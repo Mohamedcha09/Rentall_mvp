@@ -8,3 +8,4 @@ itsdangerous
 pillow
 python-dotenv
 psycopg2-binary
+stripe>=10.0.0­
