@@ -26,10 +26,11 @@ from .activate import router as activate_router
 from .freeze import router as freeze_router
 from .payments import router as payments_router
 from .checkout import router as checkout_router
-from .payouts import router as payouts_router
+# NOTE: لا نستورد payouts مباشرةً حتى لا ينهار السيرفر على Render
+# from .payouts import router as payouts_router
 from .disputes import router as disputes_router
 from .bookings import router as bookings_router
-from .payouts import router as payouts_router
+# from .payouts import router as payouts_router  # (مكررة في كودك الأصلي)
 
 load_dotenv()
 
@@ -40,11 +41,17 @@ app.add_middleware(SessionMiddleware, secret_key=os.environ.get("SECRET_KEY", "d
 
 # مجلّدات static و uploads
 BASE_DIR = os.path.dirname(__file__)
-app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
-app.mount("/uploads", StaticFiles(directory=os.path.join(os.path.dirname(BASE_DIR), "uploads")), name="uploads")
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+UPLOADS_DIR = os.path.join(os.path.dirname(BASE_DIR), "uploads")
+# تأكد من وجود مجلد الرفع على Render
+os.makedirs(UPLOADS_DIR, exist_ok=True)
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 # القوالب
-templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
 app.templates = templates
 
 # إنشاء الجداول
@@ -67,6 +74,20 @@ def seed_admin():
 
 seed_admin()
 
+# ===== تفعيل payouts اختياريًا (حتى لا ينهار التطبيق بدون stripe) =====
+PAYOUTS_ENABLED = os.getenv("ENABLE_PAYOUTS", "0") == "1"
+payouts_router = None
+if PAYOUTS_ENABLED:
+    try:
+        import stripe  # تأكد وجود المكتبة
+        from .payouts import router as _payouts_router
+        payouts_router = _payouts_router
+        print("[OK] payouts router enabled")
+    except Exception as e:
+        print(f"[SKIP] payouts router (enabled but failed): {e}")
+else:
+    print("[INFO] payouts router disabled (set ENABLE_PAYOUTS=1 & STRIPE_SECRET_KEY to enable)")
+
 # تسجيل الروترات — هذا هو المهم لمنع 404
 app.include_router(auth_router)
 app.include_router(admin_router)
@@ -78,10 +99,16 @@ app.include_router(activate_router)
 app.include_router(freeze_router)
 app.include_router(payments_router)
 app.include_router(checkout_router)
-app.include_router(payouts_router)
+# app.include_router(payouts_router)  # سنحميها بشرط بالأسفل
 app.include_router(disputes_router)
 app.include_router(bookings_router)
-app.include_router(payouts_router)
+# app.include_router(payouts_router)  # كانت مكررة—نحافظ عليها مشروطة أيضاً
+
+# ضمّن payouts إن توفّر
+if payouts_router:
+    app.include_router(payouts_router)
+if payouts_router:  # نفس التكرار الموجود عندك، ولكن محميّ
+    app.include_router(payouts_router)
 
 # الصفحة الرئيسية تعرض العناصر (مع تصنيف اختياري ?category=vehicle مثلا)
 @app.get("/")
@@ -233,4 +260,7 @@ async def sync_user_flags(request: Request, call_next):
     response = await call_next(request)
     return response
 
-
+# ====== Health Check مفيد لـ Render ======
+@app.get("/healthz")
+def healthz():
+    return {"status": "up"}
