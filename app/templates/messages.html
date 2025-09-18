@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">📩 الرسائل</h2>
+
+<div class="list-group">
+  {% for thread in threads %}
+    <a href="/messages/{{ thread.id }}" class="list-group-item list-group-item-action d-flex align-items-center">
+      <!-- صورة المنتج -->
+      <img src="{{ thread.item.image_url or '/static/placeholder.png' }}" 
+           alt="صورة المنتج" 
+           class="rounded me-3" 
+           style="width: 60px; height: 60px; object-fit: cover;">
+      
+      <div class="flex-fill">
+        <!-- اسم المستخدم + شارة التوثيق إن وُجدت الخاصية -->
+        <strong>
+          {{ thread.other_user.first_name }} {{ thread.other_user.last_name }}
+          {% if thread.other_user is defined and thread.other_user and thread.other_user.is_verified is defined and thread.other_user.is_verified %}
+            <svg class="verified-badge verified-shadow"><use href="#icon-verified"/></svg>
+          {% endif %}
+        </strong><br>
+        <!-- عنوان المنتج -->
+        <small class="text-muted">{{ thread.item.title }}</small>
+      </div>
+
+      <!-- آخر رسالة -->
+      <div class="text-muted small">
+        آخر تواصل: {{ thread.last_message_at }}
+      </div>
+    </a>
+  {% else %}
+    <p class="text-muted">لا توجد رسائل بعد.</p>
+  {% endfor %}
+</div>
+{% endblock %}

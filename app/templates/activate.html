@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="mb-4">
+  <h3 class="mb-1">إكمال التفعيل</h3>
+  <div class="text-muted">حالة حسابك الحالية:
+    <span class="badge
+      {% if user.status == 'approved' %}bg-success
+      {% elif user.status == 'pending' %}bg-warning text-dark
+      {% else %}bg-danger{% endif %}">
+      {{ user.status }}
+    </span>
+    {% if user.is_verified %}
+      <img src="/static/verified.png" class="verified-badge" alt="verified">
+    {% endif %}
+  </div>
+</div>
+
+{% if review_note %}
+  <div class="alert alert-warning text-dark mb-4">
+    <strong>ملاحظة من الأدمِن:</strong>
+    <div class="mt-1">{{ review_note }}</div>
+  </div>
+{% endif %}
+
+<div class="row g-4">
+  <!-- تحديث صورة الحساب -->
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="mb-3">صورة الحساب (التُقِطت بالكاميرا)</h5>
+        {% if user.avatar_path %}
+          <img src="/{{ user.avatar_path }}" alt="avatar" style="width:120px;height:120px;object-fit:cover;border-radius:12px;border:1px solid var(--border)">
+        {% else %}
+          <div class="text-muted small mb-2">لا توجد صورة بعد.</div>
+        {% endif %}
+
+        <form method="post" action="/activate/avatar" enctype="multipart/form-data" class="mt-3">
+          <input class="form-control" type="file" name="avatar" accept="image/*" capture="user" required>
+          <div class="small text-muted mt-2">* التصوير مباشر من الكاميرا فقط.</div>
+          <button class="btn btn-primary mt-3">حفظ الصورة</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- إعادة رفع الوثائق -->
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="mb-3">إعادة رفع الوثائق</h5>
+
+        {% if docs and docs|length %}
+          <div class="mb-3">
+            <div class="small text-muted mb-1">أحدث الوثائق المرفوعة:</div>
+            {% for d in docs|sort(attribute="created_at", reverse=True)[:1] %}
+              <div class="d-flex align-items-center gap-3">
+                {% if d.file_front_path %}
+                  <img src="/{{ d.file_front_path }}" style="width:96px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">
+                {% endif %}
+                {% if d.file_back_path %}
+                  <img src="/{{ d.file_back_path }}" style="width:96px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">
+                {% endif %}
+                <span class="badge
+                  {% if d.review_status == 'approved' %}bg-success
+                  {% elif d.review_status == 'pending' %}bg-warning text-dark
+                  {% else %}bg-danger{% endif %}">
+                  {{ d.review_status }}
+                </span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <form method="post" action="/activate/document" enctype="multipart/form-data">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label">نوع الوثيقة</label>
+              <select class="form-select" name="doc_type">
+                <option value="id_card">بطاقة تعريف</option>
+                <option value="driver_license">رخصة سياقة</option>
+                <option value="passport">جواز سفر</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label">البلد</label>
+              <input class="form-control" name="country" placeholder="مثال: Algeria">
+            </div>
+            <div class="col-6">
+              <label class="form-label">تاريخ الانتهاء (اختياري)</label>
+              <input class="form-control" name="expiry" placeholder="yyyy-mm-dd">
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <label class="form-label">صورة الوجه الأمامي (إلزامي)</label>
+            <input class="form-control" type="file" name="doc_front" accept="image/*,.pdf" required>
+          </div>
+          <div class="mt-2">
+            <label class="form-label">صورة الوجه الخلفي (اختياري)</label>
+            <input class="form-control" type="file" name="doc_back" accept="image/*,.pdf">
+          </div>
+
+          <button class="btn btn-success mt-3">إرسال للمراجعة</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- زر مراسلة الأدمِن -->
+<div class="mt-4">
+  <a class="btn btn-outline-light" href="/messages/start?user_id=1">مراسلة الأدمِن</a>
+  <span class="small text-muted ms-2">استخدم هذا الزر للاستفسار عن سبب الرفض أو ما المطلوب لتفعيل حسابك.</span>
+</div>
+
+{% endblock %}

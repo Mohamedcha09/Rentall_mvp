@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="mb-3">إدارة الضمانات (Placeholder)</h3>
+
+<div class="alert alert-info">
+  هذه صفحة إدارية تمهيدية لمتابعة الضمانات. لاحقًا يمكن ربطها بمنصة دفع (Stripe/PayPal) أو سياسة كاش.
+</div>
+
+{% if deposits and deposits|length %}
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>المستخدم</th>
+          <th>العنصر</th>
+          <th>المبلغ</th>
+          <th>الحالة</th>
+          <th>ملاحظة</th>
+          <th>تحديث الحالة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in deposits %}
+          <tr>
+            <td>{{ d.id }}</td>
+            <td>
+              {% if d.user %}
+                {{ d.user.first_name }} {{ d.user.last_name }}
+                <div class="small text-muted">{{ d.user.email }}</div>
+              {% else %}-{% endif %}
+            </td>
+            <td>{{ d.item_id or '-' }}</td>
+            <td>{{ d.amount }}</td>
+            <td>
+              <span class="badge
+                {% if d.status == 'held' %}bg-warning text-dark
+                {% elif d.status == 'released' %}bg-success
+                {% elif d.status == 'canceled' %}bg-danger
+                {% else %}bg-secondary{% endif %}">
+                {{ d.status }}
+              </span>
+            </td>
+            <td>{{ d.note or '-' }}</td>
+            <td style="min-width:280px">
+              <form method="post" action="/admin/freeze/{{ d.id }}/status" class="d-flex gap-2">
+                <select name="status" class="form-select form-select-sm" required>
+                  <option value="planned"  {% if d.status=='planned' %}selected{% endif %}>planned</option>
+                  <option value="held"     {% if d.status=='held' %}selected{% endif %}>held</option>
+                  <option value="released" {% if d.status=='released' %}selected{% endif %}>released</option>
+                  <option value="canceled" {% if d.status=='canceled' %}selected{% endif %}>canceled</option>
+                </select>
+                <input type="text" name="note" class="form-control form-control-sm" placeholder="ملاحظة (اختياري)">
+                <button class="btn btn-sm btn-primary">حفظ</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="text-muted">لا توجد سجلات.</div>
+{% endif %}
+
+{% endblock %}

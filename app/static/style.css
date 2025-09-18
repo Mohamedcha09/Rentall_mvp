@@ -1,0 +1,335 @@
+/* ====== Theme Variables ====== */
+:root{
+  --bg:#0f1115;
+  --card:#171a21;
+  --muted:#a9b0be;
+  --text:#eef2fb;
+  --primary:#7c5cff;      /* بنفسجي حديث */
+  --primary-2:#5a3eff;    /* تدرّج */
+  --accent:#00e5a8;       /* فيروزي */
+  --danger:#ff4d6d;
+  --success:#22c55e;
+  --warning:#f8b84e;
+  --border:rgba(255,255,255,.07);
+  --shadow:0 10px 30px rgba(0,0,0,.45);
+}
+
+/* ====== Base ====== */
+html,body{
+  background:
+    radial-gradient(1200px 800px at 80% -10%, rgba(124,92,255,.15), transparent 40%),
+    radial-gradient(900px 600px at -10% 110%, rgba(0,229,168,.08), transparent 40%),
+    var(--bg);
+  color:var(--text);
+  min-height:100%;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+body{
+  font-family:'Tajawal','Cairo',system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+/* ====== Navbar glass ====== */
+.navbar{
+  background: rgba(10,12,16,.65)!important;
+  backdrop-filter: blur(10px);
+  border-bottom:1px solid var(--border);
+}
+.navbar .navbar-brand{ letter-spacing:.5px; }
+.nav-link{
+  color:#cfd6e6!important;
+  transition:all .2s ease;
+}
+.nav-link:hover{ color:#fff!important; transform:translateY(-1px); }
+
+/* ====== Container spacing ====== */
+main.container{
+  padding-top:82px!important;
+  max-width:1120px;
+}
+
+/* ====== Buttons ====== */
+.btn-primary{
+  background: linear-gradient(135deg,var(--primary),var(--primary-2));
+  border:0;
+  box-shadow:0 10px 24px rgba(124,92,255,.25);
+}
+.btn-primary:hover{ filter:brightness(1.05); }
+.btn-outline-light{
+  border-color:rgba(255,255,255,.25)!important;
+  color:#e9eefb!important;
+}
+.btn-outline-light:hover{
+  background:rgba(255,255,255,.08)!important;
+  color:#fff!important;
+}
+.btn-danger{ background:var(--danger); border:0; }
+
+/* ====== Pills / filters ====== */
+.btn.btn-sm{
+  border-radius: 999px;
+  padding:.35rem .8rem;
+}
+
+/* ====== Cards (base) ====== */
+.card{
+  background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+  border:1px solid var(--border);
+  box-shadow: var(--shadow);
+  border-radius:16px;
+  overflow:hidden;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.card:hover{
+  transform: translateY(-4px);
+  border-color: rgba(124,92,255,.35);
+  box-shadow: 0 18px 40px rgba(124,92,255,.18);
+}
+.card .card-body{ padding:1rem 1rem 1.1rem; }
+
+/* صور الكروت */
+.card-img-top, .item-img{
+  height: 180px;
+  object-fit: cover;
+  border-bottom:1px solid var(--border);
+}
+
+/* ====== Typography ====== */
+h1,h2,h3,h4,h5{ letter-spacing:.2px; }
+.lead{ color:var(--muted); }
+
+/* ====== Badges ====== */
+.badge{
+  border-radius:999px;
+  padding:.35rem .6rem;
+  font-weight:600;
+  letter-spacing:.2px;
+}
+.bg-success{ background:rgba(34,197,94,.2)!important; color:#34d399!important; }
+.bg-warning{ background:rgba(248,184,78,.2)!important; color:#f8b84e!important; }
+.bg-danger{ background:rgba(255,77,109,.2)!important; color:#ff8198!important; }
+.bg-secondary{ background:rgba(148,163,184,.2)!important; color:#cbd5e1!important; }
+
+/* ====== Forms ====== */
+.form-control, .form-select{
+  background: rgba(255,255,255,.04);
+  border:1px solid var(--border);
+  color:var(--text);
+  border-radius:12px;
+}
+.form-control:focus, .form-select:focus{
+  box-shadow:0 0 0 .25rem rgba(124,92,255,.2);
+  border-color: rgba(124,92,255,.7);
+}
+.form-label{ color:#e6ebf7; }
+
+/* ====== List group ====== */
+.list-group-item{
+  background: rgba(255,255,255,.03);
+  border-color: var(--border);
+  color:var(--text);
+}
+
+/* ====== Alerts ====== */
+.alert{
+  border-radius:14px;
+  border:1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03));
+  color:#fff;
+}
+
+/* ====== Welcome hero ====== */
+.welcome-hero{ padding: 36px 0 14px; }
+.welcome-hero h1{
+  font-weight:800;
+  background: linear-gradient(90deg, #fff, #a7b3d8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ====== Items list (owner/my items) ====== */
+.card .small.text-muted{ color: var(--muted)!important; }
+
+/* ====== Thread (chat bubbles) ====== */
+.msg-bubble{
+  display:inline-block;
+  padding:.6rem .8rem;
+  border-radius:14px;
+  max-width: 70%;
+}
+.msg-out{ background: linear-gradient(135deg,var(--primary),var(--primary-2)); color:#fff; }
+.msg-in{ background: rgba(255,255,255,.08); border:1px solid var(--border); }
+
+/* ====== Footer ====== */
+footer{ color:var(--muted); border-top:1px solid var(--border); }
+
+/* ====== Small helpers ====== */
+.text-muted{ color:var(--muted)!important; }
+.grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+
+/* ====== شارة التوثيق (PNG) ====== */
+.verified-badge{
+  width:16px; height:16px;
+  vertical-align:-2px;
+  margin-inline-start:.35rem;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,.25));
+}
+.verified-badge.lg{ width:18px; height:18px; vertical-align:-3px; }
+
+/* ========================= */
+/*      تحسينات عامة         */
+/* ========================= */
+
+/* 1) وضوح أعلى للنصوص الرمادية */
+.small, .text-muted.small, .list-group-item .text-muted, .card .text-muted,
+.dropdown-menu .text-muted{
+  color:#d7def0 !important;
+  opacity:1 !important;
+}
+
+/* 2) إذا استُخدم SVG للشارة لا يتأثر بالألوان */
+svg.verified-badge, svg.verified-badge *{
+  fill: initial !important;
+  color: initial !important;
+}
+svg.verified-badge{ filter: drop-shadow(0 0 2px rgba(29,161,242,.45)); }
+
+/* 3) "مرحبًا فلان" في النافبار واضح حتى مع .disabled */
+.navbar-dark .nav-link.disabled{ opacity:1 !important; color:#fff !important; }
+
+/* 4) إخفاء ✓ القديمة إن وُجدت */
+.owner-line .fallback-check, .fallback-check{ display:none !important; }
+
+/* 5) بادج مساعد */
+.bg-dark-subtle{ background:rgba(255,255,255,.1)!important; color:#e6ebf7!important; }
+
+/* 6) أوقات الرسائل أوضح */
+.thread-time, .msg-time{ color:#d0d7eb !important; }
+
+/* ========================= */
+/*   تحسين صفحة الرئيسية     */
+/* ========================= */
+
+/* بطل الصفحة العلوي في الهوم */
+.home-hero h1{
+  font-weight: 800;
+  background: linear-gradient(90deg, #fff, #cdd6ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.card-search{
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+/* شبكة نظيفة ومتجاوبة */
+.home-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 18px;
+}
+
+/* بطاقة العنصر الحديثة */
+.card.spot{
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+  box-shadow: var(--shadow);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.card.spot:hover{
+  transform: translateY(-6px);
+  border-color: rgba(124,92,255,.35);
+  box-shadow: 0 18px 40px rgba(124,92,255,.18);
+}
+
+/* منطقة الصورة بنسبة ثابتة */
+.spot-media{
+  position: relative;
+  aspect-ratio: 16/10;
+  background: rgba(255,255,255,.03);
+  border-bottom: 1px solid var(--border);
+}
+.spot-media > img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform .25s ease;
+}
+.card.spot:hover .spot-media > img{ transform: scale(1.025); }
+
+/* تدرّج خفيف فوق الصورة */
+.spot-overlay{
+  position:absolute; inset:0;
+  background: linear-gradient(180deg, transparent 55%, rgba(15,17,21,.55));
+  pointer-events: none;
+}
+
+/* شارة السعر */
+.price-badge{
+  position:absolute; inset-inline-start:12px; top:12px;
+  padding:.35rem .6rem;
+  border-radius:999px;
+  background: rgba(10,12,16,.65);
+  backdrop-filter: blur(8px);
+  border:1px solid var(--border);
+  color:#fff;
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+  font-weight:700;
+}
+
+/* شارة التصنيف */
+.category-chip{
+  position:absolute; inset-inline-end:12px; top:12px;
+  padding:.25rem .6rem;
+  border-radius:999px;
+  font-size:.8rem;
+  color:#cfe2ff;
+  background: rgba(124,92,255,.18);
+  border:1px solid rgba(124,92,255,.35);
+}
+
+/* سطر المالك */
+.owner-line{ min-height: 30px; }
+.owner-avatar{
+  width:28px; height:28px; border-radius:999px;
+  object-fit:cover;
+  border:1px solid var(--border);
+  box-shadow: 0 4px 10px rgba(0,0,0,.25);
+}
+.owner-avatar--placeholder{
+  width:28px; height:28px; border-radius:999px;
+  display:grid; place-items:center;
+  background: rgba(255,255,255,.06);
+  border:1px solid var(--border);
+}
+
+/* المدينة كبادج أنيق */
+.city-chip{
+  padding:.25rem .55rem;
+  border-radius:999px;
+  background: rgba(255,255,255,.06);
+  border:1px solid var(--border);
+  color:#d7def0;
+  max-width: 60%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* عنوان البطاقة سطر واحد */
+.card.spot .card-title{
+  line-height:1.25;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* تباعد الأزرار داخل قائمة الفئات */
+.home-cats .btn{ margin-bottom: 6px; }

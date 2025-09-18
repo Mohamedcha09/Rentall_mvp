@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+  .hero {
+    background: radial-gradient(1200px 600px at 100% -20%, rgba(124,92,255,.25), transparent 60%),
+                radial-gradient(900px 500px at -10% 10%, rgba(0,229,168,.18), transparent 55%),
+                linear-gradient(180deg, #0f1220 0%, #0b0e19 100%);
+    color: #fff; border-radius: 18px; padding: 56px 28px; overflow: hidden;
+  }
+  .glass { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08);
+           border-radius: 16px; backdrop-filter: blur(8px); }
+  .feature-icon { width: 44px; height: 44px; border-radius: 12px;
+                  display:flex; align-items:center; justify-content:center;
+                  background: rgba(255,255,255,.08); font-size: 22px; }
+  .tick { color: #00e5a8; }
+</style>
+
+<section class="hero mb-4">
+  <div class="row align-items-center">
+    <div class="col-lg-7">
+      <h1 class="mb-3 fw-bold">مرحبًا بك في <span class="text-info">RentAll</span> — لما تحتاج شي <u>مؤقتًا</u> بدل ما تشتريه!</h1>
+      <p class="lead mb-4">
+        أحيانًا نحتاج أشياء لأيام أو ساعات فقط: كاميرا، دريل، صندوق سقف، أو حتى سيارة. الشراء مُكلف وغير عملي — وطلبه من أحد قد يكون صعب.
+        <br>هنا نربط بين <strong>اللي عندهم أغراض ما يستخدموها دائمًا</strong> و<strong>اللي يحتاجوها مؤقتًا</strong>… بسهولة وأمان.
+      </p>
+      <form method="post" action="/welcome/continue" class="d-flex flex-wrap gap-2">
+        <button class="btn btn-primary btn-lg">ابدأ الآن</button>
+        <a class="btn btn-outline-light btn-lg" href="/about">تعرّف أكثر</a>
+        <a class="btn btn-outline-secondary btn-lg" href="/register">تسجيل</a>
+        <a class="btn btn-outline-secondary btn-lg" href="/login">دخول</a>
+      </form>
+      <div class="small text-muted mt-2">بالنقر على “ابدأ الآن” سيتم حفظ كوكي لإخفاء هذه الصفحة لاحقًا.</div>
+    </div>
+    <div class="col-lg-5 mt-4 mt-lg-0">
+      
+    </div>
+  </div>
+</section>
+
+<section class="mb-4">
+  <div class="row g-3">
+    <div class="col-md-4">
+      <div class="glass p-3 h-100">
+        <div class="d-flex align-items-center mb-2">
+          <div class="feature-icon me-2">🧩</div>
+          <h5 class="m-0">المشكلة</h5>
+        </div>
+        <p class="text-muted m-0">
+          نحتاج أشياء قصيرة المدى: يوم، أسبوع، عطلة… الشراء غالي، والاستعارة غير مضمونة.
+        </p>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="glass p-3 h-100">
+        <div class="d-flex align-items-center mb-2">
+          <div class="feature-icon me-2">💡</div>
+          <h5 class="m-0">الحل</h5>
+        </div>
+        <p class="text-muted m-0">
+          منصة تربط المالك بالمستأجر. استأجر اللي تحتاجه… وخلّي أغراضك تكسب بدل ما تنام في الدولاب.
+        </p>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="glass p-3 h-100">
+        <div class="d-flex align-items-center mb-2">
+          <div class="feature-icon me-2">🔒</div>
+          <h5 class="م-0">الأمان</h5>
+        </div>
+        <p class="text-muted m-0">
+          توثيق الحسابات بالهوية، رسائل داخلية، وتقييمات علنية بعد كل عملية تأجير.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="mb-4 glass p-4">
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <h4 class="mb-3">كيف يشتغل RentAll؟</h4>
+      <ol class="text-muted">
+        <li>أنشئ حسابًا وارفع وثيقة رسمية للمراجعة (بطاقة/رخصة/جواز).</li>
+        <li>استعرض حسب التصنيف والمكان واختر المدة المناسبة.</li>
+        <li>تواصل مع المالك عبر الرسائل وحدّد التسليم.</li>
+        <li>استلم، استخدم، ارجع — ثم قيّم التجربة.</li>
+      </ol>
+      <div class="mt-2">
+        <span class="tick">✔</span> خيوط محادثة منفصلة لكل منتج — ما في خلط رسائل.<br>
+        <span class="tick">✔</span> رئيسية ديناميكية تعرض عناصر جديدة في كل زيارة.<br>
+        <span class="tick">✔</span> تصنيفات واضحة لتوصل بسرعة للي تحتاجه.
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <h4 class="mb-3">لمن هذه الخدمة؟</h4>
+      <ul class="text-muted">
+        <li>أبغى سيارة ليومين؟ معدات تصوير لعطلة؟ أدوات بناء لمشروع صغير؟</li>
+        <li>عندي أشياء جيدة بس نادرًا أستخدمها — أحب أأجرها وأكسب.</li>
+        <li>طلاب، عائلات، مسافرون، فريلانسرز… الكل يستفيد.</li>
+      </ul>
+      <div class="d-flex flex-wrap gap-2 mt-2">
+        <span class="badge bg-secondary">سيارات</span>
+        <span class="badge bg-secondary">معدات تصوير</span>
+        <span class="badge bg-secondary">أدوات بناء</span>
+        <span class="badge bg-secondary">إلكترونيات</span>
+        <span class="badge bg-secondary">ألعاب</span>
+        <span class="badge bg-secondary">تخييم وسفر</span>
+        <span class="badge bg-secondary">آلات موسيقية</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4 d-flex flex-wrap gap-2">
+    <form method="post" action="/welcome/continue">
+      <button class="btn btn-primary btn-lg">فهمت، ادخل للموقع</button>
+    </form>
+    <a class="btn btn-outline-light btn-lg" href="/about">عن المنصّة</a>
+    <a class="btn btn-outline-secondary btn-lg" href="/items">استكشف العناصر</a>
+  </div>
+</section>
+
+{% endblock %}

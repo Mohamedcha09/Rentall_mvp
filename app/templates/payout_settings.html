@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h3 class="mb-3">إعدادات التحويل (Stripe Connect)</h3>
+
+<div class="card">
+  <div class="card-body">
+    {% if user.stripe_account_id %}
+      <p class="mb-2">حساب Stripe: <code>{{ user.stripe_account_id }}</code></p>
+      {% if user.payouts_enabled %}
+        <div class="alert alert-success">جاهز لاستلام المدفوعات 🎉</div>
+      {% else %}
+        <div class="alert alert-warning">لم تُكمل خطوات التفعيل بعد.</div>
+        <form method="post" action="/payout/connect"><button class="btn btn-primary">إكمال التفعيل</button></form>
+      {% endif %}
+    {% else %}
+      <div class="alert alert-info">اربط حساب Stripe Express لتستلم أموالك مباشرة.</div>
+      <form method="post" action="/payout/connect"><button class="btn btn-primary">بدء الربط</button></form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

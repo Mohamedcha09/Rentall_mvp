@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<h3 class="mb-3">طلباتي</h3>
+
+{% if orders and orders|length %}
+  <div class="row g-3">
+    {% for o in orders %}
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="row g-0">
+            <div class="col-4">
+              <img src="{{ o.image }}" class="img-fluid rounded-start" style="height:100%;object-fit:cover">
+            </div>
+            <div class="col-8">
+              <div class="card-body">
+                <h5 class="card-title mb-1">{{ o.title }}</h5>
+                <div class="small text-muted mb-1">المدة: {{ o.days }} يوم · من {{ o.start_date }} إلى {{ o.end_date }}</div>
+                <div class="mb-2">الإجمالي: <strong>{{ o.total }}</strong> د</div>
+                <span class="badge
+                  {% if o.status=='pending' %} bg-warning text-dark
+                  {% elif o.status=='paid' %} bg-success
+                  {% elif o.status=='active' %} bg-primary
+                  {% elif o.status=='completed' %} bg-secondary
+                  {% elif o.status=='canceled' %} bg-danger
+                  {% else %} bg-dark-subtle{% endif %}">{{ o.status }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-info">لا توجد طلبات بعد.</div>
+{% endif %}
+
+<a class="btn btn-outline-light mt-3" href="/">العودة للرئيسية</a>
+{% endblock %}

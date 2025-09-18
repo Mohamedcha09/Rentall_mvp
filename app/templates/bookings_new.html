@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="mb-3">حجز: {{ item.title }}</h3>
+
+<div class="card">
+  <div class="card-body">
+    <form method="post" action="/bookings/new" id="booking-form">
+      <input type="hidden" name="item_id" value="{{ item.id }}">
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">تاريخ البدء</label>
+          <input type="date" name="start_date" id="start_date" class="form-control" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">تاريخ الانتهاء</label>
+          <input type="date" name="end_date" id="end_date" class="form-control" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label">ملاحظة (اختياري)</label>
+          <textarea name="note" class="form-control" rows="2" placeholder="تفاصيل إضافية…"></textarea>
+        </div>
+
+        <!-- إشعار فوري عن التعارض -->
+        <div class="col-12">
+          <div id="availability_hint" class="alert alert-warning" style="display:none;">
+            التواريخ المختارة تتداخل مع حجوزات مؤكَّدة. يرجى اختيار تواريخ أخرى.
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-3">
+        <button class="btn btn-success" id="submit_btn">إرسال طلب الحجز</button>
+        <a href="/items/{{ item.id }}" class="btn btn-outline-light">رجوع</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function(){
+    const startEl = document.getElementById('start_date');
+    const endEl   = document.getElementById('end_date');
+    const hint    = document.getElementById('availability_hint');
+    const btn     = document.getElementById('submit_btn');
+
+    // حدد حد أدنى اليوم
+    const today = new Date().toISOString().slice(0,10);
+    startEl.min = today;
+    endEl.min   = today;
+
+    let blocked = []; // فترات محجوزة {start,end}
+
+    // حمّل الفترات المحجوزة لهذا العنصر
+    fetch(`/api/items/{{ item.id }}/booked`, { credentials: 'include' })
+      .then(r => r.ok ? r.json() : {blocked:[]})
+      .then(json => { blocked = json.blocked || []; })
+      .catch(() => { blocked = []; });
+
+    function parse(d){
+      try { return new Date(d + "T00:00:00"); } catch(e){ return null; }
+    }
+
+    function overlaps(aStart, aEnd, bStart, bEnd){
+      return aStart <= bEnd && aEnd >= bStart;
+    }
+
+    function check(){
+      hint.style.display = 'none';
+      btn.disabled = false;
+
+      const s = startEl.value;
+      const e = endEl.value;
+      if(!s || !e) return;
+
+      const sd = parse(s);
+      const ed = parse(e);
+      if(ed < sd){
+        hint.style.display = 'block';
+        hint.textContent = 'تاريخ الانتهاء لا يمكن أن يكون قبل تاريخ البدء.';
+        btn.disabled = true;
+        return;
+      }
+
+      // تعارض مع الفترات المحجوزة
+      for(const r of blocked){
+        const rs = parse(r.start);
+        const re = parse(r.end);
+        if(overlaps(sd, ed, rs, re)){
+          hint.style.display = 'block';
+          hint.textContent = 'التواريخ المختارة تتداخل مع حجوزات مؤكَّدة. يرجى اختيار تواريخ أخرى.';
+          btn.disabled = true;
+          return;
+        }
+      }
+
+      // إعادة الرسالة الافتراضية
+      hint.style.display = 'none';
+      btn.disabled = false;
+    }
+
+    startEl.addEventListener('change', check);
+    endEl.addEventListener('change', check);
+  })();
+</script>
+
+{% endblock %}

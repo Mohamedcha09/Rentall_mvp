@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h3 class="mb-0">الضمانات (Placeholder)</h3>
+  <a href="/freeze" class="btn btn-sm btn-outline-light">تحديث</a>
+</div>
+
+<div class="alert alert-warning">
+  هذا مجرد قالب تمهيدي لميزة «التجميد/الضمان» — لا يوجد تعامل مالي فعلي الآن.
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="post" action="/freeze/create" class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">رقم العنصر (اختياري)</label>
+        <input type="number" name="item_id" class="form-control" placeholder="مثال: 101">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">قيمة الضمان</label>
+        <input type="number" name="amount" class="form-control" placeholder="مثال: 500" required>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">ملاحظة (اختياري)</label>
+        <input type="text" name="note" class="form-control" placeholder="مثال: ضمان عند الاستلام">
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-primary w-100">تسجيل</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if deposits and deposits|length %}
+  <div class="list-group">
+    {% for d in deposits %}
+      <div class="list-group-item">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="fw-bold">ضمان #{{ d.id }}</div>
+            <div class="small text-muted">
+              عنصر: {{ d.item_id or '-' }} ·
+              المبلغ: {{ d.amount }} ·
+              الحالة:
+              <span class="badge
+                {% if d.status == 'held' %}bg-warning text-dark
+                {% elif d.status == 'released' %}bg-success
+                {% elif d.status == 'canceled' %}bg-danger
+                {% else %}bg-secondary{% endif %}">
+                {{ d.status }}
+              </span>
+            </div>
+            {% if d.note %}<div class="small text-muted">ملاحظة: {{ d.note }}</div>{% endif %}
+          </div>
+          <div class="text-muted small">{{ d.created_at }}</div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="text-muted">لا توجد سجلات بعد.</div>
+{% endif %}
+
+{% endblock %}

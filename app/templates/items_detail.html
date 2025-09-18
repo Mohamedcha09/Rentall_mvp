@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+{% if not item %}
+  <div class="alert alert-danger">العنصر غير موجود.</div>
+{% else %}
+<div class="row">
+  <div class="col-md-7">
+    <div class="card">
+      {% if item.image_path %}<img src="/{{ item.image_path }}" class="card-img-top" style="max-height:400px;object-fit:cover" alt="item">{% endif %}
+      <div class="card-body">
+        <h3 class="card-title">{{ item.title }}</h3>
+        <div class="small text-muted mb-1">{{ item.category_label }}</div>
+        <p class="text-muted">{{ item.city or "" }}</p>
+        <p class="fw-bold">{{ item.price_per_day }} د/يوم</p>
+        <p>{{ item.description or "" }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-5">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5>المالك</h5>
+
+        {% if owner %}
+          <!-- اسم المالك + شارة التوثيق -->
+          <div class="mb-2">
+            <strong>{{ owner.first_name }} {{ owner.last_name }}</strong>
+            {% if owner.is_verified %}
+              <img src="/static/verified.png" class="verified-badge" alt="موثّق">
+            {% endif %}
+          </div>
+
+          <!-- رابط الملف العام -->
+          <a href="/u/{{ owner.id }}" class="btn btn-sm btn-outline-light">الملف العام</a>
+        {% endif %}
+
+        <!-- منطق المراسلة -->
+        {% if session_user and session_user.id != owner.id %}
+          {% if session_user.status == 'approved' %}
+            <div class="d-grid gap-2 mt-3">
+              <a class="btn btn-primary"
+                 href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">
+                 تواصل مع المالك
+              </a>
+              <!-- ✅ زر احجز الآن -->
+              <a class="btn btn-success"
+                 href="/bookings/new?item_id={{ item.id }}">
+                 احجز الآن
+              </a>
+            </div>
+          {% else %}
+            <div class="alert alert-warning mt-3 small">
+              حسابك قيد المراجعة؛ حالياً يمكنك مراسلة الدعم فقط لحل مشاكل التفعيل.
+            </div>
+            <a class="btn btn-outline-light" href="/messages/support">راسل الدعم</a>
+          {% endif %}
+        {% else %}
+          <div class="small text-muted mt-2">سجّل الدخول للتواصل.</div>
+        {% endif %}
+      </div>
+    </div>
+    <a href="/items" class="btn btn-outline-light">رجوع للقائمة</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

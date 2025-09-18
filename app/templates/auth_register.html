@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="max-width:640px;">
+  <h2 class="mb-4">تسجيل حساب جديد</h2>
+
+  <form method="post" action="/register" enctype="multipart/form-data">
+
+    <!-- الاسم -->
+    <div class="mb-3">
+      <label class="form-label">الاسم</label>
+      <input type="text" name="first_name" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">اللقب</label>
+      <input type="text" name="last_name" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">البريد الإلكتروني</label>
+      <input type="email" name="email" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">الهاتف</label>
+      <input type="text" name="phone" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">كلمة المرور</label>
+      <input type="password" name="password" class="form-control" required>
+    </div>
+
+    <!-- صورة الحساب (من الكاميرا فقط) -->
+    <div class="mb-3">
+      <label class="form-label">صورة الحساب (إلزامية — التقطها الآن)</label>
+
+      <!-- أزرار التحكم -->
+      <div class="d-flex gap-2 flex-wrap">
+        <button type="button" id="openCamBtn" class="btn btn-outline-light btn-sm">تشغيل الكاميرا</button>
+        <button type="button" id="snapBtn" class="btn btn-primary btn-sm" style="display:none;">التقاط الصورة</button>
+        <button type="button" id="usePhotoBtn" class="btn btn-success btn-sm" style="display:none;">اعتماد الصورة</button>
+        <button type="button" id="retakeBtn" class="btn btn-secondary btn-sm" style="display:none;">إعادة الالتقاط</button>
+      </div>
+
+      <!-- منطقة الكاميرا/المعاينة -->
+      <div id="camBox" class="mt-3" style="display:none;">
+        <video id="video" autoplay playsinline style="max-width:100%; border:1px solid var(--border); border-radius:12px;"></video>
+        <canvas id="canvas" style="display:none;"></canvas>
+        <img id="photoPreview" alt="المعاينة" style="display:none; max-width:100%; border:1px solid var(--border); border-radius:12px; margin-top:8px;">
+      </div>
+
+      <!-- هذا الحقل مخفي، سنملؤه بالملف الناتج من الكاميرا -->
+      <input type="file" name="avatar" id="avatarInput" accept="image/*" required style="display:none;">
+      <div class="text-muted small mt-2">
+        ملاحظة: يتطلب إذن الكاميرا ويعمل على <strong>HTTPS</strong> أو <strong>localhost</strong>.
+      </div>
+    </div>
+
+    <!-- الوثائق -->
+    <div class="mb-3">
+      <label class="form-label">نوع الوثيقة</label>
+      <select name="doc_type" class="form-select" required>
+        <option value="id_card">بطاقة تعريف</option>
+        <option value="driver_license">رخصة سياقة</option>
+        <option value="passport">جواز سفر</option>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">بلد الإصدار</label>
+      <input type="text" name="doc_country" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">تاريخ انتهاء الوثيقة</label>
+      <input type="date" name="doc_expiry" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">الوجه الأمامي للوثيقة</label>
+      <input type="file" name="doc_front" class="form-control" accept=".jpg,.jpeg,.png,.pdf" required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">الوجه الخلفي (اختياري)</label>
+      <input type="file" name="doc_back" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+    </div>
+
+    <button type="submit" class="btn btn-primary">تسجيل</button>
+  </form>
+</div>
+
+<!-- سكربت التحكم بالكاميرا -->
+<script>
+(function () {
+  const openCamBtn   = document.getElementById('openCamBtn');
+  const snapBtn      = document.getElementById('snapBtn');
+  const usePhotoBtn  = document.getElementById('usePhotoBtn');
+  const retakeBtn    = document.getElementById('retakeBtn');
+
+  const camBox       = document.getElementById('camBox');
+  const video        = document.getElementById('video');
+  const canvas       = document.getElementById('canvas');
+  const photoPreview = document.getElementById('photoPreview');
+  const avatarInput  = document.getElementById('avatarInput');
+
+  const form = (function findForm(el){
+    while (el && el.tagName !== 'FORM') el = el.parentElement;
+    return el || document.querySelector('form');
+  })(openCamBtn);
+
+  let stream = null;
+  let capturedBlob = null;
+
+  async function openCamera() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' }, audio: false
+      });
+      video.srcObject = stream;
+      camBox.style.display  = 'block';
+      snapBtn.style.display = 'inline-block';
+      usePhotoBtn.style.display = 'none';
+      retakeBtn.style.display   = 'none';
+      photoPreview.style.display = 'none';
+      canvas.style.display = 'none';
+      capturedBlob = null;
+      avatarInput.value = '';
+    } catch (e) {
+      alert('تعذّر الوصول إلى الكاميرا. تأكد من منح الإذن (HTTPS/localhost).');
+    }
+  }
+
+  function snapPhoto() {
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if (!w || !h) {
+      alert('الكاميرا لم تبدأ بعد، جرّب بعد ثوانٍ.');
+      return;
+    }
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, w, h);
+
+    canvas.toBlob((blob) => {
+      capturedBlob = blob;
+      photoPreview.src = URL.createObjectURL(blob);
+      photoPreview.style.display = 'block';
+      usePhotoBtn.style.display = 'inline-block';
+      retakeBtn.style.display   = 'inline-block';
+    }, 'image/jpeg', 0.9);
+  }
+
+  function stopCamera() {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+    video.srcObject = null;
+  }
+
+  function retake() {
+    capturedBlob = null;
+    photoPreview.src = '';
+    photoPreview.style.display = 'none';
+    usePhotoBtn.style.display  = 'none';
+    retakeBtn.style.display    = 'none';
+    snapBtn.style.display      = 'inline-block';
+  }
+
+  function usePhoto() {
+    if (!capturedBlob) return;
+    const file = new File([capturedBlob], `avatar_${Date.now()}.jpg`, { type: 'image/jpeg' });
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    avatarInput.files = dt.files;
+    stopCamera();
+    snapBtn.style.display     = 'none';
+    usePhotoBtn.style.display = 'none';
+    alert('تم اعتماد الصورة. يمكنك الآن إرسال النموذج.');
+  }
+
+  function guardSubmit(e) {
+    if (!avatarInput.files || avatarInput.files.length === 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      alert('يجب التقاط صورة الحساب واعتمادها قبل الإرسال.');
+      return false;
+    }
+  }
+
+  openCamBtn?.addEventListener('click', openCamera);
+  snapBtn?.addEventListener('click', snapPhoto);
+  usePhotoBtn?.addEventListener('click', usePhoto);
+  retakeBtn?.addEventListener('click', retake);
+  form?.addEventListener('submit', guardSubmit);
+
+  window.addEventListener('beforeunload', stopCamera);
+})();
+</script>
+{% endblock %}

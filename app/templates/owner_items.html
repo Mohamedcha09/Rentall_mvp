@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>أشيائي</h2>
+<p class="text-muted">العناصر التي قمت بنشرها للكراء.</p>
+
+<div class="d-flex justify-content-end mb-2">
+  <a class="btn btn-primary" href="/owner/items/new">+ أضف عنصر</a>
+</div>
+
+<div class="row">
+  {% for it in items %}
+    <div class="col-md-4">
+      <div class="card mb-3">
+        {% if it.image_path %}
+          <img src="/{{ it.image_path }}" class="card-img-top" style="height:180px;object-fit:cover" alt="item">
+        {% endif %}
+        <div class="card-body">
+          <div class="small text-muted">{{ it.category_label }}</div>
+          <h5 class="card-title">{{ it.title }}</h5>
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="fw-bold">{{ it.price_per_day }} د/يوم</span>
+            <a class="btn btn-sm btn-outline-light" href="/items/{{ it.id }}">تفاصيل</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <p class="text-muted">لم تنشر أي عنصر بعد.</p>
+  {% endfor %}
+</div>
+{% endblock %}

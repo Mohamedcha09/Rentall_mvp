@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 class="mb-3">تصحيح بيانات التحقق</h2>
+<p class="text-muted">
+هنا يمكنك إعادة رفع <strong>صورة الحساب</strong> و/أو <strong>الوثائق</strong> إذا طلب الأدمين ذلك.
+بعد الإرسال، سيقوم الأدمين بمراجعتها مرة أخرى.
+</p>
+
+{% if message %}
+  <div class="alert alert-info">{{ message }}</div>
+{% endif %}
+
+<div class="row">
+  <div class="col-md-6">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="mb-3">صورة الحساب (وجهك)</h5>
+
+        {% if user.avatar_path %}
+          <div class="mb-2">
+            <div class="small text-muted mb-1">الصورة الحالية:</div>
+            <img src="/{{ user.avatar_path }}" class="rounded border" style="width:160px;height:160px;object-fit:cover;">
+          </div>
+        {% else %}
+          <div class="text-muted small mb-2">لا توجد صورة حالية.</div>
+        {% endif %}
+
+        <form method="post" action="/profile/docs" enctype="multipart/form-data">
+          <input type="hidden" name="action" value="avatar">
+          <div class="mb-2">
+            <label class="form-label">ارفع صورة جديدة (JPG/PNG/WebP)</label>
+            <input class="form-control" type="file" name="avatar" accept="image/*" required>
+          </div>
+          <button class="btn btn-primary btn-sm">حفظ الصورة</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="mb-3">وثائق الهوية</h5>
+
+        {% set d = (user.documents|first) %}
+        <div class="row g-3">
+          <div class="col-12">
+            <div class="small text-muted">الوثيقة الحالية:
+              {% if d %}
+                <strong>{{ d.doc_type or "-" }}</strong> · بلد الإصدار: <strong>{{ d.country or "-" }}</strong> · الصلاحية: <strong>{{ d.expiry_date or "-" }}</strong>
+              {% else %}
+                لا يوجد سجل وثيقة بعد
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="col-6">
+            <div class="small text-muted mb-1">الوجه الأمامي</div>
+            {% if d and d.file_front_path %}
+              <img src="/{{ d.file_front_path }}" class="img-fluid rounded border" style="max-height:160px;object-fit:cover;">
+            {% else %}
+              <div class="text-muted small">غير مرفوع</div>
+            {% endif %}
+          </div>
+
+          <div class="col-6">
+            <div class="small text-muted mb-1">الوجه الخلفي</div>
+            {% if d and d.file_back_path %}
+              <img src="/{{ d.file_back_path }}" class="img-fluid rounded border" style="max-height:160px;object-fit:cover;">
+            {% else %}
+              <div class="text-muted small">غير مرفوع</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <hr class="my-3">
+
+        <form method="post" action="/profile/docs" enctype="multipart/form-data">
+          <input type="hidden" name="action" value="documents">
+
+          <div class="row g-2">
+            <div class="col-md-4">
+              <label class="form-label">نوع الوثيقة</label>
+              <select class="form-select" name="doc_type" required>
+                <option value="id_card"  {% if d and d.doc_type=='id_card' %}selected{% endif %}>بطاقة هوية</option>
+                <option value="driver_license" {% if d and d.doc_type=='driver_license' %}selected{% endif %}>رخصة قيادة</option>
+                <option value="passport" {% if d and d.doc_type=='passport' %}selected{% endif %}>جواز سفر</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">بلد الإصدار</label>
+              <input class="form-control" type="text" name="doc_country" value="{{ d.country if d else '' }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">تاريخ الانتهاء</label>
+              <input class="form-control" type="date" name="doc_expiry" value="{{ d.expiry_date if d and d.expiry_date }}">
+            </div>
+          </div>
+
+          <div class="mt-2">
+            <label class="form-label">صورة الوجه الأمامي (JPG/PNG/PDF)</label>
+            <input class="form-control" type="file" name="doc_front" accept=".jpg,.jpeg,.png,.pdf">
+          </div>
+          <div class="mt-2">
+            <label class="form-label">صورة الوجه الخلفي (اختياري)</label>
+            <input class="form-control" type="file" name="doc_back" accept=".jpg,.jpeg,.png,.pdf">
+          </div>
+
+          <div class="form-text text-muted mt-2">
+            إذا طلب الأدمين <strong>تصحيح</strong>، ستُعرض ملاحظته في الرسائل. بعد إعادة الرفع اضغط “حفظ الوثائق”.
+          </div>
+
+          <button class="btn btn-primary btn-sm mt-2">حفظ الوثائق</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<a href="/profile" class="btn btn-outline-light">رجوع إلى صفحتي</a>
+
+{% endblock %}

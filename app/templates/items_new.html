@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>إضافة عنصر جديد</h2>
+<form method="post" enctype="multipart/form-data">
+  <div class="mb-3">
+    <label class="form-label">العنوان</label>
+    <input type="text" name="title" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">التصنيف</label>
+    <select class="form-select" name="category" required>
+      {% for cat in categories %}
+        <option value="{{ cat.key }}">{{ cat.label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">الوصف</label>
+    <textarea name="description" class="form-control" rows="4"></textarea>
+  </div>
+  <div class="row">
+    <div class="col-md-6 mb-3">
+      <label class="form-label">المدينة</label>
+      <input type="text" name="city" class="form-control">
+    </div>
+    <div class="col-md-6 mb-3">
+      <label class="form-label">السعر/اليوم</label>
+      <input type="number" name="price_per_day" class="form-control" value="0" min="0">
+    </div>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">صورة</label>
+    <input type="file" name="image" class="form-control" accept=".jpg,.jpeg,.png">
+  </div>
+  <button class="btn btn-primary">حفظ</button>
+  <a href="/items" class="btn btn-outline-light">رجوع</a>
+</form>
+{% endblock %}

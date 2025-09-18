@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-2">العناصر</h2>
+<div class="mb-2">
+  <a class="btn btn-sm {% if not current_category %}btn-primary{% else %}btn-outline-light{% endif %}" href="/items">الكل</a>
+  {% for cat in categories %}
+    <a class="btn btn-sm {% if current_category == cat.key %}btn-primary{% else %}btn-outline-light{% endif %}" href="/items?category={{ cat.key }}">{{ cat.label }}</a>
+  {% endfor %}
+</div>
+<div class="grid mt-2">
+{% for it in items %}
+  <div class="card">
+    {% if it.image_path %}<img src="/{{ it.image_path }}" class="card-img-top item-img" alt="item">{% endif %}
+    <div class="card-body">
+      <div class="small text-muted">{{ it.category_label }}</div>
+      <h5 class="card-title">{{ it.title }}</h5>
+      <div class="d-flex justify-content-between align-items-center">
+        <span class="fw-bold">{{ it.price_per_day }} د/يوم</span>
+        <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
+      </div>
+    </div>
+  </div>
+{% else %}
+  <p class="text-muted">لا توجد عناصر ضمن هذا التصنيف.</p>
+{% endfor %}
+</div>
+{% endblock %}

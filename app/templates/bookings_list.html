@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="mb-3">حجوزاتي</h3>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="mb-3">كمستأجر</h5>
+        {% if as_renter and as_renter|length %}
+          <div class="list-group">
+            {% for b in as_renter %}
+              <div class="list-group-item bg-transparent">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <div class="fw-bold">
+                      {{ b.item.title if b.item else 'عنصر محذوف' }}
+                    </div>
+                    <div class="small text-muted">
+                      {{ b.start_date }} → {{ b.end_date }}
+                    </div>
+                    {% if b.note %}
+                      <div class="small">{{ b.note }}</div>
+                    {% endif %}
+                  </div>
+                  <span class="badge
+                    {% if b.status == 'pending' %}bg-warning text-dark
+                    {% elif b.status == 'approved' %}bg-success
+                    {% elif b.status == 'active' %}bg-primary
+                    {% elif b.status == 'completed' %}bg-secondary
+                    {% elif b.status == 'rejected' %}bg-danger
+                    {% else %}bg-dark-subtle{% endif %}">
+                    {{ b.status }}
+                  </span>
+                </div>
+
+                <!-- أزرار سريعة حسب الحالة -->
+                <div class="mt-2 d-flex gap-2">
+                  {% if b.status in ['pending','approved'] %}
+                    <form method="post" action="/bookings/{{ b.id }}/cancel">
+                      <button class="btn btn-sm btn-outline-danger">إلغاء</button>
+                    </form>
+                  {% endif %}
+                  {% if b.status == 'approved' and today >= b.start_date %}
+                    <form method="post" action="/bookings/{{ b.id }}/activate">
+                      <button class="btn btn-sm btn-success">أستلمت العنصر (تفعيل)</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-muted">لا توجد حجوزات قمت بها.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="mb-3">طلبات على أشيائي (أنا المالك)</h5>
+        {% if as_owner and as_owner|length %}
+          <div class="list-group">
+            {% for b in as_owner %}
+              <div class="list-group-item bg-transparent">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <div class="fw-bold">
+                      {{ b.item.title if b.item else 'عنصر محذوف' }}
+                    </div>
+                    <div class="small text-muted">
+                      {{ b.start_date }} → {{ b.end_date }}
+                    </div>
+                    <div class="small">
+                      طالب الحجز: {{ b.renter.first_name }} {{ b.renter.last_name }}
+                    </div>
+                    {% if b.note %}
+                      <div class="small">{{ b.note }}</div>
+                    {% endif %}
+                  </div>
+                  <span class="badge
+                    {% if b.status == 'pending' %}bg-warning text-dark
+                    {% elif b.status == 'approved' %}bg-success
+                    {% elif b.status == 'active' %}bg-primary
+                    {% elif b.status == 'completed' %}bg-secondary
+                    {% elif b.status == 'rejected' %}bg-danger
+                    {% else %}bg-dark-subtle{% endif %}">
+                    {{ b.status }}
+                  </span>
+                </div>
+
+                <!-- أزرار المالك -->
+                <div class="mt-2 d-flex gap-2">
+                  {% if b.status == 'pending' %}
+                    <form method="post" action="/bookings/{{ b.id }}/approve">
+                      <button class="btn btn-sm btn-success">قبول</button>
+                    </form>
+                    <form method="post" action="/bookings/{{ b.id }}/reject">
+                      <button class="btn btn-sm btn-outline-danger">رفض</button>
+                    </form>
+                  {% endif %}
+                  {% if b.status == 'active' %}
+                    <form method="post" action="/bookings/{{ b.id }}/complete">
+                      <button class="btn btn-sm btn-primary">إغلاق (أُعيد العنصر)</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-muted">لا توجد طلبات على أشيائك حالياً.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h3 class="mb-0">الرسائل</h3>
+  <a class="btn btn-outline-secondary btn-sm" href="/messages">تحديث</a>
+</div>
+
+<!-- تنبيه: الحساب غير الموافق عليه -->
+{% if session_user and session_user.status != 'approved' %}
+  <div class="alert alert-warning">
+    حسابك ما زال <strong>قيد المراجعة</strong>. لا يمكنك مراسلة المستخدمين حالياً،
+    لكن يمكنك <a href="/messages/support" class="alert-link">مراسلة الدعم</a> لمعرفة ما ينقص لتفعيل حسابك.
+  </div>
+{% endif %}
+
+{% if threads and threads|length %}
+  <div class="list-group">
+    {% for t in threads %}
+      <a href="/messages/{{ t.id }}" class="list-group-item list-group-item-action py-3">
+        <div class="d-flex align-items-center gap-3">
+          <img src="{{ t.item_image }}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:.5rem;">
+          <div class="flex-grow-1">
+            <div class="d-flex align-items-center gap-2">
+              <strong class="fs-6">
+                {{ t.other_fullname }}
+                {% if t.other_verified %}
+                  <img src="/static/verified.png" class="verified-badge" alt="verified">
+                {% endif %}
+              </strong>
+              {% set c = t.unread_count|int %}
+              {% if c > 0 %}
+                <span class="badge rounded-pill bg-danger">
+                  {% if c > 9 %}+9{% else %}{{ c }}{% endif %}
+                </span>
+              {% endif %}
+            </div>
+            {% if t.item_title %}
+              <div class="text-muted small">بخصوص: {{ t.item_title }}</div>
+            {% endif %}
+          </div>
+          <div class="text-nowrap text-muted small">
+            آخر تواصل {{ t.last_message_at.strftime("%d-%m-%Y") if t.last_message_at else "" }}
+          </div>
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-light border">
+    لا توجد محادثات بعد.
+  </div>
+{% endif %}
+
+{% endblock %}

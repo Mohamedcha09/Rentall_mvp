@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- هيرو أعلى الصفحة -->
+<section class="home-hero text-center mb-4">
+  <h1 class="mb-3">منصة تأجير أي شيء — نسخة تجريبية</h1>
+  <p class="lead">ابدأ بتسجيل حسابك ورفع وثيقة رسمية للمراجعة من الأدمين.</p>
+  {% if not session_user %}
+    <a href="/register" class="btn btn-primary btn-lg">تسجيل جديد</a>
+    <a href="/login" class="btn btn-outline-light btn-lg ms-2">تسجيل الدخول</a>
+  {% else %}
+    <a href="/profile" class="btn btn-primary btn-lg">اذهب إلى صفحتي</a>
+    {% if session_user.role == 'admin' %}
+      <a href="/admin" class="btn btn-warning btn-lg ms-2">لوحة الأدمين</a>
+    {% endif %}
+  {% endif %}
+</section>
+
+<!-- نموذج البحث -->
+<form method="get" action="/" class="card card-search mb-3">
+  <div class="card-body">
+    <div class="row g-2 align-items-center">
+      <div class="col-md-5">
+        <input type="text" name="q" value="{{ search_q | default('') }}"
+               class="form-control form-control-lg"
+               placeholder="ابحث عن منتج (مثال: camera, خيمة, سيارة...)">
+      </div>
+      <div class="col-md-4">
+        <input type="text" name="city" value="{{ search_city | default('') }}"
+               class="form-control form-control-lg"
+               placeholder="المدينة (مثال: montreal)">
+      </div>
+      <div class="col-md-3 d-flex gap-2">
+        {% if current_category %}
+          <input type="hidden" name="category" value="{{ current_category }}">
+        {% endif %}
+        <button class="btn btn-primary btn-lg w-100" type="submit">ابحث</button>
+      </div>
+    </div>
+  </div>
+</form>
+
+<!-- فلاتر التصنيفات + زر تحديث -->
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+  <div class="mb-2 home-cats">
+    <a class="btn btn-sm {% if not current_category %}btn-primary{% else %}btn-outline-light{% endif %}" href="/">الكل</a>
+    {% for cat in categories %}
+      <a class="btn btn-sm {% if current_category == cat.key %}btn-primary{% else %}btn-outline-light{% endif %}"
+         href="/?category={{ cat.key }}">{{ cat.label }}</a>
+    {% endfor %}
+  </div>
+
+  <div class="mb-2">
+    <a class="btn btn-sm btn-outline-light"
+       href="{{ '/' if not current_category else '/?category=' ~ current_category }}">تحديث العناصر 🔄</a>
+  </div>
+</div>
+
+<!-- شبكة العناصر الحديثة -->
+<div class="home-grid">
+  {% for it in items %}
+    <article class="card spot">
+      <div class="spot-media">
+        {% if it.image_path %}
+          <img src="/{{ it.image_path }}" alt="item">
+        {% else %}
+          <div class="spot-placeholder d-flex align-items-center justify-content-center">
+            <span>لا صورة</span>
+          </div>
+        {% endif %}
+        <div class="spot-overlay"></div>
+
+        <!-- شارات أعلى الصورة -->
+        <div class="price-badge"><strong>{{ it.price_per_day }}</strong><span> د/يوم</span></div>
+        <div class="category-chip">{{ it.category_label }}</div>
+      </div>
+
+      <div class="card-body">
+        <h5 class="card-title text-truncate" title="{{ it.title }}">{{ it.title }}</h5>
+
+        <!-- سطر المالك -->
+        <div class="owner-line d-flex align-items-center gap-2 mb-2">
+          {% if it.owner and it.owner.avatar_path %}
+            <img src="/{{ it.owner.avatar_path }}" class="owner-avatar" alt="avatar">
+          {% else %}
+            <div class="owner-avatar owner-avatar--placeholder">👤</div>
+          {% endif %}
+          <span class="small text-muted d-inline-flex align-items-center gap-1">
+            {{ it.owner.first_name }} {{ it.owner.last_name }}
+            {% if it.owner and it.owner.is_verified %}
+              <img src="/static/verified.png" class="verified-badge" alt="موثّق">
+            {% endif %}
+          </span>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between">
+          <div class="small city-chip" title="{{ it.city or '' }}">🏙️ {{ it.city or 'بدون مدينة' }}</div>
+          <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
+        </div>
+      </div>
+    </article>
+  {% else %}
+    <p class="text-muted">لا توجد عناصر لعرضها الآن.</p>
+  {% endfor %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-3">تأمين/حجز: {{ item.title }}</h2>
+<div class="card">
+  <div class="card-body">
+    <p class="mb-2">مبلغ التأمين التقريبي: <strong>{{ security_deposit }} د.</strong></p>
+    <p class="text-muted">عند التفعيل الحقيقي سيتم تنفيذ تفويض/حجز للمبلغ دون سحبه مباشرة (حسب مزود الدفع). (Placeholder)</p>
+    <form method="post" class="mt-3">
+      <button class="btn btn-primary">المتابعة للدفع</button>
+      <a href="/items/{{ item.id }}" class="btn btn-outline-light ms-2">رجوع</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title or "RentAll" }}</title>
+
+    <!-- Arabic modern fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Modern theme styles (ملفك) -->
+    <link href="/static/style.css" rel="stylesheet">
+
+    <style>
+      body { font-family: "Cairo","Tajawal", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+
+      /* شارة الرسائل أعلى الرابط بشكل لطيف */
+      .nav-msg-link { position: relative; padding-inline-end: 1.8rem; }
+      .nav-msg-link .msg-badge {
+        position: absolute;
+        top: -6px;
+        inset-inline-end: -6px;
+        min-width: 20px; height: 20px; line-height: 18px;
+        border-radius: 999px; font-size: 12px; text-align: center; padding: 0 .35rem;
+      }
+
+      /* القائمة المنسدلة للرسائل */
+      .messages-dropdown .dropdown-menu { min-width: 320px; max-height: 360px; overflow-y: auto; }
+      .msg-item { display:flex; align-items:center; gap:.6rem; padding:.5rem .75rem; text-decoration:none; color:inherit; }
+      .msg-item:hover { background-color:#f7f7f7; }
+      .msg-avatar { width:36px; height:36px; border-radius:50%; background:#e9ecef; display:flex; align-items:center; justify-content:center; font-weight:700; }
+      .msg-title { flex:1; }
+      .msg-count { font-size:12px; }
+
+      /* === شارة التوثيق الزرقاء (SVG/PNG) === */
+      .verified-badge{ width:16px; height:16px; vertical-align:-2px; margin-inline-start:.35rem; display:inline-block; }
+      .verified-badge.lg{ width:18px; height:18px; vertical-align:-3px; }
+      .verified-shadow{ filter: drop-shadow(0 0 2px rgba(29,161,242,.45)); }
+      /* لا تجعل bootstrap يلوّن الـSVG */
+      .verified-badge, .verified-badge *{ color:initial!important; fill:initial!important; }
+
+      /* اجعل “مرحبًا فلان” واضح (بدون بهتان .disabled) */
+      .navbar-dark .nav-link.disabled { opacity:1; color:#fff !important; }
+    </style>
+  </head>
+  <body>
+
+    <!-- Sprite SVG (رمز الشارة) — مرة واحدة ويُعاد استخدامه -->
+    <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+      <symbol id="icon-verified" viewBox="0 0 24 24">
+        <defs>
+          <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#33a8ff"/>
+            <stop offset="1" stop-color="#1da1f2"/>
+          </linearGradient>
+        </defs>
+        <circle cx="12" cy="12" r="10" fill="url(#g1)"/>
+        <path d="M9.2 12.6l-1.5-1.5a1 1 0 10-1.4 1.4l2.2 2.2a1 1 0 001.4 0l6-6a1 1 0 10-1.4-1.4l-5.3 5.3z" fill="#fff"/>
+      </symbol>
+    </svg>
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+      <div class="container">
+        <a class="navbar-brand fw-bold" href="/">RentAll</a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="mainNav">
+          <!-- الروابط الرئيسية (يسار) -->
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+
+            <!-- رابط ثابت -->
+            <li class="nav-item"><a class="nav-link" href="/">الرئيسية</a></li>
+
+            {% if session_user %}
+              {% set unread = (request.state.unread_messages | default(0)) | int %}
+
+              <!-- الرسائل + قائمة غير المقروء -->
+              <li class="nav-item dropdown messages-dropdown">
+                <a class="nav-link dropdown-toggle nav-msg-link" href="/messages" id="messagesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  💬 الرسائل
+                  <span id="unread-badge" class="badge bg-danger msg-badge" style="display: {% if unread > 0 %}inline-block{% else %}none{% endif %};">
+                    {% if unread > 9 %}+9{% elif unread > 0 %}{{ unread }}{% else %}0{% endif %}
+                  </span>
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="messagesDropdown" id="unread-menu-list">
+                  <li class="px-3 py-2 text-muted small" id="unread-menu-empty" {% if unread > 0 %}style="display:none"{% endif %}>لا توجد رسائل جديدة.</li>
+                  <li><a class="dropdown-item text-center" href="/messages">فتح صندوق الرسائل</a></li>
+                </ul>
+              </li>
+
+              {% if session_user.status == 'approved' %}
+                <!-- مستخدم مُعتمد: يرى كل شيء -->
+                <li class="nav-item"><a class="nav-link" href="/items">كل العناصر</a></li>
+                <li class="nav-item"><a class="nav-link" href="/profile">صفحتي</a></li>
+                <li class="nav-item"><a class="nav-link" href="/owner/items">أشيائي</a></li>
+                <li class="nav-item"><a class="nav-link" href="/owner/items/new">+ أضف عنصر</a></li>
+
+                <!-- روابط الحجوزات الصحيحة -->
+                <li class="nav-item"><a class="nav-link" href="/bookings?view=renter">طلباتي</a></li>
+                <li class="nav-item"><a class="nav-link" href="/bookings?view=owner">حجوزات على ممتلكاتي</a></li>
+                <li class="nav-item"><a class="nav-link" href="/payout/settings">التحويلات</a></li>
+
+                {% if session_user.role == 'admin' %}
+                  <li class="nav-item"><a class="nav-link" href="/admin">لوحة الأدمين</a></li>
+                  <li class="nav-item"><a class="nav-link" href="/admin/payouts">تحويلات الإدارة</a></li>
+                  <li class="nav-item"><a class="nav-link" href="/admin/freeze">التجميد</a></li>
+                {% endif %}
+              {% else %}
+                <!-- مستخدم pending: روابط محدودة فقط -->
+                <li class="nav-item"><a class="nav-link" href="/profile/docs">تصحيح التحقق</a></li>
+              {% endif %}
+            {% endif %}
+          </ul>
+
+          <!-- يمين الشريط: حالة المستخدم/الدخول -->
+          <ul class="navbar-nav ms-auto">
+            {% if session_user %}
+              <li class="nav-item">
+                <span class="nav-link disabled">
+                  مرحبًا {{ session_user.first_name }}
+                  {% if session_user.is_verified %}
+                    <img src="/static/verified.png" alt="موثّق" class="verified-badge">
+                  {% endif %}
+                  <span class="badge bg-secondary">{{ session_user.role }}</span>
+                  <span class="badge
+                    {% if session_user.status == 'approved' %}bg-success
+                    {% elif session_user.status == 'pending' %}bg-warning text-dark
+                    {% else %}bg-danger{% endif %}">{{ session_user.status }}</span>
+                </span>
+              </li>
+              <li class="nav-item"><a class="nav-link" href="/logout">خروج</a></li>
+            {% else %}
+              <li class="nav-item"><a class="nav-link" href="/login">دخول</a></li>
+              <li class="nav-item"><a class="nav-link" href="/register">تسجيل</a></li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <!-- /NAVBAR -->
+
+    <!-- المحتوى -->
+    <main class="container" style="padding-top: 82px; max-width: 1120px;">
+      {% if message %}
+        <div class="alert alert-info">{{ message }}</div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    {% if session_user %}
+    <script>
+      (function () {
+        const badge = document.getElementById('unread-badge');
+        const list = document.getElementById('unread-menu-list');
+        const emptyRow = document.getElementById('unread-menu-empty');
+
+        function makeInitials(name) {
+          const parts = (name || '').trim().split(/\s+/);
+          const first = (parts[0] || '').charAt(0);
+          const last = (parts[1] || '').charAt(0);
+          return (first + (last || '')).toUpperCase();
+        }
+
+        function buildRow(t) {
+          const countText = (t.count > 9) ? '+9' : String(t.count);
+          const vBadge = t.other_verified ? '<svg class="verified-badge verified-shadow" aria-label="موثّق"><use href="#icon-verified"/></svg>' : '';
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <a class="dropdown-item msg-item" href="/messages/${t.thread_id}">
+              <div class="msg-avatar">${makeInitials(t.other_name)}</div>
+              <div class="msg-title">
+                <div class="fw-bold">${t.other_name} ${vBadge}</div>
+                ${t.item_title ? `<div class="text-muted small">${t.item_title}</div>` : ''}
+              </div>
+              <span class="badge bg-danger msg-count">${countText}</span>
+            </a>
+          `;
+          return li;
+        }
+
+        async function refreshSummary() {
+          try {
+            const res = await fetch('/api/unread_summary', { credentials: 'include' });
+            if (!res.ok) return;
+            const data = await res.json();
+
+            const total = Number(data.total || 0);
+            if (total > 0) {
+              badge.style.display = 'inline-block';
+              badge.textContent = total > 9 ? '+9' : String(total);
+            } else {
+              badge.style.display = 'none';
+            }
+
+            const nodes = Array.from(list.querySelectorAll('li'));
+            nodes.forEach((li) => {
+              if (li.id === 'unread-menu-empty') return;
+              const isFooter = li.querySelector('.dropdown-item.text-center');
+              if (!isFooter) list.removeChild(li);
+            });
+
+            if (data.threads && data.threads.length) {
+              emptyRow.style.display = 'none';
+              data.threads.forEach(t => list.insertBefore(buildRow(t), list.lastElementChild));
+            } else {
+              emptyRow.style.display = 'block';
+            }
+          } catch (e) { /* ignore */ }
+        }
+
+        refreshSummary();
+        setInterval(refreshSummary, 10000);
+      })();
+    </script>
+    {% endif %}
+  </body>
+</html>

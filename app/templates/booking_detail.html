@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% if not booking %}
+  <div class="alert alert-danger">الحجز غير موجود.</div>
+{% else %}
+<div class="row g-3">
+  <div class="col-md-7">
+    <div class="card">
+      {% if item and item.image_path %}
+        <img src="/{{ item.image_path }}" class="card-img-top" style="max-height:360px;object-fit:cover" alt="">
+      {% endif %}
+      <div class="card-body">
+        <h4 class="mb-2">تفاصيل الحجز #{{ booking.id }}</h4>
+
+        {% if item %}
+          <div class="mb-2">
+            <div class="small text-muted">العنصر</div>
+            <div class="fw-bold">{{ item.title }}</div>
+            <div class="text-muted small">{{ item.city or '' }} · {{ item.category or '' }}</div>
+          </div>
+        {% endif %}
+
+        <div class="row g-2">
+          <div class="col-6">
+            <div class="small text-muted">من</div>
+            <div class="fw-bold">{{ booking.start_date }}</div>
+          </div>
+          <div class="col-6">
+            <div class="small text-muted">إلى</div>
+            <div class="fw-bold">{{ booking.end_date }}</div>
+          </div>
+        </div>
+
+        <div class="row g-2 mt-2">
+          <div class="col-6">
+            <div class="small text-muted">عدد الأيام</div>
+            <div class="fw-bold">{{ booking.days }}</div>
+          </div>
+          <div class="col-6">
+            <div class="small text-muted">الإجمالي</div>
+            <div class="fw-bold">{{ booking.total_amount }} د.ج</div>
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <span class="badge 
+            {% if booking.status == 'pending' %} bg-warning text-dark 
+            {% elif booking.status == 'confirmed' %} bg-info 
+            {% elif booking.status == 'paid' %} bg-success
+            {% elif booking.status == 'cancelled' %} bg-danger 
+            {% else %} bg-secondary {% endif %}">
+            {{ booking.status }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-5">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6 class="mb-3">الأطراف</h6>
+
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="small text-muted">المالك</div>
+            <div class="fw-bold">
+              {{ owner.first_name }} {{ owner.last_name }}
+              {% if owner.is_verified %}
+                <img src="/static/verified.png" class="verified-badge" alt="موثّق">
+              {% endif %}
+            </div>
+          </div>
+          <a class="btn btn-sm btn-outline-light" href="/u/{{ owner.id }}">الملف العام</a>
+        </div>
+
+        <hr>
+
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="small text-muted">المستأجر</div>
+            <div class="fw-bold">
+              {{ renter.first_name }} {{ renter.last_name }}
+              {% if renter.is_verified %}
+                <img src="/static/verified.png" class="verified-badge" alt="موثّق">
+              {% endif %}
+            </div>
+          </div>
+          <a class="btn btn-sm btn-outline-light" href="/messages/start?user_id={{ renter.id }}&item_id={{ item.id }}">مراسلة</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- أزرار الإجراءات حسب الدور والحالة -->
+    <div class="card">
+      <div class="card-body">
+        {% if session_user.id == owner.id %}
+          {% if booking.status == 'pending' %}
+            <form method="post" action="/bookings/{{ booking.id }}/confirm" class="d-inline">
+              <button class="btn btn-success">اعتماد الطلب</button>
+            </form>
+            <form method="post" action="/bookings/{{ booking.id }}/reject" class="d-inline">
+              <button class="btn btn-danger">رفض</button>
+            </form>
+          {% else %}
+            <div class="text-muted small">لا توجد إجراءات متاحة الآن للمالك.</div>
+          {% endif %}
+        {% elif session_user.id == renter.id %}
+          {% if booking.status == 'pending' %}
+            <form method="post" action="/bookings/{{ booking.id }}/cancel" class="d-inline">
+              <button class="btn btn-outline-danger">إلغاء الطلب</button>
+            </form>
+          {% elif booking.status == 'confirmed' %}
+            <a class="btn btn-primary" href="/checkout/{{ booking.id }}">ادفع الآن</a>
+          {% elif booking.status == 'paid' %}
+            <div class="alert alert-success mb-0">تم الدفع بنجاح ✅</div>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="d-grid gap-2 mt-3">
+      <a class="btn btn-outline-light" href="/items/{{ item.id }}">رجوع للعنصر</a>
+      <a class="btn btn-outline-secondary" href="/bookings/new?item_id={{ item.id }}">حجز جديد</a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

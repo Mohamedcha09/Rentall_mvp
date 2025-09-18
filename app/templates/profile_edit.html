@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>تعديل الحساب</h2>
+<form method="post">
+  <div class="mb-3">
+    <label class="form-label">رقم الهاتف</label>
+    <input type="text" class="form-control" name="phone" value="{{ user.phone }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">كلمة السر (اتركها فارغة إن لم ترد تغييرها)</label>
+    <input type="password" class="form-control" name="password" placeholder="••••••••">
+  </div>
+  <button class="btn btn-primary">حفظ</button>
+  <a href="/profile" class="btn btn-outline-light">رجوع</a>
+</form>
+{% endblock %}

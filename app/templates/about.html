@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- ======= Styles (inline for this page) ======= -->
+<style>
+  .about-hero {
+    background: radial-gradient(1100px 500px at 90% -10%, rgba(124,92,255,.25), transparent 60%),
+                radial-gradient(800px 400px at -10% 10%, rgba(0,229,168,.18), transparent 55%),
+                linear-gradient(180deg, #0f1220 0%, #0b0e19 100%);
+    color: #fff; border-radius: 18px; padding: 56px 28px; overflow: hidden;
+  }
+  .glass { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.09);
+           border-radius: 16px; backdrop-filter: blur(8px); }
+  .feature-icon { width: 46px; height: 46px; border-radius: 12px; display:flex; align-items:center; justify-content:center;
+                  background: rgba(255,255,255,.08); font-size: 22px; }
+  .tick { color: #00e5a8; }
+  .chip { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); padding: 6px 10px; border-radius: 999px; }
+  .step { display:flex; gap:12px; align-items:flex-start; }
+  .step-num { width: 34px; height: 34px; border-radius: 50%; display:flex; align-items:center; justify-content:center; background:#0d6efd; color:#fff; font-weight:700; }
+  .roadmap-dot { width: 12px; height: 12px; border-radius: 50%; background:#0d6efd; }
+  .mini-badge { background: rgba(13,110,253,.12); color:#9cc4ff; padding: 3px 8px; border-radius: 999px; font-size:.8rem; }
+  .faq .accordion-button { background: rgba(255,255,255,.03); color:#e9ecef; }
+  .faq .accordion-body { background: rgba(255,255,255,.02); }
+</style>
+
+<!-- ======= Hero ======= -->
+<section class="about-hero mb-4">
+  <div class="row align-items-center">
+    <div class="col-lg-7">
+      <div class="mini-badge mb-2">عن المنصّة</div>
+      <h1 class="fw-bold mb-3">RentAll — شارك ما لا تستخدم، واستأجر ما تحتاجه مؤقتًا</h1>
+      <p class="lead">
+        منصّة تشاركية تربط بين <strong>المالكين</strong> الذين يمتلكون أشياء لا تُستخدم دائمًا، و<strong>المستأجرين</strong> الذين يحتاجونها لفترة محدودة.
+        نوفر تجربة آمنة ومرنة باعتماد الحسابات، محادثات داخلية، وتقييمات شفافة.
+      </p>
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        <span class="chip">تحقق من الهوية</span>
+        <span class="chip">خيوط محادثة لكل منتج</span>
+        <span class="chip">تصنيفات ذكية</span>
+        <span class="chip">رئيسية ديناميكية</span>
+      </div>
+      <div class="mt-4 d-flex flex-wrap gap-2">
+        {% if not session_user %}
+          <a class="btn btn-primary btn-lg" href="/register">إنشاء حساب</a>
+          <a class="btn btn-outline-light btn-lg" href="/login">دخول</a>
+          <a class="btn btn-outline-secondary btn-lg" href="/">استكشف كضيف</a>
+        {% else %}
+          <a class="btn btn-primary btn-lg" href="/">استكشف العناصر</a>
+          <a class="btn btn-outline-light btn-lg" href="/profile">صفحتي</a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="col-lg-5 mt-4 mt-lg-0">
+      <div class="glass p-3">
+        <img src="/static/hero_placeholder.svg" class="w-100 rounded-3" alt="About Hero" style="aspect-ratio:16/9; object-fit:cover;">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======= Stats (اختياري: مرّر قيم حقيقية من باك-إند) ======= -->
+<section class="mb-4">
+  <div class="row g-3">
+    <div class="col-6 col-md-3">
+      <div class="glass p-3 text-center">
+        <div class="h2 mb-1">{{ stats_items or 128 }}</div>
+        <div class="text-muted">عنصر متاح</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="glass p-3 text-center">
+        <div class="h2 mb-1">{{ stats_users or 64 }}</div>
+        <div class="text-muted">مستخدم موثق</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="glass p-3 text-center">
+        <div class="h2 mb-1">{{ stats_cities or 6 }}</div>
+        <div class="text-muted">مدن مغطّاة</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="glass p-3 text-center">
+        <div class="h2 mb-1">{{ stats_success or '98%' }}</div>
+        <div class="text-muted">رضا المستخدمين</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======= What & Why ======= -->
+<section class="glass p-4 mb-4">
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <h4 class="mb-2">ما هو RentAll؟</h4>
+      <p class="text-muted">
+        سوق تشاركي لتأجير أي شيء بشكل مؤقت: سيارات، معدات تصوير، أدوات بناء، إلكترونيات، ألعاب، معدات تخييم وسفر… إلخ.
+        بدل ما تشتري شيء غالي وتستخدمه قليلًا، استأجره بأمان ووفّر، ودع الغرض ينتج دخلًا لصاحبه.
+      </p>
+      <div class="d-flex flex-wrap gap-2">
+        <span class="badge bg-secondary">سيارات</span>
+        <span class="badge bg-secondary">معدات تصوير</span>
+        <span class="badge bg-secondary">أدوات بناء</span>
+        <span class="badge bg-secondary">إلكترونيات</span>
+        <span class="badge bg-secondary">ألعاب</span>
+        <span class="badge bg-secondary">تخييم وسفر</span>
+        <span class="badge bg-secondary">آلات موسيقية</span>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <h4 class="mb-2">لماذا الآن؟</h4>
+      <p class="text-muted">
+        نحن نعيش اقتصاد الاستخدام بدل التملك: احتياج قصير، تكاليف عالية، ومساحات تخزين محدودة.
+        RentAll يقلل الهدر ويرفع الاستفادة عبر مطابقة سريعة وآمنة بين العرض والطلب.
+      </p>
+      <ul class="text-muted m-0">
+        <li><span class="tick">✔</span> تقليل كلفة التملك على المستأجر.</li>
+        <li><span class="tick">✔</span> دخل إضافي للمالكين.</li>
+        <li><span class="tick">✔</span> مجتمع موثوق مبني على التقييمات.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ======= How it works ======= -->
+<section class="mb-4">
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="glass p-3 h-100">
+        <h4 class="mb-3">كيف تعمل المنصّة؟</h4>
+        <div class="step mb-2">
+          <div class="step-num">1</div>
+          <div>أنشئ حسابك وارفع وثيقة رسمية (بطاقة/رخصة/جواز). الأدمين يعتمد الحسابات للثقة.</div>
+        </div>
+        <div class="step mb-2">
+          <div class="step-num">2</div>
+          <div>استعرض حسب التصنيف والمكان. صفحة رئيسية ديناميكية تقترح عناصر جديدة بكل زيارة.</div>
+        </div>
+        <div class="step mb-2">
+          <div class="step-num">3</div>
+          <div>تواصل مع المالك عبر الرسائل. كل منتج له خيط محادثة منفصل — ما في خلط.</div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div>حدّد المدة، استلم، استخدم، أعد الغرض. قيّم التجربة لبناء سمعة موثوقة للجميع.</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="glass p-3 h-100">
+        <h4 class="mb-3">الأدوار داخل المنصّة</h4>
+        <div class="d-flex align-items-start gap-2 mb-2">
+          <div class="feature-icon">👤</div>
+          <div>
+            <strong>المستخدم</strong>
+            <div class="text-muted">يستكشف العناصر، يراسل المالكين، يحجز ويراجع التجارب.</div>
+          </div>
+        </div>
+        <div class="d-flex align-items-start gap-2 mb-2">
+          <div class="feature-icon">🧳</div>
+          <div>
+            <strong>المالك</strong>
+            <div class="text-muted">ينشر العناصر، يحدّد السعر اليومي، يتلقى الرسائل والتقييمات.</div>
+          </div>
+        </div>
+        <div class="d-flex align-items-start gap-2">
+          <div class="feature-icon">🛡️</div>
+          <div>
+            <strong>الأدمين</strong>
+            <div class="text-muted">يعتمد الحسابات بالوثائق، يراقب السلوكيات، يتحكم بالتبليغات، ويوقف المخالفات.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======= Trust & Safety ======= -->
+<section class="glass p-4 mb-4">
+  <h4 class="mb-3">الثقة والأمان</h4>
+  <div class="row g-3">
+    <div class="col-md-4">
+      <div class="d-flex align-items-start gap-2">
+        <div class="feature-icon">🔒</div>
+        <div>
+          <strong>توثيق الحسابات</strong>
+          <div class="text-muted">الأدمين يعتمد الحسابات يدويًا بعد الاطلاع على الوثائق الرسمية.</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="d-flex align-items-start gap-2">
+        <div class="feature-icon">💬</div>
+        <div>
+          <strong>محادثات منفصلة لكل منتج</strong>
+          <div class="text-muted">خيوط الرسائل مرتبطة بالعنصر لتفادي أي خلط بين الطلبات.</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="d-flex align-items-start gap-2">
+        <div class="feature-icon">⭐</div>
+        <div>
+          <strong>نظام التقييمات</strong>
+          <div class="text-muted">سمعة شفافة لكل مستخدم بعد كل عملية تأجير، تساعد في الاختيار.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======= Pricing / Model (توضيحي) ======= -->
+<section class="mb-4">
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="glass p-3 h-100">
+        <h4 class="mb-2">نموذج العمل (مبدئي)</h4>
+        <p class="text-muted m-0">
+          السعر يُحدده المالك، والدفع عند التسليم أو باتفاق الطرفين (لاحقًا يمكن إضافة بوابات دفع). قد نضيف عمولة رمزية مستقبلًا لتغطية التشغيل.
+        </p>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="glass p-3 h-100">
+        <h4 class="mb-2">سياسات مختصرة</h4>
+        <ul class="text-muted m-0">
+          <li>مسؤولية الاستخدام على المستأجر، مع التزام الإرجاع بحالة جيدة.</li>
+          <li>المالك يلتزم بوصف واضح وصور حقيقية.</li>
+          <li>المخالفات تُرفع للأدمين لاتخاذ الإجراء.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======= FAQ ======= -->
+<section class="glass p-4 mb-4 faq">
+  <h4 class="mb-3">أسئلة شائعة</h4>
+  <div class="accordion" id="faq">
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="q1">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#a1">
+          هل أحتاج وثائق لتفعيل حسابي؟
+        </button>
+      </h2>
+      <div id="a1" class="accordion-collapse collapse" data-bs-parent="#faq">
+        <div class="accordion-body text-muted">
+          نعم، بطاقة هوية أو رخصة قيادة أو جواز سفر، للمراجعة اليدوية من الأدمين قبل السماح بالتعاملات.
+        </div>
+      </div>
+    </div>
+
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="q2">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#a2">
+          كيف أتأكد أن رسائلي لا تختلط بين عدة منتجات؟
+        </button>
+      </h2>
+      <div id="a2" class="accordion-collapse collapse" data-bs-parent="#faq">
+        <div class="accordion-body text-muted">
+          كل منتج يملك خيط محادثة مستقل مرتبط بـ <code>item_id</code>، وهذا يمنع الخلط حتى لنفس المالك.
+        </div>
+      </div>
+    </div>
+
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="q3">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#a3">
+          هل يوجد دفع إلكتروني؟
+        </button>
+      </h2>
+      <div id="a3" class="accordion-collapse collapse" data-bs-parent="#faq">
+        <div class="accordion-body text-muted">
+          حاليًا الدفع عند التسليم أو حسب الاتفاق. لاحقًا سنضيف بوابات دفع وتأمين اختياري لبعض الأصناف.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======= Roadmap ======= -->
+<section class="glass p-4 mb-4">
+  <h4 class="mb-3">خارطة الطريق</h4>
+  <div class="row g-3">
+    <div class="col-md-4">
+      <div class="p-3 h-100" style="border-left: 2px dashed rgba(255,255,255,.15);">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <div class="roadmap-dot"></div><strong>المرحلة 1 — النسخة التجريبية</strong>
+        </div>
+        <ul class="text-muted m-0">
+          <li>حسابات موثّقة يدويًا</li>
+          <li>تصنيفات + بحث أساسي</li>
+          <li>مراسلة داخلية لكل منتج</li>
+          <li>تقييمات بعد الإرجاع</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="p-3 h-100" style="border-left: 2px dashed rgba(255,255,255,.15);">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <div class="roadmap-dot"></div><strong>المرحلة 2 — التجربة المحسّنة</strong>
+        </div>
+        <ul class="text-muted m-0">
+          <li>بوابات دفع</li>
+          <li>إشعارات لحظية</li>
+          <li>قائمة أمنيات</li>
+          <li>فلترة متقدمة بالموقع والسعر</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="p-3 h-100">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <div class="roadmap-dot"></div><strong>المرحلة 3 — التوسّع</strong>
+        </div>
+        <ul class="text-muted m-0">
+          <li>تأمين اختياري على أصناف</li>
+          <li>توسيع المدن</li>
+          <li>لوحة تحليلات للمالكين</li>
+          <li>عروض وباقات خاصة</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======= Contact / CTA ======= -->
+<section class="mb-4">
+  <div class="glass p-4">
+    <div class="row align-items-center g-3">
+      <div class="col-lg-8">
+        <h4 class="mb-2">جاهز تشارك اللي ما تستخدمه؟ أو تستأجر اللي تحتاجه مؤقتًا؟</h4>
+        <p class="text-muted m-0">ابدأ بخطوة بسيطة — {% if not session_user %}أنشئ حسابك مجانًا أو{% endif %} استكشف العناصر المتاحة الآن.</p>
+      </div>
+      <div class="col-lg-4 d-flex gap-2 justify-content-lg-end">
+        <a class="btn btn-outline-light btn-lg" href="/items">استكشف العناصر</a>
+        {% if not session_user %}
+          <a class="btn btn-primary btn-lg" href="/register">إنشاء حساب</a>
+        {% else %}
+          <a class="btn btn-primary btn-lg" href="/profile">اذهب إلى صفحتي</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
