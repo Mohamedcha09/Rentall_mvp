@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ title or "RentAll" }}</title>
 
+    <!-- OG / Twitter cards لتحسين المعاينة عند المشاركة -->
+    <meta property="og:title" content="{{ og_title or title or 'RentAll' }}">
+    <meta property="og:description" content="{{ og_description or 'منصة كراء العناصر بين الأفراد بسهولة وأمان.' }}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:image" content="{{ og_image or request.url_for('static', path='og-default.jpg') }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ og_title or title or 'RentAll' }}">
+    <meta name="twitter:description" content="{{ og_description or 'منصة كراء العناصر بين الأفراد بسهولة وأمان.' }}">
+    <meta name="twitter:image" content="{{ og_image or request.url_for('static', path='og-default.jpg') }}">
+
     <!-- Arabic modern fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -46,6 +57,10 @@
 
       /* اجعل “مرحبًا فلان” واضح (بدون بهتان .disabled) */
       .navbar-dark .nav-link.disabled { opacity:1; color:#fff !important; }
+
+      /* شريط تنبيه Stripe */
+      .stripe-callout { border: 1px dashed rgba(13,110,253,.35); }
+      .nav-badge { font-size: .7rem; margin-inline-start:.35rem; }
     </style>
   </head>
   <body>
@@ -107,7 +122,18 @@
                 <!-- روابط الحجوزات الصحيحة -->
                 <li class="nav-item"><a class="nav-link" href="/bookings?view=renter">طلباتي</a></li>
                 <li class="nav-item"><a class="nav-link" href="/bookings?view=owner">حجوزات على ممتلكاتي</a></li>
-                <li class="nav-item"><a class="nav-link" href="/payout/settings">التحويلات</a></li>
+
+                <!-- التحويلات + شارة حالة Stripe -->
+                <li class="nav-item">
+                  <a class="nav-link" href="/payout/settings">
+                    التحويلات
+                    {% if session_user.payouts_enabled %}
+                      <span class="badge bg-success nav-badge">جاهز</span>
+                    {% else %}
+                      <span class="badge bg-warning text-dark nav-badge">أكمل الربط</span>
+                    {% endif %}
+                  </a>
+                </li>
 
                 {% if session_user.role == 'admin' %}
                   <li class="nav-item"><a class="nav-link" href="/admin">لوحة الأدمين</a></li>
@@ -148,8 +174,22 @@
     </nav>
     <!-- /NAVBAR -->
 
+    <!-- شريط تنبيه Stripe Connect (لا يظهر إلا للمُعتمدين غير المفعّلين) -->
+    {% if session_user and session_user.status == 'approved' and not session_user.payouts_enabled %}
+    <div class="container" style="padding-top: 82px;">
+      <div class="alert alert-warning stripe-callout d-flex align-items-center justify-content-between" role="alert">
+        <div>
+          💸 لتستلم أرباحك مباشرةً، قم بربط <strong>Stripe Connect</strong> بحسابك.
+        </div>
+        <div class="ms-3">
+          <a class="btn btn-sm btn-primary" href="/payout/settings">ربط Stripe الآن</a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
     <!-- المحتوى -->
-    <main class="container" style="padding-top: 82px; max-width: 1120px;">
+    <main class="container" style="padding-top: 12px; max-width: 1120px;">
       {% if message %}
         <div class="alert alert-info">{{ message }}</div>
       {% endif %}

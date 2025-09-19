@@ -230,12 +230,12 @@ def api_unread_count(request: Request, db: Session = Depends(get_db)):
         return JSONResponse({"count": 0})
     return JSONResponse({"count": unread_count(u["id"], db)})
 
-# ====== Middleware: يضيف unread_messages للقوالب ======
+# ====== Middleware: يضيف unread_messages والقيم المهمة بما فيها Stripe ======
 @app.middleware("http")
 async def sync_user_flags(request: Request, call_next):
     """
     يزامن قيم session_user مع قاعدة البيانات في كل طلب
-    (خصوصاً is_verified) حتى تظهر الشارة الزرقاء فوراً
+    (خصوصاً is_verified + حالات Stripe) حتى تظهر الشارة/الأزرار فوراً
     بدون الحاجة لإعادة تسجيل الدخول.
     """
     try:
@@ -253,6 +253,9 @@ async def sync_user_flags(request: Request, call_next):
                         sess_user["is_verified"] = bool(db_user.is_verified)
                         sess_user["role"] = db_user.role
                         sess_user["status"] = db_user.status
+                        # ⬅︎ القيم الخاصة بـ Stripe Connect
+                        sess_user["payouts_enabled"] = bool(getattr(db_user, "payouts_enabled", False))
+                        sess_user["stripe_account_id"] = getattr(db_user, "stripe_account_id", None)
                         # أعد حفظها في السيشن
                         request.session["user"] = sess_user
                 finally:
