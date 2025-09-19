@@ -8,10 +8,7 @@
     <div class="mb-2">العنصر: <strong>{{ item.title }}</strong></div>
     <div class="mb-2">المالك: {{ owner.first_name }} {{ owner.last_name }}</div>
     <div class="mb-2">التواريخ: من {{ booking.start_date }} إلى {{ booking.end_date }}</div>
-    <div class="mb-3">
-      المبلغ: <strong>{{ booking.total_amount }}</strong>
-      <small id="currency-tag">—</small>
-    </div>
+    <div class="mb-3">المبلغ: <strong>{{ booking.total_amount }} {{ (CURRENCY or 'USD') | upper }}</strong></div>
 
     {% if booking.status != 'confirmed' %}
       <div class="alert alert-warning">الحجز ليس في حالة "confirmed".</div>
@@ -27,56 +24,91 @@
 
 <script src="https://js.stripe.com/v3/"></script>
 <script>
-  (async function () {
-    function setMsg(t){ document.getElementById('pay-msg').textContent = t || ""; }
+(() => {
+  const payBtn = document.getElementById('submit-btn');
+  const msgEl  = document.getElementById('pay-msg');
+  const setMsg = (t) => { if (msgEl) msgEl.textContent = t || ""; };
 
-    {% if booking.status == 'confirmed' %}
+  // المفتاح العام يجي من الراوتر: pk = os.getenv("STRIPE_PUBLISHABLE_KEY")
+  const stripe = Stripe("{{ pk }}");
+
+  function urlParam(name){
+    const url = new URL(window.location.href);
+    return url.searchParams.get(name);
+  }
+
+  // لو رجعنا من 3D Secure، اعرض حالة الـ PaymentIntent
+  async function showStatusFromReturn(){
+    const clientSecret = urlParam('payment_intent_client_secret');
+    if (!clientSecret) return false;
+    const {paymentIntent} = await stripe.retrievePaymentIntent(clientSecret);
+    if (!paymentIntent) return false;
+
+    switch (paymentIntent.status) {
+      case "succeeded":
+        setMsg("تم الدفع بنجاح ✅");
+        if (payBtn) payBtn.disabled = true;
+        break;
+      case "processing":
+        setMsg("دفعك قيد المعالجة…");
+        break;
+      case "requires_payment_method":
+        setMsg("فشل الدفع. جرّب بطاقة أخرى.");
+        if (payBtn) payBtn.disabled = false;
+        break;
+      default:
+        setMsg("حالة الدفع: " + paymentIntent.status);
+    }
+    return true;
+  }
+
+  async function createIntent(){
+    const res = await fetch("/api/checkout/{{ booking.id }}/intent", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"}
+    });
+    if (!res.ok) {
+      let txt = "حدث خطأ أثناء إنشاء عملية الدفع";
+      try { const j = await res.json(); if (j.detail) txt = j.detail; } catch(_){}
+      throw new Error(txt);
+    }
+    return res.json();
+  }
+
+  {% if booking.status == 'confirmed' %}
+  (async function init(){
+    // لو رجعنا من redirect اعرض الحالة وخلص
+    if (await showStatusFromReturn()) return;
+
     try {
-      // 1) اجلب الإعدادات (publishable key + العملة)
-      const cfg = await fetch("/api/pay/config").then(r => r.json());
-      document.getElementById('currency-tag').textContent = cfg.currency?.toUpperCase?.() || '';
-
-      // 2) أنشئ PaymentIntent لهذا الحجز
-      const intentRes = await fetch("/api/pay/intent/{{ booking.id }}", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"}
-      });
-      if (!intentRes.ok) {
-        const e = await intentRes.json().catch(() => ({ detail: "error" }));
-        throw new Error(e.detail || "تعذّر إنشاء عملية الدفع");
-      }
-      const { clientSecret, alreadyPaid } = await intentRes.json();
-      if (alreadyPaid) { setMsg("تم الدفع مسبقًا لهذا الحجز."); return; }
-
-      // 3) حضّر Stripe Elements
-      const stripe = Stripe(cfg.publishableKey);
+      const { clientSecret } = await createIntent();
       const elements = stripe.elements({ clientSecret });
       const paymentElement = elements.create("payment");
       paymentElement.mount("#payment-element");
 
-      // 4) تأكيد الدفع
       document.getElementById("pay-form").addEventListener("submit", async (e) => {
         e.preventDefault();
-        setMsg("جارٍ تأكيد الدفع...");
-        document.getElementById("submit-btn").disabled = true;
+        setMsg("جارٍ تأكيد الدفع…");
+        if (payBtn) payBtn.disabled = true;
 
         const { error } = await stripe.confirmPayment({
           elements,
           confirmParams: {
-            // يمكنك توجيه المستخدم بعد الدفع إلى صفحة شكراً
-            return_url: window.location.href
+            // ارجع لنفس الصفحة بعد التحقق ثلاثي الأبعاد
+            return_url: window.location.href.split("?")[0]
           }
         });
 
         if (error) {
-          setMsg(error.message || "حدث خطأ أثناء الدفع");
-          document.getElementById("submit-btn").disabled = false;
+          setMsg(error.message || "حصل خطأ أثناء الدفع");
+          if (payBtn) payBtn.disabled = false;
         }
       });
-    } catch (e) {
-      setMsg(e.message || "خطأ غير متوقع");
+    } catch (err) {
+      setMsg(err.message || "خطأ غير متوقع");
     }
-    {% endif %}
   })();
+  {% endif %}
+})();
 </script>
 {% endblock %}
