@@ -26,6 +26,9 @@ from .activate import router as activate_router
 from .freeze import router as freeze_router
 from .payments import router as payments_router
 from .checkout import router as checkout_router
+from .pay_api import router as pay_api_router
+from .payout_connect import router as payout_connect_router
+
 # NOTE: لا نستورد payouts مباشرةً حتى لا ينهار السيرفر على Render
 # from .payouts import router as payouts_router
 from .disputes import router as disputes_router
@@ -99,6 +102,9 @@ app.include_router(activate_router)
 app.include_router(freeze_router)
 app.include_router(payments_router)
 app.include_router(checkout_router)
+app.include_router(pay_api_router)
+app.include_router(payout_connect_router)
+
 # app.include_router(payouts_router)  # سنحميها بشرط بالأسفل
 app.include_router(disputes_router)
 app.include_router(bookings_router)

@@ -8,7 +8,10 @@
     <div class="mb-2">العنصر: <strong>{{ item.title }}</strong></div>
     <div class="mb-2">المالك: {{ owner.first_name }} {{ owner.last_name }}</div>
     <div class="mb-2">التواريخ: من {{ booking.start_date }} إلى {{ booking.end_date }}</div>
-    <div class="mb-3">المبلغ: <strong>{{ booking.total_amount }} USD</strong></div>
+    <div class="mb-3">
+      المبلغ: <strong>{{ booking.total_amount }}</strong>
+      <small id="currency-tag">—</small>
+    </div>
 
     {% if booking.status != 'confirmed' %}
       <div class="alert alert-warning">الحجز ليس في حالة "confirmed".</div>
@@ -24,39 +27,55 @@
 
 <script src="https://js.stripe.com/v3/"></script>
 <script>
-  (async function(){
-    const stripe = Stripe("{{ pk }}");  // سنمرر pk من الراوتر لاحقًا إن أردت، أو ضعها هنا يدويًا
-
-    async function createIntent(){
-      const res = await fetch("/api/checkout/{{ booking.id }}/intent", {
-        method: "POST", headers: {"Content-Type":"application/json"}
-      });
-      if(!res.ok){ 
-        const e = await res.json().catch(()=>({detail:"error"}));
-        throw new Error(e.detail || "error");
-      }
-      return res.json();
-    }
-
+  (async function () {
     function setMsg(t){ document.getElementById('pay-msg').textContent = t || ""; }
 
     {% if booking.status == 'confirmed' %}
-    try{
-      const {clientSecret} = await createIntent();
-      const elements = stripe.elements({clientSecret});
+    try {
+      // 1) اجلب الإعدادات (publishable key + العملة)
+      const cfg = await fetch("/api/pay/config").then(r => r.json());
+      document.getElementById('currency-tag').textContent = cfg.currency?.toUpperCase?.() || '';
+
+      // 2) أنشئ PaymentIntent لهذا الحجز
+      const intentRes = await fetch("/api/pay/intent/{{ booking.id }}", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"}
+      });
+      if (!intentRes.ok) {
+        const e = await intentRes.json().catch(() => ({ detail: "error" }));
+        throw new Error(e.detail || "تعذّر إنشاء عملية الدفع");
+      }
+      const { clientSecret, alreadyPaid } = await intentRes.json();
+      if (alreadyPaid) { setMsg("تم الدفع مسبقًا لهذا الحجز."); return; }
+
+      // 3) حضّر Stripe Elements
+      const stripe = Stripe(cfg.publishableKey);
+      const elements = stripe.elements({ clientSecret });
       const paymentElement = elements.create("payment");
       paymentElement.mount("#payment-element");
 
-      document.getElementById("pay-form").addEventListener("submit", async (e)=>{
+      // 4) تأكيد الدفع
+      document.getElementById("pay-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         setMsg("جارٍ تأكيد الدفع...");
         document.getElementById("submit-btn").disabled = true;
-        const {error} = await stripe.confirmPayment({
-          elements, confirmParams: { return_url: window.location.href }
+
+        const { error } = await stripe.confirmPayment({
+          elements,
+          confirmParams: {
+            // يمكنك توجيه المستخدم بعد الدفع إلى صفحة شكراً
+            return_url: window.location.href
+          }
         });
-        if(error){ setMsg(error.message || "حصل خطأ"); document.getElementById("submit-btn").disabled = false; }
+
+        if (error) {
+          setMsg(error.message || "حدث خطأ أثناء الدفع");
+          document.getElementById("submit-btn").disabled = false;
+        }
       });
-    }catch(e){ setMsg(e.message); }
+    } catch (e) {
+      setMsg(e.message || "خطأ غير متوقع");
+    }
     {% endif %}
   })();
 </script>

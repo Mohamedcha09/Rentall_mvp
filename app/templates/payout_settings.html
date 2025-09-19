@@ -4,18 +4,33 @@
 
 <div class="card">
   <div class="card-body">
+
     {% if user.stripe_account_id %}
-      <p class="mb-2">حساب Stripe: <code>{{ user.stripe_account_id }}</code></p>
+      <p class="mb-2">رقم حساب Stripe:
+        <code>{{ user.stripe_account_id }}</code>
+      </p>
+
       {% if user.payouts_enabled %}
-        <div class="alert alert-success">جاهز لاستلام المدفوعات 🎉</div>
+        <div class="alert alert-success">حسابك مفعّل وجاهز لاستلام الأرباح 🎉</div>
+        <a class="btn btn-outline-primary" href="/payout/connect/start">
+          إدارة / مراجعة إعدادات الحساب
+        </a>
       {% else %}
         <div class="alert alert-warning">لم تُكمل خطوات التفعيل بعد.</div>
-        <form method="post" action="/payout/connect"><button class="btn btn-primary">إكمال التفعيل</button></form>
+        <a class="btn btn-primary" href="/payout/connect/start">
+          إكمال التفعيل
+        </a>
       {% endif %}
+
     {% else %}
-      <div class="alert alert-info">اربط حساب Stripe Express لتستلم أموالك مباشرة.</div>
-      <form method="post" action="/payout/connect"><button class="btn btn-primary">بدء الربط</button></form>
+      <div class="alert alert-info">
+        اربط حساب Stripe Express لتستلم أموالك مباشرة.
+      </div>
+      <a class="btn btn-primary" href="/payout/connect/start">
+        بدء الربط
+      </a>
     {% endif %}
+
   </div>
 </div>
 {% endblock %}
