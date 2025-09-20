@@ -61,6 +61,9 @@
       /* شريط تنبيه Stripe */
       .stripe-callout { border: 1px dashed rgba(13,110,253,.35); }
       .nav-badge { font-size: .7rem; margin-inline-start:.35rem; }
+
+      /* إضافة خفيفة: أيقونة شارة صغيرة قابلة لإعادة الاستخدام */
+      .badge-icon { height:18px; width:18px; margin-inline-start:6px; vertical-align:middle; display:inline-block; }
     </style>
   </head>
   <body>
@@ -156,6 +159,11 @@
                   {% if session_user.is_verified %}
                     <img src="/static/verified.png" alt="موثّق" class="verified-badge">
                   {% endif %}
+                  {# إضافة الشارة الخاصة بالأدمِن فقط كصورة — لا تغيير على الباك-إند #}
+                  {% if session_user.role == 'admin' %}
+                    <img src="/static/img/adm.png" alt="Admin" class="badge-icon">
+                  {% endif %}
+
                   <span class="badge bg-secondary">{{ session_user.role }}</span>
                   <span class="badge
                     {% if session_user.status == 'approved' %}bg-success
