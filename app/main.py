@@ -231,19 +231,13 @@ def api_unread_count(request: Request, db: Session = Depends(get_db)):
     return JSONResponse({"count": unread_count(u["id"], db)})
 
 # ====== Middleware: يضيف unread_messages والقيم المهمة بما فيها Stripe ======
+# ====== Middleware: يضيف unread_messages للقوالب ويزامن session_user ======
 @app.middleware("http")
 async def sync_user_flags(request: Request, call_next):
-    """
-    يزامن قيم session_user مع قاعدة البيانات في كل طلب
-    (خصوصاً is_verified + حالات Stripe) حتى تظهر الشارة/الأزرار فوراً
-    بدون الحاجة لإعادة تسجيل الدخول.
-    """
     try:
-        # تأكد أن عندنا سيشن
         if hasattr(request, "session"):
             sess_user = request.session.get("user")
             if sess_user and "id" in sess_user:
-                # افتح جلسة DB سريعة
                 db_gen = get_db()
                 db: Session = next(db_gen)
                 try:
@@ -253,23 +247,27 @@ async def sync_user_flags(request: Request, call_next):
                         sess_user["is_verified"] = bool(db_user.is_verified)
                         sess_user["role"] = db_user.role
                         sess_user["status"] = db_user.status
-                        # ⬅︎ القيم الخاصة بـ Stripe Connect
                         sess_user["payouts_enabled"] = bool(getattr(db_user, "payouts_enabled", False))
-                        sess_user["stripe_account_id"] = getattr(db_user, "stripe_account_id", None)
-                        # أعد حفظها في السيشن
+
+                        # حدّث الشارات لتظهر في النافبار فورًا
+                        for key in [
+                            "badge_admin","badge_new_yellow","badge_pro_green","badge_pro_gold",
+                            "badge_purple_trust","badge_renter_green","badge_orange_stars"
+                        ]:
+                            sess_user[key] = bool(getattr(db_user, key, False))
+
                         request.session["user"] = sess_user
                 finally:
-                    # أغلق gen
                     try:
                         next(db_gen)
                     except StopIteration:
                         pass
     except Exception:
-        # ما نكسرش الطلب لو صار خطأ
         pass
 
     response = await call_next(request)
     return response
+
 
 # ====== Health Check مفيد لـ Render ======
 @app.get("/healthz")
