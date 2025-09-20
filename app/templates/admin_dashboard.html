@@ -93,13 +93,9 @@
               <button class="btn btn-danger btn-sm">رفض</button>
             </form>
             {% if not u.is_verified %}
-              <form method="post" action="/admin/users/{{ u.id }}/verify">
-                <button class="btn btn-primary btn-sm">توثيق ✓</button>
-              </form>
+            
             {% else %}
-              <form method="post" action="/admin/users/{{ u.id }}/unverify">
-                <button class="btn btn-outline-light btn-sm">إلغاء التوثيق</button>
-              </form>
+              
             {% endif %}
 
             <!-- زر مراسلة صاحب الحساب -->
