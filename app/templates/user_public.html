@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_badges.html" import render_badges %}
 {% block content %}
 
 <style>
@@ -7,37 +8,17 @@
   .badge-icon{height:24px;width:24px;margin-inline-start:6px;vertical-align:middle;display:inline-block;}
 </style>
 
-{% set _created = user.created_at if user and user.created_at else None %}
-{% set _created_iso = _created.isoformat() if _created else "" %}
-{% set _role = user.role if user else '' %}
-{% set _verified = 1 if (user and user.is_verified) else 0 %}
-{% set _five_star_count = 0 %}
-{% set _returns_success_count = 0 %}
-{% set _ratings_count = 0 %}
-{% set _avg_stars = 0 %}
-
 <div class="d-flex align-items-center justify-content-between mb-3">
-  <h3 class="mb-0">
+  <h3 class="mb-0 d-flex align-items-center gap-1">
     {{ user.first_name }} {{ user.last_name }}
-    {% if user.is_verified %}
-      <img src="/static/verified.png" alt="موثّق" class="verified-badge">
-    {% endif %}
-    <span id="badges-public"
-          data-role="{{ _role }}"
-          data-created="{{ _created_iso }}"
-          data-verified="{{ _verified }}"
-          data-stars-all="{{ _ratings_count }}"
-          data-avg="{{ _avg_stars }}"
-          data-stars5="{{ _five_star_count }}"
-          data-returns="{{ _returns_success_count }}">
-    </span>
+    {{ render_badges(user, '22px') }}
   </h3>
   <div class="d-flex gap-2">
     <a class="btn btn-outline-light" href="/messages/start?user_id={{ user.id }}">أرسل رسالة</a>
   </div>
 </div>
 
-<!-- معلومات عامة (كودك كما هو) -->
+<!-- معلومات عامة -->
 <div class="card card-blur mb-3">
   <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
     <div class="text-muted small">
@@ -51,40 +32,100 @@
       <span class="badge {% if user.role=='admin' %}bg-info text-dark{% else %}bg-secondary{% endif %}">
         {{ user.role }}
       </span>
+      {# توثيق نصّي فقط — صورة التوثيق تُدار داخل الشارات #}
       {% if user.is_verified %}
-        <span class="badge bg-primary">موثّق ✔</span>
+        <span class="badge bg-primary">موثّق ✓</span>
       {% endif %}
     </div>
   </div>
 </div>
 
-<!-- تقييمات وباقي كودك كما هو ... -->
+<!-- تقييمات -->
+<div class="row g-3 mb-3">
+  <div class="col-12 col-lg-4">
+    <div class="card card-blur h-100">
+      <div class="card-body">
+        <div class="text-muted small">متوسط التقييم</div>
+        <div class="d-flex align-items-end gap-2">
+          <div class="fs-3 fw-bold">{{ "%.1f"|format(avg_stars) }}</div>
+          <div>
+            {% for i in range(1,6) %}
+              {% if i <= avg_stars|round(0, 'floor') %}
+                <span class="star text-warning">★</span>
+              {% else %}
+                <span class="star text-secondary">☆</span>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        <div class="text-muted small mt-1">إجمالي: {{ ratings_count }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-8">
+    <div class="card card-blur h-100">
+      <div class="card-body">
+        <h6 class="mb-3">آخر المراجعات</h6>
+        {% if reviews and reviews|length %}
+          <div class="list-group">
+            {% for r in reviews %}
+              <div class="list-group-item bg-transparent text-white border-secondary">
+                <div class="d-flex justify-content-between">
+                  <strong>{{ r.rater_name }}</strong>
+                  <small class="text-muted">{{ r.created_at.strftime("%Y-%m-%d") }}</small>
+                </div>
+                <div class="mb-1">
+                  {% for i in range(1,6) %}
+                    {% if i <= r.stars %}
+                      <span class="star text-warning">★</span>
+                    {% else %}
+                      <span class="star text-secondary">☆</span>
+                    {% endif %}
+                  {% endfor %}
+                </div>
+                {% if r.comment %}
+                  <div class="text-body">{{ r.comment }}</div>
+                {% else %}
+                  <div class="text-muted">لا توجد ملاحظة.</div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-muted">لا توجد تقييمات بعد.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
 
-<script>
-(function(){
-  function daysFrom(iso){ if(!iso) return 99999; const d=new Date(iso); if(isNaN(d)) return 99999; return Math.floor((Date.now()-d.getTime())/86400000); }
-  function add(src,alt){ const i=document.createElement('img'); i.src=src; i.alt=alt; i.className='badge-icon'; return i; }
-  function render(box){
-    if(!box) return;
-    const role=(box.dataset.role||'').toLowerCase();
-    const days=daysFrom(box.dataset.created||'');
-    const verified=Number(box.dataset.verified||0)===1;
-    const fiveStar=Number(box.dataset.stars5||0);
-    const returnsOk=Number(box.dataset.returns||0);
-
-    if(role==='admin'){ box.appendChild(add('/static/img/adm.png','Admin')); }
-    const allowYellow=(role!=='admin'), allowGreen=(role!=='admin'), allowViolet=(role!=='admin');
-
-    if(allowYellow && days<60){ box.appendChild(add('/static/img/jaune.png','New')); }
-    else if(allowGreen && days>=60 && days<365){ box.appendChild(add('/static/img/ProVert.png','Pro Green')); }
-    else if(days>=365){ box.appendChild(add('/static/img/ProGold.png','Pro Gold')); }
-
-    if(allowViolet && (verified || fiveStar>=20)){ box.appendChild(add('/static/img/violet.png','Trust')); }
-    if(returnsOk>=10){ box.appendChild(add('/static/img/Vert.png','Safe Renter')); }
-    if(fiveStar>=10){ box.appendChild(add('/static/img/orange.png','Top Rated')); }
-  }
-  render(document.getElementById('badges-public'));
-})();
-</script>
+<!-- عناصر المستخدم -->
+<div class="card card-blur">
+  <div class="card-body">
+    <h5 class="mb-3">عناصر {{ user.first_name }}</h5>
+    {% if items and items|length %}
+      <div class="row g-3">
+        {% for it in items %}
+          <div class="col-12 col-md-4">
+            <div class="card h-100">
+              {% if it.image_path %}
+                <img src="/{{ it.image_path }}" class="card-img-top" style="height:160px;object-fit:cover" alt="item">
+              {% endif %}
+              <div class="card-body">
+                <h6 class="card-title">{{ it.title }}</h6>
+                <div class="d-flex justify-content-between align-items-center">
+                  <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
+                  <span class="small text-muted">{{ it.category }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-muted">لا توجد عناصر منشورة لهذا المستخدم.</div>
+    {% endif %}
+  </div>
+</div>
 
 {% endblock %}

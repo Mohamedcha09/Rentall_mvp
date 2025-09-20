@@ -1,0 +1,54 @@
+{# templates/_badges.html #}
+{% macro render_badges(u, size='18px') %}
+  {% if not u %}{% return %}{% endif %}
+  <span class="user-badges">
+    {# شارة أدمين #}
+    {% if u.badge_admin %}
+      <img src="/static/img/adm.png"
+           alt="Admin"
+           style="height:{{size}};width:{{size}};margin-inline-start:6px;vertical-align:middle">
+    {% endif %}
+
+    {# شارة جديد (أصفر) #}
+    {% if u.badge_new_yellow %}
+      <img src="/static/img/jaune.png"
+           alt="New"
+           style="height:{{size}};width:{{size}};margin-inline-start:6px;vertical-align:middle">
+    {% endif %}
+
+    {# شارة Pro أخضر #}
+    {% if u.badge_pro_green %}
+      <img src="/static/img/ProVert.png"
+           alt="Pro Green"
+           style="height:{{size}};width:{{size}};margin-inline-start:6px;vertical-align:middle">
+    {% endif %}
+
+    {# شارة Pro ذهبي #}
+    {% if u.badge_pro_gold %}
+      <img src="/static/img/ProGold.png"
+           alt="Pro Gold"
+           style="height:{{size}};width:{{size}};margin-inline-start:6px;vertical-align:middle">
+    {% endif %}
+
+    {# شارة ثقة (بنفسجي) #}
+    {% if u.badge_purple_trust %}
+      <img src="/static/img/violet.png"
+           alt="Trust"
+           style="height:{{size}};width:{{size}};margin-inline-start:6px;vertical-align:middle">
+    {% endif %}
+
+    {# شارة مستأجر آمن (أخضر) #}
+    {% if u.badge_renter_green %}
+      <img src="/static/img/Vert.png"
+           alt="Safe Renter"
+           style="height:{{size}};width:{{size}};margin-inline-start:6px;vertical-align:middle">
+    {% endif %}
+
+    {# شارة أعلى تقييم (برتقالي) #}
+    {% if u.badge_orange_stars %}
+      <img src="/static/img/orange.png"
+           alt="Top Rated"
+           style="height:{{size}};width:{{size}};margin-inline-start:6px;vertical-align:middle">
+    {% endif %}
+  </span>
+{% endmacro %}

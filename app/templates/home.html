@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_badges.html" import render_badges %}
 {% block content %}
 
 <!-- هيرو أعلى الصفحة -->
@@ -56,6 +57,11 @@
   </div>
 </div>
 
+<style>
+  /* حجم صغير موحّد لأيقونات الشارات */
+  .badge-icon{height:16px;width:16px;vertical-align:middle;margin-inline-start:6px;display:inline-block}
+</style>
+
 <!-- شبكة العناصر الحديثة -->
 <div class="home-grid">
   {% for it in items %}
@@ -87,9 +93,8 @@
           {% endif %}
           <span class="small text-muted d-inline-flex align-items-center gap-1">
             {{ it.owner.first_name }} {{ it.owner.last_name }}
-            {% if it.owner and it.owner.is_verified %}
-              <img src="/static/verified.png" class="verified-badge" alt="موثّق">
-            {% endif %}
+            {# عرض كل الشارات كصور (بدون verified.png) #}
+            {% if it.owner %}{{ render_badges(it.owner, '16px') }}{% endif %}
           </span>
         </div>
 
