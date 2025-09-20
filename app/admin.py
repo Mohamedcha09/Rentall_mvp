@@ -215,20 +215,73 @@ def admin_request_fix(
     # حدّث حالة وثائقه إلى needs_fix + ضع الملاحظة
     for d in user.documents:
         d.review_status = "needs_fix"
-        # اجمع الملاحظات (لو صار فيه أكثر من طلب سابق)
         if d.review_note:
             d.review_note = f"{d.review_note.strip()}\n- {reason.strip()}"
         else:
             d.review_note = reason.strip()
         d.reviewed_at = datetime.utcnow()
-    # اترك status المستخدم كما هو (عادة pending) — الفكرة أنه ما زال قيد المعالجة
     db.commit()
 
     # افتح/أنشئ محادثة وأرسل رسالة فيها السبب + رابط صفحة التعديل
     thread = _open_or_create_admin_thread(db, a_id, user_id)
-    fix_link = "/profile/docs"  # صفحة تعديل/إعادة رفع المستندات (سنضيفها بالقالب)
+    fix_link = "/profile/docs"  # صفحة تعديل/إعادة رفع المستندات
     body = f"مرحبًا {user.first_name}،\nهناك ملاحظات على مستندات التحقق:\n- {reason}\nيرجى التصحيح وإعادة الإرسال هنا: {fix_link}"
     db.add(Message(thread_id=thread.id, sender_id=a_id, body=body))
+    db.commit()
+
+    return RedirectResponse(url="/admin", status_code=303)
+
+# ---------- جديد: حفظ الشارات (يحل 404) ----------
+@router.post("/admin/users/{user_id}/badges")
+def admin_update_user_badges(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    badge_admin:        str | None = Form(None),
+    badge_new_yellow:   str | None = Form(None),
+    badge_pro_green:    str | None = Form(None),
+    badge_pro_gold:     str | None = Form(None),
+    badge_purple_trust: str | None = Form(None),
+    badge_renter_green: str | None = Form(None),
+    badge_orange_stars: str | None = Form(None),
+):
+    """
+    يحفظ شارات المستخدم بحسب الشيكبوكسات القادمة من لوحة الأدمين.
+    - الصفراء لا تجتمع مع Pro الأخضر/الذهبي (نمنع التعارض).
+    """
+    if not require_admin(request):
+        return RedirectResponse(url="/login", status_code=303)
+
+    user = db.query(User).get(user_id)
+    if not user:
+        return RedirectResponse(url="/admin", status_code=303)
+
+    # حوّل وجود القيمة في الفورم إلى Boolean
+    b_admin        = bool(badge_admin)
+    b_new          = bool(badge_new_yellow)
+    b_pro_g        = bool(badge_pro_green)
+    b_pro_gold     = bool(badge_pro_gold)
+    b_purple_trust = bool(badge_purple_trust)
+    b_renter_green = bool(badge_renter_green)
+    b_orange       = bool(badge_orange_stars)
+
+    # منع التعارض: الصفراء لا تجتمع مع pro (نعطي أولوية لـ Pro)
+    if b_new and (b_pro_g or b_pro_gold):
+        b_new = False
+
+    # (اختياري) إجبار شارة الأدمين لمن role=admin
+    # if user.role == "admin":
+    #     b_admin = True
+
+    user.badge_admin        = b_admin
+    user.badge_new_yellow   = b_new
+    user.badge_pro_green    = b_pro_g
+    user.badge_pro_gold     = b_pro_gold
+    user.badge_purple_trust = b_purple_trust
+    user.badge_renter_green = b_renter_green
+    user.badge_orange_stars = b_orange
+
+    db.add(user)
     db.commit()
 
     return RedirectResponse(url="/admin", status_code=303)

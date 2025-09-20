@@ -29,8 +29,6 @@ def col_or_literal(table: str, name: str, type_, **kwargs):
     """
     if _has_column(table, name):
         return Column(type_, **kwargs)
-    # لو عرّفنا DEFAULT أو onupdate هنا، ما لها معنى مع literal(None)؛
-    # الهدف فقط تفادي القراءة من عمود غير موجود.
     return column_property(literal(None))
 
 
@@ -56,6 +54,22 @@ class User(Base):
 
     is_verified    = col_or_literal("users", "is_verified", Boolean, default=False, nullable=False)
     verified_at    = col_or_literal("users", "verified_at", DateTime, nullable=True)
+
+    # ===== شارات (Badges) =====
+    # البنفسجي بالأزرق (للأدمين فقط)
+    badge_admin        = col_or_literal("users", "badge_admin",        Boolean, default=False, nullable=False)
+    # الصفراء (مستخدم جديد شهرين)
+    badge_new_yellow   = col_or_literal("users", "badge_new_yellow",   Boolean, default=False, nullable=False)
+    # Pro أخضر (بعد شهرين بدلاً من الصفراء)
+    badge_pro_green    = col_or_literal("users", "badge_pro_green",    Boolean, default=False, nullable=False)
+    # Pro ذهبي (بعد سنة)
+    badge_pro_gold     = col_or_literal("users", "badge_pro_gold",     Boolean, default=False, nullable=False)
+    # بنفسجي بدون أزرق (ثقة—إعطاء إداري أو 20 تقييم 5 نجوم)
+    badge_purple_trust = col_or_literal("users", "badge_purple_trust", Boolean, default=False, nullable=False)
+    # أخضر (10 عمليات استئجار ناجحة)
+    badge_renter_green = col_or_literal("users", "badge_renter_green", Boolean, default=False, nullable=False)
+    # برتقالي (10 تقييمات 5 نجوم)
+    badge_orange_stars = col_or_literal("users", "badge_orange_stars", Boolean, default=False, nullable=False)
 
     # verified_by_id + علاقة self-ref تُعرّف فقط إن كان العمود موجوداً
     if _has_column("users", "verified_by_id"):
@@ -321,8 +335,6 @@ class Order(Base):
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # علاقات اختيارية (لا نحتاج back_populates الآن)
-
 
 # =========================
 # Bookings (طلبات الحجز)
@@ -358,6 +370,5 @@ class Booking(Base):
 
     # علاقات مريحة
     item   = relationship("Item", backref="bookings")
-    # استخدمنا foreign_keys كنص مؤهَّل لتفادي NameError أثناء تعريف الكلاس
     renter = relationship("User", foreign_keys="[Booking.renter_id]", backref="bookings_rented")
     owner  = relationship("User", foreign_keys="[Booking.owner_id]",  backref="bookings_owned")
