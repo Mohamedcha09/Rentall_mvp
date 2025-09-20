@@ -46,73 +46,42 @@ class User(Base):
     phone      = Column(String(50), nullable=False)
     password_hash = Column(String(255), nullable=False)
 
-    # أعمدة قد تكون غير موجودة في DB الحالية:
+    # Stripe / الحالة
     stripe_account_id = col_or_literal("users", "stripe_account_id", String, nullable=True)
     payouts_enabled   = col_or_literal("users", "payouts_enabled", Boolean, default=False)
     role              = col_or_literal("users", "role", String(20), default="user")
     status            = col_or_literal("users", "status", String(20), default="pending")
 
+    # التوثيق
     is_verified    = col_or_literal("users", "is_verified", Boolean, default=False, nullable=False)
     verified_at    = col_or_literal("users", "verified_at", DateTime, nullable=True)
-
-    # ===== شارات (Badges) =====
-    # البنفسجي بالأزرق (للأدمين فقط)
-    badge_admin        = col_or_literal("users", "badge_admin",        Boolean, default=False, nullable=False)
-    # الصفراء (مستخدم جديد شهرين)
-    badge_new_yellow   = col_or_literal("users", "badge_new_yellow",   Boolean, default=False, nullable=False)
-    # Pro أخضر (بعد شهرين بدلاً من الصفراء)
-    badge_pro_green    = col_or_literal("users", "badge_pro_green",    Boolean, default=False, nullable=False)
-    # Pro ذهبي (بعد سنة)
-    badge_pro_gold     = col_or_literal("users", "badge_pro_gold",     Boolean, default=False, nullable=False)
-    # بنفسجي بدون أزرق (ثقة—إعطاء إداري أو 20 تقييم 5 نجوم)
-    badge_purple_trust = col_or_literal("users", "badge_purple_trust", Boolean, default=False, nullable=False)
-    # أخضر (10 عمليات استئجار ناجحة)
-    badge_renter_green = col_or_literal("users", "badge_renter_green", Boolean, default=False, nullable=False)
-    # برتقالي (10 تقييمات 5 نجوم)
-    badge_orange_stars = col_or_literal("users", "badge_orange_stars", Boolean, default=False, nullable=False)
-
-    # verified_by_id + علاقة self-ref تُعرّف فقط إن كان العمود موجوداً
     if _has_column("users", "verified_by_id"):
         verified_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     else:
         verified_by_id = column_property(literal(None))
 
     created_at = Column(DateTime, default=datetime.utcnow)
-    # updated_at قد لا يكون موجوداً في قواعد قديمة:
     updated_at = col_or_literal("users", "updated_at", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
     avatar_path = col_or_literal("users", "avatar_path", String(500), nullable=True)
 
+    # ===== شارات (الأعمدة الجديدة) =====
+    badge_admin         = col_or_literal("users", "badge_admin",         Boolean, default=False)  # البنفسجي بالأزرق (أدمن فقط)
+    badge_new_yellow    = col_or_literal("users", "badge_new_yellow",    Boolean, default=False)  # جديد شهرين (أصفر)
+    badge_pro_green     = col_or_literal("users", "badge_pro_green",     Boolean, default=False)  # Pro أخضر
+    badge_pro_gold      = col_or_literal("users", "badge_pro_gold",      Boolean, default=False)  # Pro ذهبي (بعد سنة)
+    badge_purple_trust  = col_or_literal("users", "badge_purple_trust",  Boolean, default=False)  # بنفسجي بلا أزرق = ثقة
+    badge_renter_green  = col_or_literal("users", "badge_renter_green",  Boolean, default=False)  # أخضر (10 استعارات ناجحة)
+    badge_orange_stars  = col_or_literal("users", "badge_orange_stars",  Boolean, default=False)  # برتقالي (10× 5 نجوم)
+
     # علاقات رئيسية
-    documents = relationship(
-        "Document",
-        back_populates="user",
-        cascade="all, delete-orphan"
-    )
-    items = relationship(
-        "Item",
-        back_populates="owner",
-        cascade="all, delete-orphan"
-    )
+    documents = relationship("Document", back_populates="user", cascade="all, delete-orphan")
+    items = relationship("Item", back_populates="owner", cascade="all, delete-orphan")
 
     # علاقات التراسل والتقييمات
-    sent_messages = relationship(
-        "Message",
-        foreign_keys="Message.sender_id",
-        back_populates="sender"
-    )
-    ratings_given = relationship(
-        "Rating",
-        foreign_keys="Rating.rater_id",
-        back_populates="rater"
-    )
-    ratings_received = relationship(
-        "Rating",
-        foreign_keys="Rating.rated_user_id",
-        back_populates="rated_user"
-    )
+    sent_messages = relationship("Message", foreign_keys="Message.sender_id", back_populates="sender")
+    ratings_given = relationship("Rating", foreign_keys="Rating.rater_id", back_populates="rater")
+    ratings_received = relationship("Rating", foreign_keys="Rating.rated_user_id", back_populates="rated_user")
 
-    # علاقة "من قام بتوثيقي" تُعرّف فقط إذا كان verified_by_id موجوداً فعلاً
     if _has_column("users", "verified_by_id"):
         verified_by = relationship(
             "User",
@@ -122,7 +91,7 @@ class User(Base):
             uselist=False
         )
 
-    # ======= خصائص مساعدة لا تغيّر DB =======
+    # خصائص مساعدة
     @property
     def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}".strip()
@@ -136,7 +105,6 @@ class User(Base):
         return self.five_star_count >= 10
 
     def mark_verified(self, admin_id: int | None = None) -> None:
-        # ملاحظة: إن لم يكن verified_by_id عموداً فعلياً، فهذا الحقل لن يُحفظ في DB.
         if _has_column("users", "is_verified"):
             self.is_verified = True
         if _has_column("users", "verified_at"):
@@ -175,10 +143,6 @@ class Document(Base):
     user = relationship("User", back_populates="documents")
 
 
-# =========================
-# Items (القوائم القابلة للإيجار)
-# =========================
-
 class Item(Base):
     __tablename__ = "items"
 
@@ -190,40 +154,27 @@ class Item(Base):
     city        = Column(String(120), nullable=True)
 
     price_per_day = Column(Integer, nullable=False, default=0)
-    category     = Column(String(50), nullable=False, default="other")  # vehicle/electronics/...
+    category     = Column(String(50), nullable=False, default="other")
     image_path   = Column(String(500), nullable=True)
-    is_active    = Column(String(10), default="yes")  # أبقيناه String للتوافق الحالي
+    is_active    = Column(String(10), default="yes")
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # علاقات
     owner = relationship("User", back_populates="items")
-    message_threads = relationship(
-        "MessageThread",
-        back_populates="item",
-        cascade="all, delete-orphan"
-    )
+    message_threads = relationship("MessageThread", back_populates="item", cascade="all, delete-orphan")
 
-
-# =========================
-# Messaging (المحادثات والرسائل)
-# =========================
 
 class MessageThread(Base):
     __tablename__ = "message_threads"
 
     id = Column(Integer, primary_key=True, index=True)
-
     user_a_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     user_b_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-
-    # ربط المحادثة بعنصر محدد حتى لا تختلط الرسائل بين منتجات مختلفة
     item_id = Column(Integer, ForeignKey("items.id"), nullable=True)
 
     created_at      = Column(DateTime, default=datetime.utcnow)
     last_message_at = Column(DateTime, default=datetime.utcnow)
 
-    # علاقات
     user_a = relationship("User", foreign_keys=[user_a_id])
     user_b = relationship("User", foreign_keys=[user_b_id])
 
@@ -247,18 +198,12 @@ class Message(Base):
     body = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # قد تكون أعمدة القراءة غير موجودة في DB قديمة:
     is_read = col_or_literal("messages", "is_read", Boolean, default=False, nullable=False)
     read_at = col_or_literal("messages", "read_at", DateTime, nullable=True)
 
-    # علاقات
     thread = relationship("MessageThread", back_populates="messages")
     sender = relationship("User", foreign_keys=[sender_id], back_populates="sent_messages")
 
-
-# =========================
-# Ratings (التقييمات بين المستخدمين)
-# =========================
 
 class Rating(Base):
     __tablename__ = "ratings"
@@ -268,107 +213,69 @@ class Rating(Base):
     rater_id       = Column(Integer, ForeignKey("users.id"), nullable=False)
     rated_user_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    stars   = Column(Integer, nullable=False, default=5)  # 1-5
+    stars   = Column(Integer, nullable=False, default=5)
     comment = Column(Text, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # علاقات
     rater       = relationship("User", foreign_keys=[rater_id], back_populates="ratings_given")
     rated_user  = relationship("User", foreign_keys=[rated_user_id], back_populates="ratings_received")
 
-
-# =========================
-# Freeze Deposits (التجميد/الضمان)
-# =========================
 
 class FreezeDeposit(Base):
     __tablename__ = "freeze_deposits"
 
     id = Column(Integer, primary_key=True, index=True)
-
-    # مَن الذي يضع الضمان؟
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-
-    # على أيّ عنصر/إعلان
     item_id = Column(Integer, ForeignKey("items.id"), nullable=True)
-
-    # قيمة الضمان
     amount = Column(Integer, nullable=False, default=0)
-
-    # planned | held | released | canceled
     status = Column(String(20), nullable=False, default="planned")
-
-    # ملاحظات إدارية/عامّة
     note = Column(Text, nullable=True)
-
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # علاقات اختيارية (للاستخدام في القوالب)
     user = relationship("User", lazy="joined")
     item = relationship("Item", lazy="joined")
 
-
-# =========================
-# Orders (طلبات الاستئجار)
-# =========================
 
 class Order(Base):
     __tablename__ = "orders"
 
     id = Column(Integer, primary_key=True, index=True)
-
     item_id    = Column(Integer, ForeignKey("items.id"), nullable=False)
-    renter_id  = Column(Integer, ForeignKey("users.id"), nullable=False)  # المستأجر
-    owner_id   = Column(Integer, ForeignKey("users.id"), nullable=False)  # مالك العنصر
-
+    renter_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
+    owner_id   = Column(Integer, ForeignKey("users.id"), nullable=False)
     start_date = Column(Date, nullable=False)
     end_date   = Column(Date, nullable=False)
     days       = Column(Integer, nullable=False, default=1)
-
     price_per_day = Column(Integer, nullable=False, default=0)
     total_amount  = Column(Integer, nullable=False, default=0)
-
     status = Column(String(20), nullable=False, default="pending")
-    # حالات مقترحة: pending / paid / active / completed / canceled / refunding / refunded
-
     created_at = Column(DateTime, default=datetime.utcnow)
 
-
-# =========================
-# Bookings (طلبات الحجز)
-# =========================
 
 class Booking(Base):
     __tablename__ = "bookings"
 
     id = Column(Integer, primary_key=True, index=True)
-
-    # الروابط
     item_id   = Column(Integer, ForeignKey("items.id"), nullable=False)
-    renter_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # المستأجر
-    owner_id  = Column(Integer, ForeignKey("users.id"), nullable=False)  # مالك العنصر (للتسهيل والتاريخ)
+    renter_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    owner_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    # تفاصيل الحجز
     start_date = Column(Date, nullable=False)
     end_date   = Column(Date, nullable=False)
     days       = Column(Integer, nullable=False, default=1)
 
-    price_per_day_snapshot = Column(Integer, nullable=False, default=0)  # لقطة سعر وقت الإنشاء
-    total_amount           = Column(Integer, nullable=False, default=0)  # days * price_per_day_snapshot
+    price_per_day_snapshot = Column(Integer, nullable=False, default=0)
+    total_amount           = Column(Integer, nullable=False, default=0)
 
     status = Column(String(20), nullable=False, default="requested")
-    # requested / approved / rejected / cancelled / active / completed
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # حقول الدفع قد تكون غير موجودة في DB الحالية:
     payment_intent_id = col_or_literal("bookings", "payment_intent_id", String, nullable=True)
     payment_status    = col_or_literal("bookings", "payment_status", String, default="unpaid")
 
-    # علاقات مريحة
     item   = relationship("Item", backref="bookings")
     renter = relationship("User", foreign_keys="[Booking.renter_id]", backref="bookings_rented")
     owner  = relationship("User", foreign_keys="[Booking.owner_id]",  backref="bookings_owned")

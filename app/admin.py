@@ -1,149 +1,25 @@
 # app/admin.py
+from datetime import datetime
 from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from datetime import datetime
 
 from .database import get_db
-from .models import User, Document, MessageThread, Message  # ← أضفنا MessageThread, Message
+from .models import User, Document, MessageThread, Message
 
 router = APIRouter()
 
+
+# ---------------------------
+# Helpers
+# ---------------------------
 def require_admin(request: Request) -> bool:
     u = request.session.get("user")
     return bool(u and u.get("role") == "admin")
 
-@router.get("/admin")
-def admin_dashboard(request: Request, db: Session = Depends(get_db)):
-    """
-    لوحة الأدمين:
-    - قائمة المستخدمين قيد المراجعة (status = pending)
-    - لمحة عن جميع المستخدمين لتسهيل التوثيق/إلغاءه
-    """
-    if not require_admin(request):
-        return RedirectResponse(url="/login", status_code=303)
 
-    pending_users = (
-        db.query(User)
-        .filter(User.status == "pending")
-        .order_by(User.created_at.desc())
-        .all()
-    )
-
-    # جميع المستخدمين
-    all_users = db.query(User).order_by(User.created_at.desc()).all()
-
-    return request.app.templates.TemplateResponse(
-        "admin_dashboard.html",
-        {
-            "request": request,
-            "title": "لوحة الأدمين",
-            "pending_users": pending_users,
-            "all_users": all_users,
-            "session_user": request.session.get("user"),
-        },
-    )
-
-# ---------- قرارات التسجيل ----------
-@router.post("/admin/users/{user_id}/approve")
-def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
-    if not require_admin(request):
-        return RedirectResponse(url="/login", status_code=303)
-
-    user = db.query(User).get(user_id)
-    if user:
-        user.status = "approved"
-        db.commit()
-        # تحديث وثائق المستخدم للموافقة (إن وُجدت)
-        for d in user.documents:
-            d.review_status = "approved"
-        db.commit()
-
-    return RedirectResponse(url="/admin", status_code=303)
-
-@router.post("/admin/users/{user_id}/reject")
-def reject_user(user_id: int, request: Request, db: Session = Depends(get_db)):
-    if not require_admin(request):
-        return RedirectResponse(url="/login", status_code=303)
-
-    user = db.query(User).get(user_id)
-    if user:
-        user.status = "rejected"
-        db.commit()
-        # رفض الوثائق أيضًا
-        for d in user.documents:
-            d.review_status = "rejected"
-        db.commit()
-
-    return RedirectResponse(url="/admin", status_code=303)
-
-# ---------- التوثيق (Verification) ----------
-@router.post("/admin/users/{user_id}/verify")
-def verify_user(user_id: int, request: Request, db: Session = Depends(get_db)):
-    if not require_admin(request):
-        return RedirectResponse(url="/login", status_code=303)
-
-    admin = request.session.get("user")
-    user = db.query(User).get(user_id)
-    if user:
-        user.is_verified = True
-        user.verified_at = datetime.utcnow()
-        user.verified_by_id = admin["id"]
-        db.commit()
-
-        # لو الذي تمّ توثيقه هو المستخدم الحالي، حدّث الـ session
-        if request.session.get("user", {}).get("id") == user.id:
-            request.session["user"]["is_verified"] = True
-
-    return RedirectResponse(url="/admin", status_code=303)
-
-@router.post("/admin/users/{user_id}/unverify")
-def unverify_user(user_id: int, request: Request, db: Session = Depends(get_db)):
-    if not require_admin(request):
-        return RedirectResponse(url="/login", status_code=303)
-
-    user = db.query(User).get(user_id)
-    if user:
-        user.is_verified = False
-        user.verified_at = None
-        user.verified_by_id = None
-        db.commit()
-
-        # حدّث session إن كان هذا هو نفس المستخدم المسجّل حاليًا
-        if request.session.get("user", {}).get("id") == user.id:
-            request.session["user"]["is_verified"] = False
-
-    return RedirectResponse(url="/admin", status_code=303)
-
-# ---------- مراجعة وثائق فردية (اختياري) ----------
-@router.post("/admin/documents/{doc_id}/approve")
-def approve_document(doc_id: int, request: Request, db: Session = Depends(get_db)):
-    if not require_admin(request):
-        return RedirectResponse(url="/login", status_code=303)
-
-    doc = db.query(Document).get(doc_id)
-    if doc:
-        doc.review_status = "approved"
-        doc.reviewed_at = datetime.utcnow()
-        db.commit()
-
-    return RedirectResponse(url="/admin", status_code=303)
-
-@router.post("/admin/documents/{doc_id}/reject")
-def reject_document(doc_id: int, request: Request, db: Session = Depends(get_db)):
-    if not require_admin(request):
-        return RedirectResponse(url="/login", status_code=303)
-
-    doc = db.query(Document).get(doc_id)
-    if doc:
-        doc.review_status = "rejected"
-        doc.reviewed_at = datetime.utcnow()
-        db.commit()
-
-    return RedirectResponse(url="/admin", status_code=303)
-
-# ---------- مساعد داخلي: افتح أو أنشئ خيط رسائل بين الأدمِن والمستخدم ----------
 def _open_or_create_admin_thread(db: Session, admin_id: int, user_id: int) -> MessageThread:
+    """افتح أو أنشئ خيط رسائل بين الأدمِن والمستخدم."""
     thread = (
         db.query(MessageThread)
         .filter(
@@ -160,13 +36,170 @@ def _open_or_create_admin_thread(db: Session, admin_id: int, user_id: int) -> Me
         db.refresh(thread)
     return thread
 
-# ---------- جديد: فتح/إنشاء محادثة مع المستخدم ----------
+
+def _refresh_session_user_if_self(request: Request, user: User) -> None:
+    """لو الأدمِن عدّل نفسه، حدّث القيم داخل session حتى تظهر فورًا في الواجهة."""
+    sess = request.session.get("user")
+    if not sess:
+        return
+    if sess.get("id") != user.id:
+        return
+    # قيَم شائعة نحتاجها في القوالب
+    sess["role"] = user.role
+    sess["status"] = user.status
+    sess["is_verified"] = bool(user.is_verified)
+    # إن كانت أعمدة الشارات موجودة سيتم قراءتها (وإلا ستُهمل تلقائيًا)
+    for k in [
+        "badge_admin", "badge_new_yellow", "badge_pro_green", "badge_pro_gold",
+        "badge_purple_trust", "badge_renter_green", "badge_orange_stars",
+    ]:
+        if hasattr(user, k):
+            sess[k] = getattr(user, k)
+
+
+# ---------------------------
+# لوحة الأدمِن
+# ---------------------------
+@router.get("/admin")
+def admin_dashboard(request: Request, db: Session = Depends(get_db)):
+    if not require_admin(request):
+        return RedirectResponse(url="/login", status_code=303)
+
+    pending_users = (
+        db.query(User)
+        .filter(User.status == "pending")
+        .order_by(User.created_at.desc())
+        .all()
+    )
+    all_users = db.query(User).order_by(User.created_at.desc()).all()
+
+    return request.app.templates.TemplateResponse(
+        "admin_dashboard.html",
+        {
+            "request": request,
+            "title": "لوحة الأدمين",
+            "pending_users": pending_users,
+            "all_users": all_users,
+            "session_user": request.session.get("user"),
+        },
+    )
+
+
+# ---------------------------
+# قرارات التسجيل
+# ---------------------------
+@router.post("/admin/users/{user_id}/approve")
+def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
+    if not require_admin(request):
+        return RedirectResponse(url="/login", status_code=303)
+
+    user = db.query(User).get(user_id)
+    if user:
+        user.status = "approved"
+        # وافِق على وثائقه إن وُجدت
+        for d in (user.documents or []):
+            d.review_status = "approved"
+            d.reviewed_at = datetime.utcnow()
+        db.commit()
+        _refresh_session_user_if_self(request, user)
+
+    return RedirectResponse(url="/admin", status_code=303)
+
+
+@router.post("/admin/users/{user_id}/reject")
+def reject_user(user_id: int, request: Request, db: Session = Depends(get_db)):
+    if not require_admin(request):
+        return RedirectResponse(url="/login", status_code=303)
+
+    user = db.query(User).get(user_id)
+    if user:
+        user.status = "rejected"
+        for d in (user.documents or []):
+            d.review_status = "rejected"
+            d.reviewed_at = datetime.utcnow()
+        db.commit()
+        _refresh_session_user_if_self(request, user)
+
+    return RedirectResponse(url="/admin", status_code=303)
+
+
+# ---------------------------
+# التوثيق (Verification)
+# ---------------------------
+@router.post("/admin/users/{user_id}/verify")
+def verify_user(user_id: int, request: Request, db: Session = Depends(get_db)):
+    if not require_admin(request):
+        return RedirectResponse(url="/login", status_code=303)
+
+    admin = request.session.get("user")
+    user = db.query(User).get(user_id)
+    if user:
+        user.is_verified = True
+        user.verified_at = datetime.utcnow()
+        # verified_by_id قد لا يكون موجودًا في DB قديمة؛ إن كان موجودًا سيُخزَّن تلقائيًا
+        if hasattr(user, "verified_by_id"):
+            user.verified_by_id = admin["id"]
+        db.commit()
+        _refresh_session_user_if_self(request, user)
+
+    return RedirectResponse(url="/admin", status_code=303)
+
+
+@router.post("/admin/users/{user_id}/unverify")
+def unverify_user(user_id: int, request: Request, db: Session = Depends(get_db)):
+    if not require_admin(request):
+        return RedirectResponse(url="/login", status_code=303)
+
+    user = db.query(User).get(user_id)
+    if user:
+        user.is_verified = False
+        if hasattr(user, "verified_at"):
+            user.verified_at = None
+        if hasattr(user, "verified_by_id"):
+            user.verified_by_id = None
+        db.commit()
+        _refresh_session_user_if_self(request, user)
+
+    return RedirectResponse(url="/admin", status_code=303)
+
+
+# ---------------------------
+# مراجعة وثائق فردية (اختياري)
+# ---------------------------
+@router.post("/admin/documents/{doc_id}/approve")
+def approve_document(doc_id: int, request: Request, db: Session = Depends(get_db)):
+    if not require_admin(request):
+        return RedirectResponse(url="/login", status_code=303)
+
+    doc = db.query(Document).get(doc_id)
+    if doc:
+        doc.review_status = "approved"
+        doc.reviewed_at = datetime.utcnow()
+        db.commit()
+
+    return RedirectResponse(url="/admin", status_code=303)
+
+
+@router.post("/admin/documents/{doc_id}/reject")
+def reject_document(doc_id: int, request: Request, db: Session = Depends(get_db)):
+    if not require_admin(request):
+        return RedirectResponse(url="/login", status_code=303)
+
+    doc = db.query(Document).get(doc_id)
+    if doc:
+        doc.review_status = "rejected"
+        doc.reviewed_at = datetime.utcnow()
+        db.commit()
+
+    return RedirectResponse(url="/admin", status_code=303)
+
+
+# ---------------------------
+# مراسلة المستخدم + طلب تصحيح
+# ---------------------------
 @router.post("/admin/users/{user_id}/message")
 def admin_message_user(user_id: int, request: Request, db: Session = Depends(get_db)):
-    """
-    ينشئ (أو يفتح إن كانت موجودة) محادثة خاصة بين الأدمِن والمستخدم المحدد،
-    ثم يعيد التوجيه إلى صفحة المحادثة.
-    """
+    """إنشاء/فتح محادثة مع المستخدم ثم تحويل لصفحة الرسائل."""
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
@@ -174,80 +207,76 @@ def admin_message_user(user_id: int, request: Request, db: Session = Depends(get
     if not admin:
         return RedirectResponse(url="/login", status_code=303)
 
-    a_id = admin["id"]
-    b_id = user_id
+    thread = _open_or_create_admin_thread(db, admin["id"], user_id)
 
-    thread = _open_or_create_admin_thread(db, a_id, b_id)
-
-    # أرسل رسالة افتتاحية اختيارية إن كان الخيط جديد (لا رسائل)
+    # رسالة افتتاحية إذا كان الخيط بدون رسائل
     first_msg = db.query(Message).filter(Message.thread_id == thread.id).first()
     if not first_msg:
-        msg = Message(thread_id=thread.id, sender_id=a_id, body="مرحبًا! يرجى استكمال/تصحيح بيانات التحقق.")
-        db.add(msg)
+        db.add(Message(thread_id=thread.id, sender_id=admin["id"], body="مرحبًا! يرجى استكمال/تصحيح بيانات التحقق."))
         db.commit()
 
     return RedirectResponse(url=f"/messages/{thread.id}", status_code=303)
 
-# ---------- جديد: طلب تصحيح بيانات/صور من المستخدم + رسالة تلقائية ----------
+
 @router.post("/admin/users/{user_id}/request_fix")
 def admin_request_fix(
     user_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    reason: str = Form("نحتاج صورة أوضح أو وثيقة صالحة.")  # سبب افتراضي لو ما كتب الأدمِن شيء
+    reason: str = Form("نحتاج صورة أوضح أو وثيقة صالحة.")
 ):
-    """
-    يضع ملاحظة المراجعة على وثائق المستخدم كـ needs_fix،
-    ويرسل له رسالة خاصة بالسبب مع رابط صفحة تعديل بياناته.
-    """
+    """يضع حالة الوثائق إلى needs_fix ويرسل سببًا في الرسائل مع رابط التصحيح."""
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
     admin = request.session.get("user")
     if not admin:
         return RedirectResponse(url="/login", status_code=303)
-    a_id = admin["id"]
 
     user = db.query(User).get(user_id)
     if not user:
         return RedirectResponse(url="/admin", status_code=303)
 
-    # حدّث حالة وثائقه إلى needs_fix + ضع الملاحظة
-    for d in user.documents:
+    for d in (user.documents or []):
         d.review_status = "needs_fix"
+        d.reviewed_at = datetime.utcnow()
         if d.review_note:
             d.review_note = f"{d.review_note.strip()}\n- {reason.strip()}"
         else:
             d.review_note = reason.strip()
-        d.reviewed_at = datetime.utcnow()
+
     db.commit()
 
-    # افتح/أنشئ محادثة وأرسل رسالة فيها السبب + رابط صفحة التعديل
-    thread = _open_or_create_admin_thread(db, a_id, user_id)
-    fix_link = "/profile/docs"  # صفحة تعديل/إعادة رفع المستندات
-    body = f"مرحبًا {user.first_name}،\nهناك ملاحظات على مستندات التحقق:\n- {reason}\nيرجى التصحيح وإعادة الإرسال هنا: {fix_link}"
-    db.add(Message(thread_id=thread.id, sender_id=a_id, body=body))
+    thread = _open_or_create_admin_thread(db, admin["id"], user_id)
+    fix_link = "/profile/docs"
+    body = f"مرحبًا {user.first_name}،\nهناك ملاحظات على مستندات التحقق:\n- {reason}\nيرجى التصحيح هنا: {fix_link}"
+    db.add(Message(thread_id=thread.id, sender_id=admin["id"], body=body))
     db.commit()
 
     return RedirectResponse(url="/admin", status_code=303)
 
-# ---------- جديد: حفظ الشارات (يحل 404) ----------
+
+# ---------------------------
+# إدارة الشارات (Badges)
+# ---------------------------
 @router.post("/admin/users/{user_id}/badges")
-def admin_update_user_badges(
+def admin_update_badges(
     user_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    badge_admin:        str | None = Form(None),
-    badge_new_yellow:   str | None = Form(None),
-    badge_pro_green:    str | None = Form(None),
-    badge_pro_gold:     str | None = Form(None),
+    badge_admin: str | None = Form(None),
+    badge_new_yellow: str | None = Form(None),
+    badge_pro_green: str | None = Form(None),
+    badge_pro_gold: str | None = Form(None),
     badge_purple_trust: str | None = Form(None),
     badge_renter_green: str | None = Form(None),
     badge_orange_stars: str | None = Form(None),
 ):
     """
-    يحفظ شارات المستخدم بحسب الشيكبوكسات القادمة من لوحة الأدمين.
-    - الصفراء لا تجتمع مع Pro الأخضر/الذهبي (نمنع التعارض).
+    يحفظ الشارات المخصّصة للمستخدم.
+    قواعد التنافي:
+      - (new_yellow) لا يجتمع مع أي Pro.
+      - (pro_gold) يلغي pro_green.
     """
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
@@ -256,32 +285,39 @@ def admin_update_user_badges(
     if not user:
         return RedirectResponse(url="/admin", status_code=303)
 
-    # حوّل وجود القيمة في الفورم إلى Boolean
-    b_admin        = bool(badge_admin)
-    b_new          = bool(badge_new_yellow)
-    b_pro_g        = bool(badge_pro_green)
-    b_pro_gold     = bool(badge_pro_gold)
-    b_purple_trust = bool(badge_purple_trust)
-    b_renter_green = bool(badge_renter_green)
-    b_orange       = bool(badge_orange_stars)
+    # اقرأ القيم كبولين
+    val_admin         = bool(badge_admin)
+    val_new_yellow    = bool(badge_new_yellow)
+    val_pro_green     = bool(badge_pro_green)
+    val_pro_gold      = bool(badge_pro_gold)
+    val_purple_trust  = bool(badge_purple_trust)
+    val_renter_green  = bool(badge_renter_green)
+    val_orange_stars  = bool(badge_orange_stars)
 
-    # منع التعارض: الصفراء لا تجتمع مع pro (نعطي أولوية لـ Pro)
-    if b_new and (b_pro_g or b_pro_gold):
-        b_new = False
+    # قواعد التنافي
+    if val_new_yellow and (val_pro_green or val_pro_gold):
+        # لو الأدمِن علّم الاثنين، نعطي أولوية PRO ونلغي الأصفر
+        val_new_yellow = False
+    if val_pro_gold:
+        val_pro_green = False
 
-    # (اختياري) إجبار شارة الأدمين لمن role=admin
-    # if user.role == "admin":
-    #     b_admin = True
+    # خزّن فقط إن كانت الأعمدة موجودة (نماذج قديمة بدون أعمدة ستتجاهل تلقائيًا)
+    if hasattr(user, "badge_admin"):
+        user.badge_admin = val_admin
+    if hasattr(user, "badge_new_yellow"):
+        user.badge_new_yellow = val_new_yellow
+    if hasattr(user, "badge_pro_green"):
+        user.badge_pro_green = val_pro_green
+    if hasattr(user, "badge_pro_gold"):
+        user.badge_pro_gold = val_pro_gold
+    if hasattr(user, "badge_purple_trust"):
+        user.badge_purple_trust = val_purple_trust
+    if hasattr(user, "badge_renter_green"):
+        user.badge_renter_green = val_renter_green
+    if hasattr(user, "badge_orange_stars"):
+        user.badge_orange_stars = val_orange_stars
 
-    user.badge_admin        = b_admin
-    user.badge_new_yellow   = b_new
-    user.badge_pro_green    = b_pro_g
-    user.badge_pro_gold     = b_pro_gold
-    user.badge_purple_trust = b_purple_trust
-    user.badge_renter_green = b_renter_green
-    user.badge_orange_stars = b_orange
-
-    db.add(user)
     db.commit()
+    _refresh_session_user_if_self(request, user)
 
     return RedirectResponse(url="/admin", status_code=303)
