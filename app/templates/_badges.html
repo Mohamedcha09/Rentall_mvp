@@ -1,81 +1,44 @@
 {# app/templates/_badges.html #}
-{% macro render_badges(u, size=18) -%}
-  {# لو ما فيه مستخدم، لا تطبّع شيء #}
-  {% if not u %}{% endmacro %}{% endif %}
+{% macro icon(path, alt, size=18, class_='badge-icon') -%}
+  <img src="{{ path }}"
+       alt="{{ alt }}"
+       class="{{ class_ }}"
+       style="height:{{ size }}px;width:{{ size }}px;vertical-align:middle;margin-inline-start:6px;">
+{%- endmacro %}
 
-  {# دالة صغيرة لطباعة صورة شارة #}
-  {% macro _img(src, alt) -%}
-    <img src="{{ src }}" alt="{{ alt }}" title="{{ alt }}"
-         style="height:{{ size }}px;width:{{ size }}px;vertical-align:middle;margin-inline-start:6px;">
-  {%- endmacro %}
+{% macro render_badges(u, size=18, include_verified=True) -%}
+  {%- if not u -%}
+    {# لا شيء إذا لا يوجد مستخدم #}
+  {%- else -%}
+    <span class="user-badges">
+      {# أدمِن #}
+      {%- if u.role == 'admin' -%}
+        {{ icon('/static/img/adm.png', 'Admin', size) }}
+      {%- endif -%}
 
-  {# نحسب عمر الحساب بالأيام (fallback لو ما فيه created_at) #}
-  {% set _days =
-      ( (caller_kwargs.created_at if caller_kwargs and caller_kwargs.created_at else u.created_at).toordinal()
-        if u.created_at else None) %}
-  {# ما نقدر نحسب بالأيام بدقة داخل جينجا بدون تاريخ اليوم، فنستخدم قواعد fallback على created_at إن وجد #}
+      {# شارة التوثيق (SVG بدل verified.png) #}
+      {%- if include_verified and u.is_verified -%}
+        <svg viewBox="0 0 24 24"
+             aria-label="موثّق"
+             style="height:{{ size }}px;width:{{ size }}px;vertical-align:middle;margin-inline-start:6px;filter:drop-shadow(0 0 2px rgba(29,161,242,.45));">
+          <defs>
+            <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#33a8ff"/>
+              <stop offset="1" stop-color="#1da1f2"/>
+            </linearGradient>
+          </defs>
+          <circle cx="12" cy="12" r="10" fill="url(#g1)"/>
+          <path d="M9.2 12.6l-1.5-1.5a1 1 0 10-1.4 1.4l2.2 2.2a1 1 0 001.4 0l6-6a1 1 0 10-1.4-1.4l-5.3 5.3z" fill="#fff"/>
+        </svg>
+      {%- endif -%}
 
-  {# --- مصادر الشارات (أولوية أعمدة/فلاغات إن وُجدت، وإلا قواعد fallback) --- #}
-  {% set has_badge_admin         = (u.badge_admin is defined and u.badge_admin) or (u.role|lower == 'admin') %}
-  {% set has_badge_new_yellow    = (u.badge_new_yellow is defined and u.badge_new_yellow) %}
-  {% set has_badge_pro_green     = (u.badge_pro_green is defined and u.badge_pro_green) %}
-  {% set has_badge_pro_gold      = (u.badge_pro_gold is defined and u.badge_pro_gold) %}
-
-  {# البنفسجية: إمّا فلاغ، أو توثيق/ثقة تلقائي (≥20 تقييم 5★) #}
-  {% set five_star_count =
-       (u.five_star_count() if u.five_star_count is callable else
-        (u.five_star_count if u.five_star_count is defined else 0)) %}
-  {% set has_badge_purple_trust  =
-       (u.badge_purple_trust is defined and u.badge_purple_trust)
-       or (u.is_verified is defined and u.is_verified)
-       or (five_star_count|int >= 20) %}
-
-  {# الخضراء (مستأجر آمن): إمّا فلاغ، أو عدّاد نجاحات (إن وجد)، وإلا لا شيء #}
-  {% set returns_ok =
-       (u.returns_success_count if u.returns_success_count is defined else 0) %}
-  {% set has_badge_renter_green  =
-       (u.badge_renter_green is defined and u.badge_renter_green) or (returns_ok|int >= 10) %}
-
-  {# البرتقالية (Top Rated): إمّا فلاغ، أو ≥10 تقييم 5★ #}
-  {% set has_badge_orange_stars  =
-       (u.badge_orange_stars is defined and u.badge_orange_stars) or (five_star_count|int >= 10) %}
-
-  {# إن لم توجد فلاغات PRO، نفذ fallback بالعمر إن تواجد created_at:
-     <60 يوم = أصفر، 60..364 = Pro أخضر، ≥365 = Pro ذهبي #}
-  {% if (not has_badge_new_yellow) and (not has_badge_pro_green) and (not has_badge_pro_gold) and u.created_at %}
-    {% set days_account = ((namespace(d=cycler).d) and 0) %} {# hack لتفادي أخطاء، لن نستخدمه مباشرة #}
-    {# بما أن جينجا لا تحسب فرق الأيام بسهولة، نستخدم منطق بسيط:
-       إن كان عندك من الباك-إند days_account مرره للماكرو؛ إن لم يوجد، تجاهل fallback. #}
-  {% endif %}
-
-  {# --- طباعة الشارات --- #}
-
-  {# أولوية: أدمِن #}
-  {% if has_badge_admin %}
-    {{ _img('/static/img/adm.png', 'Admin') }}
-  {% endif %}
-
-  {# PRO: أصفر/أخضر/ذهبي (فلاغات إن وُجدت، وإلا تجاهل إن ما فيه Days) #}
-  {% if has_badge_new_yellow %}
-    {{ _img('/static/img/jaune.png', 'New') }}
-  {% elif has_badge_pro_green %}
-    {{ _img('/static/img/ProVert.png', 'Pro Green') }}
-  {% elif has_badge_pro_gold %}
-    {{ _img('/static/img/ProGold.png', 'Pro Gold') }}
-  {% endif %}
-
-  {# البنفسجية (ثقة) #}
-  {% if has_badge_purple_trust %}
-    {{ _img('/static/img/violet.png', 'Trust') }}
-  {% endif %}
-
-  {# الخضراء (مستأجر آمن) #}
-  {% if has_badge_renter_green %}
-    {{ _img('/static/img/Vert.png', 'Safe Renter') }}
-  {% endif %}
-
-  {# البرتقالية (Top Rated) #}
-  {% if has_badge_orange_stars %}
-    {{ _img('/static/img/orange.png', 'Top Rated') }}
-  {% endif %}
+      {# شارات إضافية حسب حقول البوليان في User #}
+      {%- if u.badge_new_yellow %}   {{ icon('/static/img/jaune.png',    'New',           size) }} {%- endif -%}
+      {%- if u.badge_pro_green %}    {{ icon('/static/img/ProVert.png',  'Pro Green',     size) }} {%- endif -%}
+      {%- if u.badge_pro_gold %}     {{ icon('/static/img/ProGold.png',  'Pro Gold',      size) }} {%- endif -%}
+      {%- if u.badge_purple_trust %} {{ icon('/static/img/violet.png',   'Trust',         size) }} {%- endif -%}
+      {%- if u.badge_renter_green %} {{ icon('/static/img/Vert.png',     'Safe Renter',   size) }} {%- endif -%}
+      {%- if u.badge_orange_stars %} {{ icon('/static/img/orange.png',   'Top Rated',     size) }} {%- endif -%}
+    </span>
+  {%- endif -%}
 {%- endmacro %}
