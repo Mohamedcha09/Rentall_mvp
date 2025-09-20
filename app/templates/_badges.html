@@ -1,54 +1,47 @@
 {# templates/_badges.html #}
-{% macro render_badges(u, size='18px') %}
-  {% if not u %}{% return %}{% endif %}
-  <span class="user-badges">
-    {# شارة أدمين #}
-    {% if u.badge_admin %}
-      <img src="/static/img/adm.png"
-           alt="Admin"
-           style="height:{{size}};width:{{size}};margin-inline-start:6px;vertical-align:middle">
-    {% endif %}
+{% macro render_badges(u, size="sm") %}
+  {# لو ما فيه مستخدم، لا نطبع شيء #}
+  {% if not u %}
+    <span></span>
+  {% else %}
+    {# حجم الأيقونات #}
+    {% set h = 14 if size == 'xs' else 18 if size == 'sm' else 22 %}
 
-    {# شارة جديد (أصفر) #}
-    {% if u.badge_new_yellow %}
-      <img src="/static/img/jaune.png"
-           alt="New"
-           style="height:{{size}};width:{{size}};margin-inline-start:6px;vertical-align:middle">
-    {% endif %}
+    <span class="inline-badges" style="display:inline-flex;gap:4px;vertical-align:middle;">
+      {# أدمِن #}
+      {% if (u.role | default('user')) == 'admin' %}
+        <img src="/static/img/adm.png" alt="admin" title="Admin" style="height:{{ h }}px;" loading="lazy">
+      {% endif %}
 
-    {# شارة Pro أخضر #}
-    {% if u.badge_pro_green %}
-      <img src="/static/img/ProVert.png"
-           alt="Pro Green"
-           style="height:{{size}};width:{{size}};margin-inline-start:6px;vertical-align:middle">
-    {% endif %}
+      {# أصفر (جديد) #}
+      {% if u.badge_new_yellow | default(false) %}
+        <img src="/static/img/jaune.png" alt="New" title="مستخدم جديد" style="height:{{ h }}px;" loading="lazy">
+      {% endif %}
 
-    {# شارة Pro ذهبي #}
-    {% if u.badge_pro_gold %}
-      <img src="/static/img/ProGold.png"
-           alt="Pro Gold"
-           style="height:{{size}};width:{{size}};margin-inline-start:6px;vertical-align:middle">
-    {% endif %}
+      {# PRO أخضر #}
+      {% if u.badge_pro_green | default(false) %}
+        <img src="/static/img/ProVert.png" alt="Pro Green" title="Pro أخضر" style="height:{{ h }}px;" loading="lazy">
+      {% endif %}
 
-    {# شارة ثقة (بنفسجي) #}
-    {% if u.badge_purple_trust %}
-      <img src="/static/img/violet.png"
-           alt="Trust"
-           style="height:{{size}};width:{{size}};margin-inline-start:6px;vertical-align:middle">
-    {% endif %}
+      {# PRO ذهبي #}
+      {% if u.badge_pro_gold | default(false) %}
+        <img src="/static/img/ProGold.png" alt="Pro Gold" title="Pro ذهبي" style="height:{{ h }}px;" loading="lazy">
+      {% endif %}
 
-    {# شارة مستأجر آمن (أخضر) #}
-    {% if u.badge_renter_green %}
-      <img src="/static/img/Vert.png"
-           alt="Safe Renter"
-           style="height:{{size}};width:{{size}};margin-inline-start:6px;vertical-align:middle">
-    {% endif %}
+      {# بنفسجي (ثقة) #}
+      {% if u.badge_purple_trust | default(false) %}
+        <img src="/static/img/violet.png" alt="Trust" title="ثقة" style="height:{{ h }}px;" loading="lazy">
+      {% endif %}
 
-    {# شارة أعلى تقييم (برتقالي) #}
-    {% if u.badge_orange_stars %}
-      <img src="/static/img/orange.png"
-           alt="Top Rated"
-           style="height:{{size}};width:{{size}};margin-inline-start:6px;vertical-align:middle">
-    {% endif %}
-  </span>
+      {# أخضر داكن (مستأجر آمن) #}
+      {% if u.badge_renter_green | default(false) %}
+        <img src="/static/img/Vert.png" alt="Safe Renter" title="مُستأجر موثوق" style="height:{{ h }}px;" loading="lazy">
+      {% endif %}
+
+      {# برتقالي (Top Rated) #}
+      {% if u.badge_orange_stars | default(false) %}
+        <img src="/static/img/orange.png" alt="Top Rated" title="تقييمات ممتازة" style="height:{{ h }}px;" loading="lazy">
+      {% endif %}
+    </span>
+  {% endif %}
 {% endmacro %}
