@@ -22,21 +22,24 @@
   .review-comment{ color:var(--text-normal); }
   .outlined{ box-shadow: inset 0 0 0 1px var(--accent); border-radius:16px; }
   .badge-icon{ height:24px; width:24px; margin-inline-start:6px; vertical-align:middle; display:inline-block; }
+  .verified-badge{ width:16px; height:16px; vertical-align:-2px; margin-inline-start:.35rem; display:inline-block; }
+  .verified-shadow{ filter: drop-shadow(0 0 2px rgba(29,161,242,.45)); }
 </style>
 
-{# ==== لا نغيّر باك-إند: نحسب الفرونت فقط ==== #}
-{# قيم افتراضية للحقول التي قد لا تكون متوفرة لديك #}
-{% set _created = user.created_at if user.created_at else None %}
+{# قيم مساعدة من دون الاعتماد على باك-إند إضافي #}
+{% set _created = user.created_at if user and user.created_at else None %}
 {% set _created_iso = _created.isoformat() if _created else "" %}
-{% set _role = user.role %}
-{% set _verified = 1 if user.is_verified else 0 %}
+{% set _role = user.role if user else '' %}
+{% set _verified = 1 if (user and user.is_verified) else 0 %}
 {% set _ratings_count = ratings_count|default(0) %}
 {% set _avg_stars = avg_stars|default(0) %}
-{% set _five_star_count = 0 %}        {# عدّل الرقم يدويًا إن أردت #}
-{% set _returns_success_count = 0 %}  {# عدّل الرقم يدويًا إن أردت #}
+{% set _five_star_count = five_star_count|default(0) %}        {# عدد تقييمات 5★ (إن لم يكن لديك احسبه لاحقًا) #}
+{% set _returns_success_count = returns_success_count|default(0) %}  {# عدد عمليات التأجير المعادة بنجاح #}
 
 <div class="mb-4 d-flex align-items-center justify-content-between">
-  <h3 class="mb-0 text-strong">صفحتي</h3>
+  <h3 class="mb-0 text-strong">
+    صفحتي
+  </h3>
   <a class="btn btn-outline-light btn-sm" href="/u/{{ user.id }}">عرض عام</a>
 </div>
 
@@ -47,10 +50,15 @@
     <div class="flex-grow-1">
       <h5 class="mb-1">
         {{ user.first_name }} {{ user.last_name }}
+
+        {# شارة التوثيق الزرقاء من Sprite في base.html #}
         {% if user.is_verified %}
-          <img src="/static/img/adm.png" alt="موثّق" class="verified-badge">
+          <svg class="verified-badge verified-shadow" aria-label="موثّق">
+            <use href="#icon-verified"/>
+          </svg>
         {% endif %}
-        <!-- مكان الشارات (يُملأ بالسكربت) -->
+
+        {# مكان الشارات (يمتلئ بالـJS حسب القواعد) #}
         <span id="badges-profile"
               data-role="{{ _role }}"
               data-created="{{ _created_iso }}"
@@ -74,7 +82,7 @@
         </span>
         <span class="badge bg-secondary"> {{ user.role }} </span>
         <span class="badge bg-dark-subtle text-dark">
-          عضو منذ {{ joined_at.strftime("%Y-%m-%d") }}
+          عضو منذ {{ (user.created_at or joined_at).strftime("%Y-%m-%d") if (user.created_at or joined_at) else "" }}
         </span>
       </div>
     </div>
@@ -105,12 +113,12 @@
         <div>
           <div class="small text-soft">متوسط التقييم</div>
           <div class="d-flex align-items-end gap-2">
-            <div class="fs-4 fw-bold text-strong">{{ "%.1f"|format(avg_stars) }}</div>
+            <div class="fs-4 fw-bold text-strong">{{ "%.1f"|format(_avg_stars) }}</div>
             <div aria-label="تقييم نجوم">
               {% for i in range(1,6) %}
-                {% if i <= avg_stars|round(0, 'floor') %}
+                {% if i <= _avg_stars|round(0, 'floor') %}
                   <span class="star text-warning">★</span>
-                {% elif i - avg_stars < 1 and i > avg_stars %}
+                {% elif i - _avg_stars < 1 and i > _avg_stars %}
                   <span class="star text-warning">☆</span>
                 {% else %}
                   <span class="star text-dim">☆</span>
@@ -119,7 +127,7 @@
             </div>
           </div>
         </div>
-        <span class="stat-chip">التقييمات: {{ ratings_count }}</span>
+        <span class="stat-chip">التقييمات: {{ _ratings_count }}</span>
       </div>
     </div>
   </div>
@@ -190,62 +198,51 @@
     if(!iso) return 99999;
     const d = new Date(iso);
     if(isNaN(d.getTime())) return 99999;
-    const ms = Date.now() - d.getTime();
-    return Math.floor(ms / 86400000);
+    return Math.floor((Date.now() - d.getTime()) / 86400000);
   }
-  function add(img, alt){
+  function icon(path, alt){
     const el = document.createElement('img');
-    el.src = img; el.alt = alt; el.className = 'badge-icon';
+    el.src = path; el.alt = alt; el.className = 'badge-icon';
     return el;
   }
   function render(container){
     if(!container) return;
-    const role = (container.dataset.role||'').toLowerCase();
-    const created = container.dataset.created || '';
-    const verified = Number(container.dataset.verified||0) === 1;
-    const days = daysFrom(created);
-    const fiveStar = Number(container.dataset.stars5||0);
-    const returnsOk = Number(container.dataset.returns||0);
-    const ratingsAll = Number(container.dataset.starsAll||0);
-    const avg = Number(container.dataset.avg||0);
 
-    // قواعدك:
-    // 1) الأزرق/بنفسجي للأدمِن فقط
+    const role       = (container.dataset.role||'').toLowerCase();
+    const createdIso = container.dataset.created || '';
+    const verified   = Number(container.dataset.verified||0) === 1;
+    const days       = daysFrom(createdIso);
+    const s5         = Number(container.dataset.stars5||0);
+    const returnsOk  = Number(container.dataset.returns||0);
+
+    // 1) البنفسجي-الأزرق (adm.png) للأدمِن فقط
     if(role === 'admin'){
-      container.appendChild(add('/static/img/adm.png','Admin'));
+      container.appendChild(icon('/static/img/adm.png','Admin'));
     }
 
-    // 2) الأصفر (<60 يوم) → يختفي ويظهر PRO خضراء (60.. <365) → بعد عام PRO ذهبية (>=365)
-    //    للأدمِن: لا نعرض الأصفر ولا PRO الخضراء ولا البنفسجية (حسب وصفك).
-    const allowProYellow = (role !== 'admin');
-    const allowProGreen  = (role !== 'admin');
-    const allowViolet    = (role !== 'admin');
-
-    if(allowProYellow && days < 60){
-      container.appendChild(add('/static/img/jaune.png','New'));
-    } else if(allowProGreen && days >= 60 && days < 365){
-      container.appendChild(add('/static/img/ProVert.png','Pro Green'));
-    } else if(days >= 365){
-      container.appendChild(add('/static/img/ProGold.png','Pro Gold'));
+    // 2) الأصفر (<60 يوم) → Pro أخضر (60.. <365) → Pro ذهبي (>=365)
+    if(days < 60){
+      container.appendChild(icon('/static/img/jaune.png','New'));
+    } else if(days >= 60 && days < 365){
+      container.appendChild(icon('/static/img/ProVert.png','Pro Green'));
+    } else {
+      container.appendChild(icon('/static/img/ProGold.png','Pro Gold'));
     }
 
-    // 3) البنفسجية (ثقة): توثيق يدوي OR ≥20 تقييم 5★
-    if(allowViolet && (verified || fiveStar >= 20)){
-      container.appendChild(add('/static/img/violet.png','Trust'));
+    // 3) البنفسجي (ثقة): توثيق يدوي أو ≥20 تقييم 5★
+    if(verified || s5 >= 20){
+      container.appendChild(icon('/static/img/violet.png','Trust'));
     }
 
-    // 4) الخضراء: ≥10 عمليات تأجير مُعادة بنجاح (يدويًا الآن من data-returns)
+    // 4) الخضراء (Vert.png): ≥10 عمليات استئجار أُعيدت بنجاح
     if(returnsOk >= 10){
-      container.appendChild(add('/static/img/Vert.png','Safe Renter'));
+      container.appendChild(icon('/static/img/Vert.png','Safe Renter'));
     }
 
-    // 5) البرتقالية: ≥10 تقييم 5★ (الآن نعتمد data-stars5 فقط)
-    if(fiveStar >= 10){
-      container.appendChild(add('/static/img/orange.png','Top Rated'));
+    // 5) البرتقالية: ≥10 تقييمات 5★
+    if(s5 >= 10){
+      container.appendChild(icon('/static/img/orange.png','Top Rated'));
     }
-
-    // ملاحظة: إذا ما عندك fiveStar/returns الآن، سيبقون مخفيين (القيمة 0).
-    // يمكنك تغيير الأرقام يدويًا في الـ data-* حتى بدون باك-إند.
   }
 
   render(document.getElementById('badges-profile'));

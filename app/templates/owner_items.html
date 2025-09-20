@@ -1,31 +1,91 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>أشيائي</h2>
-<p class="text-muted">العناصر التي قمت بنشرها للكراء.</p>
 
-<div class="d-flex justify-content-end mb-2">
+<style>
+  .badge-icon{height:20px;width:20px;margin-inline-start:6px;vertical-align:middle;display:inline-block;}
+</style>
+
+{% set me = session_user %}
+{% set _created = me.created_at if me and me.created_at else None %}
+{% set _created_iso = _created.isoformat() if _created else "" %}
+{% set _role = me.role if me else 'user' %}
+{% set _verified = 1 if (me and me.is_verified) else 0 %}
+{% set _five_star_count = 0 %}
+{% set _returns_success_count = 0 %}
+{% set _ratings_count = 0 %}
+{% set _avg_stars = 0 %}
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h3 class="mb-0">
+    أشيائي — {{ me.first_name }} {{ me.last_name }}
+    <span id="badges-owner-self"
+          data-role="{{ _role }}"
+          data-created="{{ _created_iso }}"
+          data-verified="{{ _verified }}"
+          data-stars-all="{{ _ratings_count }}"
+          data-avg="{{ _avg_stars }}"
+          data-stars5="{{ _five_star_count }}"
+          data-returns="{{ _returns_success_count }}">
+    </span>
+  </h3>
   <a class="btn btn-primary" href="/owner/items/new">+ أضف عنصر</a>
 </div>
 
-<div class="row">
-  {% for it in items %}
-    <div class="col-md-4">
-      <div class="card mb-3">
-        {% if it.image_path %}
-          <img src="/{{ it.image_path }}" class="card-img-top" style="height:180px;object-fit:cover" alt="item">
-        {% endif %}
-        <div class="card-body">
-          <div class="small text-muted">{{ it.category_label }}</div>
-          <h5 class="card-title">{{ it.title }}</h5>
-          <div class="d-flex justify-content-between align-items-center">
-            <span class="fw-bold">{{ it.price_per_day }} د/يوم</span>
-            <a class="btn btn-sm btn-outline-light" href="/items/{{ it.id }}">تفاصيل</a>
+{% if items and items|length %}
+  <div class="row g-3">
+    {% for it in items %}
+      <div class="col-12 col-md-4">
+        <div class="card h-100">
+          {% if it.image_path %}
+            <img src="/{{ it.image_path }}" class="card-img-top" style="height:160px;object-fit:cover">
+          {% endif %}
+          <div class="card-body">
+            <h6 class="card-title">{{ it.title }}</h6>
+            <div class="d-flex justify-content-between align-items-center">
+              <a href="/items/{{ it.id }}" class="btn btn-sm btn-outline-light">فتح</a>
+              <span class="small text-muted">{{ it.category }}</span>
+            </div>
+            <div class="mt-2">
+              <span class="badge {% if it.is_active=='yes' %}bg-success{% else %}bg-secondary{% endif %}">
+                {% if it.is_active=='yes' %}نشط{% else %}غير نشط{% endif %}
+              </span>
+              <span class="badge bg-dark-subtle text-dark">{{ it.price_per_day }} د/يوم</span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  {% else %}
-    <p class="text-muted">لم تنشر أي عنصر بعد.</p>
-  {% endfor %}
-</div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-light text-dark">لا توجد عناصر حتى الآن. ابدأ بإضافة أول عنصر لك.</div>
+{% endif %}
+
+<script>
+(function(){
+  function daysFrom(iso){ if(!iso) return 99999; const d=new Date(iso); if(isNaN(d)) return 99999; return Math.floor((Date.now()-d.getTime())/86400000); }
+  function add(src,alt){ const i=document.createElement('img'); i.src=src; i.alt=alt; i.className='badge-icon'; return i; }
+  function render(box){
+    if(!box) return;
+    const role=(box.dataset.role||'').toLowerCase();
+    const days=daysFrom(box.dataset.created||'');
+    const verified=Number(box.dataset.verified||0)===1;
+    const fiveStar=Number(box.dataset.stars5||0);
+    const returnsOk=Number(box.dataset.returns||0);
+
+    if(role==='admin'){ box.appendChild(add('/static/img/adm.png','Admin')); }
+
+    const allowYellow=(role!=='admin'), allowGreen=(role!=='admin'), allowViolet=(role!=='admin');
+
+    if(allowYellow && days<60){ box.appendChild(add('/static/img/jaune.png','New')); }
+    else if(allowGreen && days>=60 && days<365){ box.appendChild(add('/static/img/ProVert.png','Pro Green')); }
+    else if(days>=365){ box.appendChild(add('/static/img/ProGold.png','Pro Gold')); }
+
+    if(allowViolet && (verified || fiveStar>=20)){ box.appendChild(add('/static/img/violet.png','Trust')); }
+    if(returnsOk>=10){ box.appendChild(add('/static/img/Vert.png','Safe Renter')); }
+    if(fiveStar>=10){ box.appendChild(add('/static/img/orange.png','Top Rated')); }
+  }
+  render(document.getElementById('badges-owner-self'));
+})();
+</script>
+
 {% endblock %}

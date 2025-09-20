@@ -48,7 +48,7 @@
       .msg-title { flex:1; }
       .msg-count { font-size:12px; }
 
-      /* === شارة التوثيق الزرقاء (SVG/PNG) === */
+      /* === شارة التوثيق الزرقاء SVG بدل verified.png === */
       .verified-badge{ width:16px; height:16px; vertical-align:-2px; margin-inline-start:.35rem; display:inline-block; }
       .verified-badge.lg{ width:18px; height:18px; vertical-align:-3px; }
       .verified-shadow{ filter: drop-shadow(0 0 2px rgba(29,161,242,.45)); }
@@ -62,7 +62,7 @@
       .stripe-callout { border: 1px dashed rgba(13,110,253,.35); }
       .nav-badge { font-size: .7rem; margin-inline-start:.35rem; }
 
-      /* إضافة خفيفة: أيقونة شارة صغيرة قابلة لإعادة الاستخدام */
+      /* أيقونة شارة صغيرة قابلة لإعادة الاستخدام */
       .badge-icon { height:18px; width:18px; margin-inline-start:6px; vertical-align:middle; display:inline-block; }
     </style>
   </head>
@@ -156,7 +156,15 @@
               <li class="nav-item">
                 <span class="nav-link disabled">
                   مرحبًا {{ session_user.first_name }}
-                 
+
+                  {# شارة توثيق زرقاء (SVG) إن كان موثّقًا #}
+                  {% if session_user.is_verified %}
+                    <svg class="verified-badge verified-shadow" aria-label="موثّق">
+                      <use href="#icon-verified"/>
+                    </svg>
+                  {% endif %}
+
+                  {# شارة أدمِن (صورة adm.png) إن كان الدور أدمِن #}
                   {% if session_user.role == 'admin' %}
                     <img src="/static/img/adm.png" alt="Admin" class="badge-icon">
                   {% endif %}

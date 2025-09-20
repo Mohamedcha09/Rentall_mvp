@@ -14,7 +14,10 @@
             <div class="fw-bold">
               {{ u.first_name }} {{ u.last_name }}
               {% if u.is_verified %}
-                <img src="/static/verified.png" class="verified-badge" alt="موثّق">
+                <!-- كان هنا /static/verified.png: استبدلناه بـ SVG من base.html -->
+                <svg class="verified-badge verified-shadow" aria-label="موثّق">
+                  <use href="#icon-verified"/>
+                </svg>
               {% endif %}
 
               {# عرض صور الشارات إن كانت مفعلة (اختياري في شاشة المراجعة) #}
@@ -93,9 +96,13 @@
               <button class="btn btn-danger btn-sm">رفض</button>
             </form>
             {% if not u.is_verified %}
-            
+              <form method="post" action="/admin/users/{{ u.id }}/verify">
+                <button class="btn btn-primary btn-sm">توثيق ✓</button>
+              </form>
             {% else %}
-              
+              <form method="post" action="/admin/users/{{ u.id }}/unverify">
+                <button class="btn btn-outline-light btn-sm">إلغاء التوثيق</button>
+              </form>
             {% endif %}
 
             <!-- زر مراسلة صاحب الحساب -->
@@ -148,7 +155,12 @@
                   {% endif %}
                   <div>
                     {{ u.first_name }} {{ u.last_name }}
-                    
+                    {% if u.is_verified %}
+                      <!-- كان هنا /static/verified.png: استبدل بـ SVG -->
+                      <svg class="verified-badge verified-shadow" aria-label="موثّق">
+                        <use href="#icon-verified"/>
+                      </svg>
+                    {% endif %}
 
                     <!-- عرض صور الشارات حسب القيم -->
                     <div class="mt-1">
@@ -255,11 +267,12 @@
 
       function syncConflicts(changed) {
         // الصفراء لا تجتمع مع برو (أخضر/ذهبي)
-        if (changed === 'new' && chkNew.checked) {
-          chkProG.checked = false;
-          chkProGold.checked = false;
-        } else if ((changed === 'proG' && chkProG.checked) || (changed === 'proGold' && chkProGold.checked)) {
-          chkNew.checked = false;
+        if (changed === 'new' && chkNew && chkNew.checked) {
+          if (chkProG) chkProG.checked = false;
+          if (chkProGold) chkProGold.checked = false;
+        } else if ((changed === 'proG' && chkProG && chkProG.checked) ||
+                   (changed === 'proGold' && chkProGold && chkProGold.checked)) {
+          if (chkNew) chkNew.checked = false;
         }
       }
 
@@ -271,7 +284,7 @@
       const btnOff = form.querySelector('.btn-all-off');
       if (btnOn) btnOn.addEventListener('click', () => {
         form.querySelectorAll('input[type="checkbox"]').forEach(ch => ch.checked = true);
-        // بعد تشغيل الكل، نعالج التعارض: نعطي أولوية لـ Pro ذهبي، ثم أخضر، ثم نطفئ الصفراء
+        // أولوية: Pro Gold > Pro Green > إطفاء الأصفر
         if (chkProGold) chkProGold.checked = true;
         if (chkProG) chkProG.checked = !chkProGold.checked;
         if (chkNew) chkNew.checked = false;

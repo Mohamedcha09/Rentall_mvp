@@ -1,35 +1,145 @@
 {% extends "base.html" %}
 {% block content %}
-<h2 class="mb-4">📩 الرسائل</h2>
 
-<div class="list-group">
-  {% for thread in threads %}
-    <a href="/messages/{{ thread.id }}" class="list-group-item list-group-item-action d-flex align-items-center">
-      <!-- صورة المنتج -->
-      <img src="{{ thread.item.image_url or '/static/placeholder.png' }}" 
-           alt="صورة المنتج" 
-           class="rounded me-3" 
-           style="width: 60px; height: 60px; object-fit: cover;">
-      
-      <div class="flex-fill">
-        <!-- اسم المستخدم + شارة التوثيق إن وُجدت الخاصية -->
-        <strong>
-          {{ thread.other_user.first_name }} {{ thread.other_user.last_name }}
-          {% if thread.other_user is defined and thread.other_user and thread.other_user.is_verified is defined and thread.other_user.is_verified %}
-            <svg class="verified-badge verified-shadow"><use href="#icon-verified"/></svg>
+<style>
+  .badge-icon{height:18px;width:18px;margin-inline-start:6px;vertical-align:middle;display:inline-block;}
+  .thread-row{display:flex;align-items:center;gap:.6rem;padding:.5rem .75rem;border-bottom:1px solid rgba(255,255,255,.1);}
+  .thread-row a{text-decoration:none;color:inherit;display:flex;align-items:center;gap:.6rem;flex:1;}
+  .avatar{width:36px;height:36px;border-radius:50%;background:#e9ecef;color:#222;display:flex;align-items:center;justify-content:center;font-weight:700;}
+  .thread-title{flex:1;}
+  .thread-title .small{opacity:.8;}
+</style>
+
+<div class="row">
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="mb-3">محادثاتي</h5>
+        {% if threads and threads|length %}
+          <div class="list">
+            {% for t in threads %}
+              {# حدّد الطرف الآخر #}
+              {% set other = t.other_user %}
+              {% set name = (other.first_name ~ ' ' ~ other.last_name) if other else 'مستخدم' %}
+              {% set created = other.created_at if other and other.created_at else None %}
+              {% set created_iso = created.isoformat() if created else '' %}
+              {% set role = other.role if other and other.role else 'user' %}
+              {% set verified = 1 if (other and other.is_verified) else 0 %}
+
+              <div class="thread-row">
+                <a href="/messages/{{ t.id }}">
+                  <div class="avatar">
+                    {% set parts = name.split(' ') %}
+                    {{ (parts[0][:1] ~ (parts[1][:1] if parts|length>1 else ''))|upper }}
+                  </div>
+                  <div class="thread-title">
+                    <div class="fw-bold">
+                      {{ name }}
+                      <span class="auto-badges"
+                            data-role="{{ role }}"
+                            data-created="{{ created_iso }}"
+                            data-verified="{{ verified }}"
+                            data-stars5="0"
+                            data-returns="0"></span>
+                    </div>
+                    {% if t.item and t.item.title %}
+                      <div class="small text-muted">{{ t.item.title }}</div>
+                    {% endif %}
+                  </div>
+                  {% if t.unread_count and t.unread_count>0 %}
+                    <span class="badge bg-danger">{{ '+9' if t.unread_count>9 else t.unread_count }}</span>
+                  {% endif %}
+                </a>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          لا توجد محادثات بعد.
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-body">
+        {% if thread %}
+          {% set other = thread.other_user %}
+          {% set name = (other.first_name ~ ' ' ~ other.last_name) if other else 'مستخدم' %}
+          {% set created = other.created_at if other and other.created_at else None %}
+          {% set created_iso = created.isoformat() if created else '' %}
+          {% set role = other.role if other and other.role else 'user' %}
+          {% set verified = 1 if (other and other.is_verified) else 0 %}
+
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <h5 class="mb-0">
+              {{ name }}
+              <span class="auto-badges"
+                    data-role="{{ role }}"
+                    data-created="{{ created_iso }}"
+                    data-verified="{{ verified }}"
+                    data-stars5="0"
+                    data-returns="0"></span>
+            </h5>
+            {% if other %}
+              <a class="btn btn-sm btn-outline-light" href="/u/{{ other.id }}">الملف العام</a>
+            {% endif %}
+          </div>
+
+          {% if thread.messages and thread.messages|length %}
+            <div class="list-group">
+              {% for m in thread.messages %}
+                <div class="list-group-item bg-transparent text-white border-secondary">
+                  <div class="small text-muted">{{ m.sender.first_name }} · {{ m.created_at.strftime("%Y-%m-%d %H:%M") }}</div>
+                  <div>{{ m.body }}</div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-muted">لا رسائل بعد.</div>
           {% endif %}
-        </strong><br>
-        <!-- عنوان المنتج -->
-        <small class="text-muted">{{ thread.item.title }}</small>
-      </div>
 
-      <!-- آخر رسالة -->
-      <div class="text-muted small">
-        آخر تواصل: {{ thread.last_message_at }}
+          <form class="mt-3" method="post" action="/messages/{{ thread.id }}/send">
+            <div class="input-group">
+              <input type="text" name="body" class="form-control" placeholder="اكتب رسالة..." required>
+              <button class="btn btn-primary">إرسال</button>
+            </div>
+          </form>
+        {% else %}
+          <div class="text-muted">اختر محادثة من القائمة.</div>
+        {% endif %}
       </div>
-    </a>
-  {% else %}
-    <p class="text-muted">لا توجد رسائل بعد.</p>
-  {% endfor %}
+    </div>
+  </div>
 </div>
+
+<!-- سكربت شارات عام لهذه الصفحة -->
+<script>
+(function(){
+  function daysFrom(iso){ if(!iso) return 99999; const d=new Date(iso); if(isNaN(d)) return 99999; return Math.floor((Date.now()-d.getTime())/86400000); }
+  function add(src,alt){ const i=document.createElement('img'); i.src=src; i.alt=alt; i.className='badge-icon'; return i; }
+  function renderOne(box){
+    const role=(box.dataset.role||'').toLowerCase();
+    const days=daysFrom(box.dataset.created||'');
+    const verified=Number(box.dataset.verified||0)===1;
+    const fiveStar=Number(box.dataset.stars5||0);
+    const returnsOk=Number(box.dataset.returns||0);
+
+    if(role==='admin'){ box.appendChild(add('/static/img/adm.png','Admin')); }
+
+    const allowYellow=(role!=='admin'), allowGreen=(role!=='admin'), allowViolet=(role!=='admin');
+
+    if(allowYellow && days<60){ box.appendChild(add('/static/img/jaune.png','New')); }
+    else if(allowGreen && days>=60 && days<365){ box.appendChild(add('/static/img/ProVert.png','Pro Green')); }
+    else if(days>=365){ box.appendChild(add('/static/img/ProGold.png','Pro Gold')); }
+
+    if(allowViolet && (verified || fiveStar>=20)){ box.appendChild(add('/static/img/violet.png','Trust')); }
+    if(returnsOk>=10){ box.appendChild(add('/static/img/Vert.png','Safe Renter')); }
+    if(fiveStar>=10){ box.appendChild(add('/static/img/orange.png','Top Rated')); }
+  }
+
+  document.querySelectorAll('.auto-badges').forEach(renderOne);
+})();
+</script>
+
 {% endblock %}
