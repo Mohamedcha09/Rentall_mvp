@@ -156,10 +156,7 @@
               <li class="nav-item">
                 <span class="nav-link disabled">
                   مرحبًا {{ session_user.first_name }}
-                  {% if session_user.is_verified %}
-                    <img src="/static/verified.png" alt="موثّق" class="verified-badge">
-                  {% endif %}
-                  {# إضافة الشارة الخاصة بالأدمِن فقط كصورة — لا تغيير على الباك-إند #}
+                 
                   {% if session_user.role == 'admin' %}
                     <img src="/static/img/adm.png" alt="Admin" class="badge-icon">
                   {% endif %}
