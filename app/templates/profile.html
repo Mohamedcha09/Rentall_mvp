@@ -1,210 +1,132 @@
+{# app/templates/profile.html #}
 {% extends "base.html" %}
 {% from "_badges.html" import render_badges %}
 {% block content %}
 
 <style>
-  /* ألوان عالية التباين للوضع الداكن */
-  :root {
-    --surface: rgba(18, 22, 30, .75);
-    --surface-border: rgba(255,255,255,.18);
-    --text-strong: #ffffff;          /* عناوين ونصوص أساسية */
-    --text-normal: #e6e9ef;          /* نصوص عادية */
-    --text-soft: #cfd3da;            /* وصف/نص ثانوي */
-    --text-dim: #b9bec7;             /* تفاصيل صغيرة */
-    --accent: #a78bfa;               /* بنفسجي خفيف لإطارات */
-    --chip-bg: rgba(255,255,255,.12);
-  }
-
-  .card-blur {
-    background: var(--surface);
-    border: 1px solid var(--surface-border);
-    backdrop-filter: blur(6px);
-    border-radius: 14px;
-    color: var(--text-normal);
-  }
-
-  .text-soft   { color: var(--text-soft) !important; }
-  .text-dim    { color: var(--text-dim) !important; }
-  .text-strong { color: var(--text-strong) !important; }
-
-  .stat-chip {
-    border-radius: 999px;
-    padding: .35rem .75rem;
-    font-weight: 600;
-    background: var(--chip-bg);
-    color: var(--text-strong);
-    border: 1px solid rgba(255,255,255,.1);
-  }
-
-  .star {
-    font-size: 1.1rem;
-    line-height: 1;
-    margin-inline: 1px;
-  }
-
-  .section-title {
-    color: var(--text-strong);
-    letter-spacing: .2px;
-  }
-
-  .review-item {
-    background: transparent;
-    color: var(--text-normal);
-    border-color: rgba(255,255,255,.14) !important;
-  }
-
-  .review-comment { color: var(--text-normal); }
-  .outlined { box-shadow: inset 0 0 0 1px var(--accent); border-radius: 16px; }
-
-  /* حجم أيقونات الشارات داخل العناوين */
-  .badge-icon{height:22px;width:22px;margin-inline-start:6px;vertical-align:middle;display:inline-block;}
+  .badge-icon{ height:18px; width:auto; vertical-align:middle; margin-inline-start:6px; display:inline-block; }
+  .card-blur{ background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); backdrop-filter:blur(6px); border-radius:14px; }
+  .owner-mini{ width:22px; height:22px; border-radius:50%; object-fit:cover; }
 </style>
 
-<div class="mb-4 d-flex align-items-center justify-content-between">
-  <h3 class="mb-0 text-strong d-flex align-items-center gap-1">
-    صفحتي
+{# === Header: name + badges + CTA === #}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h3 class="mb-0">
+    {{ user.first_name }} {{ user.last_name }}
+    {{ render_badges(user, 18) }}
   </h3>
-  <a class="btn btn-outline-light btn-sm" href="/u/{{ user.id }}">عرض عام</a>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-light" href="/messages/start?user_id={{ user.id }}">Message</a>
+  </div>
 </div>
 
-<!-- بطاقة معلومات المستخدم -->
-<div class="card card-blur mb-4 outlined">
-  <div class="card-body d-flex align-items-center gap-4 flex-wrap">
-
-    <div class="flex-grow-1">
-      <h5 class="mb-1 d-flex align-items-center gap-1">
-        {{ user.first_name }} {{ user.last_name }}
-
-        {# ✅ شارات الحساب (تعتمد على الحقول الموجودة في user) #}
-        {{ render_badges(user, '22px') }}
-
-        {# شارة نصية فقط للتوثيق إن أردت إبقاءها #}
-        {% if user.is_verified %}
-          <span class="badge bg-primary ms-1">موثّق ✓</span>
-        {% endif %}
-      </h5>
-
-      <div class="small text-soft mb-2">
-        البريد: <span class="text-normal">{{ user.email }}</span>
-        &nbsp;•&nbsp;
-        الهاتف: <span class="text-normal">{{ user.phone }}</span>
-      </div>
-
-      <div class="d-flex align-items-center gap-2 flex-wrap">
-        <span class="badge bg-{% if user.status=='approved' %}success{% elif user.status=='pending' %}warning text-dark{% else %}danger{% endif %}">
-          {{ user.status }}
-        </span>
-        <span class="badge {% if user.role=='admin' %}bg-info text-dark{% else %}bg-secondary{% endif %}">
-          {{ user.role }}
-        </span>
-        <span class="badge bg-dark-subtle text-dark">
-          عضو منذ {{ joined_at.strftime("%Y-%m-%d") if joined_at else (user.created_at.strftime("%Y-%m-%d") if user.created_at else '') }}
-        </span>
-      </div>
+{# === Info card === #}
+<div class="card card-blur mb-3">
+  <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
+    <div class="text-muted small">
+      Email: {{ user.email }} &nbsp;•&nbsp;
+      Téléphone: {{ user.phone }} &nbsp;•&nbsp;
+      Membre depuis: {{ user.created_at.strftime("%Y-%m-%d") if user.created_at else "-" }}
     </div>
-
-    <div class="text-end">
-      <a href="/profile/edit" class="btn btn-primary">تعديل الملف</a>
+    <div>
+      <span class="badge {% if user.status=='approved' %}bg-success{% elif user.status=='pending' %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+        {{ user.status }}
+      </span>
+      <span class="badge {% if user.role=='admin' %}bg-info text-dark{% else %}bg-secondary{% endif %}">
+        {{ user.role }}
+      </span>
+      {% if user.is_verified %}
+        <span class="badge bg-primary">Vérifié ✔</span>
+      {% endif %}
     </div>
   </div>
 </div>
 
-<!-- الإحصائيات السريعة -->
-<div class="row g-3 mb-4">
-  <div class="col-12 col-md-4">
-    <div class="card card-blur outlined h-100">
-      <div class="card-body d-flex align-items-center justify-content-between">
-        <div>
-          <div class="small text-soft">العناصر المنشورة</div>
-          <div class="fs-4 fw-bold text-strong">{{ items_count }}</div>
-        </div>
-        <span class="stat-chip">النشطة: {{ items_active_count }}</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-12 col-md-4">
-    <div class="card card-blur outlined h-100">
-      <div class="card-body d-flex align-items-center justify-content-between">
-        <div>
-          <div class="small text-soft">متوسط التقييم</div>
-          <div class="d-flex align-items-end gap-2">
-            <div class="fs-4 fw-bold text-strong">{{ "%.1f"|format(avg_stars) }}</div>
-            <div aria-label="تقييم نجوم">
-              {% for i in range(1,6) %}
-                {% if i <= avg_stars|round(0, 'floor') %}
-                  <span class="star text-warning">★</span>
-                {% elif i - avg_stars < 1 and i > avg_stars %}
-                  <span class="star text-warning">☆</span>
-                {% else %}
-                  <span class="star text-dim">☆</span>
-                {% endif %}
-              {% endfor %}
-            </div>
-          </div>
-        </div>
-        <span class="stat-chip">التقييمات: {{ ratings_count }}</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-12 col-md-4">
-    <div class="card card-blur outlined h-100">
-      <div class="card-body d-flex align-items-center justify-content-between">
-        <div>
-          <div class="small text-soft">الرسائل غير المقروءة</div>
-          <div class="fs-4 fw-bold text-strong">
-            {% set unread = (request.state.unread_messages|default(0))|int %}
-            {% if unread > 9 %}+9{% else %}{{ unread }}{% endif %}
-          </div>
-        </div>
-        <a class="btn btn-outline-light" href="/messages">عرض الرسائل</a>
-      </div>
-    </div>
-  </div>
+{# === Actions (edit) === #}
+<div class="mb-3">
+  <a href="/profile/edit" class="btn btn-primary">Modifier le profil</a>
 </div>
 
-<!-- آخر المراجعات -->
-<div class="card card-blur outlined">
-  <div class="card-body">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h5 class="mb-0 section-title">آخر المراجعات</h5>
-      <a class="btn btn-sm btn-outline-secondary disabled">قريبًا: عرض الكل</a>
-    </div>
+{# === Items of this user === #}
+<h5 class="mb-2">Mes articles</h5>
+{% if items and items|length %}
+  <div class="row g-3">
+    {% for it in items %}
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card h-100">
+          {% if it.image_path %}
+            <img src="/{{ it.image_path }}" class="card-img-top" style="object-fit:cover;height:180px" alt="image">
+          {% else %}
+            <div class="d-flex align-items-center justify-content-center bg-body-tertiary" style="height:180px">Pas d'image</div>
+          {% endif %}
 
-    {% if reviews and reviews|length %}
-      <div class="list-group">
-        {% for r in reviews %}
-          <div class="list-group-item review-item border-secondary">
-            <div class="d-flex align-items-center justify-content-between flex-wrap">
-              <div class="fw-semibold text-strong">{{ r.rater_name }}</div>
-              <div class="small text-soft">{{ r.created_at.strftime("%Y-%m-%d") }}</div>
+          <div class="card-body">
+            <h6 class="card-title text-truncate mb-1" title="{{ it.title }}">{{ it.title }}</h6>
+
+            <div class="small text-muted d-flex align-items-center gap-2">
+              {% if user.avatar_path %}
+                <img src="/{{ user.avatar_path }}" class="owner-mini" alt="owner">
+              {% else %}
+                <span>👤</span>
+              {% endif %}
+              <span>{{ user.first_name }} {{ user.last_name }}</span>
+              {{ render_badges(user, 16) }}
             </div>
 
-            <div class="mb-1">
-              {% for i in range(1,6) %}
-                {% if i <= r.stars %}
-                  <span class="star text-warning">★</span>
-                {% else %}
-                  <span class="star text-dim">☆</span>
-                {% endif %}
-              {% endfor %}
+            <div class="d-flex align-items-center justify-content-between mt-2">
+              <div class="small" title="{{ it.city or '' }}">🏙️ {{ it.city or '—' }}</div>
+              <div class="small"><strong>{{ it.price_per_day }}</strong> د/يوم</div>
             </div>
-
-            {% if r.comment %}
-              <div class="review-comment">
-                {{ r.comment | e | replace('\n', '<br>') | safe }}
-              </div>
-            {% else %}
-              <div class="text-soft">لا توجد ملاحظة نصّية.</div>
-            {% endif %}
           </div>
-        {% endfor %}
+
+          <div class="card-footer bg-transparent d-flex justify-content-between">
+            <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">Détails</a>
+            <a href="/owner/items/edit/{{ it.id }}" class="btn btn-sm btn-outline-secondary">Modifier</a>
+          </div>
+        </div>
       </div>
-    {% else %}
-      <div class="alert alert-light border-0 mb-0 text-dark">لا توجد تقييمات بعد.</div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-secondary">Aucun article pour l’instant.</div>
+{% endif %}
+
+{# === Optional: Last reviews section (only if you pass reviews/avg_stars/ratings_count) === #}
+{% if reviews is defined %}
+  <hr class="my-4">
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h5 class="mb-0">Derniers avis</h5>
+    {% if ratings_count is defined %}
+      <span class="badge bg-dark-subtle text-dark">
+        Note moyenne: {{ "%.1f"|format(avg_stars|default(0)) }} ({{ ratings_count|default(0) }} avis)
+      </span>
     {% endif %}
   </div>
-</div>
+
+  {% if reviews and reviews|length %}
+    <div class="list-group">
+      {% for r in reviews %}
+        <div class="list-group-item">
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="fw-semibold">{{ r.rater_name }}</div>
+            <div class="small text-muted">{{ r.created_at.strftime("%Y-%m-%d") }}</div>
+          </div>
+          <div class="mb-1">
+            {% for i in range(1,6) %}
+              {% if i <= r.stars %}<span class="text-warning">★</span>{% else %}<span class="text-secondary">☆</span>{% endif %}
+            {% endfor %}
+          </div>
+          {% if r.comment %}
+            <div>{{ r.comment | e | replace('\n','<br>') | safe }}</div>
+          {% else %}
+            <div class="text-muted">—</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="alert alert-light border-0 mb-0 text-dark">Pas d’avis pour le moment.</div>
+  {% endif %}
+{% endif %}
 
 {% endblock %}
