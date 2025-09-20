@@ -1,47 +1,81 @@
-{# templates/_badges.html #}
-{% macro render_badges(u, size="sm") %}
-  {# لو ما فيه مستخدم، لا نطبع شيء #}
-  {% if not u %}
-    <span></span>
-  {% else %}
-    {# حجم الأيقونات #}
-    {% set h = 14 if size == 'xs' else 18 if size == 'sm' else 22 %}
+{# app/templates/_badges.html #}
+{% macro render_badges(u, size=18) -%}
+  {# لو ما فيه مستخدم، لا تطبّع شيء #}
+  {% if not u %}{% endmacro %}{% endif %}
 
-    <span class="inline-badges" style="display:inline-flex;gap:4px;vertical-align:middle;">
-      {# أدمِن #}
-      {% if (u.role | default('user')) == 'admin' %}
-        <img src="/static/img/adm.png" alt="admin" title="Admin" style="height:{{ h }}px;" loading="lazy">
-      {% endif %}
+  {# دالة صغيرة لطباعة صورة شارة #}
+  {% macro _img(src, alt) -%}
+    <img src="{{ src }}" alt="{{ alt }}" title="{{ alt }}"
+         style="height:{{ size }}px;width:{{ size }}px;vertical-align:middle;margin-inline-start:6px;">
+  {%- endmacro %}
 
-      {# أصفر (جديد) #}
-      {% if u.badge_new_yellow | default(false) %}
-        <img src="/static/img/jaune.png" alt="New" title="مستخدم جديد" style="height:{{ h }}px;" loading="lazy">
-      {% endif %}
+  {# نحسب عمر الحساب بالأيام (fallback لو ما فيه created_at) #}
+  {% set _days =
+      ( (caller_kwargs.created_at if caller_kwargs and caller_kwargs.created_at else u.created_at).toordinal()
+        if u.created_at else None) %}
+  {# ما نقدر نحسب بالأيام بدقة داخل جينجا بدون تاريخ اليوم، فنستخدم قواعد fallback على created_at إن وجد #}
 
-      {# PRO أخضر #}
-      {% if u.badge_pro_green | default(false) %}
-        <img src="/static/img/ProVert.png" alt="Pro Green" title="Pro أخضر" style="height:{{ h }}px;" loading="lazy">
-      {% endif %}
+  {# --- مصادر الشارات (أولوية أعمدة/فلاغات إن وُجدت، وإلا قواعد fallback) --- #}
+  {% set has_badge_admin         = (u.badge_admin is defined and u.badge_admin) or (u.role|lower == 'admin') %}
+  {% set has_badge_new_yellow    = (u.badge_new_yellow is defined and u.badge_new_yellow) %}
+  {% set has_badge_pro_green     = (u.badge_pro_green is defined and u.badge_pro_green) %}
+  {% set has_badge_pro_gold      = (u.badge_pro_gold is defined and u.badge_pro_gold) %}
 
-      {# PRO ذهبي #}
-      {% if u.badge_pro_gold | default(false) %}
-        <img src="/static/img/ProGold.png" alt="Pro Gold" title="Pro ذهبي" style="height:{{ h }}px;" loading="lazy">
-      {% endif %}
+  {# البنفسجية: إمّا فلاغ، أو توثيق/ثقة تلقائي (≥20 تقييم 5★) #}
+  {% set five_star_count =
+       (u.five_star_count() if u.five_star_count is callable else
+        (u.five_star_count if u.five_star_count is defined else 0)) %}
+  {% set has_badge_purple_trust  =
+       (u.badge_purple_trust is defined and u.badge_purple_trust)
+       or (u.is_verified is defined and u.is_verified)
+       or (five_star_count|int >= 20) %}
 
-      {# بنفسجي (ثقة) #}
-      {% if u.badge_purple_trust | default(false) %}
-        <img src="/static/img/violet.png" alt="Trust" title="ثقة" style="height:{{ h }}px;" loading="lazy">
-      {% endif %}
+  {# الخضراء (مستأجر آمن): إمّا فلاغ، أو عدّاد نجاحات (إن وجد)، وإلا لا شيء #}
+  {% set returns_ok =
+       (u.returns_success_count if u.returns_success_count is defined else 0) %}
+  {% set has_badge_renter_green  =
+       (u.badge_renter_green is defined and u.badge_renter_green) or (returns_ok|int >= 10) %}
 
-      {# أخضر داكن (مستأجر آمن) #}
-      {% if u.badge_renter_green | default(false) %}
-        <img src="/static/img/Vert.png" alt="Safe Renter" title="مُستأجر موثوق" style="height:{{ h }}px;" loading="lazy">
-      {% endif %}
+  {# البرتقالية (Top Rated): إمّا فلاغ، أو ≥10 تقييم 5★ #}
+  {% set has_badge_orange_stars  =
+       (u.badge_orange_stars is defined and u.badge_orange_stars) or (five_star_count|int >= 10) %}
 
-      {# برتقالي (Top Rated) #}
-      {% if u.badge_orange_stars | default(false) %}
-        <img src="/static/img/orange.png" alt="Top Rated" title="تقييمات ممتازة" style="height:{{ h }}px;" loading="lazy">
-      {% endif %}
-    </span>
+  {# إن لم توجد فلاغات PRO، نفذ fallback بالعمر إن تواجد created_at:
+     <60 يوم = أصفر، 60..364 = Pro أخضر، ≥365 = Pro ذهبي #}
+  {% if (not has_badge_new_yellow) and (not has_badge_pro_green) and (not has_badge_pro_gold) and u.created_at %}
+    {% set days_account = ((namespace(d=cycler).d) and 0) %} {# hack لتفادي أخطاء، لن نستخدمه مباشرة #}
+    {# بما أن جينجا لا تحسب فرق الأيام بسهولة، نستخدم منطق بسيط:
+       إن كان عندك من الباك-إند days_account مرره للماكرو؛ إن لم يوجد، تجاهل fallback. #}
   {% endif %}
-{% endmacro %}
+
+  {# --- طباعة الشارات --- #}
+
+  {# أولوية: أدمِن #}
+  {% if has_badge_admin %}
+    {{ _img('/static/img/adm.png', 'Admin') }}
+  {% endif %}
+
+  {# PRO: أصفر/أخضر/ذهبي (فلاغات إن وُجدت، وإلا تجاهل إن ما فيه Days) #}
+  {% if has_badge_new_yellow %}
+    {{ _img('/static/img/jaune.png', 'New') }}
+  {% elif has_badge_pro_green %}
+    {{ _img('/static/img/ProVert.png', 'Pro Green') }}
+  {% elif has_badge_pro_gold %}
+    {{ _img('/static/img/ProGold.png', 'Pro Gold') }}
+  {% endif %}
+
+  {# البنفسجية (ثقة) #}
+  {% if has_badge_purple_trust %}
+    {{ _img('/static/img/violet.png', 'Trust') }}
+  {% endif %}
+
+  {# الخضراء (مستأجر آمن) #}
+  {% if has_badge_renter_green %}
+    {{ _img('/static/img/Vert.png', 'Safe Renter') }}
+  {% endif %}
+
+  {# البرتقالية (Top Rated) #}
+  {% if has_badge_orange_stars %}
+    {{ _img('/static/img/orange.png', 'Top Rated') }}
+  {% endif %}
+{%- endmacro %}

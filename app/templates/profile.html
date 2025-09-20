@@ -1,132 +1,154 @@
-{# app/templates/profile.html #}
 {% extends "base.html" %}
-{% from "_badges.html" import render_badges %}
 {% block content %}
+{% from "_badges.html" import render_badges %}
 
 <style>
-  .badge-icon{ height:18px; width:auto; vertical-align:middle; margin-inline-start:6px; display:inline-block; }
-  .card-blur{ background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); backdrop-filter:blur(6px); border-radius:14px; }
-  .owner-mini{ width:22px; height:22px; border-radius:50%; object-fit:cover; }
+  .card-blur {
+    background: rgba(18, 22, 30, .75);
+    border: 1px solid rgba(255,255,255,.18);
+    backdrop-filter: blur(6px);
+    border-radius: 14px;
+    color: #e6e9ef;
+  }
+  .text-strong { color: #fff; }
+  .text-soft { color: #cfd3da; }
+  .star { font-size: 1.1rem; margin-inline: 1px; }
+  .badge-icon { height: 20px; width: 20px; vertical-align: middle; margin-inline-start: 4px; }
 </style>
 
-{# === Header: name + badges + CTA === #}
-<div class="d-flex align-items-center justify-content-between mb-3">
-  <h3 class="mb-0">
+<div class="mb-4 d-flex align-items-center justify-content-between">
+  <h3 class="mb-0 text-strong">
     {{ user.first_name }} {{ user.last_name }}
-    {{ render_badges(user, 18) }}
+    {{ render_badges(user, 20) }}
   </h3>
-  <div class="d-flex gap-2">
-    <a class="btn btn-outline-light" href="/messages/start?user_id={{ user.id }}">Message</a>
-  </div>
+  <a class="btn btn-outline-light btn-sm" href="/u/{{ user.id }}">عرض عام</a>
 </div>
 
-{# === Info card === #}
-<div class="card card-blur mb-3">
-  <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
-    <div class="text-muted small">
-      Email: {{ user.email }} &nbsp;•&nbsp;
-      Téléphone: {{ user.phone }} &nbsp;•&nbsp;
-      Membre depuis: {{ user.created_at.strftime("%Y-%m-%d") if user.created_at else "-" }}
+<!-- بطاقة معلومات -->
+<div class="card card-blur mb-4">
+  <div class="card-body d-flex flex-wrap justify-content-between gap-3">
+    <div class="flex-grow-1">
+      <div class="small text-soft mb-2">
+        البريد: <span class="text-light">{{ user.email }}</span> •
+        الهاتف: <span class="text-light">{{ user.phone }}</span> •
+        عضو منذ {{ user.created_at.strftime("%Y-%m-%d") if user.created_at else "" }}
+      </div>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="badge {% if user.status=='approved' %}bg-success{% elif user.status=='pending' %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+          {{ user.status }}
+        </span>
+        <span class="badge bg-secondary">{{ user.role }}</span>
+        {% if user.is_verified %}
+          <span class="badge bg-primary">موثّق ✔</span>
+        {% endif %}
+      </div>
     </div>
     <div>
-      <span class="badge {% if user.status=='approved' %}bg-success{% elif user.status=='pending' %}bg-warning text-dark{% else %}bg-danger{% endif %}">
-        {{ user.status }}
-      </span>
-      <span class="badge {% if user.role=='admin' %}bg-info text-dark{% else %}bg-secondary{% endif %}">
-        {{ user.role }}
-      </span>
-      {% if user.is_verified %}
-        <span class="badge bg-primary">Vérifié ✔</span>
-      {% endif %}
+      <a href="/profile/edit" class="btn btn-primary">تعديل الملف</a>
     </div>
   </div>
 </div>
 
-{# === Actions (edit) === #}
-<div class="mb-3">
-  <a href="/profile/edit" class="btn btn-primary">Modifier le profil</a>
-</div>
-
-{# === Items of this user === #}
-<h5 class="mb-2">Mes articles</h5>
-{% if items and items|length %}
-  <div class="row g-3">
-    {% for it in items %}
-      <div class="col-12 col-md-6 col-lg-4">
-        <div class="card h-100">
-          {% if it.image_path %}
-            <img src="/{{ it.image_path }}" class="card-img-top" style="object-fit:cover;height:180px" alt="image">
-          {% else %}
-            <div class="d-flex align-items-center justify-content-center bg-body-tertiary" style="height:180px">Pas d'image</div>
-          {% endif %}
-
-          <div class="card-body">
-            <h6 class="card-title text-truncate mb-1" title="{{ it.title }}">{{ it.title }}</h6>
-
-            <div class="small text-muted d-flex align-items-center gap-2">
-              {% if user.avatar_path %}
-                <img src="/{{ user.avatar_path }}" class="owner-mini" alt="owner">
-              {% else %}
-                <span>👤</span>
-              {% endif %}
-              <span>{{ user.first_name }} {{ user.last_name }}</span>
-              {{ render_badges(user, 16) }}
+<!-- إحصائيات سريعة -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card card-blur">
+      <div class="card-body d-flex justify-content-between">
+        <div>
+          <div class="small text-soft">العناصر المنشورة</div>
+          <div class="fs-4 fw-bold text-strong">{{ items_count }}</div>
+        </div>
+        <span class="badge bg-dark">النشطة: {{ items_active_count }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card card-blur">
+      <div class="card-body d-flex justify-content-between">
+        <div>
+          <div class="small text-soft">متوسط التقييم</div>
+          <div class="d-flex align-items-end gap-2">
+            <div class="fs-4 fw-bold text-strong">{{ "%.1f"|format(avg_stars) }}</div>
+            <div>
+              {% for i in range(1,6) %}
+                {% if i <= avg_stars|round(0,'floor') %}
+                  <span class="star text-warning">★</span>
+                {% else %}
+                  <span class="star text-muted">☆</span>
+                {% endif %}
+              {% endfor %}
             </div>
-
-            <div class="d-flex align-items-center justify-content-between mt-2">
-              <div class="small" title="{{ it.city or '' }}">🏙️ {{ it.city or '—' }}</div>
-              <div class="small"><strong>{{ it.price_per_day }}</strong> د/يوم</div>
-            </div>
-          </div>
-
-          <div class="card-footer bg-transparent d-flex justify-content-between">
-            <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">Détails</a>
-            <a href="/owner/items/edit/{{ it.id }}" class="btn btn-sm btn-outline-secondary">Modifier</a>
           </div>
         </div>
+        <span class="badge bg-dark">التقييمات: {{ ratings_count }}</span>
       </div>
-    {% endfor %}
+    </div>
   </div>
-{% else %}
-  <div class="alert alert-secondary">Aucun article pour l’instant.</div>
-{% endif %}
+  <div class="col-md-4">
+    <div class="card card-blur">
+      <div class="card-body d-flex justify-content-between">
+        <div>
+          <div class="small text-soft">رسائل غير مقروءة</div>
+          <div class="fs-4 fw-bold text-strong">
+            {% set unread = (request.state.unread_messages|default(0))|int %}
+            {% if unread > 9 %}+9{% else %}{{ unread }}{% endif %}
+          </div>
+        </div>
+        <a href="/messages" class="btn btn-outline-light">عرض</a>
+      </div>
+    </div>
+  </div>
+</div>
 
-{# === Optional: Last reviews section (only if you pass reviews/avg_stars/ratings_count) === #}
-{% if reviews is defined %}
-  <hr class="my-4">
-  <div class="d-flex align-items-center justify-content-between mb-2">
-    <h5 class="mb-0">Derniers avis</h5>
-    {% if ratings_count is defined %}
-      <span class="badge bg-dark-subtle text-dark">
-        Note moyenne: {{ "%.1f"|format(avg_stars|default(0)) }} ({{ ratings_count|default(0) }} avis)
-      </span>
+<!-- مقالاتي -->
+<div class="card card-blur mb-4">
+  <div class="card-body">
+    <h5 class="mb-3">مقالاتي</h5>
+    {% if items and items|length %}
+      <ul>
+        {% for it in items %}
+          <li><a href="/items/{{ it.id }}">{{ it.title }}</a></li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="text-muted">لا يوجد عناصر.</div>
     {% endif %}
   </div>
+</div>
 
-  {% if reviews and reviews|length %}
-    <div class="list-group">
-      {% for r in reviews %}
-        <div class="list-group-item">
-          <div class="d-flex align-items-center justify-content-between">
-            <div class="fw-semibold">{{ r.rater_name }}</div>
-            <div class="small text-muted">{{ r.created_at.strftime("%Y-%m-%d") }}</div>
+<!-- آخر المراجعات -->
+<div class="card card-blur">
+  <div class="card-body">
+    <h5 class="mb-3">آخر المراجعات</h5>
+    {% if reviews and reviews|length %}
+      <div class="list-group">
+        {% for r in reviews %}
+          <div class="list-group-item bg-transparent text-light border-secondary">
+            <div class="d-flex justify-content-between">
+              <div class="fw-bold">{{ r.rater_name }}</div>
+              <div class="small text-soft">{{ r.created_at.strftime("%Y-%m-%d") }}</div>
+            </div>
+            <div class="mb-1">
+              {% for i in range(1,6) %}
+                {% if i <= r.stars %}
+                  <span class="star text-warning">★</span>
+                {% else %}
+                  <span class="star text-muted">☆</span>
+                {% endif %}
+              {% endfor %}
+            </div>
+            {% if r.comment %}
+              <div>{{ r.comment }}</div>
+            {% else %}
+              <div class="text-muted">لا توجد ملاحظة.</div>
+            {% endif %}
           </div>
-          <div class="mb-1">
-            {% for i in range(1,6) %}
-              {% if i <= r.stars %}<span class="text-warning">★</span>{% else %}<span class="text-secondary">☆</span>{% endif %}
-            {% endfor %}
-          </div>
-          {% if r.comment %}
-            <div>{{ r.comment | e | replace('\n','<br>') | safe }}</div>
-          {% else %}
-            <div class="text-muted">—</div>
-          {% endif %}
-        </div>
-      {% endfor %}
-    </div>
-  {% else %}
-    <div class="alert alert-light border-0 mb-0 text-dark">Pas d’avis pour le moment.</div>
-  {% endif %}
-{% endif %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-muted">لا توجد مراجعات.</div>
+    {% endif %}
+  </div>
+</div>
 
 {% endblock %}
