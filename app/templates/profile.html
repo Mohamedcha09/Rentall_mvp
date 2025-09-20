@@ -65,7 +65,30 @@
     box-shadow: inset 0 0 0 1px var(--accent);
     border-radius: 16px;
   }
+
+  /* === إضافة خفيفة لأيقونات الشارات === */
+  .badge-icon{
+    height:24px; width:24px;
+    margin-inline-start:6px; vertical-align:middle; display:inline-block;
+  }
 </style>
+
+{# ==== حساب شروط الشارات (لا يحذف أي شيء من كودك) ==== #}
+{% set _now = today if today is defined else (datetime.utcnow() if datetime is defined else None) %}
+{% set _created = user.created_at if user.created_at else _now %}
+{% set _days = (_now - _created).days if (_now and _created) else 99999 %}
+{% set _is_admin = (user.role == 'admin') %}
+{% set _is_verified_manual = user.is_verified %}
+{% set _five_star_count = five_star_count|default(0) %}
+{% set _returns_success_count = returns_success_count|default(0) %}
+
+{% set show_admin_blue = _is_admin %}
+{% set show_yellow_seed = (_days < 60) %}
+{% set show_pro_green  = (_days >= 60 and _days < 365) %}
+{% set show_pro_gold   = (_days >= 365) %}
+{% set show_violet_trust = (_is_verified_manual or _five_star_count >= 20) %}
+{% set show_green_shield = (_returns_success_count >= 10) %}
+{% set show_orange_top = (_five_star_count >= 10) %}
 
 <div class="mb-4 d-flex align-items-center justify-content-between">
   <h3 class="mb-0 text-strong">صفحتي</h3>
@@ -81,6 +104,27 @@
   {{ user.first_name }} {{ user.last_name }}
   {% if user.is_verified %}
     <img src="/static/img/adm.png" alt="موثّق" class="verified-badge">
+  {% endif %}
+
+  {# ==== شارات إضافية حسب الشروط ==== #}
+  {% if show_admin_blue %}
+    <img src="/static/img/adm.png" class="badge-icon" alt="Admin">
+  {% endif %}
+  {% if show_yellow_seed %}
+    <img src="/static/img/jaune.png" class="badge-icon" alt="Nouveau">
+  {% elif show_pro_green %}
+    <img src="/static/img/ProVert.png" class="badge-icon" alt="Pro Vert">
+  {% elif show_pro_gold %}
+    <img src="/static/img/ProGold.png" class="badge-icon" alt="Pro Gold">
+  {% endif %}
+  {% if show_violet_trust %}
+    <img src="/static/img/violet.png" class="badge-icon" alt="Trust">
+  {% endif %}
+  {% if show_green_shield %}
+    <img src="/static/img/Vert.png" class="badge-icon" alt="Safe Renter">
+  {% endif %}
+  {% if show_orange_top %}
+    <img src="/static/img/orange.png" class="badge-icon" alt="Top Rated">
   {% endif %}
 </h5>
 

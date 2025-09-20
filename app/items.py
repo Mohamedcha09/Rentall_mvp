@@ -48,43 +48,43 @@ def items_list(request: Request, db: Session = Depends(get_db), category: str = 
             "account_limited": is_account_limited(request),   # ← NEW
         }
     )
+# مثال كامل للدالة (انسخه مكان دالة التفاصيل الحالية لديك)
+from fastapi import APIRouter, Request, Depends
+from sqlalchemy.orm import Session
+from .database import get_db
+from .models import Item, User
+from .utils import category_label
+from .utils_badges import get_user_badges
+
+router = APIRouter()
 
 @router.get("/items/{item_id}")
-def item_detail(item_id: int, request: Request, db: Session = Depends(get_db)):
+def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     item = db.query(Item).get(item_id)
-    if not item or item.is_active != "yes":
+    if not item:
         return request.app.templates.TemplateResponse(
             "items_detail.html",
-            {
-                "request": request,
-                "title": "تفاصيل",
-                "item": None,
-                "session_user": request.session.get("user"),
-                "message": "العنصر غير موجود",
-                "account_limited": is_account_limited(request),  # NEW: حتى في حالة غير موجود
-            }
+            {"request": request, "item": None, "session_user": request.session.get("user")}
         )
 
-    owner = db.query(User).get(item.owner_id)
+    # نفس منطقك القديم
     item.category_label = category_label(item.category)
+    owner = db.query(User).get(item.owner_id)
 
-    # NEW: معلومات إضافية للقالب
-    owner_verified = bool(owner.is_verified) if owner else False
-    owner_public_url = f"/u/{owner.id}" if owner else None   # لو عندك صفحة عامة للمستخدم
+    # أضف هذا السطر لتمرير شارات المالك
+    badges_owner = get_user_badges(owner, db)
 
     return request.app.templates.TemplateResponse(
         "items_detail.html",
         {
             "request": request,
-            "title": item.title,
             "item": item,
             "owner": owner,
+            "badges_owner": badges_owner,  # <<< مهم
             "session_user": request.session.get("user"),
-            "account_limited": is_account_limited(request),  # ← NEW: القالب يقدر يعطّل الأزرار
-            "owner_verified": owner_verified,                # ← NEW: لإظهار الشارة الزرقاء
-            "owner_public_url": owner_public_url,            # ← NEW: زر "ملف عام"
         }
     )
+
 
 @router.get("/owner/items")
 def my_items(request: Request, db: Session = Depends(get_db)):

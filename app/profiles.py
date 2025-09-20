@@ -7,6 +7,7 @@ from datetime import datetime
 
 from .database import get_db
 from .models import User, Item, Rating
+from .utils_badges import get_user_badges
 
 # ======= [إضافات] استيرادات مطلوبة لمسارات التصحيح والرفع =======
 from fastapi import UploadFile, File, Form
