@@ -5,44 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ title or "RentAll" }}</title>
 
-    <!-- Bootstrap & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
-    <!-- ستايل الرئيسي (بدلاً من blossom.css) -->
-    <link href="/static/style.css?v=5" rel="stylesheet">
-
-    <!-- Favicon/Logo (ضع الملف في static/img/logo-32.png) -->
-    <link rel="icon" type="image/png" href="/static/img/logo-32.png">
+    <!-- استدعاء ملف الستايل الخاص بك -->
+    <link href="/static/style.css?v=1" rel="stylesheet">
   </head>
-
   <body class="theme" data-theme="dark">
     <!-- ===== Topbar ===== -->
     <header class="topbar">
       <div class="topbar__inner container-fluid">
-
-        <!-- زر طيّ الشريط الجانبي -->
         <button class="btn btn-ghost btn-sm" id="sidebarToggle" aria-label="Toggle sidebar">
           <i class="bi bi-layout-sidebar-inset-reverse"></i>
         </button>
 
-        <!-- لوجو + اسم -->
+        <!-- شعار نص فقط -->
         <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/">
-          <img src="/static/img/logo-32.png" class="brand__logo" alt="RentAll">
-          <span class="brand__name d-none d-sm-inline">RentAll</span>
+          <span class="brand__name fw-bold">RentAll</span>
         </a>
 
-        <!-- حقل البحث -->
-        <form class="search" action="/" method="get" role="search">
+        <!-- بحث -->
+        <form class="search" action="/search" method="get" role="search">
           <i class="bi bi-search search__icon"></i>
           <input class="form-control form-control-sm search__input" type="search" name="q"
-                 placeholder="ابحث عن عنصر أو مستخدم…"
-                 value="{% if request %}{{ request.query_params.get('q','') }}{% endif %}">
+                 placeholder="ابحث عن عنصر أو مستخدم…" value="{{ request.query_params.get('q','') if request else '' }}">
         </form>
 
-        <!-- أزرار اليمين -->
         <div class="actions d-flex align-items-center gap-2">
-
           <!-- تبديل الثيم -->
           <button class="btn btn-ghost btn-sm" id="themeToggle" title="تبديل الثيم">
             <i class="bi bi-sun-fill d-none" id="sunIcon"></i>
@@ -70,13 +59,15 @@
             {% endif %}
           </button>
 
-          <!-- حساب -->
+          <!-- الحساب -->
           {% if session_user %}
             <div class="dropdown">
               <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
                 <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
                 <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
-                {% if session_user.status == 'approved' %}<i class="bi bi-patch-check-fill verify" title="موثّق"></i>{% endif %}
+                {% if session_user.status == 'approved' %}
+                  <i class="bi bi-patch-check-fill verify" title="موثّق"></i>
+                {% endif %}
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
                 <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> صفحتي</a></li>
@@ -133,26 +124,9 @@
           {% endif %}
         {% endif %}
       </nav>
-
       <button class="collapse-pin btn btn-ghost btn-sm mt-auto" id="pinSidebar" title="طي/تثبيت">
-        <i class="bi bi-chevron-double-left"></i>
-        <span class="ms-2 d-none d-xl-inline">طيّ الشريط</span>
+        <i class="bi bi-chevron-double-left"></i><span class="ms-2 d-none d-xl-inline">طيّ الشريط</span>
       </button>
-    </aside>
-
-    <!-- ===== Right rail (اختياري) ===== -->
-    <aside class="right-rail d-none d-xxl-block">
-      <div class="widget card p-3">
-        <div class="widget__title">أحداث قادمة</div>
-        <ul class="list-unstyled small m-0">
-          <li class="d-flex align-items-center gap-2 py-1"><i class="bi bi-calendar-event"></i> تحديثات المنصّة الأسبوع المقبل</li>
-          <li class="d-flex align-items-center gap-2 py-1"><i class="bi bi-calendar-event"></i> عروض مميزة على الكراء</li>
-        </ul>
-      </div>
-      <div class="widget card p-3 mt-3">
-        <div class="widget__title">اقتراحات</div>
-        <div class="small text-muted">سنقترح لك عناصر بناءً على نشاطك.</div>
-      </div>
     </aside>
 
     <!-- ===== Page ===== -->
@@ -181,13 +155,12 @@
     <div class="scrim" id="scrim"></div>
 
     {% if session_user %}
-      <a href="/owner/items/new" class="fab d-lg-none" title="عنصر جديد"><i class="bi bi-plus-lg"></i></a>
+    <a href="/owner/items/new" class="fab d-lg-none" title="عنصر جديد"><i class="bi bi-plus-lg"></i></a>
     {% endif %}
 
-    <!-- JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-      // ===== Sidebar state
+      // Sidebar state
       const sidebar   = document.getElementById('appSidebar');
       const pinBtn    = document.getElementById('pinSidebar');
       const toggleBtn = document.getElementById('sidebarToggle');
@@ -216,7 +189,7 @@
         }
       }
 
-      // ===== Theme toggle
+      // Theme toggle
       const themeToggle = document.getElementById('themeToggle');
       const sunIcon = document.getElementById('sunIcon');
       const moonIcon = document.getElementById('moonIcon');
@@ -236,7 +209,7 @@
         moonIcon.classList.toggle('d-none', dark);
       }
 
-      // ===== Notif panel
+      // Notif panel
       const notifOpen  = document.getElementById('notifOpen');
       const notifClose = document.getElementById('notifClose');
       const panel      = document.getElementById('notifPanel');
