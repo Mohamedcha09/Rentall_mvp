@@ -1,16 +1,21 @@
 {# templates/_badges.html #}
-{% macro render_badges(subject, size='18px') -%}
-  {# البنفسجي: ثقة (يُديره الأدمِن عبر is_verified أو badge_purple_trust) #}
-  {% if subject.is_verified or subject.badge_purple_trust %}
+{% macro render_badges(u, size_px='18px') %}
+  {% set is_verified = (u.is_verified or u.get('is_verified') or u.get('badge_purple_trust')) %}
+  {% set is_new     = (u.get('badge_new_yellow') or u.get('is_new_under_2m')) %}
+
+  {# البنفسجي: ثقة من الأدمن #}
+  {% if is_verified %}
     <img src="/static/img/violet.png"
-         alt="ثقة" title="حساب موثوق"
-         style="height:{{ size }};width:auto;vertical-align:middle;margin-inline-start:6px;">
+         alt="موثّق"
+         title="حساب موثّق"
+         style="height:{{ size_px }};width:auto;vertical-align:-2px;margin-inline-start:.35rem;filter:drop-shadow(0 0 2px rgba(0,0,0,.25));">
   {% endif %}
 
-  {# الأصفر: جديد أقل من شهرين (محسوب في باك-إند عبر خاصية is_new_under_2m) #}
-  {% if subject.is_new_under_2m %}
+  {# الأصفر: جديد تحت شهرين #}
+  {% if is_new %}
     <img src="/static/img/jaune.png"
-         alt="جديد" title="حساب جديد"
-         style="height:{{ size }};width:auto;vertical-align:middle;margin-inline-start:6px;">
+         alt="جديد"
+         title="حساب جديد"
+         style="height:{{ size_px }};width:auto;vertical-align:-2px;margin-inline-start:.35rem;filter:drop-shadow(0 0 2px rgba(0,0,0,.25));">
   {% endif %}
-{%- endmacro %}
+{% endmacro %}
