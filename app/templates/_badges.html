@@ -7,41 +7,44 @@
 {%- endmacro %}
 
 {% macro render_badges(subject, size=22) -%}
-  {# subject يمكن يكون: قائمة ['adm','violet',...] أو كائن مستخدم/dict #}
+  {# subject ممكن يكون: قائمة ['adm','violet',...] أو كائن مستخدم أو dict #}
+  {%- if not subject -%}{%- return -%}{%- endif -%}
+
   {%- set names = [] -%}
 
-  {# 1) إن كانت قائمة جاهزة #}
+  {# 1) لو قائمة جاهزة #}
   {%- if subject is sequence and (subject is not string) -%}
     {%- set names = subject -%}
   {%- else -%}
-    {# 2) إن كان مستخدم: استخرج الأعلام من session_user أو user object #}
     {%- set u = subject -%}
-    {%- set role = (u.role if u is mapping else getattr(u, 'role', None)) or '' -%}
-    {%- set is_verified = (u.is_verified if u is mapping else getattr(u, 'is_verified', False)) -%}
 
-    {%- set b_admin = (u.badge_admin if u is mapping else getattr(u, 'badge_admin', False)) -%}
-    {%- set b_new   = (u.badge_new_yellow if u is mapping else getattr(u, 'badge_new_yellow', False)) -%}
-    {%- set b_pg    = (u.badge_pro_green if u is mapping else getattr(u, 'badge_pro_green', False)) -%}
-    {%- set b_pgld  = (u.badge_pro_gold if u is mapping else getattr(u, 'badge_pro_gold', False)) -%}
-    {%- set b_vio   = (u.badge_purple_trust if u is mapping else getattr(u, 'badge_purple_trust', False)) -%}
-    {%- set b_vert  = (u.badge_renter_green if u is mapping else getattr(u, 'badge_renter_green', False)) -%}
-    {%- set b_orng  = (u.badge_orange_stars if u is mapping else getattr(u, 'badge_orange_stars', False)) -%}
+    {# helpers: نقرأ من dict أو object مع default #}
+    {%- set role         = (u['role'] if u is mapping else u.role)|default('') -%}
+    {%- set is_verified  = (u['is_verified'] if u is mapping else u.is_verified)|default(false) -%}
 
-    {# الأزرق للأدمن #}
+    {%- set b_admin      = (u['badge_admin'] if u is mapping else u.badge_admin)|default(false) -%}
+    {%- set b_new        = (u['badge_new_yellow'] if u is mapping else u.badge_new_yellow)|default(false) -%}
+    {%- set b_pg         = (u['badge_pro_green'] if u is mapping else u.badge_pro_green)|default(false) -%}
+    {%- set b_pgld       = (u['badge_pro_gold'] if u is mapping else u.badge_pro_gold)|default(false) -%}
+    {%- set b_vio        = (u['badge_purple_trust'] if u is mapping else u.badge_purple_trust)|default(false) -%}
+    {%- set b_vert       = (u['badge_renter_green'] if u is mapping else u.badge_renter_green)|default(false) -%}
+    {%- set b_orng       = (u['badge_orange_stars'] if u is mapping else u.badge_orange_stars)|default(false) -%}
+
+    {# الأزرق (أدمن) #}
     {%- if role|lower == 'admin' or b_admin %}{%- set _ = names.append('adm') -%}{%- endif -%}
 
-    {# البنفسجي (توثيق من الأدمن) #}
+    {# البنفسجي (توثيق من الأدمِن) #}
     {%- if is_verified or b_vio %}{%- set _ = names.append('violet') -%}{%- endif -%}
 
-    {# أصفر/برو أخضر/برو ذهبي (نثق بالقيم المزامَنة في السيشن) #}
+    {# أصفر / برو أخضر / برو ذهبي — هنا نعتمد على الفلاقس المزامَنة في السيشن #}
     {%- if b_pgld %}{%- set _ = names.append('ProGold') -%}
     {%- elif b_pg %}{%- set _ = names.append('ProVert') -%}
     {%- elif b_new %}{%- set _ = names.append('jaune') -%}{%- endif -%}
 
-    {# درع أخضر (استخدام ≥5) #}
+    {# درع أخضر (استعمال ≥ 5) #}
     {%- if b_vert %}{%- set _ = names.append('Vert') -%}{%- endif -%}
 
-    {# برتقالي (≥20 كلهم 5 نجوم) #}
+    {# برتقالي (≥ 20 تقييم كلهم 5 نجوم) #}
     {%- if b_orng %}{%- set _ = names.append('orange') -%}{%- endif -%}
   {%- endif -%}
 
