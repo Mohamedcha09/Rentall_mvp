@@ -333,3 +333,36 @@ svg.verified-badge{ filter: drop-shadow(0 0 2px rgba(29,161,242,.45)); }
 
 /* تباعد الأزرار داخل قائمة الفئات */
 .home-cats .btn{ margin-bottom: 6px; }
+
+/* ====== Fix Navbar Overlap / Clicks ====== */
+
+/* اجعل النافبار أعلى كل الطبقات ويستجيب للنقر دوماً */
+.navbar {
+  position: fixed;            /* fixed-top في HTML، نثبّت هنا أيضاً */
+  top: 0; left: 0; right: 0;
+  z-index: 2147483000;        /* رقم مرتفع لضمان الظهور فوق أي شيء */
+}
+
+/* أي طبقة بطول الشاشة قد تعترض النقر — عطّل اعتراضها */
+.home-hero,
+.welcome-hero,
+.hero,
+.overlay {
+  pointer-events: none;       /* تمنعها من أكل الكليك */
+}
+
+/* السماح بالنقر على العناصر الداخلية الضرورية إن وُجدت */
+.home-hero *:not(.overlay),
+.welcome-hero *:not(.overlay) {
+  pointer-events: auto;
+}
+
+/* قوائم الـ Dropdown للنافبار فوق كل المحتوى */
+.navbar .dropdown-menu {
+  z-index: 2147483001;
+}
+
+/* مساحة تحت النافبار حتى لا يختبئ المحتوى */
+main.container {
+  padding-top: 90px !important;  /* زِد أو قلّل لو احتجت */
+}
