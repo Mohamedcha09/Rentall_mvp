@@ -5,226 +5,94 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ title or "RentAll" }}</title>
 
-    <!-- Bootstrap + خط -->
+    <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
 
-    <!-- ستايل التطبيق -->
-    <link href="/static/style.css" rel="stylesheet">
-
-    <style>
-      :root {
-        --shell-bg: rgba(15,17,21,.66);
-        --border: rgba(255,255,255,.08);
-      }
-      body { font-family: "Cairo", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: #0f1115; color: #eef2fb; }
-
-      /* ===== Topbar ===== */
-      .topbar {
-        position: sticky; top: 0; z-index: 1040;
-        background: var(--shell-bg); backdrop-filter: blur(8px);
-        border-bottom: 1px solid var(--border);
-      }
-      .topbar .brand { gap:.5rem }
-      .topbar .brand img { width:28px; height:28px; border-radius:6px }
-      .topbar .searchbar { display:flex; gap:.5rem; align-items:center; max-width:720px; margin-inline:auto; width:100% }
-      .topbar .searchbar input { border-radius:999px; background:rgba(255,255,255,.06); border:1px solid var(--border); color:#fff; }
-      .topbar .searchbar .btn { border-radius:999px }
-      .topbar .actions .btn { border-color: rgba(255,255,255,.25)!important; }
-
-      /* badges بجانب الاسم */
-      .nav-user { display:flex; align-items:center; gap:.4rem; }
-
-      /* ===== Shell layout (Sidebar + Content) ===== */
-      .shell {
-        display: grid;
-        grid-template-columns: 260px 1fr;  /* Sidebar | Main */
-        gap: 18px;
-        padding: 18px;
-      }
-      @media (max-width: 992px) {
-        .shell { grid-template-columns: 1fr; }
-      }
-
-      /* Sidebar */
-      .sidebar {
-        position: sticky; top: 64px; height: calc(100dvh - 80px);
-        background: var(--shell-bg); border: 1px solid var(--border);
-        border-radius: 14px; padding: 12px; overflow:auto;
-      }
-      .sidebar .menu .btn {
-        justify-content: start; width: 100%;
-        border-radius: 12px; margin-bottom: 6px;
-        color:#e9edf8; border-color: transparent;
-        background: transparent;
-      }
-      .sidebar .menu .btn.active {
-        background: rgba(124,92,255,.18); border:1px solid rgba(124,92,255,.35);
-        color:#fff; font-weight:700;
-      }
-
-      /* Content card feel */
-      .page {
-        background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03));
-        border: 1px solid var(--border); border-radius: 14px; padding: 16px;
-      }
-
-      /* dropdown z-index */
-      .dropdown-menu { z-index: 1050; }
-    </style>
-    {% block head_extra %}{% endblock %}
+    <!-- Blossom-like theme -->
+    <link href="/static/blossom.css" rel="stylesheet">
   </head>
-  <body>
+  <body class="theme">
 
-    {% from "_badges.html" import render_badges %}
-
-    <!-- ===== TOPBAR ===== -->
-    <nav class="topbar navbar navbar-dark py-2">
-      <div class="container d-grid" style="grid-template-columns:auto 1fr auto; gap:12px; align-items:center;">
-
-        <!-- شعار -->
-        <a class="brand navbar-brand d-flex align-items-center m-0" href="/">
-          <img src="{{ url_for('static', path='logo-32.png') }}" alt="RentAll">
-          <span class="fw-bold d-none d-md-inline">RentAll</span>
+    <!-- ===== Topbar ===== -->
+    <header class="topbar">
+      <div class="topbar__inner container-fluid">
+        <!-- يسار: الشعار -->
+        <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/">
+          <img src="{{ url_for('static', path='logo-32.png') if request else '/static/logo-32.png' }}" alt="RentAll" class="brand__logo">
+          <span class="brand__name d-none d-sm-inline">RentAll</span>
         </a>
 
-        <!-- بحث -->
-        <form class="searchbar" action="/search" method="get" role="search">
-          <input class="form-control form-control-sm" name="q" type="search" placeholder="ابحث في العناصر…" value="{{ request.query_params.get('q','') }}">
-          <button class="btn btn-primary btn-sm" type="submit">بحث</button>
+        <!-- وسط: البحث -->
+        <form class="search" action="/search" method="get" role="search">
+          <input class="form-control form-control-sm search__input"
+                 type="search" name="q"
+                 placeholder="ابحث عن عنصر أو مستخدم…"
+                 value="{{ request.query_params.get('q','') if request else '' }}">
         </form>
 
-        <!-- إجراءات -->
+        <!-- يمين: أزرار -->
         <div class="actions d-flex align-items-center gap-2">
-          {% if session_user and session_user.status == 'approved' %}
-            <a href="/owner/items/new" class="btn btn-success btn-sm d-none d-sm-inline-flex">+ أضف عنصر</a>
-          {% endif %}
+          <!-- إشعارات -->
+          <a class="btn btn-light-subtle btn-sm position-relative" href="/messages" title="الإشعارات">
+            🔔
+            {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
+            {% if unread > 0 %}
+              <span class="notif-dot"></span>
+            {% endif %}
+          </a>
 
-          {# جرس الإشعارات من /api/unread_summary #}
-          {% set unread = (request.state.unread_messages | default(0)) | int %}
-          <div class="dropdown">
-            <button class="btn btn-outline-light btn-sm position-relative" data-bs-toggle="dropdown" aria-expanded="false" title="الإشعارات">
-              🔔
-              <span id="notif-badge" class="position-absolute translate-middle badge rounded-pill bg-danger"
-                    style="top:-2px; inset-inline-start:-6px; {% if unread == 0 %}display:none{% endif %}">
-                {% if unread > 9 %}+9{% else %}{{ unread }}{% endif %}
-              </span>
-            </button>
-            <div class="dropdown-menu dropdown-menu-end p-0 shadow" style="min-width:320px; max-height:360px; overflow:auto">
-              <div id="notif-empty" class="px-3 py-2 text-muted small" {% if unread > 0 %}style="display:none"{% endif %}>لا توجد إشعارات جديدة.</div>
-              <div id="notif-list" class="list-group list-group-flush small"></div>
-              <a class="dropdown-item text-center" href="/messages">فتح كل الرسائل</a>
-            </div>
-          </div>
+          <!-- أضف عنصر/منشور -->
+          <a class="btn btn-primary btn-sm" href="/owner/items/new">+ أضف عنصر</a>
 
+          <!-- الحساب -->
           {% if session_user %}
-            <a href="/profile" class="btn btn-outline-light btn-sm nav-user">
-              {{ render_badges(session_user, 18) }}
-              <span class="fw-semibold">{{ session_user.first_name or session_user.get('first_name','') }}</span>
+            <a class="btn btn-outline-light btn-sm d-flex align-items-center gap-2" href="/profile" title="صفحتي">
+              <div class="avatar">{{ (session_user.first_name or 'ح')[:1] }}</div>
+              <span class="fw-bold d-none d-sm-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
             </a>
-            <a href="/logout" class="btn btn-outline-light btn-sm">خروج</a>
+            <a class="btn btn-outline-light btn-sm d-none d-md-inline" href="/logout">خروج</a>
           {% else %}
-            <a href="/login" class="btn btn-primary btn-sm">دخول</a>
+            <a class="btn btn-outline-light btn-sm" href="/login">دخول</a>
+            <a class="btn btn-primary btn-sm" href="/register">تسجيل</a>
           {% endif %}
         </div>
       </div>
-    </nav>
+    </header>
+    <!-- /Topbar -->
 
-    <!-- ===== SHELL (Sidebar + Content) ===== -->
-    <div class="container-fluid shell">
-
-      <!-- Sidebar -->
-      <aside class="sidebar">
-        {% set p = request.url.path %}
-        <div class="menu d-grid">
-          <a class="btn btn-outline-light {% if p == '/' %}active{% endif %}" href="/">الرئيسية</a>
-          <a class="btn btn-outline-light {% if p.startswith('/items') %}active{% endif %}" href="/items">كل العناصر</a>
-
-          {% if session_user %}
-            <a class="btn btn-outline-light {% if p.startswith('/profile') and p != '/profile/docs' %}active{% endif %}" href="/profile">صفحتي</a>
-            <a class="btn btn-outline-light {% if p.startswith('/owner/items') %}active{% endif %}" href="/owner/items">أشيائي</a>
-            <a class="btn btn-outline-light {% if p == '/owner/items/new' %}active{% endif %}" href="/owner/items/new">+ أضف عنصر</a>
-            <a class="btn btn-outline-light {% if p.startswith('/bookings') and request.query_params.get('view')=='renter' %}active{% endif %}"
-               href="/bookings?view=renter">طلباتي</a>
-            <a class="btn btn-outline-light {% if p.startswith('/bookings') and request.query_params.get('view')=='owner' %}active{% endif %}"
-               href="/bookings?view=owner">حجوزات على ممتلكاتي</a>
-
-            <a class="btn btn-outline-light {% if p.startswith('/payout') %}active{% endif %}" href="/payout/settings">
-              التحويلات
-              {% if session_user.payouts_enabled %}
-                <span class="badge bg-success ms-1">جاهز</span>
-              {% else %}
-                <span class="badge bg-warning text-dark ms-1">أكمل الربط</span>
-              {% endif %}
-            </a>
-
-            {% if session_user.role == 'admin' %}
-              <hr class="my-2" />
-              <a class="btn btn-outline-light {% if p.startswith('/admin') and p == '/admin' %}active{% endif %}" href="/admin">لوحة الأدمين</a>
-              <a class="btn btn-outline-light {% if p == '/admin/payouts' %}active{% endif %}" href="/admin/payouts">تحويلات الإدارة</a>
-              <a class="btn btn-outline-light {% if p == '/admin/freeze' %}active{% endif %}" href="/admin/freeze">التجميد</a>
-            {% endif %}
-
-            {% if session_user.status != 'approved' %}
-              <hr class="my-2" />
-              <a class="btn btn-outline-light {% if p == '/profile/docs' %}active{% endif %}" href="/profile/docs">تصحيح التحقق</a>
-            {% endif %}
+    <!-- ===== Sidebar ===== -->
+    <aside class="sidebar">
+      <nav class="sidebar__nav">
+        <a class="side-link {% if request and request.url.path == '/' %}is-active{% endif %}" href="/">الرئيسية</a>
+        <a class="side-link {% if request and request.url.path.startswith('/items') %}is-active{% endif %}" href="/items">كل العناصر</a>
+        {% if session_user %}
+          <a class="side-link {% if request and request.url.path.startswith('/profile') %}is-active{% endif %}" href="/profile">صفحتي</a>
+          <a class="side-link {% if request and request.url.path.startswith('/owner/items') %}is-active{% endif %}" href="/owner/items">أشيائي</a>
+          <a class="side-link {% if request and request.url.path.startswith('/bookings') and request.query_params.get('view')=='renter' %}is-active{% endif %}" href="/bookings?view=renter">طلباتي</a>
+          <a class="side-link {% if request and request.url.path.startswith('/bookings') and request.query_params.get('view')=='owner' %}is-active{% endif %}" href="/bookings?view=owner">حجوزات على ممتلكاتي</a>
+          <a class="side-link {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" href="/payout/settings">التحويلات</a>
+          {% if session_user.role == 'admin' %}
+            <div class="side-sep"></div>
+            <a class="side-link {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" href="/admin">لوحة الأدمين</a>
           {% endif %}
-        </div>
-      </aside>
+        {% endif %}
+      </nav>
+    </aside>
+    <!-- /Sidebar -->
 
-      <!-- Page Content -->
-      <main class="page">
-        {% if message %}<div class="alert alert-info">{{ message }}</div>{% endif %}
-        {% block content %}{% endblock %}
-      </main>
-    </div>
+    <!-- ===== Page content ===== -->
+    <main class="page container-fluid">
+      {% if session_user and session_user.status == 'approved' and not session_user.payouts_enabled %}
+        <div class="alert alert-warning d-flex justify-content-between align-items-center mb-3">
+          <div>💸 لبدء استلام الأرباح، اربط <strong>Stripe Connect</strong>.</div>
+          <a class="btn btn-sm btn-primary" href="/payout/settings">ربط الآن</a>
+        </div>
+      {% endif %}
+
+      {% if message %}<div class="alert alert-info">{{ message }}</div>{% endif %}
+      {% block content %}{% endblock %}
+    </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-    {% if session_user %}
-    <script>
-      // إشعارات الرسائل (مثل السابق لكن مدمج)
-      (function(){
-        const badge = document.getElementById('notif-badge');
-        const list = document.getElementById('notif-list');
-        const empty = document.getElementById('notif-empty');
-
-        function row(t){
-          const a = document.createElement('a');
-          a.className = 'list-group-item list-group-item-action d-flex align-items-center gap-2';
-          a.href = '/messages/' + t.thread_id;
-          a.innerHTML = `
-            <div class="rounded-circle bg-secondary d-inline-grid place-items-center" style="width:28px;height:28px;">💬</div>
-            <div class="flex-grow-1">
-              <div class="fw-semibold">${t.other_name || 'مستخدم'}</div>
-              ${t.item_title ? `<div class="text-muted small">${t.item_title}</div>` : ''}
-            </div>
-            <span class="badge bg-danger">${t.count>9?'+9':t.count}</span>
-          `;
-          return a;
-        }
-
-        async function refresh(){
-          try{
-            const r = await fetch('/api/unread_summary', {credentials:'include'});
-            if(!r.ok) return;
-            const data = await r.json();
-            const total = Number(data.total || 0);
-            if(total>0){ badge.style.display='inline-block'; badge.textContent = total>9?'+9':String(total); }
-            else { badge.style.display='none'; }
-            list.innerHTML = '';
-            if(data.threads && data.threads.length){
-              empty.style.display='none';
-              data.threads.forEach(t => list.appendChild(row(t)));
-            } else { empty.style.display='block'; }
-          }catch(e){}
-        }
-        refresh(); setInterval(refresh, 10000);
-      })();
-    </script>
-    {% endif %}
-
-    {% block body_extra %}{% endblock %}
   </body>
 </html>

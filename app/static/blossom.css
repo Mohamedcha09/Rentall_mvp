@@ -1,0 +1,96 @@
+/* ========== أساسيات ========== */
+:root{
+  --bg:#0e1116;
+  --card:#171a21;
+  --muted:#a9b0be;
+  --text:#eef2fb;
+  --primary:#7c5cff;
+  --border:rgba(255,255,255,.10);
+}
+
+html,body{background:var(--bg);color:var(--text);min-height:100%;}
+.theme{font-family:'Tajawal','Cairo',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif}
+
+/* ========== Topbar ========== */
+.topbar{
+  position:fixed; inset:0 0 auto 0; height:64px;
+  background:rgba(17,19,25,.72);
+  backdrop-filter: blur(10px);
+  border-bottom:1px solid var(--border);
+  z-index:2000;
+}
+.topbar__inner{
+  display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center;
+  padding:8px 16px;
+}
+.brand__logo{width:28px;height:28px;border-radius:8px;object-fit:cover}
+.brand__name{font-weight:800}
+
+.search__input{
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.16);
+  color:#fff;
+  padding-inline:14px;
+}
+.search__input::placeholder{color:#e5e7eb}
+
+.btn-light-subtle{
+  background:rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.15);
+  color:#fff;
+}
+.btn-light-subtle:hover{background:rgba(255,255,255,.18)}
+
+.btn-primary{
+  background:linear-gradient(135deg,#7c5cff,#5a3eff);
+  border:0;
+}
+
+/* نقطة إشعار صغيرة على الجرس */
+.notif-dot{
+  position:absolute; inset-inline-start:-2px; top:-2px;
+  width:9px;height:9px;border-radius:50%;
+  background:#ff6b6b;border:1px solid #1a1f2b;
+}
+
+/* أفاتار صغير */
+.avatar{
+  width:22px;height:22px;border-radius:50%;
+  background:#222; display:grid; place-items:center; font-weight:700;
+}
+
+/* ========== Sidebar ========== */
+.sidebar{
+  position:fixed; top:64px; bottom:0; inset-inline-start:0; width:248px;
+  background:rgba(255,255,255,.03);
+  border-inline-end:1px solid var(--border);
+  padding:14px 10px; overflow:auto; z-index:1000;
+}
+.sidebar__nav{display:flex;flex-direction:column;gap:6px}
+.side-link{
+  display:flex; align-items:center; gap:.6rem;
+  padding:.6rem .8rem; border-radius:12px;
+  color:#dfe6f7; text-decoration:none;
+}
+.side-link:hover{background:rgba(255,255,255,.06); color:#fff}
+.side-link.is-active{
+  background:rgba(124,92,255,.18);
+  border:1px solid rgba(124,92,255,.35);
+  color:#fff;
+}
+.side-sep{height:1px;background:var(--border);margin:.5rem 0}
+
+/* ========== Page Layout ========== */
+.page{
+  padding: calc(64px + 16px) 16px 24px; /* أعلى: بعد التوب بار */
+  margin-inline-start: 248px;           /* يمين/يسار: بعد السايدبار (RTL يتعامل) */
+  max-width: 1200px;
+}
+
+/* بطاقات افتراضية */
+.card{
+  background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+  border:1px solid var(--border);
+  color:var(--text);
+}
