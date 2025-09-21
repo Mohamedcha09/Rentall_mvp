@@ -1,104 +1,95 @@
 {% extends "base.html" %}
+
 {% block content %}
 
-<style>
-/* زخارف خفيفة للصفحة */
-.profile-header .avatar-lg{
-  width:84px;height:84px;border-radius:50%;object-fit:cover;
-  border:1px solid var(--border);
-  box-shadow:0 8px 26px rgba(0,0,0,.25);
-}
-.star{ font-size: 1rem; }
-.star.filled{ color: #f5c34b; }
-.tab-btn{ border-radius: 999px; }
-.tab-btn.is-active{
-  background: color-mix(in oklab, var(--primary) 22%, transparent);
-  border: 1px solid color-mix(in oklab, var(--primary) 40%, var(--border));
-  color: var(--text);
-}
-.tab-panel{ display:none; }
-.tab-panel.is-active{ display:block; }
-.meta-badge{
-  border:1px solid var(--border); border-radius:12px; padding:.35rem .6rem;
-  background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03));
-}
-.divider-ghost{height:1px;background:var(--border);margin:10px 0}
-</style>
+<!-- En-tête profil avec badges -->
+<section class="card p-3 p-md-4 mb-3 glass">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
 
-<!-- ===== رأس الصفحة ===== -->
-<section class="profile-header card p-3 mb-3">
-  <div class="d-flex flex-wrap align-items-center gap-3">
-    <!-- صورة -->
-    {% if profile_user.avatar_path %}
-      <img src="/{{ profile_user.avatar_path }}" class="avatar-lg" alt="avatar">
-    {% else %}
-      <div class="avatar-lg d-grid place-items-center"
-           style="width:84px;height:84px;border-radius:50%;background:rgba(255,255,255,.06);border:1px solid var(--border)">
-        <span style="font-size:34px">👤</span>
-      </div>
-    {% endif %}
+    <div class="d-flex align-items-center gap-3">
+      {% if user.avatar_path %}
+        <img src="/{{ user.avatar_path }}" class="avatar-xl rounded-circle border" alt="avatar">
+      {% else %}
+        <div class="avatar-xl rounded-circle border d-grid place-items-center fw-bold">
+          {{ (user.first_name or 'U')[:1] }}
+        </div>
+      {% endif %}
 
-    <!-- معلومات -->
-    <div class="flex-grow-1">
-      <div class="d-flex align-items-center gap-2 flex-wrap">
-        <h3 class="m-0">
-          {{ (profile_user.first_name ~ ' ' ~ profile_user.last_name).strip() or 'مستخدم' }}
-        </h3>
-        {% if profile_user.status == 'approved' %}
-          <i class="bi bi-patch-check-fill verify" title="موثّق"></i>
-        {% endif %}
-      </div>
+      <div>
+        <h2 class="m-0 d-flex align-items-center gap-2">
+          {{ user.first_name }} {{ user.last_name }}
 
-      <div class="small text-muted d-flex flex-wrap gap-2 mt-1">
-        {% if profile_user.city %}<span class="meta-badge"><i class="bi bi-geo-alt"></i> {{ profile_user.city }}</span>{% endif %}
-        {% if profile_user.created_at %}
-          <span class="meta-badge"><i class="bi bi-calendar2-check"></i>
-            انضم {{ profile_user.created_at.strftime('%Y-%m-%d') if profile_user.created_at.__class__.__name__ == 'datetime' else profile_user.created_at }}
+          {# Badges dynamiques #}
+          {% if badges.verified %}
+            <span class="badge badge-chip chip-verified">
+              <i class="bi bi-patch-check-fill me-1"></i>موثّق
+            </span>
+          {% endif %}
+          {% if badges.new_user %}
+            <span class="badge badge-chip chip-new">
+              <i class="bi bi-stars me-1"></i>جديد
+            </span>
+          {% endif %}
+          {% if badges.power_seller %}
+            <span class="badge badge-chip chip-power">
+              <i class="bi bi-lightning-charge-fill me-1"></i>تاجر نشِط
+            </span>
+          {% endif %}
+          {% if badges.trusted %}
+            <span class="badge badge-chip chip-trusted">
+              <i class="bi bi-shield-check me-1"></i>موثوق
+            </span>
+          {% endif %}
+          {% if badges.top_rated %}
+            <span class="badge badge-chip chip-top">
+              <i class="bi bi-star-fill me-1"></i>تقييم ممتاز
+            </span>
+          {% endif %}
+        </h2>
+
+        <div class="text-muted small mt-1 d-flex flex-wrap align-items-center gap-3">
+          <span><i class="bi bi-box-seam me-1"></i> عناصر: {{ items_count }}</span>
+          <span><i class="bi bi-hand-thumbs-up me-1"></i> تأجيرات مكتملة: {{ completed_rentals }}</span>
+          <span><i class="bi bi-star me-1"></i> التقييم: {{ avg_rating if avg_rating is not none else '—' }}</span>
+          <span><i class="bi bi-calendar2-check me-1"></i>
+            انضم: {{ user.created_at.strftime("%Y-%m-%d") if user.created_at else '' }}
           </span>
-        {% endif %}
-        <span class="meta-badge"><i class="bi bi-box-seam"></i> عناصر: {{ stats.total_items or 0 }}</span>
-        <span class="meta-badge"><i class="bi bi-star-half"></i> تقييمات: {{ stats.total_reviews or 0 }}</span>
-      </div>
-
-      <!-- نجوم التقييم -->
-      <div class="mt-2">
-        {% set avg = (stats.avg_rating or 0) | float %}
-        {% for i in range(1,6) %}
-          <i class="bi star {% if i <= avg|round(0, 'floor') %}filled bi-star-fill{% elif i-avg < 1 %}filled bi-star-half{% else %}bi-star{% endif %}"></i>
-        {% endfor %}
-        <span class="small text-muted ms-1">({{ '%.1f' % avg }})</span>
+        </div>
       </div>
     </div>
 
-    <!-- أزرار -->
-    <div class="d-flex gap-2 ms-auto">
-      <a class="btn btn-primary btn-sm" href="/messages/new?to={{ profile_user.id }}">
-        <i class="bi bi-chat-left-text"></i> مراسلة
-      </a>
-      <a class="btn btn-ghost btn-sm" href="/search?q={{ (profile_user.first_name ~ ' ' ~ profile_user.last_name).strip()|urlencode }}">
-        عرض نتائج مشابهة
+    <div class="ms-auto">
+      <a class="btn btn-primary" href="/messages/new?to={{ user.id }}">
+        <i class="bi bi-chat-dots"></i> تواصل
       </a>
     </div>
-  </div>
 
-  {% if profile_user.bio %}
-    <div class="divider-ghost"></div>
-    <div class="text-muted">{{ profile_user.bio }}</div>
-  {% endif %}
-</section>
-
-<!-- ===== تبويب بسيط ===== -->
-<section class="mb-3">
-  <div class="d-flex gap-2 flex-wrap">
-    <button class="btn btn-ghost tab-btn is-active" data-tab="tab-items"><i class="bi bi-box"></i> العناصر</button>
-    <button class="btn btn-ghost tab-btn" data-tab="tab-reviews"><i class="bi bi-star"></i> التقييمات</button>
-    <button class="btn btn-ghost tab-btn" data-tab="tab-about"><i class="bi bi-info-circle"></i> حول</button>
   </div>
 </section>
 
-<!-- ===== اللوحات ===== -->
-<section id="tab-items" class="tab-panel is-active">
-  {% if items and items|length > 0 %}
+<!-- Onglets -->
+<ul class="nav nav-pills glass mb-3 p-1 gap-1" role="tablist">
+  <li class="nav-item">
+    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-items" type="button" role="tab">
+      العناصر
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-reviews" type="button" role="tab">
+      التقييمات
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-about" type="button" role="tab">
+      حول
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content">
+
+  <!-- Tab: Items -->
+  <div class="tab-pane fade show active" id="tab-items" role="tabpanel">
     <div class="home-grid">
       {% for it in items %}
         <article class="card spot">
@@ -106,108 +97,60 @@
             {% if it.image_path %}
               <img src="/{{ it.image_path }}" alt="item">
             {% else %}
-              <div class="d-flex align-items-center justify-content-center h-100 bg-dark-subtle">
-                <span class="small text-muted">لا صورة</span>
-              </div>
+              <div class="spot-placeholder d-grid place-items-center w-100 h-100">لا صورة</div>
             {% endif %}
-            <div class="spot-overlay"></div>
-            {% if it.price_per_day is not none %}
-              <div class="price-badge"><strong>{{ it.price_per_day }}</strong> د/يوم</div>
-            {% endif %}
-            {% if it.city %}<div class="category-chip">{{ it.city }}</div>{% endif %}
+            <div class="price-badge"><strong>{{ it.price_per_day }}</strong><span> د/يوم</span></div>
+            <div class="category-chip">{{ it.category_label }}</div>
           </div>
 
-          <div class="card-body d-flex flex-column gap-2">
+          <div class="card-body">
             <h6 class="spot-title" title="{{ it.title }}">{{ it.title }}</h6>
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="small city-chip" title="{{ it.city or '' }}">🏙️ {{ it.city or 'بدون مدينة' }}</div>
               <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
-              <a href="/messages/new?item_id={{ it.id }}&to={{ profile_user.id }}" class="btn btn-sm btn-ghost">مراسلة</a>
             </div>
           </div>
         </article>
+      {% else %}
+        <div class="text-muted">لا عناصر بعد.</div>
       {% endfor %}
-    </div>
-  {% else %}
-    <div class="card p-3 text-muted">لا توجد عناصر لهذا المستخدم حالياً.</div>
-  {% endif %}
-</section>
-
-<section id="tab-reviews" class="tab-panel">
-  {% if reviews and reviews|length > 0 %}
-    <div class="d-flex flex-column gap-2">
-      {% for r in reviews %}
-        <div class="card p-2">
-          <div class="d-flex align-items-center gap-2">
-            {% if r.reviewer_avatar %}
-              <img src="/{{ r.reviewer_avatar }}" class="rounded-circle" style="width:36px;height:36px;object-fit:cover;border:1px solid var(--border)">
-            {% else %}
-              <div class="rounded-circle d-grid place-items-center" style="width:36px;height:36px;background:rgba(255,255,255,.06);border:1px solid var(--border)">👤</div>
-            {% endif %}
-            <div class="flex-grow-1">
-              <div class="fw-bold small">{{ (r.reviewer_first_name ~ ' ' ~ r.reviewer_last_name).strip() or 'مستخدم' }}</div>
-              <div class="small text-muted">
-                {% for i in range(1,6) %}
-                  <i class="bi star {% if i <= (r.rating or 0) %}filled bi-star-fill{% else %}bi-star{% endif %}"></i>
-                {% endfor %}
-                <span class="ms-1">{{ r.created_at.strftime('%Y-%m-%d') if r.created_at.__class__.__name__ == 'datetime' else r.created_at }}</span>
-              </div>
-            </div>
-          </div>
-          {% if r.comment %}
-            <div class="mt-2 small">{{ r.comment }}</div>
-          {% endif %}
-        </div>
-      {% endfor %}
-    </div>
-  {% else %}
-    <div class="card p-3 text-muted">لا توجد تقييمات بعد.</div>
-  {% endif %}
-</section>
-
-<section id="tab-about" class="tab-panel">
-  <div class="card p-3">
-    <div class="row g-3">
-      <div class="col-md-6">
-        <div class="text-muted small">الاسم</div>
-        <div class="fw-bold">{{ (profile_user.first_name ~ ' ' ~ profile_user.last_name).strip() or 'مستخدم' }}</div>
-      </div>
-      <div class="col-md-6">
-        <div class="text-muted small">المدينة</div>
-        <div class="fw-bold">{{ profile_user.city or 'غير محدد' }}</div>
-      </div>
-      <div class="col-md-6">
-        <div class="text-muted small">الحالة</div>
-        <div class="fw-bold">
-          {% if profile_user.status == 'approved' %}موثّق{% else %}غير موثّق{% endif %}
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="text-muted small">انضم</div>
-        <div class="fw-bold">
-          {{ profile_user.created_at.strftime('%Y-%m-%d %H:%M') if profile_user.created_at.__class__.__name__ == 'datetime' else (profile_user.created_at or 'غير متوفر') }}
-        </div>
-      </div>
-      <div class="col-12">
-        <div class="text-muted small">نبذة</div>
-        <div class="fw-bold">{{ profile_user.bio or 'لا توجد نبذة.' }}</div>
-      </div>
     </div>
   </div>
-</section>
 
-<script>
-  // تبويب
-  const tabs = document.querySelectorAll('.tab-btn');
-  const panels = document.querySelectorAll('.tab-panel');
-  tabs.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.tab;
-      tabs.forEach(b => b.classList.toggle('is-active', b === btn));
-      panels.forEach(p => p.classList.toggle('is-active', p.id === id));
-      // تمرير لأعلى قليلًا على الموبايل
-      if (window.matchMedia('(max-width: 576px)').matches) window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  });
-</script>
+  <!-- Tab: Reviews -->
+  <div class="tab-pane fade" id="tab-reviews" role="tabpanel">
+    {% if reviews and reviews|length > 0 %}
+      <div class="vstack gap-2">
+        {% for r in reviews %}
+          <div class="card p-2">
+            <div class="small text-muted">
+              {{ r.created_at.strftime("%Y-%m-%d") if r.created_at else '' }}
+            </div>
+            <div class="fw-bold d-flex align-items-center gap-2">
+              {{ r.reviewer_first }} {{ r.reviewer_last }}
+              <span class="text-warning">
+                {% for i in range(1,6) %}
+                  <i class="bi {% if i <= (r.rating or 0) %}bi-star-fill{% else %}bi-star{% endif %}"></i>
+                {% endfor %}
+              </span>
+            </div>
+            <div>{{ r.comment }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-muted">لا تقييمات حتى الآن.</div>
+    {% endif %}
+  </div>
+
+  <!-- Tab: About -->
+  <div class="tab-pane fade" id="tab-about" role="tabpanel">
+    <div class="card p-3">
+      <div class="fw-bold mb-1">نبذة</div>
+      <div class="text-muted">{{ user.bio or 'لا توجد نبذة.' }}</div>
+    </div>
+  </div>
+
+</div>
 
 {% endblock %}

@@ -28,112 +28,96 @@ def with_defaults(row: dict) -> dict:
     return data
 
 @router.get("/users/{user_id}")
-def user_profile(
-    request: Request,
-    user_id: int = Path(..., ge=1),
-    db: Session = Depends(get_db),
-):
-    # ========= 1) معلومات المستخدم الأساسية =========
-    # بدال ما نحدد أعمدة قد لا تكون موجودة، نجيب كل شيء:
+def user_profile(request: Request, user_id: int, db: Session = Depends(get_db)):
+    # معلومات أساسية عن المستخدم
     user_sql = text("""
-        SELECT *
-        FROM users
-        WHERE id = :uid
+        SELECT
+            u.id,
+            COALESCE(u.first_name,'')  AS first_name,
+            COALESCE(u.last_name,'')   AS last_name,
+            COALESCE(u.avatar_path,'') AS avatar_path,
+            COALESCE(u.status,'')      AS status,
+            u.created_at               AS created_at,
+            COALESCE(u.bio,'')         AS bio
+        FROM users u
+        WHERE u.id = :uid
         LIMIT 1
     """)
-    user_row = db.execute(user_sql, {"uid": user_id}).mappings().first()
-    if not user_row:
+    user = db.execute(user_sql, {"uid": user_id}).mappings().first()
+    if not user:
         raise HTTPException(status_code=404, detail="المستخدم غير موجود")
 
-    user = with_defaults(user_row)
+    # أعداد وتقييمات
+    agg_sql = text("""
+        SELECT
+            (SELECT COUNT(*) FROM items i WHERE i.owner_id = :uid) AS items_count,
+            (SELECT COUNT(*) FROM bookings b WHERE b.owner_id = :uid AND b.status = 'completed') AS completed_rentals,
+            (SELECT ROUND(AVG(r.rating), 2) FROM reviews r WHERE r.target_user_id = :uid) AS avg_rating
+    """)
+    agg = db.execute(agg_sql, {"uid": user_id}).mappings().first()
+    items_count = agg["items_count"] or 0
+    completed_rentals = agg["completed_rentals"] or 0
+    avg_rating = float(agg["avg_rating"]) if agg["avg_rating"] is not None else None
 
-    # ========= 2) إحصائيات =========
-    # آمنة: قد لا يكون عندك جدول reviews — نتعامل معه لاحقًا try/except
-    # العناصر غالبًا موجودة
-    items_count = 0
-    items_count_sql = text("SELECT COUNT(*) AS c FROM items WHERE owner_id = :uid")
+    # حساب الشارات
+    created_at = user["created_at"]
+    now = datetime.now(timezone.utc)
+    is_new = False
     try:
-        items_count = db.execute(items_count_sql, {"uid": user_id}).scalar() or 0
-    except OperationalError:
-        items_count = 0
+        # created_at قد يكون naive; نتعامل مع الحالتين
+        created_dt = created_at if isinstance(created_at, datetime) else None
+        if created_dt is not None:
+            if created_dt.tzinfo is None:
+                created_dt = created_dt.replace(tzinfo=timezone.utc)
+            is_new = (now - created_dt).days < 14
+    except Exception:
+        is_new = False
 
-    total_reviews = 0
-    avg_rating = 0.0
-    try:
-        review_stats_sql = text("""
-            SELECT
-              COALESCE(COUNT(*),0)  AS total_reviews,
-              COALESCE(AVG(rating),0) AS avg_rating
-            FROM reviews
-            WHERE user_id = :uid
-        """)
-        rs = db.execute(review_stats_sql, {"uid": user_id}).mappings().first()
-        if rs:
-            total_reviews = int(rs.get("total_reviews", 0) or 0)
-            avg_rating = float(rs.get("avg_rating", 0.0) or 0.0)
-    except OperationalError:
-        # ما في جدول reviews — عادي
-        total_reviews = 0
-        avg_rating = 0.0
-
-    stats = {
-        "total_items": items_count,
-        "total_reviews": total_reviews,
-        "avg_rating": avg_rating,
+    badges = {
+        "verified": (user["status"] == "approved"),
+        "new_user": is_new,
+        "power_seller": (items_count >= 5),
+        "trusted": (completed_rentals >= 3),
+        "top_rated": (avg_rating is not None and avg_rating >= 4.5),
     }
 
-    # ========= 3) عناصر هذا المستخدم =========
-    items = []
-    try:
-        items_sql = text("""
-            SELECT id,
-                   COALESCE(title,'') AS title,
-                   COALESCE(city,'')  AS city,
-                   price_per_day,
-                   COALESCE(image_path,'') AS image_path
-            FROM items
-            WHERE owner_id = :uid
-            ORDER BY id DESC
-            LIMIT 200
-        """)
-        items = db.execute(items_sql, {"uid": user_id}).mappings().all()
-    except OperationalError:
-        items = []
+    # عناصر المالك (تعرض أسفل الصفحة)
+    items_sql = text("""
+        SELECT
+            i.id, i.title, i.city, i.price_per_day,
+            COALESCE(i.image_path,'') AS image_path,
+            COALESCE(i.category_label,'') AS category_label
+        FROM items i
+        WHERE i.owner_id = :uid
+        ORDER BY i.id DESC
+        LIMIT 50
+    """)
+    items = [dict(row) for row in db.execute(items_sql, {"uid": user_id}).mappings().all()]
 
-    # ========= 4) التقييمات (لو فيه جدول) =========
-    reviews = []
-    try:
-        reviews_sql = text("""
-            SELECT
-                r.id,
-                r.rating,
-                COALESCE(r.comment,'') AS comment,
-                r.created_at,
-                rv.id AS reviewer_id,
-                COALESCE(rv.first_name,'') AS reviewer_first_name,
-                COALESCE(rv.last_name,'')  AS reviewer_last_name,
-                COALESCE(rv.avatar_path,'') AS reviewer_avatar
-            FROM reviews r
-            JOIN users rv ON rv.id = r.reviewer_id
-            WHERE r.user_id = :uid
-            ORDER BY r.created_at DESC
-            LIMIT 200
-        """)
-        reviews = db.execute(reviews_sql, {"uid": user_id}).mappings().all()
-    except OperationalError:
-        # مافيه reviews — عادي
-        reviews = []
-
-    full_name = f"{user.get('first_name','')} {user.get('last_name','')}".strip() or "المستخدم"
+    # التقييمات (اختياري)
+    reviews_sql = text("""
+        SELECT r.id, r.rating, COALESCE(r.comment,'') AS comment,
+               r.created_at,
+               COALESCE(u.first_name,'') AS reviewer_first,
+               COALESCE(u.last_name,'')  AS reviewer_last
+        FROM reviews r
+        LEFT JOIN users u ON u.id = r.author_user_id
+        WHERE r.target_user_id = :uid
+        ORDER BY r.created_at DESC
+        LIMIT 20
+    """)
+    reviews = [dict(row) for row in db.execute(reviews_sql, {"uid": user_id}).mappings().all()]
 
     return templates.TemplateResponse(
         "user.html",
         {
             "request": request,
-            "title": full_name,
-            "profile_user": user,
-            "stats": stats,
+            "user": user,
             "items": items,
             "reviews": reviews,
-        },
+            "items_count": items_count,
+            "completed_rentals": completed_rentals,
+            "avg_rating": avg_rating,
+            "badges": badges,
+        }
     )
