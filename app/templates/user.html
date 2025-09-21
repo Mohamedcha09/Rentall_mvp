@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="mb-3">
+  <div class="card p-3 d-flex flex-wrap align-items-center gap-3">
+    <!-- أفاتار -->
+    {% if profile_user.avatar_path %}
+      <img src="/{{ profile_user.avatar_path }}" alt="avatar"
+           class="rounded-circle" style="width:72px;height:72px;object-fit:cover">
+    {% else %}
+      <div class="rounded-circle d-flex align-items-center justify-content-center"
+           style="width:72px;height:72px;background:rgba(255,255,255,.08);border:1px solid var(--border)">
+        <span style="font-size:30px">👤</span>
+      </div>
+    {% endif %}
+
+    <!-- الاسم + حالة التوثيق -->
+    <div class="flex-grow-1">
+      <h3 class="m-0">
+        {{ (profile_user.first_name ~ ' ' ~ profile_user.last_name).strip() or 'مستخدم' }}
+        {% if profile_user.status == 'approved' %}
+          <i class="bi bi-patch-check-fill verify" title="موثّق"></i>
+        {% endif %}
+      </h3>
+      <div class="text-muted small">ملف المستخدم</div>
+    </div>
+
+    <!-- زر مراسلة (اختياري لو عندك نظام رسائل) -->
+    <div class="d-flex gap-2">
+      <a class="btn btn-primary btn-sm" href="/messages/new?to={{ profile_user.id }}">
+        <i class="bi bi-chat-left-text"></i> مراسلة
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- عناصر المستخدم -->
+<section class="mb-4">
+  <h5 class="mb-2">عناصر للكراء</h5>
+
+  {% if items and items|length > 0 %}
+    <div class="home-grid">
+      {% for it in items %}
+        <article class="card spot">
+          <div class="spot-media">
+            {% if it.image_path %}
+              <img src="/{{ it.image_path }}" alt="item">
+            {% else %}
+              <div class="d-flex align-items-center justify-content-center h-100 bg-dark-subtle">
+                <span class="small text-muted">لا صورة</span>
+              </div>
+            {% endif %}
+            <div class="spot-overlay"></div>
+            {% if it.price_per_day is not none %}
+              <div class="price-badge"><strong>{{ it.price_per_day }}</strong> د/يوم</div>
+            {% endif %}
+            {% if it.city %}
+              <div class="category-chip">{{ it.city }}</div>
+            {% endif %}
+          </div>
+
+          <div class="card-body d-flex flex-column gap-2">
+            <h6 class="spot-title" title="{{ it.title }}">{{ it.title }}</h6>
+            <div class="d-flex justify-content-between align-items-center">
+              <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
+              <a href="/messages/new?item_id={{ it.id }}&to={{ profile_user.id }}" class="btn btn-sm btn-ghost">مراسلة</a>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card p-3 text-muted">لا توجد عناصر لهذا المستخدم حالياً.</div>
+  {% endif %}
+</section>
+
+{% endblock %}
