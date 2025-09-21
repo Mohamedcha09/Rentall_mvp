@@ -1,14 +1,7 @@
+{# templates/profile.html #}
 {% extends "base.html" %}
 {% from "_badges.html" import render_badges %}
 {% block content %}
-
-{# تنبيه Stripe إن لم يكن مفعلاً #}
-{% set payouts = user.payouts_enabled if user is mapping else (user.payouts_enabled or False) %}
-{% if not payouts %}
-  <div class="alert alert-warning mb-3">
-    لِتستلم أرباحك مباشرة، قم بربط حسابك بـ Stripe Connect.
-  </div>
-{% endif %}
 
 <div class="d-flex align-items-center gap-2 mb-2">
   <h2 class="m-0">{{ user.first_name }} {{ user.last_name }}</h2>
@@ -16,11 +9,10 @@
 </div>
 
 <div class="text-muted mb-3 small">
-  البريد: {{ user.email }}
-  · الهاتف: {{ user.phone or '—' }}
+  البريد: {{ user.email }} · الهاتف: {{ user.phone or '—' }}
   · عضو منذ: {{ user.created_at.strftime('%d-%m-%Y') if user.created_at }}
 </div>
 
-{# بقية مكونات صفحتك — لا تغيّر الأشياء السليمة #}
+{# ... بقية صفحتك كما هي ... #}
 
 {% endblock %}

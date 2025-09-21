@@ -259,39 +259,30 @@ def admin_request_fix(
 # ---------------------------
 # إدارة الشارات (Badges)
 # ---------------------------
+# داخل app/admin.py — استبدل دالة set_badges بالكامل بهذه النسخة:
+
 @router.post("/users/{user_id}/badges")
-def set_badges(user_id: int,
-               badge_new_yellow: str | None = Form(None),
-               badge_pro_green: str | None = Form(None),
-               badge_pro_gold: str | None = Form(None),
-               badge_purple_trust: str | None = Form(None),
-               badge_renter_green: str | None = Form(None),
-               badge_orange_stars: str | None = Form(None),
-               badge_admin: str | None = Form(None),
-               request: Request = None,
-               db: Session = Depends(get_db)):
+def set_badges(
+    user_id: int,
+    badge_purple_trust: str | None = Form(None),
+    request: Request = None,
+    db: Session = Depends(get_db)
+):
+    if not require_admin(request):
+        return RedirectResponse(url="/login", status_code=303)
 
     u = db.query(User).get(user_id)
     if not u:
         return RedirectResponse(url="/admin", status_code=303)
 
-    # حوّل إلى بوليان
-    u.badge_new_yellow  = bool(badge_new_yellow)
-    u.badge_pro_green   = bool(badge_pro_green)
-    u.badge_pro_gold    = bool(badge_pro_gold)
-    u.badge_purple_trust= bool(badge_purple_trust)
-    u.badge_renter_green= bool(badge_renter_green)
-    u.badge_orange_stars= bool(badge_orange_stars)
-    u.badge_admin       = bool(badge_admin)
+    # البنفسجي فقط
+    u.badge_purple_trust = bool(badge_purple_trust)
 
-    # حل التعارض: الأصفر لا يجتمع مع Pro
-    if u.badge_new_yellow and (u.badge_pro_green or u.badge_pro_gold):
-        # نعطي أولوية لـ Pro ونطفئ الأصفر
-        u.badge_new_yellow = False
+    # لو أردت ربطها مباشرة بـ is_verified أيضًا:
+    u.is_verified = u.badge_purple_trust
 
     db.add(u)
     db.commit()
     db.refresh(u)
 
-    # رجوع للوحة الأدمين
     return RedirectResponse(url="/admin", status_code=303)

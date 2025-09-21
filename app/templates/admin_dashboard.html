@@ -140,72 +140,22 @@
                   {% else %}bg-danger{% endif %}">{{ u.status }}</span>
               </td>
 
-              <td style="min-width:320px">
-                <!-- حفظ الشارات (صور) -->
-                <form method="post" action="/admin/users/{{ u.id }}/badges" class="badge-form" data-user="{{ u.id }}">
-                  <div class="d-flex flex-wrap gap-3 align-items-center">
-
-                    <!-- Admin -->
-                    <label class="form-check-inline d-flex align-items-center gap-1" title="Admin">
-                      <input type="checkbox" class="form-check-input" name="badge_admin" {% if u.badge_admin %}checked{% endif %}>
-                      <img src="/static/img/adm.png" style="height:20px" alt="admin">
-                    </label>
-
-                    <!-- New (Yellow) -->
-                    <label class="form-check-inline d-flex align-items-center gap-1" title="New (أصفر)">
-                      <input type="checkbox" class="form-check-input chk-new" name="badge_new_yellow" {% if u.badge_new_yellow %}checked{% endif %}>
-                      <img src="/static/img/jaune.png" style="height:20px" alt="new">
-                    </label>
-
-                    <!-- Pro Green -->
-                    <label class="form-check-inline d-flex align-items-center gap-1" title="Pro أخضر">
-                      <input type="checkbox" class="form-check-input chk-pro-green" name="badge_pro_green" {% if u.badge_pro_green %}checked{% endif %}>
-                      <img src="/static/img/ProVert.png" style="height:20px" alt="pro green">
-                    </label>
-
-                    <!-- Pro Gold -->
-                    <label class="form-check-inline d-flex align-items-center gap-1" title="Pro ذهبي">
-                      <input type="checkbox" class="form-check-input chk-pro-gold" name="badge_pro_gold" {% if u.badge_pro_gold %}checked{% endif %}>
-                      <img src="/static/img/ProGold.png" style="height:20px" alt="pro gold">
-                    </label>
-
-                    <!-- Trust (Purple) -->
-                    <label class="form-check-inline d-flex align-items-center gap-1" title="Trust (بنفسجي)">
-                      <input type="checkbox" class="form-check-input" name="badge_purple_trust" {% if u.badge_purple_trust %}checked{% endif %}>
-                      <img src="/static/img/violet.png" style="height:20px" alt="trust">
-                    </label>
-
-                    <!-- Safe Renter (Green) -->
-                    <label class="form-check-inline d-flex align-items-center gap-1" title="Safe Renter">
-                      <input type="checkbox" class="form-check-input" name="badge_renter_green" {% if u.badge_renter_green %}checked{% endif %}>
-                      <img src="/static/img/Vert.png" style="height:20px" alt="safe renter">
-                    </label>
-
-                    <!-- Top Rated (Orange) -->
-                    <label class="form-check-inline d-flex align-items-center gap-1" title="Top Rated (10× ★5)">
-                      <input type="checkbox" class="form-check-input" name="badge_orange_stars" {% if u.badge_orange_stars %}checked{% endif %}>
-                      <img src="/static/img/orange.png" style="height:20px" alt="top rated">
-                    </label>
-
-                  </div>
-
-                  <div class="mt-2 d-flex flex-wrap gap-2">
-                    <button class="btn btn-sm btn-primary">حفظ الشارات</button>
-
-                    <!-- تشغيل الكل (مع حل التعارض تلقائيًا) -->
-                    <button type="button" class="btn btn-sm btn-outline-secondary btn-all-on">امنح الكل</button>
-
-                    <!-- إزالة الكل — نموذج مستقل يرسل إلى /badges/clear -->
-                    <form method="post" action="/admin/users/{{ u.id }}/badges/clear" class="d-inline">
-                      <button class="btn btn-sm btn-outline-danger">إزالة الكل</button>
-                    </form>
-                  </div>
-
-                  <div class="form-text small mt-1">
-                    ملاحظة: <strong>الصفراء (New)</strong> لا تجتمع مع <strong>Pro الأخضر/الذهبي</strong> — سنحل التعارض تلقائيًا.
-                  </div>
-                </form>
-              </td>
+              <td style="min-width:220px">
+  <form method="post" action="/users/{{ u.id }}/badges">
+    <div class="d-flex align-items-center gap-2">
+      <label class="form-check-inline d-flex align-items-center gap-1">
+        <input type="checkbox" class="form-check-input" name="badge_purple_trust" {% if u.badge_purple_trust or u.is_verified %}checked{% endif %}>
+        <img src="/static/img/violet.png" style="height:18px" alt="ثقة" title="ثقة (يُديره الأدمِن)">
+      </label>
+    </div>
+    <div class="mt-2">
+      <button class="btn btn-sm btn-primary">حفظ</button>
+    </div>
+    <div class="form-text small mt-1">
+      الأصفر (جديد) يظهر تلقائيًا للمستخدمين الجدد لمدة شهرين — لا يحتاج تدخل.
+    </div>
+  </form>
+</td>
 
               <td class="d-flex flex-wrap gap-2">
                 <form method="post" action="/admin/users/{{ u.id }}/approve"><button class="btn btn-success btn-sm">قبول</button></form>

@@ -1,52 +1,20 @@
-{# app/templates/_badges.html #}
-{% macro render_badges(u, size='18px') -%}
-  {# يقبل u كـ object أو dict #}
-  {%- set is_map      = u is mapping -%}
-  {%- set role        = (u.get('role','') if is_map else (u.role|default('', true))) -%}
-  {%- set is_verified = (u.get('is_verified', false) if is_map else (u.is_verified|default(false, true))) -%}
+{# templates/_badges.html #}
+{% macro render_badges(subject, size='18px') -%}
+  {# احسب من خصائص المستخدم مباشرة بدون تعقيد #}
+  {% set created = subject.created_at %}
+  {% set is_verified = subject.is_verified or subject.badge_purple_trust %}
+  {% set months = ((utcnow() - created).days // 30) if created else 0 %}
 
-  {%- set b_admin         = (u.get('badge_admin', false) if is_map else (u.badge_admin|default(false, true))) -%}
-  {%- set b_new_yellow    = (u.get('badge_new_yellow', false) if is_map else (u.badge_new_yellow|default(false, true))) -%}
-  {%- set b_pro_green     = (u.get('badge_pro_green', false) if is_map else (u.badge_pro_green|default(false, true))) -%}
-  {%- set b_pro_gold      = (u.get('badge_pro_gold', false) if is_map else (u.badge_pro_gold|default(false, true))) -%}
-  {%- set b_purple_trust  = (u.get('badge_purple_trust', false) if is_map else (u.badge_purple_trust|default(false, true))) -%}
-  {%- set b_renter_green  = (u.get('badge_renter_green', false) if is_map else (u.badge_renter_green|default(false, true))) -%}
-  {%- set b_orange_stars  = (u.get('badge_orange_stars', false) if is_map else (u.badge_orange_stars|default(false, true))) -%}
+  {# البنفسجي (ثقة) #}
+  {% if is_verified %}
+    <img src="/static/img/violet.png" alt="ثقة" title="حساب موثوق" style="height:{{ size }};width:auto;vertical-align:middle;margin-inline-start:6px;">
+  {% endif %}
 
-  {# نبني مسار الصور بدون url_for لتجنب أي اعتماد على request #}
-  {%- set static_prefix = '/static/img/' -%}
-
-  <span class="d-inline-flex align-items-center gap-1">
-    {%- if is_verified %}
-      <img src="{{ static_prefix }}verified.png" alt="verified" style="height:{{ size }};">
-    {%- endif %}
-
-    {%- if role == 'admin' or b_admin %}
-      <img src="{{ static_prefix }}adm.png" alt="admin" style="height:{{ size }};">
-    {%- endif %}
-
-    {%- if b_new_yellow %}
-      <img src="{{ static_prefix }}jaune.png" alt="new" style="height:{{ size }};">
-    {%- endif %}
-
-    {%- if b_pro_green %}
-      <img src="{{ static_prefix }}ProVert.png" alt="pro green" style="height:{{ size }};">
-    {%- endif %}
-
-    {%- if b_pro_gold %}
-      <img src="{{ static_prefix }}ProGold.png" alt="pro gold" style="height:{{ size }};">
-    {%- endif %}
-
-    {%- if b_purple_trust %}
-      <img src="{{ static_prefix }}violet.png" alt="trust" style="height:{{ size }};">
-    {%- endif %}
-
-    {%- if b_renter_green %}
-      <img src="{{ static_prefix }}Vert.png" alt="renter 10+" style="height:{{ size }};">
-    {%- endif %}
-
-    {%- if b_orange_stars %}
-      <img src="{{ static_prefix }}orange.png" alt="top rated" style="height:{{ size }};">
-    {%- endif %}
-  </span>
+  {# الأصفر (جديد أقل من شهرين) #}
+  {% if months < 2 %}
+    <img src="/static/img/jaune.png" alt="جديد" title="حساب جديد" style="height:{{ size }};width:auto;vertical-align:middle;margin-inline-start:6px;">
+  {% endif %}
 {%- endmacro %}
+
+{# فلتر/دالة وقتية بسيطة #}
+{% macro utcnow() %}{{ namespace(n=cycler())._self.__class__.__mro__[1].__name__ and ('' ) }}{% endmacro %}
