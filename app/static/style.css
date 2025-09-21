@@ -307,3 +307,55 @@ svg.verified-badge{ filter: drop-shadow(0 0 2px rgba(29,161,242,.45)); }
 .navbar .dropdown-menu {
   z-index: 1150;
 }
+
+
+/* ===== Admin dashboard fixes ===== */
+
+/* لا تسمح لعناصر ضخمة (صور/ميديا) بكسر التخطيط */
+.admin-wrap img,
+.admin-wrap video,
+.admin-wrap iframe {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* بطاقات شفّافة لطيفة */
+.card-blur{background:rgba(255,255,255,.06);border:1px solid var(--border);backdrop-filter:blur(6px);border-radius:14px;}
+
+/* رأس صفحة الأدمين */
+.admin-header{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  margin-bottom:14px;
+}
+
+/* شبكة أرقام/إحصائيات أعلى الصفحة */
+.admin-stats{
+  display:grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap:12px;
+}
+.admin-stat{
+  padding:12px 14px; border:1px solid var(--border); border-radius:12px;
+  background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03));
+}
+
+/* جداول قابلة للتمرير والأعمدة متوسطة */
+.table-wrap{
+  overflow:auto; border:1px solid var(--border); border-radius:12px;
+  background:rgba(255,255,255,.03);
+}
+.table{
+  color:var(--text);
+  margin-bottom:0;
+}
+.table th, .table td{ vertical-align: middle; }
+.table thead th{
+  position: sticky; top: 0; z-index: 1;
+  background: rgba(0,0,0,.25);
+  border-bottom:1px solid var(--border);
+}
+
+/* أزرار الإجراءات مدمجة */
+.action-btns{ display:flex; gap:6px; flex-wrap:wrap; }
+
+/* مسافة آمنة أعلى الصفحة (لو تغيّر ارتفاع النافبار) */
+main.container{ padding-top: 90px !important; }
