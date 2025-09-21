@@ -1,66 +1,64 @@
 # app/routes_search.py
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import text
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
-
-# عدّل هذه الاستيرادات حسب مشروعك
-from app.db import get_db
-from app.models import User, Item  # تأكد من أسماء الموديلات والمسارات
+from .db import get_db
 
 router = APIRouter()
 
 @router.get("/api/search")
-def search(q: str = Query(""), limit: int = 8, db: Session = Depends(get_db)):
-    q = (q or "").strip()
-    if not q:
+def search(q: str = Query(..., min_length=1), db: Session = Depends(get_db)):
+    # جهّز الاستعلام بما يناسب محرّك القاعدة
+    dialect = db.bind.dialect.name if db.bind else "sqlite"
+    q_str = q.strip()
+    if not q_str:
         return {"users": [], "items": []}
 
-    # === بحث المستخدمين ===
-    users = (
-        db.query(User.id, User.first_name, User.last_name)
-          .filter(
-              or_(
-                  User.first_name.ilike(f"%{q}%"),
-                  User.last_name.ilike(f"%{q}%"),
-                  (User.first_name + " " + User.last_name).ilike(f"%{q}%"),
-              )
-          )
-          .order_by(User.first_name.asc())
-          .limit(limit)
-          .all()
-    )
+    if dialect == "sqlite":
+        # SQLite لا يدعم ILIKE -> نستخدم LOWER(..) LIKE
+        q_like = f"%{q_str.lower()}%"
+        users_sql = text("""
+            SELECT id, TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) AS name
+            FROM users
+            WHERE LOWER(COALESCE(first_name,'')) LIKE :q
+               OR LOWER(COALESCE(last_name,''))  LIKE :q
+            LIMIT 5
+        """)
+        items_sql = text("""
+            SELECT id, title, city
+            FROM items
+            WHERE LOWER(COALESCE(title,'')) LIKE :q
+               OR LOWER(COALESCE(city,''))  LIKE :q
+            LIMIT 5
+        """)
+        params = {"q": q_like}
+    else:
+        # Postgres وغيرها: ILIKE مدعوم
+        q_like = f"%{q_str}%"
+        users_sql = text("""
+            SELECT id, CONCAT_WS(' ', first_name, last_name) AS name
+            FROM users
+            WHERE first_name ILIKE :q OR last_name ILIKE :q
+            LIMIT 5
+        """)
+        items_sql = text("""
+            SELECT id, title, city
+            FROM items
+            WHERE title ILIKE :q OR city ILIKE :q
+            LIMIT 5
+        """)
+        params = {"q": q_like}
 
-    # === بحث العناصر ===
-    items = (
-        db.query(Item.id, Item.title, Item.city)
-          .filter(
-              or_(
-                  Item.title.ilike(f"%{q}%"),
-                  Item.city.ilike(f"%{q}%"),
-              )
-          )
-          .order_by(Item.created_at.desc())
-          .limit(limit)
-          .all()
-    )
+    users = db.execute(users_sql, params).mappings().all()
+    items = db.execute(items_sql, params).mappings().all()
 
-    # NB: غيّر روابط URLs لو مساراتك غير
     return {
         "users": [
-            {
-                "id": u.id,
-                "name": f"{(u.first_name or '').strip()} {(u.last_name or '').strip()}".strip() or f"User {u.id}",
-                "url": f"/users/{u.id}",   # إن كان عندك /profile/{id} بدّلها هنا
-                "type": "user",
-            } for u in users
+            {"id": u["id"], "name": u["name"], "url": f"/users/{u['id']}"}
+            for u in users
         ],
         "items": [
-            {
-                "id": it.id,
-                "title": it.title,
-                "city": it.city,
-                "url": f"/items/{it.id}",
-                "type": "item",
-            } for it in items
+            {"id": i["id"], "title": i["title"], "city": i.get("city"), "url": f"/items/{i['id']}"}
+            for i in items
         ],
     }
