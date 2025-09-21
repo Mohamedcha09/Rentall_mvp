@@ -1,55 +1,102 @@
 /* =========================================================
-   RentAll — Glass UI (one file)
+   R E N T A L L  —  Ultra Glass UI
+   يعمل مع base.html المرسل (بدون صور مطلوبة)
    ========================================================= */
 
-/* ---------------- Theme Tokens ---------------- */
+/* ------------ ألوان ومتغيرات عامة ------------ */
 :root{
   --bg:#0b0f15;
   --glass:#0f1521cc;
-  --surface:#121929;
-  --panel:#141d30;
-  --card:#171f32;
+  --surface:#111827;
+  --panel:#0f172a;
+  --card:#121a2b;
+
   --text:#eef3fb;
   --muted:#aeb6c8;
-  --border:rgba(255,255,255,.12);
-  --ring:rgba(124,92,255,.30);
-  --shadow:0 18px 46px rgba(0,0,0,.45);
 
   --primary:#7c5cff;
   --primary-2:#5a3eff;
   --success:#22c55e;
-  --danger:#ff4d6d;
   --warning:#f8b84e;
+  --danger:#ff4d6d;
 
-  --sidebar-w:268px;
+  --border:rgba(255,255,255,.12);
+  --ring: rgba(124,92,255,.28);
+  --shadow: 0 18px 46px rgba(0,0,0,.45);
+
+  --sidebar-w: 268px;
+  --radius:16px;
 }
 
-/* Light mode (اختياري) */
+/* وضع فاتح اختياري */
 body[data-theme="light"]{
-  --bg:#f4f6fb; --glass:#ffffffde; --surface:#fff; --panel:#fff; --card:#fff;
-  --text:#0d1320; --muted:#586177; --border:rgba(0,0,0,.08);
-  --ring:rgba(124,92,255,.22); --shadow:0 18px 46px rgba(0,0,0,.08);
+  --bg:#f5f7fb;
+  --glass:#ffffffd6;
+  --surface:#ffffff;
+  --panel:#ffffff;
+  --card:#ffffff;
+
+  --text:#0d1320;
+  --muted:#667086;
+
+  --border:rgba(0,0,0,.10);
+  --ring: rgba(124,92,255,.25);
+  --shadow: 0 18px 46px rgba(0,0,0,.08);
 }
 
-/* ---------------- Base ---------------- */
-html,body{height:100%}
-html{background:var(--bg)}
+/* ------------ الأساسيات ------------ */
+html,body{min-height:100%}
 body{
   background:
-    radial-gradient(900px 600px at 85% -10%, rgba(124,92,255,.15), transparent 40%),
-    radial-gradient(800px 500px at -10% 110%, rgba(0,229,168,.08), transparent 40%),
+    radial-gradient(1100px 800px at 80% -10%, rgba(124,92,255,.12), transparent 45%),
+    radial-gradient(900px 600px at -10% 110%, rgba(0,229,168,.06), transparent 40%),
     var(--bg);
   color:var(--text);
   font-family:'Tajawal','Cairo',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
-  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  -webkit-font-smoothing:antialiased;  -moz-osx-font-smoothing:grayscale;
 }
-*{scrollbar-width:thin; scrollbar-color: color-mix(in oklab, var(--text) 20%, transparent) transparent}
-*::-webkit-scrollbar{height:10px;width:10px}
-*::-webkit-scrollbar-thumb{background:color-mix(in oklab, var(--text) 22%, transparent);border-radius:20px}
-*::-webkit-scrollbar-track{background:transparent}
-.text-muted{color:var(--muted)!important}
+a{ color:inherit; text-decoration:none }
+a:hover{ text-decoration:none; filter:brightness(1.05) }
+.text-muted{ color:var(--muted)!important }
+small, .small{ color:var(--muted)!important }
 
-/* ---------------- Topbar (زجاجي) ---------------- */
+/* ------------ أزرار عامة ------------ */
+.btn{ border-radius:12px; transition:transform .12s ease, filter .12s ease }
+.btn:active{ transform:scale(.98) }
+.btn-ghost{
+  background:transparent; color:inherit; border:1px solid var(--border);
+}
+.btn-ghost:hover{ background:color-mix(in oklab, var(--text) 8%, transparent) }
+.btn-primary{
+  background:linear-gradient(135deg,var(--primary),var(--primary-2));
+  border:0; box-shadow:0 12px 28px rgba(124,92,255,.28);
+}
+.btn-primary:hover{ filter:brightness(1.05) }
+.btn-sm{ padding:.35rem .7rem; border-radius:12px }
+
+/* ------------ أسطح (بطاقات/حقول/قوائم) ------------ */
+.card, .alert, .list-group-item, .dropdown-menu,
+.form-control, .form-select{
+  background:linear-gradient(180deg, color-mix(in oklab, var(--card) 92%, transparent),
+                                    color-mix(in oklab, var(--card) 84%, transparent));
+  border:1px solid var(--border); color:var(--text); border-radius:var(--radius);
+}
+.card{ box-shadow:var(--shadow); transition:border-color .16s ease, box-shadow .16s ease, transform .16s ease }
+.card:hover{ border-color:color-mix(in oklab, var(--primary) 40%, var(--border)); box-shadow:0 20px 44px rgba(124,92,255,.18); transform: translateY(-2px) }
+
+.form-control, .form-select{ height:auto }
+.form-control:focus, .form-select:focus{
+  box-shadow:0 0 0 4px var(--ring); border-color:color-mix(in oklab, var(--primary) 60%, var(--border));
+}
+
+.dropdown-menu{ box-shadow:0 18px 40px rgba(0,0,0,.35) }
+.dropdown-item{ color:inherit }
+.dropdown-item:hover{ background:color-mix(in oklab, var(--text) 8%, transparent) }
+
+.alert{ border-radius:14px }
+.alert-warning{ color:inherit }
+
+/* ------------ شريط علوي زجاجي ------------ */
 .topbar{
   position:fixed; inset:0 0 auto 0; height:64px;
   background: linear-gradient(180deg, var(--glass), color-mix(in oklab, var(--glass) 75%, transparent));
@@ -57,34 +104,56 @@ body{
   border-bottom:1px solid var(--border);
   z-index:2000;
 }
-.topbar__inner{
-  display:grid; grid-template-columns:auto auto 1fr auto; gap:10px;
-  align-items:center; padding:10px 14px;
-}
-.brand__logo{width:28px;height:28px;border-radius:8px;object-fit:cover;box-shadow:0 4px 12px rgba(0,0,0,.35)}
-.brand__name{font-weight:800; letter-spacing:.3px}
-.btn-ghost{background:transparent; color:inherit; border:1px solid var(--border); border-radius:12px; padding:.4rem .75rem}
-.btn-ghost:hover{background:color-mix(in oklab, var(--text) 8%, transparent)}
-.btn-primary{
-  background:linear-gradient(135deg,var(--primary),var(--primary-2));
-  border:0; color:#fff; border-radius:12px;
-  box-shadow:0 12px 28px rgba(124,92,255,.28);
-}
-.btn-primary:hover{filter:brightness(1.05)}
+.topbar__inner{ display:grid; grid-template-columns:auto auto 1fr auto; gap:10px; align-items:center; padding:8px 14px }
 
-/* Search pill */
-.search{position:relative; max-width:780px; width:100%}
-.search__icon{position:absolute; inset-inline-start:12px; top:50%; transform:translateY(-50%); opacity:.9; pointer-events:none}
+/* شعار نصي */
+.brand__name{ font-weight:800; letter-spacing:.3px }
+
+/* البحث */
+.search{ position:relative; margin-inline:8px; max-width:760px; width:100% }
+.search__icon{ position:absolute; inset-inline-start:12px; top:50%; transform:translateY(-50%); opacity:.9; pointer-events:none }
 .search__input{
   padding-inline:38px 14px; height:40px; border-radius:999px;
-  background: radial-gradient(200px 100% at 100% 0, color-mix(in oklab, var(--primary) 20%, transparent), transparent 60%), color-mix(in oklab, var(--surface) 94%, transparent);
+  background: radial-gradient(200px 100% at 100% 0, color-mix(in oklab, var(--primary) 18%, transparent), transparent 60%),
+              color-mix(in oklab, var(--surface) 92%, transparent);
   border:1px solid var(--border); color:inherit;
   transition: box-shadow .15s ease, border-color .15s ease, background .2s ease;
 }
-.search__input::placeholder{color:color-mix(in oklab, var(--text) 70%, transparent)}
-.search__input:focus{outline:none; box-shadow:0 0 0 4px var(--ring); border-color:color-mix(in oklab, var(--primary) 65%, var(--border))}
+.search__input::placeholder{ color:color-mix(in oklab, var(--text) 70%, transparent) }
+.search__input:focus{ outline:none; box-shadow:0 0 0 4px var(--ring); border-color:color-mix(in oklab, var(--primary) 65%, var(--border)) }
 
-/* ---------------- Sidebar ---------------- */
+/* شارة/أفاتار */
+.avatar{
+  width:26px; height:26px; border-radius:50%;
+  display:grid; place-items:center; font-weight:800;
+  background:color-mix(in oklab, var(--panel) 88%, black);
+  color:color-mix(in oklab, var(--text) 85%, white);
+  box-shadow:inset 0 0 0 1px var(--border);
+}
+.avatar.ring{ position:relative }
+.avatar.ring::after{
+  content:""; position:absolute; inset:-2px; border-radius:50%;
+  background: conic-gradient(from 120deg, var(--primary), var(--primary-2), var(--primary));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 0);
+          mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 0);
+  filter:saturate(130%) blur(.2px);
+}
+.verify{ color:#55d5ff; filter: drop-shadow(0 0 6px rgba(85,213,255,.45)) }
+
+/* إشعار عدّاد */
+.notif-ping{
+  position:absolute; inset-inline-start:2px; top:2px; width:10px; height:10px; border-radius:50%;
+  background:#ff6b6b; border:1px solid color-mix(in oklab, var(--bg) 92%, black);
+  box-shadow:0 0 0 0 rgba(255,107,107,.6);
+  animation:ping 1.6s cubic-bezier(0,0,.2,1) infinite;
+}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(255,107,107,.6)}70%{box-shadow:0 0 0 10px rgba(255,107,107,0)}100%{box-shadow:0 0 0 0 rgba(255,107,107,0)}}
+.notif-count{
+  position:absolute; inset-inline-start:-6px; bottom:-6px; font-size:.68rem; padding:.05rem .35rem; border-radius:999px;
+  background:#ff6b6b; color:#fff; border:1px solid color-mix(in oklab, var(--bg) 90%, black)
+}
+
+/* ------------ الشريط الجانبي ------------ */
 .sidebar{
   position:fixed; top:64px; bottom:0; inset-inline-start:0; width:var(--sidebar-w);
   background:linear-gradient(180deg, var(--surface), var(--panel));
@@ -94,160 +163,178 @@ body{
   transition: width .22s ease, transform .25s ease;
 }
 .sidebar[data-collapsed="true"]{ --sidebar-w:84px }
-.sidebar__nav{display:flex;flex-direction:column;gap:6px}
+
+.sidebar__nav{ display:flex; flex-direction:column; gap:6px }
 .side-link{
-  display:flex; align-items:center; gap:.9rem; padding:.62rem .85rem; border-radius:14px;
-  color:color-mix(in oklab, var(--text) 92%, white); text-decoration:none;
-  transition: background .15s ease, transform .15s ease, color .15s ease; position:relative
+  display:flex; align-items:center; gap:.9rem;
+  padding:.62rem .85rem; border-radius:14px;
+  color:color-mix(in oklab, var(--text) 92%, white);
+  border:1px solid transparent;
+  transition: background .15s ease, transform .15s ease, color .15s ease;
+  position:relative;
 }
-.side-link i{font-size:1.15rem;opacity:.95;flex:0 0 auto}
-.side-link span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.side-link:hover{background:color-mix(in oklab, var(--text) 8%, transparent); transform:translateX(-2px)}
+.side-link i{ font-size:1.15rem; opacity:.95; flex:0 0 auto }
+.side-link span{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.side-link:hover{ background:color-mix(in oklab, var(--text) 8%, transparent); transform:translateX(-2px) }
 .side-link.is-active{
-  background:color-mix(in oklab, var(--primary) 22%, transparent);
-  border:1px solid color-mix(in oklab, var(--primary) 40%, var(--border));
-  color:var(--text); box-shadow:0 12px 28px rgba(124,92,255,.18)
+  background:color-mix(in oklab, var(--primary) 20%, transparent);
+  border-color:color-mix(in oklab, var(--primary) 36%, var(--border));
+  box-shadow:0 12px 28px rgba(124,92,255,.18);
+  color:var(--text);
 }
-.sidebar[data-collapsed="true"] .side-link{justify-content:center; padding:.62rem .6rem}
-.sidebar[data-collapsed="true"] .side-link span{display:none}
-.side-sep{height:1px;background:var(--border);margin:.5rem .25rem}
+.side-sep{ height:1px; background:var(--border); margin:.5rem .25rem }
+.collapse-pin{ margin-top:auto }
 
-/* ---------------- Right rail (اختياري) ---------------- */
-.right-rail{
-  position:fixed; top:64px; bottom:0; inset-inline-end:0; width:320px; padding:16px; overflow:auto;
-  border-inline-start:1px solid var(--border); background:linear-gradient(180deg, var(--surface), var(--panel));
-  z-index:1100
+.sidebar[data-collapsed="true"] .side-link{ justify-content:center; padding:.62rem .6rem }
+.sidebar[data-collapsed="true"] .side-link span{ display:none }
+.sidebar[data-collapsed="true"] .side-link::after{
+  content: attr(data-tooltip);
+  position:absolute; inset-inline-end: calc(-8px - 12px); top:50%; transform:translateY(-50%);
+  background:color-mix(in oklab, var(--bg) 86%, black);
+  color:var(--text); border:1px solid var(--border);
+  padding:.25rem .5rem; border-radius:8px; white-space:nowrap; opacity:0; pointer-events:none;
+  transition:opacity .12s ease, transform .12s ease
 }
-.widget__title{font-weight:800; margin-bottom:.35rem}
+.sidebar[data-collapsed="true"] .side-link:hover::after{ opacity:1; transform:translate(6px,-50%) }
 
-/* ---------------- Page wrapper ---------------- */
+@media (max-width: 991.98px){
+  .sidebar{ transform:translateX(100%) }
+  .sidebar.is-open{ transform:translateX(0) }
+}
+
+/* ------------ المساحة الرئيسية/الصفحة ------------ */
 .page{
   padding: calc(64px + 18px) 20px 28px;
   margin-inline: var(--sidebar-w) 0;
-  max-width: 1240px;
+  max-width: 1280px;
   transition: margin-inline-start .22s ease;
 }
-@media (min-width: 1400px){ .page{ margin-inline-end: 340px } }
-@media (max-width: 1399.98px){ .right-rail{ display:none } }
-@media (max-width: 991.98px){
-  .sidebar{transform:translateX(100%)}
-  .sidebar.is-open{transform:translateX(0)}
-  .page{ margin-inline: 0; padding: calc(64px + 12px) 12px 20px }
-}
+@media (max-width: 991.98px){ .page{ margin-inline:0; padding: calc(64px + 12px) 12px 20px } }
 
-/* ---------------- Surfaces (cards/forms/alerts) ---------------- */
-.card, .alert, .list-group-item, .form-control, .form-select{
-  background:linear-gradient(180deg, color-mix(in oklab, var(--card) 92%, transparent), color-mix(in oklab, var(--card) 84%, transparent));
-  border:1px solid var(--border); color:var(--text); border-radius:16px
-}
-.card{ box-shadow: var(--shadow); transition:border-color .16s ease, box-shadow .16s ease, transform .16s ease }
-.card:hover{ border-color:color-mix(in oklab, var(--primary) 40%, var(--border)); box-shadow:0 20px 44px rgba(124,92,255,.18); transform: translateY(-2px) }
-.form-control:focus, .form-select:focus{ box-shadow:0 0 0 4px var(--ring); border-color:color-mix(in oklab, var(--primary) 65%, var(--border)) }
-.alert{border-radius:14px}
-.alert-warning{ color:var(--text) }
-.badge{border-radius:999px; padding:.35rem .6rem; font-weight:600}
+/* ------------ شبكة العناصر والكروت (الواجهة الرئيسية) ------------ */
 
-/* ---------------- Home: search & filters ---------------- */
-.card-search{border-radius:16px; box-shadow:var(--shadow); background:color-mix(in oklab, var(--card) 95%, transparent)}
-
-/* ---------------- Grid of items ---------------- */
+/* شبكة ثابتة متجاوبة */
 .home-grid{
   display:grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap:16px;
 }
 
-/* Card skeleton */
+/* بطاقة عنصر */
 .card.spot{
   display:flex; flex-direction:column; height:100%;
-  border-radius:16px; overflow:hidden;
-  background:linear-gradient(180deg, color-mix(in oklab, var(--card) 95%, transparent), color-mix(in oklab, var(--card) 88%, transparent));
+  border-radius:18px; overflow:hidden;
 }
 
-/* Media block (fixed ratio) */
+/* منطقة الصورة بنسبة ثابتة */
 .spot-media{
-  position:relative; aspect-ratio:16/10; overflow:hidden;
-  background: color-mix(in oklab, var(--surface) 90%, transparent);
+  position:relative;
+  aspect-ratio: 16 / 10;        /* يمنع اختلاف الارتفاعات */
+  overflow:hidden;
+  background: rgba(255,255,255,.03);
   border-bottom:1px solid var(--border);
 }
 .spot-media > img{
-  width:100%; height:100%; object-fit:cover; display:block; transition:transform .22s ease;
+  width:100%; height:100%; object-fit:cover; display:block;
+  transition: transform .22s ease;
 }
 .card.spot:hover .spot-media > img{ transform:scale(1.02) }
 
-/* Overlay + ribbons */
-.spot-overlay{position:absolute; inset:0; background:linear-gradient(180deg, transparent 55%, rgba(15,17,21,.55))}
-.price-badge, .category-chip{ position:absolute; top:10px; z-index:2 }
+/* طبقة فوق الصورة + الشارات */
+.spot-overlay{
+  position:absolute; inset:0;
+  background: linear-gradient(180deg, transparent 55%, rgba(15,17,21,.55));
+  pointer-events:none;
+}
+.price-badge, .category-chip{
+  position:absolute; top:10px; z-index:2; border-radius:999px;
+}
 .price-badge{
   inset-inline-start:10px; padding:.3rem .55rem; font-weight:700; font-size:.9rem;
-  border-radius:999px; color:#fff;
   background: rgba(10,12,16,.65); backdrop-filter: blur(8px);
-  border:1px solid var(--border); box-shadow:0 6px 18px rgba(0,0,0,.35);
+  border:1px solid var(--border); color:#fff; box-shadow:0 6px 18px rgba(0,0,0,.35);
 }
 .category-chip{
-  inset-inline-end:10px; padding:.2rem .5rem; font-size:.78rem; border-radius:999px;
-  color:#cfe2ff; background: rgba(124,92,255,.18); border:1px solid rgba(124,92,255,.35);
+  inset-inline-end:10px; padding:.2rem .5rem; font-size:.78rem; color:#cfe2ff;
+  background: rgba(124,92,255,.18); border:1px solid rgba(124,92,255,.35);
 }
 
-/* Body */
-.card.spot .card-body{ padding:.7rem .8rem .85rem; display:flex; flex-direction:column }
-.spot-body{ flex:1; display:flex; flex-direction:column; gap:10px }
+/* جسم البطاقة */
+.card.spot .card-body{ padding:.7rem .75rem .8rem }
+.spot-body{ display:flex; flex-direction:column; gap:10px; }
 
-/* Title: clamp 2 lines */
+/* عنوان لا يتجاوز سطرين */
 .spot-title{
-  margin:.1rem 0 .2rem;
-  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;
-  min-height:2.8em; line-height:1.25;
+  margin:2px 0 4px;
+  display:-webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow:hidden;
+  min-height:2.8em;           /* يحافظ على ارتفاع ثابت */
+  line-height:1.25;
 }
 
-/* Owner line */
-.owner-line{ min-height:28px; display:flex; align-items:center; gap:.5rem }
+/* سطر المالك والمدنية */
+.owner-line{ display:flex; align-items:center; gap:.5rem; min-height:28px }
 .owner-avatar, .owner-avatar--placeholder{
   width:24px; height:24px; border-radius:50%;
   object-fit:cover; border:1px solid var(--border);
-  background: color-mix(in oklab, var(--panel) 85%, black);
-  display:grid; place-items:center;
+  display:grid; place-items:center; background:rgba(255,255,255,.06);
 }
-.card.spot .small, .card.spot .text-muted{ font-size:.8rem; line-height:1.2 }
-
-/* Footer sticks bottom */
+.city-chip{
+  padding:.2rem .5rem; border-radius:999px;
+  background: rgba(255,255,255,.06); border:1px solid var(--border);
+  color:var(--muted);
+  max-width:65%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
 .spot-footer{ margin-top:auto; display:flex; align-items:center; justify-content:space-between }
 
-/* City chip */
-.city-chip{
-  padding:.25rem .55rem; border-radius:999px;
-  background:rgba(255,255,255,.06); border:1px solid var(--border);
-  color:var(--muted); max-width:65%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-
-/* ---------------- Dropdown & menus ---------------- */
-.dropdown-menu{ background:var(--surface); border:1px solid var(--border); border-radius:12px; color:inherit; box-shadow:0 18px 40px rgba(0,0,0,.35) }
-.dropdown-item{color:inherit}
-.dropdown-item:hover{ background:color-mix(in oklab, var(--text) 8%, transparent) }
-.topbar, .navbar{ z-index:2000 }
-.dropdown-menu{ z-index:2100 }
-
-/* ---------------- Floating Action Button ---------------- */
-.fab{
-  position:fixed; inset-inline-end:16px; bottom:16px; width:54px;height:54px;border-radius:50%;
-  display:grid; place-items:center; color:#fff; text-decoration:none;
-  background:linear-gradient(135deg,var(--primary),var(--primary-2));
-  box-shadow:0 16px 40px rgba(124,92,255,.35);
-  z-index:2200; transition:transform .08s ease; animation:fabpop .24s ease-out
-}
-.fab:active{transform:scale(.96)}
-@keyframes fabpop{0%{transform:scale(.8); opacity:0}100%{transform:scale(1); opacity:1}}
-
-/* ---------------- Admin helpers ---------------- */
-img, video, iframe{ max-width:100%; height:auto; display:block }
-.table{color:var(--text)}
-.table thead th{position:sticky; top:0; z-index:1; background:color-mix(in oklab, var(--panel) 80%, transparent)}
-
-/* ---------------- Responsive tweaks ---------------- */
-@media (max-width:480px){
-  .home-grid{ grid-template-columns:repeat(auto-fill, minmax(180px,1fr)); gap:12px }
+/* تهيئة دقيقة للجوال */
+@media (max-width: 480px){
+  .home-grid{ grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:12px }
   .spot-title{ font-size:.95rem }
 }
-@media (min-width:1400px){
-  .home-grid{ grid-template-columns:repeat(auto-fill, minmax(220px,1fr)); gap:16px }
+
+/* ------------ لوح الإشعارات الجانبي + Scrim ------------ */
+.notif-panel{
+  position:fixed; top:64px; bottom:0; inset-inline-end:-380px; width:360px;
+  background:linear-gradient(180deg, var(--surface), var(--panel));
+  border-inline-start:1px solid var(--border);
+  box-shadow: -18px 0 46px rgba(0,0,0,.28);
+  transition: inset-inline-end .25s ease;
+  z-index:2100; display:flex; flex-direction:column;
 }
+.notif-panel.is-open{ inset-inline-end:0 }
+.notif-panel__header{ padding:12px 14px; border-bottom:1px solid var(--border) }
+.notif-panel__body{ padding:14px; overflow:auto }
+
+.scrim{
+  position:fixed; inset:0; background:#0007; opacity:0; pointer-events:none;
+  transition:opacity .2s ease; z-index:2005;
+}
+.scrim.is-show{ opacity:1; pointer-events:auto }
+
+/* ------------ عناصر مساعدة ------------ */
+.stripe-callout{ border:1px dashed color-mix(in oklab, var(--primary) 35%, var(--border)) }
+
+/* Scrollbar لطيف */
+*{ scrollbar-width:thin; scrollbar-color: color-mix(in oklab, var(--text) 22%, transparent) transparent }
+*::-webkit-scrollbar{ height:10px; width:10px }
+*::-webkit-scrollbar-thumb{ background:color-mix(in oklab, var(--text) 22%, transparent); border-radius:20px }
+*::-webkit-scrollbar-track{ background:transparent }
+
+/* طبقات فوق الكل */
+.topbar{ z-index:2000 }
+.sidebar { z-index:1200 }
+.dropdown-menu{ z-index:2200 }
+
+/* ------------ زر إضافة طافٍ للجوال ------------ */
+.fab{
+  position:fixed; inset-inline-end:16px; bottom:16px; width:54px; height:54px; border-radius:50%;
+  display:grid; place-items:center; color:#fff; text-decoration:none;
+  background:linear-gradient(135deg,var(--primary),var(--primary-2));
+  box-shadow:0 16px 40px rgba(124,92,255,.35), 0 0 0 0 rgba(124,92,255,.35);
+  animation:fabpop .24s ease-out; z-index:2200
+}
+@keyframes fabpop{0%{transform:scale(.8); opacity:0}100%{transform:scale(1); opacity:1}}
+.fab:active{ transform:scale(.96) }
