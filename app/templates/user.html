@@ -1,156 +1,213 @@
 {% extends "base.html" %}
 
+{% block head %}
+<style>
+  /* تحسينات صغيرة خاصة بصفحة المستخدم فقط */
+  .profile-header{position:relative;border-radius:16px;padding:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02))}
+  .profile-name{font-weight:800; letter-spacing:.2px}
+  .chip{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .6rem;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.06);font-size:.85rem}
+  .chip i{font-size:1rem}
+  .chip--verified{background:rgba(85,213,255,.14);border-color:rgba(85,213,255,.35);color:#9be3ff}
+  .chip--new{background:rgba(124,92,255,.14);border-color:rgba(124,92,255,.35);color:#d3c8ff}
+  .chip--power{background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.35);color:#86efac}
+  .chip--trusted{background:rgba(250,204,21,.18);border-color:rgba(250,204,21,.35);color:#fde68a}
+  .chip--top{background:rgba(253,164,175,.18);border-color:rgba(253,164,175,.35);color:#fecdd3}
+  .stat{display:inline-flex;align-items:center;gap:.45rem;padding:.35rem .6rem;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.04)}
+  .avatar-lg{width:84px;height:84px;border-radius:50%;object-fit:cover;border:1px solid var(--border)}
+  .tab-content > .tab-pane{padding-top:14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+  .card.item{height:100%;display:flex;flex-direction:column}
+  .item-img{height:160px;object-fit:cover;border-bottom:1px solid var(--border)}
+  .item-body{flex:1;display:flex;flex-direction:column;gap:.5rem;padding:.75rem}
+  .rating-stars{color:#ffd166}
+</style>
+{% endblock %}
+
 {% block content %}
 
-<!-- En-tête profil avec badges -->
-<section class="card p-3 p-md-4 mb-3 glass">
-  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-
-    <div class="d-flex align-items-center gap-3">
+<section class="profile-header mb-3">
+  <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <!-- الصورة -->
       {% if user.avatar_path %}
-        <img src="/{{ user.avatar_path }}" class="avatar-xl rounded-circle border" alt="avatar">
+        <img src="/{{ user.avatar_path }}" class="avatar-lg" alt="avatar">
       {% else %}
-        <div class="avatar-xl rounded-circle border d-grid place-items-center fw-bold">
-          {{ (user.first_name or 'U')[:1] }}
+        <div class="avatar-lg d-inline-grid place-items-center" style="display:grid;place-items:center;background:rgba(255,255,255,.06)">
+          <i class="bi bi-person" style="font-size:2rem;opacity:.8"></i>
         </div>
       {% endif %}
 
       <div>
-        <h2 class="m-0 d-flex align-items-center gap-2">
-          {{ user.first_name }} {{ user.last_name }}
+        <!-- الاسم + الشارات -->
+        <div class="d-flex align-items-center flex-wrap gap-2">
+          <h1 class="h3 m-0 profile-name">
+            {{ (user.first_name~' '~user.last_name)|trim or 'مستخدم' }}
+          </h1>
 
-          {# Badges dynamiques #}
+          {# شارة التوثيق #}
           {% if badges.verified %}
-            <span class="badge badge-chip chip-verified">
-              <i class="bi bi-patch-check-fill me-1"></i>موثّق
+            <span class="chip chip--verified" title="موثّق">
+              <i class="bi bi-patch-check-fill"></i> موثّق
             </span>
           {% endif %}
-          {% if badges.new_user %}
-            <span class="badge badge-chip chip-new">
-              <i class="bi bi-stars me-1"></i>جديد
-            </span>
-          {% endif %}
-          {% if badges.power_seller %}
-            <span class="badge badge-chip chip-power">
-              <i class="bi bi-lightning-charge-fill me-1"></i>تاجر نشِط
-            </span>
-          {% endif %}
-          {% if badges.trusted %}
-            <span class="badge badge-chip chip-trusted">
-              <i class="bi bi-shield-check me-1"></i>موثوق
-            </span>
-          {% endif %}
-          {% if badges.top_rated %}
-            <span class="badge badge-chip chip-top">
-              <i class="bi bi-star-fill me-1"></i>تقييم ممتاز
-            </span>
-          {% endif %}
-        </h2>
 
-        <div class="text-muted small mt-1 d-flex flex-wrap align-items-center gap-3">
-          <span><i class="bi bi-box-seam me-1"></i> عناصر: {{ items_count }}</span>
-          <span><i class="bi bi-hand-thumbs-up me-1"></i> تأجيرات مكتملة: {{ completed_rentals }}</span>
-          <span><i class="bi bi-star me-1"></i> التقييم: {{ avg_rating if avg_rating is not none else '—' }}</span>
-          <span><i class="bi bi-calendar2-check me-1"></i>
-            انضم: {{ user.created_at.strftime("%Y-%m-%d") if user.created_at else '' }}
+          {# جديد #}
+          {% if badges.new_user %}
+            <span class="chip chip--new" title="مستخدم جديد">
+              <i class="bi bi-stars"></i> جديد
+            </span>
+          {% endif %}
+
+          {# بائع قوي #}
+          {% if badges.power_seller %}
+            <span class="chip chip--power" title="بائع قوي">
+              <i class="bi bi-lightning-charge-fill"></i> بائع قوي
+            </span>
+          {% endif %}
+
+          {# موثوق #}
+          {% if badges.trusted %}
+            <span class="chip chip--trusted" title="موثوق">
+              <i class="bi bi-shield-check"></i> موثوق
+            </span>
+          {% endif %}
+
+          {# أعلى تقييماً #}
+          {% if badges.top_rated %}
+            <span class="chip chip--top" title="أعلى تقييماً">
+              <i class="bi bi-star-fill"></i> أعلى تقييماً
+            </span>
+          {% endif %}
+        </div>
+
+        <!-- معلومات صغيرة تحت الاسم -->
+        <div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
+          <span class="stat" title="عدد العناصر">
+            <i class="bi bi-box-seam"></i> {{ items_count }} عنصر
           </span>
+
+          <span class="stat" title="حجوزات مكتملة">
+            <i class="bi bi-check2-circle"></i> {{ completed_rentals }} حجز مكتمل
+          </span>
+
+          <span class="stat" title="متوسط التقييم">
+            <i class="bi bi-star-fill rating-stars"></i>
+            {{ (avg_rating if avg_rating is not none else '0.0') }} / 5
+          </span>
+
+          {% if user.created_at %}
+          <span class="stat" title="تاريخ الانضمام">
+            <i class="bi bi-calendar-check"></i>
+            انضم {{ user.created_at.strftime('%d-%m-%Y') }}
+          </span>
+          {% endif %}
+
+          {% if user.city %}
+          <span class="stat" title="المدينة">
+            <i class="bi bi-geo-alt"></i> {{ user.city }}
+          </span>
+          {% endif %}
         </div>
       </div>
     </div>
 
-    <div class="ms-auto">
-      <a class="btn btn-primary" href="/messages/new?to={{ user.id }}">
+    <!-- زر مراسلة / إجراء -->
+    <div class="d-flex align-items-center gap-2">
+      <a href="/messages/new?to={{ user.id }}" class="btn btn-primary">
         <i class="bi bi-chat-dots"></i> تواصل
       </a>
     </div>
-
   </div>
 </section>
 
-<!-- Onglets -->
-<ul class="nav nav-pills glass mb-3 p-1 gap-1" role="tablist">
-  <li class="nav-item">
-    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-items" type="button" role="tab">
+<!-- تبويبات: العناصر / التقييمات / حول -->
+<ul class="nav nav-pills gap-2" id="profileTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="items-tab" data-bs-toggle="tab" data-bs-target="#items" type="button" role="tab">
       العناصر
     </button>
   </li>
-  <li class="nav-item">
-    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-reviews" type="button" role="tab">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab">
       التقييمات
     </button>
   </li>
-  <li class="nav-item">
-    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-about" type="button" role="tab">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="about-tab" data-bs-toggle="tab" data-bs-target="#about" type="button" role="tab">
       حول
     </button>
   </li>
 </ul>
 
 <div class="tab-content">
-
-  <!-- Tab: Items -->
-  <div class="tab-pane fade show active" id="tab-items" role="tabpanel">
-    <div class="home-grid">
-      {% for it in items %}
-        <article class="card spot">
-          <div class="spot-media">
-            {% if it.image_path %}
-              <img src="/{{ it.image_path }}" alt="item">
-            {% else %}
-              <div class="spot-placeholder d-grid place-items-center w-100 h-100">لا صورة</div>
-            {% endif %}
-            <div class="price-badge"><strong>{{ it.price_per_day }}</strong><span> د/يوم</span></div>
-            <div class="category-chip">{{ it.category_label }}</div>
-          </div>
-
-          <div class="card-body">
-            <h6 class="spot-title" title="{{ it.title }}">{{ it.title }}</h6>
-            <div class="d-flex align-items-center justify-content-between">
-              <div class="small city-chip" title="{{ it.city or '' }}">🏙️ {{ it.city or 'بدون مدينة' }}</div>
-              <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
+  <!-- العناصر -->
+  <div class="tab-pane fade show active" id="items" role="tabpanel" aria-labelledby="items-tab">
+    {% if items|length == 0 %}
+      <div class="card p-4 text-center text-muted mt-2">لا توجد عناصر لهذا المستخدم.</div>
+    {% else %}
+      <div class="grid mt-2">
+        {% for it in items %}
+        <article class="card item">
+          {% if it.image_path %}
+            <img src="/{{ it.image_path }}" class="item-img" alt="item">
+          {% else %}
+            <img src="/static/img/placeholder.jpg" class="item-img" alt="">
+          {% endif %}
+          <div class="item-body">
+            <h6 class="mb-1 text-truncate" title="{{ it.title }}">{{ it.title }}</h6>
+            <div class="small text-muted d-flex align-items-center justify-content-between">
+              <span>🏙️ {{ it.city or 'بدون مدينة' }}</span>
+              <span><strong>{{ it.price_per_day or 0 }}</strong> <span class="text-muted">د/يوم</span></span>
+            </div>
+            <div class="mt-2 d-flex align-items-center justify-content-between">
+              <span class="badge bg-secondary">{{ it.category_label or 'أخرى' }}</span>
+              <a class="btn btn-sm btn-primary" href="/items/{{ it.id }}">تفاصيل</a>
             </div>
           </div>
         </article>
-      {% else %}
-        <div class="text-muted">لا عناصر بعد.</div>
-      {% endfor %}
-    </div>
-  </div>
-
-  <!-- Tab: Reviews -->
-  <div class="tab-pane fade" id="tab-reviews" role="tabpanel">
-    {% if reviews and reviews|length > 0 %}
-      <div class="vstack gap-2">
-        {% for r in reviews %}
-          <div class="card p-2">
-            <div class="small text-muted">
-              {{ r.created_at.strftime("%Y-%m-%d") if r.created_at else '' }}
-            </div>
-            <div class="fw-bold d-flex align-items-center gap-2">
-              {{ r.reviewer_first }} {{ r.reviewer_last }}
-              <span class="text-warning">
-                {% for i in range(1,6) %}
-                  <i class="bi {% if i <= (r.rating or 0) %}bi-star-fill{% else %}bi-star{% endif %}"></i>
-                {% endfor %}
-              </span>
-            </div>
-            <div>{{ r.comment }}</div>
-          </div>
         {% endfor %}
       </div>
-    {% else %}
-      <div class="text-muted">لا تقييمات حتى الآن.</div>
     {% endif %}
   </div>
 
-  <!-- Tab: About -->
-  <div class="tab-pane fade" id="tab-about" role="tabpanel">
-    <div class="card p-3">
-      <div class="fw-bold mb-1">نبذة</div>
-      <div class="text-muted">{{ user.bio or 'لا توجد نبذة.' }}</div>
-    </div>
+  <!-- التقييمات -->
+  <div class="tab-pane fade" id="reviews" role="tabpanel" aria-labelledby="reviews-tab">
+    {% if reviews|length == 0 %}
+      <div class="card p-4 text-center text-muted mt-2">لا توجد تقييمات حتى الآن.</div>
+    {% else %}
+      <div class="vstack gap-2 mt-2">
+        {% for r in reviews %}
+          <div class="card p-3">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="small text-muted">
+                {% set nm = (r.reviewer_first ~ ' ' ~ r.reviewer_last)|trim %}
+                <i class="bi bi-person-circle"></i> {{ nm or 'مستخدم' }}
+              </div>
+              <div class="rating-stars" title="{{ r.rating }}/5">
+                {% for i in range(1,6) %}
+                  {% if i <= (r.rating or 0) %}<i class="bi bi-star-fill"></i>{% else %}<i class="bi bi-star"></i>{% endif %}
+                {% endfor %}
+              </div>
+            </div>
+            {% if r.comment %}
+              <div class="mt-2">{{ r.comment }}</div>
+            {% endif %}
+            {% if r.created_at %}
+              <div class="small text-muted mt-2"><i class="bi bi-clock"></i> {{ r.created_at.strftime('%Y-%m-%d') }}</div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
   </div>
 
+  <!-- حول -->
+  <div class="tab-pane fade" id="about" role="tabpanel" aria-labelledby="about-tab">
+    <div class="card p-3 mt-2">
+      <h6 class="mb-2">نبذة</h6>
+      <p class="mb-0">{{ user.bio or 'لا توجد نبذة.' }}</p>
+    </div>
+  </div>
 </div>
 
 {% endblock %}
