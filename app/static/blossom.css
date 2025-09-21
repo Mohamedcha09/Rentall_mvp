@@ -1,96 +1,167 @@
-/* ========== أساسيات ========== */
+/* ======================
+   Modern Blossom-like UI
+   ====================== */
 :root{
   --bg:#0e1116;
+  --surface:#121722;
+  --panel:#171d2b;
   --card:#171a21;
   --muted:#a9b0be;
   --text:#eef2fb;
   --primary:#7c5cff;
+  --primary-2:#5a3eff;
   --border:rgba(255,255,255,.10);
+  --ring: rgba(124,92,255,.30);
+  --shadow: 0 12px 40px rgba(0,0,0,.35);
 }
 
 html,body{background:var(--bg);color:var(--text);min-height:100%;}
-.theme{font-family:'Tajawal','Cairo',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif}
+.theme{font-family:'Tajawal','Cairo',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;}
 
-/* ========== Topbar ========== */
+/* ====== Topbar ====== */
 .topbar{
   position:fixed; inset:0 0 auto 0; height:64px;
-  background:rgba(17,19,25,.72);
+  background:linear-gradient(180deg, rgba(15,18,27,.85), rgba(15,18,27,.72));
   backdrop-filter: blur(10px);
   border-bottom:1px solid var(--border);
   z-index:2000;
 }
 .topbar__inner{
-  display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center;
-  padding:8px 16px;
+  display:grid; grid-template-columns:auto auto 1fr auto; gap:10px; align-items:center;
+  padding:8px 14px;
 }
+.btn-ghost{
+  background:transparent; color:#eaf0ff; border:1px solid rgba(255,255,255,.12);
+}
+.btn-ghost:hover{background:rgba(255,255,255,.08)}
 .brand__logo{width:28px;height:28px;border-radius:8px;object-fit:cover}
-.brand__name{font-weight:800}
+.brand__name{font-weight:800; letter-spacing:.3px}
 
+/* Search */
+.search{position:relative; margin-inline:8px; max-width:760px; width:100%;}
+.search__icon{
+  position:absolute; inset-inline-start:12px; top:50%; transform:translateY(-50%);
+  opacity:.85;
+}
 .search__input{
+  padding-inline:36px 14px;
   border-radius:999px;
   background:rgba(255,255,255,.08);
   border:1px solid rgba(255,255,255,.16);
   color:#fff;
-  padding-inline:14px;
 }
-.search__input::placeholder{color:#e5e7eb}
-
-.btn-light-subtle{
-  background:rgba(255,255,255,.10);
-  border:1px solid rgba(255,255,255,.15);
-  color:#fff;
+.search__input::placeholder{color:#dde3f5}
+.search__input:focus{
+  outline:none; box-shadow:0 0 0 3px var(--ring); border-color:rgba(124,92,255,.55);
 }
-.btn-light-subtle:hover{background:rgba(255,255,255,.18)}
 
+/* Primary button */
 .btn-primary{
-  background:linear-gradient(135deg,#7c5cff,#5a3eff);
-  border:0;
+  background:linear-gradient(135deg,var(--primary),var(--primary-2));
+  border:0; box-shadow:0 10px 24px rgba(124,92,255,.25);
 }
+.btn-primary:hover{filter:brightness(1.05)}
 
-/* نقطة إشعار صغيرة على الجرس */
+/* Notification dot */
 .notif-dot{
-  position:absolute; inset-inline-start:-2px; top:-2px;
+  position:absolute; inset-inline-start:2px; top:2px;
   width:9px;height:9px;border-radius:50%;
   background:#ff6b6b;border:1px solid #1a1f2b;
 }
 
-/* أفاتار صغير */
+/* Avatar + verification */
 .avatar{
-  width:22px;height:22px;border-radius:50%;
+  width:24px;height:24px;border-radius:50%;
   background:#222; display:grid; place-items:center; font-weight:700;
 }
+.verify{ color:#5cc6ff; }
 
-/* ========== Sidebar ========== */
+/* ====== Sidebar ====== */
 .sidebar{
-  position:fixed; top:64px; bottom:0; inset-inline-start:0; width:248px;
-  background:rgba(255,255,255,.03);
+  position:fixed; top:64px; bottom:0; inset-inline-start:0;
+  width:268px; background:linear-gradient(180deg, var(--surface), var(--panel));
   border-inline-end:1px solid var(--border);
-  padding:14px 10px; overflow:auto; z-index:1000;
+  padding:14px 12px; overflow:auto; z-index:1200;
+  transition: transform .25s ease;
 }
 .sidebar__nav{display:flex;flex-direction:column;gap:6px}
 .side-link{
-  display:flex; align-items:center; gap:.6rem;
-  padding:.6rem .8rem; border-radius:12px;
+  display:flex; align-items:center; gap:.7rem;
+  padding:.65rem .9rem; border-radius:12px;
   color:#dfe6f7; text-decoration:none;
+  transition: background .15s ease, transform .15s ease;
 }
-.side-link:hover{background:rgba(255,255,255,.06); color:#fff}
+.side-link i{font-size:1.05rem;opacity:.95}
+.side-link:hover{background:rgba(255,255,255,.06); color:#fff; transform:translateX(-2px)}
 .side-link.is-active{
   background:rgba(124,92,255,.18);
   border:1px solid rgba(124,92,255,.35);
   color:#fff;
 }
-.side-sep{height:1px;background:var(--border);margin:.5rem 0}
+.side-sep{height:1px;background:var(--border);margin:.6rem .25rem}
 
-/* ========== Page Layout ========== */
-.page{
-  padding: calc(64px + 16px) 16px 24px; /* أعلى: بعد التوب بار */
-  margin-inline-start: 248px;           /* يمين/يسار: بعد السايدبار (RTL يتعامل) */
-  max-width: 1200px;
+/* Mobile rail (<=992px) */
+@media (max-width: 991.98px){
+  .sidebar{transform:translateX(100%)}          /* RTL: يختفي يميناً */
+  .sidebar.is-open{transform:translateX(0)}
 }
 
-/* بطاقات افتراضية */
-.card{
+/* ====== Page ====== */
+.page{
+  padding: calc(64px + 16px) 20px 28px;
+  margin-inline-start: 268px;                   /* مساحة السايدبار */
+  max-width: 1240px;
+}
+@media (max-width: 991.98px){
+  .page{ margin-inline-start: 0; padding: calc(64px + 12px) 12px 20px; }
+}
+
+/* ====== Cards & surfaces ====== */
+.card, .alert, .list-group-item, .form-control, .form-select{
   background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
   border:1px solid var(--border);
   color:var(--text);
+  border-radius:16px;
 }
+.card{ box-shadow: var(--shadow); }
+.card:hover{ border-color:rgba(124,92,255,.35); box-shadow:0 18px 40px rgba(124,92,255,.18); }
+
+.alert{border-radius:14px}
+.alert-warning{ color:#fff; }
+
+/* Forms focus */
+.form-control:focus, .form-select:focus{
+  box-shadow:0 0 0 3px var(--ring);
+  border-color:rgba(124,92,255,.55);
+}
+
+/* ====== Utilities ====== */
+.text-muted{color:var(--muted)!important}
+
+/* Nice scrollbar */
+*{scrollbar-width:thin; scrollbar-color: rgba(255,255,255,.25) transparent}
+*::-webkit-scrollbar{height:10px;width:10px}
+*::-webkit-scrollbar-thumb{background:rgba(255,255,255,.22);border-radius:20px}
+*::-webkit-scrollbar-track{background:transparent}
+
+/* Buttons sizing */
+.btn-sm{padding:.35rem .7rem;border-radius:10px}
+.btn{transition:transform .12s ease}
+.btn:active{transform:scale(.98)}
+
+/* Stripe callout */
+.stripe-callout{border:1px dashed rgba(13,110,253,.35)}
+
+/* Ghost (subtle) button */
+.btn-ghost{border:1px solid rgba(255,255,255,.12);color:#eaf0ff}
+.btn-ghost:hover{background:rgba(255,255,255,.08)}
+
+/* Dropdown dark-ish */
+.dropdown-menu{
+  background: #131826;
+  border:1px solid var(--border);
+  border-radius:12px;
+  color:#eaf0ff;
+}
+.dropdown-item{color:#eaf0ff}
+.dropdown-item:hover{background:rgba(255,255,255,.06)}
