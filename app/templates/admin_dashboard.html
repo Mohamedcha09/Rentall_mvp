@@ -14,7 +14,7 @@
           <div class="d-flex justify-content-between align-items-center mb-2">
             <div class="fw-bold d-flex align-items-center gap-1">
               {{ u.first_name }} {{ u.last_name }}
-              {{ render_badges(u, '18px') }}
+              {{ render_badges(u, 18) }}
             </div>
             <div class="small text-muted">{{ u.email }} · {{ u.phone }}</div>
           </div>
@@ -61,7 +61,7 @@
               البلد: <strong>{{ d.country or '-' }}</strong> ·
               الصلاحية: <strong>{{ d.expiry_date or '-' }}</strong> ·
               الحالة:
-              <span class="badge {% if d.review_status=='approved' %}bg-success{% elif d.review_status=='rejected' %}bg-danger{% elif d.review_status=='needs_fix' %}bg-warning text-dark{% else %}bg-warning text-dark{% endif %}">
+              <span class="badge {% if d.review_status=='approved' %}bg-success{% elif d.review_status=='rejected' %}bg-danger{% elif d.review_status in ['needs_fix','pending'] %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
                 {{ d.review_status }}
               </span>
             </div>
@@ -124,13 +124,15 @@
                   <div>
                     <div class="d-flex align-items-center gap-1">
                       {{ u.first_name }} {{ u.last_name }}
-                      {{ render_badges(u, '18px') }}
+                      {{ render_badges(u, 18) }}
                     </div>
                     <div class="small text-muted">{{ u.email }}</div>
                   </div>
                 </div>
               </td>
+
               <td><span class="badge bg-secondary">{{ u.role }}</span></td>
+
               <td>
                 <span class="badge
                   {% if u.status == 'approved' %}bg-success
@@ -138,51 +140,69 @@
                   {% else %}bg-danger{% endif %}">{{ u.status }}</span>
               </td>
 
-              <td style="min-width:280px">
+              <td style="min-width:320px">
+                <!-- حفظ الشارات (صور) -->
                 <form method="post" action="/admin/users/{{ u.id }}/badges" class="badge-form" data-user="{{ u.id }}">
-                  <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <label class="form-check-inline d-flex align-items-center gap-1">
+                  <div class="d-flex flex-wrap gap-3 align-items-center">
+
+                    <!-- Admin -->
+                    <label class="form-check-inline d-flex align-items-center gap-1" title="Admin">
+                      <input type="checkbox" class="form-check-input" name="badge_admin" {% if u.badge_admin %}checked{% endif %}>
+                      <img src="/static/img/adm.png" style="height:20px" alt="admin">
+                    </label>
+
+                    <!-- New (Yellow) -->
+                    <label class="form-check-inline d-flex align-items-center gap-1" title="New (أصفر)">
                       <input type="checkbox" class="form-check-input chk-new" name="badge_new_yellow" {% if u.badge_new_yellow %}checked{% endif %}>
-                      <span class="small">جديد</span>
+                      <img src="/static/img/jaune.png" style="height:20px" alt="new">
                     </label>
 
-                    <label class="form-check-inline d-flex align-items-center gap-1">
+                    <!-- Pro Green -->
+                    <label class="form-check-inline d-flex align-items-center gap-1" title="Pro أخضر">
                       <input type="checkbox" class="form-check-input chk-pro-green" name="badge_pro_green" {% if u.badge_pro_green %}checked{% endif %}>
-                      <span class="small">Pro أخضر</span>
+                      <img src="/static/img/ProVert.png" style="height:20px" alt="pro green">
                     </label>
 
-                    <label class="form-check-inline d-flex align-items-center gap-1">
+                    <!-- Pro Gold -->
+                    <label class="form-check-inline d-flex align-items-center gap-1" title="Pro ذهبي">
                       <input type="checkbox" class="form-check-input chk-pro-gold" name="badge_pro_gold" {% if u.badge_pro_gold %}checked{% endif %}>
-                      <span class="small">Pro ذهبي</span>
+                      <img src="/static/img/ProGold.png" style="height:20px" alt="pro gold">
                     </label>
 
-                    <label class="form-check-inline d-flex align-items-center gap-1">
+                    <!-- Trust (Purple) -->
+                    <label class="form-check-inline d-flex align-items-center gap-1" title="Trust (بنفسجي)">
                       <input type="checkbox" class="form-check-input" name="badge_purple_trust" {% if u.badge_purple_trust %}checked{% endif %}>
-                      <span class="small">ثقة</span>
+                      <img src="/static/img/violet.png" style="height:20px" alt="trust">
                     </label>
 
-                    <label class="form-check-inline d-flex align-items-center gap-1">
+                    <!-- Safe Renter (Green) -->
+                    <label class="form-check-inline d-flex align-items-center gap-1" title="Safe Renter">
                       <input type="checkbox" class="form-check-input" name="badge_renter_green" {% if u.badge_renter_green %}checked{% endif %}>
-                      <span class="small">مُستأجر آمن</span>
+                      <img src="/static/img/Vert.png" style="height:20px" alt="safe renter">
                     </label>
 
-                    <label class="form-check-inline d-flex align-items-center gap-1">
+                    <!-- Top Rated (Orange) -->
+                    <label class="form-check-inline d-flex align-items-center gap-1" title="Top Rated (10× ★5)">
                       <input type="checkbox" class="form-check-input" name="badge_orange_stars" {% if u.badge_orange_stars %}checked{% endif %}>
-                      <span class="small">Top Rated</span>
+                      <img src="/static/img/orange.png" style="height:20px" alt="top rated">
                     </label>
+
                   </div>
 
                   <div class="mt-2 d-flex flex-wrap gap-2">
                     <button class="btn btn-sm btn-primary">حفظ الشارات</button>
+
+                    <!-- تشغيل الكل (مع حل التعارض تلقائيًا) -->
                     <button type="button" class="btn btn-sm btn-outline-secondary btn-all-on">امنح الكل</button>
-                    <button type="button" class="btn btn-sm btn-outline-danger btn-all-off"
-                            onclick="fetch('/admin/badges/{{ u.id }}/clear',{method:'POST'}).then(()=>location.reload())">
-                      إزالة الكل
-                    </button>
+
+                    <!-- إزالة الكل — نموذج مستقل يرسل إلى /badges/clear -->
+                    <form method="post" action="/admin/users/{{ u.id }}/badges/clear" class="d-inline">
+                      <button class="btn btn-sm btn-outline-danger">إزالة الكل</button>
+                    </form>
                   </div>
 
                   <div class="form-text small mt-1">
-                    ملاحظة: الشارة <strong>الصفراء</strong> لا تجتمع مع <strong>Pro الأخضر/الذهبي</strong>. سيُحلّ التعارض تلقائيًا.
+                    ملاحظة: <strong>الصفراء (New)</strong> لا تجتمع مع <strong>Pro الأخضر/الذهبي</strong> — سنحل التعارض تلقائيًا.
                   </div>
                 </form>
               </td>
@@ -205,6 +225,7 @@
   </div>
 </div>
 
+<!-- منطق الواجهة: حل التعارض + تشغيل الكل -->
 <script>
 (function(){
   document.querySelectorAll('.badge-form').forEach(form => {
@@ -226,15 +247,13 @@
     if (chkProGold) chkProGold.addEventListener('change', () => syncConflicts('proGold'));
 
     const btnOn = form.querySelector('.btn-all-on');
-    const btnOff = form.querySelector('.btn-all-off');
     if (btnOn) btnOn.addEventListener('click', () => {
+      // فعّل الكل أولاً
       form.querySelectorAll('input[type="checkbox"]').forEach(ch => ch.checked = true);
+      // أولوية: ProGold > ProGreen > إطفاء New
       if (chkProGold) chkProGold.checked = true;
       if (chkProG) chkProG.checked = !chkProGold.checked;
       if (chkNew) chkNew.checked = false;
-    });
-    if (btnOff) btnOff.addEventListener('click', () => {
-      form.querySelectorAll('input[type="checkbox"]').forEach(ch => ch.checked = false);
     });
   });
 })();
