@@ -5,33 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ title or "RentAll" }}</title>
 
+    <!-- Bootstrap & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
-    <!-- Ultra-Modern Blossom-like theme -->
-    <link href="/static/style.css?v=4" rel="stylesheet">
+    <!-- ستايل الرئيسي (بدلاً من blossom.css) -->
+    <link href="/static/style.css?v=5" rel="stylesheet">
+
+    <!-- Favicon/Logo (ضع الملف في static/img/logo-32.png) -->
+    <link rel="icon" type="image/png" href="/static/img/logo-32.png">
   </head>
+
   <body class="theme" data-theme="dark">
     <!-- ===== Topbar ===== -->
     <header class="topbar">
       <div class="topbar__inner container-fluid">
+
+        <!-- زر طيّ الشريط الجانبي -->
         <button class="btn btn-ghost btn-sm" id="sidebarToggle" aria-label="Toggle sidebar">
           <i class="bi bi-layout-sidebar-inset-reverse"></i>
         </button>
 
+        <!-- لوجو + اسم -->
         <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/">
-          <img src="{{ url_for('static', path='logo-32.png') if request else '/static/logo-32.png' }}" class="brand__logo" alt="RentAll">
+          <img src="/static/img/logo-32.png" class="brand__logo" alt="RentAll">
           <span class="brand__name d-none d-sm-inline">RentAll</span>
         </a>
 
-        <!-- بحث -->
-        <form class="search" action="/search" method="get" role="search">
+        <!-- حقل البحث -->
+        <form class="search" action="/" method="get" role="search">
           <i class="bi bi-search search__icon"></i>
           <input class="form-control form-control-sm search__input" type="search" name="q"
-                 placeholder="ابحث عن عنصر أو مستخدم…" value="{{ request.query_params.get('q','') if request else '' }}">
+                 placeholder="ابحث عن عنصر أو مستخدم…"
+                 value="{% if request %}{{ request.query_params.get('q','') }}{% endif %}">
         </form>
 
+        <!-- أزرار اليمين -->
         <div class="actions d-flex align-items-center gap-2">
+
           <!-- تبديل الثيم -->
           <button class="btn btn-ghost btn-sm" id="themeToggle" title="تبديل الثيم">
             <i class="bi bi-sun-fill d-none" id="sunIcon"></i>
@@ -49,7 +60,7 @@
             </ul>
           </div>
 
-          <!-- إشعارات: يفتح لوح جانبي -->
+          <!-- إشعارات -->
           {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
           <button class="btn btn-ghost btn-sm position-relative" id="notifOpen" title="الإشعارات">
             <i class="bi bi-bell"></i>
@@ -59,7 +70,7 @@
             {% endif %}
           </button>
 
-          <!-- الحساب -->
+          <!-- حساب -->
           {% if session_user %}
             <div class="dropdown">
               <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
@@ -122,8 +133,10 @@
           {% endif %}
         {% endif %}
       </nav>
+
       <button class="collapse-pin btn btn-ghost btn-sm mt-auto" id="pinSidebar" title="طي/تثبيت">
-        <i class="bi bi-chevron-double-left"></i><span class="ms-2 d-none d-xl-inline">طيّ الشريط</span>
+        <i class="bi bi-chevron-double-left"></i>
+        <span class="ms-2 d-none d-xl-inline">طيّ الشريط</span>
       </button>
     </aside>
 
@@ -162,21 +175,20 @@
         <button class="btn btn-ghost btn-sm" id="notifClose"><i class="bi bi-x-lg"></i></button>
       </div>
       <div class="notif-panel__body">
-        <!-- يمكنك تعبئته عبر API لاحقًا -->
         <div class="small text-muted">لا توجد إشعارات جديدة.</div>
       </div>
     </div>
     <div class="scrim" id="scrim"></div>
 
     {% if session_user %}
-    <a href="/owner/items/new" class="fab d-lg-none" title="عنصر جديد"><i class="bi bi-plus-lg"></i></a>
+      <a href="/owner/items/new" class="fab d-lg-none" title="عنصر جديد"><i class="bi bi-plus-lg"></i></a>
     {% endif %}
 
+    <!-- JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
       // ===== Sidebar state
       const sidebar   = document.getElementById('appSidebar');
-      const page      = document.querySelector('.page');
       const pinBtn    = document.getElementById('pinSidebar');
       const toggleBtn = document.getElementById('sidebarToggle');
       const saved     = localStorage.getItem('sidebar_collapsed');
