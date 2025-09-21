@@ -1,49 +1,29 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- [إضافة بسيطة] حجم أيقونات الشارات -->
-<style>
-  .badge-icon{width:18px;height:18px;object-fit:contain;vertical-align:-3px;filter:drop-shadow(0 0 2px rgba(0,0,0,.25))}
-  .badge-icon + .small{margin-inline-start:.25rem}
-</style>
-
-<!-- ===== رأس الصفحة: اسم + شارات + معلومات سريعة ===== -->
 <section class="card p-3 p-md-4 mb-3">
   <div class="d-flex align-items-start align-items-md-center gap-3 flex-column flex-md-row">
 
-    <!-- أفاتار -->
     <div class="flex-shrink-0">
-      {% if user.avatar_path %}
-        <img src="/{{ user.avatar_path }}"
+      {% if profile_user.avatar_path %}
+        <img src="/{{ profile_user.avatar_path }}"
              alt="avatar"
              class="rounded-circle"
              style="width:86px;height:86px;object-fit:cover;border:1px solid var(--border)">
       {% else %}
         <div class="rounded-circle d-grid place-items-center"
              style="width:86px;height:86px;background:rgba(255,255,255,.06);border:1px solid var(--border);">
-          <span class="fw-bold fs-2">{{ (user.first_name or 'U')[:1] }}</span>
+          <span class="fw-bold fs-2">{{ (profile_user.first_name or 'U')[:1] }}</span>
         </div>
       {% endif %}
     </div>
 
-    <!-- معلومات الاسم والشارات -->
     <div class="flex-grow-1 w-100">
       <div class="d-flex flex-wrap align-items-center gap-2">
         <h2 class="m-0 fw-bold">
-          {{ user.first_name }} {{ user.last_name }}
-
-          {# [إضافة] أيقونة التوثيق الصورة بجانب الاسم #}
-          {% if is_verified %}
-            <img class="badge-icon" src="/static/img/violet.png" alt="موثّق" title="موثّق">
-          {% endif %}
-
-          {# [إضافة] أيقونة الجديد الصورة بجانب الاسم #}
-          {% if is_new %}
-            <img class="badge-icon" src="/static/img/jaune.png" alt="حساب جديد" title="حساب جديد">
-          {% endif %}
+          {{ profile_user.first_name }} {{ profile_user.last_name }}
         </h2>
 
-        <!-- شارة التوثيق (لا نحذف أي شيء، فقط أضفنا الأيقونة أعلاه) -->
         {% if is_verified %}
           <span class="d-inline-flex align-items-center gap-1 px-2 py-1 rounded-3"
                 style="border:1px solid var(--border);background:rgba(124,92,255,.15);">
@@ -52,15 +32,12 @@
           </span>
         {% endif %}
 
-        <!-- شارة جديد (النصية تبقى كما هي) -->
         {% if is_new %}
           <span class="badge rounded-pill bg-warning text-dark">جديد</span>
         {% endif %}
       </div>
 
-      <!-- سطر معلومات سريعة -->
       <div class="text-muted small mt-2 d-flex flex-wrap gap-3">
-        {% if user.city %}<span><i class="bi bi-geo-alt"></i> {{ user.city }}</span>{% endif %}
         {% if created_at_str %}<span><i class="bi bi-calendar-check"></i> انضمّ: {{ created_at_str }}</span>{% endif %}
         <span><i class="bi bi-box"></i> عناصر معروضة: {{ stats.items_count or 0 }}</span>
         {% if rating_count and rating_value %}
@@ -68,26 +45,23 @@
         {% endif %}
       </div>
 
-      <!-- نبذة -->
-      {% if user.bio %}
-        <p class="mt-2 mb-0 text-muted">{{ user.bio }}</p>
+      {% if profile_user.bio %}
+        <p class="mt-2 mb-0 text-muted">{{ profile_user.bio }}</p>
       {% endif %}
     </div>
 
-    <!-- أزرار سريعة -->
     <div class="d-flex gap-2 ms-md-auto">
-      {% if request and request.state and request.state.session_user and request.state.session_user.id != user.id %}
-        <a href="/messages/new?to={{ user.id }}" class="btn btn-primary">
+      {% if session_user and session_user.id != profile_user.id %}
+        <a href="/messages/new?to={{ profile_user.id }}" class="btn btn-primary">
           <i class="bi bi-chat-text"></i> مراسلة
         </a>
       {% endif %}
-      <a class="btn btn-ghost" href="/items?owner={{ user.id }}"><i class="bi bi-grid"></i> كل عناصره</a>
+      <a class="btn btn-ghost" href="/items?owner={{ profile_user.id }}"><i class="bi bi-grid"></i> كل عناصره</a>
     </div>
 
   </div>
 </section>
 
-<!-- ===== بطاقات موجزة: إحصائيات/مؤشرات ===== -->
 <section class="row g-3 mb-3">
   <div class="col-6 col-md-3">
     <div class="card p-3 h-100">
@@ -142,7 +116,6 @@
   </div>
 </section>
 
-<!-- ===== تبويبات: عناصر / حول / مراجعات ===== -->
 <ul class="nav nav-pills mb-3" id="userTabs" role="tablist">
   <li class="nav-item" role="presentation">
     <button class="nav-link active" id="tab-items" data-bs-toggle="tab" data-bs-target="#pane-items" type="button" role="tab">العناصر المعروضة</button>
@@ -156,15 +129,13 @@
 </ul>
 
 <div class="tab-content" id="userTabsContent">
-  <!-- ===== العناصر ===== -->
   <div class="tab-pane fade show active" id="pane-items" role="tabpanel" aria-labelledby="tab-items">
     {% if items and items|length > 0 %}
       <div class="row g-3">
         {% for it in items %}
           <div class="col-6 col-md-4 col-lg-3">
             <article class="card h-100">
-              <div class="position-relative"
-                   style="aspect-ratio:16/10;overflow:hidden;border-bottom:1px solid var(--border);background:rgba(255,255,255,.04);">
+              <div class="position-relative" style="aspect-ratio:16/10;overflow:hidden;border-bottom:1px solid var(--border);background:rgba(255,255,255,.04);">
                 {% if it.image_path %}
                   <img src="/{{ it.image_path }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
                 {% else %}
@@ -183,12 +154,9 @@
               </div>
               <div class="card-body d-flex flex-column">
                 <h6 class="mb-1 text-truncate" title="{{ it.title }}">{{ it.title }}</h6>
-                <div class="small text-muted mb-2 text-truncate">{{ it.city or 'بدون مدينة' }}</div>
                 <div class="mt-auto d-flex justify-content-between align-items-center">
                   <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
-                  <span class="small text-muted">
-                    {% if it.created_at %}{{ it.created_at.strftime("%Y-%m-%d") }}{% endif %}
-                  </span>
+                  <span class="small text-muted">{% if it.created_at %}{{ it.created_at.strftime("%Y-%m-%d") }}{% endif %}</span>
                 </div>
               </div>
             </article>
@@ -200,44 +168,28 @@
     {% endif %}
   </div>
 
-  <!-- ===== حول المستخدم ===== -->
   <div class="tab-pane fade" id="pane-about" role="tabpanel" aria-labelledby="tab-about">
     <div class="card p-3">
       <div class="row g-3">
         <div class="col-md-6">
           <div class="mb-2"><strong>الاسم الكامل</strong></div>
-          <div class="text-muted">{{ user.first_name }} {{ user.last_name }}</div>
-        </div>
-        <div class="col-md-6">
-          <div class="mb-2"><strong>المدينة</strong></div>
-          <div class="text-muted">{{ user.city or '—' }}</div>
+          <div class="text-muted">{{ profile_user.first_name }} {{ profile_user.last_name }}</div>
         </div>
         <div class="col-md-6">
           <div class="mb-2"><strong>الحالة</strong></div>
           <div>
-            {% if is_verified %}
-              <span class="badge bg-success">موثّق</span>
-            {% else %}
-              <span class="badge bg-secondary">عادي</span>
-            {% endif %}
-            {% if is_new %}
-              <span class="badge bg-warning text-dark ms-1">جديد</span>
-            {% endif %}
+            {% if is_verified %}<span class="badge bg-success">موثّق</span>{% else %}<span class="badge bg-secondary">عادي</span>{% endif %}
+            {% if is_new %}<span class="badge bg-warning text-dark ms-1">جديد</span>{% endif %}
           </div>
         </div>
         <div class="col-md-6">
           <div class="mb-2"><strong>عضو منذ</strong></div>
           <div class="text-muted">{{ created_at_str or '—' }}</div>
         </div>
-        <div class="col-12">
-          <div class="mb-2"><strong>نبذة</strong></div>
-          <div class="text-muted">{{ user.bio or '—' }}</div>
-        </div>
       </div>
     </div>
   </div>
 
-  <!-- ===== المراجعات (اختياري) ===== -->
   <div class="tab-pane fade" id="pane-reviews" role="tabpanel" aria-labelledby="tab-reviews">
     <div class="card p-3">
       {% if rating_count and rating_value %}
@@ -248,12 +200,9 @@
       {% else %}
         <div class="text-muted text-center">لا توجد مراجعات بعد.</div>
       {% endif %}
-      <!-- هنا لاحقًا يمكن إدراج قائمة مراجعات فعلية -->
     </div>
   </div>
 </div>
 
-<!-- هامش سفلي للمسافات -->
 <div class="py-2"></div>
-
 {% endblock %}
