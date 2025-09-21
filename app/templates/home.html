@@ -1,110 +1,259 @@
 {% extends "base.html" %}
 {% from "_badges.html" import render_badges %}
+
 {% block content %}
 
-<!-- هيرو أعلى الصفحة -->
-<section class="home-hero text-center mb-4">
-  <h1 class="mb-3">منصة تأجير أي شيء — نسخة تجريبية</h1>
-  <p class="lead">ابدأ بتسجيل حسابك ورفع وثيقة رسمية للمراجعة من الأدمين.</p>
-  {% if not session_user %}
-    <a href="/register" class="btn btn-primary btn-lg">تسجيل جديد</a>
-    <a href="/login" class="btn btn-outline-light btn-lg ms-2">تسجيل الدخول</a>
-  {% else %}
-    <a href="/profile" class="btn btn-primary btn-lg">اذهب إلى صفحتي</a>
-    {% if session_user.role == 'admin' %}
-      <a href="/admin" class="btn btn-warning btn-lg ms-2">لوحة الأدمين</a>
-    {% endif %}
-  {% endif %}
-</section>
+<!-- ======= Topbar (زجاجي) ======= -->
+<header class="topbar">
+  <div class="topbar__inner container-fluid">
 
-<!-- نموذج البحث -->
-<form method="get" action="/" class="card card-search mb-3">
-  <div class="card-body">
-    <div class="row g-2 align-items-center">
-      <div class="col-md-5">
-        <input type="text" name="q" value="{{ search_q | default('') }}"
-               class="form-control form-control-lg"
-               placeholder="ابحث عن منتج (مثال: camera, خيمة, سيارة...)">
-      </div>
-      <div class="col-md-4">
-        <input type="text" name="city" value="{{ search_city | default('') }}"
-               class="form-control form-control-lg"
-               placeholder="المدينة (مثال: montreal)">
-      </div>
-      <div class="col-md-3 d-flex gap-2">
-        {% if current_category %}
-          <input type="hidden" name="category" value="{{ current_category }}">
+    <!-- زر طيّ الشريط الجانبي -->
+    <button class="btn btn-ghost btn-sm" type="button" onclick="toggleSidebar()">
+      <i class="bi bi-layout-sidebar-inset-reverse"></i>
+    </button>
+
+    <!-- اللوجو -->
+    <a href="/" class="d-flex align-items-center gap-2 text-decoration-none text-reset">
+      <img class="brand__logo" src="{{ url_for('static', path='img/logo.png') }}" alt="">
+      <strong class="brand__name">RentAll</strong>
+    </a>
+
+    <!-- شريط البحث -->
+    <form class="search" method="get" action="/">
+      <i class="bi bi-search search__icon"></i>
+      <input class="form-control search__input"
+             name="q"
+             value="{{ search_q|default('') }}"
+             placeholder="ابحث عن عنصر أو مستَخدم…">
+    </form>
+
+    <!-- أزرار يمين التوببار -->
+    <div class="d-flex align-items-center gap-2">
+      <a href="/items/new" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg"></i> إنشاء
+      </a>
+
+      <button class="btn btn-ghost btn-sm position-relative" type="button" onclick="toggleNotif(true)" aria-label="فتح الإشعارات">
+        <i class="bi bi-bell"></i>
+      </button>
+
+      <!-- تبديل الثيم -->
+      <button class="btn btn-ghost btn-sm" type="button" onclick="
+        document.body.dataset.theme = (document.body.dataset.theme === 'light' ? '' : 'light')
+      ">
+        <i class="bi bi-brightness-high"></i>
+      </button>
+
+      <!-- شارة المستخدم -->
+      {% if session_user %}
+      <a href="/profile" class="d-inline-flex align-items-center gap-2 text-decoration-none text-reset">
+        {% if session_user.avatar_path %}
+          <img src="/{{ session_user.avatar_path }}" class="avatar ring" alt="avatar">
+        {% else %}
+          <div class="avatar ring">{{ (session_user.first_name or 'U')[:1] }}</div>
         {% endif %}
-        <button class="btn btn-primary btn-lg w-100" type="submit">ابحث</button>
-      </div>
+        <span class="small d-none d-md-inline">
+          {{ session_user.first_name }} {{ session_user.last_name }}
+        </span>
+      </a>
+      {% else %}
+      <a href="/login" class="btn btn-ghost btn-sm">دخول</a>
+      {% endif %}
     </div>
   </div>
-</form>
+</header>
+<!-- /Topbar -->
 
-<!-- فلاتر التصنيفات + زر تحديث -->
-<div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
-  <div class="mb-2 home-cats">
-    <a class="btn btn-sm {% if not current_category %}btn-primary{% else %}btn-outline-light{% endif %}" href="/">الكل</a>
-    {% for cat in categories %}
-      <a class="btn btn-sm {% if current_category == cat.key %}btn-primary{% else %}btn-outline-light{% endif %}"
-         href="/?category={{ cat.key }}">{{ cat.label }}</a>
+<!-- ======= Sidebar ======= -->
+<aside class="sidebar" id="appSidebar" data-collapsed="false">
+  <nav class="sidebar__nav">
+    <a class="side-link {% if not current_category %}is-active{% endif %}" href="/" data-tooltip="الرئيسية">
+      <i class="bi bi-house"></i><span>الرئيسية</span>
+    </a>
+
+    <div class="side-sep"></div>
+
+    <a class="side-link" href="/profile" data-tooltip="صفحتي">
+      <i class="bi bi-person"></i><span>صفحتي</span>
+    </a>
+
+    {% if session_user and session_user.role == 'admin' %}
+    <a class="side-link" href="/admin" data-tooltip="لوحة الأدمين">
+      <i class="bi bi-speedometer2"></i><span>لوحة الأدمين</span>
+    </a>
+    {% endif %}
+
+    <div class="side-sep"></div>
+
+    <a class="side-link" href="/items/new" data-tooltip="أضف عنصر">
+      <i class="bi bi-plus-square"></i><span>أضف عنصر</span>
+    </a>
+  </nav>
+</aside>
+<!-- /Sidebar -->
+
+<!-- ======= Right rail (اختياري) ======= -->
+<aside class="right-rail d-none d-xxl-block">
+  <div class="mb-3">
+    <div class="widget__title">مقترحات</div>
+    <div class="small text-muted">أضف عناصر جديدة لزيادة فرص التأجير 💡</div>
+  </div>
+</aside>
+
+<!-- ======= الصفحة ======= -->
+<main class="page container-fluid">
+
+  <!-- تنبيه بسيط (اختياري) -->
+  {# مثال: أظهر تلميح Stripe أو أي تنبيه لديك #}
+  {% if flash_message %}
+  <div class="alert alert-warning stripe-callout d-flex justify-content-between align-items-center mb-3">
+    <span>{{ flash_message }}</span>
+    <a class="btn btn-ghost btn-sm" href="#">تعرف أكثر</a>
+  </div>
+  {% endif %}
+
+  <!-- هيرو -->
+  <section class="home-hero text-center mb-4">
+    <h1 class="mb-2">منصة تأجير أي شيء — نسخة تجريبية</h1>
+    <p class="lead mb-3">ابدأ بتسجيل حسابك ورفع وثيقة رسمية للمراجعة من الأدمين.</p>
+    {% if not session_user %}
+      <a href="/register" class="btn btn-primary btn-lg">تسجيل جديد</a>
+      <a href="/login" class="btn btn-ghost btn-lg ms-2">تسجيل الدخول</a>
+    {% else %}
+      <a href="/profile" class="btn btn-primary btn-lg">اذهب إلى صفحتي</a>
+      {% if session_user.role == 'admin' %}
+        <a href="/admin" class="btn btn-warning btn-lg ms-2">لوحة الأدمين</a>
+      {% endif %}
+    {% endif %}
+  </section>
+
+  <!-- نموذج البحث الموسّع داخل البطاقة -->
+  <form method="get" action="/" class="card card-search mb-3">
+    <div class="card-body">
+      <div class="row g-2 align-items-center">
+        <div class="col-md-5">
+          <input type="text" name="q" value="{{ search_q|default('') }}"
+                 class="form-control form-control-lg"
+                 placeholder="ابحث عن منتج (مثال: camera, خيمة, سيارة...)">
+        </div>
+        <div class="col-md-4">
+          <input type="text" name="city" value="{{ search_city|default('') }}"
+                 class="form-control form-control-lg"
+                 placeholder="المدينة (مثال: montreal)">
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+          {% if current_category %}
+            <input type="hidden" name="category" value="{{ current_category }}">
+          {% endif %}
+          <button class="btn btn-primary btn-lg w-100" type="submit">ابحث</button>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <!-- فلاتر التصنيفات + زر تحديث -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+    <div class="mb-2 home-cats">
+      <a class="btn btn-sm {% if not current_category %}btn-primary{% else %}btn-ghost{% endif %}" href="/">الكل</a>
+      {% for cat in categories %}
+        <a class="btn btn-sm {% if current_category == cat.key %}btn-primary{% else %}btn-ghost{% endif %}"
+           href="/?category={{ cat.key }}">{{ cat.label }}</a>
+      {% endfor %}
+    </div>
+
+    <div class="mb-2">
+      <a class="btn btn-sm btn-ghost"
+         href="{{ '/' if not current_category else '/?category=' ~ current_category }}">تحديث العناصر 🔄</a>
+    </div>
+  </div>
+
+  <!-- شبكة العناصر -->
+  <div class="home-grid">
+    {% for it in items %}
+      <article class="card spot">
+        <!-- صورة ثابتة النسبة -->
+        <div class="spot-media">
+          {% if it.image_path %}
+            <img src="/{{ it.image_path }}" alt="item">
+          {% else %}
+            <img src="{{ url_for('static', path='img/placeholder.jpg') }}" alt="no image">
+          {% endif %}
+          <div class="spot-overlay"></div>
+
+          <div class="price-badge"><strong>{{ it.price_per_day }}</strong><span> د/يوم</span></div>
+          <div class="category-chip">{{ it.category_label }}</div>
+        </div>
+
+        <div class="card-body">
+          <!-- العنوان: سطران كحد أقصى -->
+          <h5 class="spot-title" title="{{ it.title }}">{{ it.title }}</h5>
+
+          <div class="spot-body">
+            <!-- سطر المالك -->
+            <div class="owner-line">
+              {% if it.owner and it.owner.avatar_path %}
+                <img src="/{{ it.owner.avatar_path }}" class="owner-avatar" alt="avatar">
+              {% else %}
+                <div class="owner-avatar owner-avatar--placeholder">👤</div>
+              {% endif %}
+              <span class="small text-muted d-inline-flex align-items-center gap-1">
+                {{ it.owner.first_name }} {{ it.owner.last_name }}
+                {% if it.owner %}{{ render_badges(it.owner, '16px') }}{% endif %}
+              </span>
+            </div>
+
+            <!-- ذيل البطاقة -->
+            <div class="spot-footer">
+              <div class="small city-chip" title="{{ it.city or '' }}">🏙️ {{ it.city or 'بدون مدينة' }}</div>
+              <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
+            </div>
+          </div>
+        </div>
+      </article>
+    {% else %}
+      <div class="card p-4 text-center text-muted">لا توجد عناصر لعرضها الآن.</div>
     {% endfor %}
   </div>
+</main>
 
-  <div class="mb-2">
-    <a class="btn btn-sm btn-outline-light"
-       href="{{ '/' if not current_category else '/?category=' ~ current_category }}">تحديث العناصر 🔄</a>
+<!-- لوحة الإشعارات الزجاجية -->
+<div class="notif-panel" id="notifPanel" aria-hidden="true">
+  <div class="notif-panel__header d-flex justify-content-between align-items-center">
+    <strong>الإشعارات</strong>
+    <button class="btn btn-sm btn-ghost" type="button" onclick="toggleNotif(false)">إغلاق</button>
+  </div>
+  <div class="notif-panel__body">
+    <p class="text-muted small mb-0">لا إشعارات بعد.</p>
   </div>
 </div>
+<div class="scrim" id="scrim" onclick="toggleNotif(false)"></div>
 
-<!-- شبكة العناصر الحديثة -->
-<div class="home-grid">
-  {% for it in items %}
-    <article class="card spot">
-      <!-- صورة العنصر -->
-      <div class="spot-media">
-        {% if it.image_path %}
-          <img src="/{{ it.image_path }}" alt="item">
-        {% else %}
-          <div class="spot-placeholder d-flex align-items-center justify-content-center">
-            <span>لا صورة</span>
-          </div>
-        {% endif %}
-        <div class="spot-overlay"></div>
+<!-- ======= Scripts صغار للتبديل ======= -->
+<script>
+  // طيّ الشريط الجانبي
+  const sidebar = document.getElementById('appSidebar');
+  function toggleSidebar(){
+    if(!sidebar) return;
+    const collapsed = sidebar.getAttribute('data-collapsed') === 'true';
+    sidebar.setAttribute('data-collapsed', collapsed ? 'false' : 'true');
+    document.documentElement.style.setProperty('--sidebar-w', collapsed ? '268px' : '84px');
+  }
 
-        <!-- شارات السعر والتصنيف -->
-        <div class="price-badge"><strong>{{ it.price_per_day }}</strong><span> د/يوم</span></div>
-        <div class="category-chip">{{ it.category_label }}</div>
-      </div>
-
-      <!-- جسم البطاقة -->
-      <div class="card-body spot-body">
-        <!-- العنوان -->
-        <h5 class="card-title spot-title" title="{{ it.title }}">{{ it.title }}</h5>
-
-        <!-- سطر المالك -->
-        <div class="owner-line d-flex align-items-center gap-2">
-          {% if it.owner and it.owner.avatar_path %}
-            <img src="/{{ it.owner.avatar_path }}" class="owner-avatar" alt="avatar">
-          {% else %}
-            <div class="owner-avatar owner-avatar--placeholder">👤</div>
-          {% endif %}
-          <span class="small text-muted d-inline-flex align-items-center gap-1 owner-name">
-            {{ it.owner.first_name }} {{ it.owner.last_name }}
-            {% if it.owner %}{{ render_badges(it.owner, '16px') }}{% endif %}
-          </span>
-        </div>
-
-        <!-- الذيل: المدينة + زر التفاصيل -->
-        <div class="spot-footer d-flex align-items-center justify-content-between">
-          <div class="small city-chip" title="{{ it.city or '' }}">🏙️ {{ it.city or 'بدون مدينة' }}</div>
-          <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
-        </div>
-      </div>
-    </article>
-  {% else %}
-    <p class="text-muted">لا توجد عناصر لعرضها الآن.</p>
-  {% endfor %}
-</div>
+  // فتح/إغلاق الإشعارات
+  const panel = document.getElementById('notifPanel');
+  const scrim = document.getElementById('scrim');
+  function toggleNotif(open){
+    const willOpen = (open === true) || !panel.classList.contains('is-open');
+    if(willOpen){
+      panel.classList.add('is-open');
+      scrim.classList.add('is-show');
+      panel.setAttribute('aria-hidden','false');
+    }else{
+      panel.classList.remove('is-open');
+      scrim.classList.remove('is-show');
+      panel.setAttribute('aria-hidden','true');
+    }
+  }
+</script>
 
 {% endblock %}
