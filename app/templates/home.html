@@ -8,13 +8,13 @@
   <div class="topbar__inner container-fluid">
 
     <!-- زر طيّ الشريط الجانبي -->
-    <button class="btn btn-ghost btn-sm" type="button" onclick="toggleSidebar()">
+    <button class="btn btn-ghost btn-sm" type="button" onclick="toggleSidebar()" aria-label="Toggle sidebar">
       <i class="bi bi-layout-sidebar-inset-reverse"></i>
     </button>
 
     <!-- اللوجو -->
     <a href="/" class="d-flex align-items-center gap-2 text-decoration-none text-reset">
-      <img class="brand__logo" src="{{ url_for('static', path='img/logo.png') }}" alt="">
+      <img class="brand__logo" src="{{ url_for('static', path='img/logo.png') }}" alt="logo">
       <strong class="brand__name">RentAll</strong>
     </a>
 
@@ -24,7 +24,10 @@
       <input class="form-control search__input"
              name="q"
              value="{{ search_q|default('') }}"
-             placeholder="ابحث عن عنصر أو مستَخدم…">
+             placeholder="ابحث عن عنصر أو مستخدم…">
+      {% if current_category %}<input type="hidden" name="category" value="{{ current_category }}">{% endif %}
+      {% if search_city %}<input type="hidden" name="city" value="{{ search_city }}">{% endif %}
+      {% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
     </form>
 
     <!-- أزرار يمين التوببار -->
@@ -33,31 +36,27 @@
         <i class="bi bi-plus-lg"></i> إنشاء
       </a>
 
-      <button class="btn btn-ghost btn-sm position-relative" type="button" onclick="toggleNotif(true)" aria-label="فتح الإشعارات">
+      <button class="btn btn-ghost btn-sm position-relative" type="button" onclick="toggleNotif(true)" aria-label="Notifications">
         <i class="bi bi-bell"></i>
       </button>
 
       <!-- تبديل الثيم -->
-      <button class="btn btn-ghost btn-sm" type="button" onclick="
-        document.body.dataset.theme = (document.body.dataset.theme === 'light' ? '' : 'light')
-      ">
+      <button class="btn btn-ghost btn-sm" type="button" onclick="document.body.dataset.theme = (document.body.dataset.theme === 'light' ? '' : 'light')" aria-label="Toggle theme">
         <i class="bi bi-brightness-high"></i>
       </button>
 
-      <!-- شارة المستخدم -->
+      <!-- المستخدم -->
       {% if session_user %}
-      <a href="/profile" class="d-inline-flex align-items-center gap-2 text-decoration-none text-reset">
-        {% if session_user.avatar_path %}
-          <img src="/{{ session_user.avatar_path }}" class="avatar ring" alt="avatar">
-        {% else %}
-          <div class="avatar ring">{{ (session_user.first_name or 'U')[:1] }}</div>
-        {% endif %}
-        <span class="small d-none d-md-inline">
-          {{ session_user.first_name }} {{ session_user.last_name }}
-        </span>
-      </a>
+        <a href="/profile" class="d-inline-flex align-items-center gap-2 text-decoration-none text-reset">
+          {% if session_user.avatar_path %}
+            <img src="/{{ session_user.avatar_path }}" class="avatar ring" alt="avatar">
+          {% else %}
+            <div class="avatar ring">{{ (session_user.first_name or 'U')[:1] }}</div>
+          {% endif %}
+          <span class="small d-none d-md-inline">{{ session_user.first_name }} {{ session_user.last_name }}</span>
+        </a>
       {% else %}
-      <a href="/login" class="btn btn-ghost btn-sm">دخول</a>
+        <a href="/login" class="btn btn-ghost btn-sm">دخول</a>
       {% endif %}
     </div>
   </div>
@@ -103,19 +102,19 @@
 <!-- ======= الصفحة ======= -->
 <main class="page container-fluid">
 
-  <!-- تنبيه بسيط (اختياري) -->
-  {# مثال: أظهر تلميح Stripe أو أي تنبيه لديك #}
+  <!-- تنبيه (اختياري) -->
   {% if flash_message %}
-  <div class="alert alert-warning stripe-callout d-flex justify-content-between align-items-center mb-3">
-    <span>{{ flash_message }}</span>
-    <a class="btn btn-ghost btn-sm" href="#">تعرف أكثر</a>
-  </div>
+    <div class="alert alert-warning stripe-callout d-flex justify-content-between align-items-center mb-3">
+      <span>{{ flash_message }}</span>
+      <a class="btn btn-ghost btn-sm" href="#">تعرف أكثر</a>
+    </div>
   {% endif %}
 
   <!-- هيرو -->
   <section class="home-hero text-center mb-4">
     <h1 class="mb-2">منصة تأجير أي شيء — نسخة تجريبية</h1>
     <p class="lead mb-3">ابدأ بتسجيل حسابك ورفع وثيقة رسمية للمراجعة من الأدمين.</p>
+
     {% if not session_user %}
       <a href="/register" class="btn btn-primary btn-lg">تسجيل جديد</a>
       <a href="/login" class="btn btn-ghost btn-lg ms-2">تسجيل الدخول</a>
@@ -127,36 +126,49 @@
     {% endif %}
   </section>
 
-  <!-- نموذج البحث الموسّع داخل البطاقة -->
+  <!-- بطاقة البحث المتقدم -->
   <form method="get" action="/" class="card card-search mb-3">
     <div class="card-body">
       <div class="row g-2 align-items-center">
-        <div class="col-md-5">
+        <div class="col-md-4">
           <input type="text" name="q" value="{{ search_q|default('') }}"
                  class="form-control form-control-lg"
-                 placeholder="ابحث عن منتج (مثال: camera, خيمة, سيارة...)">
+                 placeholder="ابحث عن منتج (camera, خيمة, سيارة...)">
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <input type="text" name="city" value="{{ search_city|default('') }}"
                  class="form-control form-control-lg"
                  placeholder="المدينة (مثال: montreal)">
         </div>
-        <div class="col-md-3 d-flex gap-2">
-          {% if current_category %}
-            <input type="hidden" name="category" value="{{ current_category }}">
-          {% endif %}
+        <div class="col-md-3">
+          <select class="form-select form-select-lg" name="category">
+            <option value="" {{ '' == (current_category|default('')) and 'selected' or '' }}>كل التصنيفات</option>
+            {% for cat in categories %}
+              <option value="{{ cat.key }}" {{ cat.key == (current_category|default('')) and 'selected' or '' }}>
+                {{ cat.label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+          <select class="form-select form-select-lg" name="sort">
+            <option value="" {{ not sort and 'selected' or '' }}>الأحدث</option>
+            <option value="pop" {{ sort=='pop' and 'selected' or '' }}>الأكثر شهرة</option>
+            <option value="price_asc" {{ sort=='price_asc' and 'selected' or '' }}>السعر ↑</option>
+            <option value="price_desc" {{ sort=='price_desc' and 'selected' or '' }}>السعر ↓</option>
+          </select>
           <button class="btn btn-primary btn-lg w-100" type="submit">ابحث</button>
         </div>
       </div>
     </div>
   </form>
 
-  <!-- فلاتر التصنيفات + زر تحديث -->
+  <!-- فلاتر سريعة -->
   <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
     <div class="mb-2 home-cats">
-      <a class="btn btn-sm {% if not current_category %}btn-primary{% else %}btn-ghost{% endif %}" href="/">الكل</a>
+      <a class="btn btn-sm {{ not current_category and 'btn-primary' or 'btn-ghost' }}" href="/">الكل</a>
       {% for cat in categories %}
-        <a class="btn btn-sm {% if current_category == cat.key %}btn-primary{% else %}btn-ghost{% endif %}"
+        <a class="btn btn-sm {{ current_category==cat.key and 'btn-primary' or 'btn-ghost' }}"
            href="/?category={{ cat.key }}">{{ cat.label }}</a>
       {% endfor %}
     </div>
@@ -170,8 +182,9 @@
   <!-- شبكة العناصر -->
   <div class="home-grid">
     {% for it in items %}
+      {% set owner = it.owner if it.owner is defined else None %}
       <article class="card spot">
-        <!-- صورة ثابتة النسبة -->
+        <!-- صورة موحّدة النسبة -->
         <div class="spot-media">
           {% if it.image_path %}
             <img src="/{{ it.image_path }}" alt="item">
@@ -180,8 +193,15 @@
           {% endif %}
           <div class="spot-overlay"></div>
 
-          <div class="price-badge"><strong>{{ it.price_per_day }}</strong><span> د/يوم</span></div>
+          {% if it.price_per_day is not none %}
+          <div class="price-badge">
+            <strong>{{ it.price_per_day }}</strong><span> د/يوم</span>
+          </div>
+          {% endif %}
+
+          {% if it.category_label %}
           <div class="category-chip">{{ it.category_label }}</div>
+          {% endif %}
         </div>
 
         <div class="card-body">
@@ -190,20 +210,20 @@
 
           <div class="spot-body">
             <!-- سطر المالك -->
-            <div class="owner-line">
-              {% if it.owner and it.owner.avatar_path %}
-                <img src="/{{ it.owner.avatar_path }}" class="owner-avatar" alt="avatar">
+            <div class="owner-line d-flex align-items-center gap-2 mb-2">
+              {% if owner and owner.avatar_path %}
+                <img src="/{{ owner.avatar_path }}" class="owner-avatar" alt="avatar">
               {% else %}
                 <div class="owner-avatar owner-avatar--placeholder">👤</div>
               {% endif %}
               <span class="small text-muted d-inline-flex align-items-center gap-1">
-                {{ it.owner.first_name }} {{ it.owner.last_name }}
-                {% if it.owner %}{{ render_badges(it.owner, '16px') }}{% endif %}
+                {{ (owner and (owner.first_name ~ ' ' ~ owner.last_name)) or 'مستخدم' }}
+                {% if owner %}{{ render_badges(owner, '16px') }}{% endif %}
               </span>
             </div>
 
             <!-- ذيل البطاقة -->
-            <div class="spot-footer">
+            <div class="d-flex align-items-center justify-content-between spot-footer">
               <div class="small city-chip" title="{{ it.city or '' }}">🏙️ {{ it.city or 'بدون مدينة' }}</div>
               <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
             </div>
@@ -228,7 +248,7 @@
 </div>
 <div class="scrim" id="scrim" onclick="toggleNotif(false)"></div>
 
-<!-- ======= Scripts صغار للتبديل ======= -->
+<!-- ======= Scripts صغيرة ======= -->
 <script>
   // طيّ الشريط الجانبي
   const sidebar = document.getElementById('appSidebar');
