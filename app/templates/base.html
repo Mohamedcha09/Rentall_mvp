@@ -270,11 +270,30 @@
 
       function esc(s){ return String(s||"").replace(/[&<>"']/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
 
+      function normalizePayload(data){
+        // نجعل الـpayload متناسقًا حتى لو السيرفر ما أرسل url/city
+        const users = (data.users||[]).map(u => ({
+          id: u.id,
+          name: u.name || `${u.first_name||""} ${u.last_name||""}`.trim(),
+          avatar: u.avatar || u.avatar_path || "",
+          url: u.url || `/users/${u.id}`
+        }));
+        const items = (data.items||[]).map(it => ({
+          id: it.id,
+          title: it.title || "",
+          image: it.image || it.image_path || "",
+          city: it.city || "",
+          url: it.url || `/items/${it.id}`
+        }));
+        return { users, items };
+      }
+
       function render(data){
+        const {users, items} = normalizePayload(data);
         const html = [];
-        if (data.users?.length){
+        if (users.length){
           html.push('<div class="typeahead-group">حسابات</div>');
-          for (const u of data.users){
+          for (const u of users){
             html.push(`<div class="typeahead-item" data-url="${u.url}">
               <i class="bi bi-person-circle"></i>
               <div class="flex-grow-1">
@@ -284,19 +303,22 @@
             </div>`);
           }
         }
-        if (data.items?.length){
-          html.push('<div class="typeahead-group">عناصر</div>');
-          for (const it of data.items){
-            const city = it.city ? ` — <span class="k">${esc(it.city)}</span>` : "";
-            html.push(`<div class="typeahead-item" data-url="${it.url}">
-              <i class="bi bi-box-seam"></i>
-              <div class="flex-grow-1">
-                <div>${esc(it.title||"")}${city}</div>
-                <div class="k">تفاصيل العنصر</div>
-              </div>
-            </div>`);
-          }
-        }
+        if (items.length){
+  html.push('<div class="typeahead-group">عناصر</div>');
+  for (const it of items){
+    const city = it.city ? ` — <span class="k">${esc(it.city)}</span>` : "";
+    html.push(`
+      <div class="typeahead-item" data-url="${it.url}">
+        <i class="bi bi-box-seam"></i>
+        <div class="flex-grow-1">
+          <div>${esc(it.title)}${city}</div>
+          <div class="k">تفاصيل العنصر</div>
+        </div>
+      </div>
+    `);
+  }
+}
+
         if (!html.length) { hide(); return; }
         panel.innerHTML = html.join(""); show();
       }

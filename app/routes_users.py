@@ -1,98 +1,107 @@
-# app/routes_users.py
-from datetime import datetime, timedelta
+# app/routes_search.py
 from fastapi import APIRouter, Request, Depends
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import text
-
+from sqlalchemy import or_, func
 from .database import get_db
+from .models import User, Item
 
 router = APIRouter()
 
-def _safe_first(db: Session, sql: str, params: dict):
-    try:
-        return db.execute(text(sql), params).mappings().first()
-    except Exception:
-        return None
+# API خفيفة للاقتراحات (لا تلمس الجلسة)
+@router.get("/api/search", response_class=JSONResponse)
+def api_search(q: str = "", db: Session = Depends(get_db)):
+    q = (q or "").strip()
+    if not q:
+        return {"users": [], "items": []}
 
-def _safe_all(db: Session, sql: str, params: dict):
-    try:
-        return db.execute(text(sql), params).mappings().all()
-    except Exception:
-        return []
+    like = f"%{q}%"
 
-@router.get("/users/{user_id}", response_class=HTMLResponse)
-def user_profile(user_id: int, request: Request, db: Session = Depends(get_db)):
-    # ===== 1) بيانات المستخدم (حقول مؤكدة الوجود فقط) =====
-    user_sql = """
-        SELECT
-            u.id,
-            COALESCE(u.first_name,'')   AS first_name,
-            COALESCE(u.last_name,'')    AS last_name,
-            COALESCE(u.avatar_path,'')  AS avatar_path,
-            COALESCE(u.status,'')       AS status,
-            u.created_at                AS created_at,
-            COALESCE(u.is_verified,0)   AS is_verified,
-            COALESCE(u.badge_new_yellow,0) AS badge_new_yellow
-        FROM users u
-        WHERE u.id = :uid
-        LIMIT 1
-    """
-    profile_user = _safe_first(db, user_sql, {"uid": user_id})
-    if not profile_user:
-        return HTMLResponse("<h3>المستخدم غير موجود</h3>", status_code=404)
+    users = (
+        db.query(User.id, User.first_name, User.last_name, User.avatar_path)
+        .filter(
+            or_(
+                User.first_name.ilike(like),
+                User.last_name.ilike(like),
+                (User.first_name + " " + User.last_name).ilike(like),
+            )
+        )
+        .order_by(User.first_name.asc())
+        .limit(8)
+        .all()
+    )
 
-    # ===== 2) عناصره =====
-    items_sql = """
-        SELECT
-            i.id,
-            i.title,
-            i.price_per_day,
-            i.created_at,
-            COALESCE(i.image_path,'') AS image_path,
-            COALESCE(i.category,'')   AS category
-        FROM items i
-        WHERE i.owner_id = :uid
-          AND COALESCE(i.is_active,'yes') = 'yes'
-        ORDER BY i.created_at DESC
-        LIMIT 24
-    """
-    items = _safe_all(db, items_sql, {"uid": user_id})
-    for it in items:
-        it["category_label"] = it.get("category", "")
+    items = (
+        db.query(Item.id, Item.title, Item.image_path)
+        .filter(
+            Item.is_active == "yes",
+            or_(Item.title.ilike(like), Item.description.ilike(like)),
+        )
+        .order_by(func.random())
+        .limit(8)
+        .all()
+    )
 
-    # ===== 3) إحصائيات بسيطة =====
-    cnt = _safe_first(db, "SELECT COUNT(*) AS items_count FROM items WHERE owner_id=:uid AND COALESCE(is_active,'yes')='yes'", {"uid": user_id})
-    stats = {"items_count": cnt["items_count"] if cnt else 0}
+    return {
+        "users": [
+            {
+                "id": u.id,
+                "name": f"{u.first_name or ''} {u.last_name or ''}".strip(),
+                "avatar": u.avatar_path or "",
+            }
+            for u in users
+        ],
+        "items": [
+            {
+                "id": it.id,
+                "title": it.title,
+                "image": it.image_path or "",
+            }
+            for it in items
+        ],
+    }
 
-    # ===== 4) تقييمات (اختياري) =====
-    r = _safe_first(db, "SELECT COUNT(*) AS rating_count, AVG(rating) AS rating_value FROM ratings WHERE target_user_id=:uid", {"uid": user_id})
-    rating_count = r["rating_count"] if r and r["rating_count"] is not None else 0
-    rating_value = float(r["rating_value"]) if r and r["rating_value"] is not None else 0.0
+# صفحة نتائج البحث (عرض فقط – لا تعديل للـsession)
+@router.get("/search", response_class=HTMLResponse)
+def search_page(request: Request, q: str = "", db: Session = Depends(get_db)):
+    q = (q or "").strip()
+    users = []
+    items = []
+    if q:
+        like = f"%{q}%"
+        users = (
+            db.query(User.id, User.first_name, User.last_name, User.avatar_path)
+            .filter(
+                or_(
+                    User.first_name.ilike(like),
+                    User.last_name.ilike(like),
+                    (User.first_name + " " + User.last_name).ilike(like),
+                )
+            )
+            .order_by(User.first_name.asc())
+            .limit(20)
+            .all()
+        )
+        items = (
+            db.query(Item)
+            .filter(
+                Item.is_active == "yes",
+                or_(Item.title.ilike(like), Item.description.ilike(like)),
+            )
+            .order_by(func.random())
+            .limit(24)
+            .all()
+        )
 
-    # ===== 5) الشارات =====
-    created_at = profile_user.get("created_at")
-    is_new = False
-    if created_at:
-        try:
-            is_new = (datetime.utcnow() - created_at) <= timedelta(days=60)
-        except Exception:
-            is_new = False
-    is_verified = bool(profile_user.get("is_verified")) or (profile_user.get("status") == "approved")
-
+    # مَرِّر session_user للتمبليت فقط للعرض — بدون لمس request.session
     return request.app.templates.TemplateResponse(
-        "user.html",
+        "search.html",
         {
             "request": request,
-            "title": f"{profile_user.get('first_name','')} {profile_user.get('last_name','')}".strip() or "الملف الشخصي",
-            "profile_user": profile_user,           # ← اسم جديد لتجنّب التعارض
+            "title": "نتائج البحث",
+            "q": q,
+            "users": users,
             "items": items,
-            "stats": stats,
-            "rating_count": rating_count,
-            "rating_value": rating_value,
-            "is_new": is_new,
-            "is_verified": is_verified,
-            "created_at_str": (created_at.strftime("%Y-%m-%d") if created_at else ""),
             "session_user": request.session.get("user"),
         },
     )
