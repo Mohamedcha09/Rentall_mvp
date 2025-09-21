@@ -14,7 +14,6 @@
   .badge-icon{height:20px;width:20px;margin-inline-start:6px;vertical-align:middle;display:inline-block;}
 </style>
 
-<!-- رأس الصفحة: الاسم + الشارات -->
 <section class="page-header mb-4">
   <h2 class="mb-1 d-flex align-items-center gap-2">
     {{ user.first_name }} {{ user.last_name }}
@@ -24,7 +23,7 @@
   <div class="text-muted small d-flex flex-wrap gap-2">
     <span>البريد: {{ user.email }}</span> •
     <span>الهاتف: {{ user.phone or 'غير مضاف' }}</span> •
-    <span>عضو منذ: {{ joined_at.strftime('%Y-%m-%d') }}</span>
+    <span>عضو منذ: {{ joined_at.strftime('%Y-%m-%d') if joined_at is defined and joined_at else '' }}</span>
   </div>
 
   <div class="mt-2 d-flex align-items-center gap-2">
@@ -38,15 +37,14 @@
   </div>
 </section>
 
-<!-- أزرار سريعة (اختياري) -->
+<!-- ✅ الإصلاح هنا: بدلاً من getattr -->
 <div class="d-flex gap-2 mb-4 flex-wrap">
-  {% if not getattr(user, 'payouts_enabled', False) %}
+  {% if not (user.payouts_enabled is defined and user.payouts_enabled) %}
     <a href="/payout/connect/start" class="btn btn-primary">اربط Stripe الآن</a>
   {% endif %}
   <a href="/messages" class="btn btn-outline-light">رسائلي</a>
 </div>
 
-<!-- كروت الإحصائيات -->
 <div class="row g-3 mb-4">
   <div class="col-sm-6 col-lg-3">
     <div class="card card-blur h-100">
@@ -87,7 +85,6 @@
   </div>
 </div>
 
-<!-- آخر المراجعات -->
 <div class="card card-blur mb-4">
   <div class="card-body">
     <h5 class="mb-3">آخر المراجعات</h5>
@@ -97,15 +94,11 @@
           <div class="list-group-item bg-transparent text-white border-secondary">
             <div class="d-flex justify-content-between">
               <strong>{{ r.rater_name }}</strong>
-              <small class="text-muted">{{ r.created_at.strftime('%Y-%m-%d') }}</small>
+              <small class="text-muted">{{ r.created_at.strftime('%Y-%m-%d') if r.created_at else '' }}</small>
             </div>
             <div class="mb-1">
               {% for i in range(1,6) %}
-                {% if i <= r.stars %}
-                  <span class="star text-warning">★</span>
-                {% else %}
-                  <span class="star text-secondary">☆</span>
-                {% endif %}
+                {% if i <= r.stars %}<span class="star text-warning">★</span>{% else %}<span class="star text-secondary">☆</span>{% endif %}
               {% endfor %}
             </div>
             {% if r.comment %}
@@ -122,9 +115,8 @@
   </div>
 </div>
 
-<!-- عناصر المستخدم (شبكة) -->
 <h4 class="mb-3">عناصري</h4>
-{% set my_items = user.items if user and user.items is defined else [] %}
+{% set my_items = user.items if user is defined and user.items is defined else [] %}
 {% if my_items and my_items|length %}
   <div class="home-grid">
     {% for it in my_items %}
