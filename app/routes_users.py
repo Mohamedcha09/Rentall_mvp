@@ -1,117 +1,127 @@
-# app/routes_users.py
-from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, Request, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import text
-from sqlalchemy.exc import OperationalError
-from fastapi.templating import Jinja2Templates
+{% extends "base.html" %}
+{% block content %}
 
-from app.db import get_db
+<section class="container-xxl">
 
-router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
+  <!-- هيدر البروفايل -->
+  <div class="card mb-3">
+    <div class="card-body d-flex justify-content-between align-items-center gap-3 flex-wrap">
 
-def _safe_first(db: Session, sql: str, params: dict):
-    return db.execute(text(sql), params).mappings().first()
+      <!-- الاسم + الأوسمة -->
+      <div class="d-flex align-items-center gap-3 flex-wrap">
+        <div>
+          <h2 class="m-0 d-flex align-items-center gap-2">
+            <span class="fw-bold text-truncate">{{ (user_obj.first_name ~ ' ' ~ user_obj.last_name).strip() or '—' }}</span>
 
-def _safe_all(db: Session, sql: str, params: dict):
-    return db.execute(text(sql), params).mappings().all()
+            {% if is_verified %}
+              <span class="chip chip-verify">
+                <i class="bi bi-patch-check-fill"></i>
+                <span>موثَّق</span>
+              </span>
+            {% endif %}
 
-@router.get("/users/{user_id}")
-def user_profile(request: Request, user_id: int, db: Session = Depends(get_db)):
-    # ----------------------------------------------------
-    # 1) اجلب فقط الأعمدة المضمونة الوجود لتفادي الأخطاء
-    #    (city/bio غير مضمونة في سكيمتك الحالية)
-    # ----------------------------------------------------
-    user = _safe_first(
-        db,
-        """
-        SELECT
-            u.id,
-            COALESCE(u.first_name,'')  AS first_name,
-            COALESCE(u.last_name,'')   AS last_name,
-            COALESCE(u.avatar_path,'') AS avatar_path,
-            COALESCE(u.status,'')      AS status,
-            u.created_at               AS created_at
-        FROM users u
-        WHERE u.id = :uid
-        LIMIT 1
-        """,
-        {"uid": user_id},
-    )
-    if not user:
-        raise HTTPException(status_code=404, detail="المستخدم غير موجود")
+            {% if is_newbie %}
+              <span class="chip chip-new">
+                <i class="bi bi-stars"></i>
+                <span>جديد</span>
+              </span>
+            {% endif %}
+          </h2>
 
-    # city و bio غير موجودين في الجدول عندك، عيّنهم افتراضياً
-    user = {
-        **user,
-        "city": "",
-        "bio": "",
-    }
+          <div class="small text-muted mt-1 d-flex align-items-center gap-2 flex-wrap">
+            <span class="d-inline-flex align-items-center gap-1">
+              <i class="bi bi-calendar2-week"></i>
+              انضم: {{ user_obj.created_at }}
+            </span>
+            <span class="d-inline-flex align-items-center gap-1">
+              <i class="bi bi-box-seam"></i>
+              عناصر: {{ items_count }}
+            </span>
+            <span class="d-inline-flex align-items-center gap-1">
+              <i class="bi bi-star-half"></i>
+              تقييم: {{ rating_avg or 0 }} ({{ reviews_count }} مراجعة)
+            </span>
+          </div>
+        </div>
+      </div>
 
-    # ----------------------------------------------------
-    # 2) حِساب الشارات
-    # ----------------------------------------------------
-    created_at = user.get("created_at")
-    now = datetime.now(timezone.utc)
-    is_new = False
-    if isinstance(created_at, datetime):
-        if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
-        is_new = (now - created_at) <= timedelta(days=60)
-    is_verified = (user.get("status", "").lower() == "approved")
+      <!-- أفاتار -->
+      <div class="flex-shrink-0">
+        {% if user_obj.avatar_path %}
+          <img src="/{{ user_obj.avatar_path }}" alt="" class="rounded-circle" style="width:76px;height:76px;object-fit:cover;border:1px solid var(--border)">
+        {% else %}
+          <div class="rounded-circle d-grid place-items-center" style="width:76px;height:76px;background:var(--surface);border:1px solid var(--border);font-weight:800;">
+            {{ (user_obj.first_name or 'U')[:1] }}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
 
-    created_at_str = ""
-    if isinstance(created_at, datetime):
-        created_at_str = created_at.strftime("%Y-%m-%d")
+  <!-- تبويبات بسيطة -->
+  <ul class="nav nav-pills mb-3 gap-2 flex-wrap">
+    <li class="nav-item"><a class="nav-link active" href="#items" data-bs-toggle="tab">العناصر</a></li>
+    <li class="nav-item"><a class="nav-link" href="#about" data-bs-toggle="tab">حول المستخدم</a></li>
+    <li class="nav-item"><a class="nav-link" href="#reviews" data-bs-toggle="tab">التقييمات</a></li>
+  </ul>
 
-    # ----------------------------------------------------
-    # 3) عناصر المستخدم — أيضاً نطلب الأعمدة المضمونة فقط
-    # ----------------------------------------------------
-    items = []
-    try:
-        items = _safe_all(
-            db,
-            """
-            SELECT
-                i.id,
-                COALESCE(i.title,'')        AS title,
-                COALESCE(i.image_path,'')   AS image_path,
-                COALESCE(i.price_per_day,0) AS price_per_day,
-                i.created_at
-            FROM items i
-            WHERE i.owner_id = :uid
-            ORDER BY i.created_at DESC
-            """,
-            {"uid": user_id},
-        )
-    except OperationalError:
-        items = []
+  <div class="tab-content">
 
-    # أضف خصائص اختيارية قد يستعملها القالب (حتى لو غير موجودة في الجدول)
-    items = [
-        {
-            **it,
-            "city": it.get("city", ""),
-            "category_label": it.get("category_label", ""),
-        }
-        for it in items
-    ]
+    <!-- عناصر المالك -->
+    <div class="tab-pane fade show active" id="items">
+      {% if items %}
+        <div class="home-grid">
+          {% for it in items %}
+            <article class="card spot">
+              <div class="spot-media">
+                {% if it.image_path %}
+                  <img src="/{{ it.image_path }}" alt="">
+                {% endif %}
+                <div class="spot-overlay"></div>
+                <div class="price-badge"><strong>{{ it.price_per_day }}</strong><span> د/يوم</span></div>
+                <div class="category-chip">{{ it.category or '' }}</div>
+              </div>
+              <div class="card-body">
+                <h5 class="spot-title" title="{{ it.title }}">{{ it.title }}</h5>
+                <div class="spot-footer d-flex justify-content-between align-items-center">
+                  <div class="small text-muted">🏙️ {{ it.city or '—' }}</div>
+                  <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
+                </div>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-center text-muted py-5">لا توجد عناصر معروضة لهذا المستخدم حاليًا.</div>
+      {% endif %}
+    </div>
 
-    # إحصائية بسيطة
-    items_count = len(items)
+    <!-- حول -->
+    <div class="tab-pane fade" id="about">
+      <div class="card">
+        <div class="card-body">
+          <div class="small text-muted">معلومات عامة:</div>
+          <ul class="m-0 mt-2 small">
+            <li>المعرف: {{ user_obj.id }}</li>
+            <li>الحالة: {{ user_obj.status or '—' }}</li>
+            <li>تاريخ الانضمام: {{ user_obj.created_at }}</li>
+          </ul>
+        </div>
+      </div>
+    </div>
 
-    return templates.TemplateResponse(
-        "user.html",
-        {
-            "request": request,
-            "user": user,
-            "items": items,
-            "stats": {"items_count": items_count},
-            "is_new": is_new,
-            "is_verified": is_verified,
-            "rating_value": 0.0,  # لو أضفت جدول reviews لاحقاً نحسبها
-            "rating_count": 0,
-            "created_at_str": created_at_str,
-        },
-    )
+    <!-- التقييمات -->
+    <div class="tab-pane fade" id="reviews">
+      <div class="card">
+        <div class="card-body text-muted text-center">
+          <div class="mb-2">تقييم متوسط: {{ rating_avg or 0 }}</div>
+          <div>({{ reviews_count }} مراجعة)</div>
+          <div class="small mt-3">ميزة التقييمات ستُستكمل لاحقًا.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+{% endblock %}
