@@ -5,24 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ title or "RentAll" }}</title>
 
-    <!-- Bootstrap & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
-    <!-- CSS الرئيسي -->
-    <link href="/static/blossom.css?v=4" rel="stylesheet">
+    <!-- استدعاء ملف الستايل الخاص بك -->
+    <link href="/static/style.css?v=1" rel="stylesheet">
   </head>
   <body class="theme" data-theme="dark">
-
     <!-- ===== Topbar ===== -->
     <header class="topbar">
       <div class="topbar__inner container-fluid">
-        <!-- زر الشريط الجانبي -->
         <button class="btn btn-ghost btn-sm" id="sidebarToggle" aria-label="Toggle sidebar">
           <i class="bi bi-layout-sidebar-inset-reverse"></i>
         </button>
 
-        <!-- شعار -->
+        <!-- شعار نص فقط -->
         <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/">
           <span class="brand__name fw-bold">RentAll</span>
         </a>
@@ -34,9 +31,7 @@
                  placeholder="ابحث عن عنصر أو مستخدم…" value="{{ request.query_params.get('q','') if request else '' }}">
         </form>
 
-        <!-- أزرار -->
         <div class="actions d-flex align-items-center gap-2">
-
           <!-- تبديل الثيم -->
           <button class="btn btn-ghost btn-sm" id="themeToggle" title="تبديل الثيم">
             <i class="bi bi-sun-fill d-none" id="sunIcon"></i>
@@ -44,15 +39,24 @@
           </button>
 
           <!-- إنشاء -->
-          {% if session_user %}
-          <a href="/items/new" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
-            <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">إنشاء</span>
-          </a>
-          {% endif %}
+          <div class="dropdown">
+            <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown">
+              <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">إنشاء</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="/owner/items/new"><i class="bi bi-box"></i> عنصر جديد</a></li>
+              <li><a class="dropdown-item" href="/messages/new"><i class="bi bi-chat-left-text"></i> منشور/رسالة</a></li>
+            </ul>
+          </div>
 
           <!-- إشعارات -->
+          {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
           <button class="btn btn-ghost btn-sm position-relative" id="notifOpen" title="الإشعارات">
             <i class="bi bi-bell"></i>
+            {% if unread > 0 %}
+              <span class="notif-ping"></span>
+              <span class="notif-count">{{ unread if unread < 100 else '99+' }}</span>
+            {% endif %}
           </button>
 
           <!-- الحساب -->
@@ -60,12 +64,16 @@
             <div class="dropdown">
               <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
                 <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
-                <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or '' }}</span>
+                <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
+                {% if session_user.status == 'approved' %}
+                  <i class="bi bi-patch-check-fill verify" title="موثّق"></i>
+                {% endif %}
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
                 <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> صفحتي</a></li>
                 <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
                 <li><a class="dropdown-item" href="/bookings?view=renter"><i class="bi bi-bag"></i> طلباتي</a></li>
+                <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a></li>
                 {% if session_user.role == 'admin' %}
                   <li><hr class="dropdown-divider"></li>
                   <li><a class="dropdown-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a></li>
@@ -89,69 +97,119 @@
         <a class="side-link {% if request and request.url.path == '/' %}is-active{% endif %}" href="/" data-tooltip="الرئيسية">
           <i class="bi bi-house-door"></i> <span>الرئيسية</span>
         </a>
-        <a class="side-link" href="/items" data-tooltip="كل العناصر">
+        <a class="side-link {% if request and request.url.path.startswith('/items') %}is-active{% endif %}" href="/items" data-tooltip="كل العناصر">
           <i class="bi bi-grid"></i> <span>كل العناصر</span>
         </a>
         {% if session_user %}
-          <a class="side-link" href="/profile" data-tooltip="صفحتي">
+          <a class="side-link {% if request and request.url.path.startswith('/profile') %}is-active{% endif %}" href="/profile" data-tooltip="صفحتي">
             <i class="bi bi-person"></i> <span>صفحتي</span>
           </a>
-          <a class="side-link" href="/bookings?view=renter" data-tooltip="طلباتي">
+          <a class="side-link {% if request and request.url.path.startswith('/owner/items') %}is-active{% endif %}" href="/owner/items" data-tooltip="أشيائي">
+            <i class="bi bi-collection"></i> <span>أشيائي</span>
+          </a>
+          <a class="side-link {% if request and request.url.path.startswith('/bookings') and request.query_params.get('view')=='renter' %}is-active{% endif %}" href="/bookings?view=renter" data-tooltip="طلباتي">
             <i class="bi bi-bag"></i> <span>طلباتي</span>
+          </a>
+          <a class="side-link {% if request and request.url.path.startswith('/bookings') and request.query_params.get('view')=='owner' %}is-active{% endif %}" href="/bookings?view=owner" data-tooltip="حجوزات على ممتلكاتي">
+            <i class="bi bi-calendar-check"></i> <span>حجوزات على ممتلكاتي</span>
+          </a>
+          <a class="side-link {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" href="/payout/settings" data-tooltip="التحويلات">
+            <i class="bi bi-cash-stack"></i> <span>التحويلات</span>
           </a>
           {% if session_user.role == 'admin' %}
             <div class="side-sep"></div>
-            <a class="side-link" href="/admin" data-tooltip="لوحة الأدمين">
+            <a class="side-link {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" href="/admin" data-tooltip="لوحة الأدمين">
               <i class="bi bi-speedometer2"></i> <span>لوحة الأدمين</span>
             </a>
           {% endif %}
         {% endif %}
       </nav>
+      <button class="collapse-pin btn btn-ghost btn-sm mt-auto" id="pinSidebar" title="طي/تثبيت">
+        <i class="bi bi-chevron-double-left"></i><span class="ms-2 d-none d-xl-inline">طيّ الشريط</span>
+      </button>
     </aside>
 
     <!-- ===== Page ===== -->
     <main class="page container-fluid">
+      {% if session_user and session_user.status == 'approved' and not session_user.payouts_enabled %}
+        <div class="stripe-callout alert alert-warning d-flex justify-content-between align-items-center mb-3">
+          <div>💸 لبدء استلام الأرباح، اربط <strong>Stripe Connect</strong>.</div>
+          <a class="btn btn-sm btn-primary" href="/payout/settings">ربط الآن</a>
+        </div>
+      {% endif %}
+
+      {% if message %}<div class="alert alert-info">{{ message }}</div>{% endif %}
       {% block content %}{% endblock %}
     </main>
 
-    <!-- إشعارات -->
+    <!-- لوح الإشعارات الجانبي -->
     <div class="notif-panel" id="notifPanel" aria-hidden="true">
       <div class="notif-panel__header d-flex justify-content-between align-items-center">
         <strong>الإشعارات</strong>
         <button class="btn btn-ghost btn-sm" id="notifClose"><i class="bi bi-x-lg"></i></button>
       </div>
       <div class="notif-panel__body">
-        <div class="small text-muted">لا توجد إشعارات بعد.</div>
+        <div class="small text-muted">لا توجد إشعارات جديدة.</div>
       </div>
     </div>
     <div class="scrim" id="scrim"></div>
 
-    <!-- ===== Scripts ===== -->
+    {% if session_user %}
+    <a href="/owner/items/new" class="fab d-lg-none" title="عنصر جديد"><i class="bi bi-plus-lg"></i></a>
+    {% endif %}
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-      // ===== Sidebar collapse
+      // Sidebar state
       const sidebar   = document.getElementById('appSidebar');
+      const pinBtn    = document.getElementById('pinSidebar');
       const toggleBtn = document.getElementById('sidebarToggle');
+      const saved     = localStorage.getItem('sidebar_collapsed');
+      if (saved === 'true') collapseSidebar(true);
 
       toggleBtn?.addEventListener('click', () => {
-        const collapsed = sidebar.getAttribute('data-collapsed') === 'true';
-        sidebar.setAttribute('data-collapsed', collapsed ? 'false' : 'true');
-        document.documentElement.style.setProperty('--sidebar-w', collapsed ? '268px' : '84px');
+        if (window.matchMedia('(max-width: 991.98px)').matches) {
+          sidebar.classList.toggle('is-open');
+          document.getElementById('scrim').classList.toggle('is-show', sidebar.classList.contains('is-open'));
+        } else {
+          collapseSidebar(sidebar.dataset.collapsed !== 'true');
+        }
       });
+      pinBtn?.addEventListener('click', () => collapseSidebar(sidebar.dataset.collapsed !== 'true'));
 
-      // ===== Theme toggle
+      function collapseSidebar(yes){
+        if (yes){
+          sidebar.dataset.collapsed = 'true';
+          document.documentElement.style.setProperty('--sidebar-w', '84px');
+          localStorage.setItem('sidebar_collapsed','true');
+        }else{
+          sidebar.dataset.collapsed = 'false';
+          document.documentElement.style.setProperty('--sidebar-w', '268px');
+          localStorage.setItem('sidebar_collapsed','false');
+        }
+      }
+
+      // Theme toggle
       const themeToggle = document.getElementById('themeToggle');
       const sunIcon = document.getElementById('sunIcon');
       const moonIcon = document.getElementById('moonIcon');
+      const savedTheme = localStorage.getItem('theme_mode');
+      if (savedTheme) setTheme(savedTheme);
 
       themeToggle?.addEventListener('click', () => {
-        const isDark = document.body.dataset.theme === 'dark';
-        document.body.dataset.theme = isDark ? 'light' : 'dark';
-        sunIcon.classList.toggle('d-none', !isDark);
-        moonIcon.classList.toggle('d-none', isDark);
+        const current = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+        setTheme(current);
       });
 
-      // ===== Notifications
+      function setTheme(mode){
+        document.body.dataset.theme = mode;
+        localStorage.setItem('theme_mode', mode);
+        const dark = mode === 'dark';
+        sunIcon.classList.toggle('d-none', !dark);
+        moonIcon.classList.toggle('d-none', dark);
+      }
+
+      // Notif panel
       const notifOpen  = document.getElementById('notifOpen');
       const notifClose = document.getElementById('notifClose');
       const panel      = document.getElementById('notifPanel');
