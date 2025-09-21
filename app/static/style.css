@@ -27,6 +27,7 @@ html,body{
 }
 body{
   font-family:'Tajawal','Cairo',system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  padding-top:82px !important; /* ✅ فراغ للنافبار */
 }
 
 /* ====== Navbar glass ====== */
@@ -34,6 +35,9 @@ body{
   background: rgba(10,12,16,.65)!important;
   backdrop-filter: blur(10px);
   border-bottom:1px solid var(--border);
+  position: fixed !important;
+  top: 0; left: 0; right: 0;
+  z-index: 2147483000 !important; /* ✅ فوق كل شيء */
 }
 .navbar .navbar-brand{ letter-spacing:.5px; }
 .nav-link{
@@ -41,6 +45,12 @@ body{
   transition:all .2s ease;
 }
 .nav-link:hover{ color:#fff!important; transform:translateY(-1px); }
+
+/* Dropdown فوق كل شيء */
+.navbar .dropdown-menu{
+  position: absolute;
+  z-index: 2147483001 !important;
+}
 
 /* ====== Container spacing ====== */
 main.container{
@@ -180,38 +190,24 @@ footer{ color:var(--muted); border-top:1px solid var(--border); }
 /* ========================= */
 /*      تحسينات عامة         */
 /* ========================= */
-
-/* 1) وضوح أعلى للنصوص الرمادية */
 .small, .text-muted.small, .list-group-item .text-muted, .card .text-muted,
 .dropdown-menu .text-muted{
   color:#d7def0 !important;
   opacity:1 !important;
 }
-
-/* 2) إذا استُخدم SVG للشارة لا يتأثر بالألوان */
 svg.verified-badge, svg.verified-badge *{
   fill: initial !important;
   color: initial !important;
 }
 svg.verified-badge{ filter: drop-shadow(0 0 2px rgba(29,161,242,.45)); }
-
-/* 3) "مرحبًا فلان" في النافبار واضح حتى مع .disabled */
 .navbar-dark .nav-link.disabled{ opacity:1 !important; color:#fff !important; }
-
-/* 4) إخفاء ✓ القديمة إن وُجدت */
 .owner-line .fallback-check, .fallback-check{ display:none !important; }
-
-/* 5) بادج مساعد */
 .bg-dark-subtle{ background:rgba(255,255,255,.1)!important; color:#e6ebf7!important; }
-
-/* 6) أوقات الرسائل أوضح */
 .thread-time, .msg-time{ color:#d0d7eb !important; }
 
 /* ========================= */
 /*   تحسين صفحة الرئيسية     */
 /* ========================= */
-
-/* بطل الصفحة العلوي في الهوم */
 .home-hero h1{
   font-weight: 800;
   background: linear-gradient(90deg, #fff, #cdd6ff);
@@ -225,15 +221,11 @@ svg.verified-badge{ filter: drop-shadow(0 0 2px rgba(29,161,242,.45)); }
   border-radius: 16px;
   box-shadow: var(--shadow);
 }
-
-/* شبكة نظيفة ومتجاوبة */
 .home-grid{
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
   gap: 18px;
 }
-
-/* بطاقة العنصر الحديثة */
 .card.spot{
   overflow: hidden;
   border-radius: 18px;
@@ -247,8 +239,6 @@ svg.verified-badge{ filter: drop-shadow(0 0 2px rgba(29,161,242,.45)); }
   border-color: rgba(124,92,255,.35);
   box-shadow: 0 18px 40px rgba(124,92,255,.18);
 }
-
-/* منطقة الصورة بنسبة ثابتة */
 .spot-media{
   position: relative;
   aspect-ratio: 16/10;
@@ -263,15 +253,11 @@ svg.verified-badge{ filter: drop-shadow(0 0 2px rgba(29,161,242,.45)); }
   transition: transform .25s ease;
 }
 .card.spot:hover .spot-media > img{ transform: scale(1.025); }
-
-/* تدرّج خفيف فوق الصورة */
 .spot-overlay{
   position:absolute; inset:0;
   background: linear-gradient(180deg, transparent 55%, rgba(15,17,21,.55));
   pointer-events: none;
 }
-
-/* شارة السعر */
 .price-badge{
   position:absolute; inset-inline-start:12px; top:12px;
   padding:.35rem .6rem;
@@ -283,8 +269,6 @@ svg.verified-badge{ filter: drop-shadow(0 0 2px rgba(29,161,242,.45)); }
   box-shadow: 0 6px 18px rgba(0,0,0,.35);
   font-weight:700;
 }
-
-/* شارة التصنيف */
 .category-chip{
   position:absolute; inset-inline-end:12px; top:12px;
   padding:.25rem .6rem;
@@ -294,8 +278,6 @@ svg.verified-badge{ filter: drop-shadow(0 0 2px rgba(29,161,242,.45)); }
   background: rgba(124,92,255,.18);
   border:1px solid rgba(124,92,255,.35);
 }
-
-/* سطر المالك */
 .owner-line{ min-height: 30px; }
 .owner-avatar{
   width:28px; height:28px; border-radius:999px;
@@ -309,8 +291,6 @@ svg.verified-badge{ filter: drop-shadow(0 0 2px rgba(29,161,242,.45)); }
   background: rgba(255,255,255,.06);
   border:1px solid var(--border);
 }
-
-/* المدينة كبادج أنيق */
 .city-chip{
   padding:.25rem .55rem;
   border-radius:999px;
@@ -322,70 +302,20 @@ svg.verified-badge{ filter: drop-shadow(0 0 2px rgba(29,161,242,.45)); }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-/* عنوان البطاقة سطر واحد */
 .card.spot .card-title{
   line-height:1.25;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
 }
-
-/* تباعد الأزرار داخل قائمة الفئات */
 .home-cats .btn{ margin-bottom: 6px; }
 
-/* ====== Fix Navbar Overlap / Clicks ====== */
-
-/* اجعل النافبار أعلى كل الطبقات ويستجيب للنقر دوماً */
-.navbar {
-  position: fixed;            /* fixed-top في HTML، نثبّت هنا أيضاً */
-  top: 0; left: 0; right: 0;
-  z-index: 2147483000;        /* رقم مرتفع لضمان الظهور فوق أي شيء */
-}
-
-/* أي طبقة بطول الشاشة قد تعترض النقر — عطّل اعتراضها */
-.home-hero,
-.welcome-hero,
-.hero,
-.overlay {
-  pointer-events: none;       /* تمنعها من أكل الكليك */
-}
-
-/* السماح بالنقر على العناصر الداخلية الضرورية إن وُجدت */
-.home-hero *:not(.overlay),
-.welcome-hero *:not(.overlay) {
-  pointer-events: auto;
-}
-
-/* قوائم الـ Dropdown للنافبار فوق كل المحتوى */
-.navbar .dropdown-menu {
-  z-index: 2147483001;
-}
-
-/* مساحة تحت النافبار حتى لا يختبئ المحتوى */
-main.container {
-  padding-top: 90px !important;  /* زِد أو قلّل لو احتجت */
-}
-
-/* ===== Fix Navbar Always on Top ===== */
-.navbar {
-  position: fixed !important;
-  top: 0; left: 0; right: 0;
-  z-index: 9999 !important;   /* اجعلها فوق أي شيء */
-}
-
-/* أي خلفيات كبيرة لا يجب أن تعلو على النافبار */
-.home-hero, .welcome-hero, .hero, .overlay {
+/* ====== Fix Overlap Hero ====== */
+.home-hero, .welcome-hero, .hero, .overlay, .banner, .cover, .spot-overlay{
+  pointer-events: none !important;
   z-index: 0 !important;
 }
-
-/* dropdowns الخاصة بالنافبار */
-.navbar .dropdown-menu {
-  z-index: 10000 !important;
-  position: absolute;
-}
-
-/* تأكد أن المحتوى ما يختفي وراء النافبار */
-body {
-  padding-top: 80px !important;   /* عدّل الرقم حسب ارتفاع النافبار */
+.home-hero *:not(.overlay),
+.welcome-hero *:not(.overlay){
+  pointer-events: auto !important;
 }
