@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="mb-3">
+  <form class="card card-search" action="/search" method="get">
+    <div class="card-body d-flex gap-2 align-items-center">
+      <i class="bi bi-search"></i>
+      <input class="form-control" type="search" name="q" value="{{ q or '' }}"
+             placeholder="ابحث عن عنصر أو مستخدم…">
+      <button class="btn btn-primary">بحث</button>
+    </div>
+  </form>
+</section>
+
+<h4 class="mb-3">نتائج البحث عن: <span class="text-info">{{ q or '—' }}</span></h4>
+
+<div class="row g-3">
+  <!-- قسم العناصر -->
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-header fw-bold">العناصر المطابقة</div>
+      <div class="card-body">
+        {% if items and items|length > 0 %}
+          <div class="row row-cols-1 g-3">
+            {% for it in items %}
+              <div class="col">
+                <a class="d-flex gap-3 text-decoration-none text-reset align-items-center"
+                   href="/items/{{ it.id }}">
+                  <div class="ratio ratio-16x9" style="max-width: 160px;">
+                    {% if it.image_path %}
+                      <img src="/{{ it.image_path }}" class="rounded object-fit-cover" alt="">
+                    {% else %}
+                      <div class="rounded d-flex align-items-center justify-content-center bg-dark-subtle">
+                        <span class="small text-muted">بدون صورة</span>
+                      </div>
+                    {% endif %}
+                  </div>
+                  <div class="flex-grow-1">
+                    <div class="fw-bold text-truncate">{{ it.title }}</div>
+                    <div class="small text-muted mt-1 d-flex align-items-center gap-2">
+                      {% if it.city %}<span>🏙️ {{ it.city }}</span>{% endif %}
+                      {% if it.price_per_day is not none %}
+                        <span class="badge bg-primary-subtle text-white">{{ it.price_per_day }} د/يوم</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </a>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-muted">لا توجد عناصر مطابقة.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- قسم المستخدمين -->
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-header fw-bold">المستخدمون المطابقون</div>
+      <div class="card-body">
+        {% if users and users|length > 0 %}
+          <ul class="list-group list-group-flush">
+            {% for u in users %}
+              <li class="list-group-item d-flex align-items-center gap-3">
+                {% if u.avatar_path %}
+                  <img src="/{{ u.avatar_path }}" class="rounded-circle" style="width:40px;height:40px;object-fit:cover" alt="">
+                {% else %}
+                  <div class="rounded-circle d-flex align-items-center justify-content-center"
+                       style="width:40px;height:40px;background:rgba(255,255,255,.08);border:1px solid var(--border)">
+                    <span>👤</span>
+                  </div>
+                {% endif %}
+                <div class="flex-grow-1">
+                  <div class="fw-bold text-truncate">{{ u.name }}</div>
+                </div>
+                <a class="btn btn-sm btn-primary" href="/users/{{ u.id }}">عرض</a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="text-muted">لا يوجد مستخدمون مطابقون.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
