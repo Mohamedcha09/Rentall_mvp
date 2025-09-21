@@ -61,7 +61,7 @@
   </head>
   <body>
 
-    {# استيراد ماكرو الشارات #}
+    {# استيراد ماكرو الشارات (نسخة الصور) #}
     {% from "_badges.html" import render_badges %}
 
     <!-- NAVBAR -->
@@ -136,14 +136,18 @@
           <ul class="navbar-nav ms-auto">
             {% if session_user %}
               <li class="nav-item">
-                <span class="nav-link disabled">
-                  مرحبًا {{ session_user.first_name }}
-                  {{ render_badges(session_user, '18px') }}
+                <span class="nav-link disabled d-flex align-items-center gap-1">
+                  {{ render_badges(session_user, 18) }}
+                  <span class="fw-bold">
+                    {{ session_user.first_name or session_user.get('first_name','') }}
+                  </span>
                   <span class="badge bg-secondary">{{ session_user.role }}</span>
                   <span class="badge
                     {% if session_user.status == 'approved' %}bg-success
                     {% elif session_user.status == 'pending' %}bg-warning text-dark
-                    {% else %}bg-danger{% endif %}">{{ session_user.status }}</span>
+                    {% else %}bg-danger{% endif %}">
+                    {{ session_user.status }}
+                  </span>
                 </span>
               </li>
               <li class="nav-item"><a class="nav-link" href="/logout">خروج</a></li>
