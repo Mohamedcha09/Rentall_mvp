@@ -28,38 +28,55 @@
     <link href="/static/style.css" rel="stylesheet">
 
     <style>
-      /* ===== إصلاح النافبار ===== */
-      body{ font-family:"Cairo","Tajawal",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; padding-top:76px; }
-      .navbar{ z-index:10000 !important; background:rgba(10,12,16,.65)!important; backdrop-filter:blur(10px); border-bottom:1px solid rgba(255,255,255,.07); }
-      .navbar, .navbar *{ pointer-events:auto !important; }
-      /* أي طبقة خلفية/هيرو/أوفرلاي لا تأخذ الضغط */
-      .home-hero, .welcome-hero, .hero, .overlay, .spot-overlay{ pointer-events:none !important; z-index:0 !important; }
-      /* قوائم الدروبداون فوق كل شيء */
-      .navbar .dropdown-menu{ z-index:10001 !important; }
-
-      /* شارة الرسائل */
-      .nav-msg-link{ position:relative; padding-inline-end:1.8rem; }
-      .nav-msg-link .msg-badge{
-        position:absolute; top:-6px; inset-inline-end:-6px;
-        min-width:20px; height:20px; line-height:18px; border-radius:999px;
-        font-size:12px; text-align:center; padding:0 .35rem;
+      body {
+        font-family: "Cairo","Tajawal", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        padding-top: 76px !important;   /* يفسح مكان للنافبار الثابت */
       }
 
-      /* قائمة الرسائل المنسدلة */
-      .messages-dropdown .dropdown-menu{ min-width:320px; max-height:360px; overflow-y:auto; }
-      .msg-item{ display:flex; align-items:center; gap:.6rem; padding:.5rem .75rem; text-decoration:none; color:inherit; }
-      .msg-item:hover{ background-color:#f7f7f7; }
-      .msg-avatar{ width:36px; height:36px; border-radius:50%; background:#e9ecef; display:flex; align-items:center; justify-content:center; font-weight:700; }
-      .msg-title{ flex:1; }
-      .msg-count{ font-size:12px; }
+      /* نافبار فوق الكل */
+      .navbar,
+      .navbar * {
+        position: relative;
+        z-index: 100000 !important;
+        pointer-events: auto !important;
+      }
 
-      .badge-icon{ height:18px; width:18px; margin-inline-start:6px; vertical-align:middle; display:inline-block; }
-      .navbar-dark .nav-link.disabled{ opacity:1; color:#fff !important; }
-      .stripe-callout{ border:1px dashed rgba(13,110,253,.35); }
-      .nav-badge{ font-size:.7rem; margin-inline-start:.35rem; }
+      /* أي طبقة خلفية أو هيرو لا تمنع الضغط */
+      body::before, body::after,
+      main::before, main::after,
+      [class*="hero"], [class*="overlay"], [class*="mask"],
+      [class*="banner"], [class*="cover"], [class*="background"] {
+        pointer-events: none !important;
+        z-index: 0 !important;
+      }
+
+      /* شارة الرسائل */
+      .nav-msg-link { position: relative; padding-inline-end: 1.8rem; }
+      .nav-msg-link .msg-badge {
+        position: absolute;
+        top: -6px;
+        inset-inline-end: -6px;
+        min-width: 20px; height: 20px; line-height: 18px;
+        border-radius: 999px; font-size: 12px; text-align: center; padding: 0 .35rem;
+      }
+
+      /* قائمة الرسائل */
+      .messages-dropdown .dropdown-menu { min-width: 320px; max-height: 360px; overflow-y: auto; }
+      .msg-item { display:flex; align-items:center; gap:.6rem; padding:.5rem .75rem; text-decoration:none; color:inherit; }
+      .msg-item:hover { background-color:#f7f7f7; }
+      .msg-avatar { width:36px; height:36px; border-radius:50%; background:#e9ecef; display:flex; align-items:center; justify-content:center; font-weight:700; }
+      .msg-title { flex:1; }
+      .msg-count { font-size:12px; }
+
+      /* اجعل “مرحبًا فلان” واضح */
+      .navbar-dark .nav-link.disabled { opacity:1; color:#fff !important; }
+
+      .stripe-callout { border: 1px dashed rgba(13,110,253,.35); }
+      .nav-badge { font-size: .7rem; margin-inline-start:.35rem; }
     </style>
   </head>
   <body>
+
     {% from "_badges.html" import render_badges %}
 
     <!-- NAVBAR -->
@@ -72,23 +89,22 @@
         </button>
 
         <div class="collapse navbar-collapse" id="mainNav">
-          <!-- اليسار -->
+          <!-- الروابط الرئيسية -->
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
             <li class="nav-item"><a class="nav-link" href="/">الرئيسية</a></li>
 
             {% if session_user %}
               {% set unread = (request.state.unread_messages | default(0)) | int %}
 
-              <!-- الرسائل -->
               <li class="nav-item dropdown messages-dropdown">
                 <a class="nav-link dropdown-toggle nav-msg-link" href="/messages" id="messagesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                   💬 الرسائل
-                  <span id="unread-badge" class="badge bg-danger msg-badge" style="display:{% if unread>0 %}inline-block{% else %}none{% endif %};">
-                    {% if unread>9 %}+9{% elif unread>0 %}{{ unread }}{% else %}0{% endif %}
+                  <span id="unread-badge" class="badge bg-danger msg-badge" style="display: {% if unread > 0 %}inline-block{% else %}none{% endif %};">
+                    {% if unread > 9 %}+9{% elif unread > 0 %}{{ unread }}{% else %}0{% endif %}
                   </span>
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="messagesDropdown" id="unread-menu-list">
-                  <li class="px-3 py-2 text-muted small" id="unread-menu-empty" {% if unread>0 %}style="display:none"{% endif %}>لا توجد رسائل جديدة.</li>
+                  <li class="px-3 py-2 text-muted small" id="unread-menu-empty" {% if unread > 0 %}style="display:none"{% endif %}>لا توجد رسائل جديدة.</li>
                   <li><a class="dropdown-item text-center" href="/messages">فتح صندوق الرسائل</a></li>
                 </ul>
               </li>
@@ -122,7 +138,7 @@
             {% endif %}
           </ul>
 
-          <!-- اليمين -->
+          <!-- يمين النافبار -->
           <ul class="navbar-nav ms-auto">
             {% if session_user %}
               <li class="nav-item">
@@ -130,7 +146,10 @@
                   {{ render_badges(session_user, 18) }}
                   <span class="fw-bold">{{ session_user.first_name or session_user.get('first_name','') }}</span>
                   <span class="badge bg-secondary">{{ session_user.role }}</span>
-                  <span class="badge {% if session_user.status=='approved' %}bg-success{% elif session_user.status=='pending' %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                  <span class="badge
+                    {% if session_user.status == 'approved' %}bg-success
+                    {% elif session_user.status == 'pending' %}bg-warning text-dark
+                    {% else %}bg-danger{% endif %}">
                     {{ session_user.status }}
                   </span>
                 </span>
@@ -146,9 +165,9 @@
     </nav>
     <!-- /NAVBAR -->
 
-    <!-- شريط تنبيه Stripe Connect -->
+    <!-- Stripe callout -->
     {% if session_user and session_user.status == 'approved' and not session_user.payouts_enabled %}
-    <div class="container" style="margin-top:10px;">
+    <div class="container" style="margin-top: 10px;">
       <div class="alert alert-warning stripe-callout d-flex align-items-center justify-content-between" role="alert">
         <div>💸 لتستلم أرباحك مباشرةً، قم بربط <strong>Stripe Connect</strong> بحسابك.</div>
         <div class="ms-3"><a class="btn btn-sm btn-primary" href="/payout/settings">ربط Stripe الآن</a></div>
@@ -157,66 +176,13 @@
     {% endif %}
 
     <!-- المحتوى -->
-    <main class="container" style="max-width:1120px;">
-      {% if message %}<div class="alert alert-info">{{ message }}</div>{% endif %}
+    <main class="container" style="max-width: 1120px;">
+      {% if message %}
+        <div class="alert alert-info">{{ message }}</div>
+      {% endif %}
       {% block content %}{% endblock %}
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-    {% if session_user %}
-    <script>
-      (function () {
-        const badge = document.getElementById('unread-badge');
-        const list = document.getElementById('unread-menu-list');
-        const emptyRow = document.getElementById('unread-menu-empty');
-
-        function makeInitials(name){
-          const parts=(name||'').trim().split(/\s+/);
-          const first=(parts[0]||'').charAt(0);
-          const last=(parts[1]||'').charAt(0);
-          return (first+(last||'')).toUpperCase();
-        }
-        function buildRow(t){
-          const countText=(t.count>9)?'+9':String(t.count);
-          const li=document.createElement('li');
-          li.innerHTML=`
-            <a class="dropdown-item msg-item" href="/messages/${t.thread_id}">
-              <div class="msg-avatar">${makeInitials(t.other_name)}</div>
-              <div class="msg-title">
-                <div class="fw-bold">${t.other_name}</div>
-                ${t.item_title?`<div class="text-muted small">${t.item_title}</div>`:''}
-              </div>
-              <span class="badge bg-danger msg-count">${countText}</span>
-            </a>`;
-          return li;
-        }
-        async function refreshSummary(){
-          try{
-            const res=await fetch('/api/unread_summary',{credentials:'include'});
-            if(!res.ok) return;
-            const data=await res.json();
-            const total=Number(data.total||0);
-            badge.style.display=(total>0)?'inline-block':'none';
-            badge.textContent=(total>9)?'+9':String(total||0);
-            // نظّف القائمة (واترك Footer)
-            Array.from(list.querySelectorAll('li')).forEach(li=>{
-              if(li.id==='unread-menu-empty') return;
-              const isFooter=li.querySelector('.dropdown-item.text-center');
-              if(!isFooter) list.removeChild(li);
-            });
-            if(data.threads && data.threads.length){
-              emptyRow.style.display='none';
-              data.threads.forEach(t=>list.insertBefore(buildRow(t), list.lastElementChild));
-            }else{
-              emptyRow.style.display='block';
-            }
-          }catch(_){/* ignore */}
-        }
-        refreshSummary();
-        setInterval(refreshSummary,10000);
-      })();
-    </script>
-    {% endif %}
   </body>
 </html>
