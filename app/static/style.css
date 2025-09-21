@@ -338,3 +338,13 @@ small, .small{ color:var(--muted)!important }
 @media (max-width: 991.98px){
   .page{ margin-inline: 0; }
 }
+
+/* ======== [أُضيف] ملء الشاشة – إضافات بدون حذف أي سطر ======== */
+html, body { height: 100%; }                /* تعزيز الارتفاع */
+#page-wrapper{
+  min-height: 100dvh;
+  min-height: 100svh;                       /* بديل آمن */
+  display: flex;
+  flex-direction: column;
+}
+.main-flex-fill{ flex: 1 1 auto; }          /* يجعل <main> يتمدّد عموديًا */
