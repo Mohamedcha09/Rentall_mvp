@@ -1,28 +1,52 @@
 {# app/templates/_badges.html #}
-{%- macro render_badges(subject, size='18px') -%}
-  {%- if not subject -%}{%- endmacro -%}{%- endif -%}
+{% macro render_badges(u, size='18px') -%}
+  {# يقبل u كـ object أو dict #}
+  {%- set is_map      = u is mapping -%}
+  {%- set role        = (u.get('role','') if is_map else (u.role|default('', true))) -%}
+  {%- set is_verified = (u.get('is_verified', false) if is_map else (u.is_verified|default(false, true))) -%}
 
-  {%- macro _img(src, title) -%}
-    <img src="{{ url_for('static', path='img/' ~ src) }}"
-         alt="{{ title }}" title="{{ title }}"
-         style="height:{{ size }};width:auto;vertical-align:middle;margin-inline-start:6px;">
-  {%- endmacro -%}
+  {%- set b_admin         = (u.get('badge_admin', false) if is_map else (u.badge_admin|default(false, true))) -%}
+  {%- set b_new_yellow    = (u.get('badge_new_yellow', false) if is_map else (u.badge_new_yellow|default(false, true))) -%}
+  {%- set b_pro_green     = (u.get('badge_pro_green', false) if is_map else (u.badge_pro_green|default(false, true))) -%}
+  {%- set b_pro_gold      = (u.get('badge_pro_gold', false) if is_map else (u.badge_pro_gold|default(false, true))) -%}
+  {%- set b_purple_trust  = (u.get('badge_purple_trust', false) if is_map else (u.badge_purple_trust|default(false, true))) -%}
+  {%- set b_renter_green  = (u.get('badge_renter_green', false) if is_map else (u.badge_renter_green|default(false, true))) -%}
+  {%- set b_orange_stars  = (u.get('badge_orange_stars', false) if is_map else (u.badge_orange_stars|default(false, true))) -%}
 
-  {# verified كـ SVG مدمج (عشان ما نعتمد على verified.png) #}
-  {%- if subject.is_verified -%}
-    <svg aria-label="موثّق"
-         style="height:{{ size }};width:{{ size }};vertical-align:middle;margin-inline-start:6px;">
-      <circle cx="10" cy="10" r="10" fill="#2ea7ff"/>
-      <path d="M5 10l3 3 7-7" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  {%- endif -%}
+  {# نبني مسار الصور بدون url_for لتجنب أي اعتماد على request #}
+  {%- set static_prefix = '/static/img/' -%}
 
-  {# نفس الصور التي تريدها #}
-  {%- if subject.badge_admin %}{{ _img('adm.png', 'admin') }}{%- endif -%}
-  {%- if subject.badge_new_yellow %}{{ _img('jaune.png', 'جديد') }}{%- endif -%}
-  {%- if subject.badge_pro_green %}{{ _img('ProVert.png', 'Pro أخضر') }}{%- endif -%}
-  {%- if subject.badge_pro_gold %}{{ _img('ProGold.png', 'Pro ذهبي') }}{%- endif -%}
-  {%- if subject.badge_purple_trust %}{{ _img('violet.png', 'ثقة') }}{%- endif -%}
-  {%- if subject.badge_renter_green %}{{ _img('Vert.png', 'مستأجر موثوق') }}{%- endif -%}
-  {%- if subject.badge_orange_stars %}{{ _img('orange.png', 'Top Rated') }}{%- endif -%}
-{%- endmacro -%}
+  <span class="d-inline-flex align-items-center gap-1">
+    {%- if is_verified %}
+      <img src="{{ static_prefix }}verified.png" alt="verified" style="height:{{ size }};">
+    {%- endif %}
+
+    {%- if role == 'admin' or b_admin %}
+      <img src="{{ static_prefix }}adm.png" alt="admin" style="height:{{ size }};">
+    {%- endif %}
+
+    {%- if b_new_yellow %}
+      <img src="{{ static_prefix }}jaune.png" alt="new" style="height:{{ size }};">
+    {%- endif %}
+
+    {%- if b_pro_green %}
+      <img src="{{ static_prefix }}ProVert.png" alt="pro green" style="height:{{ size }};">
+    {%- endif %}
+
+    {%- if b_pro_gold %}
+      <img src="{{ static_prefix }}ProGold.png" alt="pro gold" style="height:{{ size }};">
+    {%- endif %}
+
+    {%- if b_purple_trust %}
+      <img src="{{ static_prefix }}violet.png" alt="trust" style="height:{{ size }};">
+    {%- endif %}
+
+    {%- if b_renter_green %}
+      <img src="{{ static_prefix }}Vert.png" alt="renter 10+" style="height:{{ size }};">
+    {%- endif %}
+
+    {%- if b_orange_stars %}
+      <img src="{{ static_prefix }}orange.png" alt="top rated" style="height:{{ size }};">
+    {%- endif %}
+  </span>
+{%- endmacro %}
