@@ -1,22 +1,18 @@
 # app/profiles.py
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, UploadFile, File, Form
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime
+import os, secrets, shutil
 
 from .database import get_db
 from .models import User, Item, Rating
 from .utils_badges import get_user_badges
 
-# ======= [إضافات] استيرادات مطلوبة لمسارات التصحيح والرفع =======
-from fastapi import UploadFile, File, Form
-import os, secrets, shutil
-# ================================================================
-
 router = APIRouter()
 
-
+# ======================== صفحة ملفّي ========================
 @router.get("/profile")
 def profile(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user")
@@ -46,11 +42,9 @@ def profile(request: Request, db: Session = Depends(get_db)):
     )
     avg_stars = round(float(avg_stars), 1) if avg_stars is not None else 0.0
 
-    last_reviews = (
-        ratings_q.order_by(Rating.created_at.desc()).limit(5).all()
-    )
+    last_reviews = ratings_q.order_by(Rating.created_at.desc()).limit(5).all()
 
-    # هيكل آمن للمراجعات (نجيب أسماء القيّمين)
+    # أسماء المقيمين
     reviews_view = []
     for r in last_reviews:
         rater = db.query(User).get(r.rater_id)
@@ -65,6 +59,9 @@ def profile(request: Request, db: Session = Depends(get_db)):
 
     joined_at = me.created_at or datetime.utcnow()
 
+    # 🟡 احسب شاراتي
+    my_badges = get_user_badges(me, db)
+
     return request.app.templates.TemplateResponse(
         "profile.html",
         {
@@ -72,6 +69,7 @@ def profile(request: Request, db: Session = Depends(get_db)):
             "title": "صفحتي",
             "session_user": u,
             "user": me,
+            "badges": my_badges,                 # ← نمررها للقالب
             # إحصائيات
             "items_count": items_count,
             "items_active_count": items_active_count,
@@ -84,14 +82,14 @@ def profile(request: Request, db: Session = Depends(get_db)):
     )
 
 
+# ======================== صفحة عامة لمستخدم ========================
 @router.get("/u/{user_id}")
 def public_profile(user_id: int, request: Request, db: Session = Depends(get_db)):
-    # المستخدم صاحب الصفحة
     user = db.query(User).get(user_id)
     if not user:
         return RedirectResponse(url="/", status_code=303)
 
-    # عناصره (يمكنك تعديل الحد/الترتيب كما تشاء)
+    # عناصره
     items = (
         db.query(Item)
         .filter(Item.owner_id == user.id)
@@ -108,7 +106,7 @@ def public_profile(user_id: int, request: Request, db: Session = Depends(get_db)
             "category": it.category,
         })
 
-    # تقييماته (المستلمة)
+    # تقييماته
     ratings = (
         db.query(Rating)
         .filter(Rating.rated_user_id == user.id)
@@ -116,7 +114,6 @@ def public_profile(user_id: int, request: Request, db: Session = Depends(get_db)
         .all()
     )
 
-    # اسم المُقيِّم لكل تقييم
     reviews = []
     for r in ratings:
         rater = db.query(User).get(r.rater_id)
@@ -127,16 +124,19 @@ def public_profile(user_id: int, request: Request, db: Session = Depends(get_db)
             "rater_name": f"{rater.first_name} {rater.last_name}" if rater else "مستخدم",
         })
 
-    # متوسط وعدد
     ratings_count = len(ratings)
     avg_stars = float(sum([r.stars for r in ratings]) / ratings_count) if ratings_count else 0.0
+
+    # 🟣 شارات صاحب الصفحة العامة
+    badges_user = get_user_badges(user, db)
 
     return request.app.templates.TemplateResponse(
         "user_public.html",
         {
             "request": request,
             "title": f"{user.first_name} {user.last_name}",
-            "user": user,                    # نمرّر الكائن نفسه للاستفادة من is_verified
+            "user": user,
+            "badges": badges_user,               # ← نمررها للقالب
             "items": view_items,
             "reviews": reviews,
             "ratings_count": ratings_count,
@@ -146,8 +146,7 @@ def public_profile(user_id: int, request: Request, db: Session = Depends(get_db)
     )
 
 
-# ========================== [إضافات جديدة] ==========================
-# صفحة تصحيح بيانات التحقق (صورة الحساب والوثائق)
+# ========================== رفع/تصحيح الوثائق ==========================
 UPLOADS_ROOT = os.environ.get("UPLOADS_DIR", "uploads")
 AVATARS_DIR = os.path.join(UPLOADS_ROOT, "avatars")
 IDS_DIR = os.path.join(UPLOADS_ROOT, "ids")
@@ -169,7 +168,6 @@ def _save_any(fileobj: UploadFile | None, folder: str, allow_exts: list[str]):
 
 @router.get("/profile/docs")
 def profile_docs_get(request: Request, db: Session = Depends(get_db)):
-    """عرض صفحة إعادة رفع/تصحيح صورة الحساب والوثائق."""
     u = request.session.get("user")
     if not u:
         return RedirectResponse(url="/login", status_code=303)
@@ -183,17 +181,14 @@ def profile_docs_get(request: Request, db: Session = Depends(get_db)):
 def profile_docs_post(
     request: Request,
     db: Session = Depends(get_db),
-    action: str = Form(...),                # "avatar" أو "documents"
-    # avatar
+    action: str = Form(...),              # "avatar" أو "documents"
     avatar: UploadFile = File(None),
-    # docs
     doc_type: str = Form(None),
     doc_country: str = Form(None),
     doc_expiry: str = Form(None),
     doc_front: UploadFile = File(None),
     doc_back: UploadFile = File(None),
 ):
-    """حفظ التعديلات: صورة الحساب أو الوثائق، وإرجاع الصفحة مع رسالة نجاح/خطأ."""
     u = request.session.get("user")
     if not u:
         return RedirectResponse(url="/login", status_code=303)
@@ -205,19 +200,17 @@ def profile_docs_post(
     message = None
 
     if action == "avatar":
-        # تحديث صورة الحساب
         new_path = _save_any(avatar, AVATARS_DIR, [".jpg", ".jpeg", ".png", ".webp"])
         if new_path:
             user.avatar_path = new_path
-            db.commit()
             message = "تم تحديث صورة الحساب بنجاح."
+            db.commit()
         else:
             message = "صورة غير صالحة. يُقبل JPG/PNG/WebP."
 
     elif action == "documents":
-        # أنشئ أو اجلب سجل الوثيقة الأول
         doc = (user.documents[0] if user.documents else None)
-        from .models import Document  # استيراد محلي لتفادي الدوائر
+        from .models import Document
         if not doc:
             doc = Document(user_id=user.id)
 
@@ -229,13 +222,11 @@ def profile_docs_post(
             except:
                 pass
 
-        # حفظ الملفات لو تم رفعها
         fp = _save_any(doc_front, IDS_DIR, [".jpg", ".jpeg", ".png", ".pdf"])
         if fp: doc.file_front_path = fp
         bp = _save_any(doc_back, IDS_DIR, [".jpg", ".jpeg", ".png", ".pdf"])
         if bp: doc.file_back_path = bp
 
-        # عند التصحيح: نعيد الحالة إلى pending
         doc.review_status = "pending"
         doc.reviewed_at = None
         if doc not in user.documents:
@@ -243,10 +234,8 @@ def profile_docs_post(
         db.commit()
         message = "تم حفظ الوثائق وإرسالها للمراجعة."
 
-    # بعد الحفظ نعيد عرض الصفحة مع رسالة
     user = db.query(User).get(u["id"])
     return request.app.templates.TemplateResponse(
         "profile_docs.html",
         {"request": request, "title": "تصحيح بيانات التحقق", "user": user, "session_user": u, "message": message}
     )
-# ===================================================================

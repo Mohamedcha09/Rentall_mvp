@@ -1,113 +1,78 @@
 {% extends "base.html" %}
+{% from "_badges.html" import render_badges %}
 {% block content %}
+
 {% if not item %}
   <div class="alert alert-danger">العنصر غير موجود.</div>
 {% else %}
-<div class="row">
-  <div class="col-md-7">
-    <div class="card">
-      {% if item.image_path %}
-        <img src="/{{ item.image_path }}" class="card-img-top" style="max-height:400px;object-fit:cover" alt="item">
-      {% endif %}
-      <div class="card-body">
-        <h3 class="card-title">{{ item.title }}</h3>
-        <div class="small text-muted mb-1">{{ item.category_label }}</div>
-        <p class="text-muted">{{ item.city or "" }}</p>
-        <p class="fw-bold">{{ item.price_per_day }} د/يوم</p>
-        <p>{{ item.description or "" }}</p>
-      </div>
-    </div>
-  </div>
+<section class="container" style="max-width:1100px;margin:auto">
+  <div class="row" style="display:grid;grid-template-columns:1.2fr .8fr;gap:18px">
 
-  <div class="col-md-5">
-    <div class="card mb-3">
-      <div class="card-body">
-        <h5>المالك</h5>
-
-        {% if owner %}
-          <!-- اسم المالك + الشارات -->
-          {% set _created = owner.created_at if owner.created_at else None %}
-          {% set _created_iso = _created.isoformat() if _created else "" %}
-          {% set _role = owner.role or 'user' %}
-          {% set _verified = 1 if owner.is_verified else 0 %}
-          {% set _five_star_count = 0 %}
-          {% set _returns_success_count = 0 %}
-          {% set _ratings_count = 0 %}
-          {% set _avg_stars = 0 %}
-
-          <div class="mb-2">
-            <strong>{{ owner.first_name }} {{ owner.last_name }}</strong>
-            <span id="badges-owner-on-item"
-                  data-role="{{ _role }}"
-                  data-created="{{ _created_iso }}"
-                  data-verified="{{ _verified }}"
-                  data-stars-all="{{ _ratings_count }}"
-                  data-avg="{{ _avg_stars }}"
-                  data-stars5="{{ _five_star_count }}"
-                  data-returns="{{ _returns_success_count }}">
-            </span>
+    <!-- بطاقة العنصر -->
+    <div>
+      <div class="card" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:14px;overflow:hidden">
+        {% if item.image_path %}
+          <img src="/{{ item.image_path }}" alt="item"
+               style="width:100%;max-height:460px;object-fit:cover">
+        {% endif %}
+        <div class="card-body">
+          <h2 class="card-title" style="margin-bottom:6px">{{ item.title }}</h2>
+          <div class="text-muted small" style="margin-bottom:10px">
+            {{ item.category_label }} • {{ item.city or "بدون مدينة" }}
           </div>
-
-          <!-- رابط الملف العام -->
-          <a href="/u/{{ owner.id }}" class="btn btn-sm btn-outline-light">الملف العام</a>
-        {% endif %}
-
-        <!-- منطق المراسلة / الحجز -->
-        {% if session_user and owner and session_user.id != owner.id %}
-          {% if session_user.status == 'approved' %}
-            <div class="d-grid gap-2 mt-3">
-              <a class="btn btn-primary"
-                 href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">
-                 تواصل مع المالك
-              </a>
-              <a class="btn btn-success"
-                 href="/bookings/new?item_id={{ item.id }}">
-                 احجز الآن
-              </a>
-            </div>
-          {% else %}
-            <div class="alert alert-warning mt-3 small">
-              حسابك قيد المراجعة؛ حاليًا يمكنك مراسلة الدعم فقط لحل مشاكل التفعيل.
-            </div>
-            <a class="btn btn-outline-light" href="/messages/support">راسل الدعم</a>
-          {% endif %}
-        {% else %}
-          <div class="small text-muted mt-2">سجّل الدخول للتواصل.</div>
-        {% endif %}
+          <div class="h5" style="margin-bottom:12px">{{ item.price_per_day }} د/يوم</div>
+          <p style="white-space:pre-wrap">{{ item.description or "" }}</p>
+        </div>
       </div>
     </div>
-    <a href="/items" class="btn btn-outline-light">رجوع للقائمة</a>
+
+    <!-- بطاقة المالك والإجراءات -->
+    <div>
+      <div class="card" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:14px">
+        <div class="card-body">
+          <h5 class="mb-3">المالك</h5>
+
+          {% if owner %}
+            <div class="d-flex align-items-center gap-3" style="margin-bottom:8px">
+              <img src="{{ owner.avatar_path or url_for('static', path='placeholder.png') }}"
+                   alt="owner"
+                   style="width:56px;height:56px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px rgba(255,255,255,.12)">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <strong>{{ owner.first_name }} {{ owner.last_name }}</strong>
+                  {{ render_badges(owner_badges, 22) }}
+                </div>
+                <div class="text-muted small">
+                  عضو منذ {{ owner.created_at.strftime("%Y-%m-%d") if owner.created_at else "" }}
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex gap-2 mb-2">
+              <a href="/u/{{ owner.id }}" class="btn btn-sm btn-outline-light">الملف العام</a>
+              {% if session_user and session_user.id != owner.id %}
+                <a class="btn btn-sm btn-primary"
+                   href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">
+                   تواصل مع المالك
+                </a>
+                {% if session_user.status == 'approved' %}
+                  <a class="btn btn-sm btn-success" href="/bookings/new?item_id={{ item.id }}">احجز الآن</a>
+                {% else %}
+                  <span class="badge bg-warning text-dark">حسابك غير مُفعّل للحجز</span>
+                {% endif %}
+              {% else %}
+                <span class="text-muted small">سجّل الدخول للتواصل أو الحجز.</span>
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <a href="/items" class="btn btn-outline-light" style="margin-top:12px">رجوع للقائمة</a>
+    </div>
+
   </div>
-</div>
+</section>
 {% endif %}
 
-<!-- سكربت الشارات (نفس القواعد بصور فقط) -->
-<style>.badge-icon{height:20px;width:20px;margin-inline-start:6px;vertical-align:middle;display:inline-block;}</style>
-<script>
-(function(){
-  function daysFrom(iso){ if(!iso) return 99999; const d=new Date(iso); if(isNaN(d)) return 99999; return Math.floor((Date.now()-d.getTime())/86400000); }
-  function add(src,alt){ const i=document.createElement('img'); i.src=src; i.alt=alt; i.className='badge-icon'; return i; }
-  function render(box){
-    if(!box) return;
-    const role=(box.dataset.role||'').toLowerCase();
-    const days=daysFrom(box.dataset.created||'');
-    const verified=Number(box.dataset.verified||0)===1;
-    const fiveStar=Number(box.dataset.stars5||0);
-    const returnsOk=Number(box.dataset.returns||0);
-
-    if(role==='admin'){ box.appendChild(add('/static/img/adm.png','Admin')); }
-
-    const allowYellow=(role!=='admin'), allowGreen=(role!=='admin'), allowViolet=(role!=='admin');
-
-    if(allowYellow && days<60){ box.appendChild(add('/static/img/jaune.png','New')); }
-    else if(allowGreen && days>=60 && days<365){ box.appendChild(add('/static/img/ProVert.png','Pro Green')); }
-    else if(days>=365){ box.appendChild(add('/static/img/ProGold.png','Pro Gold')); }
-
-    if(allowViolet && (verified || fiveStar>=20)){ box.appendChild(add('/static/img/violet.png','Trust')); }
-    if(returnsOk>=10){ box.appendChild(add('/static/img/Vert.png','Safe Renter')); }
-    if(fiveStar>=10){ box.appendChild(add('/static/img/orange.png','Top Rated')); }
-  }
-  render(document.getElementById('badges-owner-on-item'));
-})();
-</script>
 {% endblock %}

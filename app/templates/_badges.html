@@ -1,44 +1,24 @@
 {# app/templates/_badges.html #}
-{% macro icon(path, alt, size=18, class_='badge-icon') -%}
-  <img src="{{ path }}"
-       alt="{{ alt }}"
-       class="{{ class_ }}"
-       style="height:{{ size }}px;width:{{ size }}px;vertical-align:middle;margin-inline-start:6px;">
-{%- endmacro %}
-
-{% macro render_badges(u, size=18, include_verified=True) -%}
-  {%- if not u -%}
-    {# لا شيء إذا لا يوجد مستخدم #}
-  {%- else -%}
+{% macro render_badges(badges, size=22) -%}
+  {%- if badges and badges|length -%}
     <span class="user-badges">
-      {# أدمِن #}
-      {%- if u.role == 'admin' -%}
-        {{ icon('/static/img/adm.png', 'Admin', size) }}
-      {%- endif -%}
-
-      {# شارة التوثيق (SVG بدل verified.png) #}
-      {%- if include_verified and u.is_verified -%}
-        <svg viewBox="0 0 24 24"
-             aria-label="موثّق"
-             style="height:{{ size }}px;width:{{ size }}px;vertical-align:middle;margin-inline-start:6px;filter:drop-shadow(0 0 2px rgba(29,161,242,.45));">
-          <defs>
-            <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#33a8ff"/>
-              <stop offset="1" stop-color="#1da1f2"/>
-            </linearGradient>
-          </defs>
-          <circle cx="12" cy="12" r="10" fill="url(#g1)"/>
-          <path d="M9.2 12.6l-1.5-1.5a1 1 0 10-1.4 1.4l2.2 2.2a1 1 0 001.4 0l6-6a1 1 0 10-1.4-1.4l-5.3 5.3z" fill="#fff"/>
-        </svg>
-      {%- endif -%}
-
-      {# شارات إضافية حسب حقول البوليان في User #}
-      {%- if u.badge_new_yellow %}   {{ icon('/static/img/jaune.png',    'New',           size) }} {%- endif -%}
-      {%- if u.badge_pro_green %}    {{ icon('/static/img/ProVert.png',  'Pro Green',     size) }} {%- endif -%}
-      {%- if u.badge_pro_gold %}     {{ icon('/static/img/ProGold.png',  'Pro Gold',      size) }} {%- endif -%}
-      {%- if u.badge_purple_trust %} {{ icon('/static/img/violet.png',   'Trust',         size) }} {%- endif -%}
-      {%- if u.badge_renter_green %} {{ icon('/static/img/Vert.png',     'Safe Renter',   size) }} {%- endif -%}
-      {%- if u.badge_orange_stars %} {{ icon('/static/img/orange.png',   'Top Rated',     size) }} {%- endif -%}
+      {%- for b in badges %}
+        <img src="{{ url_for('static', path='img/' ~ b ~ '.png') }}"
+             alt="badge {{ b }}"
+             class="badge-icon"
+             style="height:{{ size }}px;width:{{ size }}px;margin-inline-start:6px;vertical-align:middle;">
+      {%- endfor %}
     </span>
   {%- endif -%}
 {%- endmacro %}
+
+<style>
+.badge-icon{
+  display:inline-block;
+  object-fit:contain;
+}
+.user-badges{
+  display:inline-flex;
+  align-items:center;
+}
+</style>

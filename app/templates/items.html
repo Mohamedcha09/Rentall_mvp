@@ -1,27 +1,66 @@
 {% extends "base.html" %}
+{% from "_badges.html" import render_badges %}
 {% block content %}
-<h2 class="mb-2">العناصر</h2>
-<div class="mb-2">
-  <a class="btn btn-sm {% if not current_category %}btn-primary{% else %}btn-outline-light{% endif %}" href="/items">الكل</a>
-  {% for cat in categories %}
-    <a class="btn btn-sm {% if current_category == cat.key %}btn-primary{% else %}btn-outline-light{% endif %}" href="/items?category={{ cat.key }}">{{ cat.label }}</a>
-  {% endfor %}
-</div>
-<div class="grid mt-2">
-{% for it in items %}
-  <div class="card">
-    {% if it.image_path %}<img src="/{{ it.image_path }}" class="card-img-top item-img" alt="item">{% endif %}
-    <div class="card-body">
-      <div class="small text-muted">{{ it.category_label }}</div>
-      <h5 class="card-title">{{ it.title }}</h5>
-      <div class="d-flex justify-content-between align-items-center">
-        <span class="fw-bold">{{ it.price_per_day }} د/يوم</span>
-        <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
-      </div>
+
+<section class="container" style="max-width:1200px;margin:auto">
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h2 class="mb-0">العناصر</h2>
+    <div class="small text-muted">
+      {% if current_category %}
+        تصنيف حالي: <strong>{{ current_category }}</strong>
+      {% else %}
+        كل التصنيفات
+      {% endif %}
     </div>
   </div>
-{% else %}
-  <p class="text-muted">لا توجد عناصر ضمن هذا التصنيف.</p>
-{% endfor %}
-</div>
+
+  <!-- أزرار التصنيفات -->
+  <div class="mb-3" style="display:flex;flex-wrap:wrap;gap:8px">
+    <a class="btn btn-sm {% if not current_category %}btn-primary{% else %}btn-outline-light{% endif %}" href="/items">الكل</a>
+    {% for cat in categories %}
+      <a class="btn btn-sm {% if current_category == cat.key %}btn-primary{% else %}btn-outline-light{% endif %}"
+         href="/items?category={{ cat.key }}">{{ cat.label }}</a>
+    {% endfor %}
+  </div>
+
+  {% if items and items|length %}
+    <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
+      {% for it in items %}
+        <article class="card" style="border:1px solid rgba(255,255,255,.12);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.04)">
+          <a href="/items/{{ it.id }}" style="display:block">
+            {% if it.image_path %}
+              <img src="/{{ it.image_path }}" class="card-img-top" alt="item"
+                   style="width:100%;height:180px;object-fit:cover">
+            {% else %}
+              <div style="height:180px;display:grid;place-items:center;background:rgba(0,0,0,.15)">لا صورة</div>
+            {% endif %}
+          </a>
+          <div class="card-body">
+            <div class="small text-muted mb-1">{{ it.category_label }}</div>
+            <h5 class="card-title text-truncate" title="{{ it.title }}" style="margin-bottom:6px">{{ it.title }}</h5>
+
+            <!-- مالك العنصر + الشارات -->
+            <div class="d-flex align-items-center justify-content-between mb-2" title="{{ it.owner.first_name }} {{ it.owner.last_name }}">
+              <div class="small text-muted text-truncate" style="max-width:65%">
+                {{ it.owner.first_name }} {{ it.owner.last_name }}
+                {{ render_badges(it.owner_badges, 18) }}
+              </div>
+              <div class="fw-bold">{{ it.price_per_day }} د/يوم</div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+              <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
+              {% if it.city %}
+                <span class="small text-muted">🏙️ {{ it.city }}</span>
+              {% endif %}
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-muted">لا توجد عناصر ضمن هذا التصنيف.</p>
+  {% endif %}
+</section>
+
 {% endblock %}

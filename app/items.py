@@ -3,9 +3,11 @@ from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 import os, secrets, shutil
+
 from .database import get_db
 from .models import Item, User
 from .utils import CATEGORIES, category_label
+from .utils_badges import get_user_badges
 
 router = APIRouter()
 
@@ -13,17 +15,19 @@ UPLOADS_ROOT = os.environ.get("UPLOADS_DIR", "uploads")
 ITEMS_DIR = os.path.join(UPLOADS_ROOT, "items")
 os.makedirs(ITEMS_DIR, exist_ok=True)
 
+# --- Helpers ---
 def require_approved(request: Request):
     u = request.session.get("user")
     return u and u.get("status") == "approved"
 
-# NEW: هل الحساب مقيّد (ليس approved)؟
 def is_account_limited(request: Request) -> bool:
     u = request.session.get("user")
     if not u:
-        return False  # غير مسجّل → ما نعتبره "مقيّد"، القرار بيد القالب
+        return False
     return u.get("status") != "approved"
 
+
+# ================= قائمة العناصر =================
 @router.get("/items")
 def items_list(request: Request, db: Session = Depends(get_db), category: str = None):
     q = db.query(Item).filter(Item.is_active == "yes")
@@ -31,13 +35,15 @@ def items_list(request: Request, db: Session = Depends(get_db), category: str = 
     if category:
         q = q.filter(Item.category == category)
         current_category = category
+
     items = q.order_by(Item.created_at.desc()).all()
     for it in items:
         it.category_label = category_label(it.category)
+        # 🟢 شارات المالك
+        it.owner_badges = get_user_badges(it.owner, db) if it.owner else []
 
-    # NEW: مرّر فلاق الحساب المقيّد للقالب
     return request.app.templates.TemplateResponse(
-        "items_list.html",
+        "items.html",
         {
             "request": request,
             "title": "العناصر",
@@ -45,19 +51,12 @@ def items_list(request: Request, db: Session = Depends(get_db), category: str = 
             "categories": CATEGORIES,
             "current_category": current_category,
             "session_user": request.session.get("user"),
-            "account_limited": is_account_limited(request),   # ← NEW
+            "account_limited": is_account_limited(request),
         }
     )
-# مثال كامل للدالة (انسخه مكان دالة التفاصيل الحالية لديك)
-from fastapi import APIRouter, Request, Depends
-from sqlalchemy.orm import Session
-from .database import get_db
-from .models import Item, User
-from .utils import category_label
-from .utils_badges import get_user_badges
 
-router = APIRouter()
 
+# ================= تفاصيل عنصر =================
 @router.get("/items/{item_id}")
 def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     item = db.query(Item).get(item_id)
@@ -67,12 +66,9 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             {"request": request, "item": None, "session_user": request.session.get("user")}
         )
 
-    # نفس منطقك القديم
     item.category_label = category_label(item.category)
     owner = db.query(User).get(item.owner_id)
-
-    # أضف هذا السطر لتمرير شارات المالك
-    badges_owner = get_user_badges(owner, db)
+    owner_badges = get_user_badges(owner, db) if owner else []
 
     return request.app.templates.TemplateResponse(
         "items_detail.html",
@@ -80,20 +76,24 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             "request": request,
             "item": item,
             "owner": owner,
-            "badges_owner": badges_owner,  # <<< مهم
+            "owner_badges": owner_badges,   # ← مهم
             "session_user": request.session.get("user"),
         }
     )
 
 
+# ================= عناصر المالك =================
 @router.get("/owner/items")
 def my_items(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user")
     if not u:
         return RedirectResponse(url="/login", status_code=303)
+
     items = db.query(Item).filter(Item.owner_id == u["id"]).order_by(Item.created_at.desc()).all()
     for it in items:
         it.category_label = category_label(it.category)
+        it.owner_badges = get_user_badges(it.owner, db) if it.owner else []
+
     return request.app.templates.TemplateResponse(
         "owner_items.html",
         {
@@ -101,15 +101,17 @@ def my_items(request: Request, db: Session = Depends(get_db)):
             "title": "أشيائي",
             "items": items,
             "session_user": u,
-            "account_limited": is_account_limited(request),  # ← NEW: لتغيير الواجهة لو الحساب مقيّد
+            "account_limited": is_account_limited(request),
         }
     )
 
+
+# ================= إضافة عنصر جديد =================
 @router.get("/owner/items/new")
 def item_new_get(request: Request):
     if not require_approved(request):
-        # إبقاء التحكّم كما هو (redirect)، وما نكسر منطقك
         return RedirectResponse(url="/login", status_code=303)
+
     return request.app.templates.TemplateResponse(
         "items_new.html",
         {
@@ -117,7 +119,7 @@ def item_new_get(request: Request):
             "title": "إضافة عنصر",
             "categories": CATEGORIES,
             "session_user": request.session.get("user"),
-            "account_limited": is_account_limited(request),  # ← NEW (لن يظهر هنا عمليًا مع الشرط)
+            "account_limited": is_account_limited(request),
         }
     )
 
@@ -133,7 +135,6 @@ def item_new_post(
     image: UploadFile = File(None)
 ):
     if not require_approved(request):
-        # إبقاء التحكّم كما هو (redirect)، وما نكسر منطقك
         return RedirectResponse(url="/login", status_code=303)
 
     u = request.session.get("user")
@@ -157,5 +158,6 @@ def item_new_post(
         is_active="yes",
         category=category
     )
-    db.add(it); db.commit()
+    db.add(it)
+    db.commit()
     return RedirectResponse(url=f"/items/{it.id}", status_code=303)

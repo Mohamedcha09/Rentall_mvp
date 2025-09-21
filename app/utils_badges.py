@@ -1,81 +1,79 @@
 # app/utils_badges.py
 from datetime import datetime, timezone
-from sqlalchemy import func
-from .models import Rating, Booking, User
+from typing import List, Optional, Tuple
+from sqlalchemy.orm import Session
+from sqlalchemy import func, or_
 
-def _safe_days_since(dt):
+from .models import User, Booking, Rating
+
+# الحالات التي نعتبر فيها الحجز "مكتمل"
+BOOKING_DONE_STATUSES = {"finished", "completed", "approved", "paid", "done"}
+
+def _months_since(dt: Optional[datetime]) -> int:
     if not dt:
-        return None
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return (datetime.now(timezone.utc) - dt).days
+        return 0
+    now = datetime.now(timezone.utc) if dt.tzinfo else datetime.utcnow()
+    return max(0, (now - dt).days // 30)
 
-def count_five_star_received(user_id, db):
-    return db.query(func.count(Rating.id)).filter(
-        Rating.target_user_id == user_id,
-        Rating.stars == 5
-    ).scalar() or 0
+def _finished_bookings_count(db: Session, user_id: int) -> int:
+    q = db.query(Booking).filter(
+        or_(Booking.renter_id == user_id, Booking.owner_id == user_id)
+    )
+    if hasattr(Booking, "status"):
+        q = q.filter(Booking.status.in_(BOOKING_DONE_STATUSES))
+    return q.count()
 
-def count_confirmed_returns_as_renter(user_id, db):
+def _ratings_totals(db: Session, user_id: int) -> Tuple[int, int]:
+    total = db.query(Rating).filter(Rating.rated_user_id == user_id).count()
+    fives = (
+        db.query(Rating)
+        .filter(Rating.rated_user_id == user_id, Rating.stars == 5)
+        .count()
+    )
+    return total, fives
+
+def get_user_badges(user: User, db: Session) -> List[str]:
     """
-    نحسب عدد الحجوزات التي أرجِعت بنجاح (كمستأجر).
-    عدّل حالات/أسماء الحقول لو عندك اختلاف بسيط في الـ Booking.
+    تُعيد قائمة أسماء صور الشارات حسب قواعدك:
+      adm      → الأزرق (أدمن فقط)
+      violet   → بنفسجي (توثيق من الأدمِن)
+      jaune    → أصفر (حساب جديد < شهرين)
+      ProVert  → برو أخضر (≥ شهرين وأقل من سنة)
+      ProGold  → برو ذهبي (≥ سنة)
+      Vert     → أخضر بدرع (استعمال الموقع ≥ 5 حجوزات مكتملة)
+      orange   → برتقالي (≥ 20 تقييم وكلها 5 نجوم)
+
+    ترجع الأسماء مطابقة للصور داخل static/img
     """
-    return db.query(func.count(Booking.id)).filter(
-        Booking.renter_id == user_id,
-        Booking.status.in_(["returned","completed","closed"])  # عدّل حسب مشروعك
-    ).scalar() or 0
+    badges: List[str] = []
 
-def get_user_badges(user: User, db):
-    """
-    يحسب الشارات وفق القواعد التي طلبتها.
-    يرجّع dict فيه flags/عدّادات لتستخدمها في القوالب.
-    """
-    days = _safe_days_since(user.created_at)
-    five_star_count = count_five_star_received(user.id, db)
-    returns_count = count_confirmed_returns_as_renter(user.id, db)
-    is_admin = (user.role == "admin")
+    # 1) الأزرق (أدمن)
+    if getattr(user, "role", None) == "admin" or getattr(user, "badge_admin", False):
+        badges.append("adm")
 
-    # 1) البنفسجي بالأزرق (خاصة بالأدمين فقط)
-    admin_purple_blue = is_admin
+    # 2) البنفسجي (توثيق من الأدمِن)
+    if getattr(user, "is_verified", False) or getattr(user, "badge_purple_trust", False):
+        badges.append("violet")
 
-    # 2) الأصفر (مستخدم جديد لأول شهرين) ← تختفي بعد شهرين
-    new_yellow = (not is_admin) and (days is not None) and (days < 60)
+    # 3) شارات الزمن (أصفر/Pro أخضر/Pro ذهبي)
+    months = _months_since(getattr(user, "created_at", None))
+    if getattr(user, "badge_new_yellow", False) or months < 2:
+        badges.append("jaune")
+    elif getattr(user, "badge_pro_gold", False) or months >= 12:
+        badges.append("ProGold")
+    else:
+        badges.append("ProVert")
 
-    # 3) PRO أخضر من شهرين إلى سنة (لغير الأدمين)
-    pro_green = (not is_admin) and (days is not None) and (60 <= days < 365)
+    # 4) الخضراء (درع) — استعمال الموقع
+    if getattr(user, "badge_renter_green", False):
+        badges.append("Vert")
+    else:
+        if _finished_bookings_count(db, user.id) >= 5:
+            badges.append("Vert")
 
-    # 4) PRO ذهبي بعد سنة (للجميع)
-    pro_gold = (days is not None) and (days >= 365)
-
-    # 5) البنفسجي بدون الأزرق (موثوق من الأدمين أو تلقائي بعد 20 تقييم 5 نجوم) — يُستثنى الأdmين
-    # لو عندك فلاغ توثيق من لوحة الأdmين غير user.is_verified استبدله هنا.
-    trusted_violet = (not is_admin) and ((getattr(user, "is_verified", False)) or (five_star_count >= 20))
-
-    # 6) الخضراء (كمستأجر أنهى 10 إرجاعات مؤكدة)
-    renter_green = (returns_count >= 10)
-
-    # 7) البرتقالية (10 تقييمات خمس نجوم)
-    orange_star = (five_star_count >= 10)
-
-    # ضمان عدم اجتماع الأصفر مع PRO أخضر/ذهبي
-    if pro_gold:
-        new_yellow = False
-        pro_green = False
-    elif pro_green:
-        new_yellow = False
-
-    return {
-        "days": days,
-        "five_star_count": five_star_count,
-        "returns_count": returns_count,
-
-        "admin_purple_blue": admin_purple_blue,  # (١) أدمين
-        "new_yellow": new_yellow,                # (٢) جديد < 60 يوم
-        "pro_green": pro_green,                  # (٣) PRO أخضر (60..365)
-        "pro_gold": pro_gold,                    # (٤) PRO ذهبي (>= 365)
-        "trusted_violet": trusted_violet,        # (٥) بنفسجي بدون أزرق
-        "renter_green": renter_green,            # (٦) أخضر (10 إرجاعات)
-        "orange_star": orange_star,              # (٧) برتقالي (10 × ★5)
-        "is_admin": is_admin,
-    }
+    # 5) البرتقالية — التقييمات
+    if getattr(user, "badge_orange_stars", False):
+        badges.append("orange")
+    else:
+        total, fives = _ratings_totals(db, user.id)
+        if total >= 20 and fiv
