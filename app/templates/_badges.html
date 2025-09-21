@@ -1,24 +1,60 @@
 {# app/templates/_badges.html #}
-{% macro render_badges(badges, size=22) -%}
-  {%- if badges and badges|length -%}
+{% macro _img(name, alt, size) -%}
+  <img src="/static/img/{{ name }}.png"
+       alt="{{ alt }}"
+       class="badge-icon"
+       style="height:{{ size }}px;width:{{ size }}px;margin-inline-start:6px;vertical-align:middle;object-fit:contain;">
+{%- endmacro %}
+
+{% macro render_badges(subject, size=22) -%}
+  {# subject يمكن يكون: قائمة ['adm','violet',...] أو كائن مستخدم/dict #}
+  {%- set names = [] -%}
+
+  {# 1) إن كانت قائمة جاهزة #}
+  {%- if subject is sequence and (subject is not string) -%}
+    {%- set names = subject -%}
+  {%- else -%}
+    {# 2) إن كان مستخدم: استخرج الأعلام من session_user أو user object #}
+    {%- set u = subject -%}
+    {%- set role = (u.role if u is mapping else getattr(u, 'role', None)) or '' -%}
+    {%- set is_verified = (u.is_verified if u is mapping else getattr(u, 'is_verified', False)) -%}
+
+    {%- set b_admin = (u.badge_admin if u is mapping else getattr(u, 'badge_admin', False)) -%}
+    {%- set b_new   = (u.badge_new_yellow if u is mapping else getattr(u, 'badge_new_yellow', False)) -%}
+    {%- set b_pg    = (u.badge_pro_green if u is mapping else getattr(u, 'badge_pro_green', False)) -%}
+    {%- set b_pgld  = (u.badge_pro_gold if u is mapping else getattr(u, 'badge_pro_gold', False)) -%}
+    {%- set b_vio   = (u.badge_purple_trust if u is mapping else getattr(u, 'badge_purple_trust', False)) -%}
+    {%- set b_vert  = (u.badge_renter_green if u is mapping else getattr(u, 'badge_renter_green', False)) -%}
+    {%- set b_orng  = (u.badge_orange_stars if u is mapping else getattr(u, 'badge_orange_stars', False)) -%}
+
+    {# الأزرق للأدمن #}
+    {%- if role|lower == 'admin' or b_admin %}{%- set _ = names.append('adm') -%}{%- endif -%}
+
+    {# البنفسجي (توثيق من الأدمن) #}
+    {%- if is_verified or b_vio %}{%- set _ = names.append('violet') -%}{%- endif -%}
+
+    {# أصفر/برو أخضر/برو ذهبي (نثق بالقيم المزامَنة في السيشن) #}
+    {%- if b_pgld %}{%- set _ = names.append('ProGold') -%}
+    {%- elif b_pg %}{%- set _ = names.append('ProVert') -%}
+    {%- elif b_new %}{%- set _ = names.append('jaune') -%}{%- endif -%}
+
+    {# درع أخضر (استخدام ≥5) #}
+    {%- if b_vert %}{%- set _ = names.append('Vert') -%}{%- endif -%}
+
+    {# برتقالي (≥20 كلهم 5 نجوم) #}
+    {%- if b_orng %}{%- set _ = names.append('orange') -%}{%- endif -%}
+  {%- endif -%}
+
+  {%- if names and names|length -%}
     <span class="user-badges">
-      {%- for b in badges %}
-        <img src="{{ url_for('static', path='img/' ~ b ~ '.png') }}"
-             alt="badge {{ b }}"
-             class="badge-icon"
-             style="height:{{ size }}px;width:{{ size }}px;margin-inline-start:6px;vertical-align:middle;">
+      {%- for n in names %}
+        {{ _img(n, 'badge ' ~ n, size) }}
       {%- endfor %}
     </span>
   {%- endif -%}
 {%- endmacro %}
 
 <style>
-.badge-icon{
-  display:inline-block;
-  object-fit:contain;
-}
-.user-badges{
-  display:inline-flex;
-  align-items:center;
-}
+.badge-icon{display:inline-block}
+.user-badges{display:inline-flex;align-items:center}
 </style>
