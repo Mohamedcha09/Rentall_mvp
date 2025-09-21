@@ -30,6 +30,7 @@ from .payout_connect import router as payout_connect_router
 from .webhooks import router as webhooks_router
 from .disputes import router as disputes_router
 from .bookings import router as bookings_router
+from app.routes_search import router as search_router
 
 # ✅ جديد: إدارة الشارات من لوحة الأدمن (اختياري لكن مفيد)
 from .admin_badges import router as admin_badges_router
@@ -111,6 +112,7 @@ app.include_router(payout_connect_router)
 app.include_router(webhooks_router)
 app.include_router(disputes_router)
 app.include_router(bookings_router)
+app.include_router(search_router)
 
 # ✅ جديد: تضمين راوتر إدارة الشارات
 app.include_router(admin_badges_router)

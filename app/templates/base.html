@@ -12,6 +12,23 @@
 
     <!-- ستايل خارجي -->
     <link href="/static/style.css?v=1" rel="stylesheet">
+
+    <!-- [مضاف] تنسيق بسيط للـ Typeahead فقط -->
+    <style>
+      .search{ position:relative; } /* لكي تتموضع اللوحة أسفل الحقل */
+      .typeahead{
+        position:absolute; inset-inline:0; top: calc(100% + .25rem);
+        background: var(--surface, #fff); color: var(--text, #212529);
+        border: 1px solid rgba(0,0,0,.1); border-radius:.75rem;
+        box-shadow: 0 14px 36px rgba(0,0,0,.18); z-index:2000; overflow:hidden;
+      }
+      .typeahead.d-none{ display:none; }
+      .typeahead-group{ padding:.4rem .7rem; font-size:.8rem; opacity:.7; border-bottom:1px solid rgba(0,0,0,.06) }
+      .typeahead-item{ padding:.6rem .75rem; display:flex; gap:.6rem; align-items:center; cursor:pointer; }
+      .typeahead-item:hover, .typeahead-item.active{ background: rgba(124,92,255,.12); }
+      .typeahead-item .k{ opacity:.65; font-size:.85em }
+    </style>
+
     {% block head %}{% endblock %}
   </head>
   <body class="theme" data-theme="dark">
@@ -36,6 +53,8 @@
           <input class="form-control form-control-sm search__input" type="search" name="q"
                  placeholder="ابحث عن عنصر أو مستخدم…" value="{{ request.query_params.get('q','') if request else '' }}">
         </form>
+        <!-- [مضاف] لوحة نتائج البحث المباشر -->
+        <div id="typeaheadPanel" class="typeahead d-none"></div>
 
         <div class="actions d-flex align-items-center gap-2">
           <!-- تبديل الثيم -->
@@ -231,6 +250,97 @@
       notifOpen?.addEventListener('click', openPanel);
       notifClose?.addEventListener('click', closePanel);
       scrim?.addEventListener('click', closePanel);
+    </script>
+
+    <!-- [مضاف] سكربت الـ Typeahead (بحث حيّ) مع واقي تكرار -->
+    <script>
+    (function initTypeahead(){
+      if (window.__typeaheadInit) return; window.__typeaheadInit = true;
+
+      const form  = document.querySelector('form.search');
+      const input = form?.querySelector('input[name="q"]');
+      const panel = document.getElementById('typeaheadPanel');
+
+      if (!form || !input || !panel) return;
+
+      let tm = null, activeIndex = -1;
+
+      function hide(){ panel.classList.add('d-none'); panel.innerHTML = ""; activeIndex = -1; }
+      function show(){ panel.classList.remove('d-none'); }
+
+      function esc(s){ return String(s||"").replace(/[&<>"']/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+
+      function render(data){
+        const html = [];
+        if (data.users?.length){
+          html.push('<div class="typeahead-group">حسابات</div>');
+          for (const u of data.users){
+            html.push(`<div class="typeahead-item" data-url="${u.url}">
+              <i class="bi bi-person-circle"></i>
+              <div class="flex-grow-1">
+                <div>${esc(u.name)}</div>
+                <div class="k">الملف الشخصي</div>
+              </div>
+            </div>`);
+          }
+        }
+        if (data.items?.length){
+          html.push('<div class="typeahead-group">عناصر</div>');
+          for (const it of data.items){
+            const city = it.city ? ` — <span class="k">${esc(it.city)}</span>` : "";
+            html.push(`<div class="typeahead-item" data-url="${it.url}">
+              <i class="bi bi-box-seam"></i>
+              <div class="flex-grow-1">
+                <div>${esc(it.title||"")}${city}</div>
+                <div class="k">تفاصيل العنصر</div>
+              </div>
+            </div>`);
+          }
+        }
+        if (!html.length) { hide(); return; }
+        panel.innerHTML = html.join(""); show();
+      }
+
+      function search(q){
+        if (!q || q.trim().length < 2){ hide(); return; }
+        fetch(`/api/search?q=${encodeURIComponent(q.trim())}`)
+          .then(r => r.ok ? r.json() : Promise.reject())
+          .then(render)
+          .catch(hide);
+      }
+
+      input.addEventListener('input', ()=>{
+        clearTimeout(tm); tm = setTimeout(()=>search(input.value), 180);
+      });
+
+      panel.addEventListener('click', (e)=>{
+        const row = e.target.closest('.typeahead-item'); if (!row) return;
+        window.location.href = row.dataset.url;
+      });
+
+      input.addEventListener('keydown', (e)=>{
+        if (panel.classList.contains('d-none')) return;
+        const rows = [...panel.querySelectorAll('.typeahead-item')];
+        if (!rows.length) return;
+
+        if (e.key === 'ArrowDown'){ e.preventDefault(); setActive(rows, activeIndex+1); }
+        else if (e.key === 'ArrowUp'){ e.preventDefault(); setActive(rows, activeIndex-1); }
+        else if (e.key === 'Enter'){ if (activeIndex>=0 && rows[activeIndex]){ e.preventDefault(); rows[activeIndex].click(); } }
+        else if (e.key === 'Escape'){ hide(); }
+      });
+
+      document.addEventListener('click', (e)=>{
+        if (!panel.contains(e.target) && e.target !== input){ hide(); }
+      });
+
+      function setActive(rows, i){
+        rows.forEach(r=>r.classList.remove('active'));
+        if (i < 0) i = rows.length-1;
+        if (i >= rows.length) i = 0;
+        activeIndex = i; rows[activeIndex].classList.add('active');
+        rows[activeIndex].scrollIntoView({block:'nearest'});
+      }
+    })();
     </script>
   </body>
 </html>
