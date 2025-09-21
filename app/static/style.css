@@ -411,7 +411,7 @@ main.container{ padding-top: 90px !important; }
   font-size: .98rem;
   line-height: 1.25;
   display: -webkit-box; -webkit-box-orient: vertical;
-  
+
   -webkit-line-clamp: 2;               /* سطرين فقط */
   overflow: hidden;
   min-height: calc(1.25em * 2);        /* يحافظ على الارتفاع لو سطر واحد */
@@ -438,3 +438,80 @@ main.container{ padding-top: 90px !important; }
   .home-grid{ grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 16px; }
   .spot-media{ height: 150px; }
 }
+
+/* شبكة موحّدة */
+.home-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(270px,1fr));
+  gap:18px;
+}
+
+/* البطاقة تملأ الارتفاع وتحتفظ بكل شيء داخلها */
+.card.spot{
+  display:flex;
+  flex-direction:column;
+  height:100%;
+  border-radius:18px;
+  overflow:hidden;
+}
+
+/* مساحة الصورة ثابتة لكل العناصر */
+.spot-media{
+  position:relative;
+  aspect-ratio: 16/10;              /* توحيد الارتفاع */
+  overflow:hidden;
+  background: rgba(255,255,255,.03);
+  border-bottom:1px solid var(--border);
+}
+.spot-media > img{
+  width:100%; height:100%;
+  object-fit:cover;
+  display:block;
+  transition:transform .25s ease;
+}
+.card.spot:hover .spot-media > img{ transform:scale(1.025); }
+
+/* الـ overlay والشارات داخل منطقة الصورة فقط */
+.spot-overlay{ position:absolute; inset:0;
+  background: linear-gradient(180deg, transparent 55%, rgba(15,17,21,.55)); }
+.price-badge, .category-chip{ position:absolute; top:12px; z-index:2; }
+.price-badge{ inset-inline-start:12px; }
+.category-chip{ inset-inline-end:12px; }
+
+/* جسم البطاقة مرن: يدفع الذيل للأسفل */
+.spot-body{
+  flex:1;                            /* يملأ المتبقي */
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+/* عنوان لا يتجاوز سطرين ولا يخرج خارج الإطار */
+.spot-title{
+  margin:2px 0 4px;
+  display:-webkit-box;
+  -webkit-line-clamp:2;              /* سطران كحد أقصى */
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  min-height:2.8em;                  /* يثبت الارتفاع لو كان قصير */
+}
+
+/* سطر المالك */
+.owner-line{ min-height:30px; }
+
+/* ذيل البطاقة يبقى ملاصقاً للأسفل */
+.spot-footer{ margin-top:auto; }
+
+/* مدينة كبادج أنيق (لو طولت تُقص بشكل جميل) */
+.city-chip{
+  max-width:65%;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* معالجة أي نص يخرج بسبب لغات مختلفة */
+.card.spot .small, .card.spot .text-muted{ line-height:1.2; }
+
+/* لمنع أي تداخل غير مقصود */
+.card.spot *{ max-width:100%; }
