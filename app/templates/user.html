@@ -1,6 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
 
+<!-- [إضافة بسيطة] حجم أيقونات الشارات -->
+<style>
+  .badge-icon{width:18px;height:18px;object-fit:contain;vertical-align:-3px;filter:drop-shadow(0 0 2px rgba(0,0,0,.25))}
+  .badge-icon + .small{margin-inline-start:.25rem}
+</style>
+
 <!-- ===== رأس الصفحة: اسم + شارات + معلومات سريعة ===== -->
 <section class="card p-3 p-md-4 mb-3">
   <div class="d-flex align-items-start align-items-md-center gap-3 flex-column flex-md-row">
@@ -25,9 +31,19 @@
       <div class="d-flex flex-wrap align-items-center gap-2">
         <h2 class="m-0 fw-bold">
           {{ user.first_name }} {{ user.last_name }}
+
+          {# [إضافة] أيقونة التوثيق الصورة بجانب الاسم #}
+          {% if is_verified %}
+            <img class="badge-icon" src="/static/img/violet.png" alt="موثّق" title="موثّق">
+          {% endif %}
+
+          {# [إضافة] أيقونة الجديد الصورة بجانب الاسم #}
+          {% if is_new %}
+            <img class="badge-icon" src="/static/img/jaune.png" alt="حساب جديد" title="حساب جديد">
+          {% endif %}
         </h2>
 
-        <!-- شارة التوثيق (لا نحذف أي شيء، فقط أضفناها) -->
+        <!-- شارة التوثيق (لا نحذف أي شيء، فقط أضفنا الأيقونة أعلاه) -->
         {% if is_verified %}
           <span class="d-inline-flex align-items-center gap-1 px-2 py-1 rounded-3"
                 style="border:1px solid var(--border);background:rgba(124,92,255,.15);">
@@ -36,7 +52,7 @@
           </span>
         {% endif %}
 
-        <!-- شارة جديد -->
+        <!-- شارة جديد (النصية تبقى كما هي) -->
         {% if is_new %}
           <span class="badge rounded-pill bg-warning text-dark">جديد</span>
         {% endif %}

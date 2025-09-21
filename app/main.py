@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
+from sqlalchemy import desc, func, or_
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 
 from .database import Base, engine, SessionLocal, get_db
@@ -32,7 +32,8 @@ from .disputes import router as disputes_router
 from .bookings import router as bookings_router
 from .routes_search import router as search_router
 from .routes_users import router as users_router
-# ✅ إدارة الشارات (اختياري)
+
+# اختياري: إدارة الشارات من لوحة الأدمن
 from .admin_badges import router as admin_badges_router
 
 load_dotenv()
@@ -40,18 +41,18 @@ load_dotenv()
 app = FastAPI()
 
 # =========================
-# جلسات (ثابتة وآمنة على Render)
+# جلسات (تعديل مهم: إعدادات مستقرة حتى لا يتم الخروج تلقائياً)
 # =========================
-# (تعديل السطر ليشمل خيارات تمنع ضياع الكوكي أثناء التنقل/البحث)
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.environ.get("SECRET_KEY", "dev-secret"),
-    same_site="lax",      # يبقيك مسجلًا
-    https_only=True,      # على https فقط (Render)
+    session_cookie="ra_session",
+    same_site="lax",
+    https_only=True,
     max_age=60 * 60 * 24 * 30,  # 30 يوم
 )
 
-# مجلدات static و uploads
+# مجلّدات static و uploads
 BASE_DIR = os.path.dirname(__file__)
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
@@ -96,6 +97,7 @@ PAYOUTS_ENABLED = os.getenv("ENABLE_PAYOUTS", "0") == "1"
 payouts_router = None
 if PAYOUTS_ENABLED:
     try:
+        import stripe  # تأكد وجود المكتبة
         from .payouts import router as _payouts_router
         payouts_router = _payouts_router
         print("[OK] payouts router enabled")
@@ -123,26 +125,29 @@ app.include_router(bookings_router)
 app.include_router(search_router)
 app.include_router(users_router)
 app.include_router(admin_badges_router)
+
 if payouts_router:
     app.include_router(payouts_router)
 
 # =========================
 # الصفحة الرئيسية
+# (تعديل مهم: لا تحوّل المسجّل إلى /welcome)
 # =========================
 @app.get("/")
 def home(
     request: Request,
     db: Session = Depends(get_db),
-    category: str | None = None,
-    q: str | None = None,       # البحث النصي عن المنتج (title/description)
-    city: str | None = None,    # اسم المدينة المراد التصفية بها
+    category: str = None,
+    q: str = None,
+    city: str = None,
 ):
-    # لا تعيد توجيه المستخدم إذا رأى الترحيب سابقًا
-    if not request.cookies.get("seen_welcome"):
+    # كان يعيد التوجيه دائماً، الآن فقط للزائر غير المسجّل
+    if not request.cookies.get("seen_welcome") and not request.session.get("user"):
         return RedirectResponse(url="/welcome", status_code=303)
 
     query = db.query(Item).filter(Item.is_active == "yes")
     current_category = None
+
     if category:
         query = query.filter(Item.category == category)
         current_category = category
@@ -168,6 +173,7 @@ def home(
             query = query.filter(func.lower(Item.city).in_(matched_cities))
 
     items = query.order_by(func.random()).limit(20).all()
+
     for it in items:
         it.category_label = category_label(it.category)
 
@@ -185,12 +191,12 @@ def home(
         },
     )
 
-# ترحيب
 @app.get("/welcome", response_class=HTMLResponse)
 def welcome(request: Request):
     u = request.session.get("user")
     return templates.TemplateResponse("welcome.html", {"request": request, "session_user": u})
 
+# زر "ابدأ" من الترحيب → يضع كوكي ويذهب للرئيسية
 @app.post("/welcome/continue")
 def welcome_continue():
     resp = RedirectResponse(url="/", status_code=303)
@@ -202,7 +208,7 @@ def about(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user")
     return templates.TemplateResponse("about.html", {"request": request, "session_user": u})
 
-# ====== API صغيرة لعداد الرسائل غير المقروءة ======
+# ====== API صغيرة لتحديث شارة الرسائل ======
 @app.get("/api/unread_count")
 def api_unread_count(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user")
@@ -211,7 +217,8 @@ def api_unread_count(request: Request, db: Session = Depends(get_db)):
     return JSONResponse({"count": unread_count(u["id"], db)})
 
 # =========================
-# Middleware: مزامنة session_user
+# Middleware: مزامنة session_user بآمان
+# (تعديل مهم: لا نمسح الجلسة إذا حصل خطأ)
 # =========================
 @app.middleware("http")
 async def sync_user_flags(request: Request, call_next):
@@ -222,30 +229,34 @@ async def sync_user_flags(request: Request, call_next):
                 db_gen = get_db()
                 db: Session = next(db_gen)
                 try:
-                    db_user = db.query(User).get(sess_user["id"])
+                    db_user = db.query(User).filter(User.id == sess_user["id"]).first()
                     if db_user:
-                        # تحديث قيم مهمة حتى لا تختلف الحالة في الواجهة
+                        # قيم أساسية
                         sess_user["is_verified"] = bool(getattr(db_user, "is_verified", False))
                         sess_user["role"] = getattr(db_user, "role", sess_user.get("role"))
                         sess_user["status"] = getattr(db_user, "status", sess_user.get("status"))
                         sess_user["payouts_enabled"] = bool(getattr(db_user, "payouts_enabled", False))
 
-                        # الشارات (إن وجدت بالأعمدة)
+                        # شارات اختيارية لو موجودة في الجدول
                         for key in [
                             "badge_admin", "badge_new_yellow", "badge_pro_green", "badge_pro_gold",
-                            "badge_purple_trust", "badge_renter_green", "badge_orange_stars",
+                            "badge_purple_trust", "badge_renter_green", "badge_orange_stars"
                         ]:
-                            if hasattr(db_user, key):
+                            try:
                                 sess_user[key] = bool(getattr(db_user, key))
+                            except Exception:
+                                pass
 
                         request.session["user"] = sess_user
+                except Exception:
+                    # نتجاهل أي فشل مزامنة ولا نمسح الجلسة
+                    pass
                 finally:
                     try:
                         next(db_gen)
                     except StopIteration:
                         pass
     except Exception:
-        # لا نكسر الطلب لو حصل خطأ
         pass
 
     response = await call_next(request)
