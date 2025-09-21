@@ -1,21 +1,43 @@
-{# templates/_badges.html #}
-{% macro render_badges(u, size_px='18px') %}
-  {% set is_verified = (u.is_verified or u.get('is_verified') or u.get('badge_purple_trust')) %}
-  {% set is_new     = (u.get('badge_new_yellow') or u.get('is_new_under_2m')) %}
+{# app/templates/_badges.html #}
+{% macro render_badges(u, size='18px') -%}
+  {# هل u قاموس؟ (session_user) أم كائن ORM (User)؟ #}
+  {% set is_dict = u is mapping %}
 
-  {# البنفسجي: ثقة من الأدمن #}
+  {# === قيم آمنة بغضّ النظر عن النوع === #}
+  {# موثّق #}
+  {% if is_dict %}
+    {% set is_verified = u.get('is_verified', False) %}
+  {% else %}
+    {% set is_verified = (u|attr('is_verified')) if (u is not none and (u|attr('is_verified') is not undefined)) else False %}
+  {% endif %}
+
+  {# جديد < شهرين: نفضّل خاصية is_new_under_2m إن وُجدت، وإلا badge_new_yellow اليدوية #}
+  {% if is_dict %}
+    {% set is_new_under_2m = u.get('is_new_under_2m', False) %}
+    {% set badge_new_yellow = u.get('badge_new_yellow', False) %}
+  {% else %}
+    {% set is_new_under_2m = (u|attr('is_new_under_2m')) if (u is not none and (u|attr('is_new_under_2m') is not undefined)) else False %}
+    {% set badge_new_yellow = (u|attr('badge_new_yellow')) if (u is not none and (u|attr('badge_new_yellow') is not undefined)) else False %}
+  {% endif %}
+
+  {% set show_yellow = is_new_under_2m or badge_new_yellow %}
+
+  {# === إخراج الشارات (فقط الأصفر والبنفسجي) === #}
+  {% if show_yellow %}
+    <img
+      src="{{ url_for('static', path='img/jaune.png') }}"
+      alt="جديد"
+      title="حساب جديد"
+      style="height:{{ size }};width:auto;vertical-align:middle;margin-inline-end:.25rem;"
+    >
+  {% endif %}
+
   {% if is_verified %}
-    <img src="/static/img/violet.png"
-         alt="موثّق"
-         title="حساب موثّق"
-         style="height:{{ size_px }};width:auto;vertical-align:-2px;margin-inline-start:.35rem;filter:drop-shadow(0 0 2px rgba(0,0,0,.25));">
+    <img
+      src="{{ url_for('static', path='img/violet.png') }}"
+      alt="موثّق"
+      title="حساب موثّق من الإدارة"
+      style="height:{{ size }};width:auto;vertical-align:middle;margin-inline-end:.25rem;"
+    >
   {% endif %}
-
-  {# الأصفر: جديد تحت شهرين #}
-  {% if is_new %}
-    <img src="/static/img/jaune.png"
-         alt="جديد"
-         title="حساب جديد"
-         style="height:{{ size_px }};width:auto;vertical-align:-2px;margin-inline-start:.35rem;filter:drop-shadow(0 0 2px rgba(0,0,0,.25));">
-  {% endif %}
-{% endmacro %}
+{%- endmacro %}
