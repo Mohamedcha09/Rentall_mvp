@@ -1,65 +1,71 @@
-{# app/templates/_badges.html #}
-{% macro _img(name, alt, size) -%}
-  <img src="/static/img/{{ name }}.png"
-       alt="{{ alt }}"
-       class="badge-icon"
-       style="height:{{ size }}px;width:{{ size }}px;margin-inline-start:6px;vertical-align:middle;object-fit:contain;">
+{# قالب شارات آمن بدون صور خارجية — كله SVG — ويقبل dict أو كائن SQLAlchemy #}
+{% macro _bool(u, name) -%}
+  {%- set v = (u[name] if u is mapping and name in u else (u.__dict__.get(name) if u is not mapping else None)) -%}
+  {{ 1 if v else 0 }}
 {%- endmacro %}
 
-{% macro render_badges(subject, size=22) -%}
-  {# لو مافيه موضوع، لا نرسم شيء #}
-  {% if not subject %}
-    {# لا شيء #}
-  {% else %}
-    {%- set names = [] -%}
-
-    {# 1) لو قائمة جاهزة #}
-    {% if subject is sequence and (subject is not string) %}
-      {%- set names = subject -%}
-    {% else %}
-      {%- set u = subject -%}
-
-      {# helpers: نقرأ من dict أو object مع default #}
-      {%- set role         = (u['role'] if u is mapping else u.role)|default('') -%}
-      {%- set is_verified  = (u['is_verified'] if u is mapping else u.is_verified)|default(false) -%}
-
-      {%- set b_admin      = (u['badge_admin'] if u is mapping else u.badge_admin)|default(false) -%}
-      {%- set b_new        = (u['badge_new_yellow'] if u is mapping else u.badge_new_yellow)|default(false) -%}
-      {%- set b_pg         = (u['badge_pro_green'] if u is mapping else u.badge_pro_green)|default(false) -%}
-      {%- set b_pgld       = (u['badge_pro_gold'] if u is mapping else u.badge_pro_gold)|default(false) -%}
-      {%- set b_vio        = (u['badge_purple_trust'] if u is mapping else u.badge_purple_trust)|default(false) -%}
-      {%- set b_vert       = (u['badge_renter_green'] if u is mapping else u.badge_renter_green)|default(false) -%}
-      {%- set b_orng       = (u['badge_orange_stars'] if u is mapping else u.badge_orange_stars)|default(false) -%}
-
-      {# الأزرق (أدمن) #}
-      {% if role|lower == 'admin' or b_admin %}{%- set _ = names.append('adm') -%}{% endif %}
-
-      {# البنفسجي (توثيق من الأدمِن) #}
-      {% if is_verified or b_vio %}{%- set _ = names.append('violet') -%}{% endif %}
-
-      {# أصفر / برو أخضر / برو ذهبي (أولوية: ذهبـي ثم أخضر ثم أصفر) #}
-      {% if b_pgld %}{%- set _ = names.append('ProGold') -%}
-      {% elif b_pg %}{%- set _ = names.append('ProVert') -%}
-      {% elif b_new %}{%- set _ = names.append('jaune') -%}{% endif %}
-
-      {# درع أخضر (≥5 استعمالات) #}
-      {% if b_vert %}{%- set _ = names.append('Vert') -%}{% endif %}
-
-      {# برتقالي (≥20 تقييم كلهم 5 نجوم) #}
-      {% if b_orng %}{%- set _ = names.append('orange') -%}{% endif %}
-    {% endif %}
-
-    {% if names and names|length %}
-      <span class="user-badges">
-        {%- for n in names %}
-          {{ _img(n, 'badge ' ~ n, size) }}
-        {%- endfor %}
-      </span>
-    {% endif %}
-  {% endif %}
+{% macro _str(u, name) -%}
+  {%- if u is mapping -%}{{ u.get(name, '') or '' }}{%- else -%}{{ (u.__dict__.get(name) or '') }}{%- endif -%}
 {%- endmacro %}
 
-<style>
-.badge-icon{display:inline-block}
-.user-badges{display:inline-flex;align-items:center}
-</style>
+{% macro _svg(check_path, size) -%}
+  <svg viewBox="0 0 24 24" style="height:{{ size }};width:{{ size }};vertical-align:middle;margin-inline-start:6px">
+    {{ check_path|safe }}
+  </svg>
+{%- endmacro %}
+
+{% macro icon_admin(size='18px') -%}
+  {{ _svg('<circle cx="12" cy="12" r="10" fill="#6cf"/><path d="M7 15h10v2H7zM7 7h10v2H7zM7 11h10v2H7z" fill="#024"/>', size) }}
+{%- endmacro %}
+
+{% macro icon_verified(size='18px') -%}
+  {{ _svg('<defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#33a8ff"/><stop offset="1" stop-color="#1da1f2"/></linearGradient></defs><circle cx="12" cy="12" r="10" fill="url(#g1)"/><path d="M9.2 12.6l-1.5-1.5a1 1 0 10-1.4 1.4l2.2 2.2a1 1 0 001.4 0l6-6a1 1 0 10-1.4-1.4l-5.3 5.3z" fill="#fff"/>', size) }}
+{%- endmacro %}
+
+{% macro icon_yellow(size='18px') -%}
+  {{ _svg('<circle cx="12" cy="12" r="10" fill="#ffd54d"/><path d="M12 7v5l3 3" stroke="#7a5a00" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>', size) }}
+{%- endmacro %}
+
+{% macro icon_green(size='18px') -%}
+  {{ _svg('<circle cx="12" cy="12" r="10" fill="#69f0ae"/><path d="M8 12l2.5 2.5L16 9" stroke="#0b4" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>', size) }}
+{%- endmacro %}
+
+{% macro icon_gold(size='18px') -%}
+  {{ _svg('<circle cx="12" cy="12" r="10" fill="#ffca28"/><path d="M12 7l1.9 3.9 4.3.6-3.1 3 0.7 4.3-3.8-2-3.8 2 0.7-4.3-3.1-3 4.3-.6z" fill="#8a6d00"/>', size) }}
+{%- endmacro %}
+
+{% macro icon_violet(size='18px') -%}
+  {{ _svg('<circle cx="12" cy="12" r="10" fill="#b388ff"/><path d="M8 12h8" stroke="#2e007a" stroke-width="2" fill="none" stroke-linecap="round"/>', size) }}
+{%- endmacro %}
+
+{% macro icon_renter_safe(size='18px') -%}
+  {{ _svg('<path d="M12 3l7 4v5c0 5-3.5 7-7 9-3.5-2-7-4-7-9V7z" fill="#00c853"/><path d="M9.5 12.2L11.7 14.5 15 11" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>', size) }}
+{%- endmacro %}
+
+{% macro icon_orange(size='18px') -%}
+  {{ _svg('<circle cx="12" cy="12" r="10" fill="#ffab40"/><path d="M8.5 13.5l3 3 4-6" stroke="#7a3a00" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>', size) }}
+{%- endmacro %}
+
+{# =============== الماكرو الرئيسي =============== #}
+{% macro render_badges(subject, size='18px', include_verified=True) -%}
+  {%- if not subject -%}{%- endif -%}
+  {%- set role = (_str(subject, 'role')|lower) -%}
+  {%- set is_verified = (_bool(subject, 'is_verified')|int) -%}
+  {%- set b_yellow  = (_bool(subject, 'badge_new_yellow')|int) -%}
+  {%- set b_pgreen  = (_bool(subject, 'badge_pro_green')|int) -%}
+  {%- set b_pgold   = (_bool(subject, 'badge_pro_gold')|int) -%}
+  {%- set b_violet  = (_bool(subject, 'badge_purple_trust')|int) -%}
+  {%- set b_rgreen  = (_bool(subject, 'badge_renter_green')|int) -%}
+  {%- set b_orange  = (_bool(subject, 'badge_orange_stars')|int) -%}
+
+  <span class="user-badges">
+    {%- if role == 'admin' -%}{{ icon_admin(size) }}{%- endif -%}
+    {%- if include_verified and is_verified -%}{{ icon_verified(size) }}{%- endif -%}
+    {%- if b_yellow  -%}{{ icon_yellow(size) }}{%- endif -%}
+    {%- if b_pgreen  -%}{{ icon_green(size) }}{%- endif -%}
+    {%- if b_pgold   -%}{{ icon_gold(size) }}{%- endif -%}
+    {%- if b_violet  -%}{{ icon_violet(size) }}{%- endif -%}
+    {%- if b_rgreen  -%}{{ icon_renter_safe(size) }}{%- endif -%}
+    {%- if b_orange  -%}{{ icon_orange(size) }}{%- endif -%}
+  </span>
+{%- endmacro %}
