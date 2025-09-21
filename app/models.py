@@ -64,14 +64,14 @@ class User(Base):
     updated_at = col_or_literal("users", "updated_at", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     avatar_path = col_or_literal("users", "avatar_path", String(500), nullable=True)
 
-    # ===== شارات (الأعمدة الجديدة) =====
-    badge_admin         = col_or_literal("users", "badge_admin",         Boolean, default=False)  # البنفسجي بالأزرق (أدمن فقط)
-    badge_new_yellow    = col_or_literal("users", "badge_new_yellow",    Boolean, default=False)  # جديد شهرين (أصفر)
-    badge_pro_green     = col_or_literal("users", "badge_pro_green",     Boolean, default=False)  # Pro أخضر
-    badge_pro_gold      = col_or_literal("users", "badge_pro_gold",      Boolean, default=False)  # Pro ذهبي (بعد سنة)
-    badge_purple_trust  = col_or_literal("users", "badge_purple_trust",  Boolean, default=False)  # بنفسجي بلا أزرق = ثقة
-    badge_renter_green  = col_or_literal("users", "badge_renter_green",  Boolean, default=False)  # أخضر (10 استعارات ناجحة)
-    badge_orange_stars  = col_or_literal("users", "badge_orange_stars",  Boolean, default=False)  # برتقالي (10× 5 نجوم)
+    # ===== شارات (موجودة للحفاظ على التوافق، لكن سنستعمل فعليًا فقط البنفسجي عبر is_verified) =====
+    badge_admin         = col_or_literal("users", "badge_admin",         Boolean, default=False)  # اختياري
+    badge_new_yellow    = col_or_literal("users", "badge_new_yellow",    Boolean, default=False)  # لن نعتمد عليه؛ الأصفر يُحسب تلقائيًا
+    badge_pro_green     = col_or_literal("users", "badge_pro_green",     Boolean, default=False)  # غير مستخدم الآن
+    badge_pro_gold      = col_or_literal("users", "badge_pro_gold",      Boolean, default=False)  # غير مستخدم الآن
+    badge_purple_trust  = col_or_literal("users", "badge_purple_trust",  Boolean, default=False)  # يمكن للأدمِن تفعيلها للبنفسجي
+    badge_renter_green  = col_or_literal("users", "badge_renter_green",  Boolean, default=False)  # غير مستخدم الآن
+    badge_orange_stars  = col_or_literal("users", "badge_orange_stars",  Boolean, default=False)  # غير مستخدم الآن
 
     # علاقات رئيسية
     documents = relationship("Document", back_populates="user", cascade="all, delete-orphan")
@@ -91,7 +91,7 @@ class User(Base):
             uselist=False
         )
 
-    # خصائص مساعدة
+    # ===== خصائص مساعدة =====
     @property
     def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}".strip()
@@ -119,6 +119,18 @@ class User(Base):
             self.verified_at = None
         if _has_column("users", "verified_by_id"):
             self.verified_by_id = None
+
+    # ===== المهم: شارة "جديد" تُحسب تلقائيًا (أقل من شهرين) =====
+    @property
+    def is_new_under_2m(self) -> bool:
+        """True إذا كان الحساب أحدث من شهرين (60 يومًا)."""
+        try:
+            if not self.created_at:
+                return False
+            delta = (datetime.utcnow() - self.created_at)
+            return delta.days < 60
+        except Exception:
+            return False
 
 
 class Document(Base):

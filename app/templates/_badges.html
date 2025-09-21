@@ -1,20 +1,16 @@
 {# templates/_badges.html #}
 {% macro render_badges(subject, size='18px') -%}
-  {# احسب من خصائص المستخدم مباشرة بدون تعقيد #}
-  {% set created = subject.created_at %}
-  {% set is_verified = subject.is_verified or subject.badge_purple_trust %}
-  {% set months = ((utcnow() - created).days // 30) if created else 0 %}
-
-  {# البنفسجي (ثقة) #}
-  {% if is_verified %}
-    <img src="/static/img/violet.png" alt="ثقة" title="حساب موثوق" style="height:{{ size }};width:auto;vertical-align:middle;margin-inline-start:6px;">
+  {# البنفسجي: ثقة (يُديره الأدمِن عبر is_verified أو badge_purple_trust) #}
+  {% if subject.is_verified or subject.badge_purple_trust %}
+    <img src="/static/img/violet.png"
+         alt="ثقة" title="حساب موثوق"
+         style="height:{{ size }};width:auto;vertical-align:middle;margin-inline-start:6px;">
   {% endif %}
 
-  {# الأصفر (جديد أقل من شهرين) #}
-  {% if months < 2 %}
-    <img src="/static/img/jaune.png" alt="جديد" title="حساب جديد" style="height:{{ size }};width:auto;vertical-align:middle;margin-inline-start:6px;">
+  {# الأصفر: جديد أقل من شهرين (محسوب في باك-إند عبر خاصية is_new_under_2m) #}
+  {% if subject.is_new_under_2m %}
+    <img src="/static/img/jaune.png"
+         alt="جديد" title="حساب جديد"
+         style="height:{{ size }};width:auto;vertical-align:middle;margin-inline-start:6px;">
   {% endif %}
 {%- endmacro %}
-
-{# فلتر/دالة وقتية بسيطة #}
-{% macro utcnow() %}{{ namespace(n=cycler())._self.__class__.__mro__[1].__name__ and ('' ) }}{% endmacro %}
