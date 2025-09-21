@@ -343,8 +343,13 @@ small, .small{ color:var(--muted)!important }
 html, body { height: 100%; }                /* تعزيز الارتفاع */
 #page-wrapper{
   min-height: 100dvh;
-  min-height: 100svh;                       /* بديل آمن */
+  min-height: 100svh;                       /* بديل آمن للأجهزة */
   display: flex;
   flex-direction: column;
 }
 .main-flex-fill{ flex: 1 1 auto; }          /* يجعل <main> يتمدّد عموديًا */
+
+/* ======== [أُضيف] إصلاح الطيّ حتى لا يدخل المحتوى تحت الشريط ======== */
+.sidebar[data-collapsed="true"] ~ .page{
+  margin-inline-start: var(--sidebar-w) !important; /* تستخدم العرض الحالي 84px */
+}
