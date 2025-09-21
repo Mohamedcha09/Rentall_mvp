@@ -359,3 +359,82 @@ svg.verified-badge{ filter: drop-shadow(0 0 2px rgba(29,161,242,.45)); }
 
 /* مسافة آمنة أعلى الصفحة (لو تغيّر ارتفاع النافبار) */
 main.container{ padding-top: 90px !important; }
+
+/* ====== Home items: compact, tidy grid ====== */
+
+/* شبكة أصغر وتستوعب عناصر أكثر */
+.home-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); /* كان 290px */
+  gap: 14px;                                                   /* كان 18px */
+}
+
+/* كارت مدمج */
+.card.spot{
+  border-radius: 14px;                 /* أصغر شوي */
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.card.spot .card-body{
+  padding: .65rem .7rem .75rem;        /* تقليل الحشو الداخلي */
+}
+
+/* منطقة الصورة أصغر ومقاس ثابت */
+.spot-media{
+  position: relative;
+  height: 160px;                       /* ✅ صغّر الارتفاع (كان aspect-ratio) */
+  background: rgba(255,255,255,.04);
+  border-bottom: 1px solid var(--border);
+}
+.spot-media > img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;                    /* قصّ ذكي */
+  display: block;
+  transition: transform .22s ease;
+}
+.card.spot:hover .spot-media > img{ transform: scale(1.02); }
+
+/* شارة السعر/التصنيف أصغر */
+.price-badge{
+  top: 8px; inset-inline-start: 8px;
+  padding: .25rem .5rem;
+  font-size: .85rem;
+}
+.category-chip{
+  top: 8px; inset-inline-end: 8px;
+  padding: .2rem .45rem;
+  font-size: .75rem;
+}
+
+/* عنوان وباقي النص أصغر ومتناسق */
+.card.spot .card-title{
+  font-size: .98rem;
+  line-height: 1.25;
+  display: -webkit-box; -webkit-box-orient: vertical;
+  
+  -webkit-line-clamp: 2;               /* سطرين فقط */
+  overflow: hidden;
+  min-height: calc(1.25em * 2);        /* يحافظ على الارتفاع لو سطر واحد */
+}
+.card.spot .small,
+.card.spot .text-muted{ font-size: .78rem; }
+
+/* سطر المالك والمدنية مضغوط */
+.owner-line{ min-height: 26px; }
+.owner-avatar, .owner-avatar--placeholder{
+  width: 24px; height: 24px;           /* أصغر من 28px */
+}
+
+/* تكيّف للجوالات الصغيرة */
+@media (max-width: 480px){
+  .home-grid{ gap: 12px; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); }
+  .spot-media{ height: 140px; }
+  .card.spot .card-body{ padding: .55rem .6rem .65rem; }
+  .card.spot .card-title{ font-size: .95rem; }
+}
+
+/* تكيّف للشاشات العريضة: كبر عدد الأعمدة وقلّل الحجم قليلاً */
+@media (min-width: 1400px){
+  .home-grid{ grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 16px; }
+  .spot-media{ height: 150px; }
+}

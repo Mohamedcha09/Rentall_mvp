@@ -1,112 +1,193 @@
 {% extends "base.html" %}
-{% from "_badges.html" import render_badges %}
 {% block content %}
 
-<!-- هيرو أعلى الصفحة -->
-<section class="home-hero text-center mb-4">
-  <h1 class="mb-3">منصة تأجير أي شيء — نسخة تجريبية</h1>
-  <p class="lead">ابدأ بتسجيل حسابك ورفع وثيقة رسمية للمراجعة من الأدمين.</p>
-  {% if not session_user %}
-    <a href="/register" class="btn btn-primary btn-lg">تسجيل جديد</a>
-    <a href="/login" class="btn btn-outline-light btn-lg ms-2">تسجيل الدخول</a>
-  {% else %}
-    <a href="/profile" class="btn btn-primary btn-lg">اذهب إلى صفحتي</a>
-    {% if session_user.role == 'admin' %}
-      <a href="/admin" class="btn btn-warning btn-lg ms-2">لوحة الأدمين</a>
-    {% endif %}
-  {% endif %}
-</section>
+<!-- ===== شريط أعلى: فلاتر + فرز ===== -->
+<section class="mb-3">
+  <div class="card card-search p-2 p-md-3">
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <!-- تصنيفات سريعة كـ Chips -->
+      <div class="home-cats d-flex flex-wrap gap-2">
+        {% set cats = [
+          ('all','الكل'), ('tech','إلكترونيات'), ('games','ألعاب'),
+          ('tools','أدوات'), ('vehicles','مركبات'), ('home','منزلي')
+        ] %}
+        {% for key,label in cats %}
+          <a class="btn btn-sm btn-outline-light {% if request.query_params.get('cat','all') == key %}active{% endif %}"
+             href="/?cat={{ key }}">{{ label }}</a>
+        {% endfor %}
+      </div>
 
-<!-- نموذج البحث -->
-<form method="get" action="/" class="card card-search mb-3">
-  <div class="card-body">
-    <div class="row g-2 align-items-center">
-      <div class="col-md-5">
-        <input type="text" name="q" value="{{ search_q | default('') }}"
-               class="form-control form-control-lg"
-               placeholder="ابحث عن منتج (مثال: camera, خيمة, سيارة...)">
+      <div class="vr d-none d-md-block mx-2 opacity-25"></div>
+
+      <!-- حقل بحث محلي (يصفّي ضمن الصفحة) -->
+      <div class="flex-grow-1" style="min-width:220px;">
+        <input id="qLocal" type="search" class="form-control"
+               placeholder="ابحث داخل العناصر الظاهرة…">
       </div>
-      <div class="col-md-4">
-        <input type="text" name="city" value="{{ search_city | default('') }}"
-               class="form-control form-control-lg"
-               placeholder="المدينة (مثال: montreal)">
-      </div>
-      <div class="col-md-3 d-flex gap-2">
-        {% if current_category %}
-          <input type="hidden" name="category" value="{{ current_category }}">
-        {% endif %}
-        <button class="btn btn-primary btn-lg w-100" type="submit">ابحث</button>
+
+      <!-- فرز -->
+      <div class="ms-auto d-flex align-items-center gap-2">
+        <select id="sortSelect" class="form-select form-select-sm" style="min-width:160px;">
+          <option value="new">الأحدث</option>
+          <option value="price_asc">السعر: من الأقل</option>
+          <option value="price_desc">السعر: من الأعلى</option>
+          <option value="popular">الأكثر مشاهدة</option>
+        </select>
       </div>
     </div>
   </div>
-</form>
+</section>
 
-<!-- فلاتر التصنيفات + زر تحديث -->
-<div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
-  <div class="mb-2 home-cats">
-    <a class="btn btn-sm {% if not current_category %}btn-primary{% else %}btn-outline-light{% endif %}" href="/">الكل</a>
-    {% for cat in categories %}
-      <a class="btn btn-sm {% if current_category == cat.key %}btn-primary{% else %}btn-outline-light{% endif %}"
-         href="/?category={{ cat.key }}">{{ cat.label }}</a>
-    {% endfor %}
+<!-- ===== الشبكة ===== -->
+<section>
+  <!-- Placeholder skeletons أثناء التحميل -->
+  <div id="grid" class="home-grid">
+    {% if items and items|length %}
+      {% for it in items %}
+        <article class="card spot item-card"
+                 data-title="{{ (it.title or '')|lower }}"
+                 data-price="{{ it.price_per_day or 0 }}"
+                 data-pop="{{ it.views or 0 }}">
+          <div class="spot-media">
+            <!-- Lazy image -->
+            <img class="lazy" data-src="{{ it.cover_url or '/static/img/placeholder.jpg' }}"
+                 alt="{{ it.title or 'item' }}" loading="lazy">
+            <div class="spot-overlay"></div>
+
+            {% if it.price_per_day %}
+              <div class="price-badge">{{ it.price_per_day }} د/يوم</div>
+            {% endif %}
+            {% if it.category_name %}
+              <div class="category-chip">{{ it.category_name }}</div>
+            {% endif %}
+          </div>
+
+          <div class="card-body">
+            <h6 class="card-title mb-2">{{ it.title }}</h6>
+
+            <div class="d-flex align-items-center justify-content-between owner-line mb-2">
+              <div class="d-flex align-items-center gap-2">
+                {% if it.owner_avatar %}
+                  <img class="owner-avatar" src="{{ it.owner_avatar }}" alt="{{ it.owner_name }}">
+                {% else %}
+                  <div class="owner-avatar--placeholder">👤</div>
+                {% endif %}
+                <small class="text-muted">{{ it.owner_name or 'مستخدم' }}</small>
+                {% if it.owner %}
+                  {{ render_badges(it.owner, 16) }}
+                {% endif %}
+              </div>
+              {% if it.city %}
+                <span class="city-chip">{{ it.city }}</span>
+              {% endif %}
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between">
+              <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
+              <button class="btn btn-sm btn-outline-light btn-fav" data-id="{{ it.id }}" title="إضافة للمفضلة">♡</button>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    {% else %}
+      <!-- حالة فارغة أنيقة -->
+      <div class="card p-4 text-center" style="grid-column:1/-1;">
+        <h5 class="mb-2">لا توجد عناصر بعد</h5>
+        <p class="text-muted mb-3">ابدأ بإضافة أول عنصر لك ليستفيد منه الآخرون ✨</p>
+        {% if session_user and session_user.status == 'approved' %}
+          <a href="/owner/items/new" class="btn btn-primary">+ أضف عنصر</a>
+        {% else %}
+          <a href="/login" class="btn btn-outline-light">سجّل دخولك</a>
+        {% endif %}
+      </div>
+    {% endif %}
   </div>
 
-  <div class="mb-2">
-    <a class="btn btn-sm btn-outline-light"
-       href="{{ '/' if not current_category else '/?category=' ~ current_category }}">تحديث العناصر 🔄</a>
-  </div>
-</div>
+  {% if next_page_token %}
+    <!-- زر تحميل المزيد (لو عندك Pagination من السيرفر) -->
+    <div class="text-center mt-3">
+      <a href="/?page_token={{ next_page_token }}" class="btn btn-outline-light">تحميل المزيد</a>
+    </div>
+  {% endif %}
+</section>
 
+<!-- ===== أنماط إضافية صغيرة (تحسينات مرئية) ===== -->
 <style>
-  /* حجم صغير موحّد لأيقونات الشارات */
-  .badge-icon{height:16px;width:16px;vertical-align:middle;margin-inline-start:6px;display:inline-block}
+  /* ظل داخلي خفيف للكروت */
+  .item-card{ box-shadow: var(--shadow); }
+  .item-card .btn-fav.active{ background: rgba(255,255,255,.1)!important; }
+  /* سكيليتون (في حال أردت استخدامه عند جلب ديناميكي) */
+  .skeleton{ position:relative; overflow:hidden; background:rgba(255,255,255,.06); }
+  .skeleton::after{
+    content:""; position:absolute; inset:0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);
+    animation: shimmer 1.2s infinite;
+  }
+  @keyframes shimmer{ 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
 </style>
 
-<!-- شبكة العناصر الحديثة -->
-<div class="home-grid">
-  {% for it in items %}
-    <article class="card spot">
-      <div class="spot-media">
-        {% if it.image_path %}
-          <img src="/{{ it.image_path }}" alt="item">
-        {% else %}
-          <div class="spot-placeholder d-flex align-items-center justify-content-center">
-            <span>لا صورة</span>
-          </div>
-        {% endif %}
-        <div class="spot-overlay"></div>
+<!-- ===== سكريبت: Lazy images + بحث محلي + فرز + مفضلة ===== -->
+<script>
+(() => {
+  // --- Lazy load
+  const lazyImgs = document.querySelectorAll('img.lazy');
+  if ('IntersectionObserver' in window) {
+    const obs = new IntersectionObserver((entries, io) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          const img = e.target;
+          const src = img.getAttribute('data-src');
+          if (src) { img.src = src; img.removeAttribute('data-src'); }
+          img.classList.remove('lazy');
+          io.unobserve(img);
+        }
+      });
+    }, { rootMargin: '200px' });
+    lazyImgs.forEach(img => obs.observe(img));
+  } else {
+    lazyImgs.forEach(img => img.src = img.getAttribute('data-src'));
+  }
 
-        <!-- شارات أعلى الصورة -->
-        <div class="price-badge"><strong>{{ it.price_per_day }}</strong><span> د/يوم</span></div>
-        <div class="category-chip">{{ it.category_label }}</div>
-      </div>
+  // --- Local search
+  const q = document.getElementById('qLocal');
+  const grid = document.getElementById('grid');
+  function filterGrid(){
+    const term = (q.value || '').trim().toLowerCase();
+    const cards = grid.querySelectorAll('.item-card');
+    cards.forEach(c => {
+      const title = c.dataset.title || '';
+      c.style.display = title.includes(term) ? '' : 'none';
+    });
+  }
+  q && q.addEventListener('input', filterGrid);
 
-      <div class="card-body">
-        <h5 class="card-title text-truncate" title="{{ it.title }}">{{ it.title }}</h5>
+  // --- Sort
+  const sortSelect = document.getElementById('sortSelect');
+  function sortGrid(){
+    const val = sortSelect.value;
+    const cards = Array.from(grid.querySelectorAll('.item-card'));
+    const byPrice = (a,b) => (+a.dataset.price||0) - (+b.dataset.price||0);
+    const byPop   = (a,b) => (+b.dataset.pop||0) - (+a.dataset.pop||0);
+    const byNew   = () => 0; // السيرفر بالفعل يعطي أحدث أولاً عادةً
 
-        <!-- سطر المالك -->
-        <div class="owner-line d-flex align-items-center gap-2 mb-2">
-          {% if it.owner and it.owner.avatar_path %}
-            <img src="/{{ it.owner.avatar_path }}" class="owner-avatar" alt="avatar">
-          {% else %}
-            <div class="owner-avatar owner-avatar--placeholder">👤</div>
-          {% endif %}
-          <span class="small text-muted d-inline-flex align-items-center gap-1">
-            {{ it.owner.first_name }} {{ it.owner.last_name }}
-            {# عرض كل الشارات كصور (بدون verified.png) #}
-            {% if it.owner %}{{ render_badges(it.owner, '16px') }}{% endif %}
-          </span>
-        </div>
+    let cmp = byNew;
+    if (val === 'price_asc') cmp = byPrice;
+    if (val === 'price_desc') cmp = (a,b)=>byPrice(b,a);
+    if (val === 'popular') cmp = byPop;
 
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="small city-chip" title="{{ it.city or '' }}">🏙️ {{ it.city or 'بدون مدينة' }}</div>
-          <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
-        </div>
-      </div>
-    </article>
-  {% else %}
-    <p class="text-muted">لا توجد عناصر لعرضها الآن.</p>
-  {% endfor %}
-</div>
+    cards.sort(cmp).forEach(c => grid.appendChild(c));
+  }
+  sortSelect && sortSelect.addEventListener('change', sortGrid);
+
+  // --- Favorite toggle (واجهة فقط، اربطه ب API لو متاح)
+  grid.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-fav');
+    if (!btn) return;
+    btn.classList.toggle('active');
+    btn.textContent = btn.classList.contains('active') ? '♥' : '♡';
+    // TODO: fetch('/api/fav/toggle', {method:'POST', body: JSON.stringify({id: btn.dataset.id})})
+  });
+})();
+</script>
 
 {% endblock %}
