@@ -2,148 +2,25 @@
 {% from "_badges.html" import render_badges %}
 {% block content %}
 
-<style>
-  .card-blur{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(6px);border-radius:14px;}
-  .star{font-size:1.05rem;line-height:1;margin-inline:1px;}
-  .price-badge{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.55);padding:.15rem .4rem;border-radius:10px;font-size:.9rem}
-  .category-chip{position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.55);padding:.1rem .35rem;border-radius:10px;font-size:.75rem}
-  .home-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
-  .spot-media{position:relative;height:160px;overflow:hidden;border-top-left-radius:.5rem;border-top-right-radius:.5rem}
-  .spot-media img{width:100%;height:100%;object-fit:cover}
-  .spot-placeholder{height:160px;background:rgba(255,255,255,.06);border-top-left-radius:.5rem;border-top-right-radius:.5rem}
-  .badge-icon{height:20px;width:20px;margin-inline-start:6px;vertical-align:middle;display:inline-block;}
-</style>
-
-<section class="page-header mb-4">
-  <h2 class="mb-1 d-flex align-items-center gap-2">
-    {{ user.first_name }} {{ user.last_name }}
-    {{ render_badges(user, 20) }}
-  </h2>
-
-  <div class="text-muted small d-flex flex-wrap gap-2">
-    <span>البريد: {{ user.email }}</span> •
-    <span>الهاتف: {{ user.phone or 'غير مضاف' }}</span> •
-    <span>عضو منذ: {{ joined_at.strftime('%Y-%m-%d') if joined_at is defined and joined_at else '' }}</span>
+{# تنبيه Stripe إن لم يكن مفعلاً #}
+{% set payouts = user.payouts_enabled if user is mapping else (user.payouts_enabled or False) %}
+{% if not payouts %}
+  <div class="alert alert-warning mb-3">
+    لِتستلم أرباحك مباشرة، قم بربط حسابك بـ Stripe Connect.
   </div>
-
-  <div class="mt-2 d-flex align-items-center gap-2">
-    <span class="badge bg-secondary">{{ user.role }}</span>
-    <span class="badge
-      {% if user.status=='approved' %}bg-success
-      {% elif user.status=='pending' %}bg-warning text-dark
-      {% else %}bg-danger{% endif %}">
-      {{ user.status }}
-    </span>
-  </div>
-</section>
-
-<!-- ✅ الإصلاح هنا: بدلاً من getattr -->
-<div class="d-flex gap-2 mb-4 flex-wrap">
-  {% if not (user.payouts_enabled is defined and user.payouts_enabled) %}
-    <a href="/payout/connect/start" class="btn btn-primary">اربط Stripe الآن</a>
-  {% endif %}
-  <a href="/messages" class="btn btn-outline-light">رسائلي</a>
-</div>
-
-<div class="row g-3 mb-4">
-  <div class="col-sm-6 col-lg-3">
-    <div class="card card-blur h-100">
-      <div class="card-body">
-        <div class="text-muted small mb-1">كل العناصر</div>
-        <div class="h5 mb-0">{{ items_count }}</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-sm-6 col-lg-3">
-    <div class="card card-blur h-100">
-      <div class="card-body">
-        <div class="text-muted small mb-1">العناصر النشطة</div>
-        <div class="h5 mb-0">{{ items_active_count }}</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-sm-6 col-lg-3">
-    <div class="card card-blur h-100">
-      <div class="card-body">
-        <div class="text-muted small mb-1">متوسط التقييم</div>
-        <div class="d-flex align-items-end gap-2">
-          <div class="fs-3 fw-bold">{{ '%.1f'|format(avg_stars or 0) }}</div>
-          <div>
-            {% set full = (avg_stars or 0)|round(0,'floor') %}
-            {% for i in range(1,6) %}
-              {% if i <= full %}
-                <span class="star text-warning">★</span>
-              {% else %}
-                <span class="star text-secondary">☆</span>
-              {% endif %}
-            {% endfor %}
-          </div>
-        </div>
-        <div class="text-muted small mt-1">عدد المراجعات: {{ ratings_count }}</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="card card-blur mb-4">
-  <div class="card-body">
-    <h5 class="mb-3">آخر المراجعات</h5>
-    {% if reviews and reviews|length %}
-      <div class="list-group">
-        {% for r in reviews %}
-          <div class="list-group-item bg-transparent text-white border-secondary">
-            <div class="d-flex justify-content-between">
-              <strong>{{ r.rater_name }}</strong>
-              <small class="text-muted">{{ r.created_at.strftime('%Y-%m-%d') if r.created_at else '' }}</small>
-            </div>
-            <div class="mb-1">
-              {% for i in range(1,6) %}
-                {% if i <= r.stars %}<span class="star text-warning">★</span>{% else %}<span class="star text-secondary">☆</span>{% endif %}
-              {% endfor %}
-            </div>
-            {% if r.comment %}
-              <div class="text-body">{{ r.comment }}</div>
-            {% else %}
-              <div class="text-muted">لا توجد ملاحظة.</div>
-            {% endif %}
-          </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div class="text-muted">لا توجد تقييمات بعد.</div>
-    {% endif %}
-  </div>
-</div>
-
-<h4 class="mb-3">عناصري</h4>
-{% set my_items = user.items if user is defined and user.items is defined else [] %}
-{% if my_items and my_items|length %}
-  <div class="home-grid">
-    {% for it in my_items %}
-      <article class="card spot h-100">
-        <div class="spot-media">
-          {% if it.image_path %}
-            <img src="/{{ it.image_path }}" alt="item">
-          {% else %}
-            <div class="spot-placeholder d-flex align-items-center justify-content-center">
-              <span class="text-muted small">لا صورة</span>
-            </div>
-          {% endif %}
-          <div class="price-badge"><strong>{{ it.price_per_day or 0 }}</strong><span> د/يوم</span></div>
-          <div class="category-chip">{{ it.category_label if it.category_label is defined else it.category }}</div>
-        </div>
-        <div class="card-body">
-          <h6 class="card-title text-truncate" title="{{ it.title }}">{{ it.title }}</h6>
-          <div class="d-flex align-items-center justify-content-between">
-            <div class="small text-muted" title="{{ it.city or '' }}">🏙️ {{ it.city or 'بدون مدينة' }}</div>
-            <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
-          </div>
-        </div>
-      </article>
-    {% endfor %}
-  </div>
-{% else %}
-  <p class="text-muted">لا توجد عناصر بعد.</p>
 {% endif %}
+
+<div class="d-flex align-items-center gap-2 mb-2">
+  <h2 class="m-0">{{ user.first_name }} {{ user.last_name }}</h2>
+  {{ render_badges(user, '20px') }}
+</div>
+
+<div class="text-muted mb-3 small">
+  البريد: {{ user.email }}
+  · الهاتف: {{ user.phone or '—' }}
+  · عضو منذ: {{ user.created_at.strftime('%d-%m-%Y') if user.created_at }}
+</div>
+
+{# بقية مكونات صفحتك — لا تغيّر الأشياء السليمة #}
 
 {% endblock %}

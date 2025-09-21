@@ -1,35 +1,28 @@
 {# app/templates/_badges.html #}
-{% macro _img(path, alt, size) -%}
-  <img src="{{ path }}" alt="{{ alt }}"
-       style="height:{{ size }}px;width:{{ size }}px;vertical-align:middle;margin-inline-start:6px;">
-{%- endmacro %}
+{%- macro render_badges(subject, size='18px') -%}
+  {%- if not subject -%}{%- endmacro -%}{%- endif -%}
 
-{% macro render_badges(subject, size=18, include_verified=True) -%}
-  {%- if not subject -%}{%- endif -%}
-  {%- if subject -%}
-    {# يدعم dict (session_user) و ORM object #}
-    {%- set is_map = subject is mapping -%}
+  {%- macro _img(src, title) -%}
+    <img src="{{ url_for('static', path='img/' ~ src) }}"
+         alt="{{ title }}" title="{{ title }}"
+         style="height:{{ size }};width:auto;vertical-align:middle;margin-inline-start:6px;">
+  {%- endmacro -%}
 
-    {%- set is_verified     = (subject.get('is_verified', False) if is_map else (subject.is_verified or False)) -%}
-    {%- set badge_admin     = (subject.get('badge_admin', False) if is_map else (subject.badge_admin or False)) -%}
-    {%- set badge_new       = (subject.get('badge_new_yellow', False) if is_map else (subject.badge_new_yellow or False)) -%}
-    {%- set badge_pro_green = (subject.get('badge_pro_green', False) if is_map else (subject.badge_pro_green or False)) -%}
-    {%- set badge_pro_gold  = (subject.get('badge_pro_gold', False) if is_map else (subject.badge_pro_gold or False)) -%}
-    {%- set badge_trust     = (subject.get('badge_purple_trust', False) if is_map else (subject.badge_purple_trust or False)) -%}
-    {%- set badge_renter    = (subject.get('badge_renter_green', False) if is_map else (subject.badge_renter_green or False)) -%}
-    {%- set badge_orange    = (subject.get('badge_orange_stars', False) if is_map else (subject.badge_orange_stars or False)) -%}
-
-    <span class="user-badges">
-      {%- if include_verified and is_verified -%}
-        {{ _img('/static/img/verified.png', 'verified', size) }}
-      {%- endif -%}
-      {%- if badge_admin %}     {{ _img('/static/img/adm.png',     'admin',        size) }} {%- endif -%}
-      {%- if badge_new %}       {{ _img('/static/img/jaune.png',   'new',          size) }} {%- endif -%}
-      {%- if badge_pro_green %} {{ _img('/static/img/ProVert.png', 'Pro Green',    size) }} {%- endif -%}
-      {%- if badge_pro_gold %}  {{ _img('/static/img/ProGold.png', 'Pro Gold',     size) }} {%- endif -%}
-      {%- if badge_trust %}     {{ _img('/static/img/violet.png',  'Trust',        size) }} {%- endif -%}
-      {%- if badge_renter %}    {{ _img('/static/img/Vert.png',    'Safe Renter',  size) }} {%- endif -%}
-      {%- if badge_orange %}    {{ _img('/static/img/orange.png',  'Top Rated',    size) }} {%- endif -%}
-    </span>
+  {# verified كـ SVG مدمج (عشان ما نعتمد على verified.png) #}
+  {%- if subject.is_verified -%}
+    <svg aria-label="موثّق"
+         style="height:{{ size }};width:{{ size }};vertical-align:middle;margin-inline-start:6px;">
+      <circle cx="10" cy="10" r="10" fill="#2ea7ff"/>
+      <path d="M5 10l3 3 7-7" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
   {%- endif -%}
-{%- endmacro %}
+
+  {# نفس الصور التي تريدها #}
+  {%- if subject.badge_admin %}{{ _img('adm.png', 'admin') }}{%- endif -%}
+  {%- if subject.badge_new_yellow %}{{ _img('jaune.png', 'جديد') }}{%- endif -%}
+  {%- if subject.badge_pro_green %}{{ _img('ProVert.png', 'Pro أخضر') }}{%- endif -%}
+  {%- if subject.badge_pro_gold %}{{ _img('ProGold.png', 'Pro ذهبي') }}{%- endif -%}
+  {%- if subject.badge_purple_trust %}{{ _img('violet.png', 'ثقة') }}{%- endif -%}
+  {%- if subject.badge_renter_green %}{{ _img('Vert.png', 'مستأجر موثوق') }}{%- endif -%}
+  {%- if subject.badge_orange_stars %}{{ _img('orange.png', 'Top Rated') }}{%- endif -%}
+{%- endmacro -%}

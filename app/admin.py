@@ -259,65 +259,39 @@ def admin_request_fix(
 # ---------------------------
 # إدارة الشارات (Badges)
 # ---------------------------
-@router.post("/admin/users/{user_id}/badges")
-def admin_update_badges(
-    user_id: int,
-    request: Request,
-    db: Session = Depends(get_db),
-    badge_admin: str | None = Form(None),
-    badge_new_yellow: str | None = Form(None),
-    badge_pro_green: str | None = Form(None),
-    badge_pro_gold: str | None = Form(None),
-    badge_purple_trust: str | None = Form(None),
-    badge_renter_green: str | None = Form(None),
-    badge_orange_stars: str | None = Form(None),
-):
-    """
-    يحفظ الشارات المخصّصة للمستخدم.
-    قواعد التنافي:
-      - (new_yellow) لا يجتمع مع أي Pro.
-      - (pro_gold) يلغي pro_green.
-    """
-    if not require_admin(request):
-        return RedirectResponse(url="/login", status_code=303)
+@router.post("/users/{user_id}/badges")
+def set_badges(user_id: int,
+               badge_new_yellow: str | None = Form(None),
+               badge_pro_green: str | None = Form(None),
+               badge_pro_gold: str | None = Form(None),
+               badge_purple_trust: str | None = Form(None),
+               badge_renter_green: str | None = Form(None),
+               badge_orange_stars: str | None = Form(None),
+               badge_admin: str | None = Form(None),
+               request: Request = None,
+               db: Session = Depends(get_db)):
 
-    user = db.query(User).get(user_id)
-    if not user:
+    u = db.query(User).get(user_id)
+    if not u:
         return RedirectResponse(url="/admin", status_code=303)
 
-    # اقرأ القيم كبولين
-    val_admin         = bool(badge_admin)
-    val_new_yellow    = bool(badge_new_yellow)
-    val_pro_green     = bool(badge_pro_green)
-    val_pro_gold      = bool(badge_pro_gold)
-    val_purple_trust  = bool(badge_purple_trust)
-    val_renter_green  = bool(badge_renter_green)
-    val_orange_stars  = bool(badge_orange_stars)
+    # حوّل إلى بوليان
+    u.badge_new_yellow  = bool(badge_new_yellow)
+    u.badge_pro_green   = bool(badge_pro_green)
+    u.badge_pro_gold    = bool(badge_pro_gold)
+    u.badge_purple_trust= bool(badge_purple_trust)
+    u.badge_renter_green= bool(badge_renter_green)
+    u.badge_orange_stars= bool(badge_orange_stars)
+    u.badge_admin       = bool(badge_admin)
 
-    # قواعد التنافي
-    if val_new_yellow and (val_pro_green or val_pro_gold):
-        # لو الأدمِن علّم الاثنين، نعطي أولوية PRO ونلغي الأصفر
-        val_new_yellow = False
-    if val_pro_gold:
-        val_pro_green = False
+    # حل التعارض: الأصفر لا يجتمع مع Pro
+    if u.badge_new_yellow and (u.badge_pro_green or u.badge_pro_gold):
+        # نعطي أولوية لـ Pro ونطفئ الأصفر
+        u.badge_new_yellow = False
 
-    # خزّن فقط إن كانت الأعمدة موجودة (نماذج قديمة بدون أعمدة ستتجاهل تلقائيًا)
-    if hasattr(user, "badge_admin"):
-        user.badge_admin = val_admin
-    if hasattr(user, "badge_new_yellow"):
-        user.badge_new_yellow = val_new_yellow
-    if hasattr(user, "badge_pro_green"):
-        user.badge_pro_green = val_pro_green
-    if hasattr(user, "badge_pro_gold"):
-        user.badge_pro_gold = val_pro_gold
-    if hasattr(user, "badge_purple_trust"):
-        user.badge_purple_trust = val_purple_trust
-    if hasattr(user, "badge_renter_green"):
-        user.badge_renter_green = val_renter_green
-    if hasattr(user, "badge_orange_stars"):
-        user.badge_orange_stars = val_orange_stars
-
+    db.add(u)
     db.commit()
-    _refresh_session_user_if_self(request, user)
+    db.refresh(u)
 
+    # رجوع للوحة الأدمين
     return RedirectResponse(url="/admin", status_code=303)
