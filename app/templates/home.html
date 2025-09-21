@@ -61,39 +61,41 @@
 <div class="home-grid">
   {% for it in items %}
     <article class="card spot">
-      <!-- صورة موحّدة -->
+      <!-- صورة العنصر -->
       <div class="spot-media">
         {% if it.image_path %}
           <img src="/{{ it.image_path }}" alt="item">
         {% else %}
-          <div class="spot-placeholder d-flex align-items-center justify-content-center">لا صورة</div>
+          <div class="spot-placeholder d-flex align-items-center justify-content-center">
+            <span>لا صورة</span>
+          </div>
         {% endif %}
         <div class="spot-overlay"></div>
 
-        <!-- شارات -->
+        <!-- شارات السعر والتصنيف -->
         <div class="price-badge"><strong>{{ it.price_per_day }}</strong><span> د/يوم</span></div>
         <div class="category-chip">{{ it.category_label }}</div>
       </div>
 
       <!-- جسم البطاقة -->
       <div class="card-body spot-body">
-        <!-- عنوان -->
+        <!-- العنوان -->
         <h5 class="card-title spot-title" title="{{ it.title }}">{{ it.title }}</h5>
 
-        <!-- المالك -->
+        <!-- سطر المالك -->
         <div class="owner-line d-flex align-items-center gap-2">
           {% if it.owner and it.owner.avatar_path %}
             <img src="/{{ it.owner.avatar_path }}" class="owner-avatar" alt="avatar">
           {% else %}
             <div class="owner-avatar owner-avatar--placeholder">👤</div>
           {% endif %}
-          <span class="small text-muted d-inline-flex align-items-center gap-1 flex-wrap">
+          <span class="small text-muted d-inline-flex align-items-center gap-1 owner-name">
             {{ it.owner.first_name }} {{ it.owner.last_name }}
             {% if it.owner %}{{ render_badges(it.owner, '16px') }}{% endif %}
           </span>
         </div>
 
-        <!-- المدينة + زر -->
+        <!-- الذيل: المدينة + زر التفاصيل -->
         <div class="spot-footer d-flex align-items-center justify-content-between">
           <div class="small city-chip" title="{{ it.city or '' }}">🏙️ {{ it.city or 'بدون مدينة' }}</div>
           <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
@@ -104,68 +106,5 @@
     <p class="text-muted">لا توجد عناصر لعرضها الآن.</p>
   {% endfor %}
 </div>
-
-<!-- ستايل إضافي -->
-<style>
-/* شبكة موحّدة */
-.home-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill, minmax(270px,1fr));
-  gap:18px;
-}
-
-/* البطاقة */
-.card.spot{
-  display:flex;
-  flex-direction:column;
-  height:100%;
-  border-radius:18px;
-  overflow:hidden;
-}
-
-/* الصورة */
-.spot-media{
-  position:relative;
-  aspect-ratio:16/10;
-  overflow:hidden;
-  background:rgba(255,255,255,.03);
-  border-bottom:1px solid var(--border);
-}
-.spot-media > img{
-  width:100%; height:100%;
-  object-fit:cover;
-  display:block;
-  transition:transform .25s ease;
-}
-.card.spot:hover .spot-media > img{ transform:scale(1.025); }
-
-/* overlay والشارات */
-.spot-overlay{ position:absolute; inset:0;
-  background:linear-gradient(180deg, transparent 55%, rgba(15,17,21,.55));
-}
-.price-badge,.category-chip{ position:absolute; top:12px; z-index:2; }
-.price-badge{ inset-inline-start:12px; }
-.category-chip{ inset-inline-end:12px; }
-
-/* جسم البطاقة */
-.spot-body{ flex:1; display:flex; flex-direction:column; gap:10px; }
-.spot-title{
-  margin:2px 0 4px;
-  display:-webkit-box;
-  -webkit-line-clamp:2;
-  -webkit-box-orient:vertical;
-  overflow:hidden;
-  min-height:2.8em;
-}
-.owner-line{ min-height:30px; }
-.spot-footer{ margin-top:auto; }
-.city-chip{
-  max-width:65%;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-.card.spot *{ max-width:100%; }
-</style>
 
 {% endblock %}
