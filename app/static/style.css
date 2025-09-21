@@ -317,3 +317,24 @@ small, .small{ color:var(--muted)!important }
 }
 @keyframes fabpop{0%{transform:scale(.8); opacity:0}100%{transform:scale(1); opacity:1}}
 .fab:active{ transform:scale(.96) }
+
+
+/* ==== Full-screen on desktop ==== */
+@media (min-width: 992px){
+  .page{
+    max-width: none;           /* كان 1280px */
+  }
+}
+
+/* لو تبغى تقلّل الحافة الداخلية كمان */
+.page{ padding-inline: 12px 20px; }   /* كان 20px يمين ويسار */
+
+/* خيار: لما السايدبار يكون مطوي (collapsed) خلِّ المسافة أصغر/صفر */
+.sidebar[data-collapsed="true"] ~ .page{
+  margin-inline-start: 0;      /* كان يترك 84px */
+}
+
+/* على الموبايل يبقى بدون هامش أصلاً */
+@media (max-width: 991.98px){
+  .page{ margin-inline: 0; }
+}
