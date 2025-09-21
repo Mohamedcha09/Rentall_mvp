@@ -366,3 +366,26 @@ svg.verified-badge{ filter: drop-shadow(0 0 2px rgba(29,161,242,.45)); }
 main.container {
   padding-top: 90px !important;  /* زِد أو قلّل لو احتجت */
 }
+
+/* ===== Fix Navbar Always on Top ===== */
+.navbar {
+  position: fixed !important;
+  top: 0; left: 0; right: 0;
+  z-index: 9999 !important;   /* اجعلها فوق أي شيء */
+}
+
+/* أي خلفيات كبيرة لا يجب أن تعلو على النافبار */
+.home-hero, .welcome-hero, .hero, .overlay {
+  z-index: 0 !important;
+}
+
+/* dropdowns الخاصة بالنافبار */
+.navbar .dropdown-menu {
+  z-index: 10000 !important;
+  position: absolute;
+}
+
+/* تأكد أن المحتوى ما يختفي وراء النافبار */
+body {
+  padding-top: 80px !important;   /* عدّل الرقم حسب ارتفاع النافبار */
+}
