@@ -1,127 +1,108 @@
-{% extends "base.html" %}
-{% block content %}
+# app/routes_users.py
+# -*- coding: utf-8 -*-
+"""
+Routes for user public profile pages.
+No HTML here; the template is templates/user.html.
+"""
 
-<section class="container-xxl">
+import os
+from datetime import datetime, timezone
 
-  <!-- هيدر البروفايل -->
-  <div class="card mb-3">
-    <div class="card-body d-flex justify-content-between align-items-center gap-3 flex-wrap">
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
 
-      <!-- الاسم + الأوسمة -->
-      <div class="d-flex align-items-center gap-3 flex-wrap">
-        <div>
-          <h2 class="m-0 d-flex align-items-center gap-2">
-            <span class="fw-bold text-truncate">{{ (user_obj.first_name ~ ' ' ~ user_obj.last_name).strip() or '—' }}</span>
+from .database import get_db
+from .models import User, Item
 
-            {% if is_verified %}
-              <span class="chip chip-verify">
-                <i class="bi bi-patch-check-fill"></i>
-                <span>موثَّق</span>
-              </span>
-            {% endif %}
+# Use the same templates directory as the rest of the app
+TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
-            {% if is_newbie %}
-              <span class="chip chip-new">
-                <i class="bi bi-stars"></i>
-                <span>جديد</span>
-              </span>
-            {% endif %}
-          </h2>
+router = APIRouter()
 
-          <div class="small text-muted mt-1 d-flex align-items-center gap-2 flex-wrap">
-            <span class="d-inline-flex align-items-center gap-1">
-              <i class="bi bi-calendar2-week"></i>
-              انضم: {{ user_obj.created_at }}
-            </span>
-            <span class="d-inline-flex align-items-center gap-1">
-              <i class="bi bi-box-seam"></i>
-              عناصر: {{ items_count }}
-            </span>
-            <span class="d-inline-flex align-items-center gap-1">
-              <i class="bi bi-star-half"></i>
-              تقييم: {{ rating_avg or 0 }} ({{ reviews_count }} مراجعة)
-            </span>
-          </div>
-        </div>
-      </div>
 
-      <!-- أفاتار -->
-      <div class="flex-shrink-0">
-        {% if user_obj.avatar_path %}
-          <img src="/{{ user_obj.avatar_path }}" alt="" class="rounded-circle" style="width:76px;height:76px;object-fit:cover;border:1px solid var(--border)">
-        {% else %}
-          <div class="rounded-circle d-grid place-items-center" style="width:76px;height:76px;background:var(--surface);border:1px solid var(--border);font-weight:800;">
-            {{ (user_obj.first_name or 'U')[:1] }}
-          </div>
-        {% endif %}
-      </div>
-    </div>
-  </div>
+def _utc_now():
+    """Return an aware UTC datetime if possible."""
+    try:
+        return datetime.now(timezone.utc)
+    except Exception:
+        # Fallback (naive). We won't compare tz-aware with naive directly.
+        return datetime.utcnow()
 
-  <!-- تبويبات بسيطة -->
-  <ul class="nav nav-pills mb-3 gap-2 flex-wrap">
-    <li class="nav-item"><a class="nav-link active" href="#items" data-bs-toggle="tab">العناصر</a></li>
-    <li class="nav-item"><a class="nav-link" href="#about" data-bs-toggle="tab">حول المستخدم</a></li>
-    <li class="nav-item"><a class="nav-link" href="#reviews" data-bs-toggle="tab">التقييمات</a></li>
-  </ul>
 
-  <div class="tab-content">
+@router.get("/users/{user_id}")
+def user_profile(user_id: int, request: Request, db: Session = Depends(get_db)):
+    """
+    Public user profile:
+    - Basic info (first/last name, city, bio if present)
+    - Badges: new (account age < 60 days), verified (is_verified)
+    - Owner's active items (latest first)
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        # If user doesn't exist, go back to search (keeps q if present)
+        q = request.query_params.get("q", "")
+        return RedirectResponse(url=f"/search?q={q}", status_code=303)
 
-    <!-- عناصر المالك -->
-    <div class="tab-pane fade show active" id="items">
-      {% if items %}
-        <div class="home-grid">
-          {% for it in items %}
-            <article class="card spot">
-              <div class="spot-media">
-                {% if it.image_path %}
-                  <img src="/{{ it.image_path }}" alt="">
-                {% endif %}
-                <div class="spot-overlay"></div>
-                <div class="price-badge"><strong>{{ it.price_per_day }}</strong><span> د/يوم</span></div>
-                <div class="category-chip">{{ it.category or '' }}</div>
-              </div>
-              <div class="card-body">
-                <h5 class="spot-title" title="{{ it.title }}">{{ it.title }}</h5>
-                <div class="spot-footer d-flex justify-content-between align-items-center">
-                  <div class="small text-muted">🏙️ {{ it.city or '—' }}</div>
-                  <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
-                </div>
-              </div>
-            </article>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="text-center text-muted py-5">لا توجد عناصر معروضة لهذا المستخدم حاليًا.</div>
-      {% endif %}
-    </div>
+    # Basic fields (safe-get: if column missing returns default)
+    first_name = getattr(user, "first_name", "") or ""
+    last_name = getattr(user, "last_name", "") or ""
+    full_name = f"{first_name} {last_name}".strip() or (first_name or last_name or "User")
+    city = getattr(user, "city", "") or ""
+    bio = getattr(user, "bio", "") or ""
+    status = getattr(user, "status", "") or ""
+    avatar_path = getattr(user, "avatar_path", "") or ""
+    created = getattr(user, "created_at", None)
+    is_verified = bool(getattr(user, "is_verified", False))
 
-    <!-- حول -->
-    <div class="tab-pane fade" id="about">
-      <div class="card">
-        <div class="card-body">
-          <div class="small text-muted">معلومات عامة:</div>
-          <ul class="m-0 mt-2 small">
-            <li>المعرف: {{ user_obj.id }}</li>
-            <li>الحالة: {{ user_obj.status or '—' }}</li>
-            <li>تاريخ الانضمام: {{ user_obj.created_at }}</li>
-          </ul>
-        </div>
-      </div>
-    </div>
+    # "New" badge: account age < 60 days
+    is_new_yellow = False
+    if created:
+        now = _utc_now()
+        # Normalize to naive before subtraction if needed
+        try:
+            if getattr(created, "tzinfo", None) is not None:
+                created_naive = created.astimezone(timezone.utc).replace(tzinfo=None)
+                now_naive = now.astimezone(timezone.utc).replace(tzinfo=None)
+            else:
+                created_naive = created
+                now_naive = now.replace(tzinfo=None)
+            is_new_yellow = (now_naive - created_naive).days < 60
+        except Exception:
+            is_new_yellow = False
 
-    <!-- التقييمات -->
-    <div class="tab-pane fade" id="reviews">
-      <div class="card">
-        <div class="card-body text-muted text-center">
-          <div class="mb-2">تقييم متوسط: {{ rating_avg or 0 }}</div>
-          <div>({{ reviews_count }} مراجعة)</div>
-          <div class="small mt-3">ميزة التقييمات ستُستكمل لاحقًا.</div>
-        </div>
-      </div>
-    </div>
+    # Owner items (active only)
+    items_q = db.query(Item).filter(
+        Item.owner_id == user_id,
+        Item.is_active == "yes",
+    )
+    items = items_q.order_by(desc(Item.created_at)).limit(24).all()
+    items_count = items_q.count()
 
-  </div>
-</section>
+    # Ratings placeholders (adapt if you have a ratings table)
+    rating_avg = 0.0
+    rating_count = 0
 
-{% endblock %}
+    return templates.TemplateResponse(
+        "user.html",
+        {
+            "request": request,
+            "session_user": request.session.get("user"),
+            "user_obj": user,            # full ORM object if template needs more
+            "full_name": full_name,
+            "city": city,
+            "bio": bio,
+            "status": status,
+            "avatar_path": avatar_path,
+            "created_at": created,
+            "is_new_yellow": is_new_yellow,
+            "is_verified": is_verified,
+            "items": items,
+            "items_count": items_count,
+            "rating_avg": rating_avg,
+            "rating_count": rating_count,
+        },
+    )
