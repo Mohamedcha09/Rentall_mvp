@@ -1,213 +1,243 @@
 {% extends "base.html" %}
-
-{% block head %}
-<style>
-  /* تحسينات صغيرة خاصة بصفحة المستخدم فقط */
-  .profile-header{position:relative;border-radius:16px;padding:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02))}
-  .profile-name{font-weight:800; letter-spacing:.2px}
-  .chip{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .6rem;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.06);font-size:.85rem}
-  .chip i{font-size:1rem}
-  .chip--verified{background:rgba(85,213,255,.14);border-color:rgba(85,213,255,.35);color:#9be3ff}
-  .chip--new{background:rgba(124,92,255,.14);border-color:rgba(124,92,255,.35);color:#d3c8ff}
-  .chip--power{background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.35);color:#86efac}
-  .chip--trusted{background:rgba(250,204,21,.18);border-color:rgba(250,204,21,.35);color:#fde68a}
-  .chip--top{background:rgba(253,164,175,.18);border-color:rgba(253,164,175,.35);color:#fecdd3}
-  .stat{display:inline-flex;align-items:center;gap:.45rem;padding:.35rem .6rem;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.04)}
-  .avatar-lg{width:84px;height:84px;border-radius:50%;object-fit:cover;border:1px solid var(--border)}
-  .tab-content > .tab-pane{padding-top:14px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
-  .card.item{height:100%;display:flex;flex-direction:column}
-  .item-img{height:160px;object-fit:cover;border-bottom:1px solid var(--border)}
-  .item-body{flex:1;display:flex;flex-direction:column;gap:.5rem;padding:.75rem}
-  .rating-stars{color:#ffd166}
-</style>
-{% endblock %}
-
 {% block content %}
 
-<section class="profile-header mb-3">
-  <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-    <div class="d-flex align-items-center gap-3 flex-wrap">
-      <!-- الصورة -->
+<!-- ===== رأس الصفحة: اسم + شارات + معلومات سريعة ===== -->
+<section class="card p-3 p-md-4 mb-3">
+  <div class="d-flex align-items-start align-items-md-center gap-3 flex-column flex-md-row">
+
+    <!-- أفاتار -->
+    <div class="flex-shrink-0">
       {% if user.avatar_path %}
-        <img src="/{{ user.avatar_path }}" class="avatar-lg" alt="avatar">
+        <img src="/{{ user.avatar_path }}"
+             alt="avatar"
+             class="rounded-circle"
+             style="width:86px;height:86px;object-fit:cover;border:1px solid var(--border)">
       {% else %}
-        <div class="avatar-lg d-inline-grid place-items-center" style="display:grid;place-items:center;background:rgba(255,255,255,.06)">
-          <i class="bi bi-person" style="font-size:2rem;opacity:.8"></i>
+        <div class="rounded-circle d-grid place-items-center"
+             style="width:86px;height:86px;background:rgba(255,255,255,.06);border:1px solid var(--border);">
+          <span class="fw-bold fs-2">{{ (user.first_name or 'U')[:1] }}</span>
         </div>
       {% endif %}
-
-      <div>
-        <!-- الاسم + الشارات -->
-        <div class="d-flex align-items-center flex-wrap gap-2">
-          <h1 class="h3 m-0 profile-name">
-            {{ (user.first_name~' '~user.last_name)|trim or 'مستخدم' }}
-          </h1>
-
-          {# شارة التوثيق #}
-          {% if badges.verified %}
-            <span class="chip chip--verified" title="موثّق">
-              <i class="bi bi-patch-check-fill"></i> موثّق
-            </span>
-          {% endif %}
-
-          {# جديد #}
-          {% if badges.new_user %}
-            <span class="chip chip--new" title="مستخدم جديد">
-              <i class="bi bi-stars"></i> جديد
-            </span>
-          {% endif %}
-
-          {# بائع قوي #}
-          {% if badges.power_seller %}
-            <span class="chip chip--power" title="بائع قوي">
-              <i class="bi bi-lightning-charge-fill"></i> بائع قوي
-            </span>
-          {% endif %}
-
-          {# موثوق #}
-          {% if badges.trusted %}
-            <span class="chip chip--trusted" title="موثوق">
-              <i class="bi bi-shield-check"></i> موثوق
-            </span>
-          {% endif %}
-
-          {# أعلى تقييماً #}
-          {% if badges.top_rated %}
-            <span class="chip chip--top" title="أعلى تقييماً">
-              <i class="bi bi-star-fill"></i> أعلى تقييماً
-            </span>
-          {% endif %}
-        </div>
-
-        <!-- معلومات صغيرة تحت الاسم -->
-        <div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
-          <span class="stat" title="عدد العناصر">
-            <i class="bi bi-box-seam"></i> {{ items_count }} عنصر
-          </span>
-
-          <span class="stat" title="حجوزات مكتملة">
-            <i class="bi bi-check2-circle"></i> {{ completed_rentals }} حجز مكتمل
-          </span>
-
-          <span class="stat" title="متوسط التقييم">
-            <i class="bi bi-star-fill rating-stars"></i>
-            {{ (avg_rating if avg_rating is not none else '0.0') }} / 5
-          </span>
-
-          {% if user.created_at %}
-          <span class="stat" title="تاريخ الانضمام">
-            <i class="bi bi-calendar-check"></i>
-            انضم {{ user.created_at.strftime('%d-%m-%Y') }}
-          </span>
-          {% endif %}
-
-          {% if user.city %}
-          <span class="stat" title="المدينة">
-            <i class="bi bi-geo-alt"></i> {{ user.city }}
-          </span>
-          {% endif %}
-        </div>
-      </div>
     </div>
 
-    <!-- زر مراسلة / إجراء -->
-    <div class="d-flex align-items-center gap-2">
-      <a href="/messages/new?to={{ user.id }}" class="btn btn-primary">
-        <i class="bi bi-chat-dots"></i> تواصل
-      </a>
+    <!-- معلومات الاسم والشارات -->
+    <div class="flex-grow-1 w-100">
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <h2 class="m-0 fw-bold">
+          {{ user.first_name }} {{ user.last_name }}
+        </h2>
+
+        <!-- شارة التوثيق (لا نحذف أي شيء، فقط أضفناها) -->
+        {% if is_verified %}
+          <span class="d-inline-flex align-items-center gap-1 px-2 py-1 rounded-3"
+                style="border:1px solid var(--border);background:rgba(124,92,255,.15);">
+            <i class="bi bi-patch-check-fill" style="color:#72d3ff"></i>
+            <span class="small">موثّق</span>
+          </span>
+        {% endif %}
+
+        <!-- شارة جديد -->
+        {% if is_new %}
+          <span class="badge rounded-pill bg-warning text-dark">جديد</span>
+        {% endif %}
+      </div>
+
+      <!-- سطر معلومات سريعة -->
+      <div class="text-muted small mt-2 d-flex flex-wrap gap-3">
+        {% if user.city %}<span><i class="bi bi-geo-alt"></i> {{ user.city }}</span>{% endif %}
+        {% if created_at_str %}<span><i class="bi bi-calendar-check"></i> انضمّ: {{ created_at_str }}</span>{% endif %}
+        <span><i class="bi bi-box"></i> عناصر معروضة: {{ stats.items_count or 0 }}</span>
+        {% if rating_count and rating_value %}
+          <span><i class="bi bi-star-fill"></i> {{ "%.1f"|format(rating_value) }} ({{ rating_count }})</span>
+        {% endif %}
+      </div>
+
+      <!-- نبذة -->
+      {% if user.bio %}
+        <p class="mt-2 mb-0 text-muted">{{ user.bio }}</p>
+      {% endif %}
+    </div>
+
+    <!-- أزرار سريعة -->
+    <div class="d-flex gap-2 ms-md-auto">
+      {% if request and request.state and request.state.session_user and request.state.session_user.id != user.id %}
+        <a href="/messages/new?to={{ user.id }}" class="btn btn-primary">
+          <i class="bi bi-chat-text"></i> مراسلة
+        </a>
+      {% endif %}
+      <a class="btn btn-ghost" href="/items?owner={{ user.id }}"><i class="bi bi-grid"></i> كل عناصره</a>
+    </div>
+
+  </div>
+</section>
+
+<!-- ===== بطاقات موجزة: إحصائيات/مؤشرات ===== -->
+<section class="row g-3 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="card p-3 h-100">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div class="text-muted small">العناصر</div>
+          <div class="fs-4 fw-bold">{{ stats.items_count or 0 }}</div>
+        </div>
+        <i class="bi bi-box fs-3 opacity-75"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card p-3 h-100">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div class="text-muted small">تقييم</div>
+          <div class="fs-4 fw-bold">
+            {% if rating_count and rating_value %}{{ "%.1f"|format(rating_value) }}{% else %}—{% endif %}
+          </div>
+        </div>
+        <i class="bi bi-star fs-3 opacity-75"></i>
+      </div>
+      <div class="small text-muted mt-1">
+        {% if rating_count %}{{ rating_count }} مراجعة{% else %}لا توجد مراجعات{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card p-3 h-100">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div class="text-muted small">الحالة</div>
+          <div class="fs-6 fw-bold">
+            {% if is_verified %}<span class="text-success">موثّق</span>{% else %}<span class="text-muted">عادي</span>{% endif %}
+          </div>
+        </div>
+        <i class="bi bi-shield-check fs-3 opacity-75"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card p-3 h-100">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div class="text-muted small">عضو منذ</div>
+          <div class="fs-6 fw-bold">{{ created_at_str or '—' }}</div>
+        </div>
+        <i class="bi bi-calendar3 fs-3 opacity-75"></i>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- تبويبات: العناصر / التقييمات / حول -->
-<ul class="nav nav-pills gap-2" id="profileTabs" role="tablist">
+<!-- ===== تبويبات: عناصر / حول / مراجعات ===== -->
+<ul class="nav nav-pills mb-3" id="userTabs" role="tablist">
   <li class="nav-item" role="presentation">
-    <button class="nav-link active" id="items-tab" data-bs-toggle="tab" data-bs-target="#items" type="button" role="tab">
-      العناصر
-    </button>
+    <button class="nav-link active" id="tab-items" data-bs-toggle="tab" data-bs-target="#pane-items" type="button" role="tab">العناصر المعروضة</button>
   </li>
   <li class="nav-item" role="presentation">
-    <button class="nav-link" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab">
-      التقييمات
-    </button>
+    <button class="nav-link" id="tab-about" data-bs-toggle="tab" data-bs-target="#pane-about" type="button" role="tab">حول المستخدم</button>
   </li>
   <li class="nav-item" role="presentation">
-    <button class="nav-link" id="about-tab" data-bs-toggle="tab" data-bs-target="#about" type="button" role="tab">
-      حول
-    </button>
+    <button class="nav-link" id="tab-reviews" data-bs-toggle="tab" data-bs-target="#pane-reviews" type="button" role="tab">المراجعات</button>
   </li>
 </ul>
 
-<div class="tab-content">
-  <!-- العناصر -->
-  <div class="tab-pane fade show active" id="items" role="tabpanel" aria-labelledby="items-tab">
-    {% if items|length == 0 %}
-      <div class="card p-4 text-center text-muted mt-2">لا توجد عناصر لهذا المستخدم.</div>
-    {% else %}
-      <div class="grid mt-2">
+<div class="tab-content" id="userTabsContent">
+  <!-- ===== العناصر ===== -->
+  <div class="tab-pane fade show active" id="pane-items" role="tabpanel" aria-labelledby="tab-items">
+    {% if items and items|length > 0 %}
+      <div class="row g-3">
         {% for it in items %}
-        <article class="card item">
-          {% if it.image_path %}
-            <img src="/{{ it.image_path }}" class="item-img" alt="item">
-          {% else %}
-            <img src="/static/img/placeholder.jpg" class="item-img" alt="">
-          {% endif %}
-          <div class="item-body">
-            <h6 class="mb-1 text-truncate" title="{{ it.title }}">{{ it.title }}</h6>
-            <div class="small text-muted d-flex align-items-center justify-content-between">
-              <span>🏙️ {{ it.city or 'بدون مدينة' }}</span>
-              <span><strong>{{ it.price_per_day or 0 }}</strong> <span class="text-muted">د/يوم</span></span>
-            </div>
-            <div class="mt-2 d-flex align-items-center justify-content-between">
-              <span class="badge bg-secondary">{{ it.category_label or 'أخرى' }}</span>
-              <a class="btn btn-sm btn-primary" href="/items/{{ it.id }}">تفاصيل</a>
-            </div>
+          <div class="col-6 col-md-4 col-lg-3">
+            <article class="card h-100">
+              <div class="position-relative"
+                   style="aspect-ratio:16/10;overflow:hidden;border-bottom:1px solid var(--border);background:rgba(255,255,255,.04);">
+                {% if it.image_path %}
+                  <img src="/{{ it.image_path }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+                {% else %}
+                  <div class="d-grid place-items-center text-muted" style="width:100%;height:100%;">لا صورة</div>
+                {% endif %}
+                <div class="position-absolute top-0 start-0 m-2 px-2 py-1 rounded-pill text-white"
+                     style="background:rgba(0,0,0,.55);backdrop-filter:blur(6px);border:1px solid var(--border);font-weight:700;">
+                  {{ it.price_per_day }} د/يوم
+                </div>
+                {% if it.category_label %}
+                  <div class="position-absolute top-0 end-0 m-2 px-2 py-1 rounded-pill small"
+                       style="background:rgba(124,92,255,.18);border:1px solid rgba(124,92,255,.35);color:#cfe2ff;">
+                    {{ it.category_label }}
+                  </div>
+                {% endif %}
+              </div>
+              <div class="card-body d-flex flex-column">
+                <h6 class="mb-1 text-truncate" title="{{ it.title }}">{{ it.title }}</h6>
+                <div class="small text-muted mb-2 text-truncate">{{ it.city or 'بدون مدينة' }}</div>
+                <div class="mt-auto d-flex justify-content-between align-items-center">
+                  <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
+                  <span class="small text-muted">
+                    {% if it.created_at %}{{ it.created_at.strftime("%Y-%m-%d") }}{% endif %}
+                  </span>
+                </div>
+              </div>
+            </article>
           </div>
-        </article>
         {% endfor %}
       </div>
-    {% endif %}
-  </div>
-
-  <!-- التقييمات -->
-  <div class="tab-pane fade" id="reviews" role="tabpanel" aria-labelledby="reviews-tab">
-    {% if reviews|length == 0 %}
-      <div class="card p-4 text-center text-muted mt-2">لا توجد تقييمات حتى الآن.</div>
     {% else %}
-      <div class="vstack gap-2 mt-2">
-        {% for r in reviews %}
-          <div class="card p-3">
-            <div class="d-flex align-items-center justify-content-between">
-              <div class="small text-muted">
-                {% set nm = (r.reviewer_first ~ ' ' ~ r.reviewer_last)|trim %}
-                <i class="bi bi-person-circle"></i> {{ nm or 'مستخدم' }}
-              </div>
-              <div class="rating-stars" title="{{ r.rating }}/5">
-                {% for i in range(1,6) %}
-                  {% if i <= (r.rating or 0) %}<i class="bi bi-star-fill"></i>{% else %}<i class="bi bi-star"></i>{% endif %}
-                {% endfor %}
-              </div>
-            </div>
-            {% if r.comment %}
-              <div class="mt-2">{{ r.comment }}</div>
-            {% endif %}
-            {% if r.created_at %}
-              <div class="small text-muted mt-2"><i class="bi bi-clock"></i> {{ r.created_at.strftime('%Y-%m-%d') }}</div>
-            {% endif %}
-          </div>
-        {% endfor %}
-      </div>
+      <div class="card p-3 text-center text-muted">لا توجد عناصر معروضة لهذا المستخدم حالياً.</div>
     {% endif %}
   </div>
 
-  <!-- حول -->
-  <div class="tab-pane fade" id="about" role="tabpanel" aria-labelledby="about-tab">
-    <div class="card p-3 mt-2">
-      <h6 class="mb-2">نبذة</h6>
-      <p class="mb-0">{{ user.bio or 'لا توجد نبذة.' }}</p>
+  <!-- ===== حول المستخدم ===== -->
+  <div class="tab-pane fade" id="pane-about" role="tabpanel" aria-labelledby="tab-about">
+    <div class="card p-3">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="mb-2"><strong>الاسم الكامل</strong></div>
+          <div class="text-muted">{{ user.first_name }} {{ user.last_name }}</div>
+        </div>
+        <div class="col-md-6">
+          <div class="mb-2"><strong>المدينة</strong></div>
+          <div class="text-muted">{{ user.city or '—' }}</div>
+        </div>
+        <div class="col-md-6">
+          <div class="mb-2"><strong>الحالة</strong></div>
+          <div>
+            {% if is_verified %}
+              <span class="badge bg-success">موثّق</span>
+            {% else %}
+              <span class="badge bg-secondary">عادي</span>
+            {% endif %}
+            {% if is_new %}
+              <span class="badge bg-warning text-dark ms-1">جديد</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="mb-2"><strong>عضو منذ</strong></div>
+          <div class="text-muted">{{ created_at_str or '—' }}</div>
+        </div>
+        <div class="col-12">
+          <div class="mb-2"><strong>نبذة</strong></div>
+          <div class="text-muted">{{ user.bio or '—' }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== المراجعات (اختياري) ===== -->
+  <div class="tab-pane fade" id="pane-reviews" role="tabpanel" aria-labelledby="tab-reviews">
+    <div class="card p-3">
+      {% if rating_count and rating_value %}
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div class="display-6 fw-bold">{{ "%.1f"|format(rating_value) }}</div>
+          <div class="text-muted">بناءً على {{ rating_count }} مراجعة</div>
+        </div>
+      {% else %}
+        <div class="text-muted text-center">لا توجد مراجعات بعد.</div>
+      {% endif %}
+      <!-- هنا لاحقًا يمكن إدراج قائمة مراجعات فعلية -->
     </div>
   </div>
 </div>
+
+<!-- هامش سفلي للمسافات -->
+<div class="py-2"></div>
 
 {% endblock %}

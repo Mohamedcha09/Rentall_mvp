@@ -1,217 +1,197 @@
 # app/routes_users.py
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
-
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-from sqlalchemy import text, inspect
+from datetime import datetime, timezone, timedelta
+from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
+from fastapi.templating import Jinja2Templates
 
-# --- get_db import souple (selon ton projet) ---
-try:
-    # si ton projet expose get_db à app.db
-    from app.db import get_db
-except Exception:  # pragma: no cover
-    # fallback local si l'import ci-dessus échoue
-    from .db import get_db  # type: ignore
+# لو عندك مسار مختلف لـ get_db غيّره هنا
+from app.db import get_db
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
-# ---------- Helpers ----------
-def has_column(db: Session, table: str, column: str) -> bool:
-    """
-    Retourne True si la colonne existe (SQLite/Postgres), sinon False.
-    """
+def _safe_first(db: Session, sql: str, params: dict):
+    """تنفيذ استعلام واحد وإرجاع mapping().first() بأمان."""
+    return db.execute(text(sql), params).mappings().first()
+
+
+def _safe_all(db: Session, sql: str, params: dict):
+    """تنفيذ استعلام واحد وإرجاع mapping().all() بأمان."""
+    return db.execute(text(sql), params).mappings().all()
+
+
+@router.get("/users/{user_id}")
+def user_profile(request: Request, user_id: int, db: Session = Depends(get_db)):
+    # -----------------------------
+    # 1) جلب بيانات المستخدم بأمان
+    # -----------------------------
+    user = None
+
+    # المحاولة 1: مع city
     try:
-        insp = inspect(db.bind)
-        cols = insp.get_columns(table)
-        return any(c.get("name") == column for c in cols)
-    except Exception:
-        # si l’inspection échoue, on reste prudent
-        return False
-
-
-def coalesce_or_blank(col: str, alias: str) -> str:
-    """
-    Construit un COALESCE standardisé: COALESCE(col,'') AS alias
-    """
-    return f"COALESCE({col},'') AS {alias}"
-
-
-def compute_badges(
-    status: str,
-    created_at: Optional[datetime],
-    items_count: int,
-    completed_rentals: int,
-    avg_rating: Optional[float],
-) -> Dict[str, bool]:
-    now = datetime.utcnow()
-    is_new = False
-    if isinstance(created_at, datetime):
-        is_new = (now - created_at) <= timedelta(days=14)
-
-    verified = (status or "").lower() in {"approved", "verified"}
-
-    power_seller = items_count >= 5 or completed_rentals >= 10
-    trusted = (avg_rating or 0) >= 4.0 and completed_rentals >= 3
-    top_rated = (avg_rating or 0) >= 4.7 and completed_rentals >= 5
-
-    return {
-        "verified": verified,
-        "new_user": is_new,
-        "power_seller": power_seller,
-        "trusted": trusted,
-        "top_rated": top_rated,
-    }
-
-
-# ---------- Route: page profil utilisateur ----------
-@router.get("/{user_id}", response_class=HTMLResponse)
-def user_profile(
-    request: Request,
-    user_id: int,
-    db: Session = Depends(get_db),
-):
-    # --- 1) Lire l'utilisateur (colonnes optionnelles sécurisées) ---
-    user_fields = [
-        "u.id",
-        coalesce_or_blank("u.first_name", "first_name"),
-        coalesce_or_blank("u.last_name", "last_name"),
-        coalesce_or_blank("u.avatar_path", "avatar_path"),
-        coalesce_or_blank("u.status", "status"),
-        "u.created_at AS created_at",
-        coalesce_or_blank("u.bio", "bio"),
-    ]
-    # city peut ne pas exister -> si absente, renvoyer '' AS city
-    if has_column(db, "users", "city"):
-        user_fields.append(coalesce_or_blank("u.city", "city"))
-    else:
-        user_fields.append("'' AS city")
-
-    user_sql = text(
-        f"""
-        SELECT
-            {", ".join(user_fields)}
-        FROM users u
-        WHERE u.id = :uid
-        LIMIT 1
-        """
-    )
-
-    user_row = db.execute(user_sql, {"uid": user_id}).mappings().first()
-    if not user_row:
-        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
-
-    user = dict(user_row)
-
-    # --- 2) Récupérer les items appartenant à l’utilisateur ---
-    # colonnes minimales avec tolérance
-    item_fields = [
-        "i.id",
-        coalesce_or_blank("i.title", "title"),
-        coalesce_or_blank("i.image_path", "image_path"),
-        coalesce_or_blank("i.city", "city") if has_column(db, "items", "city") else "'' AS city",
-        "i.price_per_day" if has_column(db, "items", "price_per_day") else "0 AS price_per_day",
-        # label de catégorie: soit depuis items.category, soit via table categories si elle existe
-        coalesce_or_blank("i.category", "category_label"),
-    ]
-
-    items_sql = text(
-        f"""
-        SELECT {", ".join(item_fields)}
-        FROM items i
-        WHERE i.owner_id = :uid
-        ORDER BY COALESCE(i.created_at, CURRENT_TIMESTAMP) DESC
-        LIMIT 60
-        """
-    )
-    items = [dict(r) for r in db.execute(items_sql, {"uid": user_id}).mappings().all()]
-
-    # --- 3) Statistiques: nombre d’items, locations complétées, note moyenne ---
-    items_count = len(items)
-
-    # table bookings optionnelle
-    completed_rentals = 0
-    avg_rating: Optional[float] = None
-
-    if "bookings" in inspect(db.bind).get_table_names():
-        # completed rentals (pour ses items en tant que propriétaire)
-        comp_sql = text(
-            """
-            SELECT COUNT(*) AS c
-            FROM bookings b
-            JOIN items i ON i.id = b.item_id
-            WHERE i.owner_id = :uid
-              AND LOWER(COALESCE(b.status,'')) IN ('completed','done','finished')
-            """
-        )
-        completed_rentals = int(db.execute(comp_sql, {"uid": user_id}).scalar() or 0)
-
-    # table reviews optionnelle
-    reviews: List[Dict[str, Any]] = []
-    if "reviews" in inspect(db.bind).get_table_names():
-        # reviews reçues par cet utilisateur en tant que propriétaire
-        # (adapter si ta table utilise d'autres colonnes)
-        rv_sql = text(
+        user = _safe_first(
+            db,
             """
             SELECT
-              r.id,
-              r.rating,
-              r.comment,
-              r.created_at,
-              COALESCE(ru.first_name,'') AS reviewer_first,
-              COALESCE(ru.last_name,'')  AS reviewer_last
-            FROM reviews r
-            LEFT JOIN users ru ON ru.id = r.reviewer_id
-            WHERE r.user_id = :uid
-            ORDER BY r.created_at DESC
-            LIMIT 50
-            """
+                u.id,
+                COALESCE(u.first_name,'')   AS first_name,
+                COALESCE(u.last_name,'')    AS last_name,
+                COALESCE(u.avatar_path,'')  AS avatar_path,
+                COALESCE(u.city,'')         AS city,
+                COALESCE(u.status,'')       AS status,
+                u.created_at                AS created_at,
+                COALESCE(u.bio,'')          AS bio
+            FROM users u
+            WHERE u.id = :uid
+            LIMIT 1
+            """,
+            {"uid": user_id},
         )
-        reviews = [dict(r) for r in db.execute(rv_sql, {"uid": user_id}).mappings().all()]
+    except OperationalError:
+        # المحاولة 2: بدون city (لو العمود غير موجود)
+        user = _safe_first(
+            db,
+            """
+            SELECT
+                u.id,
+                COALESCE(u.first_name,'')   AS first_name,
+                COALESCE(u.last_name,'')    AS last_name,
+                COALESCE(u.avatar_path,'')  AS avatar_path,
+                COALESCE(u.status,'')       AS status,
+                u.created_at                AS created_at,
+                COALESCE(u.bio,'')          AS bio
+            FROM users u
+            WHERE u.id = :uid
+            LIMIT 1
+            """,
+            {"uid": user_id},
+        )
 
-        avg_sql = text("SELECT AVG(rating) FROM reviews WHERE user_id = :uid")
-        avg_val = db.execute(avg_sql, {"uid": user_id}).scalar()
-        if avg_val is not None:
-            try:
-                avg_rating = round(float(avg_val), 2)
-            except Exception:
-                avg_rating = None
+    if not user:
+        raise HTTPException(status_code=404, detail="المستخدم غير موجود")
 
-    # --- 4) Badges dynamiques ---
-    badges = compute_badges(
-        status=user.get("status", ""),
-        created_at=user.get("created_at"),
-        items_count=items_count,
-        completed_rentals=completed_rentals,
-        avg_rating=avg_rating,
+    # إذا city مفقودة من الجدول، ضعه فارغ لتجنّب أخطاء في القالب
+    if "city" not in user:
+        user = {**user, "city": ""}
+
+    # --------------------------------
+    # 2) حساب الشارات (جديد / موثّق)
+    # --------------------------------
+    created_at = user.get("created_at")
+    now = datetime.now(timezone.utc)
+    is_new = False
+    if isinstance(created_at, datetime):
+        # لو التاريخ بلا tz، اعتبره UTC
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        is_new = (now - created_at) <= timedelta(days=60)
+
+    is_verified = (user.get("status", "").lower() == "approved")
+
+    # --------------------------------
+    # 3) عناصر هذا المستخدم (Items)
+    # --------------------------------
+    # لو حقول city/category_label مفقودة بجدول items لا تسبب كراش:
+    # سنحاول إحضارها أولاً، ثم نسقط للأبسط إن فشل.
+    try:
+        items = _safe_all(
+            db,
+            """
+            SELECT
+                i.id,
+                COALESCE(i.title,'')           AS title,
+                COALESCE(i.image_path,'')      AS image_path,
+                COALESCE(i.city,'')            AS city,
+                COALESCE(i.category_label,'')  AS category_label,
+                COALESCE(i.price_per_day,0)    AS price_per_day,
+                i.created_at
+            FROM items i
+            WHERE i.owner_id = :uid
+            ORDER BY i.created_at DESC
+            """,
+            {"uid": user_id},
+        )
+    except OperationalError:
+        items = _safe_all(
+            db,
+            """
+            SELECT
+                i.id,
+                COALESCE(i.title,'')        AS title,
+                COALESCE(i.image_path,'')   AS image_path,
+                COALESCE(i.price_per_day,0) AS price_per_day,
+                i.created_at
+            FROM items i
+            WHERE i.owner_id = :uid
+            ORDER BY i.created_at DESC
+            """,
+            {"uid": user_id},
+        )
+        # ضمن الحقول غير الموجودة كقِيَم افتراضية
+        items = [
+            {**it, "city": it.get("city", ""), "category_label": it.get("category_label", "")}
+            for it in items
+        ]
+
+    # --------------------------------
+    # 4) إحصاءات سريعة
+    # --------------------------------
+    try:
+        stats = _safe_first(
+            db,
+            "SELECT COUNT(*) AS items_count FROM items WHERE owner_id = :uid",
+            {"uid": user_id},
+        ) or {"items_count": 0}
+    except OperationalError:
+        stats = {"items_count": len(items)}
+
+    # --------------------------------
+    # 5) تقييمات (اختياري، تحمّل عدم وجود الجدول)
+    # --------------------------------
+    rating_value = 0.0
+    rating_count = 0
+    try:
+        rev = _safe_first(
+            db,
+            """
+            SELECT
+                COALESCE(AVG(r.rating),0) AS rating_value,
+                COUNT(*)                  AS rating_count
+            FROM reviews r
+            WHERE r.target_user_id = :uid
+            """,
+            {"uid": user_id},
+        )
+        if rev:
+            rating_value = float(rev.get("rating_value") or 0)
+            rating_count = int(rev.get("rating_count") or 0)
+    except OperationalError:
+        pass  # لا يوجد جدول، تجاهل
+
+    # --------------------------------
+    # 6) حوّل created_at لنص آمن للقالب
+    # --------------------------------
+    created_at_str = ""
+    if isinstance(created_at, datetime):
+        created_at_str = created_at.strftime("%Y-%m-%d")
+
+    # --------------------------------
+    # 7) إرسال للتمبليت
+    # --------------------------------
+    return templates.TemplateResponse(
+        "user.html",
+        {
+            "request": request,
+            "user": user,
+            "items": items,
+            "stats": stats,
+            "is_new": is_new,
+            "is_verified": is_verified,
+            "rating_value": rating_value,
+            "rating_count": rating_count,
+            "created_at_str": created_at_str,
+        },
     )
-
-    # --- 5) Rendre le template ---
-    ctx = {
-        "request": request,
-        "title": f"{user.get('first_name','')} {user.get('last_name','')}".strip() or "Profil",
-        "user": user,
-        "items": items,
-        "reviews": reviews,
-        "items_count": items_count,
-        "completed_rentals": completed_rentals,
-        "avg_rating": avg_rating,
-        "badges": badges,
-    }
-    return templates.TemplateResponse("user.html", ctx)
-
-
-# ---------- Alias pratique /u/ID ----------
-
-@router.get("/u/{user_id}", response_class=HTMLResponse)
-def user_profile_shortcut(
-    request: Request,
-    user_id: int,
-    db: Session = Depends(get_db),
-):
-    # redirige vers la même logique
-    return user_profile(request, user_id, db)
