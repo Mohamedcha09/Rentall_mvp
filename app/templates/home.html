@@ -1,193 +1,214 @@
 {% extends "base.html" %}
+{% from "_badges.html" import render_badges %}
 {% block content %}
 
-<!-- ===== شريط أعلى: فلاتر + فرز ===== -->
-<section class="mb-3">
-  <div class="card card-search p-2 p-md-3">
-    <div class="d-flex flex-wrap align-items-center gap-2">
-      <!-- تصنيفات سريعة كـ Chips -->
-      <div class="home-cats d-flex flex-wrap gap-2">
-        {% set cats = [
-          ('all','الكل'), ('tech','إلكترونيات'), ('games','ألعاب'),
-          ('tools','أدوات'), ('vehicles','مركبات'), ('home','منزلي')
-        ] %}
-        {% for key,label in cats %}
-          <a class="btn btn-sm btn-outline-light {% if request.query_params.get('cat','all') == key %}active{% endif %}"
-             href="/?cat={{ key }}">{{ label }}</a>
-        {% endfor %}
+<!-- ===== Hero / مقدّمة خفيفة ===== -->
+<section class="home-hero text-center mb-4">
+  <h1 class="mb-2 fw-bold">اكتشف واجرِ عناصر بجودة عالية</h1>
+  <p class="lead mb-0">ابحث حسب الاسم أو المدينة، وتصفّح التصنيفات المنسّقة بعناية.</p>
+</section>
+
+<!-- ===== شريط بحث مدمج أنيق ===== -->
+<form method="get" action="/" class="card card-search mb-3 border-0 shadow-sm">
+  <div class="card-body py-3">
+    <div class="row g-2 align-items-center">
+      <div class="col-lg-5">
+        <input
+          class="form-control form-control-lg"
+          name="q"
+          value="{{ search_q | default('') }}"
+          placeholder="ابحث عن عنصر (مثال: كاميرا، خيمة، درون…)"
+          autocomplete="off"
+        />
       </div>
-
-      <div class="vr d-none d-md-block mx-2 opacity-25"></div>
-
-      <!-- حقل بحث محلي (يصفّي ضمن الصفحة) -->
-      <div class="flex-grow-1" style="min-width:220px;">
-        <input id="qLocal" type="search" class="form-control"
-               placeholder="ابحث داخل العناصر الظاهرة…">
+      <div class="col-lg-4">
+        <input
+          class="form-control form-control-lg"
+          name="city"
+          value="{{ search_city | default('') }}"
+          placeholder="المدينة (مثال: montreal)"
+          autocomplete="off"
+        />
       </div>
-
-      <!-- فرز -->
-      <div class="ms-auto d-flex align-items-center gap-2">
-        <select id="sortSelect" class="form-select form-select-sm" style="min-width:160px;">
-          <option value="new">الأحدث</option>
-          <option value="price_asc">السعر: من الأقل</option>
-          <option value="price_desc">السعر: من الأعلى</option>
-          <option value="popular">الأكثر مشاهدة</option>
-        </select>
+      <div class="col-lg-3 d-flex gap-2">
+        {% if current_category %}<input type="hidden" name="category" value="{{ current_category }}">{% endif %}
+        <button class="btn btn-primary btn-lg w-100" type="submit">بحث</button>
       </div>
     </div>
   </div>
-</section>
+</form>
 
-<!-- ===== الشبكة ===== -->
-<section>
-  <!-- Placeholder skeletons أثناء التحميل -->
-  <div id="grid" class="home-grid">
-    {% if items and items|length %}
-      {% for it in items %}
-        <article class="card spot item-card"
-                 data-title="{{ (it.title or '')|lower }}"
-                 data-price="{{ it.price_per_day or 0 }}"
-                 data-pop="{{ it.views or 0 }}">
-          <div class="spot-media">
-            <!-- Lazy image -->
-            <img class="lazy" data-src="{{ it.cover_url or '/static/img/placeholder.jpg' }}"
-                 alt="{{ it.title or 'item' }}" loading="lazy">
-            <div class="spot-overlay"></div>
-
-            {% if it.price_per_day %}
-              <div class="price-badge">{{ it.price_per_day }} د/يوم</div>
-            {% endif %}
-            {% if it.category_name %}
-              <div class="category-chip">{{ it.category_name }}</div>
-            {% endif %}
-          </div>
-
-          <div class="card-body">
-            <h6 class="card-title mb-2">{{ it.title }}</h6>
-
-            <div class="d-flex align-items-center justify-content-between owner-line mb-2">
-              <div class="d-flex align-items-center gap-2">
-                {% if it.owner_avatar %}
-                  <img class="owner-avatar" src="{{ it.owner_avatar }}" alt="{{ it.owner_name }}">
-                {% else %}
-                  <div class="owner-avatar--placeholder">👤</div>
-                {% endif %}
-                <small class="text-muted">{{ it.owner_name or 'مستخدم' }}</small>
-                {% if it.owner %}
-                  {{ render_badges(it.owner, 16) }}
-                {% endif %}
-              </div>
-              {% if it.city %}
-                <span class="city-chip">{{ it.city }}</span>
-              {% endif %}
-            </div>
-
-            <div class="d-flex align-items-center justify-content-between">
-              <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
-              <button class="btn btn-sm btn-outline-light btn-fav" data-id="{{ it.id }}" title="إضافة للمفضلة">♡</button>
-            </div>
-          </div>
-        </article>
-      {% endfor %}
-    {% else %}
-      <!-- حالة فارغة أنيقة -->
-      <div class="card p-4 text-center" style="grid-column:1/-1;">
-        <h5 class="mb-2">لا توجد عناصر بعد</h5>
-        <p class="text-muted mb-3">ابدأ بإضافة أول عنصر لك ليستفيد منه الآخرون ✨</p>
-        {% if session_user and session_user.status == 'approved' %}
-          <a href="/owner/items/new" class="btn btn-primary">+ أضف عنصر</a>
-        {% else %}
-          <a href="/login" class="btn btn-outline-light">سجّل دخولك</a>
-        {% endif %}
-      </div>
-    {% endif %}
+<!-- ===== شريط أدوات: تصنيفات + فرز + تحديث ===== -->
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+  <div class="home-cats d-flex flex-wrap gap-2">
+    <a class="btn btn-sm {% if not current_category %}btn-primary{% else %}btn-outline-light{% endif %}" href="/">الكل</a>
+    {% for cat in categories %}
+      <a class="btn btn-sm {% if current_category == cat.key %}btn-primary{% else %}btn-outline-light{% endif %}"
+         href="/?category={{ cat.key }}">{{ cat.label }}</a>
+    {% endfor %}
   </div>
 
-  {% if next_page_token %}
-    <!-- زر تحميل المزيد (لو عندك Pagination من السيرفر) -->
-    <div class="text-center mt-3">
-      <a href="/?page_token={{ next_page_token }}" class="btn btn-outline-light">تحميل المزيد</a>
-    </div>
-  {% endif %}
-</section>
+  <div class="d-flex align-items-center gap-2">
+    <form method="get" action="/" class="d-flex align-items-center gap-2">
+      {% if search_q %}<input type="hidden" name="q" value="{{ search_q }}">{% endif %}
+      {% if search_city %}<input type="hidden" name="city" value="{{ search_city }}">{% endif %}
+      {% if current_category %}<input type="hidden" name="category" value="{{ current_category }}">{% endif %}
+      <select class="form-select form-select-sm" name="sort" onchange="this.form.submit()">
+        <option value="">الفرز</option>
+        <option value="new"   {% if sort == 'new' %}selected{% endif %}>الأحدث</option>
+        <option value="price" {% if sort == 'price' %}selected{% endif %}>الأقل سعرًا</option>
+        <option value="pop"   {% if sort == 'pop' %}selected{% endif %}>الأكثر مشاهدة</option>
+      </select>
+    </form>
+    <a class="btn btn-sm btn-outline-light"
+       href="{{ '/' if not current_category and not search_q and not search_city else request.url.path }}">
+      تحديث 🔄
+    </a>
+  </div>
+</div>
 
-<!-- ===== أنماط إضافية صغيرة (تحسينات مرئية) ===== -->
+<!-- تحسينات شكلية خاصة بهذه الصفحة فقط -->
 <style>
-  /* ظل داخلي خفيف للكروت */
-  .item-card{ box-shadow: var(--shadow); }
-  .item-card .btn-fav.active{ background: rgba(255,255,255,.1)!important; }
-  /* سكيليتون (في حال أردت استخدامه عند جلب ديناميكي) */
-  .skeleton{ position:relative; overflow:hidden; background:rgba(255,255,255,.06); }
+  /* بطاقات عصرية */
+  .spot-card{
+    border:1px solid var(--border);
+    background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));
+    border-radius:18px; overflow:hidden;
+    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .spot-card:hover{ transform:translateY(-6px); border-color:rgba(124,92,255,.35); box-shadow:0 18px 40px rgba(124,92,255,.18); }
+
+  /* منطقة الصورة بنسبة ثابتة + كسكليتون */
+  .spot-media{ position:relative; aspect-ratio:16/10; background:rgba(255,255,255,.04); }
+  .spot-media img{ width:100%; height:100%; object-fit:cover; display:block; transition:transform .25s ease; }
+  .spot-card:hover .spot-media img{ transform:scale(1.03); }
+
+  /* شارات فوق الصورة */
+  .price-badge{
+    position:absolute; inset-inline-start:12px; top:12px;
+    padding:.35rem .6rem; border-radius:999px; font-weight:700; color:#fff;
+    background:rgba(10,12,16,.65); backdrop-filter:blur(8px); border:1px solid var(--border);
+    box-shadow:0 6px 18px rgba(0,0,0,.35);
+  }
+  .category-chip{
+    position:absolute; inset-inline-end:12px; top:12px;
+    padding:.25rem .6rem; border-radius:999px; font-size:.8rem; color:#cfe2ff;
+    background:rgba(124,92,255,.18); border:1px solid rgba(124,92,255,.35);
+  }
+  .new-ribbon{
+    position:absolute; inset-inline-start:-6px; bottom:12px; padding:.25rem .55rem; font-size:.75rem;
+    border-radius:0 999px 999px 0; background:rgba(34,197,94,.2); color:#34d399; border:1px solid rgba(34,197,94,.35);
+    backdrop-filter:blur(6px);
+  }
+
+  /* جسم البطاقة */
+  .spot-title{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.25; }
+  .owner-avatar{ width:28px; height:28px; border-radius:999px; object-fit:cover; border:1px solid var(--border); }
+  .owner-avatar--placeholder{ width:28px; height:28px; border-radius:999px; display:grid; place-items:center;
+    background:rgba(255,255,255,.06); border:1px solid var(--border); }
+
+  /* أزرار سريعة */
+  .spot-actions .btn{ border-radius:999px; padding:.3rem .55rem; }
+
+  /* شبكة مرنة */
+  .home-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:18px; }
+
+  /* كسكليتون تحميل */
+  @keyframes shimmer{ 0%{background-position:-450px 0} 100%{background-position:450px 0} }
+  .skeleton{ position:relative; overflow:hidden; background:#20242f; border-radius:18px; min-height:230px; border:1px solid var(--border); }
   .skeleton::after{
     content:""; position:absolute; inset:0;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);
-    animation: shimmer 1.2s infinite;
+    background:linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.07), rgba(255,255,255,0));
+    background-size:900px 100%; animation:shimmer 1.2s infinite;
   }
-  @keyframes shimmer{ 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
 </style>
 
-<!-- ===== سكريبت: Lazy images + بحث محلي + فرز + مفضلة ===== -->
+<!-- ===== شبكة العناصر ===== -->
+<div id="items-grid" class="home-grid">
+  {% if items %}
+    {% for it in items %}
+      <article class="spot-card">
+        <div class="spot-media">
+          {% if it.image_path %}
+            <img loading="lazy" src="/{{ it.image_path }}" alt="{{ it.title }}">
+          {% else %}
+            <div class="d-flex w-100 h-100 align-items-center justify-content-center text-muted">لا صورة</div>
+          {% endif %}
+          <div class="price-badge"><strong>{{ it.price_per_day }}</strong> د/يوم</div>
+          <div class="category-chip">{{ it.category_label }}</div>
+          {% if it.is_new %}<div class="new-ribbon">جديد</div>{% endif %}
+        </div>
+
+        <div class="p-3">
+          <h5 class="spot-title mb-2" title="{{ it.title }}">{{ it.title }}</h5>
+
+          <!-- مالك العنصر + الشارات -->
+          <div class="d-flex align-items-center gap-2 mb-2">
+            {% if it.owner and it.owner.avatar_path %}
+              <img class="owner-avatar" src="/{{ it.owner.avatar_path }}" alt="avatar">
+            {% else %}
+              <div class="owner-avatar owner-avatar--placeholder">👤</div>
+            {% endif %}
+            <div class="small text-muted d-flex align-items-center gap-1">
+              {{ it.owner.first_name }} {{ it.owner.last_name }}
+              {% if it.owner %}{{ render_badges(it.owner, '16px') }}{% endif %}
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="small city-chip" title="{{ it.city or '' }}">🏙️ {{ it.city or 'بدون مدينة' }}</div>
+            <div class="spot-actions d-flex gap-1">
+              <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
+              <button class="btn btn-sm btn-outline-light" type="button" onclick="saveItem('{{ it.id }}')" title="حفظ">★</button>
+              <button class="btn btn-sm btn-outline-light" type="button" onclick="shareItem('{{ request.url_for('item_detail', item_id=it.id) if false else '/items/' ~ it.id }}')" title="مشاركة">↗</button>
+            </div>
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  {% else %}
+    <!-- حالة عدم وجود عناصر -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-body text-center py-5">
+        <h5 class="mb-2">لا توجد عناصر مطابقة</h5>
+        <p class="text-muted mb-3">جرّب كلمات بحث مختلفة أو تصفّح التصنيفات.</p>
+        <a href="/owner/items/new" class="btn btn-primary">أضف أول عنصر لك</a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<!-- ===== كسكليتون لحظي عند تبديل الفرز (تحسين تجربة) ===== -->
+<template id="skeleton-card">
+  <div class="skeleton"></div>
+</template>
+
 <script>
-(() => {
-  // --- Lazy load
-  const lazyImgs = document.querySelectorAll('img.lazy');
-  if ('IntersectionObserver' in window) {
-    const obs = new IntersectionObserver((entries, io) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) {
-          const img = e.target;
-          const src = img.getAttribute('data-src');
-          if (src) { img.src = src; img.removeAttribute('data-src'); }
-          img.classList.remove('lazy');
-          io.unobserve(img);
-        }
-      });
-    }, { rootMargin: '200px' });
-    lazyImgs.forEach(img => obs.observe(img));
-  } else {
-    lazyImgs.forEach(img => img.src = img.getAttribute('data-src'));
+  function saveItem(id){
+    // يمكنك لاحقًا ربطه بـ API للحفظ في قائمة المفضلة
+    try { localStorage.setItem('fav:' + id, '1'); } catch(e){}
+  }
+  function shareItem(url){
+    if (navigator.share) {
+      navigator.share({ url, title: 'RentAll' }).catch(()=>{});
+    } else {
+      navigator.clipboard?.writeText(url);
+      alert('تم نسخ رابط العنصر');
+    }
   }
 
-  // --- Local search
-  const q = document.getElementById('qLocal');
-  const grid = document.getElementById('grid');
-  function filterGrid(){
-    const term = (q.value || '').trim().toLowerCase();
-    const cards = grid.querySelectorAll('.item-card');
-    cards.forEach(c => {
-      const title = c.dataset.title || '';
-      c.style.display = title.includes(term) ? '' : 'none';
+  // عند تغيير الفرز بالselect أعلاه، نعرض كسكليتون سريع حتى تعود الصفحة من السيرفر
+  (function(){
+    const sel = document.querySelector('select[name="sort"]');
+    if(!sel) return;
+    sel.addEventListener('change', () => {
+      const grid = document.getElementById('items-grid');
+      if(!grid) return;
+      grid.innerHTML = '';
+      const tpl = document.getElementById('skeleton-card').content;
+      for(let i=0;i<6;i++){ grid.appendChild(tpl.cloneNode(true)); }
     });
-  }
-  q && q.addEventListener('input', filterGrid);
-
-  // --- Sort
-  const sortSelect = document.getElementById('sortSelect');
-  function sortGrid(){
-    const val = sortSelect.value;
-    const cards = Array.from(grid.querySelectorAll('.item-card'));
-    const byPrice = (a,b) => (+a.dataset.price||0) - (+b.dataset.price||0);
-    const byPop   = (a,b) => (+b.dataset.pop||0) - (+a.dataset.pop||0);
-    const byNew   = () => 0; // السيرفر بالفعل يعطي أحدث أولاً عادةً
-
-    let cmp = byNew;
-    if (val === 'price_asc') cmp = byPrice;
-    if (val === 'price_desc') cmp = (a,b)=>byPrice(b,a);
-    if (val === 'popular') cmp = byPop;
-
-    cards.sort(cmp).forEach(c => grid.appendChild(c));
-  }
-  sortSelect && sortSelect.addEventListener('change', sortGrid);
-
-  // --- Favorite toggle (واجهة فقط، اربطه ب API لو متاح)
-  grid.addEventListener('click', async (e) => {
-    const btn = e.target.closest('.btn-fav');
-    if (!btn) return;
-    btn.classList.toggle('active');
-    btn.textContent = btn.classList.contains('active') ? '♥' : '♡';
-    // TODO: fetch('/api/fav/toggle', {method:'POST', body: JSON.stringify({id: btn.dataset.id})})
-  });
-})();
+  })();
 </script>
 
 {% endblock %}
