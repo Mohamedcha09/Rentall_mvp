@@ -37,10 +37,6 @@
         .actions .dropdown:first-of-type{ /* قائمة إنشاء */
           display:none !important;
         }
-        /* إخفاء أي زر أشكال/مربعات زائدة في أقصى اليمين */
-        .actions > *:not(#notifOpen):not(.btn-messages):not(form){ /* أمان إضافي */
-          /* لا شيء هنا، فقط نحدد بالأسفل الرسائل */
-        }
         /* تصغير الحشو حتى لا يظهر أي ظل أسود بمحيط الأزرار */
         .topbar__inner{ gap:8px; }
       }
@@ -66,6 +62,10 @@
         /* إفساح مساحة أسفل الصفحة حتى لا يختبئ المحتوى خلف الشريط */
         .page{ padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
       }
+
+      /* [مضاف] تحسين بسيط لزر اللغة */
+      .lang-switch .btn{ min-width: 64px; }
+      .lang-flag{ width:18px; height:18px; border-radius:50%; object-fit:cover; margin-inline-end:.35rem; }
     </style>
 
     {% block head %}{% endblock %}
@@ -127,6 +127,25 @@
             <i class="bi bi-sun-fill d-none" id="sunIcon"></i>
             <i class="bi bi-moon-stars-fill" id="moonIcon"></i>
           </button>
+
+          <!-- [مضاف] مُبدّل اللغة -->
+          <div class="dropdown lang-switch">
+            <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="اللغة">
+              <i class="bi bi-globe2"></i>
+              <span class="d-none d-sm-inline">{{ current_lang()|upper if current_lang else 'AR' }}</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item d-flex align-items-center" href="/lang/ar">
+                <span class="me-2">🇸🇦</span> العربية
+              </a></li>
+              <li><a class="dropdown-item d-flex align-items-center" href="/lang/en">
+                <span class="me-2">🇺🇸</span> English
+              </a></li>
+              <li><a class="dropdown-item d-flex align-items-center" href="/lang/fr">
+                <span class="me-2">🇫🇷</span> Français
+              </a></li>
+            </ul>
+          </div>
 
           <!-- الحساب -->
           {% if session_user %}
@@ -311,7 +330,6 @@
     </script>
 
     <!-- Typeahead -->
-    
     <script>
 (function initTypeahead(){
   if (window.__typeaheadInit) return; 

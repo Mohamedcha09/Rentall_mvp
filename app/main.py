@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func, or_
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from .i18n import get_lang_from_request, get_translator, set_lang_cookie, SUPPORTED, DEFAULT_LANG
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from .database import Base, engine, SessionLocal, get_db
 from .models import User, Item
@@ -65,6 +67,40 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 # القوالب
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 app.templates = templates
+
+# -------- [مضاف] إعدادات Jinja الافتراضية للترجمة --------
+# نضع Placeholder حتى لا تنكسر الصفحات قبل عمل الـ middleware
+templates.env.globals.setdefault("_", lambda s: s)
+templates.env.globals.setdefault("current_lang", lambda: DEFAULT_LANG)
+templates.env.globals.setdefault("SUPPORTED_LANGS", SUPPORTED)
+
+# -------- [مضاف] Middleware الترجمة --------
+class I18nMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        try:
+            # حدّد اللغة من الكوكي/البارام/الهيدر
+            lang = get_lang_from_request(request)
+            request.state.lang = lang
+
+            # جهّز المترجم
+            trans = get_translator(lang)
+            _ = trans.gettext
+
+            # اجعل _ و current_lang متاحين داخل جميع القوالب
+            templates.env.globals["_"] = _
+            templates.env.globals["current_lang"] = lambda: lang
+            templates.env.globals["SUPPORTED_LANGS"] = SUPPORTED
+        except Exception:
+            # في أي خطأ، استخدم الوضع الآمن
+            request.state.lang = DEFAULT_LANG
+            templates.env.globals["_"] = lambda s: s
+            templates.env.globals["current_lang"] = lambda: DEFAULT_LANG
+
+        response = await call_next(request)
+        return response
+
+# تفعيل الـ Middleware
+app.add_middleware(I18nMiddleware)
 
 # إنشاء الجداول
 Base.metadata.create_all(bind=engine)
@@ -266,3 +302,16 @@ async def sync_user_flags(request: Request, call_next):
 @app.get("/healthz")
 def healthz():
     return {"status": "up"}
+
+# --------- مسار تبديل اللغة (موجود سابقًا) ----------
+@app.get("/lang/{lang}")
+def switch_language(lang: str, request: Request):
+    # تأكد أن اللغة مدعومة
+    if lang not in SUPPORTED:
+        lang = DEFAULT_LANG
+
+    # ارجع إلى الصفحة السابقة إن وُجدت وإلا للصفحة الرئيسية
+    referer = request.headers.get("referer") or "/"
+    resp = RedirectResponse(url=referer, status_code=302)
+    set_lang_cookie(resp, lang)
+    return resp
