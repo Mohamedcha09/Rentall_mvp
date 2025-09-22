@@ -1,94 +1,141 @@
 # app/routes_search.py
-from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy import text
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
-from fastapi.templating import Jinja2Templates
-
-from .db import get_db
+from sqlalchemy import or_, func
+from .database import get_db
+from .models import User, Item
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
-def _run_search(q: str, db: Session):
-    dialect = db.bind.dialect.name if db.bind else "sqlite"
-    q_str = (q or "").strip()
-    if not q_str:
+def _clean_name(first: str, last: str, uid: int) -> str:
+    f = (first or "").strip()
+    l = (last or "").strip()
+    full = (f" {l}").strip() if f else l
+    return full or f"User {uid}"
+
+@router.get("/api/search")
+def api_search(q: str = "", db: Session = Depends(get_db)):
+    """
+    بحث حيّ للمحرك (typeahead) — لا يتطلب تسجيل دخول، ولا يقرأ/يعدّل الـ session.
+    يرجّع قوائم مبسطة: users + items، كل عنصر فيه url يُستخدم مباشرة في الواجهة.
+    """
+    q = (q or "").strip()
+    if len(q) < 2:
         return {"users": [], "items": []}
 
-    if dialect == "sqlite":
-        like = f"%{q_str.lower()}%"
-        users_sql = text("""
-            SELECT id,
-                   TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) AS name,
-                   COALESCE(avatar_path, '') AS avatar_path
-            FROM users
-            WHERE LOWER(COALESCE(first_name,'')) LIKE :q
-               OR LOWER(COALESCE(last_name,''))  LIKE :q
-            ORDER BY id DESC
-            LIMIT 20
-        """)
-        items_sql = text("""
-            SELECT id, title, city, price_per_day, COALESCE(image_path,'') AS image_path
-            FROM items
-            WHERE LOWER(COALESCE(title,'')) LIKE :q
-               OR LOWER(COALESCE(city,''))  LIKE :q
-            ORDER BY id DESC
-            LIMIT 20
-        """)
-        params = {"q": like}
-    else:
-        like = f"%{q_str}%"
-        users_sql = text("""
-            SELECT id,
-                   CONCAT_WS(' ', first_name, last_name) AS name,
-                   COALESCE(avatar_path, '') AS avatar_path
-            FROM users
-            WHERE first_name ILIKE :q OR last_name ILIKE :q
-            ORDER BY id DESC
-            LIMIT 20
-        """)
-        items_sql = text("""
-            SELECT id, title, city, price_per_day, COALESCE(image_path,'') AS image_path
-            FROM items
-            WHERE title ILIKE :q OR city ILIKE :q
-            ORDER BY id DESC
-            LIMIT 20
-        """)
-        params = {"q": like}
+    pattern = f"%{q}%"
 
-    users = db.execute(users_sql, params).mappings().all()
-    items = db.execute(items_sql, params).mappings().all()
+    # --- مستخدمون (بالاسم الأول/الأخير)
+    users_rows = (
+        db.query(User.id, User.first_name, User.last_name)
+        .filter(
+            or_(
+                User.first_name.ilike(pattern),
+                User.last_name.ilike(pattern),
+            )
+        )
+        .limit(8)
+        .all()
+    )
+
+    users = [
+        {
+            "id": uid,
+            "name": _clean_name(first, last, uid),
+            "url": f"/users/{uid}",
+        }
+        for (uid, first, last) in users_rows
+    ]
+
+    # --- عناصر (بالعنوان/الوصف) مع شرط التفعيل
+    items_rows = (
+        db.query(Item.id, Item.title, Item.city)
+        .filter(
+            Item.is_active == "yes",
+            or_(
+                Item.title.ilike(pattern),
+                Item.description.ilike(pattern),
+            ),
+        )
+        .limit(8)
+        .all()
+    )
+
+    items = [
+        {
+            "id": iid,
+            "title": (title or "").strip(),
+            "city": city or "",
+            "url": f"/items/{iid}",
+        }
+        for (iid, title, city) in items_rows
+    ]
+
     return {"users": users, "items": items}
 
-# صفحة النتائج المقسومة قسمين
+# (اختياري) صفحة نتائج كاملة /search لو كنت تستعملها في الواجهة
 @router.get("/search")
-def search_page(request: Request, q: str = Query("", min_length=0), db: Session = Depends(get_db)):
-    data = _run_search(q, db) if q else {"users": [], "items": []}
-    return templates.TemplateResponse(
+def search_page(request: Request, q: str = "", db: Session = Depends(get_db)):
+    q = (q or "").strip()
+    users = []
+    items = []
+
+    if len(q) >= 2:
+        pattern = f"%{q}%"
+
+        users_rows = (
+            db.query(User.id, User.first_name, User.last_name, User.avatar_path)
+            .filter(
+                or_(
+                    User.first_name.ilike(pattern),
+                    User.last_name.ilike(pattern),
+                )
+            )
+            .limit(24)
+            .all()
+        )
+        users = [
+            {
+                "id": uid,
+                "name": _clean_name(first, last, uid),
+                "avatar_path": avatar or "",
+                "url": f"/users/{uid}",
+            }
+            for (uid, first, last, avatar) in users_rows
+        ]
+
+        items_rows = (
+            db.query(Item.id, Item.title, Item.city, Item.image_path)
+            .filter(
+                Item.is_active == "yes",
+                or_(
+                    Item.title.ilike(pattern),
+                    Item.description.ilike(pattern),
+                ),
+            )
+            .limit(24)
+            .all()
+        )
+        items = [
+            {
+                "id": iid,
+                "title": (title or "").strip(),
+                "city": city or "",
+                "image_path": img or "",
+                "url": f"/items/{iid}",
+            }
+            for (iid, title, city, img) in items_rows
+        ]
+
+    # استخدم القالب الموجود عندك إن رغبت
+    return request.app.templates.TemplateResponse(
         "search.html",
         {
             "request": request,
             "title": "نتائج البحث",
             "q": q,
-            "users": data["users"],
-            "items": data["items"],
+            "users": users,
+            "items": items,
+            "session_user": request.session.get("user"),
         },
     )
-
-# API اختيارية (لو تحتاجها)
-@router.get("/api/search")
-def search_api(q: str = Query(..., min_length=1), db: Session = Depends(get_db)):
-    data = _run_search(q, db)
-    return {
-        "users": [
-            {"id": u["id"], "name": u["name"], "avatar_path": u["avatar_path"], "url": f"/users/{u['id']}"}
-            for u in data["users"]
-        ],
-        "items": [
-            {"id": i["id"], "title": i["title"], "city": i.get("city"),
-             "price_per_day": i.get("price_per_day"),
-             "image_path": i.get("image_path"),
-             "url": f"/items/{i['id']}"}
-            for i in data["items"]
-        ],
-    }
