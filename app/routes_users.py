@@ -8,6 +8,18 @@ from .models import User, Item
 
 router = APIRouter()
 
+# ---------- أداة صغيرة لتحسين اسم العرض ----------
+def _display_name(first: str, last: str, uid: int) -> str:
+    f = (first or "").strip()
+    l = (last or "").strip()
+    if f and l:
+        return f"{f} {l}"
+    if f:
+        return f
+    if l:
+        return l
+    return f"User {uid}"
+
 # API خفيفة للاقتراحات (لا تلمس الجلسة)
 @router.get("/api/search", response_class=JSONResponse)
 def api_search(q: str = "", db: Session = Depends(get_db)):
@@ -32,7 +44,7 @@ def api_search(q: str = "", db: Session = Depends(get_db)):
     )
 
     items = (
-        db.query(Item.id, Item.title, Item.image_path)
+        db.query(Item.id, Item.title, Item.city, Item.image_path)
         .filter(
             Item.is_active == "yes",
             or_(Item.title.ilike(like), Item.description.ilike(like)),
@@ -42,20 +54,24 @@ def api_search(q: str = "", db: Session = Depends(get_db)):
         .all()
     )
 
+    # نرجع شكل ثابت للواجهة: url + name/title + صور/مدينة إن وجدت
     return {
         "users": [
             {
                 "id": u.id,
-                "name": f"{u.first_name or ''} {u.last_name or ''}".strip(),
+                "name": _display_name(u.first_name, u.last_name, u.id),
                 "avatar": u.avatar_path or "",
+                "url": f"/users/{u.id}",
             }
             for u in users
         ],
         "items": [
             {
                 "id": it.id,
-                "title": it.title,
+                "title": (it.title or "").strip(),
+                "city": it.city or "",
                 "image": it.image_path or "",
+                "url": f"/items/{it.id}",
             }
             for it in items
         ],
@@ -65,10 +81,11 @@ def api_search(q: str = "", db: Session = Depends(get_db)):
 @router.get("/search", response_class=HTMLResponse)
 def search_page(request: Request, q: str = "", db: Session = Depends(get_db)):
     q = (q or "").strip()
-    users = []
-    items = []
+    users_list = []
+    items_list = []
     if q:
         like = f"%{q}%"
+
         users = (
             db.query(User.id, User.first_name, User.last_name, User.avatar_path)
             .filter(
@@ -82,8 +99,19 @@ def search_page(request: Request, q: str = "", db: Session = Depends(get_db)):
             .limit(20)
             .all()
         )
+        # نوحّد الشكل لقالب search.html
+        users_list = [
+            {
+                "id": u.id,
+                "name": _display_name(u.first_name, u.last_name, u.id),
+                "avatar_path": u.avatar_path or "",
+                "url": f"/users/{u.id}",
+            }
+            for u in users
+        ]
+
         items = (
-            db.query(Item)
+            db.query(Item.id, Item.title, Item.city, Item.image_path)
             .filter(
                 Item.is_active == "yes",
                 or_(Item.title.ilike(like), Item.description.ilike(like)),
@@ -92,16 +120,26 @@ def search_page(request: Request, q: str = "", db: Session = Depends(get_db)):
             .limit(24)
             .all()
         )
+        items_list = [
+            {
+                "id": it.id,
+                "title": (it.title or "").strip(),
+                "city": it.city or "",
+                "image_path": it.image_path or "",
+                "url": f"/items/{it.id}",
+            }
+            for it in items
+        ]
 
-    # مَرِّر session_user للتمبليت فقط للعرض — بدون لمس request.session
+    # نمرر session_user للعرض فقط (بدون أي كتابة على الجلسة)
     return request.app.templates.TemplateResponse(
         "search.html",
         {
             "request": request,
             "title": "نتائج البحث",
             "q": q,
-            "users": users,
-            "items": items,
-            "session_user": request.session.get("user"),
+            "users": users_list,
+            "items": items_list,
+            "session_user": (request.session or {}).get("user"),
         },
     )
