@@ -404,4 +404,135 @@ html, body { height: 100%; }                /* تعزيز الارتفاع */
 .price-badge{ position:absolute; top:10px; inset-inline-start:10px; background:rgba(0,0,0,.5); color:#fff; border-radius:999px; padding:.25rem .5rem; border:1px solid var(--border) }
 .category-chip{ position:absolute; top:10px; inset-inline-end:10px; background:rgba(124,92,255,.18); border:1px solid rgba(124,92,255,.35); border-radius:999px; padding:.2rem .5rem; font-size:.78rem }
 .spot-title{ margin:.1rem 0 .4rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:2.6em }
-.city-chip{ max-width:65%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:.15rem .45rem; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid var(--border) }
+.city-chip{ max-width:65%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:.15rem .45rem; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid var(--border) }  NE SUPPRIME RIEN OK
+
+
+
+@media  (max-width:768px){
+  .page{
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ===== تبويب سفلي للهاتف ===== */
+.mobile-tabbar{
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  height: 64px;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 96%, transparent), color-mix(in oklab, var(--panel) 92%, transparent));
+  border-top: 1px solid var(--border);
+  backdrop-filter: blur(12px) saturate(120%);
+  z-index: 2300;
+  display: none;
+}
+.mobile-tabbar .tabbar-inner{
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+}
+.mobile-tabbar a{
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+  color: var(--muted); font-size:.78rem; text-decoration:none;
+}
+.mobile-tabbar a i{ font-size:1.2rem; opacity:.95 }
+.mobile-tabbar a.is-active{ color: var(--text); }
+@supports (padding: max(0px)){
+  .mobile-tabbar{ padding-bottom: max(env(safe-area-inset-bottom), 0px); }
+}
+@media (max-width:768px){
+  .mobile-tabbar{ display:block; }
+}
+
+/* ===== قائمة المحادثات (Inbox) ===== */
+.dm-list{ display:flex; flex-direction:column; gap:10px }
+.dm-row{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:14px;
+  border:1px solid var(--border);
+  background:linear-gradient(180deg, color-mix(in oklab, var(--card) 92%, transparent), color-mix(in oklab, var(--card) 86%, transparent));
+  transition: background .15s ease, transform .15s ease;
+}
+.dm-row:hover{ background:color-mix(in oklab, var(--text) 6%, transparent); transform:translateY(-1px) }
+.dm-avatar{
+  width:44px; height:44px; border-radius:50%;
+  object-fit:cover; border:1px solid var(--border);
+  background:rgba(255,255,255,.06); display:grid; place-items:center; font-weight:800;
+}
+.dm-col{ min-width:0; display:flex; flex-direction:column; gap:2px }
+.dm-name{ font-weight:800 }
+.dm-preview{ color:var(--muted); font-size:.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.dm-time{ margin-inline-start:auto; color:var(--muted); font-size:.78rem }
+
+/* ===== صفحة المحادثة ===== */
+.thread-wrap{
+  display:flex; flex-direction:column; gap:8px;
+  padding: 10px 8px 96px; /* مساحة للـ composer + التبويب */
+}
+.msg{ display:flex; align-items:flex-end; gap:8px }
+.msg.me{ justify-content:flex-end }
+.msg-bubble{
+  max-width:78%;
+  padding:.6rem .75rem; border-radius:14px;
+  background: color-mix(in oklab, var(--surface) 95%, transparent);
+  border:1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.msg.me .msg-bubble{
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  border-color: transparent; color:#fff;
+}
+.msg-meta{ font-size:.75rem; color:var(--muted); margin-top:2px }
+
+/* ===== Composer (حقل كتابة الرسالة) ===== */
+.composer{
+  position: fixed;
+  inset-inline: 8px;
+  bottom: 64px; /* فوق تبويب الموبايل */
+  display:flex; align-items:center; gap:8px;
+  padding:8px; border-radius:16px;
+  background:linear-gradient(180deg, color-mix(in oklab, var(--card) 92%, transparent), color-mix(in oklab, var(--card) 86%, transparent));
+  border:1px solid var(--border);
+  box-shadow: var(--shadow);
+  z-index: 2301;
+}
+@supports (padding: max(0px)){
+  .composer{ bottom: calc(64px + max(env(safe-area-inset-bottom), 0px)); }
+}
+.composer input[type="text"],
+.composer textarea{
+  flex:1; border:0; outline:0; background:transparent; color:inherit; padding:.45rem;
+  resize:none; max-height:38vh;
+}
+.btn-send{ padding:.45rem .85rem; border-radius:12px }
+
+/* ===== رأس بروفايل للهاتف ===== */
+.m-profile{
+  display:flex; align-items:center; gap:12px;
+  padding:12px; border-radius:16px;
+  background:linear-gradient(180deg, color-mix(in oklab, var(--card) 92%, transparent), color-mix(in oklab, var(--card) 86%, transparent));
+  border:1px solid var(--border);
+}
+.m-avatar{
+  width:64px; height:64px; border-radius:50%;
+  object-fit:cover; border:1px solid var(--border);
+  background:rgba(255,255,255,.06); display:grid; place-items:center; font-size:1.4rem; font-weight:800;
+}
+.m-name{ font-weight:800; font-size:1.1rem }
+.m-badges{ display:flex; gap:6px; flex-wrap:wrap }
+
+/* ===== تحسينات Responsive إضافية ===== */
+@media (max-width:768px){
+  .topbar__inner{ grid-template-columns:auto 1fr auto auto }
+  .search{ margin-inline:6px; max-width:none }
+  .search__input{ height:38px; padding-inline:38px 12px }
+  .home-grid{ grid-template-columns: repeat(auto-fill, minmax(170px,1fr)); gap:12px }
+  .card.spot .card-body{ padding:.6rem .6rem .7rem }
+}
+
+/* ===== مساعدات عرض/إخفاء ===== */
+.hide-desktop{ display:none }
+@media (max-width:768px){
+  .hide-desktop{ display:initial }
+  .hide-mobile{ display:none!important }
+}

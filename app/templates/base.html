@@ -185,6 +185,26 @@
 
     </div><!-- /#page-wrapper -->
 
+    <!-- ===== [مضاف] تبويب سفلي للموبايل فقط ===== -->
+    {% set p = request.url.path if request else '' %}
+    <nav class="mobile-tabbar hide-desktop">
+      <div class="tabbar-inner">
+        <a href="/" class="{% if p == '/' %}is-active{% endif %}">
+          <i class="bi bi-house-door"></i><span>الرئيسية</span>
+        </a>
+        <a href="/items" class="{% if p.startswith('/items') %}is-active{% endif %}">
+          <i class="bi bi-grid"></i><span>العناصر</span>
+        </a>
+        <a href="/messages" class="{% if p.startswith('/messages') %}is-active{% endif %}">
+          <i class="bi bi-chat-dots"></i><span>الرسائل</span>
+        </a>
+        <a href="{{ '/profile' if session_user else '/login' }}" class="{% if p.startswith('/profile') %}is-active{% endif %}">
+          <i class="bi bi-person"></i><span>حسابي</span>
+        </a>
+      </div>
+    </nav>
+    <!-- /Mobile Tabbar -->
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     {% block scripts %}{% endblock %}
@@ -304,20 +324,20 @@
           }
         }
         if (items.length){
-  html.push('<div class="typeahead-group">عناصر</div>');
-  for (const it of items){
-    const city = it.city ? ` — <span class="k">${esc(it.city)}</span>` : "";
-    html.push(`
-      <div class="typeahead-item" data-url="${it.url}">
-        <i class="bi bi-box-seam"></i>
-        <div class="flex-grow-1">
-          <div>${esc(it.title)}${city}</div>
-          <div class="k">تفاصيل العنصر</div>
-        </div>
-      </div>
-    `);
-  }
-}
+          html.push('<div class="typeahead-group">عناصر</div>');
+          for (const it of items){
+            const city = it.city ? ` — <span class="k">${esc(it.city)}</span>` : "";
+            html.push(`
+              <div class="typeahead-item" data-url="${it.url}">
+                <i class="bi bi-box-seam"></i>
+                <div class="flex-grow-1">
+                  <div>${esc(it.title)}${city}</div>
+                  <div class="k">تفاصيل العنصر</div>
+                </div>
+              </div>
+            `);
+          }
+        }
 
         if (!html.length) { hide(); return; }
         panel.innerHTML = html.join(""); show();
