@@ -8,9 +8,16 @@ from .models import User, Item
 router = APIRouter()
 
 def _clean_name(first: str, last: str, uid: int) -> str:
+    """
+    يبني الاسم الكامل بشكل سليم حتى لو كان أحد الحقلين فاضي.
+    (تم إصلاح السهو: كان f-string ينسى first_name عند وجوده)
+    """
     f = (first or "").strip()
     l = (last or "").strip()
-    full = (f" {l}").strip() if f else l
+    if f and l:
+        full = f"{f} {l}"
+    else:
+        full = f or l
     return full or f"User {uid}"
 
 @router.get("/api/search")
@@ -65,7 +72,7 @@ def api_search(q: str = "", db: Session = Depends(get_db)):
         {
             "id": iid,
             "title": (title or "").strip(),
-            "city": city or "",
+            "city": (city or "").strip(),
             "url": f"/items/{iid}",
         }
         for (iid, title, city) in items_rows
@@ -98,7 +105,7 @@ def search_page(request: Request, q: str = "", db: Session = Depends(get_db)):
             {
                 "id": uid,
                 "name": _clean_name(first, last, uid),
-                "avatar_path": avatar or "",
+                "avatar_path": (avatar or "").strip(),
                 "url": f"/users/{uid}",
             }
             for (uid, first, last, avatar) in users_rows
@@ -120,8 +127,8 @@ def search_page(request: Request, q: str = "", db: Session = Depends(get_db)):
             {
                 "id": iid,
                 "title": (title or "").strip(),
-                "city": city or "",
-                "image_path": img or "",
+                "city": (city or "").strip(),
+                "image_path": (img or "").strip(),
                 "url": f"/items/{iid}",
             }
             for (iid, title, city, img) in items_rows
