@@ -1,145 +1,78 @@
-# app/routes_search.py
-from fastapi import APIRouter, Request, Depends
-from fastapi.responses import HTMLResponse, JSONResponse
+# app/routes_users.py
+from datetime import datetime, timezone, timedelta
+from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, func
+from sqlalchemy import func
 from .database import get_db
 from .models import User, Item
 
 router = APIRouter()
 
-# ---------- أداة صغيرة لتحسين اسم العرض ----------
-def _display_name(first: str, last: str, uid: int) -> str:
-    f = (first or "").strip()
-    l = (last or "").strip()
-    if f and l:
-        return f"{f} {l}"
-    if f:
-        return f
-    if l:
-        return l
-    return f"User {uid}"
+def _safe_str(v, default=""):
+    return (v or "").strip() if isinstance(v, str) else (v or default)
 
-# API خفيفة للاقتراحات (لا تلمس الجلسة)
-@router.get("/api/search", response_class=JSONResponse)
-def api_search(q: str = "", db: Session = Depends(get_db)):
-    q = (q or "").strip()
-    if not q:
-        return {"users": [], "items": []}
+def _is_new_account(created_at: datetime | None, days:int = 60) -> bool:
+    if not created_at:
+        return False
+    now = datetime.now(timezone.utc)
+    # created_at قد تكون naive في SQLite — نتعامل معها كـ UTC
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    return (now - created_at) <= timedelta(days=days)
 
-    like = f"%{q}%"
-
-    users = (
-        db.query(User.id, User.first_name, User.last_name, User.avatar_path)
-        .filter(
-            or_(
-                User.first_name.ilike(like),
-                User.last_name.ilike(like),
-                (User.first_name + " " + User.last_name).ilike(like),
-            )
-        )
-        .order_by(User.first_name.asc())
-        .limit(8)
-        .all()
+@router.get("/users/{user_id}")
+def user_profile(user_id: int, request: Request, db: Session = Depends(get_db)):
+    # 1) احضر المستخدم
+    user = (
+        db.query(User)
+        .filter(User.id == user_id)
+        .first()
     )
+    if not user:
+        # ما في مستخدم = 404
+        raise HTTPException(status_code=404, detail="User not found")
 
+    # 2) عناصره المفعّلة
     items = (
-        db.query(Item.id, Item.title, Item.city, Item.image_path)
-        .filter(
-            Item.is_active == "yes",
-            or_(Item.title.ilike(like), Item.description.ilike(like)),
-        )
-        .order_by(func.random())
-        .limit(8)
+        db.query(Item)
+        .filter(Item.owner_id == user.id, Item.is_active == "yes")
+        .order_by(Item.created_at.desc().nullslast())
         .all()
     )
 
-    # نرجع شكل ثابت للواجهة: url + name/title + صور/مدينة إن وجدت
-    return {
-        "users": [
-            {
-                "id": u.id,
-                "name": _display_name(u.first_name, u.last_name, u.id),
-                "avatar": u.avatar_path or "",
-                "url": f"/users/{u.id}",
-            }
-            for u in users
-        ],
-        "items": [
-            {
-                "id": it.id,
-                "title": (it.title or "").strip(),
-                "city": it.city or "",
-                "image": it.image_path or "",
-                "url": f"/items/{it.id}",
-            }
-            for it in items
-        ],
+    # 3) إحصاءات بسيطة
+    stats = {
+        "items_count": db.query(func.count(Item.id)).filter(Item.owner_id == user.id, Item.is_active == "yes").scalar() or 0
     }
 
-# صفحة نتائج البحث (عرض فقط – لا تعديل للـsession)
-@router.get("/search", response_class=HTMLResponse)
-def search_page(request: Request, q: str = "", db: Session = Depends(get_db)):
-    q = (q or "").strip()
-    users_list = []
-    items_list = []
-    if q:
-        like = f"%{q}%"
+    # 4) حالة الشارات
+    created_at = user.created_at
+    is_new = _is_new_account(created_at, days=60)  # الشارة الصفراء خلال أول شهرين
+    # التوثيق: إذا عندك حقل user.is_verified استعمله؛ وإلا نزّلها على status == 'approved'
+    is_verified = bool(getattr(user, "is_verified", False)) or (user.status == "approved")
 
-        users = (
-            db.query(User.id, User.first_name, User.last_name, User.avatar_path)
-            .filter(
-                or_(
-                    User.first_name.ilike(like),
-                    User.last_name.ilike(like),
-                    (User.first_name + " " + User.last_name).ilike(like),
-                )
-            )
-            .order_by(User.first_name.asc())
-            .limit(20)
-            .all()
-        )
-        # نوحّد الشكل لقالب search.html
-        users_list = [
-            {
-                "id": u.id,
-                "name": _display_name(u.first_name, u.last_name, u.id),
-                "avatar_path": u.avatar_path or "",
-                "url": f"/users/{u.id}",
-            }
-            for u in users
-        ]
+    # 5) قيم إضافية للعرض
+    created_at_str = created_at.strftime("%Y-%m-%d") if created_at else ""
 
-        items = (
-            db.query(Item.id, Item.title, Item.city, Item.image_path)
-            .filter(
-                Item.is_active == "yes",
-                or_(Item.title.ilike(like), Item.description.ilike(like)),
-            )
-            .order_by(func.random())
-            .limit(24)
-            .all()
-        )
-        items_list = [
-            {
-                "id": it.id,
-                "title": (it.title or "").strip(),
-                "city": it.city or "",
-                "image_path": it.image_path or "",
-                "url": f"/items/{it.id}",
-            }
-            for it in items
-        ]
+    # 6) (اختياري) تقييمات — إذا ما عندك جدول تقييمات حالياً، خلّها None
+    rating_value = None
+    rating_count = None
 
-    # نمرر session_user للعرض فقط (بدون أي كتابة على الجلسة)
+    # 7) مرّر كل شيء إلى القالب user.html
     return request.app.templates.TemplateResponse(
-        "search.html",
+        "user.html",
         {
             "request": request,
-            "title": "نتائج البحث",
-            "q": q,
-            "users": users_list,
-            "items": items_list,
+            "title": f"{_safe_str(user.first_name, 'User')} {_safe_str(user.last_name)}",
+            "user": user,
+            "items": items,
+            "stats": stats,
+            "is_new": is_new,
+            "is_verified": is_verified,
+            "created_at_str": created_at_str,
+            "rating_value": rating_value,
+            "rating_count": rating_count,
+            # نمرر session_user للعرض فقط (قراءة فقط)
             "session_user": (request.session or {}).get("user"),
         },
     )
