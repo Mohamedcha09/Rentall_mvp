@@ -5,10 +5,12 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
-from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from dotenv import load_dotenv
+from sqlalchemy.orm import Session
+from sqlalchemy import desc, func, or_
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from .i18n import get_lang_from_request, get_translator, set_lang_cookie, SUPPORTED, DEFAULT_LANG
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from .database import Base, engine, SessionLocal, get_db
 from .models import User, Item
@@ -32,12 +34,17 @@ from .disputes import router as disputes_router
 from .bookings import router as bookings_router
 from .routes_search import router as search_router
 from .routes_users import router as users_router
+
+# اختياري: إدارة الشارات من لوحة الأدمن
 from .admin_badges import router as admin_badges_router
 
 load_dotenv()
+
 app = FastAPI()
 
-# جلسات
+# =========================
+# جلسات (تعديل مهم: إعدادات مستقرة حتى لا يتم الخروج تلقائياً)
+# =========================
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.environ.get("SECRET_KEY", "dev-secret"),
@@ -48,7 +55,7 @@ app.add_middleware(
 )
 
 # مجلّدات static و uploads
-BASE_DIR = os.path.dirname(__file__)
+BASE_DIR = os.path.dirname(_file_)
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 UPLOADS_DIR = os.path.join(os.path.dirname(BASE_DIR), "uploads")
@@ -64,7 +71,7 @@ app.templates = templates
 # إنشاء الجداول
 Base.metadata.create_all(bind=engine)
 
-# إضافة أدمن افتراضي
+# يضيف مستخدم admin افتراضيًا إذا غير موجود
 def seed_admin():
     db = SessionLocal()
     try:
@@ -87,12 +94,12 @@ def seed_admin():
 
 seed_admin()
 
-# تفعيل payouts اختياريًا
+# ===== تفعيل payouts اختياريًا =====
 PAYOUTS_ENABLED = os.getenv("ENABLE_PAYOUTS", "0") == "1"
 payouts_router = None
 if PAYOUTS_ENABLED:
     try:
-        import stripe
+        import stripe  # تأكد وجود المكتبة
         from .payouts import router as _payouts_router
         payouts_router = _payouts_router
         print("[OK] payouts router enabled")
@@ -101,7 +108,7 @@ if PAYOUTS_ENABLED:
 else:
     print("[INFO] payouts router disabled (set ENABLE_PAYOUTS=1 & STRIPE_SECRET_KEY to enable)")
 
-# تسجيل الراوترات
+# تسجيل الروترات
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(items_router)
@@ -120,10 +127,14 @@ app.include_router(bookings_router)
 app.include_router(search_router)
 app.include_router(users_router)
 app.include_router(admin_badges_router)
+
 if payouts_router:
     app.include_router(payouts_router)
 
-# الصفحة الرئيسية مع البحث
+# =========================
+# الصفحة الرئيسية
+# (تعديل مهم: لا تحوّل المسجّل إلى /welcome)
+# =========================
 @app.get("/")
 def home(
     request: Request,
@@ -132,6 +143,7 @@ def home(
     q: str = None,
     city: str = None,
 ):
+    # كان يعيد التوجيه دائماً، الآن فقط للزائر غير المسجّل
     if not request.cookies.get("seen_welcome") and not request.session.get("user"):
         return RedirectResponse(url="/welcome", status_code=303)
 
@@ -163,6 +175,7 @@ def home(
             query = query.filter(func.lower(Item.city).in_(matched_cities))
 
     items = query.order_by(func.random()).limit(20).all()
+
     for it in items:
         it.category_label = category_label(it.category)
 
@@ -185,6 +198,7 @@ def welcome(request: Request):
     u = request.session.get("user")
     return templates.TemplateResponse("welcome.html", {"request": request, "session_user": u})
 
+# زر "ابدأ" من الترحيب → يضع كوكي ويذهب للرئيسية
 @app.post("/welcome/continue")
 def welcome_continue():
     resp = RedirectResponse(url="/", status_code=303)
@@ -196,7 +210,7 @@ def about(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user")
     return templates.TemplateResponse("about.html", {"request": request, "session_user": u})
 
-# API: عدد الرسائل غير المقروءة
+# ====== API صغيرة لتحديث شارة الرسائل ======
 @app.get("/api/unread_count")
 def api_unread_count(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user")
@@ -204,7 +218,10 @@ def api_unread_count(request: Request, db: Session = Depends(get_db)):
         return JSONResponse({"count": 0})
     return JSONResponse({"count": unread_count(u["id"], db)})
 
-# مزامنة session_user بأمان
+# =========================
+# Middleware: مزامنة session_user بآمان
+# (تعديل مهم: لا نمسح الجلسة إذا حصل خطأ)
+# =========================
 @app.middleware("http")
 async def sync_user_flags(request: Request, call_next):
     try:
@@ -216,10 +233,13 @@ async def sync_user_flags(request: Request, call_next):
                 try:
                     db_user = db.query(User).filter(User.id == sess_user["id"]).first()
                     if db_user:
+                        # قيم أساسية
                         sess_user["is_verified"] = bool(getattr(db_user, "is_verified", False))
                         sess_user["role"] = getattr(db_user, "role", sess_user.get("role"))
                         sess_user["status"] = getattr(db_user, "status", sess_user.get("status"))
                         sess_user["payouts_enabled"] = bool(getattr(db_user, "payouts_enabled", False))
+
+                        # شارات اختيارية لو موجودة في الجدول
                         for key in [
                             "badge_admin", "badge_new_yellow", "badge_pro_green", "badge_pro_gold",
                             "badge_purple_trust", "badge_renter_green", "badge_orange_stars"
@@ -228,8 +248,10 @@ async def sync_user_flags(request: Request, call_next):
                                 sess_user[key] = bool(getattr(db_user, key))
                             except Exception:
                                 pass
+
                         request.session["user"] = sess_user
                 except Exception:
+                    # نتجاهل أي فشل مزامنة ولا نمسح الجلسة
                     pass
                 finally:
                     try:
@@ -246,3 +268,16 @@ async def sync_user_flags(request: Request, call_next):
 @app.get("/healthz")
 def healthz():
     return {"status": "up"}
+
+
+@app.get("/lang/{lang}")
+def switch_language(lang: str, request: Request):
+    # تأكد أن اللغة مدعومة
+    if lang not in SUPPORTED:
+        lang = DEFAULT_LANG
+
+    # ارجع إلى الصفحة السابقة إن وُجدت وإلا للصفحة الرئيسية
+    referer = request.headers.get("referer") or "/"
+    resp = RedirectResponse(url=referer, status_code=302)
+    set_lang_cookie(resp, lang)
+    return resp
