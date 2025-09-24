@@ -5,12 +5,10 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
-from dotenv import load_dotenv
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, func, or_
+from sqlalchemy import func, or_
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
-from .i18n import get_lang_from_request, get_translator, set_lang_cookie, SUPPORTED, DEFAULT_LANG
-from starlette.middleware.base import BaseHTTPMiddleware
+from dotenv import load_dotenv
 
 from .database import Base, engine, SessionLocal, get_db
 from .models import User, Item
@@ -34,17 +32,12 @@ from .disputes import router as disputes_router
 from .bookings import router as bookings_router
 from .routes_search import router as search_router
 from .routes_users import router as users_router
-
-# اختياري: إدارة الشارات من لوحة الأدمن
 from .admin_badges import router as admin_badges_router
 
 load_dotenv()
-
 app = FastAPI()
 
-# =========================
-# جلسات (تعديل مهم: إعدادات مستقرة حتى لا يتم الخروج تلقائياً)
-# =========================
+# جلسات
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.environ.get("SECRET_KEY", "dev-secret"),
@@ -68,44 +61,10 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 app.templates = templates
 
-# -------- [مضاف] إعدادات Jinja الافتراضية للترجمة --------
-# نضع Placeholder حتى لا تنكسر الصفحات قبل عمل الـ middleware
-templates.env.globals.setdefault("_", lambda s: s)
-templates.env.globals.setdefault("current_lang", lambda: DEFAULT_LANG)
-templates.env.globals.setdefault("SUPPORTED_LANGS", SUPPORTED)
-
-# -------- [مضاف] Middleware الترجمة --------
-class I18nMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        try:
-            # حدّد اللغة من الكوكي/البارام/الهيدر
-            lang = get_lang_from_request(request)
-            request.state.lang = lang
-
-            # جهّز المترجم
-            trans = get_translator(lang)
-            _ = trans.gettext
-
-            # اجعل _ و current_lang متاحين داخل جميع القوالب
-            templates.env.globals["_"] = _
-            templates.env.globals["current_lang"] = lambda: lang
-            templates.env.globals["SUPPORTED_LANGS"] = SUPPORTED
-        except Exception:
-            # في أي خطأ، استخدم الوضع الآمن
-            request.state.lang = DEFAULT_LANG
-            templates.env.globals["_"] = lambda s: s
-            templates.env.globals["current_lang"] = lambda: DEFAULT_LANG
-
-        response = await call_next(request)
-        return response
-
-# تفعيل الـ Middleware
-app.add_middleware(I18nMiddleware)
-
 # إنشاء الجداول
 Base.metadata.create_all(bind=engine)
 
-# يضيف مستخدم admin افتراضيًا إذا غير موجود
+# إضافة أدمن افتراضي
 def seed_admin():
     db = SessionLocal()
     try:
@@ -128,12 +87,12 @@ def seed_admin():
 
 seed_admin()
 
-# ===== تفعيل payouts اختياريًا =====
+# تفعيل payouts اختياريًا
 PAYOUTS_ENABLED = os.getenv("ENABLE_PAYOUTS", "0") == "1"
 payouts_router = None
 if PAYOUTS_ENABLED:
     try:
-        import stripe  # تأكد وجود المكتبة
+        import stripe
         from .payouts import router as _payouts_router
         payouts_router = _payouts_router
         print("[OK] payouts router enabled")
@@ -142,7 +101,7 @@ if PAYOUTS_ENABLED:
 else:
     print("[INFO] payouts router disabled (set ENABLE_PAYOUTS=1 & STRIPE_SECRET_KEY to enable)")
 
-# تسجيل الروترات
+# تسجيل الراوترات
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(items_router)
@@ -161,14 +120,10 @@ app.include_router(bookings_router)
 app.include_router(search_router)
 app.include_router(users_router)
 app.include_router(admin_badges_router)
-
 if payouts_router:
     app.include_router(payouts_router)
 
-# =========================
-# الصفحة الرئيسية
-# (تعديل مهم: لا تحوّل المسجّل إلى /welcome)
-# =========================
+# الصفحة الرئيسية مع البحث
 @app.get("/")
 def home(
     request: Request,
@@ -177,7 +132,6 @@ def home(
     q: str = None,
     city: str = None,
 ):
-    # كان يعيد التوجيه دائماً، الآن فقط للزائر غير المسجّل
     if not request.cookies.get("seen_welcome") and not request.session.get("user"):
         return RedirectResponse(url="/welcome", status_code=303)
 
@@ -209,7 +163,6 @@ def home(
             query = query.filter(func.lower(Item.city).in_(matched_cities))
 
     items = query.order_by(func.random()).limit(20).all()
-
     for it in items:
         it.category_label = category_label(it.category)
 
@@ -232,7 +185,6 @@ def welcome(request: Request):
     u = request.session.get("user")
     return templates.TemplateResponse("welcome.html", {"request": request, "session_user": u})
 
-# زر "ابدأ" من الترحيب → يضع كوكي ويذهب للرئيسية
 @app.post("/welcome/continue")
 def welcome_continue():
     resp = RedirectResponse(url="/", status_code=303)
@@ -244,7 +196,7 @@ def about(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user")
     return templates.TemplateResponse("about.html", {"request": request, "session_user": u})
 
-# ====== API صغيرة لتحديث شارة الرسائل ======
+# API: عدد الرسائل غير المقروءة
 @app.get("/api/unread_count")
 def api_unread_count(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user")
@@ -252,10 +204,7 @@ def api_unread_count(request: Request, db: Session = Depends(get_db)):
         return JSONResponse({"count": 0})
     return JSONResponse({"count": unread_count(u["id"], db)})
 
-# =========================
-# Middleware: مزامنة session_user بآمان
-# (تعديل مهم: لا نمسح الجلسة إذا حصل خطأ)
-# =========================
+# مزامنة session_user بأمان
 @app.middleware("http")
 async def sync_user_flags(request: Request, call_next):
     try:
@@ -267,13 +216,10 @@ async def sync_user_flags(request: Request, call_next):
                 try:
                     db_user = db.query(User).filter(User.id == sess_user["id"]).first()
                     if db_user:
-                        # قيم أساسية
                         sess_user["is_verified"] = bool(getattr(db_user, "is_verified", False))
                         sess_user["role"] = getattr(db_user, "role", sess_user.get("role"))
                         sess_user["status"] = getattr(db_user, "status", sess_user.get("status"))
                         sess_user["payouts_enabled"] = bool(getattr(db_user, "payouts_enabled", False))
-
-                        # شارات اختيارية لو موجودة في الجدول
                         for key in [
                             "badge_admin", "badge_new_yellow", "badge_pro_green", "badge_pro_gold",
                             "badge_purple_trust", "badge_renter_green", "badge_orange_stars"
@@ -282,10 +228,8 @@ async def sync_user_flags(request: Request, call_next):
                                 sess_user[key] = bool(getattr(db_user, key))
                             except Exception:
                                 pass
-
                         request.session["user"] = sess_user
                 except Exception:
-                    # نتجاهل أي فشل مزامنة ولا نمسح الجلسة
                     pass
                 finally:
                     try:
@@ -302,16 +246,3 @@ async def sync_user_flags(request: Request, call_next):
 @app.get("/healthz")
 def healthz():
     return {"status": "up"}
-
-# --------- مسار تبديل اللغة (موجود سابقًا) ----------
-@app.get("/lang/{lang}")
-def switch_language(lang: str, request: Request):
-    # تأكد أن اللغة مدعومة
-    if lang not in SUPPORTED:
-        lang = DEFAULT_LANG
-
-    # ارجع إلى الصفحة السابقة إن وُجدت وإلا للصفحة الرئيسية
-    referer = request.headers.get("referer") or "/"
-    resp = RedirectResponse(url=referer, status_code=302)
-    set_lang_cookie(resp, lang)
-    return resp
