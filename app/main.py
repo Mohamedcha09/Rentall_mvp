@@ -7,9 +7,8 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, func, or_
+from sqlalchemy import func, or_
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
 
 from .database import Base, engine, SessionLocal, get_db
 from .models import User, Item
@@ -128,8 +127,28 @@ app.include_router(admin_badges_router)
 if payouts_router:
     app.include_router(payouts_router)
 
+# ===== أداة صغيرة لاستخراج كود التصنيف بأشكال مختلفة
+def _cat_code(cat) -> str:
+    """
+    يدعم:
+    - dict: code / value / id / slug / key
+    - tuple/list مثل: ('cars', 'سيارات')
+    - قيمة نصية مباشرة
+    """
+    if isinstance(cat, dict):
+        return (
+            cat.get("code")
+            or cat.get("value")
+            or cat.get("id")
+            or cat.get("slug")
+            or cat.get("key")
+        )
+    if isinstance(cat, (list, tuple)) and cat:
+        return str(cat[0])
+    return str(cat) if cat is not None else None
+
 # =========================
-# الصفحة الرئيسية — مع أقسام شائعة/تصنيفات/مختلط
+# الصفحة الرئيسية — أقسام شائعة/تصنيفات/مختلط
 # =========================
 @app.get("/")
 def home(
@@ -139,7 +158,7 @@ def home(
     q: str = None,
     city: str = None,
 ):
-    # توجيه للترحيب للزائر فقط (غير المسجّل ولم ير الترحيب)
+    # توجيه للترحيب للزائر فقط
     if not request.cookies.get("seen_welcome") and not request.session.get("user"):
         return RedirectResponse(url="/welcome", status_code=303)
 
@@ -170,26 +189,40 @@ def home(
         if matched_cities:
             query = query.filter(func.lower(Item.city).in_(matched_cities))
 
-    # قائمة للعرض العام إن احتجتها
+    # قائمة عامة
     items = query.order_by(func.random()).limit(20).all()
     for it in items:
         it.category_label = category_label(it.category)
 
     # ===== أقسام الرئيسية =====
-    popular_items = db.query(Item)\
-        .filter(Item.is_active == "yes")\
-        .order_by(func.random()).limit(12).all()
+    popular_items = (
+        db.query(Item)
+        .filter(Item.is_active == "yes")
+        .order_by(func.random())
+        .limit(12)
+        .all()
+    )
 
     items_by_category = {}
     for cat in CATEGORIES:
-        code = cat["code"]
-        items_by_category[code] = db.query(Item)\
-            .filter(Item.is_active == "yes", Item.category == code)\
-            .order_by(func.random()).limit(10).all()
+        code = _cat_code(cat)
+        if not code:
+            continue
+        items_by_category[code] = (
+            db.query(Item)
+            .filter(Item.is_active == "yes", Item.category == code)
+            .order_by(func.random())
+            .limit(10)
+            .all()
+        )
 
-    mixed_items = db.query(Item)\
-        .filter(Item.is_active == "yes")\
-        .order_by(func.random()).limit(24).all()
+    mixed_items = (
+        db.query(Item)
+        .filter(Item.is_active == "yes")
+        .order_by(func.random())
+        .limit(24)
+        .all()
+    )
 
     return templates.TemplateResponse(
         "home.html",
@@ -287,13 +320,11 @@ def healthz():
     return {"status": "up"}
 
 # =========================
-# /lang: مسار بسيط غير مرتبط بترجمة
-# يحفظ قيمة اللغة في كوكي فقط لإرضاء روابط الواجهة
+# /lang: مسار بسيط غير مرتبط بترجمة — فقط يحفظ كوكي
 # =========================
 @app.get("/lang/{lang}")
 def switch_language(lang: str, request: Request):
     referer = request.headers.get("referer") or "/"
     resp = RedirectResponse(url=referer, status_code=302)
-    # كوكي بسيطة (لا تُستخدم حاليًا)
     resp.set_cookie("lang", lang, max_age=60 * 60 * 24 * 365, httponly=False, samesite="lax")
     return resp
