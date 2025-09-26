@@ -655,3 +655,51 @@ html, body { height: 100%; }                /* تعزيز الارتفاع */
   grid-template-columns: repeat(auto-fill, minmax(180px,1fr));
 }
 @media (min-width:576px){ .mixed-grid{ grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); } }
+
+/* ===== Blossom-like top icons ===== */
+.actions .btn-icon{
+  border: 0 !important;
+  background: transparent !important;
+  padding: .15rem .35rem !important;
+  box-shadow: none !important;
+}
+.actions .btn-icon i{
+  font-size: 1.35rem; line-height: 1; filter: none;
+}
+.actions .btn-ghost.btn-icon{ border-color: transparent !important; }
+
+/* ألوان الأيقونات */
+.actions .msg-icon i{ color: #7c5cff; }   /* بنفسجي */
+.actions .notif-icon i{ color: #1ec9a8; } /* أخضر مائل للتيفاني */
+.actions .btn-icon:hover{ transform: translateY(-1px); }
+
+/* إذا أردت لونًا أخف في الثيم الفاتح */
+body[data-theme="light"] .actions .msg-icon i{ color:#6a57ff; }
+body[data-theme="light"] .actions .notif-icon i{ color:#18c2a1; }
+
+/* ===== Search pill like Blossom ===== */
+.topbar .search .search__input{
+  height: 44px !important;
+  border-radius: 999px !important;
+  border: 0 !important;
+  background: #f4f6fb !important;
+  color: #444 !important;
+}
+body[data-theme="dark"] .topbar .search .search__input{
+  background: rgba(255,255,255,.08) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+}
+.topbar .search .search__icon{
+  inset-inline-start: 16px !important;
+  opacity: .6 !important;
+  font-size: 1.05rem;
+}
+.topbar .search .search__input::placeholder{
+  font-size: 1.05rem;
+  letter-spacing: .2px;
+  color: #8b95a7;
+}
+body[data-theme="dark"] .topbar .search .search__input::placeholder{
+  color: color-mix(in oklab, var(--text) 60%, transparent);
+}

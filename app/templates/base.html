@@ -66,6 +66,65 @@
       /* [مضاف] تحسين بسيط لزر اللغة */
       .lang-switch .btn{ min-width: 64px; }
       .lang-flag{ width:18px; height:18px; border-radius:50%; object-fit:cover; margin-inline-end:.35rem; }
+
+      /* ===========================
+         [مضاف] تحسينات Blossom-style
+         =========================== */
+
+      /* أيقونات الرسائل/الإشعارات بشكل حرّ بدون إطار */
+      .actions .btn-messages,
+      #notifOpen{
+        border:0 !important;
+        background:transparent !important;
+        box-shadow:none !important;
+        padding:.2rem .35rem !important;
+      }
+      /* لون الرسائل أرجواني */
+      .actions .btn-messages i{
+        color:#7c5cff !important;
+        font-size:1.35rem;
+        line-height:1;
+      }
+      /* لون الإشعارات أخضر */
+      #notifOpen i{
+        color:#1ec9a8 !important;
+        font-size:1.35rem;
+        line-height:1;
+      }
+      .actions .btn-messages:hover,
+      #notifOpen:hover{ transform:translateY(-1px); }
+
+      /* حقل البحث كبسولة فاتحة (يتكيّف مع الثيم) */
+      .topbar .search .search__input{
+        height:44px !important;
+        border-radius:999px !important;
+        border:0 !important;
+        background:#f4f6fb !important;
+        color:#3b4152 !important;
+      }
+      body[data-theme="dark"] .topbar .search .search__input{
+        background:rgba(255,255,255,.08) !important;
+        border:1px solid var(--border) !important;
+        color:var(--text) !important;
+      }
+      .topbar .search .search__icon{
+        inset-inline-start:16px !important;
+        opacity:.6 !important;
+        font-size:1.05rem;
+      }
+      .topbar .search .search__input::placeholder{
+        font-size:1.05rem; letter-spacing:.2px; color:#8b95a7;
+      }
+      body[data-theme="dark"] .topbar .search .search__input::placeholder{
+        color: color-mix(in oklab, var(--text) 60%, transparent);
+      }
+
+      /* تبويب الموبايل: أظهر الأيقونة المعبّأة عند التفعيل */
+      .mobile-tabbar .tab-icon--active{ display:none; }
+      .mobile-tabbar a.is-active .tab-icon{ display:none; }
+      .mobile-tabbar a.is-active .tab-icon--active{ display:inline-block; }
+      /* لون الأيقونة النشطة أقوى قليلًا */
+      .mobile-tabbar a.is-active i{ filter:saturate(120%); }
     </style>
 
     {% block head %}{% endblock %}
