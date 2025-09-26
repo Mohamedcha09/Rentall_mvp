@@ -7,13 +7,14 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
+from sqlalchemy import desc, func, or_
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from .database import Base, engine, SessionLocal, get_db
 from .models import User, Item
 
-# استيراد الروترات
+# الروترات
 from .auth import router as auth_router
 from .admin import router as admin_router
 from .items import router as items_router
@@ -32,16 +33,14 @@ from .disputes import router as disputes_router
 from .bookings import router as bookings_router
 from .routes_search import router as search_router
 from .routes_users import router as users_router
-
-# اختياري: إدارة الشارات من لوحة الأدمن
-from .admin_badges import router as admin_badges_router
+from .admin_badges import router as admin_badges_router  # اختياري
 
 load_dotenv()
 
 app = FastAPI()
 
 # =========================
-# جلسات
+# جلسات مستقرة
 # =========================
 app.add_middleware(
     SessionMiddleware,
@@ -52,7 +51,9 @@ app.add_middleware(
     max_age=60 * 60 * 24 * 30,  # 30 يوم
 )
 
-# مجلّدات static و uploads
+# =========================
+# static / uploads / templates
+# =========================
 BASE_DIR = os.path.dirname(__file__)
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
@@ -62,14 +63,13 @@ os.makedirs(UPLOADS_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
-# القوالب
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 app.templates = templates
 
 # إنشاء الجداول
 Base.metadata.create_all(bind=engine)
 
-# يضيف مستخدم admin افتراضيًا إذا غير موجود
+# يضيف admin افتراضي إذا غير موجود
 def seed_admin():
     db = SessionLocal()
     try:
@@ -97,7 +97,7 @@ PAYOUTS_ENABLED = os.getenv("ENABLE_PAYOUTS", "0") == "1"
 payouts_router = None
 if PAYOUTS_ENABLED:
     try:
-        import stripe  # تأكد وجود المكتبة
+        import stripe  # تأكد أن المكتبة متوفرة
         from .payouts import router as _payouts_router
         payouts_router = _payouts_router
         print("[OK] payouts router enabled")
@@ -125,12 +125,11 @@ app.include_router(bookings_router)
 app.include_router(search_router)
 app.include_router(users_router)
 app.include_router(admin_badges_router)
-
 if payouts_router:
     app.include_router(payouts_router)
 
 # =========================
-# الصفحة الرئيسية
+# الصفحة الرئيسية — مع أقسام شائعة/تصنيفات/مختلط
 # =========================
 @app.get("/")
 def home(
@@ -140,6 +139,7 @@ def home(
     q: str = None,
     city: str = None,
 ):
+    # توجيه للترحيب للزائر فقط (غير المسجّل ولم ير الترحيب)
     if not request.cookies.get("seen_welcome") and not request.session.get("user"):
         return RedirectResponse(url="/welcome", status_code=303)
 
@@ -150,10 +150,12 @@ def home(
         query = query.filter(Item.category == category)
         current_category = category
 
+    # بحث نصي
     if q:
         pattern = f"%{q}%"
         query = query.filter(or_(Item.title.ilike(pattern), Item.description.ilike(pattern)))
 
+    # بحث مدينة بمطابقة مرنة
     if city:
         cities_raw = db.query(func.lower(Item.city)).distinct().all()
         cities = [c[0] for c in cities_raw if c[0]]
@@ -168,10 +170,26 @@ def home(
         if matched_cities:
             query = query.filter(func.lower(Item.city).in_(matched_cities))
 
+    # قائمة للعرض العام إن احتجتها
     items = query.order_by(func.random()).limit(20).all()
-
     for it in items:
         it.category_label = category_label(it.category)
+
+    # ===== أقسام الرئيسية =====
+    popular_items = db.query(Item)\
+        .filter(Item.is_active == "yes")\
+        .order_by(func.random()).limit(12).all()
+
+    items_by_category = {}
+    for cat in CATEGORIES:
+        code = cat["code"]
+        items_by_category[code] = db.query(Item)\
+            .filter(Item.is_active == "yes", Item.category == code)\
+            .order_by(func.random()).limit(10).all()
+
+    mixed_items = db.query(Item)\
+        .filter(Item.is_active == "yes")\
+        .order_by(func.random()).limit(24).all()
 
     return templates.TemplateResponse(
         "home.html",
@@ -184,9 +202,17 @@ def home(
             "session_user": request.session.get("user"),
             "search_q": q or "",
             "search_city": city or "",
+            # جديد
+            "popular_items": popular_items,
+            "items_by_category": items_by_category,
+            "mixed_items": mixed_items,
+            "category_label": category_label,
         },
     )
 
+# =========================
+# صفحات عامة
+# =========================
 @app.get("/welcome", response_class=HTMLResponse)
 def welcome(request: Request):
     u = request.session.get("user")
@@ -203,6 +229,7 @@ def about(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user")
     return templates.TemplateResponse("about.html", {"request": request, "session_user": u})
 
+# API شارة الرسائل
 @app.get("/api/unread_count")
 def api_unread_count(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user")
@@ -210,6 +237,9 @@ def api_unread_count(request: Request, db: Session = Depends(get_db)):
         return JSONResponse({"count": 0})
     return JSONResponse({"count": unread_count(u["id"], db)})
 
+# =========================
+# Middleware: مزامنة session_user بأمان
+# =========================
 @app.middleware("http")
 async def sync_user_flags(request: Request, call_next):
     try:
@@ -221,10 +251,13 @@ async def sync_user_flags(request: Request, call_next):
                 try:
                     db_user = db.query(User).filter(User.id == sess_user["id"]).first()
                     if db_user:
+                        # قيم أساسية
                         sess_user["is_verified"] = bool(getattr(db_user, "is_verified", False))
                         sess_user["role"] = getattr(db_user, "role", sess_user.get("role"))
                         sess_user["status"] = getattr(db_user, "status", sess_user.get("status"))
                         sess_user["payouts_enabled"] = bool(getattr(db_user, "payouts_enabled", False))
+
+                        # شارات اختيارية إن وُجدت
                         for key in [
                             "badge_admin", "badge_new_yellow", "badge_pro_green", "badge_pro_gold",
                             "badge_purple_trust", "badge_renter_green", "badge_orange_stars"
@@ -233,6 +266,7 @@ async def sync_user_flags(request: Request, call_next):
                                 sess_user[key] = bool(getattr(db_user, key))
                             except Exception:
                                 pass
+
                         request.session["user"] = sess_user
                 except Exception:
                     pass
@@ -247,6 +281,19 @@ async def sync_user_flags(request: Request, call_next):
     response = await call_next(request)
     return response
 
+# Health Check
 @app.get("/healthz")
 def healthz():
     return {"status": "up"}
+
+# =========================
+# /lang: مسار بسيط غير مرتبط بترجمة
+# يحفظ قيمة اللغة في كوكي فقط لإرضاء روابط الواجهة
+# =========================
+@app.get("/lang/{lang}")
+def switch_language(lang: str, request: Request):
+    referer = request.headers.get("referer") or "/"
+    resp = RedirectResponse(url=referer, status_code=302)
+    # كوكي بسيطة (لا تُستخدم حاليًا)
+    resp.set_cookie("lang", lang, max_age=60 * 60 * 24 * 365, httponly=False, samesite="lax")
+    return resp

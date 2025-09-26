@@ -1,128 +1,111 @@
-<!-- home.html -->
 {% extends "base.html" %}
-{% from "_badges.html" import render_badges %}
-
 {% block content %}
 
-<!-- ======= الصفحة الرئيسية ======= -->
-<section class="home-hero text-center mb-4 section-full">
-  <h1 class="mb-2">منصة تأجير أي شيء — نسخة تجريبية</h1>
-  <p class="lead mb-3">ابدأ بتسجيل حسابك ورفع وثيقة رسمية للمراجعة من الأدمين.</p>
-
-  {% if not session_user %}
-    <a href="/register" class="btn btn-primary btn-lg">تسجيل جديد</a>
-    <a href="/login" class="btn btn-ghost btn-lg ms-2">تسجيل الدخول</a>
-  {% else %}
-    <a href="/profile" class="btn btn-primary btn-lg">اذهب إلى صفحتي</a>
-    {% if session_user.role == 'admin' %}
-      <a href="/admin" class="btn btn-warning btn-lg ms-2">لوحة الأدمين</a>
-    {% endif %}
-  {% endif %}
-</section>
-
-<!-- بطاقة البحث المتقدم -->
-<form method="get" action="/" class="card card-search mb-3">
-  <div class="card-body">
-    <div class="row g-2 align-items-center">
-      <div class="col-md-4">
-        <input type="text" name="q" value="{{ search_q|default('') }}"
-               class="form-control form-control-lg"
-               placeholder="ابحث عن منتج (camera, خيمة, سيارة...)">
-      </div>
-      <div class="col-md-3">
-        <input type="text" name="city" value="{{ search_city|default('') }}"
-               class="form-control form-control-lg"
-               placeholder="المدينة (مثال: montreal)">
-      </div>
-      <div class="col-md-3">
-        <select class="form-select form-select-lg" name="category">
-          <option value="" {{ '' == (current_category|default('')) and 'selected' or '' }}>كل التصنيفات</option>
-          {% for cat in categories %}
-            <option value="{{ cat.key }}" {{ cat.key == (current_category|default('')) and 'selected' or '' }}>
-              {{ cat.label }}
-            </option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-2 d-flex gap-2">
-        <select class="form-select form-select-lg" name="sort">
-          <option value="" {{ not sort and 'selected' or '' }}>الأحدث</option>
-          <option value="pop" {{ sort=='pop' and 'selected' or '' }}>الأكثر شهرة</option>
-          <option value="price_asc" {{ sort=='price_asc' and 'selected' or '' }}>السعر ↑</option>
-          <option value="price_desc" {{ sort=='price_desc' and 'selected' or '' }}>السعر ↓</option>
-        </select>
-        <button class="btn btn-primary btn-lg w-100" type="submit">ابحث</button>
-      </div>
-    </div>
-  </div>
-</form>
-
-<!-- فلاتر سريعة -->
-<div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
-  <div class="mb-2 home-cats">
-    <a class="btn btn-sm {{ not current_category and 'btn-primary' or 'btn-ghost' }}" href="/">الكل</a>
-    {% for cat in categories %}
-      <a class="btn btn-sm {{ current_category==cat.key and 'btn-primary' or 'btn-ghost' }}"
-         href="/?category={{ cat.key }}">{{ cat.label }}</a>
-    {% endfor %}
-  </div>
-
-  <div class="mb-2">
-    <a class="btn btn-sm btn-ghost"
-       href="{{ '/' if not current_category else '/?category=' ~ current_category }}">تحديث العناصر 🔄</a>
+<!-- قسم شائع -->
+<div class="section-head">
+  <div class="section-title">شائع بالقرب منك</div>
+  <div class="d-flex gap-2">
+    <button class="arrow-btn" data-snap-prev="#row-pop"><i class="bi bi-chevron-right"></i></button>
+    <button class="arrow-btn" data-snap-next="#row-pop"><i class="bi bi-chevron-left"></i></button>
   </div>
 </div>
-
-<!-- شبكة العناصر -->
-<div class="home-grid">
-  {% for it in items %}
-    {% set owner = it.owner if it.owner is defined else None %}
-    <article class="card spot">
-      <div class="spot-media">
-        {% if it.image_path %}
-          <img src="/{{ it.image_path }}" alt="item">
-        {% else %}
-          <img src="{{ url_for('static', path='img/placeholder.png') }}" alt="no image">
-        {% endif %}
-        <div class="spot-overlay"></div>
-
-        {% if it.price_per_day is not none %}
-        <div class="price-badge">
-          <strong>{{ it.price_per_day }}</strong><span> د/يوم</span>
-        </div>
-        {% endif %}
-
-        {% if it.category_label %}
-        <div class="category-chip">{{ it.category_label }}</div>
-        {% endif %}
+<div id="row-pop" class="hrow">
+  {% for it in popular_items %}
+  <a href="/items/{{ it.id }}" class="card spot hcard text-decoration-none">
+    <div class="spot-media">
+      <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
+      <div class="spot-overlay"></div>
+      <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
+      <span class="category-chip">{{ category_label(it.category) }}</span>
+    </div>
+    <div class="card-body spot-body">
+      <div class="spot-title">{{ it.title }}</div>
+      <div class="owner-line">
+        <div class="owner-avatar--placeholder">🏷️</div>
+        <span class="city-chip">{{ it.city or '—' }}</span>
       </div>
-
-      <div class="card-body">
-        <h5 class="spot-title" title="{{ it.title }}">{{ it.title }}</h5>
-
-        <div class="spot-body">
-          <div class="owner-line d-flex align-items-center gap-2 mb-2">
-            {% if owner and owner.avatar_path %}
-              <img src="/{{ owner.avatar_path }}" class="owner-avatar" alt="avatar">
-            {% else %}
-              <div class="owner-avatar owner-avatar--placeholder">👤</div>
-            {% endif %}
-            <span class="small text-muted d-inline-flex align-items-center gap-1">
-              {{ (owner and (owner.first_name ~ ' ' ~ owner.last_name)) or 'مستخدم' }}
-              {% if owner %}{{ render_badges(owner, '16px') }}{% endif %}
-            </span>
-          </div>
-
-          <div class="d-flex align-items-center justify-content-between spot-footer">
-            <div class="small city-chip" title="{{ it.city or '' }}">🏙️ {{ it.city or 'بدون مدينة' }}</div>
-            <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
-          </div>
-        </div>
+      <div class="spot-footer">
+        <small class="text-muted">تقييم {{ it.rating|default(4.8) }}</small>
+        <i class="bi bi-arrow-left-short"></i>
       </div>
-    </article>
-  {% else %}
-    <div class="card p-4 text-center text-muted">لا توجد عناصر لعرضها الآن.</div>
+    </div>
+  </a>
   {% endfor %}
 </div>
 
+<!-- سلايدر لكل تصنيف -->
+{% for cat in categories %}
+  {% set code = cat.code %}
+  {% set list = items_by_category.get(code, []) %}
+  {% if list %}
+  <div class="section-head mt-3">
+    <div class="section-title">{{ category_label(code) }}</div>
+    <a class="text-muted small" href="/items?category={{ code }}">عرض الكل</a>
+  </div>
+  <div id="row-{{ code }}" class="hrow">
+    {% for it in list %}
+    <a href="/items/{{ it.id }}" class="card spot hcard text-decoration-none">
+      <div class="spot-media">
+        <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
+        <div class="spot-overlay"></div>
+        <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
+        <span class="category-chip">{{ category_label(it.category) }}</span>
+      </div>
+      <div class="card-body spot-body">
+        <div class="spot-title">{{ it.title }}</div>
+        <div class="owner-line">
+          <div class="owner-avatar--placeholder">🏷️</div>
+          <span class="city-chip">{{ it.city or '—' }}</span>
+        </div>
+        <div class="spot-footer">
+          <small class="text-muted">تقييم {{ it.rating|default(4.8) }}</small>
+          <i class="bi bi-arrow-left-short"></i>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endfor %}
+
+<!-- شبكة مختلطة أسفل الصفحة -->
+<div class="section-head mt-3">
+  <div class="section-title">اكتشف المزيد</div>
+</div>
+<div class="mixed-grid">
+  {% for it in mixed_items %}
+  <a href="/items/{{ it.id }}" class="card spot text-decoration-none">
+    <div class="spot-media">
+      <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
+      <div class="spot-overlay"></div>
+      <span class="category-chip">{{ category_label(it.category) }}</span>
+    </div>
+    <div class="card-body spot-body">
+      <div class="spot-title">{{ it.title }}</div>
+      <div class="owner-line">
+        <div class="owner-avatar--placeholder">🏷️</div>
+        <span class="city-chip">{{ it.city or '—' }}</span>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+  // أزرار التمرير للسلايدر
+  function snap(el, dir=1){
+    const node = document.querySelector(el);
+    if(!node) return;
+    const w = node.clientWidth * 0.9;
+    node.scrollBy({left: dir*w, behavior:'smooth'});
+  }
+  document.querySelectorAll('[data-snap-prev]').forEach(b=>{
+    b.addEventListener('click', ()=> snap(b.dataset.snapPrev, -1));
+  });
+  document.querySelectorAll('[data-snap-next]').forEach(b=>{
+    b.addEventListener('click', ()=> snap(b.dataset.snapNext, +1));
+  });
+</script>
 {% endblock %}

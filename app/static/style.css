@@ -620,3 +620,38 @@ html, body { height: 100%; }                /* تعزيز الارتفاع */
 .mobile-tabbar a .tab-icon--active{ display:none; }
 .mobile-tabbar a.is-active .tab-icon{ display:none; }
 .mobile-tabbar a.is-active .tab-icon--active{ display:block; }
+
+/* ==== سلايدر أفقي للتصنيفات ==== */
+.hrow{
+  display:grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 78%;
+  gap:12px;
+  overflow-x:auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding-inline: 4px;
+}
+@media (min-width:576px){ .hrow{ grid-auto-columns: 58%; } }
+@media (min-width:992px){ .hrow{ grid-auto-columns: 360px; } }
+.hcard{ scroll-snap-align: start; }
+.hcard .spot-media{ aspect-ratio: 16/11; }
+
+/* شريط عنوان القسم + أسهم */
+.section-head{
+  display:flex; align-items:center; justify-content:space-between;
+  margin: 8px 4px 10px;
+}
+.section-title{ font-weight:800; font-size:1.05rem }
+.arrow-btn{
+  border:1px solid var(--border); background:transparent; border-radius:10px;
+  width:36px; height:36px; display:grid; place-items:center;
+}
+.arrow-btn:disabled{ opacity:.4 }
+
+/* شبكة مختلطة في الأسفل */
+.mixed-grid{
+  display:grid; gap:12px;
+  grid-template-columns: repeat(auto-fill, minmax(180px,1fr));
+}
+@media (min-width:576px){ .mixed-grid{ grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); } }
