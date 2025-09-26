@@ -594,3 +594,29 @@ html, body { height: 100%; }                /* تعزيز الارتفاع */
   /* زر الإضافة الطافي يرتفع فوق التاب-بار */
   .fab{ bottom: calc(74px + env(safe-area-inset-bottom)); }
 }
+
+/* ========================= */
+/*     [إضافات عصرية]      */
+/* ========================= */
+
+/* لون العلامة التجارية للتبويب النشط (أخضر مثل الصورة) */
+:root{ --brand: #5900ff; }
+
+/* في شريط تبويبات الهاتف الحالي لديك (.mobile-tabbar):
+   نجعل الأيقونة/النص رماديين افتراضيًا ويصيرون أخضر عند التفعيل،
+   ونضيف خط سفلي صغير تحت التبويب النشط. */
+.mobile-tabbar a { font-weight: 600; }
+.mobile-tabbar a i { opacity: .6; transition: opacity .15s ease, transform .15s ease; }
+.mobile-tabbar a.is-active { color: var(--brand) !important; }
+.mobile-tabbar a.is-active i { opacity: 1; transform: translateY(-1px); }
+.mobile-tabbar a.is-active::after{
+  content:""; display:block; width:28px; height:3px; border-radius:3px;
+  background: var(--brand); margin-top:4px;
+}
+
+/* دعم نمط الأيقونتين:
+   ضع داخل الرابط عنصرين أحدهما class=tab-icon والآخر class=tab-icon--active (اختياري).
+   هنا نقلب العرض حسب حالة .is-active بدون الحاجة لجافاسكربت. */
+.mobile-tabbar a .tab-icon--active{ display:none; }
+.mobile-tabbar a.is-active .tab-icon{ display:none; }
+.mobile-tabbar a.is-active .tab-icon--active{ display:block; }

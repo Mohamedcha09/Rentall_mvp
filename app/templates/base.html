@@ -250,13 +250,20 @@
     <!-- شريط سفلي للجوال: الرئيسية / كل العناصر / صفحتي فقط -->
     <nav class="mobile-tabbar d-lg-none">
       <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
-        <i class="bi bi-house-door"></i><span>الرئيسية</span>
+        <!-- أيقونة عادية + أيقونة مفعّلة (تعمل تلقائيًا مع CSS) -->
+        <i class="bi bi-house-door tab-icon"></i>
+        <i class="bi bi-house-door-fill tab-icon--active"></i>
+        <span>الرئيسية</span>
       </a>
       <a href="/items" class="{% if request and request.url.path.startswith('/items') %}is-active{% endif %}">
-        <i class="bi bi-grid"></i><span>العناصر</span>
+        <i class="bi bi-grid tab-icon"></i>
+        <i class="bi bi-grid-fill tab-icon--active"></i>
+        <span>العناصر</span>
       </a>
       <a href="/profile" class="{% if request and request.url.path.startswith('/profile') %}is-active{% endif %}">
-        <i class="bi bi-person"></i><span>صفحتي</span>
+        <i class="bi bi-person tab-icon"></i>
+        <i class="bi bi-person-fill tab-icon--active"></i>
+        <span>صفحتي</span>
       </a>
     </nav>
 
