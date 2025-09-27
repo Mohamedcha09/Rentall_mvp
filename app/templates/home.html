@@ -2,40 +2,42 @@
 
 {% block head %}
 <style>
-  /* رأس القسم + أزرار */
+  /* عناوين الأقسام + أزرار يمين/يسار */
   .section-head{
     display:flex; align-items:center; justify-content:space-between;
-    gap:10px; margin: 8px 2px; padding: 2px 4px;
+    gap:10px; margin: 10px 2px; padding: 2px 4px;
   }
   .section-title{ font-weight:800; font-size:1.15rem }
+
   .arrow-btn{
     border:1px solid var(--border); background:rgba(255,255,255,.06);
     border-radius:12px; width:40px; height:40px; display:grid; place-items:center;
   }
   .arrow-btn:hover{ background:color-mix(in oklab, var(--text) 8%, transparent) }
 
-  /* صف أفقي قابل للسحب */
+  /* سلايدر أفقي */
   .hrow{
-    display:grid; grid-auto-flow: column;
-    grid-auto-columns: 88%; gap:12px;
-    overflow-x:auto; overscroll-behavior-x: contain;
-    scroll-snap-type: x mandatory; padding: 4px 2px 8px;
+    display:grid; grid-auto-flow:column; grid-auto-columns:88%;
+    gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; overscroll-behavior-x:contain;
+    padding:4px 2px 12px;
   }
-  .hrow::-webkit-scrollbar{ height:8px }
-  .hcard{ scroll-snap-align: start }
-  @media (min-width:576px){ .hrow{ grid-auto-columns: 60% } }
-  @media (min-width:768px){ .hrow{ grid-auto-columns: 42% } }
-  @media (min-width:992px){ .hrow{ grid-auto-columns: 32% } }
+  .hcard{ scroll-snap-align:start }
+  @media (min-width:576px){ .hrow{ grid-auto-columns:60% } }
+  @media (min-width:768px){ .hrow{ grid-auto-columns:42% } }
+  @media (min-width:992px){ .hrow{ grid-auto-columns:32% } }
 
-  /* كرت العنصر (نعتمد ستايلك الأساسي) */
-  .card.spot.hcard{ border-radius:18px; overflow:hidden }
+  /* بطاقات العناصر (نستخدم تنسيقك الموجود في style.css) */
+  .card.spot{ border-radius:18px; overflow:hidden }
   .spot-media{ position:relative; aspect-ratio:16/10; overflow:hidden }
+  .spot-media img{ width:100%; height:100%; object-fit:cover; display:block }
 </style>
 {% endblock %}
 
 {% block content %}
 
-<!-- == سلايدر “شائع بالقرب منك” إن وُجدت بيانات == -->
+{# =========================
+   1) سلايدر «شائع بالقرب منك»
+   ========================= #}
 {% if popular_items and popular_items|length %}
   <div class="section-head">
     <div class="section-title">شائع بالقرب منك</div>
@@ -48,7 +50,7 @@
     {% for it in popular_items %}
       <a href="/items/{{ it.id }}" class="card spot hcard text-decoration-none">
         <div class="spot-media">
-          <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
+          <img src="{{ it.image_path or '/static/placeholder.svg' }}" alt="">
           <div class="spot-overlay"></div>
           <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
           <span class="category-chip">{{ category_label(it.category) }}</span>
@@ -69,7 +71,9 @@
   </div>
 {% endif %}
 
-<!-- == سلايدر لكل تصنيف موجود == -->
+{# ======================================
+   1) سلايدر أفقي «لكل تصنيف» (كل التصنيفات)
+   ====================================== #}
 {% for cat in categories %}
   {% set code = cat.code or cat['code'] %}
   {% set list = items_by_category.get(code, []) %}
@@ -86,7 +90,7 @@
       {% for it in list %}
         <a href="/items/{{ it.id }}" class="card spot hcard text-decoration-none">
           <div class="spot-media">
-            <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
+            <img src="{{ it.image_path or '/static/placeholder.svg' }}" alt="">
             <div class="spot-overlay"></div>
             <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
             <span class="category-chip">{{ category_label(it.category) }}</span>
@@ -108,18 +112,34 @@
   {% endif %}
 {% endfor %}
 
-<!-- == شبكة “كل العناصر” في الأسفل == -->
+{# ============================================
+   2) شبكة «كل العناصر» – تجمع كل العناصر فعليًا
+   ============================================ #}
 <div class="section-head mt-3">
   <div class="section-title">كل العناصر</div>
 </div>
 
+{# لو all_items غير مُرسلة، نبنيها من كل السلايدرات + الشائع (بدون تكرار) #}
 {% set all = all_items or [] %}
-{% if all|length %}
+{% if not all or all|length == 0 %}
+  {% set ns = namespace(all=[]) %}
+  {% for _k, arr in items_by_category.items() if arr %}
+    {% for it in arr %}
+      {% if it not in ns.all %}{% set ns.all = ns.all + [it] %}{% endif %}
+    {% endfor %}
+  {% endfor %}
+  {% for it in popular_items or [] %}
+    {% if it not in ns.all %}{% set ns.all = ns.all + [it] %}{% endif %}
+  {% endfor %}
+  {% set all = ns.all %}
+{% endif %}
+
+{% if all and all|length %}
   <div class="home-grid">
     {% for it in all %}
       <a href="/items/{{ it.id }}" class="card spot text-decoration-none">
         <div class="spot-media">
-          <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
+          <img src="{{ it.image_path or '/static/placeholder.svg' }}" alt="">
           <div class="spot-overlay"></div>
           <span class="category-chip">{{ category_label(it.category) }}</span>
         </div>
@@ -145,12 +165,12 @@
 
 {% block scripts %}
 <script>
-  // تمرير أفقي للسلايدرات
+  // تمرير السلايدر يمين/يسار
   function snap(sel, dir){
-    const node = document.querySelector(sel);
-    if(!node) return;
-    const amount = Math.round(node.clientWidth * 0.92);
-    node.scrollBy({ left: dir * amount, behavior: 'smooth' });
+    const row = document.querySelector(sel);
+    if(!row) return;
+    const step = Math.round(row.clientWidth * 0.92);
+    row.scrollBy({ left: dir * step, behavior: 'smooth' });
   }
   document.querySelectorAll('[data-snap-prev]').forEach(btn=>{
     btn.addEventListener('click', ()=> snap(btn.dataset.snapPrev, -1));
