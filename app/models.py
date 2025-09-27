@@ -1,42 +1,29 @@
 # app/models.py
 from datetime import datetime, date
 from sqlalchemy import (
-    Column, Integer, Numeric, String, DateTime, ForeignKey, Text, Date, Boolean, text,
-    UniqueConstraint, func  # [ADDED] UniqueConstraint, func
+    Column, Integer, String, Text, DateTime, Date, Boolean, ForeignKey
 )
 from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.sql import literal
-from .database import Base, engine  # نحتاج engine لفحص أعمدة SQLite
+from .database import Base, engine
 
-# -------------------------
-# Helpers: تكيّف مع سكيمة SQLite الحالية
-# -------------------------
+# ---------- helpers ----------
 def _has_column(table: str, col: str) -> bool:
-    """
-    يفحص وجود عمود في جدول SQLite. إذا حدث خطأ (مثلاً قاعدة ليست SQLite)،
-    نرجّع True كـ fail-open حتى لا نعطّل الإقلاع.
-    """
     try:
         with engine.begin() as conn:
             rows = conn.exec_driver_sql(f"PRAGMA table_info('{table}')").all()
-        return any(r[1] == col for r in rows)  # r[1] = name
+        return any(r[1] == col for r in rows)
     except Exception:
         return True
 
 def col_or_literal(table: str, name: str, type_, **kwargs):
-    """
-    إن وُجد العمود فعلاً: نُرجع Column عادي.
-    إن لم يوجد: نُرجع column_property(literal(None)) لتفادي أخطاء SELECT.
-    """
     if _has_column(table, name):
         return Column(type_, **kwargs)
     return column_property(literal(None))
 
-
 # =========================
-# Users & Documents
+# Users
 # =========================
-
 class User(Base):
     _tablename_ = "users"
 
@@ -47,15 +34,13 @@ class User(Base):
     phone      = Column(String(50), nullable=False)
     password_hash = Column(String(255), nullable=False)
 
-    # Stripe / الحالة
     stripe_account_id = col_or_literal("users", "stripe_account_id", String, nullable=True)
     payouts_enabled   = col_or_literal("users", "payouts_enabled", Boolean, default=False)
     role              = col_or_literal("users", "role", String(20), default="user")
     status            = col_or_literal("users", "status", String(20), default="pending")
 
-    # التوثيق
-    is_verified    = col_or_literal("users", "is_verified", Boolean, default=False, nullable=False)
-    verified_at    = col_or_literal("users", "verified_at", DateTime, nullable=True)
+    is_verified = col_or_literal("users", "is_verified", Boolean, default=False, nullable=False)
+    verified_at = col_or_literal("users", "verified_at", DateTime, nullable=True)
     if _has_column("users", "verified_by_id"):
         verified_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     else:
@@ -65,23 +50,20 @@ class User(Base):
     updated_at = col_or_literal("users", "updated_at", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     avatar_path = col_or_literal("users", "avatar_path", String(500), nullable=True)
 
-    # ===== شارات (موجودة للحفاظ على التوافق، لكن سنستعمل فعليًا فقط البنفسجي عبر is_verified) =====
-    badge_admin         = col_or_literal("users", "badge_admin",         Boolean, default=False)  # اختياري
-    badge_new_yellow    = col_or_literal("users", "badge_new_yellow",    Boolean, default=False)  # لن نعتمد عليه؛ الأصفر يُحسب تلقائيًا
-    badge_pro_green     = col_or_literal("users", "badge_pro_green",     Boolean, default=False)  # غير مستخدم الآن
-    badge_pro_gold      = col_or_literal("users", "badge_pro_gold",      Boolean, default=False)  # غير مستخدم الآن
-    badge_purple_trust  = col_or_literal("users", "badge_purple_trust",  Boolean, default=False)  # يمكن للأدمِن تفعيلها للبنفسجي
-    badge_renter_green  = col_or_literal("users", "badge_renter_green",  Boolean, default=False)  # غير مستخدم الآن
-    badge_orange_stars  = col_or_literal("users", "badge_orange_stars",  Boolean, default=False)  # غير مستخدم الآن
+    badge_admin        = col_or_literal("users", "badge_admin",        Boolean, default=False)
+    badge_new_yellow   = col_or_literal("users", "badge_new_yellow",   Boolean, default=False)
+    badge_pro_green    = col_or_literal("users", "badge_pro_green",    Boolean, default=False)
+    badge_pro_gold     = col_or_literal("users", "badge_pro_gold",     Boolean, default=False)
+    badge_purple_trust = col_or_literal("users", "badge_purple_trust", Boolean, default=False)
+    badge_renter_green = col_or_literal("users", "badge_renter_green", Boolean, default=False)
+    badge_orange_stars = col_or_literal("users", "badge_orange_stars", Boolean, default=False)
 
-    # علاقات رئيسية
     documents = relationship("Document", back_populates="user", cascade="all, delete-orphan")
-    items = relationship("Item", back_populates="owner", cascade="all, delete-orphan")
+    items     = relationship("Item", back_populates="owner", cascade="all, delete-orphan")
 
-    # علاقات التراسل والتقييمات
-    sent_messages = relationship("Message", foreign_keys="Message.sender_id", back_populates="sender")
-    ratings_given = relationship("Rating", foreign_keys="Rating.rater_id", back_populates="rater")
-    ratings_received = relationship("Rating", foreign_keys="Rating.rated_user_id", back_populates="rated_user")
+    sent_messages     = relationship("Message", foreign_keys="Message.sender_id", back_populates="sender")
+    ratings_given     = relationship("Rating", foreign_keys="Rating.rater_id", back_populates="rater")
+    ratings_received  = relationship("Rating", foreign_keys="Rating.rated_user_id", back_populates="rated_user")
 
     if _has_column("users", "verified_by_id"):
         verified_by = relationship(
@@ -92,7 +74,6 @@ class User(Base):
             uselist=False
         )
 
-    # ===== خصائص مساعدة =====
     @property
     def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}".strip()
@@ -121,26 +102,25 @@ class User(Base):
         if _has_column("users", "verified_by_id"):
             self.verified_by_id = None
 
-    # ===== المهم: شارة "جديد" تُحسب تلقائيًا (أقل من شهرين) =====
     @property
     def is_new_under_2m(self) -> bool:
-        """True إذا كان الحساب أحدث من شهرين (60 يومًا)."""
         try:
             if not self.created_at:
                 return False
-            delta = (datetime.utcnow() - self.created_at)
-            return delta.days < 60
+            return (datetime.utcnow() - self.created_at).days < 60
         except Exception:
             return False
 
-
+# =========================
+# Documents
+# =========================
 class Document(Base):
     _tablename_ = "documents"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
 
-    doc_type = Column(String(50))           # id_card / driver_license / passport
+    doc_type = Column(String(50))
     country  = Column(String(100))
     expiry_date = Column(Date, nullable=True)
 
@@ -155,7 +135,9 @@ class Document(Base):
 
     user = relationship("User", back_populates="documents")
 
-
+# =========================
+# Items
+# =========================
 class Item(Base):
     _tablename_ = "items"
 
@@ -167,31 +149,32 @@ class Item(Base):
     city        = Column(String(120), nullable=True)
 
     price_per_day = Column(Integer, nullable=False, default=0)
-    category     = Column(String(50), nullable=False, default="other")
-    image_path   = Column(String(500), nullable=True)
-    is_active    = Column(String(10), default="yes")
+    category      = Column(String(50), nullable=False, default="other")
+    image_path    = Column(String(500), nullable=True)
+    is_active     = Column(String(10), default="yes")
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
     owner = relationship("User", back_populates="items")
     message_threads = relationship("MessageThread", back_populates="item", cascade="all, delete-orphan")
 
-
+# =========================
+# Messaging
+# =========================
 class MessageThread(Base):
     _tablename_ = "message_threads"
 
     id = Column(Integer, primary_key=True, index=True)
     user_a_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     user_b_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    item_id = Column(Integer, ForeignKey("items.id"), nullable=True)
+    item_id   = Column(Integer, ForeignKey("items.id"), nullable=True)
 
     created_at      = Column(DateTime, default=datetime.utcnow)
     last_message_at = Column(DateTime, default=datetime.utcnow)
 
     user_a = relationship("User", foreign_keys=[user_a_id])
     user_b = relationship("User", foreign_keys=[user_b_id])
-
-    item = relationship("Item", back_populates="message_threads")
+    item   = relationship("Item", back_populates="message_threads")
 
     messages = relationship(
         "Message",
@@ -199,7 +182,6 @@ class MessageThread(Base):
         cascade="all, delete-orphan",
         order_by="Message.created_at.asc()",
     )
-
 
 class Message(Base):
     _tablename_ = "messages"
@@ -217,55 +199,66 @@ class Message(Base):
     thread = relationship("MessageThread", back_populates="messages")
     sender = relationship("User", foreign_keys=[sender_id], back_populates="sent_messages")
 
-
+# =========================
+# Ratings
+# =========================
 class Rating(Base):
     _tablename_ = "ratings"
 
     id = Column(Integer, primary_key=True, index=True)
-
-    rater_id       = Column(Integer, ForeignKey("users.id"), nullable=False)
-    rated_user_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
+    rater_id      = Column(Integer, ForeignKey("users.id"), nullable=False)
+    rated_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     stars   = Column(Integer, nullable=False, default=5)
     comment = Column(Text, nullable=True)
-
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    rater       = relationship("User", foreign_keys=[rater_id], back_populates="ratings_given")
-    rated_user  = relationship("User", foreign_keys=[rated_user_id], back_populates="ratings_received")
+    rater      = relationship("User", foreign_keys=[rater_id], back_populates="ratings_given")
+    rated_user = relationship("User", foreign_keys=[rated_user_id], back_populates="ratings_received")
 
-
+# =========================
+# Freeze Deposits
+# =========================
 class FreezeDeposit(Base):
     _tablename_ = "freeze_deposits"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     item_id = Column(Integer, ForeignKey("items.id"), nullable=True)
-    amount = Column(Integer, nullable=False, default=0)
-    status = Column(String(20), nullable=False, default="planned")
-    note = Column(Text, nullable=True)
+    amount  = Column(Integer, nullable=False, default=0)
+    status  = Column(String(20), nullable=False, default="planned")
+    note    = Column(Text, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
     user = relationship("User", lazy="joined")
     item = relationship("Item", lazy="joined")
 
-
+# =========================
+# Orders
+# =========================
 class Order(Base):
     _tablename_ = "orders"
 
     id = Column(Integer, primary_key=True, index=True)
-    item_id    = Column(Integer, ForeignKey("items.id"), nullable=False)
-    renter_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
-    owner_id   = Column(Integer, ForeignKey("users.id"), nullable=False)
+    item_id   = Column(Integer, ForeignKey("items.id"), nullable=False)
+    renter_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    owner_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
+
     start_date = Column(Date, nullable=False)
     end_date   = Column(Date, nullable=False)
     days       = Column(Integer, nullable=False, default=1)
+
     price_per_day = Column(Integer, nullable=False, default=0)
     total_amount  = Column(Integer, nullable=False, default=0)
+
     status = Column(String(20), nullable=False, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
 
-
+# =========================
+# Bookings
+# =========================
 class Booking(Base):
     _tablename_ = "bookings"
 
@@ -292,22 +285,3 @@ class Booking(Base):
     item   = relationship("Item", backref="bookings")
     renter = relationship("User", foreign_keys="[Booking.renter_id]", backref="bookings_rented")
     owner  = relationship("User", foreign_keys="[Booking.owner_id]",  backref="bookings_owned")
-
-
-# =========================
-# [NEW] Favorites (المفضّلات)
-# =========================
-class Favorite(Base):
-    _tablename_ = "favorites"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    item_id = Column(Integer, ForeignKey("items.id", ondelete="CASCADE"), nullable=False, index=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-
-    _table_args_ = (
-        UniqueConstraint("user_id", "item_id", name="uq_favorites_user_item"),
-    )
-
-    user = relationship("User", backref="favorites", lazy="joined")
-    item = relationship("Item", backref="favorited_by", lazy="joined")
