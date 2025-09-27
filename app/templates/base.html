@@ -129,7 +129,7 @@
           <!-- إشعارات (أيقونة الجرس الخضراء) -->
           {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
           <button class="btn-plain position-relative" id="notifOpen" title="الإشعارات">
-            <img class="icon-img" src="/static/img/notif-count.png" alt="Notifications">
+            <img class="icon-img" src="/static/img/notfi.png" alt="Notifications">
             {% if unread > 0 %}
               <span class="notif-ping"></span>
               <span class="notif-count">{{ unread if unread < 100 else '99+' }}</span>
