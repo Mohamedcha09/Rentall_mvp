@@ -1,4 +1,4 @@
-# app/main.py
+[01 h 42, 2025-09-27] Moh: # app/main.py
 import os
 import difflib
 from fastapi import FastAPI, Request, Depends
@@ -34,6 +34,9 @@ from .routes_search import router as search_router
 from .routes_users import router as users_router
 from .admin_badges import router as admin_badges_router  # اختياري
 
+# [مضاف] راوتر المفضّلات
+from .routes_favorites import router as favorites_router
+
 load_dotenv()
 
 app = FastAPI()
@@ -53,7 +56,7 @@ app.add_middleware(
 # =========================
 # static / uploads / templates
 # =========================
-BASE_DIR = os.path.dirname(__file__)
+BASE_DIR = os.path.dirname(_file_)
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 UPLOADS_DIR = os.path.join(os.path.dirname(BASE_DIR), "uploads")
@@ -124,6 +127,9 @@ app.include_router(bookings_router)
 app.include_router(search_router)
 app.include_router(users_router)
 app.include_router(admin_badges_router)
+# [مضاف] تسجيل راوتر المفضّلات
+app.include_router(favorites_router)
+
 if payouts_router:
     app.include_router(payouts_router)
 

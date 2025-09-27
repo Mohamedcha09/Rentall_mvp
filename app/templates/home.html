@@ -2,7 +2,7 @@
 
 {% block head %}
 <style>
-  /* شريط أفقي بسحب ناعم */
+  /* صف أفقي بسحب ناعم */
   .hrow{
     display:flex; gap:14px; overflow-x:auto; scroll-snap-type:x mandatory;
     padding: 6px 4px 12px;
@@ -32,14 +32,25 @@
   @media (max-width:480px){
     .mixed-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
   }
+
+  /* زر المفضلة (قلب) */
+  .spot-media{ position:relative; }
+  .fav-btn{
+    position:absolute; top:10px; inset-inline-end:10px;
+    background:rgba(0,0,0,.28); border:0; width:36px; height:36px; border-radius:999px;
+    display:grid; place-items:center; backdrop-filter: blur(6px);
+  }
+  .fav-btn .fav-ico{ color:#fff; filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
+  .fav-btn.is-fav{ background:rgba(255,45,85,.15) }
+  .fav-btn.is-fav .fav-ico{ color:#ff2d55; fill:#ff2d55 }
 </style>
 {% endblock %}
 
 {% block content %}
 
-{# 1) سلايدر “بالقرب منك” (يستخدم nearby_items أو popular_items كبديل) #}
+{# 1) سلايدر “بالقرب منك” #}
 {% set nearby = (nearby_items if nearby_items is defined else popular_items)|default([]) %}
-{% if nearby %}
+{% if nearby and nearby|length > 0 %}
   <div class="section-head">
     <div class="section-title">شائع بالقرب منك</div>
     <div class="d-flex gap-2">
@@ -60,6 +71,13 @@
           {% if it.category is defined %}
             <span class="category-chip">{{ category_label(it.category) }}</span>
           {% endif %}
+          <!-- زر المفضلة -->
+          <button class="fav-btn" data-id="{{ it.id }}" type="button" aria-label="أضف للمفضلة">
+            <svg class="fav-ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/>
+            </svg>
+          </button>
         </div>
         <div class="card-body spot-body">
           <div class="spot-title">{{ it.title }}</div>
@@ -77,7 +95,7 @@
   </div>
 {% endif %}
 
-{# 2) سلايدر أفقي لكل تصنيف موجود في items_by_category #}
+{# 2) سلايدر أفقي لكل تصنيف #}
 {% set cats_map = (items_by_category if items_by_category is defined else {}) %}
 {% for code, lst in cats_map.items() %}
   {% if lst and lst|length > 0 %}
@@ -96,6 +114,13 @@
               <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
             {% endif %}
             <span class="category-chip">{{ category_label(it.category) }}</span>
+
+            <button class="fav-btn" data-id="{{ it.id }}" type="button" aria-label="أضف للمفضلة">
+              <svg class="fav-ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/>
+              </svg>
+            </button>
           </div>
           <div class="card-body spot-body">
             <div class="spot-title">{{ it.title }}</div>
@@ -114,11 +139,12 @@
   {% endif %}
 {% endfor %}
 
-{# 3) شبكة “كل العناصر” أسفل الصفحة #}
+{# 3) شبكة “كل العناصر” #}
 {% set all_items_list =
       (all_items if all_items is defined else
        mixed_items if mixed_items is defined else
        items if items is defined else []) %}
+
 <div class="section-head mt-3">
   <div class="section-title">كل العناصر</div>
 </div>
@@ -133,6 +159,13 @@
           {% if it.category is defined %}
             <span class="category-chip">{{ category_label(it.category) }}</span>
           {% endif %}
+
+          <button class="fav-btn" data-id="{{ it.id }}" type="button" aria-label="أضف للمفضلة">
+            <svg class="fav-ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/>
+            </svg>
+          </button>
         </div>
         <div class="card-body spot-body">
           <div class="spot-title">{{ it.title }}</div>
@@ -158,7 +191,7 @@
 
 {% block scripts %}
 <script>
-  // أزرار التمرير للسلايدر
+  /* تمرير السلايدر */
   function snap(el, dir=1){
     const node = document.querySelector(el);
     if(!node) return;
@@ -171,5 +204,45 @@
   document.querySelectorAll('[data-snap-next]').forEach(b=>{
     b.addEventListener('click', ()=> snap(b.dataset.snapNext, +1));
   });
+
+  /* حالة مبدئية قادمة من السيرفر (لو متاحة) */
+  window.favState = new Set(
+    JSON.parse('{{ fav_ids|default([])|tojson|safe }}')
+  );
+
+  /* تلوين القلوب المحفوظة مسبقًا */
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.fav-btn').forEach(btn => {
+      const id = Number(btn.dataset.id || 0);
+      if (window.favState.has(id)) btn.classList.add('is-fav');
+    });
+  });
+
+  /* تفويض أحداث: نلتقط أي ضغط على .fav-btn */
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.fav-btn');
+    if (!btn) return;
+    toggleFav(btn);
+  });
+
+  /* تبديل المفضلة */
+  async function toggleFav(btn){
+    const id = Number(btn.dataset.id || 0);
+    if (!id) return;
+
+    const willBeFav = !btn.classList.contains('is-fav');
+    btn.classList.toggle('is-fav', willBeFav); // Optimistic UI
+
+    try {
+      const method = willBeFav ? 'POST' : 'DELETE';
+      const res = await fetch(`/api/favorites/${id}`, { method });
+      if (!res.ok) throw new Error('bad status');
+      if (willBeFav) window.favState.add(id);
+      else window.favState.delete(id);
+    } catch (err) {
+      // رجّع المظهر لو فشل
+      btn.classList.toggle('is-fav', !willBeFav);
+    }
+  }
 </script>
 {% endblock %}

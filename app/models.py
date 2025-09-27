@@ -1,7 +1,8 @@
 # app/models.py
 from datetime import datetime, date
 from sqlalchemy import (
-    Column, Integer, Numeric, String, DateTime, ForeignKey, Text, Date, Boolean, text
+    Column, Integer, Numeric, String, DateTime, ForeignKey, Text, Date, Boolean, text,
+    UniqueConstraint, func  # [ADDED] UniqueConstraint, func
 )
 from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.sql import literal
@@ -37,7 +38,7 @@ def col_or_literal(table: str, name: str, type_, **kwargs):
 # =========================
 
 class User(Base):
-    __tablename__ = "users"
+    _tablename_ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
     first_name = Column(String(100), nullable=False)
@@ -134,7 +135,7 @@ class User(Base):
 
 
 class Document(Base):
-    __tablename__ = "documents"
+    _tablename_ = "documents"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
@@ -156,7 +157,7 @@ class Document(Base):
 
 
 class Item(Base):
-    __tablename__ = "items"
+    _tablename_ = "items"
 
     id = Column(Integer, primary_key=True, index=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -177,7 +178,7 @@ class Item(Base):
 
 
 class MessageThread(Base):
-    __tablename__ = "message_threads"
+    _tablename_ = "message_threads"
 
     id = Column(Integer, primary_key=True, index=True)
     user_a_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -201,7 +202,7 @@ class MessageThread(Base):
 
 
 class Message(Base):
-    __tablename__ = "messages"
+    _tablename_ = "messages"
 
     id = Column(Integer, primary_key=True, index=True)
     thread_id = Column(Integer, ForeignKey("message_threads.id"), nullable=False)
@@ -218,7 +219,7 @@ class Message(Base):
 
 
 class Rating(Base):
-    __tablename__ = "ratings"
+    _tablename_ = "ratings"
 
     id = Column(Integer, primary_key=True, index=True)
 
@@ -235,7 +236,7 @@ class Rating(Base):
 
 
 class FreezeDeposit(Base):
-    __tablename__ = "freeze_deposits"
+    _tablename_ = "freeze_deposits"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -250,7 +251,7 @@ class FreezeDeposit(Base):
 
 
 class Order(Base):
-    __tablename__ = "orders"
+    _tablename_ = "orders"
 
     id = Column(Integer, primary_key=True, index=True)
     item_id    = Column(Integer, ForeignKey("items.id"), nullable=False)
@@ -266,7 +267,7 @@ class Order(Base):
 
 
 class Booking(Base):
-    __tablename__ = "bookings"
+    _tablename_ = "bookings"
 
     id = Column(Integer, primary_key=True, index=True)
     item_id   = Column(Integer, ForeignKey("items.id"), nullable=False)
@@ -291,3 +292,22 @@ class Booking(Base):
     item   = relationship("Item", backref="bookings")
     renter = relationship("User", foreign_keys="[Booking.renter_id]", backref="bookings_rented")
     owner  = relationship("User", foreign_keys="[Booking.owner_id]",  backref="bookings_owned")
+
+
+# =========================
+# [NEW] Favorites (المفضّلات)
+# =========================
+class Favorite(Base):
+    _tablename_ = "favorites"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    item_id = Column(Integer, ForeignKey("items.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    _table_args_ = (
+        UniqueConstraint("user_id", "item_id", name="uq_favorites_user_item"),
+    )
+
+    user = relationship("User", backref="favorites", lazy="joined")
+    item = relationship("Item", backref="favorited_by", lazy="joined")
