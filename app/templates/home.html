@@ -2,58 +2,64 @@
 
 {% block head %}
 <style>
-  /* عناوين الأقسام + أزرار يمين/يسار */
+  /* شريط أفقي بسحب ناعم */
+  .hrow{
+    display:flex; gap:14px; overflow-x:auto; scroll-snap-type:x mandatory;
+    padding: 6px 4px 12px;
+  }
+  .hrow::-webkit-scrollbar{ height:8px }
+  .hrow::-webkit-scrollbar-thumb{ background:color-mix(in oklab, var(--text) 18%, transparent); border-radius:999px }
+
+  .hcard{ min-width: 86%; max-width: 86%; scroll-snap-align:start }
+  @media (min-width:576px){ .hcard{ min-width: 58%; max-width: 58%; } }
+  @media (min-width:992px){ .hcard{ min-width: 360px; max-width: 360px; } }
+
   .section-head{
-    display:flex; align-items:center; justify-content:space-between;
-    gap:10px; margin: 10px 2px; padding: 2px 4px;
+    margin: 12px 2px 8px; display:flex; align-items:center; justify-content:space-between;
   }
   .section-title{ font-weight:800; font-size:1.15rem }
-
   .arrow-btn{
-    border:1px solid var(--border); background:rgba(255,255,255,.06);
-    border-radius:12px; width:40px; height:40px; display:grid; place-items:center;
+    border:1px solid var(--border); background:transparent; border-radius:12px; width:42px; height:42px;
+    display:grid; place-items:center;
   }
   .arrow-btn:hover{ background:color-mix(in oklab, var(--text) 8%, transparent) }
 
-  /* سلايدر أفقي */
-  .hrow{
-    display:grid; grid-auto-flow:column; grid-auto-columns:88%;
-    gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; overscroll-behavior-x:contain;
-    padding:4px 2px 12px;
+  /* شبكة كل العناصر */
+  .mixed-grid{
+    display:grid; gap:14px;
+    grid-template-columns: repeat(auto-fill, minmax(220px,1fr));
   }
-  .hcard{ scroll-snap-align:start }
-  @media (min-width:576px){ .hrow{ grid-auto-columns:60% } }
-  @media (min-width:768px){ .hrow{ grid-auto-columns:42% } }
-  @media (min-width:992px){ .hrow{ grid-auto-columns:32% } }
-
-  /* بطاقات العناصر (نستخدم تنسيقك الموجود في style.css) */
-  .card.spot{ border-radius:18px; overflow:hidden }
-  .spot-media{ position:relative; aspect-ratio:16/10; overflow:hidden }
-  .spot-media img{ width:100%; height:100%; object-fit:cover; display:block }
+  @media (max-width:480px){
+    .mixed-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 
-{# =========================
-   1) سلايدر «شائع بالقرب منك»
-   ========================= #}
-{% if popular_items and popular_items|length %}
+{# 1) سلايدر “بالقرب منك” (يستخدم nearby_items أو popular_items كبديل) #}
+{% set nearby = (nearby_items if nearby_items is defined else popular_items)|default([]) %}
+{% if nearby %}
   <div class="section-head">
     <div class="section-title">شائع بالقرب منك</div>
     <div class="d-flex gap-2">
-      <button class="arrow-btn" data-snap-prev="#row-pop"><i class="bi bi-chevron-right"></i></button>
-      <button class="arrow-btn" data-snap-next="#row-pop"><i class="bi bi-chevron-left"></i></button>
+      <button class="arrow-btn" data-snap-prev="#row-near"><i class="bi bi-chevron-right"></i></button>
+      <button class="arrow-btn" data-snap-next="#row-near"><i class="bi bi-chevron-left"></i></button>
     </div>
   </div>
-  <div id="row-pop" class="hrow">
-    {% for it in popular_items %}
+
+  <div id="row-near" class="hrow">
+    {% for it in nearby %}
       <a href="/items/{{ it.id }}" class="card spot hcard text-decoration-none">
         <div class="spot-media">
-          <img src="{{ it.image_path or '/static/placeholder.svg' }}" alt="">
+          <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
           <div class="spot-overlay"></div>
-          <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
-          <span class="category-chip">{{ category_label(it.category) }}</span>
+          {% if it.price_per_day is defined %}
+            <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
+          {% endif %}
+          {% if it.category is defined %}
+            <span class="category-chip">{{ category_label(it.category) }}</span>
+          {% endif %}
         </div>
         <div class="card-body spot-body">
           <div class="spot-title">{{ it.title }}</div>
@@ -71,28 +77,24 @@
   </div>
 {% endif %}
 
-{# ======================================
-   1) سلايدر أفقي «لكل تصنيف» (كل التصنيفات)
-   ====================================== #}
-{% for cat in categories %}
-  {% set code = cat.code or cat['code'] %}
-  {% set list = items_by_category.get(code, []) %}
-  {% if list and list|length %}
-    <div class="section-head mt-2">
+{# 2) سلايدر أفقي لكل تصنيف موجود في items_by_category #}
+{% set cats_map = (items_by_category if items_by_category is defined else {}) %}
+{% for code, lst in cats_map.items() %}
+  {% if lst and lst|length > 0 %}
+    <div class="section-head mt-3">
       <div class="section-title">{{ category_label(code) }}</div>
-      <div class="d-flex gap-2">
-        <button class="arrow-btn" data-snap-prev="#row-{{ code }}"><i class="bi bi-chevron-right"></i></button>
-        <button class="arrow-btn" data-snap-next="#row-{{ code }}"><i class="bi bi-chevron-left"></i></button>
-      </div>
+      <a class="text-muted small" href="/items?category={{ code }}">عرض الكل</a>
     </div>
 
     <div id="row-{{ code }}" class="hrow">
-      {% for it in list %}
+      {% for it in lst %}
         <a href="/items/{{ it.id }}" class="card spot hcard text-decoration-none">
           <div class="spot-media">
-            <img src="{{ it.image_path or '/static/placeholder.svg' }}" alt="">
+            <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
             <div class="spot-overlay"></div>
-            <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
+            {% if it.price_per_day is defined %}
+              <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
+            {% endif %}
             <span class="category-chip">{{ category_label(it.category) }}</span>
           </div>
           <div class="card-body spot-body">
@@ -112,36 +114,25 @@
   {% endif %}
 {% endfor %}
 
-{# ============================================
-   2) شبكة «كل العناصر» – تجمع كل العناصر فعليًا
-   ============================================ #}
+{# 3) شبكة “كل العناصر” أسفل الصفحة #}
+{% set all_items_list =
+      (all_items if all_items is defined else
+       mixed_items if mixed_items is defined else
+       items if items is defined else []) %}
 <div class="section-head mt-3">
   <div class="section-title">كل العناصر</div>
 </div>
 
-{# لو all_items غير مُرسلة، نبنيها من كل السلايدرات + الشائع (بدون تكرار) #}
-{% set all = all_items or [] %}
-{% if not all or all|length == 0 %}
-  {% set ns = namespace(all=[]) %}
-  {% for _k, arr in items_by_category.items() if arr %}
-    {% for it in arr %}
-      {% if it not in ns.all %}{% set ns.all = ns.all + [it] %}{% endif %}
-    {% endfor %}
-  {% endfor %}
-  {% for it in popular_items or [] %}
-    {% if it not in ns.all %}{% set ns.all = ns.all + [it] %}{% endif %}
-  {% endfor %}
-  {% set all = ns.all %}
-{% endif %}
-
-{% if all and all|length %}
-  <div class="home-grid">
-    {% for it in all %}
+{% if all_items_list and all_items_list|length > 0 %}
+  <div class="mixed-grid">
+    {% for it in all_items_list %}
       <a href="/items/{{ it.id }}" class="card spot text-decoration-none">
         <div class="spot-media">
-          <img src="{{ it.image_path or '/static/placeholder.svg' }}" alt="">
+          <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
           <div class="spot-overlay"></div>
-          <span class="category-chip">{{ category_label(it.category) }}</span>
+          {% if it.category is defined %}
+            <span class="category-chip">{{ category_label(it.category) }}</span>
+          {% endif %}
         </div>
         <div class="card-body spot-body">
           <div class="spot-title">{{ it.title }}</div>
@@ -150,7 +141,9 @@
             <span class="city-chip">{{ it.city or '—' }}</span>
           </div>
           <div class="spot-footer">
-            <small class="text-muted">{{ it.price_per_day|default(0) }}$ /يوم</small>
+            {% if it.price_per_day is defined %}
+              <small class="text-muted">يوم/ {{ it.price_per_day|default(0) }}$</small>
+            {% endif %}
             <i class="bi bi-arrow-left-short"></i>
           </div>
         </div>
@@ -158,25 +151,25 @@
     {% endfor %}
   </div>
 {% else %}
-  <div class="card glass p-4 text-center text-muted">لا توجد عناصر حتى الآن.</div>
+  <div class="alert alert-secondary glass mt-2">لا توجد عناصر حتى الآن.</div>
 {% endif %}
 
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // تمرير السلايدر يمين/يسار
-  function snap(sel, dir){
-    const row = document.querySelector(sel);
-    if(!row) return;
-    const step = Math.round(row.clientWidth * 0.92);
-    row.scrollBy({ left: dir * step, behavior: 'smooth' });
+  // أزرار التمرير للسلايدر
+  function snap(el, dir=1){
+    const node = document.querySelector(el);
+    if(!node) return;
+    const step = Math.max(280, node.clientWidth * 0.85);
+    node.scrollBy({left: dir*step, behavior:'smooth'});
   }
-  document.querySelectorAll('[data-snap-prev]').forEach(btn=>{
-    btn.addEventListener('click', ()=> snap(btn.dataset.snapPrev, -1));
+  document.querySelectorAll('[data-snap-prev]').forEach(b=>{
+    b.addEventListener('click', ()=> snap(b.dataset.snapPrev, -1));
   });
-  document.querySelectorAll('[data-snap-next]').forEach(btn=>{
-    btn.addEventListener('click', ()=> snap(btn.dataset.snapNext, +1));
+  document.querySelectorAll('[data-snap-next]').forEach(b=>{
+    b.addEventListener('click', ()=> snap(b.dataset.snapNext, +1));
   });
 </script>
 {% endblock %}
