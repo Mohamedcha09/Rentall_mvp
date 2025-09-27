@@ -57,7 +57,7 @@ app.add_middleware(
 # =========================
 # static / uploads / templates
 # =========================
-BASE_DIR = os.path.dirname(_file_)
+BASE_DIR = os.path.dirname(__file__)
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 UPLOADS_DIR = os.path.join(os.path.dirname(BASE_DIR), "uploads")
