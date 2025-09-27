@@ -5,37 +5,30 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.sql import literal
-from .database import Base, engine   # ✅ نستعمل Base من database فقط
+from .database import Base, engine  # لا تغيّر
 
 # -------------------------
-# Helpers: فحص أعمدة SQLite اختياريًا
+# Helpers مع SQLite
 # -------------------------
 def _has_column(table: str, col: str) -> bool:
-    """يرجع True إذا كان العمود موجودًا في جدول SQLite (أو عند أي خطأ)."""
     try:
         with engine.begin() as conn:
             rows = conn.exec_driver_sql(f"PRAGMA table_info('{table}')").all()
-        return any(r[1] == col for r in rows)  # r[1] = name
+        return any(r[1] == col for r in rows)
     except Exception:
-        # في قواعد أخرى أو في أي خطأ رجّع True كي لا نعطّل الإقلاع
         return True
 
-
 def col_or_literal(table: str, name: str, type_, **kwargs):
-    """
-    إن وُجد العمود فعليًا: نُرجع Column.
-    إن لم يوجد: نُرجع column_property(literal(None)) لتفادي أخطاء SELECT.
-    """
     if _has_column(table, name):
         return Column(type_, **kwargs)
     return column_property(literal(None))
 
 
 # =========================
-# Users
+# Users & Documents
 # =========================
 class User(Base):
-    __tablename__ = "users"  # ✅ مهم جدًا
+    __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
     first_name = Column(String(100), nullable=False)
@@ -44,22 +37,23 @@ class User(Base):
     phone      = Column(String(50), nullable=False)
     password_hash = Column(String(255), nullable=False)
 
-    # Stripe / الحالة
     stripe_account_id = col_or_literal("users", "stripe_account_id", String, nullable=True)
     payouts_enabled   = col_or_literal("users", "payouts_enabled", Boolean, default=False)
     role              = col_or_literal("users", "role", String(20), default="user")
     status            = col_or_literal("users", "status", String(20), default="pending")
 
-    # التوثيق
     is_verified    = col_or_literal("users", "is_verified", Boolean, default=False, nullable=False)
     verified_at    = col_or_literal("users", "verified_at", DateTime, nullable=True)
-    verified_by_id = col_or_literal("users", "verified_by_id", Integer, nullable=True)
+    if _has_column("users", "verified_by_id"):
+        verified_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    else:
+        verified_by_id = column_property(literal(None))
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = col_or_literal("users", "updated_at", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     avatar_path = col_or_literal("users", "avatar_path", String(500), nullable=True)
 
-    # شارات اختيارية (توافق قديم)
+    # شارات اختيارية
     badge_admin         = col_or_literal("users", "badge_admin",         Boolean, default=False)
     badge_new_yellow    = col_or_literal("users", "badge_new_yellow",    Boolean, default=False)
     badge_pro_green     = col_or_literal("users", "badge_pro_green",     Boolean, default=False)
@@ -70,11 +64,24 @@ class User(Base):
 
     # علاقات
     documents = relationship("Document", back_populates="user", cascade="all, delete-orphan")
-    items     = relationship("Item", back_populates="owner", cascade="all, delete-orphan")
+    items = relationship("Item", back_populates="owner", cascade="all, delete-orphan")
 
-    sent_messages     = relationship("Message", foreign_keys="Message.sender_id", back_populates="sender")
-    ratings_given     = relationship("Rating", foreign_keys="Rating.rater_id", back_populates="rater")
-    ratings_received  = relationship("Rating", foreign_keys="Rating.rated_user_id", back_populates="rated_user")
+    sent_messages    = relationship("Message", foreign_keys="Message.sender_id", back_populates="sender")
+    ratings_given    = relationship("Rating", foreign_keys="Rating.rater_id", back_populates="rater")
+    ratings_received = relationship("Rating", foreign_keys="Rating.rated_user_id", back_populates="rated_user")
+
+    # علاقات التوثيق الذاتي
+    if _has_column("users", "verified_by_id"):
+        verified_by = relationship(
+            "User",
+            remote_side=[id],
+            foreign_keys="[User.verified_by_id]",
+            backref="verified_users",
+            uselist=False
+        )
+
+    # مفضلات
+    favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
 
     # خصائص مساعدة
     @property
@@ -105,29 +112,29 @@ class User(Base):
         if _has_column("users", "verified_by_id"):
             self.verified_by_id = None
 
+    @property
+    def is_new_under_2m(self) -> bool:
+        try:
+            if not self.created_at:
+                return False
+            return (datetime.utcnow() - self.created_at).days < 60
+        except Exception:
+            return False
 
-# =========================
-# Documents
-# =========================
+
 class Document(Base):
     __tablename__ = "documents"
-
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-
-    doc_type = Column(String(50))           # id_card / driver_license / passport
+    doc_type = Column(String(50))
     country  = Column(String(100))
     expiry_date = Column(Date, nullable=True)
-
     file_front_path = Column(String(500))
     file_back_path  = Column(String(500), nullable=True)
-
     review_status = Column(String(20), default="pending")
     review_note   = Column(Text, nullable=True)
-
     created_at = Column(DateTime, default=datetime.utcnow)
     reviewed_at = Column(DateTime, nullable=True)
-
     user = relationship("User", back_populates="documents")
 
 
@@ -153,6 +160,23 @@ class Item(Base):
 
     owner = relationship("User", back_populates="items")
     message_threads = relationship("MessageThread", back_populates="item", cascade="all, delete-orphan")
+    # علاقة المفضلة
+    favorited_by = relationship("Favorite", back_populates="item", cascade="all, delete-orphan")
+
+
+# =========================
+# Favorites (NEW)
+# =========================
+class Favorite(Base):
+    __tablename__ = "favorites"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    item_id = Column(Integer, ForeignKey("items.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="favorites")
+    item = relationship("Item", back_populates="favorited_by")
 
 
 # =========================
@@ -164,7 +188,7 @@ class MessageThread(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_a_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     user_b_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    item_id   = Column(Integer, ForeignKey("items.id"), nullable=True)
+    item_id = Column(Integer, ForeignKey("items.id"), nullable=True)
 
     created_at      = Column(DateTime, default=datetime.utcnow)
     last_message_at = Column(DateTime, default=datetime.utcnow)
@@ -207,20 +231,20 @@ class Rating(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    rater_id      = Column(Integer, ForeignKey("users.id"), nullable=False)
-    rated_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    rater_id       = Column(Integer, ForeignKey("users.id"), nullable=False)
+    rated_user_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     stars   = Column(Integer, nullable=False, default=5)
     comment = Column(Text, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    rater      = relationship("User", foreign_keys=[rater_id], back_populates="ratings_given")
-    rated_user = relationship("User", foreign_keys=[rated_user_id], back_populates="ratings_received")
+    rater       = relationship("User", foreign_keys="[Rating.rater_id]", back_populates="ratings_given")
+    rated_user  = relationship("User", foreign_keys="[Rating.rated_user_id]", back_populates="ratings_received")
 
 
 # =========================
-# FreezeDeposit
+# Freeze Deposit / Orders / Bookings
 # =========================
 class FreezeDeposit(Base):
     __tablename__ = "freeze_deposits"
@@ -228,20 +252,15 @@ class FreezeDeposit(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     item_id = Column(Integer, ForeignKey("items.id"), nullable=True)
-    amount  = Column(Integer, nullable=False, default=0)
-    status  = Column(String(20), nullable=False, default="planned")
-    note    = Column(Text, nullable=True)
-
+    amount = Column(Integer, nullable=False, default=0)
+    status = Column(String(20), nullable=False, default="planned")
+    note = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
     user = relationship("User", lazy="joined")
     item = relationship("Item", lazy="joined")
 
 
-# =========================
-# Orders
-# =========================
 class Order(Base):
     __tablename__ = "orders"
 
@@ -258,9 +277,6 @@ class Order(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
-# =========================
-# Bookings
-# =========================
 class Booking(Base):
     __tablename__ = "bookings"
 
