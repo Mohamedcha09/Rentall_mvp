@@ -3,19 +3,20 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# استخدم DATABASE_URL من البيئة إن وُجد، وإلا SQLite محلي
+# اسم ملف قاعدة البيانات المحلي
 DB_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
 
-# إذا كنا على SQLite نضيف check_same_thread=False، غير ذلك بدون connect_args
+# إعداد الاتصال (مع خيار sqlite الآمن للخيوط)
 engine = create_engine(
     DB_URL,
-    connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {}
+    connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {},
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# ✅ هذا هو Declarative Base الصحيح
+# ✅ هذا هو الـ Base الوحيد الذي يجب استعماله في بقية المشروع
 Base = declarative_base()
+
 
 def get_db():
     db = SessionLocal()
