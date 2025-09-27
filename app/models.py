@@ -1,19 +1,20 @@
 # app/models.py
 from datetime import datetime, date
 from sqlalchemy import (
-    Column, Integer, String, Text, DateTime, Date, Boolean, ForeignKey
+    Column, Integer, String, Text, DateTime, Date, Boolean, ForeignKey, UniqueConstraint
 )
 from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.sql import literal
 from .database import Base, engine
 
-# ---------- helpers ----------
+# ---------- helpers to tolerate missing columns in old DBs ----------
 def _has_column(table: str, col: str) -> bool:
     try:
         with engine.begin() as conn:
             rows = conn.exec_driver_sql(f"PRAGMA table_info('{table}')").all()
         return any(r[1] == col for r in rows)
     except Exception:
+        # if not SQLite, fail-open
         return True
 
 def col_or_literal(table: str, name: str, type_, **kwargs):
@@ -22,7 +23,7 @@ def col_or_literal(table: str, name: str, type_, **kwargs):
     return column_property(literal(None))
 
 # =========================
-# Users
+# Users & Documents
 # =========================
 class User(Base):
     _tablename_ = "users"
@@ -59,20 +60,14 @@ class User(Base):
     badge_orange_stars = col_or_literal("users", "badge_orange_stars", Boolean, default=False)
 
     documents = relationship("Document", back_populates="user", cascade="all, delete-orphan")
-    items     = relationship("Item", back_populates="owner", cascade="all, delete-orphan")
+    items = relationship("Item", back_populates="owner", cascade="all, delete-orphan")
 
-    sent_messages     = relationship("Message", foreign_keys="Message.sender_id", back_populates="sender")
-    ratings_given     = relationship("Rating", foreign_keys="Rating.rater_id", back_populates="rater")
-    ratings_received  = relationship("Rating", foreign_keys="Rating.rated_user_id", back_populates="rated_user")
+    sent_messages = relationship("Message", foreign_keys="Message.sender_id", back_populates="sender")
+    ratings_given = relationship("Rating", foreign_keys="Rating.rater_id", back_populates="rater")
+    ratings_received = relationship("Rating", foreign_keys="Rating.rated_user_id", back_populates="rated_user")
 
     if _has_column("users", "verified_by_id"):
-        verified_by = relationship(
-            "User",
-            remote_side=[id],
-            foreign_keys="[User.verified_by_id]",
-            backref="verified_users",
-            uselist=False
-        )
+        verified_by = relationship("User", remote_side=[id], foreign_keys="[User.verified_by_id]", backref="verified_users", uselist=False)
 
     @property
     def full_name(self) -> str:
@@ -111,9 +106,7 @@ class User(Base):
         except Exception:
             return False
 
-# =========================
-# Documents
-# =========================
+
 class Document(Base):
     _tablename_ = "documents"
 
@@ -135,9 +128,7 @@ class Document(Base):
 
     user = relationship("User", back_populates="documents")
 
-# =========================
-# Items
-# =========================
+
 class Item(Base):
     _tablename_ = "items"
 
@@ -149,32 +140,31 @@ class Item(Base):
     city        = Column(String(120), nullable=True)
 
     price_per_day = Column(Integer, nullable=False, default=0)
-    category      = Column(String(50), nullable=False, default="other")
-    image_path    = Column(String(500), nullable=True)
-    is_active     = Column(String(10), default="yes")
+    category     = Column(String(50), nullable=False, default="other")
+    image_path   = Column(String(500), nullable=True)
+    is_active    = Column(String(10), default="yes")
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
     owner = relationship("User", back_populates="items")
     message_threads = relationship("MessageThread", back_populates="item", cascade="all, delete-orphan")
 
-# =========================
-# Messaging
-# =========================
+
 class MessageThread(Base):
     _tablename_ = "message_threads"
 
     id = Column(Integer, primary_key=True, index=True)
     user_a_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     user_b_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    item_id   = Column(Integer, ForeignKey("items.id"), nullable=True)
+    item_id = Column(Integer, ForeignKey("items.id"), nullable=True)
 
     created_at      = Column(DateTime, default=datetime.utcnow)
     last_message_at = Column(DateTime, default=datetime.utcnow)
 
     user_a = relationship("User", foreign_keys=[user_a_id])
     user_b = relationship("User", foreign_keys=[user_b_id])
-    item   = relationship("Item", back_populates="message_threads")
+
+    item = relationship("Item", back_populates="message_threads")
 
     messages = relationship(
         "Message",
@@ -182,6 +172,7 @@ class MessageThread(Base):
         cascade="all, delete-orphan",
         order_by="Message.created_at.asc()",
     )
+
 
 class Message(Base):
     _tablename_ = "messages"
@@ -199,66 +190,55 @@ class Message(Base):
     thread = relationship("MessageThread", back_populates="messages")
     sender = relationship("User", foreign_keys=[sender_id], back_populates="sent_messages")
 
-# =========================
-# Ratings
-# =========================
+
 class Rating(Base):
     _tablename_ = "ratings"
 
     id = Column(Integer, primary_key=True, index=True)
-    rater_id      = Column(Integer, ForeignKey("users.id"), nullable=False)
-    rated_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    rater_id       = Column(Integer, ForeignKey("users.id"), nullable=False)
+    rated_user_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     stars   = Column(Integer, nullable=False, default=5)
     comment = Column(Text, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    rater      = relationship("User", foreign_keys=[rater_id], back_populates="ratings_given")
-    rated_user = relationship("User", foreign_keys=[rated_user_id], back_populates="ratings_received")
+    rater       = relationship("User", foreign_keys="[Rating.rater_id]", back_populates="ratings_given")
+    rated_user  = relationship("User", foreign_keys="[Rating.rated_user_id]", back_populates="ratings_received")
 
-# =========================
-# Freeze Deposits
-# =========================
+
 class FreezeDeposit(Base):
     _tablename_ = "freeze_deposits"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     item_id = Column(Integer, ForeignKey("items.id"), nullable=True)
-    amount  = Column(Integer, nullable=False, default=0)
-    status  = Column(String(20), nullable=False, default="planned")
-    note    = Column(Text, nullable=True)
-
+    amount = Column(Integer, nullable=False, default=0)
+    status = Column(String(20), nullable=False, default="planned")
+    note = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
     user = relationship("User", lazy="joined")
     item = relationship("Item", lazy="joined")
 
-# =========================
-# Orders
-# =========================
+
 class Order(Base):
     _tablename_ = "orders"
 
     id = Column(Integer, primary_key=True, index=True)
-    item_id   = Column(Integer, ForeignKey("items.id"), nullable=False)
-    renter_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    owner_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
-
+    item_id    = Column(Integer, ForeignKey("items.id"), nullable=False)
+    renter_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
+    owner_id   = Column(Integer, ForeignKey("users.id"), nullable=False)
     start_date = Column(Date, nullable=False)
     end_date   = Column(Date, nullable=False)
     days       = Column(Integer, nullable=False, default=1)
-
     price_per_day = Column(Integer, nullable=False, default=0)
     total_amount  = Column(Integer, nullable=False, default=0)
-
     status = Column(String(20), nullable=False, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
 
-# =========================
-# Bookings
-# =========================
+
 class Booking(Base):
     _tablename_ = "bookings"
 
@@ -285,3 +265,28 @@ class Booking(Base):
     item   = relationship("Item", backref="bookings")
     renter = relationship("User", foreign_keys="[Booking.renter_id]", backref="bookings_rented")
     owner  = relationship("User", foreign_keys="[Booking.owner_id]",  backref="bookings_owned")
+
+# ---------- Favorites (new) ----------
+class FavoriteItem(Base):
+    _tablename_ = "favorite_items"
+    _table_args_ = (UniqueConstraint("user_id", "item_id", name="uq_fav_item"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    item_id = Column(Integer, ForeignKey("items.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+    item = relationship("Item")
+
+class FavoriteOwner(Base):
+    _tablename_ = "favorite_owners"
+    _table_args_ = (UniqueConstraint("user_id", "owner_id", name="uq_fav_owner"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user  = relationship("User", foreign_keys=[user_id])
+    owner = relationship("User", foreign_keys=[owner_id])
