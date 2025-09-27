@@ -2,177 +2,161 @@
 
 {% block head %}
 <style>
-  /* بحث داخل الصفحة */
-  .hero-search{ margin:.25rem 0 1rem; display:grid; gap:.75rem; }
-  .hero-search .search__wrap{ position:relative; }
-  .hero-search input[type="search"]{
-    width:100%; height:46px; border-radius:999px;
-    border:1px solid var(--border);
-    background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-    color:var(--text); padding-inline:44px 14px;
+  /* رأس القسم + أزرار */
+  .section-head{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px; margin: 8px 2px; padding: 2px 4px;
   }
-  .hero-search .bi-search{
-    position:absolute; inset-inline-start:14px; top:50%; transform:translateY(-50%);
-    opacity:.7; font-size:1.05rem;
+  .section-title{ font-weight:800; font-size:1.15rem }
+  .arrow-btn{
+    border:1px solid var(--border); background:rgba(255,255,255,.06);
+    border-radius:12px; width:40px; height:40px; display:grid; place-items:center;
   }
+  .arrow-btn:hover{ background:color-mix(in oklab, var(--text) 8%, transparent) }
 
-  /* كبسولات التصنيفات (تمرير أفقي) */
-  .cat-tabs{
-    display:flex; gap:.5rem; overflow-x:auto; padding-bottom:.25rem; scrollbar-width:thin;
+  /* صف أفقي قابل للسحب */
+  .hrow{
+    display:grid; grid-auto-flow: column;
+    grid-auto-columns: 88%; gap:12px;
+    overflow-x:auto; overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory; padding: 4px 2px 8px;
   }
-  .cat-pill{
-    flex:0 0 auto; white-space:nowrap;
-    padding:.4rem .7rem; border-radius:999px; text-decoration:none;
-    border:1px solid var(--border); background:rgba(255,255,255,.06); color:var(--text);
-    font-weight:700; font-size:.9rem;
-  }
-  .cat-pill.is-active{ background:rgba(124,92,255,.16); border-color:rgba(124,92,255,.35); }
+  .hrow::-webkit-scrollbar{ height:8px }
+  .hcard{ scroll-snap-align: start }
+  @media (min-width:576px){ .hrow{ grid-auto-columns: 60% } }
+  @media (min-width:768px){ .hrow{ grid-auto-columns: 42% } }
+  @media (min-width:992px){ .hrow{ grid-auto-columns: 32% } }
 
-  /* عناوين الأقسام (لو مش موجودة في ستايلك) */
-  .section-head{ display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin:.5rem 2px .65rem; }
-  .section-title{ font-weight:800; font-size:1.1rem; }
-
-  /* أسهم التحريك */
-  .arrow-btn{ border:1px solid var(--border); background:transparent; border-radius:10px; padding:.35rem .55rem; }
+  /* كرت العنصر (نعتمد ستايلك الأساسي) */
+  .card.spot.hcard{ border-radius:18px; overflow:hidden }
+  .spot-media{ position:relative; aspect-ratio:16/10; overflow:hidden }
 </style>
 {% endblock %}
 
 {% block content %}
 
-<!-- ===== بحث داخل الصفحة + كبسولات التصنيفات ===== -->
-<section class="hero-search">
-  <div class="search__wrap">
-    <i class="bi bi-search"></i>
-    <form action="/search" method="get">
-      <input type="search" name="q" placeholder="ابحث داخل الصفحة…"
-             value="{{ request.query_params.get('q','') if request else '' }}">
-    </form>
-  </div>
-
-  {% set cats = categories or [] %}
-  {% if cats %}
-    <nav class="cat-tabs">
-      {% for cat in cats %}
-        {% set cname = cat.name or cat.get('name','') %}
-        {% set ccode = cat.code or cat.get('code') or (cname|replace(' ','-')|lower) %}
-        <a class="cat-pill {% if request and request.query_params.get('cat') == ccode %}is-active{% endif %}"
-           href="/items?cat={{ ccode }}">{{ cname }}</a>
-      {% endfor %}
-    </nav>
-  {% endif %}
-</section>
-
-<!-- ===== قسم شائع ===== -->
-<div class="section-head">
-  <div class="section-title">شائع بالقرب منك</div>
-  <div class="d-flex gap-2">
-    <button class="arrow-btn" data-snap-prev="#row-pop"><i class="bi bi-chevron-right"></i></button>
-    <button class="arrow-btn" data-snap-next="#row-pop"><i class="bi bi-chevron-left"></i></button>
-  </div>
-</div>
-<div id="row-pop" class="hrow">
-  {% for it in popular_items %}
-  <a href="/items/{{ it.id }}" class="card spot hcard text-decoration-none">
-    <div class="spot-media">
-      <img src="{{ it.image_path or it.image or '/static/placeholder.jpg' }}" alt="">
-      <div class="spot-overlay"></div>
-      {% if it.price_per_day or it.price %}
-        <span class="price-badge">{{ (it.price_per_day or it.price)|int }}$ /يوم</span>
-      {% endif %}
-      <span class="category-chip">{{ category_label(it.category) }}</span>
+<!-- == سلايدر “شائع بالقرب منك” إن وُجدت بيانات == -->
+{% if popular_items and popular_items|length %}
+  <div class="section-head">
+    <div class="section-title">شائع بالقرب منك</div>
+    <div class="d-flex gap-2">
+      <button class="arrow-btn" data-snap-prev="#row-pop"><i class="bi bi-chevron-right"></i></button>
+      <button class="arrow-btn" data-snap-next="#row-pop"><i class="bi bi-chevron-left"></i></button>
     </div>
-    <div class="card-body spot-body">
-      <div class="spot-title">{{ it.title }}</div>
-      <div class="owner-line">
-        <div class="owner-avatar--placeholder">🏷️</div>
-        <span class="city-chip">{{ it.city or '—' }}</span>
-      </div>
-      <div class="spot-footer">
-        <small class="text-muted">تقييم {{ it.rating|default(4.8) }}</small>
-        <i class="bi bi-arrow-left-short"></i>
-      </div>
-    </div>
-  </a>
-  {% endfor %}
-</div>
-
-<!-- ===== سلايدر لكل تصنيف ===== -->
-{% for cat in categories %}
-  {% set cname = cat.name or cat.get('name','') %}
-  {% set code  = cat.code or cat.get('code') or (cname|replace(' ','-')|lower) %}
-  {% set list  = items_by_category.get(code, []) %}
-  {% if list %}
-  <div class="section-head mt-3">
-    <div class="section-title">{{ category_label(code) or cname }}</div>
-    <a class="text-muted small" href="/items?category={{ code }}">عرض الكل</a>
   </div>
-  <div id="row-{{ code }}" class="hrow">
-    {% for it in list %}
-    <a href="/items/{{ it.id }}" class="card spot hcard text-decoration-none">
-      <div class="spot-media">
-        <img src="{{ it.image_path or it.image or '/static/placeholder.jpg' }}" alt="">
-        <div class="spot-overlay"></div>
-        {% if it.price_per_day or it.price %}
-          <span class="price-badge">{{ (it.price_per_day or it.price)|int }}$ /يوم</span>
-        {% endif %}
-        <span class="category-chip">{{ category_label(it.category) }}</span>
-      </div>
-      <div class="card-body spot-body">
-        <div class="spot-title">{{ it.title }}</div>
-        <div class="owner-line">
-          <div class="owner-avatar--placeholder">🏷️</div>
-          <span class="city-chip">{{ it.city or '—' }}</span>
+  <div id="row-pop" class="hrow">
+    {% for it in popular_items %}
+      <a href="/items/{{ it.id }}" class="card spot hcard text-decoration-none">
+        <div class="spot-media">
+          <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
+          <div class="spot-overlay"></div>
+          <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
+          <span class="category-chip">{{ category_label(it.category) }}</span>
         </div>
-        <div class="spot-footer">
-          <small class="text-muted">تقييم {{ it.rating|default(4.8) }}</small>
-          <i class="bi bi-arrow-left-short"></i>
+        <div class="card-body spot-body">
+          <div class="spot-title">{{ it.title }}</div>
+          <div class="owner-line">
+            <div class="owner-avatar--placeholder">🏷️</div>
+            <span class="city-chip">{{ it.city or '—' }}</span>
+          </div>
+          <div class="spot-footer">
+            <small class="text-muted">تقييم {{ it.rating|default(4.8) }}</small>
+            <i class="bi bi-arrow-left-short"></i>
+          </div>
         </div>
-      </div>
-    </a>
+      </a>
     {% endfor %}
   </div>
+{% endif %}
+
+<!-- == سلايدر لكل تصنيف موجود == -->
+{% for cat in categories %}
+  {% set code = cat.code or cat['code'] %}
+  {% set list = items_by_category.get(code, []) %}
+  {% if list and list|length %}
+    <div class="section-head mt-2">
+      <div class="section-title">{{ category_label(code) }}</div>
+      <div class="d-flex gap-2">
+        <button class="arrow-btn" data-snap-prev="#row-{{ code }}"><i class="bi bi-chevron-right"></i></button>
+        <button class="arrow-btn" data-snap-next="#row-{{ code }}"><i class="bi bi-chevron-left"></i></button>
+      </div>
+    </div>
+
+    <div id="row-{{ code }}" class="hrow">
+      {% for it in list %}
+        <a href="/items/{{ it.id }}" class="card spot hcard text-decoration-none">
+          <div class="spot-media">
+            <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
+            <div class="spot-overlay"></div>
+            <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
+            <span class="category-chip">{{ category_label(it.category) }}</span>
+          </div>
+          <div class="card-body spot-body">
+            <div class="spot-title">{{ it.title }}</div>
+            <div class="owner-line">
+              <div class="owner-avatar--placeholder">🏷️</div>
+              <span class="city-chip">{{ it.city or '—' }}</span>
+            </div>
+            <div class="spot-footer">
+              <small class="text-muted">تقييم {{ it.rating|default(4.8) }}</small>
+              <i class="bi bi-arrow-left-short"></i>
+            </div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
   {% endif %}
 {% endfor %}
 
-<!-- ===== شبكة مختلطة أسفل الصفحة ===== -->
+<!-- == شبكة “كل العناصر” في الأسفل == -->
 <div class="section-head mt-3">
-  <div class="section-title">اكتشف المزيد</div>
+  <div class="section-title">كل العناصر</div>
 </div>
-<div class="mixed-grid">
-  {% for it in mixed_items %}
-  <a href="/items/{{ it.id }}" class="card spot text-decoration-none">
-    <div class="spot-media">
-      <img src="{{ it.image_path or it.image or '/static/placeholder.jpg' }}" alt="">
-      <div class="spot-overlay"></div>
-      <span class="category-chip">{{ category_label(it.category) }}</span>
-    </div>
-    <div class="card-body spot-body">
-      <div class="spot-title">{{ it.title }}</div>
-      <div class="owner-line">
-        <div class="owner-avatar--placeholder">🏷️</div>
-        <span class="city-chip">{{ it.city or '—' }}</span>
-      </div>
-    </div>
-  </a>
-  {% endfor %}
-</div>
+
+{% set all = all_items or [] %}
+{% if all|length %}
+  <div class="home-grid">
+    {% for it in all %}
+      <a href="/items/{{ it.id }}" class="card spot text-decoration-none">
+        <div class="spot-media">
+          <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
+          <div class="spot-overlay"></div>
+          <span class="category-chip">{{ category_label(it.category) }}</span>
+        </div>
+        <div class="card-body spot-body">
+          <div class="spot-title">{{ it.title }}</div>
+          <div class="owner-line">
+            <div class="owner-avatar--placeholder">🏷️</div>
+            <span class="city-chip">{{ it.city or '—' }}</span>
+          </div>
+          <div class="spot-footer">
+            <small class="text-muted">{{ it.price_per_day|default(0) }}$ /يوم</small>
+            <i class="bi bi-arrow-left-short"></i>
+          </div>
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card glass p-4 text-center text-muted">لا توجد عناصر حتى الآن.</div>
+{% endif %}
 
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // أزرار التمرير للسلايدر
-  function snap(el, dir=1){
-    const node = document.querySelector(el);
+  // تمرير أفقي للسلايدرات
+  function snap(sel, dir){
+    const node = document.querySelector(sel);
     if(!node) return;
-    const w = node.clientWidth * 0.9;
-    node.scrollBy({left: dir*w, behavior:'smooth'});
+    const amount = Math.round(node.clientWidth * 0.92);
+    node.scrollBy({ left: dir * amount, behavior: 'smooth' });
   }
-  document.querySelectorAll('[data-snap-prev]').forEach(b=>{
-    b.addEventListener('click', ()=> snap(b.dataset.snapPrev, -1));
+  document.querySelectorAll('[data-snap-prev]').forEach(btn=>{
+    btn.addEventListener('click', ()=> snap(btn.dataset.snapPrev, -1));
   });
-  document.querySelectorAll('[data-snap-next]').forEach(b=>{
-    b.addEventListener('click', ()=> snap(b.dataset.snapNext, +1));
+  document.querySelectorAll('[data-snap-next]').forEach(btn=>{
+    btn.addEventListener('click', ()=> snap(btn.dataset.snapNext, +1));
   });
 </script>
 {% endblock %}
