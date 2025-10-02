@@ -7,16 +7,40 @@ import os, secrets, shutil
 
 from .database import get_db
 from .models import User, Document
-from .utils import hash_password, verify_password
+from .utils import hash_password, verify_password, MAX_FORM_PASSWORD_CHARS
 
 router = APIRouter()
 
 # مجلدات الرفع العامة
 UPLOADS_ROOT = os.environ.get("UPLOADS_DIR", "uploads")
 IDS_DIR = os.path.join(UPLOADS_ROOT, "ids")
-AVATARS_DIR = os.path.join(UPLOADS_ROOT, "avatars")  # ← جديد: مجلد صور الحساب
+AVATARS_DIR = os.path.join(UPLOADS_ROOT, "avatars")  # ← مجلد صور الحساب
 os.makedirs(IDS_DIR, exist_ok=True)
-os.makedirs(AVATARS_DIR, exist_ok=True)              # ← جديد
+os.makedirs(AVATARS_DIR, exist_ok=True)
+
+def _normalize_form_password(pwd: str) -> str:
+    """
+    قص بسيط لإدخال كلمة السر من الفورم لتفادي كلمات سر عملاقة.
+    (القص النهائي على 72 بايت يحصل داخل utils أيضاً)
+    """
+    if pwd is None:
+        return ""
+    return pwd[:MAX_FORM_PASSWORD_CHARS]
+
+def _save_any(fileobj: UploadFile | None, folder: str, allow_exts: list[str]) -> str | None:
+    """
+    حفظ ملف بصورة آمنة مع توليد اسم عشوائي وإرجاع المسار (forward slashes).
+    """
+    if not fileobj:
+        return None
+    ext = os.path.splitext(fileobj.filename or "")[1].lower()
+    if ext not in allow_exts:
+        return None
+    fname = f"{secrets.token_hex(10)}{ext}"
+    fpath = os.path.join(folder, fname)
+    with open(fpath, "wb") as f:
+        shutil.copyfileobj(fileobj.file, f)
+    return fpath.replace("\\", "/")
 
 @router.get("/login")
 def login_get(request: Request):
@@ -32,11 +56,17 @@ def login_post(
     email: str = Form(...),
     password: str = Form(...)
 ):
+    email = (email or "").strip().lower()
+    password = _normalize_form_password(password or "")
+
     user = db.query(User).filter(User.email == email).first()
-    if not user or not verify_password(password, user.password_hash):
+    ok = bool(user) and verify_password(password, user.password_hash)
+
+    if not ok:
+        # فشل → رجوع لنفس الصفحة مع باراميتر خطأ
         return RedirectResponse(url="/login?err=1", status_code=303)
 
-    # خزّن is_verified و avatar_path ضمن السيشن (مهم لظهور الشارة والصورة)
+    # خزّن is_verified و avatar_path ضمن السيشن (لإظهار الشارة والصورة)
     request.session["user"] = {
         "id": user.id,
         "first_name": user.first_name,
@@ -46,7 +76,7 @@ def login_post(
         "role": user.role,
         "status": user.status,
         "is_verified": bool(user.is_verified),
-        "avatar_path": user.avatar_path or None,  # ← جديد
+        "avatar_path": user.avatar_path or None,
     }
     return RedirectResponse(url="/", status_code=303)
 
@@ -75,6 +105,9 @@ def register_post(
     # صورة الحساب (إلزامي)
     avatar: UploadFile = File(...)
 ):
+    email = (email or "").strip().lower()
+    password = _normalize_form_password(password or "")
+
     # موجود مسبقًا؟
     exists = db.query(User).filter(User.email == email).first()
     if exists:
@@ -87,19 +120,6 @@ def register_post(
                 "session_user": request.session.get("user"),
             },
         )
-
-    # حفظ ملف بصورة آمنة
-    def _save_any(fileobj, folder, allow_exts):
-        if not fileobj:
-            return None
-        ext = os.path.splitext(fileobj.filename)[1].lower()
-        if ext not in allow_exts:
-            return None
-        fname = f"{secrets.token_hex(10)}{ext}"
-        fpath = os.path.join(folder, fname)
-        with open(fpath, "wb") as f:
-            shutil.copyfileobj(fileobj.file, f)
-        return fpath.replace("\\", "/")
 
     # احفظ الوثائق
     front_path = _save_any(doc_front, IDS_DIR, [".jpg", ".jpeg", ".png", ".pdf"])
@@ -127,7 +147,7 @@ def register_post(
         password_hash=hash_password(password),
         role="user",
         status="pending",
-        avatar_path=avatar_path  # خزّن مسار الصورة
+        avatar_path=avatar_path
     )
     db.add(u)
     db.commit()
@@ -138,7 +158,7 @@ def register_post(
     if doc_expiry:
         try:
             expiry = datetime.strptime(doc_expiry, "%Y-%m-%d").date()
-        except:
+        except Exception:
             expiry = None
 
     d = Document(
