@@ -703,3 +703,16 @@ body[data-theme="dark"] .topbar .search .search__input{
 body[data-theme="dark"] .topbar .search .search__input::placeholder{
   color: color-mix(in oklab, var(--text) 60%, transparent);
 }
+ /* ===== زرّ المفضلة فوق الصورة (متوافق مع home.html) ===== */
+.spot-media{ position:relative; overflow:hidden; border-radius:16px 16px 0 0 }
+.spot-media img{ width:100%; height:220px; object-fit:cover; display:block }
+.fav-btn{
+  position:absolute; right:10px; top:56px;
+  width:40px; height:40px; border:none; outline:none; cursor:pointer;
+  border-radius:999px; background:rgba(255,255,255,0.92);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+}
+.fav-btn .bi{ font-size:18px; color:#a944ec; line-height:1 }
+.fav-btn.is-fav{ background:#a944ec; }
+.fav-btn.is-fav .bi{ color:#fff }

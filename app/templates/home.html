@@ -2,7 +2,7 @@
 
 {% block head %}
 <style>
-  /* صف أفقي بسحب ناعم */
+  /* سطر التمرير الأفقي */
   .hrow{
     display:flex; gap:14px; overflow-x:auto; scroll-snap-type:x mandatory;
     padding: 6px 4px 12px;
@@ -24,7 +24,7 @@
   }
   .arrow-btn:hover{ background:color-mix(in oklab, var(--text) 8%, transparent) }
 
-  /* شبكة كل العناصر */
+  /* شبكة أسفل الصفحة */
   .mixed-grid{
     display:grid; gap:14px;
     grid-template-columns: repeat(auto-fill, minmax(220px,1fr));
@@ -33,24 +33,39 @@
     .mixed-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
   }
 
-  /* زر المفضلة (قلب) */
-  .spot-media{ position:relative; }
-  .fav-btn{
-    position:absolute; top:10px; inset-inline-end:10px;
-    background:rgba(0,0,0,.28); border:0; width:36px; height:36px; border-radius:999px;
-    display:grid; place-items:center; backdrop-filter: blur(6px);
+  /* وسوم الصورة/السعر/التصنيف */
+  .spot-media{ position:relative; overflow:hidden; border-radius:16px 16px 0 0 }
+  .spot-media img{ width:100%; height:220px; object-fit:cover; display:block }
+  .spot-overlay{ position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.15)); pointer-events:none }
+  .price-badge{
+    position:absolute; right:10px; top:10px; font-weight:800; font-size:.9rem;
+    background:rgba(0,0,0,.75); color:#fff; padding:6px 10px; border-radius:999px;
   }
-  .fav-btn .fav-ico{ color:#fff; filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
-  .fav-btn.is-fav{ background:rgba(255,45,85,.15) }
-  .fav-btn.is-fav .fav-ico{ color:#ff2d55; fill:#ff2d55 }
+  .category-chip{
+    position:absolute; left:10px; top:10px; font-weight:700; font-size:.8rem;
+    background:rgba(255,255,255,.9); color:var(--text); padding:6px 10px; border-radius:999px;
+    backdrop-filter: blur(6px);
+  }
+
+  /* زر المفضّلة فوق الصورة */
+  .fav-btn{
+    position:absolute; right:10px; top:56px;    /* أعلى يمين، أسفل السعر شوي */
+    width:40px; height:40px; border:none; outline:none; cursor:pointer;
+    border-radius:999px; background:rgba(255,255,255,0.92);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 4px 14px rgba(0,0,0,.12);
+  }
+  .fav-btn .bi{ font-size:18px; line-height:1; color:#a944ec }        /* لون بنفسجي للثيم */
+  .fav-btn.is-fav{ background:#a944ec; }
+  .fav-btn.is-fav .bi{ color:#fff }
 </style>
 {% endblock %}
 
 {% block content %}
 
-{# 1) سلايدر “بالقرب منك” #}
+{# 1) سلايدر “بالقرب منك / شائع” #}
 {% set nearby = (nearby_items if nearby_items is defined else popular_items)|default([]) %}
-{% if nearby and nearby|length > 0 %}
+{% if nearby %}
   <div class="section-head">
     <div class="section-title">شائع بالقرب منك</div>
     <div class="d-flex gap-2">
@@ -65,20 +80,20 @@
         <div class="spot-media">
           <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
           <div class="spot-overlay"></div>
+
           {% if it.price_per_day is defined %}
             <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
           {% endif %}
           {% if it.category is defined %}
             <span class="category-chip">{{ category_label(it.category) }}</span>
           {% endif %}
-          <!-- زر المفضلة -->
-          <button class="fav-btn" data-id="{{ it.id }}" type="button" aria-label="أضف للمفضلة">
-            <svg class="fav-ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/>
-            </svg>
+
+          <!-- زر المفضّلة فوق الصورة -->
+          <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="إضافة إلى المفضلة">
+            <i class="bi bi-heart"></i>
           </button>
         </div>
+
         <div class="card-body spot-body">
           <div class="spot-title">{{ it.title }}</div>
           <div class="owner-line">
@@ -95,7 +110,7 @@
   </div>
 {% endif %}
 
-{# 2) سلايدر أفقي لكل تصنيف #}
+{# 2) سلايدر حسب التصنيف #}
 {% set cats_map = (items_by_category if items_by_category is defined else {}) %}
 {% for code, lst in cats_map.items() %}
   {% if lst and lst|length > 0 %}
@@ -110,18 +125,18 @@
           <div class="spot-media">
             <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
             <div class="spot-overlay"></div>
+
             {% if it.price_per_day is defined %}
               <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
             {% endif %}
             <span class="category-chip">{{ category_label(it.category) }}</span>
 
-            <button class="fav-btn" data-id="{{ it.id }}" type="button" aria-label="أضف للمفضلة">
-              <svg class="fav-ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/>
-              </svg>
+            <!-- زر المفضّلة -->
+            <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="إضافة إلى المفضلة">
+              <i class="bi bi-heart"></i>
             </button>
           </div>
+
           <div class="card-body spot-body">
             <div class="spot-title">{{ it.title }}</div>
             <div class="owner-line">
@@ -144,7 +159,6 @@
       (all_items if all_items is defined else
        mixed_items if mixed_items is defined else
        items if items is defined else []) %}
-
 <div class="section-head mt-3">
   <div class="section-title">كل العناصر</div>
 </div>
@@ -156,17 +170,17 @@
         <div class="spot-media">
           <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
           <div class="spot-overlay"></div>
+
           {% if it.category is defined %}
             <span class="category-chip">{{ category_label(it.category) }}</span>
           {% endif %}
 
-          <button class="fav-btn" data-id="{{ it.id }}" type="button" aria-label="أضف للمفضلة">
-            <svg class="fav-ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/>
-            </svg>
+          <!-- زر المفضّلة -->
+          <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="إضافة إلى المفضلة">
+            <i class="bi bi-heart"></i>
           </button>
         </div>
+
         <div class="card-body spot-body">
           <div class="spot-title">{{ it.title }}</div>
           <div class="owner-line">
@@ -191,7 +205,7 @@
 
 {% block scripts %}
 <script>
-  /* تمرير السلايدر */
+  // أزرار التمرير للسلايدر
   function snap(el, dir=1){
     const node = document.querySelector(el);
     if(!node) return;
@@ -205,44 +219,14 @@
     b.addEventListener('click', ()=> snap(b.dataset.snapNext, +1));
   });
 
-  /* حالة مبدئية قادمة من السيرفر (لو متاحة) */
-  window.favState = new Set(
-    JSON.parse('{{ fav_ids|default([])|tojson|safe }}')
-  );
-
-  /* تلوين القلوب المحفوظة مسبقًا */
-  document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.fav-btn').forEach(btn => {
-      const id = Number(btn.dataset.id || 0);
-      if (window.favState.has(id)) btn.classList.add('is-fav');
-    });
-  });
-
-  /* تفويض أحداث: نلتقط أي ضغط على .fav-btn */
-  document.addEventListener('click', (e) => {
+  // تفعيل/تعطيل المفضلة بصريًا فقط (بدون API)
+  document.addEventListener('click', (e)=>{
     const btn = e.target.closest('.fav-btn');
-    if (!btn) return;
-    toggleFav(btn);
+    if(!btn) return;
+    btn.classList.toggle('is-fav');
+    // إن كان عندك API لاحقًا، استعمل:
+    // const id = btn.dataset.id;
+    // fetch(`/api/favorites/${id}`, { method: btn.classList.contains('is-fav') ? 'POST' : 'DELETE' });
   });
-
-  /* تبديل المفضلة */
-  async function toggleFav(btn){
-    const id = Number(btn.dataset.id || 0);
-    if (!id) return;
-
-    const willBeFav = !btn.classList.contains('is-fav');
-    btn.classList.toggle('is-fav', willBeFav); // Optimistic UI
-
-    try {
-      const method = willBeFav ? 'POST' : 'DELETE';
-      const res = await fetch(`/api/favorites/${id}`, { method });
-      if (!res.ok) throw new Error('bad status');
-      if (willBeFav) window.favState.add(id);
-      else window.favState.delete(id);
-    } catch (err) {
-      // رجّع المظهر لو فشل
-      btn.classList.toggle('is-fav', !willBeFav);
-    }
-  }
 </script>
 {% endblock %}
