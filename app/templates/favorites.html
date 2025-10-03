@@ -15,18 +15,22 @@
 {% block content %}
 <h4 class="mb-3">❤️ مفضلتي</h4>
 
-{% if favorites and favorites|length > 0 %}
+{% if items and items|length > 0 %}
   <div class="favorites-grid">
-    {% for it in favorites %}
+    {% for it in items %}
       <a href="/items/{{ it.id }}" class="card spot text-decoration-none">
         <div class="spot-media">
           <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
           <div class="spot-overlay"></div>
 
-          <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
-          <span class="category-chip">{{ category_label(it.category) }}</span>
+          {% if it.price_per_day is defined %}
+            <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
+          {% endif %}
+          {% if it.category is defined %}
+            <span class="category-chip">{{ category_label(it.category) }}</span>
+          {% endif %}
 
-          <!-- زر المفضلة -->
+          <!-- زر المفضلة (معلّم مسبقاً كـ is-fav هنا) -->
           <button class="fav-btn is-fav" type="button" data-id="{{ it.id }}" aria-pressed="true">
             <i class="bi bi-heart-fill"></i>
           </button>
@@ -37,9 +41,6 @@
           <div class="owner-line">
             <div class="owner-avatar--placeholder">🏷️</div>
             <span class="city-chip">{{ it.city or '—' }}</span>
-          </div>
-          <div class="spot-footer">
-            <small class="text-muted">تقييم {{ it.rating|default(4.8) }}</small>
           </div>
         </div>
       </a>
@@ -52,17 +53,34 @@
 
 {% block scripts %}
 <script>
-  // تفعيل/تعطيل المفضلة عبر API
+  // تفعيل/تعطيل المفضلة عبر API الصحيح /api/favorites/{id}
   document.addEventListener('click', async (e)=>{
     const btn = e.target.closest('.fav-btn');
     if(!btn) return;
-    const id = btn.dataset.id;
-    const pressed = btn.classList.contains('is-fav');
-    btn.classList.toggle('is-fav');
-    btn.querySelector('.bi').classList.toggle('bi-heart-fill');
-    btn.querySelector('.bi').classList.toggle('bi-heart');
 
-    await fetch(`/favorites/toggle/${id}`, { method: 'POST' });
+    e.preventDefault();
+    e.stopPropagation();
+
+    const id = Number(btn.dataset.id);
+    const isFav = btn.classList.contains('is-fav');
+    const method = isFav ? 'DELETE' : 'POST';
+
+    try{
+      const res = await fetch(`/api/favorites/${id}`, { method });
+      if(!res.ok) throw new Error('bad response');
+
+      // حدّث الزر محليًا
+      btn.classList.toggle('is-fav', !isFav);
+      const icon = btn.querySelector('.bi');
+      if(icon){
+        icon.classList.toggle('bi-heart-fill', !isFav);
+        icon.classList.toggle('bi-heart', isFav);
+      }
+      btn.setAttribute('aria-pressed', String(!isFav));
+    }catch(err){
+      console.error(err);
+      alert('تعذّر حفظ التغيير في المفضلة مؤقتًا.');
+    }
   });
 </script>
 {% endblock %}

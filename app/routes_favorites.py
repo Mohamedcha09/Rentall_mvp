@@ -1,4 +1,3 @@
-# app/routes_favorites.py
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -7,10 +6,10 @@ from sqlalchemy.orm import Session
 
 from .database import get_db
 from .models import User, Item, Favorite
-
+from .utils import category_label  # ← نحتاجه في صفحة القالب
 
 # -------------------------
-# Helper: احضار المستخدم من السيشن (يرجع None بدل ما يرمي استثناء)
+# Helper: احضار المستخدم من السيشن (يرجع None بدل الاستثناء)
 # -------------------------
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
@@ -18,7 +17,6 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optiona
     if not uid:
         return None
     return db.get(User, uid)
-
 
 # ======================================================
 # API: /api/favorites  (إضافة/حذف/جلب معرفات المفضلات)
@@ -33,12 +31,10 @@ def list_favorite_ids(
 ):
     """يرجع قائمة IDs للعناصر الموجودة في المفضلة للمستخدم الحالي."""
     if not user:
-        # للـ fetch في الواجهة
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     ids = [fav.item_id for fav in db.query(Favorite).filter_by(user_id=user.id).all()]
     return ids
-
 
 @api.post("/{item_id}")
 def add_favorite(
@@ -63,7 +59,6 @@ def add_favorite(
     db.commit()
     return {"ok": True}
 
-
 @api.delete("/{item_id}")
 def remove_favorite(
     item_id: int,
@@ -82,7 +77,6 @@ def remove_favorite(
     db.delete(fav)
     db.commit()
     return {"ok": True}
-
 
 # ============================================
 # صفحة: /favorites  (تعرض عناصر المستخدم المفضلة)
@@ -120,10 +114,10 @@ def favorites_page(
             "request": request,
             "title": "مفضّلتي",
             "session_user": request.session.get("user"),
-            "items": items,
+            "items": items,                # ← اسم الحقل الذي يستخدمه favorites.html
+            "category_label": category_label,
         },
     )
-
 
 # ==========
 # Router واحد

@@ -166,14 +166,14 @@
 {% endblock %}
 
 {% block scripts %}
-{# نمرّر حالة التسجيل ومصفوفة المفضلات بدون جافاسكربت داخل Jinja #}
+{# ننقل حالة التسجيل وIDs المفضلات للقالب (لو لم تُمرَّر تبقى []) #}
 <meta name="is-auth" content="{{ '1' if (session_user is defined and session_user) else '0' }}">
 <script id="fav-data" type="application/json">
   {{ favorites_ids | default([]) | tojson }}
 </script>
 
 <script>
-  /* ===== أزرار التمرير للسلايدر ===== */
+  /* ===== أزرار التمرير ===== */
   function snap(el, dir=1){
     const node = document.querySelector(el);
     if(!node) return;
@@ -187,7 +187,7 @@
     b.addEventListener('click', ()=> snap(b.dataset.snapNext, +1));
   });
 
-  /* ===== بيانات المفضلات من الـmeta و JSON ===== */
+  /* ===== بيانات المفضلات ===== */
   const IS_AUTH = (document.querySelector('meta[name="is-auth"]')?.content === '1');
   let FAVORITES_IDS = [];
   try{
@@ -195,7 +195,7 @@
     FAVORITES_IDS = JSON.parse(raw);
   }catch(e){ FAVORITES_IDS = []; }
 
-  /* ===== تعليم الأزرار الموجودة كمفضلة مسبقًا ===== */
+  /* ===== تعليم القلوب المحفوظة مسبقاً ===== */
   function markExistingFavorites(){
     document.querySelectorAll('.fav-btn').forEach((btn)=>{
       const id = Number(btn.dataset.id);
@@ -208,12 +208,12 @@
     });
   }
 
-  /* ===== الضغط على القلب: منع فتح الرابط + استدعاء API ===== */
+  /* ===== ضغط القلب: POST/DELETE على /api/favorites/{id} ===== */
   document.addEventListener('click', async (e)=>{
     const btn = e.target.closest('.fav-btn');
     if(!btn) return;
 
-    e.preventDefault();       // لا نذهب لصفحة العنصر
+    e.preventDefault();
     e.stopPropagation();
 
     if(!IS_AUTH){ window.location.href = '/login'; return; }
@@ -222,7 +222,7 @@
     const add = !btn.classList.contains('is-fav');
 
     try{
-      const res = await fetch(`/favorites/${id}`, { method: add ? 'POST' : 'DELETE' });
+      const res = await fetch(`/api/favorites/${id}`, { method: add ? 'POST' : 'DELETE' });
       if(!res.ok) throw new Error('bad response');
 
       btn.classList.toggle('is-fav', add);
@@ -231,7 +231,6 @@
         icon.classList.toggle('bi-heart', !add);
         icon.classList.toggle('bi-heart-fill', add);
       }
-      // عدّل المصفوفة المحلية
       const i = FAVORITES_IDS.indexOf(id);
       if(add && i === -1) FAVORITES_IDS.push(id);
       if(!add && i >= 0) FAVORITES_IDS.splice(i,1);
@@ -241,7 +240,6 @@
     }
   });
 
-  // تشغيل التعليم
   markExistingFavorites();
 </script>
 {% endblock %}

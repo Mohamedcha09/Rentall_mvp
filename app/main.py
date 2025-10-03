@@ -34,7 +34,7 @@ from .routes_search import router as search_router
 from .routes_users import router as users_router
 from .admin_badges import router as admin_badges_router  # اختياري
 
-# [مضاف] راوتر المفضّلات — نستخدمه لاحقًا
+# [مضاف] راوتر المفضّلات
 from .routes_favorites import router as favorites_router
 
 load_dotenv()
@@ -128,12 +128,8 @@ app.include_router(search_router)
 app.include_router(users_router)
 app.include_router(admin_badges_router)
 
-# ===== [هنا الإصلاح] — إضافة راوتر المفضلات الصحيح =====
+# ===== راوتر المفضلات =====
 app.include_router(favorites_router)
-
-# (سطران خاطئان كانا سبب الخطأ — أُبقيا كمعلّقين فقط دون حذف)
-# app.include_router(favorites_api)   # ← غير موجود
-# app.include_router(favorites_page)  # ← غير موجود
 
 # ===== أداة صغيرة لاستخراج كود التصنيف بأشكال مختلفة
 def _cat_code(cat) -> str:
@@ -335,4 +331,4 @@ def switch_language(lang: str, request: Request):
     referer = request.headers.get("referer") or "/"
     resp = RedirectResponse(url=referer, status_code=302)
     resp.set_cookie("lang", lang, max_age=60 * 60 * 24 * 365, httponly=False, samesite="lax")
-    return resp
+    return respond
