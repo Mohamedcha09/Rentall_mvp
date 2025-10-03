@@ -129,9 +129,6 @@ app.include_router(search_router)
 app.include_router(users_router)
 app.include_router(admin_badges_router)
 app.include_router(favorites_router)
-# [مضاف] تسجيل راوتر المفضّلات
-app.include_router(favorites_router)
-
 if payouts_router:
     app.include_router(payouts_router)
 
