@@ -34,7 +34,7 @@ from .routes_search import router as search_router
 from .routes_users import router as users_router
 from .admin_badges import router as admin_badges_router  # اختياري
 
-# [مضاف] راوتر المفضّلات
+# [مضاف] راوتر المفضّلات — نستخدمه لاحقًا
 from .routes_favorites import router as favorites_router
 
 load_dotenv()
@@ -127,8 +127,13 @@ app.include_router(bookings_router)
 app.include_router(search_router)
 app.include_router(users_router)
 app.include_router(admin_badges_router)
-app.include_router(favorites_api)
-app.include_router(favorites_page)
+
+# ===== [هنا الإصلاح] — إضافة راوتر المفضلات الصحيح =====
+app.include_router(favorites_router)
+
+# (سطران خاطئان كانا سبب الخطأ — أُبقيا كمعلّقين فقط دون حذف)
+# app.include_router(favorites_api)   # ← غير موجود
+# app.include_router(favorites_page)  # ← غير موجود
 
 # ===== أداة صغيرة لاستخراج كود التصنيف بأشكال مختلفة
 def _cat_code(cat) -> str:
