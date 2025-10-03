@@ -1,44 +1,55 @@
 # app/utils.py
 from passlib.context import CryptContext
 
-# ===== إعداد التشفير =====
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# ندعم عدة مخططات حتى يستطيع verify التعامل مع هاشات قديمة
+# ونضبط الافتراضي على bcrypt_sha256 (يتفادى حد 72 بايت تلقائياً)
+pwd_context = CryptContext(
+    schemes=["bcrypt_sha256", "bcrypt", "pbkdf2_sha256"],
+    default="bcrypt_sha256",
+    deprecated="auto",
+)
 
-# ===== حدود bcrypt =====
-BCRYPT_MAX_BYTES = 72          # bcrypt يقبل حتى 72 بايت فقط
-MAX_FORM_PASSWORD_CHARS = 128  # حد منطقي لطول إدخال كلمة السر من الفورم
+# حدود اختيارية لإدخال كلمة السر من الفورم
+BCRYPT_MAX_BYTES = 72
+MAX_FORM_PASSWORD_CHARS = 128
 
 def _truncate_for_bcrypt(password: str) -> str:
     """
-    يقص كلمة السر إلى 72 بايت (utf-8) حتى لا يرمي bcrypt ValueError.
+    قص احتياطي فقط إذا تم التحقق/الهاش عبر bcrypt التقليدي.
+    bcrypt_sha256 لا يحتاج هذا، لكن لن يضر.
     """
     if password is None:
         return ""
     b = password.encode("utf-8")
     if len(b) <= BCRYPT_MAX_BYTES:
         return password
-    # قص آمن عند حدود البايتات ثم تجاهل أي جزء حرف انقطع
     return b[:BCRYPT_MAX_BYTES].decode("utf-8", errors="ignore")
 
 def hash_password(password: str) -> str:
     """
-    نستخدم نفس القص قبل الهاش للحفاظ على الاتساق مع التحقق.
+    إنشاء هاش جديد باستخدام default في الـ CryptContext (bcrypt_sha256).
     """
-    safe = _truncate_for_bcrypt(password or "")
-    return pwd_context.hash(safe)
+    safe = password or ""
+    try:
+        return pwd_context.hash(safe)
+    except Exception:
+        # fallback نادر في بيئات غريبة
+        return pwd_context.hash(_truncate_for_bcrypt(safe))
 
 def verify_password(plain: str, hashed: str) -> bool:
     """
-    نتحقق بعد قص كلمة السر إلى 72 بايت، ونتعامل مع أي أخطاء بهدوء.
+    التحقق يدعم bcrypt_sha256 و bcrypt و pbkdf2_sha256 تلقائياً.
     """
     try:
-        safe = _truncate_for_bcrypt(plain or "")
-        return pwd_context.verify(safe, hashed or "")
+        # المحاولة مباشرة (لو كان الهاش bcrypt_sha256 أو pbkdf2_sha256)
+        if pwd_context.verify(plain or "", hashed or ""):
+            return True
+        # محاولة ثانية مقصوصة في حال كان الهاش bcrypt تقليدي
+        return pwd_context.verify(_truncate_for_bcrypt(plain or ""), hashed or "")
     except Exception:
-        # أي خطأ (مثل backend أو هاش فاسد) → نرجّع False بدل 500
         return False
 
-# ===== التصنيفات (للتصفية في /items و /owner/items/new) =====
+# ===== التصنيفات =====
 CATEGORIES = [
     {"key": "vehicle",     "label": "مركبات"},
     {"key": "housing",     "label": "سكن وإقامات"},
