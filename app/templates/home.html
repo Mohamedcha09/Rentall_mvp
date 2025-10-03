@@ -49,13 +49,13 @@
 
   /* زر المفضّلة فوق الصورة */
   .fav-btn{
-    position:absolute; right:10px; top:56px;    /* أعلى يمين، أسفل السعر شوي */
+    position:absolute; right:10px; top:56px;    /* أسفل السعر قليلاً */
     width:40px; height:40px; border:none; outline:none; cursor:pointer;
     border-radius:999px; background:rgba(255,255,255,0.92);
     display:flex; align-items:center; justify-content:center;
     box-shadow: 0 4px 14px rgba(0,0,0,.12);
   }
-  .fav-btn .bi{ font-size:18px; line-height:1; color:#a944ec }        /* لون بنفسجي للثيم */
+  .fav-btn .bi{ font-size:18px; line-height:1; color:#a944ec }
   .fav-btn.is-fav{ background:#a944ec; }
   .fav-btn.is-fav .bi{ color:#fff }
 </style>
@@ -88,7 +88,7 @@
             <span class="category-chip">{{ category_label(it.category) }}</span>
           {% endif %}
 
-          <!-- زر المفضّلة فوق الصورة -->
+          <!-- زر المفضّلة -->
           <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="إضافة إلى المفضلة">
             <i class="bi bi-heart"></i>
           </button>
@@ -204,8 +204,35 @@
 {% endblock %}
 
 {% block scripts %}
+{# ========= حقن بيانات من الخادم بشكل JSON مضمون ========= #}
+<script id="page-data" type="application/json">
+{{ {
+  "is_auth": (session_user is defined and session_user),
+  "favorites_ids": favorites_ids | default([])
+} | tojson }}
+</script>
+
 <script>
-  // أزرار التمرير للسلايدر
+  // قراءة البيانات المحقونة
+  const BOOT = JSON.parse(document.getElementById('page-data').textContent);
+  const IS_AUTH = BOOT.is_auth;                 // true/false
+  const FAVORITES_IDS = BOOT.favorites_ids || [];// [1,2,3]
+
+  // ============ تعليم الأزرار الجاهزة بالمفضلة ============
+  function markExistingFavorites(){
+    document.querySelectorAll('.fav-btn').forEach(btn=>{
+      const id = Number(btn.dataset.id);
+      if (FAVORITES_IDS.includes(id)) {
+        btn.classList.add('is-fav');
+        const icon = btn.querySelector('.bi');
+        if(icon){ icon.classList.remove('bi-heart'); icon.classList.add('bi-heart-fill'); }
+        btn.setAttribute('aria-pressed','true');
+      }
+    });
+  }
+  document.addEventListener('DOMContentLoaded', markExistingFavorites);
+
+  // ============ أزرار التمرير للسلايدر ============
   function snap(el, dir=1){
     const node = document.querySelector(el);
     if(!node) return;
@@ -219,14 +246,21 @@
     b.addEventListener('click', ()=> snap(b.dataset.snapNext, +1));
   });
 
-  // تفعيل/تعطيل المفضلة بصريًا فقط (بدون API)
+  // ============ التبديل البصري للمفضلة (كما في كودك) ============
   document.addEventListener('click', (e)=>{
     const btn = e.target.closest('.fav-btn');
     if(!btn) return;
     btn.classList.toggle('is-fav');
-    // إن كان عندك API لاحقًا، استعمل:
+    const icon = btn.querySelector('.bi');
+    if(icon){
+      icon.classList.toggle('bi-heart');
+      icon.classList.toggle('bi-heart-fill');
+    }
+    btn.setAttribute('aria-pressed', btn.classList.contains('is-fav') ? 'true' : 'false');
+
+    // لاحقًا يمكن ربط API:
     // const id = btn.dataset.id;
-    // fetch(`/api/favorites/${id}`, { method: btn.classList.contains('is-fav') ? 'POST' : 'DELETE' });
+    // fetch(`/favorites/toggle/${id}`, { method: 'POST' });
   });
 </script>
 {% endblock %}

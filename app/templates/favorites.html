@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+  <h2 class="page-title">مفضلاتي</h2>
+
+  {% if not session_user %}
+    <p>يجب تسجيل الدخول لرؤية المفضلات.</p>
+  {% else %}
+    {% if items|length == 0 %}
+      <p>لا توجد عناصر في المفضلات بعد.</p>
+    {% else %}
+      <div class="items-grid">
+        {% for it in items %}
+          <div class="item-card">
+            <a href="/items/{{ it.id }}" class="thumb">
+              <img src="{{ it.image_path or '/static/placeholder.png' }}" alt="{{ it.title }}">
+            </a>
+            <div class="item-body">
+              <a class="item-title" href="/items/{{ it.id }}">{{ it.title }}</a>
+              <div class="item-meta">
+                <span>{{ it.city or '' }}</span>
+                <span>{{ it.price_per_day }} د.ج / يوم</span>
+              </div>
+
+              <form method="post" action="/favorites/toggle">
+                <input type="hidden" name="item_id" value="{{ it.id }}">
+                <button class="fav-btn" title="إزالة من المفضلة">❤</button>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}
