@@ -1,75 +1,59 @@
 # app/routes_favorites.py
-from fastapi import APIRouter, Depends, Request, Form
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+
 from .database import get_db
 from .models import Favorite, Item
+from .utils import category_label
 
 router = APIRouter()
 
-def _require_user_id(request: Request) -> int | None:
-    u = request.session.get("user")
-    return u["id"] if u and "id" in u else None
-
+# عرض صفحة المفضلات
 @router.get("/favorites")
-def my_favorites(request: Request, db: Session = Depends(get_db)):
-    user_id = _require_user_id(request)
-    if not user_id:
-        return RedirectResponse(url="/login?next=/favorites", status_code=303)
+def favorites_page(request: Request, db: Session = Depends(get_db)):
+    user = request.session.get("user")
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
 
     favs = (
         db.query(Favorite)
-        .filter(Favorite.user_id == user_id)
-        .order_by(desc(Favorite.created_at))
+        .filter(Favorite.user_id == user["id"])
+        .join(Item)
         .all()
     )
-    item_ids = [f.item_id for f in favs]
-    items = []
-    if item_ids:
-        items = (
-            db.query(Item)
-            .filter(Item.id.in_(item_ids))
-            .order_by(desc(Item.created_at))
-            .all()
-        )
 
+    items = [f.item for f in favs]
     return request.app.templates.TemplateResponse(
         "favorites.html",
         {
             "request": request,
-            "title": "مفضلاتي",
-            "session_user": request.session.get("user"),
-            "items": items,
-        },
+            "title": "مفضلتي",
+            "session_user": user,
+            "favorites": items,
+            "category_label": category_label,
+            "favorites_ids": [i.id for i in items],  # تمرير IDs لتمييز القلوب
+        }
     )
 
-@router.post("/favorites/toggle")
-def toggle_favorite(
-    request: Request,
-    db: Session = Depends(get_db),
-    item_id: int = Form(...)
-):
-    user_id = _require_user_id(request)
-    if not user_id:
-        return RedirectResponse(url="/login", status_code=303)
 
-    fav = (
-        db.query(Favorite)
-        .filter(Favorite.user_id == user_id, Favorite.item_id == item_id)
-        .first()
-    )
+# API لإضافة/حذف مفضلة
+@router.post("/favorites/toggle/{item_id}")
+def toggle_favorite(item_id: int, request: Request, db: Session = Depends(get_db)):
+    user = request.session.get("user")
+    if not user:
+        return {"ok": False, "error": "login_required"}
+
+    fav = db.query(Favorite).filter(
+        Favorite.user_id == user["id"], Favorite.item_id == item_id
+    ).first()
 
     if fav:
-        # إلغاء المفضلة
         db.delete(fav)
         db.commit()
+        return {"ok": True, "action": "removed"}
     else:
-        # إضافة مفضلة
-        new_fav = Favorite(user_id=user_id, item_id=item_id)
+        new_fav = Favorite(user_id=user["id"], item_id=item_id)
         db.add(new_fav)
         db.commit()
-
-    # ارجع لنفس الصفحة السابقة لو متاح
-    referer = request.headers.get("referer") or "/"
-    return RedirectResponse(url=referer, status_code=303)
+        return {"ok": True, "action": "added"}

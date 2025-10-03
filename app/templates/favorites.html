@@ -1,36 +1,68 @@
 {% extends "base.html" %}
+
+{% block head %}
+<style>
+  .favorites-grid{
+    display:grid; gap:14px;
+    grid-template-columns: repeat(auto-fill, minmax(220px,1fr));
+  }
+  @media (max-width:480px){
+    .favorites-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container">
-  <h2 class="page-title">مفضلاتي</h2>
+<h4 class="mb-3">❤️ مفضلتي</h4>
 
-  {% if not session_user %}
-    <p>يجب تسجيل الدخول لرؤية المفضلات.</p>
-  {% else %}
-    {% if items|length == 0 %}
-      <p>لا توجد عناصر في المفضلات بعد.</p>
-    {% else %}
-      <div class="items-grid">
-        {% for it in items %}
-          <div class="item-card">
-            <a href="/items/{{ it.id }}" class="thumb">
-              <img src="{{ it.image_path or '/static/placeholder.png' }}" alt="{{ it.title }}">
-            </a>
-            <div class="item-body">
-              <a class="item-title" href="/items/{{ it.id }}">{{ it.title }}</a>
-              <div class="item-meta">
-                <span>{{ it.city or '' }}</span>
-                <span>{{ it.price_per_day }} د.ج / يوم</span>
-              </div>
+{% if favorites and favorites|length > 0 %}
+  <div class="favorites-grid">
+    {% for it in favorites %}
+      <a href="/items/{{ it.id }}" class="card spot text-decoration-none">
+        <div class="spot-media">
+          <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
+          <div class="spot-overlay"></div>
 
-              <form method="post" action="/favorites/toggle">
-                <input type="hidden" name="item_id" value="{{ it.id }}">
-                <button class="fav-btn" title="إزالة من المفضلة">❤</button>
-              </form>
-            </div>
+          <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
+          <span class="category-chip">{{ category_label(it.category) }}</span>
+
+          <!-- زر المفضلة -->
+          <button class="fav-btn is-fav" type="button" data-id="{{ it.id }}" aria-pressed="true">
+            <i class="bi bi-heart-fill"></i>
+          </button>
+        </div>
+
+        <div class="card-body spot-body">
+          <div class="spot-title">{{ it.title }}</div>
+          <div class="owner-line">
+            <div class="owner-avatar--placeholder">🏷️</div>
+            <span class="city-chip">{{ it.city or '—' }}</span>
           </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-  {% endif %}
-</div>
+          <div class="spot-footer">
+            <small class="text-muted">تقييم {{ it.rating|default(4.8) }}</small>
+          </div>
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-secondary glass mt-2">لا توجد عناصر في المفضلة بعد.</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // تفعيل/تعطيل المفضلة عبر API
+  document.addEventListener('click', async (e)=>{
+    const btn = e.target.closest('.fav-btn');
+    if(!btn) return;
+    const id = btn.dataset.id;
+    const pressed = btn.classList.contains('is-fav');
+    btn.classList.toggle('is-fav');
+    btn.querySelector('.bi').classList.toggle('bi-heart-fill');
+    btn.querySelector('.bi').classList.toggle('bi-heart');
+
+    await fetch(`/favorites/toggle/${id}`, { method: 'POST' });
+  });
+</script>
 {% endblock %}

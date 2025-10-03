@@ -36,7 +36,7 @@
         .topbar__inner{ gap:8px; }
       }
 
-      /* شريط سفلي للجوال (3 تبويبات فقط) */
+      /* شريط سفلي للجوال (3 تبويبات افتراضيًا) */
       @media (max-width: 768px){
         .mobile-tabbar{
           position: fixed; inset-inline: 0; bottom: 0; height: 64px;
@@ -47,6 +47,9 @@
           backdrop-filter: blur(14px) saturate(120%);
           z-index: 2100;
         }
+        /* [مضاف] إذا تحتوي تبويب "مفضلتي" نصير 4 أعمدة */
+        .mobile-tabbar.has-fav{ grid-template-columns: repeat(4, 1fr); }
+
         .mobile-tabbar a{
           display:flex; flex-direction:column; align-items:center; justify-content:center;
           gap:4px; text-decoration:none; color: var(--muted); font-size:.8rem;
@@ -125,6 +128,13 @@
           <a href="/messages" class="btn-plain btn-messages" title="الرسائل">
             <img class="icon-img" src="/static/img/msg.png" alt="Messages">
           </a>
+
+          <!-- [مضاف] مفضلتي (يظهر فقط عند تسجيل الدخول) -->
+          {% if session_user %}
+          <a href="/favorites" class="btn-plain" title="مفضلتي">
+            <i class="bi bi-heart-fill" style="font-size:20px; color:#a944ec;"></i>
+          </a>
+          {% endif %}
 
           <!-- إشعارات (أيقونة الجرس الخضراء) -->
           {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
@@ -207,7 +217,13 @@
         <a class="side-link {% if request and request.url.path.startswith('/items') %}is-active{% endif %}" href="/items" data-tooltip="كل العناصر">
           <i class="bi bi-grid"></i> <span>كل العناصر</span>
         </a>
+
         {% if session_user %}
+          <!-- [مضاف] مفضلتي في الـSidebar -->
+          <a class="side-link {% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}" href="/favorites" data-tooltip="مفضلتي">
+            <i class="bi bi-heart"></i> <span>مفضلتي</span>
+          </a>
+
           <a class="side-link {% if request and request.url.path.startswith('/profile') %}is-active{% endif %}" href="/profile" data-tooltip="صفحتي">
             <i class="bi bi-person"></i> <span>صفحتي</span>
           </a>
@@ -266,7 +282,7 @@
     {% endif %}
 
     <!-- شريط سفلي للجوال -->
-    <nav class="mobile-tabbar d-lg-none">
+    <nav class="mobile-tabbar d-lg-none {% if session_user %}has-fav{% endif %}">
       <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
         <i class="bi bi-house-door tab-icon"></i>
         <i class="bi bi-house-door-fill tab-icon--active"></i>
@@ -277,6 +293,16 @@
         <i class="bi bi-grid-fill tab-icon--active"></i>
         <span>العناصر</span>
       </a>
+
+      {% if session_user %}
+      <!-- [مضاف] تبويب المفضلة للمستخدم المسجّل -->
+      <a href="/favorites" class="{% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}">
+        <i class="bi bi-heart tab-icon"></i>
+        <i class="bi bi-heart-fill tab-icon--active"></i>
+        <span>مفضلتي</span>
+      </a>
+      {% endif %}
+
       <a href="/profile" class="{% if request and request.url.path.startswith('/profile') %}is-active{% endif %}">
         <i class="bi bi-person tab-icon"></i>
         <i class="bi bi-person-fill tab-icon--active"></i>
