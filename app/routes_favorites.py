@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import List
-
+from fastapi import APIRouter as _APIRouter  # تأكد من وجود الاستيراد
 from .database import get_db
 from .models import User, Item, Favorite
 
@@ -110,3 +110,9 @@ def favorites_page(
             "items": items,
         },
     )
+
+    
+# نجمع الراوترين في Router واحد ليتوافق مع main.py
+router = _APIRouter()
+router.include_router(api)
+router.include_router(page)

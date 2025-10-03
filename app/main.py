@@ -33,7 +33,7 @@ from .bookings import router as bookings_router
 from .routes_search import router as search_router
 from .routes_users import router as users_router
 from .admin_badges import router as admin_badges_router  # اختياري
-from .routes_favorites import router as favorites_router
+from .routes_favorites import api as favorites_api, page as favorites_page
 
 # [مضاف] راوتر المفضّلات
 from .routes_favorites import router as favorites_router
@@ -128,7 +128,8 @@ app.include_router(bookings_router)
 app.include_router(search_router)
 app.include_router(users_router)
 app.include_router(admin_badges_router)
-app.include_router(favorites_router)
+app.include_router(favorites_api)
+app.include_router(favorites_page)
 if payouts_router:
     app.include_router(payouts_router)
 
