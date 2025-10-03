@@ -1,24 +1,23 @@
 # app/routes_favorites.py
+from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from typing import List
-from fastapi import APIRouter as _APIRouter  # تأكد من وجود الاستيراد
+
 from .database import get_db
 from .models import User, Item, Favorite
 
+
 # -------------------------
-# Helper: احضار المستخدم من السيشن
+# Helper: احضار المستخدم من السيشن (يرجع None بدل ما يرمي استثناء)
 # -------------------------
-def current_user(request: Request, db: Session = Depends(get_db)) -> User:
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
     uid = data.get("id")
     if not uid:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    user = db.get(User, uid)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    return user
+        return None
+    return db.get(User, uid)
 
 
 # ======================================================
@@ -30,20 +29,28 @@ api = APIRouter(prefix="/api/favorites", tags=["favorites"])
 def list_favorite_ids(
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(current_user),
+    user: Optional[User] = Depends(get_current_user),
 ):
-    """يرجع قائمة IDs للعناصر الموجودة في المفضلة."""
+    """يرجع قائمة IDs للعناصر الموجودة في المفضلة للمستخدم الحالي."""
+    if not user:
+        # للـ fetch في الواجهة
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
     ids = [fav.item_id for fav in db.query(Favorite).filter_by(user_id=user.id).all()]
     return ids
+
 
 @api.post("/{item_id}")
 def add_favorite(
     item_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(current_user),
+    user: Optional[User] = Depends(get_current_user),
 ):
     """أضف عنصراً إلى المفضلة."""
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
     item = db.get(Item, item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -56,14 +63,18 @@ def add_favorite(
     db.commit()
     return {"ok": True}
 
+
 @api.delete("/{item_id}")
 def remove_favorite(
     item_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(current_user),
+    user: Optional[User] = Depends(get_current_user),
 ):
     """احذف عنصراً من المفضلة."""
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
     fav = db.query(Favorite).filter_by(user_id=user.id, item_id=item_id).first()
     if not fav:
         raise HTTPException(status_code=404, detail="Not in favorites")
@@ -82,12 +93,15 @@ page = APIRouter(tags=["favorites"])
 def favorites_page(
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(current_user),
+    user: Optional[User] = Depends(get_current_user),
 ):
     """
     صفحة واجهة تُظهر كل العناصر المفضلة للمستخدم الحالي.
+    إذا لم يكن مسجّلاً، نعيده لصفحة الدخول.
     """
-    # اجلب العناصر نفسها بترتيب أحدث إضافة
+    if not user:
+        return RedirectResponse(url="/login?next=/favorites", status_code=303)
+
     favs = (
         db.query(Favorite)
         .filter(Favorite.user_id == user.id)
@@ -96,7 +110,6 @@ def favorites_page(
     )
     items = []
     for f in favs:
-        # احرص على وجود العنصر (في حال حُذف)
         it = db.get(Item, f.item_id)
         if it:
             items.append(it)
@@ -111,8 +124,10 @@ def favorites_page(
         },
     )
 
-    
-# نجمع الراوترين في Router واحد ليتوافق مع main.py
-router = _APIRouter()
+
+# ==========
+# Router واحد
+# ==========
+router = APIRouter()
 router.include_router(api)
 router.include_router(page)
