@@ -2,68 +2,33 @@
 
 {% block head %}
 <style>
-  /* سطر التمرير الأفقي */
-  .hrow{
-    display:flex; gap:14px; overflow-x:auto; scroll-snap-type:x mandatory;
-    padding: 6px 4px 12px;
-  }
-  .hrow::-webkit-scrollbar{ height:8px }
-  .hrow::-webkit-scrollbar-thumb{ background:color-mix(in oklab, var(--text) 18%, transparent); border-radius:999px }
-
-  .hcard{ min-width: 86%; max-width: 86%; scroll-snap-align:start }
-  @media (min-width:576px){ .hcard{ min-width: 58%; max-width: 58%; } }
-  @media (min-width:992px){ .hcard{ min-width: 360px; max-width: 360px; } }
-
-  .section-head{
-    margin: 12px 2px 8px; display:flex; align-items:center; justify-content:space-between;
-  }
-  .section-title{ font-weight:800; font-size:1.15rem }
-  .arrow-btn{
-    border:1px solid var(--border); background:transparent; border-radius:12px; width:42px; height:42px;
-    display:grid; place-items:center;
-  }
-  .arrow-btn:hover{ background:color-mix(in oklab, var(--text) 8%, transparent) }
-
-  /* شبكة أسفل الصفحة */
-  .mixed-grid{
-    display:grid; gap:14px;
-    grid-template-columns: repeat(auto-fill, minmax(220px,1fr));
-  }
-  @media (max-width:480px){
-    .mixed-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
-  }
-
-  /* وسوم الصورة/السعر/التصنيف */
-  .spot-media{ position:relative; overflow:hidden; border-radius:16px 16px 0 0 }
-  .spot-media img{ width:100%; height:220px; object-fit:cover; display:block }
-  .spot-overlay{ position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.15)); pointer-events:none }
-  .price-badge{
-    position:absolute; right:10px; top:10px; font-weight:800; font-size:.9rem;
-    background:rgba(0,0,0,.75); color:#fff; padding:6px 10px; border-radius:999px;
-  }
-  .category-chip{
-    position:absolute; left:10px; top:10px; font-weight:700; font-size:.8rem;
-    background:rgba(255,255,255,.9); color:var(--text); padding:6px 10px; border-radius:999px;
-    backdrop-filter: blur(6px);
-  }
-
-  /* زر المفضّلة فوق الصورة */
-  .fav-btn{
-    position:absolute; right:10px; top:56px;    /* أسفل السعر قليلاً */
-    width:40px; height:40px; border:none; outline:none; cursor:pointer;
-    border-radius:999px; background:rgba(255,255,255,0.92);
-    display:flex; align-items:center; justify-content:center;
-    box-shadow: 0 4px 14px rgba(0,0,0,.12);
-  }
-  .fav-btn .bi{ font-size:18px; line-height:1; color:#a944ec }
-  .fav-btn.is-fav{ background:#a944ec; }
-  .fav-btn.is-fav .bi{ color:#fff }
+  .hrow{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 4px 12px}
+  .hrow::-webkit-scrollbar{height:8px}
+  .hrow::-webkit-scrollbar-thumb{background:color-mix(in oklab,var(--text) 18%,transparent);border-radius:999px}
+  .hcard{min-width:86%;max-width:86%;scroll-snap-align:start}
+  @media (min-width:576px){.hcard{min-width:58%;max-width:58%}}
+  @media (min-width:992px){.hcard{min-width:360px;max-width:360px}}
+  .section-head{margin:12px 2px 8px;display:flex;align-items:center;justify-content:space-between}
+  .section-title{font-weight:800;font-size:1.15rem}
+  .arrow-btn{border:1px solid var(--border);background:transparent;border-radius:12px;width:42px;height:42px;display:grid;place-items:center}
+  .arrow-btn:hover{background:color-mix(in oklab,var(--text) 8%,transparent)}
+  .mixed-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+  @media (max-width:480px){.mixed-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .spot-media{position:relative;overflow:hidden;border-radius:16px 16px 0 0}
+  .spot-media img{width:100%;height:220px;object-fit:cover;display:block}
+  .spot-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.15));pointer-events:none}
+  .price-badge{position:absolute;right:10px;top:10px;font-weight:800;font-size:.9rem;background:rgba(0,0,0,.75);color:#fff;padding:6px 10px;border-radius:999px}
+  .category-chip{position:absolute;left:10px;top:10px;font-weight:700;font-size:.8rem;background:rgba(255,255,255,.9);color:var(--text);padding:6px 10px;border-radius:999px;backdrop-filter:blur(6px)}
+  .fav-btn{position:absolute;right:10px;top:56px;width:40px;height:40px;border:none;outline:none;cursor:pointer;border-radius:999px;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+  .fav-btn .bi{font-size:18px;line-height:1;color:#a944ec}
+  .fav-btn.is-fav{background:#a944ec}
+  .fav-btn.is-fav .bi{color:#fff}
 </style>
 {% endblock %}
 
 {% block content %}
 
-{# 1) سلايدر “بالقرب منك / شائع” #}
+{# ==== سلايدر “بالقرب منك / شائع” ==== #}
 {% set nearby = (nearby_items if nearby_items is defined else popular_items)|default([]) %}
 {% if nearby %}
   <div class="section-head">
@@ -88,7 +53,6 @@
             <span class="category-chip">{{ category_label(it.category) }}</span>
           {% endif %}
 
-          <!-- زر المفضّلة -->
           <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="إضافة إلى المفضلة">
             <i class="bi bi-heart"></i>
           </button>
@@ -110,7 +74,7 @@
   </div>
 {% endif %}
 
-{# 2) سلايدر حسب التصنيف #}
+{# ==== سلايدر حسب التصنيف ==== #}
 {% set cats_map = (items_by_category if items_by_category is defined else {}) %}
 {% for code, lst in cats_map.items() %}
   {% if lst and lst|length > 0 %}
@@ -131,7 +95,6 @@
             {% endif %}
             <span class="category-chip">{{ category_label(it.category) }}</span>
 
-            <!-- زر المفضّلة -->
             <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="إضافة إلى المفضلة">
               <i class="bi bi-heart"></i>
             </button>
@@ -154,7 +117,7 @@
   {% endif %}
 {% endfor %}
 
-{# 3) شبكة “كل العناصر” #}
+{# ==== شبكة “كل العناصر” ==== #}
 {% set all_items_list =
       (all_items if all_items is defined else
        mixed_items if mixed_items is defined else
@@ -175,7 +138,6 @@
             <span class="category-chip">{{ category_label(it.category) }}</span>
           {% endif %}
 
-          <!-- زر المفضّلة -->
           <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="إضافة إلى المفضلة">
             <i class="bi bi-heart"></i>
           </button>
@@ -204,35 +166,14 @@
 {% endblock %}
 
 {% block scripts %}
-{# ========= حقن بيانات من الخادم بشكل JSON مضمون ========= #}
-<script id="page-data" type="application/json">
-{{ {
-  "is_auth": (session_user is defined and session_user),
-  "favorites_ids": favorites_ids | default([])
-} | tojson }}
+{# نمرّر حالة التسجيل ومصفوفة المفضلات بدون جافاسكربت داخل Jinja #}
+<meta name="is-auth" content="{{ '1' if (session_user is defined and session_user) else '0' }}">
+<script id="fav-data" type="application/json">
+  {{ favorites_ids | default([]) | tojson }}
 </script>
 
 <script>
-  // قراءة البيانات المحقونة
-  const BOOT = JSON.parse(document.getElementById('page-data').textContent);
-  const IS_AUTH = BOOT.is_auth;                 // true/false
-  const FAVORITES_IDS = BOOT.favorites_ids || [];// [1,2,3]
-
-  // ============ تعليم الأزرار الجاهزة بالمفضلة ============
-  function markExistingFavorites(){
-    document.querySelectorAll('.fav-btn').forEach(btn=>{
-      const id = Number(btn.dataset.id);
-      if (FAVORITES_IDS.includes(id)) {
-        btn.classList.add('is-fav');
-        const icon = btn.querySelector('.bi');
-        if(icon){ icon.classList.remove('bi-heart'); icon.classList.add('bi-heart-fill'); }
-        btn.setAttribute('aria-pressed','true');
-      }
-    });
-  }
-  document.addEventListener('DOMContentLoaded', markExistingFavorites);
-
-  // ============ أزرار التمرير للسلايدر ============
+  /* ===== أزرار التمرير للسلايدر ===== */
   function snap(el, dir=1){
     const node = document.querySelector(el);
     if(!node) return;
@@ -246,21 +187,61 @@
     b.addEventListener('click', ()=> snap(b.dataset.snapNext, +1));
   });
 
-  // ============ التبديل البصري للمفضلة (كما في كودك) ============
-  document.addEventListener('click', (e)=>{
+  /* ===== بيانات المفضلات من الـmeta و JSON ===== */
+  const IS_AUTH = (document.querySelector('meta[name="is-auth"]')?.content === '1');
+  let FAVORITES_IDS = [];
+  try{
+    const raw = document.getElementById('fav-data')?.textContent?.trim() || '[]';
+    FAVORITES_IDS = JSON.parse(raw);
+  }catch(e){ FAVORITES_IDS = []; }
+
+  /* ===== تعليم الأزرار الموجودة كمفضلة مسبقًا ===== */
+  function markExistingFavorites(){
+    document.querySelectorAll('.fav-btn').forEach((btn)=>{
+      const id = Number(btn.dataset.id);
+      if (Array.isArray(FAVORITES_IDS) && FAVORITES_IDS.includes(id)){
+        btn.classList.add('is-fav');
+        const icon = btn.querySelector('.bi');
+        if (icon){ icon.classList.remove('bi-heart'); icon.classList.add('bi-heart-fill'); }
+        btn.setAttribute('aria-pressed','true');
+      }
+    });
+  }
+
+  /* ===== الضغط على القلب: منع فتح الرابط + استدعاء API ===== */
+  document.addEventListener('click', async (e)=>{
     const btn = e.target.closest('.fav-btn');
     if(!btn) return;
-    btn.classList.toggle('is-fav');
-    const icon = btn.querySelector('.bi');
-    if(icon){
-      icon.classList.toggle('bi-heart');
-      icon.classList.toggle('bi-heart-fill');
-    }
-    btn.setAttribute('aria-pressed', btn.classList.contains('is-fav') ? 'true' : 'false');
 
-    // لاحقًا يمكن ربط API:
-    // const id = btn.dataset.id;
-    // fetch(`/favorites/toggle/${id}`, { method: 'POST' });
+    e.preventDefault();       // لا نذهب لصفحة العنصر
+    e.stopPropagation();
+
+    if(!IS_AUTH){ window.location.href = '/login'; return; }
+
+    const id = Number(btn.dataset.id);
+    const add = !btn.classList.contains('is-fav');
+
+    try{
+      const res = await fetch(`/favorites/${id}`, { method: add ? 'POST' : 'DELETE' });
+      if(!res.ok) throw new Error('bad response');
+
+      btn.classList.toggle('is-fav', add);
+      const icon = btn.querySelector('.bi');
+      if(icon){
+        icon.classList.toggle('bi-heart', !add);
+        icon.classList.toggle('bi-heart-fill', add);
+      }
+      // عدّل المصفوفة المحلية
+      const i = FAVORITES_IDS.indexOf(id);
+      if(add && i === -1) FAVORITES_IDS.push(id);
+      if(!add && i >= 0) FAVORITES_IDS.splice(i,1);
+    }catch(err){
+      console.error(err);
+      alert('تعذّر حفظ المفضلة مؤقتًا.');
+    }
   });
+
+  // تشغيل التعليم
+  markExistingFavorites();
 </script>
 {% endblock %}
