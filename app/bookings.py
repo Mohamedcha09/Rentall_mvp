@@ -1,403 +1,332 @@
 # app/bookings.py
 from datetime import datetime, date
-from fastapi import HTTPException , APIRouter, Depends, Request, Form
-from fastapi.responses import RedirectResponse, JSONResponse
+from typing import Optional, Literal
+
+from fastapi import APIRouter, Depends, Request, Form, HTTPException
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
 
 from .database import get_db
-from .models import Booking, Item, User
+from .models import User, Item, Booking, FreezeDeposit
+from .utils import category_label  # إن لم يوجد، أزل الاستيراد أو وفّر دالة بديلة
 
-router = APIRouter()
+router = APIRouter(tags=["bookings"])
 
-import os, stripe
-stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
-FEE_BPS = int(os.environ.get("PLATFORM_FEE_BPS","800"))  # 8% افتراضي
+# ---------------------------------------------------
+# Helper: احضار المستخدم من السيشن (يرجع None إن لم يسجّل)
+# ---------------------------------------------------
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
+    data = request.session.get("user") or {}
+    uid = data.get("id")
+    if not uid:
+        return None
+    return db.get(User, uid)
 
-def require_login(request: Request):
-    return request.session.get("user")
+def ensure_logged_in(user: Optional[User]):
+    if not user:
+        raise HTTPException(status_code=401, detail="not logged in")
 
-def require_approved(request: Request):
-    u = request.session.get("user")
-    return u and u.get("status") == "approved"
+def ensure_booking_side(u: User, b: Booking, as_role: Literal["owner","renter","any"]="any"):
+    ok = (u.id == b.owner_id) or (u.id == b.renter_id)
+    if not ok:
+        raise HTTPException(status_code=403, detail="not your booking")
+    if as_role == "owner" and u.id != b.owner_id:
+        raise HTTPException(status_code=403, detail="owner action only")
+    if as_role == "renter" and u.id != b.renter_id:
+        raise HTTPException(status_code=403, detail="renter action only")
 
-# ---------- إنشاء حجز ----------
-@router.get("/bookings/new")
-def booking_new(request: Request, db: Session = Depends(get_db), item_id: int = 0):
-    u = require_login(request)
-    if not u:
-        return RedirectResponse(url="/login", status_code=303)
-    if not require_approved(request):
-        return RedirectResponse(url="/profile", status_code=303)
-
-    item = db.query(Item).get(item_id)
-    if not item or item.is_active != "yes":
-        return RedirectResponse(url="/items", status_code=303)
-    if item.owner_id == u["id"]:
-        # لا تحجز عنصر تملكه
-        return RedirectResponse(url=f"/items/{item.id}", status_code=303)
-
-    return request.app.templates.TemplateResponse(
-        "bookings_new.html",
-        {
-            "request": request,
-            "title": "حجز جديد",
-            "item": item,
-            "session_user": u
-        }
-    )
-
-@router.post("/bookings/new")
-def booking_create(
+# ---------------------------------------------------
+# صفحة “العملية الواحدة” لحجز واحد
+# ---------------------------------------------------
+@router.get("/bookings/{booking_id}")
+def booking_flow_page(
+    booking_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    item_id: int = Form(...),
-    start_date: date = Form(...),
-    end_date: date = Form(...)
+    user: Optional[User] = Depends(get_current_user),
 ):
-    u = request.session.get("user")
-    if not u:
-        return RedirectResponse(url="/login", status_code=303)
+    ensure_logged_in(user)
+    b: Booking = db.get(Booking, booking_id)
+    if not b:
+        raise HTTPException(status_code=404, detail="booking not found")
 
-    item = db.query(Item).get(item_id)
-    if not item:
-        return RedirectResponse(url="/", status_code=303)
+    ensure_booking_side(user, b, "any")
 
-    days = (end_date - start_date).days or 1
-    total_amount = days * (item.price_per_day or 0)
+    it = db.get(Item, b.item_id)
+    is_owner = (user.id == b.owner_id)
+    is_renter = (user.id == b.renter_id)
 
-    b = Booking(
-        item_id=item.id,
-        renter_id=u["id"],
-        owner_id=item.owner_id,
-        start_date=start_date,
-        end_date=end_date,
-        days=days,
-        total_amount=total_amount,
-        status="pending"
-        # لا نمرر note هنا
+    # تجهيز نصوص مساعدة
+    item_title = it.title if it else f"#{b.item_id}"
+    owner_is_you = is_owner
+    renter_is_you = is_renter
+
+    # تمرير كل شيء للقالب
+    return request.app.templates.TemplateResponse(
+        "booking_flow.html",
+        {
+            "request": request,
+            "title": f"الحجز #{b.id}",
+            "session_user": request.session.get("user"),
+            "booking": b,
+            "item": it,
+            "item_title": item_title,
+            "is_owner": is_owner,
+            "is_renter": is_renter,
+            "category_label": category_label if "category_label" in globals() else (lambda c: c),
+        },
     )
-    db.add(b)
-    db.commit()
-    db.refresh(b)
 
+# ---------------------------------------------------
+# (1) المالك يوافق أو يرفض
+# ---------------------------------------------------
+@router.post("/bookings/{booking_id}/accept")
+def booking_accept(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    ensure_logged_in(user)
+    b: Booking = db.get(Booking, booking_id)
+    if not b:
+        raise HTTPException(status_code=404, detail="booking not found")
+    ensure_booking_side(user, b, "owner")
+    if b.status not in ("requested",):
+        return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
+
+    b.status = "accepted"
+    b.accepted_at = datetime.utcnow()
+    db.commit()
     return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
 
-# ---------- قائمتي ----------
-@router.get("/bookings")
-def my_bookings(request: Request, db: Session = Depends(get_db), view: str = "all"):   # >>> ADDED (view)
-    """
-    يعرض القائمتين معًا، أو واحدة حسب ?view=renter / ?view=owner
-    """
-    u = require_login(request)
-    if not u:
-        return RedirectResponse(url="/login", status_code=303)
-
-    # حجوزاتي كمستأجر
-    as_renter = (
-        db.query(Booking)
-        .filter(Booking.renter_id == u["id"])
-        .order_by(Booking.created_at.desc())
-        .all()
-    )
-    # طلبات على أشيائي (أنا المالك)
-    as_owner = (
-        db.query(Booking)
-        .filter(Booking.owner_id == u["id"])
-        .order_by(Booking.created_at.desc())
-        .all()
-    )
-
-    def view_row(b: Booking):
-        item = db.query(Item).get(b.item_id)
-        return {
-            "id": b.id,
-            "status": b.status,
-            "start_date": b.start_date,
-            "end_date": b.end_date,
-            "note": getattr(b, "note", "") or "",
-            "item": item,
-            "renter": db.query(User).get(b.renter_id),
-            "owner": db.query(User).get(b.owner_id),
-        }
-
-    # >>> ADDED (تصفية حسب view)
-    filtered_renter = [view_row(x) for x in as_renter] if view in ("all", "renter") else []
-    filtered_owner  = [view_row(x) for x in as_owner]  if view in ("all", "owner")  else []
-
-    return request.app.templates.TemplateResponse(
-        "bookings_list.html",
-        {
-            "request": request,
-            "title": "الحجوزات",
-            "session_user": u,
-            "as_renter": filtered_renter,
-            "as_owner": filtered_owner,
-            "current_view": view,                         # >>> ADDED
-            "today": date.today(),
-        }
-    )
-
-# ---------- مسارات متوافقة لتجنب 404 (اختصارات) ----------
-@router.get("/my_rentals")              # >>> ADDED
-def alias_my_rentals():
-    # مستأجر: عرض حجوزاتي
-    return RedirectResponse(url="/bookings?view=renter", status_code=303)
-
-@router.get("/owner/bookings")          # >>> ADDED
-def alias_owner_bookings():
-    # مالك: عرض الحجوزات على ممتلكاتي
-    return RedirectResponse(url="/bookings?view=owner", status_code=303)
-
-# ---------- أفعال المالك ----------
-@router.post("/bookings/{bid}/approve")
-def booking_approve(bid: int, request: Request, db: Session = Depends(get_db)):
-    u = require_login(request)
-    if not u:
-        return RedirectResponse(url="/login", status_code=303)
-    b = db.query(Booking).get(bid)
-    if not b or b.owner_id != u["id"] or b.status != "pending":
-        return RedirectResponse(url="/bookings", status_code=303)
-    b.status = "approved"
-    db.commit()
-    return RedirectResponse(url="/bookings?view=owner", status_code=303)  # >>> ADDED better back
-
-@router.post("/bookings/{bid}/reject")
-def booking_reject(bid: int, request: Request, db: Session = Depends(get_db)):
-    u = require_login(request)
-    if not u:
-        return RedirectResponse(url="/login", status_code=303)
-    b = db.query(Booking).get(bid)
-    if not b or b.owner_id != u["id"] or b.status != "pending":
-        return RedirectResponse(url="/bookings", status_code=303)
-    b.status = "rejected"
-    db.commit()
-    return RedirectResponse(url="/bookings?view=owner", status_code=303)  # >>> ADDED better back
-
-@router.post("/bookings/{bid}/complete")
-def booking_complete(bid: int, request: Request, db: Session = Depends(get_db)):
-    u = require_login(request)
-    if not u:
-        return RedirectResponse(url="/login", status_code=303)
-    b = db.query(Booking).get(bid)
-    if not b or b.owner_id != u["id"] or b.status != "active":
-        return RedirectResponse(url="/bookings", status_code=303)
-    b.status = "completed"
-    db.commit()
-    return RedirectResponse(url="/bookings?view=owner", status_code=303)  # >>> ADDED
-
-# ---------- أفعال المستأجر ----------
-@router.post("/bookings/{bid}/cancel")
-def booking_cancel(bid: int, request: Request, db: Session = Depends(get_db)):
-    u = require_login(request)
-    if not u:
-        return RedirectResponse(url="/login", status_code=303)
-    b = db.query(Booking).get(bid)
-    if not b or b.renter_id != u["id"] or b.status not in ["pending","approved"]:
-        return RedirectResponse(url="/bookings", status_code=303)
-    b.status = "cancelled"
-    db.commit()
-    return RedirectResponse(url="/bookings?view=renter", status_code=303)  # >>> ADDED
-
-@router.post("/bookings/{bid}/activate")
-def booking_activate(bid: int, request: Request, db: Session = Depends(get_db)):
-    """
-    المستأجر يؤكد الاستلام (بعد موافقة المالك) => active
-    """
-    u = require_login(request)
-    if not u:
-        return RedirectResponse(url="/login", status_code=303)
-    b = db.query(Booking).get(bid)
-    if not b or b.renter_id != u["id"] or b.status != "approved":
-        return RedirectResponse(url="/bookings", status_code=303)
-
-    today = datetime.utcnow().date()
-    if today < b.start_date:
-        return RedirectResponse(url="/bookings", status_code=303)
-
-    b.status = "active"
-    db.commit()
-    return RedirectResponse(url="/bookings?view=renter", status_code=303)  # >>> ADDED
-
-# ---------- NEW: API فترات محجوزة (approved/active) لعنصر ----------
-@router.get("/api/items/{item_id}/booked")
-def api_item_booked(item_id: int, request: Request, db: Session = Depends(get_db)):
-    rows = (
-        db.query(Booking)
-        .filter(
-            Booking.item_id == item_id,
-            Booking.status.in_(["approved", "active"])
-        )
-        .all()
-    )
-    data = [
-        { "start": r.start_date.isoformat(), "end": r.end_date.isoformat() }
-        for r in rows
-    ]
-    return JSONResponse({"blocked": data})
-
-@router.get("/bookings/{booking_id}")
-def booking_detail(booking_id: int, request: Request, db: Session = Depends(get_db)):
-    u = request.session.get("user")
-    if not u:
-        return RedirectResponse(url="/login", status_code=303)
-    b = db.query(Booking).get(booking_id)
-    if not b:
-        return RedirectResponse(url="/", status_code=303)
-    if u["id"] not in [b.renter_id, b.owner_id]:
-        return RedirectResponse(url="/", status_code=303)
-
-    item = db.query(Item).get(b.item_id)
-    renter = db.query(User).get(b.renter_id)
-    owner = db.query(User).get(b.owner_id)
-
-    return request.app.templates.TemplateResponse(
-        "booking_detail.html",
-        {
-            "request": request,
-            "title": f"حجز #{b.id}",
-            "booking": b,
-            "item": item,
-            "renter": renter,
-            "owner": owner,
-            "session_user": u,
-        },
-    )
-
-def _me(request: Request):
-    return request.session.get("user")
-
-def _not_auth():
-    return RedirectResponse(url="/login", status_code=303)
-
-def _back_to_booking(bid: int):
-    return RedirectResponse(url=f"/bookings/{bid}", status_code=303)
-
-# --------- مالك يعتمد الطلب (من pending → confirmed) ----------
-@router.post("/bookings/{booking_id}/confirm")
-def booking_confirm(booking_id: int, request: Request, db: Session = Depends(get_db)):
-    u = _me(request)
-    if not u:
-        return _not_auth()
-    b: Booking = db.query(Booking).get(booking_id)
-    if not b:
-        return RedirectResponse(url="/", status_code=303)
-    # فقط المالك يستطيع الاعتماد
-    if u["id"] != b.owner_id or b.status != "pending":
-        return _back_to_booking(booking_id)
-    b.status = "confirmed"
-    db.commit()
-    # بعد الاعتماد → يحوّل لصفحة الدفع
-    return RedirectResponse(url=f"/checkout/{booking_id}", status_code=303)
-
-# --------- مالك يرفض الطلب (من pending → cancelled) ----------
 @router.post("/bookings/{booking_id}/reject")
-def booking_reject(booking_id: int, request: Request, db: Session = Depends(get_db)):
-    u = _me(request)
-    if not u:
-        return _not_auth()
-    b: Booking = db.query(Booking).get(booking_id)
+def booking_reject(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    ensure_logged_in(user)
+    b: Booking = db.get(Booking, booking_id)
     if not b:
-        return RedirectResponse(url="/", status_code=303)
-    if u["id"] != b.owner_id or b.status != "pending":
-        return _back_to_booking(booking_id)
-    b.status = "cancelled"
+        raise HTTPException(status_code=404, detail="booking not found")
+    ensure_booking_side(user, b, "owner")
+    if b.status not in ("requested", "accepted"):
+        return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
+
+    b.status = "rejected"
+    b.rejected_at = datetime.utcnow()
     db.commit()
-    return _back_to_booking(booking_id)
+    return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
 
-# --------- مستأجر يلغي قبل الاعتماد ----------
-@router.post("/bookings/{booking_id}/cancel")
-def booking_cancel(booking_id: int, request: Request, db: Session = Depends(get_db)):
-    u = _me(request)
-    if not u:
-        return _not_auth()
-    b: Booking = db.query(Booking).get(booking_id)
+# ---------------------------------------------------
+# (2) المستأجر يختار طريقة الدفع
+#     - كاش: نعدّها “مدفوعة” بدون ديبو
+#     - أونلاين (Placeholder): نضع قيم rent/deposit ونعلّمها “paid”
+# ---------------------------------------------------
+@router.post("/bookings/{booking_id}/pay-cash")
+def booking_pay_cash(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    ensure_logged_in(user)
+    b: Booking = db.get(Booking, booking_id)
     if not b:
-        return RedirectResponse(url="/", status_code=303)
-    # يسمح بالإلغاء إذا كان هو المستأجر والحالة pending
-    if u["id"] != b.renter_id or b.status != "pending":
-        return _back_to_booking(booking_id)
-    b.status = "cancelled"
+        raise HTTPException(status_code=404, detail="booking not found")
+
+    ensure_booking_side(user, b, "renter")
+    if b.status not in ("accepted",):
+        return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
+
+    b.payment_method = "cash"
+    b.online_status = None
+    b.hold_deposit_amount = 0
+    b.deposit_status = "none"
+
+    # علامة “paid” هنا تعني أنه اختار الكاش وتم الاتفاق، لكن التحويل ليس عبر المنصة
+    b.status = "paid"
+    b.updated_at = datetime.utcnow()
     db.commit()
-    return _back_to_booking(booking_id)
+    return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
 
-# ================== Checkout (تجريبي) ==================
-@router.get("/checkout/{booking_id}")
-def checkout_page(booking_id: int, request: Request, db: Session = Depends(get_db)):
-    u = _me(request)
-    if not u:
-        return _not_auth()
-    b: Booking = db.query(Booking).get(booking_id)
+@router.post("/bookings/{booking_id}/pay-online")
+def booking_pay_online_placeholder(
+    booking_id: int,
+    request: Request,
+    rent_amount: int = Form(...),
+    deposit_amount: int = Form(0),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    Placeholder: لا يوجد Stripe فعلي.
+    - نخزّن rent_amount و deposit_amount
+    - نعلّم online_status='paid' و status='paid'
+    - عند 'picked_up' سنحوّل rent للمالك (نحط وقت release فقط كتسجيل)
+    - الديبو يبقى 'held' حتى الإرجاع.
+    """
+    ensure_logged_in(user)
+    b: Booking = db.get(Booking, booking_id)
     if not b:
-        return RedirectResponse(url="/", status_code=303)
-    if u["id"] != b.renter_id or b.status != "confirmed":
-        return _back_to_booking(booking_id)
-    item = db.query(Item).get(b.item_id)
-    owner = db.query(User).get(b.owner_id)
+        raise HTTPException(status_code=404, detail="booking not found")
+    ensure_booking_side(user, b, "renter")
 
-    # 👇 هنا حط الـ return الجديد
+    if b.status not in ("accepted",):
+        return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
+
+    # حفظ القيم
+    b.payment_method = "online"
+    b.rent_amount = max(0, int(rent_amount or 0))
+    b.hold_deposit_amount = max(0, int(deposit_amount or 0))
+
+    b.online_status = "paid"      # في Stripe الحقيقي تنتظر webhook
+    b.deposit_status = "held" if b.hold_deposit_amount > 0 else "none"
+    b.status = "paid"
+    b.updated_at = datetime.utcnow()
+    db.commit()
+    return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
+
+# ---------------------------------------------------
+# (3) المستأجر يؤكد “تم استلام الغرض” (تحويل مبلغ الإيجار للمالك)
+# ---------------------------------------------------
+@router.post("/bookings/{booking_id}/picked-up")
+def booking_picked_up(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    ensure_logged_in(user)
+    b: Booking = db.get(Booking, booking_id)
+    if not b:
+        raise HTTPException(status_code=404, detail="booking not found")
+    ensure_booking_side(user, b, "renter")
+
+    if b.status not in ("paid",):
+        return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
+
+    b.status = "picked_up"
+    b.picked_up_at = datetime.utcnow()
+
+    # في الدفع الأونلاين: لحظة الاستلام نعتبر تحويل الإيجار للمالك (release)
+    if b.payment_method == "online":
+        b.owner_payout_amount = b.rent_amount or 0
+        b.rent_released_at = datetime.utcnow()
+        b.online_status = "captured"  # مجرد تمييز placeholder
+
+    db.commit()
+    return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
+
+# ---------------------------------------------------
+# (4) المستأجر يضغط “تم إرجاع الغرض”
+# ---------------------------------------------------
+@router.post("/bookings/{booking_id}/mark-returned")
+def booking_mark_returned(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    ensure_logged_in(user)
+    b: Booking = db.get(Booking, booking_id)
+    if not b:
+        raise HTTPException(status_code=404, detail="booking not found")
+    ensure_booking_side(user, b, "renter")
+
+    if b.status not in ("picked_up",):
+        return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
+
+    b.status = "returned"
+    b.returned_at = datetime.utcnow()
+    db.commit()
+    return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
+
+# ---------------------------------------------------
+# (5) المالك يؤكد الإرجاع ويقرر مصير الديبو
+#     - action = ok          → إرجاع الديبو بالكامل
+#     - action = charge      → اقتطاع amount من الديبو (جزئي/كامل)
+# ---------------------------------------------------
+@router.post("/bookings/{booking_id}/owner-confirm-return")
+def owner_confirm_return(
+    booking_id: int,
+    request: Request,
+    action: Literal["ok", "charge"] = Form(...),
+    charge_amount: int = Form(0),
+    owner_note: str = Form(""),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    ensure_logged_in(user)
+    b: Booking = db.get(Booking, booking_id)
+    if not b:
+        raise HTTPException(status_code=404, detail="booking not found")
+    ensure_booking_side(user, b, "owner")
+
+    if b.status not in ("returned", "picked_up"):
+        return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
+
+    b.owner_return_note = (owner_note or "").strip()
+    now = datetime.utcnow()
+
+    if b.payment_method == "online" and (b.hold_deposit_amount or 0) > 0:
+        if action == "ok":
+            # إرجاع الديبو بالكامل
+            b.deposit_charged_amount = 0
+            b.deposit_status = "refunded"
+            # في Stripe الحقيقي: تنفيذ refund/void
+        else:
+            amt = max(0, int(charge_amount or 0))
+            held = b.hold_deposit_amount or 0
+            if amt >= held:
+                # اقتطاع كامل الديبو
+                b.deposit_charged_amount = held
+                b.deposit_status = "claimed"
+            else:
+                # اقتطاع جزئي
+                b.deposit_charged_amount = amt
+                b.deposit_status = "partially_refunded"
+            # Stripe الحقيقي: capture جزئي/كامل لباقي الديبو
+    else:
+        # كاش أو لا يوجد ديبو
+        b.deposit_charged_amount = 0
+        b.deposit_status = "none" if (b.hold_deposit_amount or 0) == 0 else (b.deposit_status or "released")
+
+    b.return_confirmed_by_owner_at = now
+    b.status = "closed"
+    b.updated_at = now
+    db.commit()
+    return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
+
+# ---------------------------------------------------
+# قائمة الحجوزات (مختصر للمالك/المستأجر) — اختياري موجود لديك مسبقًا
+# ---------------------------------------------------
+@router.get("/bookings")
+def bookings_index(
+    request: Request,
+    view: Literal["owner", "renter"] = "renter",
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    ensure_logged_in(user)
+    q = db.query(Booking)
+    if view == "owner":
+        q = q.filter(Booking.owner_id == user.id)
+    else:
+        q = q.filter(Booking.renter_id == user.id)
+    q = q.order_by(Booking.created_at.desc())
+    bookings = q.all()
+
+    # صفحة بسيطة (يمكنك إبقاء صفحتك الحالية)
     return request.app.templates.TemplateResponse(
-        "checkout_detail.html",
+        "bookings_index.html",  # لو لا يوجد عندك هذا القالب، أنشئ واحدًا بسيطًا أو غيّر الاسم لقالبك الحالي
         {
             "request": request,
-            "title": f"Checkout #{b.id}",
-            "booking": b,
-            "item": item,
-            "owner": owner,
-            "session_user": u,
-            "pk": os.environ.get("STRIPE_PUBLISHABLE_KEY")  # مفتاح Stripe العام
+            "title": "حجوزاتي" if view == "renter" else "حجوزات على ممتلكاتي",
+            "session_user": request.session.get("user"),
+            "bookings": bookings,
+            "view": view,
         },
     )
-
-@router.post("/checkout/{booking_id}/pay")
-def checkout_pay(booking_id: int, request: Request, db: Session = Depends(get_db)):
-    u = _me(request)
-    if not u:
-        return _not_auth()
-    b: Booking = db.query(Booking).get(booking_id)
-    if not b:
-        return RedirectResponse(url="/", status_code=303)
-    # هنا سنحاكي نجاح الدفع
-    if u["id"] == b.renter_id and b.status == "confirmed":
-        b.status = "paid"
-        db.commit()
-    return _back_to_booking(booking_id)
-
-
-@router.post("/api/checkout/{booking_id}/intent")
-def api_create_intent(booking_id: int, request: Request, db: Session = Depends(get_db)):
-    u = request.session.get("user")
-    if not u: 
-        raise HTTPException(status_code=401, detail="login required")
-    b: Booking = db.query(Booking).get(booking_id)
-    if not b: 
-        raise HTTPException(status_code=404, detail="not found")
-    if u["id"] != b.renter_id: 
-        raise HTTPException(status_code=403, detail="forbidden")
-    if b.status not in ["confirmed", "paid"]:
-        # يجب أن يكون المالك أكد الطلب (confirmed) قبل الدفع
-        raise HTTPException(status_code=400, detail="not ready")
-
-    # صاحب المنتج
-    owner: User = db.query(User).get(b.owner_id)
-    if not owner or not owner.stripe_account_id or not owner.payouts_enabled:
-        raise HTTPException(status_code=400, detail="owner not ready for payouts")
-
-    amount_cents = int((b.total_amount or 0) * 100)
-    fee_cents = amount_cents * FEE_BPS // 10000
-
-    # أنشئ PaymentIntent مع تحويل تلقائي إلى حساب المالك
-    intent = stripe.PaymentIntent.create(
-        amount = amount_cents,
-        currency = "usd",
-        automatic_payment_methods={"enabled": True},
-        application_fee_amount = fee_cents,
-        transfer_data = {"destination": owner.stripe_account_id},
-        metadata = {"booking_id": str(b.id)}
-    )
-
-    b.payment_intent_id = intent["id"]
-    b.payment_status = intent["status"]
-    db.commit()
-
-    return {"clientSecret": intent["client_secret"]}

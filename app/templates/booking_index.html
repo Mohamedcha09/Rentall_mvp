@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>{{ title }}</h4>
+    <div class="btn-group">
+      <a class="btn btn-sm {% if view=='renter' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="/bookings?view=renter">كمستأجر</a>
+      <a class="btn btn-sm {% if view=='owner' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="/bookings?view=owner">كمالك</a>
+    </div>
+  </div>
+
+  {% if bookings and bookings|length %}
+    <div class="list-group">
+      {% for b in bookings %}
+        <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+           href="/bookings/{{ b.id }}">
+          <div>
+            <div class="fw-bold">الحجز #{{ b.id }} — الحالة: {{ b.status }}</div>
+            <div class="small text-muted">{{ b.start_date }} → {{ b.end_date }} ({{ b.days }}يوم)</div>
+          </div>
+          <i class="bi bi-chevron-left"></i>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="alert alert-secondary">لا توجد حجوزات بعد.</div>
+  {% endif %}
+</div>
+{% endblock %}

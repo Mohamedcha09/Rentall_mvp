@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+  .flow-card{max-width:980px;margin:auto}
+  .state-badge{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border:1px solid var(--border);border-radius:999px;font-weight:700}
+  .k{opacity:.65}
+  .acts{display:flex;flex-wrap:wrap;gap:10px}
+  .acts form{display:inline}
+  .hint{background:color-mix(in oklab,var(--surface) 95%,transparent);border:1px dashed var(--border);border-radius:12px;padding:10px 12px}
+  .box{border:1px solid var(--border);border-radius:12px;padding:12px}
+  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flow-card card p-3 p-md-4">
+  <div class="d-flex justify-content-between align-items-start">
+    <div>
+      <h4 class="mb-1">الحجز #{{ booking.id }}</h4>
+      <div class="k">العنصر: <strong>{{ item_title }}</strong>{% if item %} — <a href="/items/{{ item.id }}">عرض</a>{% endif %}</div>
+      <div class="k">الفترة: {{ booking.start_date }} → {{ booking.end_date }} ({{ booking.days }} يوم)</div>
+    </div>
+    <span class="state-badge">
+      <i class="bi bi-flag"></i> الحالة: {{ booking.status }}
+    </span>
+  </div>
+
+  <hr>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-7">
+      {# ===== المرحلة 1: بانتظار موافقة المالك ===== #}
+      {% if booking.status in ['requested'] %}
+        {% if is_owner %}
+          <h5>طلب جديد ينتظر موافقتك</h5>
+          <div class="acts mt-2">
+            <form method="post" action="/bookings/{{ booking.id }}/accept">
+              <button class="btn btn-success"><i class="bi bi-check2-circle"></i> قبول</button>
+            </form>
+            <form method="post" action="/bookings/{{ booking.id }}/reject">
+              <button class="btn btn-outline-danger"><i class="bi bi-x-lg"></i> رفض</button>
+            </form>
+          </div>
+        {% elif is_renter %}
+          <div class="hint">تم إرسال طلبك. بانتظار موافقة المالك…</div>
+        {% endif %}
+      {% endif %}
+
+      {# ===== المرحلة 2: تم القبول → اختيار طريقة الدفع ===== #}
+      {% if booking.status in ['accepted'] %}
+        {% if is_renter %}
+          <h5>اختر طريقة الدفع</h5>
+          <div class="box mb-2">
+            <div class="mb-2">الدفع <strong>كاش عند الاستلام</strong></div>
+            <form method="post" action="/bookings/{{ booking.id }}/pay-cash">
+              <button class="btn btn-secondary"><i class="bi bi-cash-stack"></i> سأدفع كاش</button>
+            </form>
+          </div>
+
+          <div class="box">
+            <div class="mb-2">الدفع <strong>أونلاين (Placeholder)</strong></div>
+            <form method="post" action="/bookings/{{ booking.id }}/pay-online">
+              <div class="row g-2 align-items-end">
+                <div class="col-6">
+                  <label class="form-label">مبلغ الإيجار</label>
+                  <input class="form-control" type="number" step="1" min="0" name="rent_amount" value="{{ booking.total_amount or 0 }}">
+                </div>
+                <div class="col-6">
+                  <label class="form-label">قيمة الديبو (اختياري)</label>
+                  <input class="form-control" type="number" step="1" min="0" name="deposit_amount" value="{{ booking.hold_deposit_amount or 0 }}">
+                </div>
+                <div class="col-12 mt-2">
+                  <button class="btn btn-primary"><i class="bi bi-credit-card"></i> ادفع أونلاين (تجريبي)</button>
+                </div>
+              </div>
+            </form>
+            <div class="k mt-2">* هذا دفع وهمي لتجربة السلوك. سنشبك Stripe لاحقًا.</div>
+          </div>
+        {% elif is_owner %}
+          <div class="hint">تم قبول الطلب. بانتظار أن يختار المستأجر طريقة الدفع…</div>
+        {% endif %}
+      {% endif %}
+
+      {# ===== المرحلة 3: مدفوع بانتظار الاستلام ===== #}
+      {% if booking.status in ['paid'] %}
+        {% if is_renter %}
+          <h5>جاهز للاستلام</h5>
+          <div class="hint">عند استلامك الغرض من المالك، اضغط الزر أدناه.</div>
+          <form class="mt-2" method="post" action="/bookings/{{ booking.id }}/picked-up">
+            <button class="btn btn-success"><i class="bi bi-bag-check"></i> تم استلام الغرض</button>
+          </form>
+        {% elif is_owner %}
+          <div class="hint">تم الدفع. بانتظار أن يؤكد المستأجر أنه استلم الغرض.</div>
+        {% endif %}
+      {% endif %}
+
+      {# ===== المرحلة 4: الغرض مع المستأجر ===== #}
+      {% if booking.status in ['picked_up'] %}
+        {% if is_renter %}
+          <h5>الغرض لديك الآن</h5>
+          <div class="hint">عند إرجاع الغرض للمالك، اضغط:</div>
+          <form class="mt-2" method="post" action="/bookings/{{ booking.id }}/mark-returned">
+            <button class="btn btn-warning"><i class="bi bi-arrow-return-left"></i> تم إرجاع الغرض</button>
+          </form>
+        {% elif is_owner %}
+          <div class="hint">المستأجر استلم الغرض. عند إرجاعه ستظهر لك خطوات تأكيد الإرجاع والديبو.</div>
+        {% endif %}
+      {% endif %}
+
+      {# ===== المرحلة 5: المستأجر أرجع الغرض → المالك يقرر الديبو ===== #}
+      {% if booking.status in ['returned'] %}
+        {% if is_owner %}
+          <h5>تأكيد الإرجاع ومعالجة الديبو</h5>
+          <div class="box mb-2">
+            <form method="post" action="/bookings/{{ booking.id }}/owner-confirm-return">
+              <input type="hidden" name="action" value="ok">
+              <label class="form-label">ملاحظة (اختياري)</label>
+              <textarea class="form-control mb-2" name="owner_note" rows="2"></textarea>
+              <button class="btn btn-success"><i class="bi bi-check2"></i> كل شيء بخير — إعادة الديبو بالكامل</button>
+            </form>
+          </div>
+
+          <div class="box">
+            <form method="post" action="/bookings/{{ booking.id }}/owner-confirm-return">
+              <input type="hidden" name="action" value="charge">
+              <div class="row g-2">
+                <div class="col-6">
+                  <label class="form-label">مبلغ الخصم من الديبو</label>
+                  <input class="form-control" type="number" step="1" min="0" name="charge_amount" value="0">
+                </div>
+                <div class="col-12">
+                  <label class="form-label">سبب الخصم (اختياري)</label>
+                  <textarea class="form-control" name="owner_note" rows="2"></textarea>
+                </div>
+                <div class="col-12 mt-2">
+                  <button class="btn btn-outline-danger"><i class="bi bi-exclamation-triangle"></i> خصم من الديبو</button>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="k mt-2">* في Stripe الحقيقي: هنا سنقوم برد/اقتطاع الديبو حسب اختيارك.</div>
+        {% elif is_renter %}
+          <div class="hint">تم تعليم الإرجاع. بانتظار المالك لتأكيد الحالة وتحرير الديبو.</div>
+        {% endif %}
+      {% endif %}
+
+      {# ===== المرحلة النهائية ===== #}
+      {% if booking.status in ['closed','rejected'] %}
+        <div class="alert alert-info">
+          {% if booking.status == 'closed' %}
+            العملية مكتملة ✅
+          {% else %}
+            تم رفض الحجز ❌
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="col-12 col-lg-5">
+      <div class="box">
+        <h6 class="mb-2">ملخص الدفع</h6>
+        <div class="d-flex justify-content-between">
+          <span>طريقة الدفع</span>
+          <strong>{{ booking.payment_method or '—' }}</strong>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span>مبلغ الإيجار</span>
+          <strong>{{ booking.rent_amount or booking.total_amount or 0 }}$</strong>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span>الديبو المحتجز</span>
+          <strong>{{ booking.hold_deposit_amount or 0 }}$</strong>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span>حالة التحصيل الأونلاين</span>
+          <strong>{{ booking.online_status or '—' }}</strong>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span>حالة الديبو</span>
+          <strong>{{ booking.deposit_status or '—' }}</strong>
+        </div>
+        <hr>
+        <div class="k mono small">
+          {% if booking.accepted_at %}accepted_at: {{ booking.accepted_at }}<br>{% endif %}
+          {% if booking.picked_up_at %}picked_up_at: {{ booking.picked_up_at }}<br>{% endif %}
+          {% if booking.returned_at %}returned_at: {{ booking.returned_at }}<br>{% endif %}
+          {% if booking.return_confirmed_by_owner_at %}owner_confirmed_at: {{ booking.return_confirmed_by_owner_at }}<br>{% endif %}
+          {% if booking.rent_released_at %}rent_released_at: {{ booking.rent_released_at }}<br>{% endif %}
+        </div>
+      </div>
+
+      {% if item %}
+      <div class="box mt-3">
+        <h6 class="mb-2">العنصر</h6>
+        <div class="d-flex gap-3">
+          <img src="{{ item.image_path or '/static/placeholder.jpg' }}" style="width:96px;height:96px;object-fit:cover;border-radius:10px" alt="">
+          <div>
+            <div class="fw-bold">{{ item.title }}</div>
+            <div class="k">{{ category_label(item.category) }}</div>
+            <div class="k">السعر اليومي: {{ item.price_per_day }}$</div>
+            <a class="small" href="/items/{{ item.id }}">فتح صفحة العنصر</a>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
