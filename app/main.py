@@ -29,10 +29,9 @@ from .pay_api import router as pay_api_router
 from .payout_connect import router as payout_connect_router
 from .webhooks import router as webhooks_router
 from .disputes import router as disputes_router
-from .bookings import router as bookings_router
 from .routes_search import router as search_router
 from .routes_users import router as users_router
-from .admin_badges import router as admin_badges_router  # اختياري
+from .admin_badges import router as admin_badges_router 
 from .routes_bookings import router as bookings_router
 
 # [مضاف] راوتر المفضّلات
@@ -124,7 +123,6 @@ app.include_router(pay_api_router)
 app.include_router(payout_connect_router)
 app.include_router(webhooks_router)
 app.include_router(disputes_router)
-app.include_router(bookings_router)
 app.include_router(search_router)
 app.include_router(users_router)
 app.include_router(admin_badges_router)
@@ -332,4 +330,4 @@ def switch_language(lang: str, request: Request):
     referer = request.headers.get("referer") or "/"
     resp = RedirectResponse(url=referer, status_code=302)
     resp.set_cookie("lang", lang, max_age=60 * 60 * 24 * 365, httponly=False, samesite="lax")
-    return respond
+    return resp 

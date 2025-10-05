@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="max-width:840px">
+  <h3 class="mb-3">حجز: {{ item.title }}</h3>
+
+  {% if request.query_params.get('err') == 'dates' %}
+    <div class="alert alert-danger">الرجاء اختيار تاريخ بداية ونهاية صحيحين.</div>
+  {% endif %}
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <form method="post" action="/bookings/create" class="row g-3">
+        <input type="hidden" name="item_id" value="{{ item.id }}">
+
+        <div class="col-12 col-md-6">
+          <label class="form-label">من</label>
+          <input type="date" name="start_date" class="form-control" required>
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label class="form-label">إلى</label>
+          <input type="date" name="end_date" class="form-control" required>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label d-block">طريقة الدفع</label>
+          <div class="d-flex gap-3">
+            <label class="form-check">
+              <input class="form-check-input" type="radio" name="pay_method" value="online" checked>
+              <span class="form-check-label">أونلاين (عن طريق الموقع)</span>
+            </label>
+            <label class="form-check">
+              <input class="form-check-input" type="radio" name="pay_method" value="cash">
+              <span class="form-check-label">كاش عند التسليم</span>
+            </label>
+          </div>
+          <div class="form-text mt-1">
+            السعر اليومي الحالي: <strong>{{ item.price_per_day }} د.ج</strong>
+          </div>
+        </div>
+
+        <div class="col-12 d-flex justify-content-end gap-2">
+          <a href="/items/{{ item.id }}" class="btn btn-light">رجوع</a>
+          <button class="btn btn-primary">متابعة</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
