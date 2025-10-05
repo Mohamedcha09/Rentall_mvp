@@ -332,8 +332,3 @@ def switch_language(lang: str, request: Request):
     resp = RedirectResponse(url=referer, status_code=302)
     resp.set_cookie("lang", lang, max_age=60 * 60 * 24 * 365, httponly=False, samesite="lax")
     return respond
-
-
-    @app.get("/robots.txt")
-async def robots_txt():
-    return FileResponse("robots.txt", media_type="text/plain")
