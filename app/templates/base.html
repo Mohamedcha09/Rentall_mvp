@@ -66,14 +66,13 @@
       /* ===========================
          Blossom-style icons & search
          =========================== */
-      .actions .btn-plain{            /* زر بدون إطار */
+      .actions .btn-plain{
         border:0 !important; background:transparent !important; box-shadow:none !important;
         padding:.2rem .35rem !important; line-height:1;
       }
       .icon-img{ width:24px; height:24px; display:block; }
       .btn-plain:hover{ transform:translateY(-1px); }
 
-      /* حقل البحث كبسولة فاتحة (يتكيّف مع الثيم) */
       .topbar .search .search__input{
         height:44px !important; border-radius:999px !important; border:0 !important;
         background:#f4f6fb !important; color:#3b4152 !important;
@@ -90,7 +89,6 @@
         color: color-mix(in oklab, var(--text) 60%, transparent);
       }
 
-      /* تبويب الموبايل: إظهار الأيقونة المعبّأة عند التفعيل */
       .mobile-tabbar .tab-icon--active{ display:none; }
       .mobile-tabbar a.is-active .tab-icon{ display:none; }
       .mobile-tabbar a.is-active .tab-icon--active{ display:inline-block; }
@@ -124,19 +122,16 @@
         <div id="typeaheadPanel" class="typeahead d-none"></div>
 
         <div class="actions d-flex align-items-center gap-2">
-          <!-- رسائل (أيقونة الصورة البنفسجية) -->
           <a href="/messages" class="btn-plain btn-messages" title="الرسائل">
             <img class="icon-img" src="/static/img/msg.png" alt="Messages">
           </a>
 
-          <!-- [مضاف] مفضلتي (يظهر فقط عند تسجيل الدخول) -->
           {% if session_user %}
           <a href="/favorites" class="btn-plain" title="مفضلتي">
             <i class="bi bi-heart-fill" style="font-size:20px; color:#a944ec;"></i>
           </a>
           {% endif %}
 
-          <!-- إشعارات (أيقونة الجرس الخضراء) -->
           {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
           <button class="btn-plain position-relative" id="notifOpen" title="الإشعارات">
             <img class="icon-img" src="/static/img/notfi.png" alt="Notifications">
@@ -146,7 +141,7 @@
             {% endif %}
           </button>
 
-          <!-- (يُخفى على الجوال) إنشاء -->
+          <!-- إنشاء -->
           <div class="dropdown">
             <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown">
               <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">إنشاء</span>
@@ -157,22 +152,22 @@
             </ul>
           </div>
 
-          <!-- (يُخفى على الجوال) تبديل الثيم -->
+          <!-- تبديل الثيم -->
           <button class="btn btn-ghost btn-sm" id="themeToggle" title="تبديل الثيم">
             <i class="bi bi-sun-fill d-none" id="sunIcon"></i>
             <i class="bi bi-moon-stars-fill" id="moonIcon"></i>
           </button>
 
-          <!-- مُبدّل اللغة -->
+          <!-- اللغة -->
           <div class="dropdown lang-switch">
             <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="اللغة">
               <i class="bi bi-globe2"></i>
               <span class="d-none d-sm-inline">{{ current_lang()|upper if current_lang else 'AR' }}</span>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item d-flex align-items-center" href="/lang/ar"><span class="me-2"></span> العربية</a></li>
-              <li><a class="dropdown-item d-flex align-items-center" href="/lang/en"><span class="me-2"></span> English</a></li>
-              <li><a class="dropdown-item d-flex align-items-center" href="/lang/fr"><span class="me-2"></span> Français</a></li>
+              <li><a class="dropdown-item d-flex align-items-center" href="/lang/ar">العربية</a></li>
+              <li><a class="dropdown-item d-flex align-items-center" href="/lang/en">English</a></li>
+              <li><a class="dropdown-item d-flex align-items-center" href="/lang/fr">Français</a></li>
             </ul>
           </div>
 
@@ -189,7 +184,8 @@
               <ul class="dropdown-menu dropdown-menu-end">
                 <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> صفحتي</a></li>
                 <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
-                <li><a class="dropdown-item" href="/bookings?view=renter"><i class="bi bi-bag"></i> طلباتي</a></li>
+                <!-- استبدال الطلبات/حجوزات المالك برابط واحد -->
+                <li><a class="dropdown-item" href="/booking_flow"><i class="bi bi-calendar2-check"></i> حجوزاتي</a></li>
                 <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a></li>
                 {% if session_user.role == 'admin' %}
                   <li><hr class="dropdown-divider"></li>
@@ -219,7 +215,6 @@
         </a>
 
         {% if session_user %}
-          <!-- [مضاف] مفضلتي في الـSidebar -->
           <a class="side-link {% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}" href="/favorites" data-tooltip="مفضلتي">
             <i class="bi bi-heart"></i> <span>مفضلتي</span>
           </a>
@@ -227,18 +222,23 @@
           <a class="side-link {% if request and request.url.path.startswith('/profile') %}is-active{% endif %}" href="/profile" data-tooltip="صفحتي">
             <i class="bi bi-person"></i> <span>صفحتي</span>
           </a>
+
+          <!-- أشيائي تبقى كما هي -->
           <a class="side-link {% if request and request.url.path.startswith('/owner/items') %}is-active{% endif %}" href="/owner/items" data-tooltip="أشيائي">
             <i class="bi bi-collection"></i> <span>أشيائي</span>
           </a>
-          <a class="side-link {% if request and request.url.path.startswith('/bookings') and request.query_params.get('view')=='renter' %}is-active{% endif %}" href="/bookings?view=renter" data-tooltip="طلباتي">
-            <i class="bi bi-bag"></i> <span>طلباتي</span>
+
+          <!-- الرابط الجديد الموحد لحجوزات المستأجر والمالك -->
+          <a class="side-link {% if request and request.url.path.startswith('/booking_flow') %}is-active{% endif %}" href="/booking_flow" data-tooltip="حجوزاتي">
+            <i class="bi bi-calendar2-check"></i> <span>حجوزاتي</span>
           </a>
-          <a class="side-link {% if request and request.url.path.startswith('/bookings') and request.query_params.get('view')=='owner' %}is-active{% endif %}" href="/bookings?view=owner" data-tooltip="حجوزات على ممتلكاتي">
-            <i class="bi bi-calendar-check"></i> <span>حجوزات على ممتلكاتي</span>
-          </a>
+
+          <!-- حُذفت: طلباتي & حجوزات على ممتلكاتي -->
+
           <a class="side-link {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" href="/payout/settings" data-tooltip="التحويلات">
             <i class="bi bi-cash-stack"></i> <span>التحويلات</span>
           </a>
+
           {% if session_user.role == 'admin' %}
             <div class="side-sep"></div>
             <a class="side-link {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" href="/admin" data-tooltip="لوحة الأدمين">
@@ -295,7 +295,6 @@
       </a>
 
       {% if session_user %}
-      <!-- [مضاف] تبويب المفضلة للمستخدم المسجّل -->
       <a href="/favorites" class="{% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}">
         <i class="bi bi-heart tab-icon"></i>
         <i class="bi bi-heart-fill tab-icon--active"></i>
@@ -379,7 +378,7 @@
       scrim?.addEventListener('click', closePanel);
     </script>
 
-    <!-- Typeahead (إصلاح أقواس + إزالة ?. و ?? لتجنب إشعارات المحرر) -->
+    <!-- Typeahead -->
     <script>
 (function initTypeahead(){
   if (window.__typeaheadInit) return;
@@ -406,22 +405,11 @@
 
     var users = usersArr.map(function(u){
       var name = u.name || ((u.first_name||"") + " " + (u.last_name||"")).trim();
-      return {
-        id: u.id,
-        name: name,
-        avatar: u.avatar || u.avatar_path || "",
-        url: u.url || ("/users/" + u.id)
-      };
+      return { id:u.id, name:name, avatar:u.avatar||u.avatar_path||"", url:u.url||("/users/"+u.id) };
     });
 
     var items = itemsArr.map(function(it){
-      return {
-        id: it.id,
-        title: it.title || "",
-        image: it.image || it.image_path || "",
-        city: it.city || "",
-        url: it.url || ("/items/" + it.id)
-      };
+      return { id:it.id, title:it.title||"", image:it.image||it.image_path||"", city:it.city||"", url:it.url||("/items/"+it.id) };
     });
 
     return { users: users, items: items };
@@ -429,21 +417,12 @@
 
   function render(data){
     var norm = normalizePayload(data);
-    var users = norm.users, items = norm.items;
-    var html = [];
+    var users = norm.users, items = norm.items, html = [];
 
     if (users.length){
       html.push('<div class="typeahead-group">حسابات</div>');
       users.forEach(function(u){
-        html.push(
-          '<div class="typeahead-item" data-url="'+u.url+'">'+
-            '<i class="bi bi-person-circle"></i>'+
-            '<div class="flex-grow-1">'+
-              '<div>'+esc(u.name)+'</div>'+
-              '<div class="k">الملف الشخصي</div>'+
-            '</div>'+
-          '</div>'
-        );
+        html.push('<div class="typeahead-item" data-url="'+u.url+'"><i class="bi bi-person-circle"></i><div class="flex-grow-1"><div>'+esc(u.name)+'</div><div class="k">الملف الشخصي</div></div></div>');
       });
     }
 
@@ -451,29 +430,19 @@
       html.push('<div class="typeahead-group">عناصر</div>');
       items.forEach(function(it){
         var city = it.city ? ' — <span class="k">'+esc(it.city)+'</span>' : '';
-        html.push(
-          '<div class="typeahead-item" data-url="'+it.url+'">'+
-            '<i class="bi bi-box-seam"></i>'+
-            '<div class="flex-grow-1">'+
-              '<div>'+esc(it.title)+city+'</div>'+
-              '<div class="k">تفاصيل العنصر</div>'+
-            '</div>'+
-          '</div>'
-        );
+        html.push('<div class="typeahead-item" data-url="'+it.url+'"><i class="bi bi-box-seam"></i><div class="flex-grow-1"><div>'+esc(it.title)+city+'</div><div class="k">تفاصيل العنصر</div></div></div>');
       });
     }
 
     if (!html.length){ hide(); return; }
-    panel.innerHTML = html.join("");
-    show();
+    panel.innerHTML = html.join(""); show();
   }
 
   function search(q){
     if (!q || q.trim().length < 2){ hide(); return; }
     fetch('/api/search?q='+encodeURIComponent(q.trim()))
       .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-      .then(render)
-      .catch(hide);
+      .then(render).catch(hide);
   }
 
   input.addEventListener('input', function(){ clearTimeout(tm); tm = setTimeout(function(){ search(input.value); }, 180); });
