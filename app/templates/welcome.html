@@ -1,4 +1,25 @@
 {% extends "base.html" %}
+
+{% block head %}
+  {{ super() }}
+  <!-- === Link Preview (Open Graph + Twitter) for /welcome === -->
+  <meta property="og:site_name" content="SEVOR" />
+  <meta property="og:title" content="SEVOR — Rent everything you need" />
+  <meta property="og:description" content="Find and rent anything you need — cameras, books, games, furniture, and more." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://m3ak.onrender.com/welcome" />
+  <!-- IMPORTANT: absolute URL for the image -->
+  <meta property="og:image" content="https://m3ak.onrender.com/static/images/sevor-preview.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="SEVOR — Rent everything you need" />
+  <meta name="twitter:description" content="Find and rent anything you need — cameras, books, games, furniture, and more." />
+  <meta name="twitter:image" content="https://m3ak.onrender.com/static/images/sevor-preview.jpg" />
+{% endblock %}
+
 {% block content %}
 
 <style>
@@ -33,7 +54,7 @@
       <div class="small text-muted mt-2">بالنقر على “ابدأ الآن” سيتم حفظ كوكي لإخفاء هذه الصفحة لاحقًا.</div>
     </div>
     <div class="col-lg-5 mt-4 mt-lg-0">
-      
+      <!-- يمكنك لاحقًا وضع صورة/إيضاح هنا -->
     </div>
   </div>
 </section>
@@ -66,7 +87,7 @@
       <div class="glass p-3 h-100">
         <div class="d-flex align-items-center mb-2">
           <div class="feature-icon me-2">🔒</div>
-          <h5 class="م-0">الأمان</h5>
+          <h5 class="m-0">الأمان</h5>
         </div>
         <p class="text-muted m-0">
           توثيق الحسابات بالهوية، رسائل داخلية، وتقييمات علنية بعد كل عملية تأجير.
