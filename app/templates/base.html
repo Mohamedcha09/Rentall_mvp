@@ -121,6 +121,11 @@
       .notif-row:hover{ background: color-mix(in oklab, var(--surface) 92%, transparent); }
       .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2s; }
       .scrim.is-show{ opacity:1; pointer-events:auto; }
+
+      /* === [مضاف] أيقونات الشريط الجانبي + الشعار === */
+      .brand-logo{ height:32px; vertical-align:middle }
+      .brand-badge{ width:20px; height:20px; margin-inline-end:6px; vertical-align:middle }
+      .side-link .side-icon{ width:22px; height:22px; object-fit:contain }
     </style>
 
     {% block head %}{% endblock %}
@@ -137,7 +142,11 @@
         </button>
 
         <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/">
-          <span class="brand__name fw-bold">RentAll</span>
+          <!-- [مضاف] مربع أمام RentAll = ok.png -->
+          <img class="brand-badge" src="{{ url_for('static', path='images/ok.png') }}" alt="OK">
+          <!-- [معدل] استبدال نص RentAll بصورة base.png -->
+          <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="RentAll">
+          <span class="visually-hidden">RentAll</span>
         </a>
 
         <!-- بحث -->
@@ -235,31 +244,46 @@
     <aside class="sidebar" id="appSidebar" data-collapsed="false">
       <nav class="sidebar__nav">
         <a class="side-link {% if request and request.url.path == '/' %}is-active{% endif %}" href="/" data-tooltip="الرئيسية">
-          <i class="bi bi-house-door"></i> <span>الرئيسية</span>
+          <!-- الرئيسية = home.png -->
+          <img class="side-icon" src="{{ url_for('static', path='images/home.png') }}" alt="home">
+          <span>الرئيسية</span>
         </a>
+
         <a class="side-link {% if request and request.url.path.startswith('/items') %}is-active{% endif %}" href="/items" data-tooltip="كل العناصر">
-          <i class="bi bi-grid"></i> <span>كل العناصر</span>
+          <!-- كل العناصر = tout.png -->
+          <img class="side-icon" src="{{ url_for('static', path='images/tout.png') }}" alt="tout">
+          <span>كل العناصر</span>
         </a>
 
         {% if session_user %}
           <a class="side-link {% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}" href="/favorites" data-tooltip="مفضلتي">
-            <i class="bi bi-heart"></i> <span>مفضلتي</span>
+            <!-- مفضلتي = save.png -->
+            <img class="side-icon" src="{{ url_for('static', path='images/save.png') }}" alt="save">
+            <span>مفضلتي</span>
           </a>
 
           <a class="side-link {% if request and request.url.path.startswith('/profile') %}is-active{% endif %}" href="/profile" data-tooltip="صفحتي">
-            <i class="bi bi-person"></i> <span>صفحتي</span>
+            <!-- صفحتي = profil.png -->
+            <img class="side-icon" src="{{ url_for('static', path='images/profil.png') }}" alt="profil">
+            <span>صفحتي</span>
           </a>
 
           <a class="side-link {% if request and request.url.path.startswith('/owner/items') %}is-active{% endif %}" href="/owner/items" data-tooltip="أشيائي">
-            <i class="bi bi-collection"></i> <span>أشيائي</span>
+            <!-- أشيائي = page.png -->
+            <img class="side-icon" src="{{ url_for('static', path='images/page.png') }}" alt="page">
+            <span>أشيائي</span>
           </a>
 
           <a class="side-link {% if request and request.url.path.startswith('/bookings') %}is-active{% endif %}" href="/bookings" data-tooltip="حجوزاتي">
-            <i class="bi bi-calendar2-check"></i> <span>حجوزاتي</span>
+            <!-- حجوزاتي = jour.png -->
+            <img class="side-icon" src="{{ url_for('static', path='images/jour.png') }}" alt="jour">
+            <span>حجوزاتي</span>
           </a>
 
           <a class="side-link {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" href="/payout/settings" data-tooltip="التحويلات">
-            <i class="bi bi-cash-stack"></i> <span>التحويلات</span>
+            <!-- التحويلات = cart.png -->
+            <img class="side-icon" src="{{ url_for('static', path='images/cart.png') }}" alt="cart">
+            <span>التحويلات</span>
           </a>
 
           {% if session_user.role == 'admin' %}
