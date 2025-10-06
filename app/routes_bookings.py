@@ -613,3 +613,38 @@ def booking_state(
         "deposit_amount": bk.deposit_amount,
         "deposit_status": bk.deposit_status,
     })
+
+    # ======================================================
+# صفحة قائمة الحجوزات (للطرفين)
+# ======================================================
+
+@router.get("/bookings")
+def bookings_index(
+    request: Request,
+    view: Literal["renter", "owner"] = "renter",
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    require_auth(user)
+
+    q = db.query(Booking)
+    if view == "owner":
+        q = q.filter(Booking.owner_id == user.id)
+        title = "حجوزات على ممتلكاتي"
+    else:
+        q = q.filter(Booking.renter_id == user.id)
+        title = "حجوزاتي"
+
+    q = q.order_by(Booking.created_at.desc())
+    bookings = q.all()
+
+    return request.app.templates.TemplateResponse(
+        "bookings_index.html",
+        {
+            "request": request,
+            "title": title,
+            "session_user": request.session.get("user"),
+            "bookings": bookings,
+            "view": view,
+        },
+    )
