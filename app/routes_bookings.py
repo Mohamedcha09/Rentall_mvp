@@ -78,64 +78,107 @@ def booking_new_page(
     }
     return request.app.templates.TemplateResponse("booking_new.html", ctx)
 
-# ===== إنشاء الحجز (POST) =====
+# ===== إنشاء الحجز (POST) آمن لأي نموذج =====
+from sqlalchemy import inspect
+
 @router.post("/bookings")
-def create_booking(
+async def create_booking(
     request: Request,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
-    item_id: int = Form(...),
-    start_date: str = Form(...),
-    end_date: str = Form(...),
-    days: Optional[int] = Form(None),
-    pay_method: Optional[Literal["online", "cash"]] = Form(None),
 ):
     require_auth(user)
-    item = db.get(Item, item_id)
-    if not item or item.is_active != "yes":
-        raise HTTPException(status_code=404, detail="Item not available")
-    if item.owner_id == user.id:
-        raise HTTPException(status_code=400, detail="Owner cannot book own item")
+
+    # اجمع كل القيم الممكنة من الـ form والـ query
+    form = await request.form()
+    q = request.query_params
+
+    def pick(*names, default=None):
+        for n in names:
+            v = form.get(n)
+            if v is None:
+                v = q.get(n)
+            if v not in (None, ""):
+                return v
+        return default
 
     try:
-        sd, ed = _parse_date(start_date), _parse_date(end_date)
+        # item_id إجباري
+        item_id_raw = pick("item_id", "item", "itemId")
+        if not item_id_raw:
+            raise ValueError("missing item_id")
+        item_id = int(item_id_raw)
+
+        item = db.get(Item, item_id)
+        if not item or item.is_active != "yes":
+            raise HTTPException(status_code=404, detail="Item not available")
+        if item.owner_id == user.id:
+            raise HTTPException(status_code=400, detail="Owner cannot book own item")
+
+        # التواريخ (نقبل عدة أسماء)
+        sd_str = pick("start_date", "date_from", "from")
+        ed_str = pick("end_date", "date_to", "to")
+        if not sd_str or not ed_str:
+            raise ValueError("missing dates")
+
+        sd = _parse_date(sd_str)
+        ed = _parse_date(ed_str)
+
+        # لو المستخدم أدخلهم مقلوبين نقلبهم
         if ed <= sd:
-            raise ValueError
-    except Exception:
-        return RedirectResponse(url=f"/bookings/new?item_id={item_id}&err=dates", status_code=303)
+            sd, ed = ed, sd
 
-    days = max(1, days or (ed - sd).days)
-    price_per_day = item.price_per_day or 0
-    total_amount = days * max(0, price_per_day)
+        # الأيام
+        try:
+            days = int(pick("days", default="0") or "0")
+        except Exception:
+            days = 0
+        if days < 1:
+            days = max(1, (ed - sd).days)
 
-    bk = Booking(
-        item_id=item.id,
-        renter_id=user.id,
-        owner_id=item.owner_id,
-        start_date=sd,
-        end_date=ed,
-        days=days,
-        price_per_day_snapshot=price_per_day,
-        total_amount=total_amount,
-        status="requested",
-        owner_decision=None,
-        payment_method=None,
-        payment_status="unpaid",
-        deposit_amount=0,
-        deposit_status=None,
-        deposit_hold_id=None,
-        timeline_created_at=datetime.utcnow(),
-    )
-    db.add(bk); db.commit(); db.refresh(bk)
+        price_per_day = item.price_per_day or 0
+        total_amount = days * max(0, price_per_day)
 
-    # إشعار للمالك: طلب حجز جديد
-    push_notification(
-        db, user_id=item.owner_id,
-        title="طلب حجز جديد",
-        body=f"على '{item.title}' من {sd} إلى {ed} ({days} يوم).",
-        url=f"/bookings/flow/{bk.id}", kind="booking"
-    )
-    return redirect_to_flow(bk.id)
+        # جهّز الحقول التي سنحاول كتابتها
+        candidate = {
+            "item_id": item.id,
+            "renter_id": user.id,
+            "owner_id": item.owner_id,
+            "start_date": sd,
+            "end_date": ed,
+            "days": days,
+            "price_per_day_snapshot": price_per_day,  # لو العمود غير موجود سيتجاهل
+            "total_amount": total_amount,
+            "status": "requested",
+            "owner_decision": None,
+            "payment_method": None,
+            "payment_status": "unpaid",
+            "deposit_amount": 0,
+            "deposit_status": None,
+            "deposit_hold_id": None,
+            "timeline_created_at": datetime.utcnow(),
+        }
+
+        # لا تكتب إلا الأعمدة الموجودة فعلاً في الجدول
+        booking_cols = {c.key for c in inspect(Booking).mapper.column_attrs}
+        safe_data = {k: v for k, v in candidate.items() if k in booking_cols}
+
+        bk = Booking(**safe_data)
+        db.add(bk)
+        db.commit()
+        db.refresh(bk)
+        return redirect_to_flow(bk.id)
+
+    except HTTPException:
+        # مرّر نفس الاستثناء
+        raise
+    except Exception as e:
+        # رجوع لصفحة الاختيار بدل 500
+        item_id_for_redirect = pick("item_id", "item", "itemId", default="")
+        return RedirectResponse(
+            url=f"/bookings/new?item_id={item_id_for_redirect}&err=invalid",
+            status_code=303
+        )
 
 # ===== صفحة التدفق =====
 @router.get("/bookings/flow/{booking_id}")
