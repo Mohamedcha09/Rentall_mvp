@@ -13,7 +13,7 @@
     <!-- ستايل خارجي -->
     <link href="/static/style.css?v=1" rel="stylesheet">
 
-    <!-- [مضاف] تنسيق typeahead + قواعد هاتف + تحسين أيقونات ورسائل + إشعارات -->
+    <!-- ستايلات مضافة -->
     <style>
       /* typeahead */
       .search{ position:relative; }
@@ -29,14 +29,14 @@
       .typeahead-item:hover, .typeahead-item.active{ background: rgba(124,92,255,.12); }
       .typeahead-item .k{ opacity:.65; font-size:.85em }
 
-      /* ===== هاتف فقط بدون المساس بالديسكتوب ===== */
+      /* هاتف فقط */
       @media (max-width: 768px){
         #sidebarToggle, #themeToggle,
         .actions .dropdown:first-of-type{ display:none !important; }
         .topbar__inner{ gap:8px; }
       }
 
-      /* شريط سفلي للجوال (3 تبويبات افتراضيًا) */
+      /* شريط سفلي للجوال */
       @media (max-width: 768px){
         .mobile-tabbar{
           position: fixed; inset-inline: 0; bottom: 0; height: 64px;
@@ -57,13 +57,11 @@
         .page{ padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
       }
 
-      /* تحسين بسيط لزر اللغة */
+      /* تحسين زر اللغة */
       .lang-switch .btn{ min-width: 64px; }
       .lang-flag{ width:18px; height:18px; border-radius:50%; object-fit:cover; margin-inline-end:.35rem; }
 
-      /* ===========================
-         Blossom-style icons & search
-         =========================== */
+      /* أزرار */
       .actions .btn-plain{
         border:0 !important; background:transparent !important; box-shadow:none !important;
         padding:.2rem .35rem !important; line-height:1;
@@ -71,6 +69,7 @@
       .icon-img{ width:24px; height:24px; display:block; }
       .btn-plain:hover{ transform:translateY(-1px); }
 
+      /* حقل البحث */
       .topbar .search .search__input{
         height:44px !important; border-radius:999px !important; border:0 !important;
         background:#f4f6fb !important; color:#3b4152 !important;
@@ -87,12 +86,7 @@
         color: color-mix(in oklab, var(--text) 60%, transparent);
       }
 
-      .mobile-tabbar .tab-icon--active{ display:none; }
-      .mobile-tabbar a.is-active .tab-icon{ display:none; }
-      .mobile-tabbar a.is-active .tab-icon--active{ display:inline-block; }
-      .mobile-tabbar a.is-active i{ filter:saturate(120%); }
-
-      /* ===== إشعارات: شارة الجرس + اللوح الجانبي ===== */
+      /* شارة الجرس */
       #notifOpen{ position: relative; }
       #notifOpen .notif-count{
         position:absolute; top:-6px; inset-inline-end:-6px;
@@ -101,8 +95,7 @@
       }
       #notifOpen .notif-ping{
         position:absolute; top:-2px; inset-inline-end:-2px; width:8px; height:8px;
-        background:#d43aff; border-radius:50%;
-        box-shadow: 0 0 0 6px rgba(212,58,255,.18);
+        background:#d43aff; border-radius:50%; box-shadow: 0 0 0 6px rgba(212,58,255,.18);
       }
       .notif-panel{
         position: fixed; top:0; inset-inline-end:-420px; width:360px; max-width:88vw; height:100vh;
@@ -122,19 +115,17 @@
       .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2s; }
       .scrim.is-show{ opacity:1; pointer-events:auto; }
 
-      /* === [مضاف] أيقونات الشريط الجانبي + الشعار === */
-      .brand-logo{ height:44px; vertical-align:middle }          /* شعار SEVOR أكبر */
-      @media (max-width: 768px){ .brand-logo{ height:36px } }
+      /* === شعار وأيقونات === */
+      .brand-logo{ height:56px; vertical-align:middle }  /* شعار SEVOR كبير */
+      @media (max-width:768px){ .brand-logo{ height:40px } }
 
       .side-link .side-icon{ width:22px; height:22px; object-fit:contain }
 
-      /* [مهم] إزالة أي حدود/إطارات مزعجة في أعلى الشريط */
-      .topbar, .topbar__inner{
-        background: transparent !important;
-        border: 0 !important;
-        box-shadow: none !important;
-        outline: none !important;
-      }
+      /* إخفاء المربّع الرمادي (زر فتح الشريط) نهائياً */
+      #sidebarToggle{ display:none !important; }
+
+      /* إزالة أي حدود/ظلال من الهيدر */
+      .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important; }
     </style>
 
     {% block head %}{% endblock %}
@@ -146,11 +137,13 @@
     <!-- ===== Topbar ===== -->
     <header class="topbar">
       <div class="topbar__inner container-fluid">
-        <button class="btn btn-ghost btn-sm" id="sidebarToggle" aria-label="Toggle sidebar">
+
+        <!-- (مخفي) زر الشريط الجانبي حتى لا يظهر المربّع -->
+        <button class="btn btn-ghost btn-sm d-none" id="sidebarToggle" aria-label="Toggle sidebar">
           <i class="bi bi-layout-sidebar-inset-reverse"></i>
         </button>
 
-        <!-- شعار SEVOR فقط (حذفنا المربّع بالكامل) -->
+        <!-- شعار SEVOR كبير -->
         <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/">
           <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR">
           <span class="visually-hidden">SEVOR</span>
@@ -162,7 +155,6 @@
           <input class="form-control form-control-sm search__input" type="search" name="q"
                  placeholder="ابحث عن عنصر أو مستخدم…" value="{{ request.query_params.get('q','') if request else '' }}">
         </form>
-        <!-- نتائج البحث المباشر -->
         <div id="typeaheadPanel" class="typeahead d-none"></div>
 
         <div class="actions d-flex align-items-center gap-2">
@@ -251,38 +243,27 @@
     <aside class="sidebar" id="appSidebar" data-collapsed="false">
       <nav class="sidebar__nav">
         <a class="side-link {% if request and request.url.path == '/' %}is-active{% endif %}" href="/" data-tooltip="الرئيسية">
-          <img class="side-icon" src="{{ url_for('static', path='images/home.png') }}" alt="home">
-          <span>الرئيسية</span>
+          <img class="side-icon" src="{{ url_for('static', path='images/home.png') }}" alt="home"><span>الرئيسية</span>
         </a>
         <a class="side-link {% if request and request.url.path.startswith('/items') %}is-active{% endif %}" href="/items" data-tooltip="كل العناصر">
-          <img class="side-icon" src="{{ url_for('static', path='images/tout.png') }}" alt="tout">
-          <span>كل العناصر</span>
+          <img class="side-icon" src="{{ url_for('static', path='images/tout.png') }}" alt="tout"><span>كل العناصر</span>
         </a>
 
         {% if session_user %}
           <a class="side-link {% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}" href="/favorites" data-tooltip="مفضلتي">
-            <img class="side-icon" src="{{ url_for('static', path='images/save.png') }}" alt="save">
-            <span>مفضلتي</span>
+            <img class="side-icon" src="{{ url_for('static', path='images/save.png') }}" alt="save"><span>مفضلتي</span>
           </a>
-
           <a class="side-link {% if request and request.url.path.startswith('/profile') %}is-active{% endif %}" href="/profile" data-tooltip="صفحتي">
-            <img class="side-icon" src="{{ url_for('static', path='images/profil.png') }}" alt="profil">
-            <span>صفحتي</span>
+            <img class="side-icon" src="{{ url_for('static', path='images/profil.png') }}" alt="profil"><span>صفحتي</span>
           </a>
-
           <a class="side-link {% if request and request.url.path.startswith('/owner/items') %}is-active{% endif %}" href="/owner/items" data-tooltip="أشيائي">
-            <img class="side-icon" src="{{ url_for('static', path='images/page.png') }}" alt="page">
-            <span>أشيائي</span>
+            <img class="side-icon" src="{{ url_for('static', path='images/page.png') }}" alt="page"><span>أشيائي</span>
           </a>
-
           <a class="side-link {% if request and request.url.path.startswith('/bookings') %}is-active{% endif %}" href="/bookings" data-tooltip="حجوزاتي">
-            <img class="side-icon" src="{{ url_for('static', path='images/jour.png') }}" alt="jour">
-            <span>حجوزاتي</span>
+            <img class="side-icon" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>حجوزاتي</span>
           </a>
-
           <a class="side-link {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" href="/payout/settings" data-tooltip="التحويلات">
-            <img class="side-icon" src="{{ url_for('static', path='images/cart.png') }}" alt="cart">
-            <span>التحويلات</span>
+            <img class="side-icon" src="{{ url_for('static', path='images/cart.png') }}" alt="cart"><span>التحويلات</span>
           </a>
 
           {% if session_user.role == 'admin' %}
@@ -411,7 +392,7 @@
         moonIcon.classList.toggle('d-none', dark);
       }
 
-      // Notif panel (فتح/إغلاق اللوح)
+      // Notif panel
       const notifOpen  = document.getElementById('notifOpen');
       const notifClose = document.getElementById('notifClose');
       const panel      = document.getElementById('notifPanel');
@@ -520,7 +501,7 @@
 })();
     </script>
 
-    <!-- ===== إشعارات (Polling عام + عدّاد رسائل + تحميل قائمة الحجوزات عند الفتح) ===== -->
+    <!-- إشعارات: polling -->
     <script>
 (function notifSystem(){
   if (window.__notifInit) return; window.__notifInit = true;
@@ -531,80 +512,45 @@
   const body       = document.getElementById('notifBody');
   const scrim      = document.getElementById('scrim');
 
-  // شارات الجرس (لو غير موجودة نضيفها)
   let countEl = notifOpen?.querySelector('.notif-count');
-  if (!countEl){
-    countEl = document.createElement('span');
-    countEl.className = 'notif-count';
-    countEl.style.display = 'none';
-    notifOpen?.appendChild(countEl);
-  }
+  if (!countEl){ countEl = document.createElement('span'); countEl.className='notif-count'; countEl.style.display='none'; notifOpen?.appendChild(countEl); }
   let pingEl = notifOpen?.querySelector('.notif-ping');
-  if (!pingEl){
-    pingEl = document.createElement('span');
-    pingEl.className = 'notif-ping';
-    pingEl.style.display = 'none';
-    notifOpen?.appendChild(pingEl);
-  }
+  if (!pingEl){ pingEl = document.createElement('span'); pingEl.className='notif-ping'; pingEl.style.display='none'; notifOpen?.appendChild(pingEl); }
 
   function setBell(n){
     if (!countEl || !pingEl) return;
-    if (n>0){
-      countEl.textContent = (n>99 ? '99+' : String(n));
-      countEl.style.display = '';
-      pingEl.style.display = '';
-    }else{
-      countEl.textContent = '';
-      countEl.style.display = 'none';
-      pingEl.style.display = 'none';
-    }
+    if (n>0){ countEl.textContent = (n>99?'99+':String(n)); countEl.style.display=''; pingEl.style.display=''; }
+    else{ countEl.textContent=''; countEl.style.display='none'; pingEl.style.display='none'; }
   }
 
-  // فتح/إغلاق اللوح + تحميل القائمة
-  function openPanel(){
-    panel?.classList.add('is-open'); scrim?.classList.add('is-show');
-    loadPendingList();   // <<< المهم: حمّل القائمة عند الفتح
-  }
+  function openPanel(){ panel?.classList.add('is-open'); scrim?.classList.add('is-show'); loadPendingList(); }
   function closePanel(){ panel?.classList.remove('is-open'); scrim?.classList.remove('is-show'); }
   notifOpen?.addEventListener('click', openPanel);
   notifClose?.addEventListener('click', closePanel);
   scrim?.addEventListener('click', closePanel);
 
-  // رسم صف إشعار عام
   function row(title, meta, url){
     const a = document.createElement('a');
-    a.className='notif-row';
-    a.href = url || '#';
+    a.className='notif-row'; a.href=url||'#';
     a.innerHTML = `<div class="fw-bold">${esc(title)}</div>${meta?`<div class="k small">${esc(meta)}</div>`:''}`;
     return a;
   }
+  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
-  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;"}[c]));}
-
-  // تحميل قائمة الحجوزات المعلّقة للمالك
   function loadPendingList(){
     fetch('/api/bookings/pending-list', {credentials:'same-origin'})
       .then(r=>r.ok?r.json():{items:[]})
       .then(d=>{
         const items = d.items||[];
-        if (body.firstElementChild && body.firstElementChild.classList.contains('text-muted')){
-          body.innerHTML = '';
-        }
-        if (!items.length && !body.children.length){
-          body.innerHTML = '<div class="small text-muted">لا توجد إشعارات جديدة.</div>';
-          return;
-        }
+        if (body.firstElementChild && body.firstElementChild.classList.contains('text-muted')) body.innerHTML='';
+        if (!items.length && !body.children.length){ body.innerHTML='<div class="small text-muted">لا توجد إشعارات جديدة.</div>'; return; }
         const frag = document.createDocumentFragment();
-        items.forEach(b=>{
-          const meta = `${b.start_date} → ${b.end_date} (${b.days} يوم)`;
-          frag.append(row('طلب حجز جديد على: ' + (b.item_title||('عنصر #' + b.item_id)), meta, b.url));
-        });
+        items.forEach(b=>{ const meta = `${b.start_date} → ${b.end_date} (${b.days} يوم)`; frag.append(row('طلب حجز جديد على: ' + (b.item_title||('عنصر #' + b.item_id)), meta, b.url)); });
         body.prepend(frag);
       })
-      .catch(()=>{ /* تجاهل */ });
+      .catch(()=>{});
   }
 
-  // عدّاد الرسائل غير المقروءة (لو موجود عندك هذا الـAPI)
   function refreshUnread(){
     fetch('/api/unread_count')
       .then(r=>r.ok?r.json():{count:0})
@@ -614,7 +560,6 @@
   refreshUnread();
   setInterval(refreshUnread, 30*1000);
 
-  // Poll إشعارات النظام (اختياري)
   let since = 0;
   function poll(){
     fetch('/api/notifications/poll?since='+since, {headers:{'x-na':'1'}})
@@ -626,19 +571,16 @@
         if (items.length){
           if (body.firstElementChild && body.firstElementChild.classList.contains('text-muted')) body.innerHTML='';
           const frag = document.createDocumentFragment();
-          items.forEach(n=>{
-            frag.append(row(n.title||'إشعار', n.body||'', n.url));
-          });
+          items.forEach(n=>{ frag.append(row(n.title||'إشعار', n.body||'', n.url)); });
           body.prepend(frag);
           setBell((parseInt(countEl.textContent||'0')||0) + items.length);
         }
       })
-      .catch(()=>{ /* تجاهل الأخطاء */ });
+      .catch(()=>{});
   }
   setInterval(poll, 20*1000);
   poll();
 
-  // عدّاد طلبات الحجز المعلّقة للمالك
   function refreshPending(){
     fetch('/api/bookings/pending-count', {credentials:'same-origin'})
       .then(r=>{ if(!r.ok) throw 0; return r.json(); })
