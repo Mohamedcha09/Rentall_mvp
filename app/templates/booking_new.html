@@ -1,57 +1,55 @@
-{% extends "base.html" %}
+<form id="bookingCreateForm" class="card p-3" method="post" action="/bookings">
+  <!-- مهم: item_id بالاسم الذي ينتظره الباك -->
+  <input type="hidden" name="item_id" value="{{ item.id }}">
 
-{% block content %}
-<div class="container" style="max-width:840px">
-  <h3 class="mb-3">حجز: {{ item.title }}</h3>
+  <div class="row g-3">
+    <div class="col-12 col-md-4">
+      <label class="form-label">تاريخ البداية</label>
+      <input
+        class="form-control"
+        type="date"
+        name="start_date"
+        required
+        value="{{ start_default }}"
+        min="{{ start_default }}"
+      >
+    </div>
 
-  {% if request.query_params.get('err') == 'dates' %}
-    <div class="alert alert-danger">الرجاء اختيار تاريخ بداية ونهاية صحيحين.</div>
-  {% endif %}
+    <div class="col-12 col-md-4">
+      <label class="form-label">تاريخ النهاية</label>
+      <input
+        class="form-control"
+        type="date"
+        name="end_date"
+        required
+        value="{{ end_default }}"
+        min="{{ start_default }}"
+      >
+    </div>
 
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <!-- المسار الصحيح حسب الراوتر: POST /bookings -->
-      <form method="post" action="/bookings" class="row g-3">
-        <input type="hidden" name="item_id" value="{{ item.id }}">
-
-        <div class="col-12 col-md-6">
-          <label class="form-label">من</label>
-          <input type="date" name="start_date" class="form-control" required value="{{ start_default }}">
-        </div>
-
-        <div class="col-12 col-md-6">
-          <label class="form-label">إلى</label>
-          <input type="date" name="end_date" class="form-control" required value="{{ end_default }}">
-        </div>
-
-        <div class="col-12 col-md-6">
-          <label class="form-label">عدد الأيام</label>
-          <input type="number" name="days" class="form-control" min="1" value="{{ days_default }}" required>
-        </div>
-
-        <div class="col-12">
-          <label class="form-label d-block">طريقة الدفع</label>
-          <div class="d-flex flex-column gap-2">
-            <label class="form-check">
-              <input class="form-check-input" type="radio" name="pay_method" value="online" checked>
-              <span class="form-check-label">أونلاين (عن طريق الموقع)</span>
-            </label>
-            <label class="form-check">
-              <input class="form-check-input" type="radio" name="pay_method" value="cash">
-              <span class="form-check-label">كاش عند التسليم</span>
-            </label>
-          </div>
-          <div class="form-text mt-2">
-            السعر اليومي الحالي: <strong>{{ item.price_per_day }} د.ج</strong>
-          </div>
-        </div>
-
-        <div class="col-12 d-flex justify-content-end gap-2 mt-3">
-          <a href="/items/{{ item.id }}" class="btn btn-light">رجوع</a>
-          <button class="btn btn-primary" type="submit">متابعة</button>
-        </div>
-      </form>
+    <div class="col-12 col-md-4">
+      <label class="form-label">عدد الأيام (اختياري)</label>
+      <input
+        class="form-control"
+        type="number"
+        name="days"
+        min="1"
+        value="{{ days_default }}"
+      >
     </div>
   </div>
-</div>
-{% endblock %}
+
+  <div class="d-flex justify-content-end mt-3">
+    <!-- مهم: type=submit -->
+    <button type="submit" class="btn btn-primary">
+      متابعة
+    </button>
+  </div>
+
+  <!-- رسالة خطأ ودّية لو رجّعنا err=invalid -->
+  {% if request and request.query_params.get('err') == 'invalid' %}
+    <div class="alert alert-warning mt-3">
+      تأكد من اختيار <strong>تاريخ البداية والنهاية</strong> بشكل صحيح.
+    </div>
+  {% endif %}
+</form>
