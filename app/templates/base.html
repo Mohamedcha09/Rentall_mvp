@@ -13,13 +13,12 @@
     <!-- ستايل خارجي -->
     <link href="/static/style.css?v=1" rel="stylesheet">
 
-    <!-- ستايلات مضافة -->
     <style>
-      /* typeahead */
+      /* ===== Typeahead ===== */
       .search{ position:relative; }
       .typeahead{
         position:absolute; inset-inline:0; top: calc(100% + .25rem);
-        background: var(--surface, #fff); color: var(--text, #212529);
+        background: var(--surface,#fff); color: var(--text,#212529);
         border: 1px solid rgba(0,0,0,.1); border-radius:.75rem;
         box-shadow: 0 14px 36px rgba(0,0,0,.18); z-index:2000; overflow:hidden;
       }
@@ -29,39 +28,7 @@
       .typeahead-item:hover, .typeahead-item.active{ background: rgba(124,92,255,.12); }
       .typeahead-item .k{ opacity:.65; font-size:.85em }
 
-      /* هاتف فقط */
-      @media (max-width: 768px){
-        #sidebarToggle, #themeToggle,
-        .actions .dropdown:first-of-type{ display:none !important; }
-        .topbar__inner{ gap:8px; }
-      }
-
-      /* شريط سفلي للجوال */
-      @media (max-width: 768px){
-        .mobile-tabbar{
-          position: fixed; inset-inline: 0; bottom: 0; height: 64px;
-          background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 96%, transparent),
-                                               color-mix(in oklab, var(--panel) 94%, transparent));
-          border-top:1px solid var(--border);
-          display: grid; grid-template-columns: repeat(3,1fr);
-          backdrop-filter: blur(14px) saturate(120%);
-          z-index: 2100;
-        }
-        .mobile-tabbar.has-fav{ grid-template-columns: repeat(4, 1fr); }
-        .mobile-tabbar a{
-          display:flex; flex-direction:column; align-items:center; justify-content:center;
-          gap:4px; text-decoration:none; color: var(--muted); font-size:.8rem;
-        }
-        .mobile-tabbar a i{ font-size:1.25rem; }
-        .mobile-tabbar a.is-active{ color: var(--text); }
-        .page{ padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
-      }
-
-      /* تحسين زر اللغة */
-      .lang-switch .btn{ min-width: 64px; }
-      .lang-flag{ width:18px; height:18px; border-radius:50%; object-fit:cover; margin-inline-end:.35rem; }
-
-      /* أزرار */
+      /* ===== عام ===== */
       .actions .btn-plain{
         border:0 !important; background:transparent !important; box-shadow:none !important;
         padding:.2rem .35rem !important; line-height:1;
@@ -69,7 +36,6 @@
       .icon-img{ width:24px; height:24px; display:block; }
       .btn-plain:hover{ transform:translateY(-1px); }
 
-      /* حقل البحث */
       .topbar .search .search__input{
         height:44px !important; border-radius:999px !important; border:0 !important;
         background:#f4f6fb !important; color:#3b4152 !important;
@@ -79,14 +45,10 @@
         border:1px solid var(--border) !important; color:var(--text) !important;
       }
       .topbar .search .search__icon{ inset-inline-start:16px !important; opacity:.6 !important; font-size:1.05rem; }
-      .topbar .search .search__input::placeholder{
-        font-size:1.05rem; letter-spacing:.2px; color:#8b95a7;
-      }
-      body[data-theme="dark"] .topbar .search .search__input::placeholder{
-        color: color-mix(in oklab, var(--text) 60%, transparent);
-      }
+      .topbar .search .search__input::placeholder{ font-size:1.05rem; letter-spacing:.2px; color:#8b95a7; }
+      body[data-theme="dark"] .topbar .search .search__input::placeholder{ color: color-mix(in oklab, var(--text) 60%, transparent); }
 
-      /* شارة الجرس */
+      /* إشعار الجرس */
       #notifOpen{ position: relative; }
       #notifOpen .notif-count{
         position:absolute; top:-6px; inset-inline-end:-6px;
@@ -95,15 +57,15 @@
       }
       #notifOpen .notif-ping{
         position:absolute; top:-2px; inset-inline-end:-2px; width:8px; height:8px;
-        background:#d43aff; border-radius:50%;
-        box-shadow: 0 0 0 6px rgba(212,58,255,.18);
+        background:#d43aff; border-radius:50%; box-shadow: 0 0 0 6px rgba(212,58,255,.18);
       }
+
       .notif-panel{
         position: fixed; top:0; inset-inline-end:-420px; width:360px; max-width:88vw; height:100vh;
         background: var(--panel); color: var(--text);
         border-inline-start:1px solid var(--border);
         box-shadow: -14px 0 36px rgba(0,0,0,.25);
-        z-index:2300; display:flex; flex-direction:column; transition: .25s ease;
+        z-index:2300; display:flex; flex-direction:column; transition:.25s ease;
       }
       .notif-panel.is-open{ inset-inline-end:0; }
       .notif-panel__header{ padding:12px 14px; border-bottom:1px solid var(--border); }
@@ -116,17 +78,42 @@
       .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2s; }
       .scrim.is-show{ opacity:1; pointer-events:auto; }
 
-      /* === شعار وأيقونات === */
-      .brand-logo{ height:56px; vertical-align:middle }  /* تكبير SEVOR */
+      /* ===== الشعار وأزرار أعلى ===== */
+      .brand-logo{ height:56px; vertical-align:middle }
       @media (max-width:768px){ .brand-logo{ height:40px } }
-
-      /* صورة ok داخل المربّع */
       #sidebarToggle .topbar-ok{ width:24px; height:24px; display:block; }
       #sidebarToggle{ border:0; }
 
+      /* ===== الشريط الجانبي (أيقونات صور) ===== */
       .side-link .side-icon{ width:22px; height:22px; object-fit:contain }
 
-      /* إزالة أي حدود/ظلال من الهيدر (اختياري) */
+      /* ===== تبويب الجوال (الأسفل) بصورك بدل الأيقونات ===== */
+      @media (max-width: 768px){
+        .mobile-tabbar{
+          position: fixed; inset-inline: 0; bottom: 0; height: 64px;
+          background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 96%, transparent),
+                                               color-mix(in oklab, var(--panel) 94%, transparent));
+          border-top:1px solid var(--border);
+          display: grid; grid-template-columns: repeat(4,1fr); /* لدينا 4 تبويبات */
+          backdrop-filter: blur(14px) saturate(120%);
+          z-index: 2100;
+        }
+        .mobile-tabbar a{
+          display:flex; flex-direction:column; align-items:center; justify-content:center;
+          gap:4px; text-decoration:none; color: var(--muted); font-size:.8rem;
+        }
+        .mobile-tabbar .tab-img{ width:22px; height:22px; object-fit:contain; opacity:.55; transition:.15s; }
+        .mobile-tabbar a.is-active{ color: var(--text); }
+        .mobile-tabbar a.is-active .tab-img{ opacity:1; transform:scale(1.06); }
+        .page{ padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+      }
+
+      /* لا نخفي زر الثيم على الهاتف (كان مخفي قبل) */
+      @media (max-width:768px){
+        .actions .dropdown:first-of-type{ display:none !important; } /* بس منيو "إنشاء" */
+      }
+
+      /* إزالة أي حدود/ظلال من الهيدر */
       .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important; }
     </style>
 
@@ -140,12 +127,12 @@
     <header class="topbar">
       <div class="topbar__inner container-fluid">
 
-        <!-- المربّع نفسه بقي كما هو، فقط وضعنا صورة ok داخله -->
+        <!-- زر المربّع بصورتك ok -->
         <button class="btn btn-ghost btn-sm" id="sidebarToggle" aria-label="Toggle sidebar">
           <img class="topbar-ok" src="{{ url_for('static', path='images/ok.png') }}" alt="OK">
         </button>
 
-        <!-- شعار SEVOR بصورة base.png وبحجم كبير -->
+        <!-- شعار SEVOR كبير -->
         <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/">
           <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR">
           <span class="visually-hidden">SEVOR</span>
@@ -190,7 +177,7 @@
             </ul>
           </div>
 
-          <!-- تبديل الثيم -->
+          <!-- تبديل الثيم (ظاهر أيضًا على الهاتف) -->
           <button class="btn btn-ghost btn-sm" id="themeToggle" title="تبديل الثيم">
             <i class="bi bi-sun-fill d-none" id="sunIcon"></i>
             <i class="bi bi-moon-stars-fill" id="moonIcon"></i>
@@ -310,30 +297,24 @@
       <a href="/owner/items/new" class="fab d-lg-none" title="عنصر جديد"><i class="bi bi-plus-lg"></i></a>
     {% endif %}
 
-    <!-- شريط سفلي للجوال -->
-    <nav class="mobile-tabbar d-lg-none {% if session_user %}has-fav{% endif %}">
+    <!-- ===== تبويب الجوال بالصور ===== -->
+    <nav class="mobile-tabbar d-lg-none">
       <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
-        <i class="bi bi-house-door tab-icon"></i>
-        <i class="bi bi-house-door-fill tab-icon--active"></i>
+        <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home">
         <span>الرئيسية</span>
       </a>
       <a href="/items" class="{% if request and request.url.path.startswith('/items') %}is-active{% endif %}">
-        <i class="bi bi-grid tab-icon"></i>
-        <i class="bi bi-grid-fill tab-icon--active"></i>
+        <img class="tab-img" src="{{ url_for('static', path='images/tout.png') }}" alt="items">
         <span>العناصر</span>
       </a>
-
       {% if session_user %}
       <a href="/favorites" class="{% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}">
-        <i class="bi bi-heart tab-icon"></i>
-        <i class="bi bi-heart-fill tab-icon--active"></i>
+        <img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav">
         <span>مفضلتي</span>
       </a>
       {% endif %}
-
       <a href="/profile" class="{% if request and request.url.path.startswith('/profile') %}is-active{% endif %}">
-        <i class="bi bi-person tab-icon"></i>
-        <i class="bi bi-person-fill tab-icon--active"></i>
+        <img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile">
         <span>صفحتي</span>
       </a>
     </nav>
@@ -345,7 +326,7 @@
     {% block scripts %}{% endblock %}
 
     <script>
-      // Sidebar state
+      // Sidebar open/collapse
       const sidebar   = document.getElementById('appSidebar');
       const pinBtn    = document.getElementById('pinSidebar');
       const toggleBtn = document.getElementById('sidebarToggle');
@@ -374,7 +355,7 @@
         }
       }
 
-      // Theme toggle
+      // Theme toggle (يعمل على الهاتف والكمبيوتر)
       const themeToggle = document.getElementById('themeToggle');
       const sunIcon = document.getElementById('sunIcon');
       const moonIcon = document.getElementById('moonIcon');
@@ -491,7 +472,7 @@
     else if (e.key === 'Escape'){ hide(); }
   });
 
-  document.addEventListener('click', function(e){ if (!panel.contains(e.target) و e.target !== input){ hide(); } });
+  document.addEventListener('click', function(e){ if (!panel.contains(e.target) && e.target !== input){ hide(); } });
 
   function setActive(rows, i){
     rows.forEach(function(r){ r.classList.remove('active'); });
@@ -503,7 +484,7 @@
 })();
     </script>
 
-    <!-- إشعارات: polling -->
+    <!-- ===== إشعارات (Polling) ===== -->
     <script>
 (function notifSystem(){
   if (window.__notifInit) return; window.__notifInit = true;
@@ -521,8 +502,8 @@
 
   function setBell(n){
     if (!countEl || !pingEl) return;
-    if (n>0){ countEl.textContent = (n>99?'99+':String(n)); countEl.style.display=''; pingEl.style.display=''; }
-    else{ countEl.textContent=''; countEl.style.display='none'; pingEl.style.display='none'; }
+    if (n>0){ countEl.textContent = (n>99 ? '99+' : String(n)); countEl.style.display = ''; pingEl.style.display = ''; }
+    else{ countEl.textContent = ''; countEl.style.display = 'none'; pingEl.style.display = 'none'; }
   }
 
   function openPanel(){ panel?.classList.add('is-open'); scrim?.classList.add('is-show'); loadPendingList(); }
@@ -537,7 +518,7 @@
     a.innerHTML = `<div class="fw-bold">${esc(title)}</div>${meta?`<div class="k small">${esc(meta)}</div>`:''}`;
     return a;
   }
-  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;","'":"&#39;"}[c]);}
+  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
   function loadPendingList(){
     fetch('/api/bookings/pending-list', {credentials:'same-origin'})
@@ -545,9 +526,12 @@
       .then(d=>{
         const items = d.items||[];
         if (body.firstElementChild && body.firstElementChild.classList.contains('text-muted')) body.innerHTML='';
-        if (!items.length && !body.children.length){ body.innerHTML='<div class="small text-muted">لا توجد إشعارات جديدة.</div>'; return; }
+        if (!items.length && !body.children.length){ body.innerHTML = '<div class="small text-muted">لا توجد إشعارات جديدة.</div>'; return; }
         const frag = document.createDocumentFragment();
-        items.forEach(b=>{ const meta = `${b.start_date} → ${b.end_date} (${b.days} يوم)`; frag.append(row('طلب حجز جديد على: ' + (b.item_title||('عنصر #' + b.item_id)), meta, b.url)); });
+        items.forEach(b=>{
+          const meta = `${b.start_date} → ${b.end_date} (${b.days} يوم)`;
+          frag.append(row('طلب حجز جديد على: ' + (b.item_title||('عنصر #' + b.item_id)), meta, b.url));
+        });
         body.prepend(frag);
       })
       .catch(()=>{});
