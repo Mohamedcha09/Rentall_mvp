@@ -18,9 +18,7 @@ from .utils import category_label  # لتمريرها للقالب
 
 router = APIRouter(tags=["bookings"])
 
-# ======================================================
-# Helpers
-# ======================================================
+# ============= Helpers =============
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
@@ -51,10 +49,12 @@ def redirect_to_flow(booking_id: int) -> RedirectResponse:
 def _parse_date(s: str) -> date:
     return datetime.strptime(s, "%Y-%m-%d").date()
 
+def _json(data: dict) -> JSONResponse:
+    """JSON مع تعطيل الكاش للمتصفّح حتى لا يعلّق العدّاد."""
+    return JSONResponse(data, headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
 
-# ======================================================
-# صفحة إنشاء الحجز (زر "احجز الآن" يذهب هنا)
-# ======================================================
+# ============= إنشاء الحجز (UI) =============
+
 @router.get("/bookings/new")
 def booking_new_page(
     request: Request,
@@ -82,10 +82,8 @@ def booking_new_page(
     }
     return request.app.templates.TemplateResponse("booking_new.html", ctx)
 
+# ============= إنشاء الحجز (POST) =============
 
-# ======================================================
-# إنشاء الحجز (POST من booking_new.html)
-# ======================================================
 @router.post("/bookings")
 def create_booking(
     request: Request,
@@ -149,10 +147,8 @@ def create_booking(
     db.refresh(bk)
     return redirect_to_flow(bk.id)
 
+# ============= صفحة التدفق الواحدة =============
 
-# ======================================================
-# صفحة التدفق الواحدة
-# ======================================================
 @router.get("/bookings/flow/{booking_id}")
 def booking_flow_page(
     booking_id: int,
@@ -189,7 +185,7 @@ def booking_flow_page(
         "i_am_owner": is_owner(user, bk),
         "i_am_renter": is_renter(user, bk),
 
-        # flags قديمة/جديدة (لو احتجتها في قوالب أخرى)
+        # flags قديمة/جديدة
         "is_requested": (bk.status == "requested"),
         "is_declined": (bk.status == "declined"),
         "is_pending_payment": (bk.status == "pending_payment"),
@@ -201,10 +197,8 @@ def booking_flow_page(
     }
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
 
+# ============= قرار المالك: قبول/رفض =============
 
-# ======================================================
-# (المسارات الجديدة) قرار المالك: قبول/رفض
-# ======================================================
 @router.post("/bookings/{booking_id}/owner/decision")
 def owner_decision(
     booking_id: int,
@@ -237,10 +231,8 @@ def owner_decision(
     db.commit()
     return redirect_to_flow(bk.id)
 
+# ============= المستأجر يختار طريقة الدفع =============
 
-# ======================================================
-# (المسارات الجديدة) المستأجر يختار طريقة الدفع
-# ======================================================
 @router.post("/bookings/{booking_id}/renter/choose_payment")
 def renter_choose_payment(
     booking_id: int,
@@ -269,10 +261,8 @@ def renter_choose_payment(
     db.commit()
     return redirect_to_flow(bk.id)
 
+# ============= أونلاين: دفع وهمي الآن =============
 
-# ======================================================
-# (المسارات الجديدة) أونلاين: دفع وهمي الآن
-# ======================================================
 @router.post("/bookings/{booking_id}/renter/pay_online")
 def renter_pay_online(
     booking_id: int,
@@ -299,10 +289,8 @@ def renter_pay_online(
     db.commit()
     return redirect_to_flow(bk.id)
 
+# ============= تأكيد استلام المستأجر =============
 
-# ======================================================
-# (المسارات الجديدة) تأكيد استلام المستأجر
-# ======================================================
 @router.post("/bookings/{booking_id}/renter/confirm_received")
 def renter_confirm_received(
     booking_id: int,
@@ -329,11 +317,9 @@ def renter_confirm_received(
     db.commit()
     return redirect_to_flow(bk.id)
 
+# ============= (إدمن فقط) المراجعة/الديبو (نسخة القالب القديم) =============
 
-# ======================================================
-# (معدّل) قرار الديبو النهائي — إدمن فقط (يُستخدم من القالب القديم)
-# ======================================================
-@router.post("/bookings/{booking_id}/owner-confirm-return")
+@router.post("/bookings/{booking_id}/owner-confirm-return-admin")
 def _legacy_owner_confirm_return_admin(
     booking_id: int,
     action: Literal["ok", "charge"] = Form(...),
@@ -343,9 +329,7 @@ def _legacy_owner_confirm_return_admin(
     user: Optional[User] = Depends(get_current_user),
     request: Request = None,
 ):
-    """
-    هذا الإندبوينت الآن يُستخدم من قِبل الإدمن فقط لاتخاذ القرار النهائي بالديبو.
-    """
+    """هذه النسخة محصورة للإدمن لتفادي تعارض المسارات القديمة."""
     require_auth(user)
     if getattr(user, "role", "") != "admin":
         raise HTTPException(status_code=403, detail="Only admin can decide deposit")
@@ -354,7 +338,6 @@ def _legacy_owner_confirm_return_admin(
     if bk.status not in ("returned", "in_review", "picked_up"):
         return redirect_to_flow(bk.id)
 
-    # ضَمَنّا أن الحالة قبل القرار تكون in_review
     if bk.status != "in_review":
         bk.status = "in_review"
 
@@ -371,10 +354,10 @@ def _legacy_owner_confirm_return_admin(
         else:
             amt = max(0, int(charge_amount or 0))
             if amt >= dep:
-                bk.deposit_status = "claimed"  # خصم كامل
+                bk.deposit_status = "claimed"
                 bk.deposit_charged_amount = dep
             else:
-                bk.deposit_status = "partially_withheld"  # خصم جزئي
+                bk.deposit_status = "partially_withheld"
                 bk.deposit_charged_amount = amt
 
     bk.owner_return_note = (owner_note or "").strip()
@@ -384,10 +367,8 @@ def _legacy_owner_confirm_return_admin(
     db.commit()
     return redirect_to_flow(bk.id)
 
+# ============= (إدمن فقط) قرار الديبو النهائي =============
 
-# ======================================================
-# (معدّل) قرار الديبو النهائي — إدمن فقط (واجهة جديدة)
-# ======================================================
 @router.post("/bookings/{booking_id}/owner/deposit_action")
 def owner_deposit_action(
     booking_id: int,
@@ -398,10 +379,7 @@ def owner_deposit_action(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    ملاحظة: هذا الإندبوينت الآن خاص بالإدمن فقط.
-    المالك لا يستطيع تقرير مصير الديبو.
-    """
+    """المسار النهائي لحسم الديبو — إدمن فقط."""
     require_auth(user)
     if getattr(user, "role", "") != "admin":
         raise HTTPException(status_code=403, detail="Only admin can decide deposit")
@@ -440,12 +418,8 @@ def owner_deposit_action(
     db.commit()
     return redirect_to_flow(bk.id)
 
+# ============= مسارات القالب القديم (كما هي) =============
 
-# ======================================================
-# (المسارات الإضافية) تطابق أزرار القالب القديم مباشرةً
-# ======================================================
-
-# المالك يقبل
 @router.post("/bookings/{booking_id}/accept")
 def _legacy_accept(
     booking_id: int,
@@ -466,7 +440,6 @@ def _legacy_accept(
     db.commit()
     return redirect_to_flow(bk.id)
 
-# المالك يرفض
 @router.post("/bookings/{booking_id}/reject")
 def _legacy_reject(
     booking_id: int,
@@ -487,7 +460,6 @@ def _legacy_reject(
     db.commit()
     return redirect_to_flow(bk.id)
 
-# المستأجر يختار كاش
 @router.post("/bookings/{booking_id}/pay-cash")
 def _legacy_pay_cash(
     booking_id: int,
@@ -511,7 +483,6 @@ def _legacy_pay_cash(
     db.commit()
     return redirect_to_flow(bk.id)
 
-# المستأجر يدفع أونلاين (وهمي)
 @router.post("/bookings/{booking_id}/pay-online")
 def _legacy_pay_online(
     booking_id: int,
@@ -539,7 +510,6 @@ def _legacy_pay_online(
     db.commit()
     return redirect_to_flow(bk.id)
 
-# تأكيد استلام المستأجر
 @router.post("/bookings/{booking_id}/picked-up")
 def _legacy_picked_up(
     booking_id: int,
@@ -566,7 +536,6 @@ def _legacy_picked_up(
     db.commit()
     return redirect_to_flow(bk.id)
 
-# المستأجر يعلّم أنه أرجع الغرض
 @router.post("/bookings/{booking_id}/mark-returned")
 def _legacy_mark_returned(
     booking_id: int,
@@ -586,10 +555,8 @@ def _legacy_mark_returned(
     db.commit()
     return redirect_to_flow(bk.id)
 
+# ============= JSON حالة الحجز =============
 
-# ======================================================
-# JSON حالة الحجز
-# ======================================================
 @router.get("/api/bookings/{booking_id}/state")
 def booking_state(
     booking_id: int,
@@ -601,7 +568,7 @@ def booking_state(
     if not (is_renter(user, bk) or is_owner(user, bk)):
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    return JSONResponse({
+    return _json({
         "id": bk.id,
         "status": bk.status,
         "owner_decision": bk.owner_decision,
@@ -611,10 +578,8 @@ def booking_state(
         "deposit_status": bk.deposit_status,
     })
 
+# ============= صفحة قائمة الحجوزات (للطرفين) =============
 
-# ======================================================
-# صفحة قائمة الحجوزات (للطرفين)
-# ======================================================
 @router.get("/bookings")
 def bookings_index(
     request: Request,
@@ -632,8 +597,7 @@ def bookings_index(
         q = q.filter(Booking.renter_id == user.id)
         title = "حجوزاتي"
 
-    # كان يستخدم created_at (غير موجود) —> نستعمل id DESC أو timeline_created_at
-    q = q.order_by(Booking.id.desc())
+    q = q.order_by(Booking.created_at.desc())
     bookings = q.all()
 
     return request.app.templates.TemplateResponse(
@@ -647,10 +611,8 @@ def bookings_index(
         },
     )
 
+# ============= إشعارات الحجوزات (الجرس) =============
 
-# ======================================================
-# إشعارات الحجوزات للمالك (عداد + قائمة مبسّطة)
-# ======================================================
 @router.get("/api/bookings/pending-count")
 def api_bookings_pending_count(
     db: Session = Depends(get_db),
@@ -663,10 +625,9 @@ def api_bookings_pending_count(
     require_auth(user)
     count = db.query(Booking).filter(
         Booking.owner_id == user.id,
-        Booking.status == "requested"
+        Booking.status == "requested",
     ).count()
-    return JSONResponse({"count": int(count)})
-
+    return _json({"count": int(count)})
 
 @router.get("/api/bookings/pending-list")
 def api_bookings_pending_list(
@@ -682,8 +643,7 @@ def api_bookings_pending_list(
     q = (
         db.query(Booking)
         .filter(Booking.owner_id == user.id, Booking.status == "requested")
-        # كان created_at → ليس موجود. نستعمل id DESC (أحدث أولاً).
-        .order_by(Booking.id.desc())
+        .order_by(Booking.created_at.desc())
         .limit(max(1, min(50, int(limit or 10))))
     )
     rows = q.all()
@@ -706,4 +666,4 @@ def api_bookings_pending_list(
             "days": int(b.days or 1),
             "url": f"/bookings/flow/{b.id}",
         })
-    return JSONResponse({"items": data})
+    return _json({"items": data})
