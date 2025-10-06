@@ -604,3 +604,82 @@ def api_bookings_pending_list(
             "url": f"/bookings/flow/{b.id}",
         })
     return _json({"items": data})
+
+    # ======== Aliases لتوافق القالب (لا تحذف المسارات الأصلية) ========
+
+from fastapi import status
+
+def _redir(flow_id: int):
+    return RedirectResponse(url=f"/bookings/flow/{flow_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+@router.api_route("/bookings/{booking_id}/owner/accept", methods=["POST", "GET"])
+def _alias_owner_accept(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+    request: Request = None,
+):
+    """Alias للمسار القديم/الجديد حتى لا يظهر 404 عند ضغط 'قبول' من القالب."""
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if not is_owner(user, bk):
+        raise HTTPException(status_code=403, detail="Only owner can accept")
+    if bk.status != "requested":
+        return _redir(bk.id)
+    bk.status = "accepted"
+    bk.owner_decision = "accepted"
+    bk.accepted_at = datetime.utcnow()
+    bk.timeline_owner_decided_at = datetime.utcnow()
+    db.commit()
+    return _redir(bk.id)
+
+@router.api_route("/bookings/{booking_id}/owner/reject", methods=["POST", "GET"])
+def _alias_owner_reject(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+    request: Request = None,
+):
+    """Alias لمسار الرفض حتى لا يظهر 404 عند ضغط 'رفض'."""
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if not is_owner(user, bk):
+        raise HTTPException(status_code=403, detail="Only owner can reject")
+    if bk.status != "requested":
+        return _redir(bk.id)
+    bk.status = "rejected"
+    bk.owner_decision = "rejected"
+    bk.rejected_at = datetime.utcnow()
+    bk.timeline_owner_decided_at = datetime.utcnow()
+    db.commit()
+    return _redir(bk.id)
+
+# (اختياري) إن كان القالب يرسل إلى قرار مدموج:
+@router.api_route("/bookings/{booking_id}/owner/decision", methods=["POST", "GET"])
+def _alias_owner_decision(
+    booking_id: int,
+    decision: Optional[str] = Form(None),  # قد يأتي من فورم
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+    request: Request = None,
+):
+    """Alias عام يحوّل القرار إلى قبول/رفض حسب قيمة decision."""
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if not is_owner(user, bk):
+        raise HTTPException(status_code=403, detail="Only owner")
+    if bk.status != "requested":
+        return _redir(bk.id)
+
+    d = (decision or "").lower()
+    if d in ("accepted", "accept", "ok", "yes"):
+        bk.status = "accepted"
+        bk.owner_decision = "accepted"
+        bk.accepted_at = datetime.utcnow()
+    else:
+        bk.status = "rejected"
+        bk.owner_decision = "rejected"
+        bk.rejected_at = datetime.utcnow()
+    bk.timeline_owner_decided_at = datetime.utcnow()
+    db.commit()
+    return _redir(bk.id)
