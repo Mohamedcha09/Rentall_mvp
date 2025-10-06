@@ -30,6 +30,7 @@
 
   <div class="row g-3">
     <div class="col-12 col-lg-7">
+
       {# ===== المرحلة 1: بانتظار موافقة المالك ===== #}
       {% if booking.status in ['requested'] %}
         {% if is_owner %}
@@ -51,6 +52,7 @@
       {% if booking.status in ['accepted'] %}
         {% if is_renter %}
           <h5>اختر طريقة الدفع</h5>
+
           <div class="box mb-2">
             <div class="mb-2">الدفع <strong>كاش عند الاستلام</strong></div>
             <form method="post" action="/bookings/{{ booking.id }}/pay-cash">
@@ -59,7 +61,7 @@
           </div>
 
           <div class="box">
-            <div class="mb-2">الدفع <strong>أونلاين (Placeholder)</strong></div>
+            <div class="mb-2">الدفع <strong>أونلاين (تجريبي)</strong></div>
             <form method="post" action="/bookings/{{ booking.id }}/pay-online">
               <div class="row g-2 align-items-end">
                 <div class="col-6">
@@ -71,11 +73,11 @@
                   <input class="form-control" type="number" step="1" min="0" name="deposit_amount" value="{{ booking.hold_deposit_amount or 0 }}">
                 </div>
                 <div class="col-12 mt-2">
-                  <button class="btn btn-primary"><i class="bi bi-credit-card"></i> ادفع أونلاين (تجريبي)</button>
+                  <button class="btn btn-primary"><i class="bi bi-credit-card"></i> ادفع أونلاين</button>
                 </div>
               </div>
             </form>
-            <div class="k mt-2">* هذا دفع وهمي لتجربة السلوك. سنشبك Stripe لاحقًا.</div>
+            <div class="k mt-2">* الدفع الأونلاين هنا محاكي فقط لأغراض الاختبار.</div>
           </div>
         {% elif is_owner %}
           <div class="hint">تم قبول الطلب. بانتظار أن يختار المستأجر طريقة الدفع…</div>
@@ -108,39 +110,10 @@
         {% endif %}
       {% endif %}
 
-      {# ===== المرحلة 5: المستأجر أرجع الغرض → قرار الديبو ===== #}
+      {# ===== المرحلة 5: بعد الإرجاع (تعرض معلومات فقط؛ القرار يتم من لوحة الإدارة) ===== #}
       {% if booking.status in ['returned', 'in_review'] %}
         {% if session_user and session_user.role == 'admin' %}
-          <h5>تأكيد الإرجاع ومعالجة الديبو (إدمن)</h5>
-          <div class="box mb-2">
-            <form method="post" action="/bookings/{{ booking.id }}/owner-confirm-return">
-              <input type="hidden" name="action" value="ok">
-              <label class="form-label">ملاحظة (اختياري)</label>
-              <textarea class="form-control mb-2" name="owner_note" rows="2"></textarea>
-              <button class="btn btn-success"><i class="bi bi-check2"></i> كل شيء بخير — إعادة الديبو بالكامل</button>
-            </form>
-          </div>
-
-          <div class="box">
-            <form method="post" action="/bookings/{{ booking.id }}/owner-confirm-return">
-              <input type="hidden" name="action" value="charge">
-              <div class="row g-2">
-                <div class="col-6">
-                  <label class="form-label">مبلغ الخصم من الديبو</label>
-                  <input class="form-control" type="number" step="1" min="0" name="charge_amount" value="0">
-                </div>
-                <div class="col-12">
-                  <label class="form-label">سبب الخصم (اختياري)</label>
-                  <textarea class="form-control" name="owner_note" rows="2"></textarea>
-                </div>
-                <div class="col-12 mt-2">
-                  <button class="btn btn-outline-danger"><i class="bi bi-exclamation-triangle"></i> خصم من الديبو</button>
-                </div>
-              </div>
-            </form>
-          </div>
-          <div class="k mt-2">* في Stripe الحقيقي: هنا ستتم عملية رد/اقتطاع الديبو.</div>
-
+          <div class="hint">هذا الحجز بانتظار قرار الديبو من الإدارة (استخدم مسار /bookings/{{ booking.id }}/owner/deposit_action في لوحة الإدارة).</div>
         {% elif is_owner %}
           <div class="hint">تم تعليم الإرجاع. بانتظار مراجعة <strong>الإدارة</strong> لاتخاذ قرار الديبو.</div>
         {% elif is_renter %}
@@ -197,7 +170,9 @@
       <div class="box mt-3">
         <h6 class="mb-2">العنصر</h6>
         <div class="d-flex gap-3">
-          <img src="{{ item.image_path if item.image_path else '/static/placeholder.jpg' }}" style="width:96px;height:96px;object-fit:cover;border-radius:10px" alt="">
+          {# ✅ إصلاح مسار الصورة: نضمن البدء بـ / أو بديل placeholder #}
+          <img src="{{ (('/' ~ item.image_path) if item.image_path and item.image_path[0] != '/' else (item.image_path or '/static/placeholder.jpg')) }}"
+               style="width:96px;height:96px;object-fit:cover;border-radius:10px" alt="">
           <div>
             <div class="fw-bold">{{ item.title }}</div>
             <div class="k">{{ category_label(item.category) }}</div>
