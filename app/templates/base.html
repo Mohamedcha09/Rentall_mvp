@@ -95,7 +95,8 @@
       }
       #notifOpen .notif-ping{
         position:absolute; top:-2px; inset-inline-end:-2px; width:8px; height:8px;
-        background:#d43aff; border-radius:50%; box-shadow: 0 0 0 6px rgba(212,58,255,.18);
+        background:#d43aff; border-radius:50%;
+        box-shadow: 0 0 0 6px rgba(212,58,255,.18);
       }
       .notif-panel{
         position: fixed; top:0; inset-inline-end:-420px; width:360px; max-width:88vw; height:100vh;
@@ -116,15 +117,16 @@
       .scrim.is-show{ opacity:1; pointer-events:auto; }
 
       /* === شعار وأيقونات === */
-      .brand-logo{ height:56px; vertical-align:middle }  /* شعار SEVOR كبير */
+      .brand-logo{ height:56px; vertical-align:middle }  /* تكبير SEVOR */
       @media (max-width:768px){ .brand-logo{ height:40px } }
+
+      /* صورة ok داخل المربّع */
+      #sidebarToggle .topbar-ok{ width:24px; height:24px; display:block; }
+      #sidebarToggle{ border:0; }
 
       .side-link .side-icon{ width:22px; height:22px; object-fit:contain }
 
-      /* إخفاء المربّع الرمادي (زر فتح الشريط) نهائياً */
-      #sidebarToggle{ display:none !important; }
-
-      /* إزالة أي حدود/ظلال من الهيدر */
+      /* إزالة أي حدود/ظلال من الهيدر (اختياري) */
       .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important; }
     </style>
 
@@ -138,12 +140,12 @@
     <header class="topbar">
       <div class="topbar__inner container-fluid">
 
-        <!-- (مخفي) زر الشريط الجانبي حتى لا يظهر المربّع -->
-        <button class="btn btn-ghost btn-sm d-none" id="sidebarToggle" aria-label="Toggle sidebar">
-          <i class="bi bi-layout-sidebar-inset-reverse"></i>
+        <!-- المربّع نفسه بقي كما هو، فقط وضعنا صورة ok داخله -->
+        <button class="btn btn-ghost btn-sm" id="sidebarToggle" aria-label="Toggle sidebar">
+          <img class="topbar-ok" src="{{ url_for('static', path='images/ok.png') }}" alt="OK">
         </button>
 
-        <!-- شعار SEVOR كبير -->
+        <!-- شعار SEVOR بصورة base.png وبحجم كبير -->
         <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/">
           <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR">
           <span class="visually-hidden">SEVOR</span>
@@ -489,7 +491,7 @@
     else if (e.key === 'Escape'){ hide(); }
   });
 
-  document.addEventListener('click', function(e){ if (!panel.contains(e.target) && e.target !== input){ hide(); } });
+  document.addEventListener('click', function(e){ if (!panel.contains(e.target) و e.target !== input){ hide(); } });
 
   function setActive(rows, i){
     rows.forEach(function(r){ r.classList.remove('active'); });
@@ -535,7 +537,7 @@
     a.innerHTML = `<div class="fw-bold">${esc(title)}</div>${meta?`<div class="k small">${esc(meta)}</div>`:''}`;
     return a;
   }
-  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;","'":"&#39;"}[c]);}
 
   function loadPendingList(){
     fetch('/api/bookings/pending-list', {credentials:'same-origin'})
