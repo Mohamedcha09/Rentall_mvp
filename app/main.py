@@ -34,6 +34,7 @@ from .routes_users import router as users_router
 from .admin_badges import router as admin_badges_router 
 from .routes_bookings import router as bookings_router
 from .notifications import router as notifs_router  
+from .notifications_api import router as notifications_router
 
 # [مضاف] راوتر المفضّلات
 from .routes_favorites import router as favorites_router
@@ -130,7 +131,8 @@ app.include_router(admin_badges_router)
 app.include_router(bookings_router)
 # ===== راوتر المفضلات =====
 app.include_router(favorites_router)
-app.include_router(notifs_router)  #
+app.include_router(notifs_router)  
+app.include_router(notifications_router)
 # ===== أداة صغيرة لاستخراج كود التصنيف بأشكال مختلفة
 def _cat_code(cat) -> str:
     """
