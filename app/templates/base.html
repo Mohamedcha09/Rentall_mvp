@@ -47,9 +47,7 @@
           backdrop-filter: blur(14px) saturate(120%);
           z-index: 2100;
         }
-        /* إذا تحتوي تبويب "مفضلتي" نصير 4 أعمدة */
         .mobile-tabbar.has-fav{ grid-template-columns: repeat(4, 1fr); }
-
         .mobile-tabbar a{
           display:flex; flex-direction:column; align-items:center; justify-content:center;
           gap:4px; text-decoration:none; color: var(--muted); font-size:.8rem;
@@ -214,7 +212,6 @@
               <ul class="dropdown-menu dropdown-menu-end">
                 <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> صفحتي</a></li>
                 <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
-                <!-- رابط حجوزاتي (موحّد) -->
                 <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a></li>
                 <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a></li>
                 {% if session_user.role == 'admin' %}
@@ -253,12 +250,10 @@
             <i class="bi bi-person"></i> <span>صفحتي</span>
           </a>
 
-          <!-- أشيائي تبقى كما هي -->
           <a class="side-link {% if request and request.url.path.startswith('/owner/items') %}is-active{% endif %}" href="/owner/items" data-tooltip="أشيائي">
             <i class="bi bi-collection"></i> <span>أشيائي</span>
           </a>
 
-          <!-- الرابط الجديد الموحد لحجوزات المستأجر والمالك -->
           <a class="side-link {% if request and request.url.path.startswith('/bookings') %}is-active{% endif %}" href="/bookings" data-tooltip="حجوزاتي">
             <i class="bi bi-calendar2-check"></i> <span>حجوزاتي</span>
           </a>
@@ -424,7 +419,7 @@
   function show(){ panel.classList.remove('d-none'); }
   function esc(s){
     return String(s||"").replace(/[&<>"']/g, function(c){
-      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+      return {"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;","'":"&#39;"}[c];
     });
   }
 
@@ -502,7 +497,7 @@
 })();
     </script>
 
-    <!-- ===== إشعارات (Polling عام + عدّاد رسائل) ===== -->
+    <!-- ===== إشعارات (Polling عام + عدّاد رسائل + تحميل قائمة الحجوزات عند الفتح) ===== -->
     <script>
 (function notifSystem(){
   if (window.__notifInit) return; window.__notifInit = true;
@@ -542,14 +537,53 @@
     }
   }
 
-  // فتح/إغلاق اللوح
-  function openPanel(){ panel?.classList.add('is-open'); scrim?.classList.add('is-show'); }
+  // فتح/إغلاق اللوح + تحميل القائمة
+  function openPanel(){
+    panel?.classList.add('is-open'); scrim?.classList.add('is-show');
+    loadPendingList();   // <<< المهم: حمّل القائمة عند الفتح
+  }
   function closePanel(){ panel?.classList.remove('is-open'); scrim?.classList.remove('is-show'); }
   notifOpen?.addEventListener('click', openPanel);
   notifClose?.addEventListener('click', closePanel);
   scrim?.addEventListener('click', closePanel);
 
-  // عدّاد الرسائل غير المقروءة
+  // رسم صف إشعار عام
+  function row(title, meta, url){
+    const a = document.createElement('a');
+    a.className='notif-row';
+    a.href = url || '#';
+    a.innerHTML = `<div class="fw-bold">${esc(title)}</div>${meta?`<div class="k small">${esc(meta)}</div>`:''}`;
+    return a;
+  }
+
+  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+  // تحميل قائمة الحجوزات المعلّقة للمالك
+  function loadPendingList(){
+    fetch('/api/bookings/pending-list', {credentials:'same-origin'})
+      .then(r=>r.ok?r.json():{items:[]})
+      .then(d=>{
+        const items = d.items||[];
+        // إن كانت الرسالة الفارغة موجودة امسحها أولاً
+        if (body.firstElementChild && body.firstElementChild.classList.contains('text-muted')){
+          body.innerHTML = '';
+        }
+        if (!items.length && !body.children.length){
+          body.innerHTML = '<div class="small text-muted">لا توجد إشعارات جديدة.</div>';
+          return;
+        }
+        // لا نمسح الموجود بالكامل: نضيف الحجوزات في الأعلى
+        const frag = document.createDocumentFragment();
+        items.forEach(b=>{
+          const meta = `${b.start_date} → ${b.end_date} (${b.days} يوم)`;
+          frag.append(row('طلب حجز جديد على: ' + (b.item_title||('عنصر #' + b.item_id)), meta, b.url));
+        });
+        body.prepend(frag);
+      })
+      .catch(()=>{ /* تجاهل */ });
+  }
+
+  // عدّاد الرسائل غير المقروءة (لو موجود عندك هذا الـAPI)
   function refreshUnread(){
     fetch('/api/unread_count')
       .then(r=>r.ok?r.json():{count:0})
@@ -559,7 +593,7 @@
   refreshUnread();
   setInterval(refreshUnread, 30*1000);
 
-  // Poll إشعارات النظام (اختياري — لن يسبب خطأ إن لم توجد الواجهة)
+  // Poll إشعارات النظام (اختياري)
   let since = 0;
   function poll(){
     fetch('/api/notifications/poll?since='+since, {headers:{'x-na':'1'}})
@@ -569,33 +603,23 @@
         if (data.now) since = data.now;
         const items = Array.isArray(data.items)?data.items:[];
         if (items.length){
-          render(items);
-          // نرفع شارة الجرس
+          if (body.firstElementChild && body.firstElementChild.classList.contains('text-muted')) body.innerHTML='';
+          const frag = document.createDocumentFragment();
+          items.forEach(n=>{
+            frag.append(row(n.title||'إشعار', n.body||'', n.url));
+          });
+          body.prepend(frag);
           setBell((parseInt(countEl.textContent||'0')||0) + items.length);
         }
       })
       .catch(()=>{ /* تجاهل الأخطاء */ });
   }
-  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
-  function render(items){
-    if (!body) return;
-    if (body.firstElementChild && body.firstElementChild.classList.contains('text-muted')) body.innerHTML='';
-    const frag = document.createDocumentFragment();
-    items.forEach(n=>{
-      const a = document.createElement('a');
-      a.className='notif-row';
-      a.href = n.url || '#';
-      a.innerHTML = `<div class="fw-bold">${esc(n.title||'إشعار')}</div><div class="k small">${esc(n.body||'')}</div>`;
-      frag.prepend(a);
-    });
-    body.prepend(frag);
-  }
   setInterval(poll, 20*1000);
   poll();
 
-  // (اختياري) عدّاد طلبات الحجز المعلّقة للمالك
+  // عدّاد طلبات الحجز المعلّقة للمالك
   function refreshPending(){
-    fetch('/api/bookings/pending-count')
+    fetch('/api/bookings/pending-count', {credentials:'same-origin'})
       .then(r=>{ if(!r.ok) throw 0; return r.json(); })
       .then(d=>{ const c = parseInt(d.count||0); if (c>0) setBell(c); })
       .catch(()=>{});
