@@ -1,8 +1,7 @@
-# app/routes_bookings.py
 # ==============================================================
 # صفحة/تدفّق الحجز في صفحة واحدة + إنشاء حجز من "احجز الآن"
-# هذا الملف مُصحَّح بالكامل (أخطاء FastAPI/Request، 404، حساب الأيام...)
-# ملاحظة مهمّة: لا تحذف شيئًا عند اللصق، فقط استبدل محتوى الملف كله بهذا الكود.
+# مُحدّث: أضفنا Endpoints قديمة (accept/reject/pay-cash/...) لتطابق القالب،
+# مع إبقاء الواجهات الجديدة تعمل أيضاً.
 # ==============================================================
 
 from __future__ import annotations
@@ -15,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from .database import get_db
 from .models import User, Item, Booking
+from .utils import category_label  # لتمريرها للقالب
 
 router = APIRouter(tags=["bookings"])
 
@@ -23,7 +23,6 @@ router = APIRouter(tags=["bookings"])
 # ======================================================
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
-    """يجلب المستخدم من الجلسة أو يرجّع None."""
     data = request.session.get("user") or {}
     uid = data.get("id")
     if not uid:
@@ -31,12 +30,10 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optiona
     return db.get(User, uid)
 
 def require_auth(user: Optional[User]):
-    """يرفع 401 إن لم يكن المستخدم مسجّل الدخول."""
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 def require_booking(db: Session, booking_id: int) -> Booking:
-    """يجلب الحجز أو يرفع 404."""
     bk = db.get(Booking, booking_id)
     if not bk:
         raise HTTPException(status_code=404, detail="Booking not found")
@@ -49,25 +46,14 @@ def is_owner(user: User, bk: Booking) -> bool:
     return bool(user) and user.id == bk.owner_id
 
 def redirect_to_flow(booking_id: int) -> RedirectResponse:
-    """تحويل سريع لصفحة التدفق."""
     return RedirectResponse(url=f"/bookings/flow/{booking_id}", status_code=303)
 
 def _parse_date(s: str) -> date:
     return datetime.strptime(s, "%Y-%m-%d").date()
 
-def _compute_days(start_s: str, end_s: str) -> int:
-    """يحسب عدد الأيام (بما لا يقل عن 1)."""
-    try:
-        sd = _parse_date(start_s)
-        ed = _parse_date(end_s)
-        delta = (ed - sd).days
-        return max(1, delta)
-    except Exception:
-        return 1
-
 
 # ======================================================
-# إنشاء حجز (الصفحة التي يذهب لها زر "احجز الآن")
+# صفحة إنشاء الحجز (زر "احجز الآن" يذهب هنا)
 # ======================================================
 @router.get("/bookings/new")
 def booking_new_page(
@@ -76,16 +62,12 @@ def booking_new_page(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    صفحة اختيار المدة وطريقة الدفع المبدئية.
-    """
     require_auth(user)
 
     item = db.get(Item, item_id)
     if not item or item.is_active != "yes":
         raise HTTPException(status_code=404, detail="Item not available")
 
-    # تواريخ افتراضية (اليوم ← غدًا)
     today = date.today()
     tomorrow = today + timedelta(days=1)
 
@@ -102,7 +84,7 @@ def booking_new_page(
 
 
 # ======================================================
-# إنشاء الحجز (POST من نموذج booking_new.html)
+# إنشاء الحجز (POST من booking_new.html)
 # ======================================================
 @router.post("/bookings")
 def create_booking(
@@ -113,44 +95,32 @@ def create_booking(
     item_id: int = Form(...),
     start_date: str = Form(...),
     end_date: str = Form(...),
-    # قد لا يرسل الفرونت days؛ نحسبه إن لم يصل:
     days: Optional[int] = Form(None),
-    # طريقة الدفع المبدئية من النموذج (لا تغيّر الحالة النهائية الآن)
     pay_method: Optional[Literal["online", "cash"]] = Form(None),
 ):
-    """
-    ينشئ طلب حجز بالحالة requested ثم يحوّل مباشرة لصفحة التدفق الواحدة.
-    """
     require_auth(user)
 
     item = db.get(Item, item_id)
     if not item or item.is_active != "yes":
         raise HTTPException(status_code=404, detail="Item not available")
 
-    # منع حجز صاحب الغرض لنفسه
     if item.owner_id == user.id:
         raise HTTPException(status_code=400, detail="Owner cannot book own item")
 
-    # التحقق من التواريخ + حساب الأيام
+    # تحقق التواريخ + الأيام
     try:
         sd = _parse_date(start_date)
         ed = _parse_date(end_date)
         if ed <= sd:
             raise ValueError("end <= start")
     except Exception:
-        # ارجع لصفحة new مع رسالة خطأ بسيطة
-        return RedirectResponse(
-            url=f"/bookings/new?item_id={item_id}&err=dates",
-            status_code=303,
-        )
+        return RedirectResponse(url=f"/bookings/new?item_id={item_id}&err=dates", status_code=303)
 
     if not days or days < 1:
-        days = (ed - sd).days
-        days = max(1, days)
+        days = max(1, (ed - sd).days)
 
-    # إعداد مبالغ مبدئية (لقطة للسعر اليومي)
     price_per_day = item.price_per_day or 0
-    total_amount = max(1, days) * max(0, price_per_day)
+    total_amount = days * max(0, price_per_day)
 
     bk = Booking(
         item_id=item.id,
@@ -162,31 +132,26 @@ def create_booking(
         price_per_day_snapshot=price_per_day,
         total_amount=total_amount,
 
-        # حالة أولية
         status="requested",
 
-        # قرارات/وسائل الدفع
-        owner_decision=None,                  # "accepted" | "rejected" | None
-        payment_method=None,                  # "online" | "cash" | None
-        payment_status="unpaid",              # "unpaid" | "paid" | "released"
-        deposit_amount=0,                     # يحدده المالك عند القبول (إن أراد)
-        deposit_status=None,                  # None | "held" | "partially_withheld" | "refunded"
-        deposit_hold_id=None,                 # لحجز الديبو (Stripe لاحقًا)
+        owner_decision=None,
+        payment_method=None,
+        payment_status="unpaid",
+        deposit_amount=0,
+        deposit_status=None,
+        deposit_hold_id=None,
 
-        # تايملاين
         timeline_created_at=datetime.utcnow(),
     )
 
     db.add(bk)
     db.commit()
     db.refresh(bk)
-
-    # تلميح: لا نثبت طريقة الدفع هنا؛ نكتفي بالحفظ في التدفق لاحقًا
     return redirect_to_flow(bk.id)
 
 
 # ======================================================
-# الصفحة الواحدة (تتغيّر واجهتها حسب الحالة والدور)
+# صفحة التدفق الواحدة
 # ======================================================
 @router.get("/bookings/flow/{booking_id}")
 def booking_flow_page(
@@ -198,13 +163,14 @@ def booking_flow_page(
     require_auth(user)
     bk = require_booking(db, booking_id)
 
-    # تحقق أن المستخدم طرف في العملية
     if not (is_renter(user, bk) or is_owner(user, bk)):
         raise HTTPException(status_code=403, detail="Forbidden")
 
     item = db.get(Item, bk.item_id)
     owner = db.get(User, bk.owner_id)
     renter = db.get(User, bk.renter_id)
+
+    item_title = item.title if item else f"#{bk.item_id}"
 
     ctx = {
         "request": request,
@@ -214,12 +180,16 @@ def booking_flow_page(
         "item": item,
         "owner": owner,
         "renter": renter,
+        "item_title": item_title,
+        "category_label": category_label,
 
-        # أدوار
+        # تمكين كلا الاسمين ليتوافق مع القالب
+        "is_owner": is_owner(user, bk),
+        "is_renter": is_renter(user, bk),
         "i_am_owner": is_owner(user, bk),
         "i_am_renter": is_renter(user, bk),
 
-        # حالات مختصرة للعرض الشرطي بالقالب
+        # flags قديمة/جديدة (لو احتجتها في قوالب أخرى)
         "is_requested": (bk.status == "requested"),
         "is_declined": (bk.status == "declined"),
         "is_pending_payment": (bk.status == "pending_payment"),
@@ -233,14 +203,14 @@ def booking_flow_page(
 
 
 # ======================================================
-# قرار المالك: قبول/رفض + تحديد الديبو (اختياري)
+# (المسارات الجديدة) قرار المالك: قبول/رفض
 # ======================================================
 @router.post("/bookings/{booking_id}/owner/decision")
 def owner_decision(
     booking_id: int,
     decision: Literal["accepted", "rejected"] = Form(...),
     deposit_amount: int = Form(0),
-    request: Request = None,  # ← لن تُستخدم كنموذج؛ مجرد تسهيل للتوقيع
+    request: Request = None,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
@@ -248,34 +218,34 @@ def owner_decision(
     bk = require_booking(db, booking_id)
     if not is_owner(user, bk):
         raise HTTPException(status_code=403, detail="Only owner can decide")
-
     if bk.status != "requested":
         raise HTTPException(status_code=400, detail="Invalid state")
 
     if decision == "rejected":
-        bk.status = "declined"
+        bk.status = "rejected"
         bk.owner_decision = "rejected"
+        bk.rejected_at = datetime.utcnow()
         bk.timeline_owner_decided_at = datetime.utcnow()
         db.commit()
         return redirect_to_flow(bk.id)
 
-    # قبول
     bk.owner_decision = "accepted"
     bk.deposit_amount = max(0, int(deposit_amount or 0))
+    bk.accepted_at = datetime.utcnow()
     bk.timeline_owner_decided_at = datetime.utcnow()
-    bk.status = "pending_payment"  # بانتظار اختيار/تنفيذ الدفع من المستأجر
+    bk.status = "accepted"  # ليتوافق مع القالب الذي ينتظر 'accepted'
     db.commit()
     return redirect_to_flow(bk.id)
 
 
 # ======================================================
-# اختيار طريقة الدفع من المستأجر: cash أو online
+# (المسارات الجديدة) المستأجر يختار طريقة الدفع
 # ======================================================
 @router.post("/bookings/{booking_id}/renter/choose_payment")
 def renter_choose_payment(
     booking_id: int,
     method: Literal["cash", "online"] = Form(...),
-    request: Request = None,  # للتوقيع فقط
+    request: Request = None,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
@@ -283,20 +253,17 @@ def renter_choose_payment(
     bk = require_booking(db, booking_id)
     if not is_renter(user, bk):
         raise HTTPException(status_code=403, detail="Only renter can choose")
-
-    if bk.status != "pending_payment":
+    if bk.status != "accepted":
         raise HTTPException(status_code=400, detail="Invalid state")
 
     if method == "cash":
-        # كاش: بدون ديبو (حسب طلبك)
         bk.payment_method = "cash"
-        bk.payment_status = "unpaid"   # سيدفع يدويًا عند الاستلام
-        bk.status = "awaiting_pickup"  # الانتظار حتى يستلم المستأجر الغرض
+        bk.payment_status = "unpaid"
+        bk.status = "paid"  # القالب التالي ينتظر 'paid'
         bk.timeline_payment_method_chosen_at = datetime.utcnow()
         db.commit()
         return redirect_to_flow(bk.id)
 
-    # أونلاين: سيدفع الآن (الإيجار + الديبو)، التحويل للمالك يتم عند "تم الاستلام"
     bk.payment_method = "online"
     bk.timeline_payment_method_chosen_at = datetime.utcnow()
     db.commit()
@@ -304,7 +271,7 @@ def renter_choose_payment(
 
 
 # ======================================================
-# (أونلاين) تنفيذ الدفع الآن — Placeholder لStripe
+# (المسارات الجديدة) أونلاين: دفع وهمي الآن
 # ======================================================
 @router.post("/bookings/{booking_id}/renter/pay_online")
 def renter_pay_online(
@@ -313,36 +280,28 @@ def renter_pay_online(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    لاحقًا سننشئ PaymentIntent + Hold للديبو عبر Stripe.
-    الآن: نحاكي نجاح الدفع وننتقل للحالة awaiting_pickup.
-    """
     require_auth(user)
     bk = require_booking(db, booking_id)
     if not is_renter(user, bk):
         raise HTTPException(status_code=403, detail="Only renter can pay")
 
-    if bk.payment_method != "online" or bk.status != "pending_payment":
+    if bk.payment_method != "online" or bk.status not in ("accepted", "pending_payment"):
+        # نقبل accepted لتوافق القالب
         raise HTTPException(status_code=400, detail="Invalid state")
 
-    # TODO (Stripe):
-    # - create PaymentIntent(amount = total_amount)
-    # - place a separate hold for deposit (if deposit_amount > 0)
-    # - on success:
     bk.payment_status = "paid"
     if (bk.deposit_amount or 0) > 0:
         bk.deposit_status = "held"
         bk.deposit_hold_id = "HOLD_SIMULATED_ID"
 
-    bk.status = "awaiting_pickup"  # ينتظر أن يأخذ المستأجر الغرض من المالك
+    bk.status = "paid"
     bk.timeline_paid_at = datetime.utcnow()
     db.commit()
-
     return redirect_to_flow(bk.id)
 
 
 # ======================================================
-# “تم استلام الغرض” — يضغطها المستأجر عند الاستلام
+# (المسارات الجديدة) تأكيد استلام المستأجر
 # ======================================================
 @router.post("/bookings/{booking_id}/renter/confirm_received")
 def renter_confirm_received(
@@ -355,27 +314,24 @@ def renter_confirm_received(
     bk = require_booking(db, booking_id)
     if not is_renter(user, bk):
         raise HTTPException(status_code=403, detail="Only renter can confirm")
-
-    if bk.status != "awaiting_pickup":
+    if bk.status != "paid":
         raise HTTPException(status_code=400, detail="Invalid state")
 
-    # عند الاستلام:
-    # - كاش: دفع للمـالك يدويًا الآن.
-    # - أونلاين: نُحوِّل مبلغ الإيجار للمالك (Stripe transfer لاحقًا).
     if bk.payment_method == "online":
-        # TODO: Stripe — Transfer payout for rental amount to owner
-        bk.payment_status = "released"  # مبلغ الإيجار حُوِّل
-        bk.timeline_rental_released_at = datetime.utcnow()
+        bk.payment_status = "released"
+        bk.owner_payout_amount = bk.rent_amount or bk.total_amount or 0
+        bk.rent_released_at = datetime.utcnow()
+        bk.online_status = "captured"
 
-    bk.status = "in_use"  # الغرض الآن مع المستأجر
+    bk.status = "picked_up"
+    bk.picked_up_at = datetime.utcnow()
     bk.timeline_renter_received_at = datetime.utcnow()
     db.commit()
-
     return redirect_to_flow(bk.id)
 
 
 # ======================================================
-# “تم إرجاع الغرض” — يضغطها المالك عند استلامه من المستأجر
+# (المسارات الجديدة) تأكيد الإرجاع من المالك → مراجعة ديبو
 # ======================================================
 @router.post("/bookings/{booking_id}/owner/confirm_return")
 def owner_confirm_return(
@@ -388,20 +344,17 @@ def owner_confirm_return(
     bk = require_booking(db, booking_id)
     if not is_owner(user, bk):
         raise HTTPException(status_code=403, detail="Only owner can confirm")
-
-    if bk.status not in ("in_use", "awaiting_return"):
+    if bk.status not in ("in_use", "awaiting_return", "picked_up"):
         raise HTTPException(status_code=400, detail="Invalid state")
 
-    # بعد تأكيد الإرجاع، ندخل مراجعة الديبو
     bk.status = "in_review"
     bk.timeline_owner_returned_at = datetime.utcnow()
     db.commit()
-
     return redirect_to_flow(bk.id)
 
 
 # ======================================================
-# قرار الديبو — المالك (إرجاعه كامل/جزئي/حجزه)
+# (المسارات الجديدة) قرار الديبو النهائي
 # ======================================================
 @router.post("/bookings/{booking_id}/owner/deposit_action")
 def owner_deposit_action(
@@ -409,84 +362,236 @@ def owner_deposit_action(
     action: Literal["refund_all", "withhold_partial", "withhold_all"] = Form(...),
     partial_amount: int = Form(0),
     note: str = Form(""),
-    request: Request = None,  # للتوقيع فقط
+    request: Request = None,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    المالك يقرر مصير الديبو بعد الإرجاع.
-    - refund_all: إرجاع كامل.
-    - withhold_partial: اقتطاع جزئي (partial_amount).
-    - withhold_all: حجزه كله.
-    """
     require_auth(user)
     bk = require_booking(db, booking_id)
     if not is_owner(user, bk):
         raise HTTPException(status_code=403, detail="Only owner can decide deposit")
-
     if bk.status != "in_review":
         raise HTTPException(status_code=400, detail="Invalid state")
 
     dep = max(0, bk.deposit_amount or 0)
     if dep == 0:
-        # لا يوجد ديبو — نغلق العملية فورًا
         bk.status = "completed"
         bk.timeline_closed_at = datetime.utcnow()
         db.commit()
         return redirect_to_flow(bk.id)
 
-    # TODO (Stripe):
-    # - refund to renter
-    # - capture partial for owner
-    # - capture all for owner
     if action == "refund_all":
         bk.deposit_status = "refunded"
-        # stripe_release_deposit_all(bk.deposit_hold_id)
     elif action == "withhold_partial":
         amt = max(0, int(partial_amount or 0))
         if amt <= 0 or amt >= dep:
             raise HTTPException(status_code=400, detail="Invalid partial amount")
         bk.deposit_status = "partially_withheld"
-        # stripe_capture_deposit_partial(bk.deposit_hold_id, amt)
+        bk.deposit_charged_amount = amt
     elif action == "withhold_all":
-        bk.deposit_status = "partially_withheld"  # توحيد التسمية
-        # stripe_capture_deposit_all(bk.deposit_hold_id)
+        bk.deposit_status = "partially_withheld"
+        bk.deposit_charged_amount = dep
     else:
         raise HTTPException(status_code=400, detail="Unknown action")
 
     bk.status = "completed"
     bk.timeline_closed_at = datetime.utcnow()
     db.commit()
-
     return redirect_to_flow(bk.id)
 
 
 # ======================================================
-# وسيلة اختيارية: للمالك لو أراد وضع الحالة “بانتظار الاسترجاع”
-# لمن اختار كاش وكان الغرض في الاستخدام.
+# (المسارات الإضافية) تطابق أزرار القالب القديم مباشرةً
 # ======================================================
-@router.post("/bookings/{booking_id}/owner/mark_wait_return")
-def owner_mark_wait_return(
+
+# المالك يقبل
+@router.post("/bookings/{booking_id}/accept")
+def _legacy_accept(
     booking_id: int,
-    request: Request,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
+    request: Request = None,
+):
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if not is_owner(user, bk):
+        raise HTTPException(status_code=403, detail="Only owner can accept")
+    if bk.status != "requested":
+        return redirect_to_flow(bk.id)
+    bk.status = "accepted"
+    bk.owner_decision = "accepted"
+    bk.accepted_at = datetime.utcnow()
+    bk.timeline_owner_decided_at = datetime.utcnow()
+    db.commit()
+    return redirect_to_flow(bk.id)
+
+# المالك يرفض
+@router.post("/bookings/{booking_id}/reject")
+def _legacy_reject(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+    request: Request = None,
+):
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if not is_owner(user, bk):
+        raise HTTPException(status_code=403, detail="Only owner can reject")
+    if bk.status != "requested":
+        return redirect_to_flow(bk.id)
+    bk.status = "rejected"
+    bk.owner_decision = "rejected"
+    bk.rejected_at = datetime.utcnow()
+    bk.timeline_owner_decided_at = datetime.utcnow()
+    db.commit()
+    return redirect_to_flow(bk.id)
+
+# المستأجر يختار كاش
+@router.post("/bookings/{booking_id}/pay-cash")
+def _legacy_pay_cash(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+    request: Request = None,
+):
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if not is_renter(user, bk):
+        raise HTTPException(status_code=403, detail="Only renter")
+    if bk.status != "accepted":
+        return redirect_to_flow(bk.id)
+    bk.payment_method = "cash"
+    bk.online_status = None
+    bk.hold_deposit_amount = 0
+    bk.deposit_status = "none"
+    bk.payment_status = "unpaid"
+    bk.status = "paid"  # للانتقال إلى مرحلة الاستلام
+    bk.timeline_payment_method_chosen_at = datetime.utcnow()
+    db.commit()
+    return redirect_to_flow(bk.id)
+
+# المستأجر يدفع أونلاين (وهمي)
+@router.post("/bookings/{booking_id}/pay-online")
+def _legacy_pay_online(
+    booking_id: int,
+    rent_amount: int = Form(...),
+    deposit_amount: int = Form(0),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+    request: Request = None,
+):
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if not is_renter(user, bk):
+        raise HTTPException(status_code=403, detail="Only renter")
+    if bk.status != "accepted":
+        return redirect_to_flow(bk.id)
+
+    bk.payment_method = "online"
+    bk.rent_amount = max(0, int(rent_amount or 0))
+    bk.hold_deposit_amount = max(0, int(deposit_amount or 0))
+    bk.payment_status = "paid"
+    bk.online_status = "paid"
+    bk.deposit_status = "held" if bk.hold_deposit_amount > 0 else "none"
+    bk.status = "paid"
+    bk.timeline_paid_at = datetime.utcnow()
+    db.commit()
+    return redirect_to_flow(bk.id)
+
+# تأكيد استلام المستأجر
+@router.post("/bookings/{booking_id}/picked-up")
+def _legacy_picked_up(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+    request: Request = None,
+):
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if not is_renter(user, bk):
+        raise HTTPException(status_code=403, detail="Only renter")
+    if bk.status != "paid":
+        return redirect_to_flow(bk.id)
+
+    bk.status = "picked_up"
+    bk.picked_up_at = datetime.utcnow()
+
+    if bk.payment_method == "online":
+        bk.owner_payout_amount = bk.rent_amount or bk.total_amount or 0
+        bk.rent_released_at = datetime.utcnow()
+        bk.online_status = "captured"
+        bk.payment_status = "released"
+
+    db.commit()
+    return redirect_to_flow(bk.id)
+
+# المستأجر يعلّم أنه أرجع الغرض
+@router.post("/bookings/{booking_id}/mark-returned")
+def _legacy_mark_returned(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+    request: Request = None,
+):
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if not is_renter(user, bk):
+        raise HTTPException(status_code=403, detail="Only renter")
+    if bk.status != "picked_up":
+        return redirect_to_flow(bk.id)
+
+    bk.status = "returned"
+    bk.returned_at = datetime.utcnow()
+    db.commit()
+    return redirect_to_flow(bk.id)
+
+# المالك يقرر الديبو ويغلق العملية
+@router.post("/bookings/{booking_id}/owner-confirm-return")
+def _legacy_owner_confirm_return(
+    booking_id: int,
+    action: Literal["ok", "charge"] = Form(...),
+    charge_amount: int = Form(0),
+    owner_note: str = Form(""),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+    request: Request = None,
 ):
     require_auth(user)
     bk = require_booking(db, booking_id)
     if not is_owner(user, bk):
         raise HTTPException(status_code=403, detail="Only owner")
+    if bk.status not in ("returned", "picked_up"):
+        return redirect_to_flow(bk.id)
 
-    if bk.status != "in_use":
-        raise HTTPException(status_code=400, detail="Invalid state")
+    bk.owner_return_note = (owner_note or "").strip()
+    now = datetime.utcnow()
 
-    bk.status = "awaiting_return"
+    if bk.payment_method == "online" and (bk.hold_deposit_amount or 0) > 0:
+        if action == "ok":
+            bk.deposit_charged_amount = 0
+            bk.deposit_status = "refunded"
+        else:
+            amt = max(0, int(charge_amount or 0))
+            held = bk.hold_deposit_amount or 0
+            if amt >= held:
+                bk.deposit_charged_amount = held
+                bk.deposit_status = "claimed"
+            else:
+                bk.deposit_charged_amount = amt
+                bk.deposit_status = "partially_refunded"
+    else:
+        bk.deposit_charged_amount = 0
+        bk.deposit_status = "none" if (bk.hold_deposit_amount or 0) == 0 else (bk.deposit_status or "released")
+
+    bk.return_confirmed_by_owner_at = now
+    bk.status = "closed"
+    bk.timeline_closed_at = now
     db.commit()
     return redirect_to_flow(bk.id)
 
 
 # ======================================================
-# JSON صغير لإرجاع حالة الحجز (لو أردت polling في الواجهة)
+# JSON حالة الحجز
 # ======================================================
 @router.get("/api/bookings/{booking_id}/state")
 def booking_state(

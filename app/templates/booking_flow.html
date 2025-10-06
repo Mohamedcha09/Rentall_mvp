@@ -47,7 +47,7 @@
         {% endif %}
       {% endif %}
 
-      {# ===== المرحلة 2: تم القبول → اختيار طريقة الدفع ===== #}
+      {# ===== المرحلة 2: تم القبول → اختيار/تنفيذ الدفع ===== #}
       {% if booking.status in ['accepted'] %}
         {% if is_renter %}
           <h5>اختر طريقة الدفع</h5>
@@ -146,9 +146,9 @@
       {% endif %}
 
       {# ===== المرحلة النهائية ===== #}
-      {% if booking.status in ['closed','rejected'] %}
+      {% if booking.status in ['closed','rejected','completed'] %}
         <div class="alert alert-info">
-          {% if booking.status == 'closed' %}
+          {% if booking.status in ['closed','completed'] %}
             العملية مكتملة ✅
           {% else %}
             تم رفض الحجز ❌

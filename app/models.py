@@ -1,4 +1,3 @@
-# app/models.py
 from datetime import datetime, date
 from sqlalchemy import (
     Column, Integer, String, DateTime, ForeignKey, Text, Date, Boolean
@@ -318,38 +317,49 @@ class Booking(Base):
 
     # ==== (A) معلومات الدفع العامة ====
     payment_method   = col_or_literal("bookings", "payment_method", String(20), nullable=True)  # online/cash
-    platform_fee     = col_or_literal("bookings", "platform_fee", Integer, nullable=False, default=0)  # عمولة المنصة (اختياري)
-    rent_amount      = col_or_literal("bookings", "rent_amount", Integer, nullable=False, default=0)    # صافي مبلغ الإيجار (قبل أي اقتطاعات لاحقة)
-    hold_deposit_amount = col_or_literal("bookings", "hold_deposit_amount", Integer, nullable=False, default=0)  # مبلغ الديبو المطلوب من المالك
+    platform_fee     = col_or_literal("bookings", "platform_fee", Integer, nullable=False, default=0)
+    rent_amount      = col_or_literal("bookings", "rent_amount", Integer, nullable=False, default=0)
+    hold_deposit_amount = col_or_literal("bookings", "hold_deposit_amount", Integer, nullable=False, default=0)
 
     # ==== (B) أونلاين: حجز/دفع/تحويل ====
-    # معرّفات جلسات الدفع أو intents (Stripe أو مزود آخر)
-    online_status        = col_or_literal("bookings", "online_status", String(30), default="created")  # created/paid/captured/refunded/partially_refunded/failed
-    online_checkout_id   = col_or_literal("bookings", "online_checkout_id", String(120), nullable=True)  # مثل: checkout_session_id
+    online_status        = col_or_literal("bookings", "online_status", String(30), default="created")
+    online_checkout_id   = col_or_literal("bookings", "online_checkout_id", String(120), nullable=True)
     online_payment_intent_id = col_or_literal("bookings", "online_payment_intent_id", String(120), nullable=True)
-    owner_payout_amount  = col_or_literal("bookings", "owner_payout_amount", Integer, nullable=False, default=0)  # المبلغ الذي يُحوّل للمالك للإيجار
-    rent_released_at     = col_or_literal("bookings", "rent_released_at", DateTime, nullable=True)  # وقت إطلاق مبلغ الإيجار للمالك (عند picked_up)
+    owner_payout_amount  = col_or_literal("bookings", "owner_payout_amount", Integer, nullable=False, default=0)
+    rent_released_at     = col_or_literal("bookings", "rent_released_at", DateTime, nullable=True)
 
     # الديبو أونلاين (احتجاز ثم إرجاع/اقتطاع)
-    deposit_status       = col_or_literal("bookings", "deposit_status", String(30), default="none")  # none/held/released/partially_refunded/refunded/claimed
+    deposit_status       = col_or_literal("bookings", "deposit_status", String(30), default="none")
     deposit_hold_intent_id = col_or_literal("bookings", "deposit_hold_intent_id", String(120), nullable=True)
     deposit_refund_id    = col_or_literal("bookings", "deposit_refund_id", String(120), nullable=True)
-    deposit_capture_id   = col_or_literal("bookings", "deposit_capture_id", String(120), nullable=True)  # لو اقتطعنا جزءًا للمُلاك
+    deposit_capture_id   = col_or_literal("bookings", "deposit_capture_id", String(120), nullable=True)
 
     # ==== (C) كاش: تأكيد يدوي ====
     cash_confirmed_by_owner_at = col_or_literal("bookings", "cash_confirmed_by_owner_at", DateTime, nullable=True)
 
-    # ==== (D) نقاط التحكم في الدورة ====
+    # ==== (D) نقاط التحكم الإضافية (للتوافق مع الراوتر/القوالب) ====
+    owner_decision    = col_or_literal("bookings", "owner_decision", String(20), nullable=True)   # accepted/rejected/None
+    payment_status    = col_or_literal("bookings", "payment_status", String(20), nullable=True)   # unpaid/paid/released
+    deposit_amount    = col_or_literal("bookings", "deposit_amount", Integer, nullable=False, default=0)
+    deposit_hold_id   = col_or_literal("bookings", "deposit_hold_id", String(120), nullable=True)
+
+    timeline_created_at                 = col_or_literal("bookings", "timeline_created_at", DateTime, nullable=True)
+    timeline_owner_decided_at           = col_or_literal("bookings", "timeline_owner_decided_at", DateTime, nullable=True)
+    timeline_payment_method_chosen_at   = col_or_literal("bookings", "timeline_payment_method_chosen_at", DateTime, nullable=True)
+    timeline_paid_at                    = col_or_literal("bookings", "timeline_paid_at", DateTime, nullable=True)
+    timeline_renter_received_at         = col_or_literal("bookings", "timeline_renter_received_at", DateTime, nullable=True)
+    timeline_owner_returned_at          = col_or_literal("bookings", "timeline_owner_returned_at", DateTime, nullable=True)
+    timeline_rental_released_at         = col_or_literal("bookings", "timeline_rental_released_at", DateTime, nullable=True)
+    timeline_closed_at                  = col_or_literal("bookings", "timeline_closed_at", DateTime, nullable=True)
+
+    # نقاط التحكم في الدورة القديمة/الموازية
     accepted_at   = col_or_literal("bookings", "accepted_at", DateTime, nullable=True)
     rejected_at   = col_or_literal("bookings", "rejected_at", DateTime, nullable=True)
-
-    picked_up_at  = col_or_literal("bookings", "picked_up_at", DateTime, nullable=True)   # المستأجر أكد الاستلام
-    returned_at   = col_or_literal("bookings", "returned_at", DateTime, nullable=True)    # المستأجر أعلن الإرجاع
-    return_confirmed_by_owner_at = col_or_literal("bookings", "return_confirmed_by_owner_at", DateTime, nullable=True)  # المالك أكد الإرجاع + تصفية الديبو
-
-    # ملاحظات/أعطال/خصومات على الديبو (اختياري)
+    picked_up_at  = col_or_literal("bookings", "picked_up_at", DateTime, nullable=True)
+    returned_at   = col_or_literal("bookings", "returned_at", DateTime, nullable=True)
+    return_confirmed_by_owner_at = col_or_literal("bookings", "return_confirmed_by_owner_at", DateTime, nullable=True)
     owner_return_note     = col_or_literal("bookings", "owner_return_note", Text, nullable=True)
-    deposit_charged_amount = col_or_literal("bookings", "deposit_charged_amount", Integer, nullable=False, default=0)  # إن اقتُطع شيء من الديبو
+    deposit_charged_amount = col_or_literal("bookings", "deposit_charged_amount", Integer, nullable=False, default=0)
 
     # Backrefs
     item   = relationship("Item", backref="bookings")

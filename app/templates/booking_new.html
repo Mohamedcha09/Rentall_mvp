@@ -10,23 +10,23 @@
 
   <div class="card shadow-sm">
     <div class="card-body">
-      <!-- مسار الإنشاء الصحيح حسب الراوتر: POST /bookings -->
+      <!-- المسار الصحيح حسب الراوتر: POST /bookings -->
       <form method="post" action="/bookings" class="row g-3">
         <input type="hidden" name="item_id" value="{{ item.id }}">
 
         <div class="col-12 col-md-6">
           <label class="form-label">من</label>
-          <input type="date" name="start_date" class="form-control" required>
+          <input type="date" name="start_date" class="form-control" required value="{{ start_default }}">
         </div>
 
         <div class="col-12 col-md-6">
           <label class="form-label">إلى</label>
-          <input type="date" name="end_date" class="form-control" required>
+          <input type="date" name="end_date" class="form-control" required value="{{ end_default }}">
         </div>
 
         <div class="col-12 col-md-6">
           <label class="form-label">عدد الأيام</label>
-          <input type="number" name="days" class="form-control" min="1" value="1" required>
+          <input type="number" name="days" class="form-control" min="1" value="{{ days_default }}" required>
         </div>
 
         <div class="col-12">
