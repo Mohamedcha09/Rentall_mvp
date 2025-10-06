@@ -11,6 +11,7 @@ from datetime import datetime, date, timedelta
 from fastapi import APIRouter, Depends, Request, HTTPException, Form, Query
 from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func  # قد نحتاجه لاحقاً
 
 from .database import get_db
 from .models import User, Item, Booking
@@ -331,10 +332,10 @@ def renter_confirm_received(
 
 
 # ======================================================
-# (معدّل) نسخة متوافقة مع القالب القديم — إدمن فقط
+# (معدّل) نسخة إدمن لتأكيد الإرجاع/الديبو (مسار منفصل)
 # ======================================================
-@router.post("/bookings/{booking_id}/owner-confirm-return")
-def _legacy_owner_confirm_return(
+@router.post("/bookings/{booking_id}/admin/confirm-return")
+def admin_confirm_return(
     booking_id: int,
     action: Literal["ok", "charge"] = Form(...),
     charge_amount: int = Form(0),
@@ -344,7 +345,7 @@ def _legacy_owner_confirm_return(
     request: Request = None,
 ):
     """
-    هذا الإندبوينت الآن يُستخدم من قِبل الإدمن فقط لاتخاذ القرار النهائي بالديبو.
+    هذا الإندبوينت خاص بالإدمن لاتخاذ القرار النهائي بالديبو على مسار منفصل.
     """
     require_auth(user)
     if getattr(user, "role", "") != "admin":
@@ -354,7 +355,6 @@ def _legacy_owner_confirm_return(
     if bk.status not in ("returned", "in_review", "picked_up"):
         return redirect_to_flow(bk.id)
 
-    # ضَمَنّا أن الحالة قبل القرار تكون in_review
     if bk.status != "in_review":
         bk.status = "in_review"
 
@@ -371,10 +371,10 @@ def _legacy_owner_confirm_return(
         else:
             amt = max(0, int(charge_amount or 0))
             if amt >= dep:
-                bk.deposit_status = "claimed"  # خصم كامل
+                bk.deposit_status = "claimed"
                 bk.deposit_charged_amount = dep
             else:
-                bk.deposit_status = "partially_withheld"  # خصم جزئي
+                bk.deposit_status = "partially_withheld"
                 bk.deposit_charged_amount = amt
 
     bk.owner_return_note = (owner_note or "").strip()
@@ -403,7 +403,6 @@ def owner_deposit_action(
     المالك لا يستطيع تقرير مصير الديبو.
     """
     require_auth(user)
-    # === صلاحية إدمن فقط ===
     if getattr(user, "role", "") != "admin":
         raise HTTPException(status_code=403, detail="Only admin can decide deposit")
 
@@ -413,7 +412,6 @@ def owner_deposit_action(
 
     dep = max(0, bk.deposit_amount or 0)
 
-    # لا يوجد ديبو أصلاً
     if dep == 0:
         bk.deposit_status = "none"
         bk.status = "completed"
@@ -421,7 +419,7 @@ def owner_deposit_action(
         db.commit()
         return redirect_to_flow(bk.id)
 
-    # TODO: تنفيذ Stripe الحقيقي لاحقًا
+    # Stripe الحقيقي لاحقًا
     if action == "refund_all":
         bk.deposit_status = "refunded"
         bk.deposit_charged_amount = 0
@@ -432,7 +430,7 @@ def owner_deposit_action(
         bk.deposit_status = "partially_withheld"
         bk.deposit_charged_amount = amt
     elif action == "withhold_all":
-        bk.deposit_status = "claimed"  # حجز كامل
+        bk.deposit_status = "claimed"
         bk.deposit_charged_amount = dep
     else:
         raise HTTPException(status_code=400, detail="Unknown action")
@@ -589,7 +587,7 @@ def _legacy_mark_returned(
     db.commit()
     return redirect_to_flow(bk.id)
 
-# المالك يقرر الديبو ويغلق العملية
+# المالك يقرر الديبو ويغلق العملية (نسخة قديمة للمالك — تُبقي التوافق)
 @router.post("/bookings/{booking_id}/owner-confirm-return")
 def _legacy_owner_confirm_return(
     booking_id: int,
@@ -658,10 +656,10 @@ def booking_state(
         "deposit_status": bk.deposit_status,
     })
 
-    # ======================================================
+
+# ======================================================
 # صفحة قائمة الحجوزات (للطرفين)
 # ======================================================
-
 @router.get("/bookings")
 def bookings_index(
     request: Request,
@@ -693,10 +691,10 @@ def bookings_index(
         },
     )
 
-    # ======================================================
+
+# ======================================================
 # إشعارات الحجوزات للمالك (عداد + قائمة مبسّطة)
 # ======================================================
-
 @router.get("/api/bookings/pending-count")
 def api_bookings_pending_count(
     db: Session = Depends(get_db),
@@ -707,10 +705,12 @@ def api_bookings_pending_count(
     يُستخدم للجرس في التوب بار.
     """
     require_auth(user)
-    count = db.query(Booking).filter(
-        Booking.owner_id == user.id,
-        Booking.status == "requested"
-    ).count()
+    count = (
+        db.query(func.count(Booking.id))
+        .filter(Booking.owner_id == user.id, Booking.status == "requested")
+        .scalar()
+        or 0
+    )
     return JSONResponse({"count": int(count)})
 
 
@@ -725,13 +725,13 @@ def api_bookings_pending_list(
     لعرضها داخل لوح الإشعارات.
     """
     require_auth(user)
-    q = (
+    rows = (
         db.query(Booking)
         .filter(Booking.owner_id == user.id, Booking.status == "requested")
         .order_by(Booking.created_at.desc())
         .limit(max(1, min(50, int(limit or 10))))
+        .all()
     )
-    rows = q.all()
 
     def _title(it: Item | None) -> str:
         try:
