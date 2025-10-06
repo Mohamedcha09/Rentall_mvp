@@ -123,8 +123,18 @@
       .scrim.is-show{ opacity:1; pointer-events:auto; }
 
       /* === [مضاف] أيقونات الشريط الجانبي + الشعار === */
-      .brand-logo{ height:32px; vertical-align:middle }
-      .brand-badge{ width:20px; height:20px; margin-inline-end:6px; vertical-align:middle }
+      .brand-logo{ height:44px; vertical-align:middle }          /* شعار SEVOR أكبر */
+      @media (max-width: 768px){ .brand-logo{ height:36px } }
+
+      .brand-chip{
+        display:inline-flex; align-items:center; justify-content:center;
+        width:42px; height:42px; border-radius:12px;
+        border:1px solid color-mix(in oklab, var(--text) 22%, transparent);
+        background: color-mix(in oklab, var(--surface) 90%, transparent);
+        margin-inline-start:8px;
+      }
+      .brand-chip img{ width:22px; height:22px; object-fit:contain }
+
       .side-link .side-icon{ width:22px; height:22px; object-fit:contain }
     </style>
 
@@ -141,13 +151,14 @@
           <i class="bi bi-layout-sidebar-inset-reverse"></i>
         </button>
 
+        <!-- شعار SEVOR + المربّع ذو الحدّ أمامه -->
         <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/">
-          <!-- [مضاف] مربع أمام RentAll = ok.png -->
-          <img class="brand-badge" src="{{ url_for('static', path='images/ok.png') }}" alt="OK">
-          <!-- [معدل] استبدال نص RentAll بصورة base.png -->
-          <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="RentAll">
-          <span class="visually-hidden">RentAll</span>
+          <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR">
+          <span class="visually-hidden">SEVOR</span>
         </a>
+        <span class="brand-chip">
+          <img src="{{ url_for('static', path='images/ok.png') }}" alt="Logo">
+        </span>
 
         <!-- بحث -->
         <form class="search flex-grow-1" action="/search" method="get" role="search" style="max-width:760px">
@@ -244,44 +255,36 @@
     <aside class="sidebar" id="appSidebar" data-collapsed="false">
       <nav class="sidebar__nav">
         <a class="side-link {% if request and request.url.path == '/' %}is-active{% endif %}" href="/" data-tooltip="الرئيسية">
-          <!-- الرئيسية = home.png -->
           <img class="side-icon" src="{{ url_for('static', path='images/home.png') }}" alt="home">
           <span>الرئيسية</span>
         </a>
-
         <a class="side-link {% if request and request.url.path.startswith('/items') %}is-active{% endif %}" href="/items" data-tooltip="كل العناصر">
-          <!-- كل العناصر = tout.png -->
           <img class="side-icon" src="{{ url_for('static', path='images/tout.png') }}" alt="tout">
           <span>كل العناصر</span>
         </a>
 
         {% if session_user %}
           <a class="side-link {% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}" href="/favorites" data-tooltip="مفضلتي">
-            <!-- مفضلتي = save.png -->
             <img class="side-icon" src="{{ url_for('static', path='images/save.png') }}" alt="save">
             <span>مفضلتي</span>
           </a>
 
           <a class="side-link {% if request and request.url.path.startswith('/profile') %}is-active{% endif %}" href="/profile" data-tooltip="صفحتي">
-            <!-- صفحتي = profil.png -->
             <img class="side-icon" src="{{ url_for('static', path='images/profil.png') }}" alt="profil">
             <span>صفحتي</span>
           </a>
 
           <a class="side-link {% if request and request.url.path.startswith('/owner/items') %}is-active{% endif %}" href="/owner/items" data-tooltip="أشيائي">
-            <!-- أشيائي = page.png -->
             <img class="side-icon" src="{{ url_for('static', path='images/page.png') }}" alt="page">
             <span>أشيائي</span>
           </a>
 
           <a class="side-link {% if request and request.url.path.startswith('/bookings') %}is-active{% endif %}" href="/bookings" data-tooltip="حجوزاتي">
-            <!-- حجوزاتي = jour.png -->
             <img class="side-icon" src="{{ url_for('static', path='images/jour.png') }}" alt="jour">
             <span>حجوزاتي</span>
           </a>
 
           <a class="side-link {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" href="/payout/settings" data-tooltip="التحويلات">
-            <!-- التحويلات = cart.png -->
             <img class="side-icon" src="{{ url_for('static', path='images/cart.png') }}" alt="cart">
             <span>التحويلات</span>
           </a>
@@ -580,7 +583,7 @@
     return a;
   }
 
-  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&#107;>",'"':"&quot;"}[c]));}
 
   // تحميل قائمة الحجوزات المعلّقة للمالك
   function loadPendingList(){
@@ -588,7 +591,6 @@
       .then(r=>r.ok?r.json():{items:[]})
       .then(d=>{
         const items = d.items||[];
-        // إن كانت الرسالة الفارغة موجودة امسحها أولاً
         if (body.firstElementChild && body.firstElementChild.classList.contains('text-muted')){
           body.innerHTML = '';
         }
@@ -596,7 +598,6 @@
           body.innerHTML = '<div class="small text-muted">لا توجد إشعارات جديدة.</div>';
           return;
         }
-        // لا نمسح الموجود بالكامل: نضيف الحجوزات في الأعلى
         const frag = document.createDocumentFragment();
         items.forEach(b=>{
           const meta = `${b.start_date} → ${b.end_date} (${b.days} يوم)`;
