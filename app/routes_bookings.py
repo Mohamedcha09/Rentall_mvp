@@ -648,3 +648,63 @@ def bookings_index(
             "view": view,
         },
     )
+
+    # ======================================================
+# إشعارات الحجوزات للمالك (عداد + قائمة مبسّطة)
+# ======================================================
+
+@router.get("/api/bookings/pending-count")
+def api_bookings_pending_count(
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    يعيد عدد الطلبات الجديدة (requested) على ممتلكات المستخدم (كمالك).
+    يُستخدم للجرس في التوب بار.
+    """
+    require_auth(user)
+    count = db.query(Booking).filter(
+        Booking.owner_id == user.id,
+        Booking.status == "requested"
+    ).count()
+    return JSONResponse({"count": int(count)})
+
+
+@router.get("/api/bookings/pending-list")
+def api_bookings_pending_list(
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    قائمة مختصرة لأحدث الطلبات الجديدة (requested) مع عناوين وروابط.
+    لعرضها داخل لوح الإشعارات.
+    """
+    require_auth(user)
+    q = (
+        db.query(Booking)
+        .filter(Booking.owner_id == user.id, Booking.status == "requested")
+        .order_by(Booking.created_at.desc())
+        .limit(max(1, min(50, int(limit or 10))))
+    )
+    rows = q.all()
+
+    def _title(it: Item | None) -> str:
+        try:
+            return (it.title or f"#{it.id}") if it else "عنصر محذوف"
+        except Exception:
+            return "عنصر"
+
+    data = []
+    for b in rows:
+        item = db.get(Item, b.item_id)
+        data.append({
+            "id": b.id,
+            "item_id": b.item_id,
+            "item_title": _title(item),
+            "start_date": str(b.start_date),
+            "end_date": str(b.end_date),
+            "days": int(b.days or 1),
+            "url": f"/bookings/flow/{b.id}",
+        })
+    return JSONResponse({"items": data})
