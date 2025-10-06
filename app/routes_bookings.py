@@ -331,30 +331,62 @@ def renter_confirm_received(
 
 
 # ======================================================
-# (المسارات الجديدة) تأكيد الإرجاع من المالك → مراجعة ديبو
+# (معدّل) نسخة متوافقة مع القالب القديم — إدمن فقط
 # ======================================================
-@router.post("/bookings/{booking_id}/owner/confirm_return")
-def owner_confirm_return(
+@router.post("/bookings/{booking_id}/owner-confirm-return")
+def _legacy_owner_confirm_return(
     booking_id: int,
-    request: Request,
+    action: Literal["ok", "charge"] = Form(...),
+    charge_amount: int = Form(0),
+    owner_note: str = Form(""),
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
+    request: Request = None,
 ):
+    """
+    هذا الإندبوينت الآن يُستخدم من قِبل الإدمن فقط لاتخاذ القرار النهائي بالديبو.
+    """
     require_auth(user)
-    bk = require_booking(db, booking_id)
-    if not is_owner(user, bk):
-        raise HTTPException(status_code=403, detail="Only owner can confirm")
-    if bk.status not in ("in_use", "awaiting_return", "picked_up"):
-        raise HTTPException(status_code=400, detail="Invalid state")
+    if getattr(user, "role", "") != "admin":
+        raise HTTPException(status_code=403, detail="Only admin can decide deposit")
 
-    bk.status = "in_review"
-    bk.timeline_owner_returned_at = datetime.utcnow()
+    bk = require_booking(db, booking_id)
+    if bk.status not in ("returned", "in_review", "picked_up"):
+        return redirect_to_flow(bk.id)
+
+    # ضَمَنّا أن الحالة قبل القرار تكون in_review
+    if bk.status != "in_review":
+        bk.status = "in_review"
+
+    dep = max(0, bk.hold_deposit_amount or bk.deposit_amount or 0)
+    now = datetime.utcnow()
+
+    if dep == 0:
+        bk.deposit_status = "none"
+        bk.deposit_charged_amount = 0
+    else:
+        if action == "ok":
+            bk.deposit_status = "refunded"
+            bk.deposit_charged_amount = 0
+        else:
+            amt = max(0, int(charge_amount or 0))
+            if amt >= dep:
+                bk.deposit_status = "claimed"  # خصم كامل
+                bk.deposit_charged_amount = dep
+            else:
+                bk.deposit_status = "partially_withheld"  # خصم جزئي
+                bk.deposit_charged_amount = amt
+
+    bk.owner_return_note = (owner_note or "").strip()
+    bk.status = "closed"
+    bk.return_confirmed_by_owner_at = now
+    bk.timeline_closed_at = now
     db.commit()
     return redirect_to_flow(bk.id)
 
 
 # ======================================================
-# (المسارات الجديدة) قرار الديبو النهائي
+# (معدّل) قرار الديبو النهائي — إدمن فقط
 # ======================================================
 @router.post("/bookings/{booking_id}/owner/deposit_action")
 def owner_deposit_action(
@@ -366,22 +398,33 @@ def owner_deposit_action(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
+    """
+    ملاحظة: هذا الإندبوينت الآن خاص بالإدمن فقط.
+    المالك لا يستطيع تقرير مصير الديبو.
+    """
     require_auth(user)
+    # === صلاحية إدمن فقط ===
+    if getattr(user, "role", "") != "admin":
+        raise HTTPException(status_code=403, detail="Only admin can decide deposit")
+
     bk = require_booking(db, booking_id)
-    if not is_owner(user, bk):
-        raise HTTPException(status_code=403, detail="Only owner can decide deposit")
     if bk.status != "in_review":
         raise HTTPException(status_code=400, detail="Invalid state")
 
     dep = max(0, bk.deposit_amount or 0)
+
+    # لا يوجد ديبو أصلاً
     if dep == 0:
+        bk.deposit_status = "none"
         bk.status = "completed"
         bk.timeline_closed_at = datetime.utcnow()
         db.commit()
         return redirect_to_flow(bk.id)
 
+    # TODO: تنفيذ Stripe الحقيقي لاحقًا
     if action == "refund_all":
         bk.deposit_status = "refunded"
+        bk.deposit_charged_amount = 0
     elif action == "withhold_partial":
         amt = max(0, int(partial_amount or 0))
         if amt <= 0 or amt >= dep:
@@ -389,11 +432,12 @@ def owner_deposit_action(
         bk.deposit_status = "partially_withheld"
         bk.deposit_charged_amount = amt
     elif action == "withhold_all":
-        bk.deposit_status = "partially_withheld"
+        bk.deposit_status = "claimed"  # حجز كامل
         bk.deposit_charged_amount = dep
     else:
         raise HTTPException(status_code=400, detail="Unknown action")
 
+    bk.owner_return_note = (note or "").strip()
     bk.status = "completed"
     bk.timeline_closed_at = datetime.utcnow()
     db.commit()

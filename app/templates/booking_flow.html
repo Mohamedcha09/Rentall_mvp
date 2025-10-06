@@ -108,42 +108,46 @@
         {% endif %}
       {% endif %}
 
-      {# ===== المرحلة 5: المستأجر أرجع الغرض → المالك يقرر الديبو ===== #}
-      {% if booking.status in ['returned'] %}
-        {% if is_owner %}
-          <h5>تأكيد الإرجاع ومعالجة الديبو</h5>
-          <div class="box mb-2">
-            <form method="post" action="/bookings/{{ booking.id }}/owner-confirm-return">
-              <input type="hidden" name="action" value="ok">
-              <label class="form-label">ملاحظة (اختياري)</label>
-              <textarea class="form-control mb-2" name="owner_note" rows="2"></textarea>
-              <button class="btn btn-success"><i class="bi bi-check2"></i> كل شيء بخير — إعادة الديبو بالكامل</button>
-            </form>
-          </div>
+    {# ===== المرحلة 5: المستأجر أرجع الغرض → قرار الديبو ===== #}
+{% if booking.status in ['returned', 'in_review'] %}
+  {% if session_user and session_user.role == 'admin' %}
+    <h5>تأكيد الإرجاع ومعالجة الديبو (إدمن)</h5>
+    <div class="box mb-2">
+      <form method="post" action="/bookings/{{ booking.id }}/owner-confirm-return">
+        <input type="hidden" name="action" value="ok">
+        <label class="form-label">ملاحظة (اختياري)</label>
+        <textarea class="form-control mb-2" name="owner_note" rows="2"></textarea>
+        <button class="btn btn-success"><i class="bi bi-check2"></i> كل شيء بخير — إعادة الديبو بالكامل</button>
+      </form>
+    </div>
 
-          <div class="box">
-            <form method="post" action="/bookings/{{ booking.id }}/owner-confirm-return">
-              <input type="hidden" name="action" value="charge">
-              <div class="row g-2">
-                <div class="col-6">
-                  <label class="form-label">مبلغ الخصم من الديبو</label>
-                  <input class="form-control" type="number" step="1" min="0" name="charge_amount" value="0">
-                </div>
-                <div class="col-12">
-                  <label class="form-label">سبب الخصم (اختياري)</label>
-                  <textarea class="form-control" name="owner_note" rows="2"></textarea>
-                </div>
-                <div class="col-12 mt-2">
-                  <button class="btn btn-outline-danger"><i class="bi bi-exclamation-triangle"></i> خصم من الديبو</button>
-                </div>
-              </div>
-            </form>
+    <div class="box">
+      <form method="post" action="/bookings/{{ booking.id }}/owner-confirm-return">
+        <input type="hidden" name="action" value="charge">
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label">مبلغ الخصم من الديبو</label>
+            <input class="form-control" type="number" step="1" min="0" name="charge_amount" value="0">
           </div>
-          <div class="k mt-2">* في Stripe الحقيقي: هنا سنقوم برد/اقتطاع الديبو حسب اختيارك.</div>
-        {% elif is_renter %}
-          <div class="hint">تم تعليم الإرجاع. بانتظار المالك لتأكيد الحالة وتحرير الديبو.</div>
-        {% endif %}
-      {% endif %}
+          <div class="col-12">
+            <label class="form-label">سبب الخصم (اختياري)</label>
+            <textarea class="form-control" name="owner_note" rows="2"></textarea>
+          </div>
+          <div class="col-12 mt-2">
+            <button class="btn btn-outline-danger"><i class="bi bi-exclamation-triangle"></i> خصم من الديبو</button>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="k mt-2">* في Stripe الحقيقي: هنا ستتم عملية رد/اقتطاع الديبو.</div>
+
+  {% elif is_owner %}
+    <div class="hint">تم تعليم الإرجاع. بانتظار مراجعة <strong>الإدارة</strong> لاتخاذ قرار الديبو.</div>
+  {% elif is_renter %}
+    <div class="hint">تم تعليم الإرجاع. بانتظار الإدارة لتأكيد الحالة وتحرير الديبو.</div>
+  {% endif %}
+{% endif %}
+
 
       {# ===== المرحلة النهائية ===== #}
       {% if booking.status in ['closed','rejected','completed'] %}

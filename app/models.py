@@ -277,6 +277,35 @@ class Order(Base):
     status = Column(String(20), nullable=False, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # =========================
+# Notifications
+# =========================
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    kind = Column(String(40), nullable=False, default="info")  # info/success/warn/error
+    title = Column(String(200), nullable=False)
+    body = Column(Text, nullable=True)
+    link_url = Column(String(400), nullable=True)              # رابط مفيد (اختياري)
+    is_read = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    user = relationship("User", lazy="joined")
+
+# علاقة عكسيّة اختيارية (لا تغيّر بقية العلاقات)
+try:
+    User.notifications  # لو كانت موجودة مسبقاً لا ننشئها ثانية
+except Exception:
+    User.notifications = relationship(
+        "Notification",
+        primaryjoin="User.id==Notification.user_id",
+        cascade="all, delete-orphan",
+        order_by="Notification.created_at.desc()",
+        lazy="selectin"
+    )
+
 
 class Booking(Base):
     """
@@ -365,3 +394,4 @@ class Booking(Base):
     item   = relationship("Item", backref="bookings")
     renter = relationship("User", foreign_keys="[Booking.renter_id]", backref="bookings_rented")
     owner  = relationship("User", foreign_keys="[Booking.owner_id]",  backref="bookings_owned")
+
