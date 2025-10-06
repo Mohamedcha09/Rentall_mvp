@@ -60,24 +60,34 @@
             </form>
           </div>
 
+          {# ====== الدفع الأونلاين الحقيقي عبر Stripe Checkout ====== #}
           <div class="box">
-            <div class="mb-2">الدفع <strong>أونلاين (تجريبي)</strong></div>
-            <form method="post" action="/bookings/{{ booking.id }}/pay-online">
-              <div class="row g-2 align-items-end">
+            <div class="mb-2">الدفع <strong>أونلاين (Stripe Checkout)</strong></div>
+
+            {# نرسل POST إلى الراوتر الذي ينشئ جلسة Stripe ويعيدنا إلى صفحة الدفع #}
+            <form id="stripePayForm" method="post" action="/pay/checkout/{{ booking.id }}">
+              {# معلومات اختيارية/عرضية — الخادم سيحسب الفاتورة بأمان #}
+              <div class="row g-2">
                 <div class="col-6">
                   <label class="form-label">مبلغ الإيجار</label>
-                  <input class="form-control" type="number" step="1" min="0" name="rent_amount" value="{{ booking.total_amount or 0 }}">
+                  <input class="form-control" type="number" value="{{ booking.total_amount or 0 }}" disabled>
                 </div>
                 <div class="col-6">
-                  <label class="form-label">قيمة الديبو (اختياري)</label>
-                  <input class="form-control" type="number" step="1" min="0" name="deposit_amount" value="{{ booking.hold_deposit_amount or 0 }}">
+                  <label class="form-label">الديبو (اختياري)</label>
+                  <input class="form-control" type="number" value="{{ booking.deposit_amount or booking.hold_deposit_amount or 0 }}" disabled>
                 </div>
                 <div class="col-12 mt-2">
-                  <button class="btn btn-primary"><i class="bi bi-credit-card"></i> ادفع أونلاين</button>
+                  <button id="stripePayBtn" class="btn btn-primary">
+                    <i class="bi bi-credit-card"></i> ادفع أونلاين الآن
+                  </button>
                 </div>
               </div>
             </form>
-            <div class="k mt-2">* الدفع الأونلاين هنا محاكي فقط لأغراض الاختبار.</div>
+
+            <div class="k mt-2">
+              سيتم تحويلك إلى صفحة دفع آمنة من Stripe لإدخال بيانات بطاقتك.
+              بعد نجاح الدفع ستعود إلى الموقع تلقائيًا، وسنحدّث حالة الحجز.
+            </div>
           </div>
         {% elif is_owner %}
           <div class="hint">تم قبول الطلب. بانتظار أن يختار المستأجر طريقة الدفع…</div>
@@ -146,7 +156,7 @@
         </div>
         <div class="d-flex justify-content-between">
           <span>الديبو المحتجز</span>
-          <strong>{{ booking.hold_deposit_amount or 0 }}$</strong>
+          <strong>{{ booking.hold_deposit_amount or booking.deposit_amount or 0 }}$</strong>
         </div>
         <div class="d-flex justify-content-between">
           <span>حالة التحصيل الأونلاين</span>
@@ -185,4 +195,18 @@
     </div>
   </div>
 </div>
+
+{# تعطيل زر Stripe أثناء الإرسال لمنع النقر المكرر #}
+<script>
+  const f = document.getElementById('stripePayForm');
+  if (f) {
+    f.addEventListener('submit', function() {
+      const btn = document.getElementById('stripePayBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> جاري تحويلك إلى الدفع...';
+      }
+    });
+  }
+</script>
 {% endblock %}

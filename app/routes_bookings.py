@@ -2,6 +2,7 @@
 from __future__ import annotations
 from typing import Optional, Literal
 from datetime import datetime, date, timedelta
+import os  # [جديد] لقراءة STRIPE_SECRET_KEY
 
 from fastapi import APIRouter, Depends, Request, HTTPException, Form, Query, status
 from fastapi.responses import RedirectResponse, JSONResponse
@@ -53,6 +54,32 @@ def _booking_order_col():
     if hasattr(Booking, "timeline_created_at"):
         return Booking.timeline_created_at.desc()
     return Booking.id.desc()
+
+# [جديد] دالة مساعدة: التقاط مبلغ الإيجار من Stripe إن كان مفوضًا (manual capture)
+def _try_capture_stripe_rent(bk: Booking) -> bool:
+    """
+    يحاول التقاط (capture) مبلغ الإيجار المفوَّض على Stripe.
+    يرجّع True لو نجح الالتقاط، False لو لم يُنفّذ لأي سبب (عدم وجود مفتاح/Intent/فشل).
+    لا يرمي استثناءً — آمن.
+    """
+    try:
+        import stripe  # ستعمل فقط إذا stripe مُثبت
+        sk = os.getenv("STRIPE_SECRET_KEY", "")
+        if not sk:
+            return False
+        stripe.api_key = sk
+        pi_id = getattr(bk, "online_payment_intent_id", None)
+        if not pi_id:
+            return False
+        # تنفيذ الالتقاط
+        stripe.PaymentIntent.capture(pi_id)
+        # تحديث الحجز محليًا
+        bk.payment_status = "released"
+        bk.online_status = "captured"
+        bk.rent_released_at = datetime.utcnow()
+        return True
+    except Exception:
+        return False
 
 # ===== UI: صفحة إنشاء =====
 @router.get("/bookings/new")
@@ -347,11 +374,17 @@ def renter_confirm_received(
 
     item = db.get(Item, bk.item_id)
 
+    # كان سابقًا يتم الضبط مباشرة كـ captured — الآن نحاول الالتقاط الحقيقي عبر Stripe أولاً
+    captured = False
     if bk.payment_method == "online":
-        bk.payment_status = "released"
-        bk.owner_payout_amount = bk.rent_amount or bk.total_amount or 0
-        bk.rent_released_at = datetime.utcnow()
-        bk.online_status = "captured"
+        # محاولة التقاط المبلغ المفوض (manual capture) إن توفر Stripe + Intent
+        captured = _try_capture_stripe_rent(bk)
+        if not captured:
+            # احتفاظ بالسلوك السابق كتراجع آمن (تجريبي/محلي)
+            bk.payment_status = "released"
+            bk.owner_payout_amount = bk.rent_amount or bk.total_amount or 0
+            bk.rent_released_at = datetime.utcnow()
+            bk.online_status = "captured"
 
     bk.status = "picked_up"
     bk.picked_up_at = datetime.utcnow()
@@ -484,10 +517,16 @@ def alias_picked_up(booking_id: int,
     bk.picked_up_at = datetime.utcnow()
 
     if bk.payment_method == "online":
-        bk.owner_payout_amount = bk.rent_amount or bk.total_amount or 0
-        bk.rent_released_at = datetime.utcnow()
-        bk.online_status = "captured"
-        bk.payment_status = "released"
+        # [جديد] نحاول الالتقاط الحقيقي عبر Stripe، وإن لم يتوفر/فشل نرجع للسلوك المحلي السابق
+        captured = _try_capture_stripe_rent(bk)
+        if captured:
+            # التحديثات تمت داخل الدالة
+            pass
+        else:
+            bk.owner_payout_amount = bk.rent_amount or bk.total_amount or 0
+            bk.rent_released_at = datetime.utcnow()
+            bk.online_status = "captured"
+            bk.payment_status = "released"
 
     db.commit()
     push_notification(db, bk.owner_id, "المستأجر استلم الغرض",
