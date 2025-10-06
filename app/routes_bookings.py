@@ -11,11 +11,17 @@ from datetime import datetime, date, timedelta
 from fastapi import APIRouter, Depends, Request, HTTPException, Form, Query
 from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import func  # قد نحتاجه لاحقاً
 
 from .database import get_db
 from .models import User, Item, Booking
 from .utils import category_label  # لتمريرها للقالب
+
+# [اختياري] إشعارات داخلية إن وجدت
+try:
+    from .notifications import notify  # notify(user_id:int, title:str, body:str, url:str="")
+except Exception:
+    def notify(*args, **kwargs):
+        return None
 
 router = APIRouter(tags=["bookings"])
 
@@ -148,6 +154,18 @@ def create_booking(
     db.add(bk)
     db.commit()
     db.refresh(bk)
+
+    # إشعار للمالك بطلب جديد
+    try:
+        notify(
+            bk.owner_id,
+            "طلب حجز جديد",
+            f"لديك طلب على '{item.title}' من المستخدم #{bk.renter_id}",
+            url=f"/bookings/flow/{bk.id}",
+        )
+    except Exception:
+        pass
+
     return redirect_to_flow(bk.id)
 
 
@@ -222,20 +240,34 @@ def owner_decision(
     if bk.status != "requested":
         raise HTTPException(status_code=400, detail="Invalid state")
 
+    item = db.get(Item, bk.item_id)
+
     if decision == "rejected":
         bk.status = "rejected"
         bk.owner_decision = "rejected"
         bk.rejected_at = datetime.utcnow()
         bk.timeline_owner_decided_at = datetime.utcnow()
         db.commit()
+        # إشعار للمستأجر بالرفض
+        try:
+            notify(bk.renter_id, "تم رفض الحجز", f"تم رفض طلبك لعنصر '{item.title}'", url=f"/bookings/flow/{bk.id}")
+        except Exception:
+            pass
         return redirect_to_flow(bk.id)
 
     bk.owner_decision = "accepted"
     bk.deposit_amount = max(0, int(deposit_amount or 0))
     bk.accepted_at = datetime.utcnow()
     bk.timeline_owner_decided_at = datetime.utcnow()
-    bk.status = "accepted"  # ليتوافق مع القالب الذي ينتظر 'accepted'
+    bk.status = "accepted"  # ليتوافق مع القالب
     db.commit()
+
+    # إشعار للمستأجر بالقبول
+    try:
+        notify(bk.renter_id, "تم قبول الحجز", f"تم قبول طلبك لعنصر '{item.title}'. اختر طريقة الدفع.", url=f"/bookings/flow/{bk.id}")
+    except Exception:
+        pass
+
     return redirect_to_flow(bk.id)
 
 
@@ -257,17 +289,29 @@ def renter_choose_payment(
     if bk.status != "accepted":
         raise HTTPException(status_code=400, detail="Invalid state")
 
+    bk.timeline_payment_method_chosen_at = datetime.utcnow()
+
     if method == "cash":
         bk.payment_method = "cash"
         bk.payment_status = "unpaid"
-        bk.status = "paid"  # القالب التالي ينتظر 'paid'
-        bk.timeline_payment_method_chosen_at = datetime.utcnow()
+        bk.status = "paid"  # ينتقل للاستلام
         db.commit()
+        # إشعار للمالك أن المستأجر اختار كاش
+        try:
+            item = db.get(Item, bk.item_id)
+            notify(bk.owner_id, "اختيار الدفع: كاش", f"المستأجر اختار الدفع الكاش لعنصر '{item.title}'.", url=f"/bookings/flow/{bk.id}")
+        except Exception:
+            pass
         return redirect_to_flow(bk.id)
 
     bk.payment_method = "online"
-    bk.timeline_payment_method_chosen_at = datetime.utcnow()
     db.commit()
+    # إشعار للمالك أن المستأجر سيكمل أونلاين
+    try:
+        item = db.get(Item, bk.item_id)
+        notify(bk.owner_id, "اختيار الدفع: أونلاين", f"المستأجر سيقوم بالدفع أونلاين لعنصر '{item.title}'.", url=f"/bookings/flow/{bk.id}")
+    except Exception:
+        pass
     return redirect_to_flow(bk.id)
 
 
@@ -287,7 +331,6 @@ def renter_pay_online(
         raise HTTPException(status_code=403, detail="Only renter can pay")
 
     if bk.payment_method != "online" or bk.status not in ("accepted", "pending_payment"):
-        # نقبل accepted لتوافق القالب
         raise HTTPException(status_code=400, detail="Invalid state")
 
     bk.payment_status = "paid"
@@ -298,6 +341,14 @@ def renter_pay_online(
     bk.status = "paid"
     bk.timeline_paid_at = datetime.utcnow()
     db.commit()
+
+    # إشعار للمالك بالدفع
+    try:
+        item = db.get(Item, bk.item_id)
+        notify(bk.owner_id, "تم دفع الإيجار", f"تم دفع حجز '{item.title}'. انتظر تأكيد الاستلام لتحصل على أموالك.", url=f"/bookings/flow/{bk.id}")
+    except Exception:
+        pass
+
     return redirect_to_flow(bk.id)
 
 
@@ -328,14 +379,22 @@ def renter_confirm_received(
     bk.picked_up_at = datetime.utcnow()
     bk.timeline_renter_received_at = datetime.utcnow()
     db.commit()
+
+    # إشعار للمالك: تم الاستلام
+    try:
+        item = db.get(Item, bk.item_id)
+        notify(bk.owner_id, "تم الاستلام", f"المستأجر أكد استلام '{item.title}'.", url=f"/bookings/flow/{bk.id}")
+    except Exception:
+        pass
+
     return redirect_to_flow(bk.id)
 
 
 # ======================================================
-# (معدّل) نسخة إدمن لتأكيد الإرجاع/الديبو (مسار منفصل)
+# (معدّل) نسخة متوافقة مع القالب القديم — إدمن فقط
 # ======================================================
-@router.post("/bookings/{booking_id}/admin/confirm-return")
-def admin_confirm_return(
+@router.post("/bookings/{booking_id}/owner-confirm-return")
+def _legacy_owner_confirm_return_admin(
     booking_id: int,
     action: Literal["ok", "charge"] = Form(...),
     charge_amount: int = Form(0),
@@ -345,7 +404,7 @@ def admin_confirm_return(
     request: Request = None,
 ):
     """
-    هذا الإندبوينت خاص بالإدمن لاتخاذ القرار النهائي بالديبو على مسار منفصل.
+    هذا الإندبوينت الآن يُستخدم من قِبل الإدمن فقط لاتخاذ القرار النهائي بالديبو.
     """
     require_auth(user)
     if getattr(user, "role", "") != "admin":
@@ -382,6 +441,16 @@ def admin_confirm_return(
     bk.return_confirmed_by_owner_at = now
     bk.timeline_closed_at = now
     db.commit()
+
+    # إشعار للطرفين بقرار الديبو
+    try:
+        item = db.get(Item, bk.item_id)
+        msg = "تمت إعادة الديبو بالكامل" if bk.deposit_charged_amount == 0 else f"تم خصم {bk.deposit_charged_amount}$ من الديبو"
+        notify(bk.renter_id, "قرار الديبو", f"{msg} لحجز '{item.title}'.", url=f"/bookings/flow/{bk.id}")
+        notify(bk.owner_id, "قرار الديبو", f"{msg} لحجز '{item.title}'.", url=f"/bookings/flow/{bk.id}")
+    except Exception:
+        pass
+
     return redirect_to_flow(bk.id)
 
 
@@ -419,7 +488,6 @@ def owner_deposit_action(
         db.commit()
         return redirect_to_flow(bk.id)
 
-    # Stripe الحقيقي لاحقًا
     if action == "refund_all":
         bk.deposit_status = "refunded"
         bk.deposit_charged_amount = 0
@@ -439,6 +507,16 @@ def owner_deposit_action(
     bk.status = "completed"
     bk.timeline_closed_at = datetime.utcnow()
     db.commit()
+
+    # إشعار للطرفين
+    try:
+        item = db.get(Item, bk.item_id)
+        msg = "تمت إعادة الديبو بالكامل" if bk.deposit_charged_amount == 0 else f"تم خصم {bk.deposit_charged_amount}$ من الديبو"
+        notify(bk.renter_id, "قرار الديبو", f"{msg} لحجز '{item.title}'.", url=f"/bookings/flow/{bk.id}")
+        notify(bk.owner_id, "قرار الديبو", f"{msg} لحجز '{item.title}'.", url=f"/bookings/flow/{bk.id}")
+    except Exception:
+        pass
+
     return redirect_to_flow(bk.id)
 
 
@@ -587,9 +665,9 @@ def _legacy_mark_returned(
     db.commit()
     return redirect_to_flow(bk.id)
 
-# المالك يقرر الديبو ويغلق العملية (نسخة قديمة للمالك — تُبقي التوافق)
-@router.post("/bookings/{booking_id}/owner-confirm-return")
-def _legacy_owner_confirm_return(
+# المالك يقرر الديبو ويغلق العملية (النسخة القديمة) — تم تغيير المسار لتجنّب التصادم
+@router.post("/bookings/{booking_id}/owner-confirm-return-legacy")
+def _legacy_owner_confirm_return_owner_version(
     booking_id: int,
     action: Literal["ok", "charge"] = Form(...),
     charge_amount: int = Form(0),
@@ -695,6 +773,7 @@ def bookings_index(
 # ======================================================
 # إشعارات الحجوزات للمالك (عداد + قائمة مبسّطة)
 # ======================================================
+
 @router.get("/api/bookings/pending-count")
 def api_bookings_pending_count(
     db: Session = Depends(get_db),
@@ -705,13 +784,12 @@ def api_bookings_pending_count(
     يُستخدم للجرس في التوب بار.
     """
     require_auth(user)
-    count = (
-        db.query(func.count(Booking.id))
-        .filter(Booking.owner_id == user.id, Booking.status == "requested")
-        .scalar()
-        or 0
-    )
-    return JSONResponse({"count": int(count)})
+    count = db.query(Booking).filter(
+        Booking.owner_id == user.id,
+        Booking.status == "requested"
+    ).count()
+    # منع الكاش (Safari/iOS)
+    return JSONResponse({"count": int(count)}, headers={"Cache-Control": "no-store"})
 
 
 @router.get("/api/bookings/pending-list")
@@ -725,13 +803,13 @@ def api_bookings_pending_list(
     لعرضها داخل لوح الإشعارات.
     """
     require_auth(user)
-    rows = (
+    q = (
         db.query(Booking)
         .filter(Booking.owner_id == user.id, Booking.status == "requested")
         .order_by(Booking.created_at.desc())
         .limit(max(1, min(50, int(limit or 10))))
-        .all()
     )
+    rows = q.all()
 
     def _title(it: Item | None) -> str:
         try:
@@ -751,4 +829,5 @@ def api_bookings_pending_list(
             "days": int(b.days or 1),
             "url": f"/bookings/flow/{b.id}",
         })
-    return JSONResponse({"items": data})
+    # منع الكاش (Safari/iOS)
+    return JSONResponse({"items": data}, headers={"Cache-Control": "no-store"})
