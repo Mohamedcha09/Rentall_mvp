@@ -26,7 +26,7 @@ from .freeze import router as freeze_router
 from .payments import router as payments_router
 from .checkout import router as checkout_router
 from .pay_api import router as pay_api_router
-from .payout_connect import router as payout_connect_router
+from .payout_connect import router as payout_connect_router   # ✅ هذا الصحيح
 from .webhooks import router as webhooks_router
 from .disputes import router as disputes_router
 from .routes_search import router as search_router
@@ -36,8 +36,8 @@ from .routes_bookings import router as bookings_router
 from .notifications import router as notifs_router
 from .notifications_api import router as notifications_router
 
-# [جديد] راوتر مسارات إعداد Stripe Connect (الذي أرسلته لك في الملف 1)
-from .payout_routes import router as payout_routes_router
+# ❌ لا نستخدم payout_routes (القديم) لأنه كان يعرّف POST فقط ويسبب 405
+# from .payout_routes import router as payout_routes_router
 
 # [مضاف] راوتر المفضّلات
 from .routes_favorites import router as favorites_router
@@ -47,7 +47,7 @@ load_dotenv()
 app = FastAPI()
 
 # =========================
-# جلسات مستقرة
+# جلسات
 # =========================
 app.add_middleware(
     SessionMiddleware,
@@ -55,7 +55,7 @@ app.add_middleware(
     session_cookie="ra_session",
     same_site="lax",
     https_only=True,
-    max_age=60 * 60 * 24 * 30,  # 30 يوم
+    max_age=60 * 60 * 24 * 30,
 )
 
 # =========================
@@ -76,7 +76,6 @@ app.templates = templates
 # إنشاء الجداول
 Base.metadata.create_all(bind=engine)
 
-# يضيف admin افتراضي إذا غير موجود
 def seed_admin():
     db = SessionLocal()
     try:
@@ -96,10 +95,8 @@ def seed_admin():
             db.commit()
     finally:
         db.close()
-
 seed_admin()
 
-# ===== تفعيل payouts اختياريًا (رسالة معلومات فقط) =====
 PAYOUTS_ENABLED = os.getenv("ENABLE_PAYOUTS", "0") == "1"
 if PAYOUTS_ENABLED:
     print("[OK] payouts enabled via env")
@@ -119,12 +116,8 @@ app.include_router(payments_router)
 app.include_router(checkout_router)
 app.include_router(pay_api_router)
 
-# ⚠️ كان لدينا payout_connect_router (قديم) بمسارات تتصادم مع الجديد.
-# نترك الاستيراد كما هو، لكن لا نُسجّله لتجنّب تكرار /payout/connect/start.
-# app.include_router(payout_connect_router)
-
-# ✅ نسجّل الراوتر الجديد الذي أرسلته لك في الملف 1
-app.include_router(payout_routes_router)
+# ✅ نُسجّل راوتر Stripe Connect الصحيح (يدعم GET/POST)
+app.include_router(payout_connect_router)
 
 app.include_router(webhooks_router)
 app.include_router(disputes_router)
@@ -132,19 +125,11 @@ app.include_router(search_router)
 app.include_router(users_router)
 app.include_router(admin_badges_router)
 app.include_router(bookings_router)
-# ===== راوتر المفضلات =====
 app.include_router(favorites_router)
 app.include_router(notifs_router)
 app.include_router(notifications_router)
 
-# ===== أداة صغيرة لاستخراج كود التصنيف بأشكال مختلفة
 def _cat_code(cat) -> str:
-    """
-    يدعم:
-    - dict: code / value / id / slug / key
-    - tuple/list مثل: ('cars', 'سيارات')
-    - قيمة نصية مباشرة
-    """
     if isinstance(cat, dict):
         return (
             cat.get("code")
@@ -157,9 +142,6 @@ def _cat_code(cat) -> str:
         return str(cat[0])
     return str(cat) if cat is not None else None
 
-# =========================
-# الصفحة الرئيسية — أقسام شائعة/تصنيفات/مختلط
-# =========================
 @app.get("/")
 def home(
     request: Request,
@@ -168,7 +150,6 @@ def home(
     q: str = None,
     city: str = None,
 ):
-    # توجيه للترحيب للزائر فقط
     if not request.cookies.get("seen_welcome") and not request.session.get("user"):
         return RedirectResponse(url="/welcome", status_code=303)
 
@@ -179,12 +160,10 @@ def home(
         query = query.filter(Item.category == category)
         current_category = category
 
-    # بحث نصي
     if q:
         pattern = f"%{q}%"
         query = query.filter(or_(Item.title.ilike(pattern), Item.description.ilike(pattern)))
 
-    # بحث مدينة بمطابقة مرنة
     if city:
         cities_raw = db.query(func.lower(Item.city)).distinct().all()
         cities = [c[0] for c in cities_raw if c[0]]
@@ -199,18 +178,12 @@ def home(
         if matched_cities:
             query = query.filter(func.lower(Item.city).in_(matched_cities))
 
-    # قائمة عامة
     items = query.order_by(func.random()).limit(20).all()
     for it in items:
         it.category_label = category_label(it.category)
 
-    # ===== أقسام الرئيسية =====
     popular_items = (
-        db.query(Item)
-        .filter(Item.is_active == "yes")
-        .order_by(func.random())
-        .limit(12)
-        .all()
+        db.query(Item).filter(Item.is_active == "yes").order_by(func.random()).limit(12).all()
     )
 
     items_by_category = {}
@@ -227,11 +200,7 @@ def home(
         )
 
     mixed_items = (
-        db.query(Item)
-        .filter(Item.is_active == "yes")
-        .order_by(func.random())
-        .limit(24)
-        .all()
+        db.query(Item).filter(Item.is_active == "yes").order_by(func.random()).limit(24).all()
     )
 
     return templates.TemplateResponse(
@@ -245,7 +214,6 @@ def home(
             "session_user": request.session.get("user"),
             "search_q": q or "",
             "search_city": city or "",
-            # جديد
             "popular_items": popular_items,
             "items_by_category": items_by_category,
             "mixed_items": mixed_items,
@@ -253,9 +221,6 @@ def home(
         },
     )
 
-# =========================
-# صفحات عامة
-# =========================
 @app.get("/welcome", response_class=HTMLResponse)
 def welcome(request: Request):
     u = request.session.get("user")
@@ -272,7 +237,6 @@ def about(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user")
     return templates.TemplateResponse("about.html", {"request": request, "session_user": u})
 
-# API شارة الرسائل
 @app.get("/api/unread_count")
 def api_unread_count(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user")
@@ -280,9 +244,6 @@ def api_unread_count(request: Request, db: Session = Depends(get_db)):
         return JSONResponse({"count": 0})
     return JSONResponse({"count": unread_count(u["id"], db)})
 
-# =========================
-# Middleware: مزامنة session_user بأمان
-# =========================
 @app.middleware("http")
 async def sync_user_flags(request: Request, call_next):
     try:
@@ -294,44 +255,31 @@ async def sync_user_flags(request: Request, call_next):
                 try:
                     db_user = db.query(User).filter(User.id == sess_user["id"]).first()
                     if db_user:
-                        # قيم أساسية
                         sess_user["is_verified"] = bool(getattr(db_user, "is_verified", False))
                         sess_user["role"] = getattr(db_user, "role", sess_user.get("role"))
                         sess_user["status"] = getattr(db_user, "status", sess_user.get("status"))
                         sess_user["payouts_enabled"] = bool(getattr(db_user, "payouts_enabled", False))
-
-                        # شارات اختيارية إن وُجدت
                         for key in [
-                            "badge_admin", "badge_new_yellow", "badge_pro_green", "badge_pro_gold",
-                            "badge_purple_trust", "badge_renter_green", "badge_orange_stars"
+                            "badge_admin","badge_new_yellow","badge_pro_green","badge_pro_gold",
+                            "badge_purple_trust","badge_renter_green","badge_orange_stars"
                         ]:
-                            try:
-                                sess_user[key] = bool(getattr(db_user, key))
-                            except Exception:
-                                pass
-
+                            try: sess_user[key] = bool(getattr(db_user, key))
+                            except Exception: pass
                         request.session["user"] = sess_user
                 except Exception:
                     pass
                 finally:
-                    try:
-                        next(db_gen)
-                    except StopIteration:
-                        pass
+                    try: next(db_gen)
+                    except StopIteration: pass
     except Exception:
         pass
-
     response = await call_next(request)
     return response
 
-# Health Check
 @app.get("/healthz")
 def healthz():
     return {"status": "up"}
 
-# =========================
-# /lang: مسار بسيط غير مرتبط بترجمة — فقط يحفظ كوكي
-# =========================
 @app.get("/lang/{lang}")
 def switch_language(lang: str, request: Request):
     referer = request.headers.get("referer") or "/"

@@ -22,8 +22,7 @@ def _api_key():
     key = os.getenv("STRIPE_SECRET_KEY", "") or ""
     return (key.startswith("sk_test_") or key.startswith("sk_live_")), key
 
-
-# يقبل GET و POST لنفس المسار لتفادي 405
+# يدعم GET و POST لتجنّب 405
 @router.api_route("/payout/connect/start", methods=["GET", "POST"])
 def payout_connect_start(request: Request, db: Session = Depends(get_db)):
     sess = request.session.get("user")
@@ -44,7 +43,7 @@ def payout_connect_start(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=303)
 
     try:
-        # أنشئ حساب Express إن لم يكن موجودًا
+        # إنشاء حساب Express إذا لم يوجد
         if not user.stripe_account_id:
             acct = stripe.Account.create(type="express")
             user.stripe_account_id = acct.id
@@ -73,8 +72,7 @@ def payout_connect_start(request: Request, db: Session = Depends(get_db)):
     except Exception as e:
         return HTMLResponse(f"<h3>Stripe Error</h3><pre>{e}</pre>", status_code=500)
 
-
-# مسارات مساعدة: أي وصول إلى /payout/connect يعيد توجيهًا لـ start
+# مسارات مساعدة توجه دائمًا إلى start
 @router.get("/payout/connect")
 def payout_connect_alias_get():
     return RedirectResponse(url="/payout/connect/start", status_code=303)
@@ -82,7 +80,6 @@ def payout_connect_alias_get():
 @router.post("/payout/connect")
 def payout_connect_alias_post():
     return RedirectResponse(url="/payout/connect/start", status_code=303)
-
 
 @router.get("/payout/connect/refresh")
 def payout_connect_refresh(request: Request, db: Session = Depends(get_db)):
