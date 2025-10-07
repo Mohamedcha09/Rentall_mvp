@@ -10,58 +10,37 @@ from .models import User
 
 router = APIRouter()
 
-def get_base_url(request: Request) -> str:
-    # استخدم متغير البيئة إن وُجد، وإلا خُذ من الطلب
-    env_base = os.getenv("CONNECT_REDIRECT_BASE", "").strip().rstrip("/")
+def _base_url(request: Request) -> str:
+    env_base = (os.getenv("CONNECT_REDIRECT_BASE") or "").strip().rstrip("/")
     if env_base:
         return env_base
-    # Render يكون دومينه https
     host = request.url.hostname or "localhost"
     return f"https://{host}"
 
-def get_api_key_ok() -> tuple[bool, str]:
+def _api_key() -> tuple[bool, str]:
     key = os.getenv("STRIPE_SECRET_KEY", "") or ""
-    ok = key.startswith("sk_test_") or key.startswith("sk_live_")
-    return ok, key
+    return (key.startswith("sk_test_") or key.startswith("sk_live_")), key
 
-@router.post("/payout/connect")
-def connect_post_redirect():
-    """
-    دعم فورم قديم يرسل POST إلى /payout/connect
-    نحوله إلى /payout/connect/start
-    """
-    return RedirectResponse(url="/payout/connect/start", status_code=303)
-
-# 👇 أهم تعديل: نقبل GET و POST لنفس المسار لتفادي 405
-@router.api_route("/payout/connect/start", methods=["GET", "POST"])
-def connect_start(request: Request, db: Session = Depends(get_db)):
-    """
-    يبدأ رحلة Stripe Connect:
-      - ينشئ حساب Express للمستخدم إن لم يكن موجودًا
-      - يولّد AccountLink ويعيد توجيه المتصفح إلى Stripe
-    """
+def _connect_start_impl(request: Request, db: Session):
     sess = request.session.get("user")
     if not sess:
         return RedirectResponse(url="/login", status_code=303)
 
-    ok, key = get_api_key_ok()
+    ok, key = _api_key()
     if not ok:
         return HTMLResponse(
             "<h3>Stripe: مفتاح غير مُهيّأ</h3>"
-            "<p>ضبط STRIPE_SECRET_KEY (sk_test_ أو sk_live_) ثم أعد النشر.</p>",
+            "<p>اضبط STRIPE_SECRET_KEY (sk_test_ أو sk_live_) ثم أعد النشر.</p>",
             status_code=500
         )
 
     stripe.api_key = key
-    # get() قد يطلق تحذير قديم، لكن يعمل. بديله: db.get(User, sess['id']) في SQLAlchemy 2.x
     user = db.query(User).get(sess["id"]) or db.get(User, sess["id"])
 
     try:
-        # أنشئ حساب للمستخدم إن لم يكن موجوداً
         if not getattr(user, "stripe_account_id", None):
             acct = stripe.Account.create(type="express")
             user.stripe_account_id = acct.id
-            # إذا لديك عمود payouts_enabled نضبطه على False كبداية
             if hasattr(user, "payouts_enabled"):
                 user.payouts_enabled = False
             db.add(user)
@@ -69,11 +48,10 @@ def connect_start(request: Request, db: Session = Depends(get_db)):
         else:
             acct = stripe.Account.retrieve(user.stripe_account_id)
 
-        base = get_base_url(request)
         link = stripe.AccountLink.create(
             account=acct.id,
-            refresh_url=f"{base}/payout/connect/refresh",
-            return_url=f"{base}/payout/settings",
+            refresh_url=f"{_base_url(request)}/payout/connect/refresh",
+            return_url=f"{_base_url(request)}/payout/settings",
             type="account_onboarding",
         )
         return RedirectResponse(url=link.url, status_code=303)
@@ -81,23 +59,32 @@ def connect_start(request: Request, db: Session = Depends(get_db)):
     except stripe.error.AuthenticationError:
         return HTMLResponse(
             "<h3>Stripe: Invalid API Key</h3>"
-            "<p>المفتاح غير صحيح أو من وضع مختلف. استخدم مفاتيح Test أو Live الصحيحة.</p>",
+            "<p>المفتاح غير صحيح أو من وضع مختلف (Test/Live).</p>",
             status_code=401
         )
     except Exception as e:
         return HTMLResponse(f"<h3>Stripe Error</h3><pre>{str(e)}</pre>", status_code=500)
 
+@router.post("/payout/connect")
+def connect_post_redirect():
+    return RedirectResponse(url="/payout/connect/start", status_code=303)
+
+# نُعرّف طريقتين منفصلتين (GET و POST) ليتفادى الخادم 405 تمامًا
+@router.get("/payout/connect/start")
+def connect_start_get(request: Request, db: Session = Depends(get_db)):
+    return _connect_start_impl(request, db)
+
+@router.post("/payout/connect/start")
+def connect_start_post(request: Request, db: Session = Depends(get_db)):
+    return _connect_start_impl(request, db)
 
 @router.get("/payout/connect/refresh")
 def connect_refresh(request: Request, db: Session = Depends(get_db)):
-    """
-    يجلب حالة الحساب من Stripe ويحدّث users.payouts_enabled ثم يعيدك لإعدادات التحويل.
-    """
     sess = request.session.get("user")
     if not sess:
         return RedirectResponse(url="/login", status_code=303)
 
-    ok, key = get_api_key_ok()
+    ok, key = _api_key()
     if not ok:
         return HTMLResponse("STRIPE_SECRET_KEY مفقود/غير صحيح.", status_code=500)
 
@@ -108,7 +95,6 @@ def connect_refresh(request: Request, db: Session = Depends(get_db)):
 
     try:
         acct = stripe.Account.retrieve(user.stripe_account_id)
-        # لو عندك عمود payouts_enabled في جدول users، حدّثه
         if hasattr(user, "payouts_enabled"):
             user.payouts_enabled = bool(getattr(acct, "payouts_enabled", False))
             db.add(user)
