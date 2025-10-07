@@ -1,36 +1,120 @@
 {% extends "base.html" %}
+{% block head %}
+<style>
+  .cardish{border:1px solid var(--border);border-radius:14px;padding:16px}
+  .muted{opacity:.7}
+  .ok{display:inline-flex;align-items:center;gap:8px}
+  .k{opacity:.65}
+  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;}
+</style>
+{% endblock %}
+
 {% block content %}
-<h3 class="mb-3">إعدادات التحويل (Stripe Connect)</h3>
+<div class="container" style="max-width:920px">
+  <h3 class="mb-3">إعداد استلام الأرباح (Stripe Connect)</h3>
 
-<div class="card">
-  <div class="card-body">
+  <div class="cardish mb-3">
+    <p class="mb-2">
+      ليتلقّى <strong>المالك</strong> الأموال مباشرة إلى حسابه البنكي عبر Stripe، يجب أولاً إنشاء/ربط حساب
+      <strong>Stripe Connect</strong> ثم إكمال التحقق (KYC).
+    </p>
 
-    {% if user.stripe_account_id %}
-      <p class="mb-2">رقم حساب Stripe:
-        <code>{{ user.stripe_account_id }}</code>
-      </p>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+      <!-- زر بدء الربط: يستدعي POST /payout/connect/start -->
+      <form method="post" action="/payout/connect/start" class="d-inline">
+        <button class="btn btn-primary">
+          <i class="bi bi-plug"></i> ابدأ الربط الآن
+        </button>
+      </form>
 
-      {% if user.payouts_enabled %}
-        <div class="alert alert-success">حسابك مفعّل وجاهز لاستلام الأرباح 🎉</div>
-        <a class="btn btn-outline-primary" href="/payout/connect/start">
-          إدارة / مراجعة إعدادات الحساب
-        </a>
-      {% else %}
-        <div class="alert alert-warning">لم تُكمل خطوات التفعيل بعد.</div>
-        <a class="btn btn-primary" href="/payout/connect/start">
-          إكمال التفعيل
-        </a>
-      {% endif %}
+      <!-- زر فحص الحالة عبر API -->
+      <button id="chkBtn" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-repeat"></i> تحقّق من الحالة
+      </button>
+    </div>
+  </div>
 
-    {% else %}
-      <div class="alert alert-info">
-        اربط حساب Stripe Express لتستلم أموالك مباشرة.
+  <div class="row g-3">
+    <div class="col-12 col-lg-7">
+      <div class="cardish">
+        <h5 class="mb-3">حالة حسابك</h5>
+
+        <div class="mb-2"><span class="k">Stripe Account ID:</span>
+          <code class="mono" id="accId">—</code>
+        </div>
+        <div class="mb-2"><span class="k">payouts_enabled:</span>
+          <span id="payouts">—</span>
+        </div>
+        <div class="mb-2"><span class="k">charges_enabled:</span>
+          <span id="charges">—</span>
+        </div>
+        <div class="mb-2"><span class="k">details_submitted:</span>
+          <span id="details">—</span>
+        </div>
+
+        <div class="alert alert-warning mt-3" id="callout" style="display:none">
+          لم يكتمل ربط الحساب بعد. اضغط <strong>ابدأ الربط الآن</strong> وأكمل خطوات Stripe (الوضع التجريبي يدعم بيانات اختبار).
+        </div>
+
+        <div class="alert alert-success mt-3" id="okcall" style="display:none">
+          الحساب جاهز لاستلام الأرباح ✅ — الآن عند الدفع والالتقاط سيتم التحويل تلقائيًا لحسابك.
+        </div>
       </div>
-      <a class="btn btn-primary" href="/payout/connect/start">
-        بدء الربط
-      </a>
-    {% endif %}
+    </div>
 
+    <div class="col-12 col-lg-5">
+      <div class="cardish">
+        <h6 class="mb-2">ملاحظات مهمّة</h6>
+        <ul class="mb-0">
+          <li>هذا يعمل في <strong>وضع الاختبار</strong> بمفاتيحك <code>sk_test_ / pk_test_</code>.</li>
+          <li>بعد إكمال التحقق، سيصبح <em>payouts_enabled</em> = <strong>true</strong>.</li>
+          <li>بوابة الدفع في الحجز تفوِّض (authorize) الإيجار أولًا، ثم نلتقط المبلغ عند “تم الاستلام”.</li>
+          <li>التحويل يتم بحساب الوجهة عبر <span class="mono">transfer_data.destination</span> إلى حساب المالك.</li>
+        </ul>
+      </div>
+    </div>
   </div>
 </div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const btn = document.getElementById('chkBtn');
+  const accId = document.getElementById('accId');
+  const payouts = document.getElementById('payouts');
+  const charges = document.getElementById('charges');
+  const details = document.getElementById('details');
+  const callout = document.getElementById('callout');
+  const okcall = document.getElementById('okcall');
+
+  function set(val, el){
+    el.textContent = (val===true)?'true':(val===false)?'false':(val||'—');
+  }
+
+  async function load(){
+    try{
+      const r = await fetch('/api/stripe/connect/status', {credentials: 'same-origin'});
+      if(!r.ok){ throw new Error('failed'); }
+      const d = await r.json();
+      // قد لا يعيد الـ id مباشرة؛ نعرض مما في session إن وُفر عبر الميدل وير (لا بأس أن يبقى —)
+      set(d.capabilities ? d.capabilities.account || '—' : '—', accId);
+      set(d.payouts_enabled, payouts);
+      set(d.charges_enabled, charges);
+      set(d.details_submitted, details);
+
+      const ok = !!d.payouts_enabled && !!d.charges_enabled && !!d.details_submitted;
+      okcall.style.display = ok ? '' : 'none';
+      callout.style.display = ok ? 'none' : '';
+    }catch(e){
+      callout.style.display='';
+    }
+  }
+
+  btn?.addEventListener('click', function(e){ e.preventDefault(); load(); });
+  // تحميل تلقائي عند فتح الصفحة
+  load();
+})();
+</script>
 {% endblock %}

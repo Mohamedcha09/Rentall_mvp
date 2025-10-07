@@ -25,9 +25,9 @@ from .activate import router as activate_router
 from .freeze import router as freeze_router
 from .payments import router as payments_router
 from .checkout import router as checkout_router
-from .pay_api import router as pay_api_router           # يحتوي على /webhooks/stripe وعمليات الدفع
+from .pay_api import router as pay_api_router
 from .payout_connect import router as payout_connect_router
-from .webhooks import router as webhooks_router         # قد يحتوي Webhooks قديمة (نضيف له prefix لتفادي التعارض)
+from .webhooks import router as webhooks_router
 from .disputes import router as disputes_router
 from .routes_search import router as search_router
 from .routes_users import router as users_router
@@ -35,6 +35,9 @@ from .admin_badges import router as admin_badges_router
 from .routes_bookings import router as bookings_router
 from .notifications import router as notifs_router
 from .notifications_api import router as notifications_router
+
+# [جديد] راوتر مسارات إعداد Stripe Connect (الذي أرسلته لك في الملف 1)
+from .payout_routes import router as payout_routes_router
 
 # [مضاف] راوتر المفضّلات
 from .routes_favorites import router as favorites_router
@@ -51,8 +54,8 @@ app.add_middleware(
     secret_key=os.environ.get("SECRET_KEY", "dev-secret"),
     session_cookie="ra_session",
     same_site="lax",
-    https_only=True,                 # تعمل على https على Render
-    max_age=60 * 60 * 24 * 30,       # 30 يوم
+    https_only=True,
+    max_age=60 * 60 * 24 * 30,  # 30 يوم
 )
 
 # =========================
@@ -96,23 +99,14 @@ def seed_admin():
 
 seed_admin()
 
-# ===== تفعيل payouts اختياريًا =====
+# ===== تفعيل payouts اختياريًا (رسالة معلومات فقط) =====
 PAYOUTS_ENABLED = os.getenv("ENABLE_PAYOUTS", "0") == "1"
-payouts_router = None
 if PAYOUTS_ENABLED:
-    try:
-        import stripe  # تأكد أن المكتبة متوفرة
-        from .payouts import router as _payouts_router
-        payouts_router = _payouts_router
-        print("[OK] payouts router enabled")
-    except Exception as e:
-        print(f"[SKIP] payouts router (enabled but failed): {e}")
+    print("[OK] payouts enabled via env")
 else:
-    print("[INFO] payouts router disabled (set ENABLE_PAYOUTS=1 & STRIPE_SECRET_KEY to enable)")
+    print("[INFO] payouts disabled (set ENABLE_PAYOUTS=1 to show callout)")
 
-# =========================
-# تسجيل الروترات (ترتيب مهم)
-# =========================
+# تسجيل الروترات
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(items_router)
@@ -121,42 +115,36 @@ app.include_router(ratings_router)
 app.include_router(profiles_router)
 app.include_router(activate_router)
 app.include_router(freeze_router)
-
-# صفحات عامة للدفع واللوحات
 app.include_router(payments_router)
-
-# مسارات الحجز وواجهة الدفع الرئيسية (Stripe Checkout + Webhook)
 app.include_router(checkout_router)
 app.include_router(pay_api_router)
 
-# ربط Stripe Connect للمالك (إنشاء/إكمال حساب الاستلام)
-app.include_router(payout_connect_router)
+# ⚠️ كان لدينا payout_connect_router (قديم) بمسارات تتصادم مع الجديد.
+# نترك الاستيراد كما هو، لكن لا نُسجّله لتجنّب تكرار /payout/connect/start.
+# app.include_router(payout_connect_router)
 
-# إن كان لديك راوتر ويبهوكات قديم، نعطيه prefix حتى لا يتصادم مع /webhooks/stripe في pay_api.py
-# هكذا يبقى الكود موجود بدون حذف، لكن المسارات لن تتعارض
-app.include_router(webhooks_router, prefix="/_legacy-webhooks")
+# ✅ نسجّل الراوتر الجديد الذي أرسلته لك في الملف 1
+app.include_router(payout_routes_router)
 
+app.include_router(webhooks_router)
 app.include_router(disputes_router)
 app.include_router(search_router)
 app.include_router(users_router)
 app.include_router(admin_badges_router)
 app.include_router(bookings_router)
-
-# راوتر المفضلات
+# ===== راوتر المفضلات =====
 app.include_router(favorites_router)
-
-# الإشعارات
 app.include_router(notifs_router)
 app.include_router(notifications_router)
 
-# إن توفر راوتر التحويلات الاختياري
-if payouts_router:
-    app.include_router(payouts_router)
-
-# =========================
-# أداة صغيرة لاستخراج كود التصنيف
-# =========================
+# ===== أداة صغيرة لاستخراج كود التصنيف بأشكال مختلفة
 def _cat_code(cat) -> str:
+    """
+    يدعم:
+    - dict: code / value / id / slug / key
+    - tuple/list مثل: ('cars', 'سيارات')
+    - قيمة نصية مباشرة
+    """
     if isinstance(cat, dict):
         return (
             cat.get("code")
@@ -342,7 +330,7 @@ def healthz():
     return {"status": "up"}
 
 # =========================
-# /lang: يحفظ كوكي اللغة
+# /lang: مسار بسيط غير مرتبط بترجمة — فقط يحفظ كوكي
 # =========================
 @app.get("/lang/{lang}")
 def switch_language(lang: str, request: Request):

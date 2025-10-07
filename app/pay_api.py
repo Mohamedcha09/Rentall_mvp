@@ -14,17 +14,19 @@ from .models import Booking, Item, User
 from .notifications_api import push_notification
 
 # ========= إعداد Stripe =========
-# تأكد أن مفاتيحك في .env:
-# STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, CURRENCY, PLATFORM_FEE_PCT, SITE_URL
+# استخدم مفاتيح الاختبار التي زوّدتني بها (sk_test/pk_test) في .env
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 SITE_URL = os.getenv("SITE_URL", "http://localhost:8000").rstrip("/")
+# عملتك من .env (أنت ضبطتها إلى CAD)
 CURRENCY = (os.getenv("CURRENCY", "usd") or "usd").lower()
-PLATFORM_FEE_PCT = int(os.getenv("PLATFORM_FEE_PCT", "0"))  # نسبة عمولة المنصة %
+# نسبة عمولة المنصة (اختياري)
+PLATFORM_FEE_PCT = int(os.getenv("PLATFORM_FEE_PCT", "0"))
 
 if not stripe.api_key:
     raise RuntimeError("STRIPE_SECRET_KEY is missing")
 
 router = APIRouter(tags=["payments"])
+
 
 # ========= Helpers =========
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
@@ -45,6 +47,7 @@ def require_booking(db: Session, bid: int) -> Booking:
 def flow_redirect(bid: int) -> RedirectResponse:
     return RedirectResponse(url=f"/bookings/flow/{bid}", status_code=303)
 
+
 # ========= (A) Stripe Connect Onboarding للمالك =========
 @router.post("/api/stripe/connect/start")
 def connect_start(
@@ -53,28 +56,28 @@ def connect_start(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    يستخدمه المالك لإنشاء/إكمال حساب Stripe Connect (Express/Standard حسب إعداد حسابك).
-    - لو لا يوجد stripe_account_id: ننشئ account.
-    - ثم ننشئ account_link لإرسال المالك إلى رحلة التوثيق في Stripe.
+    يبدأ رحلة إنشاء/إكمال حساب Stripe Connect (Express/Standard).
+    - إذا لا يوجد stripe_account_id للمستخدم → ننشئ account.
+    - ننشئ AccountLink ونحوّل المالك إلى صفحة Stripe لإكمال البيانات.
     """
     require_auth(user)
 
     # 1) أنشئ حساب لو مفقود
     if not getattr(user, "stripe_account_id", None):
         try:
-            # اختر النوع المناسب لحسابك ("standard" أو "express"). الافتراضي هنا "express".
+            # اختر نوع الحساب المناسب. الافتراضي هنا "express".
             account = stripe.Account.create(type="express")
             user.stripe_account_id = account.id
             db.commit()
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Stripe create account failed: {e}")
 
-    # 2) أنشئ رابط onboarding
+    # 2) أنشئ رابط الـ onboarding
     try:
         link = stripe.AccountLink.create(
             account=user.stripe_account_id,
-            refresh_url=f"{SITE_URL}/payout/connect/refresh",  # صفحة تُعيد نداء connect_status
-            return_url=f"{SITE_URL}/payout/settings",          # بعد الإكمال يعود هنا
+            refresh_url=f"{SITE_URL}/payouts/refresh",
+            return_url=f"{SITE_URL}/payouts/return",
             type="account_onboarding",
         )
     except Exception as e:
@@ -82,14 +85,15 @@ def connect_start(
 
     return RedirectResponse(url=link.url, status_code=303)
 
+
 @router.get("/api/stripe/connect/status")
 def connect_status(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    يجلب حالة حساب المالك من Stripe ويحفظ payouts_enabled في DB.
-    استدعِه بعد الرجوع من onboarding أو من لوحة الحساب.
+    يجلب حالة حساب المالك من Stripe ويحفظ payouts_enabled في قاعدة البيانات.
+    استدعِه بعد الرجوع من onboarding أو من صفحة الإعدادات.
     """
     require_auth(user)
     if not getattr(user, "stripe_account_id", None):
@@ -114,6 +118,7 @@ def connect_status(
         "charges_enabled": acc.get("charges_enabled", False),
     })
 
+
 # ========= (B) Checkout للإيجار (تفويض فقط) =========
 @router.post("/api/stripe/checkout/rent/{booking_id}")
 def start_checkout_rent(
@@ -122,9 +127,10 @@ def start_checkout_rent(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    - يفوِّض مبلغ الإيجار باستخدام manual capture.
-    - يربط التحويل بحساب المالك عبر transfer_data (Destination charge).
-    - عند الالتقاط (capture) سيذهب المبلغ مباشرة لحساب المالك، مع خصم عمولة المنصة (اختياري).
+    - يفوِّض مبلغ الإيجار (manual capture).
+    - يحدد التحويل إلى حساب المالك عبر transfer_data.destination (Destination charge).
+    - تُطبّق عمولة المنصة (application_fee_amount) إن كانت > 0.
+    - بعد نجاح الـ Checkout → webhook يغيّر الحجز إلى paid ويخزن الـ payment_intent_id.
     """
     require_auth(user)
     bk = require_booking(db, booking_id)
@@ -141,7 +147,6 @@ def start_checkout_rent(
     amount_cents = max(0, (bk.total_amount or 0)) * 100
     app_fee_cents = (amount_cents * PLATFORM_FEE_PCT) // 100 if PLATFORM_FEE_PCT > 0 else 0
 
-    # نبني payment_intent_data مع حقول اختيارية فقط عند الحاجة
     pid: dict = {
         "capture_method": "manual",
         "metadata": {"kind": "rent", "booking_id": str(bk.id)},
@@ -173,6 +178,7 @@ def start_checkout_rent(
     db.commit()
     return RedirectResponse(url=session.url, status_code=303)
 
+
 # ========= (C) Checkout للديبو (تفويض فقط) =========
 @router.post("/api/stripe/checkout/deposit/{booking_id}")
 def start_checkout_deposit(
@@ -181,8 +187,8 @@ def start_checkout_deposit(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    يفوِّض مبلغ الديبو (لا تحويل هنا؛ مجرد hold).
-    القرار لاحقًا عبر /api/stripe/deposit/resolve/{booking_id}.
+    يفوِّض مبلغ الديبو (manual capture). لا يوجد تحويل هنا.
+    لاحقاً نقرر عبر /api/stripe/deposit/resolve/{booking_id}.
     """
     require_auth(user)
     bk = require_booking(db, booking_id)
@@ -221,9 +227,14 @@ def start_checkout_deposit(
     db.commit()
     return RedirectResponse(url=session.url, status_code=303)
 
+
 # ========= (D) Webhook: تثبيت نتائج الـ Checkout =========
 @router.post("/webhooks/stripe")
 async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
+    """
+    يستقبل أحداث Stripe:
+    - checkout.session.completed → نقرأ الـ PaymentIntent ونحدِّث الحجز.
+    """
     payload = await request.body()
     sig = request.headers.get("stripe-signature")
     endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
@@ -245,9 +256,10 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
             return JSONResponse({"ok": True})
 
         if kind == "rent":
+            # تم تفويض مبلغ الإيجار
             bk.online_payment_intent_id = pi.id
-            bk.online_status = "authorized"     # تم التفويض بنجاح
-            bk.status = "paid"                  # صار جاهز للاستلام
+            bk.online_status = "authorized"
+            bk.status = "paid"
             bk.timeline_paid_at = datetime.utcnow()
             db.commit()
             push_notification(db, bk.owner_id, "تم تفويض دفعة الإيجار",
@@ -258,6 +270,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                               f"/bookings/flow/{bk.id}", "booking")
 
         elif kind == "deposit":
+            # تم تفويض الديبو (hold)
             bk.deposit_hold_intent_id = pi.id
             bk.deposit_status = "held"
             db.commit()
@@ -270,6 +283,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 
     return JSONResponse({"ok": True})
 
+
 # ========= (E) التقاط مبلغ الإيجار يدويًا (اختياري زر منفصل) =========
 @router.post("/api/stripe/capture-rent/{booking_id}")
 def capture_rent(
@@ -278,8 +292,8 @@ def capture_rent(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    لو حبّيت زر منفصل لالتقاط مبلغ الإيجار (بدل الالتقاط عند 'تم الاستلام').
-    في تدفّقك الحالي يتم الالتقاط تلقائيًا عند تأكيد الاستلام من المستأجر.
+    يلتقط مبلغ الإيجار المؤجَّل (authorized) ويرسله لحساب المالك (Destination).
+    مفيد إذا أردت زرًا منفصلًا. في التدفق الكامل عادةً تربطه بزر "تم الاستلام".
     """
     require_auth(user)
     bk = require_booking(db, booking_id)
@@ -300,6 +314,7 @@ def capture_rent(
                       f"/bookings/flow/{bk.id}", "booking")
     return flow_redirect(bk.id)
 
+
 # ========= (F) قرار الديبو (للإدمن) =========
 @router.post("/api/stripe/deposit/resolve/{booking_id}")
 def resolve_deposit(
@@ -310,9 +325,9 @@ def resolve_deposit(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    بعد إرجاع الغرض:
-      - refund_all        : إلغاء التفويض بالكامل.
-      - withhold_all      : اقتطاع كل الديبو.
+    بعد الإرجاع:
+      - refund_all        : إلغاء التفويض بالكامل للديبو.
+      - withhold_all      : اقتطاع كل الديبو لصالح المالك.
       - withhold_partial  : اقتطاع جزء من الديبو.
     """
     require_auth(user)
@@ -327,12 +342,14 @@ def resolve_deposit(
     dep = max(0, bk.deposit_amount or bk.hold_deposit_amount or 0)
     try:
         if action == "refund_all":
-            stripe.PaymentIntent.cancel(pi_id)  # يلغي التفويض
+            stripe.PaymentIntent.cancel(pi_id)  # يلغي التفويض بالكامل
             bk.deposit_status = "refunded"
+
         elif action == "withhold_all":
             stripe.PaymentIntent.capture(pi_id, amount_to_capture=dep * 100)
             bk.deposit_status = "claimed"
             bk.deposit_charged_amount = dep
+
         elif action == "withhold_partial":
             amt = max(0, int(partial_amount or 0))
             if amt <= 0 or amt >= dep:
@@ -340,6 +357,7 @@ def resolve_deposit(
             stripe.PaymentIntent.capture(pi_id, amount_to_capture=amt * 100)
             bk.deposit_status = "partially_withheld"
             bk.deposit_charged_amount = amt
+
         else:
             raise HTTPException(status_code=400, detail="Unknown action")
     except Exception as e:
