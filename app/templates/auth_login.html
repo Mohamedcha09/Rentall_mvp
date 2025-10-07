@@ -1,31 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="login-container">
-  <div class="login-box">
-    <img src="{{ url_for('static', filename='images/ok.png') }}" alt="Sevor Logo" class="logo">
-    <h2 class="title">Créer un compte Sevor</h2>
-
-    <form method="post" action="/login" class="login-form">
-      <input type="email" name="email" placeholder="Votre email" required>
-      <button type="submit">Continuer</button>
-
-      <div class="divider">OU</div>
-
-      <button type="button" class="social apple">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" alt="Apple">
-        S'inscrire avec Apple
-      </button>
-
-      <button type="button" class="social google">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/0/09/Google_new_logo.svg" alt="Google">
-        S'inscrire avec Google
-      </button>
-    </form>
-
-    <p class="bottom-text">
-      Vous avez déjà un compte ?
-      <a href="/register">Se connecter</a>
-    </p>
+<h2>تسجيل الدخول</h2>
+<form method="post" action="/login">
+  <div class="mb-3">
+    <label class="form-label">البريد الإلكتروني</label>
+    <input type="email" class="form-control" name="email" required>
   </div>
-</div>
+  <div class="mb-3">
+    <label class="form-label">كلمة المرور</label>
+    <input type="password" class="form-control" name="password" required>
+  </div>
+  <button type="submit" class="btn btn-primary">دخول</button>
+</form>
+<p class="mt-3">ليس لديك حساب؟ <a href="/register">سجّل الآن</a></p>
 {% endblock %}
