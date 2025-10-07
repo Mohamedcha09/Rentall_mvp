@@ -20,12 +20,10 @@
     </p>
 
     <div class="d-flex flex-wrap gap-2 align-items-center">
-      <!-- زر بدء الربط: يستدعي POST /payout/connect/start -->
-      <form method="post" action="/payout/connect/start" class="d-inline">
-        <button class="btn btn-primary">
-          <i class="bi bi-plug"></i> ابدأ الربط الآن
-        </button>
-      </form>
+      <!-- زر بدء الربط: يوجّه إلى مسار يدعم GET -->
+      <a class="btn btn-primary" href="/payout/connect/start">
+        <i class="bi bi-plug"></i> ابدأ الربط الآن
+      </a>
 
       <!-- زر فحص الحالة عبر API -->
       <button id="chkBtn" class="btn btn-outline-secondary">
@@ -98,8 +96,10 @@
       const r = await fetch('/api/stripe/connect/status', {credentials: 'same-origin'});
       if(!r.ok){ throw new Error('failed'); }
       const d = await r.json();
-      // قد لا يعيد الـ id مباشرة؛ نعرض مما في session إن وُفر عبر الميدل وير (لا بأس أن يبقى —)
-      set(d.capabilities ? d.capabilities.account || '—' : '—', accId);
+
+      // نعرض الـ Account ID إن كان متوفّرًا من الـ API (اقتراح: أضفه كـ account_id)
+      set(d.account_id || '—', accId);
+
       set(d.payouts_enabled, payouts);
       set(d.charges_enabled, charges);
       set(d.details_submitted, details);
