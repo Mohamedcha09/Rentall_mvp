@@ -14,8 +14,10 @@ from .models import Booking, Item, User
 from .notifications_api import push_notification
 
 # ========= إعداد Stripe =========
+# تأكد أن مفاتيحك في .env:
+# STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, CURRENCY, PLATFORM_FEE_PCT, SITE_URL
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
-SITE_URL = os.getenv("SITE_URL", "http://localhost:8000")
+SITE_URL = os.getenv("SITE_URL", "http://localhost:8000").rstrip("/")
 CURRENCY = (os.getenv("CURRENCY", "usd") or "usd").lower()
 PLATFORM_FEE_PCT = int(os.getenv("PLATFORM_FEE_PCT", "0"))  # نسبة عمولة المنصة %
 
@@ -23,7 +25,6 @@ if not stripe.api_key:
     raise RuntimeError("STRIPE_SECRET_KEY is missing")
 
 router = APIRouter(tags=["payments"])
-
 
 # ========= Helpers =========
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
@@ -44,7 +45,6 @@ def require_booking(db: Session, bid: int) -> Booking:
 def flow_redirect(bid: int) -> RedirectResponse:
     return RedirectResponse(url=f"/bookings/flow/{bid}", status_code=303)
 
-
 # ========= (A) Stripe Connect Onboarding للمالك =========
 @router.post("/api/stripe/connect/start")
 def connect_start(
@@ -53,9 +53,9 @@ def connect_start(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    يستخدمه المالك لإنشاء/إكمال حساب Stripe Connect (Standard/Express حسب إعداد حسابك).
+    يستخدمه المالك لإنشاء/إكمال حساب Stripe Connect (Express/Standard حسب إعداد حسابك).
     - لو لا يوجد stripe_account_id: ننشئ account.
-    - ننشئ account_link لإرسال المالك إلى رحلة التوثيق في Stripe.
+    - ثم ننشئ account_link لإرسال المالك إلى رحلة التوثيق في Stripe.
     """
     require_auth(user)
 
@@ -73,15 +73,14 @@ def connect_start(
     try:
         link = stripe.AccountLink.create(
             account=user.stripe_account_id,
-            refresh_url=f"{SITE_URL}/payouts/refresh",  # صفحة بسيطة تُعيد نداء connect_status
-            return_url=f"{SITE_URL}/payouts/return",   # بعد الإكمال يعود هنا
+            refresh_url=f"{SITE_URL}/payout/connect/refresh",  # صفحة تُعيد نداء connect_status
+            return_url=f"{SITE_URL}/payout/settings",          # بعد الإكمال يعود هنا
             type="account_onboarding",
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe account link failed: {e}")
 
     return RedirectResponse(url=link.url, status_code=303)
-
 
 @router.get("/api/stripe/connect/status")
 def connect_status(
@@ -101,7 +100,6 @@ def connect_status(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe retrieve account failed: {e}")
 
-    # حفظ النتيجة محليًا
     was_enabled = bool(getattr(user, "payouts_enabled", False))
     now_enabled = bool(acc.get("payouts_enabled", False))
     user.payouts_enabled = now_enabled
@@ -115,7 +113,6 @@ def connect_status(
         "details_submitted": acc.get("details_submitted", False),
         "charges_enabled": acc.get("charges_enabled", False),
     })
-
 
 # ========= (B) Checkout للإيجار (تفويض فقط) =========
 @router.post("/api/stripe/checkout/rent/{booking_id}")
@@ -176,7 +173,6 @@ def start_checkout_rent(
     db.commit()
     return RedirectResponse(url=session.url, status_code=303)
 
-
 # ========= (C) Checkout للديبو (تفويض فقط) =========
 @router.post("/api/stripe/checkout/deposit/{booking_id}")
 def start_checkout_deposit(
@@ -224,7 +220,6 @@ def start_checkout_deposit(
     bk.online_status = bk.online_status or "pending_authorization"
     db.commit()
     return RedirectResponse(url=session.url, status_code=303)
-
 
 # ========= (D) Webhook: تثبيت نتائج الـ Checkout =========
 @router.post("/webhooks/stripe")
@@ -275,7 +270,6 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 
     return JSONResponse({"ok": True})
 
-
 # ========= (E) التقاط مبلغ الإيجار يدويًا (اختياري زر منفصل) =========
 @router.post("/api/stripe/capture-rent/{booking_id}")
 def capture_rent(
@@ -305,7 +299,6 @@ def capture_rent(
                       f"حجز #{bk.id}: تم تحويل المبلغ لك.",
                       f"/bookings/flow/{bk.id}", "booking")
     return flow_redirect(bk.id)
-
 
 # ========= (F) قرار الديبو (للإدمن) =========
 @router.post("/api/stripe/deposit/resolve/{booking_id}")
