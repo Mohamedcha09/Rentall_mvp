@@ -16,6 +16,8 @@ from .notifications_api import push_notification
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 SITE_URL = os.getenv("SITE_URL", "http://localhost:8000")
 CURRENCY = os.getenv("CURRENCY", "usd")
+PLATFORM_FEE_PCT = int(os.getenv("PLATFORM_FEE_PCT", "0"))  # نسبة عمولتك % اختياري
+
 if not stripe.api_key:
     raise RuntimeError("STRIPE_SECRET_KEY is missing")
 
@@ -39,7 +41,7 @@ def require_booking(db: Session, bid: int) -> Booking:
 def flow_redirect(bid: int) -> RedirectResponse:
     return RedirectResponse(url=f"/bookings/flow/{bid}", status_code=303)
 
-# --- 1) Checkout للإيجار (تفويض فقط) ---
+# --- 1) Checkout للإيجار (تفويض فقط) + تحويل تلقائي للمالك عند الالتقاط ---
 @router.post("/api/stripe/checkout/rent/{booking_id}")
 def start_checkout_rent(booking_id: int, db: Session = Depends(get_db), user: Optional[User] = Depends(get_current_user)):
     require_auth(user)
@@ -50,14 +52,23 @@ def start_checkout_rent(booking_id: int, db: Session = Depends(get_db), user: Op
         return flow_redirect(bk.id)
 
     item = db.get(Item, bk.item_id) or (_ for _ in ()).throw(HTTPException(404, "Item not found"))
+    owner = db.get(User, bk.owner_id)
+    if not owner or not getattr(owner, "stripe_account_id", None):
+        raise HTTPException(status_code=400, detail="Owner is not onboarded to Stripe (missing stripe_account_id)")
+
     amount_cents = max(0, (bk.total_amount or 0)) * 100
+    app_fee_cents = (amount_cents * PLATFORM_FEE_PCT) // 100 if PLATFORM_FEE_PCT > 0 else 0
 
     try:
         session = stripe.checkout.Session.create(
             mode="payment",
             payment_intent_data={
-                "capture_method": "manual",
+                "capture_method": "manual",                             # تفويض فقط
                 "metadata": {"kind": "rent", "booking_id": str(bk.id)},
+                # تحويل الوجهة عند الالتقاط (Destination charge)
+                "transfer_data": {"destination": owner.stripe_account_id},
+                # عمولة المنصة (اختياري)
+                "application_fee_amount": app_fee_cents if app_fee_cents > 0 else None,
             },
             line_items=[{
                 "quantity": 1,
@@ -76,7 +87,6 @@ def start_checkout_rent(booking_id: int, db: Session = Depends(get_db), user: Op
     bk.payment_method = "online"
     bk.online_status = "pending_authorization"
     db.commit()
-
     return RedirectResponse(url=session.url, status_code=303)
 
 # --- 2) Checkout للديبو (تفويض فقط) ---
@@ -119,8 +129,9 @@ def start_checkout_deposit(booking_id: int, db: Session = Depends(get_db), user:
     db.commit()
     return RedirectResponse(url=session.url, status_code=303)
 
-# --- 3) Webhook: نثبت نتائج الـ Checkout ---
-@router.post("/stripe/webhook")
+# --- 3) Webhook: يوافق نتائج الـ Checkout ويخزن الـ PaymentIntent ---
+# ملاحظة: المسار يطابق ما وضعته في Stripe Dashboard
+@router.post("/webhooks/stripe")
 async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     payload = await request.body()
     sig = request.headers.get("stripe-signature")
@@ -145,7 +156,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
         if kind == "rent":
             bk.online_payment_intent_id = pi.id
             bk.online_status = "authorized"
-            bk.status = "paid"
+            bk.status = "paid"                       # صار جاهز للاستلام
             bk.timeline_paid_at = datetime.utcnow()
             db.commit()
             push_notification(db, bk.owner_id, "تم تفويض دفعة الإيجار",
@@ -190,7 +201,7 @@ def capture_rent(booking_id: int, db: Session = Depends(get_db), user: Optional[
                       f"/bookings/flow/{bk.id}", "booking")
     return flow_redirect(bk.id)
 
-# --- 5) قرار الديبو (إدمن): إرجاع/اقتطاع/جزئي ---
+# --- 5) قرار الديبو (إدمن) ---
 @router.post("/api/stripe/deposit/resolve/{booking_id}")
 def resolve_deposit(
     booking_id: int,

@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Optional, Literal
 from datetime import datetime, date, timedelta
-import os  # [جديد] لقراءة STRIPE_SECRET_KEY
+import os  # لقراءة STRIPE_SECRET_KEY
 
 from fastapi import APIRouter, Depends, Request, HTTPException, Form, Query, status
 from fastapi.responses import RedirectResponse, JSONResponse
@@ -12,7 +12,7 @@ from sqlalchemy import inspect
 from .database import get_db
 from .models import User, Item, Booking
 from .utils import category_label
-from .notifications_api import push_notification, notify_admins  # تأكد من وجوده
+from .notifications_api import push_notification, notify_admins
 
 router = APIRouter(tags=["bookings"])
 
@@ -47,7 +47,6 @@ def _parse_date(s: str) -> date:
 def _json(data: dict) -> JSONResponse:
     return JSONResponse(data, headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
 
-# عمود ترتيب آمن بحسب أعمدة النموذج الموجودة فعليًا
 def _booking_order_col():
     if hasattr(Booking, "created_at"):
         return Booking.created_at.desc()
@@ -55,15 +54,10 @@ def _booking_order_col():
         return Booking.timeline_created_at.desc()
     return Booking.id.desc()
 
-# [جديد] دالة مساعدة: التقاط مبلغ الإيجار من Stripe إن كان مفوضًا (manual capture)
+# التقاط Stripe (يُستدعى عند "تم الاستلام")
 def _try_capture_stripe_rent(bk: Booking) -> bool:
-    """
-    يحاول التقاط (capture) مبلغ الإيجار المفوَّض على Stripe.
-    يرجّع True لو نجح الالتقاط، False لو لم يُنفّذ لأي سبب (عدم وجود مفتاح/Intent/فشل).
-    لا يرمي استثناءً — آمن.
-    """
     try:
-        import stripe  # ستعمل فقط إذا stripe مُثبت
+        import stripe
         sk = os.getenv("STRIPE_SECRET_KEY", "")
         if not sk:
             return False
@@ -71,9 +65,7 @@ def _try_capture_stripe_rent(bk: Booking) -> bool:
         pi_id = getattr(bk, "online_payment_intent_id", None)
         if not pi_id:
             return False
-        # تنفيذ الالتقاط
         stripe.PaymentIntent.capture(pi_id)
-        # تحديث الحجز محليًا
         bk.payment_status = "released"
         bk.online_status = "captured"
         bk.rent_released_at = datetime.utcnow()
@@ -105,7 +97,7 @@ def booking_new_page(
     }
     return request.app.templates.TemplateResponse("booking_new.html", ctx)
 
-# ===== إنشاء الحجز (POST) آمن لأي نموذج =====
+# ===== إنشاء الحجز =====
 @router.post("/bookings")
 async def create_booking(
     request: Request,
@@ -113,7 +105,6 @@ async def create_booking(
     user: Optional[User] = Depends(get_current_user),
 ):
     require_auth(user)
-
     form = await request.form()
     q = request.query_params
 
@@ -185,13 +176,11 @@ async def create_booking(
         db.commit()
         db.refresh(bk)
 
-        # إشعار للمالك بوجود طلب جديد
         push_notification(
             db, bk.owner_id, "طلب حجز جديد",
             f"على '{item.title}'. اضغط لعرض التفاصيل.",
             f"/bookings/flow/{bk.id}", "booking"
         )
-
         return redirect_to_flow(bk.id)
 
     except HTTPException:
@@ -243,7 +232,7 @@ def booking_flow_page(
     }
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
 
-# ===== قرار المالك (المسار الحديث) =====
+# ===== قرار المالك =====
 @router.post("/bookings/{booking_id}/owner/decision")
 def owner_decision(
     booking_id: int,
@@ -286,7 +275,7 @@ def owner_decision(
                       f"/bookings/flow/{bk.id}", "booking")
     return redirect_to_flow(bk.id)
 
-# ===== اختيار طريقة الدفع (حديث) =====
+# ===== اختيار طريقة الدفع =====
 @router.post("/bookings/{booking_id}/renter/choose_payment")
 def renter_choose_payment(
     booking_id: int,
@@ -323,7 +312,7 @@ def renter_choose_payment(
                       f"/bookings/flow/{bk.id}", "booking")
     return redirect_to_flow(bk.id)
 
-# ===== دفع أونلاين (حديث) =====
+# ===== دفع أونلاين (تحويل للـ Checkout بدلاً من محاكاة) =====
 @router.post("/bookings/{booking_id}/renter/pay_online")
 def renter_pay_online(
     booking_id: int,
@@ -332,32 +321,10 @@ def renter_pay_online(
     user: Optional[User] = Depends(get_current_user),
 ):
     require_auth(user)
-    bk = require_booking(db, booking_id)
-    if not is_renter(user, bk):
-        raise HTTPException(status_code=403, detail="Only renter can pay")
-    if bk.payment_method != "online" or bk.status not in ("accepted", "pending_payment"):
-        raise HTTPException(status_code=400, detail="Invalid state")
+    # توجيه مباشر لمسار Stripe Checkout الحقيقي
+    return RedirectResponse(url=f"/api/stripe/checkout/rent/{booking_id}", status_code=303)
 
-    item = db.get(Item, bk.item_id)
-
-    bk.payment_status = "paid"
-    if (bk.deposit_amount or 0) > 0:
-        bk.deposit_status = "held"
-        bk.deposit_hold_id = "HOLD_SIMULATED_ID"
-
-    bk.status = "paid"
-    bk.timeline_paid_at = datetime.utcnow()
-    db.commit()
-
-    push_notification(db, bk.owner_id, "تم الدفع أونلاين",
-                      f"حجز '{item.title}'. سلّم الغرض عند الموعد.",
-                      f"/bookings/flow/{bk.id}", "booking")
-    push_notification(db, bk.renter_id, "تم استلام دفعتك",
-                      f"حجز '{item.title}'. توجه للاستلام حسب الموعد.",
-                      f"/bookings/flow/{bk.id}", "booking")
-    return redirect_to_flow(bk.id)
-
-# ===== تأكيد استلام المستأجر (حديث) =====
+# ===== تأكيد استلام المستأجر =====
 @router.post("/bookings/{booking_id}/renter/confirm_received")
 def renter_confirm_received(
     booking_id: int,
@@ -374,13 +341,11 @@ def renter_confirm_received(
 
     item = db.get(Item, bk.item_id)
 
-    # كان سابقًا يتم الضبط مباشرة كـ captured — الآن نحاول الالتقاط الحقيقي عبر Stripe أولاً
+    # نحاول الالتقاط الحقيقي عبر Stripe
     captured = False
     if bk.payment_method == "online":
-        # محاولة التقاط المبلغ المفوض (manual capture) إن توفر Stripe + Intent
         captured = _try_capture_stripe_rent(bk)
         if not captured:
-            # احتفاظ بالسلوك السابق كتراجع آمن (تجريبي/محلي)
             bk.payment_status = "released"
             bk.owner_payout_amount = bk.rent_amount or bk.total_amount or 0
             bk.rent_released_at = datetime.utcnow()
@@ -399,7 +364,7 @@ def renter_confirm_received(
                       f"/bookings/flow/{bk.id}", "booking")
     return redirect_to_flow(bk.id)
 
-# ======= Aliases للمسارات القديمة المستخدمة في القالب =======
+# ======= Aliases القديمة (أبقيناها) =======
 
 def _redir(flow_id: int):
     return RedirectResponse(url=f"/bookings/flow/{flow_id}", status_code=status.HTTP_303_SEE_OTHER)
@@ -471,10 +436,11 @@ def alias_pay_cash(booking_id: int,
 
 @router.post("/bookings/{booking_id}/pay-online")
 def alias_pay_online(booking_id: int,
-                     rent_amount: int = Form(...),
+                     rent_amount: int = Form(0),
                      deposit_amount: int = Form(0),
                      db: Session = Depends(get_db),
                      user: Optional[User] = Depends(get_current_user)):
+    # توجيه للـ Checkout الحقيقي (وآخر قيم المبالغ نخزنها فقط لو أردت)
     require_auth(user)
     bk = require_booking(db, booking_id)
     if not is_renter(user, bk):
@@ -482,24 +448,15 @@ def alias_pay_online(booking_id: int,
     if bk.status != "accepted":
         return _redir(bk.id)
 
-    item = db.get(Item, bk.item_id)
+    # حفظ مبالغ مقترحة (اختياري)
     bk.payment_method = "online"
-    bk.rent_amount = max(0, int(rent_amount or 0))
-    bk.hold_deposit_amount = max(0, int(deposit_amount or 0))
-    bk.payment_status = "paid"
-    bk.online_status = "paid"
-    bk.deposit_status = "held" if bk.hold_deposit_amount > 0 else "none"
-    bk.status = "paid"
-    bk.timeline_paid_at = datetime.utcnow()
+    if rent_amount:
+        bk.rent_amount = max(0, int(rent_amount or 0))
+    if deposit_amount:
+        bk.hold_deposit_amount = max(0, int(deposit_amount or 0))
     db.commit()
 
-    push_notification(db, bk.owner_id, "تم الدفع أونلاين",
-                      f"حجز '{item.title}'. سلّم الغرض عند الموعد.",
-                      f"/bookings/flow/{bk.id}", "booking")
-    push_notification(db, bk.renter_id, "تم استلام دفعتك",
-                      f"حجز '{item.title}'. توجه للاستلام حسب الموعد.",
-                      f"/bookings/flow/{bk.id}", "booking")
-    return _redir(bk.id)
+    return RedirectResponse(url=f"/api/stripe/checkout/rent/{booking_id}", status_code=303)
 
 @router.post("/bookings/{booking_id}/picked-up")
 def alias_picked_up(booking_id: int,
@@ -517,12 +474,8 @@ def alias_picked_up(booking_id: int,
     bk.picked_up_at = datetime.utcnow()
 
     if bk.payment_method == "online":
-        # [جديد] نحاول الالتقاط الحقيقي عبر Stripe، وإن لم يتوفر/فشل نرجع للسلوك المحلي السابق
         captured = _try_capture_stripe_rent(bk)
-        if captured:
-            # التحديثات تمت داخل الدالة
-            pass
-        else:
+        if not captured:
             bk.owner_payout_amount = bk.rent_amount or bk.total_amount or 0
             bk.rent_released_at = datetime.utcnow()
             bk.online_status = "captured"
