@@ -64,29 +64,37 @@
           <div class="box">
             <div class="mb-2">الدفع <strong>أونلاين (Stripe Checkout)</strong></div>
 
-            {# نرسل POST إلى الراوتر الذي ينشئ جلسة Stripe ويعيدنا إلى صفحة الدفع #}
-            <form id="stripePayForm" method="post" action="/pay/checkout/{{ booking.id }}">
-              {# معلومات اختيارية/عرضية — الخادم سيحسب الفاتورة بأمان #}
+            {# ✅ زر تفويض مبلغ الإيجار (المسار الصحيح) #}
+            <form id="stripePayForm" method="post" action="/api/stripe/checkout/rent/{{ booking.id }}">
               <div class="row g-2">
                 <div class="col-6">
                   <label class="form-label">مبلغ الإيجار</label>
                   <input class="form-control" type="number" value="{{ booking.total_amount or 0 }}" disabled>
                 </div>
                 <div class="col-6">
-                  <label class="form-label">الديبو (اختياري)</label>
+                  <label class="form-label">الديبو</label>
                   <input class="form-control" type="number" value="{{ booking.deposit_amount or booking.hold_deposit_amount or 0 }}" disabled>
                 </div>
                 <div class="col-12 mt-2">
                   <button id="stripePayBtn" class="btn btn-primary">
-                    <i class="bi bi-credit-card"></i> ادفع أونلاين الآن
+                    <i class="bi bi-credit-card"></i> ادفع الإيجار أونلاين
                   </button>
                 </div>
               </div>
             </form>
 
+            {# ✅ زر تفويض الديبو يظهر فقط إذا فيه ديبو #}
+            {% if (booking.deposit_amount or booking.hold_deposit_amount) and (booking.deposit_amount or booking.hold_deposit_amount) > 0 %}
+            <form class="mt-2" method="post" action="/api/stripe/checkout/deposit/{{ booking.id }}">
+              <button class="btn btn-outline-primary">
+                <i class="bi bi-shield-lock"></i> حجز الديبو أونلاين
+              </button>
+            </form>
+            {% endif %}
+
             <div class="k mt-2">
               سيتم تحويلك إلى صفحة دفع آمنة من Stripe لإدخال بيانات بطاقتك.
-              بعد نجاح الدفع ستعود إلى الموقع تلقائيًا، وسنحدّث حالة الحجز.
+              بعد النجاح ستعود تلقائيًا لصفحة الحجز، وسنحدّث الحالة.
             </div>
           </div>
         {% elif is_owner %}
@@ -120,10 +128,10 @@
         {% endif %}
       {% endif %}
 
-      {# ===== المرحلة 5: بعد الإرجاع (تعرض معلومات فقط؛ القرار يتم من لوحة الإدارة) ===== #}
+      {# ===== المرحلة 5: بعد الإرجاع ===== #}
       {% if booking.status in ['returned', 'in_review'] %}
         {% if session_user and session_user.role == 'admin' %}
-          <div class="hint">هذا الحجز بانتظار قرار الديبو من الإدارة (استخدم مسار /bookings/{{ booking.id }}/owner/deposit_action في لوحة الإدارة).</div>
+          <div class="hint">هذا الحجز بانتظار قرار الديبو من الإدارة.</div>
         {% elif is_owner %}
           <div class="hint">تم تعليم الإرجاع. بانتظار مراجعة <strong>الإدارة</strong> لاتخاذ قرار الديبو.</div>
         {% elif is_renter %}
@@ -180,7 +188,6 @@
       <div class="box mt-3">
         <h6 class="mb-2">العنصر</h6>
         <div class="d-flex gap-3">
-          {# ✅ إصلاح مسار الصورة: نضمن البدء بـ / أو بديل placeholder #}
           <img src="{{ (('/' ~ item.image_path) if item.image_path and item.image_path[0] != '/' else (item.image_path or '/static/placeholder.jpg')) }}"
                style="width:96px;height:96px;object-fit:cover;border-radius:10px" alt="">
           <div>
