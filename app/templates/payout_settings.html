@@ -3,9 +3,8 @@
 <style>
   .cardish{border:1px solid var(--border);border-radius:14px;padding:16px}
   .muted{opacity:.7}
-  .ok{display:inline-flex;align-items:center;gap:8px}
   .k{opacity:.65}
-  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
 </style>
 {% endblock %}
 
@@ -15,17 +14,16 @@
 
   <div class="cardish mb-3">
     <p class="mb-2">
-      ليتلقّى <strong>المالك</strong> الأموال مباشرة إلى حسابه البنكي عبر Stripe، يجب أولاً إنشاء/ربط حساب
-      <strong>Stripe Connect</strong> ثم إكمال التحقق (KYC).
+      ليتلقّى <strong>المالك</strong> الأموال إلى حسابه البنكي عبر Stripe،
+      اربط حساب <strong>Stripe Connect</strong> وأكمل التحقق KYC.
     </p>
 
     <div class="d-flex flex-wrap gap-2 align-items-center">
-      <!-- زر بدء الربط: يوجّه إلى مسار يدعم GET -->
+      <!-- رابط GET بدل فورم -->
       <a class="btn btn-primary" href="/payout/connect/start">
         <i class="bi bi-plug"></i> ابدأ الربط الآن
       </a>
 
-      <!-- زر فحص الحالة عبر API -->
       <button id="chkBtn" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-repeat"></i> تحقّق من الحالة
       </button>
@@ -38,42 +36,34 @@
         <h5 class="mb-3">حالة حسابك</h5>
 
         <div class="mb-2"><span class="k">Stripe Account ID:</span>
-          <code class="mono" id="accId">—</code>
-        </div>
+          <code class="mono" id="accId">—</code></div>
         <div class="mb-2"><span class="k">payouts_enabled:</span>
-          <span id="payouts">—</span>
-        </div>
+          <span id="payouts">—</span></div>
         <div class="mb-2"><span class="k">charges_enabled:</span>
-          <span id="charges">—</span>
-        </div>
+          <span id="charges">—</span></div>
         <div class="mb-2"><span class="k">details_submitted:</span>
-          <span id="details">—</span>
-        </div>
+          <span id="details">—</span></div>
 
         <div class="alert alert-warning mt-3" id="callout" style="display:none">
-          لم يكتمل ربط الحساب بعد. اضغط <strong>ابدأ الربط الآن</strong> وأكمل خطوات Stripe (الوضع التجريبي يدعم بيانات اختبار).
+          لم يكتمل الربط بعد. اضغط <strong>ابدأ الربط الآن</strong> وأكمل خطوات Stripe.
         </div>
-
         <div class="alert alert-success mt-3" id="okcall" style="display:none">
-          الحساب جاهز لاستلام الأرباح ✅ — الآن عند الدفع والالتقاط سيتم التحويل تلقائيًا لحسابك.
+          الحساب جاهز لاستلام الأرباح ✅
         </div>
       </div>
     </div>
 
     <div class="col-12 col-lg-5">
       <div class="cardish">
-        <h6 class="mb-2">ملاحظات مهمّة</h6>
+        <h6 class="mb-2">ملاحظات</h6>
         <ul class="mb-0">
-          <li>هذا يعمل في <strong>وضع الاختبار</strong> بمفاتيحك <code>sk_test_ / pk_test_</code>.</li>
-          <li>بعد إكمال التحقق، سيصبح <em>payouts_enabled</em> = <strong>true</strong>.</li>
-          <li>بوابة الدفع في الحجز تفوِّض (authorize) الإيجار أولًا، ثم نلتقط المبلغ عند “تم الاستلام”.</li>
-          <li>التحويل يتم بحساب الوجهة عبر <span class="mono">transfer_data.destination</span> إلى حساب المالك.</li>
+          <li>الوضع الحالي: مفاتيح اختبار <code>sk_test/ pk_test</code>.</li>
+          <li>بعد إكمال KYC يصبح <code>payouts_enabled = true</code>.</li>
         </ul>
       </div>
     </div>
   </div>
 </div>
-
 {% endblock %}
 
 {% block scripts %}
@@ -87,23 +77,17 @@
   const callout = document.getElementById('callout');
   const okcall = document.getElementById('okcall');
 
-  function set(val, el){
-    el.textContent = (val===true)?'true':(val===false)?'false':(val||'—');
-  }
+  function set(val, el){ el.textContent = (val===true)?'true':(val===false)?'false':(val||'—'); }
 
   async function load(){
     try{
-      const r = await fetch('/api/stripe/connect/status', {credentials: 'same-origin'});
-      if(!r.ok){ throw new Error('failed'); }
+      const r = await fetch('/api/stripe/connect/status', {credentials:'same-origin'});
+      if(!r.ok) throw 0;
       const d = await r.json();
-
-      // نعرض الـ Account ID إن كان متوفّرًا من الـ API (اقتراح: أضفه كـ account_id)
       set(d.account_id || '—', accId);
-
       set(d.payouts_enabled, payouts);
       set(d.charges_enabled, charges);
       set(d.details_submitted, details);
-
       const ok = !!d.payouts_enabled && !!d.charges_enabled && !!d.details_submitted;
       okcall.style.display = ok ? '' : 'none';
       callout.style.display = ok ? 'none' : '';
@@ -111,9 +95,7 @@
       callout.style.display='';
     }
   }
-
-  btn?.addEventListener('click', function(e){ e.preventDefault(); load(); });
-  // تحميل تلقائي عند فتح الصفحة
+  btn?.addEventListener('click', e=>{ e.preventDefault(); load(); });
   load();
 })();
 </script>
