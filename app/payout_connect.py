@@ -2,7 +2,7 @@
 import os
 import stripe
 from fastapi import APIRouter, Request, Depends, HTTPException
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
 
 from .database import get_db
@@ -29,8 +29,7 @@ def _set_api_key_or_500():
 
 def _ensure_account(db: Session, user: User) -> str:
     """
-    ينشئ حساب Express إذا غير موجود و يحفظه في DB وSession.
-    يعيد acct_id
+    ينشئ حساب Express إذا غير موجود ويحفظه في DB، ويعيد acct_id
     """
     acct_id = getattr(user, "stripe_account_id", None)
     if not acct_id:
@@ -57,6 +56,19 @@ def _ensure_account(db: Session, user: User) -> str:
 def _pct(amount_cents: int, fee_pct: float) -> int:
     return int(round(amount_cents * (float(fee_pct) / 100.0)))
 
+# =========================
+# Page: /payout/settings
+# =========================
+@router.get("/payout/settings", response_class=HTMLResponse)
+def payout_settings(request: Request):
+    """
+    نعرض صفحة الإعدادات من القالب payout_settings.html
+    """
+    t = request.app.templates  # تم تعريفه في main.py
+    return t.TemplateResponse(
+        "payout_settings.html",
+        {"request": request, "session_user": request.session.get("user")}
+    )
 
 # =========================
 # Debug
@@ -74,7 +86,6 @@ def connect_debug(request: Request, db: Session = Depends(get_db)):
         "db_user_present": bool(db_user is not None),
         "db_stripe_account_id": db_acct,
     }
-
 
 # =========================
 # Start / Onboard / Refresh
@@ -102,7 +113,6 @@ def payout_connect_start(request: Request, db: Session = Depends(get_db)):
     )
     return RedirectResponse(link.url, status_code=303)
 
-
 @router.get("/connect/onboard")
 def connect_onboard(request: Request, db: Session = Depends(get_db)):
     _set_api_key_or_500()
@@ -128,7 +138,6 @@ def connect_onboard(request: Request, db: Session = Depends(get_db)):
     )
     return RedirectResponse(link.url)
 
-
 @router.get("/payout/connect/refresh")
 def payout_connect_refresh(request: Request, db: Session = Depends(get_db)):
     _set_api_key_or_500()
@@ -141,7 +150,6 @@ def payout_connect_refresh(request: Request, db: Session = Depends(get_db)):
     try:
         if getattr(user, "stripe_account_id", None):
             acct = stripe.Account.retrieve(user.stripe_account_id)
-            # مزامنة DB
             try:
                 if getattr(user, "stripe_account_id", None) != acct.id:
                     user.stripe_account_id = acct.id
@@ -153,7 +161,6 @@ def payout_connect_refresh(request: Request, db: Session = Depends(get_db)):
     except Exception:
         pass
     return RedirectResponse(url="/payout/settings", status_code=303)
-
 
 # =========================
 # Status + Force Save
@@ -180,7 +187,7 @@ def stripe_connect_status(request: Request, db: Session = Depends(get_db), autoc
 
     acct = stripe.Account.retrieve(acct_id)
 
-    # حفظ تلقائي للـID و payouts_enabled في DB
+    # حفظ تلقائي
     changed = False
     if getattr(user, "stripe_account_id", None) != acct.id:
         try:
@@ -206,12 +213,8 @@ def stripe_connect_status(request: Request, db: Session = Depends(get_db), autoc
         "requirements_due": acct.get("requirements", {}).get("currently_due", []),
     })
 
-
 @router.post("/api/stripe/connect/save")
 def stripe_connect_force_save(request: Request, db: Session = Depends(get_db)):
-    """
-    حفظ إجباري للـ account_id إلى DB من الـSession/Stripe
-    """
     _set_api_key_or_500()
     sess = request.session.get("user")
     if not sess:
@@ -226,7 +229,6 @@ def stripe_connect_force_save(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(400, "no_account")
 
     acct = stripe.Account.retrieve(acct_id)
-
     try:
         user.stripe_account_id = acct.id
         if hasattr(user, "payouts_enabled"):
@@ -237,7 +239,6 @@ def stripe_connect_force_save(request: Request, db: Session = Depends(get_db)):
 
     return {"saved": True, "account_id": acct.id}
 
-
 # =========================
 # Split Test (Destination charge)
 # =========================
@@ -245,13 +246,9 @@ def stripe_connect_force_save(request: Request, db: Session = Depends(get_db)):
 def split_test_checkout(
     request: Request,
     db: Session = Depends(get_db),
-    amount: int = 2000,          # 2000 = 20.00
+    amount: int = 2000,
     currency: str | None = None,
 ):
-    """
-    تجربة دفع مع تقسيم المبلغ:
-    - Destination charge إلى حساب المستخدم المتصل + عمولة المنصة application_fee_amount
-    """
     _set_api_key_or_500()
     sess_user = request.session.get("user")
     if not sess_user:
