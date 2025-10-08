@@ -1,9 +1,9 @@
+# app/payout_connect.py
 import os
 import stripe
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
-
 from .database import get_db
 from .models import User
 
@@ -36,10 +36,7 @@ def _ensure_account(db: Session, user: User) -> str:
             type="express",
             country="CA",
             email=(user.email or None),
-            capabilities={
-                "card_payments": {"requested": True},
-                "transfers": {"requested": True},
-            },
+            capabilities={"card_payments": {"requested": True}, "transfers": {"requested": True}},
         )
         acct_id = acct.id
         try:
@@ -56,18 +53,12 @@ def _pct(amount_cents: int, fee_pct: float) -> int:
     return int(round(amount_cents * (float(fee_pct) / 100.0)))
 
 # =========================
-# Page: /payout/settings
+# صفحة الإعدادات
 # =========================
 @router.get("/payout/settings", response_class=HTMLResponse)
 def payout_settings(request: Request):
-    """
-    نعرض صفحة الإعدادات من القالب payout_settings.html
-    """
-    t = request.app.templates  # تم تعريفه في main.py
-    return t.TemplateResponse(
-        "payout_settings.html",
-        {"request": request, "session_user": request.session.get("user")}
-    )
+    t = request.app.templates
+    return t.TemplateResponse("payout_settings.html", {"request": request, "session_user": request.session.get("user")})
 
 # =========================
 # Debug
@@ -85,6 +76,33 @@ def connect_debug(request: Request, db: Session = Depends(get_db)):
         "db_user_present": bool(db_user is not None),
         "db_stripe_account_id": db_acct,
     }
+
+# يرجع الـ id مباشرة (ومفيد للتشخيص السريع)
+@router.get("/api/stripe/connect/id")
+def connect_account_id(request: Request, db: Session = Depends(get_db)):
+    _set_api_key_or_500()
+    sess = request.session.get("user")
+    if not sess:
+        raise HTTPException(401, "unauthenticated")
+    user = db.query(User).get(sess["id"])
+    if not user:
+        raise HTTPException(404, "user_not_found")
+    acct_id = getattr(user, "stripe_account_id", None) or request.session.get("connect_account_id")
+    if not acct_id:
+        # لا يوجد حساب بعد
+        return {"account_id": None}
+    # تأكيد من Stripe ثم حفظه في DB
+    acct = stripe.Account.retrieve(acct_id)
+    real_id = acct.id
+    try:
+        if getattr(user, "stripe_account_id", None) != real_id:
+            user.stripe_account_id = real_id
+        if hasattr(user, "payouts_enabled"):
+            user.payouts_enabled = bool(getattr(acct, "payouts_enabled", False))
+        db.add(user); db.commit()
+    except Exception:
+        pass
+    return {"account_id": real_id}
 
 # =========================
 # Start / Onboard / Refresh
@@ -149,6 +167,7 @@ def payout_connect_refresh(request: Request, db: Session = Depends(get_db)):
     try:
         if getattr(user, "stripe_account_id", None):
             acct = stripe.Account.retrieve(user.stripe_account_id)
+            # sync
             try:
                 if getattr(user, "stripe_account_id", None) != acct.id:
                     user.stripe_account_id = acct.id
@@ -186,7 +205,7 @@ def stripe_connect_status(request: Request, db: Session = Depends(get_db), autoc
 
     acct = stripe.Account.retrieve(acct_id)
 
-    # حفظ تلقائي في DB
+    # حفظ تلقائي
     changed = False
     if getattr(user, "stripe_account_id", None) != acct.id:
         try:
@@ -202,10 +221,10 @@ def stripe_connect_status(request: Request, db: Session = Depends(get_db), autoc
     if changed:
         db.add(user); db.commit()
 
-    # ✅ التعديل المهم هنا
+    # ⬅⬅⬅ أهم شيء هنا: account_id
     return JSONResponse({
         "connected": True,
-        "account_id": acct.id,  # ← السطر الجديد
+        "account_id": acct.id,
         "charges_enabled": bool(acct.charges_enabled),
         "payouts_enabled": bool(acct.payouts_enabled),
         "details_submitted": bool(acct.details_submitted),
@@ -276,11 +295,7 @@ def split_test_checkout(
         success_url=success,
         cancel_url=cancel,
         line_items=[{
-            "price_data": {
-                "currency": cur,
-                "product_data": {"name": "Test split order"},
-                "unit_amount": amount,
-            },
+            "price_data": {"currency": cur, "product_data": {"name": "Test split order"}, "unit_amount": amount},
             "quantity": 1,
         }],
         payment_intent_data={
