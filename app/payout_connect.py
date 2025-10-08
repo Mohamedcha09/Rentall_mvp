@@ -305,3 +305,30 @@ def split_test_checkout(
         metadata={"split_mode": "destination_charge", "acct": acct_id, "fee_pct": str(fee_pct)},
     )
     return RedirectResponse(session.url, status_code=303)
+
+    # === Onboard link as JSON (يفتح صفحة KYC/إضافة بنك) ===
+@router.get("/api/stripe/connect/onboard_link")
+def connect_onboard_link(request: Request, db: Session = Depends(get_db)):
+    _set_api_key_or_500()
+    sess = request.session.get("user")
+    if not sess:
+        raise HTTPException(status_code=401, detail="unauthenticated")
+
+    user = db.query(User).get(sess["id"])
+    if not user:
+        raise HTTPException(status_code=404, detail="user_not_found")
+
+    acct_id = getattr(user, "stripe_account_id", None) or request.session.get("connect_account_id")
+    if not acct_id:
+        # ننشئ الحساب إن لم يوجد (نفس منطقك)
+        acct_id = _ensure_account(db, user)
+        request.session["connect_account_id"] = acct_id
+
+    base = _base_url(request)
+    link = stripe.AccountLink.create(
+        account=acct_id,
+        type="account_onboarding",
+        refresh_url=f"{base}/payout/connect/refresh",
+        return_url=f"{base}/payout/settings?done=1",
+    )
+    return {"url": link.url}

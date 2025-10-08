@@ -2,7 +2,6 @@
 {% block head %}
 <style>
   .cardish{border:1px solid var(--border);border-radius:14px;padding:16px}
-  .muted{opacity:.7}
   .k{opacity:.65}
   .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
 </style>
@@ -17,26 +16,14 @@
       ليتلقّى <strong>المالك</strong> الأموال إلى حسابه البنكي عبر Stripe،
       اربط حساب <strong>Stripe Connect</strong> وأكمل التحقق (KYC).
     </p>
-
+    <p class="mb-2">
+      ستقوم المنصة باقتطاع <strong>8%</strong> من كل عملية كرسوم خدمة.
+    </p>
     <div class="d-flex flex-wrap gap-2 align-items-center">
-      <!-- يبدأ أو يُنشئ الحساب ويرسل المستخدم إلى صفحة Stripe -->
-      <a class="btn btn-primary" href="/payout/connect/start">
-        <i class="bi bi-plug"></i> ابدأ الربط الآن
-      </a>
-
-      <!-- فحص الحالة -->
-      <button id="chkBtn" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-repeat"></i> تحقّق من الحالة
-      </button>
-
-      <!-- ✅ يظهر فقط إذا تم الربط (account_id موجود) لكن payouts ما زالت false -->
-      <a id="onboardBtn" class="btn btn-warning" href="/connect/onboard" style="display:none">
-        <i class="bi bi-shield-check"></i> أكمل التحقق الآن
-      </a>
-    </div>
-
-    <div class="small muted mt-2">
-      ستقوم المنصّة باقتطاع <strong>8%</strong> من كل عملية كرسوم خدمة.
+      <a class="btn btn-primary" href="/payout/connect/start">ابدأ الربط الآن</a>
+      <button id="chkBtn" class="btn btn-outline-secondary">تحقّق من الحالة</button>
+      <!-- هذا الزر نظهره فقط عند الحاجة عبر الجافاسكربت -->
+      <button id="kycBtn" class="btn btn-warning d-none">أكمل التحقق الآن</button>
     </div>
   </div>
 
@@ -54,15 +41,11 @@
         <div class="mb-2"><span class="k">details_submitted:</span>
           <span id="details">—</span></div>
 
-        <!-- ❗ يظهر فقط عندما: تم الربط لكن لم يكتمل التفعيل -->
-        <div class="alert alert-warning mt-3" id="callout" style="display:none">
-          حسابك مرتبط لكن لم يكتمل التفعيل بعد. لإتمام التفعيل بشكل كامل، اضغط
-          <strong>أكمل التحقق الآن</strong> وارفع مستند الهوية وصورتك وأكمل بيانات البنك.
+        <div class="alert alert-warning mt-3 d-none" id="callout">
+          لم يكتمل التحقق بعد. اضغط <strong>أكمل التحقق الآن</strong> لرفع الهوية/الصورة وإضافة حسابك البنكي.
         </div>
-
-        <!-- ✅ يظهر فقط عندما: الحساب جاهز 100% -->
-        <div class="alert alert-success mt-3" id="okcall" style="display:none">
-          🎉 حسابك مُفعل 100% ويمكنه استقبال الأموال الآن. سيتم اقتطاع <strong>8%</strong> كعمولة المنصّة من كل عملية.
+        <div class="alert alert-success mt-3 d-none" id="okcall">
+          🎉 حسابك الآن <strong>مفعّل بالكامل</strong> ويمكنك استلام الأرباح!
         </div>
       </div>
     </div>
@@ -71,8 +54,8 @@
       <div class="cardish">
         <h6 class="mb-2">ملاحظات</h6>
         <ul class="mb-0">
-          <li>الوضع الحالي: مفاتيح اختبار <code>pk_test</code> / <code>sk_test</code>.</li>
-          <li>لكي يصبح <code>payouts_enabled = true</code> يجب إنهاء التحقق وإضافة حساب بنكي.</li>
+          <li>الوضع الحالي: مفاتيح اختبار <code>pk_test/sk_test</code> (إن كنت في وضع الاختبار).</li>
+          <li>بعد إكمال KYC وإضافة بنك، يصبح <code>payouts_enabled = true</code>.</li>
         </ul>
       </div>
     </div>
@@ -83,63 +66,55 @@
 {% block scripts %}
 <script>
 (function(){
-  const btn        = document.getElementById('chkBtn');
-  const accId      = document.getElementById('accId');
-  const payouts    = document.getElementById('payouts');
-  const charges    = document.getElementById('charges');
-  const details    = document.getElementById('details');
-  const callout    = document.getElementById('callout');
-  const okcall     = document.getElementById('okcall');
-  const onboardBtn = document.getElementById('onboardBtn');
+  const accId   = document.getElementById('accId');
+  const payouts = document.getElementById('payouts');
+  const charges = document.getElementById('charges');
+  const details = document.getElementById('details');
 
-  function set(val, el){
-    el.textContent = (val===true)?'true':(val===false)?'false':(val||'—');
-  }
+  const callout = document.getElementById('callout');
+  const okcall  = document.getElementById('okcall');
+  const kycBtn  = document.getElementById('kycBtn');
+
+  function set(val, el){ el.textContent = (val===true)?'true':(val===false)?'false':(val||'—'); }
+  function show(el, yes){ el.classList.toggle('d-none', !yes); }
 
   async function load(){
     try{
-      const r = await fetch('/api/stripe/connect/status', {credentials:'same-origin'});
-      if(!r.ok){ throw new Error('status fetch failed'); }
+      const r = await fetch('/api/stripe/connect/status?autocreate=1', {credentials:'same-origin'});
+      if(!r.ok) throw new Error('status failed');
       const d = await r.json();
 
-      const accountId = d.account_id || null;
-      const pe = !!d.payouts_enabled;
-      const ce = !!d.charges_enabled;
-      const ds = !!d.details_submitted;
+      set(d.account_id || '—', accId);
+      set(d.payouts_enabled, payouts);
+      set(d.charges_enabled, charges);
+      set(d.details_submitted, details);
 
-      set(accountId || '—', accId);
-      set(pe, payouts);
-      set(ce, charges);
-      set(ds, details);
+      const needKyc = !!d.connected && !!d.charges_enabled && !d.payouts_enabled;
+      const fullyOk = !!d.payouts_enabled && !!d.charges_enabled;
 
-      const ready = pe && ce && ds;
-      const connectedOnly = !!accountId && !ready; // ← تم الربط لكن لم يكتمل التفعيل
-
-      // ✅ المنطق المطلوب:
-      // إذا تم الربط ولكن payouts_enabled ما زالت false ⇒ أظهر زر "أكمل التحقق الآن"
-      onboardBtn.style.display = connectedOnly ? '' : 'none';
-
-      // رسالة تنبيه عند النقص
-      callout.style.display = connectedOnly ? '' : 'none';
-
-      // رسالة نجاح عند الجاهزية 100%
-      okcall.style.display = ready ? '' : 'none';
+      show(callout, needKyc);
+      show(kycBtn, needKyc);
+      show(okcall, fullyOk);
 
     }catch(e){
-      // في حال الفشل… لا نعرف الحالة، سنخفي رسالة النجاح ونظهر تنبيه عام
-      okcall.style.display = 'none';
-      callout.style.display = '';
-      // نعرض زر الإنهاء لإعطاء المستخدم طريقة لإكمال الخطوات
-      onboardBtn.style.display = '';
+      console.error(e);
+      show(callout, true);
     }
   }
 
-  // إعادة فحص تلقائي عند العودة من Stripe (?done=1)
-  if (new URLSearchParams(window.location.search).get('done') === '1') {
-    setTimeout(load, 1500);
-  }
+  document.getElementById('chkBtn')?.addEventListener('click', e => { e.preventDefault(); load(); });
 
-  btn?.addEventListener('click', (e)=>{ e.preventDefault(); load(); });
+  // زر "أكمل التحقق الآن" → نطلب لينك الـ Onboarding من الباكند
+  kycBtn?.addEventListener('click', async (e)=>{
+    e.preventDefault();
+    try{
+      const r = await fetch('/api/stripe/connect/onboard_link', {credentials:'same-origin'});
+      const d = await r.json();
+      if (d && d.url) window.location.href = d.url;
+    }catch(err){ console.error(err); }
+  });
+
+  // تحميل تلقائي عند فتح الصفحة
   load();
 })();
 </script>
