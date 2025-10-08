@@ -2,6 +2,7 @@
 {% block head %}
 <style>
   .cardish{border:1px solid var(--border);border-radius:14px;padding:16px}
+  .muted{opacity:.7}
   .k{opacity:.65}
   .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
 </style>
@@ -14,11 +15,28 @@
   <div class="cardish mb-3">
     <p class="mb-2">
       ليتلقّى <strong>المالك</strong> الأموال إلى حسابه البنكي عبر Stripe،
-      اربط حساب <strong>Stripe Connect</strong> وأكمل التحقق KYC.
+      اربط حساب <strong>Stripe Connect</strong> وأكمل التحقق (KYC).
     </p>
+
     <div class="d-flex flex-wrap gap-2 align-items-center">
-      <a class="btn btn-primary" href="/payout/connect/start">ابدأ الربط الآن</a>
-      <button id="chkBtn" class="btn btn-outline-secondary">تحقّق من الحالة</button>
+      <!-- يبدأ أو يُنشئ الحساب ويرسل المستخدم إلى صفحة Stripe -->
+      <a class="btn btn-primary" href="/payout/connect/start">
+        <i class="bi bi-plug"></i> ابدأ الربط الآن
+      </a>
+
+      <!-- فحص الحالة -->
+      <button id="chkBtn" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-repeat"></i> تحقّق من الحالة
+      </button>
+
+      <!-- زر يُظهر فقط إذا الحساب غير مكتمل -->
+      <a id="onboardBtn" class="btn btn-warning" href="/connect/onboard" style="display:none">
+        <i class="bi bi-shield-check"></i> أكمل التحقق الآن
+      </a>
+    </div>
+
+    <div class="small muted mt-2">
+      ملاحظة عمولة المنصّة: سيتم اقتطاع <strong>8%</strong> من كل عملية دفع كرسوم خدمة.
     </div>
   </div>
 
@@ -35,6 +53,17 @@
           <span id="charges">—</span></div>
         <div class="mb-2"><span class="k">details_submitted:</span>
           <span id="details">—</span></div>
+
+        <!-- تنبيه عندما الحساب غير جاهز -->
+        <div class="alert alert-warning mt-3" id="callout" style="display:none">
+          الحساب غير جاهز بعد لاستلام الأرباح. اضغط
+          <strong>أكمل التحقق الآن</strong> وأدخل مستند الهوية وبيانات البنك.
+        </div>
+
+        <!-- رسالة نجاح عندما يجهز الحساب -->
+        <div class="alert alert-success mt-3" id="okcall" style="display:none">
+          🎉 حسابك الآن مُفعل ويمكنه استقبال الأموال. سيتم اقتطاع <strong>8%</strong> كعمولة منصّتنا من كل عملية.
+        </div>
       </div>
     </div>
 
@@ -42,8 +71,9 @@
       <div class="cardish">
         <h6 class="mb-2">ملاحظات</h6>
         <ul class="mb-0">
-          <li>الوضع الحالي: مفاتيح اختبار <code>pk_test / sk_test</code>.</li>
-          <li>بعد إكمال KYC وإضافة بنك اختبار، يصبح <code>payouts_enabled = true</code>.</li>
+          <li>الوضع الحالي: مفاتيح اختبار <code>pk_test</code> / <code>sk_test</code>.</li>
+          <li>بعد إكمال KYC وإضافة حساب بنكي (اختبار/حقيقي)، يصبح
+            <code>payouts_enabled = true</code>.</li>
         </ul>
       </div>
     </div>
@@ -54,22 +84,50 @@
 {% block scripts %}
 <script>
 (function(){
-  const accId   = document.getElementById('accId');
-  const payouts = document.getElementById('payouts');
-  const charges = document.getElementById('charges');
-  const details = document.getElementById('details');
+  const btn        = document.getElementById('chkBtn');
+  const accId      = document.getElementById('accId');
+  const payouts    = document.getElementById('payouts');
+  const charges    = document.getElementById('charges');
+  const details    = document.getElementById('details');
+  const callout    = document.getElementById('callout');
+  const okcall     = document.getElementById('okcall');
+  const onboardBtn = document.getElementById('onboardBtn');
 
-  function set(val, el){ el.textContent = (val===true)?'true':(val===false)?'false':(val||'—'); }
+  function set(val, el){
+    el.textContent = (val===true)?'true':(val===false)?'false':(val||'—');
+  }
 
   async function load(){
-    const r = await fetch('/api/stripe/connect/status', {credentials:'same-origin'});
-    const d = await r.json();
-    set(d.account_id || '—', accId);
-    set(d.payouts_enabled, payouts);
-    set(d.charges_enabled, charges);
-    set(d.details_submitted, details);
+    try{
+      const r = await fetch('/api/stripe/connect/status', {credentials:'same-origin'});
+      if(!r.ok){ throw new Error('status fetch failed'); }
+      const d = await r.json();
+
+      set(d.account_id || '—', accId);
+      set(d.payouts_enabled, payouts);
+      set(d.charges_enabled, charges);
+      set(d.details_submitted, details);
+
+      const ready = !!d.payouts_enabled && !!d.charges_enabled && !!d.details_submitted;
+
+      // إظهار/إخفاء العناصر حسب الجاهزية
+      okcall.style.display   = ready ? '' : 'none';
+      callout.style.display  = ready ? 'none' : '';
+      onboardBtn.style.display = ready ? 'none' : '';
+    }catch(e){
+      // في حال الفشل… اظهر زر الإتمام والتنبيه
+      callout.style.display = '';
+      onboardBtn.style.display = '';
+    }
   }
-  document.getElementById('chkBtn').addEventListener('click', (e)=>{ e.preventDefault(); load(); });
+
+  // إعادة فحص تلقائي عند العودة من Stripe (?done=1)
+  if (new URLSearchParams(window.location.search).get('done') === '1') {
+    // أحياناً Stripe يحتاج ثوانٍ لمزامنة الحالة — نجرب إعادة التحميل بعد لحظات
+    setTimeout(load, 1500);
+  }
+
+  btn?.addEventListener('click', (e)=>{ e.preventDefault(); load(); });
   load();
 })();
 </script>
