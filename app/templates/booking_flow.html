@@ -31,7 +31,6 @@
   <div class="row g-3">
     <div class="col-12 col-lg-7">
 
-      {# ===== المرحلة 1: بانتظار موافقة المالك ===== #}
       {% if booking.status in ['requested'] %}
         {% if is_owner %}
           <h5>طلب جديد ينتظر موافقتك</h5>
@@ -48,7 +47,6 @@
         {% endif %}
       {% endif %}
 
-      {# ===== المرحلة 2: تم القبول → اختيار/تنفيذ الدفع ===== #}
       {% if booking.status in ['accepted'] %}
         {% if is_renter %}
           <h5>اختر طريقة الدفع</h5>
@@ -60,11 +58,26 @@
             </form>
           </div>
 
-          {# ====== الدفع الأونلاين الحقيقي عبر Stripe Checkout ====== #}
           <div class="box">
             <div class="mb-2">الدفع <strong>أونلاين (Stripe Checkout)</strong></div>
 
-            {# ✅ زر تفويض مبلغ الإيجار (المسار الصحيح) #}
+            {# إذا payouts للمالك غير مفعّلة: نعطّل الزر ونظهر رسالة #}
+            {% if not owner_pe %}
+              <div class="alert alert-warning">
+                لا يمكن الدفع أونلاين الآن لأن <strong>المالك</strong> لم يُكمل تفعيل حساب الاستلام بعد.
+                {% if owner and owner.id == session_user.id %}
+                  <div class="mt-2">
+                    <a class="btn btn-primary btn-sm" href="/connect/onboard">
+                      <i class="bi bi-person-badge"></i> أكمل التحقق الآن
+                    </a>
+                    <small class="d-block k mt-1">بعد إكمال التحقق البنكي والهوية سيصبح الدفع أونلاين متاحًا.</small>
+                  </div>
+                {% else %}
+                  <small class="d-block k mt-1">رجاءً اطلب من المالك إكمال التحقق البنكي والهوية ليتاح الدفع أونلاين.</small>
+                {% endif %}
+              </div>
+            {% endif %}
+
             <form id="stripePayForm" method="post" action="/api/stripe/checkout/rent/{{ booking.id }}">
               <div class="row g-2">
                 <div class="col-6">
@@ -76,17 +89,18 @@
                   <input class="form-control" type="number" value="{{ booking.deposit_amount or booking.hold_deposit_amount or 0 }}" disabled>
                 </div>
                 <div class="col-12 mt-2">
-                  <button id="stripePayBtn" class="btn btn-primary">
+                  <button id="stripePayBtn" class="btn btn-primary"
+                          {% if not owner_pe %}disabled aria-disabled="true" title="المالك لم يفعل الاستلام بعد"{% endif %}>
                     <i class="bi bi-credit-card"></i> ادفع الإيجار أونلاين
                   </button>
                 </div>
               </div>
             </form>
 
-            {# ✅ زر تفويض الديبو يظهر فقط إذا فيه ديبو #}
             {% if (booking.deposit_amount or booking.hold_deposit_amount) and (booking.deposit_amount or booking.hold_deposit_amount) > 0 %}
             <form class="mt-2" method="post" action="/api/stripe/checkout/deposit/{{ booking.id }}">
-              <button class="btn btn-outline-primary">
+              <button class="btn btn-outline-primary"
+                      {% if not owner_pe %}disabled aria-disabled="true" title="المالك لم يفعل الاستلام بعد"{% endif %}>
                 <i class="bi bi-shield-lock"></i> حجز الديبو أونلاين
               </button>
             </form>
@@ -99,10 +113,21 @@
           </div>
         {% elif is_owner %}
           <div class="hint">تم قبول الطلب. بانتظار أن يختار المستأجر طريقة الدفع…</div>
+
+          {# مساعدة للمالك: إن كان حسابه غير مفعّل نعرض CTA لإكمال التحقق #}
+          {% if not owner_pe %}
+            <div class="alert alert-warning mt-2">
+              لكي يتمكّن المستأجر من الدفع أونلاين وتحويل المبلغ لك، أكمل تفعيل حسابك البنكي:
+              <div class="mt-2">
+                <a class="btn btn-primary btn-sm" href="/connect/onboard">
+                  <i class="bi bi-person-badge"></i> أكمل التحقق الآن
+                </a>
+              </div>
+            </div>
+          {% endif %}
         {% endif %}
       {% endif %}
 
-      {# ===== المرحلة 3: مدفوع بانتظار الاستلام ===== #}
       {% if booking.status in ['paid'] %}
         {% if is_renter %}
           <h5>جاهز للاستلام</h5>
@@ -115,7 +140,6 @@
         {% endif %}
       {% endif %}
 
-      {# ===== المرحلة 4: الغرض مع المستأجر ===== #}
       {% if booking.status in ['picked_up'] %}
         {% if is_renter %}
           <h5>الغرض لديك الآن</h5>
@@ -128,7 +152,6 @@
         {% endif %}
       {% endif %}
 
-      {# ===== المرحلة 5: بعد الإرجاع ===== #}
       {% if booking.status in ['returned', 'in_review'] %}
         {% if session_user and session_user.role == 'admin' %}
           <div class="hint">هذا الحجز بانتظار قرار الديبو من الإدارة.</div>
@@ -139,7 +162,6 @@
         {% endif %}
       {% endif %}
 
-      {# ===== المرحلة النهائية ===== #}
       {% if booking.status in ['closed','rejected','completed'] %}
         <div class="alert alert-info">
           {% if booking.status in ['closed','completed'] %}
@@ -203,7 +225,6 @@
   </div>
 </div>
 
-{# تعطيل زر Stripe أثناء الإرسال لمنع النقر المكرر #}
 <script>
   const f = document.getElementById('stripePayForm');
   if (f) {
@@ -216,4 +237,4 @@
     });
   }
 </script>
-{% endblock %}
+{% endblock %}  

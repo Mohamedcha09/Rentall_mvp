@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Optional, Literal
 from datetime import datetime, date, timedelta
-import os  # لقراءة STRIPE_SECRET_KEY
+import os
 
 from fastapi import APIRouter, Depends, Request, HTTPException, Form, Query, status
 from fastapi.responses import RedirectResponse, JSONResponse
@@ -207,6 +207,10 @@ def booking_flow_page(
     item = db.get(Item, bk.item_id)
     owner = db.get(User, bk.owner_id)
     renter = db.get(User, bk.renter_id)
+
+    # ADDED: نمرّر حالة تفعيل مدفوعات المالك إلى القالب
+    owner_pe = bool(getattr(owner, "payouts_enabled", False)) if owner else False
+
     ctx = {
         "request": request,
         "title": "الحجز",
@@ -215,6 +219,7 @@ def booking_flow_page(
         "item": item,
         "owner": owner,
         "renter": renter,
+        "owner_pe": owner_pe,  # ADDED
         "item_title": (item.title if item else f"#{bk.item_id}"),
         "category_label": category_label,
         "is_owner": is_owner(user, bk),
@@ -222,7 +227,7 @@ def booking_flow_page(
         "i_am_owner": is_owner(user, bk),
         "i_am_renter": is_renter(user, bk),
         "is_requested": (bk.status == "requested"),
-        "is_declined": (bk.status == "declined"),
+        "is_declined": (bk.status == "rejected"),
         "is_pending_payment": (bk.status == "pending_payment"),
         "is_awaiting_pickup": (bk.status == "awaiting_pickup"),
         "is_in_use": (bk.status == "in_use"),
@@ -312,7 +317,7 @@ def renter_choose_payment(
                       f"/bookings/flow/{bk.id}", "booking")
     return redirect_to_flow(bk.id)
 
-# ===== دفع أونلاين (تحويل للـ Checkout بدلاً من محاكاة) =====
+# ===== دفع أونلاين — نحظر لو payouts غير مفعّلة =====
 @router.post("/bookings/{booking_id}/renter/pay_online")
 def renter_pay_online(
     booking_id: int,
@@ -321,7 +326,19 @@ def renter_pay_online(
     user: Optional[User] = Depends(get_current_user),
 ):
     require_auth(user)
-    # توجيه مباشر لمسار Stripe Checkout الحقيقي
+    bk = require_booking(db, booking_id)
+    if not is_renter(user, bk):
+        raise HTTPException(status_code=403, detail="Only renter can pay")
+    if bk.status != "accepted":
+        return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
+
+    owner = db.get(User, bk.owner_id)
+    owner_pe = bool(getattr(owner, "payouts_enabled", False)) if owner else False
+    if not owner_pe:
+        # منع باك-إند حتى لو حاول أحد يتجاوز الواجهة
+        raise HTTPException(status_code=409, detail="Owner payouts not enabled")
+
+    # توجيه لمسار Checkout الحقيقي
     return RedirectResponse(url=f"/api/stripe/checkout/rent/{booking_id}", status_code=303)
 
 # ===== تأكيد استلام المستأجر =====
@@ -341,7 +358,6 @@ def renter_confirm_received(
 
     item = db.get(Item, bk.item_id)
 
-    # نحاول الالتقاط الحقيقي عبر Stripe
     captured = False
     if bk.payment_method == "online":
         captured = _try_capture_stripe_rent(bk)
@@ -364,7 +380,7 @@ def renter_confirm_received(
                       f"/bookings/flow/{bk.id}", "booking")
     return redirect_to_flow(bk.id)
 
-# ======= Aliases القديمة (أبقيناها) =======
+# ======= Aliases القديمة =======
 
 def _redir(flow_id: int):
     return RedirectResponse(url=f"/bookings/flow/{flow_id}", status_code=status.HTTP_303_SEE_OTHER)
@@ -440,7 +456,7 @@ def alias_pay_online(booking_id: int,
                      deposit_amount: int = Form(0),
                      db: Session = Depends(get_db),
                      user: Optional[User] = Depends(get_current_user)):
-    # توجيه للـ Checkout الحقيقي (وآخر قيم المبالغ نخزنها فقط لو أردت)
+    # ADDED: نفس فحص تفعيل payouts قبل التحويل لCheckout
     require_auth(user)
     bk = require_booking(db, booking_id)
     if not is_renter(user, bk):
@@ -448,7 +464,11 @@ def alias_pay_online(booking_id: int,
     if bk.status != "accepted":
         return _redir(bk.id)
 
-    # حفظ مبالغ مقترحة (اختياري)
+    owner = db.get(User, bk.owner_id)
+    owner_pe = bool(getattr(owner, "payouts_enabled", False)) if owner else False
+    if not owner_pe:
+        raise HTTPException(status_code=409, detail="Owner payouts not enabled")
+
     bk.payment_method = "online"
     if rent_amount:
         bk.rent_amount = max(0, int(rent_amount or 0))
