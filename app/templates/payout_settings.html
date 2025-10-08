@@ -29,14 +29,14 @@
         <i class="bi bi-arrow-repeat"></i> تحقّق من الحالة
       </button>
 
-      <!-- زر يُظهر فقط إذا الحساب غير مكتمل -->
+      <!-- ✅ يظهر فقط إذا تم الربط (account_id موجود) لكن payouts ما زالت false -->
       <a id="onboardBtn" class="btn btn-warning" href="/connect/onboard" style="display:none">
         <i class="bi bi-shield-check"></i> أكمل التحقق الآن
       </a>
     </div>
 
     <div class="small muted mt-2">
-      ملاحظة عمولة المنصّة: سيتم اقتطاع <strong>8%</strong> من كل عملية دفع كرسوم خدمة.
+      ستقوم المنصّة باقتطاع <strong>8%</strong> من كل عملية كرسوم خدمة.
     </div>
   </div>
 
@@ -54,15 +54,15 @@
         <div class="mb-2"><span class="k">details_submitted:</span>
           <span id="details">—</span></div>
 
-        <!-- تنبيه عندما الحساب غير جاهز -->
+        <!-- ❗ يظهر فقط عندما: تم الربط لكن لم يكتمل التفعيل -->
         <div class="alert alert-warning mt-3" id="callout" style="display:none">
-          الحساب غير جاهز بعد لاستلام الأرباح. اضغط
-          <strong>أكمل التحقق الآن</strong> وأدخل مستند الهوية وبيانات البنك.
+          حسابك مرتبط لكن لم يكتمل التفعيل بعد. لإتمام التفعيل بشكل كامل، اضغط
+          <strong>أكمل التحقق الآن</strong> وارفع مستند الهوية وصورتك وأكمل بيانات البنك.
         </div>
 
-        <!-- رسالة نجاح عندما يجهز الحساب -->
+        <!-- ✅ يظهر فقط عندما: الحساب جاهز 100% -->
         <div class="alert alert-success mt-3" id="okcall" style="display:none">
-          🎉 حسابك الآن مُفعل ويمكنه استقبال الأموال. سيتم اقتطاع <strong>8%</strong> كعمولة منصّتنا من كل عملية.
+          🎉 حسابك مُفعل 100% ويمكنه استقبال الأموال الآن. سيتم اقتطاع <strong>8%</strong> كعمولة المنصّة من كل عملية.
         </div>
       </div>
     </div>
@@ -72,8 +72,7 @@
         <h6 class="mb-2">ملاحظات</h6>
         <ul class="mb-0">
           <li>الوضع الحالي: مفاتيح اختبار <code>pk_test</code> / <code>sk_test</code>.</li>
-          <li>بعد إكمال KYC وإضافة حساب بنكي (اختبار/حقيقي)، يصبح
-            <code>payouts_enabled = true</code>.</li>
+          <li>لكي يصبح <code>payouts_enabled = true</code> يجب إنهاء التحقق وإضافة حساب بنكي.</li>
         </ul>
       </div>
     </div>
@@ -103,27 +102,40 @@
       if(!r.ok){ throw new Error('status fetch failed'); }
       const d = await r.json();
 
-      set(d.account_id || '—', accId);
-      set(d.payouts_enabled, payouts);
-      set(d.charges_enabled, charges);
-      set(d.details_submitted, details);
+      const accountId = d.account_id || null;
+      const pe = !!d.payouts_enabled;
+      const ce = !!d.charges_enabled;
+      const ds = !!d.details_submitted;
 
-      const ready = !!d.payouts_enabled && !!d.charges_enabled && !!d.details_submitted;
+      set(accountId || '—', accId);
+      set(pe, payouts);
+      set(ce, charges);
+      set(ds, details);
 
-      // إظهار/إخفاء العناصر حسب الجاهزية
-      okcall.style.display   = ready ? '' : 'none';
-      callout.style.display  = ready ? 'none' : '';
-      onboardBtn.style.display = ready ? 'none' : '';
+      const ready = pe && ce && ds;
+      const connectedOnly = !!accountId && !ready; // ← تم الربط لكن لم يكتمل التفعيل
+
+      // ✅ المنطق المطلوب:
+      // إذا تم الربط ولكن payouts_enabled ما زالت false ⇒ أظهر زر "أكمل التحقق الآن"
+      onboardBtn.style.display = connectedOnly ? '' : 'none';
+
+      // رسالة تنبيه عند النقص
+      callout.style.display = connectedOnly ? '' : 'none';
+
+      // رسالة نجاح عند الجاهزية 100%
+      okcall.style.display = ready ? '' : 'none';
+
     }catch(e){
-      // في حال الفشل… اظهر زر الإتمام والتنبيه
+      // في حال الفشل… لا نعرف الحالة، سنخفي رسالة النجاح ونظهر تنبيه عام
+      okcall.style.display = 'none';
       callout.style.display = '';
+      // نعرض زر الإنهاء لإعطاء المستخدم طريقة لإكمال الخطوات
       onboardBtn.style.display = '';
     }
   }
 
   // إعادة فحص تلقائي عند العودة من Stripe (?done=1)
   if (new URLSearchParams(window.location.search).get('done') === '1') {
-    // أحياناً Stripe يحتاج ثوانٍ لمزامنة الحالة — نجرب إعادة التحميل بعد لحظات
     setTimeout(load, 1500);
   }
 
