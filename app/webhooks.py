@@ -1,48 +1,23 @@
 # app/webhooks.py
 import os, stripe
-from fastapi import APIRouter, Request, HTTPException
-from .database import SessionLocal
-from .models import Booking
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
-# مفتاح Stripe السري من المتغيرات (بدون ما يطيّح السيرفر لو مفقود)
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
-
-@router.post("/api/stripe/webhook")
+@router.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
     payload = await request.body()
-    sig_header = request.headers.get("stripe-signature")
-    wh_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-    if not wh_secret:
-        # خلي الخطأ واضح في اللوج بدل كراش أثناء الإقلاع
-        raise HTTPException(status_code=500, detail="STRIPE_WEBHOOK_SECRET not set")
+    sig_header = request.headers.get("stripe-signature", "")
+    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+    if not webhook_secret:
+        return JSONResponse({"error": "Missing STRIPE_WEBHOOK_SECRET"}, status_code=400)
 
     try:
-        event = stripe.Webhook.construct_event(payload, sig_header, wh_secret)
-    except stripe.error.SignatureVerificationError:
-        raise HTTPException(status_code=400, detail="Invalid signature")
+        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
 
-    etype = event.get("type")
-    print("Webhook event:", etype)
-
-    # لو كنت ترسل booking_id في metadata عند إنشاء الـ PaymentIntent
-    if etype in ("payment_intent.succeeded", "payment_intent.payment_failed"):
-        pi = event["data"]["object"]
-        meta = pi.get("metadata") or {}
-        booking_id = meta.get("booking_id")
-        if booking_id:
-            db = SessionLocal()
-            try:
-                b = db.get(Booking, int(booking_id))
-                if b:
-                    if etype == "payment_intent.succeeded":
-                        b.payment_status = "paid"
-                    else:
-                        if b.payment_status != "paid":
-                            b.payment_status = "failed"
-                    db.commit()
-            finally:
-                db.close()
-
-    return {"ok": True}
+    print("✅ Webhook received:", event["type"])
+    return {"received": True}

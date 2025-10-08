@@ -35,6 +35,7 @@ from .admin_badges import router as admin_badges_router
 from .routes_bookings import router as bookings_router
 from .notifications import router as notifs_router
 from .notifications_api import router as notifications_router
+from .split_test import router as split_test_router
 
 # ❌ لا نستخدم payout_routes (القديم) لأنه كان يعرّف POST فقط ويسبب 405
 # from .payout_routes import router as payout_routes_router
@@ -115,7 +116,7 @@ app.include_router(freeze_router)
 app.include_router(payments_router)
 app.include_router(checkout_router)
 app.include_router(pay_api_router)
-
+app.include_router(split_test_router)
 # ✅ نُسجّل راوتر Stripe Connect الصحيح (يدعم GET/POST)
 app.include_router(payout_connect_router)
 
