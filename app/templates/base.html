@@ -1,3 +1,4 @@
+<!-- app/templates/base.html -->
 <!doctype html>
 <html lang="ar" dir="rtl">
   <head>
@@ -85,7 +86,6 @@
 
       /* ===== الشريط الجانبي (أيقونات صور) ===== */
       .side-link .side-icon{ width:22px; height:22px; object-fit:contain }
-      .side-link.is-active{ background: rgba(124,92,255,.12); }
 
       /* ===== تبويب الجوال (الأسفل) ===== */
       @media (max-width: 768px){
@@ -109,7 +109,7 @@
       }
 
       @media (max-width:768px){
-        .actions .dropdown:first-of-type{ display:none !important; }
+        .actions .dropdown:first-of-type{ display:none !important; } /* منيو إنشاء فقط */
       }
 
       .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important; }
@@ -151,7 +151,7 @@
 
           {% if session_user %}
           <a href="/favorites" class="btn-plain" title="مفضلتي">
-            <i class="bi bi-heart-fill" style="font-size:20px;"></i>
+            <i class="bi bi-heart-fill" style="font-size:20px; color:#a944ec;"></i>
           </a>
           {% endif %}
 
@@ -229,23 +229,12 @@
     <!-- ===== Sidebar ===== -->
     <aside class="sidebar" id="appSidebar" data-collapsed="false">
       <nav class="sidebar__nav">
-        <!-- الرئيسية -->
         <a class="side-link {% if request and request.url.path == '/' %}is-active{% endif %}" href="/" data-tooltip="الرئيسية">
           <img class="side-icon" src="{{ url_for('static', path='images/home.png') }}" alt="home"><span>الرئيسية</span>
         </a>
-
-        <!-- كل العناصر -->
         <a class="side-link {% if request and request.url.path.startswith('/items') %}is-active{% endif %}" href="/items" data-tooltip="كل العناصر">
           <img class="side-icon" src="{{ url_for('static', path='images/tout.png') }}" alt="tout"><span>كل العناصر</span>
         </a>
-
-        <!-- ✅ الإضافة الجديدة: يظهر فقط لمدير الوديعة أو الأدمن -->
-        {% if session_user and session_user.get('can_manage_deposits') %}
-          <a class="side-link {% if request and request.url.path.startswith('/dm/deposits') %}is-active{% endif %}"
-             href="/dm/deposits" data-tooltip="قضايا الوديعة">
-            <i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>
-          </a>
-        {% endif %}
 
         {% if session_user %}
           <a class="side-link {% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}" href="/favorites" data-tooltip="مفضلتي">
@@ -260,6 +249,15 @@
           <a class="side-link {% if request and request.url.path.startswith('/bookings') %}is-active{% endif %}" href="/bookings" data-tooltip="حجوزاتي">
             <img class="side-icon" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>حجوزاتي</span>
           </a>
+
+          <!-- === الجديد: قضايا الوديعة (يظهر فقط لمدير الوديعة/الأدمين) === -->
+          {% if session_user.get('can_manage_deposits') %}
+            <a class="side-link {% if request and request.url.path.startswith('/dm/deposits') %}is-active{% endif %}"
+               href="/dm/deposits" data-tooltip="قضايا الوديعة">
+              <i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>
+            </a>
+          {% endif %}
+
           <a class="side-link {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" href="/payout/settings" data-tooltip="التحويلات">
             <img class="side-icon" src="{{ url_for('static', path='images/cart.png') }}" alt="cart"><span>التحويلات</span>
           </a>
@@ -290,7 +288,7 @@
       {% block content %}{% endblock %}
     </main>
 
-    <!-- إشعارات -->
+    <!-- لوحة إشعارات جانبية -->
     <div class="notif-panel" id="notifPanel" aria-hidden="true">
       <div class="notif-panel__header d-flex justify-content-between align-items-center">
         <strong>الإشعارات</strong>
@@ -326,6 +324,14 @@
         <img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile">
         <span>صفحتي</span>
       </a>
+
+      <!-- === الجديد: تبويب الجوال لقضايا الوديعة (اختياري) === -->
+      {% if session_user and session_user.get('can_manage_deposits') %}
+        <a href="/dm/deposits" class="{% if request and request.url.path.startswith('/dm/deposits') %}is-active{% endif %}">
+          <i class="bi bi-shield-exclamation"></i>
+          <span>قضايا الوديعة</span>
+        </a>
+      {% endif %}
     </nav>
 
     </div><!-- /#page-wrapper -->
@@ -334,7 +340,71 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     {% block scripts %}{% endblock %}
 
-    <!-- ===== Typeahead ===== -->
+    <script>
+      // Sidebar open/collapse
+      const sidebar   = document.getElementById('appSidebar');
+      const pinBtn    = document.getElementById('pinSidebar');
+      const toggleBtn = document.getElementById('sidebarToggle');
+      const saved     = localStorage.getItem('sidebar_collapsed');
+      if (saved === 'true') collapseSidebar(true);
+
+      toggleBtn?.addEventListener('click', () => {
+        if (window.matchMedia('(max-width: 991.98px)').matches) {
+          sidebar.classList.toggle('is-open');
+          document.getElementById('scrim').classList.toggle('is-show', sidebar.classList.contains('is-open'));
+        } else {
+          collapseSidebar(sidebar.dataset.collapsed !== 'true');
+        }
+      });
+      pinBtn?.addEventListener('click', () => collapseSidebar(sidebar.dataset.collapsed !== 'true'));
+
+      function collapseSidebar(yes){
+        if (yes){
+          sidebar.dataset.collapsed = 'true';
+          document.documentElement.style.setProperty('--sidebar-w', '84px');
+          localStorage.setItem('sidebar_collapsed','true');
+        }else{
+          sidebar.dataset.collapsed = 'false';
+          document.documentElement.style.setProperty('--sidebar-w', '268px');
+          localStorage.setItem('sidebar_collapsed','false');
+        }
+      }
+
+      // Theme toggle
+      const themeToggle = document.getElementById('themeToggle');
+      const sunIcon = document.getElementById('sunIcon');
+      const moonIcon = document.getElementById('moonIcon');
+      const savedTheme = localStorage.getItem('theme_mode');
+      if (savedTheme) setTheme(savedTheme);
+
+      themeToggle?.addEventListener('click', () => {
+        const current = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+        setTheme(current);
+      });
+
+      function setTheme(mode){
+        document.body.dataset.theme = mode;
+        localStorage.setItem('theme_mode', mode);
+        const dark = mode === 'dark';
+        sunIcon.classList.toggle('d-none', !dark);
+        moonIcon.classList.toggle('d-none', dark);
+      }
+
+      // Notif panel
+      const notifOpen  = document.getElementById('notifOpen');
+      const notifClose = document.getElementById('notifClose');
+      const panel      = document.getElementById('notifPanel');
+      const body       = document.getElementById('notifBody');
+      const scrim      = document.getElementById('scrim');
+
+      function openPanel(){ panel?.classList.add('is-open'); scrim?.classList.add('is-show'); }
+      function closePanel(){ panel?.classList.remove('is-open'); scrim?.classList.remove('is-show'); }
+      notifOpen?.addEventListener('click', openPanel);
+      notifClose?.addEventListener('click', closePanel);
+      scrim?.addEventListener('click', closePanel);
+    </script>
+
+    <!-- Typeahead -->
     <script>
 (function initTypeahead(){
   if (window.__typeaheadInit) return;
@@ -429,7 +499,7 @@
 })();
     </script>
 
-    <!-- ===== إشعارات (Polling) ===== -->
+    <!-- إشعارات (Polling مبسّط) -->
     <script>
 (function notifSystem(){
   if (window.__notifInit) return; window.__notifInit = true;
@@ -451,35 +521,13 @@
     else{ countEl.textContent = ''; countEl.style.display = 'none'; pingEl.style.display = 'none'; }
   }
 
-  function openPanel(){ panel?.classList.add('is-open'); scrim?.classList.add('is-show'); }
-  function closePanel(){ panel?.classList.remove('is-open'); scrim?.classList.remove('is-show'); }
-  notifOpen?.addEventListener('click', openPanel);
-  notifClose?.addEventListener('click', closePanel);
-  scrim?.addEventListener('click', closePanel);
-
   function row(title, meta, url){
     const a = document.createElement('a');
     a.className='notif-row'; a.href=url||'#';
-    a.innerHTML = `<div class="fw-bold">${title}</div>${meta?`<div class="k small">${meta}</div>`:''}`;
+    a.innerHTML = `<div class="fw-bold">${esc(title)}</div>${meta?`<div class="k small">${esc(meta)}</div>`:''}`;
     return a;
   }
-
-  function loadPendingList(){
-    fetch('/api/bookings/pending-list', {credentials:'same-origin'})
-      .then(r=>r.ok?r.json():{items:[]})
-      .then(d=>{
-        const items = d.items||[];
-        if (body.firstElementChild && body.firstElementChild.classList.contains('text-muted')) body.innerHTML='';
-        if (!items.length && !body.children.length){ body.innerHTML = '<div class="small text-muted">لا توجد إشعارات جديدة.</div>'; return; }
-        const frag = document.createDocumentFragment();
-        items.forEach(b=>{
-          const meta = `${b.start_date} → ${b.end_date} (${b.days} يوم)`;
-          frag.append(row('طلب حجز جديد على: ' + (b.item_title||('عنصر #' + b.item_id)), meta, b.url));
-        });
-        body.prepend(frag);
-      })
-      .catch(()=>{});
-  }
+  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
   function refreshUnread(){
     fetch('/api/unread_count')
@@ -490,6 +538,7 @@
   refreshUnread();
   setInterval(refreshUnread, 30*1000);
 
+  // polling للإشعارات المخصّصة (اختياري)
   let since = 0;
   function poll(){
     fetch('/api/notifications/poll?since='+since, {headers:{'x-na':'1'}})
@@ -501,10 +550,8 @@
         if (items.length){
           if (body.firstElementChild && body.firstElementChild.classList.contains('text-muted')) body.innerHTML='';
           const frag = document.createDocumentFragment();
-          items.forEach(n=>{
-            const a = row(n.title||'إشعار', n.body||'', n.url);
-            body.prepend(a);
-          });
+          items.forEach(n=>{ frag.append(row(n.title||'إشعار', n.body||'', n.url)); });
+          body.prepend(frag);
           setBell((parseInt(countEl.textContent||'0')||0) + items.length);
         }
       })
@@ -512,15 +559,6 @@
   }
   setInterval(poll, 20*1000);
   poll();
-
-  function refreshPending(){
-    fetch('/api/bookings/pending-count', {credentials:'same-origin'})
-      .then(r=>{ if(!r.ok) throw 0; return r.json(); })
-      .then(d=>{ const c = parseInt(d.count||0); if (c>0) setBell(c); })
-      .catch(()=>{});
-  }
-  refreshPending();
-  setInterval(refreshPending, 45*1000);
 })();
     </script>
 
