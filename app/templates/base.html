@@ -118,9 +118,7 @@
     {% block head %}{% endblock %}
   </head>
 
-  <!-- لاحظ الإضافة هنا: data-can-dm -->
-  <body class="theme" data-theme="dark"
-        data-can-dm="{{ 1 if session_user and (session_user.can_manage_deposits or session_user.is_deposit_manager or ((session_user.role or '')|lower == 'admin')) else 0 }}">
+  <body class="theme" data-theme="dark">
 
     <div id="page-wrapper"><!-- غلاف ملء الشاشة -->
 
@@ -253,10 +251,15 @@
             <img class="side-icon" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>حجوزاتي</span>
           </a>
 
-          <!-- يظهر بالرندر العادي لو الـsession فيها الصلاحية -->
+          <!-- قد يرسمه السيرفر، لكن سنُخفيه بالـJS حتى يصل إشعار المنح -->
           {% if session_user.get('can_manage_deposits') %}
             <a class="side-link {% if request and request.url.path.startswith('/dm/deposits') %}is-active{% endif %}"
-               href="/dm/deposits" data-tooltip="قضايا الوديعة">
+               href="/dm/deposits" data-tooltip="قضايا الوديعة" data-nav="dm-link">
+              <i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>
+            </a>
+          {% else %}
+            <!-- مكان بديل ننشئ فيه الرابط ديناميكياً عند المنح -->
+            <a class="side-link" href="/dm/deposits" data-tooltip="قضايا الوديعة" data-nav="dm-link" style="display:none">
               <i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>
             </a>
           {% endif %}
@@ -328,13 +331,11 @@
         <span>صفحتي</span>
       </a>
 
-      <!-- التبويب سيظهر هنا أيضاً لو عنده الصلاحية -->
-      {% if session_user and session_user.get('can_manage_deposits') %}
-        <a href="/dm/deposits" class="{% if request and request.url.path.startswith('/dm/deposits') %}is-active{% endif %}">
-          <i class="bi bi-shield-exclamation"></i>
-          <span>قضايا الوديعة</span>
-        </a>
-      {% endif %}
+      <!-- تبويب الجوال لقضايا الوديعة: مخفي حتى يصل إشعار المنح -->
+      <a href="/dm/deposits" data-nav="dm-mobile" style="display:none">
+        <i class="bi bi-shield-exclamation"></i>
+        <span>قضايا الوديعة</span>
+      </a>
     </nav>
 
     </div><!-- /#page-wrapper -->
@@ -543,71 +544,60 @@
 })();
     </script>
 
-    <!-- ====== سكربت إظهار/إخفاء رابط قضايا الوديعة فورياً ====== -->
+    <!-- ====== سكربت إظهار/إخفاء «قضايا الوديعة» حسب الإشعار فقط ====== -->
     <script>
 (function () {
-  // أدوات إضافة/حذف الرابط في الشريط الجانبي وتبويب الجوال
-  function ensureSidebarLink(){
-    const nav = document.querySelector('.sidebar__nav'); if(!nav) return;
-    if (nav.querySelector('[data-nav="dm-link"]')) return;
-    const a = document.createElement('a');
-    a.setAttribute('data-nav','dm-link');
-    a.className = 'side-link';
-    a.href = '/dm/deposits';
-    a.setAttribute('data-tooltip','قضايا الوديعة');
-    a.innerHTML = '<i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>';
-    nav.appendChild(a);
-  }
-  function removeSidebarLink(){
-    const el = document.querySelector('.sidebar__nav [data-nav="dm-link"]'); if (el) el.remove();
-  }
-  function ensureMobileTab(){
-    const m = document.querySelector('.mobile-tabbar'); if(!m) return;
-    if (m.querySelector('[data-nav="dm-mobile"]')) return;
-    const a = document.createElement('a');
-    a.setAttribute('data-nav','dm-mobile');
-    a.href = '/dm/deposits';
-    a.innerHTML = '<i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>';
-    m.appendChild(a);
-  }
-  function removeMobileTab(){
-    const el = document.querySelector('.mobile-tabbar [data-nav="dm-mobile"]'); if (el) el.remove();
-  }
+  const sideEl   = document.querySelector('[data-nav="dm-link"]') || document.querySelector('.sidebar__nav a[href="/dm/deposits"]');
+  const mobileEl = document.querySelector('[data-nav="dm-mobile"]') || document.querySelector('.mobile-tabbar a[href="/dm/deposits"]');
 
   function showDM(){
-    try{ localStorage.setItem('dm_enabled','1'); }catch(e){}
-    ensureSidebarLink();
-    ensureMobileTab();
+    try{ localStorage.setItem('dm_enabled','1'); }catch(_){}
+    if (sideEl)   sideEl.style.display   = '';
+    if (mobileEl) mobileEl.style.display = '';
   }
   function hideDM(){
-    try{ localStorage.removeItem('dm_enabled'); }catch(e){}
-    removeSidebarLink();
-    removeMobileTab();
+    try{ localStorage.removeItem('dm_enabled'); }catch(_){}
+    if (sideEl)   sideEl.style.display   = 'none';
+    if (mobileEl) mobileEl.style.display = 'none';
   }
 
-  // تهيئة مبدئية: من body data أو من localStorage
-  var canDM = (document.body.dataset.canDm === '1') || (localStorage.getItem('dm_enabled') === '1');
-  if (canDM) showDM();
+  // عند التحميل: أخفِ دائمًا مبدئيًا، وأظهر فقط لو localStorage مفعل
+  if (sideEl)   sideEl.style.display   = 'none';
+  if (mobileEl) mobileEl.style.display = 'none';
+  try{ if (localStorage.getItem('dm_enabled') === '1') showDM(); }catch(_){}
 
-  // راقب لوحة الإشعارات: عند ظهور نص منح/إلغاء MD عدّل الرابط فوراً
+  // اعتراض fetch لالتقاط /api/notifications/poll وتفعيل/تعطيل الرابط فورًا
+  const _fetch = window.fetch;
+  window.fetch = function(url, opts){
+    const p = _fetch.apply(this, arguments);
+    try{
+      const u = (typeof url === 'string') ? url : (url && url.url) || '';
+      if (u.indexOf('/api/notifications/poll') !== -1){
+        p.then(r => r.clone().json().then(data => {
+          const items = (data && data.items) || [];
+          for (const n of items){
+            const txt = ((n && (n.title||'')) + ' ' + (n && (n.body||''))).trim();
+            if (/تم\s+منحك?\s+دور\s+مت?حكّم?\s+الوديعة/i.test(txt)) { showDM(); break; }
+            if (/تم\s+إلغاء\s+دور\s+مت?حكّم?\s+الوديعة/i.test(txt)) { hideDM(); break; }
+          }
+        }).catch(()=>{})).catch(()=>{});
+      }
+    }catch(_){}
+    return p;
+  };
+
+  // كمساعدة إضافية: إن تم إدراج الإشعار داخل لوحة الإشعارات DOM
   const notifBody = document.getElementById('notifBody');
   if (notifBody){
-    const rxGrant  = /تم\s+منحك?\s+دور\s+متحكّم\s+الوديعة/i;
-    const rxRevoke = /تم\s+إلغاء\s+دور\s+متحكّم\s+الوديعة/i;
-
-    const onChange = () => {
-      const txt = notifBody.textContent || '';
-      if (rxGrant.test(txt))  { showDM(); }
-      if (rxRevoke.test(txt)) { hideDM(); }
+    const rxGrant  = /تم\s+منحك?\s+دور\s+مت?حكّم?\s+الوديعة/i;
+    const rxRevoke = /تم\s+إلغاء\s+دور\s+مت?حكّم?\s+الوديعة/i;
+    const check = () => {
+      const t = notifBody.textContent || '';
+      if (rxGrant.test(t))  showDM();
+      if (rxRevoke.test(t)) hideDM();
     };
-
-    const mo = new MutationObserver(function(muts){
-      for (const m of muts){
-        if (m.type === 'childList' || m.type === 'characterData'){ onChange(); break; }
-      }
-    });
-    mo.observe(notifBody, {childList:true, subtree:true, characterData:true});
-    onChange();
+    new MutationObserver(check).observe(notifBody, {childList:true,subtree:true,characterData:true});
+    check();
   }
 })();
     </script>
