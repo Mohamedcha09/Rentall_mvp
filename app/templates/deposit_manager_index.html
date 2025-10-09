@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+  .dm-wrap{max-width:1100px;margin:auto}
+  .dm-tabs a{padding:8px 12px;border:1px solid var(--border);border-radius:10px;text-decoration:none}
+  .dm-tabs a.active{background:var(--surface-2,#222);color:#fff;border-color:transparent}
+  .dm-card{border:1px solid var(--border);border-radius:14px;padding:14px}
+  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
+  .k{opacity:.7}
+  .row-gap{display:grid;gap:12px}
+  .badge-soft{border:1px solid var(--border);border-radius:999px;padding:2px 8px}
+  .acts .btn{margin-inline-end:6px;margin-block-end:6px}
+  .dm-empty{border:1px dashed var(--border);border-radius:14px;padding:24px;text-align:center;color:#888}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dm-wrap">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="m-0">لوحة متحكّم الوديعة</h4>
+    <div class="dm-tabs d-flex gap-2">
+      <a href="/deposit-manager?view=pending" class="{% if view=='pending' %}active{% endif %}">قيد الانتظار</a>
+      <a href="/deposit-manager?view=in_review" class="{% if view=='in_review' %}active{% endif %}">تحت المراجعة</a>
+      <a href="/deposit-manager?view=resolved" class="{% if view=='resolved' %}active{% endif %}">محسومة</a>
+    </div>
+  </div>
+
+  {% if not rows or rows|length == 0 %}
+    <div class="dm-empty">لا توجد قضايا في هذا التبويب.</div>
+  {% else %}
+    <div class="row-gap">
+      {% for bk in rows %}
+      <div class="dm-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="d-flex align-items-center gap-2">
+              <strong>حجز #{{ bk.id }}</strong>
+              <span class="badge-soft mono k">{{ bk.status or '—' }}</span>
+              <span class="badge-soft mono k">وديعة: {{ bk.deposit_status or '—' }}</span>
+            </div>
+            <div class="k">
+              عنصر: <a href="/items/{{ bk.item_id }}">#{{ bk.item_id }}</a> ·
+              مالك: <a href="/users/{{ bk.owner_id }}">#{{ bk.owner_id }}</a> ·
+              مستأجر: <a href="/users/{{ bk.renter_id }}">#{{ bk.renter_id }}</a>
+            </div>
+            <div class="k mono small mt-1">
+              من {{ bk.start_date }} إلى {{ bk.end_date }} · أيام: {{ bk.days }} · إجمالي الإيجار: {{ bk.total_amount }}$
+            </div>
+            <div class="k mono small">
+              الدفوعات: {{ bk.payment_method or '—' }} · حالة أونلاين: {{ bk.online_status or '—' }}
+            </div>
+            <div class="k mono small">
+              الديبو المطلوب/الممسوك: {{ bk.deposit_amount or bk.hold_deposit_amount or 0 }}$ · المخصوم: {{ bk.deposit_charged_amount or 0 }}$
+            </div>
+          </div>
+          <div>
+            <a class="btn btn-outline-light btn-sm" href="/bookings/flow/{{ bk.id }}">فتح صفحة الحجز</a>
+          </div>
+        </div>
+
+        <hr class="my-3">
+
+        <div class="acts">
+          {% if view == 'pending' %}
+            <!-- استلام/Claim ينقل الحالة إلى in_review -->
+            <form method="post" action="/deposit-manager/{{ bk.id }}/claim" class="d-inline">
+              <button class="btn btn-primary btn-sm">
+                <i class="bi bi-clipboard-check"></i> استلام القضية (Claim)
+              </button>
+            </form>
+          {% endif %}
+
+          {% if view in ['in_review','pending'] %}
+            <!-- طلب معلومات إضافية -->
+            <form method="post" action="/deposit-manager/{{ bk.id }}/need-info" class="d-inline">
+              <input type="hidden" name="target" value="owner">
+              <input type="hidden" name="message" value="يرجى رفع صور/فيديو يوضح الحالة قبل وبعد.">
+              <button class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-image"></i> طلب معلومات من المالك
+              </button>
+            </form>
+
+            <form method="post" action="/deposit-manager/{{ bk.id }}/need-info" class="d-inline">
+              <input type="hidden" name="target" value="renter">
+              <input type="hidden" name="message" value="يرجى تقديم توضيحات وصور مضادّة لحجج المالك.">
+              <button class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-question-circle"></i> طلب معلومات من المستأجر
+              </button>
+            </form>
+
+            <!-- قرار نهائي: نوجّه لنموذج القرار الموحّد (/deposits/{id}/decision) عبر dm_decide -->
+            <div class="mt-2 p-2" style="border:1px solid var(--border);border-radius:10px">
+              <form method="post" action="/deposit-manager/{{ bk.id }}/decide" class="row g-2">
+                <div class="col-md-4">
+                  <label class="form-label small k">نوع القرار</label>
+                  <select class="form-select form-select-sm" name="decision" required>
+                    <option value="refund_all">ردّ كامل الوديعة</option>
+                    <option value="refund_partial">ردّ جزئي (أدخل المبلغ)</option>
+                    <option value="withhold_all">حجز كامل الوديعة</option>
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small k">مبلغ جزئي (إن وُجد)</label>
+                  <input class="form-control form-control-sm" type="number" min="0" name="amount" placeholder="0">
+                </div>
+                <div class="col-md-5">
+                  <label class="form-label small k">سبب القرار</label>
+                  <input class="form-control form-control-sm" type="text" name="reason" placeholder="مثال: خدوش متوسطة + تأخير يوم">
+                </div>
+                <div class="col-12 mt-1">
+                  <button class="btn btn-success btn-sm">
+                    <i class="bi bi-shield-check"></i> تنفيذ القرار
+                  </button>
+                  <span class="small k ms-2">سيتم تنفيذ العملية عبر مسار القرار الموحّد ثم العودة.</span>
+                </div>
+              </form>
+            </div>
+          {% endif %}
+
+          {% if view == 'resolved' %}
+            <span class="k">هذه القضية مُقفلة/محسومة.</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

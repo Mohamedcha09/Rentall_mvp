@@ -47,6 +47,15 @@ def require_booking(db: Session, bid: int) -> Booking:
 def flow_redirect(bid: int) -> RedirectResponse:
     return RedirectResponse(url=f"/bookings/flow/{bid}", status_code=303)
 
+# --- (NEW) السماح للأدمِن أو لمتحكّم الوديعة ---
+def can_manage_deposits(u: Optional[User]) -> bool:
+    if not u:
+        return False
+    role = (getattr(u, "role", "") or "").lower()
+    if role == "admin":
+        return True
+    return bool(getattr(u, "is_deposit_manager", False))
+
 
 # ========= (A) Stripe Connect Onboarding للمالك =========
 @router.post("/api/stripe/connect/start")
@@ -315,7 +324,7 @@ def capture_rent(
     return flow_redirect(bk.id)
 
 
-# ========= (F) قرار الديبو (للإدمن) =========
+# ========= (F) قرار الديبو (Admin أو Deposit Manager) =========
 @router.post("/api/stripe/deposit/resolve/{booking_id}")
 def resolve_deposit(
     booking_id: int,
@@ -329,10 +338,13 @@ def resolve_deposit(
       - refund_all        : إلغاء التفويض بالكامل للديبو.
       - withhold_all      : اقتطاع كل الديبو لصالح المالك.
       - withhold_partial  : اقتطاع جزء من الديبو.
+    يسمح بتنفيذ القرار لمن لديه صلاحية: Admin أو Deposit Manager.
     """
     require_auth(user)
-    if getattr(user, "role", "") != "admin":
-        raise HTTPException(status_code=403, detail="Admins only")
+
+    # --- (NEW) السماح للأدمِن أو لمتحكّم الوديعة فقط ---
+    if not can_manage_deposits(user):
+        raise HTTPException(status_code=403, detail="Deposit decision requires Admin or Deposit Manager")
 
     bk = require_booking(db, booking_id)
     pi_id = bk.deposit_hold_intent_id
@@ -360,6 +372,8 @@ def resolve_deposit(
 
         else:
             raise HTTPException(status_code=400, detail="Unknown action")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe deposit op failed: {e}")
 

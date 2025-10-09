@@ -47,7 +47,12 @@
           <tbody>
             {% for u in pending_users %}
             <tr>
-              <td class="fw-semibold">{{ u.first_name }} {{ u.last_name }}</td>
+              <td class="fw-semibold">
+                {{ u.first_name }} {{ u.last_name }}
+                {% if getattr(u, 'is_deposit_manager', False) %}
+                  <span class="badge bg-primary ms-1">Deposit&nbsp;Manager</span>
+                {% endif %}
+              </td>
               <td class="text-muted small">{{ u.email }}</td>
               <td class="text-muted small">{{ u.phone or '—' }}</td>
               <td class="text-muted small">{{ u.created_at.strftime('%Y-%m-%d') if u.created_at }}</td>
@@ -77,6 +82,22 @@
                     <input type="hidden" name="reason" value="يرجى رفع صورة أوضح/وثيقة صالحة.">
                     <button class="btn btn-sm btn-warning text-dark" type="submit">طلب تصحيح</button>
                   </form>
+
+                  <!-- (NEW) إدارة صلاحية متحكّم الوديعة -->
+                  {% if getattr(u, 'is_deposit_manager', False) %}
+                    <form method="post" action="/admin/users/{{ u.id }}/revoke_deposit_manager">
+                      <button class="btn btn-sm btn-outline-danger" type="submit" title="سحب صلاحية متحكم الوديعة">
+                        سحب DM
+                      </button>
+                    </form>
+                  {% else %}
+                    <form method="post" action="/admin/users/{{ u.id }}/grant_deposit_manager">
+                      <button class="btn btn-sm btn-outline-primary" type="submit" title="منح صلاحية متحكم الوديعة">
+                        منح DM
+                      </button>
+                    </form>
+                  {% endif %}
+                  <!-- /NEW -->
                 </div>
               </td>
             </tr>
@@ -115,7 +136,12 @@
           <tbody>
             {% for u in all_users %}
             <tr>
-              <td class="fw-semibold">{{ u.first_name }} {{ u.last_name }}</td>
+              <td class="fw-semibold">
+                {{ u.first_name }} {{ u.last_name }}
+                {% if getattr(u, 'is_deposit_manager', False) %}
+                  <span class="badge bg-primary ms-1">Deposit&nbsp;Manager</span>
+                {% endif %}
+              </td>
               <td class="text-muted small">{{ u.email }}</td>
               <td>
                 <span class="badge {% if u.role=='admin' %}bg-info text-dark{% else %}bg-secondary{% endif %}">
@@ -138,7 +164,6 @@
                 {% endif %}
               </td>
               <td class="small">
-                {# عرض سريع لبعض الحقول الشائعة للشارات #}
                 {% if u.badge_new_yellow %}<span class="badge bg-warning text-dark">جديد</span>{% endif %}
                 {% if u.badge_purple_trust %}<span class="badge bg-dark-subtle">ثقة</span>{% endif %}
                 {% if u.badge_pro_green %}<span class="badge bg-success">Pro</span>{% endif %}
@@ -168,7 +193,7 @@
                     <button class="btn btn-sm btn-outline-light" type="submit">مراسلة</button>
                   </form>
 
-                  {# ضبط الشارات بسرعة #}
+                  <!-- ضبط الشارات بسرعة -->
                   <form method="post" action="/users/{{ u.id }}/badges" class="d-inline-block">
                     <input type="hidden" name="badge_new_yellow" value="{{ 'on' if u.badge_new_yellow else '' }}">
                     <input type="hidden" name="badge_purple_trust" value="{{ 'on' if u.badge_purple_trust else '' }}">
@@ -177,6 +202,22 @@
                     <input type="hidden" name="badge_admin" value="{{ 'on' if u.role=='admin' or u.badge_admin else '' }}">
                     <button class="btn btn-sm btn-secondary" type="submit">حفظ الشارات</button>
                   </form>
+
+                  <!-- (NEW) إدارة صلاحية متحكّم الوديعة -->
+                  {% if getattr(u, 'is_deposit_manager', False) %}
+                    <form method="post" action="/admin/users/{{ u.id }}/revoke_deposit_manager">
+                      <button class="btn btn-sm btn-outline-danger" type="submit" title="سحب صلاحية متحكم الوديعة">
+                        سحب DM
+                      </button>
+                    </form>
+                  {% else %}
+                    <form method="post" action="/admin/users/{{ u.id }}/grant_deposit_manager">
+                      <button class="btn btn-sm btn-outline-primary" type="submit" title="منح صلاحية متحكم الوديعة">
+                        منح DM
+                      </button>
+                    </form>
+                  {% endif %}
+                  <!-- /NEW -->
                 </div>
               </td>
             </tr>

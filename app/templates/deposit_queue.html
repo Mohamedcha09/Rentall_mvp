@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+.queue-wrap{max-width:1000px;margin:auto}
+.case-card{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px;transition:.2s}
+.case-card:hover{background:color-mix(in oklab,var(--surface) 95%,white)}
+.case-header{display:flex;justify-content:space-between;align-items:center}
+.case-status{font-size:13px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;opacity:.7}
+.badge-id{background:color-mix(in oklab,var(--primary) 25%,transparent);border-radius:8px;padding:2px 6px;font-size:13px;margin-right:6px}
+h4 small{font-size:14px;color:var(--text-secondary)}
+.search-box{margin-bottom:16px}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="queue-wrap">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="m-0">قضايا الوديعة
+      <small class="ms-2 text-muted">({{ view_label }})</small>
+    </h4>
+    <a href="/" class="btn btn-outline-light btn-sm">← رجوع</a>
+  </div>
+
+  {% include "deposit_manager_nav.html" %}
+
+  <div class="search-box">
+    <form method="get" class="d-flex">
+      <input class="form-control form-control-sm me-2" name="q" placeholder="ابحث برقم الحجز أو اسم العنصر" value="{{ q or '' }}">
+      <button class="btn btn-outline-light btn-sm">بحث</button>
+    </form>
+  </div>
+
+  {% if cases %}
+    {% for c in cases %}
+      <div class="case-card">
+        <div class="case-header">
+          <div>
+            <span class="badge-id">#{{ c.booking_id }}</span>
+            <strong>{{ c.item_title or '—' }}</strong><br>
+            <span class="small k">من {{ c.owner_name or '—' }} → إلى {{ c.renter_name or '—' }}</span>
+          </div>
+          <div class="text-end">
+            <div class="case-status">{{ c.status_label or c.status }}</div>
+            <div class="small mono k mt-1">{{ c.created_at }}</div>
+          </div>
+        </div>
+        <div class="mt-2 small k mono">
+          وديعة: {{ c.deposit_amount }}$ — بلاغ: {{ c.issue_type or '—' }}
+        </div>
+        <div class="mt-2">
+          <a href="/deposit-case/{{ c.booking_id }}" class="btn btn-sm btn-success">
+            فتح القضية
+          </a>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="alert alert-secondary text-center">لا توجد قضايا في هذا القسم.</div>
+  {% endif %}
+</div>
+{% endblock %}

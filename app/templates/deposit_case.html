@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+.case-wrap{max-width:950px;margin:auto}
+.box{border:1px solid var(--border);border-radius:14px;padding:14px}
+.k{opacity:.7}
+.mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+.imgs{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+.imgs img{width:180px;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
+.decision-form{border:1px dashed var(--border);border-radius:12px;padding:14px;margin-top:18px}
+.badge-soft{border:1px solid var(--border);border-radius:999px;padding:3px 8px;font-size:13px}
+.alert-note{background:color-mix(in oklab,var(--surface) 90%,transparent);border-radius:10px;padding:12px;margin-top:10px}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="case-wrap">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="m-0">قضية وديعة #{{ booking.id }}</h4>
+    <a href="/deposit-manager" class="btn btn-outline-light btn-sm">← رجوع للقائمة</a>
+  </div>
+
+  <div class="box mb-3">
+    <div class="d-flex justify-content-between">
+      <div>
+        <div><strong>العنصر:</strong> {{ item.title if item else '—' }}</div>
+        <div class="k small">
+          من {{ booking.start_date }} إلى {{ booking.end_date }} ({{ booking.days }} يوم)
+        </div>
+      </div>
+      <div class="text-end">
+        <div class="badge-soft mono">{{ booking.status }}</div>
+        <div class="badge-soft mono">وديعة: {{ booking.deposit_status or '—' }}</div>
+      </div>
+    </div>
+    <hr>
+    <div class="small k mono">
+      المالك #{{ booking.owner_id }} — المستأجر #{{ booking.renter_id }}<br>
+      طريقة الدفع: {{ booking.payment_method or '—' }}<br>
+      مبلغ الإيجار: {{ booking.total_amount }}$<br>
+      الوديعة المحجوزة: {{ booking.hold_deposit_amount or booking.deposit_amount or 0 }}$
+    </div>
+  </div>
+
+  {% if dispute %}
+  <div class="box mb-3">
+    <h6 class="mb-2">تفاصيل البلاغ من المالك</h6>
+    <div><strong>نوع المشكلة:</strong> {{ dispute.issue_type or '—' }}</div>
+    <div><strong>الوصف:</strong> {{ dispute.description or '—' }}</div>
+    {% if dispute.created_at %}
+      <div class="small k mono mt-1">تاريخ البلاغ: {{ dispute.created_at }}</div>
+    {% endif %}
+    {% if dispute.evidence_paths %}
+      <div class="imgs">
+        {% for img in dispute.evidence_paths %}
+          <img src="{{ img }}" alt="evidence">
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if renter_reply %}
+  <div class="box mb-3">
+    <h6 class="mb-2">رد المستأجر</h6>
+    <div>{{ renter_reply.text or '—' }}</div>
+    {% if renter_reply.images %}
+      <div class="imgs">
+        {% for img in renter_reply.images %}
+          <img src="{{ img }}" alt="reply-evidence">
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if renter_reply.created_at %}
+      <div class="small k mono mt-1">تاريخ الرد: {{ renter_reply.created_at }}</div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if decision %}
+  <div class="alert alert-success">
+    <strong>تم اتخاذ القرار:</strong> {{ decision.decision_label }}<br>
+    <span class="k">{{ decision.reason or '—' }}</span><br>
+    <span class="small mono">بتاريخ {{ decision.decided_at }}</span>
+  </div>
+  {% else %}
+  <div class="decision-form">
+    <h6 class="mb-2">اتخاذ القرار النهائي</h6>
+    <form method="post" action="/deposits/{{ booking.id }}/decision">
+      <div class="row g-2">
+        <div class="col-md-4">
+          <label class="form-label small k">نوع القرار</label>
+          <select class="form-select form-select-sm" name="decision" required>
+            <option value="refund_all">ردّ كامل الوديعة</option>
+            <option value="refund_partial">ردّ جزئي</option>
+            <option value="withhold_all">حجز كامل الوديعة</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small k">المبلغ الجزئي (إن وُجد)</label>
+          <input class="form-control form-control-sm" type="number" name="amount" min="0" value="0">
+        </div>
+        <div class="col-md-5">
+          <label class="form-label small k">السبب</label>
+          <input class="form-control form-control-sm" type="text" name="reason" placeholder="مثال: خدوش طفيفة + تأخير يوم">
+        </div>
+      </div>
+      <div class="mt-3">
+        <button class="btn btn-success btn-sm">
+          <i class="bi bi-shield-check"></i> تنفيذ القرار
+        </button>
+        <a href="/deposit-manager" class="btn btn-outline-light btn-sm ms-2">رجوع</a>
+      </div>
+    </form>
+    <div class="alert-note k small mt-2">
+      بعد تنفيذ القرار سيتم تحويل المبلغ المناسب تلقائيًا للمالك أو للمستأجر، وتحديث حالة الوديعة.
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

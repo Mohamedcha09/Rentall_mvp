@@ -61,7 +61,6 @@
           <div class="box">
             <div class="mb-2">الدفع <strong>أونلاين (Stripe Checkout)</strong></div>
 
-            {# إذا payouts للمالك غير مفعّلة: نعطّل الزر ونظهر رسالة #}
             {% if not owner_pe %}
               <div class="alert alert-warning">
                 لا يمكن الدفع أونلاين الآن لأن <strong>المالك</strong> لم يُكمل تفعيل حساب الاستلام بعد.
@@ -101,7 +100,7 @@
             <form class="mt-2" method="post" action="/api/stripe/checkout/deposit/{{ booking.id }}">
               <button class="btn btn-outline-primary"
                       {% if not owner_pe %}disabled aria-disabled="true" title="المالك لم يفعل الاستلام بعد"{% endif %}>
-                <i class="bi bi-shield-lock"></i> حجز الديبو أونلاين
+                <i class="bi bi-shield-lock"></i> حجز الوديعة (ديبو) أونلاين
               </button>
             </form>
             {% endif %}
@@ -114,7 +113,6 @@
         {% elif is_owner %}
           <div class="hint">تم قبول الطلب. بانتظار أن يختار المستأجر طريقة الدفع…</div>
 
-          {# مساعدة للمالك: إن كان حسابه غير مفعّل نعرض CTA لإكمال التحقق #}
           {% if not owner_pe %}
             <div class="alert alert-warning mt-2">
               لكي يتمكّن المستأجر من الدفع أونلاين وتحويل المبلغ لك، أكمل تفعيل حسابك البنكي:
@@ -148,17 +146,17 @@
             <button class="btn btn-warning"><i class="bi bi-arrow-return-left"></i> تم إرجاع الغرض</button>
           </form>
         {% elif is_owner %}
-          <div class="hint">المستأجر استلم الغرض. عند إرجاعه ستظهر لك خطوات تأكيد الإرجاع والديبو.</div>
+          <div class="hint">المستأجر استلم الغرض. عند إرجاعه ستظهر لك خطوات تأكيد الإرجاع والوديعة.</div>
         {% endif %}
       {% endif %}
 
       {% if booking.status in ['returned', 'in_review'] %}
         {% if session_user and session_user.role == 'admin' %}
-          <div class="hint">هذا الحجز بانتظار قرار الديبو من الإدارة.</div>
+          <div class="hint">هذا الحجز بانتظار قرار الوديعة من الإدارة/متحكّم الوديعة.</div>
         {% elif is_owner %}
-          <div class="hint">تم تعليم الإرجاع. بانتظار مراجعة <strong>الإدارة</strong> لاتخاذ قرار الديبو.</div>
+          <div class="hint">تم تعليم الإرجاع. بانتظار مراجعة <strong>الإدارة/متحكّم الوديعة</strong> لاتخاذ قرار الوديعة.</div>
         {% elif is_renter %}
-          <div class="hint">تم تعليم الإرجاع. بانتظار الإدارة لتأكيد الحالة وتحرير الديبو.</div>
+          <div class="hint">تم تعليم الإرجاع. بانتظار الإدارة/متحكّم الوديعة لتأكيد الحالة وتحرير الوديعة.</div>
         {% endif %}
       {% endif %}
 
@@ -185,7 +183,7 @@
           <strong>{{ booking.rent_amount or booking.total_amount or 0 }}$</strong>
         </div>
         <div class="d-flex justify-content-between">
-          <span>الديبو المحتجز</span>
+          <span>الوديعة المحتجزة</span>
           <strong>{{ booking.hold_deposit_amount or booking.deposit_amount or 0 }}$</strong>
         </div>
         <div class="d-flex justify-content-between">
@@ -193,7 +191,7 @@
           <strong>{{ booking.online_status or '—' }}</strong>
         </div>
         <div class="d-flex justify-content-between">
-          <span>حالة الديبو</span>
+          <span>حالة الوديعة</span>
           <strong>{{ booking.deposit_status or '—' }}</strong>
         </div>
         <hr>
@@ -237,4 +235,4 @@
     });
   }
 </script>
-{% endblock %}  
+{% endblock %}

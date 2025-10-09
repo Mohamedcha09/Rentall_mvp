@@ -1,4 +1,9 @@
-# routes_bookings.py
+# app/routes_bookings.py
+# NOTE:
+# قرارات الوديعة (refund/withhold) أصبحت تُدار في app/pay_api.py عبر صلاحية user.can_manage_deposits
+# (أي Deposit Manager أو Admin). لا تغييرات وظيفية هنا؛ التدفق وإشعارات "بانتظار مراجعة الإدارة"
+# تبقى كما هي، والقرار النهائي يُنفّذ من مسارات pay_api.py.
+
 from __future__ import annotations
 from typing import Optional, Literal
 from datetime import datetime, date, timedelta
@@ -524,10 +529,10 @@ def alias_mark_returned(booking_id: int,
     db.commit()
 
     push_notification(db, bk.owner_id, "تم تعليم الإرجاع",
-                      f"الغرض '{item.title}' أُرجِع. بانتظار مراجعة الإدارة للديبو.",
+                      f"الغرض '{item.title}' أُرجِع. بانتظار مراجعة الإدارة للوديعة.",
                       f"/bookings/flow/{bk.id}", "deposit")
-    push_notification(db, bk.renter_id, "بانتظار مراجعة الديبو",
-                      f"سيتم إشعارك بعد مراجعة الإدارة لحالة الديبو لحجز '{item.title}'.",
+    push_notification(db, bk.renter_id, "بانتظار مراجعة الوديعة",
+                      f"سيتم إشعارك بعد مراجعة الإدارة لحالة الوديعة لحجز '{item.title}'.",
                       f"/bookings/flow/{bk.id}", "deposit")
     notify_admins(db, "مراجعة ديبو مطلوبة",
                   f"حجز #{bk.id} يحتاج قرار ديبو.", f"/bookings/flow/{bk.id}")
