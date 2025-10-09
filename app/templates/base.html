@@ -118,7 +118,7 @@
     {% block head %}{% endblock %}
   </head>
 
-  <!-- data-can-dm من السيرفر -->
+  <!-- نمرّر حالة مبدئية من السيرفر -->
   <body class="theme" data-theme="dark"
         data-can-dm="{{ 1 if session_user and (session_user.can_manage_deposits or session_user.is_deposit_manager or ((session_user.role or '')|lower == 'admin')) else 0 }}">
 
@@ -253,6 +253,7 @@
             <img class="side-icon" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>حجوزاتي</span>
           </a>
 
+          <!-- يظهر بالرندر العادي لو الـsession فيها الصلاحية -->
           {% if session_user.get('can_manage_deposits') %}
             <a class="side-link {% if request and request.url.path.startswith('/dm/deposits') %}is-active{% endif %}"
                href="/dm/deposits" data-tooltip="قضايا الوديعة">
@@ -327,6 +328,7 @@
         <span>صفحتي</span>
       </a>
 
+      <!-- التبويب سيظهر هنا أيضاً لو عنده الصلاحية -->
       {% if session_user and session_user.get('can_manage_deposits') %}
         <a href="/dm/deposits" class="{% if request and request.url.path.startswith('/dm/deposits') %}is-active{% endif %}">
           <i class="bi bi-shield-exclamation"></i>
@@ -390,19 +392,6 @@
         sunIcon.classList.toggle('d-none', !dark);
         moonIcon.classList.toggle('d-none', dark);
       }
-
-      // Notif panel
-      const notifOpen  = document.getElementById('notifOpen');
-      const notifClose = document.getElementById('notifClose');
-      const panel      = document.getElementById('notifPanel');
-      const body       = document.getElementById('notifBody');
-      const scrim      = document.getElementById('scrim');
-
-      function openPanel(){ panel?.classList.add('is-open'); scrim?.classList.add('is-show'); }
-      function closePanel(){ panel?.classList.remove('is-open'); scrim?.classList.remove('is-show'); }
-      notifOpen?.addEventListener('click', openPanel);
-      notifClose?.addEventListener('click', closePanel);
-      scrim?.addEventListener('click', closePanel);
     </script>
 
     <!-- Typeahead -->
@@ -422,7 +411,7 @@
   function show(){ panel.classList.remove('d-none'); }
   function esc(s){
     return String(s||"").replace(/[&<>"']/g, function(c){
-      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+      return {"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;","'":"&#39;"}[c];
     });
   }
 
@@ -500,7 +489,7 @@
 })();
     </script>
 
-    <!-- إشعارات (Polling مبسّط) -->
+    <!-- نظام الإشعارات: تحديث عدّاد الجرس فقط -->
     <script>
 (function notifSystem(){
   if (window.__notifInit) return; window.__notifInit = true;
@@ -522,26 +511,10 @@
     else{ countEl.textContent = ''; countEl.style.display = 'none'; pingEl.style.display = 'none'; }
   }
 
-  function row(title, meta, url){
-    const a = document.createElement('a');
-    a.className='notif-row'; a.href=url||'#';
-    a.innerHTML = `<div class="fw-bold">${esc(title)}</div>${meta?`<div class="k small">${esc(meta)}</div>`:''}`;
-    return a;
-  }
-  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
-
-  let prevCount = -1;
   function refreshUnread(){
     fetch('/api/unread_count')
       .then(r=>r.ok?r.json():{count:0})
-      .then(d=>{
-        const n = parseInt(d.count||0);
-        setBell(n);
-        if (n !== prevCount){
-          prevCount = n;
-          document.dispatchEvent(new CustomEvent('unread:changed', {detail:{count:n}}));
-        }
-      })
+      .then(d=>setBell(parseInt(d.count||0)))
       .catch(()=>{});
   }
   refreshUnread();
@@ -549,9 +522,10 @@
 })();
     </script>
 
-    <!-- ====== سكربت إظهار/إخفاء رابط قضايا الوديعة (بدون localStorage) ====== -->
+    <!-- ====== سكربت نهائي: إظهار/إخفاء «قضايا الوديعة» بناءً على حالة السيرفر، وفور وصول إشعار ====== -->
     <script>
 (function () {
+  // -------- DOM helpers --------
   function ensureSidebarLink(){
     const nav = document.querySelector('.sidebar__nav'); if(!nav) return;
     if (nav.querySelector('[data-nav="dm-link"]')) return;
@@ -579,68 +553,50 @@
     const el = document.querySelector('.mobile-tabbar [data-nav="dm-mobile"]'); if (el) el.remove();
   }
 
-  function showDM(){ ensureSidebarLink(); ensureMobileTab(); }
-  function hideDM(){ removeSidebarLink(); removeMobileTab(); }
-
-  // تهيئة مبدئية من السيرفر فقط
-  var canDM = (document.body.dataset.canDm === '1');
-  if (canDM) { showDM(); } else { hideDM(); }
-
-  // راقب نص الإشعار المفتوح (اختياري)
-  const notifBody = document.getElementById('notifBody');
-  if (notifBody){
-    const rxGrant  = /تم\s+منحك?\s+دور\s+متحكّم\s+الوديعة/i;
-    const rxRevoke = /تم\s+إلغاء\s+دور\s+متحكّم\s+الوديعة/i;
-
-    const onChange = () => {
-      const txt = notifBody.textContent || '';
-      if (rxGrant.test(txt))  { showDM(); }
-      if (rxRevoke.test(txt)) { hideDM(); }
-    };
-    const mo = new MutationObserver(muts=>{
-      for (const m of muts){
-        if (m.type === 'childList' || m.type === 'characterData'){ onChange(); break; }
-      }
-    });
-    mo.observe(notifBody, {childList:true, subtree:true, characterData:true});
-    onChange();
+  function showDM(){
+    try{ localStorage.setItem('dm_enabled','1'); }catch(e){}
+    ensureSidebarLink();
+    ensureMobileTab();
+  }
+  function hideDM(){
+    try{ localStorage.removeItem('dm_enabled'); }catch(e){}
+    removeSidebarLink();
+    removeMobileTab();
   }
 
-  window.showDM = showDM;
-  window.hideDM = hideDM;
-})();
-    </script>
+  function canDMFromUser(u){
+    const role = String((u && u.role) || '').toLowerCase();
+    return !!(u && (u.can_manage_deposits || u.is_deposit_manager || role === 'admin'));
+  }
 
-    <!-- سكربت مزامنة صلاحية MD من السيرفر فقط -->
-    <script>
-(function roleAutoToggle(){
-  if (window.__dmSyncInit) return; window.__dmSyncInit = true;
-
-  function syncFromMe(){
-    return fetch('/api/me', {credentials:'include'})
+  function refreshFromServer(){
+    return fetch('/api/me', {headers:{'x-na':'1'}})
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => {
-        const flag = !!(data && (data.can_manage_deposits || data.is_deposit_manager || data.canDM));
-        if (flag) { showDM(); } else { hideDM(); }
+        const u = (data && (data.user || data)) || {};
+        if (canDMFromUser(u)) showDM(); else hideDM();
       })
       .catch(()=>{});
   }
 
-  // فحص أوّلي
-  syncFromMe();
+  // تهيئة أولية من الـbody/localStorage
+  const bootCan = (document.body.dataset.canDm === '1') || (localStorage.getItem('dm_enabled') === '1');
+  if (bootCan) showDM(); else hideDM();
 
-  // عند تغيّر عدّاد الإشعارات (حدث يُطلقه notifSystem)
-  document.addEventListener('unread:changed', () => {
-    syncFromMe();
+  // عند فتح لوحة الإشعارات: فحص من السيرفر
+  document.getElementById('notifOpen')?.addEventListener('click', () => {
+    setTimeout(refreshFromServer, 300);
   });
 
-  // شبكة أمان خلال أول دقيقتين
-  let checks = 0;
-  const timer = setInterval(() => {
-    checks += 1;
-    syncFromMe();
-    if (checks >= 8) clearInterval(timer);
-  }, 15000);
+  // راقب تغيّر عدّاد الجرس (يعني وصل إشعار جديد)
+  const countEl = document.querySelector('#notifOpen .notif-count');
+  if (countEl){
+    const mo = new MutationObserver(() => { refreshFromServer(); });
+    mo.observe(countEl, {childList:true, characterData:true, subtree:true});
+  }
+
+  // فحص دوري احتياطي
+  setInterval(refreshFromServer, 30000);
 })();
     </script>
 
