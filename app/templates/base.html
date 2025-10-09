@@ -118,9 +118,10 @@
     {% block head %}{% endblock %}
   </head>
 
-  <!-- لاحظ الإضافة هنا: data-can-dm -->
+  <!-- أضفنا data-can-dm + data-user-id -->
   <body class="theme" data-theme="dark"
-        data-can-dm="{{ 1 if session_user and (session_user.can_manage_deposits or session_user.is_deposit_manager or ((session_user.role or '')|lower == 'admin')) else 0 }}">
+        data-can-dm="{{ 1 if session_user and (session_user.can_manage_deposits or session_user.is_deposit_manager or ((session_user.role or '')|lower == 'admin')) else 0 }}"
+        data-user-id="{{ session_user.id if session_user else '' }}">
 
     <div id="page-wrapper"><!-- غلاف ملء الشاشة -->
 
@@ -253,7 +254,6 @@
             <img class="side-icon" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>حجوزاتي</span>
           </a>
 
-          <!-- يظهر بالرندر العادي لو الـsession فيها الصلاحية -->
           {% if session_user.get('can_manage_deposits') %}
             <a class="side-link {% if request and request.url.path.startswith('/dm/deposits') %}is-active{% endif %}"
                href="/dm/deposits" data-tooltip="قضايا الوديعة">
@@ -328,7 +328,6 @@
         <span>صفحتي</span>
       </a>
 
-      <!-- التبويب سيظهر هنا أيضاً لو عنده الصلاحية -->
       {% if session_user and session_user.get('can_manage_deposits') %}
         <a href="/dm/deposits" class="{% if request and request.url.path.startswith('/dm/deposits') %}is-active{% endif %}">
           <i class="bi bi-shield-exclamation"></i>
@@ -393,11 +392,11 @@
         moonIcon.classList.toggle('d-none', dark);
       }
 
-      // Notif panel
+      // Notif panel open/close
       const notifOpen  = document.getElementById('notifOpen');
       const notifClose = document.getElementById('notifClose');
       const panel      = document.getElementById('notifPanel');
-      const body       = document.getElementById('notifBody');
+      const bodyEl     = document.getElementById('notifBody');
       const scrim      = document.getElementById('scrim');
 
       function openPanel(){ panel?.classList.add('is-open'); scrim?.classList.add('is-show'); }
@@ -424,7 +423,7 @@
   function show(){ panel.classList.remove('d-none'); }
   function esc(s){
     return String(s||"").replace(/[&<>"']/g, function(c){
-      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+      return {"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;","'":"&#39;"}[c];
     });
   }
 
@@ -502,17 +501,12 @@
 })();
     </script>
 
-    <!-- إشعارات (Polling مبسّط) -->
+    <!-- إشعارات (عداد الجرس فقط) -->
     <script>
 (function notifSystem(){
   if (window.__notifInit) return; window.__notifInit = true;
 
   const notifOpen  = document.getElementById('notifOpen');
-  const notifClose = document.getElementById('notifClose');
-  const panel      = document.getElementById('notifPanel');
-  const body       = document.getElementById('notifBody');
-  const scrim      = document.getElementById('scrim');
-
   let countEl = notifOpen?.querySelector('.notif-count');
   if (!countEl){ countEl = document.createElement('span'); countEl.className='notif-count'; countEl.style.display='none'; notifOpen?.appendChild(countEl); }
   let pingEl = notifOpen?.querySelector('.notif-ping');
@@ -524,27 +518,10 @@
     else{ countEl.textContent = ''; countEl.style.display = 'none'; pingEl.style.display = 'none'; }
   }
 
-  function row(title, meta, url){
-    const a = document.createElement('a');
-    a.className='notif-row'; a.href=url||'#';
-    a.innerHTML = `<div class="fw-bold">${esc(title)}</div>${meta?`<div class="k small">${esc(meta)}</div>`:''}`;
-    return a;
-  }
-  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
-
-  let prevCount = -1;
   function refreshUnread(){
     fetch('/api/unread_count')
       .then(r=>r.ok?r.json():{count:0})
-      .then(d=>{
-        const n = parseInt(d.count||0);
-        setBell(n);
-        if (n !== prevCount){
-          prevCount = n;
-          // إطلاق حدث داخلي لتنبيه سكربتات أخرى (مثل مزامنة صلاحية MD)
-          document.dispatchEvent(new CustomEvent('unread:changed', {detail:{count:n}}));
-        }
-      })
+      .then(d=>setBell(parseInt(d.count||0)))
       .catch(()=>{});
   }
   refreshUnread();
@@ -552,10 +529,14 @@
 })();
     </script>
 
-    <!-- ====== سكربت إظهار/إخفاء رابط قضايا الوديعة فورياً ====== -->
+    <!-- ====== سكربت إظهار/إخفاء رابط قضايا الوديعة فورياً (شرطي تماماً) ====== -->
     <script>
 (function () {
-  // أدوات إضافة/حذف الرابط في الشريط الجانبي وتبويب الجوال
+  // مفاتيح مرتبطة بالمستخدم الحالي
+  const USER_ID = (document.body.dataset.userId || '').toString();
+  const DM_KEY  = USER_ID ? ('dm_enabled_user_' + USER_ID) : 'dm_enabled_user';
+
+  // دوال تعديل الـDOM
   function ensureSidebarLink(){
     const nav = document.querySelector('.sidebar__nav'); if(!nav) return;
     if (nav.querySelector('[data-nav="dm-link"]')) return;
@@ -583,24 +564,33 @@
     const el = document.querySelector('.mobile-tabbar [data-nav="dm-mobile"]'); if (el) el.remove();
   }
 
+  // حفظ/تطبيق الحالة للمستخدم الحالي فقط
   function showDM(){
-    try{ localStorage.setItem('dm_enabled','1'); }catch(e){}
+    try { localStorage.setItem(DM_KEY, '1'); } catch(e){}
     ensureSidebarLink();
     ensureMobileTab();
   }
   function hideDM(){
-    try{ localStorage.removeItem('dm_enabled'); }catch(e){}
+    try {
+      localStorage.removeItem(DM_KEY);
+      localStorage.removeItem('dm_enabled'); // تنظيف مفاتيح قديمة إن وجدت
+    } catch(e){}
     removeSidebarLink();
     removeMobileTab();
   }
 
-  // تهيئة مبدئية: من body data أو من localStorage
-  var canDM = (document.body.dataset.canDm === '1') || (localStorage.getItem('dm_enabled') === '1');
-  if (canDM) showDM();
+  // 1) تهيئة صارمة عند التحميل
+  const sessionCanDM = (document.body.dataset.canDm === '1');
+  if (sessionCanDM) {
+    showDM();
+  } else {
+    hideDM(); // يمنع ظهورها لمن لا يملك MD حتى لو كان هناك بقايا localStorage
+  }
 
-  // راقب لوحة الإشعارات: عند ظهور نص منح/إلغاء MD عدّل الرابط فوراً
+  // 2) راقب لوحة الإشعارات: منح/إلغاء MD
   const notifBody = document.getElementById('notifBody');
   if (notifBody){
+    // عدّل النصوص إذا كانت صياغة إشعارك مختلفة
     const rxGrant  = /تم\s+منحك?\s+دور\s+متحكّم\s+الوديعة/i;
     const rxRevoke = /تم\s+إلغاء\s+دور\s+متحكّم\s+الوديعة/i;
 
@@ -618,59 +608,6 @@
     mo.observe(notifBody, {childList:true, subtree:true, characterData:true});
     onChange();
   }
-
-  // كشف الدوال عالمياً ليستعملها سكربت آخر إن لزم
-  window.showDM = window.showDM || showDM;
-  window.hideDM = window.hideDM || hideDM;
-})();
-    </script>
-
-    <!-- سكربت مزامنة صلاحية MD مع تغيّر عدّاد الإشعارات + فحص من /api/me -->
-    <script>
-(function roleAutoToggle(){
-  if (window.__dmSyncInit) return; window.__dmSyncInit = true;
-
-  const rxGrant  = /تم\s+منحك?\s+دور\s+متحكّم\s+الوديعة/i;
-  const rxRevoke = /تم\s+إلغاء\s+دور\s+متحكّم\s+الوديعة/i;
-
-  function trySyncFromMe(){
-    return fetch('/api/me', {credentials:'include'})
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(data => {
-        const flag = !!(data && (data.can_manage_deposits || data.is_deposit_manager || data.canDM));
-        if (flag) { showDM(); } else { hideDM(); }
-      })
-      .catch(()=>{ /* صامت */ });
-  }
-
-  function trySyncFromLatestNotif(){
-    return fetch('/api/notifications/latest', {credentials:'include'})
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(d => {
-        const txt = (d && (d.text || d.message || '')) || '';
-        if (rxGrant.test(txt))  { showDM(); }
-        if (rxRevoke.test(txt)) { hideDM(); }
-      })
-      .catch(()=>{ /* تجاهل إذا غير متوفر */ });
-  }
-
-  // فحص أوّلي
-  trySyncFromMe();
-
-  // عند تغيّر عدّاد الإشعارات (وصول إشعار جديد غالبًا)
-  document.addEventListener('unread:changed', () => {
-    trySyncFromLatestNotif().then(() => {
-      trySyncFromMe();
-    });
-  });
-
-  // شبكة أمان: فحص خفيف خلال أول دقيقتين
-  let checks = 0;
-  const timer = setInterval(() => {
-    checks += 1;
-    trySyncFromMe();
-    if (checks >= 8) clearInterval(timer); // ~2 دقيقة
-  }, 15000);
 })();
     </script>
 
