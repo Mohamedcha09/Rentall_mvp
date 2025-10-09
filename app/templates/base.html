@@ -117,7 +117,10 @@
 
     {% block head %}{% endblock %}
   </head>
-  <body class="theme" data-theme="dark">
+
+  <!-- لاحظ الإضافة هنا: data-can-dm -->
+  <body class="theme" data-theme="dark"
+        data-can-dm="{{ 1 if session_user and (session_user.can_manage_deposits or session_user.is_deposit_manager or ((session_user.role or '')|lower == 'admin')) else 0 }}">
 
     <div id="page-wrapper"><!-- غلاف ملء الشاشة -->
 
@@ -250,7 +253,7 @@
             <img class="side-icon" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>حجوزاتي</span>
           </a>
 
-          <!-- === الجديد: قضايا الوديعة (يظهر فقط لمدير الوديعة/الأدمين) === -->
+          <!-- يظهر بالرندر العادي لو الـsession فيها الصلاحية -->
           {% if session_user.get('can_manage_deposits') %}
             <a class="side-link {% if request and request.url.path.startswith('/dm/deposits') %}is-active{% endif %}"
                href="/dm/deposits" data-tooltip="قضايا الوديعة">
@@ -325,7 +328,7 @@
         <span>صفحتي</span>
       </a>
 
-      <!-- === الجديد: تبويب الجوال لقضايا الوديعة (اختياري) === -->
+      <!-- التبويب سيظهر هنا أيضاً لو عنده الصلاحية -->
       {% if session_user and session_user.get('can_manage_deposits') %}
         <a href="/dm/deposits" class="{% if request and request.url.path.startswith('/dm/deposits') %}is-active{% endif %}">
           <i class="bi bi-shield-exclamation"></i>
@@ -537,121 +540,75 @@
   }
   refreshUnread();
   setInterval(refreshUnread, 30*1000);
-
-  // polling للإشعارات المخصّصة (اختياري)
-  let since = 0;
-  function poll(){
-    fetch('/api/notifications/poll?since='+since, {headers:{'x-na':'1'}})
-      .then(r=>{ if (r.status===404) throw new Error('noapi'); return r.json(); })
-      .then(data=>{
-        if (!data) return;
-        if (data.now) since = data.now;
-        const items = Array.isArray(data.items)?data.items:[];
-        if (items.length){
-          if (body.firstElementChild && body.firstElementChild.classList.contains('text-muted')) body.innerHTML='';
-          const frag = document.createDocumentFragment();
-          items.forEach(n=>{ frag.append(row(n.title||'إشعار', n.body||'', n.url)); });
-          body.prepend(frag);
-          setBell((parseInt(countEl.textContent||'0')||0) + items.length);
-        }
-      })
-      .catch(()=>{});
-  }
-  setInterval(poll, 20*1000);
-  poll();
 })();
     </script>
 
-    <!-- ===== الإضافة الجديدة: إظهار "قضايا الوديعة" فور منح MD عبر الإشعار ===== -->
+    <!-- ====== سكربت إظهار/إخفاء رابط قضايا الوديعة فورياً ====== -->
     <script>
-(function dmLiveLink(){
-  if (window.__dmLinkInit) return; window.__dmLinkInit = true;
-
-  function ensureDMSidebarLink(){
-    const nav = document.querySelector('.sidebar__nav');
-    if (!nav) return;
-    if (nav.querySelector('a[data-dm-link="1"]') || nav.querySelector('a[href="/dm/deposits"]')) return;
-
-    const afterNode =
-      nav.querySelector('a[href^="/bookings"]') ||
-      nav.querySelector('a[href="/payout/settings"]') ||
-      nav.querySelector('a.side-link:last-of-type');
-
+(function () {
+  // أدوات إضافة/حذف الرابط في الشريط الجانبي وتبويب الجوال
+  function ensureSidebarLink(){
+    const nav = document.querySelector('.sidebar__nav'); if(!nav) return;
+    if (nav.querySelector('[data-nav="dm-link"]')) return;
     const a = document.createElement('a');
+    a.setAttribute('data-nav','dm-link');
     a.className = 'side-link';
-    a.setAttribute('data-dm-link','1');
     a.href = '/dm/deposits';
     a.setAttribute('data-tooltip','قضايا الوديعة');
     a.innerHTML = '<i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>';
-
-    if (afterNode && afterNode.parentNode === nav) {
-      nav.insertBefore(a, afterNode.nextSibling);
-    } else {
-      nav.appendChild(a);
-    }
+    nav.appendChild(a);
   }
-
-  function ensureDMMobileTab(){
-    const bar = document.querySelector('.mobile-tabbar');
-    if (!bar) return;
-    if (bar.querySelector('a[data-dm-link="1"]') || bar.querySelector('a[href="/dm/deposits"]')) return;
-
+  function removeSidebarLink(){
+    const el = document.querySelector('.sidebar__nav [data-nav="dm-link"]'); if (el) el.remove();
+  }
+  function ensureMobileTab(){
+    const m = document.querySelector('.mobile-tabbar'); if(!m) return;
+    if (m.querySelector('[data-nav="dm-mobile"]')) return;
     const a = document.createElement('a');
-    a.setAttribute('data-dm-link','1');
+    a.setAttribute('data-nav','dm-mobile');
     a.href = '/dm/deposits';
     a.innerHTML = '<i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>';
-
-    bar.appendChild(a);
+    m.appendChild(a);
+  }
+  function removeMobileTab(){
+    const el = document.querySelector('.mobile-tabbar [data-nav="dm-mobile"]'); if (el) el.remove();
   }
 
-  function showDMLinks(){
-    ensureDMSidebarLink();
-    ensureDMMobileTab();
-    try { localStorage.setItem('dm_granted','1'); } catch(e){}
+  function showDM(){
+    try{ localStorage.setItem('dm_enabled','1'); }catch(e){}
+    ensureSidebarLink();
+    ensureMobileTab();
   }
-  function hideDMLinks(){
-    document.querySelectorAll('a[data-dm-link="1"]').forEach(el => el.remove());
-    try { localStorage.removeItem('dm_granted'); } catch(e){}
+  function hideDM(){
+    try{ localStorage.removeItem('dm_enabled'); }catch(e){}
+    removeSidebarLink();
+    removeMobileTab();
   }
 
-  try {
-    if (localStorage.getItem('dm_granted') === '1') {
-      showDMLinks();
-    }
-  } catch(e){}
+  // تهيئة مبدئية: من body data أو من localStorage
+  var canDM = (document.body.dataset.canDm === '1') || (localStorage.getItem('dm_enabled') === '1');
+  if (canDM) showDM();
 
-  const _fetch = window.fetch;
-  window.fetch = function(input, init){
-    const p = _fetch.apply(this, arguments);
-    try{
-      const url = (typeof input === 'string') ? input : (input && input.url) || '';
-      if (/\/api\/notifications\/poll(\?|$)/.test(url)) {
-        p.then(async (res) => {
-          try {
-            const clone = res.clone();
-            const data = await clone.json().catch(()=>null);
-            if (data && Array.isArray(data.items)) {
-              const granted = data.items.some(n =>
-                (n && (
-                  (n.kind && String(n.kind).toLowerCase() === 'role') ||
-                  /متحكّم\s*الوديعة|قضايا\s*الوديعة|الوديعة/i.test(String(n.title||'') + ' ' + String(n.body||''))
-                ))
-              );
-              const revoked = data.items.some(n =>
-                (n && (
-                  /تم إلغاء دور متحكّم الوديعة|إلغاء\s*الوديعة/i.test(String(n.title||'') + ' ' + String(n.body||''))
-                ))
-              );
+  // راقب لوحة الإشعارات: عند ظهور نص منح/إلغاء MD عدّل الرابط فوراً
+  const notifBody = document.getElementById('notifBody');
+  if (notifBody){
+    const rxGrant  = /تم\s+منحك?\s+دور\s+متحكّم\s+الوديعة/i;
+    const rxRevoke = /تم\s+إلغاء\s+دور\s+متحكّم\s+الوديعة/i;
 
-              if (granted) showDMLinks();
-              if (revoked) hideDMLinks();
-            }
-          } catch(e){}
-        }).catch(()=>{});
+    const onChange = () => {
+      const txt = notifBody.textContent || '';
+      if (rxGrant.test(txt))  { showDM(); }
+      if (rxRevoke.test(txt)) { hideDM(); }
+    };
+
+    const mo = new MutationObserver(function(muts){
+      for (const m of muts){
+        if (m.type === 'childList' || m.type === 'characterData'){ onChange(); break; }
       }
-    }catch(e){}
-    return p;
-  };
+    });
+    mo.observe(notifBody, {childList:true, subtree:true, characterData:true});
+    onChange();
+  }
 })();
     </script>
 
