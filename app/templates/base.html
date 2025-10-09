@@ -118,10 +118,9 @@
     {% block head %}{% endblock %}
   </head>
 
-  <!-- أضفنا data-can-dm + data-user-id -->
+  <!-- data-can-dm من السيرفر -->
   <body class="theme" data-theme="dark"
-        data-can-dm="{{ 1 if session_user and (session_user.can_manage_deposits or session_user.is_deposit_manager or ((session_user.role or '')|lower == 'admin')) else 0 }}"
-        data-user-id="{{ session_user.id if session_user else '' }}">
+        data-can-dm="{{ 1 if session_user and (session_user.can_manage_deposits or session_user.is_deposit_manager or ((session_user.role or '')|lower == 'admin')) else 0 }}">
 
     <div id="page-wrapper"><!-- غلاف ملء الشاشة -->
 
@@ -392,11 +391,11 @@
         moonIcon.classList.toggle('d-none', dark);
       }
 
-      // Notif panel open/close
+      // Notif panel
       const notifOpen  = document.getElementById('notifOpen');
       const notifClose = document.getElementById('notifClose');
       const panel      = document.getElementById('notifPanel');
-      const bodyEl     = document.getElementById('notifBody');
+      const body       = document.getElementById('notifBody');
       const scrim      = document.getElementById('scrim');
 
       function openPanel(){ panel?.classList.add('is-open'); scrim?.classList.add('is-show'); }
@@ -423,7 +422,7 @@
   function show(){ panel.classList.remove('d-none'); }
   function esc(s){
     return String(s||"").replace(/[&<>"']/g, function(c){
-      return {"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
     });
   }
 
@@ -501,12 +500,17 @@
 })();
     </script>
 
-    <!-- إشعارات (عداد الجرس فقط) -->
+    <!-- إشعارات (Polling مبسّط) -->
     <script>
 (function notifSystem(){
   if (window.__notifInit) return; window.__notifInit = true;
 
   const notifOpen  = document.getElementById('notifOpen');
+  const notifClose = document.getElementById('notifClose');
+  const panel      = document.getElementById('notifPanel');
+  const body       = document.getElementById('notifBody');
+  const scrim      = document.getElementById('scrim');
+
   let countEl = notifOpen?.querySelector('.notif-count');
   if (!countEl){ countEl = document.createElement('span'); countEl.className='notif-count'; countEl.style.display='none'; notifOpen?.appendChild(countEl); }
   let pingEl = notifOpen?.querySelector('.notif-ping');
@@ -518,10 +522,26 @@
     else{ countEl.textContent = ''; countEl.style.display = 'none'; pingEl.style.display = 'none'; }
   }
 
+  function row(title, meta, url){
+    const a = document.createElement('a');
+    a.className='notif-row'; a.href=url||'#';
+    a.innerHTML = `<div class="fw-bold">${esc(title)}</div>${meta?`<div class="k small">${esc(meta)}</div>`:''}`;
+    return a;
+  }
+  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+  let prevCount = -1;
   function refreshUnread(){
     fetch('/api/unread_count')
       .then(r=>r.ok?r.json():{count:0})
-      .then(d=>setBell(parseInt(d.count||0)))
+      .then(d=>{
+        const n = parseInt(d.count||0);
+        setBell(n);
+        if (n !== prevCount){
+          prevCount = n;
+          document.dispatchEvent(new CustomEvent('unread:changed', {detail:{count:n}}));
+        }
+      })
       .catch(()=>{});
   }
   refreshUnread();
@@ -529,14 +549,9 @@
 })();
     </script>
 
-    <!-- ====== سكربت إظهار/إخفاء رابط قضايا الوديعة فورياً (شرطي تماماً) ====== -->
+    <!-- ====== سكربت إظهار/إخفاء رابط قضايا الوديعة (بدون localStorage) ====== -->
     <script>
 (function () {
-  // مفاتيح مرتبطة بالمستخدم الحالي
-  const USER_ID = (document.body.dataset.userId || '').toString();
-  const DM_KEY  = USER_ID ? ('dm_enabled_user_' + USER_ID) : 'dm_enabled_user';
-
-  // دوال تعديل الـDOM
   function ensureSidebarLink(){
     const nav = document.querySelector('.sidebar__nav'); if(!nav) return;
     if (nav.querySelector('[data-nav="dm-link"]')) return;
@@ -564,33 +579,16 @@
     const el = document.querySelector('.mobile-tabbar [data-nav="dm-mobile"]'); if (el) el.remove();
   }
 
-  // حفظ/تطبيق الحالة للمستخدم الحالي فقط
-  function showDM(){
-    try { localStorage.setItem(DM_KEY, '1'); } catch(e){}
-    ensureSidebarLink();
-    ensureMobileTab();
-  }
-  function hideDM(){
-    try {
-      localStorage.removeItem(DM_KEY);
-      localStorage.removeItem('dm_enabled'); // تنظيف مفاتيح قديمة إن وجدت
-    } catch(e){}
-    removeSidebarLink();
-    removeMobileTab();
-  }
+  function showDM(){ ensureSidebarLink(); ensureMobileTab(); }
+  function hideDM(){ removeSidebarLink(); removeMobileTab(); }
 
-  // 1) تهيئة صارمة عند التحميل
-  const sessionCanDM = (document.body.dataset.canDm === '1');
-  if (sessionCanDM) {
-    showDM();
-  } else {
-    hideDM(); // يمنع ظهورها لمن لا يملك MD حتى لو كان هناك بقايا localStorage
-  }
+  // تهيئة مبدئية من السيرفر فقط
+  var canDM = (document.body.dataset.canDm === '1');
+  if (canDM) { showDM(); } else { hideDM(); }
 
-  // 2) راقب لوحة الإشعارات: منح/إلغاء MD
+  // راقب نص الإشعار المفتوح (اختياري)
   const notifBody = document.getElementById('notifBody');
   if (notifBody){
-    // عدّل النصوص إذا كانت صياغة إشعارك مختلفة
     const rxGrant  = /تم\s+منحك?\s+دور\s+متحكّم\s+الوديعة/i;
     const rxRevoke = /تم\s+إلغاء\s+دور\s+متحكّم\s+الوديعة/i;
 
@@ -599,8 +597,7 @@
       if (rxGrant.test(txt))  { showDM(); }
       if (rxRevoke.test(txt)) { hideDM(); }
     };
-
-    const mo = new MutationObserver(function(muts){
+    const mo = new MutationObserver(muts=>{
       for (const m of muts){
         if (m.type === 'childList' || m.type === 'characterData'){ onChange(); break; }
       }
@@ -608,6 +605,42 @@
     mo.observe(notifBody, {childList:true, subtree:true, characterData:true});
     onChange();
   }
+
+  window.showDM = showDM;
+  window.hideDM = hideDM;
+})();
+    </script>
+
+    <!-- سكربت مزامنة صلاحية MD من السيرفر فقط -->
+    <script>
+(function roleAutoToggle(){
+  if (window.__dmSyncInit) return; window.__dmSyncInit = true;
+
+  function syncFromMe(){
+    return fetch('/api/me', {credentials:'include'})
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        const flag = !!(data && (data.can_manage_deposits || data.is_deposit_manager || data.canDM));
+        if (flag) { showDM(); } else { hideDM(); }
+      })
+      .catch(()=>{});
+  }
+
+  // فحص أوّلي
+  syncFromMe();
+
+  // عند تغيّر عدّاد الإشعارات (حدث يُطلقه notifSystem)
+  document.addEventListener('unread:changed', () => {
+    syncFromMe();
+  });
+
+  // شبكة أمان خلال أول دقيقتين
+  let checks = 0;
+  const timer = setInterval(() => {
+    checks += 1;
+    syncFromMe();
+    if (checks >= 8) clearInterval(timer);
+  }, 15000);
 })();
     </script>
 
