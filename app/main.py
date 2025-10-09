@@ -26,7 +26,7 @@ from .freeze import router as freeze_router
 from .payments import router as payments_router
 from .checkout import router as checkout_router
 from .pay_api import router as pay_api_router
-from .payout_connect import router as payout_connect_router   # ✅ هذا الصحيح
+from .payout_connect import router as payout_connect_router   # ✅ الصحيح
 from .webhooks import router as webhooks_router
 from .disputes import router as disputes_router
 from .routes_search import router as search_router
@@ -36,10 +36,7 @@ from .routes_bookings import router as bookings_router
 from .notifications import router as notifs_router
 from .notifications_api import router as notifications_router
 from .split_test import router as split_test_router
-from .routes_favorites import router as favorites_router
-
-# ✅ صفحة/واجهات متحكّم الوديعة (طابور القضايا)
-from .deposit_manager import router as deposit_manager_router
+from .routes_favorites import router as favorites_router  # المفضلات
 
 load_dotenv()
 
@@ -115,7 +112,7 @@ app.include_router(payments_router)
 app.include_router(checkout_router)
 app.include_router(pay_api_router)
 app.include_router(split_test_router)
-app.include_router(payout_connect_router)  # Stripe Connect الصحيح
+app.include_router(payout_connect_router)   # ✅ يدعم GET/POST (Connect)
 app.include_router(webhooks_router)
 app.include_router(disputes_router)
 app.include_router(search_router)
@@ -125,9 +122,6 @@ app.include_router(bookings_router)
 app.include_router(favorites_router)
 app.include_router(notifs_router)
 app.include_router(notifications_router)
-
-# ✅ واجهات متحكّم الوديعة
-app.include_router(deposit_manager_router)
 
 def _cat_code(cat) -> str:
     if isinstance(cat, dict):
@@ -244,9 +238,9 @@ def api_unread_count(request: Request, db: Session = Depends(get_db)):
         return JSONResponse({"count": 0})
     return JSONResponse({"count": unread_count(u["id"], db)})
 
+# ============ ميدلوير مزامنة الجلسة ============
 @app.middleware("http")
 async def sync_user_flags(request: Request, call_next):
-    """مزامنة الأعلام من قاعدة البيانات إلى جلسة الواجهة."""
     try:
         if hasattr(request, "session"):
             sess_user = request.session.get("user")
@@ -256,14 +250,20 @@ async def sync_user_flags(request: Request, call_next):
                 try:
                     db_user = db.query(User).filter(User.id == sess_user["id"]).first()
                     if db_user:
-                        # حقول عامة
+                        # أساسيات
                         sess_user["is_verified"] = bool(getattr(db_user, "is_verified", False))
                         sess_user["role"] = getattr(db_user, "role", sess_user.get("role"))
                         sess_user["status"] = getattr(db_user, "status", sess_user.get("status"))
                         sess_user["payouts_enabled"] = bool(getattr(db_user, "payouts_enabled", False))
-                        # ✅ متحكّم الوديعة
+
+                        # ✅ مهم: متحكّم الوديعة (DM)
                         sess_user["is_deposit_manager"] = bool(getattr(db_user, "is_deposit_manager", False))
-                        # شارات
+                        sess_user["can_manage_deposits"] = bool(
+                            sess_user.get("is_deposit_manager")
+                            or (str(sess_user.get("role","")).lower() == "admin")
+                        )
+
+                        # شارات اختيارية
                         for key in [
                             "badge_admin","badge_new_yellow","badge_pro_green","badge_pro_gold",
                             "badge_purple_trust","badge_renter_green","badge_orange_stars"
@@ -272,6 +272,7 @@ async def sync_user_flags(request: Request, call_next):
                                 sess_user[key] = bool(getattr(db_user, key))
                             except Exception:
                                 pass
+
                         request.session["user"] = sess_user
                 except Exception:
                     pass

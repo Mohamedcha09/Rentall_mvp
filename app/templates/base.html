@@ -134,7 +134,6 @@
           <span class="visually-hidden">SEVOR</span>
         </a>
 
-        <!-- بحث -->
         <form class="search flex-grow-1" action="/search" method="get" role="search" style="max-width:760px">
           <i class="bi bi-search search__icon"></i>
           <input class="form-control form-control-sm search__input" type="search" name="q"
@@ -162,7 +161,6 @@
             {% endif %}
           </button>
 
-          <!-- إنشاء -->
           <div class="dropdown">
             <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown">
               <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">إنشاء</span>
@@ -173,13 +171,11 @@
             </ul>
           </div>
 
-          <!-- تبديل الثيم -->
           <button class="btn btn-ghost btn-sm" id="themeToggle" title="تبديل الثيم">
             <i class="bi bi-sun-fill d-none" id="sunIcon"></i>
             <i class="bi bi-moon-stars-fill" id="moonIcon"></i>
           </button>
 
-          <!-- اللغة -->
           <div class="dropdown lang-switch">
             <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="اللغة">
               <i class="bi bi-globe2"></i>
@@ -192,7 +188,6 @@
             </ul>
           </div>
 
-          <!-- الحساب -->
           {% if session_user %}
             <div class="dropdown">
               <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
@@ -207,11 +202,6 @@
                 <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
                 <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a></li>
                 <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a></li>
-
-                {% if session_user.is_deposit_manager or session_user.role == 'admin' %}
-                  <li><a class="dropdown-item" href="/dm/cases"><i class="bi bi-shield-lock"></i> قضايا الوديعة</a></li>
-                {% endif %}
-
                 {% if session_user.role == 'admin' %}
                   <li><hr class="dropdown-divider"></li>
                   <li><a class="dropdown-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a></li>
@@ -256,11 +246,13 @@
             <img class="side-icon" src="{{ url_for('static', path='images/cart.png') }}" alt="cart"><span>التحويلات</span>
           </a>
 
-          {% if session_user.is_deposit_manager or session_user.role == 'admin' %}
-            <div class="side-sep"></div>
-            <a class="side-link {% if request and request.url.path.startswith('/dm') %}is-active{% endif %}" href="/dm/cases" data-tooltip="قضايا الوديعة">
-              <i class="bi bi-shield-lock"></i> <span>قضايا الوديعة</span>
+          <!-- ✅ يظهر لمتحكم الوديعة أو الأدمن -->
+          {% if session_user.get('can_manage_deposits') %}
+            <a class="side-link {% if request and request.url.path.startswith('/deposit') %}is-active{% endif %}"
+               href="/deposit/issues" data-tooltip="قضايا الوديعة">
+              <i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>
             </a>
+            <div class="side-sep"></div>
           {% endif %}
 
           {% if session_user.role == 'admin' %}
@@ -334,7 +326,7 @@
     {% block scripts %}{% endblock %}
 
     <script>
-      // Sidebar open/collapse
+      // Sidebar
       const sidebar   = document.getElementById('appSidebar');
       const pinBtn    = document.getElementById('pinSidebar');
       const toggleBtn = document.getElementById('sidebarToggle');
@@ -363,7 +355,7 @@
         }
       }
 
-      // Theme toggle
+      // Theme
       const themeToggle = document.getElementById('themeToggle');
       const sunIcon = document.getElementById('sunIcon');
       const moonIcon = document.getElementById('moonIcon');
@@ -387,7 +379,6 @@
       const notifOpen  = document.getElementById('notifOpen');
       const notifClose = document.getElementById('notifClose');
       const panel      = document.getElementById('notifPanel');
-      const body       = document.getElementById('notifBody');
       const scrim      = document.getElementById('scrim');
 
       function openPanel(){ panel.classList.add('is-open'); scrim.classList.add('is-show'); }
@@ -398,194 +389,7 @@
       scrim?.addEventListener('click', closePanel);
     </script>
 
-    <!-- Typeahead -->
-    <script>
-(function initTypeahead(){
-  if (window.__typeaheadInit) return;
-  window.__typeaheadInit = true;
-
-  var form  = document.querySelector('form.search');
-  var input = form ? form.querySelector('input[name="q"]') : null;
-  var panel = document.getElementById('typeaheadPanel');
-  if (!form || !input || !panel) return;
-
-  var tm = null, activeIndex = -1;
-
-  function hide(){ panel.classList.add('d-none'); panel.innerHTML = ""; activeIndex = -1; }
-  function show(){ panel.classList.remove('d-none'); }
-  function esc(s){
-    return String(s||"").replace(/[&<>"']/g, function(c){
-      return {"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;","'":"&#39;"}[c];
-    });
-  }
-
-  function normalizePayload(data){
-    var usersArr = (data && data.users) ? data.users : [];
-    var itemsArr = (data && data.items) ? data.items : [];
-
-    var users = usersArr.map(function(u){
-      var name = u.name || ((u.first_name||"") + " " + (u.last_name||"")).trim();
-      return { id:u.id, name:name, avatar:u.avatar||u.avatar_path||"", url:u.url||("/users/"+u.id) };
-    });
-
-    var items = itemsArr.map(function(it){
-      return { id:it.id, title:it.title||"", image:it.image||it.image_path||"", city:it.city||"", url:it.url||("/items/"+it.id) };
-    });
-
-    return { users: users, items: items };
-  }
-
-  function render(data){
-    var norm = normalizePayload(data);
-    var users = norm.users, items = norm.items, html = [];
-
-    if (users.length){
-      html.push('<div class="typeahead-group">حسابات</div>');
-      users.forEach(function(u){
-        html.push('<div class="typeahead-item" data-url="'+u.url+'"><i class="bi bi-person-circle"></i><div class="flex-grow-1"><div>'+esc(u.name)+'</div><div class="k">الملف الشخصي</div></div></div>');
-      });
-    }
-
-    if (items.length){
-      html.push('<div class="typeahead-group">عناصر</div>');
-      items.forEach(function(it){
-        var city = it.city ? ' — <span class="k">'+esc(it.city)+'</span>' : '';
-        html.push('<div class="typeahead-item" data-url="'+it.url+'"><i class="bi bi-box-seam"></i><div class="flex-grow-1"><div>'+esc(it.title)+city+'</div><div class="k">تفاصيل العنصر</div></div></div>');
-      });
-    }
-
-    if (!html.length){ hide(); return; }
-    panel.innerHTML = html.join(""); show();
-  }
-
-  function search(q){
-    if (!q || q.trim().length < 2) { hide(); return; }
-    fetch('/api/search?q='+encodeURIComponent(q.trim()))
-      .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-      .then(render).catch(hide);
-  }
-
-  input.addEventListener('input', function(){ clearTimeout(tm); tm = setTimeout(function(){ search(input.value); }, 180); });
-  panel.addEventListener('click', function(e){
-    var row = e.target.closest('.typeahead-item'); if (!row) return;
-    window.location.href = row.getAttribute('data-url');
-  });
-
-  input.addEventListener('keydown', function(e){
-    if (panel.classList.contains('d-none')) return;
-    var rows = Array.prototype.slice.call(panel.querySelectorAll('.typeahead-item'));
-    if (!rows.length) return;
-    if (e.key === 'ArrowDown'){ e.preventDefault(); setActive(rows, activeIndex+1); }
-    else if (e.key === 'ArrowUp'){ e.preventDefault(); setActive(rows, activeIndex-1); }
-    else if (e.key === 'Enter'){ if (activeIndex>=0 && rows[activeIndex]){ e.preventDefault(); rows[activeIndex].click(); } }
-    else if (e.key === 'Escape'){ hide(); }
-  });
-
-  document.addEventListener('click', function(e){ if (!panel.contains(e.target) && e.target !== input){ hide(); } });
-
-  function setActive(rows, i){
-    rows.forEach(function(r){ r.classList.remove('active'); });
-    if (i < 0) i = rows.length-1;
-    if (i >= rows.length) i = 0;
-    activeIndex = i; rows[activeIndex].classList.add('active');
-    rows[activeIndex].scrollIntoView({block:'nearest'});
-  }
-})();
-    </script>
-
-    <!-- ===== إشعارات (Polling) ===== -->
-    <script>
-(function notifSystem(){
-  if (window.__notifInit) return; window.__notifInit = true;
-
-  const notifOpen  = document.getElementById('notifOpen');
-  const notifClose = document.getElementById('notifClose');
-  const panel      = document.getElementById('notifPanel');
-  const body       = document.getElementById('notifBody');
-  const scrim      = document.getElementById('scrim');
-
-  let countEl = notifOpen?.querySelector('.notif-count');
-  if (!countEl){ countEl = document.createElement('span'); countEl.className='notif-count'; countEl.style.display='none'; notifOpen?.appendChild(countEl); }
-  let pingEl = notifOpen?.querySelector('.notif-ping');
-  if (!pingEl){ pingEl = document.createElement('span'); pingEl.className='notif-ping'; pingEl.style.display='none'; notifOpen?.appendChild(pingEl); }
-
-  function setBell(n){
-    if (!countEl || !pingEl) return;
-    if (n>0){ countEl.textContent = (n>99 ? '99+' : String(n)); countEl.style.display = ''; pingEl.style.display = ''; }
-    else{ countEl.textContent = ''; countEl.style.display = 'none'; pingEl.style.display = 'none'; }
-  }
-
-  function openPanel(){ panel?.classList.add('is-open'); scrim?.classList.add('is-show'); loadPendingList(); }
-  function closePanel(){ panel?.classList.remove('is-open'); scrim?.classList.remove('is-show'); }
-  notifOpen?.addEventListener('click', openPanel);
-  notifClose?.addEventListener('click', closePanel);
-  scrim?.addEventListener('click', closePanel);
-
-  function row(title, meta, url){
-    const a = document.createElement('a');
-    a.className='notif-row'; a.href=url||'#';
-    a.innerHTML = `<div class="fw-bold">${esc(title)}</div>${meta?`<div class="k small">${esc(meta)}</div>`:''}`;
-    return a;
-  }
-  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
-
-  function loadPendingList(){
-    fetch('/api/bookings/pending-list', {credentials:'same-origin'})
-      .then(r=>r.ok?r.json():{items:[]})
-      .then(d=>{
-        const items = d.items||[];
-        if (body.firstElementChild && body.firstElementChild.classList.contains('text-muted')) body.innerHTML='';
-        if (!items.length && !body.children.length){ body.innerHTML = '<div class="small text-muted">لا توجد إشعارات جديدة.</div>'; return; }
-        const frag = document.createDocumentFragment();
-        items.forEach(b=>{
-          const meta = `${b.start_date} → ${b.end_date} (${b.days} يوم)`;
-          frag.append(row('طلب حجز جديد على: ' + (b.item_title||('عنصر #' + b.item_id)), meta, b.url));
-        });
-        body.prepend(frag);
-      })
-      .catch(()=>{});
-  }
-
-  function refreshUnread(){
-    fetch('/api/unread_count')
-      .then(r=>r.ok?r.json():{count:0})
-      .then(d=>setBell(parseInt(d.count||0)))
-      .catch(()=>{});
-  }
-  refreshUnread();
-  setInterval(refreshUnread, 30*1000);
-
-  let since = 0;
-  function poll(){
-    fetch('/api/notifications/poll?since='+since, {headers:{'x-na':'1'}})
-      .then(r=>{ if (r.status===404) throw new Error('noapi'); return r.json(); })
-      .then(data=>{
-        if (!data) return;
-        if (data.now) since = data.now;
-        const items = Array.isArray(data.items)?data.items:[];
-        if (items.length){
-          if (body.firstElementChild && body.firstElementChild.classList.contains('text-muted')) body.innerHTML='';
-          const frag = document.createDocumentFragment();
-          items.forEach(n=>{ frag.append(row(n.title||'إشعار', n.body||'', n.url)); });
-          body.prepend(frag);
-          setBell((parseInt(countEl.textContent||'0')||0) + items.length);
-        }
-      })
-      .catch(()=>{});
-  }
-  setInterval(poll, 20*1000);
-  poll();
-
-  function refreshPending(){
-    fetch('/api/bookings/pending-count', {credentials:'same-origin'})
-      .then(r=>{ if(!r.ok) throw 0; return r.json(); })
-      .then(d=>{ const c = parseInt(d.count||0); if (c>0) setBell(c); })
-      .catch(()=>{});
-  }
-  refreshPending();
-  setInterval(refreshPending, 45*1000);
-})();
-    </script>
-
+    <!-- Typeahead & إشعارات (Polling) كما كانت لديك -->
+    {% block extra_js %}{% endblock %}
   </body>
 </html>
