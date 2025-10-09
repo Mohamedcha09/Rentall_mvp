@@ -1,4 +1,3 @@
-# app/admin.py
 from datetime import datetime
 from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import RedirectResponse
@@ -48,13 +47,6 @@ def _refresh_session_user_if_self(request: Request, user: User) -> None:
     sess["role"] = user.role
     sess["status"] = user.status
     sess["is_verified"] = bool(user.is_verified)
-
-    # (NEW) ضمِّن علم متحكّم الوديعة في الجلسة
-    try:
-        sess["is_deposit_manager"] = bool(getattr(user, "is_deposit_manager", False))
-    except Exception:
-        pass
-
     # إن كانت أعمدة الشارات موجودة سيتم قراءتها (وإلا ستُهمل تلقائيًا)
     for k in [
         "badge_admin", "badge_new_yellow", "badge_pro_green", "badge_pro_gold",
@@ -62,6 +54,9 @@ def _refresh_session_user_if_self(request: Request, user: User) -> None:
     ]:
         if hasattr(user, k):
             sess[k] = getattr(user, k)
+    # صلاحية متحكّم الوديعة
+    if hasattr(user, "is_deposit_manager"):
+        sess["is_deposit_manager"] = bool(getattr(user, "is_deposit_manager", False))
 
 
 # ---------------------------
@@ -266,8 +261,6 @@ def admin_request_fix(
 # ---------------------------
 # إدارة الشارات (Badges)
 # ---------------------------
-# داخل app/admin.py — استبدل دالة set_badges بالكامل بهذه النسخة:
-
 @router.post("/users/{user_id}/badges")
 def set_badges(
     user_id: int,
@@ -292,47 +285,35 @@ def set_badges(
     db.commit()
     db.refresh(u)
 
-    _refresh_session_user_if_self(request, u)
     return RedirectResponse(url="/admin", status_code=303)
 
 
 # ---------------------------
-# (NEW) إدارة صلاحية Deposit Manager
+# (NEW) إدارة صلاحية متحكّم الوديعة
 # ---------------------------
-@router.post("/admin/users/{user_id}/grant_deposit_manager")
-def grant_deposit_manager(user_id: int, request: Request, db: Session = Depends(get_db)):
-    """منح صلاحية متحكم الوديعة للمستخدم."""
+@router.post("/admin/users/{user_id}/deposit_manager/enable")
+def enable_deposit_manager(user_id: int, request: Request, db: Session = Depends(get_db)):
+    """يمنح المستخدم صلاحية متحكّم الوديعة (يمكنه حسم/رد الوديعة)."""
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
     u = db.query(User).get(user_id)
-    if u:
-        # الحقل اختياري في DB قديمة، استخدم getattr/setattr
-        try:
-            setattr(u, "is_deposit_manager", True)
-        except Exception:
-            pass
-        db.add(u)
+    if u and hasattr(u, "is_deposit_manager"):
+        u.is_deposit_manager = True
         db.commit()
         _refresh_session_user_if_self(request, u)
-
     return RedirectResponse(url="/admin", status_code=303)
 
 
-@router.post("/admin/users/{user_id}/revoke_deposit_manager")
-def revoke_deposit_manager(user_id: int, request: Request, db: Session = Depends(get_db)):
-    """سحب صلاحية متحكم الوديعة من المستخدم."""
+@router.post("/admin/users/{user_id}/deposit_manager/disable")
+def disable_deposit_manager(user_id: int, request: Request, db: Session = Depends(get_db)):
+    """يلغي صلاحية متحكّم الوديعة عن المستخدم."""
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
     u = db.query(User).get(user_id)
-    if u:
-        try:
-            setattr(u, "is_deposit_manager", False)
-        except Exception:
-            pass
-        db.add(u)
+    if u and hasattr(u, "is_deposit_manager"):
+        u.is_deposit_manager = False
         db.commit()
         _refresh_session_user_if_self(request, u)
-
     return RedirectResponse(url="/admin", status_code=303)
