@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<h4 class="mb-3">قضايا الوديعة</h4>
+
+<div class="card">
+  <div class="card-body">
+    {% if cases and cases|length %}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>العنصر</th>
+            <th>المالك</th>
+            <th>المستأجر</th>
+            <th>الحالة</th>
+            <th>الوديعة</th>
+            <th>المقتطع</th>
+            <th>تاريخ الإرجاع</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in cases %}
+          <tr>
+            <td>{{ b.id }}</td>
+            <td>
+              {% set it = items_map.get(b.item_id) if items_map else None %}
+              {% if it %}
+                <a href="/items/{{ it.id }}">{{ it.title }}</a>
+              {% else %}
+                #{{ b.item_id }}
+              {% endif %}
+            </td>
+            <td>#{{ b.owner_id }}</td>
+            <td>#{{ b.renter_id }}</td>
+            <td><span class="badge bg-dark-subtle">{{ b.status }}</span></td>
+            <td><strong>{{ b.hold_deposit_amount or 0 }}$</strong></td>
+            <td>{{ b.deposit_charged_amount or 0 }}$</td>
+            <td class="small text-muted">{{ b.returned_at or '—' }}</td>
+            <td><a href="/dm/deposits/{{ b.id }}" class="btn btn-sm btn-primary">فتح</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      لا توجد قضايا وديعة حتى الآن.
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

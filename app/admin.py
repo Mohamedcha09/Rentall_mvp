@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session
 
 from .database import get_db
 from .models import User, Document, MessageThread, Message
+from .notifications_api import push_notification  # NEW
 
 router = APIRouter()
-
 
 # ---------------------------
 # Helpers
@@ -43,18 +43,15 @@ def _refresh_session_user_if_self(request: Request, user: User) -> None:
         return
     if sess.get("id") != user.id:
         return
-    # قيَم شائعة نحتاجها في القوالب
     sess["role"] = user.role
     sess["status"] = user.status
     sess["is_verified"] = bool(user.is_verified)
-    # إن كانت أعمدة الشارات موجودة سيتم قراءتها (وإلا ستُهمل تلقائيًا)
     for k in [
         "badge_admin", "badge_new_yellow", "badge_pro_green", "badge_pro_gold",
         "badge_purple_trust", "badge_renter_green", "badge_orange_stars",
     ]:
         if hasattr(user, k):
             sess[k] = getattr(user, k)
-    # صلاحية متحكّم الوديعة
     if hasattr(user, "is_deposit_manager"):
         sess["is_deposit_manager"] = bool(getattr(user, "is_deposit_manager", False))
 
@@ -98,7 +95,6 @@ def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
     user = db.query(User).get(user_id)
     if user:
         user.status = "approved"
-        # وافِق على وثائقه إن وُجدت
         for d in (user.documents or []):
             d.review_status = "approved"
             d.reviewed_at = datetime.utcnow()
@@ -138,7 +134,6 @@ def verify_user(user_id: int, request: Request, db: Session = Depends(get_db)):
     if user:
         user.is_verified = True
         user.verified_at = datetime.utcnow()
-        # verified_by_id قد لا يكون موجودًا في DB قديمة؛ إن كان موجودًا سيُخزَّن تلقائيًا
         if hasattr(user, "verified_by_id"):
             user.verified_by_id = admin["id"]
         db.commit()
@@ -201,7 +196,6 @@ def reject_document(doc_id: int, request: Request, db: Session = Depends(get_db)
 # ---------------------------
 @router.post("/admin/users/{user_id}/message")
 def admin_message_user(user_id: int, request: Request, db: Session = Depends(get_db)):
-    """إنشاء/فتح محادثة مع المستخدم ثم تحويل لصفحة الرسائل."""
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
@@ -211,7 +205,6 @@ def admin_message_user(user_id: int, request: Request, db: Session = Depends(get
 
     thread = _open_or_create_admin_thread(db, admin["id"], user_id)
 
-    # رسالة افتتاحية إذا كان الخيط بدون رسائل
     first_msg = db.query(Message).filter(Message.thread_id == thread.id).first()
     if not first_msg:
         db.add(Message(thread_id=thread.id, sender_id=admin["id"], body="مرحبًا! يرجى استكمال/تصحيح بيانات التحقق."))
@@ -227,7 +220,6 @@ def admin_request_fix(
     db: Session = Depends(get_db),
     reason: str = Form("نحتاج صورة أوضح أو وثيقة صالحة.")
 ):
-    """يضع حالة الوثائق إلى needs_fix ويرسل سببًا في الرسائل مع رابط التصحيح."""
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
@@ -275,25 +267,19 @@ def set_badges(
     if not u:
         return RedirectResponse(url="/admin", status_code=303)
 
-    # البنفسجي فقط
     u.badge_purple_trust = bool(badge_purple_trust)
-
-    # لو أردت ربطها مباشرة بـ is_verified أيضًا:
     u.is_verified = u.badge_purple_trust
-
     db.add(u)
     db.commit()
     db.refresh(u)
-
     return RedirectResponse(url="/admin", status_code=303)
 
 
 # ---------------------------
-# (NEW) إدارة صلاحية متحكّم الوديعة
+# (NEW) إدارة صلاحية متحكّم الوديعة + إشعار
 # ---------------------------
 @router.post("/admin/users/{user_id}/deposit_manager/enable")
 def enable_deposit_manager(user_id: int, request: Request, db: Session = Depends(get_db)):
-    """يمنح المستخدم صلاحية متحكّم الوديعة (يمكنه حسم/رد الوديعة)."""
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
@@ -302,12 +288,19 @@ def enable_deposit_manager(user_id: int, request: Request, db: Session = Depends
         u.is_deposit_manager = True
         db.commit()
         _refresh_session_user_if_self(request, u)
+        # إشعار + رابط لوحة DM
+        push_notification(
+            db, u.id,
+            "تم منحك دور متحكّم الوديعة",
+            "يمكنك الآن مراجعة الودائع واتخاذ القرارات.",
+            "/dm/deposits",
+            "role"
+        )
     return RedirectResponse(url="/admin", status_code=303)
 
 
 @router.post("/admin/users/{user_id}/deposit_manager/disable")
 def disable_deposit_manager(user_id: int, request: Request, db: Session = Depends(get_db)):
-    """يلغي صلاحية متحكّم الوديعة عن المستخدم."""
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
@@ -316,4 +309,11 @@ def disable_deposit_manager(user_id: int, request: Request, db: Session = Depend
         u.is_deposit_manager = False
         db.commit()
         _refresh_session_user_if_self(request, u)
+        push_notification(
+            db, u.id,
+            "تم إلغاء دور متحكّم الوديعة",
+            "لم تعد تملك صلاحية إدارة الودائع.",
+            "/",
+            "role"
+        )
     return RedirectResponse(url="/admin", status_code=303)
