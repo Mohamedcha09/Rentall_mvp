@@ -1,6 +1,6 @@
+# app/deposit_manager.py
 from __future__ import annotations
-from typing import Optional
-import os
+from typing import Optional, Literal
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
@@ -8,207 +8,164 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import User, Booking, Item
+from .models import Booking, User
 from .notifications_api import push_notification
 
-router = APIRouter(tags=["deposit_manager"])
+router = APIRouter(tags=["deposit-manager"])
 
-
-# ------------- Helpers -------------
+# --------------- Helpers ---------------
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
     uid = data.get("id")
     return db.get(User, uid) if uid else None
 
-def require_dm(user: Optional[User]):
-    if not user or not user.can_manage_deposits:
-        raise HTTPException(status_code=403, detail="Deposit Manager only")
+def require_auth(user: Optional[User]):
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
-def _stripe():
-    try:
-        import stripe
-        sk = os.getenv("STRIPE_SECRET_KEY", "")
-        if not sk:
-            return None
-        stripe.api_key = sk
-        return stripe
-    except Exception:
-        return None
+def require_manager(user: Optional[User]):
+    require_auth(user)
+    if not user.can_manage_deposits:
+        raise HTTPException(status_code=403, detail="Deposit manager only")
 
-def _notify_after_decision(db: Session, bk: Booking, title_owner: str, title_renter: str, body: str):
-    push_notification(db, bk.owner_id, title_owner, body, f"/bookings/flow/{bk.id}", "deposit")
-    push_notification(db, bk.renter_id, title_renter, body, f"/bookings/flow/{bk.id}", "deposit")
-
-
-# ------------- قائمة القضايا -------------
-@router.get("/dm/deposits")
-def dm_queue(
-    request: Request,
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
-    require_dm(user)
-
-    q = (
-        db.query(Booking)
-        .filter(
-            (Booking.hold_deposit_amount > 0)
-        )
-        .order_by(Booking.returned_at.desc().nullslast(), Booking.created_at.desc())
-    )
-    cases = q.all()
-
-    # نجلب عناوين العناصر سريعًا
-    items_map = {}
-    if cases:
-        item_ids = list({b.item_id for b in cases})
-        for it in db.query(Item).filter(Item.id.in_(item_ids)).all():
-            items_map[it.id] = it
-
-    return request.app.templates.TemplateResponse(
-        "dm_queue.html",
-        {
-            "request": request,
-            "title": "قضايا الوديعة",
-            "session_user": request.session.get("user"),
-            "cases": cases,
-            "items_map": items_map,
-        },
-    )
-
-
-# ------------- عرض قضية -------------
-@router.get("/dm/deposits/{booking_id}")
-def dm_case(
-    booking_id: int,
-    request: Request,
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
-    require_dm(user)
+def _get_booking(db: Session, booking_id: int) -> Booking:
     bk = db.get(Booking, booking_id)
     if not bk:
         raise HTTPException(status_code=404, detail="Booking not found")
+    return bk
 
-    item = db.get(Item, bk.item_id)
-    owner = db.get(User, bk.owner_id)
-    renter = db.get(User, bk.renter_id)
 
+# --------------- قائمة القضايا ---------------
+@router.get("/deposit-manager")
+def dm_index(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+    view: Literal["pending", "in_review", "resolved"] = "pending",
+):
+    """
+    تبويب بسيط:
+      - pending   : القضايا التي تحتاج قرار (deposit_status in ['in_dispute','held']) وحالة الحجز ليست مغلقة
+      - in_review : الحجز في حالة in_review (مفتوحة وتحت المراجعة)
+      - resolved  : الحجز مغلق/مكتمل وفيه قرار وديعة نهائي
+    """
+    require_manager(user)
+
+    q = db.query(Booking)
+
+    if view == "pending":
+        q = q.filter(
+            Booking.status.in_(["returned", "in_review"]),
+            Booking.deposit_status.in_(["in_dispute", "held"])
+        )
+        title = "Deposit Queue — Pending"
+    elif view == "in_review":
+        q = q.filter(Booking.status == "in_review")
+        title = "Deposit Queue — In Review"
+    else:
+        q = q.filter(Booking.status.in_(["closed", "completed"]))
+        title = "Deposit Queue — Resolved"
+
+    rows = q.order_by(Booking.updated_at.desc().nullslast(), Booking.created_at.desc().nullslast()).all()
+
+    # نمرر كل شيء للقالب
     return request.app.templates.TemplateResponse(
-        "dm_case.html",
+        "deposit_manager_index.html",
         {
             "request": request,
-            "title": f"قضية وديعة #{bk.id}",
+            "title": title,
             "session_user": request.session.get("user"),
-            "bk": bk,
-            "item": item,
-            "owner": owner,
-            "renter": renter,
-        },
+            "rows": rows,
+            "view": view,
+        }
     )
 
 
-# ------------- تنفيذ القرار -------------
-@router.post("/dm/deposits/{booking_id}/decision")
-def dm_decide(
+# --------------- استلام/Claim القضية ---------------
+@router.post("/deposit-manager/{booking_id}/claim")
+def dm_claim(
     booking_id: int,
-    decision: str = Form(...),  # 'release' or 'withhold'
-    amount: int = Form(0),
-    reason: str = Form(""),
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    تعليم القضية أنها قيد المراجعة (لا نضيف أعمدة جديدة؛ فقط نضبط status=in_review)
+    """
+    require_manager(user)
+    bk = _get_booking(db, booking_id)
+
+    # حالات منطقية للاستلام
+    if bk.deposit_status not in ["in_dispute", "held"]:
+        return RedirectResponse(url="/deposit-manager?view=resolved", status_code=303)
+
+    bk.status = "in_review"
+    bk.updated_at = datetime.utcnow()
+    db.commit()
+
+    # إشعار الطرفين أن القضية دخلت قيد المراجعة
+    push_notification(
+        db, bk.owner_id, "قضية الوديعة قيد المراجعة",
+        f"تم استلام القضية #{bk.id} من قِبل متحكّم الوديعة.",
+        f"/bookings/flow/{bk.id}", "deposit"
+    )
+    push_notification(
+        db, bk.renter_id, "قضية الوديعة قيد المراجعة",
+        f"تم استلام القضية #{bk.id} من قِبل متحكّم الوديعة.",
+        f"/bookings/flow/{bk.id}", "deposit"
+    )
+
+    return RedirectResponse(url="/deposit-manager?view=in_review", status_code=303)
+
+
+# --------------- طلب معلومات/أدلة إضافية ---------------
+@router.post("/deposit-manager/{booking_id}/need-info")
+def dm_need_info(
+    booking_id: int,
+    target: Literal["owner", "renter"] = Form(...),
+    message: str = Form("يرجى تزويدنا بمعلومات/صور إضافية لدعم موقفك."),
     request: Request = None,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    require_dm(user)
-    bk = db.get(Booking, booking_id)
-    if not bk:
-        raise HTTPException(status_code=404, detail="Booking not found")
+    require_manager(user)
+    bk = _get_booking(db, booking_id)
 
-    if (bk.hold_deposit_amount or 0) <= 0:
-        raise HTTPException(status_code=400, detail="No deposit on this booking")
-
-    stripe = _stripe()
-    updated_note = (bk.owner_return_note or "").strip()
-
-    if decision == "release":
-        # محاولة إلغاء الحجز (Authorization) في Stripe
-        if stripe and getattr(bk, "deposit_hold_intent_id", None):
-            try:
-                stripe.PaymentIntent.cancel(bk.deposit_hold_intent_id)
-            except Exception:
-                # تجاهل الفشل ونكمّل محليًا
-                pass
-
-        bk.deposit_status = "released"
-        bk.updated_at = datetime.utcnow()
-        if updated_note:
-            updated_note += "\n"
-        updated_note += f"[DM] Release full deposit. Reason: {reason or '—'}"
-        bk.owner_return_note = updated_note
-        db.commit()
-
-        _notify_after_decision(
-            db, bk,
-            "تم الإفراج عن الوديعة",
-            "تم الإفراج عن وديعتك",
-            f"قرار متحكّم الوديعة: إفراج كامل. السبب: {reason or '—'}",
-        )
-        return RedirectResponse(url=f"/dm/deposits/{bk.id}", status_code=303)
-
-    # withhold (جزئي/كامل)
-    amount = max(0, int(amount or 0))
-    if amount <= 0:
-        raise HTTPException(status_code=400, detail="Invalid amount")
-
-    if amount > (bk.hold_deposit_amount or 0):
-        amount = bk.hold_deposit_amount or 0
-
-    captured_ok = False
-    if stripe and getattr(bk, "deposit_hold_intent_id", None):
-        try:
-            amt_cents = int(amount * 100)
-            pi = stripe.PaymentIntent.capture(
-                bk.deposit_hold_intent_id,
-                amount_to_capture=amt_cents
-            )
-            # optional: حفظ آخر charge لو احتجناه
-            try:
-                charge_id = (pi.get("latest_charge") or "") if isinstance(pi, dict) else None
-                if charge_id and hasattr(bk, "deposit_capture_id"):
-                    bk.deposit_capture_id = str(charge_id)
-            except Exception:
-                pass
-            captured_ok = True
-
-            # إن تبقّى جزء غير محجوز بعد الاقتطاع، نحاول إلغاء المتبقي لتحريره
-            try:
-                remaining = (bk.hold_deposit_amount or 0) - (bk.deposit_charged_amount or 0) - amount
-                if remaining > 0:
-                    stripe.PaymentIntent.cancel(bk.deposit_hold_intent_id)
-            except Exception:
-                pass
-        except Exception:
-            captured_ok = False
-
-    # تحديث الحالة محليًا على أي حال
-    bk.deposit_charged_amount = (bk.deposit_charged_amount or 0) + amount
-    if bk.deposit_charged_amount >= (bk.hold_deposit_amount or 0):
-        bk.deposit_status = "claimed"  # خصم كامل
-    else:
-        bk.deposit_status = "partially_refunded"  # تم اقتطاع جزء وسيُفرج عن الباقي
+    # نترك الحالة in_review كما هي
     bk.updated_at = datetime.utcnow()
-
-    if updated_note:
-        updated_note += "\n"
-    updated_note += f"[DM] Withhold {amount}$ . Reason: {reason or '—'} (stripe_ok={captured_ok})"
-    bk.owner_return_note = updated_note
-
     db.commit()
 
-    _notify_after_decision(
-        db, bk,
-        "قرار وديعة: اقتطاع للمالك",
-        "قرار وديعة: تم اقتطاع جزء من وديعتك",
-        f"المبلغ المقتطع: {amount}$ — السبب: {reason or '—'}",
+    # نرسل إشعار للمطلوب منه
+    target_user_id = bk.owner_id if target == "owner" else bk.renter_id
+    push_notification(
+        db, target_user_id, "طلب معلومات إضافية",
+        message or "نرجو تزويدنا بتفاصيل إضافية.",
+        f"/bookings/flow/{bk.id}", "deposit"
     )
-    return RedirectResponse(url=f"/dm/deposits/{bk.id}", status_code=303)
+
+    return RedirectResponse(url="/deposit-manager?view=in_review", status_code=303)
+
+
+# --------------- تنفيذ القرار النهائي (يوجّه لمسار القرار في routes_deposits.py) ---------------
+@router.post("/deposit-manager/{booking_id}/decide")
+def dm_decide(
+    booking_id: int,
+    decision: Literal["refund_all", "refund_partial", "withhold_all"] = Form(...),
+    amount: int = Form(0),
+    reason: str = Form(""),
+    request: Request = None,
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    نستخدم مسار القرار الذي كتبناه في routes_deposits.py
+    فقط نعيد توجيه POST مع نفس الحقول.
+    """
+    require_manager(user)
+
+    # نعيد التوجيه مباشرةً لنفس نموذج القرار الموحد
+    # حتى يبقى تنفيذ القرار في ملف واحد (routes_deposits.py)
+    form_qs = f"decision={decision}&amount={max(0,int(amount or 0))}&reason={reason}"
+    return RedirectResponse(
+        url=f"/deposits/{booking_id}/decision?{form_qs}",
+        status_code=303
+    )

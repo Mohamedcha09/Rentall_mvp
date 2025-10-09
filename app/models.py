@@ -326,6 +326,10 @@ class Booking(Base):
     deposit_hold_id = col_or_literal("bookings", "deposit_hold_id", String(120), nullable=True)
     deposit_charged_amount = col_or_literal("bookings", "deposit_charged_amount", Integer, nullable=False, default=0)
 
+    # ✅ كانت ناقصة (مطلوبة لقائمة DM + كتابة الملاحظات)
+    returned_at = col_or_literal("bookings", "returned_at", DateTime, nullable=True)
+    owner_return_note = col_or_literal("bookings", "owner_return_note", Text, nullable=True)
+
     item = relationship("Item", backref="bookings")
     renter = relationship("User", foreign_keys=[renter_id], back_populates="bookings_rented")
     owner = relationship("User", foreign_keys=[owner_id], back_populates="bookings_owned")

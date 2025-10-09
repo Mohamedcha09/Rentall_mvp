@@ -1,222 +1,162 @@
 {% extends "base.html" %}
+
 {% block content %}
+<div class="container py-4">
+  <h3 class="mb-4">لوحة الأدمين</h3>
 
-<div class="admin-wrap">
-
-  <div class="admin-header">
-    <h4 class="mb-0 d-flex align-items-center gap-2">
-      لوحة الأدمين
-      <span class="badge bg-dark-subtle">إدارة المستخدمين</span>
-    </h4>
-    <a href="/welcome" class="btn btn-outline-light btn-sm">العودة للرئيسية</a>
-  </div>
-
-  <!-- إحصائيات سريعة -->
-  <div class="admin-stats mb-3">
-    <div class="admin-stat">
-      <div class="text-muted small">بإنتظار الموافقة</div>
-      <div class="fs-5 fw-bold">{{ pending_users|length }}</div>
+  <!-- مستخدمون بإنتظار الموافقة -->
+  <div class="card mb-4">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <strong>في انتظار الموافقة</strong>
+      <span class="badge bg-secondary">{{ pending_users|length }}</span>
     </div>
-    <div class="admin-stat">
-      <div class="text-muted small">إجمالي المستخدمين</div>
-      <div class="fs-5 fw-bold">{{ all_users|length }}</div>
-    </div>
-  </div>
-
-  <!-- بانتظار الموافقة -->
-  <div class="card card-blur mb-3">
-    <div class="card-body">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h6 class="m-0">طلبات جديدة</h6>
-        <span class="badge bg-warning text-dark">{{ pending_users|length }}</span>
-      </div>
-
-      {% if pending_users and pending_users|length %}
-      <div class="table-wrap">
-        <table class="table table-sm align-middle">
+    <div class="card-body p-0">
+      {% if not pending_users %}
+        <div class="p-3 text-muted">لا يوجد طلبات حالياً.</div>
+      {% else %}
+      <div class="table-responsive">
+        <table class="table mb-0 align-middle">
           <thead>
             <tr>
-              <th>المستخدم</th>
+              <th>#</th>
+              <th>الاسم</th>
               <th>البريد</th>
               <th>الهاتف</th>
-              <th>تاريخ الإنشاء</th>
-              <th>حالة الوثائق</th>
-              <th class="text-center">إجراءات</th>
+              <th>توثيق</th>
+              <th class="text-end">إجراءات</th>
             </tr>
           </thead>
           <tbody>
             {% for u in pending_users %}
             <tr>
-              <td class="fw-semibold">{{ u.first_name }} {{ u.last_name }}</td>
-              <td class="text-muted small">{{ u.email }}</td>
-              <td class="text-muted small">{{ u.phone or '—' }}</td>
-              <td class="text-muted small">{{ u.created_at.strftime('%Y-%m-%d') if u.created_at }}</td>
+              <td>{{ u.id }}</td>
+              <td>{{ u.first_name }} {{ u.last_name }}</td>
+              <td>{{ u.email }}</td>
+              <td>{{ u.phone }}</td>
               <td>
-                {% set doc = (u.documents[0] if u.documents else None) %}
-                {% if doc %}
-                  {% if doc.review_status == 'approved' %}<span class="badge bg-success">مقبولة</span>
-                  {% elif doc.review_status == 'rejected' %}<span class="badge bg-danger">مرفوضة</span>
-                  {% elif doc.review_status == 'needs_fix' %}<span class="badge bg-warning text-dark">تحتاج تصحيح</span>
-                  {% else %}<span class="badge bg-secondary">قيد المراجعة</span>{% endif %}
+                {% if u.is_verified|default(false) %}
+                  <span class="badge bg-success">موثّق</span>
                 {% else %}
-                  <span class="badge bg-secondary">لا وثائق</span>
+                  <span class="badge bg-warning text-dark">قيد المراجعة</span>
                 {% endif %}
               </td>
-              <td class="text-center">
-                <div class="action-btns">
-                  <form method="post" action="/admin/users/{{ u.id }}/approve">
-                    <button class="btn btn-sm btn-success" type="submit">قبول</button>
-                  </form>
-                  <form method="post" action="/admin/users/{{ u.id }}/reject">
-                    <button class="btn btn-sm btn-danger" type="submit">رفض</button>
-                  </form>
-                  <form method="post" action="/admin/users/{{ u.id }}/message">
-                    <button class="btn btn-sm btn-outline-light" type="submit">مراسلة</button>
-                  </form>
-                  <form method="post" action="/admin/users/{{ u.id }}/request_fix">
-                    <input type="hidden" name="reason" value="يرجى رفع صورة أوضح/وثيقة صالحة.">
-                    <button class="btn btn-sm btn-warning text-dark" type="submit">طلب تصحيح</button>
-                  </form>
-                </div>
+              <td class="text-end">
+                <form method="post" action="/admin/users/{{ u.id }}/approve" class="d-inline">
+                  <button class="btn btn-sm btn-success">موافقة</button>
+                </form>
+                <form method="post" action="/admin/users/{{ u.id }}/reject" class="d-inline">
+                  <button class="btn btn-sm btn-outline-danger">رفض</button>
+                </form>
+                <form method="post" action="/admin/users/{{ u.id }}/message" class="d-inline">
+                  <button class="btn btn-sm btn-outline-primary">مراسلة</button>
+                </form>
               </td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
-      {% else %}
-        <div class="text-muted">لا توجد طلبات حاليًا.</div>
       {% endif %}
     </div>
   </div>
 
-  <!-- جميع المستخدمين -->
-  <div class="card card-blur">
-    <div class="card-body">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h6 class="m-0">جميع المستخدمين</h6>
-        <span class="badge bg-dark-subtle">{{ all_users|length }}</span>
-      </div>
-
-      {% if all_users and all_users|length %}
-      <div class="table-wrap">
-        <table class="table table-sm align-middle">
+  <!-- كل المستخدمين -->
+  <div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <strong>كل المستخدمين</strong>
+      <span class="badge bg-secondary">{{ all_users|length }}</span>
+    </div>
+    <div class="card-body p-0">
+      {% if not all_users %}
+        <div class="p-3 text-muted">لا يوجد مستخدمون.</div>
+      {% else %}
+      <div class="table-responsive">
+        <table class="table mb-0 align-middle">
           <thead>
             <tr>
+              <th>#</th>
               <th>الاسم</th>
               <th>البريد</th>
-              <th>الدور</th>
               <th>الحالة</th>
-              <th>موثّق</th>
-              <th>وديعة</th>
-              <th>شارات</th>
-              <th class="text-center">إجراءات</th>
+              <th>الدور</th>
+              <th>توثيق</th>
+              <th>MD</th>
+              <th class="text-end">إجراءات</th>
             </tr>
           </thead>
           <tbody>
             {% for u in all_users %}
             <tr>
-              <td class="fw-semibold">{{ u.first_name }} {{ u.last_name }}</td>
-              <td class="text-muted small">{{ u.email }}</td>
+              <td>{{ u.id }}</td>
+              <td>{{ u.first_name }} {{ u.last_name }}</td>
+              <td>{{ u.email }}</td>
               <td>
-                <span class="badge {% if u.role=='admin' %}bg-info text-dark{% else %}bg-secondary{% endif %}">
-                  {{ u.role }}
-                </span>
-              </td>
-              <td>
-                <span class="badge
-                  {% if u.status=='approved' %}bg-success
-                  {% elif u.status=='pending' %}bg-warning text-dark
-                  {% else %}bg-danger{% endif %}">
-                  {{ u.status }}
-                </span>
-              </td>
-              <td>
-                {% if u.is_verified %}
-                  <span class="badge bg-primary">✓ موثّق</span>
+                {% if u.status == 'approved' %}
+                  <span class="badge bg-success">مقبول</span>
+                {% elif u.status == 'rejected' %}
+                  <span class="badge bg-danger">مرفوض</span>
                 {% else %}
-                  <span class="badge bg-secondary">غير موثّق</span>
+                  <span class="badge bg-secondary">معلّق</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if u.role == 'admin' %}
+                  <span class="badge bg-dark">Admin</span>
+                {% else %}
+                  <span class="badge bg-info text-dark">User</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if u.is_verified|default(false) %}
+                  <span class="badge bg-success">موثّق</span>
+                  <form method="post" action="/admin/users/{{ u.id }}/unverify" class="d-inline">
+                    <button class="btn btn-sm btn-outline-warning">إلغاء التوثيق</button>
+                  </form>
+                {% else %}
+                  <form method="post" action="/admin/users/{{ u.id }}/verify" class="d-inline">
+                    <button class="btn btn-sm btn-outline-success">توثيق</button>
+                  </form>
                 {% endif %}
               </td>
 
-              <!-- وديعة: بادج + أزرار -->
+              <!-- عمود صلاحية متحكّم الوديعة (MD) -->
               <td>
                 {% if u.is_deposit_manager|default(false) %}
-                  <span class="badge bg-success">Deposit Manager</span>
+                  <span class="badge bg-primary">MD</span>
                 {% else %}
-                  <span class="badge bg-secondary">عادي</span>
+                  <span class="badge bg-secondary">—</span>
                 {% endif %}
               </td>
 
-              <td class="small">
-                {% if u.badge_new_yellow %}<span class="badge bg-warning text-dark">جديد</span>{% endif %}
-                {% if u.badge_purple_trust %}<span class="badge bg-dark-subtle">ثقة</span>{% endif %}
-                {% if u.badge_pro_green %}<span class="badge bg-success">Pro</span>{% endif %}
-                {% if u.badge_pro_gold %}<span class="badge bg-warning text-dark">Pro+</span>{% endif %}
-                {% if u.badge_admin %}<span class="badge bg-info text-dark">Admin</span>{% endif %}
-              </td>
-
-              <td class="text-center">
-                <div class="action-btns d-flex flex-wrap gap-1 justify-content-center">
-
-                  <!-- تفعيل/تعطيل صلاحية متحكّم الوديعة -->
-                  {% if u.is_deposit_manager|default(false) %}
-                    <form method="post" action="/admin/users/{{ u.id }}/deposit_manager/disable">
-                      <button class="btn btn-sm btn-outline-danger" type="submit">إلغاء DM</button>
-                    </form>
-                  {% else %}
-                    <form method="post" action="/admin/users/{{ u.id }}/deposit_manager/enable">
-                      <button class="btn btn-sm btn-outline-success" type="submit">تفعيل DM</button>
-                    </form>
-                  {% endif %}
-
-                  <!-- توثيق/إلغاء -->
-                  {% if not u.is_verified %}
-                  <form method="post" action="/admin/users/{{ u.id }}/verify">
-                    <button class="btn btn-sm btn-primary" type="submit">توثيق</button>
+              <td class="text-end">
+                {% if u.is_deposit_manager|default(false) %}
+                  <form method="post" action="/admin/users/{{ u.id }}/deposit_manager/disable" class="d-inline">
+                    <button class="btn btn-sm btn-outline-danger">إلغاء MD</button>
                   </form>
-                  {% else %}
-                  <form method="post" action="/admin/users/{{ u.id }}/unverify">
-                    <button class="btn btn-sm btn-outline-light" type="submit">إلغاء التوثيق</button>
+                {% else %}
+                  <form method="post" action="/admin/users/{{ u.id }}/deposit_manager/enable" class="d-inline">
+                    <button class="btn btn-sm btn-outline-primary">منح MD</button>
                   </form>
-                  {% endif %}
+                {% endif %}
 
-                  <!-- قبول/رفض -->
-                  <form method="post" action="/admin/users/{{ u.id }}/approve">
-                    <button class="btn btn-sm btn-success" type="submit">قبول</button>
+                {% if u.status != 'approved' %}
+                  <form method="post" action="/admin/users/{{ u.id }}/approve" class="d-inline">
+                    <button class="btn btn-sm btn-success">موافقة</button>
                   </form>
-                  <form method="post" action="/admin/users/{{ u.id }}/reject">
-                    <button class="btn btn-sm btn-danger" type="submit">رفض</button>
-                  </form>
+                {% endif %}
 
-                  <!-- مراسلة -->
-                  <form method="post" action="/admin/users/{{ u.id }}/message">
-                    <button class="btn btn-sm btn-outline-light" type="submit">مراسلة</button>
-                  </form>
-
-                  <!-- حفظ الشارات سريعًا (كما كانت) -->
-                  <form method="post" action="/users/{{ u.id }}/badges" class="d-inline-block">
-                    <input type="hidden" name="badge_new_yellow" value="{{ 'on' if u.badge_new_yellow else '' }}">
-                    <input type="hidden" name="badge_purple_trust" value="{{ 'on' if u.badge_purple_trust else '' }}">
-                    <input type="hidden" name="badge_pro_green" value="{{ 'on' if u.badge_pro_green else '' }}">
-                    <input type="hidden" name="badge_pro_gold" value="{{ 'on' if u.badge_pro_gold else '' }}">
-                    <input type="hidden" name="badge_admin" value="{{ 'on' if u.role=='admin' or u.badge_admin else '' }}">
-                    <button class="btn btn-sm btn-secondary" type="submit">حفظ الشارات</button>
-                  </form>
-
-                </div>
+                <form method="post" action="/admin/users/{{ u.id }}/message" class="d-inline">
+                  <button class="btn btn-sm btn-outline-primary">مراسلة</button>
+                </form>
               </td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
-      {% else %}
-        <div class="text-muted">لا يوجد مستخدمون.</div>
       {% endif %}
     </div>
   </div>
 
 </div>
-
 {% endblock %}

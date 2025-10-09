@@ -1,335 +1,392 @@
-<!-- base.html -->
 <!doctype html>
 <html lang="ar" dir="rtl">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{ title or "RentAll" }}</title>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title or "RentAll" }}</title>
 
-    <!-- Bootstrap & Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
-    <!-- ستايل خارجي -->
-    <link href="/static/style.css?v=1" rel="stylesheet">
+  <!-- ستايل خارجي -->
+  <link href="/static/style.css?v=1" rel="stylesheet">
 
-    <style>
-      /* ===== Typeahead ===== */
-      .search{ position:relative; }
-      .typeahead{
-        position:absolute; inset-inline:0; top: calc(100% + .25rem);
-        background: var(--surface,#fff); color: var(--text,#212529);
-        border: 1px solid rgba(0,0,0,.1); border-radius:.75rem;
-        box-shadow: 0 14px 36px rgba(0,0,0,.18); z-index:2000; overflow:hidden;
+  <style>
+    /* ===== Typeahead ===== */
+    .search{ position:relative; }
+    .typeahead{
+      position:absolute; inset-inline:0; top: calc(100% + .25rem);
+      background: var(--surface,#fff); color: var(--text,#212529);
+      border: 1px solid rgba(0,0,0,.1); border-radius:.75rem;
+      box-shadow: 0 14px 36px rgba(0,0,0,.18); z-index:2000; overflow:hidden;
+    }
+    .typeahead.d-none{ display:none; }
+    .typeahead-group{ padding:.4rem .7rem; font-size:.8rem; opacity:.7; border-bottom:1px solid rgba(0,0,0,.06) }
+    .typeahead-item{ padding:.6rem .75rem; display:flex; gap:.6rem; align-items:center; cursor:pointer; }
+    .typeahead-item:hover, .typeahead-item.active{ background: rgba(124,92,255,.12); }
+    .typeahead-item .k{ opacity:.65; font-size:.85em }
+
+    /* ===== عام ===== */
+    .actions .btn-plain{
+      border:0 !important; background:transparent !important; box-shadow:none !important;
+      padding:.2rem .35rem !important; line-height:1;
+    }
+    .icon-img{ width:24px; height:24px; display:block; }
+    .btn-plain:hover{ transform:translateY(-1px); }
+
+    .topbar .search .search__input{
+      height:44px !important; border-radius:999px !important; border:0 !important;
+      background:#f4f6fb !important; color:#3b4152 !important;
+    }
+    body[data-theme="dark"] .topbar .search .search__input{
+      background:rgba(255,255,255,.08) !important;
+      border:1px solid var(--border) !important; color:var(--text) !important;
+    }
+    .topbar .search .search__icon{ inset-inline-start:16px !important; opacity:.6 !important; font-size:1.05rem; }
+    .topbar .search .search__input::placeholder{ font-size:1.05rem; letter-spacing:.2px; color:#8b95a7; }
+    body[data-theme="dark"] .topbar .search .search__input::placeholder{ color: color-mix(in oklab, var(--text) 60%, transparent); }
+
+    /* إشعار الجرس */
+    #notifOpen{ position: relative; }
+    #notifOpen .notif-count{
+      position:absolute; top:-6px; inset-inline-end:-6px;
+      background:#d43aff; color:#fff; font-size:12px; line-height:18px;
+      min-width:18px; height:18px; padding:0 4px; border-radius:10px; text-align:center;
+    }
+    #notifOpen .notif-ping{
+      position:absolute; top:-2px; inset-inline-end:-2px; width:8px; height:8px;
+      background:#d43aff; border-radius:50%; box-shadow: 0 0 0 6px rgba(212,58,255,.18);
+    }
+
+    .notif-panel{
+      position: fixed; top:0; inset-inline-end:-420px; width:360px; max-width:88vw; height:100vh;
+      background: var(--panel); color: var(--text);
+      border-inline-start:1px solid var(--border);
+      box-shadow: -14px 0 36px rgba(0,0,0,.25);
+      z-index:2300; display:flex; flex-direction:column; transition:.25s ease;
+    }
+    .notif-panel.is-open{ inset-inline-end:0; }
+    .notif-panel__header{ padding:12px 14px; border-bottom:1px solid var(--border); }
+    .notif-panel__body{ padding:10px 14px; overflow:auto; }
+    .notif-row{
+      display:block; padding:10px 8px; text-decoration:none; color:inherit;
+      border-bottom:1px solid var(--border); border-radius:8px;
+    }
+    .notif-row:hover{ background: color-mix(in oklab, var(--surface) 92%, transparent); }
+    .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2s; }
+    .scrim.is-show{ opacity:1; pointer-events:auto; }
+
+    /* ===== الشريط الجانبي ===== */
+    .brand-logo{ height:56px; vertical-align:middle }
+    @media (max-width:768px){ .brand-logo{ height:40px } }
+    #sidebarToggle .topbar-ok{ width:24px; height:24px; display:block; }
+    #sidebarToggle{ border:0; }
+    .side-link .side-icon{ width:22px; height:22px; object-fit:contain }
+
+    /* ===== تبويب الجوال ===== */
+    @media (max-width: 768px){
+      .mobile-tabbar{
+        position: fixed; inset-inline: 0; bottom: 0; height: 64px;
+        background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 96%, transparent),
+                                             color-mix(in oklab, var(--panel) 94%, transparent));
+        border-top:1px solid var(--border);
+        display: grid; grid-template-columns: repeat(4,1fr);
+        backdrop-filter: blur(14px) saturate(120%);
+        z-index: 2100;
       }
-      .typeahead.d-none{ display:none; }
-      .typeahead-group{ padding:.4rem .7rem; font-size:.8rem; opacity:.7; border-bottom:1px solid rgba(0,0,0,.06) }
-      .typeahead-item{ padding:.6rem .75rem; display:flex; gap:.6rem; align-items:center; cursor:pointer; }
-      .typeahead-item:hover, .typeahead-item.active{ background: rgba(124,92,255,.12); }
-      .typeahead-item .k{ opacity:.65; font-size:.85em }
-
-      /* ===== عام ===== */
-      .actions .btn-plain{
-        border:0 !important; background:transparent !important; box-shadow:none !important;
-        padding:.2rem .35rem !important; line-height:1;
+      .mobile-tabbar a{
+        display:flex; flex-direction:column; align-items:center; justify-content:center;
+        gap:4px; text-decoration:none; color: var(--muted); font-size:.8rem;
       }
-      .icon-img{ width:24px; height:24px; display:block; }
-      .btn-plain:hover{ transform:translateY(-1px); }
+      .mobile-tabbar .tab-img{ width:22px; height:22px; object-fit:contain; opacity:.55; transition:.15s; }
+      .mobile-tabbar a.is-active{ color: var(--text); }
+      .mobile-tabbar a.is-active .tab-img{ opacity:1; transform:scale(1.06); }
+      .page{ padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+    }
 
-      .topbar .search .search__input{
-        height:44px !important; border-radius:999px !important; border:0 !important;
-        background:#f4f6fb !important; color:#3b4152 !important;
-      }
-      body[data-theme="dark"] .topbar .search .search__input{
-        background:rgba(255,255,255,.08) !important;
-        border:1px solid var(--border) !important; color:var(--text) !important;
-      }
-      .topbar .search .search__icon{ inset-inline-start:16px !important; opacity:.6 !important; font-size:1.05rem; }
-      .topbar .search .search__input::placeholder{ font-size:1.05rem; letter-spacing:.2px; color:#8b95a7; }
-      body[data-theme="dark"] .topbar .search .search__input::placeholder{ color: color-mix(in oklab, var(--text) 60%, transparent); }
+    @media (max-width:768px){
+      .actions .dropdown:first-of-type{ display:none !important; }
+    }
 
-      /* إشعار الجرس */
-      #notifOpen{ position: relative; }
-      #notifOpen .notif-count{
-        position:absolute; top:-6px; inset-inline-end:-6px;
-        background:#d43aff; color:#fff; font-size:12px; line-height:18px;
-        min-width:18px; height:18px; padding:0 4px; border-radius:10px; text-align:center;
-      }
-      #notifOpen .notif-ping{
-        position:absolute; top:-2px; inset-inline-end:-2px; width:8px; height:8px;
-        background:#d43aff; border-radius:50%; box-shadow: 0 0 0 6px rgba(212,58,255,.18);
-      }
+    .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important; }
+  </style>
 
-      .notif-panel{
-        position: fixed; top:0; inset-inline-end:-420px; width:360px; max-width:88vw; height:100vh;
-        background: var(--panel); color: var(--text);
-        border-inline-start:1px solid var(--border);
-        box-shadow: -14px 0 36px rgba(0,0,0,.25);
-        z-index:2300; display:flex; flex-direction:column; transition:.25s ease;
-      }
-      .notif-panel.is-open{ inset-inline-end:0; }
-      .notif-panel__header{ padding:12px 14px; border-bottom:1px solid var(--border); }
-      .notif-panel__body{ padding:10px 14px; overflow:auto; }
-      .notif-row{
-        display:block; padding:10px 8px; text-decoration:none; color:inherit;
-        border-bottom:1px solid var(--border); border-radius:8px;
-      }
-      .notif-row:hover{ background: color-mix(in oklab, var(--surface) 92%, transparent); }
-      .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2s; }
-      .scrim.is-show{ opacity:1; pointer-events:auto; }
+  {% block head %}{% endblock %}
+</head>
+<body class="theme" data-theme="dark">
 
-      /* ===== الشعار وأزرار أعلى ===== */
-      .brand-logo{ height:56px; vertical-align:middle }
-      @media (max-width:768px){ .brand-logo{ height:40px } }
-      #sidebarToggle .topbar-ok{ width:24px; height:24px; display:block; }
-      #sidebarToggle{ border:0; }
+<div id="page-wrapper"><!-- غلاف ملء الشاشة -->
 
-      /* ===== الشريط الجانبي (أيقونات صور) ===== */
-      .side-link .side-icon{ width:22px; height:22px; object-fit:contain }
+  <!-- ===== Topbar ===== -->
+  <header class="topbar">
+    <div class="topbar__inner container-fluid">
 
-      /* ===== تبويب الجوال (الأسفل) بصورك بدل الأيقونات ===== */
-      @media (max-width: 768px){
-        .mobile-tabbar{
-          position: fixed; inset-inline: 0; bottom: 0; height: 64px;
-          background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 96%, transparent),
-                                               color-mix(in oklab, var(--panel) 94%, transparent));
-          border-top:1px solid var(--border);
-          display: grid; grid-template-columns: repeat(4,1fr);
-          backdrop-filter: blur(14px) saturate(120%);
-          z-index: 2100;
-        }
-        .mobile-tabbar a{
-          display:flex; flex-direction:column; align-items:center; justify-content:center;
-          gap:4px; text-decoration:none; color: var(--muted); font-size:.8rem;
-        }
-        .mobile-tabbar .tab-img{ width:22px; height:22px; object-fit:contain; opacity:.55; transition:.15s; }
-        .mobile-tabbar a.is-active{ color: var(--text); }
-        .mobile-tabbar a.is-active .tab-img{ opacity:1; transform:scale(1.06); }
-        .page{ padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
-      }
+      <!-- زر فتح/طيّ الشريط الجانبي -->
+      <button class="btn btn-ghost btn-sm" id="sidebarToggle" aria-label="Toggle sidebar">
+        <img class="topbar-ok" src="{{ url_for('static', path='images/ok.png') }}" alt="OK">
+      </button>
 
-      @media (max-width:768px){
-        .actions .dropdown:first-of-type{ display:none !important; }
-      }
+      <!-- شعار -->
+      <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/">
+        <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR">
+        <span class="visually-hidden">SEVOR</span>
+      </a>
 
-      .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important; }
-    </style>
+      <!-- بحث -->
+      <form class="search flex-grow-1" action="/search" method="get" role="search" style="max-width:760px">
+        <i class="bi bi-search search__icon"></i>
+        <input class="form-control form-control-sm search__input" type="search" name="q"
+               placeholder="ابحث عن عنصر أو مستخدم…" value="{{ request.query_params.get('q','') if request else '' }}">
+      </form>
+      <div id="typeaheadPanel" class="typeahead d-none"></div>
 
-    {% block head %}{% endblock %}
-  </head>
-  <body class="theme" data-theme="dark">
-
-    <div id="page-wrapper"><!-- غلاف ملء الشاشة -->
-
-    <!-- ===== Topbar ===== -->
-    <header class="topbar">
-      <div class="topbar__inner container-fluid">
-
-        <button class="btn btn-ghost btn-sm" id="sidebarToggle" aria-label="Toggle sidebar">
-          <img class="topbar-ok" src="{{ url_for('static', path='images/ok.png') }}" alt="OK">
-        </button>
-
-        <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/">
-          <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR">
-          <span class="visually-hidden">SEVOR</span>
-        </a>
-
-        <form class="search flex-grow-1" action="/search" method="get" role="search" style="max-width:760px">
-          <i class="bi bi-search search__icon"></i>
-          <input class="form-control form-control-sm search__input" type="search" name="q"
-                 placeholder="ابحث عن عنصر أو مستخدم…" value="{{ request.query_params.get('q','') if request else '' }}">
-        </form>
-        <div id="typeaheadPanel" class="typeahead d-none"></div>
-
-        <div class="actions d-flex align-items-center gap-2">
-          <a href="/messages" class="btn-plain btn-messages" title="الرسائل">
-            <img class="icon-img" src="/static/img/msg.png" alt="Messages">
-          </a>
-
-          {% if session_user %}
-          <a href="/favorites" class="btn-plain" title="مفضلتي">
-            <i class="bi bi-heart-fill" style="font-size:20px; color:#a944ec;"></i>
-          </a>
-          {% endif %}
-
-          {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
-          <button class="btn-plain position-relative" id="notifOpen" title="الإشعارات">
-            <img class="icon-img" src="/static/img/notfi.png" alt="Notifications">
-            {% if unread > 0 %}
-              <span class="notif-ping"></span>
-              <span class="notif-count">{{ unread if unread < 100 else '99+' }}</span>
-            {% endif %}
-          </button>
-
-          <div class="dropdown">
-            <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown">
-              <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">إنشاء</span>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="/owner/items/new"><i class="bi bi-box"></i> عنصر جديد</a></li>
-              <li><a class="dropdown-item" href="/messages"><i class="bi bi-chat-left-text"></i> رسالة</a></li>
-            </ul>
-          </div>
-
-          <button class="btn btn-ghost btn-sm" id="themeToggle" title="تبديل الثيم">
-            <i class="bi bi-sun-fill d-none" id="sunIcon"></i>
-            <i class="bi bi-moon-stars-fill" id="moonIcon"></i>
-          </button>
-
-          <div class="dropdown lang-switch">
-            <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="اللغة">
-              <i class="bi bi-globe2"></i>
-              <span class="d-none d-sm-inline">{{ current_lang()|upper if current_lang else 'AR' }}</span>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item d-flex align-items-center" href="/lang/ar">العربية</a></li>
-              <li><a class="dropdown-item d-flex align-items-center" href="/lang/en">English</a></li>
-              <li><a class="dropdown-item d-flex align-items-center" href="/lang/fr">Français</a></li>
-            </ul>
-          </div>
-
-          {% if session_user %}
-            <div class="dropdown">
-              <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
-                <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
-                <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
-                {% if session_user.status == 'approved' %}
-                  <i class="bi bi-patch-check-fill verify" title="موثّق"></i>
-                {% endif %}
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> صفحتي</a></li>
-                <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
-                <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a></li>
-                <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a></li>
-                {% if session_user.role == 'admin' %}
-                  <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a></li>
-                {% endif %}
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right"></i> خروج</a></li>
-              </ul>
-            </div>
-          {% else %}
-            <a class="btn btn-ghost btn-sm" href="/login">دخول</a>
-            <a class="btn btn-primary btn-sm" href="/register">تسجيل</a>
-          {% endif %}
-        </div>
-      </div>
-    </header>
-    <!-- /Topbar -->
-
-    <!-- ===== Sidebar ===== -->
-    <aside class="sidebar" id="appSidebar" data-collapsed="false">
-      <nav class="sidebar__nav">
-        <a class="side-link {% if request and request.url.path == '/' %}is-active{% endif %}" href="/" data-tooltip="الرئيسية">
-          <img class="side-icon" src="{{ url_for('static', path='images/home.png') }}" alt="home"><span>الرئيسية</span>
-        </a>
-        <a class="side-link {% if request and request.url.path.startswith('/items') %}is-active{% endif %}" href="/items" data-tooltip="كل العناصر">
-          <img class="side-icon" src="{{ url_for('static', path='images/tout.png') }}" alt="tout"><span>كل العناصر</span>
+      <div class="actions d-flex align-items-center gap-2">
+        <a href="/messages" class="btn-plain btn-messages" title="الرسائل">
+          <img class="icon-img" src="/static/img/msg.png" alt="Messages">
         </a>
 
         {% if session_user %}
-          <a class="side-link {% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}" href="/favorites" data-tooltip="مفضلتي">
-            <img class="side-icon" src="{{ url_for('static', path='images/save.png') }}" alt="save"><span>مفضلتي</span>
+          <a href="/favorites" class="btn-plain" title="مفضلتي">
+            <i class="bi bi-heart-fill" style="font-size:20px; color:#a944ec;"></i>
           </a>
-          <a class="side-link {% if request and request.url.path.startswith('/profile') %}is-active{% endif %}" href="/profile" data-tooltip="صفحتي">
-            <img class="side-icon" src="{{ url_for('static', path='images/profil.png') }}" alt="profil"><span>صفحتي</span>
-          </a>
-          <a class="side-link {% if request and request.url.path.startswith('/owner/items') %}is-active{% endif %}" href="/owner/items" data-tooltip="أشيائي">
-            <img class="side-icon" src="{{ url_for('static', path='images/page.png') }}" alt="page"><span>أشيائي</span>
-          </a>
-          <a class="side-link {% if request and request.url.path.startswith('/bookings') %}is-active{% endif %}" href="/bookings" data-tooltip="حجوزاتي">
-            <img class="side-icon" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>حجوزاتي</span>
-          </a>
-          <a class="side-link {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" href="/payout/settings" data-tooltip="التحويلات">
-            <img class="side-icon" src="{{ url_for('static', path='images/cart.png') }}" alt="cart"><span>التحويلات</span>
-          </a>
-
-          <!-- NEW: قضايا الوديعة (لا حذف، مجرد إضافة) -->
-          {% if session_user.get('can_manage_deposits') %}
-            <a class="side-link {% if request and request.url.path.startswith('/deposit') %}is-active{% endif %}"
-               href="/deposit/issues" data-tooltip="قضايا الوديعة">
-              <i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>
-            </a>
-            <div class="side-sep"></div>
-          {% endif %}
-
-          {% if session_user.role == 'admin' %}
-            <div class="side-sep"></div>
-            <a class="side-link {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" href="/admin" data-tooltip="لوحة الأدمين">
-              <i class="bi bi-speedometer2"></i> <span>لوحة الأدمين</span>
-            </a>
-          {% endif %}
         {% endif %}
-      </nav>
-      <button class="collapse-pin btn btn-ghost btn-sm mt-auto" id="pinSidebar" title="طي/تثبيت">
-        <i class="bi bi-chevron-double-left"></i><span class="ms-2 d-none d-xl-inline">طيّ الشريط</span>
-      </button>
-    </aside>
 
-    <!-- ===== Page ===== -->
-    <main class="page container-fluid main-flex-fill min-vh-100">
-      {% if session_user and session_user.status == 'approved' and not session_user.payouts_enabled %}
-        <div class="stripe-callout alert alert-warning d-flex justify-content-between align-items-center mb-3">
-          <div>💸 لبدء استلام الأرباح، اربط <strong>Stripe Connect</strong>.</div>
-          <a class="btn btn-sm btn-primary" href="/payout/settings">ربط الآن</a>
+        {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
+        <button class="btn-plain position-relative" id="notifOpen" title="الإشعارات">
+          <img class="icon-img" src="/static/img/notfi.png" alt="Notifications">
+          {% if unread > 0 %}
+            <span class="notif-ping"></span>
+            <span class="notif-count">{{ unread if unread < 100 else '99+' }}</span>
+          {% endif %}
+        </button>
+
+        <!-- إنشاء -->
+        <div class="dropdown">
+          <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown">
+            <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">إنشاء</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="/owner/items/new"><i class="bi bi-box"></i> عنصر جديد</a></li>
+            <li><a class="dropdown-item" href="/messages"><i class="bi bi-chat-left-text"></i> رسالة</a></li>
+          </ul>
         </div>
-      {% endif %}
 
-      {% if message %}<div class="alert alert-info">{{ message }}</div>{% endif %}
-      {% block content %}{% endblock %}
-    </main>
+        <!-- تبديل الثيم -->
+        <button class="btn btn-ghost btn-sm" id="themeToggle" title="تبديل الثيم">
+          <i class="bi bi-sun-fill d-none" id="sunIcon"></i>
+          <i class="bi bi-moon-stars-fill" id="moonIcon"></i>
+        </button>
 
-    <!-- إشعارات -->
-    <div class="notif-panel" id="notifPanel" aria-hidden="true">
-      <div class="notif-panel__header d-flex justify-content-between align-items-center">
-        <strong>الإشعارات</strong>
-        <button class="btn btn-ghost btn-sm" id="notifClose"><i class="bi bi-x-lg"></i></button>
-      </div>
-      <div class="notif-panel__body" id="notifBody">
-        <div class="small text-muted">لا توجد إشعارات جديدة.</div>
+        <!-- اللغة -->
+        <div class="dropdown lang-switch">
+          <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="اللغة">
+            <i class="bi bi-globe2"></i>
+            <span class="d-none d-sm-inline">{{ current_lang()|upper if current_lang else 'AR' }}</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item d-flex align-items-center" href="/lang/ar">العربية</a></li>
+            <li><a class="dropdown-item d-flex align-items-center" href="/lang/en">English</a></li>
+            <li><a class="dropdown-item d-flex align-items-center" href="/lang/fr">Français</a></li>
+          </ul>
+        </div>
+
+        <!-- الحساب -->
+        {% if session_user %}
+          <div class="dropdown">
+            <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
+              <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
+              <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
+              {% if session_user.status == 'approved' %}
+                <i class="bi bi-patch-check-fill verify" title="موثّق"></i>
+              {% endif %}
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> صفحتي</a></li>
+              <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
+              <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a></li>
+              <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a></li>
+
+              {% if session_user.get('can_manage_deposits') %}
+                <li><a class="dropdown-item" href="/dm/deposits"><i class="bi bi-shield-exclamation"></i> قضايا الوديعة</a></li>
+              {% endif %}
+
+              {% if session_user.role == 'admin' %}
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a></li>
+              {% endif %}
+
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right"></i> خروج</a></li>
+            </ul>
+          </div>
+        {% else %}
+          <a class="btn btn-ghost btn-sm" href="/login">دخول</a>
+          <a class="btn btn-primary btn-sm" href="/register">تسجيل</a>
+        {% endif %}
       </div>
     </div>
-    <div class="scrim" id="scrim"></div>
+  </header>
+  <!-- /Topbar -->
 
-    {% if session_user %}
-      <a href="/owner/items/new" class="fab d-lg-none" title="عنصر جديد"><i class="bi bi-plus-lg"></i></a>
+  <!-- ===== Sidebar ===== -->
+  <aside class="sidebar" id="appSidebar" data-collapsed="false">
+    <nav class="sidebar__nav">
+      <a class="side-link {% if request and request.url.path == '/' %}is-active{% endif %}" href="/" data-tooltip="الرئيسية">
+        <img class="side-icon" src="{{ url_for('static', path='images/home.png') }}" alt="home"><span>الرئيسية</span>
+      </a>
+      <a class="side-link {% if request and request.url.path.startswith('/items') %}is-active{% endif %}" href="/items" data-tooltip="كل العناصر">
+        <img class="side-icon" src="{{ url_for('static', path='images/tout.png') }}" alt="tout"><span>كل العناصر</span>
+      </a>
+
+      {% if session_user %}
+        <a class="side-link {% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}" href="/favorites" data-tooltip="مفضلتي">
+          <img class="side-icon" src="{{ url_for('static', path='images/save.png') }}" alt="save"><span>مفضلتي</span>
+        </a>
+        <a class="side-link {% if request and request.url.path.startswith('/profile') %}is-active{% endif %}" href="/profile" data-tooltip="صفحتي">
+          <img class="side-icon" src="{{ url_for('static', path='images/profil.png') }}" alt="profil"><span>صفحتي</span>
+        </a>
+        <a class="side-link {% if request and request.url.path.startswith('/owner/items') %}is-active{% endif %}" href="/owner/items" data-tooltip="أشيائي">
+          <img class="side-icon" src="{{ url_for('static', path='images/page.png') }}" alt="page"><span>أشيائي</span>
+        </a>
+        <a class="side-link {% if request and request.url.path.startswith('/bookings') %}is-active{% endif %}" href="/bookings" data-tooltip="حجوزاتي">
+          <img class="side-icon" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>حجوزاتي</span>
+        </a>
+        <a class="side-link {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" href="/payout/settings" data-tooltip="التحويلات">
+          <img class="side-icon" src="{{ url_for('static', path='images/cart.png') }}" alt="cart"><span>التحويلات</span>
+        </a>
+
+        {% if session_user.get('can_manage_deposits') %}
+          <a class="side-link {% if request and request.url.path.startswith('/dm/deposits') %}is-active{% endif %}"
+             href="/dm/deposits" data-tooltip="قضايا الوديعة">
+            <i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>
+          </a>
+          <div class="side-sep"></div>
+        {% endif %}
+
+        {% if session_user.role == 'admin' %}
+          <div class="side-sep"></div>
+          <a class="side-link {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" href="/admin" data-tooltip="لوحة الأدمين">
+            <i class="bi bi-speedometer2"></i> <span>لوحة الأدمين</span>
+          </a>
+        {% endif %}
+      {% endif %}
+    </nav>
+    <button class="collapse-pin btn btn-ghost btn-sm mt-auto" id="pinSidebar" title="طي/تثبيت">
+      <i class="bi bi-chevron-double-left"></i><span class="ms-2 d-none d-xl-inline">طيّ الشريط</span>
+    </button>
+  </aside>
+
+  <!-- ===== Page ===== -->
+  <main class="page container-fluid main-flex-fill min-vh-100">
+    {% if session_user and session_user.status == 'approved' and not session_user.payouts_enabled %}
+      <div class="stripe-callout alert alert-warning d-flex justify-content-between align-items-center mb-3">
+        <div>💸 لبدء استلام الأرباح، اربط <strong>Stripe Connect</strong>.</div>
+        <a class="btn btn-sm btn-primary" href="/payout/settings">ربط الآن</a>
+      </div>
     {% endif %}
 
-    <!-- ===== تبويب الجوال بالصور ===== -->
-    <nav class="mobile-tabbar d-lg-none">
-      <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
-        <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home">
-        <span>الرئيسية</span>
-      </a>
-      <a href="/items" class="{% if request and request.url.path.startswith('/items') %}is-active{% endif %}">
-        <img class="tab-img" src="{{ url_for('static', path='images/tout.png') }}" alt="items">
-        <span>العناصر</span>
-      </a>
-      {% if session_user %}
-      <a href="/favorites" class="{% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}">
-        <img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav">
-        <span>مفضلتي</span>
-      </a>
-      {% endif %}
-      <a href="/profile" class="{% if request and request.url.path.startswith('/profile') %}is-active{% endif %}">
-        <img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile">
-        <span>صفحتي</span>
-      </a>
-    </nav>
+    {% if message %}<div class="alert alert-info">{{ message }}</div>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
 
-    </div><!-- /#page-wrapper -->
+  <!-- إشعارات Panel -->
+  <div class="notif-panel" id="notifPanel" aria-hidden="true">
+    <div class="notif-panel__header d-flex justify-content-between align-items-center">
+      <strong>الإشعارات</strong>
+      <button class="btn btn-ghost btn-sm" id="notifClose"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="notif-panel__body" id="notifBody">
+      <div class="small text-muted">لا توجد إشعارات جديدة.</div>
+    </div>
+  </div>
+  <div class="scrim" id="scrim"></div>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    {% block scripts %}{% endblock %}
+  {% if session_user %}
+    <a href="/owner/items/new" class="fab d-lg-none" title="عنصر جديد"><i class="bi bi-plus-lg"></i></a>
+  {% endif %}
 
-    <!-- باقي السكربتات لديك كما هي (Typeahead + Notifications + Sidebar + Theme) 
-         تركتها بدون أي حذف أو تعديل عدا أنها موجودة أصلاً في ملفك. -->
+  <!-- تبويب الجوال -->
+  <nav class="mobile-tabbar d-lg-none">
+    <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
+      <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home">
+      <span>الرئيسية</span>
+    </a>
+    <a href="/items" class="{% if request and request.url.path.startswith('/items') %}is-active{% endif %}">
+      <img class="tab-img" src="{{ url_for('static', path='images/tout.png') }}" alt="items">
+      <span>العناصر</span>
+    </a>
+    {% if session_user %}
+    <a href="/favorites" class="{% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}">
+      <img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav">
+      <span>مفضلتي</span>
+    </a>
+    {% endif %}
+    <a href="/profile" class="{% if request and request.url.path.startswith('/profile') %}is-active{% endif %}">
+      <img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile">
+      <span>صفحتي</span>
+    </a>
+  </nav>
 
-    <!-- Typeahead -->
-    <script>
+</div><!-- /#page-wrapper -->
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+
+<script>
+  // Sidebar open/collapse
+  const sidebar   = document.getElementById('appSidebar');
+  const pinBtn    = document.getElementById('pinSidebar');
+  const toggleBtn = document.getElementById('sidebarToggle');
+  const saved     = localStorage.getItem('sidebar_collapsed');
+  if (saved === 'true') collapseSidebar(true);
+
+  toggleBtn?.addEventListener('click', () => {
+    if (window.matchMedia('(max-width: 991.98px)').matches) {
+      sidebar.classList.toggle('is-open');
+      document.getElementById('scrim').classList.toggle('is-show', sidebar.classList.contains('is-open'));
+    } else {
+      collapseSidebar(sidebar.dataset.collapsed !== 'true');
+    }
+  });
+  pinBtn?.addEventListener('click', () => collapseSidebar(sidebar.dataset.collapsed !== 'true'));
+
+  function collapseSidebar(yes){
+    if (yes){
+      sidebar.dataset.collapsed = 'true';
+      document.documentElement.style.setProperty('--sidebar-w', '84px');
+      localStorage.setItem('sidebar_collapsed','true');
+    }else{
+      sidebar.dataset.collapsed = 'false';
+      document.documentElement.style.setProperty('--sidebar-w', '268px');
+      localStorage.setItem('sidebar_collapsed','false');
+    }
+  }
+
+  // Theme toggle
+  const themeToggle = document.getElementById('themeToggle');
+  const sunIcon = document.getElementById('sunIcon');
+  const moonIcon = document.getElementById('moonIcon');
+  const savedTheme = localStorage.getItem('theme_mode');
+  if (savedTheme) setTheme(savedTheme);
+
+  themeToggle?.addEventListener('click', () => {
+    const current = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+    setTheme(current);
+  });
+
+  function setTheme(mode){
+    document.body.dataset.theme = mode;
+    localStorage.setItem('theme_mode', mode);
+    const dark = mode === 'dark';
+    sunIcon.classList.toggle('d-none', !dark);
+    moonIcon.classList.toggle('d-none', dark);
+  }
+</script>
+
+<!-- Typeahead -->
+<script>
 (function initTypeahead(){
   if (window.__typeaheadInit) return;
   window.__typeaheadInit = true;
@@ -421,10 +478,10 @@
     rows[activeIndex].scrollIntoView({block:'nearest'});
   }
 })();
-    </script>
+</script>
 
-    <!-- ===== إشعارات (Polling) ===== -->
-    <script>
+<!-- إشعارات (Polling) -->
+<script>
 (function notifSystem(){
   if (window.__notifInit) return; window.__notifInit = true;
 
@@ -515,7 +572,7 @@
   refreshPending();
   setInterval(refreshPending, 45*1000);
 })();
-    </script>
+</script>
 
-  </body>
+</body>
 </html>

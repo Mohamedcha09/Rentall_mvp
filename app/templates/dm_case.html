@@ -1,117 +1,35 @@
 {% extends "base.html" %}
 {% block content %}
+<div class="container py-3">
+  <h3 class="mb-3">قضية وديعة #{{ bk.id }}</h3>
 
-<h4 class="mb-3">قضية وديعة #{{ bk.id }}</h4>
-
-<div class="row g-3">
-  <div class="col-lg-7">
-    <div class="card">
-      {% if item and item.image_path %}
-        <img src="{{ (('/' ~ item.image_path) if item.image_path and item.image_path[0] != '/' else (item.image_path or '/static/placeholder.jpg')) }}"
-             class="card-img-top" style="max-height:320px;object-fit:cover" alt="">
-      {% endif %}
-      <div class="card-body">
-        <div class="d-flex justify-content-between">
-          <div>
-            <div class="small text-muted">العنصر</div>
-            <div class="fw-bold">{{ item.title if item else ('#' ~ bk.item_id) }}</div>
-          </div>
-          <span class="badge bg-dark-subtle">{{ bk.status }}</span>
-        </div>
-
-        <hr>
-
-        <div class="row g-2">
-          <div class="col-6">
-            <div class="small text-muted">المالك</div>
-            <div class="fw-bold">#{{ owner.id }} — {{ owner.full_name if owner else '' }}</div>
-          </div>
-          <div class="col-6">
-            <div class="small text-muted">المستأجر</div>
-            <div class="fw-bold">#{{ renter.id }} — {{ renter.full_name if renter else '' }}</div>
-          </div>
-        </div>
-
-        <div class="row g-2 mt-2">
-          <div class="col-6">
-            <div class="small text-muted">الوديعة المحجوزة</div>
-            <div class="fw-bold">{{ bk.hold_deposit_amount or 0 }}$</div>
-          </div>
-          <div class="col-6">
-            <div class="small text-muted">المقتطع حتى الآن</div>
-            <div class="fw-bold">{{ bk.deposit_charged_amount or 0 }}$</div>
-          </div>
-        </div>
-
-        <div class="row g-2 mt-2">
-          <div class="col-6">
-            <div class="small text-muted">حالة الوديعة</div>
-            <div class="fw-bold">{{ bk.deposit_status or '—' }}</div>
-          </div>
-          <div class="col-6">
-            <div class="small text-muted">حالة أونلاين</div>
-            <div class="fw-bold">{{ bk.online_status or '—' }}</div>
-          </div>
-        </div>
-
-        <div class="mt-3 small text-muted">
-          {% if bk.owner_return_note %}<div class="mb-1">ملاحظات:</div><pre class="small">{{ bk.owner_return_note }}</pre>{% endif %}
-        </div>
-      </div>
+  <div class="card mb-3">
+    <div class="card-body">
+      <div><strong>العنصر:</strong> {{ item.title if item else ('#' ~ bk.item_id) }}</div>
+      <div><strong>المالك:</strong> #{{ bk.owner_id }}</div>
+      <div><strong>المستأجر:</strong> #{{ bk.renter_id }}</div>
+      <div><strong>الوديعة المحجوزة:</strong> {{ bk.hold_deposit_amount or 0 }}$</div>
+      <div><strong>الحالة الحالية:</strong> {{ bk.deposit_status or 'none' }}</div>
+      <div><strong>ملاحظات:</strong><br>{{ bk.owner_return_note or '—' }}</div>
     </div>
   </div>
 
-  <div class="col-lg-5">
-    <div class="card">
-      <div class="card-body">
-        <h6 class="mb-2">اتخاذ قرار</h6>
-
-        <!-- إفراج كامل -->
-        <form method="post" action="/dm/deposits/{{ bk.id }}/decision" class="mb-2">
-          <input type="hidden" name="decision" value="release">
-          <div class="mb-2">
-            <label class="form-label">سبب (اختياري)</label>
-            <input name="reason" class="form-control" placeholder="مثال: لا توجد مشاكل أثناء الفحص.">
-          </div>
-          <button class="btn btn-success"><i class="bi bi-arrow-counterclockwise"></i> إفراج كامل للوديعة</button>
-        </form>
-
-        <hr>
-
-        <!-- اقتطاع جزء/كامل -->
-        <form method="post" action="/dm/deposits/{{ bk.id }}/decision">
-          <input type="hidden" name="decision" value="withhold">
-          <div class="row g-2">
-            <div class="col-6">
-              <label class="form-label">المبلغ</label>
-              <input type="number" name="amount" class="form-control" min="1" max="{{ bk.hold_deposit_amount or 0 }}" value="{{ bk.hold_deposit_amount or 0 }}">
-            </div>
-            <div class="col-6">
-              <label class="form-label">سبب</label>
-              <input name="reason" class="form-control" placeholder="تأخير/ضرر/فقدان…">
-            </div>
-          </div>
-          <div class="mt-2 d-grid">
-            <button class="btn btn-danger"><i class="bi bi-shield-exclamation"></i> اقتطاع المبلغ المحدد</button>
-          </div>
-          <div class="small text-muted mt-2">
-            لو تم اقتطاع جزء فقط سيتم تحرير المتبقي تلقائيًا (قدر الإمكان).
-          </div>
-        </form>
-
-      </div>
+  <form method="post" action="/dm/deposits/{{ bk.id }}/decision" class="row g-2">
+    <div class="col-12 col-md-4">
+      <select name="decision" class="form-select" required>
+        <option value="release">إفراج كامل</option>
+        <option value="withhold">اقتطاع (جزئي/كامل)</option>
+      </select>
     </div>
-
-    <div class="card mt-3">
-      <div class="card-body">
-        <h6 class="mb-2">تواريخ</h6>
-        <div class="d-flex justify-content-between"><span>تم القبول:</span><span>{{ bk.accepted_at or '—' }}</span></div>
-        <div class="d-flex justify-content-between"><span>تم الاستلام:</span><span>{{ bk.picked_up_at or '—' }}</span></div>
-        <div class="d-flex justify-content-between"><span>تم الإرجاع:</span><span>{{ bk.returned_at or '—' }}</span></div>
-        <div class="d-flex justify-content-between"><span>تحويل الإيجار:</span><span>{{ bk.rent_released_at or '—' }}</span></div>
-      </div>
+    <div class="col-12 col-md-4">
+      <input type="number" min="0" step="1" name="amount" class="form-control" placeholder="المبلغ عند الاقتطاع">
     </div>
-  </div>
+    <div class="col-12 col-md-8">
+      <input type="text" name="reason" class="form-control" placeholder="السبب / الملاحظات">
+    </div>
+    <div class="col-12 col-md-4 text-end">
+      <button class="btn btn-success">تنفيذ القرار</button>
+    </div>
+  </form>
 </div>
-
 {% endblock %}
