@@ -36,12 +36,10 @@ from .routes_bookings import router as bookings_router
 from .notifications import router as notifs_router
 from .notifications_api import router as notifications_router
 from .split_test import router as split_test_router
-
-# ❌ لا نستخدم payout_routes (القديم) لأنه كان يعرّف POST فقط ويسبب 405
-# from .payout_routes import router as payout_routes_router
-
-# [مضاف] راوتر المفضّلات
 from .routes_favorites import router as favorites_router
+
+# ✅ صفحة/واجهات متحكّم الوديعة (طابور القضايا)
+from .deposit_manager import router as deposit_manager_router
 
 load_dotenv()
 
@@ -117,9 +115,7 @@ app.include_router(payments_router)
 app.include_router(checkout_router)
 app.include_router(pay_api_router)
 app.include_router(split_test_router)
-# ✅ نُسجّل راوتر Stripe Connect الصحيح (يدعم GET/POST)
-app.include_router(payout_connect_router)
-
+app.include_router(payout_connect_router)  # Stripe Connect الصحيح
 app.include_router(webhooks_router)
 app.include_router(disputes_router)
 app.include_router(search_router)
@@ -129,6 +125,9 @@ app.include_router(bookings_router)
 app.include_router(favorites_router)
 app.include_router(notifs_router)
 app.include_router(notifications_router)
+
+# ✅ واجهات متحكّم الوديعة
+app.include_router(deposit_manager_router)
 
 def _cat_code(cat) -> str:
     if isinstance(cat, dict):
@@ -247,6 +246,7 @@ def api_unread_count(request: Request, db: Session = Depends(get_db)):
 
 @app.middleware("http")
 async def sync_user_flags(request: Request, call_next):
+    """مزامنة الأعلام من قاعدة البيانات إلى جلسة الواجهة."""
     try:
         if hasattr(request, "session"):
             sess_user = request.session.get("user")
@@ -256,22 +256,30 @@ async def sync_user_flags(request: Request, call_next):
                 try:
                     db_user = db.query(User).filter(User.id == sess_user["id"]).first()
                     if db_user:
+                        # حقول عامة
                         sess_user["is_verified"] = bool(getattr(db_user, "is_verified", False))
                         sess_user["role"] = getattr(db_user, "role", sess_user.get("role"))
                         sess_user["status"] = getattr(db_user, "status", sess_user.get("status"))
                         sess_user["payouts_enabled"] = bool(getattr(db_user, "payouts_enabled", False))
+                        # ✅ متحكّم الوديعة
+                        sess_user["is_deposit_manager"] = bool(getattr(db_user, "is_deposit_manager", False))
+                        # شارات
                         for key in [
                             "badge_admin","badge_new_yellow","badge_pro_green","badge_pro_gold",
                             "badge_purple_trust","badge_renter_green","badge_orange_stars"
                         ]:
-                            try: sess_user[key] = bool(getattr(db_user, key))
-                            except Exception: pass
+                            try:
+                                sess_user[key] = bool(getattr(db_user, key))
+                            except Exception:
+                                pass
                         request.session["user"] = sess_user
                 except Exception:
                     pass
                 finally:
-                    try: next(db_gen)
-                    except StopIteration: pass
+                    try:
+                        next(db_gen)
+                    except StopIteration:
+                        pass
     except Exception:
         pass
     response = await call_next(request)

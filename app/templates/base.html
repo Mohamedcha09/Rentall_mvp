@@ -1,4 +1,4 @@
-<!-- base.html -->
+<!-- app/templates/base.html -->
 <!doctype html>
 <html lang="ar" dir="rtl">
   <head>
@@ -94,7 +94,7 @@
           background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 96%, transparent),
                                                color-mix(in oklab, var(--panel) 94%, transparent));
           border-top:1px solid var(--border);
-          display: grid; grid-template-columns: repeat(4,1fr); /* لدينا 4 تبويبات */
+          display: grid; grid-template-columns: repeat(4,1fr);
           backdrop-filter: blur(14px) saturate(120%);
           z-index: 2100;
         }
@@ -108,12 +108,10 @@
         .page{ padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
       }
 
-      /* لا نخفي زر الثيم على الهاتف (كان مخفي قبل) */
       @media (max-width:768px){
-        .actions .dropdown:first-of-type{ display:none !important; } /* بس منيو "إنشاء" */
+        .actions .dropdown:first-of-type{ display:none !important; }
       }
 
-      /* إزالة أي حدود/ظلال من الهيدر */
       .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important; }
     </style>
 
@@ -127,12 +125,10 @@
     <header class="topbar">
       <div class="topbar__inner container-fluid">
 
-        <!-- زر المربّع بصورتك ok -->
         <button class="btn btn-ghost btn-sm" id="sidebarToggle" aria-label="Toggle sidebar">
           <img class="topbar-ok" src="{{ url_for('static', path='images/ok.png') }}" alt="OK">
         </button>
 
-        <!-- شعار SEVOR كبير -->
         <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/">
           <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR">
           <span class="visually-hidden">SEVOR</span>
@@ -177,7 +173,7 @@
             </ul>
           </div>
 
-          <!-- تبديل الثيم (ظاهر أيضًا على الهاتف) -->
+          <!-- تبديل الثيم -->
           <button class="btn btn-ghost btn-sm" id="themeToggle" title="تبديل الثيم">
             <i class="bi bi-sun-fill d-none" id="sunIcon"></i>
             <i class="bi bi-moon-stars-fill" id="moonIcon"></i>
@@ -211,6 +207,11 @@
                 <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
                 <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a></li>
                 <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a></li>
+
+                {% if session_user.is_deposit_manager or session_user.role == 'admin' %}
+                  <li><a class="dropdown-item" href="/dm/cases"><i class="bi bi-shield-lock"></i> قضايا الوديعة</a></li>
+                {% endif %}
+
                 {% if session_user.role == 'admin' %}
                   <li><hr class="dropdown-divider"></li>
                   <li><a class="dropdown-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a></li>
@@ -254,6 +255,13 @@
           <a class="side-link {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" href="/payout/settings" data-tooltip="التحويلات">
             <img class="side-icon" src="{{ url_for('static', path='images/cart.png') }}" alt="cart"><span>التحويلات</span>
           </a>
+
+          {% if session_user.is_deposit_manager or session_user.role == 'admin' %}
+            <div class="side-sep"></div>
+            <a class="side-link {% if request and request.url.path.startswith('/dm') %}is-active{% endif %}" href="/dm/cases" data-tooltip="قضايا الوديعة">
+              <i class="bi bi-shield-lock"></i> <span>قضايا الوديعة</span>
+            </a>
+          {% endif %}
 
           {% if session_user.role == 'admin' %}
             <div class="side-sep"></div>
@@ -355,7 +363,7 @@
         }
       }
 
-      // Theme toggle (يعمل على الهاتف والكمبيوتر)
+      // Theme toggle
       const themeToggle = document.getElementById('themeToggle');
       const sunIcon = document.getElementById('sunIcon');
       const moonIcon = document.getElementById('moonIcon');
@@ -379,6 +387,7 @@
       const notifOpen  = document.getElementById('notifOpen');
       const notifClose = document.getElementById('notifClose');
       const panel      = document.getElementById('notifPanel');
+      const body       = document.getElementById('notifBody');
       const scrim      = document.getElementById('scrim');
 
       function openPanel(){ panel.classList.add('is-open'); scrim.classList.add('is-show'); }
