@@ -39,6 +39,7 @@ from .split_test import router as split_test_router
 
 # [مضاف] راوتر المفضّلات
 from .routes_favorites import router as favorites_router
+from .routers.me import router as me_router
 
 load_dotenv()
 
@@ -126,7 +127,7 @@ app.include_router(bookings_router)
 app.include_router(favorites_router)
 app.include_router(notifs_router)
 app.include_router(notifications_router)
-
+app.include_router(me_router)
 def _cat_code(cat) -> str:
     if isinstance(cat, dict):
         return (
