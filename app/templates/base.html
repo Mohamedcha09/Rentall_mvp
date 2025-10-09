@@ -118,7 +118,9 @@
     {% block head %}{% endblock %}
   </head>
 
-  <body class="theme" data-theme="dark">
+  <!-- لاحظ الإضافة هنا: data-can-dm -->
+  <body class="theme" data-theme="dark"
+        data-can-dm="{{ 1 if session_user and (session_user.can_manage_deposits or session_user.is_deposit_manager or ((session_user.role or '')|lower == 'admin')) else 0 }}">
 
     <div id="page-wrapper"><!-- غلاف ملء الشاشة -->
 
@@ -251,15 +253,10 @@
             <img class="side-icon" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>حجوزاتي</span>
           </a>
 
-          <!-- قد يرسمه السيرفر، لكن سنُخفيه بالـJS حتى يصل إشعار المنح -->
+          <!-- يظهر بالرندر العادي لو الـsession فيها الصلاحية -->
           {% if session_user.get('can_manage_deposits') %}
             <a class="side-link {% if request and request.url.path.startswith('/dm/deposits') %}is-active{% endif %}"
-               href="/dm/deposits" data-tooltip="قضايا الوديعة" data-nav="dm-link">
-              <i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>
-            </a>
-          {% else %}
-            <!-- مكان بديل ننشئ فيه الرابط ديناميكياً عند المنح -->
-            <a class="side-link" href="/dm/deposits" data-tooltip="قضايا الوديعة" data-nav="dm-link" style="display:none">
+               href="/dm/deposits" data-tooltip="قضايا الوديعة">
               <i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>
             </a>
           {% endif %}
@@ -331,11 +328,13 @@
         <span>صفحتي</span>
       </a>
 
-      <!-- تبويب الجوال لقضايا الوديعة: مخفي حتى يصل إشعار المنح -->
-      <a href="/dm/deposits" data-nav="dm-mobile" style="display:none">
-        <i class="bi bi-shield-exclamation"></i>
-        <span>قضايا الوديعة</span>
-      </a>
+      <!-- التبويب سيظهر هنا أيضاً لو عنده الصلاحية -->
+      {% if session_user and session_user.get('can_manage_deposits') %}
+        <a href="/dm/deposits" class="{% if request and request.url.path.startswith('/dm/deposits') %}is-active{% endif %}">
+          <i class="bi bi-shield-exclamation"></i>
+          <span>قضايا الوديعة</span>
+        </a>
+      {% endif %}
     </nav>
 
     </div><!-- /#page-wrapper -->
@@ -425,7 +424,7 @@
   function show(){ panel.classList.remove('d-none'); }
   function esc(s){
     return String(s||"").replace(/[&<>"']/g, function(c){
-      return {"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
     });
   }
 
@@ -531,12 +530,21 @@
     a.innerHTML = `<div class="fw-bold">${esc(title)}</div>${meta?`<div class="k small">${esc(meta)}</div>`:''}`;
     return a;
   }
-  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
+  let prevCount = -1;
   function refreshUnread(){
     fetch('/api/unread_count')
       .then(r=>r.ok?r.json():{count:0})
-      .then(d=>setBell(parseInt(d.count||0)))
+      .then(d=>{
+        const n = parseInt(d.count||0);
+        setBell(n);
+        if (n !== prevCount){
+          prevCount = n;
+          // إطلاق حدث داخلي لتنبيه سكربتات أخرى (مثل مزامنة صلاحية MD)
+          document.dispatchEvent(new CustomEvent('unread:changed', {detail:{count:n}}));
+        }
+      })
       .catch(()=>{});
   }
   refreshUnread();
@@ -544,61 +552,125 @@
 })();
     </script>
 
-    <!-- ====== سكربت إظهار/إخفاء «قضايا الوديعة» حسب الإشعار فقط ====== -->
+    <!-- ====== سكربت إظهار/إخفاء رابط قضايا الوديعة فورياً ====== -->
     <script>
 (function () {
-  const sideEl   = document.querySelector('[data-nav="dm-link"]') || document.querySelector('.sidebar__nav a[href="/dm/deposits"]');
-  const mobileEl = document.querySelector('[data-nav="dm-mobile"]') || document.querySelector('.mobile-tabbar a[href="/dm/deposits"]');
+  // أدوات إضافة/حذف الرابط في الشريط الجانبي وتبويب الجوال
+  function ensureSidebarLink(){
+    const nav = document.querySelector('.sidebar__nav'); if(!nav) return;
+    if (nav.querySelector('[data-nav="dm-link"]')) return;
+    const a = document.createElement('a');
+    a.setAttribute('data-nav','dm-link');
+    a.className = 'side-link';
+    a.href = '/dm/deposits';
+    a.setAttribute('data-tooltip','قضايا الوديعة');
+    a.innerHTML = '<i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>';
+    nav.appendChild(a);
+  }
+  function removeSidebarLink(){
+    const el = document.querySelector('.sidebar__nav [data-nav="dm-link"]'); if (el) el.remove();
+  }
+  function ensureMobileTab(){
+    const m = document.querySelector('.mobile-tabbar'); if(!m) return;
+    if (m.querySelector('[data-nav="dm-mobile"]')) return;
+    const a = document.createElement('a');
+    a.setAttribute('data-nav','dm-mobile');
+    a.href = '/dm/deposits';
+    a.innerHTML = '<i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>';
+    m.appendChild(a);
+  }
+  function removeMobileTab(){
+    const el = document.querySelector('.mobile-tabbar [data-nav="dm-mobile"]'); if (el) el.remove();
+  }
 
   function showDM(){
-    try{ localStorage.setItem('dm_enabled','1'); }catch(_){}
-    if (sideEl)   sideEl.style.display   = '';
-    if (mobileEl) mobileEl.style.display = '';
+    try{ localStorage.setItem('dm_enabled','1'); }catch(e){}
+    ensureSidebarLink();
+    ensureMobileTab();
   }
   function hideDM(){
-    try{ localStorage.removeItem('dm_enabled'); }catch(_){}
-    if (sideEl)   sideEl.style.display   = 'none';
-    if (mobileEl) mobileEl.style.display = 'none';
+    try{ localStorage.removeItem('dm_enabled'); }catch(e){}
+    removeSidebarLink();
+    removeMobileTab();
   }
 
-  // عند التحميل: أخفِ دائمًا مبدئيًا، وأظهر فقط لو localStorage مفعل
-  if (sideEl)   sideEl.style.display   = 'none';
-  if (mobileEl) mobileEl.style.display = 'none';
-  try{ if (localStorage.getItem('dm_enabled') === '1') showDM(); }catch(_){}
+  // تهيئة مبدئية: من body data أو من localStorage
+  var canDM = (document.body.dataset.canDm === '1') || (localStorage.getItem('dm_enabled') === '1');
+  if (canDM) showDM();
 
-  // اعتراض fetch لالتقاط /api/notifications/poll وتفعيل/تعطيل الرابط فورًا
-  const _fetch = window.fetch;
-  window.fetch = function(url, opts){
-    const p = _fetch.apply(this, arguments);
-    try{
-      const u = (typeof url === 'string') ? url : (url && url.url) || '';
-      if (u.indexOf('/api/notifications/poll') !== -1){
-        p.then(r => r.clone().json().then(data => {
-          const items = (data && data.items) || [];
-          for (const n of items){
-            const txt = ((n && (n.title||'')) + ' ' + (n && (n.body||''))).trim();
-            if (/تم\s+منحك?\s+دور\s+مت?حكّم?\s+الوديعة/i.test(txt)) { showDM(); break; }
-            if (/تم\s+إلغاء\s+دور\s+مت?حكّم?\s+الوديعة/i.test(txt)) { hideDM(); break; }
-          }
-        }).catch(()=>{})).catch(()=>{});
-      }
-    }catch(_){}
-    return p;
-  };
-
-  // كمساعدة إضافية: إن تم إدراج الإشعار داخل لوحة الإشعارات DOM
+  // راقب لوحة الإشعارات: عند ظهور نص منح/إلغاء MD عدّل الرابط فوراً
   const notifBody = document.getElementById('notifBody');
   if (notifBody){
-    const rxGrant  = /تم\s+منحك?\s+دور\s+مت?حكّم?\s+الوديعة/i;
-    const rxRevoke = /تم\s+إلغاء\s+دور\s+مت?حكّم?\s+الوديعة/i;
-    const check = () => {
-      const t = notifBody.textContent || '';
-      if (rxGrant.test(t))  showDM();
-      if (rxRevoke.test(t)) hideDM();
+    const rxGrant  = /تم\s+منحك?\s+دور\s+متحكّم\s+الوديعة/i;
+    const rxRevoke = /تم\s+إلغاء\s+دور\s+متحكّم\s+الوديعة/i;
+
+    const onChange = () => {
+      const txt = notifBody.textContent || '';
+      if (rxGrant.test(txt))  { showDM(); }
+      if (rxRevoke.test(txt)) { hideDM(); }
     };
-    new MutationObserver(check).observe(notifBody, {childList:true,subtree:true,characterData:true});
-    check();
+
+    const mo = new MutationObserver(function(muts){
+      for (const m of muts){
+        if (m.type === 'childList' || m.type === 'characterData'){ onChange(); break; }
+      }
+    });
+    mo.observe(notifBody, {childList:true, subtree:true, characterData:true});
+    onChange();
   }
+
+  // كشف الدوال عالمياً ليستعملها سكربت آخر إن لزم
+  window.showDM = window.showDM || showDM;
+  window.hideDM = window.hideDM || hideDM;
+})();
+    </script>
+
+    <!-- سكربت مزامنة صلاحية MD مع تغيّر عدّاد الإشعارات + فحص من /api/me -->
+    <script>
+(function roleAutoToggle(){
+  if (window.__dmSyncInit) return; window.__dmSyncInit = true;
+
+  const rxGrant  = /تم\s+منحك?\s+دور\s+متحكّم\s+الوديعة/i;
+  const rxRevoke = /تم\s+إلغاء\s+دور\s+متحكّم\s+الوديعة/i;
+
+  function trySyncFromMe(){
+    return fetch('/api/me', {credentials:'include'})
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        const flag = !!(data && (data.can_manage_deposits || data.is_deposit_manager || data.canDM));
+        if (flag) { showDM(); } else { hideDM(); }
+      })
+      .catch(()=>{ /* صامت */ });
+  }
+
+  function trySyncFromLatestNotif(){
+    return fetch('/api/notifications/latest', {credentials:'include'})
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(d => {
+        const txt = (d && (d.text || d.message || '')) || '';
+        if (rxGrant.test(txt))  { showDM(); }
+        if (rxRevoke.test(txt)) { hideDM(); }
+      })
+      .catch(()=>{ /* تجاهل إذا غير متوفر */ });
+  }
+
+  // فحص أوّلي
+  trySyncFromMe();
+
+  // عند تغيّر عدّاد الإشعارات (وصول إشعار جديد غالبًا)
+  document.addEventListener('unread:changed', () => {
+    trySyncFromLatestNotif().then(() => {
+      trySyncFromMe();
+    });
+  });
+
+  // شبكة أمان: فحص خفيف خلال أول دقيقتين
+  let checks = 0;
+  const timer = setInterval(() => {
+    checks += 1;
+    trySyncFromMe();
+    if (checks >= 8) clearInterval(timer); // ~2 دقيقة
+  }, 15000);
 })();
     </script>
 
