@@ -83,6 +83,7 @@ RENTER_REPLY_WINDOW_HOURS = 48  # مهلة رد المستأجر (للعرض ف�
 
 def _iso(dt: Optional[datetime]) -> Optional[str]:
     return dt.isoformat() if dt else None
+
 # ===== UI: صفحة إنشاء =====
 @router.get("/bookings/new")
 def booking_new_page(

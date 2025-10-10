@@ -270,7 +270,12 @@ def report_deposit_issue(
     # ملاحظة المالك
     try:
         if description:
-            setattr(bk, "owner_return_note", (getattr(bk, "owner_return_note", "") or "").strip() + (("\n" if getattr(bk, "owner_return_note", "") else "") + f"[{issue_type}] {description}"))
+            setattr(
+                bk,
+                "owner_return_note",
+                (getattr(bk, "owner_return_note", "") or "").strip()
+                + (("\n" if getattr(bk, "owner_return_note", "") else "") + f"[{issue_type}] {description}")
+            )
     except Exception:
         pass
 
