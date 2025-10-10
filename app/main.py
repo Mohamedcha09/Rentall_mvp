@@ -44,6 +44,12 @@ from .routers.me import router as me_router
 # ✅ [مضاف] راوتر إدارة الودائع (DM / قرارات الوديعة)
 from .routes_deposits import router as deposits_router
 
+# ✅ [جديد] راوتر أدلّة الوديعة (رفع/عرض ملفات)
+from .routes_evidence import router as evidence_router
+
+# ✅ [جديد] راوتر تشغيل الإفراج التلقائي يدويًا (للاختبار/الأدمن)
+from .cron_auto_release import router as cron_router
+
 load_dotenv()
 
 app = FastAPI()
@@ -134,6 +140,12 @@ app.include_router(me_router)
 
 # ✅ [مضاف] تسجيل مسارات إدارة الودائع (DM)
 app.include_router(deposits_router)
+
+# ✅ [مضاف] تسجيل مسارات أدلّة الوديعة
+app.include_router(evidence_router)
+
+# ✅ [مضاف] تسجيل مسار تشغيل الإفراج التلقائي يدويًا
+app.include_router(cron_router)
 
 def _cat_code(cat) -> str:
     if isinstance(cat, dict):
