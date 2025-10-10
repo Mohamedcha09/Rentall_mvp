@@ -1,80 +1,161 @@
-"""
-app/cron_auto_release.py
-------------------------
-هذا السكربت مسؤول عن "الإفراج التلقائي" عن الودائع بعد انتهاء مهلة الاعتراض (48 ساعة)
-في حال لم يُفتح أي بلاغ من المالك ولم تكن هناك حالة نزاع.
+# app/cron_auto_release.py
+from __future__ import annotations
+from datetime import datetime, timedelta
+import os
 
-يمكن تشغيله:
-  - يدويًا عبر المتصفح من الراوتر:  GET /admin/run/auto-release
-  - أو مجدول (cron job) كل ساعة مثلاً.
+import stripe
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
 
-"""
+from .database import get_db
+from .models import Booking, User
+from .notifications_api import push_notification, notify_admins
 
-from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter
-from sqlalchemy import and_
-from app.database import SessionLocal
-from app.models import Booking
-from app.utils import notify_user
+router = APIRouter(tags=["admin"])
 
-router = APIRouter()
+# إعداد Stripe
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
-AUTO_RELEASE_DELAY_HOURS = 48  # 48 ساعة بعد الإرجاع
+# نفس النافذة الزمنية المعتمدة: 48 ساعة بعد الإرجاع
+AUTO_RELEASE_WINDOW_HOURS = 48
 
-def auto_release_logic(db):
+
+def _can_auto_release(bk: Booking, now: datetime) -> bool:
     """
-    يمرّ على جميع الحجوزات التي:
-      - حالتها returned
-      - ومرت 48 ساعة منذ وقت الإرجاع
-      - ولم تُفتح قضية أو نزاع
-      - ولم تُفرج وديعتها بعد
-    ثم يعيد الوديعة للمستأجر.
+    الشروط:
+      - الحجز مُعلّم مُرجع returned/in_review
+      - يوجد تفويض وديعة deposit_hold_intent_id
+      - لا يوجد نزاع مفتوح (deposit_status != 'in_dispute')
+      - مضت 48 ساعة على returned_at دون بلاغ
     """
-    now = datetime.now(timezone.utc)
-    cutoff = now - timedelta(hours=AUTO_RELEASE_DELAY_HOURS)
+    if not getattr(bk, "returned_at", None):
+        return False
+    if getattr(bk, "deposit_status", None) in ("in_dispute", "partially_withheld", "claimed"):
+        return False
+    if getattr(bk, "deposit_hold_intent_id", None) in (None, ""):
+        return False
+    if getattr(bk, "status", None) not in ("returned", "in_review"):
+        return False
 
-    bookings = db.query(Booking).filter(
-        and_(
-            Booking.status == "returned",
-            Booking.returned_at != None,
-            Booking.returned_at < cutoff,
-            Booking.deposit_status.notin_(["in_dispute", "claimed", "partially_withheld", "refunded"]),
-        )
-    ).all()
+    try:
+        deadline = bk.returned_at + timedelta(hours=AUTO_RELEASE_WINDOW_HOURS)
+        return now >= deadline
+    except Exception:
+        return False
 
-    released_count = 0
-    for bk in bookings:
+
+def _do_release(bk: Booking) -> None:
+    """
+    يلغي تفويض الوديعة ويرمز الحالات محليًا.
+    """
+    pi_id = getattr(bk, "deposit_hold_intent_id", None)
+    if not pi_id:
+        return
+
+    # محاولة إلغاء التفويض على Stripe (أمان: نتجنب كسر المهمة عند أي خطأ)
+    try:
+        if stripe.api_key:
+            stripe.PaymentIntent.cancel(pi_id)
+    except Exception:
+        # تجاهل بهدوء—قد يكون مُلغى مسبقًا
+        pass
+
+    # تحديث حالة الوديعة والحجز
+    try:
         bk.deposit_status = "refunded"
-        bk.updated_at = now
-        released_count += 1
-        db.add(bk)
-        # إشعار المستخدمين
-        try:
-            notify_user(bk.renter_id, f"✅ تم الإفراج التلقائي عن الوديعة لحجز #{bk.id}")
-            notify_user(bk.owner_id, f"ℹ️ تم الإفراج التلقائي عن وديعة حجز #{bk.id}")
-        except Exception:
-            pass
+        bk.deposit_charged_amount = 0
+    except Exception:
+        pass
 
-    db.commit()
-    return released_count
+    # إن كان الحجز ما زال returned/in_review نعتبره مكتمل
+    try:
+        if getattr(bk, "status", None) in ("returned", "in_review"):
+            bk.status = "completed"
+    except Exception:
+        pass
+
+    # طابع زمني للتحديث
+    try:
+        bk.updated_at = datetime.utcnow()
+    except Exception:
+        pass
 
 
 @router.get("/admin/run/auto-release")
-def run_auto_release():
+def run_auto_release(
+    dry: bool = Query(True, description="وضع التجربة فقط دون تنفيذ فعلي على Stripe/DB"),
+    db: Session = Depends(get_db),
+):
     """
-    راوتر إداري لتشغيل العملية يدويًا أثناء التطوير أو الاختبار.
+    لتشغيل الإفراج التلقائي يدويًا من الأدمن أثناء الاختبار.
+    - يمرّ على الحجوزات المستحقة ويُلغي تفويض الوديعة إذا انقضت 48 ساعة بعد الإرجاع بدون نزاع.
+    - إذا كان dry=true لا يُجري التغييرات، فقط يُرجع ما كان سيفعله.
     """
-    db = SessionLocal()
-    try:
-        count = auto_release_logic(db)
-        return {"status": "ok", "released": count}
-    finally:
-        db.close()
+    # مبدئيًا أي مستخدم يستطيع طلب هذا المسار؟ في الإنتاج اربطه بدور الأدمن فقط.
+    now = datetime.utcnow()
 
+    # مرشّح أساسي لتقليل النتائج
+    q = (
+        db.query(Booking)
+        .filter(
+            Booking.returned_at.isnot(None),
+            Booking.deposit_hold_intent_id.isnot(None),
+            Booking.deposit_status.is_(None) | Booking.deposit_status.in_(["held", "refunded", "none", "in_review"]),
+            Booking.status.in_(["returned", "in_review"]),
+        )
+        .order_by(Booking.returned_at.asc())
+    )
+    candidates = q.all()
 
-if __name__ == "__main__":
-    # يمكن تشغيل هذا الملف مباشرة: python app/cron_auto_release.py
-    db = SessionLocal()
-    count = auto_release_logic(db)
-    print(f"✅ تم الإفراج التلقائي عن {count} وديعة/ودائع منتهية المهلة.")
-    db.close()
+    to_release = [bk for bk in candidates if _can_auto_release(bk, now)]
+    count = 0
+    ids = []
+
+    if not dry:
+        for bk in to_release:
+            _do_release(bk)
+            db.commit()
+            count += 1
+            ids.append(bk.id)
+
+            # تنبيهات لأطراف الحجز
+            try:
+                push_notification(
+                    db,
+                    bk.renter_id,
+                    "إفراج وديعة تلقائي",
+                    f"أُفرجت وديعة الحجز #{bk.id} تلقائيًا بعد انتهاء مهلة الاعتراض.",
+                    f"/bookings/flow/{bk.id}",
+                    "deposit",
+                )
+                push_notification(
+                    db,
+                    bk.owner_id,
+                    "إفراج وديعة تلقائي",
+                    f"تم الإفراج عن الوديعة لحجز #{bk.id} بعد انتهاء المهلة.",
+                    f"/bookings/flow/{bk.id}",
+                    "deposit",
+                )
+            except Exception:
+                pass
+
+        try:
+            if count:
+                notify_admins(
+                    db,
+                    "تشغيل الإفراج التلقائي",
+                    f"أُفرج تلقائيًا عن {count} وديعة. (IDs: {ids})",
+                    "/admin",
+                )
+        except Exception:
+            pass
+
+    return {
+        "now": now.isoformat(),
+        "dry": dry,
+        "candidates": [bk.id for bk in candidates],
+        "eligible": [bk.id for bk in to_release],
+        "released_count": (count if not dry else 0),
+        "released_ids": (ids if not dry else []),
+        "window_hours": AUTO_RELEASE_WINDOW_HOURS,
+    }
