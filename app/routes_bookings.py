@@ -1,8 +1,7 @@
 # app/routes_bookings.py
 # NOTE:
-# قرارات الوديعة (refund/withhold) أصبحت تُدار في app/pay_api.py عبر صلاحية user.can_manage_deposits
-# (أي Deposit Manager أو Admin). لا تغييرات وظيفية هنا؛ التدفق وإشعارات "بانتظار مراجعة الإدارة"
-# تبقى كما هي، والقرار النهائي يُنفّذ من مسارات pay_api.py.
+# قرارات الوديعة (refund/withhold) تُدار في app/pay_api.py عبر صلاحية can_manage_deposits
+# هذا الملف مسؤول عن تدفّق الحجز من الإنشاء حتى الإرجاع.
 
 from __future__ import annotations
 from typing import Optional, Literal
@@ -78,6 +77,12 @@ def _try_capture_stripe_rent(bk: Booking) -> bool:
     except Exception:
         return False
 
+# [ADDED helpers] مهلات وسياسة الوقت
+DISPUTE_WINDOW_HOURS = 48  # مهلة البلاغ بعد الإرجاع
+RENTER_REPLY_WINDOW_HOURS = 48  # مهلة رد المستأجر (للعرض فقط)
+
+def _iso(dt: Optional[datetime]) -> Optional[str]:
+    return dt.isoformat() if dt else None
 # ===== UI: صفحة إنشاء =====
 @router.get("/bookings/new")
 def booking_new_page(
@@ -213,8 +218,16 @@ def booking_flow_page(
     owner = db.get(User, bk.owner_id)
     renter = db.get(User, bk.renter_id)
 
-    # ADDED: نمرّر حالة تفعيل مدفوعات المالك إلى القالب
+    # حالة تفعيل مدفوعات المالك لتمكين الدفع أونلاين
     owner_pe = bool(getattr(owner, "payouts_enabled", False)) if owner else False
+
+    # [ADDED] تمرير مهلة البلاغ بعد الإرجاع لعرض عدّاد (48 ساعة)
+    dispute_deadline = None
+    if getattr(bk, "returned_at", None):
+        try:
+            dispute_deadline = bk.returned_at + timedelta(hours=DISPUTE_WINDOW_HOURS)
+        except Exception:
+            dispute_deadline = None
 
     ctx = {
         "request": request,
@@ -224,7 +237,7 @@ def booking_flow_page(
         "item": item,
         "owner": owner,
         "renter": renter,
-        "owner_pe": owner_pe,  # ADDED
+        "owner_pe": owner_pe,
         "item_title": (item.title if item else f"#{bk.item_id}"),
         "category_label": category_label,
         "is_owner": is_owner(user, bk),
@@ -239,6 +252,9 @@ def booking_flow_page(
         "is_awaiting_return": (bk.status == "awaiting_return"),
         "is_in_review": (bk.status == "in_review"),
         "is_completed": (bk.status == "completed"),
+        # [ADDED]
+        "dispute_deadline_iso": _iso(dispute_deadline),
+        "renter_reply_hours": RENTER_REPLY_WINDOW_HOURS,
     }
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
 
@@ -273,7 +289,14 @@ def owner_decision(
         return redirect_to_flow(bk.id)
 
     bk.owner_decision = "accepted"
-    bk.deposit_amount = max(0, int(deposit_amount or 0))
+
+    # افتراضي الديبو = 5 × السعر اليومي إذا لم يُدخل المالك رقمًا
+    default_deposit = (item.price_per_day or 0) * 5
+    amount = int(deposit_amount or 0)
+    if amount <= 0:
+        amount = default_deposit
+
+    bk.deposit_amount = max(0, amount)
     bk.accepted_at = datetime.utcnow()
     bk.timeline_owner_decided_at = datetime.utcnow()
     bk.status = "accepted"
@@ -322,7 +345,7 @@ def renter_choose_payment(
                       f"/bookings/flow/{bk.id}", "booking")
     return redirect_to_flow(bk.id)
 
-# ===== دفع أونلاين — نحظر لو payouts غير مفعّلة =====
+# ===== دفع أونلاين — منع إن لم يُفعّل المالك الاستلام =====
 @router.post("/bookings/{booking_id}/renter/pay_online")
 def renter_pay_online(
     booking_id: int,
@@ -340,10 +363,8 @@ def renter_pay_online(
     owner = db.get(User, bk.owner_id)
     owner_pe = bool(getattr(owner, "payouts_enabled", False)) if owner else False
     if not owner_pe:
-        # منع باك-إند حتى لو حاول أحد يتجاوز الواجهة
         raise HTTPException(status_code=409, detail="Owner payouts not enabled")
 
-    # توجيه لمسار Checkout الحقيقي
     return RedirectResponse(url=f"/api/stripe/checkout/rent/{booking_id}", status_code=303)
 
 # ===== تأكيد استلام المستأجر =====
@@ -385,7 +406,90 @@ def renter_confirm_received(
                       f"/bookings/flow/{bk.id}", "booking")
     return redirect_to_flow(bk.id)
 
-# ======= Aliases القديمة =======
+# [ADDED] تأكيد المالك للتسليم (زر "تمّ التسليم" عند المالك)
+@router.post("/bookings/{booking_id}/owner/confirm_delivered")
+def owner_confirm_delivered(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    يسمح للمالك بتعليم أن الغرض تمّ تسليمه للمستأجر.
+    - يلتقط دفعة الإيجار إذا كانت أونلاين (manual capture).
+    - يغيّر الحالة إلى picked_up.
+    """
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if not is_owner(user, bk):
+        raise HTTPException(status_code=403, detail="Only owner can confirm delivery")
+    if bk.status not in ("paid",):  # تم دفعها (كاش/أونلاين مؤهَّلة للتسليم)
+        return redirect_to_flow(bk.id)
+
+    item = db.get(Item, bk.item_id)
+
+    if bk.payment_method == "online":
+        captured = _try_capture_stripe_rent(bk)
+        if not captured:
+            bk.payment_status = "released"
+            bk.owner_payout_amount = bk.rent_amount or bk.total_amount or 0
+            bk.rent_released_at = datetime.utcnow()
+            bk.online_status = "captured"
+
+    bk.status = "picked_up"
+    bk.picked_up_at = datetime.utcnow()
+    db.commit()
+
+    push_notification(db, bk.renter_id, "تمّ تسليم الغرض",
+                      f"قام المالك بتسليم '{item.title}'. نتمنى لك تجربة موفقة.",
+                      f"/bookings/flow/{bk.id}", "booking")
+    return redirect_to_flow(bk.id)
+
+# [ADDED] اختصار لفتح بلاغ وديعة من صفحة التدفق (ينقل لمسار البلاغ)
+@router.post("/bookings/{booking_id}/owner/open_deposit_issue")
+def owner_open_deposit_issue(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    اختصار ينقل إلى فورم البلاغ الموجود في routes_deposits.py
+    POST الحقيقي يكون على: /deposits/{booking_id}/report
+    """
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if not is_owner(user, bk):
+        raise HTTPException(status_code=403, detail="Only owner")
+    return RedirectResponse(url=f"/deposits/{bk.id}/report", status_code=303)
+
+# [ADDED] API يُرجع مهلة البلاغ وردّ المستأجر بصيغة ISO لعرض عدّادات
+@router.get("/api/bookings/{booking_id}/deadlines")
+def booking_deadlines(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if not (is_renter(user, bk) or is_owner(user, bk)):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    dispute_deadline = None
+    renter_reply_deadline = None
+
+    if getattr(bk, "returned_at", None):
+        try:
+            dispute_deadline = bk.returned_at + timedelta(hours=DISPUTE_WINDOW_HOURS)
+        except Exception:
+            dispute_deadline = None
+
+    # مبدئيًا لا نملك طابعًا زمنيًا لبداية النزاع لاحتساب رد المستأجر بدقة.
+    # يمكن لاحقًا الاعتماد على updated_at عند دخول in_dispute، هنا نعرض قيمة إرشادية بالساعات.
+    return _json({
+        "dispute_deadline_iso": _iso(dispute_deadline),
+        "renter_reply_window_hours": RENTER_REPLY_WINDOW_HOURS,
+    })
+
+# ======= Aliases القديمة (متروكة للتوافق) =======
 
 def _redir(flow_id: int):
     return RedirectResponse(url=f"/bookings/flow/{flow_id}", status_code=status.HTTP_303_SEE_OTHER)
@@ -401,6 +505,12 @@ def alias_accept(booking_id: int,
     if bk.status != "requested":
         return _redir(bk.id)
     item = db.get(Item, bk.item_id)
+
+    # قبول سريع بدون إدخال يدوي: نملأ الديبو الافتراضي
+    default_deposit = (item.price_per_day or 0) * 5
+    if (bk.deposit_amount or 0) <= 0:
+        bk.deposit_amount = default_deposit
+
     bk.status = "accepted"
     bk.owner_decision = "accepted"
     bk.accepted_at = datetime.utcnow()
@@ -461,7 +571,6 @@ def alias_pay_online(booking_id: int,
                      deposit_amount: int = Form(0),
                      db: Session = Depends(get_db),
                      user: Optional[User] = Depends(get_current_user)):
-    # ADDED: نفس فحص تفعيل payouts قبل التحويل لCheckout
     require_auth(user)
     bk = require_booking(db, booking_id)
     if not is_renter(user, bk):

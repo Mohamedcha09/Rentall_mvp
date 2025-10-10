@@ -31,22 +31,58 @@
   <div class="row g-3">
     <div class="col-12 col-lg-7">
 
+      {# ======= المرحلة: طلب جديد ======= #}
       {% if booking.status in ['requested'] %}
         {% if is_owner %}
-          <h5>طلب جديد ينتظر موافقتك</h5>
-          <div class="acts mt-2">
-            <form method="post" action="/bookings/{{ booking.id }}/accept">
-              <button class="btn btn-success"><i class="bi bi-check2-circle"></i> قبول</button>
+          <h5 class="mb-2">طلب جديد ينتظر موافقتك</h5>
+
+          <div class="box mb-2">
+            <div class="mb-2">أدخل <strong>الديبو</strong> المطلوب (الافتراضي = سعر اليوم × 5)</div>
+            <form method="post" action="/bookings/{{ booking.id }}/owner/decision" class="row g-2 align-items-end">
+              <input type="hidden" name="decision" value="accepted">
+              <div class="col-12 col-md-6">
+                <label class="form-label">قيمة الديبو</label>
+                <input id="depositInput" name="deposit_amount" type="number" min="0" step="1" class="form-control"
+                       value="{{ booking.deposit_amount or 0 }}">
+                <div class="form-text k">يمكنك تغيير القيمة قبل القبول.</div>
+              </div>
+              <div class="col-12 col-md-6">
+                <button class="btn btn-success w-100"><i class="bi bi-check2-circle"></i> قبول بالديبو</button>
+              </div>
             </form>
-            <form method="post" action="/bookings/{{ booking.id }}/reject">
+          </div>
+
+          <div class="acts">
+            <form method="post" action="/bookings/{{ booking.id }}/owner/decision">
+              <input type="hidden" name="decision" value="rejected">
               <button class="btn btn-outline-danger"><i class="bi bi-x-lg"></i> رفض</button>
             </form>
           </div>
+
+          <script>
+  // الافتراضي = سعر اليوم × 5 (مرة واحدة فقط لو الحقل فارغ/صفر)
+  (function () {
+    try {
+      var inp = document.getElementById('depositInput');
+      if (!inp) return;
+
+      var current = parseInt(inp.value || '0', 10);
+      if (!current || current <= 0) {
+        // نجعل إدراج Jinja كسلسلة ثم نحولها لرقم ليتفادى المحرر أي أخطاء نحوية
+        var pricePerDay = parseInt('{{ (item.price_per_day or 0)|int }}', 10) || 0;
+        var defVal = pricePerDay * 5;
+        inp.value = defVal;
+      }
+    } catch (e) {}
+  })();
+</script>
+
         {% elif is_renter %}
           <div class="hint">تم إرسال طلبك. بانتظار موافقة المالك…</div>
         {% endif %}
       {% endif %}
 
+      {# ======= المرحلة: مقبول – اختيار الدفع ======= #}
       {% if booking.status in ['accepted'] %}
         {% if is_renter %}
           <h5>اختر طريقة الدفع</h5>
@@ -126,6 +162,7 @@
         {% endif %}
       {% endif %}
 
+      {# ======= المرحلة: تم الدفع ======= #}
       {% if booking.status in ['paid'] %}
         {% if is_renter %}
           <h5>جاهز للاستلام</h5>
@@ -138,6 +175,7 @@
         {% endif %}
       {% endif %}
 
+      {# ======= المرحلة: تم الاستلام ======= #}
       {% if booking.status in ['picked_up'] %}
         {% if is_renter %}
           <h5>الغرض لديك الآن</h5>
@@ -150,6 +188,7 @@
         {% endif %}
       {% endif %}
 
+      {# ======= المرحلة: بانتظار مراجعة الوديعة ======= #}
       {% if booking.status in ['returned', 'in_review'] %}
         {% if session_user and session_user.role == 'admin' %}
           <div class="hint">هذا الحجز بانتظار قرار الوديعة من الإدارة/متحكّم الوديعة.</div>
@@ -224,6 +263,7 @@
 </div>
 
 <script>
+  // زر الانتقال لـ Stripe
   const f = document.getElementById('stripePayForm');
   if (f) {
     f.addEventListener('submit', function() {

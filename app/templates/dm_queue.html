@@ -1,34 +1,181 @@
 {% extends "base.html" %}
+
+{% block head %}
+<style>
+  .k{opacity:.7}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:.25rem .55rem;border:1px solid var(--border);border-radius:999px;font-size:.85rem}
+  .tbl-wrap{border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  .status-flag{font-weight:700}
+  .status-flag.held{color:#0d6efd}
+  .status-flag.in_dispute{color:#dc3545}
+  .status-flag.partially_withheld{color:#fd7e14}
+  .status-flag.refunded{color:#198754}
+  .status-flag.claimed{color:#6f42c1}
+  .status-flag.none{color:#6c757d}
+  .status-flag.returned,.status-flag.in_review{color:#0d6efd}
+  .searchbox{max-width:360px}
+  .chip{display:inline-block;padding:.15rem .5rem;border:1px solid var(--border);border-radius:999px;margin:.15rem;font-size:.8rem}
+  .sticky-actions{position:sticky;right:0;background:var(--surface);}
+  /* تحسين عرض على الشاشات الصغيرة */
+  @media (max-width: 768px){
+    .table thead{display:none}
+    .table tbody tr{display:block;margin-bottom:12px;border:1px solid var(--border);border-radius:10px;padding:8px}
+    .table tbody td{display:flex;justify-content:space-between;padding:.35rem .5rem;border:0}
+    .table tbody td::before{content:attr(data-label);font-weight:600;color:#6c757d}
+    .sticky-actions{position:static}
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-3">
-  <h3 class="mb-3">قضايا الوديعة</h3>
-  {% if not cases %}
-    <div class="alert alert-info">لا توجد قضايا حالياً.</div>
-  {% else %}
-    <div class="table-responsive">
-      <table class="table align-middle">
-        <thead>
-          <tr>
-            <th>#</th><th>العنصر</th><th>المستأجر</th><th>المالك</th>
-            <th>الوديعة</th><th>حالة الوديعة</th><th>أُعيد</th><th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for b in cases %}
-          <tr>
-            <td>{{ b.id }}</td>
-            <td>{{ (items_map.get(b.item_id).title if items_map.get(b.item_id) else ('#' ~ b.item_id)) }}</td>
-            <td>#{{ b.renter_id }}</td>
-            <td>#{{ b.owner_id }}</td>
-            <td>{{ b.hold_deposit_amount or 0 }}$</td>
-            <td>{{ b.deposit_status or 'none' }}</td>
-            <td>{{ b.returned_at or '—' }}</td>
-            <td><a class="btn btn-sm btn-primary" href="/dm/deposits/{{ b.id }}">فتح</a></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div>
+      <h3 class="mb-1">قضايا الوديعة (Deposit Queue)</h3>
+      <div class="k">
+        تظهر هنا كل الحجوزات التي لديها وديعة محجوزة وتحتاج معالجة:
+        <span class="chip">deposit: held / in_dispute / partially_withheld</span>
+        <span class="chip">booking: returned / in_review</span>
+      </div>
     </div>
+
+    <form class="d-flex align-items-center gap-2 searchbox" onsubmit="return false;">
+      <input id="q" class="form-control" type="search" placeholder="ابحث بالعنصر أو رقم الحجز أو المستخدم…">
+      <button type="button" class="btn btn-outline-secondary" onclick="clearSearch()">مسح</button>
+    </form>
+  </div>
+
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <span class="pill"><i class="bi bi-collection"></i> العدد: <b>{{ cases|length }}</b></span>
+    <div class="pill">
+      <span class="me-1">تلميحات الحالة:</span>
+      <span class="chip">held=محجوز</span>
+      <span class="chip">in_dispute=نزاع</span>
+      <span class="chip">partially_withheld=اقتطاع جزئي</span>
+      <span class="chip">claimed=اقتطاع كامل</span>
+      <span class="chip">refunded=مفرج</span>
+    </div>
+  </div>
+
+  {% if not cases %}
+    <div class="alert alert-info">
+      لا توجد قضايا حالياً. ستظهر هنا أي قضية وديعة عندما:
+      <ul class="mb-0">
+        <li>يكون هناك تفويض وديعة <b>held</b>، أو</li>
+        <li>تكون حالة الحجز <b>returned / in_review</b>، أو</li>
+        <li>تكون الوديعة في حالة <b>in_dispute / partially_withheld</b>.</li>
+      </ul>
+    </div>
+  {% else %}
+
+  <div class="tbl-wrap">
+    <table id="casesTbl" class="table align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th style="width:72px">#</th>
+          <th>العنصر</th>
+          <th class="text-nowrap">المستأجر</th>
+          <th class="text-nowrap">المالك</th>
+          <th class="text-nowrap">الوديعة</th>
+          <th class="text-nowrap">حالة الوديعة</th>
+          <th class="text-nowrap">حالة الحجز</th>
+          <th class="text-nowrap">أُعيد</th>
+          <th class="text-nowrap">آخر تحديث</th>
+          <th class="text-end sticky-actions" style="width:120px">إجراء</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in cases %}
+        {% set it = items_map.get(b.item_id) %}
+        <tr>
+          <td data-label="#">#{{ b.id }}</td>
+
+          <td data-label="العنصر">
+            <div class="fw-semibold">
+              {% if it %}
+                {{ it.title }}
+              {% else %}
+                {{ '#' ~ b.item_id }}
+              {% endif %}
+            </div>
+            <div class="k small">ID: {{ b.item_id }}</div>
+          </td>
+
+          <td data-label="المستأجر" class="text-nowrap">
+            #{{ b.renter_id }}
+          </td>
+
+          <td data-label="المالك" class="text-nowrap">
+            #{{ b.owner_id }}
+          </td>
+
+          <td data-label="الوديعة" class="text-nowrap">
+            {{ b.hold_deposit_amount or b.deposit_amount or 0 }}$
+          </td>
+
+          <td data-label="حالة الوديعة" class="text-nowrap">
+            <span class="status-flag {{ (b.deposit_status or 'none')|lower }}">
+              {{ b.deposit_status or 'none' }}
+            </span>
+          </td>
+
+          <td data-label="حالة الحجز" class="text-nowrap">
+            <span class="status-flag {{ (b.status or '')|lower }}">
+              {{ b.status }}
+            </span>
+          </td>
+
+          <td data-label="أُعيد" class="text-nowrap">
+            {% if b.returned_at %}{{ b.returned_at }}{% else %}—{% endif %}
+          </td>
+
+          <td data-label="آخر تحديث" class="text-nowrap">
+            {% if b.updated_at %}{{ b.updated_at }}{% else %}—{% endif %}
+          </td>
+
+          <td data-label="إجراء" class="text-end sticky-actions">
+            <a class="btn btn-sm btn-primary" href="/dm/deposits/{{ b.id }}">
+              فتح
+            </a>
+            {% if it %}
+              <a class="btn btn-sm btn-outline-secondary ms-1" href="/items/{{ it.id }}" target="_blank">
+                العنصر
+              </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
   {% endif %}
 </div>
+
+<script>
+  const q = document.getElementById('q');
+  const tbl = document.getElementById('casesTbl');
+
+  function norm(s){ return (s||'').toString().toLowerCase().trim(); }
+
+  function clearSearch(){
+    q.value = '';
+    filterRows();
+  }
+
+  function filterRows(){
+    if(!tbl) return;
+    const term = norm(q.value);
+    const rows = tbl.querySelectorAll('tbody tr');
+    rows.forEach(tr=>{
+      const text = norm(tr.innerText);
+      tr.style.display = text.indexOf(term) >= 0 ? '' : 'none';
+    });
+  }
+
+  if(q){
+    q.addEventListener('input', filterRows);
+  }
+</script>
 {% endblock %}

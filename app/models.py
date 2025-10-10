@@ -1,3 +1,4 @@
+# app/models.py
 from datetime import datetime, date
 from sqlalchemy import (
     Column, Integer, String, DateTime, ForeignKey, Text, Date, Boolean
@@ -330,6 +331,94 @@ class Booking(Base):
     returned_at = col_or_literal("bookings", "returned_at", DateTime, nullable=True)
     owner_return_note = col_or_literal("bookings", "owner_return_note", Text, nullable=True)
 
+    # ===== [جديد] حقول التايملاين المستخدمة في التدفق والقوالب =====
+    accepted_at = col_or_literal("bookings", "accepted_at", DateTime, nullable=True)
+    rejected_at = col_or_literal("bookings", "rejected_at", DateTime, nullable=True)
+    picked_up_at = col_or_literal("bookings", "picked_up_at", DateTime, nullable=True)
+    return_confirmed_by_owner_at = col_or_literal("bookings", "return_confirmed_by_owner_at", DateTime, nullable=True)
+
+    timeline_created_at = col_or_literal("bookings", "timeline_created_at", DateTime, nullable=True)
+    timeline_owner_decided_at = col_or_literal("bookings", "timeline_owner_decided_at", DateTime, nullable=True)
+    timeline_payment_method_chosen_at = col_or_literal("bookings", "timeline_payment_method_chosen_at", DateTime, nullable=True)
+    timeline_paid_at = col_or_literal("bookings", "timeline_paid_at", DateTime, nullable=True)
+    timeline_renter_received_at = col_or_literal("bookings", "timeline_renter_received_at", DateTime, nullable=True)
+
+    # ===== [جديد] فحص الإرجاع السريع (لا مشاكل) ومهلة الإفراج التلقائي =====
+    return_check_no_problem = col_or_literal("bookings", "return_check_no_problem", Boolean, default=False)
+    return_check_submitted_at = col_or_literal("bookings", "return_check_submitted_at", DateTime, nullable=True)
+    deposit_auto_release_at = col_or_literal("bookings", "deposit_auto_release_at", DateTime, nullable=True)
+
+    # ===== [جديد] مسار النزاع (بلاغ المالك / رد المستأجر / قرار DM) =====
+    dispute_opened_at = col_or_literal("bookings", "dispute_opened_at", DateTime, nullable=True)
+    renter_response_at = col_or_literal("bookings", "renter_response_at", DateTime, nullable=True)
+    dm_decision_at = col_or_literal("bookings", "dm_decision_at", DateTime, nullable=True)
+
+    renter_response_deadline_at = col_or_literal("bookings", "renter_response_deadline_at", DateTime, nullable=True)
+    dm_decision_deadline_at = col_or_literal("bookings", "dm_decision_deadline_at", DateTime, nullable=True)
+
+    owner_report_type = col_or_literal("bookings", "owner_report_type", String(20), nullable=True)  # delay/damage/loss/theft
+    owner_report_reason = col_or_literal("bookings", "owner_report_reason", Text, nullable=True)
+    renter_response_text = col_or_literal("bookings", "renter_response_text", Text, nullable=True)
+
+    dm_decision = col_or_literal("bookings", "dm_decision", String(30), nullable=True)  # release/withhold/partial
+    dm_decision_amount = col_or_literal("bookings", "dm_decision_amount", Integer, nullable=False, default=0)
+    dm_decision_note = col_or_literal("bookings", "dm_decision_note", Text, nullable=True)
+
+    if _has_column("bookings", "dm_claimed_by_id"):
+        dm_claimed_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    else:
+        dm_claimed_by_id = column_property(literal(None))
+    dm_claimed_at = col_or_literal("bookings", "dm_claimed_at", DateTime, nullable=True)
+
+    if _has_column("bookings", "dm_closed_by_id"):
+        dm_closed_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    else:
+        dm_closed_by_id = column_property(literal(None))
+
+    # علاقات
     item = relationship("Item", backref="bookings")
     renter = relationship("User", foreign_keys=[renter_id], back_populates="bookings_rented")
     owner = relationship("User", foreign_keys=[owner_id], back_populates="bookings_owned")
+
+    # سجلات وأدلة الوديعة
+    deposit_audits = relationship("DepositAuditLog", back_populates="booking", cascade="all, delete-orphan", order_by="DepositAuditLog.created_at.desc()")
+    deposit_evidences = relationship("DepositEvidence", back_populates="booking", cascade="all, delete-orphan", order_by="DepositEvidence.created_at.desc()")
+
+
+# =========================
+# Deposit Audit Log (سجل قرارات الوديعة)
+# =========================
+class DepositAuditLog(Base):
+    __tablename__ = "deposit_audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=False)
+    actor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    actor_role = Column(String(20), nullable=False)  # admin / manager / owner / renter
+    action = Column(String(40), nullable=False)      # open_dispute / renter_reply / dm_release / dm_withhold / auto_release ...
+    amount = Column(Integer, nullable=False, default=0)
+    reason = Column(Text, nullable=True)
+    details = Column(Text, nullable=True)            # JSON نصّي/تفاصيل إضافية
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    booking = relationship("Booking", back_populates="deposit_audits")
+    actor = relationship("User", lazy="joined")
+
+
+# =========================
+# Deposit Evidence (أدلة وصور/ملفات النزاع)
+# =========================
+class DepositEvidence(Base):
+    __tablename__ = "deposit_evidences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=False)
+    uploader_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    side = Column(String(20), nullable=False)        # owner / renter / manager
+    kind = Column(String(20), nullable=False, default="image")  # image / video / doc / note
+    file_path = Column(String(600), nullable=True)   # مسار الملف إن وجد
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    booking = relationship("Booking", back_populates="deposit_evidences")
+    uploader = relationship("User", lazy="joined")

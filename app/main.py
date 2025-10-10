@@ -41,6 +41,9 @@ from .split_test import router as split_test_router
 from .routes_favorites import router as favorites_router
 from .routers.me import router as me_router
 
+# ✅ [مضاف] راوتر إدارة الودائع (DM / قرارات الوديعة)
+from .routes_deposits import router as deposits_router
+
 load_dotenv()
 
 app = FastAPI()
@@ -128,6 +131,10 @@ app.include_router(favorites_router)
 app.include_router(notifs_router)
 app.include_router(notifications_router)
 app.include_router(me_router)
+
+# ✅ [مضاف] تسجيل مسارات إدارة الودائع (DM)
+app.include_router(deposits_router)
+
 def _cat_code(cat) -> str:
     if isinstance(cat, dict):
         return (
