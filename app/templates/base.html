@@ -501,7 +501,7 @@
     </script>
 
     <!-- إشعارات (Polling مبسّط) -->
-    <script>
+   <script>
 (function notifSystem(){
   if (window.__notifInit) return; window.__notifInit = true;
 
@@ -511,6 +511,7 @@
   const body       = document.getElementById('notifBody');
   const scrim      = document.getElementById('scrim');
 
+  // عناصر العدّاد على الجرس
   let countEl = notifOpen?.querySelector('.notif-count');
   if (!countEl){ countEl = document.createElement('span'); countEl.className='notif-count'; countEl.style.display='none'; notifOpen?.appendChild(countEl); }
   let pingEl = notifOpen?.querySelector('.notif-ping');
@@ -522,17 +523,67 @@
     else{ countEl.textContent = ''; countEl.style.display = 'none'; pingEl.style.display = 'none'; }
   }
 
-  function row(title, meta, url){
-    const a = document.createElement('a');
-    a.className='notif-row'; a.href=url||'#';
-    a.innerHTML = `<div class="fw-bold">${esc(title)}</div>${meta?`<div class="k small">${esc(meta)}</div>`:''}`;
-    return a;
-  }
   function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
+  // نحاول أول مسار يشتغل عندك (بدون تعديل الباك)
+  const FEEDS = [
+    '/api/notifications/poll',
+    '/api/notifications',          // إن كان عندك هذا
+    '/notifications/json'          // احتياطي
+  ];
+
+  async function fetchFirst(urls){
+    for (const u of urls){
+      try{
+        const r = await fetch(u, {credentials:'include'});
+        if (r.ok){
+          const data = await r.json();
+          return {data, url:u};
+        }
+      }catch(_){}
+    }
+    return {data:null, url:null};
+  }
+
+  // توحيد المخرجات لأبسط شكل
+  function normalize(data){
+    const items = (data && (data.items || data.notifications || data)) || [];
+    // بعض الواجهات ترجع {items: [...], unread: n}
+    const unread = Number(data && (data.unread ?? data.count ?? 0)) || 0;
+    return {
+      unread,
+      items: items.map(n => ({
+        title: n.title || n.subject || 'إشعار',
+        meta:  n.body  || n.text || n.message || '',
+        link:  n.link_url || n.url || '#',
+        kind:  n.kind || 'info',
+        is_read: !!(n.is_read),
+        created_at: n.created_at || n.time || ''
+      }))
+    };
+  }
+
+  function renderList(list){
+    body.innerHTML = '';
+    if (!list.items.length){
+      body.innerHTML = '<div class="small text-muted">لا توجد إشعارات جديدة.</div>';
+      return;
+    }
+    list.items.forEach(n=>{
+      const a = document.createElement('a');
+      a.className='notif-row'; a.href=n.link||'#';
+      a.innerHTML = `
+        <div class="fw-bold">${esc(n.title)}</div>
+        ${n.meta ? `<div class="k small">${esc(n.meta)}</div>` : ''}
+      `;
+      body.appendChild(a);
+    });
+  }
+
+  // جلب العدد بشكل دوري
   let prevCount = -1;
   function refreshUnread(){
-    fetch('/api/unread_count')
+    fetch('/api/unread_count', {credentials:'include'})
       .then(r=>r.ok?r.json():{count:0})
       .then(d=>{
         const n = parseInt(d.count||0);
@@ -546,8 +597,32 @@
   }
   refreshUnread();
   setInterval(refreshUnread, 30*1000);
+
+  // فتح/غلق اللوحة
+  function openPanel(){ panel?.classList.add('is-open'); scrim?.classList.add('is-show'); loadPanel(); }
+  function closePanel(){ panel?.classList.remove('is-open'); scrim?.classList.remove('is-show'); }
+  notifOpen?.addEventListener('click', openPanel);
+  notifClose?.addEventListener('click', closePanel);
+  scrim?.addEventListener('click', closePanel);
+
+  // تحميل الإشعارات عند الفتح
+  async function loadPanel(){
+    body.innerHTML = '<div class="small text-muted">جارِ التحميل…</div>';
+    const {data} = await fetchFirst(FEEDS);
+    const norm = normalize(data||{});
+    renderList(norm);
+
+    // إذا رجعت الواجهة عدد unread حدّث الجرس
+    if (typeof norm.unread === 'number') setBell(norm.unread);
+
+    // محاولة وضعها كمقروء (اختياري، نتجاهل الفشل)
+    try{
+      await fetch('/api/notifications/mark_all_read', {method:'POST', credentials:'include'});
+      setTimeout(refreshUnread, 800);
+    }catch(_){}
+  }
 })();
-    </script>
+</script>
 
     <!-- ====== سكربت إظهار/إخفاء رابط قضايا الوديعة (بدون localStorage) ====== -->
     <script>
