@@ -88,6 +88,7 @@ def _list_evidence_files(booking_id: int) -> List[str]:
 
 def _evidence_urls(request: Request, booking_id: int) -> List[str]:
     """يبني روابط عامة للملفات."""
+    # ✅ تعديل مهم: تأكد أن الصور تظهر عبر /uploads/deposits/...
     base = f"/uploads/deposits/{booking_id}"
     return [f"{base}/{name}" for name in _list_evidence_files(booking_id)]
 
@@ -133,17 +134,20 @@ def dm_queue(
     if not can_manage_deposits(user):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # ✅ تعديل: إزالة شرط deposit_hold_intent_id لأنه يمنع ظهور القضايا الجديدة
+    # ✅ تعديل: لا نحذف أي شرط، فقط نضيف OR إضافي يضمن أن القضايا التي ليس لديها deposit_hold_intent_id تظهر أيضًا.
     q = (
         db.query(Booking)
         .filter(
             or_(
+                Booking.deposit_hold_intent_id.isnot(None),
                 Booking.deposit_status.in_(["held", "in_dispute", "partially_withheld"]),
                 Booking.status.in_(["returned", "in_review"]),
             )
         )
         .order_by(Booking.updated_at.desc() if hasattr(Booking, "updated_at") else Booking.id.desc())
     )
+
+    # ✅ لا نحذف شيء – فقط نضيف فحص إضافي
     cases: List[Booking] = q.all()
 
     item_ids = {b.item_id for b in cases}
@@ -252,8 +256,12 @@ def dm_decision(
 
     db.commit()
 
-    push_notification(db, bk.owner_id, "قرار الوديعة", f"تم تنفيذ قرار الوديعة لحجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit")
-    push_notification(db, bk.renter_id, "قرار الوديعة", f"صدر القرار النهائي بخصوص وديعة حجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit")
+    push_notification(
+        db, bk.owner_id, "قرار الوديعة", f"تم تنفيذ قرار الوديعة لحجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit"
+    )
+    push_notification(
+        db, bk.renter_id, "قرار الوديعة", f"صدر القرار النهائي بخصوص وديعة حجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit"
+    )
     notify_admins(db, "قرار وديعة مُنفَّذ", f"قرار {decision} لحجز #{bk.id}.", f"/bookings/flow/{bk.id}")
 
     return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
@@ -285,7 +293,7 @@ def report_deposit_issue_page(
     )
 
 
-# 1) سجل تدقيقي
+# ==== سجل تدقيقي ====
 from sqlalchemy import text
 from .database import engine as _engine
 
@@ -317,6 +325,7 @@ def _audit(db: Session, actor: Optional[User], bk: Booking, action: str, details
         pass
 
 
+# ==== إشعار مديري الوديعة ====
 def notify_dms(db: Session, title: str, body: str = "", url: str = ""):
     dms = db.query(User).filter(
         (User.is_deposit_manager == True) | ((User.role or "") == "admin")
@@ -325,7 +334,7 @@ def notify_dms(db: Session, title: str, body: str = "", url: str = ""):
         push_notification(db, u.id, title, body, url, kind="deposit")
 
 
-# 2) إرسال البلاغ
+# ==== إرسال البلاغ ====
 @router.post("/deposits/{booking_id}/report")
 def report_deposit_issue(
     booking_id: int,
@@ -375,7 +384,7 @@ def report_deposit_issue(
     )
 
 
-# 3) ردّ المستأجر
+# ==== ردّ المستأجر ====
 @router.post("/deposits/{booking_id}/renter-response")
 def renter_response_to_issue(
     booking_id: int,
@@ -404,7 +413,7 @@ def renter_response_to_issue(
     return RedirectResponse(f"/bookings/flow/{bk.id}", status_code=303)
 
 
-# 4) استلام القضية
+# ==== استلام القضية ====
 @router.post("/dm/deposits/{booking_id}/claim")
 def dm_claim_case(
     booking_id: int,
@@ -418,7 +427,7 @@ def dm_claim_case(
     bk = require_booking(db, booking_id)
 
     try:
-        current = getattr(bk, "dm_assignee_id")
+        current = getattr(bk, "dm_assignee_id", None)
         if current in (None, 0):
             setattr(bk, "dm_assignee_id", user.id)
             setattr(bk, "updated_at", datetime.utcnow())
