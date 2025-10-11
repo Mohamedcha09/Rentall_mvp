@@ -366,7 +366,8 @@ def renter_pay_online(
     if not owner_pe:
         raise HTTPException(status_code=409, detail="Owner payouts not enabled")
 
-    return RedirectResponse(url=f"/api/stripe/checkout/rent/{booking_id}", status_code=303)
+    # ✅ تعديل مطلوب: الدفع المتزامن للإيجار + الوديعة
+    return RedirectResponse(url=f"/api/stripe/checkout/all/{booking_id}", status_code=303)
 
 # ===== تأكيد استلام المستأجر =====
 @router.post("/bookings/{booking_id}/renter/confirm_received")
@@ -591,7 +592,8 @@ def alias_pay_online(booking_id: int,
         bk.hold_deposit_amount = max(0, int(deposit_amount or 0))
     db.commit()
 
-    return RedirectResponse(url=f"/api/stripe/checkout/rent/{booking_id}", status_code=303)
+    # ✅ تعديل مطلوب: الدفع المتزامن للإيجار + الوديعة
+    return RedirectResponse(url=f"/api/stripe/checkout/all/{booking_id}", status_code=303)
 
 @router.post("/bookings/{booking_id}/picked-up")
 def alias_picked_up(booking_id: int,

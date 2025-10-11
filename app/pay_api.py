@@ -53,6 +53,82 @@ def can_manage_deposits(u: Optional[User]) -> bool:
     return bool(getattr(u, "is_deposit_manager", False))
 
 
+# ============================================================
+# (NEW) Checkout: Rent + Deposit together (same session)
+# ============================================================
+@router.post("/api/stripe/checkout/all/{booking_id}")
+def start_checkout_all(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    إنشاء Checkout Session واحدة تشمل:
+    - مبلغ الإيجار (يذهب إلى المالك عبر destination charge)
+    - الوديعة (تدخل ضمن نفس الـ PaymentIntent وتُعتبر محجوزة لدينا)
+    نُعلّمها في الـ webhook بنوع metadata=all.
+    """
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if user.id != bk.renter_id:
+        raise HTTPException(status_code=403, detail="Only renter can pay")
+    if bk.status not in ("accepted", "requested"):
+        return flow_redirect(bk.id)
+
+    item = db.get(Item, bk.item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    owner = db.get(User, bk.owner_id)
+    if not owner or not getattr(owner, "stripe_account_id", None):
+        raise HTTPException(status_code=400, detail="Owner is not onboarded to Stripe")
+
+    rent_cents = int(max(0, (bk.total_amount or 0)) * 100)
+    dep_cents = int(max(0, (bk.deposit_amount or bk.hold_deposit_amount or 0)) * 100)
+    if rent_cents <= 0 and dep_cents <= 0:
+        return flow_redirect(bk.id)
+
+    app_fee_cents = (rent_cents * PLATFORM_FEE_PCT) // 100 if PLATFORM_FEE_PCT > 0 else 0
+
+    try:
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            payment_intent_data={
+                "metadata": {"kind": "all", "booking_id": str(bk.id)},
+                # نحول الوجهة للمالك (الإيجار)، والعمولة إن وجدت تُطبّق على الإيجار
+                "transfer_data": {"destination": owner.stripe_account_id},
+                "application_fee_amount": app_fee_cents if app_fee_cents > 0 else None,
+            },
+            line_items=[
+                {
+                    "quantity": 1,
+                    "price_data": {
+                        "currency": CURRENCY,
+                        "product_data": {"name": f"Rent for '{item.title}' (#{bk.id})"},
+                        "unit_amount": rent_cents,
+                    },
+                },
+                {
+                    "quantity": 1,
+                    "price_data": {
+                        "currency": CURRENCY,
+                        "product_data": {"name": f"Deposit for '{item.title}' (#{bk.id})"},
+                        "unit_amount": dep_cents,
+                    },
+                },
+            ],
+            success_url=f"{SITE_URL}/bookings/flow/{bk.id}?all_ok=1&sid={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{SITE_URL}/bookings/flow/{bk.id}?cancel=1",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Stripe error: {e}")
+
+    bk.payment_method = "online"
+    bk.online_status = "pending_authorization"
+    db.commit()
+    return RedirectResponse(url=session.url, status_code=303)
+
+
 # ============ (A) Stripe Connect Onboarding ============
 @router.post("/api/stripe/connect/start")
 def connect_start(
@@ -240,6 +316,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     checkout.session.completed:
       - kind=rent    → status=paid, online_status=authorized, حفظ online_payment_intent_id
       - kind=deposit → deposit_status=held, حفظ deposit_hold_intent_id
+      - kind=all     → الحالتين معًا: paid + held وتخزين نفس intent لكليهما
     """
     payload = await request.body()
     sig = request.headers.get("stripe-signature")
@@ -284,6 +361,22 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
             push_notification(db, bk.renter_id, "تم حجز الديبو",
                               f"حجز #{bk.id}: الديبو الآن محجوز.",
                               f"/bookings/flow/{bk.id}", "deposit")
+
+        elif kind == "all":
+            # دفع الإيجار + حجز الوديعة في نفس الجلسة
+            bk.online_payment_intent_id = pi.id
+            bk.deposit_hold_intent_id = pi.id
+            bk.online_status = "authorized"
+            bk.deposit_status = "held"
+            bk.status = "paid"
+            bk.timeline_paid_at = datetime.utcnow()
+            db.commit()
+            push_notification(db, bk.owner_id, "تم الدفع الكامل",
+                              f"حجز #{bk.id}: تم دفع الإيجار وحجز الوديعة معًا.",
+                              f"/bookings/flow/{bk.id}", "booking")
+            push_notification(db, bk.renter_id, "تم الدفع بنجاح",
+                              f"تم دفع الإيجار والوديعة معًا لحجز #{bk.id}.",
+                              f"/bookings/flow/{bk.id}", "booking")
 
     return JSONResponse({"ok": True})
 
