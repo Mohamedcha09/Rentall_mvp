@@ -23,20 +23,9 @@ def require_auth(user: Optional[User]):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-def _user_can_manage_deposits(user: Optional[User]) -> bool:
-    if not user:
-        return False
-    # سماح بالأدوار/الفلاغات المختلفة
-    role = ((getattr(user, "role", "") or "").lower())
-    return bool(
-        role == "admin" or
-        getattr(user, "is_deposit_manager", False) or
-        getattr(user, "can_manage_deposits", False)
-    )
-
 def require_manager(user: Optional[User]):
     require_auth(user)
-    if not _user_can_manage_deposits(user):
+    if not user.can_manage_deposits:
         raise HTTPException(status_code=403, detail="Deposit manager only")
 
 def _get_booking(db: Session, booking_id: int) -> Booking:
@@ -79,6 +68,7 @@ def dm_index(
 
     rows = q.order_by(Booking.updated_at.desc().nullslast(), Booking.created_at.desc().nullslast()).all()
 
+    # نمرر كل شيء للقالب
     return request.app.templates.TemplateResponse(
         "deposit_manager_index.html",
         {
@@ -156,7 +146,7 @@ def dm_need_info(
     return RedirectResponse(url="/deposit-manager?view=in_review", status_code=303)
 
 
-# --------------- تنفيذ القرار النهائي ---------------
+# --------------- تنفيذ القرار النهائي (يوجّه لمسار القرار في routes_deposits.py) ---------------
 @router.post("/deposit-manager/{booking_id}/decide")
 def dm_decide(
     booking_id: int,
@@ -164,38 +154,18 @@ def dm_decide(
     amount: int = Form(0),
     reason: str = Form(""),
     request: Request = None,
-    db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    يترجم قرارات الواجهة إلى مسار التنفيذ الفعلي:
-    - refund_all     -> decision=release
-    - refund_partial -> decision=withhold  + amount (جزئي)
-    - withhold_all   -> decision=withhold  + amount=قيمة الوديعة بالكامل
-    ثم يوجّه إلى /dm/deposits/{booking_id}/decision (المسار الموحّد في routes_deposits.py)
+    نستخدم مسار القرار الذي كتبناه في routes_deposits.py
+    فقط نعيد توجيه POST مع نفس الحقول.
     """
     require_manager(user)
-    bk = _get_booking(db, booking_id)
 
-    # احسب الوديعة الكاملة عند الحاجة
-    deposit_total = int(bk.deposit_amount or bk.hold_deposit_amount or 0) if bk else 0
-
-    if decision == "refund_all":
-        mapped_decision = "release"
-        mapped_amount = 0
-    elif decision == "refund_partial":
-        mapped_decision = "withhold"
-        mapped_amount = max(0, int(amount or 0))
-    elif decision == "withhold_all":
-        mapped_decision = "withhold"
-        mapped_amount = max(0, int(deposit_total))
-    else:
-        raise HTTPException(status_code=400, detail="Unknown decision")
-
-    # نعيد التوجيه إلى المنفّذ الحقيقي للقرار
-    # لاحظ: المسار الصحيح موجود في routes_deposits.py -> POST /dm/deposits/{booking_id}/decision
-    form_qs = f"decision={mapped_decision}&amount={mapped_amount}&reason={reason}"
+    # نعيد التوجيه مباشرةً لنفس نموذج القرار الموحد
+    # حتى يبقى تنفيذ القرار في ملف واحد (routes_deposits.py)
+    form_qs = f"decision={decision}&amount={max(0,int(amount or 0))}&reason={reason}"
     return RedirectResponse(
-        url=f"/dm/deposits/{booking_id}/decision?{form_qs}",
+        url=f"/deposits/{booking_id}/decision?{form_qs}",
         status_code=303
     )

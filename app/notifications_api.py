@@ -2,7 +2,6 @@
 from __future__ import annotations
 from typing import Optional
 from datetime import datetime
-
 from fastapi import APIRouter, Depends, Request, HTTPException, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -18,13 +17,9 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optiona
     return db.get(User, uid) if uid else None
 
 def _json(data: dict) -> JSONResponse:
-    # منع الكاش لتحديث العدّاد فوراً
-    return JSONResponse(
-        data,
-        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"}
-    )
+    return JSONResponse(data, headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
 
-# ====== إنشاء إشعار واحد (للاستخدام الداخلي) ======
+# ✅ مطابق تمامًا للموديل: نستخدم link_url ولا نمرر meta/url
 def push_notification(
     db: Session,
     user_id: int,
@@ -33,15 +28,11 @@ def push_notification(
     url: Optional[str] = None,
     kind: str = "system",
 ) -> Notification:
-    """
-    ينشئ صف إشعار في جدول Notification
-    NOTE: الحقل الصحيح للرابط في الموديل هو link_url
-    """
     n = Notification(
         user_id=user_id,
         title=(title or "").strip()[:200],
         body=(body or "").strip()[:1000],
-        link_url=url or "",
+        link_url=url or "",          # <-- هذا هو اسم الحقل في الموديل
         kind=kind,
         is_read=False,
         created_at=datetime.utcnow(),
@@ -56,22 +47,13 @@ def notify_admins(db: Session, title: str, body: str = "", url: str = ""):
     for a in admins:
         push_notification(db, a.id, title, body, url, kind="admin")
 
-# ====== API: عداد غير المقروء ======
 @router.get("/api/unread_count")
-def api_unread_count(
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
+def api_unread_count(db: Session = Depends(get_db), user: Optional[User] = Depends(get_current_user)):
     if not user:
         return _json({"count": 0})
-    count = (
-        db.query(Notification)
-        .filter(Notification.user_id == user.id, Notification.is_read == False)
-        .count()
-    )
+    count = db.query(Notification).filter(Notification.user_id == user.id, Notification.is_read == False).count()
     return _json({"count": int(count)})
 
-# ====== API: polling للإشعارات الجديدة منذ وقت معيّن ======
 @router.get("/api/notifications/poll")
 def api_poll(
     request: Request,
@@ -100,34 +82,13 @@ def api_poll(
     now = int(datetime.utcnow().timestamp())
     return _json({"now": now, "items": items})
 
-# ====== API: تعليم إشعار واحد كمقروء ======
 @router.post("/api/notifications/{notif_id}/read")
-def mark_read(
-    notif_id: int,
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
+def mark_read(notif_id: int, db: Session = Depends(get_db), user: Optional[User] = Depends(get_current_user)):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     n = db.get(Notification, notif_id)
     if not n or n.user_id != user.id:
         raise HTTPException(status_code=404, detail="Not found")
     n.is_read = True
-    db.commit()
-    return _json({"ok": True})
-
-# ====== ✅ API: تعليم كل الإشعارات كمقروء (كان سبب الخطأ 404) ======
-@router.post("/api/notifications/mark_all_read")
-def mark_all_read(
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    (
-        db.query(Notification)
-        .filter(Notification.user_id == user.id, Notification.is_read == False)
-        .update({"is_read": True})
-    )
     db.commit()
     return _json({"ok": True})
