@@ -18,7 +18,9 @@ from fastapi import (
 )
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import or_   # ✅ [إضافة] لاستخدام or_ بوضوح في فلترة قائمة القضايا
+
+# ✅ (جديد) لاستعمال or_ في الفلترة بدل عامل البت |
+from sqlalchemy import or_
 
 from .database import get_db
 from .models import Booking, Item, User
@@ -30,8 +32,9 @@ router = APIRouter(tags=["deposits"])
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
 # ============ مسارات الأدلة (بدون تغيير قاعدة البيانات) ============
-APP_ROOT = os.getenv("APP_ROOT", "/opt/render/project/src")  # آمن على Render
-UPLOADS_BASE = os.path.join(APP_ROOT, "uploads")
+# ✅ توحيد المسار مع main.py الذي يعمل mount لـ /uploads من جذر المشروع
+PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))  # .../app -> نطلع مستوى واحد
+UPLOADS_BASE = os.path.join(PROJECT_ROOT, "uploads")
 DEPOSIT_UPLOADS = os.path.join(UPLOADS_BASE, "deposits")
 os.makedirs(DEPOSIT_UPLOADS, exist_ok=True)
 
@@ -86,8 +89,9 @@ def _list_evidence_files(booking_id: int) -> List[str]:
 
 def _evidence_urls(request: Request, booking_id: int) -> List[str]:
     """يبني روابط عامة للملفات عبر /uploads/... (يجب أن تكون لديك StaticFiles مركّبة على مجلد uploads)."""
-    # في main.py لديك بالفعل تقديم uploads. إن لم يكن، أضِف:
-    # app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+    # في main.py لديك:
+    # UPLOADS_DIR = os.path.join(os.path.dirname(BASE_DIR), "uploads")
+    # app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
     base = f"/uploads/deposits/{booking_id}"
     return [f"{base}/{name}" for name in _list_evidence_files(booking_id)]
 
@@ -133,16 +137,14 @@ def dm_queue(
     if not can_manage_deposits(user):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # ✅ [تعديل] استخدام or_ لتفادي أي التباس في أولوية عامل |
+    # ✅ استخدام or_ بدل عامل البت | لضمان توليد WHERE صحيح مع SQLAlchemy
     q = (
         db.query(Booking)
-        .filter(
-            or_(
-                Booking.deposit_hold_intent_id.isnot(None),
-                Booking.deposit_status.in_(["held", "in_dispute", "partially_withheld"]),
-                Booking.status.in_(["returned", "in_review"]),
-            )
-        )
+        .filter(or_(
+            Booking.deposit_hold_intent_id.isnot(None),
+            Booking.deposit_status.in_(["held", "in_dispute", "partially_withheld"]),
+            Booking.status.in_(["returned", "in_review"]),
+        ))
         .order_by(Booking.updated_at.desc() if hasattr(Booking, "updated_at") else Booking.id.desc())
     )
     cases: List[Booking] = q.all()
@@ -179,7 +181,7 @@ def dm_case_page(
     item = db.get(Item, bk.item_id)
 
     # روابط الأدلة ليطلع عليها DM
-    evidence_urls = _evidence_urls(request, bk.id)  # ✅ [إضافة] ثم نمررها بعدة أسماء أدناه
+    evidence = _evidence_urls(request, bk.id)
 
     return request.app.templates.TemplateResponse(
         "dm_case.html",
@@ -190,10 +192,7 @@ def dm_case_page(
             "bk": bk,
             "booking": bk,          # لتوافق القوالب التي تتوقع 'booking'
             "item": item,
-            # ✅ [إضافة] تمرير الروابط بأكثر من اسم لضمان توافق القالب
-            "evidence": evidence_urls,
-            "evidence_files": evidence_urls,
-            "evidence_urls": evidence_urls,
+            "evidence": evidence,   # قائمة روابط لصور/فيديوهات البلاغ
         },
     )
 
