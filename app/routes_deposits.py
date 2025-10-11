@@ -31,7 +31,7 @@ router = APIRouter(tags=["deposits"])
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
 # ============ مسارات الأدلة ============
-APP_ROOT = os.getenv("APP_ROOT", "/opt/render/project/src")  # آمن على Render
+APP_ROOT = os.path.dirname(os.path.dirname(__file__))
 UPLOADS_BASE = os.path.join(APP_ROOT, "uploads")
 DEPOSIT_UPLOADS = os.path.join(UPLOADS_BASE, "deposits")
 os.makedirs(DEPOSIT_UPLOADS, exist_ok=True)
