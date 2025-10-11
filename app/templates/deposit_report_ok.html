@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}تم إرسال البلاغ{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:740px">
+  <div class="card p-4 mt-3">
+    <h4 class="mb-2">شكراً لك!</h4>
+    <p class="mb-1">تم استلام بلاغ الوديعة للحجز <strong>#{{ bk.id }}</strong>.</p>
+    <p class="text-muted mb-3">سيراجعه فريق الوديعة (MD) وسنرد عليك خلال أقل من 24 ساعة.</p>
+
+    <div class="alert alert-info">
+      يمكنك متابعة الحالة من <a href="/bookings/flow/{{ bk.id }}">صفحة الحجز</a>،
+      أو أن ينتقل فريق الوديعة مباشرة من <a href="/dm/deposits/{{ bk.id }}">رابط القضية</a>.
+    </div>
+
+    <div class="d-flex gap-2">
+      <a class="btn btn-primary" href="/bookings/flow/{{ bk.id }}">الرجوع لصفحة الحجز</a>
+      <a class="btn btn-outline-secondary" href="/dm/deposits">فتح قضايا الوديعة</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

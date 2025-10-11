@@ -29,7 +29,6 @@ router = APIRouter(tags=["deposits"])
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
 # ============ مسارات الأدلة (بدون تغيير قاعدة البيانات) ============
-# سيتم تخزين الصور/الفيديوهات على القرص داخل مشروعك
 APP_ROOT = os.getenv("APP_ROOT", "/opt/render/project/src")  # آمن على Render
 UPLOADS_BASE = os.path.join(APP_ROOT, "uploads")
 DEPOSIT_UPLOADS = os.path.join(UPLOADS_BASE, "deposits")
@@ -270,7 +269,6 @@ def dm_decision(
 
 # ===================== [صفحة البلاغ + المعالجة] =====================
 
-# 0) صفحة البلاغ (GET) — **هذه** التي تُفتح من زر “فتح بلاغ وديعة”
 @router.get("/deposits/{booking_id}/report")
 def report_deposit_issue_page(
     booking_id: int,
@@ -278,41 +276,35 @@ def report_deposit_issue_page(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    تعرض فورم بلاغ الوديعة للمالك مع رفع صور/فيديو ووصف.
-    """
+    """تعرض فورم بلاغ الوديعة للمالك مع رفع صور/فيديو ووصف."""
     require_auth(user)
     bk = require_booking(db, booking_id)
     if user.id != bk.owner_id:
         raise HTTPException(status_code=403, detail="Only owner can open report page")
-
     item = db.get(Item, bk.item_id)
-
     return request.app.templates.TemplateResponse(
-        "deposit_report.html",    # ← صفحة جديدة للبلاغ، ليست صفحة اتخاذ القرار
+        "deposit_report.html",
         {
             "request": request,
             "title": f"فتح بلاغ وديعة — حجز #{bk.id}",
             "session_user": request.session.get("user"),
             "bk": bk,
-            "booking": bk,         # للتوافق مع أي قالب يتوقع 'booking'
+            "booking": bk,
             "item": item,
         },
     )
 
 
-# 1) تسجيل تدقيقي اختياري (لا يكسر لو الجدول غير موجود)
+# 1) تسجيل تدقيقي اختياري
 from sqlalchemy import text
 from .database import engine as _engine
 
 def _audit(db: Session, actor: Optional[User], bk: Booking, action: str, details: dict | None = None):
     """
     يكتب سجلًا في جدول deposit_audit_log إذا كان موجودًا.
-    الحقول المقترحة: id, booking_id, actor_id, role, action, details, created_at
     """
     try:
         with _engine.begin() as conn:
-            # يعمل على SQLite/PG: نكشف وجود الجدول، وإلا نخرج بهدوء
             try:
                 conn.exec_driver_sql("SELECT 1 FROM deposit_audit_log LIMIT 1")
                 has_table = True
@@ -338,6 +330,16 @@ def _audit(db: Session, actor: Optional[User], bk: Booking, action: str, details
         pass
 
 
+# ==== NEW: إشعار كل مديري الوديعة ====
+def notify_dms(db: Session, title: str, body: str = "", url: str = ""):
+    """إشعار جميع مستخدمي MD + الإدمن."""
+    dms = db.query(User).filter(
+        (User.is_deposit_manager == True) | ((User.role or "") == "admin")
+    ).all()
+    for u in dms:
+        push_notification(db, u.id, title, body, url, kind="deposit")
+
+
 # 2) إرسال البلاغ (POST) — يحفظ الأدلة ويحوّل الحالة إلى in_dispute / in_review
 @router.post("/deposits/{booking_id}/report")
 def report_deposit_issue(
@@ -345,25 +347,25 @@ def report_deposit_issue(
     issue_type: Literal["delay", "damage", "loss", "theft"] = Form(...),
     description: str = Form(""),
     files: List[UploadFile] | None = File(None),  # ← صور/فيديوهات متعدّدة
+    request: Request = None,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
     """
     يستخدمه المالك لفتح قضية وديعة مع أدلة (ملفات).
-    لا يغيّر قاعدة البيانات (لا جداول جديدة) — الأدلة تُحفظ على القرص.
+    الأدلة تُحفظ على القرص، وتتحوّل الحالة ليظهر الحجز في قائمة DM.
     """
     require_auth(user)
     bk = require_booking(db, booking_id)
     if user.id != bk.owner_id:
         raise HTTPException(status_code=403, detail="Only owner can report issue")
-
     if getattr(bk, "deposit_hold_intent_id", None) is None:
         raise HTTPException(status_code=400, detail="No deposit hold found")
 
     # حفظ الأدلة
     saved = _save_evidence_files(bk.id, files)
 
-    # تحديث حالات الحجز
+    # تحديث حالات الحجز (تجعل القضية تظهر في /dm/deposits)
     bk.deposit_status = "in_dispute"
     bk.status = "in_review"
     bk.updated_at = datetime.utcnow()
@@ -387,7 +389,10 @@ def report_deposit_issue(
         f"/bookings/flow/{bk.id}",
         "deposit"
     )
-    notify_admins(db, "مراجعة ديبو مطلوبة", f"بلاغ جديد بخصوص حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+    notify_dms(db, "بلاغ وديعة جديد — بانتظار المراجعة",
+               f"بلاغ جديد للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+    notify_admins(db, "مراجعة ديبو مطلوبة",
+                  f"بلاغ جديد بخصوص حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
 
     # سجل تدقيقي
     _audit(
@@ -398,8 +403,17 @@ def report_deposit_issue(
         details={"issue_type": issue_type, "desc": description, "files": saved},
     )
 
-    # بعد البلاغ نعيد المالك إلى تدفّق الحجز مع إشعار نجاح
-    return RedirectResponse(f"/bookings/flow/{bk.id}?report_ok=1", status_code=303)
+    # ✅ صفحة شكر بدل الرجوع لشاشة الزر
+    return request.app.templates.TemplateResponse(
+        "deposit_report_ok.html",
+        {
+            "request": request,
+            "title": "تم إرسال البلاغ",
+            "session_user": request.session.get("user"),
+            "bk": bk,
+        },
+        status_code=200
+    )
 
 
 # 3) ردّ المستأجر على البلاغ (تعليق فقط)
@@ -410,9 +424,7 @@ def renter_response_to_issue(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    يتيح للمستأجر إضافة رده على بلاغ الوديعة.
-    """
+    """يتيح للمستأجر إضافة رده على بلاغ الوديعة."""
     require_auth(user)
     bk = require_booking(db, booking_id)
     if user.id != bk.renter_id:
