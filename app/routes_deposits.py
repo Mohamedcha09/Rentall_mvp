@@ -34,9 +34,11 @@ UPLOADS_BASE = os.path.join(APP_ROOT, "uploads")
 DEPOSIT_UPLOADS = os.path.join(UPLOADS_BASE, "deposits")
 os.makedirs(DEPOSIT_UPLOADS, exist_ok=True)
 
+# ✅ أضفنا HEIC/HEIF و PDF وبعض الامتدادات الشائعة
 ALLOWED_EXTS = {
     ".png", ".jpg", ".jpeg", ".webp", ".gif",
-    ".mp4", ".mov", ".m4v", ".avi", ".wmv",
+    ".mp4", ".mov", ".m4v", ".avi", ".wmv", ".3gp",
+    ".heic", ".heif", ".pdf"
 }
 
 def _ext_ok(filename: str) -> bool:
@@ -84,9 +86,11 @@ def _list_evidence_files(booking_id: int) -> List[str]:
         return []
 
 def _evidence_urls(request: Request, booking_id: int) -> List[str]:
-    """يبني روابط عامة للملفات عبر /uploads/... (يجب أن تكون لديك StaticFiles مركّبة على مجلد uploads)."""
-    # في main.py لديك بالفعل تقديم uploads. إن لم يكن، أضِف:
-    # app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+    """
+    يبني روابط عامة للملفات عبر /uploads/... 
+    تأكد في main.py من:
+      app.mount("/uploads", StaticFiles(directory=os.path.join(APP_ROOT, "uploads")), name="uploads")
+    """
     base = f"/uploads/deposits/{booking_id}"
     return [f"{base}/{name}" for name in _list_evidence_files(booking_id)]
 
@@ -132,14 +136,22 @@ def dm_queue(
     if not can_manage_deposits(user):
         raise HTTPException(status_code=403, detail="Access denied")
 
+    # ✅ استخدمنا or_ بدل | لضمان التوافق
+    from sqlalchemy import or_, func
+
     q = (
         db.query(Booking)
         .filter(
-            (Booking.deposit_hold_intent_id.isnot(None))
-            | (Booking.deposit_status.in_(["held", "in_dispute", "partially_withheld"]))
-            | (Booking.status.in_(["returned", "in_review"]))
+            or_(
+                Booking.deposit_hold_intent_id.isnot(None),
+                Booking.deposit_status.in_(["held", "in_dispute", "partially_withheld"]),
+                Booking.status.in_(["returned", "in_review"])
+            )
         )
-        .order_by(Booking.updated_at.desc() if hasattr(Booking, "updated_at") else Booking.id.desc())
+        # ترتيب آمن حتى لو updated_at فارغ
+        .order_by(
+            func.coalesce(getattr(Booking, "updated_at", None), getattr(Booking, "created_at", None), Booking.id).desc()
+        )
     )
     cases: List[Booking] = q.all()
 
@@ -269,6 +281,7 @@ def dm_decision(
 
 # ===================== [صفحة البلاغ + المعالجة] =====================
 
+# 0) صفحة البلاغ (GET)
 @router.get("/deposits/{booking_id}/report")
 def report_deposit_issue_page(
     booking_id: int,
@@ -281,9 +294,11 @@ def report_deposit_issue_page(
     bk = require_booking(db, booking_id)
     if user.id != bk.owner_id:
         raise HTTPException(status_code=403, detail="Only owner can open report page")
+
     item = db.get(Item, bk.item_id)
+
     return request.app.templates.TemplateResponse(
-        "deposit_report.html",
+        "deposit_report.html",    # ← صفحة البلاغ
         {
             "request": request,
             "title": f"فتح بلاغ وديعة — حجز #{bk.id}",
@@ -302,6 +317,7 @@ from .database import engine as _engine
 def _audit(db: Session, actor: Optional[User], bk: Booking, action: str, details: dict | None = None):
     """
     يكتب سجلًا في جدول deposit_audit_log إذا كان موجودًا.
+    الحقول المقترحة: id, booking_id, actor_id, role, action, details, created_at
     """
     try:
         with _engine.begin() as conn:
@@ -330,16 +346,6 @@ def _audit(db: Session, actor: Optional[User], bk: Booking, action: str, details
         pass
 
 
-# ==== NEW: إشعار كل مديري الوديعة ====
-def notify_dms(db: Session, title: str, body: str = "", url: str = ""):
-    """إشعار جميع مستخدمي MD + الإدمن."""
-    dms = db.query(User).filter(
-        (User.is_deposit_manager == True) | ((User.role or "") == "admin")
-    ).all()
-    for u in dms:
-        push_notification(db, u.id, title, body, url, kind="deposit")
-
-
 # 2) إرسال البلاغ (POST) — يحفظ الأدلة ويحوّل الحالة إلى in_dispute / in_review
 @router.post("/deposits/{booking_id}/report")
 def report_deposit_issue(
@@ -347,25 +353,25 @@ def report_deposit_issue(
     issue_type: Literal["delay", "damage", "loss", "theft"] = Form(...),
     description: str = Form(""),
     files: List[UploadFile] | None = File(None),  # ← صور/فيديوهات متعدّدة
-    request: Request = None,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
     """
     يستخدمه المالك لفتح قضية وديعة مع أدلة (ملفات).
-    الأدلة تُحفظ على القرص، وتتحوّل الحالة ليظهر الحجز في قائمة DM.
+    لا يغيّر قاعدة البيانات — الأدلة تُحفظ على القرص.
     """
     require_auth(user)
     bk = require_booking(db, booking_id)
     if user.id != bk.owner_id:
         raise HTTPException(status_code=403, detail="Only owner can report issue")
+
     if getattr(bk, "deposit_hold_intent_id", None) is None:
         raise HTTPException(status_code=400, detail="No deposit hold found")
 
     # حفظ الأدلة
     saved = _save_evidence_files(bk.id, files)
 
-    # تحديث حالات الحجز (تجعل القضية تظهر في /dm/deposits)
+    # تحديث حالات الحجز
     bk.deposit_status = "in_dispute"
     bk.status = "in_review"
     bk.updated_at = datetime.utcnow()
@@ -389,10 +395,7 @@ def report_deposit_issue(
         f"/bookings/flow/{bk.id}",
         "deposit"
     )
-    notify_dms(db, "بلاغ وديعة جديد — بانتظار المراجعة",
-               f"بلاغ جديد للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
-    notify_admins(db, "مراجعة ديبو مطلوبة",
-                  f"بلاغ جديد بخصوص حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+    notify_admins(db, "مراجعة ديبو مطلوبة", f"بلاغ جديد بخصوص حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
 
     # سجل تدقيقي
     _audit(
@@ -403,17 +406,8 @@ def report_deposit_issue(
         details={"issue_type": issue_type, "desc": description, "files": saved},
     )
 
-    # ✅ صفحة شكر بدل الرجوع لشاشة الزر
-    return request.app.templates.TemplateResponse(
-        "deposit_report_ok.html",
-        {
-            "request": request,
-            "title": "تم إرسال البلاغ",
-            "session_user": request.session.get("user"),
-            "bk": bk,
-        },
-        status_code=200
-    )
+    # بعد البلاغ نعيد المالك إلى تدفّق الحجز مع إشعار نجاح (تظهر بطاقة "شكراً" عندك)
+    return RedirectResponse(f"/bookings/flow/{bk.id}?report_ok=1", status_code=303)
 
 
 # 3) ردّ المستأجر على البلاغ (تعليق فقط)
