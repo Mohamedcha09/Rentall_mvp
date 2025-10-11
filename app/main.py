@@ -72,7 +72,10 @@ app.add_middleware(
 BASE_DIR = os.path.dirname(__file__)
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
-UPLOADS_DIR = os.path.join(os.path.dirname(BASE_DIR), "uploads")
+
+# ✅ [تعديل مهم] توحيد مسار uploads ليطابق نفس الذي في routes_deposits.py
+APP_ROOT = os.getenv("APP_ROOT", os.path.dirname(BASE_DIR))
+UPLOADS_DIR = os.path.join(APP_ROOT, "uploads")
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

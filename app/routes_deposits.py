@@ -30,13 +30,13 @@ router = APIRouter(tags=["deposits"])
 # ============ Stripe ============
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
-# ============ مسارات الأدلة (بدون تغيير قاعدة البيانات) ============
+# ============ مسارات الأدلة ============
 APP_ROOT = os.getenv("APP_ROOT", "/opt/render/project/src")  # آمن على Render
 UPLOADS_BASE = os.path.join(APP_ROOT, "uploads")
 DEPOSIT_UPLOADS = os.path.join(UPLOADS_BASE, "deposits")
 os.makedirs(DEPOSIT_UPLOADS, exist_ok=True)
 
-# ✅ [مهم] أضفنا HEIC/HEIF + دعم الامتدادات الشائعة
+# ✅ دعم الامتدادات الشائعة
 ALLOWED_EXTS = {
     ".png", ".jpg", ".jpeg", ".webp", ".gif",
     ".mp4", ".mov", ".m4v", ".avi", ".wmv",
@@ -53,7 +53,7 @@ def _booking_folder(booking_id: int) -> str:
     return path
 
 def _save_evidence_files(booking_id: int, files: List[UploadFile] | None) -> List[str]:
-    """يحفظ الملفات ويُعيد أسماء الملفات المحفوظة (فقط الاسم، بدون المسار الكامل)."""
+    """يحفظ الملفات ويُعيد أسماء الملفات المحفوظة."""
     saved: List[str] = []
     if not files:
         return saved
@@ -62,7 +62,6 @@ def _save_evidence_files(booking_id: int, files: List[UploadFile] | None) -> Lis
         if not f or not f.filename:
             continue
         if not _ext_ok(f.filename):
-            # نتجاهل الامتدادات غير المدعومة بصمت حتى لا نكسر التدفق
             continue
         ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
         _, ext = os.path.splitext(f.filename)
@@ -78,7 +77,7 @@ def _save_evidence_files(booking_id: int, files: List[UploadFile] | None) -> Lis
     return saved
 
 def _list_evidence_files(booking_id: int) -> List[str]:
-    """يُعيد قائمة أسماء الملفات الموجودة للقضية."""
+    """يُعيد قائمة الملفات الموجودة."""
     folder = _booking_folder(booking_id)
     try:
         files = [n for n in os.listdir(folder) if _ext_ok(n)]
@@ -88,9 +87,7 @@ def _list_evidence_files(booking_id: int) -> List[str]:
         return []
 
 def _evidence_urls(request: Request, booking_id: int) -> List[str]:
-    """يبني روابط عامة للملفات عبر /uploads/... (يجب أن تكون لديك StaticFiles مركّبة على مجلد uploads)."""
-    # في main.py لديك بالفعل تقديم uploads. إن لم يكن، أضِف:
-    # app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+    """يبني روابط عامة للملفات."""
     base = f"/uploads/deposits/{booking_id}"
     return [f"{base}/{name}" for name in _list_evidence_files(booking_id)]
 
@@ -128,7 +125,7 @@ def dm_queue(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    تعرض كل الحجوزات التي لديها وديعة محجوزة وتحتاج معالجة:
+    تعرض كل الحجوزات التي تحتاج مراجعة وديعة:
     - deposit_status in ('held','in_dispute','partially_withheld')
     - أو حالة الحجز تشير لعودة العنصر ومراجعة الوديعة ('returned','in_review')
     """
@@ -136,12 +133,11 @@ def dm_queue(
     if not can_manage_deposits(user):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # ✅ [تعديل مهم] استخدم or_ بدلاً من عامل | لضمان التوافق الكامل
+    # ✅ تعديل: إزالة شرط deposit_hold_intent_id لأنه يمنع ظهور القضايا الجديدة
     q = (
         db.query(Booking)
         .filter(
             or_(
-                Booking.deposit_hold_intent_id.isnot(None),
                 Booking.deposit_status.in_(["held", "in_dispute", "partially_withheld"]),
                 Booking.status.in_(["returned", "in_review"]),
             )
@@ -166,7 +162,7 @@ def dm_queue(
     )
 
 
-# ============ صفحة القضية للمراجع/DM ============
+# ============ صفحة القضية للمراجع ============
 @router.get("/dm/deposits/{booking_id}")
 def dm_case_page(
     booking_id: int,
@@ -180,8 +176,6 @@ def dm_case_page(
 
     bk = require_booking(db, booking_id)
     item = db.get(Item, bk.item_id)
-
-    # روابط الأدلة ليطلع عليها DM
     evidence = _evidence_urls(request, bk.id)
 
     return request.app.templates.TemplateResponse(
@@ -191,14 +185,14 @@ def dm_case_page(
             "title": f"قضية وديعة #{bk.id}",
             "session_user": request.session.get("user"),
             "bk": bk,
-            "booking": bk,          # لتوافق القوالب التي تتوقع 'booking'
+            "booking": bk,
             "item": item,
-            "evidence": evidence,   # قائمة روابط لصور/فيديوهات البلاغ
+            "evidence": evidence,
         },
     )
 
 
-# ============ تنفيذ القرار (DM) ============
+# ============ تنفيذ القرار ============
 @router.post("/dm/deposits/{booking_id}/decision")
 def dm_decision(
     booking_id: int,
@@ -208,11 +202,6 @@ def dm_decision(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    decision = release  -> إرجاع كامل (cancel authorization)
-    decision = withhold -> إن كان amount == deposit  => خصم كامل
-                           إن كان 0 < amount < deposit => خصم جزئي
-    """
     require_auth(user)
     if not can_manage_deposits(user):
         raise HTTPException(status_code=403, detail="Access denied")
@@ -263,19 +252,14 @@ def dm_decision(
 
     db.commit()
 
-    push_notification(
-        db, bk.owner_id, "قرار الوديعة", f"تم تنفيذ قرار الوديعة لحجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit"
-    )
-    push_notification(
-        db, bk.renter_id, "قرار الوديعة", f"صدر القرار النهائي بخصوص وديعة حجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit"
-    )
+    push_notification(db, bk.owner_id, "قرار الوديعة", f"تم تنفيذ قرار الوديعة لحجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit")
+    push_notification(db, bk.renter_id, "قرار الوديعة", f"صدر القرار النهائي بخصوص وديعة حجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit")
     notify_admins(db, "قرار وديعة مُنفَّذ", f"قرار {decision} لحجز #{bk.id}.", f"/bookings/flow/{bk.id}")
 
     return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
 
-# ===================== [صفحة البلاغ + المعالجة] =====================
-
+# ===================== بلاغ الوديعة =====================
 @router.get("/deposits/{booking_id}/report")
 def report_deposit_issue_page(
     booking_id: int,
@@ -283,7 +267,6 @@ def report_deposit_issue_page(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """تعرض فورم بلاغ الوديعة للمالك مع رفع صور/فيديو ووصف."""
     require_auth(user)
     bk = require_booking(db, booking_id)
     if user.id != bk.owner_id:
@@ -302,14 +285,11 @@ def report_deposit_issue_page(
     )
 
 
-# 1) تسجيل تدقيقي اختياري
+# 1) سجل تدقيقي
 from sqlalchemy import text
 from .database import engine as _engine
 
 def _audit(db: Session, actor: Optional[User], bk: Booking, action: str, details: dict | None = None):
-    """
-    يكتب سجلًا في جدول deposit_audit_log إذا كان موجودًا.
-    """
     try:
         with _engine.begin() as conn:
             try:
@@ -337,9 +317,7 @@ def _audit(db: Session, actor: Optional[User], bk: Booking, action: str, details
         pass
 
 
-# ==== NEW: إشعار كل مديري الوديعة ====
 def notify_dms(db: Session, title: str, body: str = "", url: str = ""):
-    """إشعار جميع مستخدمي MD + الإدمن."""
     dms = db.query(User).filter(
         (User.is_deposit_manager == True) | ((User.role or "") == "admin")
     ).all()
@@ -347,21 +325,17 @@ def notify_dms(db: Session, title: str, body: str = "", url: str = ""):
         push_notification(db, u.id, title, body, url, kind="deposit")
 
 
-# 2) إرسال البلاغ (POST) — يحفظ الأدلة ويحوّل الحالة إلى in_dispute / in_review
+# 2) إرسال البلاغ
 @router.post("/deposits/{booking_id}/report")
 def report_deposit_issue(
     booking_id: int,
     issue_type: Literal["delay", "damage", "loss", "theft"] = Form(...),
     description: str = Form(""),
-    files: List[UploadFile] | None = File(None),  # ← صور/فيديوهات متعدّدة
+    files: List[UploadFile] | None = File(None),
     request: Request = None,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    يستخدمه المالك لفتح قضية وديعة مع أدلة (ملفات).
-    الأدلة تُحفظ على القرص، وتتحوّل الحالة ليظهر الحجز في قائمة DM.
-    """
     require_auth(user)
     bk = require_booking(db, booking_id)
     if user.id != bk.owner_id:
@@ -369,15 +343,11 @@ def report_deposit_issue(
     if getattr(bk, "deposit_hold_intent_id", None) is None:
         raise HTTPException(status_code=400, detail="No deposit hold found")
 
-    # حفظ الأدلة
     saved = _save_evidence_files(bk.id, files)
-
-    # تحديث حالات الحجز (تجعل القضية تظهر في /dm/deposits)
     bk.deposit_status = "in_dispute"
     bk.status = "in_review"
     bk.updated_at = datetime.utcnow()
 
-    # ضمّ النص إلى ملاحظة المالك (إن وُجد العمود)
     try:
         note_old = (getattr(bk, "owner_return_note", "") or "").strip()
         note_new = f"[{issue_type}] {description}".strip()
@@ -387,30 +357,12 @@ def report_deposit_issue(
 
     db.commit()
 
-    # إشعارات
-    push_notification(
-        db,
-        bk.renter_id,
-        "بلاغ وديعة جديد",
-        f"قام المالك بالإبلاغ عن مشكلة ({issue_type}) بخصوص الحجز #{bk.id}.",
-        f"/bookings/flow/{bk.id}",
-        "deposit"
-    )
-    notify_dms(db, "بلاغ وديعة جديد — بانتظار المراجعة",
-               f"بلاغ جديد للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
-    notify_admins(db, "مراجعة ديبو مطلوبة",
-                  f"بلاغ جديد بخصوص حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+    push_notification(db, bk.renter_id, "بلاغ وديعة جديد", f"قام المالك بالإبلاغ عن مشكلة ({issue_type}) بخصوص الحجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit")
+    notify_dms(db, "بلاغ وديعة جديد — بانتظار المراجعة", f"بلاغ جديد للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+    notify_admins(db, "مراجعة ديبو مطلوبة", f"بلاغ جديد بخصوص حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
 
-    # سجل تدقيقي
-    _audit(
-        db,
-        actor=user,
-        bk=bk,
-        action="owner_report_issue",
-        details={"issue_type": issue_type, "desc": description, "files": saved},
-    )
+    _audit(db, actor=user, bk=bk, action="owner_report_issue", details={"issue_type": issue_type, "desc": description, "files": saved})
 
-    # ✅ صفحة شكر بدل الرجوع لشاشة الزر
     return request.app.templates.TemplateResponse(
         "deposit_report_ok.html",
         {
@@ -423,7 +375,7 @@ def report_deposit_issue(
     )
 
 
-# 3) ردّ المستأجر على البلاغ (تعليق فقط)
+# 3) ردّ المستأجر
 @router.post("/deposits/{booking_id}/renter-response")
 def renter_response_to_issue(
     booking_id: int,
@@ -431,7 +383,6 @@ def renter_response_to_issue(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """يتيح للمستأجر إضافة رده على بلاغ الوديعة."""
     require_auth(user)
     bk = require_booking(db, booking_id)
     if user.id != bk.renter_id:
@@ -445,14 +396,7 @@ def renter_response_to_issue(
         pass
     db.commit()
 
-    push_notification(
-        db,
-        bk.owner_id,
-        "رد من المستأجر",
-        f"ردّ المستأجر على بلاغ الوديعة لحجز #{bk.id}.",
-        f"/bookings/flow/{bk.id}",
-        "deposit"
-    )
+    push_notification(db, bk.owner_id, "رد من المستأجر", f"ردّ المستأجر على بلاغ الوديعة لحجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit")
     notify_admins(db, "رد وديعة جديد", f"ردّ المستأجر في قضية حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
 
     _audit(db, actor=user, bk=bk, action="renter_response", details={"comment": renter_comment})
@@ -460,17 +404,13 @@ def renter_response_to_issue(
     return RedirectResponse(f"/bookings/flow/{bk.id}", status_code=303)
 
 
-# 4) (اختياري) استلام/Claim القضية من متحكّم الوديعة
+# 4) استلام القضية
 @router.post("/dm/deposits/{booking_id}/claim")
 def dm_claim_case(
     booking_id: int,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    يضع المراجع الحالي كمُستلم للقضية إن كان لديك عمود dm_assignee_id في bookings.
-    يتجاهل بهدوء إن لم يكن العمود موجودًا.
-    """
     require_auth(user)
     if not can_manage_deposits(user):
         raise HTTPException(status_code=403, detail="Access denied")
