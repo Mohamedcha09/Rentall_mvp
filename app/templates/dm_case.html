@@ -1,19 +1,61 @@
-{% if evidence and evidence|length %}
-<div class="mt-4">
-  <h5 class="mb-2">الأدلة المرفوعة</h5>
-  <div class="row g-3">
-    {% for url in evidence %}
-      {% set lower = url|lower %}
-      <div class="col-12 col-md-6 col-lg-4">
+{% extends "base.html" %}
+{% block title %}قضية وديعة #{{ bk.id }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h2>قضية وديعة #{{ bk.id }}</h2>
+
+  <div class="card" style="padding:16px;margin-bottom:16px;">
+    <div><b>العنصر:</b> {{ item.title if item else "—" }}</div>
+    <div><b>المالك:</b> #{{ bk.owner_id }} — <b>المستأجر:</b> #{{ bk.renter_id }}</div>
+    <div><b>حالة الحجز:</b> {{ bk.status }} — <b>حالة الوديعة:</b> {{ bk.deposit_status }}</div>
+    {% if bk.owner_return_note %}
+      <div style="margin-top:8px;"><b>ملاحظة المالك:</b><br>{{ bk.owner_return_note | replace('\n','<br>') | safe }}</div>
+    {% endif %}
+  </div>
+
+  <h3>الأدلة المرفوعة</h3>
+  {% if evidence and evidence|length %}
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+      {% for url in evidence %}
+        {% set lower = url|lower %}
         {% if lower.endswith('.mp4') or lower.endswith('.mov') or lower.endswith('.m4v') or lower.endswith('.avi') or lower.endswith('.wmv') %}
-          <video src="{{ url }}" controls style="width:100%;max-height:320px;"></video>
+          <video src="{{ url }}" controls style="max-width:320px;max-height:220px;border-radius:8px;"></video>
         {% else %}
-          <a href="{{ url }}" target="_blank">
-            <img src="{{ url }}" alt="evidence" style="width:100%;max-height:320px;object-fit:cover;border:1px solid #ddd;border-radius:6px;">
+          <a href="{{ url }}" target="_blank" style="display:inline-block;">
+            <img src="{{ url }}" alt="evidence" style="max-width:220px;max-height:160px;border-radius:8px;object-fit:cover;">
           </a>
         {% endif %}
-      </div>
-    {% endfor %}
-  </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">لا توجد ملفات أدلة.</p>
+  {% endif %}
+
+  <form action="/dm/deposits/{{ bk.id }}/decision" method="post" class="card" style="padding:16px;gap:12px;">
+    <h3 style="margin-top:0;">اتخاذ القرار النهائي</h3>
+
+    <label>نوع القرار</label>
+    <select name="decision" required>
+      <option value="">— اختر —</option>
+      <option value="release">رد كامل الوديعة</option>
+      <option value="withhold">اقتطاع من الوديعة</option>
+    </select>
+
+    <label>المبلغ الجزئي (إن وجد)</label>
+    <input name="amount" type="number" min="0" step="1" value="0" />
+
+    <label>السبب/التفاصيل</label>
+    <textarea name="reason" rows="3" placeholder="اكتب سبب القرار…"></textarea>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <a class="btn btn-secondary" href="/dm/deposits">رجوع</a>
+      <button class="btn btn-success" type="submit">تنفيذ القرار</button>
+    </div>
+  </form>
+
+  <form action="/dm/deposits/{{ bk.id }}/claim" method="post" style="margin-top:12px;">
+    <button class="btn btn-outline">استلام القضية (اختياري)</button>
+  </form>
 </div>
-{% endif %}
+{% endblock %}

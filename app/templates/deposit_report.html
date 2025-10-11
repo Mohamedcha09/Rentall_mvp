@@ -1,48 +1,33 @@
 {% extends "base.html" %}
+{% block title %}فتح بلاغ وديعة — حجز #{{ bk.id }}{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-  <h3 class="mb-3">فتح بلاغ وديعة — حجز #{{ bk.id }}</h3>
+<div class="container">
+  <h2>فتح بلاغ وديعة — حجز #{{ bk.id }}</h2>
+  <p>العنصر: <strong>{{ item.title if item else "—" }}</strong></p>
 
-  <div class="card">
-    <div class="card-body">
+  <form action="/deposits/{{ bk.id }}/report" method="post" enctype="multipart/form-data" class="card" style="padding:16px;gap:12px;">
+    <label>نوع المشكلة</label>
+    <select name="issue_type" required>
+      <option value="">— اختر —</option>
+      <option value="delay">تأخير في الإرجاع</option>
+      <option value="damage">أضرار</option>
+      <option value="loss">فقدان</option>
+      <option value="theft">سرقة</option>
+    </select>
 
-      <!-- مهم: enctype حتى تُرسل الملفات والحقول -->
-      <form method="post"
-            action="/deposits/{{ bk.id }}/report"
-            enctype="multipart/form-data">
+    <label>وصف مختصر لما حدث</label>
+    <textarea name="description" rows="4" placeholder="الرجاء ذكر التفاصيل، التواريخ، والقيمة التقريبية للأضرار (إن وجدت)"></textarea>
 
-        <!-- اسم الحقل يجب أن يكون issue_type -->
-        <div class="mb-3">
-          <label class="form-label">نوع المشكلة</label>
-          <select name="issue_type" class="form-select" required>
-            <option value="delay">تأخير في الإرجاع</option>
-            <option value="damage">أضرار/خدوش</option>
-            <option value="loss">فقدان جزء/إكسسوار</option>
-            <option value="theft">سرقة/فقدان كامل</option>
-          </select>
-        </div>
+    <label>إرفاق أدلة (صور/فيديو) — يمكنك اختيار عدة ملفات</label>
+    <input type="file" name="files" multiple accept=".png,.jpg,.jpeg,.webp,.gif,.mp4,.mov,.m4v,.avi,.wmv"/>
 
-        <div class="mb-3">
-          <label class="form-label">وصف مختصر لما حدث</label>
-          <textarea name="description" class="form-control" rows="4"
-                    placeholder="الرجاء ذكر التفاصيل والتواريخ والقيمة التقريبية للأضرار إن وُجدت"></textarea>
-        </div>
-
-        <!-- اسم الحقل يجب أن يكون files -->
-        <div class="mb-3">
-          <label class="form-label">إرفاق أدلة (صور/فيديو) — يمكن اختيار عدة ملفات</label>
-          <input type="file" name="files" class="form-control" multiple>
-          <div class="form-text">الامتدادات المسموحة: png, jpg, jpeg, webp, gif, mp4, mov, m4v, avi, wmv</div>
-        </div>
-
-        <div class="d-flex gap-2">
-          <a href="/bookings/flow/{{ bk.id }}" class="btn btn-secondary">إلغاء</a>
-          <button type="submit" class="btn btn-danger">إرسال البلاغ</button>
-        </div>
-
-      </form>
-
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+      <a class="btn btn-secondary" href="/bookings/flow/{{ bk.id }}">إلغاء</a>
+      <button class="btn btn-danger" type="submit">إرسال البلاغ</button>
     </div>
-  </div>
+  </form>
+
+  <p class="muted" style="margin-top:12px;">ستظهر القضية لفريق مراجعة الوديعة بعد الإرسال.</p>
 </div>
 {% endblock %}
