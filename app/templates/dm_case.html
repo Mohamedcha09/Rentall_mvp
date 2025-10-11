@@ -1,147 +1,19 @@
-{% extends "base.html" %}
-
-{% block head %}
-<style>
-  .case-wrap{max-width:1000px;margin:auto}
-  .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  @media (max-width: 768px){.meta-grid{grid-template-columns:1fr}}
-  .kv{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:10px}
-  .kv span:first-child{opacity:.7}
-  .card-ish{border:1px solid var(--border);border-radius:12px;padding:14px}
-  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;}
-  .soft{background:color-mix(in oklab,var(--surface) 94%,transparent)}
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="container py-3 case-wrap">
-  <div class="d-flex justify-content-between align-items-center mb-2">
-    <h3 class="mb-0">قضية وديعة #{{ bk.id }}</h3>
-    <a class="btn btn-outline-secondary btn-sm" href="/dm/deposits">
-      <i class="bi bi-arrow-right"></i> رجوع إلى القائمة
-    </a>
-  </div>
-
-  {# شريط حالة #}
-  <div class="alert {% if bk.deposit_status in ['in_dispute','in_review'] %}alert-warning{% elif bk.deposit_status in ['claimed','partially_withheld'] %}alert-danger{% elif bk.deposit_status in ['refunded'] %}alert-success{% else %}alert-secondary{% endif %} mb-3">
-    <strong>حالة الوديعة:</strong> {{ bk.deposit_status or 'none' }}
-    {% if bk.status %}<span class="ms-3"><strong>حالة الحجز:</strong> {{ bk.status }}</span>{% endif %}
-  </div>
-
+{% if evidence and evidence|length %}
+<div class="mt-4">
+  <h5 class="mb-2">الأدلة المرفوعة</h5>
   <div class="row g-3">
-    <!-- العمود الأيسر: معلومات القضية -->
-    <div class="col-12 col-lg-7">
-      <div class="card-ish soft mb-3">
-        <h5 class="mb-3">ملخص القضية</h5>
-        <div class="meta-grid">
-          <div class="kv"><span>العنصر</span><span>
-            {% if item %}{{ item.title }}{% else %}#{{ bk.item_id }}{% endif %}
-          </span></div>
-
-          <div class="kv"><span>المستأجر</span><span>
-            {% if bk.renter %}{{ bk.renter.full_name }} (#{{ bk.renter_id }}){% else %}#{{ bk.renter_id }}{% endif %}
-          </span></div>
-
-          <div class="kv"><span>المالك</span><span>
-            {% if bk.owner %}{{ bk.owner.full_name }} (#{{ bk.owner_id }}){% else %}#{{ bk.owner_id }}{% endif %}
-          </span></div>
-
-          <div class="kv"><span>إجمالي الإيجار</span><span>{{ bk.total_amount or 0 }}$</span></div>
-
-          <div class="kv"><span>الوديعة المحجوزة</span><span>{{ bk.hold_deposit_amount or bk.deposit_amount or 0 }}$</span></div>
-
-          <div class="kv"><span>المقتطع من الوديعة</span><span>{{ bk.deposit_charged_amount or 0 }}$</span></div>
-
-          <div class="kv"><span>طريقة الدفع</span><span>{{ bk.payment_method or '—' }}</span></div>
-
-          <div class="kv"><span>حالة الدفع الأونلاين</span><span>{{ bk.online_status or '—' }}</span></div>
-        </div>
-      </div>
-
-      <div class="card-ish mb-3">
-        <h5 class="mb-2">ملاحظات المالك عند الإرجاع</h5>
-        <div class="mono" style="white-space:pre-wrap">{{ bk.owner_return_note or '—' }}</div>
-      </div>
-
-      <div class="card-ish mb-3">
-        <h5 class="mb-2">الخط الزمني (Timeline)</h5>
-        <div class="mono small">
-          {% if bk.created_at %}created_at: {{ bk.created_at }}<br>{% endif %}
-          {% if bk.accepted_at %}accepted_at: {{ bk.accepted_at }}<br>{% endif %}
-          {% if bk.picked_up_at %}picked_up_at: {{ bk.picked_up_at }}<br>{% endif %}
-          {% if bk.returned_at %}returned_at: {{ bk.returned_at }}<br>{% endif %}
-          {% if bk.rent_released_at %}rent_released_at: {{ bk.rent_released_at }}<br>{% endif %}
-          {% if bk.updated_at %}updated_at: {{ bk.updated_at }}<br>{% endif %}
-          {% if bk.online_payment_intent_id %}pi(rent): {{ bk.online_payment_intent_id }}<br>{% endif %}
-          {% if bk.deposit_hold_intent_id %}pi(deposit): {{ bk.deposit_hold_intent_id }}<br>{% endif %}
-        </div>
-      </div>
-
-      {# ملاحظة: في هذا الإصدار لا نعرض أدلة مرفوعة لأن الجداول/الروت غير موجودة بعد. #}
-      <div class="alert alert-info">
-        يمكنك طلب أدلة إضافية عبر الرسائل داخل النظام. (عرض الأدلة المرفوعة سيُضاف عندما تتوفر جداول الأدلة.)
-      </div>
-    </div>
-
-    <!-- العمود الأيمن: تنفيذ القرار -->
-    <div class="col-12 col-lg-5">
-      <div class="card-ish">
-        <h5 class="mb-3">تنفيذ قرار الوديعة</h5>
-
-        <form method="post" action="/dm/deposits/{{ bk.id }}/decision" class="row g-2">
-          <div class="col-12">
-            <label class="form-label">نوع القرار</label>
-            <select name="decision" class="form-select" required>
-              <option value="release">إفراج كامل (إلغاء التفويض)</option>
-              <option value="withhold">اقتطاع (جزئي/كامل)</option>
-            </select>
-          </div>
-
-          <div class="col-12">
-            <label class="form-label">
-              المبلغ عند الاقتطاع
-              <small class="text-muted">(ضع 0 للإفراج الكامل، أو ضع قيمة &lt;= الوديعة)</small>
-            </label>
-            <input type="number" min="0" step="1" name="amount" class="form-control"
-                   placeholder="مثال: 50 عند خصم جزئي">
-            <div class="form-text">الوديعة المتاحة: {{ bk.hold_deposit_amount or bk.deposit_amount or 0 }}$</div>
-          </div>
-
-          <div class="col-12">
-            <label class="form-label">السبب / الملاحظات (تظهر في الحجز)</label>
-            <textarea name="reason" rows="3" class="form-control" placeholder="اكتب شرحًا واضحًا لقرارك…"></textarea>
-          </div>
-
-          <div class="col-12 text-end">
-            <button class="btn btn-success">
-              <i class="bi bi-shield-check"></i> تنفيذ القرار
-            </button>
-          </div>
-        </form>
-
-        <hr>
-
-        <div class="small text-muted">
-          عند اختيار <strong>إفراج كامل</strong>: سنلغي التفويض على الوديعة ويُعاد كامل المبلغ للمستأجر. <br>
-          عند اختيار <strong>اقتطاع</strong>: إذا كان <em>المبلغ</em> أقل من الوديعة → خصم جزئي، وإذا كان مساويًا للوديعة → خصم كامل.
-        </div>
-      </div>
-
-      <div class="card-ish mt-3">
-        <h6 class="mb-2">روابط سريعة</h6>
-        <div class="d-grid gap-2">
-          <a class="btn btn-outline-primary" href="/bookings/flow/{{ bk.id }}">
-            <i class="bi bi-flag"></i> فتح صفحة الحجز
+    {% for url in evidence %}
+      {% set lower = url|lower %}
+      <div class="col-12 col-md-6 col-lg-4">
+        {% if lower.endswith('.mp4') or lower.endswith('.mov') or lower.endswith('.m4v') or lower.endswith('.avi') or lower.endswith('.wmv') %}
+          <video src="{{ url }}" controls style="width:100%;max-height:320px;"></video>
+        {% else %}
+          <a href="{{ url }}" target="_blank">
+            <img src="{{ url }}" alt="evidence" style="width:100%;max-height:320px;object-fit:cover;border:1px solid #ddd;border-radius:6px;">
           </a>
-          {% if item %}
-          <a class="btn btn-outline-secondary" href="/items/{{ item.id }}">
-            <i class="bi bi-box-seam"></i> فتح صفحة العنصر
-          </a>
-          {% endif %}
-        </div>
+        {% endif %}
       </div>
-
-    </div>
+    {% endfor %}
   </div>
 </div>
-{% endblock %}
+{% endif %}
