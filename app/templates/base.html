@@ -525,10 +525,10 @@
 
   function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
-  // نحاول أول مسار يشتغل عندك (بدون تعديل الباك)
+  // المسارات الفعّالة
   const FEEDS = [
-    '/api/notifications/poll',
-    '/api/notifications',          // إن كان عندك هذا
+    '/api/notifications/poll',     // ✓ فعّال (ملف 3)
+    '/api/notifications',          // لو وفّرته مستقبلاً
     '/notifications/json'          // احتياطي
   ];
 
@@ -545,10 +545,9 @@
     return {data:null, url:null};
   }
 
-  // توحيد المخرجات لأبسط شكل
+  // توحيد المخرجات
   function normalize(data){
     const items = (data && (data.items || data.notifications || data)) || [];
-    // بعض الواجهات ترجع {items: [...], unread: n}
     const unread = Number(data && (data.unread ?? data.count ?? 0)) || 0;
     return {
       unread,
@@ -605,17 +604,16 @@
   notifClose?.addEventListener('click', closePanel);
   scrim?.addEventListener('click', closePanel);
 
-  // تحميل الإشعارات عند الفتح
+  // تحميل الإشعارات عند الفتح + تعليمها كمقروء
   async function loadPanel(){
     body.innerHTML = '<div class="small text-muted">جارِ التحميل…</div>';
     const {data} = await fetchFirst(FEEDS);
     const norm = normalize(data||{});
     renderList(norm);
 
-    // إذا رجعت الواجهة عدد unread حدّث الجرس
     if (typeof norm.unread === 'number') setBell(norm.unread);
 
-    // محاولة وضعها كمقروء (اختياري، نتجاهل الفشل)
+    // تعليم الكل كمقروء (✓ هذا المسار موجود في ملف 3)
     try{
       await fetch('/api/notifications/mark_all_read', {method:'POST', credentials:'include'});
       setTimeout(refreshUnread, 800);
@@ -624,7 +622,7 @@
 })();
 </script>
 
-    <!-- ====== سكربت إظهار/إخفاء رابط قضايا الوديعة (بدون localStorage) ====== -->
+    <!-- ====== سكربت إظهار/إخفاء رابط قضايا الوديعة ====== -->
     <script>
 (function () {
   function ensureSidebarLink(){
@@ -704,7 +702,7 @@
   // فحص أوّلي
   syncFromMe();
 
-  // عند تغيّر عدّاد الإشعارات (حدث يُطلقه notifSystem)
+  // عند تغيّر عدّاد الإشعارات
   document.addEventListener('unread:changed', () => {
     syncFromMe();
   });
