@@ -2,7 +2,7 @@
 from __future__ import annotations
 import os
 from datetime import datetime
-from typing import Optional, Literal
+from typing import Optional, Literal, Callable
 
 import stripe
 from fastapi import APIRouter, Depends, Request, HTTPException, Form
@@ -67,6 +67,11 @@ def start_checkout_all(
     - مبلغ الإيجار (يذهب إلى المالك عبر destination charge)
     - الوديعة (تدخل ضمن نفس الـ PaymentIntent وتُعتبر محجوزة لدينا)
     نُعلّمها في الـ webhook بنوع metadata=all.
+
+    ملاحظات Stripe:
+    - PaymentIntent الواحد لا يسمح إلا بعملية capture واحدة، لذلك نتعامل
+      مع (all) كدفعة تُسجَّل "سُددت" فورًا بالنسبة للإيجار، بينما تُدار
+      الوديعة كحجز/حالة على الحجز ليُتخذ القرار لاحقًا (من خلال نفس PI).
     """
     require_auth(user)
     bk = require_booking(db, booking_id)
@@ -90,15 +95,18 @@ def start_checkout_all(
 
     app_fee_cents = (rent_cents * PLATFORM_FEE_PCT) // 100 if PLATFORM_FEE_PCT > 0 else 0
 
+    # نبني payment_intent_data بدون مفاتيح None (Stripe يرفض None)
+    pi_data = {
+        "metadata": {"kind": "all", "booking_id": str(bk.id)},
+        "transfer_data": {"destination": owner.stripe_account_id},
+    }
+    if app_fee_cents > 0:
+        pi_data["application_fee_amount"] = app_fee_cents
+
     try:
         session = stripe.checkout.Session.create(
             mode="payment",
-            payment_intent_data={
-                "metadata": {"kind": "all", "booking_id": str(bk.id)},
-                # نحول الوجهة للمالك (الإيجار)، والعمولة إن وجدت تُطبّق على الإيجار
-                "transfer_data": {"destination": owner.stripe_account_id},
-                "application_fee_amount": app_fee_cents if app_fee_cents > 0 else None,
-            },
+            payment_intent_data=pi_data,
             line_items=[
                 {
                     "quantity": 1,
@@ -310,75 +318,79 @@ def start_checkout_deposit(
 
 
 # ============ (D) Webhook: تثبيت نتائج Checkout ============
-@router.post("/webhooks/stripe")
-async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
-    """
-    checkout.session.completed:
-      - kind=rent    → status=paid, online_status=authorized, حفظ online_payment_intent_id
-      - kind=deposit → deposit_status=held, حفظ deposit_hold_intent_id
-      - kind=all     → الحالتين معًا: paid + held وتخزين نفس intent لكليهما
-    """
-    payload = await request.body()
-    sig = request.headers.get("stripe-signature")
-    endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
-    try:
-        event = stripe.Webhook.construct_event(payload, sig, endpoint_secret)
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
+def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
+    """منطق المعالجة الفعلي للويبهوك (نستدعيه من مسارين)."""
+    intent_id = session_obj.get("payment_intent")
+    pi = stripe.PaymentIntent.retrieve(intent_id) if intent_id else None
+    md = (pi.metadata or {}) if pi else {}
+    kind = md.get("kind")
+    booking_id = int(md.get("booking_id") or 0)
 
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
-        intent_id = session.get("payment_intent")
-        pi = stripe.PaymentIntent.retrieve(intent_id) if intent_id else None
-        md = (pi.metadata or {}) if pi else {}
-        kind = md.get("kind")
-        booking_id = int(md.get("booking_id") or 0)
+    bk = db.get(Booking, booking_id) if booking_id else None
+    if not bk:
+        return
 
-        bk = db.get(Booking, booking_id) if booking_id else None
-        if not bk:
-            return JSONResponse({"ok": True})
+    if kind == "rent":
+        bk.online_payment_intent_id = pi.id
+        bk.online_status = "authorized"
+        bk.status = "paid"
+        bk.timeline_paid_at = datetime.utcnow()
+        db.commit()
+        push_notification(db, bk.owner_id, "تم تفويض دفعة الإيجار",
+                          f"حجز #{bk.id}: التفويض جاهز. سلّم الغرض عند الموعد.",
+                          f"/bookings/flow/{bk.id}", "booking")
+        push_notification(db, bk.renter_id, "تم تفويض دفعتك",
+                          f"حجز #{bk.id}. يمكنك استلام الغرض الآن.",
+                          f"/bookings/flow/{bk.id}", "booking")
 
-        if kind == "rent":
-            bk.online_payment_intent_id = pi.id
-            bk.online_status = "authorized"
-            bk.status = "paid"
-            bk.timeline_paid_at = datetime.utcnow()
-            db.commit()
-            push_notification(db, bk.owner_id, "تم تفويض دفعة الإيجار",
-                              f"حجز #{bk.id}: التفويض جاهز. سلّم الغرض عند الموعد.",
-                              f"/bookings/flow/{bk.id}", "booking")
-            push_notification(db, bk.renter_id, "تم تفويض دفعتك",
-                              f"حجز #{bk.id}. يمكنك استلام الغرض الآن.",
-                              f"/bookings/flow/{bk.id}", "booking")
+    elif kind == "deposit":
+        bk.deposit_hold_intent_id = pi.id
+        bk.deposit_status = "held"
+        db.commit()
+        push_notification(db, bk.owner_id, "تم حجز الديبو",
+                          f"حجز #{bk.id}: الديبو محجوز.",
+                          f"/bookings/flow/{bk.id}", "deposit")
+        push_notification(db, bk.renter_id, "تم حجز الديبو",
+                          f"حجز #{bk.id}: الديبو الآن محجوز.",
+                          f"/bookings/flow/{bk.id}", "deposit")
 
-        elif kind == "deposit":
-            bk.deposit_hold_intent_id = pi.id
-            bk.deposit_status = "held"
-            db.commit()
-            push_notification(db, bk.owner_id, "تم حجز الديبو",
-                              f"حجز #{bk.id}: الديبو محجوز.",
-                              f"/bookings/flow/{bk.id}", "deposit")
-            push_notification(db, bk.renter_id, "تم حجز الديبو",
-                              f"حجز #{bk.id}: الديبو الآن محجوز.",
-                              f"/bookings/flow/{bk.id}", "deposit")
+    elif kind == "all":
+        # دفع الإيجار + (تمييز الوديعة كمحجوزة) في نفس الجلسة
+        bk.online_payment_intent_id = pi.id
+        bk.deposit_hold_intent_id = pi.id
+        bk.online_status = "authorized"
+        bk.deposit_status = "held"
+        bk.status = "paid"
+        bk.timeline_paid_at = datetime.utcnow()
+        db.commit()
+        push_notification(db, bk.owner_id, "تم الدفع الكامل",
+                          f"حجز #{bk.id}: تم دفع الإيجار وحجز الوديعة معًا.",
+                          f"/bookings/flow/{bk.id}", "booking")
+        push_notification(db, bk.renter_id, "تم الدفع بنجاح",
+                          f"تم دفع الإيجار والوديعة معًا لحجز #{bk.id}.",
+                          f"/bookings/flow/{bk.id}", "booking")
 
-        elif kind == "all":
-            # دفع الإيجار + حجز الوديعة في نفس الجلسة
-            bk.online_payment_intent_id = pi.id
-            bk.deposit_hold_intent_id = pi.id
-            bk.online_status = "authorized"
-            bk.deposit_status = "held"
-            bk.status = "paid"
-            bk.timeline_paid_at = datetime.utcnow()
-            db.commit()
-            push_notification(db, bk.owner_id, "تم الدفع الكامل",
-                              f"حجز #{bk.id}: تم دفع الإيجار وحجز الوديعة معًا.",
-                              f"/bookings/flow/{bk.id}", "booking")
-            push_notification(db, bk.renter_id, "تم الدفع بنجاح",
-                              f"تم دفع الإيجار والوديعة معًا لحجز #{bk.id}.",
-                              f"/bookings/flow/{bk.id}", "booking")
 
-    return JSONResponse({"ok": True})
+def _webhook_handler_factory() -> Callable:
+    async def _handler(request: Request, db: Session = Depends(get_db)):
+        payload = await request.body()
+        sig = request.headers.get("stripe-signature")
+        endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+        try:
+            event = stripe.Webhook.construct_event(payload, sig, endpoint_secret)
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=400)
+
+        if event["type"] == "checkout.session.completed":
+            _handle_checkout_completed(event["data"]["object"], db)
+
+        # يمكن إضافة معالجات لأحداث أخرى إذا لزم
+        return JSONResponse({"ok": True})
+    return _handler
+
+# ندعم مسارين تجنبًا لاختلاف الإعدادات بين الكود ولوحة Stripe
+router.post("/webhooks/stripe")(_webhook_handler_factory())
+router.post("/stripe/webhook")(_webhook_handler_factory())
 
 
 # ============ (E) التقاط مبلغ الإيجار يدويًا (اختياري) ============

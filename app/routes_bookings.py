@@ -366,7 +366,7 @@ def renter_pay_online(
     if not owner_pe:
         raise HTTPException(status_code=409, detail="Owner payouts not enabled")
 
-    # ✅ تعديل مطلوب: الدفع المتزامن للإيجار + الوديعة
+    # ✅ الدفع المتزامن للإيجار + الوديعة في جلسة واحدة
     return RedirectResponse(url=f"/api/stripe/checkout/all/{booking_id}", status_code=303)
 
 # ===== تأكيد استلام المستأجر =====
@@ -476,7 +476,6 @@ def booking_deadlines(
         raise HTTPException(status_code=403, detail="Forbidden")
 
     dispute_deadline = None
-    renter_reply_deadline = None
 
     if getattr(bk, "returned_at", None):
         try:
@@ -484,8 +483,6 @@ def booking_deadlines(
         except Exception:
             dispute_deadline = None
 
-    # مبدئيًا لا نملك طابعًا زمنيًا لبداية النزاع لاحتساب رد المستأجر بدقة.
-    # يمكن لاحقًا الاعتماد على updated_at عند دخول in_dispute، هنا نعرض قيمة إرشادية بالساعات.
     return _json({
         "dispute_deadline_iso": _iso(dispute_deadline),
         "renter_reply_window_hours": RENTER_REPLY_WINDOW_HOURS,
@@ -592,7 +589,7 @@ def alias_pay_online(booking_id: int,
         bk.hold_deposit_amount = max(0, int(deposit_amount or 0))
     db.commit()
 
-    # ✅ تعديل مطلوب: الدفع المتزامن للإيجار + الوديعة
+    # ✅ الدفع المتزامن للإيجار + الوديعة
     return RedirectResponse(url=f"/api/stripe/checkout/all/{booking_id}", status_code=303)
 
 @router.post("/bookings/{booking_id}/picked-up")
