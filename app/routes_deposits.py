@@ -203,7 +203,7 @@ def dm_decision(
 
 # ===================== [إضافات وفق الخطة] =====================
 
-# 0) صفحة البلاغ (GET) — هذه هي الإضافة التي تمنع 405
+# 0) صفحة البلاغ (GET) — تمنع 405 وتُمرِّر booking للقالب
 @router.get("/deposits/{booking_id}/report")
 def report_deposit_issue_page(
     booking_id: int,
@@ -222,8 +222,7 @@ def report_deposit_issue_page(
 
     item = db.get(Item, bk.item_id)
 
-    # نعرض القالب الموجود لديك: deposit_case.html
-    # (يجب أن يحتوي على <form method="post" action="/deposits/{bk.id}/report">)
+    # تمرير كلا الاسمين: bk و booking (للتوافق مع القالب)
     return request.app.templates.TemplateResponse(
         "deposit_case.html",
         {
@@ -231,6 +230,7 @@ def report_deposit_issue_page(
             "title": f"فتح بلاغ وديعة — حجز #{bk.id}",
             "session_user": request.session.get("user"),
             "bk": bk,
+            "booking": bk,   # <-- هذا السطر هو التصحيح لمنع UndefinedError
             "item": item,
         },
     )
@@ -247,9 +247,10 @@ def _audit(db: Session, actor: Optional[User], bk: Booking, action: str, details
       id, booking_id, actor_id, role, action, details(json/text), created_at
     """
     try:
-        # نفحص الجدول مرة واحدة تقريبًا
         with _engine.begin() as conn:
-            rows = conn.exec_driver_sql("SELECT name FROM sqlite_master WHERE type='table' AND name='deposit_audit_log'").all()
+            rows = conn.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='deposit_audit_log'"
+            ).all()
             if not rows:
                 return
             conn.exec_driver_sql(
@@ -267,7 +268,6 @@ def _audit(db: Session, actor: Optional[User], bk: Booking, action: str, details
                 },
             )
     except Exception:
-        # لا شيء — سجّل بصمت بدون كسر التدفق
         pass
 
 
@@ -293,14 +293,12 @@ def report_deposit_issue(
     if user.id != bk.owner_id:
         raise HTTPException(status_code=403, detail="Only owner can report issue")
 
-    # لا نقيّد بالحالة كثيرًا، لكن منطقيًا يكون بعد returned/picked_up
     if getattr(bk, "deposit_hold_intent_id", None) is None:
         raise HTTPException(status_code=400, detail="No deposit hold found")
 
     bk.deposit_status = "in_dispute"
     bk.status = "in_review"
     bk.updated_at = datetime.utcnow()
-    # ملاحظة المالك
     try:
         if description:
             setattr(
@@ -314,7 +312,6 @@ def report_deposit_issue(
 
     db.commit()
 
-    # إشعارات
     push_notification(
         db,
         bk.renter_id,
@@ -325,7 +322,6 @@ def report_deposit_issue(
     )
     notify_admins(db, "مراجعة ديبو مطلوبة", f"بلاغ جديد بخصوص حجز #{bk.id}.", f"/bookings/flow/{bk.id}")
 
-    # سجل تدقيقي
     _audit(db, actor=user, bk=bk, action="owner_report_issue", details={"issue_type": issue_type, "desc": description})
 
     return RedirectResponse(f"/bookings/flow/{bk.id}", status_code=303)
@@ -350,7 +346,6 @@ def renter_response_to_issue(
     if bk.deposit_status != "in_dispute":
         raise HTTPException(status_code=400, detail="No open deposit issue")
 
-    # تحديث وقت
     try:
         setattr(bk, "updated_at", datetime.utcnow())
     except Exception:
@@ -367,7 +362,6 @@ def renter_response_to_issue(
     )
     notify_admins(db, "رد وديعة جديد", f"ردّ المستأجر في قضية حجز #{bk.id}.", f"/bookings/flow/{bk.id}")
 
-    # سجل تدقيقي
     _audit(db, actor=user, bk=bk, action="renter_response", details={"comment": renter_comment})
 
     return RedirectResponse(f"/bookings/flow/{bk.id}", status_code=303)
@@ -390,7 +384,6 @@ def dm_claim_case(
 
     bk = require_booking(db, booking_id)
 
-    # لو العمود موجود — عين المراجع
     try:
         current = getattr(bk, "dm_assignee_id")
         if current in (None, 0):
@@ -399,7 +392,6 @@ def dm_claim_case(
             _audit(db, actor=user, bk=bk, action="dm_claim_case", details={})
             db.commit()
     except Exception:
-        # لا عمود — تجاهُل
         pass
 
     return RedirectResponse(f"/dm/deposits/{bk.id}", status_code=303)
