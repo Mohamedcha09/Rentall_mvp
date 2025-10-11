@@ -91,7 +91,7 @@ def dm_queue(
     )
 
 
-# ============ صفحة القضية ============
+# ============ صفحة القضية (للمراجع/DM) ============
 @router.get("/dm/deposits/{booking_id}")
 def dm_case_page(
     booking_id: int,
@@ -118,7 +118,7 @@ def dm_case_page(
     )
 
 
-# ============ تنفيذ القرار ============
+# ============ تنفيذ القرار (DM) ============
 @router.post("/dm/deposits/{booking_id}/decision")
 def dm_decision(
     booking_id: int,
@@ -203,6 +203,39 @@ def dm_decision(
 
 # ===================== [إضافات وفق الخطة] =====================
 
+# 0) صفحة البلاغ (GET) — هذه هي الإضافة التي تمنع 405
+@router.get("/deposits/{booking_id}/report")
+def report_deposit_issue_page(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    تعرض فورم بلاغ الوديعة للمالك.
+    يتحقق من صلاحية المالك ويُمرّر الحجز/العنصر إلى القالب.
+    """
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if user.id != bk.owner_id:
+        raise HTTPException(status_code=403, detail="Only owner can open report page")
+
+    item = db.get(Item, bk.item_id)
+
+    # نعرض القالب الموجود لديك: deposit_case.html
+    # (يجب أن يحتوي على <form method="post" action="/deposits/{bk.id}/report">)
+    return request.app.templates.TemplateResponse(
+        "deposit_case.html",
+        {
+            "request": request,
+            "title": f"فتح بلاغ وديعة — حجز #{bk.id}",
+            "session_user": request.session.get("user"),
+            "bk": bk,
+            "item": item,
+        },
+    )
+
+
 # 1) تسجيل تدقيقي اختياري (لا يكسر لو الجدول غير موجود)
 from sqlalchemy import text
 from .database import engine as _engine
@@ -238,7 +271,7 @@ def _audit(db: Session, actor: Optional[User], bk: Booking, action: str, details
         pass
 
 
-# 2) بلاغ المالك عن مشكلة عند الإرجاع
+# 2) بلاغ المالك عن مشكلة عند الإرجاع (POST)
 @router.post("/deposits/{booking_id}/report")
 def report_deposit_issue(
     booking_id: int,

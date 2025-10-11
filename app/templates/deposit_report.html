@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}بلاغ وديعة — الحجز #{{ booking.id }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <div class="mb-3">
+    <a class="btn btn-sm btn-outline-secondary" href="/bookings/flow/{{ booking.id }}">← العودة إلى تدفّق الحجز</a>
+  </div>
+
+  <h2 class="mb-2">بلاغ وديعة</h2>
+  <p class="text-muted mb-4">
+    الحجز رقم <strong>#{{ booking.id }}</strong> — العنصر:
+    <a href="/items/{{ item.id }}" target="_blank">{{ item.title }}</a>
+  </p>
+
+  {# رسالة خطأ/نجاح اختيارية عبر باراميتر query ?ok=1 أو ?err=... #}
+  {% if request.query_params.get("ok") %}
+    <div class="alert alert-success">تم إرسال البلاغ بنجاح. سنراجع الطلب ونبلغك بالقرار.</div>
+  {% elif request.query_params.get("err") %}
+    <div class="alert alert-danger">تعذّر إرسال البلاغ: {{ request.query_params.get("err") }}</div>
+  {% endif %}
+
+  {# تنبيه بالمهلة إذا وفّرتها الراوتر #}
+  {% if dispute_deadline_iso %}
+    <div class="alert alert-warning d-flex align-items-center" role="alert">
+      <div>
+        لديك مهلة لتقديم البلاغ حتى:
+        <strong id="deadlineText">{{ dispute_deadline_iso }}</strong>
+        <div class="small text-muted">ينتهي العدّاد خلال: <span id="deadlineCountdown">—</span></div>
+      </div>
+    </div>
+  {% endif %}
+
+  <form method="post"
+        action="/deposits/{{ booking.id }}/report"
+        enctype="multipart/form-data"
+        class="card shadow-sm border-0">
+    <div class="card-body">
+
+      <div class="mb-3">
+        <label class="form-label">نوع المشكلة</label>
+        <select name="report_type" class="form-select" required>
+          <option value="" disabled selected>اختر نوع البلاغ…</option>
+          <option value="delay">تأخير في الإرجاع</option>
+          <option value="damage">ضرر</option>
+          <option value="loss">فقدان</option>
+          <option value="theft">سرقة</option>
+          <option value="other">أخرى</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">وصف مختصر لما حدث</label>
+        <textarea name="reason" class="form-control" rows="5" placeholder="اكتب تفاصيل المشكلة والأدلة المتوفّرة…" required></textarea>
+        <div class="form-text">الرجاء ذكر التواريخ، القيمة التقريبية للأضرار إن وجدت، وأي تفاصيل تفيد فريق المراجعة.</div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">إرفاق أدلة (صور/فيديو/ملف)</label>
+        <input type="file" name="files" class="form-control" multiple
+               accept="image/*,video/*,.pdf,.doc,.docx,.heic,.heif">
+        <div class="form-text">يمكنك اختيار عدة ملفات دفعة واحدة. الحجم الأقصى يعتمد على إعدادات الخادم.</div>
+      </div>
+
+      {# حقول خفية اختيارية في حال احتجتها لاحقًا #}
+      <input type="hidden" name="booking_id" value="{{ booking.id }}"/>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-danger">
+          إرسال البلاغ
+        </button>
+        <a href="/bookings/flow/{{ booking.id }}" class="btn btn-outline-secondary">إلغاء</a>
+      </div>
+
+    </div>
+  </form>
+
+  <div class="mt-4">
+    <h6 class="text-muted">ملاحظات:</h6>
+    <ul class="small text-muted">
+      <li>قد نتواصل معك لطلب توضيحات أو مستندات إضافية.</li>
+      <li>إرسال البلاغ لا يعني اقتطاع الوديعة مباشرة؛ يتم أولًا فحص الأدلة ثم اتخاذ القرار.</li>
+    </ul>
+  </div>
+
+</div>
+
+{% if dispute_deadline_iso %}
+<script>
+  (function () {
+    try {
+      const end = new Date('{{ dispute_deadline_iso }}');
+      const $t = document.getElementById('deadlineCountdown');
+      if (!$t || isNaN(end)) return;
+
+      function pad(n){ return (n<10?'0':'') + n; }
+
+      function tick(){
+        const now = new Date();
+        let diff = Math.floor((end - now) / 1000);
+        if (diff <= 0){
+          $t.textContent = '00:00:00';
+          clearInterval(timer);
+          return;
+        }
+        const h = Math.floor(diff/3600); diff %= 3600;
+        const m = Math.floor(diff/60);
+        const s = diff%60;
+        $t.textContent = pad(h) + ':' + pad(m) + ':' + pad(s);
+      }
+      tick();
+      const timer = setInterval(tick, 1000);
+    } catch(e){}
+  })();
+</script>
+{% endif %}
+{% endblock %}
