@@ -89,6 +89,8 @@ def _list_evidence_files(booking_id: int) -> List[str]:
 
 def _evidence_urls(request: Request, booking_id: int) -> List[str]:
     """يبني روابط عامة للملفات عبر /uploads/... (يجب أن تكون لديك StaticFiles مركّبة على مجلد uploads)."""
+    # في main.py لديك بالفعل تقديم uploads. إن لم يكن، أضِف:
+    # app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
     base = f"/uploads/deposits/{booking_id}"
     return [f"{base}/{name}" for name in _list_evidence_files(booking_id)]
 

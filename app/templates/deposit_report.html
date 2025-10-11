@@ -20,7 +20,13 @@
     <textarea name="description" rows="4" placeholder="الرجاء ذكر التفاصيل، التواريخ، والقيمة التقريبية للأضرار (إن وجدت)"></textarea>
 
     <label>إرفاق أدلة (صور/فيديو) — يمكنك اختيار عدة ملفات</label>
-    <input type="file" name="files" multiple accept=".png,.jpg,.jpeg,.webp,.gif,.mp4,.mov,.m4v,.avi,.wmv"/>
+    <!-- التعديل هنا: توسيع accept لدعم image/* و video/* و HEIC/HEIF مع الامتدادات الموجودة أصلًا -->
+    <input
+      type="file"
+      name="files"
+      multiple
+      accept="image/*,video/*,.heic,.heif,.png,.jpg,.jpeg,.webp,.gif,.mp4,.mov,.m4v,.avi,.wmv"
+    />
 
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
       <a class="btn btn-secondary" href="/bookings/flow/{{ bk.id }}">إلغاء</a>
