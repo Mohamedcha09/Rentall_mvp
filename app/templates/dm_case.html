@@ -16,15 +16,36 @@
 
   <h3>الأدلة المرفوعة</h3>
 
-  <!-- صندوق تشخيصي آمن 100% -->
-  <div class="card" style="padding:8px;margin-bottom:10px;">
-    <div style="font-size:13px;">
-      Evidence debug — count:
-      <b>{{ (evidence|length) if (evidence is defined and evidence) else 0 }}</b>
-    </div>
-    {% if evidence is defined %}
-      <pre style="white-space:pre-wrap;max-height:140px;overflow:auto;margin:6px 0 0;">{{ evidence|default([]) }}</pre>
-    {% endif %}
+<div class="card" style="padding:8px;margin-bottom:10px;">
+  <div style="font-size:13px;">
+    Evidence debug — count: <b>{{ ev_list|length if ev_list is defined else 0 }}</b>
+  </div>
+  {% if ev_list is defined %}
+    <pre style="white-space:pre-wrap;max-height:120px;overflow:auto;margin:6px 0 0;">
+{{ ev_list }}
+    </pre>
+  {% endif %}
+</div>
+
+{% if ev_list is defined and (ev_list|length) > 0 %}
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+    {% for url in ev_list %}
+      {% set lower = (url or '')|lower %}
+      {% if lower.endswith('.mp4') or lower.endswith('.mov') or lower.endswith('.m4v') or lower.endswith('.avi') or lower.endswith('.wmv') %}
+        <video src="{{ url }}?v={{ bk.updated_at.timestamp() if bk.updated_at }}" controls
+               style="max-width:320px;max-height:220px;border-radius:8px;"></video>
+      {% else %}
+        <a href="{{ url }}" target="_blank" style="display:inline-block;">
+          <img src="{{ url }}?v={{ bk.updated_at.timestamp() if bk.updated_at }}"
+               alt="evidence"
+               style="max-width:220px;max-height:160px;border-radius:8px;object-fit:cover;">
+        </a>
+      {% endif %}
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="muted">لا توجد ملفات أدلة.</p>
+{% endif %}
   </div>
 
   {% set ev_list = evidence|default([]) %}

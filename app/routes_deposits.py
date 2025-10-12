@@ -6,6 +6,7 @@ import os
 import io
 import shutil
 import stripe
+import mimetypes
 
 from fastapi import (
     APIRouter,
@@ -37,16 +38,11 @@ if not stripe.api_key:
         pass
 
 # ============ مسارات الأدلة ============
-# NOTE: نحتفظ بهذه المتغيرات كما هي، لكن سنستبدل دوال الأدلة أدناه بنسخة أقوى
+# NOTE: نحتفظ بهذه المتغيرات كما هي، لكن الدوال أدناه تُحسّن البناء والفلترة
 APP_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 UPLOADS_BASE = os.path.join(APP_ROOT, "uploads")
 DEPOSIT_UPLOADS = os.path.join(UPLOADS_BASE, "deposits")
 os.makedirs(DEPOSIT_UPLOADS, exist_ok=True)
-
-# ------------------------------------------------------------
-# ✅ النسخة المطلوبة (مع mimetypes) — استبدال قسم الأدلة كما طلبت
-# ------------------------------------------------------------
-import mimetypes
 
 ALLOWED_EXTS = {
     ".png", ".jpg", ".jpeg", ".webp", ".gif",
@@ -125,7 +121,6 @@ def _evidence_urls(request: Request, booking_id: int) -> List[str]:
     urls = [f"{base}/{str(name)}" for name in files]
     print(f"[evidence] URLS for #{booking_id}: {urls}")
     return urls
-# ------------------------------------------------------------
 
 
 # ============ Helpers ============
@@ -208,8 +203,8 @@ def dm_case_page(
 
     bk = require_booking(db, booking_id)
     item = db.get(Item, bk.item_id)
-    # ضمان قائمة نصوص فقط
-    evidence = [str(u) for u in _evidence_urls(request, bk.id) if u]
+    # نمرّر المتغير باسم ev_list لتفادي أي تعارض أسماء
+    ev_list = [str(u) for u in _evidence_urls(request, bk.id) if u]
 
     resp = request.app.templates.TemplateResponse(
         "dm_case.html",
@@ -220,13 +215,14 @@ def dm_case_page(
             "bk": bk,
             "booking": bk,
             "item": item,
-            "evidence": evidence or [],   # عدم تمرير Undefined
+            "ev_list": ev_list or [],   # عدم تمرير Undefined
         },
     )
-    # منع الكاش (اختياري لكنه مفيد أثناء التجربة)
+    # منع الكاش + علامة نسخة للمساعدة في التشخيص
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     resp.headers["Pragma"] = "no-cache"
     resp.headers["Expires"] = "0"
+    resp.headers["X-Route-Version"] = "deposits-v3"
     return resp
 
 
@@ -514,7 +510,7 @@ def debug_evidence(booking_id: int, request: Request):
 def debug_open_file(booking_id: int, name: str):
     return {"public_url": f"/uploads/deposits/{booking_id}/{name}"}
 
-# ===== مسار تشخيصي إضافي كما طلبت =====
+# ===== مسار تشخيصي إضافي =====
 @router.get("/dm/deposits/{booking_id}/_ctx")
 def dm_case_context(
     booking_id: int,
@@ -523,8 +519,7 @@ def dm_case_context(
 ):
     bk = require_booking(db, booking_id)
     item = db.get(Item, bk.item_id)
-    # نبني الأدلة دون الاعتماد على request (build-only)
-    ev = _evidence_urls(Request(scope={"type": "http"}), bk.id)
+    ev = _evidence_urls(Request(scope={"type": "http"}), bk.id)  # build-only
     return {
         "bk": {"id": bk.id, "status": bk.status, "deposit_status": bk.deposit_status},
         "item": {"id": item.id if item else None, "title": item.title if item else None},
