@@ -11,44 +11,23 @@
     <div><b>المالك:</b> #{{ bk.owner_id }} — <b>المستأجر:</b> #{{ bk.renter_id }}</div>
     <div><b>حالة الحجز:</b> {{ bk.status }} — <b>حالة الوديعة:</b> {{ bk.deposit_status }}</div>
     {% if bk.owner_return_note %}
-      <div style="margin-top:8px;"><b>ملاحظة المالك:</b><br>{{ (bk.owner_return_note or "") | replace('\n','<br>') | safe }}</div>
+      <div style="margin-top:8px;">
+        <b>ملاحظة المالك:</b><br>
+        {{ (bk.owner_return_note or "") | replace('\n','<br>') | safe }}
+      </div>
     {% endif %}
   </div>
 
   <h3>الأدلة المرفوعة</h3>
 
-  {# متغيّر موحّد: يأخذ أول قائمة غير فارغة بين evidence و ev_list #}
-  {% set imgs = (evidence if evidence is defined and evidence else (ev_list if ev_list is defined else [])) %}
-
-  <!-- Debug: يساعدنا على التأكد أن السيرفر أرسل القائمة فعلاً -->
-  <div class="card" style="padding:8px;margin-bottom:10px;">
+  <!-- ===== Evidence (Client-side fetch + Server vars) ===== -->
+  <div id="ev-container" class="card" style="padding:8px;margin-bottom:10px;">
     <div style="font-size:13px;">
-      Evidence debug — count: <b>{{ imgs|length }}</b>
+      Evidence — <b id="ev-count">0</b>
     </div>
-    <pre style="white-space:pre-wrap;max-height:120px;overflow:auto;margin:6px 0 0;">{{ imgs }}</pre>
+    <div id="ev-grid" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;"></div>
+    <div id="ev-empty" class="muted" style="margin-top:8px;">لا توجد ملفات أدلة.</div>
   </div>
-
-  {% if imgs|length > 0 %}
-    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-      {% for url in imgs %}
-        {% set u = (url or '') %}
-        {% set lower = u|lower %}
-        {% if lower.endswith('.mp4') or lower.endswith('.mov') or lower.endswith('.m4v') or lower.endswith('.avi') or lower.endswith('.wmv') %}
-          <video src="{{ u }}?v={{ bk.updated_at.timestamp() if bk.updated_at }}" controls
-                 style="max-width:320px;max-height:220px;border-radius:8px;"></video>
-        {% else %}
-          <a href="{{ u }}" target="_blank" style="display:inline-block;">
-            <img src="{{ u }}?v={{ bk.updated_at.timestamp() if bk.updated_at }}"
-                 alt="evidence"
-                 loading="lazy"
-                 style="max-width:220px;max-height:160px;border-radius:8px;object-fit:cover;">
-          </a>
-        {% endif %}
-      {% endfor %}
-    </div>
-  {% else %}
-    <p class="muted">لا توجد ملفات أدلة.</p>
-  {% endif %}
 
   <!-- نموذج القرار -->
   <form action="/dm/deposits/{{ bk.id }}/decision" method="post" class="card" style="padding:16px;gap:12px;">
@@ -78,4 +57,66 @@
     <button class="btn btn-outline">استلام القضية (اختياري)</button>
   </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  // ===== قيم مرسلة من السيرفر (قد تكون null) =====
+  const serverEvidence = {{ evidence|tojson if evidence is defined else 'null' }};
+  const serverEvList   = {{ ev_list|tojson   if ev_list   is defined else 'null' }};
+
+  // عناصر DOM
+  var grid    = document.getElementById('ev-grid');
+  var countEl = document.getElementById('ev-count');
+  var emptyEl = document.getElementById('ev-empty');
+
+  function isVideo(url){
+    var s = (url || '').toLowerCase();
+    return s.endsWith('.mp4') || s.endsWith('.mov') || s.endsWith('.m4v') ||
+           s.endsWith('.avi') || s.endsWith('.wmv') || s.endsWith('.webm');
+  }
+
+  function addImg(u){
+    var a = document.createElement('a');
+    a.href = u; a.target = '_blank'; a.style.display = 'inline-block';
+    var img = document.createElement('img');
+    img.src = u + '?v={{ bk.updated_at.timestamp() if bk.updated_at else 0 }}';
+    img.alt = 'evidence'; img.loading = 'lazy';
+    img.style.maxWidth = '220px'; img.style.maxHeight = '160px';
+    img.style.borderRadius = '8px'; img.style.objectFit = 'cover';
+    a.appendChild(img); grid.appendChild(a);
+  }
+
+  function addVideo(u){
+    var v = document.createElement('video');
+    v.src = u + '?v={{ bk.updated_at.timestamp() if bk.updated_at else 0 }}';
+    v.controls = true;
+    v.style.maxWidth = '320px'; v.style.maxHeight = '220px'; v.style.borderRadius = '8px';
+    grid.appendChild(v);
+  }
+
+  function render(urls){
+    if (!Array.isArray(urls)) urls = [];
+    urls.forEach(function(u){ isVideo(u) ? addVideo(u) : addImg(u); });
+    countEl.textContent = urls.length;
+    emptyEl.style.display = urls.length ? 'none' : '';
+  }
+
+  // 1) حاول أولاً القيم القادمة من السيرفر (evidence أو ev_list)
+  var fromServer = Array.isArray(serverEvidence) && serverEvidence.length ? serverEvidence
+                 : (Array.isArray(serverEvList) && serverEvList.length ? serverEvList : null);
+
+  if (fromServer){
+    render(fromServer);
+  } else {
+    // 2) لو لا يوجد، اجلبها من API التشخيصي
+    var id = {{ bk.id }};
+    fetch('/debug/evidence/' + id, {credentials:'include'})
+      .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+      .then(function(data){ render((data && data.urls) ? data.urls : []); })
+      .catch(function(){ render([]); });
+  }
+})();
+</script>
 {% endblock %}
