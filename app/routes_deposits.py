@@ -56,8 +56,21 @@ def _ext_ok(filename: str) -> bool:
     _, ext = os.path.splitext((filename or "").lower())
     return ext in ALLOWED_EXTS
 
+# ======================
+# 🔧 تصحيح رئيسي هنا:
+# بدل الاعتماد على ثابت DEPOSIT_UPLOADS فقط، نحسب مسار المجلد ديناميكيًا
+# من __file__ في كل مرة (تمامًا كما يعمل debug/uploads).
+# ======================
 def _booking_folder(booking_id: int) -> str:
-    path = os.path.join(DEPOSIT_UPLOADS, str(booking_id))
+    """
+    ابنِ المسار كل مرة من __file__ لضمان التطابق مع الماونت في main.py:
+    ../uploads/deposits/<booking_id>
+    """
+    app_root_runtime = os.path.dirname(os.path.dirname(__file__))   # ../src
+    uploads_base_rt  = os.path.join(app_root_runtime, "uploads")    # ../src/uploads
+    deposits_dir_rt  = os.path.join(uploads_base_rt, "deposits")    # ../src/uploads/deposits
+    os.makedirs(deposits_dir_rt, exist_ok=True)
+    path = os.path.join(deposits_dir_rt, str(booking_id))
     os.makedirs(path, exist_ok=True)
     return path
 
@@ -85,21 +98,39 @@ def _save_evidence_files(booking_id: int, files: List[UploadFile] | None) -> Lis
         saved.append(safe_name)
     return saved
 
+# ✅ نجعل القراءة أكثر تسامحًا ونطبع لوج واضح
 def _list_evidence_files(booking_id: int) -> List[str]:
-    """يُعيد قائمة الملفات الموجودة."""
+    """يُعيد قائمة الملفات الموجودة مع تتبّع أخطاء واضح في اللوج."""
     folder = _booking_folder(booking_id)
     try:
-        files = [n for n in os.listdir(folder) if _ext_ok(n)]
-        files.sort()
-        return files
-    except Exception:
+        names: List[str] = []
+        for entry in os.scandir(folder):
+            if not entry.is_file():
+                continue
+            n = entry.name
+            if not n or n.startswith("."):
+                continue
+            if _ext_ok(n) or any(
+                n.lower().endswith(suf)
+                for suf in (".jpg", ".jpeg", ".png", ".webp", ".gif",
+                            ".mp4", ".mov", ".m4v", ".avi", ".wmv",
+                            ".heic", ".heif", ".bmp", ".tiff")
+            ):
+                names.append(n)
+        names.sort()
+        print(f"[evidence] folder={folder} files={names}")
+        return names
+    except Exception as e:
+        print(f"[evidence] list failed in {folder}: {e}")
         return []
 
 def _evidence_urls(request: Request, booking_id: int) -> List[str]:
     """يبني روابط عامة للملفات."""
-    # ✅ مهم: المسار العام يخرج عبر /uploads/deposits/<booking_id>/<file>
     base = f"/uploads/deposits/{booking_id}"
-    return [f"{base}/{name}" for name in _list_evidence_files(booking_id)]
+    files = _list_evidence_files(booking_id)
+    urls = [f"{base}/{name}" for name in files]
+    print(f"[evidence] urls for #{booking_id}: {urls}")
+    return urls
 
 
 # ============ Helpers ============
@@ -431,7 +462,7 @@ def renter_response_to_issue(
 
     _audit(db, actor=user, bk=bk, action="renter_response", details={"comment": renter_comment})
 
-    return RedirectResponse(f"/bookings/flow/{bk.id}", status_code=303)
+    return RedirectResponse(f"/dm/deposits/{bk.id}", status_code=303)
 
 
 # ==== استلام القضية ====
@@ -459,14 +490,14 @@ def dm_claim_case(
 
     return RedirectResponse(f"/dm/deposits/{bk.id}", status_code=303)
 
-    # ===== DEBUG: افحص مسارات الرفع والقراءة على الديبلوي =====
+
+# ===== DEBUG: افحص مسارات الرفع والقراءة على الديبلوي (Top-level, ليس داخل دالة) =====
 @router.get("/debug/uploads/{booking_id}")
 def debug_uploads(booking_id: int, request: Request):
-    import json
-    APP_ROOT = os.path.dirname(os.path.dirname(__file__))
-    UPLOADS_BASE = os.path.join(APP_ROOT, "uploads")
-    DEPOSIT_UPLOADS = os.path.join(UPLOADS_BASE, "deposits")
-    bk_folder = os.path.join(DEPOSIT_UPLOADS, str(booking_id))
+    APP_ROOT_RT = os.path.dirname(os.path.dirname(__file__))
+    UPLOADS_BASE_RT = os.path.join(APP_ROOT_RT, "uploads")
+    DEPOSIT_UPLOADS_RT = os.path.join(UPLOADS_BASE_RT, "deposits")
+    bk_folder = os.path.join(DEPOSIT_UPLOADS_RT, str(booking_id))
     os.makedirs(bk_folder, exist_ok=True)
 
     # أنشئ ملف اختبار صغير داخل مجلد القضية
@@ -476,11 +507,20 @@ def debug_uploads(booking_id: int, request: Request):
             f.write("OK " + datetime.utcnow().isoformat())
 
     return {
-        "app_root": APP_ROOT,
-        "uploads_base": UPLOADS_BASE,
-        "deposits_dir": DEPOSIT_UPLOADS,
+        "app_root": APP_ROOT_RT,
+        "uploads_base": UPLOADS_BASE_RT,
+        "deposits_dir": DEPOSIT_UPLOADS_RT,
         "booking_folder": bk_folder,
         "folder_exists": os.path.isdir(bk_folder),
         "files_now": sorted(os.listdir(bk_folder)),
         "public_url_example": f"/uploads/deposits/{booking_id}/test.txt"
     }
+
+# ===== Debug إضافية لعرض ما تراه صفحة القضية بالضبط =====
+@router.get("/debug/evidence/{booking_id}")
+def debug_evidence(booking_id: int, request: Request):
+    return {"urls": _evidence_urls(request, booking_id)}
+
+@router.get("/debug/file/{booking_id}/{name}")
+def debug_open_file(booking_id: int, name: str):
+    return {"public_url": f"/uploads/deposits/{booking_id}/{name}"}
