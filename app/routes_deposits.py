@@ -86,14 +86,32 @@ def _save_evidence_files(booking_id: int, files: List[UploadFile] | None) -> Lis
     return saved
 
 def _list_evidence_files(booking_id: int) -> List[str]:
-    """يُعيد قائمة الملفات الموجودة."""
+    """يُعيد قائمة الملفات الموجودة داخل مجلد القضيّة مع تتبّع للأخطاء."""
     folder = _booking_folder(booking_id)
     try:
-        files = [n for n in os.listdir(folder) if _ext_ok(n)]
-        files.sort()
-        return files
-    except Exception:
+        # تجاهل الملفات المخفية وتأكّد من الامتداد
+        names = []
+        for n in os.listdir(folder):
+            if not n or n.startswith("."):
+                continue
+            if _ext_ok(n):
+                names.append(n)
+        names.sort()
+        # تتبّع
+        print(f"[evidence] folder={folder} files={names}")
+        return names
+    except Exception as e:
+        print(f"[evidence] list failed in {folder}: {e}")
         return []
+
+def _evidence_urls(request: Request, booking_id: int) -> List[str]:
+    """يبني روابط عامة للملفات."""
+    base = f"/uploads/deposits/{booking_id}"
+    files = _list_evidence_files(booking_id)
+    urls = [f"{base}/{name}" for name in files]
+    # تتبّع
+    print(f"[evidence] urls for #{booking_id}: {urls}")
+    return urls
 
 def _evidence_urls(request: Request, booking_id: int) -> List[str]:
     """يبني روابط عامة للملفات."""
@@ -484,3 +502,14 @@ def debug_uploads(booking_id: int, request: Request):
         "files_now": sorted(os.listdir(bk_folder)),
         "public_url_example": f"/uploads/deposits/{booking_id}/test.txt"
     }
+
+    # ===== Debug endpoints (لا تؤثر على الإنتاج) =====
+@router.get("/debug/evidence/{booking_id}")
+def debug_evidence(booking_id: int, request: Request):
+    """يرجع نفس القائمة التي تراها صفحة القضية بالضبط."""
+    return {"urls": _evidence_urls(request, booking_id)}
+
+@router.get("/debug/file/{booking_id}/{name}")
+def debug_open_file(booking_id: int, name: str):
+    """يبني رابط عام مباشر لملف داخل القضيّة (للتجربة اليدوية)."""
+    return {"public_url": f"/uploads/deposits/{booking_id}/{name}"}
