@@ -16,55 +16,31 @@
 
   <h3>الأدلة المرفوعة</h3>
 
-<div class="card" style="padding:8px;margin-bottom:10px;">
-  <div style="font-size:13px;">
-    Evidence debug — count: <b>{{ ev_list|length if ev_list is defined else 0 }}</b>
-  </div>
-  {% if ev_list is defined %}
-    <pre style="white-space:pre-wrap;max-height:120px;overflow:auto;margin:6px 0 0;">
-{{ ev_list }}
-    </pre>
-  {% endif %}
-</div>
+  {# متغيّر موحّد: يأخذ أول قائمة غير فارغة بين evidence و ev_list #}
+  {% set imgs = (evidence if evidence is defined and evidence else (ev_list if ev_list is defined else [])) %}
 
-{% if ev_list is defined and (ev_list|length) > 0 %}
-  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-    {% for url in ev_list %}
-      {% set lower = (url or '')|lower %}
-      {% if lower.endswith('.mp4') or lower.endswith('.mov') or lower.endswith('.m4v') or lower.endswith('.avi') or lower.endswith('.wmv') %}
-        <video src="{{ url }}?v={{ bk.updated_at.timestamp() if bk.updated_at }}" controls
-               style="max-width:320px;max-height:220px;border-radius:8px;"></video>
-      {% else %}
-        <a href="{{ url }}" target="_blank" style="display:inline-block;">
-          <img src="{{ url }}?v={{ bk.updated_at.timestamp() if bk.updated_at }}"
-               alt="evidence"
-               style="max-width:220px;max-height:160px;border-radius:8px;object-fit:cover;">
-        </a>
-      {% endif %}
-    {% endfor %}
-  </div>
-{% else %}
-  <p class="muted">لا توجد ملفات أدلة.</p>
-{% endif %}
+  <!-- Debug صغير يساعدنا على التأكد من أن القيم وصلت -->
+  <div class="card" style="padding:8px;margin-bottom:10px;">
+    <div style="font-size:13px;">
+      Evidence debug — count: <b>{{ imgs|length }}</b>
+    </div>
+    <pre style="white-space:pre-wrap;max-height:120px;overflow:auto;margin:6px 0 0;">{{ imgs }}</pre>
   </div>
 
-  {% set ev_list = evidence|default([]) %}
-  {% if ev_list and (ev_list|length) > 0 %}
+  {% if imgs|length > 0 %}
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-      {% for url in ev_list %}
+      {% for url in imgs %}
         {% set u = (url or '') %}
         {% set lower = u|lower %}
         {% if lower.endswith('.mp4') or lower.endswith('.mov') or lower.endswith('.m4v') or lower.endswith('.avi') or lower.endswith('.wmv') %}
-          <video src="{{ u }}" controls style="max-width:320px;max-height:220px;border-radius:8px;"></video>
-        {% elif lower.endswith('.jpg') or lower.endswith('.jpeg') or lower.endswith('.png') or lower.endswith('.webp') or lower.endswith('.gif') or lower.endswith('.heic') or lower.endswith('.heif') or lower.endswith('.bmp') or lower.endswith('.tiff') %}
-          <a href="{{ u }}" target="_blank" style="display:inline-block;">
-            <img src="{{ u }}" alt="evidence" loading="lazy"
-                 style="max-width:220px;max-height:160px;border-radius:8px;object-fit:cover;">
-          </a>
+          <video src="{{ u }}?v={{ bk.updated_at.timestamp() if bk.updated_at }}" controls
+                 style="max-width:320px;max-height:220px;border-radius:8px;"></video>
         {% else %}
-          <!-- أي ملف غير صورة/فيديو: نظهره كرابط -->
-          <a href="{{ u }}" target="_blank" class="btn btn-outline" style="padding:6px 10px;">
-            ملف: {{ u.split('/')[-1] }}
+          <a href="{{ u }}" target="_blank" style="display:inline-block;">
+            <img src="{{ u }}?v={{ bk.updated_at.timestamp() if bk.updated_at }}"
+                 alt="evidence"
+                 loading="lazy"
+                 style="max-width:220px;max-height:160px;border-radius:8px;object-fit:cover;">
           </a>
         {% endif %}
       {% endfor %}

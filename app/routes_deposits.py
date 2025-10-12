@@ -38,7 +38,6 @@ if not stripe.api_key:
         pass
 
 # ============ مسارات الأدلة ============
-# NOTE: نحتفظ بهذه المتغيرات كما هي، لكن الدوال أدناه تُحسّن البناء والفلترة
 APP_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 UPLOADS_BASE = os.path.join(APP_ROOT, "uploads")
 DEPOSIT_UPLOADS = os.path.join(UPLOADS_BASE, "deposits")
@@ -52,8 +51,8 @@ ALLOWED_EXTS = {
 
 def _booking_folder(booking_id: int) -> str:
     """
-    ابنِ المسار كل مرة من __file__ لضمان التطابق مع الماونت في main.py:
     ../uploads/deposits/<booking_id>
+    (يبنى دائمًا من __file__ لضمان التطابق مع الماونت في main.py)
     """
     app_root_runtime = os.path.dirname(os.path.dirname(__file__))   # ../src
     uploads_base_rt  = os.path.join(app_root_runtime, "uploads")    # ../src/uploads
@@ -69,12 +68,10 @@ def _ext_ok(filename: str) -> bool:
     _, ext = os.path.splitext(filename.lower())
     if ext in ALLOWED_EXTS:
         return True
-    # fallback حسب نوع المحتوى
     guess, _ = mimetypes.guess_type(filename)
     return bool(guess and (guess.startswith("image/") or guess.startswith("video/")))
 
 def _save_evidence_files(booking_id: int, files: List[UploadFile] | None) -> List[str]:
-    """يحفظ الملفات ويُعيد أسماء الملفات المحفوظة."""
     saved: List[str] = []
     if not files:
         return saved
@@ -203,8 +200,9 @@ def dm_case_page(
 
     bk = require_booking(db, booking_id)
     item = db.get(Item, bk.item_id)
-    # نمرّر المتغير باسم ev_list لتفادي أي تعارض أسماء
-    ev_list = [str(u) for u in _evidence_urls(request, bk.id) if u]
+
+    # ⬅️ نكوّن القائمة ونمررها باسمين (compat)
+    evidence_urls = [str(u) for u in _evidence_urls(request, bk.id) if u]
 
     resp = request.app.templates.TemplateResponse(
         "dm_case.html",
@@ -215,10 +213,10 @@ def dm_case_page(
             "bk": bk,
             "booking": bk,
             "item": item,
-            "ev_list": ev_list or [],   # عدم تمرير Undefined
+            "evidence": evidence_urls,   # للاسم القديم
+            "ev_list": evidence_urls,    # للاسم الجديد
         },
     )
-    # منع الكاش + علامة نسخة للمساعدة في التشخيص
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     resp.headers["Pragma"] = "no-cache"
     resp.headers["Expires"] = "0"
