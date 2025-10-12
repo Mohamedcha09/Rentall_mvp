@@ -18,7 +18,6 @@ from fastapi import (
 )
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-# ✅ نستخدم or_ الصريحة
 from sqlalchemy import or_
 
 from .database import get_db
@@ -28,7 +27,6 @@ from .notifications_api import push_notification, notify_admins
 router = APIRouter(tags=["deposits"])
 
 # ============ Stripe ============
-# نحاول أخذ المفتاح من البيئة؛ وإن كان فارغًا نحمّل .env بشكل احتياطي
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 if not stripe.api_key:
     try:
@@ -39,13 +37,11 @@ if not stripe.api_key:
         pass
 
 # ============ مسارات الأدلة ============
-# توحيد الجذر ليكون: <جذر المشروع>/uploads/deposits
 APP_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 UPLOADS_BASE = os.path.join(APP_ROOT, "uploads")
 DEPOSIT_UPLOADS = os.path.join(UPLOADS_BASE, "deposits")
 os.makedirs(DEPOSIT_UPLOADS, exist_ok=True)
 
-# ✅ دعم الامتدادات الشائعة
 ALLOWED_EXTS = {
     ".png", ".jpg", ".jpeg", ".webp", ".gif",
     ".mp4", ".mov", ".m4v", ".avi", ".wmv",
@@ -56,16 +52,8 @@ def _ext_ok(filename: str) -> bool:
     _, ext = os.path.splitext((filename or "").lower())
     return ext in ALLOWED_EXTS
 
-# ======================
-# 🔧 تصحيح رئيسي هنا:
-# بدل الاعتماد على ثابت DEPOSIT_UPLOADS فقط، نحسب مسار المجلد ديناميكيًا
-# من __file__ في كل مرة (تمامًا كما يعمل debug/uploads).
-# ======================
 def _booking_folder(booking_id: int) -> str:
-    """
-    ابنِ المسار كل مرة من __file__ لضمان التطابق مع الماونت في main.py:
-    ../uploads/deposits/<booking_id>
-    """
+    """ابنِ المسار كل مرة من __file__ لضمان التطابق مع الماونت في main.py: ../uploads/deposits/<booking_id>"""
     app_root_runtime = os.path.dirname(os.path.dirname(__file__))   # ../src
     uploads_base_rt  = os.path.join(app_root_runtime, "uploads")    # ../src/uploads
     deposits_dir_rt  = os.path.join(uploads_base_rt, "deposits")    # ../src/uploads/deposits
@@ -75,7 +63,6 @@ def _booking_folder(booking_id: int) -> str:
     return path
 
 def _save_evidence_files(booking_id: int, files: List[UploadFile] | None) -> List[str]:
-    """يحفظ الملفات ويُعيد أسماء الملفات المحفوظة."""
     saved: List[str] = []
     if not files:
         return saved
@@ -99,10 +86,7 @@ def _save_evidence_files(booking_id: int, files: List[UploadFile] | None) -> Lis
     return saved
 
 def _list_evidence_files(booking_id: int) -> List[str]:
-    """
-    أرجع كل الملفات الموجودة داخل مجلد القضية بدون أي فلترة،
-    حتى نتأكد أن القراءة صحيحة 100%. لاحقًا ممكن نرجع نفلتر.
-    """
+    """أرجع كل الملفات الموجودة داخل مجلد القضية (لضمان القراءة 100%)."""
     folder = _booking_folder(booking_id)
     try:
         names = []
@@ -156,16 +140,10 @@ def dm_queue(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    تعرض كل الحجوزات التي تحتاج مراجعة وديعة:
-    - deposit_status in ('held','in_dispute','partially_withheld')
-    - أو حالة الحجز تشير لعودة العنصر ومراجعة الوديعة ('returned','in_review')
-    """
     require_auth(user)
     if not can_manage_deposits(user):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # لا نحذف أي شرط — فقط نضمن OR كافية
     q = (
         db.query(Booking)
         .filter(
@@ -212,7 +190,8 @@ def dm_case_page(
     item = db.get(Item, bk.item_id)
     evidence = _evidence_urls(request, bk.id)
 
-    return request.app.templates.TemplateResponse(
+    # ✅ التغيير هنا: نعيد Response مع هيدرز تمنع الكاش
+    resp = request.app.templates.TemplateResponse(
         "dm_case.html",
         {
             "request": request,
@@ -224,6 +203,10 @@ def dm_case_page(
             "evidence": evidence,
         },
     )
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
 
 
 # ============ تنفيذ القرار ============
@@ -286,12 +269,8 @@ def dm_decision(
 
     db.commit()
 
-    push_notification(
-        db, bk.owner_id, "قرار الوديعة", f"تم تنفيذ قرار الوديعة لحجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit"
-    )
-    push_notification(
-        db, bk.renter_id, "قرار الوديعة", f"صدر القرار النهائي بخصوص وديعة حجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit"
-    )
+    push_notification(db, bk.owner_id, "قرار الوديعة", f"تم تنفيذ قرار الوديعة لحجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit")
+    push_notification(db, bk.renter_id, "قرار الوديعة", f"صدر القرار النهائي بخصوص وديعة حجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit")
     notify_admins(db, "قرار وديعة مُنفَّذ", f"قرار {decision} لحجز #{bk.id}.", f"/bookings/flow/{bk.id}")
 
     return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
@@ -328,10 +307,6 @@ from sqlalchemy import text
 from .database import engine as _engine
 
 def _audit(db: Session, actor: Optional[User], bk: Booking, action: str, details: dict | None = None):
-    """
-    نحاول الكتابة في جدول السجل؛ إن كان اسم الجدول مفردًا أو جمعًا.
-    لا نحذف منطقك القديم، نضيف فحصًا إضافيًا فقط.
-    """
     try:
         with _engine.begin() as conn:
             has_table = False
@@ -482,7 +457,7 @@ def dm_claim_case(
     return RedirectResponse(f"/dm/deposits/{bk.id}", status_code=303)
 
 
-# ===== DEBUG: افحص مسارات الرفع والقراءة على الديبلوي (Top-level, ليس داخل دالة) =====
+# ===== DEBUG =====
 @router.get("/debug/uploads/{booking_id}")
 def debug_uploads(booking_id: int, request: Request):
     APP_ROOT_RT = os.path.dirname(os.path.dirname(__file__))
@@ -491,7 +466,6 @@ def debug_uploads(booking_id: int, request: Request):
     bk_folder = os.path.join(DEPOSIT_UPLOADS_RT, str(booking_id))
     os.makedirs(bk_folder, exist_ok=True)
 
-    # أنشئ ملف اختبار صغير داخل مجلد القضية
     test_path = os.path.join(bk_folder, "test.txt")
     if not os.path.exists(test_path):
         with open(test_path, "w", encoding="utf-8") as f:
@@ -507,7 +481,6 @@ def debug_uploads(booking_id: int, request: Request):
         "public_url_example": f"/uploads/deposits/{booking_id}/test.txt"
     }
 
-# ===== Debug إضافية لعرض ما تراه صفحة القضية بالضبط =====
 @router.get("/debug/evidence/{booking_id}")
 def debug_evidence(booking_id: int, request: Request):
     return {"urls": _evidence_urls(request, booking_id)}
