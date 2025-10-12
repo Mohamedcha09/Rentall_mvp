@@ -1,7 +1,7 @@
 # app/routes_deposits.py
 from __future__ import annotations
 from typing import Optional, Literal, List, Dict
-from datetime import datetime
+from datetime import datetime, timedelta  # [NEW] timedelta
 import os
 import io
 import shutil
@@ -161,7 +161,7 @@ def dm_queue(
         .filter(
             or_(
                 Booking.deposit_hold_intent_id.isnot(None),
-                Booking.deposit_status.in_(["held", "in_dispute", "partially_withheld"]),
+                Booking.deposit_status.in_(["held", "in_dispute", "partially_withheld", "awaiting_renter"]),  # [NEW] أضفنا awaiting_renter
                 Booking.status.in_(["returned", "in_review"]),
             )
         )
@@ -251,25 +251,70 @@ def dm_decision(
 
     try:
         if decision == "release":
+            # تنفيذ الإفراج الكامل فورًا
             stripe.PaymentIntent.cancel(pi_id)
             bk.deposit_status = "refunded"
             bk.deposit_charged_amount = 0
             _audit(db, actor=user, bk=bk, action="deposit_release_all", details={"reason": reason})
 
+            # نغلق الحجز في حالة الإفراج الكامل (كما كان)
+            bk.status = "closed"
+            bk.updated_at = datetime.utcnow()
+
+            db.commit()
+
+            # إشعارات
+            push_notification(
+                db, bk.owner_id, "قرار الوديعة", f"تم الإفراج الكامل عن وديعة الحجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit"
+            )
+            push_notification(
+                db, bk.renter_id, "قرار الوديعة", f"تم الإفراج الكامل عن وديعتك لحجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit"
+            )
+            notify_admins(db, "قرار وديعة مُنفَّذ", f"إفراج كامل لحجز #{bk.id}.", f"/bookings/flow/{bk.id}")
+
         elif decision == "withhold":
+            # [NEW] لا نلتقط المبلغ الآن — نمنح المستأجر 24 ساعة للرد
             amt = max(0, int(amount or 0))
             if amt <= 0:
                 raise HTTPException(status_code=400, detail="Invalid amount")
-            if amt >= deposit_total:
-                stripe.PaymentIntent.capture(pi_id, amount_to_capture=deposit_total * 100)
-                bk.deposit_status = "claimed"
-                bk.deposit_charged_amount = deposit_total
-                _audit(db, actor=user, bk=bk, action="deposit_withhold_all", details={"amount": deposit_total, "reason": reason})
-            else:
-                stripe.PaymentIntent.capture(pi_id, amount_to_capture=amt * 100)
-                bk.deposit_status = "partially_withheld"
-                bk.deposit_charged_amount = amt
-                _audit(db, actor=user, bk=bk, action="deposit_withhold_partial", details={"amount": amt, "reason": reason})
+
+            # إذا كان الاقتطاع المقترح يساوي/يتجاوز كامل الوديعة، سنبقيه مقترحًا الآن وننفذه لاحقًا (كرون)
+            # نحفَظ القرار والمهلة:
+            now = datetime.utcnow()
+            deadline = now + timedelta(hours=24)  # [NEW] مهلة 24 ساعة
+
+            bk.deposit_status = "awaiting_renter"  # [NEW] حالة انتظار رد المستأجر
+            bk.dm_decision = "withhold"            # [NEW]
+            bk.dm_decision_amount = amt            # [NEW]
+            bk.dm_decision_note = (reason or None) # [NEW]
+            bk.renter_response_deadline_at = deadline  # [NEW]
+            bk.updated_at = now
+
+            # لا نغلق الحجز هنا — بانتظار رد أو تنفيذ آلي
+            _audit(
+                db, actor=user, bk=bk, action="dm_withhold_pending",
+                details={"amount": amt, "reason": reason, "deadline": deadline.isoformat()}
+            )
+
+            db.commit()
+
+            # [NEW] إشعارات للطرفين
+            push_notification(
+                db, bk.owner_id, "قرار خصم (بانتظار المستأجر)",
+                f"تم فتح قرار خصم بمبلغ {amt} ريال لحجز #{bk.id}. سيتم التنفيذ بعد 24 ساعة ما لم يقدّم المستأجر ردًا.",
+                f"/bookings/flow/{bk.id}", "deposit"
+            )
+            push_notification(
+                db, bk.renter_id, "تنبيه: قرار خصم قيد الانتظار",
+                f"يوجد قرار خصم بمبلغ {amt} ريال على وديعتك في حجز #{bk.id}. لديك 24 ساعة للرد ورفع أدلة.",
+                f"/deposits/{bk.id}/evidence/form", "deposit"  # رابط مباشر لنموذج رفع الأدلة (من routes_evidence)
+            )
+            notify_admins(
+                db, "قرار خصم قيد الانتظار",
+                f"DM اقترح خصم {amt} على الحجز #{bk.id} — بانتظار رد المستأجر خلال 24 ساعة.",
+                f"/dm/deposits/{bk.id}"
+            )
+
         else:
             raise HTTPException(status_code=400, detail="Unknown decision")
 
@@ -278,24 +323,7 @@ def dm_decision(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe deposit operation failed: {e}")
 
-    bk.status = "closed"
-    bk.updated_at = datetime.utcnow()
-    if reason:
-        try:
-            setattr(bk, "owner_return_note", reason)
-        except Exception:
-            pass
-
-    db.commit()
-
-    push_notification(
-        db, bk.owner_id, "قرار الوديعة", f"تم تنفيذ قرار الوديعة لحجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit"
-    )
-    push_notification(
-        db, bk.renter_id, "قرار الوديعة", f"صدر القرار النهائي بخصوص وديعة حجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit"
-    )
-    notify_admins(db, "قرار وديعة مُنفَّذ", f"قرار {decision} لحجز #{bk.id}.", f"/bookings/flow/{bk.id}")
-
+    # في حالة withhold لم نعمل Redirect فوق بعد commit؟ نعم نعمله هنا، وكذلك في release أعلاه بعد commit تم.
     return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
 

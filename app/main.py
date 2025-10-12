@@ -54,6 +54,8 @@ from .routes_evidence import router as evidence_router
 # ✅ [جديد] راوتر تشغيل الإفراج التلقائي يدويًا (للاختبار/الأدمن)
 from .cron_auto_release import router as cron_router
 
+# ✅ [حسب طلبك] إضافة الاستيراد بالشكل التالي أيضًا (بدون حذف القديم)
+from . import cron_auto_release  # سيُستخدم أدناه مع include_router(cron_auto_release.router)
 
 app = FastAPI()
 
@@ -150,8 +152,16 @@ app.include_router(deposits_router)
 # ✅ [مضاف] تسجيل مسارات أدلّة الوديعة
 app.include_router(evidence_router)
 
-# ✅ [مضاف] تسجيل مسار تشغيل الإفراج التلقائي يدويًا
+# ✅ [مضاف] تسجيل مسار تشغيل الإفراج التلقائي يدويًا (الاستيراد القديم)
 app.include_router(cron_router)
+
+# ✅ [حسب طلبك] تسجيل نفس الراوتر عبر include_router(cron_auto_release.router) بدون تكرار المسار
+try:
+    # لا تقم بإعادة الإدراج إذا كان المسار موجودًا بالفعل
+    if not any(getattr(r, "path", None) == "/admin/run/auto-release" for r in getattr(app, "routes", [])):
+        app.include_router(cron_auto_release.router)
+except Exception:
+    pass
 
 def _cat_code(cat) -> str:
     if isinstance(cat, dict):

@@ -29,6 +29,54 @@
     <div id="ev-empty" class="muted" style="margin-top:8px;">لا توجد ملفات أدلة.</div>
   </div>
 
+  <!-- ========== [إضافة] نموذج ردّ المستأجر (ضمن نفس الصفحة) ========== -->
+  {% set is_renter = session_user and session_user.id == bk.renter_id %}
+  {% if is_renter %}
+  <div class="card" style="padding:16px;margin-bottom:16px;">
+    <h3 style="margin-top:0;">ردّ المستأجر وإرفاق أدلة</h3>
+
+    <!-- عدّاد الوقت المتبقي إن وُجدت مهلة -->
+    {% if bk.renter_response_deadline_at %}
+      <div style="margin-bottom:10px;">
+        لديك حتى:
+        <b>{{ bk.renter_response_deadline_at }}</b>
+        (<span id="rr-countdown" data-deadline-ts="{{ bk.renter_response_deadline_at.timestamp() if bk.renter_response_deadline_at else 0 }}">—</span> متبقٍ)
+      </div>
+    {% endif %}
+
+    <form id="renter-evidence-form"
+          method="post"
+          action="/deposits/{{ bk.id }}/evidence/upload"
+          enctype="multipart/form-data"
+          style="display:flex;flex-direction:column;gap:10px;">
+
+      <label>وصف (اختياري)</label>
+      <textarea name="description" rows="3" placeholder="اكتب تعليقك…"></textarea>
+
+      <label>أرفق أدلة (صور/فيديو/ملفات PDF — يمكنك اختيار عدة ملفات)</label>
+      <input id="renter-files" name="files" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.webm,.pdf" />
+      <div id="renter-files-preview" class="muted" style="font-size:13px;"></div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button id="renter-submit" class="btn btn-primary" type="submit">إرسال الردّ/الأدلة</button>
+      </div>
+      <div id="renter-deadline-msg" class="alert" style="display:none;margin-top:6px;"></div>
+    </form>
+
+    <!-- قناة بديلة: ردّ نصيّ فقط (بدون ملفات) إن رغبت -->
+    <form method="post" action="/deposits/{{ bk.id }}/renter-response" style="margin-top:10px;display:flex;gap:8px;align-items:flex-start;">
+      <textarea name="renter_comment" rows="2" placeholder="ردّ نصي سريع…"></textarea>
+      <button class="btn btn-outline" type="submit">إرسال ردّ نصي</button>
+    </form>
+  </div>
+  {% else %}
+  <!-- إن لم يكن المستخدم هو المستأجر، نظهر تلميحًا -->
+  <div class="card" style="padding:12px;margin-bottom:16px;">
+    <div class="muted">يمكن للمستأجر فقط إضافة ردّ وأدلة من حسابه.</div>
+  </div>
+  {% endif %}
+  <!-- ========== [نهاية الإضافة] ========== -->
+
   <!-- نموذج القرار -->
   <form action="/dm/deposits/{{ bk.id }}/decision" method="post" class="card" style="padding:16px;gap:12px;">
     <h3 style="margin-top:0;">اتخاذ القرار النهائي</h3>
@@ -117,6 +165,54 @@
       .then(function(data){ render((data && data.urls) ? data.urls : []); })
       .catch(function(){ render([]); });
   }
+
+  // ========== [إضافة] عدّاد مهلة ردّ المستأجر + تعطيل النموذج عند الانتهاء ==========
+  (function setupRenterDeadline(){
+    var cd = document.getElementById('rr-countdown');
+    var form = document.getElementById('renter-evidence-form');
+    var submitBtn = document.getElementById('renter-submit');
+    var msg = document.getElementById('renter-deadline-msg');
+    if(!cd || !form || !submitBtn){ return; }
+
+    var ts = parseFloat(cd.getAttribute('data-deadline-ts') || '0') * 1000;
+    if(!ts){ return; }
+
+    function two(n){ return (n<10?'0':'') + n; }
+    function tick(){
+      var now = Date.now();
+      var diff = ts - now;
+      if (diff <= 0){
+        cd.textContent = 'انتهت المهلة';
+        form.querySelectorAll('input,textarea,button').forEach(function(el){ el.disabled = true; });
+        if (msg){
+          msg.style.display = '';
+          msg.className = 'alert alert-warning';
+          msg.textContent = 'انتهت مهلة الـ 24 ساعة لإرسال الردّ والأدلة.';
+        }
+        return; // توقف
+      }
+      var s = Math.floor(diff / 1000);
+      var d = Math.floor(s / 86400); s -= d*86400;
+      var h = Math.floor(s / 3600);  s -= h*3600;
+      var m = Math.floor(s / 60);    s -= m*60;
+      cd.textContent = (d>0? (d+'ي ') : '') + two(h) + ':' + two(m) + ':' + two(s);
+      requestAnimationFrame(tick);
+    }
+    tick();
+  })();
+
+  // ========== [إضافة] معاينة أسماء الملفات المختارة ==========
+  (function filePreview(){
+    var inp = document.getElementById('renter-files');
+    var box = document.getElementById('renter-files-preview');
+    if(!inp || !box){ return; }
+    inp.addEventListener('change', function(){
+      if (!inp.files || !inp.files.length){ box.textContent = ''; return; }
+      var names = [];
+      for (var i=0; i<inp.files.length; i++){ names.push('• ' + inp.files[i].name); }
+      box.textContent = 'سيتم رفع ' + inp.files.length + ' ملف(ات):\n' + names.join('\n');
+    });
+  })();
 })();
 </script>
 {% endblock %}
