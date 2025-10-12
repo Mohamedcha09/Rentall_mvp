@@ -21,8 +21,8 @@ router = APIRouter(tags=["deposit-evidence"])
 # إعدادات الحفظ / الامتدادات
 # =========================
 BASE_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = BASE_DIR.parent
-UPLOADS_DIR = PROJECT_ROOT.parent / "uploads"   # مطابق لما في app/main.py
+PROJECT_ROOT = BASE_DIR.parent                  # -> /opt/render/project/src
+UPLOADS_DIR = PROJECT_ROOT / "uploads"          # -> /opt/render/project/src/uploads ✅
 DEPOSITS_DIR = UPLOADS_DIR / "deposits"
 
 ALLOWED_IMAGE_EXTS = {"jpg", "jpeg", "png", "webp", "gif"}

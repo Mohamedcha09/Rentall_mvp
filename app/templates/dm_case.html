@@ -5,6 +5,7 @@
 <div class="container">
   <h2>قضية وديعة #{{ bk.id }}</h2>
 
+  <!-- معلومات عامة عن الحجز -->
   <div class="card" style="padding:16px;margin-bottom:16px;">
     <div><b>العنصر:</b> {{ (item.title if item else "—") }}</div>
     <div><b>المالك:</b> #{{ bk.owner_id }} — <b>المستأجر:</b> #{{ bk.renter_id }}</div>
@@ -19,7 +20,7 @@
   {# متغيّر موحّد: يأخذ أول قائمة غير فارغة بين evidence و ev_list #}
   {% set imgs = (evidence if evidence is defined and evidence else (ev_list if ev_list is defined else [])) %}
 
-  <!-- Debug صغير يساعدنا على التأكد من أن القيم وصلت -->
+  <!-- Debug: يساعدنا على التأكد أن السيرفر أرسل القائمة فعلاً -->
   <div class="card" style="padding:8px;margin-bottom:10px;">
     <div style="font-size:13px;">
       Evidence debug — count: <b>{{ imgs|length }}</b>
@@ -49,6 +50,7 @@
     <p class="muted">لا توجد ملفات أدلة.</p>
   {% endif %}
 
+  <!-- نموذج القرار -->
   <form action="/dm/deposits/{{ bk.id }}/decision" method="post" class="card" style="padding:16px;gap:12px;">
     <h3 style="margin-top:0;">اتخاذ القرار النهائي</h3>
 
@@ -71,6 +73,7 @@
     </div>
   </form>
 
+  <!-- استلام القضية -->
   <form action="/dm/deposits/{{ bk.id }}/claim" method="post" style="margin-top:12px;">
     <button class="btn btn-outline">استلام القضية (اختياري)</button>
   </form>

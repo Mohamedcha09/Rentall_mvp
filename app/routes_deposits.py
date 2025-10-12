@@ -194,14 +194,16 @@ def dm_case_page(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
+    # صلاحيات
     require_auth(user)
     if not can_manage_deposits(user):
         raise HTTPException(status_code=403, detail="Access denied")
 
+    # جلب الحجز والعنصر
     bk = require_booking(db, booking_id)
     item = db.get(Item, bk.item_id)
 
-    # ⬅️ نكوّن القائمة ونمررها باسمين (compat)
+    # ✅ تكوين قائمة الروابط ثم تمرير الاسمين معًا (توافق مع القالب القديم والجديد)
     evidence_urls = [str(u) for u in _evidence_urls(request, bk.id) if u]
 
     resp = request.app.templates.TemplateResponse(
@@ -213,10 +215,12 @@ def dm_case_page(
             "bk": bk,
             "booking": bk,
             "item": item,
-            "evidence": evidence_urls,   # للاسم القديم
-            "ev_list": evidence_urls,    # للاسم الجديد
+            "evidence": evidence_urls,  # الاسم القديم (للتوافق)
+            "ev_list": evidence_urls,   # الاسم الجديد (الموحّد)
         },
     )
+
+    # رؤوس لمنع الكاش + علامة نسخة للمساعدة في التشخيص
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     resp.headers["Pragma"] = "no-cache"
     resp.headers["Expires"] = "0"
