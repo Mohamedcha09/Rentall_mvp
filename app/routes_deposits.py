@@ -458,3 +458,29 @@ def dm_claim_case(
         pass
 
     return RedirectResponse(f"/dm/deposits/{bk.id}", status_code=303)
+
+    # ===== DEBUG: افحص مسارات الرفع والقراءة على الديبلوي =====
+@router.get("/debug/uploads/{booking_id}")
+def debug_uploads(booking_id: int, request: Request):
+    import json
+    APP_ROOT = os.path.dirname(os.path.dirname(__file__))
+    UPLOADS_BASE = os.path.join(APP_ROOT, "uploads")
+    DEPOSIT_UPLOADS = os.path.join(UPLOADS_BASE, "deposits")
+    bk_folder = os.path.join(DEPOSIT_UPLOADS, str(booking_id))
+    os.makedirs(bk_folder, exist_ok=True)
+
+    # أنشئ ملف اختبار صغير داخل مجلد القضية
+    test_path = os.path.join(bk_folder, "test.txt")
+    if not os.path.exists(test_path):
+        with open(test_path, "w", encoding="utf-8") as f:
+            f.write("OK " + datetime.utcnow().isoformat())
+
+    return {
+        "app_root": APP_ROOT,
+        "uploads_base": UPLOADS_BASE,
+        "deposits_dir": DEPOSIT_UPLOADS,
+        "booking_folder": bk_folder,
+        "folder_exists": os.path.isdir(bk_folder),
+        "files_now": sorted(os.listdir(bk_folder)),
+        "public_url_example": f"/uploads/deposits/{booking_id}/test.txt"
+    }

@@ -1,47 +1,23 @@
 {% extends "base.html" %}
-{% block title %}قضايا الوديعة (Deposit Queue){% endblock %}
-
+{% block title %}قضايا الوديعة{% endblock %}
 {% block content %}
 <div class="container">
   <h2>قضايا الوديعة (Deposit Queue)</h2>
-  <p class="muted">تظهر هنا الحجوزات التي تحتاج مراجعة وديعة.</p>
 
   {% if cases and cases|length %}
-  <table class="table">
-    <thead>
-      <tr>
-        <th>#الحجز</th>
-        <th>العنصر</th>
-        <th>المالك</th>
-        <th>المستأجر</th>
-        <th>حالة الحجز</th>
-        <th>حالة الوديعة</th>
-        <th>إجراءات</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for b in cases %}
-      {% set it = items_map.get(b.item_id) if items_map else None %}
-      <tr>
-        <td>#{{ b.id }}</td>
-        <td>{{ it.title if it else "—" }}</td>
-        <td>#{{ b.owner_id }}</td>
-        <td>#{{ b.renter_id }}</td>
-        <td>{{ b.status }}</td>
-        <td>{{ b.deposit_status }}</td>
-        <td>
-          <a class="btn btn-primary" href="/dm/deposits/{{ b.id }}">فتح</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    {% for b in cases %}
+      <div class="card" style="padding:12px;margin-bottom:10px;">
+        <div><b>#{{ b.id }}</b> — حالة الحجز: <code>{{ b.status }}</code> — حالة الوديعة: <code>{{ b.deposit_status or 'none' }}</code></div>
+        <div>العنصر: {{ items_map.get(b.item_id).title if items_map.get(b.item_id) else '—' }}</div>
+        <div style="margin-top:6px;"><a class="btn" href="/dm/deposits/{{ b.id }}">فتح القضية</a></div>
+      </div>
+    {% endfor %}
   {% else %}
-    <div class="card" style="padding:16px;">
-      <strong>لا توجد قضايا حالياً.</strong>
-      <ul style="margin-top:8px;">
+    <div class="card" style="padding:12px;">
+      <b>لا توجد قضايا حالياً.</b>
+      <ul style="margin:8px 0 0 18px;">
         <li>عند فتح بلاغ من المالك، ستظهر القضية هنا.</li>
-        <li>تظهر القضايا أيضاً عند كون الوديعة: <code>held / in_dispute / partially_withheld</code> أو الحجز <code>returned / in_review</code>.</li>
+        <li>تظهر القضايا أيضاً عند كون الوديعة: <code>held</code> / <code>in_dispute</code> / <code>partially_withheld</code> أو حالة الحجز <code>returned</code> / <code>in_review</code>.</li>
       </ul>
     </div>
   {% endif %}
