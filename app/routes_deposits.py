@@ -37,10 +37,16 @@ if not stripe.api_key:
         pass
 
 # ============ مسارات الأدلة ============
+# NOTE: نحتفظ بهذه المتغيرات كما هي، لكن سنستبدل دوال الأدلة أدناه بنسخة أقوى
 APP_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 UPLOADS_BASE = os.path.join(APP_ROOT, "uploads")
 DEPOSIT_UPLOADS = os.path.join(UPLOADS_BASE, "deposits")
 os.makedirs(DEPOSIT_UPLOADS, exist_ok=True)
+
+# ------------------------------------------------------------
+# ✅ النسخة المطلوبة (مع mimetypes) — استبدال قسم الأدلة كما طلبت
+# ------------------------------------------------------------
+import mimetypes
 
 ALLOWED_EXTS = {
     ".png", ".jpg", ".jpeg", ".webp", ".gif",
@@ -48,12 +54,11 @@ ALLOWED_EXTS = {
     ".heic", ".heif", ".bmp", ".tiff"
 }
 
-def _ext_ok(filename: str) -> bool:
-    _, ext = os.path.splitext((filename or "").lower())
-    return ext in ALLOWED_EXTS
-
 def _booking_folder(booking_id: int) -> str:
-    """ابنِ المسار كل مرة من __file__ لضمان التطابق مع الماونت في main.py: ../uploads/deposits/<booking_id>"""
+    """
+    ابنِ المسار كل مرة من __file__ لضمان التطابق مع الماونت في main.py:
+    ../uploads/deposits/<booking_id>
+    """
     app_root_runtime = os.path.dirname(os.path.dirname(__file__))   # ../src
     uploads_base_rt  = os.path.join(app_root_runtime, "uploads")    # ../src/uploads
     deposits_dir_rt  = os.path.join(uploads_base_rt, "deposits")    # ../src/uploads/deposits
@@ -62,7 +67,18 @@ def _booking_folder(booking_id: int) -> str:
     os.makedirs(path, exist_ok=True)
     return path
 
+def _ext_ok(filename: str) -> bool:
+    if not filename:
+        return False
+    _, ext = os.path.splitext(filename.lower())
+    if ext in ALLOWED_EXTS:
+        return True
+    # fallback حسب نوع المحتوى
+    guess, _ = mimetypes.guess_type(filename)
+    return bool(guess and (guess.startswith("image/") or guess.startswith("video/")))
+
 def _save_evidence_files(booking_id: int, files: List[UploadFile] | None) -> List[str]:
+    """يحفظ الملفات ويُعيد أسماء الملفات المحفوظة."""
     saved: List[str] = []
     if not files:
         return saved
@@ -86,13 +102,15 @@ def _save_evidence_files(booking_id: int, files: List[UploadFile] | None) -> Lis
     return saved
 
 def _list_evidence_files(booking_id: int) -> List[str]:
-    """أرجع كل الملفات الموجودة داخل مجلد القضية (لضمان القراءة 100%)."""
+    """يُعيد قائمة الملفات الموجودة (مفلترة بأمان)."""
     folder = _booking_folder(booking_id)
     try:
-        names = []
+        names: List[str] = []
         for entry in os.scandir(folder):
             if entry.is_file():
-                names.append(entry.name)
+                n = entry.name
+                if n and (not n.startswith(".")) and _ext_ok(n):
+                    names.append(n)
         names.sort()
         print(f"[evidence] FOUND in {folder}: {names}")
         return names
@@ -101,11 +119,13 @@ def _list_evidence_files(booking_id: int) -> List[str]:
         return []
 
 def _evidence_urls(request: Request, booking_id: int) -> List[str]:
+    """يبني روابط عامة للملفات ضمن /uploads/deposits/<id>"""
     base = f"/uploads/deposits/{booking_id}"
     files = _list_evidence_files(booking_id)
-    urls = [f"{base}/{name}" for name in files]
+    urls = [f"{base}/{str(name)}" for name in files]
     print(f"[evidence] URLS for #{booking_id}: {urls}")
     return urls
+# ------------------------------------------------------------
 
 
 # ============ Helpers ============
@@ -188,9 +208,9 @@ def dm_case_page(
 
     bk = require_booking(db, booking_id)
     item = db.get(Item, bk.item_id)
-    evidence = _evidence_urls(request, bk.id)
+    # ضمان قائمة نصوص فقط
+    evidence = [str(u) for u in _evidence_urls(request, bk.id) if u]
 
-    # ✅ التغيير هنا: نعيد Response مع هيدرز تمنع الكاش
     resp = request.app.templates.TemplateResponse(
         "dm_case.html",
         {
@@ -200,9 +220,10 @@ def dm_case_page(
             "bk": bk,
             "booking": bk,
             "item": item,
-            "evidence": evidence,
+            "evidence": evidence or [],   # عدم تمرير Undefined
         },
     )
+    # منع الكاش (اختياري لكنه مفيد أثناء التجربة)
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     resp.headers["Pragma"] = "no-cache"
     resp.headers["Expires"] = "0"
@@ -269,8 +290,12 @@ def dm_decision(
 
     db.commit()
 
-    push_notification(db, bk.owner_id, "قرار الوديعة", f"تم تنفيذ قرار الوديعة لحجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit")
-    push_notification(db, bk.renter_id, "قرار الوديعة", f"صدر القرار النهائي بخصوص وديعة حجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit")
+    push_notification(
+        db, bk.owner_id, "قرار الوديعة", f"تم تنفيذ قرار الوديعة لحجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit"
+    )
+    push_notification(
+        db, bk.renter_id, "قرار الوديعة", f"صدر القرار النهائي بخصوص وديعة حجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit"
+    )
     notify_admins(db, "قرار وديعة مُنفَّذ", f"قرار {decision} لحجز #{bk.id}.", f"/bookings/flow/{bk.id}")
 
     return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
@@ -488,3 +513,20 @@ def debug_evidence(booking_id: int, request: Request):
 @router.get("/debug/file/{booking_id}/{name}")
 def debug_open_file(booking_id: int, name: str):
     return {"public_url": f"/uploads/deposits/{booking_id}/{name}"}
+
+# ===== مسار تشخيصي إضافي كما طلبت =====
+@router.get("/dm/deposits/{booking_id}/_ctx")
+def dm_case_context(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    bk = require_booking(db, booking_id)
+    item = db.get(Item, bk.item_id)
+    # نبني الأدلة دون الاعتماد على request (build-only)
+    ev = _evidence_urls(Request(scope={"type": "http"}), bk.id)
+    return {
+        "bk": {"id": bk.id, "status": bk.status, "deposit_status": bk.deposit_status},
+        "item": {"id": item.id if item else None, "title": item.title if item else None},
+        "evidence": ev,
+    }

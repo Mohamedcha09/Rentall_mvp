@@ -6,61 +6,48 @@
   <h2>قضية وديعة #{{ bk.id }}</h2>
 
   <div class="card" style="padding:16px;margin-bottom:16px;">
-    <div><b>العنصر:</b> {{ item.title if item else "—" }}</div>
+    <div><b>العنصر:</b> {{ (item.title if item else "—") }}</div>
     <div><b>المالك:</b> #{{ bk.owner_id }} — <b>المستأجر:</b> #{{ bk.renter_id }}</div>
     <div><b>حالة الحجز:</b> {{ bk.status }} — <b>حالة الوديعة:</b> {{ bk.deposit_status }}</div>
     {% if bk.owner_return_note %}
-      <div style="margin-top:8px;"><b>ملاحظة المالك:</b><br>{{ bk.owner_return_note | replace('\n','<br>') | safe }}</div>
+      <div style="margin-top:8px;"><b>ملاحظة المالك:</b><br>{{ (bk.owner_return_note or "") | replace('\n','<br>') | safe }}</div>
     {% endif %}
   </div>
 
   <h3>الأدلة المرفوعة</h3>
 
-  <!-- DEBUG: يساعدنا نرى ما تصله الصفحة -->
+  <!-- صندوق تشخيصي آمن 100% -->
   <div class="card" style="padding:8px;margin-bottom:10px;">
     <div style="font-size:13px;">
-      Evidence debug — count: <b>{{ evidence|length if evidence is defined else 0 }}</b>
+      Evidence debug — count:
+      <b>{{ (evidence|length) if (evidence is defined and evidence) else 0 }}</b>
     </div>
     {% if evidence is defined %}
-      <pre style="white-space:pre-wrap;max-height:120px;overflow:auto;margin:6px 0 0;">{{ evidence }}</pre>
+      <pre style="white-space:pre-wrap;max-height:140px;overflow:auto;margin:6px 0 0;">{{ evidence|default([]) }}</pre>
     {% endif %}
   </div>
 
-  {% if evidence is defined and (evidence|length) > 0 %}
-    {% set ns = namespace(shown=0) %}
+  {% set ev_list = evidence|default([]) %}
+  {% if ev_list and (ev_list|length) > 0 %}
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-      {% for url in evidence %}
-        {% set lower = (url or '')|lower %}
-
-        {# --- فيديو --- #}
+      {% for url in ev_list %}
+        {% set u = (url or '') %}
+        {% set lower = u|lower %}
         {% if lower.endswith('.mp4') or lower.endswith('.mov') or lower.endswith('.m4v') or lower.endswith('.avi') or lower.endswith('.wmv') %}
-          <video src="{{ url }}?v={{ bk.updated_at.timestamp() if bk.updated_at }}" controls
-                style="max-width:320px;max-height:220px;border-radius:8px;"></video>
-          {% set ns.shown = ns.shown + 1 %}
-          {% continue %}
-        {% endif %}
-
-        {# --- صور --- #}
-        {% if lower.endswith('.jpg') or lower.endswith('.jpeg') or lower.endswith('.png') or lower.endswith('.webp')
-              or lower.endswith('.gif') or lower.endswith('.bmp') or lower.endswith('.heic') or lower.endswith('.heif')
-              or lower.endswith('.tiff') %}
-          <a href="{{ url }}" target="_blank" style="display:inline-block;">
-            <img src="{{ url }}?v={{ bk.updated_at.timestamp() if bk.updated_at }}"
-                 alt="evidence"
+          <video src="{{ u }}" controls style="max-width:320px;max-height:220px;border-radius:8px;"></video>
+        {% elif lower.endswith('.jpg') or lower.endswith('.jpeg') or lower.endswith('.png') or lower.endswith('.webp') or lower.endswith('.gif') or lower.endswith('.heic') or lower.endswith('.heif') or lower.endswith('.bmp') or lower.endswith('.tiff') %}
+          <a href="{{ u }}" target="_blank" style="display:inline-block;">
+            <img src="{{ u }}" alt="evidence" loading="lazy"
                  style="max-width:220px;max-height:160px;border-radius:8px;object-fit:cover;">
           </a>
-          {% set ns.shown = ns.shown + 1 %}
-          {% continue %}
+        {% else %}
+          <!-- أي ملف غير صورة/فيديو: نظهره كرابط -->
+          <a href="{{ u }}" target="_blank" class="btn btn-outline" style="padding:6px 10px;">
+            ملف: {{ u.split('/')[-1] }}
+          </a>
         {% endif %}
-
-        {# أي امتداد آخر (مثل txt) نتجاهله #}
-        {% continue %}
       {% endfor %}
     </div>
-
-    {% if ns.shown == 0 %}
-      <p class="muted">لا توجد ملفات أدلة مرئية (الملفات الحالية ليست صورًا أو فيديوهات).</p>
-    {% endif %}
   {% else %}
     <p class="muted">لا توجد ملفات أدلة.</p>
   {% endif %}
