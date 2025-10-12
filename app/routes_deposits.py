@@ -98,38 +98,29 @@ def _save_evidence_files(booking_id: int, files: List[UploadFile] | None) -> Lis
         saved.append(safe_name)
     return saved
 
-# ✅ نجعل القراءة أكثر تسامحًا ونطبع لوج واضح
 def _list_evidence_files(booking_id: int) -> List[str]:
-    """يُعيد قائمة الملفات الموجودة مع تتبّع أخطاء واضح في اللوج."""
+    """
+    أرجع كل الملفات الموجودة داخل مجلد القضية بدون أي فلترة،
+    حتى نتأكد أن القراءة صحيحة 100%. لاحقًا ممكن نرجع نفلتر.
+    """
     folder = _booking_folder(booking_id)
     try:
-        names: List[str] = []
+        names = []
         for entry in os.scandir(folder):
-            if not entry.is_file():
-                continue
-            n = entry.name
-            if not n or n.startswith("."):
-                continue
-            if _ext_ok(n) or any(
-                n.lower().endswith(suf)
-                for suf in (".jpg", ".jpeg", ".png", ".webp", ".gif",
-                            ".mp4", ".mov", ".m4v", ".avi", ".wmv",
-                            ".heic", ".heif", ".bmp", ".tiff")
-            ):
-                names.append(n)
+            if entry.is_file():
+                names.append(entry.name)
         names.sort()
-        print(f"[evidence] folder={folder} files={names}")
+        print(f"[evidence] FOUND in {folder}: {names}")
         return names
     except Exception as e:
-        print(f"[evidence] list failed in {folder}: {e}")
+        print(f"[evidence] ERROR reading {folder}: {e}")
         return []
 
 def _evidence_urls(request: Request, booking_id: int) -> List[str]:
-    """يبني روابط عامة للملفات."""
     base = f"/uploads/deposits/{booking_id}"
     files = _list_evidence_files(booking_id)
     urls = [f"{base}/{name}" for name in files]
-    print(f"[evidence] urls for #{booking_id}: {urls}")
+    print(f"[evidence] URLS for #{booking_id}: {urls}")
     return urls
 
 
