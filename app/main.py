@@ -1,11 +1,15 @@
 # app/main.py
 import os
 import difflib
+
+# ✅ حمّل مفاتيح .env مبكّرًا جداً قبل استيراد أي ملفات قد تقرأ المتغيرات
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
-from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -50,7 +54,6 @@ from .routes_evidence import router as evidence_router
 # ✅ [جديد] راوتر تشغيل الإفراج التلقائي يدويًا (للاختبار/الأدمن)
 from .cron_auto_release import router as cron_router
 
-load_dotenv()
 
 app = FastAPI()
 
@@ -73,8 +76,8 @@ BASE_DIR = os.path.dirname(__file__)
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
-# ✅ [تعديل مهم] توحيد مسار uploads ليطابق نفس الذي في routes_deposits.py
-APP_ROOT = os.getenv("APP_ROOT", os.path.dirname(BASE_DIR))
+# ✅ توحيد مسار uploads ليكون على نفس جذر المشروع (Rentall_mvp/uploads)
+APP_ROOT = os.path.abspath(os.path.join(BASE_DIR, ".."))
 UPLOADS_DIR = os.path.join(APP_ROOT, "uploads")
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 

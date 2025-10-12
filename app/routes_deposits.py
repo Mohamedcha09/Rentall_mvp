@@ -18,7 +18,7 @@ from fastapi import (
 )
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-# ✅ [جديد] نستخدم or_ الصريحة
+# ✅ نستخدم or_ الصريحة
 from sqlalchemy import or_
 
 from .database import get_db
@@ -28,10 +28,19 @@ from .notifications_api import push_notification, notify_admins
 router = APIRouter(tags=["deposits"])
 
 # ============ Stripe ============
+# نحاول أخذ المفتاح من البيئة؛ وإن كان فارغًا نحمّل .env بشكل احتياطي
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+if not stripe.api_key:
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+    except Exception:
+        pass
 
 # ============ مسارات الأدلة ============
-APP_ROOT = os.path.dirname(os.path.dirname(__file__))
+# توحيد الجذر ليكون: <جذر المشروع>/uploads/deposits
+APP_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 UPLOADS_BASE = os.path.join(APP_ROOT, "uploads")
 DEPOSIT_UPLOADS = os.path.join(UPLOADS_BASE, "deposits")
 os.makedirs(DEPOSIT_UPLOADS, exist_ok=True)
@@ -44,7 +53,7 @@ ALLOWED_EXTS = {
 }
 
 def _ext_ok(filename: str) -> bool:
-    _, ext = os.path.splitext(filename.lower())
+    _, ext = os.path.splitext((filename or "").lower())
     return ext in ALLOWED_EXTS
 
 def _booking_folder(booking_id: int) -> str:
@@ -88,7 +97,7 @@ def _list_evidence_files(booking_id: int) -> List[str]:
 
 def _evidence_urls(request: Request, booking_id: int) -> List[str]:
     """يبني روابط عامة للملفات."""
-    # ✅ تعديل مهم: تأكد أن الصور تظهر عبر /uploads/deposits/...
+    # ✅ مهم: المسار العام يخرج عبر /uploads/deposits/<booking_id>/<file>
     base = f"/uploads/deposits/{booking_id}"
     return [f"{base}/{name}" for name in _list_evidence_files(booking_id)]
 
@@ -134,7 +143,7 @@ def dm_queue(
     if not can_manage_deposits(user):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # ✅ تعديل: لا نحذف أي شرط، فقط نضيف OR إضافي يضمن أن القضايا التي ليس لديها deposit_hold_intent_id تظهر أيضًا.
+    # لا نحذف أي شرط — فقط نضمن OR كافية
     q = (
         db.query(Booking)
         .filter(
@@ -147,7 +156,6 @@ def dm_queue(
         .order_by(Booking.updated_at.desc() if hasattr(Booking, "updated_at") else Booking.id.desc())
     )
 
-    # ✅ لا نحذف شيء – فقط نضيف فحص إضافي
     cases: List[Booking] = q.all()
 
     item_ids = {b.item_id for b in cases}
@@ -298,18 +306,31 @@ from sqlalchemy import text
 from .database import engine as _engine
 
 def _audit(db: Session, actor: Optional[User], bk: Booking, action: str, details: dict | None = None):
+    """
+    نحاول الكتابة في جدول السجل؛ إن كان اسم الجدول مفردًا أو جمعًا.
+    لا نحذف منطقك القديم، نضيف فحصًا إضافيًا فقط.
+    """
     try:
         with _engine.begin() as conn:
+            has_table = False
             try:
                 conn.exec_driver_sql("SELECT 1 FROM deposit_audit_log LIMIT 1")
+                table_name = "deposit_audit_log"
                 has_table = True
             except Exception:
-                has_table = False
+                try:
+                    conn.exec_driver_sql("SELECT 1 FROM deposit_audit_logs LIMIT 1")
+                    table_name = "deposit_audit_logs"
+                    has_table = True
+                except Exception:
+                    has_table = False
+
             if not has_table:
                 return
+
             conn.exec_driver_sql(
-                """
-                INSERT INTO deposit_audit_log (booking_id, actor_id, role, action, details, created_at)
+                f"""
+                INSERT INTO {table_name} (booking_id, actor_id, role, action, details, created_at)
                 VALUES (:bid, :aid, :role, :action, :details, :ts)
                 """,
                 {
