@@ -16,37 +16,26 @@
 
   <h3>الأدلة المرفوعة</h3>
 
-<!-- DEBUG يظهر دائماً ليساعدنا على التشخيص -->
-<div class="card" style="padding:8px;margin-bottom:10px;">
-  <div style="font-size:13px;">
-    Evidence debug — count: <b>{{ evidence|length if evidence is defined else 0 }}</b>
-  </div>
-  {% if evidence is defined %}
-    <pre style="white-space:pre-wrap;max-height:120px;overflow:auto;margin:6px 0 0;">
-{{ evidence }}
-    </pre>
-  {% endif %}
-</div>
+  <!-- DEBUG: اطبع العدّ والقائمة لتأكيد أن المتغير صحيح -->
+  <p class="muted">Evidence debug — count: {{ evidence|length }}</p>
+  <p class="muted" style="word-break:break-all;">{{ evidence|tojson }}</p>
 
-{% if evidence is defined and (evidence|length) > 0 %}
-  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-    {% for url in evidence %}
-      {% set lower = (url or '')|lower %}
-      {% if lower.endswith('.mp4') or lower.endswith('.mov') or lower.endswith('.m4v') or lower.endswith('.avi') or lower.endswith('.wmv') %}
-        <video src="{{ url }}?v={{ bk.updated_at.timestamp() if bk.updated_at }}" controls
-               style="max-width:320px;max-height:220px;border-radius:8px;"></video>
-      {% else %}
-        <a href="{{ url }}" target="_blank" style="display:inline-block;">
-          <img src="{{ url }}?v={{ bk.updated_at.timestamp() if bk.updated_at }}"
-               alt="evidence"
-               style="max-width:220px;max-height:160px;border-radius:8px;object-fit:cover;">
-        </a>
-      {% endif %}
-    {% endfor %}
-  </div>
-{% else %}
-  <p class="muted">لا توجد ملفات أدلة.</p>
-{% endif %}
+  {% if evidence and evidence|length > 0 %}
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+      {% for url in evidence %}
+        {% set lower = url|lower %}
+        {% if lower.endswith('.mp4') or lower.endswith('.mov') or lower.endswith('.m4v') or lower.endswith('.avi') or lower.endswith('.wmv') %}
+          <video src="{{ url }}" controls style="max-width:320px;max-height:220px;border-radius:8px;"></video>
+        {% else %}
+          <a href="{{ url }}" target="_blank" style="display:inline-block;">
+            <img src="{{ url }}" alt="evidence" style="max-width:220px;max-height:160px;border-radius:8px;object-fit:cover;">
+          </a>
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">لا توجد ملفات أدلة.</p>
+  {% endif %}
 
   <form action="/dm/deposits/{{ bk.id }}/decision" method="post" class="card" style="padding:16px;gap:12px;">
     <h3 style="margin-top:0;">اتخاذ القرار النهائي</h3>
