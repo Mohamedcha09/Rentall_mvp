@@ -14,28 +14,30 @@
     {% endif %}
   </div>
 
-  <h3>الأدلة المرفوعة</h3>
+<h3>الأدلة المرفوعة</h3>
 
-  <!-- DEBUG: اطبع العدّ والقائمة لتأكيد أن المتغير صحيح -->
-  <p class="muted">Evidence debug — count: {{ evidence|length }}</p>
-  <p class="muted" style="word-break:break-all;">{{ evidence|tojson }}</p>
+{# آمن ضد Undefined #}
+{% set ev = evidence|default([]) %}
 
-  {% if evidence and evidence|length > 0 %}
-    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-      {% for url in evidence %}
-        {% set lower = url|lower %}
-        {% if lower.endswith('.mp4') or lower.endswith('.mov') or lower.endswith('.m4v') or lower.endswith('.avi') or lower.endswith('.wmv') %}
-          <video src="{{ url }}" controls style="max-width:320px;max-height:220px;border-radius:8px;"></video>
-        {% else %}
-          <a href="{{ url }}" target="_blank" style="display:inline-block;">
-            <img src="{{ url }}" alt="evidence" style="max-width:220px;max-height:160px;border-radius:8px;object-fit:cover;">
-          </a>
-        {% endif %}
-      {% endfor %}
-    </div>
-  {% else %}
-    <p class="muted">لا توجد ملفات أدلة.</p>
-  {% endif %}
+<p class="muted">Evidence debug — count: {{ ev|length }}</p>
+<p class="muted" style="word-break:break-all;">{{ ev|tojson }}</p>
+
+{% if ev and ev|length > 0 %}
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+    {% for url in ev %}
+      {% set lower = (url|string)|lower %}
+      {% if lower.endswith('.mp4') or lower.endswith('.mov') or lower.endswith('.m4v') or lower.endswith('.avi') or lower.endswith('.wmv') %}
+        <video src="{{ url }}" controls style="max-width:320px;max-height:220px;border-radius:8px;"></video>
+      {% else %}
+        <a href="{{ url }}" target="_blank" style="display:inline-block;">
+          <img src="{{ url }}" alt="evidence" style="max-width:220px;max-height:160px;border-radius:8px;object-fit:cover;">
+        </a>
+      {% endif %}
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="muted">لا توجد ملفات أدلة.</p>
+{% endif %}
 
   <form action="/dm/deposits/{{ bk.id }}/decision" method="post" class="card" style="padding:16px;gap:12px;">
     <h3 style="margin-top:0;">اتخاذ القرار النهائي</h3>
