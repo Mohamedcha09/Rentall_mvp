@@ -605,3 +605,71 @@ def dm_case_context(
         "item": {"id": item.id if item else None, "title": item.title if item else None},
         "evidence": ev,
     }
+
+    # ===== [NEW] بدء مهلة ردّ المستأجر 24h + إشعار (لا تنفيذ فوري) =====
+@router.post("/dm/deposits/{booking_id}/start-window")
+def dm_start_renter_window(
+    booking_id: int,
+    amount: int = Form(0),
+    reason: str = Form(""),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    require_auth(user)
+    if not can_manage_deposits(user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    bk = require_booking(db, booking_id)
+
+    # نحفظ القرار كاقتطاع مقترح ونفعّل مهلة الرد
+    amt = max(0, int(amount or 0))
+    if amt <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be > 0")
+
+    now = datetime.utcnow()
+    deadline = now + timedelta(hours=24)
+
+    # لا ننفّذ Stripe هنا؛ فقط نجهّز الحالة للكرون لاحقًا
+    try:
+        bk.deposit_status = "awaiting_renter"
+        bk.dm_decision = "withhold"
+        bk.dm_decision_amount = amt
+        bk.dm_decision_note = (reason or None)
+        bk.renter_response_deadline_at = deadline
+        bk.updated_at = now
+        # لا نلمس bk.status هنا (تبقى in_review/returned)
+    except Exception:
+        pass
+
+    # سجل تدقيق
+    try:
+        _audit(
+            db, actor=user, bk=bk, action="dm_withhold_pending",
+            details={"amount": amt, "reason": reason, "deadline": deadline.isoformat()}
+        )
+    except Exception:
+        pass
+
+    db.commit()
+
+    # إشعار المستأجر + إعلام المالك
+    try:
+        push_notification(
+            db, bk.renter_id, "تنبيه: قرار خصم قيد الانتظار",
+            f"يوجد قرار خصم بمبلغ {amt} على وديعتك في حجز #{bk.id}. لديك 24 ساعة للرد ورفع أدلة.",
+            f"/deposits/{bk.id}/evidence/form", "deposit"
+        )
+        push_notification(
+            db, bk.owner_id, "تم تفعيل مهلة ردّ المستأجر",
+            f"تم فتح قرار خصم بمبلغ {amt} ريال على الحجز #{bk.id}. التنفيذ سيكون تلقائيًا بعد 24 ساعة إن لم يرد المستأجر.",
+            f"/dm/deposits/{bk.id}", "deposit"
+        )
+        notify_admins(
+            db, "قرار خصم قيد الانتظار",
+            f"DM فعّل مهلة 24h للحجز #{bk.id} (amount={amt}).",
+            f"/dm/deposits/{bk.id}"
+        )
+    except Exception:
+        pass
+
+    return RedirectResponse(url=f"/dm/deposits/{bk.id}", status_code=303)

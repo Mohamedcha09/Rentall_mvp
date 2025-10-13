@@ -5,20 +5,12 @@
 <div class="container">
   <h2>قضية وديعة #{{ bk.id }}</h2>
 
-  {% if bk.deposit_status == 'awaiting_renter' and bk.renter_response_deadline_at %}
-    <div class="alert alert-warning" style="margin-bottom:12px;">
-      يوجد قرار خصم قيد الانتظار. ينتهي حق المستأجر في الرد عند:
-      <b>{{ bk.renter_response_deadline_at }}</b>
-      (<span id="rr-countdown-banner"
-             data-deadline-ts="{{ bk.renter_response_deadline_at.timestamp() if bk.renter_response_deadline_at else 0 }}">—</span> متبقٍ)
-      — إذا لم يرد المستأجر خلال المهلة سيتم التنفيذ تلقائيًا.
-    </div>
-  {% endif %}
-
+  <!-- معلومات عامة -->
   <div class="card" style="padding:16px;margin-bottom:16px;">
     <div><b>العنصر:</b> {{ (item.title if item else "—") }}</div>
     <div><b>المالك:</b> #{{ bk.owner_id }} — <b>المستأجر:</b> #{{ bk.renter_id }}</div>
     <div><b>حالة الحجز:</b> {{ bk.status }} — <b>حالة الوديعة:</b> {{ bk.deposit_status }}</div>
+
     {% if bk.owner_return_note %}
       <div style="margin-top:8px;">
         <b>ملاحظة المالك:</b><br>
@@ -26,6 +18,23 @@
       </div>
     {% endif %}
   </div>
+
+  <!-- إشعار حالة "بانتظار رد المستأجر" -->
+  {% if bk.deposit_status == 'awaiting_renter' %}
+    <div class="card" style="padding:12px;margin-bottom:16px;border-left:6px solid #6f42c1;">
+      <div style="font-weight:700;margin-bottom:6px;">تم إشعار المستأجر وتفعيل تنفيذ القرار تلقائيًا</div>
+      <div>لدى المستأجر مهلة للرد حتى:
+        <b>
+          {% if bk.renter_response_deadline_at %}
+            {{ bk.renter_response_deadline_at }}
+          {% else %}
+            —
+          {% endif %}
+        </b>.
+        بعد انتهاء المهلة ينفَّذ القرار تلقائيًا إن لم يرد.
+      </div>
+    </div>
+  {% endif %}
 
   <h3>الأدلة المرفوعة</h3>
   <div id="ev-container" class="card" style="padding:8px;margin-bottom:10px;">
@@ -36,80 +45,43 @@
     <div id="ev-empty" class="muted" style="margin-top:8px;">لا توجد ملفات أدلة.</div>
   </div>
 
-  {% set is_renter = session_user and session_user.id == bk.renter_id %}
-  {% if is_renter %}
-  <div class="card" style="padding:16px;margin-bottom:16px;">
-    <h3 style="margin-top:0;">ردّ المستأجر وإرفاق أدلة</h3>
-
-    {% if bk.renter_response_deadline_at %}
-      <div style="margin-bottom:10px;">
-        لديك حتى:
-        <b>{{ bk.renter_response_deadline_at }}</b>
-        (<span id="rr-countdown"
-               data-deadline-ts="{{ bk.renter_response_deadline_at.timestamp() if bk.renter_response_deadline_at else 0 }}">—</span> متبقٍ)
-      </div>
-    {% endif %}
-
-    <form id="renter-evidence-form"
-          method="post"
-          action="/deposits/{{ bk.id }}/evidence/upload"
-          enctype="multipart/form-data"
-          style="display:flex;flex-direction:column;gap:10px;">
-
-      <label>وصف (اختياري)</label>
-      <textarea name="description" rows="3" placeholder="اكتب تعليقك…"></textarea>
-
-      <label>أرفق أدلة (صور/فيديو/ملفات PDF — يمكنك اختيار عدة ملفات)</label>
-      <input id="renter-files" name="files" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.webm,.pdf" />
-      <div id="renter-files-preview" class="muted" style="font-size:13px;"></div>
-
-      <div style="display:flex;gap:8px;justify-content:flex-end;">
-        <button id="renter-submit" class="btn btn-primary" type="submit">إرسال الردّ/الأدلة</button>
-      </div>
-      <div id="renter-deadline-msg" class="alert" style="display:none;margin-top:6px;"></div>
-    </form>
-
-    <form method="post" action="/deposits/{{ bk.id }}/renter-response" style="margin-top:10px;display:flex;gap:8px;align-items:flex-start;">
-      <textarea name="renter_comment" rows="2" placeholder="ردّ نصي سريع…"></textarea>
-      <button class="btn btn-outline" type="submit">إرسال ردّ نصي</button>
-    </form>
-  </div>
-  {% else %}
-  <div class="card" style="padding:12px;margin-bottom:16px;">
-    <div class="muted">يمكن للمستأجر فقط إضافة ردّ وأدلة من حسابه.</div>
-  </div>
-  {% endif %}
-
+  <!-- نموذج القرار (لـ DM) -->
   <form id="dm-decision-form" action="/dm/deposits/{{ bk.id }}/decision" method="post" class="card" style="padding:16px;gap:12px;">
     <h3 style="margin-top:0;">اتخاذ القرار النهائي</h3>
 
     <label>نوع القرار</label>
-    <select id="decision-select" name="decision" required>
+    <select id="decision" name="decision" required>
       <option value="">— اختر —</option>
       <option value="release">رد كامل الوديعة</option>
-      <option value="withhold">اقتطاع من الوديعة (بدء مهلة 24h)</option>
+      <option value="withhold">اقتطاع من الوديعة</option>
     </select>
 
     <label>المبلغ الجزئي (إن وجد)</label>
-    <input id="amount-input" name="amount" type="number" min="0" step="1" value="0" />
+    <input id="amount" name="amount" type="number" min="0" step="1" value="0" />
 
     <label>السبب/التفاصيل</label>
-    <textarea id="reason-text" name="reason" rows="3" placeholder="اكتب سبب القرار…"></textarea>
+    <textarea id="reason" name="reason" rows="3" placeholder="اكتب سبب القرار…"></textarea>
 
-    <div class="muted" style="font-size:12px;margin-top:6px;">
-      ملاحظة: اختيار "اقتطاع من الوديعة" لا يخصم مباشرة، بل يرسل إشعارًا للمستأجر ويبدأ مهلة 24 ساعة للرد. بعد انتهاء المهلة يُنفَّذ القرار تلقائيًا إن لم يرد.
-    </div>
-
-    <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:10px;">
+    <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;">
       <a class="btn btn-secondary" href="/dm/deposits">رجوع</a>
+
+      <!-- زر تنفيذ القرار التقليدي -->
       <button class="btn btn-success" type="submit">تنفيذ القرار</button>
-      <!-- زر الاختصار الجديد -->
-      <button id="start-24h" type="button" class="btn" style="background:#6f42c1;color:#fff;">
+
+      <!-- زر بدء مهلة الرد 24h وإشعار المستأجر -->
+      <button id="btn-start-window" class="btn" type="button"
+              style="background:#6f42c1;color:#fff;border-radius:10px;">
         بدء مهلة الرد 24h وإشعار المستأجر
       </button>
     </div>
+
+    <div class="muted" style="margin-top:10px;font-size:12px;">
+      زر “بدء مهلة الرد 24h” يرسل إشعارًا للمستأجر ويحدد مهلة 24 ساعة للرد ورفع أدلة.
+      ينفَّذ القرار تلقائيًا بعد انتهاء المهلة إن لم يرد المستأجر.
+    </div>
   </form>
 
+  <!-- استلام القضية -->
   <form action="/dm/deposits/{{ bk.id }}/claim" method="post" style="margin-top:12px;">
     <button class="btn btn-outline">استلام القضية (اختياري)</button>
   </form>
@@ -119,7 +91,7 @@
 {% block scripts %}
 <script>
 (function(){
-  // ===== Evidence =====
+  // ===== عرض الأدلة (من الخادم أو عبر /debug/evidence) =====
   const serverEvidence = {{ evidence|tojson if evidence is defined else 'null' }};
   const serverEvList   = {{ ev_list|tojson   if ev_list   is defined else 'null' }};
   var grid    = document.getElementById('ev-grid');
@@ -161,88 +133,34 @@
   } else {
     var id = {{ bk.id }};
     fetch('/debug/evidence/' + id, {credentials:'include'})
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(data => render((data && data.urls) ? data.urls : []))
-      .catch(() => render([]));
+      .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+      .then(function(data){ render((data && data.urls) ? data.urls : []); })
+      .catch(function(){ render([]); });
   }
 
-  // ===== عداد التنبيه في البانر =====
-  const bannerEl = document.getElementById('rr-countdown-banner');
-  if (bannerEl){
-    const deadlineTs = parseFloat(bannerEl.dataset.deadlineTs || '0');
-    const tick = () => {
-      const now = Math.floor(Date.now()/1000);
-      const diff = Math.max(0, deadlineTs - now);
-      const h = Math.floor(diff / 3600);
-      const m = Math.floor((diff % 3600) / 60);
-      const s = Math.floor(diff % 60);
-      bannerEl.textContent = `${h}h ${m}m ${s}s`;
-    };
-    tick(); setInterval(tick, 1000);
-  }
+  // ===== زر "بدء مهلة الرد 24h" — يتحقق من المدخلات ويقدم الفورم كـ withhold =====
+  var btn = document.getElementById('btn-start-window');
+  var form = document.getElementById('dm-decision-form');
+  var selDecision = document.getElementById('decision');
+  var amount = document.getElementById('amount');
+  var reason = document.getElementById('reason');
 
-  // ===== عداد وإقفال نموذج المستأجر عند نهاية المهلة =====
-  (function setupRenterDeadline(){
-    var cd = document.getElementById('rr-countdown');
-    var form = document.getElementById('renter-evidence-form');
-    var submitBtn = document.getElementById('renter-submit');
-    var msg = document.getElementById('renter-deadline-msg');
-    if(!cd || !form || !submitBtn){ return; }
-    var ts = parseFloat(cd.getAttribute('data-deadline-ts') || '0') * 1000;
-    if(!ts){ return; }
-    function two(n){ return (n<10?'0':'') + n; }
-    function tick(){
-      var now = Date.now();
-      var diff = ts - now;
-      if (diff <= 0){
-        cd.textContent = 'انتهت المهلة';
-        form.querySelectorAll('input,textarea,button').forEach(function(el){ el.disabled = true; });
-        if (msg){
-          msg.style.display = '';
-          msg.className = 'alert alert-warning';
-          msg.textContent = 'انتهت مهلة الـ 24 ساعة لإرسال الردّ والأدلة.';
-        }
-        return;
-      }
-      var s = Math.floor(diff / 1000);
-      var h = Math.floor(s / 3600);  s -= h*3600;
-      var m = Math.floor(s / 60);    s -= m*60;
-      cd.textContent = two(h) + ':' + two(m) + ':' + two(s);
-      requestAnimationFrame(tick);
-    }
-    tick();
-  })();
-
-  // ===== معاينة أسماء ملفات المستأجر =====
-  (function filePreview(){
-    var inp = document.getElementById('renter-files');
-    var box = document.getElementById('renter-files-preview');
-    if(!inp || !box){ return; }
-    inp.addEventListener('change', function(){
-      if (!inp.files || !inp.files.length){ box.textContent = ''; return; }
-      var names = [];
-      for (var i=0; i<inp.files.length; i++){ names.push('• ' + inp.files[i].name); }
-      box.textContent = 'سيتم رفع ' + inp.files.length + ' ملف(ات):\n' + names.join('\n');
-    });
-  })();
-
-  // ===== زر "بدء مهلة 24h وإشعار المستأجر" =====
-  (function(){
-    var btn = document.getElementById('start-24h');
-    var sel = document.getElementById('decision-select');
-    var amt = document.getElementById('amount-input');
-    var frm = document.getElementById('dm-decision-form');
-    if (!btn || !sel || !amt || !frm) return;
+  if (btn && form && selDecision && amount){
     btn.addEventListener('click', function(){
-      if (!amt.value || parseInt(amt.value,10) <= 0){
-        alert('ضع مبلغ الخصم أولاً (> 0).');
-        amt.focus();
+      // يجب أن يكون القرار اقتطاع وأن يكون المبلغ > 0
+      var amt = parseInt(amount.value || '0', 10);
+      if (isNaN(amt) || amt <= 0){
+        alert('ضع مبلغ الخصم أولًا (أكبر من صفر) قبل بدء مهلة الرد.');
+        amount.focus();
         return;
       }
-      sel.value = 'withhold';
-      frm.submit(); // نفس endpoint → يرسل إشعارًا ويبدأ المهلة 24h
+      // ثبّت القرار على withhold حتى لو القائمة على قيمة أخرى
+      selDecision.value = 'withhold';
+
+      // أرسل الفورم (سيقوم السيرفر: وضع deposit_status=awaiting_renter + إشعار المستأجر + تحديد deadline)
+      form.submit();
     });
-  })();
+  }
 })();
 </script>
 {% endblock %}
