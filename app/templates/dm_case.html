@@ -80,25 +80,33 @@
   </div>
   {% endif %}
 
-  <form action="/dm/deposits/{{ bk.id }}/decision" method="post" class="card" style="padding:16px;gap:12px;">
+  <form id="dm-decision-form" action="/dm/deposits/{{ bk.id }}/decision" method="post" class="card" style="padding:16px;gap:12px;">
     <h3 style="margin-top:0;">اتخاذ القرار النهائي</h3>
 
     <label>نوع القرار</label>
-    <select name="decision" required>
+    <select id="decision-select" name="decision" required>
       <option value="">— اختر —</option>
       <option value="release">رد كامل الوديعة</option>
-      <option value="withhold">اقتطاع من الوديعة</option>
+      <option value="withhold">اقتطاع من الوديعة (بدء مهلة 24h)</option>
     </select>
 
     <label>المبلغ الجزئي (إن وجد)</label>
-    <input name="amount" type="number" min="0" step="1" value="0" />
+    <input id="amount-input" name="amount" type="number" min="0" step="1" value="0" />
 
     <label>السبب/التفاصيل</label>
-    <textarea name="reason" rows="3" placeholder="اكتب سبب القرار…"></textarea>
+    <textarea id="reason-text" name="reason" rows="3" placeholder="اكتب سبب القرار…"></textarea>
 
-    <div style="display:flex;gap:8px;justify-content:flex-end;">
+    <div class="muted" style="font-size:12px;margin-top:6px;">
+      ملاحظة: اختيار "اقتطاع من الوديعة" لا يخصم مباشرة، بل يرسل إشعارًا للمستأجر ويبدأ مهلة 24 ساعة للرد. بعد انتهاء المهلة يُنفَّذ القرار تلقائيًا إن لم يرد.
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:10px;">
       <a class="btn btn-secondary" href="/dm/deposits">رجوع</a>
       <button class="btn btn-success" type="submit">تنفيذ القرار</button>
+      <!-- زر الاختصار الجديد -->
+      <button id="start-24h" type="button" class="btn" style="background:#6f42c1;color:#fff;">
+        بدء مهلة الرد 24h وإشعار المستأجر
+      </button>
     </div>
   </form>
 
@@ -111,9 +119,9 @@
 {% block scripts %}
 <script>
 (function(){
+  // ===== Evidence =====
   const serverEvidence = {{ evidence|tojson if evidence is defined else 'null' }};
   const serverEvList   = {{ ev_list|tojson   if ev_list   is defined else 'null' }};
-
   var grid    = document.getElementById('ev-grid');
   var countEl = document.getElementById('ev-count');
   var emptyEl = document.getElementById('ev-empty');
@@ -158,25 +166,83 @@
       .catch(() => render([]));
   }
 
-  // عداد تنازلي للمهلة
+  // ===== عداد التنبيه في البانر =====
   const bannerEl = document.getElementById('rr-countdown-banner');
-  const formEl = document.getElementById('renter-evidence-form');
-  const deadlineTs = bannerEl ? parseInt(bannerEl.dataset.deadlineTs || 0) : 0;
-
-  if (deadlineTs > 0){
-    const updateCountdown = () => {
-      const now = Date.now() / 1000;
+  if (bannerEl){
+    const deadlineTs = parseFloat(bannerEl.dataset.deadlineTs || '0');
+    const tick = () => {
+      const now = Math.floor(Date.now()/1000);
       const diff = Math.max(0, deadlineTs - now);
       const h = Math.floor(diff / 3600);
       const m = Math.floor((diff % 3600) / 60);
       const s = Math.floor(diff % 60);
-      const txt = `${h}h ${m}m ${s}s`;
-      if (bannerEl) bannerEl.textContent = txt;
-      if (formEl && diff <= 0){ formEl.querySelectorAll("input,textarea,button").forEach(e=>e.disabled=true); }
+      bannerEl.textContent = `${h}h ${m}m ${s}s`;
     };
-    updateCountdown();
-    setInterval(updateCountdown, 1000);
+    tick(); setInterval(tick, 1000);
   }
+
+  // ===== عداد وإقفال نموذج المستأجر عند نهاية المهلة =====
+  (function setupRenterDeadline(){
+    var cd = document.getElementById('rr-countdown');
+    var form = document.getElementById('renter-evidence-form');
+    var submitBtn = document.getElementById('renter-submit');
+    var msg = document.getElementById('renter-deadline-msg');
+    if(!cd || !form || !submitBtn){ return; }
+    var ts = parseFloat(cd.getAttribute('data-deadline-ts') || '0') * 1000;
+    if(!ts){ return; }
+    function two(n){ return (n<10?'0':'') + n; }
+    function tick(){
+      var now = Date.now();
+      var diff = ts - now;
+      if (diff <= 0){
+        cd.textContent = 'انتهت المهلة';
+        form.querySelectorAll('input,textarea,button').forEach(function(el){ el.disabled = true; });
+        if (msg){
+          msg.style.display = '';
+          msg.className = 'alert alert-warning';
+          msg.textContent = 'انتهت مهلة الـ 24 ساعة لإرسال الردّ والأدلة.';
+        }
+        return;
+      }
+      var s = Math.floor(diff / 1000);
+      var h = Math.floor(s / 3600);  s -= h*3600;
+      var m = Math.floor(s / 60);    s -= m*60;
+      cd.textContent = two(h) + ':' + two(m) + ':' + two(s);
+      requestAnimationFrame(tick);
+    }
+    tick();
+  })();
+
+  // ===== معاينة أسماء ملفات المستأجر =====
+  (function filePreview(){
+    var inp = document.getElementById('renter-files');
+    var box = document.getElementById('renter-files-preview');
+    if(!inp || !box){ return; }
+    inp.addEventListener('change', function(){
+      if (!inp.files || !inp.files.length){ box.textContent = ''; return; }
+      var names = [];
+      for (var i=0; i<inp.files.length; i++){ names.push('• ' + inp.files[i].name); }
+      box.textContent = 'سيتم رفع ' + inp.files.length + ' ملف(ات):\n' + names.join('\n');
+    });
+  })();
+
+  // ===== زر "بدء مهلة 24h وإشعار المستأجر" =====
+  (function(){
+    var btn = document.getElementById('start-24h');
+    var sel = document.getElementById('decision-select');
+    var amt = document.getElementById('amount-input');
+    var frm = document.getElementById('dm-decision-form');
+    if (!btn || !sel || !amt || !frm) return;
+    btn.addEventListener('click', function(){
+      if (!amt.value || parseInt(amt.value,10) <= 0){
+        alert('ضع مبلغ الخصم أولاً (> 0).');
+        amt.focus();
+        return;
+      }
+      sel.value = 'withhold';
+      frm.submit(); // نفس endpoint → يرسل إشعارًا ويبدأ المهلة 24h
+    });
+  })();
 })();
 </script>
 {% endblock %}
