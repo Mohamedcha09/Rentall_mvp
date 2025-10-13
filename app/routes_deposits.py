@@ -1,7 +1,7 @@
 # app/routes_deposits.py
 from __future__ import annotations
 from typing import Optional, Literal, List, Dict
-from datetime import datetime, timedelta  # [NEW] timedelta
+from datetime import datetime, timedelta  # [KEEP/NEW] timedelta موجود
 import os
 import io
 import shutil
@@ -144,6 +144,22 @@ def can_manage_deposits(u: Optional[User]) -> bool:
         return True
     return bool(getattr(u, "is_deposit_manager", False))
 
+# [NEW] فورمات مبالغ + تلخيص سبب
+def _fmt_money(v: int | float | None) -> str:
+    try:
+        return f"{int(v):,}"
+    except Exception:
+        try:
+            return f"{float(v):,.0f}"
+        except Exception:
+            return str(v)
+
+def _short_reason(txt: str | None, limit: int = 120) -> str:
+    s = (txt or "").strip()
+    if len(s) <= limit:
+        return s
+    return s[: limit - 1] + "…"
+
 
 # ============ قائمة القضايا (DM) ============
 @router.get("/dm/deposits")
@@ -161,7 +177,7 @@ def dm_queue(
         .filter(
             or_(
                 Booking.deposit_hold_intent_id.isnot(None),
-                Booking.deposit_status.in_(["held", "in_dispute", "partially_withheld", "awaiting_renter"]),  # [NEW] أضفنا awaiting_renter
+                Booking.deposit_status.in_(["held", "in_dispute", "partially_withheld", "awaiting_renter"]),
                 Booking.status.in_(["returned", "in_review"]),
             )
         )
@@ -263,34 +279,39 @@ def dm_decision(
 
             db.commit()
 
-            # إشعارات
+            # 🔔 إشعارات (صياغة أوضح)
             push_notification(
-                db, bk.owner_id, "قرار الوديعة", f"تم الإفراج الكامل عن وديعة الحجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit"
+                db, bk.owner_id,
+                "قرار الوديعة — إرجاع كامل",
+                f"تم إرجاع وديعة الحجز #{bk.id} بالكامل.",
+                f"/bookings/flow/{bk.id}",
+                "deposit"
             )
             push_notification(
-                db, bk.renter_id, "قرار الوديعة", f"تم الإفراج الكامل عن وديعتك لحجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit"
+                db, bk.renter_id,
+                "قرار الوديعة — إرجاع كامل",
+                f"تم إرجاع وديعتك بالكامل لحجز #{bk.id}.",
+                f"/bookings/flow/{bk.id}",
+                "deposit"
             )
             notify_admins(db, "قرار وديعة مُنفَّذ", f"إفراج كامل لحجز #{bk.id}.", f"/bookings/flow/{bk.id}")
 
         elif decision == "withhold":
-            # [NEW] لا نلتقط المبلغ الآن — نمنح المستأجر 24 ساعة للرد
+            # لا نلتقط المبلغ الآن — نمنح المستأجر 24 ساعة للرد
             amt = max(0, int(amount or 0))
             if amt <= 0:
                 raise HTTPException(status_code=400, detail="Invalid amount")
 
-            # إذا كان الاقتطاع المقترح يساوي/يتجاوز كامل الوديعة، سنبقيه مقترحًا الآن وننفذه لاحقًا (كرون)
-            # نحفَظ القرار والمهلة:
             now = datetime.utcnow()
-            deadline = now + timedelta(hours=24)  # [NEW] مهلة 24 ساعة
+            deadline = now + timedelta(hours=24)  # مهلة 24 ساعة
 
-            bk.deposit_status = "awaiting_renter"  # [NEW] حالة انتظار رد المستأجر
-            bk.dm_decision = "withhold"            # [NEW]
-            bk.dm_decision_amount = amt            # [NEW]
-            bk.dm_decision_note = (reason or None) # [NEW]
-            bk.renter_response_deadline_at = deadline  # [NEW]
+            bk.deposit_status = "awaiting_renter"     # [NEW]
+            bk.dm_decision = "withhold"               # [NEW]
+            bk.dm_decision_amount = amt               # [NEW]
+            bk.dm_decision_note = (reason or None)    # [NEW]
+            bk.renter_response_deadline_at = deadline # [NEW]
             bk.updated_at = now
 
-            # لا نغلق الحجز هنا — بانتظار رد أو تنفيذ آلي
             _audit(
                 db, actor=user, bk=bk, action="dm_withhold_pending",
                 details={"amount": amt, "reason": reason, "deadline": deadline.isoformat()}
@@ -298,20 +319,41 @@ def dm_decision(
 
             db.commit()
 
-            # [NEW] إشعارات للطرفين
+            # 🔔 إشعارات مُحسّنة النص
+            amount_txt = _fmt_money(amt)
+            reason_txt = _short_reason(reason)
+
+            # إلى المالك
             push_notification(
-                db, bk.owner_id, "قرار خصم (بانتظار المستأجر)",
-                f"تم فتح قرار خصم بمبلغ {amt} ريال لحجز #{bk.id}. سيتم التنفيذ بعد 24 ساعة ما لم يقدّم المستأجر ردًا.",
-                f"/bookings/flow/{bk.id}", "deposit"
+                db, bk.owner_id,
+                "قرار خصم قيد الانتظار",
+                (
+                    f"تم فتح قرار خصم بمبلغ {amount_txt} على الحجز #{bk.id}."
+                    + (f" السبب: {reason_txt}" if reason_txt else "")
+                    + " — سيتم التنفيذ تلقائيًا بعد 24 ساعة ما لم يقدّم المستأجر ردًا."
+                ),
+                f"/dm/deposits/{bk.id}",
+                "deposit",
             )
+
+            # إلى المستأجر
             push_notification(
-                db, bk.renter_id, "تنبيه: قرار خصم قيد الانتظار",
-                f"يوجد قرار خصم بمبلغ {amt} ريال على وديعتك في حجز #{bk.id}. لديك 24 ساعة للرد ورفع أدلة.",
-                f"/deposits/{bk.id}/evidence/form", "deposit"  # رابط مباشر لنموذج رفع الأدلة (من routes_evidence)
+                db, bk.renter_id,
+                "تنبيه: قرار خصم على وديعتك",
+                (
+                    f"يوجد قرار خصم بمبلغ {amount_txt} على وديعتك في الحجز #{bk.id}."
+                    + (f" السبب: {reason_txt}." if reason_txt else "")
+                    + " لديك 24 ساعة للرد ورفع أدلة."
+                ),
+                # رابط نموذج رفع الأدلة المباشر
+                f"/deposits/{bk.id}/evidence/form",
+                "deposit",
             )
+
+            # إلى الإداريين
             notify_admins(
                 db, "قرار خصم قيد الانتظار",
-                f"DM اقترح خصم {amt} على الحجز #{bk.id} — بانتظار رد المستأجر خلال 24 ساعة.",
+                f"DM اقترح خصم {amount_txt} على الحجز #{bk.id} — بانتظار رد المستأجر خلال 24 ساعة.",
                 f"/dm/deposits/{bk.id}"
             )
 
@@ -323,7 +365,7 @@ def dm_decision(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe deposit operation failed: {e}")
 
-    # في حالة withhold لم نعمل Redirect فوق بعد commit؟ نعم نعمله هنا، وكذلك في release أعلاه بعد commit تم.
+    # Redirect عام (يبقى كما هو)
     return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
 
@@ -435,7 +477,11 @@ def report_deposit_issue(
 
     db.commit()
 
-    push_notification(db, bk.renter_id, "بلاغ وديعة جديد", f"قام المالك بالإبلاغ عن مشكلة ({issue_type}) بخصوص الحجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit")
+    push_notification(
+        db, bk.renter_id, "بلاغ وديعة جديد",
+        f"قام المالك بالإبلاغ عن مشكلة ({issue_type}) بخصوص الحجز #{bk.id}.",
+        f"/bookings/flow/{bk.id}", "deposit"
+    )
     notify_dms(db, "بلاغ وديعة جديد — بانتظار المراجعة", f"بلاغ جديد للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
     notify_admins(db, "مراجعة ديبو مطلوبة", f"بلاغ جديد بخصوص حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
 
@@ -474,7 +520,11 @@ def renter_response_to_issue(
         pass
     db.commit()
 
-    push_notification(db, bk.owner_id, "رد من المستأجر", f"ردّ المستأجر على بلاغ الوديعة لحجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit")
+    push_notification(
+        db, bk.owner_id, "رد من المستأجر",
+        f"ردّ المستأجر على بلاغ الوديعة لحجز #{bk.id}.",
+        f"/bookings/flow/{bk.id}", "deposit"
+    )
     notify_admins(db, "رد وديعة جديد", f"ردّ المستأجر في قضية حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
 
     _audit(db, actor=user, bk=bk, action="renter_response", details={"comment": renter_comment})

@@ -5,7 +5,16 @@
 <div class="container">
   <h2>قضية وديعة #{{ bk.id }}</h2>
 
-  <!-- معلومات عامة عن الحجز -->
+  {% if bk.deposit_status == 'awaiting_renter' and bk.renter_response_deadline_at %}
+    <div class="alert alert-warning" style="margin-bottom:12px;">
+      يوجد قرار خصم قيد الانتظار. ينتهي حق المستأجر في الرد عند:
+      <b>{{ bk.renter_response_deadline_at }}</b>
+      (<span id="rr-countdown-banner"
+             data-deadline-ts="{{ bk.renter_response_deadline_at.timestamp() if bk.renter_response_deadline_at else 0 }}">—</span> متبقٍ)
+      — إذا لم يرد المستأجر خلال المهلة سيتم التنفيذ تلقائيًا.
+    </div>
+  {% endif %}
+
   <div class="card" style="padding:16px;margin-bottom:16px;">
     <div><b>العنصر:</b> {{ (item.title if item else "—") }}</div>
     <div><b>المالك:</b> #{{ bk.owner_id }} — <b>المستأجر:</b> #{{ bk.renter_id }}</div>
@@ -19,8 +28,6 @@
   </div>
 
   <h3>الأدلة المرفوعة</h3>
-
-  <!-- ===== Evidence (Client-side fetch + Server vars) ===== -->
   <div id="ev-container" class="card" style="padding:8px;margin-bottom:10px;">
     <div style="font-size:13px;">
       Evidence — <b id="ev-count">0</b>
@@ -29,18 +36,17 @@
     <div id="ev-empty" class="muted" style="margin-top:8px;">لا توجد ملفات أدلة.</div>
   </div>
 
-  <!-- ========== [إضافة] نموذج ردّ المستأجر (ضمن نفس الصفحة) ========== -->
   {% set is_renter = session_user and session_user.id == bk.renter_id %}
   {% if is_renter %}
   <div class="card" style="padding:16px;margin-bottom:16px;">
     <h3 style="margin-top:0;">ردّ المستأجر وإرفاق أدلة</h3>
 
-    <!-- عدّاد الوقت المتبقي إن وُجدت مهلة -->
     {% if bk.renter_response_deadline_at %}
       <div style="margin-bottom:10px;">
         لديك حتى:
         <b>{{ bk.renter_response_deadline_at }}</b>
-        (<span id="rr-countdown" data-deadline-ts="{{ bk.renter_response_deadline_at.timestamp() if bk.renter_response_deadline_at else 0 }}">—</span> متبقٍ)
+        (<span id="rr-countdown"
+               data-deadline-ts="{{ bk.renter_response_deadline_at.timestamp() if bk.renter_response_deadline_at else 0 }}">—</span> متبقٍ)
       </div>
     {% endif %}
 
@@ -63,21 +69,17 @@
       <div id="renter-deadline-msg" class="alert" style="display:none;margin-top:6px;"></div>
     </form>
 
-    <!-- قناة بديلة: ردّ نصيّ فقط (بدون ملفات) إن رغبت -->
     <form method="post" action="/deposits/{{ bk.id }}/renter-response" style="margin-top:10px;display:flex;gap:8px;align-items:flex-start;">
       <textarea name="renter_comment" rows="2" placeholder="ردّ نصي سريع…"></textarea>
       <button class="btn btn-outline" type="submit">إرسال ردّ نصي</button>
     </form>
   </div>
   {% else %}
-  <!-- إن لم يكن المستخدم هو المستأجر، نظهر تلميحًا -->
   <div class="card" style="padding:12px;margin-bottom:16px;">
     <div class="muted">يمكن للمستأجر فقط إضافة ردّ وأدلة من حسابه.</div>
   </div>
   {% endif %}
-  <!-- ========== [نهاية الإضافة] ========== -->
 
-  <!-- نموذج القرار -->
   <form action="/dm/deposits/{{ bk.id }}/decision" method="post" class="card" style="padding:16px;gap:12px;">
     <h3 style="margin-top:0;">اتخاذ القرار النهائي</h3>
 
@@ -100,7 +102,6 @@
     </div>
   </form>
 
-  <!-- استلام القضية -->
   <form action="/dm/deposits/{{ bk.id }}/claim" method="post" style="margin-top:12px;">
     <button class="btn btn-outline">استلام القضية (اختياري)</button>
   </form>
@@ -110,11 +111,9 @@
 {% block scripts %}
 <script>
 (function(){
-  // ===== قيم مرسلة من السيرفر (قد تكون null) =====
   const serverEvidence = {{ evidence|tojson if evidence is defined else 'null' }};
   const serverEvList   = {{ ev_list|tojson   if ev_list   is defined else 'null' }};
 
-  // عناصر DOM
   var grid    = document.getElementById('ev-grid');
   var countEl = document.getElementById('ev-count');
   var emptyEl = document.getElementById('ev-empty');
@@ -124,7 +123,6 @@
     return s.endsWith('.mp4') || s.endsWith('.mov') || s.endsWith('.m4v') ||
            s.endsWith('.avi') || s.endsWith('.wmv') || s.endsWith('.webm');
   }
-
   function addImg(u){
     var a = document.createElement('a');
     a.href = u; a.target = '_blank'; a.style.display = 'inline-block';
@@ -135,7 +133,6 @@
     img.style.borderRadius = '8px'; img.style.objectFit = 'cover';
     a.appendChild(img); grid.appendChild(a);
   }
-
   function addVideo(u){
     var v = document.createElement('video');
     v.src = u + '?v={{ bk.updated_at.timestamp() if bk.updated_at else 0 }}';
@@ -143,76 +140,43 @@
     v.style.maxWidth = '320px'; v.style.maxHeight = '220px'; v.style.borderRadius = '8px';
     grid.appendChild(v);
   }
-
   function render(urls){
     if (!Array.isArray(urls)) urls = [];
     urls.forEach(function(u){ isVideo(u) ? addVideo(u) : addImg(u); });
     countEl.textContent = urls.length;
     emptyEl.style.display = urls.length ? 'none' : '';
   }
-
-  // 1) حاول أولاً القيم القادمة من السيرفر (evidence أو ev_list)
   var fromServer = Array.isArray(serverEvidence) && serverEvidence.length ? serverEvidence
                  : (Array.isArray(serverEvList) && serverEvList.length ? serverEvList : null);
-
   if (fromServer){
     render(fromServer);
   } else {
-    // 2) لو لا يوجد، اجلبها من API التشخيصي
     var id = {{ bk.id }};
     fetch('/debug/evidence/' + id, {credentials:'include'})
-      .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-      .then(function(data){ render((data && data.urls) ? data.urls : []); })
-      .catch(function(){ render([]); });
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => render((data && data.urls) ? data.urls : []))
+      .catch(() => render([]));
   }
 
-  // ========== [إضافة] عدّاد مهلة ردّ المستأجر + تعطيل النموذج عند الانتهاء ==========
-  (function setupRenterDeadline(){
-    var cd = document.getElementById('rr-countdown');
-    var form = document.getElementById('renter-evidence-form');
-    var submitBtn = document.getElementById('renter-submit');
-    var msg = document.getElementById('renter-deadline-msg');
-    if(!cd || !form || !submitBtn){ return; }
+  // عداد تنازلي للمهلة
+  const bannerEl = document.getElementById('rr-countdown-banner');
+  const formEl = document.getElementById('renter-evidence-form');
+  const deadlineTs = bannerEl ? parseInt(bannerEl.dataset.deadlineTs || 0) : 0;
 
-    var ts = parseFloat(cd.getAttribute('data-deadline-ts') || '0') * 1000;
-    if(!ts){ return; }
-
-    function two(n){ return (n<10?'0':'') + n; }
-    function tick(){
-      var now = Date.now();
-      var diff = ts - now;
-      if (diff <= 0){
-        cd.textContent = 'انتهت المهلة';
-        form.querySelectorAll('input,textarea,button').forEach(function(el){ el.disabled = true; });
-        if (msg){
-          msg.style.display = '';
-          msg.className = 'alert alert-warning';
-          msg.textContent = 'انتهت مهلة الـ 24 ساعة لإرسال الردّ والأدلة.';
-        }
-        return; // توقف
-      }
-      var s = Math.floor(diff / 1000);
-      var d = Math.floor(s / 86400); s -= d*86400;
-      var h = Math.floor(s / 3600);  s -= h*3600;
-      var m = Math.floor(s / 60);    s -= m*60;
-      cd.textContent = (d>0? (d+'ي ') : '') + two(h) + ':' + two(m) + ':' + two(s);
-      requestAnimationFrame(tick);
-    }
-    tick();
-  })();
-
-  // ========== [إضافة] معاينة أسماء الملفات المختارة ==========
-  (function filePreview(){
-    var inp = document.getElementById('renter-files');
-    var box = document.getElementById('renter-files-preview');
-    if(!inp || !box){ return; }
-    inp.addEventListener('change', function(){
-      if (!inp.files || !inp.files.length){ box.textContent = ''; return; }
-      var names = [];
-      for (var i=0; i<inp.files.length; i++){ names.push('• ' + inp.files[i].name); }
-      box.textContent = 'سيتم رفع ' + inp.files.length + ' ملف(ات):\n' + names.join('\n');
-    });
-  })();
+  if (deadlineTs > 0){
+    const updateCountdown = () => {
+      const now = Date.now() / 1000;
+      const diff = Math.max(0, deadlineTs - now);
+      const h = Math.floor(diff / 3600);
+      const m = Math.floor((diff % 3600) / 60);
+      const s = Math.floor(diff % 60);
+      const txt = `${h}h ${m}m ${s}s`;
+      if (bannerEl) bannerEl.textContent = txt;
+      if (formEl && diff <= 0){ formEl.querySelectorAll("input,textarea,button").forEach(e=>e.disabled=true); }
+    };
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+  }
 })();
 </script>
 {% endblock %}

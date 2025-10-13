@@ -4,11 +4,11 @@ from datetime import datetime, timedelta
 import os
 
 import stripe
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import Booking, User
+from .models import Booking
 from .notifications_api import push_notification, notify_admins
 
 router = APIRouter(tags=["admin"])
@@ -19,23 +19,67 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 # نفس النافذة الزمنية المعتمدة: 48 ساعة بعد الإرجاع
 AUTO_RELEASE_WINDOW_HOURS = 48
 
-# ================================
-# [إضافة] مهلة ردّ المستأجر: 24 ساعة
-# ================================
-DM_RESPONSE_WINDOW_HOURS = 24  # بعد قرار DM (withhold/partial/release) إن طُلِب ردّ المستأجر
+# [إضافة] مهلة ردّ المستأجر: 24 ساعة بعد قرار DM مع تعليق التنفيذ
+DM_RESPONSE_WINDOW_HOURS = 24
 
 
+# =======================
+# أدوات مساعدة (Helpers)
+# =======================
+def _currency(num: int) -> str:
+    try:
+        return f"{int(num):,}"
+    except Exception:
+        return str(num)
+
+
+def _stripe_capture(pi_id: str, amount: int) -> bool:
+    """
+    Stripe يتعامل بالمئات (cents) لذا نضرب ×100.
+    """
+    try:
+        stripe.PaymentIntent.capture(pi_id, amount_to_capture=int(amount) * 100)
+        return True
+    except Exception:
+        return False
+
+
+def _stripe_cancel(pi_id: str) -> bool:
+    try:
+        stripe.PaymentIntent.cancel(pi_id)
+        return True
+    except Exception:
+        return False
+
+
+def _has_dispute_open(bk: Booking) -> bool:
+    return (getattr(bk, "deposit_status", None) or "").lower() in (
+        "in_dispute", "partially_withheld", "claimed"
+    )
+
+
+def _has_renter_replied(bk: Booking) -> bool:
+    """
+    يعتبر المستأجر قد ردّ إذا كان لدينا ختم زمني للرد.
+    (لو لديك منطق إضافي يعتمد على وجود أدلة المستأجر، يمكنك توسيعه لاحقًا.)
+    """
+    return getattr(bk, "renter_response_at", None) is not None
+
+
+# ==========================
+# منطق الإفراج التلقائي 48h
+# ==========================
 def _can_auto_release(bk: Booking, now: datetime) -> bool:
     """
     الشروط:
       - الحجز مُعلّم مُرجع returned/in_review
       - يوجد تفويض وديعة deposit_hold_intent_id
-      - لا يوجد نزاع مفتوح (deposit_status != 'in_dispute')
+      - لا يوجد نزاع مفتوح
       - مضت 48 ساعة على returned_at دون بلاغ
     """
     if not getattr(bk, "returned_at", None):
         return False
-    if getattr(bk, "deposit_status", None) in ("in_dispute", "partially_withheld", "claimed"):
+    if _has_dispute_open(bk):
         return False
     if getattr(bk, "deposit_hold_intent_id", None) in (None, ""):
         return False
@@ -87,24 +131,33 @@ def _do_release(bk: Booking) -> None:
 
 
 # ======================================================
-# [إضافة] تنفيذ قرار DM تلقائيًا بعد مهلة ردّ المستأجر (24h)
+# تنفيذ قرار DM تلقائيًا بعد مهلة ردّ المستأجر (24h)
 # ======================================================
 def _can_execute_dm_decision(bk: Booking, now: datetime) -> bool:
     """
     الشروط العامة للتنفيذ التلقائي بعد مهلة الرد:
       - يوجد PaymentIntent (تفويض وديعة)
       - يوجد قرار DM محفوظ bk.dm_decision (withhold/partial/release)
+      - الحالة الحالية للحجز: awaiting_renter (أمان)
+      - لم يردّ المستأجر قبل انتهاء المهلة (renter_response_at == None)
       - تم ضبط bk.renter_response_deadline_at، وانتهت المهلة
-      - لم يُنفّذ القرار سابقًا (لا توجد dm_decision_at)
+      - لم يُنفّذ القرار سابقًا (dm_decision_at == None)
     """
     pi_id = getattr(bk, "deposit_hold_intent_id", None)
     decision = (getattr(bk, "dm_decision", None) or "").lower()
     deadline = getattr(bk, "renter_response_deadline_at", None)
     already_executed = getattr(bk, "dm_decision_at", None) is not None
+    deposit_status = (getattr(bk, "deposit_status", None) or "").lower()
 
     if not pi_id:
         return False
     if decision not in ("withhold", "partial", "release"):
+        return False
+    # ✅ تنفيذ تلقائي فقط عندما نكون بانتظار المستأجر
+    if deposit_status != "awaiting_renter":
+        return False
+    # ✅ إيقاف التنفيذ التلقائي إذا المستأجر ردّ قبل انتهاء المهلة
+    if _has_renter_replied(bk):
         return False
     if not deadline:
         return False
@@ -113,34 +166,6 @@ def _can_execute_dm_decision(bk: Booking, now: datetime) -> bool:
 
     try:
         return now >= deadline
-    except Exception:
-        return False
-
-
-def _currency(num: int) -> str:
-    try:
-        return f"{int(num):,}"
-    except Exception:
-        return str(num)
-
-
-def _stripe_capture(pi_id: str, amount: int) -> bool:
-    """
-    التقاط مبلغ جزئي/كامل من تفويض الوديعة.
-    Stripe يتعامل بالمئات (cents) لذا نضرب ×100.
-    يعيد True إذا نجح.
-    """
-    try:
-        stripe.PaymentIntent.capture(pi_id, amount_to_capture=int(amount) * 100)
-        return True
-    except Exception:
-        return False
-
-
-def _stripe_cancel(pi_id: str) -> bool:
-    try:
-        stripe.PaymentIntent.cancel(pi_id)
-        return True
     except Exception:
         return False
 
@@ -156,13 +181,16 @@ def _execute_dm_decision(db: Session, bk: Booking) -> str:
     pi_id = getattr(bk, "deposit_hold_intent_id", None)
     decision = (getattr(bk, "dm_decision", None) or "").lower()
     amount = int(getattr(bk, "dm_decision_amount", 0) or 0)
-    deposit_total = int((getattr(bk, "deposit_amount", None) or getattr(bk, "hold_deposit_amount", None) or 0))
+    deposit_total = int(
+        (getattr(bk, "deposit_amount", None)
+         or getattr(bk, "hold_deposit_amount", None)
+         or 0)
+    )
 
     if not pi_id or not decision:
         return "skipped:no_pi_or_decision"
 
     if decision in ("withhold", "partial"):
-        # التحقق من المبلغ
         if amount <= 0:
             return "skipped:zero_amount"
 
@@ -210,7 +238,7 @@ def _execute_dm_decision(db: Session, bk: Booking) -> str:
     elif decision == "release":
         ok = _stripe_cancel(pi_id)
         if not ok:
-            # قد يكون التفويض منتهيًا أو ملغيًا مسبقًا — نكمل التحديثات
+            # قد يكون التفويض منتهيًا أو مُلغى مسبقًا — نكمل التحديثات
             pass
 
         try:
@@ -259,9 +287,9 @@ def run_auto_release(
     - إذا كان dry=true لا يُجري التغييرات، فقط يُرجع ما كان سيفعله.
 
     [إضافة]
-    - كذلك ينفّذ قرارات DM المؤجلة تلقائيًا بعد انتهاء مهلة ردّ المستأجر (24 ساعة).
+    - كذلك ينفّذ قرارات DM المؤجلة تلقائيًا بعد انتهاء مهلة ردّ المستأجر (24 ساعة)،
+      بشرط أن تكون الحالة awaiting_renter ولم يردّ المستأجر قبل انتهاء المهلة.
     """
-    # مبدئيًا أي مستخدم يستطيع طلب هذا المسار؟ في الإنتاج اربطه بدور الأدمن فقط.
     now = datetime.utcnow()
 
     # -------------------------------
@@ -323,7 +351,7 @@ def run_auto_release(
             pass
 
     # -------------------------------------------------------
-    # [إضافة] تنفيذ قرارات DM بعد انتهاء مهلة ردّ المستأجر 24h
+    # تنفيذ قرارات DM بعد انتهاء مهلة ردّ المستأجر 24h
     # -------------------------------------------------------
     q2 = (
         db.query(Booking)

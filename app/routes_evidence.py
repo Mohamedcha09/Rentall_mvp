@@ -5,8 +5,8 @@ import os
 import uuid
 from pathlib import Path
 from typing import Optional, Literal, List
-from datetime import datetime, timedelta
 
+from datetime import datetime
 from fastapi import APIRouter, Depends, Request, UploadFile, File, Form, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
@@ -105,19 +105,21 @@ async def upload_deposit_evidence(
     bk = require_booking(db, booking_id)
     side = user_side_for_booking(user, bk)
 
+    # حماية عدد الملفات
     files = files or []
     if len(files) > MAX_FILES_PER_REQUEST:
         raise HTTPException(status_code=400, detail=f"Max {MAX_FILES_PER_REQUEST} files per request")
 
     saved_any = False
-    saved_record_ids: List[int] = []
+    saved_records: List[int] = []
     saved_files: List[str] = []
     comment = (description or "").strip()
 
+    # أنشئ المجلد
     evidence_dir = DEPOSITS_DIR / str(bk.id) / side
     ensure_dirs(evidence_dir)
 
-    # 1) ملاحظة فقط (بلا ملف)
+    # 1) ملاحظة فقط (بلا ملف) — إذا لا يوجد ملفات وتم تمرير وصف
     if not files and comment:
         ev = DepositEvidence(
             booking_id=bk.id,
@@ -132,7 +134,7 @@ async def upload_deposit_evidence(
         db.commit()
         db.refresh(ev)
         saved_any = True
-        saved_record_ids.append(ev.id)
+        saved_records.append(ev.id)
 
     # 2) ملفات
     for up in files:
@@ -152,10 +154,13 @@ async def upload_deposit_evidence(
 
         kind = classify_kind(ext)
         rel_path = str(full_path).replace("\\", "/")
+        # نخزن مسارًا يبدأ بـ /uploads ليسهل عرضه في القالب
         if "/uploads/" not in rel_path:
+            # حوّل إلى مسار نسبي من جذر المشروع
             try:
                 rel_path = "/uploads" + rel_path.split("/uploads", 1)[1]
             except Exception:
+                # fallback: مسار مطلق (لكن الأفضل إبقاءه نسبيًا)
                 pass
 
         ev = DepositEvidence(
@@ -170,15 +175,14 @@ async def upload_deposit_evidence(
         db.add(ev)
         db.commit()
         db.refresh(ev)
-
         saved_any = True
-        saved_record_ids.append(ev.id)
+        saved_records.append(ev.id)
         saved_files.append(rel_path)
 
     if not saved_any:
         raise HTTPException(status_code=400, detail="No files nor description provided")
 
-    # تحديثات الحالة العامة بعد أي رفع
+    # تحديثات عامة
     now = datetime.utcnow()
     try:
         setattr(bk, "updated_at", now)
@@ -187,26 +191,40 @@ async def upload_deposit_evidence(
         pass
 
     # =========================
-    # ✅ تعديل مطلوب: إذا كان الرافع مستأجرًا والحالة تنتظر ردّه (awaiting_renter)
-    #    → نحولها إلى نزاع in_dispute + مراجعة in_review + نسجل رده ونخطر الجميع
+    # ✅ منطق خاص: إذا رفع المستأجر أثناء انتظار ردّه (awaiting_renter)
+    #    → نحولها إلى نزاع، نختم وقت الرد، ونلغي المهلة لمنع التنفيذ التلقائي.
     # =========================
     try:
         current_status = (getattr(bk, "deposit_status", None) or "").lower()
         if side == "renter" and current_status == "awaiting_renter":
-            bk.deposit_status = "in_dispute"
-            bk.status = "in_review"
-            bk.updated_at = now
-
-            # حفظ تعليق المستأجر (اختياري إن كان لديك هذا الحقل)
+            # تحويل الحالة إلى نزاع ومراجعة
             try:
-                old_note = (getattr(bk, "renter_response_text", "") or "").strip()
-                new_note = (old_note + ("\n" if old_note and comment else "") + (comment or "")).strip()
-                setattr(bk, "renter_response_text", new_note or None)
+                bk.deposit_status = "in_dispute"
+                bk.status = "in_review"
+            except Exception:
+                pass
+
+            # ختم وقت الرد
+            try:
                 setattr(bk, "renter_response_at", now)
             except Exception:
                 pass
 
-            # سجل تدقيق
+            # تعطيل المهلة تلقائيًا — لضمان عدم تنفيذ القرار تلقائيًا بعد 24 ساعة
+            try:
+                setattr(bk, "renter_response_deadline_at", None)
+            except Exception:
+                pass
+
+            # حفظ نص الرد (إن وُجد)
+            try:
+                old_note = (getattr(bk, "renter_response_text", "") or "").strip()
+                new_note = (old_note + ("\n" if old_note and comment else "") + (comment or "")).strip()
+                setattr(bk, "renter_response_text", new_note or None)
+            except Exception:
+                pass
+
+            # سجل تدقيقي (إن وُجدت دالة _audit)
             try:
                 from .routes_deposits import _audit
                 _audit(
@@ -219,7 +237,10 @@ async def upload_deposit_evidence(
             except Exception:
                 pass
 
-            db.commit()
+            try:
+                db.commit()
+            except Exception:
+                pass
 
             # إشعارات
             try:
@@ -236,15 +257,16 @@ async def upload_deposit_evidence(
             except Exception:
                 pass
 
+            # استجابة
             accept = (request.headers.get("accept") or "").lower()
             if "application/json" in accept:
-                return JSONResponse({"ok": True, "saved_ids": saved_record_ids})
+                return JSONResponse({"ok": True, "saved_ids": saved_records})
             return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
     except Exception:
         # لا نكسر العملية لو حدث خطأ في الفرع السابق
         pass
 
-    # إشعارات افتراضية حسب الجهة الرافعِة
+    # إشعارات افتراضية حسب جهة الرفع
     try:
         if side == "owner":
             push_notification(
@@ -259,6 +281,7 @@ async def upload_deposit_evidence(
                 f"/bookings/flow/{bk.id}", "deposit"
             )
         else:
+            # manager
             push_notification(
                 db, bk.owner_id, "تحديث على القضية",
                 f"قام متحكّم الوديعة برفع/إرفاق أدلة على قضية #{bk.id}.",
@@ -273,9 +296,10 @@ async def upload_deposit_evidence(
     except Exception:
         pass
 
+    # دعم JSON أو ريديركت
     accept = (request.headers.get("accept") or "").lower()
     if "application/json" in accept:
-        return JSONResponse({"ok": True, "saved_ids": saved_record_ids})
+        return JSONResponse({"ok": True, "saved_ids": saved_records})
 
     return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
@@ -293,7 +317,7 @@ def list_deposit_evidence(
     """
     require_auth(user)
     bk = require_booking(db, booking_id)
-    _ = user_side_for_booking(user, bk)
+    _ = user_side_for_booking(user, bk)  # سيثير 403 تلقائيًا إذا ليس مخوّل
 
     rows = (
         db.query(DepositEvidence)
