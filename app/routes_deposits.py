@@ -265,7 +265,7 @@ def dm_decision(
         if decision == "release":
             # يجب أن يكون لدينا تفويض وديعة لإلغاءه
             if not pi_id:
-                return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
+                return RedirectResponse(url=f"/dm/deposits/{bk.id}", status_code=303)
 
             # تنفيذ الإفراج الكامل فورًا
             stripe.PaymentIntent.cancel(pi_id)
@@ -365,8 +365,8 @@ def dm_decision(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe deposit operation failed: {e}")
 
-    # Redirect عام (يبقى كما هو)
-    return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
+    # ✅ نعيد دائمًا لصفحة DM الخاصة بالقضية (حتى يرى البطاقة البنفسجية مباشرة)
+    return RedirectResponse(url=f"/dm/deposits/{bk.id}?started=1", status_code=303)
 
 
 # ===================== بلاغ الوديعة =====================
@@ -673,4 +673,5 @@ def dm_start_renter_window(
     except Exception:
         pass
 
-    return RedirectResponse(url=f"/dm/deposits/{bk.id}", status_code=303)
+    # ✅ ارجع إلى صفحة DM للقضية
+    return RedirectResponse(url=f"/dm/deposits/{bk.id}?started=1", status_code=303)

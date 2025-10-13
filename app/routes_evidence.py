@@ -4,15 +4,15 @@ from __future__ import annotations
 import os
 import uuid
 from pathlib import Path
-from typing import Optional, Literal, List
+from typing import Optional, Literal, List, Dict, Any
 
 from datetime import datetime
 from fastapi import APIRouter, Depends, Request, UploadFile, File, Form, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
 
-from .database import get_db
-from .models import Booking, User, DepositEvidence
+from .database import get_db, engine as _engine
+from .models import Booking, User
 from .notifications_api import push_notification, notify_admins
 
 router = APIRouter(tags=["deposit-evidence"])
@@ -33,7 +33,7 @@ ALLOWED_ALL_EXTS = ALLOWED_IMAGE_EXTS | ALLOWED_VIDEO_EXTS | ALLOWED_DOC_EXTS
 MAX_FILES_PER_REQUEST = 10  # حماية بسيطة
 
 # =========================
-# Helpers
+# Helpers: هوية المستخدم/الحجز
 # =========================
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
@@ -60,6 +60,9 @@ def user_side_for_booking(user: User, bk: Booking) -> Literal["owner","renter","
         return "manager"
     raise HTTPException(status_code=403, detail="Forbidden")
 
+# =========================
+# Helpers: ملفات ومسارات
+# =========================
 def safe_ext(filename: str) -> str:
     ext = (filename.rsplit(".", 1)[-1] if "." in filename else "").lower().strip()
     return ext
@@ -83,6 +86,71 @@ def save_upload_file(dst_path: Path, up: UploadFile) -> None:
             f.write(chunk)
 
 # =========================
+# Helpers: طبقة توافق مع الجدول (uploader_id/by_user_id, file_path/file)
+# =========================
+def _evidence_cols() -> Dict[str, bool]:
+    cols = {"uploader_id": False, "by_user_id": False, "file_path": False, "file": False,
+            "description": False, "side": False, "kind": False, "booking_id": False, "created_at": False, "id": False}
+    try:
+        with _engine.begin() as conn:
+            rows = conn.exec_driver_sql("PRAGMA table_info('deposit_evidences')").all()
+        for _, name, *_ in rows:
+            if name in cols:
+                cols[name] = True
+    except Exception:
+        pass
+    return cols
+
+def _insert_evidence_row(values: Dict[str, Any]) -> int:
+    """
+    يُدخل صفًا في deposit_evidences مع التعامل التلقائي مع اختلاف أسماء الأعمدة.
+    يعيد id المُدخل.
+    """
+    cols = _evidence_cols()
+    # خرائط الأعمدة المتغيرة
+    user_col = "uploader_id" if cols["uploader_id"] else ("by_user_id" if cols["by_user_id"] else "uploader_id")
+    file_col = "file_path" if cols["file_path"] else ("file" if cols["file"] else "file_path")
+
+    insert_cols = ["booking_id", user_col, "side", "kind", file_col, "description", "created_at"]
+    params = {
+        "booking_id": values["booking_id"],
+        user_col: values["uploader_id"],           # نمرر بنفس الاسم المناسب
+        "side": values["side"],
+        "kind": values["kind"],
+        file_col: values.get("file_path"),
+        "description": values.get("description"),
+        "created_at": values.get("created_at") or datetime.utcnow(),
+    }
+
+    placeholders = ", ".join([f":{c}" for c in insert_cols])
+    columns_sql  = ", ".join(insert_cols)
+
+    sql = f"INSERT INTO deposit_evidences ({columns_sql}) VALUES ({placeholders})"
+    with _engine.begin() as conn:
+        res = conn.exec_driver_sql(sql, params)
+        try:
+            new_id = int(res.lastrowid or 0)
+        except Exception:
+            new_id = 0
+    return new_id
+
+def _select_evidence_rows(booking_id: int) -> List[Dict[str, Any]]:
+    cols = _evidence_cols()
+    user_col = "uploader_id" if cols["uploader_id"] else ("by_user_id" if cols["by_user_id"] else "uploader_id")
+    file_col = "file_path" if cols["file_path"] else ("file" if cols["file"] else "file_path")
+
+    select_cols = f"id, booking_id, {user_col} as uploader_id, side, kind, {file_col} as file_path, description, created_at"
+    sql = f"""
+        SELECT {select_cols}
+        FROM deposit_evidences
+        WHERE booking_id = :bid
+        ORDER BY created_at DESC, id DESC
+    """
+    with _engine.begin() as conn:
+        rows = conn.exec_driver_sql(sql, {"bid": booking_id}).mappings().all()
+        return [dict(r) for r in rows]
+
+# =========================
 # API: رفع الأدلة (صور/فيديو/مستندات + ملاحظة)
 # =========================
 @router.post("/deposits/{booking_id}/evidence/upload")
@@ -97,7 +165,7 @@ async def upload_deposit_evidence(
     """
     يرفع أدلة من الطرفين (المالك/المستأجر) أو المتحكّم (manager).
     - يحفظ الملفات تحت: /uploads/deposits/{booking_id}/{side}/<uuid>.<ext>
-    - ينشئ سجل في DepositEvidence لكل ملف
+    - يُدخل الصفوف في deposit_evidences مع دعم (uploader_id/by_user_id) و (file_path/file)
     - إذا لم تُرسل ملفات وأُرسلت ملاحظة -> يسجّل evidence من النوع note (بدون ملف)
     - يُرسل إشعارات
     """
@@ -111,7 +179,7 @@ async def upload_deposit_evidence(
         raise HTTPException(status_code=400, detail=f"Max {MAX_FILES_PER_REQUEST} files per request")
 
     saved_any = False
-    saved_records: List[int] = []
+    saved_ids: List[int] = []
     saved_files: List[str] = []
     comment = (description or "").strip()
 
@@ -119,22 +187,20 @@ async def upload_deposit_evidence(
     evidence_dir = DEPOSITS_DIR / str(bk.id) / side
     ensure_dirs(evidence_dir)
 
-    # 1) ملاحظة فقط (بلا ملف) — إذا لا يوجد ملفات وتم تمرير وصف
+    # 1) ملاحظة فقط (بدون ملف)
     if not files and comment:
-        ev = DepositEvidence(
-            booking_id=bk.id,
-            uploader_id=user.id,
-            side=side,
-            kind="note",
-            file_path=None,
-            description=comment,
-            created_at=datetime.utcnow(),
-        )
-        db.add(ev)
-        db.commit()
-        db.refresh(ev)
-        saved_any = True
-        saved_records.append(ev.id)
+        ev_id = _insert_evidence_row({
+            "booking_id": bk.id,
+            "uploader_id": user.id,
+            "side": side,
+            "kind": "note",
+            "file_path": None,
+            "description": comment,
+            "created_at": datetime.utcnow(),
+        })
+        if ev_id:
+            saved_any = True
+            saved_ids.append(ev_id)
 
     # 2) ملفات
     for up in files:
@@ -152,32 +218,28 @@ async def upload_deposit_evidence(
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to store file: {e}")
 
-        kind = classify_kind(ext)
+        # نخزن دائمًا مسارًا عامًا يبدأ بـ /uploads ليسهل العرض
         rel_path = str(full_path).replace("\\", "/")
-        # نخزن مسارًا يبدأ بـ /uploads ليسهل عرضه في القالب
         if "/uploads/" not in rel_path:
-            # حوّل إلى مسار نسبي من جذر المشروع
             try:
                 rel_path = "/uploads" + rel_path.split("/uploads", 1)[1]
             except Exception:
-                # fallback: مسار مطلق (لكن الأفضل إبقاءه نسبيًا)
-                pass
+                rel_path = rel_path  # fallback
 
-        ev = DepositEvidence(
-            booking_id=bk.id,
-            uploader_id=user.id,
-            side=side,
-            kind=kind,
-            file_path=rel_path,
-            description=comment or None,
-            created_at=datetime.utcnow(),
-        )
-        db.add(ev)
-        db.commit()
-        db.refresh(ev)
-        saved_any = True
-        saved_records.append(ev.id)
-        saved_files.append(rel_path)
+        kind = classify_kind(ext)
+        ev_id = _insert_evidence_row({
+            "booking_id": bk.id,
+            "uploader_id": user.id,
+            "side": side,
+            "kind": kind,
+            "file_path": rel_path,
+            "description": (comment or None),
+            "created_at": datetime.utcnow(),
+        })
+        if ev_id:
+            saved_any = True
+            saved_ids.append(ev_id)
+            saved_files.append(rel_path)
 
     if not saved_any:
         raise HTTPException(status_code=400, detail="No files nor description provided")
@@ -191,40 +253,30 @@ async def upload_deposit_evidence(
         pass
 
     # =========================
-    # ✅ منطق خاص: إذا رفع المستأجر أثناء انتظار ردّه (awaiting_renter)
-    #    → نحولها إلى نزاع، نختم وقت الرد، ونلغي المهلة لمنع التنفيذ التلقائي.
+    # إذا رفع المستأجر أثناء انتظار ردّه → نحولها إلى نزاع ونلغي المهلة
     # =========================
     try:
         current_status = (getattr(bk, "deposit_status", None) or "").lower()
         if side == "renter" and current_status == "awaiting_renter":
-            # تحويل الحالة إلى نزاع ومراجعة
             try:
                 bk.deposit_status = "in_dispute"
                 bk.status = "in_review"
             except Exception:
                 pass
-
-            # ختم وقت الرد
             try:
                 setattr(bk, "renter_response_at", now)
             except Exception:
                 pass
-
-            # تعطيل المهلة تلقائيًا — لضمان عدم تنفيذ القرار تلقائيًا بعد 24 ساعة
             try:
                 setattr(bk, "renter_response_deadline_at", None)
             except Exception:
                 pass
-
-            # حفظ نص الرد (إن وُجد)
             try:
                 old_note = (getattr(bk, "renter_response_text", "") or "").strip()
                 new_note = (old_note + ("\n" if old_note and comment else "") + (comment or "")).strip()
                 setattr(bk, "renter_response_text", new_note or None)
             except Exception:
                 pass
-
-            # سجل تدقيقي (إن وُجدت دالة _audit)
             try:
                 from .routes_deposits import _audit
                 _audit(
@@ -236,7 +288,6 @@ async def upload_deposit_evidence(
                 )
             except Exception:
                 pass
-
             try:
                 db.commit()
             except Exception:
@@ -257,13 +308,11 @@ async def upload_deposit_evidence(
             except Exception:
                 pass
 
-            # استجابة
             accept = (request.headers.get("accept") or "").lower()
             if "application/json" in accept:
-                return JSONResponse({"ok": True, "saved_ids": saved_records})
+                return JSONResponse({"ok": True, "saved_ids": saved_ids})
             return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
     except Exception:
-        # لا نكسر العملية لو حدث خطأ في الفرع السابق
         pass
 
     # إشعارات افتراضية حسب جهة الرفع
@@ -299,12 +348,12 @@ async def upload_deposit_evidence(
     # دعم JSON أو ريديركت
     accept = (request.headers.get("accept") or "").lower()
     if "application/json" in accept:
-        return JSONResponse({"ok": True, "saved_ids": saved_records})
+        return JSONResponse({"ok": True, "saved_ids": saved_ids})
 
     return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
 # =========================
-# API: جلب الأدلة بشكل JSON
+# API: جلب الأدلة بشكل JSON (يقرأ ديناميكيًا حسب أسماء الأعمدة)
 # =========================
 @router.get("/deposits/{booking_id}/evidence")
 def list_deposit_evidence(
@@ -314,27 +363,23 @@ def list_deposit_evidence(
 ):
     """
     يُرجع قائمة الأدلة المرفوعة للحجز بترتيب زمني هابط (الأحدث أولًا).
+    يدعم كلا الاسمين uploader_id/by_user_id وأيضًا file_path/file.
     """
     require_auth(user)
     bk = require_booking(db, booking_id)
     _ = user_side_for_booking(user, bk)  # سيثير 403 تلقائيًا إذا ليس مخوّل
 
-    rows = (
-        db.query(DepositEvidence)
-        .filter(DepositEvidence.booking_id == booking_id)
-        .order_by(DepositEvidence.created_at.desc())
-        .all()
-    )
+    rows = _select_evidence_rows(booking_id)
 
-    def to_dict(ev: DepositEvidence):
+    def to_dict(r: Dict[str, Any]):
         return {
-            "id": ev.id,
-            "side": ev.side,
-            "kind": ev.kind,
-            "file": ev.file_path,
-            "description": ev.description,
-            "created_at": ev.created_at.isoformat() if ev.created_at else None,
-            "uploader_id": ev.uploader_id,
+            "id": r.get("id"),
+            "side": r.get("side"),
+            "kind": r.get("kind"),
+            "file": r.get("file_path"),
+            "description": r.get("description"),
+            "created_at": (r.get("created_at").isoformat() if hasattr(r.get("created_at"), "isoformat") else r.get("created_at")),
+            "uploader_id": r.get("uploader_id"),
         }
 
     return JSONResponse({
@@ -354,7 +399,7 @@ def simple_evidence_form(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    صفحة بسيطة لاختبار الرفع يدويًا (اختيارية).
+    صفحة بسيطة لاختبار الرفع يدويًا (اختياري).
     """
     require_auth(user)
     bk = require_booking(db, booking_id)
