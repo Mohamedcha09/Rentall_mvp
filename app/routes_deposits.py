@@ -260,13 +260,13 @@ def dm_decision(
 
     bk = require_booking(db, booking_id)
     pi_id = getattr(bk, "deposit_hold_intent_id", None)
-    if not pi_id:
-        return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
-
-    deposit_total = max(0, bk.deposit_amount or bk.hold_deposit_amount or 0)
 
     try:
         if decision == "release":
+            # يجب أن يكون لدينا تفويض وديعة لإلغاءه
+            if not pi_id:
+                return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
+
             # تنفيذ الإفراج الكامل فورًا
             stripe.PaymentIntent.cancel(pi_id)
             bk.deposit_status = "refunded"
@@ -297,7 +297,7 @@ def dm_decision(
             notify_admins(db, "قرار وديعة مُنفَّذ", f"إفراج كامل لحجز #{bk.id}.", f"/bookings/flow/{bk.id}")
 
         elif decision == "withhold":
-            # لا نلتقط المبلغ الآن — نمنح المستأجر 24 ساعة للرد
+            # لا نلتقط المبلغ الآن — نمنح المستأجر 24 ساعة للرد (لا نحتاج pi_id هنا)
             amt = max(0, int(amount or 0))
             if amt <= 0:
                 raise HTTPException(status_code=400, detail="Invalid amount")
@@ -606,7 +606,8 @@ def dm_case_context(
         "evidence": ev,
     }
 
-    # ===== [NEW] بدء مهلة ردّ المستأجر 24h + إشعار (لا تنفيذ فوري) =====
+
+# ===== [NEW] بدء مهلة ردّ المستأجر 24h + إشعار (لا تنفيذ فوري) =====
 @router.post("/dm/deposits/{booking_id}/start-window")
 def dm_start_renter_window(
     booking_id: int,

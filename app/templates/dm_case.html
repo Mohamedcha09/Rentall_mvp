@@ -17,10 +17,17 @@
         {{ (bk.owner_return_note or "") | replace('\n','<br>') | safe }}
       </div>
     {% endif %}
+
+    {% if bk.renter_response_text %}
+      <div style="margin-top:8px;">
+        <b>ملاحظة/رد المستأجر:</b><br>
+        {{ (bk.renter_response_text or "") | replace('\n','<br>') | safe }}
+      </div>
+    {% endif %}
   </div>
 
   <!-- إشعار حالة "بانتظار رد المستأجر" -->
-  {% if bk.deposit_status == 'awaiting_renter' %}
+  {% if (bk.deposit_status or '') == 'awaiting_renter' %}
     <div class="card" style="padding:12px;margin-bottom:16px;border-left:6px solid #6f42c1;">
       <div style="font-weight:700;margin-bottom:6px;">تم إشعار المستأجر وتفعيل تنفيذ القرار تلقائيًا</div>
       <div>لدى المستأجر مهلة للرد حتى:
@@ -36,8 +43,9 @@
     </div>
   {% endif %}
 
+  <!-- الأدلة -->
   <h3>الأدلة المرفوعة</h3>
-  <div id="ev-container" class="card" style="padding:8px;margin-bottom:10px;">
+  <div id="ev-container" class="card" style="padding:8px;margin-bottom:12px;">
     <div style="font-size:13px;">
       Evidence — <b id="ev-count">0</b>
     </div>
@@ -68,7 +76,7 @@
       <!-- زر تنفيذ القرار التقليدي -->
       <button class="btn btn-success" type="submit">تنفيذ القرار</button>
 
-      <!-- زر بدء مهلة الرد 24h وإشعار المستأجر -->
+      <!-- زر بدء مهلة الرد 24h وإشعار المستأجر (يستخدم نفس الفورم كـ withhold) -->
       <button id="btn-start-window" class="btn" type="button"
               style="background:#6f42c1;color:#fff;border-radius:10px;">
         بدء مهلة الرد 24h وإشعار المستأجر
@@ -76,8 +84,8 @@
     </div>
 
     <div class="muted" style="margin-top:10px;font-size:12px;">
-      زر “بدء مهلة الرد 24h” يرسل إشعارًا للمستأجر ويحدد مهلة 24 ساعة للرد ورفع أدلة.
-      ينفَّذ القرار تلقائيًا بعد انتهاء المهلة إن لم يرد المستأجر.
+      زر “بدء مهلة الرد 24h” يثبت القرار على “اقتطاع من الوديعة” ويضبط المهلة 24 ساعة
+      ويُرسل إشعارًا للمستأجر لرفع الأدلة. بعد انتهاء المهلة ينفَّذ القرار تلقائيًا إذا لم يرد.
     </div>
   </form>
 
@@ -91,73 +99,120 @@
 {% block scripts %}
 <script>
 (function(){
-  // ===== عرض الأدلة (من الخادم أو عبر /debug/evidence) =====
+  // ===== مخرجات السيرفر القديمة (مسارات /uploads/deposits/<id> المباشرة) =====
   const serverEvidence = {{ evidence|tojson if evidence is defined else 'null' }};
   const serverEvList   = {{ ev_list|tojson   if ev_list   is defined else 'null' }};
   var grid    = document.getElementById('ev-grid');
   var countEl = document.getElementById('ev-count');
   var emptyEl = document.getElementById('ev-empty');
 
-  function isVideo(url){
+  function isVideoUrl(url){
     var s = (url || '').toLowerCase();
     return s.endsWith('.mp4') || s.endsWith('.mov') || s.endsWith('.m4v') ||
            s.endsWith('.avi') || s.endsWith('.wmv') || s.endsWith('.webm');
   }
-  function addImg(u){
+  function addImg(url){
     var a = document.createElement('a');
-    a.href = u; a.target = '_blank'; a.style.display = 'inline-block';
+    a.href = url; a.target = '_blank'; a.style.display = 'inline-block';
     var img = document.createElement('img');
-    img.src = u + '?v={{ bk.updated_at.timestamp() if bk.updated_at else 0 }}';
+    img.src = url + '?v={{ bk.updated_at.timestamp() if bk.updated_at else 0 }}';
     img.alt = 'evidence'; img.loading = 'lazy';
     img.style.maxWidth = '220px'; img.style.maxHeight = '160px';
     img.style.borderRadius = '8px'; img.style.objectFit = 'cover';
     a.appendChild(img); grid.appendChild(a);
   }
-  function addVideo(u){
+  function addVideo(url){
     var v = document.createElement('video');
-    v.src = u + '?v={{ bk.updated_at.timestamp() if bk.updated_at else 0 }}';
+    v.src = url + '?v={{ bk.updated_at.timestamp() if bk.updated_at else 0 }}';
     v.controls = true;
     v.style.maxWidth = '320px'; v.style.maxHeight = '220px'; v.style.borderRadius = '8px';
     grid.appendChild(v);
   }
-  function render(urls){
+  function addNote(text){
+    var d = document.createElement('div');
+    d.className = 'card';
+    d.style.padding = '10px';
+    d.style.maxWidth = '360px';
+    d.style.whiteSpace = 'pre-wrap';
+    d.textContent = text || '—';
+    grid.appendChild(d);
+  }
+  function renderUrls(urls){
     if (!Array.isArray(urls)) urls = [];
-    urls.forEach(function(u){ isVideo(u) ? addVideo(u) : addImg(u); });
+    urls.forEach(function(u){ isVideoUrl(u) ? addVideo(u) : addImg(u); });
     countEl.textContent = urls.length;
     emptyEl.style.display = urls.length ? 'none' : '';
   }
-  var fromServer = Array.isArray(serverEvidence) && serverEvidence.length ? serverEvidence
-                 : (Array.isArray(serverEvList) && serverEvList.length ? serverEvList : null);
-  if (fromServer){
-    render(fromServer);
-  } else {
-    var id = {{ bk.id }};
-    fetch('/debug/evidence/' + id, {credentials:'include'})
-      .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-      .then(function(data){ render((data && data.urls) ? data.urls : []); })
-      .catch(function(){ render([]); });
+  function renderFromJson(items){
+    items = Array.isArray(items) ? items : [];
+    var shown = 0;
+    items.forEach(function(ev){
+      var file = ev && ev.file ? ev.file : '';
+      var kind = (ev && ev.kind) || '';
+      var desc = (ev && ev.description) || '';
+      if (kind === 'note' && !file){
+        addNote(desc);
+        shown++;
+      } else if (file){
+        if (isVideoUrl(file)) addVideo(file); else addImg(file);
+        shown++;
+      }
+    });
+    countEl.textContent = shown;
+    emptyEl.style.display = shown ? 'none' : '';
+    return shown;
   }
 
-  // ===== زر "بدء مهلة الرد 24h" — يتحقق من المدخلات ويقدم الفورم كـ withhold =====
+  // نحاول أولًا API الجديد /deposits/{id}/evidence (يعرض الأدلة من جدول DepositEvidence)
+  var bkId = {{ bk.id }};
+  fetch('/deposits/' + bkId + '/evidence', {credentials:'include'})
+    .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+    .then(function(data){
+      var c = data && Array.isArray(data.items) ? renderFromJson(data.items) : 0;
+      if (c === 0){
+        // إن لم يوجد شيء، جرّب الأدلة القديمة القادمة من السيرفر
+        var fromServer = Array.isArray(serverEvidence) && serverEvidence.length ? serverEvidence
+                       : (Array.isArray(serverEvList) && serverEvList.length ? serverEvList : null);
+        if (fromServer){ renderUrls(fromServer); }
+        else {
+          // وآخر محاولة: تشخيصية عبر /debug/evidence
+          fetch('/debug/evidence/' + bkId, {credentials:'include'})
+            .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+            .then(function(d){ renderUrls((d && d.urls) ? d.urls : []); })
+            .catch(function(){ renderUrls([]); });
+        }
+      }
+    })
+    .catch(function(){
+      // فشل API — ارجع للطرق القديمة
+      var fromServer = Array.isArray(serverEvidence) && serverEvidence.length ? serverEvidence
+                     : (Array.isArray(serverEvList) && serverEvList.length ? serverEvList : null);
+      if (fromServer){ renderUrls(fromServer); }
+      else {
+        fetch('/debug/evidence/' + bkId, {credentials:'include'})
+          .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+          .then(function(d){ renderUrls((d && d.urls) ? d.urls : []); })
+          .catch(function(){ renderUrls([]); });
+      }
+    });
+
+  // ===== زر "بدء مهلة الرد 24h" — يثبت القرار على withhold ويرسل الفورم إلى /decision =====
   var btn = document.getElementById('btn-start-window');
   var form = document.getElementById('dm-decision-form');
   var selDecision = document.getElementById('decision');
   var amount = document.getElementById('amount');
-  var reason = document.getElementById('reason');
 
   if (btn && form && selDecision && amount){
     btn.addEventListener('click', function(){
-      // يجب أن يكون القرار اقتطاع وأن يكون المبلغ > 0
       var amt = parseInt(amount.value || '0', 10);
       if (isNaN(amt) || amt <= 0){
         alert('ضع مبلغ الخصم أولًا (أكبر من صفر) قبل بدء مهلة الرد.');
         amount.focus();
         return;
       }
-      // ثبّت القرار على withhold حتى لو القائمة على قيمة أخرى
+      // ثبّت القرار على withhold
       selDecision.value = 'withhold';
-
-      // أرسل الفورم (سيقوم السيرفر: وضع deposit_status=awaiting_renter + إشعار المستأجر + تحديد deadline)
+      // أرسل الفورم — السيرفر سيضبط deposit_status=awaiting_renter + deadline + إشعارات
       form.submit();
     });
   }
