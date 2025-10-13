@@ -70,6 +70,9 @@
     <label>السبب/التفاصيل</label>
     <textarea id="reason" name="reason" rows="3" placeholder="اكتب سبب القرار…"></textarea>
 
+    <!-- ✅ حقل خفي لإرسال القرار عند استخدام زر "بدء مهلة الرد" -->
+    <input type="hidden" name="decision" id="hidden-decision" value="">
+
     <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;">
       <a class="btn btn-secondary" href="/dm/deposits">رجوع</a>
 
@@ -99,7 +102,7 @@
 {% block scripts %}
 <script>
 (function(){
-  // ===== مخرجات السيرفر القديمة (مسارات /uploads/deposits/<id> المباشرة) =====
+  // ===== الأدلة =====
   const serverEvidence = {{ evidence|tojson if evidence is defined else 'null' }};
   const serverEvList   = {{ ev_list|tojson   if ev_list   is defined else 'null' }};
   var grid    = document.getElementById('ev-grid');
@@ -143,66 +146,29 @@
     countEl.textContent = urls.length;
     emptyEl.style.display = urls.length ? 'none' : '';
   }
-  function renderFromJson(items){
-    items = Array.isArray(items) ? items : [];
-    var shown = 0;
-    items.forEach(function(ev){
-      var file = ev && ev.file ? ev.file : '';
-      var kind = (ev && ev.kind) || '';
-      var desc = (ev && ev.description) || '';
-      if (kind === 'note' && !file){
-        addNote(desc);
-        shown++;
-      } else if (file){
-        if (isVideoUrl(file)) addVideo(file); else addImg(file);
-        shown++;
-      }
-    });
-    countEl.textContent = shown;
-    emptyEl.style.display = shown ? 'none' : '';
-    return shown;
-  }
 
-  // نحاول أولًا API الجديد /deposits/{id}/evidence (يعرض الأدلة من جدول DepositEvidence)
   var bkId = {{ bk.id }};
   fetch('/deposits/' + bkId + '/evidence', {credentials:'include'})
-    .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-    .then(function(data){
-      var c = data && Array.isArray(data.items) ? renderFromJson(data.items) : 0;
-      if (c === 0){
-        // إن لم يوجد شيء، جرّب الأدلة القديمة القادمة من السيرفر
-        var fromServer = Array.isArray(serverEvidence) && serverEvidence.length ? serverEvidence
-                       : (Array.isArray(serverEvList) && serverEvList.length ? serverEvList : null);
-        if (fromServer){ renderUrls(fromServer); }
-        else {
-          // وآخر محاولة: تشخيصية عبر /debug/evidence
-          fetch('/debug/evidence/' + bkId, {credentials:'include'})
-            .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-            .then(function(d){ renderUrls((d && d.urls) ? d.urls : []); })
-            .catch(function(){ renderUrls([]); });
-        }
-      }
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(data => {
+      var items = data && Array.isArray(data.items) ? data.items : [];
+      if (!items.length) return renderUrls(serverEvidence || serverEvList || []);
+      items.forEach(ev => {
+        if (ev.kind === 'note') addNote(ev.description);
+        else if (isVideoUrl(ev.file)) addVideo(ev.file); else addImg(ev.file);
+      });
+      countEl.textContent = items.length;
+      emptyEl.style.display = items.length ? 'none' : '';
     })
-    .catch(function(){
-      // فشل API — ارجع للطرق القديمة
-      var fromServer = Array.isArray(serverEvidence) && serverEvidence.length ? serverEvidence
-                     : (Array.isArray(serverEvList) && serverEvList.length ? serverEvList : null);
-      if (fromServer){ renderUrls(fromServer); }
-      else {
-        fetch('/debug/evidence/' + bkId, {credentials:'include'})
-          .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-          .then(function(d){ renderUrls((d && d.urls) ? d.urls : []); })
-          .catch(function(){ renderUrls([]); });
-      }
-    });
+    .catch(() => renderUrls(serverEvidence || serverEvList || []));
 
-  // ===== زر "بدء مهلة الرد 24h" — يثبت القرار على withhold ويرسل الفورم إلى /decision =====
+  // ===== زر "بدء مهلة الرد 24h" =====
   var btn = document.getElementById('btn-start-window');
   var form = document.getElementById('dm-decision-form');
-  var selDecision = document.getElementById('decision');
   var amount = document.getElementById('amount');
+  var hiddenDecision = document.getElementById('hidden-decision');
 
-  if (btn && form && selDecision && amount){
+  if (btn && form && amount && hiddenDecision){
     btn.addEventListener('click', function(){
       var amt = parseInt(amount.value || '0', 10);
       if (isNaN(amt) || amt <= 0){
@@ -210,9 +176,7 @@
         amount.focus();
         return;
       }
-      // ثبّت القرار على withhold
-      selDecision.value = 'withhold';
-      // أرسل الفورم — السيرفر سيضبط deposit_status=awaiting_renter + deadline + إشعارات
+      hiddenDecision.value = 'withhold';
       form.submit();
     });
   }
