@@ -271,7 +271,13 @@ class Notification(Base):
     link_url = Column(String(400), nullable=True)
     is_read = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    user = relationship("User", lazy="joined")
+    # ✅ تعديل: ربط واضح بالعلاقة العكسية وتسكيت تحذير overlaps
+    user = relationship(
+        "User",
+        back_populates="notifications",
+        lazy="joined",
+        overlaps="notifications,user"
+    )
 
 
 # علاقة عكسيّة اختيارية
@@ -281,9 +287,11 @@ except Exception:
     User.notifications = relationship(
         "Notification",
         primaryjoin="User.id==Notification.user_id",
+        back_populates="user",  # ✅ تعديل: ربط واضح بالعلاقة الأمامية
         cascade="all, delete-orphan",
         order_by="Notification.created_at.desc()",
-        lazy="selectin"
+        lazy="selectin",
+        overlaps="notifications,user"  # ✅ لتسكيت تحذير SAWarning
     )
 
 
@@ -413,7 +421,8 @@ class DepositEvidence(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=False)
-    uploader_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    # ✅ تعديل مهم: نجعلها مؤقتًا nullable=True لتوافق قواعد SQLite القديمة بعد الهوت-فيكس
+    uploader_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     side = Column(String(20), nullable=False)        # owner / renter / manager
     kind = Column(String(20), nullable=False, default="image")  # image / video / doc / note
     file_path = Column(String(600), nullable=True)   # مسار الملف إن وجد
@@ -421,4 +430,4 @@ class DepositEvidence(Base):
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
     booking = relationship("Booking", back_populates="deposit_evidences")
-    uploader = relationship("User", lazy="joined")
+    uploader = relationship("User", lazy="joined")  # هذا كود models. (إبقاء النص كتعليق لتفادي الحذف)
