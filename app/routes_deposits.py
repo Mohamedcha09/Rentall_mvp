@@ -255,7 +255,7 @@ def dm_decision(
     decision: Literal["release", "withhold"] = Form(...),
     amount: int = Form(0),
     reason: str = Form(""),
-    finalize: int = Form(0),   # NEW: لإظهار رسالة النجاح بعد القرار
+    finalize: int = Form(0),   # موجود عندك، نستخدمه الآن لإرسال إشعار نهائي + شارة
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
@@ -269,7 +269,21 @@ def dm_decision(
     try:
         if decision == "release":
             if not pi_id:
-                return RedirectResponse(url=f"/dm/deposits/{bk.id}", status_code=303)
+                # لا يوجد Intent لإلغائه، لكن نعتبر القرار “إرجاع كامل” إدارياً
+                # إشعارات القرار النهائي (إرجاع كامل)
+                push_notification(db, bk.owner_id, "تم إعلان القرار النهائي",
+                                  f"تم إرجاع وديعة الحجز #{bk.id} بالكامل.",
+                                  f"/bookings/flow/{bk.id}", "deposit")
+                push_notification(db, bk.renter_id, "تم إعلان القرار النهائي",
+                                  f"تم إرجاع وديعتك بالكامل لحجز #{bk.id}.",
+                                  f"/bookings/flow/{bk.id}", "deposit")
+                notify_admins(db, "قرار نهائي — إرجاع كامل (بدون Intent)",
+                              f"تم إعلان قرار نهائي بإرجاع كامل لحجز #{bk.id}.",
+                              f"/dm/deposits/{bk.id}")
+                # إعادة التوجيه حسب وجود finalize
+                return RedirectResponse(url=f"/dm/deposits/{bk.id}?{'final=1' if finalize else 'started=1'}", status_code=303)
+
+            # إلغاء الحجز في Stripe + ضبط الحالة
             stripe.PaymentIntent.cancel(pi_id)
             bk.deposit_status = "refunded"
             bk.deposit_charged_amount = 0
@@ -278,13 +292,28 @@ def dm_decision(
             bk.updated_at = datetime.utcnow()
             db.commit()
 
-            # إشعارات القرار النهائي (إرجاع كامل)
-            title = "تم إعلان القرار النهائي"
-            body_owner  = f"تم إرجاع وديعة الحجز #{bk.id} بالكامل."
-            body_renter = f"تم إرجاع وديعتك بالكامل لحجز #{bk.id}."
-            push_notification(db, bk.owner_id, title, body_owner,  f"/bookings/flow/{bk.id}", "deposit")
-            push_notification(db, bk.renter_id, title, body_renter, f"/bookings/flow/{bk.id}", "deposit")
-            notify_admins(db, "قرار نهائي — إرجاع كامل", f"تم إعلان قرار نهائي بإرجاع كامل لحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+            # إشعارات القرار (كما كانت)
+            push_notification(db, bk.owner_id, "قرار الوديعة — إرجاع كامل",
+                              f"تم إرجاع وديعة الحجز #{bk.id} بالكامل.",
+                              f"/bookings/flow/{bk.id}", "deposit")
+            push_notification(db, bk.renter_id, "قرار الوديعة — إرجاع كامل",
+                              f"تم إرجاع وديعتك بالكامل لحجز #{bk.id}.",
+                              f"/bookings/flow/{bk.id}", "deposit")
+            notify_admins(db, "قرار وديعة مُنفَّذ",
+                          f"إفراج كامل لحجز #{bk.id}.",
+                          f"/bookings/flow/{bk.id}")
+
+            # لو الزر كان “اتخاذ القرار النهائي” نرسل إشعار موحد إضافي بعنوان تم إعلان القرار النهائي
+            if finalize:
+                push_notification(db, bk.owner_id, "تم إعلان القرار النهائي",
+                                  f"تم إعلان القرار النهائي: إرجاع كامل وديعة الحجز #{bk.id}.",
+                                  f"/dm/deposits/{bk.id}", "deposit")
+                push_notification(db, bk.renter_id, "تم إعلان القرار النهائي",
+                                  f"تم إعلان القرار النهائي: إرجاع كامل وديعتك لحجز #{bk.id}.",
+                                  f"/dm/deposits/{bk.id}", "deposit")
+                notify_admins(db, "قرار نهائي مُعلن",
+                              f"booking #{bk.id} — decision=release",
+                              f"/dm/deposits/{bk.id}")
 
         elif decision == "withhold":
             amt = max(0, int(amount or 0))
@@ -308,6 +337,7 @@ def dm_decision(
             amount_txt = _fmt_money(amt)
             reason_txt = _short_reason(reason)
 
+            # إشعارات “قيد الانتظار” كما هي
             push_notification(
                 db, bk.owner_id, "قرار خصم قيد الانتظار",
                 (f"تم فتح قرار خصم بمبلغ {amount_txt} على الحجز #{bk.id}."
@@ -315,7 +345,6 @@ def dm_decision(
                  + " — سيتم التنفيذ تلقائيًا بعد 24 ساعة ما لم يقدّم المستأجر ردًا."),
                 f"/dm/deposits/{bk.id}", "deposit"
             )
-
             push_notification(
                 db, bk.renter_id, "تنبيه: قرار خصم على وديعتك",
                 (f"يوجد قرار خصم بمبلغ {amount_txt} على وديعتك في الحجز #{bk.id}."
@@ -323,12 +352,31 @@ def dm_decision(
                  + " لديك 24 ساعة للرد ورفع أدلة."),
                 f"/deposits/{bk.id}/evidence/form", "deposit"
             )
-
             notify_admins(
                 db, "قرار خصم قيد الانتظار",
                 f"DM اقترح خصم {amount_txt} على الحجز #{bk.id} — بانتظار رد المستأجر خلال 24 ساعة.",
                 f"/dm/deposits/{bk.id}"
             )
+
+            # لو كان الضغط عبر “اتخاذ القرار النهائي” نرسل إشعارًا موحّدًا إضافيًا كما طلبت
+            if finalize:
+                push_notification(
+                    db, bk.owner_id, "تم إعلان القرار النهائي",
+                    (f"تم إعلان القرار النهائي: اقتطاع مبلغ {amount_txt} من وديعة الحجز #{bk.id}."
+                     + (f" السبب: {reason_txt}." if reason_txt else "")),
+                    f"/dm/deposits/{bk.id}", "deposit"
+                )
+                push_notification(
+                    db, bk.renter_id, "تم إعلان القرار النهائي",
+                    (f"تم إعلان القرار النهائي: اقتطاع مبلغ {amount_txt} من وديعتك لحجز #{bk.id}."
+                     + (f" السبب: {reason_txt}." if reason_txt else "")),
+                    f"/dm/deposits/{bk.id}", "deposit"
+                )
+                notify_admins(
+                    db, "قرار نهائي مُعلن",
+                    f"booking #{bk.id} — decision=withhold, amount={amount_txt}",
+                    f"/dm/deposits/{bk.id}"
+                )
         else:
             raise HTTPException(status_code=400, detail="Unknown decision")
 
@@ -337,12 +385,8 @@ def dm_decision(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe deposit operation failed: {e}")
 
-    # بعد التنفيذ: إذا كان finalize=1 نعرض تنبيه النجاح
-    if finalize:
-        return RedirectResponse(url=f"/dm/deposits/{bk.id}?final=1", status_code=303)
-    # الافتراضي السابق
-    return RedirectResponse(url=f"/dm/deposits/{bk.id}?started=1", status_code=303)
-
+    # إعادة التوجيه: لو Finalize فعّلنا شارة النجاح ?final=1، وإلا نُبقي السلوك القديم (?started=1)
+    return RedirectResponse(url=f"/dm/deposits/{bk.id}?{'final=1' if finalize else 'started=1'}", status_code=303)
 # ===================== بلاغ الوديعة =====================
 @router.get("/deposits/{booking_id}/report")
 def report_deposit_issue_page(
