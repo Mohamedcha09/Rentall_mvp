@@ -5,6 +5,30 @@
 <div class="container">
   <h2>قضية وديعة #{{ bk.id }}</h2>
 
+  {# ==== تنبيه نجاح عند بدء المهلة (?started=1) ==== #}
+  {% if request.query_params.get('started') in ['1', 'true', 'yes'] %}
+    <div id="start-ok" class="card"
+         style="padding:12px;margin-bottom:16px;border-left:6px solid #2ecc71;background:#ecfff1;">
+      <div style="font-weight:700;margin-bottom:4px;">تم تفعيل مهلة ردّ المستأجر</div>
+      <div>
+        تم إرسال إشعار إلى المستأجر لرفع الأدلة. إذا لم يرد خلال 24 ساعة سيتم تنفيذ القرار تلقائيًا.
+      </div>
+    </div>
+    <script>
+      (function () {
+        setTimeout(function(){ var el = document.getElementById('start-ok'); if (el) el.style.display='none'; }, 6000);
+        try {
+          var url = new URL(window.location.href);
+          if (url.searchParams.has('started')) {
+            url.searchParams.delete('started');
+            var q = url.searchParams.toString();
+            window.history.replaceState({}, document.title, url.pathname + (q ? '?' + q : '') + url.hash);
+          }
+        } catch(e){}
+      })();
+    </script>
+  {% endif %}
+
   <!-- معلومات عامة -->
   <div class="card" style="padding:16px;margin-bottom:16px;">
     <div><b>العنصر:</b> {{ (item.title if item else "—") }}</div>
@@ -77,13 +101,13 @@
       <button class="btn btn-success" type="submit">تنفيذ القرار</button>
 
       {% if (bk.deposit_status or '') == 'awaiting_renter' %}
-      <!-- زر بدء مهلة الرد 24h -->
+      <!-- عند انتظار رد: أظهر زر بدء المهلة -->
       <button id="btn-start-window" class="btn" type="button"
               style="background:#6f42c1;color:#fff;border-radius:10px;">
         بدء مهلة الرد 24h وإشعار المستأجر
       </button>
       {% else %}
-      <!-- بعد رد المستأجر: غيّر الزر للقرار النهائي الآن -->
+      <!-- بعد ردّ المستأجر: غيّر الزر -->
       <button id="btn-finalize-now" class="btn" type="button"
               style="background:#6f42c1;color:#fff;border-radius:10px;">
         اتخاذ القرار النهائي الآن
@@ -93,9 +117,9 @@
 
     <div class="muted" style="margin-top:10px;font-size:12px;">
       {% if (bk.deposit_status or '') == 'awaiting_renter' %}
-        زر “بدء مهلة الرد 24h” يثبت القرار على “اقتطاع من الوديعة” ويضبط المهلة 24 ساعة ويُرسل إشعارًا للمستأجر لرفع الأدلة.
+        زر “بدء مهلة الرد 24h” يثبت القرار على “اقتطاع من الوديعة” ويضبط المهلة 24 ساعة ويُرسل إشعارًا للمستأجر.
       {% else %}
-        بعد وصول ردّ المستأجر يمكنك الآن اتخاذ القرار النهائي مباشرة.
+        بعد وصول ردّ المستأجر يمكنك اتخاذ القرار النهائي مباشرة.
       {% endif %}
     </div>
   </form>
@@ -147,11 +171,15 @@
     d.textContent = text || '—';
     grid.appendChild(d);
   }
+  function incCount(by){
+    var cur = parseInt(countEl.textContent || '0', 10);
+    countEl.textContent = cur + by;
+    emptyEl.style.display = (cur + by) > 0 ? 'none' : '';
+  }
   function renderUrls(urls){
     if (!Array.isArray(urls)) urls = [];
     urls.forEach(function(u){ isVideoUrl(u) ? addVideo(u) : addImg(u); });
-    countEl.textContent = (parseInt(countEl.textContent || '0',10) + urls.length);
-    emptyEl.style.display = (parseInt(countEl.textContent,10) > 0) ? 'none' : '';
+    incCount(urls.length);
   }
   function renderFromJson(items){
     items = Array.isArray(items) ? items : [];
@@ -167,19 +195,18 @@
         shown++;
       }
     });
-    countEl.textContent = (parseInt(countEl.textContent || '0',10) + shown);
-    emptyEl.style.display = (parseInt(countEl.textContent,10) > 0) ? 'none' : '';
+    incCount(shown);
   }
 
   var bkId = {{ bk.id }};
 
-  // 1) اعرض أدلة DB (المستأجر + المالك + المدير)
+  // 1) أعرض الأدلة من قاعدة البيانات (الطرفين)
   fetch('/deposits/' + bkId + '/evidence', {credentials:'include'})
     .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
     .then(function(data){ renderFromJson(data && data.items); })
-    .catch(function(){ /* نتجاوز */ })
+    .catch(function(){ /* تجاهل */ })
     .finally(function(){
-      // 2) أضف الأدلة القديمة من مجلد /uploads (إن وجدت) لدمج الطرفين
+      // 2) أدمج الأدلة القديمة الموجودة في مجلد /uploads (إن وُجدت) — دمج دائمًا
       var fromServer = Array.isArray(serverEvidence) && serverEvidence.length ? serverEvidence
                      : (Array.isArray(serverEvList) && serverEvList.length ? serverEvList : null);
       if (fromServer){ renderUrls(fromServer); }
