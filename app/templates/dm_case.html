@@ -5,6 +5,33 @@
 <div class="container">
   <h2>قضية وديعة #{{ bk.id }}</h2>
 
+  {# ==== تنبيه نجاح عند بدء المهلة (?started=1) ==== #}
+  {% if request.query_params.get('started') in ['1', 'true', 'yes'] %}
+    <div id="start-ok" class="card"
+         style="padding:12px;margin-bottom:16px;border-left:6px solid #2ecc71;background:#ecfff1;">
+      <div style="font-weight:700;margin-bottom:4px;">تم تفعيل مهلة ردّ المستأجر</div>
+      <div>
+        تم إرسال إشعار إلى المستأجر لرفع الأدلة. إذا لم يرد خلال 24 ساعة سيتم تنفيذ القرار تلقائيًا.
+      </div>
+    </div>
+    <script>
+      (function () {
+        setTimeout(function () {
+          var el = document.getElementById('start-ok');
+          if (el) el.style.display = 'none';
+        }, 6000);
+        try {
+          var url = new URL(window.location.href);
+          if (url.searchParams.has('started')) {
+            url.searchParams.delete('started');
+            var q = url.searchParams.toString();
+            window.history.replaceState({}, document.title, url.pathname + (q ? '?' + q : '') + url.hash);
+          }
+        } catch (e) {}
+      })();
+    </script>
+  {% endif %}
+
   <!-- معلومات عامة -->
   <div class="card" style="padding:16px;margin-bottom:16px;">
     <div><b>العنصر:</b> {{ (item.title if item else "—") }}</div>
@@ -76,7 +103,7 @@
       <!-- زر تنفيذ القرار التقليدي -->
       <button class="btn btn-success" type="submit">تنفيذ القرار</button>
 
-      <!-- زر بدء مهلة الرد 24h وإشعار المستأجر (يستخدم نفس الفورم كـ withhold) -->
+      <!-- زر بدء مهلة الرد 24h وإشعار المستأجر -->
       <button id="btn-start-window" class="btn" type="button"
               style="background:#6f42c1;color:#fff;border-radius:10px;">
         بدء مهلة الرد 24h وإشعار المستأجر
@@ -99,7 +126,6 @@
 {% block scripts %}
 <script>
 (function(){
-  // ===== مخرجات السيرفر القديمة (مسارات /uploads/deposits/<id> المباشرة) =====
   const serverEvidence = {{ evidence|tojson if evidence is defined else 'null' }};
   const serverEvList   = {{ ev_list|tojson   if ev_list   is defined else 'null' }};
   var grid    = document.getElementById('ev-grid');
@@ -163,40 +189,35 @@
     return shown;
   }
 
-  // نحاول أولًا API الجديد /deposits/{id}/evidence (يعرض الأدلة من جدول DepositEvidence)
   var bkId = {{ bk.id }};
   fetch('/deposits/' + bkId + '/evidence', {credentials:'include'})
-    .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-    .then(function(data){
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(data => {
       var c = data && Array.isArray(data.items) ? renderFromJson(data.items) : 0;
       if (c === 0){
-        // إن لم يوجد شيء، جرّب الأدلة القديمة القادمة من السيرفر
         var fromServer = Array.isArray(serverEvidence) && serverEvidence.length ? serverEvidence
                        : (Array.isArray(serverEvList) && serverEvList.length ? serverEvList : null);
         if (fromServer){ renderUrls(fromServer); }
         else {
-          // وآخر محاولة: تشخيصية عبر /debug/evidence
           fetch('/debug/evidence/' + bkId, {credentials:'include'})
-            .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-            .then(function(d){ renderUrls((d && d.urls) ? d.urls : []); })
-            .catch(function(){ renderUrls([]); });
+            .then(r=>r.ok?r.json():Promise.reject())
+            .then(d=>{ renderUrls((d && d.urls)?d.urls:[]); })
+            .catch(()=>{ renderUrls([]); });
         }
       }
     })
-    .catch(function(){
-      // فشل API — ارجع للطرق القديمة
+    .catch(()=>{
       var fromServer = Array.isArray(serverEvidence) && serverEvidence.length ? serverEvidence
                      : (Array.isArray(serverEvList) && serverEvList.length ? serverEvList : null);
       if (fromServer){ renderUrls(fromServer); }
       else {
         fetch('/debug/evidence/' + bkId, {credentials:'include'})
-          .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-          .then(function(d){ renderUrls((d && d.urls) ? d.urls : []); })
-          .catch(function(){ renderUrls([]); });
+          .then(r=>r.ok?r.json():Promise.reject())
+          .then(d=>{ renderUrls((d && d.urls)?d.urls:[]); })
+          .catch(()=>{ renderUrls([]); });
       }
     });
 
-  // ===== زر "بدء مهلة الرد 24h" — يثبت القرار على withhold ويرسل إلى مسار start-window =====
   var btn = document.getElementById('btn-start-window');
   var form = document.getElementById('dm-decision-form');
   var selDecision = document.getElementById('decision');
@@ -211,7 +232,7 @@
         return;
       }
       selDecision.value = 'withhold';
-      form.action = '/dm/deposits/{{ bk.id }}/start-window'; // NEW: وجّه الإرسال للمسار الصحيح
+      form.action = '/dm/deposits/{{ bk.id }}/start-window';
       form.submit();
     });
   }

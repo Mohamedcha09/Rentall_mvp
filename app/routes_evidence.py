@@ -89,8 +89,16 @@ def save_upload_file(dst_path: Path, up: UploadFile) -> None:
 # Helpers: طبقة توافق مع الجدول (uploader_id/by_user_id, file_path/file)
 # =========================
 def _evidence_cols() -> Dict[str, bool]:
-    cols = {"uploader_id": False, "by_user_id": False, "file_path": False, "file": False,
-            "description": False, "side": False, "kind": False, "booking_id": False, "created_at": False, "id": False}
+    """
+    نكشف وجود الأعمدة في deposit_evidences لنُعامل الفروقات:
+    - uploader_id / by_user_id
+    - file_path / file
+    """
+    cols = {
+        "id": False, "booking_id": False, "uploader_id": False, "by_user_id": False,
+        "side": False, "kind": False, "file_path": False, "file": False,
+        "description": False, "created_at": False
+    }
     try:
         with _engine.begin() as conn:
             rows = conn.exec_driver_sql("PRAGMA table_info('deposit_evidences')").all()
@@ -103,29 +111,59 @@ def _evidence_cols() -> Dict[str, bool]:
 
 def _insert_evidence_row(values: Dict[str, Any]) -> int:
     """
-    يُدخل صفًا في deposit_evidences مع التعامل التلقائي مع اختلاف أسماء الأعمدة.
-    يعيد id المُدخل.
+    يُدخل صفًا في deposit_evidences مع دعم كلا الاسمين (uploader_id/by_user_id) و (file_path/file).
+    لو العمودين موجودين نملأهما معاً بنفس القيمة لضمان عدم كسر قيود NOT NULL.
     """
     cols = _evidence_cols()
-    # خرائط الأعمدة المتغيرة
-    user_col = "uploader_id" if cols["uploader_id"] else ("by_user_id" if cols["by_user_id"] else "uploader_id")
-    file_col = "file_path" if cols["file_path"] else ("file" if cols["file"] else "file_path")
+    has_uploader = cols.get("uploader_id", False)
+    has_by_user  = cols.get("by_user_id",  False)
+    has_filepath = cols.get("file_path",   False)
+    has_file     = cols.get("file",        False)
 
-    insert_cols = ["booking_id", user_col, "side", "kind", file_col, "description", "created_at"]
+    insert_cols = ["booking_id", "side", "kind", "description", "created_at"]
     params = {
         "booking_id": values["booking_id"],
-        user_col: values["uploader_id"],           # نمرر بنفس الاسم المناسب
         "side": values["side"],
         "kind": values["kind"],
-        file_col: values.get("file_path"),
         "description": values.get("description"),
         "created_at": values.get("created_at") or datetime.utcnow(),
     }
 
+    # أعمدة المستخدم
+    if has_uploader and has_by_user:
+        insert_cols += ["uploader_id", "by_user_id"]
+        params["uploader_id"] = values["uploader_id"]
+        params["by_user_id"]  = values["uploader_id"]
+    elif has_uploader:
+        insert_cols.append("uploader_id")
+        params["uploader_id"] = values["uploader_id"]
+    elif has_by_user:
+        insert_cols.append("by_user_id")
+        params["by_user_id"]  = values["uploader_id"]
+    else:
+        # لا يوجد عمود للهوية (نادر جدًا) — نكمل بدونها
+        pass
+
+    # أعمدة الملف
+    fp = values.get("file_path")
+    if has_filepath and has_file:
+        insert_cols += ["file_path", "file"]
+        params["file_path"] = fp
+        params["file"]      = fp
+    elif has_filepath:
+        insert_cols.append("file_path")
+        params["file_path"] = fp
+    elif has_file:
+        insert_cols.append("file")
+        params["file"] = fp
+    else:
+        # لا يوجد عمود ملف — مقبول لو kind = note
+        pass
+
     placeholders = ", ".join([f":{c}" for c in insert_cols])
     columns_sql  = ", ".join(insert_cols)
-
     sql = f"INSERT INTO deposit_evidences ({columns_sql}) VALUES ({placeholders})"
+
     with _engine.begin() as conn:
         res = conn.exec_driver_sql(sql, params)
         try:
@@ -135,11 +173,25 @@ def _insert_evidence_row(values: Dict[str, Any]) -> int:
     return new_id
 
 def _select_evidence_rows(booking_id: int) -> List[Dict[str, Any]]:
+    """
+    نقرأ باستخدام COALESCE لنُرجع uploader_id موحد و file_path موحد مهما كان اسم العمود الحقيقي.
+    """
     cols = _evidence_cols()
-    user_col = "uploader_id" if cols["uploader_id"] else ("by_user_id" if cols["by_user_id"] else "uploader_id")
-    file_col = "file_path" if cols["file_path"] else ("file" if cols["file"] else "file_path")
+    has_uploader = cols.get("uploader_id", False)
+    has_by_user  = cols.get("by_user_id",  False)
+    has_filepath = cols.get("file_path",   False)
+    has_file     = cols.get("file",        False)
 
-    select_cols = f"id, booking_id, {user_col} as uploader_id, side, kind, {file_col} as file_path, description, created_at"
+    uploader_expr = (
+        "COALESCE(uploader_id, by_user_id)" if (has_uploader and has_by_user)
+        else ("uploader_id" if has_uploader else ("by_user_id" if has_by_user else "NULL"))
+    )
+    file_expr = (
+        "COALESCE(file_path, file)" if (has_filepath and has_file)
+        else ("file_path" if has_filepath else ("file" if has_file else "NULL"))
+    )
+
+    select_cols = f"id, booking_id, {uploader_expr} as uploader_id, side, kind, {file_expr} as file_path, description, created_at"
     sql = f"""
         SELECT {select_cols}
         FROM deposit_evidences
