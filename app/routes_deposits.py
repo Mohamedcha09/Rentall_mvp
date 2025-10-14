@@ -255,7 +255,7 @@ def dm_decision(
     decision: Literal["release", "withhold"] = Form(...),
     amount: int = Form(0),
     reason: str = Form(""),
-    finalize: int = Form(0),   # موجود عندك، نستخدمه الآن لإرسال إشعار نهائي + شارة
+    finalize: int = Form(0),   # 0=بدء مهلة، 1=تنفيذ نهائي الآن
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
@@ -265,118 +265,152 @@ def dm_decision(
 
     bk = require_booking(db, booking_id)
     pi_id = getattr(bk, "deposit_hold_intent_id", None)
+    owner: User = db.get(User, bk.owner_id)
+    renter: User = db.get(User, bk.renter_id)
 
     try:
+        # ───────────────── release: إرجاع كامل الوديعة ─────────────────
         if decision == "release":
-            if not pi_id:
-                # لا يوجد Intent لإلغائه، لكن نعتبر القرار “إرجاع كامل” إدارياً
-                # إشعارات القرار النهائي (إرجاع كامل)
-                push_notification(db, bk.owner_id, "تم إعلان القرار النهائي",
-                                  f"تم إرجاع وديعة الحجز #{bk.id} بالكامل.",
-                                  f"/bookings/flow/{bk.id}", "deposit")
-                push_notification(db, bk.renter_id, "تم إعلان القرار النهائي",
-                                  f"تم إرجاع وديعتك بالكامل لحجز #{bk.id}.",
-                                  f"/bookings/flow/{bk.id}", "deposit")
-                notify_admins(db, "قرار نهائي — إرجاع كامل (بدون Intent)",
-                              f"تم إعلان قرار نهائي بإرجاع كامل لحجز #{bk.id}.",
-                              f"/dm/deposits/{bk.id}")
-                # إعادة التوجيه حسب وجود finalize
-                return RedirectResponse(url=f"/dm/deposits/{bk.id}?{'final=1' if finalize else 'started=1'}", status_code=303)
-
-            # إلغاء الحجز في Stripe + ضبط الحالة
-            stripe.PaymentIntent.cancel(pi_id)
-            bk.deposit_status = "refunded"
-            bk.deposit_charged_amount = 0
-            _audit(db, actor=user, bk=bk, action="deposit_release_all", details={"reason": reason})
-            bk.status = "closed"
-            bk.updated_at = datetime.utcnow()
-            db.commit()
-
-            # إشعارات القرار (كما كانت)
+            if pi_id:
+                # إلغاء الحجز لدى Stripe (لا يتم خصم شيء)
+                stripe.PaymentIntent.cancel(pi_id)
+                bk.deposit_status = "refunded"
+                bk.deposit_charged_amount = 0
+                bk.status = "closed"
+                bk.updated_at = datetime.utcnow()
+                _audit(db, actor=user, bk=bk, action="deposit_release_all", details={"reason": reason})
+                db.commit()
+            # إشعارات
             push_notification(db, bk.owner_id, "قرار الوديعة — إرجاع كامل",
-                              f"تم إرجاع وديعة الحجز #{bk.id} بالكامل.",
-                              f"/bookings/flow/{bk.id}", "deposit")
+                              f"تم إرجاع وديعة الحجز #{bk.id} بالكامل.", f"/bookings/flow/{bk.id}", "deposit")
             push_notification(db, bk.renter_id, "قرار الوديعة — إرجاع كامل",
-                              f"تم إرجاع وديعتك بالكامل لحجز #{bk.id}.",
-                              f"/bookings/flow/{bk.id}", "deposit")
-            notify_admins(db, "قرار وديعة مُنفَّذ",
-                          f"إفراج كامل لحجز #{bk.id}.",
-                          f"/bookings/flow/{bk.id}")
+                              f"تم إرجاع وديعتك بالكامل لحجز #{bk.id}.", f"/bookings/flow/{bk.id}", "deposit")
+            notify_admins(db, "قرار وديعة مُنفَّذ", f"إفراج كامل لحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
 
-            # لو الزر كان “اتخاذ القرار النهائي” نرسل إشعار موحد إضافي بعنوان تم إعلان القرار النهائي
-            if finalize:
-                push_notification(db, bk.owner_id, "تم إعلان القرار النهائي",
-                                  f"تم إعلان القرار النهائي: إرجاع كامل وديعة الحجز #{bk.id}.",
-                                  f"/dm/deposits/{bk.id}", "deposit")
-                push_notification(db, bk.renter_id, "تم إعلان القرار النهائي",
-                                  f"تم إعلان القرار النهائي: إرجاع كامل وديعتك لحجز #{bk.id}.",
-                                  f"/dm/deposits/{bk.id}", "deposit")
-                notify_admins(db, "قرار نهائي مُعلن",
-                              f"booking #{bk.id} — decision=release",
-                              f"/dm/deposits/{bk.id}")
+            return RedirectResponse(url=f"/dm/deposits/{bk.id}?{'final=1' if finalize else 'started=1'}", status_code=303)
 
+        # ───────────────── withhold: خصم من الوديعة ─────────────────
         elif decision == "withhold":
             amt = max(0, int(amount or 0))
             if amt <= 0:
                 raise HTTPException(status_code=400, detail="Invalid amount")
 
-            now = datetime.utcnow()
-            deadline = now + timedelta(hours=24)
+            # finalize=0 → نفس سلوكك السابق: بدء مهلة 24h وإشعار المستأجر
+            if not finalize:
+                now = datetime.utcnow()
+                deadline = now + timedelta(hours=24)
+                bk.deposit_status = "awaiting_renter"
+                bk.dm_decision = "withhold"
+                bk.dm_decision_amount = amt
+                bk.dm_decision_note = (reason or None)
+                bk.renter_response_deadline_at = deadline
+                bk.updated_at = now
+                _audit(db, actor=user, bk=bk, action="dm_withhold_pending",
+                       details={"amount": amt, "reason": reason, "deadline": deadline.isoformat()})
+                db.commit()
 
-            bk.deposit_status = "awaiting_renter"
+                amount_txt = _fmt_money(amt)
+                reason_txt = _short_reason(reason)
+                push_notification(
+                    db, bk.owner_id, "قرار خصم قيد الانتظار",
+                    (f"تم فتح قرار خصم بمبلغ {amount_txt} على الحجز #{bk.id}."
+                     + (f" السبب: {reason_txt}" if reason_txt else "")
+                     + " — سيتم التنفيذ تلقائيًا بعد 24 ساعة ما لم يقدّم المستأجر ردًا."),
+                    f"/dm/deposits/{bk.id}", "deposit"
+                )
+                push_notification(
+                    db, bk.renter_id, "تنبيه: قرار خصم على وديعتك",
+                    (f"يوجد قرار خصم بمبلغ {amount_txt} على وديعتك في الحجز #{bk.id}."
+                     + (f" السبب: {reason_txt}." if reason_txt else "")
+                     + " لديك 24 ساعة للرد ورفع أدلة."),
+                    f"/deposits/{bk.id}/evidence/form", "deposit"
+                )
+                notify_admins(db, "قرار خصم قيد الانتظار",
+                              f"DM اقترح خصم {amount_txt} على الحجز #{bk.id} — بانتظار رد المستأجر خلال 24 ساعة.",
+                              f"/dm/deposits/{bk.id}")
+                return RedirectResponse(url=f"/dm/deposits/{bk.id}?started=1", status_code=303)
+
+            # finalize=1 → تنفيذ الخصم الحقيقي الآن بالعملة CAD
+            if not pi_id:
+                raise HTTPException(status_code=400, detail="No deposit hold found (PaymentIntent id missing)")
+
+            amt_cents = amt * 100
+            # التحقق: لا تتجاوز قيمة الحجز المحجوزة
+            pi = stripe.PaymentIntent.retrieve(pi_id)
+            if (pi.get("amount_capturable") or 0) < amt_cents:
+                raise HTTPException(status_code=400, detail="Amount exceeds capturable amount")
+
+            # تنفيذ الخصم الجزئي الحقيقي
+            captured = stripe.PaymentIntent.capture(pi_id, amount_to_capture=amt_cents)  # currency: CAD
+            charge_id = captured.get("latest_charge")
+
+            # تحويل المبلغ إلى المالك إن كان لديه حساب Stripe متصل
+            transferred_ok = False
+            try:
+                if owner and getattr(owner, "stripe_account_id", None) and getattr(owner, "payouts_enabled", False):
+                    stripe.Transfer.create(
+                        amount=amt_cents,
+                        currency="cad",
+                        destination=owner.stripe_account_id,
+                        # ربط التحويل بالعملية لسرعة الإتاحة (إن كان مسموحًا):
+                        source_transaction=charge_id if charge_id else None
+                    )
+                    transferred_ok = True
+            except Exception:
+                transferred_ok = False  # نحافظ على الأموال في رصيد المنصة وننبه الأدمن
+
+            # تحديث الحجز
+            now = datetime.utcnow()
+            bk.deposit_status = "partially_withheld"
             bk.dm_decision = "withhold"
             bk.dm_decision_amount = amt
             bk.dm_decision_note = (reason or None)
-            bk.renter_response_deadline_at = deadline
+            bk.dm_decision_at = now
+            # تجميعيًا في حال وُجدت خصومات سابقة
+            try:
+                prev = int(getattr(bk, "deposit_charged_amount", 0) or 0)
+            except Exception:
+                prev = 0
+            bk.deposit_charged_amount = prev + amt
             bk.updated_at = now
 
-            _audit(db, actor=user, bk=bk, action="dm_withhold_pending",
-                   details={"amount": amt, "reason": reason, "deadline": deadline.isoformat()})
+            _audit(db, actor=user, bk=bk, action="dm_withhold_final",
+                   details={"amount": amt, "reason": reason, "currency": "CAD", "charge_id": charge_id,
+                            "transferred_to_owner": transferred_ok})
             db.commit()
 
             amount_txt = _fmt_money(amt)
             reason_txt = _short_reason(reason)
 
-            # إشعارات “قيد الانتظار” كما هي
+            # إشعارات القرار النهائي (يستطيع الطرفان قراءة القرار عند الضغط على الإشعار)
             push_notification(
-                db, bk.owner_id, "قرار خصم قيد الانتظار",
-                (f"تم فتح قرار خصم بمبلغ {amount_txt} على الحجز #{bk.id}."
-                 + (f" السبب: {reason_txt}" if reason_txt else "")
-                 + " — سيتم التنفيذ تلقائيًا بعد 24 ساعة ما لم يقدّم المستأجر ردًا."),
+                db, bk.owner_id, "تم إعلان القرار النهائي",
+                (f"تم اقتطاع مبلغ {amount_txt} CAD من وديعة الحجز #{bk.id} لصالحك."
+                 + (f" السبب: {reason_txt}." if reason_txt else "")),
                 f"/dm/deposits/{bk.id}", "deposit"
             )
             push_notification(
-                db, bk.renter_id, "تنبيه: قرار خصم على وديعتك",
-                (f"يوجد قرار خصم بمبلغ {amount_txt} على وديعتك في الحجز #{bk.id}."
-                 + (f" السبب: {reason_txt}." if reason_txt else "")
-                 + " لديك 24 ساعة للرد ورفع أدلة."),
-                f"/deposits/{bk.id}/evidence/form", "deposit"
-            )
-            notify_admins(
-                db, "قرار خصم قيد الانتظار",
-                f"DM اقترح خصم {amount_txt} على الحجز #{bk.id} — بانتظار رد المستأجر خلال 24 ساعة.",
-                f"/dm/deposits/{bk.id}"
+                db, bk.renter_id, "تم إعلان القرار النهائي",
+                (f"تم اقتطاع مبلغ {amount_txt} CAD من وديعتك لحجز #{bk.id}."
+                 + (f" السبب: {reason_txt}." if reason_txt else "")),
+                f"/dm/deposits/{bk.id}", "deposit"
             )
 
-            # لو كان الضغط عبر “اتخاذ القرار النهائي” نرسل إشعارًا موحّدًا إضافيًا كما طلبت
-            if finalize:
-                push_notification(
-                    db, bk.owner_id, "تم إعلان القرار النهائي",
-                    (f"تم إعلان القرار النهائي: اقتطاع مبلغ {amount_txt} من وديعة الحجز #{bk.id}."
-                     + (f" السبب: {reason_txt}." if reason_txt else "")),
-                    f"/dm/deposits/{bk.id}", "deposit"
-                )
-                push_notification(
-                    db, bk.renter_id, "تم إعلان القرار النهائي",
-                    (f"تم إعلان القرار النهائي: اقتطاع مبلغ {amount_txt} من وديعتك لحجز #{bk.id}."
-                     + (f" السبب: {reason_txt}." if reason_txt else "")),
-                    f"/dm/deposits/{bk.id}", "deposit"
-                )
+            if not transferred_ok:
                 notify_admins(
-                    db, "قرار نهائي مُعلن",
-                    f"booking #{bk.id} — decision=withhold, amount={amount_txt}",
+                    db, "تحذير: لم يُحوَّل المبلغ للمالك تلقائيًا",
+                    f"تم الخصم {amount_txt} CAD من وديعة الحجز #{bk.id} لكن لم يُحوّل للمالك (لا حساب Stripe/غير مفعّل).",
                     f"/dm/deposits/{bk.id}"
                 )
+            else:
+                notify_admins(
+                    db, "خصم جزئي مُحوّل للمالك",
+                    f"تم خصم {amount_txt} CAD من وديعة الحجز #{bk.id} وتحويله لحساب المالك.",
+                    f"/dm/deposits/{bk.id}"
+                )
+
+            return RedirectResponse(url=f"/dm/deposits/{bk.id}?final=1", status_code=303)
+
         else:
             raise HTTPException(status_code=400, detail="Unknown decision")
 
@@ -384,9 +418,6 @@ def dm_decision(
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe deposit operation failed: {e}")
-
-    # إعادة التوجيه: لو Finalize فعّلنا شارة النجاح ?final=1، وإلا نُبقي السلوك القديم (?started=1)
-    return RedirectResponse(url=f"/dm/deposits/{bk.id}?{'final=1' if finalize else 'started=1'}", status_code=303)
 # ===================== بلاغ الوديعة =====================
 @router.get("/deposits/{booking_id}/report")
 def report_deposit_issue_page(
