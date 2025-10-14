@@ -17,11 +17,10 @@ from fastapi import (
     File,
 )
 from fastapi.responses import RedirectResponse
-    # ملاحظة: HTML/JSON تستخدمها ملفات أخرى
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 
-from .database import get_db
+from .database import get_db, engine as _engine
 from .models import Booking, Item, User
 from .notifications_api import push_notification, notify_admins
 
@@ -50,13 +49,9 @@ ALLOWED_EXTS = {
 }
 
 def _booking_folder(booking_id: int) -> str:
-    """
-    ../uploads/deposits/<booking_id>
-    (يبنى دائمًا من __file__ لضمان التطابق مع الماونت في main.py)
-    """
-    app_root_runtime = os.path.dirname(os.path.dirname(__file__))   # ../src
-    uploads_base_rt  = os.path.join(app_root_runtime, "uploads")    # ../src/uploads
-    deposits_dir_rt  = os.path.join(uploads_base_rt, "deposits")    # ../src/uploads/deposits
+    app_root_runtime = os.path.dirname(os.path.dirname(__file__))
+    uploads_base_rt  = os.path.join(app_root_runtime, "uploads")
+    deposits_dir_rt  = os.path.join(uploads_base_rt, "deposits")
     os.makedirs(deposits_dir_rt, exist_ok=True)
     path = os.path.join(deposits_dir_rt, str(booking_id))
     os.makedirs(path, exist_ok=True)
@@ -95,7 +90,6 @@ def _save_evidence_files(booking_id: int, files: List[UploadFile] | None) -> Lis
     return saved
 
 def _list_evidence_files(booking_id: int) -> List[str]:
-    """يُعيد قائمة الملفات الموجودة (مفلترة بأمان)."""
     folder = _booking_folder(booking_id)
     try:
         names: List[str] = []
@@ -105,20 +99,14 @@ def _list_evidence_files(booking_id: int) -> List[str]:
                 if n and (not n.startswith(".")) and _ext_ok(n):
                     names.append(n)
         names.sort()
-        print(f"[evidence] FOUND in {folder}: {names}")
         return names
-    except Exception as e:
-        print(f"[evidence] ERROR reading {folder}: {e}")
+    except Exception:
         return []
 
 def _evidence_urls(request: Request, booking_id: int) -> List[str]:
-    """يبني روابط عامة للملفات ضمن /uploads/deposits/<id>"""
     base = f"/uploads/deposits/{booking_id}"
     files = _list_evidence_files(booking_id)
-    urls = [f"{base}/{str(name)}" for name in files]
-    print(f"[evidence] URLS for #{booking_id}: {urls}")
-    return urls
-
+    return [f"{base}/{str(name)}" for name in files]
 
 # ============ Helpers ============
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
@@ -144,7 +132,6 @@ def can_manage_deposits(u: Optional[User]) -> bool:
         return True
     return bool(getattr(u, "is_deposit_manager", False))
 
-# أدوات صغيرة
 def _fmt_money(v: int | float | None) -> str:
     try:
         return f"{int(v):,}"
@@ -160,6 +147,32 @@ def _short_reason(txt: str | None, limit: int = 120) -> str:
         return s
     return s[: limit - 1] + "…"
 
+# ====== NEW: هل يوجد رد من المستأجر؟ ======
+def _has_renter_reply(db: Session, booking_id: int, bk: Booking | None = None) -> bool:
+    try:
+        # 1) إذا يوجد وقت رد محفوظ
+        if bk is not None and getattr(bk, "renter_response_at", None):
+            return True
+        # 2) إذا توجد أدلة للمستأجر في جدول deposit_evidences (أي اسم أعمدة)
+        with _engine.begin() as conn:
+            rows = conn.exec_driver_sql("PRAGMA table_info('deposit_evidences')").all()
+            cols = {r[1] for r in rows}
+            by_user = "by_user_id" in cols
+            uploader = "uploader_id" in cols
+            file_col = "file_path" if "file_path" in cols else ("file" if "file" in cols else None)
+            side_col = "side" if "side" in cols else None
+
+            # نبني استعلامًا مرنًا
+            base = "SELECT COUNT(1) AS c FROM deposit_evidences WHERE booking_id = :bid"
+            if side_col:
+                base += f" AND {side_col} = 'renter'"
+            if file_col:
+                base += f" AND {file_col} IS NOT NULL"
+            res = conn.exec_driver_sql(base, {"bid": booking_id}).first()
+            c = int(res[0]) if res and res[0] is not None else 0
+            return c > 0
+    except Exception:
+        return False
 
 # ============ قائمة القضايا (DM) ============
 @router.get("/dm/deposits")
@@ -201,7 +214,6 @@ def dm_queue(
         },
     )
 
-
 # ============ صفحة القضية للمراجع ============
 @router.get("/dm/deposits/{booking_id}")
 def dm_case_page(
@@ -210,17 +222,17 @@ def dm_case_page(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    # صلاحيات
     require_auth(user)
     if not can_manage_deposits(user):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # جلب الحجز والعنصر
     bk = require_booking(db, booking_id)
     item = db.get(Item, bk.item_id)
 
-    # ✅ نمرر روابط الأدلة الموجودة في مجلد /uploads (للتوافق مع القديم)
     evidence_urls = [str(u) for u in _evidence_urls(request, bk.id) if u]
+
+    # === NEW: حدد إن كان هناك رد من المستأجر فعليًا ===
+    has_renter_reply = _has_renter_reply(db, bk.id, bk)
 
     resp = request.app.templates.TemplateResponse(
         "dm_case.html",
@@ -231,18 +243,17 @@ def dm_case_page(
             "bk": bk,
             "booking": bk,
             "item": item,
-            "evidence": evidence_urls,  # الاسم القديم (للتوافق)
-            "ev_list": evidence_urls,   # الاسم الجديد (الموحّد)
+            "evidence": evidence_urls,
+            "ev_list": evidence_urls,
+            "has_renter_reply": has_renter_reply,   # <-- أهم شيء
         },
     )
 
-    # رؤوس لمنع الكاش + علامة نسخة للمساعدة
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     resp.headers["Pragma"] = "no-cache"
     resp.headers["Expires"] = "0"
-    resp.headers["X-Route-Version"] = "deposits-v3"
+    resp.headers["X-Route-Version"] = "deposits-v4"
     return resp
-
 
 # ============ تنفيذ القرار ============
 @router.post("/dm/deposits/{booking_id}/decision")
@@ -265,37 +276,23 @@ def dm_decision(
         if decision == "release":
             if not pi_id:
                 return RedirectResponse(url=f"/dm/deposits/{bk.id}", status_code=303)
-
-            # إلغاء التفويض = إرجاع كامل
             stripe.PaymentIntent.cancel(pi_id)
             bk.deposit_status = "refunded"
             bk.deposit_charged_amount = 0
             _audit(db, actor=user, bk=bk, action="deposit_release_all", details={"reason": reason})
-
             bk.status = "closed"
             bk.updated_at = datetime.utcnow()
-
             db.commit()
 
-            # إشعارات
-            push_notification(
-                db, bk.owner_id,
-                "قرار الوديعة — إرجاع كامل",
-                f"تم إرجاع وديعة الحجز #{bk.id} بالكامل.",
-                f"/bookings/flow/{bk.id}",
-                "deposit"
-            )
-            push_notification(
-                db, bk.renter_id,
-                "قرار الوديعة — إرجاع كامل",
-                f"تم إرجاع وديعتك بالكامل لحجز #{bk.id}.",
-                f"/bookings/flow/{bk.id}",
-                "deposit"
-            )
+            push_notification(db, bk.owner_id, "قرار الوديعة — إرجاع كامل",
+                              f"تم إرجاع وديعة الحجز #{bk.id} بالكامل.",
+                              f"/bookings/flow/{bk.id}", "deposit")
+            push_notification(db, bk.renter_id, "قرار الوديعة — إرجاع كامل",
+                              f"تم إرجاع وديعتك بالكامل لحجز #{bk.id}.",
+                              f"/bookings/flow/{bk.id}", "deposit")
             notify_admins(db, "قرار وديعة مُنفَّذ", f"إفراج كامل لحجز #{bk.id}.", f"/bookings/flow/{bk.id}")
 
         elif decision == "withhold":
-            # فقط فتح مهلة الرد (لا تنفيذ فوري)
             amt = max(0, int(amount or 0))
             if amt <= 0:
                 raise HTTPException(status_code=400, detail="Invalid amount")
@@ -310,38 +307,27 @@ def dm_decision(
             bk.renter_response_deadline_at = deadline
             bk.updated_at = now
 
-            _audit(
-                db, actor=user, bk=bk, action="dm_withhold_pending",
-                details={"amount": amt, "reason": reason, "deadline": deadline.isoformat()}
-            )
-
+            _audit(db, actor=user, bk=bk, action="dm_withhold_pending",
+                   details={"amount": amt, "reason": reason, "deadline": deadline.isoformat()})
             db.commit()
 
             amount_txt = _fmt_money(amt)
             reason_txt = _short_reason(reason)
 
             push_notification(
-                db, bk.owner_id,
-                "قرار خصم قيد الانتظار",
-                (
-                    f"تم فتح قرار خصم بمبلغ {amount_txt} على الحجز #{bk.id}."
-                    + (f" السبب: {reason_txt}" if reason_txt else "")
-                    + " — سيتم التنفيذ تلقائيًا بعد 24 ساعة ما لم يقدّم المستأجر ردًا."
-                ),
-                f"/dm/deposits/{bk.id}",
-                "deposit",
+                db, bk.owner_id, "قرار خصم قيد الانتظار",
+                (f"تم فتح قرار خصم بمبلغ {amount_txt} على الحجز #{bk.id}."
+                 + (f" السبب: {reason_txt}" if reason_txt else "")
+                 + " — سيتم التنفيذ تلقائيًا بعد 24 ساعة ما لم يقدّم المستأجر ردًا."),
+                f"/dm/deposits/{bk.id}", "deposit"
             )
 
             push_notification(
-                db, bk.renter_id,
-                "تنبيه: قرار خصم على وديعتك",
-                (
-                    f"يوجد قرار خصم بمبلغ {amount_txt} على وديعتك في الحجز #{bk.id}."
-                    + (f" السبب: {reason_txt}." if reason_txt else "")
-                    + " لديك 24 ساعة للرد ورفع أدلة."
-                ),
-                f"/deposits/{bk.id}/evidence/form",
-                "deposit",
+                db, bk.renter_id, "تنبيه: قرار خصم على وديعتك",
+                (f"يوجد قرار خصم بمبلغ {amount_txt} على وديعتك في الحجز #{bk.id}."
+                 + (f" السبب: {reason_txt}." if reason_txt else "")
+                 + " لديك 24 ساعة للرد ورفع أدلة."),
+                f"/deposits/{bk.id}/evidence/form", "deposit"
             )
 
             notify_admins(
@@ -349,7 +335,6 @@ def dm_decision(
                 f"DM اقترح خصم {amount_txt} على الحجز #{bk.id} — بانتظار رد المستأجر خلال 24 ساعة.",
                 f"/dm/deposits/{bk.id}"
             )
-
         else:
             raise HTTPException(status_code=400, detail="Unknown decision")
 
@@ -358,9 +343,7 @@ def dm_decision(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe deposit operation failed: {e}")
 
-    # العودة للصفحة مع ?started=1 لعرض تنبيه التفعيل
     return RedirectResponse(url=f"/dm/deposits/{bk.id}?started=1", status_code=303)
-
 
 # ===================== بلاغ الوديعة =====================
 @router.get("/deposits/{booking_id}/report")
@@ -387,11 +370,7 @@ def report_deposit_issue_page(
         },
     )
 
-
 # ==== سجل تدقيقي ====
-from sqlalchemy import text
-from .database import engine as _engine
-
 def _audit(db: Session, actor: Optional[User], bk: Booking, action: str, details: dict | None = None):
     try:
         with _engine.begin() as conn:
@@ -428,7 +407,6 @@ def _audit(db: Session, actor: Optional[User], bk: Booking, action: str, details
     except Exception:
         pass
 
-
 # ==== إشعار مديري الوديعة ====
 def notify_dms(db: Session, title: str, body: str = "", url: str = ""):
     dms = db.query(User).filter(
@@ -436,7 +414,6 @@ def notify_dms(db: Session, title: str, body: str = "", url: str = ""):
     ).all()
     for u in dms:
         push_notification(db, u.id, title, body, url, kind="deposit")
-
 
 # ==== إرسال البلاغ ====
 @router.post("/deposits/{booking_id}/report")
@@ -491,7 +468,6 @@ def report_deposit_issue(
         status_code=200
     )
 
-
 # ==== ردّ المستأجر ====
 @router.post("/deposits/{booking_id}/renter-response")
 def renter_response_to_issue(
@@ -509,6 +485,7 @@ def renter_response_to_issue(
 
     try:
         setattr(bk, "updated_at", datetime.utcnow())
+        setattr(bk, "renter_response_at", datetime.utcnow())
     except Exception:
         pass
     db.commit()
@@ -523,7 +500,6 @@ def renter_response_to_issue(
     _audit(db, actor=user, bk=bk, action="renter_response", details={"comment": renter_comment})
 
     return RedirectResponse(f"/dm/deposits/{bk.id}", status_code=303)
-
 
 # ==== استلام القضية ====
 @router.post("/dm/deposits/{booking_id}/claim")
@@ -549,7 +525,6 @@ def dm_claim_case(
         pass
 
     return RedirectResponse(f"/dm/deposits/{bk.id}", status_code=303)
-
 
 # ===== DEBUG =====
 @router.get("/debug/uploads/{booking_id}")
@@ -583,7 +558,6 @@ def debug_evidence(booking_id: int, request: Request):
 def debug_open_file(booking_id: int, name: str):
     return {"public_url": f"/uploads/deposits/{booking_id}/{name}"}
 
-# ===== مسار تشخيصي إضافي =====
 @router.get("/dm/deposits/{booking_id}/_ctx")
 def dm_case_context(
     booking_id: int,
@@ -592,13 +566,12 @@ def dm_case_context(
 ):
     bk = require_booking(db, booking_id)
     item = db.get(Item, bk.item_id)
-    ev = _evidence_urls(Request(scope={"type": "http"}), bk.id)  # build-only
+    ev = _evidence_urls(Request(scope={"type": "http"}), bk.id)
     return {
         "bk": {"id": bk.id, "status": bk.status, "deposit_status": bk.deposit_status},
         "item": {"id": item.id if item else None, "title": item.title if item else None},
         "evidence": ev,
     }
-
 
 # ===== [NEW] بدء مهلة ردّ المستأجر 24h + إشعار =====
 @router.post("/dm/deposits/{booking_id}/start-window")
