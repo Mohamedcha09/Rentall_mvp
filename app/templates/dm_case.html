@@ -67,7 +67,7 @@
     </div>
   {% endif %}
 
-  <!-- الأدلة -->
+  <!-- الأدلة (المالك + المستأجر) -->
   <h3>الأدلة المرفوعة</h3>
   <div id="ev-container" class="card" style="padding:8px;margin-bottom:12px;">
     <div style="font-size:13px;">
@@ -101,13 +101,13 @@
       <button class="btn btn-success" type="submit">تنفيذ القرار</button>
 
       {% if (bk.deposit_status or '') == 'awaiting_renter' %}
-      <!-- المرحلة 1: فقط عند انتظار رد المستأجر -->
+      <!-- المرحلة 1: قبل رد المستأجر — أظهر زر بدء المهلة فقط -->
       <button id="btn-start-window" class="btn" type="button"
               style="background:#6f42c1;color:#fff;border-radius:10px;">
         بدء مهلة الرد 24h وإشعار المستأجر
       </button>
       {% else %}
-      <!-- المرحلة 2+: بعد رد المستأجر → الزر يتبدّل -->
+      <!-- المرحلة 2: بعد رد المستأجر — غيّر الزر إلى اتخاذ القرار النهائي -->
       <button id="btn-finalize-now" class="btn" type="button"
               style="background:#6f42c1;color:#fff;border-radius:10px;">
         اتخاذ القرار النهائي الآن
@@ -134,8 +134,10 @@
 {% block scripts %}
 <script>
 (function(){
+  // قد يرسل السيرفر قوائم قديمة للصور (توافقًا مع إصدارات سابقة)
   const serverEvidence = {{ evidence|tojson if evidence is defined else 'null' }};
   const serverEvList   = {{ ev_list|tojson   if ev_list   is defined else 'null' }};
+
   var grid    = document.getElementById('ev-grid');
   var countEl = document.getElementById('ev-count');
   var emptyEl = document.getElementById('ev-empty');
@@ -200,13 +202,13 @@
 
   var bkId = {{ bk.id }};
 
-  // 1) أعرض الأدلة من قاعدة البيانات (يشمل المالك + المستأجر)
+  // (1) أعرض الأدلة المخزنة في قاعدة البيانات (مالك + مستأجر) — الأحدث أولًا
   fetch('/deposits/' + bkId + '/evidence', {credentials:'include'})
     .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
     .then(function(data){ renderFromJson(data && data.items); })
     .catch(function(){ /* تجاهل */ })
     .finally(function(){
-      // 2) أدمج الأدلة القديمة الموجودة في /uploads (إن وُجدت)
+      // (2) أدمج الأدلة القديمة من مجلد /uploads إن وُجدت (توافق للخلف)
       var fromServer = Array.isArray(serverEvidence) && serverEvidence.length ? serverEvidence
                      : (Array.isArray(serverEvList) && serverEvList.length ? serverEvList : null);
       if (fromServer){ renderUrls(fromServer); }
@@ -223,6 +225,7 @@
   var selDecision = document.getElementById('decision');
   var amount = document.getElementById('amount');
 
+  // المرحلة 1: بدء مهلة الرد 24h
   var btnStart = document.getElementById('btn-start-window');
   if (btnStart && form && selDecision && amount){
     btnStart.addEventListener('click', function(){
@@ -237,6 +240,7 @@
     });
   }
 
+  // المرحلة 2: بعد رد المستأجر — اتخاذ القرار النهائي
   var btnFinalize = document.getElementById('btn-finalize-now');
   if (btnFinalize && form){
     btnFinalize.addEventListener('click', function(){
