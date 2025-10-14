@@ -150,19 +150,13 @@ def _short_reason(txt: str | None, limit: int = 120) -> str:
 # ====== NEW: هل يوجد رد من المستأجر؟ ======
 def _has_renter_reply(db: Session, booking_id: int, bk: Booking | None = None) -> bool:
     try:
-        # 1) إذا يوجد وقت رد محفوظ
         if bk is not None and getattr(bk, "renter_response_at", None):
             return True
-        # 2) إذا توجد أدلة للمستأجر في جدول deposit_evidences (أي اسم أعمدة)
         with _engine.begin() as conn:
             rows = conn.exec_driver_sql("PRAGMA table_info('deposit_evidences')").all()
             cols = {r[1] for r in rows}
-            by_user = "by_user_id" in cols
-            uploader = "uploader_id" in cols
             file_col = "file_path" if "file_path" in cols else ("file" if "file" in cols else None)
             side_col = "side" if "side" in cols else None
-
-            # نبني استعلامًا مرنًا
             base = "SELECT COUNT(1) AS c FROM deposit_evidences WHERE booking_id = :bid"
             if side_col:
                 base += f" AND {side_col} = 'renter'"
@@ -231,7 +225,6 @@ def dm_case_page(
 
     evidence_urls = [str(u) for u in _evidence_urls(request, bk.id) if u]
 
-    # === NEW: حدد إن كان هناك رد من المستأجر فعليًا ===
     has_renter_reply = _has_renter_reply(db, bk.id, bk)
 
     resp = request.app.templates.TemplateResponse(
@@ -245,7 +238,7 @@ def dm_case_page(
             "item": item,
             "evidence": evidence_urls,
             "ev_list": evidence_urls,
-            "has_renter_reply": has_renter_reply,   # <-- أهم شيء
+            "has_renter_reply": has_renter_reply,
         },
     )
 
@@ -262,6 +255,7 @@ def dm_decision(
     decision: Literal["release", "withhold"] = Form(...),
     amount: int = Form(0),
     reason: str = Form(""),
+    finalize: int = Form(0),   # NEW: لإظهار رسالة النجاح بعد القرار
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
@@ -284,13 +278,13 @@ def dm_decision(
             bk.updated_at = datetime.utcnow()
             db.commit()
 
-            push_notification(db, bk.owner_id, "قرار الوديعة — إرجاع كامل",
-                              f"تم إرجاع وديعة الحجز #{bk.id} بالكامل.",
-                              f"/bookings/flow/{bk.id}", "deposit")
-            push_notification(db, bk.renter_id, "قرار الوديعة — إرجاع كامل",
-                              f"تم إرجاع وديعتك بالكامل لحجز #{bk.id}.",
-                              f"/bookings/flow/{bk.id}", "deposit")
-            notify_admins(db, "قرار وديعة مُنفَّذ", f"إفراج كامل لحجز #{bk.id}.", f"/bookings/flow/{bk.id}")
+            # إشعارات القرار النهائي (إرجاع كامل)
+            title = "تم إعلان القرار النهائي"
+            body_owner  = f"تم إرجاع وديعة الحجز #{bk.id} بالكامل."
+            body_renter = f"تم إرجاع وديعتك بالكامل لحجز #{bk.id}."
+            push_notification(db, bk.owner_id, title, body_owner,  f"/bookings/flow/{bk.id}", "deposit")
+            push_notification(db, bk.renter_id, title, body_renter, f"/bookings/flow/{bk.id}", "deposit")
+            notify_admins(db, "قرار نهائي — إرجاع كامل", f"تم إعلان قرار نهائي بإرجاع كامل لحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
 
         elif decision == "withhold":
             amt = max(0, int(amount or 0))
@@ -343,6 +337,10 @@ def dm_decision(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe deposit operation failed: {e}")
 
+    # بعد التنفيذ: إذا كان finalize=1 نعرض تنبيه النجاح
+    if finalize:
+        return RedirectResponse(url=f"/dm/deposits/{bk.id}?final=1", status_code=303)
+    # الافتراضي السابق
     return RedirectResponse(url=f"/dm/deposits/{bk.id}?started=1", status_code=303)
 
 # ===================== بلاغ الوديعة =====================

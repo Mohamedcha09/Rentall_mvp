@@ -29,6 +29,30 @@
     </script>
   {% endif %}
 
+  {# ==== تنبيه نجاح عند تنفيذ القرار النهائي (?final=1) ==== #}
+  {% if request.query_params.get('final') in ['1', 'true', 'yes'] %}
+    <div id="final-ok" class="card"
+         style="padding:12px;margin-bottom:16px;border-left:6px solid #2ecc71;background:#ecfff1;">
+      <div style="font-weight:700;margin-bottom:4px;">تم تنفيذ القرار النهائي</div>
+      <div>
+        تم تنفيذ القرار النهائي وتم إرسال الإشعارات للطرفين.
+      </div>
+    </div>
+    <script>
+      (function () {
+        setTimeout(function(){ var el = document.getElementById('final-ok'); if (el) el.style.display='none'; }, 6000);
+        try {
+          var url = new URL(window.location.href);
+          if (url.searchParams.has('final')) {
+            url.searchParams.delete('final');
+            var q = url.searchParams.toString();
+            window.history.replaceState({}, document.title, url.pathname + (q ? '?' + q : '') + url.hash);
+          }
+        } catch(e){}
+      })();
+    </script>
+  {% endif %}
+
   <!-- معلومات عامة -->
   <div class="card" style="padding:16px;margin-bottom:16px;">
     <div><b>العنصر:</b> {{ (item.title if item else "—") }}</div>
@@ -296,6 +320,13 @@
 
   if (btnFinalize && form){
     btnFinalize.addEventListener('click', function(){
+      // نضيف finalize=1 كحقل مخفي لعرض تنبيه النجاح بعد التنفيذ
+      var h = document.createElement('input');
+      h.type = 'hidden';
+      h.name = 'finalize';
+      h.value = '1';
+      form.appendChild(h);
+
       form.action = '/dm/deposits/{{ bk.id }}/decision';
       form.submit();
     });
