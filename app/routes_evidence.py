@@ -1,4 +1,3 @@
-# app/routes_evidence.py
 from __future__ import annotations
 
 import os
@@ -21,8 +20,8 @@ router = APIRouter(tags=["deposit-evidence"])
 # إعدادات الحفظ / الامتدادات
 # =========================
 BASE_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = BASE_DIR.parent                  # -> /opt/render/project/src
-UPLOADS_DIR = PROJECT_ROOT / "uploads"          # -> /opt/render/project/src/uploads ✅
+PROJECT_ROOT = BASE_DIR.parent
+UPLOADS_DIR = PROJECT_ROOT / "uploads"
 DEPOSITS_DIR = UPLOADS_DIR / "deposits"
 
 ALLOWED_IMAGE_EXTS = {"jpg", "jpeg", "png", "webp", "gif"}
@@ -89,11 +88,6 @@ def save_upload_file(dst_path: Path, up: UploadFile) -> None:
 # Helpers: طبقة توافق مع الجدول (uploader_id/by_user_id, file_path/file)
 # =========================
 def _evidence_cols() -> Dict[str, bool]:
-    """
-    نكشف وجود الأعمدة في deposit_evidences لنُعامل الفروقات:
-    - uploader_id / by_user_id
-    - file_path / file
-    """
     cols = {
         "id": False, "booking_id": False, "uploader_id": False, "by_user_id": False,
         "side": False, "kind": False, "file_path": False, "file": False,
@@ -110,10 +104,6 @@ def _evidence_cols() -> Dict[str, bool]:
     return cols
 
 def _insert_evidence_row(values: Dict[str, Any]) -> int:
-    """
-    يُدخل صفًا في deposit_evidences مع دعم كلا الاسمين (uploader_id/by_user_id) و (file_path/file).
-    لو العمودين موجودين نملأهما معاً بنفس القيمة لضمان عدم كسر قيود NOT NULL.
-    """
     cols = _evidence_cols()
     has_uploader = cols.get("uploader_id", False)
     has_by_user  = cols.get("by_user_id",  False)
@@ -129,7 +119,6 @@ def _insert_evidence_row(values: Dict[str, Any]) -> int:
         "created_at": values.get("created_at") or datetime.utcnow(),
     }
 
-    # أعمدة المستخدم
     if has_uploader and has_by_user:
         insert_cols += ["uploader_id", "by_user_id"]
         params["uploader_id"] = values["uploader_id"]
@@ -140,10 +129,7 @@ def _insert_evidence_row(values: Dict[str, Any]) -> int:
     elif has_by_user:
         insert_cols.append("by_user_id")
         params["by_user_id"]  = values["uploader_id"]
-    else:
-        pass
 
-    # أعمدة الملف
     fp = values.get("file_path")
     if has_filepath and has_file:
         insert_cols += ["file_path", "file"]
@@ -155,8 +141,6 @@ def _insert_evidence_row(values: Dict[str, Any]) -> int:
     elif has_file:
         insert_cols.append("file")
         params["file"] = fp
-    else:
-        pass
 
     placeholders = ", ".join([f":{c}" for c in insert_cols])
     columns_sql  = ", ".join(insert_cols)
@@ -171,9 +155,6 @@ def _insert_evidence_row(values: Dict[str, Any]) -> int:
     return new_id
 
 def _select_evidence_rows(booking_id: int) -> List[Dict[str, Any]]:
-    """
-    نقرأ باستخدام COALESCE لنُرجع uploader_id موحد و file_path موحد مهما كان اسم العمود الحقيقي.
-    """
     cols = _evidence_cols()
     has_uploader = cols.get("uploader_id", False)
     has_by_user  = cols.get("by_user_id",  False)
@@ -223,7 +204,6 @@ async def upload_deposit_evidence(
     bk = require_booking(db, booking_id)
     side = user_side_for_booking(user, bk)
 
-    # حماية عدد الملفات
     files = files or []
     if len(files) > MAX_FILES_PER_REQUEST:
         raise HTTPException(status_code=400, detail=f"Max {MAX_FILES_PER_REQUEST} files per request")
@@ -233,11 +213,10 @@ async def upload_deposit_evidence(
     saved_files: List[str] = []
     comment = (description or "").strip()
 
-    # أنشئ المجلد
     evidence_dir = DEPOSITS_DIR / str(bk.id) / side
     ensure_dirs(evidence_dir)
 
-    # 1) ملاحظة فقط (بدون ملف)
+    # 1) ملاحظة فقط
     if not files and comment:
         ev_id = _insert_evidence_row({
             "booking_id": bk.id,
@@ -268,7 +247,7 @@ async def upload_deposit_evidence(
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to store file: {e}")
 
-        # [FIX] مسار عام ثابت للعرض عبر StaticFiles — لا نعيد المسار المطلق أبداً
+        # ✅ مسار عام ثابت لعرض الصور/الفيديو فورًا
         rel_path = f"/uploads/deposits/{bk.id}/{side}/{stored_name}"
 
         kind = classify_kind(ext)
@@ -289,7 +268,6 @@ async def upload_deposit_evidence(
     if not saved_any:
         raise HTTPException(status_code=400, detail="No files nor description provided")
 
-    # تحديثات عامة
     now = datetime.utcnow()
     try:
         setattr(bk, "updated_at", now)
@@ -297,14 +275,12 @@ async def upload_deposit_evidence(
     except Exception:
         pass
 
-    # =========================
-    # إذا رفع المستأجر أثناء انتظار ردّه → نحولها إلى نزاع ونلغي المهلة
-    # =========================
+    # ===== منطق المرحلة 2: المستأجر يرد أثناء الانتظار → تحويل الحالة + إشعار + تبديل الزر في الواجهة =====
     try:
         current_status = (getattr(bk, "deposit_status", None) or "").lower()
         if side == "renter" and current_status == "awaiting_renter":
             try:
-                bk.deposit_status = "in_dispute"
+                bk.deposit_status = "in_dispute"   # ← هذا الذي يجعل الزر يتبدّل في dm_case.html
                 bk.status = "in_review"
             except Exception:
                 pass
@@ -375,7 +351,6 @@ async def upload_deposit_evidence(
                 f"/bookings/flow/{bk.id}", "deposit"
             )
         else:
-            # manager
             push_notification(
                 db, bk.owner_id, "تحديث على القضية",
                 f"قام متحكّم الوديعة برفع/إرفاق أدلة على قضية #{bk.id}.",
@@ -390,7 +365,6 @@ async def upload_deposit_evidence(
     except Exception:
         pass
 
-    # دعم JSON أو ريديركت
     accept = (request.headers.get("accept") or "").lower()
     if "application/json" in accept:
         return JSONResponse({"ok": True, "saved_ids": saved_ids})
@@ -398,7 +372,7 @@ async def upload_deposit_evidence(
     return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
 # =========================
-# API: جلب الأدلة بشكل JSON (يقرأ ديناميكيًا حسب أسماء الأعمدة)
+# API: جلب الأدلة بشكل JSON
 # =========================
 @router.get("/deposits/{booking_id}/evidence")
 def list_deposit_evidence(
@@ -406,13 +380,9 @@ def list_deposit_evidence(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    يُرجع قائمة الأدلة المرفوعة للحجز بترتيب زمني هابط (الأحدث أولًا).
-    يدعم كلا الاسمين uploader_id/by_user_id وأيضًا file_path/file.
-    """
     require_auth(user)
     bk = require_booking(db, booking_id)
-    _ = user_side_for_booking(user, bk)  # سيثير 403 تلقائيًا إذا ليس مخوّل
+    _ = user_side_for_booking(user, bk)
 
     rows = _select_evidence_rows(booking_id)
 
@@ -444,9 +414,6 @@ def simple_evidence_form(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    صفحة بسيطة لاختبار الرفع يدويًا (اختياري).
-    """
     require_auth(user)
     bk = require_booking(db, booking_id)
     _ = user_side_for_booking(user, bk)

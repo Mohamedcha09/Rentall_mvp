@@ -101,13 +101,13 @@
       <button class="btn btn-success" type="submit">تنفيذ القرار</button>
 
       {% if (bk.deposit_status or '') == 'awaiting_renter' %}
-      <!-- عند انتظار رد: أظهر زر بدء المهلة -->
+      <!-- المرحلة 1: فقط عند انتظار رد المستأجر -->
       <button id="btn-start-window" class="btn" type="button"
               style="background:#6f42c1;color:#fff;border-radius:10px;">
         بدء مهلة الرد 24h وإشعار المستأجر
       </button>
       {% else %}
-      <!-- بعد ردّ المستأجر: غيّر الزر -->
+      <!-- المرحلة 2+: بعد رد المستأجر → الزر يتبدّل -->
       <button id="btn-finalize-now" class="btn" type="button"
               style="background:#6f42c1;color:#fff;border-radius:10px;">
         اتخاذ القرار النهائي الآن
@@ -200,13 +200,13 @@
 
   var bkId = {{ bk.id }};
 
-  // 1) أعرض الأدلة من قاعدة البيانات (الطرفين)
+  // 1) أعرض الأدلة من قاعدة البيانات (يشمل المالك + المستأجر)
   fetch('/deposits/' + bkId + '/evidence', {credentials:'include'})
     .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
     .then(function(data){ renderFromJson(data && data.items); })
     .catch(function(){ /* تجاهل */ })
     .finally(function(){
-      // 2) أدمج الأدلة القديمة الموجودة في مجلد /uploads (إن وُجدت) — دمج دائمًا
+      // 2) أدمج الأدلة القديمة الموجودة في /uploads (إن وُجدت)
       var fromServer = Array.isArray(serverEvidence) && serverEvidence.length ? serverEvidence
                      : (Array.isArray(serverEvList) && serverEvList.length ? serverEvList : null);
       if (fromServer){ renderUrls(fromServer); }
