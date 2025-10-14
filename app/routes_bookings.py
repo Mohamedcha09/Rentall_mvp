@@ -77,7 +77,45 @@ def _try_capture_stripe_rent(bk: Booking) -> bool:
     except Exception:
         return False
 
-# [ADDED helpers] مهلات وسياسة الوقت
+# [ADDED] ====== إنشاء تفويض وديعة Stripe (manual capture) وتخزينه في الحجز ======
+def _ensure_deposit_hold(bk: Booking) -> bool:
+    """
+    ينشئ PaymentIntent (manual capture) للوديعة إذا كان مفقودًا،
+    ويحفظ id في booking.deposit_hold_intent_id.
+    يرجع True إذا صار عندنا وديعة، False لو فشل.
+    """
+    try:
+        import stripe
+        sk = os.getenv("STRIPE_SECRET_KEY", "")
+        if not sk:
+            return False
+        stripe.api_key = sk
+
+        # إذا موجود سابقًا لا نكرر الإنشاء
+        if getattr(bk, "deposit_hold_intent_id", None):
+            return True
+
+        amount = int(getattr(bk, "deposit_amount", 0) or 0)
+        if amount <= 0:
+            return False
+
+        pi = stripe.PaymentIntent.create(
+            amount=amount * 100,                 # Stripe بالسنت
+            currency="cad",                      # العملة CAD كما طلبت
+            capture_method="manual",             # manual capture للوديعة
+            description=f"Deposit hold for booking #{bk.id}",
+        )
+
+        bk.deposit_hold_intent_id = pi["id"]
+        try:
+            bk.deposit_status = "held"
+        except Exception:
+            pass
+        return True
+    except Exception:
+        return False
+
+# [ADDED] مهلات وسياسة الوقت (كما هي لديك)
 DISPUTE_WINDOW_HOURS = 48  # مهلة البلاغ بعد الإرجاع
 RENTER_REPLY_WINDOW_HOURS = 48  # مهلة رد المستأجر (للعرض فقط)
 
@@ -700,3 +738,27 @@ def bookings_index(
             "view": view,
         },
     )
+
+# [ADDED] ===== مسار سريع لإنشاء تفويض وديعة يدويًا لحجز معيّن =====
+@router.post("/api/stripe/hold/{booking_id}")
+def api_create_deposit_hold(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    ينشئ PaymentIntent manual-capture بعملة CAD للوديعة إذا كان مفقودًا
+    ويخزن المعرّف في booking.deposit_hold_intent_id
+    استخدامه مرّة واحدة للحجز الذي يظهر فيه "No deposit on this booking".
+    """
+    require_auth(user)
+    bk = db.get(Booking, booking_id)
+    if not bk:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    ok = _ensure_deposit_hold(bk)
+    if not ok:
+        raise HTTPException(status_code=400, detail="Failed to create deposit hold")
+
+    db.commit()
+    return {"ok": True, "deposit_hold_intent_id": bk.deposit_hold_intent_id}
