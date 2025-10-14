@@ -5,6 +5,7 @@
 <div class="container">
   <h2>قضية وديعة #{{ bk.id }}</h2>
 
+  {# ==== تنبيه نجاح عند بدء المهلة (?started=1) ==== #}
   {% if request.query_params.get('started') in ['1', 'true', 'yes'] %}
     <div id="start-ok" class="card"
          style="padding:12px;margin-bottom:16px;border-left:6px solid #2ecc71;background:#ecfff1;">
@@ -28,6 +29,7 @@
     </script>
   {% endif %}
 
+  <!-- معلومات عامة -->
   <div class="card" style="padding:16px;margin-bottom:16px;">
     <div><b>العنصر:</b> {{ (item.title if item else "—") }}</div>
     <div><b>المالك:</b> #{{ bk.owner_id }} — <b>المستأجر:</b> #{{ bk.renter_id }}</div>
@@ -48,7 +50,8 @@
     {% endif %}
   </div>
 
-  {% if (bk.deposit_status or '') == 'awaiting_renter' and not has_renter_reply %}
+  <!-- إشعار حالة الانتظار يظهر فقط إذا لا يوجد رد من المستأجر حتى الآن -->
+  {% if (bk.deposit_status or '') == 'awaiting_renter' and not (has_renter_reply or false) %}
     <div class="card" style="padding:12px;margin-bottom:16px;border-left:6px solid #6f42c1;">
       <div style="font-weight:700;margin-bottom:6px;">تم إشعار المستأجر وتفعيل تنفيذ القرار تلقائيًا</div>
       <div>لدى المستأجر مهلة للرد حتى:
@@ -64,15 +67,30 @@
     </div>
   {% endif %}
 
+  <!-- الأدلة (مفصولة حسب الجهة) -->
   <h3>الأدلة المرفوعة</h3>
-  <div id="ev-container" class="card" style="padding:8px;margin-bottom:12px;">
-    <div style="font-size:13px;">
-      Evidence — <b id="ev-count">0</b>
+
+  <div class="card" style="padding:12px;margin-bottom:12px;">
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <!-- أدلة المالك -->
+      <div style="flex:1 1 360px;min-width:320px;">
+        <h4 style="margin-top:0;">أدلة المالك</h4>
+        <div style="font-size:13px;">Owner — <b id="ev-owner-count">0</b></div>
+        <div id="ev-owner-grid" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;"></div>
+        <div id="ev-owner-empty" class="muted" style="margin-top:8px;">لا توجد أدلة للمالك.</div>
+      </div>
+
+      <!-- أدلة المستأجر -->
+      <div style="flex:1 1 360px;min-width:320px;">
+        <h4 style="margin-top:0;">أدلة المستأجر</h4>
+        <div style="font-size:13px;">Renter — <b id="ev-renter-count">0</b></div>
+        <div id="ev-renter-grid" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;"></div>
+        <div id="ev-renter-empty" class="muted" style="margin-top:8px;">لا توجد أدلة للمستأجر.</div>
+      </div>
     </div>
-    <div id="ev-grid" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;"></div>
-    <div id="ev-empty" class="muted" style="margin-top:8px;">لا توجد ملفات أدلة.</div>
   </div>
 
+  <!-- نموذج القرار (لـ DM) -->
   <form id="dm-decision-form" action="/dm/deposits/{{ bk.id }}/decision" method="post" class="card" style="padding:16px;gap:12px;">
     <h3 style="margin-top:0;">اتخاذ القرار النهائي</h3>
 
@@ -92,30 +110,25 @@
     <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;">
       <a class="btn btn-secondary" href="/dm/deposits">رجوع</a>
 
+      <!-- زر تنفيذ القرار التقليدي -->
       <button class="btn btn-success" type="submit">تنفيذ القرار</button>
 
-      {% if has_renter_reply %}
-        <button id="btn-finalize-now" class="btn" type="button"
-                style="background:#6f42c1;color:#fff;border-radius:10px;">
-          اتخاذ القرار النهائي الآن
-        </button>
-      {% else %}
-        <button id="btn-start-window" class="btn" type="button"
-                style="background:#6f42c1;color:#fff;border-radius:10px;">
-          بدء مهلة الرد 24h وإشعار المستأجر
-        </button>
-      {% endif %}
+      <!-- نعرض أحد الزرين حسب الحالة (يُضبط بالـJS أيضًا) -->
+      <button id="btn-start-window" class="btn" type="button"
+              style="background:#6f42c1;color:#fff;border-radius:10px;display:none;">
+        بدء مهلة الرد 24h وإشعار المستأجر
+      </button>
+
+      <button id="btn-finalize-now" class="btn" type="button"
+              style="background:#6f42c1;color:#fff;border-radius:10px;display:none;">
+        اتخاذ القرار النهائي الآن
+      </button>
     </div>
 
-    <div class="muted" style="margin-top:10px;font-size:12px;">
-      {% if has_renter_reply %}
-        بعد وصول ردّ المستأجر يمكنك اتخاذ القرار النهائي مباشرة.
-      {% else %}
-        زر “بدء مهلة الرد 24h” يثبت القرار على “اقتطاع من الوديعة” ويضبط المهلة 24 ساعة ويُرسل إشعارًا للمستأجر.
-      {% endif %}
-    </div>
+    <div id="hint-text" class="muted" style="margin-top:10px;font-size:12px;"></div>
   </form>
 
+  <!-- استلام القضية -->
   <form action="/dm/deposits/{{ bk.id }}/claim" method="post" style="margin-top:12px;">
     <button class="btn btn-outline">استلام القضية (اختياري)</button>
   </form>
@@ -125,18 +138,35 @@
 {% block scripts %}
 <script>
 (function(){
+  // ===== متغيرات من السيرفر =====
   const serverEvidence = {{ evidence|tojson if evidence is defined else 'null' }};
   const serverEvList   = {{ ev_list|tojson   if ev_list   is defined else 'null' }};
-  var grid    = document.getElementById('ev-grid');
-  var countEl = document.getElementById('ev-count');
-  var emptyEl = document.getElementById('ev-empty');
+  const hasRenterReplyServer = {{ 'true' if (has_renter_reply or false) else 'false' }};
+  var bkId = {{ bk.id }};
+
+  // ===== عناصر DOM لقسم المالك والمستأجر =====
+  var ownerGrid    = document.getElementById('ev-owner-grid');
+  var ownerCountEl = document.getElementById('ev-owner-count');
+  var ownerEmptyEl = document.getElementById('ev-owner-empty');
+
+  var renterGrid    = document.getElementById('ev-renter-grid');
+  var renterCountEl = document.getElementById('ev-renter-count');
+  var renterEmptyEl = document.getElementById('ev-renter-empty');
+
+  // ===== أزرار القرار =====
+  var btnStart    = document.getElementById('btn-start-window');
+  var btnFinalize = document.getElementById('btn-finalize-now');
+  var form        = document.getElementById('dm-decision-form');
+  var selDecision = document.getElementById('decision');
+  var amount      = document.getElementById('amount');
+  var hintText    = document.getElementById('hint-text');
 
   function isVideoUrl(url){
     var s = (url || '').toLowerCase();
     return s.endsWith('.mp4') || s.endsWith('.mov') || s.endsWith('.m4v') ||
            s.endsWith('.avi') || s.endsWith('.wmv') || s.endsWith('.webm');
   }
-  function addImg(url){
+  function addImg(grid, url){
     var a = document.createElement('a');
     a.href = url; a.target = '_blank'; a.style.display = 'inline-block';
     var img = document.createElement('img');
@@ -146,14 +176,14 @@
     img.style.borderRadius = '8px'; img.style.objectFit = 'cover';
     a.appendChild(img); grid.appendChild(a);
   }
-  function addVideo(url){
+  function addVideo(grid, url){
     var v = document.createElement('video');
     v.src = url + '?v={{ bk.updated_at.timestamp() if bk.updated_at else 0 }}';
     v.controls = true;
     v.style.maxWidth = '320px'; v.style.maxHeight = '220px'; v.style.borderRadius = '8px';
     grid.appendChild(v);
   }
-  function addNote(text){
+  function addNote(grid, text){
     var d = document.createElement('div');
     d.className = 'card';
     d.style.padding = '10px';
@@ -162,56 +192,95 @@
     d.textContent = text || '—';
     grid.appendChild(d);
   }
-  function incCount(by){
-    var cur = parseInt(countEl.textContent || '0', 10);
-    countEl.textContent = cur + by;
+  function incCount(el, emptyEl, by){
+    var cur = parseInt(el.textContent || '0', 10);
+    el.textContent = cur + by;
     emptyEl.style.display = (cur + by) > 0 ? 'none' : '';
   }
-  function renderUrls(urls){
-    if (!Array.isArray(urls)) urls = [];
-    urls.forEach(function(u){ isVideoUrl(u) ? addVideo(u) : addImg(u); });
-    incCount(urls.length);
+
+  // توزيع عنصر واحد حسب الجهة
+  function renderOne(ev){
+    var side = (ev && ev.side) ? (''+ev.side).toLowerCase() : '';
+    var file = ev && ev.file ? ev.file : '';
+    var kind = (ev && ev.kind) || '';
+    var desc = (ev && ev.description) || '';
+
+    var grid, cnt, empty;
+    if (side === 'renter'){
+      grid = renterGrid; cnt = renterCountEl; empty = renterEmptyEl;
+    } else if (side === 'owner'){
+      grid = ownerGrid; cnt = ownerCountEl; empty = ownerEmptyEl;
+    } else {
+      // لو غير معروف (manager/قديم) نضعه في قسم المالك حتى لا يختلط
+      grid = ownerGrid; cnt = ownerCountEl; empty = ownerEmptyEl;
+    }
+
+    if (kind === 'note' && !file){
+      addNote(grid, desc); incCount(cnt, empty, 1); return (side === 'renter');
+    } else if (file){
+      if (isVideoUrl(file)) addVideo(grid, file); else addImg(grid, file);
+      incCount(cnt, empty, 1); return (side === 'renter');
+    }
+    return false;
   }
+
+  // JSON من الـAPI
+  var renterSeen = false;
   function renderFromJson(items){
     items = Array.isArray(items) ? items : [];
-    var shown = 0;
     items.forEach(function(ev){
-      var file = ev && ev.file ? ev.file : '';
-      var kind = (ev && ev.kind) || '';
-      var desc = (ev && ev.description) || '';
-      if (kind === 'note' && !file){
-        addNote(desc); shown++;
-      } else if (file){
-        if (isVideoUrl(file)) addVideo(file); else addImg(file);
-        shown++;
-      }
+      var isRenterItem = renderOne(ev);
+      if (isRenterItem) renterSeen = true;
     });
-    incCount(shown);
   }
 
-  var bkId = {{ bk.id }};
+  // روابط قديمة من مجلد /uploads (بدون side) → نعتبرها للمالك
+  function renderLegacyUrls(urls){
+    if (!Array.isArray(urls)) urls = [];
+    urls.forEach(function(u){
+      if (isVideoUrl(u)) addVideo(ownerGrid, u); else addImg(ownerGrid, u);
+    });
+    incCount(ownerCountEl, ownerEmptyEl, urls.length);
+  }
 
+  // تبديل الأزرار بحسب وجود رد للمستأجر
+  function toggleButtons(hasRenterReply){
+    if (hasRenterReply){
+      if (btnStart)    btnStart.style.display    = 'none';
+      if (btnFinalize) btnFinalize.style.display = '';
+      if (hintText)    hintText.textContent = 'بعد وصول ردّ المستأجر يمكنك اتخاذ القرار النهائي مباشرة.';
+    } else {
+      if (btnStart)    btnStart.style.display    = '';
+      if (btnFinalize) btnFinalize.style.display = 'none';
+      if (hintText)    hintText.textContent = 'زر “بدء مهلة الرد 24h” يثبت القرار على “اقتطاع من الوديعة” ويضبط المهلة 24 ساعة ويُرسل إشعارًا للمستأجر.';
+    }
+  }
+
+  // أولاً اضبط الحالة المبدئية من السيرفر
+  toggleButtons(Boolean(hasRenterReplyServer));
+
+  // 1) جلب الأدلة من قاعدة البيانات (تشمل side)
   fetch('/deposits/' + bkId + '/evidence', {credentials:'include'})
     .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
     .then(function(data){ renderFromJson(data && data.items); })
     .catch(function(){ /* تجاهل */ })
     .finally(function(){
+      // 2) دمج أدلة قديمة (بدون side) — توضع كأدلة مالك
       var fromServer = Array.isArray(serverEvidence) && serverEvidence.length ? serverEvidence
                      : (Array.isArray(serverEvList) && serverEvList.length ? serverEvList : null);
-      if (fromServer){ renderUrls(fromServer); }
+      if (fromServer){ renderLegacyUrls(fromServer); }
       else {
         fetch('/debug/evidence/' + bkId, {credentials:'include'})
           .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-          .then(function(d){ renderUrls((d && d.urls) ? d.urls : []); })
+          .then(function(d){ renderLegacyUrls((d && d.urls) ? d.urls : []); })
           .catch(function(){ /* لا شيء */ });
       }
+
+      // 3) بعد العرض: إن وُجد عنصر للمستأجر من JSON نبدّل الأزرار فورًا
+      if (renterSeen) toggleButtons(true);
     });
 
-  var form = document.getElementById('dm-decision-form');
-  var selDecision = document.getElementById('decision');
-  var amount = document.getElementById('amount');
-
-  var btnStart = document.getElementById('btn-start-window');
+  // ===== أحداث الأزرار =====
   if (btnStart && form && selDecision && amount){
     btnStart.addEventListener('click', function(){
       var amt = parseInt(amount.value || '0', 10);
@@ -225,7 +294,6 @@
     });
   }
 
-  var btnFinalize = document.getElementById('btn-finalize-now');
   if (btnFinalize && form){
     btnFinalize.addEventListener('click', function(){
       form.action = '/dm/deposits/{{ bk.id }}/decision';
