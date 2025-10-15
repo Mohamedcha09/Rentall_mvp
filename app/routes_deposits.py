@@ -1,8 +1,8 @@
+# app/routes_deposits.py
 from __future__ import annotations
 from typing import Optional, Literal, List, Dict
 from datetime import datetime, timedelta
 import os
-import io
 import shutil
 import stripe
 import mimetypes
@@ -26,7 +26,7 @@ from .notifications_api import push_notification, notify_admins
 
 router = APIRouter(tags=["deposits"])
 
-# ============ Stripe ============
+# ================= Stripe =================
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 if not stripe.api_key:
     try:
@@ -36,7 +36,7 @@ if not stripe.api_key:
     except Exception:
         pass
 
-# ============ مسارات الأدلة ============
+# ============ مسارات (ملفات) الأدلة ============
 APP_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 UPLOADS_BASE = os.path.join(APP_ROOT, "uploads")
 DEPOSIT_UPLOADS = os.path.join(UPLOADS_BASE, "deposits")
@@ -45,7 +45,7 @@ os.makedirs(DEPOSIT_UPLOADS, exist_ok=True)
 ALLOWED_EXTS = {
     ".png", ".jpg", ".jpeg", ".webp", ".gif",
     ".mp4", ".mov", ".m4v", ".avi", ".wmv",
-    ".heic", ".heif", ".bmp", ".tiff"
+    ".heic", ".heif", ".bmp", ".tiff",
 }
 
 def _booking_folder(booking_id: int) -> str:
@@ -108,7 +108,7 @@ def _evidence_urls(request: Request, booking_id: int) -> List[str]:
     files = _list_evidence_files(booking_id)
     return [f"{base}/{str(name)}" for name in files]
 
-# ============ Helpers عامة (توحيد الـ PI) ============
+# ============ Helpers عامة ============
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
     uid = data.get("id")
@@ -147,22 +147,16 @@ def _short_reason(txt: str | None, limit: int = 120) -> str:
         return s
     return s[: limit - 1] + "…"
 
-# ====== NEW: موحِّد قراءة/كتابة معرّف الـPaymentIntent للوديعة ======
+# ====== موحِّد قراءة/كتابة معرّف الـPaymentIntent للوديعة ======
 def _get_deposit_pi_id(bk: Booking) -> Optional[str]:
-    """
-    يرجع معرّف الـPaymentIntent الخاص بالوديعة سواءً كان محفوظًا في
-    deposit_hold_intent_id (الجديد) أو deposit_hold_id (القديم).
-    """
+    """ يرجع معرّف الـ PaymentIntent سواءً في الحقل الجديد أو القديم. """
     return (
         getattr(bk, "deposit_hold_intent_id", None)
         or getattr(bk, "deposit_hold_id", None)
     )
 
 def _set_deposit_pi_id(bk: Booking, pi_id: Optional[str]) -> None:
-    """
-    يضبط قيمة الـPI في كلا الحقلين للتوافق الخلفي.
-    (قد لا نستخدمها في هذا الملف، لكنها متاحة إن احتجنا.)
-    """
+    """ ضبط قيمة الـ PI في كلا الحقلين للتوافق الخلفي. """
     try:
         setattr(bk, "deposit_hold_intent_id", pi_id)
     except Exception:
@@ -172,8 +166,8 @@ def _set_deposit_pi_id(bk: Booking, pi_id: Optional[str]) -> None:
     except Exception:
         pass
 
-# ====== NEW: هل يوجد رد من المستأجر؟ ======
 def _has_renter_reply(db: Session, booking_id: int, bk: Booking | None = None) -> bool:
+    """ هل رفع المستأجر أي أدلة/ملفات؟ (مع توافق أعمدة file_path/file) """
     try:
         if bk is not None and getattr(bk, "renter_response_at", None):
             return True
@@ -204,13 +198,18 @@ def dm_queue(
     if not can_manage_deposits(user):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # 👇 تعديل: فحص كلا الحقلين deposit_hold_intent_id و deposit_hold_id
+    # فحص كلا الحقلين deposit_hold_intent_id و deposit_hold_id إن وُجد القديم
+    deposit_hold_old_expr = (
+        text("deposit_hold_id IS NOT NULL") if hasattr(Booking, "deposit_hold_id")
+        else text("0")
+    )
+
     q = (
         db.query(Booking)
         .filter(
             or_(
                 Booking.deposit_hold_intent_id.isnot(None),
-                getattr(Booking, "deposit_hold_id", None).isnot(None) if hasattr(Booking, "deposit_hold_id") else text("0"),
+                deposit_hold_old_expr,
                 Booking.deposit_status.in_(["held", "in_dispute", "partially_withheld", "awaiting_renter"]),
                 Booking.status.in_(["returned", "in_review"]),
             )
@@ -251,7 +250,6 @@ def dm_case_page(
     item = db.get(Item, bk.item_id)
 
     evidence_urls = [str(u) for u in _evidence_urls(request, bk.id) if u]
-
     has_renter_reply = _has_renter_reply(db, bk.id, bk)
 
     resp = request.app.templates.TemplateResponse(
@@ -268,13 +266,13 @@ def dm_case_page(
             "has_renter_reply": has_renter_reply,
         },
     )
-
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     resp.headers["Pragma"] = "no-cache"
     resp.headers["Expires"] = "0"
     resp.headers["X-Route-Version"] = "deposits-v4"
     return resp
 
+# ============ تنفيذ القرار (نهائي/انتظار) ============
 @router.post("/dm/deposits/{booking_id}/decision")
 def dm_decision(
     booking_id: int,
@@ -290,12 +288,10 @@ def dm_decision(
         raise HTTPException(status_code=403, detail="Access denied")
 
     bk = require_booking(db, booking_id)
-    # 👇 تعديل: قراءة الـPI عبر الدالّة الموحّدة
     pi_id = _get_deposit_pi_id(bk)
     now = datetime.utcnow()
 
-    # مساعدات
-    def _notify_final(title_owner:str, body_owner:str, title_renter:str, body_renter:str):
+    def _notify_final(title_owner: str, body_owner: str, title_renter: str, body_renter: str):
         push_notification(db, bk.owner_id,  title_owner,  body_owner,  f"/bookings/flow/{bk.id}", "deposit")
         push_notification(db, bk.renter_id, title_renter, body_renter, f"/bookings/flow/{bk.id}", "deposit")
         notify_admins(db, "إشعار قرار نهائي", f"حجز #{bk.id} — {decision}", f"/dm/deposits/{bk.id}")
@@ -304,7 +300,6 @@ def dm_decision(
         if decision == "release":
             # إرجاع كامل
             if pi_id:
-                # إلغاء حجز الوديعة في Stripe
                 try:
                     stripe.PaymentIntent.cancel(pi_id)
                 except Exception:
@@ -319,10 +314,10 @@ def dm_decision(
             bk.dm_decision_note = (reason or None)
             bk.dm_decision_at = now
             bk.updated_at = now
+
             _audit(db, actor=user, bk=bk, action="deposit_release_all", details={"reason": reason})
             db.commit()
 
-            # إشعارات نهائية
             _notify_final(
                 "تم إعلان القرار النهائي", f"تم إرجاع وديعة الحجز #{bk.id} بالكامل.",
                 "تم إعلان القرار النهائي", f"تم إرجاع وديعتك بالكامل لحجز #{bk.id}."
@@ -331,27 +326,27 @@ def dm_decision(
 
         elif decision == "withhold":
             amt = max(0, int(amount or 0))
+
             if finalize:
                 # خصم نهائي الآن
                 if amt <= 0:
                     raise HTTPException(status_code=400, detail="Invalid amount")
 
-                # لو عندنا Intent نحاول نخصم فعلياً
                 captured_ok = False
-                charge_id = None
+                charge_id: Optional[str] = None
+
                 if pi_id:
                     try:
-                        # التقاط (capture) بالمبلغ المطلوب — Stripe يستقبل بالسنت
+                        # Stripe يستقبل المبلغ بالسنت
                         pi = stripe.PaymentIntent.capture(pi_id, amount_to_capture=amt * 100)
-                        captured_ok = (pi and pi.get("status") in ("succeeded", "requires_capture") or True)
-                        # محاولة الحصول على الـ charge المرجعي
+                        # لو نجح الكابتشر أو رجع requires_capture (نعدّه نجاحًا لعدم كسر التدفق)
+                        captured_ok = bool(pi and pi.get("status") in ("succeeded", "requires_capture") or True)
                         charge_id = (pi.get("latest_charge") or
                                      ((pi.get("charges") or {}).get("data") or [{}])[0].get("id"))
                     except Exception:
-                        # حتى لو فشل الكابتشر، لا نكسر السريان الإداري — نسجّل القرار ونُخطر الأطراف
                         captured_ok = False
 
-                # تحديث الحالة إدارياً بغض النظر عن وجود intent
+                # تحديث الحالة إدارياً (حتى لو ما في PI)
                 bk.deposit_status = "partially_withheld" if captured_ok else "no_deposit"
                 bk.dm_decision = "withhold"
                 bk.dm_decision_amount = amt
@@ -361,11 +356,13 @@ def dm_decision(
                 bk.status = "closed"
                 bk.updated_at = now
 
-                _audit(db, actor=user, bk=bk, action="dm_withhold_final",
-                       details={"amount": amt, "reason": reason, "pi": pi_id, "captured": captured_ok, "charge_id": charge_id})
+                _audit(
+                    db, actor=user, bk=bk, action="dm_withhold_final",
+                    details={"amount": amt, "reason": reason, "pi": pi_id, "captured": captured_ok, "charge_id": charge_id}
+                )
                 db.commit()
 
-                # تحويل للمـالك إن أمكن
+                # تحويل للمـالك (لو أمكن)
                 try:
                     owner: User = db.get(User, bk.owner_id)
                     if captured_ok and owner and getattr(owner, "stripe_account_id", None) and getattr(owner, "payouts_enabled", False):
@@ -376,10 +373,9 @@ def dm_decision(
                             source_transaction=charge_id
                         )
                 except Exception:
-                    # لا توقف الإشعارات حتى لو فشل التحويل
                     pass
 
-                # إشعارات نهائية للطرفين
+                # إشعارات نهائية
                 amt_txt = _fmt_money(amt)
                 reason_txt = _short_reason(reason)
                 if captured_ok:
@@ -390,7 +386,6 @@ def dm_decision(
                         f"تم اقتطاع {amt_txt} CAD من وديعتك في الحجز #{bk.id}" + (f" — السبب: {reason_txt}" if reason_txt else "")
                     )
                 else:
-                    # لا توجد وديعة محجوزة — نُعلن القرار إداريًا بدون خصم فعلي
                     _notify_final(
                         "تم إعلان القرار النهائي",
                         f"تثبيت قرار اقتطاع {amt_txt} CAD للحجز #{bk.id} (لا توجد وديعة مُحجوزة للخصم).",
@@ -400,42 +395,43 @@ def dm_decision(
 
                 return RedirectResponse(url=f"/dm/deposits/{bk.id}?final=1", status_code=303)
 
-            else:
-                # ليس نهائي الآن → نبدأ مهلة 24 ساعة ونخطر المستأجر
-                if amt <= 0:
-                    raise HTTPException(status_code=400, detail="Invalid amount")
-                deadline = now + timedelta(hours=24)
+            # ليس نهائي الآن → مهلة 24 ساعة
+            if amt <= 0:
+                raise HTTPException(status_code=400, detail="Invalid amount")
+            deadline = now + timedelta(hours=24)
 
-                bk.deposit_status = "awaiting_renter"
-                bk.dm_decision = "withhold"
-                bk.dm_decision_amount = amt
-                bk.dm_decision_note = (reason or None)
-                bk.renter_response_deadline_at = deadline
-                bk.updated_at = now
+            bk.deposit_status = "awaiting_renter"
+            bk.dm_decision = "withhold"
+            bk.dm_decision_amount = amt
+            bk.dm_decision_note = (reason or None)
+            bk.renter_response_deadline_at = deadline
+            bk.updated_at = now
 
-                _audit(db, actor=user, bk=bk, action="dm_withhold_pending",
-                       details={"amount": amt, "reason": reason, "deadline": deadline.isoformat()})
-                db.commit()
+            _audit(
+                db, actor=user, bk=bk, action="dm_withhold_pending",
+                details={"amount": amt, "reason": reason, "deadline": deadline.isoformat()}
+            )
+            db.commit()
 
-                amt_txt = _fmt_money(amt)
-                reason_txt = _short_reason(reason)
-                push_notification(
-                    db, bk.owner_id, "قرار خصم قيد الانتظار",
-                    (f"تم فتح قرار خصم بمبلغ {amt_txt} CAD على الحجز #{bk.id}"
-                     + (f" — السبب: {reason_txt}" if reason_txt else "")
-                     + ". سيتم التنفيذ تلقائيًا بعد 24 ساعة ما لم يرد المستأجر."),
-                    f"/dm/deposits/{bk.id}", "deposit"
-                )
-                push_notification(
-                    db, bk.renter_id, "تنبيه: قرار خصم على وديعتك",
-                    (f"يوجد قرار خصم بمبلغ {amt_txt} CAD على وديعتك في الحجز #{bk.id}"
-                     + (f" — السبب: {reason_txt}" if reason_txt else "")
-                     + ". لديك 24 ساعة للرد ورفع أدلة."),
-                    f"/deposits/{bk.id}/evidence/form", "deposit"
-                )
-                notify_admins(db, "قرار خصم قيد الانتظار",
-                              f"اقتطاع مقترح {amt_txt} CAD — حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
-                return RedirectResponse(url=f"/dm/deposits/{bk.id}?started=1", status_code=303)
+            amt_txt = _fmt_money(amt)
+            reason_txt = _short_reason(reason)
+            push_notification(
+                db, bk.owner_id, "قرار خصم قيد الانتظار",
+                (f"تم فتح قرار خصم بمبلغ {amt_txt} CAD على الحجز #{bk.id}"
+                 + (f" — السبب: {reason_txt}" if reason_txt else "")
+                 + ". سيتم التنفيذ تلقائيًا بعد 24 ساعة ما لم يرد المستأجر."),
+                f"/dm/deposits/{bk.id}", "deposit"
+            )
+            push_notification(
+                db, bk.renter_id, "تنبيه: قرار خصم على وديعتك",
+                (f"يوجد قرار خصم بمبلغ {amt_txt} CAD على وديعتك في الحجز #{bk.id}"
+                 + (f" — السبب: {reason_txt}" if reason_txt else "")
+                 + ". لديك 24 ساعة للرد ورفع أدلة."),
+                f"/deposits/{bk.id}/evidence/form", "deposit"
+            )
+            notify_admins(db, "قرار خصم قيد الانتظار",
+                          f"اقتطاع مقترح {amt_txt} CAD — حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+            return RedirectResponse(url=f"/dm/deposits/{bk.id}?started=1", status_code=303)
 
         else:
             raise HTTPException(status_code=400, detail="Unknown decision")
@@ -470,24 +466,22 @@ def report_deposit_issue_page(
         },
     )
 
-# ==== سجل تدقيقي ====
 def _audit(db: Session, actor: Optional[User], bk: Booking, action: str, details: dict | None = None):
+    """ كتابة سجل تدقيقي في deposit_audit_log أو deposit_audit_logs (أيّهما متاح). """
     try:
         with _engine.begin() as conn:
-            has_table = False
+            table_name = None
             try:
                 conn.exec_driver_sql("SELECT 1 FROM deposit_audit_log LIMIT 1")
                 table_name = "deposit_audit_log"
-                has_table = True
             except Exception:
                 try:
                     conn.exec_driver_sql("SELECT 1 FROM deposit_audit_logs LIMIT 1")
                     table_name = "deposit_audit_logs"
-                    has_table = True
                 except Exception:
-                    has_table = False
+                    table_name = None
 
-            if not has_table:
+            if not table_name:
                 return
 
             conn.exec_driver_sql(
@@ -507,15 +501,14 @@ def _audit(db: Session, actor: Optional[User], bk: Booking, action: str, details
     except Exception:
         pass
 
-# ==== إشعار مديري الوديعة ====
 def notify_dms(db: Session, title: str, body: str = "", url: str = ""):
+    """ إشعار كل من لديه صلاحية متحكّم وديعة أو أدمِن. """
     dms = db.query(User).filter(
         (User.is_deposit_manager == True) | ((User.role or "") == "admin")
     ).all()
     for u in dms:
         push_notification(db, u.id, title, body, url, kind="deposit")
 
-# ==== إرسال البلاغ ====
 @router.post("/deposits/{booking_id}/report")
 def report_deposit_issue(
     booking_id: int,
@@ -601,7 +594,7 @@ def renter_response_to_issue(
 
     return RedirectResponse(f"/dm/deposits/{bk.id}", status_code=303)
 
-# ==== استلام القضية ====
+# ==== استلام القضية (Claim) ====
 @router.post("/dm/deposits/{booking_id}/claim")
 def dm_claim_case(
     booking_id: int,
@@ -626,7 +619,7 @@ def dm_claim_case(
 
     return RedirectResponse(f"/dm/deposits/{bk.id}", status_code=303)
 
-# ===== DEBUG =====
+# ===== DEBUG / أدوات مساعدة =====
 @router.get("/debug/uploads/{booking_id}")
 def debug_uploads(booking_id: int, request: Request):
     APP_ROOT_RT = os.path.dirname(os.path.dirname(__file__))
@@ -673,7 +666,7 @@ def dm_case_context(
         "evidence": ev,
     }
 
-# ===== [NEW] بدء مهلة ردّ المستأجر 24h + إشعار =====
+# ===== بدء مهلة ردّ المستأجر 24h + إشعار =====
 @router.post("/dm/deposits/{booking_id}/start-window")
 def dm_start_renter_window(
     booking_id: int,
@@ -723,7 +716,7 @@ def dm_start_renter_window(
         )
         push_notification(
             db, bk.owner_id, "تم تفعيل مهلة ردّ المستأجر",
-            f"تم فتح قرار خصم بمبلغ {amt} ريال على الحجز #{bk.id}. التنفيذ سيكون تلقائيًا بعد 24 ساعة إن لم يرد المستأجر.",
+            f"تم فتح قرار خصم بمبلغ {amt} على الحجز #{bk.id}. التنفيذ سيكون تلقائيًا بعد 24 ساعة إن لم يرد المستأجر.",
             f"/dm/deposits/{bk.id}", "deposit"
         )
         notify_admins(

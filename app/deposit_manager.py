@@ -25,7 +25,8 @@ def require_auth(user: Optional[User]):
 
 def require_manager(user: Optional[User]):
     require_auth(user)
-    if not user.can_manage_deposits:
+    # نتعامل بأمان لو الخاصية غير موجودة في موديلات قديمة
+    if not bool(getattr(user, "can_manage_deposits", False)):
         raise HTTPException(status_code=403, detail="Deposit manager only")
 
 def _get_booking(db: Session, booking_id: int) -> Booking:
@@ -146,26 +147,28 @@ def dm_need_info(
     return RedirectResponse(url="/deposit-manager?view=in_review", status_code=303)
 
 
-# --------------- تنفيذ القرار النهائي (يوجّه لمسار القرار في routes_deposits.py) ---------------
+# --------------- تنفيذ القرار النهائي/الانتظار ---------------
 @router.post("/deposit-manager/{booking_id}/decide")
 def dm_decide(
     booking_id: int,
-    decision: Literal["refund_all", "refund_partial", "withhold_all"] = Form(...),
+    # 🔗 نفس القيم المتوقّعة في routes_deposits.dm_decision
+    decision: Literal["release", "withhold"] = Form(...),
     amount: int = Form(0),
     reason: str = Form(""),
+    finalize: int = Form(0),  # 0/1 من الزر
     request: Request = None,
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    نستخدم مسار القرار الذي كتبناه في routes_deposits.py
-    فقط نعيد توجيه POST مع نفس الحقول.
+    لا ننفّذ المنطق هنا؛ نعيد توجيه POST بنفس الحقول إلى
+    /dm/deposits/{booking_id}/decision
+    ونستخدم 307 للحفاظ على طريقة POST والـbody.
     """
     require_manager(user)
 
-    # نعيد التوجيه مباشرةً لنفس نموذج القرار الموحد
-    # حتى يبقى تنفيذ القرار في ملف واحد (routes_deposits.py)
-    form_qs = f"decision={decision}&amount={max(0,int(amount or 0))}&reason={reason}"
+    # إعادة توجيه إلى راوت التنفيذ الموحد
+    # (307 = Temporary Redirect مع الحفاظ على POST)
     return RedirectResponse(
-        url=f"/dm/deposits/{booking_id}/decision?{form_qs}",
-        status_code=303
+        url=f"/dm/deposits/{booking_id}/decision",
+        status_code=307
     )
