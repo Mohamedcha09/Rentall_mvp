@@ -15,9 +15,15 @@ from .notifications_api import push_notification, notify_admins
 
 # ================= Stripe Config =================
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")  # sk_test_...
+
+# ⚠️ حدّد رابط موقعك في ENV تحت SITE_URL (بدون / في النهاية)
 SITE_URL = (os.getenv("SITE_URL", "http://localhost:8000") or "").rstrip("/")
-CURRENCY = (os.getenv("CURRENCY", "usd") or "usd").lower()       # مثال: cad
-PLATFORM_FEE_PCT = int(os.getenv("PLATFORM_FEE_PCT", "0"))       # عمولة المنصة %
+
+# نجعل CAD الافتراضي لضمان التطابق مع بقية النظام
+CURRENCY = (os.getenv("CURRENCY", "cad") or "cad").lower()
+
+# نسبة عمولة المنصّة (اختياري)
+PLATFORM_FEE_PCT = int(os.getenv("PLATFORM_FEE_PCT", "0"))
 
 if not stripe.api_key:
     raise RuntimeError("STRIPE_SECRET_KEY is missing in environment")
@@ -52,6 +58,23 @@ def can_manage_deposits(u: Optional[User]) -> bool:
         return True
     return bool(getattr(u, "is_deposit_manager", False))
 
+# توحيد قراءة/كتابة معرّف تفويض الوديعة (PI)
+def _get_deposit_pi_id(bk: Booking) -> Optional[str]:
+    return (
+        getattr(bk, "deposit_hold_intent_id", None)
+        or getattr(bk, "deposit_hold_id", None)
+    )
+
+def _set_deposit_pi_id(bk: Booking, pi_id: Optional[str]) -> None:
+    try:
+        setattr(bk, "deposit_hold_intent_id", pi_id)
+    except Exception:
+        pass
+    try:
+        setattr(bk, "deposit_hold_id", pi_id)
+    except Exception:
+        pass
+
 
 # ============================================================
 # (NEW) Checkout: Rent + Deposit together (same session)
@@ -66,12 +89,7 @@ def start_checkout_all(
     إنشاء Checkout Session واحدة تشمل:
     - مبلغ الإيجار (يذهب إلى المالك عبر destination charge)
     - الوديعة (تدخل ضمن نفس الـ PaymentIntent وتُعتبر محجوزة لدينا)
-    نُعلّمها في الـ webhook بنوع metadata=all.
-
-    ملاحظات Stripe:
-    - PaymentIntent الواحد لا يسمح إلا بعملية capture واحدة، لذلك نتعامل
-      مع (all) كدفعة تُسجَّل "سُددت" فورًا بالنسبة للإيجار، بينما تُدار
-      الوديعة كحجز/حالة على الحجز ليُتخذ القرار لاحقًا (من خلال نفس PI).
+    نعلّم الـ PI في الويبهوك بقيمة metadata=all.
     """
     require_auth(user)
     bk = require_booking(db, booking_id)
@@ -89,13 +107,13 @@ def start_checkout_all(
         raise HTTPException(status_code=400, detail="Owner is not onboarded to Stripe")
 
     rent_cents = int(max(0, (bk.total_amount or 0)) * 100)
-    dep_cents = int(max(0, (bk.deposit_amount or bk.hold_deposit_amount or 0)) * 100)
+    dep_cents = int(max(0, (bk.deposit_amount or getattr(bk, "hold_deposit_amount", 0) or 0)) * 100)
     if rent_cents <= 0 and dep_cents <= 0:
         return flow_redirect(bk.id)
 
     app_fee_cents = (rent_cents * PLATFORM_FEE_PCT) // 100 if PLATFORM_FEE_PCT > 0 else 0
 
-    # نبني payment_intent_data بدون مفاتيح None (Stripe يرفض None)
+    # نبني payment_intent_data بدون None
     pi_data = {
         "metadata": {"kind": "all", "booking_id": str(bk.id)},
         "transfer_data": {"destination": owner.stripe_account_id},
@@ -204,7 +222,7 @@ def connect_status(
     })
 
 
-# ============ (B) Checkout: Rent (manual capture + destination) ============
+# ============ (B) Checkout: Rent فقط (manual capture + destination) ============
 @router.post("/api/stripe/checkout/rent/{booking_id}")
 def start_checkout_rent(
     booking_id: int,
@@ -232,7 +250,7 @@ def start_checkout_rent(
     if not owner or not getattr(owner, "stripe_account_id", None):
         raise HTTPException(status_code=400, detail="Owner is not onboarded to Stripe")
 
-    amount_cents = max(0, (bk.total_amount or 0)) * 100
+    amount_cents = int(max(0, (bk.total_amount or 0)) * 100)
     app_fee_cents = (amount_cents * PLATFORM_FEE_PCT) // 100 if PLATFORM_FEE_PCT > 0 else 0
 
     pi_data: dict = {
@@ -267,7 +285,7 @@ def start_checkout_rent(
     return RedirectResponse(url=session.url, status_code=303)
 
 
-# ============ (C) Checkout: Deposit Hold (manual capture, no transfer) ============
+# ============ (C) Checkout: Deposit فقط (manual capture, no transfer) ============
 @router.post("/api/stripe/checkout/deposit/{booking_id}")
 def start_checkout_deposit(
     booking_id: int,
@@ -282,7 +300,7 @@ def start_checkout_deposit(
     if user.id != bk.renter_id:
         raise HTTPException(status_code=403, detail="Only renter can pay deposit")
 
-    dep = max(0, bk.deposit_amount or bk.hold_deposit_amount or 0)
+    dep = int(max(0, bk.deposit_amount or getattr(bk, "hold_deposit_amount", 0) or 0))
     if dep <= 0:
         return flow_redirect(bk.id)
 
@@ -344,7 +362,7 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
                           f"/bookings/flow/{bk.id}", "booking")
 
     elif kind == "deposit":
-        bk.deposit_hold_intent_id = pi.id
+        _set_deposit_pi_id(bk, pi.id)
         bk.deposit_status = "held"
         db.commit()
         push_notification(db, bk.owner_id, "تم حجز الديبو",
@@ -355,9 +373,9 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
                           f"/bookings/flow/{bk.id}", "deposit")
 
     elif kind == "all":
-        # دفع الإيجار + (تمييز الوديعة كمحجوزة) في نفس الجلسة
+        # دفع الإيجار + اعتبار الوديعة محجوزة على نفس الـ PI
         bk.online_payment_intent_id = pi.id
-        bk.deposit_hold_intent_id = pi.id
+        _set_deposit_pi_id(bk, pi.id)
         bk.online_status = "authorized"
         bk.deposit_status = "held"
         bk.status = "paid"
@@ -393,7 +411,7 @@ router.post("/webhooks/stripe")(_webhook_handler_factory())
 router.post("/stripe/webhook")(_webhook_handler_factory())
 
 
-# ============ (E) التقاط مبلغ الإيجار يدويًا (اختياري) ============
+# ============ (E) التقاط مبلغ الإيجار يدويًا ============
 @router.post("/api/stripe/capture-rent/{booking_id}")
 def capture_rent(
     booking_id: int,
@@ -406,7 +424,7 @@ def capture_rent(
     """
     require_auth(user)
     bk = require_booking(db, booking_id)
-    if not bk.online_payment_intent_id:
+    if not getattr(bk, "online_payment_intent_id", None):
         return flow_redirect(bk.id)
 
     try:
@@ -445,16 +463,18 @@ def resolve_deposit(
         raise HTTPException(status_code=403, detail="Deposit decision requires Admin or Deposit Manager")
 
     bk = require_booking(db, booking_id)
-    pi_id = getattr(bk, "deposit_hold_intent_id", None)
+    pi_id = _get_deposit_pi_id(bk)
     if not pi_id:
+        # لا يوجد تفويض وديعة محفوظ
         return flow_redirect(bk.id)
 
-    dep = max(0, bk.deposit_amount or bk.hold_deposit_amount or 0)
+    dep = int(max(0, bk.deposit_amount or getattr(bk, "hold_deposit_amount", 0) or 0))
     try:
         if action == "refund_all":
             # إلغاء التفويض بالكامل (لا سحب)
             stripe.PaymentIntent.cancel(pi_id)
             bk.deposit_status = "refunded"
+            bk.deposit_charged_amount = 0
 
         elif action == "withhold_all":
             # اقتطاع كامل الديبو
@@ -463,12 +483,14 @@ def resolve_deposit(
             bk.deposit_charged_amount = dep
 
         elif action == "withhold_partial":
-            amt = max(0, int(partial_amount or 0))
+            amt = int(max(0, partial_amount or 0))
             if amt <= 0 or amt >= dep:
                 raise HTTPException(status_code=400, detail="Invalid partial amount")
             stripe.PaymentIntent.capture(pi_id, amount_to_capture=amt * 100)
             bk.deposit_status = "partially_withheld"
-            bk.deposit_charged_amount = amt
+            # قد يكون لدينا اقتطاعات سابقة؛ نجمعها بشكل آمن
+            prev = int(getattr(bk, "deposit_charged_amount", 0) or 0)
+            bk.deposit_charged_amount = prev + amt
 
         else:
             raise HTTPException(status_code=400, detail="Unknown action")

@@ -1,8 +1,3 @@
-# app/routes_bookings.py
-# NOTE:
-# قرارات الوديعة (refund/withhold) تُدار في app/pay_api.py عبر صلاحية can_manage_deposits
-# هذا الملف مسؤول عن تدفّق الحجز من الإنشاء حتى الإرجاع.
-
 from __future__ import annotations
 from typing import Optional, Literal
 from datetime import datetime, date, timedelta
@@ -58,7 +53,7 @@ def _booking_order_col():
         return Booking.timeline_created_at.desc()
     return Booking.id.desc()
 
-# التقاط Stripe (يُستدعى عند "تم الاستلام")
+# ===== Stripe helpers for rent capture =====
 def _try_capture_stripe_rent(bk: Booking) -> bool:
     try:
         import stripe
@@ -77,12 +72,29 @@ def _try_capture_stripe_rent(bk: Booking) -> bool:
     except Exception:
         return False
 
-# [ADDED] ====== إنشاء تفويض وديعة Stripe (manual capture) وتخزينه في الحجز ======
+# ===== Deposit PI unifier =====
+def _get_deposit_pi_id(bk: Booking) -> Optional[str]:
+    return (
+        getattr(bk, "deposit_hold_intent_id", None)
+        or getattr(bk, "deposit_hold_id", None)
+    )
+
+def _set_deposit_pi_id(bk: Booking, pi_id: Optional[str]) -> None:
+    try:
+        setattr(bk, "deposit_hold_intent_id", pi_id)
+    except Exception:
+        pass
+    try:
+        setattr(bk, "deposit_hold_id", pi_id)
+    except Exception:
+        pass
+
+# ====== إنشاء تفويض وديعة Stripe (manual capture) وتخزينه في الحجز ======
 def _ensure_deposit_hold(bk: Booking) -> bool:
     """
     ينشئ PaymentIntent (manual capture) للوديعة إذا كان مفقودًا،
-    ويحفظ id في booking.deposit_hold_intent_id.
-    يرجع True إذا صار عندنا وديعة، False لو فشل.
+    ويحفظ id في كلا الحقلين (deposit_hold_intent_id و deposit_hold_id)،
+    ويضبط deposit_status='held'.
     """
     try:
         import stripe
@@ -91,8 +103,8 @@ def _ensure_deposit_hold(bk: Booking) -> bool:
             return False
         stripe.api_key = sk
 
-        # إذا موجود سابقًا لا نكرر الإنشاء
-        if getattr(bk, "deposit_hold_intent_id", None):
+        # موجود مسبقاً؟
+        if _get_deposit_pi_id(bk):
             return True
 
         amount = int(getattr(bk, "deposit_amount", 0) or 0)
@@ -100,13 +112,13 @@ def _ensure_deposit_hold(bk: Booking) -> bool:
             return False
 
         pi = stripe.PaymentIntent.create(
-            amount=amount * 100,                 # Stripe بالسنت
-            currency="cad",                      # العملة CAD كما طلبت
-            capture_method="manual",             # manual capture للوديعة
+            amount=amount * 100,                 # Stripe wants cents
+            currency="cad",                      # CAD كما تعملون
+            capture_method="manual",             # تفويض (manual capture)
             description=f"Deposit hold for booking #{bk.id}",
         )
 
-        bk.deposit_hold_intent_id = pi["id"]
+        _set_deposit_pi_id(bk, pi["id"])
         try:
             bk.deposit_status = "held"
         except Exception:
@@ -115,9 +127,9 @@ def _ensure_deposit_hold(bk: Booking) -> bool:
     except Exception:
         return False
 
-# [ADDED] مهلات وسياسة الوقت (كما هي لديك)
-DISPUTE_WINDOW_HOURS = 48  # مهلة البلاغ بعد الإرجاع
-RENTER_REPLY_WINDOW_HOURS = 48  # مهلة رد المستأجر (للعرض فقط)
+# ===== سياسة الوقت =====
+DISPUTE_WINDOW_HOURS = 48   # مهلة البلاغ بعد الإرجاع
+RENTER_REPLY_WINDOW_HOURS = 48  # لعرض العداد فقط
 
 def _iso(dt: Optional[datetime]) -> Optional[str]:
     return dt.isoformat() if dt else None
@@ -260,7 +272,7 @@ def booking_flow_page(
     # حالة تفعيل مدفوعات المالك لتمكين الدفع أونلاين
     owner_pe = bool(getattr(owner, "payouts_enabled", False)) if owner else False
 
-    # [ADDED] تمرير مهلة البلاغ بعد الإرجاع لعرض عدّاد (48 ساعة)
+    # تمرير مهلة البلاغ بعد الإرجاع لعرض عدّاد (48 ساعة)
     dispute_deadline = None
     if getattr(bk, "returned_at", None):
         try:
@@ -291,7 +303,6 @@ def booking_flow_page(
         "is_awaiting_return": (bk.status == "awaiting_return"),
         "is_in_review": (bk.status == "in_review"),
         "is_completed": (bk.status == "completed"),
-        # [ADDED]
         "dispute_deadline_iso": _iso(dispute_deadline),
         "renter_reply_hours": RENTER_REPLY_WINDOW_HOURS,
     }
@@ -446,7 +457,7 @@ def renter_confirm_received(
                       f"/bookings/flow/{bk.id}", "booking")
     return redirect_to_flow(bk.id)
 
-# [ADDED] تأكيد المالك للتسليم (زر "تمّ التسليم" عند المالك)
+# ===== تأكيد المالك للتسليم =====
 @router.post("/bookings/{booking_id}/owner/confirm_delivered")
 def owner_confirm_delivered(
     booking_id: int,
@@ -462,7 +473,7 @@ def owner_confirm_delivered(
     bk = require_booking(db, booking_id)
     if not is_owner(user, bk):
         raise HTTPException(status_code=403, detail="Only owner can confirm delivery")
-    if bk.status not in ("paid",):  # تم دفعها (كاش/أونلاين مؤهَّلة للتسليم)
+    if bk.status not in ("paid",):
         return redirect_to_flow(bk.id)
 
     item = db.get(Item, bk.item_id)
@@ -484,7 +495,7 @@ def owner_confirm_delivered(
                       f"/bookings/flow/{bk.id}", "booking")
     return redirect_to_flow(bk.id)
 
-# [ADDED] اختصار لفتح بلاغ وديعة من صفحة التدفق (ينقل لمسار البلاغ)
+# ===== اختصار لفتح بلاغ وديعة =====
 @router.post("/bookings/{booking_id}/owner/open_deposit_issue")
 def owner_open_deposit_issue(
     booking_id: int,
@@ -501,7 +512,7 @@ def owner_open_deposit_issue(
         raise HTTPException(status_code=403, detail="Only owner")
     return RedirectResponse(url=f"/deposits/{bk.id}/report", status_code=303)
 
-# [ADDED] API يُرجع مهلة البلاغ وردّ المستأجر بصيغة ISO لعرض عدّادات
+# ===== API يُرجع مهلة البلاغ وردّ المستأجر بصيغة ISO =====
 @router.get("/api/bookings/{booking_id}/deadlines")
 def booking_deadlines(
     booking_id: int,
@@ -514,7 +525,6 @@ def booking_deadlines(
         raise HTTPException(status_code=403, detail="Forbidden")
 
     dispute_deadline = None
-
     if getattr(bk, "returned_at", None):
         try:
             dispute_deadline = bk.returned_at + timedelta(hours=DISPUTE_WINDOW_HOURS)
@@ -527,7 +537,6 @@ def booking_deadlines(
     })
 
 # ======= Aliases القديمة (متروكة للتوافق) =======
-
 def _redir(flow_id: int):
     return RedirectResponse(url=f"/bookings/flow/{flow_id}", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -739,7 +748,7 @@ def bookings_index(
         },
     )
 
-# [ADDED] ===== مسار سريع لإنشاء تفويض وديعة يدويًا لحجز معيّن =====
+# ===== مسار سريع لإنشاء تفويض وديعة يدويًا =====
 @router.post("/api/stripe/hold/{booking_id}")
 def api_create_deposit_hold(
     booking_id: int,
@@ -748,8 +757,8 @@ def api_create_deposit_hold(
 ):
     """
     ينشئ PaymentIntent manual-capture بعملة CAD للوديعة إذا كان مفقودًا
-    ويخزن المعرّف في booking.deposit_hold_intent_id
-    استخدامه مرّة واحدة للحجز الذي يظهر فيه "No deposit on this booking".
+    ويخزن المعرّف في كلا الحقلين (deposit_hold_intent_id و deposit_hold_id).
+    ملاحظة: هذا المسار هو **POST**. أي طلب GET سيرجع Method Not Allowed.
     """
     require_auth(user)
     bk = db.get(Booking, booking_id)
@@ -761,4 +770,4 @@ def api_create_deposit_hold(
         raise HTTPException(status_code=400, detail="Failed to create deposit hold")
 
     db.commit()
-    return {"ok": True, "deposit_hold_intent_id": bk.deposit_hold_intent_id}
+    return {"ok": True, "deposit_hold_intent_id": _get_deposit_pi_id(bk)}

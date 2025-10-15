@@ -108,7 +108,7 @@ def _evidence_urls(request: Request, booking_id: int) -> List[str]:
     files = _list_evidence_files(booking_id)
     return [f"{base}/{str(name)}" for name in files]
 
-# ============ Helpers ============
+# ============ Helpers عامة (توحيد الـ PI) ============
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
     uid = data.get("id")
@@ -147,6 +147,31 @@ def _short_reason(txt: str | None, limit: int = 120) -> str:
         return s
     return s[: limit - 1] + "…"
 
+# ====== NEW: موحِّد قراءة/كتابة معرّف الـPaymentIntent للوديعة ======
+def _get_deposit_pi_id(bk: Booking) -> Optional[str]:
+    """
+    يرجع معرّف الـPaymentIntent الخاص بالوديعة سواءً كان محفوظًا في
+    deposit_hold_intent_id (الجديد) أو deposit_hold_id (القديم).
+    """
+    return (
+        getattr(bk, "deposit_hold_intent_id", None)
+        or getattr(bk, "deposit_hold_id", None)
+    )
+
+def _set_deposit_pi_id(bk: Booking, pi_id: Optional[str]) -> None:
+    """
+    يضبط قيمة الـPI في كلا الحقلين للتوافق الخلفي.
+    (قد لا نستخدمها في هذا الملف، لكنها متاحة إن احتجنا.)
+    """
+    try:
+        setattr(bk, "deposit_hold_intent_id", pi_id)
+    except Exception:
+        pass
+    try:
+        setattr(bk, "deposit_hold_id", pi_id)
+    except Exception:
+        pass
+
 # ====== NEW: هل يوجد رد من المستأجر؟ ======
 def _has_renter_reply(db: Session, booking_id: int, bk: Booking | None = None) -> bool:
     try:
@@ -179,11 +204,13 @@ def dm_queue(
     if not can_manage_deposits(user):
         raise HTTPException(status_code=403, detail="Access denied")
 
+    # 👇 تعديل: فحص كلا الحقلين deposit_hold_intent_id و deposit_hold_id
     q = (
         db.query(Booking)
         .filter(
             or_(
                 Booking.deposit_hold_intent_id.isnot(None),
+                getattr(Booking, "deposit_hold_id", None).isnot(None) if hasattr(Booking, "deposit_hold_id") else text("0"),
                 Booking.deposit_status.in_(["held", "in_dispute", "partially_withheld", "awaiting_renter"]),
                 Booking.status.in_(["returned", "in_review"]),
             )
@@ -263,7 +290,8 @@ def dm_decision(
         raise HTTPException(status_code=403, detail="Access denied")
 
     bk = require_booking(db, booking_id)
-    pi_id = getattr(bk, "deposit_hold_intent_id", None) or None
+    # 👇 تعديل: قراءة الـPI عبر الدالّة الموحّدة
+    pi_id = _get_deposit_pi_id(bk)
     now = datetime.utcnow()
 
     # مساعدات
@@ -319,7 +347,7 @@ def dm_decision(
                         # محاولة الحصول على الـ charge المرجعي
                         charge_id = (pi.get("latest_charge") or
                                      ((pi.get("charges") or {}).get("data") or [{}])[0].get("id"))
-                    except Exception as e:
+                    except Exception:
                         # حتى لو فشل الكابتشر، لا نكسر السريان الإداري — نسجّل القرار ونُخطر الأطراف
                         captured_ok = False
 
@@ -416,6 +444,7 @@ def dm_decision(
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe deposit operation failed: {e}")
+
 # ===================== بلاغ الوديعة =====================
 @router.get("/deposits/{booking_id}/report")
 def report_deposit_issue_page(
@@ -501,7 +530,7 @@ def report_deposit_issue(
     bk = require_booking(db, booking_id)
     if user.id != bk.owner_id:
         raise HTTPException(status_code=403, detail="Only owner can report issue")
-    if getattr(bk, "deposit_hold_intent_id", None) is None:
+    if _get_deposit_pi_id(bk) is None:
         raise HTTPException(status_code=400, detail="No deposit hold found")
 
     saved = _save_evidence_files(bk.id, files)
