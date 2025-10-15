@@ -14,7 +14,7 @@ from .models import Booking, Item, User
 from .notifications_api import push_notification, notify_admins
 
 # ================= Stripe Config =================
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")  # sk_test_...
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")  # sk_test_... / sk_live_...
 
 # ⚠️ حدّد رابط موقعك في ENV تحت SITE_URL (بدون / في النهاية)
 SITE_URL = (os.getenv("SITE_URL", "http://localhost:8000") or "").rstrip("/")
@@ -337,7 +337,7 @@ def start_checkout_deposit(
 
 # ============ (D) Webhook: تثبيت نتائج Checkout ============
 def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
-    """منطق المعالجة الفعلي للويبهوك (نستدعيه من مسارين)."""
+    """منطق المعالجة الفعلي للويبهوك (نستدعيه من المسار أدناه)."""
     intent_id = session_obj.get("payment_intent")
     pi = stripe.PaymentIntent.retrieve(intent_id) if intent_id else None
     md = (pi.metadata or {}) if pi else {}
@@ -402,13 +402,11 @@ def _webhook_handler_factory() -> Callable:
         if event["type"] == "checkout.session.completed":
             _handle_checkout_completed(event["data"]["object"], db)
 
-        # يمكن إضافة معالجات لأحداث أخرى إذا لزم
         return JSONResponse({"ok": True})
     return _handler
 
-# ندعم مسارين تجنبًا لاختلاف الإعدادات بين الكود ولوحة Stripe
+# ⚠️ مهم: نستخدم مسار واحد هنا لتفادي التعارض مع app/webhooks.py
 router.post("/webhooks/stripe")(_webhook_handler_factory())
-router.post("/stripe/webhook")(_webhook_handler_factory())
 
 
 # ============ (E) التقاط مبلغ الإيجار يدويًا ============
@@ -465,19 +463,16 @@ def resolve_deposit(
     bk = require_booking(db, booking_id)
     pi_id = _get_deposit_pi_id(bk)
     if not pi_id:
-        # لا يوجد تفويض وديعة محفوظ
         return flow_redirect(bk.id)
 
     dep = int(max(0, bk.deposit_amount or getattr(bk, "hold_deposit_amount", 0) or 0))
     try:
         if action == "refund_all":
-            # إلغاء التفويض بالكامل (لا سحب)
             stripe.PaymentIntent.cancel(pi_id)
             bk.deposit_status = "refunded"
             bk.deposit_charged_amount = 0
 
         elif action == "withhold_all":
-            # اقتطاع كامل الديبو
             stripe.PaymentIntent.capture(pi_id, amount_to_capture=dep * 100)
             bk.deposit_status = "claimed"
             bk.deposit_charged_amount = dep
@@ -488,7 +483,6 @@ def resolve_deposit(
                 raise HTTPException(status_code=400, detail="Invalid partial amount")
             stripe.PaymentIntent.capture(pi_id, amount_to_capture=amt * 100)
             bk.deposit_status = "partially_withheld"
-            # قد يكون لدينا اقتطاعات سابقة؛ نجمعها بشكل آمن
             prev = int(getattr(bk, "deposit_charged_amount", 0) or 0)
             bk.deposit_charged_amount = prev + amt
 
@@ -501,7 +495,6 @@ def resolve_deposit(
 
     db.commit()
 
-    # إشعارات (اختياري)
     notify_admins(db, "تم تنفيذ قرار وديعة", f"حجز #{bk.id}: {action}.", f"/bookings/flow/{bk.id}")
     push_notification(db, bk.owner_id, "قرار الوديعة",
                       f"تم تنفيذ القرار: {action}.", f"/bookings/flow/{bk.id}", "deposit")
@@ -509,3 +502,56 @@ def resolve_deposit(
                       f"تم تنفيذ القرار: {action}.", f"/bookings/flow/{bk.id}", "deposit")
 
     return flow_redirect(bk.id)
+
+
+# ============ (G) (اختياري) API لـ Elements (PaymentIntent مباشر) ============
+@router.post("/api/checkout/{booking_id}/intent")
+def create_payment_intent_elements(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    بديل اختياري لو أردت استخدام Stripe Elements بدل Checkout.
+    ينشئ PaymentIntent بمبلغ الإيجار (manual capture) + metadata فقط.
+    """
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if user.id != bk.renter_id:
+        raise HTTPException(status_code=403, detail="Only renter can pay")
+    if bk.status not in ("accepted", "requested"):
+        raise HTTPException(status_code=400, detail="Booking is not payable now")
+
+    owner = db.get(User, bk.owner_id)
+    if not owner or not getattr(owner, "stripe_account_id", None):
+        raise HTTPException(status_code=400, detail="Owner is not onboarded to Stripe")
+
+    rent_cents = int(max(0, (bk.total_amount or 0)) * 100)
+    if rent_cents <= 0:
+        raise HTTPException(status_code=400, detail="Invalid amount")
+
+    app_fee_cents = (rent_cents * PLATFORM_FEE_PCT) // 100 if PLATFORM_FEE_PCT > 0 else 0
+
+    kwargs = dict(
+        amount=rent_cents,
+        currency=CURRENCY,
+        capture_method="manual",
+        metadata={"kind": "rent", "booking_id": str(bk.id)},
+        transfer_data={"destination": owner.stripe_account_id},
+        automatic_payment_methods={"enabled": True},
+    )
+    if app_fee_cents > 0:
+        kwargs["application_fee_amount"] = app_fee_cents
+
+    try:
+        pi = stripe.PaymentIntent.create(**kwargs)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Stripe error: {e}")
+
+    # نحفظ حالة انتظار
+    bk.payment_method = "online"
+    bk.online_status = "pending_authorization"
+    bk.online_payment_intent_id = pi.id
+    db.commit()
+
+    return {"clientSecret": pi.client_secret}

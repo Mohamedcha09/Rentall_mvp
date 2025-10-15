@@ -24,13 +24,10 @@ async def stripe_webhook(request: Request):
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
     except Exception as e:
-        # نفس السطر الأصلي مع إرجاع خطأ واضح
         return JSONResponse({"error": str(e)}, status_code=400)
 
-    # ✅ السطر الأصلي (لا نحذفه)
+    # لوج تشخيصي مفيد
     print("✅ Webhook received:", event["type"])
-
-    # ===== إضافات غير مدمّرة: لوج تفصيلي عندما تكتمل جلسة الدفع =====
     try:
         if event.get("type") == "checkout.session.completed":
             session = event["data"]["object"]
@@ -51,8 +48,7 @@ async def stripe_webhook(request: Request):
                 f"intent={intent_id} kind={kind} booking_id={booking_id}"
             )
     except Exception as e:
-        # لا نكسر الاستدعاء بسبب لوج فقط
         print("⚠️ logging block error:", e)
 
-    # لا نحدّث قاعدة البيانات هنا، التحديث الفعلي يتم في pay_api.py (/webhooks/stripe)
+    # التحديث الحقيقي لقاعدة البيانات يتم في pay_api.py على /webhooks/stripe
     return {"received": True}

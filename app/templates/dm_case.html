@@ -1,351 +1,330 @@
 {% extends "base.html" %}
-{% block title %}قضية وديعة #{{ bk.id }}{% endblock %}
 
-{% block content %}
-<div class="container">
-  <h2>قضية وديعة #{{ bk.id }}</h2>
-
-  {# ==== تنبيه نجاح عند بدء المهلة (?started=1) ==== #}
-  {% if request.query_params.get('started') in ['1', 'true', 'yes'] %}
-    <div id="start-ok" class="card"
-         style="padding:12px;margin-bottom:16px;border-left:6px solid #2ecc71;background:#ecfff1;">
-      <div style="font-weight:700;margin-bottom:4px;">تم تفعيل مهلة ردّ المستأجر</div>
-      <div>
-        تم إرسال إشعار إلى المستأجر لرفع الأدلة. إذا لم يرد خلال 24 ساعة سيتم تنفيذ القرار تلقائيًا.
-      </div>
-    </div>
-    <script>
-      (function () {
-        setTimeout(function(){ var el = document.getElementById('start-ok'); if (el) el.style.display='none'; }, 6000);
-        try {
-          var url = new URL(window.location.href);
-          if (url.searchParams.has('started')) {
-            url.searchParams.delete('started');
-            var q = url.searchParams.toString();
-            window.history.replaceState({}, document.title, url.pathname + (q ? '?' + q : '') + url.hash);
-          }
-        } catch(e){}
-      })();
-    </script>
-  {% endif %}
-
-  {# ==== تنبيه نجاح عند تنفيذ القرار النهائي (?final=1) ==== #}
-  {% if request.query_params.get('final') in ['1', 'true', 'yes'] %}
-    <div id="final-ok" class="card"
-         style="padding:12px;margin-bottom:16px;border-left:6px solid #2ecc71;background:#ecfff1;">
-      <div style="font-weight:700;margin-bottom:4px;">تم تنفيذ القرار النهائي</div>
-      <div>
-        تم تنفيذ القرار النهائي وتم إرسال الإشعارات للطرفين.
-      </div>
-    </div>
-    <script>
-      (function () {
-        setTimeout(function(){ var el = document.getElementById('final-ok'); if (el) el.style.display='none'; }, 6000);
-        try {
-          var url = new URL(window.location.href);
-          if (url.searchParams.has('final')) {
-            url.searchParams.delete('final');
-            var q = url.searchParams.toString();
-            window.history.replaceState({}, document.title, url.pathname + (q ? '?' + q : '') + url.hash);
-          }
-        } catch(e){}
-      })();
-    </script>
-  {% endif %}
-
-  <!-- معلومات عامة -->
-  <div class="card" style="padding:16px;margin-bottom:16px;">
-    <div><b>العنصر:</b> {{ (item.title if item else "—") }}</div>
-    <div><b>المالك:</b> #{{ bk.owner_id }} — <b>المستأجر:</b> #{{ bk.renter_id }}</div>
-    <div><b>حالة الحجز:</b> {{ bk.status }} — <b>حالة الوديعة:</b> {{ bk.deposit_status }}</div>
-
-    {% if bk.owner_return_note %}
-      <div style="margin-top:8px;">
-        <b>ملاحظة المالك:</b><br>
-        {{ (bk.owner_return_note or "") | replace('\n','<br>') | safe }}
-      </div>
-    {% endif %}
-
-    {% if bk.renter_response_text %}
-      <div style="margin-top:8px;">
-        <b>ملاحظة/رد المستأجر:</b><br>
-        {{ (bk.renter_response_text or "") | replace('\n','<br>') | safe }}
-      </div>
-    {% endif %}
-  </div>
-
-  <!-- إشعار حالة الانتظار يظهر فقط إذا لا يوجد رد من المستأجر حتى الآن -->
-  {% if (bk.deposit_status or '') == 'awaiting_renter' and not (has_renter_reply or false) %}
-    <div class="card" style="padding:12px;margin-bottom:16px;border-left:6px solid #6f42c1;">
-      <div style="font-weight:700;margin-bottom:6px;">تم إشعار المستأجر وتفعيل تنفيذ القرار تلقائيًا</div>
-      <div>لدى المستأجر مهلة للرد حتى:
-        <b>
-          {% if bk.renter_response_deadline_at %}
-            {{ bk.renter_response_deadline_at }}
-          {% else %}
-            —
-          {% endif %}
-        </b>.
-        بعد انتهاء المهلة ينفَّذ القرار تلقائيًا إن لم يرد.
-      </div>
-    </div>
-  {% endif %}
-
-  <!-- الأدلة (مفصولة حسب الجهة) -->
-  <h3>الأدلة المرفوعة</h3>
-
-  <div class="card" style="padding:12px;margin-bottom:12px;">
-    <div style="display:flex;gap:16px;flex-wrap:wrap;">
-      <!-- أدلة المالك -->
-      <div style="flex:1 1 360px;min-width:320px;">
-        <h4 style="margin-top:0;">أدلة المالك</h4>
-        <div style="font-size:13px;">Owner — <b id="ev-owner-count">0</b></div>
-        <div id="ev-owner-grid" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;"></div>
-        <div id="ev-owner-empty" class="muted" style="margin-top:8px;">لا توجد أدلة للمالك.</div>
-      </div>
-
-      <!-- أدلة المستأجر -->
-      <div style="flex:1 1 360px;min-width:320px;">
-        <h4 style="margin-top:0;">أدلة المستأجر</h4>
-        <div style="font-size:13px;">Renter — <b id="ev-renter-count">0</b></div>
-        <div id="ev-renter-grid" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;"></div>
-        <div id="ev-renter-empty" class="muted" style="margin-top:8px;">لا توجد أدلة للمستأجر.</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- نموذج القرار (لـ DM) -->
-  <!-- ✅ تعديل: جعل action على مسار v4 الجديد -->
-  <form id="dm-decision-form" action="/dm/deposits/v4/{{ bk.id }}/decision" method="post" class="card" style="padding:16px;gap:12px;">
-    <h3 style="margin-top:0;">اتخاذ القرار النهائي</h3>
-
-    <label>نوع القرار</label>
-    <select id="decision" name="decision" required>
-      <option value="">— اختر —</option>
-      <option value="release">رد كامل الوديعة</option>
-      <option value="withhold">اقتطاع من الوديعة</option>
-    </select>
-
-    <label>المبلغ الجزئي (إن وجد)</label>
-    <input id="amount" name="amount" type="number" min="0" step="1" value="0" />
-
-    <label>السبب/التفاصيل</label>
-    <textarea id="reason" name="reason" rows="3" placeholder="اكتب سبب القرار…"></textarea>
-
-    <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;">
-      <a class="btn btn-secondary" href="/dm/deposits">رجوع</a>
-
-      <!-- زر تنفيذ القرار التقليدي -->
-      <button class="btn btn-success" type="submit">تنفيذ القرار</button>
-
-      <!-- نعرض أحد الزرين حسب الحالة (يُضبط بالـJS أيضًا) -->
-      <button id="btn-start-window" class="btn" type="button"
-              style="background:#6f42c1;color:#fff;border-radius:10px;display:none;">
-        بدء مهلة الرد 24h وإشعار المستأجر
-      </button>
-
-      <button id="btn-finalize-now" class="btn" type="button"
-              style="background:#6f42c1;color:#fff;border-radius:10px;display:none;">
-        اتخاذ القرار النهائي الآن
-      </button>
-    </div>
-
-    <div id="hint-text" class="muted" style="margin-top:10px;font-size:12px;"></div>
-  </form>
-
-  <!-- استلام القضية -->
-  <form action="/dm/deposits/{{ bk.id }}/claim" method="post" style="margin-top:12px;">
-    <button class="btn btn-outline">استلام القضية (اختياري)</button>
-  </form>
-</div>
+{% block head %}
+<style>
+  .flow-card{max-width:1000px;margin:auto}
+  .state-badge{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border:1px solid var(--border);border-radius:999px;font-weight:700}
+  .k{opacity:.7}
+  .acts{display:flex;flex-wrap:wrap;gap:10px}
+  .acts form{display:inline}
+  .hint{background:color-mix(in oklab,var(--surface) 92%,transparent);border:1px dashed var(--border);border-radius:12px;padding:10px 12px}
+  .box{border:1px solid var(--border);border-radius:12px;padding:12px}
+  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;}
+  .btn-wide{min-width:220px}
+  .badge-dot{display:inline-flex;gap:6px;align-items:center}
+  .badge-dot i{font-size:10px}
+  .muted{opacity:.6}
+  .alert-mini{padding:.6rem .8rem}
+</style>
+{% if dispute_deadline_iso %}
+  <script defer src="/static/js/countdown.js"></script>
+{% endif %}
 {% endblock %}
 
-{% block scripts %}
+{% block content %}
+<div class="flow-card card p-3 p-md-4">
+
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-start flex-wrap">
+    <div class="mb-2">
+      <h4 class="mb-1">الحجز #{{ booking.id }}</h4>
+      <div class="k">
+        العنصر: <strong>{{ item_title }}</strong>
+        {% if item %} — <a href="/items/{{ item.id }}">فتح صفحة العنصر</a>{% endif %}
+      </div>
+      <div class="k">الفترة: {{ booking.start_date }} → {{ booking.end_date }} ({{ booking.days }} يوم)</div>
+    </div>
+    <span class="state-badge mt-1">
+      <i class="bi bi-flag"></i>
+      <span>الحالة: {{ booking.status }}</span>
+    </span>
+  </div>
+
+  <hr>
+
+  <div class="row g-3">
+    <!-- Left column: actions / flow -->
+    <div class="col-12 col-lg-7">
+
+      {# ======= المرحلة: طلب جديد ======= #}
+      {% if booking.status in ['requested'] %}
+        {% if is_owner %}
+          <h5 class="mb-2">طلب جديد ينتظر موافقتك</h5>
+
+          <div class="box mb-2">
+            <div class="mb-2">أدخل <strong>الوديعة (ديبو)</strong> المطلوبة (الافتراضي = سعر اليوم × 5)</div>
+            <form method="post" action="/bookings/{{ booking.id }}/owner/decision" class="row g-2 align-items-end">
+              <input type="hidden" name="decision" value="accepted">
+              <div class="col-12 col-md-6">
+                <label class="form-label">قيمة الوديعة</label>
+                <input id="depositInput" name="deposit_amount" type="number" min="0" step="1" class="form-control"
+                       value="{{ booking.deposit_amount or 0 }}">
+                <div class="form-text k">يمكنك تغيير القيمة قبل القبول.</div>
+              </div>
+              <div class="col-12 col-md-6">
+                <button class="btn btn-success w-100"><i class="bi bi-check2-circle"></i> قبول بالوديعة</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="acts">
+            <form method="post" action="/bookings/{{ booking.id }}/owner/decision">
+              <input type="hidden" name="decision" value="rejected">
+              <button class="btn btn-outline-danger"><i class="bi bi-x-lg"></i> رفض</button>
+            </form>
+          </div>
+
+          <script>
+            (function () {
+              try {
+                var inp = document.getElementById('depositInput');
+                if (!inp) return;
+                var current = parseInt(inp.value || '0', 10);
+                if (!current || current <= 0) {
+                  var pricePerDay = parseInt('{{ (item.price_per_day or 0)|int }}', 10) || 0;
+                  var defVal = pricePerDay * 5;
+                  inp.value = defVal;
+                }
+              } catch (e) {}
+            })();
+          </script>
+
+        {% elif is_renter %}
+          <div class="hint">تم إرسال طلبك. بانتظار موافقة المالك…</div>
+        {% endif %}
+      {% endif %}
+
+      {# ======= المرحلة: مقبول – اختيار الدفع ======= #}
+      {% if booking.status in ['accepted'] %}
+        {% if is_renter %}
+          <h5 class="mb-2">اختر طريقة الدفع</h5>
+
+          <!-- الدفع كاش -->
+          <div class="box mb-2">
+            <div class="mb-2">الدفع <strong>كاش عند الاستلام</strong></div>
+            <form method="post" action="/bookings/{{ booking.id }}/pay-cash">
+              <button class="btn btn-secondary btn-wide"><i class="bi bi-cash-stack"></i> سأدفع كاش</button>
+            </form>
+          </div>
+
+          <!-- الدفع أونلاين -->
+          <div class="box">
+            <div class="mb-2">الدفع <strong>أونلاين (Stripe Checkout)</strong></div>
+
+            {% if not owner_pe %}
+              <div class="alert alert-warning alert-mini">
+                لا يمكن الدفع أونلاين الآن لأن <strong>المالك</strong> لم يُكمل تفعيل حساب الاستلام بعد.
+                {% if owner and owner.id == session_user.id %}
+                  <div class="mt-2">
+                    <a class="btn btn-primary btn-sm" href="/connect/onboard">
+                      <i class="bi bi-person-badge"></i> أكمل التحقق الآن
+                    </a>
+                    <small class="d-block k mt-1">بعد إكمال التحقق البنكي والهوية سيصبح الدفع أونلاين متاحًا.</small>
+                  </div>
+                {% else %}
+                  <small class="d-block k mt-1">رجاءً اطلب من المالك إكمال التحقق البنكي والهوية ليتاح الدفع أونلاين.</small>
+                {% endif %}
+              </div>
+            {% endif %}
+
+            <!-- الدفع الموحّد: إيجار + وديعة في نفس العملية -->
+            <form id="stripePayAllForm" method="post" action="/api/stripe/checkout/all/{{ booking.id }}">
+              <div class="row g-2">
+                <div class="col-6">
+                  <label class="form-label">مبلغ الإيجار</label>
+                  <input class="form-control" type="number" value="{{ booking.rent_amount or booking.total_amount or 0 }}" disabled>
+                </div>
+                <div class="col-6">
+                  <label class="form-label">الوديعة (ديبو)</label>
+                  <input class="form-control" type="number" value="{{ booking.deposit_amount or booking.hold_deposit_amount or 0 }}" disabled>
+                </div>
+                <div class="col-12 mt-2">
+                  <button id="stripePayAllBtn" class="btn btn-primary btn-wide"
+                          {% if not owner_pe %}disabled aria-disabled="true" title="المالك لم يفعل الاستلام بعد"{% endif %}>
+                    <i class="bi bi-credit-card"></i> ادفع الآن (الإيجار + الوديعة)
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            <!-- الأزرار القديمة (إبقاؤها دون حذف) -->
+            <div class="mt-3">
+              <div class="muted small mb-1">أو يمكنك استخدام الأزرار المنفصلة (كما كانت):</div>
+              <form id="stripePayRentForm" method="post" action="/api/stripe/checkout/rent/{{ booking.id }}" class="d-inline">
+                <button id="stripePayRentBtn" class="btn btn-outline-primary btn-sm me-1"
+                        {% if not owner_pe %}disabled aria-disabled="true"{% endif %}>
+                  <i class="bi bi-credit-card-2-front"></i> دفع الإيجار فقط
+                </button>
+              </form>
+
+              {% if (booking.deposit_amount or booking.hold_deposit_amount) and (booking.deposit_amount or booking.hold_deposit_amount) > 0 %}
+              <form class="d-inline" method="post" action="/api/stripe/checkout/deposit/{{ booking.id }}">
+                <button class="btn btn-outline-secondary btn-sm"
+                        {% if not owner_pe %}disabled aria-disabled="true"{% endif %}>
+                  <i class="bi bi-shield-lock"></i> حجز الوديعة فقط
+                </button>
+              </form>
+              {% endif %}
+            </div>
+
+            <div class="k mt-2">
+              سيتم تحويلك إلى صفحة دفع آمنة من Stripe لإدخال بيانات بطاقتك.
+              بعد النجاح ستعود تلقائيًا لصفحة الحجز، وسنحدّث الحالة.
+            </div>
+          </div>
+        {% elif is_owner %}
+          <div class="hint">تم قبول الطلب. بانتظار أن يختار المستأجر طريقة الدفع…</div>
+
+          {% if not owner_pe %}
+            <div class="alert alert-warning mt-2 alert-mini">
+              لكي يتمكّن المستأجر من الدفع أونلاين وتحويل المبلغ لك، أكمل تفعيل حسابك البنكي:
+              <div class="mt-2">
+                <a class="btn btn-primary btn-sm" href="/connect/onboard">
+                  <i class="bi bi-person-badge"></i> أكمل التحقق الآن
+                </a>
+              </div>
+            </div>
+          {% endif %}
+        {% endif %}
+      {% endif %}
+
+      {# ======= المرحلة: تم الدفع ======= #}
+      {% if booking.status in ['paid'] %}
+        {% if is_renter %}
+          <h5>جاهز للاستلام</h5>
+          <div class="hint">عند استلامك الغرض من المالك، اضغط الزر أدناه.</div>
+          <form class="mt-2" method="post" action="/bookings/{{ booking.id }}/picked-up">
+            <button class="btn btn-success btn-wide"><i class="bi bi-bag-check"></i> تم استلام الغرض</button>
+          </form>
+        {% elif is_owner %}
+          <div class="hint">تم الدفع. بانتظار أن يؤكد المستأجر أنه استلم الغرض.</div>
+          <form class="mt-2" method="post" action="/bookings/{{ booking.id }}/owner/confirm_delivered">
+            <button class="btn btn-outline-success btn-sm"><i class="bi bi-hand-thumbs-up"></i> علِّم تمّ التسليم</button>
+          </form>
+        {% endif %}
+      {% endif %}
+
+      {# ======= المرحلة: تم الاستلام ======= #}
+      {% if booking.status in ['picked_up'] %}
+        {% if is_renter %}
+          <h5>الغرض لديك الآن</h5>
+          <div class="hint">عند إرجاع الغرض للمالك، اضغط:</div>
+          <form class="mt-2" method="post" action="/bookings/{{ booking.id }}/mark-returned">
+            <button class="btn btn-warning btn-wide"><i class="bi bi-arrow-return-left"></i> تم إرجاع الغرض</button>
+          </form>
+        {% elif is_owner %}
+          <div class="hint">المستأجر استلم الغرض. عند إرجاعه ستظهر لك خطوات تأكيد الإرجاع والوديعة.</div>
+        {% endif %}
+      {% endif %}
+
+      {# ======= المرحلة: تم الإرجاع / قيد مراجعة الوديعة ======= #}
+      {% if booking.status in ['returned', 'in_review'] %}
+        {% if is_owner %}
+          <h5 class="mb-2">الإرجاع معلَّم — المراجعة</h5>
+          <div class="hint mb-2">
+            لديك مهلة للاعتراض عبر فتح بلاغ وديعة إذا كانت هناك مشكلة:
+            {% if dispute_deadline_iso %}
+              <div class="mt-2">
+                <span class="badge-dot"><i class="bi bi-circle-fill"></i> العدّاد حتى نهاية مهلة الاعتراض:</span>
+                <div id="deadlineCountdown" class="mono fw-bold"></div>
+              </div>
+            {% endif %}
+          </div>
+          <form method="post" action="/bookings/{{ booking.id }}/owner/open_deposit_issue">
+            <button class="btn btn-outline-danger btn-wide">
+              <i class="bi bi-exclamation-octagon"></i> فتح بلاغ وديعة (مشكلة/ضرر/تأخير)
+            </button>
+          </form>
+          <div class="k small mt-2">إن لم تفتح بلاغًا ضمن المهلة، تُفرج الوديعة تلقائيًا للمستأجر حسب السياسة.</div>
+
+        {% elif is_renter %}
+          <div class="hint">تم تعليم الإرجاع. بانتظار الإدارة/متحكّم الوديعة لاتخاذ قرار الوديعة.</div>
+          {% if dispute_deadline_iso %}
+            <div class="k small mt-2">مهلة اعتراض المالك مازالت سارية — سيتم الإفراج تلقائيًا بعد انتهائها إذا لا توجد بلاغات.</div>
+          {% endif %}
+        {% elif session_user and session_user.role == 'admin' %}
+          <div class="hint">هذا الحجز بانتظار قرار الوديعة من الإدارة/متحكّم الوديعة.</div>
+        {% endif %}
+      {% endif %}
+
+      {# ======= حالات منتهية ======= #}
+      {% if booking.status in ['closed','rejected','completed'] %}
+        <div class="alert alert-info">
+          {% if booking.status in ['closed','completed'] %}
+            العملية مكتملة ✅
+          {% else %}
+            تم رفض الحجز ❌
+          {% endif %}
+        </div>
+      {% endif %}
+
+    </div>
+
+    <!-- Right column: summary -->
+    <div class="col-12 col-lg-5">
+      <div class="box">
+        <h6 class="mb-2">ملخص الدفع</h6>
+        <div class="d-flex justify-content-between"><span>طريقة الدفع</span><strong>{{ booking.payment_method or '—' }}</strong></div>
+        <div class="d-flex justify-content-between"><span>مبلغ الإيجار</span><strong>{{ booking.rent_amount or booking.total_amount or 0 }}$</strong></div>
+        <div class="d-flex justify-content-between"><span>الوديعة المحتجزة</span><strong>{{ booking.hold_deposit_amount or booking.deposit_amount or 0 }}$</strong></div>
+        <div class="d-flex justify-content-between"><span>حالة التحصيل الأونلاين</span><strong>{{ booking.online_status or '—' }}</strong></div>
+        <div class="d-flex justify-content-between"><span>حالة الوديعة</span><strong>{{ booking.deposit_status or '—' }}</strong></div>
+        <hr>
+        <div class="k mono small">
+          {% if booking.accepted_at %}accepted_at: {{ booking.accepted_at }}<br>{% endif %}
+          {% if booking.picked_up_at %}picked_up_at: {{ booking.picked_up_at }}<br>{% endif %}
+          {% if booking.returned_at %}returned_at: {{ booking.returned_at }}<br>{% endif %}
+          {% if booking.return_confirmed_by_owner_at %}owner_confirmed_at: {{ booking.return_confirmed_by_owner_at }}<br>{% endif %}
+          {% if booking.rent_released_at %}rent_released_at: {{ booking.rent_released_at }}<br>{% endif %}
+        </div>
+      </div>
+
+      {% if item %}
+      <div class="box mt-3">
+        <h6 class="mb-2">العنصر</h6>
+        <div class="d-flex gap-3">
+          <img src="{{ (('/' ~ item.image_path) if item.image_path and item.image_path[0] != '/' else (item.image_path or '/static/placeholder.jpg')) }}"
+               style="width:96px;height:96px;object-fit:cover;border-radius:10px" alt="">
+          <div>
+            <div class="fw-bold">{{ item.title }}</div>
+            <div class="k">{{ category_label(item.category) }}</div>
+            <div class="k">السعر اليومي: {{ item.price_per_day }}$</div>
+            <a class="small" href="/items/{{ item.id }}">فتح صفحة العنصر</a>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- UX: تعطيل الأزرار أثناء التحويل -->
 <script>
-(function(){
-  // ===== متغيرات من السيرفر =====
-  const serverEvidence = {{ evidence|tojson if evidence is defined else 'null' }};
-  const serverEvList   = {{ ev_list|tojson   if ev_list   is defined else 'null' }};
-  const hasRenterReplyServer = {{ 'true' if (has_renter_reply or false) else 'false' }};
-  var bkId = {{ bk.id }};
-
-  // ===== عناصر DOM لقسم المالك والمستأجر =====
-  var ownerGrid    = document.getElementById('ev-owner-grid');
-  var ownerCountEl = document.getElementById('ev-owner-count');
-  var ownerEmptyEl = document.getElementById('ev-owner-empty');
-
-  var renterGrid    = document.getElementById('ev-renter-grid');
-  var renterCountEl = document.getElementById('ev-renter-count');
-  var renterEmptyEl = document.getElementById('ev-renter-empty');
-
-  // ===== أزرار القرار =====
-  var btnStart    = document.getElementById('btn-start-window');
-  var btnFinalize = document.getElementById('btn-finalize-now');
-  var form        = document.getElementById('dm-decision-form');
-  var selDecision = document.getElementById('decision');
-  var amount      = document.getElementById('amount');
-  var hintText    = document.getElementById('hint-text');
-
-  function isVideoUrl(url){
-    var s = (url || '').toLowerCase();
-    return s.endsWith('.mp4') || s.endsWith('.mov') || s.endsWith('.m4v') ||
-           s.endsWith('.avi') || s.endsWith('.wmv') || s.endsWith('.webm');
+  function wireDisableOnSubmit(formId, btnId, text){
+    var f = document.getElementById(formId);
+    if(!f) return;
+    f.addEventListener('submit', function(){
+      var btn = document.getElementById(btnId);
+      if(btn){
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> ' + (text || 'جاري تحويلك...');
+      }
+    });
   }
-  function addImg(grid, url){
-    var a = document.createElement('a');
-    a.href = url; a.target = '_blank'; a.style.display = 'inline-block';
-    var img = document.createElement('img');
-    img.src = url + '?v={{ bk.updated_at.timestamp() if bk.updated_at else 0 }}';
-    img.alt = 'evidence'; img.loading = 'lazy';
-    img.style.maxWidth = '220px'; img.style.maxHeight = '160px';
-    img.style.borderRadius = '8px'; img.style.objectFit = 'cover';
-    a.appendChild(img); grid.appendChild(a);
-  }
-  function addVideo(grid, url){
-    var v = document.createElement('video');
-    v.src = url + '?v={{ bk.updated_at.timestamp() if bk.updated_at else 0 }}';
-    v.controls = true;
-    v.style.maxWidth = '320px'; v.style.maxHeight = '220px'; v.style.borderRadius = '8px';
-    grid.appendChild(v);
-  }
-  function addNote(grid, text){
-    var d = document.createElement('div');
-    d.className = 'card';
-    d.style.padding = '10px';
-    d.style.maxWidth = '360px';
-    d.style.whiteSpace = 'pre-wrap';
-    d.textContent = text || '—';
-    grid.appendChild(d);
-  }
-  function incCount(el, emptyEl, by){
-    var cur = parseInt(el.textContent || '0', 10);
-    el.textContent = cur + by;
-    emptyEl.style.display = (cur + by) > 0 ? 'none' : '';
-  }
+  wireDisableOnSubmit('stripePayAllForm','stripePayAllBtn','جاري تحويلك إلى الدفع…');
+  wireDisableOnSubmit('stripePayRentForm','stripePayRentBtn','جاري تحويلك إلى الدفع…');
 
-  // توزيع عنصر واحد حسب الجهة
-  function renderOne(ev){
-    var side = (ev && ev.side) ? (''+ev.side).toLowerCase() : '';
-    var file = ev && ev.file ? ev.file : '';
-    var kind = (ev && ev.kind) || '';
-    var desc = (ev && ev.description) || '';
-
-    var grid, cnt, empty;
-    if (side === 'renter'){
-      grid = renterGrid; cnt = renterCountEl; empty = renterEmptyEl;
-    } else if (side === 'owner'){
-      grid = ownerGrid; cnt = ownerCountEl; empty = ownerEmptyEl;
-    } else {
-      // لو غير معروف (manager/قديم) نضعه في قسم المالك حتى لا يختلط
-      grid = ownerGrid; cnt = ownerCountEl; empty = ownerEmptyEl;
+  {% if dispute_deadline_iso %}
+  try{
+    if(window.initCountdown){
+      initCountdown('deadlineCountdown','{{ dispute_deadline_iso }}');
+    }else{
+      var el = document.getElementById('deadlineCountdown');
+      if(el){
+        el.textContent = new Date('{{ dispute_deadline_iso }}').toLocaleString();
+      }
     }
-
-    if (kind === 'note' && !file){
-      addNote(grid, desc); incCount(cnt, empty, 1); return (side === 'renter');
-    } else if (file){
-      if (isVideoUrl(file)) addVideo(grid, file); else addImg(grid, file);
-      incCount(cnt, empty, 1); return (side === 'renter');
-    }
-    return false;
-  }
-
-  // JSON من الـAPI
-  var renterSeen = false;
-  function renderFromJson(items){
-    items = Array.isArray(items) ? items : [];
-    items.forEach(function(ev){
-      var isRenterItem = renderOne(ev);
-      if (isRenterItem) renterSeen = true;
-    });
-  }
-
-  // روابط قديمة من مجلد /uploads (بدون side) → نعتبرها للمالك
-  function renderLegacyUrls(urls){
-    if (!Array.isArray(urls)) urls = [];
-    urls.forEach(function(u){
-      if (isVideoUrl(u)) addVideo(ownerGrid, u); else addImg(ownerGrid, u);
-    });
-    incCount(ownerCountEl, ownerEmptyEl, urls.length);
-  }
-
-  // تبديل الأزرار بحسب وجود رد للمستأجر
-  function toggleButtons(hasRenterReply){
-    if (hasRenterReply){
-      if (btnStart)    btnStart.style.display    = 'none';
-      if (btnFinalize) btnFinalize.style.display = '';
-      if (hintText)    hintText.textContent = 'بعد وصول ردّ المستأجر يمكنك اتخاذ القرار النهائي مباشرة.';
-    } else {
-      if (btnStart)    btnStart.style.display    = '';
-      if (btnFinalize) btnFinalize.style.display = 'none';
-      if (hintText)    hintText.textContent = 'زر “بدء مهلة الرد 24h” يثبت القرار على “اقتطاع من الوديعة” ويضبط المهلة 24 ساعة ويُرسل إشعارًا للمستأجر.';
-    }
-  }
-
-  // أولاً اضبط الحالة المبدئية من السيرفر
-  toggleButtons(Boolean(hasRenterReplyServer));
-
-  // 1) جلب الأدلة من قاعدة البيانات (تشمل side)
-  fetch('/deposits/' + bkId + '/evidence', {credentials:'include'})
-    .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-    .then(function(data){ renderFromJson(data && data.items); })
-    .catch(function(){ /* تجاهل */ })
-    .finally(function(){
-      // 2) دمج أدلة قديمة (بدون side) — توضع كأدلة مالك
-      var fromServer = Array.isArray(serverEvidence) && serverEvidence.length ? serverEvidence
-                     : (Array.isArray(serverEvList) && serverEvList.length ? serverEvList : null);
-      if (fromServer){ renderLegacyUrls(fromServer); }
-      else {
-        fetch('/debug/evidence/' + bkId, {credentials:'include'})
-          .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-          .then(function(d){ renderLegacyUrls((d && d.urls) ? d.urls : []); })
-          .catch(function(){ /* لا شيء */ });
-      }
-
-      // 3) بعد العرض: إن وُجد عنصر للمستأجر من JSON نبدّل الأزرار فورًا
-      if (renterSeen) toggleButtons(true);
-    });
-
-  // ===== أحداث الأزرار =====
-
-  // ✅ تعديل: بدء مهلة الرد — نُرسل إلى مسار v4 الجديد
-  if (btnStart && form && selDecision && amount){
-    btnStart.addEventListener('click', function(){
-      var amt = parseInt(amount.value || '0', 10);
-      if (isNaN(amt) || amt <= 0){
-        alert('ضع مبلغ الخصم أولًا (أكبر من صفر) قبل بدء مهلة الرد.');
-        amount.focus(); return;
-      }
-      selDecision.value = 'withhold';
-      form.action = '/dm/deposits/v4/{{ bk.id }}/start-window';
-      form.submit();
-    });
-  }
-
-  // ✅ تعديل: اتخاذ القرار النهائي الآن — فحوصات بسيطة، ومسار v4
-  if (btnFinalize && form){
-    btnFinalize.addEventListener('click', function(){
-      if (!selDecision.value){
-        alert('اختر نوع القرار أولًا (رد كامل أو اقتطاع).');
-        selDecision.focus(); return;
-      }
-      if (selDecision.value === 'withhold'){
-        var amt = parseInt(amount.value || '0', 10);
-        if (isNaN(amt) || amt <= 0){
-          alert('ضع مبلغ الخصم (أكبر من صفر) للاقتطاع النهائي.');
-          amount.focus(); return;
-        }
-      }
-      // نضيف finalize=1 لتمييز التنفيذ النهائي
-      var h = document.createElement('input');
-      h.type = 'hidden';
-      h.name = 'finalize';
-      h.value = '1';
-      form.appendChild(h);
-
-      form.action = '/dm/deposits/v4/{{ bk.id }}/decision';
-      form.submit();
-    });
-  }
-})();
+  }catch(e){}
+  {% endif %}
 </script>
 {% endblock %}
