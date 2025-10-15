@@ -166,6 +166,6 @@ def dm_decide(
     # حتى يبقى تنفيذ القرار في ملف واحد (routes_deposits.py)
     form_qs = f"decision={decision}&amount={max(0,int(amount or 0))}&reason={reason}"
     return RedirectResponse(
-        url=f"/deposits/{booking_id}/decision?{form_qs}",
+        url=f"/dm/deposits/{booking_id}/decision?{form_qs}",
         status_code=303
     )
