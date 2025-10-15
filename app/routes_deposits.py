@@ -728,3 +728,42 @@ def dm_start_renter_window(
         pass
 
     return RedirectResponse(url=f"/dm/deposits/{bk.id}?started=1", status_code=303)
+
+    # ====== ALIASES v4 لتجنّب اصطدام الراوتر القديم ======
+
+@router.post("/dm/deposits/v4/{booking_id}/decision")
+def dm_decision_v4(
+    booking_id: int,
+    decision: Literal["release", "withhold"] = Form(...),
+    amount: int = Form(0),
+    reason: str = Form(""),
+    finalize: int = Form(0),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    # يستدعي نفس المنطق بالضبط
+    return dm_decision(
+        booking_id=booking_id,
+        decision=decision,
+        amount=amount,
+        reason=reason,
+        finalize=finalize,
+        db=db,
+        user=user,
+    )
+
+@router.post("/dm/deposits/v4/{booking_id}/start-window")
+def dm_start_renter_window_v4(
+    booking_id: int,
+    amount: int = Form(0),
+    reason: str = Form(""),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    return dm_start_renter_window(
+        booking_id=booking_id,
+        amount=amount,
+        reason=reason,
+        db=db,
+        user=user,
+    )

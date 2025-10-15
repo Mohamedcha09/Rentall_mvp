@@ -115,7 +115,8 @@
   </div>
 
   <!-- نموذج القرار (لـ DM) -->
-  <form id="dm-decision-form" action="/dm/deposits/{{ bk.id }}/decision" method="post" class="card" style="padding:16px;gap:12px;">
+  <!-- ✅ تعديل: جعل action على مسار v4 الجديد -->
+  <form id="dm-decision-form" action="/dm/deposits/v4/{{ bk.id }}/decision" method="post" class="card" style="padding:16px;gap:12px;">
     <h3 style="margin-top:0;">اتخاذ القرار النهائي</h3>
 
     <label>نوع القرار</label>
@@ -305,6 +306,8 @@
     });
 
   // ===== أحداث الأزرار =====
+
+  // ✅ تعديل: بدء مهلة الرد — نُرسل إلى مسار v4 الجديد
   if (btnStart && form && selDecision && amount){
     btnStart.addEventListener('click', function(){
       var amt = parseInt(amount.value || '0', 10);
@@ -313,21 +316,33 @@
         amount.focus(); return;
       }
       selDecision.value = 'withhold';
-      form.action = '/dm/deposits/{{ bk.id }}/start-window';
+      form.action = '/dm/deposits/v4/{{ bk.id }}/start-window';
       form.submit();
     });
   }
 
+  // ✅ تعديل: اتخاذ القرار النهائي الآن — فحوصات بسيطة، ومسار v4
   if (btnFinalize && form){
     btnFinalize.addEventListener('click', function(){
-      // نضيف finalize=1 كحقل مخفي لعرض تنبيه النجاح بعد التنفيذ
+      if (!selDecision.value){
+        alert('اختر نوع القرار أولًا (رد كامل أو اقتطاع).');
+        selDecision.focus(); return;
+      }
+      if (selDecision.value === 'withhold'){
+        var amt = parseInt(amount.value || '0', 10);
+        if (isNaN(amt) || amt <= 0){
+          alert('ضع مبلغ الخصم (أكبر من صفر) للاقتطاع النهائي.');
+          amount.focus(); return;
+        }
+      }
+      // نضيف finalize=1 لتمييز التنفيذ النهائي
       var h = document.createElement('input');
       h.type = 'hidden';
       h.name = 'finalize';
       h.value = '1';
       form.appendChild(h);
 
-      form.action = '/dm/deposits/{{ bk.id }}/decision';
+      form.action = '/dm/deposits/v4/{{ bk.id }}/decision';
       form.submit();
     });
   }
