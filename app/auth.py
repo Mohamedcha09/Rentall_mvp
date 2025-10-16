@@ -120,7 +120,9 @@ def register_post(
     avatar: UploadFile = File(...),
 ):
     email = (email or "").strip().lower()
-    password = _normalize_form_password(password or "")
+    password = _normalize_form_password(password or ""
+
+    )
 
     # تحقق من وجود المستخدم
     exists = db.query(User).filter(User.email == email).first()
@@ -192,22 +194,34 @@ def register_post(
         verify_url = f"{BASE_URL}/activate/verify?token={token}"
 
         subj = "Activate your account — RentAll"
+
+        # 🔧 زر Bulletproof يعمل على الجوال + أوتلوك
         html = f"""
         <div style="font-family:Tahoma,Arial,sans-serif;line-height:1.8;direction:rtl;text-align:right">
           <h3 style="margin:0 0 12px">مرحبًا {first_name} 👋</h3>
           <p>شكرًا لتسجيلك في <b>RentAll</b>. اضغط الزر أدناه لتفعيل حسابك:</p>
-          <p style="text-align:center;margin:24px 0">
-            <a href="{verify_url}"
-               style="display:inline-block;padding:12px 20px;border-radius:8px;
-                      background:#2563eb;color:#fff;text-decoration:none;font-weight:700">
-              تفعيل الحساب
-            </a>
-          </p>
+
+          <!-- Button : BEGIN -->
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:24px auto">
+            <tr>
+              <td bgcolor="#2563eb" style="border-radius:8px;">
+                <a href="{verify_url}" target="_blank"
+                   style="font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:16px;
+                          text-decoration:none;padding:14px 22px;display:inline-block;
+                          color:#ffffff;border-radius:8px;">
+                  تفعيل الحساب
+                </a>
+              </td>
+            </tr>
+          </table>
+          <!-- Button : END -->
+
           <p style="color:#666;font-size:13px">إن لم يظهر الزر، افتح هذا الرابط:</p>
           <p style="word-break:break-all"><a href="{verify_url}">{verify_url}</a></p>
           <p style="color:#888;font-size:12px">إذا لم تقم بالتسجيل، تجاهل هذه الرسالة.</p>
         </div>
         """
+
         text = f"مرحبًا {first_name}\n\nفعّل حسابك عبر الرابط:\n{verify_url}\n\nإن لم تكن أنت، تجاهل الرسالة."
         send_email(u.email, subj, html, text_body=text)
     except Exception:
