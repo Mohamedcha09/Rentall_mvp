@@ -4,7 +4,6 @@ from datetime import datetime
 from fastapi import APIRouter, Request, Depends, UploadFile, File, Form, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-
 from .database import get_db
 from .models import User, Document
 
@@ -34,10 +33,6 @@ def _require_login(request: Request):
 
 @router.get("/activate")
 def activate_get(request: Request, db: Session = Depends(get_db)):
-    """
-    صفحة إكمال التفعيل للمستخدمين pending/rejected.
-    (لا علاقة لها بتفعيل البريد، فقط لرفع صورة/وثائق)
-    """
     sess = _require_login(request)
     if not sess:
         return RedirectResponse(url="/login", status_code=303)
@@ -57,26 +52,12 @@ def activate_get(request: Request, db: Session = Depends(get_db)):
 
     return request.app.templates.TemplateResponse(
         "activate.html",
-        {
-            "request": request,
-            "title": "إكمال التفعيل",
-            "user": user,
-            "docs": docs,
-            "review_note": review_note,
-            "session_user": sess
-        }
+        {"request": request, "title": "إكمال التفعيل", "user": user, "docs": docs,
+         "review_note": review_note, "session_user": sess}
     )
 
 @router.post("/activate/avatar")
-def activate_update_avatar(
-    request: Request,
-    db: Session = Depends(get_db),
-    avatar: UploadFile = File(...),
-):
-    """
-    إعادة التقاط/رفع صورة الحساب (كاميرا فقط من الواجهة).
-    تُحدَّث الصورة وتبقى الحالة كما هي حتى يراجع الأدمِن.
-    """
+def activate_update_avatar(request: Request, db: Session = Depends(get_db), avatar: UploadFile = File(...)):
     sess = _require_login(request)
     if not sess:
         return RedirectResponse(url="/login", status_code=303)
@@ -90,26 +71,16 @@ def activate_update_avatar(
 
 @router.post("/activate/document")
 def activate_update_document(
-    request: Request,
-    db: Session = Depends(get_db),
-    doc_type: str = Form("id_card"),
-    country: str = Form(""),
-    expiry: str = Form(""),
-    doc_front: UploadFile = File(...),
-    doc_back: UploadFile = File(None),
+    request: Request, db: Session = Depends(get_db),
+    doc_type: str = Form("id_card"), country: str = Form(""),
+    expiry: str = Form(""), doc_front: UploadFile = File(...), doc_back: UploadFile = File(None),
 ):
-    """
-    إعادة رفع الوثيقة (وجه أمامي إجباري + خلفي اختياري).
-    تنشئ سجل وثيقة جديد بوضع pending ليُراجع من الأدمِن.
-    """
     from datetime import datetime as dt
-
     sess = _require_login(request)
     if not sess:
         return RedirectResponse(url="/login", status_code=303)
 
     user = db.query(User).get(sess["id"])
-
     front_path = _save(doc_front, IDS_DIR, [".jpg", ".jpeg", ".png", ".pdf"])
     back_path = _save(doc_back, IDS_DIR, [".jpg", ".jpeg", ".png", ".pdf"]) if doc_back else None
 
@@ -121,22 +92,16 @@ def activate_update_document(
             expiry_date = None
 
     d = Document(
-        user_id=user.id,
-        doc_type=doc_type,
-        country=country,
-        expiry_date=expiry_date,
-        file_front_path=front_path,
-        file_back_path=back_path,
-        review_status="pending",
-        review_note=None,
-        created_at=datetime.utcnow(),
+        user_id=user.id, doc_type=doc_type, country=country,
+        expiry_date=expiry_date, file_front_path=front_path,
+        file_back_path=back_path, review_status="pending",
+        review_note=None, created_at=datetime.utcnow(),
     )
     db.add(d)
     db.commit()
-
     return RedirectResponse(url="/activate", status_code=303)
 
-# ===== تفعيل البريد عبر التوكن + تسجيل دخول تلقائي =====
+# ===== تفعيل البريد عبر التوكن =====
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 def _signer() -> URLSafeTimedSerializer:
@@ -145,16 +110,9 @@ def _signer() -> URLSafeTimedSerializer:
 
 @router.get("/activate/verify")
 def activate_verify(token: str, request: Request, db: Session = Depends(get_db)):
-    """
-    يفك التوكن (صالحيته 3 أيام). إذا كان صحيحًا:
-      - يضبط is_verified=True و verified_at=الآن (إن وُجد العمود)
-      - يضبط status="approved" (لتفعيل الحجز مباشرة)
-      - ينشئ جلسة (login) للمستخدم
-      - يحوّل للصفحة الرئيسية
-    """
     s = _signer()
     try:
-        data = s.loads(token, max_age=60 * 60 * 24 * 3)  # 3 أيام
+        data = s.loads(token, max_age=60 * 60 * 24 * 3)
     except SignatureExpired:
         raise HTTPException(status_code=400, detail="انتهت صلاحية رابط التفعيل.")
     except BadSignature:
@@ -169,20 +127,18 @@ def activate_verify(token: str, request: Request, db: Session = Depends(get_db))
     if not user or (user.email or "").lower() != email:
         raise HTTPException(status_code=404, detail="المستخدم غير موجود.")
 
-    # ✅ تفعيل البريد + الموافقة على الحساب للحجز
+    # ✅ فقط تفعيل البريد بدون تعديل الحالة
     try:
         user.is_verified = True
         if hasattr(user, "verified_at"):
             user.verified_at = datetime.utcnow()
-        if hasattr(user, "status"):
-            user.status = "approved"
         db.add(user)
         db.commit()
         db.refresh(user)
     except Exception:
         pass
 
-    # تسجيل دخول تلقائي بالبيانات المحدثة
+    # تسجيل دخول تلقائي
     request.session["user"] = {
         "id": user.id,
         "first_name": user.first_name,
@@ -190,7 +146,7 @@ def activate_verify(token: str, request: Request, db: Session = Depends(get_db))
         "email": user.email,
         "phone": user.phone,
         "role": user.role,
-        "status": user.status,      # الآن "approved"
+        "status": user.status,
         "is_verified": True,
         "avatar_path": user.avatar_path or None,
     }

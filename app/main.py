@@ -55,8 +55,11 @@ from .routes_evidence import router as evidence_router
 from .cron_auto_release import router as cron_router
 from .debug_email import router as debug_email_router
 
-# ✅ [حسب طلبك] إضافة الاستيراد بالشكل التالي أيضًا (بدون حذف القديم)
-from . import cron_auto_release  # سيُستخدم أدناه مع include_router(cron_auto_release.router)
+# ✅ (إزالة إلزامية) لا نحتاج هذا الاستيراد لأنّه يسبب تكرار الراوتر و/أو NameError
+# from .cron_auto_release import cron_auto_release  # سيُستخدم أدناه مع include_router(cron_auto_release.router)
+
+# ✅ (إزالة إلزامية) إذا لم يكن لديك ملف admin_users.py فهذا الاستيراد سيكسر التشغيل
+# from .admin_users import router as admin_users_router
 
 app = FastAPI()
 
@@ -180,13 +183,12 @@ app.include_router(evidence_router)
 # ✅ [مضاف] تسجيل مسار تشغيل الإفراج التلقائي يدويًا (الاستيراد القديم)
 app.include_router(cron_router)
 
-# ✅ [حسب طلبك] تسجيل نفس الراوتر عبر include_router(cron_auto_release.router) بدون تكرار المسار
-try:
-    # لا تقم بإعادة الإدراج إذا كان المسار موجودًا بالفعل
-    if not any(getattr(r, "path", None) == "/admin/run/auto-release" for r in getattr(app, "routes", [])):
-        app.include_router(cron_auto_release.router)
-except Exception:
-    pass
+# ✅ (إزالة إلزامية) تجنب محاولة include ثانية لنفس راوتر الكرون باسم مختلف
+# try:
+#     if not any(getattr(r, "path", None) == "/admin/run/auto-release" for r in getattr(app, "routes", [])):
+#         app.include_router(cron_auto_release.router)
+# except Exception:
+#     pass
 
 def _cat_code(cat) -> str:
     if isinstance(cat, dict):

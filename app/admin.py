@@ -1,20 +1,27 @@
+# app/admin.py
 from datetime import datetime
-from fastapi import APIRouter, Depends, Request, Form
+import os
+
+from fastapi import APIRouter, Depends, Request, HTTPException, Form
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from .database import get_db
 from .models import User, Document, MessageThread, Message
 from .notifications_api import push_notification  # NEW
+from .email_service import send_email             # ✅ لإرسال الإيميل عند الموافقة
 
 router = APIRouter()
+
+BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
+
 
 # ---------------------------
 # Helpers
 # ---------------------------
 def require_admin(request: Request) -> bool:
     u = request.session.get("user")
-    return bool(u and u.get("role") == "admin")
+    return bool(u and (u.get("role") or "").lower() == "admin")
 
 
 def _open_or_create_admin_thread(db: Session, admin_id: int, user_id: int) -> MessageThread:
@@ -39,9 +46,7 @@ def _open_or_create_admin_thread(db: Session, admin_id: int, user_id: int) -> Me
 def _refresh_session_user_if_self(request: Request, user: User) -> None:
     """لو الأدمِن عدّل نفسه، حدّث القيم داخل session حتى تظهر فورًا في الواجهة."""
     sess = request.session.get("user")
-    if not sess:
-        return
-    if sess.get("id") != user.id:
+    if not sess or sess.get("id") != user.id:
         return
     sess["role"] = user.role
     sess["status"] = user.status
@@ -54,6 +59,8 @@ def _refresh_session_user_if_self(request: Request, user: User) -> None:
             sess[k] = getattr(user, k)
     if hasattr(user, "is_deposit_manager"):
         sess["is_deposit_manager"] = bool(getattr(user, "is_deposit_manager", False))
+    # ✅ اكتب التحديثات مرّة أخرى داخل السيشن
+    request.session["user"] = sess
 
 
 # ---------------------------
@@ -93,13 +100,57 @@ def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=303)
 
     user = db.query(User).get(user_id)
-    if user:
-        user.status = "approved"
-        for d in (user.documents or []):
-            d.review_status = "approved"
-            d.reviewed_at = datetime.utcnow()
-        db.commit()
-        _refresh_session_user_if_self(request, user)
+    if not user:
+        return RedirectResponse(url="/admin", status_code=303)
+
+    # ✅ موافقة الحساب (تشغيل زر الحجز)
+    user.status = "approved"
+
+    # ✅ وثّق البريد لو لم يكن موثّقًا، لإتمام 100%
+    try:
+        if hasattr(user, "is_verified") and not bool(user.is_verified):
+            user.is_verified = True
+        if hasattr(user, "verified_at") and not getattr(user, "verified_at", None):
+            user.verified_at = datetime.utcnow()
+        if hasattr(user, "verified_by_id"):
+            admin = request.session.get("user") or {}
+            if admin.get("id"):
+                user.verified_by_id = admin["id"]
+    except Exception:
+        pass
+
+    # (اختياري) وسم كل المستندات كـ approved
+    for d in (user.documents or []):
+        d.review_status = "approved"
+        d.reviewed_at = datetime.utcnow()
+
+    db.commit()
+    _refresh_session_user_if_self(request, user)
+
+    # ✅ إرسال إيميل "تم تفعيل حسابك 100%"
+    try:
+        subject = "تم تفعيل حسابك 100% — يمكنك الحجز الآن 🎉"
+        home_url = f"{BASE_URL}/"
+        html = f"""
+        <div style="font-family:Tahoma,Arial,sans-serif;line-height:1.8;direction:rtl;text-align:right">
+          <h3 style="margin:0 0 12px">مرحبًا {user.first_name} 👋</h3>
+          <p>تمت موافقة الأدمين على حسابك، وحسابك الآن <b>مفعّل 100%</b>.</p>
+          <p>يمكنك الآن استخدام كل الميزات، بما فيها زر <b>احجز الآن</b>.</p>
+          <p style="text-align:center;margin:24px 0">
+            <a href="{home_url}"
+               style="display:inline-block;padding:12px 20px;border-radius:8px;
+                      background:#16a34a;color:#fff;text-decoration:none;font-weight:700">
+              ابدأ الآن
+            </a>
+          </p>
+          <p style="color:#888;font-size:12px">إذا لم تطلب هذه العملية، تجاهل الرسالة.</p>
+        </div>
+        """
+        text = f"مرحبًا {user.first_name}\n\nتم تفعيل حسابك 100% ويمكنك الآن الحجز.\n{home_url}"
+        send_email(user.email, subject, html, text_body=text)
+    except Exception:
+        # لا نكسر الطلب إن فشل الإيميل
+        pass
 
     return RedirectResponse(url="/admin", status_code=303)
 
@@ -110,13 +161,28 @@ def reject_user(user_id: int, request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=303)
 
     user = db.query(User).get(user_id)
-    if user:
-        user.status = "rejected"
-        for d in (user.documents or []):
-            d.review_status = "rejected"
-            d.reviewed_at = datetime.utcnow()
-        db.commit()
-        _refresh_session_user_if_self(request, user)
+    if not user:
+        return RedirectResponse(url="/admin", status_code=303)
+
+    user.status = "rejected"
+    for d in (user.documents or []):
+        d.review_status = "rejected"
+        d.reviewed_at = datetime.utcnow()
+    db.commit()
+    _refresh_session_user_if_self(request, user)
+
+    # (اختياري) إيميل رفض
+    try:
+        subject = "لم يتم قبول حسابك حالياً"
+        html = f"""
+        <div style="font-family:Tahoma,Arial,sans-serif;direction:rtl;text-align:right;line-height:1.8">
+          <p>نعتذر، لم يتم قبول حسابك حالياً. يمكنك إعادة رفع صور واضحة لبطاقتك وصورتك الشخصية ثم طلب المراجعة مرة أخرى.</p>
+          <p><a href="{BASE_URL}/activate">إكمال التفعيل</a></p>
+        </div>
+        """
+        send_email(user.email, subject, html, text_body="لم يتم قبول حسابك حالياً.")
+    except Exception:
+        pass
 
     return RedirectResponse(url="/admin", status_code=303)
 
@@ -131,13 +197,16 @@ def verify_user(user_id: int, request: Request, db: Session = Depends(get_db)):
 
     admin = request.session.get("user")
     user = db.query(User).get(user_id)
-    if user:
-        user.is_verified = True
+    if not user:
+        return RedirectResponse(url="/admin", status_code=303)
+
+    user.is_verified = True
+    if hasattr(user, "verified_at"):
         user.verified_at = datetime.utcnow()
-        if hasattr(user, "verified_by_id"):
-            user.verified_by_id = admin["id"]
-        db.commit()
-        _refresh_session_user_if_self(request, user)
+    if hasattr(user, "verified_by_id") and admin:
+        user.verified_by_id = admin.get("id")
+    db.commit()
+    _refresh_session_user_if_self(request, user)
 
     return RedirectResponse(url="/admin", status_code=303)
 
@@ -148,14 +217,16 @@ def unverify_user(user_id: int, request: Request, db: Session = Depends(get_db))
         return RedirectResponse(url="/login", status_code=303)
 
     user = db.query(User).get(user_id)
-    if user:
-        user.is_verified = False
-        if hasattr(user, "verified_at"):
-            user.verified_at = None
-        if hasattr(user, "verified_by_id"):
-            user.verified_by_id = None
-        db.commit()
-        _refresh_session_user_if_self(request, user)
+    if not user:
+        return RedirectResponse(url="/admin", status_code=303)
+
+    user.is_verified = False
+    if hasattr(user, "verified_at"):
+        user.verified_at = None
+    if hasattr(user, "verified_by_id"):
+        user.verified_by_id = None
+    db.commit()
+    _refresh_session_user_if_self(request, user)
 
     return RedirectResponse(url="/admin", status_code=303)
 
@@ -272,6 +343,7 @@ def set_badges(
     db.add(u)
     db.commit()
     db.refresh(u)
+    _refresh_session_user_if_self(request, u)
     return RedirectResponse(url="/admin", status_code=303)
 
 
