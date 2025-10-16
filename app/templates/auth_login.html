@@ -2,13 +2,14 @@
 
 {% block head %}
 <style>
-  /* اخفاء كل شيء يخص التخطيط العام في هذه الصفحة */
+  /* اخفاء تخطيط الموقع في هذه الصفحة */
   .topbar, .sidebar, .mobile-tabbar, .fab { display:none !important; }
-  .page{ margin:0 !important; padding:0 !important; min-height:100vh; }
+  html, body { height:100%; }
+  .page{ margin:0 !important; padding:0 !important; min-height:100dvh; }
 
-  /* خلفية ناعمة */
+  /* خلفية ممتدة */
   .login-bg{
-    min-height:100vh;
+    min-height:100dvh; /* يملأ الشاشة على كل الأجهزة */
     background:
       radial-gradient(1100px 800px at 80% -10%, rgba(124,92,255,.12), transparent 45%),
       radial-gradient(900px 600px at -10% 110%, rgba(0,229,168,.06), transparent 40%),
@@ -17,38 +18,48 @@
   }
 
   .login-wrap{
-    width:100%; max-width:1200px; padding:28px 16px; margin:auto;
+    width:100%; max-width:1240px; padding:28px 16px; margin:auto;
     display:grid; grid-template-columns: 1fr 420px; gap:28px;
   }
   @media (max-width: 992px){
     .login-wrap{ grid-template-columns: 1fr; gap:18px; padding:18px 12px; }
   }
 
-  /* العمود الأيسر (النص والبراند) */
+  /* ===== يسار: البراند والنص ===== */
   .brand-side{ color:var(--text); padding: 24px 6px; }
   .brand-row{ display:flex; align-items:center; gap:14px; margin-bottom:10px }
   .brand-logo{ width:54px; height:54px; border-radius:14px; object-fit:cover;
                box-shadow:0 10px 26px rgba(0,0,0,.28) }
   .brand-name{
     font-weight:900; letter-spacing:.2px;
-    font-size:36px; line-height:1; background: linear-gradient(90deg,#5a3eff,#2ec7a6);
+    font-size:36px; line-height:1;
+    background: linear-gradient(90deg,#5a3eff,#2ec7a6);
     -webkit-background-clip:text; background-clip:text; color:transparent;
   }
-  .pill{
-    display:inline-flex; align-items:center; gap:8px;
-    padding:.35rem .65rem; border-radius:999px;
-    background:rgba(124,92,255,.18); color:#cfe2ff;
-    border:1px solid rgba(124,92,255,.35); font-weight:700; font-size:.9rem;
+
+  /* شارة اللوغو على يمين الاسم (كانت مربّع صغير، صارت صورة ok.png واضحة) */
+  .brand-badge{
+    display:inline-flex; align-items:center; gap:10px; margin-top:8px;
+    background: rgba(255,255,255,.08);
+    border: 1px solid var(--border); border-radius:999px;
+    padding:.35rem .6rem;
+    backdrop-filter: blur(10px) saturate(120%);
   }
+  .brand-badge .okicon{
+    width:32px; height:32px; border-radius:8px; object-fit:cover; display:block;
+    box-shadow:0 8px 20px rgba(0,0,0,.25);
+  }
+  .brand-badge .txt{ font-weight:800; letter-spacing:.2px; }
+
   .headline{
     font-weight:800; font-size: clamp(24px, 3.8vw, 40px);
-    line-height:1.25; margin:14px 0 10px;
+    line-height:1.25; margin:16px 0 10px;
   }
   .subline{
     color:var(--muted); font-size:clamp(14px,1.8vw,16px);
   }
 
-  /* العمود الأيمن (الكارد) */
+  /* ===== يمين: الكارد ===== */
   .login-card{
     background:linear-gradient(180deg, color-mix(in oklab, var(--panel,#0f172a) 96%, transparent),
                                       color-mix(in oklab, var(--surface,#111827) 92%, transparent));
@@ -64,6 +75,7 @@
     color:#b7f3e7; background:rgba(46,199,166,.15);
     border:1px solid rgba(46,199,166,.4);
   }
+
   .form-control{
     background:rgba(255,255,255,.06); border:1px solid var(--border);
     color:var(--text); border-radius:10px; height:46px;
@@ -77,16 +89,11 @@
   .btn-success{ height:44px; font-weight:800 }
   .footer-note{ color:var(--muted); font-size:.85rem; text-align:center; margin-top:10px }
 
-  /* زر اظهار/اخفاء كلمة المرور */
   .pw-toggle{
     position:absolute; inset-inline-start:10px; top:50%; transform:translateY(-50%);
     cursor:pointer; opacity:.75;
   }
-
-  /* تصغير الحاوية على الموبايل */
-  @media (max-width:480px){
-    .login-card{ padding:14px }
-  }
+  @media (max-width:480px){ .login-card{ padding:14px } }
 </style>
 {% endblock %}
 
@@ -94,19 +101,20 @@
 <div class="login-bg">
   <div class="login-wrap" role="main">
 
-    <!-- يسار: علامة تجارية + نص تعريفي -->
+    <!-- يسار: علامة تجارية + نص -->
     <section class="brand-side">
       <div class="brand-row">
-        <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR">
+        <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR logo">
         <div class="brand-name">SEVOR</div>
       </div>
 
-      <div class="pill">
-        <span class="bi bi-stars"></span>
-        <span>منصّة الحجز الذكية</span>
+      <!-- شارة اللوغو (ok.png) بدل المربّع الصغير -->
+      <div class="brand-badge">
+        <img class="okicon" src="{{ url_for('static', path='images/ok.png') }}" alt="SEVOR icon">
+        <span class="txt">منصّة الحجز الذكية</span>
       </div>
 
-      <h1 class="headline mt-3">
+      <h1 class="headline">
         ابقَ على تواصل مع الأشياء التي تحتاجها في حياتك اليومية.
       </h1>
       <p class="subline">
@@ -118,9 +126,7 @@
     <aside class="login-card">
       <div class="head">
         <div class="fw-bold">تسجيل الدخول</div>
-        <div class="secure-pill">
-          <i class="bi bi-shield-lock"></i> آمن ومشفّر
-        </div>
+        <div class="secure-pill"><i class="bi bi-shield-lock"></i> آمن ومشفّر</div>
       </div>
 
       {% if request.query_params.get('err') %}
@@ -150,9 +156,7 @@
         </div>
       </form>
 
-      <div class="footer-note">
-        © SEVOR — كل الحقوق محفوظة
-      </div>
+      <div class="footer-note">© SEVOR — كل الحقوق محفوظة</div>
     </aside>
 
   </div>
@@ -165,8 +169,8 @@
     const pw  = document.getElementById('pw');
     if (!btn || !pw) return;
     btn.addEventListener('click', function(){
-      const t = pw.getAttribute('type') === 'password' ? 'text' : 'password';
-      pw.setAttribute('type', t);
+      const t = pw.type === 'password' ? 'text' : 'password';
+      pw.type = t;
       const i = btn.querySelector('i');
       if (i){ i.className = 'bi ' + (t === 'password' ? 'bi-eye' : 'bi-eye-slash'); }
       pw.focus();
