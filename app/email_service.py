@@ -1,43 +1,45 @@
 # app/email_service.py
 import os
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from dotenv import load_dotenv
+import requests
 
-load_dotenv()  # لتحميل إعدادات .env
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+SENDGRID_SENDER = os.getenv("SENDGRID_SENDER", "sevorapp026@gmail.com")
 
-EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
-EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
-EMAIL_USER = os.getenv("EMAIL_USER")
-EMAIL_PASS = os.getenv("EMAIL_PASS")
-EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ["true", "1", "yes"]
-
-def send_email(to_email: str, subject: str, html_body: str, text_body: str = ""):
+def send_email(to: str, subject: str, html_body: str, text_body: str = None):
     """
-    إرسال رسالة بريد إلكتروني HTML (بسيطة) عبر Gmail SMTP
+    يرسل البريد الإلكتروني باستخدام SendGrid API.
     """
-    if not EMAIL_USER or not EMAIL_PASS:
-        print("[WARN] Email not configured properly.")
+    if not SENDGRID_API_KEY:
+        print("❌ SENDGRID_API_KEY غير موجود")
         return False
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = EMAIL_USER
-    msg["To"] = to_email
+    if not to or not subject:
+        print("❌ المتغيرات المطلوبة غير كاملة")
+        return False
 
-    if text_body:
-        msg.attach(MIMEText(text_body, "plain", "utf-8"))
-    msg.attach(MIMEText(html_body, "html", "utf-8"))
+    url = "https://api.sendgrid.com/v3/mail/send"
+    headers = {
+        "Authorization": f"Bearer {SENDGRID_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "personalizations": [{"to": [{"email": to}]}],
+        "from": {"email": SENDGRID_SENDER, "name": "RentAll"},
+        "subject": subject,
+        "content": [
+            {"type": "text/plain", "value": text_body or subject},
+            {"type": "text/html", "value": html_body or subject}
+        ]
+    }
 
     try:
-        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as server:
-            if EMAIL_USE_TLS:
-                server.starttls()
-            server.login(EMAIL_USER, EMAIL_PASS)
-            server.sendmail(EMAIL_USER, [to_email], msg.as_string())
-        print(f"[MAIL SENT] {to_email} ← {subject}")
-        return True
+        response = requests.post(url, headers=headers, json=payload)
+        if response.status_code in [200, 202]:
+            print(f"✅ Email sent to {to}")
+            return True
+        else:
+            print(f"❌ SendGrid Error: {response.status_code} {response.text}")
+            return False
     except Exception as e:
-        print(f"[MAIL ERROR] {e}")
+        print(f"❌ Exception during send_email: {e}")
         return False

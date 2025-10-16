@@ -27,7 +27,7 @@ from .notifications_api import push_notification, notify_admins
 # ===== SMTP Email (fallback) =====
 # سيتم استبداله لاحقًا بـ app/emailer.py؛ هنا نضمن عدم كسر التنفيذ إن لم يوجد.
 try:
-    from .emailer import send_email  # سيُنشأ لاحقًا
+    from .email_service import send_email
 except Exception:
     def send_email(to, subject, html_body, text_body=None, cc=None, bcc=None, reply_to=None):
         return False  # NO-OP مؤقتًا

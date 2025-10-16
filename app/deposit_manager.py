@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from .models import Booking, User
 from .notifications_api import push_notification
+from .email_service import send_email
 
 router = APIRouter(tags=["deposit-manager"])
 
