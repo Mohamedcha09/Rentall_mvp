@@ -53,6 +53,7 @@ from .routes_evidence import router as evidence_router
 
 # ✅ [جديد] راوتر تشغيل الإفراج التلقائي يدويًا (للاختبار/الأدمن)
 from .cron_auto_release import router as cron_router
+from .debug_email import router as debug_email_router
 
 # ✅ [حسب طلبك] إضافة الاستيراد بالشكل التالي أيضًا (بدون حذف القديم)
 from . import cron_auto_release  # سيُستخدم أدناه مع include_router(cron_auto_release.router)
@@ -168,6 +169,7 @@ app.include_router(favorites_router)
 app.include_router(notifs_router)
 app.include_router(notifications_router)
 app.include_router(me_router)
+app.include_router(debug_email_router)
 
 # ✅ [مضاف] تسجيل مسارات إدارة الودائع (DM)
 app.include_router(deposits_router)
