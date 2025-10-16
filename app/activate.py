@@ -10,6 +10,7 @@ from .models import User, Document
 
 router = APIRouter()
 
+# مجلدات الرفع
 UPLOADS_ROOT = os.environ.get("UPLOADS_DIR", "uploads")
 AVATARS_DIR = os.path.join(UPLOADS_ROOT, "avatars")
 IDS_DIR = os.path.join(UPLOADS_ROOT, "ids")
@@ -35,7 +36,7 @@ def _require_login(request: Request):
 def activate_get(request: Request, db: Session = Depends(get_db)):
     """
     صفحة إكمال التفعيل للمستخدمين pending/rejected.
-    (هذه الصفحة تبقى كما هي لمن يريد رفع وثائق أو صورة — لا علاقة لها بتفعيل البريد)
+    (لا علاقة لها بتفعيل البريد، فقط لرفع صورة/وثائق)
     """
     sess = _require_login(request)
     if not sess:
@@ -74,7 +75,7 @@ def activate_update_avatar(
 ):
     """
     إعادة التقاط/رفع صورة الحساب (كاميرا فقط من الواجهة).
-    تُحدَّث الصورة وتبقى الحالة كما هي (pending/rejected) إلى أن يراجع الأدمِن.
+    تُحدَّث الصورة وتبقى الحالة كما هي حتى يراجع الأدمِن.
     """
     sess = _require_login(request)
     if not sess:
@@ -145,10 +146,11 @@ def _signer() -> URLSafeTimedSerializer:
 @router.get("/activate/verify")
 def activate_verify(token: str, request: Request, db: Session = Depends(get_db)):
     """
-    يفك التوكن (صالحيته 3 أيام). إذا صح:
-      - يضبط user.is_verified=True
+    يفك التوكن (صالحيته 3 أيام). إذا كان صحيحًا:
+      - يضبط is_verified=True و verified_at=الآن (إن وُجد العمود)
+      - يضبط status="approved" (لتفعيل الحجز مباشرة)
       - ينشئ جلسة (login) للمستخدم
-      - يحوّل للصفحة الرئيسية مباشرة
+      - يحوّل للصفحة الرئيسية
     """
     s = _signer()
     try:
@@ -167,16 +169,20 @@ def activate_verify(token: str, request: Request, db: Session = Depends(get_db))
     if not user or (user.email or "").lower() != email:
         raise HTTPException(status_code=404, detail="المستخدم غير موجود.")
 
-    # فعّل إن لم يكن مفعّلًا
+    # ✅ تفعيل البريد + الموافقة على الحساب للحجز
     try:
-        if not bool(getattr(user, "is_verified", False)):
-            user.is_verified = True
-            db.add(user)
-            db.commit()
+        user.is_verified = True
+        if hasattr(user, "verified_at"):
+            user.verified_at = datetime.utcnow()
+        if hasattr(user, "status"):
+            user.status = "approved"
+        db.add(user)
+        db.commit()
+        db.refresh(user)
     except Exception:
         pass
 
-    # تسجيل دخول تلقائي (نفس شكل السيشن في /login)
+    # تسجيل دخول تلقائي بالبيانات المحدثة
     request.session["user"] = {
         "id": user.id,
         "first_name": user.first_name,
@@ -184,7 +190,7 @@ def activate_verify(token: str, request: Request, db: Session = Depends(get_db))
         "email": user.email,
         "phone": user.phone,
         "role": user.role,
-        "status": user.status,
+        "status": user.status,      # الآن "approved"
         "is_verified": True,
         "avatar_path": user.avatar_path or None,
     }
