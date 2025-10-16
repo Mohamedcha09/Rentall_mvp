@@ -716,3 +716,42 @@ body[data-theme="dark"] .topbar .search .search__input::placeholder{
 .fav-btn .bi{ font-size:18px; color:#a944ec; line-height:1 }
 .fav-btn.is-fav{ background:#a944ec; }
 .fav-btn.is-fav .bi{ color:#fff }
+
+
+/* ===== إصلاح امتلاء الصفحة واختفاء الشريط الأفقي ===== */
+html, body {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden !important;
+  margin: 0;
+  padding: 0;
+}
+
+#page-wrapper,
+.page,
+.container,
+.container-fluid {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: clip !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+}
+
+.row {
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+img, video {
+  max-width: 100%;
+  height: auto;
+}
+
+[style*="100vw"], .w-100vw {
+  width: 100% !important;
+}
