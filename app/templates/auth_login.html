@@ -2,178 +2,166 @@
 
 {% block head %}
 <style>
-  /* اخفاء تخطيط الموقع في هذه الصفحة */
-  .topbar, .sidebar, .mobile-tabbar, .fab { display:none !important; }
-  html, body { height:100%; }
-  .page{ margin:0 !important; padding:0 !important; min-height:100dvh; }
-
-  /* خلفية ممتدة */
-  .login-bg{
-    min-height:100dvh; /* يملأ الشاشة على كل الأجهزة */
+  /* إخفاء النّافبار/السايدبار في صفحة الدخول فقط + ملء الشاشة */
+  .topbar, .sidebar, .mobile-tabbar { display:none !important; }
+  .page{
+    margin:0 !important; padding:0 !important;
+    min-height: 100dvh; min-height: 100svh;
+    display:grid; grid-template-columns: 1fr 520px;
     background:
-      radial-gradient(1100px 800px at 80% -10%, rgba(124,92,255,.12), transparent 45%),
-      radial-gradient(900px 600px at -10% 110%, rgba(0,229,168,.06), transparent 40%),
-      var(--bg,#0b0f15);
+      radial-gradient(1200px 900px at 85% -10%, rgba(124,92,255,.14), transparent 45%),
+      radial-gradient(900px 700px at -10% 110%, rgba(0,229,168,.08), transparent 40%),
+      var(--bg);
+  }
+  @media (max-width: 980px){
+    .page{ grid-template-columns: 1fr; }
+  }
+
+  /* العمود الأيسر (العرض/الهويرو) */
+  .hero{
     display:flex; align-items:center; justify-content:center;
+    padding: clamp(24px, 6vw, 80px);
+  }
+  .hero-inner{ max-width: 780px; width:100%; }
+  .brand-row{
+    display:flex; align-items:center; gap:12px; margin-bottom: 18px;
+  }
+  .brand-row img.logo{ height: 44px; width:auto; display:block; }
+  .brand-row .name{
+    font-weight:900; letter-spacing:.3px; font-size: clamp(22px, 3.2vw, 34px);
+    background: linear-gradient(135deg,#6ee7f9,#7c5cff);
+    -webkit-background-clip:text; background-clip:text; color: transparent;
+  }
+  .hero h1{
+    font-weight:900; line-height:1.35;
+    font-size: clamp(26px, 3.8vw, 44px);
+    margin: 6px 0 12px;
+  }
+  .hero p{
+    color: var(--muted); font-size: clamp(14px, 1.4vw, 16px);
   }
 
-  .login-wrap{
-    width:100%; max-width:1240px; padding:28px 16px; margin:auto;
-    display:grid; grid-template-columns: 1fr 420px; gap:28px;
+  /* العمود الأيمن (بطاقة الدخول) */
+  .login-col{
+    display:flex; align-items:center; justify-content:center;
+    padding: clamp(16px, 4vw, 36px);
+    background: linear-gradient(180deg, color-mix(in oklab, var(--panel) 92%, transparent),
+                                        color-mix(in oklab, var(--panel) 84%, transparent));
+    border-inline-start: 1px solid var(--border);
   }
-  @media (max-width: 992px){
-    .login-wrap{ grid-template-columns: 1fr; gap:18px; padding:18px 12px; }
+  .card-login{
+    width:100%; max-width: 460px;
+    background: linear-gradient(180deg, color-mix(in oklab, var(--card) 96%, transparent),
+                                        color-mix(in oklab, var(--card) 88%, transparent));
+    border:1px solid var(--border);
+    border-radius: 18px; box-shadow: var(--shadow);
+    padding: 18px 18px 20px;
   }
+  .card-login .head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 10px;
+  }
+  .head .title{ font-weight:800; opacity:.9 }
 
-  /* ===== يسار: البراند والنص ===== */
-  .brand-side{ color:var(--text); padding: 24px 6px; }
-  .brand-row{ display:flex; align-items:center; gap:14px; margin-bottom:10px }
-  .brand-logo{ width:54px; height:54px; border-radius:14px; object-fit:cover;
-               box-shadow:0 10px 26px rgba(0,0,0,.28) }
-  .brand-name{
-    font-weight:900; letter-spacing:.2px;
-    font-size:36px; line-height:1;
-    background: linear-gradient(90deg,#5a3eff,#2ec7a6);
-    -webkit-background-clip:text; background-clip:text; color:transparent;
+  /* حقل كلمة السر مع زر العين بدون أن يغطي النص */
+  .pw-wrap{ position: relative; }
+  .pw-input{
+    padding-inline-start: 44px !important;   /* نحجز مكان زر العين على اليسار (RTL) */
   }
-
-  /* شارة اللوغو على يمين الاسم (كانت مربّع صغير، صارت صورة ok.png واضحة) */
-  .brand-badge{
-    display:inline-flex; align-items:center; gap:10px; margin-top:8px;
-    background: rgba(255,255,255,.08);
-    border: 1px solid var(--border); border-radius:999px;
-    padding:.35rem .6rem;
-    backdrop-filter: blur(10px) saturate(120%);
-  }
-  .brand-badge .okicon{
-    width:32px; height:32px; border-radius:8px; object-fit:cover; display:block;
-    box-shadow:0 8px 20px rgba(0,0,0,.25);
-  }
-  .brand-badge .txt{ font-weight:800; letter-spacing:.2px; }
-
-  .headline{
-    font-weight:800; font-size: clamp(24px, 3.8vw, 40px);
-    line-height:1.25; margin:16px 0 10px;
-  }
-  .subline{
-    color:var(--muted); font-size:clamp(14px,1.8vw,16px);
-  }
-
-  /* ===== يمين: الكارد ===== */
-  .login-card{
-    background:linear-gradient(180deg, color-mix(in oklab, var(--panel,#0f172a) 96%, transparent),
-                                      color-mix(in oklab, var(--surface,#111827) 92%, transparent));
-    border:1px solid var(--border); border-radius:14px;
-    padding:18px; box-shadow:0 18px 44px rgba(0,0,0,.35);
-  }
-  .login-card .head{
-    display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;
-  }
-  .secure-pill{
-    display:inline-flex; align-items:center; gap:6px;
-    padding:.25rem .5rem; border-radius:999px; font-size:.78rem;
-    color:#b7f3e7; background:rgba(46,199,166,.15);
-    border:1px solid rgba(46,199,166,.4);
-  }
-
-  .form-control{
-    background:rgba(255,255,255,.06); border:1px solid var(--border);
-    color:var(--text); border-radius:10px; height:46px;
-  }
-  .form-control::placeholder{ color:color-mix(in oklab, var(--text) 55%, transparent) }
-  .row-note{ color:var(--muted); font-size:.86rem; margin:.25rem 2px 10px }
-  .btn-primary{
-    background:linear-gradient(135deg,var(--primary,#7c5cff),var(--primary-2,#5a3eff));
-    border:0; height:46px; font-weight:800; letter-spacing:.3px;
-  }
-  .btn-success{ height:44px; font-weight:800 }
-  .footer-note{ color:var(--muted); font-size:.85rem; text-align:center; margin-top:10px }
-
   .pw-toggle{
-    position:absolute; inset-inline-start:10px; top:50%; transform:translateY(-50%);
-    cursor:pointer; opacity:.75;
+    position:absolute; inset-inline-start: 8px; top: 50%;
+    transform: translateY(-50%);
+    width: 36px; height: 36px; border-radius: 12px;
+    border:1px solid var(--border);
+    display:grid; place-items:center;
+    background: rgba(255,255,255,.06);
+    cursor:pointer;
   }
-  @media (max-width:480px){ .login-card{ padding:14px } }
+  .pw-toggle i{ font-size: 18px; opacity:.9 }
+
+  /* أزرار */
+  .btn-primary{
+    background: linear-gradient(135deg, var(--primary), var(--primary-2));
+    border:0; box-shadow:0 12px 28px rgba(124,92,255,.28);
+  }
+  .btn-success{ box-shadow:0 12px 28px rgba(34,197,94,.25); }
+
+  /* تنسيق الحقول */
+  .form-control{
+    height: 48px; border-radius: 14px;
+    background: color-mix(in oklab, var(--panel) 92%, transparent);
+    border:1px solid var(--border); color: var(--text);
+  }
+  .form-control:focus{
+    box-shadow:0 0 0 4px var(--ring);
+    border-color: color-mix(in oklab, var(--primary) 60%, var(--border));
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="login-bg">
-  <div class="login-wrap" role="main">
+<div class="hero">
+  <div class="hero-inner">
+    <div class="brand-row">
+      <!-- لوغو واسم الموقع كما طلبت -->
+      <img class="logo" src="{{ url_for('static', path='images/ok.png') }}" alt="SEVOR">
+      <div class="name">SEVOR</div>
+    </div>
 
-    <!-- يسار: علامة تجارية + نص -->
-    <section class="brand-side">
-      <div class="brand-row">
-        <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR logo">
-        <div class="brand-name">SEVOR</div>
+    <h1>ابقَ على تواصل مع الأشياء التي تحتاجها في حياتك اليومية.</h1>
+    <p>
+      استأجر ما تريد بسهولة وأمان؛ إدارة محادثاتك، مدفوعاتك، وإشعاراتك — كلها في مكانٍ واحد.
+    </p>
+  </div>
+</div>
+
+<div class="login-col">
+  <div class="card-login">
+    <div class="head">
+      <div class="title">تسجيل الدخول</div>
+      <!-- أزلت الشارة/المربّع الصغير نهائياً -->
+    </div>
+
+    <form method="post" action="/login" novalidate>
+      <div class="mb-3">
+        <label class="form-label">البريد الإلكتروني</label>
+        <input type="email" class="form-control" name="email" placeholder="name@example.com" required>
       </div>
 
-      <!-- شارة اللوغو (ok.png) بدل المربّع الصغير -->
-      <div class="brand-badge">
-        <img class="okicon" src="{{ url_for('static', path='images/ok.png') }}" alt="SEVOR icon">
-        <span class="txt">منصّة الحجز الذكية</span>
+      <div class="mb-2 pw-wrap">
+        <label class="form-label">كلمة المرور</label>
+        <input id="pw" type="password" class="form-control pw-input" name="password" required>
+        <button class="pw-toggle" type="button" aria-label="إظهار/إخفاء كلمة المرور">
+          <i class="bi bi-eye-slash"></i>
+        </button>
       </div>
 
-      <h1 class="headline">
-        ابقَ على تواصل مع الأشياء التي تحتاجها في حياتك اليومية.
-      </h1>
-      <p class="subline">
-        استأجر ما تريد بسهولة وأمان: إدارة محادثاتك، مدفوعاتك، وإشعاراتك — كلها في مكانٍ واحد.
-      </p>
-    </section>
-
-    <!-- يمين: كارد تسجيل الدخول -->
-    <aside class="login-card">
-      <div class="head">
-        <div class="fw-bold">تسجيل الدخول</div>
-        <div class="secure-pill"><i class="bi bi-shield-lock"></i> آمن ومشفّر</div>
+      <div class="text-muted small mb-3">
+        يتم تشفير كلمات المرور، ونستعمل التحقّق بخطوتين لحماية حسابك.
       </div>
 
+      <button type="submit" class="btn btn-primary w-100 mb-2">دخول</button>
+      <a href="/register" class="btn btn-success w-100">إنشاء حساب جديد</a>
       {% if request.query_params.get('err') %}
-        <div class="alert alert-danger py-2">البريد أو كلمة المرور غير صحيحة.</div>
+        <div class="alert alert-danger mt-3 mb-0">البريد أو كلمة المرور غير صحيحة.</div>
       {% endif %}
+    </form>
 
-      <form method="post" action="/login" novalidate>
-        <div class="mb-3">
-          <label class="form-label">البريد الإلكتروني</label>
-          <input type="email" class="form-control" name="email" placeholder="name@example.com" required>
-        </div>
-
-        <div class="mb-1 position-relative">
-          <label class="form-label">كلمة المرور</label>
-          <input id="pw" type="password" class="form-control" name="password" placeholder="••••••••" required>
-          <button class="btn btn-sm btn-ghost pw-toggle" type="button" aria-label="إظهار/إخفاء">
-            <i class="bi bi-eye"></i>
-          </button>
-        </div>
-
-        <div class="row-note">يتم تشفير كلمات المرور، ونستعمل التحقق بخطوتين لحماية حسابك.</div>
-
-        <button type="submit" class="btn btn-primary w-100">دخول</button>
-
-        <div class="d-grid mt-2">
-          <a class="btn btn-success w-100" href="/register">إنشاء حساب جديد</a>
-        </div>
-      </form>
-
-      <div class="footer-note">© SEVOR — كل الحقوق محفوظة</div>
-    </aside>
-
+    <div class="small text-center text-muted mt-3">© SEVOR — كل الحقوق محفوظة</div>
   </div>
 </div>
 
 <script>
-  // إظهار/إخفاء كلمة المرور
+  // زر إظهار/إخفاء كلمة المرور — بدون تغطية حقل الإدخال
   (function(){
     const btn = document.querySelector('.pw-toggle');
-    const pw  = document.getElementById('pw');
-    if (!btn || !pw) return;
+    const input = document.getElementById('pw');
+    if (!btn || !input) return;
     btn.addEventListener('click', function(){
-      const t = pw.type === 'password' ? 'text' : 'password';
-      pw.type = t;
-      const i = btn.querySelector('i');
-      if (i){ i.className = 'bi ' + (t === 'password' ? 'bi-eye' : 'bi-eye-slash'); }
-      pw.focus();
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.innerHTML = show ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+      input.focus();
     });
   })();
 </script>
