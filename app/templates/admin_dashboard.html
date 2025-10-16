@@ -4,7 +4,7 @@
 <div class="container py-4">
   <h3 class="mb-4">لوحة الأدمين</h3>
 
-  <!-- مستخدمون بإنتظار الموافقة -->
+  <!-- ==================== في انتظار الموافقة ==================== -->
   <div class="card mb-4">
     <div class="card-header d-flex align-items-center justify-content-between">
       <strong>في انتظار الموافقة</strong>
@@ -22,24 +22,65 @@
               <th>الاسم</th>
               <th>البريد</th>
               <th>الهاتف</th>
-              <th>توثيق</th>
+              <th>صورة الحساب</th>
+              <th>هوية (أمامي/خلفي)</th>
+              <th>توثيق البريد</th>
               <th class="text-end">إجراءات</th>
             </tr>
           </thead>
           <tbody>
-            {% for u in pending_users %}
+            {% for row in pending_users %}
+              {# يدعم الشكلين: row.u أو row نفسه User #}
+              {% set u = row.u if row is mapping and 'u' in row else row %}
+              {% set docs = u.documents or [] %}
+              {% if row is mapping and 'latest_doc' in row %}
+                {% set d = row.latest_doc %}
+              {% else %}
+                {% set d = (docs|sort(attribute='created_at'))|last %}
+              {% endif %}
             <tr>
               <td>{{ u.id }}</td>
               <td>{{ u.first_name }} {{ u.last_name }}</td>
               <td>{{ u.email }}</td>
               <td>{{ u.phone }}</td>
+
+              <!-- صورة الحساب -->
+              <td>
+                {% if u.avatar_path %}
+                  <a href="/{{ u.avatar_path }}" target="_blank">
+                    <img src="/{{ u.avatar_path }}" alt="avatar"
+                         style="width:54px;height:54px;object-fit:cover;border-radius:6px">
+                  </a>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+
+              <!-- صور الهوية -->
+              <td>
+                {% if d and d.file_front_path %}
+                  <a href="/{{ d.file_front_path }}" target="_blank" title="الوجه الأمامي">
+                    <img src="/{{ d.file_front_path }}" style="width:60px;height:40px;object-fit:cover;border-radius:4px;margin-inline-end:6px">
+                  </a>
+                {% endif %}
+                {% if d and d.file_back_path %}
+                  <a href="/{{ d.file_back_path }}" target="_blank" title="الوجه الخلفي">
+                    <img src="/{{ d.file_back_path }}" style="width:60px;height:40px;object-fit:cover;border-radius:4px">
+                  </a>
+                {% endif %}
+                {% if not (d and (d.file_front_path or d.file_back_path)) %}
+                  <span class="text-muted">لا توجد وثيقة</span>
+                {% endif %}
+              </td>
+
               <td>
                 {% if u.is_verified|default(false) %}
                   <span class="badge bg-success">موثّق</span>
                 {% else %}
-                  <span class="badge bg-warning text-dark">قيد المراجعة</span>
+                  <span class="badge bg-warning text-dark">غير موثّق</span>
                 {% endif %}
               </td>
+
               <td class="text-end">
                 <form method="post" action="/admin/users/{{ u.id }}/approve" class="d-inline">
                   <button class="btn btn-sm btn-success">موافقة</button>
@@ -60,7 +101,7 @@
     </div>
   </div>
 
-  <!-- كل المستخدمين -->
+  <!-- ==================== كل المستخدمين ==================== -->
   <div class="card">
     <div class="card-header d-flex align-items-center justify-content-between">
       <strong>كل المستخدمين</strong>
@@ -79,13 +120,22 @@
               <th>البريد</th>
               <th>الحالة</th>
               <th>الدور</th>
+              <th>صورة الحساب</th>
+              <th>هوية (أ/خ)</th>
               <th>توثيق</th>
               <th>MD</th>
               <th class="text-end">إجراءات</th>
             </tr>
           </thead>
           <tbody>
-            {% for u in all_users %}
+            {% for row in all_users %}
+              {% set u = row.u if row is mapping and 'u' in row else row %}
+              {% set docs = u.documents or [] %}
+              {% if row is mapping and 'latest_doc' in row %}
+                {% set d = row.latest_doc %}
+              {% else %}
+                {% set d = (docs|sort(attribute='created_at'))|last %}
+              {% endif %}
             <tr>
               <td>{{ u.id }}</td>
               <td>{{ u.first_name }} {{ u.last_name }}</td>
@@ -107,10 +157,31 @@
                 {% endif %}
               </td>
               <td>
+                {% if u.avatar_path %}
+                  <a href="/{{ u.avatar_path }}" target="_blank">
+                    <img src="/{{ u.avatar_path }}" style="width:46px;height:46px;object-fit:cover;border-radius:6px">
+                  </a>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if d and d.file_front_path %}
+                  <a href="/{{ d.file_front_path }}" target="_blank" title="أمامي">
+                    <img src="/{{ d.file_front_path }}" style="width:44px;height:30px;object-fit:cover;border-radius:4px;margin-inline-end:4px">
+                  </a>
+                {% endif %}
+                {% if d and d.file_back_path %}
+                  <a href="/{{ d.file_back_path }}" target="_blank" title="خلفي">
+                    <img src="/{{ d.file_back_path }}" style="width:44px;height:30px;object-fit:cover;border-radius:4px">
+                  </a>
+                {% endif %}
+              </td>
+              <td>
                 {% if u.is_verified|default(false) %}
                   <span class="badge bg-success">موثّق</span>
                   <form method="post" action="/admin/users/{{ u.id }}/unverify" class="d-inline">
-                    <button class="btn btn-sm btn-outline-warning">إلغاء التوثيق</button>
+                    <button class="btn btn-sm btn-outline-warning">إلغاء</button>
                   </form>
                 {% else %}
                   <form method="post" action="/admin/users/{{ u.id }}/verify" class="d-inline">
@@ -118,8 +189,6 @@
                   </form>
                 {% endif %}
               </td>
-
-              <!-- عمود صلاحية متحكّم الوديعة (MD) -->
               <td>
                 {% if u.is_deposit_manager|default(false) %}
                   <span class="badge bg-primary">MD</span>
@@ -127,7 +196,6 @@
                   <span class="badge bg-secondary">—</span>
                 {% endif %}
               </td>
-
               <td class="text-end">
                 {% if u.is_deposit_manager|default(false) %}
                   <form method="post" action="/admin/users/{{ u.id }}/deposit_manager/disable" class="d-inline">
