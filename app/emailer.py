@@ -1,146 +1,116 @@
 # app/emailer.py
-from __future__ import annotations
-import os
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import os, json, requests
+from email.utils import formataddr
 
-# نستخدم requests فقط عند وجود مفتاح SendGrid
-try:
-    import requests  # type: ignore
-except Exception:
-    requests = None  # في لوكال عادة موجودة؛ على السيرفر تأكد من إضافتها للـ requirements.txt
+# ============================================
+#  📧  خدمة إرسال البريد عبر SendGrid (بديل آمن يعمل على Render)
+# ============================================
 
-DEFAULT_FROM = os.getenv("EMAIL_FROM") or os.getenv("EMAIL_USER") or "no-reply@example.com"
+# رابط الموقع (لإضافة روابط التفعيل وغيرها)
+SITE_URL = (os.getenv("SITE_URL") or "http://localhost:8000").rstrip("/")
 
-def _env_bool(v: str | None, default: bool = True) -> bool:
-    if v is None:
-        return default
-    return str(v).strip().lower() in ("1", "true", "yes", "on")
+# إعدادات SendGrid (مفاتيح من البيئة)
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "").strip()
+SENDGRID_SENDER = (os.getenv("SENDGRID_SENDER", "") or os.getenv("EMAIL_USER", "")).strip()
 
-def _send_via_sendgrid(
-    to: str,
-    subject: str,
-    html_body: str,
-    text_body: str | None = None,
-    cc: list[str] | None = None,
-    bcc: list[str] | None = None,
-    reply_to: str | None = None,
-) -> bool:
-    """
-    إرسال عبر SendGrid HTTP API.
-    يحتاج:
-      - SENDGRID_API_KEY
-      - EMAIL_FROM (أو EMAIL_USER) كمرسل
-    """
-    api_key = os.getenv("SENDGRID_API_KEY")
-    if not api_key or requests is None:
-        return False
 
-    from_email = DEFAULT_FROM
-    personalizations = [{"to": [{"email": to}]}]
-    if cc:
-        personalizations[0]["cc"] = [{"email": x} for x in cc if x]
-    if bcc:
-        personalizations[0]["bcc"] = [{"email": x} for x in bcc if x]
+# ----------------------------
+# 🧩 تكوين رؤوس الطلب (Headers)
+# ----------------------------
+def _sg_headers():
+    return {
+        "Authorization": f"Bearer {SENDGRID_API_KEY}",
+        "Content-Type": "application/json"
+    }
 
-    payload = {
-        "from": {"email": from_email},
-        "subject": subject,
-        "personalizations": personalizations,
+
+# ----------------------------
+# 🧾 إنشاء Payload للإرسال
+# ----------------------------
+def _sg_payload(to, subject, html_body, text_body=None, cc=None, bcc=None, reply_to=None):
+    def _addr(x):
+        if not x:
+            return None
+        if isinstance(x, (list, tuple)):
+            return [{"email": e} for e in x if e]
+        return [{"email": x}]
+
+    data = {
+        "personalizations": [{
+            "to": _addr(to),
+            **({"cc": _addr(cc)} if cc else {}),
+            **({"bcc": _addr(bcc)} if bcc else {}),
+        }],
+        "from": {"email": SENDGRID_SENDER, "name": "Rentall"},
+        **({"reply_to": {"email": reply_to}} if reply_to else {}),
+        "subject": subject or "(no subject)",
         "content": [
             {"type": "text/plain", "value": (text_body or "")},
-            {"type": "text/html", "value": (html_body or "")},
+            {"type": "text/html", "value": (html_body or text_body or "")},
         ],
     }
-    if reply_to:
-        payload["reply_to"] = {"email": reply_to}
+    return data
+
+
+# ----------------------------
+# 🚀 الدالة الرئيسية للإرسال
+# ----------------------------
+def send_email(to, subject, html_body, text_body=None, cc=None, bcc=None, reply_to=None) -> bool:
+    """
+    ترسل البريد الإلكتروني عبر SendGrid (Render لا يسمح بـ SMTP).
+    ترجع True إذا نجح الإرسال.
+    """
+    if not (SENDGRID_API_KEY and SENDGRID_SENDER and to):
+        print("[EMAILER] Missing SendGrid environment variables.")
+        return False
 
     try:
+        payload = _sg_payload(to, subject, html_body, text_body, cc, bcc, reply_to)
         resp = requests.post(
             "https://api.sendgrid.com/v3/mail/send",
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            json=payload,
-            timeout=20,
+            headers=_sg_headers(),
+            data=json.dumps(payload),
+            timeout=20
         )
-        # SendGrid يرجع 202 عند النجاح
-        return 200 <= resp.status_code < 300
-    except Exception:
-        return False
-
-
-def _send_via_smtp(
-    to: str,
-    subject: str,
-    html_body: str,
-    text_body: str | None = None,
-    cc: list[str] | None = None,
-    bcc: list[str] | None = None,
-    reply_to: str | None = None,
-) -> bool:
-    """
-    إرسال عبر SMTP (Gmail).
-    يعمل محليًا من جهازك، لكنه غالبًا محجوب على السيرفر.
-    يحتاج:
-      EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS, EMAIL_USE_TLS
-    """
-    host = os.getenv("EMAIL_HOST", "")
-    port = int(os.getenv("EMAIL_PORT", "587") or 0)
-    user = os.getenv("EMAIL_USER", "")
-    pwd  = os.getenv("EMAIL_PASS", "")
-    use_tls = _env_bool(os.getenv("EMAIL_USE_TLS"), True)
-
-    if not (host and port and user and pwd and to):
-        return False
-
-    # بناء الرسالة
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = DEFAULT_FROM or user
-    msg["To"] = to
-    if reply_to:
-        msg["Reply-To"] = reply_to
-
-    msg.attach(MIMEText((text_body or ""), "plain", "utf-8"))
-    msg.attach(MIMEText((html_body or ""), "html", "utf-8"))
-
-    recipients = [to] + (cc or []) + (bcc or [])
-    try:
-        smtp = smtplib.SMTP(host, port, timeout=20)
-        smtp.ehlo()
-        if use_tls and port == 587:
-            smtp.starttls()
-            smtp.ehlo()
-        smtp.login(user, pwd)
-        smtp.sendmail(msg["From"], recipients, msg.as_string())
-        try:
-            smtp.quit()
-        except Exception:
-            pass
-        return True
-    except Exception:
-        return False
-
-
-def send_email(
-    to: str,
-    subject: str,
-    html_body: str,
-    text_body: str | None = None,
-    cc: list[str] | None = None,
-    bcc: list[str] | None = None,
-    reply_to: str | None = None,
-) -> bool:
-    """
-    واجهة موحّدة:
-      1) تجرّب SendGrid إذا كان SENDGRID_API_KEY موجودًا (موصى به على السيرفر).
-      2) وإلا تستخدم SMTP.
-    """
-    # 1) SendGrid أولاً (مخصص للسيرفر)
-    if os.getenv("SENDGRID_API_KEY"):
-        ok = _send_via_sendgrid(to, subject, html_body, text_body, cc, bcc, reply_to)
-        if ok:
+        if resp.status_code == 202:
+            print(f"[EMAIL SENT] to {to} ✅")
             return True
+        else:
+            print(f"[EMAIL FAILED] {resp.status_code}: {resp.text[:200]}")
+            return False
+    except Exception as e:
+        print("[EMAIL ERROR]", e)
+        return False
 
-    # 2) SMTP كخيار احتياطي (يعمل محليًا)
-    return _send_via_smtp(to, subject, html_body, text_body, cc, bcc, reply_to)
+
+# ----------------------------
+# 🧠 أداة اختبار وتشخيص
+# ----------------------------
+def _diag_send(to: str) -> dict:
+    """
+    دالة اختبار داخلية يمكن استدعاؤها من /admin/debug/email/send
+    """
+    if not (SENDGRID_API_KEY and SENDGRID_SENDER):
+        return {"ok": False, "stage": "env", "note": "SENDGRID_API_KEY or SENDER missing"}
+
+    payload = _sg_payload(
+        to,
+        "RentAll — Test Email (SendGrid)",
+        "<p>✅ اختبار إرسال من RentAll عبر SendGrid.</p>",
+        "اختبار إرسال من RentAll عبر SendGrid"
+    )
+
+    try:
+        r = requests.post(
+            "https://api.sendgrid.com/v3/mail/send",
+            headers=_sg_headers(),
+            data=json.dumps(payload),
+            timeout=20
+        )
+        return {
+            "ok": (r.status_code == 202),
+            "status": r.status_code,
+            "text": r.text[:300]
+        }
+    except Exception as e:
+        return {"ok": False, "stage": "http", "error": str(e)}
