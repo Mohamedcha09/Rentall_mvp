@@ -1,45 +1,47 @@
-# app/email_service.py
-import os
-import requests
+# app/email_service.py  — SendGrid API sender
+import os, json, urllib.request
 
-SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
-SENDGRID_SENDER = os.getenv("SENDGRID_SENDER", "sevorapp026@gmail.com")
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
+FROM_EMAIL       = os.getenv("FROM_EMAIL", "")  # يجب أن تكون نفس المرسل الذي تحققته في SendGrid
 
-def send_email(to: str, subject: str, html_body: str, text_body: str = None):
+def send_email(to: str, subject: str, html_body: str, text_body: str | None = None) -> bool:
     """
-    يرسل البريد الإلكتروني باستخدام SendGrid API.
+    يرسل بريدًا عبر SendGrid API. يرجع True عند النجاح.
     """
-    if not SENDGRID_API_KEY:
-        print("❌ SENDGRID_API_KEY غير موجود")
+    if not (SENDGRID_API_KEY and FROM_EMAIL and to and subject and html_body):
+        print("❌ send_email: missing env or params")
         return False
 
-    if not to or not subject:
-        print("❌ المتغيرات المطلوبة غير كاملة")
-        return False
+    if not text_body:
+        text_body = " "
 
-    url = "https://api.sendgrid.com/v3/mail/send"
-    headers = {
-        "Authorization": f"Bearer {SENDGRID_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
+    data = {
         "personalizations": [{"to": [{"email": to}]}],
-        "from": {"email": SENDGRID_SENDER, "name": "RentAll"},
+        "from": {"email": FROM_EMAIL},
         "subject": subject,
         "content": [
-            {"type": "text/plain", "value": text_body or subject},
-            {"type": "text/html", "value": html_body or subject}
-        ]
+            {"type": "text/plain", "value": text_body},
+            {"type": "text/html",  "value": html_body},
+        ],
     }
 
+    req = urllib.request.Request(
+        url="https://api.sendgrid.com/v3/mail/send",
+        data=json.dumps(data).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {SENDGRID_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
     try:
-        response = requests.post(url, headers=headers, json=payload)
-        if response.status_code in [200, 202]:
-            print(f"✅ Email sent to {to}")
-            return True
-        else:
-            print(f"❌ SendGrid Error: {response.status_code} {response.text}")
-            return False
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            # SendGrid يعيد 202 في حال النجاح (بدون جسم)
+            ok = (200 <= resp.status < 300)
+            if not ok:
+                print("❌ send_email resp:", resp.status, resp.read())
+            return ok
     except Exception as e:
-        print(f"❌ Exception during send_email: {e}")
+        print("❌ send_email exception:", e)
         return False
