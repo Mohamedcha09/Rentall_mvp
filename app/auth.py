@@ -1,5 +1,5 @@
 # app/auth.py
-from fastapi import APIRouter, Depends, Request, Form, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -9,31 +9,25 @@ from .database import get_db
 from .models import User, Document
 from .utils import hash_password, verify_password, MAX_FORM_PASSWORD_CHARS
 
-# ===== إشعارات (مضاف) =====
-from .notifications_api import push_notification  # ← استخدام للإشعار بعد التسجيل
-
-# ===== SMTP Email (fallback) =====
-# سنستبدل هذا لاحقًا بـ app/emailer.py، لكن الآن نجعله لا يكسر التنفيذ إن لم يوجد.
+# (اختياري) لديك إشعارات داخلية في المشروع، لكننا لن نستخدمها لتفعيل البريد
+# من أجل عدم كسر الاستيراد في أماكن أخرى نتركه موجودًا إن احتاجته ملفات ثانية
 try:
-    from .emailer import send_email  # سيُنشأ لاحقًا
+    from .notifications_api import push_notification  # noqa: F401
+except Exception:
+    pass
+
+# ===== SMTP Email helper =====
+# سنستخدم app/emailer.py لو موجود. وإلا نعمل NO-OP.
+try:
+    from .emailer import send_email  # ← يرسل عبر SMTP (Gmail)
 except Exception:
     def send_email(to, subject, html_body, text_body=None, cc=None, bcc=None, reply_to=None):
         return False  # NO-OP مؤقتًا
 
+# ===== تواقيع رابط التفعيل =====
+from itsdangerous import URLSafeTimedSerializer
+
 BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
-
-# ==== تفعيل الإيميل (توكنات موقّعة) ====
-from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
-SECRET_KEY = os.getenv("SECRET_KEY", "change-me")  # ضعه في .env
-ACTIVATE_SALT = os.getenv("ACTIVATE_EMAIL_SALT", "activate-email-salt")
-ACTIVATE_MAX_AGE = int(os.getenv("ACTIVATE_LINK_MAX_AGE_SECONDS", "259200"))  # 3 أيام
-
-def _activation_serializer() -> URLSafeTimedSerializer:
-    return URLSafeTimedSerializer(SECRET_KEY, salt=ACTIVATE_SALT)
-
-def make_activation_token(user_id: int, email: str) -> str:
-    data = {"uid": int(user_id), "email": (email or "").strip().lower()}
-    return _activation_serializer().dumps(data)
 
 router = APIRouter()
 
@@ -67,6 +61,10 @@ def _save_any(fileobj: UploadFile | None, folder: str, allow_exts: list[str]) ->
     with open(fpath, "wb") as f:
         shutil.copyfileobj(fileobj.file, f)
     return fpath.replace("\\", "/")
+
+def _signer() -> URLSafeTimedSerializer:
+    secret = os.getenv("SECRET_KEY", "dev-secret")
+    return URLSafeTimedSerializer(secret_key=secret, salt="email-verify-v1")
 
 @router.get("/login")
 def login_get(request: Request):
@@ -172,7 +170,7 @@ def register_post(
         phone=phone,
         password_hash=hash_password(password),
         role="user",
-        status="pending",
+        status="pending",   # حالة المراجعة الإدارية إن كانت لديك
         avatar_path=avatar_path
     )
     db.add(u)
@@ -199,36 +197,36 @@ def register_post(
     db.add(d)
     db.commit()
 
-    # ===== إشعار داخلي بعد التسجيل (مضاف) =====
+    # ===== (جديد) بريد تفعيل الحساب فقط (بدون إشعار داخلي) =====
     try:
-        push_notification(
-            db,
-            user_id=u.id,
-            title="✅ تأكيد التسجيل",
-            body="تم إنشاء حسابك بنجاح. رجاءً فعّل بريدك الإلكتروني لإكمال التسجيل.",
-            url="/activate",              # مسار صفحة/تدفق التفعيل لديك
-            kind="system"
-        )
-    except Exception:
-        # لا نكسر التدفق لو تعذّر الإشعار
-        pass
+        s = _signer()
+        token = s.dumps({"uid": u.id, "email": u.email})
+        verify_url = f"{BASE_URL}/activate/verify?token={token}"
 
-    # ===== بريد تفعيل الحساب (آمن بتوكن) =====
-    try:
-        token = make_activation_token(u.id, u.email)
-        activate_url = f"{BASE_URL}/activate/confirm?token={token}"
         subj = "Activate your account — RentAll"
-        html = (
-            f"<p>مرحبًا {first_name},</p>"
-            f"<p>شكرًا لتسجيلك في RentAll. رجاءً فعّل حسابك عبر الرابط التالي (صالح 72 ساعة):</p>"
-            f'<p><a href="{activate_url}">{activate_url}</a></p>'
-            "<p>إذا لم تقم بالتسجيل، تجاهل هذه الرسالة.</p>"
-        )
-        send_email(u.email, subj, html, text_body=f"Activate: {activate_url}")
+        html = f"""
+        <div style="font-family:Tahoma,Arial,sans-serif;line-height:1.8;direction:rtl;text-align:right">
+          <h3 style="margin:0 0 12px">مرحبًا {first_name} 👋</h3>
+          <p>شكرًا لتسجيلك في <b>RentAll</b>. اضغط الزر أدناه لتفعيل حسابك وتسجيل الدخول تلقائيًا:</p>
+          <p style="text-align:center;margin:24px 0">
+            <a href="{verify_url}"
+               style="display:inline-block;padding:12px 20px;border-radius:8px;
+                      background:#2563eb;color:#fff;text-decoration:none;font-weight:700">
+              تفعيل الحساب
+            </a>
+          </p>
+          <p style="color:#666;font-size:13px">إن لم يظهر الزر، افتح هذا الرابط:</p>
+          <p style="word-break:break-all"><a href="{verify_url}">{verify_url}</a></p>
+          <p style="color:#888;font-size:12px">إذا لم تقم بالتسجيل، تجاهل هذه الرسالة.</p>
+        </div>
+        """
+        text = f"مرحبًا {first_name}\n\nفعّل حسابك عبر الرابط:\n{verify_url}\n\nإن لم تكن أنت، تجاهل الرسالة."
+        send_email(u.email, subj, html, text_body=text)
     except Exception:
+        # لا نكسر التدفق إذا فشل الإرسال
         pass
 
-    return RedirectResponse(url="/login", status_code=303)
+    return RedirectResponse(url="/login?check_email=1", status_code=303)
 
 @router.get("/logout")
 def logout(request: Request):

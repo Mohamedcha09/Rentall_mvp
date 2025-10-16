@@ -1,7 +1,7 @@
 # app/activate.py
 import os, secrets, shutil
 from datetime import datetime
-from fastapi import APIRouter, Request, Depends, UploadFile, File, Form
+from fastapi import APIRouter, Request, Depends, UploadFile, File, Form, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -10,53 +10,16 @@ from .models import User, Document
 
 router = APIRouter()
 
-# ========= مسارات الرفع =========
 UPLOADS_ROOT = os.environ.get("UPLOADS_DIR", "uploads")
 AVATARS_DIR = os.path.join(UPLOADS_ROOT, "avatars")
 IDS_DIR = os.path.join(UPLOADS_ROOT, "ids")
 os.makedirs(AVATARS_DIR, exist_ok=True)
 os.makedirs(IDS_DIR, exist_ok=True)
 
-# اسم قالب صفحة التفعيل (لدعم كلا الاسمين لديك)
-TEMPLATE_NAME = os.getenv("ACTIVATE_TEMPLATE", "activete.jtml")  # بدّله إلى "activate.html" إذا أردت
-
-# ========= إعدادات عامة =========
-BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
-
-# ========= خدمة البريد (fallback) =========
-try:
-    from .emailer import send_email  # signature: (to, subject, html_body, text_body=None, ...)
-except Exception:
-    def send_email(to, subject, html_body, text_body=None, cc=None, bcc=None, reply_to=None):
-        return False  # NO-OP إذا لم توجد الخدمة بعد
-
-# ========= توكن تفعيل الإيميل (كما في auth.py) =========
-from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
-
-SECRET_KEY = os.getenv("SECRET_KEY", "change-me")  # ضع قيمة قوية في .env
-ACTIVATE_SALT = os.getenv("ACTIVATE_EMAIL_SALT", "activate-email-salt")
-ACTIVATE_MAX_AGE = int(os.getenv("ACTIVATE_LINK_MAX_AGE_SECONDS", "259200"))  # 3 أيام
-
-def _activation_serializer() -> URLSafeTimedSerializer:
-    return URLSafeTimedSerializer(SECRET_KEY, salt=ACTIVATE_SALT)
-
-def _make_activation_token(user_id: int, email: str) -> str:
-    data = {"uid": int(user_id), "email": (email or "").strip().lower()}
-    return _activation_serializer().dumps(data)
-
-def _verify_activation_token(token: str) -> dict | None:
-    try:
-        return _activation_serializer().loads(token, max_age=ACTIVATE_MAX_AGE)
-    except (SignatureExpired, BadSignature):
-        return None
-    except Exception:
-        return None
-
-# ========= مساعدين داخليين =========
 def _save(fileobj: UploadFile, folder: str, allow_exts):
     if not fileobj:
         return None
-    ext = os.path.splitext(fileobj.filename or "")[1].lower()
+    ext = os.path.splitext(fileobj.filename)[1].lower()
     if ext not in allow_exts:
         return None
     fname = f"{secrets.token_hex(12)}{ext}"
@@ -68,43 +31,31 @@ def _save(fileobj: UploadFile, folder: str, allow_exts):
 def _require_login(request: Request):
     return request.session.get("user")
 
-# ========= صفحة التفعيل =========
 @router.get("/activate")
 def activate_get(request: Request, db: Session = Depends(get_db)):
     """
     صفحة إكمال التفعيل للمستخدمين pending/rejected.
-    تعرض حالة الحساب، الوثائق، وملاحظات المراجعة إن وجدت،
-    مع نماذج لإعادة رفع الصورة/الوثائق، وزر مراسلة الأدمِن.
+    (هذه الصفحة تبقى كما هي لمن يريد رفع وثائق أو صورة — لا علاقة لها بتفعيل البريد)
     """
     sess = _require_login(request)
     if not sess:
         return RedirectResponse(url="/login", status_code=303)
 
     user = db.query(User).get(sess["id"])
-    # اجلب أحدث وثائق من قاعدة البيانات (أفضل من user.documents إن كان lazy)
-    try:
-        docs = (
-            db.query(Document)
-            .filter(Document.user_id == user.id)
-            .order_by(Document.created_at.desc().nullslast())
-            .all()
-        )
-    except Exception:
-        docs = []
+    docs = user.documents or []
 
-    # لو صار المستخدم approved بالفعل، رجّعه للصفحة الرئيسية
     if user.status == "approved":
         return RedirectResponse(url="/", status_code=303)
 
-    # ملاحظة المراجعة (إن وجدت)
     review_note = None
-    for d in docs:
-        if getattr(d, "review_note", None):
-            review_note = d.review_note
-            break
+    if docs:
+        for d in sorted(docs, key=lambda x: x.created_at or datetime.utcnow(), reverse=True):
+            if getattr(d, "review_note", None):
+                review_note = d.review_note
+                break
 
     return request.app.templates.TemplateResponse(
-        TEMPLATE_NAME,
+        "activate.html",
         {
             "request": request,
             "title": "إكمال التفعيل",
@@ -115,7 +66,6 @@ def activate_get(request: Request, db: Session = Depends(get_db)):
         }
     )
 
-# ========= إعادة رفع صورة الحساب =========
 @router.post("/activate/avatar")
 def activate_update_avatar(
     request: Request,
@@ -137,7 +87,6 @@ def activate_update_avatar(
         db.commit()
     return RedirectResponse(url="/activate", status_code=303)
 
-# ========= إعادة رفع الوثائق =========
 @router.post("/activate/document")
 def activate_update_document(
     request: Request,
@@ -186,72 +135,58 @@ def activate_update_document(
 
     return RedirectResponse(url="/activate", status_code=303)
 
-# ========= تأكيد الإيميل بالتوكن =========
-@router.get("/activate/confirm")
-def activate_confirm(request: Request, token: str, db: Session = Depends(get_db)):
+# ===== تفعيل البريد عبر التوكن + تسجيل دخول تلقائي =====
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+
+def _signer() -> URLSafeTimedSerializer:
+    secret = os.getenv("SECRET_KEY", "dev-secret")
+    return URLSafeTimedSerializer(secret_key=secret, salt="email-verify-v1")
+
+@router.get("/activate/verify")
+def activate_verify(token: str, request: Request, db: Session = Depends(get_db)):
     """
-    يقرأ التوكن الموقّع ويؤكد البريد:
-      - يضبط is_verified=True و email_verified_at (إن وُجدا)
-      - لا يغيّر موافقة الأدمِن (status يبقى كما هو)
-      - يحدّث session_user لعرض الشارة فورًا
+    يفك التوكن (صالحيته 3 أيام). إذا صح:
+      - يضبط user.is_verified=True
+      - ينشئ جلسة (login) للمستخدم
+      - يحوّل للصفحة الرئيسية مباشرة
     """
-    data = _verify_activation_token(token)
-    if not data:
-        return RedirectResponse(url="/activate?err=token", status_code=303)
-
-    u = db.query(User).get(int(data.get("uid", 0)))
-    if not u:
-        return RedirectResponse(url="/activate?err=user", status_code=303)
-
-    if (u.email or "").strip().lower() != (data.get("email") or "").strip().lower():
-        return RedirectResponse(url="/activate?err=mismatch", status_code=303)
-
+    s = _signer()
     try:
-        if hasattr(u, "is_verified"):
-            u.is_verified = True
-        if hasattr(u, "email_verified_at"):
-            setattr(u, "email_verified_at", datetime.utcnow())
-        db.add(u); db.commit()
+        data = s.loads(token, max_age=60 * 60 * 24 * 3)  # 3 أيام
+    except SignatureExpired:
+        raise HTTPException(status_code=400, detail="انتهت صلاحية رابط التفعيل.")
+    except BadSignature:
+        raise HTTPException(status_code=400, detail="رابط التفعيل غير صالح.")
+
+    uid = int((data or {}).get("uid") or 0)
+    email = ((data or {}).get("email") or "").strip().lower()
+    if not uid or not email:
+        raise HTTPException(status_code=400, detail="بيانات التفعيل ناقصة.")
+
+    user = db.query(User).get(uid)
+    if not user or (user.email or "").lower() != email:
+        raise HTTPException(status_code=404, detail="المستخدم غير موجود.")
+
+    # فعّل إن لم يكن مفعّلًا
+    try:
+        if not bool(getattr(user, "is_verified", False)):
+            user.is_verified = True
+            db.add(user)
+            db.commit()
     except Exception:
         pass
 
-    # عدّل السيشن لإظهار الشارة مباشرة
-    try:
-        sess = request.session.get("user") or {}
-        if sess.get("id") == u.id:
-            sess["is_verified"] = True
-            request.session["user"] = sess
-    except Exception:
-        pass
+    # تسجيل دخول تلقائي (نفس شكل السيشن في /login)
+    request.session["user"] = {
+        "id": user.id,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "email": user.email,
+        "phone": user.phone,
+        "role": user.role,
+        "status": user.status,
+        "is_verified": True,
+        "avatar_path": user.avatar_path or None,
+    }
 
-    return RedirectResponse(url="/activate?ok=1", status_code=303)
-
-# ========= إعادة إرسال رابط التفعيل =========
-@router.post("/activate/resend")
-def activate_resend(request: Request, db: Session = Depends(get_db)):
-    """
-    يعيد إرسال رابط التفعيل للمستخدم الحالي (من السيشن).
-    """
-    sess = _require_login(request)
-    if not sess:
-        return RedirectResponse(url="/login", status_code=303)
-
-    u = db.query(User).get(sess["id"])
-    if not u:
-        return RedirectResponse(url="/login", status_code=303)
-
-    try:
-        token = _make_activation_token(u.id, u.email)
-        link = f"{BASE_URL}/activate/confirm?token={token}"
-        send_email(
-            u.email,
-            "Activate your account — RentAll",
-            f"<p>مرحبًا {(u.first_name or 'صديقنا')}،</p>"
-            f"<p>هذا رابط تفعيل بريدك (صالح 72 ساعة):</p>"
-            f"<p><a href='{link}'>{link}</a></p>",
-            text_body=f"Activate link: {link}"
-        )
-    except Exception:
-        pass
-
-    return RedirectResponse(url="/activate?resent=1", status_code=303)
+    return RedirectResponse(url="/", status_code=303)
