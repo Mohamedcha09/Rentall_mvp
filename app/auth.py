@@ -1,5 +1,5 @@
 # app/auth.py
-from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
+from fastapi import APIRouter, Depends, Request, Form, UploadFile, File, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -8,6 +8,32 @@ import os, secrets, shutil
 from .database import get_db
 from .models import User, Document
 from .utils import hash_password, verify_password, MAX_FORM_PASSWORD_CHARS
+
+# ===== إشعارات (مضاف) =====
+from .notifications_api import push_notification  # ← استخدام للإشعار بعد التسجيل
+
+# ===== SMTP Email (fallback) =====
+# سنستبدل هذا لاحقًا بـ app/emailer.py، لكن الآن نجعله لا يكسر التنفيذ إن لم يوجد.
+try:
+    from .emailer import send_email  # سيُنشأ لاحقًا
+except Exception:
+    def send_email(to, subject, html_body, text_body=None, cc=None, bcc=None, reply_to=None):
+        return False  # NO-OP مؤقتًا
+
+BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
+
+# ==== تفعيل الإيميل (توكنات موقّعة) ====
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+SECRET_KEY = os.getenv("SECRET_KEY", "change-me")  # ضعه في .env
+ACTIVATE_SALT = os.getenv("ACTIVATE_EMAIL_SALT", "activate-email-salt")
+ACTIVATE_MAX_AGE = int(os.getenv("ACTIVATE_LINK_MAX_AGE_SECONDS", "259200"))  # 3 أيام
+
+def _activation_serializer() -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(SECRET_KEY, salt=ACTIVATE_SALT)
+
+def make_activation_token(user_id: int, email: str) -> str:
+    data = {"uid": int(user_id), "email": (email or "").strip().lower()}
+    return _activation_serializer().dumps(data)
 
 router = APIRouter()
 
@@ -172,6 +198,35 @@ def register_post(
     )
     db.add(d)
     db.commit()
+
+    # ===== إشعار داخلي بعد التسجيل (مضاف) =====
+    try:
+        push_notification(
+            db,
+            user_id=u.id,
+            title="✅ تأكيد التسجيل",
+            body="تم إنشاء حسابك بنجاح. رجاءً فعّل بريدك الإلكتروني لإكمال التسجيل.",
+            url="/activate",              # مسار صفحة/تدفق التفعيل لديك
+            kind="system"
+        )
+    except Exception:
+        # لا نكسر التدفق لو تعذّر الإشعار
+        pass
+
+    # ===== بريد تفعيل الحساب (آمن بتوكن) =====
+    try:
+        token = make_activation_token(u.id, u.email)
+        activate_url = f"{BASE_URL}/activate/confirm?token={token}"
+        subj = "Activate your account — RentAll"
+        html = (
+            f"<p>مرحبًا {first_name},</p>"
+            f"<p>شكرًا لتسجيلك في RentAll. رجاءً فعّل حسابك عبر الرابط التالي (صالح 72 ساعة):</p>"
+            f'<p><a href="{activate_url}">{activate_url}</a></p>'
+            "<p>إذا لم تقم بالتسجيل، تجاهل هذه الرسالة.</p>"
+        )
+        send_email(u.email, subj, html, text_body=f"Activate: {activate_url}")
+    except Exception:
+        pass
 
     return RedirectResponse(url="/login", status_code=303)
 

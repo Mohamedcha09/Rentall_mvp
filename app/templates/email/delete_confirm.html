@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <title>تأكيد حذف الحساب</title>
+</head>
+<body style="font-family:Arial,Helvetica,sans-serif;line-height:1.7">
+  <h2>تأكيد حذف الحساب</h2>
+  <p>مرحبًا {{ user_name | default("مستخدم") }}،</p>
+  <p>لتأكيد حذف حسابك نهائيًا، اضغط على الرابط التالي:</p>
+  <p>
+    <a href="{{ delete_link }}">{{ delete_link }}</a>
+  </p>
+  <p style="color:#a00">
+    تحذير: هذا الإجراء نهائي ولا يمكن التراجع عنه.
+  </p>
+</body>
+</html>

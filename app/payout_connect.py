@@ -1,13 +1,92 @@
 # app/payout_connect.py
 import os
+import smtplib
+from email.mime.text import MIMEText
+
 import stripe
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
 from sqlalchemy.orm import Session
+
 from .database import get_db
 from .models import User
+from .notifications_api import push_notification, notify_admins  # ⬅ إشعارات داخل الموقع
 
 router = APIRouter()
+
+# =========================
+# Email helper (simple SMTP)
+# =========================
+def _send_email(to_email: str, subject: str, body: str) -> bool:
+    """
+    يرسل بريدًا بسيطًا باستخدام إعدادات البيئة:
+    EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS, EMAIL_USE_TLS
+    يعيد True لو تمّ الإرسال أو False لو فشل (دون أن يكسر التدفق).
+    """
+    try:
+        host = os.getenv("EMAIL_HOST", "")
+        port = int(os.getenv("EMAIL_PORT", "587"))
+        user = os.getenv("EMAIL_USER", "")
+        pwd  = os.getenv("EMAIL_PASS", "")
+        use_tls = str(os.getenv("EMAIL_USE_TLS", "True")).lower() in ("1", "true", "yes")
+
+        if not (host and port and user and pwd and to_email):
+            return False
+
+        msg = MIMEText(body, _charset="utf-8")
+        msg["Subject"] = subject
+        msg["From"] = user
+        msg["To"] = to_email
+
+        smtp = smtplib.SMTP(host, port, timeout=20)
+        try:
+            if use_tls:
+                smtp.starttls()
+            smtp.login(user, pwd)
+            smtp.sendmail(user, [to_email], msg.as_string())
+        finally:
+            try:
+                smtp.quit()
+            except Exception:
+                pass
+        return True
+    except Exception:
+        # لا نرفع استثناءً — إشعار البريد غير حاسم للتدفق
+        return False
+
+# ===== إضافة: خدمة موحّدة لإرسال الإيميل (إن وُجدت) + BASE_URL =====
+BASE_URL = (os.getenv("SITE_URL") or os.getenv("CONNECT_REDIRECT_BASE") or "http://localhost:8000").rstrip("/")
+try:
+    # هذه ستُنشأ لاحقًا في app/emailer.py
+    from .emailer import send_email as _templated_send_email  # signature: (to, subject, html_body, text_body=None, ...)
+except Exception:
+    _templated_send_email = None
+
+def send_email(to_email: str, subject: str, html_body: str, text_body: str | None = None) -> bool:
+    """
+    التفاف موحّد: يجرّب app/emailer.send_email (HTML) ثم يسقط على _send_email (نصي).
+    """
+    try:
+        if _templated_send_email:
+            ok = bool(_templated_send_email(to_email, subject, html_body, text_body=text_body))
+            if ok:
+                return True
+    except Exception:
+        pass
+    # سقوط نصي بسيط
+    plain = text_body or _strip_html(html_body)
+    return _send_email(to_email, subject, plain)
+
+def _strip_html(html: str) -> str:
+    # تحويل بسيط جداً لرسالة نصية—يكفي للاحتياط
+    try:
+        import re
+        txt = re.sub(r"<br\s*/?>", "\n", html, flags=re.I)
+        txt = re.sub(r"</p\s*>", "\n\n", txt, flags=re.I)
+        txt = re.sub(r"<[^>]+>", "", txt)
+        return txt.strip()
+    except Exception:
+        return html
 
 # =========================
 # Helpers
@@ -118,17 +197,58 @@ def payout_connect_start(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/login", status_code=303)
 
-    acct_id = _ensure_account(db, user)
-    request.session["connect_account_id"] = acct_id
+    try:
+        acct_id = _ensure_account(db, user)
+        request.session["connect_account_id"] = acct_id
 
-    base = _base_url(request)
-    link = stripe.AccountLink.create(
-        account=acct_id,
-        type="account_onboarding",
-        refresh_url=f"{base}/payout/connect/refresh",
-        return_url=f"{base}/payout/settings?done=1",
-    )
-    return RedirectResponse(link.url, status_code=303)
+        base = _base_url(request)
+        link = stripe.AccountLink.create(
+            account=acct_id,
+            type="account_onboarding",
+            refresh_url=f"{base}/payout/connect/refresh",
+            return_url=f"{base}/payout/settings?done=1",
+        )
+        return RedirectResponse(link.url, status_code=303)
+
+    except Exception as e:
+        # (24) فشل ربط الحساب — إشعار بريد + إشعار داخل الموقع + إشعار للأدمن
+        reason = str(e)
+        push_notification(
+            db, user.id,
+            "🪪 فشل ربط Stripe",
+            "تعذّر بدء ربط حساب Stripe Connect. حاول مجددًا أو تواصل مع الدعم.",
+            "/payout/settings",
+            kind="system",
+        )
+        notify_admins(
+            db,
+            "Stripe Connect linking failed",
+            f"user_id={user.id} — {reason[:180]}",
+            "/admin"
+        )
+        # ===== إرسال بريد عبر الخدمة الموحّدة ثم سقوط نصي عند الحاجة =====
+        try:
+            send_email(
+                user.email,
+                "🪪 فشل ربط Stripe",
+                (
+                    f"<p>مرحبًا {user.first_name or ''},</p>"
+                    f"<p>تعذّر بدء ربط حسابك على Stripe Connect.</p>"
+                    f"<p>السبب (إن وُجد): {reason}</p>"
+                    f'<p>حاول مجددًا من خلال <a href="{BASE_URL}/payout/settings">صفحة الإعدادات</a> '
+                    f'أو تواصل مع الدعم.</p>'
+                ),
+                (
+                    f"مرحبًا {user.first_name or ''},\n\n"
+                    "تعذّر بدء ربط حسابك على Stripe Connect.\n"
+                    f"السبب (إن وُجد): {reason}\n\n"
+                    f"جرّب من جديد عبر صفحة الإعدادات: {BASE_URL}/payout/settings، أو تواصل مع الدعم."
+                )
+            )
+        except Exception:
+            # سقوط صامت
+            pass
+        return RedirectResponse(url="/payout/settings?err=1", status_code=303)
 
 @router.get("/connect/onboard")
 def connect_onboard(request: Request, db: Session = Depends(get_db)):
@@ -157,34 +277,125 @@ def connect_onboard(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/payout/connect/refresh")
 def payout_connect_refresh(request: Request, db: Session = Depends(get_db)):
+    """
+    يعود المستخدم من Stripe هنا (refresh/return). نزامن الحالة،
+    وإذا أصبحت payouts_enabled=True نرسل إشعار النجاح (23).
+    """
     _set_api_key_or_500()
     sess = request.session.get("user")
     if not sess:
         return RedirectResponse(url="/login", status_code=303)
+
     user = db.query(User).get(sess["id"])
     if not user:
         return RedirectResponse(url="/payout/settings", status_code=303)
+
+    became_enabled = False
     try:
         if getattr(user, "stripe_account_id", None):
             acct = stripe.Account.retrieve(user.stripe_account_id)
-            # sync
+
+            # sync flags
             try:
                 if getattr(user, "stripe_account_id", None) != acct.id:
                     user.stripe_account_id = acct.id
             except Exception:
                 pass
+
+            pe = bool(getattr(acct, "payouts_enabled", False))
+            before = bool(getattr(user, "payouts_enabled", False))
             if hasattr(user, "payouts_enabled"):
-                user.payouts_enabled = bool(getattr(acct, "payouts_enabled", False))
+                user.payouts_enabled = pe
             db.add(user); db.commit()
-    except Exception:
-        pass
-    return RedirectResponse(url="/payout/settings", status_code=303)
+
+            became_enabled = (pe and not before)
+
+            # (23) نجاح الربط لأول مرة → بريد + إشعار + إشعار Admin/DM
+            if became_enabled:
+                push_notification(
+                    db, user.id,
+                    "🔗 تم ربط Stripe Connect بنجاح",
+                    "أصبحت التحويلات مفعّلة على حسابك. يمكنك الآن استلام الأرباح.",
+                    "/payout/settings",
+                    kind="system",
+                )
+                notify_admins(
+                    db,
+                    "Stripe Connect linked",
+                    f"user_id={user.id} — payouts_enabled=True",
+                    "/admin"
+                )
+                # ===== بريد نجاح الربط (HTML + نصي) =====
+                try:
+                    send_email(
+                        user.email,
+                        "🔗 تم ربط Stripe Connect بنجاح",
+                        (
+                            f"<p>مرحبًا {user.first_name or ''},</p>"
+                            "<p>تم ربط حساب Stripe Connect بنجاح وأصبحت التحويلات مفعّلة على حسابك.</p>"
+                            f'<p>يمكنك مراجعة الحالة من <a href="{BASE_URL}/payout/settings">صفحة الإعدادات</a>.</p>'
+                            "<p>شكرًا لاستخدامك منصّتنا.</p>"
+                        ),
+                        (
+                            f"مرحبًا {user.first_name or ''},\n\n"
+                            "تم ربط حساب Stripe Connect بنجاح وأصبحت التحويلات مفعّلة على حسابك.\n"
+                            f"راجع صفحة الإعدادات: {BASE_URL}/payout/settings\n\n"
+                            "شكرًا لاستخدامك منصّتنا."
+                        )
+                    )
+                except Exception:
+                    pass
+
+    except Exception as e:
+        # خطأ أثناء المزامنة/الرجوع من Stripe → نبلّغ المستخدم وننبه الأدمن (24)
+        reason = str(e)
+        push_notification(
+            db, user.id,
+            "🪪 فشل مزامنة Stripe",
+            "حدث خطأ أثناء مزامنة حالة Stripe. حاول مجددًا.",
+            "/payout/settings",
+            kind="system",
+        )
+        notify_admins(
+            db, "Stripe Connect refresh failed",
+            f"user_id={user.id} — {reason[:180]}",
+            "/admin"
+        )
+        # ===== بريد فشل/مشكلة في المزامنة =====
+        try:
+            send_email(
+                user.email,
+                "🪪 فشل ربط/مزامنة Stripe",
+                (
+                    f"<p>مرحبًا {user.first_name or ''},</p>"
+                    "<p>حدث خطأ أثناء مزامنة حساب Stripe Connect.</p>"
+                    f"<p>السبب (إن وُجد): {reason}</p>"
+                    f'<p>أعد المحاولة من <a href="{BASE_URL}/payout/settings">صفحة الإعدادات</a> '
+                    "أو تواصل مع الدعم.</p>"
+                ),
+                (
+                    f"مرحبًا {user.first_name or ''},\n\n"
+                    "حدث خطأ أثناء مزامنة حساب Stripe Connect.\n"
+                    f"السبب (إن وُجد): {reason}\n\n"
+                    f"جرّب من جديد عبر صفحة الإعدادات: {BASE_URL}/payout/settings، أو تواصل مع الدعم."
+                )
+            )
+        except Exception:
+            pass
+
+    # رجوع لواجهة الإعدادات (ستعرض حالة النجاح عبر باراميتر done=1)
+    qs = "?done=1" if became_enabled else ""
+    return RedirectResponse(url=f"/payout/settings{qs}", status_code=303)
 
 # =========================
 # Status + Force Save
 # =========================
 @router.get("/api/stripe/connect/status")
 def stripe_connect_status(request: Request, db: Session = Depends(get_db), autocreate: int = 0):
+    """
+    endpoint JSON لقراءة حالة الحساب. (لا يرسل بريدًا كي لا نكرّر).
+    إشعارات البريد تتم فعليًا في refresh (عند التحوّل لأول مرّة).
+    """
     _set_api_key_or_500()
     sess = request.session.get("user")
     if not sess:
@@ -221,7 +432,6 @@ def stripe_connect_status(request: Request, db: Session = Depends(get_db), autoc
     if changed:
         db.add(user); db.commit()
 
-    # ⬅⬅⬅ أهم شيء هنا: account_id
     return JSONResponse({
         "connected": True,
         "account_id": acct.id,
@@ -306,7 +516,7 @@ def split_test_checkout(
     )
     return RedirectResponse(session.url, status_code=303)
 
-    # === Onboard link as JSON (يفتح صفحة KYC/إضافة بنك) ===
+# === Onboard link as JSON (يفتح صفحة KYC/إضافة بنك) ===
 @router.get("/api/stripe/connect/onboard_link")
 def connect_onboard_link(request: Request, db: Session = Depends(get_db)):
     _set_api_key_or_500()

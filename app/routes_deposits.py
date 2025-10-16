@@ -24,6 +24,26 @@ from .database import get_db, engine as _engine
 from .models import Booking, Item, User
 from .notifications_api import push_notification, notify_admins
 
+# ===== SMTP Email (fallback) =====
+# سيتم استبداله لاحقًا بـ app/emailer.py؛ هنا نضمن عدم كسر التنفيذ إن لم يوجد.
+try:
+    from .emailer import send_email  # سيُنشأ لاحقًا
+except Exception:
+    def send_email(to, subject, html_body, text_body=None, cc=None, bcc=None, reply_to=None):
+        return False  # NO-OP مؤقتًا
+
+BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
+
+def _user_email(db: Session, user_id: int) -> str | None:
+    u = db.get(User, user_id) if user_id else None
+    return (u.email or None) if u else None
+
+def _admin_emails(db: Session) -> list[str]:
+    admins = db.query(User).filter(
+        ((User.role == "admin") | (User.is_deposit_manager == True))
+    ).all()
+    return [a.email for a in admins if getattr(a, "email", None)]
+
 router = APIRouter(tags=["deposits"])
 
 # ================= Stripe =================
@@ -322,6 +342,23 @@ def dm_decision(
                 "تم إعلان القرار النهائي", f"تم إرجاع وديعة الحجز #{bk.id} بالكامل.",
                 "تم إعلان القرار النهائي", f"تم إرجاع وديعتك بالكامل لحجز #{bk.id}."
             )
+
+            # ===== Emails: قرار نهائي — إرجاع كامل =====
+            try:
+                renter_email = _user_email(db, bk.renter_id)
+                owner_email  = _user_email(db, bk.owner_id)
+                case_url = f"{BASE_URL}/bookings/flow/{bk.id}"
+                if owner_email:
+                    send_email(owner_email, f"قرار نهائي — إرجاع وديعة #{bk.id}",
+                               f"<p>تم إرجاع الوديعة بالكامل لحجز #{bk.id}.</p>"
+                               f'<p><a href="{case_url}">تفاصيل الحجز</a></p>')
+                if renter_email:
+                    send_email(renter_email, f"قرار نهائي — إرجاع وديعتك #{bk.id}",
+                               f"<p>تم إرجاع وديعتك بالكامل لحجز #{bk.id}.</p>"
+                               f'<p><a href="{case_url}">تفاصيل الحجز</a></p>')
+            except Exception:
+                pass
+
             return RedirectResponse(url=f"/dm/deposits/{bk.id}?final=1", status_code=303)
 
         elif decision == "withhold":
@@ -393,6 +430,23 @@ def dm_decision(
                         f"تثبيت قرار اقتطاع {amt_txt} CAD على وديعتك للحجز #{bk.id}، لكن لا توجد وديعة محجوزة."
                     )
 
+                # ===== Emails: قرار نهائي — اقتطاع =====
+                try:
+                    renter_email = _user_email(db, bk.renter_id)
+                    owner_email  = _user_email(db, bk.owner_id)
+                    case_url = f"{BASE_URL}/bookings/flow/{bk.id}"
+                    if owner_email:
+                        send_email(owner_email, f"قرار نهائي — اقتطاع {amt_txt} CAD — #{bk.id}",
+                                   f"<p>تم اقتطاع {amt_txt} CAD من وديعة الحجز #{bk.id}.</p>"
+                                   f'<p><a href="{case_url}">تفاصيل الحجز</a></p>')
+                    if renter_email:
+                        send_email(renter_email, f"قرار نهائي — خصم {amt_txt} CAD من وديعتك — #{bk.id}",
+                                   f"<p>تم خصم {amt_txt} CAD من وديعتك لحجز #{bk.id}."
+                                   + (f" — السبب: {reason_txt}" if reason_txt else "")
+                                   + f'</p><p><a href="{case_url}">تفاصيل الحجز</a></p>')
+                except Exception:
+                    pass
+
                 return RedirectResponse(url=f"/dm/deposits/{bk.id}?final=1", status_code=303)
 
             # ليس نهائي الآن → مهلة 24 ساعة
@@ -431,6 +485,41 @@ def dm_decision(
             )
             notify_admins(db, "قرار خصم قيد الانتظار",
                           f"اقتطاع مقترح {amt_txt} CAD — حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+
+            # ===== Emails: بدء نافذة 24 ساعة (عبر decision) =====
+            try:
+                renter_email = _user_email(db, bk.renter_id)
+                owner_email  = _user_email(db, bk.owner_id)
+                admins_em    = _admin_emails(db)
+                case_url = f"{BASE_URL}/dm/deposits/{bk.id}"
+                ev_url   = f"{BASE_URL}/deposits/{bk.id}/evidence/form"
+                deadline_str = deadline.strftime("%Y-%m-%d %H:%M UTC")
+                if renter_email:
+                    send_email(
+                        renter_email,
+                        f"تنبيه: قرار خصم على وديعتك — #{bk.id}",
+                        f"<p>يوجد قرار خصم بمبلغ {amt_txt} CAD على وديعتك للحجز #{bk.id}."
+                        f" لديك حتى <b>{deadline_str}</b> للرد ورفع الأدلة.</p>"
+                        f'<p><a href="{ev_url}">رفع الأدلة</a></p>'
+                    )
+                if owner_email:
+                    send_email(
+                        owner_email,
+                        f"تم بدء مهلة ردّ المستأجر — #{bk.id}",
+                        f"<p>فُتحت مهلة 24 ساعة لتنفيذ قرار الخصم بمبلغ {amt_txt} CAD."
+                        f" التنفيذ تلقائيًا بعد انتهاء المهلة ما لم يردّ المستأجر.</p>"
+                        f'<p><a href="{case_url}">صفحة القضية</a></p>'
+                    )
+                for em in admins_em:
+                    send_email(
+                        em,
+                        f"[DM] awaiting_renter — #{bk.id}",
+                        f"<p>اقتطاع مقترح بمبلغ {amt_txt} CAD للحجز #{bk.id}.</p>"
+                        f'<p><a href="{case_url}">فتح القضية</a></p>'
+                    )
+            except Exception:
+                pass
+
             return RedirectResponse(url=f"/dm/deposits/{bk.id}?started=1", status_code=303)
 
         else:
@@ -617,6 +706,37 @@ def dm_claim_case(
     except Exception:
         pass
 
+    # 🔔 إشعار "تم تعيينك لمراجعة قضية" (Assign) — يصل للمراجع نفسه + Admin
+    try:
+        push_notification(
+            db, user.id,
+            "تم تعيينك لمراجعة قضية",
+            f"تم إسناد قضية وديعة #{bk.id} لك.",
+            f"/dm/deposits/{bk.id}",
+            "deposit",
+        )
+        notify_admins(
+            db, "Assign — تم تعيين مراجع",
+            f"تم تعيين {user.id} لمراجعة قضية #{bk.id}.",
+            f"/dm/deposits/{bk.id}",
+        )
+    except Exception:
+        pass
+
+    # ===== Email: تم تعيينك لمراجعة قضية =====
+    try:
+        reviewer_email = _user_email(db, user.id)
+        case_url = f"{BASE_URL}/dm/deposits/{bk.id}"
+        if reviewer_email:
+            send_email(
+                reviewer_email,
+                f"تم تعيينك لمراجعة قضية — #{bk.id}",
+                f"<p>قضية وديعة #{bk.id} أُسندت إليك للمراجعة.</p>"
+                f'<p><a href="{case_url}">فتح القضية</a></p>'
+            )
+    except Exception:
+        pass
+
     return RedirectResponse(f"/dm/deposits/{bk.id}", status_code=303)
 
 # ===== DEBUG / أدوات مساعدة =====
@@ -724,6 +844,41 @@ def dm_start_renter_window(
             f"DM فعّل مهلة 24h للحجز #{bk.id} (amount={amt}).",
             f"/dm/deposits/{bk.id}"
         )
+    except Exception:
+        pass
+
+    # ===== Emails: بدء نافذة 24 ساعة (عبر start-window) =====
+    try:
+        renter_email = _user_email(db, bk.renter_id)
+        owner_email  = _user_email(db, bk.owner_id)
+        admins_em    = _admin_emails(db)
+        case_url = f"{BASE_URL}/dm/deposits/{bk.id}"
+        ev_url   = f"{BASE_URL}/deposits/{bk.id}/evidence/form"
+        deadline_str = deadline.strftime("%Y-%m-%d %H:%M UTC")
+
+        if renter_email:
+            send_email(
+                renter_email,
+                f"تنبيه: قرار خصم على وديعتك — #{bk.id}",
+                f"<p>يوجد قرار خصم بمبلغ {amt} CAD على وديعتك للحجز #{bk.id}."
+                f" لديك حتى <b>{deadline_str}</b> للرد ورفع الأدلة.</p>"
+                f'<p><a href="{ev_url}">رفع الأدلة</a></p>'
+            )
+        if owner_email:
+            send_email(
+                owner_email,
+                f"تم بدء مهلة ردّ المستأجر — #{bk.id}",
+                f"<p>فُتحت مهلة 24 ساعة لتنفيذ قرار الخصم بمبلغ {amt} CAD."
+                f" التنفيذ تلقائيًا بعد انتهاء المهلة ما لم يردّ المستأجر.</p>"
+                f'<p><a href="{case_url}">صفحة القضية</a></p>'
+            )
+        for em in admins_em:
+            send_email(
+                em,
+                f"[DM] awaiting_renter — #{bk.id}",
+                f"<p>اقتطاع مقترح بمبلغ {amt} CAD للحجز #{bk.id}.</p>"
+                f'<p><a href="{case_url}">فتح القضية</a></p>'
+            )
     except Exception:
         pass
 

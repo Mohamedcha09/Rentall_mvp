@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <title>إيصال الدفع</title>
+</head>
+<body style="font-family:Arial,Helvetica,sans-serif;line-height:1.7">
+  <h2>🧾 إيصال الدفع</h2>
+  <p>مرحبًا {{ renter_name | default("العميل") }}،</p>
+  <p>تم تسجيل دفعتك بنجاح للحجز رقم <b>#{{ booking_id }}</b>.</p>
+
+  <table style="border-collapse:collapse;min-width:320px">
+    <tr>
+      <td style="padding:6px 10px"><b>العنصر</b></td>
+      <td style="padding:6px 10px">{{ item_title }}</td>
+    </tr>
+    <tr>
+      <td style="padding:6px 10px"><b>المبلغ</b></td>
+      <td style="padding:6px 10px">{{ amount_text }}</td>
+    </tr>
+    <tr>
+      <td style="padding:6px 10px"><b>العملة</b></td>
+      <td style="padding:6px 10px">{{ currency | upper }}</td>
+    </tr>
+    <tr>
+      <td style="padding:6px 10px"><b>التاريخ</b></td>
+      <td style="padding:6px 10px">{{ paid_at }}</td>
+    </tr>
+    <tr>
+      <td style="padding:6px 10px"><b>PaymentIntent</b></td>
+      <td style="padding:6px 10px">{{ pi_id or "-" }}</td>
+    </tr>
+    <tr>
+      <td style="padding:6px 10px"><b>Charge</b></td>
+      <td style="padding:6px 10px">{{ charge_id or "-" }}</td>
+    </tr>
+  </table>
+
+  <p style="margin-top:12px">
+    إدارة الحجز: <a href="{{ booking_url }}">{{ booking_url }}</a>
+  </p>
+  <p style="color:#888;font-size:12px">
+    هذه الرسالة للتأكيد ولا تتطلب أي إجراء.
+  </p>
+</body>
+</html>

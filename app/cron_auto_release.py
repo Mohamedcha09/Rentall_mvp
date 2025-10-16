@@ -8,8 +8,26 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import Booking
+from .models import Booking, User
 from .notifications_api import push_notification, notify_admins
+
+# ===== SMTP Email (fallback) =====
+# سيتم استبداله لاحقًا بـ app/emailer.py؛ وهنا نضمن عدم كسر التنفيذ إن لم يوجد.
+try:
+    from .emailer import send_email  # سيُنشأ لاحقًا
+except Exception:
+    def send_email(to, subject, html_body, text_body=None, cc=None, bcc=None, reply_to=None):
+        return False  # NO-OP مؤقتًا
+
+BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
+
+def _user_email(db: Session, user_id: int) -> str | None:
+    u = db.get(User, user_id) if user_id else None
+    return (u.email or None) if u else None
+
+def _admin_emails(db: Session) -> list[str]:
+    q = db.query(User).filter(((User.role == "admin") | (User.is_deposit_manager == True))).all()
+    return [getattr(a, "email", None) for a in q if getattr(a, "email", None)]
 
 router = APIRouter(tags=["admin"])
 
@@ -233,6 +251,37 @@ def _execute_dm_decision(db: Session, bk: Booking) -> str:
         except Exception:
             pass
 
+        # ===== Emails: تنفيذ تلقائي — خصم =====
+        try:
+            owner_email = _user_email(db, bk.owner_id)
+            renter_email = _user_email(db, bk.renter_id)
+            admins_em   = _admin_emails(db)
+            case_url = f"{BASE_URL}/bookings/flow/{bk.id}"
+            amt_txt = _currency(amount)
+            if owner_email:
+                send_email(
+                    owner_email,
+                    f"تنفيذ تلقائي لقرار الخصم — #{bk.id}",
+                    f"<p>تم تعويضك بمبلغ {amt_txt} CAD من وديعة الحجز #{bk.id} بعد انتهاء مهلة الرد.</p>"
+                    f'<p><a href="{case_url}">تفاصيل الحجز</a></p>'
+                )
+            if renter_email:
+                send_email(
+                    renter_email,
+                    f"انتهت مهلة الرد — خصم {amt_txt} CAD — #{bk.id}",
+                    f"<p>تم خصم {amt_txt} CAD من وديعتك للحجز #{bk.id} لانتهاء مهلة الرد دون أدلة.</p>"
+                    f'<p><a href="{case_url}">تفاصيل الحجز</a></p>'
+                )
+            for em in admins_em:
+                send_email(
+                    em,
+                    f"[Auto] تنفيذ قرار DM — #{bk.id}",
+                    f"<p>تم تنفيذ قرار الخصم تلقائيًا بمبلغ {amt_txt} CAD.</p>"
+                    f'<p><a href="{case_url}">فتح القضية</a></p>'
+                )
+        except Exception:
+            pass
+
         return f"captured:{amount}"
 
     elif decision == "release":
@@ -268,6 +317,36 @@ def _execute_dm_decision(db: Session, bk: Booking) -> str:
                 "deposit",
             )
             notify_admins(db, "تنفيذ قرار وديعة تلقائي", f"حجز #{bk.id} — إرجاع كامل.", f"/dm/deposits/{bk.id}")
+        except Exception:
+            pass
+
+        # ===== Emails: تنفيذ تلقائي — إرجاع =====
+        try:
+            owner_email = _user_email(db, bk.owner_id)
+            renter_email = _user_email(db, bk.renter_id)
+            admins_em   = _admin_emails(db)
+            case_url = f"{BASE_URL}/bookings/flow/{bk.id}"
+            if owner_email:
+                send_email(
+                    owner_email,
+                    f"تنفيذ تلقائي — إرجاع الوديعة — #{bk.id}",
+                    f"<p>تم إرجاع الوديعة بالكامل لهذا الحجز بعد انتهاء مهلة الرد.</p>"
+                    f'<p><a href="{case_url}">تفاصيل الحجز</a></p>'
+                )
+            if renter_email:
+                send_email(
+                    renter_email,
+                    f"انتهت المهلة — تم إرجاع وديعتك — #{bk.id}",
+                    f"<p>تم إرجاع وديعتك بالكامل لهذا الحجز بعد انتهاء مهلة الرد.</p>"
+                    f'<p><a href="{case_url}">تفاصيل الحجز</a></p>'
+                )
+            for em in admins_em:
+                send_email(
+                    em,
+                    f"[Auto] تنفيذ DM: إرجاع — #{bk.id}",
+                    f"<p>تم تنفيذ قرار الإرجاع تلقائيًا (انتهاء المهلة).</p>"
+                    f'<p><a href="{case_url}">فتح القضية</a></p>'
+                )
         except Exception:
             pass
 
@@ -336,6 +415,36 @@ def run_auto_release(
                     f"/bookings/flow/{bk.id}",
                     "deposit",
                 )
+            except Exception:
+                pass
+
+            # ===== Emails: إفراج تلقائي 48h =====
+            try:
+                renter_email = _user_email(db, bk.renter_id)
+                owner_email  = _user_email(db, bk.owner_id)
+                admins_em    = _admin_emails(db)
+                case_url = f"{BASE_URL}/bookings/flow/{bk.id}"
+                if renter_email:
+                    send_email(
+                        renter_email,
+                        f"إفراج تلقائي عن الوديعة — #{bk.id}",
+                        f"<p>أُفرجت وديعتك تلقائيًا بعد مرور 48 ساعة دون نزاع.</p>"
+                        f'<p><a href="{case_url}">تفاصيل الحجز</a></p>'
+                    )
+                if owner_email:
+                    send_email(
+                        owner_email,
+                        f"تم الإفراج عن وديعة الحجز — #{bk.id}",
+                        f"<p>أُفرج عن الوديعة تلقائيًا بعد انتهاء المهلة.</p>"
+                        f'<p><a href="{case_url}">تفاصيل الحجز</a></p>'
+                    )
+                for em in admins_em:
+                    send_email(
+                        em,
+                        f"[Auto] إفراج وديعة 48h — #{bk.id}",
+                        f"<p>تم الإفراج التلقائي عن وديعة هذا الحجز لانتهاء المهلة دون نزاع.</p>"
+                        f'<p><a href="{case_url}">فتح الحجز</a></p>'
+                    )
             except Exception:
                 pass
 

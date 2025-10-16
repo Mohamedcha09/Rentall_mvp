@@ -13,6 +13,37 @@ from .database import get_db
 from .models import Booking, Item, User
 from .notifications_api import push_notification, notify_admins
 
+# ===== إضافة: خدمة بريد موحّدة (HTML) + سقوط نصي =====
+BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
+try:
+    # ستتوفر لاحقًا في app/emailer.py
+    from .emailer import send_email as _templated_send_email  # (to, subject, html_body, text_body=None, ...)
+except Exception:
+    _templated_send_email = None
+
+def _strip_html(html: str) -> str:
+    try:
+        import re
+        txt = re.sub(r"<br\s*/?>", "\n", html, flags=re.I)
+        txt = re.sub(r"</p\s*>", "\n\n", txt, flags=re.I)
+        txt = re.sub(r"<[^>]+>", "", txt)
+        return txt.strip()
+    except Exception:
+        return html
+
+def send_email(to_email: str, subject: str, html_body: str, text_body: str | None = None) -> bool:
+    """يحاول emailer.send_email ثم يسقط لإرسال نصي عبر SMTP test_email.py لديك (إن مُعد)؛
+       هنا نكتفي بالمحاولة عبر emailer فقط (fallback آمن بصمت)."""
+    try:
+        if _templated_send_email:
+            ok = bool(_templated_send_email(to_email, subject, html_body, text_body=text_body))
+            if ok:
+                return True
+    except Exception:
+        pass
+    # سقوط صامت (بدون SMTP خام هنا كي لا نكرر الكود) — لن يكسر التدفق.
+    return False
+
 # ================= Stripe Config =================
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")  # sk_test_... / sk_live_...
 
@@ -74,6 +105,77 @@ def _set_deposit_pi_id(bk: Booking, pi_id: Optional[str]) -> None:
         setattr(bk, "deposit_hold_id", pi_id)
     except Exception:
         pass
+
+# ====== Helpers إضافية للفواتير ======
+def _fmt_money_cents(amount_cents: int, currency: str | None = None) -> str:
+    try:
+        unit = (currency or CURRENCY or "cad").upper()
+        return f"{amount_cents/100:,.2f} {unit}"
+    except Exception:
+        return str(amount_cents)
+
+def _latest_charge_id(pi: dict | stripe.PaymentIntent | None) -> str | None:
+    try:
+        if not pi:
+            return None
+        ch = getattr(pi, "latest_charge", None) or (getattr(pi, "charges", None) or {}).get("data", [{}])[0].get("id")
+        return ch
+    except Exception:
+        return None
+
+def _user_email(db: Session, user_id: int) -> str | None:
+    u = db.get(User, user_id) if user_id else None
+    return (u.email or None) if u else None
+
+def _compose_invoice_html(
+    bk: Booking,
+    renter: User | None,
+    item: Item | None,
+    amount_txt: str,
+    currency: str,
+    pi_id: str | None,
+    charge_id: str | None,
+    when: datetime,
+) -> tuple[str, str]:
+    """يرجع (html, text)."""
+    item_title = getattr(item, "title", "") or "Item"
+    renter_name = (getattr(renter, "first_name", "") or "").strip() or "Customer"
+    order_dt = when.strftime("%Y-%m-%d %H:%M UTC")
+    booking_url = f"{SITE_URL}/bookings/flow/{bk.id}"
+    html = f"""
+    <div style="font-family:Arial,Helvetica,sans-serif;line-height:1.6">
+      <h3>إيصال الدفع — حجز #{bk.id}</h3>
+      <p>مرحبًا {renter_name},</p>
+      <p>تم تسجيل دفعتك بنجاح.</p>
+      <table style="border-collapse:collapse;min-width:320px">
+        <tr><td style="padding:4px 8px"><b>العنصر</b></td><td style="padding:4px 8px">{item_title}</td></tr>
+        <tr><td style="padding:4px 8px"><b>رقم الحجز</b></td><td style="padding:4px 8px">#{bk.id}</td></tr>
+        <tr><td style="padding:4px 8px"><b>التاريخ</b></td><td style="padding:4px 8px">{order_dt}</td></tr>
+        <tr><td style="padding:4px 8px"><b>المبلغ</b></td><td style="padding:4px 8px">{amount_txt}</td></tr>
+        <tr><td style="padding:4px 8px"><b>العملة</b></td><td style="padding:4px 8px">{currency.upper()}</td></tr>
+        <tr><td style="padding:4px 8px"><b>PaymentIntent</b></td><td style="padding:4px 8px">{pi_id or "-"}</td></tr>
+        <tr><td style="padding:4px 8px"><b>Charge</b></td><td style="padding:4px 8px">{charge_id or "-"}</td></tr>
+      </table>
+      <p style="margin-top:12px">
+        يمكنك متابعة الحجز من هنا: <a href="{booking_url}">{booking_url}</a>
+      </p>
+      <p style="color:#888;font-size:12px">هذه الرسالة للتأكيد ولا تتطلب أي إجراء.</p>
+    </div>
+    """
+    text = (
+        f"إيصال الدفع — حجز #{bk.id}\n\n"
+        f"مرحبًا {renter_name},\n"
+        f"تم تسجيل دفعتك بنجاح.\n\n"
+        f"العنصر: {item_title}\n"
+        f"رقم الحجز: #{bk.id}\n"
+        f"التاريخ: {order_dt}\n"
+        f"المبلغ: {amount_txt}\n"
+        f"العملة: {currency.upper()}\n"
+        f"PaymentIntent: {pi_id or '-'}\n"
+        f"Charge: {charge_id or '-'}\n\n"
+        f"رابط الحجز: {booking_url}\n"
+    )
+    return html, text
 
 
 # ============================================================
@@ -348,6 +450,16 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     if not bk:
         return
 
+    # ====== تجهيز بيانات الفاتورة من الـ Session/PI ======
+    amount_total_cents = int(session_obj.get("amount_total") or 0)  # إجمالي جلسة Checkout
+    currency = (session_obj.get("currency") or CURRENCY or "cad").lower()
+    charge_id = _latest_charge_id(pi)
+    when = datetime.utcnow()
+
+    # سنحتاج بيانات العنصر والمستأجر لبناء الفاتورة
+    renter = db.get(User, bk.renter_id) if bk.renter_id else None
+    item = db.get(Item, bk.item_id) if bk.item_id else None
+
     if kind == "rent":
         bk.online_payment_intent_id = pi.id
         bk.online_status = "authorized"
@@ -361,6 +473,32 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
                           f"حجز #{bk.id}. يمكنك استلام الغرض الآن.",
                           f"/bookings/flow/{bk.id}", "booking")
 
+        # ===== إيصال/فاتورة للمستأجر (Rent) =====
+        try:
+            renter_email = _user_email(db, bk.renter_id)
+            # إن فشل amount_total من الجلسة نستخدم قيمة الحجز
+            amt_cents = amount_total_cents if amount_total_cents > 0 else int(max(0, (bk.total_amount or 0)) * 100)
+            amount_txt = _fmt_money_cents(amt_cents, currency)
+            if renter_email:
+                html, text = _compose_invoice_html(
+                    bk=bk,
+                    renter=renter,
+                    item=item,
+                    amount_txt=amount_txt,
+                    currency=currency,
+                    pi_id=pi.id if pi else None,
+                    charge_id=charge_id,
+                    when=when,
+                )
+                send_email(
+                    renter_email,
+                    f"🧾 إيصال الدفع — حجز #{bk.id}",
+                    html,
+                    text_body=text,
+                )
+        except Exception:
+            pass
+
     elif kind == "deposit":
         _set_deposit_pi_id(bk, pi.id)
         bk.deposit_status = "held"
@@ -371,6 +509,7 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
         push_notification(db, bk.renter_id, "تم حجز الديبو",
                           f"حجز #{bk.id}: الديبو الآن محجوز.",
                           f"/bookings/flow/{bk.id}", "deposit")
+        # (لا نرسل فاتورة للوديعة وحدها حسب المتطلبات)
 
     elif kind == "all":
         # دفع الإيجار + اعتبار الوديعة محجوزة على نفس الـ PI
@@ -387,6 +526,34 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
         push_notification(db, bk.renter_id, "تم الدفع بنجاح",
                           f"تم دفع الإيجار والوديعة معًا لحجز #{bk.id}.",
                           f"/bookings/flow/{bk.id}", "booking")
+
+        # ===== إيصال/فاتورة للمستأجر (All) — يظهر الإجمالي المدفوع للجلسة =====
+        try:
+            renter_email = _user_email(db, bk.renter_id)
+            amt_cents = amount_total_cents if amount_total_cents > 0 else (
+                int(max(0, (bk.total_amount or 0)) * 100) +
+                int(max(0, (bk.deposit_amount or getattr(bk, "hold_deposit_amount", 0) or 0)) * 100)
+            )
+            amount_txt = _fmt_money_cents(amt_cents, currency)
+            if renter_email:
+                html, text = _compose_invoice_html(
+                    bk=bk,
+                    renter=renter,
+                    item=item,
+                    amount_txt=amount_txt,
+                    currency=currency,
+                    pi_id=pi.id if pi else None,
+                    charge_id=charge_id,
+                    when=when,
+                )
+                send_email(
+                    renter_email,
+                    f"🧾 إيصال الدفع — حجز #{bk.id}",
+                    html,
+                    text_body=text,
+                )
+        except Exception:
+            pass
 
 
 def _webhook_handler_factory() -> Callable:

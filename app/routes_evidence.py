@@ -1,3 +1,4 @@
+# app/deposit_evidence.py
 from __future__ import annotations
 
 import os
@@ -13,6 +14,26 @@ from sqlalchemy.orm import Session
 from .database import get_db, engine as _engine
 from .models import Booking, User
 from .notifications_api import push_notification, notify_admins
+
+# ===== SMTP Email (fallback) =====
+# سيتم استبداله لاحقًا بـ app/emailer.py؛ هنا نضمن عدم كسر التنفيذ إن لم يوجد.
+try:
+    from .emailer import send_email  # سيُنشأ لاحقًا
+except Exception:
+    def send_email(to, subject, html_body, text_body=None, cc=None, bcc=None, reply_to=None):
+        return False  # NO-OP مؤقتًا
+
+BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
+
+def _user_email(db: Session, user_id: int) -> str | None:
+    u = db.get(User, user_id) if user_id else None
+    return (u.email or None) if u else None
+
+def _admin_emails(db: Session) -> list[str]:
+    admins = db.query(User).filter(
+        ((User.role == "admin") | (User.is_deposit_manager == True))
+    ).all()
+    return [a.email for a in admins if getattr(a, "email", None)]
 
 router = APIRouter(tags=["deposit-evidence"])
 
@@ -329,6 +350,29 @@ async def upload_deposit_evidence(
             except Exception:
                 pass
 
+            # ===== Emails: ردّ المستأجر — أصبحت القضية in_dispute =====
+            try:
+                owner_email = _user_email(db, bk.owner_id)
+                renter_email = _user_email(db, bk.renter_id)
+                admins_em = _admin_emails(db)
+                case_url = f"{BASE_URL}/dm/deposits/{bk.id}"
+                if owner_email:
+                    send_email(
+                        owner_email,
+                        f"ردّ المستأجر على وديعة #{bk.id}",
+                        f"<p>قام المستأجر برفع أدلة/ملاحظة. الحالة الآن: نزاع مفتوح.</p>"
+                        f'<p><a href="{case_url}">فتح القضية</a></p>'
+                    )
+                for em in admins_em:
+                    send_email(
+                        em,
+                        f"[DM] Renter responded — #{bk.id}",
+                        f"<p>المستأجر أضاف أدلة — القضية أصبحت in_dispute.</p>"
+                        f'<p><a href="{case_url}">فتح القضية</a></p>'
+                    )
+            except Exception:
+                pass
+
             accept = (request.headers.get("accept") or "").lower()
             if "application/json" in accept:
                 return JSONResponse({"ok": True, "saved_ids": saved_ids})
@@ -362,6 +406,39 @@ async def upload_deposit_evidence(
                 f"/bookings/flow/{bk.id}", "deposit"
             )
         notify_admins(db, "Evidence uploaded", f"حجز #{bk.id} — side={side}", f"/bookings/flow/{bk.id}")
+    except Exception:
+        pass
+
+    # ===== Emails: إشعار بالطرف المقابل حسب جهة الرفع =====
+    try:
+        case_url = f"{BASE_URL}/bookings/flow/{bk.id}"
+        if side == "owner":
+            em = _user_email(db, bk.renter_id)
+            if em:
+                send_email(
+                    em,
+                    f"أدلة جديدة من المالك — #{bk.id}",
+                    f"<p>أضاف المالك أدلة/ملاحظة لقضية الوديعة.</p>"
+                    f'<p><a href="{case_url}">تفاصيل الحجز</a></p>'
+                )
+        elif side == "renter":
+            em = _user_email(db, bk.owner_id)
+            if em:
+                send_email(
+                    em,
+                    f"أدلة من المستأجر — #{bk.id}",
+                    f"<p>أضاف المستأجر أدلة/ملاحظة لقضية الوديعة.</p>"
+                    f'<p><a href="{case_url}">تفاصيل الحجز</a></p>'
+                )
+        else:
+            for em in (_user_email(db, bk.owner_id), _user_email(db, bk.renter_id)):
+                if em:
+                    send_email(
+                        em,
+                        f"تحديث من المتحكّم — #{bk.id}",
+                        f"<p>قام متحكّم الوديعة بإضافة مرفقات/ملاحظة.</p>"
+                        f'<p><a href="{case_url}">تفاصيل الحجز</a></p>'
+                    )
     except Exception:
         pass
 
