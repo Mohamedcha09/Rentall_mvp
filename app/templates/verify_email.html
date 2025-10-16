@@ -1,24 +1,200 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container py-5" style="max-width:720px">
-  <div class="card" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:14px">
-    <div class="card-body p-4">
-      <h3 class="mb-3">تحقّق من بريدك الإلكتروني</h3>
-      <p class="text-muted">
-        لقد أرسلنا رابط تفعيل إلى بريدك الإلكتروني
-        {% if email %}<b>{{ email }}</b>{% endif %}.
-        يرجى فتح الرسالة والضغط على زر <b>تفعيل الحساب</b>.
+<style>
+  /* ===== Modern Email Verify Page ===== */
+  :root{
+    --card-bg: rgba(255,255,255,.04);
+    --card-bd: rgba(255,255,255,.12);
+    --accent: #2563eb;
+    --success: #16a34a;
+    --warning: #f59e0b;
+    --muted: rgba(255,255,255,.7);
+  }
+  .ve-container{
+    max-width: 860px; margin: 0 auto; padding: 32px 16px;
+  }
+  .ve-card{
+    background: var(--card-bg);
+    border: 1px solid var(--card-bd);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+  }
+  .ve-hero{
+    padding: 28px 24px 14px;
+    background:
+      radial-gradient(1200px 180px at 100% -30%, rgba(37,99,235,.15), transparent 60%),
+      radial-gradient(1000px 180px at 0% -40%, rgba(22,163,74,.12), transparent 60%);
+  }
+  .ve-title{
+    display: flex; align-items: center; gap: 10px; margin: 0 0 8px 0;
+    font-size: 26px; font-weight: 800;
+  }
+  .ve-badge{
+    display:inline-flex; align-items:center; gap:8px;
+    background: rgba(37,99,235,.15); border:1px solid rgba(37,99,235,.35);
+    color: #cfe0ff; padding: 6px 10px; border-radius: 999px; font-size: 13px;
+  }
+  .ve-body{ padding: 16px 24px 24px; }
+  .ve-steps{ display:grid; grid-template-columns: 1fr; gap: 10px; margin: 12px 0 18px; }
+  .ve-step{
+    display:flex; align-items:flex-start; gap:12px;
+    background: rgba(255,255,255,.03); border:1px dashed var(--card-bd);
+    padding:12px 14px; border-radius:12px;
+  }
+  .ve-step i{
+    flex:0 0 auto; width:28px; height:28px; border-radius:50%;
+    display:grid; place-items:center; font-style:normal; font-weight:900;
+    background: rgba(37,99,235,.15); border:1px solid rgba(37,99,235,.3);
+  }
+  .ve-actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top: 6px; }
+  .btn-ve{
+    border-radius:10px; padding:10px 14px; border:1px solid transparent;
+    font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:8px;
+  }
+  .btn-primary-ve{ background: var(--accent); color:#fff; }
+  .btn-outline-ve{ background: transparent; color:#fff; border-color: var(--card-bd); }
+  .btn-success-ve{ background: var(--success); color:#fff; }
+  .btn-ghost-ve{ background: rgba(255,255,255,.06); color:#fff; }
+  .ve-email{
+    display:flex; align-items:center; gap:8px; padding:10px 12px;
+    background: rgba(255,255,255,.06); border:1px solid var(--card-bd); border-radius:10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    direction:ltr; unicode-bidi: plaintext;
+  }
+  .ve-hint{ color: var(--muted); font-size: 14px; }
+  .ve-divider{ height:1px; background: var(--card-bd); margin: 16px 0; }
+  .ve-faq details{
+    background: rgba(255,255,255,.03); border:1px solid var(--card-bd); border-radius:12px; padding: 10px 12px;
+  }
+  .ve-faq summary{ cursor:pointer; font-weight:700; }
+  .ve-pulse{
+    position:absolute; inset:auto 16px 16px auto; width:10px; height:10px; border-radius:999px;
+    background: var(--warning); box-shadow: 0 0 0 0 rgba(245,158,11,.7); animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse{
+    0%{ box-shadow:0 0 0 0 rgba(245,158,11,.6) }
+    70%{ box-shadow:0 0 0 10px rgba(245,158,11,0) }
+    100%{ box-shadow:0 0 0 0 rgba(245,158,11,0) }
+  }
+  @media (min-width: 720px){
+    .ve-steps{ grid-template-columns: 1fr 1fr; }
+  }
+</style>
+
+<div class="ve-container" dir="rtl">
+  <div class="ve-card">
+    <span class="ve-pulse" title="بانتظار التفعيل"></span>
+
+    <div class="ve-hero">
+      <h3 class="ve-title">
+        ✉️ تحقّق من بريدك الإلكتروني
+        <span class="ve-badge">الخطوة 1/2 — تفعيل البريد</span>
+      </h3>
+      <p class="ve-hint">
+        لقد أرسلنا رابط تفعيل إلى بريدك
+        {% if email %}<b>{{ email }}</b>{% else %}<b>—</b>{% endif %}.
+        افتح الرسالة واضغط على زر <b>تفعيل الحساب</b>.
       </p>
-      <ul class="mb-3">
-        <li>إن لم تجد الرسالة، راجع مجلد الرسائل غير المرغوبة (Spam).</li>
-        <li>بعد الضغط على الرابط، سيتم تفعيل بريدك ويمكنك تسجيل الدخول.</li>
-        <li>ملاحظة: زر <b>احجز الآن</b> يتطلب موافقة الأدمن، حتى بعد تفعيل الإيميل.</li>
-      </ul>
-      <div class="d-flex gap-2">
-        <a href="/login" class="btn btn-primary">العودة لتسجيل الدخول</a>
-        <a href="/" class="btn btn-outline-light">الرجوع للرئيسية</a>
+    </div>
+
+    <div class="ve-body">
+      {% if email %}
+      <div class="ve-email" id="emailBox" data-email="{{ email|e }}">
+        {{ email }}
+        <button class="btn-ve btn-ghost-ve" id="copyBtn" type="button" style="margin-right:auto">نسخ البريد</button>
       </div>
+      {% endif %}
+
+      <div class="ve-steps">
+        <div class="ve-step">
+          <i>1</i>
+          <div>
+            <b>افتح صندوق الوارد</b>
+            <div class="ve-hint">ابحث عن رسالة بعنوان “Activate your account — RentAll”.</div>
+          </div>
+        </div>
+        <div class="ve-step">
+          <i>2</i>
+          <div>
+            <b>اضغط زر “تفعيل الحساب”</b>
+            <div class="ve-hint">سيفتح الموقع ويؤكد تفعيل بريدك مباشرة.</div>
+          </div>
+        </div>
+        <div class="ve-step">
+          <i>3</i>
+          <div>
+            <b>سجّل الدخول</b>
+            <div class="ve-hint">بعد تفعيل البريد يمكنك الدخول واستخدام الموقع (زر الحجز يبقى بانتظار موافقة الأدمين).</div>
+          </div>
+        </div>
+        <div class="ve-step">
+          <i>💡</i>
+          <div>
+            <b>لم تجد الرسالة؟</b>
+            <div class="ve-hint">تحقق من مجلد <b>Spam</b> أو ابحث باسم الموقع “RentAll”.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ve-actions">
+        {% if email %}
+        <a class="btn-ve btn-primary-ve" id="openInboxBtn">فتح بريدك الآن</a>
+        {% endif %}
+        <a href="/login" class="btn-ve btn-outline-ve">العودة لتسجيل الدخول</a>
+        <a href="/" class="btn-ve btn-outline-ve">الرجوع للرئيسية</a>
+      </div>
+
+      <div class="ve-divider"></div>
+
+      <div class="ve-faq">
+        <details>
+          <summary>لم تصلني رسالة التفعيل، ماذا أفعل؟</summary>
+          <div class="ve-hint" style="margin-top:8px">
+            1) تأكد من صحة البريد أعلاه — إن كان خطأً، سجّل من جديد بالبريد الصحيح.<br>
+            2) افحص مجلد <b>Spam</b> أو <b>Junk</b>.<br>
+            3) انتظر دقيقة أو دقيقتين ثم حدّث الصفحة.<br>
+            4) إذا استمرت المشكلة، تواصل معنا من صفحة “تواصل معنا”.
+          </div>
+        </details>
+      </div>
+
+      <p class="ve-hint" style="margin-top:14px">
+        ملاحظة: تفعيل البريد يفتح حسابك. لكن زر <b>احجز الآن</b> يُفعَّل فقط بعد موافقة الأدمين على صورك ووثائقك.
+      </p>
     </div>
   </div>
 </div>
+
+<script>
+  (function(){
+    const email = document.getElementById('emailBox')?.dataset?.email || '';
+    // خريطةドومينات البريد إلى صفحة البريد
+    const providers = [
+      {m:/gmail\.com$/i, url:'https://mail.google.com/'},
+      {m:/(outlook|hotmail|live)\.com$/i, url:'https://outlook.live.com/mail/'},
+      {m:/yahoo\.com$/i, url:'https://mail.yahoo.com/'},
+      {m:/icloud\.com$/i, url:'https://www.icloud.com/mail'},
+      {m:/mail\.ru$/i, url:'https://e.mail.ru/'},
+      {m:/proton\.me$|protonmail\.com$/i, url:'https://mail.proton.me/u/0/inbox'},
+    ];
+    const domain = (email.split('@')[1] || '').toLowerCase();
+    const match = providers.find(p => p.m.test(domain));
+    const openBtn = document.getElementById('openInboxBtn');
+    if(openBtn){
+      if(match){ openBtn.href = match.url; openBtn.target='_blank'; }
+      else { openBtn.href = '/'; openBtn.onclick = function(e){ e.preventDefault(); alert('افتح بريدك يدويًا: ' + (domain || '—')); }; }
+    }
+    const cp = document.getElementById('copyBtn');
+    if(cp){
+      cp.addEventListener('click', async ()=>{
+        try{
+          await navigator.clipboard.writeText(email);
+          cp.textContent = 'تم النسخ ✓';
+          setTimeout(()=> cp.textContent = 'نسخ البريد', 1600);
+        }catch(e){ alert('انسخ البريد يدويًا: ' + email); }
+      });
+    }
+  })();
+</script>
 {% endblock %}
