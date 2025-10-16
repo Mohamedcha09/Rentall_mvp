@@ -126,43 +126,102 @@ def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
     # إرسال إيميل بحسب حالة تفعيل البريد
     try:
         home_url = f"{BASE_URL}/"
+        logo = f"{BASE_URL}/static/images/ok.png"
+        brand = f"{BASE_URL}/static/images/base.png"
+
         if bool(getattr(user, "is_verified", False)):
             # بريده مفعّل => 100%
             subject = "تم تفعيل حسابك 100% — يمكنك الحجز الآن 🎉"
-            html = f"""
-            <div style="font-family:Tahoma,Arial,sans-serif;line-height:1.8;direction:rtl;text-align:right">
-              <h3 style="margin:0 0 12px">مرحبًا {user.first_name} 👋</h3>
-              <p>تمت موافقة الأدمين على حسابك، وحسابك الآن <b>مفعّل 100%</b>.</p>
-              <p>يمكنك الآن استخدام كل الميزات، بما فيها زر <b>احجز الآن</b>.</p>
-              <p style="text-align:center;margin:24px 0">
-                <a href="{home_url}"
-                   style="display:inline-block;padding:12px 20px;border-radius:8px;
-                          background:#16a34a;color:#fff;text-decoration:none;font-weight:700">
+            year = datetime.utcnow().year
+            html = f"""<!doctype html>
+<html lang="ar" dir="rtl">
+  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تفعيل 100%</title></head>
+  <body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,'Segoe UI',sans-serif;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0">تم تفعيل حسابك 100% — يمكنك الحجز الآن</div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b0f1a;padding:24px 12px">
+      <tr><td align="center">
+        <table role="presentation" width="640" cellspacing="0" cellpadding="0" style="width:100%;max-width:640px;background:#0f172a;border:1px solid #1f2937;border-radius:16px;overflow:hidden">
+          <tr>
+            <td style="padding:20px 24px;background:linear-gradient(90deg,#111827,#0b1220)">
+              <table width="100%"><tr>
+                <td align="right"><img src="{brand}" alt="اسم الموقع" style="height:22px;opacity:.95"></td>
+                <td align="left"><img src="{logo}" alt="Logo" style="height:36px;border-radius:8px"></td>
+              </tr></table>
+            </td>
+          </tr>
+          <tr><td style="padding:28px 26px">
+            <h2 style="margin:0 0 12px;font-size:22px;color:#fff;">مرحبًا {user.first_name} 👋</h2>
+            <p style="margin:0 0 12px;line-height:1.9;color:#cbd5e1">
+              تمت موافقة الأدمين على حسابك، وحسابك الآن <b style="color:#fff">مفعّل 100%</b>.
+              بإمكانك استخدام كل المزايا، بما فيها زر <b>احجز الآن</b>.
+            </p>
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:26px auto">
+              <tr><td bgcolor="#16a34a" style="border-radius:10px;">
+                <a href="{home_url}" target="_blank"
+                   style="font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:16px;text-decoration:none;
+                          padding:14px 22px;display:inline-block;color:#ffffff;border-radius:10px;font-weight:700">
                   ابدأ الآن
                 </a>
-              </p>
-              <p style="color:#888;font-size:12px">إذا لم تطلب هذه العملية، تجاهل الرسالة.</p>
-            </div>
-            """
+              </td></tr>
+            </table>
+            <p style="margin:0;color:#94a3b8;font-size:13px">نصيحة: حدّث صورتك وعرّف بنفسك لزيادة الثقة والقبول السريع.</p>
+          </td></tr>
+          <tr><td style="padding:18px 24px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
+            إذا لم تطلب هذه العملية، تجاهل الرسالة.
+          </td></tr>
+        </table>
+        <div style="color:#64748b;font-size:11px;margin-top:12px">&copy; {year} RentAll — جميع الحقوق محفوظة</div>
+      </td></tr>
+    </table>
+  </body>
+</html>"""
             text = f"مرحبًا {user.first_name}\n\nتم تفعيل حسابك 100% ويمكنك الآن الحجز.\n{home_url}"
         else:
             # بريده غير مفعّل => يحتاج تفعيل البريد لإكمال 100%
             verify_page = f"{BASE_URL}/verify-email?email={user.email}"
-            subject = "تمت موافقة الأدمن — أكمل تفعيل البريد لإتمام حسابك"
-            html = f"""
-            <div style="font-family:Tahoma,Arial,sans-serif;line-height:1.8;direction:rtl;text-align:right">
-              <h3 style="margin:0 0 12px">مرحبًا {user.first_name} 👋</h3>
-              <p>تمت موافقة الأدمين على حسابك. بقي خطوة واحدة لإكمال التفعيل 100%: <b>فعّل بريدك</b>.</p>
-              <p>افتح رسائل بريدك واضغط رابط "تفعيل الحساب". إن لم تجد الرسالة، تفقد مجلد Spam.</p>
-              <p style="text-align:center;margin:24px 0">
-                <a href="{verify_page}"
-                   style="display:inline-block;padding:12px 20px;border-radius:8px;
-                          background:#2563eb;color:#fff;text-decoration:none;font-weight:700">
+            subject = "تمت موافقة الأدمن — فعّل بريدك لإكمال 100%"
+            year = datetime.utcnow().year
+            html = f"""<!doctype html>
+<html lang="ar" dir="rtl">
+  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>أكمل تفعيل البريد</title></head>
+  <body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,'Segoe UI',sans-serif;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0">تمت الموافقة — أكمل تفعيل البريد لإتمام حسابك</div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b0f1a;padding:24px 12px">
+      <tr><td align="center">
+        <table role="presentation" width="640" cellspacing="0" cellpadding="0" style="width:100%;max-width:640px;background:#0f172a;border:1px solid #1f2937;border-radius:16px;overflow:hidden">
+          <tr>
+            <td style="padding:20px 24px;background:linear-gradient(90deg,#111827,#0b1220)">
+              <table width="100%"><tr>
+                <td align="right"><img src="{brand}" alt="اسم الموقع" style="height:22px;opacity:.95"></td>
+                <td align="left"><img src="{logo}" alt="Logo" style="height:36px;border-radius:8px"></td>
+              </tr></table>
+            </td>
+          </tr>
+          <tr><td style="padding:28px 26px">
+            <h2 style="margin:0 0 12px;font-size:22px;color:#fff;">مرحبًا {user.first_name} 👋</h2>
+            <p style="margin:0 0 12px;line-height:1.9;color:#cbd5e1">
+              تمت موافقة الأدمين على حسابك. بقي خطوة واحدة لإكمال التفعيل 100%: <b style="color:#fff">فعّل بريدك</b>.
+              افتح رسائل بريدك واضغط على رابط <b>تفعيل الحساب</b>. إن لم تجد الرسالة، تفقد مجلد Spam.
+            </p>
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:26px auto">
+              <tr><td bgcolor="#2563eb" style="border-radius:10px;">
+                <a href="{verify_page}" target="_blank"
+                   style="font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:16px;text-decoration:none;
+                          padding:14px 22px;display:inline-block;color:#ffffff;border-radius:10px;font-weight:700">
                   تعليمات التفعيل
                 </a>
-              </p>
-            </div>
-            """
+              </td></tr>
+            </table>
+          </td></tr>
+          <tr><td style="padding:18px 24px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
+            إذا لم تطلب هذه العملية، تجاهل الرسالة.
+          </td></tr>
+        </table>
+        <div style="color:#64748b;font-size:11px;margin-top:12px">&copy; {year} RentAll — جميع الحقوق محفوظة</div>
+      </td></tr>
+    </table>
+  </body>
+</html>"""
             text = (
                 f"مرحبًا {user.first_name}\n\n"
                 f"تمت موافقة الأدمن على حسابك. لإكمال 100% فعّل بريدك من رسالة التفعيل.\n"

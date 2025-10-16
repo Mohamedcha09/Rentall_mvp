@@ -1,3 +1,4 @@
+# app/auth.py
 from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -120,9 +121,7 @@ def register_post(
     avatar: UploadFile = File(...),
 ):
     email = (email or "").strip().lower()
-    password = _normalize_form_password(password or ""
-
-    )
+    password = _normalize_form_password(password or "")
 
     # تحقق من وجود المستخدم
     exists = db.query(User).filter(User.email == email).first()
@@ -187,47 +186,72 @@ def register_post(
     db.add(d)
     db.commit()
 
-    # ===== إرسال بريد التفعيل =====
+    # ===== إرسال بريد التفعيل (تصميم احترافي) =====
     try:
         s = _signer()
         token = s.dumps({"uid": u.id, "email": u.email})
         verify_url = f"{BASE_URL}/activate/verify?token={token}"
+        logo = f"{BASE_URL}/static/images/ok.png"
+        brand = f"{BASE_URL}/static/images/base.png"
+        year = datetime.utcnow().year
 
         subj = "Activate your account — RentAll"
 
-        # 🔧 زر Bulletproof يعمل على الجوال + أوتلوك
-        html = f"""
-        <div style="font-family:Tahoma,Arial,sans-serif;line-height:1.8;direction:rtl;text-align:right">
-          <h3 style="margin:0 0 12px">مرحبًا {first_name} 👋</h3>
-          <p>شكرًا لتسجيلك في <b>RentAll</b>. اضغط الزر أدناه لتفعيل حسابك:</p>
-
-          <!-- Button : BEGIN -->
-          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:24px auto">
-            <tr>
-              <td bgcolor="#2563eb" style="border-radius:8px;">
+        html = f"""<!doctype html>
+<html lang="ar" dir="rtl">
+  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تفعيل الحساب</title></head>
+  <body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,'Segoe UI',sans-serif;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0">فعّل حسابك لإتمام الدخول واستخدام المنصّة</div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b0f1a;padding:24px 12px">
+      <tr><td align="center">
+        <table role="presentation" width="640" cellspacing="0" cellpadding="0" style="width:100%;max-width:640px;background:#0f172a;border:1px solid #1f2937;border-radius:16px;overflow:hidden">
+          <tr>
+            <td style="padding:20px 24px;background:linear-gradient(90deg,#111827,#0b1220)">
+              <table width="100%"><tr>
+                <td align="right"><img src="{brand}" alt="اسم الموقع" style="height:22px;opacity:.95"></td>
+                <td align="left"><img src="{logo}" alt="Logo" style="height:36px;border-radius:8px"></td>
+              </tr></table>
+            </td>
+          </tr>
+          <tr><td style="padding:28px 26px">
+            <h2 style="margin:0 0 12px;font-size:22px;color:#ffffff;">مرحبًا {first_name} 👋</h2>
+            <p style="margin:0 0 12px;line-height:1.9;color:#cbd5e1">
+              شكرًا لتسجيلك في <b style="color:#fff">RentAll</b>.
+              لتأمين حسابك والبدء، اضغط على الزر أدناه لتفعيل بريدك الإلكتروني.
+            </p>
+            <!-- Button : BEGIN -->
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:26px auto">
+              <tr><td bgcolor="#2563eb" style="border-radius:10px;">
                 <a href="{verify_url}" target="_blank"
-                   style="font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:16px;
-                          text-decoration:none;padding:14px 22px;display:inline-block;
-                          color:#ffffff;border-radius:8px;">
+                   style="font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:16px;text-decoration:none;
+                          padding:14px 22px;display:inline-block;color:#ffffff;border-radius:10px;font-weight:700">
                   تفعيل الحساب
                 </a>
-              </td>
-            </tr>
-          </table>
-          <!-- Button : END -->
-
-          <p style="color:#666;font-size:13px">إن لم يظهر الزر، افتح هذا الرابط:</p>
-          <p style="word-break:break-all"><a href="{verify_url}">{verify_url}</a></p>
-          <p style="color:#888;font-size:12px">إذا لم تقم بالتسجيل، تجاهل هذه الرسالة.</p>
-        </div>
-        """
+              </td></tr>
+            </table>
+            <!-- Button : END -->
+            <p style="margin:0 0 8px;color:#94a3b8;font-size:13px">إن لم يعمل الزر، استخدم هذا الرابط:</p>
+            <p style="margin:0 0 16px;word-break:break-all"><a href="{verify_url}" style="color:#60a5fa;text-decoration:none">{verify_url}</a></p>
+            <div style="margin-top:20px;padding:12px 14px;border:1px dashed #334155;border-radius:10px;color:#cbd5e1;font-size:13px">
+              ملاحظة: حتى بعد تفعيل البريد، يبقى زر <b>احجز الآن</b> مُعطّلًا إلى أن يراجع الأدمين صورك ووثائقك ويوافق على حسابك.
+            </div>
+          </td></tr>
+          <tr><td style="padding:18px 24px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
+            إذا لم تقم بالتسجيل، يمكنك تجاهل هذه الرسالة.
+          </td></tr>
+        </table>
+        <div style="color:#64748b;font-size:11px;margin-top:12px">&copy; {year} RentAll — جميع الحقوق محفوظة</div>
+      </td></tr>
+    </table>
+  </body>
+</html>"""
 
         text = f"مرحبًا {first_name}\n\nفعّل حسابك عبر الرابط:\n{verify_url}\n\nإن لم تكن أنت، تجاهل الرسالة."
         send_email(u.email, subj, html, text_body=text)
     except Exception:
         pass
 
-    # ✅ بدلاً من /login — نرسل لصفحة التحقق من البريد
+    # ✅ نرسل لصفحة التحقق من البريد
     return RedirectResponse(url=f"/verify-email?email={u.email}&sent=1", status_code=303)
 
 # ============ Email Verify Wall ============
