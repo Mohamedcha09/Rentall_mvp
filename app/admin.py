@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from .models import User, Document, MessageThread, Message
 from .notifications_api import push_notification  # NEW
-from .email_service import send_email             # ✅ لإرسال الإيميل عند الموافقة
+from .email_service import send_email             # لإرسال الإيميل عند الموافقة
 
 router = APIRouter()
 
@@ -59,7 +59,7 @@ def _refresh_session_user_if_self(request: Request, user: User) -> None:
             sess[k] = getattr(user, k)
     if hasattr(user, "is_deposit_manager"):
         sess["is_deposit_manager"] = bool(getattr(user, "is_deposit_manager", False))
-    # ✅ اكتب التحديثات مرّة أخرى داخل السيشن
+    # اكتب التحديثات مرّة أخرى داخل السيشن
     request.session["user"] = sess
 
 
@@ -96,6 +96,13 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
 # ---------------------------
 @router.post("/admin/users/{user_id}/approve")
 def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
+    """
+    موافقة الأدمن: نفعّل زر الحجز عبر تغيير status إلى approved،
+    لكن لا نلمس is_verified (تفعيل البريد يبقى عبر رابط الإيميل فقط).
+    كما نرسل بريداً للمستخدم:
+      - إن كان بريده مفعلاً => "حسابك 100% — يمكنك الحجز".
+      - إن لم يكن => "تمت الموافقة — فعّل بريدك لإكمال 100%".
+    """
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
@@ -103,21 +110,10 @@ def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/admin", status_code=303)
 
-    # ✅ موافقة الحساب (تشغيل زر الحجز)
+    # موافقة الحساب (تشغيل زر الحجز)
     user.status = "approved"
 
-    # ✅ وثّق البريد لو لم يكن موثّقًا، لإتمام 100%
-    try:
-        if hasattr(user, "is_verified") and not bool(user.is_verified):
-            user.is_verified = True
-        if hasattr(user, "verified_at") and not getattr(user, "verified_at", None):
-            user.verified_at = datetime.utcnow()
-        if hasattr(user, "verified_by_id"):
-            admin = request.session.get("user") or {}
-            if admin.get("id"):
-                user.verified_by_id = admin["id"]
-    except Exception:
-        pass
+    # لا نغيّر is_verified هنا — تفعيل البريد يتم فقط عبر /activate/verify
 
     # (اختياري) وسم كل المستندات كـ approved
     for d in (user.documents or []):
@@ -127,29 +123,55 @@ def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
     db.commit()
     _refresh_session_user_if_self(request, user)
 
-    # ✅ إرسال إيميل "تم تفعيل حسابك 100%"
+    # إرسال إيميل بحسب حالة تفعيل البريد
     try:
-        subject = "تم تفعيل حسابك 100% — يمكنك الحجز الآن 🎉"
         home_url = f"{BASE_URL}/"
-        html = f"""
-        <div style="font-family:Tahoma,Arial,sans-serif;line-height:1.8;direction:rtl;text-align:right">
-          <h3 style="margin:0 0 12px">مرحبًا {user.first_name} 👋</h3>
-          <p>تمت موافقة الأدمين على حسابك، وحسابك الآن <b>مفعّل 100%</b>.</p>
-          <p>يمكنك الآن استخدام كل الميزات، بما فيها زر <b>احجز الآن</b>.</p>
-          <p style="text-align:center;margin:24px 0">
-            <a href="{home_url}"
-               style="display:inline-block;padding:12px 20px;border-radius:8px;
-                      background:#16a34a;color:#fff;text-decoration:none;font-weight:700">
-              ابدأ الآن
-            </a>
-          </p>
-          <p style="color:#888;font-size:12px">إذا لم تطلب هذه العملية، تجاهل الرسالة.</p>
-        </div>
-        """
-        text = f"مرحبًا {user.first_name}\n\nتم تفعيل حسابك 100% ويمكنك الآن الحجز.\n{home_url}"
+        if bool(getattr(user, "is_verified", False)):
+            # بريده مفعّل => 100%
+            subject = "تم تفعيل حسابك 100% — يمكنك الحجز الآن 🎉"
+            html = f"""
+            <div style="font-family:Tahoma,Arial,sans-serif;line-height:1.8;direction:rtl;text-align:right">
+              <h3 style="margin:0 0 12px">مرحبًا {user.first_name} 👋</h3>
+              <p>تمت موافقة الأدمين على حسابك، وحسابك الآن <b>مفعّل 100%</b>.</p>
+              <p>يمكنك الآن استخدام كل الميزات، بما فيها زر <b>احجز الآن</b>.</p>
+              <p style="text-align:center;margin:24px 0">
+                <a href="{home_url}"
+                   style="display:inline-block;padding:12px 20px;border-radius:8px;
+                          background:#16a34a;color:#fff;text-decoration:none;font-weight:700">
+                  ابدأ الآن
+                </a>
+              </p>
+              <p style="color:#888;font-size:12px">إذا لم تطلب هذه العملية، تجاهل الرسالة.</p>
+            </div>
+            """
+            text = f"مرحبًا {user.first_name}\n\nتم تفعيل حسابك 100% ويمكنك الآن الحجز.\n{home_url}"
+        else:
+            # بريده غير مفعّل => يحتاج تفعيل البريد لإكمال 100%
+            verify_page = f"{BASE_URL}/verify-email?email={user.email}"
+            subject = "تمت موافقة الأدمن — أكمل تفعيل البريد لإتمام حسابك"
+            html = f"""
+            <div style="font-family:Tahoma,Arial,sans-serif;line-height:1.8;direction:rtl;text-align:right">
+              <h3 style="margin:0 0 12px">مرحبًا {user.first_name} 👋</h3>
+              <p>تمت موافقة الأدمين على حسابك. بقي خطوة واحدة لإكمال التفعيل 100%: <b>فعّل بريدك</b>.</p>
+              <p>افتح رسائل بريدك واضغط رابط "تفعيل الحساب". إن لم تجد الرسالة، تفقد مجلد Spam.</p>
+              <p style="text-align:center;margin:24px 0">
+                <a href="{verify_page}"
+                   style="display:inline-block;padding:12px 20px;border-radius:8px;
+                          background:#2563eb;color:#fff;text-decoration:none;font-weight:700">
+                  تعليمات التفعيل
+                </a>
+              </p>
+            </div>
+            """
+            text = (
+                f"مرحبًا {user.first_name}\n\n"
+                f"تمت موافقة الأدمن على حسابك. لإكمال 100% فعّل بريدك من رسالة التفعيل.\n"
+                f"{verify_page}"
+            )
+
         send_email(user.email, subject, html, text_body=text)
     except Exception:
-        # لا نكسر الطلب إن فشل الإيميل
+        # لا نكسر الطلب إذا فشل الإرسال
         pass
 
     return RedirectResponse(url="/admin", status_code=303)
@@ -192,6 +214,10 @@ def reject_user(user_id: int, request: Request, db: Session = Depends(get_db)):
 # ---------------------------
 @router.post("/admin/users/{user_id}/verify")
 def verify_user(user_id: int, request: Request, db: Session = Depends(get_db)):
+    """
+    زر توثيق البريد اليدوي بواسطة الأدمن (إن احتجتم).
+    لا علاقة له بموافقة الحجز. هذا يضبط is_verified فقط.
+    """
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 

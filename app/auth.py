@@ -1,4 +1,3 @@
-# app/auth.py
 from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -16,7 +15,6 @@ except Exception:
     pass
 
 # ======= Email System =======
-# ✳️ تم استبدال emailer القديم بـ email_service الجديد
 from .email_service import send_email
 
 # ===== تواقيع رابط التفعيل =====
@@ -79,6 +77,10 @@ def login_post(
 
     if not ok:
         return RedirectResponse(url="/login?err=1", status_code=303)
+
+    # ✅ منع الدخول قبل تفعيل الإيميل
+    if not bool(getattr(user, "is_verified", False)):
+        return RedirectResponse(url=f"/verify-email?email={email}", status_code=303)
 
     request.session["user"] = {
         "id": user.id,
@@ -211,7 +213,25 @@ def register_post(
     except Exception:
         pass
 
-    return RedirectResponse(url="/login?check_email=1", status_code=303)
+    # ✅ بدلاً من /login — نرسل لصفحة التحقق من البريد
+    return RedirectResponse(url=f"/verify-email?email={u.email}&sent=1", status_code=303)
+
+# ============ Email Verify Wall ============
+@router.get("/verify-email")
+def verify_email_page(request: Request, email: str = ""):
+    """
+    صفحة تُظهر للمستخدم أنه يجب عليه تفعيل بريده أولاً.
+    تُعرض بعد التسجيل أو إذا حاول تسجيل الدخول بدون تفعيل.
+    """
+    return request.app.templates.TemplateResponse(
+        "verify_email.html",
+        {
+            "request": request,
+            "title": "تحقق من بريدك",
+            "email": (email or "").strip(),
+            "session_user": request.session.get("user"),
+        },
+    )
 
 # ============ Logout ============
 @router.get("/logout")

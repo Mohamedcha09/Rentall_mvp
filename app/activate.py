@@ -1,4 +1,3 @@
-# app/activate.py
 import os, secrets, shutil
 from datetime import datetime
 from fastapi import APIRouter, Request, Depends, UploadFile, File, Form, HTTPException
@@ -9,7 +8,6 @@ from .models import User, Document
 
 router = APIRouter()
 
-# مجلدات الرفع
 UPLOADS_ROOT = os.environ.get("UPLOADS_DIR", "uploads")
 AVATARS_DIR = os.path.join(UPLOADS_ROOT, "avatars")
 IDS_DIR = os.path.join(UPLOADS_ROOT, "ids")
@@ -127,7 +125,7 @@ def activate_verify(token: str, request: Request, db: Session = Depends(get_db))
     if not user or (user.email or "").lower() != email:
         raise HTTPException(status_code=404, detail="المستخدم غير موجود.")
 
-    # ✅ فقط تفعيل البريد بدون تعديل الحالة
+    # ✅ تفعيل البريد فقط (لا نغيّر status)
     try:
         user.is_verified = True
         if hasattr(user, "verified_at"):

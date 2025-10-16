@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5" style="max-width:720px">
+  <div class="card" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:14px">
+    <div class="card-body p-4">
+      <h3 class="mb-3">تحقّق من بريدك الإلكتروني</h3>
+      <p class="text-muted">
+        لقد أرسلنا رابط تفعيل إلى بريدك الإلكتروني
+        {% if email %}<b>{{ email }}</b>{% endif %}.
+        يرجى فتح الرسالة والضغط على زر <b>تفعيل الحساب</b>.
+      </p>
+      <ul class="mb-3">
+        <li>إن لم تجد الرسالة، راجع مجلد الرسائل غير المرغوبة (Spam).</li>
+        <li>بعد الضغط على الرابط، سيتم تفعيل بريدك ويمكنك تسجيل الدخول.</li>
+        <li>ملاحظة: زر <b>احجز الآن</b> يتطلب موافقة الأدمن، حتى بعد تفعيل الإيميل.</li>
+      </ul>
+      <div class="d-flex gap-2">
+        <a href="/login" class="btn btn-primary">العودة لتسجيل الدخول</a>
+        <a href="/" class="btn btn-outline-light">الرجوع للرئيسية</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
