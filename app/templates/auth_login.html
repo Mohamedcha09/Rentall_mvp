@@ -1,16 +1,182 @@
 {% extends "base.html" %}
+{% block head %}
+<style>
+  /* نخفي التوب بار والسايدبار في صفحة الدخول فقط، ونمدّد الصفحة */
+  .topbar, .sidebar, .mobile-tabbar, .fab { display:none !important; }
+  .page{
+    margin:0 !important;
+    padding:0 !important;
+    min-height:100dvh;
+    display:grid;
+    grid-template-columns: 1fr 420px; /* يسار تعريف / يمين فورم */
+  }
+  @media (max-width: 992px){
+    .page{ grid-template-columns: 1fr; }
+  }
+
+  /* خلفية مستقبلية بألوان موقعك */
+  .login-hero{
+    position:relative;
+    padding: clamp(24px, 6vw, 56px);
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+  .login-hero::before,
+  .login-hero::after{
+    content:"";
+    position:absolute; inset:-20%;
+    background:
+      radial-gradient(900px 600px at 10% 15%, rgba(124,92,255,.14), transparent 60%),
+      radial-gradient(700px 500px at 95% 85%, rgba(0,229,168,.10), transparent 55%);
+    filter: blur(6px);
+    z-index:0;
+  }
+  .login-hero .inner{
+    position:relative; z-index:1;
+    max-width:720px; width:100%;
+    color:var(--text);
+  }
+  .brand-row{
+    display:flex; align-items:center; gap:14px; margin-bottom:16px;
+  }
+  .brand-row img.logo{
+    width: clamp(120px, 28vw, 200px);
+    height:auto; display:block;
+  }
+  .brand-chip{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:.3rem .6rem; border-radius:999px;
+    border:1px solid var(--border);
+    background: rgba(255,255,255,.05);
+    font-weight:700; color:var(--text);
+  }
+  .brand-chip i{ color:#55d5ff }
+  .hero-title{
+    font-weight:900; letter-spacing:.2px; margin: 6px 0 10px;
+    font-size: clamp(1.2rem, 2.4vw + .6rem, 2rem);
+  }
+  .hero-sub{
+    color:var(--muted);
+    font-size: clamp(.95rem, 1.1vw + .5rem, 1.05rem);
+  }
+
+  /* بطاقة الدخول */
+  .login-card{
+    display:flex; align-items:center; justify-content:center;
+    padding: clamp(18px, 4vw, 28px);
+  }
+  .login-panel{
+    width: 100%;
+    max-width: 420px;
+    border:1px solid var(--border);
+    border-radius: 16px;
+    background: linear-gradient(180deg,
+      color-mix(in oklab, var(--card) 92%, transparent),
+      color-mix(in oklab, var(--card) 86%, transparent));
+    box-shadow: 0 18px 46px rgba(0,0,0,.35);
+  }
+  .login-panel .body{ padding: 20px 18px 18px; }
+  .login-panel .footer{
+    padding: 16px 18px 18px;
+    border-top:1px solid var(--border);
+    text-align:center;
+  }
+  .login-logo{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    padding-top:14px;
+  }
+  .login-logo img{ width:34px; height:34px; object-fit:contain }
+  .login-logo .name{
+    font-weight:800; letter-spacing:.3px;
+  }
+
+  .form-label{ font-weight:700 }
+  .hint{
+    margin-top:6px; font-size:.86rem; color:var(--muted);
+  }
+  .btn-primary{
+    width:100%; padding:.6rem 1rem; font-weight:800; border-radius:12px;
+    background: linear-gradient(135deg, #7c5cff, #5a3eff);
+    box-shadow: 0 12px 28px rgba(124,92,255,.28);
+  }
+  .btn-primary:active{ transform: translateY(1px) }
+  .links{ display:flex; justify-content:space-between; align-items:center; margin-top:10px; }
+  .links a{ color:#aee6ff; text-decoration:none }
+  .links a:hover{ text-decoration:underline }
+
+  /* بطاقة “إنشاء حساب” مثل فيسبوك */
+  .create{
+    text-align:center; margin-top:12px;
+  }
+  .create .btn{
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    border:0; font-weight:800;
+    box-shadow: 0 12px 28px rgba(22,163,74,.32);
+  }
+  .create .btn:hover{ filter:brightness(1.05) }
+</style>
+{% endblock %}
+
 {% block content %}
-<h2>تسجيل الدخول</h2>
-<form method="post" action="/login">
-  <div class="mb-3">
-    <label class="form-label">البريد الإلكتروني</label>
-    <input type="email" class="form-control" name="email" required>
-  </div>
-  <div class="mb-3">
-    <label class="form-label">كلمة المرور</label>
-    <input type="password" class="form-control" name="password" required>
-  </div>
-  <button type="submit" class="btn btn-primary">دخول</button>
-</form>
-<p class="mt-3">ليس لديك حساب؟ <a href="/register">سجّل الآن</a></p>
+
+  <!-- يسار: تعريف وهوية -->
+  <section class="login-hero">
+    <div class="inner">
+      <div class="brand-row">
+        <img class="logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR">
+        <span class="brand-chip">
+          <img src="{{ url_for('static', path='images/ok.png') }}" alt="" style="width:18px;height:18px;object-fit:contain">
+          منصّة الحجز الذكية
+        </span>
+      </div>
+
+      <h1 class="hero-title">ابقَ على تواصل مع الأشياء التي تحتاجها في حياتك اليومية.</h1>
+      <p class="hero-sub">
+        استأجر ما تريد بسهولة وأمان. إدارة محادثات، مدفوعات، وإشعارات — كلها في مكان واحد.
+      </p>
+    </div>
+  </section>
+
+  <!-- يمين: بطاقة الدخول -->
+  <section class="login-card">
+    <div class="login-panel">
+      <div class="login-logo">
+        <img src="{{ url_for('static', path='images/ok.png') }}" alt="logo">
+        <div class="name">SEVOR</div>
+      </div>
+
+      <div class="body">
+        <form method="post" action="/login" novalidate>
+          <div class="mb-3">
+            <label class="form-label">البريد الإلكتروني</label>
+            <input type="email" class="form-control form-control-lg" name="email" placeholder="name@example.com" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">كلمة المرور</label>
+            <input type="password" class="form-control form-control-lg" name="password" placeholder="••••••••" required>
+            <div class="hint">يتم تشفير كلمات المرور، وسندعم التحقق بخطوتين قريبًا.</div>
+          </div>
+
+          <button type="submit" class="btn btn-primary mt-3">دخول</button>
+
+          <div class="links">
+            <span class="text-muted small">بدخولك فأنت توافق على الشروط.</span>
+            <!-- إذا لم تملك مسار استرجاع كلمة المرور، اتركها # أو احذف الرابط -->
+            <a href="#" class="small">هل نسيت كلمة المرور؟</a>
+          </div>
+        </form>
+
+        <div class="create">
+          <div class="mt-3">
+            <a href="/register" class="btn btn-success btn-lg w-100">إنشاء حساب جديد</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer small text-muted">
+        © {{ (now() if now else None) or '' }} SEVOR — كل الحقوق محفوظة.
+      </div>
+    </div>
+  </section>
+
 {% endblock %}
