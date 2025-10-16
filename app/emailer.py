@@ -4,111 +4,143 @@ import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Optional, Iterable, Tuple
 
-def _as_bool(v: str | None, default: bool = True) -> bool:
+# نستخدم requests فقط عند وجود مفتاح SendGrid
+try:
+    import requests  # type: ignore
+except Exception:
+    requests = None  # في لوكال عادة موجودة؛ على السيرفر تأكد من إضافتها للـ requirements.txt
+
+DEFAULT_FROM = os.getenv("EMAIL_FROM") or os.getenv("EMAIL_USER") or "no-reply@example.com"
+
+def _env_bool(v: str | None, default: bool = True) -> bool:
     if v is None:
         return default
     return str(v).strip().lower() in ("1", "true", "yes", "on")
 
-def _from_header() -> str:
-    user = os.getenv("EMAIL_USER", "") or "no-reply@example.com"
-    name = os.getenv("EMAIL_FROM_NAME", "") or "Rentall"
-    # إن كان اسم العرض فارغًا نرجع البريد فقط
-    return f"{name} <{user}>" if name else user
-
-def send_email(
-    to: str | Iterable[str],
+def _send_via_sendgrid(
+    to: str,
     subject: str,
     html_body: str,
-    text_body: Optional[str] = None,
-    cc: Optional[Iterable[str]] = None,
-    bcc: Optional[Iterable[str]] = None,
-    attachments: Optional[Iterable[Tuple[str, bytes, str]]] = None,  # (filename, content_bytes, mime)
+    text_body: str | None = None,
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    reply_to: str | None = None,
 ) -> bool:
     """
-    يرسل بريد HTML (+نصي احتياطي) عبر SMTP.
-    يعتمد على المتغيرات:
-      - EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS
-      - EMAIL_USE_TLS (افتراضي True)
-      - EMAIL_FROM_NAME (اختياري)
-    يعيد True عند نجاح الإرسال. لا يرمي استثناءات (يعود False عند الفشل).
+    إرسال عبر SendGrid HTTP API.
+    يحتاج:
+      - SENDGRID_API_KEY
+      - EMAIL_FROM (أو EMAIL_USER) كمرسل
     """
+    api_key = os.getenv("SENDGRID_API_KEY")
+    if not api_key or requests is None:
+        return False
+
+    from_email = DEFAULT_FROM
+    personalizations = [{"to": [{"email": to}]}]
+    if cc:
+        personalizations[0]["cc"] = [{"email": x} for x in cc if x]
+    if bcc:
+        personalizations[0]["bcc"] = [{"email": x} for x in bcc if x]
+
+    payload = {
+        "from": {"email": from_email},
+        "subject": subject,
+        "personalizations": personalizations,
+        "content": [
+            {"type": "text/plain", "value": (text_body or "")},
+            {"type": "text/html", "value": (html_body or "")},
+        ],
+    }
+    if reply_to:
+        payload["reply_to"] = {"email": reply_to}
+
     try:
-        host = os.getenv("EMAIL_HOST", "")
-        port = int(os.getenv("EMAIL_PORT", "587"))
-        user = os.getenv("EMAIL_USER", "")
-        pwd  = os.getenv("EMAIL_PASS", "")
-        use_tls = _as_bool(os.getenv("EMAIL_USE_TLS", "true"), True)
+        resp = requests.post(
+            "https://api.sendgrid.com/v3/mail/send",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json=payload,
+            timeout=20,
+        )
+        # SendGrid يرجع 202 عند النجاح
+        return 200 <= resp.status_code < 300
+    except Exception:
+        return False
 
-        if not (host and port and user and pwd):
-            return False
 
-        # تأكد أن to عبارة عن قائمة
-        if isinstance(to, str):
-            to_list = [to]
-        else:
-            to_list = list(to or [])
+def _send_via_smtp(
+    to: str,
+    subject: str,
+    html_body: str,
+    text_body: str | None = None,
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    reply_to: str | None = None,
+) -> bool:
+    """
+    إرسال عبر SMTP (Gmail).
+    يعمل محليًا من جهازك، لكنه غالبًا محجوب على السيرفر.
+    يحتاج:
+      EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS, EMAIL_USE_TLS
+    """
+    host = os.getenv("EMAIL_HOST", "")
+    port = int(os.getenv("EMAIL_PORT", "587") or 0)
+    user = os.getenv("EMAIL_USER", "")
+    pwd  = os.getenv("EMAIL_PASS", "")
+    use_tls = _env_bool(os.getenv("EMAIL_USE_TLS"), True)
 
-        if not to_list:
-            return False
+    if not (host and port and user and pwd and to):
+        return False
 
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = _from_header()
-        msg["To"] = ", ".join(to_list)
-        if cc:
-            cc_list = list(cc)
-            if cc_list:
-                msg["Cc"] = ", ".join(cc_list)
-        else:
-            cc_list = []
+    # بناء الرسالة
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = DEFAULT_FROM or user
+    msg["To"] = to
+    if reply_to:
+        msg["Reply-To"] = reply_to
 
-        # النص الاحتياطي
-        if not text_body:
-            try:
-                # تحويل بسيط من HTML إلى نص
-                import re
-                txt = html_body
-                txt = re.sub(r"<br\s*/?>", "\n", txt, flags=re.I)
-                txt = re.sub(r"</p\s*>", "\n\n", txt, flags=re.I)
-                txt = re.sub(r"<[^>]+>", "", txt)
-                text_body = txt.strip()
-            except Exception:
-                text_body = " "
+    msg.attach(MIMEText((text_body or ""), "plain", "utf-8"))
+    msg.attach(MIMEText((html_body or ""), "html", "utf-8"))
 
-        # أجزاء المحتوى
-        part_text = MIMEText(text_body or " ", "plain", _charset="utf-8")
-        part_html = MIMEText(html_body or " ", "html", _charset="utf-8")
-        msg.attach(part_text)
-        msg.attach(part_html)
-
-        # مرفقات (اختياري)
-        if attachments:
-            from email.mime.base import MIMEBase
-            from email import encoders
-            for filename, content_bytes, mime in attachments:
-                main_type, sub_type = (mime.split("/", 1) + ["octet-stream"])[:2]
-                part = MIMEBase(main_type, sub_type)
-                part.set_payload(content_bytes or b"")
-                encoders.encode_base64(part)
-                part.add_header("Content-Disposition", f'attachment; filename="{filename}"')
-                msg.attach(part)
-
-        # الإرسال
-        smtp = smtplib.SMTP(host, port, timeout=30)
+    recipients = [to] + (cc or []) + (bcc or [])
+    try:
+        smtp = smtplib.SMTP(host, port, timeout=20)
+        smtp.ehlo()
+        if use_tls and port == 587:
+            smtp.starttls()
+            smtp.ehlo()
+        smtp.login(user, pwd)
+        smtp.sendmail(msg["From"], recipients, msg.as_string())
         try:
-            if use_tls:
-                smtp.starttls()
-            smtp.login(user, pwd)
-            all_rcpts = to_list + cc_list + (list(bcc or []) if bcc else [])
-            smtp.sendmail(user, all_rcpts, msg.as_string())
-        finally:
-            try:
-                smtp.quit()
-            except Exception:
-                pass
+            smtp.quit()
+        except Exception:
+            pass
         return True
     except Exception:
-        # لا نكسر التدفق — نعطي False فقط
         return False
+
+
+def send_email(
+    to: str,
+    subject: str,
+    html_body: str,
+    text_body: str | None = None,
+    cc: list[str] | None = None,
+    bcc: list[str] | None = None,
+    reply_to: str | None = None,
+) -> bool:
+    """
+    واجهة موحّدة:
+      1) تجرّب SendGrid إذا كان SENDGRID_API_KEY موجودًا (موصى به على السيرفر).
+      2) وإلا تستخدم SMTP.
+    """
+    # 1) SendGrid أولاً (مخصص للسيرفر)
+    if os.getenv("SENDGRID_API_KEY"):
+        ok = _send_via_sendgrid(to, subject, html_body, text_body, cc, bcc, reply_to)
+        if ok:
+            return True
+
+    # 2) SMTP كخيار احتياطي (يعمل محليًا)
+    return _send_via_smtp(to, subject, html_body, text_body, cc, bcc, reply_to)
