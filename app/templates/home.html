@@ -2,34 +2,6 @@
 
 {% block head %}
 <style>
-  /* === إخفاء عناصر الإطار العامة في هذه الصفحة فقط === */
-  header.topbar,
-  aside.sidebar,
-  .mobile-tabbar,
-  .fab { display: none !important; }
-
-  /* صفحة ممتدة بالكامل بدون هامش السايدبار / التوببار */
-  .page{
-    margin: 0 !important;
-    max-width: none !important;
-    padding: 18px 14px 28px !important;
-  }
-  @media (min-width: 992px){
-    .page{ padding-inline: 24px !important; }
-  }
-
-  /* أزرار الدخول/التسجيل أعلى الصفحة */
-  .auth-cta{
-    position: fixed;
-    top: 14px;
-    inset-inline-start: 14px; /* أعلى يسار في RTL */
-    display: flex; gap: 8px; z-index: 3000;
-  }
-  .auth-cta .btn{ border-radius: 12px; padding: .4rem .8rem; }
-  .auth-cta .btn-outline{ background: transparent; border:1px solid var(--border); }
-  .auth-cta .btn-outline:hover{ background: color-mix(in oklab, var(--text) 8%, transparent); }
-
-  /* ======= نفس ستايل الكروت والسلايدر الموجود لديك ======= */
   .hrow{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 4px 12px}
   .hrow::-webkit-scrollbar{height:8px}
   .hrow::-webkit-scrollbar-thumb{background:color-mix(in oklab,var(--text) 18%,transparent);border-radius:999px}
@@ -55,12 +27,6 @@
 {% endblock %}
 
 {% block content %}
-
-<!-- زرّان فقط أعلى الصفحة -->
-<div class="auth-cta">
-  <a class="btn btn-outline btn-sm" href="/login">دخول</a>
-  <a class="btn btn-primary btn-sm" href="/register">إنشاء حساب</a>
-</div>
 
 {# ==== سلايدر “بالقرب منك / شائع” ==== #}
 {% set nearby = (nearby_items if nearby_items is defined else popular_items)|default([]) %}
@@ -200,6 +166,7 @@
 {% endblock %}
 
 {% block scripts %}
+{# ننقل حالة التسجيل وIDs المفضلات للقالب (لو لم تُمرَّر تبقى []) #}
 <meta name="is-auth" content="{{ '1' if (session_user is defined and session_user) else '0' }}">
 <script id="fav-data" type="application/json">
   {{ favorites_ids | default([]) | tojson }}
