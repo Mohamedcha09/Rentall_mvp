@@ -40,6 +40,11 @@
     z-index: 1;
   }
 
+  /* ✅ فقط هذا الجزء المضاف — إخفاء الصورة على الهاتف */
+  @media (max-width: 992px){
+    .hero::before { content: none !important; display: none !important; }
+  }
+
   .brand-row{
     display:flex; align-items:center; gap:12px; margin-bottom: 10px;
   }
