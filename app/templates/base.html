@@ -468,52 +468,53 @@
     </script>
 
     <!-- سكربت زر ☰ (مُوحّد ومحسّن) -->
-    <script>
-    (function(){
-      const btn  = document.getElementById('menuBtn');
-      const menu = document.getElementById('quickMenu');
-      if(!btn || !menu) return;
+    <!-- [إصلاح نهائي لزر ☰] -->
+<script>
+(function(){
+  const btn  = document.getElementById('menuBtn');
+  const menu = document.getElementById('quickMenu');
+  if(!btn || !menu) return;
 
-      // امنع الازدواج
-      if (window.__quickMenuInit) return;
-      window.__quickMenuInit = true;
+  // امنع التهيئة المكررة
+  if (window.__quickMenuInit) return;
+  window.__quickMenuInit = true;
 
-      function open(){
-        menu.hidden = false;
-        btn.setAttribute('aria-expanded','true');
-        // نؤخر ربط حدث الكليك الخارجي نصف "تيك" لتفادي غلق فوري عند الضغط على الزر
-        setTimeout(()=>{
-          document.addEventListener('click', onDoc, true);
-          document.addEventListener('keydown', onKey);
-        },0);
-      }
-      function close(){
-        menu.hidden = true;
-        btn.setAttribute('aria-expanded','false');
-        document.removeEventListener('click', onDoc, true);
-        document.removeEventListener('keydown', onKey);
-      }
-      function toggle(){ menu.hidden ? open() : close(); }
+  function open(){
+    menu.classList.add('is-open');     // ← أضفنا كلاس
+    menu.removeAttribute('hidden');    // ← أزلنا الـ hidden
+    btn.setAttribute('aria-expanded','true');
+    setTimeout(()=>{
+      document.addEventListener('click', onDoc, true);
+      document.addEventListener('keydown', onKey);
+    },0);
+  }
 
-      function onDoc(e){
-        // تجاهل الضغط داخل الزر أو داخل القائمة
-        if (e.target===btn || btn.contains(e.target) || menu.contains(e.target)) return;
-        close();
-      }
-      function onKey(e){ if (e.key==='Escape'){ close(); btn.focus(); } }
+  function close(){
+    menu.classList.remove('is-open');  // ← نحذف الكلاس
+    menu.setAttribute('hidden','');    // ← نعيد الـ hidden
+    btn.setAttribute('aria-expanded','false');
+    document.removeEventListener('click', onDoc, true);
+    document.removeEventListener('keydown', onKey);
+  }
 
-      btn.addEventListener('click', function(e){
-        e.preventDefault();
-        e.stopPropagation(); // مهم: لا يُعتبر "ضغط خارج" ويغلق القائمة مباشرة
-        toggle();
-      });
-      menu.addEventListener('click', function(e){
-        // تفاعل داخل القائمة بدون أن يُغلقها كضغط خارجي
-        e.stopPropagation();
-      });
-    })();
-    </script>
+  function toggle(){ menu.classList.contains('is-open') ? close() : open(); }
 
+  function onDoc(e){
+    if (e.target===btn || btn.contains(e.target) || menu.contains(e.target)) return;
+    close();
+  }
+
+  function onKey(e){ if (e.key==='Escape'){ close(); btn.focus(); } }
+
+  btn.addEventListener('click', function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    toggle();
+  });
+
+  menu.addEventListener('click', function(e){ e.stopPropagation(); });
+})();
+</script>
     <!-- Typeahead -->
     <script>
     (function initTypeahead(){
