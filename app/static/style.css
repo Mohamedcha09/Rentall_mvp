@@ -1,18 +1,19 @@
+/* style.css */
 /* =========================================================
-   R E N T A L L — Ultra Glass UI  (Light-only)
-   نسخة كاملة مدمجة بالتعديلات المطلوبة
+   R E N T A L L  —  Ultra Glass UI
+   يعمل مع base.html (بدون صور مطلوبة)
    ========================================================= */
 
-/* ------------ ألوان ومتغيرات عامة (نهاري فقط) ------------ */
+/* ------------ ألوان ومتغيرات عامة ------------ */
 :root{
-  --bg:#f5f7fb;
-  --glass:#ffffffd6;
-  --surface:#ffffff;
-  --panel:#ffffff;
-  --card:#ffffff;
+  --bg:#0b0f15;
+  --glass:#0f1521cc;
+  --surface:#111827;
+  --panel:#0f172a;
+  --card:#121a2b;
 
-  --text:#0d1320;
-  --muted:#667086;
+  --text:#eef3fb;
+  --muted:#aeb6c8;
 
   --primary:#7c5cff;
   --primary-2:#5a3eff;
@@ -20,19 +21,15 @@
   --warning:#f8b84e;
   --danger:#ff4d6d;
 
-  --border:rgba(0,0,0,.10);
-  --ring: rgba(124,92,255,.25);
-  --shadow: 0 18px 46px rgba(0,0,0,.08);
+  --border:rgba(255,255,255,.12);
+  --ring: rgba(124,92,255,.28);
+  --shadow: 0 18px 46px rgba(0,0,0,.45);
 
   --sidebar-w: 268px;
   --radius:16px;
-
-  /* لون علامة التبويب النشط في الموبايل */
-  --brand:#5900ff;
 }
 
-/* فرض الوضع الفاتح مهما كان data-theme */
-body[data-theme="dark"],
+/* وضع فاتح اختياري */
 body[data-theme="light"]{
   --bg:#f5f7fb;
   --glass:#ffffffd6;
@@ -50,14 +47,6 @@ body[data-theme="light"]{
 
 /* ------------ الأساسيات ------------ */
 html,body{min-height:100%}
-html, body{
-  height:100%;
-  width:100%;
-  max-width:100vw;
-  overflow-x:hidden;
-  margin:0;
-  padding:0;
-}
 body{
   background:
     radial-gradient(1100px 800px at 80% -10%, rgba(124,92,255,.12), transparent 45%),
@@ -65,24 +54,19 @@ body{
     var(--bg);
   color:var(--text);
   font-family:'Tajawal','Cairo',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
+  -webkit-font-smoothing:antialiased;  -moz-osx-font-smoothing:grayscale;
 }
 a{ color:inherit; text-decoration:none }
 a:hover{ text-decoration:none; filter:brightness(1.05) }
 .text-muted{ color:var(--muted)!important }
 small, .small{ color:var(--muted)!important }
 
-*{ box-sizing:border-box; scrollbar-width:thin; scrollbar-color: color-mix(in oklab, var(--text) 22%, transparent) transparent }
-*::-webkit-scrollbar{ height:10px; width:10px }
-*::-webkit-scrollbar-thumb{ background:color-mix(in oklab, var(--text) 22%, transparent); border-radius:20px }
-*::-webkit-scrollbar-track{ background:transparent }
-img, video{ max-width:100%; height:auto }
-
 /* ------------ أزرار عامة ------------ */
 .btn{ border-radius:12px; transition:transform .12s ease, filter .12s ease }
 .btn:active{ transform:scale(.98) }
-.btn-ghost{ background:transparent; color:inherit; border:1px solid var(--border) }
+.btn-ghost{
+  background:transparent; color:inherit; border:1px solid var(--border);
+}
 .btn-ghost:hover{ background:color-mix(in oklab, var(--text) 8%, transparent) }
 .btn-primary{
   background:linear-gradient(135deg,var(--primary),var(--primary-2));
@@ -99,19 +83,17 @@ img, video{ max-width:100%; height:auto }
   border:1px solid var(--border); color:var(--text); border-radius:var(--radius);
 }
 .card{ box-shadow:var(--shadow); transition:border-color .16s ease, box-shadow .16s ease, transform .16s ease }
-.card:hover{
-  border-color:color-mix(in oklab, var(--primary) 40%, var(--border));
-  box-shadow:0 20px 44px rgba(124,92,255,.18);
-  transform: translateY(-2px);
-}
+.card:hover{ border-color:color-mix(in oklab, var(--primary) 40%, var(--border)); box-shadow:0 20px 44px rgba(124,92,255,.18); transform: translateY(-2px) }
+
 .form-control, .form-select{ height:auto }
 .form-control:focus, .form-select:focus{
-  box-shadow:0 0 0 4px var(--ring);
-  border-color:color-mix(in oklab, var(--primary) 60%, var(--border));
+  box-shadow:0 0 0 4px var(--ring); border-color:color-mix(in oklab, var(--primary) 60%, var(--border));
 }
-.dropdown-menu{ box-shadow:0 18px 40px rgba(0,0,0,.12) }
+
+.dropdown-menu{ box-shadow:0 18px 40px rgba(0,0,0,.35) }
 .dropdown-item{ color:inherit }
 .dropdown-item:hover{ background:color-mix(in oklab, var(--text) 8%, transparent) }
+
 .alert{ border-radius:14px }
 .alert-warning{ color:inherit }
 
@@ -123,29 +105,21 @@ img, video{ max-width:100%; height:auto }
   border-bottom:1px solid var(--border);
   z-index:2000;
 }
-.topbar__inner{
-  display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; padding:8px 14px;
-}
+.topbar__inner{ display:grid; grid-template-columns:auto auto 1fr auto; gap:10px; align-items:center; padding:8px 14px }
 .brand__name{ font-weight:800; letter-spacing:.3px }
 
-/* ------------ البحث (بالوسط + بنفسجي) ------------ */
-.search{ position:relative; margin-inline:auto; max-width:760px; width:100% }
-.search__icon{
-  position:absolute; inset-inline-start:16px; top:50%; transform:translateY(-50%);
-  opacity:.8; pointer-events:none; font-size:1.05rem;
-}
+/* ------------ البحث ------------ */
+.search{ position:relative; margin-inline:8px; max-width:760px; width:100% }
+.search__icon{ position:absolute; inset-inline-start:12px; top:50%; transform:translateY(-50%); opacity:.9; pointer-events:none }
 .search__input{
-  padding-inline:44px 14px; height:44px; border-radius:999px;
-  background: linear-gradient(135deg, rgba(124,92,255,.18), rgba(124,92,255,.10)) !important;
-  border:1px solid color-mix(in oklab, var(--primary) 40%, var(--border)) !important;
-  color:inherit;
+  padding-inline:38px 14px; height:40px; border-radius:999px;
+  background: radial-gradient(200px 100% at 100% 0, color-mix(in oklab, var(--primary) 18%, transparent), transparent 60%),
+              color-mix(in oklab, var(--surface) 92%, transparent);
+  border:1px solid var(--border); color:inherit;
   transition: box-shadow .15s ease, border-color .15s ease, background .2s ease;
 }
-.search__input::placeholder{ color:#8b95a7 }
-.search__input:focus{
-  outline:none; box-shadow:0 0 0 4px var(--ring);
-  border-color:color-mix(in oklab, var(--primary) 65%, var(--border));
-}
+.search__input::placeholder{ color:color-mix(in oklab, var(--text) 70%, transparent) }
+.search__input:focus{ outline:none; box-shadow:0 0 0 4px var(--ring); border-color:color-mix(in oklab, var(--primary) 65%, var(--border)) }
 
 /* ------------ أفاتار ووسام التوثيق ------------ */
 .avatar{
@@ -210,7 +184,6 @@ img, video{ max-width:100%; height:auto }
 .side-sep{ height:1px; background:var(--border); margin:.5rem .25rem }
 .collapse-pin{ margin-top:auto }
 
-/* تلميح عند الطي */
 .sidebar[data-collapsed="true"] .side-link{ justify-content:center; padding:.62rem .6rem }
 .sidebar[data-collapsed="true"] .side-link span{ display:none }
 .sidebar[data-collapsed="true"] .side-link::after{
@@ -223,38 +196,19 @@ img, video{ max-width:100%; height:auto }
 }
 .sidebar[data-collapsed="true"] .side-link:hover::after{ opacity:1; transform:translate(6px,-50%) }
 
-/* —— إخفاء السايدبار على الدِّسكتوب —— */
-@media (min-width: 992px){
-  .sidebar{ display:none !important; }
-}
-
-/* إبقاءه off-canvas على الموبايل */
 @media (max-width: 991.98px){
   .sidebar{ transform:translateX(100%) }
   .sidebar.is-open{ transform:translateX(0) }
 }
 
 /* ------------ المساحة الرئيسية ------------ */
-#page-wrapper{
-  min-height:100dvh;
-  min-height:100svh;
-  display:flex;
-  flex-direction:column;
-}
-.main-flex-fill{ flex:1 1 auto; }
-
 .page{
   padding: calc(64px + 18px) 20px 28px;
-  margin-inline:0;                 /* لا مسافة لسايدبار على الديسكتوب */
-  max-width:1280px;
+  margin-inline: var(--sidebar-w) 0;
+  max-width: 1280px;
   transition: margin-inline-start .22s ease;
 }
-@media (min-width: 992px){
-  .page{ max-width:none; }         /* ملء الشاشة على الديسكتوب */
-}
-@media (max-width: 991.98px){
-  .page{ margin-inline:0; padding: calc(64px + 12px) 12px 90px }
-}
+@media (max-width: 991.98px){ .page{ margin-inline:0; padding: calc(64px + 12px) 12px 20px } }
 
 /* ------------ شبكة العناصر ------------ */
 .home-grid{
@@ -270,7 +224,7 @@ img, video{ max-width:100%; height:auto }
   position:relative;
   aspect-ratio: 16 / 10;
   overflow:hidden;
-  background: rgba(0,0,0,.03);
+  background: rgba(255,255,255,.03);
   border-bottom:1px solid var(--border);
 }
 .spot-media > img{
@@ -280,7 +234,7 @@ img, video{ max-width:100%; height:auto }
 .card.spot:hover .spot-media > img{ transform:scale(1.02) }
 .spot-overlay{
   position:absolute; inset:0;
-  background: linear-gradient(180deg, transparent 55%, rgba(15,17,21,.12));
+  background: linear-gradient(180deg, transparent 55%, rgba(15,17,21,.55));
   pointer-events:none;
 }
 .price-badge, .category-chip{
@@ -288,12 +242,12 @@ img, video{ max-width:100%; height:auto }
 }
 .price-badge{
   inset-inline-start:10px; padding:.3rem .55rem; font-weight:700; font-size:.9rem;
-  background: rgba(10,12,16,.06); backdrop-filter: blur(8px);
-  border:1px solid var(--border); color:#333; box-shadow:0 6px 18px rgba(0,0,0,.06);
+  background: rgba(10,12,16,.65); backdrop-filter: blur(8px);
+  border:1px solid var(--border); color:#fff; box-shadow:0 6px 18px rgba(0,0,0,.35);
 }
 .category-chip{
-  inset-inline-end:10px; padding:.2rem .5rem; font-size:.78rem; color:#5d6bff;
-  background: rgba(124,92,255,.12); border:1px solid rgba(124,92,255,.35);
+  inset-inline-end:10px; padding:.2rem .5rem; font-size:.78rem; color:#cfe2ff;
+  background: rgba(124,92,255,.18); border:1px solid rgba(124,92,255,.35);
 }
 .card.spot .card-body{ padding:.7rem .75rem .8rem }
 .spot-body{ display:flex; flex-direction:column; gap:10px; }
@@ -310,11 +264,11 @@ img, video{ max-width:100%; height:auto }
 .owner-avatar, .owner-avatar--placeholder{
   width:24px; height:24px; border-radius:50%;
   object-fit:cover; border:1px solid var(--border);
-  display:grid; place-items:center; background:rgba(0,0,0,.04);
+  display:grid; place-items:center; background:rgba(255,255,255,.06);
 }
 .city-chip{
   padding:.2rem .5rem; border-radius:999px;
-  background: rgba(0,0,0,.04); border:1px solid var(--border);
+  background: rgba(255,255,255,.06); border:1px solid var(--border);
   color:var(--muted);
   max-width:65%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
@@ -329,7 +283,7 @@ img, video{ max-width:100%; height:auto }
   position:fixed; top:64px; bottom:0; inset-inline-end:-380px; width:360px;
   background:linear-gradient(180deg, var(--surface), var(--panel));
   border-inline-start:1px solid var(--border);
-  box-shadow: -18px 0 46px rgba(0,0,0,.12);
+  box-shadow: -18px 0 46px rgba(0,0,0,.28);
   transition: inset-inline-end .25s ease;
   z-index:2100; display:flex; flex-direction:column;
 }
@@ -343,23 +297,15 @@ img, video{ max-width:100%; height:auto }
 }
 .scrim.is-show{ opacity:1; pointer-events:auto }
 
-/* ------------ إضافات عامة ------------ */
+/* ------------ إضافات ------------ */
 .stripe-callout{ border:1px dashed color-mix(in oklab, var(--primary) 35%, var(--border)) }
+*{ scrollbar-width:thin; scrollbar-color: color-mix(in oklab, var(--text) 22%, transparent) transparent }
+*::-webkit-scrollbar{ height:10px; width:10px }
+*::-webkit-scrollbar-thumb{ background:color-mix(in oklab, var(--text) 22%, transparent); border-radius:20px }
+*::-webkit-scrollbar-track{ background:transparent }
 .topbar{ z-index:2000 }
-.sidebar{ z-index:1200 }
+.sidebar { z-index:1200 }
 .dropdown-menu{ z-index:2200 }
-
-/* ====== منيو زر ☰ (تحسينات) ====== */
-.menu-list .dropdown-item{ padding:.55rem .9rem; border-radius:10px }
-.menu-list .dropdown-item:hover{ background: rgba(124,92,255,.10) }
-.menu-ico{ width:18px; height:18px; object-fit:contain; opacity:.9 }
-
-/* ====== منع التكرار تحت التوب بار على الدِّسكتوب ======
-   ضع كلاس subnav أو toolbar-secondary أو shortcuts-bar
-   على أي صف مختصرات/فلاتر تحت التوب بار ليُخفى على الديسكتوب */
-@media (min-width: 992px){
-  .subnav, .toolbar-secondary, .shortcuts-bar{ display:none !important; }
-}
 
 /* ------------ زر إضافة طافٍ للجوال ------------ */
 .fab{
@@ -372,16 +318,46 @@ img, video{ max-width:100%; height:auto }
 @keyframes fabpop{0%{transform:scale(.8); opacity:0}100%{transform:scale(1); opacity:1}}
 .fab:active{ transform:scale(.96) }
 
-/* ========== ملء الشاشة وتقليل الحواف ========== */
-@media (min-width: 992px){
-  .page{ max-width:none; }
-}
-.page{ padding-inline: 12px 20px; }
 
-/* ======= Typeahead ======= */
-.searchbox{ position:relative }
-.searchbox .typeahead{
-  position:absolute; inset-inline:0; top:100%;
+/* ==== Full-screen on desktop ==== */
+@media (min-width: 992px){
+  .page{
+    max-width: none;           /* كان 1280px */
+  }
+}
+
+/* لو تبغى تقلّل الحافة الداخلية كمان */
+.page{ padding-inline: 12px 20px; }   /* كان 20px يمين ويسار */
+
+/* خيار: لما السايدبار يكون مطوي (collapsed) خلِّ المسافة أصغر/صفر */
+.sidebar[data-collapsed="true"] ~ .page{
+  margin-inline-start: 0;      /* كان يترك 84px */
+}
+
+/* على الموبايل يبقى بدون هامش أصلاً */
+@media (max-width: 991.98px){
+  .page{ margin-inline: 0; }
+}
+
+/* ======== [أُضيف] ملء الشاشة – إضافات بدون حذف أي سطر ======== */
+html, body { height: 100%; }                /* تعزيز الارتفاع */
+#page-wrapper{
+  min-height: 100dvh;
+  min-height: 100svh;                       /* بديل آمن للأجهزة */
+  display: flex;
+  flex-direction: column;
+}
+.main-flex-fill{ flex: 1 1 auto; }          /* يجعل <main> يتمدّد عموديًا */
+
+/* ======== [أُضيف] إصلاح الطيّ حتى لا يدخل المحتوى تحت الشريط ======== */
+.sidebar[data-collapsed="true"] ~ .page{
+  margin-inline-start: var(--sidebar-w) !important; /* تستخدم العرض الحالي 84px */
+}
+ 
+/* ======= Search typeahead ======= */
+.searchbox { position: relative; }
+.searchbox .typeahead {
+  position: absolute; inset-inline: 0; top: 100%;
   background: var(--surface, #fff);
   color: var(--text, #212529);
   border: 1px solid rgba(0,0,0,.1);
@@ -397,75 +373,79 @@ img, video{ max-width:100%; height:auto }
 .typeahead-item{
   padding: .55rem .75rem; cursor: pointer; display: flex; align-items: center; gap: .5rem;
 }
-.typeahead-item:hover, .typeahead-item.active{ background: rgba(124,92,255,.12) }
+.typeahead-item:hover, .typeahead-item.active{
+  background: rgba(124,92,255,.12);
+}
 .typeahead-item .k{ opacity:.65; font-size:.85em }
 
 /* شارات بجانب الاسم */
 .badge-chip{
   display:inline-flex; align-items:center; gap:.25rem;
   border-radius:999px; padding:.2rem .5rem; font-weight:700; font-size:.78rem;
-  border:1px solid var(--border); background:rgba(0,0,0,.04); color:var(--text);
+  border:1px solid var(--border); background:rgba(255,255,255,.06); color:var(--text);
 }
-.chip-verified{ background:rgba(85,213,255,.15); border-color:rgba(85,213,255,.35); color:#0d6efd }
-.chip-new{ background:rgba(124,92,255,.12); border-color:rgba(124,92,255,.35) }
-.chip-power{ background:rgba(255,221,87,.12); border-color:rgba(255,221,87,.35) }
-.chip-trusted{ background:rgba(34,197,94,.12); border-color:rgba(34,197,94,.35) }
-.chip-top{ background:rgba(255,199,0,.12); border-color:rgba(255,199,0,.35) }
+.chip-verified{ background:rgba(85,213,255,.15); border-color:rgba(85,213,255,.35); color:#bfefff }
+.chip-new{ background:rgba(124,92,255,.12); border-color:rgba(124,92,255,.35); }
+.chip-power{ background:rgba(255,221,87,.12); border-color:rgba(255,221,87,.35); }
+.chip-trusted{ background:rgba(34,197,94,.12); border-color:rgba(34,197,94,.35); }
+.chip-top{ background:rgba(255,199,0,.12); border-color:rgba(255,199,0,.35); }
 
 /* أفاتار كبير */
-.avatar-xl{ width:76px; height:76px; background:rgba(0,0,0,.04); color:var(--text); display:grid; place-items:center; font-size:1.8rem }
+.avatar-xl{ width:76px; height:76px; background:rgba(255,255,255,.06); color:var(--text); display:grid; place-items:center; font-size:1.8rem }
 
 /* لمسة زجاجية بسيطة */
-.glass{ background: linear-gradient(180deg, rgba(0,0,0,.04), rgba(0,0,0,.02)) !important; border:1px solid var(--border) !important; border-radius:16px }
+.glass{ background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03)) !important; border:1px solid var(--border) !important; border-radius:16px }
 
-/* شبكة العناصر (توافق) + زر مفضلة */
-.spot-media{ position:relative; border-radius:16px 16px 0 0 }
-.spot-media img{ width:100%; height:220px; object-fit:cover; display:block }
-.fav-btn{
-  position:absolute; right:10px; top:56px;
-  width:40px; height:40px; border:none; outline:none; cursor:pointer;
-  border-radius:999px; background:rgba(255,255,255,0.92);
-  display:flex; align-items:center; justify-content:center;
-  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+/* شبكة العناصر (إن لم تكن موجودة) */
+.home-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px,1fr)); gap:16px }
+.card.spot{ overflow:hidden; border-radius:16px }
+.spot-media{ position:relative; aspect-ratio:16/10; background:rgba(255,255,255,.04); border-bottom:1px solid var(--border) }
+.spot-media img{ width:100%; height:100%; object-fit:cover; display:block }
+.price-badge{ position:absolute; top:10px; inset-inline-start:10px; background:rgba(0,0,0,.5); color:#fff; border-radius:999px; padding:.25rem .5rem; border:1px solid var(--border) }
+.category-chip{ position:absolute; top:10px; inset-inline-end:10px; background:rgba(124,92,255,.18); border:1px solid rgba(124,92,255,.35); border-radius:999px; padding:.2rem .5rem; font-size:.78rem }
+.spot-title{ margin:.1rem 0 .4rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:2.6em }
+.city-chip{ max-width:65%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:.15rem .45rem; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid var(--border) }  
+
+
+@media (max-width: 768px){
+  .page{
+    /* مساحة أسفل للتاب بار + حافة iPhone */
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
 }
-.fav-btn .bi{ font-size:18px; color:#a944ec; line-height:1 }
-.fav-btn.is-fav{ background:#a944ec }
-.fav-btn.is-fav .bi{ color:#fff }
+
 
 /* ===== تبويب سفلي للهاتف ===== */
 .mobile-tabbar{
-  position: fixed; inset-inline: 0; bottom: 0; height: 64px;
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  height: 64px;
   background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 96%, transparent), color-mix(in oklab, var(--panel) 92%, transparent));
   border-top: 1px solid var(--border);
   backdrop-filter: blur(12px) saturate(120%);
-  z-index: 2300; display: none;
+  z-index: 2300;
+  display: none;
 }
 .mobile-tabbar .tabbar-inner{
   height: 100%;
-  display: grid; grid-template-columns: repeat(5, 1fr);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
 }
 .mobile-tabbar a{
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
   color: var(--muted); font-size:.78rem; text-decoration:none;
 }
 .mobile-tabbar a i{ font-size:1.2rem; opacity:.95 }
-.mobile-tabbar a.is-active{ color: var(--brand) !important }
-.mobile-tabbar a.is-active i{ opacity:1; transform: translateY(-1px) }
-.mobile-tabbar a.is-active::after{
-  content:""; display:block; width:28px; height:3px; border-radius:3px;
-  background: var(--brand); margin-top:4px;
-}
-.mobile-tabbar a .tab-icon--active{ display:none }
-.mobile-tabbar a.is-active .tab-icon{ display:none }
-.mobile-tabbar a.is-active .tab-icon--active{ display:block }
+.mobile-tabbar a.is-active{ color: var(--text); }
 @supports (padding: max(0px)){
-  .mobile-tabbar{ padding-bottom: max(env(safe-area-inset-bottom), 0px) }
+  .mobile-tabbar{ padding-bottom: max(env(safe-area-inset-bottom), 0px); }
 }
 @media (max-width:768px){
-  .mobile-tabbar{ display:block }
+  .mobile-tabbar{ display:block; }
 }
 
-/* ===== قائمة المحادثات ===== */
+/* ===== قائمة المحادثات (Inbox) ===== */
 .dm-list{ display:flex; flex-direction:column; gap:10px }
 .dm-row{
   display:flex; align-items:center; gap:10px;
@@ -478,7 +458,7 @@ img, video{ max-width:100%; height:auto }
 .dm-avatar{
   width:44px; height:44px; border-radius:50%;
   object-fit:cover; border:1px solid var(--border);
-  background:rgba(0,0,0,.04); display:grid; place-items:center; font-weight:800;
+  background:rgba(255,255,255,.06); display:grid; place-items:center; font-weight:800;
 }
 .dm-col{ min-width:0; display:flex; flex-direction:column; gap:2px }
 .dm-name{ font-weight:800 }
@@ -505,9 +485,11 @@ img, video{ max-width:100%; height:auto }
 }
 .msg-meta{ font-size:.75rem; color:var(--muted); margin-top:2px }
 
-/* ===== Composer ===== */
+/* ===== Composer (حقل كتابة الرسالة) ===== */
 .composer{
-  position: fixed; inset-inline: 8px; bottom: 64px; /* فوق تبويب الموبايل */
+  position: fixed;
+  inset-inline: 8px;
+  bottom: 64px; /* فوق تبويب الموبايل */
   display:flex; align-items:center; gap:8px;
   padding:8px; border-radius:16px;
   background:linear-gradient(180deg, color-mix(in oklab, var(--card) 92%, transparent), color-mix(in oklab, var(--card) 86%, transparent));
@@ -516,7 +498,7 @@ img, video{ max-width:100%; height:auto }
   z-index: 2301;
 }
 @supports (padding: max(0px)){
-  .composer{ bottom: calc(64px + max(env(safe-area-inset-bottom), 0px)) }
+  .composer{ bottom: calc(64px + max(env(safe-area-inset-bottom), 0px)); }
 }
 .composer input[type="text"],
 .composer textarea{
@@ -535,28 +517,63 @@ img, video{ max-width:100%; height:auto }
 .m-avatar{
   width:64px; height:64px; border-radius:50%;
   object-fit:cover; border:1px solid var(--border);
-  background:rgba(0,0,0,.04); display:grid; place-items:center; font-size:1.4rem; font-weight:800;
+  background:rgba(255,255,255,.06); display:grid; place-items:center; font-size:1.4rem; font-weight:800;
 }
 .m-name{ font-weight:800; font-size:1.1rem }
 .m-badges{ display:flex; gap:6px; flex-wrap:wrap }
 
 /* ===== تحسينات Responsive إضافية ===== */
 @media (max-width:768px){
-  .topbar{ height:56px; border-bottom:1px solid var(--border) }
-  .topbar__inner{ grid-template-columns: 1fr auto auto; gap:8px; padding:8px 12px }
-  .search{ order:1; margin:0 }
-  .search__input{ height:40px; padding-inline:40px 12px }
-  .topbar .actions > *{ display:none !important }
-  .topbar .actions #notifOpen{ display:inline-flex !important; order:3 }
-  .topbar .actions .btn-messages{ display:inline-flex !important; order:2 }
-  .brand{ display:none !important }
+  .topbar__inner{ grid-template-columns:auto 1fr auto auto }
+  .search{ margin-inline:6px; max-width:none }
+  .search__input{ height:38px; padding-inline:38px 12px }
+  .home-grid{ grid-template-columns: repeat(auto-fill, minmax(170px,1fr)); gap:12px }
+  .card.spot .card-body{ padding:.6rem .6rem .7rem }
+}
 
+/* ===== مساعدات عرض/إخفاء ===== */
+.hide-desktop{ display:none }
+@media (max-width:768px){
+  .hide-desktop{ display:initial }
+  .hide-mobile{ display:none!important }
+}
+
+/* === Mobile navbar: Search + Notifs + Messages only === */
+@media (max-width: 768px){
+
+  /* ترتيب شريط علوي مبسّط */
+  .topbar{ height:56px; border-bottom:1px solid var(--border); }
+  .topbar__inner{
+    grid-template-columns: 1fr auto auto;   /* بحث | رسائل | جرس */
+    gap: 8px; padding: 8px 12px;
+  }
+
+  /* أُبقي البحث بعرض جيّد */
+  .search{ order:1; margin:0; }
+  .search__input{ height:40px; border-radius:20px; padding-inline:40px 12px; }
+
+  /* أخفي كل أزرار actions… */
+  .topbar .actions > *{ display:none !important; }
+
+  /* …ثم أظهر فقط الرسائل + الإشعارات (سنضع للرسائل كلاس خاص) */
+  .topbar .actions #notifOpen{ display:inline-flex !important; order:3; }
+  .topbar .actions .btn-messages{ display:inline-flex !important; order:2; }
+
+  /* أخفي شعار/اسم البراند في الهاتف (المحتوى يهمّنا البحث) */
+  .brand{ display:none !important; }
+
+  /* لا أريد الشريط الجانبي في الهاتف */
+  .sidebar{ display:none !important; }
+  .collapse-pin{ display:none !important; }
+
+  /* مساحة الصفحة تحسب للتاب-بار السفلي */
   .page{
     margin-inline:0 !important;
     padding: calc(56px + 10px) 12px 110px;
     padding-bottom: calc(90px + env(safe-area-inset-bottom));
   }
 
+  /* إن وُجد Tabbar سفلي عندك، ثبّته وأظهره بشكل جميل */
   .tabbar{
     position:fixed; inset-inline:0; bottom:0;
     height:68px; padding:8px 14px calc(8px + env(safe-area-inset-bottom));
@@ -568,52 +585,43 @@ img, video{ max-width:100%; height:auto }
   }
   .tabbar a{
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:6px; font-size:.8rem; color: color-mix(in oklab, var(--text) 78%, #000);
+    gap:6px; font-size:.8rem; color: color-mix(in oklab, var(--text) 78%, #fff);
     text-decoration:none;
   }
   .tabbar a i{ font-size:1.25rem }
   .tabbar a.is-active{ color:var(--text); font-weight:700 }
 
-  .fab{ bottom: calc(74px + env(safe-area-inset-bottom)) }
+  /* زر الإضافة الطافي يرتفع فوق التاب-بار */
+  .fab{ bottom: calc(74px + env(safe-area-inset-bottom)); }
 }
 
-/* ===== أيقونات أعلى (تحسين صغير) ===== */
-.actions .btn-icon{
-  border:0 !important;
-  background:transparent !important;
-  padding:.15rem .35rem !important;
-  box-shadow:none !important;
-}
-.actions .btn-icon i{ font-size:1.35rem; line-height:1 }
-.actions .btn-ghost.btn-icon{ border-color:transparent !important }
-.actions .msg-icon i{ color:#7c5cff }
-.actions .notif-icon i{ color:#1ec9a8 }
-.actions .btn-icon:hover{ transform: translateY(-1px) }
+/* ========================= */
+/*     [إضافات عصرية]      */
+/* ========================= */
 
-/* ===== Search pill: تأكيد الارتفاع ونمط الـpill ===== */
-.topbar .search .search__input{
-  height:44px !important;
-  border-radius:999px !important;
-}
-.topbar .search .search__input::placeholder{
-  font-size:1.05rem; letter-spacing:.2px; color:#8b95a7;
+/* لون العلامة التجارية للتبويب النشط (أخضر مثل الصورة) */
+:root{ --brand: #5900ff; }
+
+/* في شريط تبويبات الهاتف الحالي لديك (.mobile-tabbar):
+   نجعل الأيقونة/النص رماديين افتراضيًا ويصيرون أخضر عند التفعيل،
+   ونضيف خط سفلي صغير تحت التبويب النشط. */
+.mobile-tabbar a { font-weight: 600; }
+.mobile-tabbar a i { opacity: .6; transition: opacity .15s ease, transform .15s ease; }
+.mobile-tabbar a.is-active { color: var(--brand) !important; }
+.mobile-tabbar a.is-active i { opacity: 1; transform: translateY(-1px); }
+.mobile-tabbar a.is-active::after{
+  content:""; display:block; width:28px; height:3px; border-radius:3px;
+  background: var(--brand); margin-top:4px;
 }
 
-/* ===== إصلاحات عرض كاملة ===== */
-#page-wrapper,
-.page,
-.container,
-.container-fluid{
-  width:100% !important;
-  max-width:100% !important;
-  overflow-x:clip !important;
-  margin:0 auto !important;
-  padding:0 !important;
-}
-.row{ margin-right:0 !important; margin-left:0 !important }
-[style*="100vw"], .w-100vw{ width:100% !important }
+/* دعم نمط الأيقونتين:
+   ضع داخل الرابط عنصرين أحدهما class=tab-icon والآخر class=tab-icon--active (اختياري).
+   هنا نقلب العرض حسب حالة .is-active بدون الحاجة لجافاسكربت. */
+.mobile-tabbar a .tab-icon--active{ display:none; }
+.mobile-tabbar a.is-active .tab-icon{ display:none; }
+.mobile-tabbar a.is-active .tab-icon--active{ display:block; }
 
-/* ===== سلايدر أفقي (اختياري) ===== */
+/* ==== سلايدر أفقي للتصنيفات ==== */
 .hrow{
   display:grid;
   grid-auto-flow: column;
@@ -624,13 +632,16 @@ img, video{ max-width:100%; height:auto }
   -webkit-overflow-scrolling: touch;
   padding-inline: 4px;
 }
-@media (min-width:576px){ .hrow{ grid-auto-columns:58% } }
-@media (min-width:992px){ .hrow{ grid-auto-columns:360px } }
-.hcard{ scroll-snap-align:start }
-.hcard .spot-media{ aspect-ratio:16/11 }
+@media (min-width:576px){ .hrow{ grid-auto-columns: 58%; } }
+@media (min-width:992px){ .hrow{ grid-auto-columns: 360px; } }
+.hcard{ scroll-snap-align: start; }
+.hcard .spot-media{ aspect-ratio: 16/11; }
 
 /* شريط عنوان القسم + أسهم */
-.section-head{ display:flex; align-items:center; justify-content:space-between; margin:8px 4px 10px }
+.section-head{
+  display:flex; align-items:center; justify-content:space-between;
+  margin: 8px 4px 10px;
+}
 .section-title{ font-weight:800; font-size:1.05rem }
 .arrow-btn{
   border:1px solid var(--border); background:transparent; border-radius:10px;
@@ -638,51 +649,171 @@ img, video{ max-width:100%; height:auto }
 }
 .arrow-btn:disabled{ opacity:.4 }
 
-/* شبكة مختلطة */
+/* شبكة مختلطة في الأسفل */
 .mixed-grid{
   display:grid; gap:12px;
   grid-template-columns: repeat(auto-fill, minmax(180px,1fr));
 }
-@media (min-width:576px){ .mixed-grid{ grid-template-columns: repeat(auto-fill, minmax(220px,1fr)) } }
+@media (min-width:576px){ .mixed-grid{ grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); } }
 
-/* ===== إخفاء زر تبديل الثيم أينما وُجد ===== */
-#themeToggle{ display:none !important }
-
-/* ===== Navbar Grid like Airbnb ===== */
-.nav-grid{
-  /* نحافظ على ترتيب بصري يسار-وسط-يمين حتى مع RTL */
-  direction: ltr;                 /* مهم جداً */
-  display: grid !important;
-  grid-template-columns: 1fr minmax(320px, 760px) auto;
-  align-items: center;
-  gap: 10px;
+/* ===== Blossom-like top icons ===== */
+.actions .btn-icon{
+  border: 0 !important;
+  background: transparent !important;
+  padding: .15rem .35rem !important;
+  box-shadow: none !important;
 }
-.nav-left, .nav-center, .nav-right{ direction: rtl; } /* نعيد اتجاه النصوص للعربي */
-.nav-left{ justify-self: start; min-width: 0; white-space: nowrap; }
-.nav-center{ justify-self: center; min-width: 0; }
-.nav-right{ justify-self: end; }
+.actions .btn-icon i{
+  font-size: 1.35rem; line-height: 1; filter: none;
+}
+.actions .btn-ghost.btn-icon{ border-color: transparent !important; }
 
-/* البحث وسط وبيل أنيق */
-.nav-center.search{ width:100%; }
-.nav-center .search__input{
-  height:44px; border-radius:999px; padding-inline:44px 12px;
-  background: linear-gradient(135deg, rgba(124,92,255,.18), rgba(124,92,255,.10));
-  border:1px solid color-mix(in oklab, var(--primary) 40%, var(--border));
+/* ألوان الأيقونات */
+.actions .msg-icon i{ color: #7c5cff; }   /* بنفسجي */
+.actions .notif-icon i{ color: #1ec9a8; } /* أخضر مائل للتيفاني */
+.actions .btn-icon:hover{ transform: translateY(-1px); }
+
+/* إذا أردت لونًا أخف في الثيم الفاتح */
+body[data-theme="light"] .actions .msg-icon i{ color:#6a57ff; }
+body[data-theme="light"] .actions .notif-icon i{ color:#18c2a1; }
+
+/* ===== Search pill like Blossom ===== */
+.topbar .search .search__input{
+  height: 44px !important;
+  border-radius: 999px !important;
+  border: 0 !important;
+  background: #f4f6fb !important;
+  color: #444 !important;
+}
+body[data-theme="dark"] .topbar .search .search__input{
+  background: rgba(255,255,255,.08) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+}
+.topbar .search .search__icon{
+  inset-inline-start: 16px !important;
+  opacity: .6 !important;
+  font-size: 1.05rem;
+}
+.topbar .search .search__input::placeholder{
+  font-size: 1.05rem;
+  letter-spacing: .2px;
+  color: #8b95a7;
+}
+body[data-theme="dark"] .topbar .search .search__input::placeholder{
+  color: color-mix(in oklab, var(--text) 60%, transparent);
+}
+ /* ===== زرّ المفضلة فوق الصورة (متوافق مع home.html) ===== */
+.spot-media{ position:relative; overflow:hidden; border-radius:16px 16px 0 0 }
+.spot-media img{ width:100%; height:220px; object-fit:cover; display:block }
+.fav-btn{
+  position:absolute; right:10px; top:56px;
+  width:40px; height:40px; border:none; outline:none; cursor:pointer;
+  border-radius:999px; background:rgba(255,255,255,0.92);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+}
+.fav-btn .bi{ font-size:18px; color:#a944ec; line-height:1 }
+.fav-btn.is-fav{ background:#a944ec; }
+.fav-btn.is-fav .bi{ color:#fff }
+
+
+/* ===== إصلاح امتلاء الصفحة واختفاء الشريط الأفقي ===== */
+html, body {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden !important;
+  margin: 0;
+  padding: 0;
 }
 
-/* حجم الشعار والتحكم */
-.brand-logo{ height: 40px; }
-@media (min-width: 768px){ .brand-logo{ height: 48px; } }
-.brand__name{ font-weight:800; letter-spacing:.3px }
+#page-wrapper,
+.page,
+.container,
+.container-fluid {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: clip !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+}
 
-/* أزرار اليسار (لا تلتف) */
-.nav-left .btn-icon{ padding:.2rem .35rem; }
-.nav-left{ gap: .25rem; }
+.row {
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+}
 
-/* منيو ☰ */
-.menu-list .dropdown-item{ padding:.55rem .9rem; border-radius:10px; }
-.menu-list .dropdown-item:hover{ background: rgba(124,92,255,.10); }
-.menu-ico{ width:18px; height:18px; object-fit:contain; opacity:.9; }
+* {
+  box-sizing: border-box;
+}
 
-/* زِد الأولوية لمنع نزول أي عنصر تحت الشريط */
-.topbar{ position: sticky; top:0; z-index: 3000; }
+img, video {
+  max-width: 100%;
+  height: auto;
+}
+
+[style*="100vw"], .w-100vw {
+  width: 100% !important;
+}
+
+/* ========== إصلاح امتلاء الشاشة وتوافق الشريط الجانبي ========== */
+html, body {
+  height: 100%;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+/* غلاف الصفحة الرئيسي */
+#page-wrapper {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* المساحة الرئيسية داخل الصفحة */
+.page {
+  flex: 1 1 auto;
+  padding: calc(64px + 18px) 20px 28px;
+  margin-inline-start: var(--sidebar-w);
+  max-width: 100%;
+  width: 100%;
+  transition: margin-inline-start .25s ease;
+}
+
+/* عند طيّ الشريط الجانبي */
+.sidebar[data-collapsed="true"] ~ .page {
+  margin-inline-start: 84px; /* نفس عرض السايدبار المطوي */
+}
+
+/* على الشاشات الصغيرة */
+@media (max-width: 991.98px) {
+  .page {
+    margin-inline: 0 !important;
+    padding: calc(64px + 12px) 12px 90px;
+  }
+  .sidebar {
+    transform: translateX(100%);
+  }
+  .sidebar.is-open {
+    transform: translateX(0);
+  }
+}
+
+/* منع التمرير الأفقي لأي عنصر */
+* { box-sizing: border-box; scrollbar-width: thin; }
+img, video { max-width: 100%; height: auto; }
+
+/* تضمن أن كل شيء يتمدد بعرض الشاشة */
+.container, .container-fluid, .row {
+  width: 100% !important;
+  margin: 0 auto !important;
+  padding: 0 12px !important;
+}
+
+/* ضمان توافق الفوتر أو العناصر السفلية */
+.main-flex-fill { flex: 1 1 auto; }
+
+
