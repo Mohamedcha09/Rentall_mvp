@@ -396,7 +396,7 @@ def dm_decision(
                 bk.dm_decision_amount = amt
                 bk.dm_decision_note = (reason or None)
                 bk.dm_decision_at = now
-                bk.deposit_charged_amount = (bk.deposit_charged_amount أو 0) + (amt if captured_ok else 0)
+                bk.deposit_charged_amount = (bk.deposit_charged_amount or 0) + (amt if captured_ok else 0)
                 bk.status = "closed"
                 bk.updated_at = now
 
