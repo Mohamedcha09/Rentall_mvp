@@ -85,11 +85,12 @@
       /* ========= [جديد] زر ☰ والقائمة المنسدلة (سطح المكتب فقط) ========= */
       @media (min-width: 992px){
         .topbar__inner{ position:relative; }
-        /* إخفاء السايدبار ومساحة الصفحة على سطح المكتب فقط */
+
+        /* (1) إخفاء السايدبار على سطح المكتب فقط — يبقى في الـ DOM */
         .sidebar{ display:none !important; }
         .page{ margin-inline: 0 !important; }
 
-        /* زر الهامبورغر */
+        /* (2) زر الهامبورغر */
         .hamburger-btn{
           display:inline-flex; align-items:center; justify-content:center;
           border:0; background:transparent; font-size:24px; line-height:1;
@@ -99,7 +100,7 @@
           background: color-mix(in oklab, var(--text, #fff) 8%, transparent);
         }
 
-        /* القائمة العلوية الصغيرة */
+        /* (3) القائمة العلوية الصغيرة */
         .topmenu{
           position:absolute; inset-inline-start:14px; top:calc(100% + 8px);
           min-width:260px;
@@ -122,7 +123,7 @@
         }
       }
 
-      /* نبقي تعريفات قديمة خاصة بأزرار/صور في الزر السابق (لن تُستخدم الآن) */
+      /* تعريفات قديمة لزر السايدبار (مُعطّل الآن لكن أبقيناه) */
       #sidebarToggle .topbar-ok{ width:24px; height:24px; display:block; }
       #sidebarToggle{ border:0; }
 
@@ -289,7 +290,7 @@
     </header>
     <!-- /Topbar -->
 
-    <!-- ===== Sidebar ===== -->
+    <!-- ===== Sidebar (يبقى في الـ DOM لكن مخفي على سطح المكتب عبر CSS) ===== -->
     <aside class="sidebar" id="appSidebar" data-collapsed="false">
       <nav class="sidebar__nav">
         <a class="side-link {% if request and request.url.path == '/' %}is-active{% endif %}" href="/" data-tooltip="الرئيسية">
@@ -499,7 +500,7 @@
       function show(){ panel.classList.remove('d-none'); }
       function esc(s){
         return String(s||"").replace(/[&<>"']/g, function(c){
-          return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+          return {"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;","'":"&#39;"}[c];
         });
       }
 
@@ -532,7 +533,7 @@
 
         if (items.length){
           html.push('<div class="typeahead-group">عناصر</div>');
-          items.forEach(function(it){
+        items.forEach(function(it){
             var city = it.city ? ' — <span class="k">'+esc(it.city)+'</span>' : '';
             html.push('<div class="typeahead-item" data-url="'+it.url+'"><i class="bi bi-box-seam"></i><div class="flex-grow-1"><div>'+esc(it.title)+city+'</div><div class="k">تفاصيل العنصر</div></div></div>');
           });
@@ -600,7 +601,7 @@
         else{ countEl.textContent = ''; countEl.style.display = 'none'; pingEl.style.display = 'none'; }
       }
 
-      function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+      function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;","'":"&#39;"}[c]);}
 
       // نحاول أول مسار يشتغل عندك (بدون تعديل الباك)
       const FEEDS = [
@@ -725,9 +726,11 @@
       function showDM(){ ensureSidebarLink(); ensureMobileTab(); }
       function hideDM(){ removeSidebarLink(); removeMobileTab(); }
 
+      // تهيئة مبدئية من السيرفر فقط
       var canDM = (document.body.dataset.canDm === '1');
       if (canDM) { showDM(); } else { hideDM(); }
 
+      // راقب نص الإشعار المفتوح (اختياري)
       const notifBody = document.getElementById('notifBody');
       if (notifBody){
         const rxGrant  = /تم\s+منحك?\s+دور\s+متحكّم\s+الوديعة/i;
@@ -767,9 +770,15 @@
           .catch(()=>{});
       }
 
+      // فحص أوّلي
       syncFromMe();
-      document.addEventListener('unread:changed', () => { syncFromMe(); });
 
+      // عند تغيّر عدّاد الإشعارات (حدث يُطلقه notifSystem)
+      document.addEventListener('unread:changed', () => {
+        syncFromMe();
+      });
+
+      // شبكة أمان خلال أول دقيقتين
       let checks = 0;
       const timer = setInterval(() => {
         checks += 1;
