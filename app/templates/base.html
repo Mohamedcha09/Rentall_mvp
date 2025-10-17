@@ -28,27 +28,21 @@
       .typeahead-item:hover, .typeahead-item.active{ background: rgba(124,92,255,.12); }
       .typeahead-item .k{ opacity:.65; font-size:.85em }
 
-      /* ===== عام ===== */
+      /* عام للأزرار الصورية أعلى */
       .actions .btn-plain{
         border:0 !important; background:transparent !important; box-shadow:none !important;
         padding:.2rem .35rem !important; line-height:1;
       }
-      .icon-img{ width:24px; height:24px; display:block; }
       .btn-plain:hover{ transform:translateY(-1px); }
 
+      /* تحسين شكل حقل البحث */
       .topbar .search .search__input{
-        height:44px !important; border-radius:999px !important; border:0 !important;
-        background:#f4f6fb !important; color:#3b4152 !important;
+        height:44px; border-radius:999px; border:1px solid var(--border);
+        background:rgba(255,255,255,.08); color:var(--text);
       }
-      body[data-theme="dark"] .topbar .search .search__input{
-        background:rgba(255,255,255,.08) !important;
-        border:1px solid var(--border) !important; color:var(--text) !important;
-      }
-      .topbar .search .search__icon{ inset-inline-start:16px !important; opacity:.6 !important; font-size:1.05rem; }
-      .topbar .search .search__input::placeholder{ font-size:1.05rem; letter-spacing:.2px; color:#8b95a7; }
-      body[data-theme="dark"] .topbar .search .search__input::placeholder{ color: color-mix(in oklab, var(--text) 60%, transparent); }
+      .topbar .search .search__icon{ inset-inline-start:16px; opacity:.6; font-size:1.05rem; }
 
-      /* إشعار الجرس */
+      /* إشعار الجرس (عداد + نقطة) */
       #notifOpen{ position: relative; }
       #notifOpen .notif-count{
         position:absolute; top:-6px; inset-inline-end:-6px;
@@ -60,6 +54,7 @@
         background:#d43aff; border-radius:50%; box-shadow: 0 0 0 6px rgba(212,58,255,.18);
       }
 
+      /* لوحة الإشعارات الجانبية */
       .notif-panel{
         position: fixed; top:0; inset-inline-end:-420px; width:360px; max-width:88vw; height:100vh;
         background: var(--panel); color: var(--text);
@@ -78,16 +73,11 @@
       .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2s; }
       .scrim.is-show{ opacity:1; pointer-events:auto; }
 
-      /* ===== الشعار وأزرار أعلى ===== */
+      /* شعار */
       .brand-logo{ height:56px; vertical-align:middle }
       @media (max-width:768px){ .brand-logo{ height:40px } }
-      #sidebarToggle .topbar-ok{ width:24px; height:24px; display:block; }
-      #sidebarToggle{ border:0; }
 
-      /* ===== الشريط الجانبي (أيقونات صور) ===== */
-      .side-link .side-icon{ width:22px; height:22px; object-fit:contain }
-
-      /* ===== تبويب الجوال (الأسفل) ===== */
+      /* تبويب الجوال (الأسفل) */
       @media (max-width: 768px){
         .mobile-tabbar{
           position: fixed; inset-inline: 0; bottom: 0; height: 64px;
@@ -108,119 +98,54 @@
         .page{ padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
       }
 
-      @media (max-width:768px){
-        .actions .dropdown:first-of-type{ display:none !important; } /* منيو إنشاء فقط */
-      }
-
+      /* إزالة أي ظل/حدود افتراضية للترويسة */
       .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important; }
     </style>
 
     {% block head %}{% endblock %}
   </head>
 
-  <!-- data-can-dm من السيرفر -->
+  <!-- ملاحظة: سنجعل الثيم نهاري من الـ CSS الخارجي لاحقًا -->
   <body class="theme" data-theme="dark"
         data-can-dm="{{ 1 if session_user and (session_user.can_manage_deposits or session_user.is_deposit_manager or ((session_user.role or '')|lower == 'admin')) else 0 }}">
 
     <div id="page-wrapper"><!-- غلاف ملء الشاشة -->
 
-    <!-- ===== Topbar ===== -->
+    <!-- ===== Topbar (Airbnb-like على الديسكتوب) ===== -->
     <header class="topbar">
       <div class="topbar__inner container-fluid">
 
-        <!-- زر المربّع -->
-        <button class="btn btn-ghost btn-sm" id="sidebarToggle" aria-label="Toggle sidebar">
-          <img class="topbar-ok" src="{{ url_for('static', path='images/ok.png') }}" alt="OK">
+        <!-- زر ثلاثة خطوط: يفتح قائمة Offcanvas -->
+        <button class="btn btn-ghost btn-sm" type="button"
+                data-bs-toggle="offcanvas" data-bs-target="#mainMenu"
+                aria-controls="mainMenu" aria-label="القائمة">
+          <i class="bi bi-list" style="font-size:1.6rem"></i>
         </button>
 
-        <!-- الشعار -->
-        <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/">
-          <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR">
-          <span class="visually-hidden">SEVOR</span>
-        </a>
-
-        <!-- البحث -->
-        <form class="search flex-grow-1" action="/search" method="get" role="search" style="max-width:760px">
+        <!-- البحث في الوسط -->
+        <form class="search flex-grow-1" action="/search" method="get" role="search">
           <i class="bi bi-search search__icon"></i>
-          <input class="form-control form-control-sm search__input" type="search" name="q"
-                 placeholder="ابحث عن عنصر أو مستخدم…" value="{{ request.query_params.get('q','') if request else '' }}">
+          <input class="form-control search__input" type="search" name="q"
+                 placeholder="إلى أين؟ • متى؟ • من؟"
+                 value="{{ request.query_params.get('q','') if request else '' }}">
         </form>
         <div id="typeaheadPanel" class="typeahead d-none"></div>
 
+        <!-- أيقونات مختصرة -->
         <div class="actions d-flex align-items-center gap-2">
-          <a href="/messages" class="btn-plain btn-messages" title="الرسائل">
-            <img class="icon-img" src="/static/img/msg.png" alt="Messages">
+          <a href="/messages" class="btn btn-ghost btn-sm btn-icon msg-icon" title="الرسائل">
+            <i class="bi bi-chat-dots"></i>
           </a>
-
-          {% if session_user %}
-          <a href="/favorites" class="btn-plain" title="مفضلتي">
-            <i class="bi bi-heart-fill" style="font-size:20px; color:#a944ec;"></i>
-          </a>
-          {% endif %}
-
           {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
-          <button class="btn-plain position-relative" id="notifOpen" title="الإشعارات">
-            <img class="icon-img" src="/static/img/notfi.png" alt="Notifications">
+          <button class="btn btn-ghost btn-sm btn-icon notif-icon" id="notifOpen" title="الإشعارات">
+            <i class="bi bi-bell"></i>
             {% if unread > 0 %}
               <span class="notif-ping"></span>
               <span class="notif-count">{{ unread if unread < 100 else '99+' }}</span>
             {% endif %}
           </button>
 
-          <!-- إنشاء -->
-          <div class="dropdown">
-            <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown">
-              <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">إنشاء</span>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="/owner/items/new"><i class="bi bi-box"></i> عنصر جديد</a></li>
-              <li><a class="dropdown-item" href="/messages"><i class="bi bi-chat-left-text"></i> رسالة</a></li>
-            </ul>
-          </div>
-
-          <!-- تبديل الثيم -->
-          <button class="btn btn-ghost btn-sm" id="themeToggle" title="تبديل الثيم">
-            <i class="bi bi-sun-fill d-none" id="sunIcon"></i>
-            <i class="bi bi-moon-stars-fill" id="moonIcon"></i>
-          </button>
-
-          <!-- اللغة -->
-          <div class="dropdown lang-switch">
-            <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="اللغة">
-              <i class="bi bi-globe2"></i>
-              <span class="d-none d-sm-inline">{{ current_lang()|upper if current_lang else 'AR' }}</span>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item d-flex align-items-center" href="/lang/ar">العربية</a></li>
-              <li><a class="dropdown-item d-flex align-items-center" href="/lang/en">English</a></li>
-              <li><a class="dropdown-item d-flex align-items-center" href="/lang/fr">Français</a></li>
-            </ul>
-          </div>
-
-          <!-- الحساب -->
-          {% if session_user %}
-            <div class="dropdown">
-              <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
-                <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
-                <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
-                {% if session_user.status == 'approved' %}
-                  <i class="bi bi-patch-check-fill verify" title="موثّق"></i>
-                {% endif %}
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> صفحتي</a></li>
-                <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
-                <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a></li>
-                <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a></li>
-                {% if session_user.role == 'admin' %}
-                  <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a></li>
-                {% endif %}
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right"></i> خروج</a></li>
-              </ul>
-            </div>
-          {% else %}
+          {% if not session_user %}
             <a class="btn btn-ghost btn-sm" href="/login">دخول</a>
             <a class="btn btn-primary btn-sm" href="/register">تسجيل</a>
           {% endif %}
@@ -229,7 +154,39 @@
     </header>
     <!-- /Topbar -->
 
-    <!-- ===== Sidebar ===== -->
+    <!-- ===== Offcanvas Menu (بديل السايدبار) ===== -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="mainMenu" aria-labelledby="mainMenuLabel">
+      <div class="offcanvas-header">
+        <h5 id="mainMenuLabel" class="mb-0">القائمة</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="إغلاق"></button>
+      </div>
+      <div class="offcanvas-body d-flex flex-column gap-2">
+        <a class="btn btn-ghost text-start" href="/"><i class="bi bi-house-door me-2"></i> الرئيسية</a>
+        <a class="btn btn-ghost text-start" href="/items"><i class="bi bi-grid-3x3-gap me-2"></i> كل العناصر</a>
+
+        {% if session_user %}
+          <a class="btn btn-ghost text-start" href="/favorites"><i class="bi bi-heart me-2"></i> مفضلتي</a>
+          <a class="btn btn-ghost text-start" href="/profile"><i class="bi bi-person-circle me-2"></i> صفحتي</a>
+          <a class="btn btn-ghost text-start" href="/owner/items"><i class="bi bi-collection me-2"></i> أشيائي</a>
+          <a class="btn btn-ghost text-start" href="/bookings"><i class="bi bi-calendar2-check me-2"></i> حجوزاتي</a>
+          <a class="btn btn-ghost text-start" href="/payout/settings"><i class="bi bi-cash-stack me-2"></i> التحويلات</a>
+
+          {% if session_user.role == 'admin' %}
+            <hr class="my-2">
+            <a class="btn btn-ghost text-start" href="/admin"><i class="bi bi-speedometer2 me-2"></i> لوحة الأدمين</a>
+          {% endif %}
+
+          <hr class="my-2">
+          <a class="btn btn-ghost text-start text-danger" href="/logout"><i class="bi bi-box-arrow-right me-2"></i> خروج</a>
+        {% else %}
+          <hr class="my-2">
+          <a class="btn btn-ghost text-start" href="/login"><i class="bi bi-box-arrow-in-right me-2"></i> دخول</a>
+          <a class="btn btn-primary text-start" href="/register"><i class="bi bi-person-plus me-2"></i> إنشاء حساب</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ===== Sidebar الأصلي (لن نلمسه – سيُخفى على الديسكتوب من CSS الخارجي) ===== -->
     <aside class="sidebar" id="appSidebar" data-collapsed="false">
       <nav class="sidebar__nav">
         <a class="side-link {% if request and request.url.path == '/' %}is-active{% endif %}" href="/" data-tooltip="الرئيسية">
@@ -341,71 +298,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     {% block scripts %}{% endblock %}
 
-    <script>
-      // Sidebar open/collapse
-      const sidebar   = document.getElementById('appSidebar');
-      const pinBtn    = document.getElementById('pinSidebar');
-      const toggleBtn = document.getElementById('sidebarToggle');
-      const saved     = localStorage.getItem('sidebar_collapsed');
-      if (saved === 'true') collapseSidebar(true);
-
-      toggleBtn?.addEventListener('click', () => {
-        if (window.matchMedia('(max-width: 991.98px)').matches) {
-          sidebar.classList.toggle('is-open');
-          document.getElementById('scrim').classList.toggle('is-show', sidebar.classList.contains('is-open'));
-        } else {
-          collapseSidebar(sidebar.dataset.collapsed !== 'true');
-        }
-      });
-      pinBtn?.addEventListener('click', () => collapseSidebar(sidebar.dataset.collapsed !== 'true'));
-
-      function collapseSidebar(yes){
-        if (yes){
-          sidebar.dataset.collapsed = 'true';
-          document.documentElement.style.setProperty('--sidebar-w', '84px');
-          localStorage.setItem('sidebar_collapsed','true');
-        }else{
-          sidebar.dataset.collapsed = 'false';
-          document.documentElement.style.setProperty('--sidebar-w', '268px');
-          localStorage.setItem('sidebar_collapsed','false');
-        }
-      }
-
-      // Theme toggle
-      const themeToggle = document.getElementById('themeToggle');
-      const sunIcon = document.getElementById('sunIcon');
-      const moonIcon = document.getElementById('moonIcon');
-      const savedTheme = localStorage.getItem('theme_mode');
-      if (savedTheme) setTheme(savedTheme);
-
-      themeToggle?.addEventListener('click', () => {
-        const current = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
-        setTheme(current);
-      });
-
-      function setTheme(mode){
-        document.body.dataset.theme = mode;
-        localStorage.setItem('theme_mode', mode);
-        const dark = mode === 'dark';
-        sunIcon.classList.toggle('d-none', !dark);
-        moonIcon.classList.toggle('d-none', dark);
-      }
-
-      // Notif panel
-      const notifOpen  = document.getElementById('notifOpen');
-      const notifClose = document.getElementById('notifClose');
-      const panel      = document.getElementById('notifPanel');
-      const body       = document.getElementById('notifBody');
-      const scrim      = document.getElementById('scrim');
-
-      function openPanel(){ panel?.classList.add('is-open'); scrim?.classList.add('is-show'); }
-      function closePanel(){ panel?.classList.remove('is-open'); scrim?.classList.remove('is-show'); }
-      notifOpen?.addEventListener('click', openPanel);
-      notifClose?.addEventListener('click', closePanel);
-      scrim?.addEventListener('click', closePanel);
-    </script>
-
-    <!-- Typeahead -->
+    <!-- Typeahead (كما هو عندك) -->
     <script>
 (function initTypeahead(){
   if (window.__typeaheadInit) return;
@@ -523,32 +416,22 @@
     else{ countEl.textContent = ''; countEl.style.display = 'none'; pingEl.style.display = 'none'; }
   }
 
-  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]);}
 
-  // نحاول أول مسار يشتغل عندك (بدون تعديل الباك)
-  const FEEDS = [
-    '/api/notifications/poll',
-    '/api/notifications',          // إن كان عندك هذا
-    '/notifications/json'          // احتياطي
-  ];
+  const FEEDS = ['/api/notifications/poll','/api/notifications','/notifications/json'];
 
   async function fetchFirst(urls){
     for (const u of urls){
       try{
         const r = await fetch(u, {credentials:'include'});
-        if (r.ok){
-          const data = await r.json();
-          return {data, url:u};
-        }
+        if (r.ok){ const data = await r.json(); return {data, url:u}; }
       }catch(_){}
     }
     return {data:null, url:null};
   }
 
-  // توحيد المخرجات لأبسط شكل
   function normalize(data){
     const items = (data && (data.items || data.notifications || data)) || [];
-    // بعض الواجهات ترجع {items: [...], unread: n}
     const unread = Number(data && (data.unread ?? data.count ?? 0)) || 0;
     return {
       unread,
@@ -572,15 +455,11 @@
     list.items.forEach(n=>{
       const a = document.createElement('a');
       a.className='notif-row'; a.href=n.link||'#';
-      a.innerHTML = `
-        <div class="fw-bold">${esc(n.title)}</div>
-        ${n.meta ? `<div class="k small">${esc(n.meta)}</div>` : ''}
-      `;
+      a.innerHTML = `<div class="fw-bold">${esc(n.title)}</div>${n.meta ? `<div class="k small">${esc(n.meta)}</div>` : ''}`;
       body.appendChild(a);
     });
   }
 
-  // جلب العدد بشكل دوري
   let prevCount = -1;
   function refreshUnread(){
     fetch('/api/unread_count', {credentials:'include'})
@@ -598,33 +477,27 @@
   refreshUnread();
   setInterval(refreshUnread, 30*1000);
 
-  // فتح/غلق اللوحة
-  function openPanel(){ panel?.classList.add('is-open'); scrim?.classList.add('is-show'); loadPanel(); }
+  function openPanel(){ panel?.classList.add('is-open'); scrim?.classList.add('is-show'); }
   function closePanel(){ panel?.classList.remove('is-open'); scrim?.classList.remove('is-show'); }
   notifOpen?.addEventListener('click', openPanel);
   notifClose?.addEventListener('click', closePanel);
   scrim?.addEventListener('click', closePanel);
 
-  // تحميل الإشعارات عند الفتح
   async function loadPanel(){
-    body.innerHTML = '<div class="small text-muted">جارِ التحميل…</div>';
     const {data} = await fetchFirst(FEEDS);
     const norm = normalize(data||{});
     renderList(norm);
-
-    // إذا رجعت الواجهة عدد unread حدّث الجرس
     if (typeof norm.unread === 'number') setBell(norm.unread);
-
-    // محاولة وضعها كمقروء (اختياري، نتجاهل الفشل)
     try{
       await fetch('/api/notifications/mark_all_read', {method:'POST', credentials:'include'});
       setTimeout(refreshUnread, 800);
     }catch(_){}
   }
+  notifOpen?.addEventListener('click', loadPanel);
 })();
-</script>
+    </script>
 
-    <!-- ====== سكربت إظهار/إخفاء رابط قضايا الوديعة (بدون localStorage) ====== -->
+    <!-- سكربت إظهار/إخفاء رابط قضايا الوديعة (كما هو) -->
     <script>
 (function () {
   function ensureSidebarLink(){
@@ -653,15 +526,12 @@
   function removeMobileTab(){
     const el = document.querySelector('.mobile-tabbar [data-nav="dm-mobile"]'); if (el) el.remove();
   }
-
   function showDM(){ ensureSidebarLink(); ensureMobileTab(); }
   function hideDM(){ removeSidebarLink(); removeMobileTab(); }
 
-  // تهيئة مبدئية من السيرفر فقط
   var canDM = (document.body.dataset.canDm === '1');
   if (canDM) { showDM(); } else { hideDM(); }
 
-  // راقب نص الإشعار المفتوح (اختياري)
   const notifBody = document.getElementById('notifBody');
   if (notifBody){
     const rxGrant  = /تم\s+منحك?\s+دور\s+متحكّم\s+الوديعة/i;
@@ -683,39 +553,6 @@
 
   window.showDM = showDM;
   window.hideDM = hideDM;
-})();
-    </script>
-
-    <!-- سكربت مزامنة صلاحية MD من السيرفر فقط -->
-    <script>
-(function roleAutoToggle(){
-  if (window.__dmSyncInit) return; window.__dmSyncInit = true;
-
-  function syncFromMe(){
-    return fetch('/api/me', {credentials:'include'})
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(data => {
-        const flag = !!(data && (data.can_manage_deposits || data.is_deposit_manager || data.canDM));
-        if (flag) { showDM(); } else { hideDM(); }
-      })
-      .catch(()=>{});
-  }
-
-  // فحص أوّلي
-  syncFromMe();
-
-  // عند تغيّر عدّاد الإشعارات (حدث يُطلقه notifSystem)
-  document.addEventListener('unread:changed', () => {
-    syncFromMe();
-  });
-
-  // شبكة أمان خلال أول دقيقتين
-  let checks = 0;
-  const timer = setInterval(() => {
-    checks += 1;
-    syncFromMe();
-    if (checks >= 8) clearInterval(timer);
-  }, 15000);
 })();
     </script>
 
