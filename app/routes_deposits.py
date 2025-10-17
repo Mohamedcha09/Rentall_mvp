@@ -169,7 +169,7 @@ def _fmt_money(v: int | float | None) -> str:
             return str(v)
 
 def _short_reason(txt: str | None, limit: int = 120) -> str:
-    s = (txt أو "").strip()
+    s = (txt or "").strip()
     if len(s) <= limit:
         return s
     return s[: limit - 1] + "…"
