@@ -18,8 +18,8 @@ except Exception:
 # ======= Email System =======
 from .email_service import send_email
 
-# ===== تواقيع رابط التفعيل =====
-from itsdangerous import URLSafeTimedSerializer
+# ===== روابط موقّعة =====
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
 
@@ -54,6 +54,12 @@ def _save_any(fileobj: UploadFile | None, folder: str, allow_exts: list[str]) ->
 def _signer() -> URLSafeTimedSerializer:
     secret = os.getenv("SECRET_KEY", "dev-secret")
     return URLSafeTimedSerializer(secret_key=secret, salt="email-verify-v1")
+
+# ✅ مُوقّع خاص بإعادة التعيين (ملح مختلف)
+def _pwd_signer() -> URLSafeTimedSerializer:
+    secret = os.getenv("SECRET_KEY", "dev-secret")
+    return URLSafeTimedSerializer(secret_key=secret, salt="pwd-reset-v1")
+
 
 # ============ Login ============
 @router.get("/login")
@@ -95,6 +101,7 @@ def login_post(
         "avatar_path": user.avatar_path or None,
     }
     return RedirectResponse(url="/", status_code=303)
+
 
 # ============ Register ============
 @router.get("/register")
@@ -194,7 +201,6 @@ def register_post(
         year = datetime.utcnow().year
         subj = "Activate your account — RentAll"
 
-        # ✅ زر <a> فقط + ستايل inline + لا توجد عناصر تغطيه
         html = f"""<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
@@ -218,36 +224,22 @@ def register_post(
               <p style="margin:0 0 16px 0;font-size:15px;line-height:1.8;color:#cdd7ee;">
                 شكرًا لتسجيلك في <b>RentAll</b>. لتأمين حسابك والبدء، اضغط على الزر أدناه لتفعيل بريدك الإلكتروني:
               </p>
-
-              <!-- زر Bulletproof -->
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:18px auto;">
                 <tr>
                   <td align="center" bgcolor="#2563eb" style="border-radius:12px;">
-                    <!--[if mso]>
-                    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{verify_url}" style="height:48px;v-text-anchor:middle;width:240px;" arcsize="16%" strokecolor="#2563eb" fillcolor="#2563eb">
-                      <w:anchorlock/>
-                      <center style="color:#ffffff;font-family:Arial,'Segoe UI',sans-serif;font-size:18px;font-weight:700;">
-                        تفعيل الحساب
-                      </center>
-                    </v:roundrect>
-                    <![endif]-->
-                    <!--[if !mso]><!-- -->
                     <a href="{verify_url}" target="_blank"
                        style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;
                               font-weight:700;font-size:18px;line-height:48px;border-radius:12px;
                               padding:0 26px;min-width:200px;text-align:center;cursor:pointer;">
                       تفعيل الحساب
                     </a>
-                    <!--<![endif]-->
                   </td>
                 </tr>
               </table>
-
               <p style="margin:22px 0 6px 0;font-size:14px;color:#93a4c9;">إن لم يعمل الزر، انسخ وافتح هذا الرابط:</p>
               <p dir="ltr" style="margin:0 0 16px 0;font-size:14px;word-break:break-all;">
                 <a href="{verify_url}" style="color:#60a5fa;text-decoration:underline;" target="_blank">{verify_url}</a>
               </p>
-
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
                      style="background:#0f172a;border:1px dashed #223049;border-radius:12px;">
                 <tr><td style="padding:12px 14px;">
@@ -256,13 +248,12 @@ def register_post(
                   </p>
                 </td></tr>
               </table>
-
               <p style="margin:16px 0 4px 0;font-size:12px;color:#7f8db0;">إذا لم تقم بإنشاء هذا الحساب، تجاهل هذه الرسالة.</p>
             </td>
           </tr>
           <tr>
             <td style="padding:14px 22px;background:#0b1220;color:#94a3b8;font-size:11px;text-align:center;">
-              © {year} RentAll
+              ©️ {year} RentAll
             </td>
           </tr>
         </table>
@@ -280,6 +271,7 @@ def register_post(
     # ✅ نرسل لصفحة التحقق من البريد
     return RedirectResponse(url=f"/verify-email?email={u.email}&sent=1", status_code=303)
 
+
 # ============ Email Verify Wall ============
 @router.get("/verify-email")
 def verify_email_page(request: Request, email: str = ""):
@@ -296,6 +288,154 @@ def verify_email_page(request: Request, email: str = ""):
             "session_user": request.session.get("user"),
         },
     )
+
+
+# ============ Password Reset (2) ============
+# 1) صفحة طلب الإيميل
+@router.get("/forgot")
+def forgot_get(request: Request):
+    return request.app.templates.TemplateResponse(
+        "auth_forgot.html",
+        {"request": request, "title": "إعادة تعيين كلمة المرور", "session_user": request.session.get("user")}
+    )
+
+# 2) استلام الإيميل وإرسال رابط إعادة التعيين
+@router.post("/forgot")
+def forgot_post(request: Request, db: Session = Depends(get_db), email: str = Form(...)):
+    email = (email or "").strip().lower()
+    user = db.query(User).filter(User.email == email).first()
+
+    # نُظهر دائمًا نفس الرسالة (لأمان الخصوصية) حتى لو الإيميل غير موجود
+    msg = "إن وُجد حساب مطابق، سنرسل رابط إعادة تعيين كلمة المرور إلى بريدك إن شاء الله."
+
+    try:
+        if user:
+            s = _pwd_signer()
+            token = s.dumps({"uid": user.id, "email": user.email})
+            reset_url = f"{BASE_URL}/reset-password?token={token}"
+            year = datetime.utcnow().year
+            subj = "Reset your password — RentAll"
+
+            html = f"""<!doctype html>
+<html lang="ar" dir="rtl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>إعادة تعيين كلمة المرور</title></head>
+<body style="margin:0;padding:0;background:#0f172a;color:#eaf0ff;font-family:Arial,'Segoe UI',Tahoma,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#0f172a;">
+    <tr><td align="center" style="padding:24px 12px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#111827;border:1px solid #223049;border-radius:16px;overflow:hidden;">
+        <tr>
+          <td style="padding:20px 22px;background:#0f172a;border-bottom:1px solid #223049;">
+            <span style="display:inline-block;background:rgba(124,92,255,.15);border:1px solid rgba(124,92,255,.35);color:#d8cfff;padding:6px 10px;border-radius:999px;font-size:13px;">إعادة تعيين كلمة المرور</span>
+          </td>
+        </tr>
+        <tr><td style="padding:22px;">
+          <p style="margin:0 0 10px 0;color:#cdd7ee">لقد طُلِب إعادة تعيين كلمة المرور لحسابك على <b>RentAll</b>.</p>
+          <p style="margin:0 0 14px 0;color:#cdd7ee">اضغط الزر أدناه وأدخل كلمة مرور جديدة:</p>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:18px auto;">
+            <tr><td bgcolor="#7c5cff" style="border-radius:12px;">
+              <a href="{reset_url}" target="_blank"
+                 style="display:inline-block;background:#7c5cff;color:#ffffff;text-decoration:none;font-weight:700;
+                        font-size:18px;line-height:48px;border-radius:12px;padding:0 26px;min-width:220px;text-align:center;">
+                إعادة التعيين الآن
+              </a>
+            </td></tr>
+          </table>
+          <p style="margin:18px 0 6px 0;font-size:14px;color:#93a4c9;">إن لم يعمل الزر، استخدم الرابط التالي:</p>
+          <p dir="ltr" style="margin:0 0 10px 0;word-break:break-all;">
+            <a href="{reset_url}" style="color:#bda7ff;text-decoration:underline" target="_blank">{reset_url}</a>
+          </p>
+          <p style="margin:12px 0 0 0;font-size:12px;color:#7f8db0;">يتنهي صلاحية هذا الرابط بعد ساعتين.</p>
+        </td></tr>
+        <tr><td style="padding:14px 22px;background:#0b1220;color:#94a3b8;font-size:11px;text-align:center;">© {year} RentAll</td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+            text = f"إعادة تعيين كلمة المرور:\n{reset_url}\n(الرابط صالح لساعتين)"
+            send_email(user.email, subj, html, text_body=text)
+    except Exception:
+        pass
+
+    return request.app.templates.TemplateResponse(
+        "auth_forgot.html",
+        {"request": request, "title": "إعادة تعيين كلمة المرور", "info": msg, "session_user": request.session.get("user")}
+    )
+
+# 3) صفحة إدخال كلمة مرور جديدة (من خلال الرابط)
+@router.get("/reset-password")
+def reset_get(request: Request, token: str = ""):
+    if not token:
+        return RedirectResponse(url="/forgot", status_code=303)
+    # ما نتحقق من التوقيع هنا؛ نتحقق فعليًا عند POST (لتحديد المدة)
+    return request.app.templates.TemplateResponse(
+        "auth_reset_password.html",
+        {"request": request, "title": "تعيين كلمة مرور جديدة", "token": token, "session_user": request.session.get("user")}
+    )
+
+# 4) حفظ كلمة المرور الجديدة
+@router.post("/reset-password")
+def reset_post(
+    request: Request,
+    db: Session = Depends(get_db),
+    token: str = Form(...),
+    password: str = Form(...),
+    confirm: str = Form(...),
+):
+    password = _normalize_form_password(password or "")
+    confirm  = _normalize_form_password(confirm or "")
+
+    if (not password) or (password != confirm):
+        return request.app.templates.TemplateResponse(
+            "auth_reset_password.html",
+            {
+                "request": request,
+                "title": "تعيين كلمة مرور جديدة",
+                "token": token,
+                "error": "كلمتا المرور غير متطابقتين.",
+                "session_user": request.session.get("user"),
+            },
+        )
+
+    # تحقق/فك التوقيع — صلاحية ساعتين
+    try:
+        data = _pwd_signer().loads(token, max_age=2*60*60)
+        uid = int(data.get("uid", 0))
+        email = (data.get("email") or "").strip().lower()
+    except SignatureExpired:
+        return request.app.templates.TemplateResponse(
+            "auth_reset_password.html",
+            {"request": request, "title": "تعيين كلمة مرور جديدة", "error": "انتهت صلاحية الرابط. اطلب رابطًا جديدًا.", "token": "", "session_user": request.session.get("user")},
+        )
+    except BadSignature:
+        return request.app.templates.TemplateResponse(
+            "auth_reset_password.html",
+            {"request": request, "title": "تعيين كلمة مرور جديدة", "error": "رابط غير صالح.", "token": "", "session_user": request.session.get("user")},
+        )
+
+    user = db.query(User).filter(User.id == uid, User.email == email).first()
+    if not user:
+        return request.app.templates.TemplateResponse(
+            "auth_reset_password.html",
+            {"request": request, "title": "تعيين كلمة مرور جديدة", "error": "الحساب غير موجود.", "token": "", "session_user": request.session.get("user")},
+        )
+
+    # حدّث كلمة السر
+    user.password_hash = hash_password(password)
+    db.add(user)
+    db.commit()
+
+    # (اختياري) إشعار داخلي
+    try:
+        if 'push_notification' in globals():
+            push_notification(user_id=user.id, title="تم تغيير كلمة المرور", body="تم تحديث كلمة مرور حسابك بنجاح.")
+    except Exception:
+        pass
+
+    # أعد توجيه للمسج + صفحة الدخول
+    return RedirectResponse(url="/login?reset_ok=1", status_code=303)
+
 
 # ============ Logout ============
 @router.get("/logout")

@@ -142,12 +142,18 @@
 
       <button type="submit" class="btn btn-primary w-100 mb-2">دخول</button>
       <a href="/register" class="btn btn-success w-100">إنشاء حساب جديد</a>
+
+      <!-- ✅ الإضافة الوحيدة: رابط نسيت كلمة المرور -->
+      <div class="text-center mt-2">
+        <a href="/forgot" class="text-muted">نسيت كلمة المرور؟</a>
+      </div>
+
       {% if request.query_params.get('err') %}
         <div class="alert alert-danger mt-3 mb-0">البريد أو كلمة المرور غير صحيحة.</div>
       {% endif %}
     </form>
 
-    <div class="small text-center text-muted mt-3">© SEVOR — كل الحقوق محفوظة</div>
+    <div class="small text-center text-muted mt-3">©️ SEVOR — كل الحقوق محفوظة</div>
   </div>
 </div>
 
