@@ -21,7 +21,7 @@
     display:flex; align-items:center; justify-content:center;
     padding: clamp(22px, 5vw, 80px);
   }
-  .hero-inner{ max-width: 860px; width:100%; }
+  .hero-inner{ max-width: 860px; width:100%; position: relative; }
   .brand-row{
     display:flex; align-items:center; gap:12px; margin-bottom: 10px;
   }
@@ -31,6 +31,18 @@
     background: linear-gradient(135deg,#6ee7f9,#7c5cff);
     -webkit-background-clip:text; background-clip:text; color: transparent;
   }
+
+  /* الصورة الإضافية */
+  .app-image {
+    position: absolute;
+    top: -40px;
+    left: -40px;
+    max-width: 260px;
+    width: 100%;
+    opacity: 0.9;
+    border-radius: 20px;
+  }
+
   .badge-soft{
     display:inline-flex; align-items:center; gap:8px;
     background: rgba(255,255,255,.06);
@@ -122,6 +134,10 @@
 <!-- عمود العرض -->
 <section class="hero">
   <div class="hero-inner">
+
+    <!-- ✅ الصورة المضافة في الأعلى اليسار -->
+    <img src="{{ url_for('static', path='images/app.png') }}" alt="App" class="app-image">
+
     <div class="brand-row">
       <img class="logo" src="{{ url_for('static', path='images/ok.png') }}" alt="SEVOR">
       <div class="name">SEVOR</div>
@@ -181,10 +197,9 @@
         <div class="form-text">يتم تشفير كلمات المرور، ونستعمل التحقق بخطوتين لمنع إساءة الاستخدام.</div>
       </div>
 
-      <!-- صورة الحساب (كاميرا أو رفع مباشر) -->
+      <!-- صورة الحساب -->
       <div class="mt-3">
         <label class="form-label">صورة الحساب (إلزامية)</label>
-
         <div class="d-flex gap-2 flex-wrap">
           <button type="button" id="openCamBtn" class="btn btn-outline-light btn-sm">تشغيل الكاميرا</button>
           <button type="button" id="snapBtn" class="btn btn-primary btn-sm" style="display:none;">التقاط</button>
@@ -198,7 +213,6 @@
           <img id="photoPreview" alt="المعاينة" style="display:none; max-width:100%; border:1px solid var(--border); border-radius:12px; margin-top:8px;">
         </div>
 
-        <!-- بديل رفع مباشر (يلزم في حال تعذّر الكاميرا) -->
         <input type="file" name="avatar" id="avatarInput" accept="image/*" required class="form-control mt-2">
         <div class="form-text">إن رغبت بالتقاط الصورة من الكاميرا، استخدم الأزرار بالأعلى.</div>
       </div>
@@ -243,10 +257,8 @@
   </div>
 </section>
 
-<!-- سكربت: زر إظهار/إخفاء كلمة السر + الكاميرا (لا يغطي الحقل) -->
 <script>
 (function(){
-  // عين كلمة السر
   const pwToggle = document.getElementById('pwToggle');
   const pwInput  = document.getElementById('pwInput');
   pwToggle?.addEventListener('click', () => {
@@ -255,7 +267,6 @@
     pwToggle.innerHTML = isPass ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
   });
 
-  // كاميرا (اختياري)
   const openCamBtn   = document.getElementById('openCamBtn');
   const snapBtn      = document.getElementById('snapBtn');
   const usePhotoBtn  = document.getElementById('usePhotoBtn');
