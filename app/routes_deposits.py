@@ -18,6 +18,7 @@ from fastapi import (
 )
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
+    # NOTE: if using SQLAlchemy 2.0+ Core text, keep import below
 from sqlalchemy import or_, text
 
 from .database import get_db, engine as _engine
@@ -43,6 +44,11 @@ def _admin_emails(db: Session) -> list[str]:
         ((User.role == "admin") | (User.is_deposit_manager == True))
     ).all()
     return [a.email for a in admins if getattr(a, "email", None)]
+
+# >>> ADDED (email): إحضار إيميلات كل DMs فقط (بدون الإداريين إن أردت الفصل)
+def _dm_emails_only(db: Session) -> list[str]:
+    dms = db.query(User).filter(User.is_deposit_manager == True).all()
+    return [u.email for u in dms if getattr(u, "email", None)]
 
 router = APIRouter(tags=["deposits"])
 
@@ -629,6 +635,7 @@ def report_deposit_issue(
 
     db.commit()
 
+    # إشعارات داخلية موجودة
     push_notification(
         db, bk.renter_id, "بلاغ وديعة جديد",
         f"قام المالك بالإبلاغ عن مشكلة ({issue_type}) بخصوص الحجز #{bk.id}.",
@@ -638,6 +645,52 @@ def report_deposit_issue(
     notify_admins(db, "مراجعة ديبو مطلوبة", f"بلاغ جديد بخصوص حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
 
     _audit(db, actor=user, bk=bk, action="owner_report_issue", details={"issue_type": issue_type, "desc": description, "files": saved})
+
+    # >>> ADDED (email): إرسال إيميلات عند البلاغ — للمستأجر + المالك (تأكيد) + الإداريين + الـDMs
+    try:
+        renter_email = _user_email(db, bk.renter_id)
+        owner_email  = _user_email(db, bk.owner_id)
+        admins_em    = _admin_emails(db)
+        dms_em       = _dm_emails_only(db)
+
+        case_url  = f"{BASE_URL}/dm/deposits/{bk.id}"
+        flow_url  = f"{BASE_URL}/bookings/flow/{bk.id}"
+
+        # للمستأجر
+        if renter_email:
+            send_email(
+                renter_email,
+                f"بلاغ وديعة جديد — #{bk.id}",
+                f"<p>قام المالك بالإبلاغ عن مشكلة (<b>{issue_type}</b>) بخصوص الحجز #{bk.id}.</p>"
+                f'<p><a href="{flow_url}">فتح تفاصيل الحجز</a></p>'
+            )
+        # للمالك (تأكيد)
+        if owner_email:
+            send_email(
+                owner_email,
+                f"تم إرسال بلاغ الوديعة — #{bk.id}",
+                f"<p>تم تقديم بلاغك ({issue_type}) بنجاح للحجز #{bk.id} وهو الآن قيد المراجعة.</p>"
+                f'<p><a href="{flow_url}">تفاصيل الحجز</a></p>'
+            )
+        # للأدمن
+        for em in admins_em:
+            send_email(
+                em,
+                f"[Admin] بلاغ وديعة جديد — #{bk.id}",
+                f"<p>بلاغ وديعة جديد من المالك بخصوص الحجز #{bk.id}.</p>"
+                f'<p><a href="{case_url}">فتح القضية</a></p>'
+            )
+        # للـDMs
+        for em in dms_em:
+            send_email(
+                em,
+                f"[DM] بلاغ وديعة جديد — #{bk.id}",
+                f"<p>بلاغ جديد بانتظار المراجعة للحجز #{bk.id}.</p>"
+                f'<p><a href="{case_url}">إدارة القضية</a></p>'
+            )
+    except Exception:
+        pass
+    # <<< END ADDED (email)
 
     return request.app.templates.TemplateResponse(
         "deposit_report_ok.html",
