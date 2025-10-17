@@ -9,7 +9,7 @@ from .database import get_db
 from .models import User, Document
 from .utils import hash_password, verify_password, MAX_FORM_PASSWORD_CHARS
 
-# (اختياري) إشعارات داخلية، نترك الاستيراد لعدم كسر الملفات الأخرى
+# (اختياري) إشعارات داخلية
 try:
     from .notifications_api import push_notification  # noqa: F401
 except Exception:
@@ -186,64 +186,90 @@ def register_post(
     db.add(d)
     db.commit()
 
-    # ===== إرسال بريد التفعيل (تصميم احترافي) =====
+    # ===== إرسال بريد التفعيل (تصميم متوافق مع الهاتف) =====
     try:
         s = _signer()
         token = s.dumps({"uid": u.id, "email": u.email})
         verify_url = f"{BASE_URL}/activate/verify?token={token}"
-        logo = f"{BASE_URL}/static/images/ok.png"
-        brand = f"{BASE_URL}/static/images/base.png"
         year = datetime.utcnow().year
-
         subj = "Activate your account — RentAll"
 
+        # ✅ زر <a> فقط + ستايل inline + لا توجد عناصر تغطيه
         html = f"""<!doctype html>
 <html lang="ar" dir="rtl">
-  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تفعيل الحساب</title></head>
-  <body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,'Segoe UI',sans-serif;">
-    <div style="display:none;max-height:0;overflow:hidden;opacity:0">فعّل حسابك لإتمام الدخول واستخدام المنصّة</div>
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b0f1a;padding:24px 12px">
-      <tr><td align="center">
-        <table role="presentation" width="640" cellspacing="0" cellpadding="0" style="width:100%;max-width:640px;background:#0f172a;border:1px solid #1f2937;border-radius:16px;overflow:hidden">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>تفعيل الحساب</title>
+</head>
+<body style="margin:0;padding:0;background:#0f172a;color:#eaf0ff;font-family:Arial,'Segoe UI',Tahoma,sans-serif;direction:rtl;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#0f172a;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#111827;border:1px solid #223049;border-radius:16px;overflow:hidden;">
           <tr>
-            <td style="padding:20px 24px;background:linear-gradient(90deg,#111827,#0b1220)">
-              <table width="100%"><tr>
-                <td align="right"><img src="{brand}" alt="اسم الموقع" style="height:22px;opacity:.95"></td>
-                <td align="left"><img src="{logo}" alt="Logo" style="height:36px;border-radius:8px"></td>
-              </tr></table>
+            <td style="padding:20px 22px;background:#0f172a;border-bottom:1px solid #223049;">
+              <span style="display:inline-block;background:rgba(37,99,235,.15);border:1px solid rgba(37,99,235,.35);color:#cfe0ff;padding:6px 10px;border-radius:999px;font-size:13px;">SEVOR • RentAll</span>
             </td>
           </tr>
-          <tr><td style="padding:28px 26px">
-            <h2 style="margin:0 0 12px;font-size:22px;color:#ffffff;">مرحبًا {first_name} 👋</h2>
-            <p style="margin:0 0 12px;line-height:1.9;color:#cbd5e1">
-              شكرًا لتسجيلك في <b style="color:#fff">RentAll</b>.
-              لتأمين حسابك والبدء، اضغط على الزر أدناه لتفعيل بريدك الإلكتروني.
-            </p>
-            <!-- Button : BEGIN -->
-            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:26px auto">
-              <tr><td bgcolor="#2563eb" style="border-radius:10px;">
-                <a href="{verify_url}" target="_blank"
-                   style="font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:16px;text-decoration:none;
-                          padding:14px 22px;display:inline-block;color:#ffffff;border-radius:10px;font-weight:700">
-                  تفعيل الحساب
-                </a>
-              </td></tr>
-            </table>
-            <!-- Button : END -->
-            <p style="margin:0 0 8px;color:#94a3b8;font-size:13px">إن لم يعمل الزر، استخدم هذا الرابط:</p>
-            <p style="margin:0 0 16px;word-break:break-all"><a href="{verify_url}" style="color:#60a5fa;text-decoration:none">{verify_url}</a></p>
-            <div style="margin-top:20px;padding:12px 14px;border:1px dashed #334155;border-radius:10px;color:#cbd5e1;font-size:13px">
-              ملاحظة: حتى بعد تفعيل البريد، يبقى زر <b>احجز الآن</b> مُعطّلًا إلى أن يراجع الأدمين صورك ووثائقك ويوافق على حسابك.
-            </div>
-          </td></tr>
-          <tr><td style="padding:18px 24px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
-            إذا لم تقم بالتسجيل، يمكنك تجاهل هذه الرسالة.
-          </td></tr>
+          <tr>
+            <td style="padding:22px;">
+              <h2 style="margin:0 0 10px 0;font-weight:800;font-size:22px;line-height:1.4;color:#eaf0ff;">مرحبًا {first_name} 👋</h2>
+              <p style="margin:0 0 16px 0;font-size:15px;line-height:1.8;color:#cdd7ee;">
+                شكرًا لتسجيلك في <b>RentAll</b>. لتأمين حسابك والبدء، اضغط على الزر أدناه لتفعيل بريدك الإلكتروني:
+              </p>
+
+              <!-- زر Bulletproof -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:18px auto;">
+                <tr>
+                  <td align="center" bgcolor="#2563eb" style="border-radius:12px;">
+                    <!--[if mso]>
+                    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{verify_url}" style="height:48px;v-text-anchor:middle;width:240px;" arcsize="16%" strokecolor="#2563eb" fillcolor="#2563eb">
+                      <w:anchorlock/>
+                      <center style="color:#ffffff;font-family:Arial,'Segoe UI',sans-serif;font-size:18px;font-weight:700;">
+                        تفعيل الحساب
+                      </center>
+                    </v:roundrect>
+                    <![endif]-->
+                    <!--[if !mso]><!-- -->
+                    <a href="{verify_url}" target="_blank"
+                       style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;
+                              font-weight:700;font-size:18px;line-height:48px;border-radius:12px;
+                              padding:0 26px;min-width:200px;text-align:center;cursor:pointer;">
+                      تفعيل الحساب
+                    </a>
+                    <!--<![endif]-->
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:22px 0 6px 0;font-size:14px;color:#93a4c9;">إن لم يعمل الزر، انسخ وافتح هذا الرابط:</p>
+              <p dir="ltr" style="margin:0 0 16px 0;font-size:14px;word-break:break-all;">
+                <a href="{verify_url}" style="color:#60a5fa;text-decoration:underline;" target="_blank">{verify_url}</a>
+              </p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
+                     style="background:#0f172a;border:1px dashed #223049;border-radius:12px;">
+                <tr><td style="padding:12px 14px;">
+                  <p style="margin:0;font-size:13px;color:#9fb0d8;">
+                    ملاحظة: حتى بعد تفعيل البريد، يبقى زر <b>احجز الآن</b> معطّلًا إلى أن يراجع الأدمين وثائقك ويوافقوا عليها.
+                  </p>
+                </td></tr>
+              </table>
+
+              <p style="margin:16px 0 4px 0;font-size:12px;color:#7f8db0;">إذا لم تقم بإنشاء هذا الحساب، تجاهل هذه الرسالة.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:14px 22px;background:#0b1220;color:#94a3b8;font-size:11px;text-align:center;">
+              © {year} RentAll
+            </td>
+          </tr>
         </table>
-        <div style="color:#64748b;font-size:11px;margin-top:12px">&copy; {year} RentAll — جميع الحقوق محفوظة</div>
-      </td></tr>
-    </table>
-  </body>
+      </td>
+    </tr>
+  </table>
+</body>
 </html>"""
 
         text = f"مرحبًا {first_name}\n\nفعّل حسابك عبر الرابط:\n{verify_url}\n\nإن لم تكن أنت، تجاهل الرسالة."
