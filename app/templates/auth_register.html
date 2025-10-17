@@ -2,13 +2,12 @@
 
 {% block head %}
 <style>
-  /* إخفاء الهيدر/السايدبار والتاب السفلي بهذه الصفحة فقط */
   .topbar, .sidebar, .mobile-tabbar { display:none !important; }
-  /* مساحة العمل فل سكرين */
-  .page{
+
+  .page {
     margin:0 !important; padding:0 !important;
-    min-height:100dvh; min-height:100svh;
-    display:grid; grid-template-columns: 1fr 640px; gap:0;
+    min-height:100dvh; display:grid;
+    grid-template-columns: 1fr 640px;
     background:
       radial-gradient(1200px 900px at 85% -10%, rgba(124,92,255,.14), transparent 45%),
       radial-gradient(900px 700px at -10% 110%, rgba(0,229,168,.08), transparent 40%),
@@ -16,12 +15,31 @@
   }
   @media (max-width: 1100px){ .page{ grid-template-columns: 1fr; } }
 
-  /* قسم العرض (يسار) */
+  /* القسم الأيسر */
   .hero{
+    position:relative;
     display:flex; align-items:center; justify-content:center;
     padding: clamp(22px, 5vw, 80px);
+    overflow:hidden;
   }
-  .hero-inner{ max-width: 860px; width:100%; position: relative; }
+  .hero-inner{ max-width: 860px; width:100%; position:relative; z-index:2; }
+
+  /* ✅ الصورة الكبيرة في الأعلى */
+  .hero::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    background: url("{{ url_for('static', path='images/app.png') }}") no-repeat center top;
+    background-size: contain;
+    width: 100%;
+    max-width: 700px;
+    height: 340px;
+    opacity: 0.95;
+    z-index: 1;
+  }
+
   .brand-row{
     display:flex; align-items:center; gap:12px; margin-bottom: 10px;
   }
@@ -30,17 +48,6 @@
     font-weight:900; letter-spacing:.3px; font-size: clamp(22px, 3.2vw, 34px);
     background: linear-gradient(135deg,#6ee7f9,#7c5cff);
     -webkit-background-clip:text; background-clip:text; color: transparent;
-  }
-
-  /* الصورة الإضافية */
-  .app-image {
-    position: absolute;
-    top: -40px;
-    left: -40px;
-    max-width: 260px;
-    width: 100%;
-    opacity: 0.9;
-    border-radius: 20px;
   }
 
   .badge-soft{
@@ -56,7 +63,6 @@
   }
   .hero p{ color: var(--muted); font-size: clamp(14px, 1.4vw, 16px); }
 
-  /* عمود النموذج (يمين) */
   .reg-col{
     display:flex; align-items:center; justify-content:center;
     padding: clamp(14px, 4vw, 32px);
@@ -85,11 +91,9 @@
     color:#b5f1c7; font-weight:700; font-size:.82rem;
   }
 
-  /* شبكة الحقول */
   .grid-2{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   @media (max-width: 640px){ .grid-2{ grid-template-columns: 1fr; } }
 
-  /* الحقول */
   .form-label{ font-weight:800; }
   .form-control, .form-select{
     height: 48px; border-radius: 14px;
@@ -102,7 +106,6 @@
   }
   .form-text{ color: var(--muted) !important; }
 
-  /* كلمة السر + زر العين — الزر لا يغطي الحقل */
   .pw-wrap{ position: relative; }
   .pw-input{ padding-inline-start: 44px !important; }
   .pw-toggle{
@@ -114,11 +117,9 @@
   }
   .pw-toggle:hover{ filter:brightness(1.04); }
 
-  /* رفع الملفات */
   .file-row{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
   @media (max-width: 640px){ .file-row{ grid-template-columns: 1fr; } }
 
-  /* أزرار */
   .btn{ border-radius: 12px; }
   .btn-primary{
     background: linear-gradient(135deg, var(--primary), var(--primary-2));
@@ -130,14 +131,8 @@
 {% endblock %}
 
 {% block content %}
-
-<!-- عمود العرض -->
 <section class="hero">
   <div class="hero-inner">
-
-    <!-- ✅ الصورة المضافة في الأعلى اليسار -->
-    <img src="{{ url_for('static', path='images/app.png') }}" alt="App" class="app-image">
-
     <div class="brand-row">
       <img class="logo" src="{{ url_for('static', path='images/ok.png') }}" alt="SEVOR">
       <div class="name">SEVOR</div>
@@ -153,17 +148,13 @@
   </div>
 </section>
 
-<!-- عمود النموذج -->
 <section class="reg-col">
   <div class="card-reg">
     <div class="head">
       <div class="title">إنشاء حساب جديد</div>
       <div class="secure"><i class="bi bi-shield-lock"></i> آمن ومشفّر</div>
     </div>
-
     <form method="post" action="/register" enctype="multipart/form-data">
-
-      <!-- الاسم واللقب -->
       <div class="grid-2">
         <div>
           <label class="form-label">الاسم</label>
@@ -175,7 +166,6 @@
         </div>
       </div>
 
-      <!-- الإيميل والهاتف -->
       <div class="grid-2 mt-3">
         <div>
           <label class="form-label">البريد الإلكتروني</label>
@@ -187,37 +177,20 @@
         </div>
       </div>
 
-      <!-- كلمة المرور -->
       <div class="mt-3">
         <label class="form-label">كلمة المرور</label>
         <div class="pw-wrap">
-          <button type="button" class="pw-toggle" id="pwToggle" aria-label="إظهار/إخفاء"><i class="bi bi-eye-slash"></i></button>
+          <button type="button" class="pw-toggle" id="pwToggle"><i class="bi bi-eye-slash"></i></button>
           <input type="password" name="password" class="form-control pw-input" id="pwInput" required>
         </div>
         <div class="form-text">يتم تشفير كلمات المرور، ونستعمل التحقق بخطوتين لمنع إساءة الاستخدام.</div>
       </div>
 
-      <!-- صورة الحساب -->
       <div class="mt-3">
         <label class="form-label">صورة الحساب (إلزامية)</label>
-        <div class="d-flex gap-2 flex-wrap">
-          <button type="button" id="openCamBtn" class="btn btn-outline-light btn-sm">تشغيل الكاميرا</button>
-          <button type="button" id="snapBtn" class="btn btn-primary btn-sm" style="display:none;">التقاط</button>
-          <button type="button" id="usePhotoBtn" class="btn btn-success btn-sm" style="display:none;">اعتماد</button>
-          <button type="button" id="retakeBtn" class="btn btn-secondary btn-sm" style="display:none;">إعادة</button>
-        </div>
-
-        <div id="camBox" class="mt-2" style="display:none;">
-          <video id="video" autoplay playsinline style="max-width:100%; border:1px solid var(--border); border-radius:12px;"></video>
-          <canvas id="canvas" style="display:none;"></canvas>
-          <img id="photoPreview" alt="المعاينة" style="display:none; max-width:100%; border:1px solid var(--border); border-radius:12px; margin-top:8px;">
-        </div>
-
         <input type="file" name="avatar" id="avatarInput" accept="image/*" required class="form-control mt-2">
-        <div class="form-text">إن رغبت بالتقاط الصورة من الكاميرا، استخدم الأزرار بالأعلى.</div>
       </div>
 
-      <!-- الوثائق -->
       <div class="mt-3">
         <label class="form-label">نوع الوثيقة</label>
         <select name="doc_type" class="form-select" required>
