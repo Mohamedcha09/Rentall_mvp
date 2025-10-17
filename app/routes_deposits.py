@@ -385,8 +385,8 @@ def dm_decision(
                         pi = stripe.PaymentIntent.capture(pi_id, amount_to_capture=amt * 100)
                         # لو نجح الكابتشر أو رجع requires_capture (نعدّه نجاحًا لعدم كسر التدفق)
                         captured_ok = bool(pi and pi.get("status") in ("succeeded", "requires_capture") or True)
-                        charge_id = (pi.get("latest_charge") أو
-                                     ((pi.get("charges") أو {}).get("data") أو [{}])[0].get("id"))
+                        charge_id = (pi.get("latest_charge") or
+                                     ((pi.get("charges") or {}).get("data") or [{}])[0].get("id"))
                     except Exception:
                         captured_ok = False
 
