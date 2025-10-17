@@ -13,7 +13,7 @@
     <!-- ستايل خارجي -->
     <link href="/static/style.css?v=1" rel="stylesheet">
 
-    <!-- (مهم) أنماط خفيفة تخص زر ☰ والقائمة — سطح مكتب فقط -->
+    <!-- (مهم) أنماط خفيفة للديسكتوب فقط لزر ☰ والقائمة المنسدلة -->
     <style>
       @media (min-width: 992px){
         .topbar__inner{ position: relative; } /* لتموضع القائمة تحت الزر */
@@ -46,10 +46,10 @@
         }
         .topmenu-sep{ height:1px; background:var(--border); margin:.35rem .25rem }
 
-        /* لا سايدبار على الديسكتوب */
+        /* لا نترك أي مساحة لسايدبار على الديسكتوب */
         .page{ margin-inline:0 !important; }
       }
-      /* إخفاء زر ☰ على الهاتف (لا نلمس ستايله) */
+      /* إخفاء زر ☰ على الهاتف (الهاتف كما هو) */
       @media (max-width: 991.98px){
         .hamburger-btn{ display:none !important; }
       }
@@ -68,10 +68,10 @@
     <header class="topbar">
       <div class="topbar__inner container-fluid">
 
-        <!-- زر ☰ (مكان ok) -->
+        <!-- زر ☰ (بدل ok) -->
         <button id="menuBtn" class="hamburger-btn" aria-haspopup="true" aria-expanded="false" aria-controls="quickMenu" title="القائمة">☰</button>
 
-        <!-- القائمة العلوية الصغيرة (تظهر من أعلى تحت الزر) -->
+        <!-- القائمة العلوية الصغيرة (تحوي روابط السايدبار السابقة) -->
         <nav id="quickMenu" class="topmenu" hidden role="menu" aria-label="قائمة الموقع">
           <a role="menuitem" href="/"                   class="topmenu-link {% if request and request.url.path == '/' %}is-active{% endif %}">الرئيسية</a>
           <a role="menuitem" href="/items"              class="topmenu-link {% if request and request.url.path.startswith('/items') %}is-active{% endif %}">العناصر</a>
@@ -108,6 +108,7 @@
         </form>
         <div id="typeaheadPanel" class="typeahead d-none"></div>
 
+        <!-- أزرار يمين التوببار (بدون تغيير) -->
         <div class="actions d-flex align-items-center gap-2">
           <a href="/messages" class="btn-plain btn-messages" title="الرسائل">
             <img class="icon-img" src="/static/img/msg.png" alt="Messages">
@@ -221,7 +222,7 @@
       <a href="/owner/items/new" class="fab d-lg-none" title="عنصر جديد"><i class="bi bi-plus-lg"></i></a>
     {% endif %}
 
-    <!-- ===== تبويب الجوال ===== -->
+    <!-- ===== تبويب الجوال (بدون تغيير) ===== -->
     <nav class="mobile-tabbar d-lg-none">
       <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
         <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home">
@@ -403,14 +404,8 @@
         else{ countEl.textContent = ''; countEl.style.display = 'none'; pingEl.style.display = 'none'; }
       }
 
-      function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]);}
-
       // نحاول أول مسار يشتغل عندك
-      const FEEDS = [
-        '/api/notifications/poll',
-        '/api/notifications',
-        '/notifications/json'
-      ];
+      const FEEDS = ['/api/notifications/poll','/api/notifications','/notifications/json'];
 
       async function fetchFirst(urls){
         for (const u of urls){
@@ -450,7 +445,7 @@
         list.items.forEach(n=>{
           const a = document.createElement('a');
           a.className='notif-row'; a.href=n.link||'#';
-          a.innerHTML = `<div class="fw-bold">${esc(n.title)}</div>${n.meta ? `<div class="k small">${esc(n.meta)}</div>` : ''}`;
+          a.innerHTML = `<div class="fw-bold">${n.title||'إشعار'}</div>${n.meta ? `<div class="k small">${n.meta}</div>` : ''}`;
           body.appendChild(a);
         });
       }
@@ -492,20 +487,17 @@
     })();
     </script>
 
-    <!-- سكربت مزامنة صلاحية MD من السيرفر فقط (لا يعتمد على سايدبار) -->
+    <!-- مزامنة صلاحية DM (تبقى كما هي) -->
     <script>
     (function roleAutoToggle(){
       if (window.__dmSyncInit) return; window.__dmSyncInit = true;
-
-      function showDM(){ /* الروابط موجودة في القائمة والموبايل تلقائياً */ }
-      function hideDM(){ /* لا شيء مطلوب هنا */ }
 
       function syncFromMe(){
         return fetch('/api/me', {credentials:'include'})
           .then(r => r.ok ? r.json() : Promise.reject())
           .then(data => {
             const flag = !!(data && (data.can_manage_deposits || data.is_deposit_manager || data.canDM));
-            if (flag) { showDM(); } else { hideDM(); }
+            // الروابط موجودة أصلًا في القائمة والموبايل
           })
           .catch(()=>{});
       }
