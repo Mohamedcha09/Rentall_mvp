@@ -1,84 +1,94 @@
 <!doctype html>
-<html lang="ar" dir="rtl" xmlns="http://www.w3.org/1999/xhtml">
+<html lang="ar" dir="rtl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>تفعيل الحساب</title>
   <style>
-    html,body{margin:0!important;padding:0!important;height:100%!important;width:100%!important}
-    *{-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%}
-    a[x-apple-data-detectors]{color:inherit!important;text-decoration:none!important}
-    .ExternalClass{width:100%}.ExternalClass *{line-height:100%}
-    table,td{mso-table-lspace:0pt!important;mso-table-rspace:0pt!important;border-collapse:collapse!important}
-    img{-ms-interpolation-mode:bicubic}
-
-    .wrap{max-width:640px;margin:0 auto;background:#0f172a;color:#eef3fb;
-          font-family:Arial,Helvetica,sans-serif;direction:rtl}
-    .box{padding:24px}
-    .title{font-size:22px;font-weight:800;margin:0 0 8px}
-    .muted{color:#aeb6c8;font-size:14px;margin:0}
-    .btn-a{display:block;text-decoration:none}
-    .btn-text{font-weight:700;font-size:16px;line-height:1}
-    .mt-16{margin-top:16px}.mt-24{margin-top:24px}
-    .code{direction:ltr;unicode-bidi:plaintext;font-family:Consolas,Menlo,monospace}
+    /* كل شيء inline-safe وبسيط قدر الإمكان */
+    @media (prefers-color-scheme: dark) {
+      body { background:#0f172a !important; color:#eaf0ff !important; }
+    }
   </style>
 </head>
-<body style="background:#0b0f15;">
-  <center role="article" aria-roledescription="email" lang="ar" dir="rtl">
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-      <tr>
-        <td align="center">
-          <table role="presentation" class="wrap" cellspacing="0" cellpadding="0" border="0" width="100%">
-            <tr>
-              <td class="box" style="background:#111827;border-bottom:1px solid rgba(255,255,255,.08)">
-                <table role="presentation" width="100%">
-                  <tr>
-                    <td align="right" style="font-weight:800;font-size:18px">SEVOR • RentAll</td>
-                    <td align="left" style="color:#55d5ff;font-weight:700">موثَّق ✓</td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
+<body style="margin:0;padding:0;background:#0f172a;color:#eaf0ff;font-family:Arial,'Segoe UI',Tahoma,sans-serif;direction:rtl;">
+  <!-- غلاف 100% -->
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#0f172a;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
 
-            <tr>
-              <td class="box">
-                <h1 class="title">مرحبًا {{ user_name | default('مستخدم') }} 👋</h1>
-                <p class="muted">شكرًا لتسجيلك. اضغط الزر أدناه لتفعيل حسابك:</p>
+        <!-- كارد 600px -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#111827;border:1px solid #223049;border-radius:16px;overflow:hidden;">
+          <!-- رأس بسيط -->
+          <tr>
+            <td style="padding:20px 22px;background:#0f172a;border-bottom:1px solid #223049;">
+              <span style="display:inline-block;background:rgba(37,99,235,.15);border:1px solid rgba(37,99,235,.35);color:#cfe0ff;padding:6px 10px;border-radius:999px;font-size:13px;">SEVOR • RentAll</span>
+            </td>
+          </tr>
 
-                <!-- زر متوافق مع الهواتف -->
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" class="mt-16">
-                  <tr>
-                    <td align="center" bgcolor="#2563eb" style="border-radius:10px;">
-                      <a class="btn-a" href="{{ activate_link }}" target="_blank"
-                         style="display:block;padding:14px 26px;border-radius:10px;background:#2563eb;color:#ffffff;">
-                        <span class="btn-text">تفعيل الحساب</span>
-                      </a>
-                    </td>
-                  </tr>
-                </table>
+          <!-- محتوى -->
+          <tr>
+            <td style="padding:22px;">
+              <h2 style="margin:0 0 10px 0;font-weight:800;font-size:22px;line-height:1.4;color:#eaf0ff;">
+                مرحبًا {{ user_name | default("صديقنا") }} 👋
+              </h2>
+              <p style="margin:0 0 16px 0;font-size:15px;line-height:1.8;color:#cdd7ee;">
+                شكرًا لتسجيلك في <b>RentAll</b>. لتأمين حسابك والبدء، اضغط على الزر أدناه لتفعيل بريدك الإلكتروني:
+              </p>
 
-                <p class="muted mt-24">إن لم يظهر الزر أو لم يعمل، افتح هذا الرابط:</p>
-                <p class="code" style="word-break:break-all;">
-                  <a href="{{ activate_link }}" style="color:#7c5cff;text-decoration:underline;" target="_blank">
-                    {{ activate_link }}
-                  </a>
-                </p>
+              <!-- زر Bulletproof (رابط قابل للنقر على الهاتف) -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:18px auto;">
+                <tr>
+                  <td align="center" bgcolor="#2563eb" style="border-radius:12px;">
+                    <!--[if mso]>
+                    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{{ activate_link }}" style="height:48px;v-text-anchor:middle;width:240px;" arcsize="16%" strokecolor="#2563eb" fillcolor="#2563eb">
+                      <w:anchorlock/>
+                      <center style="color:#ffffff;font-family:Arial,'Segoe UI',sans-serif;font-size:18px;font-weight:700;">
+                        تفعيل الحساب
+                      </center>
+                    </v:roundrect>
+                    <![endif]-->
+                    <!--[if !mso]><!-- -->
+                    <a href="{{ activate_link }}"
+                       style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;
+                              font-weight:700;font-size:18px;line-height:48px;border-radius:12px;
+                              padding:0 26px;min-width:200px;text-align:center;cursor:pointer;"
+                       target="_blank">
+                      تفعيل الحساب
+                    </a>
+                    <!--<![endif]-->
+                  </td>
+                </tr>
+              </table>
 
-                <p class="muted mt-24" style="font-size:12px">
-                  إذا لم تقُم بالتسجيل، تجاهل هذه الرسالة.
-                </p>
-              </td>
-            </tr>
+              <!-- رابط احتياطي نصي -->
+              <p style="margin:22px 0 6px 0;font-size:14px;color:#93a4c9;">
+                إن لم يعمل الزر، انسخ وافتح هذا الرابط:
+              </p>
+              <p dir="ltr" style="margin:0 0 16px 0;font-size:14px;word-break:break-all;">
+                <a href="{{ activate_link }}" style="color:#60a5fa;text-decoration:underline;" target="_blank">{{ activate_link }}</a>
+              </p>
 
-            <tr>
-              <td class="box" style="background:#111827;border-top:1px solid rgba(255,255,255,.08);font-size:12px;color:#aeb6c8">
-                © SEVOR — جميع الحقوق محفوظة.
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </center>
+              <!-- ملاحظة -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
+                     style="background:#0f172a;border:1px dashed #223049;border-radius:12px;">
+                <tr><td style="padding:12px 14px;">
+                  <p style="margin:0;font-size:13px;color:#9fb0d8;">
+                    ملاحظة: حتى بعد تفعيل البريد، يبقى زر <b>احجز الآن</b> معطّلًا إلى أن يراجع الأدمين وثائقك ويوافقوا عليها.
+                  </p>
+                </td></tr>
+              </table>
+
+              <p style="margin:16px 0 4px 0;font-size:12px;color:#7f8db0;">
+                إذا لم تقم بإنشاء هذا الحساب، تجاهل هذه الرسالة.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+        <!-- /الكارد -->
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
