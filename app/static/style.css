@@ -61,6 +61,16 @@ a:hover{ text-decoration:none; filter:brightness(1.05) }
 .text-muted{ color:var(--muted)!important }
 small, .small{ color:var(--muted)!important }
 
+/* منع أي تمرير أفقي عام + حماية العرض */
+html, body{
+  width:100%;
+  max-width:100vw;
+  overflow-x:hidden;
+}
+
+/* صور/فيديو آمنة */
+img, video{ max-width:100%; height:auto; display:block }
+
 /* ------------ أزرار عامة ------------ */
 .btn{ border-radius:12px; transition:transform .12s ease, filter .12s ease }
 .btn:active{ transform:scale(.98) }
@@ -208,7 +218,15 @@ small, .small{ color:var(--muted)!important }
   max-width: 1280px;
   transition: margin-inline-start .22s ease;
 }
-@media (max-width: 991.98px){ .page{ margin-inline:0; padding: calc(64px + 12px) 12px 20px } }
+
+/* امتلاء الشاشة على الديسكتوب */
+@media (min-width: 992px){
+  .page{ max-width: none; }
+}
+
+@media (max-width: 991.98px){
+  .page{ margin-inline:0; padding: calc(64px + 12px) 12px 20px }
+}
 
 /* ------------ شبكة العناصر ------------ */
 .home-grid{
@@ -318,43 +336,27 @@ small, .small{ color:var(--muted)!important }
 @keyframes fabpop{0%{transform:scale(.8); opacity:0}100%{transform:scale(1); opacity:1}}
 .fab:active{ transform:scale(.96) }
 
-
-/* ==== Full-screen on desktop ==== */
-@media (min-width: 992px){
-  .page{
-    max-width: none;           /* كان 1280px */
-  }
-}
-
-/* لو تبغى تقلّل الحافة الداخلية كمان */
-.page{ padding-inline: 12px 20px; }   /* كان 20px يمين ويسار */
-
-/* خيار: لما السايدبار يكون مطوي (collapsed) خلِّ المسافة أصغر/صفر */
-.sidebar[data-collapsed="true"] ~ .page{
-  margin-inline-start: 0;      /* كان يترك 84px */
-}
+/* ==== Full-screen “حواف أصغر” ==== */
+.page{ padding-inline: 12px 20px; }   /* تقليل الحافة اليمنى/اليسرى قليلاً */
 
 /* على الموبايل يبقى بدون هامش أصلاً */
 @media (max-width: 991.98px){
   .page{ margin-inline: 0; }
 }
 
-/* ======== [أُضيف] ملء الشاشة – إضافات بدون حذف أي سطر ======== */
-html, body { height: 100%; }                /* تعزيز الارتفاع */
+/* ======== ملء الشاشة للهيكل ======== */
 #page-wrapper{
   min-height: 100dvh;
-  min-height: 100svh;                       /* بديل آمن للأجهزة */
+  min-height: 100svh; /* بديل آمن للأجهزة */
   display: flex;
   flex-direction: column;
 }
-.main-flex-fill{ flex: 1 1 auto; }          /* يجعل <main> يتمدّد عموديًا */
+.main-flex-fill{ flex: 1 1 auto; }  /* يجعل <main> يتمدّد عموديًا */
 
-/* ======== [أُضيف] إصلاح الطيّ حتى لا يدخل المحتوى تحت الشريط ======== */
-.sidebar[data-collapsed="true"] ~ .page{
-  margin-inline-start: var(--sidebar-w) !important; /* تستخدم العرض الحالي 84px */
-}
- 
-/* ======= Search typeahead ======= */
+/* ✅ ملاحظة: تَرَكنا التحكم بالهامش الجانبي للصفحة عبر --sidebar-w فقط.
+   وتم حذف القاعدة التي كانت تُجبر الصفحة على هامش مختلف عند الطيّ. */
+
+/* ======= Search typeahead (نسختك الأصلية) ======= */
 .searchbox { position: relative; }
 .searchbox .typeahead {
   position: absolute; inset-inline: 0; top: 100%;
@@ -406,14 +408,12 @@ html, body { height: 100%; }                /* تعزيز الارتفاع */
 .spot-title{ margin:.1rem 0 .4rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:2.6em }
 .city-chip{ max-width:65%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:.15rem .45rem; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid var(--border) }  
 
-
 @media (max-width: 768px){
   .page{
     /* مساحة أسفل للتاب بار + حافة iPhone */
     padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
   }
 }
-
 
 /* ===== تبويب سفلي للهاتف ===== */
 .mobile-tabbar{
@@ -599,12 +599,9 @@ html, body { height: 100%; }                /* تعزيز الارتفاع */
 /*     [إضافات عصرية]      */
 /* ========================= */
 
-/* لون العلامة التجارية للتبويب النشط (أخضر مثل الصورة) */
+/* لون العلامة التجارية للتبويب النشط */
 :root{ --brand: #5900ff; }
 
-/* في شريط تبويبات الهاتف الحالي لديك (.mobile-tabbar):
-   نجعل الأيقونة/النص رماديين افتراضيًا ويصيرون أخضر عند التفعيل،
-   ونضيف خط سفلي صغير تحت التبويب النشط. */
 .mobile-tabbar a { font-weight: 600; }
 .mobile-tabbar a i { opacity: .6; transition: opacity .15s ease, transform .15s ease; }
 .mobile-tabbar a.is-active { color: var(--brand) !important; }
@@ -614,9 +611,7 @@ html, body { height: 100%; }                /* تعزيز الارتفاع */
   background: var(--brand); margin-top:4px;
 }
 
-/* دعم نمط الأيقونتين:
-   ضع داخل الرابط عنصرين أحدهما class=tab-icon والآخر class=tab-icon--active (اختياري).
-   هنا نقلب العرض حسب حالة .is-active بدون الحاجة لجافاسكربت. */
+/* دعم نمط الأيقونتين */
 .mobile-tabbar a .tab-icon--active{ display:none; }
 .mobile-tabbar a.is-active .tab-icon{ display:none; }
 .mobile-tabbar a.is-active .tab-icon--active{ display:block; }
@@ -669,11 +664,10 @@ html, body { height: 100%; }                /* تعزيز الارتفاع */
 .actions .btn-ghost.btn-icon{ border-color: transparent !important; }
 
 /* ألوان الأيقونات */
-.actions .msg-icon i{ color: #7c5cff; }   /* بنفسجي */
-.actions .notif-icon i{ color: #1ec9a8; } /* أخضر مائل للتيفاني */
+.actions .msg-icon i{ color: #7c5cff; }
+.actions .notif-icon i{ color: #1ec9a8; }
 .actions .btn-icon:hover{ transform: translateY(-1px); }
 
-/* إذا أردت لونًا أخف في الثيم الفاتح */
 body[data-theme="light"] .actions .msg-icon i{ color:#6a57ff; }
 body[data-theme="light"] .actions .notif-icon i{ color:#18c2a1; }
 
@@ -703,7 +697,8 @@ body[data-theme="dark"] .topbar .search .search__input{
 body[data-theme="dark"] .topbar .search .search__input::placeholder{
   color: color-mix(in oklab, var(--text) 60%, transparent);
 }
- /* ===== زرّ المفضلة فوق الصورة (متوافق مع home.html) ===== */
+
+/* ===== زرّ المفضلة فوق الصورة ===== */
 .spot-media{ position:relative; overflow:hidden; border-radius:16px 16px 0 0 }
 .spot-media img{ width:100%; height:220px; object-fit:cover; display:block }
 .fav-btn{
@@ -716,42 +711,3 @@ body[data-theme="dark"] .topbar .search .search__input::placeholder{
 .fav-btn .bi{ font-size:18px; color:#a944ec; line-height:1 }
 .fav-btn.is-fav{ background:#a944ec; }
 .fav-btn.is-fav .bi{ color:#fff }
-
-
-/* ===== إصلاح امتلاء الصفحة واختفاء الشريط الأفقي ===== */
-html, body {
-  width: 100%;
-  max-width: 100vw;
-  overflow-x: hidden !important;
-  margin: 0;
-  padding: 0;
-}
-
-#page-wrapper,
-.page,
-.container,
-.container-fluid {
-  width: 100% !important;
-  max-width: 100% !important;
-  overflow-x: clip !important;
-  margin: 0 auto !important;
-  padding: 0 !important;
-}
-
-.row {
-  margin-right: 0 !important;
-  margin-left: 0 !important;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-img, video {
-  max-width: 100%;
-  height: auto;
-}
-
-[style*="100vw"], .w-100vw {
-  width: 100% !important;
-}
