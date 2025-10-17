@@ -7,112 +7,75 @@
     <title>{{ title or "RentAll" }}</title>
 
     <!-- Bootstrap & Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
     <!-- ستايل خارجي -->
-    <link href="/static/style.css?v=1" rel="stylesheet">
+    <link href="/static/style.css?v=2" rel="stylesheet">
 
+    <!-- إصلاحات عامة لملء الشاشة ومنع الشريط الأفقي -->
     <style>
-      /* ===== Typeahead ===== */
-      .search{ position:relative; }
-      .typeahead{
-        position:absolute; inset-inline:0; top: calc(100% + .25rem);
-        background: var(--surface,#fff); color: var(--text,#212529);
-        border: 1px solid rgba(0,0,0,.1); border-radius:.75rem;
-        box-shadow: 0 14px 36px rgba(0,0,0,.18); z-index:2000; overflow:hidden;
+      html, body{
+        height:100%;
+        width:100%;
+        max-width:100vw;
+        overflow-x:hidden;   /* يمنع شريط التمرير الأفقي */
+        margin:0; padding:0;
       }
-      .typeahead.d-none{ display:none; }
-      .typeahead-group{ padding:.4rem .7rem; font-size:.8rem; opacity:.7; border-bottom:1px solid rgba(0,0,0,.06) }
-      .typeahead-item{ padding:.6rem .75rem; display:flex; gap:.6rem; align-items:center; cursor:pointer; }
-      .typeahead-item:hover, .typeahead-item.active{ background: rgba(124,92,255,.12); }
-      .typeahead-item .k{ opacity:.65; font-size:.85em }
+      /* غلاف الصفحة يملأ الشاشة دائمًا */
+      #page-wrapper{
+        min-height:100svh;    /* يدعم الهواتف */
+        min-height:100dvh;    /* كروم حديث */
+        display:flex; flex-direction:column;
+        width:100%;
+        max-width:100%;
+        overflow-x:clip;      /* يقتطع أي تجاوز عرضي */
+      }
+      /* المساحة الرئيسية تمتدّ لملء الفراغ بدون تجاوز */
+      main.page{
+        flex:1 1 auto;
+        width:100%;
+        max-width:100%;
+        overflow-x:clip;
+      }
+      /* لا تجعل الحاويات تضيف هوامش عرضية */
+      .container, .container-fluid{max-width:100%; overflow-x:clip}
+      .row{margin-inline:0 !important}
 
-      /* ===== عام ===== */
-      .actions .btn-plain{
-        border:0 !important; background:transparent !important; box-shadow:none !important;
-        padding:.2rem .35rem !important; line-height:1;
+      /* حافة داخلية أخف للصفحة؛ والحساب مع الشريط الجانبي */
+      .page{
+        padding: calc(64px + 18px) 20px 28px;
+        margin-inline-start: var(--sidebar-w);
+        transition: margin-inline-start .22s ease;
       }
-      .icon-img{ width:24px; height:24px; display:block; }
-      .btn-plain:hover{ transform:translateY(-1px); }
-
-      .topbar .search .search__input{
-        height:44px !important; border-radius:999px !important; border:0 !important;
-        background:#f4f6fb !important; color:#3b4152 !important;
+      /* عند طيّ الشريط الجانبي استخدم العرض الفعلي للمتغيّر */
+      .sidebar[data-collapsed="true"] ~ .page{
+        margin-inline-start: var(--sidebar-w) !important; /* 84px عند الطيّ */
       }
-      body[data-theme="dark"] .topbar .search .search__input{
-        background:rgba(255,255,255,.08) !important;
-        border:1px solid var(--border) !important; color:var(--text) !important;
-      }
-      .topbar .search .search__icon{ inset-inline-start:16px !important; opacity:.6 !important; font-size:1.05rem; }
-      .topbar .search .search__input::placeholder{ font-size:1.05rem; letter-spacing:.2px; color:#8b95a7; }
-      body[data-theme="dark"] .topbar .search .search__input::placeholder{ color: color-mix(in oklab, var(--text) 60%, transparent); }
-
-      /* إشعار الجرس */
-      #notifOpen{ position: relative; }
-      #notifOpen .notif-count{
-        position:absolute; top:-6px; inset-inline-end:-6px;
-        background:#d43aff; color:#fff; font-size:12px; line-height:18px;
-        min-width:18px; height:18px; padding:0 4px; border-radius:10px; text-align:center;
-      }
-      #notifOpen .notif-ping{
-        position:absolute; top:-2px; inset-inline-end:-2px; width:8px; height:8px;
-        background:#d43aff; border-radius:50%; box-shadow: 0 0 0 6px rgba(212,58,255,.18);
+      @media (max-width: 991.98px){
+        .page{ margin-inline:0; padding: calc(64px + 12px) 12px 20px }
       }
 
-      .notif-panel{
-        position: fixed; top:0; inset-inline-end:-420px; width:360px; max-width:88vw; height:100vh;
-        background: var(--panel); color: var(--text);
-        border-inline-start:1px solid var(--border);
-        box-shadow: -14px 0 36px rgba(0,0,0,.25);
-        z-index:2300; display:flex; flex-direction:column; transition:.25s ease;
+      /* اجعل شريط الأعلى ثابتاً دائماً وبدون ظلّ زائد */
+      .topbar, .topbar__inner{
+        background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important;
       }
-      .notif-panel.is-open{ inset-inline-end:0; }
-      .notif-panel__header{ padding:12px 14px; border-bottom:1px solid var(--border); }
-      .notif-panel__body{ padding:10px 14px; overflow:auto; }
-      .notif-row{
-        display:block; padding:10px 8px; text-decoration:none; color:inherit;
-        border-bottom:1px solid var(--border); border-radius:8px;
+      .topbar{
+        position:fixed; inset:0 0 auto 0; height:64px;
+        background: linear-gradient(180deg, var(--glass), color-mix(in oklab, var(--glass) 75%, transparent));
+        backdrop-filter: blur(14px) saturate(120%);
+        border-bottom:1px solid var(--border);
+        z-index:2000;
       }
-      .notif-row:hover{ background: color-mix(in oklab, var(--surface) 92%, transparent); }
-      .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2s; }
-      .scrim.is-show{ opacity:1; pointer-events:auto; }
+      .topbar__inner{ display:grid; grid-template-columns:auto auto 1fr auto; gap:10px; align-items:center; padding:8px 14px }
 
-      /* ===== الشعار وأزرار أعلى ===== */
-      .brand-logo{ height:56px; vertical-align:middle }
-      @media (max-width:768px){ .brand-logo{ height:40px } }
-      #sidebarToggle .topbar-ok{ width:24px; height:24px; display:block; }
-      #sidebarToggle{ border:0; }
-
-      /* ===== الشريط الجانبي (أيقونات صور) ===== */
-      .side-link .side-icon{ width:22px; height:22px; object-fit:contain }
-
-      /* ===== تبويب الجوال (الأسفل) ===== */
-      @media (max-width: 768px){
-        .mobile-tabbar{
-          position: fixed; inset-inline: 0; bottom: 0; height: 64px;
-          background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 96%, transparent),
-                                               color-mix(in oklab, var(--panel) 94%, transparent));
-          border-top:1px solid var(--border);
-          display: grid; grid-template-columns: repeat(4,1fr);
-          backdrop-filter: blur(14px) saturate(120%);
-          z-index: 2100;
-        }
-        .mobile-tabbar a{
-          display:flex; flex-direction:column; align-items:center; justify-content:center;
-          gap:4px; text-decoration:none; color: var(--muted); font-size:.8rem;
-        }
-        .mobile-tabbar .tab-img{ width:22px; height:22px; object-fit:contain; opacity:.55; transition:.15s; }
-        .mobile-tabbar a.is-active{ color: var(--text); }
-        .mobile-tabbar a.is-active .tab-img{ opacity:1; transform:scale(1.06); }
-        .page{ padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
-      }
-
-      @media (max-width:768px){
-        .actions .dropdown:first-of-type{ display:none !important; } /* منيو إنشاء فقط */
-      }
-
-      .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important; }
+      /* عندما تريد إخفاء التوب بار والسايدبار (مثلاً صفحات الدخول/التسجيل)
+         مرِّر hide_chrome=True من السيرفر */
+      {% if hide_chrome %}
+        .topbar{ display:none !important; }
+        .sidebar{ display:none !important; }
+        .page{ padding: 20px 12px 20px !important; margin-inline-start: 0 !important; }
+      {% endif %}
     </style>
 
     {% block head %}{% endblock %}
@@ -130,12 +93,12 @@
 
         <!-- زر المربّع -->
         <button class="btn btn-ghost btn-sm" id="sidebarToggle" aria-label="Toggle sidebar">
-          <img class="topbar-ok" src="{{ url_for('static', path='images/ok.png') }}" alt="OK">
+          <img class="topbar-ok" src="{{ url_for('static', path='images/ok.png') }}" alt="OK" width="24" height="24">
         </button>
 
         <!-- الشعار -->
         <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/">
-          <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR">
+          <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR" style="height:56px">
           <span class="visually-hidden">SEVOR</span>
         </a>
 
@@ -143,13 +106,13 @@
         <form class="search flex-grow-1" action="/search" method="get" role="search" style="max-width:760px">
           <i class="bi bi-search search__icon"></i>
           <input class="form-control form-control-sm search__input" type="search" name="q"
-                 placeholder="ابحث عن عنصر أو مستخدم…" value="{{ request.query_params.get('q','') if request else '' }}">
+                 placeholder="ابحث عن عنصر أو مستخدم…" value="{{ request.query_params.get('q','') if request else '' }}" autocomplete="off">
         </form>
         <div id="typeaheadPanel" class="typeahead d-none"></div>
 
         <div class="actions d-flex align-items-center gap-2">
           <a href="/messages" class="btn-plain btn-messages" title="الرسائل">
-            <img class="icon-img" src="/static/img/msg.png" alt="Messages">
+            <img class="icon-img" src="/static/img/msg.png" alt="Messages" width="24" height="24">
           </a>
 
           {% if session_user %}
@@ -159,8 +122,8 @@
           {% endif %}
 
           {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
-          <button class="btn-plain position-relative" id="notifOpen" title="الإشعارات">
-            <img class="icon-img" src="/static/img/notfi.png" alt="Notifications">
+          <button class="btn-plain position-relative" id="notifOpen" title="الإشعارات" type="button">
+            <img class="icon-img" src="/static/img/notfi.png" alt="Notifications" width="24" height="24">
             {% if unread > 0 %}
               <span class="notif-ping"></span>
               <span class="notif-count">{{ unread if unread < 100 else '99+' }}</span>
@@ -169,7 +132,7 @@
 
           <!-- إنشاء -->
           <div class="dropdown">
-            <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown">
+            <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" type="button">
               <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">إنشاء</span>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
@@ -179,14 +142,14 @@
           </div>
 
           <!-- تبديل الثيم -->
-          <button class="btn btn-ghost btn-sm" id="themeToggle" title="تبديل الثيم">
+          <button class="btn btn-ghost btn-sm" id="themeToggle" title="تبديل الثيم" type="button">
             <i class="bi bi-sun-fill d-none" id="sunIcon"></i>
             <i class="bi bi-moon-stars-fill" id="moonIcon"></i>
           </button>
 
           <!-- اللغة -->
           <div class="dropdown lang-switch">
-            <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="اللغة">
+            <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="اللغة" type="button">
               <i class="bi bi-globe2"></i>
               <span class="d-none d-sm-inline">{{ current_lang()|upper if current_lang else 'AR' }}</span>
             </button>
@@ -200,7 +163,7 @@
           <!-- الحساب -->
           {% if session_user %}
             <div class="dropdown">
-              <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
+              <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown" type="button">
                 <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
                 <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
                 {% if session_user.status == 'approved' %}
@@ -272,7 +235,7 @@
           {% endif %}
         {% endif %}
       </nav>
-      <button class="collapse-pin btn btn-ghost btn-sm mt-auto" id="pinSidebar" title="طي/تثبيت">
+      <button class="collapse-pin btn btn-ghost btn-sm mt-auto" id="pinSidebar" title="طي/تثبيت" type="button">
         <i class="bi bi-chevron-double-left"></i><span class="ms-2 d-none d-xl-inline">طيّ الشريط</span>
       </button>
     </aside>
@@ -294,7 +257,7 @@
     <div class="notif-panel" id="notifPanel" aria-hidden="true">
       <div class="notif-panel__header d-flex justify-content-between align-items-center">
         <strong>الإشعارات</strong>
-        <button class="btn btn-ghost btn-sm" id="notifClose"><i class="bi bi-x-lg"></i></button>
+        <button class="btn btn-ghost btn-sm" id="notifClose" type="button"><i class="bi bi-x-lg"></i></button>
       </div>
       <div class="notif-panel__body" id="notifBody">
         <div class="small text-muted">لا توجد إشعارات جديدة.</div>
@@ -362,6 +325,7 @@
       function collapseSidebar(yes){
         if (yes){
           sidebar.dataset.collapsed = 'true';
+          // عند الطيّ نغيّر المتغيّر ليستخدم في الـ CSS
           document.documentElement.style.setProperty('--sidebar-w', '84px');
           localStorage.setItem('sidebar_collapsed','true');
         }else{
@@ -553,7 +517,7 @@
     return {
       unread,
       items: items.map(n => ({
-        title: n.title || n.subject || 'إشعار',
+        title: n.title او n.subject || 'إشعار',
         meta:  n.body  || n.text || n.message || '',
         link:  n.link_url || n.url || '#',
         kind:  n.kind || 'info',
@@ -622,74 +586,37 @@
     }catch(_){}
   }
 })();
-</script>
-
-    <!-- ====== سكربت إظهار/إخفاء رابط قضايا الوديعة (بدون localStorage) ====== -->
-    <script>
-(function () {
-  function ensureSidebarLink(){
-    const nav = document.querySelector('.sidebar__nav'); if(!nav) return;
-    if (nav.querySelector('[data-nav="dm-link"]')) return;
-    const a = document.createElement('a');
-    a.setAttribute('data-nav','dm-link');
-    a.className = 'side-link';
-    a.href = '/dm/deposits';
-    a.setAttribute('data-tooltip','قضايا الوديعة');
-    a.innerHTML = '<i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>';
-    nav.appendChild(a);
-  }
-  function removeSidebarLink(){
-    const el = document.querySelector('.sidebar__nav [data-nav="dm-link"]'); if (el) el.remove();
-  }
-  function ensureMobileTab(){
-    const m = document.querySelector('.mobile-tabbar'); if(!m) return;
-    if (m.querySelector('[data-nav="dm-mobile"]')) return;
-    const a = document.createElement('a');
-    a.setAttribute('data-nav','dm-mobile');
-    a.href = '/dm/deposits';
-    a.innerHTML = '<i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>';
-    m.appendChild(a);
-  }
-  function removeMobileTab(){
-    const el = document.querySelector('.mobile-tabbar [data-nav="dm-mobile"]'); if (el) el.remove();
-  }
-
-  function showDM(){ ensureSidebarLink(); ensureMobileTab(); }
-  function hideDM(){ removeSidebarLink(); removeMobileTab(); }
-
-  // تهيئة مبدئية من السيرفر فقط
-  var canDM = (document.body.dataset.canDm === '1');
-  if (canDM) { showDM(); } else { hideDM(); }
-
-  // راقب نص الإشعار المفتوح (اختياري)
-  const notifBody = document.getElementById('notifBody');
-  if (notifBody){
-    const rxGrant  = /تم\s+منحك?\s+دور\s+متحكّم\s+الوديعة/i;
-    const rxRevoke = /تم\s+إلغاء\s+دور\s+متحكّم\s+الوديعة/i;
-
-    const onChange = () => {
-      const txt = notifBody.textContent || '';
-      if (rxGrant.test(txt))  { showDM(); }
-      if (rxRevoke.test(txt)) { hideDM(); }
-    };
-    const mo = new MutationObserver(muts=>{
-      for (const m of muts){
-        if (m.type === 'childList' || m.type === 'characterData'){ onChange(); break; }
-      }
-    });
-    mo.observe(notifBody, {childList:true, subtree:true, characterData:true});
-    onChange();
-  }
-
-  window.showDM = showDM;
-  window.hideDM = hideDM;
-})();
     </script>
 
     <!-- سكربت مزامنة صلاحية MD من السيرفر فقط -->
     <script>
 (function roleAutoToggle(){
   if (window.__dmSyncInit) return; window.__dmSyncInit = true;
+
+  function showDM(){
+    const nav = document.querySelector('.sidebar__nav'); if(!nav) return;
+    if (!nav.querySelector('[data-nav="dm-link"]')){
+      const a = document.createElement('a');
+      a.setAttribute('data-nav','dm-link');
+      a.className = 'side-link';
+      a.href = '/dm/deposits';
+      a.setAttribute('data-tooltip','قضايا الوديعة');
+      a.innerHTML = '<i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>';
+      nav.appendChild(a);
+    }
+    const m = document.querySelector('.mobile-tabbar');
+    if (m && !m.querySelector('[data-nav="dm-mobile"]')){
+      const a = document.createElement('a');
+      a.setAttribute('data-nav','dm-mobile');
+      a.href = '/dm/deposits';
+      a.innerHTML = '<i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>';
+      m.appendChild(a);
+    }
+  }
+  function hideDM(){
+    const el = document.querySelector('.sidebar__nav [data-nav="dm-link"]'); if (el) el.remove();
+    const el2 = document.querySelector('.mobile-tabbar [data-nav="dm-mobile"]'); if (el2) el2.remove();
+  }
 
   function syncFromMe(){
     return fetch('/api/me', {credentials:'include'})
@@ -700,22 +627,15 @@
       })
       .catch(()=>{});
   }
+  // تهيئة مبدئية من السيرفر فقط
+  var canDM = (document.body.dataset.canDm === '1');
+  if (canDM) { showDM(); } else { hideDM(); }
 
-  // فحص أوّلي
+  // فحص أوّلي ودفعات
   syncFromMe();
-
-  // عند تغيّر عدّاد الإشعارات (حدث يُطلقه notifSystem)
-  document.addEventListener('unread:changed', () => {
-    syncFromMe();
-  });
-
-  // شبكة أمان خلال أول دقيقتين
+  document.addEventListener('unread:changed', syncFromMe);
   let checks = 0;
-  const timer = setInterval(() => {
-    checks += 1;
-    syncFromMe();
-    if (checks >= 8) clearInterval(timer);
-  }, 15000);
+  const timer = setInterval(() => { checks += 1; syncFromMe(); if (checks >= 8) clearInterval(timer); }, 15000);
 })();
     </script>
 
