@@ -647,3 +647,42 @@ img, video{ max-width:100%; height:auto }
 
 /* ===== إخفاء زر تبديل الثيم أينما وُجد ===== */
 #themeToggle{ display:none !important }
+
+/* ===== Navbar Grid like Airbnb ===== */
+.nav-grid{
+  /* نحافظ على ترتيب بصري يسار-وسط-يمين حتى مع RTL */
+  direction: ltr;                 /* مهم جداً */
+  display: grid !important;
+  grid-template-columns: 1fr minmax(320px, 760px) auto;
+  align-items: center;
+  gap: 10px;
+}
+.nav-left, .nav-center, .nav-right{ direction: rtl; } /* نعيد اتجاه النصوص للعربي */
+.nav-left{ justify-self: start; min-width: 0; white-space: nowrap; }
+.nav-center{ justify-self: center; min-width: 0; }
+.nav-right{ justify-self: end; }
+
+/* البحث وسط وبيل أنيق */
+.nav-center.search{ width:100%; }
+.nav-center .search__input{
+  height:44px; border-radius:999px; padding-inline:44px 12px;
+  background: linear-gradient(135deg, rgba(124,92,255,.18), rgba(124,92,255,.10));
+  border:1px solid color-mix(in oklab, var(--primary) 40%, var(--border));
+}
+
+/* حجم الشعار والتحكم */
+.brand-logo{ height: 40px; }
+@media (min-width: 768px){ .brand-logo{ height: 48px; } }
+.brand__name{ font-weight:800; letter-spacing:.3px }
+
+/* أزرار اليسار (لا تلتف) */
+.nav-left .btn-icon{ padding:.2rem .35rem; }
+.nav-left{ gap: .25rem; }
+
+/* منيو ☰ */
+.menu-list .dropdown-item{ padding:.55rem .9rem; border-radius:10px; }
+.menu-list .dropdown-item:hover{ background: rgba(124,92,255,.10); }
+.menu-ico{ width:18px; height:18px; object-fit:contain; opacity:.9; }
+
+/* زِد الأولوية لمنع نزول أي عنصر تحت الشريط */
+.topbar{ position: sticky; top:0; z-index: 3000; }

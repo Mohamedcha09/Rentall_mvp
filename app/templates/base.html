@@ -62,188 +62,114 @@
 
     <div id="page-wrapper"><!-- غلاف ملء الشاشة -->
 
-    <!-- ===== Topbar ===== -->
-    <header class="topbar">
-      <div class="topbar__inner container-fluid">
+    <!-- ===== Topbar (Airbnb-like) ===== -->
+<header class="topbar">
+  <div class="container-fluid nav-grid topbar__inner">
 
-        <!-- زر ☰: Dropdown يحمل كل روابط السايدبار مع لوغوهات -->
-        <div class="dropdown">
-          <button class="btn btn-ghost btn-sm" id="menuToggle" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu">
-            <span style="font-size:20px; line-height:1;">☰</span>
-          </button>
+    <!-- يسار: شعار + رسائل + إشعارات -->
+    <div class="nav-left d-flex align-items-center gap-2" dir="rtl">
+      <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/" title="SEVOR">
+        <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR" />
+        <strong class="brand__name d-none d-sm-inline">SEVOR</strong>
+      </a>
 
-          <!-- القائمة كاملة -->
-          <ul class="dropdown-menu dropdown-menu-end shadow-sm menu-list">
-            <li class="dropdown-header small text-muted px-3 pt-2 pb-1">القائمة الرئيسية</li>
+      <a href="/messages" class="btn btn-ghost btn-sm btn-icon msg-icon" title="الرسائل">
+        <i class="bi bi-chat-left-text"></i>
+      </a>
 
+      {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
+      <button class="btn btn-ghost btn-sm btn-icon notif-icon position-relative" id="notifOpen" title="الإشعارات">
+        <i class="bi bi-bell"></i>
+        {% if unread > 0 %}
+          <span class="notif-ping"></span>
+          <span class="notif-count">{{ unread if unread < 100 else '99+' }}</span>
+        {% endif %}
+      </button>
+    </div>
+
+    <!-- وسط: البحث -->
+    <form class="nav-center search" action="/search" method="get" role="search" dir="rtl">
+      <i class="bi bi-search search__icon"></i>
+      <input class="form-control form-control-sm search__input" type="search" name="q"
+             placeholder="ابحث عن عنصر أو مستخدم…" value="{{ request.query_params.get('q','') if request else '' }}">
+    </form>
+
+    <!-- يمين: منيو ☰ بكل الصفحات -->
+    <div class="nav-right dropdown" dir="rtl">
+      <button class="btn btn-ghost btn-sm" id="menuToggle" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu">
+        <span style="font-size:20px; line-height:1;">☰</span>
+      </button>
+
+      <ul class="dropdown-menu dropdown-menu-end shadow-sm menu-list">
+        <li class="dropdown-header small text-muted px-3 pt-2 pb-1">القائمة الرئيسية</li>
+
+        <li>
+          <a class="dropdown-item d-flex align-items-center gap-2" href="/">
+            <img class="menu-ico" src="{{ url_for('static', path='images/home.png') }}" alt=""><span>الرئيسية</span>
+          </a>
+        </li>
+        <li>
+          <a class="dropdown-item d-flex align-items-center gap-2" href="/items">
+            <img class="menu-ico" src="{{ url_for('static', path='images/tout.png') }}" alt=""><span>كل العناصر</span>
+          </a>
+        </li>
+
+        {% if session_user %}
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" href="/favorites">
+              <img class="menu-ico" src="{{ url_for('static', path='images/save.png') }}" alt=""><span>مفضلتي</span>
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" href="/profile">
+              <img class="menu-ico" src="{{ url_for('static', path='images/profil.png') }}" alt=""><span>صفحتي</span>
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" href="/owner/items">
+              <img class="menu-ico" src="{{ url_for('static', path='images/page.png') }}" alt=""><span>أشيائي</span>
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" href="/bookings">
+              <img class="menu-ico" src="{{ url_for('static', path='images/jour.png') }}" alt=""><span>حجوزاتي</span>
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" href="/payout/settings">
+              <img class="menu-ico" src="{{ url_for('static', path='images/cart.png') }}" alt=""><span>التحويلات</span>
+            </a>
+          </li>
+
+          {% if session_user.get('can_manage_deposits') %}
             <li>
-              <a class="dropdown-item d-flex align-items-center gap-2" href="/">
-                <img class="menu-ico" src="{{ url_for('static', path='images/home.png') }}" alt="">
-                <span>الرئيسية</span>
+              <a class="dropdown-item d-flex align-items-center gap-2" href="/dm/deposits">
+                <i class="bi bi-shield-exclamation" style="font-size:18px;"></i><span>قضايا الوديعة</span>
               </a>
             </li>
+          {% endif %}
 
+          {% if session_user.role == 'admin' %}
+            <li><hr class="dropdown-divider"></li>
+            <li class="dropdown-header small text-muted px-3 pt-1 pb-1">مسؤول النظام</li>
             <li>
-              <a class="dropdown-item d-flex align-items-center gap-2" href="/items">
-                <img class="menu-ico" src="{{ url_for('static', path='images/tout.png') }}" alt="">
-                <span>كل العناصر</span>
+              <a class="dropdown-item d-flex align-items-center gap-2" href="/admin">
+                <i class="bi bi-speedometer2" style="font-size:18px;"></i><span>لوحة الأدمين</span>
               </a>
             </li>
-
-            {% if session_user %}
-              <li>
-                <a class="dropdown-item d-flex align-items-center gap-2" href="/favorites">
-                  <img class="menu-ico" src="{{ url_for('static', path='images/save.png') }}" alt="">
-                  <span>مفضلتي</span>
-                </a>
-              </li>
-
-              <li>
-                <a class="dropdown-item d-flex align-items-center gap-2" href="/profile">
-                  <img class="menu-ico" src="{{ url_for('static', path='images/profil.png') }}" alt="">
-                  <span>صفحتي</span>
-                </a>
-              </li>
-
-              <li>
-                <a class="dropdown-item d-flex align-items-center gap-2" href="/owner/items">
-                  <img class="menu-ico" src="{{ url_for('static', path='images/page.png') }}" alt="">
-                  <span>أشيائي</span>
-                </a>
-              </li>
-
-              <li>
-                <a class="dropdown-item d-flex align-items-center gap-2" href="/bookings">
-                  <img class="menu-ico" src="{{ url_for('static', path='images/jour.png') }}" alt="">
-                  <span>حجوزاتي</span>
-                </a>
-              </li>
-
-              <li>
-                <a class="dropdown-item d-flex align-items-center gap-2" href="/payout/settings">
-                  <img class="menu-ico" src="{{ url_for('static', path='images/cart.png') }}" alt="">
-                  <span>التحويلات</span>
-                </a>
-              </li>
-
-              {% if session_user.get('can_manage_deposits') %}
-                <li>
-                  <a class="dropdown-item d-flex align-items-center gap-2" href="/dm/deposits">
-                    <i class="bi bi-shield-exclamation" style="font-size:18px;"></i>
-                    <span>قضايا الوديعة</span>
-                  </a>
-                </li>
-              {% endif %}
-
-              {% if session_user.role == 'admin' %}
-                <li><hr class="dropdown-divider"></li>
-                <li class="dropdown-header small text-muted px-3 pt-1 pb-1">مسؤول النظام</li>
-                <li>
-                  <a class="dropdown-item d-flex align-items-center gap-2" href="/admin">
-                    <i class="bi bi-speedometer2" style="font-size:18px;"></i>
-                    <span>لوحة الأدمين</span>
-                  </a>
-                </li>
-              {% endif %}
-            {% endif %}
-          </ul>
-        </div>
-
-        <!-- الشعار -->
-        <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/">
-          <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR">
-          <span class="visually-hidden">SEVOR</span>
-        </a>
-
-        <!-- البحث (وسط) -->
-        <form class="search flex-grow-1" action="/search" method="get" role="search">
-          <i class="bi bi-search search__icon"></i>
-          <input class="form-control form-control-sm search__input" type="search" name="q"
-                 placeholder="ابحث عن عنصر أو مستخدم…" value="{{ request.query_params.get('q','') if request else '' }}">
-        </form>
-
-        <!-- أزرار يمين التوب بار -->
-        <div class="actions d-flex align-items-center gap-2">
-          <a href="/messages" class="btn btn-ghost btn-sm btn-messages" title="الرسائل">
-            <i class="bi bi-chat-left-text" style="font-size:18px;"></i>
-          </a>
-
-          {% if session_user %}
-          <a href="/favorites" class="btn btn-ghost btn-sm" title="مفضلتي">
-            <i class="bi bi-heart-fill" style="font-size:18px; color:#a944ec;"></i>
-          </a>
           {% endif %}
 
-          {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
-          <button class="btn btn-ghost btn-sm position-relative" id="notifOpen" title="الإشعارات">
-            <i class="bi bi-bell" style="font-size:18px;"></i>
-            {% if unread > 0 %}
-              <span class="notif-ping"></span>
-              <span class="notif-count">{{ unread if unread < 100 else '99+' }}</span>
-            {% endif %}
-          </button>
-
-          <!-- إنشاء -->
-          <div class="dropdown">
-            <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown">
-              <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">إنشاء</span>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="/owner/items/new"><i class="bi bi-box"></i> عنصر جديد</a></li>
-              <li><a class="dropdown-item" href="/messages"><i class="bi bi-chat-left-text"></i> رسالة</a></li>
-            </ul>
-          </div>
-
-          <!-- زر الثيم مخفي (نهاري فقط) -->
-          <button class="btn btn-ghost btn-sm" id="themeToggle" style="display:none">
-            <i class="bi bi-sun-fill d-none" id="sunIcon"></i>
-            <i class="bi bi-moon-stars-fill" id="moonIcon"></i>
-          </button>
-
-          <!-- اللغة -->
-          <div class="dropdown lang-switch">
-            <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="اللغة">
-              <i class="bi bi-globe2"></i>
-              <span class="d-none d-sm-inline">{{ current_lang()|upper if current_lang else 'AR' }}</span>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item d-flex align-items-center" href="/lang/ar">العربية</a></li>
-              <li><a class="dropdown-item d-flex align-items-center" href="/lang/en">English</a></li>
-              <li><a class="dropdown-item d-flex align-items-center" href="/lang/fr">Français</a></li>
-            </ul>
-          </div>
-
-          <!-- الحساب -->
-          {% if session_user %}
-            <div class="dropdown">
-              <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
-                <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
-                <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
-                {% if session_user.status == 'approved' %}
-                  <i class="bi bi-patch-check-fill verify" title="موثّق"></i>
-                {% endif %}
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> صفحتي</a></li>
-                <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
-                <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a></li>
-                <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a></li>
-                {% if session_user.role == 'admin' %}
-                  <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a></li>
-                {% endif %}
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right"></i> خروج</a></li>
-              </ul>
-            </div>
-          {% else %}
-            <a class="btn btn-ghost btn-sm" href="/login">دخول</a>
-            <a class="btn btn-primary btn-sm" href="/register">تسجيل</a>
-          {% endif %}
-        </div>
-      </div>
-    </header>
-    <!-- /Topbar -->
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" href="/owner/items/new">
+              <i class="bi bi-plus-square"></i><span>إنشاء عنصر جديد</span>
+            </a>
+          </li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</header>
 
     <!-- ===== Sidebar (يُستخدم للموبايل فقط؛ مخفي على الدِّسكتوب بالـCSS) ===== -->
     <aside class="sidebar" id="appSidebar" data-collapsed="false">
