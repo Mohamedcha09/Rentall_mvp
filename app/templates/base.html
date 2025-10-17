@@ -82,15 +82,15 @@
       .brand-logo{ height:56px; vertical-align:middle }
       @media (max-width:768px){ .brand-logo{ height:40px } }
 
-      /* ========= [جديد] زر ☰ والقائمة المنسدلة (سطح المكتب فقط) ========= */
+      /* ========= زر ☰ والقائمة المنسدلة (سطح المكتب فقط) ========= */
       @media (min-width: 992px){
         .topbar__inner{ position:relative; }
 
-        /* (1) إخفاء السايدبار على سطح المكتب فقط — يبقى في الـ DOM */
+        /* إخفاء السايدبار على سطح المكتب — يبقى في الـ DOM */
         .sidebar{ display:none !important; }
         .page{ margin-inline: 0 !important; }
 
-        /* (2) زر الهامبورغر */
+        /* زر الهامبورغر */
         .hamburger-btn{
           display:inline-flex; align-items:center; justify-content:center;
           border:0; background:transparent; font-size:24px; line-height:1;
@@ -100,7 +100,7 @@
           background: color-mix(in oklab, var(--text, #fff) 8%, transparent);
         }
 
-        /* (3) القائمة العلوية الصغيرة */
+        /* القائمة العلوية */
         .topmenu{
           position:absolute; inset-inline-start:14px; top:calc(100% + 8px);
           min-width:260px;
@@ -171,10 +171,11 @@
     <header class="topbar">
       <div class="topbar__inner container-fluid">
 
-        <!-- [جديد] زر ☰ بدل صورة ok -->
-        <button id="menuBtn" class="hamburger-btn" aria-haspopup="true" aria-expanded="false" aria-controls="quickMenu" title="القائمة">☰</button>
+        <!-- زر ☰ -->
+        <button id="menuBtn" class="hamburger-btn" type="button"
+                aria-haspopup="true" aria-expanded="false" aria-controls="quickMenu" title="القائمة">☰</button>
 
-        <!-- [جديد] القائمة الصغيرة المنسدلة -->
+        <!-- القائمة الصغيرة المنسدلة -->
         <nav id="quickMenu" class="topmenu" hidden role="menu" aria-label="قائمة الموقع">
           <a role="menuitem" href="/">الرئيسية</a>
           <a role="menuitem" href="/items">العناصر</a>
@@ -466,42 +467,52 @@
       scrim?.addEventListener('click', closePanel);
     </script>
 
-    <!-- [إصلاح نهائي لزر ☰] -->
-<script>
-document.addEventListener("DOMContentLoaded", function(){
-  const btn = document.getElementById('menuBtn');
-  const menu = document.getElementById('quickMenu');
-  if(!btn || !menu) return;
+    <!-- سكربت زر ☰ (مُوحّد ومحسّن) -->
+    <script>
+    (function(){
+      const btn  = document.getElementById('menuBtn');
+      const menu = document.getElementById('quickMenu');
+      if(!btn || !menu) return;
 
-  function openMenu(){
-    menu.hidden = false;
-    btn.setAttribute('aria-expanded','true');
-    document.addEventListener('click', outsideClick);
-    document.addEventListener('keydown', escClose);
-  }
+      // امنع الازدواج
+      if (window.__quickMenuInit) return;
+      window.__quickMenuInit = true;
 
-  function closeMenu(){
-    menu.hidden = true;
-    btn.setAttribute('aria-expanded','false');
-    document.removeEventListener('click', outsideClick);
-    document.removeEventListener('keydown', escClose);
-  }
+      function open(){
+        menu.hidden = false;
+        btn.setAttribute('aria-expanded','true');
+        // نؤخر ربط حدث الكليك الخارجي نصف "تيك" لتفادي غلق فوري عند الضغط على الزر
+        setTimeout(()=>{
+          document.addEventListener('click', onDoc, true);
+          document.addEventListener('keydown', onKey);
+        },0);
+      }
+      function close(){
+        menu.hidden = true;
+        btn.setAttribute('aria-expanded','false');
+        document.removeEventListener('click', onDoc, true);
+        document.removeEventListener('keydown', onKey);
+      }
+      function toggle(){ menu.hidden ? open() : close(); }
 
-  function outsideClick(e){
-    if(!menu.contains(e.target) && e.target !== btn){
-      closeMenu();
-    }
-  }
+      function onDoc(e){
+        // تجاهل الضغط داخل الزر أو داخل القائمة
+        if (e.target===btn || btn.contains(e.target) || menu.contains(e.target)) return;
+        close();
+      }
+      function onKey(e){ if (e.key==='Escape'){ close(); btn.focus(); } }
 
-  function escClose(e){
-    if(e.key === 'Escape'){ closeMenu(); }
-  }
-
-  btn.addEventListener('click', function(){
-    if(menu.hidden){ openMenu(); } else { closeMenu(); }
-  });
-});
-</script>
+      btn.addEventListener('click', function(e){
+        e.preventDefault();
+        e.stopPropagation(); // مهم: لا يُعتبر "ضغط خارج" ويغلق القائمة مباشرة
+        toggle();
+      });
+      menu.addEventListener('click', function(e){
+        // تفاعل داخل القائمة بدون أن يُغلقها كضغط خارجي
+        e.stopPropagation();
+      });
+    })();
+    </script>
 
     <!-- Typeahead -->
     <script>
@@ -553,7 +564,7 @@ document.addEventListener("DOMContentLoaded", function(){
 
         if (items.length){
           html.push('<div class="typeahead-group">عناصر</div>');
-        items.forEach(function(it){
+          items.forEach(function(it){
             var city = it.city ? ' — <span class="k">'+esc(it.city)+'</span>' : '';
             html.push('<div class="typeahead-item" data-url="'+it.url+'"><i class="bi bi-box-seam"></i><div class="flex-grow-1"><div>'+esc(it.title)+city+'</div><div class="k">تفاصيل العنصر</div></div></div>');
           });
@@ -710,68 +721,6 @@ document.addEventListener("DOMContentLoaded", function(){
           setTimeout(refreshUnread, 800);
         }catch(_){}
       }
-    })();
-    </script>
-
-    <!-- ====== سكربت إظهار/إخفاء رابط قضايا الوديعة (بدون localStorage) ====== -->
-    <script>
-    (function () {
-      function ensureSidebarLink(){
-        const nav = document.querySelector('.sidebar__nav'); if(!nav) return;
-        if (nav.querySelector('[data-nav="dm-link"]')) return;
-        const a = document.createElement('a');
-        a.setAttribute('data-nav','dm-link');
-        a.className = 'side-link';
-        a.href = '/dm/deposits';
-        a.setAttribute('data-tooltip','قضايا الوديعة');
-        a.innerHTML = '<i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>';
-        nav.appendChild(a);
-      }
-      function removeSidebarLink(){
-        const el = document.querySelector('.sidebar__nav [data-nav="dm-link"]'); if (el) el.remove();
-      }
-      function ensureMobileTab(){
-        const m = document.querySelector('.mobile-tabbar'); if(!m) return;
-        if (m.querySelector('[data-nav="dm-mobile"]')) return;
-        const a = document.createElement('a');
-        a.setAttribute('data-nav','dm-mobile');
-        a.href = '/dm/deposits';
-        a.innerHTML = '<i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>';
-        m.appendChild(a);
-      }
-      function removeMobileTab(){
-        const el = document.querySelector('.mobile-tabbar [data-nav="dm-mobile"]'); if (el) el.remove();
-      }
-
-      function showDM(){ ensureSidebarLink(); ensureMobileTab(); }
-      function hideDM(){ removeSidebarLink(); removeMobileTab(); }
-
-      // تهيئة مبدئية من السيرفر فقط
-      var canDM = (document.body.dataset.canDm === '1');
-      if (canDM) { showDM(); } else { hideDM(); }
-
-      // راقب نص الإشعار المفتوح (اختياري)
-      const notifBody = document.getElementById('notifBody');
-      if (notifBody){
-        const rxGrant  = /تم\s+منحك?\s+دور\s+متحكّم\s+الوديعة/i;
-        const rxRevoke = /تم\s+إلغاء\s+دور\s+متحكّم\s+الوديعة/i;
-
-        const onChange = () => {
-          const txt = notifBody.textContent || '';
-          if (rxGrant.test(txt))  { showDM(); }
-          if (rxRevoke.test(txt)) { hideDM(); }
-        };
-        const mo = new MutationObserver(muts=>{
-          for (const m of muts){
-            if (m.type === 'childList' || m.type === 'characterData'){ onChange(); break; }
-          }
-        });
-        mo.observe(notifBody, {childList:true, subtree:true, characterData:true});
-        onChange();
-      }
-
-      window.showDM = showDM;
-      window.hideDM = hideDM;
     })();
     </script>
 
