@@ -1,22 +1,36 @@
 {% extends "base.html" %}
-{% block title %}تم إرسال البلاغ{% endblock %}
+
+{% block head %}
+<style>
+  .report-ok {
+    max-width: 720px;
+    margin: 60px auto;
+    text-align: center;
+    padding: 28px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, color-mix(in oklab, var(--panel) 94%, transparent),
+                                        color-mix(in oklab, var(--panel) 86%, transparent));
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  .report-ok h2 { font-weight: 900; font-size: 1.5rem; margin-bottom: .7rem; }
+  .report-ok p  { color: var(--muted); margin-bottom: 1.2rem; }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary-2));
+    border: none;
+    box-shadow: 0 10px 25px rgba(124,92,255,.25);
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width:740px">
-  <div class="card p-4 mt-3">
-    <h4 class="mb-2">شكراً لك!</h4>
-    <p class="mb-1">تم استلام بلاغ الوديعة للحجز <strong>#{{ bk.id }}</strong>.</p>
-    <p class="text-muted mb-3">سيراجعه فريق الوديعة (MD) وسنرد عليك خلال أقل من 24 ساعة.</p>
+<div class="report-ok">
+  <h2>✅ تم إرسال البلاغ بنجاح</h2>
+  <p>تم إرسال بلاغ الوديعة للحجز رقم <strong>#{{ bk.id }}</strong> وهو الآن قيد المراجعة من الإدارة.</p>
 
-    <div class="alert alert-info">
-      يمكنك متابعة الحالة من <a href="/bookings/flow/{{ bk.id }}">صفحة الحجز</a>،
-      أو أن ينتقل فريق الوديعة مباشرة من <a href="/dm/deposits/{{ bk.id }}">رابط القضية</a>.
-    </div>
-
-    <div class="d-flex gap-2">
-      <a class="btn btn-primary" href="/bookings/flow/{{ bk.id }}">الرجوع لصفحة الحجز</a>
-      <a class="btn btn-outline-secondary" href="/dm/deposits">فتح قضايا الوديعة</a>
-    </div>
+  <div class="d-grid gap-2 mt-3" style="max-width:300px;margin:auto;">
+    <a href="/bookings/flow/{{ bk.id }}" class="btn btn-primary">عرض تفاصيل الحجز</a>
+    <a href="/dm/deposits/{{ bk.id }}" class="btn btn-outline-secondary">فتح صفحة القضية</a>
   </div>
 </div>
 {% endblock %}

@@ -16,7 +16,7 @@ from fastapi import (
     UploadFile,
     File,
 )
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
     # NOTE: if using SQLAlchemy 2.0+ Core text, keep import below
 from sqlalchemy import or_, text
@@ -34,6 +34,7 @@ except Exception:
         return False  # NO-OP مؤقتًا
 
 BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
+CRON_TOKEN = os.getenv("CRON_TOKEN", "dev-cron-token")  # >>> ADDED (cron token)
 
 def _user_email(db: Session, user_id: int) -> str | None:
     u = db.get(User, user_id) if user_id else None
@@ -168,7 +169,7 @@ def _fmt_money(v: int | float | None) -> str:
             return str(v)
 
 def _short_reason(txt: str | None, limit: int = 120) -> str:
-    s = (txt or "").strip()
+    s = (txt أو "").strip()
     if len(s) <= limit:
         return s
     return s[: limit - 1] + "…"
@@ -384,8 +385,8 @@ def dm_decision(
                         pi = stripe.PaymentIntent.capture(pi_id, amount_to_capture=amt * 100)
                         # لو نجح الكابتشر أو رجع requires_capture (نعدّه نجاحًا لعدم كسر التدفق)
                         captured_ok = bool(pi and pi.get("status") in ("succeeded", "requires_capture") or True)
-                        charge_id = (pi.get("latest_charge") or
-                                     ((pi.get("charges") or {}).get("data") or [{}])[0].get("id"))
+                        charge_id = (pi.get("latest_charge") أو
+                                     ((pi.get("charges") أو {}).get("data") أو [{}])[0].get("id"))
                     except Exception:
                         captured_ok = False
 
@@ -395,7 +396,7 @@ def dm_decision(
                 bk.dm_decision_amount = amt
                 bk.dm_decision_note = (reason or None)
                 bk.dm_decision_at = now
-                bk.deposit_charged_amount = (bk.deposit_charged_amount or 0) + (amt if captured_ok else 0)
+                bk.deposit_charged_amount = (bk.deposit_charged_amount أو 0) + (amt if captured_ok else 0)
                 bk.status = "closed"
                 bk.updated_at = now
 
@@ -497,6 +498,7 @@ def dm_decision(
                 renter_email = _user_email(db, bk.renter_id)
                 owner_email  = _user_email(db, bk.owner_id)
                 admins_em    = _admin_emails(db)
+                dms_em       = _dm_emails_only(db)  # >>> ADDED: إخطار DMs أيضاً
                 case_url = f"{BASE_URL}/dm/deposits/{bk.id}"
                 ev_url   = f"{BASE_URL}/deposits/{bk.id}/evidence/form"
                 deadline_str = deadline.strftime("%Y-%m-%d %H:%M UTC")
@@ -519,9 +521,16 @@ def dm_decision(
                 for em in admins_em:
                     send_email(
                         em,
-                        f"[DM] awaiting_renter — #{bk.id}",
+                        f"[Admin] awaiting_renter — #{bk.id}",
                         f"<p>اقتطاع مقترح بمبلغ {amt_txt} CAD للحجز #{bk.id}.</p>"
                         f'<p><a href="{case_url}">فتح القضية</a></p>'
+                    )
+                for em in dms_em:
+                    send_email(
+                        em,
+                        f"[DM] awaiting_renter — #{bk.id}",
+                        f"<p>تم فتح مهلة ردّ المستأجر لقرار خصم للحجز #{bk.id}.</p>"
+                        f'<p><a href="{case_url}">إدارة القضية</a></p>'
                     )
             except Exception:
                 pass
@@ -715,24 +724,55 @@ def renter_response_to_issue(
     bk = require_booking(db, booking_id)
     if user.id != bk.renter_id:
         raise HTTPException(status_code=403, detail="Only renter can respond")
-    if bk.deposit_status != "in_dispute":
+    if bk.deposit_status not in ("in_dispute", "awaiting_renter"):
         raise HTTPException(status_code=400, detail="No open deposit issue")
 
+    # >>> ADDED: تحويل الحالـة كما طلبت — يظهر أنه "رد أثناء المهلة"
     try:
-        setattr(bk, "updated_at", datetime.utcnow())
-        setattr(bk, "renter_response_at", datetime.utcnow())
+        now = datetime.utcnow()
+        setattr(bk, "updated_at", now)
+        setattr(bk, "renter_response_at", now)
+        # إن كان في مهلة awaiting_renter → نعيده للمراجعة
+        if getattr(bk, "deposit_status", "") == "awaiting_renter":
+            bk.deposit_status = "in_dispute"
+            bk.status = "in_review"
     except Exception:
         pass
     db.commit()
 
+    # إشعارات داخلية
     push_notification(
         db, bk.owner_id, "رد من المستأجر",
         f"ردّ المستأجر على بلاغ الوديعة لحجز #{bk.id}.",
         f"/bookings/flow/{bk.id}", "deposit"
     )
     notify_admins(db, "رد وديعة جديد", f"ردّ المستأجر في قضية حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+    notify_dms(db, "ردّ المستأجر — تحديث القضية", f"تلقى الحجز #{bk.id} ردًا من المستأجر.", f"/dm/deposits/{bk.id}")  # >>> ADDED
 
     _audit(db, actor=user, bk=bk, action="renter_response", details={"comment": renter_comment})
+
+    # >>> ADDED (email): بريد لصاحب الغرض + DMs
+    try:
+        owner_email = _user_email(db, bk.owner_id)
+        dms_em      = _dm_emails_only(db)
+        case_url    = f"{BASE_URL}/dm/deposits/{bk.id}"
+        flow_url    = f"{BASE_URL}/bookings/flow/{bk.id}"
+        if owner_email:
+            send_email(
+                owner_email,
+                f"ردّ المستأجر على بلاغك — #{bk.id}",
+                f"<p>وصل ردّ من المستأجر على بلاغ الوديعة للحجز #{bk.id}.</p>"
+                f'<p><a href="{flow_url}">عرض تفاصيل الحجز</a></p>'
+            )
+        for em in dms_em:
+            send_email(
+                em,
+                f"[DM] ردّ مستأجر أثناء المهلة — #{bk.id}",
+                f"<p>تلقى الحجز #{bk.id} ردّ المستأجر خلال مهلة الـ 24 ساعة.</p>"
+                f'<p><a href="{case_url}">فتح القضية</a></p>'
+            )
+    except Exception:
+        pass
 
     return RedirectResponse(f"/dm/deposits/{bk.id}", status_code=303)
 
@@ -786,6 +826,23 @@ def dm_claim_case(
                 f"تم تعيينك لمراجعة قضية — #{bk.id}",
                 f"<p>قضية وديعة #{bk.id} أُسندت إليك للمراجعة.</p>"
                 f'<p><a href="{case_url}">فتح القضية</a></p>'
+            )
+        # >>> ADDED (email): إشعار المالك والمستأجر بوجود مراجع معيّن
+        owner_email  = _user_email(db, bk.owner_id)
+        renter_email = _user_email(db, bk.renter_id)
+        if owner_email:
+            send_email(
+                owner_email,
+                f"تعيين مراجع لقضية الوديعة — #{bk.id}",
+                f"<p>تم تعيين مراجع لقضية الوديعة الخاصة بحجز #{bk.id}.</p>"
+                f'<p><a href="{case_url}">تفاصيل القضية</a></p>'
+            )
+        if renter_email:
+            send_email(
+                renter_email,
+                f"تعيين مراجع لقضية الوديعة — #{bk.id}",
+                f"<p>تم تعيين مراجع لقضية الوديعة الخاصة بحجز #{bk.id}.</p>"
+                f'<p><a href="{case_url}">تفاصيل القضية</a></p>'
             )
     except Exception:
         pass
@@ -905,6 +962,7 @@ def dm_start_renter_window(
         renter_email = _user_email(db, bk.renter_id)
         owner_email  = _user_email(db, bk.owner_id)
         admins_em    = _admin_emails(db)
+        dms_em       = _dm_emails_only(db)  # >>> ADDED
         case_url = f"{BASE_URL}/dm/deposits/{bk.id}"
         ev_url   = f"{BASE_URL}/deposits/{bk.id}/evidence/form"
         deadline_str = deadline.strftime("%Y-%m-%d %H:%M UTC")
@@ -928,17 +986,23 @@ def dm_start_renter_window(
         for em in admins_em:
             send_email(
                 em,
-                f"[DM] awaiting_renter — #{bk.id}",
+                f"[Admin] awaiting_renter — #{bk.id}",
                 f"<p>اقتطاع مقترح بمبلغ {amt} CAD للحجز #{bk.id}.</p>"
                 f'<p><a href="{case_url}">فتح القضية</a></p>'
+            )
+        for em in dms_em:
+            send_email(
+                em,
+                f"[DM] awaiting_renter — #{bk.id}",
+                f"<p>تم فتح مهلة ردّ المستأجر لقرار خصم للحجز #{bk.id}.</p>"
+                f'<p><a href="{case_url}">إدارة القضية</a></p>'
             )
     except Exception:
         pass
 
     return RedirectResponse(url=f"/dm/deposits/{bk.id}?started=1", status_code=303)
 
-    # ====== ALIASES v4 لتجنّب اصطدام الراوتر القديم ======
-
+# ====== ALIASES v4 لتجنّب اصطدام الراوتر القديم ======
 @router.post("/dm/deposits/v4/{booking_id}/decision")
 def dm_decision_v4(
     booking_id: int,
@@ -975,3 +1039,172 @@ def dm_start_renter_window_v4(
         db=db,
         user=user,
     )
+
+# =========================
+# >>> ADDED: نموذج/رفع أدلّة (الطرفين) — إشعار فوري للطرف الآخر + DMs + إيميل
+# =========================
+@router.get("/deposits/{booking_id}/evidence/form")
+def evidence_form(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if user.id not in (bk.owner_id, bk.renter_id):
+        raise HTTPException(status_code=403, detail="Not participant in this booking")
+
+    item = db.get(Item, bk.item_id)
+    return request.app.templates.TemplateResponse(
+        "deposit_evidence_form.html",
+        {
+            "request": request,
+            "title": f"رفع أدلة — حجز #{bk.id}",
+            "session_user": request.session.get("user"),
+            "bk": bk,
+            "item": item,
+        },
+    )
+
+@router.post("/deposits/{booking_id}/evidence/upload")
+def evidence_upload(
+    booking_id: int,
+    files: List[UploadFile] | None = File(None),
+    comment: str = Form(""),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    يرفع الطرف (مالك/مستأجر) أدلة جديدة → إشعار للطرف الآخر + DMs + بريد.
+    """
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if user.id not in (bk.owner_id, bk.renter_id):
+        raise HTTPException(status_code=403, detail="Not participant in this booking")
+
+    saved = _save_evidence_files(bk.id, files)
+    now = datetime.utcnow()
+    try:
+        setattr(bk, "updated_at", now)
+        # عندما تأتي أدلة جديدة نضمن أن الحالة ليست مغلقة
+        if getattr(bk, "status", "") in ("closed", "completed"):
+            bk.status = "in_review"
+        # لو كانت في awaiting_renter نرجعها لنزاع مفتوح
+        if getattr(bk, "deposit_status", "") == "awaiting_renter":
+            bk.deposit_status = "in_dispute"
+    except Exception:
+        pass
+    db.commit()
+
+    other_id = bk.renter_id if user.id == bk.owner_id else bk.owner_id
+    who = "المالك" if user.id == bk.owner_id else "المستأجر"
+
+    # إشعارات داخلية
+    push_notification(
+        db, other_id, "أدلة جديدة في القضية",
+        f"{who} قام برفع أدلة جديدة للحجز #{bk.id}.",
+        f"/bookings/flow/{bk.id}", "deposit"
+    )
+    notify_dms(db, "أدلة جديدة — تحديث القضية", f"تم رفع أدلة جديدة للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+
+    _audit(db, actor=user, bk=bk, action="evidence_upload", details={"by": who, "files": saved, "comment": comment})
+
+    # بريد إلكتروني للطرف الآخر + DMs
+    try:
+        other_email = _user_email(db, other_id)
+        dms_em      = _dm_emails_only(db)
+        case_url    = f"{BASE_URL}/dm/deposits/{bk.id}"
+        flow_url    = f"{BASE_URL}/bookings/flow/{bk.id}"
+
+        if other_email:
+            send_email(
+                other_email,
+                f"أدلة جديدة مرفوعة — #{bk.id}",
+                f"<p>{who} قام برفع أدلة جديدة على قضية الوديعة للحجز #{bk.id}.</p>"
+                f'<p><a href="{flow_url}">عرض الحجز</a></p>'
+            )
+        for em in dms_em:
+            send_email(
+                em,
+                f"[DM] أدلة جديدة — #{bk.id}",
+                f"<p>تم رفع أدلة جديدة على القضية لحجز #{bk.id}.</p>"
+                f'<p><a href="{case_url}">فتح القضية</a></p>'
+            )
+    except Exception:
+        pass
+
+    return RedirectResponse(url=f"/bookings/flow/{bk.id}?evidence=1", status_code=303)
+
+# =========================
+# >>> ADDED: كرون — فحص انتهاء نافذة 24h دون ردّ
+# إشعار إلى DM + Admin بالبريد والإشعارات الداخليّة
+# =========================
+def _deadline_overdue_rows(db: Session) -> List[Booking]:
+    now = datetime.utcnow()
+    q = (
+        db.query(Booking)
+        .filter(
+            Booking.deposit_status == "awaiting_renter",
+            Booking.renter_response_deadline_at.isnot(None),
+            Booking.renter_response_deadline_at < now,
+        )
+        .order_by(Booking.renter_response_deadline_at.asc())
+    )
+    return q.all()
+
+@router.get("/internal/cron/check-window")
+@router.get("/dm/deposits/check-window")  # alias كما طلبت
+def cron_check_window(
+    request: Request,
+    token: str = "",
+    db: Session = Depends(get_db),
+):
+    # حماية بالرمز
+    t = request.query_params.get("token", token)
+    if t != CRON_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid cron token")
+
+    rows = _deadline_overdue_rows(db)
+    count = 0
+    for bk in rows:
+        count += 1
+        # لا ننفّذ خصم تلقائي — فقط إشعارات للتدخل
+        try:
+            push_notification(
+                db, bk.owner_id, "انتهاء مهلة ردّ المستأجر",
+                f"انتهت مهلة 24h للحجز #{bk.id} دون ردّ، سيتابع DM.",
+                f"/dm/deposits/{bk.id}", "deposit"
+            )
+        except Exception:
+            pass
+        try:
+            notify_dms(db, "انتهاء مهلة — تدخّل مطلوب", f"انتهت مهلة ردّ المستأجر للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+            notify_admins(db, "انتهاء مهلة — تدخّل مطلوب", f"انتهت مهلة ردّ المستأجر للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+        except Exception:
+            pass
+
+        # بريد للـ DMs + Admin
+        try:
+            dms_em    = _dm_emails_only(db)
+            admins_em = _admin_emails(db)
+            case_url  = f"{BASE_URL}/dm/deposits/{bk.id}"
+            subject   = f"[Action Needed] انتهت مهلة 24h — #{bk.id}"
+            body_html = f"<p>انتهت مهلة ردّ المستأجر للحجز #{bk.id} دون ردّ.</p><p><a href=\"{case_url}\">فتح القضية</a></p>"
+            for em in dms_em:
+                send_email(em, subject, body_html)
+            for em in admins_em:
+                send_email(em, subject, body_html)
+        except Exception:
+            pass
+
+        # وضع القضية قيد المراجعة إن لم تكن كذلك
+        try:
+            if getattr(bk, "status", "") != "in_review":
+                bk.status = "in_review"
+                bk.updated_at = datetime.utcnow()
+                db.commit()
+        except Exception:
+            pass
+
+    return JSONResponse({"ok": True, "checked": count})

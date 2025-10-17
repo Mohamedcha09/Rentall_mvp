@@ -466,22 +466,42 @@
       scrim?.addEventListener('click', closePanel);
     </script>
 
-    <!-- [جديد] سكربت فتح/غلق القائمة العلوية عند زر ☰ -->
-    <script>
-    (function(){
-      const btn = document.getElementById('menuBtn');
-      const menu = document.getElementById('quickMenu');
-      if(!btn || !menu) return;
+    <!-- [إصلاح نهائي لزر ☰] -->
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+  const btn = document.getElementById('menuBtn');
+  const menu = document.getElementById('quickMenu');
+  if(!btn || !menu) return;
 
-      function open(){ menu.hidden = false; btn.setAttribute('aria-expanded','true'); document.addEventListener('click', onDoc, true); document.addEventListener('keydown', onKey); }
-      function close(){ menu.hidden = true; btn.setAttribute('aria-expanded','false'); document.removeEventListener('click', onDoc, true); document.removeEventListener('keydown', onKey); }
-      function toggle(){ menu.hidden ? open() : close(); }
-      function onDoc(e){ if(e.target===btn || btn.contains(e.target)) return; if(!menu.contains(e.target)) close(); }
-      function onKey(e){ if(e.key==='Escape'){ close(); btn.focus(); } }
+  function openMenu(){
+    menu.hidden = false;
+    btn.setAttribute('aria-expanded','true');
+    document.addEventListener('click', outsideClick);
+    document.addEventListener('keydown', escClose);
+  }
 
-      btn.addEventListener('click', toggle);
-    })();
-    </script>
+  function closeMenu(){
+    menu.hidden = true;
+    btn.setAttribute('aria-expanded','false');
+    document.removeEventListener('click', outsideClick);
+    document.removeEventListener('keydown', escClose);
+  }
+
+  function outsideClick(e){
+    if(!menu.contains(e.target) && e.target !== btn){
+      closeMenu();
+    }
+  }
+
+  function escClose(e){
+    if(e.key === 'Escape'){ closeMenu(); }
+  }
+
+  btn.addEventListener('click', function(){
+    if(menu.hidden){ openMenu(); } else { closeMenu(); }
+  });
+});
+</script>
 
     <!-- Typeahead -->
     <script>

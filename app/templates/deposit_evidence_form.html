@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+  .evidence-card {
+    max-width: 720px;
+    margin: 30px auto;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: linear-gradient(180deg, color-mix(in oklab, var(--card) 96%, transparent),
+                                        color-mix(in oklab, var(--card) 88%, transparent));
+    box-shadow: var(--shadow);
+  }
+  .evidence-card h3 {
+    font-weight: 900;
+    font-size: 1.4rem;
+    margin-bottom: .8rem;
+  }
+  .evidence-card p { color: var(--muted); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary-2));
+    border: none;
+    box-shadow: 0 10px 25px rgba(124,92,255,.25);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+  <div class="evidence-card">
+    <h3>📎 رفع أدلة — الحجز #{{ bk.id }}</h3>
+    <p class="mb-3">
+      يمكنك رفع صور أو مقاطع فيديو أو مستندات، وإضافة ملاحظات لتوضيح موقفك في القضية.
+    </p>
+
+    <form method="post" action="/deposits/{{ bk.id }}/evidence/upload" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label class="form-label fw-bold">الملفات (مسموح: صور / فيديو)</label>
+        <input type="file" name="files" class="form-control" multiple required>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-bold">تعليق (اختياري)</label>
+        <textarea name="comment" class="form-control" rows="3"
+                  placeholder="اكتب شرحًا مختصرًا للأدلة..."></textarea>
+      </div>
+
+      <div class="d-grid gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">رفع الأدلة الآن</button>
+        <a href="/bookings/flow/{{ bk.id }}" class="btn btn-outline-secondary">العودة إلى تفاصيل الحجز</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
