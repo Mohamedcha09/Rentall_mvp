@@ -1,5 +1,6 @@
 # app/payout_connect.py
 import os
+# ===== [قديــم: SMTP يدوي] أبقيته كتعليقات — نعتمد SendGrid فقط الآن =====
 # import smtplib
 # from email.mime.text import MIMEText
 
@@ -12,15 +13,20 @@ from .database import get_db
 from .models import User
 from .notifications_api import push_notification, notify_admins  # إشعارات داخل الموقع
 
-# ===== إرسال البريد عبر SendGrid (كما في مشروعك) =====
+# ===== [جديد] استخدام SendGrid عبر خدمة المشروع الموحدة =====
 from .email_service import send_email as _sg_send_email  # (to, subject, html_body, text_body=None, ...)
 
 router = APIRouter()
 
-# ===== روابط أساسية =====
+# =========================
+# قاعدة الروابط
+# =========================
 BASE_URL = (os.getenv("SITE_URL") or os.getenv("CONNECT_REDIRECT_BASE") or "http://localhost:8000").rstrip("/")
 
-# ===== محوّل HTML ➜ نص احتياطي =====
+
+# =========================
+# Helpers عامة
+# =========================
 def _strip_html(html: str) -> str:
     try:
         import re
@@ -33,7 +39,7 @@ def _strip_html(html: str) -> str:
 
 def send_email(to_email: str, subject: str, html_body: str, text_body: str | None = None) -> bool:
     """
-    نستخدم SendGrid فقط عبر app/email_service.send_email
+    نُرسل حصريًّا عبر SendGrid (email_service). أي خطأ لا يكسر التدفق.
     """
     try:
         return bool(_sg_send_email(
@@ -45,9 +51,6 @@ def send_email(to_email: str, subject: str, html_body: str, text_body: str | Non
     except Exception:
         return False
 
-# =========================
-# Helpers
-# =========================
 def _base_url(request: Request) -> str:
     env_base = (os.getenv("CONNECT_REDIRECT_BASE") or os.getenv("SITE_URL") or "").strip().rstrip("/")
     if env_base:
@@ -72,7 +75,10 @@ def _ensure_account(db: Session, user: User) -> str:
             type="express",
             country="CA",
             email=(user.email or None),
-            capabilities={"card_payments": {"requested": True}, "transfers": {"requested": True}},
+            capabilities={
+                "card_payments": {"requested": True},
+                "transfers": {"requested": True}
+            },
         )
         acct_id = acct.id
         try:
@@ -88,16 +94,21 @@ def _ensure_account(db: Session, user: User) -> str:
 def _pct(amount_cents: int, fee_pct: float) -> int:
     return int(round(amount_cents * (float(fee_pct) / 100.0)))
 
+
 # =========================
-# صفحة الإعدادات
+# صفحة الإعدادات (عرض واجهة)
 # =========================
 @router.get("/payout/settings", response_class=HTMLResponse)
 def payout_settings(request: Request):
     t = request.app.templates
-    return t.TemplateResponse("payout_settings.html", {"request": request, "session_user": request.session.get("user")})
+    return t.TemplateResponse("payout_settings.html", {
+        "request": request,
+        "session_user": request.session.get("user")
+    })
+
 
 # =========================
-# Debug
+# مسارات تشخيصية
 # =========================
 @router.get("/api/stripe/connect/debug")
 def connect_debug(request: Request, db: Session = Depends(get_db)):
@@ -113,7 +124,6 @@ def connect_debug(request: Request, db: Session = Depends(get_db)):
         "db_stripe_account_id": db_acct,
     }
 
-# يرجع الـ id مباشرة
 @router.get("/api/stripe/connect/id")
 def connect_account_id(request: Request, db: Session = Depends(get_db)):
     _set_api_key_or_500()
@@ -138,10 +148,11 @@ def connect_account_id(request: Request, db: Session = Depends(get_db)):
         pass
     return {"account_id": real_id}
 
+
 # =========================
 # Start / Onboard / Refresh
 # =========================
-@router.api_route("/payout/connect/start", methods=["GET","POST"])
+@router.api_route("/payout/connect/start", methods=["GET", "POST"])
 def payout_connect_start(request: Request, db: Session = Depends(get_db)):
     _set_api_key_or_500()
     sess = request.session.get("user")
@@ -166,7 +177,7 @@ def payout_connect_start(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(link.url, status_code=303)
 
     except Exception as e:
-        # (24) فشل ربط الحساب — إشعار + بريد
+        # (24) فشل بدء الربط — إشعار + بريد
         reason = str(e)
         push_notification(
             db, user.id,
@@ -176,8 +187,7 @@ def payout_connect_start(request: Request, db: Session = Depends(get_db)):
             kind="system",
         )
         notify_admins(
-            db,
-            "Stripe Connect linking failed",
+            db, "Stripe Connect linking failed",
             f"user_id={user.id} — {reason[:180]}",
             "/admin"
         )
@@ -187,10 +197,10 @@ def payout_connect_start(request: Request, db: Session = Depends(get_db)):
                 "🪪 فشل ربط Stripe",
                 (
                     f"<p>مرحبًا {user.first_name or ''},</p>"
-                    f"<p>تعذّر بدء ربط حسابك على Stripe Connect.</p>"
+                    "<p>تعذّر بدء ربط حسابك على Stripe Connect.</p>"
                     f"<p>السبب (إن وُجد): {reason}</p>"
                     f'<p>حاول مجددًا من خلال <a href="{BASE_URL}/payout/settings">صفحة الإعدادات</a> '
-                    f'أو تواصل مع الدعم.</p>'
+                    "أو تواصل مع الدعم.</p>"
                 ),
                 (
                     f"مرحبًا {user.first_name or ''},\n\n"
@@ -202,6 +212,7 @@ def payout_connect_start(request: Request, db: Session = Depends(get_db)):
         except Exception:
             pass
         return RedirectResponse(url="/payout/settings?err=1", status_code=303)
+
 
 @router.get("/connect/onboard")
 def connect_onboard(request: Request, db: Session = Depends(get_db)):
@@ -228,12 +239,13 @@ def connect_onboard(request: Request, db: Session = Depends(get_db)):
     )
     return RedirectResponse(link.url)
 
+
 @router.get("/payout/connect/refresh")
 def payout_connect_refresh(request: Request, db: Session = Depends(get_db)):
     """
-    يعود المستخدم من Stripe هنا (refresh/return). نزامن الحالة.
-    ✳️ تعديل مهم: لو كانت payouts_enabled=True سنرسل بريد النجاح دائمًا
-        (بدل ما كان سابقًا فقط عند الانتقال لأول مرة).
+    يعود المستخدم من Stripe هنا (refresh/return).
+    نزامن الحالة، وإذا تحولت من غير مفعّل إلى مفعّل،
+    **ونجحت الشروط الثلاثة (payouts & charges & details)** نرسل بريد التفعيل.
     """
     _set_api_key_or_500()
     sess = request.session.get("user")
@@ -244,26 +256,31 @@ def payout_connect_refresh(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/payout/settings", status_code=303)
 
+    became_enabled = False
     try:
         if getattr(user, "stripe_account_id", None):
             acct = stripe.Account.retrieve(user.stripe_account_id)
 
-            # مزامنة
+            # sync id إن تغيّر
             try:
                 if getattr(user, "stripe_account_id", None) != acct.id:
                     user.stripe_account_id = acct.id
             except Exception:
                 pass
 
-            pe = bool(getattr(acct, "payouts_enabled", False))
-            # before = bool(getattr(user, "payouts_enabled", False))  # ← لم نعد نستخدمه للإرسال فقط
+            payouts_enabled   = bool(getattr(acct, "payouts_enabled", False))
+            charges_enabled   = bool(getattr(acct, "charges_enabled", False))
+            details_submitted = bool(getattr(acct, "details_submitted", False))
+
+            before = bool(getattr(user, "payouts_enabled", False))
             if hasattr(user, "payouts_enabled"):
-                user.payouts_enabled = pe
+                user.payouts_enabled = payouts_enabled
             db.add(user); db.commit()
 
-            # كان سابقًا: if pe and not before:  ← هذا يمنع البريد إذا كان مُفعّلًا من قبل
-            # الآن: لو مفعّل، أرسل البريد دائمًا.
-            if pe:
+            became_enabled = (payouts_enabled and not before)
+
+            # (23) نجاح الربط لأول مرة
+            if became_enabled:
                 push_notification(
                     db, user.id,
                     "🔗 تم ربط Stripe Connect بنجاح",
@@ -277,27 +294,45 @@ def payout_connect_refresh(request: Request, db: Session = Depends(get_db)):
                     f"user_id={user.id} — payouts_enabled=True",
                     "/admin"
                 )
-                try:
-                    send_email(
-                        user.email,
-                        "🔗 تم ربط Stripe Connect بنجاح",
-                        (
-                            f"<p>مرحبًا {user.first_name or ''},</p>"
-                            "<p>تم ربط حساب Stripe Connect بنجاح وأصبحت التحويلات مفعّلة على حسابك.</p>"
-                            f'<p>يمكنك مراجعة الحالة من <a href="{BASE_URL}/payout/settings">صفحة الإعدادات</a>.</p>'
-                            "<p>شكرًا لاستخدامك منصّتنا.</p>"
-                        ),
-                        (
-                            f"مرحبًا {user.first_name or ''},\n\n"
-                            "تم ربط حساب Stripe Connect بنجاح وأصبحت التحويلات مفعّلة على حسابك.\n"
-                            f"راجع صفحة الإعدادات: {BASE_URL}/payout/settings\n\n"
-                            "شكرًا لاستخدامك منصّتنا."
+
+                # ✅ شرط الإيميل: القيم الثلاث كلّها True
+                if payouts_enabled and charges_enabled and details_submitted:
+                    try:
+                        send_email(
+                            user.email,
+                            "🎉 حساب Stripe Connect مفعَّل بالكامل — جاهز لاستلام الأرباح",
+                            (
+                                f"<div style='font-family:Tahoma,Arial,sans-serif;direction:rtl;text-align:right;line-height:1.9'>"
+                                f"<h3>مرحبًا {user.first_name or 'عزيزي المستخدم'} 👋</h3>"
+                                "<p>تم تفعيل حسابك في Stripe Connect بالكامل، ويمكنك الآن استلام الأرباح على حسابك البنكي.</p>"
+                                "<ul style='margin:0 0 12px;padding:0 18px'>"
+                                "<li>payouts_enabled: <b>true</b></li>"
+                                "<li>charges_enabled: <b>true</b></li>"
+                                "<li>details_submitted: <b>true</b></li>"
+                                "</ul>"
+                                f"<p>يمكنك مراجعة الحالة من <a href='{BASE_URL}/payout/settings'>صفحة الإعدادات</a>.</p>"
+                                "<p style='color:#999;font-size:12px'>إذا لم تكن أنت من أجرى هذه العملية، يرجى التواصل مع الدعم.</p>"
+                                "</div>"
+                            ),
+                            (
+                                f"مرحبًا {user.first_name or 'عزيزي المستخدم'},\n\n"
+                                "تم تفعيل حساب Stripe Connect بالكامل ويمكنك الآن استلام الأرباح.\n"
+                                "الحالة:\n"
+                                "- payouts_enabled: true\n- charges_enabled: true\n- details_submitted: true\n\n"
+                                f"رابط الإعدادات: {BASE_URL}/payout/settings\n"
+                            )
                         )
+                    except Exception:
+                        pass
+                else:
+                    # لا نرسل بريدًا، فقط لوج للمساعدة
+                    print(
+                        "[Stripe Check] Account not fully ready for email: "
+                        f"payouts={payouts_enabled}, charges={charges_enabled}, details={details_submitted}"
                     )
-                except Exception:
-                    pass
 
     except Exception as e:
+        # خطأ أثناء العودة/المزامنة
         reason = str(e)
         push_notification(
             db, user.id,
@@ -332,14 +367,18 @@ def payout_connect_refresh(request: Request, db: Session = Depends(get_db)):
         except Exception:
             pass
 
-    # ملاحظة: قد تتكرر الرسالة لو ضغط المستخدم “تحقق من الحالة” مرات عديدة — هذا مقصود هنا لتأكيد الوصول بالبريد.
-    return RedirectResponse(url="/payout/settings?done=1", status_code=303)
+    qs = "?done=1" if became_enabled else ""
+    return RedirectResponse(url=f"/payout/settings{qs}", status_code=303)
+
 
 # =========================
 # Status + Force Save
 # =========================
 @router.get("/api/stripe/connect/status")
 def stripe_connect_status(request: Request, db: Session = Depends(get_db), autocreate: int = 0):
+    """
+    Endpoint JSON للحالة (لا يرسل بريدًا).
+    """
     _set_api_key_or_500()
     sess = request.session.get("user")
     if not sess:
@@ -382,8 +421,9 @@ def stripe_connect_status(request: Request, db: Session = Depends(get_db), autoc
         "payouts_enabled": bool(acct.payouts_enabled),
         "details_submitted": bool(acct.details_submitted),
         "capabilities": getattr(acct, "capabilities", None),
-        "requirements_due": acct.get("requirements", {}).get("currently_due", []),
+        "requirements_due": (acct.get("requirements", {}) or {}).get("currently_due", []),
     })
+
 
 @router.post("/api/stripe/connect/save")
 def stripe_connect_force_save(request: Request, db: Session = Depends(get_db)):
@@ -410,6 +450,7 @@ def stripe_connect_force_save(request: Request, db: Session = Depends(get_db)):
         pass
 
     return {"saved": True, "account_id": acct.id}
+
 
 # =========================
 # Split Test (Destination charge) — كما هو
@@ -459,7 +500,8 @@ def split_test_checkout(
     )
     return RedirectResponse(session.url, status_code=303)
 
-# === Onboard link as JSON (نفسه)
+
+# === Onboard link as JSON (يفتح صفحة KYC/إضافة بنك) — كما هو
 @router.get("/api/stripe/connect/onboard_link")
 def connect_onboard_link(request: Request, db: Session = Depends(get_db)):
     _set_api_key_or_500()
