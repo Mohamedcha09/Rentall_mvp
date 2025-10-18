@@ -18,7 +18,7 @@ from fastapi import (
 )
 from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
-    # NOTE: if using SQLAlchemy 2.0+ Core text, keep import below
+# NOTE: if using SQLAlchemy 2.0+ Core text, keep import below
 from sqlalchemy import or_, text
 
 from .database import get_db, engine as _engine
@@ -34,7 +34,7 @@ except Exception:
         return False  # NO-OP مؤقتًا
 
 BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
-CRON_TOKEN = os.getenv("CRON_TOKEN", "dev-cron-token")  # >>> ADDED (cron token)
+CRON_TOKEN = os.getenv("CRON_TOKEN", "dev-cron-token")  # رمز حماية للكرون اليدوي
 
 def _user_email(db: Session, user_id: int) -> str | None:
     u = db.get(User, user_id) if user_id else None
@@ -46,7 +46,7 @@ def _admin_emails(db: Session) -> list[str]:
     ).all()
     return [a.email for a in admins if getattr(a, "email", None)]
 
-# >>> ADDED (email): إحضار إيميلات كل DMs فقط (بدون الإداريين إن أردت الفصل)
+# إيميلات الـ DMs فقط (بدون الإداريين، للفصل عند الحاجة)
 def _dm_emails_only(db: Session) -> list[str]:
     dms = db.query(User).filter(User.is_deposit_manager == True).all()
     return [u.email for u in dms if getattr(u, "email", None)]
@@ -406,7 +406,7 @@ def dm_decision(
                 )
                 db.commit()
 
-                # تحويل للمـالك (لو أمكن)
+                # محاولة تحويل للمالك (لو لديه Stripe متكامل)
                 try:
                     owner: User = db.get(User, bk.owner_id)
                     if captured_ok and owner and getattr(owner, "stripe_account_id", None) and getattr(owner, "payouts_enabled", False):
@@ -498,7 +498,7 @@ def dm_decision(
                 renter_email = _user_email(db, bk.renter_id)
                 owner_email  = _user_email(db, bk.owner_id)
                 admins_em    = _admin_emails(db)
-                dms_em       = _dm_emails_only(db)  # >>> ADDED: إخطار DMs أيضاً
+                dms_em       = _dm_emails_only(db)
                 case_url = f"{BASE_URL}/dm/deposits/{bk.id}"
                 ev_url   = f"{BASE_URL}/deposits/{bk.id}/evidence/form"
                 deadline_str = deadline.strftime("%Y-%m-%d %H:%M UTC")
@@ -644,7 +644,7 @@ def report_deposit_issue(
 
     db.commit()
 
-    # إشعارات داخلية موجودة
+    # إشعارات داخلية
     push_notification(
         db, bk.renter_id, "بلاغ وديعة جديد",
         f"قام المالك بالإبلاغ عن مشكلة ({issue_type}) بخصوص الحجز #{bk.id}.",
@@ -655,7 +655,7 @@ def report_deposit_issue(
 
     _audit(db, actor=user, bk=bk, action="owner_report_issue", details={"issue_type": issue_type, "desc": description, "files": saved})
 
-    # >>> ADDED (email): إرسال إيميلات عند البلاغ — للمستأجر + المالك (تأكيد) + الإداريين + الـDMs
+    # Emails: عند البلاغ — للمستأجر + المالك (تأكيد) + الإداريين + الـDMs
     try:
         renter_email = _user_email(db, bk.renter_id)
         owner_email  = _user_email(db, bk.owner_id)
@@ -665,7 +665,6 @@ def report_deposit_issue(
         case_url  = f"{BASE_URL}/dm/deposits/{bk.id}"
         flow_url  = f"{BASE_URL}/bookings/flow/{bk.id}"
 
-        # للمستأجر
         if renter_email:
             send_email(
                 renter_email,
@@ -673,7 +672,6 @@ def report_deposit_issue(
                 f"<p>قام المالك بالإبلاغ عن مشكلة (<b>{issue_type}</b>) بخصوص الحجز #{bk.id}.</p>"
                 f'<p><a href="{flow_url}">فتح تفاصيل الحجز</a></p>'
             )
-        # للمالك (تأكيد)
         if owner_email:
             send_email(
                 owner_email,
@@ -681,7 +679,6 @@ def report_deposit_issue(
                 f"<p>تم تقديم بلاغك ({issue_type}) بنجاح للحجز #{bk.id} وهو الآن قيد المراجعة.</p>"
                 f'<p><a href="{flow_url}">تفاصيل الحجز</a></p>'
             )
-        # للأدمن
         for em in admins_em:
             send_email(
                 em,
@@ -689,7 +686,6 @@ def report_deposit_issue(
                 f"<p>بلاغ وديعة جديد من المالك بخصوص الحجز #{bk.id}.</p>"
                 f'<p><a href="{case_url}">فتح القضية</a></p>'
             )
-        # للـDMs
         for em in dms_em:
             send_email(
                 em,
@@ -699,7 +695,6 @@ def report_deposit_issue(
             )
     except Exception:
         pass
-    # <<< END ADDED (email)
 
     return request.app.templates.TemplateResponse(
         "deposit_report_ok.html",
@@ -727,7 +722,6 @@ def renter_response_to_issue(
     if bk.deposit_status not in ("in_dispute", "awaiting_renter"):
         raise HTTPException(status_code=400, detail="No open deposit issue")
 
-    # >>> ADDED: تحويل الحالـة كما طلبت — يظهر أنه "رد أثناء المهلة"
     try:
         now = datetime.utcnow()
         setattr(bk, "updated_at", now)
@@ -747,11 +741,11 @@ def renter_response_to_issue(
         f"/bookings/flow/{bk.id}", "deposit"
     )
     notify_admins(db, "رد وديعة جديد", f"ردّ المستأجر في قضية حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
-    notify_dms(db, "ردّ المستأجر — تحديث القضية", f"تلقى الحجز #{bk.id} ردًا من المستأجر.", f"/dm/deposits/{bk.id}")  # >>> ADDED
+    notify_dms(db, "ردّ المستأجر — تحديث القضية", f"تلقى الحجز #{bk.id} ردًا من المستأجر.", f"/dm/deposits/{bk.id}")
 
     _audit(db, actor=user, bk=bk, action="renter_response", details={"comment": renter_comment})
 
-    # >>> ADDED (email): بريد لصاحب الغرض + DMs
+    # Emails: لصاحب الغرض + DMs
     try:
         owner_email = _user_email(db, bk.owner_id)
         dms_em      = _dm_emails_only(db)
@@ -799,7 +793,7 @@ def dm_claim_case(
     except Exception:
         pass
 
-    # 🔔 إشعار "تم تعيينك لمراجعة قضية" (Assign) — يصل للمراجع نفسه + Admin
+    # 🔔 إشعارات: تعيينك لمراجعة القضية
     try:
         push_notification(
             db, user.id,
@@ -816,7 +810,7 @@ def dm_claim_case(
     except Exception:
         pass
 
-    # ===== Email: تم تعيينك لمراجعة قضية =====
+    # ✉️ Emails: للمراجع نفسه + المالك + المستأجر
     try:
         reviewer_email = _user_email(db, user.id)
         case_url = f"{BASE_URL}/dm/deposits/{bk.id}"
@@ -827,7 +821,6 @@ def dm_claim_case(
                 f"<p>قضية وديعة #{bk.id} أُسندت إليك للمراجعة.</p>"
                 f'<p><a href="{case_url}">فتح القضية</a></p>'
             )
-        # >>> ADDED (email): إشعار المالك والمستأجر بوجود مراجع معيّن
         owner_email  = _user_email(db, bk.owner_id)
         renter_email = _user_email(db, bk.renter_id)
         if owner_email:
@@ -938,6 +931,7 @@ def dm_start_renter_window(
 
     db.commit()
 
+    # إشعارات داخلية
     try:
         push_notification(
             db, bk.renter_id, "تنبيه: قرار خصم قيد الانتظار",
@@ -957,12 +951,12 @@ def dm_start_renter_window(
     except Exception:
         pass
 
-    # ===== Emails: بدء نافذة 24 ساعة (عبر start-window) =====
+    # Emails: بدء نافذة 24 ساعة
     try:
         renter_email = _user_email(db, bk.renter_id)
         owner_email  = _user_email(db, bk.owner_id)
         admins_em    = _admin_emails(db)
-        dms_em       = _dm_emails_only(db)  # >>> ADDED
+        dms_em       = _dm_emails_only(db)
         case_url = f"{BASE_URL}/dm/deposits/{bk.id}"
         ev_url   = f"{BASE_URL}/deposits/{bk.id}/evidence/form"
         deadline_str = deadline.strftime("%Y-%m-%d %H:%M UTC")
@@ -1041,7 +1035,7 @@ def dm_start_renter_window_v4(
     )
 
 # =========================
-# >>> ADDED: نموذج/رفع أدلّة (الطرفين) — إشعار فوري للطرف الآخر + DMs + إيميل
+# >>> نموذج/رفع أدلّة (الطرفين) — إشعار فوري للطرف الآخر + DMs + إيميل
 # =========================
 @router.get("/deposits/{booking_id}/evidence/form")
 def evidence_form(
@@ -1110,7 +1104,7 @@ def evidence_upload(
 
     _audit(db, actor=user, bk=bk, action="evidence_upload", details={"by": who, "files": saved, "comment": comment})
 
-    # بريد إلكتروني للطرف الآخر + DMs
+    # Emails: للطرف الآخر + DMs
     try:
         other_email = _user_email(db, other_id)
         dms_em      = _dm_emails_only(db)
@@ -1137,7 +1131,7 @@ def evidence_upload(
     return RedirectResponse(url=f"/bookings/flow/{bk.id}?evidence=1", status_code=303)
 
 # =========================
-# >>> ADDED: كرون — فحص انتهاء نافذة 24h دون ردّ
+# >>> كرون — فحص انتهاء نافذة 24h دون ردّ
 # إشعار إلى DM + Admin بالبريد والإشعارات الداخليّة
 # =========================
 def _deadline_overdue_rows(db: Session) -> List[Booking]:
@@ -1154,7 +1148,7 @@ def _deadline_overdue_rows(db: Session) -> List[Booking]:
     return q.all()
 
 @router.get("/internal/cron/check-window")
-@router.get("/dm/deposits/check-window")  # alias كما طلبت
+@router.get("/dm/deposits/check-window")  # alias
 def cron_check_window(
     request: Request,
     token: str = "",
@@ -1184,7 +1178,7 @@ def cron_check_window(
         except Exception:
             pass
 
-        # بريد للـ DMs + Admin
+        # Emails: للـ DMs + Admin
         try:
             dms_em    = _dm_emails_only(db)
             admins_em = _admin_emails(db)
