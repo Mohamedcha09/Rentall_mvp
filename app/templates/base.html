@@ -557,10 +557,10 @@
       function hide(){ panel.classList.add('d-none'); panel.innerHTML = ""; activeIndex = -1; }
       function show(){ panel.classList.remove('d-none'); }
       function esc(s){
-        return String(s||"").replace(/[&<>"']/g, function(c){
-          return {"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;","'":"&#39;"}[c];
-        });
-      }
+  return String(s||"").replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
 
       function normalizePayload(data){
         var usersArr = (data && data.users) ? data.users : [];
@@ -659,7 +659,11 @@
         else{ countEl.textContent = ''; countEl.style.display = 'none'; pingEl.style.display = 'none'; }
       }
 
-      function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"," >":"&gt;",'"':"&quot;","'":"&#39;"}[c]);}
+      function esc(s){
+  return String(s||"").replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
 
       // نحاول أول مسار يشتغل عندك (بدون تعديل الباك)
       const FEEDS = [
@@ -716,7 +720,7 @@
 
       let prevCount = -1;
       function refreshUnread(){
-        fetch('/api/unread_count', {credentials:'include'})
+        fetch('/api/notifs/unread_count', {credentials:'include'})
           .then(r=>r.ok?r.json():{count:0})
           .then(d=>{
             const n = parseInt(d.count||0);

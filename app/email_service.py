@@ -43,6 +43,9 @@ def send_email(
     if not SENDGRID_API_KEY:
         print("[email_service] ❌ SENDGRID_API_KEY مفقود من .env")
         return False
+    if not FROM_EMAIL:
+        print("[email_service] ❌ FROM_EMAIL مفقود من .env")
+        return False
 
     recipients = _normalize_list(to)
     if not recipients:
@@ -92,7 +95,8 @@ def send_email(
         print(f"[email_service] ⚠️ Exception while sending email: {e}")
         return False
 
-# اختبار سريع من الطرف المحلي
+
+# اختبار سريع من الطرف المحلي (اختياري)
 if __name__ == "__main__":
     test_to = os.getenv("TEST_EMAIL_TO", FROM_EMAIL)
     ok = send_email(
@@ -102,3 +106,5 @@ if __name__ == "__main__":
         text_body="It works! This is a test email via SendGrid."
     )
     print("Test send:", "OK ✅" if ok else "FAILED ❌")
+
+

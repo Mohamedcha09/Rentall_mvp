@@ -92,3 +92,19 @@ def mark_read(notif_id: int, db: Session = Depends(get_db), user: Optional[User]
     n.is_read = True
     db.commit()
     return _json({"ok": True})
+
+    @router.post("/api/notifications/mark_all_read")
+def mark_all_read(
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user)
+):
+    """Mark all notifications as read for the current user"""
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    db.query(Notification).filter(
+        Notification.user_id == user.id,
+        Notification.is_read == False
+    ).update({"is_read": True})
+    db.commit()
+    return {"ok": True}
