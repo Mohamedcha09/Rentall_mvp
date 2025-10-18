@@ -14,8 +14,8 @@ except Exception:
 # إعدادات SendGrid من .env
 # =========================
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
-FROM_EMAIL       = os.getenv("FROM_EMAIL", "")
-FROM_NAME        = os.getenv("FROM_NAME", "Rentall Notifications")
+FROM_EMAIL = (os.getenv("FROM_EMAIL", "") or "").split("#", 1)[0].strip()
+FROM_NAME  = (os.getenv("FROM_NAME", "Rentall Notifications") or "").strip()
 
 SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send"
 
