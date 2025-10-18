@@ -1,7 +1,7 @@
 # app/payout_connect.py
 import os
-import smtplib
-from email.mime.text import MIMEText
+# import smtplib
+# from email.mime.text import MIMEText
 
 import stripe
 from fastapi import APIRouter, Request, Depends, HTTPException
@@ -12,73 +12,52 @@ from .database import get_db
 from .models import User
 from .notifications_api import push_notification, notify_admins  # ⬅ إشعارات داخل الموقع
 
+# ===== [جديد] إرسال بريد عبر SendGrid مباشرة =====
+from .email_service import send_email as _sg_send_email  # (to, subject, html_body, text_body=None, ...)
+
 router = APIRouter()
 
 # =========================
-# Email helper (simple SMTP)
+# Email helper (simple SMTP) — تم إلغاؤه لصالح SendGrid (أبقيته كتعليقات)
 # =========================
-def _send_email(to_email: str, subject: str, body: str) -> bool:
-    """
-    يرسل بريدًا بسيطًا باستخدام إعدادات البيئة:
-    EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS, EMAIL_USE_TLS
-    يعيد True لو تمّ الإرسال أو False لو فشل (دون أن يكسر التدفق).
-    """
-    try:
-        host = os.getenv("EMAIL_HOST", "")
-        port = int(os.getenv("EMAIL_PORT", "587"))
-        user = os.getenv("EMAIL_USER", "")
-        pwd  = os.getenv("EMAIL_PASS", "")
-        use_tls = str(os.getenv("EMAIL_USE_TLS", "True")).lower() in ("1", "true", "yes")
+# def _send_email(to_email: str, subject: str, body: str) -> bool:
+#     try:
+#         host = os.getenv("EMAIL_HOST", "")
+#         port = int(os.getenv("EMAIL_PORT", "587"))
+#         user = os.getenv("EMAIL_USER", "")
+#         pwd  = os.getenv("EMAIL_PASS", "")
+#         use_tls = str(os.getenv("EMAIL_USE_TLS", "True")).lower() in ("1", "true", "yes")
+#         if not (host and port and user and pwd and to_email):
+#             return False
+#         msg = MIMEText(body, _charset="utf-8")
+#         msg["Subject"] = subject
+#         msg["From"] = user
+#         msg["To"] = to_email
+#         smtp = smtplib.SMTP(host, port, timeout=20)
+#         try:
+#             if use_tls:
+#                 smtp.starttls()
+#             smtp.login(user, pwd)
+#             smtp.sendmail(user, [to_email], msg.as_string())
+#         finally:
+#             try:
+#                 smtp.quit()
+#             except Exception:
+#                 pass
+#         return True
+#     except Exception:
+#         return False
 
-        if not (host and port and user and pwd and to_email):
-            return False
-
-        msg = MIMEText(body, _charset="utf-8")
-        msg["Subject"] = subject
-        msg["From"] = user
-        msg["To"] = to_email
-
-        smtp = smtplib.SMTP(host, port, timeout=20)
-        try:
-            if use_tls:
-                smtp.starttls()
-            smtp.login(user, pwd)
-            smtp.sendmail(user, [to_email], msg.as_string())
-        finally:
-            try:
-                smtp.quit()
-            except Exception:
-                pass
-        return True
-    except Exception:
-        # لا نرفع استثناءً — إشعار البريد غير حاسم للتدفق
-        return False
-
-# ===== إضافة: خدمة موحّدة لإرسال الإيميل (إن وُجدت) + BASE_URL =====
+# ===== قاعدة الروابط =====
 BASE_URL = (os.getenv("SITE_URL") or os.getenv("CONNECT_REDIRECT_BASE") or "http://localhost:8000").rstrip("/")
-try:
-    # هذه ستُنشأ لاحقًا في app/emailer.py
-    from .emailer import send_email as _templated_send_email  # signature: (to, subject, html_body, text_body=None, ...)
-except Exception:
-    _templated_send_email = None
 
-def send_email(to_email: str, subject: str, html_body: str, text_body: str | None = None) -> bool:
-    """
-    التفاف موحّد: يجرّب app/emailer.send_email (HTML) ثم يسقط على _send_email (نصي).
-    """
-    try:
-        if _templated_send_email:
-            ok = bool(_templated_send_email(to_email, subject, html_body, text_body=text_body))
-            if ok:
-                return True
-    except Exception:
-        pass
-    # سقوط نصي بسيط
-    plain = text_body or _strip_html(html_body)
-    return _send_email(to_email, subject, plain)
+# ===== [قديم] محاولة الاعتماد على app/emailer — تم تعليقها لصالح SendGrid المباشر
+# try:
+#     from .emailer import send_email as _templated_send_email
+# except Exception:
+#     _templated_send_email = None
 
 def _strip_html(html: str) -> str:
-    # تحويل بسيط جداً لرسالة نصية—يكفي للاحتياط
     try:
         import re
         txt = re.sub(r"<br\s*/?>", "\n", html, flags=re.I)
@@ -87,6 +66,16 @@ def _strip_html(html: str) -> str:
         return txt.strip()
     except Exception:
         return html
+
+def send_email(to_email: str, subject: str, html_body: str, text_body: str | None = None) -> bool:
+    """
+    ⬅ الآن نستخدم SendGrid فقط عبر app/email_service.send_email
+    """
+    try:
+        # SendGrid expects both HTML and (اختياري) نصي
+        return bool(_sg_send_email(to=to_email, subject=subject, html_body=html_body, text_body=text_body or _strip_html(html_body)))
+    except Exception:
+        return False
 
 # =========================
 # Helpers
@@ -168,9 +157,7 @@ def connect_account_id(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(404, "user_not_found")
     acct_id = getattr(user, "stripe_account_id", None) or request.session.get("connect_account_id")
     if not acct_id:
-        # لا يوجد حساب بعد
         return {"account_id": None}
-    # تأكيد من Stripe ثم حفظه في DB
     acct = stripe.Account.retrieve(acct_id)
     real_id = acct.id
     try:
@@ -226,7 +213,7 @@ def payout_connect_start(request: Request, db: Session = Depends(get_db)):
             f"user_id={user.id} — {reason[:180]}",
             "/admin"
         )
-        # ===== إرسال بريد عبر الخدمة الموحّدة ثم سقوط نصي عند الحاجة =====
+        # ===== بريد SendGrid (HTML + نص) =====
         try:
             send_email(
                 user.email,
@@ -246,7 +233,6 @@ def payout_connect_start(request: Request, db: Session = Depends(get_db)):
                 )
             )
         except Exception:
-            # سقوط صامت
             pass
         return RedirectResponse(url="/payout/settings?err=1", status_code=303)
 
@@ -279,7 +265,7 @@ def connect_onboard(request: Request, db: Session = Depends(get_db)):
 def payout_connect_refresh(request: Request, db: Session = Depends(get_db)):
     """
     يعود المستخدم من Stripe هنا (refresh/return). نزامن الحالة،
-    وإذا أصبحت payouts_enabled=True نرسل إشعار النجاح (23).
+    وإذا أصبحت payouts_enabled=True نرسل إشعار النجاح (23) + إيميل عبر SendGrid.
     """
     _set_api_key_or_500()
     sess = request.session.get("user")
@@ -310,7 +296,7 @@ def payout_connect_refresh(request: Request, db: Session = Depends(get_db)):
 
             became_enabled = (pe and not before)
 
-            # (23) نجاح الربط لأول مرة → بريد + إشعار + إشعار Admin/DM
+            # (23) نجاح الربط لأول مرة → بريد + إشعار + إشعار Admin
             if became_enabled:
                 push_notification(
                     db, user.id,
@@ -325,7 +311,7 @@ def payout_connect_refresh(request: Request, db: Session = Depends(get_db)):
                     f"user_id={user.id} — payouts_enabled=True",
                     "/admin"
                 )
-                # ===== بريد نجاح الربط (HTML + نصي) =====
+                # ===== بريد نجاح الربط (SendGrid) =====
                 try:
                     send_email(
                         user.email,
@@ -347,7 +333,7 @@ def payout_connect_refresh(request: Request, db: Session = Depends(get_db)):
                     pass
 
     except Exception as e:
-        # خطأ أثناء المزامنة/الرجوع من Stripe → نبلّغ المستخدم وننبه الأدمن (24)
+        # فشل مزامنة/عودة
         reason = str(e)
         push_notification(
             db, user.id,
@@ -361,7 +347,6 @@ def payout_connect_refresh(request: Request, db: Session = Depends(get_db)):
             f"user_id={user.id} — {reason[:180]}",
             "/admin"
         )
-        # ===== بريد فشل/مشكلة في المزامنة =====
         try:
             send_email(
                 user.email,
@@ -383,7 +368,6 @@ def payout_connect_refresh(request: Request, db: Session = Depends(get_db)):
         except Exception:
             pass
 
-    # رجوع لواجهة الإعدادات (ستعرض حالة النجاح عبر باراميتر done=1)
     qs = "?done=1" if became_enabled else ""
     return RedirectResponse(url=f"/payout/settings{qs}", status_code=303)
 
@@ -392,10 +376,6 @@ def payout_connect_refresh(request: Request, db: Session = Depends(get_db)):
 # =========================
 @router.get("/api/stripe/connect/status")
 def stripe_connect_status(request: Request, db: Session = Depends(get_db), autocreate: int = 0):
-    """
-    endpoint JSON لقراءة حالة الحساب. (لا يرسل بريدًا كي لا نكرّر).
-    إشعارات البريد تتم فعليًا في refresh (عند التحوّل لأول مرّة).
-    """
     _set_api_key_or_500()
     sess = request.session.get("user")
     if not sess:
@@ -416,7 +396,6 @@ def stripe_connect_status(request: Request, db: Session = Depends(get_db), autoc
 
     acct = stripe.Account.retrieve(acct_id)
 
-    # حفظ تلقائي
     changed = False
     if getattr(user, "stripe_account_id", None) != acct.id:
         try:
@@ -469,7 +448,7 @@ def stripe_connect_force_save(request: Request, db: Session = Depends(get_db)):
     return {"saved": True, "account_id": acct.id}
 
 # =========================
-# Split Test (Destination charge)
+# Split Test (Destination charge) — كما هو
 # =========================
 @router.get("/split/test")
 def split_test_checkout(
@@ -516,7 +495,7 @@ def split_test_checkout(
     )
     return RedirectResponse(session.url, status_code=303)
 
-# === Onboard link as JSON (يفتح صفحة KYC/إضافة بنك) ===
+# === Onboard link as JSON (نفسه)
 @router.get("/api/stripe/connect/onboard_link")
 def connect_onboard_link(request: Request, db: Session = Depends(get_db)):
     _set_api_key_or_500()
@@ -530,7 +509,6 @@ def connect_onboard_link(request: Request, db: Session = Depends(get_db)):
 
     acct_id = getattr(user, "stripe_account_id", None) or request.session.get("connect_account_id")
     if not acct_id:
-        # ننشئ الحساب إن لم يوجد (نفس منطقك)
         acct_id = _ensure_account(db, user)
         request.session["connect_account_id"] = acct_id
 
