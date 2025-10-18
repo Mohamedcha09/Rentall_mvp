@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 
 from .database import get_db
 from .models import User, Document, MessageThread, Message
-from .notifications_api import push_notification  # NEW
-from .email_service import send_email             # لإرسال الإيميل عند الموافقة
+from .notifications_api import push_notification  # إشعار داخل الموقع
+from .email_service import send_email             # إرسال البريد عبر SendGrid
 
 router = APIRouter()
 
@@ -59,7 +59,6 @@ def _refresh_session_user_if_self(request: Request, user: User) -> None:
             sess[k] = getattr(user, k)
     if hasattr(user, "is_deposit_manager"):
         sess["is_deposit_manager"] = bool(getattr(user, "is_deposit_manager", False))
-    # اكتب التحديثات مرّة أخرى داخل السيشن
     request.session["user"] = sess
 
 
@@ -98,10 +97,7 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
 def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
     """
     موافقة الأدمن: نفعّل زر الحجز عبر تغيير status إلى approved،
-    لكن لا نلمس is_verified (تفعيل البريد يبقى عبر رابط الإيميل فقط).
-    كما نرسل بريداً للمستخدم:
-      - إن كان بريده مفعلاً => "حسابك 100% — يمكنك الحجز".
-      - إن لم يكن => "تمت الموافقة — فعّل بريدك لإكمال 100%".
+    ونرسل بريداً يوضّح الحالة.
     """
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
@@ -110,12 +106,8 @@ def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/admin", status_code=303)
 
-    # موافقة الحساب (تشغيل زر الحجز)
     user.status = "approved"
 
-    # لا نغيّر is_verified هنا — تفعيل البريد يتم فقط عبر /activate/verify
-
-    # (اختياري) وسم كل المستندات كـ approved
     for d in (user.documents or []):
         d.review_status = "approved"
         d.reviewed_at = datetime.utcnow()
@@ -130,107 +122,97 @@ def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
         brand = f"{BASE_URL}/static/images/base.png"
 
         if bool(getattr(user, "is_verified", False)):
-            # بريده مفعّل => 100%
             subject = "تم تفعيل حسابك 100% — يمكنك الحجز الآن 🎉"
             year = datetime.utcnow().year
             html = f"""<!doctype html>
-<html lang="ar" dir="rtl">
-  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تفعيل 100%</title></head>
-  <body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,'Segoe UI',sans-serif;">
-    <div style="display:none;max-height:0;overflow:hidden;opacity:0">تم تفعيل حسابك 100% — يمكنك الحجز الآن</div>
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b0f1a;padding:24px 12px">
-      <tr><td align="center">
-        <table role="presentation" width="640" cellspacing="0" cellpadding="0" style="width:100%;max-width:640px;background:#0f172a;border:1px solid #1f2937;border-radius:16px;overflow:hidden">
-          <tr>
-            <td style="padding:20px 24px;background:linear-gradient(90deg,#111827,#0b1220)">
-              <table width="100%"><tr>
-                <td align="right"><img src="{brand}" alt="اسم الموقع" style="height:22px;opacity:.95"></td>
-                <td align="left"><img src="{logo}" alt="Logo" style="height:36px;border-radius:8px"></td>
-              </tr></table>
-            </td>
-          </tr>
-          <tr><td style="padding:28px 26px">
-            <h2 style="margin:0 0 12px;font-size:22px;color:#fff;">مرحبًا {user.first_name} 👋</h2>
-            <p style="margin:0 0 12px;line-height:1.9;color:#cbd5e1">
-              تمت موافقة الأدمين على حسابك، وحسابك الآن <b style="color:#fff">مفعّل 100%</b>.
-              بإمكانك استخدام كل المزايا، بما فيها زر <b>احجز الآن</b>.
-            </p>
-            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:26px auto">
-              <tr><td bgcolor="#16a34a" style="border-radius:10px;">
-                <a href="{home_url}" target="_blank"
-                   style="font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:16px;text-decoration:none;
-                          padding:14px 22px;display:inline-block;color:#ffffff;border-radius:10px;font-weight:700">
-                  ابدأ الآن
-                </a>
-              </td></tr>
-            </table>
-            <p style="margin:0;color:#94a3b8;font-size:13px">نصيحة: حدّث صورتك وعرّف بنفسك لزيادة الثقة والقبول السريع.</p>
-          </td></tr>
-          <tr><td style="padding:18px 24px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
-            إذا لم تطلب هذه العملية، تجاهل الرسالة.
-          </td></tr>
-        </table>
-        <div style="color:#64748b;font-size:11px;margin-top:12px">&copy; {year} RentAll — جميع الحقوق محفوظة</div>
-      </td></tr>
-    </table>
-  </body>
-</html>"""
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>تفعيل 100%</title></head>
+<body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,'Segoe UI',sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0">تم تفعيل حسابك 100% — يمكنك الحجز الآن</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b0f1a;padding:24px 12px">
+    <tr><td align="center">
+      <table role="presentation" width="640" cellspacing="0" cellpadding="0"
+             style="width:100%;max-width:640px;background:#0f172a;border:1px solid #1f2937;border-radius:16px;overflow:hidden">
+        <tr>
+          <td style="padding:20px 24px;background:linear-gradient(90deg,#111827,#0b1220)">
+            <table width="100%"><tr>
+              <td align="right"><img src="{brand}" alt="" style="height:22px;opacity:.95"></td>
+              <td align="left"><img src="{logo}" alt="" style="height:36px;border-radius:8px"></td>
+            </tr></table>
+          </td>
+        </tr>
+        <tr><td style="padding:28px 26px">
+          <h2 style="margin:0 0 12px;font-size:22px;color:#fff;">مرحبًا {user.first_name or ''} 👋</h2>
+          <p style="margin:0 0 12px;line-height:1.9;color:#cbd5e1">
+            تمت موافقة الأدمين على حسابك، وحسابك الآن <b style="color:#fff">مفعّل 100%</b>.
+          </p>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:26px auto">
+            <tr><td bgcolor="#16a34a" style="border-radius:10px;">
+              <a href="{home_url}" target="_blank"
+                 style="font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:16px;text-decoration:none;
+                        padding:14px 22px;display:inline-block;color:#ffffff;border-radius:10px;font-weight:700">
+                ابدأ الآن
+              </a>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:18px 24px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
+          إذا لم تطلب هذه العملية، تجاهل الرسالة.
+        </td></tr>
+      </table>
+      <div style="color:#64748b;font-size:11px;margin-top:12px">&copy; {year} RentAll</div>
+    </td></tr>
+  </table>
+</body></html>"""
             text = f"مرحبًا {user.first_name}\n\nتم تفعيل حسابك 100% ويمكنك الآن الحجز.\n{home_url}"
         else:
-            # بريده غير مفعّل => يحتاج تفعيل البريد لإكمال 100%
             verify_page = f"{BASE_URL}/verify-email?email={user.email}"
             subject = "تمت موافقة الأدمن — فعّل بريدك لإكمال 100%"
             year = datetime.utcnow().year
             html = f"""<!doctype html>
-<html lang="ar" dir="rtl">
-  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>أكمل تفعيل البريد</title></head>
-  <body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,'Segoe UI',sans-serif;">
-    <div style="display:none;max-height:0;overflow:hidden;opacity:0">تمت الموافقة — أكمل تفعيل البريد لإتمام حسابك</div>
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b0f1a;padding:24px 12px">
-      <tr><td align="center">
-        <table role="presentation" width="640" cellspacing="0" cellpadding="0" style="width:100%;max-width:640px;background:#0f172a;border:1px solid #1f2937;border-radius:16px;overflow:hidden">
-          <tr>
-            <td style="padding:20px 24px;background:linear-gradient(90deg,#111827,#0b1220)">
-              <table width="100%"><tr>
-                <td align="right"><img src="{brand}" alt="اسم الموقع" style="height:22px;opacity:.95"></td>
-                <td align="left"><img src="{logo}" alt="Logo" style="height:36px;border-radius:8px"></td>
-              </tr></table>
-            </td>
-          </tr>
-          <tr><td style="padding:28px 26px">
-            <h2 style="margin:0 0 12px;font-size:22px;color:#fff;">مرحبًا {user.first_name} 👋</h2>
-            <p style="margin:0 0 12px;line-height:1.9;color:#cbd5e1">
-              تمت موافقة الأدمين على حسابك. بقي خطوة واحدة لإكمال التفعيل 100%: <b style="color:#fff">فعّل بريدك</b>.
-              افتح رسائل بريدك واضغط على رابط <b>تفعيل الحساب</b>. إن لم تجد الرسالة، تفقد مجلد Spam.
-            </p>
-            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:26px auto">
-              <tr><td bgcolor="#2563eb" style="border-radius:10px;">
-                <a href="{verify_page}" target="_blank"
-                   style="font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:16px;text-decoration:none;
-                          padding:14px 22px;display:inline-block;color:#ffffff;border-radius:10px;font-weight:700">
-                  تعليمات التفعيل
-                </a>
-              </td></tr>
-            </table>
-          </td></tr>
-          <tr><td style="padding:18px 24px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
-            إذا لم تطلب هذه العملية، تجاهل الرسالة.
-          </td></tr>
-        </table>
-        <div style="color:#64748b;font-size:11px;margin-top:12px">&copy; {year} RentAll — جميع الحقوق محفوظة</div>
-      </td></tr>
-    </table>
-  </body>
-</html>"""
-            text = (
-                f"مرحبًا {user.first_name}\n\n"
-                f"تمت موافقة الأدمن على حسابك. لإكمال 100% فعّل بريدك من رسالة التفعيل.\n"
-                f"{verify_page}"
-            )
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>أكمل تفعيل البريد</title></head>
+<body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,'Segoe UI',sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0">تمت الموافقة — أكمل تفعيل البريد لإتمام حسابك</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b0f1a;padding:24px 12px">
+    <tr><td align="center">
+      <table role="presentation" width="640" cellspacing="0" cellpadding="0"
+             style="width:100%;max-width:640px;background:#0f172a;border:1px solid #1f2937;border-radius:16px;overflow:hidden">
+        <tr>
+          <td style="padding:20px 24px;background:linear-gradient(90deg,#111827,#0b1220)">
+            <table width="100%"><tr>
+              <td align="right"><img src="{brand}" alt="" style="height:22px;opacity:.95"></td>
+              <td align="left"><img src="{logo}" alt="" style="height:36px;border-radius:8px"></td>
+            </tr></table>
+          </td>
+        </tr>
+        <tr><td style="padding:28px 26px">
+          <h2 style="margin:0 0 12px;font-size:22px;color:#fff;">مرحبًا {user.first_name or ''} 👋</h2>
+          <p style="margin:0 0 12px;line-height:1.9;color:#cbd5e1">
+            تمت موافقة الأدمين على حسابك. بقي خطوة واحدة لإكمال التفعيل 100%: <b style="color:#fff">فعّل بريدك</b>.
+          </p>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:26px auto">
+            <tr><td bgcolor="#2563eb" style="border-radius:10px;">
+              <a href="{verify_page}" target="_blank"
+                 style="font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:16px;text-decoration:none;
+                        padding:14px 22px;display:inline-block;color:#ffffff;border-radius:10px;font-weight:700">
+                تعليمات التفعيل
+              </a>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:18px 24px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
+          إذا لم تطلب هذه العملية، تجاهل الرسالة.
+        </td></tr>
+      </table>
+      <div style="color:#64748b;font-size:11px;margin-top:12px">&copy; {year} RentAll</div>
+    </td></tr>
+  </table>
+</body></html>"""
+            text = f"مرحبًا {user.first_name}\n\nتمت موافقة الأدمن. لإكمال 100% فعّل بريدك من رسالة التفعيل.\n{verify_page}"
 
         send_email(user.email, subject, html, text_body=text)
     except Exception:
-        # لا نكسر الطلب إذا فشل الإرسال
         pass
 
     return RedirectResponse(url="/admin", status_code=303)
@@ -252,7 +234,7 @@ def reject_user(user_id: int, request: Request, db: Session = Depends(get_db)):
     db.commit()
     _refresh_session_user_if_self(request, user)
 
-    # (اختياري) إيميل رفض
+    # إيميل رفض (اختياري)
     try:
         subject = "لم يتم قبول حسابك حالياً"
         html = f"""
@@ -273,10 +255,6 @@ def reject_user(user_id: int, request: Request, db: Session = Depends(get_db)):
 # ---------------------------
 @router.post("/admin/users/{user_id}/verify")
 def verify_user(user_id: int, request: Request, db: Session = Depends(get_db)):
-    """
-    زر توثيق البريد اليدوي بواسطة الأدمن (إن احتجتم).
-    لا علاقة له بموافقة الحجز. هذا يضبط is_verified فقط.
-    """
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
@@ -317,7 +295,7 @@ def unverify_user(user_id: int, request: Request, db: Session = Depends(get_db))
 
 
 # ---------------------------
-# مراجعة وثائق فردية (اختياري)
+# مراجعة وثائق فردية
 # ---------------------------
 @router.post("/admin/documents/{doc_id}/approve")
 def approve_document(doc_id: int, request: Request, db: Session = Depends(get_db)):
@@ -433,7 +411,7 @@ def set_badges(
 
 
 # ---------------------------
-# (NEW) إدارة صلاحية متحكّم الوديعة + إشعار
+# إدارة صلاحية متحكّم الوديعة + (إشعار + بريد)
 # ---------------------------
 @router.post("/admin/users/{user_id}/deposit_manager/enable")
 def enable_deposit_manager(user_id: int, request: Request, db: Session = Depends(get_db)):
@@ -446,56 +424,67 @@ def enable_deposit_manager(user_id: int, request: Request, db: Session = Depends
         db.commit()
         _refresh_session_user_if_self(request, u)
 
-        # إشعار داخلي
+        # إشعار داخل الموقع
         push_notification(
             db, u.id,
             "تم منحك دور متحكّم الوديعة 🎉",
-            "يمكنك الآن مراجعة الودائع واتخاذ القرارات الإدارية.",
+            "يمكنك الآن مراجعة الودائع واتخاذ القرارات.",
             "/dm/deposits",
             "role"
         )
 
-        # إيميل زجاجي جميل (تفعيل)
+        # بريد: قبول الدور
         try:
-            if u.email:
-                subject = "🎉 تمت ترقيتك إلى متحكّم الوديعة — مرحبًا بك في الفريق الإداري"
-                dash_url = f"{BASE_URL}/dm/deposits"
-                year = datetime.utcnow().year
-                html = f"""<!doctype html><html lang="ar" dir="rtl"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>دور متحكّم الوديعة</title>
-<style>
-  body{{margin:0;background:linear-gradient(145deg,#0b0f1a,#111827);color:#f3f4f6;font-family:'Segoe UI',Tahoma,Arial,sans-serif}}
-  .glass{{background:rgba(17,25,40,.6);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(14px);
-         -webkit-backdrop-filter:blur(14px);border-radius:20px;padding:40px;max-width:640px;margin:40px auto;
-         box-shadow:0 0 40px rgba(0,0,0,.30)}}
-  .title{font-size:26px;font-weight:800;color:#c084fc;text-align:center;margin-bottom:12px}
-  .desc{line-height:1.9;color:#e2e8f0;font-size:15.5px;text-align:center}
-  .btn{display:block;text-align:center;margin:24px auto;padding:14px 26px;border-radius:14px;
-       background:linear-gradient(90deg,#7c3aed,#4f46e5);color:#fff;text-decoration:none;font-weight:700;
-       box-shadow:0 0 18px rgba(124,58,237,.45)}
-  .hint{font-size:13px;color:#a5b4fc;text-align:center;margin-top:10px}
-  .footer{text-align:center;color:#94a3b8;font-size:12px;margin-top:28px}
-</style></head><body>
-  <div class="glass">
-    <div class="title">🎉 تم منحك دور متحكّم الوديعة</div>
-    <p class="desc">مرحبًا <b>{u.first_name or "مستخدم"}</b> 👋<br>
-    تهانينا! لقد تمت ترقيتك لتصبح <b>متحكّم وديعة</b> ضمن فريق إدارة المنصة.<br>
-    يمكنك الآن الإشراف على النزاعات واتخاذ القرارات بشأن الودائع بكل احترافية.</p>
-    <a class="btn" href="{dash_url}" target="_blank">🔍 الدخول إلى لوحة القضايا</a>
-    <div class="hint">نثق بحكمك وخبرتك — شكرًا لانضمامك إلى فريقنا ❤️</div>
-    <div class="footer">&copy; {year} RentAll — جميع الحقوق محفوظة</div>
-  </div>
+            subject = "🎉 تم منحك دور متحكّم الوديعة — أهلاً بك في لوحة المراجعة"
+            home = f"{BASE_URL}/dm/deposits"
+            logo = f"{BASE_URL}/static/images/ok.png"
+            brand = f"{BASE_URL}/static/images/base.png"
+            year = datetime.utcnow().year
+            html = f"""<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>تم منحك دور متحكّم الوديعة</title></head>
+<body style="margin:0;background:#0b0f1a;font-family:Tahoma,Arial,sans-serif;color:#e5e7eb">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;background:#0b0f1a">
+    <tr><td align="center">
+      <table role="presentation" width="640" cellpadding="0" cellspacing="0"
+             style="width:100%;max-width:640px;border-radius:20px;overflow:hidden;
+                    background:linear-gradient(135deg,rgba(17,24,39,.85),rgba(2,6,23,.85));
+                    border:1px solid rgba(148,163,184,.25);backdrop-filter:blur(8px)">
+        <tr>
+          <td style="padding:18px 22px;background:linear-gradient(90deg,#111827,#0b1220)">
+            <table width="100%"><tr>
+              <td align="right"><img src="{brand}" style="height:22px;opacity:.95" alt=""></td>
+              <td align="left"><img src="{logo}" style="height:36px;border-radius:10px" alt=""></td>
+            </tr></table>
+          </td>
+        </tr>
+        <tr><td style="padding:28px 26px">
+          <h2 style="margin:0 0 10px;color:#fff">مرحبًا {u.first_name or 'صديقنا'} 🎉</h2>
+          <p style="margin:0 0 12px;line-height:1.9;color:#cbd5e1">
+            تم منحك <b style="color:#fff">دور متحكّم الوديعة</b>. يمكنك الآن الدخول إلى لوحة إدارة القضايا،
+            مراجعة الأدلة، و اتخاذ القرارات النهائية.
+          </p>
+          <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:22px auto">
+            <tr><td bgcolor="#16a34a" style="border-radius:12px">
+              <a href="{home}" target="_blank"
+                 style="display:inline-block;padding:14px 22px;color:#fff;text-decoration:none;font-weight:700;border-radius:12px">
+                 فتح لوحة الودائع
+              </a>
+            </td></tr>
+          </table>
+          <p style="margin:8px 0 0;color:#94a3b8;font-size:13px">نصيحة: فعّل التنبيهات لتصلك تحديثات القضايا فورًا.</p>
+        </td></tr>
+        <tr><td style="padding:16px 22px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
+          &copy; {year} RentAll
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
 </body></html>"""
-                text = (
-                    "🎉 تم منحك دور متحكّم الوديعة!\n\n"
-                    f"مرحبًا {u.first_name or 'مستخدم'}, تمت ترقيتك لتصبح ضمن فريق إدارة الودائع.\n"
-                    f"لوحة القضايا: {dash_url}\n\n"
-                    "شكرًا لانضمامك إلى الفريق!"
-                )
-                send_email(u.email, subject, html, text_body=text)
-        except Exception as e:
-            print("❌ Email send failed (enable):", e)
+            text = f"تم منحك دور متحكّم الوديعة. لوحة الإدارة: {home}"
+            send_email(u.email, subject, html, text_body=text)
+        except Exception:
+            pass
 
     return RedirectResponse(url="/admin", status_code=303)
 
@@ -511,7 +500,6 @@ def disable_deposit_manager(user_id: int, request: Request, db: Session = Depend
         db.commit()
         _refresh_session_user_if_self(request, u)
 
-        # إشعار داخلي
         push_notification(
             db, u.id,
             "تم إلغاء دور متحكّم الوديعة",
@@ -520,46 +508,36 @@ def disable_deposit_manager(user_id: int, request: Request, db: Session = Depend
             "role"
         )
 
-        # إيميل زجاجي جميل (إلغاء)
+        # بريد: إلغاء الدور
         try:
-            if u.email:
-                subject = "تم إلغاء دور متحكّم الوديعة — شكرًا على جهودك"
-                home_url = f"{BASE_URL}/"
-                year = datetime.utcnow().year
-                html = f"""<!doctype html><html lang="ar" dir="rtl"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>إلغاء الدور</title>
-<style>
-  body{{margin:0;background:linear-gradient(145deg,#0b0f1a,#111827);color:#f3f4f6;font-family:'Segoe UI',Tahoma,Arial,sans-serif}}
-  .glass{{background:rgba(17,25,40,.6);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(14px);
-         -webkit-backdrop-filter:blur(14px);border-radius:20px;padding:40px;max-width:640px;margin:40px auto;
-         box-shadow:0 0 40px rgba(0,0,0,.30)}}
-  .title{font-size:24px;font-weight:800;color:#fda4af;text-align:center;margin-bottom:12px}
-  .desc{line-height:1.9;color:#e2e8f0;font-size:15.5px;text-align:center}
-  .btn{display:block;text-align:center;margin:22px auto;padding:13px 24px;border-radius:14px;
-       background:linear-gradient(90deg,#ef4444,#b91c1c);color:#fff;text-decoration:none;font-weight:800;
-       box-shadow:0 0 16px rgba(239,68,68,.45)}
-  .hint{font-size:13px;color:#fca5a5;text-align:center;margin-top:10px}
-  .footer{text-align:center;color:#94a3b8;font-size:12px;margin-top:28px}
-</style></head><body>
-  <div class="glass">
-    <div class="title">تم إلغاء دور متحكّم الوديعة</div>
-    <p class="desc">مرحبًا <b>{u.first_name or "مستخدم"}</b> 👋<br>
-    نود إبلاغك بأنه تم إلغاء صلاحية <b>متحكّم الوديعة</b> من حسابك حاليًا.<br>
-    نشكرك على جهودك خلال الفترة الماضية، ويسعدنا تعاونك دائمًا.</p>
-    <a class="btn" href="{home_url}" target="_blank">العودة للواجهة الرئيسية</a>
-    <div class="hint">لأي استفسار، لا تتردد بمراسلتنا — نحن هنا لخدمتك.</div>
-    <div class="footer">&copy; {year} RentAll — جميع الحقوق محفوظة</div>
-  </div>
+            subject = "تم إلغاء دور متحكّم الوديعة"
+            home = f"{BASE_URL}/"
+            year = datetime.utcnow().year
+            html = f"""<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>إلغاء الصلاحية</title></head>
+<body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,sans-serif">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;background:#0b0f1a">
+    <tr><td align="center">
+      <table role="presentation" width="640" cellpadding="0" cellspacing="0"
+             style="width:100%;max-width:640px;border-radius:18px;overflow:hidden;background:#0f172a;border:1px solid #1f2937">
+        <tr><td style="padding:26px 24px">
+          <h3 style="margin:0 0 8px;color:#fff">تم إلغاء دور متحكّم الوديعة</h3>
+          <p style="margin:0;line-height:1.9;color:#cbd5e1">
+            تم إلغاء صلاحية إدارة الودائع من حسابك. لا يزال بإمكانك استخدام بقية مزايا الموقع كالمعتاد.
+          </p>
+          <p style="margin:18px 0 0"><a href="{home}" style="color:#60a5fa;text-decoration:none">العودة للصفحة الرئيسية</a></p>
+        </td></tr>
+        <tr><td style="padding:14px 22px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
+          &copy; {year} RentAll
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
 </body></html>"""
-                text = (
-                    "تم إلغاء دور متحكّم الوديعة.\n\n"
-                    f"مرحبًا {u.first_name or 'مستخدم'}, تم إلغاء صلاحية إدارة الودائع من حسابك حاليًا.\n"
-                    f"العودة للواجهة: {home_url}\n\n"
-                    "شكرًا لك على جهودك."
-                )
-                send_email(u.email, subject, html, text_body=text)
-        except Exception as e:
-            print("❌ Email send failed (disable):", e)
+            text = f"تم إلغاء دور متحكّم الوديعة من حسابك. لمزيد من التفاصيل: {home}"
+            send_email(u.email, subject, html, text_body=text)
+        except Exception:
+            pass
 
     return RedirectResponse(url="/admin", status_code=303)
