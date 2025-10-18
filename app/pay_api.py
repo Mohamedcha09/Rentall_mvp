@@ -202,7 +202,7 @@ def start_checkout_all(
 
     item = db.get(Item, bk.item_id)
     if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
+        raise HTTPException(status_code=404, "Item not found")
 
     owner = db.get(User, bk.owner_id)
     if not owner or not getattr(owner, "stripe_account_id", None):
@@ -722,3 +722,17 @@ def create_payment_intent_elements(
     db.commit()
 
     return {"clientSecret": pi.client_secret}
+
+
+# >>> NEW: Endpoint حالة بسيط لتفعيل/تعطيل الأزرار في الواجهة
+@router.get("/api/stripe/checkout/state/{booking_id}")
+def checkout_state(booking_id: int, db: Session = Depends(get_db), user: Optional[User] = Depends(get_current_user)):
+    """يرجّع إذا كان الإيجار مُفوَّضًا والوديعة محجوزة؛ مفيد لتغيير نص الأزرار في الواجهة."""
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    return {
+        "rent_authorized": (bk.online_status == "authorized"),
+        "rent_captured": (bk.online_status == "captured"),
+        "deposit_held": (bk.deposit_status == "held"),
+        "ready_for_pickup": (bk.online_status == "authorized" and bk.deposit_status == "held"),
+    }
