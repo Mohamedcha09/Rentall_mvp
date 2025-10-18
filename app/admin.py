@@ -445,14 +445,58 @@ def enable_deposit_manager(user_id: int, request: Request, db: Session = Depends
         u.is_deposit_manager = True
         db.commit()
         _refresh_session_user_if_self(request, u)
-        # إشعار + رابط لوحة DM
+
+        # إشعار داخلي
         push_notification(
             db, u.id,
-            "تم منحك دور متحكّم الوديعة",
-            "يمكنك الآن مراجعة الودائع واتخاذ القرارات.",
+            "تم منحك دور متحكّم الوديعة 🎉",
+            "يمكنك الآن مراجعة الودائع واتخاذ القرارات الإدارية.",
             "/dm/deposits",
             "role"
         )
+
+        # إيميل زجاجي جميل (تفعيل)
+        try:
+            if u.email:
+                subject = "🎉 تمت ترقيتك إلى متحكّم الوديعة — مرحبًا بك في الفريق الإداري"
+                dash_url = f"{BASE_URL}/dm/deposits"
+                year = datetime.utcnow().year
+                html = f"""<!doctype html><html lang="ar" dir="rtl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>دور متحكّم الوديعة</title>
+<style>
+  body{{margin:0;background:linear-gradient(145deg,#0b0f1a,#111827);color:#f3f4f6;font-family:'Segoe UI',Tahoma,Arial,sans-serif}}
+  .glass{{background:rgba(17,25,40,.6);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(14px);
+         -webkit-backdrop-filter:blur(14px);border-radius:20px;padding:40px;max-width:640px;margin:40px auto;
+         box-shadow:0 0 40px rgba(0,0,0,.30)}}
+  .title{font-size:26px;font-weight:800;color:#c084fc;text-align:center;margin-bottom:12px}
+  .desc{line-height:1.9;color:#e2e8f0;font-size:15.5px;text-align:center}
+  .btn{display:block;text-align:center;margin:24px auto;padding:14px 26px;border-radius:14px;
+       background:linear-gradient(90deg,#7c3aed,#4f46e5);color:#fff;text-decoration:none;font-weight:700;
+       box-shadow:0 0 18px rgba(124,58,237,.45)}
+  .hint{font-size:13px;color:#a5b4fc;text-align:center;margin-top:10px}
+  .footer{text-align:center;color:#94a3b8;font-size:12px;margin-top:28px}
+</style></head><body>
+  <div class="glass">
+    <div class="title">🎉 تم منحك دور متحكّم الوديعة</div>
+    <p class="desc">مرحبًا <b>{u.first_name or "مستخدم"}</b> 👋<br>
+    تهانينا! لقد تمت ترقيتك لتصبح <b>متحكّم وديعة</b> ضمن فريق إدارة المنصة.<br>
+    يمكنك الآن الإشراف على النزاعات واتخاذ القرارات بشأن الودائع بكل احترافية.</p>
+    <a class="btn" href="{dash_url}" target="_blank">🔍 الدخول إلى لوحة القضايا</a>
+    <div class="hint">نثق بحكمك وخبرتك — شكرًا لانضمامك إلى فريقنا ❤️</div>
+    <div class="footer">&copy; {year} RentAll — جميع الحقوق محفوظة</div>
+  </div>
+</body></html>"""
+                text = (
+                    "🎉 تم منحك دور متحكّم الوديعة!\n\n"
+                    f"مرحبًا {u.first_name or 'مستخدم'}, تمت ترقيتك لتصبح ضمن فريق إدارة الودائع.\n"
+                    f"لوحة القضايا: {dash_url}\n\n"
+                    "شكرًا لانضمامك إلى الفريق!"
+                )
+                send_email(u.email, subject, html, text_body=text)
+        except Exception as e:
+            print("❌ Email send failed (enable):", e)
+
     return RedirectResponse(url="/admin", status_code=303)
 
 
@@ -466,6 +510,8 @@ def disable_deposit_manager(user_id: int, request: Request, db: Session = Depend
         u.is_deposit_manager = False
         db.commit()
         _refresh_session_user_if_self(request, u)
+
+        # إشعار داخلي
         push_notification(
             db, u.id,
             "تم إلغاء دور متحكّم الوديعة",
@@ -473,4 +519,47 @@ def disable_deposit_manager(user_id: int, request: Request, db: Session = Depend
             "/",
             "role"
         )
+
+        # إيميل زجاجي جميل (إلغاء)
+        try:
+            if u.email:
+                subject = "تم إلغاء دور متحكّم الوديعة — شكرًا على جهودك"
+                home_url = f"{BASE_URL}/"
+                year = datetime.utcnow().year
+                html = f"""<!doctype html><html lang="ar" dir="rtl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>إلغاء الدور</title>
+<style>
+  body{{margin:0;background:linear-gradient(145deg,#0b0f1a,#111827);color:#f3f4f6;font-family:'Segoe UI',Tahoma,Arial,sans-serif}}
+  .glass{{background:rgba(17,25,40,.6);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(14px);
+         -webkit-backdrop-filter:blur(14px);border-radius:20px;padding:40px;max-width:640px;margin:40px auto;
+         box-shadow:0 0 40px rgba(0,0,0,.30)}}
+  .title{font-size:24px;font-weight:800;color:#fda4af;text-align:center;margin-bottom:12px}
+  .desc{line-height:1.9;color:#e2e8f0;font-size:15.5px;text-align:center}
+  .btn{display:block;text-align:center;margin:22px auto;padding:13px 24px;border-radius:14px;
+       background:linear-gradient(90deg,#ef4444,#b91c1c);color:#fff;text-decoration:none;font-weight:800;
+       box-shadow:0 0 16px rgba(239,68,68,.45)}
+  .hint{font-size:13px;color:#fca5a5;text-align:center;margin-top:10px}
+  .footer{text-align:center;color:#94a3b8;font-size:12px;margin-top:28px}
+</style></head><body>
+  <div class="glass">
+    <div class="title">تم إلغاء دور متحكّم الوديعة</div>
+    <p class="desc">مرحبًا <b>{u.first_name or "مستخدم"}</b> 👋<br>
+    نود إبلاغك بأنه تم إلغاء صلاحية <b>متحكّم الوديعة</b> من حسابك حاليًا.<br>
+    نشكرك على جهودك خلال الفترة الماضية، ويسعدنا تعاونك دائمًا.</p>
+    <a class="btn" href="{home_url}" target="_blank">العودة للواجهة الرئيسية</a>
+    <div class="hint">لأي استفسار، لا تتردد بمراسلتنا — نحن هنا لخدمتك.</div>
+    <div class="footer">&copy; {year} RentAll — جميع الحقوق محفوظة</div>
+  </div>
+</body></html>"""
+                text = (
+                    "تم إلغاء دور متحكّم الوديعة.\n\n"
+                    f"مرحبًا {u.first_name or 'مستخدم'}, تم إلغاء صلاحية إدارة الودائع من حسابك حاليًا.\n"
+                    f"العودة للواجهة: {home_url}\n\n"
+                    "شكرًا لك على جهودك."
+                )
+                send_email(u.email, subject, html, text_body=text)
+        except Exception as e:
+            print("❌ Email send failed (disable):", e)
+
     return RedirectResponse(url="/admin", status_code=303)
