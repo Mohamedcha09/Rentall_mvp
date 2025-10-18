@@ -673,5 +673,68 @@ body[data-theme="dark"] .topbar .search .search__input::placeholder{
   width:36px; height:36px; display:grid; place-items:center; border-radius:10px;
   font-size:1.15rem; line-height:1;
 }
+ /* ===== Top quick menu — Glassy, icons, animation ===== */
+.topmenu{
+  position: fixed;
+  top: 58px;                         /* تحت التوب بار */
+  inset-inline-end: 12px;            /* يمين في RTL */
+  min-width: 260px;
+  max-width: 88vw;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid var(--border, rgba(255,255,255,.12));
+  background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 100%, transparent),
+                                       color-mix(in oklab, var(--panel) 92%, transparent));
+  box-shadow: 0 18px 46px rgba(0,0,0,.35);
+  backdrop-filter: blur(14px) saturate(120%);
+  z-index: 3001;                     /* أعلى من typeahead */
+  display: none;
+  transform-origin: top right;
+  transform: translateY(-6px) scale(.98);
+  opacity: 0;
+  transition: opacity .18s ease, transform .18s ease;
+}
+.topmenu.is-open{ display:block; opacity:1; transform: translateY(0) scale(1); }
+.topmenu::before{
+  content:"";
+  position:absolute; inset-inline-end: 20px; top:-8px;
+  width:14px; height:14px; transform: rotate(45deg);
+  background: inherit;
+  border-inline-start: 1px solid var(--border, rgba(255,255,255,.12));
+  border-top:        1px solid var(--border, rgba(255,255,255,.12));
+  filter: blur(.2px);
+}
 
+/* عناصر القائمة */
+.topmenu-item{
+  display:flex; align-items:center; gap:.6rem;
+  padding:.6rem .7rem; border-radius:10px; color:inherit; text-decoration:none;
+  transition: background .15s ease, transform .12s ease;
+}
+.topmenu-item i{ font-size:1.12rem; opacity:.9; transition: transform .15s ease, opacity .15s ease; }
+.topmenu-item:hover{
+  background: color-mix(in oklab, var(--text, #fff) 8%, transparent);
+  transform: translateY(-1px);
+}
+.topmenu-item:hover i{ transform: translateY(-1px); opacity:1; }
+.topmenu-sep{
+  height:1px; margin:.35rem .25rem; border:0; background:var(--border, rgba(255,255,255,.12));
+}
+
+/* حجم زر ☰ ولمسة هوفر */
+.hamburger-btn{
+  width:38px; height:38px; display:grid; place-items:center; border-radius:10px;
+  font-size:1.1rem; line-height:1; border:0; background:transparent; cursor:pointer;
+}
+.hamburger-btn:hover{ background: color-mix(in oklab, var(--text) 8%, transparent); }
+
+/* الوضع الفاتح */
+body[data-theme="light"] .topmenu{
+  box-shadow: 0 18px 40px rgba(0,0,0,.10);
+}
+
+/* على الشاشات الصغيرة: نخلي القائمة يمين ومتباعدة قليلاً */
+@media (max-width: 991.98px){
+  .topmenu{ inset-inline-end: 10px; top: 56px; }
+}
 /* انتهى */

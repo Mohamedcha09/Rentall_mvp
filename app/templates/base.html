@@ -175,25 +175,51 @@
         <button id="menuBtn" class="hamburger-btn" type="button"
                 aria-haspopup="true" aria-expanded="false" aria-controls="quickMenu" title="القائمة">☰</button>
 
-        <!-- القائمة الصغيرة المنسدلة -->
-        <nav id="quickMenu" class="topmenu" hidden role="menu" aria-label="قائمة الموقع">
-          <a role="menuitem" href="/">الرئيسية</a>
-          <a role="menuitem" href="/items">العناصر</a>
-          {% if session_user %}
-            <a role="menuitem" href="/favorites">مفضلتي</a>
-            <a role="menuitem" href="/profile">صفحتي</a>
-            <a role="menuitem" href="/bookings">حجوزاتي</a>
-            <a role="menuitem" href="/payout/settings">التحويلات</a>
-            <a role="menuitem" href="/owner/items">أشيائي</a>
-            {% if session_user.get('can_manage_deposits') %}
-              <a role="menuitem" href="/dm/deposits">قضايا الوديعة</a>
-            {% endif %}
-            {% if session_user.role == 'admin' %}
-              <hr class="topmenu-sep" role="separator">
-              <a role="menuitem" href="/admin">لوحة الأدمين</a>
-            {% endif %}
-          {% endif %}
-        </nav>
+        <!-- القائمة الصغيرة المنسدلة (استبدل القديمة بهذه) -->
+<nav id="quickMenu" class="topmenu" hidden role="menu" aria-label="قائمة الموقع">
+  <a role="menuitem" class="topmenu-item" href="/">
+    <i class="bi bi-house"></i><span>الرئيسية</span>
+  </a>
+
+  <a role="menuitem" class="topmenu-item" href="/items">
+    <i class="bi bi-box-seam"></i><span>العناصر</span>
+  </a>
+
+  {% if session_user %}
+    <a role="menuitem" class="topmenu-item" href="/favorites">
+      <i class="bi bi-heart-fill"></i><span>مفضلتي</span>
+    </a>
+
+    <a role="menuitem" class="topmenu-item" href="/profile">
+      <i class="bi bi-person-circle"></i><span>صفحتي</span>
+    </a>
+
+    <a role="menuitem" class="topmenu-item" href="/bookings">
+      <i class="bi bi-calendar2-check"></i><span>حجوزاتي</span>
+    </a>
+
+    <a role="menuitem" class="topmenu-item" href="/payout/settings">
+      <i class="bi bi-cash-stack"></i><span>التحويلات</span>
+    </a>
+
+    <a role="menuitem" class="topmenu-item" href="/owner/items">
+      <i class="bi bi-collection"></i><span>أشيائي</span>
+    </a>
+
+    {% if session_user.get('can_manage_deposits') %}
+      <a role="menuitem" class="topmenu-item" href="/dm/deposits">
+        <i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>
+      </a>
+    {% endif %}
+
+    {% if session_user.role == 'admin' %}
+      <hr class="topmenu-sep" role="separator">
+      <a role="menuitem" class="topmenu-item" href="/admin">
+        <i class="bi bi-speedometer2"></i><span>لوحة الأدمين</span>
+      </a>
+    {% endif %}
+  {% endif %}
+</nav>
 
         <!-- الشعار -->
         <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/">
