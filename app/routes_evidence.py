@@ -19,7 +19,6 @@ from .notifications_api import push_notification, notify_admins
 # سيتم استبداله لاحقًا بـ app/emailer.py؛ هنا نضمن عدم كسر التنفيذ إن لم يوجد.
 try:
     from .email_service import send_email
-
 except Exception:
     def send_email(to, subject, html_body, text_body=None, cc=None, bcc=None, reply_to=None):
         return False  # NO-OP مؤقتًا
@@ -88,12 +87,14 @@ def safe_ext(filename: str) -> str:
     ext = (filename.rsplit(".", 1)[-1] if "." in filename else "").lower().strip()
     return ext
 
-def classify_kind(ext: str) -> Literal["image","video","doc"]:
+def classify_kind(ext: str) -> Literal["image","video","doc","note"]:
     if ext in ALLOWED_IMAGE_EXTS:
         return "image"
     if ext in ALLOWED_VIDEO_EXTS:
         return "video"
-    return "doc"
+    if ext in ALLOWED_DOC_EXTS:
+        return "doc"
+    return "note"
 
 def ensure_dirs(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
@@ -297,12 +298,12 @@ async def upload_deposit_evidence(
     except Exception:
         pass
 
-    # ===== منطق المرحلة 2: المستأجر يرد أثناء الانتظار → تحويل الحالة + إشعار + تبديل الزر في الواجهة =====
+    # ===== المرحلة: لو كان status للوديعة awaiting_renter وردّ المستأجر → قلبها نزاع وإشعارات للـ DM =====
     try:
         current_status = (getattr(bk, "deposit_status", None) or "").lower()
         if side == "renter" and current_status == "awaiting_renter":
             try:
-                bk.deposit_status = "in_dispute"   # ← هذا الذي يجعل الزر يتبدّل في dm_case.html
+                bk.deposit_status = "in_dispute"   # ← يجعل الواجهة تعرض أزرار المراجعة
                 bk.status = "in_review"
             except Exception:
                 pass
@@ -336,7 +337,7 @@ async def upload_deposit_evidence(
             except Exception:
                 pass
 
-            # إشعارات
+            # 🔔 إشعارات — لاحظ الروابط تذهب إلى صفحة DM للمراجعة
             try:
                 push_notification(
                     db, bk.owner_id, "ردّ المستأجر على قرار الخصم",
@@ -351,10 +352,9 @@ async def upload_deposit_evidence(
             except Exception:
                 pass
 
-            # ===== Emails: ردّ المستأجر — أصبحت القضية in_dispute =====
+            # ✉️ بريد: إشعار لأصحاب الصلاحية
             try:
                 owner_email = _user_email(db, bk.owner_id)
-                renter_email = _user_email(db, bk.renter_id)
                 admins_em = _admin_emails(db)
                 case_url = f"{BASE_URL}/dm/deposits/{bk.id}"
                 if owner_email:
@@ -381,7 +381,7 @@ async def upload_deposit_evidence(
     except Exception:
         pass
 
-    # إشعارات افتراضية حسب جهة الرفع
+    # إشعارات افتراضية حسب جهة الرفع (روابط التدفق العادي للطرف المقابل)
     try:
         if side == "owner":
             push_notification(
@@ -406,11 +406,12 @@ async def upload_deposit_evidence(
                 f"قام متحكّم الوديعة برفع/إرفاق أدلة على قضية #{bk.id}.",
                 f"/bookings/flow/{bk.id}", "deposit"
             )
+        # إشعار إداري (لو تريد فتح صفحة DM مباشرة يمكن تعديل الرابط هنا أيضًا)
         notify_admins(db, "Evidence uploaded", f"حجز #{bk.id} — side={side}", f"/bookings/flow/{bk.id}")
     except Exception:
         pass
 
-    # ===== Emails: إشعار بالطرف المقابل حسب جهة الرفع =====
+    # ✉️ بريد: إشعار للطرف المقابل + روابط مناسبة
     try:
         case_url = f"{BASE_URL}/bookings/flow/{bk.id}"
         if side == "owner":
@@ -525,3 +526,21 @@ def simple_evidence_form(
     </html>
     """
     return HTMLResponse(html)
+
+# ---------- تحويل روابط الإشعارات/الروابط القديمة إلى صفحة الـ DM ----------
+@router.get("/deposits/{booking_id}/report")
+def deposit_report_redirect(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    بعض الإشعارات القديمة ترسل إلى /deposits/{id}/report.
+    هنا نعيد التوجيه تلقائيًا:
+      - إذا كان المستخدم متحكّم الوديعة/أدمِن → صفحة قضية الوديعة
+      - غير ذلك → صفحة تدفّق الحجز
+    """
+    if user and (getattr(user, "is_deposit_manager", False) or (getattr(user, "role", "") or "").lower() == "admin"):
+        return RedirectResponse(url=f"/dm/deposits/{booking_id}", status_code=303)
+    return RedirectResponse(url=f"/bookings/flow/{booking_id}", status_code=303)

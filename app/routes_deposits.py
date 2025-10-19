@@ -25,6 +25,12 @@ from .database import get_db, engine as _engine
 from .models import Booking, Item, User
 from .notifications_api import push_notification, notify_admins
 
+# ✅ نمرّر الدالة للقوالب التي تحتاج label للفئة
+try:
+    from .utils import category_label
+except Exception:
+    category_label = lambda c: c  # fallback بسيط
+
 # ===== SMTP Email (fallback) =====
 # سيتم استبداله لاحقًا بـ app/emailer.py؛ هنا نضمن عدم كسر التنفيذ إن لم يوجد.
 try:
@@ -258,6 +264,7 @@ def dm_queue(
             "session_user": request.session.get("user"),
             "cases": cases,
             "items_map": items_map,
+            "category_label": category_label,  # تمريرها لو احتاج القالب
         },
     )
 
@@ -291,6 +298,7 @@ def dm_case_page(
             "evidence": evidence_urls,
             "ev_list": evidence_urls,
             "has_renter_reply": has_renter_reply,
+            "category_label": category_label,  # ✅ إصلاح: تمرير الدالة التي يستخدمها القالب
         },
     )
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
@@ -319,6 +327,7 @@ def dm_decision(
     now = datetime.utcnow()
 
     def _notify_final(title_owner: str, body_owner: str, title_renter: str, body_renter: str):
+        # الإشعار النهائي يوجّه الطرفين لتدفّق الحجز (كما كان)
         push_notification(db, bk.owner_id,  title_owner,  body_owner,  f"/bookings/flow/{bk.id}", "deposit")
         push_notification(db, bk.renter_id, title_renter, body_renter, f"/bookings/flow/{bk.id}", "deposit")
         notify_admins(db, "إشعار قرار نهائي", f"حجز #{bk.id} — {decision}", f"/dm/deposits/{bk.id}")
@@ -567,6 +576,7 @@ def report_deposit_issue_page(
             "bk": bk,
             "booking": bk,
             "item": item,
+            "category_label": category_label,  # نمررها لو احتاج القالب
         },
     )
 
@@ -650,6 +660,7 @@ def report_deposit_issue(
         f"قام المالك بالإبلاغ عن مشكلة ({issue_type}) بخصوص الحجز #{bk.id}.",
         f"/bookings/flow/{bk.id}", "deposit"
     )
+    # ✅ هذا هو الإشعار الذي تريده أن يفتح صفحة مراجعة القضايا
     notify_dms(db, "بلاغ وديعة جديد — بانتظار المراجعة", f"بلاغ جديد للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
     notify_admins(db, "مراجعة ديبو مطلوبة", f"بلاغ جديد بخصوص حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
 
@@ -1058,6 +1069,7 @@ def evidence_form(
             "session_user": request.session.get("user"),
             "bk": bk,
             "item": item,
+            "category_label": category_label,
         },
     )
 
