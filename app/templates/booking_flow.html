@@ -129,37 +129,41 @@
               </div>
             {% endif %}
 
-            {# زر الإيجار — إما نشط للدفع أو معطّل بعنوان "تم دفع الإيجار" #}
             {% set rent_paid = (booking.online_status == 'authorized') %}
-            <form id="stripePayRentForm"
-                  method="post"
-                  action="/api/stripe/checkout/rent/{{ booking.id }}"
-                  class="d-inline">
-              <button id="stripePayRentBtn"
-                      class="btn {% if rent_paid %}btn-success{% else %}btn-outline-primary{% endif %} btn-wide me-1"
-                      {% if not owner_pe or rent_paid %}disabled aria-disabled="true"{% endif %}>
-                {% if rent_paid %}
-                  <i class="bi bi-check2-circle"></i> تم دفع الإيجار
-                {% else %}
-                  <i class="bi bi-credit-card-2-front"></i> دفع الإيجار فقط
-                {% endif %}
-              </button>
-            </form>
-
-            {# زر الوديعة — يبقى فعال حتى يتم الحجز #}
             {% set deposit_ok = (booking.deposit_status == 'held') %}
+
+            <!-- زر: دفع الإيجار فقط (يتحوّل لعبارة تم الدفع) -->
+            <div id="rentActionWrap" class="d-inline">
+              {% if rent_paid %}
+                <button id="rentPaidBadge" class="btn btn-success btn-wide me-1" disabled>
+                  <i class="bi bi-check2-circle"></i> تم دفع الإيجار ✅
+                </button>
+              {% else %}
+                <form id="stripePayRentForm" method="post" action="/api/stripe/checkout/rent/{{ booking.id }}" class="d-inline">
+                  <button id="stripePayRentBtn" class="btn btn-outline-primary btn-wide me-1"
+                          {% if not owner_pe %}disabled aria-disabled="true"{% endif %}>
+                    <i class="bi bi-credit-card-2-front"></i> دفع الإيجار فقط
+                  </button>
+                </form>
+              {% endif %}
+            </div>
+
+            <!-- زر: حجز الوديعة فقط (يختفي عند الحجز) -->
             {% if (booking.deposit_amount or booking.hold_deposit_amount) and (booking.deposit_amount or booking.hold_deposit_amount) > 0 %}
-            <form id="stripeDepositForm" class="d-inline" method="post" action="/api/stripe/checkout/deposit/{{ booking.id }}">
-              <button id="stripeDepositBtn"
-                      class="btn {% if deposit_ok %}btn-success{% else %}btn-outline-secondary{% endif %} btn-wide"
-                      {% if deposit_ok %}disabled aria-disabled="true"{% elif not owner_pe %}disabled aria-disabled="true"{% endif %}>
-                {% if deposit_ok %}
-                  <i class="bi bi-shield-check"></i> الوديعة محجوزة
-                {% else %}
-                  <i class="bi bi-shield-lock"></i> حجز الوديعة فقط
-                {% endif %}
-              </button>
-            </form>
+            <div id="depositActionWrap" class="d-inline">
+              {% if deposit_ok %}
+                <button id="depositHeldBadge" class="btn btn-success btn-wide" disabled>
+                  <i class="bi bi-shield-check"></i> تم حجز الوديعة ✅
+                </button>
+              {% else %}
+                <form id="stripeDepositForm" class="d-inline" method="post" action="/api/stripe/checkout/deposit/{{ booking.id }}">
+                  <button id="stripeDepositBtn" class="btn btn-outline-secondary btn-wide"
+                          {% if not owner_pe %}disabled aria-disabled="true"{% endif %}>
+                    <i class="bi bi-shield-lock"></i> حجز الوديعة فقط
+                  </button>
+                </form>
+              {% endif %}
+            </div>
             {% endif %}
 
             <div class="k mt-2">
@@ -292,7 +296,7 @@
   </div>
 </div>
 
-<!-- UX: تعطيل الأزرار أثناء التحويل + تحديث الحالة -->
+<!-- UX: تعطيل الأزرار أثناء التحويل + منطق التحديث -->
 <script>
   function wireDisableOnSubmit(formId, btnId, text){
     var f = document.getElementById(formId);
@@ -308,52 +312,48 @@
   wireDisableOnSubmit('stripePayRentForm','stripePayRentBtn','جاري تحويلك إلى الدفع…');
   wireDisableOnSubmit('stripeDepositForm','stripeDepositBtn','جاري تحويلك إلى الدفع…');
 
-  // أدوات مساعدة
-  function getParam(name){
-    var m = new RegExp('[?&]'+name+'=([^&]+)').exec(window.location.search);
-    return m ? decodeURIComponent(m[1].replace(/\+/g,' ')) : null;
-  }
+  // تبديل الواجهة لنتيجة دفع الإيجار
   function markRentPaidUI(){
-    var btn = document.getElementById('stripePayRentBtn');
-    if(!btn) return;
-    btn.disabled = true;
-    btn.classList.remove('btn-outline-primary');
-    btn.classList.add('btn-success');
-    btn.innerHTML = '<i class="bi bi-check2-circle"></i> تم دفع الإيجار';
+    var wrap = document.getElementById('rentActionWrap');
+    if(!wrap) return;
+    wrap.innerHTML = '<button class="btn btn-success btn-wide me-1" disabled><i class="bi bi-check2-circle"></i> تم دفع الإيجار ✅</button>';
   }
+  // تبديل الواجهة لنتيجة حجز الوديعة
   function markDepositHeldUI(){
-    var btn = document.getElementById('stripeDepositBtn');
-    if(!btn) return;
-    btn.disabled = true;
-    btn.classList.remove('btn-outline-secondary');
-    btn.classList.add('btn-success');
-    btn.innerHTML = '<i class="bi bi-shield-check"></i> الوديعة محجوزة';
+    var wrap = document.getElementById('depositActionWrap');
+    if(!wrap) return;
+    wrap.innerHTML = '<button class="btn btn-success btn-wide" disabled><i class="bi bi-shield-check"></i> تم حجز الوديعة ✅</button>';
   }
 
-  // 1) لو رجعنا من Checkout ومعنا rent_ok/deposit_ok غيّر النص فوراً
+  // عند فتح الصفحة: إن كان كلاهما مكتملين نحول لنفس صفحة الحجز مع باراميتر ready=1
   (function(){
     try{
-      if(getParam('rent_ok') === '1'){ markRentPaidUI(); }
-      if(getParam('deposit_ok') === '1'){ markDepositHeldUI(); }
+      var box = document.getElementById('onlineBox');
+      if(!box) return;
+      var rentAuth = box.getAttribute('data-rent-authorized') === '1';
+      var depHeld  = box.getAttribute('data-deposit-held') === '1';
+      if(rentAuth){ markRentPaidUI(); }
+      if(depHeld){ markDepositHeldUI(); }
+      if(rentAuth && depHeld){
+        window.location.href = "/bookings/flow/{{ booking.id }}?ready=1";
+      }
     }catch(e){}
   })();
 
-  // 2) استعلام الحالة من السيرفر لتحديث الأزرار + تحويل تلقائي عند اكتمالهما
+  // استعلام الحالة من السيرفر لتحديث الأزرار + تحويل عند الجاهزية
   (function(){
     var bookingId = {{ booking.id }};
     fetch('/api/stripe/checkout/state/' + bookingId, {credentials:'same-origin'})
-      .then(function(r){ return r.ok ? r.json() : {}; })
-      .then(function(state){
+      .then(r => r.ok ? r.json() : {})
+      .then(state => {
         try{
           if(state.rent_authorized){ markRentPaidUI(); }
           if(state.deposit_held){ markDepositHeldUI(); }
-
-          // إذا كان كلاهما جاهزين → تحويل لصفحة الاستلام
           if(state.ready_for_pickup){
-            window.location.href = '/bookings/{{ booking.id }}/pickup';
+            window.location.href = "/bookings/flow/{{ booking.id }}?ready=1";
           }
         }catch(e){}
-      }).catch(function(){});
+      }).catch(()=>{});
   })();
 
   // عدّاد مهلة الاعتراض (إن وُجد)
