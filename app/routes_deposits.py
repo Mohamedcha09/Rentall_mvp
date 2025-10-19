@@ -587,48 +587,6 @@ def report_deposit_issue_page(
         },
     )
 
-def _audit(db: Session, actor: Optional[User], bk: Booking, action: str, details: dict | None = None):
-    """ كتابة سجل تدقيقي في deposit_audit_log أو deposit_audit_logs (أيّهما متاح). """
-    try:
-        with _engine.begin() as conn:
-            table_name = None
-            try:
-                conn.exec_driver_sql("SELECT 1 FROM deposit_audit_log LIMIT 1")
-                table_name = "deposit_audit_log"
-            except Exception:
-                try:
-                    conn.exec_driver_sql("SELECT 1 FROM deposit_audit_logs LIMIT 1")
-                    table_name = "deposit_audit_logs"
-                except Exception:
-                    table_name = None
-
-            if not table_name:
-                return
-
-            conn.exec_driver_sql(
-                f"""
-                INSERT INTO {table_name} (booking_id, actor_id, role, action, details, created_at)
-                VALUES (:bid, :aid, :role, :action, :details, :ts)
-                """,
-                {
-                    "bid": bk.id,
-                    "aid": getattr(actor, "id", None),
-                    "role": (getattr(actor, "role", "") or ("dm" if can_manage_deposits(actor) else "")),
-                    "action": action,
-                    "details": (str(details) if details else None),
-                    "ts": datetime.utcnow(),
-                },
-            )
-    except Exception:
-        pass
-
-def notify_dms(db: Session, title: str, body: str = "", url: str = ""):
-    """ إشعار كل من لديه صلاحية متحكّم وديعة أو أدمِن. """
-    dms = db.query(User).filter(
-        (User.is_deposit_manager == True) | ((User.role or "") == "admin")
-    ).all()
-    for u in dms:
-        push_notification(db, u.id, title, body, url, kind="deposit")
 
 @router.post("/deposits/{booking_id}/report")
 def report_deposit_issue(
@@ -647,11 +605,39 @@ def report_deposit_issue(
     if _get_deposit_pi_id(bk) is None:
         raise HTTPException(status_code=400, detail="No deposit hold found")
 
+    # 1) حفظ الملفات على القرص
     saved = _save_evidence_files(bk.id, files)
+
+    # 2) تسجيل كل ملف كصف Evidence في DB مع side='owner'
+    try:
+        from .models import DepositEvidence
+        for name in saved:
+            db.add(DepositEvidence(
+                booking_id=bk.id,
+                uploader_id=user.id,
+                side="owner",
+                kind="image",  # يمكن لاحقًا استنتاج النوع من الامتداد
+                file_path=f"/uploads/deposits/{bk.id}/{name}",
+                description=(description or None),
+            ))
+        # معلومات البلاغ للمرجع/الديسبيوت
+        try:
+            bk.owner_report_type = (issue_type or None)
+            bk.owner_report_reason = (description or None)
+            bk.dispute_opened_at = datetime.utcnow()
+        except Exception:
+            pass
+        db.commit()
+    except Exception:
+        # نتجاهل أي خطأ غير مهم هنا حتى لا نكسر الفلو
+        pass
+
+    # 3) تحديث حالات الحجز/الوديعة
     bk.deposit_status = "in_dispute"
     bk.status = "in_review"
     bk.updated_at = datetime.utcnow()
 
+    # إبقاء ملاحظة المالك القديمة + إضافة الحالية
     try:
         note_old = (getattr(bk, "owner_return_note", "") or "").strip()
         note_new = f"[{issue_type}] {description}".strip()
@@ -661,31 +647,27 @@ def report_deposit_issue(
 
     db.commit()
 
-    # إشعارات داخلية
+    # ===== إشعارات وبريد (كما هي عندك) =====
     push_notification(
         db, bk.renter_id, "بلاغ وديعة جديد",
         f"قام المالك بالإبلاغ عن مشكلة ({issue_type}) بخصوص الحجز #{bk.id}.",
         f"/bookings/flow/{bk.id}", "deposit"
     )
-
-    # ✅ تعديلاتنا: الإشعار يفتح قائمة القضايا وليس قضية معيّنة
     notify_dms(db, "بلاغ وديعة جديد — بانتظار المراجعة",
                f"بلاغ جديد للحجز #{bk.id}.", "/dm/deposits")
     notify_admins(db, "مراجعة ديبو مطلوبة",
                   f"بلاغ جديد بخصوص حجز #{bk.id}.", "/dm/deposits")
 
-    _audit(db, actor=user, bk=bk, action="owner_report_issue", details={"issue_type": issue_type, "desc": description, "files": saved})
+    _audit(db, actor=user, bk=bk, action="owner_report_issue",
+           details={"issue_type": issue_type, "desc": description, "files": saved})
 
-    # Emails: عند البلاغ — للمستأجر + المالك (تأكيد) + الإداريين + الـDMs
     try:
         renter_email = _user_email(db, bk.renter_id)
         owner_email  = _user_email(db, bk.owner_id)
         admins_em    = _admin_emails(db)
         dms_em       = _dm_emails_only(db)
-
         case_url  = f"{BASE_URL}/dm/deposits/{bk.id}"
         flow_url  = f"{BASE_URL}/bookings/flow/{bk.id}"
-
         if renter_email:
             send_email(
                 renter_email,
@@ -701,19 +683,13 @@ def report_deposit_issue(
                 f'<p><a href="{flow_url}">تفاصيل الحجز</a></p>'
             )
         for em in admins_em:
-            send_email(
-                em,
-                f"[Admin] بلاغ وديعة جديد — #{bk.id}",
-                f"<p>بلاغ وديعة جديد من المالك بخصوص الحجز #{bk.id}.</p>"
-                f'<p><a href="{case_url}">فتح القضية</a></p>'
-            )
+            send_email(em, f"[Admin] بلاغ وديعة جديد — #{bk.id}",
+                       f"<p>بلاغ وديعة جديد من المالك بخصوص الحجز #{bk.id}.</p>"
+                       f'<p><a href="{case_url}">فتح القضية</a></p>')
         for em in dms_em:
-            send_email(
-                em,
-                f"[DM] بلاغ وديعة جديد — #{bk.id}",
-                f"<p>بلاغ جديد بانتظار المراجعة للحجز #{bk.id}.</p>"
-                f'<p><a href="{case_url}">إدارة القضية</a></p>'
-            )
+            send_email(em, f"[DM] بلاغ وديعة جديد — #{bk.id}",
+                       f"<p>بلاغ جديد بانتظار المراجعة للحجز #{bk.id}.</p>"
+                       f'<p><a href="{case_url}">إدارة القضية</a></p>')
     except Exception:
         pass
 
@@ -727,6 +703,99 @@ def report_deposit_issue(
         },
         status_code=200
     )
+
+
+# =========================
+# >>> نموذج/رفع أدلّة (الطرفين) — إشعار فوري للطرف الآخر + DMs + إيميل
+# =========================
+@router.post("/deposits/{booking_id}/evidence/upload")
+def evidence_upload(
+    booking_id: int,
+    files: List[UploadFile] | None = File(None),
+    comment: str = Form(""),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    يرفع الطرف (مالك/مستأجر) أدلة جديدة → إشعار للطرف الآخر + DMs + بريد.
+    """
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if user.id not in (bk.owner_id, bk.renter_id):
+        raise HTTPException(status_code=403, detail="Not participant in this booking")
+
+    # 1) حفظ الملفات على القرص
+    saved = _save_evidence_files(bk.id, files)
+
+    # 2) تسجيل الأدلة في DB مع side مناسب (owner/renter)
+    try:
+        from .models import DepositEvidence
+        side_val = "owner" if user.id == bk.owner_id else "renter"
+        for name in saved:
+            db.add(DepositEvidence(
+                booking_id=bk.id,
+                uploader_id=user.id,
+                side=side_val,
+                kind="image",
+                file_path=f"/uploads/deposits/{bk.id}/{name}",
+                description=(comment or None),
+            ))
+        db.commit()
+    except Exception:
+        pass
+
+    # 3) تحديث حالة الحجز/النزاع
+    now = datetime.utcnow()
+    try:
+        setattr(bk, "updated_at", now)
+        # عندما تأتي أدلة جديدة نضمن أن الحالة ليست مغلقة
+        if getattr(bk, "status", "") in ("closed", "completed"):
+            bk.status = "in_review"
+        # لو كانت في awaiting_renter نرجعها لنزاع مفتوح
+        if getattr(bk, "deposit_status", "") == "awaiting_renter":
+            bk.deposit_status = "in_dispute"
+    except Exception:
+        pass
+    db.commit()
+
+    other_id = bk.renter_id if user.id == bk.owner_id else bk.owner_id
+    who = "المالك" if user.id == bk.owner_id else "المستأجر"
+
+    # إشعارات داخلية
+    push_notification(
+        db, other_id, "أدلة جديدة في القضية",
+        f"{who} قام برفع أدلة جديدة للحجز #{bk.id}.",
+        f"/bookings/flow/{bk.id}", "deposit"
+    )
+    notify_dms(db, "أدلة جديدة — تحديث القضية", f"تم رفع أدلة جديدة للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+
+    _audit(db, actor=user, bk=bk, action="evidence_upload",
+           details={"by": who, "files": saved, "comment": comment})
+
+    # Emails: للطرف الآخر + DMs
+    try:
+        other_email = _user_email(db, other_id)
+        dms_em      = _dm_emails_only(db)
+        case_url    = f"{BASE_URL}/dm/deposits/{bk.id}"
+        flow_url    = f"{BASE_URL}/bookings/flow/{bk.id}"
+        if other_email:
+            send_email(
+                other_email,
+                f"أدلة جديدة مرفوعة — #{bk.id}",
+                f"<p>{who} قام برفع أدلة جديدة على قضية الوديعة للحجز #{bk.id}.</p>"
+                f'<p><a href="{flow_url}">عرض الحجز</a></p>'
+            )
+        for em in dms_em:
+            send_email(
+                em,
+                f"[DM] أدلة جديدة — #{bk.id}",
+                f"<p>تم رفع أدلة جديدة على القضية لحجز #{bk.id}.</p>"
+                f'<p><a href="{case_url}">فتح القضية</a></p>'
+            )
+    except Exception:
+        pass
+
+    return RedirectResponse(url=f"/bookings/flow/{bk.id}?evidence=1", status_code=303)
 
 # ==== ردّ المستأجر ====
 @router.post("/deposits/{booking_id}/renter-response")
@@ -1099,7 +1168,23 @@ def evidence_upload(
     if user.id not in (bk.owner_id, bk.renter_id):
         raise HTTPException(status_code=403, detail="Not participant in this booking")
 
-    saved = _save_evidence_files(bk.id, files)
+    saved = _save_evidence_files(bk.id, files) 
+    # --- تسجيل الأدلة الجديدة في قاعدة البيانات حسب الجهة (مالك أو مستأجر) ---
+try:
+    from .models import DepositEvidence
+    side_val = "owner" if user.id == bk.owner_id else "renter"
+    for name in saved:
+        db.add(DepositEvidence(
+            booking_id=bk.id,
+            uploader_id=user.id,
+            side=side_val,
+            kind="image",
+            file_path=f"/uploads/deposits/{bk.id}/{name}",
+            description=(comment or None),
+        ))
+    db.commit()
+except Exception:
+    pass
     now = datetime.utcnow()
     try:
         setattr(bk, "updated_at", now)
