@@ -75,7 +75,6 @@
           </div>
 
           <script>
-            // الافتراضي = سعر اليوم × 5 (مرة واحدة فقط لو الحقل فارغ/صفر)
             (function () {
               try {
                 var inp = document.getElementById('depositInput');
@@ -95,7 +94,7 @@
         {% endif %}
       {% endif %}
 
-      {# ======= المرحلة: مقبول – اختيار الدفع ======= #}
+      {# ======= المرحلة: مقبول – الدفع أونلاين بأزرار منفصلة ======= #}
       {% if booking.status in ['accepted'] %}
         {% if is_renter %}
           <h5 class="mb-2">اختر طريقة الدفع</h5>
@@ -108,8 +107,10 @@
             </form>
           </div>
 
-          <!-- الدفع أونلاين -->
-          <div class="box">
+          <!-- الدفع أونلاين بأزرار منفصلة -->
+          <div class="box" id="onlineBox"
+               data-rent-authorized="{{ '1' if booking.online_status == 'authorized' else '0' }}"
+               data-deposit-held="{{ '1' if booking.deposit_status == 'held' else '0' }}">
             <div class="mb-2">الدفع <strong>أونلاين (Stripe Checkout)</strong></div>
 
             {% if not owner_pe %}
@@ -128,49 +129,39 @@
               </div>
             {% endif %}
 
-            <!-- الدفع الموحّد: إيجار + وديعة في نفس العملية -->
-            <form id="stripePayAllForm" method="post" action="/api/stripe/checkout/all/{{ booking.id }}">
-              <div class="row g-2">
-                <div class="col-6">
-                  <label class="form-label">مبلغ الإيجار</label>
-                  <input class="form-control" type="number" value="{{ booking.rent_amount or booking.total_amount or 0 }}" disabled>
-                </div>
-                <div class="col-6">
-                  <label class="form-label">الوديعة (ديبو)</label>
-                  <input class="form-control" type="number" value="{{ booking.deposit_amount or booking.hold_deposit_amount or 0 }}" disabled>
-                </div>
-                <div class="col-12 mt-2">
-                  <button id="stripePayAllBtn" class="btn btn-primary btn-wide"
-                          {% if not owner_pe %}disabled aria-disabled="true" title="المالك لم يفعل الاستلام بعد"{% endif %}>
-                    <i class="bi bi-credit-card"></i> ادفع الآن (الإيجار + الوديعة)
-                  </button>
-                </div>
-              </div>
+            <!-- زر: دفع الإيجار فقط (يختفي بعد الدفع) -->
+            {% set rent_paid = (booking.online_status == 'authorized') %}
+            <form id="stripePayRentForm" method="post" action="/api/stripe/checkout/rent/{{ booking.id }}" class="d-inline"
+                  {% if rent_paid %}style="display:none"{% endif %}>
+              <button id="stripePayRentBtn" class="btn btn-outline-primary btn-wide me-1"
+                      {% if not owner_pe %}disabled aria-disabled="true"{% endif %}>
+                <i class="bi bi-credit-card-2-front"></i> دفع الإيجار فقط
+              </button>
             </form>
 
-            <!-- الأزرار القديمة (إبقاؤها دون حذف) -->
-            <div class="mt-3">
-              <div class="muted small mb-1">أو يمكنك استخدام الأزرار المنفصلة (كما كانت):</div>
-              <form id="stripePayRentForm" method="post" action="/api/stripe/checkout/rent/{{ booking.id }}" class="d-inline">
-                <button id="stripePayRentBtn" class="btn btn-outline-primary btn-sm me-1"
-                        {% if not owner_pe %}disabled aria-disabled="true"{% endif %}>
-                  <i class="bi bi-credit-card-2-front"></i> دفع الإيجار فقط
-                </button>
-              </form>
+            <!-- زر: حجز الوديعة فقط (يختفي بعد الحجز) -->
+            {% set deposit_ok = (booking.deposit_status == 'held') %}
+            {% if (booking.deposit_amount or booking.hold_deposit_amount) and (booking.deposit_amount or booking.hold_deposit_amount) > 0 %}
+            <form id="stripeDepositForm" class="d-inline" method="post" action="/api/stripe/checkout/deposit/{{ booking.id }}"
+                  {% if deposit_ok %}style="display:none"{% endif %}>
+              <button id="stripeDepositBtn" class="btn btn-outline-secondary btn-wide"
+                      {% if not owner_pe %}disabled aria-disabled="true"{% endif %}>
+                <i class="bi bi-shield-lock"></i> حجز الوديعة فقط
+              </button>
+            </form>
+            {% endif %}
 
-              {% if (booking.deposit_amount or booking.hold_deposit_amount) and (booking.deposit_amount or booking.hold_deposit_amount) > 0 %}
-              <form class="d-inline" method="post" action="/api/stripe/checkout/deposit/{{ booking.id }}">
-                <button class="btn btn-outline-secondary btn-sm"
-                        {% if not owner_pe %}disabled aria-disabled="true"{% endif %}>
-                  <i class="bi bi-shield-lock"></i> حجز الوديعة فقط
-                </button>
-              </form>
-              {% endif %}
-            </div>
+            <!-- (مُعلّق عمداً): دمج الإيجار + الوديعة في زر واحد
+            <form id="stripePayAllForm" method="post" action="/api/stripe/checkout/all/{{ booking.id }}" class="mt-3">
+              <button id="stripePayAllBtn" class="btn btn-primary btn-wide"
+                      {% if not owner_pe %}disabled aria-disabled="true"{% endif %}>
+                <i class="bi bi-credit-card"></i> ادفع الآن (الإيجار + الوديعة)
+              </button>
+            </form>
+            -->
 
             <div class="k mt-2">
-              سيتم تحويلك إلى صفحة دفع آمنة من Stripe لإدخال بيانات بطاقتك.
-              بعد النجاح ستعود تلقائيًا لصفحة الحجز، وسنحدّث الحالة.
+              سيتم تحويلك إلى صفحة دفع آمنة من Stripe لإدخال بيانات بطاقتك. بعد النجاح ستعود تلقائيًا لصفحة الحجز وسنحدّث الحالة.
             </div>
           </div>
         {% elif is_owner %}
@@ -189,7 +180,7 @@
         {% endif %}
       {% endif %}
 
-      {# ======= المرحلة: تم الدفع ======= #}
+      {# ======= المرحلة: تم الدفع (جاهز للاستلام) ======= #}
       {% if booking.status in ['paid'] %}
         {% if is_renter %}
           <h5>جاهز للاستلام</h5>
@@ -299,7 +290,7 @@
   </div>
 </div>
 
-<!-- UX: تعطيل الأزرار أثناء التحويل -->
+<!-- UX: تعطيل الأزرار أثناء التحويل + منطق الاختفاء/التحويل -->
 <script>
   function wireDisableOnSubmit(formId, btnId, text){
     var f = document.getElementById(formId);
@@ -312,8 +303,23 @@
       }
     });
   }
-  wireDisableOnSubmit('stripePayAllForm','stripePayAllBtn','جاري تحويلك إلى الدفع…');
   wireDisableOnSubmit('stripePayRentForm','stripePayRentBtn','جاري تحويلك إلى الدفع…');
+  wireDisableOnSubmit('stripeDepositForm','stripeDepositBtn','جاري تحويلك إلى الدفع…');
+
+  // منطق الواجهة: إخفاء الأزرار بعد الدفع/الحجز + تحويل تلقائي لصفحة الاستلام
+  (function(){
+    try{
+      var box = document.getElementById('onlineBox');
+      if(!box) return;
+      var rentAuth = box.getAttribute('data-rent-authorized') === '1';
+      var depHeld  = box.getAttribute('data-deposit-held') === '1';
+
+      // إذا كان كلاهما مكتملين، يتم التحويل مباشرةً لصفحة الاستلام
+      if(rentAuth && depHeld){
+        window.location.href = "/bookings/{{ booking.id }}/pickup";
+      }
+    }catch(e){}
+  })();
 
   // عدّاد مهلة الاعتراض (إن وُجد)
   {% if dispute_deadline_iso %}
@@ -321,11 +327,8 @@
     if(window.initCountdown){
       initCountdown('deadlineCountdown','{{ dispute_deadline_iso }}');
     }else{
-      // fallback بسيط إن لم يكن الملف موجودًا
       var el = document.getElementById('deadlineCountdown');
-      if(el){
-        el.textContent = new Date('{{ dispute_deadline_iso }}').toLocaleString();
-      }
+      if(el){ el.textContent = new Date('{{ dispute_deadline_iso }}').toLocaleString(); }
     }
   }catch(e){}
   {% endif %}

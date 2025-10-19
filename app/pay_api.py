@@ -202,7 +202,7 @@ def start_checkout_all(
 
     item = db.get(Item, bk.item_id)
     if not item:
-       raise HTTPException(status_code=404, detail="Item not found")
+        raise HTTPException(status_code=404, detail="Item not found")
     owner = db.get(User, bk.owner_id)
     if not owner or not getattr(owner, "stripe_account_id", None):
         raise HTTPException(status_code=400, detail="Owner is not onboarded to Stripe")
@@ -345,7 +345,7 @@ def start_checkout_rent(
 
     item = db.get(Item, bk.item_id)
     if not item:
-        raise HTTPException(404, "Item not found")
+        raise HTTPException(status_code=404, detail="Item not found")
 
     owner = db.get(User, bk.owner_id)
     if not owner or not getattr(owner, "stripe_account_id", None):
@@ -407,7 +407,7 @@ def start_checkout_deposit(
 
     item = db.get(Item, bk.item_id)
     if not item:
-        raise HTTPException(404, "Item not found")
+        raise HTTPException(status_code=404, detail="Item not found")
 
     try:
         session = stripe.checkout.Session.create(
