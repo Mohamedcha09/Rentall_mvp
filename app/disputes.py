@@ -93,14 +93,20 @@ def dm_case(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
+    """
+    شاشة ملف وديعة لمدير الوديعة.
+    * إصلاح أساسي: تمرير 'booking' بدل 'bk' حتى لا ينكسر القالب.
+    * لا حذف لأي منطق موجود.
+    """
     require_dm(user)
+
     bk = db.get(Booking, booking_id)
     if not bk:
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    item = db.get(Item, bk.item_id)
-    owner = db.get(User, bk.owner_id)
-    renter = db.get(User, bk.renter_id)
+    item = db.get(Item, bk.item_id) if bk.item_id else None
+    owner = db.get(User, bk.owner_id) if bk.owner_id else None
+    renter = db.get(User, bk.renter_id) if bk.renter_id else None
 
     return request.app.templates.TemplateResponse(
         "dm_case.html",
@@ -108,8 +114,12 @@ def dm_case(
             "request": request,
             "title": f"قضية وديعة #{bk.id}",
             "session_user": request.session.get("user"),
+            # 👇 التسمية التي ينتظرها القالب
+            "booking": bk,
+            # نبقي النسخة القديمة أيضاً لو في مكان آخر يعتمد عليها
             "bk": bk,
             "item": item,
+            "item_title": (item.title if item else "—"),
             "owner": owner,
             "renter": renter,
         },
