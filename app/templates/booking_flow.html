@@ -313,20 +313,17 @@
   wireDisableOnSubmit('stripePayRentForm','stripePayRentBtn','جاري تحويلك إلى الدفع…');
   wireDisableOnSubmit('stripeDepositForm','stripeDepositBtn','جاري تحويلك إلى الدفع…');
 
-  // تبديل الواجهة لنتيجة دفع الإيجار
   function markRentPaidUI(){
     var wrap = document.getElementById('rentActionWrap');
     if(!wrap) return;
     wrap.innerHTML = '<button class="btn btn-success btn-wide me-1" disabled><i class="bi bi-check2-circle"></i> تم دفع الإيجار ✅</button>';
   }
-  // تبديل الواجهة لنتيجة حجز الوديعة
   function markDepositHeldUI(){
     var wrap = document.getElementById('depositActionWrap');
     if(!wrap) return;
     wrap.innerHTML = '<button class="btn btn-success btn-wide" disabled><i class="bi bi-shield-check"></i> تم حجز الوديعة ✅</button>';
   }
 
-  // عند فتح الصفحة: إن كان كلاهما مكتملين نحول لنفس صفحة الحجز مع باراميتر ready=1
   (function(){
     try{
       var box = document.getElementById('onlineBox');
@@ -341,7 +338,6 @@
     }catch(e){}
   })();
 
-  // استعلام الحالة من السيرفر لتحديث الأزرار + تحويل عند الجاهزية
   (function(){
     var bookingId = {{ booking.id }};
     fetch('/api/stripe/checkout/state/' + bookingId, {credentials:'same-origin'})
@@ -357,7 +353,6 @@
       }).catch(()=>{});
   })();
 
-  // عدّاد مهلة الاعتراض (إن وُجد)
   {% if dispute_deadline_iso %}
   try{
     if(window.initCountdown){

@@ -564,8 +564,15 @@ def report_deposit_issue_page(
 ):
     require_auth(user)
     bk = require_booking(db, booking_id)
+
+    # ✅ ريديركت ذكي حسب الدور:
     if user.id != bk.owner_id:
-        raise HTTPException(status_code=403, detail="Only owner can open report page")
+        if can_manage_deposits(user):  # DM/Admin
+            return RedirectResponse(url=f"/dm/deposits/{bk.id}", status_code=303)
+        # مشارك آخر (مستأجر) أو زائر → تدفق الحجز
+        return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
+
+    # المالك فقط يرى صفحة إنشاء البلاغ
     item = db.get(Item, bk.item_id)
     return request.app.templates.TemplateResponse(
         "deposit_report.html",
@@ -660,9 +667,12 @@ def report_deposit_issue(
         f"قام المالك بالإبلاغ عن مشكلة ({issue_type}) بخصوص الحجز #{bk.id}.",
         f"/bookings/flow/{bk.id}", "deposit"
     )
-    # ✅ هذا هو الإشعار الذي تريده أن يفتح صفحة مراجعة القضايا
-    notify_dms(db, "بلاغ وديعة جديد — بانتظار المراجعة", f"بلاغ جديد للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
-    notify_admins(db, "مراجعة ديبو مطلوبة", f"بلاغ جديد بخصوص حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+
+    # ✅ تعديلاتنا: الإشعار يفتح قائمة القضايا وليس قضية معيّنة
+    notify_dms(db, "بلاغ وديعة جديد — بانتظار المراجعة",
+               f"بلاغ جديد للحجز #{bk.id}.", "/dm/deposits")
+    notify_admins(db, "مراجعة ديبو مطلوبة",
+                  f"بلاغ جديد بخصوص حجز #{bk.id}.", "/dm/deposits")
 
     _audit(db, actor=user, bk=bk, action="owner_report_issue", details={"issue_type": issue_type, "desc": description, "files": saved})
 
