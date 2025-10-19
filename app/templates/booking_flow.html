@@ -306,15 +306,53 @@
   wireDisableOnSubmit('stripePayRentForm','stripePayRentBtn','جاري تحويلك إلى الدفع…');
   wireDisableOnSubmit('stripeDepositForm','stripeDepositBtn','جاري تحويلك إلى الدفع…');
 
-  // منطق الواجهة: إخفاء الأزرار بعد الدفع/الحجز + تحويل تلقائي لصفحة الاستلام
+  // أدوات مساعدة
+  function getParam(name){
+    var m = new RegExp('[?&]'+name+'=([^&]+)').exec(window.location.search);
+    return m ? decodeURIComponent(m[1].replace(/\+/g,' ')) : null;
+  }
+  function hideElById(id){
+    var el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+  }
+
+  // 1) لو رجعنا من Checkout ومعنا rent_ok=1 نخفي زر الإيجار فوراً
+  (function(){
+    try{
+      if(getParam('rent_ok') === '1'){
+        hideElById('stripePayRentForm');
+      }
+      if(getParam('deposit_ok') === '1'){
+        hideElById('stripeDepositForm');
+      }
+    }catch(e){}
+  })();
+
+  // 2) استعلام الحالة من السيرفر لتحديث الأزرار + تحويل تلقائي عند اكتمالهما
+  (function(){
+    var bookingId = {{ booking.id }};
+    fetch('/api/stripe/checkout/state/' + bookingId, {credentials:'same-origin'})
+      .then(function(r){ return r.ok ? r.json() : {}; })
+      .then(function(state){
+        try{
+          if(state.rent_authorized){ hideElById('stripePayRentForm'); }
+          if(state.deposit_held){ hideElById('stripeDepositForm'); }
+
+          // إذا كان كلاهما جاهزين → تحويل لصفحة الاستلام
+          if(state.ready_for_pickup){
+            window.location.href = '/bookings/{{ booking.id }}/pickup';
+          }
+        }catch(e){}
+      }).catch(function(){});
+  })();
+
+  // 3) منطق قديم: لو الصفحة نفسها قالت مكتمِلَين نحول (يبقى كـ fallback)
   (function(){
     try{
       var box = document.getElementById('onlineBox');
       if(!box) return;
       var rentAuth = box.getAttribute('data-rent-authorized') === '1';
       var depHeld  = box.getAttribute('data-deposit-held') === '1';
-
-      // إذا كان كلاهما مكتملين، يتم التحويل مباشرةً لصفحة الاستلام
       if(rentAuth && depHeld){
         window.location.href = "/bookings/{{ booking.id }}/pickup";
       }
