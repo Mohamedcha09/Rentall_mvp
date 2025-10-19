@@ -334,7 +334,7 @@ def start_checkout_rent(
     - يُنشئ Session لتفويض مبلغ الإيجار (capture لاحقًا عند الاستلام).
     - تحويل الوجهة لحساب المالك عبر transfer_data.destination (Destination Charge).
     - تطبيق عمولة المنصّة application_fee_amount إن وُجدت.
-    - بعد نجاح الـ Checkout، webhook يحدّث الحجز إلى paid ويخزن payment_intent_id.
+    - بعد نجاح الـ Checkout، webhook يحدّث الحجز.
     """
     require_auth(user)
     bk = require_booking(db, booking_id)
@@ -460,22 +460,34 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     item = db.get(Item, bk.item_id) if bk.item_id else None
 
     if kind == "rent":
+        # مفوّض الإيجار — لا نغيّر الحجز إلى paid إلا إذا كانت الوديعة محجوزة مسبقًا
         bk.online_payment_intent_id = pi.id
         bk.online_status = "authorized"
-        bk.status = "paid"
-        bk.timeline_paid_at = datetime.utcnow()
-        db.commit()
-        push_notification(db, bk.owner_id, "تم تفويض دفعة الإيجار",
-                          f"حجز #{bk.id}: التفويض جاهز. سلّم الغرض عند الموعد.",
-                          f"/bookings/flow/{bk.id}", "booking")
-        push_notification(db, bk.renter_id, "تم تفويض دفعتك",
-                          f"حجز #{bk.id}. يمكنك استلام الغرض الآن.",
-                          f"/bookings/flow/{bk.id}", "booking")
 
-        # ===== إيصال/فاتورة للمستأجر (Rent) =====
+        # إن كانت الوديعة محجوزة بالفعل، يصبح الحجز جاهزًا للاستلام
+        if (bk.deposit_status or "").lower() == "held":
+            bk.status = "paid"
+            bk.timeline_paid_at = datetime.utcnow()
+            db.commit()
+            push_notification(db, bk.owner_id, "تم تفويض دفعة الإيجار",
+                              f"حجز #{bk.id}: التفويض جاهز. سلّم الغرض عند الموعد.",
+                              f"/bookings/flow/{bk.id}", "booking")
+            push_notification(db, bk.renter_id, "تم تفويض الإيجار + الوديعة محجوزة",
+                              f"حجز #{bk.id}. يمكنك استلام الغرض الآن.",
+                              f"/bookings/flow/{bk.id}", "booking")
+        else:
+            # فقط إشعار بأن الإيجار تفوَّض ويجب حجز الوديعة لإكمال العملية
+            db.commit()
+            push_notification(db, bk.owner_id, "تم تفويض دفعة الإيجار",
+                              f"حجز #{bk.id}: انتظر حجز الوديعة قبل التسليم.",
+                              f"/bookings/flow/{bk.id}", "booking")
+            push_notification(db, bk.renter_id, "تم تفويض الإيجار",
+                              f"حجز #{bk.id}: رجاءً أكمل حجز الوديعة للانتقال للاستلام.",
+                              f"/bookings/flow/{bk.id}", "booking")
+
+        # إيصال الإيجار اختياري — نبقيه كما هو
         try:
             renter_email = _user_email(db, bk.renter_id)
-            # إن فشل amount_total من الجلسة نستخدم قيمة الحجز
             amt_cents = amount_total_cents if amount_total_cents > 0 else int(max(0, (bk.total_amount or 0)) * 100)
             amount_txt = _fmt_money_cents(amt_cents, currency)
             if renter_email:
@@ -489,26 +501,57 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
                     charge_id=charge_id,
                     when=when,
                 )
-                send_email(
-                    renter_email,
-                    f"🧾 إيصال الدفع — حجز #{bk.id}",
-                    html,
-                    text_body=text,
-                )
+                send_email(renter_email, f"🧾 إيصال الدفع — حجز #{bk.id}", html, text_body=text)
         except Exception:
             pass
 
     elif kind == "deposit":
         _set_deposit_pi_id(bk, pi.id)
         bk.deposit_status = "held"
-        db.commit()
-        push_notification(db, bk.owner_id, "تم حجز الديبو",
-                          f"حجز #{bk.id}: الديبو محجوز.",
-                          f"/bookings/flow/{bk.id}", "deposit")
-        push_notification(db, bk.renter_id, "تم حجز الديبو",
-                          f"حجز #{bk.id}: الديبو الآن محجوز.",
-                          f"/bookings/flow/{bk.id}", "deposit")
-        # (لا نرسل فاتورة للوديعة وحدها حسب المتطلبات)
+
+        # إذا كان الإيجار مفوضًا بالفعل، نُتم العملية ونحوّل إلى paid
+        if (bk.online_status or "").lower() == "authorized":
+            bk.status = "paid"
+            bk.timeline_paid_at = datetime.utcnow()
+
+            # إرسال الإيصال الكامل (الإيجار + الوديعة) عند اكتمال الاثنين
+            try:
+                renter_email = _user_email(db, bk.renter_id)
+                amt_cents = (
+                    int(max(0, (bk.total_amount or 0)) * 100) +
+                    int(max(0, (bk.deposit_amount or getattr(bk, "hold_deposit_amount", 0) or 0)) * 100)
+                )
+                amount_txt = _fmt_money_cents(amt_cents, currency)
+                if renter_email:
+                    html, text = _compose_invoice_html(
+                        bk=bk,
+                        renter=renter,
+                        item=item,
+                        amount_txt=amount_txt,
+                        currency=currency,
+                        pi_id=pi.id if pi else None,
+                        charge_id=charge_id,
+                        when=when,
+                    )
+                    send_email(renter_email, f"🧾 إيصال الدفع — حجز #{bk.id}", html, text_body=text)
+            except Exception:
+                pass
+
+            db.commit()
+            push_notification(db, bk.owner_id, "اكتمل الدفع",
+                              f"حجز #{bk.id}: الإيجار مفوَّض والوديعة محجوزة.",
+                              f"/bookings/flow/{bk.id}", "booking")
+            push_notification(db, bk.renter_id, "جاهز للاستلام",
+                              f"حجز #{bk.id}: يمكنك استلام الغرض الآن.",
+                              f"/bookings/flow/{bk.id}", "booking")
+        else:
+            db.commit()
+            push_notification(db, bk.owner_id, "تم حجز الديبو",
+                              f"حجز #{bk.id}: الديبو محجوز. بانتظار تفويض الإيجار.",
+                              f"/bookings/flow/{bk.id}", "deposit")
+            push_notification(db, bk.renter_id, "تم حجز الديبو",
+                              f"حجز #{bk.id}: أكمل دفع الإيجار للانتقال للاستلام.",
+                              f"/bookings/flow/{bk.id}", "deposit")
 
     elif kind == "all":
         # دفع الإيجار + اعتبار الوديعة محجوزة على نفس الـ PI
@@ -526,7 +569,7 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
                           f"تم دفع الإيجار والوديعة معًا لحجز #{bk.id}.",
                           f"/bookings/flow/{bk.id}", "booking")
 
-        # ===== إيصال/فاتورة للمستأجر (All) — يظهر الإجمالي المدفوع للجلسة =====
+        # إيصال الإجمالي
         try:
             renter_email = _user_email(db, bk.renter_id)
             amt_cents = amount_total_cents if amount_total_cents > 0 else (
@@ -545,12 +588,7 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
                     charge_id=charge_id,
                     when=when,
                 )
-                send_email(
-                    renter_email,
-                    f"🧾 إيصال الدفع — حجز #{bk.id}",
-                    html,
-                    text_body=text,
-                )
+                send_email(renter_email, f"🧾 إيصال الدفع — حجز #{bk.id}", html, text_body=text)
         except Exception:
             pass
 
