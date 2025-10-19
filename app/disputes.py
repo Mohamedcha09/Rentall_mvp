@@ -34,7 +34,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optiona
     return db.get(User, uid) if uid else None
 
 def require_dm(user: Optional[User]):
-    if not user or not user.can_manage_deposits:
+    if not user or not getattr(user, "can_manage_deposits", False):
         raise HTTPException(status_code=403, detail="Deposit Manager only")
 
 def _stripe():
@@ -49,8 +49,13 @@ def _stripe():
         return None
 
 def _notify_after_decision(db: Session, bk: Booking, title_owner: str, title_renter: str, body: str):
-    push_notification(db, bk.owner_id, title_owner, body, f"/bookings/flow/{bk.id}", "deposit")
-    push_notification(db, bk.renter_id, title_renter, body, f"/bookings/flow/{bk.id}", "deposit")
+    """
+    بعد قرار متحكّم الوديعة، نوجّه كلا الطرفين إلى صفحة القضية.
+    (إذا أردت توجيه المستأجر لتدفّق الحجز بدلاً من ذلك يمكنك تغيير الرابط الثاني.)
+    """
+    link = f"/dm/deposits/{bk.id}"
+    push_notification(db, bk.owner_id, title_owner, body, link, "deposit")
+    push_notification(db, bk.renter_id, title_renter, body, link, "deposit")
 
 
 @router.get("/dm/deposits")
@@ -85,17 +90,6 @@ def dm_queue(
         },
     )
 
-# ✅ إضافة دالة تحويل التصنيفات إلى نص عربي لكي يستخدمها القالب بأمان
-def _category_label(cat):
-    CATEGORY_LABELS = {
-        "cars": "سيارات",
-        "bikes": "دراجات",
-        "electronics": "إلكترونيات",
-        "tools": "أدوات",
-        "real_estate": "عقارات",
-    }
-    return CATEGORY_LABELS.get(cat, cat or "—")
-
 
 @router.get("/dm/deposits/{booking_id}")
 def dm_case(
@@ -106,10 +100,7 @@ def dm_case(
 ):
     """
     شاشة ملف وديعة لمدير الوديعة.
-    * إصلاح أساسي: تمرير 'booking' إضافةً إلى 'bk' حتى لا ينكسر القالب.
-    * تمرير 'category_label' ليستخدمه القالب.
-    * تمرير 'owner_pe' لأن القالب يستعمله في منطق الدفع الأونلاين.
-    * لا حذف لأي منطق موجود.
+    * تمرير 'booking' بالإضافة إلى 'bk' ليتوافق مع القالب dm_case.html
     """
     require_dm(user)
 
@@ -121,27 +112,20 @@ def dm_case(
     owner = db.get(User, bk.owner_id) if bk.owner_id else None
     renter = db.get(User, bk.renter_id) if bk.renter_id else None
 
-    # قد يعتمد القالب على هذا الحقل لإظهار أزرار Stripe
-    owner_pe = bool(getattr(owner, "payouts_enabled", False))
-
     return request.app.templates.TemplateResponse(
         "dm_case.html",
         {
             "request": request,
             "title": f"قضية وديعة #{bk.id}",
             "session_user": request.session.get("user"),
-            # 👇 التسمية التي ينتظرها القالب
+            # التسمية التي يستخدمها القالب:
             "booking": bk,
-            # نبقي النسخة القديمة أيضاً لو في مكان آخر يعتمد عليها
+            # نبقي النسخة القديمة أيضاً في حال اعتمد عليها جزء آخر:
             "bk": bk,
             "item": item,
             "item_title": (item.title if item else "—"),
             "owner": owner,
             "renter": renter,
-            # ✅ تم تمرير الدالة للقالب لمنع خطأ 'category_label is undefined'
-            "category_label": _category_label,
-            # ✅ تمرير حالة تفعيل مدفوعات المالك
-            "owner_pe": owner_pe,
         },
     )
 
@@ -168,7 +152,7 @@ def dm_decide(
     updated_note = (bk.owner_return_note or "").strip()
 
     if decision == "release":
-        # محاولة إلغاء الحجز (Authorization) في Stripe
+        # إلغاء الحجز (Authorization) في Stripe إن أمكن
         if stripe and getattr(bk, "deposit_hold_intent_id", None):
             try:
                 stripe.PaymentIntent.cancel(bk.deposit_hold_intent_id)
@@ -215,7 +199,7 @@ def dm_decide(
                 pass
             captured_ok = True
 
-            # تحرير المتبقي إن وجد
+            # تحرير المتبقي إن وُجد
             try:
                 remaining = (bk.hold_deposit_amount or 0) - (bk.deposit_charged_amount or 0) - amount
                 if remaining > 0:
@@ -248,3 +232,22 @@ def dm_decide(
         f"المبلغ المقتطع: {amount}$ — السبب: {reason or '—'}",
     )
     return RedirectResponse(url=f"/dm/deposits/{bk.id}", status_code=303)
+
+
+# ---------- تحويل روابط الإشعارات القديمة ----------
+@router.get("/deposits/{booking_id}/report")
+def deposit_report_redirect(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    بعض الإشعارات القديمة ترسل إلى /deposits/{id}/report.
+    هنا نعيد التوجيه تلقائيًا:
+      - إذا كان المستخدم متحكّم الوديعة → صفحة قضية الوديعة
+      - غير ذلك → صفحة تدفّق الحجز
+    """
+    if user and getattr(user, "can_manage_deposits", False):
+        return RedirectResponse(url=f"/dm/deposits/{booking_id}", status_code=303)
+    return RedirectResponse(url=f"/bookings/flow/{booking_id}", status_code=303)
