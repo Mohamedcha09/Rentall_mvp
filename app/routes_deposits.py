@@ -736,7 +736,7 @@ def evidence_upload(
                 booking_id=bk.id,
                 uploader_id=user.id,
                 side=side_val,
-                kind="image",
+                kind="image",  # يمكن لاحقًا الاستنتاج من الامتداد
                 file_path=f"/uploads/deposits/{bk.id}/{name}",
                 description=(comment or None),
             ))
@@ -1152,90 +1152,6 @@ def evidence_form(
         },
     )
 
-@router.post("/deposits/{booking_id}/evidence/upload")
-def evidence_upload(
-    booking_id: int,
-    files: List[UploadFile] | None = File(None),
-    comment: str = Form(""),
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
-    """
-    يرفع الطرف (مالك/مستأجر) أدلة جديدة → إشعار للطرف الآخر + DMs + بريد.
-    """
-    require_auth(user)
-    bk = require_booking(db, booking_id)
-    if user.id not in (bk.owner_id, bk.renter_id):
-        raise HTTPException(status_code=403, detail="Not participant in this booking")
-
-    saved = _save_evidence_files(bk.id, files) 
-    # --- تسجيل الأدلة الجديدة في قاعدة البيانات حسب الجهة (مالك أو مستأجر) ---
-try:
-    from .models import DepositEvidence
-    side_val = "owner" if user.id == bk.owner_id else "renter"
-    for name in saved:
-        db.add(DepositEvidence(
-            booking_id=bk.id,
-            uploader_id=user.id,
-            side=side_val,
-            kind="image",
-            file_path=f"/uploads/deposits/{bk.id}/{name}",
-            description=(comment or None),
-        ))
-    db.commit()
-except Exception:
-    pass
-    now = datetime.utcnow()
-    try:
-        setattr(bk, "updated_at", now)
-        # عندما تأتي أدلة جديدة نضمن أن الحالة ليست مغلقة
-        if getattr(bk, "status", "") in ("closed", "completed"):
-            bk.status = "in_review"
-        # لو كانت في awaiting_renter نرجعها لنزاع مفتوح
-        if getattr(bk, "deposit_status", "") == "awaiting_renter":
-            bk.deposit_status = "in_dispute"
-    except Exception:
-        pass
-    db.commit()
-
-    other_id = bk.renter_id if user.id == bk.owner_id else bk.owner_id
-    who = "المالك" if user.id == bk.owner_id else "المستأجر"
-
-    # إشعارات داخلية
-    push_notification(
-        db, other_id, "أدلة جديدة في القضية",
-        f"{who} قام برفع أدلة جديدة للحجز #{bk.id}.",
-        f"/bookings/flow/{bk.id}", "deposit"
-    )
-    notify_dms(db, "أدلة جديدة — تحديث القضية", f"تم رفع أدلة جديدة للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
-
-    _audit(db, actor=user, bk=bk, action="evidence_upload", details={"by": who, "files": saved, "comment": comment})
-
-    # Emails: للطرف الآخر + DMs
-    try:
-        other_email = _user_email(db, other_id)
-        dms_em      = _dm_emails_only(db)
-        case_url    = f"{BASE_URL}/dm/deposits/{bk.id}"
-        flow_url    = f"{BASE_URL}/bookings/flow/{bk.id}"
-
-        if other_email:
-            send_email(
-                other_email,
-                f"أدلة جديدة مرفوعة — #{bk.id}",
-                f"<p>{who} قام برفع أدلة جديدة على قضية الوديعة للحجز #{bk.id}.</p>"
-                f'<p><a href="{flow_url}">عرض الحجز</a></p>'
-            )
-        for em in dms_em:
-            send_email(
-                em,
-                f"[DM] أدلة جديدة — #{bk.id}",
-                f"<p>تم رفع أدلة جديدة على القضية لحجز #{bk.id}.</p>"
-                f'<p><a href="{case_url}">فتح القضية</a></p>'
-            )
-    except Exception:
-        pass
-
-    return RedirectResponse(url=f"/bookings/flow/{bk.id}?evidence=1", status_code=303)
 
 # =========================
 # >>> كرون — فحص انتهاء نافذة 24h دون ردّ
