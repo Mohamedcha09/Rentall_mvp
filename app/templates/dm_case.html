@@ -29,7 +29,7 @@
     <div class="mb-2">
       <h4 class="mb-1">الحجز #{{ booking.id }}</h4>
       <div class="k">
-        العنصر: <strong>{{ item_title }}</strong>
+        العنصر: <strong>{{ item_title or (item.title if item else '—') }}</strong>
         {% if item %} — <a href="/items/{{ item.id }}">فتح صفحة العنصر</a>{% endif %}
       </div>
       <div class="k">الفترة: {{ booking.start_date }} → {{ booking.end_date }} ({{ booking.days }} يوم)</div>
@@ -287,7 +287,7 @@
                style="width:96px;height:96px;object-fit:cover;border-radius:10px" alt="">
           <div>
             <div class="fw-bold">{{ item.title }}</div>
-            <div class="k">{{ category_label(item.category) }}</div>
+            <div class="k">{{ category_label(item.category) if item and item.category else '—' }}</div>
             <div class="k">السعر اليومي: {{ item.price_per_day }}$</div>
             <a class="small" href="/items/{{ item.id }}">فتح صفحة العنصر</a>
           </div>

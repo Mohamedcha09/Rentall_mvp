@@ -85,6 +85,17 @@ def dm_queue(
         },
     )
 
+# ✅ إضافة دالة تحويل التصنيفات إلى نص عربي لكي يستخدمها القالب بأمان
+def _category_label(cat):
+    CATEGORY_LABELS = {
+        "cars": "سيارات",
+        "bikes": "دراجات",
+        "electronics": "إلكترونيات",
+        "tools": "أدوات",
+        "real_estate": "عقارات",
+    }
+    return CATEGORY_LABELS.get(cat, cat or "—")
+
 
 @router.get("/dm/deposits/{booking_id}")
 def dm_case(
@@ -95,7 +106,9 @@ def dm_case(
 ):
     """
     شاشة ملف وديعة لمدير الوديعة.
-    * إصلاح أساسي: تمرير 'booking' بدل 'bk' حتى لا ينكسر القالب.
+    * إصلاح أساسي: تمرير 'booking' إضافةً إلى 'bk' حتى لا ينكسر القالب.
+    * تمرير 'category_label' ليستخدمه القالب.
+    * تمرير 'owner_pe' لأن القالب يستعمله في منطق الدفع الأونلاين.
     * لا حذف لأي منطق موجود.
     """
     require_dm(user)
@@ -107,6 +120,9 @@ def dm_case(
     item = db.get(Item, bk.item_id) if bk.item_id else None
     owner = db.get(User, bk.owner_id) if bk.owner_id else None
     renter = db.get(User, bk.renter_id) if bk.renter_id else None
+
+    # قد يعتمد القالب على هذا الحقل لإظهار أزرار Stripe
+    owner_pe = bool(getattr(owner, "payouts_enabled", False))
 
     return request.app.templates.TemplateResponse(
         "dm_case.html",
@@ -122,6 +138,10 @@ def dm_case(
             "item_title": (item.title if item else "—"),
             "owner": owner,
             "renter": renter,
+            # ✅ تم تمرير الدالة للقالب لمنع خطأ 'category_label is undefined'
+            "category_label": _category_label,
+            # ✅ تمرير حالة تفعيل مدفوعات المالك
+            "owner_pe": owner_pe,
         },
     )
 
