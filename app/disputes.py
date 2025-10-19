@@ -27,13 +27,14 @@ def dispute_new(request: Request, db: Session = Depends(get_db)):
         {"request": request, "session_user": u, "title": "فتح نزاع"}
     )
 
-# ---------- Deposit Manager ----------
+# ---------- Helpers مشتركة ----------
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
     uid = data.get("id")
     return db.get(User, uid) if uid else None
 
 def require_dm(user: Optional[User]):
+    # ملاحظة: الملف الرسمي يستخدم is_deposit_manager/admin، هنا نحافظ على can_manage_deposits للتوافق
     if not user or not getattr(user, "can_manage_deposits", False):
         raise HTTPException(status_code=403, detail="Deposit Manager only")
 
@@ -51,19 +52,25 @@ def _stripe():
 def _notify_after_decision(db: Session, bk: Booking, title_owner: str, title_renter: str, body: str):
     """
     بعد قرار متحكّم الوديعة، نوجّه كلا الطرفين إلى صفحة القضية.
-    (إذا أردت توجيه المستأجر لتدفّق الحجز بدلاً من ذلك يمكنك تغيير الرابط الثاني.)
     """
     link = f"/dm/deposits/{bk.id}"
     push_notification(db, bk.owner_id, title_owner, body, link, "deposit")
     push_notification(db, bk.renter_id, title_renter, body, link, "deposit")
 
+# ============================================================
+# ⚠️ نُقِلَت مسارات DM هنا إلى Prefix "dm-compat" لمنع التعارض
+# ============================================================
 
-@router.get("/dm/deposits")
-def dm_queue(
+@router.get("/dm-compat/deposits")
+def dm_queue_compat(
     request: Request,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
+    """
+    نسخة توافقية لا تتعارض مع المسار الرسمي في routes_deposits.py
+    يُفضّل استخدام /dm/deposits من الملف الرسمي.
+    """
     require_dm(user)
 
     q = (
@@ -83,7 +90,7 @@ def dm_queue(
         "dm_queue.html",
         {
             "request": request,
-            "title": "قضايا الوديعة",
+            "title": "قضايا الوديعة (توافق)",
             "session_user": request.session.get("user"),
             "cases": cases,
             "items_map": items_map,
@@ -91,16 +98,15 @@ def dm_queue(
     )
 
 
-@router.get("/dm/deposits/{booking_id}")
-def dm_case(
+@router.get("/dm-compat/deposits/{booking_id}")
+def dm_case_compat(
     booking_id: int,
     request: Request,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    شاشة ملف وديعة لمدير الوديعة.
-    * تمرير 'booking' بالإضافة إلى 'bk' ليتوافق مع القالب dm_case.html
+    شاشة ملف وديعة (نسخة توافقية). المسار الرسمي: /dm/deposits/{booking_id} في routes_deposits.py
     """
     require_dm(user)
 
@@ -116,12 +122,10 @@ def dm_case(
         "dm_case.html",
         {
             "request": request,
-            "title": f"قضية وديعة #{bk.id}",
+            "title": f"قضية وديعة #{bk.id} (توافق)",
             "session_user": request.session.get("user"),
-            # التسمية التي يستخدمها القالب:
-            "booking": bk,
-            # نبقي النسخة القديمة أيضاً في حال اعتمد عليها جزء آخر:
-            "bk": bk,
+            "booking": bk,  # الاسم الذي قد يعتمد عليه القالب
+            "bk": bk,       # والتسمية القديمة أيضاً
             "item": item,
             "item_title": (item.title if item else "—"),
             "owner": owner,
@@ -130,8 +134,8 @@ def dm_case(
     )
 
 
-@router.post("/dm/deposits/{booking_id}/decision")
-def dm_decide(
+@router.post("/dm-compat/deposits/{booking_id}/decision")
+def dm_decide_compat(
     booking_id: int,
     decision: str = Form(...),  # 'release' or 'withhold'
     amount: int = Form(0),
@@ -140,6 +144,9 @@ def dm_decide(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
+    """
+    تنفيذ قرار (نسخة توافقية). المسار الرسمي موجود في routes_deposits.py
+    """
     require_dm(user)
     bk = db.get(Booking, booking_id)
     if not bk:
@@ -152,7 +159,6 @@ def dm_decide(
     updated_note = (bk.owner_return_note or "").strip()
 
     if decision == "release":
-        # إلغاء الحجز (Authorization) في Stripe إن أمكن
         if stripe and getattr(bk, "deposit_hold_intent_id", None):
             try:
                 stripe.PaymentIntent.cancel(bk.deposit_hold_intent_id)
@@ -175,7 +181,7 @@ def dm_decide(
         )
         return RedirectResponse(url=f"/dm/deposits/{bk.id}", status_code=303)
 
-    # withhold (جزئي/كامل)
+    # withhold
     amount = max(0, int(amount or 0))
     if amount <= 0:
         raise HTTPException(status_code=400, detail="Invalid amount")
@@ -199,7 +205,6 @@ def dm_decide(
                 pass
             captured_ok = True
 
-            # تحرير المتبقي إن وُجد
             try:
                 remaining = (bk.hold_deposit_amount or 0) - (bk.deposit_charged_amount or 0) - amount
                 if remaining > 0:
@@ -209,12 +214,11 @@ def dm_decide(
         except Exception:
             captured_ok = False
 
-    # تحديث محلي
     bk.deposit_charged_amount = (bk.deposit_charged_amount or 0) + amount
     if bk.deposit_charged_amount >= (bk.hold_deposit_amount or 0):
-        bk.deposit_status = "claimed"  # خصم كامل
+        bk.deposit_status = "claimed"
     else:
-        bk.deposit_status = "partially_refunded"  # تم اقتطاع جزء
+        bk.deposit_status = "partially_refunded"
 
     bk.updated_at = datetime.utcnow()
 
@@ -234,19 +238,24 @@ def dm_decide(
     return RedirectResponse(url=f"/dm/deposits/{bk.id}", status_code=303)
 
 
-# ---------- تحويل روابط الإشعارات القديمة ----------
-@router.get("/deposits/{booking_id}/report")
-def deposit_report_redirect(
+# ------------------------------------------------------------
+# ✅ إصلاح التعارض مع صفحة البلاغ الرسمية:
+#   كان هذا الملف يُعرِّف GET /deposits/{booking_id}/report كـ Redirect
+#   وهذا يُخفي صفحة النموذج الحقيقية (الموجودة في routes_deposits.py).
+#   نقلناه لمسار LEGACY منفصل آمن:
+# ------------------------------------------------------------
+@router.get("/deposits/{booking_id}/report-legacy")
+def deposit_report_legacy_redirect(
     booking_id: int,
     request: Request,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    بعض الإشعارات القديمة ترسل إلى /deposits/{id}/report.
-    هنا نعيد التوجيه تلقائيًا:
-      - إذا كان المستخدم متحكّم الوديعة → صفحة قضية الوديعة
-      - غير ذلك → صفحة تدفّق الحجز
+    مسار قديم للروابط التاريخية فقط.
+    - لو المستخدم DM → نرسله لصفحة القضية /dm/deposits/{id}
+    - غير ذلك → نرسله لتدفّق الحجز /bookings/flow/{id}
+    صفحة النموذج الرسمية موجودة على: GET /deposits/{booking_id}/report (في routes_deposits.py)
     """
     if user and getattr(user, "can_manage_deposits", False):
         return RedirectResponse(url=f"/dm/deposits/{booking_id}", status_code=303)

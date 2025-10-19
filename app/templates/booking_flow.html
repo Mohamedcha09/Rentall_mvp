@@ -228,7 +228,8 @@
               </div>
             {% endif %}
           </div>
-          <form method="post" action="/bookings/{{ booking.id }}/owner/open_deposit_issue">
+          <!-- ✅ تم تصحيح المسار هنا -->
+          <form method="get" action="/deposits/{{ booking.id }}/report">
             <button class="btn btn-outline-danger btn-wide">
               <i class="bi bi-exclamation-octagon"></i> فتح بلاغ وديعة (مشكلة/ضرر/تأخير)
             </button>
