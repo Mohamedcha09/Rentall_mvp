@@ -1,4 +1,3 @@
-{# templates/dm_case.html #}
 {% extends "base.html" %}
 
 {% block title %}قضية وديعة #{{ bk.id }}{% endblock %}
@@ -49,7 +48,7 @@
     <!-- Left -->
     <div class="col-12 col-lg-7">
 
-      {# مطالِب سريعة #}
+      <!-- معلومات الطرفين -->
       <div class="box mb-3">
         <div class="d-flex justify-content-between align-items-center">
           <div>
@@ -65,7 +64,7 @@
         </div>
       </div>
 
-      {# أزرار الإدارة #}
+      <!-- أزرار الإدارة -->
       <div class="box mb-3">
         <h6 class="mb-2">قرار متحكّم الوديعة</h6>
 
@@ -106,7 +105,7 @@
           </form>
         </div>
 
-        {# مسار بديل صريح لبدء المهلة (نفس الذي فوق) #}
+        <!-- مسار بديل لبدء المهلة -->
         <details class="mt-2">
           <summary class="k">بدء المهلة عبر مسار مستقل</summary>
           <form method="post" action="/dm/deposits/{{ bk.id }}/start-window" class="row g-2 mt-2">
@@ -125,7 +124,7 @@
         </details>
       </div>
 
-      {# الأدلة #}
+      <!-- الأدلة -->
       <div class="box mb-3">
         <h6 class="mb-2">الأدلة المرفوعة</h6>
 
@@ -192,7 +191,6 @@
             </div>
           {% endif %}
 
-          {# توافق قديم: الملفات الموجودة على القرص (ev_list) #}
           {% if ev_list and ev_list|length %}
             <div class="mb-2 fw-bold">أدلة (توافق قديم — ملفات على القرص)</div>
             <div class="ev-grid">
@@ -220,7 +218,7 @@
         {% endif %}
       </div>
 
-      {# سجل التدقيق #}
+      <!-- سجل التدقيق -->
       <div class="box mb-3">
         <h6 class="mb-2">سجل القضية</h6>
         {% set audits = bk.deposit_audits or [] %}
