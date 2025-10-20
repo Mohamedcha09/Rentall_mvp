@@ -1,353 +1,61 @@
-{# templates/dm_case.html #}
+{# templates/dm_queue.html #}
 {% extends "base.html" %}
 
-{% block title %}قضية وديعة #{{ (bk and bk.id) or '' }}{% endblock %}
-
-{% block head %}
-<style>
-  .case-wrap{max-width:1100px;margin:auto}
-  .badge-chip{display:inline-flex;gap:.5rem;align-items:center;padding:.35rem .6rem;border:1px solid var(--border,#e5e7eb);border-radius:999px;font-weight:700}
-  .k{opacity:.7}
-  .box{border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:12px}
-  .ev-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
-  .ev-card{border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:8px;background:#fff}
-  .ev-card img, .ev-card video{width:100%;height:120px;object-fit:cover;border-radius:8px}
-  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-  .muted{opacity:.6}
-  .acts{display:flex;flex-wrap:wrap;gap:8px}
-  .btn{cursor:pointer}
-  .alert-mini{padding:.6rem .8rem}
-</style>
-{% endblock %}
+{% block title %}قضايا الوديعة{% endblock %}
 
 {% block content %}
-<div class="case-wrap card p-3 p-md-4">
-
-  {# ===== Header ===== #}
-  <div class="d-flex justify-content-between align-items-start flex-wrap">
-    <div class="mb-2">
-      <h4 class="mb-1">قضية وديعة — الحجز #{{ (bk and bk.id) or '—' }}</h4>
-
-      <div class="k">
-        العنصر:
-        {% if item %}
-          <strong>{{ item.title }}</strong>
-          — <a href="/items/{{ item.id }}">صفحة العنصر</a>
-          {% if item.category %}<span class="ms-1 text-muted small">({{ category_label(item.category) if category_label else item.category }})</span>{% endif %}
-        {% else %}
-          —
-        {% endif %}
-      </div>
-
-      <div class="k">
-        الفترة:
-        {% if bk and bk.start_date and bk.end_date %}
-          {{ bk.start_date }} → {{ bk.end_date }}
-          {% if bk.days %} ({{ bk.days }} يوم){% endif %}
-        {% else %}
-          —
-        {% endif %}
-      </div>
-    </div>
-
-    <div class="d-flex flex-column align-items-end gap-2">
-      <span class="badge-chip">
-        <i class="bi bi-bookmark-check"></i>
-        حالة الحجز: {{ (bk and bk.status) or '—' }}
-      </span>
-      <span class="badge-chip">
-        <i class="bi bi-shield-lock"></i>
-        حالة الوديعة: {{ (bk and (bk.deposit_status or 'none')) or '—' }}
-      </span>
-    </div>
+<div class="card p-3 p-md-4">
+  <div class="d-flex justify-content-between align-items-center flex-wrap">
+    <h4 class="mb-2">قضايا الوديعة</h4>
+    <a class="btn btn-light" href="/admin">العودة للوحة</a>
   </div>
-
   <hr>
 
-  <div class="row g-3">
-    {# ===== Left ===== #}
-    <div class="col-12 col-lg-7">
-
-      {# معلومات الطرفين #}
-      <div class="box mb-3">
-        <div class="d-flex justify-content-between align-items-center">
-          <div>
-            <div class="k">المستأجر</div>
-            <div class="fw-bold">
-              {{ (bk and bk.renter and bk.renter.full_name) or '—' }}
-            </div>
-            <div class="muted small">
-              {{ (bk and bk.renter and bk.renter.email) or '' }}
-            </div>
-          </div>
-          <div>
-            <div class="k">المالك</div>
-            <div class="fw-bold">
-              {{ (bk and bk.owner and bk.owner.full_name) or '—' }}
-            </div>
-            <div class="muted small">
-              {{ (bk and bk.owner and bk.owner.email) or '' }}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {# أزرار الإدارة #}
-      <div class="box mb-3">
-        <h6 class="mb-2">قرار متحكّم الوديعة</h6>
-
-        <div class="alert alert-warning alert-mini mb-3">
-          ملاحظة: يمكنك إما <strong>فتح مهلة 24 ساعة</strong> ليتمكن المستأجر من الرد، أو
-          <strong>تنفيذ قرار نهائي</strong> الآن.
-        </div>
-
-        <div class="acts mb-2">
-          {# إطلاق كامل #}
-          <form method="post" action="/dm/deposits/{{ (bk and bk.id) or 0 }}/decision" class="d-inline">
-            <input type="hidden" name="decision" value="release">
-            <button class="btn btn-success">
-              <i class="bi bi-arrow-repeat"></i> إطلاق الوديعة بالكامل
-            </button>
-          </form>
-        </div>
-
-        {# خصم (نهائي أو فتح مهلة) #}
-        <div class="box mt-2">
-          <form method="post" action="/dm/deposits/{{ (bk and bk.id) or 0 }}/decision" id="withholdDecisionForm" class="row g-2">
-            <input type="hidden" name="decision" value="withhold">
-            <div class="col-12 col-md-4">
-              <label class="form-label">المبلغ (CAD)</label>
-              <input type="number" min="1" step="1" name="amount" class="form-control" placeholder="0" required>
-            </div>
-            <div class="col-12 col-md-8">
-              <label class="form-label">السبب</label>
-              <input type="text" name="reason" class="form-control" placeholder="تلخيص السبب…" maxlength="300">
-            </div>
-            <div class="col-12 d-flex gap-2">
-              <button name="finalize" value="1" class="btn btn-danger">
-                <i class="bi bi-shield-exclamation"></i> خصم نهائي الآن
-              </button>
-              <button name="finalize" value="0" class="btn btn-outline-warning">
-                <i class="bi bi-hourglass-split"></i> فتح مهلة 24 ساعة
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {# مسار بديل صريح لبدء المهلة #}
-        <details class="mt-2">
-          <summary class="k">بدء المهلة عبر مسار مستقل</summary>
-          <form method="post" action="/dm/deposits/{{ (bk and bk.id) or 0 }}/start-window" class="row g-2 mt-2">
-            <div class="col-12 col-md-4">
-              <label class="form-label">المبلغ (CAD)</label>
-              <input type="number" min="1" step="1" name="amount" class="form-control" required>
-            </div>
-            <div class="col-12 col-md-8">
-              <label class="form-label">السبب</label>
-              <input type="text" name="reason" class="form-control" maxlength="300">
-            </div>
-            <div class="col-12">
-              <button class="btn btn-outline-warning">
-                <i class="bi bi-hourglass-split"></i> بدء مهلة 24 ساعة
-              </button>
-            </div>
-          </form>
-        </details>
-      </div>
-
-      {# الأدلة #}
-      <div class="box mb-3">
-        <h6 class="mb-2">الأدلة المرفوعة</h6>
-
-        {% set all_evs = (bk and bk.deposit_evidences) or [] %}
-        {% set owner_evs = (all_evs | selectattr('side','equalto','owner') | list) %}
-        {% set renter_evs = (all_evs | selectattr('side','equalto','renter') | list) %}
-        {% set mgr_evs   = (all_evs | selectattr('side','equalto','manager') | list) %}
-
-        {% if owner_evs or renter_evs or mgr_evs or (ev_list and ev_list|length) %}
-          {% if owner_evs %}
-            <div class="mb-2 fw-bold">أدلة المالك</div>
-            <div class="ev-grid mb-3">
-              {% for ev in owner_evs %}
-                <div class="ev-card">
-                  {% if ev.kind in ['image','', None] %}
-                    <a href="{{ ev.file_path }}" target="_blank"><img src="{{ ev.file_path }}" alt=""></a>
-                  {% elif ev.kind == 'video' %}
-                    <video src="{{ ev.file_path }}" controls></video>
-                  {% else %}
-                    <div class="mono small"><a href="{{ ev.file_path }}" target="_blank">{{ ev.file_path }}</a></div>
-                  {% endif %}
-                  {% if ev.description %}<div class="mt-1 small k">{{ ev.description }}</div>{% endif %}
-                  <div class="muted mono small">{{ ev.created_at }}</div>
-                </div>
-              {% endfor %}
-            </div>
-          {% endif %}
-
-          {% if renter_evs %}
-            <div class="mb-2 fw-bold">أدلة المستأجر</div>
-            <div class="ev-grid mb-3">
-              {% for ev in renter_evs %}
-                <div class="ev-card">
-                  {% if ev.kind in ['image','', None] %}
-                    <a href="{{ ev.file_path }}" target="_blank"><img src="{{ ev.file_path }}" alt=""></a>
-                  {% elif ev.kind == 'video' %}
-                    <video src="{{ ev.file_path }}" controls></video>
-                  {% else %}
-                    <div class="mono small"><a href="{{ ev.file_path }}" target="_blank">{{ ev.file_path }}</a></div>
-                  {% endif %}
-                  {% if ev.description %}<div class="mt-1 small k">{{ ev.description }}</div>{% endif %}
-                  <div class="muted mono small">{{ ev.created_at }}</div>
-                </div>
-              {% endfor %}
-            </div>
-          {% endif %}
-
-          {% if mgr_evs %}
-            <div class="mb-2 fw-bold">أدلة من المتحكّم</div>
-            <div class="ev-grid mb-3">
-              {% for ev in mgr_evs %}
-                <div class="ev-card">
-                  {% if ev.kind in ['image','', None] %}
-                    <a href="{{ ev.file_path }}" target="_blank"><img src="{{ ev.file_path }}" alt=""></a>
-                  {% elif ev.kind == 'video' %}
-                    <video src="{{ ev.file_path }}" controls></video>
-                  {% else %}
-                    <div class="mono small"><a href="{{ ev.file_path }}" target="_blank">{{ ev.file_path }}</a></div>
-                  {% endif %}
-                  {% if ev.description %}<div class="mt-1 small k">{{ ev.description }}</div>{% endif %}
-                  <div class="muted mono small">{{ ev.created_at }}</div>
-                </div>
-              {% endfor %}
-            </div>
-          {% endif %}
-
-          {# توافق قديم: ملفات على القرص جاءت من ev_list (روابط جاهزة) #}
-          {% if ev_list and ev_list|length %}
-            <div class="mb-2 fw-bold">أدلة (توافق قديم — ملفات على القرص)</div>
-            <div class="ev-grid">
-              {% for u in ev_list %}
-                <div class="ev-card">
-                  {% if u.endswith('.mp4') or u.endswith('.mov') or u.endswith('.m4v') or u.endswith('.avi') or u.endswith('.wmv') %}
-                    <video src="{{ u }}" controls></video>
-                  {% else %}
-                    <a href="{{ u }}" target="_blank"><img src="{{ u }}" alt=""></a>
-                  {% endif %}
-                  <div class="mono small mt-1">{{ u }}</div>
-                </div>
-              {% endfor %}
-            </div>
-          {% endif %}
-
-        {% else %}
-          <div class="alert alert-secondary alert-mini">لا توجد أدلة بعد.</div>
-        {% endif %}
-
-        {% if has_renter_reply %}
-          <div class="alert alert-info alert-mini mt-3">
-            المستأجر قام بالرد ورفع أدلة/تعليق.
-          </div>
-        {% endif %}
-      </div>
-
-      {# سجل التدقيق #}
-      <div class="box mb-3">
-        <h6 class="mb-2">سجل القضية</h6>
-        {% set audits = (bk and bk.deposit_audits) or [] %}
-        {% if audits %}
-          <div class="table-responsive">
-            <table class="table table-sm align-middle">
-              <thead>
-                <tr>
-                  <th>الزمن</th>
-                  <th>الفاعل</th>
-                  <th>الإجراء</th>
-                  <th>المبلغ</th>
-                  <th>ملاحظات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for a in audits %}
-                  <tr>
-                    <td class="mono small">{{ a.created_at }}</td>
-                    <td>
-                      {{ (a.actor and a.actor.full_name) or a.actor_id }}
-                      {% if a.actor_role %}<span class="muted">({{ a.actor_role }})</span>{% endif %}
-                    </td>
-                    <td class="mono">{{ a.action }}</td>
-                    <td>{{ a.amount or 0 }}</td>
-                    <td class="small">{{ a.reason or a.details }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        {% else %}
-          <div class="muted">لا توجد سجلات بعد.</div>
-        {% endif %}
-      </div>
-
+  {% set list = cases or [] %}
+  {% if not list %}
+    <div class="alert alert-secondary">لا توجد قضايا حالياً. عند وصول بلاغات ستظهر هنا.</div>
+  {% else %}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>العنصر</th>
+            <th>المالك</th>
+            <th>المستأجر</th>
+            <th>حالة الحجز</th>
+            <th>حالة الوديعة</th>
+            <th>آخر تحديث</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for c in list %}
+          {% set it = items_map.get(c.item_id) if items_map else None %}
+          <tr>
+            <td class="mono">{{ c.id }}</td>
+            <td>
+              {% if it %}
+                <a href="/items/{{ it.id }}" target="_blank">{{ it.title }}</a>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>{{ (c.owner and c.owner.full_name) or c.owner_id }}</td>
+            <td>{{ (c.renter and c.renter.full_name) or c.renter_id }}</td>
+            <td><span class="badge bg-light text-dark">{{ c.status or '—' }}</span></td>
+            <td><span class="badge bg-light text-dark">{{ c.deposit_status or '—' }}</span></td>
+            <td class="mono small">{{ c.updated_at or c.created_at }}</td>
+            <td>
+              <a class="btn btn-outline-primary btn-sm" href="/dm/deposits/{{ c.id }}">
+                فتح القضية
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
     </div>
-
-    {# ===== Right ===== #}
-    <div class="col-12 col-lg-5">
-
-      <div class="box">
-        <h6 class="mb-2">ملخص مالي</h6>
-        <div class="d-flex justify-content-between">
-          <span>مبلغ الإيجار</span>
-          <strong>{{ (bk and (bk.rent_amount or bk.total_amount) ) or 0 }}$</strong>
-        </div>
-        <div class="d-flex justify-content-between">
-          <span>الوديعة المطلوبة</span>
-          <strong>{{ (bk and (bk.hold_deposit_amount or bk.deposit_amount)) or 0 }}$</strong>
-        </div>
-        <div class="d-flex justify-content-between">
-          <span>المقتطع حتى الآن</span>
-          <strong>{{ (bk and bk.deposit_charged_amount) or 0 }}$</strong>
-        </div>
-        <div class="d-flex justify-content-between">
-          <span>Stripe rent</span>
-          <strong>{{ (bk and bk.online_status) or '—' }}</strong>
-        </div>
-        <hr>
-        <div class="mono small k">
-          {% if bk and bk.accepted_at %}accepted_at: {{ bk.accepted_at }}<br>{% endif %}
-          {% if bk and bk.picked_up_at %}picked_up_at: {{ bk.picked_up_at }}<br>{% endif %}
-          {% if bk and bk.returned_at %}returned_at: {{ bk.returned_at }}<br>{% endif %}
-          {% if bk and bk.return_confirmed_by_owner_at %}owner_confirmed_at: {{ bk.return_confirmed_by_owner_at }}<br>{% endif %}
-          {% if bk and bk.rent_released_at %}rent_released_at: {{ bk.rent_released_at }}<br>{% endif %}
-          {% if bk and bk.renter_response_deadline_at %}renter_deadline: {{ bk.renter_response_deadline_at }}<br>{% endif %}
-          {% if bk and bk.dm_decision_deadline_at %}dm_deadline: {{ bk.dm_decision_deadline_at }}<br>{% endif %}
-        </div>
-      </div>
-
-      <div class="box mt-3">
-        <h6 class="mb-2">إجراءات</h6>
-
-        <form method="post" action="/dm/deposits/{{ (bk and bk.id) or 0 }}/claim" class="d-inline">
-          <button class="btn btn-outline-primary">
-            <i class="bi bi-person-check"></i> استلام/تعيين القضية لي
-          </button>
-        </form>
-
-        <a class="btn btn-outline-secondary ms-1" href="/deposits/{{ (bk and bk.id) or 0 }}/evidence/form">
-          <i class="bi bi-cloud-upload"></i> رفع أدلة جديدة (يدوي)
-        </a>
-
-        <a class="btn btn-light ms-1" href="/dm/deposits">
-          <i class="bi bi-list-task"></i> العودة للقائمة
-        </a>
-      </div>
-
-      {% if bk and bk.owner_return_note %}
-      <div class="box mt-3">
-        <h6 class="mb-2">ملاحظات المالك عن الإرجاع</h6>
-        <div class="small">{{ bk.owner_return_note }}</div>
-      </div>
-      {% endif %}
-
-    </div>
-  </div>
+  {% endif %}
 </div>
 {% endblock %}
