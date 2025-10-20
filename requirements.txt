@@ -6,7 +6,7 @@ python-multipart
 itsdangerous
 pillow
 python-dotenv
-psycopg2-binary
+psycopg[binary]
 stripe==10.12.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
