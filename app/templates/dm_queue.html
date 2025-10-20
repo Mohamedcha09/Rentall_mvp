@@ -1,6 +1,7 @@
+{# templates/dm_case.html #}
 {% extends "base.html" %}
 
-{% block title %}قضية وديعة #{{ bk.id }}{% endblock %}
+{% block title %}قضية وديعة #{{ (bk and bk.id) or '' }}{% endblock %}
 
 {% block head %}
 <style>
@@ -22,59 +23,87 @@
 {% block content %}
 <div class="case-wrap card p-3 p-md-4">
 
-  <!-- Header -->
+  {# ===== Header ===== #}
   <div class="d-flex justify-content-between align-items-start flex-wrap">
     <div class="mb-2">
-      <h4 class="mb-1">قضية وديعة — الحجز #{{ bk.id }}</h4>
+      <h4 class="mb-1">قضية وديعة — الحجز #{{ (bk and bk.id) or '—' }}</h4>
+
       <div class="k">
         العنصر:
         {% if item %}
-          <strong>{{ item.title }}</strong> — <a href="/items/{{ item.id }}">صفحة العنصر</a>
+          <strong>{{ item.title }}</strong>
+          — <a href="/items/{{ item.id }}">صفحة العنصر</a>
+          {% if item.category %}<span class="ms-1 text-muted small">({{ category_label(item.category) if category_label else item.category }})</span>{% endif %}
         {% else %}
           —
         {% endif %}
       </div>
-      <div class="k">الفترة: {{ bk.start_date }} → {{ bk.end_date }} ({{ bk.days }} يوم)</div>
+
+      <div class="k">
+        الفترة:
+        {% if bk and bk.start_date and bk.end_date %}
+          {{ bk.start_date }} → {{ bk.end_date }}
+          {% if bk.days %} ({{ bk.days }} يوم){% endif %}
+        {% else %}
+          —
+        {% endif %}
+      </div>
     </div>
+
     <div class="d-flex flex-column align-items-end gap-2">
-      <span class="badge-chip"><i class="bi bi-bookmark-check"></i> حالة الحجز: {{ bk.status }}</span>
-      <span class="badge-chip"><i class="bi bi-shield-lock"></i> حالة الوديعة: {{ bk.deposit_status or 'none' }}</span>
+      <span class="badge-chip">
+        <i class="bi bi-bookmark-check"></i>
+        حالة الحجز: {{ (bk and bk.status) or '—' }}
+      </span>
+      <span class="badge-chip">
+        <i class="bi bi-shield-lock"></i>
+        حالة الوديعة: {{ (bk and (bk.deposit_status or 'none')) or '—' }}
+      </span>
     </div>
   </div>
 
   <hr>
 
   <div class="row g-3">
-    <!-- Left -->
+    {# ===== Left ===== #}
     <div class="col-12 col-lg-7">
 
-      <!-- معلومات الطرفين -->
+      {# معلومات الطرفين #}
       <div class="box mb-3">
         <div class="d-flex justify-content-between align-items-center">
           <div>
             <div class="k">المستأجر</div>
-            <div class="fw-bold">{{ bk.renter.full_name if bk.renter else '—' }}</div>
-            <div class="muted small">{{ bk.renter.email if bk.renter else '' }}</div>
+            <div class="fw-bold">
+              {{ (bk and bk.renter and bk.renter.full_name) or '—' }}
+            </div>
+            <div class="muted small">
+              {{ (bk and bk.renter and bk.renter.email) or '' }}
+            </div>
           </div>
           <div>
             <div class="k">المالك</div>
-            <div class="fw-bold">{{ bk.owner.full_name if bk.owner else '—' }}</div>
-            <div class="muted small">{{ bk.owner.email if bk.owner else '' }}</div>
+            <div class="fw-bold">
+              {{ (bk and bk.owner and bk.owner.full_name) or '—' }}
+            </div>
+            <div class="muted small">
+              {{ (bk and bk.owner and bk.owner.email) or '' }}
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- أزرار الإدارة -->
+      {# أزرار الإدارة #}
       <div class="box mb-3">
         <h6 class="mb-2">قرار متحكّم الوديعة</h6>
 
         <div class="alert alert-warning alert-mini mb-3">
-          ملاحظة: يمكنك إما <strong>فتح مهلة 24 ساعة</strong> ليتمكن المستأجر من الرد، أو <strong>تنفيذ قرار نهائي</strong> الآن.
+          ملاحظة: يمكنك إما <strong>فتح مهلة 24 ساعة</strong> ليتمكن المستأجر من الرد، أو
+          <strong>تنفيذ قرار نهائي</strong> الآن.
         </div>
 
         <div class="acts mb-2">
-          <!-- إطلاق كامل -->
-          <form method="post" action="/dm/deposits/{{ bk.id }}/decision" class="d-inline">
+          {# إطلاق كامل #}
+          <form method="post" action="/dm/deposits/{{ (bk and bk.id) or 0 }}/decision" class="d-inline">
             <input type="hidden" name="decision" value="release">
             <button class="btn btn-success">
               <i class="bi bi-arrow-repeat"></i> إطلاق الوديعة بالكامل
@@ -82,17 +111,17 @@
           </form>
         </div>
 
-        <!-- خصم (نهائي أو فتح مهلة) -->
+        {# خصم (نهائي أو فتح مهلة) #}
         <div class="box mt-2">
-          <form method="post" action="/dm/deposits/{{ bk.id }}/decision" id="withholdDecisionForm" class="row g-2">
+          <form method="post" action="/dm/deposits/{{ (bk and bk.id) or 0 }}/decision" id="withholdDecisionForm" class="row g-2">
             <input type="hidden" name="decision" value="withhold">
             <div class="col-12 col-md-4">
               <label class="form-label">المبلغ (CAD)</label>
-              <input type="number" min="1" step="1" name="amount" class="form-control" placeholder="0">
+              <input type="number" min="1" step="1" name="amount" class="form-control" placeholder="0" required>
             </div>
             <div class="col-12 col-md-8">
               <label class="form-label">السبب</label>
-              <input type="text" name="reason" class="form-control" placeholder="تلخيص السبب…">
+              <input type="text" name="reason" class="form-control" placeholder="تلخيص السبب…" maxlength="300">
             </div>
             <div class="col-12 d-flex gap-2">
               <button name="finalize" value="1" class="btn btn-danger">
@@ -105,30 +134,32 @@
           </form>
         </div>
 
-        <!-- مسار بديل لبدء المهلة -->
+        {# مسار بديل صريح لبدء المهلة #}
         <details class="mt-2">
           <summary class="k">بدء المهلة عبر مسار مستقل</summary>
-          <form method="post" action="/dm/deposits/{{ bk.id }}/start-window" class="row g-2 mt-2">
+          <form method="post" action="/dm/deposits/{{ (bk and bk.id) or 0 }}/start-window" class="row g-2 mt-2">
             <div class="col-12 col-md-4">
               <label class="form-label">المبلغ (CAD)</label>
-              <input type="number" min="1" step="1" name="amount" class="form-control">
+              <input type="number" min="1" step="1" name="amount" class="form-control" required>
             </div>
             <div class="col-12 col-md-8">
               <label class="form-label">السبب</label>
-              <input type="text" name="reason" class="form-control">
+              <input type="text" name="reason" class="form-control" maxlength="300">
             </div>
             <div class="col-12">
-              <button class="btn btn-outline-warning"><i class="bi bi-hourglass-split"></i> بدء مهلة 24 ساعة</button>
+              <button class="btn btn-outline-warning">
+                <i class="bi bi-hourglass-split"></i> بدء مهلة 24 ساعة
+              </button>
             </div>
           </form>
         </details>
       </div>
 
-      <!-- الأدلة -->
+      {# الأدلة #}
       <div class="box mb-3">
         <h6 class="mb-2">الأدلة المرفوعة</h6>
 
-        {% set all_evs = bk.deposit_evidences or [] %}
+        {% set all_evs = (bk and bk.deposit_evidences) or [] %}
         {% set owner_evs = (all_evs | selectattr('side','equalto','owner') | list) %}
         {% set renter_evs = (all_evs | selectattr('side','equalto','renter') | list) %}
         {% set mgr_evs   = (all_evs | selectattr('side','equalto','manager') | list) %}
@@ -139,7 +170,7 @@
             <div class="ev-grid mb-3">
               {% for ev in owner_evs %}
                 <div class="ev-card">
-                  {% if ev.kind in ['image',''] %}
+                  {% if ev.kind in ['image','', None] %}
                     <a href="{{ ev.file_path }}" target="_blank"><img src="{{ ev.file_path }}" alt=""></a>
                   {% elif ev.kind == 'video' %}
                     <video src="{{ ev.file_path }}" controls></video>
@@ -158,7 +189,7 @@
             <div class="ev-grid mb-3">
               {% for ev in renter_evs %}
                 <div class="ev-card">
-                  {% if ev.kind in ['image',''] %}
+                  {% if ev.kind in ['image','', None] %}
                     <a href="{{ ev.file_path }}" target="_blank"><img src="{{ ev.file_path }}" alt=""></a>
                   {% elif ev.kind == 'video' %}
                     <video src="{{ ev.file_path }}" controls></video>
@@ -177,7 +208,7 @@
             <div class="ev-grid mb-3">
               {% for ev in mgr_evs %}
                 <div class="ev-card">
-                  {% if ev.kind in ['image',''] %}
+                  {% if ev.kind in ['image','', None] %}
                     <a href="{{ ev.file_path }}" target="_blank"><img src="{{ ev.file_path }}" alt=""></a>
                   {% elif ev.kind == 'video' %}
                     <video src="{{ ev.file_path }}" controls></video>
@@ -191,6 +222,7 @@
             </div>
           {% endif %}
 
+          {# توافق قديم: ملفات على القرص جاءت من ev_list (روابط جاهزة) #}
           {% if ev_list and ev_list|length %}
             <div class="mb-2 fw-bold">أدلة (توافق قديم — ملفات على القرص)</div>
             <div class="ev-grid">
@@ -218,10 +250,10 @@
         {% endif %}
       </div>
 
-      <!-- سجل التدقيق -->
+      {# سجل التدقيق #}
       <div class="box mb-3">
         <h6 class="mb-2">سجل القضية</h6>
-        {% set audits = bk.deposit_audits or [] %}
+        {% set audits = (bk and bk.deposit_audits) or [] %}
         {% if audits %}
           <div class="table-responsive">
             <table class="table table-sm align-middle">
@@ -238,7 +270,10 @@
                 {% for a in audits %}
                   <tr>
                     <td class="mono small">{{ a.created_at }}</td>
-                    <td>{{ a.actor.full_name if a.actor else a.actor_id }} <span class="muted">({{ a.actor_role }})</span></td>
+                    <td>
+                      {{ (a.actor and a.actor.full_name) or a.actor_id }}
+                      {% if a.actor_role %}<span class="muted">({{ a.actor_role }})</span>{% endif %}
+                    </td>
                     <td class="mono">{{ a.action }}</td>
                     <td>{{ a.amount or 0 }}</td>
                     <td class="small">{{ a.reason or a.details }}</td>
@@ -254,37 +289,49 @@
 
     </div>
 
-    <!-- Right -->
+    {# ===== Right ===== #}
     <div class="col-12 col-lg-5">
 
       <div class="box">
         <h6 class="mb-2">ملخص مالي</h6>
-        <div class="d-flex justify-content-between"><span>مبلغ الإيجار</span><strong>{{ bk.rent_amount or bk.total_amount or 0 }}$</strong></div>
-        <div class="d-flex justify-content-between"><span>الوديعة المطلوبة</span><strong>{{ bk.hold_deposit_amount or bk.deposit_amount or 0 }}$</strong></div>
-        <div class="d-flex justify-content-between"><span>المقتطع حتى الآن</span><strong>{{ bk.deposit_charged_amount or 0 }}$</strong></div>
-        <div class="d-flex justify-content-between"><span>Stripe rent</span><strong>{{ bk.online_status or '—' }}</strong></div>
+        <div class="d-flex justify-content-between">
+          <span>مبلغ الإيجار</span>
+          <strong>{{ (bk and (bk.rent_amount or bk.total_amount) ) or 0 }}$</strong>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span>الوديعة المطلوبة</span>
+          <strong>{{ (bk and (bk.hold_deposit_amount or bk.deposit_amount)) or 0 }}$</strong>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span>المقتطع حتى الآن</span>
+          <strong>{{ (bk and bk.deposit_charged_amount) or 0 }}$</strong>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span>Stripe rent</span>
+          <strong>{{ (bk and bk.online_status) or '—' }}</strong>
+        </div>
         <hr>
         <div class="mono small k">
-          {% if bk.accepted_at %}accepted_at: {{ bk.accepted_at }}<br>{% endif %}
-          {% if bk.picked_up_at %}picked_up_at: {{ bk.picked_up_at }}<br>{% endif %}
-          {% if bk.returned_at %}returned_at: {{ bk.returned_at }}<br>{% endif %}
-          {% if bk.return_confirmed_by_owner_at %}owner_confirmed_at: {{ bk.return_confirmed_by_owner_at }}<br>{% endif %}
-          {% if bk.rent_released_at %}rent_released_at: {{ bk.rent_released_at }}<br>{% endif %}
-          {% if bk.renter_response_deadline_at %}renter_deadline: {{ bk.renter_response_deadline_at }}<br>{% endif %}
-          {% if bk.dm_decision_deadline_at %}dm_deadline: {{ bk.dm_decision_deadline_at }}<br>{% endif %}
+          {% if bk and bk.accepted_at %}accepted_at: {{ bk.accepted_at }}<br>{% endif %}
+          {% if bk and bk.picked_up_at %}picked_up_at: {{ bk.picked_up_at }}<br>{% endif %}
+          {% if bk and bk.returned_at %}returned_at: {{ bk.returned_at }}<br>{% endif %}
+          {% if bk and bk.return_confirmed_by_owner_at %}owner_confirmed_at: {{ bk.return_confirmed_by_owner_at }}<br>{% endif %}
+          {% if bk and bk.rent_released_at %}rent_released_at: {{ bk.rent_released_at }}<br>{% endif %}
+          {% if bk and bk.renter_response_deadline_at %}renter_deadline: {{ bk.renter_response_deadline_at }}<br>{% endif %}
+          {% if bk and bk.dm_decision_deadline_at %}dm_deadline: {{ bk.dm_decision_deadline_at }}<br>{% endif %}
         </div>
       </div>
 
       <div class="box mt-3">
         <h6 class="mb-2">إجراءات</h6>
 
-        <form method="post" action="/dm/deposits/{{ bk.id }}/claim" class="d-inline">
+        <form method="post" action="/dm/deposits/{{ (bk and bk.id) or 0 }}/claim" class="d-inline">
           <button class="btn btn-outline-primary">
             <i class="bi bi-person-check"></i> استلام/تعيين القضية لي
           </button>
         </form>
 
-        <a class="btn btn-outline-secondary ms-1" href="/deposits/{{ bk.id }}/evidence/form">
+        <a class="btn btn-outline-secondary ms-1" href="/deposits/{{ (bk and bk.id) or 0 }}/evidence/form">
           <i class="bi bi-cloud-upload"></i> رفع أدلة جديدة (يدوي)
         </a>
 
@@ -293,7 +340,7 @@
         </a>
       </div>
 
-      {% if bk.owner_return_note %}
+      {% if bk and bk.owner_return_note %}
       <div class="box mt-3">
         <h6 class="mb-2">ملاحظات المالك عن الإرجاع</h6>
         <div class="small">{{ bk.owner_return_note }}</div>
