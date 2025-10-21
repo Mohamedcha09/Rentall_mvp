@@ -760,6 +760,9 @@ for name, url in saved_pairs:
 # =========================
 # >>> نموذج/رفع أدلّة (الطرفين) — إشعار فوري للطرف الآخر + DMs + إيميل
 # =========================
+# =========================
+# >>> نموذج/رفع أدلّة (الطرفين) — إشعار فوري للطرف الآخر + DMs + إيميل
+# =========================
 @router.post("/deposits/{booking_id}/evidence/upload")
 def evidence_upload(
     booking_id: int,
@@ -786,16 +789,17 @@ def evidence_upload(
         for name, url in saved_pairs:
             db.add(DepositEvidence(
                 booking_id=bk.id,
-                uploader_id=user.id,
-                by_user_id=user.id,  # ✅ إضافة مطلوبة حتى لا يفشل NOT NULL
+                uploader_id=user.id,        # ✅ NOT NULL في بعض الجداول
+                by_user_id=user.id if hasattr(DepositEvidence, "by_user_id") else None,  # توافقية
                 side=side_val,
-                kind="image",  # يمكن لاحقًا الاستنتاج من الامتداد
-                file_path=url,  # <<< NEW: Cloudinary
+                kind="image",               # يمكن لاحقًا الاستنتاج من الامتداد
+                file_path=url,              # رابط Cloudinary أو المحلي
                 description=(comment or None),
             ))
         db.commit()
     except Exception:
-        db.rollback()  # ✅ مهم
+        db.rollback()
+        # لا نرفع الخطأ حتى لا نكسر الواجهة؛ نكمل الإشعارات
         pass
 
     # 3) تحديث حالة الحجز/النزاع
@@ -808,23 +812,26 @@ def evidence_upload(
         # لو كانت في awaiting_renter نرجعها لنزاع مفتوح
         if getattr(bk, "deposit_status", "") == "awaiting_renter":
             bk.deposit_status = "in_dispute"
+        db.commit()
     except Exception:
+        db.rollback()
         pass
-    db.commit()
 
     other_id = bk.renter_id if user.id == bk.owner_id else bk.owner_id
     who = "المالك" if user.id == bk.owner_id else "المستأجر"
 
     # إشعارات داخلية
-    push_notification(
-        db, other_id, "أدلة جديدة في القضية",
-        f"{who} قام برفع أدلة جديدة للحجز #{bk.id}.",
-        f"/bookings/flow/{bk.id}", "deposit"
-    )
-    notify_dms(db, "أدلة جديدة — تحديث القضية", f"تم رفع أدلة جديدة للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
-
-    _audit(db, actor=user, bk=bk, action="evidence_upload",
-           details={"by": who, "files": [p[0] for p in saved_pairs], "comment": comment})
+    try:
+        push_notification(
+            db, other_id, "أدلة جديدة في القضية",
+            f"{who} قام برفع أدلة جديدة للحجز #{bk.id}.",
+            f"/bookings/flow/{bk.id}", "deposit"
+        )
+        notify_dms(db, "أدلة جديدة — تحديث القضية", f"تم رفع أدلة جديدة للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+        _audit(db, actor=user, bk=bk, action="evidence_upload",
+               details={"by": who, "files": [p[0] for p in saved_pairs], "comment": comment})
+    except Exception:
+        pass
 
     # Emails: للطرف الآخر + DMs
     try:
@@ -850,6 +857,7 @@ def evidence_upload(
         pass
 
     return RedirectResponse(url=f"/bookings/flow/{bk.id}?evidence=1", status_code=303)
+
 
 # ==== ردّ المستأجر ====
 @router.post("/deposits/{booking_id}/renter-response")
