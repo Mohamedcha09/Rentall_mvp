@@ -47,8 +47,8 @@
               <!-- صورة الحساب -->
               <td>
                 {% if u.avatar_path %}
-                  <a href="/{{ u.avatar_path }}" target="_blank">
-                    <img src="/{{ u.avatar_path }}" alt="avatar"
+                  <a href="{{ u.avatar_path | media_url }}" target="_blank" rel="noopener">
+                    <img src="{{ u.avatar_path | media_url }}" alt="avatar"
                          style="width:54px;height:54px;object-fit:cover;border-radius:6px">
                   </a>
                 {% else %}
@@ -59,13 +59,13 @@
               <!-- صور الهوية -->
               <td>
                 {% if d and d.file_front_path %}
-                  <a href="/{{ d.file_front_path }}" target="_blank" title="الوجه الأمامي">
-                    <img src="/{{ d.file_front_path }}" style="width:60px;height:40px;object-fit:cover;border-radius:4px;margin-inline-end:6px">
+                  <a href="{{ d.file_front_path | media_url }}" target="_blank" title="الوجه الأمامي" rel="noopener">
+                    <img src="{{ d.file_front_path | media_url }}" style="width:60px;height:40px;object-fit:cover;border-radius:4px;margin-inline-end:6px">
                   </a>
                 {% endif %}
                 {% if d and d.file_back_path %}
-                  <a href="/{{ d.file_back_path }}" target="_blank" title="الوجه الخلفي">
-                    <img src="/{{ d.file_back_path }}" style="width:60px;height:40px;object-fit:cover;border-radius:4px">
+                  <a href="{{ d.file_back_path | media_url }}" target="_blank" title="الوجه الخلفي" rel="noopener">
+                    <img src="{{ d.file_back_path | media_url }}" style="width:60px;height:40px;object-fit:cover;border-radius:4px">
                   </a>
                 {% endif %}
                 {% if not (d and (d.file_front_path or d.file_back_path)) %}
@@ -158,8 +158,8 @@
               </td>
               <td>
                 {% if u.avatar_path %}
-                  <a href="/{{ u.avatar_path }}" target="_blank">
-                    <img src="/{{ u.avatar_path }}" style="width:46px;height:46px;object-fit:cover;border-radius:6px">
+                  <a href="{{ u.avatar_path | media_url }}" target="_blank" rel="noopener">
+                    <img src="{{ u.avatar_path | media_url }}" style="width:46px;height:46px;object-fit:cover;border-radius:6px">
                   </a>
                 {% else %}
                   <span class="text-muted">—</span>
@@ -167,13 +167,13 @@
               </td>
               <td>
                 {% if d and d.file_front_path %}
-                  <a href="/{{ d.file_front_path }}" target="_blank" title="أمامي">
-                    <img src="/{{ d.file_front_path }}" style="width:44px;height:30px;object-fit:cover;border-radius:4px;margin-inline-end:4px">
+                  <a href="{{ d.file_front_path | media_url }}" target="_blank" title="أمامي" rel="noopener">
+                    <img src="{{ d.file_front_path | media_url }}" style="width:44px;height:30px;object-fit:cover;border-radius:4px;margin-inline-end:4px">
                   </a>
                 {% endif %}
                 {% if d and d.file_back_path %}
-                  <a href="/{{ d.file_back_path }}" target="_blank" title="خلفي">
-                    <img src="/{{ d.file_back_path }}" style="width:44px;height:30px;object-fit:cover;border-radius:4px">
+                  <a href="{{ d.file_back_path | media_url }}" target="_blank" title="خلفي" rel="noopener">
+                    <img src="{{ d.file_back_path | media_url }}" style="width:44px;height:30px;object-fit:cover;border-radius:4px">
                   </a>
                 {% endif %}
               </td>
