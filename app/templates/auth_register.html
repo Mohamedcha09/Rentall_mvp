@@ -24,7 +24,7 @@
   }
   .hero-inner{ max-width: 860px; width:100%; position:relative; z-index:2; }
 
-  /* ✅ الصورة الكبيرة في الأعلى */
+  /* الصورة الكبيرة */
   .hero::before {
     content: "";
     position: absolute;
@@ -39,15 +39,11 @@
     opacity: 0.95;
     z-index: 1;
   }
-
-  /* ✅ فقط هذا الجزء المضاف — إخفاء الصورة على الهاتف */
   @media (max-width: 992px){
     .hero::before { content: none !important; display: none !important; }
   }
 
-  .brand-row{
-    display:flex; align-items:center; gap:12px; margin-bottom: 10px;
-  }
+  .brand-row{ display:flex; align-items:center; gap:12px; margin-bottom: 10px; }
   .brand-row img.logo{ height: 44px; width:auto; display:block; }
   .brand-row .name{
     font-weight:900; letter-spacing:.3px; font-size: clamp(22px, 3.2vw, 34px);
@@ -132,111 +128,152 @@
   }
   .btn-success{ background:#22c55e; border:0; }
   .muted{ color: var(--muted); }
+
+  /* الكاميرا */
+  .cam-box{
+    display:none; margin-top: 12px; padding:12px; border:1px dashed var(--border);
+    border-radius:14px; background: rgba(255,255,255,.03);
+  }
+  .cam-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .cam-media{ width:100%; max-height: 360px; border-radius:12px; display:block; }
+  #photoPreview{ display:none; }
+  #canvas{ display:none; }
 </style>
 {% endblock %}
 
 {% block content %}
-<section class="hero">
-  <div class="hero-inner">
-    <div class="brand-row">
-      <img class="logo" src="{{ url_for('static', path='images/ok.png') }}" alt="SEVOR">
-      <div class="name">SEVOR</div>
+<div class="page">
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="brand-row">
+        <img class="logo" src="{{ url_for('static', path='images/ok.png') }}" alt="SEVOR">
+        <div class="name">SEVOR</div>
+      </div>
+
+      <span class="badge-soft">
+        <img src="{{ url_for('static', path='images/ok.png') }}" alt="" style="width:18px;height:18px;border-radius:6px;object-fit:cover">
+        منصة الحجز الذكية
+      </span>
+
+      <h1>افتح حسابك وابدأ التواصل مع الأشياء التي تحتاجها يوميًا.</h1>
+      <p class="muted">سجّل الآن لإدارة محادثاتك، مدفوعاتك، وإشعاراتك بسهولة وأمان — كل شيء في مكان واحد.</p>
     </div>
+  </section>
 
-    <span class="badge-soft">
-      <img src="{{ url_for('static', path='images/ok.png') }}" alt="" style="width:18px;height:18px;border-radius:6px;object-fit:cover">
-      منصة الحجز الذكية
-    </span>
+  <section class="reg-col">
+    <div class="card-reg">
+      <div class="head">
+        <div class="title">إنشاء حساب جديد</div>
+        <div class="secure"><i class="bi bi-shield-lock"></i> آمن ومشفّر</div>
+      </div>
 
-    <h1>افتح حسابك وابدأ التواصل مع الأشياء التي تحتاجها يوميًا.</h1>
-    <p class="muted">سجّل الآن لإدارة محادثاتك، مدفوعاتك، وإشعاراتك بسهولة وأمان — كل شيء في مكان واحد.</p>
-  </div>
-</section>
+      <form method="post" action="/register" enctype="multipart/form-data" novalidate>
+        <div class="grid-2">
+          <div>
+            <label class="form-label">الاسم</label>
+            <input type="text" name="first_name" class="form-control" required>
+          </div>
+          <div>
+            <label class="form-label">اللقب</label>
+            <input type="text" name="last_name" class="form-control" required>
+          </div>
+        </div>
 
-<section class="reg-col">
-  <div class="card-reg">
-    <div class="head">
-      <div class="title">إنشاء حساب جديد</div>
-      <div class="secure"><i class="bi bi-shield-lock"></i> آمن ومشفّر</div>
+        <div class="grid-2 mt-3">
+          <div>
+            <label class="form-label">البريد الإلكتروني</label>
+            <input type="email" name="email" class="form-control" autocomplete="email" required>
+          </div>
+          <div>
+            <label class="form-label">الهاتف</label>
+            <input type="tel" name="phone" class="form-control" inputmode="tel" autocomplete="tel" required>
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <label class="form-label">كلمة المرور</label>
+          <div class="pw-wrap">
+            <button type="button" class="pw-toggle" id="pwToggle" aria-label="إظهار/إخفاء كلمة المرور"><i class="bi bi-eye-slash"></i></button>
+            <input type="password" name="password" class="form-control pw-input" id="pwInput" minlength="6" required>
+          </div>
+          <div class="form-text">يتم تشفير كلمات المرور، ونستعمل التحقق بخطوتين لمنع إساءة الاستخدام.</div>
+        </div>
+
+        <!-- صورة الحساب — كاميرا فقط -->
+        <div class="mt-3">
+          <label class="form-label">صورة الحساب (التقاط بالكاميرا فقط)</label>
+
+          <div class="cam-actions">
+            <button type="button" class="btn btn-success btn-sm" id="openCamBtn">
+              <i class="bi bi-camera"></i> افتح الكاميرا
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="snapBtn" style="display:none;">
+              <i class="bi bi-record2"></i> التقط صورة
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" id="usePhotoBtn" style="display:none;">
+              <i class="bi bi-check2-circle"></i> استخدم الصورة
+            </button>
+            <button type="button" class="btn btn-outline-light btn-sm" id="retakeBtn" style="display:none;">
+              <i class="bi bi-arrow-repeat"></i> أعد الالتقاط
+            </button>
+          </div>
+
+          <div class="cam-box" id="camBox">
+            <video id="video" class="cam-media" autoplay playsinline></video>
+            <canvas id="canvas" class="cam-media"></canvas>
+            <img id="photoPreview" class="cam-media" alt="معاينة الصورة">
+          </div>
+
+          <!-- حقل ملف مخفي: نملؤه برمجياً بعد الالتقاط -->
+          <input type="file" name="avatar" id="avatarInput" accept="image/*"
+                 style="position:absolute;left:-9999px;opacity:0;" tabindex="-1" aria-hidden="true">
+
+          <div class="form-text">يجب التقاط صورة مباشرة عبر الكاميرا. لا يُسمح برفع صور من الجهاز.</div>
+        </div>
+
+        <div class="mt-3">
+          <label class="form-label">نوع الوثيقة</label>
+          <select name="doc_type" class="form-select" required>
+            <option value="id_card">بطاقة تعريف</option>
+            <option value="driver_license">رخصة سياقة</option>
+            <option value="passport">جواز سفر</option>
+          </select>
+        </div>
+
+        <div class="grid-2 mt-3">
+          <div>
+            <label class="form-label">بلد الإصدار</label>
+            <input type="text" name="doc_country" class="form-control" required>
+          </div>
+          <div>
+            <label class="form-label">تاريخ انتهاء الوثيقة</label>
+            <input type="date" name="doc_expiry" class="form-control">
+          </div>
+        </div>
+
+        <div class="file-row mt-3">
+          <div>
+            <label class="form-label">الوجه الأمامي للوثيقة</label>
+            <input type="file" name="doc_front" class="form-control" accept=".jpg,.jpeg,.png,.pdf" required>
+          </div>
+          <div>
+            <label class="form-label">الوجه الخلفي (اختياري)</label>
+            <input type="file" name="doc_back" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 mt-4">إنشاء الحساب</button>
+        <div class="text-center mt-2">
+          <a class="muted" href="/login">لديك حساب؟ سجّل الدخول</a>
+        </div>
+      </form>
     </div>
-    <form method="post" action="/register" enctype="multipart/form-data">
-      <div class="grid-2">
-        <div>
-          <label class="form-label">الاسم</label>
-          <input type="text" name="first_name" class="form-control" required>
-        </div>
-        <div>
-          <label class="form-label">اللقب</label>
-          <input type="text" name="last_name" class="form-control" required>
-        </div>
-      </div>
-
-      <div class="grid-2 mt-3">
-        <div>
-          <label class="form-label">البريد الإلكتروني</label>
-          <input type="email" name="email" class="form-control" required>
-        </div>
-        <div>
-          <label class="form-label">الهاتف</label>
-          <input type="text" name="phone" class="form-control" required>
-        </div>
-      </div>
-
-      <div class="mt-3">
-        <label class="form-label">كلمة المرور</label>
-        <div class="pw-wrap">
-          <button type="button" class="pw-toggle" id="pwToggle"><i class="bi bi-eye-slash"></i></button>
-          <input type="password" name="password" class="form-control pw-input" id="pwInput" required>
-        </div>
-        <div class="form-text">يتم تشفير كلمات المرور، ونستعمل التحقق بخطوتين لمنع إساءة الاستخدام.</div>
-      </div>
-
-      <div class="mt-3">
-        <label class="form-label">صورة الحساب (إلزامية)</label>
-        <input type="file" name="avatar" id="avatarInput" accept="image/*" required class="form-control mt-2">
-      </div>
-
-      <div class="mt-3">
-        <label class="form-label">نوع الوثيقة</label>
-        <select name="doc_type" class="form-select" required>
-          <option value="id_card">بطاقة تعريف</option>
-          <option value="driver_license">رخصة سياقة</option>
-          <option value="passport">جواز سفر</option>
-        </select>
-      </div>
-
-      <div class="grid-2 mt-3">
-        <div>
-          <label class="form-label">بلد الإصدار</label>
-          <input type="text" name="doc_country" class="form-control" required>
-        </div>
-        <div>
-          <label class="form-label">تاريخ انتهاء الوثيقة</label>
-          <input type="date" name="doc_expiry" class="form-control">
-        </div>
-      </div>
-
-      <div class="file-row mt-3">
-        <div>
-          <label class="form-label">الوجه الأمامي للوثيقة</label>
-          <input type="file" name="doc_front" class="form-control" accept=".jpg,.jpeg,.png,.pdf" required>
-        </div>
-        <div>
-          <label class="form-label">الوجه الخلفي (اختياري)</label>
-          <input type="file" name="doc_back" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
-        </div>
-      </div>
-
-      <button type="submit" class="btn btn-primary w-100 mt-4">إنشاء الحساب</button>
-      <div class="text-center mt-2">
-        <a class="muted" href="/login">لديك حساب؟ سجّل الدخول</a>
-      </div>
-    </form>
-  </div>
-</section>
+  </section>
+</div>
 
 <script>
 (function(){
+  // تبديل كلمة المرور
   const pwToggle = document.getElementById('pwToggle');
   const pwInput  = document.getElementById('pwInput');
   pwToggle?.addEventListener('click', () => {
@@ -245,6 +282,8 @@
     pwToggle.innerHTML = isPass ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
   });
 
+  // عناصر الكاميرا
+  const form         = document.querySelector('form[action="/register"]');
   const openCamBtn   = document.getElementById('openCamBtn');
   const snapBtn      = document.getElementById('snapBtn');
   const usePhotoBtn  = document.getElementById('usePhotoBtn');
@@ -255,44 +294,82 @@
   const photoPreview = document.getElementById('photoPreview');
   const avatarInput  = document.getElementById('avatarInput');
 
+  // 🔒 منع فتح منتقي الملفات نهائياً
+  if (avatarInput) {
+    const block = (e)=> e.preventDefault();
+    avatarInput.addEventListener('click', block);
+    avatarInput.addEventListener('focus', ()=> avatarInput.blur());
+    avatarInput.addEventListener('keydown', block);
+  }
+
   let stream = null, capturedBlob = null;
+
+  function show(el){ el.style.display='block'; }
+  function hide(el){ el.style.display='none'; }
 
   async function openCamera(){
     try{
+      // لو تفضّل الكاميرا الخلفية على الهاتف استبدل 'user' بـ { ideal: 'environment' }
       stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user' }, audio:false });
       video.srcObject = stream;
-      camBox.style.display = 'block';
-      snapBtn.style.display = 'inline-block';
-      usePhotoBtn.style.display = 'none';
-      retakeBtn.style.display = 'none';
-      photoPreview.style.display = 'none';
-      canvas.style.display = 'none';
+      show(camBox);
+      show(snapBtn);
+      hide(usePhotoBtn);
+      hide(retakeBtn);
+      hide(photoPreview);
+      hide(canvas);
       capturedBlob = null;
     }catch(e){
-      alert('تعذّر الوصول إلى الكاميرا. تأكد من الإذن ووجود HTTPS.');
+      alert('تعذّر الوصول إلى الكاميرا. تأكد من منح الإذن وأن الصفحة تعمل عبر HTTPS.');
     }
   }
+
   function snapPhoto(){
     const w = video.videoWidth, h = video.videoHeight;
-    if (!w || !h) { alert('انتظر بدء الكاميرا…'); return; }
+    if (!w || !h) { alert('انتظر تشغيل الكاميرا…'); return; }
     canvas.width = w; canvas.height = h;
-    const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0, w, h);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, w, h);
     canvas.toBlob((blob)=>{
       capturedBlob = blob;
       photoPreview.src = URL.createObjectURL(blob);
-      photoPreview.style.display = 'block';
-      usePhotoBtn.style.display = 'inline-block';
-      retakeBtn.style.display   = 'inline-block';
+      hide(video);
+      show(photoPreview);
+      show(usePhotoBtn);
+      show(retakeBtn);
+      hide(snapBtn);
     }, 'image/jpeg', 0.9);
   }
-  function stopCamera(){ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; video.srcObject=null; } }
-  function retake(){ capturedBlob=null; photoPreview.src=''; photoPreview.style.display='none'; usePhotoBtn.style.display='none'; retakeBtn.style.display='none'; snapBtn.style.display='inline-block'; }
+
+  function stopCamera(){
+    if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+    video.srcObject = null;
+  }
+
+  function retake(){
+    capturedBlob=null;
+    photoPreview.src='';
+    hide(photoPreview);
+    show(video);
+    show(snapBtn);
+    hide(usePhotoBtn);
+    hide(retakeBtn);
+  }
+
   function usePhoto(){
     if(!capturedBlob) return;
     const file = new File([capturedBlob], `avatar_${Date.now()}.jpg`, { type:'image/jpeg' });
     const dt = new DataTransfer(); dt.items.add(file); avatarInput.files = dt.files;
-    stopCamera(); snapBtn.style.display='none'; usePhotoBtn.style.display='none';
+    stopCamera();
   }
+
+  // تحقق قبل الإرسال: لازم صورة ملتقطة
+  form?.addEventListener('submit', (e)=>{
+    if (!avatarInput.files || avatarInput.files.length === 0){
+      e.preventDefault();
+      alert('الرجاء التقاط صورة عبر الكاميرا قبل إرسال النموذج.');
+    }
+  });
 
   openCamBtn?.addEventListener('click', openCamera);
   snapBtn?.addEventListener('click', snapPhoto);
@@ -301,5 +378,4 @@
   window.addEventListener('beforeunload', stopCamera);
 })();
 </script>
-
 {% endblock %}

@@ -116,6 +116,22 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 app.templates = templates
 
+# 🔽 أضف هذا الفلتر مباشرةً هنا
+def media_url(path: str | None) -> str:
+    """يُرجع رابط Cloudinary كما هو، أو يسبق المسار المحلي بـ '/'."""
+    if not path:
+        return ""
+    p = str(path).strip()
+    if p.startswith("http://") or p.startswith("https://"):
+        return p
+    # لو المسار أصلاً يبدأ بـ / اتركه
+    if p.startswith("/"):
+        return p
+    return "/" + p
+
+# تسجيل الفلتر في بيئة Jinja
+app.templates.env.filters["media_url"] = media_url
+
 # إنشاء الجداول
 Base.metadata.create_all(bind=engine)
 
