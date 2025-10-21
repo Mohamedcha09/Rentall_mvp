@@ -7,6 +7,16 @@ import shutil
 import stripe
 import mimetypes
 
+# --- NEW: Cloudinary ---
+import cloudinary
+import cloudinary.uploader
+# ملاحظة: Cloudinary يقرأ الإعدادات من CLOUDINARY_URL تلقائيًا.
+# أو يمكنك تهيئته يدويًا:
+# cloudinary.config(cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+#                   api_key=os.getenv("CLOUDINARY_API_KEY"),
+#                   api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+#                   secure=True)
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -137,6 +147,30 @@ def _save_evidence_files(booking_id: int, files: List[UploadFile] | None) -> Lis
             pass
         saved.append(safe_name)
     return saved
+
+# >>> NEW: حفظ محلي + رفع Cloudinary وإرجاع [(local_name, secure_url)]
+def _save_evidence_files_and_cloud(booking_id: int, files: List[UploadFile] | None) -> List[tuple[str, str]]:
+    saved_names = _save_evidence_files(booking_id, files)
+    results: List[tuple[str, str]] = []
+    folder = _booking_folder(booking_id)
+    for name in saved_names:
+        # رابط بديل محلي لو فشل الرفع
+        url = f"/uploads/deposits/{booking_id}/{name}"
+        try:
+            full_path = os.path.join(folder, name)
+            up = cloudinary.uploader.upload(
+                full_path,
+                folder=f"deposits/{booking_id}",
+                public_id=os.path.splitext(name)[0],
+                resource_type="auto"  # يدعم صور/فيديو تلقائيًا
+            )
+            url = up.get("secure_url") or url
+        except Exception:
+            # لا نكسر الفلو — نبقى على الرابط المحلي
+            pass
+        results.append((name, url))
+    return results
+# <<< NEW
 
 def _list_evidence_files(booking_id: int) -> List[str]:
     folder = _booking_folder(booking_id)
@@ -621,23 +655,24 @@ def report_deposit_issue(
     if _get_deposit_pi_id(bk) is None:
         raise HTTPException(status_code=400, detail="No deposit hold found")
 
-    # 1) حفظ الملفات على القرص
-    saved = _save_evidence_files(bk.id, files)
+    # 1) حفظ + رفع Cloudinary (بدون حذف الحفظ المحلي)
+    #    ترجع [(local_name, secure_url)]
+    saved_pairs = _save_evidence_files_and_cloud(bk.id, files)
 
-    # 2) تسجيل كل ملف كصف Evidence في DB مع side='owner'
+    # 2) تسجيل كل ملف كصف Evidence في DB مع side='owner' ورابط Cloudinary
     try:
         from .models import DepositEvidence
-        for name in saved:
+        for name, url in saved_pairs:
             db.add(DepositEvidence(
                 booking_id=bk.id,
                 uploader_id=user.id,
-                by_user_id=user.id,  # ✅ إضافة مطلوبة حتى لا يفشل NOT NULL
+                by_user_id=user.id,  # ✅ موجود لديك
                 side="owner",
-                kind="image",  # يمكن لاحقًا استنتاج النوع من الامتداد
-                file_path=f"/uploads/deposits/{bk.id}/{name}",
+                kind="image",  # يمكن لاحقًا استنتاج النوع
+                file_path=url,  # <<< NEW: رابط Cloudinary الآمن
                 description=(description or None),
             ))
-        # معلومات البلاغ للمرجع/الديسبيوت
+        # معلومات البلاغ
         try:
             bk.owner_report_type = (issue_type or None)
             bk.owner_report_reason = (description or None)
@@ -646,9 +681,7 @@ def report_deposit_issue(
             pass
         db.commit()
     except Exception:
-        # مهم: نُنهي المعاملة الفاشلة حتى لا تبقى الجلسة معلّقة
         db.rollback()
-        # نتجاهل أي خطأ غير مهم هنا حتى لا نكسر الفلو
         pass
 
     # 3) تحديث حالات الحجز/الوديعة
@@ -678,7 +711,7 @@ def report_deposit_issue(
                   f"بلاغ جديد بخصوص حجز #{bk.id}.", "/dm/deposits")
 
     _audit(db, actor=user, bk=bk, action="owner_report_issue",
-           details={"issue_type": issue_type, "desc": description, "files": saved})
+           details={"issue_type": issue_type, "desc": description, "files": [p[0] for p in saved_pairs]})
 
     try:
         renter_email = _user_email(db, bk.renter_id)
@@ -743,21 +776,21 @@ def evidence_upload(
     if user.id not in (bk.owner_id, bk.renter_id):
         raise HTTPException(status_code=403, detail="Not participant in this booking")
 
-    # 1) حفظ الملفات على القرص
-    saved = _save_evidence_files(bk.id, files)
+    # 1) حفظ + رفع Cloudinary (بدون حذف الحفظ المحلي)
+    saved_pairs = _save_evidence_files_and_cloud(bk.id, files)
 
-    # 2) تسجيل الأدلة في DB مع side مناسب (owner/renter)
+    # 2) تسجيل الأدلة في DB مع side مناسب (owner/renter) ورابط Cloudinary
     try:
         from .models import DepositEvidence
         side_val = "owner" if user.id == bk.owner_id else "renter"
-        for name in saved:
+        for name, url in saved_pairs:
             db.add(DepositEvidence(
                 booking_id=bk.id,
                 uploader_id=user.id,
                 by_user_id=user.id,  # ✅ إضافة مطلوبة حتى لا يفشل NOT NULL
                 side=side_val,
                 kind="image",  # يمكن لاحقًا الاستنتاج من الامتداد
-                file_path=f"/uploads/deposits/{bk.id}/{name}",
+                file_path=url,  # <<< NEW: Cloudinary
                 description=(comment or None),
             ))
         db.commit()
@@ -791,7 +824,7 @@ def evidence_upload(
     notify_dms(db, "أدلة جديدة — تحديث القضية", f"تم رفع أدلة جديدة للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
 
     _audit(db, actor=user, bk=bk, action="evidence_upload",
-           details={"by": who, "files": saved, "comment": comment})
+           details={"by": who, "files": [p[0] for p in saved_pairs], "comment": comment})
 
     # Emails: للطرف الآخر + DMs
     try:

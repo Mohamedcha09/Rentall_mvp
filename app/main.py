@@ -1,8 +1,26 @@
 # app/main.py
+
+# >>> FIX: حمّل .env مبكّر جدًا قبل أي قراءة للمتغيرات
+from dotenv import load_dotenv
+load_dotenv()  # آمنة لو استدعيتها مرة ثانية لاحقًا
+
+import cloudinary
+import cloudinary.uploader
+import os
+
+# >>> ADD: Cloudinary secure
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+    secure=True  # يضمن روابط https
+)
+
 import os
 import difflib
 
 # ✅ حمّل مفاتيح .env مبكّرًا جداً قبل استيراد أي ملفات قد تقرأ المتغيرات
+# >>> NOTE: هذا الاستدعاء الثاني لا يضر (idempotent)
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -40,7 +58,7 @@ from .routes_bookings import router as bookings_router
 from .notifications import router as notifs_router
 from .notifications_api import router as notifications_router
 from .split_test import router as split_test_router
-
+from .routes_debug_cloudinary import router as debug_cloudinary_router
 # [مضاف] راوتر المفضّلات
 from .routes_favorites import router as favorites_router
 from .routers.me import router as me_router
@@ -66,12 +84,17 @@ app = FastAPI()
 # =========================
 # جلسات
 # =========================
+# >>> ADD: جعل https_only يعتمد على البيئة (HTTPS في الإنتاج، HTTP محليًا)
+SITE_URL = os.environ.get("SITE_URL", "")
+HTTPS_ONLY_COOKIES = os.getenv("HTTPS_ONLY_COOKIES",
+                               "1" if SITE_URL.startswith("https") else "0") == "1"
+
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.environ.get("SECRET_KEY", "dev-secret"),
     session_cookie="ra_session",
     same_site="lax",
-    https_only=True,
+    https_only=HTTPS_ONLY_COOKIES,  # >>> FIX: بدل True ثابتة
     max_age=60 * 60 * 24 * 30,
 )
 
@@ -161,6 +184,8 @@ app.include_router(pay_api_router)
 app.include_router(split_test_router)
 # ✅ نُسجّل راوتر Stripe Connect الصحيح (يدعم GET/POST)
 app.include_router(payout_connect_router)
+# مع بقية include_router(...)
+app.include_router(debug_cloudinary_router)
 
 app.include_router(webhooks_router)
 app.include_router(disputes_router)
