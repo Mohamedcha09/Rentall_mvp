@@ -156,15 +156,17 @@ def ensure_sqlite_columns():
 def seed_admin():
     db = SessionLocal()
     try:
-        admin = db.query(User).filter(User.email == "admin@example.com").first()
+        admin = db.query(User).filter(User.email == "chachouamohamed57@gmail.com
+").first()
         if not admin:
             from .utils import hash_password
             admin = User(
                 first_name="Admin",
                 last_name="User",
-                email="admin@example.com",
+                email="chachouamohamed57@gmail.com
+",
                 phone="0000000000",
-                password_hash=hash_password("admin123"),
+                password_hash=hash_password("Blida0909"),
                 role="admin",
                 status="approved",
             )
