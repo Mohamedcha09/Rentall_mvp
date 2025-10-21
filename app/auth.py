@@ -81,14 +81,40 @@ def login_post(
 
     user = db.query(User).filter(User.email == email).first()
     ok = bool(user) and verify_password(password, user.password_hash)
-
     if not ok:
         return RedirectResponse(url="/login?err=1", status_code=303)
 
-    # ✅ منع الدخول قبل تفعيل الإيميل
-    if not bool(getattr(user, "is_verified", False)):
-        return RedirectResponse(url=f"/verify-email?email={email}", status_code=303)
+    # ✅ السماح للأدمن بالدخول فورًا + تفعيل كامل تلقائيًا
+    if str(getattr(user, "role", "")).lower() == "admin":
+        changed = False
+        # فعّل البريد والحالة إن لم يكونا مفعّلين
+        if not bool(getattr(user, "is_verified", False)):
+            user.is_verified = True
+            changed = True
+        if (getattr(user, "status", "pending") or "").lower() != "approved":
+            user.status = "approved"
+            changed = True
+        # (اختياري) اجعله مدير ودائع تلقائيًا إن كان الحقل موجود
+        try:
+            if not bool(getattr(user, "is_deposit_manager", False)):
+                user.is_deposit_manager = True
+                changed = True
+        except Exception:
+            pass
+        if changed:
+            db.add(user)
+            db.commit()
+            db.refresh(user)
 
+    else:
+        # 🧱 المستخدمون العاديون: ما زال مطلوب تحقق البريد
+        if not bool(getattr(user, "is_verified", False)):
+            return RedirectResponse(url=f"/verify-email?email={email}", status_code=303)
+        # (اختياري) لو تريد منع الدخول قبل موافقة الأدمن على الوثائق
+        # if (getattr(user, "status", "pending") or "").lower() != "approved":
+        #     return RedirectResponse(url="/pending-approval", status_code=303)
+
+    # ✅ أنشئ الجلسة وسجّل الدخول
     request.session["user"] = {
         "id": user.id,
         "first_name": user.first_name,
@@ -99,9 +125,10 @@ def login_post(
         "status": user.status,
         "is_verified": bool(user.is_verified),
         "avatar_path": user.avatar_path or None,
+        # لو أضفت أعلامًا أخرى تظهر في الواجهة (اختياري)
+        "is_deposit_manager": bool(getattr(user, "is_deposit_manager", False)),
     }
     return RedirectResponse(url="/", status_code=303)
-
 
 # ============ Register ============
 @router.get("/register")
