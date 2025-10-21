@@ -123,24 +123,35 @@ Base.metadata.create_all(bind=engine)
 # ✅ [إضافة] هوت-فيكس لتأمين أعمدة مفقودة في SQLite (خصوصًا deposit_evidences.uploader_id)
 # =========================
 def ensure_sqlite_columns():
+    """
+    هوت-فيكس يضيف عمود uploader_id في جدول deposit_evidences
+    لكن فقط عند استخدام SQLite. يُتجاهل تلقائياً مع Postgres.
+    """
     try:
-        with engine.begin() as conn:
-            # تأكد من عمود uploader_id في جدول deposit_evidences
-            cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info('deposit_evidences')").all()}
-            if "uploader_id" not in cols:
-                # نضيف العمود بدون NOT NULL لتوافق القواعد القديمة
-                conn.exec_driver_sql("ALTER TABLE deposit_evidences ADD COLUMN uploader_id INTEGER;")
-                # (اختياري) فهرس
-                # conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_deposit_evidences_uploader_id ON deposit_evidences(uploader_id);")
-    except Exception as e:
-        # لا نُسقط التطبيق لو فشل — فقط نطبع تحذير
-        print(f"[WARN] ensure_sqlite_columns failed: {e}")
+        # لو القاعدة ليست SQLite لا نفعل شيئًا
+        try:
+            backend = engine.url.get_backend_name()
+        except Exception:
+            backend = getattr(getattr(engine, "dialect", None), "name", "")
+        if backend != "sqlite":
+            return  # ✅ لا تشغّل PRAGMA على Postgres
 
-# ✅ استدعاء الهوت-فيكس بعد create_all
-ensure_sqlite_columns()
-# =========================
-# END الهوت-فيكس
-# =========================
+        with engine.begin() as conn:
+            cols = {
+                row[1]
+                for row in conn.exec_driver_sql("PRAGMA table_info('deposit_evidences')").all()
+            }
+            if "uploader_id" not in cols:
+                conn.exec_driver_sql(
+                    "ALTER TABLE deposit_evidences ADD COLUMN uploader_id INTEGER;"
+                )
+                # اختياري: إنشاء فهرس
+                # conn.exec_driver_sql(
+                #     "CREATE INDEX IF NOT EXISTS ix_deposit_evidences_uploader_id "
+                #     "ON deposit_evidences(uploader_id);"
+                # )
+    except Exception as e:
+        print(f"[WARN] ensure_sqlite_columns skipped/failed: {e}")
 
 def seed_admin():
     db = SessionLocal()
