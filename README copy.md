@@ -18,7 +18,7 @@ uvicorn app.main:app --reload
 Open http://127.0.0.1:8000
 
 ## 🔐 Default Admin
-- Email: `chachouamohamed57@gmail.com`
+- Email: `admin@example.com`
 - Password: `admin123`
 
 ## 📁 Structure
