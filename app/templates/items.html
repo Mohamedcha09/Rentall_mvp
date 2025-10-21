@@ -2,57 +2,152 @@
 {% from "_badges.html" import render_badges %}
 {% block content %}
 
+<style>
+  /* زجاجي/معتم خفيف */
+  .glass-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .glass-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 36px rgba(0,0,0,0.28);
+    border-color: rgba(255,255,255,0.18);
+  }
+  .glass-btn {
+    border: 1px solid rgba(255,255,255,.18);
+    background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: #eaf0ff;
+  }
+  .glass-btn:hover {
+    border-color: rgba(255,255,255,.30);
+    color: #fff;
+  }
+  .chip {
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(148,163,184,.25);
+    background: rgba(148,163,184,.10);
+  }
+  .grid-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .item-img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+    background: rgba(0,0,0,.18);
+  }
+  @media (max-width: 480px) {
+    .item-img { height: 180px; }
+  }
+  .price-badge {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    font-weight: 800;
+    padding: 6px 10px;
+    border-radius: 12px;
+    background: rgba(2, 6, 23, .65);
+    border: 1px solid rgba(148,163,184,.35);
+    backdrop-filter: blur(6px);
+  }
+  .owner-line {
+    display: flex; align-items: center; gap: 8px; min-height: 28px;
+  }
+  .avatar {
+    width: 26px; height: 26px; border-radius: 50%; object-fit: cover;
+    box-shadow: 0 0 0 2px rgba(255,255,255,.12);
+  }
+  .toolbar {
+    display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+  }
+  .pill {
+    padding: 8px 12px; border-radius: 999px; border:1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.04); color:#eaf0ff; text-decoration:none;
+  }
+  .pill.active {
+    border-color: rgba(99,102,241,.6);
+    background: rgba(99,102,241,.18);
+  }
+</style>
+
 <section class="container" style="max-width:1200px;margin:auto">
-  <div class="d-flex align-items-center justify-content-between mb-2">
-    <h2 class="mb-0">العناصر</h2>
-    <div class="small text-muted">
-      {% if current_category %}
-        تصنيف حالي: <strong>{{ current_category }}</strong>
-      {% else %}
-        كل التصنيفات
-      {% endif %}
+
+  <div class="d-flex align-items-center justify-content-between mb-3" style="gap:8px">
+    <div class="d-flex align-items-center" style="gap:10px">
+      <h2 class="mb-0">العناصر</h2>
+      <span class="chip">
+        {% if current_category %}
+          التصنيف: <b>{{ current_category }}</b>
+        {% else %}
+          كل التصنيفات
+        {% endif %}
+      </span>
+      <span class="chip">
+        الترتيب:
+        {% if current_sort == 'new' %}الأحدث{% else %}عشوائي{% endif %}
+      </span>
+    </div>
+
+    <div class="toolbar">
+      <a class="pill {% if not current_category %}active{% endif %}" href="/items">الكل</a>
+      {% for cat in categories %}
+        {# cat قد يكون dict أو object؛ استخدم key/label الشائعة في مشروعك #}
+        {% set key = cat.key if cat.key is defined else (cat.code if cat.code is defined else cat) %}
+        {% set label = cat.label if cat.label is defined else (cat.name if cat.name is defined else key) %}
+        <a class="pill {% if current_category == key %}active{% endif %}" href="/items?category={{ key }}">{{ label }}</a>
+      {% endfor %}
+
+      {# أزرار الترتيب #}
+      {% set base_q = '&category=' ~ current_category if current_category else '' %}
+      <a class="pill {% if current_sort != 'new' %}active{% endif %}" href="/items?sort=random{{ base_q }}">عشوائي</a>
+      <a class="pill {% if current_sort == 'new' %}active{% endif %}" href="/items?sort=new{{ base_q }}">الأحدث</a>
     </div>
   </div>
 
-  <!-- أزرار التصنيفات -->
-  <div class="mb-3" style="display:flex;flex-wrap:wrap;gap:8px">
-    <a class="btn btn-sm {% if not current_category %}btn-primary{% else %}btn-outline-light{% endif %}" href="/items">الكل</a>
-    {% for cat in categories %}
-      <a class="btn btn-sm {% if current_category == cat.key %}btn-primary{% else %}btn-outline-light{% endif %}"
-         href="/items?category={{ cat.key }}">{{ cat.label }}</a>
-    {% endfor %}
-  </div>
-
   {% if items and items|length %}
-    <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
+    <div class="grid-items">
       {% for it in items %}
-        <article class="card" style="border:1px solid rgba(255,255,255,.12);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.04)">
-          <a href="/items/{{ it.id }}" style="display:block">
+        <article class="glass-card">
+          <a href="/items/{{ it.id }}" style="display:block; position:relative">
             {% if it.image_path %}
-              <img src="/{{ it.image_path }}" class="card-img-top" alt="item"
-                   style="width:100%;height:180px;object-fit:cover">
+              <img src="{{ it.image_path | media_url }}" class="item-img" alt="item" loading="lazy" referrerpolicy="no-referrer">
             {% else %}
-              <div style="height:180px;display:grid;place-items:center;background:rgba(0,0,0,.15)">لا صورة</div>
+              <div class="item-img d-grid place-items-center text-muted">لا صورة</div>
             {% endif %}
+            <span class="price-badge">{{ it.price_per_day }} د/يوم</span>
           </a>
-          <div class="card-body">
-            <div class="small text-muted mb-1">{{ it.category_label }}</div>
-            <h5 class="card-title text-truncate" title="{{ it.title }}" style="margin-bottom:6px">{{ it.title }}</h5>
 
-            <!-- مالك العنصر + الشارات -->
-            <div class="d-flex align-items-center justify-content-between mb-2" title="{{ it.owner.first_name }} {{ it.owner.last_name }}">
-              <div class="small text-muted text-truncate" style="max-width:65%">
+          <div class="p-3">
+            <div class="small text-muted mb-1">{{ it.category_label }}{% if it.city %} • {{ it.city }}{% endif %}</div>
+            <h5 class="mb-2 text-truncate" title="{{ it.title }}">{{ it.title }}</h5>
+
+            <div class="owner-line mb-2" title="{{ it.owner.first_name }} {{ it.owner.last_name }}">
+              {% if it.owner and it.owner.avatar_path %}
+                <img class="avatar" src="{{ it.owner.avatar_path | media_url }}" alt="">
+              {% endif %}
+              <div class="text-muted small text-truncate" style="max-width:70%">
                 {{ it.owner.first_name }} {{ it.owner.last_name }}
+              </div>
+              <div style="margin-inline-start:auto">
                 {{ render_badges(it.owner_badges, 18) }}
               </div>
-              <div class="fw-bold">{{ it.price_per_day }} د/يوم</div>
             </div>
 
-            <div class="d-flex justify-content-between">
-              <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
-              {% if it.city %}
-                <span class="small text-muted">🏙️ {{ it.city }}</span>
-              {% endif %}
+            <div class="d-flex justify-content-between align-items-center">
+              <a href="/items/{{ it.id }}" class="btn btn-sm glass-btn">تفاصيل</a>
+              <a href="/messages/start?user_id={{ it.owner_id }}&item_id={{ it.id }}" class="btn btn-sm btn-outline-primary">تواصل</a>
             </div>
           </div>
         </article>
@@ -61,6 +156,7 @@
   {% else %}
     <p class="text-muted">لا توجد عناصر ضمن هذا التصنيف.</p>
   {% endif %}
+
 </section>
 
 {% endblock %}

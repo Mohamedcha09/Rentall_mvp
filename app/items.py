@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func  # ✅ لفرز عشوائي
 import os, secrets, shutil
 
 # Cloudinary (رفع الصور إلى السحابة)
@@ -16,7 +17,10 @@ from .utils_badges import get_user_badges
 router = APIRouter()
 
 # جذر مجلد الرفع المحلي (مُعلن أيضاً في main.py بالـ /uploads)
-UPLOADS_ROOT = os.environ.get("UPLOADS_DIR", os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")), "uploads"))
+UPLOADS_ROOT = os.environ.get(
+    "UPLOADS_DIR",
+    os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")), "uploads")
+)
 ITEMS_DIR = os.path.join(UPLOADS_ROOT, "items")
 os.makedirs(ITEMS_DIR, exist_ok=True)
 
@@ -43,14 +47,27 @@ def _local_public_url(fname: str) -> str:
 
 # ================= قائمة العناصر =================
 @router.get("/items")
-def items_list(request: Request, db: Session = Depends(get_db), category: str = None):
+def items_list(
+    request: Request,
+    db: Session = Depends(get_db),
+    category: str = None,
+    sort: str = None,   # ✅ دعم اختيار الترتيب عبر الاستعلام
+):
     q = db.query(Item).filter(Item.is_active == "yes")
     current_category = None
     if category:
         q = q.filter(Item.category == category)
         current_category = category
 
-    items = q.order_by(Item.created_at.desc()).all()
+    # ✅ افتراضيًا ترتيب عشوائي حتى لا يظهر نفس العنصر أولاً كل مرة
+    # استخدم ?sort=new لعرض الأحدث أولاً
+    sort = (sort or request.query_params.get("sort") or "random").lower()
+    if sort == "new":
+        q = q.order_by(Item.created_at.desc())
+    else:
+        q = q.order_by(func.random())
+
+    items = q.all()
     for it in items:
         it.category_label = category_label(it.category)
         # 🟢 شارات المالك
@@ -66,6 +83,7 @@ def items_list(request: Request, db: Session = Depends(get_db), category: str = 
             "current_category": current_category,
             "session_user": request.session.get("user"),
             "account_limited": is_account_limited(request),
+            "current_sort": sort,  # ✅ لعرض شارة الترتيب في القالب إن أردت
         }
     )
 
@@ -101,7 +119,12 @@ def my_items(request: Request, db: Session = Depends(get_db)):
     if not u:
         return RedirectResponse(url="/login", status_code=303)
 
-    items = db.query(Item).filter(Item.owner_id == u["id"]).order_by(Item.created_at.desc()).all()
+    items = (
+        db.query(Item)
+        .filter(Item.owner_id == u["id"])
+        .order_by(Item.created_at.desc())
+        .all()
+    )
     for it in items:
         it.category_label = category_label(it.category)
         it.owner_badges = get_user_badges(it.owner, db) if it.owner else []
