@@ -655,24 +655,22 @@ def report_deposit_issue(
     if _get_deposit_pi_id(bk) is None:
         raise HTTPException(status_code=400, detail="No deposit hold found")
 
-    # 1) حفظ + رفع Cloudinary (بدون حذف الحفظ المحلي)
-    #    ترجع [(local_name, secure_url)]
+    # 1) حفظ محلي + رفع Cloudinary (يرجع [(local_name, secure_url)])
     saved_pairs = _save_evidence_files_and_cloud(bk.id, files)
 
-    # 2) تسجيل كل ملف كصف Evidence في DB مع side='owner' ورابط Cloudinary
+    # 2) تسجيل كل ملف كـ Evidence في DB مع side='owner' ورابط Cloudinary
     try:
         from .models import DepositEvidence
-side_val = "owner" if user.id == bk.owner_id else "renter"
-for name, url in saved_pairs:
-    db.add(DepositEvidence(
-        booking_id=bk.id,
-        uploader_id=user.id,
-        side=side_val,
-        kind="image",
-        file_path=url,        # رابط Cloudinary
-        description=(comment or None),
-    ))
-        # معلومات البلاغ
+        for name, url in saved_pairs:
+            db.add(DepositEvidence(
+                booking_id=bk.id,
+                uploader_id=user.id,        # المالك هو الرافع هنا
+                side="owner",
+                kind="image",               # ممكن لاحقاً نستنتجه من الامتداد
+                file_path=url,              # رابط Cloudinary أو المحلي fallback
+                description=(description or None),
+            ))
+        # حفظ معلومات البلاغ على الحجز
         try:
             bk.owner_report_type = (issue_type or None)
             bk.owner_report_reason = (description or None)
@@ -699,7 +697,7 @@ for name, url in saved_pairs:
 
     db.commit()
 
-    # ===== إشعارات وبريد (كما هي عندك) =====
+    # ===== إشعارات وبريد =====
     push_notification(
         db, bk.renter_id, "بلاغ وديعة جديد",
         f"قام المالك بالإبلاغ عن مشكلة ({issue_type}) بخصوص الحجز #{bk.id}.",
@@ -755,7 +753,6 @@ for name, url in saved_pairs:
         },
         status_code=200
     )
-
 
 # =========================
 # >>> نموذج/رفع أدلّة (الطرفين) — إشعار فوري للطرف الآخر + DMs + إيميل
