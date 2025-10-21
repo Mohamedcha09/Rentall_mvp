@@ -19,7 +19,7 @@ Open http://127.0.0.1:8000
 
 ## 🔐 Default Admin
 - Email: `chachouamohamed57@gmail.com`
-- Password: `Blida0909`
+- Password: `admin123`
 
 ## 📁 Structure
 ```

@@ -156,24 +156,34 @@ def ensure_sqlite_columns():
 def seed_admin():
     db = SessionLocal()
     try:
-admin = db.query(User).filter(User.email == "chachouamohamed57@gmail.com").first()
+        admin = db.query(User).filter(User.email == "chachouamohamed57@gmail.com").first()
         if not admin:
-            from .utils import hash_password
+            try:
+                from .utils import hash_password
+            except Exception:
+                # احتياط لو ما عندك الدالة
+                import hashlib
+                def hash_password(p):  # بديل بسيط جداً
+                    return hashlib.sha256(p.encode("utf-8")).hexdigest()
+
             admin = User(
                 first_name="Admin",
                 last_name="User",
                 email="chachouamohamed57@gmail.com",
-
                 phone="0000000000",
                 password_hash=hash_password("Blida0909"),
                 role="admin",
                 status="approved",
+                is_deposit_manager=True,  # لو تحب يكون DM أيضاً
             )
             db.add(admin)
             db.commit()
     finally:
         db.close()
+
+# نادِ الدالة مرة واحدة عند الإقلاع
 seed_admin()
+
 
 PAYOUTS_ENABLED = os.getenv("ENABLE_PAYOUTS", "0") == "1"
 if PAYOUTS_ENABLED:
