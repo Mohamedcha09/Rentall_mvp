@@ -760,9 +760,6 @@ for name, url in saved_pairs:
 # =========================
 # >>> نموذج/رفع أدلّة (الطرفين) — إشعار فوري للطرف الآخر + DMs + إيميل
 # =========================
-# =========================
-# >>> نموذج/رفع أدلّة (الطرفين) — إشعار فوري للطرف الآخر + DMs + إيميل
-# =========================
 @router.post("/deposits/{booking_id}/evidence/upload")
 def evidence_upload(
     booking_id: int,
@@ -771,45 +768,38 @@ def evidence_upload(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    يرفع الطرف (مالك/مستأجر) أدلة جديدة → إشعار للطرف الآخر + DMs + بريد.
-    """
     require_auth(user)
     bk = require_booking(db, booking_id)
     if user.id not in (bk.owner_id, bk.renter_id):
         raise HTTPException(status_code=403, detail="Not participant in this booking")
 
-    # 1) حفظ + رفع Cloudinary (بدون حذف الحفظ المحلي)
+    # 1) حفظ + رفع
     saved_pairs = _save_evidence_files_and_cloud(bk.id, files)
 
-    # 2) تسجيل الأدلة في DB مع side مناسب (owner/renter) ورابط Cloudinary
+    # 2) سجّل الأدلة
     try:
         from .models import DepositEvidence
         side_val = "owner" if user.id == bk.owner_id else "renter"
         for name, url in saved_pairs:
             db.add(DepositEvidence(
                 booking_id=bk.id,
-                uploader_id=user.id,        # ✅ NOT NULL في بعض الجداول
-                by_user_id=user.id if hasattr(DepositEvidence, "by_user_id") else None,  # توافقية
+                uploader_id=user.id,
                 side=side_val,
-                kind="image",               # يمكن لاحقًا الاستنتاج من الامتداد
-                file_path=url,              # رابط Cloudinary أو المحلي
+                kind="image",
+                file_path=url,
                 description=(comment or None),
             ))
         db.commit()
     except Exception:
         db.rollback()
-        # لا نرفع الخطأ حتى لا نكسر الواجهة؛ نكمل الإشعارات
         pass
 
-    # 3) تحديث حالة الحجز/النزاع
+    # 3) تحديث الحالة
     now = datetime.utcnow()
     try:
         setattr(bk, "updated_at", now)
-        # عندما تأتي أدلة جديدة نضمن أن الحالة ليست مغلقة
         if getattr(bk, "status", "") in ("closed", "completed"):
             bk.status = "in_review"
-        # لو كانت في awaiting_renter نرجعها لنزاع مفتوح
         if getattr(bk, "deposit_status", "") == "awaiting_renter":
             bk.deposit_status = "in_dispute"
         db.commit()
@@ -820,20 +810,19 @@ def evidence_upload(
     other_id = bk.renter_id if user.id == bk.owner_id else bk.owner_id
     who = "المالك" if user.id == bk.owner_id else "المستأجر"
 
-    # إشعارات داخلية
+    # إشعارات
     try:
-        push_notification(
-            db, other_id, "أدلة جديدة في القضية",
-            f"{who} قام برفع أدلة جديدة للحجز #{bk.id}.",
-            f"/bookings/flow/{bk.id}", "deposit"
-        )
-        notify_dms(db, "أدلة جديدة — تحديث القضية", f"تم رفع أدلة جديدة للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+        push_notification(db, other_id, "أدلة جديدة في القضية",
+                          f"{who} قام برفع أدلة جديدة للحجز #{bk.id}.",
+                          f"/bookings/flow/{bk.id}", "deposit")
+        notify_dms(db, "أدلة جديدة — تحديث القضية",
+                   f"تم رفع أدلة جديدة للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
         _audit(db, actor=user, bk=bk, action="evidence_upload",
                details={"by": who, "files": [p[0] for p in saved_pairs], "comment": comment})
     except Exception:
         pass
 
-    # Emails: للطرف الآخر + DMs
+    # إيميلات
     try:
         other_email = _user_email(db, other_id)
         dms_em      = _dm_emails_only(db)
