@@ -738,3 +738,157 @@ body[data-theme="light"] .topmenu{
   .topmenu{ inset-inline-end: 10px; top: 56px; }
 }
 /* انتهى */
+
+/****************************************************
+ *  Mobile-only Addons (Airbnb-like) — append only  *
+ *  لا تغيّر ستايل الكمبيوتر — أضف هذا القسم في آخر الملف
+ ****************************************************/
+
+/* ===== Top tabs (Home / تحويلات / لوحة أدمين) ===== */
+.m-top-tabs{
+  position: sticky;
+  top: 56px;           /* تحت التوب بار بالموبايل */
+  z-index: 2000;
+  display: grid;
+  grid-auto-flow: column;
+  gap: 8px;
+  padding: 8px 12px;
+  background: linear-gradient(180deg, rgba(0,0,0,.00), rgba(0,0,0,.04));
+  backdrop-filter: blur(12px) saturate(120%);
+  border-bottom: 1px solid var(--border, rgba(255,255,255,.12));
+}
+.m-top-tabs .m-tab{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 12px;
+  font-weight: 700;
+  font-size: .92rem;
+  border-radius: 999px;
+  color: var(--muted, #8b95a7);
+  text-decoration: none;
+  border: 1px solid transparent;
+  background: color-mix(in oklab, var(--panel, #0f172a) 90%, transparent);
+  transition: background .15s ease, color .15s ease, transform .12s ease, border-color .15s ease;
+}
+.m-top-tabs .m-tab:hover{ transform: translateY(-1px); }
+.m-top-tabs .m-tab.is-active{
+  color: var(--text, #fff);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--surface, #111827) 92%, transparent),
+                                       color-mix(in oklab, var(--panel, #0f172a) 88%, transparent));
+  border-color: color-mix(in oklab, var(--primary, #7c5cff) 45%, var(--border, rgba(255,255,255,.12)));
+  box-shadow: 0 10px 28px rgba(0,0,0,.18);
+}
+
+/* ===== Bottom mobile tabbar (5 tabs) ===== */
+.mobile-tabbar{
+  position: fixed !important;
+  inset-inline: 0;
+  bottom: 0;
+  height: 64px;
+  background: linear-gradient(180deg,
+              color-mix(in oklab, var(--surface, #111827) 96%, transparent),
+              color-mix(in oklab, var(--panel, #0f172a) 92%, transparent));
+  border-top: 1px solid var(--border, rgba(255,255,255,.12));
+  backdrop-filter: blur(14px) saturate(120%);
+  z-index: 2300;
+  display: block;
+}
+.mobile-tabbar .tabbar-inner{
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr); /* ← خمسة تبويبات */
+}
+.mobile-tabbar a{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 100%;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--muted, #8b95a7);
+  text-decoration: none;
+  transition: color .15s ease, transform .12s ease, opacity .15s ease;
+}
+.mobile-tabbar .tab-img{
+  width: 22px; height: 22px; object-fit: contain;
+  opacity: .55; transition: opacity .15s ease, transform .12s ease;
+}
+.mobile-tabbar a.is-active{
+  color: var(--text, #fff);
+}
+.mobile-tabbar a.is-active .tab-img{
+  opacity: 1; transform: translateY(-1px) scale(1.06);
+}
+/* شريط سفلي صغير أسفل التبويب النشط (لمسة Airbnb) */
+.mobile-tabbar a.is-active::after{
+  content:"";
+  display:block;
+  width: 26px; height: 3px; border-radius: 3px;
+  margin-top: 3px;
+  background: var(--primary, #7c5cff);
+}
+
+/* ===== Mobile topbar compact ===== */
+@media (max-width: 768px){
+  .topbar{ height: 56px; border-bottom: 1px solid var(--border, rgba(255,255,255,.12)); }
+  .topbar__inner{
+    grid-template-columns: 1fr auto auto; /* بحث + رسائل + جرس */
+    gap: 8px; padding: 8px 12px;
+  }
+  .brand{ display: none !important; }           /* إخفاء الشعار في الموبايل */
+  .sidebar{ display: none !important; }         /* لا نُظهر السايدبار بالموبايل */
+  .collapse-pin{ display: none !important; }
+
+  .search{ margin: 0; }
+  .search .search__input{
+    height: 40px !important;
+    border-radius: 20px !important;
+    padding-inline: 40px 12px !important;
+  }
+
+  /* مساحة أسفل الصفحة بسبب التبويب السفلي */
+  .page{
+    margin-inline: 0 !important;
+    padding: calc(56px + 10px) 12px 110px !important;
+    padding-bottom: calc(90px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* ===== Cards / media polish on mobile ===== */
+@media (max-width: 768px){
+  .home-grid{ grid-template-columns: repeat(auto-fill, minmax(170px,1fr)); gap: 12px; }
+  .card.spot{ border-radius: 16px; overflow: hidden; }
+  .spot-media{ aspect-ratio: 16/10; border-bottom: 1px solid var(--border, rgba(255,255,255,.12)); }
+  .card.spot .card-body{ padding: .6rem .6rem .7rem; }
+  .spot-title{
+    margin: .1rem 0 .4rem;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    overflow: hidden; min-height: 2.6em;
+  }
+  .city-chip{
+    max-width: 65%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    padding: .15rem .45rem; border-radius: 999px;
+    background: rgba(255,255,255,.06); border: 1px solid var(--border, rgba(255,255,255,.12));
+  }
+}
+
+/* ===== Floating Action Button spacing over tabbar ===== */
+@media (max-width: 768px){
+  .fab{ bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ===== Small helpers ===== */
+.m-hide-desktop{ display: none; }
+@media (max-width: 992px){
+  .m-hide-desktop{ display: initial; }
+  .d-lg-none .m-hide-desktop{ display: initial; }
+}
+
+/* تأكيد أن التبويبات العلوية تظهر فقط على الموبايل */
+@media (min-width: 992px){
+  .m-top-tabs{ display: none !important; }
+}

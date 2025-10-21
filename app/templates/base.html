@@ -325,7 +325,24 @@
         </div>
       </div>
     </header>
-    <!-- /Topbar -->
+
+    <!-- ===== Mobile Top Tabs (موبايل فقط) ===== -->
+    <nav class="m-top-tabs d-lg-none" role="tablist" aria-label="أقسام عليا">
+      <a href="/" class="m-tab {% if request and request.url.path == '/' %}is-active{% endif %}" role="tab"
+         aria-selected="{{ 'true' if request and request.url.path == '/' else 'false' }}">Home</a>
+
+      {% if session_user %}
+        <a href="/payout/settings" class="m-tab {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" role="tab"
+           aria-selected="{{ 'true' if request and request.url.path.startswith('/payout') else 'false' }}">تحويلات</a>
+      {% else %}
+        <a href="/login" class="m-tab" role="tab" aria-selected="false">تحويلات</a>
+      {% endif %}
+
+      {% if session_user and session_user.role == 'admin' %}
+        <a href="/admin" class="m-tab {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" role="tab"
+           aria-selected="{{ 'true' if request and request.url.path.startswith('/admin') else 'false' }}">لوحة أدمين</a>
+      {% endif %}
+    </nav>
 
     <!-- ===== Sidebar (يبقى في الـ DOM لكن مخفي على سطح المكتب عبر CSS) ===== -->
     <aside class="sidebar" id="appSidebar" data-collapsed="false">
@@ -405,31 +422,59 @@
     {% endif %}
 
     <!-- ===== تبويب الجوال ===== -->
+    <!-- (تم تعديله ليصبح 5 تبويبات: رئيسية / مفضلاتي / حجوزاتي / الرسائل / بروفايلي) -->
     <nav class="mobile-tabbar d-lg-none">
       <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
         <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home">
         <span>الرئيسية</span>
       </a>
-      <a href="/items" class="{% if request and request.url.path.startswith('/items') %}is-active{% endif %}">
-        <img class="tab-img" src="{{ url_for('static', path='images/tout.png') }}" alt="items">
-        <span>العناصر</span>
-      </a>
+
       {% if session_user %}
       <a href="/favorites" class="{% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}">
         <img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav">
-        <span>مفضلتي</span>
+        <span>مفضلاتي</span>
+      </a>
+      {% else %}
+      <a href="/login">
+        <img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav">
+        <span>مفضلاتي</span>
       </a>
       {% endif %}
+
+      {% if session_user %}
+      <a href="/bookings" class="{% if request and request.url.path.startswith('/bookings') %}is-active{% endif %}">
+        <img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour">
+        <span>حجوزاتي</span>
+      </a>
+      {% else %}
+      <a href="/login">
+        <img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour">
+        <span>حجوزاتي</span>
+      </a>
+      {% endif %}
+
+      {% if session_user %}
+      <a href="/messages" class="{% if request and request.url.path.startswith('/messages') %}is-active{% endif %}">
+        <img class="tab-img" src="/static/img/msg.png" alt="Messages">
+        <span>الرسائل</span>
+      </a>
+      {% else %}
+      <a href="/login">
+        <img class="tab-img" src="/static/img/msg.png" alt="Messages">
+        <span>الرسائل</span>
+      </a>
+      {% endif %}
+
+      {% if session_user %}
       <a href="/profile" class="{% if request and request.url.path.startswith('/profile') %}is-active{% endif %}">
         <img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile">
-        <span>صفحتي</span>
+        <span>بروفايلي</span>
       </a>
-
-      {% if session_user and session_user.get('can_manage_deposits') %}
-        <a href="/dm/deposits" class="{% if request and request.url.path.startswith('/dm/deposits') %}is-active{% endif %}">
-          <i class="bi bi-shield-exclamation"></i>
-          <span>قضايا الوديعة</span>
-        </a>
+      {% else %}
+      <a href="/login">
+        <img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile">
+        <span>بروفايلي</span>
+      </a>
       {% endif %}
     </nav>
 
@@ -568,7 +613,7 @@
       function show(){ panel.classList.remove('d-none'); }
       function esc(s){
   return String(s||"").replace(/[&<>"']/g, function(c){
-    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
   });
 }
 
@@ -671,7 +716,7 @@
 
       function esc(s){
   return String(s||"").replace(/[&<>"']/g, function(c){
-    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
   });
 }
 
