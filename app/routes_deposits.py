@@ -662,16 +662,16 @@ def report_deposit_issue(
     # 2) تسجيل كل ملف كصف Evidence في DB مع side='owner' ورابط Cloudinary
     try:
         from .models import DepositEvidence
-        for name, url in saved_pairs:
-            db.add(DepositEvidence(
-                booking_id=bk.id,
-                uploader_id=user.id,
-                by_user_id=user.id,  # ✅ موجود لديك
-                side="owner",
-                kind="image",  # يمكن لاحقًا استنتاج النوع
-                file_path=url,  # <<< NEW: رابط Cloudinary الآمن
-                description=(description or None),
-            ))
+side_val = "owner" if user.id == bk.owner_id else "renter"
+for name, url in saved_pairs:
+    db.add(DepositEvidence(
+        booking_id=bk.id,
+        uploader_id=user.id,
+        side=side_val,
+        kind="image",
+        file_path=url,        # رابط Cloudinary
+        description=(comment or None),
+    ))
         # معلومات البلاغ
         try:
             bk.owner_report_type = (issue_type or None)

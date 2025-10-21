@@ -4,6 +4,10 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 import os, secrets, shutil
 
+# Cloudinary (رفع الصور إلى السحابة)
+import cloudinary
+import cloudinary.uploader
+
 from .database import get_db
 from .models import Item, User
 from .utils import CATEGORIES, category_label
@@ -11,7 +15,8 @@ from .utils_badges import get_user_badges
 
 router = APIRouter()
 
-UPLOADS_ROOT = os.environ.get("UPLOADS_DIR", "uploads")
+# جذر مجلد الرفع المحلي (مُعلن أيضاً في main.py بالـ /uploads)
+UPLOADS_ROOT = os.environ.get("UPLOADS_DIR", os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")), "uploads"))
 ITEMS_DIR = os.path.join(UPLOADS_ROOT, "items")
 os.makedirs(ITEMS_DIR, exist_ok=True)
 
@@ -26,6 +31,15 @@ def is_account_limited(request: Request) -> bool:
         return False
     return u.get("status") != "approved"
 
+def _ext_ok(filename: str) -> bool:
+    if not filename:
+        return False
+    ext = os.path.splitext(filename.lower())[1]
+    return ext in [".jpg", ".jpeg", ".png", ".webp"]
+
+def _local_public_url(fname: str) -> str:
+    # عنوان يمكن فتحه عبر StaticFiles('/uploads' -> UPLOADS_ROOT)
+    return f"/uploads/items/{fname}"
 
 # ================= قائمة العناصر =================
 @router.get("/items")
@@ -55,7 +69,6 @@ def items_list(request: Request, db: Session = Depends(get_db), category: str = 
         }
     )
 
-
 # ================= تفاصيل عنصر =================
 @router.get("/items/{item_id}")
 def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
@@ -81,7 +94,6 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
         }
     )
 
-
 # ================= عناصر المالك =================
 @router.get("/owner/items")
 def my_items(request: Request, db: Session = Depends(get_db)):
@@ -104,7 +116,6 @@ def my_items(request: Request, db: Session = Depends(get_db)):
             "account_limited": is_account_limited(request),
         }
     )
-
 
 # ================= إضافة عنصر جديد =================
 @router.get("/owner/items/new")
@@ -138,23 +149,65 @@ def item_new_post(
         return RedirectResponse(url="/login", status_code=303)
 
     u = request.session.get("user")
-    img_path = None
-    if image:
-        ext = os.path.splitext(image.filename)[1].lower()
-        if ext in [".jpg", ".jpeg", ".png"]:
+
+    # المسار النهائي الذي سنخزنه في DB (Cloudinary URL أو مسار محلي /uploads/..)
+    image_path_for_db = None
+
+    if image and image.filename:
+        # 1) تأكيد الامتداد
+        if not _ext_ok(image.filename):
+            # تجاهل الملف غير المدعوم بهدوء (تقدر ترجع خطأ HTTP لو حاب)
+            pass
+        else:
+            # 2) اسم ملف آمن محلي (للـ fallback أو أي حاجة ثانية)
+            ext = os.path.splitext(image.filename)[1].lower()
             fname = f"{u['id']}_{secrets.token_hex(8)}{ext}"
             fpath = os.path.join(ITEMS_DIR, fname)
-            with open(fpath, "wb") as f:
-                shutil.copyfileobj(image.file, f)
-            img_path = fpath.replace("\\", "/")
 
+            # 3) نحاول الرفع إلى Cloudinary أولاً
+            uploaded_url = None
+            try:
+                # ارفع الملف مباشرة من الـ stream إلى كلودينري (resource_type=image)
+                up = cloudinary.uploader.upload(
+                    image.file,               # stream
+                    folder=f"items/{u['id']}",
+                    public_id=os.path.splitext(fname)[0],
+                    resource_type="image",
+                )
+                uploaded_url = (up or {}).get("secure_url")
+            except Exception:
+                uploaded_url = None
+
+            # 4) إذا ما نجح كلودينري → نحفظ محلياً وننشئ URL عام عبر /uploads
+            if not uploaded_url:
+                try:
+                    # لازم نرجّع مؤشر الملف للبداية قبل النسخ
+                    try:
+                        image.file.seek(0)
+                    except Exception:
+                        pass
+                    with open(fpath, "wb") as f:
+                        shutil.copyfileobj(image.file, f)
+                    image_path_for_db = _local_public_url(fname)
+                except Exception:
+                    image_path_for_db = None
+            else:
+                image_path_for_db = uploaded_url
+
+            # تأكد إغلاق الملف
+            try:
+                image.file.close()
+            except Exception:
+                pass
+
+    # إنشاء السجل
     it = Item(
         owner_id=u["id"],
         title=title,
         description=description,
         city=city,
         price_per_day=price_per_day,
-        image_path=img_path,
+        image_path=image_path_for_db,   # قد يكون Cloudinary URL أو /uploads/items/xxx
         is_active="yes",
         category=category
     )
