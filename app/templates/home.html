@@ -86,7 +86,7 @@
       <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="9" aria-label="10"></button>
     </div>
 
-    <!-- Slides (كل الشرائح داخل .carousel-inner) -->
+    <!-- Slides -->
     <div class="carousel-inner">
       <!-- 1 -->
       <div class="carousel-item active">
@@ -363,7 +363,6 @@
     FAVORITES_IDS = JSON.parse(raw);
   }catch(e){ FAVORITES_IDS = []; }
 
-  /* ===== تعليم القلوب المحفوظة مسبقاً ===== */
   function markExistingFavorites(){
     document.querySelectorAll('.fav-btn').forEach((btn)=>{
       const id = Number(btn.dataset.id);
@@ -376,23 +375,18 @@
     });
   }
 
-  /* ===== ضغط القلب: POST/DELETE على /api/favorites/{id} ===== */
+  /* ضغط القلب: POST/DELETE على /api/favorites/{id} */
   document.addEventListener('click', async (e)=>{
     const btn = e.target.closest('.fav-btn');
     if(!btn) return;
-
     e.preventDefault();
     e.stopPropagation();
-
     if(!IS_AUTH){ window.location.href = '/login'; return; }
-
     const id = Number(btn.dataset.id);
     const add = !btn.classList.contains('is-fav');
-
     try{
       const res = await fetch(`/api/favorites/${id}`, { method: add ? 'POST' : 'DELETE' });
       if(!res.ok) throw new Error('bad response');
-
       btn.classList.toggle('is-fav', add);
       const icon = btn.querySelector('.bi');
       if(icon){

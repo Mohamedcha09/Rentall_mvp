@@ -978,3 +978,59 @@ html[dir="rtl"] .hero-carousel .carousel-caption{
 .hero-carousel .carousel-control-prev,
 .hero-carousel .carousel-control-next{ width: 6%; }
 .hero-carousel .carousel-indicators [data-bs-target]{ width:12px; height:12px; }
+
+/* === Amazon hero blend (ثبّت الاندماج مع الأبيض) === */
+@media (min-width: 992px){
+  .edge-bleed .hero-carousel{ border-radius:0!important; box-shadow:none!important; }
+  .hero-carousel::after{
+    content:""; position:absolute; inset-inline:0; bottom:0; height:160px;
+    background:linear-gradient(180deg, rgba(255,255,255,0) 5%, #fff 85%);
+    pointer-events:none;
+  }
+  /* يسحب الرفوف لأعلى لتلتصق أسفل البانر */
+  .home-shelves{ margin-top:-72px!important; background:#fff; border-radius:18px 18px 0 0;
+                 box-shadow:0 8px 26px rgba(0,0,0,.06); padding:18px 18px 22px; }
+}
+
+/* زيادة تباين النص فوق الصور الفاتحة */
+.hero-carousel::before{
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,.28) 100%);
+  pointer-events:none;
+}
+
+/* === لوحات فئات مثل Amazon === */
+.panel-row{
+  display:grid; gap:14px;
+  grid-template-columns:repeat(1, minmax(0,1fr));
+}
+@media (min-width:768px){ .panel-row{ grid-template-columns:repeat(2,1fr); } }
+@media (min-width:1200px){ .panel-row{ grid-template-columns:repeat(4,1fr); } }
+
+.panel-card{
+  background:#fff; border:1px solid var(--border);
+  border-radius:16px; box-shadow:var(--shadow);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.panel-head{
+  padding:12px 14px 6px; font-weight:800; font-size:1.05rem;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.panel-body{ padding:10px 12px 12px; }
+.mini-grid{
+  display:grid; gap:10px; grid-template-columns:repeat(2,1fr);
+}
+.mini{
+  display:block; border-radius:12px; overflow:hidden; border:1px solid var(--border);
+  background:rgba(0,0,0,.03);
+}
+.mini img{ width:100%; aspect-ratio:1/1; object-fit:cover; display:block; }
+.panel-foot{ padding:10px 12px 14px; }
+.panel-foot a{ font-weight:700; color:#007185; }     /* لون رابط مثل أمازون */
+.panel-foot a:hover{ text-decoration:underline; }
+
+/* في الموبايل نُبقي البطاقات بعرض الشاشة والسكول أفقي اختياري */
+@media (max-width: 576px){
+  .panel-row{ display:flex; overflow:auto; gap:12px; scroll-snap-type:x mandatory; padding-bottom:6px; }
+  .panel-card{ min-width: 86%; scroll-snap-align:start; }
+}
