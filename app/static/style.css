@@ -901,3 +901,38 @@ html, body { height: 100%; }
   </button>
 </div>
 <!-- ========== /Hero Carousel ========== -->
+/* ===== Desktop-only Amazon look ===== */
+@media (min-width: 992px){
+  /* بانر ممتد بالحافة (edge-to-edge) */
+  .edge-bleed{
+    margin-inline: calc(50% - 50vw);
+    width: 100vw;
+  }
+
+  /* تلاشي أسفل الصورة إلى الأبيض ليمتزج مع الموقع */
+  .hero-carousel{ position: relative; }
+  .hero-carousel::after{
+    content:"";
+    position:absolute; left:0; right:0; bottom:0; height:120px;
+    /* تدرّج يذوب من شفّاف إلى أبيض (لون موقعك) */
+    background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #ffffff 75%);
+    pointer-events:none;
+  }
+
+  /* صندوق أبيض للمنتجات تحت البانر (مثل رفوف أمازون) */
+  .home-shelves{
+    background:#fff;
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 8px 26px rgba(0,0,0,.06);
+    margin-top: -40px;   /* يركّب فوق حافة البانر */
+    padding: 16px 18px 20px;
+  }
+
+  /* عرض المحتوى مثل أمازون */
+  .home-shelves.container-xl{ max-width: 1320px; }
+}
+
+/* تحسين بسيط للمؤشرات */
+.hero-carousel .carousel-indicators [data-bs-target]{
+  width:10px; height:10px; border-radius:50%;
+}
