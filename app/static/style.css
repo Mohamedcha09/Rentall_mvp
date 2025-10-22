@@ -1019,3 +1019,60 @@ body[data-theme="light"] .topmenu{
     text-align: start;
   }
 }
+
+/* ==== Airbnb-like: Topbar search-only on mobile ==== */
+@media (max-width: 768px){
+  /* اخفِ كل شيء في التوب بار ما عدا البحث */
+  .topbar .brand,
+  .topbar .actions,
+  .topbar #menuBtn{ display:none !important; }
+
+  .topbar{ height:56px; border-bottom:1px solid var(--border); }
+  .topbar__inner{
+    grid-template-columns: 1fr !important;   /* عمود واحد */
+    gap: 8px; padding: 8px 12px;
+  }
+
+  /* البحث يتمدّد بالكامل ويأخذ شكل الحبة */
+  .topbar .search{ margin:0; max-width:none !important; }
+  .topbar .search .search__input{
+    height:44px !important;
+    border-radius:999px !important;
+    padding-inline:40px 14px !important;
+    background:#f4f6fb !important;
+    color:#444 !important;
+    border:0 !important;
+    box-shadow: 0 8px 18px rgba(0,0,0,.08) inset,
+                0 6px 16px rgba(0,0,0,.10);
+  }
+  body[data-theme="dark"] .topbar .search .search__input{
+    background:rgba(255,255,255,.08) !important;
+    border:1px solid var(--border) !important;
+    color:var(--text) !important;
+    box-shadow:none;
+  }
+  .topbar .search .search__icon{
+    inset-inline-start:16px !important;
+    opacity:.65 !important;
+    font-size:1.05rem;
+  }
+  .topbar .search .search__input::placeholder{
+    font-size:1.05rem; letter-spacing:.2px; color:#8b95a7;
+  }
+  body[data-theme="dark"] .topbar .search .search__input::placeholder{
+    color: color-mix(in oklab, var(--text) 60%, transparent);
+  }
+
+  /* لمسة عند التركيز مثل Airbnb */
+  .topbar .search.is-focused .search__input{
+    outline:0; box-shadow:0 0 0 4px var(--ring), 0 8px 28px rgba(0,0,0,.18);
+    border-color: color-mix(in oklab, var(--primary) 60%, var(--border)) !important;
+  }
+
+  /* تأمين مسافة أسفل لأن التبويب السفلي موجود */
+  .page{
+    margin-inline:0 !important;
+    padding: calc(56px + 10px) 12px 110px !important;
+    padding-bottom: calc(90px + env(safe-area-inset-bottom)) !important;
+  }
+}
