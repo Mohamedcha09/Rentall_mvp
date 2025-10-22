@@ -24,38 +24,30 @@
   .fav-btn.is-fav{background:#a944ec}
   .fav-btn.is-fav .bi{color:#fff}
 
-  /* ========= Hero Carousel ========= */
+  /* ========= Hero Carousel (صور فقط) ========= */
   .hero-carousel{ position:relative; border-radius:16px; overflow:hidden; box-shadow: var(--shadow); }
   .hero-carousel .carousel-item{ max-height:520px; overflow:hidden; }
-  .hero-carousel .carousel-item img{
-    width:100%; height:520px; object-fit:cover; object-position:center; display:block;
-  }
-  .hero-carousel .carousel-caption{ left:5%; right:auto; bottom:12%; text-align:start; }
-  .hero-carousel .carousel-caption h2{ font-weight:800; }
-  .hero-carousel .carousel-caption p{ margin-bottom:.6rem; }
+  .hero-carousel .carousel-item img{ width:100%; height:520px; object-fit:cover; object-position:center; display:block; }
+
+  /* لا مؤشرات، ولا كابشن */
+  .hero-carousel .carousel-indicators{ display:none !important; }
+  .hero-carousel .carousel-caption{ display:none !important; }
+
   @media (max-width:992px){
     .hero-carousel .carousel-item img{ height:380px; }
-    .hero-carousel .carousel-caption{ bottom:10%; }
-    .hero-carousel .carousel-caption h2{ font-size:1.6rem; }
   }
   @media (max-width:576px){
     .hero-carousel .carousel-item img{ height:300px; }
-    .hero-carousel .carousel-caption{ bottom:8%; }
-    .hero-carousel .carousel-caption p{ display:none; }
   }
-  .hero-carousel .carousel-indicators [data-bs-target]{ width:10px; height:10px; border-radius:50%; }
 
   /* ===== Desktop-only Amazon look (edge bleed + white shelves) ===== */
   @media (min-width: 992px){
-    /* اجعل البانر بعرض الشاشة */
     .edge-bleed{ margin-inline: calc(50% - 50vw); width:100vw; }
-    /* تلاشي لأسفل نحو الأبيض ليذوب مع الخلفية */
     .hero-carousel::after{
       content:""; position:absolute; left:0; right:0; bottom:0; height:120px;
       background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #ffffff 75%);
       pointer-events:none;
     }
-    /* غلاف أبيض للرفوف تحت البانر */
     .home-shelves{
       background:#fff; border-radius:18px 18px 0 0; box-shadow:0 8px 26px rgba(0,0,0,.06);
       margin-top:-40px; padding:16px 18px 20px;
@@ -67,120 +59,45 @@
 
 {% block content %}
 
-<!-- HERO (edge-to-edge, fades to white on desktop) -->
+<!-- HERO (صور فقط، حواف الشاشة، تلاشي للأبيض) -->
 <div class="edge-bleed">
   <div id="heroCarousel" class="carousel slide hero-carousel mb-0"
        data-bs-ride="carousel" data-bs-interval="4000" data-bs-touch="true" aria-label="عروض رئيسية">
 
-    <!-- Indicators: 10 شرائح -->
-    <div class="carousel-indicators">
-      <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-label="1"></button>
-      <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1" aria-label="2"></button>
-      <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2" aria-label="3"></button>
-      <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="3" aria-label="4"></button>
-      <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="4" aria-label="5"></button>
-      <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="5" aria-label="6"></button>
-      <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="6" aria-label="7"></button>
-      <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="7" aria-label="8"></button>
-      <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="8" aria-label="9"></button>
-      <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="9" aria-label="10"></button>
-    </div>
-
-    <!-- Slides -->
     <div class="carousel-inner">
-      <!-- 1 -->
       <div class="carousel-item active">
-        <img src="{{ url_for('static', path='img/banners/banner1.jpg') }}" alt="Top rentals on Sevor">
-        <div class="carousel-caption text-start">
-          <h2>Rent anything, anytime</h2>
-          <p>Vehicles, homes, electronics & more — all on Sevor.</p>
-          <a href="/explore" class="btn btn-light btn-sm">Explore now</a>
-        </div>
+        <img src="{{ url_for('static', path='img/banners/banner1.jpg') }}" alt="">
       </div>
-      <!-- 2 -->
       <div class="carousel-item">
-        <img src="{{ url_for('static', path='img/banners/banner2.jpg') }}" alt="Weekend deals">
-        <div class="carousel-caption text-start">
-          <h2>Weekend deals</h2>
-          <p>Save on cars, vans, and travel gear.</p>
-          <a href="/offers" class="btn btn-light btn-sm">See offers</a>
-        </div>
+        <img src="{{ url_for('static', path='img/banners/banner2.jpg') }}" alt="">
       </div>
-      <!-- 3 -->
       <div class="carousel-item">
-        <img src="{{ url_for('static', path='img/banners/banner3.jpg') }}" alt="Secure deposits">
-        <div class="carousel-caption text-start">
-          <h2>Trusted rentals</h2>
-          <p>Verified owners, photo check-in/out, secure deposits.</p>
-          <a href="/how-it-works" class="btn btn-light btn-sm">How it works</a>
-        </div>
+        <img src="{{ url_for('static', path='img/banners/banner3.jpg') }}" alt="">
       </div>
-      <!-- 4 -->
       <div class="carousel-item">
-        <img src="{{ url_for('static', path='img/banners/banner4.jpg') }}" alt="Banner 4">
-        <div class="carousel-caption text-start">
-          <h2>Seasonal picks</h2>
-          <p>Tools, cameras, travel sets and more.</p>
-          <a href="/explore" class="btn btn-light btn-sm">Browse</a>
-        </div>
+        <img src="{{ url_for('static', path='img/banners/banner4.jpg') }}" alt="">
       </div>
-      <!-- 5 -->
       <div class="carousel-item">
-        <img src="{{ url_for('static', path='img/banners/banner5.jpg') }}" alt="Banner 5">
-        <div class="carousel-caption text-start">
-          <h2>Long-term deals</h2>
-          <p>Better prices for weekly rentals.</p>
-          <a href="/offers" class="btn btn-light btn-sm">See deals</a>
-        </div>
+        <img src="{{ url_for('static', path='img/banners/banner5.jpg') }}" alt="">
       </div>
-      <!-- 6 -->
       <div class="carousel-item">
-        <img src="{{ url_for('static', path='img/banners/banner6.jpg') }}" alt="Banner 6">
-        <div class="carousel-caption text-start">
-          <h2>Electronics hub</h2>
-          <p>Consoles, lenses, laptops and more.</p>
-          <a href="/items?category=electronics" class="btn btn-light btn-sm">Electronics</a>
-        </div>
+        <img src="{{ url_for('static', path='img/banners/banner6.jpg') }}" alt="">
       </div>
-      <!-- 7 -->
       <div class="carousel-item">
-        <img src="{{ url_for('static', path='img/banners/banner7.jpg') }}" alt="Banner 7">
-        <div class="carousel-caption text-start">
-          <h2>Home & tools</h2>
-          <p>Everything you need for projects.</p>
-          <a href="/items?category=tools" class="btn btn-light btn-sm">View tools</a>
-        </div>
+        <img src="{{ url_for('static', path='img/banners/banner7.jpg') }}" alt="">
       </div>
-      <!-- 8 -->
       <div class="carousel-item">
-        <img src="{{ url_for('static', path='img/banners/banner8.jpg') }}" alt="Banner 8">
-        <div class="carousel-caption text-start">
-          <h2>Travel ready</h2>
-          <p>Cars, vans and travel gear.</p>
-          <a href="/items?category=vehicles" class="btn btn-light btn-sm">Vehicles</a>
-        </div>
+        <img src="{{ url_for('static', path='img/banners/banner8.jpg') }}" alt="">
       </div>
-      <!-- 9 -->
       <div class="carousel-item">
-        <img src="{{ url_for('static', path='img/banners/banner9.jpg') }}" alt="Banner 9">
-        <div class="carousel-caption text-start">
-          <h2>Pro owners</h2>
-          <p>Trusted owners and verified profiles.</p>
-          <a href="/how-it-works" class="btn btn-light btn-sm">Learn more</a>
-        </div>
+        <img src="{{ url_for('static', path='img/banners/banner9.jpg') }}" alt="">
       </div>
-      <!-- 10 -->
       <div class="carousel-item">
-        <img src="{{ url_for('static', path='img/banners/banner10.jpg') }}" alt="Banner 10">
-        <div class="carousel-caption text-start">
-          <h2>Sevor picks</h2>
-          <p>Handpicked items near you.</p>
-          <a href="/explore" class="btn btn-light btn-sm">Explore</a>
-        </div>
+        <img src="{{ url_for('static', path='img/banners/banner10.jpg') }}" alt="">
       </div>
     </div>
 
-    <!-- Controls -->
+    <!-- أسهم فقط -->
     <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" aria-label="السابق">
       <span class="carousel-control-prev-icon" aria-hidden="true"></span>
     </button>
@@ -191,7 +108,7 @@
 </div>
 <!-- /HERO -->
 
-<!-- غلاف أبيض للمنتجات (سطح المكتب فقط يظهر التأثير) -->
+<!-- رفوف المنتجات البيضاء تحت البانر -->
 <div class="home-shelves container-xl">
 
 {# ==== سلايدر “بالقرب منك / شائع” ==== #}
@@ -334,7 +251,6 @@
 {% endblock %}
 
 {% block scripts %}
-{# ننقل حالة التسجيل وIDs المفضلات للقالب (لو لم تُمرَّر تبقى []) #}
 <meta name="is-auth" content="{{ '1' if (session_user is defined and session_user) else '0' }}">
 <script id="fav-data" type="application/json">
   {{ favorites_ids | default([]) | tojson }}
@@ -363,6 +279,7 @@
     FAVORITES_IDS = JSON.parse(raw);
   }catch(e){ FAVORITES_IDS = []; }
 
+  /* ===== تعليم القلوب المحفوظة مسبقاً ===== */
   function markExistingFavorites(){
     document.querySelectorAll('.fav-btn').forEach((btn)=>{
       const id = Number(btn.dataset.id);
@@ -375,18 +292,23 @@
     });
   }
 
-  /* ضغط القلب: POST/DELETE على /api/favorites/{id} */
+  /* ===== ضغط القلب: POST/DELETE على /api/favorites/{id} ===== */
   document.addEventListener('click', async (e)=>{
     const btn = e.target.closest('.fav-btn');
     if(!btn) return;
+
     e.preventDefault();
     e.stopPropagation();
+
     if(!IS_AUTH){ window.location.href = '/login'; return; }
+
     const id = Number(btn.dataset.id);
     const add = !btn.classList.contains('is-fav');
+
     try{
       const res = await fetch(`/api/favorites/${id}`, { method: add ? 'POST' : 'DELETE' });
       if(!res.ok) throw new Error('bad response');
+
       btn.classList.toggle('is-fav', add);
       const icon = btn.querySelector('.bi');
       if(icon){
