@@ -988,7 +988,7 @@ html[dir="rtl"] .hero-carousel .carousel-caption{
     pointer-events:none;
   }
   /* يسحب الرفوف لأعلى لتلتصق أسفل البانر */
-  .home-shelves{ margin-top:-140px!important; background:#fff; border-radius:18px 18px 0 0;
+  .home-shelves{ margin-top:-160px!important; background:#fff; border-radius:18px 18px 0 0;
                  box-shadow:0 8px 26px rgba(0,0,0,.06); padding:18px 18px 22px; }
 }
 
