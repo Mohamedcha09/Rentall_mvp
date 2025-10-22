@@ -959,3 +959,63 @@ body[data-theme="light"] .topmenu{
     background: var(--primary, #7c5cff); margin-top:3px;
   }
 }
+
+/* === Mobile: Airbnb-style search pill only === */
+@media (max-width: 768px){
+
+  /* أخفِ كل الأزرار العلوية على الموبايل */
+  .topbar .actions{ display:none !important; }
+
+  /* شريط علوي بسيط جدًا بدون حدود */
+  .topbar{
+    height: 64px;
+    background: transparent;
+    border-bottom: 0 !important;
+  }
+
+  /* الحاوية */
+  .topbar__inner{
+    grid-template-columns: 1fr !important;  /* بحث فقط */
+    padding: 10px 12px !important;
+  }
+
+  /* صندوق البحث */
+  .topbar .search{
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    position: relative;
+  }
+
+  /* كبسولة بيضاء مثل Airbnb */
+  .topbar .search .search__input{
+    height: 44px !important;
+    border-radius: 999px !important;
+    border: 0 !important;
+    background: #ffffff !important;
+    color: #222 !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,.08);
+    text-align: center;                 /* placeholder بالوسط */
+    padding-inline: 44px 44px !important; /* فراغ للعدسة يمين/يسار */
+  }
+
+  /* placeholder رمادي خفيف */
+  .topbar .search .search__input::placeholder{
+    color: #9aa4b2 !important;
+    font-size: 1.05rem;
+    letter-spacing: .2px;
+  }
+
+  /* أيقونة العدسة داخل الحقل */
+  .topbar .search .search__icon{
+    inset-inline-start: 14px !important;  /* في RTL تظهر يسار الحقل */
+    top: 50%; transform: translateY(-50%);
+    opacity: .55 !important;
+    font-size: 1.15rem !important;
+  }
+
+  /* عند التركيز: رجّع المحاذاة طبيعية لسهولة الكتابة */
+  .topbar .search.is-focused .search__input{
+    text-align: start;
+  }
+}
