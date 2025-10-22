@@ -892,3 +892,32 @@ body[data-theme="light"] .topmenu{
 @media (min-width: 992px){
   .m-top-tabs{ display: none !important; }
 }
+/* ---- Fix: make bottom bar 5 columns on mobile ---- */
+@media (max-width: 768px){
+  /* ألغِ شبكة الأربع أعمدة القديمة */
+  .mobile-tabbar{
+    display: block !important;
+    padding: 0 !important;          /* اختياري: يقلّل العرض الداخلي */
+    height: 64px !important;
+  }
+
+  /* الشبكة الحقيقية هنا: خمسة أعمدة متساوية */
+  .mobile-tabbar .tabbar-inner{
+    height: 100%;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    align-items: center;
+  }
+
+  /* امنع التفاف النص/الأيقونة */
+  .mobile-tabbar a{
+    white-space: nowrap;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobile-tabbar .tab-img{
+    flex-shrink: 0;
+  }
+}
