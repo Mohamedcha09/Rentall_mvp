@@ -921,3 +921,41 @@ body[data-theme="light"] .topmenu{
     flex-shrink: 0;
   }
 }
+/* --- FIX: mobile bottom bar must be 5 columns --- */
+@media (max-width: 768px){
+  .mobile-tabbar{
+    /* اجعل الحاوية نفسها Grid بخمسة أعمدة */
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    align-items: center;
+    gap: 0;
+    padding: 0 !important;
+    height: 64px !important;
+  }
+
+  /* الروابط داخل كل عمود */
+  .mobile-tabbar > a{
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-width: 0;            /* ضروري للـellipsis */
+    white-space: nowrap;     /* منع اللفّ */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: .78rem;       /* صغّر النص قليلًا */
+    line-height: 1.1;
+  }
+
+  .mobile-tabbar .tab-img{
+    width: 22px; height: 22px;
+    flex-shrink: 0;
+  }
+
+  /* شريط التحديد أسفل التبويب النشط */
+  .mobile-tabbar > a.is-active::after{
+    content:""; display:block; width:26px; height:3px; border-radius:3px;
+    background: var(--primary, #7c5cff); margin-top:3px;
+  }
+}
