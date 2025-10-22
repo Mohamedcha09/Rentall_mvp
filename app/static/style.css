@@ -1,36 +1,11 @@
 /* style.css */
 /* =========================================================
-   R E N T A L L  —  Ultra Glass UI
-   يعمل مع base.html (بدون صور مطلوبة)
+   R E N T A L L  —  Ultra Glass UI (Light-only)
+   يعمل مع base.html — الوضع الأبيض فقط
    ========================================================= */
 
-/* ------------ ألوان ومتغيرات عامة ------------ */
+/* ------------ ألوان ومتغيرات عامة (أبيض فقط) ------------ */
 :root{
-  --bg:#0b0f15;
-  --glass:#0f1521cc;
-  --surface:#111827;
-  --panel:#0f172a;
-  --card:#121a2b;
-
-  --text:#eef3fb;
-  --muted:#aeb6c8;
-
-  --primary:#7c5cff;
-  --primary-2:#5a3eff;
-  --success:#22c55e;
-  --warning:#f8b84e;
-  --danger:#ff4d6d;
-
-  --border:rgba(255,255,255,.12);
-  --ring: rgba(124,92,255,.28);
-  --shadow: 0 18px 46px rgba(0,0,0,.45);
-
-  --sidebar-w: 268px; /* تبقى معرفة لو احتجتها لاحقًا */
-  --radius:16px;
-}
-
-/* وضع فاتح اختياري */
-body[data-theme="light"]{
   --bg:#f5f7fb;
   --glass:#ffffffd6;
   --surface:#ffffff;
@@ -40,9 +15,18 @@ body[data-theme="light"]{
   --text:#0d1320;
   --muted:#667086;
 
+  --primary:#7c5cff;
+  --primary-2:#5a3eff;
+  --success:#22c55e;
+  --warning:#f8b84e;
+  --danger:#ff4d6d;
+
   --border:rgba(0,0,0,.10);
   --ring: rgba(124,92,255,.25);
   --shadow: 0 18px 46px rgba(0,0,0,.08);
+
+  --sidebar-w: 268px;
+  --radius:16px;
 }
 
 /* ------------ الأساسيات ------------ */
@@ -70,7 +54,7 @@ small, .small{ color:var(--muted)!important }
 .btn-ghost:hover{ background:color-mix(in oklab, var(--text) 8%, transparent) }
 .btn-primary{
   background:linear-gradient(135deg,var(--primary),var(--primary-2));
-  border:0; box-shadow:0 12px 28px rgba(124,92,255,.28);
+  border:0; box-shadow:0 12px 28px rgba(124,92,255,.18);
 }
 .btn-primary:hover{ filter:brightness(1.05) }
 .btn-sm{ padding:.35rem .7rem; border-radius:12px }
@@ -78,21 +62,21 @@ small, .small{ color:var(--muted)!important }
 /* ------------ أسطح (بطاقات/حقول/قوائم) ------------ */
 .card, .alert, .list-group-item, .dropdown-menu,
 .form-control, .form-select{
-  background:linear-gradient(180deg, color-mix(in oklab, var(--card) 92%, transparent),
-                                    color-mix(in oklab, var(--card) 84%, transparent));
+  background:linear-gradient(180deg, color-mix(in oklab, var(--card) 98%, transparent),
+                                    color-mix(in oklab, var(--card) 96%, transparent));
   border:1px solid var(--border); color:var(--text); border-radius:var(--radius);
 }
 .card{ box-shadow:var(--shadow); transition:border-color .16s ease, box-shadow .16s ease, transform .16s ease }
-.card:hover{ border-color:color-mix(in oklab, var(--primary) 40%, var(--border)); box-shadow:0 20px 44px rgba(124,92,255,.18); transform: translateY(-2px) }
+.card:hover{ border-color:color-mix(in oklab, var(--primary) 28%, var(--border)); box-shadow:0 20px 44px rgba(124,92,255,.12); transform: translateY(-2px) }
 
 .form-control, .form-select{ height:auto }
 .form-control:focus, .form-select:focus{
-  box-shadow:0 0 0 4px var(--ring); border-color:color-mix(in oklab, var(--primary) 60%, var(--border));
+  box-shadow:0 0 0 4px var(--ring); border-color:color-mix(in oklab, var(--primary) 55%, var(--border));
 }
 
-.dropdown-menu{ box-shadow:0 18px 40px rgba(0,0,0,.35) }
+.dropdown-menu{ box-shadow:0 18px 40px rgba(0,0,0,.10) }
 .dropdown-item{ color:inherit }
-.dropdown-item:hover{ background:color-mix(in oklab, var(--text) 8%, transparent) }
+.dropdown-item:hover{ background:color-mix(in oklab, var(--text) 6%, transparent) }
 
 .alert{ border-radius:14px }
 .alert-warning{ color:inherit }
@@ -110,23 +94,22 @@ small, .small{ color:var(--muted)!important }
 
 /* ------------ البحث ------------ */
 .search{ position:relative; margin-inline:8px; max-width:760px; width:100% }
-.search__icon{ position:absolute; inset-inline-start:12px; top:50%; transform:translateY(-50%); opacity:.9; pointer-events:none }
+.search__icon{ position:absolute; inset-inline-start:12px; top:50%; transform:translateY(-50%); opacity:.7; pointer-events:none }
 .search__input{
   padding-inline:38px 14px; height:40px; border-radius:999px;
-  background: radial-gradient(200px 100% at 100% 0, color-mix(in oklab, var(--primary) 18%, transparent), transparent 60%),
-              color-mix(in oklab, var(--surface) 92%, transparent);
-  border:1px solid var(--border); color:inherit;
+  background: #f4f6fb;
+  border:1px solid var(--border); color:#3b4152;
   transition: box-shadow .15s ease, border-color .15s ease, background .2s ease;
 }
-.search__input::placeholder{ color:color-mix(in oklab, var(--text) 70%, transparent) }
-.search__input:focus{ outline:none; box-shadow:0 0 0 4px var(--ring); border-color:color-mix(in oklab, var(--primary) 65%, var(--border)) }
+.search__input::placeholder{ color:#8b95a7 }
+.search__input:focus{ outline:none; box-shadow:0 0 0 4px var(--ring); border-color:color-mix(in oklab, var(--primary) 50%, var(--border)) }
 
 /* ------------ أفاتار ووسام التوثيق ------------ */
 .avatar{
   width:26px; height:26px; border-radius:50%;
   display:grid; place-items:center; font-weight:800;
-  background:color-mix(in oklab, var(--panel) 88%, black);
-  color:color-mix(in oklab, var(--text) 85%, white);
+  background:color-mix(in oklab, var(--panel) 98%, white);
+  color:color-mix(in oklab, var(--text) 92%, black);
   box-shadow:inset 0 0 0 1px var(--border);
 }
 .avatar.ring{ position:relative }
@@ -137,28 +120,27 @@ small, .small{ color:var(--muted)!important }
           mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 0);
   filter:saturate(130%) blur(.2px);
 }
-.verify{ color:#55d5ff; filter: drop-shadow(0 0 6px rgba(85,213,255,.45)) }
+.verify{ color:#1aa7ff; filter: drop-shadow(0 0 6px rgba(85,213,255,.35)) }
 
 /* ------------ إشعارات ------------ */
 .notif-ping{
   position:absolute; inset-inline-start:2px; top:2px; width:10px; height:10px; border-radius:50%;
   background:#ff6b6b; border:1px solid color-mix(in oklab, var(--bg) 92%, black);
-  box-shadow:0 0 0 0 rgba(255,107,107,.6);
+  box-shadow:0 0 0 0 rgba(255,107,107,.35);
   animation:ping 1.6s cubic-bezier(0,0,.2,1) infinite;
 }
-@keyframes ping{0%{box-shadow:0 0 0 0 rgba(255,107,107,.6)}70%{box-shadow:0 0 0 10px rgba(255,107,107,0)}100%{box-shadow:0 0 0 0 rgba(255,107,107,0)}}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(255,107,107,.35)}70%{box-shadow:0 0 0 10px rgba(255,107,107,0)}100%{box-shadow:0 0 0 0 rgba(255,107,107,0)}}
 .notif-count{
   position:absolute; inset-inline-start:-6px; bottom:-6px; font-size:.68rem; padding:.05rem .35rem; border-radius:999px;
   background:#ff6b6b; color:#fff; border:1px solid color-mix(in oklab, var(--bg) 90%, black)
 }
 
-/* === [تم الحذف المطلوب] الشريط الجانبي (Sidebar) ستايل بالكامل === */
-/* (أزيلت جميع بلوكات .sidebar و .sidebar__nav و .side-link و الحالات التابعة و media الخاصة بها) */
+/* === [تم الحذف السابق] ستايل السايدبار بالكامل غير موجود === */
 
 /* ------------ المساحة الرئيسية ------------ */
 .page{
   padding: calc(64px + 18px) 20px 28px;
-  margin-inline: 0;                 /* كان: var(--sidebar-w) 0 */
+  margin-inline: 0;
   max-width: 1280px;
   transition: margin-inline-start .22s ease;
 }
@@ -178,7 +160,7 @@ small, .small{ color:var(--muted)!important }
   position:relative;
   aspect-ratio: 16 / 10;
   overflow:hidden;
-  background: rgba(255,255,255,.03);
+  background: rgba(0,0,0,.02);
   border-bottom:1px solid var(--border);
 }
 .spot-media > img{
@@ -188,7 +170,7 @@ small, .small{ color:var(--muted)!important }
 .card.spot:hover .spot-media > img{ transform:scale(1.02) }
 .spot-overlay{
   position:absolute; inset:0;
-  background: linear-gradient(180deg, transparent 55%, rgba(15,17,21,.55));
+  background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,.10));
   pointer-events:none;
 }
 .price-badge, .category-chip{
@@ -196,12 +178,12 @@ small, .small{ color:var(--muted)!important }
 }
 .price-badge{
   inset-inline-start:10px; padding:.3rem .55rem; font-weight:700; font-size:.9rem;
-  background: rgba(10,12,16,.65); backdrop-filter: blur(8px);
-  border:1px solid var(--border); color:#fff; box-shadow:0 6px 18px rgba(0,0,0,.35);
+  background: rgba(0,0,0,.55); backdrop-filter: blur(8px);
+  border:1px solid var(--border); color:#fff; box-shadow:0 6px 18px rgba(0,0,0,.12);
 }
 .category-chip{
-  inset-inline-end:10px; padding:.2rem .5rem; font-size:.78rem; color:#cfe2ff;
-  background: rgba(124,92,255,.18); border:1px solid rgba(124,92,255,.35);
+  inset-inline-end:10px; padding:.2rem .5rem; font-size:.78rem; color:#5a3eff;
+  background: rgba(124,92,255,.10); border:1px solid rgba(124,92,255,.25);
 }
 .card.spot .card-body{ padding:.7rem .75rem .8rem }
 .spot-body{ display:flex; flex-direction:column; gap:10px; }
@@ -218,11 +200,11 @@ small, .small{ color:var(--muted)!important }
 .owner-avatar, .owner-avatar--placeholder{
   width:24px; height:24px; border-radius:50%;
   object-fit:cover; border:1px solid var(--border);
-  display:grid; place-items:center; background:rgba(255,255,255,.06);
+  display:grid; place-items:center; background:rgba(0,0,0,.03);
 }
 .city-chip{
   padding:.2rem .5rem; border-radius:999px;
-  background: rgba(255,255,255,.06); border:1px solid var(--border);
+  background: rgba(0,0,0,.03); border:1px solid var(--border);
   color:var(--muted);
   max-width:65%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
@@ -237,7 +219,7 @@ small, .small{ color:var(--muted)!important }
   position:fixed; top:64px; bottom:0; inset-inline-end:-380px; width:360px;
   background:linear-gradient(180deg, var(--surface), var(--panel));
   border-inline-start:1px solid var(--border);
-  box-shadow: -18px 0 46px rgba(0,0,0,.28);
+  box-shadow: -18px 0 46px rgba(0,0,0,.08);
   transition: inset-inline-end .25s ease;
   z-index:2100; display:flex; flex-direction:column;
 }
@@ -258,7 +240,6 @@ small, .small{ color:var(--muted)!important }
 *::-webkit-scrollbar-thumb{ background:color-mix(in oklab, var(--text) 22%, transparent); border-radius:20px }
 *::-webkit-scrollbar-track{ background:transparent }
 .topbar{ z-index:2000 }
-/* .sidebar { z-index:1200 }  [لم تعد موجودة] */
 .dropdown-menu{ z-index:2200 }
 
 /* ------------ زر إضافة طافٍ للجوال ------------ */
@@ -266,7 +247,7 @@ small, .small{ color:var(--muted)!important }
   position:fixed; inset-inline-end:16px; bottom:16px; width:54px; height:54px; border-radius:50%;
   display:grid; place-items:center; color:#fff; text-decoration:none;
   background:linear-gradient(135deg,var(--primary),var(--primary-2));
-  box-shadow:0 16px 40px rgba(124,92,255,.35), 0 0 0 0 rgba(124,92,255,.35);
+  box-shadow:0 16px 40px rgba(124,92,255,.25), 0 0 0 0 rgba(124,92,255,.25);
   animation:fabpop .24s ease-out; z-index:2200
 }
 @keyframes fabpop{0%{transform:scale(.8); opacity:0}100%{transform:scale(1); opacity:1}}
@@ -277,18 +258,14 @@ small, .small{ color:var(--muted)!important }
   .page{ max-width: none; }
 }
 
-/* لو تبغى تقلّل الحافة الداخلية كمان */
+/* تقليل الحافة الداخلية */
 .page{ padding-inline: 12px 20px; }
 
-/* [أُزيل] قواعد تعتمد على sidebar مطوي */
-/* .sidebar[data-collapsed="true"] ~ .page{ margin-inline-start: 0; } */
-
-/* على الموبايل يبقى بدون هامش أصلاً */
 @media (max-width: 991.98px){
   .page{ margin-inline: 0; }
 }
 
-/* ======== [أُضيف] ملء الشاشة – إضافات بدون حذف أي سطر ======== */
+/* ======== ملء الشاشة — بدون حذف ======== */
 html, body { height: 100%; }
 #page-wrapper{
   min-height: 100dvh;
@@ -298,10 +275,7 @@ html, body { height: 100%; }
 }
 .main-flex-fill{ flex: 1 1 auto; }
 
-/* [أُزيل] إصلاح الطيّ الذي يعتمد على السايدبار */
-/* .sidebar[data-collapsed="true"] ~ .page{ margin-inline-start: var(--sidebar-w) !important; } */
- 
-/* ======= Search typeahead ======= */
+/* ======= Typeahead ======= */
 .searchbox { position: relative; }
 .searchbox .typeahead {
   position: absolute; inset-inline: 0; top: 100%;
@@ -310,7 +284,7 @@ html, body { height: 100%; }
   border: 1px solid rgba(0,0,0,.1);
   border-radius: .5rem;
   margin-top: .25rem; z-index: 2000;
-  box-shadow: 0 10px 30px rgba(0,0,0,.15);
+  box-shadow: 0 10px 30px rgba(0,0,0,.10);
   overflow: hidden;
 }
 .typeahead-group{
@@ -329,29 +303,29 @@ html, body { height: 100%; }
 .badge-chip{
   display:inline-flex; align-items:center; gap:.25rem;
   border-radius:999px; padding:.2rem .5rem; font-weight:700; font-size:.78rem;
-  border:1px solid var(--border); background:rgba(255,255,255,.06); color:var(--text);
+  border:1px solid var(--border); background:rgba(0,0,0,.03); color:var(--text);
 }
-.chip-verified{ background:rgba(85,213,255,.15); border-color:rgba(85,213,255,.35); color:#bfefff }
-.chip-new{ background:rgba(124,92,255,.12); border-color:rgba(124,92,255,.35); }
-.chip-power{ background:rgba(255,221,87,.12); border-color:rgba(255,221,87,.35); }
-.chip-trusted{ background:rgba(34,197,94,.12); border-color:rgba(34,197,94,.35); }
-.chip-top{ background:rgba(255,199,0,.12); border-color:rgba(255,199,0,.35); }
+.chip-verified{ background:rgba(85,213,255,.12); border-color:rgba(85,213,255,.25); color:#0996e6 }
+.chip-new{ background:rgba(124,92,255,.10); border-color:rgba(124,92,255,.25); }
+.chip-power{ background:rgba(255,221,87,.12); border-color:rgba(255,221,87,.25); }
+.chip-trusted{ background:rgba(34,197,94,.12); border-color:rgba(34,197,94,.25); }
+.chip-top{ background:rgba(255,199,0,.12); border-color:rgba(255,199,0,.25); }
 
 /* أفاتار كبير */
-.avatar-xl{ width:76px; height:76px; background:rgba(255,255,255,.06); color:var(--text); display:grid; place-items:center; font-size:1.8rem }
+.avatar-xl{ width:76px; height:76px; background:rgba(0,0,0,.03); color:var(--text); display:grid; place-items:center; font-size:1.8rem }
 
 /* لمسة زجاجية بسيطة */
-.glass{ background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03)) !important; border:1px solid var(--border) !important; border-radius:16px }
+.glass{ background: linear-gradient(180deg, rgba(0,0,0,.02), rgba(0,0,0,.01)) !important; border:1px solid var(--border) !important; border-radius:16px }
 
-/* شبكة العناصر (إن لم تكن موجودة) */
+/* شبكة العناصر */
 .home-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px,1fr)); gap:16px }
 .card.spot{ overflow:hidden; border-radius:16px }
-.spot-media{ position:relative; aspect-ratio:16/10; background:rgba(255,255,255,.04); border-bottom:1px solid var(--border) }
+.spot-media{ position:relative; aspect-ratio:16/10; background:rgba(0,0,0,.03); border-bottom:1px solid var(--border) }
 .spot-media img{ width:100%; height:100%; object-fit:cover; display:block }
 .price-badge{ position:absolute; top:10px; inset-inline-start:10px; background:rgba(0,0,0,.5); color:#fff; border-radius:999px; padding:.25rem .5rem; border:1px solid var(--border) }
-.category-chip{ position:absolute; top:10px; inset-inline-end:10px; background:rgba(124,92,255,.18); border:1px solid rgba(124,92,255,.35); border-radius:999px; padding:.2rem .5rem; font-size:.78rem }
+.category-chip{ position:absolute; top:10px; inset-inline-end:10px; background:rgba(124,92,255,.10); border:1px solid rgba(124,92,255,.25); border-radius:999px; padding:.2rem .5rem; font-size:.78rem }
 .spot-title{ margin:.1rem 0 .4rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:2.6em }
-.city-chip{ max-width:65%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:.15rem .45rem; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid var(--border) }  
+.city-chip{ max-width:65%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:.15rem .45rem; border-radius:999px; background:rgba(0,0,0,.03); border:1px solid var(--border) }  
 
 @media (max-width: 768px){
   .page{
@@ -395,14 +369,14 @@ html, body { height: 100%; }
   display:flex; align-items:center; gap:10px;
   padding:10px 12px; border-radius:14px;
   border:1px solid var(--border);
-  background:linear-gradient(180deg, color-mix(in oklab, var(--card) 92%, transparent), color-mix(in oklab, var(--card) 86%, transparent));
+  background:linear-gradient(180deg, color-mix(in oklab, var(--card) 98%, transparent), color-mix(in oklab, var(--card) 96%, transparent));
   transition: background .15s ease, transform .15s ease;
 }
-.dm-row:hover{ background:color-mix(in oklab, var(--text) 6%, transparent); transform:translateY(-1px) }
+.dm-row:hover{ background:color-mix(in oklab, var(--text) 4%, transparent); transform:translateY(-1px) }
 .dm-avatar{
   width:44px; height:44px; border-radius:50%;
   object-fit:cover; border:1px solid var(--border);
-  background:rgba(255,255,255,.06); display:grid; place-items:center; font-weight:800;
+  background:rgba(0,0,0,.03); display:grid; place-items:center; font-weight:800;
 }
 .dm-col{ min-width:0; display:flex; flex-direction:column; gap:2px }
 .dm-name{ font-weight:800 }
@@ -412,14 +386,14 @@ html, body { height: 100%; }
 /* ===== صفحة المحادثة ===== */
 .thread-wrap{
   display:flex; flex-direction:column; gap:8px;
-  padding: 10px 8px 96px; /* مساحة للـ composer + التبويب */
+  padding: 10px 8px 96px;
 }
 .msg{ display:flex; align-items:flex-end; gap:8px }
 .msg.me{ justify-content:flex-end }
 .msg-bubble{
   max-width:78%;
   padding:.6rem .75rem; border-radius:14px;
-  background: color-mix(in oklab, var(--surface) 95%, transparent);
+  background: color-mix(in oklab, var(--surface) 98%, transparent);
   border:1px solid var(--border);
   box-shadow: var(--shadow);
 }
@@ -429,14 +403,14 @@ html, body { height: 100%; }
 }
 .msg-meta{ font-size:.75rem; color:var(--muted); margin-top:2px }
 
-/* ===== Composer (حقل كتابة الرسالة) ===== */
+/* ===== Composer ===== */
 .composer{
   position: fixed;
   inset-inline: 8px;
-  bottom: 64px; /* فوق تبويب الموبايل */
+  bottom: 64px;
   display:flex; align-items:center; gap:8px;
   padding:8px; border-radius:16px;
-  background:linear-gradient(180deg, color-mix(in oklab, var(--card) 92%, transparent), color-mix(in oklab, var(--card) 86%, transparent));
+  background:linear-gradient(180deg, color-mix(in oklab, var(--card) 98%, transparent), color-mix(in oklab, var(--card) 96%, transparent));
   border:1px solid var(--border);
   box-shadow: var(--shadow);
   z-index: 2301;
@@ -455,13 +429,13 @@ html, body { height: 100%; }
 .m-profile{
   display:flex; align-items:center; gap:12px;
   padding:12px; border-radius:16px;
-  background:linear-gradient(180deg, color-mix(in oklab, var(--card) 92%, transparent), color-mix(in oklab, var(--card) 86%, transparent));
+  background:linear-gradient(180deg, color-mix(in oklab, var(--card) 98%, transparent), color-mix(in oklab, var(--card) 96%, transparent));
   border:1px solid var(--border);
 }
 .m-avatar{
   width:64px; height:64px; border-radius:50%;
   object-fit:cover; border:1px solid var(--border);
-  background:rgba(255,255,255,.06); display:grid; place-items:center; font-size:1.4rem; font-weight:800;
+  background:rgba(0,0,0,.03); display:grid; place-items:center; font-size:1.4rem; font-weight:800;
 }
 .m-name{ font-weight:800; font-size:1.1rem }
 .m-badges{ display:flex; gap:6px; flex-wrap:wrap }
@@ -501,7 +475,6 @@ html, body { height: 100%; }
 
   .brand{ display:none !important; }
 
-  /* بقي كما هو حسب طلبك */
   .sidebar{ display:none !important; }
   .collapse-pin{ display:none !important; }
 
@@ -514,7 +487,7 @@ html, body { height: 100%; }
   .tabbar{
     position:fixed; inset-inline:0; bottom:0;
     height:68px; padding:8px 14px calc(8px + env(safe-area-inset-bottom));
-    background: color-mix(in oklab, var(--panel) 92%, transparent);
+    background: color-mix(in oklab, var(--panel) 98%, transparent);
     backdrop-filter: blur(16px) saturate(140%);
     border-top:1px solid var(--border);
     display:grid; grid-template-columns: repeat(4,1fr);
@@ -522,7 +495,7 @@ html, body { height: 100%; }
   }
   .tabbar a{
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:6px; font-size:.8rem; color: color-mix(in oklab, var(--text) 78%, #fff);
+    gap:6px; font-size:.8rem; color: color-mix(in oklab, var(--text) 78%, #000);
     text-decoration:none;
   }
   .tabbar a i{ font-size:1.25rem }
@@ -532,7 +505,7 @@ html, body { height: 100%; }
 }
 
 /* ========================= */
-/*     [إضافات عصرية]      */
+/*     إضافات عصرية         */
 /* ========================= */
 
 :root{ --brand: #5900ff; }
@@ -593,26 +566,17 @@ html, body { height: 100%; }
   font-size: 1.35rem; line-height: 1; filter: none;
 }
 .actions .btn-ghost.btn-icon{ border-color: transparent !important; }
-
-.actions .msg-icon i{ color: #7c5cff; }
-.actions .notif-icon i{ color: #1ec9a8; }
+.actions .msg-icon i{ color:#6a57ff; }     /* ألوان خفيفة للوضع الأبيض */
+.actions .notif-icon i{ color:#18c2a1; }
 .actions .btn-icon:hover{ transform: translateY(-1px); }
 
-body[data-theme="light"] .actions .msg-icon i{ color:#6a57ff; }
-body[data-theme="light"] .actions .notif-icon i{ color:#18c2a1; }
-
-/* ===== Search pill like Blossom ===== */
+/* ===== Search pill ===== */
 .topbar .search .search__input{
   height: 44px !important;
   border-radius: 999px !important;
   border: 0 !important;
   background: #f4f6fb !important;
   color: #444 !important;
-}
-body[data-theme="dark"] .topbar .search .search__input{
-  background: rgba(255,255,255,.08) !important;
-  border: 1px solid var(--border) !important;
-  color: var(--text) !important;
 }
 .topbar .search .search__icon{
   inset-inline-start: 16px !important;
@@ -624,9 +588,6 @@ body[data-theme="dark"] .topbar .search .search__input{
   letter-spacing: .2px;
   color: #8b95a7;
 }
-body[data-theme="dark"] .topbar .search .search__input::placeholder{
-  color: color-mix(in oklab, var(--text) 60%, transparent);
-}
 
 /* ===== زرّ المفضلة فوق الصورة ===== */
 .spot-media{ position:relative; overflow:hidden; border-radius:16px 16px 0 0 }
@@ -636,58 +597,27 @@ body[data-theme="dark"] .topbar .search .search__input::placeholder{
   width:40px; height:40px; border:none; outline:none; cursor:pointer;
   border-radius:999px; background:rgba(255,255,255,0.92);
   display:flex; align-items:center; justify-content:center;
-  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+  box-shadow: 0 4px 14px rgba(0,0,0,.08);
 }
 .fav-btn .bi{ font-size:18px; color:#a944ec; line-height:1 }
 .fav-btn.is-fav{ background:#a944ec; }
 .fav-btn.is-fav .bi{ color:#fff }
 
-/* ===== [جديد] قائمة الثلاثة خطوط العلوية (☰) ===== */
+/* ===== قائمة الثلاثة خطوط العلوية (☰) ===== */
 .topmenu{
   position: fixed;
-  top: 64px;                         /* تحت التوب بار مباشرة */
-  inset-inline-end: 12px;            /* جهة اليمين في RTL */
-  min-width: 220px;
-  max-width: 86vw;
-  background: linear-gradient(180deg, var(--surface), color-mix(in oklab, var(--panel) 92%, transparent));
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: 0 18px 40px rgba(0,0,0,.35);
-  padding: 6px;
-  z-index: 2200;
-  display: none;                      /* تُظهرها بجافاسكربت عبر إضافة .is-open */
-}
-.topmenu.is-open{ display:block; }
-.topmenu .topmenu-item{
-  display:flex; align-items:center; gap:.6rem;
-  padding:.55rem .65rem; border-radius:10px; color:inherit; text-decoration:none;
-}
-.topmenu .topmenu-item:hover{
-  background: color-mix(in oklab, var(--text) 8%, transparent);
-}
-.topmenu .sep{
-  height:1px; background:var(--border); margin:.3rem .25rem;
-}
-/* زر الثلاثة خطوط لو حبيت تضبط حجمه بدون التأثير على الهاتف */
-.hamburger-btn{
-  width:36px; height:36px; display:grid; place-items:center; border-radius:10px;
-  font-size:1.15rem; line-height:1;
-}
- /* ===== Top quick menu — Glassy, icons, animation ===== */
-.topmenu{
-  position: fixed;
-  top: 58px;                         /* تحت التوب بار */
-  inset-inline-end: 12px;            /* يمين في RTL */
+  top: 58px;
+  inset-inline-end: 12px;
   min-width: 260px;
   max-width: 88vw;
   padding: 8px;
   border-radius: 14px;
-  border: 1px solid var(--border, rgba(255,255,255,.12));
+  border: 1px solid var(--border);
   background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 100%, transparent),
-                                       color-mix(in oklab, var(--panel) 92%, transparent));
-  box-shadow: 0 18px 46px rgba(0,0,0,.35);
+                                       color-mix(in oklab, var(--panel) 98%, transparent));
+  box-shadow: 0 18px 40px rgba(0,0,0,.10);
   backdrop-filter: blur(14px) saturate(120%);
-  z-index: 3001;                     /* أعلى من typeahead */
+  z-index: 3001;
   display: none;
   transform-origin: top right;
   transform: translateY(-6px) scale(.98);
@@ -700,12 +630,10 @@ body[data-theme="dark"] .topbar .search .search__input::placeholder{
   position:absolute; inset-inline-end: 20px; top:-8px;
   width:14px; height:14px; transform: rotate(45deg);
   background: inherit;
-  border-inline-start: 1px solid var(--border, rgba(255,255,255,.12));
-  border-top:        1px solid var(--border, rgba(255,255,255,.12));
+  border-inline-start: 1px solid var(--border);
+  border-top:        1px solid var(--border);
   filter: blur(.2px);
 }
-
-/* عناصر القائمة */
 .topmenu-item{
   display:flex; align-items:center; gap:.6rem;
   padding:.6rem .7rem; border-radius:10px; color:inherit; text-decoration:none;
@@ -713,41 +641,27 @@ body[data-theme="dark"] .topbar .search .search__input::placeholder{
 }
 .topmenu-item i{ font-size:1.12rem; opacity:.9; transition: transform .15s ease, opacity .15s ease; }
 .topmenu-item:hover{
-  background: color-mix(in oklab, var(--text, #fff) 8%, transparent);
+  background: color-mix(in oklab, var(--text) 6%, transparent);
   transform: translateY(-1px);
 }
 .topmenu-item:hover i{ transform: translateY(-1px); opacity:1; }
 .topmenu-sep{
-  height:1px; margin:.35rem .25rem; border:0; background:var(--border, rgba(255,255,255,.12));
+  height:1px; margin:.35rem .25rem; border:0; background:var(--border);
 }
-
-/* حجم زر ☰ ولمسة هوفر */
 .hamburger-btn{
   width:38px; height:38px; display:grid; place-items:center; border-radius:10px;
   font-size:1.1rem; line-height:1; border:0; background:transparent; cursor:pointer;
 }
-.hamburger-btn:hover{ background: color-mix(in oklab, var(--text) 8%, transparent); }
-
-/* الوضع الفاتح */
-body[data-theme="light"] .topmenu{
-  box-shadow: 0 18px 40px rgba(0,0,0,.10);
-}
-
-/* على الشاشات الصغيرة: نخلي القائمة يمين ومتباعدة قليلاً */
-@media (max-width: 991.98px){
-  .topmenu{ inset-inline-end: 10px; top: 56px; }
-}
-/* انتهى */
+.hamburger-btn:hover{ background: color-mix(in oklab, var(--text) 6%, transparent); }
 
 /****************************************************
- *  Mobile-only Addons (Airbnb-like) — append only  *
- *  لا تغيّر ستايل الكمبيوتر — أضف هذا القسم في آخر الملف
+ *  Mobile-only Addons (Airbnb-like)
  ****************************************************/
 
-/* ===== Top tabs (Home / تحويلات / لوحة أدمين) ===== */
+/* ===== Top tabs ===== */
 .m-top-tabs{
   position: sticky;
-  top: 56px;           /* تحت التوب بار بالموبايل */
+  top: 56px;
   z-index: 2000;
   display: grid;
   grid-auto-flow: column;
@@ -755,7 +669,7 @@ body[data-theme="light"] .topmenu{
   padding: 8px 12px;
   background: linear-gradient(180deg, rgba(0,0,0,.00), rgba(0,0,0,.04));
   backdrop-filter: blur(12px) saturate(120%);
-  border-bottom: 1px solid var(--border, rgba(255,255,255,.12));
+  border-bottom: 1px solid var(--border);
 }
 .m-top-tabs .m-tab{
   display: inline-flex;
@@ -766,19 +680,19 @@ body[data-theme="light"] .topmenu{
   font-weight: 700;
   font-size: .92rem;
   border-radius: 999px;
-  color: var(--muted, #8b95a7);
+  color: var(--muted);
   text-decoration: none;
   border: 1px solid transparent;
-  background: color-mix(in oklab, var(--panel, #0f172a) 90%, transparent);
+  background: color-mix(in oklab, var(--panel) 98%, transparent);
   transition: background .15s ease, color .15s ease, transform .12s ease, border-color .15s ease;
 }
 .m-top-tabs .m-tab:hover{ transform: translateY(-1px); }
 .m-top-tabs .m-tab.is-active{
-  color: var(--text, #fff);
-  background: linear-gradient(180deg, color-mix(in oklab, var(--surface, #111827) 92%, transparent),
-                                       color-mix(in oklab, var(--panel, #0f172a) 88%, transparent));
-  border-color: color-mix(in oklab, var(--primary, #7c5cff) 45%, var(--border, rgba(255,255,255,.12)));
-  box-shadow: 0 10px 28px rgba(0,0,0,.18);
+  color: var(--text);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 98%, transparent),
+                                       color-mix(in oklab, var(--panel) 96%, transparent));
+  border-color: color-mix(in oklab, var(--primary) 35%, var(--border));
+  box-shadow: 0 10px 28px rgba(0,0,0,.08);
 }
 
 /* ===== Bottom mobile tabbar (5 tabs) ===== */
@@ -788,9 +702,9 @@ body[data-theme="light"] .topmenu{
   bottom: 0;
   height: 64px;
   background: linear-gradient(180deg,
-              color-mix(in oklab, var(--surface, #111827) 96%, transparent),
-              color-mix(in oklab, var(--panel, #0f172a) 92%, transparent));
-  border-top: 1px solid var(--border, rgba(255,255,255,.12));
+              color-mix(in oklab, var(--surface) 98%, transparent),
+              color-mix(in oklab, var(--panel) 96%, transparent));
+  border-top: 1px solid var(--border);
   backdrop-filter: blur(14px) saturate(120%);
   z-index: 2300;
   display: block;
@@ -798,7 +712,7 @@ body[data-theme="light"] .topmenu{
 .mobile-tabbar .tabbar-inner{
   height: 100%;
   display: grid;
-  grid-template-columns: repeat(5, 1fr); /* ← خمسة تبويبات */
+  grid-template-columns: repeat(5, 1fr);
 }
 .mobile-tabbar a{
   display: flex;
@@ -809,7 +723,7 @@ body[data-theme="light"] .topmenu{
   height: 100%;
   font-size: .8rem;
   font-weight: 600;
-  color: var(--muted, #8b95a7);
+  color: var(--muted);
   text-decoration: none;
   transition: color .15s ease, transform .12s ease, opacity .15s ease;
 }
@@ -818,39 +732,48 @@ body[data-theme="light"] .topmenu{
   opacity: .55; transition: opacity .15s ease, transform .12s ease;
 }
 .mobile-tabbar a.is-active{
-  color: var(--text, #fff);
+  color: var(--text);
 }
 .mobile-tabbar a.is-active .tab-img{
   opacity: 1; transform: translateY(-1px) scale(1.06);
 }
-/* شريط سفلي صغير أسفل التبويب النشط (لمسة Airbnb) */
 .mobile-tabbar a.is-active::after{
   content:"";
   display:block;
   width: 26px; height: 3px; border-radius: 3px;
   margin-top: 3px;
-  background: var(--primary, #7c5cff);
+  background: var(--primary);
 }
 
 /* ===== Mobile topbar compact ===== */
 @media (max-width: 768px){
-  .topbar{ height: 56px; border-bottom: 1px solid var(--border, rgba(255,255,255,.12)); }
+  .topbar{ height: 56px; border-bottom: 1px solid var(--border); }
   .topbar__inner{
-    grid-template-columns: 1fr auto auto; /* بحث + رسائل + جرس */
+    grid-template-columns: 1fr;   /* بحث فقط */
     gap: 8px; padding: 8px 12px;
   }
-  .brand{ display: none !important; }           /* إخفاء الشعار في الموبايل */
-  .sidebar{ display: none !important; }         /* لا نُظهر السايدبار بالموبايل */
+  .brand{ display: none !important; }
+  .sidebar{ display: none !important; }
   .collapse-pin{ display: none !important; }
 
   .search{ margin: 0; }
   .search .search__input{
-    height: 40px !important;
-    border-radius: 20px !important;
-    padding-inline: 40px 12px !important;
+    height: 44px !important;
+    border-radius: 999px !important;
+    padding-inline: 44px 44px !important;
+    background: #ffffff !important;
+    color: #222 !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,.08);
+    text-align: center;
+  }
+  .search .search__input:focus{ text-align: start; }
+  .search .search__icon{
+    inset-inline-start: 14px !important;
+    top: 50%; transform: translateY(-50%);
+    opacity: .55 !important;
+    font-size: 1.15rem !important;
   }
 
-  /* مساحة أسفل الصفحة بسبب التبويب السفلي */
   .page{
     margin-inline: 0 !important;
     padding: calc(56px + 10px) 12px 110px !important;
@@ -862,7 +785,7 @@ body[data-theme="light"] .topmenu{
 @media (max-width: 768px){
   .home-grid{ grid-template-columns: repeat(auto-fill, minmax(170px,1fr)); gap: 12px; }
   .card.spot{ border-radius: 16px; overflow: hidden; }
-  .spot-media{ aspect-ratio: 16/10; border-bottom: 1px solid var(--border, rgba(255,255,255,.12)); }
+  .spot-media{ aspect-ratio: 16/10; border-bottom: 1px solid var(--border); }
   .card.spot .card-body{ padding: .6rem .6rem .7rem; }
   .spot-title{
     margin: .1rem 0 .4rem;
@@ -872,7 +795,7 @@ body[data-theme="light"] .topmenu{
   .city-chip{
     max-width: 65%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     padding: .15rem .45rem; border-radius: 999px;
-    background: rgba(255,255,255,.06); border: 1px solid var(--border, rgba(255,255,255,.12));
+    background: rgba(0,0,0,.03); border: 1px solid var(--border);
   }
 }
 
@@ -892,39 +815,10 @@ body[data-theme="light"] .topmenu{
 @media (min-width: 992px){
   .m-top-tabs{ display: none !important; }
 }
-/* ---- Fix: make bottom bar 5 columns on mobile ---- */
-@media (max-width: 768px){
-  /* ألغِ شبكة الأربع أعمدة القديمة */
-  .mobile-tabbar{
-    display: block !important;
-    padding: 0 !important;          /* اختياري: يقلّل العرض الداخلي */
-    height: 64px !important;
-  }
 
-  /* الشبكة الحقيقية هنا: خمسة أعمدة متساوية */
-  .mobile-tabbar .tabbar-inner{
-    height: 100%;
-    display: grid !important;
-    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-    align-items: center;
-  }
-
-  /* امنع التفاف النص/الأيقونة */
-  .mobile-tabbar a{
-    white-space: nowrap;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .mobile-tabbar .tab-img{
-    flex-shrink: 0;
-  }
-}
-/* --- FIX: mobile bottom bar must be 5 columns --- */
+/* ---- Fix: bottom bar = 5 cols ---- */
 @media (max-width: 768px){
   .mobile-tabbar{
-    /* اجعل الحاوية نفسها Grid بخمسة أعمدة */
     display: grid !important;
     grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
     align-items: center;
@@ -932,147 +826,14 @@ body[data-theme="light"] .topmenu{
     padding: 0 !important;
     height: 64px !important;
   }
-
-  /* الروابط داخل كل عمود */
   .mobile-tabbar > a{
-    display: flex !important;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    min-width: 0;            /* ضروري للـellipsis */
-    white-space: nowrap;     /* منع اللفّ */
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: .78rem;       /* صغّر النص قليلًا */
-    line-height: 1.1;
+    display: flex !important; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: .78rem; line-height: 1.1;
   }
-
-  .mobile-tabbar .tab-img{
-    width: 22px; height: 22px;
-    flex-shrink: 0;
-  }
-
-  /* شريط التحديد أسفل التبويب النشط */
+  .mobile-tabbar .tab-img{ width: 22px; height: 22px; flex-shrink: 0; }
   .mobile-tabbar > a.is-active::after{
     content:""; display:block; width:26px; height:3px; border-radius:3px;
-    background: var(--primary, #7c5cff); margin-top:3px;
-  }
-}
-
-/* === Mobile: Airbnb-style search pill only === */
-@media (max-width: 768px){
-
-  /* أخفِ كل الأزرار العلوية على الموبايل */
-  .topbar .actions{ display:none !important; }
-
-  /* شريط علوي بسيط جدًا بدون حدود */
-  .topbar{
-    height: 64px;
-    background: transparent;
-    border-bottom: 0 !important;
-  }
-
-  /* الحاوية */
-  .topbar__inner{
-    grid-template-columns: 1fr !important;  /* بحث فقط */
-    padding: 10px 12px !important;
-  }
-
-  /* صندوق البحث */
-  .topbar .search{
-    margin: 0 !important;
-    max-width: none !important;
-    width: 100% !important;
-    position: relative;
-  }
-
-  /* كبسولة بيضاء مثل Airbnb */
-  .topbar .search .search__input{
-    height: 44px !important;
-    border-radius: 999px !important;
-    border: 0 !important;
-    background: #ffffff !important;
-    color: #222 !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,.08);
-    text-align: center;                 /* placeholder بالوسط */
-    padding-inline: 44px 44px !important; /* فراغ للعدسة يمين/يسار */
-  }
-
-  /* placeholder رمادي خفيف */
-  .topbar .search .search__input::placeholder{
-    color: #9aa4b2 !important;
-    font-size: 1.05rem;
-    letter-spacing: .2px;
-  }
-
-  /* أيقونة العدسة داخل الحقل */
-  .topbar .search .search__icon{
-    inset-inline-start: 14px !important;  /* في RTL تظهر يسار الحقل */
-    top: 50%; transform: translateY(-50%);
-    opacity: .55 !important;
-    font-size: 1.15rem !important;
-  }
-
-  /* عند التركيز: رجّع المحاذاة طبيعية لسهولة الكتابة */
-  .topbar .search.is-focused .search__input{
-    text-align: start;
-  }
-}
-
-/* ==== Airbnb-like: Topbar search-only on mobile ==== */
-@media (max-width: 768px){
-  /* اخفِ كل شيء في التوب بار ما عدا البحث */
-  .topbar .brand,
-  .topbar .actions,
-  .topbar #menuBtn{ display:none !important; }
-
-  .topbar{ height:56px; border-bottom:1px solid var(--border); }
-  .topbar__inner{
-    grid-template-columns: 1fr !important;   /* عمود واحد */
-    gap: 8px; padding: 8px 12px;
-  }
-
-  /* البحث يتمدّد بالكامل ويأخذ شكل الحبة */
-  .topbar .search{ margin:0; max-width:none !important; }
-  .topbar .search .search__input{
-    height:44px !important;
-    border-radius:999px !important;
-    padding-inline:40px 14px !important;
-    background:#f4f6fb !important;
-    color:#444 !important;
-    border:0 !important;
-    box-shadow: 0 8px 18px rgba(0,0,0,.08) inset,
-                0 6px 16px rgba(0,0,0,.10);
-  }
-  body[data-theme="dark"] .topbar .search .search__input{
-    background:rgba(255,255,255,.08) !important;
-    border:1px solid var(--border) !important;
-    color:var(--text) !important;
-    box-shadow:none;
-  }
-  .topbar .search .search__icon{
-    inset-inline-start:16px !important;
-    opacity:.65 !important;
-    font-size:1.05rem;
-  }
-  .topbar .search .search__input::placeholder{
-    font-size:1.05rem; letter-spacing:.2px; color:#8b95a7;
-  }
-  body[data-theme="dark"] .topbar .search .search__input::placeholder{
-    color: color-mix(in oklab, var(--text) 60%, transparent);
-  }
-
-  /* لمسة عند التركيز مثل Airbnb */
-  .topbar .search.is-focused .search__input{
-    outline:0; box-shadow:0 0 0 4px var(--ring), 0 8px 28px rgba(0,0,0,.18);
-    border-color: color-mix(in oklab, var(--primary) 60%, var(--border)) !important;
-  }
-
-  /* تأمين مسافة أسفل لأن التبويب السفلي موجود */
-  .page{
-    margin-inline:0 !important;
-    padding: calc(56px + 10px) 12px 110px !important;
-    padding-bottom: calc(90px + env(safe-area-inset-bottom)) !important;
+    background: var(--primary); margin-top:3px;
   }
 }

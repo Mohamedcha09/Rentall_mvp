@@ -171,9 +171,6 @@
     {% block head %}{% endblock %}
   </head>
 
-  <!-- data-can-dm من السيرفر -->
-  <body class="theme" data-theme="dark"
-        data-can-dm="{{ 1 if session_user and (session_user.can_manage_deposits or session_user.is_deposit_manager or ((session_user.role or '')|lower == 'admin')) else 0 }}">
 
     <div id="page-wrapper"><!-- غلاف ملء الشاشة -->
 
