@@ -837,3 +837,15 @@ html, body { height: 100%; }
     background: var(--primary); margin-top:3px;
   }
 }
+
+/* === إخفاء زر ☰ وإصلاح شريط الموبايل === */
+@media (max-width: 768px){
+  #menuBtn{ display:none !important; }      /* يخفي زر الثلاث خطوط */
+  .topbar .actions{ display:none !important; } /* يخفي الأزرار الجانبية */
+  .brand{ display:none !important; }        /* يخفي شعار Sevor العلوي */
+  .topbar__inner{
+    grid-template-columns: 1fr !important;  /* يجعل فقط البحث */
+    padding: 8px 12px !important;
+  }
+  .topbar{ height: 56px !important; border: none !important; }
+}
