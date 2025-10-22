@@ -23,10 +23,86 @@
   .fav-btn .bi{font-size:18px;line-height:1;color:#a944ec}
   .fav-btn.is-fav{background:#a944ec}
   .fav-btn.is-fav .bi{color:#fff}
+
+  /* ========= ADDED: Hero Carousel (Amazon-style) ========= */
+  .hero-carousel{ position:relative; border-radius:16px; overflow:hidden; box-shadow: var(--shadow); }
+  .hero-carousel .carousel-item{ max-height:520px; overflow:hidden; }
+  .hero-carousel .carousel-item img{
+    width:100%; height:520px; object-fit:cover; object-position:center; display:block;
+  }
+  .hero-carousel .carousel-caption{
+    left:5%; right:auto; bottom:12%; text-align:start;
+  }
+  .hero-carousel .carousel-caption h2{ font-weight:800; }
+  .hero-carousel .carousel-caption p{ margin-bottom:.6rem; }
+  @media (max-width:992px){
+    .hero-carousel .carousel-item img{ height:380px; }
+    .hero-carousel .carousel-caption{ bottom:10%; }
+    .hero-carousel .carousel-caption h2{ font-size:1.6rem; }
+  }
+  @media (max-width:576px){
+    .hero-carousel .carousel-item img{ height:300px; }
+    .hero-carousel .carousel-caption{ bottom:8%; }
+    .hero-carousel .carousel-caption p{ display:none; } /* مثل أمازون بالموبايل */
+  }
+  /* ========= /ADDED ========= */
 </style>
 {% endblock %}
 
 {% block content %}
+
+<!-- ========== ADDED: Hero Carousel (Amazon-like) ========== -->
+<div id="heroCarousel" class="carousel slide hero-carousel mb-3"
+     data-bs-ride="carousel" data-bs-interval="4000" data-bs-touch="true" aria-label="عروض رئيسية">
+  <!-- Indicators -->
+  <div class="carousel-indicators">
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-label="1"></button>
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1" aria-label="2"></button>
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2" aria-label="3"></button>
+  </div>
+
+  <!-- Slides -->
+  <div class="carousel-inner">
+    <!-- Slide 1 -->
+    <div class="carousel-item active">
+      <img src="{{ url_for('static', path='img/banners/banner1.jpg') }}" alt="Top rentals on Sevor">
+      <div class="carousel-caption text-start">
+        <h2>Rent anything, anytime</h2>
+        <p>Vehicles, homes, electronics & more — all on Sevor.</p>
+        <a href="/explore" class="btn btn-light btn-sm">Explore now</a>
+      </div>
+    </div>
+
+    <!-- Slide 2 -->
+    <div class="carousel-item">
+      <img src="{{ url_for('static', path='img/banners/banner2.jpg') }}" alt="Weekend deals">
+      <div class="carousel-caption text-start">
+        <h2>Weekend deals</h2>
+        <p>Save on cars, vans, and travel gear.</p>
+        <a href="/offers" class="btn btn-light btn-sm">See offers</a>
+      </div>
+    </div>
+
+    <!-- Slide 3 -->
+    <div class="carousel-item">
+      <img src="{{ url_for('static', path='img/banners/banner3.jpg') }}" alt="Secure deposits">
+      <div class="carousel-caption text-start">
+        <h2>Trusted rentals</h2>
+        <p>Verified owners, photo check-in/out, secure deposits.</p>
+        <a href="/how-it-works" class="btn btn-light btn-sm">How it works</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" aria-label="السابق">
+    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+  </button>
+  <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next" aria-label="التالي">
+    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+  </button>
+</div>
+<!-- ========== /ADDED: Hero Carousel ========== -->
 
 {# ==== سلايدر “بالقرب منك / شائع” ==== #}
 {% set nearby = (nearby_items if nearby_items is defined else popular_items)|default([]) %}
@@ -241,5 +317,15 @@
   });
 
   markExistingFavorites();
+</script>
+
+<!-- ADDED: pause/cycle on hover for the hero carousel -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const el = document.getElementById('heroCarousel');
+  if(!el) return;
+  el.addEventListener('mouseenter', () => bootstrap.Carousel.getOrCreateInstance(el).pause());
+  el.addEventListener('mouseleave', () => bootstrap.Carousel.getOrCreateInstance(el).cycle());
+});
 </script>
 {% endblock %}
