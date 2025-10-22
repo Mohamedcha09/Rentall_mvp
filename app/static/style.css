@@ -936,3 +936,45 @@ html, body { height: 100%; }
 .hero-carousel .carousel-indicators [data-bs-target]{
   width:10px; height:10px; border-radius:50%;
 }
+
+/* ===== إصلاحات البانر على سطح المكتب (Amazon-like) ===== */
+@media (min-width: 992px){
+  /* البانر يكون حافة لحافة بدون ظلال/حواف دائرية */
+  .edge-bleed .hero-carousel{
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* تلاشي أطول للأسفل حتى يندمج تمامًا مع الأبيض */
+  .hero-carousel::after{
+    height: 160px !important;
+    background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #ffffff 80%) !important;
+  }
+
+  /* ارفع الرفوف البيضاء قليلًا فوق نهاية البانر */
+  .home-shelves{
+    margin-top: -72px !important;   /* كان -40px ؛ زُوِّد ليلتصق تمامًا */
+    border-radius: 18px 18px 0 0;
+  }
+}
+
+/* ===== تحسين قراءة النص فوق الصور الفاتحة ===== */
+/* فيع/فينييت خفيف من الجهة السفلية والجانبية */
+.hero-carousel{ position:relative; }
+.hero-carousel::before{
+  content:""; position:absolute; inset:0;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0.00) 50%, rgba(0,0,0,0.28) 100%),
+    linear-gradient(90deg, rgba(0,0,0,0.22), rgba(0,0,0,0));
+  pointer-events:none;
+}
+
+/* ===== تموضع الكابشن مع اتجاه RTL ===== */
+html[dir="rtl"] .hero-carousel .carousel-caption{
+  right: 5% !important; left: auto !important; text-align: end !important;
+}
+
+/* مؤشرات/أسهم أكبر قليلًا لسهولة النقر */
+.hero-carousel .carousel-control-prev,
+.hero-carousel .carousel-control-next{ width: 6%; }
+.hero-carousel .carousel-indicators [data-bs-target]{ width:12px; height:12px; }
