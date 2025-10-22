@@ -42,18 +42,25 @@
 
   /* ===== Desktop-only Amazon look (edge bleed + white shelves) ===== */
   @media (min-width: 992px){
-    .edge-bleed{ margin-inline: calc(50% - 50vw); width:100vw; }
-    .hero-carousel::after{
-      content:""; position:absolute; left:0; right:0; bottom:0; height:120px;
-      background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #ffffff 75%);
-      pointer-events:none;
-    }
-    .home-shelves{
-      background:#fff; border-radius:18px 18px 0 0; box-shadow:0 8px 26px rgba(0,0,0,.06);
-      margin-top:-40px; padding:16px 18px 20px;
-    }
-    .home-shelves.container-xl{ max-width:1320px; }
+  .edge-bleed{ margin-inline: calc(50% - 50vw); width:100vw; }
+
+  .hero-carousel::after{
+    content:""; position:absolute; left:0; right:0; bottom:0; height:160px;
+    background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #ffffff 85%);
+    pointer-events:none;
   }
+
+  /* ✨ رفع المنشورات قليلاً ليظهر الدمج الطبيعي مع الأبيض */
+  .home-shelves{
+    background:#fff;
+    border-radius:18px 18px 0 0;
+    box-shadow:0 8px 26px rgba(0,0,0,.06);
+    margin-top:-80px; /* تعديل مهم */
+    padding:16px 18px 20px;
+  }
+
+  .home-shelves.container-xl{ max-width:1320px; }
+}
 </style>
 {% endblock %}
 
