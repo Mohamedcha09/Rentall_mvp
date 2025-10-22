@@ -166,6 +166,12 @@
       }
 
       .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important; }
+
+      /* ✅ إضافة صغيرة: عند تركيز البحث في الموبايل نخفي الأيقونات المجاورة مثل Airbnb */
+      @media (max-width:768px){
+        .topbar .search.is-focused{ z-index:2201; }
+        .topbar .search.is-focused ~ .actions{ display:none !important; }
+      }
     </style>
 
     {% block head %}{% endblock %}
@@ -596,6 +602,7 @@
   menu.addEventListener('click', function(e){ e.stopPropagation(); });
 })();
 </script>
+
     <!-- Typeahead -->
     <script>
     (function initTypeahead(){
@@ -613,7 +620,7 @@
       function show(){ panel.classList.remove('d-none'); }
       function esc(s){
   return String(s||"").replace(/[&<>"']/g, function(c){
-    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+    return {"&":"&amp;","<":"&gt;","\"":"&quot;","'":"&#39;"}[c];
   });
 }
 
@@ -691,6 +698,17 @@
     })();
     </script>
 
+    <!-- ✅ سكربت تركيز/إلغاء تركيز حقل البحث (الإضافة المطلوبة) -->
+    <script>
+      (function(){
+        var form = document.querySelector('.topbar .search');
+        var input = form ? form.querySelector('.search__input') : null;
+        if(!form || !input) return;
+        input.addEventListener('focus', function(){ form.classList.add('is-focused'); });
+        input.addEventListener('blur',  function(){ form.classList.remove('is-focused'); });
+      })();
+    </script>
+
     <!-- إشعارات (Polling مبسّط) -->
     <script>
     (function notifSystem(){
@@ -716,7 +734,7 @@
 
       function esc(s){
   return String(s||"").replace(/[&<>"']/g, function(c){
-    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+    return {"&":"&amp;","<":"&gt;","\"":"&quot;","'":"&#39;"}[c];
   });
 }
 
