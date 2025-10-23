@@ -30,50 +30,51 @@
   /* =========================================================
      HERO — صورة كاملة + حواف دائرية (نسبة 3:2 لصور 1536×1024)
      ========================================================= */
-  .edge-bleed{ margin-inline: calc(50% - 50vw); width:100vw; } /* كما كانت (شكل أمازون) */
+  .edge-bleed{ margin-inline: calc(50% - 50vw); width:100vw; } /* افتراضي: شكل أمازون */
   .hero-carousel{
     position:relative;
     border-radius:18px !important;
     overflow:hidden !important;
     box-shadow:0 14px 34px rgba(0,0,0,.08);
   }
-  /* أعطِ الحواف الدائرية لكل الطبقات */
+  /* الحواف الدائرية لكل طبقات السلايدر */
   .hero-carousel .carousel-inner,
   .hero-carousel .carousel-item,
   .hero-carousel .carousel-item img{
     border-radius:18px !important;
     overflow:hidden !important;
   }
-  /* استخدم نسبة 3:2 لأن صورك 1536×1024 */
+  /* نسبة 3:2 (1536×1024) */
   .hero-carousel .carousel-item{
     aspect-ratio: 3 / 2 !important;
     max-height:none !important;
   }
-  /* الصورة تظهر كاملة بدون قص + تمركز + خلفية لطيفة */
+  /* الصورة كاملة بدون قص */
   .hero-carousel .carousel-item img{
     width:100% !important;
     height:100% !important;
-    object-fit:contain !important;  /* أهم سطر: لا قص */
+    object-fit:contain !important;
     object-position:center !important;
     display:block !important;
-    background:#eef2f7 !important;  /* يظهر في الفراغات */
+    background:#eef2f7 !important; /* لون الفراغ */
   }
-  /* لا مؤشرات ولا كابشن (صور فقط) */
+  /* بدون مؤشرات أو كابشن */
   .hero-carousel .carousel-indicators{ display:none !important; }
   .hero-carousel .carousel-caption{ display:none !important; }
-  /* ألغِ أي طبقة تلاشي قديمة */
+  /* إزالة أي تلاشي قديم */
   .hero-carousel::before,
   .hero-carousel::after{ content:none !important; display:none !important; }
 
-  /* أسهم بحجم مريح */
+  /* الأسهم */
   .hero-carousel .carousel-control-prev,
   .hero-carousel .carousel-control-next{ width:8% !important; }
   .hero-carousel .carousel-control-prev-icon,
   .hero-carousel .carousel-control-next-icon{ filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
 
-  /* ديسكتوب: إن أردت شكل كرت وسط الصفحة بدل edge-bleed فعّل الكتلة أدناه */
+  /* ===== تصغير خفيف على الكمبيوتر فقط (لا تغيير للموبايل) ===== */
   @media (min-width: 992px){
-    /* إبقاء شكل أمازون كما تحب: edge-bleed شغّال */
+    .edge-bleed{ margin-inline:auto !important; width:auto !important; } /* تعطيل الـ edge-bleed على الديسكتوب */
+    .hero-carousel{ max-width:1100px; margin:0 auto 14px; }              /* ← عدّل الرقم لتكبير/تصغير بسيط */
     .home-shelves{
       background:#fff; border-radius:18px 18px 0 0; box-shadow:0 8px 26px rgba(0,0,0,.06);
       margin-top:-80px; padding:16px 18px 20px;
@@ -81,7 +82,7 @@
     .home-shelves.container-xl{ max-width:1320px; }
   }
 
-  /* موبايل: نحافظ على النسبة 3:2 أيضاً */
+  /* موبايل: بدون أي تغيير */
   @media (max-width:576px){
     .hero-carousel .carousel-item{ aspect-ratio: 3 / 2 !important; }
   }
@@ -207,7 +208,7 @@
             <div class="spot-title">{{ it.title }}</div>
             <div class="owner-line">
               <div class="owner-avatar--placeholder">🏷️</div>
-              <span class="city-chip">{{ it.city or '—' }}</span>
+              <span class="city-chip">{{ it.city او '—' }}</span>
             </div>
             <div class="spot-footer">
               <small class="text-muted">تقييم {{ it.rating|default(4.8) }}</small>
