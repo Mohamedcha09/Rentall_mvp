@@ -3,8 +3,9 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="utf-8" />
+    <!-- (موجودة) -->
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- ⬇️ إضافة فقط: لتمكين الـ safe area على iOS -->
+    <!-- ⬇️ إضافة لتمكين الـ safe area على iOS -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{{ title or "RentAll" }}</title>
 
@@ -15,7 +16,7 @@
     <!-- ستايل خارجي -->
     <link href="/static/style.css?v=1" rel="stylesheet">
 
-    <!-- ✅ تمت الإضافة هنا: ملفات PWA -->
+    <!-- ✅ ملفات PWA -->
     <link rel="manifest" href="{{ url_for('static', path='manifest.json') }}">
     <meta name="theme-color" content="#6C63FF">
     <script>
@@ -69,7 +70,7 @@
       }
       #notifOpen .notif-ping{
         position:absolute; top:-2px; inset-inline-end:-2px; width:8px; height:8px;
-        background:#d43aff; border-radius:50%; box-shadow: 0 0 0 6px rgba(212,58,255,.18);
+        background:#d43aff; border-radius:50%; box-shadow:0 0 0 6px rgba(212,58,255,.18);
       }
 
       .notif-panel{
@@ -162,15 +163,16 @@
         .mobile-tabbar a.is-active .tab-img{ opacity:1; transform:scale(1.06); }
         .page{ padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
       }
+
       /* ===== رفع زر الإضافة (+) قليلاً للأعلى على الموبايل ===== */
-@media (max-width: 768px) {
-  .mobile-tabbar .floating-btn,
-  .fab, 
-  .btn-fab, 
-  .add-item-btn {
-    bottom: 76px !important; /* كان 60 تقريبًا، رفعناه قليلاً */
-  }
-}
+      @media (max-width: 768px) {
+        .mobile-tabbar .floating-btn,
+        .fab, 
+        .btn-fab, 
+        .add-item-btn {
+          bottom: 76px !important; /* كان 60 تقريبًا، رفعناه قليلاً */
+        }
+      }
 
       @media (max-width:768px){
         .actions .dropdown:first-of-type{ display:none !important; }
@@ -179,47 +181,49 @@
       .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important; }
 
       /* ===== رفع زر الإضافة (+) قليلاً للأعلى على الهاتف ===== */
-@media (max-width: 768px) {
-  /* غطينا جميع الأسماء الممكنة للزر */
-  .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"] {
-    position: fixed !important;
-    bottom: 80px !important; /* ← عدّل هذا الرقم لرفع أكثر (جرب 90px لو أردت أعلى) */
-    z-index: 1000 !important;
-  }
-}
+      @media (max-width: 768px) {
+        /* غطينا جميع الأسماء الممكنة للزر */
+        .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"] {
+          position: fixed !important;
+          bottom: 80px !important; /* ← عدّل هذا الرقم لرفع أكثر (جرب 90px لو أردت أعلى) */
+          z-index: 1000 !important;
+        }
+      }
 
-/* ✅ تعريف متغيرات الـ safe area (إضافة فقط) */
-:root{
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-bottom-legacy: constant(safe-area-inset-bottom, 0px);
-}
+      /* ✅ تعريف متغيرات الـ safe area */
+      :root{
+        --safe-bottom: env(safe-area-inset-bottom, 0px);
+        --safe-bottom-legacy: constant(safe-area-inset-bottom, 0px);
+      }
 
-/* ✅ مساحة سفلية للمحتوى حتى لا يُقص خلف الشريط (إضافة فقط) */
-body{
-  padding-bottom: calc(84px + max(var(--safe-bottom), var(--safe-bottom-legacy)));
-}
+      /* ✅ مساحة سفلية للمحتوى حتى لا يُقص خلف الشريط */
+      body{
+        padding-bottom: calc(84px + max(var(--safe-bottom), var(--safe-bottom-legacy)));
+      }
 
-/* ✅ رفع النافبار السفلي فعليًا فوق خط iPhone (إضافة فقط) */
-@media (max-width: 768px){
-  .mobile-tabbar{
-    bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 6px) !important;
-    border-radius: 16px 16px 0 0;
-    padding-bottom: 8px !important;
-    padding-top: 8px !important;
-  }
-  /* زر + فوق الشريط بمسافة مريحة */
-  .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
-    bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 96px) !important;
-  }
-}
+      /* ✅ رفع النافبار السفلي فعليًا فوق خط iPhone */
+      @media (max-width: 768px){
+        .mobile-tabbar{
+          bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 6px) !important;
+          border-radius: 16px 16px 0 0;
+          padding-bottom: 8px !important;
+          padding-top: 8px !important;
+        }
+        /* زر + فوق الشريط بمسافة مريحة */
+        .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
+          bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 96px) !important;
+        }
+      }
 
-/* ✅ للتأكد أن عناصر التبويب تبقى في الوسط دائمًا */
-.mobile-tabbar .nav-item { padding-bottom: 4px; }
+      /* ✅ للتأكد أن عناصر التبويب تبقى في الوسط دائمًا */
+      .mobile-tabbar .nav-item { padding-bottom: 4px; }
     </style>
 
     {% block head %}{% endblock %}
   </head>
 
+  <!-- ⬇️ إضافة: وسم body -->
+  <body>
 
     <div id="page-wrapper"><!-- غلاف ملء الشاشة -->
 
@@ -231,51 +235,51 @@ body{
         <button id="menuBtn" class="hamburger-btn" type="button"
                 aria-haspopup="true" aria-expanded="false" aria-controls="quickMenu" title="القائمة">☰</button>
 
-        <!-- القائمة الصغيرة المنسدلة (استبدل القديمة بهذه) -->
-<nav id="quickMenu" class="topmenu" hidden role="menu" aria-label="قائمة الموقع">
-  <a role="menuitem" class="topmenu-item" href="/">
-    <i class="bi bi-house"></i><span>الرئيسية</span>
-  </a>
+        <!-- القائمة الصغيرة المنسدلة -->
+        <nav id="quickMenu" class="topmenu" hidden role="menu" aria-label="قائمة الموقع">
+          <a role="menuitem" class="topmenu-item" href="/">
+            <i class="bi bi-house"></i><span>الرئيسية</span>
+          </a>
 
-  <a role="menuitem" class="topmenu-item" href="/items">
-    <i class="bi bi-box-seam"></i><span>العناصر</span>
-  </a>
+          <a role="menuitem" class="topmenu-item" href="/items">
+            <i class="bi bi-box-seam"></i><span>العناصر</span>
+          </a>
 
-  {% if session_user %}
-    <a role="menuitem" class="topmenu-item" href="/favorites">
-      <i class="bi bi-heart-fill"></i><span>مفضلتي</span>
-    </a>
+          {% if session_user %}
+            <a role="menuitem" class="topmenu-item" href="/favorites">
+              <i class="bi bi-heart-fill"></i><span>مفضلتي</span>
+            </a>
 
-    <a role="menuitem" class="topmenu-item" href="/profile">
-      <i class="bi bi-person-circle"></i><span>صفحتي</span>
-    </a>
+            <a role="menuitem" class="topmenu-item" href="/profile">
+              <i class="bi bi-person-circle"></i><span>صفحتي</span>
+            </a>
 
-    <a role="menuitem" class="topmenu-item" href="/bookings">
-      <i class="bi bi-calendar2-check"></i><span>حجوزاتي</span>
-    </a>
+            <a role="menuitem" class="topmenu-item" href="/bookings">
+              <i class="bi bi-calendar2-check"></i><span>حجوزاتي</span>
+            </a>
 
-    <a role="menuitem" class="topmenu-item" href="/payout/settings">
-      <i class="bi bi-cash-stack"></i><span>التحويلات</span>
-    </a>
+            <a role="menuitem" class="topmenu-item" href="/payout/settings">
+              <i class="bi bi-cash-stack"></i><span>التحويلات</span>
+            </a>
 
-    <a role="menuitem" class="topmenu-item" href="/owner/items">
-      <i class="bi bi-collection"></i><span>أشيائي</span>
-    </a>
+            <a role="menuitem" class="topmenu-item" href="/owner/items">
+              <i class="bi bi-collection"></i><span>أشيائي</span>
+            </a>
 
-    {% if session_user.get('can_manage_deposits') %}
-      <a role="menuitem" class="topmenu-item" href="/dm/deposits">
-        <i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>
-      </a>
-    {% endif %}
+            {% if session_user.get('can_manage_deposits') %}
+              <a role="menuitem" class="topmenu-item" href="/dm/deposits">
+                <i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>
+              </a>
+            {% endif %}
 
-    {% if session_user.role == 'admin' %}
-      <hr class="topmenu-sep" role="separator">
-      <a role="menuitem" class="topmenu-item" href="/admin">
-        <i class="bi bi-speedometer2"></i><span>لوحة الأدمين</span>
-      </a>
-    {% endif %}
-  {% endif %}
-</nav>
+            {% if session_user.role == 'admin' %}
+              <hr class="topmenu-sep" role="separator">
+              <a role="menuitem" class="topmenu-item" href="/admin">
+                <i class="bi bi-speedometer2"></i><span>لوحة الأدمين</span>
+              </a>
+            {% endif %}
+          {% endif %}
+        </nav>
 
         <!-- الشعار -->
         <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/">
@@ -322,7 +326,6 @@ body{
             </ul>
           </div>
 
-          
           <!-- اللغة -->
           <div class="dropdown lang-switch">
             <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="الlanguage">
@@ -369,23 +372,38 @@ body{
 
     <!-- ===== Mobile Top Tabs (موبايل فقط) ===== -->
     <nav class="m-top-tabs d-lg-none" role="tablist" aria-label="أقسام عليا">
+      <!-- Home -->
       <a href="/" class="m-tab {% if request and request.url.path == '/' %}is-active{% endif %}" role="tab"
          aria-selected="{{ 'true' if request and request.url.path == '/' else 'false' }}">Home</a>
 
       {% if session_user %}
+        <!-- إشعارات: صفحة مستقلة -->
+        <a href="/notifications" class="m-tab {% if request and request.url.path.startswith('/notifications') %}is-active{% endif %}" role="tab"
+           aria-selected="{{ 'true' if request and request.url.path.startswith('/notifications') else 'false' }}">
+          إشعارات
+          {% set unread_top = (request.state.unread_messages|default(0))|int if request else 0 %}
+          <small id="mNotifBadge" {% if unread_top<=0 %}style="display:none"{% endif %} class="ms-1">
+            {{ unread_top if unread_top < 100 else '99+' }}
+          </small>
+        </a>
+
+        <!-- تحويلات -->
         <a href="/payout/settings" class="m-tab {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" role="tab"
            aria-selected="{{ 'true' if request and request.url.path.startswith('/payout') else 'false' }}">تحويلات</a>
-      {% else %}
-        <a href="/login" class="m-tab" role="tab" aria-selected="false">تحويلات</a>
-      {% endif %}
 
-      {% if session_user and session_user.role == 'admin' %}
-        <a href="/admin" class="m-tab {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" role="tab"
-           aria-selected="{{ 'true' if request and request.url.path.startswith('/admin') else 'false' }}">لوحة أدمين</a>
+        {% if session_user.role == 'admin' %}
+          <!-- لوحة أدمين -->
+          <a href="/admin" class="m-tab {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" role="tab"
+             aria-selected="{{ 'true' if request and request.url.path.startswith('/admin') else 'false' }}">لوحة أدمين</a>
+        {% endif %}
+      {% else %}
+        <!-- غير مسجّل -->
+        <a href="/login" class="m-tab" role="tab" aria-selected="false">إشعارات</a>
+        <a href="/login" class="m-tab" role="tab" aria-selected="false">تحويلات</a>
       {% endif %}
     </nav>
 
-    <!-- ===== Sidebar (يبقى في الـ DOM لكن مخفي على سطح المكتب عبر CSS) ===== -->
+    <!-- ===== Sidebar ===== -->
     <aside class="sidebar" id="appSidebar" data-collapsed="false">
       <nav class="sidebar__nav">
         <a class="side-link {% if request and request.url.path == '/' %}is-active{% endif %}" href="/" data-tooltip="الرئيسية">
@@ -446,7 +464,7 @@ body{
       {% block content %}{% endblock %}
     </main>
 
-    <!-- لوحة إشعارات جانبية -->
+    <!-- لوحة إشعارات جانبية (تظل موجودة لسطح المكتب) -->
     <div class="notif-panel" id="notifPanel" aria-hidden="true">
       <div class="notif-panel__header d-flex justify-content-between align-items-center">
         <strong>الإشعارات</strong>
@@ -462,8 +480,7 @@ body{
       <a href="/owner/items/new" class="fab d-lg-none" title="عنصر جديد"><i class="bi bi-plus-lg"></i></a>
     {% endif %}
 
-    <!-- ===== تبويب الجوال ===== -->
-    <!-- (تم تعديله ليصبح 5 تبويبات: رئيسية / مفضلاتي / حجوزاتي / الرسائل / بروفايلي) -->
+    <!-- ===== تبويب الجوال السفلي ===== -->
     <nav class="mobile-tabbar d-lg-none">
       <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
         <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home">
@@ -526,10 +543,10 @@ body{
     {% block scripts %}{% endblock %}
 
     <script>
-      // Sidebar open/collapse (لن يعمل الآن لأنه لا يوجد زر sidebarToggle، لكن أبقيته كما هو)
+      // Sidebar open/collapse
       const sidebar   = document.getElementById('appSidebar');
       const pinBtn    = document.getElementById('pinSidebar');
-      const toggleBtn = document.getElementById('sidebarToggle'); // غير موجود الآن؛ لا مشكلة
+      const toggleBtn = document.getElementById('sidebarToggle'); // غير موجود الآن
       const saved     = localStorage.getItem('sidebar_collapsed');
       if (saved === 'true') collapseSidebar(true);
 
@@ -571,15 +588,15 @@ body{
         document.body.dataset.theme = mode;
         localStorage.setItem('theme_mode', mode);
         const dark = mode === 'dark';
-        sunIcon.classList.toggle('d-none', !dark);
-        moonIcon.classList.toggle('d-none', dark);
+        sunIcon?.classList.toggle('d-none', !dark);
+        moonIcon?.classList.toggle('d-none', dark);
       }
 
-      // Notif panel
+      // Notif panel (للديسكتوب)
       const notifOpen  = document.getElementById('notifOpen');
       const notifClose = document.getElementById('notifClose');
       const panel      = document.getElementById('notifPanel');
-      const body       = document.getElementById('notifBody');
+      const bodyEl     = document.getElementById('notifBody');
       const scrim      = document.getElementById('scrim');
 
       function openPanel(){ panel?.classList.add('is-open'); scrim?.classList.add('is-show'); }
@@ -589,54 +606,53 @@ body{
       scrim?.addEventListener('click', closePanel);
     </script>
 
-    <!-- سكربت زر ☰ (مُوحّد ومحسّن) -->
-    <!-- [إصلاح نهائي لزر ☰] -->
-<script>
-(function(){
-  const btn  = document.getElementById('menuBtn');
-  const menu = document.getElementById('quickMenu');
-  if(!btn || !menu) return;
+    <!-- سكربت زر ☰ -->
+    <script>
+    (function(){
+      const btn  = document.getElementById('menuBtn');
+      const menu = document.getElementById('quickMenu');
+      if(!btn || !menu) return;
 
-  // امنع التهيئة المكررة
-  if (window.__quickMenuInit) return;
-  window.__quickMenuInit = true;
+      if (window.__quickMenuInit) return;
+      window.__quickMenuInit = true;
 
-  function open(){
-    menu.classList.add('is-open');
-    menu.removeAttribute('hidden');
-    btn.setAttribute('aria-expanded','true');
-    setTimeout(()=>{
-      document.addEventListener('click', onDoc, true);
-      document.addEventListener('keydown', onKey);
-    },0);
-  }
+      function open(){
+        menu.classList.add('is-open');
+        menu.removeAttribute('hidden');
+        btn.setAttribute('aria-expanded','true');
+        setTimeout(()=>{
+          document.addEventListener('click', onDoc, true);
+          document.addEventListener('keydown', onKey);
+        },0);
+      }
 
-  function close(){
-    menu.classList.remove('is-open');
-    menu.setAttribute('hidden','');
-    btn.setAttribute('aria-expanded','false');
-    document.removeEventListener('click', onDoc, true);
-    document.removeEventListener('keydown', onKey);
-  }
+      function close(){
+        menu.classList.remove('is-open');
+        menu.setAttribute('hidden','');
+        btn.setAttribute('aria-expanded','false');
+        document.removeEventListener('click', onDoc, true);
+        document.removeEventListener('keydown', onKey);
+      }
 
-  function toggle(){ menu.classList.contains('is-open') ? close() : open(); }
+      function toggle(){ menu.classList.contains('is-open') ? close() : open(); }
 
-  function onDoc(e){
-    if (e.target===btn || btn.contains(e.target) || menu.contains(e.target)) return;
-    close();
-  }
+      function onDoc(e){
+        if (e.target===btn || btn.contains(e.target) || menu.contains(e.target)) return;
+        close();
+      }
 
-  function onKey(e){ if (e.key==='Escape'){ close(); btn.focus(); } }
+      function onKey(e){ if (e.key==='Escape'){ close(); btn.focus(); } }
 
-  btn.addEventListener('click', function(e){
-    e.preventDefault();
-    e.stopPropagation();
-    toggle();
-  });
+      btn.addEventListener('click', function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        toggle();
+      });
 
-  menu.addEventListener('click', function(e){ e.stopPropagation(); });
-})();
-</script>
+      menu.addEventListener('click', function(e){ e.stopPropagation(); });
+    })();
+    </script>
+
     <!-- Typeahead -->
     <script>
     (function initTypeahead(){
@@ -653,10 +669,10 @@ body{
       function hide(){ panel.classList.add('d-none'); panel.innerHTML = ""; activeIndex = -1; }
       function show(){ panel.classList.remove('d-none'); }
       function esc(s){
-  return String(s||"").replace(/[&<>"']/g, function(c){
-    return {"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c];
-  });
-}
+        return String(s||"").replace(/[&<>"']/g, function(c){
+          return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+        });
+      }
 
       function normalizePayload(data){
         var usersArr = (data && data.users) ? data.users : [];
@@ -756,10 +772,10 @@ body{
       }
 
       function esc(s){
-  return String(s||"").replace(/[&<>"']/g, function(c){
-    return {"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c];
-  });
-}
+        return String(s||"").replace(/[&<>"']/g, function(c){
+          return {"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c];
+        });
+      }
 
       // نحاول أول مسار يشتغل عندك (بدون تعديل الباك)
       const FEEDS = [
@@ -851,10 +867,13 @@ body{
     })();
     </script>
 
-    <!-- سكربت مزامنة صلاحية MD من السيرفر فقط -->
+    <!-- سكربت مزامنة صلاحية MD من السيرفر -->
     <script>
     (function roleAutoToggle(){
       if (window.__dmSyncInit) return; window.__dmSyncInit = true;
+
+      function showDM(){ /* تركناه فارغ/موجود */ }
+      function hideDM(){ /* تركناه فارغ/موجود */ }
 
       function syncFromMe(){
         return fetch('/api/me', {credentials:'include'})
@@ -869,7 +888,7 @@ body{
       // فحص أوّلي
       syncFromMe();
 
-      // عند تغيّر عدّاد الإشعارات (حدث يُطلقه notifSystem)
+      // عند تغيّر عدّاد الإشعارات
       document.addEventListener('unread:changed', () => {
         syncFromMe();
       });
