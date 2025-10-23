@@ -17,10 +17,15 @@ def _has_column(table: str, col: str) -> bool:
             rows = conn.exec_driver_sql(f"PRAGMA table_info('{table}')").all()
         return any(r[1] == col for r in rows)
     except Exception:
+        # على Postgres أو لو فشل الفحص، نُرجع True لمنع إنشاء column_property خاطئ
         return True
 
 
 def col_or_literal(table: str, name: str, type_, **kwargs):
+    """
+    لو العمود موجود فعلاً في الجدول → Column(type_)
+    لو غير موجود (في قواعد قديمة) → column_property(literal(None)) حتى لا تنكسر النماذج
+    """
     if _has_column(table, name):
         return Column(type_, **kwargs)
     return column_property(literal(None))
@@ -153,9 +158,11 @@ class Item(Base):
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     city = Column(String(120), nullable=True)
+
     # ✅ جديد: إحداثيات اختيارية (تُنشأ فقط إذا الأعمدة موجودة في الجدول بفضل col_or_literal)
     latitude = col_or_literal("items", "latitude", Float, nullable=True)   # ✅ إضافة
     longitude = col_or_literal("items", "longitude", Float, nullable=True) # ✅ إضافة
+
     price_per_day = Column(Integer, nullable=False, default=0)
     category = Column(String(50), nullable=False, default="other")
     image_path = Column(String(500), nullable=True)
@@ -274,7 +281,7 @@ class Notification(Base):
     link_url = Column(String(400), nullable=True)
     is_read = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    # ✅ تعديل: ربط واضح بالعلاقة العكسية وتسكيت تحذير overlaps
+    # ✅ ربط واضح بالعلاقة العكسية وتسكيت تحذير overlaps
     user = relationship(
         "User",
         back_populates="notifications",
@@ -290,11 +297,11 @@ except Exception:
     User.notifications = relationship(
         "Notification",
         primaryjoin="User.id==Notification.user_id",
-        back_populates="user",  # ✅ تعديل: ربط واضح بالعلاقة الأمامية
+        back_populates="user",
         cascade="all, delete-orphan",
         order_by="Notification.created_at.desc()",
         lazy="selectin",
-        overlaps="notifications,user"  # ✅ لتسكيت تحذير SAWarning
+        overlaps="notifications,user"
     )
 
 
@@ -342,7 +349,7 @@ class Booking(Base):
     returned_at = col_or_literal("bookings", "returned_at", DateTime, nullable=True)
     owner_return_note = col_or_literal("bookings", "owner_return_note", Text, nullable=True)
 
-    # ===== [جديد] حقول التايملاين المستخدمة في التدفق والقوالب =====
+    # ===== حقول التايملاين المستخدمة في التدفق والقوالب =====
     accepted_at = col_or_literal("bookings", "accepted_at", DateTime, nullable=True)
     rejected_at = col_or_literal("bookings", "rejected_at", DateTime, nullable=True)
     picked_up_at = col_or_literal("bookings", "picked_up_at", DateTime, nullable=True)
@@ -354,12 +361,12 @@ class Booking(Base):
     timeline_paid_at = col_or_literal("bookings", "timeline_paid_at", DateTime, nullable=True)
     timeline_renter_received_at = col_or_literal("bookings", "timeline_renter_received_at", DateTime, nullable=True)
 
-    # ===== [جديد] فحص الإرجاع السريع (لا مشاكل) ومهلة الإفراج التلقائي =====
+    # ===== فحص الإرجاع السريع ومهلة الإفراج التلقائي =====
     return_check_no_problem = col_or_literal("bookings", "return_check_no_problem", Boolean, default=False)
     return_check_submitted_at = col_or_literal("bookings", "return_check_submitted_at", DateTime, nullable=True)
     deposit_auto_release_at = col_or_literal("bookings", "deposit_auto_release_at", DateTime, nullable=True)
 
-    # ===== [جديد] مسار النزاع (بلاغ المالك / رد المستأجر / قرار DM) =====
+    # ===== مسار النزاع =====
     dispute_opened_at = col_or_literal("bookings", "dispute_opened_at", DateTime, nullable=True)
     renter_response_at = col_or_literal("bookings", "renter_response_at", DateTime, nullable=True)
     dm_decision_at = col_or_literal("bookings", "dm_decision_at", DateTime, nullable=True)
@@ -392,12 +399,22 @@ class Booking(Base):
     owner = relationship("User", foreign_keys=[owner_id], back_populates="bookings_owned")
 
     # سجلات وأدلة الوديعة
-    deposit_audits = relationship("DepositAuditLog", back_populates="booking", cascade="all, delete-orphan", order_by="DepositAuditLog.created_at.desc()")
-    deposit_evidences = relationship("DepositEvidence", back_populates="booking", cascade="all, delete-orphan", order_by="DepositEvidence.created_at.desc()")
+    deposit_audits = relationship(
+        "DepositAuditLog",
+        back_populates="booking",
+        cascade="all, delete-orphan",
+        order_by="DepositAuditLog.created_at.desc()"
+    )
+    deposit_evidences = relationship(
+        "DepositEvidence",
+        back_populates="booking",
+        cascade="all, delete-orphan",
+        order_by="DepositEvidence.created_at.desc()"
+    )
 
 
 # =========================
-# Deposit Audit Log (سجل قرارات الوديعة)
+# Deposit Audit Log
 # =========================
 class DepositAuditLog(Base):
     __tablename__ = "deposit_audit_logs"
@@ -417,14 +434,14 @@ class DepositAuditLog(Base):
 
 
 # =========================
-# Deposit Evidence (أدلة وصور/ملفات النزاع)
+# Deposit Evidence
 # =========================
 class DepositEvidence(Base):
     __tablename__ = "deposit_evidences"
 
     id = Column(Integer, primary_key=True, index=True)
     booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=False)
-    # ✅ تعديل مهم: نجعلها مؤقتًا nullable=True لتوافق قواعد SQLite القديمة بعد الهوت-فيكس
+    # ✅ جعلها مؤقتًا nullable=True لتوافق قواعد SQLite القديمة بعد الهوت-فيكس
     uploader_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     side = Column(String(20), nullable=False)        # owner / renter / manager
     kind = Column(String(20), nullable=False, default="image")  # image / video / doc / note

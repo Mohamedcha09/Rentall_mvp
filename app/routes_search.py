@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, Request, Query  # ✅ إضافة Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
+
 from .database import get_db
 from .models import User, Item
 
@@ -9,6 +10,7 @@ router = APIRouter()
 
 # ✅ إضافة: نصف قطر الأرض بالكيلومتر لاستخدامه مع دالة Haversine
 EARTH_RADIUS_KM = 6371.0
+
 
 def _clean_name(first: str, last: str, uid: int) -> str:
     """
@@ -23,10 +25,18 @@ def _clean_name(first: str, last: str, uid: int) -> str:
         full = f or l
     return full or f"User {uid}"
 
+
 # ✅ إضافة: دالة مساعدة لتطبيق فلترة المدينة أو GPS (أولوية GPS ثم المدينة)
-def _apply_city_or_gps_filter(qs, city: str | None, lat: float | None, lng: float | None, radius_km: float | None):
+def _apply_city_or_gps_filter(
+    qs,
+    city: str | None,
+    lat: float | None,
+    lng: float | None,
+    radius_km: float | None,
+):
     # أولوية GPS إن توفّر lat/lng + radius_km
     if lat is not None and lng is not None and radius_km:
+        # مسافة Haversine (نسخة acos/cos مناسبة لـ SQLAlchemy)
         distance_expr = EARTH_RADIUS_KM * func.acos(
             func.cos(func.radians(lat)) *
             func.cos(func.radians(Item.latitude)) *
@@ -40,8 +50,10 @@ def _apply_city_or_gps_filter(qs, city: str | None, lat: float | None, lng: floa
             distance_expr <= radius_km
         )
     elif city:
+        # مطابقة مباشرة على المدينة (يمكن لاحقًا توسيعها لمطابقة تقريبية)
         qs = qs.filter(Item.city.ilike(city.strip()))
     return qs
+
 
 @router.get("/api/search")
 def api_search(
@@ -114,6 +126,7 @@ def api_search(
     ]
 
     return {"users": users, "items": items}
+
 
 # (اختياري) صفحة نتائج كاملة /search لو كنت تستعملها في الواجهة
 @router.get("/search")
