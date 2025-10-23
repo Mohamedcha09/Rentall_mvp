@@ -668,3 +668,60 @@ small, .small{ color:var(--muted)!important }
   height: 10px !important;
   border-radius: 50% !important;
 }
+
+/* === Hero rounded + show full image on all devices === */
+.hero-carousel{
+  border-radius:18px;
+  overflow:hidden;
+  box-shadow: var(--shadow);
+}
+
+/* اجعل الحواف الدائرية حقيقية على كل طبقات السلايدر */
+.hero-carousel .carousel-inner,
+.hero-carousel .carousel-item,
+.hero-carousel .carousel-item img{
+  border-radius:18px;
+  overflow:hidden;
+}
+
+/* افتراضي: الصورة تُعرَض كاملة (لا قص) مع خلفية لطيفة */
+.hero-carousel .carousel-item img{
+  width:100%;
+  height:56vw;           /* ارتفاع مرن للجوال */
+  max-height:420px;      /* سقف مناسب للتابلت/الجوال */
+  object-fit:contain;    /* تعرض الصورة كاملة بدون قص */
+  object-position:center;
+  background:#eef2f7;    /* يظهر خلف الصورة إن كان فيها فراغ */
+  display:block;
+}
+
+/* ألغِ الفينييت/التلاشي القديم حتى لا يغيّم الصورة */
+.hero-carousel::before,
+.hero-carousel::after{ display:none !important; }
+
+/* الجوال الصغير */
+@media (max-width:576px){
+  .hero-carousel .carousel-item img{ height:230px; max-height:none; }
+}
+
+/* الكمبيوتر: كرت وسط الصفحة بحواف دائرية وصورة كاملة */
+@media (min-width:992px){
+  /* لا تمدّ للحواف */
+  .edge-bleed{ margin-inline:0; width:auto; }
+
+  .hero-carousel{
+    max-width: 1100px;     /* أصغر قليلاً كما طلبت */
+    margin: 0 auto 14px;   /* وسّطه وأعطه فراغاً تحت */
+    border-radius:22px;
+    box-shadow:0 14px 38px rgba(0,0,0,.10);
+  }
+
+  .hero-carousel .carousel-item img{
+    height:420px;          /* ارتفاع ثابت جميل للديسكتوب */
+    object-fit:contain;    /* مهم: تُعرض الصورة كاملة */
+    background:#eef2f7;
+  }
+
+  /* لا نرفع الرفوف فوق الصورة الآن */
+  .home-shelves{ margin-top: 16px !important; }
+}
