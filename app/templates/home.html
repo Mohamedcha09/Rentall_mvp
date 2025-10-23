@@ -37,59 +37,69 @@
     overflow:hidden !important;
     box-shadow:0 14px 34px rgba(0,0,0,.08);
   }
-  /* الحواف الدائرية لكل طبقات السلايدر */
   .hero-carousel .carousel-inner,
   .hero-carousel .carousel-item,
   .hero-carousel .carousel-item img{
     border-radius:18px !important;
     overflow:hidden !important;
   }
-  /* نسبة 3:2 (1536×1024) */
   .hero-carousel .carousel-item{
     aspect-ratio: 3 / 2 !important;
     max-height:none !important;
   }
-  /* الصورة كاملة بدون قص */
   .hero-carousel .carousel-item img{
     width:100% !important;
     height:100% !important;
     object-fit:contain !important;
     object-position:center !important;
     display:block !important;
-    background:#eef2f7 !important; /* لون الفراغ */
+    background:#eef2f7 !important;
   }
-  /* بدون مؤشرات أو كابشن */
   .hero-carousel .carousel-indicators{ display:none !important; }
   .hero-carousel .carousel-caption{ display:none !important; }
-  /* إزالة أي تلاشي قديم */
   .hero-carousel::before,
   .hero-carousel::after{ content:none !important; display:none !important; }
-
-  /* الأسهم */
   .hero-carousel .carousel-control-prev,
   .hero-carousel .carousel-control-next{ width:8% !important; }
   .hero-carousel .carousel-control-prev-icon,
   .hero-carousel .carousel-control-next-icon{ filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
 
-  /* ===== تصغير خفيف على الكمبيوتر فقط (لا تغيير للموبايل) ===== */
+  /* ديسكتوب: تصغير خفيف */
   @media (min-width: 992px){
-    .edge-bleed{ margin-inline:auto !important; width:auto !important; } /* تعطيل الـ edge-bleed على الديسكتوب */
-.hero-carousel{
-  max-width:950px;     /* 🔹 تصغير العرض قليلاً */
-  margin:0 auto 14px;
-  border-radius:18px !important;
-  overflow:hidden !important;
-  box-shadow:0 14px 34px rgba(0,0,0,.08);
-}    .home-shelves{
+    .edge-bleed{ margin-inline:auto !important; width:auto !important; }
+    .hero-carousel{ max-width:950px; margin:0 auto 14px; border-radius:18px !important; overflow:hidden !important; box-shadow:0 14px 34px rgba(0,0,0,.08); }
+    .home-shelves{
       background:#fff; border-radius:18px 18px 0 0; box-shadow:0 8px 26px rgba(0,0,0,.06);
       margin-top:-80px; padding:16px 18px 20px;
     }
     .home-shelves.container-xl{ max-width:1320px; }
   }
-
-  /* موبايل: بدون أي تغيير */
   @media (max-width:576px){
     .hero-carousel .carousel-item{ aspect-ratio: 3 / 2 !important; }
+  }
+
+  /* =========================================================
+     🔥 جديد: سلايدر الصور الطولية (1024×1536)
+     ========================================================= */
+  .top-strip { margin: 12px auto 10px; max-width: 1100px; }
+  .top-strip .carousel-item{ padding: 2px 0; }
+  .top-strip-row{
+    display:grid; gap:12px;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .top-card img{
+    width:100%;
+    aspect-ratio: 2 / 3;          /* لأن الصور 1024×1536 */
+    object-fit:cover;              /* تغطية جميلة مع الحفاظ على الحواف */
+    border-radius:16px;
+    display:block;
+    background:#eef2f7;
+  }
+  /* على الهاتف: صورة واحدة فقط */
+  @media (max-width: 768px){
+    .top-strip { padding-inline: 8px; }
+    .top-strip-row{ grid-template-columns: 1fr; }
+    .top-card:nth-child(n+2){ display:none; } /* إخفاء البطاقة 2 و3 على الهاتف */
   }
 </style>
 {% endblock %}
@@ -102,7 +112,6 @@
        data-bs-ride="carousel" data-bs-interval="5000" data-bs-touch="true" aria-label="عروض رئيسية">
 
     <div class="carousel-inner">
-      {# ✅ صور السلايدر تُبنى تلقائيًا من قائمة banners القادمة من السيرفر #}
       {% if banners and banners|length > 0 %}
         {% for src in banners %}
           <div class="carousel-item {% if loop.index0 == 0 %}active{% endif %}">
@@ -110,7 +119,6 @@
           </div>
         {% endfor %}
       {% else %}
-        {# احتياطي: لو ما في صور بالمجلد، نعرض 3 صور افتراضية #}
         <div class="carousel-item active">
           <img src="{{ url_for('static', path='img/banners/banner1.jpg') }}" alt="">
         </div>
@@ -123,7 +131,6 @@
       {% endif %}
     </div>
 
-    <!-- أسهم فقط -->
     <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" aria-label="السابق">
       <span class="carousel-control-prev-icon" aria-hidden="true"></span>
     </button>
@@ -133,6 +140,33 @@
   </div>
 </div>
 <!-- /HERO -->
+
+{# 🔥 جديد: السلايدر الأفقي للصور الطولية 1024×1536 #}
+{% if top_slider and top_slider|length > 0 %}
+  <div id="topStrip" class="carousel slide top-strip" data-bs-ride="carousel" data-bs-interval="5000" aria-label="معرض علوي">
+    <div class="carousel-inner">
+      {# نقسم الصور مجموعات من 3 لعرضها في شريحة واحدة على الديسكتوب #}
+      {% for chunk in top_slider | batch(3, fill_with=None) %}
+        <div class="carousel-item {% if loop.first %}active{% endif %}">
+          <div class="top-strip-row">
+            {% for src in chunk %}
+              {% if src %}
+                <div class="top-card"><img src="{{ src }}" alt=""></div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <button class="carousel-control-prev" type="button" data-bs-target="#topStrip" data-bs-slide="prev" aria-label="السابق">
+      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#topStrip" data-bs-slide="next" aria-label="التالي">
+      <span class="carousel-control-next-icon" aria-hidden="true"></span>
+    </button>
+  </div>
+{% endif %}
 
 <!-- رفوف المنتجات البيضاء تحت البانر -->
 <div class="home-shelves container-xl">
@@ -350,21 +384,14 @@
   markExistingFavorites();
 </script>
 
-<!-- إيقاف/تشغيل السلايدر عند المرور -->
+<!-- إيقاف/تشغيل السلايدر عند المرور (HERO) -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  const el = document.getElementById('heroCarousel');
-  if (!el) return;
-
-  el.addEventListener('mouseenter', () => {
-    const carousel = bootstrap.Carousel.getOrCreateInstance(el);
-    carousel.pause();
-  });
-
-  el.addEventListener('mouseleave', () => {
-    const carousel = bootstrap.Carousel.getOrCreateInstance(el);
-    carousel.cycle();
-  });
+  const hero = document.getElementById('heroCarousel');
+  if (hero){
+    hero.addEventListener('mouseenter', () => bootstrap.Carousel.getOrCreateInstance(hero).pause());
+    hero.addEventListener('mouseleave', () => bootstrap.Carousel.getOrCreateInstance(hero).cycle());
+  }
 });
 </script>
 {% endblock %}
