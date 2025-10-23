@@ -223,6 +223,46 @@
     filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)) !important;
   }
 }
+
+/* === هاتف فقط: كرت البانر متمركز، ممتلئ، بدون فراغات === */
+@media (max-width: 576px){
+  /* خلي الحاوية تتمركز وما تمتد لعرض الشاشة كامل */
+  .edge-bleed{
+    margin-inline: auto !important;
+    width: 100% !important;
+    padding-inline: 14px;             /* مسافة جانبية بسيطة */
+  }
+
+  /* الكرت نفسه */
+  .hero-carousel{
+    max-width: 700px;                  /* يتمركز ويبدو ككرت */
+    margin: 0 auto 16px !important;
+    border-radius: 22px !important;
+    overflow: hidden !important;
+  }
+
+  /* ثبّت نسبة 16:9 (شكل بطاقة) */
+  .hero-carousel .carousel-item{
+    aspect-ratio: 16 / 9 !important;
+    max-height: none !important;
+  }
+
+  /* أهم سطرين: املأ الكرت بالكامل وامنع الفراغ أسفل/أعلى */
+  .hero-carousel .carousel-item img{
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;      /* يملىء بدون فراغات */
+    object-position: center !important;
+    background: transparent !important;/* لا خلفية رمادية */
+    display: block !important;
+  }
+
+  /* زرّ السحب (الأسهم) يبقى ضمن الكرت */
+  .hero-carousel .carousel-control-prev,
+  .hero-carousel .carousel-control-next{
+    width: 12% !important;
+  }
+}
 </style>
 {% endblock %}
 
