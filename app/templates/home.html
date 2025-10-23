@@ -126,6 +126,35 @@
     display: block !important;
   }
 }
+
+/* === Fix: توسيط وتصغير الـ HERO فقط === */
+.edge-bleed{
+  /* ألغينا الـ full-bleed وخليّناه كونتينر عادي بالوسط */
+  margin-inline: auto !important;
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+.hero-carousel{
+  /* حجم صغير ومتمركز */
+  max-width: 420px !important;   /* موبايل */
+  margin: 8px auto 14px !important;
+}
+
+@media (min-width: 576px){
+  .hero-carousel{ max-width: 560px !important; }  /* تابلت صغير */
+}
+
+@media (min-width: 992px){
+  .hero-carousel{ max-width: 720px !important; }  /* ديسكتوب */
+}
+
+/* أزرار التنقل أضيق قليلًا مع الحجم الجديد */
+.hero-carousel .carousel-control-prev,
+.hero-carousel .carousel-control-next{
+  width: 10% !important;
+}
 </style>
 {% endblock %}
 
