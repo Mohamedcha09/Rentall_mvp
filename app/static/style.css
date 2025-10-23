@@ -540,3 +540,51 @@ small, .small{ color:var(--muted)!important }
 }
 @keyframes fabpop{0%{transform:scale(.8); opacity:0}100%{transform:scale(1); opacity:1}}
 .fab:active{ transform:scale(.96) }
+
+
+/* ======= HERO FIX: show full image, rounded, smaller on desktop ======= */
+
+/* ألغِ الارتفاعات الثابتة كلها */
+.hero-carousel,
+.hero-carousel .carousel-item { height: auto !important; }
+
+/* نسبة أبعاد ثابتة 16:9 لكل الشرائح */
+.hero-carousel .carousel-item{
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+
+/* الصورة تَظهَر كاملة بدون قص */
+.hero-carousel .carousel-item img{
+  width: 100%;
+  height: 100%;
+  object-fit: contain !important;   /* كانت cover تقصّ الصورة */
+  background: #f4f6fb;              /* لون خلفية خلف الصورة لو فيها فراغات */
+  border-radius: 18px;              /* حافة دائرية للصورة نفسها أيضًا */
+  display: block;
+}
+
+/* شكل أنيق موحّد للهاتف والكمبيوتر */
+.hero-carousel{
+  border-radius: 18px !important;
+  overflow: hidden;
+  box-shadow: 0 14px 34px rgba(0,0,0,.08);
+}
+
+/* اجعل السلايدر أصغر قليلًا ومركزيًا في الديسكتوب (بدون تمديد للحواف) */
+@media (min-width: 992px){
+  /* ألغِ edge-bleed على الديسكتوب ليكون مثل الهاتف */
+  .edge-bleed{ margin-inline: auto !important; width: auto !important; }
+
+  /* عرض مريح */
+  .hero-carousel{ max-width: 1180px; margin-inline: auto; }
+}
+
+/* أسهم ومؤشرات أكبر قليلًا ولمس أسهل */
+.hero-carousel .carousel-control-prev,
+.hero-carousel .carousel-control-next{ width: 8%; }
+.hero-carousel .carousel-indicators [data-bs-target]{ width: 10px; height: 10px; border-radius: 50%; }
+
+/* ألغِ أي تلاشي/طبقات قد تغيّم أسفل الصورة وتسبب “قصّ بصري” */
+.hero-carousel::before,
+.hero-carousel::after{ display: none !important; }
