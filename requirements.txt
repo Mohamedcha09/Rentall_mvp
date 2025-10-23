@@ -1,7 +1,7 @@
-fastapi
-uvicorn
+﻿fastapi
+uvicorn[standard]
 jinja2
-sqlalchemy
+sqlalchemy>=2.0
 python-multipart
 itsdangerous
 pillow
@@ -11,7 +11,5 @@ passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 stripe==10.12.0
 cloudinary==1.41.0
-psycopg[binary]==3.1.18
-alembic­­>=1.13
-psycopg2-binary==2.9.9
 alembic==1.17.0
+psycopg2-binary==2.9.9
