@@ -22,6 +22,15 @@
     <div class="col-md-6 mb-3">
       <label class="form-label">المدينة</label>
       <input type="text" name="city" class="form-control">
+      <!-- ✅ إضافات دون حذف السطر السابق: زر GPS + حقول مخفية -->
+      <div class="d-flex gap-2 mt-2">
+        <button type="button" id="useMyLocNew" class="btn btn-outline-secondary btn-sm">📍 استخدم موقعي</button>
+        <input type="number" id="radiusNew" class="form-control form-control-sm" style="max-width:110px" placeholder="km" value="25" min="1">
+      </div>
+      <small class="text-muted">يمكنك تعبئة المدينة يدويًا، أو الضغط على زر الموقع لحفظ الإحداثيات للإعلان.</small>
+      <input type="hidden" name="latitude" id="latNew">
+      <input type="hidden" name="longitude" id="lngNew">
+      <!-- /إضافات -->
     </div>
     <div class="col-md-6 mb-3">
       <label class="form-label">السعر/اليوم</label>
@@ -35,4 +44,39 @@
   <button class="btn btn-primary">حفظ</button>
   <a href="/items" class="btn btn-outline-light">رجوع</a>
 </form>
+{% endblock %}
+
+{# ✅ نضيف سكربت داخل block scripts في أسفل الصفحة (base.html يملك هذا البلوك) #}
+{% block scripts %}
+<script>
+(function(){
+  const btn = document.getElementById('useMyLocNew');
+  const latEl = document.getElementById('latNew');
+  const lngEl = document.getElementById('lngNew');
+  const radEl = document.getElementById('radiusNew');
+
+  function setCookie(name, value, days=180){
+    const d=new Date(); d.setTime(d.getTime()+days*864e5);
+    document.cookie = name+"="+encodeURIComponent(value||"")+";expires="+d.toUTCString()+";path=/;SameSite=Lax";
+  }
+
+  btn?.addEventListener('click', function(){
+    if(!navigator.geolocation){
+      alert('المتصفح لا يدعم تحديد الموقع.');
+      return;
+    }
+    const r = radEl?.value || "25";
+    navigator.geolocation.getCurrentPosition(function(pos){
+      const {latitude, longitude} = pos.coords;
+      if (latEl) latEl.value = latitude;
+      if (lngEl) lngEl.value = longitude;
+      // حفظ اختياري للـradius في الكوكي ليستفيد منه البحث لاحقًا
+      setCookie('radius_km', r);
+      alert('تم حفظ موقعك (إحداثيات) لهذا الإعلان. يمكنك ترك المدينة كما هي أو تعديلها.');
+    }, function(){
+      alert('تعذر الحصول على موقعك. يمكنك إدخال المدينة فقط.');
+    });
+  });
+})();
+</script>
 {% endblock %}

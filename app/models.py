@@ -1,7 +1,7 @@
 # app/models.py
 from datetime import datetime, date
 from sqlalchemy import (
-    Column, Integer, String, DateTime, ForeignKey, Text, Date, Boolean
+    Column, Integer, String, DateTime, ForeignKey, Text, Date, Boolean, Float  # ✅ أضفنا Float هنا
 )
 from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.sql import literal
@@ -153,6 +153,9 @@ class Item(Base):
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     city = Column(String(120), nullable=True)
+    # ✅ جديد: إحداثيات اختيارية (تُنشأ فقط إذا الأعمدة موجودة في الجدول بفضل col_or_literal)
+    latitude = col_or_literal("items", "latitude", Float, nullable=True)   # ✅ إضافة
+    longitude = col_or_literal("items", "longitude", Float, nullable=True) # ✅ إضافة
     price_per_day = Column(Integer, nullable=False, default=0)
     category = Column(String(50), nullable=False, default="other")
     image_path = Column(String(500), nullable=True)
@@ -430,4 +433,4 @@ class DepositEvidence(Base):
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
     booking = relationship("Booking", back_populates="deposit_evidences")
-    uploader = relationship("User", lazy="joined")  # هذا كود models. (إبقاء النص كتعليق لتفادي الحذف)
+    uploader = relationship("User", lazy="joined")

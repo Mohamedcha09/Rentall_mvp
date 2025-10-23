@@ -203,6 +203,19 @@
         <i class="bi bi-search search__icon"></i>
         <input class="form-control form-control-sm search__input" type="search" name="q"
                placeholder="ابحث عن عنصر أو مستخدم…" value="{{ request.query_params.get('q','') if request else '' }}">
+
+        <!-- ✅ إضافة: مدخل مدينة صغير -->
+        <input class="form-control form-control-sm ms-2" style="max-width:180px" type="text" id="cityInputTop" name="city" placeholder="City">
+
+        <!-- ✅ إضافة: نصف القطر للبحث القريب -->
+        <input class="form-control form-control-sm" style="max-width:100px" type="number" id="radiusTop" name="radius_km" value="25" min="1" title="km">
+
+        <!-- ✅ إضافة: زر GPS صغير -->
+        <button class="btn btn-sm btn-outline-secondary" type="button" id="useLocTop" title="Use my location">📍</button>
+
+        <!-- ✅ إضافة: حقول خفية لـ lat/lng -->
+        <input type="hidden" id="latTop" name="lat">
+        <input type="hidden" id="lngTop" name="lng">
       </form>
       <div id="typeaheadPanel" class="typeahead d-none"></div>
 
@@ -535,7 +548,6 @@
   <script>
   (function notifSystem(){
     if (window.__notifInit) return; window.__notifInit = true;
-
     const notifOpen  = document.getElementById('notifOpen');
     const notifClose = document.getElementById('notifClose');
     const panel      = document.getElementById('notifPanel');
@@ -716,5 +728,71 @@
     }
   }
 </style>
+
+  <!-- ✅ إضافة: سكربت صغير لإدارة city/GPS في الهيدر دون لمس سكربتاتك -->
+  <script>
+  (function cityGpsHeaderEnhancer(){
+    if (window.__cityGpsEnhancerInit) return; window.__cityGpsEnhancerInit = true;
+
+    function setCookie(name, value, days=180){
+      try{
+        const d=new Date(); d.setTime(d.getTime()+days*864e5);
+        document.cookie = name+"="+encodeURIComponent(value||"")+";expires="+d.toUTCString()+";path=/;SameSite=Lax";
+      }catch(_){}
+    }
+    function getCookie(name){
+      const m = document.cookie.match(new RegExp('(?:^| )'+name+'=([^;]+)'));
+      return m ? decodeURIComponent(m[1]) : "";
+    }
+
+    var cityEl = document.getElementById('cityInputTop');
+    var latEl  = document.getElementById('latTop');
+    var lngEl  = document.getElementById('lngTop');
+    var rEl    = document.getElementById('radiusTop');
+    var btnLoc = document.getElementById('useLocTop');
+
+    // تهيئة من الكوكي/الـURL بدون تغيير حقول البحث الأصلية
+    try{
+      var url = new URL(location.href);
+      var c   = url.searchParams.get('city') || getCookie('city') || "";
+      var lat = url.searchParams.get('lat') || getCookie('lat') || "";
+      var lng = url.searchParams.get('lng') || getCookie('lng') || "";
+      var rad = url.searchParams.get('radius_km') || getCookie('radius_km') || "25";
+      if (cityEl) cityEl.value = c;
+      if (latEl)  latEl.value  = lat;
+      if (lngEl)  lngEl.value  = lng;
+      if (rEl)    rEl.value    = rad;
+    }catch(_){}
+
+    // GPS: يحفظ lat/lng + radius ويزيل city من الرابط لتجنب التعارض
+    btnLoc?.addEventListener('click', function(){
+      if(!navigator.geolocation){ alert('المتصفح لا يدعم تحديد الموقع.'); return; }
+      var rad = (rEl && rEl.value) ? rEl.value : "25";
+      navigator.geolocation.getCurrentPosition(function(pos){
+        var lat = pos.coords.latitude, lng = pos.coords.longitude;
+        setCookie('lat', lat); setCookie('lng', lng); setCookie('radius_km', rad);
+        setCookie('city', ""); if (cityEl) cityEl.value = "";
+        if (latEl) latEl.value = lat; if (lngEl) lngEl.value = lng;
+
+        var u = new URL(location.href);
+        u.searchParams.set('lat', lat);
+        u.searchParams.set('lng', lng);
+        u.searchParams.set('radius_km', rad);
+        u.searchParams.delete('city');
+        location.href = u.toString();
+      }, function(){
+        alert('تعذر الحصول على موقعك.');
+      });
+    });
+
+    // عند تغيير المدينة يدويًا نحفظها ونمسح الإحداثيات من الكوكي فقط (كي تبقى أولوية city)
+    cityEl?.addEventListener('change', function(){
+      var c = (cityEl.value||"").trim();
+      setCookie('city', c);
+      setCookie('lat', ""); setCookie('lng', "");
+    });
+  })();
+  </script>
+
 </body>
 </html>

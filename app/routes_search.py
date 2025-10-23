@@ -1,11 +1,14 @@
 # app/routes_search.py
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Query  # ✅ إضافة Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from .database import get_db
 from .models import User, Item
 
 router = APIRouter()
+
+# ✅ إضافة: نصف قطر الأرض بالكيلومتر لاستخدامه مع دالة Haversine
+EARTH_RADIUS_KM = 6371.0
 
 def _clean_name(first: str, last: str, uid: int) -> str:
     """
@@ -20,11 +23,40 @@ def _clean_name(first: str, last: str, uid: int) -> str:
         full = f or l
     return full or f"User {uid}"
 
+# ✅ إضافة: دالة مساعدة لتطبيق فلترة المدينة أو GPS (أولوية GPS ثم المدينة)
+def _apply_city_or_gps_filter(qs, city: str | None, lat: float | None, lng: float | None, radius_km: float | None):
+    # أولوية GPS إن توفّر lat/lng + radius_km
+    if lat is not None and lng is not None and radius_km:
+        distance_expr = EARTH_RADIUS_KM * func.acos(
+            func.cos(func.radians(lat)) *
+            func.cos(func.radians(Item.latitude)) *
+            func.cos(func.radians(Item.longitude) - func.radians(lng)) +
+            func.sin(func.radians(lat)) *
+            func.sin(func.radians(Item.latitude))
+        )
+        qs = qs.filter(
+            Item.latitude.isnot(None),
+            Item.longitude.isnot(None),
+            distance_expr <= radius_km
+        )
+    elif city:
+        qs = qs.filter(Item.city.ilike(city.strip()))
+    return qs
+
 @router.get("/api/search")
-def api_search(q: str = "", db: Session = Depends(get_db)):
+def api_search(
+    q: str = "",
+    # ✅ إضافة: بارامترات اختيارية للفلترة المكانية
+    city: str | None = Query(None),
+    lat: float | None = Query(None),
+    lng: float | None = Query(None),
+    radius_km: float | None = Query(25.0),
+    db: Session = Depends(get_db),
+):
     """
     بحث حيّ للمحرك (typeahead) — لا يتطلب تسجيل دخول، ولا يقرأ/يعدّل الـ session.
     يرجّع قوائم مبسطة: users + items، كل عنصر فيه url يُستخدم مباشرة في الواجهة.
+    ✅ الآن يدعم الفلترة بالمدينة أو GPS (إن قُدمت البارامترات).
     """
     q = (q or "").strip()
     if len(q) < 2:
@@ -55,7 +87,7 @@ def api_search(q: str = "", db: Session = Depends(get_db)):
     ]
 
     # --- عناصر (بالعنوان/الوصف) مع شرط التفعيل
-    items_rows = (
+    items_q = (
         db.query(Item.id, Item.title, Item.city)
         .filter(
             Item.is_active == "yes",
@@ -64,9 +96,12 @@ def api_search(q: str = "", db: Session = Depends(get_db)):
                 Item.description.ilike(pattern),
             ),
         )
-        .limit(8)
-        .all()
     )
+
+    # ✅ تطبيق فلترة المدينة/GPS إن وجدت
+    items_q = _apply_city_or_gps_filter(items_q, city, lat, lng, radius_km)
+
+    items_rows = items_q.limit(8).all()
 
     items = [
         {
@@ -82,10 +117,33 @@ def api_search(q: str = "", db: Session = Depends(get_db)):
 
 # (اختياري) صفحة نتائج كاملة /search لو كنت تستعملها في الواجهة
 @router.get("/search")
-def search_page(request: Request, q: str = "", db: Session = Depends(get_db)):
+def search_page(
+    request: Request,
+    q: str = "",
+    # ✅ إضافة: نفس بارامترات الفلترة للصفحة الكاملة
+    city: str | None = Query(None),
+    lat: float | None = Query(None),
+    lng: float | None = Query(None),
+    radius_km: float | None = Query(25.0),
+    db: Session = Depends(get_db)
+):
     q = (q or "").strip()
     users = []
     items = []
+
+    # ✅ محاولة قراءة قيم محفوظة من الكوكي إن لم تُرسل بالـURL
+    try:
+        if not city:
+            city = request.cookies.get("city")
+        if lat is None and (request.cookies.get("lat") not in (None, "")):
+            lat = float(request.cookies.get("lat"))
+        if lng is None and (request.cookies.get("lng") not in (None, "")):
+            lng = float(request.cookies.get("lng"))
+        if not radius_km:
+            ck = request.cookies.get("radius_km")
+            radius_km = float(ck) if ck else 25.0
+    except Exception:
+        pass
 
     if len(q) >= 2:
         pattern = f"%{q}%"
@@ -111,7 +169,7 @@ def search_page(request: Request, q: str = "", db: Session = Depends(get_db)):
             for (uid, first, last, avatar) in users_rows
         ]
 
-        items_rows = (
+        items_q = (
             db.query(Item.id, Item.title, Item.city, Item.image_path)
             .filter(
                 Item.is_active == "yes",
@@ -120,9 +178,12 @@ def search_page(request: Request, q: str = "", db: Session = Depends(get_db)):
                     Item.description.ilike(pattern),
                 ),
             )
-            .limit(24)
-            .all()
         )
+
+        # ✅ تطبيق فلترة المدينة/GPS إن وجدت
+        items_q = _apply_city_or_gps_filter(items_q, city, lat, lng, radius_km)
+
+        items_rows = items_q.limit(24).all()
         items = [
             {
                 "id": iid,
@@ -144,5 +205,10 @@ def search_page(request: Request, q: str = "", db: Session = Depends(get_db)):
             "users": users,
             "items": items,
             "session_user": request.session.get("user"),
+            # ✅ تمرير القيم الحالية للواجهة (مفيد لإظهار الشارة/الحالة)
+            "selected_city": city or "",
+            "lat": lat,
+            "lng": lng,
+            "radius_km": radius_km
         },
     )
