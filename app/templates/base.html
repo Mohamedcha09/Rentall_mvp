@@ -669,7 +669,7 @@
       function show(){ panel.classList.remove('d-none'); }
       function esc(s){
         return String(s||"").replace(/[&<>"']/g, function(c){
-          return {"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c];
+          return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
         });
       }
 
@@ -765,7 +765,7 @@
 
       function setBell(n){
         if (!countEl || !pingEl) return;
-        if (n>0){ countEl.textContent = (n>99 ? '99+' : String(n)); countEl.style.display = ''; pingEl.style.display = ''; }
+        if (n>0){ countEl.textContent = (ن>99 ? '99+' : String(n)); countEl.style.display = ''; pingEl.style.display = ''; }
         else{ countEl.textContent = ''; countEl.style.display = 'none'; pingEl.style.display = 'none'; }
       }
 
@@ -893,6 +893,33 @@
       }, 15000);
     })();
     </script>
+
+    <!-- ⬇️⬇️ الباتش النهائي لإجبار الستايل (يوضع في آخر البودي) ⬇️⬇️ -->
+    <style>
+      :root{ --safe-b: env(safe-area-inset-bottom, 0px); }
+      .page, body{ padding-bottom: calc(74px + var(--safe-b)) !important; }
+      @media (max-width:768px){
+        .mobile-tabbar{
+          position: fixed !important;
+          left:0; right:0;
+          bottom: calc(var(--safe-b) + 2px) !important;
+          padding-top: 6px !important;
+          padding-bottom: calc(6px + var(--safe-b)) !important;
+          border-top: 1px solid rgba(0,0,0,.08) !important;
+          border-radius: 16px 16px 0 0 !important;
+          background:#fff;
+          backdrop-filter: blur(14px) saturate(120%);
+          z-index: 9999 !important;
+          transform: translateZ(0);
+        }
+        .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
+          position: fixed !important;
+          bottom: calc(var(--safe-b) + 84px) !important;
+          z-index: 10000 !important;
+        }
+      }
+    </style>
+    <!-- ⬆️⬆️ نهاية الباتش النهائي ⬆️⬆️ -->
 
   </body>
 </html>
