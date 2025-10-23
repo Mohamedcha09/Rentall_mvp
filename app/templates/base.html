@@ -4,6 +4,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- ⬇️ إضافة فقط: لتمكين الـ safe area على iOS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{{ title or "RentAll" }}</title>
 
     <!-- Bootstrap & Icons -->
@@ -186,24 +188,33 @@
   }
 }
 
-/* ✅ رفع النافبار السفلي على iPhone مثل Airbnb */
-.mobile-tabbar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 999;
-  background: #fff;
-  border-top: 1px solid rgba(0,0,0,0.08);
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px) !important; /* يرفعها فوق خط الآيفون */
-  padding-top: 6px !important;
-  box-shadow: 0 -4px 16px rgba(0,0,0,0.05);
+/* ✅ تعريف متغيرات الـ safe area (إضافة فقط) */
+:root{
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-bottom-legacy: constant(safe-area-inset-bottom, 0px);
 }
 
-/* للتأكد أن عناصر التبويب تبقى في الوسط دائمًا */
-.mobile-tabbar .nav-item {
-  padding-bottom: 4px;
+/* ✅ مساحة سفلية للمحتوى حتى لا يُقص خلف الشريط (إضافة فقط) */
+body{
+  padding-bottom: calc(84px + max(var(--safe-bottom), var(--safe-bottom-legacy)));
 }
+
+/* ✅ رفع النافبار السفلي فعليًا فوق خط iPhone (إضافة فقط) */
+@media (max-width: 768px){
+  .mobile-tabbar{
+    bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 6px) !important;
+    border-radius: 16px 16px 0 0;
+    padding-bottom: 8px !important;
+    padding-top: 8px !important;
+  }
+  /* زر + فوق الشريط بمسافة مريحة */
+  .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
+    bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 96px) !important;
+  }
+}
+
+/* ✅ للتأكد أن عناصر التبويب تبقى في الوسط دائمًا */
+.mobile-tabbar .nav-item { padding-bottom: 4px; }
     </style>
 
     {% block head %}{% endblock %}
@@ -591,8 +602,8 @@
   window.__quickMenuInit = true;
 
   function open(){
-    menu.classList.add('is-open');     // ← أضفنا كلاس
-    menu.removeAttribute('hidden');    // ← أزلنا الـ hidden
+    menu.classList.add('is-open');
+    menu.removeAttribute('hidden');
     btn.setAttribute('aria-expanded','true');
     setTimeout(()=>{
       document.addEventListener('click', onDoc, true);
@@ -601,8 +612,8 @@
   }
 
   function close(){
-    menu.classList.remove('is-open');  // ← نحذف الكلاس
-    menu.setAttribute('hidden','');    // ← نعيد الـ hidden
+    menu.classList.remove('is-open');
+    menu.setAttribute('hidden','');
     btn.setAttribute('aria-expanded','false');
     document.removeEventListener('click', onDoc, true);
     document.removeEventListener('keydown', onKey);
@@ -643,7 +654,7 @@
       function show(){ panel.classList.remove('d-none'); }
       function esc(s){
   return String(s||"").replace(/[&<>"']/g, function(c){
-    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+    return {"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c];
   });
 }
 
@@ -746,7 +757,7 @@
 
       function esc(s){
   return String(s||"").replace(/[&<>"']/g, function(c){
-    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+    return {"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c];
   });
 }
 
