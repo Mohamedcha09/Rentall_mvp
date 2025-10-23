@@ -3,9 +3,7 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="utf-8" />
-    <!-- موجودة -->
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- تمكين الـ safe area على iOS -->
+    <!-- viewport واحد فقط مع دعم safe area -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{{ title or "RentAll" }}</title>
 
@@ -142,32 +140,26 @@
       /* ===== تبويب الجوال (الأسفل) ===== */
       @media (max-width: 768px){
         .mobile-tabbar{
-          position: fixed; inset-inline: 0; bottom: 0; height: 64px;
-          background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 96%, transparent),
-                                               color-mix(in oklab, var(--panel) 94%, transparent));
-          border-top:1px solid var(--border);
-          display: grid; grid-template-columns: repeat(4,1fr);
-          backdrop-filter: blur(14px) saturate(120%);
-          z-index: 2100;
+          position: fixed; inset-inline: 0;
+          /* سيُحسَب موضع الأسفل من متغير --safe لاحقًا */
+          height: 64px;
+          background: #ffffff;               /* أبيض 100% */
+          border-top:1px solid rgba(0,0,0,.08);
+          display: grid; grid-template-columns: repeat(5,1fr);
+          z-index: 2147483647;               /* عالٍ لضمان الظهور في التطبيق */
+          box-shadow: 0 10px 40px rgba(0,0,0,.06), 0 0 0 1px rgba(0,0,0,.03) inset;
+          backdrop-filter: none !important;  /* لا شفافية */
+          -webkit-backdrop-filter: none !important;
+          border-radius: 16px 16px 0 0;
+          padding: 8px 10px;
         }
         .mobile-tabbar a{
           display:flex; flex-direction:column; align-items:center; justify-content:center;
-          gap:4px; text-decoration:none; color: var(--muted); font-size:.8rem;
+          gap:4px; text-decoration:none; color:#4b5563; font-size:.85rem;
         }
-        .mobile-tabbar .tab-img{ width:22px; height:22px; object-fit:contain; opacity:.55; transition:.15s; }
-        .mobile-tabbar a.is-active{ color: var(--text); }
-        .mobile-tabbar a.is-active .tab-img{ opacity:1; transform:scale(1.06); }
-        .page{ padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
-      }
-
-      /* ===== رفع زر الإضافة (+) قليلاً للأعلى على الموبايل ===== */
-      @media (max-width: 768px) {
-        .mobile-tabbar .floating-btn,
-        .fab, 
-        .btn-fab, 
-        .add-item-btn {
-          bottom: 76px !important;
-        }
+        .mobile-tabbar .tab-img{ width:22px; height:22px; object-fit:contain; opacity:.9; }
+        .mobile-tabbar a.is-active{ color:#111827; font-weight:700; }
+        .page{ /* padding سفلي سيُضاف ديناميكيًا عبر --safe */ }
       }
 
       @media (max-width:768px){
@@ -176,61 +168,48 @@
 
       .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important; }
 
+      /* أزرار عائمة */
       @media (max-width: 768px) {
         .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"] {
           position: fixed !important;
-          bottom: 80px !important;
-          z-index: 1000 !important;
+          right: 16px !important;
+          z-index: 2147483647 !important;
         }
       }
 
-      /* ✅ متغيرات safe area الأساس */
+      /* ✅ متغيرات safe area */
       :root{
-        --safe-bottom: env(safe-area-inset-bottom, 0px);
-        --safe-bottom-legacy: constant(safe-area-inset-bottom, 0px);
+        --safe: 0px; /* سيتم ضبطها بالسكربت */
       }
 
-      /* ✅ مساحة سفلية للمحتوى */
-      body{
-        padding-bottom: calc(70px + max(var(--safe-bottom), var(--safe-bottom-legacy)));
-      }
+      /* ✅ مساحة سفلية للمحتوى حتى لا يُقص خلف الشريط */
+      body{ padding-bottom: calc(74px + var(--safe)); }
 
-      /* ✅ رفع النافبار السفلي فوق خط iPhone */
+      /* ✅ على الجوال: وضع الشريط فوق safe area + رفع زر (+) */
       @media (max-width: 768px){
         .mobile-tabbar{
-          bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 2px) !important;
-          border-radius: 16px 16px 0 0;
-          padding-bottom: 6px !important;
-          padding-top: 6px !important;
+          bottom: calc(var(--safe) + 2px) !important;
+          padding-bottom: calc(8px + var(--safe)) !important;
         }
         .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
-          bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 86px) !important;
+          bottom: calc(var(--safe) + 86px) !important;
         }
       }
 
-      .mobile-tabbar .nav-item { padding-bottom: 4px; }
-
-      /* ===== دعم وضع التطبيق (PWA) ===== */
+      /* ======================= دعم وضع التطبيق (PWA) ======================= */
       @media (display-mode: standalone) {
-        :root{
-          --safe-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
-          --safe-bottom-legacy: max(constant(safe-area-inset-bottom, 0px), 16px);
-        }
-        body{
-          padding-bottom: calc(82px + max(var(--safe-bottom), var(--safe-bottom-legacy))) !important;
-        }
+        :root{ --safe: max(env(safe-area-inset-bottom, 0px), 16px); }
+        body{ padding-bottom: calc(82px + var(--safe)) !important; }
         .mobile-tabbar{
-          bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 2px) !important;
-          padding-top: 6px !important;
-          padding-bottom: 6px !important;
-          border-radius: 16px 16px 0 0;
-          z-index: 2100;
+          bottom: calc(var(--safe) + 2px) !important;
+          padding-bottom: calc(8px + var(--safe)) !important;
+          background:#ffffff !important; /* تأكيد الأبيض في التطبيق */
         }
         .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
-          bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 86px) !important;
-          z-index: 2200 !important;
+          bottom: calc(var(--safe) + 86px) !important;
         }
       }
+      /* ==================================================================== */
     </style>
 
     {% block head %}{% endblock %}
@@ -249,46 +228,21 @@
 
         <!-- القائمة الصغيرة المنسدلة -->
         <nav id="quickMenu" class="topmenu" hidden role="menu" aria-label="قائمة الموقع">
-          <a role="menuitem" class="topmenu-item" href="/">
-            <i class="bi bi-house"></i><span>الرئيسية</span>
-          </a>
-
-          <a role="menuitem" class="topmenu-item" href="/items">
-            <i class="bi bi-box-seam"></i><span>العناصر</span>
-          </a>
+          <a role="menuitem" class="topmenu-item" href="/"><i class="bi bi-house"></i><span>الرئيسية</span></a>
+          <a role="menuitem" class="topmenu-item" href="/items"><i class="bi bi-box-seam"></i><span>العناصر</span></a>
 
           {% if session_user %}
-            <a role="menuitem" class="topmenu-item" href="/favorites">
-              <i class="bi bi-heart-fill"></i><span>مفضلتي</span>
-            </a>
-
-            <a role="menuitem" class="topmenu-item" href="/profile">
-              <i class="bi bi-person-circle"></i><span>صفحتي</span>
-            </a>
-
-            <a role="menuitem" class="topmenu-item" href="/bookings">
-              <i class="bi bi-calendar2-check"></i><span>حجوزاتي</span>
-            </a>
-
-            <a role="menuitem" class="topmenu-item" href="/payout/settings">
-              <i class="bi bi-cash-stack"></i><span>التحويلات</span>
-            </a>
-
-            <a role="menuitem" class="topmenu-item" href="/owner/items">
-              <i class="bi bi-collection"></i><span>أشيائي</span>
-            </a>
-
+            <a role="menuitem" class="topmenu-item" href="/favorites"><i class="bi bi-heart-fill"></i><span>مفضلتي</span></a>
+            <a role="menuitem" class="topmenu-item" href="/profile"><i class="bi bi-person-circle"></i><span>صفحتي</span></a>
+            <a role="menuitem" class="topmenu-item" href="/bookings"><i class="bi bi-calendar2-check"></i><span>حجوزاتي</span></a>
+            <a role="menuitem" class="topmenu-item" href="/payout/settings"><i class="bi bi-cash-stack"></i><span>التحويلات</span></a>
+            <a role="menuitem" class="topmenu-item" href="/owner/items"><i class="bi bi-collection"></i><span>أشيائي</span></a>
             {% if session_user.get('can_manage_deposits') %}
-              <a role="menuitem" class="topmenu-item" href="/dm/deposits">
-                <i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>
-              </a>
+              <a role="menuitem" class="topmenu-item" href="/dm/deposits"><i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span></a>
             {% endif %}
-
             {% if session_user.role == 'admin' %}
               <hr class="topmenu-sep" role="separator">
-              <a role="menuitem" class="topmenu-item" href="/admin">
-                <i class="bi bi-speedometer2"></i><span>لوحة الأدمين</span>
-              </a>
+              <a role="menuitem" class="topmenu-item" href="/admin"><i class="bi bi-speedometer2"></i><span>لوحة الأدمين</span></a>
             {% endif %}
           {% endif %}
         </nav>
@@ -382,7 +336,7 @@
       </div>
     </header>
 
-    <!-- ===== Mobile Top Tabs ===== -->
+    <!-- ===== Mobile Top Tabs (موبايل فقط) ===== -->
     <nav class="m-top-tabs d-lg-none" role="tablist" aria-label="أقسام عليا">
       <a href="/" class="m-tab {% if request and request.url.path == '/' %}is-active{% endif %}" role="tab"
          aria-selected="{{ 'true' if request and request.url.path == '/' else 'false' }}">Home</a>
@@ -398,7 +352,6 @@
         </a>
         <a href="/payout/settings" class="m-tab {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" role="tab"
            aria-selected="{{ 'true' if request and request.url.path.startswith('/payout') else 'false' }}">تحويلات</a>
-
         {% if session_user.role == 'admin' %}
           <a href="/admin" class="m-tab {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" role="tab"
              aria-selected="{{ 'true' if request and request.url.path.startswith('/admin') else 'false' }}">لوحة أدمين</a>
@@ -470,7 +423,7 @@
       {% block content %}{% endblock %}
     </main>
 
-    <!-- لوحة إشعارات جانبية -->
+    <!-- لوحة إشعارات جانبية (للديسكتوب) -->
     <div class="notif-panel" id="notifPanel" aria-hidden="true">
       <div class="notif-panel__header d-flex justify-content-between align-items-center">
         <strong>الإشعارات</strong>
@@ -486,60 +439,43 @@
       <a href="/owner/items/new" class="fab d-lg-none" title="عنصر جديد"><i class="bi bi-plus-lg"></i></a>
     {% endif %}
 
-    <!-- ===== تبويب الجوال السفلي ===== -->
-    <nav class="mobile-tabbar d-lg-none">
+    <!-- ===== تبويب الجوال السفلي (أبيض 100%) ===== -->
+    <nav class="mobile-tabbar d-lg-none" id="mobileTabbar">
+      {% if session_user %}
+        <a href="/profile" class="{% if request and request.url.path.startswith('/profile') %}is-active{% endif %}">
+          <img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile"><span>بروفايلي</span>
+        </a>
+      {% else %}
+        <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile"><span>بروفايلي</span></a>
+      {% endif %}
+
+      {% if session_user %}
+        <a href="/messages" class="{% if request and request.url.path.startswith('/messages') %}is-active{% endif %}">
+          <img class="tab-img" src="/static/img/msg.png" alt="Messages"><span>الرسائل</span>
+        </a>
+      {% else %}
+        <a href="/login"><img class="tab-img" src="/static/img/msg.png" alt="Messages"><span>الرسائل</span></a>
+      {% endif %}
+
+      {% if session_user %}
+        <a href="/bookings" class="{% if request and request.url.path.startswith('/bookings') %}is-active{% endif %}">
+          <img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>حجوزاتي</span>
+        </a>
+      {% else %}
+        <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>حجوزاتي</span></a>
+      {% endif %}
+
+      {% if session_user %}
+        <a href="/favorites" class="{% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}">
+          <img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav"><span>مفضلاتي</span>
+        </a>
+      {% else %}
+        <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav"><span>مفضلاتي</span></a>
+      {% endif %}
+
       <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
-        <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home">
-        <span>الرئيسية</span>
+        <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home"><span>الرئيسية</span>
       </a>
-
-      {% if session_user %}
-      <a href="/favorites" class="{% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}">
-        <img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav">
-        <span>مفضلاتي</span>
-      </a>
-      {% else %}
-      <a href="/login">
-        <img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav">
-        <span>مفضلاتي</span>
-      </a>
-      {% endif %}
-
-      {% if session_user %}
-      <a href="/bookings" class="{% if request and request.url.path.startswith('/bookings') %}is-active{% endif %}">
-        <img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour">
-        <span>حجوزاتي</span>
-      </a>
-      {% else %}
-      <a href="/login">
-        <img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour">
-        <span>حجوزاتي</span>
-      </a>
-      {% endif %}
-
-      {% if session_user %}
-      <a href="/messages" class="{% if request and request.url.path.startswith('/messages') %}is-active{% endif %}">
-        <img class="tab-img" src="/static/img/msg.png" alt="Messages">
-        <span>الرسائل</span>
-      </a>
-      {% else %}
-      <a href="/login">
-        <img class="tab-img" src="/static/img/msg.png" alt="Messages">
-        <span>الرسائل</span>
-      </a>
-      {% endif %}
-
-      {% if session_user %}
-      <a href="/profile" class="{% if request and request.url.path.startswith('/profile') %}is-active{% endif %}">
-        <img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile">
-        <span>بروفايلي</span>
-      </a>
-      {% else %}
-      <a href="/login">
-        <img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile">
-        <span>بروفايلي</span>
-      </a>
-      {% endif %}
     </nav>
 
     </div><!-- /#page-wrapper -->
@@ -548,6 +484,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     {% block scripts %}{% endblock %}
 
+    <!-- ====== JS عام ====== -->
     <script>
       // Sidebar open/collapse
       const sidebar   = document.getElementById('appSidebar');
@@ -569,11 +506,11 @@
       function collapseSidebar(yes){
         if (yes){
           sidebar.dataset.collapsed = 'true';
-          document.documentElement.setAttribute('style','--sidebar-w:84px');
+          document.documentElement.style.setProperty('--sidebar-w','84px');
           localStorage.setItem('sidebar_collapsed','true');
         }else{
           sidebar.dataset.collapsed = 'false';
-          document.documentElement.setAttribute('style','--sidebar-w:268px');
+          document.documentElement.style.setProperty('--sidebar-w','268px');
           localStorage.setItem('sidebar_collapsed','false');
         }
       }
@@ -584,12 +521,10 @@
       const moonIcon = document.getElementById('moonIcon');
       const savedTheme = localStorage.getItem('theme_mode');
       if (savedTheme) setTheme(savedTheme);
-
       themeToggle?.addEventListener('click', () => {
         const current = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
         setTheme(current);
       });
-
       function setTheme(mode){
         document.body.dataset.theme = mode;
         localStorage.setItem('theme_mode', mode);
@@ -772,7 +707,6 @@
 
       function setBell(n){
         if (!countEl || !pingEl) return;
-        /* شرط صحيح */
         if (n>0){ countEl.textContent = (n>99 ? '99+' : String(n)); countEl.style.display = ''; pingEl.style.display = ''; }
         else{ countEl.textContent = ''; countEl.style.display = 'none'; pingEl.style.display = 'none'; }
       }
@@ -789,7 +723,10 @@
         for (const u of urls){
           try{
             const r = await fetch(u, {credentials:'include'});
-            if (r.ok){ const data = await r.json(); return {data, url:u}; }
+            if (r.ok){
+              const data = await r.json();
+              return {data, url:u};
+            }
           }catch(_){}
         }
         return {data:null, url:null};
@@ -840,7 +777,7 @@
           .catch(()=>{});
       }
       refreshUnread();
-      setInterval(refreshUnread, 30*1000);
+      setInterval(refreshUnread, 30000);
 
       function openPanel(){ panel?.classList.add('is-open'); scrim?.classList.add('is-show'); loadPanel(); }
       function closePanel(){ panel?.classList.remove('is-open'); scrim?.classList.remove('is-show'); }
@@ -866,9 +803,8 @@
     <script>
     (function roleAutoToggle(){
       if (window.__dmSyncInit) return; window.__dmSyncInit = true;
-
-      function showDM(){ }
-      function hideDM(){ }
+      function showDM(){}
+      function hideDM(){}
 
       function syncFromMe(){
         return fetch('/api/me', {credentials:'include'})
@@ -879,102 +815,51 @@
           })
           .catch(()=>{});
       }
-
       syncFromMe();
       document.addEventListener('unread:changed', () => { syncFromMe(); });
-
       let checks = 0;
       const timer = setInterval(() => {
-        checks += 1;
-        syncFromMe();
-        if (checks >= 8) clearInterval(timer);
+        checks += 1; syncFromMe(); if (checks >= 8) clearInterval(timer);
       }, 15000);
     })();
     </script>
 
-    <!-- 🔥🔥 الباتش النهائي + سكربت safe-area (لا تلمسه) 🔥🔥 -->
-    <style id="tabbar-solid-white">
-      :root{ --safe: env(safe-area-inset-bottom, 0px); }
-      body, .page{ padding-bottom: calc(84px + var(--safe)) !important; }
-      @media (max-width:768px){
-        .mobile-tabbar{
-          position: fixed !important;
-          left:0; right:0;
-          bottom: calc(var(--safe) + 2px) !important;
-          height: 64px !important;
-
-          /* أبيض 100% بدون شفافية أو Blur */
-          background: #fff !important;
-          -webkit-backdrop-filter: none !important;
-          backdrop-filter: none !important;
-
-          border-top: 1px solid rgba(0,0,0,.08) !important;
-          border-radius: 16px 16px 0 0 !important;
-          box-shadow: 0 8px 28px rgba(0,0,0,.08) !important;
-
-          padding-top: 8px !important;
-          padding-bottom: calc(8px + var(--safe)) !important;
-
-          z-index: 2147483647 !important;
-          transform: translateZ(0);
-          isolation: isolate;
-        }
-        .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
-          position: fixed !important;
-          right: 16px !important;
-          bottom: calc(var(--safe) + 92px) !important;
-          z-index: 2147483647 !important;
-        }
+    <!-- ✅ قياس safe area + fallback iOS داخل PWA -->
+    <script>
+    (function(){
+      var root = document.documentElement;
+      function computeSafe(){
+        var safe = 0;
+        try{
+          var probe = document.createElement('div');
+          probe.style.cssText =
+            'position:fixed; bottom:0; left:0; right:0; '+
+            'height:constant(safe-area-inset-bottom); height:env(safe-area-inset-bottom); '+
+            'pointer-events:none; opacity:0;';
+          document.body.appendChild(probe);
+          safe = Math.max(0, probe.getBoundingClientRect().height || 0);
+          probe.remove();
+        }catch(_){}
+        var isIOS = /iphone|ipod|ipad/i.test(navigator.userAgent);
+        var isStandalone = (window.navigator.standalone === true) ||
+                           (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+        if (isIOS && isStandalone && safe < 8) safe = 16;  // حد أدنى آمن داخل التطبيق
+        root.style.setProperty('--safe', safe + 'px');
       }
-    </style>
-
-    <script>
-      (function(){
-        var root = document.documentElement;
-
-        function computeSafe(){
-          var safe = 0;
-          try{
-            var probe = document.createElement('div');
-            probe.style.cssText =
-              'position:fixed; bottom:0; left:0; right:0;' +
-              'height:constant(safe-area-inset-bottom); height:env(safe-area-inset-bottom);' +
-              'pointer-events:none; opacity:0;';
-            document.body.appendChild(probe);
-            safe = Math.max(0, probe.getBoundingClientRect().height || 0);
-            probe.remove();
-          }catch(_){}
-
-          var isIOS = /iphone|ipod|ipad/i.test(navigator.userAgent);
-          var isStandalone = (window.navigator.standalone === true) ||
-                             (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-          if (isIOS && isStandalone && safe < 8) safe = 16;
-
-          root.style.setProperty('--safe', safe + 'px');
-        }
-
-        computeSafe();
-        window.addEventListener('resize', computeSafe);
-        if (window.visualViewport){
-          visualViewport.addEventListener('resize', computeSafe);
-          visualViewport.addEventListener('scroll', computeSafe);
-        }
-      })();
-    </script>
-    <!-- 🔥🔥 نهاية الباتش 🔥🔥 -->
-
-    <!-- كشف وضع التطبيق وإضافة كلاس html.pwa -->
-    <script>
-      (function(){
-        var isStandalone = false;
-        try {
-          isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
-                         || (window.navigator.standalone === true);
-        } catch(_) {}
-        if (isStandalone) {
+      computeSafe();
+      window.addEventListener('resize', computeSafe);
+      if (window.visualViewport){
+        visualViewport.addEventListener('resize', computeSafe);
+        visualViewport.addEventListener('scroll', computeSafe);
+      }
+      // علِّم الـ html بوضع التطبيق إن وُجد
+      try{
+        if ((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+            (window.navigator.standalone === true)) {
           document.documentElement.classList.add('pwa');
         }
-      })();
+      }catch(_){}
+    })();
     </script>
 
   </body>
