@@ -302,53 +302,7 @@
     {% endif %}
   </nav>
 
-  <!-- ===== Sidebar (ديسكتوب) ===== -->
-  <aside class="sidebar d-none d-lg-flex flex-column" id="appSidebar" data-collapsed="false">
-    <nav class="sidebar__nav p-2">
-      <a class="side-link d-flex align-items-center gap-2 py-2 {% if request and request.url.path == '/' %}is-active{% endif %}" href="/">
-        <img class="side-icon" src="{{ url_for('static', path='images/home.png') }}" alt="home" width="22" height="22"><span>الرئيسية</span>
-      </a>
-      <a class="side-link d-flex align-items-center gap-2 py-2 {% if request and request.url.path.startswith('/items') %}is-active{% endif %}" href="/items">
-        <img class="side-icon" src="{{ url_for('static', path='images/tout.png') }}" alt="tout" width="22" height="22"><span>كل العناصر</span>
-      </a>
-
-      {% if session_user %}
-        <a class="side-link d-flex align-items-center gap-2 py-2 {% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}" href="/favorites">
-          <img class="side-icon" src="{{ url_for('static', path='images/save.png') }}" alt="save" width="22" height="22"><span>مفضلتي</span>
-        </a>
-        <a class="side-link d-flex align-items-center gap-2 py-2 {% if request and request.url.path.startswith('/profile') %}is-active{% endif %}" href="/profile">
-          <img class="side-icon" src="{{ url_for('static', path='images/profil.png') }}" alt="profil" width="22" height="22"><span>صفحتي</span>
-        </a>
-        <a class="side-link d-flex align-items-center gap-2 py-2 {% if request and request.url.path.startswith('/owner/items') %}is-active{% endif %}" href="/owner/items">
-          <img class="side-icon" src="{{ url_for('static', path='images/page.png') }}" alt="page" width="22" height="22"><span>أشيائي</span>
-        </a>
-        <a class="side-link d-flex align-items-center gap-2 py-2 {% if request and request.url.path.startswith('/bookings') %}is-active{% endif %}" href="/bookings">
-          <img class="side-icon" src="{{ url_for('static', path='images/jour.png') }}" alt="jour" width="22" height="22"><span>حجوزاتي</span>
-        </a>
-
-        {% if session_user.get('can_manage_deposits') %}
-          <a class="side-link d-flex align-items-center gap-2 py-2 {% if request and request.url.path.startswith('/dm/deposits') %}is-active{% endif %}"
-             href="/dm/deposits">
-            <i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>
-          </a>
-        {% endif %}
-
-        <a class="side-link d-flex align-items-center gap-2 py-2 {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" href="/payout/settings">
-          <img class="side-icon" src="{{ url_for('static', path='images/cart.png') }}" alt="cart" width="22" height="22"><span>التحويلات</span>
-        </a>
-
-        {% if session_user.role == 'admin' %}
-          <div class="side-sep my-2" style="height:1px;background:var(--border)"></div>
-          <a class="side-link d-flex align-items-center gap-2 py-2 {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" href="/admin">
-            <i class="bi bi-speedometer2"></i> <span>لوحة الأدمين</span>
-          </a>
-        {% endif %}
-      {% endif %}
-    </nav>
-    <button class="collapse-pin btn btn-ghost btn-sm mt-auto" id="pinSidebar" title="طي/تثبيت">
-      <i class="bi bi-chevron-double-left"></i><span class="ms-2 d-none d-xl-inline">طيّ الشريط</span>
-    </button>
-  </aside>
+  
 
   <!-- ===== Page ===== -->
   <main class="page container-fluid main-flex-fill min-vh-100">
