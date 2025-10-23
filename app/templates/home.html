@@ -47,7 +47,11 @@
   /* استخدم نسبة 3:2 لأن صورك 1536×1024 */
   .hero-carousel .carousel-item{
     aspect-ratio: 5 / 3 !important; /* تصغير الصورة قليلاً */
-    max-height: 480px !important;   /* أقصى ارتفاع للصورة */
+    max-height: 480px !important;   /* أقصى ارتفاع للحاسوب */
+}
+
+@media (max-width:768px){
+    .hero-carousel .carousel-item{ max-height: 320px !important; } /* للجوال */
 }
   /* الصورة تظهر كاملة بدون قص + تمركز + خلفية لطيفة */
   .hero-carousel .carousel-item img{
