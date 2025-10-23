@@ -98,12 +98,9 @@
       /* ========= زر ☰ والقائمة المنسدلة (سطح المكتب فقط) ========= */
       @media (min-width: 992px){
         .topbar__inner{ position:relative; }
-
-        /* إخفاء السايدبار على سطح المكتب — يبقى في الـ DOM */
         .sidebar{ display:none !important; }
         .page{ margin-inline: 0 !important; }
 
-        /* زر الهامبورغر */
         .hamburger-btn{
           display:inline-flex; align-items:center; justify-content:center;
           border:0; background:transparent; font-size:24px; line-height:1;
@@ -113,7 +110,6 @@
           background: color-mix(in oklab, var(--text, #fff) 8%, transparent);
         }
 
-        /* القائمة العلوية */
         .topmenu{
           position:absolute; inset-inline-start:14px; top:calc(100% + 8px);
           min-width:260px;
@@ -182,10 +178,9 @@
 
       /* ===== رفع زر الإضافة (+) قليلاً للأعلى على الهاتف ===== */
       @media (max-width: 768px) {
-        /* غطينا جميع الأسماء الممكنة للزر */
         .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"] {
           position: fixed !important;
-          bottom: 80px !important; /* ← عدّل هذا الرقم لرفع أكثر (جرب 90px لو أردت أعلى) */
+          bottom: 80px !important;
           z-index: 1000 !important;
         }
       }
@@ -198,20 +193,24 @@
 
       /* ✅ مساحة سفلية للمحتوى حتى لا يُقص خلف الشريط */
       body{
-        padding-bottom: calc(84px + max(var(--safe-bottom), var(--safe-bottom-legacy)));
+        /* ✳️ تعديل: كانت 84px، خفّضناها ليقل الفراغ */
+        padding-bottom: calc(70px + max(var(--safe-bottom), var(--safe-bottom-legacy)));
       }
 
       /* ✅ رفع النافبار السفلي فعليًا فوق خط iPhone */
       @media (max-width: 768px){
         .mobile-tabbar{
-          bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 6px) !important;
+          /* ✳️ تعديل: كانت +6px، صارت +2px ليقترب من مؤشر iPhone مثل Airbnb */
+          bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 2px) !important;
           border-radius: 16px 16px 0 0;
-          padding-bottom: 8px !important;
-          padding-top: 8px !important;
+          /* ✳️ تعديل: تقليل الحشوات العمودية قليلاً */
+          padding-bottom: 6px !important;
+          padding-top: 6px !important;
         }
-        /* زر + فوق الشريط بمسافة مريحة */
+        /* زر + فوق الشريط بمسافة مريحة بدون مبالغة */
         .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
-          bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 96px) !important;
+          /* ✳️ تعديل: كانت +96px، خفّضناها */
+          bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 86px) !important;
         }
       }
 
@@ -563,11 +562,11 @@
       function collapseSidebar(yes){
         if (yes){
           sidebar.dataset.collapsed = 'true';
-          document.documentElement.style.setProperty('--sidebar-w', '84px');
+          document.documentElement.setAttribute('style','--sidebar-w:84px');
           localStorage.setItem('sidebar_collapsed','true');
         }else{
           sidebar.dataset.collapsed = 'false';
-          document.documentElement.style.setProperty('--sidebar-w', '268px');
+          document.documentElement.setAttribute('style','--sidebar-w:268px');
           localStorage.setItem('sidebar_collapsed','false');
         }
       }
@@ -670,7 +669,7 @@
       function show(){ panel.classList.remove('d-none'); }
       function esc(s){
         return String(s||"").replace(/[&<>"']/g, function(c){
-          return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+          return {"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c];
         });
       }
 
@@ -759,7 +758,6 @@
       const body       = document.getElementById('notifBody');
       const scrim      = document.getElementById('scrim');
 
-      // عناصر العدّاد على الجرس
       let countEl = notifOpen?.querySelector('.notif-count');
       if (!countEl){ countEl = document.createElement('span'); countEl.className='notif-count'; countEl.style.display='none'; notifOpen?.appendChild(countEl); }
       let pingEl = notifOpen?.querySelector('.notif-ping');
@@ -777,7 +775,6 @@
         });
       }
 
-      // نحاول أول مسار يشتغل عندك (بدون تعديل الباك)
       const FEEDS = [
         '/api/notifications/poll',
         '/api/notifications',
@@ -885,15 +882,9 @@
           .catch(()=>{});
       }
 
-      // فحص أوّلي
       syncFromMe();
+      document.addEventListener('unread:changed', () => { syncFromMe(); });
 
-      // عند تغيّر عدّاد الإشعارات
-      document.addEventListener('unread:changed', () => {
-        syncFromMe();
-      });
-
-      // شبكة أمان خلال أول دقيقتين
       let checks = 0;
       const timer = setInterval(() => {
         checks += 1;
