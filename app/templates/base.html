@@ -3,8 +3,9 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="utf-8" />
-    <!-- (موجودة) -->
-    <!-- ⬇️ إضافة لتمكين الـ safe area على iOS -->
+    <!-- موجودة -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- تمكين الـ safe area على iOS -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{{ title or "RentAll" }}</title>
 
@@ -165,17 +166,16 @@
         .fab, 
         .btn-fab, 
         .add-item-btn {
-          bottom: 76px !important; /* كان 60 تقريبًا، رفعناه قليلاً */
+          bottom: 76px !important;
         }
       }
 
       @media (max-width:768px){
-        .actions .dropdown:first-of-type{ display:none !重要; }
+        .actions .dropdown:first-of-type{ display:none !important; }
       }
 
       .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important; }
 
-      /* ===== رفع زر الإضافة (+) قليلاً للأعلى على الهاتف ===== */
       @media (max-width: 768px) {
         .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"] {
           position: fixed !important;
@@ -184,39 +184,33 @@
         }
       }
 
-      /* ✅ تعريف متغيرات الـ safe area */
+      /* ✅ متغيرات safe area الأساس */
       :root{
         --safe-bottom: env(safe-area-inset-bottom, 0px);
         --safe-bottom-legacy: constant(safe-area-inset-bottom, 0px);
       }
 
-      /* ✅ مساحة سفلية للمحتوى حتى لا يُقص خلف الشريط */
+      /* ✅ مساحة سفلية للمحتوى */
       body{
-        /* ✳️ تعديل: كانت 84px، خفّضناها ليقل الفراغ */
         padding-bottom: calc(70px + max(var(--safe-bottom), var(--safe-bottom-legacy)));
       }
 
-      /* ✅ رفع النافبار السفلي فعليًا فوق خط iPhone */
+      /* ✅ رفع النافبار السفلي فوق خط iPhone */
       @media (max-width: 768px){
         .mobile-tabbar{
-          /* ✳️ تعديل: كانت +6px، صارت +2px ليقترب من مؤشر iPhone مثل Airbnb */
           bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 2px) !important;
           border-radius: 16px 16px 0 0;
-          /* ✳️ تعديل: تقليل الحشوات العمودية قليلاً */
           padding-bottom: 6px !important;
           padding-top: 6px !important;
         }
-        /* زر + فوق الشريط بمسافة مريحة بدون مبالغة */
         .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
-          /* ✳️ تعديل: كانت +96px، خفّضناها */
           bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 86px) !important;
         }
       }
 
-      /* ✅ للتأكد أن عناصر التبويب تبقى في الوسط دائمًا */
       .mobile-tabbar .nav-item { padding-bottom: 4px; }
 
-      /* ======================= PATCH: دعم وضع التطبيق (PWA) ======================= */
+      /* ===== دعم وضع التطبيق (PWA) ===== */
       @media (display-mode: standalone) {
         :root{
           --safe-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
@@ -237,178 +231,12 @@
           z-index: 2200 !important;
         }
       }
-      /* ========================================================================== */
     </style>
-
-    <style id="mobile-tabbar-final-fix">
-  /* ✅ قاعدة موحّدة: لا تعتمد على متغيرات سابقة */
-  @media (max-width: 768px){
-    .mobile-tabbar{
-      position: fixed !important;
-      top: auto !important;                 /* ← يمنع ظهورها بالأعلى */
-      left: 0 !important; right: 0 !important;
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 2px) !important;
-
-      height: 64px !important;
-      background: #fff !important;          /* أبيض بالكامل */
-      -webkit-backdrop-filter: none !important;
-      backdrop-filter: none !important;
-      border-top: 1px solid rgba(0,0,0,.08) !important;
-      border-radius: 16px 16px 0 0 !important;
-      box-shadow: 0 10px 40px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.02) inset !important;
-      z-index: 2147483647 !important;
-      padding-top: 8px !important;
-      padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
-      transform: translateZ(0);
-      isolation: isolate;
-    }
-
-    /* مساحة للمحتوى حتى لا يختبئ خلف الشريط */
-    body, .page{
-      padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px)) !important;
-    }
-
-    /* زر + فوق الشريط بمسافة مناسبة */
-    .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
-      position: fixed !important;
-      top: auto !important;
-      right: 16px !important;
-      bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
-      z-index: 2147483647 !important;
-    }
-
-    /* ألوان الأيقونات والنص داخل الشريط */
-    .mobile-tabbar .tab-img{ opacity: 1 !important; }
-    .mobile-tabbar a{ color: var(--text, #111827) !important; }
-  }
-
-  /* ✅ وضع التطبيق (PWA): أضف حد أدنى 16px تحت */
-  @media (display-mode: standalone) and (max-width: 768px){
-    .mobile-tabbar{
-      bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
-      padding-bottom: calc(8px + 16px + env(safe-area-inset-bottom, 0px)) !important;
-    }
-    body, .page{
-      padding-bottom: calc(82px + 16px + env(safe-area-inset-bottom, 0px)) !important;
-    }
-  }
-</style>
-
-<style id="mobile-tabbar-final-fix-v3">
-  /* إجبار الشريط السفلي أن يبقى أسفل، أبيض 100%، مع احترام الـ safe-area */
-  @media (max-width: 768px){
-    .mobile-tabbar{
-      position: fixed !important;
-      top: auto !important;                /* يمنع ظهوره بالأعلى */
-      left: 0 !important; right: 0 !important;
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 2px) !important;
-
-      height: 64px !important;
-      background: #fff !important;         /* أبيض بالكامل */
-      -webkit-backdrop-filter: none !important;
-      backdrop-filter: none !important;
-
-      border-top: 1px solid rgba(0,0,0,.08) !important;
-      border-radius: 16px 16px 0 0 !important;
-      box-shadow: 0 10px 40px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.02) inset !important;
-      padding-top: 8px !important;
-      padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
-
-      z-index: 2147483647 !important;
-      transform: translateZ(0);
-      isolation: isolate;
-    }
-
-    /* مساحة للمحتوى حتى لا يتغطى بالشريط */
-    body, .page{
-      padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px)) !important;
-    }
-
-    /* زر الإضافة (+) فوق الشريط بمسافة مريحة */
-    .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
-      position: fixed !important;
-      top: auto !important;
-      right: 16px !important;
-      bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
-      z-index: 2147483647 !important;
-    }
-
-    /* ألوان داخل الشريط */
-    .mobile-tabbar .tab-img{ opacity: 1 !important; }
-    .mobile-tabbar a{ color: var(--text, #111827) !important; }
-  }
-
-  /* وضع التطبيق (PWA): حد أدنى 16px للـ safe-area */
-  @media (display-mode: standalone) and (max-width: 768px){
-    .mobile-tabbar{
-      bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
-      padding-bottom: calc(8px + 16px + env(safe-area-inset-bottom, 0px)) !important;
-    }
-    body, .page{
-      padding-bottom: calc(82px + 16px + env(safe-area-inset-bottom, 0px)) !important;
-    }
-  }
-</style>
-
-<style id="mobile-tabbar-final-fix">
-  @media (max-width: 768px){
-    .mobile-tabbar{
-      position: fixed !important;
-      top: auto !important;                 /* يمنع طلوعها للأعلى */
-      left: 0 !important; right: 0 !important;
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 2px) !important;
-
-      height: 64px !important;
-      background: #ffffff !important;       /* أبيض بالكامل */
-      -webkit-backdrop-filter: none !important;
-      backdrop-filter: none !important;
-
-      border-top: 1px solid rgba(0,0,0,.08) !important;
-      border-radius: 16px 16px 0 0 !important;
-      box-shadow: 0 10px 40px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.02) inset !important;
-      z-index: 2147483647 !important;
-      padding-top: 8px !important;
-      padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
-      transform: translateZ(0);
-      isolation: isolate;
-    }
-
-    /* مساحة للمحتوى حتى لا يتغطى بالشريط */
-    body, .page{
-      padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px)) !important;
-    }
-
-    /* زر + فوق الشريط */
-    .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
-      position: fixed !important;
-      top: auto !important;
-      right: 16px !important;
-      bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
-      z-index: 2147483647 !important;
-    }
-
-    .mobile-tabbar .tab-img{ opacity: 1 !important; }
-    .mobile-tabbar a{ color: var(--text, #111827) !important; }
-  }
-
-  /* وضع التطبيق (PWA): حد أدنى 16px للـ safe-area */
-  @media (display-mode: standalone) and (max-width: 768px){
-    .mobile-tabbar{
-      bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
-      padding-bottom: calc(8px + 16px + env(safe-area-inset-bottom, 0px)) !important;
-    }
-    body, .page{
-      padding-bottom: calc(82px + 16px + env(safe-area-inset-bottom, 0px)) !important;
-    }
-  }
-</style>
 
     {% block head %}{% endblock %}
   </head>
 
-  <!-- ⬇️ إضافة: وسم body -->
   <body>
-
     <div id="page-wrapper"><!-- غلاف ملء الشاشة -->
 
     <!-- ===== Topbar ===== -->
@@ -554,9 +382,8 @@
       </div>
     </header>
 
-    <!-- ===== Mobile Top Tabs (موبايل فقط) ===== -->
+    <!-- ===== Mobile Top Tabs ===== -->
     <nav class="m-top-tabs d-lg-none" role="tablist" aria-label="أقسام عليا">
-      <!-- Home -->
       <a href="/" class="m-tab {% if request and request.url.path == '/' %}is-active{% endif %}" role="tab"
          aria-selected="{{ 'true' if request and request.url.path == '/' else 'false' }}">Home</a>
 
@@ -569,7 +396,6 @@
             {{ unread_top if unread_top < 100 else '99+' }}
           </small>
         </a>
-
         <a href="/payout/settings" class="m-tab {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" role="tab"
            aria-selected="{{ 'true' if request and request.url.path.startswith('/payout') else 'false' }}">تحويلات</a>
 
@@ -644,7 +470,7 @@
       {% block content %}{% endblock %}
     </main>
 
-    <!-- لوحة إشعارات جانبية (تظل موجودة لسطح المكتب) -->
+    <!-- لوحة إشعارات جانبية -->
     <div class="notif-panel" id="notifPanel" aria-hidden="true">
       <div class="notif-panel__header d-flex justify-content-between align-items-center">
         <strong>الإشعارات</strong>
@@ -946,7 +772,7 @@
 
       function setBell(n){
         if (!countEl || !pingEl) return;
-        /* PATCH: كان مكتوب "ن>99" بحرف عربي؛ صُحح إلى n>99 */
+        /* شرط صحيح */
         if (n>0){ countEl.textContent = (n>99 ? '99+' : String(n)); countEl.style.display = ''; pingEl.style.display = ''; }
         else{ countEl.textContent = ''; countEl.style.display = 'none'; pingEl.style.display = 'none'; }
       }
@@ -957,20 +783,13 @@
         });
       }
 
-      const FEEDS = [
-        '/api/notifications/poll',
-        '/api/notifications',
-        '/notifications/json'
-      ];
+      const FEEDS = ['/api/notifications/poll','/api/notifications','/notifications/json'];
 
       async function fetchFirst(urls){
         for (const u of urls){
           try{
             const r = await fetch(u, {credentials:'include'});
-            if (r.ok){
-              const data = await r.json();
-              return {data, url:u};
-            }
+            if (r.ok){ const data = await r.json(); return {data, url:u}; }
           }catch(_){}
         }
         return {data:null, url:null};
@@ -1001,10 +820,7 @@
         list.items.forEach(n=>{
           const a = document.createElement('a');
           a.className='notif-row'; a.href=n.link||'#';
-          a.innerHTML = `
-            <div class="fw-bold">${esc(n.title)}</div>
-            ${n.meta ? `<div class="k small">${esc(n.meta)}</div>` : ''}
-          `;
+          a.innerHTML = `<div class="fw-bold">${esc(n.title)}</div>${n.meta ? `<div class="k small">${esc(n.meta)}</div>` : ''}`;
           body.appendChild(a);
         });
       }
@@ -1046,13 +862,13 @@
     })();
     </script>
 
-    <!-- سكربت مزامنة صلاحية MD من السيرفر -->
+    <!-- سكربت مزامنة صلاحية MD -->
     <script>
     (function roleAutoToggle(){
       if (window.__dmSyncInit) return; window.__dmSyncInit = true;
 
-      function showDM(){ /* تركناه فارغ/موجود */ }
-      function hideDM(){ /* تركناه فارغ/موجود */ }
+      function showDM(){ }
+      function hideDM(){ }
 
       function syncFromMe(){
         return fetch('/api/me', {credentials:'include'})
@@ -1076,75 +892,78 @@
     })();
     </script>
 
-    <!-- ⬇️⬇️ الكتل الأصلية للهوت-فيكس لديك (أبقيناها كما هي) ⬇️⬇️ -->
-    <style>
-      :root{ --safe-b: env(safe-area-inset-bottom, 0px); }
-      .page, body{ padding-bottom: calc(74px + var(--safe-b)) !important; }
+    <!-- 🔥🔥 الباتش النهائي + سكربت safe-area (لا تلمسه) 🔥🔥 -->
+    <style id="tabbar-solid-white">
+      :root{ --safe: env(safe-area-inset-bottom, 0px); }
+      body, .page{ padding-bottom: calc(84px + var(--safe)) !important; }
       @media (max-width:768px){
         .mobile-tabbar{
           position: fixed !important;
           left:0; right:0;
-          bottom: calc(var(--safe-b) + 2px) !important;
-          padding-top: 6px !important;
-          padding-bottom: calc(6px + var(--safe-b)) !important;
-          border-top: 1px solid rgba(0,0,0,.08) !important;
-          border-radius: 16px 16px 0 0 !important;
-          background:#fff;
-          backdrop-filter: blur(14px) saturate(120%);
-          z-index: 9999 !important;
-          transform: translateZ(0);
-        }
-        .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
-          position: fixed !important;
-          bottom: calc(var(--safe-b) + 84px) !important;
-          z-index: 10000 !important;
-        }
-      }
-    </style>
-
-    <style id="mobile-tabbar-hotfix">
-      #page-wrapper, .page { overflow: visible !important; }
-      :root{ --safe-b: env(safe-area-inset-bottom, 0px); }
-      body, .page{
-        padding-bottom: calc(88px + var(--safe-b)) !important;
-      }
-      @media (max-width: 768px){
-        .mobile-tabbar{
-          position: fixed !important;
-          left: 0; right: 0;
-          bottom: calc(var(--safe-b) + 6px) !important;
+          bottom: calc(var(--safe) + 2px) !important;
           height: 64px !important;
-          padding-top: 8px !important;
-          padding-bottom: calc(8px + var(--safe-b)) !important;
-          background: var(--surface, #fff) !important;
-          -webkit-backdrop-filter: blur(14px) saturate(120%);
-          backdrop-filter: blur(14px) saturate(120%);
+
+          /* أبيض 100% بدون شفافية أو Blur */
+          background: #fff !important;
+          -webkit-backdrop-filter: none !important;
+          backdrop-filter: none !important;
+
           border-top: 1px solid rgba(0,0,0,.08) !important;
           border-radius: 16px 16px 0 0 !important;
-          box-shadow: 0 10px 40px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.02) inset;
+          box-shadow: 0 8px 28px rgba(0,0,0,.08) !important;
+
+          padding-top: 8px !important;
+          padding-bottom: calc(8px + var(--safe)) !important;
+
           z-index: 2147483647 !important;
-          isolation: isolate;
           transform: translateZ(0);
-          will-change: transform;
-          backface-visibility: hidden;
+          isolation: isolate;
         }
-        #page-wrapper{
-          transform: none !important;
-          filter: none !important;
-          perspective: none !important;
-        }
-        .mobile-tabbar .tab-img{ opacity: 1 !important; }
-        .mobile-tabbar a{ color: var(--text, #111827) !important; }
         .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
           position: fixed !important;
           right: 16px !important;
-          bottom: calc(var(--safe-b) + 90px) !important;
+          bottom: calc(var(--safe) + 92px) !important;
           z-index: 2147483647 !important;
         }
       }
     </style>
 
-    <!-- PATCH: كشف وضع التطبيق وإضافة كلاس فالباك html.pwa -->
+    <script>
+      (function(){
+        var root = document.documentElement;
+
+        function computeSafe(){
+          var safe = 0;
+          try{
+            var probe = document.createElement('div');
+            probe.style.cssText =
+              'position:fixed; bottom:0; left:0; right:0;' +
+              'height:constant(safe-area-inset-bottom); height:env(safe-area-inset-bottom);' +
+              'pointer-events:none; opacity:0;';
+            document.body.appendChild(probe);
+            safe = Math.max(0, probe.getBoundingClientRect().height || 0);
+            probe.remove();
+          }catch(_){}
+
+          var isIOS = /iphone|ipod|ipad/i.test(navigator.userAgent);
+          var isStandalone = (window.navigator.standalone === true) ||
+                             (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+          if (isIOS && isStandalone && safe < 8) safe = 16;
+
+          root.style.setProperty('--safe', safe + 'px');
+        }
+
+        computeSafe();
+        window.addEventListener('resize', computeSafe);
+        if (window.visualViewport){
+          visualViewport.addEventListener('resize', computeSafe);
+          visualViewport.addEventListener('scroll', computeSafe);
+        }
+      })();
+    </script>
+    <!-- 🔥🔥 نهاية الباتش 🔥🔥 -->
+
+    <!-- كشف وضع التطبيق وإضافة كلاس html.pwa -->
     <script>
       (function(){
         var isStandalone = false;
@@ -1157,70 +976,6 @@
         }
       })();
     </script>
-    <!-- ⬆️⬆️ نهاية الكتل الأصلية ⬆️⬆️ -->
-
-    <!-- =========================== ADD: فالباك دقيق + توحيد المتغيّر =========================== -->
-    <script>
-      (function(){
-        // يقيس safe-area فعليًا عندما ترجع env(...) صفر داخل PWA
-        try{
-          var probe = document.createElement('div');
-          probe.style.cssText = 'position:fixed; left:0; right:0; bottom:0; height:env(safe-area-inset-bottom); '+
-                                'height:constant(safe-area-inset-bottom); pointer-events:none; opacity:0;';
-          document.body.appendChild(probe);
-          var h = Math.max(0, probe.getBoundingClientRect().height || 0);
-          probe.remove();
-          if (h > 0){
-            document.documentElement.style.setProperty('--safe-b-dyn', h + 'px');
-          }
-        }catch(_){}
-      })();
-    </script>
-
-    <style>
-      /* نجمع كل المصادر في متغيّر واحد موحَّد */
-      :root{
-        /* إذا قاس الجافاسكربت قيمة حقيقية تُستعمل أولاً */
-        --safe-b-unified: max(var(--safe-b-dyn, 0px),
-                              env(safe-area-inset-bottom, 0px),
-                              constant(safe-area-inset-bottom, 0px));
-      }
-      /* حدّ أدنى داخل الـ PWA */
-      @media (display-mode: standalone){
-        :root{ --safe-b-unified: max(var(--safe-b-unified), 16px); }
-      }
-
-      /* إجبار المسافات بحيث لا يختفي المحتوى خلف الشريط */
-      body, .page{ padding-bottom: calc(74px + var(--safe-b-unified)) !important; }
-
-      /* الشريط السفلي أبيض 100% وغير شفاف وفوق الـ Home Indicator */
-      @media (max-width:768px){
-        .mobile-tabbar{
-          position: fixed !important;
-          left:0; right:0;
-          bottom: calc(var(--safe-b-unified) + 2px) !important;
-          height: 64px !important;
-          background: #fff !important;           /* أبيض بالكامل */
-          -webkit-backdrop-filter: none !important;
-          backdrop-filter: none !important;
-          border-top: 1px solid rgba(0,0,0,.08) !important;
-          border-radius: 16px 16px 0 0 !important;
-          box-shadow: 0 10px 40px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.02) inset !important;
-          z-index: 2147483647 !important;
-          padding-top: 8px !important;
-          padding-bottom: calc(8px + var(--safe-b-unified)) !important;
-        }
-        .mobile-tabbar .tab-img{ opacity:1 !important; }
-        .mobile-tabbar a{ color: var(--text, #111827) !important; }
-        .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
-          position: fixed !important;
-          bottom: calc(var(--safe-b-unified) + 90px) !important;
-          right: 16px !important;
-          z-index: 2147483647 !important;
-        }
-      }
-    </style>
-    <!-- ========================================================================================= -->
 
   </body>
 </html>
