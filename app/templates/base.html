@@ -175,6 +175,16 @@
       }
 
       .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important; }
+
+      /* ===== رفع زر الإضافة (+) قليلاً للأعلى على الهاتف ===== */
+@media (max-width: 768px) {
+  /* غطينا جميع الأسماء الممكنة للزر */
+  .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"] {
+    position: fixed !important;
+    bottom: 80px !important; /* ← عدّل هذا الرقم لرفع أكثر (جرب 90px لو أردت أعلى) */
+    z-index: 1000 !important;
+  }
+}
     </style>
 
     {% block head %}{% endblock %}
