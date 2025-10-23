@@ -74,8 +74,13 @@
   /* ===== تصغير خفيف على الكمبيوتر فقط (لا تغيير للموبايل) ===== */
   @media (min-width: 992px){
     .edge-bleed{ margin-inline:auto !important; width:auto !important; } /* تعطيل الـ edge-bleed على الديسكتوب */
-    .hero-carousel{ max-width:1100px; margin:0 auto 14px; }              /* ← عدّل الرقم لتكبير/تصغير بسيط */
-    .home-shelves{
+.hero-carousel{
+  max-width:950px;     /* 🔹 تصغير العرض قليلاً */
+  margin:0 auto 14px;
+  border-radius:18px !important;
+  overflow:hidden !important;
+  box-shadow:0 14px 34px rgba(0,0,0,.08);
+}    .home-shelves{
       background:#fff; border-radius:18px 18px 0 0; box-shadow:0 8px 26px rgba(0,0,0,.06);
       margin-top:-80px; padding:16px 18px 20px;
     }
