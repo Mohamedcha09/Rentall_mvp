@@ -125,6 +125,30 @@
     display: block !important;
   }
 }
+/* ===== تحسين حجم وتموضع السلايدر الرئيسي (HERO) على الهاتف ===== */
+@media (max-width: 576px) {
+  .edge-bleed {
+    margin-inline: auto !important;
+    width: 92% !important; /* جعله في الوسط بعرض مناسب */
+  }
+
+  .hero-carousel {
+    border-radius: 14px !important;
+    max-width: 100% !important;
+    margin: 0 auto 10px !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  }
+
+  .hero-carousel .carousel-item {
+    aspect-ratio: 4 / 3 !important; /* أصغر قليلاً من السابق */
+  }
+
+  .hero-carousel .carousel-item img {
+    object-fit: contain !important; /* إظهار الصورة كاملة بدون قص */
+    object-position: center !important;
+    background: #f5f6fa !important; /* خلفية ناعمة */
+  }
+}
 </style>
 {% endblock %}
 
