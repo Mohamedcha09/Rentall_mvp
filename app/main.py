@@ -1,4 +1,4 @@
-# app/main.py 
+# app/main.py
 
 # >>> FIX: حمّل .env مبكّر جدًا قبل أي قراءة للمتغيرات
 from dotenv import load_dotenv
@@ -7,6 +7,8 @@ load_dotenv()  # آمنة لو استدعيتها مرة ثانية لاحقًا
 import cloudinary
 import cloudinary.uploader
 import os
+import difflib
+import random  # ← [مضاف] للخلط العشوائي
 
 # >>> ADD: Cloudinary secure
 cloudinary.config(
@@ -15,14 +17,6 @@ cloudinary.config(
     api_secret=os.getenv("CLOUDINARY_API_SECRET"),
     secure=True  # يضمن روابط https
 )
-
-import os
-import difflib
-
-# ✅ حمّل مفاتيح .env مبكّرًا جداً قبل استيراد أي ملفات قد تقرأ المتغيرات
-# >>> NOTE: هذا الاستدعاء الثاني لا يضر (idempotent)
-from dotenv import load_dotenv
-load_dotenv()
 
 from fastapi import FastAPI, Request, Depends
 from fastapi.staticfiles import StaticFiles
@@ -72,12 +66,6 @@ from .routes_evidence import router as evidence_router
 # ✅ [جديد] راوتر تشغيل الإفراج التلقائي يدويًا (للاختبار/الأدمن)
 from .cron_auto_release import router as cron_router
 from .debug_email import router as debug_email_router
-
-# ✅ (إزالة إلزامية) لا نحتاج هذا الاستيراد لأنّه يسبب تكرار الراوتر و/أو NameError
-# from .cron_auto_release import cron_auto_release  # سيُستخدم أدناه مع include_router(cron_auto_release.router)
-
-# ✅ (إزالة إلزامية) إذا لم يكن لديك ملف admin_users.py فهذا الاستيراد سيكسر التشغيل
-# from .admin_users import router as admin_users_router
 
 app = FastAPI()
 
@@ -195,6 +183,38 @@ if PAYOUTS_ENABLED:
     print("[OK] payouts enabled via env")
 else:
     print("[INFO] payouts disabled (set ENABLE_PAYOUTS=1 to show callout)")
+
+# =========================
+# ✅ [مضاف] دالّة قراءة صور البانر تلقائيًا من المجلد
+# =========================
+BANNERS_DIR = os.path.join(STATIC_DIR, "img", "banners")
+BANNERS_URL_PREFIX = "/static/img/banners"
+ALLOWED_BANNER_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+BANNERS_SHUFFLE = os.getenv("BANNERS_SHUFFLE", "1") == "1"  # عشوائي عند كل تحديث
+
+def list_banner_images() -> list[str]:
+    """
+    تفحص مجلد static/img/banners/ وتعيد كل الصور كروابط ويب.
+    لا يهم أسماء الملفات؛ أي صورة تضعها ستظهر.
+    """
+    try:
+        os.makedirs(BANNERS_DIR, exist_ok=True)
+        files = []
+        for name in os.listdir(BANNERS_DIR):
+            p = os.path.join(BANNERS_DIR, name)
+            if not os.path.isfile(p):
+                continue
+            ext = os.path.splitext(name)[1].lower()
+            if ext in ALLOWED_BANNER_EXTS:
+                files.append(f"{BANNERS_URL_PREFIX}/{name}")
+        # رتب أبجديًا للحصول على ترتيب ثابت، ثم اعمل shuffle إذا مفعّل
+        files.sort()
+        if BANNERS_SHUFFLE:
+            random.shuffle(files)
+        return files
+    except Exception as e:
+        print("[WARN] list_banner_images failed:", e)
+        return []
 
 # تسجيل الروترات
 app.include_router(auth_router)
@@ -316,24 +336,8 @@ def home(
         db.query(Item).filter(Item.is_active == "yes").order_by(func.random()).limit(24).all()
     )
 
-    # =========================
-    # ✅ [إضافة جديدة] تحميل صور السلايدر تلقائيًا من static/img/banners
-    # =========================
-    banners = []
-    try:
-        banners_dir = os.path.join(STATIC_DIR, "img", "banners")
-        if os.path.isdir(banners_dir):
-            for f in os.listdir(banners_dir):
-                name = f.lower()
-                if name.endswith((".jpg", ".jpeg", ".png", ".webp", ".gif")):
-                    # استخدم المسار الثابت مباشرةً ليتوافق مع mount("/static", ...)
-                    banners.append(f"/static/img/banners/{f}")
-        # ترتيب عشوائي كل زيارة
-        import random
-        random.shuffle(banners)
-    except Exception as e:
-        print(f"[WARN] banners load error: {e}")
-        banners = []
+    # ✅ [مضاف] اجلب صور البانر من المجلد تلقائيًا
+    banners = list_banner_images()
 
     return templates.TemplateResponse(
         "home.html",
@@ -350,8 +354,7 @@ def home(
             "items_by_category": items_by_category,
             "mixed_items": mixed_items,
             "category_label": category_label,
-            # 🔽 نمرّر الصور للقالب ليبني السلايدر تلقائيًا
-            "banners": banners,
+            "banners": banners,  # ← مهم
         },
     )
 
