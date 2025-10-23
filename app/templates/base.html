@@ -689,18 +689,30 @@
     }
   }
 </style>
-<style id="mobile-tabbar-safearea-bg">
+<style id="safearea-white-under-navbar">
   @media (max-width: 768px){
-    /* إنشاء طبقة بيضاء تغطي الفراغ أسفل الشريط */
-    .mobile-tabbar::after{
+    /* تأكد أن الشريط فوق الجميع */
+    .mobile-tabbar{
+      z-index: 2147483647 !important;
+      background: #fff !important; /* أبيض 100% */
+    }
+
+    /* طبقة بيضاء تغطي الفراغ أسفل حافة iPhone */
+    body::after{
       content: "";
       position: fixed;
       left: 0;
       right: 0;
       bottom: 0;
-      height: max(env(safe-area-inset-bottom, 0px), var(--safe-bottom, 0px));
-      background: #fff; /* نفس لون navbar */
-      z-index: 2147483646; /* تحت الشريط مباشرة */
+      /* نأخذ أي متغير متاح للـ safe-area */
+      height: max(
+        env(safe-area-inset-bottom, 0px),
+        var(--safe-b, 0px),
+        var(--safe-bottom, 0px)
+      );
+      background: #fff;             /* نفس لون الشريط */
+      z-index: 2147483646;          /* أقل من الشريط بقليل */
+      pointer-events: none;         /* لا تمنع اللمس والتمرير */
     }
   }
 </style>
