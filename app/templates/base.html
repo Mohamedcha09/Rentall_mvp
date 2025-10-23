@@ -689,5 +689,20 @@
     }
   }
 </style>
+<style id="mobile-tabbar-safearea-bg">
+  @media (max-width: 768px){
+    /* إنشاء طبقة بيضاء تغطي الفراغ أسفل الشريط */
+    .mobile-tabbar::after{
+      content: "";
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: max(env(safe-area-inset-bottom, 0px), var(--safe-bottom, 0px));
+      background: #fff; /* نفس لون navbar */
+      z-index: 2147483646; /* تحت الشريط مباشرة */
+    }
+  }
+</style>
 </body>
 </html>
