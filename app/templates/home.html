@@ -208,7 +208,7 @@
             <div class="spot-title">{{ it.title }}</div>
             <div class="owner-line">
               <div class="owner-avatar--placeholder">🏷️</div>
-              <span class="city-chip">{{ it.city او '—' }}</span>
+              <span class="city-chip">{{ it.city or '—' }}</span>
             </div>
             <div class="spot-footer">
               <small class="text-muted">تقييم {{ it.rating|default(4.8) }}</small>
