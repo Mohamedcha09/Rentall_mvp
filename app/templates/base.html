@@ -4,7 +4,6 @@
   <head>
     <meta charset="utf-8" />
     <!-- (موجودة) -->
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!-- ⬇️ إضافة لتمكين الـ safe area على iOS -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{{ title or "RentAll" }}</title>
@@ -284,6 +283,62 @@
   }
 
   /* ✅ وضع التطبيق (PWA): أضف حد أدنى 16px تحت */
+  @media (display-mode: standalone) and (max-width: 768px){
+    .mobile-tabbar{
+      bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+      padding-bottom: calc(8px + 16px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+    body, .page{
+      padding-bottom: calc(82px + 16px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+  }
+</style>
+
+<style id="mobile-tabbar-final-fix-v3">
+  /* إجبار الشريط السفلي أن يبقى أسفل، أبيض 100%، مع احترام الـ safe-area */
+  @media (max-width: 768px){
+    .mobile-tabbar{
+      position: fixed !important;
+      top: auto !important;                /* يمنع ظهوره بالأعلى */
+      left: 0 !important; right: 0 !important;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 2px) !important;
+
+      height: 64px !important;
+      background: #fff !important;         /* أبيض بالكامل */
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+
+      border-top: 1px solid rgba(0,0,0,.08) !important;
+      border-radius: 16px 16px 0 0 !important;
+      box-shadow: 0 10px 40px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.02) inset !important;
+      padding-top: 8px !important;
+      padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+
+      z-index: 2147483647 !important;
+      transform: translateZ(0);
+      isolation: isolate;
+    }
+
+    /* مساحة للمحتوى حتى لا يتغطى بالشريط */
+    body, .page{
+      padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    /* زر الإضافة (+) فوق الشريط بمسافة مريحة */
+    .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
+      position: fixed !important;
+      top: auto !important;
+      right: 16px !important;
+      bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
+      z-index: 2147483647 !important;
+    }
+
+    /* ألوان داخل الشريط */
+    .mobile-tabbar .tab-img{ opacity: 1 !important; }
+    .mobile-tabbar a{ color: var(--text, #111827) !important; }
+  }
+
+  /* وضع التطبيق (PWA): حد أدنى 16px للـ safe-area */
   @media (display-mode: standalone) and (max-width: 768px){
     .mobile-tabbar{
       bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
