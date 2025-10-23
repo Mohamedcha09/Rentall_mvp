@@ -691,26 +691,24 @@
 </style>
 <style id="safearea-white-under-navbar">
   @media (max-width: 768px){
-    /* تأكد أن الـ navbar فوق الكل */
     .mobile-tabbar{
       z-index: 2147483647 !important;
       background: #fff !important;
     }
 
-    /* الطبقة البيضاء السفلية */
     body::after{
       content: "";
       position: fixed;
       left: 0;
       right: 0;
       bottom: 0;
-      /* ✳️ زيادة 6px لتغطية أي فراغ باقٍ */
+      /* ✅ زدنا 9px لتغطية آخر فراغ */
       height: calc(
         max(
           env(safe-area-inset-bottom, 0px),
           var(--safe-b, 0px),
           var(--safe-bottom, 0px)
-        ) + 6px
+        ) + 9px
       );
       background: #fff;
       z-index: 2147483646;
