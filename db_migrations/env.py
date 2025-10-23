@@ -3,7 +3,8 @@ from logging.config import fileConfig
 import os
 from sqlalchemy import engine_from_config, pool
 from alembic import context
-
+from dotenv import load_dotenv
+load_dotenv()
 # Render يمرّر DATABASE_URL تلقائيًا من خدمة PostgreSQL
 DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("DATABASE_URL_FULL")
 
