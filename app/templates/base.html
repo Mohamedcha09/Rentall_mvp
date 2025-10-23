@@ -160,6 +160,15 @@
         .mobile-tabbar a.is-active .tab-img{ opacity:1; transform:scale(1.06); }
         .page{ padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
       }
+      /* ===== رفع زر الإضافة (+) قليلاً للأعلى على الموبايل ===== */
+@media (max-width: 768px) {
+  .mobile-tabbar .floating-btn,
+  .fab, 
+  .btn-fab, 
+  .add-item-btn {
+    bottom: 76px !important; /* كان 60 تقريبًا، رفعناه قليلاً */
+  }
+}
 
       @media (max-width:768px){
         .actions .dropdown:first-of-type{ display:none !important; }
