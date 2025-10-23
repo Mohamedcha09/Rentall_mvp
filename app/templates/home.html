@@ -125,6 +125,55 @@
     display: block !important;
   }
 }
+
+/* ==== Center HERO on mobile (final) ==== */
+@media (max-width: 576px){
+  /* أوقف الـ edge-bleed على الموبايل وخلّي البلوك يتوسّط */
+  .edge-bleed{
+    margin-inline: auto !important;
+    width: 100% !important;
+    padding-inline: 12px !important; /* مسافة جانبية بسيطة */
+  }
+
+  /* كرت السلايدر نفسه: وسط + حواف دائرية */
+  .hero-carousel{
+    max-width: 94vw !important;
+    margin: 10px auto 14px !important; /* توسيط عمودي/أفقي */
+    border-radius: 22px !important;
+    overflow: hidden !important;
+  }
+
+  /* تأكيد الحواف الدائرية لكل الطبقات */
+  .hero-carousel .carousel-inner,
+  .hero-carousel .carousel-item,
+  .hero-carousel .carousel-item img{
+    border-radius: 22px !important;
+    overflow: hidden !important;
+  }
+
+  /* ارتفاع مريح لظهور الصورة/النص كاملين */
+  .hero-carousel .carousel-item{
+    aspect-ratio: auto !important;   /* لا تُجبر 3:2 على الموبايل */
+    min-height: 340px !important;    /* كبّرها قليلًا لو لسه النص ينقص */
+  }
+
+  /* اعرض الصورة كاملة ومركّزة */
+  .hero-carousel .carousel-item img{
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;  /* بدون قص */
+    object-position: center !important;
+    background: #fff !important;     /* خلفية نظيفة حول الصورة */
+    display: block !important;
+  }
+
+  /* سهام أصغر قليلًا داخل الإطار */
+  .hero-carousel .carousel-control-prev,
+  .hero-carousel .carousel-control-next{
+    width: 10% !important;
+  }
+}
+
 </style>
 {% endblock %}
 
