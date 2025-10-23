@@ -219,6 +219,9 @@
       </form>
       <div id="typeaheadPanel" class="typeahead d-none"></div>
 
+      <!-- ✅✅ إضافة فقط: بانيل اقتراحات المدينة (جديد) -->
+      <div id="citySuggestPanel" class="typeahead d-none"></div>
+
       <div class="actions d-flex align-items-center gap-2 ms-auto">
         <a href="/messages" class="btn btn-ghost btn-sm" title="الرسائل">
           <img class="icon-img" src="/static/img/msg.png" alt="Messages" style="width:24px;height:24px">
@@ -791,6 +794,111 @@
       setCookie('city', c);
       setCookie('lat', ""); setCookie('lng', "");
     });
+  })();
+  </script>
+
+  <!-- ✅✅ إضافة فقط: اقتراحات المدن عبر Nominatim (بدون المساس بسكربتاتك) -->
+  <script>
+  (function cityAutoComplete(){
+    if (window.__citySuggestInit) return; window.__citySuggestInit = true;
+    const input = document.getElementById('cityInputTop');
+    const panel = document.getElementById('citySuggestPanel');
+    const latEl = document.getElementById('latTop');
+    const lngEl = document.getElementById('lngTop');
+
+    if(!input || !panel) return;
+
+    let tm = null, active = -1;
+
+    function esc(s){
+      return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c]));
+    }
+    function hide(){ panel.classList.add('d-none'); panel.innerHTML=""; active=-1; }
+    function show(){ panel.classList.remove('d-none'); }
+
+    function positionPanel(){
+      // نضعه تحت حقل المدينة تقريبًا (يعتمد على CSS الحالي .typeahead)
+      const r = input.getBoundingClientRect();
+      panel.style.position = 'absolute';
+      panel.style.minWidth = r.width + 'px';
+      // الحاوية الأم هي .topbar__inner => مناسب لأن .typeahead لديه position:absolute مع inset-inline
+    }
+
+    function pick(place){
+      input.value = place.display_name;
+      if (latEl) latEl.value = place.lat;
+      if (lngEl) lngEl.value = place.lon;
+      try{
+        document.cookie = "city="+encodeURIComponent(place.display_name)+";path=/;SameSite=Lax";
+        document.cookie = "lat="+place.lat+";path=/;SameSite=Lax";
+        document.cookie = "lng="+place.lon+";path=/;SameSite=Lax";
+      }catch(_){}
+      hide();
+    }
+
+    function render(list){
+      if (!Array.isArray(list) || !list.length){ hide(); return; }
+      const html = [];
+      html.push('<div class="typeahead-group">مدن/مناطق</div>');
+      list.slice(0,8).forEach((p,i)=>{
+        const name = esc(p.display_name || '');
+        html.push('<div class="typeahead-item" data-i="'+i+'"><i class="bi bi-geo-alt"></i><div class="flex-grow-1"><div>'+name+'</div><div class="k">lat '+esc(p.lat)+' — lng '+esc(p.lon)+'</div></div></div>');
+      });
+      panel.innerHTML = html.join('');
+      show();
+    }
+
+    function searchCity(q){
+      if (!q || q.trim().length < 1){ hide(); return; }
+      const url = 'https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&accept-language=ar&q=' + encodeURIComponent(q.trim());
+      fetch(url, {headers: {'Accept':'application/json'}})
+        .then(r => r.ok ? r.json() : [])
+        .then(render)
+        .catch(hide);
+    }
+
+    input.addEventListener('input', function(){
+      clearTimeout(tm);
+      const q = input.value;
+      if (!q || q.trim().length < 1){ hide(); return; }
+      tm = setTimeout(()=>{ positionPanel(); searchCity(q); }, 220);
+    });
+
+    panel.addEventListener('click', function(e){
+      const row = e.target.closest('.typeahead-item');
+      if (!row) return;
+      const i = Number(row.getAttribute('data-i'));
+      // نقرأ آخر قائمة مرسلة في panel عبر نصوصها—أسهل هو إعادة طلب العناصر:
+      const q = input.value.trim();
+      if (!q) return;
+      fetch('https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&accept-language=ar&q='+encodeURIComponent(q))
+        .then(r=>r.json())
+        .then(list => { if (list[i]) pick(list[i]); })
+        .catch(()=>{});
+    });
+
+    document.addEventListener('click', function(e){
+      if (e.target === input || panel.contains(e.target)) return;
+      hide();
+    });
+
+    input.addEventListener('keydown', function(e){
+      if (panel.classList.contains('d-none')) return;
+      const rows = Array.prototype.slice.call(panel.querySelectorAll('.typeahead-item'));
+      if (!rows.length) return;
+      if (e.key === 'ArrowDown'){ e.preventDefault(); setActive(rows, active+1); }
+      else if (e.key === 'ArrowUp'){ e.preventDefault(); setActive(rows, active-1); }
+      else if (e.key === 'Enter'){ if (active>=0 && rows[active]){ e.preventDefault(); rows[active].click(); } }
+      else if (e.key === 'Escape'){ hide(); }
+    });
+
+    function setActive(rows, i){
+      rows.forEach(r=>r.classList.remove('active'));
+      if (i < 0) i = rows.length-1;
+      if (i >= rows.length) i = 0;
+      active = i; rows[active].classList.add('active');
+      rows[active].scrollIntoView({block:'nearest'});
+    }
   })();
   </script>
 

@@ -155,6 +155,10 @@
 .hero-carousel .carousel-control-next{
   width: 10% !important;
 }
+
+/* ✅ إضافة: شريط تحكّم للموقع في الصفحة الرئيسية */
+.home-locbar .form-control{ height: 44px; }
+.home-locbar .btn{ height: 44px; }
 </style>
 {% endblock %}
 
@@ -184,6 +188,31 @@
   </div>
 </div>
 <!-- /HERO -->
+
+<!-- ✅ إضافة: شريط تحكّم للموقع (مدينة / نصف قطر / GPS) -->
+<section class="container-xl my-3">
+  <form class="row g-2 align-items-center home-locbar" action="/" method="get" role="search" id="homeLocForm">
+    <div class="col-12 col-md-5">
+      <input type="text" class="form-control" id="homeCityInput" name="city" placeholder="اكتب المدينة / المنطقة …" autocomplete="off">
+      <!-- اقتراحات المدن -->
+      <div id="homeCitySugg" class="border rounded mt-1 bg-white shadow-sm" style="display:none; position:absolute; z-index:1000; max-height:260px; overflow:auto"></div>
+    </div>
+    <div class="col-6 col-md-3">
+      <input type="number" class="form-control" id="homeRadius" name="radius_km" min="1" value="25" placeholder="km 25">
+    </div>
+    <div class="col-6 col-md-2 d-grid">
+      <button type="button" id="homeUseGPS" class="btn btn-outline-secondary">📍 استخدم موقعي</button>
+    </div>
+    <div class="col-12 col-md-2 d-grid">
+      <button class="btn btn-primary" type="submit">تطبيق</button>
+    </div>
+
+    <!-- حقول خفية للإحداثيات -->
+    <input type="hidden" id="homeLat" name="lat">
+    <input type="hidden" id="homeLng" name="lng">
+  </form>
+</section>
+<!-- /loc bar -->
 
 <!-- رفوف المنتجات البيضاء تحت البانر -->
 <div class="home-shelves container-xl">
@@ -485,5 +514,122 @@
       carousel.cycle();
     });
   });
+
+  /* ============================================
+     ✅ إضافة: سكربت شريط الموقع (مدينة/GPS/نصف قطر)
+     - بدون لمس بقية سكربتاتك
+     - يستخدم الكوكيز + Nominatim للاقتراحات
+     ============================================ */
+  (function homeLocBar(){
+    const cityEl = document.getElementById('homeCityInput');
+    const latEl  = document.getElementById('homeLat');
+    const lngEl  = document.getElementById('homeLng');
+    const rEl    = document.getElementById('homeRadius');
+    const gpsBtn = document.getElementById('homeUseGPS');
+    const sugg   = document.getElementById('homeCitySugg');
+
+    function setCookie(name, value, days=180){
+      try{
+        const d=new Date(); d.setTime(d.getTime()+days*864e5);
+        document.cookie = name+"="+encodeURIComponent(value||"")+";expires="+d.toUTCString()+";path=/;SameSite=Lax";
+      }catch(_){}
+    }
+    function getCookie(name){
+      const m = document.cookie.match(new RegExp('(?:^| )'+name+'=([^;]+)'));
+      return m ? decodeURIComponent(m[1]) : "";
+    }
+
+    // تهيئة من الكوكي/الـURL
+    try{
+      const url = new URL(location.href);
+      const c   = url.searchParams.get('city') || getCookie('city') || "";
+      const lat = url.searchParams.get('lat')  || getCookie('lat')  || "";
+      const lng = url.searchParams.get('lng')  || getCookie('lng')  || "";
+      const rad = url.searchParams.get('radius_km') || getCookie('radius_km') || "25";
+      if (cityEl) cityEl.value = c;
+      if (latEl)  latEl.value  = lat;
+      if (lngEl)  lngEl.value  = lng;
+      if (rEl)    rEl.value    = rad;
+    }catch(_){}
+
+    // GPS
+    gpsBtn?.addEventListener('click', function(){
+      if (!navigator.geolocation){ alert('المتصفح لا يدعم تحديد الموقع.'); return; }
+      const rad = (rEl && rEl.value) ? rEl.value : "25";
+      navigator.geolocation.getCurrentPosition(function(pos){
+        const lat = pos.coords.latitude, lng = pos.coords.longitude;
+        setCookie('lat', lat); setCookie('lng', lng); setCookie('radius_km', rad);
+        setCookie('city', ""); if (cityEl) cityEl.value = "";
+        if (latEl) latEl.value = lat; if (lngEl) lngEl.value = lng;
+
+        const u = new URL(location.href);
+        u.searchParams.set('lat', lat);
+        u.searchParams.set('lng', lng);
+        u.searchParams.set('radius_km', rad);
+        u.searchParams.delete('city');
+        location.href = u.toString();
+      }, function(){
+        alert('تعذر الحصول على موقعك.');
+      });
+    });
+
+    // حفظ المدينة يدويًا وإلغاء الإحداثيات
+    cityEl?.addEventListener('change', function(){
+      const c = (cityEl.value||"").trim();
+      setCookie('city', c);
+      setCookie('lat', ""); setCookie('lng', "");
+    });
+
+    // ✅ اقتراحات المدن من Nominatim
+    let t=null;
+    function hideSugg(){ if(sugg){ sugg.style.display='none'; sugg.innerHTML=''; } }
+    function showSugg(){ if(sugg){ sugg.style.display='block'; } }
+
+    cityEl?.addEventListener('input', function(){
+      clearTimeout(t);
+      const q = this.value.trim();
+      if (q.length<2){ hideSugg(); return; }
+      t = setTimeout(async ()=>{
+        try{
+          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&accept-language=ar`;
+          const r = await fetch(url, {headers:{'Accept':'application/json'}});
+          if(!r.ok){ hideSugg(); return; }
+          const data = await r.json();
+          if(!Array.isArray(data) || data.length===0){ hideSugg(); return; }
+          sugg.innerHTML = '';
+          data.slice(0,8).forEach(p=>{
+            const row = document.createElement('div');
+            row.className = 'py-2 px-2';
+            row.style.cursor = 'pointer';
+            row.textContent = p.display_name;
+            row.addEventListener('click', ()=>{
+              cityEl.value = p.display_name;
+              setCookie('city', p.display_name);
+              setCookie('lat', p.lat);
+              setCookie('lng', p.lon);
+              if (latEl) latEl.value = p.lat;
+              if (lngEl) lngEl.value = p.lon;
+              hideSugg();
+
+              const u = new URL(location.href);
+              u.searchParams.set('city', p.display_name);
+              u.searchParams.set('lat', p.lat);
+              u.searchParams.set('lng', p.lon);
+              const rad = (rEl && rEl.value) ? rEl.value : "25";
+              u.searchParams.set('radius_km', rad);
+              location.href = u.toString();
+            });
+            sugg.appendChild(row);
+          });
+          showSugg();
+        }catch(_){ hideSugg(); }
+      }, 300);
+    });
+
+    document.addEventListener('click', (e)=>{
+      if (!sugg) return;
+      if (!sugg.contains(e.target) && e.target !== cityEl){ hideSugg(); }
+    });
+  })();
 </script>
 {% endblock %}
