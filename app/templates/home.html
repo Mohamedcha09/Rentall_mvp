@@ -42,25 +42,23 @@
 
   /* ===== Desktop-only Amazon look (edge bleed + white shelves) ===== */
   @media (min-width: 992px){
-  .edge-bleed{ margin-inline: calc(50% - 50vw); width:100vw; }
+    .edge-bleed{ margin-inline: calc(50% - 50vw); width:100vw; }
 
-  .hero-carousel::after{
-    content:""; position:absolute; left:0; right:0; bottom:0; height:160px;
-    background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #ffffff 85%);
-    pointer-events:none;
+    /* تلاشي الصورة نحو خلفية الموقع */
+    .hero-carousel::after{
+      content:""; position:absolute; left:0; right:0; bottom:0; height:160px;
+      background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #ffffff 85%);
+      pointer-events:none;
+    }
+
+    /* ✨ رفع رفوف المنتجات ليظهر الدمج الطبيعي */
+    .home-shelves{
+      background:#fff; border-radius:18px 18px 0 0; box-shadow:0 8px 26px rgba(0,0,0,.06);
+      margin-top:-80px; padding:16px 18px 20px;
+    }
+
+    .home-shelves.container-xl{ max-width:1320px; }
   }
-
-  /* ✨ رفع المنشورات قليلاً ليظهر الدمج الطبيعي مع الأبيض */
-  .home-shelves{
-    background:#fff;
-    border-radius:18px 18px 0 0;
-    box-shadow:0 8px 26px rgba(0,0,0,.06);
-    margin-top:-80px; /* تعديل مهم */
-    padding:16px 18px 20px;
-  }
-
-  .home-shelves.container-xl{ max-width:1320px; }
-}
 </style>
 {% endblock %}
 
@@ -69,39 +67,20 @@
 <!-- HERO (صور فقط، حواف الشاشة، تلاشي للأبيض) -->
 <div class="edge-bleed">
   <div id="heroCarousel" class="carousel slide hero-carousel mb-0"
-       data-bs-ride="carousel" data-bs-interval="4000" data-bs-touch="true" aria-label="عروض رئيسية">
+       data-bs-ride="carousel" data-bs-interval="5000" data-bs-touch="true" aria-label="عروض رئيسية">
 
     <div class="carousel-inner">
-      <div class="carousel-item active">
-        <img src="{{ url_for('static', path='img/banners/sevor1.png') }}" alt="">
-      </div>
-      <div class="carousel-item">
-        <img src="{{ url_for('static', path='img/banners/sevor2.png') }}" alt="">
-      </div>
-      <div class="carousel-item">
-        <img src="{{ url_for('static', path='img/banners/banner3.jpg') }}" alt="">
-      </div>
-      <div class="carousel-item">
-        <img src="{{ url_for('static', path='img/banners/banner4.jpg') }}" alt="">
-      </div>
-      <div class="carousel-item">
-        <img src="{{ url_for('static', path='img/banners/banner5.jpg') }}" alt="">
-      </div>
-      <div class="carousel-item">
-        <img src="{{ url_for('static', path='img/banners/banner6.jpg') }}" alt="">
-      </div>
-      <div class="carousel-item">
-        <img src="{{ url_for('static', path='img/banners/banner7.jpg') }}" alt="">
-      </div>
-      <div class="carousel-item">
-        <img src="{{ url_for('static', path='img/banners/banner8.jpg') }}" alt="">
-      </div>
-      <div class="carousel-item">
-        <img src="{{ url_for('static', path='img/banners/banner9.jpg') }}" alt="">
-      </div>
-      <div class="carousel-item">
-        <img src="{{ url_for('static', path='img/banners/banner10.jpg') }}" alt="">
-      </div>
+      {# إذا وُجدت قائمة banners من السيرفر نستخدمها؛ وإلا fallback لثلاث صور #}
+      {% set slides = (banners if banners is defined and banners|length>0 else [
+        url_for('static', path='img/banners/banner1.jpg'),
+        url_for('static', path='img/banners/banner2.jpg'),
+        url_for('static', path='img/banners/banner3.jpg'),
+      ]) %}
+      {% for src in slides %}
+        <div class="carousel-item {% if loop.first %}active{% endif %}">
+          <img src="{{ src }}" alt="">
+        </div>
+      {% endfor %}
     </div>
 
     <!-- أسهم فقط -->
@@ -118,72 +97,30 @@
 <!-- رفوف المنتجات البيضاء تحت البانر -->
 <div class="home-shelves container-xl">
 
-{# ==== سلايدر “بالقرب منك / شائع” ==== #}
-{% set nearby = (nearby_items if nearby_items is defined else popular_items)|default([]) %}
-{% if nearby %}
-  <div class="section-head">
-    <div class="section-title">شائع بالقرب منك</div>
-    <div class="d-flex gap-2">
-      <button class="arrow-btn" data-snap-prev="#row-near"><i class="bi bi-chevron-right"></i></button>
-      <button class="arrow-btn" data-snap-next="#row-near"><i class="bi bi-chevron-left"></i></button>
-    </div>
-  </div>
-
-  <div id="row-near" class="hrow">
-    {% for it in nearby %}
-      <a href="/items/{{ it.id }}" class="card spot hcard text-decoration-none">
-        <div class="spot-media">
-          <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
-          <div class="spot-overlay"></div>
-
-          {% if it.price_per_day is defined %}
-            <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
-          {% endif %}
-          {% if it.category is defined %}
-            <span class="category-chip">{{ category_label(it.category) }}</span>
-          {% endif %}
-
-          <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="إضافة إلى المفضلة">
-            <i class="bi bi-heart"></i>
-          </button>
-        </div>
-
-        <div class="card-body spot-body">
-          <div class="spot-title">{{ it.title }}</div>
-          <div class="owner-line">
-            <div class="owner-avatar--placeholder">🏷️</div>
-            <span class="city-chip">{{ it.city or '—' }}</span>
-          </div>
-          <div class="spot-footer">
-            <small class="text-muted">تقييم {{ it.rating|default(4.8) }}</small>
-            <i class="bi bi-arrow-left-short"></i>
-          </div>
-        </div>
-      </a>
-    {% endfor %}
-  </div>
-{% endif %}
-
-{# ==== سلايدر حسب التصنيف ==== #}
-{% set cats_map = (items_by_category if items_by_category is defined else {}) %}
-{% for code, lst in cats_map.items() %}
-  {% if lst and lst|length > 0 %}
-    <div class="section-head mt-3">
-      <div class="section-title">{{ category_label(code) }}</div>
-      <a class="text-muted small" href="/items?category={{ code }}">عرض الكل</a>
+  {# ==== سلايدر “بالقرب منك / شائع” ==== #}
+  {% set nearby = (nearby_items if nearby_items is defined else popular_items)|default([]) %}
+  {% if nearby %}
+    <div class="section-head">
+      <div class="section-title">شائع بالقرب منك</div>
+      <div class="d-flex gap-2">
+        <button class="arrow-btn" data-snap-prev="#row-near"><i class="bi bi-chevron-right"></i></button>
+        <button class="arrow-btn" data-snap-next="#row-near"><i class="bi bi-chevron-left"></i></button>
+      </div>
     </div>
 
-    <div id="row-{{ code }}" class="hrow">
-      {% for it in lst %}
+    <div id="row-near" class="hrow">
+      {% for it in nearby %}
         <a href="/items/{{ it.id }}" class="card spot hcard text-decoration-none">
           <div class="spot-media">
-            <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
+            <img src="{{ (it.image_path or '/static/placeholder.jpg') | media_url }}" alt="">
             <div class="spot-overlay"></div>
 
             {% if it.price_per_day is defined %}
               <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
             {% endif %}
-            <span class="category-chip">{{ category_label(it.category) }}</span>
+            {% if it.category is defined %}
+              <span class="category-chip">{{ category_label(it.category) }}</span>
+            {% endif %}
 
             <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="إضافة إلى المفضلة">
               <i class="bi bi-heart"></i>
@@ -205,53 +142,95 @@
       {% endfor %}
     </div>
   {% endif %}
-{% endfor %}
 
-{# ==== شبكة “كل العناصر” ==== #}
-{% set all_items_list =
-      (all_items if all_items is defined else
-       mixed_items if mixed_items is defined else
-       items if items is defined else []) %}
-<div class="section-head mt-3">
-  <div class="section-title">كل العناصر</div>
-</div>
+  {# ==== سلايدر حسب التصنيف ==== #}
+  {% set cats_map = (items_by_category if items_by_category is defined else {}) %}
+  {% for code, lst in cats_map.items() %}
+    {% if lst and lst|length > 0 %}
+      <div class="section-head mt-3">
+        <div class="section-title">{{ category_label(code) }}</div>
+        <a class="text-muted small" href="/items?category={{ code }}">عرض الكل</a>
+      </div>
 
-{% if all_items_list and all_items_list|length > 0 %}
-  <div class="mixed-grid">
-    {% for it in all_items_list %}
-      <a href="/items/{{ it.id }}" class="card spot text-decoration-none">
-        <div class="spot-media">
-          <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
-          <div class="spot-overlay"></div>
+      <div id="row-{{ code }}" class="hrow">
+        {% for it in lst %}
+          <a href="/items/{{ it.id }}" class="card spot hcard text-decoration-none">
+            <div class="spot-media">
+              <img src="{{ (it.image_path or '/static/placeholder.jpg') | media_url }}" alt="">
+              <div class="spot-overlay"></div>
 
-          {% if it.category is defined %}
-            <span class="category-chip">{{ category_label(it.category) }}</span>
-          {% endif %}
+              {% if it.price_per_day is defined %}
+                <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
+              {% endif %}
+              <span class="category-chip">{{ category_label(it.category) }}</span>
 
-          <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="إضافة إلى المفضلة">
-            <i class="bi bi-heart"></i>
-          </button>
-        </div>
+              <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="إضافة إلى المفضلة">
+                <i class="bi bi-heart"></i>
+              </button>
+            </div>
 
-        <div class="card-body spot-body">
-          <div class="spot-title">{{ it.title }}</div>
-          <div class="owner-line">
-            <div class="owner-avatar--placeholder">🏷️</div>
-            <span class="city-chip">{{ it.city or '—' }}</span>
-          </div>
-          <div class="spot-footer">
-            {% if it.price_per_day is defined %}
-              <small class="text-muted">يوم/ {{ it.price_per_day|default(0) }}$</small>
-            {% endif %}
-            <i class="bi bi-arrow-left-short"></i>
-          </div>
-        </div>
-      </a>
-    {% endfor %}
+            <div class="card-body spot-body">
+              <div class="spot-title">{{ it.title }}</div>
+              <div class="owner-line">
+                <div class="owner-avatar--placeholder">🏷️</div>
+                <span class="city-chip">{{ it.city or '—' }}</span>
+              </div>
+              <div class="spot-footer">
+                <small class="text-muted">تقييم {{ it.rating|default(4.8) }}</small>
+                <i class="bi bi-arrow-left-short"></i>
+              </div>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endfor %}
+
+  {# ==== شبكة “كل العناصر” ==== #}
+  {% set all_items_list =
+        (all_items if all_items is defined else
+         mixed_items if mixed_items is defined else
+         items if items is defined else []) %}
+  <div class="section-head mt-3">
+    <div class="section-title">كل العناصر</div>
   </div>
-{% else %}
-  <div class="alert alert-secondary glass mt-2">لا توجد عناصر حتى الآن.</div>
-{% endif %}
+
+  {% if all_items_list and all_items_list|length > 0 %}
+    <div class="mixed-grid">
+      {% for it in all_items_list %}
+        <a href="/items/{{ it.id }}" class="card spot text-decoration-none">
+          <div class="spot-media">
+            <img src="{{ (it.image_path or '/static/placeholder.jpg') | media_url }}" alt="">
+            <div class="spot-overlay"></div>
+
+            {% if it.category is defined %}
+              <span class="category-chip">{{ category_label(it.category) }}</span>
+            {% endif %}
+
+            <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="إضافة إلى المفضلة">
+              <i class="bi bi-heart"></i>
+            </button>
+          </div>
+
+          <div class="card-body spot-body">
+            <div class="spot-title">{{ it.title }}</div>
+            <div class="owner-line">
+              <div class="owner-avatar--placeholder">🏷️</div>
+              <span class="city-chip">{{ it.city or '—' }}</span>
+            </div>
+            <div class="spot-footer">
+              {% if it.price_per_day is defined %}
+                <small class="text-muted">يوم/ {{ it.price_per_day|default(0) }}$</small>
+              {% endif %}
+              <i class="bi bi-arrow-left-short"></i>
+            </div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="alert alert-secondary glass mt-2">لا توجد عناصر حتى الآن.</div>
+  {% endif %}
 
 </div> <!-- /.home-shelves -->
 

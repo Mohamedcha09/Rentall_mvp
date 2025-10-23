@@ -1,4 +1,3 @@
-/* style.css */
 /* =========================================================
    R E N T A L L  —  Ultra Glass UI (Light-only)
    يعمل مع base.html — الوضع الأبيض فقط
@@ -27,10 +26,13 @@
 
   --sidebar-w: 268px;
   --radius:16px;
+
+  --brand:#5900ff; /* إضافي للتاب بار */
 }
 
 /* ------------ الأساسيات ------------ */
 html,body{min-height:100%}
+html, body { height: 100%; } /* ملء الشاشة */
 body{
   background:
     radial-gradient(1100px 800px at 80% -10%, rgba(124,92,255,.12), transparent 45%),
@@ -48,9 +50,7 @@ small, .small{ color:var(--muted)!important }
 /* ------------ أزرار عامة ------------ */
 .btn{ border-radius:12px; transition:transform .12s ease, filter .12s ease }
 .btn:active{ transform:scale(.98) }
-.btn-ghost{
-  background:transparent; color:inherit; border:1px solid var(--border);
-}
+.btn-ghost{ background:transparent; color:inherit; border:1px solid var(--border); }
 .btn-ghost:hover{ background:color-mix(in oklab, var(--text) 8%, transparent) }
 .btn-primary{
   background:linear-gradient(135deg,var(--primary),var(--primary-2));
@@ -135,8 +135,6 @@ small, .small{ color:var(--muted)!important }
   background:#ff6b6b; color:#fff; border:1px solid color-mix(in oklab, var(--bg) 90%, black)
 }
 
-/* === [تم الحذف السابق] ستايل السايدبار بالكامل غير موجود === */
-
 /* ------------ المساحة الرئيسية ------------ */
 .page{
   padding: calc(64px + 18px) 20px 28px;
@@ -145,6 +143,22 @@ small, .small{ color:var(--muted)!important }
   transition: margin-inline-start .22s ease;
 }
 @media (max-width: 991.98px){ .page{ margin-inline:0; padding: calc(64px + 12px) 12px 20px } }
+
+/* ==== Full-screen on desktop ==== */
+@media (min-width: 992px){ .page{ max-width: none; } }
+
+/* تقليل الحافة الداخلية */
+.page{ padding-inline: 12px 20px; }
+@media (max-width: 991.98px){ .page{ margin-inline: 0; } }
+
+/* ======== ملء الشاشة — بدون حذف ======== */
+#page-wrapper{
+  min-height: 100dvh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+.main-flex-fill{ flex: 1 1 auto; }
 
 /* ------------ شبكة العناصر ------------ */
 .home-grid{
@@ -214,315 +228,7 @@ small, .small{ color:var(--muted)!important }
   .spot-title{ font-size:.95rem }
 }
 
-/* ------------ لوح الإشعارات ------------ */
-.notif-panel{
-  position:fixed; top:64px; bottom:0; inset-inline-end:-380px; width:360px;
-  background:linear-gradient(180deg, var(--surface), var(--panel));
-  border-inline-start:1px solid var(--border);
-  box-shadow: -18px 0 46px rgba(0,0,0,.08);
-  transition: inset-inline-end .25s ease;
-  z-index:2100; display:flex; flex-direction:column;
-}
-.notif-panel.is-open{ inset-inline-end:0 }
-.notif-panel__header{ padding:12px 14px; border-bottom:1px solid var(--border) }
-.notif-panel__body{ padding:14px; overflow:auto }
-
-.scrim{
-  position:fixed; inset:0; background:#0007; opacity:0; pointer-events:none;
-  transition:opacity .2s ease; z-index:2005;
-}
-.scrim.is-show{ opacity:1; pointer-events:auto }
-
-/* ------------ إضافات ------------ */
-.stripe-callout{ border:1px dashed color-mix(in oklab, var(--primary) 35%, var(--border)) }
-*{ scrollbar-width:thin; scrollbar-color: color-mix(in oklab, var(--text) 22%, transparent) transparent }
-*::-webkit-scrollbar{ height:10px; width:10px }
-*::-webkit-scrollbar-thumb{ background:color-mix(in oklab, var(--text) 22%, transparent); border-radius:20px }
-*::-webkit-scrollbar-track{ background:transparent }
-.topbar{ z-index:2000 }
-.dropdown-menu{ z-index:2200 }
-
-/* ------------ زر إضافة طافٍ للجوال ------------ */
-.fab{
-  position:fixed; inset-inline-end:16px; bottom:16px; width:54px; height:54px; border-radius:50%;
-  display:grid; place-items:center; color:#fff; text-decoration:none;
-  background:linear-gradient(135deg,var(--primary),var(--primary-2));
-  box-shadow:0 16px 40px rgba(124,92,255,.25), 0 0 0 0 rgba(124,92,255,.25);
-  animation:fabpop .24s ease-out; z-index:2200
-}
-@keyframes fabpop{0%{transform:scale(.8); opacity:0}100%{transform:scale(1); opacity:1}}
-.fab:active{ transform:scale(.96) }
-
-/* ==== Full-screen on desktop ==== */
-@media (min-width: 992px){
-  .page{ max-width: none; }
-}
-
-/* تقليل الحافة الداخلية */
-.page{ padding-inline: 12px 20px; }
-
-@media (max-width: 991.98px){
-  .page{ margin-inline: 0; }
-}
-
-/* ======== ملء الشاشة — بدون حذف ======== */
-html, body { height: 100%; }
-#page-wrapper{
-  min-height: 100dvh;
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-}
-.main-flex-fill{ flex: 1 1 auto; }
-
-/* ======= Typeahead ======= */
-.searchbox { position: relative; }
-.searchbox .typeahead {
-  position: absolute; inset-inline: 0; top: 100%;
-  background: var(--surface, #fff);
-  color: var(--text, #212529);
-  border: 1px solid rgba(0,0,0,.1);
-  border-radius: .5rem;
-  margin-top: .25rem; z-index: 2000;
-  box-shadow: 0 10px 30px rgba(0,0,0,.10);
-  overflow: hidden;
-}
-.typeahead-group{
-  padding: .35rem .6rem; font-size: .8rem; opacity: .7;
-  border-bottom: 1px solid rgba(0,0,0,.06)
-}
-.typeahead-item{
-  padding: .55rem .75rem; cursor: pointer; display: flex; align-items: center; gap: .5rem;
-}
-.typeahead-item:hover, .typeahead-item.active{
-  background: rgba(124,92,255,.12);
-}
-.typeahead-item .k{ opacity:.65; font-size:.85em }
-
-/* شارات بجانب الاسم */
-.badge-chip{
-  display:inline-flex; align-items:center; gap:.25rem;
-  border-radius:999px; padding:.2rem .5rem; font-weight:700; font-size:.78rem;
-  border:1px solid var(--border); background:rgba(0,0,0,.03); color:var(--text);
-}
-.chip-verified{ background:rgba(85,213,255,.12); border-color:rgba(85,213,255,.25); color:#0996e6 }
-.chip-new{ background:rgba(124,92,255,.10); border-color:rgba(124,92,255,.25); }
-.chip-power{ background:rgba(255,221,87,.12); border-color:rgba(255,221,87,.25); }
-.chip-trusted{ background:rgba(34,197,94,.12); border-color:rgba(34,197,94,.25); }
-.chip-top{ background:rgba(255,199,0,.12); border-color:rgba(255,199,0,.25); }
-
-/* أفاتار كبير */
-.avatar-xl{ width:76px; height:76px; background:rgba(0,0,0,.03); color:var(--text); display:grid; place-items:center; font-size:1.8rem }
-
-/* لمسة زجاجية بسيطة */
-.glass{ background: linear-gradient(180deg, rgba(0,0,0,.02), rgba(0,0,0,.01)) !important; border:1px solid var(--border) !important; border-radius:16px }
-
-/* شبكة العناصر */
-.home-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px,1fr)); gap:16px }
-.card.spot{ overflow:hidden; border-radius:16px }
-.spot-media{ position:relative; aspect-ratio:16/10; background:rgba(0,0,0,.03); border-bottom:1px solid var(--border) }
-.spot-media img{ width:100%; height:100%; object-fit:cover; display:block }
-.price-badge{ position:absolute; top:10px; inset-inline-start:10px; background:rgba(0,0,0,.5); color:#fff; border-radius:999px; padding:.25rem .5rem; border:1px solid var(--border) }
-.category-chip{ position:absolute; top:10px; inset-inline-end:10px; background:rgba(124,92,255,.10); border:1px solid rgba(124,92,255,.25); border-radius:999px; padding:.2rem .5rem; font-size:.78rem }
-.spot-title{ margin:.1rem 0 .4rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:2.6em }
-.city-chip{ max-width:65%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:.15rem .45rem; border-radius:999px; background:rgba(0,0,0,.03); border:1px solid var(--border) }  
-
-@media (max-width: 768px){
-  .page{
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-  }
-}
-
-/* ===== تبويب سفلي للهاتف ===== */
-.mobile-tabbar{
-  position: fixed;
-  inset-inline: 0;
-  bottom: 0;
-  height: 64px;
-  background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 96%, transparent), color-mix(in oklab, var(--panel) 92%, transparent));
-  border-top: 1px solid var(--border);
-  backdrop-filter: blur(12px) saturate(120%);
-  z-index: 2300;
-  display: none;
-}
-.mobile-tabbar .tabbar-inner{
-  height: 100%;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-}
-.mobile-tabbar a{
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
-  color: var(--muted); font-size:.78rem; text-decoration:none;
-}
-.mobile-tabbar a i{ font-size:1.2rem; opacity:.95 }
-.mobile-tabbar a.is-active{ color: var(--text); }
-@supports (padding: max(0px)){
-  .mobile-tabbar{ padding-bottom: max(env(safe-area-inset-bottom), 0px); }
-}
-@media (max-width:768px){
-  .mobile-tabbar{ display:block; }
-}
-
-/* ===== قائمة المحادثات (Inbox) ===== */
-.dm-list{ display:flex; flex-direction:column; gap:10px }
-.dm-row{
-  display:flex; align-items:center; gap:10px;
-  padding:10px 12px; border-radius:14px;
-  border:1px solid var(--border);
-  background:linear-gradient(180deg, color-mix(in oklab, var(--card) 98%, transparent), color-mix(in oklab, var(--card) 96%, transparent));
-  transition: background .15s ease, transform .15s ease;
-}
-.dm-row:hover{ background:color-mix(in oklab, var(--text) 4%, transparent); transform:translateY(-1px) }
-.dm-avatar{
-  width:44px; height:44px; border-radius:50%;
-  object-fit:cover; border:1px solid var(--border);
-  background:rgba(0,0,0,.03); display:grid; place-items:center; font-weight:800;
-}
-.dm-col{ min-width:0; display:flex; flex-direction:column; gap:2px }
-.dm-name{ font-weight:800 }
-.dm-preview{ color:var(--muted); font-size:.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-.dm-time{ margin-inline-start:auto; color:var(--muted); font-size:.78rem }
-
-/* ===== صفحة المحادثة ===== */
-.thread-wrap{
-  display:flex; flex-direction:column; gap:8px;
-  padding: 10px 8px 96px;
-}
-.msg{ display:flex; align-items:flex-end; gap:8px }
-.msg.me{ justify-content:flex-end }
-.msg-bubble{
-  max-width:78%;
-  padding:.6rem .75rem; border-radius:14px;
-  background: color-mix(in oklab, var(--surface) 98%, transparent);
-  border:1px solid var(--border);
-  box-shadow: var(--shadow);
-}
-.msg.me .msg-bubble{
-  background: linear-gradient(135deg, var(--primary), var(--primary-2));
-  border-color: transparent; color:#fff;
-}
-.msg-meta{ font-size:.75rem; color:var(--muted); margin-top:2px }
-
-/* ===== Composer ===== */
-.composer{
-  position: fixed;
-  inset-inline: 8px;
-  bottom: 64px;
-  display:flex; align-items:center; gap:8px;
-  padding:8px; border-radius:16px;
-  background:linear-gradient(180deg, color-mix(in oklab, var(--card) 98%, transparent), color-mix(in oklab, var(--card) 96%, transparent));
-  border:1px solid var(--border);
-  box-shadow: var(--shadow);
-  z-index: 2301;
-}
-@supports (padding: max(0px)){
-  .composer{ bottom: calc(64px + max(env(safe-area-inset-bottom), 0px)); }
-}
-.composer input[type="text"],
-.composer textarea{
-  flex:1; border:0; outline:0; background:transparent; color:inherit; padding:.45rem;
-  resize:none; max-height:38vh;
-}
-.btn-send{ padding:.45rem .85rem; border-radius:12px }
-
-/* ===== رأس بروفايل للهاتف ===== */
-.m-profile{
-  display:flex; align-items:center; gap:12px;
-  padding:12px; border-radius:16px;
-  background:linear-gradient(180deg, color-mix(in oklab, var(--card) 98%, transparent), color-mix(in oklab, var(--card) 96%, transparent));
-  border:1px solid var(--border);
-}
-.m-avatar{
-  width:64px; height:64px; border-radius:50%;
-  object-fit:cover; border:1px solid var(--border);
-  background:rgba(0,0,0,.03); display:grid; place-items:center; font-size:1.4rem; font-weight:800;
-}
-.m-name{ font-weight:800; font-size:1.1rem }
-.m-badges{ display:flex; gap:6px; flex-wrap:wrap }
-
-/* ===== تحسينات Responsive إضافية ===== */
-@media (max-width:768px){
-  .topbar__inner{ grid-template-columns:auto 1fr auto auto }
-  .search{ margin-inline:6px; max-width:none }
-  .search__input{ height:38px; padding-inline:38px 12px }
-  .home-grid{ grid-template-columns: repeat(auto-fill, minmax(170px,1fr)); gap:12px }
-  .card.spot .card-body{ padding:.6rem .6rem .7rem }
-}
-
-/* ===== مساعدات عرض/إخفاء ===== */
-.hide-desktop{ display:none }
-@media (max-width:768px){
-  .hide-desktop{ display:initial }
-  .hide-mobile{ display:none!important }
-}
-
-/* === Mobile navbar: Search + Notifs + Messages only === */
-@media (max-width: 768px){
-
-  .topbar{ height:56px; border-bottom:1px solid var(--border); }
-  .topbar__inner{
-    grid-template-columns: 1fr auto auto;
-    gap: 8px; padding: 8px 12px;
-  }
-
-  .search{ order:1; margin:0; }
-  .search__input{ height:40px; border-radius:20px; padding-inline:40px 12px; }
-
-  .topbar .actions > *{ display:none !important; }
-
-  .topbar .actions #notifOpen{ display:inline-flex !important; order:3; }
-  .topbar .actions .btn-messages{ display:inline-flex !important; order:2; }
-
-  .brand{ display:none !important; }
-
-  .sidebar{ display:none !important; }
-  .collapse-pin{ display:none !important; }
-
-  .page{
-    margin-inline:0 !important;
-    padding: calc(56px + 10px) 12px 110px;
-    padding-bottom: calc(90px + env(safe-area-inset-bottom));
-  }
-
-  .tabbar{
-    position:fixed; inset-inline:0; bottom:0;
-    height:68px; padding:8px 14px calc(8px + env(safe-area-inset-bottom));
-    background: color-mix(in oklab, var(--panel) 98%, transparent);
-    backdrop-filter: blur(16px) saturate(140%);
-    border-top:1px solid var(--border);
-    display:grid; grid-template-columns: repeat(4,1fr);
-    z-index:2300;
-  }
-  .tabbar a{
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:6px; font-size:.8rem; color: color-mix(in oklab, var(--text) 78%, #000);
-    text-decoration:none;
-  }
-  .tabbar a i{ font-size:1.25rem }
-  .tabbar a.is-active{ color:var(--text); font-weight:700 }
-
-  .fab{ bottom: calc(74px + env(safe-area-inset-bottom)); }
-}
-
-/* ========================= */
-/*     إضافات عصرية         */
-/* ========================= */
-
-:root{ --brand: #5900ff; }
-
-.mobile-tabbar a { font-weight: 600; }
-.mobile-tabbar a i { opacity: .6; transition: opacity .15s ease, transform .15s ease; }
-.mobile-tabbar a.is-active { color: var(--brand) !important; }
-.mobile-tabbar a.is-active i { opacity: 1; transform: translateY(-1px); }
-.mobile-tabbar a.is-active::after{
-  content:""; display:block; width:28px; height:3px; border-radius:3px;
-  background: var(--brand); margin-top:4px;
-}
-
-.mobile-tabbar a .tab-icon--active{ display:none; }
-.mobile-tabbar a.is-active .tab-icon{ display:none; }
-.mobile-tabbar a.is-active .tab-icon--active{ display:block; }
-
+/* ===== سلايدر أفقي للبطاقات ===== */
 .hrow{
   display:grid;
   grid-auto-flow: column;
@@ -555,22 +261,15 @@ html, body { height: 100%; }
 }
 @media (min-width:576px){ .mixed-grid{ grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); } }
 
-/* ===== Blossom-like top icons ===== */
-.actions .btn-icon{
-  border: 0 !important;
-  background: transparent !important;
-  padding: .15rem .35rem !important;
-  box-shadow: none !important;
-}
-.actions .btn-icon i{
-  font-size: 1.35rem; line-height: 1; filter: none;
-}
-.actions .btn-ghost.btn-icon{ border-color: transparent !important; }
-.actions .msg-icon i{ color:#6a57ff; }     /* ألوان خفيفة للوضع الأبيض */
+/* ===== أيقونات أعلى (تحسين) ===== */
+.actions .btn-icon{ border:0!important; background:transparent!important; padding:.15rem .35rem!important; box-shadow:none!important; }
+.actions .btn-icon i{ font-size:1.35rem; line-height:1; filter:none; }
+.actions .btn-ghost.btn-icon{ border-color: transparent!important; }
+.actions .msg-icon i{ color:#6a57ff; }
 .actions .notif-icon i{ color:#18c2a1; }
 .actions .btn-icon:hover{ transform: translateY(-1px); }
 
-/* ===== Search pill ===== */
+/* ===== Search pill (تحسين مظهر البحث في التوب بار) ===== */
 .topbar .search .search__input{
   height: 44px !important;
   border-radius: 999px !important;
@@ -578,16 +277,8 @@ html, body { height: 100%; }
   background: #f4f6fb !important;
   color: #444 !important;
 }
-.topbar .search .search__icon{
-  inset-inline-start: 16px !important;
-  opacity: .6 !important;
-  font-size: 1.05rem;
-}
-.topbar .search .search__input::placeholder{
-  font-size: 1.05rem;
-  letter-spacing: .2px;
-  color: #8b95a7;
-}
+.topbar .search .search__icon{ inset-inline-start: 16px !important; opacity: .6 !important; font-size: 1.05rem; }
+.topbar .search .search__input::placeholder{ font-size: 1.05rem; letter-spacing: .2px; color: #8b95a7; }
 
 /* ===== زرّ المفضلة فوق الصورة ===== */
 .spot-media{ position:relative; overflow:hidden; border-radius:16px 16px 0 0 }
@@ -603,35 +294,25 @@ html, body { height: 100%; }
 .fav-btn.is-fav{ background:#a944ec; }
 .fav-btn.is-fav .bi{ color:#fff }
 
-/* ===== قائمة الثلاثة خطوط العلوية (☰) ===== */
+/* ===== قائمة ثلاث خطوط علوية ===== */
 .topmenu{
   position: fixed;
   top: 58px;
   inset-inline-end: 12px;
-  min-width: 260px;
-  max-width: 88vw;
-  padding: 8px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
+  min-width: 260px; max-width: 88vw;
+  padding: 8px; border-radius: 14px; border: 1px solid var(--border);
   background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 100%, transparent),
                                        color-mix(in oklab, var(--panel) 98%, transparent));
   box-shadow: 0 18px 40px rgba(0,0,0,.10);
   backdrop-filter: blur(14px) saturate(120%);
-  z-index: 3001;
-  display: none;
-  transform-origin: top right;
-  transform: translateY(-6px) scale(.98);
-  opacity: 0;
+  z-index: 3001; display: none; transform-origin: top right;
+  transform: translateY(-6px) scale(.98); opacity: 0;
   transition: opacity .18s ease, transform .18s ease;
 }
 .topmenu.is-open{ display:block; opacity:1; transform: translateY(0) scale(1); }
 .topmenu::before{
-  content:"";
-  position:absolute; inset-inline-end: 20px; top:-8px;
-  width:14px; height:14px; transform: rotate(45deg);
-  background: inherit;
-  border-inline-start: 1px solid var(--border);
-  border-top:        1px solid var(--border);
+  content:""; position:absolute; inset-inline-end: 20px; top:-8px; width:14px; height:14px; transform: rotate(45deg);
+  background: inherit; border-inline-start: 1px solid var(--border); border-top: 1px solid var(--border);
   filter: blur(.2px);
 }
 .topmenu-item{
@@ -640,49 +321,26 @@ html, body { height: 100%; }
   transition: background .15s ease, transform .12s ease;
 }
 .topmenu-item i{ font-size:1.12rem; opacity:.9; transition: transform .15s ease, opacity .15s ease; }
-.topmenu-item:hover{
-  background: color-mix(in oklab, var(--text) 6%, transparent);
-  transform: translateY(-1px);
-}
+.topmenu-item:hover{ background: color-mix(in oklab, var(--text) 6%, transparent); transform: translateY(-1px); }
 .topmenu-item:hover i{ transform: translateY(-1px); opacity:1; }
-.topmenu-sep{
-  height:1px; margin:.35rem .25rem; border:0; background:var(--border);
-}
-.hamburger-btn{
-  width:38px; height:38px; display:grid; place-items:center; border-radius:10px;
-  font-size:1.1rem; line-height:1; border:0; background:transparent; cursor:pointer;
-}
+.topmenu-sep{ height:1px; margin:.35rem .25rem; border:0; background:var(--border); }
+.hamburger-btn{ width:38px; height:38px; display:grid; place-items:center; border-radius:10px; font-size:1.1rem; line-height:1; border:0; background:transparent; cursor:pointer; }
 .hamburger-btn:hover{ background: color-mix(in oklab, var(--text) 6%, transparent); }
 
 /****************************************************
  *  Mobile-only Addons (Airbnb-like)
  ****************************************************/
-
-/* ===== Top tabs ===== */
 .m-top-tabs{
-  position: sticky;
-  top: 56px;
-  z-index: 2000;
-  display: grid;
-  grid-auto-flow: column;
-  gap: 8px;
-  padding: 8px 12px;
+  position: sticky; top: 56px; z-index: 2000;
+  display: grid; grid-auto-flow: column; gap: 8px; padding: 8px 12px;
   background: linear-gradient(180deg, rgba(0,0,0,.00), rgba(0,0,0,.04));
   backdrop-filter: blur(12px) saturate(120%);
   border-bottom: 1px solid var(--border);
 }
 .m-top-tabs .m-tab{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 36px;
-  padding: 0 12px;
-  font-weight: 700;
-  font-size: .92rem;
-  border-radius: 999px;
-  color: var(--muted);
-  text-decoration: none;
-  border: 1px solid transparent;
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 36px; padding: 0 12px; font-weight: 700; font-size: .92rem; border-radius: 999px;
+  color: var(--muted); text-decoration: none; border: 1px solid transparent;
   background: color-mix(in oklab, var(--panel) 98%, transparent);
   transition: background .15s ease, color .15s ease, transform .12s ease, border-color .15s ease;
 }
@@ -697,82 +355,39 @@ html, body { height: 100%; }
 
 /* ===== Bottom mobile tabbar (5 tabs) ===== */
 .mobile-tabbar{
-  position: fixed !important;
-  inset-inline: 0;
-  bottom: 0;
-  height: 64px;
+  position: fixed !important; inset-inline: 0; bottom: 0; height: 64px;
   background: linear-gradient(180deg,
               color-mix(in oklab, var(--surface) 98%, transparent),
               color-mix(in oklab, var(--panel) 96%, transparent));
   border-top: 1px solid var(--border);
   backdrop-filter: blur(14px) saturate(120%);
-  z-index: 2300;
-  display: block;
+  z-index: 2300; display: block;
 }
-.mobile-tabbar .tabbar-inner{
-  height: 100%;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-}
+.mobile-tabbar .tabbar-inner{ height: 100%; display: grid; grid-template-columns: repeat(5, 1fr); }
 .mobile-tabbar a{
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  height: 100%;
-  font-size: .8rem;
-  font-weight: 600;
-  color: var(--muted);
-  text-decoration: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  height: 100%; font-size: .8rem; font-weight: 600; color: var(--muted); text-decoration: none;
   transition: color .15s ease, transform .12s ease, opacity .15s ease;
 }
-.mobile-tabbar .tab-img{
-  width: 22px; height: 22px; object-fit: contain;
-  opacity: .55; transition: opacity .15s ease, transform .12s ease;
-}
-.mobile-tabbar a.is-active{
-  color: var(--text);
-}
-.mobile-tabbar a.is-active .tab-img{
-  opacity: 1; transform: translateY(-1px) scale(1.06);
-}
+.mobile-tabbar .tab-img{ width: 22px; height: 22px; object-fit: contain; opacity: .55; transition: opacity .15s ease, transform .12s ease; }
+.mobile-tabbar a.is-active{ color: var(--text); }
+.mobile-tabbar a.is-active .tab-img{ opacity: 1; transform: translateY(-1px) scale(1.06); }
 .mobile-tabbar a.is-active::after{
-  content:"";
-  display:block;
-  width: 26px; height: 3px; border-radius: 3px;
-  margin-top: 3px;
-  background: var(--primary);
+  content:""; display:block; width: 26px; height: 3px; border-radius: 3px; margin-top: 3px; background: var(--primary);
 }
 
 /* ===== Mobile topbar compact ===== */
 @media (max-width: 768px){
   .topbar{ height: 56px; border-bottom: 1px solid var(--border); }
-  .topbar__inner{
-    grid-template-columns: 1fr;   /* بحث فقط */
-    gap: 8px; padding: 8px 12px;
-  }
-  .brand{ display: none !important; }
-  .sidebar{ display: none !important; }
-  .collapse-pin{ display: none !important; }
-
+  .topbar__inner{ grid-template-columns: 1fr; gap: 8px; padding: 8px 12px; }
+  .brand, .sidebar, .collapse-pin{ display: none !important; }
   .search{ margin: 0; }
   .search .search__input{
-    height: 44px !important;
-    border-radius: 999px !important;
-    padding-inline: 44px 44px !important;
-    background: #ffffff !important;
-    color: #222 !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,.08);
-    text-align: center;
+    height: 44px !important; border-radius: 999px !important; padding-inline: 44px 44px !important;
+    background: #ffffff !important; color: #222 !important; box-shadow: 0 8px 24px rgba(0,0,0,.08); text-align: center;
   }
   .search .search__input:focus{ text-align: start; }
-  .search .search__icon{
-    inset-inline-start: 14px !important;
-    top: 50%; transform: translateY(-50%);
-    opacity: .55 !important;
-    font-size: 1.15rem !important;
-  }
+  .search .search__icon{ inset-inline-start: 14px !important; top: 50%; transform: translateY(-50%); opacity: .55 !important; font-size: 1.15rem !important; }
 
   .page{
     margin-inline: 0 !important;
@@ -788,21 +403,17 @@ html, body { height: 100%; }
   .spot-media{ aspect-ratio: 16/10; border-bottom: 1px solid var(--border); }
   .card.spot .card-body{ padding: .6rem .6rem .7rem; }
   .spot-title{
-    margin: .1rem 0 .4rem;
-    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    margin: .1rem 0 .4rem; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
     overflow: hidden; min-height: 2.6em;
   }
   .city-chip{
     max-width: 65%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    padding: .15rem .45rem; border-radius: 999px;
-    background: rgba(0,0,0,.03); border: 1px solid var(--border);
+    padding: .15rem .45rem; border-radius: 999px; background: rgba(0,0,0,.03); border: 1px solid var(--border);
   }
 }
 
 /* ===== Floating Action Button spacing over tabbar ===== */
-@media (max-width: 768px){
-  .fab{ bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
-}
+@media (max-width: 768px){ .fab{ bottom: calc(74px + env(safe-area-inset-bottom, 0px)); } }
 
 /* ===== Small helpers ===== */
 .m-hide-desktop{ display: none; }
@@ -811,20 +422,12 @@ html, body { height: 100%; }
   .d-lg-none .m-hide-desktop{ display: initial; }
 }
 
-/* تأكيد أن التبويبات العلوية تظهر فقط على الموبايل */
-@media (min-width: 992px){
-  .m-top-tabs{ display: none !important; }
-}
-
 /* ---- Fix: bottom bar = 5 cols ---- */
 @media (max-width: 768px){
   .mobile-tabbar{
     display: grid !important;
     grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-    align-items: center;
-    gap: 0;
-    padding: 0 !important;
-    height: 64px !important;
+    align-items: center; gap: 0; padding: 0 !important; height: 64px !important;
   }
   .mobile-tabbar > a{
     display: flex !important; flex-direction: column; align-items: center; justify-content: center;
@@ -833,243 +436,107 @@ html, body { height: 100%; }
   }
   .mobile-tabbar .tab-img{ width: 22px; height: 22px; flex-shrink: 0; }
   .mobile-tabbar > a.is-active::after{
-    content:""; display:block; width:26px; height:3px; border-radius:3px;
-    background: var(--primary); margin-top:3px;
+    content:""; display:block; width:26px; height:3px; border-radius:3px; background: var(--primary); margin-top:3px;
   }
 }
 
 /* === إخفاء زر ☰ وإصلاح شريط الموبايل === */
 @media (max-width: 768px){
-  #menuBtn{ display:none !important; }      /* يخفي زر الثلاث خطوط */
-  .topbar .actions{ display:none !important; } /* يخفي الأزرار الجانبية */
-  .brand{ display:none !important; }        /* يخفي شعار Sevor العلوي */
-  .topbar__inner{
-    grid-template-columns: 1fr !important;  /* يجعل فقط البحث */
-    padding: 8px 12px !important;
-  }
+  #menuBtn{ display:none !important; }
+  .topbar .actions{ display:none !important; }
+  .brand{ display:none !important; }
+  .topbar__inner{ grid-template-columns: 1fr !important; padding: 8px 12px !important; }
   .topbar{ height: 56px !important; border: none !important; }
 }
-/*  ========== Hero Carousel (Amazon-like) ========== */ 
-<div id="heroCarousel" class="carousel slide hero-carousel mb-3"
-     data-bs-ride="carousel" data-bs-interval="4000" data-bs-touch="true" aria-label="عروض رئيسية">
-  <!-- Indicators -->
-  <div class="carousel-indicators">
-    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-label="1"></button>
-    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1" aria-label="2"></button>
-    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2" aria-label="3"></button>
-  </div>
 
-  <!-- Slides -->
-  <div class="carousel-inner">
-    <!-- Slide 1 -->
-    <div class="carousel-item active">
-      <img src="{{ url_for('static', path='img/banners/sevor1.jpg') }}" alt="Top rentals on Sevor">
-      <div class="carousel-caption text-start">
-        <h2>Rent anything, anytime</h2>
-        <p>Vehicles, homes, electronics & more — all on Sevor.</p>
-        <a href="/explore" class="btn btn-light btn-sm">Explore now</a>
-      </div>
-    </div>
+/* ========================= */
+/*     إضافات عصرية         */
+/* ========================= */
 
-    <!-- Slide 2 -->
-    <div class="carousel-item">
-      <img src="{{ url_for('static', path='img/banners/sevor2.jpg') }}" alt="Weekend deals">
-      <div class="carousel-caption text-start">
-        <h2>Weekend deals</h2>
-        <p>Save on cars, vans, and travel gear.</p>
-        <a href="/offers" class="btn btn-light btn-sm">See offers</a>
-      </div>
-    </div>
+.mobile-tabbar a { font-weight: 600; }
+.mobile-tabbar a i { opacity: .6; transition: opacity .15s ease, transform .15s ease; }
+.mobile-tabbar a.is-active { color: var(--brand) !important; }
+.mobile-tabbar a.is-active i { opacity: 1; transform: translateY(-1px); }
+.mobile-tabbar a.is-active::after{
+  content:""; display:block; width:28px; height:3px; border-radius:3px; background: var(--brand); margin-top:4px;
+}
+.mobile-tabbar a .tab-icon--active{ display:none; }
+.mobile-tabbar a.is-active .tab-icon{ display:none; }
+.mobile-tabbar a.is-active .tab-icon--active{ display:block; }
 
-    <!-- Slide 3 -->
-    <div class="carousel-item">
-      <img src="{{ url_for('static', path='img/banners/banner3.jpg') }}" alt="Secure deposits">
-      <div class="carousel-caption text-start">
-        <h2>Trusted rentals</h2>
-        <p>Verified owners, photo check-in/out, secure deposits.</p>
-        <a href="/how-it-works" class="btn btn-light btn-sm">How it works</a>
-      </div>
-    </div>
-  </div>
+/* ---------------------------------------------------------
+   Hero Carousel (صور فقط) + Amazon-like blend على الديسكتوب
+   --------------------------------------------------------- */
+.hero-carousel{ position:relative; border-radius:16px; overflow:hidden; box-shadow: var(--shadow); }
+.hero-carousel .carousel-item{ max-height:520px; overflow:hidden; }
+.hero-carousel .carousel-item img{ width:100%; height:520px; object-fit:cover; object-position:center; display:block; }
 
-  <!-- Controls -->
-  <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" aria-label="السابق">
-    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-  </button>
-  <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next" aria-label="التالي">
-    <span class="carousel-control-next-icon" aria-hidden="true"></span>
-  </button>
-</div>
-<!-- ========== /Hero Carousel ========== -->
-/* ===== Desktop-only Amazon look ===== */
+/* إلغاء المؤشرات والكابشن (صور فقط) */
+.hero-carousel .carousel-indicators{ display:none !important; }
+.hero-carousel .carousel-caption{ display:none !important; }
+
+/* تكييف ارتفاع الصور على الشاشات الأصغر */
+@media (max-width:992px){ .hero-carousel .carousel-item img{ height:380px; } }
+@media (max-width:576px){ .hero-carousel .carousel-item img{ height:300px; } }
+
+/* ===== Desktop-only: edge-to-edge + blend + رفع الرفوف ===== */
 @media (min-width: 992px){
-  /* بانر ممتد بالحافة (edge-to-edge) */
-  .edge-bleed{
-    margin-inline: calc(50% - 50vw);
-    width: 100vw;
-  }
+  /* اجعل البانر يمتد لحواف الشاشة */
+  .edge-bleed{ margin-inline: calc(50% - 50vw); width:100vw; }
 
-  /* تلاشي أسفل الصورة إلى الأبيض ليمتزج مع الموقع */
-  .hero-carousel{ position: relative; }
+  /* تلاشي من الصورة إلى الأبيض ليلتحم مع الصفحة */
   .hero-carousel::after{
-    content:"";
-    position:absolute; left:0; right:0; bottom:0; height:120px;
-    /* تدرّج يذوب من شفّاف إلى أبيض (لون موقعك) */
-    background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #ffffff 75%);
+    content:""; position:absolute; left:0; right:0; bottom:0; height:160px;
+    background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #ffffff 85%);
     pointer-events:none;
   }
 
-  /* صندوق أبيض للمنتجات تحت البانر (مثل رفوف أمازون) */
-  .home-shelves{
-    background:#fff;
-    border-radius: 18px 18px 0 0;
-    box-shadow: 0 8px 26px rgba(0,0,0,.06);
-    margin-top: -40px;   /* يركّب فوق حافة البانر */
-    padding: 16px 18px 20px;
-  }
-
-  /* عرض المحتوى مثل أمازون */
-  .home-shelves.container-xl{ max-width: 1320px; }
-}
-
-/* تحسين بسيط للمؤشرات */
-.hero-carousel .carousel-indicators [data-bs-target]{
-  width:10px; height:10px; border-radius:50%;
-}
-
-/* ===== إصلاحات البانر على سطح المكتب (Amazon-like) ===== */
-@media (min-width: 992px){
-  /* البانر يكون حافة لحافة بدون ظلال/حواف دائرية */
-  .edge-bleed .hero-carousel{
-    border-radius: 0 !important;
-    box-shadow: none !important;
-  }
-
-  /* تلاشي أطول للأسفل حتى يندمج تمامًا مع الأبيض */
-  .hero-carousel::after{
-    height: 160px !important;
-    background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #ffffff 80%) !important;
-  }
-
-  /* ارفع الرفوف البيضاء قليلًا فوق نهاية البانر */
-  .home-shelves{
-    margin-top: -72px !important;   /* كان -40px ؛ زُوِّد ليلتصق تمامًا */
-    border-radius: 18px 18px 0 0;
-  }
-}
-
-/* ===== تحسين قراءة النص فوق الصور الفاتحة ===== */
-/* فيع/فينييت خفيف من الجهة السفلية والجانبية */
-.hero-carousel{ position:relative; }
-.hero-carousel::before{
-  content:""; position:absolute; inset:0;
-  background:
-    linear-gradient(180deg, rgba(0,0,0,0.00) 50%, rgba(0,0,0,0.28) 100%),
-    linear-gradient(90deg, rgba(0,0,0,0.22), rgba(0,0,0,0));
-  pointer-events:none;
-}
-
-/* ===== تموضع الكابشن مع اتجاه RTL ===== */
-html[dir="rtl"] .hero-carousel .carousel-caption{
-  right: 5% !important; left: auto !important; text-align: end !important;
-}
-
-/* مؤشرات/أسهم أكبر قليلًا لسهولة النقر */
-.hero-carousel .carousel-control-prev,
-.hero-carousel .carousel-control-next{ width: 6%; }
-.hero-carousel .carousel-indicators [data-bs-target]{ width:12px; height:12px; }
-
-/* === Amazon hero blend (ثبّت الاندماج مع الأبيض) === */
-@media (min-width: 992px){
-  .edge-bleed .hero-carousel{ border-radius:0!important; box-shadow:none!important; }
-  .hero-carousel::after{
-    content:""; position:absolute; inset-inline:0; bottom:0; height:160px;
-    background:linear-gradient(180deg, rgba(255,255,255,0) 5%, #fff 85%);
-    pointer-events:none;
-  }
-  /* يسحب الرفوف لأعلى لتلتصق أسفل البانر */
-  .home-shelves{ margin-top:-72px!important; background:#fff; border-radius:18px 18px 0 0;
-                 box-shadow:0 8px 26px rgba(0,0,0,.06); padding:18px 18px 22px; }
-}
-
-/* زيادة تباين النص فوق الصور الفاتحة */
-.hero-carousel::before{
-  content:""; position:absolute; inset:0;
-  background:linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,.28) 100%);
-  pointer-events:none;
-}
-
-/* === لوحات فئات مثل Amazon === */
-.panel-row{
-  display:grid; gap:14px;
-  grid-template-columns:repeat(1, minmax(0,1fr));
-}
-@media (min-width:768px){ .panel-row{ grid-template-columns:repeat(2,1fr); } }
-@media (min-width:1200px){ .panel-row{ grid-template-columns:repeat(4,1fr); } }
-
-.panel-card{
-  background:#fff; border:1px solid var(--border);
-  border-radius:16px; box-shadow:var(--shadow);
-  display:flex; flex-direction:column; overflow:hidden;
-}
-.panel-head{
-  padding:12px 14px 6px; font-weight:800; font-size:1.05rem;
-  display:flex; align-items:center; justify-content:space-between;
-}
-.panel-body{ padding:10px 12px 12px; }
-.mini-grid{
-  display:grid; gap:10px; grid-template-columns:repeat(2,1fr);
-}
-.mini{
-  display:block; border-radius:12px; overflow:hidden; border:1px solid var(--border);
-  background:rgba(0,0,0,.03);
-}
-.mini img{ width:100%; aspect-ratio:1/1; object-fit:cover; display:block; }
-.panel-foot{ padding:10px 12px 14px; }
-.panel-foot a{ font-weight:700; color:#007185; }     /* لون رابط مثل أمازون */
-.panel-foot a:hover{ text-decoration:underline; }
-
-/* في الموبايل نُبقي البطاقات بعرض الشاشة والسكول أفقي اختياري */
-@media (max-width: 576px){
-  .panel-row{ display:flex; overflow:auto; gap:12px; scroll-snap-type:x mandatory; padding-bottom:6px; }
-  .panel-card{ min-width: 86%; scroll-snap-align:start; }
-}
-
-/* ===== Fix: Amazon-like blend + lift shelves (desktop) ===== */
-@media (min-width: 992px){
-  /* اجعل البانر حافة لحافة وبدون ظل */
-  .edge-bleed{ margin-inline: calc(50% - 50vw); width: 100vw; }
-  .edge-bleed .hero-carousel{ border-radius:0 !important; box-shadow:none !important; position:relative; z-index:0; }
-
-  /* ألغِ التعتيم السفلي القوي إن وُجد (هو سبب الشريط الغامق) */
-  .hero-carousel::before{ display:none !important; }
-
-  /* تلاشي من الصورة إلى لون خلفية الموقع الحقيقي (وليس #fff) */
-  .hero-carousel::after{
-  content:"";
-  position:absolute;
-  left:0; right:0; bottom:0;
-  height:240px; /* زيد الطول لتغطي اللون البني */
-  background: linear-gradient(180deg,
-               rgba(255,255,255,0) 40%,  /* يبدأ التلاشي أبكر */
-               var(--bg) 90%);
-  pointer-events:none;
-  z-index: 2;
-}
-
-  /* ارفع منطقة المنتجات فوق نهاية البانر ليلتحم التلاشي */
+  /* ✨ رفع رفوف المنتجات ليظهر الدمج الطبيعي */
   .home-shelves{
     position: relative; z-index: 1;
-    margin-top: -120px;                        /* كان -40/-72: ارفعها أكثر */
-    background: var(--bg);                     /* الخلفية مثل الموقع */
-    border-radius: 18px 18px 0 0;
-    box-shadow: 0 8px 26px rgba(0,0,0,.06);
-    padding: 18px 18px 22px;
+    background:#fff; border-radius:18px 18px 0 0; box-shadow:0 8px 26px rgba(0,0,0,.06);
+    margin-top:-80px; /* تعديل مهم */
+    padding:16px 18px 20px;
   }
 
-  /* عرض مريح مثل أمازون */
-  .home-shelves.container-xl{ max-width: 1320px; }
+  .home-shelves.container-xl{ max-width:1320px; }
 }
 
-/* اختياري: إن أردت نصًا خفيفًا أعلى الصور بدون شريط أسود */
-// .hero-carousel .carousel-caption{ text-shadow: 0 2px 10px rgba(0,0,0,.25); }
+/* ===== تحسينات التمرير/السكرول ===== */
+*{ scrollbar-width:thin; scrollbar-color: color-mix(in oklab, var(--text) 22%, transparent) transparent }
+*::-webkit-scrollbar{ height:10px; width:10px }
+*::-webkit-scrollbar-thumb{ background:color-mix(in oklab, var(--text) 22%, transparent); border-radius:20px }
+*::-webkit-scrollbar-track{ background:transparent }
+.topbar{ z-index:2000 }
+.dropdown-menu{ z-index:2200 }
+
+/* ------------ لوح الإشعارات ------------ */
+.notif-panel{
+  position:fixed; top:64px; bottom:0; inset-inline-end:-380px; width:360px;
+  background:linear-gradient(180deg, var(--surface), var(--panel));
+  border-inline-start:1px solid var(--border);
+  box-shadow: -18px 0 46px rgba(0,0,0,.08);
+  transition: inset-inline-end .25s ease;
+  z-index:2100; display:flex; flex-direction:column;
+}
+.notif-panel.is-open{ inset-inline-end:0 }
+.notif-panel__header{ padding:12px 14px; border-bottom:1px solid var(--border) }
+.notif-panel__body{ padding:14px; overflow:auto }
+
+.scrim{
+  position:fixed; inset:0; background:#0007; opacity:0; pointer-events:none;
+  transition:opacity .2s ease; z-index:2005;
+}
+.scrim.is-show{ opacity:1; pointer-events:auto }
+
+/* ------------ إضافات متنوعة ------------ */
+.stripe-callout{ border:1px dashed color-mix(in oklab, var(--primary) 35%, var(--border)) }
+.fab{
+  position:fixed; inset-inline-end:16px; bottom:16px; width:54px; height:54px; border-radius:50%;
+  display:grid; place-items:center; color:#fff; text-decoration:none;
+  background:linear-gradient(135deg,var(--primary),var(--primary-2));
+  box-shadow:0 16px 40px rgba(124,92,255,.25), 0 0 0 0 rgba(124,92,255,.25);
+  animation:fabpop .24s ease-out; z-index:2200
+}
+@keyframes fabpop{0%{transform:scale(.8); opacity:0}100%{transform:scale(1); opacity:1}}
+.fab:active{ transform:scale(.96) }

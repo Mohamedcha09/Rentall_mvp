@@ -1,4 +1,4 @@
-# app/main.py
+# app/main.py 
 
 # >>> FIX: حمّل .env مبكّر جدًا قبل أي قراءة للمتغيرات
 from dotenv import load_dotenv
@@ -316,6 +316,25 @@ def home(
         db.query(Item).filter(Item.is_active == "yes").order_by(func.random()).limit(24).all()
     )
 
+    # =========================
+    # ✅ [إضافة جديدة] تحميل صور السلايدر تلقائيًا من static/img/banners
+    # =========================
+    banners = []
+    try:
+        banners_dir = os.path.join(STATIC_DIR, "img", "banners")
+        if os.path.isdir(banners_dir):
+            for f in os.listdir(banners_dir):
+                name = f.lower()
+                if name.endswith((".jpg", ".jpeg", ".png", ".webp", ".gif")):
+                    # استخدم المسار الثابت مباشرةً ليتوافق مع mount("/static", ...)
+                    banners.append(f"/static/img/banners/{f}")
+        # ترتيب عشوائي كل زيارة
+        import random
+        random.shuffle(banners)
+    except Exception as e:
+        print(f"[WARN] banners load error: {e}")
+        banners = []
+
     return templates.TemplateResponse(
         "home.html",
         {
@@ -331,6 +350,8 @@ def home(
             "items_by_category": items_by_category,
             "mixed_items": mixed_items,
             "category_label": category_label,
+            # 🔽 نمرّر الصور للقالب ليبني السلايدر تلقائيًا
+            "banners": banners,
         },
     )
 
