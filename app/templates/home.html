@@ -284,6 +284,42 @@
     opacity: 1;
   }
 }
+
+/* ==== FINAL: Mobile hero bigger + fully visible + rounded & centered ==== */
+@media (max-width: 576px){
+
+  /* حجم وبوزيشن الكرت */
+  .hero-carousel{
+    max-width: 92vw !important;      /* أعرض شوي من قبل */
+    margin: 10px auto 16px !important;/* وسط الصفحة مع مسافة لطيفة */
+    border-radius: 22px !important;
+    overflow: hidden !important;
+  }
+
+  /* الحواف الدائرية لكل الطبقات */
+  .hero-carousel .carousel-inner,
+  .hero-carousel .carousel-item,
+  .hero-carousel .carousel-item img{
+    border-radius: 22px !important;
+    overflow: hidden !important;
+  }
+
+  /* لا تفرض نسبة ثابتة — خلّيها أطول قليلاً */
+  .hero-carousel .carousel-item{
+    aspect-ratio: auto !important;    /* يوقف 3/2 القديمة */
+    min-height: 340px !important;     /* ← تكبير بسيط ليظهر النص كامل */
+  }
+
+  /* اعرض الصورة كاملة ومركّزة داخل الكرت */
+  .hero-carousel .carousel-item img{
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;   /* لا قصّ */
+    object-position: center !important;
+    background: #fff !important;      /* خلفية نظيفة حول الصورة */
+    display: block !important;
+  }
+}
 </style>
 {% endblock %}
 
