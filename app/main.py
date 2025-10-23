@@ -42,7 +42,7 @@ from .freeze import router as freeze_router
 from .payments import router as payments_router
 from .checkout import router as checkout_router
 from .pay_api import router as pay_api_router
-from .payout_connect import router as payout_connect_router
+from .payout_connect import router as payout_connect_router   # ✅ هذا الصحيح
 from .webhooks import router as webhooks_router
 from .disputes import router as disputes_router
 from .routes_search import router as search_router
@@ -53,10 +53,17 @@ from .notifications import router as notifs_router
 from .notifications_api import router as notifications_router
 from .split_test import router as split_test_router
 from .routes_debug_cloudinary import router as debug_cloudinary_router
+# [مضاف] راوتر المفضّلات
 from .routes_favorites import router as favorites_router
 from .routers.me import router as me_router
+
+# ✅ [مضاف] راوتر إدارة الودائع (DM / قرارات الوديعة)
 from .routes_deposits import router as deposits_router
+
+# ✅ [جديد] راوتر أدلّة الوديعة (رفع/عرض ملفات)
 from .routes_evidence import router as evidence_router
+
+# ✅ [جديد] راوتر تشغيل الإفراج التلقائي يدويًا (للاختبار/الأدمن)
 from .cron_auto_release import router as cron_router
 from .debug_email import router as debug_email_router
 
@@ -65,6 +72,7 @@ app = FastAPI()
 # =========================
 # جلسات
 # =========================
+# >>> ADD: جعل https_only يعتمد على البيئة (HTTPS في الإنتاج، HTTP محليًا)
 SITE_URL = os.environ.get("SITE_URL", "")
 HTTPS_ONLY_COOKIES = os.getenv("HTTPS_ONLY_COOKIES",
                                "1" if SITE_URL.startswith("https") else "0") == "1"
@@ -74,7 +82,7 @@ app.add_middleware(
     secret_key=os.environ.get("SECRET_KEY", "dev-secret"),
     session_cookie="ra_session",
     same_site="lax",
-    https_only=HTTPS_ONLY_COOKIES,
+    https_only=HTTPS_ONLY_COOKIES,  # >>> FIX: بدل True ثابتة
     max_age=60 * 60 * 24 * 30,
 )
 
@@ -85,6 +93,7 @@ BASE_DIR = os.path.dirname(__file__)
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
+# ✅ توحيد مسار uploads ليكون على نفس جذر المشروع (Rentall_mvp/uploads)
 APP_ROOT = os.path.abspath(os.path.join(BASE_DIR, ".."))
 UPLOADS_DIR = os.path.join(APP_ROOT, "uploads")
 os.makedirs(UPLOADS_DIR, exist_ok=True)
@@ -95,33 +104,56 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 app.templates = templates
 
+# 🔽 أضف هذا الفلتر مباشرةً هنا
 def media_url(path: str | None) -> str:
+    """يُرجع رابط Cloudinary كما هو، أو يسبق المسار المحلي بـ '/'."""
     if not path:
         return ""
     p = str(path).strip()
     if p.startswith("http://") or p.startswith("https://"):
         return p
+    # لو المسار أصلاً يبدأ بـ / اتركه
     if p.startswith("/"):
         return p
     return "/" + p
 
+# تسجيل الفلتر في بيئة Jinja
 app.templates.env.filters["media_url"] = media_url
 
 # إنشاء الجداول
 Base.metadata.create_all(bind=engine)
 
+# =========================
+# ✅ [إضافة] هوت-فيكس لتأمين أعمدة مفقودة في SQLite (خصوصًا deposit_evidences.uploader_id)
+# =========================
 def ensure_sqlite_columns():
+    """
+    هوت-فيكس يضيف عمود uploader_id في جدول deposit_evidences
+    لكن فقط عند استخدام SQLite. يُتجاهل تلقائياً مع Postgres.
+    """
     try:
+        # لو القاعدة ليست SQLite لا نفعل شيئًا
         try:
             backend = engine.url.get_backend_name()
         except Exception:
             backend = getattr(getattr(engine, "dialect", None), "name", "")
         if backend != "sqlite":
-            return
+            return  # ✅ لا تشغّل PRAGMA على Postgres
+
         with engine.begin() as conn:
-            cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info('deposit_evidences')").all()}
+            cols = {
+                row[1]
+                for row in conn.exec_driver_sql("PRAGMA table_info('deposit_evidences')").all()
+            }
             if "uploader_id" not in cols:
-                conn.exec_driver_sql("ALTER TABLE deposit_evidences ADD COLUMN uploader_id INTEGER;")
+                conn.exec_driver_sql(
+                    "ALTER TABLE deposit_evidences ADD COLUMN uploader_id INTEGER;"
+                )
+                # اختياري: إنشاء فهرس
+                # conn.exec_driver_sql(
+                #     "CREATE INDEX IF NOT EXISTS ix_deposit_evidences_uploader_id "
+                #     "ON deposit_evidences(uploader_id);"
+                # )
     except Exception as e:
         print(f"[WARN] ensure_sqlite_columns skipped/failed: {e}")
 
@@ -147,10 +179,13 @@ def seed_admin():
 seed_admin()
 
 PAYOUTS_ENABLED = os.getenv("ENABLE_PAYOUTS", "0") == "1"
-print("[OK] payouts enabled via env" if PAYOUTS_ENABLED else "[INFO] payouts disabled (set ENABLE_PAYOUTS=1 to show callout)")
+if PAYOUTS_ENABLED:
+    print("[OK] payouts enabled via env")
+else:
+    print("[INFO] payouts disabled (set ENABLE_PAYOUTS=1 to show callout)")
 
 # =========================
-# صور الـ HERO (البانرز) — موجودة سابقًا
+# ✅ صور الـ HERO (البانرز) — كما كانت
 # =========================
 BANNERS_DIR = os.path.join(STATIC_DIR, "img", "banners")
 BANNERS_URL_PREFIX = "/static/img/banners"
@@ -168,6 +203,7 @@ def list_banner_images() -> list[str]:
             ext = os.path.splitext(name)[1].lower()
             if ext in ALLOWED_BANNER_EXTS:
                 files.append(f"{BANNERS_URL_PREFIX}/{name}")
+        # رتب أبجديًا للحصول على ترتيب ثابت، ثم اعمل shuffle إذا مفعّل
         files.sort()
         if BANNERS_SHUFFLE:
             random.shuffle(files)
@@ -177,11 +213,11 @@ def list_banner_images() -> list[str]:
         return []
 
 # =========================
-# 🔥 جديد: صور السلايدر الأفقي (الطولية 1024×1536)
+# ✅ جديد: صور السلايدر العلوي (الطولية 1024×1536)
 # ضع الصور هنا: app/static/img/top_slider/
 # =========================
-TOP_STRIP_DIR = os.path.join(STATIC_DIR, "img", "top_slider")
-TOP_STRIP_URL_PREFIX = "/static/img/top_slider"
+TOP_SLIDER_DIR = os.path.join(STATIC_DIR, "img", "top_slider")
+TOP_SLIDER_URL_PREFIX = "/static/img/top_slider"
 ALLOWED_TOP_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
 
 def list_top_slider_images() -> list[str]:
@@ -189,20 +225,29 @@ def list_top_slider_images() -> list[str]:
     يعيد روابط الصور داخل static/img/top_slider بامتدادات مسموحة.
     """
     try:
-        os.makedirs(TOP_STRIP_DIR, exist_ok=True)
+        os.makedirs(TOP_SLIDER_DIR, exist_ok=True)
         files = []
-        for name in os.listdir(TOP_STRIP_DIR):
-            p = os.path.join(TOP_STRIP_DIR, name)
+        for name in os.listdir(TOP_SLIDER_DIR):
+            p = os.path.join(TOP_SLIDER_DIR, name)
             if not os.path.isfile(p):
                 continue
             ext = os.path.splitext(name)[1].lower()
             if ext in ALLOWED_TOP_EXTS:
-                files.append(f"{TOP_STRIP_URL_PREFIX}/{name}")
+                files.append(f"{TOP_SLIDER_URL_PREFIX}/{name}")
         files.sort()  # ترتيب ثابت
         return files
     except Exception as e:
         print("[WARN] list_top_slider_images failed:", e)
         return []
+
+def split_into_three_columns(urls: list[str]) -> list[list[str]]:
+    """
+    يقسم القائمة إلى ثلاث قوائم (عمود 1/2/3) بالتناوب.
+    """
+    cols = [[], [], []]
+    for i, u in enumerate(urls):
+        cols[i % 3].append(u)
+    return cols
 
 # تسجيل الروترات
 app.include_router(auth_router)
@@ -217,8 +262,11 @@ app.include_router(payments_router)
 app.include_router(checkout_router)
 app.include_router(pay_api_router)
 app.include_router(split_test_router)
+# ✅ نُسجّل راوتر Stripe Connect الصحيح (يدعم GET/POST)
 app.include_router(payout_connect_router)
+# مع بقية include_router(...)
 app.include_router(debug_cloudinary_router)
+
 app.include_router(webhooks_router)
 app.include_router(disputes_router)
 app.include_router(search_router)
@@ -230,13 +278,25 @@ app.include_router(notifs_router)
 app.include_router(notifications_router)
 app.include_router(me_router)
 app.include_router(debug_email_router)
+
+# ✅ [مضاف] تسجيل مسارات إدارة الودائع (DM)
 app.include_router(deposits_router)
+
+# ✅ [مضاف] تسجيل مسارات أدلّة الوديعة
 app.include_router(evidence_router)
+
+# ✅ [مضاف] تسجيل مسار تشغيل الإفراج التلقائي يدويًا (الاستيراد القديم)
 app.include_router(cron_router)
 
 def _cat_code(cat) -> str:
     if isinstance(cat, dict):
-        return (cat.get("code") or cat.get("value") or cat.get("id") or cat.get("slug") or cat.get("key"))
+        return (
+            cat.get("code")
+            or cat.get("value")
+            or cat.get("id")
+            or cat.get("slug")
+            or cat.get("key")
+        )
     if isinstance(cat, (list, tuple)) and cat:
         return str(cat[0])
     return str(cat) if cat is not None else None
@@ -302,10 +362,12 @@ def home(
         db.query(Item).filter(Item.is_active == "yes").order_by(func.random()).limit(24).all()
     )
 
-    # صور الـ HERO
+    # ✅ صور الـ HERO
     banners = list_banner_images()
-    # 🔥 صور السلايدر الطولي الجديد
-    top_slider = list_top_slider_images()
+
+    # ✅ صور السلايدر الطولي (من مجلد واحد) وتقسيمها لأعمدة
+    top_all = list_top_slider_images()
+    top_strip_cols = split_into_three_columns(top_all)
 
     return templates.TemplateResponse(
         "home.html",
@@ -323,7 +385,7 @@ def home(
             "mixed_items": mixed_items,
             "category_label": category_label,
             "banners": banners,
-            "top_slider": top_slider,  # ← مهم
+            "top_strip_cols": top_strip_cols,  # ← مهم
         },
     )
 
@@ -365,10 +427,13 @@ async def sync_user_flags(request: Request, call_next):
                         sess_user["role"] = getattr(db_user, "role", sess_user.get("role"))
                         sess_user["status"] = getattr(db_user, "status", sess_user.get("status"))
                         sess_user["payouts_enabled"] = bool(getattr(db_user, "payouts_enabled", False))
+                        # ===== [إضافة مهمة] أعلام الوديعة =====
                         sess_user["is_deposit_manager"] = bool(getattr(db_user, "is_deposit_manager", False))
                         sess_user["can_manage_deposits"] = bool(
-                            sess_user.get("is_deposit_manager") or (str(sess_user.get("role","")).lower() == "admin")
+                            sess_user.get("is_deposit_manager") or
+                            (str(sess_user.get("role","")).lower() == "admin")
                         )
+                        # الشارات
                         for key in [
                             "badge_admin","badge_new_yellow","badge_pro_green","badge_pro_gold",
                             "badge_purple_trust","badge_renter_green","badge_orange_stars"
