@@ -691,28 +691,30 @@
 </style>
 <style id="safearea-white-under-navbar">
   @media (max-width: 768px){
-    /* تأكد أن الشريط فوق الجميع */
+    /* تأكد أن الـ navbar فوق الكل */
     .mobile-tabbar{
       z-index: 2147483647 !important;
-      background: #fff !important; /* أبيض 100% */
+      background: #fff !important;
     }
 
-    /* طبقة بيضاء تغطي الفراغ أسفل حافة iPhone */
+    /* الطبقة البيضاء السفلية */
     body::after{
       content: "";
       position: fixed;
       left: 0;
       right: 0;
       bottom: 0;
-      /* نأخذ أي متغير متاح للـ safe-area */
-      height: max(
-        env(safe-area-inset-bottom, 0px),
-        var(--safe-b, 0px),
-        var(--safe-bottom, 0px)
+      /* ✳️ زيادة 6px لتغطية أي فراغ باقٍ */
+      height: calc(
+        max(
+          env(safe-area-inset-bottom, 0px),
+          var(--safe-b, 0px),
+          var(--safe-bottom, 0px)
+        ) + 6px
       );
-      background: #fff;             /* نفس لون الشريط */
-      z-index: 2147483646;          /* أقل من الشريط بقليل */
-      pointer-events: none;         /* لا تمنع اللمس والتمرير */
+      background: #fff;
+      z-index: 2147483646;
+      pointer-events: none;
     }
   }
 </style>
