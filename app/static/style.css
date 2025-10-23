@@ -588,3 +588,83 @@ small, .small{ color:var(--muted)!important }
 /* ألغِ أي تلاشي/طبقات قد تغيّم أسفل الصورة وتسبب “قصّ بصري” */
 .hero-carousel::before,
 .hero-carousel::after{ display: none !important; }
+
+/* ===== HERO: أظهر الصورة كاملة بدون قص + نفس الستايل على الهاتف والكمبيوتر ===== */
+
+/* إلغاء أي ارتفاعات/طبقات قديمة */
+.hero-carousel,
+.hero-carousel .carousel-item{
+  height: auto !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+  box-shadow: 0 14px 34px rgba(0,0,0,.08) !important;
+  position: relative;
+}
+
+/* نسبة أبعاد ثابتة لكل سلايد (يشبه الهاتف) */
+.hero-carousel .carousel-item{
+  aspect-ratio: 16 / 9 !important;        /* يمكنك تغييرها 21/9 أو 4/3 حسب صورك */
+}
+
+/* الصورة تظهر كاملة (بدون قص) */
+.hero-carousel .carousel-item img{
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;          /* contain = لا قص إطلاقًا */
+  object-position: center !important;
+  display: block !important;
+  background: #f4f6fb !important;          /* لون خفيف خلف الفراغات إن وجدت */
+  border-radius: 18px !important;
+}
+
+/* ألغِ أي طبقات/تلاشي قديم كان يسبب قص بصري تحت الصورة */
+.hero-carousel::before,
+.hero-carousel::after{
+  content: none !important;
+  display: none !important;
+}
+
+/* كبّر منطقة النقر للأسهم */
+.hero-carousel .carousel-control-prev,
+.hero-carousel .carousel-control-next{
+  width: 8% !important;
+}
+
+/* حواف دائرية على السلايدر نفسه في كل المقاسات */
+.edge-bleed .hero-carousel{
+  border-radius: 18px !important;
+  box-shadow: 0 14px 34px rgba(0,0,0,.08) !important;
+}
+
+/* على الكمبيوتر: لا تمد للعرض الكامل للحافة—خليه أنيق وأصغر قليلاً */
+@media (min-width: 992px){
+  .edge-bleed{               /* عطّل تمديد الحواف */
+    margin-inline: auto !important;
+    width: auto !important;
+  }
+  .hero-carousel{
+    max-width: 1180px !important;          /* أصغر شوي من كامل الصفحة */
+    margin-inline: auto !important;
+  }
+}
+
+/* لو عندك “رفوف” تحت البانر تعتمد على تلاشي البانر القديم، خلّها طبيعية الآن */
+.home-shelves{
+  margin-top: 16px !important;             /* لا ترفعها فوق البانر لأننا ألغينا التلاشي */
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 8px 26px rgba(0,0,0,.06);
+}
+
+/* حواف دائرية متناسقة للأسهم حتى شكلها يكون مثل الهاتف */
+.hero-carousel .carousel-control-prev-icon,
+.hero-carousel .carousel-control-next-icon{
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
+}
+
+/* المؤشرات */
+.hero-carousel .carousel-indicators [data-bs-target]{
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+}
