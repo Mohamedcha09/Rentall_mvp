@@ -105,6 +105,26 @@
     .top-strip .carousel-item{ aspect-ratio: 16 / 9; } /* ملائمة للموبايل */
     .top-strip{ border-radius:14px; }
   }
+  /* ====== إصلاح عرض صور Top Strip على الهاتف (تُعرض كاملة بدون قص) ====== */
+@media (max-width: 576px){
+  /* خلي السطر يعرض عمود واحد كما هو */
+  .top-strip-grid{ grid-template-columns: 1fr; }
+
+  /* خلي كل سلايد عمودي 2:3 بما يتماشى مع صورك 1024x1536 */
+  .top-strip .carousel-item{
+    aspect-ratio: 2 / 3 !important;
+  }
+
+  /* اعرض الصورة كاملة بدون أي قص + خلفية لطيفة للفراغ */
+  .top-strip .carousel-item img{
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    object-position: center !important;
+    background: #eef2f7 !important;
+    display: block !important;
+  }
+}
 </style>
 {% endblock %}
 
