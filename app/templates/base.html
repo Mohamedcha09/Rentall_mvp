@@ -716,5 +716,24 @@
       if (isStandalone) { document.documentElement.classList.add('pwa'); }
     })();
   </script>
+
+  <style id="mobile-tabbar-raise">
+  @media (max-width: 768px){
+    /* ارفع الشريط الأبيض قليلاً فوق الحافة */
+    .mobile-tabbar{
+      bottom: calc(max(var(--safe-area-inset-bottom, 0px), var(--safe-bottom, 0px)) + 8px) !important;
+    }
+
+    /* زِد padding أسفل الصفحة بنفس الزيادة حتى لا يختفي المحتوى وراء الشريط */
+    .page{
+      padding-bottom: calc(110px + max(var(--safe-area-inset-bottom, 0px), var(--safe-bottom, 0px))) !important;
+    }
+
+    /* ارفع زر الإضافة (+) بنفس التناسب */
+    .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
+      bottom: calc(max(var(--safe-area-inset-bottom, 0px), var(--safe-bottom, 0px)) + 96px) !important;
+    }
+  }
+</style>
 </body>
 </html>
