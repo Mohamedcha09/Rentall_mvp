@@ -558,3 +558,84 @@ small, .small{ color:var(--muted)!important }
 @media (max-width:576px){
   .hero-carousel .carousel-item{ aspect-ratio:16/9; }
 }
+/* =========================================================
+   🎯 HERO SLIDER — إظهار الصورة كاملة + حواف دائرية
+   ========================================================= */
+
+/* إطار السلايدر */
+.hero-carousel {
+  position: relative;
+  border-radius: 22px; /* حواف ناعمة */
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+  background: #f7f8fb;
+}
+
+/* إلغاء أي تأثيرات أو تمديد قديم */
+.edge-bleed { 
+  margin-inline: auto !important;
+  width: 100%;
+}
+
+/* كل طبقات السلايدر لها نفس الحواف */
+.hero-carousel .carousel-inner,
+.hero-carousel .carousel-item,
+.hero-carousel .carousel-item img {
+  border-radius: 22px;
+  overflow: hidden;
+}
+
+/* الصورة تظهر كاملة بدون قص */
+.hero-carousel .carousel-item img {
+  width: 100%;
+  height: auto;                /* يضبط الارتفاع تلقائي حسب العرض */
+  aspect-ratio: 3 / 2;         /* لأن صورك 1536x1024 (3:2) */
+  object-fit: contain !important; /* عرض كامل بدون قص */
+  object-position: center;
+  background: #eef2f7;         /* لون خلفية لطيف خلف الصورة */
+  display: block;
+}
+
+/* إلغاء التلاشي أو الطبقات الزائدة */
+.hero-carousel::before,
+.hero-carousel::after {
+  display: none !important;
+}
+
+/* تحسين الأزرار */
+.hero-carousel .carousel-control-prev,
+.hero-carousel .carousel-control-next {
+  width: 8%;
+}
+.hero-carousel .carousel-control-prev-icon,
+.hero-carousel .carousel-control-next-icon {
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+/* إخفاء المؤشرات إذا لا تريدها */
+.hero-carousel .carousel-indicators {
+  display: none !important;
+}
+
+/* الهواتف: ضبط ارتفاع مناسب */
+@media (max-width: 768px) {
+  .hero-carousel {
+    border-radius: 18px;
+  }
+  .hero-carousel .carousel-item img {
+    aspect-ratio: 3 / 2;
+    height: auto;
+  }
+}
+
+/* الكمبيوتر: لا تمد للحواف واجعلها بطاقة أنيقة */
+@media (min-width: 992px) {
+  .hero-carousel {
+    max-width: 1100px;
+    margin: 0 auto 20px;
+    border-radius: 24px;
+  }
+  .home-shelves {
+    margin-top: 18px !important;
+  }
+}
