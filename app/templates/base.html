@@ -171,7 +171,7 @@
       }
 
       @media (max-width:768px){
-        .actions .dropdown:first-of-type{ display:none !important; }
+        .actions .dropdown:first-of-type{ display:none !重要; }
       }
 
       .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important; }
@@ -218,7 +218,6 @@
       .mobile-tabbar .nav-item { padding-bottom: 4px; }
 
       /* ======================= PATCH: دعم وضع التطبيق (PWA) ======================= */
-      /* عندما يُفتح كـ تطبيق (standalone) قد ترجع env(...) = 0، نضع حدًا أدنى ونزيد الـ padding */
       @media (display-mode: standalone) {
         :root{
           --safe-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
@@ -400,7 +399,6 @@
          aria-selected="{{ 'true' if request and request.url.path == '/' else 'false' }}">Home</a>
 
       {% if session_user %}
-        <!-- إشعارات: صفحة مستقلة -->
         <a href="/notifications" class="m-tab {% if request and request.url.path.startswith('/notifications') %}is-active{% endif %}" role="tab"
            aria-selected="{{ 'true' if request and request.url.path.startswith('/notifications') else 'false' }}">
           إشعارات
@@ -410,17 +408,14 @@
           </small>
         </a>
 
-        <!-- تحويلات -->
         <a href="/payout/settings" class="m-tab {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" role="tab"
            aria-selected="{{ 'true' if request and request.url.path.startswith('/payout') else 'false' }}">تحويلات</a>
 
         {% if session_user.role == 'admin' %}
-          <!-- لوحة أدمين -->
           <a href="/admin" class="m-tab {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" role="tab"
              aria-selected="{{ 'true' if request and request.url.path.startswith('/admin') else 'false' }}">لوحة أدمين</a>
         {% endif %}
       {% else %}
-        <!-- غير مسجّل -->
         <a href="/login" class="m-tab" role="tab" aria-selected="false">إشعارات</a>
         <a href="/login" class="m-tab" role="tab" aria-selected="false">تحويلات</a>
       {% endif %}
@@ -919,7 +914,7 @@
     })();
     </script>
 
-    <!-- ⬇️⬇️ الباتش النهائي لإجبار الستايل (يوضع في آخر البودي) + فالباك PWA ⬇️⬇️ -->
+    <!-- ⬇️⬇️ الكتل الأصلية للهوت-فيكس لديك (أبقيناها كما هي) ⬇️⬇️ -->
     <style>
       :root{ --safe-b: env(safe-area-inset-bottom, 0px); }
       .page, body{ padding-bottom: calc(74px + var(--safe-b)) !important; }
@@ -1000,42 +995,70 @@
         }
       })();
     </script>
+    <!-- ⬆️⬆️ نهاية الكتل الأصلية ⬆️⬆️ -->
 
-    <!-- ✅ سكربت حساب safe-area ووضع --safe (لم أحذف شيئاً) -->
+    <!-- =========================== ADD: فالباك دقيق + توحيد المتغيّر =========================== -->
     <script>
-    (function(){
-      var root = document.documentElement;
-
-      function computeSafe(){
-        var safe = 0;
+      (function(){
+        // يقيس safe-area فعليًا عندما ترجع env(...) صفر داخل PWA
         try{
           var probe = document.createElement('div');
-          probe.style.cssText =
-            'position:fixed; bottom:0; left:0; right:0;' +
-            'height:constant(safe-area-inset-bottom); height:env(safe-area-inset-bottom);' +
-            'pointer-events:none; opacity:0;';
+          probe.style.cssText = 'position:fixed; left:0; right:0; bottom:0; height:env(safe-area-inset-bottom); '+
+                                'height:constant(safe-area-inset-bottom); pointer-events:none; opacity:0;';
           document.body.appendChild(probe);
-          safe = Math.max(0, probe.getBoundingClientRect().height || 0);
+          var h = Math.max(0, probe.getBoundingClientRect().height || 0);
           probe.remove();
+          if (h > 0){
+            document.documentElement.style.setProperty('--safe-b-dyn', h + 'px');
+          }
         }catch(_){}
-
-        var isIOS = /iphone|ipod|ipad/i.test(navigator.userAgent);
-        var isStandalone = (window.navigator.standalone === true) ||
-                           (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-        if (isIOS && isStandalone && safe < 8) safe = 16;
-
-        root.style.setProperty('--safe', safe + 'px');
-      }
-
-      computeSafe();
-      window.addEventListener('resize', computeSafe);
-      if (window.visualViewport){
-        visualViewport.addEventListener('resize', computeSafe);
-        visualViewport.addEventListener('scroll', computeSafe);
-      }
-    })();
+      })();
     </script>
-    <!-- ⬆️⬆️ نهاية الباتش النهائي ⬆️⬆️ -->
+
+    <style>
+      /* نجمع كل المصادر في متغيّر واحد موحَّد */
+      :root{
+        /* إذا قاس الجافاسكربت قيمة حقيقية تُستعمل أولاً */
+        --safe-b-unified: max(var(--safe-b-dyn, 0px),
+                              env(safe-area-inset-bottom, 0px),
+                              constant(safe-area-inset-bottom, 0px));
+      }
+      /* حدّ أدنى داخل الـ PWA */
+      @media (display-mode: standalone){
+        :root{ --safe-b-unified: max(var(--safe-b-unified), 16px); }
+      }
+
+      /* إجبار المسافات بحيث لا يختفي المحتوى خلف الشريط */
+      body, .page{ padding-bottom: calc(74px + var(--safe-b-unified)) !important; }
+
+      /* الشريط السفلي أبيض 100% وغير شفاف وفوق الـ Home Indicator */
+      @media (max-width:768px){
+        .mobile-tabbar{
+          position: fixed !important;
+          left:0; right:0;
+          bottom: calc(var(--safe-b-unified) + 2px) !important;
+          height: 64px !important;
+          background: #fff !important;           /* أبيض بالكامل */
+          -webkit-backdrop-filter: none !important;
+          backdrop-filter: none !important;
+          border-top: 1px solid rgba(0,0,0,.08) !important;
+          border-radius: 16px 16px 0 0 !important;
+          box-shadow: 0 10px 40px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.02) inset !important;
+          z-index: 2147483647 !important;
+          padding-top: 8px !important;
+          padding-bottom: calc(8px + var(--safe-b-unified)) !important;
+        }
+        .mobile-tabbar .tab-img{ opacity:1 !important; }
+        .mobile-tabbar a{ color: var(--text, #111827) !important; }
+        .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
+          position: fixed !important;
+          bottom: calc(var(--safe-b-unified) + 90px) !important;
+          right: 16px !important;
+          z-index: 2147483647 !important;
+        }
+      }
+    </style>
+    <!-- ========================================================================================= -->
 
   </body>
 </html>
