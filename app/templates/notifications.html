@@ -1,0 +1,106 @@
+{# app/templates/notifications.html #}
+{% extends "base.html" %}
+{% block head %}
+<style>
+  .notif-page{ max-width:720px; margin:0 auto; }
+  .notif-card{
+    display:block; text-decoration:none; color:inherit;
+    border:1px solid var(--border); border-radius:14px;
+    background:var(--surface); padding:12px; margin-bottom:10px;
+  }
+  .notif-card:hover{ background: color-mix(in oklab, var(--surface) 94%, transparent); }
+  .notif-title{ font-weight:800; font-size:1rem; margin-bottom:4px; }
+  .notif-meta{ opacity:.7; font-size:.9rem; }
+  .notif-empty{
+    text-align:center; padding:30px 10px; opacity:.7;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="notif-page container">
+  <h1 class="h5 fw-bold my-3">الإشعارات</h1>
+  <div id="notifList"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const list = document.getElementById('notifList');
+  const badge = document.getElementById('mNotifBadge');
+
+  const FEEDS = [
+    '/api/notifications/poll',
+    '/api/notifications',
+    '/notifications/json'
+  ];
+
+  function esc(s){
+    return String(s||"").replace(/[&<>"']/g, c =>
+      ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  }
+
+  async function fetchFirst(urls){
+    for (const u of urls){
+      try{
+        const r = await fetch(u, {credentials:'include'});
+        if (r.ok){ return await r.json(); }
+      }catch(_){}
+    }
+    return null;
+  }
+
+  function normalize(data){
+    const items = (data && (data.items || data.notifications || data)) || [];
+    const unread = Number(data && (data.unread ?? data.count ?? 0)) || 0;
+    return {
+      unread,
+      items: items.map(n => ({
+        title: n.title || n.subject || 'إشعار',
+        meta:  n.body  || n.text || n.message || '',
+        link:  n.link_url || n.url || '#',
+        is_read: !!n.is_read,
+        created_at: n.created_at || n.time || ''
+      }))
+    };
+  }
+
+  function render(norm){
+    list.innerHTML = '';
+    if (!norm.items.length){
+      list.innerHTML = '<div class="notif-empty">لا توجد إشعارات.</div>';
+      return;
+    }
+    norm.items.forEach(n=>{
+      const a = document.createElement('a');
+      a.className='notif-card';
+      a.href = n.link || '#';
+      a.innerHTML = `
+        <div class="notif-title">${esc(n.title)}</div>
+        ${n.meta ? `<div class="notif-meta">${esc(n.meta)}</div>` : '' }
+      `;
+      list.appendChild(a);
+    });
+  }
+
+  function updateBadge(n){
+    if (!badge) return;
+    if (n>0){ badge.style.display=''; badge.textContent = (n>99?'99+':String(n)); }
+    else{ badge.style.display='none'; badge.textContent=''; }
+  }
+
+  async function load(){
+    list.innerHTML = '<div class="notif-empty">جارِ التحميل…</div>';
+    const data = await fetchFirst(FEEDS);
+    const norm = normalize(data||{});
+    render(norm);
+    updateBadge(norm.unread);
+    try{ await fetch('/api/notifications/mark_all_read', {method:'POST', credentials:'include'}); }
+    catch(_){}
+  }
+
+  load();
+})();
+</script>
+{% endblock %}

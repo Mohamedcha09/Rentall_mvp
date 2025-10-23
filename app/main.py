@@ -461,3 +461,14 @@ def switch_language(lang: str, request: Request):
     resp = RedirectResponse(url=referer, status_code=302)
     resp.set_cookie("lang", lang, max_age=60 * 60 * 24 * 365, httponly=False, samesite="lax")
     return resp
+
+
+@app.get("/notifications", response_class=HTMLResponse)
+def notifications_page(request: Request):
+    u = request.session.get("user")
+    if not u:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse(
+        "notifications.html",
+        {"request": request, "session_user": u, "title": "الإشعارات"}
+    )
