@@ -216,6 +216,30 @@
 
       /* ✅ للتأكد أن عناصر التبويب تبقى في الوسط دائمًا */
       .mobile-tabbar .nav-item { padding-bottom: 4px; }
+
+      /* ======================= PATCH: دعم وضع التطبيق (PWA) ======================= */
+      /* عندما يُفتح كـ تطبيق (standalone) قد ترجع env(...) = 0، نضع حدًا أدنى ونزيد الـ padding */
+      @media (display-mode: standalone) {
+        :root{
+          --safe-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+          --safe-bottom-legacy: max(constant(safe-area-inset-bottom, 0px), 16px);
+        }
+        body{
+          padding-bottom: calc(82px + max(var(--safe-bottom), var(--safe-bottom-legacy))) !important;
+        }
+        .mobile-tabbar{
+          bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 2px) !important;
+          padding-top: 6px !important;
+          padding-bottom: 6px !important;
+          border-radius: 16px 16px 0 0;
+          z-index: 2100;
+        }
+        .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
+          bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 86px) !important;
+          z-index: 2200 !important;
+        }
+      }
+      /* ========================================================================== */
     </style>
 
     {% block head %}{% endblock %}
@@ -669,7 +693,7 @@
       function show(){ panel.classList.remove('d-none'); }
       function esc(s){
         return String(s||"").replace(/[&<>"']/g, function(c){
-          return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+          return {"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c];
         });
       }
 
@@ -765,7 +789,8 @@
 
       function setBell(n){
         if (!countEl || !pingEl) return;
-        if (n>0){ countEl.textContent = (ن>99 ? '99+' : String(n)); countEl.style.display = ''; pingEl.style.display = ''; }
+        /* PATCH: كان مكتوب "ن>99" بحرف عربي؛ صُحح إلى n>99 */
+        if (n>0){ countEl.textContent = (n>99 ? '99+' : String(n)); countEl.style.display = ''; pingEl.style.display = ''; }
         else{ countEl.textContent = ''; countEl.style.display = 'none'; pingEl.style.display = 'none'; }
       }
 
@@ -894,7 +919,7 @@
     })();
     </script>
 
-    <!-- ⬇️⬇️ الباتش النهائي لإجبار الستايل (يوضع في آخر البودي) ⬇️⬇️ -->
+    <!-- ⬇️⬇️ الباتش النهائي لإجبار الستايل (يوضع في آخر البودي) + فالباك PWA ⬇️⬇️ -->
     <style>
       :root{ --safe-b: env(safe-area-inset-bottom, 0px); }
       .page, body{ padding-bottom: calc(74px + var(--safe-b)) !important; }
@@ -921,62 +946,60 @@
     </style>
 
     <style id="mobile-tabbar-hotfix">
-  /* لا تقصّ المحتوى فوق الشريط */
-  #page-wrapper, .page { overflow: visible !important; }
+      #page-wrapper, .page { overflow: visible !important; }
+      :root{ --safe-b: env(safe-area-inset-bottom, 0px); }
+      body, .page{
+        padding-bottom: calc(88px + var(--safe-b)) !important;
+      }
+      @media (max-width: 768px){
+        .mobile-tabbar{
+          position: fixed !important;
+          left: 0; right: 0;
+          bottom: calc(var(--safe-b) + 6px) !important;
+          height: 64px !important;
+          padding-top: 8px !important;
+          padding-bottom: calc(8px + var(--safe-b)) !important;
+          background: var(--surface, #fff) !important;
+          -webkit-backdrop-filter: blur(14px) saturate(120%);
+          backdrop-filter: blur(14px) saturate(120%);
+          border-top: 1px solid rgba(0,0,0,.08) !important;
+          border-radius: 16px 16px 0 0 !important;
+          box-shadow: 0 10px 40px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.02) inset;
+          z-index: 2147483647 !important;
+          isolation: isolate;
+          transform: translateZ(0);
+          will-change: transform;
+          backface-visibility: hidden;
+        }
+        #page-wrapper{
+          transform: none !important;
+          filter: none !important;
+          perspective: none !important;
+        }
+        .mobile-tabbar .tab-img{ opacity: 1 !important; }
+        .mobile-tabbar a{ color: var(--text, #111827) !important; }
+        .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
+          position: fixed !important;
+          right: 16px !important;
+          bottom: calc(var(--safe-b) + 90px) !important;
+          z-index: 2147483647 !important;
+        }
+      }
+    </style>
 
-  :root{ --safe-b: env(safe-area-inset-bottom, 0px); }
-
-  /* اترك مساحة كافية تحت المحتوى */
-  body, .page{
-    padding-bottom: calc(88px + var(--safe-b)) !important;
-  }
-
-  /* ثبّت الشريط فوق كل العناصر وامنع أي تغطية أو قص */
-  @media (max-width: 768px){
-    .mobile-tabbar{
-      position: fixed !important;
-      left: 0; right: 0;
-      bottom: calc(var(--safe-b) + 6px) !important; /* ارفعه شوي فوق مؤشر iOS */
-      height: 64px !important;
-      padding-top: 8px !important;
-      padding-bottom: calc(8px + var(--safe-b)) !important;
-
-      /* خلفية واضحة + ظل */
-      background: var(--surface, #fff) !important;
-      -webkit-backdrop-filter: blur(14px) saturate(120%);
-      backdrop-filter: blur(14px) saturate(120%);
-      border-top: 1px solid rgba(0,0,0,.08) !important;
-      border-radius: 16px 16px 0 0 !important;
-      box-shadow: 0 10px 40px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.02) inset;
-
-      /* أقصى أولوية في الترتيب */
-      z-index: 2147483647 !important;
-      isolation: isolate;              /* سياق تكديس خاص */
-      transform: translateZ(0);        /* إصلاح iOS */
-      will-change: transform;
-      backface-visibility: hidden;
-    }
-
-    /* أي عنصر أب عنده transform يسبب قص؛ ألغيه إن وُجد على الغلاف */
-    #page-wrapper{
-      transform: none !important;
-      filter: none !important;
-      perspective: none !important;
-    }
-
-    /* تأكيد ظهور الأيقونات بوضوح */
-    .mobile-tabbar .tab-img{ opacity: 1 !important; }
-    .mobile-tabbar a{ color: var(--text, #111827) !important; }
-
-    /* موضع زر + بحيث ما يغطي البطاقات ولا ينزل تحت المؤشر */
-    .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
-      position: fixed !important;
-      right: 16px !important;            /* خياري: حطه يمين */
-      bottom: calc(var(--safe-b) + 90px) !important;
-      z-index: 2147483647 !important;
-    }
-  }
-</style>
+    <!-- PATCH: كشف وضع التطبيق وإضافة كلاس فالباك html.pwa -->
+    <script>
+      (function(){
+        var isStandalone = false;
+        try {
+          isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+                         || (window.navigator.standalone === true);
+        } catch(_) {}
+        if (isStandalone) {
+          document.documentElement.classList.add('pwa');
+        }
+      })();
+    </script>
     <!-- ⬆️⬆️ نهاية الباتش النهائي ⬆️⬆️ -->
 
   </body>
