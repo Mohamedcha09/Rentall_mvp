@@ -28,68 +28,34 @@
 
   .edge-bleed{ margin-inline: calc(50% - 50vw); width:100vw; }
   .hero-carousel{
-    position:relative;
-    border-radius:18px !important;
-    overflow:hidden !important;
+    position:relative;border-radius:18px !important;overflow:hidden !important;
     box-shadow:0 14px 34px rgba(0,0,0,.08);
   }
   .hero-carousel .carousel-inner,
   .hero-carousel .carousel-item,
-  .hero-carousel .carousel-item img{
-    border-radius:18px !important;
-    overflow:hidden !important;
-  }
-  .hero-carousel .carousel-item{
-    aspect-ratio: 3 / 2 !important;
-    max-height:none !important;
-  }
-  .hero-carousel .carousel-item img{
-    width:100% !important;
-    height:100% !important;
-    object-fit:contain !important;
-    object-position:center !important;
-    display:block !important;
-    background:#eef2f7 !important;
-  }
-  .hero-carousel .carousel-indicators{ display:none !important; }
-  .hero-carousel .carousel-caption{ display:none !important; }
-  .hero-carousel::before,
-  .hero-carousel::after{ content:none !important; display:none !important; }
-  .hero-carousel .carousel-control-prev,
-  .hero-carousel .carousel-control-next{ width:8% !important; }
-  .hero-carousel .carousel-control-prev-icon,
-  .hero-carousel .carousel-control-next-icon{ filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
+  .hero-carousel .carousel-item img{border-radius:18px !important;overflow:hidden !important;}
+  .hero-carousel .carousel-item{aspect-ratio: 3 / 2 !important;max-height:none !important;}
+  .hero-carousel .carousel-item img{width:100% !important;height:100% !important;object-fit:contain !important;object-position:center !important;display:block !important;background:#eef2f7 !important;}
+  .hero-carousel .carousel-indicators,.hero-carousel .carousel-caption{display:none !important;}
+  .hero-carousel::before,.hero-carousel::after{content:none !important;display:none !important;}
+  .hero-carousel .carousel-control-prev,.hero-carousel .carousel-control-next{width:8% !important;}
+  .hero-carousel .carousel-control-prev-icon,.hero-carousel .carousel-control-next-icon{filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));}
 
   @media (min-width: 992px){
     .edge-bleed{ margin-inline:auto !important; width:auto !important; }
     .hero-carousel{ max-width:950px; margin:0 auto 14px; }
-    .home-shelves{
-      background:#fff; border-radius:18px 18px 0 0; box-shadow:0 8px 26px rgba(0,0,0,.06);
-      margin-top:-80px; padding:16px 18px 20px;
-    }
+    .home-shelves{background:#fff;border-radius:18px 18px 0 0;box-shadow:0 8px 26px rgba(0,0,0,.06);margin-top:-80px;padding:16px 18px 20px;}
     .home-shelves.container-xl{ max-width:1320px; }
   }
-  @media (max-width:576px){
-    .hero-carousel .carousel-item{ aspect-ratio: 3 / 2 !important; }
-  }
+  @media (max-width:576px){.hero-carousel .carousel-item{ aspect-ratio: 3 / 2 !important; }}
 
   .top-strip-wrap{ margin:12px 0 6px; }
-  .top-strip-grid{
-    display:grid; grid-template-columns:repeat(3,1fr); gap:12px;
-  }
-  .top-strip{
-    border-radius:16px; overflow:hidden; box-shadow:0 8px 26px rgba(0,0,0,.06);
-    background:#fff; border:1px solid var(--border);
-  }
-  .top-strip .carousel-item{
-    aspect-ratio: 2 / 3;
-  }
-  .top-strip .carousel-item img{
-    width:100%; height:100%; object-fit:cover; display:block;
-  }
+  .top-strip-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
+  .top-strip{border-radius:16px; overflow:hidden; box-shadow:0 8px 26px rgba(0,0,0,.06);background:#fff; border:1px solid var(--border);}
+  .top-strip .carousel-item{aspect-ratio: 2 / 3;}
+  .top-strip .carousel-item img{width:100%; height:100%; object-fit:cover; display:block;}
   .top-strip .carousel-indicators{ display:none; }
-  .top-strip .carousel-control-prev,
-  .top-strip .carousel-control-next{ width:12%; }
+  .top-strip .carousel-control-prev,.top-strip .carousel-control-next{ width:12%; }
 
   @media (max-width: 576px){
     .top-strip-grid{ grid-template-columns:1fr; }
@@ -98,38 +64,32 @@
     .top-strip{ border-radius:14px; }
   }
 
-@media (max-width: 576px){
-  .top-strip-grid{ grid-template-columns: 1fr; }
-  .top-strip .carousel-item{ aspect-ratio: 2 / 3 !important; }
-  .top-strip .carousel-item img{
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: contain !important;
-    object-position: center !important;
-    background: #eef2f7 !important;
-    display: block !important;
+  @media (max-width: 576px){
+    .top-strip-grid{ grid-template-columns: 1fr; }
+    .top-strip .carousel-item{ aspect-ratio: 2 / 3 !important; }
+    .top-strip .carousel-item img{
+      width: 100% !important;height: 100% !important;object-fit: contain !important;
+      object-position: center !important;background: #eef2f7 !important;display: block !important;
+    }
   }
-}
 
-.edge-bleed{ margin-inline: auto !important; width: 100% !important; display: flex !important; justify-content: center !important; }
-.hero-carousel{ max-width: 420px !important; margin: 8px auto 14px !important; }
-@media (min-width: 576px){ .hero-carousel{ max-width: 560px !important; } }
-@media (min-width: 992px){ .hero-carousel{ max-width: 720px !important; } }
-.hero-carousel .carousel-control-prev,
-.hero-carousel .carousel-control-next{ width: 10% !important; }
+  .edge-bleed{ margin-inline: auto !important;width: 100% !important;display: flex !important;justify-content: center !important;}
+  .hero-carousel{ max-width: 420px !important; margin: 8px auto 14px !important; }
+  @media (min-width: 576px){ .hero-carousel{ max-width: 560px !important; } }
+  @media (min-width: 992px){ .hero-carousel{ max-width: 720px !important; } }
+  .hero-carousel .carousel-control-prev,.hero-carousel .carousel-control-next{ width: 10% !important; }
 
-.home-locbar .form-control{ height: 44px; }
-.home-locbar .btn{ height: 44px; }
+  .home-locbar .form-control{ height: 44px; }
+  .home-locbar .btn{ height: 44px; }
 </style>
 {% endblock %}
 
 {% block content %}
 
-<!-- HERO (صور فقط) -->
+<!-- HERO -->
 <div class="edge-bleed">
   <div id="heroCarousel" class="carousel slide hero-carousel mb-0"
        data-bs-ride="carousel" data-bs-interval="5000" data-bs-touch="true" aria-label="عروض رئيسية">
-
     <div class="carousel-inner">
       {% if banners and banners|length > 0 %}
         {% for src in banners %}
@@ -139,7 +99,6 @@
         {% endfor %}
       {% endif %}
     </div>
-
     <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" aria-label="السابق">
       <span class="carousel-control-prev-icon" aria-hidden="true"></span>
     </button>
@@ -150,13 +109,13 @@
 </div>
 <!-- /HERO -->
 
-<!-- ✅ شريط تحكّم للموقع (مدينة / نصف قطر / GPS) -->
+<!-- شريط الموقع -->
 <section class="container-xl my-3">
   <form class="row g-2 align-items-center home-locbar" action="/" method="get" role="search" id="homeLocForm">
-    <div class="col-12 col-md-5">
+    <div class="col-12 col-md-5 position-relative">
       <input type="text" class="form-control" id="homeCityInput" name="city" placeholder="اكتب المدينة / المنطقة …" autocomplete="off">
-      <!-- اقتراحات المدن -->
-      <div id="homeCitySugg" class="border rounded mt-1 bg-white shadow-sm" style="display:none; position:absolute; z-index:1000; max-height:260px; overflow:auto"></div>
+      <div id="homeCitySugg" class="border rounded mt-1 bg-white shadow-sm"
+           style="display:none; position:absolute; z-index:1000; max-height:260px; overflow:auto; inset-inline:0;"></div>
     </div>
     <div class="col-6 col-md-3">
       <input type="number" class="form-control" id="homeRadius" name="radius_km" min="1" value="25" placeholder="km 25">
@@ -167,18 +126,13 @@
     <div class="col-12 col-md-2 d-grid">
       <button class="btn btn-primary" type="submit">تطبيق</button>
     </div>
-
-    <!-- حقول خفية للإحداثيات -->
     <input type="hidden" id="homeLat" name="lat">
     <input type="hidden" id="homeLng" name="lng">
   </form>
 </section>
-<!-- /loc bar -->
 
-<!-- رفوف المنتجات البيضاء تحت البانر -->
 <div class="home-shelves container-xl">
 
-{# ==== سلايدر “بالقرب منك / شائع” ==== #}
 {% set nearby = (nearby_items if nearby_items is defined else popular_items)|default([]) %}
 {% if nearby %}
   <div class="section-head">
@@ -195,19 +149,16 @@
         <div class="spot-media">
           <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
           <div class="spot-overlay"></div>
-
           {% if it.price_per_day is defined %}
             <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
           {% endif %}
           {% if it.category is defined %}
             <span class="category-chip">{{ category_label(it.category) }}</span>
           {% endif %}
-
           <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="إضافة إلى المفضلة">
             <i class="bi bi-heart"></i>
           </button>
         </div>
-
         <div class="card-body spot-body">
           <div class="spot-title">{{ it.title }}</div>
           <div class="owner-line">
@@ -224,7 +175,6 @@
   </div>
 {% endif %}
 
-{# ==== سلايدر حسب التصنيف ==== #}
 {% set cats_map = (items_by_category if items_by_category is defined else {}) %}
 {% for code, lst in cats_map.items() %}
   {% if lst and lst|length > 0 %}
@@ -239,17 +189,14 @@
           <div class="spot-media">
             <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
             <div class="spot-overlay"></div>
-
             {% if it.price_per_day is defined %}
               <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
             {% endif %}
             <span class="category-chip">{{ category_label(it.category) }}</span>
-
             <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="إضافة إلى المفضلة">
               <i class="bi bi-heart"></i>
             </button>
           </div>
-
           <div class="card-body spot-body">
             <div class="spot-title">{{ it.title }}</div>
             <div class="owner-line">
@@ -267,72 +214,6 @@
   {% endif %}
 {% endfor %}
 
-{# ===== Top Strip ===== #}
-{% set cols = top_strip_cols|default([[],[],[]]) %}
-{% set total = (cols[0]|length) + (cols[1]|length) + (cols[2]|length) %}
-{% if total > 0 %}
-<div class="top-strip-wrap">
-  <div class="top-strip-grid">
-    <div class="top-strip-col">
-      <div id="topStrip1" class="carousel slide top-strip" data-bs-ride="carousel" data-bs-interval="5000" data-bs-touch="true" aria-label="Top strip 1">
-        <div class="carousel-inner">
-          {% for src in cols[0] %}
-            <div class="carousel-item {% if loop.first %}active{% endif %}">
-              <img src="{{ src }}" alt="">
-            </div>
-          {% endfor %}
-        </div>
-        <button class="carousel-control-prev" type="button" data-bs-target="#topStrip1" data-bs-slide="prev" aria-label="السابق">
-          <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-        </button>
-        <button class="carousel-control-next" type="button" data-bs-target="#topStrip1" data-bs-slide="next" aria-label="التالي">
-          <span class="carousel-control-next-icon" aria-hidden="true"></span>
-        </button>
-      </div>
-    </div>
-
-    <div class="top-strip-col">
-      <div id="topStrip2" class="carousel slide top-strip" data-bs-ride="carousel" data-bs-interval="8000" data-bs-touch="true" aria-label="Top strip 2">
-        <div class="carousel-inner">
-          {% for src in cols[1] %}
-            <div class="carousel-item {% if loop.first %}active{% endif %}">
-              <img src="{{ src }}" alt="">
-            </div>
-          {% endfor %}
-        </div>
-        <button class="carousel-control-prev" type="button" data-bs-target="#topStrip2" data-bs-slide="prev" aria-label="السابق">
-          <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-        </button>
-        <button class="carousel-control-next" type="button" data-bs-target="#topStrip2" data-bs-slide="next" aria-label="التالي">
-          <span class="carousel-control-next-icon" aria-hidden="true"></span>
-        </button>
-      </div>
-    </div>
-
-    <div class="top-strip-col">
-      <div id="topStrip3" class="carousel slide top-strip" data-bs-ride="carousel" data-bs-interval="10000" data-bs-touch="true" aria-label="Top strip 3">
-        <div class="carousel-inner">
-          {% for src in cols[2] %}
-            <div class="carousel-item {% if loop.first %}active{% endif %}">
-              <img src="{{ src }}" alt="">
-            </div>
-          {% endfor %}
-        </div>
-        <button class="carousel-control-prev" type="button" data-bs-target="#topStrip3" data-bs-slide="prev" aria-label="السابق">
-          <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-        </button>
-        <button class="carousel-control-next" type="button" data-bs-target="#topStrip3" data-bs-slide="next" aria-label="التالي">
-          <span class="carousel-control-next-icon" aria-hidden="true"></span>
-        </button>
-      </div>
-    </div>
-
-  </div>
-</div>
-{% endif %}
-{# ===== /Top Strip ===== #}
-
-{# ==== شبكة “كل العناصر” ==== #}
 {% set all_items_list =
       (all_items if all_items is defined else
        mixed_items if mixed_items is defined else
@@ -348,16 +229,13 @@
         <div class="spot-media">
           <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
           <div class="spot-overlay"></div>
-
           {% if it.category is defined %}
             <span class="category-chip">{{ category_label(it.category) }}</span>
           {% endif %}
-
           <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="إضافة إلى المفضلة">
             <i class="bi bi-heart"></i>
           </button>
         </div>
-
         <div class="card-body spot-body">
           <div class="spot-title">{{ it.title }}</div>
           <div class="owner-line">
@@ -389,7 +267,6 @@
 </script>
 
 <script>
-  /* ===== أزرار التمرير ===== */
   function snap(el, dir=1){
     const node = document.querySelector(el);
     if(!node) return;
@@ -403,7 +280,6 @@
     b.addEventListener('click', ()=> snap(b.dataset.snapNext, +1));
   });
 
-  /* ===== بيانات المفضلات ===== */
   const IS_AUTH = (document.querySelector('meta[name="is-auth"]')?.content === '1');
   let FAVORITES_IDS = [];
   try{
@@ -426,18 +302,13 @@
   document.addEventListener('click', async (e)=>{
     const btn = e.target.closest('.fav-btn');
     if(!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-
+    e.preventDefault(); e.stopPropagation();
     if(!IS_AUTH){ window.location.href = '/login'; return; }
-
     const id = Number(btn.dataset.id);
     const add = !btn.classList.contains('is-fav');
-
     try{
       const res = await fetch(`/api/favorites/${id}`, { method: add ? 'POST' : 'DELETE' });
       if(!res.ok) throw new Error('bad response');
-
       btn.classList.toggle('is-fav', add);
       const icon = btn.querySelector('.bi');
       if(icon){
@@ -447,33 +318,23 @@
       const i = FAVORITES_IDS.indexOf(id);
       if(add && i === -1) FAVORITES_IDS.push(id);
       if(!add && i >= 0) FAVORITES_IDS.splice(i,1);
-    }catch(err){
-      console.error(err);
-      alert('تعذّر حفظ المفضلة مؤقتًا.');
-    }
+    }catch(err){ console.error(err); alert('تعذّر حفظ المفضلة مؤقتًا.'); }
   });
 
   markExistingFavorites();
 
-  /* إيقاف/تشغيل الـ HERO عند المرور */
   document.addEventListener('DOMContentLoaded', function () {
     const el = document.getElementById('heroCarousel');
     if (!el) return;
-    el.addEventListener('mouseenter', () => {
-      const carousel = bootstrap.Carousel.getOrCreateInstance(el);
-      carousel.pause();
-    });
-    el.addEventListener('mouseleave', () => {
-      const carousel = bootstrap.Carousel.getOrCreateInstance(el);
-      carousel.cycle();
-    });
+    el.addEventListener('mouseenter', () => bootstrap.Carousel.getOrCreateInstance(el).pause());
+    el.addEventListener('mouseleave', () => bootstrap.Carousel.getOrCreateInstance(el).cycle());
   });
 
-  /* ============================================
-     ✅ شريط الموقع (مدينة/GPS/نصف قطر) — تعديلات السلوك
-     ============================================ */
+  /* =========================
+     ✅ شريط الموقع (مدينة/GPS)
+     - نفس منطق البحث: لغة الإدخال + إزالة التكرار داخل البلد
+     ========================= */
   (function homeLocBar(){
-    const form  = document.getElementById('homeLocForm');
     const cityEl = document.getElementById('homeCityInput');
     const latEl  = document.getElementById('homeLat');
     const lngEl  = document.getElementById('homeLng');
@@ -491,9 +352,6 @@
       const m = document.cookie.match(new RegExp('(?:^| )'+name+'=([^;]+)'));
       return m ? decodeURIComponent(m[1]) : "";
     }
-    function delCookie(name){
-      try{ document.cookie = name+"=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax"; }catch(_){}
-    }
 
     // تهيئة من الكوكي/الـURL
     try{
@@ -508,16 +366,15 @@
       if (rEl)    rEl.value    = rad;
     }catch(_){}
 
-    // 📍 GPS
+    // GPS
     gpsBtn?.addEventListener('click', function(){
       if (!navigator.geolocation){ alert('المتصفح لا يدعم تحديد الموقع.'); return; }
       const rad = (rEl && rEl.value) ? rEl.value : "25";
       navigator.geolocation.getCurrentPosition(function(pos){
         const lat = pos.coords.latitude, lng = pos.coords.longitude;
         setCookie('lat', lat); setCookie('lng', lng); setCookie('radius_km', rad);
-        setCookie('city', "");
+        setCookie('city', ""); if (cityEl) cityEl.value = "";
         if (latEl) latEl.value = lat; if (lngEl) lngEl.value = lng;
-        if (cityEl) cityEl.value = "";
 
         const u = new URL(location.href);
         u.searchParams.set('lat', lat);
@@ -525,101 +382,106 @@
         u.searchParams.set('radius_km', rad);
         u.searchParams.delete('city');
         location.href = u.toString();
-      }, function(){
-        alert('تعذر الحصول على موقعك.');
-      });
+      }, function(){ alert('تعذر الحصول على موقعك.'); });
     });
 
-    // حفظ المدينة يدويًا وإلغاء الإحداثيات
-    cityEl?.addEventListener('change', function(){
-      const c = (cityEl.value||"").trim();
-      setCookie('city', c);
-      setCookie('lat', ""); setCookie('lng', "");
-    });
+    // ====== اقتراحات مدينة (لغة الإدخال + إزالة التكرار داخل البلد) ======
+    const ALLOWED = new Set(['city','town','village','municipality']);
+    const FALLBACK = new Set(['state','province']);
+    function esc(s){ return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
 
-    // ✅ اقتراحات المدن (نختار منها ⇒ نفلتر فورًا)
-    let t=null;
+    function detectLang(q){
+      const s=(q||'').trim();
+      if (/[\u0600-\u06FF]/.test(s)) return 'ar';
+      const hasFr = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(s) || /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
+      if (hasFr) return 'fr';
+      if (/\b(new|city|county|state|united|kingdom|usa|us|uk)\b/i.test(s)) return 'en';
+      const prefs=(navigator.languages||[navigator.language||'en']).map(x=>x.slice(0,2).toLowerCase());
+      if (prefs.includes('fr')) return 'fr';
+      if (prefs.includes('en')) return 'en';
+      if (prefs.includes('ar')) return 'ar';
+      return 'en';
+    }
+    function normalizePlace(p){
+      const a=p.address||{};
+      const type=(p.type||'').toLowerCase();
+      const cc=(a.country_code||'').toLowerCase();
+      const city=a.city||a.town||a.village||a.municipality||a.state||a.province||(p.display_name||'').split(',')[0];
+      const prioMap={city:1,town:2,village:3,municipality:3,state:6,province:6,administrative:8,county:8,region:8};
+      const prio=prioMap[type]??9;
+      const country=a.country||'';
+      return { city, country, cc, label: city+(country?`, ${country}`:''), lat:p.lat, lon:p.lon, type, prio };
+    }
+    function dedupeByCountry(list){
+      const best=new Map();
+      for(const p of list){
+        const n=normalizePlace(p);
+        if(!n.city||!n.cc) continue;
+        const key=n.city.trim().toLowerCase()+'|'+n.cc;
+        const prev=best.get(key);
+        if(!prev || n.prio < prev.prio) best.set(key,n);
+      }
+      return Array.from(best.values());
+    }
+    async function queryCities(q){
+      const lang=detectLang(q);
+      const u='https://nominatim.openstreetmap.org/search'
+            +'?format=json&addressdetails=1&limit=30&namedetails=0&extratags=0'
+            +'&accept-language='+encodeURIComponent(lang)
+            +'&q='+encodeURIComponent(q);
+      const r=await fetch(u,{headers:{'Accept':'application/json'}});
+      if(!r.ok) return [];
+      let data=await r.json();
+      let filtered=data.filter(x=>ALLOWED.has((x.type||'').toLowerCase()));
+      if(!filtered.length) filtered=data.filter(x=>FALLBACK.has((x.type||'').toLowerCase()));
+      if(!filtered.length) filtered=data;
+      return dedupeByCountry(filtered).slice(0,6);
+    }
     function hideSugg(){ if(sugg){ sugg.style.display='none'; sugg.innerHTML=''; } }
     function showSugg(){ if(sugg){ sugg.style.display='block'; } }
 
+    let t=null, cache=[];
     cityEl?.addEventListener('input', function(){
       clearTimeout(t);
-      const q = this.value.trim();
-      if (q.length<2){ hideSugg(); return; }
-      t = setTimeout(async ()=>{
+      const q=this.value.trim();
+      if(q.length<2){ hideSugg(); return; }
+      t=setTimeout(async ()=>{
         try{
-          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&accept-language=ar`;
-          const r = await fetch(url, {headers:{'Accept':'application/json'}});
-          if(!r.ok){ hideSugg(); return; }
-          const data = await r.json();
-          if(!Array.isArray(data) || data.length===0){ hideSugg(); return; }
-          sugg.innerHTML = '';
-          data.slice(0,8).forEach(p=>{
-            const row = document.createElement('div');
-            row.className = 'py-2 px-2';
-            row.style.cursor = 'pointer';
-            row.textContent = p.display_name;
-            row.addEventListener('click', ()=>{
-              // حفظ الاختيار
-              cityEl.value = p.display_name;
-              setCookie('city', p.display_name);
-              setCookie('lat', p.lat);
-              setCookie('lng', p.lon);
-              if (latEl) latEl.value = p.lat;
-              if (lngEl) lngEl.value = p.lon;
-              hideSugg();
-
-              // إعادة تحميل مفلترة على المدينة المختارة
-              const u = new URL(location.href);
-              const rad = (rEl && rEl.value) ? rEl.value : "25";
-              u.searchParams.set('city', p.display_name);
-              u.searchParams.set('lat', p.lat);
-              u.searchParams.set('lng', p.lon);
-              u.searchParams.set('radius_km', rad);
-              location.href = u.toString();
-            });
-            sugg.appendChild(row);
-          });
+          cache=await queryCities(q);
+          if(!cache.length){ hideSugg(); return; }
+          sugg.innerHTML='<div class="px-2 pt-2 small text-muted">مدن/مناطق</div>'
+            + cache.map((p,i)=>(
+                `<div class="py-2 px-2" data-i="${i}" style="cursor:pointer">
+                   <i class="bi bi-geo-alt"></i>
+                   <span>${esc(p.label)}</span>
+                 </div>`
+              )).join('');
           showSugg();
         }catch(_){ hideSugg(); }
-      }, 300);
+      },250);
+    });
+    sugg?.addEventListener('click', (e)=>{
+      const row=e.target.closest('[data-i]'); if(!row) return;
+      const i=Number(row.getAttribute('data-i')||'-1'); const p=cache[i]; if(!p) return;
+      cityEl.value=p.label;
+      if(latEl) latEl.value=p.lat||''; if(lngEl) lngEl.value=p.lon||'';
+      setCookie('city', p.label); setCookie('lat', p.lat||''); setCookie('lng', p.lon||'');
+      const rad=(rEl&&rEl.value)?rEl.value:"25"; setCookie('radius_km', rad);
+      hideSugg();
+      const u=new URL(location.href);
+      u.searchParams.set('city', p.label);
+      u.searchParams.set('lat', p.lat||'');
+      u.searchParams.set('lng', p.lon||'');
+      u.searchParams.set('radius_km', rad);
+      location.href=u.toString();
     });
 
-    document.addEventListener('click', (e)=>{
-      if (!sugg) return;
-      if (!sugg.contains(e.target) && e.target !== cityEl){ hideSugg(); }
-    });
-
-    // ✅ سلوك زر "تطبيق"
-    form?.addEventListener('submit', function(e){
-      e.preventDefault();
-      const c   = (cityEl?.value || "").trim();
-      const lat = (latEl?.value || "").trim();
-      const lng = (lngEl?.value || "").trim();
-      const rad = (rEl?.value || "25").trim();
-
-      const u = new URL(location.href);
-      // نظّف أي قيم قديمة
-      ['city','lat','lng','radius_km'].forEach(k=>u.searchParams.delete(k));
-
-      if (lat && lng){
-        // فلترة مكانية (GPS)
-        setCookie('lat', lat); setCookie('lng', lng); setCookie('radius_km', rad); setCookie('city', "");
-        u.searchParams.set('lat', lat);
-        u.searchParams.set('lng', lng);
-        u.searchParams.set('radius_km', rad);
-      } else if (c){
-        // فلترة بالنص (مدينة فقط)
-        setCookie('city', c); delCookie('lat'); delCookie('lng'); setCookie('radius_km', rad);
-        u.searchParams.set('city', c);
-        u.searchParams.set('radius_km', rad);
-      } else {
-        // بدون أي مدخلات ⇒ اعرض كل العناصر (امسح الكوكي وبارامز)
-        delCookie('city'); delCookie('lat'); delCookie('lng'); delCookie('radius_km');
-        u.search = ""; // يزيل كل الاستعلامات
-      }
-
-      location.href = u.toString();
+    // حفظ المدينة يدويًا يُفرّغ الإحداثيات حتى لا يتعارضا
+    cityEl?.addEventListener('change', ()=>{
+      const c=(cityEl.value||'').trim();
+      setCookie('city', c);
+      setCookie('lat',''); setCookie('lng','');
+      if(latEl) latEl.value=''; if(lngEl) lngEl.value='';
     });
   })();
 </script>
