@@ -700,5 +700,54 @@
   }
 </style>
 
+<style id="sevor-mobile-lift">
+  @media (max-width: 768px){
+    /* مقدار الرفع فوق خط iPhone (يمكنك تغييره 2-12px) */
+    :root{ --tab-lift: 6px; } /* ← جرّب 6px أو 8px حسب ذوقك */
+
+    /* ارفع الشريط */
+    .mobile-tabbar{
+      bottom: calc(
+        max(env(safe-area-inset-bottom, 0px),
+            var(--safe-bottom, 0px),
+            var(--safe-bottom-legacy, 0px)) + var(--tab-lift)
+      ) !important;
+    }
+
+    /* غطّ الفراغ أسفل الشريط بالكامل باللون الأبيض */
+    body::after{
+      content:"";
+      position:fixed; left:0; right:0; bottom:0;
+      height: calc(
+        max(env(safe-area-inset-bottom, 0px),
+            var(--safe-bottom, 0px),
+            var(--safe-bottom-legacy, 0px)) + 10px + var(--tab-lift)
+      );
+      background:#fff; pointer-events:none;
+      z-index:2147483646;
+    }
+
+    /* عدّل مكان زر + ليرتفع بنفس المقدار */
+    .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
+      bottom: calc(
+        max(env(safe-area-inset-bottom, 0px),
+            var(--safe-bottom, 0px),
+            var(--safe-bottom-legacy, 0px)) + 92px + var(--tab-lift)
+      ) !important;
+      z-index:2147483648 !important;
+    }
+
+    /* مساحة سفلية للمحتوى كي لا يغطيه الشريط بعد الرفع */
+    .page, body{
+      padding-bottom: calc(
+        104px + var(--tab-lift) +
+        max(env(safe-area-inset-bottom, 0px),
+            var(--safe-bottom, 0px),
+            var(--safe-bottom-legacy, 0px))
+      ) !important;
+    }
+  }
+</style>
+
 </body>
 </html>
