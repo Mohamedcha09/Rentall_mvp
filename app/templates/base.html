@@ -3,7 +3,6 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8" />
-  <!-- تمكين الـ safe-area للـ iOS PWA -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>{{ title or "RentAll" }}</title>
 
@@ -21,41 +20,32 @@
     if ("serviceWorker" in navigator) { navigator.serviceWorker.register("/static/sw.js"); }
   </script>
 
-  <!-- متغيّرات عامة + ألوان -->
   <style>
     :root{
-      --text:#111827;
-      --muted:#6b7280;
-      --panel:#f8fafc;
-      --surface:#ffffff;
-      --border:rgba(0,0,0,.08);
+      --text:#111827; --muted:#6b7280; --panel:#f8fafc; --surface:#ffffff; --border:rgba(0,0,0,.08);
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --safe-bottom-legacy: constant(safe-area-inset-bottom, 0px);
     }
     body{ color:var(--text); background:#f4f6fb; }
     [data-theme="dark"]{
-      --text:#e5e7eb; --muted:#9ca3af;
-      --panel:#0b1220; --surface:#0f172a;
-      --border:rgba(255,255,255,.12);
+      --text:#e5e7eb; --muted:#9ca3af; --panel:#0b1220; --surface:#0f172a; --border:rgba(255,255,255,.12);
       background:#0b1020;
     }
 
-    /* ====== التوب بار ====== */
+    /* Topbar */
     .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; }
 
-    /* ====== شريط البحث (نصف عنصر / نصف مدينة) ====== */
+    /* Searchbar (عنصر + مدينة) */
     .searchbar{ position:relative; max-width:760px; margin-inline:auto; }
     .searchbar-wrap{
       display:flex; align-items:center; gap:10px;
       background:#fff; border:1px solid var(--border);
       border-radius:999px; padding:10px 14px;
-      box-shadow:0 6px 20px rgba(0,0,0,.06)
+      box-shadow:0 6px 20px rgba(0,0,0,.06);
     }
     body[data-theme="dark"] .searchbar-wrap{
-      background:rgba(255,255,255,.06);
-      border-color:var(--border);
-      backdrop-filter:saturate(120%) blur(6px);
+      background:rgba(255,255,255,.06); border-color:var(--border); backdrop-filter:saturate(120%) blur(6px);
     }
     .searchbar i.bi-search{font-size:18px; opacity:.7}
     .searchbar input{ border:0; outline:0; background:transparent; color:inherit; font-size:16px; }
@@ -63,7 +53,7 @@
     .searchbar .sep{ width:1px; height:24px; background:var(--border); }
     .searchbar .k{ opacity:.55; font-size:.9rem; white-space:nowrap }
 
-    /* اقتراحات المدن */
+    /* Panel اقتراحات المدينة */
     .city-suggest{
       position:absolute; inset-inline:14px; top: calc(100% + 8px);
       background: var(--surface); color: var(--text);
@@ -75,7 +65,7 @@
     .city-suggest .row:hover{ background: color-mix(in oklab, var(--text) 8%, transparent); }
     .city-suggest .sub{ opacity:.6; font-size:.85em }
 
-    /* ====== Typeahead (لعناصر/حسابات — كما هو) ====== */
+    /* Typeahead لديك (حسابات/عناصر) */
     .typeahead{
       position:absolute; inset-inline:0; top: calc(100% + .25rem);
       background: var(--surface); color: var(--text);
@@ -88,7 +78,7 @@
     .typeahead-item:hover, .typeahead-item.active{ background: rgba(124,92,255,.12); }
     .typeahead-item .k{ opacity:.65; font-size:.85em }
 
-    /* الجرس */
+    /* جرس الإشعارات */
     #notifOpen{ position: relative; }
     #notifOpen .notif-count{
       position:absolute; top:-6px; inset-inline-end:-6px;
@@ -100,42 +90,33 @@
       background:#d43aff; border-radius:50%; box-shadow:0 0 0 6px rgba(212,58,255,.18);
     }
 
-    /* سايدبار */
+    /* تخطيطات أخرى */
     .sidebar{ width:268px; flex:0 0 268px; border-inline-end:1px solid var(--border); background:var(--surface); }
     .sidebar[data-collapsed="true"]{ width:84px; flex-basis:84px; }
     @media (max-width:991.98px){ .sidebar{ display:none !important; } }
 
-    /* مساحة أسفل المحتوى حتى لا يُغطّيها الشريط السفلي */
     body{ padding-bottom: calc(76px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
 
-    /* الشريط السفلي الأبيض (موبايل) */
     @media (max-width: 768px){
       .mobile-tabbar{
-        position: fixed; inset-inline: 0; bottom: 0;
-        height: 64px; display: grid; grid-template-columns: repeat(5,1fr);
-        align-items: center;
+        position: fixed; inset-inline: 0; bottom: 0; height: 64px;
+        display: grid; grid-template-columns: repeat(5,1fr); align-items: center;
         background: #fff; border-top: 1px solid var(--border);
         padding: 6px 8px calc(6px + max(var(--safe-bottom), var(--safe-bottom-legacy)));
         z-index: 2147483647; border-radius: 16px 16px 0 0;
       }
-      .mobile-tabbar a{
-        text-decoration:none; color:#6b7280; font-size:.82rem;
-        display:flex; flex-direction:column; align-items:center; gap:4px;
-      }
+      .mobile-tabbar a{ text-decoration:none; color:#6b7280; font-size:.82rem; display:flex; flex-direction:column; align-items:center; gap:4px; }
       .mobile-tabbar .tab-img{ width:22px; height:22px; object-fit:contain; opacity:.7; transition:opacity .15s, transform .15s; }
       .mobile-tabbar a.is-active{ color:#111827; font-weight:700; }
       .mobile-tabbar a.is-active .tab-img{ opacity:1; transform:scale(1.06); }
-
       .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
         position: fixed !important; right: 16px !important;
         bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 86px) !important;
         z-index: 2147483647 !important;
       }
-
       .page{ padding-bottom: calc(100px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
     }
 
-    /* لوحة إشعارات جانبية */
     .notif-panel{
       position: fixed; top:0; inset-inline-end:-420px; width:360px; max-width:88vw; height:100vh;
       background: var(--surface); color: var(--text);
@@ -146,14 +127,10 @@
     .notif-panel.is-open{ inset-inline-end:0; }
     .notif-panel__header{ padding:12px 14px; border-bottom:1px solid var(--border); }
     .notif-panel__body{ padding:10px 14px; overflow:auto; }
-    .notif-row{
-      display:block; padding:10px 8px; text-decoration:none; color:inherit;
-      border-bottom:1px solid var(--border); border-radius:8px;
-    }
+    .notif-row{ display:block; padding:10px 8px; text-decoration:none; color:inherit; border-bottom:1px solid var(--border); border-radius:8px; }
     .notif-row:hover{ background: color-mix(in oklab, var(--surface) 92%, transparent); }
     .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2s; }
 
-    /* قائمة سريعة على الديسكتوب */
     @media (min-width:992px){
       .hamburger-btn{ display:inline-flex; align-items:center; justify-content:center; border:0; background:transparent; font-size:24px; padding:.35rem .6rem; border-radius:10px; cursor:pointer; }
       .hamburger-btn:hover{ background: color-mix(in oklab, var(--text,#111827) 8%, transparent); color:#fff; }
@@ -171,7 +148,7 @@
   {% block head %}{% endblock %}
 </head>
 <body>
-  <div id="page-wrapper"><!-- غلاف -->
+  <div id="page-wrapper">
 
   <!-- ===== Topbar ===== -->
   <header class="topbar">
@@ -181,7 +158,7 @@
       <button id="menuBtn" class="hamburger-btn d-none d-lg-inline" type="button"
               aria-haspopup="true" aria-expanded="false" aria-controls="quickMenu" title="القائمة">☰</button>
 
-      <!-- القائمة المنسدلة الصغيرة (ديسكتوب) -->
+      <!-- القائمة المنسدلة (ديسكتوب) -->
       <nav id="quickMenu" class="topmenu" hidden role="menu" aria-label="قائمة الموقع">
         <a role="menuitem" class="topmenu-item" href="/"><i class="bi bi-house"></i> الرئيسية</a>
         <a role="menuitem" class="topmenu-item" href="/items"><i class="bi bi-box-seam"></i> العناصر</a>
@@ -210,12 +187,12 @@
         <span class="visually-hidden">SEVOR</span>
       </a>
 
-      <!-- ======== شريط البحث (عنصر + مدينة) ======== -->
+      <!-- ===== شريط البحث (عنصر + مدينة) ===== -->
       <form class="search searchbar flex-grow-1" action="/search" method="get" role="search" dir="rtl">
         <div class="searchbar-wrap">
           <i class="bi bi-search"></i>
 
-          <!-- نصف 1: عنصر/غرض -->
+          <!-- نصف 1: العنصر -->
           <div class="field">
             <input class="form-control form-control-sm" type="search" name="q" id="qTop"
                    placeholder="ابحث عن عنصر (سيارة، كاميرا…)"
@@ -224,7 +201,7 @@
 
           <div class="sep" aria-hidden="true"></div>
 
-          <!-- نصف 2: مدينة/منطقة -->
+          <!-- نصف 2: المدينة -->
           <div class="field">
             <span class="k">المدينة</span>
             <input class="form-control form-control-sm" type="text" id="cityTop" name="city"
@@ -232,7 +209,7 @@
                    value="{{ request.query_params.get('city','') if request else '' }}">
           </div>
 
-          <!-- إحداثيات مخفية تُملأ عند اختيار اقتراح مدينة -->
+          <!-- إحداثيات تُملأ حين يختار المستخدم اقتراحًا -->
           <input type="hidden" id="latTop" name="lat" value="{{ request.query_params.get('lat','') if request else '' }}">
           <input type="hidden" id="lonTop" name="lon" value="{{ request.query_params.get('lon','') if request else '' }}">
         </div>
@@ -240,9 +217,8 @@
         <!-- قائمة اقتراحات المدن -->
         <div id="citySuggest" class="city-suggest" aria-label="اقتراحات المدن"></div>
       </form>
-      <!-- /searchbar -->
 
-      <!-- لوحة النوعية الحالية لديك (بحث الحسابات/العناصر) -->
+      <!-- typeahead لديك (بحث حسابات/عناصر) -->
       <div id="typeaheadPanel" class="typeahead d-none"></div>
 
       <div class="actions d-flex align-items-center gap-2 ms-auto">
@@ -318,7 +294,7 @@
     </div>
   </header>
 
-  <!-- تبويبات أعلى (موبايل فقط) -->
+  <!-- تبويبات أعلى (موبايل) -->
   <nav class="m-top-tabs d-lg-none px-3 pb-2" role="tablist" aria-label="أقسام عليا">
     <a href="/" class="m-tab {% if request and request.url.path == '/' %}is-active{% endif %}" role="tab"
        aria-selected="{{ 'true' if request and request.url.path == '/' else 'false' }}">Home</a>
@@ -372,7 +348,7 @@
     </a>
   {% endif %}
 
-  <!-- الشريط السفلي الأبيض (موبايل) -->
+  <!-- شريط سفلي (موبايل) -->
   <nav class="mobile-tabbar d-lg-none">
     <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
       <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home"><span>الرئيسية</span>
@@ -405,7 +381,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   {% block scripts %}{% endblock %}
 
-  <!-- Safe-area قياس ديناميكي + فالباك iOS -->
+  <!-- Safe-area -->
   <script>
   (function(){
     var root = document.documentElement;
@@ -413,16 +389,13 @@
       var safe = 0;
       try{
         var probe = document.createElement('div');
-        probe.style.cssText = 'position:fixed; bottom:0; left:0; right:0; ' +
-                              'height:constant(safe-area-inset-bottom); height:env(safe-area-inset-bottom); ' +
-                              'pointer-events:none; opacity:0;';
+        probe.style.cssText = 'position:fixed; bottom:0; left:0; right:0; height:constant(safe-area-inset-bottom); height:env(safe-area-inset-bottom); pointer-events:none; opacity:0;';
         document.body.appendChild(probe);
         safe = Math.max(0, probe.getBoundingClientRect().height || 0);
         probe.remove();
       }catch(_){}
       var isIOS = /iphone|ipod|ipad/i.test(navigator.userAgent);
-      var isStandalone = (window.navigator.standalone === true) ||
-                         (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+      var isStandalone = (window.navigator.standalone === true) || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
       if (isIOS && isStandalone && safe < 8) safe = 16;
       root.style.setProperty('--safe-bottom', safe + 'px');
     }
@@ -456,7 +429,7 @@
   })();
   </script>
 
-  <!-- Typeahead لعناصر/حسابات (كما هو عندك) -->
+  <!-- Typeahead لعناصر/حسابات (كما هو لديك) -->
   <script>
   (function initTypeahead(){
     if (window.__typeaheadInit) return; window.__typeaheadInit = true;
@@ -467,42 +440,30 @@
     if (!form || !input || !panel) return;
 
     var tm = null, activeIndex = -1;
-
     function hide(){ panel.classList.add('d-none'); panel.innerHTML = ""; activeIndex = -1; }
     function show(){ panel.classList.remove('d-none'); }
-    function esc(s){
-      return String(s||"").replace(/[&<>"']/g, function(c){
-        return {"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c];
-      });
-    }
+    function esc(s){ return String(s||"").replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c]; }); }
 
     function normalizePayload(data){
       var usersArr = (data && data.users) ? data.users : [];
       var itemsArr = (data && data.items) ? data.items : [];
-
       var users = usersArr.map(function(u){
         var name = u.name || ((u.first_name||"") + " " + (u.last_name||"")).trim();
         return { id:u.id, name:name, avatar:u.avatar||u.avatar_path||"", url:u.url||("/users/"+u.id) };
       });
-
       var items = itemsArr.map(function(it){
         return { id:it.id, title:it.title||"", image:it.image||it.image_path||"", city:it.city||"", url:it.url||("/items/"+it.id) };
       });
-
       return { users: users, items: items };
     }
 
     function render(data){
       var norm = normalizePayload(data);
       var users = norm.users, items = norm.items, html = [];
-
       if (users.length){
         html.push('<div class="typeahead-group">حسابات</div>');
-        users.forEach(function(u){
-          html.push('<div class="typeahead-item" data-url="'+u.url+'"><i class="bi bi-person-circle"></i><div class="flex-grow-1"><div>'+esc(u.name)+'</div><div class="k">الملف الشخصي</div></div></div>');
-        });
+        users.forEach(function(u){ html.push('<div class="typeahead-item" data-url="'+u.url+'"><i class="bi bi-person-circle"></i><div class="flex-grow-1"><div>'+esc(u.name)+'</div><div class="k">الملف الشخصي</div></div></div>'); });
       }
-
       if (items.length){
         html.push('<div class="typeahead-group">عناصر</div>');
         items.forEach(function(it){
@@ -510,7 +471,6 @@
           html.push('<div class="typeahead-item" data-url="'+it.url+'"><i class="bi bi-box-seam"></i><div class="flex-grow-1"><div>'+esc(it.title)+city+'</div><div class="k">تفاصيل العنصر</div></div></div>');
         });
       }
-
       if (!html.length){ hide(); return; }
       panel.innerHTML = html.join(""); show();
     }
@@ -550,7 +510,7 @@
   })();
   </script>
 
-  <!-- ===== Autocomplete للمدينة عبر OpenStreetMap (مفلتر: مدينة واحدة لكل بلد) ===== -->
+  <!-- ===== Autocomplete للمدينة: لغة الإدخال + إزالة التكرار داخل البلد ===== -->
   <script>
   (function cityAutocomplete(){
     if (window.__cityAutoInit) return; window.__cityAutoInit = true;
@@ -560,56 +520,76 @@
     const latEl = document.getElementById('latTop');
     const lonEl = document.getElementById('lonTop');
     const form  = input ? input.closest('form') : null;
-
     if(!input || !panel || !form) return;
 
     let tm = null, lastList = [], active = -1;
 
+    function detectLang(q){
+      if (/[\u0600-\u06FF]/.test(q)) return 'ar';
+      if (/[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(q)) return 'fr';
+      const page = (document.documentElement.getAttribute('lang')||'').slice(0,2).toLowerCase();
+      if (page === 'ar' || page === 'en' || page === 'fr') return page || 'en';
+      const nav = (navigator.language||'en').slice(0,2).toLowerCase();
+      return (nav==='ar'||nav==='fr') ? nav : 'en';
+    }
     function esc(s){ return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
     function hide(){ panel.style.display='none'; panel.innerHTML=""; lastList=[]; active=-1; }
     function show(){ panel.style.display='block'; }
 
+    const ALLOWED = new Set(['city','town','village','municipality']);
+    const FALLBACK = new Set(['state','province']);
     function normalizePlace(p){
       const a = p.address || {};
-      const city = a.city || a.town || a.village || a.state || (p.display_name||'').split(',')[0];
-      const country = a.country || '';
       const type = (p.type || '').toLowerCase();
-      const prioMap = {city:1, town:2, village:3, state:4, administrative:5, county:6, region:7};
-      const prio = prioMap[type] || 9;
-      return { city, country, label: city + (country ? ', ' + country : ''), lat:p.lat, lon:p.lon, prio };
+      const cc = (a.country_code || '').toLowerCase();
+      const city = a.city || a.town || a.village || a.municipality || a.state || a.province || (p.display_name||'').split(',')[0];
+      const prioMap = {city:1, town:2, village:3, municipality:3, state:6, province:6, administrative:8, county:8, region:8};
+      const prio = prioMap[type] ?? 9;
+      const country = a.country || '';
+      return { city, country, cc, label: city + (country ? ', ' + country : ''), lat:p.lat, lon:p.lon, type, prio };
     }
     function dedupeByCountry(list){
       const best = new Map();
-      list.forEach(raw=>{
+      for(const raw of list){
         const n = normalizePlace(raw);
-        if (!n.city || !n.country) return;
-        const key = (n.city + '|' + n.country).toLowerCase();
+        if (!n.city || !n.cc) continue;
+        const key = (n.city.trim().toLowerCase() + '|' + n.cc);
         const prev = best.get(key);
         if (!prev || n.prio < prev.prio) best.set(key, n);
-      });
+      }
       return Array.from(best.values());
     }
+
     async function query(q){
+      const lang = detectLang(q);
       const u = 'https://nominatim.openstreetmap.org/search'
               + '?format=json&addressdetails=1&namedetails=0&extratags=0'
-              + '&limit=20&accept-language=ar,en&q=' + encodeURIComponent(q);
+              + '&limit=30&accept-language=' + encodeURIComponent(lang)
+              + '&q=' + encodeURIComponent(q);
       const r = await fetch(u, { headers: { 'Accept': 'application/json' }});
       if(!r.ok) return [];
-      return await r.json();
+      const data = await r.json();
+
+      let filtered = data.filter(x => ALLOWED.has((x.type||'').toLowerCase()));
+      if (!filtered.length) filtered = data.filter(x => FALLBACK.has((x.type||'').toLowerCase()));
+      if (!filtered.length) filtered = data;
+
+      return dedupeByCountry(filtered);
     }
+
     function render(list){
-      const uniq = dedupeByCountry(list).slice(0, 6);
-      if(uniq.length === 0){ hide(); return; }
-      lastList = uniq;
+      if(!Array.isArray(list) || list.length===0){ hide(); return; }
+      lastList = list.slice(0, 6);
       const html = [
         '<div class="typeahead-group">مدن/مناطق</div>',
-        ...uniq.map((p,i)=>(
+        ...lastList.map((p,i)=>(
           '<div class="row" data-i="'+i+'"><i class="bi bi-geo-alt"></i>'
           + '<div><div>'+esc(p.label)+'</div><div class="sub">lat '+esc(p.lat)+' — lon '+esc(p.lon)+'</div></div></div>'
         ))
       ].join('');
       panel.innerHTML = html; show(); active = -1;
     }
+
     function pick(i){
       const p = lastList[i]; if(!p) return;
       input.value = p.label;
@@ -630,7 +610,7 @@
       pick(Number(row.getAttribute('data-i')||'-1'));
     });
 
-    // Enter/OK: يرسل البحث حتى لو كان التركيز على المدينة
+    // Enter/OK: إرسال النموذج حتى لو التركيز على المدينة
     input.addEventListener('keydown', function(e){
       if (panel.style.display !== 'block') {
         if (e.key === 'Enter') { e.preventDefault(); form.submit(); }
@@ -650,113 +630,19 @@
       rows.forEach(r=>r.classList.remove('active'));
       if (active>=0 && rows[active]){ rows[active].classList.add('active'); rows[active].scrollIntoView({block:'nearest'}); }
     }
-    document.addEventListener('click', function(e){ if (e.target === input || panel.contains(e.target)) return; hide(); });
 
-    // Enter أيضاً في خانة q
+    // Enter أيضًا من خانة q
     const qInput = document.getElementById('qTop');
     qInput?.addEventListener('keydown', function(e){
       if (e.key === 'Enter'){ e.preventDefault(); form.submit(); }
     });
+
+    // إغلاق عند النقر خارج
+    document.addEventListener('click', function(e){ if (e.target === input || panel.contains(e.target)) return; hide(); });
   })();
   </script>
 
-  <!-- نظام الإشعارات (بدون تغيير جوهري) -->
-  <script>
-  (function notifSystem(){
-    if (window.__notifInit) return; window.__notifInit = true;
-    const notifOpen  = document.getElementById('notifOpen');
-    const notifClose = document.getElementById('notifClose');
-    const panel      = document.getElementById('notifPanel');
-    const body       = document.getElementById('notifBody');
-    const scrim      = document.getElementById('scrim');
-
-    let countEl = notifOpen?.querySelector('.notif-count');
-    if (!countEl){ countEl = document.createElement('span'); countEl.className='notif-count'; countEl.style.display='none'; notifOpen?.appendChild(countEl); }
-    let pingEl = notifOpen?.querySelector('.notif-ping');
-    if (!pingEl){ pingEl = document.createElement('span'); pingEl.className='notif-ping'; pingEl.style.display='none'; notifOpen?.appendChild(pingEl); }
-
-    function setBell(n){
-      if (!countEl || !pingEl) return;
-      if (n>0){ countEl.textContent = (n>99 ? '99+' : String(n)); countEl.style.display = ''; pingEl.style.display = ''; }
-      else{ countEl.textContent = ''; countEl.style.display = 'none'; pingEl.style.display = 'none'; }
-    }
-
-    const FEEDS = ['/api/notifications/poll','/api/notifications','/notifications/json'];
-
-    async function fetchFirst(urls){
-      for (const u of urls){
-        try{
-          const r = await fetch(u, {credentials:'include'});
-          if (r.ok){ const data = await r.json(); return {data, url:u}; }
-        }catch(_){}
-      }
-      return {data:null, url:null};
-    }
-
-    function normalize(data){
-      const items = (data && (data.items || data.notifications || data)) || [];
-      const unread = Number(data && (data.unread ?? data.count ?? 0)) || 0;
-      return {
-        unread,
-        items: items.map(n => ({
-          title: n.title || n.subject || 'إشعار',
-          meta:  n.body  || n.text || n.message || '',
-          link:  n.link_url || n.url || '#',
-          kind:  n.kind || 'info',
-          is_read: !!(n.is_read),
-          created_at: n.created_at || n.time || ''
-        }))
-      };
-    }
-
-    function renderList(list){
-      body.innerHTML = '';
-      if (!list.items.length){
-        body.innerHTML = '<div class="small text-muted">لا توجد إشعارات جديدة.</div>';
-        return;
-      }
-      list.items.forEach(n=>{
-        const a = document.createElement('a');
-        a.className='notif-row'; a.href=n.link||'#';
-        a.innerHTML = '<div class="fw-bold">'+(n.title||'إشعار')+'</div>' + (n.meta ? '<div class="k small">'+n.meta+'</div>' : '');
-        body.appendChild(a);
-      });
-    }
-
-    let prevCount = -1;
-    function refreshUnread(){
-      fetch('/api/notifs/unread_count', {credentials:'include'})
-        .then(r=>r.ok?r.json():{count:0})
-        .then(d=>{
-          const n = parseInt(d.count||0);
-          setBell(n);
-          if (n !== prevCount){
-            prevCount = n;
-            document.dispatchEvent(new CustomEvent('unread:changed', {detail:{count:n}}));
-          }
-        }).catch(()=>{});
-    }
-    refreshUnread();
-    setInterval(refreshUnread, 30*1000);
-
-    function openPanel(){ panel?.classList.add('is-open'); scrim?.classList.add('is-show'); loadPanel(); }
-    function closePanel(){ panel?.classList.remove('is-open'); scrim?.classList.remove('is-show'); }
-    notifOpen?.addEventListener('click', openPanel);
-    notifClose?.addEventListener('click', closePanel);
-    scrim?.addEventListener('click', closePanel);
-
-    async function loadPanel(){
-      body.innerHTML = '<div class="small text-muted">جارِ التحميل…</div>';
-      const {data} = await fetchFirst(FEEDS);
-      const norm = normalize(data||{});
-      renderList(norm);
-      if (typeof norm.unread === 'number') setBell(norm.unread);
-      try{ await fetch('/api/notifications/mark_all_read', {method:'POST', credentials:'include'}); setTimeout(refreshUnread, 800); }catch(_){}
-    }
-  })();
-  </script>
-
-  <!-- كشف وضع التطبيق وإضافة html.pwa -->
+  <!-- كشف وضع التطبيق وإضافة كلاس html.pwa -->
   <script>
     (function(){
       var isStandalone = false;
@@ -767,5 +653,6 @@
       if (isStandalone) { document.documentElement.classList.add('pwa'); }
     })();
   </script>
+
 </body>
 </html>
