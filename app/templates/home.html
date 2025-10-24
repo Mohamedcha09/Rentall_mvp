@@ -71,7 +71,7 @@
       background:#fff; border-radius:18px 18px 0 0; box-shadow:0 8px 26px rgba(0,0,0,.06);
       margin-top:-80px; padding:16px 18px 20px;
     }
-    .home-shelves.container-xl{ max_width:1320px; }
+    .home-shelves.container-xl{ max-width:1320px; }
   }
   @media (max-width:576px){
     .hero-carousel .carousel-item{ aspect-ratio: 3 / 2 !important; }
@@ -390,7 +390,7 @@
 {% if all_items_list and all_items_list|length > 0 %}
   <div class="mixed-grid">
     {% for it in all_items_list %}
-      <a href="/items/{{ it.id }}" class="card spot text-decoration:none">
+      <a href="/items/{{ it.id }}" class="card spot text-decoration-none">
         <div class="spot-media">
           <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
           <div class="spot-overlay"></div>
@@ -580,58 +580,10 @@
       setCookie('lat', ""); setCookie('lng', "");
     });
 
-    // ✅ اقتراحات المدن من Nominatim — لغة الإدخال + أفضل نتيجة واحدة + إزالة التكرار داخل البلد
+    // ✅ اقتراحات المدن من Nominatim
     let t=null;
     function hideSugg(){ if(sugg){ sugg.style.display='none'; sugg.innerHTML=''; } }
     function showSugg(){ if(sugg){ sugg.style.display='block'; } }
-
-    function detectLang(q){
-      const s=(q||'').trim();
-      if (/[\u0600-\u06FF]/.test(s)) return 'ar';
-      const hasFr = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(s) || /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
-      if (hasFr) return 'fr';
-      return 'en';
-    }
-    const ALLOWED = new Set(['city','town','village','municipality']);
-    const FALLBACK = new Set(['state','province']);
-    function normalizePlace(p){
-      const a=p.address||{};
-      const type=(p.type||'').toLowerCase();
-      const cc=(a.country_code||'').toLowerCase();
-      const city=a.city||a.town||a.village||a.municipality||a.state||a.province||(p.display_name||'').split(',')[0];
-      const prioMap={city:1,town:2,village:3,municipality:3,state:6,province:6,administrative:8,county:8,region:8};
-      const prio=prioMap[type]??9;
-      const country=a.country||'';
-      return { city, country, cc, label: city+(country?`, ${country}`:''), lat:p.lat, lon:p.lon, type, prio };
-    }
-    function pickBestUnique(list){
-      const best=new Map();
-      for(const p of list){
-        const n=normalizePlace(p);
-        if(!n.city||!n.cc) continue;
-        const key=n.city.trim().toLowerCase()+'|'+n.cc;
-        const prev=best.get(key);
-        if(!prev || n.prio < prev.prio) best.set(key,n);
-      }
-      return Array.from(best.values());
-    }
-    async function queryBestCity(q){
-      const lang=detectLang(q);
-      const url = 'https://nominatim.openstreetmap.org/search'
-                 + '?format=json&addressdetails=1&limit=30&namedetails=0&extratags=0'
-                 + '&accept-language='+encodeURIComponent(lang)
-                 + '&q='+encodeURIComponent(q);
-      const r = await fetch(url, {headers:{'Accept':'application/json'}});
-      if(!r.ok) return null;
-      let data = await r.json();
-      let filtered = data.filter(x=>ALLOWED.has((x.type||'').toLowerCase()));
-      if(!filtered.length) filtered = data.filter(x=>FALLBACK.has((x.type||'').toLowerCase()));
-      if(!filtered.length) filtered = data;
-      const unique = pickBestUnique(filtered);
-      // اختر أفضل نتيجة عامة (أقل prio)
-      unique.sort((a,b)=>a.prio-b.prio);
-      return unique[0]||null;
-    }
 
     cityEl?.addEventListener('input', function(){
       clearTimeout(t);
@@ -639,82 +591,44 @@
       if (q.length<2){ hideSugg(); return; }
       t = setTimeout(async ()=>{
         try{
-          const best = await queryBestCity(q);
-          if(!best){ hideSugg(); return; }
-          sugg.innerHTML =
-            `<div class="py-2 px-2" data-best="1" style="cursor:pointer">
-               <i class="bi bi-geo-alt"></i>
-               <span>${best.label}</span>
-             </div>`;
-          sugg.dataset.lat = best.lat||'';
-          sugg.dataset.lon = best.lon||'';
+          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&accept-language=ar`;
+          const r = await fetch(url, {headers:{'Accept':'application/json'}});
+          if(!r.ok){ hideSugg(); return; }
+          const data = await r.json();
+          if(!Array.isArray(data) || data.length===0){ hideSugg(); return; }
+          sugg.innerHTML = '';
+          data.slice(0,8).forEach(p=>{
+            const row = document.createElement('div');
+            row.className = 'py-2 px-2';
+            row.style.cursor = 'pointer';
+            row.textContent = p.display_name;
+            row.addEventListener('click', ()=>{
+              cityEl.value = p.display_name;
+              setCookie('city', p.display_name);
+              setCookie('lat', p.lat);
+              setCookie('lng', p.lon);
+              if (latEl) latEl.value = p.lat;
+              if (lngEl) lngEl.value = p.lon;
+              hideSugg();
+
+              const u = new URL(location.href);
+              u.searchParams.set('city', p.display_name);
+              u.searchParams.set('lat', p.lat);
+              u.searchParams.set('lng', p.lon);
+              const rad = (rEl && rEl.value) ? rEl.value : "25";
+              u.searchParams.set('radius_km', rad);
+              location.href = u.toString();
+            });
+            sugg.appendChild(row);
+          });
           showSugg();
         }catch(_){ hideSugg(); }
-      }, 250);
-    });
-
-    // اختيار الاقتراح الوحيد
-    sugg?.addEventListener('click', ()=>{
-      const label = (sugg.querySelector('[data-best] span')?.textContent||'').trim();
-      const lat = sugg.dataset.lat||'';
-      const lon = sugg.dataset.lon||'';
-      if(!label) return;
-      if(cityEl) cityEl.value = label;
-      if(latEl)  latEl.value  = lat;
-      if(lngEl)  lngEl.value  = lon;
-
-      const rad = (rEl && rEl.value) ? rEl.value : "25";
-      setCookie('city', label);
-      setCookie('lat', lat);
-      setCookie('lng', lon);
-      setCookie('radius_km', rad);
-
-      hideSugg();
-
-      const u = new URL(location.href);
-      u.searchParams.set('city', label);
-      u.searchParams.set('lat', lat);
-      u.searchParams.set('lng', lon);
-      u.searchParams.set('radius_km', rad);
-      location.href = u.toString();
+      }, 300);
     });
 
     document.addEventListener('click', (e)=>{
       if (!sugg) return;
       if (!sugg.contains(e.target) && e.target !== cityEl){ hideSugg(); }
-    });
-
-    // ✅ سلوك زر "تطبيق" — يضمن الفلترة الصحيحة مثل /search
-    const form = document.getElementById('homeLocForm');
-    form?.addEventListener('submit', function(e){
-      e.preventDefault();
-      const c   = (cityEl?.value || "").trim();
-      const lat = (latEl?.value || "").trim();
-      const lng = (lngEl?.value || "").trim();
-      const rad = (rEl?.value || "25").trim();
-
-      const u = new URL(location.href);
-      // نظّف أي قيم سابقة
-      ['city','lat','lng','radius_km'].forEach(k=>u.searchParams.delete(k));
-
-      if (lat && lng){
-        setCookie('lat', lat); setCookie('lng', lng); setCookie('radius_km', rad); setCookie('city', c||"");
-        u.searchParams.set('lat', lat);
-        u.searchParams.set('lng', lng);
-        u.searchParams.set('radius_km', rad);
-        if (c) u.searchParams.set('city', c);
-      } else if (c){
-        // مدينة بدون GPS
-        setCookie('city', c); setCookie('radius_km', rad);
-        setCookie('lat', ""); setCookie('lng', "");
-        u.searchParams.set('city', c);
-        u.searchParams.set('radius_km', rad);
-      } else {
-        // لا شيء → اعرض كل العناصر
-        setCookie('city',""); setCookie('lat',""); setCookie('lng',""); setCookie('radius_km',"");
-        u.search = "";
-      }
-      location.href = u.toString();
     });
   })();
 </script>
