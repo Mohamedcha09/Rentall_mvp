@@ -1,11 +1,14 @@
 {% extends "base.html" %}
+
 {% block content %}
 <h2>إضافة عنصر جديد</h2>
-<form method="post" enctype="multipart/form-data">
+
+<form method="post" enctype="multipart/form-data" id="newItemForm">
   <div class="mb-3">
     <label class="form-label">العنوان</label>
     <input type="text" name="title" class="form-control" required>
   </div>
+
   <div class="mb-3">
     <label class="form-label">التصنيف</label>
     <select class="form-select" name="category" required>
@@ -14,41 +17,55 @@
       {% endfor %}
     </select>
   </div>
+
   <div class="mb-3">
     <label class="form-label">الوصف</label>
     <textarea name="description" class="form-control" rows="4"></textarea>
   </div>
+
   <div class="row">
-    <div class="col-md-6 mb-3">
+    <div class="col-md-6 mb-3 position-relative">
       <label class="form-label">المدينة</label>
-      <input type="text" name="city" class="form-control">
-      <!-- ✅ إضافات دون حذف السطر السابق: زر GPS + حقول مخفية -->
+
+      <!-- حقل المدينة -->
+      <input type="text" name="city" id="cityNew" class="form-control" placeholder="اكتب المدينة / المنطقة…" autocomplete="off">
+
+      <!-- قائمة الاقتراحات -->
+      <div id="cityNewSuggest" class="border rounded mt-1 bg-white shadow-sm"
+           style="display:none; position:absolute; z-index:1000; max-height:260px; overflow:auto; inset-inline:0;"></div>
+
+      <!-- GPS + نصف قطر (اختياري) -->
       <div class="d-flex gap-2 mt-2">
         <button type="button" id="useMyLocNew" class="btn btn-outline-secondary btn-sm">📍 استخدم موقعي</button>
-        <input type="number" id="radiusNew" class="form-control form-control-sm" style="max-width:110px" placeholder="km" value="25" min="1">
+        <input type="number" id="radiusNew" class="form-control form-control-sm" style="max-width:110px"
+               placeholder="km" value="25" min="1">
       </div>
-      <small class="text-muted">يمكنك تعبئة المدينة يدويًا، أو الضغط على زر الموقع لحفظ الإحداثيات للإعلان.</small>
+      <small class="text-muted d-block mt-1">اختر مدينة من القائمة أو استخدم موقعك. عند الاختيار يتم حفظ الإحداثيات تلقائيًا.</small>
+
+      <!-- إحداثيات مخفية -->
       <input type="hidden" name="latitude" id="latNew">
       <input type="hidden" name="longitude" id="lngNew">
-      <!-- /إضافات -->
     </div>
+
     <div class="col-md-6 mb-3">
       <label class="form-label">السعر/اليوم</label>
       <input type="number" name="price_per_day" class="form-control" value="0" min="0">
     </div>
   </div>
+
   <div class="mb-3">
     <label class="form-label">صورة</label>
     <input type="file" name="image" class="form-control" accept=".jpg,.jpeg,.png">
   </div>
+
   <button class="btn btn-primary">حفظ</button>
   <a href="/items" class="btn btn-outline-light">رجوع</a>
 </form>
 {% endblock %}
 
-{# ✅ نضيف سكربت داخل block scripts في أسفل الصفحة (base.html يملك هذا البلوك) #}
 {% block scripts %}
 <script>
+/* ============ زر GPS كما هو ============ */
 (function(){
   const btn = document.getElementById('useMyLocNew');
   const latEl = document.getElementById('latNew');
@@ -56,26 +73,152 @@
   const radEl = document.getElementById('radiusNew');
 
   function setCookie(name, value, days=180){
-    const d=new Date(); d.setTime(d.getTime()+days*864e5);
-    document.cookie = name+"="+encodeURIComponent(value||"")+";expires="+d.toUTCString()+";path=/;SameSite=Lax";
+    try{
+      const d=new Date(); d.setTime(d.getTime()+days*864e5);
+      document.cookie = name+"="+encodeURIComponent(value||"")+";expires="+d.toUTCString()+";path=/;SameSite=Lax";
+    }catch(_){}
   }
 
   btn?.addEventListener('click', function(){
-    if(!navigator.geolocation){
-      alert('المتصفح لا يدعم تحديد الموقع.');
-      return;
-    }
+    if(!navigator.geolocation){ alert('المتصفح لا يدعم تحديد الموقع.'); return; }
     const r = radEl?.value || "25";
     navigator.geolocation.getCurrentPosition(function(pos){
       const {latitude, longitude} = pos.coords;
       if (latEl) latEl.value = latitude;
       if (lngEl) lngEl.value = longitude;
-      // حفظ اختياري للـradius في الكوكي ليستفيد منه البحث لاحقًا
       setCookie('radius_km', r);
-      alert('تم حفظ موقعك (إحداثيات) لهذا الإعلان. يمكنك ترك المدينة كما هي أو تعديلها.');
-    }, function(){
-      alert('تعذر الحصول على موقعك. يمكنك إدخال المدينة فقط.');
-    });
+      alert('تم حفظ موقعك (إحداثيات) لهذا الإعلان.');
+    }, function(){ alert('تعذر الحصول على موقعك.'); });
+  });
+})();
+
+/* ============ Autocomplete للمدينة (مطابق للهيدر) ============ */
+(function cityNewAutocomplete(){
+  const input = document.getElementById('cityNew');
+  const panel = document.getElementById('cityNewSuggest');
+  const latEl = document.getElementById('latNew');
+  const lonEl = document.getElementById('lngNew');
+  const form  = document.getElementById('newItemForm');
+  if(!input || !panel) return;
+
+  let tm=null, lastList=[], active=-1;
+
+  // كشف اللغة بحسب ما يكتب المستخدم
+  function detectLang(q){
+    const s = (q||'').trim();
+    if (/[\u0600-\u06FF]/.test(s)) return 'ar';                       // عربي
+    const hasFrMarks = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(s);  // حروف فرنسية
+    const frWords = /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
+    const enWords = /\b(new|city|county|state|united|kingdom|usa|us|uk)\b/i.test(s);
+    if (hasFrMarks || frWords) return 'fr';
+    if (enWords) return 'en';
+    // افتراضي: تفضيلات المتصفح
+    const prefs = (navigator.languages || [navigator.language||'en']).map(x=>x.slice(0,2).toLowerCase());
+    if (prefs.includes('fr')) return 'fr';
+    if (prefs.includes('en')) return 'en';
+    if (prefs.includes('ar')) return 'ar';
+    return 'en';
+  }
+
+  function esc(s){ return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
+  function hide(){ panel.style.display='none'; panel.innerHTML=''; active=-1; lastList=[]; }
+  function show(){ panel.style.display='block'; }
+
+  const ALLOWED = new Set(['city','town','village','municipality']);
+  const FALLBACK = new Set(['state','province']);
+  function normalizePlace(p){
+    const a = p.address || {};
+    const type = (p.type || '').toLowerCase();
+    const cc = (a.country_code || '').toLowerCase();
+    const city = a.city || a.town || a.village || a.municipality || a.state || a.province || (p.display_name||'').split(',')[0];
+    const prioMap = {city:1, town:2, village:3, municipality:3, state:6, province:6, administrative:8, county:8, region:8};
+    const prio = prioMap[type] ?? 9;
+    const country = a.country || '';
+    return { city, country, cc, label: city + (country ? ', ' + country : ''), lat:p.lat, lon:p.lon, type, prio };
+  }
+  function dedupeByCountry(list){
+    const best = new Map();
+    for(const raw of list){
+      const n = normalizePlace(raw);
+      if (!n.city || !n.cc) continue;
+      const key = n.city.trim().toLowerCase() + '|' + n.cc;
+      const prev = best.get(key);
+      if (!prev || n.prio < prev.prio) best.set(key, n);
+    }
+    return Array.from(best.values());
+  }
+
+  async function query(q){
+    const lang = detectLang(q);
+    const url = 'https://nominatim.openstreetmap.org/search'
+              + '?format=json&addressdetails=1&limit=30&accept-language=' + encodeURIComponent(lang)
+              + '&q=' + encodeURIComponent(q);
+    const r = await fetch(url, {headers:{'Accept':'application/json'}});
+    if(!r.ok) return [];
+    const data = await r.json();
+    let filtered = data.filter(x => ALLOWED.has((x.type||'').toLowerCase()));
+    if (!filtered.length) filtered = data.filter(x => FALLBACK.has((x.type||'').toLowerCase()));
+    if (!filtered.length) filtered = data;
+    return dedupeByCountry(filtered);
+  }
+
+  function render(list){
+    if(!Array.isArray(list) || !list.length){ hide(); return; }
+    lastList = list.slice(0,8);
+    const html = [
+      '<div class="px-2 py-1 small text-muted border-bottom">مدن/مناطق</div>',
+      ...lastList.map((p,i)=>(
+        '<div class="py-2 px-2 d-flex gap-2 align-items-start city-row" data-i="'+i+'" style="cursor:pointer">'
+        + '<i class="bi bi-geo-alt"></i>'
+        + '<div><div>'+esc(p.label)+'</div><div class="text-muted small">lat '+esc(p.lat)+' — lon '+esc(p.lon)+'</div></div>'
+        + '</div>'
+      ))
+    ].join('');
+    panel.innerHTML = html; show(); active=-1;
+  }
+
+  function pick(i){
+    const p = lastList[i]; if(!p) return;
+    input.value = p.label;
+    if (latEl) latEl.value = p.lat || '';
+    if (lonEl) lonEl.value = p.lon || '';
+    hide();
+  }
+
+  input.addEventListener('input', function(){
+    clearTimeout(tm);
+    const q = input.value.trim();
+    latEl.value = ''; lonEl.value = '';
+    if (q.length < 2){ hide(); return; }
+    tm = setTimeout(async ()=>{ try{ const list = await query(q); render(list); }catch(_){ hide(); } }, 220);
+  });
+
+  panel.addEventListener('click', function(e){
+    const row = e.target.closest('.city-row'); if(!row) return;
+    pick(Number(row.getAttribute('data-i')||'-1'));
+  });
+
+  // أسهم + Enter
+  input.addEventListener('keydown', function(e){
+    if (panel.style.display !== 'block') return;
+    const rows = Array.prototype.slice.call(panel.querySelectorAll('.city-row'));
+    if (!rows.length) return;
+    if (e.key === 'ArrowDown'){ e.preventDefault(); active = (active+1) % rows.length; markActive(rows); }
+    else if (e.key === 'ArrowUp'){ e.preventDefault(); active = (active-1+rows.length) % rows.length; markActive(rows); }
+    else if (e.key === 'Enter'){ e.preventDefault(); if (active>=0) rows[active].click(); }
+    else if (e.key === 'Escape'){ hide(); }
+  });
+  function markActive(rows){
+    rows.forEach(r=>r.classList.remove('bg-light'));
+    if (active>=0 && rows[active]){ rows[active].classList.add('bg-light'); rows[active].scrollIntoView({block:'nearest'}); }
+  }
+
+  // إغلاق عند النقر خارج
+  document.addEventListener('click', (e)=>{ if (!panel.contains(e.target) && e.target !== input){ hide(); } });
+
+  // تأكيد قبل الإرسال: لو المستخدم كتب يدويًا بدون اختيار، نترك city كما هي (lat/lon قد تكون فارغة)
+  form?.addEventListener('submit', function(){
+    // لا شيء إضافي — السيرفر سيستقبل city + (lat/lon إن وُجدت)
   });
 })();
 </script>
