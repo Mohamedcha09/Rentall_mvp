@@ -56,6 +56,7 @@ from .routes_debug_cloudinary import router as debug_cloudinary_router
 # [مضاف] راوتر المفضّلات
 from .routes_favorites import router as favorites_router
 from .routers.me import router as me_router
+from .routes_home import router as home_router
 
 # ✅ [مضاف] راوتر إدارة الودائع (DM / قرارات الوديعة)
 from .routes_deposits import router as deposits_router
@@ -266,6 +267,7 @@ app.include_router(split_test_router)
 app.include_router(payout_connect_router)
 # مع بقية include_router(...)
 app.include_router(debug_cloudinary_router)
+app.include_router(home_router)
 
 app.include_router(webhooks_router)
 app.include_router(disputes_router)
