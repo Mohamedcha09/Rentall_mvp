@@ -57,12 +57,17 @@ def api_search(
     city: str | None = Query(None),
     lat: float | None = Query(None),
     lng: float | None = Query(None),
+    lon: float | None = Query(None),          # ✅ جديد: قبول lon أيضًا من الـURL
     radius_km: float | None = Query(25.0),
     db: Session = Depends(get_db),
 ):
     """
     بحث حيّ (autocomplete) يدعم الفلترة بالمدينة أو GPS.
     """
+    # ✅ لو جاء lon بدون lng ننسخه
+    if lng is None and lon is not None:
+        lng = lon
+
     q = (q or "").strip()
     if len(q) < 2:
         return {"users": [], "items": []}
@@ -127,6 +132,7 @@ def search_page(
     city: str | None = Query(None),
     lat: float | None = Query(None),
     lng: float | None = Query(None),
+    lon: float | None = Query(None),          # ✅ جديد: قبول lon أيضًا
     radius_km: float | None = Query(25.0),
     db: Session = Depends(get_db)
 ):
@@ -134,18 +140,29 @@ def search_page(
     صفحة نتائج البحث الرئيسية (تُعرض فيها كل النتائج).
     تدعم الفلترة بالمدينة أو GPS تمامًا مثل الـ API.
     """
+    # ✅ ضمّن lon في lng لو كانت lng مفقودة
+    if lng is None and lon is not None:
+        lng = lon
+
     q = (q or "").strip()
     users = []
     items = []
 
-    # ✅ قراءة القيم من الكوكي إذا لم تُرسل في الـURL
+    # ✅ قراءة القيم من الكوكي إذا لم تُرسل في الـURL (الاسمين lng/lon)
     try:
         if not city:
             city = request.cookies.get("city")
-        if lat is None and (request.cookies.get("lat") not in (None, "")):
-            lat = float(request.cookies.get("lat"))
-        if lng is None and (request.cookies.get("lng") not in (None, "")):
-            lng = float(request.cookies.get("lng"))
+
+        if lat is None:
+            c_lat = request.cookies.get("lat")
+            if c_lat not in (None, ""):
+                lat = float(c_lat)
+
+        if lng is None:
+            c_lng = request.cookies.get("lng") or request.cookies.get("lon")
+            if c_lng not in (None, ""):
+                lng = float(c_lng)
+
         if not radius_km:
             ck = request.cookies.get("radius_km")
             radius_km = float(ck) if ck else 25.0
@@ -215,7 +232,7 @@ def search_page(
             "session_user": request.session.get("user"),
             "selected_city": city or "",
             "lat": lat,
-            "lng": lng,
+            "lng": lng,               # ✅ تأكد من تمرير lng بعد الدمج
             "radius_km": radius_km
         },
     )

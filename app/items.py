@@ -166,7 +166,9 @@ def item_new_post(
     description: str = Form(""),
     city: str = Form(""),
     price_per_day: int = Form(0),
-    image: UploadFile = File(None)
+    image: UploadFile = File(None),
+    latitude: float | None = Form(None),   # ✅ جديد: نستقبل latitude من النموذج
+    longitude: float | None = Form(None),  # ✅ جديد: نستقبل longitude من النموذج
 ):
     if not require_approved(request):
         return RedirectResponse(url="/login", status_code=303)
@@ -232,7 +234,9 @@ def item_new_post(
         price_per_day=price_per_day,
         image_path=image_path_for_db,   # قد يكون Cloudinary URL أو /uploads/items/xxx
         is_active="yes",
-        category=category
+        category=category,
+        latitude=latitude,    # ✅ جديد: نخزّن الإحداثيات إن وُجدت
+        longitude=longitude,  # ✅ جديد: نخزّن الإحداثيات إن وُجدت
     )
     db.add(it)
     db.commit()

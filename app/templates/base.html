@@ -125,7 +125,7 @@
     .notif-panel__body{ padding:10px 14px; overflow:auto; }
     .notif-row{ display:block; padding:10px 8px; text-decoration:none; color:inherit; border-bottom:1px solid var(--border); border-radius:8px; }
     .notif-row:hover{ background: color-mix(in oklab, var(--surface) 92%, transparent); }
-    .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2س; }
+    .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2s; }
 
     @media (min-width:992px){
       .hamburger-btn{ display:inline-flex; align-items:center; justify-content:center; border:0; background:transparent; font-size:24px; padding:.35rem .6rem; border-radius:10px; cursor:pointer; }
@@ -207,9 +207,8 @@
 
           <!-- إحداثيات تُملأ عند الاختيار -->
           <input type="hidden" id="latTop" name="lat" value="{{ request.query_params.get('lat','') if request else '' }}">
-          <input type="hidden" id="lonTop" name="lon" value="{{ request.query_params.get('lon','') if request else '' }}">
-          <!-- ✅ جديد: نصف القطر ليعمل البحث الجغرافي -->
-          <input type="hidden" id="radiusTop" name="radius_km" value="{{ request.query_params.get('radius_km','25') if request else '25' }}">
+          <!-- ✅ تعديل: نستخدم lng (ليس lon) -->
+          <input type="hidden" id="lngTop" name="lng" value="{{ request.query_params.get('lng','') if request else '' }}">
         </div>
 
         <!-- قائمة اقتراحات المدن -->
@@ -440,7 +439,6 @@
     var tm = null, activeIndex = -1;
     function hide(){ panel.classList.add('d-none'); panel.innerHTML = ""; activeIndex = -1; }
     function show(){ panel.classList.remove('d-none'); }
-
     function esc(s){ return String(s||"").replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c]; }); }
 
     function normalizePayload(data){
@@ -509,7 +507,7 @@
   })();
   </script>
 
-  <!-- ===== Autocomplete للمدينة: لغة الإدخال + إزالة التكرار داخل البلد ===== -->
+  <!-- ===== Autocomplete للمدينة: لغة الإدخال + إزالة التكرار داخل البلد + استخدام lng ===== -->
   <script>
   (function cityAutocomplete(){
     if (window.__cityAutoInit) return; window.__cityAutoInit = true;
@@ -517,13 +515,12 @@
     const input = document.getElementById('cityTop');
     const panel = document.getElementById('citySuggest');
     const latEl = document.getElementById('latTop');
-    const lonEl = document.getElementById('lonTop');
+    const lngEl = document.getElementById('lngTop');   // ✅ بدل lonTop
     const form  = input ? input.closest('form') : null;
     if(!input || !panel || !form) return;
 
     let tm = null, lastList = [], active = -1;
 
-    /* === كشف لغة الإدخال === */
     function detectLang(q){
       const s = (q||'').trim();
       if (/[\u0600-\u06FF]/.test(s)) return 'ar'; // عربي
@@ -591,7 +588,7 @@
         '<div class="typeahead-group">مدن/مناطق</div>',
         ...lastList.map((p,i)=>(
           '<div class="row" data-i="'+i+'"><i class="bi bi-geo-alt"></i>'
-          + '<div><div>'+esc(p.label)+'</div><div class="sub">lat '+esc(p.lat)+' — lon '+esc(p.lon)+'</div></div></div>'
+          + '<div><div>'+esc(p.label)+'</div><div class="sub">lat '+esc(p.lat)+' — lng '+esc(p.lon)+'</div></div></div>'
         ))
       ].join('');
       panel.innerHTML = html; show(); active = -1;
@@ -601,25 +598,20 @@
       const p = lastList[i]; if(!p) return;
       input.value = p.label;
       if (latEl) latEl.value = p.lat || '';
-      if (lonEl) lonEl.value = p.lon || '';
-
-      /* ✅ املأ نصف القطر تلقائيًا (كوكي إن وجد وإلا 25) */
+      if (lngEl) lngEl.value = p.lon || '';
       try{
-        const rEl = document.getElementById('radiusTop');
-        if (rEl){
-          const m = document.cookie.match(/(?:^| )radius_km=([^;]+)/);
-          const fromCookie = m ? decodeURIComponent(m[1]) : '';
-          rEl.value = (fromCookie && Number(fromCookie) > 0) ? fromCookie : '25';
-        }
+        document.cookie = "city="+encodeURIComponent(p.label)+";path=/;SameSite=Lax";
+        document.cookie = "lat="+(p.lat||"")+";path=/;SameSite=Lax";
+        document.cookie = "lng="+(p.lon||"")+";path=/;SameSite=Lax";   // ✅ كوكي باسم lng
       }catch(_){}
-
       hide();
     }
 
     input.addEventListener('input', function(){
       clearTimeout(tm);
       const q = input.value.trim();
-      latEl.value = ''; lonEl.value = '';
+      if (latEl) latEl.value = '';
+      if (lngEl) lngEl.value = '';
       if (q.length < 2){ hide(); return; }
       tm = setTimeout(async ()=>{ try{ const list = await query(q); render(list); }catch(_){ hide(); } }, 220);
     });
@@ -685,7 +677,6 @@
       left: 0;
       right: 0;
       bottom: 0;
-      /* ✅ زدنا 9px لتغطية آخر فراغ */
       height: calc(
         max(
           env(safe-area-inset-bottom, 0px),
@@ -696,55 +687,6 @@
       background: #fff;
       z-index: 2147483646;
       pointer-events: none;
-    }
-  }
-</style>
-
-<style id="sevor-mobile-lift">
-  @media (max-width: 768px){
-    /* مقدار الرفع فوق خط iPhone (يمكنك تغييره 2-12px) */
-    :root{ --tab-lift: 6px; } /* ← جرّب 6px أو 8px حسب ذوقك */
-
-    /* ارفع الشريط */
-    .mobile-tabbar{
-      bottom: calc(
-        max(env(safe-area-inset-bottom, 0px),
-            var(--safe-bottom, 0px),
-            var(--safe-bottom-legacy, 0px)) + var(--tab-lift)
-      ) !important;
-    }
-
-    /* غطّ الفراغ أسفل الشريط بالكامل باللون الأبيض */
-    body::after{
-      content:"";
-      position:fixed; left:0; right:0; bottom:0;
-      height: calc(
-        max(env(safe-area-inset-bottom, 0px),
-            var(--safe-bottom, 0px),
-            var(--safe-bottom-legacy, 0px)) + 10px + var(--tab-lift)
-      );
-      background:#fff; pointer-events:none;
-      z-index:2147483646;
-    }
-
-    /* عدّل مكان زر + ليرتفع بنفس المقدار */
-    .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
-      bottom: calc(
-        max(env(safe-area-inset-bottom, 0px),
-            var(--safe-bottom, 0px),
-            var(--safe-bottom-legacy, 0px)) + 92px + var(--tab-lift)
-      ) !important;
-      z-index:2147483648 !important;
-    }
-
-    /* مساحة سفلية للمحتوى كي لا يغطيه الشريط بعد الرفع */
-    .page, body{
-      padding-bottom: calc(
-        104px + var(--tab-lift) +
-        max(env(safe-area-inset-bottom, 0px),
-            var(--safe-bottom, 0px),
-            var(--safe-bottom-legacy, 0px))
-      ) !important;
     }
   }
 </style>
