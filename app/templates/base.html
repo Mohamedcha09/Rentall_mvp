@@ -16,9 +16,7 @@
   <!-- PWA -->
   <link rel="manifest" href="{{ url_for('static', path='manifest.json') }}">
   <meta name="theme-color" content="#6C63FF">
-  <script>
-    if ("serviceWorker" in navigator) { navigator.serviceWorker.register("/static/sw.js"); }
-  </script>
+  <script> if ("serviceWorker" in navigator) { navigator.serviceWorker.register("/static/sw.js"); } </script>
 
   <style>
     :root{
@@ -78,19 +76,17 @@
     .typeahead-item:hover, .typeahead-item.active{ background: rgba(124,92,255,.12); }
     .typeahead-item .k{ opacity:.65; font-size:.85em }
 
-    /* جرس الإشعارات */
+    /* جرس */
     #notifOpen{ position: relative; }
     #notifOpen .notif-count{
-      position:absolute; top:-6px; inset-inline-end:-6px;
-      background:#d43aff; color:#fff; font-size:12px; line-height:18px;
-      min-width:18px; height:18px; padding:0 4px; border-radius:10px; text-align:center;
+      position:absolute; top:-6px; inset-inline-end:-6px; background:#d43aff; color:#fff;
+      font-size:12px; line-height:18px; min-width:18px; height:18px; padding:0 4px; border-radius:10px; text-align:center;
     }
     #notifOpen .notif-ping{
-      position:absolute; top:-2px; inset-inline-end:-2px; width:8px; height:8px;
-      background:#d43aff; border-radius:50%; box-shadow:0 0 0 6px rgba(212,58,255,.18);
+      position:absolute; top:-2px; inset-inline-end:-2px; width:8px; height:8px; background:#d43aff; border-radius:50%;
+      box-shadow:0 0 0 6px rgba(212,58,255,.18);
     }
 
-    /* تخطيطات أخرى */
     .sidebar{ width:268px; flex:0 0 268px; border-inline-end:1px solid var(--border); background:var(--surface); }
     .sidebar[data-collapsed="true"]{ width:84px; flex-basis:84px; }
     @media (max-width:991.98px){ .sidebar{ display:none !important; } }
@@ -209,7 +205,7 @@
                    value="{{ request.query_params.get('city','') if request else '' }}">
           </div>
 
-          <!-- إحداثيات تُملأ حين يختار المستخدم اقتراحًا -->
+          <!-- إحداثيات تُملأ عند الاختيار -->
           <input type="hidden" id="latTop" name="lat" value="{{ request.query_params.get('lat','') if request else '' }}">
           <input type="hidden" id="lonTop" name="lon" value="{{ request.query_params.get('lon','') if request else '' }}">
         </div>
@@ -320,7 +316,7 @@
   <!-- ===== Page ===== -->
   <main class="page container-fluid main-flex-fill min-vh-100">
     {% if session_user and session_user.status == 'approved' and not session_user.payouts_enabled %}
-      <div class="stripe-callout alert alert-warning d-flex justify-content-between align-items-center mb-3">
+      <div class="stripe-callout alert alert-warning d-flex justify-content-between align-items:center mb-3">
         <div>💸 لبدء استلام الأرباح، اربط <strong>Stripe Connect</strong>.</div>
         <a class="btn btn-sm btn-primary" href="/payout/settings">ربط الآن</a>
       </div>
@@ -524,14 +520,38 @@
 
     let tm = null, lastList = [], active = -1;
 
+    /* === كشف لغة الإدخال ===
+       - عربي: وجود حروف عربية
+       - فرنسي: وجود علامات فرنسية OR كلمات فرنسية شائعة
+       - إنجليزي: وجود كلمات إنجليزية شائعة
+       - وإلا: نختار من تفضيلات المتصفح (نُفضّل fr ثم en ثم ar)
+    */
     function detectLang(q){
-      if (/[\u0600-\u06FF]/.test(q)) return 'ar';
-      if (/[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(q)) return 'fr';
-      const page = (document.documentElement.getAttribute('lang')||'').slice(0,2).toLowerCase();
-      if (page === 'ar' || page === 'en' || page === 'fr') return page || 'en';
-      const nav = (navigator.language||'en').slice(0,2).toLowerCase();
-      return (nav==='ar'||nav==='fr') ? nav : 'en';
+      const s = (q||'').trim();
+
+      if (/[\u0600-\u06FF]/.test(s)) return 'ar'; // عربي
+
+      // مؤشرات فرنسية
+      const hasFrMarks = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(s);
+      const frWords = /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
+
+      // مؤشرات إنجليزية
+      const enWords = /\b(new|city|county|state|united|kingdom|usa|us|uk)\b/i.test(s);
+
+      if (hasFrMarks || frWords) return 'fr';
+      if (enWords) return 'en';
+
+      // إذا كانت أحرف لاتينية عادية بدون مؤشرات:
+      // نختار وفق تفضيلات المتصفح بين fr ثم en ثم ar
+      const prefs = (navigator.languages || [navigator.language || 'en']).map(x=>x.slice(0,2).toLowerCase());
+      if (prefs.includes('fr')) return 'fr';
+      if (prefs.includes('en')) return 'en';
+      if (prefs.includes('ar')) return 'ar';
+
+      // افتراضي آمن
+      return 'en';
     }
+
     function esc(s){ return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
     function hide(){ panel.style.display='none'; panel.innerHTML=""; lastList=[]; active=-1; }
     function show(){ panel.style.display='block'; }
