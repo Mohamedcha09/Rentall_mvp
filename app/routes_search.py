@@ -25,6 +25,22 @@ def _clean_name(first: str, last: str, uid: int) -> str:
     return full or f"User {uid}"
 
 
+def _to_float(v, default=None):
+    """
+    يحوّل القيمة إلى float إذا كانت صالحة وغير فارغة.
+    يعيد default لو فشل التحويل أو كانت القيمة None/"".
+    """
+    if v is None:
+        return default
+    try:
+        s = str(v).strip()
+        if s == "":
+            return default
+        return float(s)
+    except Exception:
+        return default
+
+
 # ✅ دالة فلترة ذكية للمدينة أو GPS (أولوية GPS)
 def _apply_city_or_gps_filter(qs, city: str | None, lat: float | None, lng: float | None, radius_km: float | None):
     """
@@ -55,18 +71,24 @@ def _apply_city_or_gps_filter(qs, city: str | None, lat: float | None, lng: floa
 def api_search(
     q: str = "",
     city: str | None = Query(None),
-    lat: float | None = Query(None),
-    lng: float | None = Query(None),
-    lon: float | None = Query(None),          # ✅ جديد: قبول lon أيضًا من الـURL
-    radius_km: float | None = Query(25.0),
+    # 🔧 استلام lat/lng/lon/radius كنصوص ثم تحويلها يدويًا لتفادي خطأ التحويل عندما تكون ""
+    lat: str | None = Query(None),
+    lng: str | None = Query(None),
+    lon: str | None = Query(None),          # قبول lon أيضًا من الـURL
+    radius_km: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
     """
     بحث حيّ (autocomplete) يدعم الفلترة بالمدينة أو GPS.
     """
-    # ✅ لو جاء lon بدون lng ننسخه
-    if lng is None and lon is not None:
+    # ✅ دمج lon داخل lng إن وُجد
+    if (lng is None or str(lng).strip() == "") and lon not in (None, ""):
         lng = lon
+
+    # ✅ تحويل القيم إلى float بأمان
+    lat_f = _to_float(lat)
+    lng_f = _to_float(lng)
+    radius_f = _to_float(radius_km, default=25.0)
 
     q = (q or "").strip()
     if len(q) < 2:
@@ -108,7 +130,7 @@ def api_search(
         )
     )
 
-    items_q = _apply_city_or_gps_filter(items_q, city, lat, lng, radius_km)
+    items_q = _apply_city_or_gps_filter(items_q, city, lat_f, lng_f, radius_f)
     items_rows = items_q.limit(8).all()
 
     items = [
@@ -130,10 +152,10 @@ def search_page(
     request: Request,
     q: str = "",
     city: str | None = Query(None),
-    lat: float | None = Query(None),
-    lng: float | None = Query(None),
-    lon: float | None = Query(None),          # ✅ جديد: قبول lon أيضًا
-    radius_km: float | None = Query(25.0),
+    lat: str | None = Query(None),
+    lng: str | None = Query(None),
+    lon: str | None = Query(None),          # ✅ قبول lon أيضًا
+    radius_km: str | None = Query(None),
     db: Session = Depends(get_db)
 ):
     """
@@ -141,7 +163,7 @@ def search_page(
     تدعم الفلترة بالمدينة أو GPS تمامًا مثل الـ API.
     """
     # ✅ ضمّن lon في lng لو كانت lng مفقودة
-    if lng is None and lon is not None:
+    if (lng is None or str(lng).strip() == "") and lon not in (None, ""):
         lng = lon
 
     q = (q or "").strip()
@@ -153,21 +175,26 @@ def search_page(
         if not city:
             city = request.cookies.get("city")
 
-        if lat is None:
+        if lat in (None, ""):
             c_lat = request.cookies.get("lat")
             if c_lat not in (None, ""):
-                lat = float(c_lat)
+                lat = c_lat
 
-        if lng is None:
+        if lng in (None, ""):
             c_lng = request.cookies.get("lng") or request.cookies.get("lon")
             if c_lng not in (None, ""):
-                lng = float(c_lng)
+                lng = c_lng
 
-        if not radius_km:
+        if radius_km in (None, ""):
             ck = request.cookies.get("radius_km")
-            radius_km = float(ck) if ck else 25.0
+            radius_km = ck if ck else None
     except Exception:
         pass
+
+    # ✅ تحويل نهائي إلى float مع افتراض 25 كم كافتراضي
+    lat_f = _to_float(lat)
+    lng_f = _to_float(lng)
+    radius_f = _to_float(radius_km, default=25.0)
 
     if len(q) >= 2:
         pattern = f"%{q}%"
@@ -206,7 +233,7 @@ def search_page(
             )
         )
 
-        items_q = _apply_city_or_gps_filter(items_q, city, lat, lng, radius_km)
+        items_q = _apply_city_or_gps_filter(items_q, city, lat_f, lng_f, radius_f)
         items_rows = items_q.limit(24).all()
 
         items = [
@@ -231,8 +258,8 @@ def search_page(
             "items": items,
             "session_user": request.session.get("user"),
             "selected_city": city or "",
-            "lat": lat,
-            "lng": lng,               # ✅ تأكد من تمرير lng بعد الدمج
-            "radius_km": radius_km
+            "lat": lat_f,
+            "lng": lng_f,               # ✅ نمرّر القيم المحوّلة
+            "radius_km": radius_f
         },
     )
