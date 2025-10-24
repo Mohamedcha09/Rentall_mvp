@@ -3,7 +3,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8" />
-  <!-- مهم: تمكين الـ safe-area -->
+  <!-- تمكين الـ safe-area للـ iOS PWA -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>{{ title or "RentAll" }}</title>
 
@@ -21,7 +21,7 @@
     if ("serviceWorker" in navigator) { navigator.serviceWorker.register("/static/sw.js"); }
   </script>
 
-  <!-- متغيّرات عامة + ألوان داكن/فاتح -->
+  <!-- متغيّرات عامة + ألوان -->
   <style>
     :root{
       --text:#111827;
@@ -29,8 +29,6 @@
       --panel:#f8fafc;
       --surface:#ffffff;
       --border:rgba(0,0,0,.08);
-
-      /* safe areas */
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --safe-bottom-legacy: constant(safe-area-inset-bottom, 0px);
@@ -43,11 +41,11 @@
       background:#0b1020;
     }
 
-    /* ====== البحث/التوب بار (إبقاء الهيكل) ====== */
-    .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important; }
+    /* ====== التوب بار ====== */
+    .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; }
 
-    /* ====== شريط البحث الجديد (نصف عنصر / نصف مدينة) ====== */
-    .searchbar{ position:relative; max-width:760px; margin-inline-start:auto; margin-inline-end:auto; }
+    /* ====== شريط البحث (نصف عنصر / نصف مدينة) ====== */
+    .searchbar{ position:relative; max-width:760px; margin-inline:auto; }
     .searchbar-wrap{
       display:flex; align-items:center; gap:10px;
       background:#fff; border:1px solid var(--border);
@@ -60,13 +58,9 @@
       backdrop-filter:saturate(120%) blur(6px);
     }
     .searchbar i.bi-search{font-size:18px; opacity:.7}
-    .searchbar input{
-      border:0; outline:0; background:transparent; color:inherit; font-size:16px;
-    }
+    .searchbar input{ border:0; outline:0; background:transparent; color:inherit; font-size:16px; }
     .searchbar .field{ flex:1; display:flex; align-items:center; gap:10px; }
-    .searchbar .sep{
-      width:1px; height:24px; background:var(--border);
-    }
+    .searchbar .sep{ width:1px; height:24px; background:var(--border); }
     .searchbar .k{ opacity:.55; font-size:.9rem; white-space:nowrap }
 
     /* اقتراحات المدن */
@@ -81,7 +75,7 @@
     .city-suggest .row:hover{ background: color-mix(in oklab, var(--text) 8%, transparent); }
     .city-suggest .sub{ opacity:.6; font-size:.85em }
 
-    /* ====== Typeahead (القائم لديك لعناصر/حسابات) ====== */
+    /* ====== Typeahead (لعناصر/حسابات — كما هو) ====== */
     .typeahead{
       position:absolute; inset-inline:0; top: calc(100% + .25rem);
       background: var(--surface); color: var(--text);
@@ -94,7 +88,7 @@
     .typeahead-item:hover, .typeahead-item.active{ background: rgba(124,92,255,.12); }
     .typeahead-item .k{ opacity:.65; font-size:.85em }
 
-    /* ====== الجرس ====== */
+    /* الجرس */
     #notifOpen{ position: relative; }
     #notifOpen .notif-count{
       position:absolute; top:-6px; inset-inline-end:-6px;
@@ -106,33 +100,29 @@
       background:#d43aff; border-radius:50%; box-shadow:0 0 0 6px rgba(212,58,255,.18);
     }
 
-    /* ====== سايدبار (ديسكتوب) مختصر ====== */
+    /* سايدبار */
     .sidebar{ width:268px; flex:0 0 268px; border-inline-end:1px solid var(--border); background:var(--surface); }
     .sidebar[data-collapsed="true"]{ width:84px; flex-basis:84px; }
     @media (max-width:991.98px){ .sidebar{ display:none !important; } }
 
-    /* ====== مساحة أسفل المحتوى حتى لا يُغطّيها الشريط السفلي ====== */
+    /* مساحة أسفل المحتوى حتى لا يُغطّيها الشريط السفلي */
     body{ padding-bottom: calc(76px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
 
-    /* ====== شريط سفلي أبيض 100% (Airbnb-like) ====== */
+    /* الشريط السفلي الأبيض (موبايل) */
     @media (max-width: 768px){
       .mobile-tabbar{
         position: fixed; inset-inline: 0; bottom: 0;
         height: 64px; display: grid; grid-template-columns: repeat(5,1fr);
         align-items: center;
-        background: #fff;
-        border-top: 1px solid var(--border);
+        background: #fff; border-top: 1px solid var(--border);
         padding: 6px 8px calc(6px + max(var(--safe-bottom), var(--safe-bottom-legacy)));
-        z-index: 2147483647;
-        border-radius: 16px 16px 0 0;
+        z-index: 2147483647; border-radius: 16px 16px 0 0;
       }
       .mobile-tabbar a{
         text-decoration:none; color:#6b7280; font-size:.82rem;
         display:flex; flex-direction:column; align-items:center; gap:4px;
       }
-      .mobile-tabbar .tab-img{
-        width:22px; height:22px; object-fit:contain; opacity:.7; transition:opacity .15s, transform .15s;
-      }
+      .mobile-tabbar .tab-img{ width:22px; height:22px; object-fit:contain; opacity:.7; transition:opacity .15s, transform .15s; }
       .mobile-tabbar a.is-active{ color:#111827; font-weight:700; }
       .mobile-tabbar a.is-active .tab-img{ opacity:1; transform:scale(1.06); }
 
@@ -145,7 +135,7 @@
       .page{ padding-bottom: calc(100px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
     }
 
-    /* ====== لوحة إشعارات جانبية (ديسكتوب) ====== */
+    /* لوحة إشعارات جانبية */
     .notif-panel{
       position: fixed; top:0; inset-inline-end:-420px; width:360px; max-width:88vw; height:100vh;
       background: var(--surface); color: var(--text);
@@ -162,7 +152,6 @@
     }
     .notif-row:hover{ background: color-mix(in oklab, var(--surface) 92%, transparent); }
     .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2s; }
-    .scrim.is-show{ opacity:1; pointer-events:auto; }
 
     /* قائمة سريعة على الديسكتوب */
     @media (min-width:992px){
@@ -253,7 +242,7 @@
       </form>
       <!-- /searchbar -->
 
-      <!-- (تبقى لوحة النوعية لديك بدون تغيير) -->
+      <!-- لوحة النوعية الحالية لديك (بحث الحسابات/العناصر) -->
       <div id="typeaheadPanel" class="typeahead d-none"></div>
 
       <div class="actions d-flex align-items-center gap-2 ms-auto">
@@ -329,7 +318,7 @@
     </div>
   </header>
 
-  <!-- ===== تبويبات أعلى (موبايل فقط) ===== -->
+  <!-- تبويبات أعلى (موبايل فقط) -->
   <nav class="m-top-tabs d-lg-none px-3 pb-2" role="tablist" aria-label="أقسام عليا">
     <a href="/" class="m-tab {% if request and request.url.path == '/' %}is-active{% endif %}" role="tab"
        aria-selected="{{ 'true' if request and request.url.path == '/' else 'false' }}">Home</a>
@@ -383,7 +372,7 @@
     </a>
   {% endif %}
 
-  <!-- ===== الشريط السفلي الأبيض (موبايل) ===== -->
+  <!-- الشريط السفلي الأبيض (موبايل) -->
   <nav class="mobile-tabbar d-lg-none">
     <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
       <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home"><span>الرئيسية</span>
@@ -416,11 +405,10 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   {% block scripts %}{% endblock %}
 
-  <!-- ===== Safe-area قياس ديناميكي + فالباك iOS PWA ===== -->
+  <!-- Safe-area قياس ديناميكي + فالباك iOS -->
   <script>
   (function(){
     var root = document.documentElement;
-
     function computeSafe(){
       var safe = 0;
       try{
@@ -432,15 +420,12 @@
         safe = Math.max(0, probe.getBoundingClientRect().height || 0);
         probe.remove();
       }catch(_){}
-
       var isIOS = /iphone|ipod|ipad/i.test(navigator.userAgent);
       var isStandalone = (window.navigator.standalone === true) ||
                          (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-      if (isIOS && isStandalone && safe < 8) safe = 16;  // حد أدنى آمن
-
+      if (isIOS && isStandalone && safe < 8) safe = 16;
       root.style.setProperty('--safe-bottom', safe + 'px');
     }
-
     computeSafe();
     window.addEventListener('resize', computeSafe);
     if (window.visualViewport){
@@ -450,32 +435,19 @@
   })();
   </script>
 
-  <!-- ===== زر ☰ (قائمة سريعة) ===== -->
+  <!-- زر ☰ (قائمة سريعة) -->
   <script>
   (function(){
     const btn  = document.getElementById('menuBtn');
     const menu = document.getElementById('quickMenu');
     if(!btn || !menu) return;
-
     if (window.__quickMenuInit) return;
     window.__quickMenuInit = true;
 
-    function open(){
-      menu.classList.add('is-open');
-      menu.removeAttribute('hidden');
-      btn.setAttribute('aria-expanded','true');
-      setTimeout(()=>{
-        document.addEventListener('click', onDoc, true);
-        document.addEventListener('keydown', onKey);
-      },0);
-    }
-    function close(){
-      menu.classList.remove('is-open');
-      menu.setAttribute('hidden','');
-      btn.setAttribute('aria-expanded','false');
-      document.removeEventListener('click', onDoc, true);
-      document.removeEventListener('keydown', onKey);
-    }
+    function open(){ menu.classList.add('is-open'); menu.removeAttribute('hidden'); btn.setAttribute('aria-expanded','true');
+      setTimeout(()=>{ document.addEventListener('click', onDoc, true); document.addEventListener('keydown', onKey); },0); }
+    function close(){ menu.classList.remove('is-open'); menu.setAttribute('hidden',''); btn.setAttribute('aria-expanded','false');
+      document.removeEventListener('click', onDoc, true); document.removeEventListener('keydown', onKey); }
     function toggle(){ menu.classList.contains('is-open') ? close() : open(); }
     function onDoc(e){ if (e.target===btn || btn.contains(e.target) || menu.contains(e.target)) return; close(); }
     function onKey(e){ if (e.key==='Escape'){ close(); btn.focus(); } }
@@ -484,11 +456,10 @@
   })();
   </script>
 
-  <!-- ===== Typeahead لعناصر/حسابات (بدون تغيير) ===== -->
+  <!-- Typeahead لعناصر/حسابات (كما هو عندك) -->
   <script>
   (function initTypeahead(){
-    if (window.__typeaheadInit) return;
-    window.__typeaheadInit = true;
+    if (window.__typeaheadInit) return; window.__typeaheadInit = true;
 
     var form  = document.querySelector('form.search');
     var input = form ? form.querySelector('input[name="q"]') : null;
@@ -579,7 +550,7 @@
   })();
   </script>
 
-  <!-- ===== Autocomplete للمدينة عبر OpenStreetMap (Nominatim) ===== -->
+  <!-- ===== Autocomplete للمدينة عبر OpenStreetMap (مفلتر: مدينة واحدة لكل بلد) ===== -->
   <script>
   (function cityAutocomplete(){
     if (window.__cityAutoInit) return; window.__cityAutoInit = true;
@@ -588,51 +559,60 @@
     const panel = document.getElementById('citySuggest');
     const latEl = document.getElementById('latTop');
     const lonEl = document.getElementById('lonTop');
+    const form  = input ? input.closest('form') : null;
 
-    if(!input || !panel) return;
+    if(!input || !panel || !form) return;
 
-    let tm = null, lastList = [];
+    let tm = null, lastList = [], active = -1;
 
-    function esc(s){
-      return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c]));
-    }
-    function hide(){ panel.style.display='none'; panel.innerHTML=""; lastList=[]; }
+    function esc(s){ return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
+    function hide(){ panel.style.display='none'; panel.innerHTML=""; lastList=[]; active=-1; }
     function show(){ panel.style.display='block'; }
 
-    // تهيئة من الـURL (لو جاء المستخدم برابط يحتوي إحداثيات/مدينة)
-    try{
-      const url = new URL(location.href);
-      const c  = url.searchParams.get('city') || '';
-      const la = url.searchParams.get('lat') || url.searchParams.get('latitude') || '';
-      const lo = url.searchParams.get('lon') || url.searchParams.get('lng') || url.searchParams.get('longitude') || '';
-      if (c) input.value = c;
-      if (la) latEl.value = la;
-      if (lo) lonEl.value = lo;
-    }catch(_){}
-
+    function normalizePlace(p){
+      const a = p.address || {};
+      const city = a.city || a.town || a.village || a.state || (p.display_name||'').split(',')[0];
+      const country = a.country || '';
+      const type = (p.type || '').toLowerCase();
+      const prioMap = {city:1, town:2, village:3, state:4, administrative:5, county:6, region:7};
+      const prio = prioMap[type] || 9;
+      return { city, country, label: city + (country ? ', ' + country : ''), lat:p.lat, lon:p.lon, prio };
+    }
+    function dedupeByCountry(list){
+      const best = new Map();
+      list.forEach(raw=>{
+        const n = normalizePlace(raw);
+        if (!n.city || !n.country) return;
+        const key = (n.city + '|' + n.country).toLowerCase();
+        const prev = best.get(key);
+        if (!prev || n.prio < prev.prio) best.set(key, n);
+      });
+      return Array.from(best.values());
+    }
     async function query(q){
-      const u = 'https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&accept-language=ar,en&q=' + encodeURIComponent(q);
+      const u = 'https://nominatim.openstreetmap.org/search'
+              + '?format=json&addressdetails=1&namedetails=0&extratags=0'
+              + '&limit=20&accept-language=ar,en&q=' + encodeURIComponent(q);
       const r = await fetch(u, { headers: { 'Accept': 'application/json' }});
       if(!r.ok) return [];
       return await r.json();
     }
-
     function render(list){
-      if(!Array.isArray(list) || list.length===0){ hide(); return; }
-      lastList = list.slice(0,8);
-      const html = [];
-      html.push('<div class="typeahead-group">مدن/مناطق</div>');
-      lastList.forEach((p, i)=>{
-        const name = esc(p.display_name || '');
-        html.push('<div class="row" data-i="'+i+'"><i class="bi bi-geo-alt"></i><div><div>'+name+'</div><div class="sub">lat '+esc(p.lat)+' — lon '+esc(p.lon)+'</div></div></div>');
-      });
-      panel.innerHTML = html.join('');
-      show();
+      const uniq = dedupeByCountry(list).slice(0, 6);
+      if(uniq.length === 0){ hide(); return; }
+      lastList = uniq;
+      const html = [
+        '<div class="typeahead-group">مدن/مناطق</div>',
+        ...uniq.map((p,i)=>(
+          '<div class="row" data-i="'+i+'"><i class="bi bi-geo-alt"></i>'
+          + '<div><div>'+esc(p.label)+'</div><div class="sub">lat '+esc(p.lat)+' — lon '+esc(p.lon)+'</div></div></div>'
+        ))
+      ].join('');
+      panel.innerHTML = html; show(); active = -1;
     }
-
-    function pick(idx){
-      const p = lastList[idx]; if(!p) return;
-      input.value = p.display_name || '';
+    function pick(i){
+      const p = lastList[i]; if(!p) return;
+      input.value = p.label;
       if (latEl) latEl.value = p.lat || '';
       if (lonEl) lonEl.value = p.lon || '';
       hide();
@@ -643,22 +623,44 @@
       const q = input.value.trim();
       latEl.value = ''; lonEl.value = '';
       if (q.length < 2){ hide(); return; }
-      tm = setTimeout(async ()=>{ try{ const list = await query(q); render(list); }catch(_){ hide(); } }, 240);
+      tm = setTimeout(async ()=>{ try{ const list = await query(q); render(list); }catch(_){ hide(); } }, 220);
     });
-
     panel.addEventListener('click', function(e){
       const row = e.target.closest('.row'); if(!row) return;
       pick(Number(row.getAttribute('data-i')||'-1'));
     });
 
-    document.addEventListener('click', function(e){
-      if (e.target === input || panel.contains(e.target)) return;
-      hide();
+    // Enter/OK: يرسل البحث حتى لو كان التركيز على المدينة
+    input.addEventListener('keydown', function(e){
+      if (panel.style.display !== 'block') {
+        if (e.key === 'Enter') { e.preventDefault(); form.submit(); }
+        return;
+      }
+      const rows = Array.prototype.slice.call(panel.querySelectorAll('.row'));
+      if (!rows.length) return;
+      if (e.key === 'ArrowDown'){ e.preventDefault(); active = (active+1) % rows.length; markActive(rows); }
+      else if (e.key === 'ArrowUp'){ e.preventDefault(); active = (active-1 + rows.length) % rows.length; markActive(rows); }
+      else if (e.key === 'Enter'){
+        e.preventDefault();
+        if (active >= 0 && rows[active]) { rows[active].click(); }
+        else { form.submit(); }
+      } else if (e.key === 'Escape'){ hide(); }
+    });
+    function markActive(rows){
+      rows.forEach(r=>r.classList.remove('active'));
+      if (active>=0 && rows[active]){ rows[active].classList.add('active'); rows[active].scrollIntoView({block:'nearest'}); }
+    }
+    document.addEventListener('click', function(e){ if (e.target === input || panel.contains(e.target)) return; hide(); });
+
+    // Enter أيضاً في خانة q
+    const qInput = document.getElementById('qTop');
+    qInput?.addEventListener('keydown', function(e){
+      if (e.key === 'Enter'){ e.preventDefault(); form.submit(); }
     });
   })();
   </script>
 
-  <!-- إشعارات (polling خفيف) + إصلاح n>99 (بدون تغيير) -->
+  <!-- نظام الإشعارات (بدون تغيير جوهري) -->
   <script>
   (function notifSystem(){
     if (window.__notifInit) return; window.__notifInit = true;
@@ -677,12 +679,6 @@
       if (!countEl || !pingEl) return;
       if (n>0){ countEl.textContent = (n>99 ? '99+' : String(n)); countEl.style.display = ''; pingEl.style.display = ''; }
       else{ countEl.textContent = ''; countEl.style.display = 'none'; pingEl.style.display = 'none'; }
-    }
-
-    function esc(s){
-      return String(s||"").replace(/[&<>"']/g, function(c){
-        return {"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c];
-      });
     }
 
     const FEEDS = ['/api/notifications/poll','/api/notifications','/notifications/json'];
@@ -722,7 +718,7 @@
       list.items.forEach(n=>{
         const a = document.createElement('a');
         a.className='notif-row'; a.href=n.link||'#';
-        a.innerHTML = '<div class="fw-bold">'+esc(n.title)+'</div>' + (n.meta ? '<div class="k small">'+esc(n.meta)+'</div>' : '');
+        a.innerHTML = '<div class="fw-bold">'+(n.title||'إشعار')+'</div>' + (n.meta ? '<div class="k small">'+n.meta+'</div>' : '');
         body.appendChild(a);
       });
     }
@@ -738,8 +734,7 @@
             prevCount = n;
             document.dispatchEvent(new CustomEvent('unread:changed', {detail:{count:n}}));
           }
-        })
-        .catch(()=>{});
+        }).catch(()=>{});
     }
     refreshUnread();
     setInterval(refreshUnread, 30*1000);
@@ -756,15 +751,12 @@
       const norm = normalize(data||{});
       renderList(norm);
       if (typeof norm.unread === 'number') setBell(norm.unread);
-      try{
-        await fetch('/api/notifications/mark_all_read', {method:'POST', credentials:'include'});
-        setTimeout(refreshUnread, 800);
-      }catch(_){}
+      try{ await fetch('/api/notifications/mark_all_read', {method:'POST', credentials:'include'}); setTimeout(refreshUnread, 800); }catch(_){}
     }
   })();
   </script>
 
-  <!-- كشف وضع التطبيق وإضافة كلاس فالباك html.pwa -->
+  <!-- كشف وضع التطبيق وإضافة html.pwa -->
   <script>
     (function(){
       var isStandalone = false;
@@ -775,8 +767,5 @@
       if (isStandalone) { document.documentElement.classList.add('pwa'); }
     })();
   </script>
-
-  <!-- (تم حذف مدخلات radius/GPS وسكربتاتها من الهيدر حسب الطلب) -->
-
 </body>
 </html>
