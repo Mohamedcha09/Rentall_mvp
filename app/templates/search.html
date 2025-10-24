@@ -28,7 +28,9 @@
                    href="/items/{{ it.id }}">
                   <div class="ratio ratio-16x9" style="max-width: 160px;">
                     {% if it.image_path %}
-                      <img src="/{{ it.image_path }}" class="rounded object-fit-cover" alt="">
+                      {# ✅ إذا كان الرابط يبدأ بـ http(s) نستخدمه كما هو، وإلا نضيف / للمسار المحلي #}
+                      {% set src = it.image_path if it.image_path.startswith('http') else '/' ~ it.image_path.lstrip('/') %}
+                      <img src="{{ src }}" class="rounded object-fit-cover" alt="{{ it.title }}">
                     {% else %}
                       <div class="rounded d-flex align-items-center justify-content-center bg-dark-subtle">
                         <span class="small text-muted">بدون صورة</span>
@@ -65,7 +67,8 @@
             {% for u in users %}
               <li class="list-group-item d-flex align-items-center gap-3">
                 {% if u.avatar_path %}
-                  <img src="/{{ u.avatar_path }}" class="rounded-circle" style="width:40px;height:40px;object-fit:cover" alt="">
+                  {% set avatar_src = u.avatar_path if u.avatar_path.startswith('http') else '/' ~ u.avatar_path.lstrip('/') %}
+                  <img src="{{ avatar_src }}" class="rounded-circle" style="width:40px;height:40px;object-fit:cover" alt="{{ u.name }}">
                 {% else %}
                   <div class="rounded-circle d-flex align-items-center justify-content-center"
                        style="width:40px;height:40px;background:rgba(255,255,255,.08);border:1px solid var(--border)">
