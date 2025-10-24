@@ -125,7 +125,7 @@
     .notif-panel__body{ padding:10px 14px; overflow:auto; }
     .notif-row{ display:block; padding:10px 8px; text-decoration:none; color:inherit; border-bottom:1px solid var(--border); border-radius:8px; }
     .notif-row:hover{ background: color-mix(in oklab, var(--surface) 92%, transparent); }
-    .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2s; }
+    .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2س; }
 
     @media (min-width:992px){
       .hamburger-btn{ display:inline-flex; align-items:center; justify-content:center; border:0; background:transparent; font-size:24px; padding:.35rem .6rem; border-radius:10px; cursor:pointer; }
@@ -208,6 +208,8 @@
           <!-- إحداثيات تُملأ عند الاختيار -->
           <input type="hidden" id="latTop" name="lat" value="{{ request.query_params.get('lat','') if request else '' }}">
           <input type="hidden" id="lonTop" name="lon" value="{{ request.query_params.get('lon','') if request else '' }}">
+          <!-- ✅ جديد: نصف القطر ليعمل البحث الجغرافي -->
+          <input type="hidden" id="radiusTop" name="radius_km" value="{{ request.query_params.get('radius_km','25') if request else '25' }}">
         </div>
 
         <!-- قائمة اقتراحات المدن -->
@@ -438,6 +440,7 @@
     var tm = null, activeIndex = -1;
     function hide(){ panel.classList.add('d-none'); panel.innerHTML = ""; activeIndex = -1; }
     function show(){ panel.classList.remove('d-none'); }
+
     function esc(s){ return String(s||"").replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c]; }); }
 
     function normalizePayload(data){
@@ -520,35 +523,19 @@
 
     let tm = null, lastList = [], active = -1;
 
-    /* === كشف لغة الإدخال ===
-       - عربي: وجود حروف عربية
-       - فرنسي: وجود علامات فرنسية OR كلمات فرنسية شائعة
-       - إنجليزي: وجود كلمات إنجليزية شائعة
-       - وإلا: نختار من تفضيلات المتصفح (نُفضّل fr ثم en ثم ar)
-    */
+    /* === كشف لغة الإدخال === */
     function detectLang(q){
       const s = (q||'').trim();
-
       if (/[\u0600-\u06FF]/.test(s)) return 'ar'; // عربي
-
-      // مؤشرات فرنسية
       const hasFrMarks = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(s);
       const frWords = /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
-
-      // مؤشرات إنجليزية
       const enWords = /\b(new|city|county|state|united|kingdom|usa|us|uk)\b/i.test(s);
-
       if (hasFrMarks || frWords) return 'fr';
       if (enWords) return 'en';
-
-      // إذا كانت أحرف لاتينية عادية بدون مؤشرات:
-      // نختار وفق تفضيلات المتصفح بين fr ثم en ثم ar
       const prefs = (navigator.languages || [navigator.language || 'en']).map(x=>x.slice(0,2).toLowerCase());
       if (prefs.includes('fr')) return 'fr';
       if (prefs.includes('en')) return 'en';
       if (prefs.includes('ar')) return 'ar';
-
-      // افتراضي آمن
       return 'en';
     }
 
@@ -615,6 +602,17 @@
       input.value = p.label;
       if (latEl) latEl.value = p.lat || '';
       if (lonEl) lonEl.value = p.lon || '';
+
+      /* ✅ املأ نصف القطر تلقائيًا (كوكي إن وجد وإلا 25) */
+      try{
+        const rEl = document.getElementById('radiusTop');
+        if (rEl){
+          const m = document.cookie.match(/(?:^| )radius_km=([^;]+)/);
+          const fromCookie = m ? decodeURIComponent(m[1]) : '';
+          rEl.value = (fromCookie && Number(fromCookie) > 0) ? fromCookie : '25';
+        }
+      }catch(_){}
+
       hide();
     }
 
