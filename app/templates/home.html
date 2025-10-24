@@ -189,7 +189,7 @@
 </div>
 <!-- /HERO -->
 
-<!-- ✅ إضافة: شريط تحكّم للموقع (مدينة / نصف قطر / GPS) -->
+<!-- ✅ شريط تحكّم للموقع (مدينة / نصف قطر / GPS) -->
 <section class="container-xl my-3">
   <form class="row g-2 align-items-center home-locbar" action="/" method="get" role="search" id="homeLocForm">
     <div class="col-12 col-md-5">
@@ -202,6 +202,8 @@
     </div>
     <div class="col-6 col-md-2 d-grid">
       <button type="button" id="homeUseGPS" class="btn btn-outline-secondary">📍 استخدم موقعي</button>
+      <!-- ⬇️ زر إلغاء الموقـع (أضفته هنا فقط) -->
+      <button type="button" id="homeClearGPS" class="btn btn-link btn-sm mt-1">❌ إلغاء موقعي</button>
     </div>
     <div class="col-12 col-md-2 d-grid">
       <button class="btn btn-primary" type="submit">تطبيق</button>
@@ -516,16 +518,16 @@
   });
 
   /* ============================================
-     ✅ إضافة: سكربت شريط الموقع (مدينة/GPS/نصف قطر)
-     - بدون لمس بقية سكربتاتك
-     - يستخدم الكوكيز + Nominatim للاقتراحات
+     ✅ شريط الموقع (مدينة/GPS/نصف قطر) — البحث فقط
      ============================================ */
   (function homeLocBar(){
+    const form   = document.getElementById('homeLocForm');
     const cityEl = document.getElementById('homeCityInput');
     const latEl  = document.getElementById('homeLat');
     const lngEl  = document.getElementById('homeLng');
     const rEl    = document.getElementById('homeRadius');
     const gpsBtn = document.getElementById('homeUseGPS');
+    const clearBtn = document.getElementById('homeClearGPS'); // زر إلغاء الموقـع
     const sugg   = document.getElementById('homeCitySugg');
 
     function setCookie(name, value, days=180){
@@ -537,6 +539,9 @@
     function getCookie(name){
       const m = document.cookie.match(new RegExp('(?:^| )'+name+'=([^;]+)'));
       return m ? decodeURIComponent(m[1]) : "";
+    }
+    function delCookie(name){
+      try{ document.cookie = name+"=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax"; }catch(_){}
     }
 
     // تهيئة من الكوكي/الـURL
@@ -552,7 +557,7 @@
       if (rEl)    rEl.value    = rad;
     }catch(_){}
 
-    // GPS
+    // 📍 GPS
     gpsBtn?.addEventListener('click', function(){
       if (!navigator.geolocation){ alert('المتصفح لا يدعم تحديد الموقع.'); return; }
       const rad = (rEl && rEl.value) ? rEl.value : "25";
@@ -573,6 +578,20 @@
       });
     });
 
+    // ❌ إلغاء الموقـع (يمسح إحداثيات + باراميترات + يرجّع كل العناصر)
+    clearBtn?.addEventListener('click', function(){
+      delCookie('lat'); delCookie('lng'); delCookie('radius_km');
+      // اترك city كما هي أو امسحها إذا فارغة
+      const u = new URL(location.href);
+      u.searchParams.delete('lat');
+      u.searchParams.delete('lng');
+      u.searchParams.delete('radius_km');
+      if(!(cityEl?.value||"").trim()){
+        delCookie('city'); u.searchParams.delete('city');
+      }
+      location.href = u.toString();
+    });
+
     // حفظ المدينة يدويًا وإلغاء الإحداثيات
     cityEl?.addEventListener('change', function(){
       const c = (cityEl.value||"").trim();
@@ -580,10 +599,57 @@
       setCookie('lat', ""); setCookie('lng', "");
     });
 
-    // ✅ اقتراحات المدن من Nominatim
+    // ✅ اقتراح مدينة واحدة فقط — لغة الإدخال + إزالة تكرار داخل البلد
     let t=null;
     function hideSugg(){ if(sugg){ sugg.style.display='none'; sugg.innerHTML=''; } }
     function showSugg(){ if(sugg){ sugg.style.display='block'; } }
+
+    function detectLang(q){
+      const s=(q||'').trim();
+      if (/[\u0600-\u06FF]/.test(s)) return 'ar';
+      const hasFr = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(s) || /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
+      if (hasFr) return 'fr';
+      return 'en';
+    }
+    const ALLOWED = new Set(['city','town','village','municipality']);
+    const FALLBACK = new Set(['state','province']);
+    function normalizePlace(p){
+      const a=p.address||{};
+      const type=(p.type||'').toLowerCase();
+      const cc=(a.country_code||'').toLowerCase();
+      const city=a.city||a.town||a.village||a.municipality||a.state||a.province||(p.display_name||'').split(',')[0];
+      const prioMap={city:1,town:2,village:3,municipality:3,state:6,province:6,administrative:8,county:8,region:8};
+      const prio=prioMap[type]??9;
+      const country=a.country||'';
+      return { city, country, cc, label: city+(country?`, ${country}`:''), lat:p.lat, lon:p.lon, type, prio };
+    }
+    function pickBestUnique(list){
+      const best=new Map();
+      for(const p of list){
+        const n=normalizePlace(p);
+        if(!n.city||!n.cc) continue;
+        const key=n.city.trim().toLowerCase()+'|'+n.cc;
+        const prev=best.get(key);
+        if(!prev || n.prio < prev.prio) best.set(key,n);
+      }
+      return Array.from(best.values());
+    }
+    async function queryBestCity(q){
+      const lang=detectLang(q);
+      const url = 'https://nominatim.openstreetmap.org/search'
+                 + '?format=json&addressdetails=1&limit=30&namedetails=0&extratags=0'
+                 + '&accept-language='+encodeURIComponent(lang)
+                 + '&q='+encodeURIComponent(q);
+      const r = await fetch(url, {headers:{'Accept':'application/json'}});
+      if(!r.ok) return null;
+      let data = await r.json();
+      let filtered = data.filter(x=>ALLOWED.has((x.type||'').toLowerCase()));
+      if(!filtered.length) filtered = data.filter(x=>FALLBACK.has((x.type||'').toLowerCase()));
+      if(!filtered.length) filtered = data;
+      const unique = pickBestUnique(filtered);
+      unique.sort((a,b)=>a.prio-b.prio);
+      return unique[0]||null;
+    }
 
     cityEl?.addEventListener('input', function(){
       clearTimeout(t);
@@ -591,44 +657,78 @@
       if (q.length<2){ hideSugg(); return; }
       t = setTimeout(async ()=>{
         try{
-          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&accept-language=ar`;
-          const r = await fetch(url, {headers:{'Accept':'application/json'}});
-          if(!r.ok){ hideSugg(); return; }
-          const data = await r.json();
-          if(!Array.isArray(data) || data.length===0){ hideSugg(); return; }
-          sugg.innerHTML = '';
-          data.slice(0,8).forEach(p=>{
-            const row = document.createElement('div');
-            row.className = 'py-2 px-2';
-            row.style.cursor = 'pointer';
-            row.textContent = p.display_name;
-            row.addEventListener('click', ()=>{
-              cityEl.value = p.display_name;
-              setCookie('city', p.display_name);
-              setCookie('lat', p.lat);
-              setCookie('lng', p.lon);
-              if (latEl) latEl.value = p.lat;
-              if (lngEl) lngEl.value = p.lon;
-              hideSugg();
-
-              const u = new URL(location.href);
-              u.searchParams.set('city', p.display_name);
-              u.searchParams.set('lat', p.lat);
-              u.searchParams.set('lng', p.lon);
-              const rad = (rEl && rEl.value) ? rEl.value : "25";
-              u.searchParams.set('radius_km', rad);
-              location.href = u.toString();
-            });
-            sugg.appendChild(row);
-          });
+          const best = await queryBestCity(q);
+          if(!best){ hideSugg(); return; }
+          sugg.innerHTML =
+            `<div class="py-2 px-2" data-best="1" style="cursor:pointer">
+               <i class="bi bi-geo-alt"></i>
+               <span>${best.label}</span>
+             </div>`;
+          sugg.dataset.lat = best.lat||'';
+          sugg.dataset.lon = best.lon||'';
           showSugg();
         }catch(_){ hideSugg(); }
-      }, 300);
+      }, 250);
+    });
+
+    // اختيار الاقتراح الوحيد
+    sugg?.addEventListener('click', ()=>{
+      const label = (sugg.querySelector('[data-best] span')?.textContent||'').trim();
+      const lat = sugg.dataset.lat||'';
+      const lon = sugg.dataset.lon||'';
+      if(!label) return;
+      if(cityEl) cityEl.value = label;
+      if(latEl)  latEl.value  = lat;
+      if(lngEl)  lngEl.value  = lon;
+
+      const rad = (rEl && rEl.value) ? rEl.value : "25";
+      setCookie('city', label);
+      setCookie('lat', lat);
+      setCookie('lng', lon);
+      setCookie('radius_km', rad);
+
+      hideSugg();
+
+      const u = new URL(location.href);
+      u.searchParams.set('city', label);
+      u.searchParams.set('lat', lat);
+      u.searchParams.set('lng', lon);
+      u.searchParams.set('radius_km', rad);
+      location.href = u.toString();
     });
 
     document.addEventListener('click', (e)=>{
       if (!sugg) return;
       if (!sugg.contains(e.target) && e.target !== cityEl){ hideSugg(); }
+    });
+
+    // ✅ زر "تطبيق" — مثل /search تمامًا
+    form?.addEventListener('submit', function(e){
+      e.preventDefault();
+      const c   = (cityEl?.value || "").trim();
+      const lat = (latEl?.value || "").trim();
+      const lng = (lngEl?.value || "").trim();
+      const rad = (rEl?.value || "25").trim();
+
+      const u = new URL(location.href);
+      ['city','lat','lng','radius_km'].forEach(k=>u.searchParams.delete(k));
+
+      if (lat && lng){
+        setCookie('lat', lat); setCookie('lng', lng); setCookie('radius_km', rad); setCookie('city', c||"");
+        u.searchParams.set('lat', lat);
+        u.searchParams.set('lng', lng);
+        u.searchParams.set('radius_km', rad);
+        if (c) u.searchParams.set('city', c);
+      } else if (c){
+        setCookie('city', c); setCookie('radius_km', rad);
+        setCookie('lat', ""); setCookie('lng', "");
+        u.searchParams.set('city', c);
+        u.searchParams.set('radius_km', rad);
+      } else {
+        delCookie('city'); delCookie('lat'); delCookie('lng'); delCookie('radius_km');
+        u.search = "";
+      }
+      location.href = u.toString();
     });
   })();
 </script>
