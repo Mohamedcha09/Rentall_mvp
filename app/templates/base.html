@@ -43,20 +43,45 @@
       background:#0b1020;
     }
 
-    /* ====== البحث/التوب بار ====== */
+    /* ====== البحث/التوب بار (إبقاء الهيكل) ====== */
     .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important; }
-    .search{ position:relative; }
-    .topbar .search .search__input{
-      height:44px !important; border-radius:999px !important; border:0 !important;
-      background:#f4f6fb !important; color:#3b4152 !important;
-    }
-    body[data-theme="dark"] .topbar .search .search__input{
-      background:rgba(255,255,255,.08) !important;
-      border:1px solid var(--border) !important; color:var(--text) !important;
-    }
-    .search__icon{ position:absolute; inset-inline-start:16px; top:50%; transform:translateY(-50%); opacity:.6; font-size:1.05rem; }
 
-    /* ====== Typeahead ====== */
+    /* ====== شريط البحث الجديد (نصف عنصر / نصف مدينة) ====== */
+    .searchbar{ position:relative; max-width:760px; margin-inline-start:auto; margin-inline-end:auto; }
+    .searchbar-wrap{
+      display:flex; align-items:center; gap:10px;
+      background:#fff; border:1px solid var(--border);
+      border-radius:999px; padding:10px 14px;
+      box-shadow:0 6px 20px rgba(0,0,0,.06)
+    }
+    body[data-theme="dark"] .searchbar-wrap{
+      background:rgba(255,255,255,.06);
+      border-color:var(--border);
+      backdrop-filter:saturate(120%) blur(6px);
+    }
+    .searchbar i.bi-search{font-size:18px; opacity:.7}
+    .searchbar input{
+      border:0; outline:0; background:transparent; color:inherit; font-size:16px;
+    }
+    .searchbar .field{ flex:1; display:flex; align-items:center; gap:10px; }
+    .searchbar .sep{
+      width:1px; height:24px; background:var(--border);
+    }
+    .searchbar .k{ opacity:.55; font-size:.9rem; white-space:nowrap }
+
+    /* اقتراحات المدن */
+    .city-suggest{
+      position:absolute; inset-inline:14px; top: calc(100% + 8px);
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius:14px;
+      box-shadow: 0 14px 36px rgba(0,0,0,.18); z-index:2200; overflow:hidden;
+      display:none; max-height:320px; overflow:auto;
+    }
+    .city-suggest .row{ padding:10px 12px; cursor:pointer; display:flex; gap:8px; align-items:baseline; }
+    .city-suggest .row:hover{ background: color-mix(in oklab, var(--text) 8%, transparent); }
+    .city-suggest .sub{ opacity:.6; font-size:.85em }
+
+    /* ====== Typeahead (القائم لديك لعناصر/حسابات) ====== */
     .typeahead{
       position:absolute; inset-inline:0; top: calc(100% + .25rem);
       background: var(--surface); color: var(--text);
@@ -95,11 +120,11 @@
         position: fixed; inset-inline: 0; bottom: 0;
         height: 64px; display: grid; grid-template-columns: repeat(5,1fr);
         align-items: center;
-        background: #fff;               /* أبيض 100% */
+        background: #fff;
         border-top: 1px solid var(--border);
         padding: 6px 8px calc(6px + max(var(--safe-bottom), var(--safe-bottom-legacy)));
-        z-index: 2147483647;            /* فوق كل شيء */
-        border-radius: 16px 16px 0 0;   /* حواف علوية دائرية */
+        z-index: 2147483647;
+        border-radius: 16px 16px 0 0;
       }
       .mobile-tabbar a{
         text-decoration:none; color:#6b7280; font-size:.82rem;
@@ -111,14 +136,12 @@
       .mobile-tabbar a.is-active{ color:#111827; font-weight:700; }
       .mobile-tabbar a.is-active .tab-img{ opacity:1; transform:scale(1.06); }
 
-      /* زر + إن وجد */
       .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
         position: fixed !important; right: 16px !important;
         bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 86px) !important;
         z-index: 2147483647 !important;
       }
 
-      /* ارفع الصفحة حتى لا تختبئ خلف الشريط */
       .page{ padding-bottom: calc(100px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
     }
 
@@ -198,29 +221,40 @@
         <span class="visually-hidden">SEVOR</span>
       </a>
 
-      <!-- البحث -->
-      <form class="search flex-grow-1" action="/search" method="get" role="search" style="max-width:760px">
-        <i class="bi bi-search search__icon"></i>
-        <input class="form-control form-control-sm search__input" type="search" name="q"
-               placeholder="ابحث عن عنصر أو مستخدم…" value="{{ request.query_params.get('q','') if request else '' }}">
+      <!-- ======== شريط البحث (عنصر + مدينة) ======== -->
+      <form class="search searchbar flex-grow-1" action="/search" method="get" role="search" dir="rtl">
+        <div class="searchbar-wrap">
+          <i class="bi bi-search"></i>
 
-        <!-- ✅ إضافة: مدخل مدينة صغير -->
-        <input class="form-control form-control-sm ms-2" style="max-width:180px" type="text" id="cityInputTop" name="city" placeholder="City">
+          <!-- نصف 1: عنصر/غرض -->
+          <div class="field">
+            <input class="form-control form-control-sm" type="search" name="q" id="qTop"
+                   placeholder="ابحث عن عنصر (سيارة، كاميرا…)"
+                   value="{{ request.query_params.get('q','') if request else '' }}" autocomplete="off">
+          </div>
 
-        <!-- ✅ إضافة: نصف القطر للبحث القريب -->
-        <input class="form-control form-control-sm" style="max-width:100px" type="number" id="radiusTop" name="radius_km" value="25" min="1" title="km">
+          <div class="sep" aria-hidden="true"></div>
 
-        <!-- ✅ إضافة: زر GPS صغير -->
-        <button class="btn btn-sm btn-outline-secondary" type="button" id="useLocTop" title="Use my location">📍</button>
+          <!-- نصف 2: مدينة/منطقة -->
+          <div class="field">
+            <span class="k">المدينة</span>
+            <input class="form-control form-control-sm" type="text" id="cityTop" name="city"
+                   placeholder="مونتريال، الجزائر…" autocomplete="off"
+                   value="{{ request.query_params.get('city','') if request else '' }}">
+          </div>
 
-        <!-- ✅ إضافة: حقول خفية لـ lat/lng -->
-        <input type="hidden" id="latTop" name="lat">
-        <input type="hidden" id="lngTop" name="lng">
+          <!-- إحداثيات مخفية تُملأ عند اختيار اقتراح مدينة -->
+          <input type="hidden" id="latTop" name="lat" value="{{ request.query_params.get('lat','') if request else '' }}">
+          <input type="hidden" id="lonTop" name="lon" value="{{ request.query_params.get('lon','') if request else '' }}">
+        </div>
+
+        <!-- قائمة اقتراحات المدن -->
+        <div id="citySuggest" class="city-suggest" aria-label="اقتراحات المدن"></div>
       </form>
-      <div id="typeaheadPanel" class="typeahead d-none"></div>
+      <!-- /searchbar -->
 
-      <!-- ✅✅ إضافة فقط: بانيل اقتراحات المدينة (جديد) -->
-      <div id="citySuggestPanel" class="typeahead d-none"></div>
+      <!-- (تبقى لوحة النوعية لديك بدون تغيير) -->
+      <div id="typeaheadPanel" class="typeahead d-none"></div>
 
       <div class="actions d-flex align-items-center gap-2 ms-auto">
         <a href="/messages" class="btn btn-ghost btn-sm" title="الرسائل">
@@ -317,8 +351,6 @@
       <a href="/login" class="m-tab" role="tab">تحويلات</a>
     {% endif %}
   </nav>
-
-  
 
   <!-- ===== Page ===== -->
   <main class="page container-fluid main-flex-fill min-vh-100">
@@ -452,7 +484,7 @@
   })();
   </script>
 
-  <!-- ===== Typeahead ===== -->
+  <!-- ===== Typeahead لعناصر/حسابات (بدون تغيير) ===== -->
   <script>
   (function initTypeahead(){
     if (window.__typeaheadInit) return;
@@ -547,7 +579,86 @@
   })();
   </script>
 
-  <!-- ===== إشعارات (polling خفيف) + إصلاح n>99 ===== -->
+  <!-- ===== Autocomplete للمدينة عبر OpenStreetMap (Nominatim) ===== -->
+  <script>
+  (function cityAutocomplete(){
+    if (window.__cityAutoInit) return; window.__cityAutoInit = true;
+
+    const input = document.getElementById('cityTop');
+    const panel = document.getElementById('citySuggest');
+    const latEl = document.getElementById('latTop');
+    const lonEl = document.getElementById('lonTop');
+
+    if(!input || !panel) return;
+
+    let tm = null, lastList = [];
+
+    function esc(s){
+      return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c]));
+    }
+    function hide(){ panel.style.display='none'; panel.innerHTML=""; lastList=[]; }
+    function show(){ panel.style.display='block'; }
+
+    // تهيئة من الـURL (لو جاء المستخدم برابط يحتوي إحداثيات/مدينة)
+    try{
+      const url = new URL(location.href);
+      const c  = url.searchParams.get('city') || '';
+      const la = url.searchParams.get('lat') || url.searchParams.get('latitude') || '';
+      const lo = url.searchParams.get('lon') || url.searchParams.get('lng') || url.searchParams.get('longitude') || '';
+      if (c) input.value = c;
+      if (la) latEl.value = la;
+      if (lo) lonEl.value = lo;
+    }catch(_){}
+
+    async function query(q){
+      const u = 'https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&accept-language=ar,en&q=' + encodeURIComponent(q);
+      const r = await fetch(u, { headers: { 'Accept': 'application/json' }});
+      if(!r.ok) return [];
+      return await r.json();
+    }
+
+    function render(list){
+      if(!Array.isArray(list) || list.length===0){ hide(); return; }
+      lastList = list.slice(0,8);
+      const html = [];
+      html.push('<div class="typeahead-group">مدن/مناطق</div>');
+      lastList.forEach((p, i)=>{
+        const name = esc(p.display_name || '');
+        html.push('<div class="row" data-i="'+i+'"><i class="bi bi-geo-alt"></i><div><div>'+name+'</div><div class="sub">lat '+esc(p.lat)+' — lon '+esc(p.lon)+'</div></div></div>');
+      });
+      panel.innerHTML = html.join('');
+      show();
+    }
+
+    function pick(idx){
+      const p = lastList[idx]; if(!p) return;
+      input.value = p.display_name || '';
+      if (latEl) latEl.value = p.lat || '';
+      if (lonEl) lonEl.value = p.lon || '';
+      hide();
+    }
+
+    input.addEventListener('input', function(){
+      clearTimeout(tm);
+      const q = input.value.trim();
+      latEl.value = ''; lonEl.value = '';
+      if (q.length < 2){ hide(); return; }
+      tm = setTimeout(async ()=>{ try{ const list = await query(q); render(list); }catch(_){ hide(); } }, 240);
+    });
+
+    panel.addEventListener('click', function(e){
+      const row = e.target.closest('.row'); if(!row) return;
+      pick(Number(row.getAttribute('data-i')||'-1'));
+    });
+
+    document.addEventListener('click', function(e){
+      if (e.target === input || panel.contains(e.target)) return;
+      hide();
+    });
+  })();
+  </script>
+
+  <!-- إشعارات (polling خفيف) + إصلاح n>99 (بدون تغيير) -->
   <script>
   (function notifSystem(){
     if (window.__notifInit) return; window.__notifInit = true;
@@ -653,27 +764,6 @@
   })();
   </script>
 
-  <!-- مزامنة صلاحية DM -->
-  <script>
-  (function roleAutoToggle(){
-    if (window.__dmSyncInit) return; window.__dmSyncInit = true;
-    function showDM(){ } function hideDM(){ }
-    function syncFromMe(){
-      return fetch('/api/me', {credentials:'include'})
-        .then(r => r.ok ? r.json() : Promise.reject())
-        .then(data => {
-          const flag = !!(data && (data.can_manage_deposits || data.is_deposit_manager || data.canDM));
-          if (flag) { showDM(); } else { hideDM(); }
-        })
-        .catch(()=>{});
-    }
-    syncFromMe();
-    document.addEventListener('unread:changed', () => { syncFromMe(); });
-    let checks = 0;
-    const timer = setInterval(() => { checks += 1; syncFromMe(); if (checks >= 8) clearInterval(timer); }, 15000);
-  })();
-  </script>
-
   <!-- كشف وضع التطبيق وإضافة كلاس فالباك html.pwa -->
   <script>
     (function(){
@@ -686,221 +776,7 @@
     })();
   </script>
 
-  <style id="mobile-tabbar-raise">
-  @media (max-width: 768px){
-    /* ارفع الشريط الأبيض قليلاً فوق الحافة */
-    .mobile-tabbar{
-      bottom: calc(max(var(--safe-area-inset-bottom, 0px), var(--safe-bottom, 0px)) + 8px) !important;
-    }
-
-    /* زِد padding أسفل الصفحة بنفس الزيادة حتى لا يختفي المحتوى وراء الشريط */
-    .page{
-      padding-bottom: calc(110px + max(var(--safe-area-inset-bottom, 0px), var(--safe-bottom, 0px))) !important;
-    }
-
-    /* ارفع زر الإضافة (+) بنفس التناسب */
-    .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
-      bottom: calc(max(var(--safe-area-inset-bottom, 0px), var(--safe-bottom, 0px)) + 96px) !important;
-    }
-  }
-</style>
-<style id="safearea-white-under-navbar">
-  @media (max-width: 768px){
-    .mobile-tabbar{
-      z-index: 2147483647 !important;
-      background: #fff !important;
-    }
-
-    body::after{
-      content: "";
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      /* ✅ زدنا 9px لتغطية آخر فراغ */
-      height: calc(
-        max(
-          env(safe-area-inset-bottom, 0px),
-          var(--safe-b, 0px),
-          var(--safe-bottom, 0px)
-        ) + 9px
-      );
-      background: #fff;
-      z-index: 2147483646;
-      pointer-events: none;
-    }
-  }
-</style>
-
-  <!-- ✅ إضافة: سكربت صغير لإدارة city/GPS في الهيدر دون لمس سكربتاتك -->
-  <script>
-  (function cityGpsHeaderEnhancer(){
-    if (window.__cityGpsEnhancerInit) return; window.__cityGpsEnhancerInit = true;
-
-    function setCookie(name, value, days=180){
-      try{
-        const d=new Date(); d.setTime(d.getTime()+days*864e5);
-        document.cookie = name+"="+encodeURIComponent(value||"")+";expires="+d.toUTCString()+";path=/;SameSite=Lax";
-      }catch(_){}
-    }
-    function getCookie(name){
-      const m = document.cookie.match(new RegExp('(?:^| )'+name+'=([^;]+)'));
-      return m ? decodeURIComponent(m[1]) : "";
-    }
-
-    var cityEl = document.getElementById('cityInputTop');
-    var latEl  = document.getElementById('latTop');
-    var lngEl  = document.getElementById('lngTop');
-    var rEl    = document.getElementById('radiusTop');
-    var btnLoc = document.getElementById('useLocTop');
-
-    // تهيئة من الكوكي/الـURL بدون تغيير حقول البحث الأصلية
-    try{
-      var url = new URL(location.href);
-      var c   = url.searchParams.get('city') || getCookie('city') || "";
-      var lat = url.searchParams.get('lat') || getCookie('lat') || "";
-      var lng = url.searchParams.get('lng') || getCookie('lng') || "";
-      var rad = url.searchParams.get('radius_km') || getCookie('radius_km') || "25";
-      if (cityEl) cityEl.value = c;
-      if (latEl)  latEl.value  = lat;
-      if (lngEl)  lngEl.value  = lng;
-      if (rEl)    rEl.value    = rad;
-    }catch(_){}
-
-    // GPS: يحفظ lat/lng + radius ويزيل city من الرابط لتجنب التعارض
-    btnLoc?.addEventListener('click', function(){
-      if(!navigator.geolocation){ alert('المتصفح لا يدعم تحديد الموقع.'); return; }
-      var rad = (rEl && rEl.value) ? rEl.value : "25";
-      navigator.geolocation.getCurrentPosition(function(pos){
-        var lat = pos.coords.latitude, lng = pos.coords.longitude;
-        setCookie('lat', lat); setCookie('lng', lng); setCookie('radius_km', rad);
-        setCookie('city', ""); if (cityEl) cityEl.value = "";
-        if (latEl) latEl.value = lat; if (lngEl) lngEl.value = lng;
-
-        var u = new URL(location.href);
-        u.searchParams.set('lat', lat);
-        u.searchParams.set('lng', lng);
-        u.searchParams.set('radius_km', rad);
-        u.searchParams.delete('city');
-        location.href = u.toString();
-      }, function(){
-        alert('تعذر الحصول على موقعك.');
-      });
-    });
-
-    // عند تغيير المدينة يدويًا نحفظها ونمسح الإحداثيات من الكوكي فقط (كي تبقى أولوية city)
-    cityEl?.addEventListener('change', function(){
-      var c = (cityEl.value||"").trim();
-      setCookie('city', c);
-      setCookie('lat', ""); setCookie('lng', "");
-    });
-  })();
-  </script>
-
-  <!-- ✅✅ إضافة فقط: اقتراحات المدن عبر Nominatim (بدون المساس بسكربتاتك) -->
-  <script>
-  (function cityAutoComplete(){
-    if (window.__citySuggestInit) return; window.__citySuggestInit = true;
-    const input = document.getElementById('cityInputTop');
-    const panel = document.getElementById('citySuggestPanel');
-    const latEl = document.getElementById('latTop');
-    const lngEl = document.getElementById('lngTop');
-
-    if(!input || !panel) return;
-
-    let tm = null, active = -1;
-
-    function esc(s){
-      return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c]));
-    }
-    function hide(){ panel.classList.add('d-none'); panel.innerHTML=""; active=-1; }
-    function show(){ panel.classList.remove('d-none'); }
-
-    function positionPanel(){
-      // نضعه تحت حقل المدينة تقريبًا (يعتمد على CSS الحالي .typeahead)
-      const r = input.getBoundingClientRect();
-      panel.style.position = 'absolute';
-      panel.style.minWidth = r.width + 'px';
-      // الحاوية الأم هي .topbar__inner => مناسب لأن .typeahead لديه position:absolute مع inset-inline
-    }
-
-    function pick(place){
-      input.value = place.display_name;
-      if (latEl) latEl.value = place.lat;
-      if (lngEl) lngEl.value = place.lon;
-      try{
-        document.cookie = "city="+encodeURIComponent(place.display_name)+";path=/;SameSite=Lax";
-        document.cookie = "lat="+place.lat+";path=/;SameSite=Lax";
-        document.cookie = "lng="+place.lon+";path=/;SameSite=Lax";
-      }catch(_){}
-      hide();
-    }
-
-    function render(list){
-      if (!Array.isArray(list) || !list.length){ hide(); return; }
-      const html = [];
-      html.push('<div class="typeahead-group">مدن/مناطق</div>');
-      list.slice(0,8).forEach((p,i)=>{
-        const name = esc(p.display_name || '');
-        html.push('<div class="typeahead-item" data-i="'+i+'"><i class="bi bi-geo-alt"></i><div class="flex-grow-1"><div>'+name+'</div><div class="k">lat '+esc(p.lat)+' — lng '+esc(p.lon)+'</div></div></div>');
-      });
-      panel.innerHTML = html.join('');
-      show();
-    }
-
-    function searchCity(q){
-      if (!q || q.trim().length < 1){ hide(); return; }
-      const url = 'https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&accept-language=ar&q=' + encodeURIComponent(q.trim());
-      fetch(url, {headers: {'Accept':'application/json'}})
-        .then(r => r.ok ? r.json() : [])
-        .then(render)
-        .catch(hide);
-    }
-
-    input.addEventListener('input', function(){
-      clearTimeout(tm);
-      const q = input.value;
-      if (!q || q.trim().length < 1){ hide(); return; }
-      tm = setTimeout(()=>{ positionPanel(); searchCity(q); }, 220);
-    });
-
-    panel.addEventListener('click', function(e){
-      const row = e.target.closest('.typeahead-item');
-      if (!row) return;
-      const i = Number(row.getAttribute('data-i'));
-      // نقرأ آخر قائمة مرسلة في panel عبر نصوصها—أسهل هو إعادة طلب العناصر:
-      const q = input.value.trim();
-      if (!q) return;
-      fetch('https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&accept-language=ar&q='+encodeURIComponent(q))
-        .then(r=>r.json())
-        .then(list => { if (list[i]) pick(list[i]); })
-        .catch(()=>{});
-    });
-
-    document.addEventListener('click', function(e){
-      if (e.target === input || panel.contains(e.target)) return;
-      hide();
-    });
-
-    input.addEventListener('keydown', function(e){
-      if (panel.classList.contains('d-none')) return;
-      const rows = Array.prototype.slice.call(panel.querySelectorAll('.typeahead-item'));
-      if (!rows.length) return;
-      if (e.key === 'ArrowDown'){ e.preventDefault(); setActive(rows, active+1); }
-      else if (e.key === 'ArrowUp'){ e.preventDefault(); setActive(rows, active-1); }
-      else if (e.key === 'Enter'){ if (active>=0 && rows[active]){ e.preventDefault(); rows[active].click(); } }
-      else if (e.key === 'Escape'){ hide(); }
-    });
-
-    function setActive(rows, i){
-      rows.forEach(r=>r.classList.remove('active'));
-      if (i < 0) i = rows.length-1;
-      if (i >= rows.length) i = 0;
-      active = i; rows[active].classList.add('active');
-      rows[active].scrollIntoView({block:'nearest'});
-    }
-  })();
-  </script>
+  <!-- (تم حذف مدخلات radius/GPS وسكربتاتها من الهيدر حسب الطلب) -->
 
 </body>
 </html>
