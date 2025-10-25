@@ -626,6 +626,92 @@
 /* ضمان المربّع دائمًا */
 .spot-media{ aspect-ratio:1/1 !important; }
 .spot-media img{ width:100% !important; height:100% !important; object-fit:cover !important; }
+/* ===== تصحيح ستايل قسم "كل العناصر" على الهاتف ===== */
+@media (max-width: 576px){
+
+  /* المسافات ومنطقة أمان أسفل حتى لا يغطيها التاب بار */
+  .home-shelves{
+    padding-bottom: calc(env(safe-area-inset-bottom,0) + 84px) !important;
+  }
+
+  /* عنوان القسم */
+  .section-head{ margin:10px 8px 8px !important; }
+  .section-title{ font-size:1rem !important; font-weight:800 !important; }
+
+  /* شبكة "كل العناصر": عمودان ثابتان مثل Airbnb مع فجوات صغيرة */
+  .mixed-grid{
+    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+    gap: 10px !important;
+    padding-inline: 8px !important;
+  }
+
+  /* الكرت داخل "كل العناصر" أصغر ولا يمتد بعرض كبير */
+  .mixed-grid .spot{
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  /* الصورة مربعة 100% وزوايا ناعمة ولا تقطع */
+  .mixed-grid .spot-media{
+    aspect-ratio: 1/1 !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+  }
+  .mixed-grid .spot-media img{
+    display:block !important;
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover !important;
+    border-radius:12px !important;
+  }
+
+  /* شارة الفئة والقلب أصغر */
+  .mixed-grid .category-chip{
+    top:8px; left:8px; padding:4px 9px; font-size:.74rem;
+    background:rgba(255,255,255,.96); border:1px solid rgba(0,0,0,.06); border-radius:999px;
+    box-shadow:0 3px 8px rgba(0,0,0,.08);
+  }
+  .mixed-grid .fav-btn{
+    top:8px; right:8px; width:28px; height:28px;
+    background:#fff !important; border:1px solid rgba(0,0,0,.1) !important; box-shadow:0 2px 6px rgba(0,0,0,.1) !important;
+  }
+  .mixed-grid .fav-btn .bi{ font-size:14px; }
+
+  /* نصوص تحت الصورة: حجم صغير، بدون خلفيات رمادية، محاذاة يسار */
+  .mixed-grid .spot-body{
+    padding:8px 2px 0 !important;
+    background:transparent !important;
+    text-align:start !important;
+  }
+  .mixed-grid .spot-title{
+    font-size:.92rem !important; font-weight:800 !important; line-height:1.2 !important;
+    margin-bottom:4px !important;
+    display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
+    color:#111 !important;
+  }
+  .mixed-grid .owner-avatar--placeholder{ display:none !important; }
+  .mixed-grid .city-chip{
+    background:none !important; border:none !important; padding:0 !important;
+    color:#6b7280 !important; font-size:.85rem !important;
+  }
+
+  /* سطر السعر والتقييم مثل Airbnb (رفيع ونظيف) */
+  .mixed-grid .spot-footer{
+    display:flex !important; align-items:center !important; justify-content:space-between !important;
+    margin-top:2px !important;
+  }
+  .mixed-grid .spot-footer small{
+    font-size:.86rem !important; font-weight:800 !important; color:#111 !important;
+  }
+}
+
+/* إزالة أي خلفية/ظل عند المرور في كل المقاسات */
+.spot, .spot:hover, .spot:focus{ background:transparent !important; box-shadow:none !important; outline:0 !important; }
+
+/* تأكيد المربّع للجميع */
+.spot-media{ aspect-ratio:1/1 !important; }
+.spot-media img{ width:100% !important; height:100% !important; object-fit:cover !important; }
 
 </style>
 {% endblock %}
