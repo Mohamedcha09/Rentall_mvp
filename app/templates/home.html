@@ -442,6 +442,62 @@
 .mixed-grid {
   gap: 20px !important;
 }
+
+/* مربع حقيقي للصورة */
+.spot-media{
+  aspect-ratio: 1 / 1 !important;   /* الحاوية نفسها مربّعة */
+  border-radius: 14px !important;
+  overflow: hidden !important;
+  background: transparent !important;
+}
+.spot-media img{
+  width:100% !important;
+  height:100% !important;            /* يملأ المربّع */
+  object-fit:cover !important;
+  object-position:center !important;
+  aspect-ratio:auto !important;      /* تجاهل أي نسب قديمة */
+  background:#f3f4f6;
+}
+
+/* كرت أصغر مثل Airbnb */
+.hcard{ min-width:250px !important; max-width:250px !important; }
+@media (max-width:576px){ .hcard{ min-width:230px !important; max-width:230px !important; } }
+@media (min-width:992px){ .hcard{ min-width:260px !important; max-width:260px !important; } }
+
+/* أزل أي تأثير بنفسجي عند المرور/التركيز */
+.spot,
+.spot:hover,
+.spot:focus,
+.spot:active{
+  background:transparent !important;
+  box-shadow:none !important;
+  outline:0 !important;
+}
+
+/* أخفِ شارة السعر السوداء على الصورة */
+.price-badge{ display:none !important; }
+
+/* قلب صغير ووسم أبيض مثل Airbnb */
+.fav-btn{ top:10px; right:10px; width:32px; height:32px; background:#fff !important; border:1px solid rgba(0,0,0,.1) !important; box-shadow:0 3px 8px rgba(0,0,0,.1) !important; }
+.fav-btn .bi{ font-size:15px; color:#111; }
+.fav-btn.is-fav{ background:#111 !important; border-color:#111 !important; }
+.fav-btn.is-fav .bi{ color:#fff !important; }
+
+.category-chip{
+  top:10px; left:10px; padding:6px 12px; font-size:.78rem; font-weight:700;
+  background:rgba(255,255,255,.96); border:1px solid rgba(0,0,0,.06); border-radius:999px;
+  box-shadow:0 4px 12px rgba(0,0,0,.08); backdrop-filter:blur(8px);
+}
+
+/* نصوص تحت الصورة مثل Airbnb */
+.spot-body{ padding:10px 6px 0 !important; background:transparent !important; }
+.spot-title{ font-weight:800; color:#111; font-size:.98rem; margin-bottom:4px; line-height:1.25; -webkit-line-clamp:1; display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden; }
+.owner-avatar--placeholder{ display:none !important; }
+.city-chip{ background:none !important; border:none !important; padding:0 !important; color:#6b7280 !important; }
+
+/* سطر السعر + التقييم */
+.spot-footer{ display:flex; align-items:center; justify-content:space-between; margin-top:2px; }
+.spot-footer small{ color:#111 !important; font-weight:800; font-size:.9rem; }
 </style>
 {% endblock %}
 
