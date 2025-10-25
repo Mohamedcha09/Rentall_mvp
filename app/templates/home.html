@@ -557,6 +557,28 @@
   box-shadow: none !important;
   outline: none !important;
 }
+/* ==== 6 بطاقات في الصف على اللابتوب ==== */
+
+/* السلايدر (hrow) */
+@media (min-width:1200px){
+  .hrow{ gap:12px !important; padding-inline:2px !important; }
+  /* عرض الكرت مضبوط بحيث يدخل 6 بالضبط */
+  .hcard{ min-width:206px !important; max-width:206px !important; }
+}
+
+/* شبكة "كل العناصر" (mixed-grid) */
+@media (min-width:1200px){
+  .mixed-grid{
+    gap:14px !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  }
+  .mixed-grid .spot-media{ aspect-ratio:1/1 !important; }
+}
+
+/* ضمان المربّع في كل مكان + إزالة أي تأثيرات */
+.spot-media{ aspect-ratio:1/1 !important; border-radius:14px !important; overflow:hidden !important; }
+.spot-media img{ width:100% !important; height:100% !important; object-fit:cover !important; }
+.spot, .spot:hover, .spot:focus{ background:transparent !important; box-shadow:none !important; outline:0 !important; }
 
 </style>
 {% endblock %}
