@@ -163,6 +163,144 @@
 }
 .home-locbar .btn.btn-primary:hover{ filter:brightness(1.06); }
 .home-locbar .btn{ height:48px; }
+
+/* ================================
+   مود ستايل — شريط الموقع (Home Locbar)
+   يعمل بدون تعديل HTML
+   ================================ */
+
+.home-locbar{
+  --ring:#a944ec;           /* بنفسجي العلامة */
+  --ring-2:#7c3aed;
+  --accent:#0ea5e9;         /* أزرق */
+  --text-on:#ffffff;
+  --glass: rgba(255,255,255,.85);
+  --glass-2: rgba(255,255,255,.70);
+  background: linear-gradient(180deg,var(--glass),var(--glass-2));
+  backdrop-filter: blur(10px);
+  border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  border-radius: 18px;
+  padding: 12px;
+  box-shadow: 0 14px 30px rgba(0,0,0,.08);
+  row-gap: 10px !important;
+}
+
+.home-locbar .form-control{
+  height: 48px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab,var(--border) 80%, transparent);
+  padding-inline: 46px 16px; /* مساحة للأيقونة */
+  font-weight: 600;
+  letter-spacing: .2px;
+  transition: .2s;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0);
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%238f8f94' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 21l-4.35-4.35'/><circle cx='10' cy='10' r='7'/></svg>")
+    no-repeat 14px 50% / 20px 20px,
+    #fff;
+}
+.home-locbar .form-control::placeholder{ color: #9aa1aa; font-weight:600; }
+.home-locbar .form-control:focus{
+  border-color: var(--ring);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--ring) 22%, transparent);
+}
+
+/* زر: استخدم موقعي */
+#homeUseGPS.btn{
+  height: 48px;
+  border-radius: 999px;
+  font-weight: 800;
+  border: none;
+  color: var(--text-on);
+  background: linear-gradient(135deg, var(--accent), #22d3ee);
+  box-shadow: 0 12px 26px rgba(14,165,233,.28), 0 2px 0 rgba(255,255,255,.4) inset;
+  transition: transform .08s ease, filter .2s ease, box-shadow .2s ease;
+}
+#homeUseGPS.btn:hover{ filter: brightness(1.06); }
+#homeUseGPS.btn:active{ transform: translateY(1px); }
+
+/* زر: إلغاء موقعي (رابط أنيق) */
+#homeClearGPS.btn{
+  height: 36px;
+  padding-inline: 12px;
+  margin-top: 6px;
+  align-self: center;
+  border-radius: 999px;
+  color: #ef4444;
+  font-weight: 700;
+  text-decoration: none !important;
+  background: color-mix(in oklab,#ef4444 10%, transparent);
+  transition: background .2s ease, color .2s ease;
+}
+#homeClearGPS.btn:hover{ background: color-mix(in oklab,#ef4444 18%, transparent); color:#dc2626; }
+
+/* زر: تطبيق */
+.home-locbar .btn.btn-primary{
+  height: 48px;
+  border-radius: 999px;
+  font-weight: 900;
+  letter-spacing: .3px;
+  border: none;
+  color: var(--text-on);
+  background: linear-gradient(135deg, var(--ring), var(--ring-2));
+  box-shadow: 0 14px 30px rgba(124,58,237,.28);
+  transition: transform .08s ease, filter .2s ease, box-shadow .2s ease;
+}
+.home-locbar .btn.btn-primary:hover{ filter: brightness(1.06); }
+.home-locbar .btn.btn-primary:active{ transform: translateY(1px); }
+
+/* اقتراحات المدن */
+#homeCitySugg{
+  border-radius: 14px !important;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--ring) 30%, var(--border));
+  box-shadow: 0 18px 36px rgba(0,0,0,.12);
+}
+#homeCitySugg > div{
+  font-weight: 600;
+  color: color-mix(in oklab, var(--text) 85%, #444);
+}
+#homeCitySugg > div:hover{
+  background: color-mix(in oklab, var(--ring) 10%, #f7f7fb);
+}
+
+/* وضع الهاتف: ترتيب عمودي مريح + مسافات أكبر */
+@media (max-width: 576px){
+  .home-locbar{ padding: 12px; border-radius: 16px; }
+  .home-locbar .col-12, .home-locbar .col-6, .home-locbar .col-md-2, .home-locbar .col-md-5{
+    width: 100% !important;
+  }
+  #homeUseGPS.btn{ width: 100%; }
+  #homeClearGPS.btn{ margin-inline:auto; }
+  .home-locbar .btn.btn-primary{ width: 100%; }
+}
+
+/* وضع الديسكتوب: محاذاة أنيقة بين الحقول */
+@media (min-width: 768px){
+  .home-locbar{ padding: 14px 16px; }
+  #homeClearGPS.btn{ margin-top: 4px; }
+}
+
+/* دعم الوضع الداكن تلقائيًا */
+@media (prefers-color-scheme: dark){
+  .home-locbar{
+    --glass: rgba(18,18,22,.65);
+    --glass-2: rgba(18,18,22,.55);
+  }
+  .home-locbar .form-control{
+    background-color: #0f1116;
+    color: #e7e8ea;
+    border-color: color-mix(in oklab,#fff 8%, #2a2d33);
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%23b1b4ba' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 21l-4.35-4.35'/><circle cx='10' cy='10' r='7'/></svg>");
+  }
+  #homeCitySugg{
+    background: #0f1116 !important;
+    border-color: color-mix(in oklab, var(--ring) 30%, #2a2d33);
+  }
+  #homeCitySugg > div{ color:#e7e8ea; }
+  #homeCitySugg > div:hover{ background: color-mix(in oklab, var(--ring) 18%, #141722); }
+}
 </style>
 {% endblock %}
 
