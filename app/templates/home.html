@@ -306,80 +306,142 @@
 /* شبكة "كل العناصر": فجوات أريح وبطاقات متقاربة */
 .mixed-grid{ gap:16px !important; }
 
-/* ======= Airbnb-perfect look (STYLE ONLY) ======= */
+/* ===============================
+   Airbnb Exact Layout Correction
+   =============================== */
 
-/* 1) الصورة مربعة مع زوايا ناعمة وحد خفي */
-.spot{ border-radius:14px; overflow:hidden; border:1px solid #e7e7ea; box-shadow:0 6px 18px rgba(0,0,0,.04); background:#fff; }
-.spot-media{ border-radius:14px 14px 0 0; }
-.spot-media img{
-  width:100% !important; height:auto !important;
-  aspect-ratio: 1 / 1;                 /* مثل Airbnb تقريبًا */
-  object-fit:cover !important; object-position:center !important;
-  background:#f3f4f6;
+/* اجعل الكرت مربع بدون مساحة بيضاء تحته */
+.spot {
+  border-radius: 14px;
+  overflow: hidden;
+  border: none;
+  box-shadow: none;
+  background: transparent;
 }
 
-/* 2) أخفي شارة السعر على الصورة (Airbnb لا يضع السعر فوق الصورة) */
-.price-badge{ display:none !important; }
-
-/* 3) شارة الفئة مثل "Coup de coeur voyageurs" */
-.category-chip{
-  position:absolute; left:12px; top:12px;
-  font-weight:700; font-size:.78rem;
-  padding:6px 12px; border-radius:999px;
-  color:#111827;
-  background:rgba(255,255,255,.96);
-  border:1px solid rgba(0,0,0,.08);
-  box-shadow:0 6px 16px rgba(0,0,0,.08);
-  backdrop-filter:saturate(160%) blur(8px);
+/* الصورة مربعة تمامًا */
+.spot-media img {
+  width: 100% !important;
+  aspect-ratio: 1 / 1 !important;
+  object-fit: cover !important;
+  border-radius: 14px;
+  background: #f3f4f6;
 }
 
-/* 4) قلب صغير أبيض بحافة خفيفة */
-.fav-btn{
-  right:12px; top:12px;
-  width:34px; height:34px;
-  background:#fff !important;
-  border:1px solid rgba(0,0,0,.08) !important;
-  box-shadow:0 6px 16px rgba(0,0,0,.10) !important;
-}
-.fav-btn .bi{ font-size:16px; color:#111827; }
-.fav-btn.is-fav{ background:#111827 !important; border-color:#111827 !important; }
-.fav-btn.is-fav .bi{ color:#fff !important; }
-
-/* 5) نصوص تحت الصورة: عنوان قوي + سطر معلومات باهت + سطر السعر/التقييم */
-.spot-body{ padding:10px 12px 12px !important; }
-.spot-title{
-  font-weight:800; letter-spacing:.1px;
-  font-size:clamp(.96rem,.92rem + .22vw,1.06rem);
-  color:#111827; margin-bottom:6px; line-height:1.25;
-  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
+/* لا خلفية ولا حدود للصورة */
+.spot-media {
+  border: none !important;
+  background: transparent !important;
 }
 
-/* حوّل city-chip إلى نص باهت مثل Airbnb (بدون كبسولة) */
-.city-chip{
-  display:inline-block; background:none !important; border:none !important;
-  padding:0 !important; border-radius:0 !important;
-  font-size:.9rem; color:#6b7280; margin-bottom:4px;
+/* أيقونة القلب */
+.fav-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  background: #fff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+}
+.fav-btn .bi {
+  font-size: 15px;
+  color: #111;
+}
+.fav-btn.is-fav {
+  background: #111 !important;
+}
+.fav-btn.is-fav .bi {
+  color: #fff !important;
 }
 
-/* الفوتر: السعر يسار/التقييم يمين */
-.spot-footer{
-  display:flex; align-items:center; justify-content:space-between; margin-top:2px;
+/* وسم التصنيف (مثل Coup de cœur voyageurs) */
+.category-chip {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #111;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(8px);
 }
-.spot-footer small{
-  /* هذا هو النص الذي عندك "يوم/ 10$" — نجعله بارزًا مثل السعر في Airbnb */
-  color:#111827 !important; font-weight:800; font-size:.95rem;
+
+/* الجسم الداخلي (العنوان والسعر والتقييم فقط) */
+.spot-body {
+  background: transparent !important;
+  padding: 8px 4px 0 4px !important;
 }
-.spot-footer .bi{ display:none; } /* نخفي السهم لأنه لا يوجد في Airbnb */
 
-/* 6) كروت السلايدر بحجم Airbnb تقريبًا */
-.hcard{ min-width:280px !important; max-width:280px !important; }
-@media (max-width:576px){ .hcard{ min-width:260px !important; max-width:260px !important; } }
+/* العنوان */
+.spot-title {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: #111;
+  margin-bottom: 4px;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 
-/* 7) شبكة “كل العناصر” — فجوات مثل Airbnb */
-.mixed-grid{ gap:18px !important; }
+/* اخفِ الرموز القديمة (🏷️ و city-chip القديمة) */
+.owner-avatar--placeholder {
+  display: none !important;
+}
+.city-chip {
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
 
-/* 8) تباعد الأقسام والعناوين */
-.section-title{ font-weight:800; font-size:1.05rem; color:#111827; }
+/* سطر السعر والتقييم مثل Airbnb */
+.spot-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2px;
+}
+.spot-footer small {
+  font-size: 0.88rem;
+  color: #111;
+  font-weight: 700;
+}
+.spot-footer::before {
+  content: "★ ";
+  color: #111;
+  font-size: 0.9rem;
+  margin-right: 2px;
+}
+
+/* حجم الكروت مثل Airbnb */
+.hcard {
+  min-width: 250px !important;
+  max-width: 250px !important;
+}
+@media (min-width: 768px) {
+  .hcard {
+    min-width: 280px !important;
+    max-width: 280px !important;
+  }
+}
+@media (min-width: 992px) {
+  .hcard {
+    min-width: 300px !important;
+    max-width: 300px !important;
+  }
+}
+.mixed-grid {
+  gap: 20px !important;
+}
 </style>
 {% endblock %}
 
