@@ -1,9 +1,8 @@
 # app/items.py
 from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from typing import Optional
+from sqlalchemy import func, or_   # ← أضفنا or_ للفلترة بالمدينة
 import os, secrets, shutil
 
 # Cloudinary (رفع الصور إلى السحابة)
@@ -25,7 +24,7 @@ UPLOADS_ROOT = os.environ.get(
 ITEMS_DIR = os.path.join(UPLOADS_ROOT, "items")
 os.makedirs(ITEMS_DIR, exist_ok=True)
 
-# --- Helpers ---
+# ---------------- Helpers ----------------
 def require_approved(request: Request):
     u = request.session.get("user")
     return u and u.get("status") == "approved"
@@ -46,40 +45,47 @@ def _local_public_url(fname: str) -> str:
     # عنوان يمكن فتحه عبر StaticFiles('/uploads' -> UPLOADS_ROOT)
     return f"/uploads/items/{fname}"
 
+
 # ================= قائمة العناصر =================
-@router.get("/items", response_class=HTMLResponse)
+@router.get("/items")
 def items_list(
     request: Request,
     db: Session = Depends(get_db),
-    category: Optional[str] = None,
-    sort: Optional[str] = None,   # random | new
-    city: Optional[str] = None,
-    lat: Optional[float] = None,
-    lng: Optional[float] = None,
+    category: str = None,
+    sort: str = None,               # sort=random|new
+    city: str = None,               # اسم المدينة (مثال: "Paris, France")
+    lat: float | None = None,       # إحداثيات اختيارية (من الاقتراح/GPS)
+    lng: float | None = None,
 ):
-    # الأساس: عناصر مفعّلة فقط
     q = db.query(Item).filter(Item.is_active == "yes")
     current_category = None
-
-    # فلترة التصنيف
     if category:
         q = q.filter(Item.category == category)
         current_category = category
 
-    # فلترة المدينة (عند عدم وجود إحداثيات)
-    if city and (lat is None or lng is None):
-        # فلترة بسيطة بالاسم (تعمل مع أي DB)
-        q = q.filter(Item.city.ilike(f"%{city}%"))
+    # ===== فلترة صارمة بالمدينة =====
+    # نُظهر فقط العناصر التي مدينتها تطابق الاسم المُدخل (جزئياً) — لا نوسّع لمدن أخرى
+    applied_name_filter = False
+    if city:
+        # مثال: "Paris, France" → "Paris"
+        short = (city or "").split(",")[0].strip()
+        if short:
+            q = q.filter(
+                or_(
+                    func.lower(Item.city).like(f"%{short.lower()}%"),
+                    func.lower(Item.city).like(f"%{(city or '').lower()}%")
+                )
+            )
+            applied_name_filter = True
 
-    # الفرز
-    # - عند وجود lat/lng: نفرز بالقرب أولاً (وأيضًا نفلتر العناصر التي فيها إحداثيات)
-    # - عند عدم وجودهما: نطبّق sort المعتاد (random/new)
+    # ===== الترتيب =====
+    # إذا لدينا إحداثيات، نرتّب بها فقط داخل النتائج الحالية (لا نضيف مدن مجاورة)
     applied_distance_sort = False
     if lat is not None and lng is not None:
-        # مسافة مبسّطة (مربّع الفرق) تعمل على Postgres و SQLite بدون دوال مثل acos
-        # distance^2 = (lat - item.lat)^2 + (lng - item.lng)^2
-        # مع تجاهل العناصر التي لا تملك إحداثيات
-        q = q.filter(Item.latitude.isnot(None), Item.longitude.isnot(None))
+        # لا نُجبر وجود إحداثيات على كل العناصر كي لا نخسر عناصر مدينتها مطابقة لكن بدون lat/lng
+        # لو أردت استبعاد العناصر التي بلا إحداثيات، أزل التعليق التالي:
+        # q = q.filter(Item.latitude.isnot(None), Item.longitude.isnot(None))
+
         dist2 = (
             (Item.latitude - float(lat)) * (Item.latitude - float(lat))
             + (Item.longitude - float(lng)) * (Item.longitude - float(lng))
@@ -87,7 +93,7 @@ def items_list(
         q = q.order_by(dist2.asc())
         applied_distance_sort = True
 
-    # إن لم نطبّق فرز المسافة، نتبع sort
+    # إن لم نرتب بالمسافة، استخدم sort=new|random
     s = (sort or request.query_params.get("sort") or "random").lower()
     current_sort = s
     if not applied_distance_sort:
@@ -98,7 +104,7 @@ def items_list(
 
     items = q.all()
 
-    # تحضير حقول العرض
+    # تجهيز بيانات العرض
     for it in items:
         it.category_label = category_label(it.category)
         it.owner_badges = get_user_badges(it.owner, db) if it.owner else []
@@ -111,20 +117,20 @@ def items_list(
             "items": items,
             "categories": CATEGORIES,
             "current_category": current_category,
+            "session_user": request.session.get("user"),
+            "account_limited": is_account_limited(request),
             "current_sort": current_sort,
             "selected_city": city or "",
             "lat": lat,
             "lng": lng,
-            "session_user": request.session.get("user"),
-            "account_limited": is_account_limited(request),
         }
     )
 
+
 # ================= تفاصيل عنصر =================
-@router.get("/items/{item_id}", response_class=HTMLResponse)
+@router.get("/items/{item_id}")
 def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
-    # استبدال Query.get القديم
-    item = db.get(Item, item_id)
+    item = db.query(Item).get(item_id)
     if not item:
         return request.app.templates.TemplateResponse(
             "items_detail.html",
@@ -132,7 +138,7 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
         )
 
     item.category_label = category_label(item.category)
-    owner = db.get(User, item.owner_id)
+    owner = db.query(User).get(item.owner_id)
     owner_badges = get_user_badges(owner, db) if owner else []
 
     return request.app.templates.TemplateResponse(
@@ -146,8 +152,9 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
         }
     )
 
+
 # ================= عناصر المالك =================
-@router.get("/owner/items", response_class=HTMLResponse)
+@router.get("/owner/items")
 def my_items(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user")
     if not u:
@@ -174,8 +181,9 @@ def my_items(request: Request, db: Session = Depends(get_db)):
         }
     )
 
+
 # ================= إضافة عنصر جديد =================
-@router.get("/owner/items/new", response_class=HTMLResponse)
+@router.get("/owner/items/new")
 def item_new_get(request: Request):
     if not require_approved(request):
         return RedirectResponse(url="/login", status_code=303)
@@ -191,6 +199,7 @@ def item_new_get(request: Request):
         }
     )
 
+
 @router.post("/owner/items/new")
 def item_new_post(
     request: Request,
@@ -201,7 +210,7 @@ def item_new_post(
     city: str = Form(""),
     price_per_day: int = Form(0),
     image: UploadFile = File(None),
-    latitude: float | None = Form(None),   # نخزّن الإحداثيات إن وُجدت
+    latitude: float | None = Form(None),   # نخزن الإحداثيات إن وُجدت
     longitude: float | None = Form(None),
 ):
     if not require_approved(request):
@@ -209,14 +218,18 @@ def item_new_post(
 
     u = request.session.get("user")
 
+    # المسار النهائي الذي سنخزنه في DB (Cloudinary URL أو مسار محلي /uploads/..)
     image_path_for_db = None
 
     if image and image.filename:
+        # 1) تأكيد الامتداد
         if _ext_ok(image.filename):
+            # 2) اسم ملف آمن محلي (للـ fallback)
             ext = os.path.splitext(image.filename)[1].lower()
             fname = f"{u['id']}_{secrets.token_hex(8)}{ext}"
             fpath = os.path.join(ITEMS_DIR, fname)
 
+            # 3) محاولة الرفع إلى Cloudinary
             uploaded_url = None
             try:
                 up = cloudinary.uploader.upload(
@@ -229,6 +242,7 @@ def item_new_post(
             except Exception:
                 uploaded_url = None
 
+            # 4) إن فشل الرفع السحابي → حفظ محلي
             if not uploaded_url:
                 try:
                     try:
@@ -248,6 +262,7 @@ def item_new_post(
             except Exception:
                 pass
 
+    # إنشاء السجل
     it = Item(
         owner_id=u["id"],
         title=title,
