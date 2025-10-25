@@ -67,6 +67,7 @@ from .routes_evidence import router as evidence_router
 # ✅ [جديد] راوتر تشغيل الإفراج التلقائي يدويًا (للاختبار/الأدمن)
 from .cron_auto_release import router as cron_router
 from .debug_email import router as debug_email_router
+from .routes_metrics import router as metrics_router  # ← جديد
 
 app = FastAPI()
 
@@ -268,6 +269,7 @@ app.include_router(payout_connect_router)
 # مع بقية include_router(...)
 app.include_router(debug_cloudinary_router)
 app.include_router(home_router)
+app.include_router(metrics_router)  # ← جديد
 
 app.include_router(webhooks_router)
 app.include_router(disputes_router)
@@ -281,6 +283,7 @@ app.include_router(notifications_router)
 app.include_router(me_router)
 app.include_router(debug_email_router)
 
+# في الأسفل:
 # ✅ [مضاف] تسجيل مسارات إدارة الودائع (DM)
 app.include_router(deposits_router)
 

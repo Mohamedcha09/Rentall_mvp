@@ -4,6 +4,67 @@
 <div class="container py-4">
   <h3 class="mb-4">لوحة الأدمين</h3>
 
+  <!-- ===== إحصائيات الزيارات ===== -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <div class="row g-3 text-center">
+        <div class="col-6 col-lg-3">
+          <div class="p-3 rounded-3 border">
+            <div class="small text-muted">زوار اليوم</div>
+            <div id="m_today" class="fs-3 fw-bold">—</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="p-3 rounded-3 border">
+            <div class="small text-muted">زوار هذا الشهر</div>
+            <div id="m_month" class="fs-3 fw-bold">—</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="p-3 rounded-3 border">
+            <div class="small text-muted">زوار هذه السنة</div>
+            <div id="m_year" class="fs-3 fw-bold">—</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="p-3 rounded-3 border">
+            <div class="small text-muted">المتصلون الآن</div>
+            <div id="m_online" class="fs-3 fw-bold">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <canvas id="dailyChart" height="120" style="max-height:240px"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script>
+  (async function(){
+    try{
+      const sum = await (await fetch("/api/admin/metrics/summary")).json();
+      document.getElementById("m_today").textContent  = sum.today  ?? 0;
+      document.getElementById("m_month").textContent  = sum.month  ?? 0;
+      document.getElementById("m_year").textContent   = sum.year   ?? 0;
+      document.getElementById("m_online").textContent = sum.online_now ?? 0;
+
+      const d = await (await fetch("/api/admin/metrics/daily_chart")).json();
+      const ctx = document.getElementById("dailyChart").getContext("2d");
+      new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: d.labels || [],
+          datasets: [{ label: "زوار فريدون", data: d.values || [], tension: .3, fill: false }]
+        },
+        options: { responsive: true, plugins: { legend: { display: true } }, scales: { y: { beginAtZero: true } } }
+      });
+    }catch(e){}
+  })();
+  </script>
+
   <!-- ==================== في انتظار الموافقة ==================== -->
   <div class="card mb-4">
     <div class="card-header d-flex align-items-center justify-content-between">
