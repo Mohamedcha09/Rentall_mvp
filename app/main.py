@@ -80,8 +80,10 @@ app = FastAPI()
 # =========================
 # >>> ADD: جعل https_only يعتمد على البيئة (HTTPS في الإنتاج، HTTP محليًا)
 SITE_URL = os.environ.get("SITE_URL", "")
-HTTPS_ONLY_COOKIES = os.getenv("HTTPS_ONLY_COOKIES",
-                               "1" if SITE_URL.startswith("https") else "0") == "1"
+HTTPS_ONLY_COOKIES = os.getenv(
+    "HTTPS_ONLY_COOKIES",
+    "1" if SITE_URL.startswith("https") else "0"
+) == "1"
 
 app.add_middleware(
     SessionMiddleware,
@@ -130,12 +132,13 @@ app.templates.env.filters["media_url"] = media_url
 Base.metadata.create_all(bind=engine)
 
 # =========================
-# ✅ [إضافة] هوت-فيكس لتأمين أعمدة مفقودة في SQLite (خصوصًا deposit_evidences.uploader_id)
+# ✅ [إضافة] هوت-فيكس لتأمين أعمدة مفقودة في SQLite
 # =========================
 def ensure_sqlite_columns():
     """
-    هوت-فيكس يضيف عمود uploader_id في جدول deposit_evidences
-    لكن فقط عند استخدام SQLite. يُتجاهل تلقائياً مع Postgres.
+    هوت-فيكس يضيف أعمدة ناقصة عند استخدام SQLite فقط (يتجاهل Postgres):
+      - deposit_evidences.uploader_id
+      - reports.status / reports.tag / reports.updated_at
     """
     try:
         # لو القاعدة ليست SQLite لا نفعل شيئًا
@@ -147,21 +150,33 @@ def ensure_sqlite_columns():
             return  # ✅ لا تشغّل PRAGMA على Postgres
 
         with engine.begin() as conn:
-            cols = {
-                row[1]
-                for row in conn.exec_driver_sql("PRAGMA table_info('deposit_evidences')").all()
-            }
-            if "uploader_id" not in cols:
-                conn.exec_driver_sql(
-                    "ALTER TABLE deposit_evidences ADD COLUMN uploader_id INTEGER;"
-                )
-                # اختياري: إنشاء فهرس
-                # conn.exec_driver_sql(
-                #     "CREATE INDEX IF NOT EXISTS ix_deposit_evidences_uploader_id "
-                #     "ON deposit_evidences(uploader_id);"
-                # )
+            # === deposit_evidences.uploader_id ===
+            try:
+                cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info('deposit_evidences')").all()}
+                if "uploader_id" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE deposit_evidences ADD COLUMN uploader_id INTEGER;")
+            except Exception as e:
+                print(f"[WARN] ensure_sqlite_columns: deposit_evidences.uploader_id → {e}")
+
+            # === reports: status/tag/updated_at ===
+            try:
+                rcols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info('reports')").all()}
+                if "status" not in rcols:
+                    conn.exec_driver_sql("ALTER TABLE reports ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'open';")
+                if "tag" not in rcols:
+                    conn.exec_driver_sql("ALTER TABLE reports ADD COLUMN tag VARCHAR(24);")
+                if "updated_at" not in rcols:
+                    conn.exec_driver_sql("ALTER TABLE reports ADD COLUMN updated_at TIMESTAMP;")
+            except Exception as e:
+                print(f"[WARN] ensure_sqlite_columns: reports.* → {e}")
+
+        print("[OK] ensure_sqlite_columns(): columns verified/added")
+
     except Exception as e:
         print(f"[WARN] ensure_sqlite_columns skipped/failed: {e}")
+
+# ✅ مهم: استدعِ الهوت-فيكس بعد إنشاء الجداول
+ensure_sqlite_columns()
 
 def seed_admin():
     db = SessionLocal()
