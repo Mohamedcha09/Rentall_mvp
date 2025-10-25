@@ -217,6 +217,11 @@
     #homeClearGPS.btn{ margin-top:2px !important; }
     .home-locbar .btn.btn-primary{ margin-top:6px !important; }
   }
+
+  /* ===== (إضافة جديدة) أزرار سلايدر لكل تصنيف + تحسين الـ hrow ===== */
+  .section-head .row-nav{display:flex;gap:8px;align-items:center}
+  .hrow{scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+  .hrow > *{scroll-snap-align:start}
 </style>
 {% endblock %}
 
@@ -327,6 +332,16 @@
     <div class="section-head mt-3">
       <div class="section-title">{{ category_label(code) }}</div>
       <a class="text-muted small" href="/items?category={{ code }}">عرض الكل</a>
+      <!-- (إضافة جديدة) أزرار تنقل السلايدر لهذا التصنيف -->
+      <div class="row-nav">
+        <button class="arrow-btn" data-snap-prev="#row-{{ code }}" aria-label="السابق">
+          <i class="bi bi-chevron-right"></i>
+        </button>
+        <button class="arrow-btn" data-snap-next="#row-{{ code }}" aria-label="التالي">
+          <i class="bi bi-chevron-left"></i>
+        </button>
+      </div>
+      <!-- /إضافة -->
     </div>
 
     <div id="row-{{ code }}" class="hrow">
@@ -657,7 +672,7 @@
     function detectLang(q){
       const s=(q||'').trim();
       if (/[\u0600-\u06FF]/.test(s)) return 'ar';
-      const hasFr = /[àâäæçéèêëîïôœùûüÿÀÂÄÆÇÉÈÊËÎÏÔŒÙÛÜŸ]/.test(s)
+      const hasFr = /[àâäæçéèêëîïôùûüÿÀÂÄÇÉÈÊËÎÏÔÙÛÜŸ]/.test(s)
                  || /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
       if (hasFr) return 'fr';
       return 'en';
@@ -792,6 +807,34 @@
         u.search = "";
       }
       location.href = u.toString();
+    });
+  })();
+
+  /* ===== (إضافة جديدة) سحب بالإصبع/الماوس + عجلة أفقية لكل hrow ===== */
+  (function enhancers(){
+    document.querySelectorAll('.hrow').forEach(row=>{
+      // سحب/إفلات
+      let down=false, start=0, startLeft=0, pid=null;
+      row.addEventListener('pointerdown', e=>{
+        down=true; pid=e.pointerId; row.setPointerCapture(pid);
+        start=e.pageX; startLeft=row.scrollLeft;
+      });
+      row.addEventListener('pointermove', e=>{
+        if(!down) return;
+        row.scrollLeft = startLeft - (e.pageX - start);
+      });
+      function up(){ if(pid!=null){ try{row.releasePointerCapture(pid)}catch(_){} } down=false; pid=null; }
+      row.addEventListener('pointerup', up);
+      row.addEventListener('pointercancel', up);
+      row.addEventListener('mouseleave', up);
+
+      // عجلة الفأرة → تمرير أفقي
+      row.addEventListener('wheel', e=>{
+        if(Math.abs(e.deltaY) > Math.abs(e.deltaX)){
+          row.scrollLeft += e.deltaY;
+          e.preventDefault();
+        }
+      }, {passive:false});
     });
   })();
 </script>
