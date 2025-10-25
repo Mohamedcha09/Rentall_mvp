@@ -226,6 +226,96 @@
 .owner-line{display:none!important}
 .spot-footer{display:none!important}
 
+/* ===== Locbar Compact (إضافات فقط) ===== */
+.home-locbar.locbar--compact{
+  padding:8px 10px;
+  border-radius:12px;
+  box-shadow:none;
+  gap:8px;
+  background:#fff;
+}
+
+/* نحط العناصر بسطر واحد وبحجم صغير */
+.locbar--compact{
+  display:grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items:center;
+}
+.locbar--compact .col-12.col-md-5,
+.locbar--compact .col-6.col-md-2,
+.locbar--compact .col-12.col-md-2{padding:0;margin:0}
+.locbar--compact .col-6.col-md-2.d-grid{
+  display:grid !important;
+  grid-auto-flow:column;
+  gap:6px;
+  justify-content:start;
+}
+
+/* حقل المدينة صغير وبسيط */
+.locbar--compact #homeCityInput{
+  height:38px;
+  border-radius:10px;
+  background:#fff;
+  font-weight:600;
+  font-size:.92rem;
+  padding-inline:10px;
+  border:1px solid var(--border);
+  box-shadow:none;
+}
+
+/* زر GPS و”تطبيق“ صغيرين */
+.locbar--compact .btn{
+  height:38px;
+  padding:0 10px;
+  border-radius:10px;
+  font-weight:700;
+  font-size:.9rem;
+  white-space:nowrap;
+}
+.locbar--compact #homeUseGPS{
+  background:#fff;
+  border:1px solid var(--border);
+  color:var(--sevor-ink);
+}
+.locbar--compact #homeUseGPS::before{content:"📍";margin-inline-end:4px}
+.locbar--compact .btn.btn-primary{
+  background:var(--sevor-brand);
+  box-shadow:none;
+}
+
+/* زر الإلغاء كرابط صغير */
+.locbar--compact #homeClearGPS{
+  padding:0 6px;
+  margin:0;
+  height:auto;
+  line-height:1;
+  font-weight:800;
+  color:var(--sevor-danger);
+}
+
+/* قائمة الاقتراحات أخفّ وأصغر */
+.locbar--compact #homeCitySugg{
+  border-radius:10px;
+  box-shadow:0 6px 18px rgba(2,6,23,.08);
+  max-height:220px;
+  font-size:.92rem;
+}
+.locbar--compact #homeCitySugg>div{padding:.5rem .6rem}
+@media (max-width:576px){
+  /* على الموبايل صفّين: (المدينة + GPS) فوق، (تطبيق + إلغاء) تحت */
+  .locbar--compact{
+    grid-template-columns: 1fr auto;
+    row-gap:6px;
+  }
+  .locbar--compact .col-12.col-md-2.d-grid{
+    grid-column: 1 / -1;
+    justify-content:space-between;
+  }
+  .locbar--compact .btn{height:36px; font-size:.88rem}
+  .locbar--compact #homeCityInput{height:36px; font-size:.9rem}
+}
+
+
 </style>
 
 
@@ -260,7 +350,7 @@
 
 <!-- ✅ شريط تحكّم للموقع (مدينة / GPS) -->
 <section class="container-xl my-3">
-  <form class="row g-2 align-items-center home-locbar" action="/" method="get" role="search" id="homeLocForm">
+<form class="row g-2 align-items-center home-locbar locbar--compact" action="/" method="get" role="search" id="homeLocForm">
     <div class="col-12 col-md-5">
       <input type="text" class="form-control" id="homeCityInput" name="city" placeholder="اكتب المدينة / المنطقة …" autocomplete="off">
       <!-- اقتراحات المدن -->
@@ -268,8 +358,9 @@
     </div>
     <!-- ❌ تمت إزالة خانة km 25 بالكامل -->
     <div class="col-6 col-md-2 d-grid">
-      <button type="button" id="homeUseGPS" class="btn btn-outline-secondary">📍 استخدم موقعي</button>
-      <button type="button" id="homeClearGPS" class="btn btn-link btn-sm mt-1">❌ إلغاء موقعي</button>
+      <button type="button" id="homeUseGPS" class="btn btn-outline-secondary" aria-label="استخدم موقعي">📍 GPS</button>
+<button type="button" id="homeClearGPS" class="btn btn-link btn-sm">إلغاء</button>
+
     </div>
     <div class="col-12 col-md-2 d-grid">
       <button class="btn btn-primary" type="submit">تطبيق</button>
