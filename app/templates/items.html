@@ -62,24 +62,14 @@
     border: 1px solid rgba(148,163,184,.35);
     backdrop-filter: blur(6px);
   }
-  .owner-line {
-    display: flex; align-items: center; gap: 8px; min-height: 28px;
-  }
-  .avatar {
-    width: 26px; height: 26px; border-radius: 50%; object-fit: cover;
-    box-shadow: 0 0 0 2px rgba(255,255,255,.12);
-  }
-  .toolbar {
-    display:flex; flex-wrap:wrap; gap:8px; align-items:center;
-  }
+  .owner-line { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+  .avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2px rgba(255,255,255,.12); }
+  .toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
   .pill {
     padding: 8px 12px; border-radius: 999px; border:1px solid rgba(255,255,255,.12);
     background: rgba(255,255,255,.04); color:#eaf0ff; text-decoration:none;
   }
-  .pill.active {
-    border-color: rgba(99,102,241,.6);
-    background: rgba(99,102,241,.18);
-  }
+  .pill.active { border-color: rgba(99,102,241,.6); background: rgba(99,102,241,.18); }
 
   /* ===== Location Bar (items page) ===== */
   .items-locbar{
@@ -115,7 +105,6 @@
   #itemsCitySugg > div{ font-size:.95rem; color:#111; border-top:1px solid rgba(0,0,0,.04); }
   #itemsCitySugg > div:first-child{ border-top:none; }
   #itemsCitySugg > div:hover{ background:#f7f7fb; }
-
 </style>
 
 <section class="container" style="max-width:1200px;margin:auto">
@@ -222,6 +211,7 @@
   function getCookie(n){const m=document.cookie.match(new RegExp('(?:^| )'+n+'=([^;]+)'));return m?decodeURIComponent(m[1]):"";}
   function delCookie(n){try{document.cookie=n+"=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax";}catch(_){}} 
 
+  // تهيئة من الكوكي/الـURL
   try{
     const u=new URL(location.href);
     const c=u.searchParams.get('city')||getCookie('city')||"";
@@ -230,16 +220,20 @@
     if(cityEl)cityEl.value=c; if(latEl)latEl.value=lat; if(lngEl)lngEl.value=lng;
   }catch(_){}
 
+  // GPS
   gpsBtn?.addEventListener('click',()=>{
     if(!navigator.geolocation){alert('المتصفح لا يدعم تحديد الموقع.');return;}
     navigator.geolocation.getCurrentPosition(pos=>{
       const lat=pos.coords.latitude,lng=pos.coords.longitude;
       setCookie('lat',lat);setCookie('lng',lng);setCookie('city',"");
       cityEl.value="";latEl.value=lat;lngEl.value=lng;
-      const u=new URL(location.href);u.searchParams.set('lat',lat);u.searchParams.set('lng',lng);u.searchParams.delete('city');location.href=u.toString();
+      const u=new URL(location.href);
+      u.searchParams.set('lat',lat);u.searchParams.set('lng',lng);u.searchParams.delete('city');
+      location.href=u.toString();
     },()=>alert('تعذر الحصول على موقعك.'));
   });
 
+  // إلغاء الموقع
   clearBtn?.addEventListener('click',()=>{
     delCookie('lat');delCookie('lng');
     const u=new URL(location.href);
@@ -248,40 +242,106 @@
     location.href=u.toString();
   });
 
+  // تغيير المدينة يدويًا
   cityEl?.addEventListener('change',()=>{
     setCookie('city',(cityEl.value||"").trim());
     setCookie('lat',"");setCookie('lng',"");
   });
 
+  // ===== اقتراح مدينة واحدة فقط + لغة الإدخال =====
   let t=null;
   function hideSugg(){if(sugg){sugg.style.display='none';sugg.innerHTML='';}}
   function showSugg(){if(sugg){sugg.style.display='block';}}
-  function detectLang(q){const s=(q||'').trim();if(/[\u0600-\u06FF]/.test(s))return'ar';const fr=/[àâäæçéèêëîïôœùûüÿÀÂÄÆÇÉÈÊËÎÏÔŒÙÛÜŸ]/.test(s)||/\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);return fr?'fr':'en';}
-  const ALLOWED=new Set(['city','town','village','municipality']);const FALLBACK=new Set(['state','province']);
-  function normalizePlace(p){const a=p.address||{},type=(p.type||'').toLowerCase(),cc=(a.country_code||'').toLowerCase(),city=a.city||a.town||a.village||a.municipality||a.state||a.province||(p.display_name||'').split(',')[0],prioMap={city:1,town:2,village:3,municipality:3,state:6,province:6,administrative:8,county:8,region:8};return{city,country:a.country||'',cc,lat:p.lat,lon:p.lon,type,prio:(prioMap[type]??9)};}
-  function pickBestUnique(list){const best=new Map();for(const p of list){const n=normalizePlace(p);if(!n.city||!n.cc)continue;const key=n.city.trim().toLowerCase()+'|'+n.cc;const prev=best.get(key);if(!prev||n.prio<prev.prio)best.set(key,n);}return Array.from(best.values());}
+  function detectLang(q){
+    const s=(q||'').trim();
+    if(/[\u0600-\u06FF]/.test(s))return'ar';
+    const fr=/[àâäæçéèêëîïôœùûüÿÀÂÄÆÇÉÈÊËÎÏÔŒÙÛÜŸ]/.test(s)||/\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
+    return fr?'fr':'en';
+  }
+  const ALLOWED=new Set(['city','town','village','municipality']);
+  const FALLBACK=new Set(['state','province']);
+  function normalizePlace(p){
+    const a=p.address||{},type=(p.type||'').toLowerCase(),cc=(a.country_code||'').toLowerCase();
+    const city=a.city||a.town||a.village||a.municipality||a.state||a.province||(p.display_name||'').split(',')[0];
+    const prioMap={city:1,town:2,village:3,municipality:3,state:6,province:6,administrative:8,county:8,region:8};
+    return{city,country:a.country||'',cc,lat:p.lat,lon:p.lon,type,prio:(prioMap[type]??9)};
+  }
+  function pickBestUnique(list){
+    const best=new Map();
+    for(const p of list){
+      const n=normalizePlace(p);
+      if(!n.city||!n.cc)continue;
+      const key=n.city.trim().toLowerCase()+'|'+n.cc;
+      const prev=best.get(key);
+      if(!prev||n.prio<prev.prio)best.set(key,n);
+    }
+    return Array.from(best.values());
+  }
 
   cityEl?.addEventListener('input',function(){
-    clearTimeout(t);const q=this.value.trim();if(q.length<2){hideSugg();return;}
+    clearTimeout(t);
+    const q=this.value.trim();
+    if(q.length<2){hideSugg();return;}
     t=setTimeout(async()=>{
       try{
         const lang=detectLang(q);
         const url='https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=30&accept-language='+encodeURIComponent(lang)+'&q='+encodeURIComponent(q);
         const r=await fetch(url,{headers:{'Accept':'application/json'}});
-        if(!r.ok){hideSugg();return;}let data=await r.json();
-        let f=data.filter(x=>ALLOWED.has((x.type||'').toLowerCase()));if(!f.length)f=data.filter(x=>FALLBACK.has((x.type||'').toLowerCase()));if(!f.length)f=data;
-        const u=pickBestUnique(f).sort((a,b)=>a.prio-b.prio);const best=u[0];if(!best){hideSugg();return;}
+        if(!r.ok){hideSugg();return;}
+        let data=await r.json();
+        let f=data.filter(x=>ALLOWED.has((x.type||'').toLowerCase()));
+        if(!f.length)f=data.filter(x=>FALLBACK.has((x.type||'').toLowerCase()));
+        if(!f.length)f=data;
+        const u=pickBestUnique(f).sort((a,b)=>a.prio-b.prio);
+        const best=u[0];
+        if(!best){hideSugg();return;}
         const label=(best.city||'').trim()+(best.country?`, ${best.country}`:'');
         sugg.innerHTML=`<div class="py-2 px-2" data-best="1" style="cursor:pointer"><i class="bi bi-geo-alt"></i> <span>${label}</span></div>`;
-        sugg.dataset.lat=best.lat||'';sugg.dataset.lon=best.lon||'';showSugg();
+        sugg.dataset.lat=best.lat||'';sugg.dataset.lon=best.lon||'';
+        showSugg();
       }catch(_){hideSugg();}
     },250);
   });
 
+  // اختيار الاقتراح
   sugg?.addEventListener('click',()=>{
     const label=(sugg.querySelector('[data-best] span')?.textContent||'').trim();
     const lat=sugg.dataset.lat||'';const lon=sugg.dataset.lon||'';
     if(!label)return;
     cityEl.value=label;latEl.value=lat;lngEl.value=lon;
     setCookie('city',label);setCookie('lat',lat);setCookie('lng',lon);
-    const u=new URL(location.href);u.searchParams.set('city',label);u.searchParams.set('lat',lat);u.searchParams.set('lng',lon);location.href=u.toString();
+    const u=new URL(location.href);
+    u.searchParams.set('city',label);u.searchParams.set('lat',lat);u.searchParams.set('lng',lon);
+    location.href=u.toString();
+  });
+
+  // إخفاء القائمة عند النقر خارجها
+  document.addEventListener('click',(e)=>{
+    if(!sugg)return;
+    if(!sugg.contains(e.target) && e.target!==cityEl){hideSugg();}
+  });
+
+  // إرسال "تطبيق"
+  form?.addEventListener('submit',function(e){
+    e.preventDefault();
+    const c=(cityEl?.value||"").trim();
+    const lat=(latEl?.value||"").trim();
+    const lng=(lngEl?.value||"").trim();
+    const u=new URL(location.href);
+    ['city','lat','lng'].forEach(k=>u.searchParams.delete(k));
+    if(lat && lng){
+      setCookie('lat',lat);setCookie('lng',lng);setCookie('city',c||"");
+      u.searchParams.set('lat',lat);u.searchParams.set('lng',lng);
+      if(c)u.searchParams.set('city',c);
+    }else if(c){
+      setCookie('city',c);setCookie('lat',"");setCookie('lng',"");
+      u.searchParams.set('city',c);
+    }else{
+      delCookie('city');delCookie('lat');delCookie('lng');
+    }
+    location.href=u.toString();
+  });
+})();
+</script>
+
+{% endblock %}

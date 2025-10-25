@@ -29,7 +29,7 @@
   /* =========================================================
      HERO — صورة كاملة + حواف دائرية (نسبة 3:2 لصور 1536×1024)
      ========================================================= */
-  .edge-bleed{ margin-inline: calc(50% - 50vw); width:100vw; } /* كما كانت (شكل أمازون) */
+  .edge-bleed{ margin-inline: calc(50% - 50vw); width:100vw; }
   .hero-carousel{
     position:relative;
     border-radius:18px !important;
@@ -42,26 +42,16 @@
     border-radius:18px !important;
     overflow:hidden !important;
   }
-  .hero-carousel .carousel-item{
-    aspect-ratio: 3 / 2 !important;
-    max-height:none !important;
-  }
+  .hero-carousel .carousel-item{ aspect-ratio: 3 / 2 !important; max-height:none !important; }
   .hero-carousel .carousel-item img{
-    width:100% !important;
-    height:100% !important;
-    object-fit:contain !important;
-    object-position:center !important;
-    display:block !important;
-    background:#eef2f7 !important;
+    width:100% !important; height:100% !important;
+    object-fit:contain !important; object-position:center !important;
+    display:block !important; background:#eef2f7 !important;
   }
-  .hero-carousel .carousel-indicators{ display:none !important; }
-  .hero-carousel .carousel-caption{ display:none !important; }
-  .hero-carousel::before,
-  .hero-carousel::after{ content:none !important; display:none !important; }
-  .hero-carousel .carousel-control-prev,
-  .hero-carousel .carousel-control-next{ width:8% !important; }
-  .hero-carousel .carousel-control-prev-icon,
-  .hero-carousel .carousel-control-next-icon{ filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
+  .hero-carousel .carousel-indicators, .hero-carousel .carousel-caption{ display:none !important; }
+  .hero-carousel::before, .hero-carousel::after{ content:none !important; display:none !important; }
+  .hero-carousel .carousel-control-prev, .hero-carousel .carousel-control-next{ width:8% !important; }
+  .hero-carousel .carousel-control-prev-icon, .hero-carousel .carousel-control-next-icon{ filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
 
   /* ديسكتوب: كرت أنيق بدل edge-bleed */
   @media (min-width: 992px){
@@ -73,281 +63,160 @@
     }
     .home-shelves.container-xl{ max-width:1320px; }
   }
-  @media (max-width:576px){
-    .hero-carousel .carousel-item{ aspect-ratio: 3 / 2 !important; }
-  }
+  @media (max-width:576px){ .hero-carousel .carousel-item{ aspect-ratio: 3 / 2 !important; } }
 
   /* =========================================================
      ░ Top Strip (3 سلايدرات صور طولية) ░
      ========================================================= */
   .top-strip-wrap{ margin:12px 0 6px; }
-  .top-strip-grid{
-    display:grid; grid-template-columns:repeat(3,1fr); gap:12px;
-  }
+  .top-strip-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
   .top-strip{
     border-radius:16px; overflow:hidden; box-shadow:0 8px 26px rgba(0,0,0,.06);
     background:#fff; border:1px solid var(--border);
   }
-  .top-strip .carousel-item{
-    aspect-ratio: 2 / 3; /* لأن صورك 1024x1536 (عمودية) */
-  }
-  .top-strip .carousel-item img{
-    width:100%; height:100%; object-fit:cover; display:block;
-  }
+  .top-strip .carousel-item{ aspect-ratio: 2 / 3; }
+  .top-strip .carousel-item img{ width:100%; height:100%; object-fit:cover; display:block; }
   .top-strip .carousel-indicators{ display:none; }
-  .top-strip .carousel-control-prev,
-  .top-strip .carousel-control-next{ width:12%; }
+  .top-strip .carousel-control-prev, .top-strip .carousel-control-next{ width:12%; }
 
-  /* موبايل: عمود واحد فقط (نظهر السلايدر الأول فقط) */
+  /* موبايل: عمود واحد فقط */
   @media (max-width: 576px){
     .top-strip-grid{ grid-template-columns:1fr; }
     .top-strip-col:not(:first-child){ display:none; }
-    .top-strip .carousel-item{ aspect-ratio: 16 / 9; } /* ملائمة للموبايل */
+    .top-strip .carousel-item{ aspect-ratio: 16 / 9; }
     .top-strip{ border-radius:14px; }
   }
 
-  /* ====== إصلاح عرض صور Top Strip على الهاتف (تُعرض كاملة بدون قص) ====== */
-@media (max-width: 576px){
-  .top-strip-grid{ grid-template-columns: 1fr; }
-  .top-strip .carousel-item{ aspect-ratio: 2 / 3 !important; }
-  .top-strip .carousel-item img{
-    width: 100% !important; height: 100% !important;
-    object-fit: contain !important; object-position: center !important;
-    background: #eef2f7 !important; display: block !important;
+  /* إصلاح عرض صور Top Strip على الهاتف */
+  @media (max-width: 576px){
+    .top-strip-grid{ grid-template-columns: 1fr; }
+    .top-strip .carousel-item{ aspect-ratio: 2 / 3 !important; }
+    .top-strip .carousel-item img{
+      width:100% !important; height:100% !important;
+      object-fit:contain !important; object-position:center !important;
+      background:#eef2f7 !important; display:block !important;
+    }
   }
-}
 
-/* === Fix: توسيط وتصغير الـ HERO فقط === */
-.edge-bleed{ margin-inline: auto !important; width: 100% !important; display: flex !important; justify-content: center !important; }
-.hero-carousel{ max-width: 420px !important; margin: 8px auto 14px !important; }
-@media (min-width: 576px){ .hero-carousel{ max-width: 560px !important; } }
-@media (min-width: 992px){ .hero-carousel{ max-width: 720px !important; } }
-.hero-carousel .carousel-control-prev, .hero-carousel .carousel-control-next{ width: 10% !important; }
+  /* توسيط وتصغير الـ HERO فقط */
+  .edge-bleed{ margin-inline:auto !important; width:100% !important; display:flex !important; justify-content:center !important; }
+  .hero-carousel{ max-width:420px !important; margin:8px auto 14px !important; }
+  @media (min-width:576px){ .hero-carousel{ max-width:560px !important; } }
+  @media (min-width:992px){ .hero-carousel{ max-width:720px !important; } }
+  .hero-carousel .carousel-control-prev, .hero-carousel .carousel-control-next{ width:10% !important; }
 
+  /* ===========================
+     SEVOR — Pro Minimal Locbar
+     =========================== */
+  :root{
+    --sevor-brand:#6C63FF;   /* Purple */
+    --sevor-ink:#0f172a;     /* Text */
+    --sevor-muted:#667085;   /* Secondary */
+    --sevor-bg:#ffffff;
+    --sevor-bg-soft:#f7f7fb;
+    --sevor-danger:#ea3e41;
+  }
 
-/* ================================
-   Location Bar — Final Clean Style
-   ================================ */
-:root{
-  --loc-bg:#ffffff;
-  --loc-border:rgba(0,0,0,.08);
-  --loc-shadow:0 8px 22px rgba(0,0,0,.06);
-  --loc-radius:18px;
-  --loc-pad:14px;
+  /* بطاقة الشريط */
+  .home-locbar{
+    background:var(--sevor-bg) !important;
+    border:1px solid var(--border) !important;
+    border-radius:16px !important;
+    padding:14px 12px !important;
+    margin-block:16px !important;
+    box-shadow:0 8px 22px rgba(2,6,23,.06) !important;
+    align-items:center !important;
+    gap:8px !important;
+  }
 
-  --brand:#7c3aed;           /* بنفسجي رائق أساسي */
-  --brand-ink:#ffffff;
-  --brand-weak:#ede9fe;      /* بنفسجي فاتح جداً للخلفيات */
-  --accent:#0ea5e9;          /* أزرق سماوي خفيف كaccent */
-  --ink:#0f172a;             /* نص داكن أنيق */
-  --muted:#6b7280;           /* رمادي للعناصر الثانوية */
-  --danger:#e5484d;          /* أحمر خفيف */
-}
+  /* الحقل */
+  #homeCityInput{
+    height:46px !important;
+    border-radius:999px !important;
+    border:1px solid var(--border) !important;
+    background:#fafafa !important;
+    color:var(--sevor-ink) !important;
+    padding-inline:14px !important;
+    font-weight:600 !important;
+    letter-spacing:.2px !important;
+    transition:border-color .15s, box-shadow .15s, background .15s !important;
+  }
+  #homeCityInput::placeholder{ color:#9aa3af !important; }
+  #homeCityInput:focus{
+    background:#fff !important;
+    border-color: color-mix(in oklab, var(--sevor-brand) 42%, #9aa) !important;
+    box-shadow:0 0 0 4px color-mix(in oklab, var(--sevor-brand) 18%, transparent) !important;
+    outline:none !important;
+  }
 
-/* كارد الشريط */
-.home-locbar{
-  background:var(--loc-bg);
-  border:1px solid var(--loc-border);
-  border-radius:var(--loc-radius);
-  box-shadow:var(--loc-shadow);
-  padding:calc(var(--loc-pad) + 2px) var(--loc-pad);
-  margin-block:16px;
-  align-items:center;
-}
+  /* إخفاء خانة نصف القطر إن وُجدت */
+  .home-locbar .col-6.col-md-3:has(#homeRadius){ display:none !important; }
+  #homeRadius{ display:none !important; }
 
-/* حقل المدينة */
-#homeCityInput{
-  height:48px;
-  border-radius:999px;
-  border:1px solid var(--loc-border);
-  background:#fafafa;
-  color:var(--ink);
-  padding-inline:16px 14px;
-  font-weight:600;
-  letter-spacing:.2px;
-  transition:border-color .18s ease, box-shadow .18s ease, background .18s;
-}
-#homeCityInput:focus{
-  background:#fff;
-  border-color: color-mix(in oklab, var(--brand) 40%, #9aa);
-  box-shadow:0 0 0 4px color-mix(in oklab, var(--brand) 18%, transparent);
-  outline:none;
-}
+  /* أزرار — مقاس موحّد ومنع التفاف النص */
+  .home-locbar .btn{
+    height:46px !important;
+    border-radius:999px !important;
+    white-space:nowrap !important;
+  }
 
-/* إخفاء خانة نصف القطر (بدون تعديل HTML) */
-.home-locbar .col-6.col-md-3:has(#homeRadius){ display:none !important; }
-#homeRadius{ display:none !important; }
+  /* استخدم موقعي */
+  #homeUseGPS.btn{
+    background:var(--sevor-bg-soft) !important;
+    border:1px solid var(--border) !important;
+    color:var(--sevor-ink) !important;
+    font-weight:800 !important;
+    letter-spacing:.2px !important;
+    display:flex !important; align-items:center !important; justify-content:center !important;
+    gap:6px !important;
+  }
+  #homeUseGPS.btn::before{ content:"📍"; display:inline-block; transform:translateY(1px); }
+  #homeUseGPS.btn:hover{ background:#eef0f6 !important; }
 
-/* زر استخدم موقعي (هادئ) */
-#homeUseGPS.btn{
-  height:48px;
-  border-radius:999px;
-  border:1px solid var(--loc-border);
-  background:#f6f7fb;
-  color:var(--ink);
-  font-weight:800;
-  letter-spacing:.2px;
-  line-height:46px;
-  transition:transform .06s ease, background .18s ease, border-color .18s ease;
-}
-#homeUseGPS.btn:hover{
-  background:#eef0f6;
-  border-color: color-mix(in oklab, var(--accent) 22%, var(--loc-border));
-}
-#homeUseGPS.btn:active{ transform:translateY(1px); }
+  /* إلغاء موقعي — كرابط أنيق */
+  #homeClearGPS.btn{
+    height:auto !important; padding:6px 8px 0 !important; border:none !important;
+    color:var(--sevor-danger) !important; font-weight:700 !important; text-decoration:none !important;
+  }
+  #homeClearGPS.btn:hover{ text-decoration:underline !important; }
 
-/* زر إلغاء موقعي (رابط واضح) */
-#homeClearGPS.btn{
-  height:auto;
-  border:none;
-  padding:6px 8px 0;
-  color:var(--danger);
-  font-weight:700;
-  text-decoration:none;
-}
-#homeClearGPS.btn:hover{ opacity:.85; text-decoration:underline; }
+  /* تطبيق — زر أساسي واضح */
+  .home-locbar .btn.btn-primary{
+    background:linear-gradient(135deg, var(--sevor-brand), color-mix(in oklab, var(--sevor-brand) 72%, #8ab)) !important;
+    color:#fff !important; border:none !important; font-weight:900 !important; letter-spacing:.3px !important;
+    box-shadow:0 10px 24px rgba(108,99,255,.22) !important;
+    transition:filter .15s, transform .06s !important;
+  }
+  .home-locbar .btn.btn-primary:hover{ filter:brightness(1.03) !important; }
+  .home-locbar .btn.btn-primary:active{ transform:translateY(1px) !important; }
 
-/* زر تطبيق (أساسي صريح) */
-.home-locbar .btn.btn-primary{
-  height:48px;
-  border-radius:999px;
-  background:linear-gradient(135deg, var(--brand), color-mix(in oklab, var(--brand) 70%, var(--accent)));
-  color:var(--brand-ink);
-  border:none;
-  font-weight:900;
-  letter-spacing:.3px;
-  box-shadow:0 12px 28px rgba(124,58,237,.22);
-  transition:transform .06s ease, filter .18s ease;
-}
-.home-locbar .btn.btn-primary:hover{ filter:brightness(1.03); }
-.home-locbar .btn.btn-primary:active{ transform:translateY(1px); }
+  /* قائمة الاقتراحات */
+  #homeCitySugg{
+    position:absolute !important; z-index:1000 !important; display:none;
+    max-height:260px !important; overflow:auto !important; background:#fff !important;
+    border:1px solid var(--border) !important; border-radius:12px !important;
+    box-shadow:0 8px 22px rgba(2,6,23,.06) !important;
+  }
+  #homeCitySugg > div{
+    padding:.6rem .75rem !important; font-size:.95rem !important; color:var(--sevor-ink) !important;
+    border-top:1px solid rgba(2,6,23,.06) !important; cursor:pointer !important;
+  }
+  #homeCitySugg > div:first-child{ border-top:none !important; }
+  #homeCitySugg > div:hover{ background:#f5f3ff !important; }
 
-/* قائمة الاقتراحات للمدينة */
-#homeCitySugg{
-  display:none; position:absolute; z-index:1000;
-  max-height:260px; overflow:auto;
-  border-radius:12px !important;
-  border:1px solid var(--loc-border) !important;
-  box-shadow:var(--loc-shadow) !important;
-  background:#fff !important;
-}
-#homeCitySugg > div{
-  font-size:.95rem; color:var(--ink);
-  padding:.6rem .75rem;
-  border-top:1px solid rgba(0,0,0,.04);
-  cursor:pointer;
-}
-#homeCitySugg > div:first-child{ border-top:none; }
-#homeCitySugg > div:hover{ background:var(--brand-weak); }
+  /* تخطيط دِسك توب */
+  @media (min-width:992px){
+    .home-locbar .col-12.col-md-5{ padding-inline-end:8px !important; }
+    .home-locbar .col-6.col-md-2.d-grid{ justify-items:end !important; }
+  }
 
-/* محاذاة وتباعد أجمل على الدِسك توب */
-@media (min-width:992px){
-  .home-locbar .col-12.col-md-5{ padding-inline-end:8px; }
-  .home-locbar .col-6.col-md-2.d-grid{ justify-items:end; }
-}
-
-/* تحسينات موبايل */
-@media (max-width:576px){
-  .home-locbar{ border-radius:16px; padding:12px; }
-  #homeUseGPS.btn{ margin-top:6px; }
-  #homeClearGPS.btn{ margin-top:2px; }
-  .home-locbar .btn.btn-primary{ margin-top:6px; }
-}
-
-/* كارد أنيق للشريط كله */
-.home-locbar{
-  background:var(--loc-bg);
-  border:1px solid var(--loc-border);
-  border-radius:var(--loc-radius);
-  box-shadow:var(--loc-shadow);
-  padding:calc(var(--loc-pad) + 2px) var(--loc-pad);
-  margin-block:16px;
-}
-
-/* حقل المدينة — قرص/حبّة ناعمة */
-.home-locbar #homeCityInput{
-  height:48px;
-  border-radius:999px;
-  border:1px solid var(--loc-border);
-  background:#fafafa;
-  transition:border-color .2s, box-shadow .2s;
-}
-.home-locbar #homeCityInput:focus{
-  border-color: color-mix(in oklab, var(--loc-primary) 40%, #999);
-  box-shadow:0 0 0 4px color-mix(in oklab, var(--loc-primary) 16%, transparent);
-  background:#fff;
-}
-
-/* إخفاء خانة نصف القطر + عمودها بدون تعديل HTML */
-.home-locbar .col-6.col-md-3:has(#homeRadius){ display:none !important; }
-#homeRadius{ display:none !important; }
-
-/* زر “استخدم موقعي” — زر رصين */
-#homeUseGPS.btn{
-  height:48px;
-  border-radius:999px;
-  border:1px solid var(--loc-border);
-  background:#f6f7fb;
-  color:#111;
-  font-weight:700;
-  letter-spacing:.2px;
-}
-#homeUseGPS.btn:hover{ background:#eef0f6; }
-
-/* زر “إلغاء موقعي” — رابط هادئ */
-#homeClearGPS.btn{
-  height:auto;
-  border:none;
-  padding:6px 8px 0;
-  color:var(--loc-danger);
-  font-weight:700;
-  text-decoration:none;
-}
-#homeClearGPS.btn:hover{ opacity:.85; }
-
-/* زر “تطبيق” — أساسي بسيط */
-.home-locbar .btn.btn-primary{
-  height:48px;
-  border-radius:999px;
-  background:var(--loc-primary);
-  color:var(--loc-primary-ink);
-  border:none;
-  font-weight:800;
-  letter-spacing:.2px;
-  box-shadow:0 10px 24px rgba(91,75,255,.18);
-}
-.home-locbar .btn.btn-primary:hover{ filter:brightness(.96); }
-
-/* صندوق الاقتراحات — خفيف ومرتّب */
-#homeCitySugg{
-  border-radius:12px !important;
-  border:1px solid var(--loc-border) !important;
-  box-shadow:var(--loc-shadow) !important;
-  overflow:hidden !important;
-}
-#homeCitySugg > div{
-  font-size:.95rem;
-  color:#111;
-  border-top:1px solid rgba(0,0,0,.04);
-}
-#homeCitySugg > div:first-child{ border-top:none; }
-#homeCitySugg > div:hover{ background:#f7f7fb; }
-
-/* محاذاة أفقية أجمل على الدِسك توب */
-@media (min-width:992px){
-  .home-locbar .col-12.col-md-5{ padding-inline-end:8px; }
-  .home-locbar .col-6.col-md-2.d-grid{ justify-items:end; }
-}
-
-/* تباعد/تكديس موبايل أنظف */
-@media (max-width:576px){
-  .home-locbar{ border-radius:16px; padding:12px; }
-  #homeUseGPS.btn{ margin-top:6px; }
-  #homeClearGPS.btn{ margin-top:2px; }
-  .home-locbar .btn.btn-primary{ margin-top:6px; }
-}
-
-
+  /* موبايل */
+  @media (max-width:576px){
+    .home-locbar{ padding:12px !important; border-radius:14px !important; }
+    #homeUseGPS.btn{ margin-top:6px !important; }
+    #homeClearGPS.btn{ margin-top:2px !important; }
+    .home-locbar .btn.btn-primary{ margin-top:6px !important; }
+  }
 </style>
 {% endblock %}
 
