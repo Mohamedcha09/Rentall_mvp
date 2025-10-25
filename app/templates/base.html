@@ -740,5 +740,24 @@
 })();
 </script>
 
+<script>
+document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const form = e.target;
+  const data = new FormData(form);
+  const res = await fetch(form.action, { method:'POST', body:data });
+  const out = await res.json().catch(()=>({}));
+  if (res.ok && out.ok){
+    alert('✅ تم إرسال البلاغ. شكرًا لك!');
+    // اغلق المودال:
+    const m = bootstrap.Modal.getInstance(document.getElementById('reportModal'));
+    m?.hide();
+  }else{
+    alert('❌ تعذّر إرسال البلاغ. حاول لاحقًا.');
+  }
+});
+</script>
+
+
 </body>
 </html>

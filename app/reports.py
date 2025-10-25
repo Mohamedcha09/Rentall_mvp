@@ -294,3 +294,25 @@ def admin_reports_page(request: Request, db: Session = Depends(get_db)):
         except Exception:
             count = 0
         return JSONResponse({"ok": True, "message": "Reports admin view is not installed yet.", "count": count})
+
+
+# == ضع هذا أسفل create_report مباشرةً في app/reports.py ==
+
+@router.post("/reports/new")
+async def create_report_legacy(
+    request: Request,
+    db: Session = Depends(get_db),
+    item_id: int = Form(None),
+    reason: str = Form(None),
+    note: str | None = Form(None),
+    image_index: int | None = Form(None),
+):
+    # نعيد استعمال نفس المنطق بالضبط
+    return await create_report(
+        request=request,
+        db=db,
+        item_id=item_id,
+        reason=reason,
+        note=note,
+        image_index=image_index,
+    )
