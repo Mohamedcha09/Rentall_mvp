@@ -579,6 +579,53 @@
 .spot-media{ aspect-ratio:1/1 !important; border-radius:14px !important; overflow:hidden !important; }
 .spot-media img{ width:100% !important; height:100% !important; object-fit:cover !important; }
 .spot, .spot:hover, .spot:focus{ background:transparent !important; box-shadow:none !important; outline:0 !important; }
+/* ======= هاتف: كروت أصغر مثل Airbnb ======= */
+@media (max-width: 576px){
+  /* إظهار ~2.3–2.5 كرت في الشاشة */
+  .hrow{ gap:10px !important; padding-inline:8px !important; }
+  .hcard{
+    min-width:42vw !important;   /* جرّب 40–44vw لو حبيت أدقّ */
+    max-width:42vw !important;
+  }
+
+  /* شبكة "كل العناصر" = عمودان ثابتان */
+  .mixed-grid{
+    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+    gap:10px !important;
+  }
+
+  /* الصورة تبقى مربّع صغير وأطراف أنعم */
+  .spot-media{ aspect-ratio:1/1 !important; border-radius:12px !important; overflow:hidden !important; }
+  .spot-media img{ width:100% !important; height:100% !important; object-fit:cover !important; border-radius:12px !important; }
+
+  /* أيقونة القلب والوسم أصغر */
+  .fav-btn{ top:8px; right:8px; width:28px; height:28px; background:#fff !important; border:1px solid rgba(0,0,0,.1) !important; box-shadow:0 2px 6px rgba(0,0,0,.1) !important; }
+  .fav-btn .bi{ font-size:14px; }
+  .fav-btn.is-fav{ background:#111 !important; border-color:#111 !important; }
+  .fav-btn.is-fav .bi{ color:#fff !important; }
+
+  .category-chip{
+    top:8px; left:8px;
+    padding:4px 9px; font-size:.74rem; font-weight:700;
+    background:rgba(255,255,255,.96); border:1px solid rgba(0,0,0,.06); border-radius:999px;
+    box-shadow:0 3px 8px rgba(0,0,0,.08); backdrop-filter:blur(8px);
+  }
+
+  /* نصوص تحت الصورة أصغر ومختصرة */
+  .spot-body{ padding:8px 2px 0 !important; background:transparent !important; }
+  .spot-title{ font-size:.90rem; font-weight:800; line-height:1.2; margin-bottom:4px; -webkit-line-clamp:1; display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden; color:#111; }
+  .city-chip{ background:none !important; border:none !important; padding:0 !important; color:#6b7280 !important; font-size:.85rem; }
+
+  .spot-footer{ display:flex; justify-content:space-between; align-items:center; margin-top:2px; }
+  .spot-footer small{ font-size:.86rem; font-weight:800; color:#111 !important; }
+}
+
+/* إزالة أي تأثير بنفسجي عند المرور — في كل المقاسات */
+.spot, .spot:hover, .spot:focus{ background:transparent !important; box-shadow:none !important; outline:0 !important; }
+
+/* ضمان المربّع دائمًا */
+.spot-media{ aspect-ratio:1/1 !important; }
+.spot-media img{ width:100% !important; height:100% !important; object-fit:cover !important; }
 
 </style>
 {% endblock %}
