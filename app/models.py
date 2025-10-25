@@ -1,7 +1,7 @@
 # app/models.py
 from datetime import datetime, date
 from sqlalchemy import (
-    Column, Integer, String, DateTime, ForeignKey, Text, Date, Boolean, Float  # ✅ أضفنا Float هنا
+    Column, Integer, String, DateTime, ForeignKey, Text, Date, Boolean, Float
 )
 from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.sql import literal
@@ -75,6 +75,9 @@ class User(Base):
     # صلاحية متحكم الوديعة
     is_deposit_manager = col_or_literal("users", "is_deposit_manager", Boolean, default=False, nullable=False)
 
+    # ✅ جديد: صلاحية مدقّق المحتوى (MOD)
+    is_mod = col_or_literal("users", "is_mod", Boolean, default=False, nullable=False)
+
     # العلاقات
     documents = relationship("Document", back_populates="user", cascade="all, delete-orphan")
     items = relationship("Item", back_populates="owner", cascade="all, delete-orphan")
@@ -86,6 +89,10 @@ class User(Base):
     # علاقات الحجوزات
     bookings_rented = relationship("Booking", foreign_keys="[Booking.renter_id]", back_populates="renter")
     bookings_owned = relationship("Booking", foreign_keys="[Booking.owner_id]", back_populates="owner")
+
+    # علاقات البلاغات/الإجراءات (اختيارية)
+    reports_filed = relationship("Report", foreign_keys="[Report.reporter_id]", back_populates="reporter", cascade="all, delete-orphan")
+    report_actions = relationship("ReportActionLog", foreign_keys="[ReportActionLog.actor_id]", back_populates="actor", cascade="all, delete-orphan")
 
     # توثيق
     if _has_column("users", "verified_by_id"):
@@ -159,9 +166,9 @@ class Item(Base):
     description = Column(Text, nullable=True)
     city = Column(String(120), nullable=True)
 
-    # ✅ جديد: إحداثيات اختيارية (تُنشأ فقط إذا الأعمدة موجودة في الجدول بفضل col_or_literal)
-    latitude = col_or_literal("items", "latitude", Float, nullable=True)   # ✅ إضافة
-    longitude = col_or_literal("items", "longitude", Float, nullable=True) # ✅ إضافة
+    # ✅ إحداثيات اختيارية
+    latitude = col_or_literal("items", "latitude", Float, nullable=True)
+    longitude = col_or_literal("items", "longitude", Float, nullable=True)
 
     price_per_day = Column(Integer, nullable=False, default=0)
     category = Column(String(50), nullable=False, default="other")
@@ -451,3 +458,63 @@ class DepositEvidence(Base):
 
     booking = relationship("Booking", back_populates="deposit_evidences")
     uploader = relationship("User", lazy="joined")
+
+
+# =========================
+# Reports (بلاغات)  ✅ جديد
+# =========================
+class Report(Base):
+    __tablename__ = "reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    # الهدف الأساسي للبلاغ: عنصر (اختياريًا يمكن مستقبلاً إضافة أنواع أخرى)
+    item_id = Column(Integer, ForeignKey("items.id"), nullable=True)
+
+    # المبلِّغ
+    reporter_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    # نص السبب/التفاصيل
+    reason = Column(Text, nullable=False)
+
+    # حالة البلاغ: open / in_review / resolved / rejected
+    status = Column(String(20), nullable=False, default="open")
+
+    # وسم اختياري لتصنيف السبب: spam / fraud / illegal / abuse / other
+    tag = col_or_literal("reports", "tag", String(24), nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at = col_or_literal("reports", "updated_at", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # علاقات
+    item = relationship("Item", lazy="joined")
+    reporter = relationship("User", foreign_keys=[reporter_id], back_populates="reports_filed")
+
+    action_logs = relationship(
+        "ReportActionLog",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        order_by="ReportActionLog.created_at.desc()"
+    )
+
+
+# =========================
+# Report Action Log (قرارات المراجعين) ✅ جديد
+# =========================
+class ReportActionLog(Base):
+    __tablename__ = "report_action_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    report_id = Column(Integer, ForeignKey("reports.id"), nullable=False)
+
+    # من نفّذ الإجراء: مود/أدمن
+    actor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    # نوع القرار: remove_item / reject_report / warn_owner / note / close
+    action = Column(String(40), nullable=False)
+
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    # علاقات
+    report = relationship("Report", back_populates="action_logs")
+    actor = relationship("User", back_populates="report_actions", lazy="joined")

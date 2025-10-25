@@ -66,6 +66,19 @@
   padding:8px 12px; font-size:13px; color:#fff; cursor:pointer;
   backdrop-filter: blur(6px);
 }
+/* ▾▾ ADD: زر القائمة ⋮ أعلى الصورة ▾▾ */
+.gallery-menu{
+  position:absolute; top:10px; right:10px;
+}
+.gallery-menu .btn-menu{
+  background:rgba(0,0,0,.45); color:#fff; border:1px solid var(--stroke);
+  border-radius:12px; padding:6px 10px; line-height:1; font-weight:700;
+}
+.gallery-menu .dropdown-menu{
+  border-radius:12px; overflow:hidden; border:1px solid var(--stroke);
+}
+/* ▴▴ END ADD ▴▴ */
+
 .thumbs{
   display:flex; gap:10px; padding:12px; overflow-x:auto;
   background:linear-gradient(180deg, rgba(255,255,255,.03), transparent);
@@ -176,13 +189,24 @@
           {% if current %}
             <button class="gallery-zoom" id="zoomBtn">تكبير الصورة</button>
           {% endif %}
+
+          {# ▾▾ ADD: زر ⋮ + قائمة البلاغ ▾▾ #}
+          <div class="gallery-menu dropdown">
+            <button class="btn-menu" data-bs-toggle="dropdown" aria-expanded="false" title="خيارات">⋮</button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <button class="dropdown-item" id="openReportBtn" type="button">🚩 الإبلاغ عن الصورة/المنشور</button>
+              </li>
+            </ul>
+          </div>
+          {# ▴▴ END ADD ▴▴ #}
         </div>
 
         {% if _srcs|length > 1 %}
           <div class="thumbs" id="thumbs">
             {% for s in _srcs %}
               {% set src = build_src(s.strip()) %}
-              <img data-src="{{ src }}" class="{% if loop.index0==0 %}active{% endif %}" src="{{ src }}" alt="thumb {{ loop.index }}">
+              <img data-src="{{ src }}" data-index="{{ loop.index0 }}" class="{% if loop.index0==0 %}active{% endif %}" src="{{ src }}" alt="thumb {{ loop.index }}">
             {% endfor %}
           </div>
         {% endif %}
@@ -263,6 +287,52 @@
   {% endif %}
 </section>
 
+<!-- ▾▾ ADD: مودال الإبلاغ ▾▾ -->
+<div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportLabel" aria-hidden="true" dir="rtl">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="/reports/new" id="reportForm">
+        <div class="modal-header">
+          <h5 class="modal-title" id="reportLabel">🚩 الإبلاغ عن الصورة/المنشور</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="item_id" value="{{ item.id }}">
+          <input type="hidden" name="image_index" id="rf_image_index" value="0">
+          <input type="hidden" name="image_url" id="rf_image_url" value="">
+
+          <div class="mb-3">
+            <label class="form-label">السبب</label>
+            <select class="form-select" name="reason" required>
+              <option value="" selected disabled>اختر سبب البلاغ</option>
+              <option value="nudity">محتوى غير لائق/عُري</option>
+              <option value="violence">عنف/كراهية</option>
+              <option value="scam">احتيال/خداع</option>
+              <option value="copyright">حقوق ملكية</option>
+              <option value="spam">سبام/مزعج</option>
+              <option value="other">أخرى</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">ملاحظات إضافية (اختياري)</label>
+            <textarea class="form-control" name="note" rows="3" placeholder="اكتب تفاصيل تساعدنا في المراجعة…"></textarea>
+          </div>
+
+          <div class="small text-muted">
+            سيتم إرسال البلاغ مع رقم الصورة الحالية ورابطها ليتولى فريق المراجعة التحقق.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+          <button type="submit" class="btn btn-danger">إرسال البلاغ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<!-- ▴▴ END ADD ▴▴ -->
+
 <!-- ===============  Lightbox & Gallery JS (خفيف)  =============== -->
 <script>
 (function(){
@@ -297,6 +367,14 @@
         main.src = t.dataset.src || t.src;
         [...thumbs.querySelectorAll('img')].forEach(i=>i.classList.remove('active'));
         t.classList.add('active');
+
+        // ▾▾ ADD: تحديث حقول البلاغ مع الصورة الجديدة ▾▾
+        try{
+          const idx = parseInt(t.getAttribute('data-index') || '0', 10) || 0;
+          document.getElementById('rf_image_index')?.setAttribute('value', String(idx));
+          document.getElementById('rf_image_url')?.setAttribute('value', t.dataset.src || t.src || '');
+        }catch(_){}
+        // ▴▴ END ADD ▴▴
       }
     });
 
@@ -326,6 +404,27 @@
     if(e.key==='ArrowRight') step(+1);
     if(e.key==='ArrowLeft') step(-1);
   });
+
+  // ▾▾ ADD: فتح مودال البلاغ وتعبئة القيم الابتدائية ▾▾
+  const openReportBtn = document.getElementById('openReportBtn');
+  if(openReportBtn){
+    openReportBtn.addEventListener('click', function(){
+      // صورة حالية
+      const activeThumb = document.querySelector('#thumbs img.active') || document.querySelector('#thumbs img');
+      const idx = activeThumb ? parseInt(activeThumb.getAttribute('data-index') || '0', 10) || 0 : 0;
+      const url = activeThumb ? (activeThumb.dataset.src || activeThumb.src || (main?.src||'')) : (main?.src||'');
+
+      const idxEl = document.getElementById('rf_image_index');
+      const urlEl = document.getElementById('rf_image_url');
+      if(idxEl) idxEl.setAttribute('value', String(idx));
+      if(urlEl) urlEl.setAttribute('value', url);
+
+      // افتح المودال
+      const m = new bootstrap.Modal(document.getElementById('reportModal'));
+      m.show();
+    });
+  }
+  // ▴▴ END ADD ▴▴
 
 })();
 </script>

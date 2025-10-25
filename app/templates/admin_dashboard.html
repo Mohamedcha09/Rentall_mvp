@@ -185,6 +185,7 @@
               <th>هوية (أ/خ)</th>
               <th>توثيق</th>
               <th>MD</th>
+              <th>MOD</th>  {# ✅ عمود جديد #}
               <th class="text-end">إجراءات</th>
             </tr>
           </thead>
@@ -199,7 +200,12 @@
               {% endif %}
             <tr>
               <td>{{ u.id }}</td>
-              <td>{{ u.first_name }} {{ u.last_name }}</td>
+              <td>
+                {{ u.first_name }} {{ u.last_name }}
+                {% if u.is_mod|default(false) %}
+                  <span class="badge bg-secondary ms-1" title="مدقّق محتوى">MOD</span>  {# ✅ شارة صغيرة بجانب الاسم #}
+                {% endif %}
+              </td>
               <td>{{ u.email }}</td>
               <td>
                 {% if u.status == 'approved' %}
@@ -250,6 +256,8 @@
                   </form>
                 {% endif %}
               </td>
+
+              <!-- MD -->
               <td>
                 {% if u.is_deposit_manager|default(false) %}
                   <span class="badge bg-primary">MD</span>
@@ -257,7 +265,18 @@
                   <span class="badge bg-secondary">—</span>
                 {% endif %}
               </td>
+
+              <!-- MOD ✅ عمود جديد -->
+              <td>
+                {% if u.is_mod|default(false) %}
+                  <span class="badge bg-secondary">MOD</span>
+                {% else %}
+                  <span class="badge bg-secondary">—</span>
+                {% endif %}
+              </td>
+
               <td class="text-end">
+                {# MD actions #}
                 {% if u.is_deposit_manager|default(false) %}
                   <form method="post" action="/admin/users/{{ u.id }}/deposit_manager/disable" class="d-inline">
                     <button class="btn btn-sm btn-outline-danger">إلغاء MD</button>
@@ -265,6 +284,17 @@
                 {% else %}
                   <form method="post" action="/admin/users/{{ u.id }}/deposit_manager/enable" class="d-inline">
                     <button class="btn btn-sm btn-outline-primary">منح MD</button>
+                  </form>
+                {% endif %}
+
+                {# MOD actions ✅ زران جديدان #}
+                {% if u.is_mod|default(false) %}
+                  <form method="post" action="/admin/users/{{ u.id }}/mod/disable" class="d-inline">
+                    <button class="btn btn-sm btn-outline-danger">إلغاء MOD</button>
+                  </form>
+                {% else %}
+                  <form method="post" action="/admin/users/{{ u.id }}/mod/enable" class="d-inline">
+                    <button class="btn btn-sm btn-outline-primary">منح MOD</button>
                   </form>
                 {% endif %}
 

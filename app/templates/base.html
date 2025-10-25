@@ -170,6 +170,11 @@
             <a role="menuitem" class="topmenu-item" href="/dm/deposits"><i class="bi bi-shield-exclamation"></i> قضايا الوديعة</a>
           {% endif %}
 
+          {# ✅ جديد: رابط البلاغات للأدمن أو المود (is_mod) #}
+          {% if session_user.role == 'admin' or session_user.get('is_mod') %}
+            <a role="menuitem" class="topmenu-item" href="/admin/reports">📸 البلاغات</a>
+          {% endif %}
+
           {% if session_user.role == 'admin' %}
             <hr class="topmenu-sep" role="separator">
             <a role="menuitem" class="topmenu-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a>
@@ -275,6 +280,12 @@
             <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
             <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a></li>
             <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a></li>
+
+            {# ✅ جديد: البلاغات مرئية للأدمن أو المود من قائمة الحساب أيضًا #}
+            {% if session_user.role == 'admin' or session_user.get('is_mod') %}
+              <li><a class="dropdown-item" href="/admin/reports">📸 البلاغات</a></li>
+            {% endif %}
+
             {% if session_user.role == 'admin' %}
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a></li>

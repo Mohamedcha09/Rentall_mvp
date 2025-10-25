@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container py-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h3 class="m-0">📸 البلاغات</h3>
+    <a href="/admin" class="btn btn-sm btn-outline-secondary">↩︎ العودة للوحة الأدمين</a>
+  </div>
+
+  <!-- تنبيهات بسيطة -->
+  {% if not reports %}
+    <div class="alert alert-info">لا توجد بلاغات حتى الآن.</div>
+  {% else %}
+
+  <div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <strong>قائمة البلاغات</strong>
+      <span class="badge bg-secondary">{{ reports|length }}</span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>الهدف</th>
+            <th>المبلِّغ</th>
+            <th>السبب</th>
+            <th>تاريخ</th>
+            <th>الحالة</th>
+            <th class="text-end">إجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in reports %}
+          <tr>
+            <td class="fw-bold">{{ r.id }}</td>
+
+            <!-- الهدف (منشور/صورة) -->
+            <td>
+              {% set _item_id = r.item_id if r.item_id is defined else None %}
+              {% set _img_i   = r.image_index if r.image_index is defined else None %}
+              {% if _img_i is not none %}
+                صورة <span class="badge bg-dark">#{{ _img_i }}</span>
+                — منشور <a href="/items/{{ _item_id }}" target="_blank" class="text-decoration-none">#{{ _item_id }}</a>
+              {% else %}
+                منشور <a href="/items/{{ _item_id }}" target="_blank" class="text-decoration-none">#{{ _item_id }}</a>
+              {% endif %}
+            </td>
+
+            <!-- المبلّغ -->
+            <td>
+              {% if r.reporter is defined and r.reporter %}
+                {{ (r.reporter.first_name ~ ' ' ~ r.reporter.last_name)|trim }}
+                <small class="text-muted">(#{{ r.reporter.id }})</small>
+              {% else %}
+                مستخدم <span class="text-muted">#{{ r.reporter_id }}</span>
+              {% endif %}
+            </td>
+
+            <!-- السبب -->
+            <td style="max-width: 320px">
+              <div class="text-truncate" title="{{ r.reason }}">{{ r.reason }}</div>
+              {% if r.note %}
+                <div class="small text-muted text-truncate" title="{{ r.note }}">ملاحظات: {{ r.note }}</div>
+              {% endif %}
+            </td>
+
+            <!-- التاريخ -->
+            <td>
+              {% if r.created_at %}{{ r.created_at.strftime("%Y-%m-%d %H:%M") }}{% else %}—{% endif %}
+            </td>
+
+            <!-- الحالة -->
+            <td>
+              {% set st = (r.status or 'pending')|lower %}
+              {% if st == 'pending' %}
+                <span class="badge bg-warning text-dark">بانتظار</span>
+              {% elif st in ['resolved','done','closed'] %}
+                <span class="badge bg-success">مُعالج</span>
+              {% elif st in ['rejected','dismissed'] %}
+                <span class="badge bg-secondary">مرفوض</span>
+              {% else %}
+                <span class="badge bg-info text-dark">{{ r.status }}</span>
+              {% endif %}
+            </td>
+
+            <!-- إجراءات -->
+            <td class="text-end">
+              <div class="btn-group btn-group-sm" role="group" aria-label="actions">
+                <!-- مبدئيًا نرسل إلى مسار عام (يمكنك تنفيذه لاحقًا): /admin/reports/{id}/resolve -->
+                <form method="post" action="/admin/reports/{{ r.id }}/resolve" class="d-inline">
+                  {% if r.image_index is defined and r.image_index is not none %}
+                    <input type="hidden" name="action" value="remove_image">
+                    <button class="btn btn-outline-danger" title="حذف الصورة">🗑️ صورة</button>
+                  {% else %}
+                    <input type="hidden" name="action" value="remove_item">
+                    <button class="btn btn-outline-danger" title="إلغاء نشر المنشور">🗑️ منشور</button>
+                  {% endif %}
+                </form>
+
+                <form method="post" action="/admin/reports/{{ r.id }}/resolve" class="d-inline">
+                  <input type="hidden" name="action" value="warn_owner">
+                  <button class="btn btn-outline-warning" title="تحذير المالك">⚠️ تحذير</button>
+                </form>
+
+                <form method="post" action="/admin/reports/{{ r.id }}/resolve" class="d-inline">
+                  <input type="hidden" name="action" value="reject">
+                  <button class="btn btn-outline-secondary" title="رفض البلاغ">✖️ رفض</button>
+                </form>
+
+                <form method="post" action="/admin/reports/{{ r.id }}/resolve" class="d-inline">
+                  <input type="hidden" name="action" value="mark_done">
+                  <button class="btn btn-outline-success" title="وضع كمُعالج">✔️ تم</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% endif %}
+</div>
+
+{% endblock %}

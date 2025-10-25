@@ -69,6 +69,10 @@ from .cron_auto_release import router as cron_router
 from .debug_email import router as debug_email_router
 from .routes_metrics import router as metrics_router  # ← جديد
 
+# ✅ [جديد جدًا] راوتر البلاغات العامة + راوتر البلاغات الإدارية
+from .reports import router as reports_router                 # /reports/*
+from .admin_reports import router as admin_reports_router     # /admin/reports/*
+
 app = FastAPI()
 
 # =========================
@@ -283,7 +287,6 @@ app.include_router(notifications_router)
 app.include_router(me_router)
 app.include_router(debug_email_router)
 
-# في الأسفل:
 # ✅ [مضاف] تسجيل مسارات إدارة الودائع (DM)
 app.include_router(deposits_router)
 
@@ -292,6 +295,10 @@ app.include_router(evidence_router)
 
 # ✅ [مضاف] تسجيل مسار تشغيل الإفراج التلقائي يدويًا (الاستيراد القديم)
 app.include_router(cron_router)
+
+# ✅ [جديد جدًا] تسجيل راوتر البلاغات العامة + الإدارية
+app.include_router(reports_router)          # /reports/*
+app.include_router(admin_reports_router)    # /admin/reports/*
 
 def _cat_code(cat) -> str:
     if isinstance(cat, dict):
@@ -438,6 +445,11 @@ async def sync_user_flags(request: Request, call_next):
                             sess_user.get("is_deposit_manager") or
                             (str(sess_user.get("role","")).lower() == "admin")
                         )
+                        # ===== [إضافة مهمة] علم مُدقّق المحتوى (MOD) =====
+                        try:
+                            sess_user["is_mod"] = bool(getattr(db_user, "is_mod", False))
+                        except Exception:
+                            pass
                         # الشارات
                         for key in [
                             "badge_admin","badge_new_yellow","badge_pro_green","badge_pro_gold",
