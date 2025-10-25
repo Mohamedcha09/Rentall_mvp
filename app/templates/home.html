@@ -644,11 +644,9 @@
               <span class="city-chip">{{ it.city or '—' }}</span>
             </div>
             <div class="spot-footer">
-  {% if it.price_per_day %}
-    <small>{{ it.price_per_day|int }}$ / يوم</small>
-  {% endif %}
-  <small>★ {{ it.rating|default(4.8) }}</small>
-</div>
+              <small class="text-muted">تقييم {{ it.rating|default(4.8) }}</small>
+              <i class="bi bi-arrow-left-short"></i>
+            </div>
           </div>
         </a>
       {% endfor %}
