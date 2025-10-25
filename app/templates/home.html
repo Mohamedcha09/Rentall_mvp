@@ -475,6 +475,110 @@
   }
 }
 
+/* ======== MOBILE ONE-LINE LOCBAR (FINAL HARD OVERRIDE) ======== */
+@media (max-width:576px){
+
+  /* حوّل صفّ البوتستراب إلى Flex بدون لفّ */
+  .home-locbar.locbar--compact.row{
+    display:flex !important;
+    flex-wrap:nowrap !important;
+    align-items:center !important;
+    gap:8px !important;
+    padding:8px !important;
+    background:#fff !important;
+    border-radius:12px !important;
+    box-shadow:none !important;
+    --bs-gutter-x:0 !important;
+    --bs-gutter-y:0 !important;
+  }
+
+  /* ألغِ هوامش/أبعاد الأعمدة الافتراضية كي لا تنزل لسطر جديد */
+  .home-locbar.locbar--compact.row > [class*="col-"]{
+    width:auto !important;
+    flex:0 0 auto !important;
+    padding:0 !important;
+    margin:0 !important;
+    min-width:0 !important;
+  }
+
+  /* حقل المدينة يتمدد ويأخذ المساحة */
+  .home-locbar.locbar--compact .col-12.col-md-5{
+    flex:1 1 auto !important;
+    min-width:0 !important;
+  }
+
+  /* مجموعة GPS تبقى أفقية دائمًا */
+  .home-locbar.locbar--compact .col-6.col-md-2.d-grid{
+    display:flex !important;
+    align-items:center !important;
+    gap:8px !important;
+  }
+
+  /* حاوية زر البحث تبقى بحجمها ولا تتمدّد */
+  .home-locbar.locbar--compact .col-12.col-md-2.d-grid{
+    display:flex !important;
+    align-items:center !important;
+  }
+
+  /* مقاسات موحّدة وصغيرة */
+  .home-locbar.locbar--compact .btn{
+    height:34px !important;
+    border-radius:10px !important;
+    font-size:.88rem !important;
+    padding:0 12px !important;
+    white-space:nowrap !important;
+  }
+  #homeCityInput{
+    height:34px !important;
+    border-radius:10px !important;
+    font-size:.88rem !important;
+    padding:0 10px !important;
+    background:#fff !important;
+    border:1px solid var(--border) !important;
+    box-shadow:none !important;
+  }
+
+  /* زر GPS = أيقونة فقط (لمنع أي نص) */
+  #homeUseGPS{
+    font-size:0 !important;
+    background:#fff !important;
+    border:1px solid var(--border) !important;
+    color:var(--sevor-ink) !important;
+    padding:0 10px !important;
+  }
+  #homeUseGPS::before{
+    content:"📍" !important;
+    font-size:18px !important;
+    line-height:1 !important;
+    display:inline-block !important;
+    transform:translateY(1px);
+  }
+
+  /* زر البحث بسيط */
+  .home-locbar.locbar--compact .btn.btn-primary{
+    background:var(--sevor-brand) !important;
+    box-shadow:none !important;
+  }
+
+  /* زر الإلغاء كرابط صغير على نفس السطر */
+  #homeClearGPS{
+    padding:0 6px !important;
+    height:auto !important;
+    line-height:1 !important;
+    font-weight:800 !important;
+    color:var(--sevor-danger) !important;
+    border:none !important;
+    background:transparent !important;
+  }
+
+  /* أخفِ أي عناصر زائدة (مثل نصف القطر) إن ظهرت بالخطأ */
+  #homeRadius,
+  .home-locbar:has(#homeRadius) .col-6.col-md-3{
+    display:none !important;
+  }
+}
+
+
 
 </style>
 
