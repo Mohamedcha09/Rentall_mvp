@@ -634,9 +634,9 @@
     const cityEl = document.getElementById('homeCityInput');
     const latEl  = document.getElementById('homeLat');
     const lngEl  = document.getElementById('homeLng');
-    const rEl    = document.getElementById('homeRadius'); // قد يكون null بعد حذف الحقل وهذا مقصود
+    const rEl    = document.getElementById('homeRadius'); // قد لا يوجد — لا مشكلة
     const gpsBtn = document.getElementById('homeUseGPS');
-    const clearBtn = document.getElementById('homeClearGPS'); // زر إلغاء الموقـع
+    const clearBtn = document.getElementById('homeClearGPS');
     const sugg   = document.getElementById('homeCitySugg');
 
     function setCookie(name, value, days=180){
@@ -653,7 +653,7 @@
       try{ document.cookie = name+"=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax"; }catch(_){}
     }
 
-    // تهيئة من الكوكي/الـURL
+    // تهيئة بسيطة (بدون تغيير على الباقي)
     try{
       const url = new URL(location.href);
       const c   = url.searchParams.get('city') || getCookie('city') || "";
@@ -663,10 +663,10 @@
       if (cityEl) cityEl.value = c;
       if (latEl)  latEl.value  = lat;
       if (lngEl)  lngEl.value  = lng;
-      if (rEl)    rEl.value    = rad; // لن يُنفّذ إذا rEl غير موجود
+      if (rEl)    rEl.value    = rad;
     }catch(_){}
 
-    // 📍 GPS
+    // 📍 GPS (كما هو)
     gpsBtn?.addEventListener('click', function(){
       if (!navigator.geolocation){ alert('المتصفح لا يدعم تحديد الموقع.'); return; }
       const rad = (rEl && rEl.value) ? rEl.value : "25";
@@ -675,81 +675,154 @@
         setCookie('lat', lat); setCookie('lng', lng); setCookie('radius_km', rad);
         setCookie('city', ""); if (cityEl) cityEl.value = "";
         if (latEl) latEl.value = lat; if (lngEl) lngEl.value = lng;
-
         const u = new URL(location.href);
         u.searchParams.set('lat', lat);
         u.searchParams.set('lng', lng);
         u.searchParams.set('radius_km', rad);
         u.searchParams.delete('city');
         location.href = u.toString();
-      }, function(){
-        alert('تعذر الحصول على موقعك.');
-      });
+      }, function(){ alert('تعذر الحصول على موقعك.'); });
     });
 
-    // ❌ إلغاء الموقـع
+    // ❌ إلغاء الموقـع (كما هو)
     clearBtn?.addEventListener('click', function(){
       delCookie('lat'); delCookie('lng'); delCookie('radius_km');
       const u = new URL(location.href);
-      u.searchParams.delete('lat');
-      u.searchParams.delete('lng');
-      u.searchParams.delete('radius_km');
-      if(!(cityEl?.value||"").trim()){
-        delCookie('city'); u.searchParams.delete('city');
-      }
+      u.searchParams.delete('lat'); u.searchParams.delete('lng'); u.searchParams.delete('radius_km');
+      if(!(cityEl?.value||"").trim()){ delCookie('city'); u.searchParams.delete('city'); }
       location.href = u.toString();
     });
 
-    // حفظ المدينة يدويًا وإلغاء الإحداثيات
+    // حفظ المدينة يدويًا
     cityEl?.addEventListener('change', function(){
       const c = (cityEl.value||"").trim();
       setCookie('city', c);
       setCookie('lat', ""); setCookie('lng', "");
     });
 
-    // اقتراح مدينة واحدة
+    /* ==========================
+       ✅ اقتراح مدينة واحدة فقط
+       ========================== */
     let t=null;
     function hideSugg(){ if(sugg){ sugg.style.display='none'; sugg.innerHTML=''; } }
     function showSugg(){ if(sugg){ sugg.style.display='block'; } }
+
+    // اكتشاف لغة الإدخال: ar / fr / en
+    function detectLang(q){
+      const s=(q||'').trim();
+      if (/[\u0600-\u06FF]/.test(s)) return 'ar';
+      const hasFr = /[àâäæçéèêëîïôœùûüÿÀÂÄÆÇÉÈÊËÎÏÔŒÙÛÜŸ]/.test(s)
+                 || /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
+      if (hasFr) return 'fr';
+      return 'en';
+    }
+
+    // أنواع الأماكن المقبولة كـ "مدينة"
+    const ALLOWED = new Set(['city','town','village','municipality']);
+    const FALLBACK = new Set(['state','province']);
+
+    // تحويل نتيجة Nominatim لشكل موحّد
+    function normalizePlace(p){
+      const a=p.address||{};
+      const type=(p.type||'').toLowerCase();
+      const cc=(a.country_code||'').toLowerCase();
+      const city=a.city||a.town||a.village||a.municipality||a.state||a.province||(p.display_name||'').split(',')[0];
+      const country=a.country||'';
+      // أولوية أعلى للمدينة ثم البلدة… (رقم أصغر = أفضل)
+      const prioMap={city:1,town:2,village:3,municipality:3,state:6,province:6,administrative:8,county:8,region:8};
+      const prio=prioMap[type]??9;
+      return { city, country, cc, lat:p.lat, lon:p.lon, type, prio };
+    }
+
+    // إزالة التكرار داخل نفس البلد واختيار الأفضل
+    function pickBestUnique(list){
+      const best=new Map();
+      for(const p of list){
+        const n=normalizePlace(p);
+        if(!n.city||!n.cc) continue;
+        const key=n.city.trim().toLowerCase()+'|'+n.cc;
+        const prev=best.get(key);
+        if(!prev || n.prio < prev.prio) best.set(key,n);
+      }
+      return Array.from(best.values());
+    }
 
     cityEl?.addEventListener('input', function(){
       clearTimeout(t);
       const q = this.value.trim();
       if (q.length<2){ hideSugg(); return; }
+
       t = setTimeout(async ()=>{
         try{
-          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&accept-language=ar`;
+          const lang = detectLang(q);
+          const url = 'https://nominatim.openstreetmap.org/search'
+                    + '?format=json&addressdetails=1&limit=30'
+                    + '&accept-language='+encodeURIComponent(lang)
+                    + '&q='+encodeURIComponent(q);
+
           const r = await fetch(url, {headers:{'Accept':'application/json'}});
           if(!r.ok){ hideSugg(); return; }
-          const data = await r.json();
-          if(!Array.isArray(data) || data.length===0){ hideSugg(); return; }
-          const p = data[0];
-          sugg.innerHTML = `<div class="py-2 px-2" data-best="1" style="cursor:pointer">${p.display_name}</div>`;
-          sugg.dataset.lat = p.lat||''; sugg.dataset.lon = p.lon||'';
+          let data = await r.json();
+
+          // 1) احتفظ فقط بأنواع المدن، وإن لم توجد خذ fallback، وإن لم توجد خذ الكل
+          let filtered = data.filter(x=>ALLOWED.has((x.type||'').toLowerCase()));
+          if(!filtered.length) filtered = data.filter(x=>FALLBACK.has((x.type||'').toLowerCase()));
+          if(!filtered.length) filtered = data;
+
+          // 2) أزل التكرار داخل كل بلد واختر الأفضل
+          const unique = pickBestUnique(filtered);
+
+          // 3) اختر نتيجة واحدة فقط (الأعلى أولوية)
+          unique.sort((a,b)=>a.prio-b.prio);
+          const best = unique[0];
+          if(!best){ hideSugg(); return; }
+
+          // 4) اعرضها كـ "City, Country"
+          const label = (best.city||'').trim() + (best.country?`, ${best.country}`:'');
+          sugg.innerHTML =
+            `<div class="py-2 px-2" data-best="1" style="cursor:pointer">
+               <i class="bi bi-geo-alt"></i>
+               <span>${label}</span>
+             </div>`;
+          sugg.dataset.lat = best.lat||'';
+          sugg.dataset.lon = best.lon||'';
           showSugg();
         }catch(_){ hideSugg(); }
       }, 250);
     });
 
-    // اختيار الاقتراح
+    // اختيار الاقتراح الوحيد
     sugg?.addEventListener('click', ()=>{
-      const label = (sugg.querySelector('[data-best]')?.textContent||'').trim();
-      const lat = sugg.dataset.lat||''; const lon = sugg.dataset.lon||'';
+      const label = (sugg.querySelector('[data-best] span')?.textContent||'').trim();
+      const lat = sugg.dataset.lat||'';
+      const lon = sugg.dataset.lon||'';
       if(!label) return;
-      if(cityEl) cityEl.value = label; if(latEl) latEl.value = lat; if(lngEl) lngEl.value = lon;
+
+      if(cityEl) cityEl.value = label;
+      if(latEl)  latEl.value  = lat;
+      if(lngEl)  lngEl.value  = lon;
+
       const rad = (rEl && rEl.value) ? rEl.value : "25";
-      setCookie('city', label); setCookie('lat', lat); setCookie('lng', lon); setCookie('radius_km', rad);
+      setCookie('city', label);
+      setCookie('lat', lat);
+      setCookie('lng', lon);
+      setCookie('radius_km', rad);
+
       const u = new URL(location.href);
-      u.searchParams.set('city', label); u.searchParams.set('lat', lat); u.searchParams.set('lng', lon); u.searchParams.set('radius_km', rad);
+      u.searchParams.set('city', label);
+      u.searchParams.set('lat', lat);
+      u.searchParams.set('lng', lon);
+      u.searchParams.set('radius_km', rad);
       location.href = u.toString();
     });
 
+    // إخفاء القائمة عند النقر خارجها
     document.addEventListener('click', (e)=>{
       if (!sugg) return;
       if (!sugg.contains(e.target) && e.target !== cityEl){ hideSugg(); }
     });
 
-    // زر "تطبيق"
+    // زر "تطبيق" (كما هو)
     form?.addEventListener('submit', function(e){
       e.preventDefault();
       const c   = (cityEl?.value || "").trim();
