@@ -21,12 +21,18 @@
 .arrow-btn:hover{background:color-mix(in oklab,var(--text) 8%,transparent)}
 .section-head .row-nav{display:flex;gap:8px;align-items:center}
 
+/* ❌ أخفِ أزرار السهم على الهاتف فقط */
+@media (max-width:576px){
+  .section-head .row-nav,
+  .section-head .arrow-btn{display:none !important}
+}
+
 /* =========================================
    البطاقة (Airbnb-like) — شكل موحّد
    ========================================= */
 .spot{border:none;background:transparent;box-shadow:none;border-radius:14px;overflow:hidden}
-.spot-media{position:relative;aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:transparent}
-.spot-media img{display:block;width:100%;height:100%;object-fit:cover;object-position:center;border-radius:14px}
+.spot-media{position:relative;aspect-ratio:1/1 !important;border-radius:14px;overflow:hidden;background:transparent}
+.spot-media img{display:block;width:100%;height:100% !important;object-fit:cover !important;object-position:center;border-radius:14px;aspect-ratio:auto !important}
 .spot-overlay{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.12))}
 
 /* عناصر فوق الصورة */
@@ -49,27 +55,27 @@
    شبكة "كل العناصر" — 2–3–4–5–6 أعمدة
    ========================================= */
 .mixed-grid{display:grid;gap:14px;padding-inline:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
-@media (min-width:576px){.mixed-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media (min-width:768px){.mixed-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media (min-width:992px){.mixed-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
-@media (min-width:1200px){.mixed-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
+@media (min-width:576px){ .mixed-grid{grid-template-columns:repeat(3,minmax(0,1fr))} }
+@media (min-width:768px){ .mixed-grid{grid-template-columns:repeat(4,minmax(0,1fr))} }
+@media (min-width:992px){ .mixed-grid{grid-template-columns:repeat(5,minmax(0,1fr))} }
+@media (min-width:1200px){ .mixed-grid{grid-template-columns:repeat(6,minmax(0,1fr))} }
 
 /* اجعل بطاقات "كل العناصر" نفس شكل السلايدر */
 .home-shelves .mixed-grid>.spot{border:none;background:transparent;box-shadow:none;border-radius:14px}
-.home-shelves .mixed-grid .spot-media{aspect-ratio:1/1;border-radius:14px;overflow:hidden}
-.home-shelves .mixed-grid .spot-media img{width:100%;height:100%;object-fit:cover;border-radius:14px}
+.home-shelves .mixed-grid .spot-media{aspect-ratio:1/1 !important;border-radius:14px;overflow:hidden}
+.home-shelves .mixed-grid .spot-media img{width:100%;height:100% !important;object-fit:cover !important;border-radius:14px;aspect-ratio:auto !important}
 .home-shelves .mixed-grid .category-chip{top:8px;left:8px;padding:4px 9px;font-size:.74rem}
 .home-shelves .mixed-grid .fav-btn{top:8px;right:8px;width:28px;height:28px}
 .home-shelves .mixed-grid .fav-btn .bi{font-size:14px}
-@supports(padding:max(0px)){.home-shelves{padding-bottom:max(84px,env(safe-area-inset-bottom,0))}}
+@supports(padding:max(0px)){ .home-shelves{padding-bottom:max(84px, env(safe-area-inset-bottom,0))} }
 
 /* =========================================
-   HERO (بانر علوي)
+   HERO (بانر علوي) — لا تعديل على السلوك
    ========================================= */
 .edge-bleed{margin-inline:auto;width:100%;display:flex;justify-content:center}
 .hero-carousel{position:relative;max-width:420px;margin:8px auto 14px;border-radius:18px;overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,.08)}
-@media (min-width:576px){.hero-carousel{max-width:560px}}
-@media (min-width:992px){.hero-carousel{max-width:720px}}
+@media (min-width:576px){ .hero-carousel{max-width:560px} }
+@media (min-width:992px){ .hero-carousel{max-width:720px} }
 .hero-carousel .carousel-inner,.hero-carousel .carousel-item,.hero-carousel .carousel-item img{border-radius:18px;overflow:hidden}
 .hero-carousel .carousel-item{aspect-ratio:3/2}
 .hero-carousel .carousel-item img{width:100%;height:100%;object-fit:contain;object-position:center;display:block;background:#eef2f7}
@@ -85,7 +91,7 @@
 }
 
 /* =========================================
-   Top Strip (3 سلايدر عمودية)
+   Top Strip (3 سلايدر عمودية) — لا تعديل
    ========================================= */
 .top-strip-wrap{margin:12px 0 6px}
 .top-strip-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
@@ -156,6 +162,7 @@
   .spot-footer small{font-size:.86rem}
 }
 </style>
+
 {% endblock %}
 
 {% block content %}
