@@ -947,6 +947,115 @@
   .home-shelves{ padding-bottom:max(84px, env(safe-area-inset-bottom,0)) !important; }
 }
 
+/* =========================
+   تصحيح نهائي لقسم "كل العناصر"
+   (نفس مظهر سلايدر التصنيفات)
+   ========================= */
+
+/* شبكة: 2 موبايل — 3 SM — 4 MD — 5 LG — 6 XL */
+.home-shelves .mixed-grid{
+  display:grid !important;
+  gap:12px !important;
+  padding-inline:10px !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;   /* xs */
+}
+@media (min-width:576px){
+  .home-shelves .mixed-grid{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
+}
+@media (min-width:768px){
+  .home-shelves .mixed-grid{ grid-template-columns:repeat(4,minmax(0,1fr)) !important; }
+}
+@media (min-width:992px){
+  .home-shelves .mixed-grid{ grid-template-columns:repeat(5,minmax(0,1fr)) !important; }
+}
+@media (min-width:1200px){
+  .home-shelves .mixed-grid{ grid-template-columns:repeat(6,minmax(0,1fr)) !important; }
+}
+
+/* الكرت: شفاف مثل Airbnb (بدون ظل/خلفية) */
+.home-shelves .mixed-grid > .spot{
+  border:none !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  border-radius:14px !important;
+}
+
+/* الصورة مربّع 1:1 مع زوايا ناعمة */
+.home-shelves .mixed-grid .spot-media{
+  aspect-ratio:1 / 1 !important;
+  border-radius:14px !important;
+  overflow:hidden !important;
+  background:transparent !important;
+}
+.home-shelves .mixed-grid .spot-media img{
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover !important;
+  border-radius:14px !important;
+  display:block !important;
+}
+
+/* الوسم والقلب نفس حجم السلايدر */
+.home-shelves .mixed-grid .category-chip{
+  position:absolute; top:8px; left:8px;
+  padding:4px 9px; font-size:.74rem; font-weight:700;
+  background:rgba(255,255,255,.96);
+  border:1px solid rgba(0,0,0,.06);
+  border-radius:999px; box-shadow:0 3px 8px rgba(0,0,0,.08);
+  backdrop-filter:blur(8px);
+}
+.home-shelves .mixed-grid .fav-btn{
+  position:absolute; top:8px; right:8px;
+  width:28px; height:28px;
+  background:#fff !important;
+  border:1px solid rgba(0,0,0,.1) !important;
+  box-shadow:0 2px 6px rgba(0,0,0,.1) !important;
+}
+.home-shelves .mixed-grid .fav-btn .bi{ font-size:14px; }
+.home-shelves .mixed-grid .fav-btn.is-fav{ background:#111 !important; border-color:#111 !important; }
+.home-shelves .mixed-grid .fav-btn.is-fav .bi{ color:#fff !important; }
+
+/* النصوص تحت الصورة: عنوان سطر واحد، مدينة رمادية، سطر سعر/تقييم */
+.home-shelves .mixed-grid .spot-body{
+  padding:8px 4px 0 !important;
+  background:transparent !important;
+  text-align:start !important;
+}
+.home-shelves .mixed-grid .spot-title{
+  font-weight:800 !important; color:#111 !important;
+  font-size:clamp(.9rem,.86rem + .2vw,.98rem) !important;
+  line-height:1.2 !important; margin-bottom:4px !important;
+  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
+}
+.home-shelves .mixed-grid .owner-avatar--placeholder{ display:none !important; }
+.home-shelves .mixed-grid .city-chip{
+  background:none !important; border:none !important; padding:0 !important;
+  color:#6b7280 !important; font-size:.86rem !important;
+}
+.home-shelves .mixed-grid .spot-footer{
+  display:flex !important; align-items:center !important; justify-content:space-between !important;
+  margin-top:2px !important;
+}
+.home-shelves .mixed-grid .spot-footer small{
+  color:#111 !important; font-weight:800 !important; font-size:.88rem !important;
+}
+
+/* لا ظل/بنفسجي عند الهوفر */
+.home-shelves .mixed-grid > .spot:hover,
+.home-shelves .mixed-grid > .spot:focus{
+  background:transparent !important;
+  box-shadow:none !important;
+  outline:0 !important;
+}
+
+/* أخفي شارة السعر الداكنة فوق الصورة داخل هذا القسم فقط */
+.home-shelves .mixed-grid .price-badge{ display:none !important; }
+
+/* مساحة أمان أسفل للموبايل (التاب بار) */
+@supports(padding:max(0px)){
+  .home-shelves{ padding-bottom:max(84px, env(safe-area-inset-bottom,0)) !important; }
+}
+
 
 </style>
 {% endblock %}
