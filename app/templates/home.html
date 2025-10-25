@@ -222,6 +222,89 @@
   .section-head .row-nav{display:flex;gap:8px;align-items:center}
   .hrow{scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
   .hrow > *{scroll-snap-align:start}
+
+
+  /* ============ Airbnb-like Card Polish (override only) ============ */
+
+/* أبعاد الكرت والصورة */
+.spot { border-radius:16px; overflow:hidden; border:1px solid var(--border); box-shadow:0 6px 18px rgba(0,0,0,.04); }
+.spot-media { border-radius:16px 16px 0 0; }
+.spot-media img{
+  width:100% !important; height:auto !important;
+  aspect-ratio: 20 / 15;            /* قريب من نسب Airbnb */
+  object-fit:cover !important; object-position:center !important;
+  background:#f3f4f6;
+}
+
+/* زر القلب — أصغر وبحد خفيف */
+.fav-btn{
+  top:12px; right:12px;
+  width:34px; height:34px;
+  background:#fff !important;
+  border:1px solid rgba(0,0,0,.08) !important;
+  box-shadow:0 4px 12px rgba(0,0,0,.08) !important;
+}
+.fav-btn .bi{ font-size:16px; color:#111827; }
+.fav-btn.is-fav{ background:#111827 !important; border-color:#111827 !important; }
+.fav-btn.is-fav .bi{ color:#fff !important; }
+
+/* شارة السعر — تصغير ووزن قوي */
+.price-badge{
+  right:12px; top:auto; bottom:12px;
+  font-size:.85rem; padding:5px 10px; border-radius:999px;
+  background:rgba(17,24,39,.9);
+}
+
+/* شارة التصنيف (pill) — كـ Airbnb */
+.category-chip{
+  left:12px; top:12px;
+  font-weight:700; font-size:.78rem;
+  padding:5px 10px;
+  color:#111827;
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(0,0,0,.06);
+  backdrop-filter:saturate(180%) blur(8px);
+}
+
+/* جسم الكرت والنصوص */
+.spot-body{ padding:10px 12px 12px !important; }
+.spot-title{
+  font-weight:800; letter-spacing:.1px;
+  font-size:clamp(.95rem, .92rem + .2vw, 1.05rem);
+  color:#111827; margin-bottom:6px; line-height:1.25;
+  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
+}
+
+/* سطر المالك/المدينة على هيئة chip صغيرة */
+.owner-line{ display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+.owner-avatar--placeholder{ display:none; } /* نخفي الايموجي */
+.city-chip{
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:.8rem; color:#374151;
+  background:#f3f4f6; border:1px solid #e5e7eb; border-radius:999px;
+  padding:4px 10px;
+}
+
+/* الفوتر: التقييم وسهم رفيع */
+.spot-footer{
+  display:flex; align-items:center; justify-content:space-between; margin-top:2px;
+}
+.spot-footer small{ color:#6b7280 !important; font-weight:700; }
+.spot-footer .bi{ font-size:18px; color:#9ca3af; }
+
+/* هرو سلايدر أصغر قليلًا على الموبايل */
+@media (max-width:576px){
+  .hero-carousel{ max-width: 92% !important; }
+  .spot-media img{ aspect-ratio: 4 / 3; }
+}
+
+/* عرض الكروت الأفقية: بطاقة أضيق قليلًا مثل Airbnb */
+.hcard{ min-width:320px !important; max-width:320px !important; }
+@media (min-width:576px){ .hcard{ min-width:300px !important; max-width:300px !important; } }
+@media (min-width:992px){ .hcard{ min-width:280px !important; max-width:280px !important; } }
+
+/* شبكة "كل العناصر": فجوات أريح وبطاقات متقاربة */
+.mixed-grid{ gap:16px !important; }
 </style>
 {% endblock %}
 
