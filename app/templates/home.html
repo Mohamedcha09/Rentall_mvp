@@ -498,6 +498,66 @@
 /* سطر السعر + التقييم */
 .spot-footer{ display:flex; align-items:center; justify-content:space-between; margin-top:2px; }
 .spot-footer small{ color:#111 !important; font-weight:800; font-size:.9rem; }
+
+/* ===============================
+   حجم الكروت مثل Airbnb (6 في الصف)
+   =============================== */
+
+/* كروت السلايدر والمربعات أصغر قليلاً */
+.hcard, .spot {
+  min-width: 220px !important;
+  max-width: 220px !important;
+}
+
+/* في الشاشات الكبيرة (لابتوب + ديسكتوب) */
+@media (min-width: 1200px){
+  .hcard, .spot {
+    min-width: 210px !important;
+    max-width: 210px !important;
+  }
+}
+
+/* في التابلت */
+@media (max-width: 992px){
+  .hcard, .spot {
+    min-width: 250px !important;
+    max-width: 250px !important;
+  }
+}
+
+/* في الهاتف */
+@media (max-width: 576px){
+  .hcard, .spot {
+    min-width: 300px !important;
+    max-width: 300px !important;
+  }
+}
+
+/* تقليل الفجوة بين الكروت */
+.hrow { gap: 12px !important; }
+.mixed-grid { gap: 14px !important; }
+
+/* تأكد أن الصورة تبقى مربعة */
+.spot-media{
+  aspect-ratio: 1 / 1 !important;
+  height: auto !important;
+  overflow: hidden !important;
+  border-radius: 14px !important;
+}
+.spot-media img{
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 14px !important;
+}
+
+/* إخفاء أي خلفية بنفسجية */
+.spot, .spot:hover, .spot:focus {
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
 </style>
 {% endblock %}
 
