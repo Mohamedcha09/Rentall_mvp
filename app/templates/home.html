@@ -164,6 +164,112 @@
 .home-locbar .btn.btn-primary:hover{ filter:brightness(1.06); }
 .home-locbar .btn{ height:48px; }
 
+/* ==== Location Bar — clean, minimal mode ==== */
+:root{
+  --loc-bg:#fff;
+  --loc-border:rgba(0,0,0,.08);
+  --loc-shadow:0 8px 24px rgba(0,0,0,.06);
+  --loc-radius:18px;
+  --loc-pad:14px;
+  --loc-primary:#5b4bff; /* بنفسجي هادئ */
+  --loc-primary-ink:#fff;
+  --loc-muted:#6b7280;   /* رمادي أنيق */
+  --loc-danger:#e5484d;  /* أحمر خفيف */
+}
+
+/* كارد أنيق للشريط كله */
+.home-locbar{
+  background:var(--loc-bg);
+  border:1px solid var(--loc-border);
+  border-radius:var(--loc-radius);
+  box-shadow:var(--loc-shadow);
+  padding:calc(var(--loc-pad) + 2px) var(--loc-pad);
+  margin-block:16px;
+}
+
+/* حقل المدينة — قرص/حبّة ناعمة */
+.home-locbar #homeCityInput{
+  height:48px;
+  border-radius:999px;
+  border:1px solid var(--loc-border);
+  background:#fafafa;
+  transition:border-color .2s, box-shadow .2s;
+}
+.home-locbar #homeCityInput:focus{
+  border-color: color-mix(in oklab, var(--loc-primary) 40%, #999);
+  box-shadow:0 0 0 4px color-mix(in oklab, var(--loc-primary) 16%, transparent);
+  background:#fff;
+}
+
+/* إخفاء خانة نصف القطر + عمودها بدون تعديل HTML */
+.home-locbar .col-6.col-md-3:has(#homeRadius){ display:none !important; }
+#homeRadius{ display:none !important; }
+
+/* زر “استخدم موقعي” — زر رصين */
+#homeUseGPS.btn{
+  height:48px;
+  border-radius:999px;
+  border:1px solid var(--loc-border);
+  background:#f6f7fb;
+  color:#111;
+  font-weight:700;
+  letter-spacing:.2px;
+}
+#homeUseGPS.btn:hover{ background:#eef0f6; }
+
+/* زر “إلغاء موقعي” — رابط هادئ */
+#homeClearGPS.btn{
+  height:auto;
+  border:none;
+  padding:6px 8px 0;
+  color:var(--loc-danger);
+  font-weight:700;
+  text-decoration:none;
+}
+#homeClearGPS.btn:hover{ opacity:.85; }
+
+/* زر “تطبيق” — أساسي بسيط */
+.home-locbar .btn.btn-primary{
+  height:48px;
+  border-radius:999px;
+  background:var(--loc-primary);
+  color:var(--loc-primary-ink);
+  border:none;
+  font-weight:800;
+  letter-spacing:.2px;
+  box-shadow:0 10px 24px rgba(91,75,255,.18);
+}
+.home-locbar .btn.btn-primary:hover{ filter:brightness(.96); }
+
+/* صندوق الاقتراحات — خفيف ومرتّب */
+#homeCitySugg{
+  border-radius:12px !important;
+  border:1px solid var(--loc-border) !important;
+  box-shadow:var(--loc-shadow) !important;
+  overflow:hidden !important;
+}
+#homeCitySugg > div{
+  font-size:.95rem;
+  color:#111;
+  border-top:1px solid rgba(0,0,0,.04);
+}
+#homeCitySugg > div:first-child{ border-top:none; }
+#homeCitySugg > div:hover{ background:#f7f7fb; }
+
+/* محاذاة أفقية أجمل على الدِسك توب */
+@media (min-width:992px){
+  .home-locbar .col-12.col-md-5{ padding-inline-end:8px; }
+  .home-locbar .col-6.col-md-2.d-grid{ justify-items:end; }
+}
+
+/* تباعد/تكديس موبايل أنظف */
+@media (max-width:576px){
+  .home-locbar{ border-radius:16px; padding:12px; }
+  #homeUseGPS.btn{ margin-top:6px; }
+  #homeClearGPS.btn{ margin-top:2px; }
+  .home-locbar .btn.btn-primary{ margin-top:6px; }
+}
+
 
 </style>
 {% endblock %}
