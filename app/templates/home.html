@@ -108,57 +108,61 @@
 
   /* ====== إصلاح عرض صور Top Strip على الهاتف (تُعرض كاملة بدون قص) ====== */
 @media (max-width: 576px){
-  /* خلي السطر يعرض عمود واحد كما هو */
   .top-strip-grid{ grid-template-columns: 1fr; }
-
-  /* خلي كل سلايد عمودي 2:3 بما يتماشى مع صورك 1024x1536 */
-  .top-strip .carousel-item{
-    aspect-ratio: 2 / 3 !important;
-  }
-
-  /* اعرض الصورة كاملة بدون أي قص + خلفية لطيفة للفراغ */
+  .top-strip .carousel-item{ aspect-ratio: 2 / 3 !important; }
   .top-strip .carousel-item img{
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: contain !important;
-    object-position: center !important;
-    background: #eef2f7 !important;
-    display: block !important;
+    width: 100% !important; height: 100% !important;
+    object-fit: contain !important; object-position: center !important;
+    background: #eef2f7 !important; display: block !important;
   }
 }
 
 /* === Fix: توسيط وتصغير الـ HERO فقط === */
-.edge-bleed{
-  /* ألغينا الـ full-bleed وخليّناه كونتينر عادي بالوسط */
-  margin-inline: auto !important;
-  width: 100% !important;
-  display: flex !important;
-  justify-content: center !important;
+.edge-bleed{ margin-inline: auto !important; width: 100% !important; display: flex !important; justify-content: center !important; }
+.hero-carousel{ max-width: 420px !important; margin: 8px auto 14px !important; }
+@media (min-width: 576px){ .hero-carousel{ max-width: 560px !important; } }
+@media (min-width: 992px){ .hero-carousel{ max-width: 720px !important; } }
+.hero-carousel .carousel-control-prev, .hero-carousel .carousel-control-next{ width: 10% !important; }
+
+/* ✅ تنسيق خرافي لشريط الموقع */
+.home-locbar{
+  --ring:#a944ec; --alt:#0ea5e9;
+  background:linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.75));
+  backdrop-filter: blur(8px);
+  border:1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  border-radius:18px; padding:14px 12px; box-shadow:0 12px 26px rgba(0,0,0,.08);
+}
+.home-locbar .form-control{
+  height:48px; border-radius:999px; border:1px solid color-mix(in oklab,var(--border) 80%, transparent);
+  padding-inline:16px 14px; font-weight:600; letter-spacing:.2px;
+  box-shadow: inset 0 0 0 1px rgba(169,68,236,.0);
+  transition:.2s;
+}
+.home-locbar .form-control:focus{
+  border-color: var(--ring);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--ring) 20%, transparent);
 }
 
-.hero-carousel{
-  /* حجم صغير ومتمركز */
-  max-width: 420px !important;   /* موبايل */
-  margin: 8px auto 14px !important;
+.home-locbar #homeUseGPS.btn{
+  border-radius:999px; font-weight:800;
+  background: linear-gradient(135deg, var(--alt), #22d3ee);
+  color:#fff; border:none; box-shadow:0 10px 24px rgba(14,165,233,.25);
 }
+.home-locbar #homeUseGPS.btn:hover{ filter: brightness(1.05); }
 
-@media (min-width: 576px){
-  .hero-carousel{ max-width: 560px !important; }  /* تابلت صغير */
+.home-locbar #homeClearGPS.btn{
+  border-radius:999px; font-weight:700; text-decoration:none;
+  color:#ef4444; padding-inline:8px;
 }
+.home-locbar #homeClearGPS.btn:hover{ color:#dc2626; text-decoration:underline; }
 
-@media (min-width: 992px){
-  .hero-carousel{ max-width: 720px !important; }  /* ديسكتوب */
+.home-locbar .btn.btn-primary{
+  border-radius:999px; font-weight:900; letter-spacing:.3px;
+  background:linear-gradient(135deg, #a944ec, #7c3aed);
+  border:none; box-shadow:0 12px 28px rgba(124,58,237,.28);
 }
-
-/* أزرار التنقل أضيق قليلًا مع الحجم الجديد */
-.hero-carousel .carousel-control-prev,
-.hero-carousel .carousel-control-next{
-  width: 10% !important;
-}
-
-/* ✅ إضافة: شريط تحكّم للموقع في الصفحة الرئيسية */
-.home-locbar .form-control{ height: 44px; }
-.home-locbar .btn{ height: 44px; }
+.home-locbar .btn.btn-primary:hover{ filter:brightness(1.06); }
+.home-locbar .btn{ height:48px; }
 </style>
 {% endblock %}
 
@@ -189,7 +193,7 @@
 </div>
 <!-- /HERO -->
 
-<!-- ✅ شريط تحكّم للموقع (مدينة / نصف قطر / GPS) -->
+<!-- ✅ شريط تحكّم للموقع (مدينة / GPS) -->
 <section class="container-xl my-3">
   <form class="row g-2 align-items-center home-locbar" action="/" method="get" role="search" id="homeLocForm">
     <div class="col-12 col-md-5">
@@ -197,12 +201,9 @@
       <!-- اقتراحات المدن -->
       <div id="homeCitySugg" class="border rounded mt-1 bg-white shadow-sm" style="display:none; position:absolute; z-index:1000; max-height:260px; overflow:auto"></div>
     </div>
-    <div class="col-6 col-md-3">
-      <input type="number" class="form-control" id="homeRadius" name="radius_km" min="1" value="25" placeholder="km 25">
-    </div>
+    <!-- ❌ تمت إزالة خانة km 25 بالكامل -->
     <div class="col-6 col-md-2 d-grid">
       <button type="button" id="homeUseGPS" class="btn btn-outline-secondary">📍 استخدم موقعي</button>
-      <!-- ⬇️ زر إلغاء الموقـع (أضفته هنا فقط) -->
       <button type="button" id="homeClearGPS" class="btn btn-link btn-sm mt-1">❌ إلغاء موقعي</button>
     </div>
     <div class="col-12 col-md-2 d-grid">
@@ -525,7 +526,7 @@
     const cityEl = document.getElementById('homeCityInput');
     const latEl  = document.getElementById('homeLat');
     const lngEl  = document.getElementById('homeLng');
-    const rEl    = document.getElementById('homeRadius');
+    const rEl    = document.getElementById('homeRadius'); // قد يكون null بعد حذف الحقل وهذا مقصود
     const gpsBtn = document.getElementById('homeUseGPS');
     const clearBtn = document.getElementById('homeClearGPS'); // زر إلغاء الموقـع
     const sugg   = document.getElementById('homeCitySugg');
@@ -554,7 +555,7 @@
       if (cityEl) cityEl.value = c;
       if (latEl)  latEl.value  = lat;
       if (lngEl)  lngEl.value  = lng;
-      if (rEl)    rEl.value    = rad;
+      if (rEl)    rEl.value    = rad; // لن يُنفّذ إذا rEl غير موجود
     }catch(_){}
 
     // 📍 GPS
@@ -578,10 +579,9 @@
       });
     });
 
-    // ❌ إلغاء الموقـع (يمسح إحداثيات + باراميترات + يرجّع كل العناصر)
+    // ❌ إلغاء الموقـع
     clearBtn?.addEventListener('click', function(){
       delCookie('lat'); delCookie('lng'); delCookie('radius_km');
-      // اترك city كما هي أو امسحها إذا فارغة
       const u = new URL(location.href);
       u.searchParams.delete('lat');
       u.searchParams.delete('lng');
@@ -599,57 +599,10 @@
       setCookie('lat', ""); setCookie('lng', "");
     });
 
-    // ✅ اقتراح مدينة واحدة فقط — لغة الإدخال + إزالة تكرار داخل البلد
+    // اقتراح مدينة واحدة
     let t=null;
     function hideSugg(){ if(sugg){ sugg.style.display='none'; sugg.innerHTML=''; } }
     function showSugg(){ if(sugg){ sugg.style.display='block'; } }
-
-    function detectLang(q){
-      const s=(q||'').trim();
-      if (/[\u0600-\u06FF]/.test(s)) return 'ar';
-      const hasFr = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(s) || /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
-      if (hasFr) return 'fr';
-      return 'en';
-    }
-    const ALLOWED = new Set(['city','town','village','municipality']);
-    const FALLBACK = new Set(['state','province']);
-    function normalizePlace(p){
-      const a=p.address||{};
-      const type=(p.type||'').toLowerCase();
-      const cc=(a.country_code||'').toLowerCase();
-      const city=a.city||a.town||a.village||a.municipality||a.state||a.province||(p.display_name||'').split(',')[0];
-      const prioMap={city:1,town:2,village:3,municipality:3,state:6,province:6,administrative:8,county:8,region:8};
-      const prio=prioMap[type]??9;
-      const country=a.country||'';
-      return { city, country, cc, label: city+(country?`, ${country}`:''), lat:p.lat, lon:p.lon, type, prio };
-    }
-    function pickBestUnique(list){
-      const best=new Map();
-      for(const p of list){
-        const n=normalizePlace(p);
-        if(!n.city||!n.cc) continue;
-        const key=n.city.trim().toLowerCase()+'|'+n.cc;
-        const prev=best.get(key);
-        if(!prev || n.prio < prev.prio) best.set(key,n);
-      }
-      return Array.from(best.values());
-    }
-    async function queryBestCity(q){
-      const lang=detectLang(q);
-      const url = 'https://nominatim.openstreetmap.org/search'
-                 + '?format=json&addressdetails=1&limit=30&namedetails=0&extratags=0'
-                 + '&accept-language='+encodeURIComponent(lang)
-                 + '&q='+encodeURIComponent(q);
-      const r = await fetch(url, {headers:{'Accept':'application/json'}});
-      if(!r.ok) return null;
-      let data = await r.json();
-      let filtered = data.filter(x=>ALLOWED.has((x.type||'').toLowerCase()));
-      if(!filtered.length) filtered = data.filter(x=>FALLBACK.has((x.type||'').toLowerCase()));
-      if(!filtered.length) filtered = data;
-      const unique = pickBestUnique(filtered);
-      unique.sort((a,b)=>a.prio-b.prio);
-      return unique[0]||null;
-    }
 
     cityEl?.addEventListener('input', function(){
       clearTimeout(t);
@@ -657,43 +610,29 @@
       if (q.length<2){ hideSugg(); return; }
       t = setTimeout(async ()=>{
         try{
-          const best = await queryBestCity(q);
-          if(!best){ hideSugg(); return; }
-          sugg.innerHTML =
-            `<div class="py-2 px-2" data-best="1" style="cursor:pointer">
-               <i class="bi bi-geo-alt"></i>
-               <span>${best.label}</span>
-             </div>`;
-          sugg.dataset.lat = best.lat||'';
-          sugg.dataset.lon = best.lon||'';
+          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&accept-language=ar`;
+          const r = await fetch(url, {headers:{'Accept':'application/json'}});
+          if(!r.ok){ hideSugg(); return; }
+          const data = await r.json();
+          if(!Array.isArray(data) || data.length===0){ hideSugg(); return; }
+          const p = data[0];
+          sugg.innerHTML = `<div class="py-2 px-2" data-best="1" style="cursor:pointer">${p.display_name}</div>`;
+          sugg.dataset.lat = p.lat||''; sugg.dataset.lon = p.lon||'';
           showSugg();
         }catch(_){ hideSugg(); }
       }, 250);
     });
 
-    // اختيار الاقتراح الوحيد
+    // اختيار الاقتراح
     sugg?.addEventListener('click', ()=>{
-      const label = (sugg.querySelector('[data-best] span')?.textContent||'').trim();
-      const lat = sugg.dataset.lat||'';
-      const lon = sugg.dataset.lon||'';
+      const label = (sugg.querySelector('[data-best]')?.textContent||'').trim();
+      const lat = sugg.dataset.lat||''; const lon = sugg.dataset.lon||'';
       if(!label) return;
-      if(cityEl) cityEl.value = label;
-      if(latEl)  latEl.value  = lat;
-      if(lngEl)  lngEl.value  = lon;
-
+      if(cityEl) cityEl.value = label; if(latEl) latEl.value = lat; if(lngEl) lngEl.value = lon;
       const rad = (rEl && rEl.value) ? rEl.value : "25";
-      setCookie('city', label);
-      setCookie('lat', lat);
-      setCookie('lng', lon);
-      setCookie('radius_km', rad);
-
-      hideSugg();
-
+      setCookie('city', label); setCookie('lat', lat); setCookie('lng', lon); setCookie('radius_km', rad);
       const u = new URL(location.href);
-      u.searchParams.set('city', label);
-      u.searchParams.set('lat', lat);
-      u.searchParams.set('lng', lon);
-      u.searchParams.set('radius_km', rad);
+      u.searchParams.set('city', label); u.searchParams.set('lat', lat); u.searchParams.set('lng', lon); u.searchParams.set('radius_km', rad);
       location.href = u.toString();
     });
 
@@ -702,7 +641,7 @@
       if (!sugg.contains(e.target) && e.target !== cityEl){ hideSugg(); }
     });
 
-    // ✅ زر "تطبيق" — مثل /search تمامًا
+    // زر "تطبيق"
     form?.addEventListener('submit', function(e){
       e.preventDefault();
       const c   = (cityEl?.value || "").trim();
@@ -715,15 +654,12 @@
 
       if (lat && lng){
         setCookie('lat', lat); setCookie('lng', lng); setCookie('radius_km', rad); setCookie('city', c||"");
-        u.searchParams.set('lat', lat);
-        u.searchParams.set('lng', lng);
-        u.searchParams.set('radius_km', rad);
+        u.searchParams.set('lat', lat); u.searchParams.set('lng', lng); u.searchParams.set('radius_km', rad);
         if (c) u.searchParams.set('city', c);
       } else if (c){
         setCookie('city', c); setCookie('radius_km', rad);
         setCookie('lat', ""); setCookie('lng', "");
-        u.searchParams.set('city', c);
-        u.searchParams.set('radius_km', rad);
+        u.searchParams.set('city', c); u.searchParams.set('radius_km', rad);
       } else {
         delCookie('city'); delCookie('lat'); delCookie('lng'); delCookie('radius_km');
         u.search = "";
