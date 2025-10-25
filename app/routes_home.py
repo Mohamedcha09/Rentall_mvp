@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from pathlib import Path
 import random
+from urllib.parse import quote  # ⬅️ مهم لترميز أسماء الملفات
 
 from .database import get_db
 from .models import Item
@@ -13,10 +14,8 @@ router = APIRouter()
 
 EARTH_RADIUS_KM = 6371.0
 
+
 def _apply_city_or_gps_filter(qs, city: str | None, lat: float | None, lng: float | None, radius_km: float | None):
-    """
-    فلترة حسب GPS إن توفّر، وإلا حسب المدينة (case-insensitive).
-    """
     from sqlalchemy import func
     if lat is not None and lng is not None and radius_km:
         distance_expr = EARTH_RADIUS_KM * func.acos(
@@ -36,56 +35,55 @@ def _apply_city_or_gps_filter(qs, city: str | None, lat: float | None, lng: floa
     return qs
 
 
-# ---------- مصادر الصور الثابتة (static) ----------
-_VALID_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
+# ========= مصادر الصور من مجلد static =========
+_IMG_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
-def _static_url(request: Request, rel_path: str) -> str:
-    """
-    يحوّل مسارًا نسبيًا داخل static إلى URL. يفترض أنك عامل mount:
-    app.mount('/static', StaticFiles(directory='app/static'), name='static')
-    """
-    # نتأكد من عدم وجود سلاش أولي مزدوج
-    rel_path = rel_path.lstrip("/")
-    return f"/static/{rel_path}"
 
-def _collect_static_images(request: Request, subdir: str) -> list[str]:
-    """
-    يقرأ كل الصور من app/static/<subdir>/ ويرجع URLs.
-    """
-    # الجذر النسبي من مجلد المشروع
-    root = Path(__file__).resolve().parent.parent  # يشير إلى app/
-    folder = root / "static" / subdir
-    urls: list[str] = []
-    try:
-        if folder.exists():
-            for p in sorted(folder.iterdir()):
-                if p.is_file() and p.suffix.lower() in _VALID_EXTS:
-                    rel = f"{subdir}/{p.name}"
-                    urls.append(_static_url(request, rel))
-    except Exception:
-        pass
-    return urls
+def _static_dir(*parts: str) -> Path:
+    # هذا الملف: app/routes_home.py → parent = app/
+    base_app = Path(__file__).resolve().parent
+    return base_app / "static" / Path(*parts)
 
-def _banners_from_static(request: Request) -> list[str]:
-    imgs = _collect_static_images(request, "img/banners")
+
+def _list_static_images(subfolder: str) -> list[str]:
+    """
+    يرجّع روابط /static/img/<subfolder>/<file> مع URL-encoding لاسم الملف.
+    """
+    folder = _static_dir("img", subfolder)
+    if not folder.exists():
+        return []
+    items: list[str] = []
+    for p in folder.iterdir():
+        if p.is_file() and p.suffix.lower() in _IMG_EXTS:
+            # نبني المسار تحت /static مع ترميز كل جزء يحتوي مسافات/فواصل
+            rel = p.relative_to(_static_dir())  # نسبي إلى app/static
+            parts = [quote(part) for part in rel.parts]  # ⬅️ هنا الترميز
+            url = "/static/" + "/".join(parts)
+            items.append(url)
+    return items
+
+
+def _pick_banners_from_static(max_count: int = 8) -> list[str]:
+    imgs = _list_static_images("banners")
+    if not imgs:
+        return []
     random.shuffle(imgs)
-    return imgs
+    return imgs[:max_count]
 
-def _topstrip_from_static(request: Request) -> list[list[str]]:
-    imgs = _collect_static_images(request, "img/top_slider")
-    random.shuffle(imgs)
-    # وزّعها على 3 أعمدة
+
+def _pick_topstrip_from_static(limit_per_col: int = 12) -> list[list[str]]:
+    imgs = _list_static_images("top_slider")
     cols = [[], [], []]
-    for i, u in enumerate(imgs):
-        cols[i % 3].append(u)
+    if not imgs:
+        return cols
+    random.shuffle(imgs)
+    for i, src in enumerate(imgs[: 3 * limit_per_col]):
+        cols[i % 3].append(src)
     return cols
 
 
-# ---------- fallback من العناصر في الداتابيز ----------
-def _fallback_media_from_items(db: Session, limit: int = 18):
-    """
-    بدائل في حال مجلدات static فاضية.
-    """
+# ========= فولباك من العناصر لو ما فيه صور static =========
+def _fallback_media_from_items(db: Session, limit: int = 24):
     rows = (
         db.query(Item.image_path)
         .filter(Item.is_active == "yes", Item.image_path.isnot(None), Item.image_path != "")
@@ -94,9 +92,9 @@ def _fallback_media_from_items(db: Session, limit: int = 18):
         .all()
     )
     imgs = [r[0] for r in rows if r[0]]
-    banners = imgs[:3]
+    banners = imgs[:5]
     cols = [[], [], []]
-    for i, src in enumerate(imgs[3:]):
+    for i, src in enumerate(imgs[5:]):
         cols[i % 3].append(src)
     return banners, cols
 
@@ -111,7 +109,6 @@ def home_page(
     radius_km: float | None = Query(None),
     db: Session = Depends(get_db),
 ):
-    # دعم lon كبديل
     if lng is None and lon is not None:
         lng = lon
 
@@ -155,15 +152,17 @@ def home_page(
     else:
         all_items = base_q.order_by(func.random()).limit(60).all()
 
-    # ---------- HERO + TOP STRIP من static ----------
-    banners = _banners_from_static(request)           # من app/static/img/banners/
-    top_strip_cols = _topstrip_from_static(request)   # من app/static/img/top_slider/
+    # ====== صور الـHero والـTop Strip من مجلد static أولًا ======
+    banners = _pick_banners_from_static(max_count=8)
+    top_strip_cols = _pick_topstrip_from_static(limit_per_col=12)
 
-    # إن كانت مجلدات static فارغة، نلجأ إلى fallback من العناصر حتى لا تختفي الأقسام
-    if not banners:
-        banners, _fallback_cols = _fallback_media_from_items(db)
-        if not any(top_strip_cols):
-            top_strip_cols = _fallback_cols
+    # لو فاضية نرجع لفولباك من صور العناصر
+    if not banners and all(len(col) == 0 for col in top_strip_cols):
+        fb_banners, fb_cols = _fallback_media_from_items(db)
+        if not banners:
+            banners = fb_banners
+        if all(len(col) == 0 for col in top_strip_cols):
+            top_strip_cols = fb_cols
 
     def _cat_label(c): return category_label(c)
 
@@ -175,10 +174,8 @@ def home_page(
             "nearby_items": nearby_items,
             "items_by_category": items_by_category,
             "all_items": all_items,
-            # ⬅️ هذه القيم الآن قادمة من مجلدات static التي حددتها
             "banners": banners,
             "top_strip_cols": top_strip_cols,
-            # باراميترات الفلترة لواجهة المستخدم
             "selected_city": city or "",
             "lat": lat,
             "lng": lng,
