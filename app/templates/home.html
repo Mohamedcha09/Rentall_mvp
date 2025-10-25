@@ -197,6 +197,35 @@
   .spot-media{aspect-ratio:1/1 !important}
   .spot-media img{height:100% !important}
 }
+
+/* =====[ ADD-ON | لا تعدّل ما فوق ]================================== */
+/* إبقاء الصور مربعة (تأكيد) */
+.spot-media{aspect-ratio:1/1!important}
+.spot-media img{height:100%!important;object-fit:cover!important}
+
+/* لا نريد شارة السعر فوق الصورة إطلاقًا */
+.price-badge{display:none!important}
+
+/* شكل البيانات تحت العنوان: سعر ← مدينة ← تقييم */
+.spot-meta{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  margin-top:4px;
+}
+.spot-price{font-weight:900;color:#111;font-size:.95rem}
+.spot-price span{font-weight:600;opacity:.85}
+.spot-city{color:#6b7280;font-size:.92rem}
+.spot-rating{font-weight:800;color:#111;font-size:.9rem}
+.spot-rating::before{content:"★ ";font-weight:900}
+
+/* تقليل التباعد لأننا لا نستخدم price-badge تحت الصورة */
+.spot-body{padding-top:10px}
+
+/* إخفاء السطور القديمة (لا نحذف HTML) حتى لا تتكرر المعلومات */
+.owner-line{display:none!important}
+.spot-footer{display:none!important}
+
 </style>
 
 
@@ -288,6 +317,14 @@
 
         <div class="card-body spot-body">
           <div class="spot-title">{{ it.title }}</div>
+            <!-- NEW: سعر → مدينة → تقييم -->
+  <div class="spot-meta">
+    {% if it.price_per_day is defined %}
+      <div class="spot-price"><strong>{{ it.price_per_day|default(0) }}$</strong> <span>/يوم</span></div>
+    {% endif %}
+    <div class="spot-city">{{ it.city or '—' }}</div>
+    <div class="spot-rating">{{ it.rating|default(4.8) }}</div>
+  </div>
           <div class="owner-line">
             <div class="owner-avatar--placeholder">🏷️</div>
             <span class="city-chip">{{ it.city or '—' }}</span>
@@ -340,6 +377,14 @@
 
           <div class="card-body spot-body">
             <div class="spot-title">{{ it.title }}</div>
+              <!-- NEW: سعر → مدينة → تقييم -->
+  <div class="spot-meta">
+    {% if it.price_per_day is defined %}
+      <div class="spot-price"><strong>{{ it.price_per_day|default(0) }}$</strong> <span>/يوم</span></div>
+    {% endif %}
+    <div class="spot-city">{{ it.city or '—' }}</div>
+    <div class="spot-rating">{{ it.rating|default(4.8) }}</div>
+  </div>
             <div class="owner-line">
               <div class="owner-avatar--placeholder">🏷️</div>
               <span class="city-chip">{{ it.city or '—' }}</span>
@@ -455,6 +500,14 @@
 
         <div class="card-body spot-body">
           <div class="spot-title">{{ it.title }}</div>
+            <!-- NEW: سعر → مدينة → تقييم -->
+  <div class="spot-meta">
+    {% if it.price_per_day is defined %}
+      <div class="spot-price"><strong>{{ it.price_per_day|default(0) }}$</strong> <span>/يوم</span></div>
+    {% endif %}
+    <div class="spot-city">{{ it.city or '—' }}</div>
+    <div class="spot-rating">{{ it.rating|default(4.8) }}</div>
+  </div>
           <div class="owner-line">
             <div class="owner-avatar--placeholder">🏷️</div>
             <span class="city-chip">{{ it.city or '—' }}</span>
