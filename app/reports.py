@@ -14,19 +14,19 @@ from .models import User, Item
 
 # استيرادات اختيارية لحماية التشغيل لو الجداول/الخدمات غير متوفرة
 try:
-    from .models import Report, ReportActionLog  # مضافة في models.py
+    from .models import Report, ReportActionLog  # موجودة في models.py
 except Exception:  # pragma: no cover
     Report = None
     ReportActionLog = None
 
 try:
-    from .notifications_api import push_notification  # إشعارات داخلية
+    from .notifications_api import push_notification
 except Exception:  # pragma: no cover
     def push_notification(db: Session, user_id: int, title: str, body: str, link_url: str = "/", kind: str = "info"):
         return None
 
 try:
-    from .email_service import send_email  # بريد (اختياري)
+    from .email_service import send_email
 except Exception:  # pragma: no cover
     def send_email(*args, **kwargs):
         return None
@@ -34,6 +34,7 @@ except Exception:  # pragma: no cover
 
 router = APIRouter()
 BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
+DEBUG_REPORTS = os.getenv("DEBUG_REPORTS", "0") == "1"
 
 
 # =========================
@@ -57,13 +58,9 @@ def _notify_owner_and_moderators(
     reporter_name: str,
     item_id: int,
     reason: str,
-    image_index: Optional[int] = None,
 ):
     """إشعار المالك + كل الأدمن والمودز."""
     label = f"بلاغ على المنشور #{item_id}"
-    if image_index is not None:
-        label = f"بلاغ على صورة #{image_index} من المنشور #{item_id}"
-
     body = f"المبلِّغ: {reporter_name}\nالسبب: {reason}"
     link = f"/items/{item_id}"
 
@@ -111,45 +108,28 @@ def _build_report_instance(
     reporter_id: int,
     item_id: int,
     reason: str,
-    note: Optional[str],
-    image_index: Optional[int],
-    payload: Optional[Dict[str, Any]] = None,
+    note: Optional[str],            # يُستقبل من الفورم لكن لا يُحفظ لعدم وجود عمود
+    image_index: Optional[int],     # يُستقبل من الفورم لكن لا يُحفظ لعدم وجود عمود
 ):
     """
-    إنشاء كائن Report مع مراعاة اختلاف السكيمة: لا نضيف إلا الحقول الموجودة فعلاً.
+    ننشئ كائن Report مطابق لسكيمة models.Report الحالية:
+    الأعمدة المتاحة: item_id, reporter_id, reason, status, tag, created_at, updated_at
     """
     if Report is None:
         raise HTTPException(status_code=500, detail="Report model is missing")
 
     data: Dict[str, Any] = {
         "reporter_id": reporter_id,
-        "reason": reason[:120] if reason else "",
-        "status": "pending",
+        "reason": (reason or "")[:5000],
+        "status": "open",                 # مطابق للـ default في الموديل
         "created_at": datetime.utcnow(),
+        # ملاحظة: لا نُمرّر updated_at، سيُحدّث تلقائيًا عند الحاجة
     }
 
-    # أضِف فقط الحقول الموجودة فعليًا في الموديل/الجدول
     if hasattr(Report, "item_id"):
         data["item_id"] = item_id
 
-    if note and hasattr(Report, "note"):
-        data["note"] = (note or "").strip() or None
-
-    if image_index is not None and hasattr(Report, "image_index"):
-        try:
-            data["image_index"] = int(image_index)
-        except Exception:
-            pass
-
-    if hasattr(Report, "target_type"):
-        data["target_type"] = "image" if image_index is not None else "item"
-
-    if payload and hasattr(Report, "payload_json"):
-        try:
-            import json
-            data["payload_json"] = json.dumps(payload, ensure_ascii=False)
-        except Exception:
-            pass
+    # لا نمرر note/image_index/target_type/payload_json لأنها غير موجودة في السكيمة الحالية
 
     return Report(**data)
 
@@ -186,8 +166,7 @@ async def create_report(
     image_index: int | None = Form(None),
 ):
     """
-    ينشئ بلاغًا على منشور/صورة. يقبل Form أو JSON.
-    لو أُرسل JSON، سنقرأه من body مباشرةً.
+    ينشئ بلاغًا على منشور. يقبل Form أو JSON.
     """
     u = _require_login(request)
 
@@ -199,11 +178,11 @@ async def create_report(
             reason = data.get("reason")
             note = data.get("note")
             image_index = data.get("image_index")
-            if image_index is not None:
-                try:
+            try:
+                if image_index is not None:
                     image_index = int(image_index)
-                except Exception:
-                    image_index = None
+            except Exception:
+                image_index = None
         except Exception:
             pass
 
@@ -223,7 +202,6 @@ async def create_report(
             reason=str(reason),
             note=note,
             image_index=image_index,
-            payload={"ip": request.client.host if request.client else None},
         )
         db.add(report)
         db.commit()
@@ -232,6 +210,10 @@ async def create_report(
         raise
     except Exception as e:
         db.rollback()
+        # تشخيص اختياري
+        if DEBUG_REPORTS:
+            print(f"[REPORTS] create_report error: {e!r}")
+            return JSONResponse({"ok": False, "error": "exception", "detail": str(e)}, status_code=500)
         raise HTTPException(status_code=500, detail="failed-to-create-report") from e
 
     # سجلّ الإجراء الأولي "submitted"
@@ -240,7 +222,7 @@ async def create_report(
     # إشعار المالك + الأدمن/المود
     try:
         reporter_name = f"{u.get('first_name','').strip()} {u.get('last_name','').strip()}".strip() or f"User#{u['id']}"
-        _notify_owner_and_moderators(db, owner_id, reporter_name, int(item_id), str(reason), image_index)
+        _notify_owner_and_moderators(db, owner_id, reporter_name, int(item_id), str(reason))
     except Exception:
         pass
 
@@ -249,7 +231,7 @@ async def create_report(
             "ok": True,
             "message": "تم إرسال البلاغ، شكرًا لمساهمتك.",
             "report_id": getattr(report, "id", None),
-            "status": getattr(report, "status", "pending"),
+            "status": getattr(report, "status", "open"),
         },
         status_code=201,
     )
