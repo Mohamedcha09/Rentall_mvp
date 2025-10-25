@@ -1,7 +1,7 @@
 # app/routes_home.py
 from fastapi import APIRouter, Depends, Request, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from pathlib import Path
 from urllib.parse import quote
 import random
@@ -53,6 +53,19 @@ def _apply_city_or_gps_filter(qs, city: str | None, lat: float | None, lng: floa
     elif city:
         qs = qs.filter(Item.city.ilike(f"%{city.strip()}%"))
     return qs
+
+
+# فلترة مرنة حسب التصنيف (تدعم key أو label أو مطابقة جزئية قديمة)
+def _apply_category_filter(qs, code: str, label: str):
+    # لو عندك البيانات مخزنة بالـ key (vehicle) أو بالـ label (مركبات) أو مشتقة منها
+    return qs.filter(
+        or_(
+            Item.category == code,
+            Item.category == label,
+            Item.category.ilike(f"%{code}%"),
+            Item.category.ilike(f"%{label}%"),
+        )
+    )
 
 
 # ==========================
@@ -160,16 +173,24 @@ def home_page(
     if filtering_active:
         nearby_rows = filtered_q.order_by(Item.created_at.desc()).limit(20).all()
     else:
-        # استخدم random لو ما في فلترة لنعرض تنويع
         nearby_rows = base_q.order_by(func.random()).limit(20).all()
     nearby_items = [_serialize(i) for i in nearby_rows]
 
-    # سلايدر لكل تصنيف
+    # سلايدر لكل تصنيف — (تصحيح مهم: CATEGORIES قائمة قواميس)
     items_by_category: dict[str, list[dict]] = {}
-    for code, _label in CATEGORIES:
-        q_cat = base_q.filter(Item.category == code)
+    for cat in CATEGORIES:
+        code = cat.get("key", "")
+        label = cat.get("label", "")
+        if not code and not label:
+            continue
+
+        q_cat = base_q
+        # طبّق فلترة الموقع إذا موجودة
         if filtering_active:
             q_cat = _apply_city_or_gps_filter(q_cat, city, lat, lng, radius_km)
+        # فلترة مرنة على التصنيف
+        q_cat = _apply_category_filter(q_cat, code, label)
+
         rows = q_cat.order_by(func.random()).limit(12).all()
         lst = [_serialize(i) for i in rows]
         if lst:
@@ -194,7 +215,8 @@ def home_page(
 
     # لو ما لقينا بانرز إطلاقًا، خذ من صور العناصر
     if not banners:
-        banners = [i["image_path"] for i in (nearby_items[:5] or all_items[:5]) if i.get("image_path")]
+        candidates = nearby_items[:5] or all_items[:5]
+        banners = [i["image_path"] for i in candidates if i.get("image_path")]
 
     ctx = {
         "request": request,
@@ -216,7 +238,6 @@ def home_page(
     # استخدم templates المسجّلة على التطبيق لو موجودة
     templates = getattr(request.app, "templates", None)
     if templates:
-        # تأكد أن الدالة متاحة كـ global أيضًا (اختياري)
         try:
             templates.env.globals["category_label"] = _category_label
         except Exception:
