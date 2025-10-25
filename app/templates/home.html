@@ -3,1062 +3,159 @@
 
 {% block head %}
 <style>
-  .hrow{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 4px 12px}
-  .hrow::-webkit-scrollbar{height:8px}
-  .hrow::-webkit-scrollbar-thumb{background:color-mix(in oklab,var(--text) 18%,transparent);border-radius:999px}
-  .hcard{min-width:86%;max-width:86%;scroll-snap-align:start}
-  @media (min-width:576px){.hcard{min-width:58%;max-width:58%}}
-  @media (min-width:992px){.hcard{min-width:360px;max-width:360px}}
-  .section-head{margin:12px 2px 8px;display:flex;align-items:center;justify-content:space-between}
-  .section-title{font-weight:800;font-size:1.15rem}
-  .arrow-btn{border:1px solid var(--border);background:transparent;border-radius:12px;width:42px;height:42px;display:grid;place-items:center}
-  .arrow-btn:hover{background:color-mix(in oklab,var(--text) 8%,transparent)}
-  .mixed-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
-  @media (max-width:480px){.mixed-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-
-  .spot-media{position:relative;overflow:hidden;border-radius:16px 16px 0 0}
-  .spot-media img{width:100%;height:220px;object-fit:cover;display:block}
-  .spot-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.15));pointer-events:none}
-  .price-badge{position:absolute;right:10px;top:10px;font-weight:800;font-size:.9rem;background:rgba(0,0,0,.75);color:#fff;padding:6px 10px;border-radius:999px}
-  .category-chip{position:absolute;left:10px;top:10px;font-weight:700;font-size:.8rem;background:rgba(255,255,255,.9);color:var(--text);padding:6px 10px;border-radius:999px;backdrop-filter:blur(6px)}
-  .fav-btn{position:absolute;right:10px;top:56px;width:40px;height:40px;border:none;outline:none;cursor:pointer;border-radius:999px;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.12)}
-  .fav-btn .bi{font-size:18px;line-height:1;color:#a944ec}
-  .fav-btn.is-fav{background:#a944ec}
-  .fav-btn.is-fav .bi{color:#fff}
-
-  /* =========================================================
-     HERO — صورة كاملة + حواف دائرية (نسبة 3:2 لصور 1536×1024)
-     ========================================================= */
-  .edge-bleed{ margin-inline: calc(50% - 50vw); width:100vw; }
-  .hero-carousel{
-    position:relative;
-    border-radius:18px !important;
-    overflow:hidden !important;
-    box-shadow:0 14px 34px rgba(0,0,0,.08);
-  }
-  .hero-carousel .carousel-inner,
-  .hero-carousel .carousel-item,
-  .hero-carousel .carousel-item img{
-    border-radius:18px !important;
-    overflow:hidden !important;
-  }
-  .hero-carousel .carousel-item{ aspect-ratio: 3 / 2 !important; max-height:none !important; }
-  .hero-carousel .carousel-item img{
-    width:100% !important; height:100% !important;
-    object-fit:contain !important; object-position:center !important;
-    display:block !important; background:#eef2f7 !important;
-  }
-  .hero-carousel .carousel-indicators, .hero-carousel .carousel-caption{ display:none !important; }
-  .hero-carousel::before, .hero-carousel::after{ content:none !important; display:none !important; }
-  .hero-carousel .carousel-control-prev, .hero-carousel .carousel-control-next{ width:8% !important; }
-  .hero-carousel .carousel-control-prev-icon, .hero-carousel .carousel-control-next-icon{ filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
-
-  /* ديسكتوب: كرت أنيق بدل edge-bleed */
-  @media (min-width: 992px){
-    .edge-bleed{ margin-inline:auto !important; width:auto !important; }
-    .hero-carousel{ max-width:950px; margin:0 auto 14px; }
-    .home-shelves{
-      background:#fff; border-radius:18px 18px 0 0; box-shadow:0 8px 26px rgba(0,0,0,.06);
-      margin-top:-80px; padding:16px 18px 20px;
-    }
-    .home-shelves.container-xl{ max-width:1320px; }
-  }
-  @media (max-width:576px){ .hero-carousel .carousel-item{ aspect-ratio: 3 / 2 !important; } }
-
-  /* =========================================================
-     ░ Top Strip (3 سلايدرات صور طولية) ░
-     ========================================================= */
-  .top-strip-wrap{ margin:12px 0 6px; }
-  .top-strip-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
-  .top-strip{
-    border-radius:16px; overflow:hidden; box-shadow:0 8px 26px rgba(0,0,0,.06);
-    background:#fff; border:1px solid var(--border);
-  }
-  .top-strip .carousel-item{ aspect-ratio: 2 / 3; }
-  .top-strip .carousel-item img{ width:100%; height:100%; object-fit:cover; display:block; }
-  .top-strip .carousel-indicators{ display:none; }
-  .top-strip .carousel-control-prev, .top-strip .carousel-control-next{ width:12%; }
-
-  /* موبايل: عمود واحد فقط */
-  @media (max-width: 576px){
-    .top-strip-grid{ grid-template-columns:1fr; }
-    .top-strip-col:not(:first-child){ display:none; }
-    .top-strip .carousel-item{ aspect-ratio: 16 / 9; }
-    .top-strip{ border-radius:14px; }
-  }
-
-  /* إصلاح عرض صور Top Strip على الهاتف */
-  @media (max-width: 576px){
-    .top-strip-grid{ grid-template-columns: 1fr; }
-    .top-strip .carousel-item{ aspect-ratio: 2 / 3 !important; }
-    .top-strip .carousel-item img{
-      width:100% !important; height:100% !important;
-      object-fit:contain !important; object-position:center !important;
-      background:#eef2f7 !important; display:block !important;
-    }
-  }
-
-  /* توسيط وتصغير الـ HERO فقط */
-  .edge-bleed{ margin-inline:auto !important; width:100% !important; display:flex !important; justify-content:center !important; }
-  .hero-carousel{ max-width:420px !important; margin:8px auto 14px !important; }
-  @media (min-width:576px){ .hero-carousel{ max-width:560px !important; } }
-  @media (min-width:992px){ .hero-carousel{ max-width:720px !important; } }
-  .hero-carousel .carousel-control-prev, .hero-carousel .carousel-control-next{ width:10% !important; }
-
-  /* ===========================
-     SEVOR — Pro Minimal Locbar
-     =========================== */
-  :root{
-    --sevor-brand:#6C63FF;   /* Purple */
-    --sevor-ink:#0f172a;     /* Text */
-    --sevor-muted:#667085;   /* Secondary */
-    --sevor-bg:#ffffff;
-    --sevor-bg-soft:#f7f7fb;
-    --sevor-danger:#ea3e41;
-  }
-
-  /* بطاقة الشريط */
-  .home-locbar{
-    background:var(--sevor-bg) !important;
-    border:1px solid var(--border) !important;
-    border-radius:16px !important;
-    padding:14px 12px !important;
-    margin-block:16px !important;
-    box-shadow:0 8px 22px rgba(2,6,23,.06) !important;
-    align-items:center !important;
-    gap:8px !important;
-  }
-
-  /* الحقل */
-  #homeCityInput{
-    height:46px !important;
-    border-radius:999px !important;
-    border:1px solid var(--border) !important;
-    background:#fafafa !important;
-    color:var(--sevor-ink) !important;
-    padding-inline:14px !important;
-    font-weight:600 !important;
-    letter-spacing:.2px !important;
-    transition:border-color .15s, box-shadow .15s, background .15s !important;
-  }
-  #homeCityInput::placeholder{ color:#9aa3af !important; }
-  #homeCityInput:focus{
-    background:#fff !important;
-    border-color: color-mix(in oklab, var(--sevor-brand) 42%, #9aa) !important;
-    box-shadow:0 0 0 4px color-mix(in oklab, var(--sevor-brand) 18%, transparent) !important;
-    outline:none !important;
-  }
-
-  /* إخفاء خانة نصف القطر إن وُجدت */
-  .home-locbar .col-6.col-md-3:has(#homeRadius){ display:none !important; }
-  #homeRadius{ display:none !important; }
-
-  /* أزرار — مقاس موحّد ومنع التفاف النص */
-  .home-locbar .btn{
-    height:46px !important;
-    border-radius:999px !important;
-    white-space:nowrap !important;
-  }
-
-  /* استخدم موقعي */
-  #homeUseGPS.btn{
-    background:var(--sevor-bg-soft) !important;
-    border:1px solid var(--border) !important;
-    color:var(--sevor-ink) !important;
-    font-weight:800 !important;
-    letter-spacing:.2px !important;
-    display:flex !important; align-items:center !important; justify-content:center !important;
-    gap:6px !important;
-  }
-  #homeUseGPS.btn::before{ content:"📍"; display:inline-block; transform:translateY(1px); }
-  #homeUseGPS.btn:hover{ background:#eef0f6 !important; }
-
-  /* إلغاء موقعي — كرابط أنيق */
-  #homeClearGPS.btn{
-    height:auto !important; padding:6px 8px 0 !important; border:none !important;
-    color:var(--sevor-danger) !important; font-weight:700 !important; text-decoration:none !important;
-  }
-  #homeClearGPS.btn:hover{ text-decoration:underline !important; }
-
-  /* تطبيق — زر أساسي واضح */
-  .home-locbar .btn.btn-primary{
-    background:linear-gradient(135deg, var(--sevor-brand), color-mix(in oklab, var(--sevor-brand) 72%, #8ab)) !important;
-    color:#fff !important; border:none !important; font-weight:900 !important; letter-spacing:.3px !important;
-    box-shadow:0 10px 24px rgba(108,99,255,.22) !important;
-    transition:filter .15s, transform .06s !important;
-  }
-  .home-locbar .btn.btn-primary:hover{ filter:brightness(1.03) !important; }
-  .home-locbar .btn.btn-primary:active{ transform:translateY(1px) !important; }
-
-  /* قائمة الاقتراحات */
-  #homeCitySugg{
-    position:absolute !important; z-index:1000 !important; display:none;
-    max-height:260px !important; overflow:auto !important; background:#fff !important;
-    border:1px solid var(--border) !important; border-radius:12px !important;
-    box-shadow:0 8px 22px rgba(2,6,23,.06) !important;
-  }
-  #homeCitySugg > div{
-    padding:.6rem .75rem !important; font-size:.95rem !important; color:var(--sevor-ink) !important;
-    border-top:1px solid rgba(2,6,23,.06) !important; cursor:pointer !important;
-  }
-  #homeCitySugg > div:first-child{ border-top:none !important; }
-  #homeCitySugg > div:hover{ background:#f5f3ff !important; }
-
-  /* تخطيط دِسك توب */
-  @media (min-width:992px){
-    .home-locbar .col-12.col-md-5{ padding-inline-end:8px !important; }
-    .home-locbar .col-6.col-md-2.d-grid{ justify-items:end !important; }
-  }
-
-  /* موبايل */
-  @media (max-width:576px){
-    .home-locbar{ padding:12px !important; border-radius:14px !important; }
-    #homeUseGPS.btn{ margin-top:6px !important; }
-    #homeClearGPS.btn{ margin-top:2px !important; }
-    .home-locbar .btn.btn-primary{ margin-top:6px !important; }
-  }
-
-  /* ===== (إضافة جديدة) أزرار سلايدر لكل تصنيف + تحسين الـ hrow ===== */
-  .section-head .row-nav{display:flex;gap:8px;align-items:center}
-  .hrow{scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
-  .hrow > *{scroll-snap-align:start}
-
-
-  /* ============ Airbnb-like Card Polish (override only) ============ */
-
-/* أبعاد الكرت والصورة */
-.spot { border-radius:16px; overflow:hidden; border:1px solid var(--border); box-shadow:0 6px 18px rgba(0,0,0,.04); }
-.spot-media { border-radius:16px 16px 0 0; }
-.spot-media img{
-  width:100% !important; height:auto !important;
-  aspect-ratio: 20 / 15;            /* قريب من نسب Airbnb */
-  object-fit:cover !important; object-position:center !important;
-  background:#f3f4f6;
-}
-
-/* زر القلب — أصغر وبحد خفيف */
-.fav-btn{
-  top:12px; right:12px;
-  width:34px; height:34px;
-  background:#fff !important;
-  border:1px solid rgba(0,0,0,.08) !important;
-  box-shadow:0 4px 12px rgba(0,0,0,.08) !important;
-}
-.fav-btn .bi{ font-size:16px; color:#111827; }
-.fav-btn.is-fav{ background:#111827 !important; border-color:#111827 !important; }
-.fav-btn.is-fav .bi{ color:#fff !important; }
-
-/* شارة السعر — تصغير ووزن قوي */
-.price-badge{
-  right:12px; top:auto; bottom:12px;
-  font-size:.85rem; padding:5px 10px; border-radius:999px;
-  background:rgba(17,24,39,.9);
-}
-
-/* شارة التصنيف (pill) — كـ Airbnb */
-.category-chip{
-  left:12px; top:12px;
-  font-weight:700; font-size:.78rem;
-  padding:5px 10px;
-  color:#111827;
-  background:rgba(255,255,255,.92);
-  border:1px solid rgba(0,0,0,.06);
-  backdrop-filter:saturate(180%) blur(8px);
-}
-
-/* جسم الكرت والنصوص */
-.spot-body{ padding:10px 12px 12px !important; }
-.spot-title{
-  font-weight:800; letter-spacing:.1px;
-  font-size:clamp(.95rem, .92rem + .2vw, 1.05rem);
-  color:#111827; margin-bottom:6px; line-height:1.25;
-  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
-}
-
-/* سطر المالك/المدينة على هيئة chip صغيرة */
-.owner-line{ display:flex; align-items:center; gap:6px; margin-bottom:6px; }
-.owner-avatar--placeholder{ display:none; } /* نخفي الايموجي */
-.city-chip{
-  display:inline-flex; align-items:center; gap:6px;
-  font-size:.8rem; color:#374151;
-  background:#f3f4f6; border:1px solid #e5e7eb; border-radius:999px;
-  padding:4px 10px;
-}
-
-/* الفوتر: التقييم وسهم رفيع */
-.spot-footer{
-  display:flex; align-items:center; justify-content:space-between; margin-top:2px;
-}
-.spot-footer small{ color:#6b7280 !important; font-weight:700; }
-.spot-footer .bi{ font-size:18px; color:#9ca3af; }
-
-/* هرو سلايدر أصغر قليلًا على الموبايل */
-@media (max-width:576px){
-  .hero-carousel{ max-width: 92% !important; }
-  .spot-media img{ aspect-ratio: 4 / 3; }
-}
-
-/* عرض الكروت الأفقية: بطاقة أضيق قليلًا مثل Airbnb */
-.hcard{ min-width:320px !important; max-width:320px !important; }
-@media (min-width:576px){ .hcard{ min-width:300px !important; max-width:300px !important; } }
-@media (min-width:992px){ .hcard{ min-width:280px !important; max-width:280px !important; } }
-
-/* شبكة "كل العناصر": فجوات أريح وبطاقات متقاربة */
-.mixed-grid{ gap:16px !important; }
-
-/* ===============================
-   Airbnb Exact Layout Correction
-   =============================== */
-
-/* اجعل الكرت مربع بدون مساحة بيضاء تحته */
-.spot {
-  border-radius: 14px;
-  overflow: hidden;
-  border: none;
-  box-shadow: none;
-  background: transparent;
-}
-
-/* الصورة مربعة تمامًا */
-.spot-media img {
-  width: 100% !important;
-  aspect-ratio: 1 / 1 !important;
-  object-fit: cover !important;
-  border-radius: 14px;
-  background: #f3f4f6;
-}
-
-/* لا خلفية ولا حدود للصورة */
-.spot-media {
-  border: none !important;
-  background: transparent !important;
-}
-
-/* أيقونة القلب */
-.fav-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 32px;
-  height: 32px;
-  background: #fff !important;
-  border: 1px solid rgba(0, 0, 0, 0.1) !important;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
-}
-.fav-btn .bi {
-  font-size: 15px;
-  color: #111;
-}
-.fav-btn.is-fav {
-  background: #111 !important;
-}
-.fav-btn.is-fav .bi {
-  color: #fff !important;
-}
-
-/* وسم التصنيف (مثل Coup de cœur voyageurs) */
-.category-chip {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 999px;
-  padding: 5px 10px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #111;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
-  backdrop-filter: blur(8px);
-}
-
-/* الجسم الداخلي (العنوان والسعر والتقييم فقط) */
-.spot-body {
-  background: transparent !important;
-  padding: 8px 4px 0 4px !important;
-}
-
-/* العنوان */
-.spot-title {
-  font-size: 0.96rem;
-  font-weight: 800;
-  color: #111;
-  margin-bottom: 4px;
-  line-height: 1.2;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* اخفِ الرموز القديمة (🏷️ و city-chip القديمة) */
-.owner-avatar--placeholder {
-  display: none !important;
-}
-.city-chip {
-  background: none !important;
-  border: none !important;
-  padding: 0 !important;
-  font-size: 0.9rem;
-  color: #6b7280;
-}
-
-/* سطر السعر والتقييم مثل Airbnb */
-.spot-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 2px;
-}
-.spot-footer small {
-  font-size: 0.88rem;
-  color: #111;
-  font-weight: 700;
-}
-.spot-footer::before {
-  content: "★ ";
-  color: #111;
-  font-size: 0.9rem;
-  margin-right: 2px;
-}
-
-/* حجم الكروت مثل Airbnb */
-.hcard {
-  min-width: 250px !important;
-  max-width: 250px !important;
-}
-@media (min-width: 768px) {
-  .hcard {
-    min-width: 280px !important;
-    max-width: 280px !important;
-  }
-}
-@media (min-width: 992px) {
-  .hcard {
-    min-width: 300px !important;
-    max-width: 300px !important;
-  }
-}
-.mixed-grid {
-  gap: 20px !important;
-}
-
-/* مربع حقيقي للصورة */
-.spot-media{
-  aspect-ratio: 1 / 1 !important;   /* الحاوية نفسها مربّعة */
-  border-radius: 14px !important;
-  overflow: hidden !important;
-  background: transparent !important;
-}
-.spot-media img{
-  width:100% !important;
-  height:100% !important;            /* يملأ المربّع */
-  object-fit:cover !important;
-  object-position:center !important;
-  aspect-ratio:auto !important;      /* تجاهل أي نسب قديمة */
-  background:#f3f4f6;
-}
-
-/* كرت أصغر مثل Airbnb */
-.hcard{ min-width:250px !important; max-width:250px !important; }
-@media (max-width:576px){ .hcard{ min-width:230px !important; max-width:230px !important; } }
-@media (min-width:992px){ .hcard{ min-width:260px !important; max-width:260px !important; } }
-
-/* أزل أي تأثير بنفسجي عند المرور/التركيز */
-.spot,
-.spot:hover,
-.spot:focus,
-.spot:active{
-  background:transparent !important;
-  box-shadow:none !important;
-  outline:0 !important;
-}
-
-/* أخفِ شارة السعر السوداء على الصورة */
-.price-badge{ display:none !important; }
-
-/* قلب صغير ووسم أبيض مثل Airbnb */
-.fav-btn{ top:10px; right:10px; width:32px; height:32px; background:#fff !important; border:1px solid rgba(0,0,0,.1) !important; box-shadow:0 3px 8px rgba(0,0,0,.1) !important; }
-.fav-btn .bi{ font-size:15px; color:#111; }
-.fav-btn.is-fav{ background:#111 !important; border-color:#111 !important; }
-.fav-btn.is-fav .bi{ color:#fff !important; }
-
-.category-chip{
-  top:10px; left:10px; padding:6px 12px; font-size:.78rem; font-weight:700;
-  background:rgba(255,255,255,.96); border:1px solid rgba(0,0,0,.06); border-radius:999px;
-  box-shadow:0 4px 12px rgba(0,0,0,.08); backdrop-filter:blur(8px);
-}
-
-/* نصوص تحت الصورة مثل Airbnb */
-.spot-body{ padding:10px 6px 0 !important; background:transparent !important; }
-.spot-title{ font-weight:800; color:#111; font-size:.98rem; margin-bottom:4px; line-height:1.25; -webkit-line-clamp:1; display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden; }
-.owner-avatar--placeholder{ display:none !important; }
-.city-chip{ background:none !important; border:none !important; padding:0 !important; color:#6b7280 !important; }
-
-/* سطر السعر + التقييم */
-.spot-footer{ display:flex; align-items:center; justify-content:space-between; margin-top:2px; }
-.spot-footer small{ color:#111 !important; font-weight:800; font-size:.9rem; }
-
-/* ===============================
-   حجم الكروت مثل Airbnb (6 في الصف)
-   =============================== */
-
-/* كروت السلايدر والمربعات أصغر قليلاً */
-.hcard, .spot {
-  min-width: 220px !important;
-  max-width: 220px !important;
-}
-
-/* في الشاشات الكبيرة (لابتوب + ديسكتوب) */
-@media (min-width: 1200px){
-  .hcard, .spot {
-    min-width: 210px !important;
-    max-width: 210px !important;
-  }
-}
-
-/* في التابلت */
-@media (max-width: 992px){
-  .hcard, .spot {
-    min-width: 250px !important;
-    max-width: 250px !important;
-  }
-}
-
-/* في الهاتف */
-@media (max-width: 576px){
-  .hcard, .spot {
-    min-width: 300px !important;
-    max-width: 300px !important;
-  }
-}
-
-/* تقليل الفجوة بين الكروت */
-.hrow { gap: 12px !important; }
-.mixed-grid { gap: 14px !important; }
-
-/* تأكد أن الصورة تبقى مربعة */
-.spot-media{
-  aspect-ratio: 1 / 1 !important;
-  height: auto !important;
-  overflow: hidden !important;
-  border-radius: 14px !important;
-}
-.spot-media img{
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  border-radius: 14px !important;
-}
-
-/* إخفاء أي خلفية بنفسجية */
-.spot, .spot:hover, .spot:focus {
-  background: transparent !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
-/* ==== 6 بطاقات في الصف على اللابتوب ==== */
-
-/* السلايدر (hrow) */
-@media (min-width:1200px){
-  .hrow{ gap:12px !important; padding-inline:2px !important; }
-  /* عرض الكرت مضبوط بحيث يدخل 6 بالضبط */
-  .hcard{ min-width:206px !important; max-width:206px !important; }
-}
-
-/* شبكة "كل العناصر" (mixed-grid) */
-@media (min-width:1200px){
-  .mixed-grid{
-    gap:14px !important;
-    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
-  }
-  .mixed-grid .spot-media{ aspect-ratio:1/1 !important; }
-}
-
-/* ضمان المربّع في كل مكان + إزالة أي تأثيرات */
-.spot-media{ aspect-ratio:1/1 !important; border-radius:14px !important; overflow:hidden !important; }
-.spot-media img{ width:100% !important; height:100% !important; object-fit:cover !important; }
-.spot, .spot:hover, .spot:focus{ background:transparent !important; box-shadow:none !important; outline:0 !important; }
-/* ======= هاتف: كروت أصغر مثل Airbnb ======= */
-@media (max-width: 576px){
-  /* إظهار ~2.3–2.5 كرت في الشاشة */
-  .hrow{ gap:10px !important; padding-inline:8px !important; }
-  .hcard{
-    min-width:42vw !important;   /* جرّب 40–44vw لو حبيت أدقّ */
-    max-width:42vw !important;
-  }
-
-  /* شبكة "كل العناصر" = عمودان ثابتان */
-  .mixed-grid{
-    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
-    gap:10px !important;
-  }
-
-  /* الصورة تبقى مربّع صغير وأطراف أنعم */
-  .spot-media{ aspect-ratio:1/1 !important; border-radius:12px !important; overflow:hidden !important; }
-  .spot-media img{ width:100% !important; height:100% !important; object-fit:cover !important; border-radius:12px !important; }
-
-  /* أيقونة القلب والوسم أصغر */
-  .fav-btn{ top:8px; right:8px; width:28px; height:28px; background:#fff !important; border:1px solid rgba(0,0,0,.1) !important; box-shadow:0 2px 6px rgba(0,0,0,.1) !important; }
-  .fav-btn .bi{ font-size:14px; }
-  .fav-btn.is-fav{ background:#111 !important; border-color:#111 !important; }
-  .fav-btn.is-fav .bi{ color:#fff !important; }
-
-  .category-chip{
-    top:8px; left:8px;
-    padding:4px 9px; font-size:.74rem; font-weight:700;
-    background:rgba(255,255,255,.96); border:1px solid rgba(0,0,0,.06); border-radius:999px;
-    box-shadow:0 3px 8px rgba(0,0,0,.08); backdrop-filter:blur(8px);
-  }
-
-  /* نصوص تحت الصورة أصغر ومختصرة */
-  .spot-body{ padding:8px 2px 0 !important; background:transparent !important; }
-  .spot-title{ font-size:.90rem; font-weight:800; line-height:1.2; margin-bottom:4px; -webkit-line-clamp:1; display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden; color:#111; }
-  .city-chip{ background:none !important; border:none !important; padding:0 !important; color:#6b7280 !important; font-size:.85rem; }
-
-  .spot-footer{ display:flex; justify-content:space-between; align-items:center; margin-top:2px; }
-  .spot-footer small{ font-size:.86rem; font-weight:800; color:#111 !important; }
-}
-
-/* إزالة أي تأثير بنفسجي عند المرور — في كل المقاسات */
-.spot, .spot:hover, .spot:focus{ background:transparent !important; box-shadow:none !important; outline:0 !important; }
-
-/* ضمان المربّع دائمًا */
-.spot-media{ aspect-ratio:1/1 !important; }
-.spot-media img{ width:100% !important; height:100% !important; object-fit:cover !important; }
-/* ===== تصحيح ستايل قسم "كل العناصر" على الهاتف ===== */
-@media (max-width: 576px){
-
-  /* المسافات ومنطقة أمان أسفل حتى لا يغطيها التاب بار */
-  .home-shelves{
-    padding-bottom: calc(env(safe-area-inset-bottom,0) + 84px) !important;
-  }
-
-  /* عنوان القسم */
-  .section-head{ margin:10px 8px 8px !important; }
-  .section-title{ font-size:1rem !important; font-weight:800 !important; }
-
-  /* شبكة "كل العناصر": عمودان ثابتان مثل Airbnb مع فجوات صغيرة */
-  .mixed-grid{
-    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
-    gap: 10px !important;
-    padding-inline: 8px !important;
-  }
-
-  /* الكرت داخل "كل العناصر" أصغر ولا يمتد بعرض كبير */
-  .mixed-grid .spot{
-    border: none !important;
-    background: transparent !important;
-    box-shadow: none !important;
-  }
-
-  /* الصورة مربعة 100% وزوايا ناعمة ولا تقطع */
-  .mixed-grid .spot-media{
-    aspect-ratio: 1/1 !important;
-    border-radius: 12px !important;
-    overflow: hidden !important;
-  }
-  .mixed-grid .spot-media img{
-    display:block !important;
-    width:100% !important;
-    height:100% !important;
-    object-fit:cover !important;
-    border-radius:12px !important;
-  }
-
-  /* شارة الفئة والقلب أصغر */
-  .mixed-grid .category-chip{
-    top:8px; left:8px; padding:4px 9px; font-size:.74rem;
-    background:rgba(255,255,255,.96); border:1px solid rgba(0,0,0,.06); border-radius:999px;
-    box-shadow:0 3px 8px rgba(0,0,0,.08);
-  }
-  .mixed-grid .fav-btn{
-    top:8px; right:8px; width:28px; height:28px;
-    background:#fff !important; border:1px solid rgba(0,0,0,.1) !important; box-shadow:0 2px 6px rgba(0,0,0,.1) !important;
-  }
-  .mixed-grid .fav-btn .bi{ font-size:14px; }
-
-  /* نصوص تحت الصورة: حجم صغير، بدون خلفيات رمادية، محاذاة يسار */
-  .mixed-grid .spot-body{
-    padding:8px 2px 0 !important;
-    background:transparent !important;
-    text-align:start !important;
-  }
-  .mixed-grid .spot-title{
-    font-size:.92rem !important; font-weight:800 !important; line-height:1.2 !important;
-    margin-bottom:4px !important;
-    display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
-    color:#111 !important;
-  }
-  .mixed-grid .owner-avatar--placeholder{ display:none !important; }
-  .mixed-grid .city-chip{
-    background:none !important; border:none !important; padding:0 !important;
-    color:#6b7280 !important; font-size:.85rem !important;
-  }
-
-  /* سطر السعر والتقييم مثل Airbnb (رفيع ونظيف) */
-  .mixed-grid .spot-footer{
-    display:flex !important; align-items:center !important; justify-content:space-between !important;
-    margin-top:2px !important;
-  }
-  .mixed-grid .spot-footer small{
-    font-size:.86rem !important; font-weight:800 !important; color:#111 !important;
-  }
-}
-
-/* إزالة أي خلفية/ظل عند المرور في كل المقاسات */
-.spot, .spot:hover, .spot:focus{ background:transparent !important; box-shadow:none !important; outline:0 !important; }
-
-/* تأكيد المربّع للجميع */
-.spot-media{ aspect-ratio:1/1 !important; }
-.spot-media img{ width:100% !important; height:100% !important; object-fit:cover !important; }
-/* 🎨 تنسيق قسم "كل العناصر" ليتوافق مع Airbnb */
-
-.all-items {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 18px;
-  padding: 12px 20px;
-}
-
-.all-items .item-card {
-  border-radius: 14px;
-  overflow: hidden;
-  background: #fff;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-  transition: all .25s ease;
-}
-
-.all-items .item-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.1);
-}
-
-/* الصورة */
-.all-items .item-card img {
-  width: 100%;
-  height: 240px;
-  object-fit: cover;
-  display: block;
-}
-
-/* النصوص */
-.all-items .item-info {
-  padding: 10px 12px;
-}
-
-.all-items .item-title {
-  font-weight: 700;
-  font-size: 1rem;
-  color: #111;
-  margin-bottom: 4px;
-}
-
-.all-items .item-location {
-  font-size: .9rem;
-  color: #6b6b6b;
-}
-
-.all-items .item-price {
-  font-size: .95rem;
-  font-weight: 800;
-  color: #111;
-  margin-top: 6px;
-}
-
-.all-items .item-rating {
-  color: #fbbf24;
-  font-size: .9rem;
-}
-
-/* 💻 للحاسوب: 3 بطاقات في الصف */
-@media (min-width: 992px) {
-  .all-items {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-/* 📱 للهاتف: بطاقتان في الصف */
-@media (max-width: 768px) {
-  .all-items {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    padding: 8px;
-  }
-
-  .all-items .item-card img {
-    height: 160px;
-  }
-
-  .all-items .item-title {
-    font-size: .9rem;
-  }
-
-  .all-items .item-price {
-    font-size: .85rem;
-  }
-}
-/* ============================
-   تصحيح قسم "كل العناصر" فقط
-   (حاسوب + موبايل) — بدون HTML
-   ============================ */
-
-/* شبكة كل العناصر */
-.mixed-grid{
-  display:grid !important;
-  grid-template-columns: repeat(2, minmax(0,1fr)) !important; /* موبايل: عمودان */
-  gap:10px !important;
-  padding-inline:8px !important;
-}
-
-/* تدرّج الأعمدة مثل Airbnb */
-@media (min-width:576px){  /* شاشات صغيرة */
-  .mixed-grid{ grid-template-columns: repeat(3, minmax(0,1fr)) !important; gap:12px !important; padding-inline:10px !important; }
-}
-@media (min-width:768px){  /* تابلت */
-  .mixed-grid{ grid-template-columns: repeat(4, minmax(0,1fr)) !important; gap:14px !important; padding-inline:12px !important; }
-}
-@media (min-width:992px){  /* لابتوب */
-  .mixed-grid{ grid-template-columns: repeat(5, minmax(0,1fr)) !important; }
-}
-@media (min-width:1200px){ /* لابتوب كبير/ديسكتوب — 6 بطاقات */
-  .mixed-grid{ grid-template-columns: repeat(6, minmax(0,1fr)) !important; }
-}
-
-/* الكرت داخل "كل العناصر" — نظيف مثل Airbnb */
-.mixed-grid .spot{
-  border:none !important;
-  background:transparent !important;
-  box-shadow:none !important;
-}
-
-/* الصورة مربّعة 100% وزوايا ناعمة */
-.mixed-grid .spot-media{
-  aspect-ratio:1 / 1 !important;
-  border-radius:14px !important;
-  overflow:hidden !important;
-  background:transparent !important;
-}
-.mixed-grid .spot-media img{
-  width:100% !important;
-  height:100% !important;
-  object-fit:cover !important;
-  border-radius:14px !important;
-}
-
-/* الوسم والقلب أصغر */
-.mixed-grid .category-chip{
-  top:8px; left:8px;
-  padding:4px 9px; font-size:.74rem; font-weight:700;
-  background:rgba(255,255,255,.96);
-  border:1px solid rgba(0,0,0,.06);
-  border-radius:999px; box-shadow:0 3px 8px rgba(0,0,0,.08);
-  backdrop-filter:blur(8px);
-}
-.mixed-grid .fav-btn{
-  top:8px; right:8px; width:28px; height:28px;
-  background:#fff !important; border:1px solid rgba(0,0,0,.1) !important;
-  box-shadow:0 2px 6px rgba(0,0,0,.1) !important;
-}
-.mixed-grid .fav-btn .bi{ font-size:14px; }
-
-/* النصوص تحت الصورة */
-.mixed-grid .spot-body{
-  padding:8px 2px 0 !important;
-  background:transparent !important;
-  text-align:start !important;
-}
-.mixed-grid .spot-title{
-  font-size:clamp(.9rem, .86rem + .2vw, .98rem) !important;
-  font-weight:800 !important; line-height:1.2 !important; margin-bottom:4px !important;
-  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
-  color:#111 !important;
-}
-.mixed-grid .owner-avatar--placeholder{ display:none !important; }
-.mixed-grid .city-chip{
-  background:none !important; border:none !important; padding:0 !important;
-  color:#6b7280 !important; font-size:.86rem !important;
-}
-
-/* السعر + التقييم سطر واحد نظيف */
-.mixed-grid .spot-footer{
-  display:flex !important; align-items:center !important; justify-content:space-between !important;
-  margin-top:2px !important;
-}
-.mixed-grid .spot-footer small{
-  color:#111 !important; font-weight:800 !important; font-size:.88rem !important;
-}
-
-/* إزالة أي خلفية/ظل عند المرور */
-.mixed-grid .spot:hover, .mixed-grid .spot:focus{
-  background:transparent !important; box-shadow:none !important; outline:0 !important;
-}
-
-/* مساحة أمان أسفل كي لا يغطي التاب بار المحتوى على الهاتف */
-@supports(padding: max(0px)){
-  .home-shelves{ padding-bottom: max(84px, env(safe-area-inset-bottom,0)) !important; }
-}
-
-/* ==== FINAL OVERRIDES (keep only this at the very end) ==== */
-
-/* صور مربّعة نظيفة في كل الأقسام */
-.spot-media{ aspect-ratio:1/1 !important; border-radius:14px !important; overflow:hidden !important; background:transparent !important; }
-.spot-media img{ width:100% !important; height:100% !important; object-fit:cover !important; border-radius:14px !important; }
-.price-badge{ display:none !important; }                /* لا شارة سوداء على الصورة */
-.spot, .spot:hover, .spot:focus{ background:transparent !important; box-shadow:none !important; outline:0 !important; }
-
-/* السلايدر (hrow) — كرت صغير مثل Airbnb */
-.hrow{ gap:12px !important; padding-inline:6px !important; }
-.hcard{ min-width:206px !important; max-width:206px !important; }             /* >=1200px يظهر 6 كروت */
-@media (max-width:1199.98px){ .hcard{ min-width:220px !important; max-width:220px !important; } }
-@media (max-width:991.98px){  .hcard{ min-width:240px !important; max-width:240px !important; } }
-@media (max-width:576px){     .hcard{ min-width:42vw  !important; max-width:42vw  !important; } } /* هاتف ~2.3 كرت */
-
-/* شبكة "كل العناصر" (بدون تغيير HTML) */
-.mixed-grid{ gap:14px !important; padding-inline:10px !important; }
-@media (max-width:575.98px){  .mixed-grid{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:10px !important; } }
-@media (min-width:576px) and (max-width:767.98px){  .mixed-grid{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; } }
-@media (min-width:768px) and (max-width:991.98px){  .mixed-grid{ grid-template-columns:repeat(4,minmax(0,1fr)) !important; } }
-@media (min-width:992px) and (max-width:1199.98px){ .mixed-grid{ grid-template-columns:repeat(5,minmax(0,1fr)) !important; } }
-@media (min-width:1200px){                             .mixed-grid{ grid-template-columns:repeat(6,minmax(0,1fr)) !important; } }
-
-/* نصوص البطاقة تحت الصورة — صغيرة ونظيفة */
-.spot-body{ padding:8px 4px 0 !important; background:transparent !important; }
-.spot-title{
-  font-weight:800 !important; color:#111 !important;
-  font-size:clamp(.9rem,.86rem + .2vw,.98rem) !important;
-  margin-bottom:4px !important; line-height:1.2 !important;
-  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
-}
-.owner-avatar--placeholder{ display:none !important; }
-.city-chip{ background:none !important; border:none !important; padding:0 !important; color:#6b7280 !important; font-size:.86rem !important; }
-.spot-footer{ display:flex !important; align-items:center !important; justify-content:space-between !important; margin-top:2px !important; }
-.spot-footer small{ color:#111 !important; font-weight:800 !important; font-size:.88rem !important; }
-
-/* أيقونة القلب والوسم — أصغر */
-.fav-btn{ top:10px; right:10px; width:32px; height:32px; background:#fff !important; border:1px solid rgba(0,0,0,.1) !important; box-shadow:0 3px 8px rgba(0,0,0,.1) !important; }
-.fav-btn .bi{ font-size:15px; color:#111; }
-.fav-btn.is-fav{ background:#111 !important; border-color:#111 !important; }
-.fav-btn.is-fav .bi{ color:#fff !important; }
-.category-chip{ top:10px; left:10px; padding:5px 10px; font-size:.75rem; font-weight:700; background:rgba(255,255,255,.95); border:1px solid rgba(0,0,0,.06); border-radius:999px; box-shadow:0 3px 8px rgba(0,0,0,.06); backdrop-filter:blur(8px); }
-
-/* مساحة أمان أسفل للموبايل (لا يغطيه التاب بار) */
-@supports(padding:max(0px)){
-  .home-shelves{ padding-bottom:max(84px, env(safe-area-inset-bottom,0)) !important; }
-}
-
-/* =========================
-   تصحيح نهائي لقسم "كل العناصر"
-   (نفس مظهر سلايدر التصنيفات)
-   ========================= */
-
-/* شبكة: 2 موبايل — 3 SM — 4 MD — 5 LG — 6 XL */
-.home-shelves .mixed-grid{
-  display:grid !important;
-  gap:12px !important;
-  padding-inline:10px !important;
-  grid-template-columns:repeat(2,minmax(0,1fr)) !important;   /* xs */
-}
-@media (min-width:576px){
-  .home-shelves .mixed-grid{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
-}
-@media (min-width:768px){
-  .home-shelves .mixed-grid{ grid-template-columns:repeat(4,minmax(0,1fr)) !important; }
-}
+/* =========================================
+   أساسيات السلايدر والقسم
+   ========================================= */
+.hrow{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 6px 12px;-webkit-overflow-scrolling:touch}
+.hrow::-webkit-scrollbar{height:8px}
+.hrow::-webkit-scrollbar-thumb{background:color-mix(in oklab,var(--text) 18%,transparent);border-radius:999px}
+.hrow>*{scroll-snap-align:start}
+.hcard{min-width:206px;max-width:206px}
+@media (max-width:1199.98px){.hcard{min-width:220px;max-width:220px}}
+@media (max-width:991.98px){.hcard{min-width:240px;max-width:240px}}
+@media (max-width:576px){.hcard{min-width:42vw;max-width:42vw}} /* هاتف ~2.3 كرت */
+
+.section-head{margin:12px 2px 8px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.section-title{font-weight:800;font-size:1.05rem}
+.arrow-btn{border:1px solid var(--border);background:transparent;border-radius:12px;width:42px;height:42px;display:grid;place-items:center}
+.arrow-btn:hover{background:color-mix(in oklab,var(--text) 8%,transparent)}
+.section-head .row-nav{display:flex;gap:8px;align-items:center}
+
+/* =========================================
+   البطاقة (Airbnb-like) — شكل موحّد
+   ========================================= */
+.spot{border:none;background:transparent;box-shadow:none;border-radius:14px;overflow:hidden}
+.spot-media{position:relative;aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:transparent}
+.spot-media img{display:block;width:100%;height:100%;object-fit:cover;object-position:center;border-radius:14px}
+.spot-overlay{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.12))}
+
+/* عناصر فوق الصورة */
+.price-badge{display:none} /* لا نعرض شارة السعر فوق الصورة */
+.category-chip{position:absolute;top:10px;left:10px;padding:5px 10px;font-size:.75rem;font-weight:700;color:#111;background:rgba(255,255,255,.96);border:1px solid rgba(0,0,0,.06);border-radius:999px;box-shadow:0 3px 8px rgba(0,0,0,.08);backdrop-filter:blur(8px)}
+.fav-btn{position:absolute;top:10px;right:10px;width:32px;height:32px;border:1px solid rgba(0,0,0,.1);background:#fff;border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,.1);cursor:pointer}
+.fav-btn .bi{font-size:15px;color:#111}
+.fav-btn.is-fav{background:#111;border-color:#111}
+.fav-btn.is-fav .bi{color:#fff}
+
+/* نصوص تحت الصورة */
+.spot-body{padding:8px 4px 0;background:transparent;text-align:start}
+.spot-title{font-weight:800;color:#111;font-size:clamp(.9rem,.86rem + .2vw,.98rem);margin-bottom:4px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.owner-avatar--placeholder{display:none}
+.city-chip{background:none;border:none;padding:0;color:#6b7280;font-size:.86rem}
+.spot-footer{display:flex;align-items:center;justify-content:space-between;margin-top:2px}
+.spot-footer small{color:#111;font-weight:800;font-size:.88rem}
+
+/* =========================================
+   شبكة "كل العناصر" — 2–3–4–5–6 أعمدة
+   ========================================= */
+.mixed-grid{display:grid;gap:14px;padding-inline:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (min-width:576px){.mixed-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:768px){.mixed-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (min-width:992px){.mixed-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media (min-width:1200px){.mixed-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
+
+/* اجعل بطاقات "كل العناصر" نفس شكل السلايدر */
+.home-shelves .mixed-grid>.spot{border:none;background:transparent;box-shadow:none;border-radius:14px}
+.home-shelves .mixed-grid .spot-media{aspect-ratio:1/1;border-radius:14px;overflow:hidden}
+.home-shelves .mixed-grid .spot-media img{width:100%;height:100%;object-fit:cover;border-radius:14px}
+.home-shelves .mixed-grid .category-chip{top:8px;left:8px;padding:4px 9px;font-size:.74rem}
+.home-shelves .mixed-grid .fav-btn{top:8px;right:8px;width:28px;height:28px}
+.home-shelves .mixed-grid .fav-btn .bi{font-size:14px}
+@supports(padding:max(0px)){.home-shelves{padding-bottom:max(84px,env(safe-area-inset-bottom,0))}}
+
+/* =========================================
+   HERO (بانر علوي)
+   ========================================= */
+.edge-bleed{margin-inline:auto;width:100%;display:flex;justify-content:center}
+.hero-carousel{position:relative;max-width:420px;margin:8px auto 14px;border-radius:18px;overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,.08)}
+@media (min-width:576px){.hero-carousel{max-width:560px}}
+@media (min-width:992px){.hero-carousel{max-width:720px}}
+.hero-carousel .carousel-inner,.hero-carousel .carousel-item,.hero-carousel .carousel-item img{border-radius:18px;overflow:hidden}
+.hero-carousel .carousel-item{aspect-ratio:3/2}
+.hero-carousel .carousel-item img{width:100%;height:100%;object-fit:contain;object-position:center;display:block;background:#eef2f7}
+.hero-carousel .carousel-indicators,.hero-carousel .carousel-caption{display:none}
+.hero-carousel .carousel-control-prev,.hero-carousel .carousel-control-next{width:10%}
+
+/* Desktop card-wrap تحت الهيرو */
 @media (min-width:992px){
-  .home-shelves .mixed-grid{ grid-template-columns:repeat(5,minmax(0,1fr)) !important; }
-}
-@media (min-width:1200px){
-  .home-shelves .mixed-grid{ grid-template-columns:repeat(6,minmax(0,1fr)) !important; }
-}
-
-/* الكرت: شفاف مثل Airbnb (بدون ظل/خلفية) */
-.home-shelves .mixed-grid > .spot{
-  border:none !important;
-  background:transparent !important;
-  box-shadow:none !important;
-  border-radius:14px !important;
+  .edge-bleed{margin-inline:auto;width:auto}
+  .hero-carousel{max-width:950px;margin:0 auto 14px}
+  .home-shelves{background:#fff;border-radius:18px 18px 0 0;box-shadow:0 8px 26px rgba(0,0,0,.06);margin-top:-80px;padding:16px 18px 20px}
+  .home-shelves.container-xl{max-width:1320px}
 }
 
-/* الصورة مربّع 1:1 مع زوايا ناعمة */
-.home-shelves .mixed-grid .spot-media{
-  aspect-ratio:1 / 1 !important;
-  border-radius:14px !important;
-  overflow:hidden !important;
-  background:transparent !important;
-}
-.home-shelves .mixed-grid .spot-media img{
-  width:100% !important;
-  height:100% !important;
-  object-fit:cover !important;
-  border-radius:14px !important;
-  display:block !important;
-}
-
-/* الوسم والقلب نفس حجم السلايدر */
-.home-shelves .mixed-grid .category-chip{
-  position:absolute; top:8px; left:8px;
-  padding:4px 9px; font-size:.74rem; font-weight:700;
-  background:rgba(255,255,255,.96);
-  border:1px solid rgba(0,0,0,.06);
-  border-radius:999px; box-shadow:0 3px 8px rgba(0,0,0,.08);
-  backdrop-filter:blur(8px);
-}
-.home-shelves .mixed-grid .fav-btn{
-  position:absolute; top:8px; right:8px;
-  width:28px; height:28px;
-  background:#fff !important;
-  border:1px solid rgba(0,0,0,.1) !important;
-  box-shadow:0 2px 6px rgba(0,0,0,.1) !important;
-}
-.home-shelves .mixed-grid .fav-btn .bi{ font-size:14px; }
-.home-shelves .mixed-grid .fav-btn.is-fav{ background:#111 !important; border-color:#111 !important; }
-.home-shelves .mixed-grid .fav-btn.is-fav .bi{ color:#fff !important; }
-
-/* النصوص تحت الصورة: عنوان سطر واحد، مدينة رمادية، سطر سعر/تقييم */
-.home-shelves .mixed-grid .spot-body{
-  padding:8px 4px 0 !important;
-  background:transparent !important;
-  text-align:start !important;
-}
-.home-shelves .mixed-grid .spot-title{
-  font-weight:800 !important; color:#111 !important;
-  font-size:clamp(.9rem,.86rem + .2vw,.98rem) !important;
-  line-height:1.2 !important; margin-bottom:4px !important;
-  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
-}
-.home-shelves .mixed-grid .owner-avatar--placeholder{ display:none !important; }
-.home-shelves .mixed-grid .city-chip{
-  background:none !important; border:none !important; padding:0 !important;
-  color:#6b7280 !important; font-size:.86rem !important;
-}
-.home-shelves .mixed-grid .spot-footer{
-  display:flex !important; align-items:center !important; justify-content:space-between !important;
-  margin-top:2px !important;
-}
-.home-shelves .mixed-grid .spot-footer small{
-  color:#111 !important; font-weight:800 !important; font-size:.88rem !important;
+/* =========================================
+   Top Strip (3 سلايدر عمودية)
+   ========================================= */
+.top-strip-wrap{margin:12px 0 6px}
+.top-strip-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.top-strip{border-radius:16px;overflow:hidden;box-shadow:0 8px 26px rgba(0,0,0,.06);background:#fff;border:1px solid var(--border)}
+.top-strip .carousel-item{aspect-ratio:2/3}
+.top-strip .carousel-item img{width:100%;height:100%;object-fit:cover;display:block}
+.top-strip .carousel-indicators{display:none}
+.top-strip .carousel-control-prev,.top-strip .carousel-control-next{width:12%}
+@media (max-width:576px){
+  .top-strip-grid{grid-template-columns:1fr}
+  .top-strip-col:not(:first-child){display:none}
+  .top-strip{border-radius:14px}
+  .top-strip .carousel-item{aspect-ratio:2/3}
+  .top-strip .carousel-item img{width:100%;height:100%;object-fit:contain;object-position:center;background:#eef2f7}
 }
 
-/* لا ظل/بنفسجي عند الهوفر */
-.home-shelves .mixed-grid > .spot:hover,
-.home-shelves .mixed-grid > .spot:focus{
-  background:transparent !important;
-  box-shadow:none !important;
-  outline:0 !important;
+/* =========================================
+   شريط الموقع (Locbar)
+   ========================================= */
+:root{
+  --sevor-brand:#6C63FF;
+  --sevor-ink:#0f172a;
+  --sevor-muted:#667085;
+  --sevor-bg:#ffffff;
+  --sevor-bg-soft:#f7f7fb;
+  --sevor-danger:#ea3e41;
+}
+.home-locbar{background:var(--sevor-bg);border:1px solid var(--border);border-radius:16px;padding:14px 12px;margin-block:16px;box-shadow:0 8px 22px rgba(2,6,23,.06);align-items:center;gap:8px}
+.home-locbar .btn{height:46px;border-radius:999px;white-space:nowrap}
+#homeCityInput{height:46px;border-radius:999px;border:1px solid var(--border);background:#fafafa;color:var(--sevor-ink);padding-inline:14px;font-weight:600;letter-spacing:.2px;transition:border-color .15s,box-shadow .15s,background .15s}
+#homeCityInput::placeholder{color:#9aa3af}
+#homeCityInput:focus{background:#fff;border-color:color-mix(in oklab,var(--sevor-brand) 42%,#9aa);box-shadow:0 0 0 4px color-mix(in oklab,var(--sevor-brand) 18%, transparent);outline:none}
+.home-locbar .col-6.col-md-3:has(#homeRadius){display:none}
+#homeRadius{display:none}
+#homeUseGPS{background:var(--sevor-bg-soft);border:1px solid var(--border);color:var(--sevor-ink);font-weight:800;letter-spacing:.2px;display:flex;align-items:center;justify-content:center;gap:6px}
+#homeUseGPS::before{content:"📍";display:inline-block;transform:translateY(1px)}
+#homeUseGPS:hover{background:#eef0f6}
+#homeClearGPS{height:auto;padding:6px 8px 0;border:none;color:var(--sevor-danger);font-weight:700;text-decoration:none}
+#homeClearGPS:hover{text-decoration:underline}
+.home-locbar .btn.btn-primary{background:linear-gradient(135deg,var(--sevor-brand),color-mix(in oklab,var(--sevor-brand) 72%,#8ab));color:#fff;border:none;font-weight:900;letter-spacing:.3px;box-shadow:0 10px 24px rgba(108,99,255,.22);transition:filter .15s,transform .06s}
+.home-locbar .btn.btn-primary:hover{filter:brightness(1.03)}
+.home-locbar .btn.btn-primary:active{transform:translateY(1px)}
+#homeCitySugg{position:absolute;z-index:1000;display:none;max-height:260px;overflow:auto;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 22px rgba(2,6,23,.06)}
+#homeCitySugg>div{padding:.6rem .75rem;font-size:.95rem;color:var(--sevor-ink);border-top:1px solid rgba(2,6,23,.06);cursor:pointer}
+#homeCitySugg>div:first-child{border-top:none}
+#homeCitySugg>div:hover{background:#f5f3ff}
+@media (min-width:992px){
+  .home-locbar .col-12.col-md-5{padding-inline-end:8px}
+  .home-locbar .col-6.col-md-2.d-grid{justify-items:end}
+}
+@media (max-width:576px){
+  .home-locbar{padding:12px;border-radius:14px}
+  #homeUseGPS{margin-top:6px}
+  #homeClearGPS{margin-top:2px}
+  .home-locbar .btn.btn-primary{margin-top:6px}
 }
 
-/* أخفي شارة السعر الداكنة فوق الصورة داخل هذا القسم فقط */
-.home-shelves .mixed-grid .price-badge{ display:none !important; }
-
-/* مساحة أمان أسفل للموبايل (التاب بار) */
-@supports(padding:max(0px)){
-  .home-shelves{ padding-bottom:max(84px, env(safe-area-inset-bottom,0)) !important; }
+/* =========================================
+   تحسينات صغيرة للهاتف
+   ========================================= */
+@media (max-width:576px){
+  .hero-carousel{max-width:92%}
+  .category-chip{top:8px;left:8px;padding:4px 9px;font-size:.74rem}
+  .fav-btn{top:8px;right:8px;width:28px;height:28px}
+  .fav-btn .bi{font-size:14px}
+  .spot-body{padding:8px 2px 0}
+  .spot-title{font-size:.9rem}
+  .spot-footer small{font-size:.86rem}
 }
-
-
 </style>
-{% endblock %}
 
 {% block content %}
 
