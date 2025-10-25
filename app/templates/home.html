@@ -408,6 +408,73 @@
   .locbar--compact{column-gap:6px}
 }
 
+/* ====== MOBILE ONE-LINE LOCBAR (HARD OVERRIDE) ====== */
+.home-locbar.locbar--compact{
+  padding:8px !important;
+  border-radius:12px !important;
+  background:#fff !important;
+  box-shadow:none !important;
+  gap:6px !important;
+}
+
+/* شبكة ثابتة: حقل يتمدد + GPS + تطبيق + إلغاء (سطر واحد) */
+@media (max-width:576px){
+  .locbar--compact{
+    display:grid !important;
+    grid-template-columns: minmax(0,1fr) auto auto auto !important;
+    align-items:center !important;
+    column-gap:6px !important;
+    row-gap:0 !important;
+  }
+  /* أحجام صغيرة موحّدة */
+  .locbar--compact #homeCityInput,
+  .locbar--compact .btn{
+    height:34px !important;
+    font-size:.86rem !important;
+    border-radius:10px !important;
+  }
+  /* مدخل المدينة يَتمدّد ولا يُجبِر على سطر جديد */
+  .locbar--compact #homeCityInput{
+    min-width:0 !important;
+    padding-inline:10px !important;
+    background:#fff !important;
+    border:1px solid var(--border) !important;
+    box-shadow:none !important;
+  }
+  /* أزرار مصغّرة وبسيطة */
+  .locbar--compact #homeUseGPS{
+    padding:0 10px !important;
+    background:#fff !important;
+    border:1px solid var(--border) !important;
+    color:var(--sevor-ink) !important;
+    white-space:nowrap !important;
+  }
+  .locbar--compact .btn.btn-primary{
+    padding:0 12px !important;
+    background:var(--sevor-brand) !important;
+    box-shadow:none !important;
+  }
+  .locbar--compact #homeClearGPS{
+    padding:0 6px !important;
+    height:auto !important;
+    line-height:1 !important;
+    font-weight:800 !important;
+    color:var(--sevor-danger) !important;
+    border:none !important;
+    background:transparent !important;
+  }
+  /* ألغِ أي قواعد قد تجعل الشبكة صفّين */
+  .locbar--compact .col-12.col-md-5,
+  .locbar--compact .col-6.col-md-2,
+  .locbar--compact .col-12.col-md-2{padding:0 !important; margin:0 !important}
+  .locbar--compact .col-6.col-md-2.d-grid{
+    display:grid !important;
+    grid-auto-flow:column !important;
+    gap:6px !important;
+    justify-content:start !important;
+  }
+}
+
 
 </style>
 
@@ -456,7 +523,7 @@
 
     </div>
     <div class="col-12 col-md-2 d-grid">
-      <button class="btn btn-primary" type="submit">تطبيق</button>
+<button class="btn btn-primary" type="submit">بحث</button>
     </div>
 
     <!-- حقول خفية للإحداثيات -->
