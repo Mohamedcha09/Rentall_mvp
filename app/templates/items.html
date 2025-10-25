@@ -4,33 +4,151 @@
 {% block content %}
 
 <style>
+  /* ==== أساسيات قديمة (أبقيتها) ==== */
   .glass-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:14px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 8px 24px rgba(0,0,0,.2);transition:transform .18s,box-shadow .18s,border-color .18s}
   .glass-card:hover{transform:translateY(-2px);box-shadow:0 14px 36px rgba(0,0,0,.28);border-color:rgba(255,255,255,.18)}
   .glass-btn{border:1px solid rgba(255,255,255,.18);background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#eaf0ff}
   .glass-btn:hover{border-color:rgba(255,255,255,.30);color:#fff}
   .chip{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid rgba(148,163,184,.25);background:rgba(148,163,184,.10)}
-  .grid-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
-  .item-img{width:100%;height:200px;object-fit:cover;display:block;background:rgba(0,0,0,.18)}
-  @media (max-width:480px){.item-img{height:180px}}
-  .price-badge{position:absolute;bottom:10px;left:10px;font-weight:800;padding:6px 10px;border-radius:12px;background:rgba(2,6,23,.65);border:1px solid rgba(148,163,184,.35);backdrop-filter:blur(6px)}
-  .owner-line{display:flex;align-items:center;gap:8px;min-height:28px}
-  .avatar{width:26px;height:26px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px rgba(255,255,255,.12)}
   .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   .pill{padding:8px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#eaf0ff;text-decoration:none}
   .pill.active{border-color:rgba(99,102,241,.6);background:rgba(99,102,241,.18)}
-  /* شريط الموقع */
-  .items-locbar{--loc-bg:#fff;--loc-border:rgba(0,0,0,.08);--loc-shadow:0 8px 24px rgba(0,0,0,.06);--loc-radius:18px;--loc-pad:14px;--loc-primary:#5b4bff;--loc-primary-ink:#fff;--loc-danger:#e5484d;background:var(--loc-bg);border:1px solid var(--loc-border);border-radius:var(--loc-radius);box-shadow:var(--loc-shadow);padding:calc(var(--loc-pad) + 2px) var(--loc-pad);margin-block:16px}
-  .items-locbar .form-control{height:48px;border-radius:999px;border:1px solid var(--loc-border);background:#fafafa;transition:border-color .2s, box-shadow .2s;padding-inline:16px}
-  .items-locbar .form-control:focus{border-color:color-mix(in oklab,var(--loc-primary) 40%, #999);box-shadow:0 0 0 4px color-mix(in oklab,var(--loc-primary) 16%, transparent);background:#fff}
-  #itemsUseGPS.btn{height:48px;border-radius:999px;border:1px solid var(--loc-border);background:#f6f7fb;color:#111;font-weight:700}
-  #itemsUseGPS.btn:hover{background:#eef0f6}
-  #itemsClearGPS.btn{height:auto;border:none;padding:6px 8px 0;color:var(--loc-danger);font-weight:700;text-decoration:none}
-  #itemsClearGPS.btn:hover{opacity:.85}
-  .items-locbar .btn.btn-primary{height:48px;border-radius:999px;background:var(--loc-primary);color:var(--loc-primary-ink);border:none;font-weight:800;box-shadow:0 10px 24px rgba(91,75,255,.18)}
+
+  /* ====== نفس شبكة الرئيسية (2→6 أعمدة) + كروت مربعة وعصرية ====== */
+  .grid-items{
+    display:grid;
+    gap:14px;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    padding-inline:10px;
+  }
+  @media (min-width:576px){ .grid-items{grid-template-columns:repeat(3,minmax(0,1fr))} }
+  @media (min-width:768px){ .grid-items{grid-template-columns:repeat(4,minmax(0,1fr))} }
+  @media (min-width:992px){ .grid-items{grid-template-columns:repeat(5,minmax(0,1fr))} }
+  @media (min-width:1200px){ .grid-items{grid-template-columns:repeat(6,minmax(0,1fr))} }
+
+  /* الكرت مثل الرئيسية (بسيط وبدون زجاج عند العرض) */
+  .grid-items article.glass-card{
+    border:none !important;
+    background:transparent !important;
+    box-shadow:none !important;
+    border-radius:14px !important;
+  }
+
+  /* الصورة مربّعة دائماً */
+  .item-img{
+    width:100% !important;
+    aspect-ratio:1/1 !important;
+    height:auto !important;
+    object-fit:cover !important;
+    border-radius:14px !important;
+    background:#eef2f7 !important;
+    display:block;
+  }
+
+  /* السعر كسطر تحت الصورة (لا يغطيها) */
+  .price-badge{
+    position:static !important;
+    display:block !important;
+    background:transparent !important;
+    border:none !important;
+    padding:0 !important;
+    margin:8px 2px 0 !important;
+    color:#111 !important;
+    font-weight:900 !important;
+    font-size:.95rem !important;
+  }
+
+  /* نصوص تحت الصورة — عنوان سطر واحد + وصف صغير */
+  .grid-items h5{
+    font-weight:800;
+    font-size:clamp(.92rem,.88rem + .2vw,1rem);
+    margin:6px 2px 2px !important;
+    line-height:1.2;
+  }
+  .grid-items .small.text-muted{
+    color:#6b7280 !important;
+    margin:2px 2px 0 !important;
+  }
+
+  /* إخفاء سطر المالك لتبسيط البطاقة مثل الرئيسية */
+  .owner-line{display:none !important}
+
+  /* أزرار البطاقة أصغر وأنظف */
+  .grid-items .glass-btn,
+  .grid-items .btn-outline-primary{
+    height:34px;
+    border-radius:10px;
+    padding:0 12px;
+    font-weight:700;
+  }
+
+  /* ===== شريط الموقع (نفس روح الرئيسية) ===== */
+  .items-locbar{
+    --loc-bg:#fff;--loc-border:rgba(0,0,0,.08);--loc-shadow:0 8px 24px rgba(0,0,0,.06);
+    --loc-radius:18px;--loc-pad:14px;--loc-primary:#6C63FF;--loc-danger:#e5484d;
+    background:var(--loc-bg);border:1px solid var(--loc-border);border-radius:var(--loc-radius);
+    box-shadow:var(--loc-shadow);padding:calc(var(--loc-pad) + 2px) var(--loc-pad);margin-block:16px;
+  }
+  .items-locbar .form-control{
+    height:48px;border-radius:999px;border:1px solid var(--loc-border);background:#fafafa;
+    transition:border-color .2s, box-shadow .2s; padding-inline:16px;
+  }
+  .items-locbar .form-control:focus{
+    border-color:color-mix(in oklab,var(--loc-primary) 40%, #999);
+    box-shadow:0 0 0 4px color-mix(in oklab,var(--loc-primary) 16%, transparent);
+    background:#fff;
+  }
+  .items-locbar .btn.btn-primary{
+    height:48px;border-radius:999px;background:var(--loc-primary);color:#fff;border:none;font-weight:800;
+    box-shadow:0 10px 24px rgba(108,99,255,.18);
+  }
   #itemsCitySugg{border-radius:12px;border:1px solid var(--loc-border);box-shadow:var(--loc-shadow);overflow:hidden}
   #itemsCitySugg>div{font-size:.95rem;color:#111;border-top:1px solid rgba(0,0,0,.04)}
   #itemsCitySugg>div:first-child{border-top:none}
   #itemsCitySugg>div:hover{background:#f7f7fb}
+
+  /* ====== MOBILE ONE-LINE LOCBAR (الهاتف: سطر واحد) ====== */
+  @media (max-width:576px){
+    .items-locbar.row{
+      display:flex !important; flex-wrap:nowrap !important; align-items:center !important;
+      gap:8px !important; padding:8px !important; background:#fff !important; border-radius:12px !important;
+      box-shadow:none !important; --bs-gutter-x:0 !important; --bs-gutter-y:0 !important;
+    }
+    .items-locbar.row > [class*="col-"]{
+      width:auto !important; flex:0 0 auto !important; padding:0 !important; margin:0 !important; min-width:0 !important;
+    }
+    .items-locbar .col-12.col-md-6{ flex:1 1 auto !important; min-width:0 !important; }
+    .items-locbar .col-6.col-md-3.d-grid{ display:flex !important; align-items:center !important; gap:8px !important; }
+    .items-locbar .col-6.col-md-3.d-grid:last-of-type{ display:flex !important; align-items:center !important; }
+
+    .items-locbar .form-control,
+    .items-locbar .btn{ height:34px !important; border-radius:10px !important; font-size:.88rem !important; }
+    .items-locbar .form-control{
+      padding:0 10px !important; background:#fff !important; border:1px solid rgba(0,0,0,.08) !important; box-shadow:none !important;
+    }
+
+    /* زر GPS = أيقونة فقط */
+    #itemsUseGPS{
+      font-size:0 !important; padding:0 10px !important;
+      background:#fff !important; border:1px solid rgba(0,0,0,.08) !important; color:#111 !important;
+    }
+    #itemsUseGPS::before{
+      content:"📍"; font-size:18px; line-height:1; display:inline-block; transform:translateY(1px);
+    }
+
+    /* زر البحث */
+    .items-locbar .btn.btn-primary{ background:#6C63FF !important; box-shadow:none !important; padding:0 12px !important; }
+
+    /* زر الإلغاء كرابط صغير */
+    #itemsClearGPS{
+      padding:0 6px !important; height:auto !important; line-height:1 !important;
+      font-weight:800 !important; color:#e5484d !important; border:none !important; background:transparent !important;
+    }
+
+    /* اقتراحات أصغر */
+    #itemsCitySugg{ border-radius:10px !important; box-shadow:0 6px 18px rgba(2,6,23,.08) !important; max-height:220px !important; font-size:.92rem !important; }
+    #itemsCitySugg>div{ padding:.5rem .6rem !important; }
+  }
 </style>
 
 <section class="container" style="max-width:1200px;margin:auto">
@@ -68,12 +186,12 @@
       <div id="itemsCitySugg" class="bg-white mt-1" style="display:none; position:absolute; z-index:1000; max-height:260px; overflow:auto; inset-inline:0;"></div>
     </div>
     <div class="col-6 col-md-3 d-grid">
-      <button type="button" id="homeUseGPS" class="btn btn-outline-secondary" aria-label="استخدم موقعي">📍 GPS</button>
-<button type="button" id="homeClearGPS" class="btn btn-link btn-sm">إلغاء</button>
-
+      <!-- مهم: تبديل المعرفات لتطابق الجافاسكربت -->
+      <button type="button" id="itemsUseGPS" class="btn btn-outline-secondary" aria-label="استخدم موقعي" title="استخدم موقعي"></button>
+      <button type="button" id="itemsClearGPS" class="btn btn-link btn-sm">إلغاء</button>
     </div>
     <div class="col-6 col-md-3 d-grid">
-      <button class="btn btn-primary" type="submit">تطبيق</button>
+      <button class="btn btn-primary" type="submit">بحث</button>
     </div>
 
     <!-- حقول خفية + حفظ category/sort -->
@@ -93,22 +211,17 @@
             {% else %}
               <div class="item-img d-grid place-items-center text-muted">لا صورة</div>
             {% endif %}
-            {% if it.price_per_day is defined %}<span class="price-badge">{{ it.price_per_day }} د/يوم</span>{% endif %}
           </a>
 
-          <div class="p-3">
+          <div class="p-2">
             <div class="small text-muted mb-1">{{ it.category_label }}{% if it.city %} • {{ it.city }}{% endif %}</div>
-            <h5 class="mb-2 text-truncate" title="{{ it.title }}">{{ it.title }}</h5>
+            <h5 class="mb-1 text-truncate" title="{{ it.title }}">{{ it.title }}</h5>
 
-            <div class="owner-line mb-2" title="{{ it.owner.first_name }} {{ it.owner.last_name }}">
-              {% if it.owner and it.owner.avatar_path %}
-                <img class="avatar" src="{{ it.owner.avatar_path | media_url }}" alt="">
-              {% endif %}
-              <div class="text-muted small text-truncate" style="max-width:70%">{{ it.owner.first_name }} {{ it.owner.last_name }}</div>
-              <div style="margin-inline-start:auto">{{ render_badges(it.owner_badges, 18) }}</div>
-            </div>
+            {% if it.price_per_day is defined %}
+              <span class="price-badge">{{ it.price_per_day }} د/يوم</span>
+            {% endif %}
 
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center mt-2">
               <a href="/items/{{ it.id }}" class="btn btn-sm glass-btn">تفاصيل</a>
               <a href="/messages/start?user_id={{ it.owner_id }}&item_id={{ it.id }}" class="btn btn-sm btn-outline-primary">تواصل</a>
             </div>
