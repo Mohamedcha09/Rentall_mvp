@@ -899,6 +899,55 @@
   .home-shelves{ padding-bottom: max(84px, env(safe-area-inset-bottom,0)) !important; }
 }
 
+/* ==== FINAL OVERRIDES (keep only this at the very end) ==== */
+
+/* صور مربّعة نظيفة في كل الأقسام */
+.spot-media{ aspect-ratio:1/1 !important; border-radius:14px !important; overflow:hidden !important; background:transparent !important; }
+.spot-media img{ width:100% !important; height:100% !important; object-fit:cover !important; border-radius:14px !important; }
+.price-badge{ display:none !important; }                /* لا شارة سوداء على الصورة */
+.spot, .spot:hover, .spot:focus{ background:transparent !important; box-shadow:none !important; outline:0 !important; }
+
+/* السلايدر (hrow) — كرت صغير مثل Airbnb */
+.hrow{ gap:12px !important; padding-inline:6px !important; }
+.hcard{ min-width:206px !important; max-width:206px !important; }             /* >=1200px يظهر 6 كروت */
+@media (max-width:1199.98px){ .hcard{ min-width:220px !important; max-width:220px !important; } }
+@media (max-width:991.98px){  .hcard{ min-width:240px !important; max-width:240px !important; } }
+@media (max-width:576px){     .hcard{ min-width:42vw  !important; max-width:42vw  !important; } } /* هاتف ~2.3 كرت */
+
+/* شبكة "كل العناصر" (بدون تغيير HTML) */
+.mixed-grid{ gap:14px !important; padding-inline:10px !important; }
+@media (max-width:575.98px){  .mixed-grid{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:10px !important; } }
+@media (min-width:576px) and (max-width:767.98px){  .mixed-grid{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; } }
+@media (min-width:768px) and (max-width:991.98px){  .mixed-grid{ grid-template-columns:repeat(4,minmax(0,1fr)) !important; } }
+@media (min-width:992px) and (max-width:1199.98px){ .mixed-grid{ grid-template-columns:repeat(5,minmax(0,1fr)) !important; } }
+@media (min-width:1200px){                             .mixed-grid{ grid-template-columns:repeat(6,minmax(0,1fr)) !important; } }
+
+/* نصوص البطاقة تحت الصورة — صغيرة ونظيفة */
+.spot-body{ padding:8px 4px 0 !important; background:transparent !important; }
+.spot-title{
+  font-weight:800 !important; color:#111 !important;
+  font-size:clamp(.9rem,.86rem + .2vw,.98rem) !important;
+  margin-bottom:4px !important; line-height:1.2 !important;
+  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
+}
+.owner-avatar--placeholder{ display:none !important; }
+.city-chip{ background:none !important; border:none !important; padding:0 !important; color:#6b7280 !important; font-size:.86rem !important; }
+.spot-footer{ display:flex !important; align-items:center !important; justify-content:space-between !important; margin-top:2px !important; }
+.spot-footer small{ color:#111 !important; font-weight:800 !important; font-size:.88rem !important; }
+
+/* أيقونة القلب والوسم — أصغر */
+.fav-btn{ top:10px; right:10px; width:32px; height:32px; background:#fff !important; border:1px solid rgba(0,0,0,.1) !important; box-shadow:0 3px 8px rgba(0,0,0,.1) !important; }
+.fav-btn .bi{ font-size:15px; color:#111; }
+.fav-btn.is-fav{ background:#111 !important; border-color:#111 !important; }
+.fav-btn.is-fav .bi{ color:#fff !important; }
+.category-chip{ top:10px; left:10px; padding:5px 10px; font-size:.75rem; font-weight:700; background:rgba(255,255,255,.95); border:1px solid rgba(0,0,0,.06); border-radius:999px; box-shadow:0 3px 8px rgba(0,0,0,.06); backdrop-filter:blur(8px); }
+
+/* مساحة أمان أسفل للموبايل (لا يغطيه التاب بار) */
+@supports(padding:max(0px)){
+  .home-shelves{ padding-bottom:max(84px, env(safe-area-inset-bottom,0)) !important; }
+}
+
+
 </style>
 {% endblock %}
 
