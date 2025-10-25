@@ -712,6 +712,92 @@
 /* تأكيد المربّع للجميع */
 .spot-media{ aspect-ratio:1/1 !important; }
 .spot-media img{ width:100% !important; height:100% !important; object-fit:cover !important; }
+/* 🎨 تنسيق قسم "كل العناصر" ليتوافق مع Airbnb */
+
+.all-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 18px;
+  padding: 12px 20px;
+}
+
+.all-items .item-card {
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+  transition: all .25s ease;
+}
+
+.all-items .item-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+}
+
+/* الصورة */
+.all-items .item-card img {
+  width: 100%;
+  height: 240px;
+  object-fit: cover;
+  display: block;
+}
+
+/* النصوص */
+.all-items .item-info {
+  padding: 10px 12px;
+}
+
+.all-items .item-title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #111;
+  margin-bottom: 4px;
+}
+
+.all-items .item-location {
+  font-size: .9rem;
+  color: #6b6b6b;
+}
+
+.all-items .item-price {
+  font-size: .95rem;
+  font-weight: 800;
+  color: #111;
+  margin-top: 6px;
+}
+
+.all-items .item-rating {
+  color: #fbbf24;
+  font-size: .9rem;
+}
+
+/* 💻 للحاسوب: 3 بطاقات في الصف */
+@media (min-width: 992px) {
+  .all-items {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 📱 للهاتف: بطاقتان في الصف */
+@media (max-width: 768px) {
+  .all-items {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 8px;
+  }
+
+  .all-items .item-card img {
+    height: 160px;
+  }
+
+  .all-items .item-title {
+    font-size: .9rem;
+  }
+
+  .all-items .item-price {
+    font-size: .85rem;
+  }
+}
 
 </style>
 {% endblock %}
