@@ -12,10 +12,10 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from .models import User, Item
 
-# هذه الاستيرادات اختيارية — نستخدم try حتى لا تنكسر لو غير متوفرة
+# استيرادات اختيارية لحماية التشغيل لو الجداول/الخدمات غير متوفرة
 try:
     from .models import Report, ReportActionLog  # مضافة في models.py
-except Exception as e:  # pragma: no cover
+except Exception:  # pragma: no cover
     Report = None
     ReportActionLog = None
 
@@ -23,7 +23,6 @@ try:
     from .notifications_api import push_notification  # إشعارات داخلية
 except Exception:  # pragma: no cover
     def push_notification(db: Session, user_id: int, title: str, body: str, link_url: str = "/", kind: str = "info"):
-        # fallback صامت
         return None
 
 try:
@@ -34,7 +33,6 @@ except Exception:  # pragma: no cover
 
 
 router = APIRouter()
-
 BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
 
 
@@ -80,9 +78,7 @@ def _notify_owner_and_moderators(
     try:
         moderators = (
             db.query(User)
-            .filter(
-                (User.role == "admin") | (getattr(User, "is_mod", False) == True)  # noqa: E712
-            )
+            .filter((User.role == "admin") | (getattr(User, "is_mod", False) == True))  # noqa: E712
             .all()
         )
         for m in moderators:
@@ -120,29 +116,35 @@ def _build_report_instance(
     payload: Optional[Dict[str, Any]] = None,
 ):
     """
-    ننشئ كائن Report مع حماية من اختلاف الحقول (لو سكيمة الهجرة قديمة/جديدة).
+    إنشاء كائن Report مع مراعاة اختلاف السكيمة: لا نضيف إلا الحقول الموجودة فعلاً.
     """
     if Report is None:
         raise HTTPException(status_code=500, detail="Report model is missing")
 
-    data = {
+    data: Dict[str, Any] = {
         "reporter_id": reporter_id,
         "reason": reason[:120] if reason else "",
-        "note": (note or "").strip() or None,
         "status": "pending",
         "created_at": datetime.utcnow(),
     }
 
-    # حقول اختيارية حسب المخطط الذي أضفته:
-    # item_id, image_index, target_type, handled_at ...
+    # أضِف فقط الحقول الموجودة فعليًا في الموديل/الجدول
     if hasattr(Report, "item_id"):
         data["item_id"] = item_id
+
+    if note and hasattr(Report, "note"):
+        data["note"] = (note or "").strip() or None
+
     if image_index is not None and hasattr(Report, "image_index"):
-        data["image_index"] = int(image_index)
+        try:
+            data["image_index"] = int(image_index)
+        except Exception:
+            pass
+
     if hasattr(Report, "target_type"):
         data["target_type"] = "image" if image_index is not None else "item"
+
     if payload and hasattr(Report, "payload_json"):
-        # إن كان لديك عمود JSON نصي لتفاصيل إضافية
         try:
             import json
             data["payload_json"] = json.dumps(payload, ensure_ascii=False)
@@ -170,7 +172,7 @@ def _log_action(db: Session, report_id: int, actor_id: int, action: str, note: O
 
 
 # =========================
-# API: إنشاء بلاغ
+# API: إنشاء بلاغ (المسار الرئيسي)
 # =========================
 @router.post("/reports")
 async def create_report(
@@ -254,27 +256,46 @@ async def create_report(
 
 
 # =========================
-# (اختياري) صفحة إدارة البلاغات — لا تكسر الرابط
+# (توافق قديم) /reports/new → يعيد استخدام نفس المنطق
+# =========================
+@router.post("/reports/new")
+async def create_report_legacy(
+    request: Request,
+    db: Session = Depends(get_db),
+    item_id: int = Form(None),
+    reason: str = Form(None),
+    note: str | None = Form(None),
+    image_index: int | None = Form(None),
+):
+    return await create_report(
+        request=request,
+        db=db,
+        item_id=item_id,
+        reason=reason,
+        note=note,
+        image_index=image_index,
+    )
+
+
+# =========================
+# صفحة إدارة البلاغات (اختيارية)
 # =========================
 @router.get("/admin/reports")
 def admin_reports_page(request: Request, db: Session = Depends(get_db)):
     """
-    يحاول عرض قالب admin/reports.html إن كان موجودًا.
-    إن لم يوجد القالب، يُرجع JSON بسيط حتى لا ينكسر الرابط في القائمة.
-    الوصول مقيّد للأدمن والمود.
+    يعرض قالب admin/reports.html إن كان موجودًا؛ وإلا يرجع JSON بسيط.
+    الوصول مقيّد للأدمن/المود.
     """
     sess = request.session.get("user")
-    if not sess or not (str(sess.get("role","")).lower() == "admin" or bool(sess.get("is_mod"))):
+    if not sess or not (str(sess.get("role", "")).lower() == "admin" or bool(sess.get("is_mod"))):
         return RedirectResponse(url="/login", status_code=303)
 
-    # لو لديك القالب: app/templates/admin/reports.html
     try:
-        # اجلب 50 بلاغًا أخيرًا
         if Report is None:
             raise RuntimeError("Report model missing")
         reports = (
             db.query(Report)
-            .order_by(getattr(Report, "created_at"))
+            .order_by(getattr(Report, "created_at").desc() if hasattr(Report, "created_at") else None)
             .limit(50)
             .all()
         )
@@ -288,31 +309,8 @@ def admin_reports_page(request: Request, db: Session = Depends(get_db)):
             },
         )
     except Exception:
-        # fallback JSON
         try:
             count = db.query(Report).count() if Report else 0
         except Exception:
             count = 0
         return JSONResponse({"ok": True, "message": "Reports admin view is not installed yet.", "count": count})
-
-
-# == ضع هذا أسفل create_report مباشرةً في app/reports.py ==
-
-@router.post("/reports/new")
-async def create_report_legacy(
-    request: Request,
-    db: Session = Depends(get_db),
-    item_id: int = Form(None),
-    reason: str = Form(None),
-    note: str | None = Form(None),
-    image_index: int | None = Form(None),
-):
-    # نعيد استعمال نفس المنطق بالضبط
-    return await create_report(
-        request=request,
-        db=db,
-        item_id=item_id,
-        reason=reason,
-        note=note,
-        image_index=image_index,
-    )
