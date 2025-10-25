@@ -12,6 +12,9 @@ router = APIRouter()
 EARTH_RADIUS_KM = 6371.0
 
 def _apply_city_or_gps_filter(qs, city: str | None, lat: float | None, lng: float | None, radius_km: float | None):
+    """
+    فلترة حسب GPS إن توفّر، وإلا حسب المدينة (case-insensitive).
+    """
     from sqlalchemy import func
     if lat is not None and lng is not None and radius_km:
         distance_expr = EARTH_RADIUS_KM * func.acos(
@@ -128,7 +131,7 @@ def home_page(
             "nearby_items": nearby_items,
             "items_by_category": items_by_category,
             "all_items": all_items,
-            # ✅ هذه هي المهمة لظهور السلايدر/التوب-سترِب
+            # ✅ ضروري لظهور السلايدر/التوب-سترِب
             "banners": banners,
             "top_strip_cols": top_strip_cols,
             # باراميترات الفلترة لواجهة المستخدم
