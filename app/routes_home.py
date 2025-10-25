@@ -2,6 +2,8 @@
 from fastapi import APIRouter, Depends, Request, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from pathlib import Path
+import random
 
 from .database import get_db
 from .models import Item
@@ -33,8 +35,57 @@ def _apply_city_or_gps_filter(qs, city: str | None, lat: float | None, lng: floa
         qs = qs.filter(Item.city.ilike(f"%{city.strip()}%"))
     return qs
 
+
+# ---------- مصادر الصور الثابتة (static) ----------
+_VALID_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
+
+def _static_url(request: Request, rel_path: str) -> str:
+    """
+    يحوّل مسارًا نسبيًا داخل static إلى URL. يفترض أنك عامل mount:
+    app.mount('/static', StaticFiles(directory='app/static'), name='static')
+    """
+    # نتأكد من عدم وجود سلاش أولي مزدوج
+    rel_path = rel_path.lstrip("/")
+    return f"/static/{rel_path}"
+
+def _collect_static_images(request: Request, subdir: str) -> list[str]:
+    """
+    يقرأ كل الصور من app/static/<subdir>/ ويرجع URLs.
+    """
+    # الجذر النسبي من مجلد المشروع
+    root = Path(__file__).resolve().parent.parent  # يشير إلى app/
+    folder = root / "static" / subdir
+    urls: list[str] = []
+    try:
+        if folder.exists():
+            for p in sorted(folder.iterdir()):
+                if p.is_file() and p.suffix.lower() in _VALID_EXTS:
+                    rel = f"{subdir}/{p.name}"
+                    urls.append(_static_url(request, rel))
+    except Exception:
+        pass
+    return urls
+
+def _banners_from_static(request: Request) -> list[str]:
+    imgs = _collect_static_images(request, "img/banners")
+    random.shuffle(imgs)
+    return imgs
+
+def _topstrip_from_static(request: Request) -> list[list[str]]:
+    imgs = _collect_static_images(request, "img/top_slider")
+    random.shuffle(imgs)
+    # وزّعها على 3 أعمدة
+    cols = [[], [], []]
+    for i, u in enumerate(imgs):
+        cols[i % 3].append(u)
+    return cols
+
+
+# ---------- fallback من العناصر في الداتابيز ----------
 def _fallback_media_from_items(db: Session, limit: int = 18):
-    """لو ما عندنا إعدادات للبنرات/التوب-سترِب، نأخذ أحدث صور عناصر كبديل."""
+    """
+    بدائل في حال مجلدات static فاضية.
+    """
     rows = (
         db.query(Item.image_path)
         .filter(Item.is_active == "yes", Item.image_path.isnot(None), Item.image_path != "")
@@ -43,13 +94,12 @@ def _fallback_media_from_items(db: Session, limit: int = 18):
         .all()
     )
     imgs = [r[0] for r in rows if r[0]]
-    # بنرات: أول 3 صور
     banners = imgs[:3]
-    # top strip 3 أعمدة بالتناوب
     cols = [[], [], []]
-    for i, src in enumerate(imgs[3:]):  # الباقي للتوب-سترِب
+    for i, src in enumerate(imgs[3:]):
         cols[i % 3].append(src)
     return banners, cols
+
 
 @router.get("/")
 def home_page(
@@ -105,21 +155,15 @@ def home_page(
     else:
         all_items = base_q.order_by(func.random()).limit(60).all()
 
-    # ✅ تمرير البنرات والتوب-سترِب حتى لا تختفي الأقسام
-    # إن كان عندك state/settings تزودها، استخدمها؛ وإلا نولد بدائل من صور العناصر.
-    try:
-        app_state = getattr(request.app, "state", None)
-        banners = getattr(app_state, "home_banners", None) if app_state else None
-        top_strip_cols = getattr(app_state, "home_top_strip_cols", None) if app_state else None
-    except Exception:
-        banners = None
-        top_strip_cols = None
+    # ---------- HERO + TOP STRIP من static ----------
+    banners = _banners_from_static(request)           # من app/static/img/banners/
+    top_strip_cols = _topstrip_from_static(request)   # من app/static/img/top_slider/
 
-    if not banners or not isinstance(banners, list):
-        banners, top_cols_fallback = _fallback_media_from_items(db)
-        # لو كان عندك top_strip_cols من الإعدادات نستعمله، وإلا من fallback
-        if not top_strip_cols or not isinstance(top_strip_cols, list) or len(top_strip_cols) != 3:
-            top_strip_cols = top_cols_fallback
+    # إن كانت مجلدات static فارغة، نلجأ إلى fallback من العناصر حتى لا تختفي الأقسام
+    if not banners:
+        banners, _fallback_cols = _fallback_media_from_items(db)
+        if not any(top_strip_cols):
+            top_strip_cols = _fallback_cols
 
     def _cat_label(c): return category_label(c)
 
@@ -131,7 +175,7 @@ def home_page(
             "nearby_items": nearby_items,
             "items_by_category": items_by_category,
             "all_items": all_items,
-            # ✅ ضروري لظهور السلايدر/التوب-سترِب
+            # ⬅️ هذه القيم الآن قادمة من مجلدات static التي حددتها
             "banners": banners,
             "top_strip_cols": top_strip_cols,
             # باراميترات الفلترة لواجهة المستخدم
