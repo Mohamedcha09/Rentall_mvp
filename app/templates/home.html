@@ -175,6 +175,28 @@
   .spot-media{aspect-ratio:1/1 !important}
   .spot-media img{height:100% !important}
 }
+
+/* ✅ إظهار السعر داخل السلايدرات (hrow) */
+.hrow .price-badge{
+  display:inline-block !important;
+  position:absolute;
+  right:12px; bottom:12px;
+  font-weight:800; font-size:.9rem;
+  background:rgba(17,24,39,.9);
+  color:#fff;
+  padding:6px 10px;
+  border-radius:999px;
+  z-index:2;
+}
+
+/* (اختياري) إبقاء السعر مخفيًا داخل شبكة "كل العناصر" فقط */
+.mixed-grid .price-badge{
+  display:none !important;
+}
+
+/* لإلغاء الإخفاء العام إن وُجد سابقًا */
+.price-badge{ display:inline-block; }
+
 </style>
 
 {% endblock %}
