@@ -304,8 +304,28 @@ def register_post(
 # ============ Email Verify Wall ============
 @router.get("/verify-email")
 def verify_email_page(request: Request, email: str = "", db: Session = Depends(get_db)):
-    return RedirectResponse("/", status_code=303)
-    
+    """
+    لو البريد الموجود في الكويري هو أدمن أو حسابه مفعّل -> رجّعه للصفحة الرئيسية حتى بدون جلسة.
+    غير كذا اعرض صفحة التحقق.
+    """
+    # لو فيه جلسة ومفعّل/أدمن -> للصفحة الرئيسية
+    u = request.session.get("user") or {}
+    if u and (u.get("role","").lower() == "admin" or bool(u.get("is_verified"))):
+        return RedirectResponse("/", status_code=303)
+
+    em = (email or "").strip().lower()
+    if em:
+        user = db.query(User).filter(User.email == em).first()
+        if user:
+            if (getattr(user, "role", "") or "").lower() == "admin" or bool(getattr(user, "is_verified", False)):
+                return RedirectResponse("/", status_code=303)
+
+    # باقي الحالات: اعرض الصفحة
+    return request.app.templates.TemplateResponse(
+        "verify_email.html",
+        {"request": request, "title": "تحقق من بريدك", "email": em, "session_user": u or None},
+    )
+
 # ============ Password Reset (2) ============
 # 1) صفحة طلب الإيميل
 @router.get("/forgot")
