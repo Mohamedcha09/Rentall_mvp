@@ -300,22 +300,26 @@ def register_post(
 
 
 # ============ Email Verify Wall ============
+# ============ Email Verify Wall ============
 @router.get("/verify-email")
 def verify_email_page(request: Request, email: str = ""):
     """
     صفحة تُظهر للمستخدم أنه يجب عليه تفعيل بريده أولاً.
-    تُعرض بعد التسجيل أو إذا حاول تسجيل الدخول بدون تفعيل.
+    الأدمن أو أي مستخدم is_verified=True يُعاد توجيهه فورًا للصفحة الرئيسية.
     """
+    u = request.session.get("user") or {}
+    if (u.get("role", "").lower() == "admin") or bool(u.get("is_verified", False)):
+        return RedirectResponse("/", status_code=303)
+
     return request.app.templates.TemplateResponse(
         "verify_email.html",
         {
             "request": request,
             "title": "تحقق من بريدك",
             "email": (email or "").strip(),
-            "session_user": request.session.get("user"),
+            "session_user": u,
         },
     )
-
 
 # ============ Password Reset (2) ============
 # 1) صفحة طلب الإيميل
