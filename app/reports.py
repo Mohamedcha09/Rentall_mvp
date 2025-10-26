@@ -8,26 +8,27 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import text
 
 from .database import get_db, engine
 from .models import User, Item
 
-# استيرادات اختيارية
+# =========================
+# استيرادات اختيارية لحماية التشغيل لو الجداول/الخدمات غير متوفرة
+# =========================
 try:
-    from .models import Report, ReportActionLog
+    from .models import Report, ReportActionLog  # مضافة في models.py
 except Exception:  # pragma: no cover
     Report = None
     ReportActionLog = None
 
 try:
-    from .notifications_api import push_notification
+    from .notifications_api import push_notification  # إشعارات داخلية
 except Exception:  # pragma: no cover
     def push_notification(db: Session, user_id: int, title: str, body: str, link_url: str = "/", kind: str = "info"):
         return None
 
 try:
-    from .email_service import send_email
+    from .email_service import send_email  # بريد (اختياري)
 except Exception:  # pragma: no cover
     def send_email(*args, **kwargs):
         return None
@@ -35,7 +36,32 @@ except Exception:  # pragma: no cover
 
 router = APIRouter()
 BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
-DEBUG_REPORTS = os.getenv("DEBUG_REPORTS", "0") == "1"
+
+
+# =====================================================
+# هوت-فيكس تلقائي لإضافة أعمدة ناقصة في جدول reports (Postgres)
+# =====================================================
+def _ensure_reports_columns():
+    """
+    لو تعمل على Postgres وكانت أعمدة tag / updated_at غير موجودة
+    نضيفها بأمان (IF NOT EXISTS). لا يفعل شيئًا على SQLite.
+    """
+    try:
+        backend = engine.url.get_backend_name()
+    except Exception:
+        backend = getattr(getattr(engine, "dialect", None), "name", "")
+
+    if str(backend).startswith("postgres"):
+        try:
+            with engine.begin() as conn:
+                conn.exec_driver_sql("ALTER TABLE reports ADD COLUMN IF NOT EXISTS tag VARCHAR(24);")
+                conn.exec_driver_sql("ALTER TABLE reports ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NULL;")
+        except Exception as e:
+            # لا توقف السيرفر؛ فقط اطبع تحذيرًا
+            print("[WARN] ensure reports columns failed:", e)
+
+# شغّل الفِكس مرة واحدة عند تحميل الملف
+_ensure_reports_columns()
 
 
 # =========================
@@ -59,21 +85,30 @@ def _notify_owner_and_moderators(
     reporter_name: str,
     item_id: int,
     reason: str,
+    image_index: Optional[int] = None,
 ):
+    """إشعار المالك + كل الأدمن والمودز."""
     label = f"بلاغ على المنشور #{item_id}"
+    if image_index is not None:
+        label = f"بلاغ على صورة #{image_index} من المنشور #{item_id}"
+
     body = f"المبلِّغ: {reporter_name}\nالسبب: {reason}"
     link = f"/items/{item_id}"
 
+    # 1) المالك
     if owner_id:
         try:
             push_notification(db, owner_id, "🚩 " + label, body, link, "report")
         except Exception:
             pass
 
+    # 2) كل الأدمن + كل المودز
     try:
         moderators = (
             db.query(User)
-            .filter((User.role == "admin") | (getattr(User, "is_mod", False) == True))  # noqa: E712
+            .filter(
+                (User.role == "admin") | (getattr(User, "is_mod", False) == True)  # noqa: E712
+            )
             .all()
         )
         for m in moderators:
@@ -84,6 +119,7 @@ def _notify_owner_and_moderators(
     except Exception:
         pass
 
+    # (اختياري) بريد للأدمن فقط
     try:
         admins = db.query(User).filter(User.role == "admin").all()
         for a in admins:
@@ -107,23 +143,49 @@ def _build_report_instance(
     reason: str,
     note: Optional[str],
     image_index: Optional[int],
+    payload: Optional[Dict[str, Any]] = None,
 ):
     """
-    مطابق لسكيمة Report الحالية: item_id, reporter_id, reason, status, tag, created_at, updated_at
+    إنشاء كائن Report مع مراعاة اختلاف السكيمة: لا نضيف إلا الحقول الموجودة فعلاً.
+    يعمل مع قواعد قديمة/جديدة بدون كسر.
     """
     if Report is None:
         raise HTTPException(status_code=500, detail="Report model is missing")
 
     data: Dict[str, Any] = {
         "reporter_id": reporter_id,
-        "reason": (reason or "")[:5000],
-        "status": "open",             # يتوافق مع models.py
+        "reason": reason[:120] if reason else "",
+        "status": "pending",  # يمكن تركها للـ default "open" إن رغبت
         "created_at": datetime.utcnow(),
     }
+
+    # أضِف فقط الحقول الموجودة فعليًا في الموديل/الجدول
     if hasattr(Report, "item_id"):
         data["item_id"] = item_id
 
-    # لا نمرر note/image_index/target_type/payload_json لأنها غير موجودة في الجدول عندك
+    if note and hasattr(Report, "note"):
+        data["note"] = (note or "").strip() or None
+
+    if image_index is not None and hasattr(Report, "image_index"):
+        try:
+            data["image_index"] = int(image_index)
+        except Exception:
+            pass
+
+    if hasattr(Report, "target_type"):
+        data["target_type"] = "image" if image_index is not None else "item"
+
+    if payload and hasattr(Report, "payload_json"):
+        try:
+            import json
+            data["payload_json"] = json.dumps(payload, ensure_ascii=False)
+        except Exception:
+            pass
+
+    # إن كان لديك عمود updated_at في الجدول
+    if hasattr(Report, "updated_at"):
+        data["updated_at"] = datetime.utcnow()
+
     return Report(**data)
 
 
@@ -145,70 +207,26 @@ def _log_action(db: Session, report_id: int, actor_id: int, action: str, note: O
 
 
 # =========================
-# تشخيص سريع
-# =========================
-@router.get("/reports/_diag")
-def reports_diag(request: Request, db: Session = Depends(get_db)):
-    sess = request.session.get("user")
-    logged_in = bool(sess)
-
-    # فحص وجود الجدول وأعمدته
-    columns = []
-    table_exists = False
-    try:
-        with engine.begin() as conn:
-            if engine.url.get_backend_name() == "sqlite":
-                rows = conn.exec_driver_sql("PRAGMA table_info('reports')").all()
-                table_exists = True if rows else False
-                columns = [r[1] for r in rows]
-            else:
-                # Postgres
-                rows = conn.exec_driver_sql(
-                    "SELECT column_name FROM information_schema.columns WHERE table_name='reports' ORDER BY ordinal_position"
-                ).all()
-                table_exists = True if rows else False
-                columns = [r[0] for r in rows]
-    except Exception as e:
-        return JSONResponse({"ok": False, "where": "_diag.table_check", "error": str(e)})
-
-    # تجربة إدراج وهمي (rollback)
-    insert_error = None
-    if table_exists and logged_in:
-        try:
-            it = db.query(Item).first()
-            if it:
-                tmp = _build_report_instance(sess["id"], it.id, "diag-test", None, None)
-                db.add(tmp)
-                db.flush()   # لا commit
-                db.rollback()
-        except Exception as e:
-            db.rollback()
-            insert_error = str(e)
-
-    return JSONResponse({
-        "ok": True,
-        "logged_in": logged_in,
-        "table_exists": table_exists,
-        "columns": columns,
-        "insert_error": insert_error,
-    })
-
-
-# =========================
-# API: إنشاء بلاغ
+# API: إنشاء بلاغ (المسار الرئيسي)
 # =========================
 @router.post("/reports")
 async def create_report(
     request: Request,
     db: Session = Depends(get_db),
+
+    # ندعم Form وكذلك JSON
     item_id: int = Form(None),
     reason: str = Form(None),
     note: str | None = Form(None),
     image_index: int | None = Form(None),
 ):
+    """
+    ينشئ بلاغًا على منشور/صورة. يقبل Form أو JSON.
+    لو أُرسل JSON، سنقرأه من body مباشرةً.
+    """
     u = _require_login(request)
 
-    # دعم JSON
+    # السماح بإرسال JSON (mobile/SPA)
     if item_id is None or reason is None:
         try:
             data = await request.json()
@@ -216,23 +234,23 @@ async def create_report(
             reason = data.get("reason")
             note = data.get("note")
             image_index = data.get("image_index")
-            try:
-                if image_index is not None:
+            if image_index is not None:
+                try:
                     image_index = int(image_index)
-            except Exception:
-                image_index = None
+                except Exception:
+                    image_index = None
         except Exception:
             pass
 
     if not item_id or not reason:
         raise HTTPException(status_code=422, detail="missing-required-fields")
 
-    # تحقّق العنصر
+    # تحقّق من وجود العنصر ومعرفة المالك
     owner_id = _get_item_owner_id(db, item_id)
     if not owner_id:
         raise HTTPException(status_code=404, detail="item-not-found")
 
-    # إنشاء السجل
+    # أنشئ البلاغ
     try:
         report = _build_report_instance(
             reporter_id=int(u["id"]),
@@ -240,6 +258,7 @@ async def create_report(
             reason=str(reason),
             note=note,
             image_index=image_index,
+            payload={"ip": request.client.host if request.client else None},
         )
         db.add(report)
         db.commit()
@@ -248,26 +267,32 @@ async def create_report(
         raise
     except Exception as e:
         db.rollback()
-        if DEBUG_REPORTS:
-            # إرجاع السبب الحقيقي ليساعدك
-            return JSONResponse({"ok": False, "error": "create_failed", "detail": str(e)}, status_code=500)
         raise HTTPException(status_code=500, detail="failed-to-create-report") from e
 
+    # سجلّ الإجراء الأولي "submitted"
     _log_action(db, getattr(report, "id", 0), int(u["id"]), "submitted", note)
 
+    # إشعار المالك + الأدمن/المود
     try:
         reporter_name = f"{u.get('first_name','').strip()} {u.get('last_name','').strip()}".strip() or f"User#{u['id']}"
-        _notify_owner_and_moderators(db, owner_id, reporter_name, int(item_id), str(reason))
+        _notify_owner_and_moderators(db, owner_id, reporter_name, int(item_id), str(reason), image_index)
     except Exception:
         pass
 
     return JSONResponse(
-        {"ok": True, "message": "تم إرسال البلاغ، شكرًا لك.", "report_id": getattr(report, "id", None), "status": getattr(report, "status", "open")},
+        {
+            "ok": True,
+            "message": "تم إرسال البلاغ، شكرًا لمساهمتك.",
+            "report_id": getattr(report, "id", None),
+            "status": getattr(report, "status", "pending"),
+        },
         status_code=201,
     )
 
 
-# توافق قديم
+# =========================
+# (توافق قديم) /reports/new → يعيد استخدام نفس المنطق
+# =========================
 @router.post("/reports/new")
 async def create_report_legacy(
     request: Request,
@@ -277,27 +302,46 @@ async def create_report_legacy(
     note: str | None = Form(None),
     image_index: int | None = Form(None),
 ):
-    return await create_report(request=request, db=db, item_id=item_id, reason=reason, note=note, image_index=image_index)
+    return await create_report(
+        request=request,
+        db=db,
+        item_id=item_id,
+        reason=reason,
+        note=note,
+        image_index=image_index,
+    )
 
 
-# صفحة إدارة البلاغات (إن وُجد القالب)
+# =========================
+# صفحة إدارة البلاغات (اختيارية)
+# =========================
 @router.get("/admin/reports")
 def admin_reports_page(request: Request, db: Session = Depends(get_db)):
+    """
+    يعرض قالب admin/reports.html إن كان موجودًا؛ وإلا يرجع JSON بسيط.
+    الوصول مقيّد للأدمن/المود.
+    """
     sess = request.session.get("user")
-    if not sess or not (str(sess.get("role","")).lower() == "admin" or bool(sess.get("is_mod"))):
+    if not sess or not (str(sess.get("role", "")).lower() == "admin" or bool(sess.get("is_mod"))):
         return RedirectResponse(url="/login", status_code=303)
+
     try:
         if Report is None:
             raise RuntimeError("Report model missing")
-        reports = (
-            db.query(Report)
-            .order_by(getattr(Report, "created_at").desc() if hasattr(Report, "created_at") else None)
-            .limit(50)
-            .all()
-        )
+        # ترتيب تنازلي لو حقل created_at متاح
+        order_expr = getattr(Report, "created_at", None)
+        q = db.query(Report)
+        if order_expr is not None:
+            q = q.order_by(order_expr.desc())
+        reports = q.limit(50).all()
         return request.app.templates.TemplateResponse(
             "admin/reports.html",
-            {"request": request, "title": "البلاغات", "reports": reports, "session_user": sess},
+            {
+                "request": request,
+                "title": "البلاغات",
+                "reports": reports,
+                "session_user": sess,
+            },
         )
     except Exception:
         try:
@@ -305,3 +349,53 @@ def admin_reports_page(request: Request, db: Session = Depends(get_db)):
         except Exception:
             count = 0
         return JSONResponse({"ok": True, "message": "Reports admin view is not installed yet.", "count": count})
+
+
+# =========================
+# مسار تشخيصي سريع: /reports/_diag
+# =========================
+@router.get("/reports/_diag")
+def reports_diag(request: Request, db: Session = Depends(get_db)):
+    """
+    يُفيد في التشخيص: يفحص وجود الجدول والأعمدة ويحاول إدراج سجلّ تجريبي.
+    فعّل DEBUG_REPORTS=1 لإتاحة الإدراج التجريبي.
+    """
+    info: Dict[str, Any] = {"ok": True}
+
+    # هل المستخدم داخل؟
+    info["logged_in"] = bool(request.session.get("user"))
+
+    # هل الجدول موجود؟
+    try:
+        with engine.begin() as conn:
+            res = conn.exec_driver_sql(
+                "SELECT column_name FROM information_schema.columns WHERE table_name='reports'"
+            ).all()
+        cols = [r[0] for r in res] if res else []
+        info["table_exists"] = bool(cols)
+        info["columns"] = cols
+    except Exception as e:
+        info["table_exists"] = False
+        info["error_list_columns"] = str(e)
+
+    # محاولة إدراج سجل تجريبي (اختياري)
+    do_insert = os.getenv("DEBUG_REPORTS", "0") == "1"
+    if do_insert and Report is not None and info.get("table_exists"):
+        try:
+            u = request.session.get("user") or {"id": 1}
+            r = _build_report_instance(
+                reporter_id=int(u["id"]),
+                item_id=1,
+                reason="diag-test",
+                note=None,
+                image_index=None,
+                payload=None,
+            )
+            db.add(r)
+            db.commit()
+            info["insert_test"] = "ok"
+        except Exception as e:
+            db.rollback()
+            info["insert_error"] = str(e)
+
+    return JSONResponse(info)
