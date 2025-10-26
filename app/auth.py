@@ -301,26 +301,37 @@ def register_post(
 
 # ============ Email Verify Wall ============
 # ============ Email Verify Wall ============
+# ============ Email Verify Wall ============
 @router.get("/verify-email")
-def verify_email_page(request: Request, email: str = ""):
+def verify_email_page(request: Request, db: Session = Depends(get_db), email: str = ""):
     """
-    صفحة تُظهر للمستخدم أنه يجب عليه تفعيل بريده أولاً.
-    الأدمن أو أي مستخدم is_verified=True يُعاد توجيهه فورًا للصفحة الرئيسية.
+    لو فيه جلسة ومستخدم أدمن أو حسابه مفعّل → رجّعه للواجهة.
+    ولو مافيه جلسة لكن جاي email في الرابط → نفحص من قاعدة البيانات ونقرر.
     """
     u = request.session.get("user") or {}
+
+    # 1) عند وجود جلسة
     if (u.get("role", "").lower() == "admin") or bool(u.get("is_verified", False)):
         return RedirectResponse("/", status_code=303)
 
+    # 2) بدون جلسة: جرّب نتحقق عبر البريد لو موجود
+    e = (email or "").strip().lower()
+    if e:
+        db_user = db.query(User).filter(User.email == e).first()
+        if db_user:
+            if (str(getattr(db_user, "role", "")).lower() == "admin") or bool(getattr(db_user, "is_verified", False)):
+                return RedirectResponse("/", status_code=303)
+
+    # 3) لو ما تحقق أي شرط، اعرض صفحة التحقق
     return request.app.templates.TemplateResponse(
         "verify_email.html",
         {
             "request": request,
             "title": "تحقق من بريدك",
-            "email": (email or "").strip(),
+            "email": e,
             "session_user": u,
         },
     )
-
 # ============ Password Reset (2) ============
 # 1) صفحة طلب الإيميل
 @router.get("/forgot")

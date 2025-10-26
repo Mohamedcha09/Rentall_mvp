@@ -74,6 +74,19 @@ from .reports import router as reports_router                 # /reports/*
 from .admin_reports import router as admin_reports_router     # /admin/reports/*
 
 app = FastAPI()
+@app.get("/whoami")
+def whoami(request: Request, db: Session = Depends(get_db)):
+    sess = request.session.get("user")
+    info = {"session_user": sess or None}
+    if not sess:
+        return info
+    return {
+        "id": sess.get("id"),
+        "email": sess.get("email"),
+        "role": sess.get("role"),
+        "is_verified": bool(sess.get("is_verified")),
+        "status": sess.get("status"),
+    }
 
 # =========================
 # جلسات
