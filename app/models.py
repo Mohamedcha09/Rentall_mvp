@@ -12,13 +12,32 @@ from .database import Base, engine
 # Helpers مع SQLite
 # -------------------------
 def _has_column(table: str, col: str) -> bool:
+    # تحديد نوع المحرك
+    try:
+        backend = getattr(engine.url, "get_backend_name", lambda: "")()
+    except Exception:
+        backend = getattr(getattr(engine, "dialect", None), "name", "") or ""
+
     try:
         with engine.begin() as conn:
-            rows = conn.exec_driver_sql(f"PRAGMA table_info('{table}')").all()
-        return any(r[1] == col for r in rows)
+            if str(backend).startswith("postgres"):
+                # الاستعلام الصحيح في Postgres
+                rows = conn.exec_driver_sql(
+                    """
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_schema='public' AND table_name=:t
+                    """,
+                ).mappings().params(t=table).all()
+                cols = [r["column_name"] for r in rows]
+                return col in cols
+            else:
+                # SQLite
+                rows = conn.exec_driver_sql(f"PRAGMA table_info('{table}')").all()
+                return any(r[1] == col for r in rows)
     except Exception:
-        # على Postgres أو لو فشل الفحص، نُرجع True لمنع إنشاء column_property خاطئ
-        return True
+        # لو فشل الفحص نرجّع False حتى لا يتصرّف ORM كأن العمود موجود
+        return False
 
 
 def col_or_literal(table: str, name: str, type_, **kwargs):
