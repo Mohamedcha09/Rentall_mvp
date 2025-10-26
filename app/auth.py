@@ -303,33 +303,39 @@ def register_post(
 # ============ Email Verify Wall ============
 # ============ Email Verify Wall ============
 @router.get("/verify-email")
-def verify_email_page(request: Request, db: Session = Depends(get_db), email: str = ""):
+def verify_email_page(request: Request, email: str = "", db: Session = Depends(get_db)):
     """
-    لو فيه جلسة ومستخدم أدمن أو حسابه مفعّل → رجّعه للواجهة.
-    ولو مافيه جلسة لكن جاي email في الرابط → نفحص من قاعدة البيانات ونقرر.
+    صفحة التحقق:
+    - لو المستخدم مسجّل جلسة وكان أدمن → تحويل للصفحة الرئيسية.
+    - لو المستخدم مسجّل جلسة وكان is_verified=True → تحويل للصفحة الرئيسية.
+    - لو ما فيه جلسة لكن تم تمرير email لإدمن أو لحساب مفعّل في DB → تحويل للصفحة الرئيسية.
+    - غير كذا نعرض صفحة التحقق العادية.
     """
+    # 1) لو عندك جلسة:
     u = request.session.get("user") or {}
+    if u:
+        if u.get("role", "").lower() == "admin" or bool(u.get("is_verified", False)):
+            return RedirectResponse("/", status_code=303)
 
-    # 1) عند وجود جلسة
-    if (u.get("role", "").lower() == "admin") or bool(u.get("is_verified", False)):
-        return RedirectResponse("/", status_code=303)
-
-    # 2) بدون جلسة: جرّب نتحقق عبر البريد لو موجود
-    e = (email or "").strip().lower()
-    if e:
-        db_user = db.query(User).filter(User.email == e).first()
-        if db_user:
-            if (str(getattr(db_user, "role", "")).lower() == "admin") or bool(getattr(db_user, "is_verified", False)):
+    # 2) بدون جلسة: افحص DB لو فيه بريد بالكويري
+    em = (email or "").strip().lower()
+    if em:
+        user = db.query(User).filter(User.email == em).first()
+        if user:
+            role = (getattr(user, "role", "") or "").lower()
+            is_verified = bool(getattr(user, "is_verified", False))
+            # أي أدمن، أو أي حساب مفعّل → رجّعه للصفحة الرئيسية
+            if role == "admin" or is_verified:
                 return RedirectResponse("/", status_code=303)
 
-    # 3) لو ما تحقق أي شرط، اعرض صفحة التحقق
+    # 3) اعرض صفحة التحقق لباقي الحالات
     return request.app.templates.TemplateResponse(
         "verify_email.html",
         {
             "request": request,
             "title": "تحقق من بريدك",
-            "email": e,
-            "session_user": u,
+            "email": em,
+            "session_user": u or None,
         },
     )
 # ============ Password Reset (2) ============
