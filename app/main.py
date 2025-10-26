@@ -98,6 +98,8 @@ HTTPS_ONLY_COOKIES = os.getenv(
     "1" if SITE_URL.startswith("https") else "0"
 ) == "1"
 
+COOKIE_DOMAIN = os.getenv("COOKIE_DOMAIN") or "sevor.net"
+
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.environ.get("SECRET_KEY", "dev-secret"),
