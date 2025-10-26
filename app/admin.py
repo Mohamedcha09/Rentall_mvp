@@ -670,6 +670,8 @@ def disable_mod(user_id: int, request: Request, db: Session = Depends(get_db)):
             pass
 
     return RedirectResponse(url="/admin", status_code=303)
+
+    
 # ---------------------------
 # ▴▴ END ADD ▴▴
 # ---------------------------
