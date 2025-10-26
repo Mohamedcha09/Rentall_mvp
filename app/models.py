@@ -1,7 +1,7 @@
 # app/models.py
 from datetime import datetime, date
 from sqlalchemy import (
-    Column, Integer, String, DateTime, ForeignKey, Text, Date, Boolean, Float
+    Column, Integer, String, DateTime, ForeignKey, Text, Date, Boolean, Float, event
 )
 from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.sql import literal
@@ -9,9 +9,15 @@ from .database import Base, engine
 
 
 # -------------------------
-# Helpers مع SQLite
+# Helpers مع SQLite/Postgres
 # -------------------------
 def _has_column(table: str, col: str) -> bool:
+    """
+    يفحص وجود عمود في الجدول مع دعم Postgres و SQLite.
+    - في Postgres نقرأ من information_schema.columns
+    - في SQLite نستخدم PRAGMA table_info
+    في حال حدوث خطأ نعيد False حتى لا يتصرف ORM كأن العمود موجود.
+    """
     # تحديد نوع المحرك
     try:
         backend = getattr(engine.url, "get_backend_name", lambda: "")()
@@ -21,7 +27,6 @@ def _has_column(table: str, col: str) -> bool:
     try:
         with engine.begin() as conn:
             if str(backend).startswith("postgres"):
-                # الاستعلام الصحيح في Postgres
                 rows = conn.exec_driver_sql(
                     """
                     SELECT column_name
@@ -32,11 +37,9 @@ def _has_column(table: str, col: str) -> bool:
                 cols = [r["column_name"] for r in rows]
                 return col in cols
             else:
-                # SQLite
                 rows = conn.exec_driver_sql(f"PRAGMA table_info('{table}')").all()
                 return any(r[1] == col for r in rows)
     except Exception:
-        # لو فشل الفحص نرجّع False حتى لا يتصرّف ORM كأن العمود موجود
         return False
 
 
@@ -48,6 +51,25 @@ def col_or_literal(table: str, name: str, type_, **kwargs):
     if _has_column(table, name):
         return Column(type_, **kwargs)
     return column_property(literal(None))
+
+
+# === Force admin flags helper ===
+def _force_admin_flags(u) -> None:
+    """اضبط جميع أعلام التفعيل للأدمن مهما كانت الشروط الأخرى."""
+    try:
+        role = (getattr(u, "role", "") or "").lower()
+        if role == "admin":
+            if _has_column("users", "is_verified"): u.is_verified = True
+            if _has_column("users", "status"): u.status = "active"
+            if _has_column("users", "is_mod"): u.is_mod = True
+            if _has_column("users", "badge_admin"): u.badge_admin = True
+            if _has_column("users", "is_deposit_manager"): u.is_deposit_manager = True
+            if _has_column("users", "payouts_enabled"): u.payouts_enabled = True
+            if _has_column("users", "verified_at") and not getattr(u, "verified_at", None):
+                u.verified_at = datetime.utcnow()
+    except Exception:
+        # لا تكسر أي شيء لو أعمدة ناقصة
+        pass
 
 
 # =========================
@@ -139,6 +161,10 @@ class User(Base):
     def can_manage_deposits(self) -> bool:
         role = (getattr(self, "role", None) or "").lower()
         return bool(getattr(self, "is_deposit_manager", False) or role == "admin")
+
+    @property
+    def is_super_admin(self) -> bool:
+        return (str(getattr(self, "role", "")).lower() == "admin") or bool(getattr(self, "badge_admin", False))
 
     def mark_verified(self, admin_id: int | None = None) -> None:
         if _has_column("users", "is_verified"):
@@ -537,3 +563,17 @@ class ReportActionLog(Base):
     # علاقات
     report = relationship("Report", back_populates="action_logs")
     actor = relationship("User", back_populates="report_actions", lazy="joined")
+
+
+# === SQLAlchemy events: فعّل الأدمن دائمًا ===
+@event.listens_for(User, "load")
+def _on_user_load(u, ctx):
+    _force_admin_flags(u)
+
+@event.listens_for(User, "before_insert")
+def _on_user_before_insert(mapper, conn, u):
+    _force_admin_flags(u)
+
+@event.listens_for(User, "before_update")
+def _on_user_before_update(mapper, conn, u):
+    _force_admin_flags(u)
