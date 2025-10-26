@@ -305,39 +305,27 @@ def register_post(
 @router.get("/verify-email")
 def verify_email_page(request: Request, email: str = "", db: Session = Depends(get_db)):
     """
-    صفحة التحقق:
-    - لو المستخدم مسجّل جلسة وكان أدمن → تحويل للصفحة الرئيسية.
-    - لو المستخدم مسجّل جلسة وكان is_verified=True → تحويل للصفحة الرئيسية.
-    - لو ما فيه جلسة لكن تم تمرير email لإدمن أو لحساب مفعّل في DB → تحويل للصفحة الرئيسية.
-    - غير كذا نعرض صفحة التحقق العادية.
+    لو البريد الموجود في الكويري هو أدمن أو حسابه مفعّل -> رجّعه للصفحة الرئيسية حتى بدون جلسة.
+    غير كذا اعرض صفحة التحقق.
     """
-    # 1) لو عندك جلسة:
+    # لو فيه جلسة ومفعّل/أدمن -> للصفحة الرئيسية
     u = request.session.get("user") or {}
-    if u:
-        if u.get("role", "").lower() == "admin" or bool(u.get("is_verified", False)):
-            return RedirectResponse("/", status_code=303)
+    if u and (u.get("role","").lower() == "admin" or bool(u.get("is_verified"))):
+        return RedirectResponse("/", status_code=303)
 
-    # 2) بدون جلسة: افحص DB لو فيه بريد بالكويري
     em = (email or "").strip().lower()
     if em:
         user = db.query(User).filter(User.email == em).first()
         if user:
-            role = (getattr(user, "role", "") or "").lower()
-            is_verified = bool(getattr(user, "is_verified", False))
-            # أي أدمن، أو أي حساب مفعّل → رجّعه للصفحة الرئيسية
-            if role == "admin" or is_verified:
+            if (getattr(user, "role", "") or "").lower() == "admin" or bool(getattr(user, "is_verified", False)):
                 return RedirectResponse("/", status_code=303)
 
-    # 3) اعرض صفحة التحقق لباقي الحالات
+    # باقي الحالات: اعرض الصفحة
     return request.app.templates.TemplateResponse(
         "verify_email.html",
-        {
-            "request": request,
-            "title": "تحقق من بريدك",
-            "email": em,
-            "session_user": u or None,
-        },
+        {"request": request, "title": "تحقق من بريدك", "email": em, "session_user": u or None},
     )
+
 # ============ Password Reset (2) ============
 # 1) صفحة طلب الإيميل
 @router.get("/forgot")
@@ -490,3 +478,20 @@ def reset_post(
 def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/", status_code=303)
+
+
+@router.get("/dev/admin-login")
+def dev_admin_login(request: Request, db: Session = Depends(get_db)):
+    # إدخال سريع للأدمن لاختبار الجلسات (احذِفه بعد ما تخلّص)
+    user = db.query(User).filter(User.email == "admin@example.com").first()
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    # فرض تفعيل كامل
+    user.is_verified = True
+    user.status = "active"
+    db.add(user); db.commit(); db.refresh(user)
+    request.session["user"] = {
+        "id": user.id, "email": user.email, "role": user.role,
+        "is_verified": True, "status": "active"
+    }
+    return RedirectResponse("/", status_code=303)
