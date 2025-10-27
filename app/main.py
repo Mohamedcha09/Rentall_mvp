@@ -87,10 +87,11 @@ def whoami(request: Request, db: Session = Depends(get_db)):
     }
 
 # -----------------------------------------------------------------------------
-# الجلسات (الكوكيز آمنة على الإنتاج فقط)
+# الجلسات (الكوكيز آمنة على الإنتاج فقط) + ضبط الدومين
 # -----------------------------------------------------------------------------
 SITE_URL = os.environ.get("SITE_URL", "")
-HTTPS_ONLY_COOKIES = os.getenv("HTTPS_ONLY_COOKIES", "1" if SITE_URL.startswith("https") else "0") == "1"
+COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN", "sevor.net")   # ← مهم جدًا
+HTTPS_ONLY_COOKIES = bool(int(os.environ.get("HTTPS_ONLY_COOKIES", "1" if SITE_URL.startswith("https") else "0")))
 
 app.add_middleware(
     SessionMiddleware,
@@ -99,7 +100,26 @@ app.add_middleware(
     same_site="lax",
     https_only=HTTPS_ONLY_COOKIES,
     max_age=60 * 60 * 24 * 30,
+    domain=COOKIE_DOMAIN,  # ← يضمن أن الكوكيز تُكتَب لدومين sevor.net
 )
+
+# -----------------------------------------------------------------------------
+# فرض التحويل إلى الدومين الأساسي (sevor.net) لمنع ضياع الجلسة
+# -----------------------------------------------------------------------------
+@app.middleware("http")
+async def force_primary_domain(request: Request, call_next):
+    try:
+        host = request.headers.get("host", "")
+        primary = os.environ.get("COOKIE_DOMAIN", "sevor.net")
+        # أي دومين غير الأساسي يتحوّل 301 إلى sevor.net مع نفس المسار والكويري
+        if host and host != primary:
+            new_url = f"https://{primary}{request.url.path}"
+            if request.url.query:
+                new_url += f"?{request.url.query}"
+            return RedirectResponse(new_url, status_code=301)
+    except Exception:
+        pass
+    return await call_next(request)
 
 # -----------------------------------------------------------------------------
 # Static / Templates / Uploads

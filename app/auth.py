@@ -1,7 +1,9 @@
+# app/auth.py
 from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
+from urllib.parse import urlencode
 import os, secrets, shutil
 
 from .database import get_db
@@ -20,17 +22,22 @@ from .email_service import send_email
 # ===== روابط موقّعة =====
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
+# ==== بيئة / روابط أساسية ====
+SITE_URL = (os.getenv("SITE_URL") or "").rstrip("/")
 BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
 
 router = APIRouter()
 
-# مجلدات الرفع العامة
-UPLOADS_ROOT = os.environ.get("UPLOADS_DIR", "uploads")
+# توحيد مجلدات الرفع مع main.py (على مستوى جذر المشروع)
+APP_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+UPLOADS_ROOT = os.environ.get("UPLOADS_DIR", os.path.join(APP_ROOT, "uploads"))
 IDS_DIR = os.path.join(UPLOADS_ROOT, "ids")
 AVATARS_DIR = os.path.join(UPLOADS_ROOT, "avatars")
 os.makedirs(IDS_DIR, exist_ok=True)
 os.makedirs(AVATARS_DIR, exist_ok=True)
 
+# ===== helpers =====
 def _normalize_form_password(pwd: str) -> str:
     """قص بسيط لإدخال كلمة السر لتفادي كلمات سر عملاقة."""
     if pwd is None:
@@ -48,21 +55,45 @@ def _save_any(fileobj: UploadFile | None, folder: str, allow_exts: list[str]) ->
     fpath = os.path.join(folder, fname)
     with open(fpath, "wb") as f:
         shutil.copyfileobj(fileobj.file, f)
-    return fpath.replace("\\", "/")
+    # ارجع مسارًا يبدأ بـ / ليعمل مع StaticFiles("/uploads", ...)
+    rel = os.path.relpath(fpath, APP_ROOT).replace("\\", "/")
+    return "/" + rel if not rel.startswith("/") else rel
 
 def _signer() -> URLSafeTimedSerializer:
-    secret = os.getenv("SECRET_KEY", "dev-secret")
-    return URLSafeTimedSerializer(secret_key=secret, salt="email-verify-v1")
+    return URLSafeTimedSerializer(secret_key=SECRET_KEY, salt="email-verify-v1")
 
-# ✅ مُوقّع خاص بإعادة التعيين (ملح مختلف)
 def _pwd_signer() -> URLSafeTimedSerializer:
-    secret = os.getenv("SECRET_KEY", "dev-secret")
-    return URLSafeTimedSerializer(secret_key=secret, salt="pwd-reset-v1")
+    return URLSafeTimedSerializer(secret_key=SECRET_KEY, salt="pwd-reset-v1")
 
+def _maybe_redirect_canonical(request: Request) -> RedirectResponse | None:
+    """
+    لو SITE_URL مضبوط وهو مختلف عن الدومين الحالي، حوّل لنفس الـ path على الدومين الأساسي.
+    """
+    try:
+        if not SITE_URL:
+            return None
+        # لو نفس الهوست، لا تعمل شيء
+        current_host = request.url.hostname or ""
+        target_host = SITE_URL.replace("https://", "").replace("http://", "").split("/")[0]
+        if current_host == target_host:
+            return None
+        # ابنِ رابط التحويل بنفس المسار والكويري
+        path = request.url.path
+        query = request.url.query or ""
+        redirect_to = f"{SITE_URL}{path}"
+        if query:
+            redirect_to += f"?{query}"
+        return RedirectResponse(url=redirect_to, status_code=308)
+    except Exception:
+        return None
 
 # ============ Login ============
 @router.get("/login")
 def login_get(request: Request):
+    # توجيه للدومين الأساسي لو لزم
+    r = _maybe_redirect_canonical(request)
+    if r:
+        return r
     return request.app.templates.TemplateResponse(
         "auth_login.html",
         {"request": request, "title": "دخول", "session_user": request.session.get("user")}
@@ -83,18 +114,23 @@ def login_post(
     if not ok:
         return RedirectResponse(url="/login?err=1", status_code=303)
 
-    # ✅ السماح للأدمن بالدخول فورًا + تفعيل كامل تلقائيًا
-    if str(getattr(user, "role", "")).lower() == "admin":
+    # ✅ الأدمن: فعّل كاملًا دائمًا
+    role = str(getattr(user, "role", "") or "").lower()
+    if role == "admin":
         changed = False
         if not bool(getattr(user, "is_verified", False)):
             user.is_verified = True
-            user.verified_at = datetime.utcnow()
+            try:
+                user.verified_at = datetime.utcnow()
+            except Exception:
+                pass
             changed = True
         # اتساق الحالة
-        if (getattr(user, "status", "pending") or "").lower() != "active":
+        if (getattr(user, "status", "pending") or "").lower() not in ("active", "approved"):
+            # اختر "active" كحالة دخول
             user.status = "active"
             changed = True
-        # (اختياري) اجعله مدير ودائع تلقائيًا إن كان الحقل موجود
+        # (اختياري) جعله مدير ودائع تلقائيًا إن كان الحقل موجود
         try:
             if not bool(getattr(user, "is_deposit_manager", False)):
                 user.is_deposit_manager = True
@@ -105,31 +141,39 @@ def login_post(
             db.add(user)
             db.commit()
             db.refresh(user)
-
     else:
-        # 🧱 المستخدمون العاديون: ما زال مطلوب تحقق البريد
+        # 🧱 المستخدم العادي: يتطلب تحقق البريد
         if not bool(getattr(user, "is_verified", False)):
-            return RedirectResponse(url=f"/verify-email?email={email}", status_code=303)
+            # اعد توجيه صفحة verify-email مع تمرير البريد
+            query = urlencode({"email": email})
+            return RedirectResponse(url=f"/verify-email?{query}", status_code=303)
 
     # ✅ أنشئ الجلسة وسجّل الدخول
     request.session["user"] = {
         "id": user.id,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
+        "first_name": getattr(user, "first_name", ""),
+        "last_name": getattr(user, "last_name", ""),
         "email": user.email,
-        "phone": user.phone,
+        "phone": getattr(user, "phone", ""),
         "role": user.role,
-        "status": user.status,
-        "is_verified": bool(user.is_verified),
-        "avatar_path": user.avatar_path or None,
+        "status": getattr(user, "status", "active"),
+        "is_verified": bool(getattr(user, "is_verified", False)),
+        "avatar_path": getattr(user, "avatar_path", None) or None,
+        # أعلام إضافية
         "is_deposit_manager": bool(getattr(user, "is_deposit_manager", False)),
     }
+    # لو SITE_URL مضبوط ودخلت من دومين آخر، رجّعه للدومين الأساسي
+    r = _maybe_redirect_canonical(request)
+    if r:
+        return r
     return RedirectResponse(url="/", status_code=303)
-
 
 # ============ Register ============
 @router.get("/register")
 def register_get(request: Request):
+    r = _maybe_redirect_canonical(request)
+    if r:
+        return r
     return request.app.templates.TemplateResponse(
         "auth_register.html",
         {"request": request, "title": "تسجيل", "session_user": request.session.get("user")}
@@ -286,7 +330,6 @@ def register_post(
     # ✅ نرسل لصفحة التحقق من البريد
     return RedirectResponse(url=f"/verify-email?email={u.email}&sent=1", status_code=303)
 
-
 # ============ Email Verify Wall ============
 @router.get("/verify-email")
 def verify_email_page(request: Request, email: str = "", db: Session = Depends(get_db)):
@@ -294,6 +337,10 @@ def verify_email_page(request: Request, email: str = "", db: Session = Depends(g
     لو البريد الموجود في الكويري هو أدمن أو حسابه مفعّل -> رجّعه للصفحة الرئيسية حتى بدون جلسة.
     غير كذا اعرض صفحة التحقق.
     """
+    r = _maybe_redirect_canonical(request)
+    if r:
+        return r
+
     u = request.session.get("user") or {}
     role = str((u or {}).get("role") or "").lower()
     isv  = bool((u or {}).get("is_verified"))
@@ -302,6 +349,7 @@ def verify_email_page(request: Request, email: str = "", db: Session = Depends(g
     if role == "admin" or isv:
         return RedirectResponse("/", status_code=303)
 
+    # لو جالك ايميل بالكويري وتبين أنه verified/admin في القاعدة -> رجّعه للبيت
     em = (email or "").strip().lower()
     if em:
         user = db.query(User).filter(User.email == em).first()
@@ -324,6 +372,10 @@ def verify_from_email(request: Request, token: str = "", db: Session = Depends(g
     يفكّ توقيع التوكن ويُفعّل الحساب مباشرة: is_verified=True و status=active
     ثم يوجّه للصفحة الرئيسية.
     """
+    r = _maybe_redirect_canonical(request)
+    if r:
+        return r
+
     if not token:
         return RedirectResponse(url="/verify-email", status_code=303)
     try:
@@ -341,7 +393,10 @@ def verify_from_email(request: Request, token: str = "", db: Session = Depends(g
 
     if not bool(getattr(user, "is_verified", False)):
         user.is_verified = True
-        user.verified_at = datetime.utcnow()
+        try:
+            user.verified_at = datetime.utcnow()
+        except Exception:
+            pass
     if (getattr(user, "status", "pending") or "").lower() != "active":
         user.status = "active"
     db.add(user)
@@ -351,22 +406,24 @@ def verify_from_email(request: Request, token: str = "", db: Session = Depends(g
     # سجّل الجلسة مباشرةً
     request.session["user"] = {
         "id": user.id,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
+        "first_name": getattr(user, "first_name", ""),
+        "last_name": getattr(user, "last_name", ""),
         "email": user.email,
-        "phone": user.phone,
+        "phone": getattr(user, "phone", ""),
         "role": user.role,
-        "status": user.status,
+        "status": getattr(user, "status", "active"),
         "is_verified": True,
-        "avatar_path": user.avatar_path or None,
+        "avatar_path": getattr(user, "avatar_path", None) or None,
         "is_deposit_manager": bool(getattr(user, "is_deposit_manager", False)),
     }
     return RedirectResponse("/", status_code=303)
 
-
 # ============ Password Reset ============
 @router.get("/forgot")
 def forgot_get(request: Request):
+    r = _maybe_redirect_canonical(request)
+    if r:
+        return r
     return request.app.templates.TemplateResponse(
         "auth_forgot.html",
         {"request": request, "title": "إعادة تعيين كلمة المرور", "session_user": request.session.get("user")}
@@ -438,6 +495,9 @@ def forgot_post(request: Request, db: Session = Depends(get_db), email: str = Fo
 # 3) صفحة إدخال كلمة مرور جديدة (من خلال الرابط)
 @router.get("/reset-password")
 def reset_get(request: Request, token: str = ""):
+    r = _maybe_redirect_canonical(request)
+    if r:
+        return r
     if not token:
         return RedirectResponse(url="/forgot", status_code=303)
     return request.app.templates.TemplateResponse(
@@ -504,13 +564,15 @@ def reset_post(
 
     return RedirectResponse(url="/login?reset_ok=1", status_code=303)
 
-
 # ============ Logout ============
 @router.get("/logout")
 def logout(request: Request):
     request.session.clear()
+    # بعد الخروج: حوّل للدومين الأساسي لو لازم
+    r = _maybe_redirect_canonical(request)
+    if r:
+        return r
     return RedirectResponse(url="/", status_code=303)
-
 
 @router.get("/dev/admin-login")
 def dev_admin_login(request: Request, db: Session = Depends(get_db)):
@@ -525,4 +587,7 @@ def dev_admin_login(request: Request, db: Session = Depends(get_db)):
         "id": user.id, "email": user.email, "role": user.role,
         "is_verified": True, "status": "active"
     }
+    r = _maybe_redirect_canonical(request)
+    if r:
+        return r
     return RedirectResponse("/", status_code=303)
