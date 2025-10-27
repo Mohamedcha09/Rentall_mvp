@@ -295,21 +295,27 @@ def verify_email_page(request: Request, email: str = "", db: Session = Depends(g
     غير كذا اعرض صفحة التحقق.
     """
     u = request.session.get("user") or {}
-    if u and (u.get("role", "").lower() == "admin" or bool(u.get("is_verified"))):
+    role = str((u or {}).get("role") or "").lower()
+    isv  = bool((u or {}).get("is_verified"))
+
+    # لو فيه جلسة ومفعّل/أدمن -> للصفحة الرئيسية
+    if role == "admin" or isv:
         return RedirectResponse("/", status_code=303)
 
     em = (email or "").strip().lower()
     if em:
         user = db.query(User).filter(User.email == em).first()
         if user:
-            if (getattr(user, "role", "") or "").lower() == "admin" or bool(getattr(user, "is_verified", False)):
+            db_role = str(getattr(user, "role", "") or "").lower()
+            db_isv  = bool(getattr(user, "is_verified", False))
+            if db_role == "admin" or db_isv:
                 return RedirectResponse("/", status_code=303)
 
+    # باقي الحالات: اعرض الصفحة
     return request.app.templates.TemplateResponse(
         "verify_email.html",
         {"request": request, "title": "تحقق من بريدك", "email": em, "session_user": u or None},
     )
-
 
 # ============ تفعيل الحساب عبر الرابط ============
 @router.get("/activate/verify")
