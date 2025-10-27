@@ -12,11 +12,14 @@
           {% for r in pending %}
             <a href="#" class="list-group-item list-group-item-action"
                data-report='{{ {
-                 "id": r.id, "item_id": getattr(r,"item_id", None), "reason": r.reason,
-                 "note": getattr(r,"note",""), "image_index": getattr(r,"image_index", None),
-                 "reporter_id": getattr(r,"reporter_id", None),
-                 "status": r.status or "pending",
-                 "created_at": (r.created_at.isoformat() if getattr(r,"created_at",None) else "")
+                 "id": r.id,
+                 "item_id": r.item_id,
+                 "reason": r.reason,
+                 "note": r.note or "",
+                 "image_index": r.image_index,
+                 "reporter_id": r.reporter_id,
+                 "status": (r.status or "pending"),
+                 "created_at": (r.created_at.isoformat() if r.created_at else "")
                } | tojson | safe }}'>
               🚩 #{{ r.id }} — {{ 'صورة #' ~ r.image_index if r.image_index is not none else 'منشور' }} #{{ r.item_id }}
               <div class="small text-muted">السبب: {{ r.reason }}</div>
@@ -36,12 +39,15 @@
           {% for r in processed %}
             <a href="#" class="list-group-item list-group-item-action"
                data-report='{{ {
-                 "id": r.id, "item_id": getattr(r,"item_id", None), "reason": r.reason,
-                 "note": getattr(r,"note",""), "image_index": getattr(r,"image_index", None),
-                 "reporter_id": getattr(r,"reporter_id", None),
-                 "status": r.status or "closed",
-                 "tag": getattr(r,"tag",""),
-                 "updated_at": (r.updated_at.isoformat() if getattr(r,"updated_at",None) else (r.created_at.isoformat() if getattr(r,"created_at",None) else ""))
+                 "id": r.id,
+                 "item_id": r.item_id,
+                 "reason": r.reason,
+                 "note": r.note or "",
+                 "image_index": r.image_index,
+                 "reporter_id": r.reporter_id,
+                 "status": (r.status or "closed"),
+                 "tag": r.tag or "",
+                 "updated_at": (r.updated_at.isoformat() if r.updated_at else (r.created_at.isoformat() if r.created_at else ""))
                } | tojson | safe }}'>
               ✅ #{{ r.id }} — {{ 'صورة #' ~ r.image_index if r.image_index is not none else 'منشور' }} #{{ r.item_id }}
               <div class="small text-muted">
@@ -104,9 +110,7 @@
   let current = null;
 
   function setDecisionAction(form, action){
-    // القرارات: /admin/reports/{id}/decision
     form.action = '/admin/reports/' + current.id + '/decision';
-    // حقن action
     const old = form.querySelector('input[name="action"]');
     if (old) old.remove();
     const a = document.createElement('input');
@@ -115,7 +119,6 @@
   }
 
   function setReopenAction(form){
-    // إعادة فتح: /admin/reports/{id}/reopen
     form.action = '/admin/reports/' + current.id + '/reopen';
     const old = form.querySelector('input[name="action"]');
     if (old) old.remove();
@@ -129,10 +132,8 @@
       '<div><b>السبب:</b> '+(r.reason||'')+'</div>'+
       (r.note?'<div class="text-muted small">ملاحظة: '+r.note+'</div>':'');
 
-    // زر عرض المنشور
     viewItem.href = '/items/' + (r.item_id || '');
 
-    // إظهار أي نموذج؟
     const st = (r.status || '').toLowerCase();
     const isPending = !st || st==='pending' || st==='open';
     decForm.style.display = isPending ? '' : 'none';
@@ -152,7 +153,6 @@
   hookList(document.getElementById('pendingList'));
   hookList(document.getElementById('doneList'));
 
-  // إرسال قرارات البلاغ المعلّق
   decForm?.addEventListener('submit', function(e){
     e.preventDefault();
     const btn = e.submitter;
@@ -162,7 +162,6 @@
     decForm.submit();
   });
 
-  // إرسال استرجاع/إعادة فتح
   resForm?.addEventListener('submit', function(e){
     e.preventDefault();
     const btn = e.submitter;
@@ -170,7 +169,7 @@
     if (act === 'reopen'){
       setReopenAction(resForm);
     }else{
-      setDecisionAction(resForm, act); // restore_item
+      setDecisionAction(resForm, act);
     }
     resForm.submit();
   });
