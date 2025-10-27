@@ -1,4 +1,3 @@
-# app/auth.py
 from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -87,12 +86,13 @@ def login_post(
     # ✅ السماح للأدمن بالدخول فورًا + تفعيل كامل تلقائيًا
     if str(getattr(user, "role", "")).lower() == "admin":
         changed = False
-        # فعّل البريد والحالة إن لم يكونا مفعّلين
         if not bool(getattr(user, "is_verified", False)):
             user.is_verified = True
+            user.verified_at = datetime.utcnow()
             changed = True
-        if (getattr(user, "status", "pending") or "").lower() != "approved":
-            user.status = "approved"
+        # اتساق الحالة
+        if (getattr(user, "status", "pending") or "").lower() != "active":
+            user.status = "active"
             changed = True
         # (اختياري) اجعله مدير ودائع تلقائيًا إن كان الحقل موجود
         try:
@@ -110,9 +110,6 @@ def login_post(
         # 🧱 المستخدمون العاديون: ما زال مطلوب تحقق البريد
         if not bool(getattr(user, "is_verified", False)):
             return RedirectResponse(url=f"/verify-email?email={email}", status_code=303)
-        # (اختياري) لو تريد منع الدخول قبل موافقة الأدمن على الوثائق
-        # if (getattr(user, "status", "pending") or "").lower() != "approved":
-        #     return RedirectResponse(url="/pending-approval", status_code=303)
 
     # ✅ أنشئ الجلسة وسجّل الدخول
     request.session["user"] = {
@@ -125,10 +122,10 @@ def login_post(
         "status": user.status,
         "is_verified": bool(user.is_verified),
         "avatar_path": user.avatar_path or None,
-        # لو أضفت أعلامًا أخرى تظهر في الواجهة (اختياري)
         "is_deposit_manager": bool(getattr(user, "is_deposit_manager", False)),
     }
     return RedirectResponse(url="/", status_code=303)
+
 
 # ============ Register ============
 @router.get("/register")
@@ -220,7 +217,7 @@ def register_post(
     db.add(d)
     db.commit()
 
-    # ===== إرسال بريد التفعيل (تصميم متوافق مع الهاتف) =====
+    # ===== إرسال بريد التفعيل =====
     try:
         s = _signer()
         token = s.dumps({"uid": u.id, "email": u.email})
@@ -267,15 +264,6 @@ def register_post(
               <p dir="ltr" style="margin:0 0 16px 0;font-size:14px;word-break:break-all;">
                 <a href="{verify_url}" style="color:#60a5fa;text-decoration:underline;" target="_blank">{verify_url}</a>
               </p>
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
-                     style="background:#0f172a;border:1px dashed #223049;border-radius:12px;">
-                <tr><td style="padding:12px 14px;">
-                  <p style="margin:0;font-size:13px;color:#9fb0d8;">
-                    ملاحظة: حتى بعد تفعيل البريد، يبقى زر <b>احجز الآن</b> معطّلًا إلى أن يراجع الأدمين وثائقك ويوافقوا عليها.
-                  </p>
-                </td></tr>
-              </table>
-              <p style="margin:16px 0 4px 0;font-size:12px;color:#7f8db0;">إذا لم تقم بإنشاء هذا الحساب، تجاهل هذه الرسالة.</p>
             </td>
           </tr>
           <tr>
@@ -300,17 +288,14 @@ def register_post(
 
 
 # ============ Email Verify Wall ============
-# ============ Email Verify Wall ============
-# ============ Email Verify Wall ============
 @router.get("/verify-email")
 def verify_email_page(request: Request, email: str = "", db: Session = Depends(get_db)):
     """
     لو البريد الموجود في الكويري هو أدمن أو حسابه مفعّل -> رجّعه للصفحة الرئيسية حتى بدون جلسة.
     غير كذا اعرض صفحة التحقق.
     """
-    # لو فيه جلسة ومفعّل/أدمن -> للصفحة الرئيسية
     u = request.session.get("user") or {}
-    if u and (u.get("role","").lower() == "admin" or bool(u.get("is_verified"))):
+    if u and (u.get("role", "").lower() == "admin" or bool(u.get("is_verified"))):
         return RedirectResponse("/", status_code=303)
 
     em = (email or "").strip().lower()
@@ -320,14 +305,60 @@ def verify_email_page(request: Request, email: str = "", db: Session = Depends(g
             if (getattr(user, "role", "") or "").lower() == "admin" or bool(getattr(user, "is_verified", False)):
                 return RedirectResponse("/", status_code=303)
 
-    # باقي الحالات: اعرض الصفحة
     return request.app.templates.TemplateResponse(
         "verify_email.html",
         {"request": request, "title": "تحقق من بريدك", "email": em, "session_user": u or None},
     )
 
-# ============ Password Reset (2) ============
-# 1) صفحة طلب الإيميل
+
+# ============ تفعيل الحساب عبر الرابط ============
+@router.get("/activate/verify")
+def verify_from_email(request: Request, token: str = "", db: Session = Depends(get_db)):
+    """
+    يفكّ توقيع التوكن ويُفعّل الحساب مباشرة: is_verified=True و status=active
+    ثم يوجّه للصفحة الرئيسية.
+    """
+    if not token:
+        return RedirectResponse(url="/verify-email", status_code=303)
+    try:
+        data = _signer().loads(token, max_age=48 * 3600)  # صلاحية 48 ساعة
+        uid = int(data.get("uid", 0))
+        email = (data.get("email") or "").strip().lower()
+    except SignatureExpired:
+        return RedirectResponse(url="/verify-email?expired=1", status_code=303)
+    except BadSignature:
+        return RedirectResponse(url="/verify-email?bad=1", status_code=303)
+
+    user = db.query(User).filter(User.id == uid, User.email == email).first()
+    if not user:
+        return RedirectResponse(url="/verify-email?bad=1", status_code=303)
+
+    if not bool(getattr(user, "is_verified", False)):
+        user.is_verified = True
+        user.verified_at = datetime.utcnow()
+    if (getattr(user, "status", "pending") or "").lower() != "active":
+        user.status = "active"
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    # سجّل الجلسة مباشرةً
+    request.session["user"] = {
+        "id": user.id,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "email": user.email,
+        "phone": user.phone,
+        "role": user.role,
+        "status": user.status,
+        "is_verified": True,
+        "avatar_path": user.avatar_path or None,
+        "is_deposit_manager": bool(getattr(user, "is_deposit_manager", False)),
+    }
+    return RedirectResponse("/", status_code=303)
+
+
+# ============ Password Reset ============
 @router.get("/forgot")
 def forgot_get(request: Request):
     return request.app.templates.TemplateResponse(
@@ -335,13 +366,12 @@ def forgot_get(request: Request):
         {"request": request, "title": "إعادة تعيين كلمة المرور", "session_user": request.session.get("user")}
     )
 
-# 2) استلام الإيميل وإرسال رابط إعادة التعيين
 @router.post("/forgot")
 def forgot_post(request: Request, db: Session = Depends(get_db), email: str = Form(...)):
     email = (email or "").strip().lower()
     user = db.query(User).filter(User.email == email).first()
 
-    # نُظهر دائمًا نفس الرسالة (لأمان الخصوصية) حتى لو الإيميل غير موجود
+    # نُظهر دائمًا نفس الرسالة
     msg = "إن وُجد حساب مطابق، سنرسل رابط إعادة تعيين كلمة المرور إلى بريدك إن شاء الله."
 
     try:
@@ -382,7 +412,7 @@ def forgot_post(request: Request, db: Session = Depends(get_db), email: str = Fo
           </p>
           <p style="margin:12px 0 0 0;font-size:12px;color:#7f8db0;">يتنهي صلاحية هذا الرابط بعد ساعتين.</p>
         </td></tr>
-        <tr><td style="padding:14px 22px;background:#0b1220;color:#94a3b8;font-size:11px;text-align:center;">© {year} RentAll</td></tr>
+        <tr><td style="padding:14px 22px;background:#0b1220;color:#94a3b8;font-size:11px;text-align:center;">©️ {year} RentAll</td></tr>
       </table>
     </td></tr>
   </table>
@@ -404,7 +434,6 @@ def forgot_post(request: Request, db: Session = Depends(get_db), email: str = Fo
 def reset_get(request: Request, token: str = ""):
     if not token:
         return RedirectResponse(url="/forgot", status_code=303)
-    # ما نتحقق من التوقيع هنا؛ نتحقق فعليًا عند POST (لتحديد المدة)
     return request.app.templates.TemplateResponse(
         "auth_reset_password.html",
         {"request": request, "title": "تعيين كلمة مرور جديدة", "token": token, "session_user": request.session.get("user")}
@@ -457,19 +486,16 @@ def reset_post(
             {"request": request, "title": "تعيين كلمة مرور جديدة", "error": "الحساب غير موجود.", "token": "", "session_user": request.session.get("user")},
         )
 
-    # حدّث كلمة السر
     user.password_hash = hash_password(password)
     db.add(user)
     db.commit()
 
-    # (اختياري) إشعار داخلي
     try:
         if 'push_notification' in globals():
             push_notification(user_id=user.id, title="تم تغيير كلمة المرور", body="تم تحديث كلمة مرور حسابك بنجاح.")
     except Exception:
         pass
 
-    # أعد توجيه للمسج + صفحة الدخول
     return RedirectResponse(url="/login?reset_ok=1", status_code=303)
 
 
@@ -486,7 +512,6 @@ def dev_admin_login(request: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == "admin@example.com").first()
     if not user:
         return RedirectResponse("/login", status_code=303)
-    # فرض تفعيل كامل
     user.is_verified = True
     user.status = "active"
     db.add(user); db.commit(); db.refresh(user)
