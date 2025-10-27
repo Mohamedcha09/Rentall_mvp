@@ -1,128 +1,152 @@
 {% extends "base.html" %}
 {% block content %}
-
-<div class="container py-4">
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <h3 class="m-0">📸 البلاغات</h3>
-    <a href="/admin" class="btn btn-sm btn-outline-secondary">↩︎ العودة للوحة الأدمين</a>
-  </div>
-
-  <!-- تنبيهات بسيطة -->
-  {% if not reports %}
-    <div class="alert alert-info">لا توجد بلاغات حتى الآن.</div>
-  {% else %}
-
-  <div class="card">
-    <div class="card-header d-flex align-items-center justify-content-between">
-      <strong>قائمة البلاغات</strong>
-      <span class="badge bg-secondary">{{ reports|length }}</span>
-    </div>
-
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead class="table-light">
-          <tr>
-            <th>#</th>
-            <th>الهدف</th>
-            <th>المبلِّغ</th>
-            <th>السبب</th>
-            <th>تاريخ</th>
-            <th>الحالة</th>
-            <th class="text-end">إجراءات</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in reports %}
-          <tr>
-            <td class="fw-bold">{{ r.id }}</td>
-
-            <!-- الهدف (منشور/صورة) -->
-            <td>
-              {% set _item_id = r.item_id if r.item_id is defined else None %}
-              {% set _img_i   = r.image_index if r.image_index is defined else None %}
-              {% if _img_i is not none %}
-                صورة <span class="badge bg-dark">#{{ _img_i }}</span>
-                — منشور <a href="/items/{{ _item_id }}" target="_blank" class="text-decoration-none">#{{ _item_id }}</a>
-              {% else %}
-                منشور <a href="/items/{{ _item_id }}" target="_blank" class="text-decoration-none">#{{ _item_id }}</a>
-              {% endif %}
-            </td>
-
-            <!-- المبلّغ -->
-            <td>
-              {% if r.reporter is defined and r.reporter %}
-                {{ (r.reporter.first_name ~ ' ' ~ r.reporter.last_name)|trim }}
-                <small class="text-muted">(#{{ r.reporter.id }})</small>
-              {% else %}
-                مستخدم <span class="text-muted">#{{ r.reporter_id }}</span>
-              {% endif %}
-            </td>
-
-            <!-- السبب -->
-            <td style="max-width: 320px">
-              <div class="text-truncate" title="{{ r.reason }}">{{ r.reason }}</div>
-              {% if r.note %}
-                <div class="small text-muted text-truncate" title="{{ r.note }}">ملاحظات: {{ r.note }}</div>
-              {% endif %}
-            </td>
-
-            <!-- التاريخ -->
-            <td>
-              {% if r.created_at %}{{ r.created_at.strftime("%Y-%m-%d %H:%M") }}{% else %}—{% endif %}
-            </td>
-
-            <!-- الحالة -->
-            <td>
-              {% set st = (r.status or 'pending')|lower %}
-              {% if st == 'pending' %}
-                <span class="badge bg-warning text-dark">بانتظار</span>
-              {% elif st in ['resolved','done','closed'] %}
-                <span class="badge bg-success">مُعالج</span>
-              {% elif st in ['rejected','dismissed'] %}
-                <span class="badge bg-secondary">مرفوض</span>
-              {% else %}
-                <span class="badge bg-info text-dark">{{ r.status }}</span>
-              {% endif %}
-            </td>
-
-            <!-- إجراءات -->
-            <td class="text-end">
-              <div class="btn-group btn-group-sm" role="group" aria-label="actions">
-                <!-- مبدئيًا نرسل إلى مسار عام (يمكنك تنفيذه لاحقًا): /admin/reports/{id}/resolve -->
-                <form method="post" action="/admin/reports/{{ r.id }}/resolve" class="d-inline">
-                  {% if r.image_index is defined and r.image_index is not none %}
-                    <input type="hidden" name="action" value="remove_image">
-                    <button class="btn btn-outline-danger" title="حذف الصورة">🗑️ صورة</button>
-                  {% else %}
-                    <input type="hidden" name="action" value="remove_item">
-                    <button class="btn btn-outline-danger" title="إلغاء نشر المنشور">🗑️ منشور</button>
-                  {% endif %}
-                </form>
-
-                <form method="post" action="/admin/reports/{{ r.id }}/resolve" class="d-inline">
-                  <input type="hidden" name="action" value="warn_owner">
-                  <button class="btn btn-outline-warning" title="تحذير المالك">⚠️ تحذير</button>
-                </form>
-
-                <form method="post" action="/admin/reports/{{ r.id }}/resolve" class="d-inline">
-                  <input type="hidden" name="action" value="reject">
-                  <button class="btn btn-outline-secondary" title="رفض البلاغ">✖️ رفض</button>
-                </form>
-
-                <form method="post" action="/admin/reports/{{ r.id }}/resolve" class="d-inline">
-                  <input type="hidden" name="action" value="mark_done">
-                  <button class="btn btn-outline-success" title="وضع كمُعالج">✔️ تم</button>
-                </form>
-              </div>
-            </td>
-          </tr>
+<div class="container py-3">
+  <h3 class="mb-3">البلاغات</h3>
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card">
+        <div class="card-header fw-bold">غير مدروسة</div>
+        <div class="list-group list-group-flush" id="list-pending">
+          {% for r in pending %}
+            <a href="#" class="list-group-item list-group-item-action" data-id="{{ r.id }}" data-status="{{ r.status }}" data-item="{{ r.item_id }}" data-reason="{{ r.reason|e }}" data-reporter="{{ r.reporter.full_name if r.reporter else ('User#' ~ r.reporter_id) }}" data-reporter-id="{{ r.reporter_id }}" data-note="{{ r.note or '' }}">
+              🚩 #{{ r.id }} — عنصر #{{ r.item_id }} — {{ r.created_at.strftime("%Y-%m-%d %H:%M") }}
+              <div class="small text-muted mt-1">{{ r.reason }}</div>
+            </a>
+          {% else %}
+            <div class="p-3 text-muted">لا يوجد.</div>
           {% endfor %}
-        </tbody>
-      </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card">
+        <div class="card-header fw-bold">تمت دراستها</div>
+        <div class="list-group list-group-flush" id="list-processed">
+          {% for r in processed %}
+            <a href="#" class="list-group-item list-group-item-action" data-id="{{ r.id }}" data-status="{{ r.status }}" data-item="{{ r.item_id }}" data-reason="{{ r.reason|e }}" data-reporter="{{ r.reporter.full_name if r.reporter else ('User#' ~ r.reporter_id) }}" data-reporter-id="{{ r.reporter_id }}" data-note="{{ r.note or '' }}">
+              ✅ #{{ r.id }} — عنصر #{{ r.item_id }} — {{ r.updated_at.strftime("%Y-%m-%d %H:%M") if r.updated_at else '' }}
+              <div class="small text-muted mt-1">{{ r.reason }}</div>
+            </a>
+          {% else %}
+            <div class="p-3 text-muted">لا يوجد.</div>
+          {% endfor %}
+        </div>
+      </div>
     </div>
   </div>
 
-  {% endif %}
+  <!-- لوحة تفاصيل -->
+  <div class="offcanvas offcanvas-start show d-none" tabindex="-1" id="reportDrawer" style="visibility:visible;">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title">تفاصيل البلاغ</h5>
+      <button class="btn-close" id="drawerClose"></button>
+    </div>
+    <div class="offcanvas-body" id="drawerBody">
+      <div class="text-muted">اختر بلاغًا من القائمة.</div>
+    </div>
+  </div>
 </div>
 
+<script>
+(function(){
+  const body = document.getElementById('drawerBody');
+  const drawer = document.getElementById('reportDrawer');
+  const closeBtn = document.getElementById('drawerClose');
+
+  function openDrawer(){ drawer.classList.remove('d-none'); }
+  function closeDrawer(){ drawer.classList.add('d-none'); }
+
+  closeBtn.addEventListener('click', closeDrawer);
+
+  function renderPendingView(data){
+    body.innerHTML = `
+      <div class="mb-2"><b>البلاغ #${data.id}</b> — على عنصر #${data.item_id}</div>
+      <div class="mb-2"><b>المبلّغ:</b> ${data.reporter} (ID: ${data.reporter_id})</div>
+      <div class="mb-2"><b>السبب:</b> ${data.reason||''}</div>
+      ${data.note ? `<div class="mb-2"><b>ملاحظات:</b> ${data.note}</div>` : ''}
+      <hr>
+      <form method="post" action="/admin/reports/${data.id}/action" onsubmit="return submitAction(event)">
+        <input type="hidden" name="report_id" value="${data.id}">
+        <div class="mb-2">
+          <label class="form-label">قرار</label>
+          <select class="form-select" name="action" required>
+            <option value="">— اختر —</option>
+            <option value="suspend_item">إيقاف المنشور مؤقتًا</option>
+            <option value="remove_item">حذف المنشور</option>
+            <option value="reject_report">رفض البلاغ</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <input class="form-control" name="suspend_days" type="number" min="1" step="1" placeholder="أيام الإيقاف (اختياري)">
+        </div>
+        <div class="mb-2">
+          <textarea class="form-control" name="note" placeholder="ملاحظة داخلية (اختياري)"></textarea>
+        </div>
+        <button class="btn btn-primary">حفظ القرار</button>
+      </form>
+    `;
+  }
+
+  function renderProcessedView(data){
+    body.innerHTML = `
+      <div class="mb-2"><b>البلاغ #${data.id}</b> — على عنصر #${data.item_id}</div>
+      <div class="mb-2"><b>السبب:</b> ${data.reason||''}</div>
+      ${data.note ? `<div class="mb-2"><b>ملاحظات:</b> ${data.note}</div>` : ''}
+      <hr>
+      <form method="post" action="/admin/reports/${data.id}/action" onsubmit="return submitAction(event)">
+        <input type="hidden" name="report_id" value="${data.id}">
+        <div class="mb-2">
+          <label class="form-label">إجراء</label>
+          <select class="form-select" name="action" required>
+            <option value="">— اختر —</option>
+            <option value="restore_item">إعادة المنشور (فك الإيقاف)</option>
+            <option value="reopen">إعادة فتح البلاغ</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <textarea class="form-control" name="note" placeholder="ملاحظة داخلية (اختياري)"></textarea>
+        </div>
+        <button class="btn btn-primary">تنفيذ</button>
+      </form>
+    `;
+  }
+
+  // عند الضغط على عنصر في القائمة
+  document.getElementById('list-pending')?.addEventListener('click', (e)=>{
+    const row = e.target.closest('a[data-id]'); if(!row) return;
+    e.preventDefault();
+    openDrawer();
+    renderPendingView({
+      id: row.dataset.id,
+      item_id: row.dataset.item,
+      reason: row.dataset.reason,
+      note: row.dataset.note,
+      reporter: row.dataset.reporter,
+      reporter_id: row.dataset.reporterId
+    });
+  });
+
+  document.getElementById('list-processed')?.addEventListener('click', (e)=>{
+    const row = e.target.closest('a[data-id]'); if(!row) return;
+    e.preventDefault();
+    openDrawer();
+    renderProcessedView({
+      id: row.dataset.id,
+      item_id: row.dataset.item,
+      reason: row.dataset.reason,
+      note: row.dataset.note
+    });
+  });
+
+  window.submitAction = async function(ev){
+    ev.preventDefault();
+    const f = ev.target;
+    const fd = new FormData(f);
+    const res = await fetch(f.action, { method:'POST', body: fd });
+    if(res.ok){ location.reload(); } else { alert('فشل الحفظ'); }
+    return false;
+  }
+})();
+</script>
 {% endblock %}

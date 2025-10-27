@@ -8,7 +8,6 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
-
 from .database import get_db, engine
 from .models import User, Item
 
@@ -315,42 +314,34 @@ async def create_report_legacy(
 # =========================
 # صفحة إدارة البلاغات (اختيارية)
 # =========================
+# app/reports.py
 @router.get("/admin/reports")
 def admin_reports_page(request: Request, db: Session = Depends(get_db)):
-    """
-    يعرض قالب admin/reports.html إن كان موجودًا؛ وإلا يرجع JSON بسيط.
-    الوصول مقيّد للأدمن/المود.
-    """
     sess = request.session.get("user")
-    if not sess or not (str(sess.get("role", "")).lower() == "admin" or bool(sess.get("is_mod"))):
+    if not sess or not (str(sess.get("role","")).lower()=="admin" or bool(sess.get("is_mod"))):
         return RedirectResponse(url="/login", status_code=303)
 
-    try:
-        if Report is None:
-            raise RuntimeError("Report model missing")
-        # ترتيب تنازلي لو حقل created_at متاح
-        order_expr = getattr(Report, "created_at", None)
-        q = db.query(Report)
-        if order_expr is not None:
-            q = q.order_by(order_expr.desc())
-        reports = q.limit(50).all()
-        return request.app.templates.TemplateResponse(
-            "admin/reports.html",
-            {
-                "request": request,
-                "title": "البلاغات",
-                "reports": reports,
-                "session_user": sess,
-            },
-        )
-    except Exception:
-        try:
-            count = db.query(Report).count() if Report else 0
-        except Exception:
-            count = 0
-        return JSONResponse({"ok": True, "message": "Reports admin view is not installed yet.", "count": count})
+    # pending/open على اليسار
+    pending = (
+        db.query(Report)
+        .filter(Report.status.in_(["open","pending"]))
+        .order_by(Report.created_at.desc())
+        .all()
+    )
 
+    # processed/closed على اليمين
+    processed = (
+        db.query(Report)
+        .filter(Report.status.in_(["closed","resolved","rejected"]))
+        .order_by(Report.updated_at.desc().nullslast())
+        .limit(200)
+        .all()
+    )
 
+    return request.app.templates.TemplateResponse(
+        "admin/reports.html",
+        {"request": request, "title": "البلاغات", "pending": pending, "processed": processed, "session_user": sess}
+    )
 # =========================
 # مسار تشخيصي سريع: /reports/_diag
 # =========================
@@ -399,3 +390,55 @@ def reports_diag(request: Request, db: Session = Depends(get_db)):
             info["insert_error"] = str(e)
 
     return JSONResponse(info)
+
+
+
+@router.post("/admin/reports/{report_id}/action")
+def decide_report(
+    report_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    action: str = Form(...),
+    note: str = Form(""),
+    suspend_days: int = Form(None),
+):
+    sess = request.session.get("user")
+    if not sess or not (str(sess.get("role","")).lower()=="admin" or bool(sess.get("is_mod"))):
+        raise HTTPException(status_code=403, detail="forbidden")
+
+    r = db.query(Report).get(report_id)
+    if not r: raise HTTPException(404, "report-not-found")
+
+    # اجلب المنشور
+    it = db.query(Item).get(getattr(r, "item_id", 0))
+
+    def mark(status, tag=None):
+        r.status = status
+        if hasattr(r, "updated_at"):
+            r.updated_at = datetime.utcnow()
+        if tag and hasattr(r, "tag"): r.tag = tag
+        db.add(r)
+
+    if action == "remove_item" and it:
+        it.is_active = "no"
+        mark("closed", tag="removed")
+        _log_action(db, r.id, sess["id"], "remove_item", note)
+    elif action == "suspend_item" and it:
+        it.is_active = "no"  # أو "suspended" لو عندك حقل خاص
+        mark("closed", tag=f"suspended:{suspend_days or 0}")
+        _log_action(db, r.id, sess["id"], "suspend_item", f"{note} days={suspend_days or 0}")
+    elif action == "reject_report":
+        mark("closed", tag="rejected")
+        _log_action(db, r.id, sess["id"], "reject_report", note)
+    elif action == "restore_item" and it:
+        it.is_active = "yes"
+        mark("closed", tag="restored")
+        _log_action(db, r.id, sess["id"], "restore_item", note)
+    elif action == "reopen":
+        mark("open", tag="reopened")
+        _log_action(db, r.id, sess["id"], "reopen", note)
+    else:
+        raise HTTPException(400, "bad-action")
+
+    db.commit()
+    return JSONResponse({"ok": True})
