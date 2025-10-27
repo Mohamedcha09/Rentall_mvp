@@ -8,19 +8,12 @@
     <div class="col-lg-6">
       <div class="card">
         <div class="card-header bg-warning-subtle fw-bold">غير مدروسة</div>
-        <div class="list-group list-group-flush" id="pendingList">
+        <div class="list-group list-group-flush">
           {% for r in pending %}
-            <a href="#"
-               class="list-group-item list-group-item-action"
-               data-id="{{ r.id }}"
-               data-item="{{ r.item_id or '' }}"
-               data-reason="{{ (r.reason or '')|e }}"
-               data-note="{{ (r.note or '')|e }}"
-               data-img="{{ r.image_index if r.image_index is not none else '' }}"
-               data-status="{{ r.status or 'pending' }}"
-               data-tag="{{ r.tag or '' }}"
-            >
-              🚩 #{{ r.id }} — {{ 'صورة #' ~ r.image_index if r.image_index is not none else 'منشور' }} #{{ r.item_id }}
+            <a class="list-group-item list-group-item-action" href="/admin/reports/{{ r.id }}">
+              🚩 #{{ r.id }} —
+              {{ 'صورة #' ~ r.image_index if r.image_index is not none else 'منشور' }}
+              #{{ r.item_id }}
               <div class="small text-muted">السبب: {{ r.reason }}</div>
             </a>
           {% else %}
@@ -34,19 +27,12 @@
     <div class="col-lg-6">
       <div class="card">
         <div class="card-header bg-success-subtle fw-bold">تمت دراستها</div>
-        <div class="list-group list-group-flush" id="doneList">
+        <div class="list-group list-group-flush">
           {% for r in processed %}
-            <a href="#"
-               class="list-group-item list-group-item-action"
-               data-id="{{ r.id }}"
-               data-item="{{ r.item_id or '' }}"
-               data-reason="{{ (r.reason or '')|e }}"
-               data-note="{{ (r.note or '')|e }}"
-               data-img="{{ r.image_index if r.image_index is not none else '' }}"
-               data-status="{{ r.status or 'closed' }}"
-               data-tag="{{ r.tag or '' }}"
-            >
-              ✅ #{{ r.id }} — {{ 'صورة #' ~ r.image_index if r.image_index is not none else 'منشور' }} #{{ r.item_id }}
+            <a class="list-group-item list-group-item-action" href="/admin/reports/{{ r.id }}">
+              ✅ #{{ r.id }} —
+              {{ 'صورة #' ~ r.image_index if r.image_index is not none else 'منشور' }}
+              #{{ r.item_id }}
               <div class="small text-muted">
                 الحالة: {{ r.status }}{% if r.tag %} — {{ r.tag }}{% endif %}
               </div>
@@ -59,115 +45,5 @@
       </div>
     </div>
   </div>
-
-  <!-- التفاصيل + الأزرار -->
-  <div class="card mt-3" id="details" style="display:none">
-    <div class="card-header fw-bold">تفاصيل البلاغ</div>
-    <div class="card-body">
-      <div id="dSummary" class="mb-2"></div>
-
-      <!-- قرارات للبلاغ المعلّق -->
-      <form id="decisionForm" method="post" class="row g-2" style="display:none">
-        <input type="hidden" name="note" id="noteInput">
-        <div class="col-12">
-          <label class="form-label">ملاحظة القرار</label>
-          <textarea id="noteArea" class="form-control" rows="2" placeholder="ملاحظاتك (اختياري)"></textarea>
-        </div>
-        <div class="col-12 d-flex flex-wrap gap-2">
-          <button type="submit" class="btn btn-warning" data-action="suspend_item">⏸️ إيقاف المنشور</button>
-          <button type="submit" class="btn btn-danger"  data-action="remove_item">🗑️ حذف المنشور</button>
-          <button type="submit" class="btn btn-secondary" data-action="reject_report">❌ رفض البلاغ</button>
-          <a class="btn btn-outline-primary" id="viewItemBtn" target="_blank">🔗 عرض المنشور</a>
-        </div>
-      </form>
-
-      <!-- أزرار للبلاغ المعالج -->
-      <form id="restoreForm" method="post" class="mt-2" style="display:none">
-        <div class="d-flex flex-wrap gap-2">
-          <button type="submit" class="btn btn-success" data-action="restore_item">♻️ استرجاع المنشور</button>
-          <button type="submit" class="btn btn-outline-warning" data-action="reopen">🔄 إعادة فتح البلاغ</button>
-        </div>
-      </form>
-    </div>
-  </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-(function(){
-  const details   = document.getElementById('details');
-  const summary   = document.getElementById('dSummary');
-  const decForm   = document.getElementById('decisionForm');
-  const resForm   = document.getElementById('restoreForm');
-  const noteArea  = document.getElementById('noteArea');
-  const noteInput = document.getElementById('noteInput');
-  const viewItem  = document.getElementById('viewItemBtn');
-  let current = null;
-
-  function setDecisionAction(form, action){
-    form.action = '/admin/reports/' + current.id + '/decision';
-    const old = form.querySelector('input[name="action"]'); if (old) old.remove();
-    const a = document.createElement('input');
-    a.type='hidden'; a.name='action'; a.value = action;
-    form.appendChild(a);
-  }
-  function setReopenAction(form){
-    form.action = '/admin/reports/' + current.id + '/reopen';
-    const old = form.querySelector('input[name="action"]'); if (old) old.remove();
-  }
-
-  function showFromEl(a){
-    const r = {
-      id: Number(a.dataset.id),
-      item_id: a.dataset.item || '',
-      reason: a.dataset.reason || '',
-      note: a.dataset.note || '',
-      image_index: (a.dataset.img === '' ? null : Number(a.dataset.img)),
-      status: (a.dataset.status || '').toLowerCase(),
-      tag: a.dataset.tag || ''
-    };
-    current = r;
-
-    const itemLabel = (r.image_index!=null) ? ('صورة #' + r.image_index) : 'المنشور';
-    summary.innerHTML =
-      '<div class="mb-1">البلاغ #'+r.id+' — '+ itemLabel +' #'+(r.item_id||'-')+'</div>'+
-      '<div><b>السبب:</b> '+(r.reason||'')+'</div>'+
-      (r.note?'<div class="text-muted small">ملاحظة: '+r.note+'</div>':'');
-    viewItem.href = '/items/' + (r.item_id || '');
-
-    const isPending = (!r.status || r.status==='pending' || r.status==='open');
-    decForm.style.display = isPending ? '' : 'none';
-    resForm.style.display = isPending ? 'none' : '';
-    details.style.display = '';
-  }
-
-  function hook(list){
-    if (!list) return;
-    list.querySelectorAll('a.list-group-item').forEach(a=>{
-      a.addEventListener('click', (e)=>{ e.preventDefault(); showFromEl(a); });
-    });
-  }
-  hook(document.getElementById('pendingList'));
-  hook(document.getElementById('doneList'));
-
-  decForm?.addEventListener('submit', function(e){
-    e.preventDefault();
-    const btn = e.submitter;
-    const act = btn?.dataset?.action || '';
-    noteInput.value = noteArea.value || '';
-    setDecisionAction(decForm, act);
-    decForm.submit();
-  });
-
-  resForm?.addEventListener('submit', function(e){
-    e.preventDefault();
-    const btn = e.submitter;
-    const act = btn?.dataset?.action || '';
-    if (act === 'reopen'){ setReopenAction(resForm); }
-    else { setDecisionAction(resForm, act); }
-    resForm.submit();
-  });
-})();
-</script>
 {% endblock %}
