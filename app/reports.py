@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
+
 from .database import get_db, engine
 from .models import User, Item
 
@@ -42,8 +43,7 @@ BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:
 # =====================================================
 def _ensure_reports_columns():
     """
-    لو تعمل على Postgres وكانت أعمدة tag / updated_at غير موجودة
-    نضيفها بأمان (IF NOT EXISTS). لا يفعل شيئًا على SQLite.
+    لو تعمل على Postgres وكانت أعمدة معينة غير موجودة نضيفها بأمان.
     """
     try:
         backend = engine.url.get_backend_name()
@@ -55,8 +55,10 @@ def _ensure_reports_columns():
             with engine.begin() as conn:
                 conn.exec_driver_sql("ALTER TABLE reports ADD COLUMN IF NOT EXISTS tag VARCHAR(24);")
                 conn.exec_driver_sql("ALTER TABLE reports ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NULL;")
+                conn.exec_driver_sql("ALTER TABLE reports ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending';")
+                conn.exec_driver_sql("ALTER TABLE reports ADD COLUMN IF NOT EXISTS note TEXT;")
+                conn.exec_driver_sql("ALTER TABLE reports ADD COLUMN IF NOT EXISTS image_index INT;")
         except Exception as e:
-            # لا توقف السيرفر؛ فقط اطبع تحذيرًا
             print("[WARN] ensure reports columns failed:", e)
 
 # شغّل الفِكس مرة واحدة عند تحميل الملف
@@ -73,9 +75,46 @@ def _require_login(request: Request) -> Dict[str, Any]:
     return u
 
 
+def _require_admin_or_mod(request: Request) -> dict:
+    sess = request.session.get("user") or {}
+    if not (str(sess.get("role","")).lower()=="admin" or bool(sess.get("is_mod"))):
+        raise HTTPException(status_code=403, detail="forbidden")
+    return sess
+
+
 def _get_item_owner_id(db: Session, item_id: int) -> Optional[int]:
     it = db.query(Item).filter(Item.id == item_id).first()
     return it.owner_id if it else None
+
+
+def _set_item_state(db: Session, item_id: int, *, state: str):
+    """
+    يغير حالة العنصر بشكل متوافق:
+    - لو يوجد عمود status: نستخدم active/suspended/deleted
+    - وإلا نستخدم is_active = yes/no
+    """
+    it = db.query(Item).get(item_id)
+    if not it:
+        raise HTTPException(status_code=404, detail="item-not-found")
+
+    # تفضيل عمود status إن وُجد
+    if hasattr(it, "status"):
+        if state == "active":
+            it.status = "active"
+        elif state == "suspended":
+            it.status = "suspended"
+        elif state == "deleted":
+            it.status = "deleted"
+    else:
+        # توافق مع السكيمة القديمة
+        if state in ("suspended", "deleted"):
+            setattr(it, "is_active", "no")
+        elif state == "active":
+            setattr(it, "is_active", "yes")
+
+    db.add(it)
+    db.commit()
+    return it
 
 
 def _notify_owner_and_moderators(
@@ -92,12 +131,14 @@ def _notify_owner_and_moderators(
         label = f"بلاغ على صورة #{image_index} من المنشور #{item_id}"
 
     body = f"المبلِّغ: {reporter_name}\nالسبب: {reason}"
-    link = f"/items/{item_id}"
+
+    owner_link = f"/items/{item_id}"   # المالك → يفتح منشوره
+    mod_link   = "/admin/reports"      # الأدمن/المود → صفحة البلاغات
 
     # 1) المالك
     if owner_id:
         try:
-            push_notification(db, owner_id, "🚩 " + label, body, link, "report")
+            push_notification(db, owner_id, "🚩 " + label, body, owner_link, "report")
         except Exception:
             pass
 
@@ -105,14 +146,12 @@ def _notify_owner_and_moderators(
     try:
         moderators = (
             db.query(User)
-            .filter(
-                (User.role == "admin") | (getattr(User, "is_mod", False) == True)  # noqa: E712
-            )
+            .filter((User.role == "admin") | (getattr(User, "is_mod", False) == True))  # noqa: E712
             .all()
         )
         for m in moderators:
             try:
-                push_notification(db, m.id, "🚩 " + label, body, link, "report")
+                push_notification(db, m.id, "🚩 " + label, body, mod_link, "report")
             except Exception:
                 pass
     except Exception:
@@ -128,10 +167,10 @@ def _notify_owner_and_moderators(
                 <h3>🚩 بلاغ جديد</h3>
                 <p><b>المبلِّغ:</b> {reporter_name}</p>
                 <p><b>السبب:</b> {reason}</p>
-                <p><a href="{BASE_URL}/items/{item_id}" target="_blank">فتح المنشور</a></p>
+                <p><a href="{BASE_URL}/admin/reports" target="_blank">فتح لوحة البلاغات</a></p>
               </div>
             """
-            send_email(a.email, subj, html, text_body=f"بلاغ جديد — {label}\n{body}\n{BASE_URL}{link}")
+            send_email(a.email, subj, html, text_body=f"بلاغ جديد — {label}\n{body}\n{BASE_URL}/admin/reports")
     except Exception:
         pass
 
@@ -145,8 +184,7 @@ def _build_report_instance(
     payload: Optional[Dict[str, Any]] = None,
 ):
     """
-    إنشاء كائن Report مع مراعاة اختلاف السكيمة: لا نضيف إلا الحقول الموجودة فعلاً.
-    يعمل مع قواعد قديمة/جديدة بدون كسر.
+    إنشاء كائن Report مع مراعاة اختلاف السكيمة.
     """
     if Report is None:
         raise HTTPException(status_code=500, detail="Report model is missing")
@@ -154,15 +192,14 @@ def _build_report_instance(
     data: Dict[str, Any] = {
         "reporter_id": reporter_id,
         "reason": reason[:120] if reason else "",
-        "status": "pending",  # يمكن تركها للـ default "open" إن رغبت
+        "status": "pending",
         "created_at": datetime.utcnow(),
     }
 
-    # أضِف فقط الحقول الموجودة فعليًا في الموديل/الجدول
     if hasattr(Report, "item_id"):
         data["item_id"] = item_id
 
-    if note and hasattr(Report, "note"):
+    if note is not None and hasattr(Report, "note"):
         data["note"] = (note or "").strip() or None
 
     if image_index is not None and hasattr(Report, "image_index"):
@@ -181,7 +218,6 @@ def _build_report_instance(
         except Exception:
             pass
 
-    # إن كان لديك عمود updated_at في الجدول
     if hasattr(Report, "updated_at"):
         data["updated_at"] = datetime.utcnow()
 
@@ -221,7 +257,6 @@ async def create_report(
 ):
     """
     ينشئ بلاغًا على منشور/صورة. يقبل Form أو JSON.
-    لو أُرسل JSON، سنقرأه من body مباشرةً.
     """
     u = _require_login(request)
 
@@ -312,9 +347,8 @@ async def create_report_legacy(
 
 
 # =========================
-# صفحة إدارة البلاغات (اختيارية)
+# صفحة إدارة البلاغات
 # =========================
-# app/reports.py
 @router.get("/admin/reports")
 def admin_reports_page(request: Request, db: Session = Depends(get_db)):
     sess = request.session.get("user")
@@ -338,10 +372,88 @@ def admin_reports_page(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
+    # مصفوفة موحّدة (إن احتاج القالب هذا الشكل)
+    reports = (
+        db.query(Report)
+        .order_by(Report.created_at.desc())
+        .limit(200)
+        .all()
+    )
+
     return request.app.templates.TemplateResponse(
         "admin/reports.html",
-        {"request": request, "title": "البلاغات", "pending": pending, "processed": processed, "session_user": sess}
+        {
+            "request": request,
+            "title": "البلاغات",
+            "pending": pending,
+            "processed": processed,
+            "reports": reports,
+            "session_user": sess,
+        }
     )
+
+
+# =========================
+# مسارات القرارات (إيقاف/حذف/استرجاع/إغلاق/إعادة فتح)
+# =========================
+@router.post("/admin/reports/{report_id}/decision")
+def reports_decision(
+    report_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    action: str = Form(...),           # suspend_item | delete_item | restore_item | close_only
+    note: str = Form(""),
+):
+    sess = _require_admin_or_mod(request)
+
+    r = db.query(Report).get(report_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="report-not-found")
+
+    item_id = getattr(r, "item_id", None)
+
+    if action == "suspend_item" and item_id:
+        _set_item_state(db, int(item_id), state="suspended")
+    elif action == "delete_item" and item_id:
+        _set_item_state(db, int(item_id), state="deleted")
+    elif action == "restore_item" and item_id:
+        _set_item_state(db, int(item_id), state="active")
+    elif action == "close_only":
+        pass
+    else:
+        raise HTTPException(status_code=400, detail="bad-action")
+
+    # تحديث البلاغ
+    if hasattr(r, "status"):
+        r.status = "closed"
+    if note and hasattr(r, "note"):
+        r.note = (note or "").strip()
+    if hasattr(r, "updated_at"):
+        r.updated_at = datetime.utcnow()
+
+    db.add(r)
+    db.commit()
+    _log_action(db, getattr(r, "id", 0), int(sess["id"]), f"decision:{action}", note)
+
+    return RedirectResponse(url="/admin/reports", status_code=303)
+
+
+@router.post("/admin/reports/{report_id}/reopen")
+def reports_reopen(report_id: int, request: Request, db: Session = Depends(get_db)):
+    _require_admin_or_mod(request)
+    r = db.query(Report).get(report_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="report-not-found")
+    if hasattr(r, "status"):
+        r.status = "pending"
+    if hasattr(r, "updated_at"):
+        r.updated_at = datetime.utcnow()
+    db.add(r)
+    db.commit()
+    _log_action(db, getattr(r, "id", 0), request.session["user"]["id"], "reopen", None)
+    return RedirectResponse(url="/admin/reports", status_code=303)
+
+
 # =========================
 # مسار تشخيصي سريع: /reports/_diag
 # =========================
@@ -390,55 +502,3 @@ def reports_diag(request: Request, db: Session = Depends(get_db)):
             info["insert_error"] = str(e)
 
     return JSONResponse(info)
-
-
-
-@router.post("/admin/reports/{report_id}/action")
-def decide_report(
-    report_id: int,
-    request: Request,
-    db: Session = Depends(get_db),
-    action: str = Form(...),
-    note: str = Form(""),
-    suspend_days: int = Form(None),
-):
-    sess = request.session.get("user")
-    if not sess or not (str(sess.get("role","")).lower()=="admin" or bool(sess.get("is_mod"))):
-        raise HTTPException(status_code=403, detail="forbidden")
-
-    r = db.query(Report).get(report_id)
-    if not r: raise HTTPException(404, "report-not-found")
-
-    # اجلب المنشور
-    it = db.query(Item).get(getattr(r, "item_id", 0))
-
-    def mark(status, tag=None):
-        r.status = status
-        if hasattr(r, "updated_at"):
-            r.updated_at = datetime.utcnow()
-        if tag and hasattr(r, "tag"): r.tag = tag
-        db.add(r)
-
-    if action == "remove_item" and it:
-        it.is_active = "no"
-        mark("closed", tag="removed")
-        _log_action(db, r.id, sess["id"], "remove_item", note)
-    elif action == "suspend_item" and it:
-        it.is_active = "no"  # أو "suspended" لو عندك حقل خاص
-        mark("closed", tag=f"suspended:{suspend_days or 0}")
-        _log_action(db, r.id, sess["id"], "suspend_item", f"{note} days={suspend_days or 0}")
-    elif action == "reject_report":
-        mark("closed", tag="rejected")
-        _log_action(db, r.id, sess["id"], "reject_report", note)
-    elif action == "restore_item" and it:
-        it.is_active = "yes"
-        mark("closed", tag="restored")
-        _log_action(db, r.id, sess["id"], "restore_item", note)
-    elif action == "reopen":
-        mark("open", tag="reopened")
-        _log_action(db, r.id, sess["id"], "reopen", note)
-    else:
-        raise HTTPException(400, "bad-action")
-
-    db.commit()
-    return JSONResponse({"ok": True})
