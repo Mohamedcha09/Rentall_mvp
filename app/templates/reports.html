@@ -2,17 +2,20 @@
 {% block content %}
 <div class="container py-3">
   <h3 class="mb-3">البلاغات</h3>
+
   <div class="row g-3">
+    <!-- غير مدروسة -->
     <div class="col-lg-6">
       <div class="card">
         <div class="card-header bg-warning-subtle fw-bold">غير مدروسة</div>
         <div class="list-group list-group-flush" id="pendingList">
-          {% for r in reports if (r.status or 'pending') == 'pending' %}
+          {% for r in pending %}
             <a href="#" class="list-group-item list-group-item-action"
                data-report='{{ {
                  "id": r.id, "item_id": getattr(r,"item_id", None), "reason": r.reason,
                  "note": getattr(r,"note",""), "image_index": getattr(r,"image_index", None),
                  "reporter_id": getattr(r,"reporter_id", None),
+                 "status": r.status or "pending",
                  "created_at": (r.created_at.isoformat() if getattr(r,"created_at",None) else "")
                } | tojson | safe }}'>
               🚩 #{{ r.id }} — {{ 'صورة #' ~ r.image_index if r.image_index is not none else 'منشور' }} #{{ r.item_id }}
@@ -25,20 +28,26 @@
       </div>
     </div>
 
+    <!-- تمت دراستها -->
     <div class="col-lg-6">
       <div class="card">
         <div class="card-header bg-success-subtle fw-bold">تمت دراستها</div>
         <div class="list-group list-group-flush" id="doneList">
-          {% for r in reports if (r.status or 'pending') != 'pending' %}
+          {% for r in processed %}
             <a href="#" class="list-group-item list-group-item-action"
                data-report='{{ {
                  "id": r.id, "item_id": getattr(r,"item_id", None), "reason": r.reason,
                  "note": getattr(r,"note",""), "image_index": getattr(r,"image_index", None),
                  "reporter_id": getattr(r,"reporter_id", None),
-                 "created_at": (r.created_at.isoformat() if getattr(r,"created_at",None) else "")
+                 "status": r.status or "closed",
+                 "tag": getattr(r,"tag",""),
+                 "updated_at": (r.updated_at.isoformat() if getattr(r,"updated_at",None) else (r.created_at.isoformat() if getattr(r,"created_at",None) else ""))
                } | tojson | safe }}'>
               ✅ #{{ r.id }} — {{ 'صورة #' ~ r.image_index if r.image_index is not none else 'منشور' }} #{{ r.item_id }}
-              <div class="small text-muted">القرار: {{ r.note or '—' }}</div>
+              <div class="small text-muted">
+                الحالة: {{ r.status }}{% if r.tag %} — {{ r.tag }}{% endif %}
+              </div>
+              {% if r.note %}<div class="small text-muted">ملاحظة: {{ r.note }}</div>{% endif %}
             </a>
           {% else %}
             <div class="list-group-item text-muted">لا يوجد بلاغات منتهية.</div>
@@ -48,28 +57,33 @@
     </div>
   </div>
 
+  <!-- التفاصيل + الأزرار -->
   <div class="card mt-3" id="details" style="display:none">
     <div class="card-header fw-bold">تفاصيل البلاغ</div>
     <div class="card-body">
       <div id="dSummary" class="mb-2"></div>
 
+      <!-- قرارات للبلاغ المعلّق -->
       <form id="decisionForm" method="post" class="row g-2" style="display:none">
-        <input type="hidden" name="report_id" id="repId">
+        <input type="hidden" name="note" id="noteInput">
         <div class="col-12">
           <label class="form-label">ملاحظة القرار</label>
-          <textarea name="note" class="form-control" rows="2"></textarea>
+          <textarea id="noteArea" class="form-control" rows="2" placeholder="ملاحظاتك (اختياري)"></textarea>
         </div>
-        <div class="col-12 d-flex gap-2">
-          <button formaction="/admin/reports/{{ 0 }}/decision" onclick="return setAct(this,'suspend_item')" class="btn btn-warning">إيقاف المنشور</button>
-          <button formaction="/admin/reports/{{ 0 }}/decision" onclick="return setAct(this,'delete_item')" class="btn btn-danger">حذف المنشور</button>
-          <button formaction="/admin/reports/{{ 0 }}/decision" onclick="return setAct(this,'close_only')" class="btn btn-secondary">إغلاق البلاغ فقط</button>
+        <div class="col-12 d-flex flex-wrap gap-2">
+          <button type="submit" class="btn btn-warning" data-action="suspend_item">⏸️ إيقاف المنشور</button>
+          <button type="submit" class="btn btn-danger"  data-action="remove_item">🗑️ حذف المنشور</button>
+          <button type="submit" class="btn btn-secondary" data-action="reject_report">❌ رفض البلاغ</button>
+          <a class="btn btn-outline-primary" id="viewItemBtn" target="_blank">🔗 عرض المنشور</a>
         </div>
       </form>
 
+      <!-- أزرار للبلاغ المعالج -->
       <form id="restoreForm" method="post" class="mt-2" style="display:none">
-        <input type="hidden" name="note" value="تمت إعادة العنصر/فتح البلاغ">
-        <button formaction="/admin/reports/{{ 0 }}/decision" onclick="return setAct(this,'restore_item')" class="btn btn-success">إرجاع المنشور</button>
-        <button formaction="/admin/reports/{{ 0 }}/reopen" class="btn btn-outline-primary ms-2">إعادة فتح البلاغ</button>
+        <div class="d-flex flex-wrap gap-2">
+          <button type="submit" class="btn btn-success" data-action="restore_item">♻️ استرجاع المنشور</button>
+          <button type="submit" class="btn btn-outline-warning" data-action="reopen">🔄 إعادة فتح البلاغ</button>
+        </div>
       </form>
     </div>
   </div>
@@ -78,37 +92,87 @@
 
 {% block scripts %}
 <script>
-function setAct(btn, act){
-  const f = btn.closest('form');
-  const rid = document.getElementById('repId').value;
-  f.action = '/admin/reports/'+rid+'/decision';
-  const a = document.createElement('input'); a.type='hidden'; a.name='action'; a.value=act;
-  f.appendChild(a);
-  return true;
-}
 (function(){
+  const details   = document.getElementById('details');
+  const summary   = document.getElementById('dSummary');
+  const decForm   = document.getElementById('decisionForm');
+  const resForm   = document.getElementById('restoreForm');
+  const noteArea  = document.getElementById('noteArea');
+  const noteInput = document.getElementById('noteInput');
+  const viewItem  = document.getElementById('viewItemBtn');
+
+  let current = null;
+
+  function setDecisionAction(form, action){
+    // القرارات: /admin/reports/{id}/decision
+    form.action = '/admin/reports/' + current.id + '/decision';
+    // حقن action
+    const old = form.querySelector('input[name="action"]');
+    if (old) old.remove();
+    const a = document.createElement('input');
+    a.type='hidden'; a.name='action'; a.value = action;
+    form.appendChild(a);
+  }
+
+  function setReopenAction(form){
+    // إعادة فتح: /admin/reports/{id}/reopen
+    form.action = '/admin/reports/' + current.id + '/reopen';
+    const old = form.querySelector('input[name="action"]');
+    if (old) old.remove();
+  }
+
   function show(r){
-    const d = document.getElementById('details');
-    const s = document.getElementById('dSummary');
-    const decision = document.getElementById('decisionForm');
-    const restore  = document.getElementById('restoreForm');
-    document.getElementById('repId').value = r.id;
-    s.innerHTML =
-      '<div class="mb-1">البلاغ #'+r.id+' — '+(r.image_index!=null?'صورة #'+r.image_index:'المنشور')+' #'+(r.item_id||'-')+'</div>'+
+    current = r;
+    const itemLabel = (r.image_index!=null) ? ('صورة #' + r.image_index) : 'المنشور';
+    summary.innerHTML =
+      '<div class="mb-1">البلاغ #'+r.id+' — '+ itemLabel +' #'+(r.item_id||'-')+'</div>'+
       '<div><b>السبب:</b> '+(r.reason||'')+'</div>'+
       (r.note?'<div class="text-muted small">ملاحظة: '+r.note+'</div>':'');
-    const isPending = !r.status || r.status==='pending';
-    decision.style.display = isPending ? '' : 'none';
-    restore.style.display  = isPending ? 'none' : '';
-    d.style.display = '';
+
+    // زر عرض المنشور
+    viewItem.href = '/items/' + (r.item_id || '');
+
+    // إظهار أي نموذج؟
+    const st = (r.status || '').toLowerCase();
+    const isPending = !st || st==='pending' || st==='open';
+    decForm.style.display = isPending ? '' : 'none';
+    resForm.style.display = isPending ? 'none' : '';
+    details.style.display = '';
   }
-  document.querySelectorAll('#pendingList a, #doneList a').forEach(a=>{
-    a.addEventListener('click', (e)=>{
-      e.preventDefault();
-      const data = JSON.parse(a.getAttribute('data-report')||'{}');
-      data.status = a.closest('#pendingList') ? 'pending' : 'closed';
-      show(data);
+
+  function hookList(list){
+    list.querySelectorAll('a.list-group-item').forEach(a=>{
+      a.addEventListener('click', (e)=>{
+        e.preventDefault();
+        const data = JSON.parse(a.getAttribute('data-report')||'{}');
+        show(data);
+      });
     });
+  }
+  hookList(document.getElementById('pendingList'));
+  hookList(document.getElementById('doneList'));
+
+  // إرسال قرارات البلاغ المعلّق
+  decForm?.addEventListener('submit', function(e){
+    e.preventDefault();
+    const btn = e.submitter;
+    const act = btn?.dataset?.action || '';
+    noteInput.value = noteArea.value || '';
+    setDecisionAction(decForm, act);
+    decForm.submit();
+  });
+
+  // إرسال استرجاع/إعادة فتح
+  resForm?.addEventListener('submit', function(e){
+    e.preventDefault();
+    const btn = e.submitter;
+    const act = btn?.dataset?.action || '';
+    if (act === 'reopen'){
+      setReopenAction(resForm);
+    }else{
+      setDecisionAction(resForm, act); // restore_item
+    }
+    resForm.submit();
   });
 })();
 </script>

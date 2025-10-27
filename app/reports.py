@@ -381,7 +381,7 @@ def admin_reports_page(request: Request, db: Session = Depends(get_db)):
     )
 
     return request.app.templates.TemplateResponse(
-        "admin/reports.html",
+            "reports.html",
         {
             "request": request,
             "title": "البلاغات",
