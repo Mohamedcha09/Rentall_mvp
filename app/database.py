@@ -54,10 +54,6 @@ def _backend_name() -> str:
 
 
 def _has_column(table: str, col: str) -> bool:
-    """
-    يفحص وجود عمود في الجدول مع دعم Postgres و SQLite.
-    لو حدث خطأ نعيد False (أفضل من أن نتصرف كأن العمود موجود).
-    """
     backend = _backend_name()
     try:
         with engine.begin() as conn:
@@ -66,17 +62,16 @@ def _has_column(table: str, col: str) -> bool:
                     """
                     SELECT column_name
                     FROM information_schema.columns
-                    WHERE table_schema='public' AND table_name=:t
+                    WHERE table_schema='public' AND table_name=%(t)s
                     """,
-                ).mappings().params(t=table).all()
+                    {"t": table},
+                ).mappings().all()
                 return col in [r["column_name"] for r in rows]
             else:
                 rows = conn.exec_driver_sql(f"PRAGMA table_info('{table}')").all()
-                # في SQLite: (cid, name, type, notnull, dflt_value, pk)
                 return any(r[1] == col for r in rows)
     except Exception:
         return False
-
 
 # =========================================================
 # 4) Hotfix: تأكيد أعمدة reports (لو كانت ناقصة في Postgres قديم)

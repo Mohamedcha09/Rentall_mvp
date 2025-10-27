@@ -59,8 +59,8 @@ class User(Base):
     stripe_account_id = col_or_literal("users", "stripe_account_id", String, nullable=True)
     payouts_enabled   = col_or_literal("users", "payouts_enabled", Boolean, default=False)
 
-    role    = col_or_literal("users", "role", String(20), default="user")
-    status  = col_or_literal("users", "status", String(20), default="pending")
+    role   = Column(String(20), default="user")
+    status = Column(String(20), default="pending")
 
     is_verified = col_or_literal("users", "is_verified", Boolean, default=False, nullable=False)
     verified_at = col_or_literal("users", "verified_at", DateTime, nullable=True)
