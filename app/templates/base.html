@@ -739,7 +739,118 @@
   setTimeout(ping, 5000);
 })();
 </script>
+<script>
+(function initNotifications(){
+  if (window.__notifInit) return; window.__notifInit = true;
 
+  const btn    = document.getElementById('notifOpen');
+  const panel  = document.getElementById('notifPanel');
+  const bodyEl = document.getElementById('notifBody');
+  const close  = document.getElementById('notifClose');
+  const scrim  = document.getElementById('scrim');
+
+  if (!btn || !panel || !bodyEl) return;
+
+  // عناصر الشارة فوق الجرس (إذا غير موجودة ننشئها)
+  let ping  = btn.querySelector('.notif-ping');
+  let count = btn.querySelector('.notif-count');
+  if (!ping){  ping  = document.createElement('span'); ping.className='notif-ping';  ping.style.display='none'; btn.appendChild(ping); }
+  if (!count){ count = document.createElement('span'); count.className='notif-count'; count.style.display='none'; btn.appendChild(count); }
+
+  let lastTs = 0;  // آخر توقيت استلمناه من السيرفر
+  let pollTm = null;
+
+  function setBadge(n){
+    if (!n || n<=0){ ping.style.display='none'; count.style.display='none'; }
+    else {
+      ping.style.display='block';
+      count.style.display='block';
+      count.textContent = (n>99 ? '99+' : n);
+    }
+  }
+
+  async function fetchUnreadCount(){
+    try{
+      const r = await fetch('/api/unread_count', {cache:'no-store'});
+      if(!r.ok) return;
+      const j = await r.json();
+      setBadge(Number(j.count||0));
+    }catch(_){}
+  }
+
+  function esc(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
+
+  function renderItems(items){
+    if (!items || !items.length){
+      bodyEl.innerHTML = '<div class="small text-muted">لا توجد إشعارات جديدة.</div>';
+      return;
+    }
+    bodyEl.innerHTML = items.map(it=>{
+      const href = it.url ? (' href="'+esc(it.url)+'"') : '';
+      return `<a class="notif-row"${href}>
+        <div class="fw-bold">${esc(it.title||'إشعار')}</div>
+        ${it.body ? '<div class="small text-muted">'+esc(it.body)+'</div>' : ''}
+      </a>`;
+    }).join('');
+  }
+
+  async function pollOnce(){
+    try{
+      const r = await fetch('/api/notifications/poll?since='+(lastTs||0), {cache:'no-store'});
+      if(!r.ok) return;
+      const j = await r.json();
+      lastTs = Number(j.now||Math.floor(Date.now()/1000));
+      const items = Array.isArray(j.items) ? j.items : [];
+      // لو اللوحة مفتوحة نعرض الكل، لو مغلقة نحدّث الشارة فقط
+      if (panel.classList.contains('is-open')){
+        // عند الفتح نطلب آخر 30 مباشرة (since=0)
+        if (items.length===0){ await loadInitial(); }
+        else { renderItems(items); }
+      } else {
+        if (items.length>0){ await fetchUnreadCount(); }
+      }
+    }catch(_){}
+  }
+
+  async function loadInitial(){
+    try{
+      const r = await fetch('/api/notifications/poll?since=0', {cache:'no-store'});
+      if(!r.ok) return;
+      const j = await r.json();
+      lastTs = Number(j.now||Math.floor(Date.now()/1000));
+      renderItems(j.items||[]);
+    }catch(_){}
+  }
+
+  async function markAllRead(){
+    try{
+      await fetch('/api/notifications/mark_all_read', {method:'POST'});
+      setBadge(0);
+    }catch(_){}
+  }
+
+  function openPanel(){
+    panel.classList.add('is-open');
+    panel.setAttribute('aria-hidden','false');
+    scrim.style.opacity='1'; scrim.style.pointerEvents='auto';
+    loadInitial().then(markAllRead);
+  }
+  function closePanel(){
+    panel.classList.remove('is-open');
+    panel.setAttribute('aria-hidden','true');
+    scrim.style.opacity='0'; scrim.style.pointerEvents='none';
+  }
+
+  btn.addEventListener('click', (e)=>{ e.preventDefault(); panel.classList.contains('is-open') ? closePanel() : openPanel(); });
+  close?.addEventListener('click', ()=>closePanel());
+  scrim?.addEventListener('click', ()=>closePanel());
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closePanel(); });
+
+  // بدء تشغيل: اسحب العداد ثم ابدأ polling
+  fetchUnreadCount();
+  pollTm = setInterval(pollOnce, 20000); // كل 20 ثانية
+})();
+</script>
 <script>
 document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
   e.preventDefault();
