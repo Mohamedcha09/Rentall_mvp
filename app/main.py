@@ -194,7 +194,33 @@ def ensure_sqlite_columns():
     except Exception as e:
         print(f"[WARN] ensure_sqlite_columns skipped/failed: {e}")
 
+# === جديد: تهيئة أعمدة users.is_mod / users.badge_admin على جميع المحركات
+def ensure_users_columns():
+    """
+    يضمن وجود users.is_mod و users.badge_admin على SQLite و Postgres.
+    """
+    try:
+        try:
+            backend = engine.url.get_backend_name()
+        except Exception:
+            backend = getattr(getattr(engine, "dialect", None), "name", "")
+
+        with engine.begin() as conn:
+            if backend == "sqlite":
+                cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info('users')").all()}
+                if "is_mod" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_mod BOOLEAN DEFAULT 0;")
+                if "badge_admin" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN badge_admin BOOLEAN DEFAULT 0;")
+            elif str(backend).startswith("postgres"):
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_mod BOOLEAN DEFAULT false;")
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS badge_admin BOOLEAN DEFAULT false;")
+        print("[OK] ensure_users_columns(): users.is_mod / badge_admin ready")
+    except Exception as e:
+        print(f"[WARN] ensure_users_columns failed: {e}")
+
 ensure_sqlite_columns()
+ensure_users_columns()
 
 def seed_admin():
     db = SessionLocal()
@@ -302,6 +328,13 @@ app.include_router(evidence_router)
 app.include_router(cron_router)
 app.include_router(reports_router)
 app.include_router(admin_reports_router)
+
+# -----------------------------------------------------------------------------
+# مسار قديم → تحويل إلى صفحة البلاغات الجديدة
+# -----------------------------------------------------------------------------
+@app.get("/mod/reports")
+def legacy_mod_reports_redirect():
+    return RedirectResponse(url="/admin/reports", status_code=308)
 
 # -----------------------------------------------------------------------------
 # الصفحات العامة
@@ -431,9 +464,6 @@ async def sync_user_flags(request: Request, call_next):
                         sess_user["status"] = getattr(db_user, "status", sess_user.get("status"))
                         sess_user["payouts_enabled"] = bool(getattr(db_user, "payouts_enabled", False))
                         sess_user["is_deposit_manager"] = bool(getattr(db_user, "is_deposit_manager", False))
-                        sess_user["can_manage_deposits"] = bool(
-                            sess_user.get("is_deposit_manager") or str(sess_user.get("role","")).lower() == "admin"
-                        )
                         try:
                             sess_user["is_mod"] = bool(getattr(db_user, "is_mod", False))
                         except Exception:
