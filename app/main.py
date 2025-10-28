@@ -66,6 +66,7 @@ from .debug_email import router as debug_email_router
 from .routes_metrics import router as metrics_router
 from .reports import router as reports_router
 from .admin_reports import router as admin_reports_router
+from .support import router as support_router
 
 # -----------------------------------------------------------------------------
 # إنشاء التطبيق
@@ -339,6 +340,7 @@ app.include_router(evidence_router)
 app.include_router(cron_router)
 app.include_router(reports_router)
 app.include_router(admin_reports_router)
+app.include_router(support_router)
 
 # -----------------------------------------------------------------------------
 # مسار قديم → تحويل إلى صفحة البلاغات الجديدة

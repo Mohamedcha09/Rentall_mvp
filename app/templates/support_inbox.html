@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-3">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h3 class="fw-bold">{{ 'Support Inbox (Agent)' if is_agent else 'مركز المساعدة' }}</h3>
+    {% if not is_agent %}
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newTicketModal">
+      <i class="bi bi-plus-lg"></i> تذكرة جديدة
+    </button>
+    {% endif %}
+  </div>
+
+  {% if tickets and tickets|length %}
+    <div class="list-group">
+      {% for t in tickets %}
+      <a class="list-group-item list-group-item-action d-flex align-items-center justify-content-between" href="/support/t/{{ t.id }}">
+        <div class="me-2">
+          <div class="fw-bold">{{ t.subject }}</div>
+          <small class="text-muted">
+            الحالة: {{ t.status }}
+            {% if is_agent and t.user %} • من: {{ t.user.first_name }} {{ t.user.last_name }}{% endif %}
+            {% if t.agent and not is_agent %} • الوكيل: {{ t.agent.first_name }} {{ t.agent.last_name }}{% endif %}
+          </small>
+        </div>
+        {% if (is_agent and t.unread_for_agent) or (not is_agent and t.unread_for_user) %}
+          <span class="badge bg-danger">جديد</span>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="alert alert-info">لا توجد تذاكر بعد.</div>
+  {% endif %}
+</div>
+
+{% if not is_agent %}
+<div class="modal fade" id="newTicketModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" action="/support/start" method="post">
+      <div class="modal-header">
+        <h5 class="modal-title">تذكرة جديدة</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <label class="form-label">الموضوع</label>
+          <input class="form-control" name="subject" required maxlength="200" placeholder="مثال: مشكلة في الحجز #123">
+        </div>
+        <div class="mb-2">
+          <label class="form-label">الرسالة</label>
+          <textarea class="form-control" name="body" rows="4" required placeholder="صف مشكلتك…"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" data-bs-dismiss="modal" type="button">إلغاء</button>
+        <button class="btn btn-primary" type="submit">فتح التذكرة</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

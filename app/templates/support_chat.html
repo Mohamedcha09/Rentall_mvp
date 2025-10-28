@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-3" style="max-width:900px">
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h4 class="fw-bold">تذكرة #{{ ticket.id }} — {{ ticket.subject }}</h4>
+    <div class="d-flex gap-2">
+      {% if is_agent and ticket.status != 'closed' %}
+      <form action="/admin/support/claim/{{ ticket.id }}" method="post">
+        <button class="btn btn-outline-secondary btn-sm" type="submit">
+          {% if ticket.agent %}تحويل لي{% else %}استلام التذكرة{% endif %}
+        </button>
+      </form>
+      <form action="/admin/support/close/{{ ticket.id }}" method="post">
+        <button class="btn btn-outline-danger btn-sm" type="submit">إغلاق</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body" style="max-height:60vh; overflow:auto;">
+      {% for m in messages %}
+        <div class="mb-3">
+          <div class="small text-muted">
+            {{ m.sender_role == 'agent' and 'Agent' or 'User' }}
+            • {{ m.sender and (m.sender.first_name ~ ' ' ~ m.sender.last_name) or '' }}
+            • {{ m.created_at.strftime('%Y-%m-%d %H:%M') }}
+          </div>
+          <div class="border rounded p-2">{{ m.body | e }}</div>
+        </div>
+      {% endfor %}
+      {% if not messages or messages|length == 0 %}
+        <div class="text-muted">لا رسائل بعد.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if ticket.status != 'closed' %}
+  <form action="/support/t/{{ ticket.id }}/send" method="post" class="d-flex gap-2">
+    <textarea class="form-control" name="body" rows="2" placeholder="اكتب رسالتك…" required></textarea>
+    <button class="btn btn-primary" type="submit">إرسال</button>
+  </form>
+  {% else %}
+  <div class="alert alert-warning">هذه التذكرة مغلقة.</div>
+  {% endif %}
+</div>
+{% endblock %}

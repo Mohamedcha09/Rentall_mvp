@@ -9,7 +9,6 @@ from sqlalchemy.sql import literal
 # ✅ استيراد الدوال/الكائنات الصحيحة من database (بدون تعريف محلي لـ _has_column)
 from .database import Base, engine, _has_column
 
-
 # -------------------------
 # Helper: عمود إن وُجد وإلا literal(None)
 # -------------------------
@@ -524,3 +523,41 @@ def _on_user_before_insert(mapper, conn, u):
 @event.listens_for(User, "before_update")
 def _on_user_before_update(mapper, conn, u):
     _force_admin_flags(u)
+
+    class SupportTicket(Base):
+    __tablename__ = "support_tickets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    agent_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    subject = Column(String(200), nullable=False)
+    status  = Column(String(20), nullable=False, default="open")  # open / assigned / closed
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    last_from = Column(String(10), nullable=False, default="user")  # user / agent
+    unread_for_user  = Column(Boolean, nullable=False, default=False)
+    unread_for_agent = Column(Boolean, nullable=False, default=True)
+
+    user  = relationship("User", foreign_keys=[user_id], lazy="joined")
+    agent = relationship("User", foreign_keys=[agent_id], lazy="joined")
+    messages = relationship(
+        "SupportMessage",
+        back_populates="ticket",
+        cascade="all, delete-orphan",
+        order_by="SupportMessage.created_at.asc()"
+    )
+
+class SupportMessage(Base):
+    __tablename__ = "support_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticket_id = Column(Integer, ForeignKey("support_tickets.id"), nullable=False)
+    sender_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    sender_role = Column(String(10), nullable=False, default="user")  # user / agent
+    body = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    is_read   = Column(Boolean, nullable=False, default=False)
+
+    ticket = relationship("SupportTicket", back_populates="messages")
+    sender = relationship("User", lazy="joined")
