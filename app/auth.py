@@ -149,7 +149,8 @@ def login_post(
             return RedirectResponse(url=f"/verify-email?{query}", status_code=303)
 
     # ✅ أنشئ الجلسة وسجّل الدخول
-       request.session["user"] = {
+       # ✅ أنشئ الجلسة وسجّل الدخول
+    request.session["user"] = {
         "id": user.id,
         "first_name": getattr(user, "first_name", ""),
         "last_name": getattr(user, "last_name", ""),
@@ -159,9 +160,9 @@ def login_post(
         "status": getattr(user, "status", "active"),
         "is_verified": bool(getattr(user, "is_verified", False)),
         "avatar_path": getattr(user, "avatar_path", None) or None,
+        # أعلام إضافية
         "is_deposit_manager": bool(getattr(user, "is_deposit_manager", False)),
-        # ✅ أضِفه هنا:
-        "is_mod": bool(getattr(user, "is_mod", False)),
+        "is_mod": bool(getattr(user, "is_mod", False)),   # ✅ مهم لظهور “البلاغات”
     }
 
     # لو SITE_URL مضبوط ودخلت من دومين آخر، رجّعه للدومين الأساسي
@@ -417,6 +418,7 @@ def verify_from_email(request: Request, token: str = "", db: Session = Depends(g
         "is_verified": True,
         "avatar_path": getattr(user, "avatar_path", None) or None,
         "is_deposit_manager": bool(getattr(user, "is_deposit_manager", False)),
+        "is_mod": bool(getattr(user, "is_mod", False)),   # ✅
     }
     return RedirectResponse("/", status_code=303)
 
