@@ -4,16 +4,13 @@
   <h3 class="mb-3">البلاغات</h3>
 
   <div class="row g-3">
-    <!-- غير مدروسة -->
     <div class="col-lg-6">
       <div class="card">
         <div class="card-header bg-warning-subtle fw-bold">غير مدروسة</div>
         <div class="list-group list-group-flush">
           {% for r in pending %}
             <a class="list-group-item list-group-item-action" href="/admin/reports/{{ r.id }}">
-              🚩 #{{ r.id }} —
-              {{ 'صورة #' ~ r.image_index if r.image_index is not none else 'منشور' }}
-              #{{ r.item_id }}
+              🚩 #{{ r.id }} — {{ 'صورة #' ~ r.image_index if r.image_index is not none else 'منشور' }} #{{ r.item_id }}
               <div class="small text-muted">السبب: {{ r.reason }}</div>
             </a>
           {% else %}
@@ -23,16 +20,13 @@
       </div>
     </div>
 
-    <!-- تمت دراستها -->
     <div class="col-lg-6">
       <div class="card">
         <div class="card-header bg-success-subtle fw-bold">تمت دراستها</div>
         <div class="list-group list-group-flush">
           {% for r in processed %}
             <a class="list-group-item list-group-item-action" href="/admin/reports/{{ r.id }}">
-              ✅ #{{ r.id }} —
-              {{ 'صورة #' ~ r.image_index if r.image_index is not none else 'منشور' }}
-              #{{ r.item_id }}
+              ✅ #{{ r.id }} — {{ 'صورة #' ~ r.image_index if r.image_index is not none else 'منشور' }} #{{ r.item_id }}
               <div class="small text-muted">
                 الحالة: {{ r.status }}{% if r.tag %} — {{ r.tag }}{% endif %}
               </div>

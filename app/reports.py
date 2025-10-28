@@ -562,11 +562,9 @@ def admin_report_detail_page(report_id: int, request: Request, db: Session = Dep
     if not r:
         raise HTTPException(status_code=404, detail="report-not-found")
 
-    # هل البلاغ قيد الدراسة؟
     status_val = (getattr(r, "status", None) or "").lower()
     is_pending = status_val in ("", "pending", "open")
 
-    # معلومات إضافية اختيارية
     item_id = getattr(r, "item_id", None)
     owner_id = _get_item_owner_id(db, int(item_id)) if item_id else None
 
@@ -579,5 +577,6 @@ def admin_report_detail_page(report_id: int, request: Request, db: Session = Dep
             "item_id": item_id,
             "owner_id": owner_id,
             "is_pending": is_pending,
+            "session_user": sess,  # ✅ مهم
         }
     )
