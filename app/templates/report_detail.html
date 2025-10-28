@@ -1,86 +1,88 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container py-3">
-
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h3 class="mb-0">تفاصيل البلاغ #{{ r.id }}</h3>
-    <a class="btn btn-outline-secondary btn-sm" href="/admin/reports">← رجوع للقائمة</a>
-  </div>
-
-  <div class="card mb-3">
-    <div class="card-body">
-      <div class="mb-2"><b>المستهدف:</b>
-        {{ 'صورة #' ~ r.image_index if r.image_index is not none else 'المنشور' }}
-        #{{ r.item_id }}
-      </div>
-      <div><b>السبب:</b> {{ r.reason }}</div>
-      {% if r.note %}<div class="text-muted"><b>ملاحظات سابقة:</b> {{ r.note }}</div>{% endif %}
-      <div class="small text-muted mt-2">
-        الحالة: {{ r.status }}{% if r.tag %} — {{ r.tag }}{% endif %}
-      </div>
-      <div class="mt-2">
-        <a class="btn btn-link p-0" target="_blank" href="/items/{{ r.item_id }}">🔗 عرض المنشور</a>
-      </div>
+    <div class="d-flex gap-2">
+      <a href="/admin/reports" class="btn btn-outline-secondary">⬅️ رجوع إلى البلاغات</a>
+      {% if item_id %}
+        <a href="/items/{{ item_id }}" class="btn btn-outline-primary" target="_blank">🔗 عرض المنشور</a>
+      {% endif %}
     </div>
   </div>
 
-  {% if reporter %}
-    <div class="card mb-3">
-      <div class="card-header">صاحب البلاغ</div>
-      <div class="card-body">
-        <div>{{ reporter.first_name }} {{ reporter.last_name }}</div>
-        <div class="small text-muted">{{ reporter.email }}</div>
-      </div>
-    </div>
-  {% endif %}
-
-  {% if item %}
-    <div class="card mb-3">
-      <div class="card-header">معلومات المنشور</div>
-      <div class="card-body">
-        <div><b>ID:</b> {{ item.id }}</div>
-        {% if item.title %}<div><b>العنوان:</b> {{ item.title }}</div>{% endif %}
-        <div class="small text-muted">
-          حالة العنصر:
-          {% if item.status is defined %}
-            {{ item.status }}
-          {% else %}
-            {{ 'active' if item.is_active == 'yes' else 'inactive' }}
-          {% endif %}
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="card">
+        <div class="card-header fw-bold">البيانات</div>
+        <div class="card-body">
+          <div class="row gy-2">
+            <div class="col-6"><b>الحالة:</b> {{ r.status or '—' }}</div>
+            <div class="col-6"><b>الوسم:</b> {{ r.tag or '—' }}</div>
+            <div class="col-6"><b>المنشور:</b> {{ item_id or '—' }}</div>
+            <div class="col-6"><b>الصورة:</b> {{ r.image_index if r.image_index is not none else '—' }}</div>
+            <div class="col-12"><b>السبب:</b> {{ r.reason or '—' }}</div>
+            <div class="col-12"><b>ملاحظة:</b> {{ r.note or '—' }}</div>
+            <div class="col-6"><b>أُنشئ:</b> {{ r.created_at or '—' }}</div>
+            <div class="col-6"><b>آخر تحديث:</b> {{ r.updated_at or '—' }}</div>
+            <div class="col-6"><b>المبلِّغ:</b> {{ r.reporter_id or '—' }}</div>
+            <div class="col-6"><b>مالك المنشور:</b> {{ owner_id or '—' }}</div>
+          </div>
         </div>
       </div>
     </div>
-  {% endif %}
 
-  {% set is_pending = (r.status is not defined) or (r.status in ['pending','open']) %}
-
-  {% if is_pending %}
-    <form method="post" action="/admin/reports/{{ r.id }}/decision" class="card">
-      <div class="card-header">قرار</div>
-      <div class="card-body">
-        <div class="mb-3">
-          <label class="form-label">ملاحظة القرار (اختياري)</label>
-          <textarea name="note" class="form-control" rows="2"></textarea>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
-          <button name="action" value="suspend_item" class="btn btn-warning">⏸️ إيقاف المنشور</button>
-          <button name="action" value="delete_item"  class="btn btn-danger">🗑️ حذف المنشور</button>
-          <button name="action" value="reject_report" class="btn btn-secondary">❌ رفض البلاغ</button>
-          <a class="btn btn-outline-primary" target="_blank" href="/items/{{ r.item_id }}">🔗 عرض المنشور</a>
+    <div class="col-lg-5">
+      {% if is_pending %}
+      <!-- قرارات للبلاغ المعلّق -->
+      <div class="card">
+        <div class="card-header bg-warning-subtle fw-bold">اتخاذ قرار</div>
+        <div class="card-body">
+          <form method="post" action="/admin/reports/{{ r.id }}/decision" class="row g-2">
+            <input type="hidden" name="note" id="noteInput">
+            <div class="col-12">
+              <label class="form-label">ملاحظة القرار</label>
+              <textarea id="noteArea" class="form-control" rows="2" placeholder="ملاحظاتك (اختياري)"></textarea>
+            </div>
+            <div class="col-12 d-flex flex-wrap gap-2">
+              <button name="action" value="suspend_item" class="btn btn-warning">⏸️ إيقاف المنشور</button>
+              <button name="action" value="delete_item"  class="btn btn-danger">🗑️ حذف المنشور</button>
+              <button name="action" value="reject_report" class="btn btn-secondary">❌ رفض البلاغ</button>
+              <button name="action" value="close_only" class="btn btn-outline-dark">📁 إغلاق البلاغ فقط</button>
+            </div>
+          </form>
         </div>
       </div>
-    </form>
-  {% else %}
-    <form method="post" action="/admin/reports/{{ r.id }}/reopen" class="d-inline">
-      <button class="btn btn-outline-warning">🔄 إعادة فتح البلاغ</button>
-    </form>
-    {% if item %}
-      <form method="post" action="/admin/reports/{{ r.id }}/decision" class="d-inline ms-2">
-        <input type="hidden" name="note" value="استرجاع بعد المراجعة">
-        <button name="action" value="restore_item" class="btn btn-success">♻️ استرجاع المنشور</button>
-      </form>
-    {% endif %}
-  {% endif %}
-
+      {% else %}
+      <!-- أزرار بعد المعالجة -->
+      <div class="card">
+        <div class="card-header bg-success-subtle fw-bold">إجراءات إضافية</div>
+        <div class="card-body">
+          <form method="post" action="/admin/reports/{{ r.id }}/decision" class="d-flex flex-wrap gap-2 mb-2">
+            <button name="action" value="restore_item" class="btn btn-success">♻️ استرجاع المنشور</button>
+          </form>
+          <form method="post" action="/admin/reports/{{ r.id }}/reopen" class="d-flex flex-wrap gap-2">
+            <button class="btn btn-outline-primary">🔄 إعادة فتح البلاغ</button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // فقط لنسخ الملاحظة المخزنة في الـ textarea إلى حقل "note" عند إرسال أي زر
+  (function(){
+    const form = document.querySelector('form[action*="/decision"]');
+    if (!form) return;
+    form.addEventListener('submit', function(e){
+      const noteArea = document.getElementById('noteArea');
+      const noteInput = document.getElementById('noteInput');
+      if (noteArea && noteInput) noteInput.value = noteArea.value || '';
+    });
+  })();
+</script>
 {% endblock %}

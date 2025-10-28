@@ -548,3 +548,36 @@ def reports_diag(request: Request, db: Session = Depends(get_db)):
             info["insert_error"] = str(e)
 
     return JSONResponse(info)
+
+    # =========================
+# صفحة تفاصيل بلاغ واحد
+# =========================
+@router.get("/admin/reports/{report_id}")
+def admin_report_detail_page(report_id: int, request: Request, db: Session = Depends(get_db)):
+    sess = request.session.get("user")
+    if not sess or not (str(sess.get("role","")).lower()=="admin" or bool(sess.get("is_mod"))):
+        return RedirectResponse(url="/login", status_code=303)
+
+    r = db.query(Report).get(report_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="report-not-found")
+
+    # هل البلاغ قيد الدراسة؟
+    status_val = (getattr(r, "status", None) or "").lower()
+    is_pending = status_val in ("", "pending", "open")
+
+    # معلومات إضافية اختيارية
+    item_id = getattr(r, "item_id", None)
+    owner_id = _get_item_owner_id(db, int(item_id)) if item_id else None
+
+    return request.app.templates.TemplateResponse(
+        "report_detail.html",
+        {
+            "request": request,
+            "title": f"بلاغ #{getattr(r,'id', '')}",
+            "r": r,
+            "item_id": item_id,
+            "owner_id": owner_id,
+            "is_pending": is_pending,
+        }
+    )
