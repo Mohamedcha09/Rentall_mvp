@@ -551,7 +551,7 @@ class SupportTicket(Base):
         "SupportMessage",
         back_populates="ticket",
         cascade="all, delete-orphan",
-        order_by="SupportMessage.created_at.asc()
+        order_by="SupportMessage.created_at.asc()"
     )
 
 
