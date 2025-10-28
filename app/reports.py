@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 from datetime import datetime
 from typing import Any, Dict, Optional
+from fastapi.responses import RedirectResponse
 
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -381,18 +382,23 @@ async def create_report_legacy(
 @router.get("/admin/reports")
 def admin_reports_page(request: Request, db: Session = Depends(get_db)):
     sess = request.session.get("user")
-    if not sess or not (str(sess.get("role","")).lower()=="admin" or bool(sess.get("is_mod"))):
+    if not sess:
         return RedirectResponse(url="/login", status_code=303)
 
-    # pending/open على اليسار
+    # تحقّق صارم من القاعدة (لا تعتمد على أعلام الجلسة فقط)
+    me = db.query(User).filter(User.id == int(sess.get("id", 0))).first()
+    is_admin = (getattr(me, "role", "") or "").lower() == "admin"
+    is_mod   = bool(getattr(me, "is_mod", False))
+
+    if not (is_admin or is_mod):
+        return RedirectResponse(url="/login", status_code=303)
+
     pending = (
         db.query(Report)
         .filter(Report.status.in_(["open","pending"]))
         .order_by(Report.created_at.desc())
         .all()
     )
-
-    # processed/closed على اليمين
     processed = (
         db.query(Report)
         .filter(Report.status.in_(["closed","resolved","rejected"]))
@@ -400,8 +406,6 @@ def admin_reports_page(request: Request, db: Session = Depends(get_db)):
         .limit(200)
         .all()
     )
-
-    # مصفوفة موحّدة (إن احتاج القالب هذا الشكل)
     reports = (
         db.query(Report)
         .order_by(Report.created_at.desc())
@@ -580,3 +584,9 @@ def admin_report_detail_page(report_id: int, request: Request, db: Session = Dep
             "session_user": sess,  # ✅ مهم
         }
     )
+
+
+@router.get("/mod/reports")
+def legacy_mod_reports_redirect():
+    # تحويل أي رابط قديم /mod/reports إلى المسار الجديد
+    return RedirectResponse(url="/admin/reports", status_code=308)

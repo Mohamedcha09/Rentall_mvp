@@ -158,6 +158,7 @@ Base.metadata.create_all(bind=engine)
 def ensure_sqlite_columns():
     """
     هوت-فيكس أعمدة ناقصة عند استخدام SQLite فقط (يتجاهل Postgres):
+      - users.is_mod / users.is_deposit_manager (لصلاحيات المود و DM)
       - deposit_evidences.uploader_id
       - reports.status / reports.tag / reports.updated_at
     """
@@ -170,15 +171,25 @@ def ensure_sqlite_columns():
             return
 
         with engine.begin() as conn:
-            # deposit_evidences.uploader_id
+            # ===== users: is_mod / is_deposit_manager =====
             try:
-                cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info('deposit_evidences')").all()}
-                if "uploader_id" not in cols:
+                ucols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info('users')").all()}
+                if "is_mod" not in ucols:
+                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_mod BOOLEAN NOT NULL DEFAULT 0;")
+                if "is_deposit_manager" not in ucols:
+                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_deposit_manager BOOLEAN NOT NULL DEFAULT 0;")
+            except Exception as e:
+                print(f"[WARN] ensure_sqlite_columns: users.* → {e}")
+
+            # ===== deposit_evidences.uploader_id =====
+            try:
+                ecols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info('deposit_evidences')").all()}
+                if "uploader_id" not in ecols:
                     conn.exec_driver_sql("ALTER TABLE deposit_evidences ADD COLUMN uploader_id INTEGER;")
             except Exception as e:
                 print(f"[WARN] ensure_sqlite_columns: deposit_evidences.uploader_id → {e}")
 
-            # reports: status/tag/updated_at
+            # ===== reports: status/tag/updated_at =====
             try:
                 rcols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info('reports')").all()}
                 if "status" not in rcols:
