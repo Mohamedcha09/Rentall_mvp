@@ -185,7 +185,8 @@
               <th>هوية (أ/خ)</th>
               <th>توثيق</th>
               <th>MD</th>
-              <th>MOD</th>  {# ✅ عمود جديد #}
+              <th>MOD</th>
+              <th>CS</th>  {# ✅ جديد: عمود خدمة الزبائن #}
               <th class="text-end">إجراءات</th>
             </tr>
           </thead>
@@ -203,7 +204,7 @@
               <td>
                 {{ u.first_name }} {{ u.last_name }}
                 {% if u.is_mod|default(false) %}
-                  <span class="badge bg-secondary ms-1" title="مدقّق محتوى">MOD</span>  {# ✅ شارة صغيرة بجانب الاسم #}
+                  <span class="badge bg-secondary ms-1" title="مدقّق محتوى">MOD</span>
                 {% endif %}
               </td>
               <td>{{ u.email }}</td>
@@ -266,10 +267,19 @@
                 {% endif %}
               </td>
 
-              <!-- MOD ✅ عمود جديد -->
+              <!-- MOD -->
               <td>
                 {% if u.is_mod|default(false) %}
                   <span class="badge bg-secondary">MOD</span>
+                {% else %}
+                  <span class="badge bg-secondary">—</span>
+                {% endif %}
+              </td>
+
+              <!-- ✅ CS: خدمة الزبائن -->
+              <td>
+                {% if u.is_support|default(false) %}
+                  <span class="badge bg-success">CS</span>
                 {% else %}
                   <span class="badge bg-secondary">—</span>
                 {% endif %}
@@ -287,7 +297,7 @@
                   </form>
                 {% endif %}
 
-                {# MOD actions ✅ زران جديدان #}
+                {# MOD actions #}
                 {% if u.is_mod|default(false) %}
                   <form method="post" action="/admin/users/{{ u.id }}/mod/disable" class="d-inline">
                     <button class="btn btn-sm btn-outline-danger">إلغاء MOD</button>
@@ -295,6 +305,17 @@
                 {% else %}
                   <form method="post" action="/admin/users/{{ u.id }}/mod/enable" class="d-inline">
                     <button class="btn btn-sm btn-outline-primary">منح MOD</button>
+                  </form>
+                {% endif %}
+
+                {# ✅ CS actions: منح/إلغاء خدمة الزبائن #}
+                {% if u.is_support|default(false) %}
+                  <form method="post" action="/admin/users/{{ u.id }}/cs/disable" class="d-inline">
+                    <button class="btn btn-sm btn-outline-danger">إلغاء CS</button>
+                  </form>
+                {% else %}
+                  <form method="post" action="/admin/users/{{ u.id }}/cs/enable" class="d-inline">
+                    <button class="btn btn-sm btn-outline-primary">منح CS</button>
                   </form>
                 {% endif %}
 

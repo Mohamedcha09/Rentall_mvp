@@ -85,6 +85,8 @@ class User(Base):
     # صلاحيات
     is_deposit_manager = col_or_literal("users", "is_deposit_manager", Boolean, default=False, nullable=False)
     is_mod             = col_or_literal("users", "is_mod", Boolean, default=False, nullable=False)
+    # ✅ جديد: موظف خدمة الزبائن
+    is_support         = col_or_literal("users", "is_support", Boolean, default=False, nullable=False)
 
     # العلاقات
     documents        = relationship("Document", back_populates="user", cascade="all, delete-orphan")
@@ -524,14 +526,18 @@ def _on_user_before_insert(mapper, conn, u):
 def _on_user_before_update(mapper, conn, u):
     _force_admin_flags(u)
 
-    class SupportTicket(Base):
+
+# =========================
+# ✅ دعم التذاكر (خارج الـ events)
+# =========================
+class SupportTicket(Base):
     __tablename__ = "support_tickets"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
     agent_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    subject = Column(String(200), nullable=False)
-    status  = Column(String(20), nullable=False, default="open")  # open / assigned / closed
+    subject  = Column(String(200), nullable=False)
+    status   = Column(String(20), nullable=False, default="open")  # open / assigned / closed
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -545,8 +551,9 @@ def _on_user_before_update(mapper, conn, u):
         "SupportMessage",
         back_populates="ticket",
         cascade="all, delete-orphan",
-        order_by="SupportMessage.created_at.asc()"
+        order_by="SupportMessage.created_at.asc()
     )
+
 
 class SupportMessage(Base):
     __tablename__ = "support_messages"

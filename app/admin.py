@@ -59,10 +59,12 @@ def _refresh_session_user_if_self(request: Request, user: User) -> None:
             sess[k] = getattr(user, k)
     if hasattr(user, "is_deposit_manager"):
         sess["is_deposit_manager"] = bool(getattr(user, "is_deposit_manager", False))
-    # ▾▾ ADD: تحديث is_mod في السيشن إن وُجد ▾▾
+    # تحديث is_mod في السيشن إن وُجد
     if hasattr(user, "is_mod"):
         sess["is_mod"] = bool(getattr(user, "is_mod", False))
-    # ▴▴ END ADD ▴▴
+    # ✅ CS: تحديث is_support في السيشن إن وُجد
+    if hasattr(user, "is_support"):
+        sess["is_support"] = bool(getattr(user, "is_support", False))
     request.session["user"] = sess
 
 
@@ -374,6 +376,7 @@ def admin_request_fix(
         d.reviewed_at = datetime.utcnow()
         if d.review_note:
             d.review_note = f"{d.review_note.strip()}\n- {reason.strip()}"
+    ...
         else:
             d.review_note = reason.strip()
 
@@ -548,7 +551,7 @@ def disable_deposit_manager(user_id: int, request: Request, db: Session = Depend
 
 
 # ---------------------------
-# ▾▾ ADD: إدارة صلاحية MOD (مدقّق محتوى) ▾▾
+# إدارة صلاحية MOD (مدقّق محتوى)
 # ---------------------------
 @router.post("/admin/users/{user_id}/mod/enable")
 def enable_mod(user_id: int, request: Request, db: Session = Depends(get_db)):
@@ -671,7 +674,133 @@ def disable_mod(user_id: int, request: Request, db: Session = Depends(get_db)):
 
     return RedirectResponse(url="/admin", status_code=303)
 
-    
+
 # ---------------------------
-# ▴▴ END ADD ▴▴
+# ✅ CS: إدارة صلاحية موظفي خدمة الزبائن (Customer Support)
 # ---------------------------
+@router.post("/admin/users/{user_id}/cs/enable")
+def enable_customer_support(user_id: int, request: Request, db: Session = Depends(get_db)):
+    """
+    يمنح صلاحية موظف خدمة الزبائن (is_support = True) للمستخدم.
+    """
+    if not require_admin(request):
+        return RedirectResponse(url="/login", status_code=303)
+
+    u = db.query(User).get(user_id)
+    if not u:
+        return RedirectResponse(url="/admin", status_code=303)
+
+    if hasattr(u, "is_support"):
+        u.is_support = True
+        db.commit()
+        _refresh_session_user_if_self(request, u)
+
+        # إشعار داخل الموقع
+        try:
+            push_notification(
+                db, u.id,
+                "🎧 تم منحك صلاحية خدمة الزبائن",
+                "يمكنك الآن الوصول إلى صندوق الوارد ومتابعة التذاكر.",
+                "/cs/inbox",
+                "role"
+            )
+        except Exception:
+            pass
+
+        # بريد: قبول الدور
+        try:
+            subject = "🎧 تم منحك صلاحية خدمة الزبائن (CS)"
+            inbox_url = f"{BASE_URL}/cs/inbox"
+            year = datetime.utcnow().year
+            html = f"""<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>صلاحية خدمة الزبائن</title></head>
+<body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,sans-serif">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;background:#0b0f1a">
+    <tr><td align="center">
+      <table role="presentation" width="640" cellpadding="0" cellspacing="0"
+             style="width:100%;max-width:640px;border-radius:18px;overflow:hidden;background:#0f172a;border:1px solid #1f2937">
+        <tr><td style="padding:26px 24px">
+          <h3 style="margin:0 0 8px;color:#fff">تم منحك صلاحية خدمة الزبائن</h3>
+          <p style="margin:0;line-height:1.9;color:#cbd5e1">
+            يمكنك الآن تعيين ومتابعة التذاكر والرد على المستخدمين.
+          </p>
+          <p style="margin:18px 0 0"><a href="{inbox_url}" style="color:#60a5fa;text-decoration:none">فتح صندوق الوارد</a></p>
+        </td></tr>
+        <tr><td style="padding:14px 22px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
+          &copy; {year} RentAll
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+            text = f"تم منحك صلاحية خدمة الزبائن. صندوق الوارد: {inbox_url}"
+            send_email(u.email, subject, html, text_body=text)
+        except Exception:
+            pass
+
+    return RedirectResponse(url="/admin", status_code=303)
+
+
+@router.post("/admin/users/{user_id}/cs/disable")
+def disable_customer_support(user_id: int, request: Request, db: Session = Depends(get_db)):
+    """
+    يسحب صلاحية موظف خدمة الزبائن (is_support = False) من المستخدم.
+    """
+    if not require_admin(request):
+        return RedirectResponse(url="/login", status_code=303)
+
+    u = db.query(User).get(user_id)
+    if not u:
+        return RedirectResponse(url="/admin", status_code=303)
+
+    if hasattr(u, "is_support"):
+        u.is_support = False
+        db.commit()
+        _refresh_session_user_if_self(request, u)
+
+        # إشعار داخل الموقع
+        try:
+            push_notification(
+                db, u.id,
+                "تم إلغاء صلاحية خدمة الزبائن",
+                "لم تعد تملك صلاحية الوصول إلى صندوق الوارد.",
+                "/",
+                "role"
+            )
+        except Exception:
+            pass
+
+        # بريد: إلغاء الدور
+        try:
+            subject = "تم إلغاء صلاحية خدمة الزبائن (CS)"
+            home = f"{BASE_URL}/"
+            year = datetime.utcnow().year
+            html = f"""<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>إلغاء صلاحية CS</title></head>
+<body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,sans-serif">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;background:#0b0f1a">
+    <tr><td align="center">
+      <table role="presentation" width="640" cellpadding="0" cellspacing="0"
+             style="width:100%;max-width:640px;border-radius:18px;overflow:hidden;background:#0f172a;border:1px solid #1f2937">
+        <tr><td style="padding:26px 24px">
+          <h3 style="margin:0 0 8px;color:#fff">تم إلغاء صلاحية خدمة الزبائن</h3>
+          <p style="margin:0;line-height:1.9;color:#cbd5e1">
+            تم سحب صلاحية خدمة الزبائن من حسابك. لا يزال بإمكانك استخدام بقية مزايا الموقع كالمعتاد.
+          </p>
+          <p style="margin:18px 0 0"><a href="{home}" style="color:#60a5fa;text-decoration:none">العودة للصفحة الرئيسية</a></p>
+        </td></tr>
+        <tr><td style="padding:14px 22px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
+          &copy; {year} RentAll
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+            text = f"تم إلغاء صلاحية خدمة الزبائن من حسابك. لمزيد من التفاصيل: {home}"
+            send_email(u.email, subject, html, text_body=text)
+        except Exception:
+            pass
+
+    return RedirectResponse(url="/admin", status_code=303)
