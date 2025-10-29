@@ -37,7 +37,7 @@ def bump_ticket_on_message(db, ticket_id, author_user, is_cs_author: bool):
             t.status = "open"
     db.commit()
 
-    
+
 def _ensure_cs_session(db: Session, request: Request):
     """
     ✅ تُستخدم كـ "fallback" ذكي:
@@ -206,25 +206,42 @@ def support_ticket_view(tid: int, request: Request, db: Session = Depends(get_db
 
 @router.get("/cs/inbox", response_class=HTMLResponse)
 def cs_inbox(request: Request, db: Session = Depends(get_db)):
-    """
-    ✅ قبل أي تحويل، نفحص إن كانت الجلسة قديمة:
-      - لو المستخدم في DB يملك is_support=True لكن الجلسة لا، نحدّث الجلسة ونسمح بالدخول.
-      - لو لا يملك صلاحية CS فعلاً، نعيده إلى /support/my.
-    """
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
 
-    # فحص/تحديث الجلسة عند أول دخول
     u_cs = _ensure_cs_session(db, request)
     if not u_cs:
-        # مسجل دخول لكن ليس CS → رجّعه لتذاكره بدل صفحة login
         return RedirectResponse("/support/my", status_code=303)
 
-    tickets = db.query(SupportTicket).order_by(SupportTicket.updated_at.desc()).all()
+    base_q = db.query(SupportTicket)
+
+    data = {
+        "new": (
+            base_q.filter(SupportTicket.status == "new")
+                  .order_by(SupportTicket.last_msg_at.desc(), SupportTicket.created_at.desc())
+                  .all()
+        ),
+        "in_review": (
+            base_q.filter(SupportTicket.status == "open")
+                  .order_by(SupportTicket.last_msg_at.desc(), SupportTicket.updated_at.desc())
+                  .all()
+        ),
+        "resolved": (
+            base_q.filter(SupportTicket.status == "resolved")
+                  .order_by(SupportTicket.resolved_at.desc(), SupportTicket.updated_at.desc())
+                  .all()
+        ),
+    }
+
     return request.app.templates.TemplateResponse(
         "cs_inbox.html",
-        {"request": request, "session_user": u_cs, "tickets": tickets, "title": "صندوق خدمة الزبائن"},
+        {
+            "request": request,
+            "session_user": u_cs,
+            "title": "CS Inbox",
+            "data": data,  # ✅ أهم شيء: تمرير data كما يتوقع القالب
+        },
     )
 
 

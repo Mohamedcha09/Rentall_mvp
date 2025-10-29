@@ -770,7 +770,7 @@ button.dropdown-toggle::after {
   if (!btn || !panel || !bodyEl) return;
 
   // ✅ علم يحدد إذا كان المستخدم Support
-  const IS_SUPPORT = {{ 'true' if session_user and session_user.is_support else 'false' }};
+const IS_SUPPORT = {{ 'true' if session_user and (session_user.get('is_support') or session_user.is_support) else 'false' }};
 
   // عناصر الشارة
   let ping  = btn.querySelector('.notif-ping');
