@@ -130,25 +130,33 @@ def support_ticket_view(tid: int, request: Request, db: Session = Depends(get_db
 # ========== واجهة موظف خدمة الزبائن (CS) ==========
 @router.get("/cs/inbox", response_class=HTMLResponse)
 def cs_inbox(request: Request, db: Session = Depends(get_db)):
-    u = _require_cs(request)
+    u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
+    if not u.get("is_support", False):
+        # ✅ مسجل دخول لكن ليس CS → رجّعه لتذاكره بدل صفحة login
+        return RedirectResponse("/support/my", status_code=303)
+
     tickets = db.query(SupportTicket).order_by(SupportTicket.updated_at.desc()).all()
     return request.app.templates.TemplateResponse(
         "cs_inbox.html",
         {"request": request, "session_user": u, "tickets": tickets, "title": "صندوق خدمة الزبائن"}
     )
 
+
 @router.get("/cs/ticket/{tid}", response_class=HTMLResponse)
 def cs_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
-    u = _require_cs(request)
+    u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
+    if not u.get("is_support", False):
+        # ✅ مسجل دخول لكن ليس CS
+        return RedirectResponse("/support/my", status_code=303)
+
     t = db.query(SupportTicket).filter(SupportTicket.id == tid).first()
     if not t:
         return RedirectResponse("/cs/inbox", status_code=303)
     msgs = t.messages
-    # علّم كمقروء للوكيل
     t.unread_for_agent = False
     db.commit()
     return request.app.templates.TemplateResponse(
