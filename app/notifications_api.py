@@ -22,8 +22,7 @@ def _json(data: dict) -> JSONResponse:
         headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"}
     )
 
-# --------------------- Helpers ---------------------
-
+# ================== Helpers ==================
 def push_notification(
     db: Session,
     user_id: int,
@@ -32,15 +31,12 @@ def push_notification(
     url: Optional[str] = None,
     kind: str = "system",
 ) -> Notification:
-    """
-    إنشاء إشعار واحد عادي.
-    """
     n = Notification(
         user_id=user_id,
         title=(title or "").strip()[:200],
         body=(body or "").strip()[:1000],
         link_url=url or "",
-        kind=kind or "system",
+        kind=kind,
         is_read=False,
         created_at=datetime.utcnow(),
     )
@@ -54,22 +50,7 @@ def notify_admins(db: Session, title: str, body: str = "", url: str = ""):
     for a in admins:
         push_notification(db, a.id, title, body, url, kind="admin")
 
-def _is_cs_grant(title: str, body: str, kind: str) -> bool:
-    """
-    نكشف إشعارات منح صلاحية خدمة الزبائن بأي صياغة شائعة.
-    """
-    t = (title or "").strip()
-    b = (body or "").strip()
-    k = (kind or "").strip().lower()
-    return (
-        "تم منحك صلاحية خدمة الزبائن" in t
-        or "تم منحك خدمة الزبائن" in t
-        or ("صلاحية" in t and "خدمة الزبائن" in t)
-        or ("خدمة الزبائن" in b)
-        or k == "role"
-    )
-
-# --------------------- APIs ---------------------
+# ================== APIs used by frontend ==================
 
 @router.get("/api/unread_count")
 def api_unread_count(
@@ -92,17 +73,9 @@ def api_poll(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    نُرجع الإشعارات الجديدة منذ (since).
-    ✅ إصلاح مهم:
-       - لو الإشعار هو منح CS، ولدى المستخدم is_support=True → نُجبر الرابط على /cs/inbox
-       - نضيف alias باسم 'type' مساوي لـ 'kind' لتوافق الواجهة (تفادي undefined)
-    """
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-
     cutoff = datetime.utcfromtimestamp(since or 0)
-
     rows = (
         db.query(Notification)
         .filter(Notification.user_id == user.id, Notification.created_at > cutoff)
@@ -110,26 +83,15 @@ def api_poll(
         .limit(30)
         .all()
     )
-
-    items = []
-    for r in rows:
-        url = r.link_url or ""
-        # ✅ إجبار صفحة صندوق CS عند منح الصلاحية
-        if user.is_support and _is_cs_grant(r.title or "", r.body or "", r.kind or ""):
-            url = "/cs/inbox"
-
-        item = {
-            "id": r.id,
-            "title": r.title,
-            "body": r.body or "",
-            "url": url,
-            "ts": int(r.created_at.timestamp()),
-            "kind": r.kind or "system",
-            "type": r.kind or "system",     # <-- alias لتوافق الواجهة (it.type)
-            "is_read": bool(r.is_read),
-        }
-        items.append(item)
-
+    items = [{
+        "id": r.id,
+        "title": r.title,
+        "body": r.body or "",
+        "url": r.link_url or "",
+        "ts": int(r.created_at.timestamp()),
+        "kind": r.kind or "system",
+        "is_read": bool(r.is_read),
+    } for r in rows]
     now = int(datetime.utcnow().timestamp())
     return _json({"now": now, "items": items})
 

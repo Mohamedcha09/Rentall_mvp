@@ -1,752 +1,757 @@
 <!-- app/templates/base.html -->
 <!doctype html>
 <html lang="ar" dir="rtl">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>{{ title or "RentAll" }}</title>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{{ title or "RentAll" }}</title>
 
-    <!-- Bootstrap & Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
-    <!-- ستايل خارجي -->
-    <link href="/static/style.css?v=1" rel="stylesheet">
+  <!-- CSS خارجي -->
+  <link href="/static/style.css?v=1" rel="stylesheet">
 
-    <!-- ✅ ملفات PWA -->
-    <link rel="manifest" href="{{ url_for('static', path='manifest.json') }}">
-    <meta name="theme-color" content="#6C63FF">
-    <script>
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/static/sw.js");
+  <!-- PWA -->
+  <link rel="manifest" href="{{ url_for('static', path='manifest.json') }}">
+  <meta name="theme-color" content="#6C63FF">
+  <script> if ("serviceWorker" in navigator) { navigator.serviceWorker.register("/static/sw.js"); } </script>
+
+  <style>
+    :root{
+      --text:#111827; --muted:#6b7280; --panel:#f8fafc; --surface:#ffffff; --border:rgba(0,0,0,.08);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-bottom-legacy: constant(safe-area-inset-bottom, 0px);
+    }
+    body{ color:var(--text); background:#f4f6fb; }
+    [data-theme="dark"]{
+      --text:#e5e7eb; --muted:#9ca3af; --panel:#0b1220; --surface:#0f172a; --border:rgba(255,255,255,.12);
+      background:#0b1020;
+    }
+
+    /* Topbar */
+    .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; }
+
+    /* Searchbar (عنصر + مدينة) */
+    .searchbar{ position:relative; max-width:760px; margin-inline:auto; }
+    .searchbar-wrap{
+      display:flex; align-items:center; gap:10px;
+      background:#fff; border:1px solid var(--border);
+      border-radius:999px; padding:10px 14px;
+      box-shadow:0 6px 20px rgba(0,0,0,.06);
+    }
+    body[data-theme="dark"] .searchbar-wrap{
+      background:rgba(255,255,255,.06); border-color:var(--border); backdrop-filter:saturate(120%) blur(6px);
+    }
+    .searchbar i.bi-search{font-size:18px; opacity:.7}
+    .searchbar input{ border:0; outline:0; background:transparent; color:inherit; font-size:16px; }
+    .searchbar .field{ flex:1; display:flex; align-items:center; gap:10px; }
+    .searchbar .sep{ width:1px; height:24px; background:var(--border); }
+    .searchbar .k{ opacity:.55; font-size:.9rem; white-space:nowrap }
+
+    /* Panel اقتراحات المدينة */
+    .city-suggest{
+      position:absolute; inset-inline:14px; top: calc(100% + 8px);
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius:14px;
+      box-shadow: 0 14px 36px rgba(0,0,0,.18); z-index:2200; overflow:hidden;
+      display:none; max-height:320px; overflow:auto;
+    }
+    .city-suggest .row{ padding:10px 12px; cursor:pointer; display:flex; gap:8px; align-items:baseline; }
+    .city-suggest .row:hover{ background: color-mix(in oklab, var(--text) 8%, transparent); }
+    .city-suggest .sub{ opacity:.6; font-size:.85em }
+
+    /* Typeahead لديك (حسابات/عناصر) */
+    .typeahead{
+      position:absolute; inset-inline:0; top: calc(100% + .25rem);
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius:.75rem;
+      box-shadow: 0 14px 36px rgba(0,0,0,.18); z-index:2000; overflow:hidden;
+    }
+    .typeahead.d-none{ display:none; }
+    .typeahead-group{ padding:.45rem .75rem; font-size:.85rem; opacity:.7; border-bottom:1px solid var(--border) }
+    .typeahead-item{ padding:.65rem .8rem; display:flex; gap:.6rem; align-items:center; cursor:pointer; }
+    .typeahead-item:hover, .typeahead-item.active{ background: rgba(124,92,255,.12); }
+    .typeahead-item .k{ opacity:.65; font-size:.85em }
+
+    /* جرس */
+    #notifOpen{ position: relative; }
+    #notifOpen .notif-count{
+      position:absolute; top:-6px; inset-inline-end:-6px; background:#d43aff; color:#fff;
+      font-size:12px; line-height:18px; min-width:18px; height:18px; padding:0 4px; border-radius:10px; text-align:center;
+    }
+    #notifOpen .notif-ping{
+      position:absolute; top:-2px; inset-inline-end:-2px; width:8px; height:8px; background:#d43aff; border-radius:50%;
+      box-shadow:0 0 0 6px rgba(212,58,255,.18);
+    }
+
+    .sidebar{ width:268px; flex:0 0 268px; border-inline-end:1px solid var(--border); background:var(--surface); }
+    .sidebar[data-collapsed="true"]{ width:84px; flex-basis:84px; }
+    @media (max-width:991.98px){ .sidebar{ display:none !important; } }
+
+    body{ padding-bottom: calc(76px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
+
+    @media (max-width: 768px){
+      .mobile-tabbar{
+        position: fixed; inset-inline: 0; bottom: 0; height: 64px;
+        display: grid; grid-template-columns: repeat(5,1fr); align-items: center;
+        background: #fff; border-top: 1px solid var(--border);
+        padding: 6px 8px calc(6px + max(var(--safe-bottom), var(--safe-bottom-legacy)));
+        z-index: 2147483647; border-radius: 16px 16px 0 0;
       }
-    </script>
-
-    <style>
-      :root{
-        --text:#111827; --muted:#6b7280; --panel:#f8fafc; --surface:#ffffff; --border:rgba(0,0,0,.08);
-        --safe-top: env(safe-area-inset-top, 0px);
-        --safe-bottom: env(safe-area-inset-bottom, 0px);
-        --safe-bottom-legacy: constant(safe-area-inset-bottom, 0px);
+      .mobile-tabbar a{ text-decoration:none; color:#6b7280; font-size:.82rem; display:flex; flex-direction:column; align-items:center; gap:4px; }
+      .mobile-tabbar .tab-img{ width:22px; height:22px; object-fit:contain; opacity:.7; transition:opacity .15s, transform .15s; }
+      .mobile-tabbar a.is-active{ color:#111827; font-weight:700; }
+      .mobile-tabbar a.is-active .tab-img{ opacity:1; transform:scale(1.06); }
+      .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
+        position: fixed !important; right: 16px !important;
+        bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 86px) !important;
+        z-index: 2147483647 !important;
       }
-      body{ color:var(--text); background:#f4f6fb; }
-      [data-theme="dark"]{
-        --text:#e5e7eb; --muted:#9ca3af; --panel:#0b1220; --surface:#0f172a; --border:rgba(255,255,255,.12);
-        background:#0b1020;
+      .page{ padding-bottom: calc(100px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
+    }
+
+    .notif-panel{
+      position: fixed; top:0; inset-inline-end:-420px; width:360px; max-width:88vw; height:100vh;
+      background: var(--surface); color: var(--text);
+      border-inline-start:1px solid var(--border);
+      box-shadow: -14px 0 36px rgba(0,0,0,.25);
+      z-index:2300; display:flex; flex-direction:column; transition:.25s ease;
+    }
+    .notif-panel.is-open{ inset-inline-end:0; }
+    .notif-panel__header{ padding:12px 14px; border-bottom:1px solid var(--border); }
+    .notif-panel__body{ padding:10px 14px; overflow:auto; }
+    .notif-row{ display:block; padding:10px 8px; text-decoration:none; color:inherit; border-bottom:1px solid var(--border); border-radius:8px; }
+    .notif-row:hover{ background: color-mix(in oklab, var(--surface) 92%, transparent); }
+    .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2s; }
+
+    @media (min-width:992px){
+      .hamburger-btn{ display:inline-flex; align-items:center; justify-content:center; border:0; background:transparent; font-size:24px; padding:.35rem .6rem; border-radius:10px; cursor:pointer; }
+      .hamburger-btn:hover{ background: color-mix(in oklab, var(--text,#111827) 8%, transparent); color:#fff; }
+      .topmenu{
+        position:absolute; inset-inline-start:14px; top:calc(100% + 8px);
+        min-width:260px; background: linear-gradient(180deg, var(--surface,#111827), var(--panel,#0f172a));
+        border:1px solid var(--border); border-radius:14px; padding:8px; box-shadow:0 18px 40px rgba(0,0,0,.30); z-index:2400;
       }
+      .topmenu[hidden]{ display:none; } .topmenu a{ display:block; padding:.55rem .65rem; border-radius:10px; color:inherit; text-decoration:none; }
+      .topmenu a:hover{ background: color-mix(in oklab, var(--text,#fff) 8%, transparent); }
+      .topmenu-sep{ height:1px; border:0; background:var(--border); margin:.35rem .25rem; }
+    }
+  </style>
 
-      /* Topbar */
-      .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; }
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <div id="page-wrapper">
 
-      /* Searchbar (عنصر + مدينة) */
-      .searchbar{ position:relative; max-width:760px; margin-inline:auto; }
-      .searchbar-wrap{
-        display:flex; align-items:center; gap:10px;
-        background:#fff; border:1px solid var(--border);
-        border-radius:999px; padding:10px 14px;
-        box-shadow:0 6px 20px rgba(0,0,0,.06);
-      }
-      body[data-theme="dark"] .searchbar-wrap{
-        background:rgba(255,255,255,.06); border-color:var(--border); backdrop-filter:saturate(120%) blur(6px);
-      }
-      .searchbar i.bi-search{font-size:18px; opacity:.7}
-      .searchbar input{ border:0; outline:0; background:transparent; color:inherit; font-size:16px; }
-      .searchbar .field{ flex:1; display:flex; align-items:center; gap:10px; }
-      .searchbar .sep{ width:1px; height:24px; background:var(--border); }
-      .searchbar .k{ opacity:.55; font-size:.9rem; white-space:nowrap }
+  <!-- ===== Topbar ===== -->
+  <header class="topbar">
+    <div class="topbar__inner container-fluid d-flex align-items-center gap-2 py-2">
 
-      /* Panel اقتراحات المدينة */
-      .city-suggest{
-        position:absolute; inset-inline:14px; top: calc(100% + 8px);
-        background: var(--surface); color: var(--text);
-        border: 1px solid var(--border); border-radius:14px;
-        box-shadow: 0 14px 36px rgba(0,0,0,.18); z-index:2200; overflow:hidden;
-        display:none; max-height:320px; overflow:auto;
-      }
-      .city-suggest .row{ padding:10px 12px; cursor:pointer; display:flex; gap:8px; align-items:baseline; }
-      .city-suggest .row:hover{ background: color-mix(in oklab, var(--text) 8%, transparent); }
-      .city-suggest .sub{ opacity:.6; font-size:.85em }
+      <!-- زر ☰ -->
+      <button id="menuBtn" class="hamburger-btn d-none d-lg-inline" type="button"
+              aria-haspopup="true" aria-expanded="false" aria-controls="quickMenu" title="القائمة">☰</button>
 
-      /* Typeahead لديك (حسابات/عناصر) */
-      .typeahead{
-        position:absolute; inset-inline:0; top: calc(100% + .25rem);
-        background: var(--surface); color: var(--text);
-        border: 1px solid var(--border); border-radius:.75rem;
-        box-shadow: 0 14px 36px rgba(0,0,0,.18); z-index:2000; overflow:hidden;
-      }
-      .typeahead.d-none{ display:none; }
-      .typeahead-group{ padding:.45rem .75rem; font-size:.85rem; opacity:.7; border-bottom:1px solid var(--border) }
-      .typeahead-item{ padding:.65rem .8rem; display:flex; gap:.6rem; align-items:center; cursor:pointer; }
-      .typeahead-item:hover, .typeahead-item.active{ background: rgba(124,92,255,.12); }
-      .typeahead-item .k{ opacity:.65; font-size:.85em }
+      <!-- القائمة المنسدلة (ديسكتوب) -->
+      <nav id="quickMenu" class="topmenu" hidden role="menu" aria-label="قائمة الموقع">
+        <a role="menuitem" class="topmenu-item" href="/"><i class="bi bi-house"></i> الرئيسية</a>
+        <a role="menuitem" class="topmenu-item" href="/items"><i class="bi bi-box-seam"></i> العناصر</a>
 
-      /* جرس */
-      #notifOpen{ position: relative; }
-      #notifOpen .notif-count{
-        position:absolute; top:-6px; inset-inline-end:-6px; background:#d43aff; color:#fff;
-        font-size:12px; line-height:18px; min-width:18px; height:18px; padding:0 4px; border-radius:10px; text-align:center;
-      }
-      #notifOpen .notif-ping{
-        position:absolute; top:-2px; inset-inline-end:-2px; width:8px; height:8px; background:#d43aff; border-radius:50%;
-        box-shadow:0 0 0 6px rgba(212,58,255,.18);
-      }
+        {% if session_user %}
+          <a role="menuitem" class="topmenu-item" href="/favorites"><i class="bi bi-heart-fill"></i> مفضلتي</a>
+          <a role="menuitem" class="topmenu-item" href="/profile"><i class="bi bi-person-circle"></i> صفحتي</a>
+          <a role="menuitem" class="topmenu-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a>
+          <a role="menuitem" class="topmenu-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a>
+          <a role="menuitem" class="topmenu-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a>
 
-      .sidebar{ width:268px; flex:0 0 268px; border-inline-end:1px solid var(--border); background:var(--surface); }
-      .sidebar[data-collapsed="true"]{ width:84px; flex-basis:84px; }
-      @media (max-width:991.98px){ .sidebar{ display:none !important; } }
+          {% if session_user.get('can_manage_deposits') %}
+            <a role="menuitem" class="topmenu-item" href="/dm/deposits"><i class="bi bi-shield-exclamation"></i> قضايا الوديعة</a>
+          {% endif %}
 
-      body{ padding-bottom: calc(76px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
+          {# ✅ جديد: رابط البلاغات للأدمن أو المود (is_mod) #}
+          {% if session_user.role == 'admin' or session_user.get('is_mod') %}
+            <a role="menuitem" class="topmenu-item" href="/admin/reports">📸 البلاغات</a>
+          {% endif %}
 
-      @media (max-width: 768px){
-        .mobile-tabbar{
-          position: fixed; inset-inline: 0; bottom: 0; height: 64px;
-          display: grid; grid-template-columns: repeat(5,1fr); align-items: center;
-          background: #fff; border-top: 1px solid var(--border);
-          padding: 6px 8px calc(6px + max(var(--safe-bottom), var(--safe-bottom-legacy)));
-          z-index: 2147483647; border-radius: 16px 16px 0 0;
-        }
-        .mobile-tabbar a{ text-decoration:none; color:#6b7280; font-size:.82rem; display:flex; flex-direction:column; align-items:center; gap:4px; }
-        .mobile-tabbar .tab-img{ width:22px; height:22px; object-fit:contain; opacity:.7; transition:opacity .15s, transform .15s; }
-        .mobile-tabbar a.is-active{ color:#111827; font-weight:700; }
-        .mobile-tabbar a.is-active .tab-img{ opacity:1; transform:scale(1.06); }
-        .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
-          position: fixed !important; right: 16px !important;
-          bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 86px) !important;
-          z-index: 2147483647 !important;
-        }
-        .page{ padding-bottom: calc(100px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
-      }
+          {% if session_user.role == 'admin' %}
+            <hr class="topmenu-sep" role="separator">
+            <a role="menuitem" class="topmenu-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a>
+          {% endif %}
+        {% endif %}
+      </nav>
 
-      .notif-panel{
-        position: fixed; top:0; inset-inline-end:-420px; width:360px; max-width:88vw; height:100vh;
-        background: var(--surface); color: var(--text);
-        border-inline-start:1px solid var(--border);
-        box-shadow: -14px 0 36px rgba(0,0,0,.25);
-        z-index:2300; display:flex; flex-direction:column; transition:.25s ease;
-      }
-      .notif-panel.is-open{ inset-inline-end:0; }
-      .notif-panel__header{ padding:12px 14px; border-bottom:1px solid var(--border); }
-      .notif-panel__body{ padding:10px 14px; overflow:auto; }
-      .notif-row{ display:block; padding:10px 8px; text-decoration:none; color:inherit; border-bottom:1px solid var(--border); border-radius:8px; }
-      .notif-row:hover{ background: color-mix(in oklab, var(--surface) 92%, transparent); }
-      .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2s; }
+      <!-- الشعار -->
+      <a class="brand d-flex align-items-center gap-2 text-decoration:none me-2" href="/">
+        <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR" style="height:48px">
+        <span class="visually-hidden">SEVOR</span>
+      </a>
 
-      @media (min-width:992px){
-        .hamburger-btn{ display:inline-flex; align-items:center; justify-content:center; border:0; background:transparent; font-size:24px; padding:.35rem .6rem; border-radius:10px; cursor:pointer; }
-        .hamburger-btn:hover{ background: color-mix(in oklab, var(--text,#111827) 8%, transparent); color:#fff; }
-        .topmenu{
-          position:absolute; inset-inline-start:14px; top:calc(100% + 8px);
-          min-width:260px; background: linear-gradient(180deg, var(--surface,#111827), var(--panel,#0f172a));
-          border:1px solid var(--border); border-radius:14px; padding:8px; box-shadow:0 18px 40px rgba(0,0,0,.30); z-index:2400;
-        }
-        .topmenu[hidden]{ display:none; } .topmenu a{ display:block; padding:.55rem .65rem; border-radius:10px; color:inherit; text-decoration:none; }
-        .topmenu a:hover{ background: color-mix(in oklab, var(--text,#fff) 8%, transparent); }
-        .topmenu-sep{ height:1px; border:0; background:var(--border); margin:.35rem .25rem; }
-      }
-    </style>
+      <!-- ===== شريط البحث (عنصر + مدينة) ===== -->
+      <form class="search searchbar flex-grow-1" action="/search" method="get" role="search" dir="rtl">
+        <div class="searchbar-wrap">
+          <i class="bi bi-search"></i>
 
-    {% block head %}{% endblock %}
-  </head>
-  <body>
-    <div id="page-wrapper">
+          <!-- نصف 1: العنصر -->
+          <div class="field">
+            <input class="form-control form-control-sm" type="search" name="q" id="qTop"
+                   placeholder="ابحث عن عنصر (سيارة، كاميرا…)"
+                   value="{{ request.query_params.get('q','') if request else '' }}" autocomplete="off">
+          </div>
 
-    <!-- ===== Topbar ===== -->
-    <header class="topbar">
-      <div class="topbar__inner container-fluid d-flex align-items-center gap-2 py-2">
+          <div class="sep" aria-hidden="true"></div>
 
-        <!-- زر ☰ -->
-        <button id="menuBtn" class="hamburger-btn d-none d-lg-inline" type="button"
-                aria-haspopup="true" aria-expanded="false" aria-controls="quickMenu" title="القائمة">☰</button>
+          <!-- نصف 2: المدينة -->
+          <div class="field">
+            <span class="k">المدينة</span>
+            <input class="form-control form-control-sm" type="text" id="cityTop" name="city"
+                   placeholder="مونتريال، الجزائر…" autocomplete="off"
+                   value="{{ request.query_params.get('city','') if request else '' }}">
+          </div>
 
-        <!-- القائمة المنسدلة (ديسكتوب) -->
-        <nav id="quickMenu" class="topmenu" hidden role="menu" aria-label="قائمة الموقع">
-          <a role="menuitem" class="topmenu-item" href="/"><i class="bi bi-house"></i> الرئيسية</a>
-          <a role="menuitem" class="topmenu-item" href="/items"><i class="bi bi-box-seam"></i> العناصر</a>
+          <!-- إحداثيات تُملأ عند الاختيار -->
+          <input type="hidden" id="latTop" name="lat" value="{{ request.query_params.get('lat','') if request else '' }}">
+          <!-- ✅ تعديل: نستخدم lng (ليس lon) -->
+          <input type="hidden" id="lngTop" name="lng" value="{{ request.query_params.get('lng','') if request else '' }}">
+        </div>
 
-          {% if session_user %}
-            <a role="menuitem" class="topmenu-item" href="/favorites"><i class="bi bi-heart-fill"></i> مفضلتي</a>
-            <a role="menuitem" class="topmenu-item" href="/profile"><i class="bi bi-person-circle"></i> صفحتي</a>
-            <a role="menuitem" class="topmenu-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a>
-            <a role="menuitem" class="topmenu-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a>
-            <a role="menuitem" class="topmenu-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a>
+        <!-- قائمة اقتراحات المدن -->
+        <div id="citySuggest" class="city-suggest" aria-label="اقتراحات المدن"></div>
+      </form>
 
-            {% if session_user.get('can_manage_deposits') %}
-              <a role="menuitem" class="topmenu-item" href="/dm/deposits"><i class="bi bi-shield-exclamation"></i> قضايا الوديعة</a>
-            {% endif %}
+      <!-- typeahead لديك (بحث حسابات/عناصر) -->
+      <div id="typeaheadPanel" class="typeahead d-none"></div>
 
+      <div class="actions d-flex align-items-center gap-2 ms-auto">
+        <a href="/messages" class="btn btn-ghost btn-sm" title="الرسائل">
+          <img class="icon-img" src="/static/img/msg.png" alt="Messages" style="width:24px;height:24px">
+        </a>
+
+        {% if session_user %}
+          <a href="/favorites" class="btn btn-ghost btn-sm" title="مفضلتي">
+            <i class="bi bi-heart-fill" style="font-size:20px; color:#a944ec;"></i>
+          </a>
+        {% endif %}
+
+        {# ✅ أزرار الدعم خارج زر الجرس #}
+        {% if session_user and session_user.is_support %}
+          <a class="btn btn-outline-secondary btn-sm" href="/cs/inbox" title="صندوق خدمة الزبائن (CS)">
+            <i class="bi bi-headset"></i>
+          </a>
+        {% endif %}
+        <a class="btn btn-outline-secondary btn-sm" href="/support/new" title="الدعم">
+          <i class="bi bi-life-preserver"></i>
+        </a>
+
+        {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
+        <button class="btn btn-ghost btn-sm position-relative" id="notifOpen" type="button" title="الإشعارات">
+          <img class="icon-img" src="/static/img/notfi.png" alt="Notifications" style="width:24px;height:24px">
+          {% if unread > 0 %}
+            <span class="notif-ping"></span>
+            <span class="notif-count">{{ unread if unread < 100 else '99+' }}</span>
+          {% endif %}
+        </button>
+
+        <!-- إنشاء -->
+        <div class="dropdown">
+          <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown">
+            <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">إنشاء</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="/owner/items/new"><i class="bi bi-box"></i> عنصر جديد</a></li>
+            <li><a class="dropdown-item" href="/messages"><i class="bi bi-chat-left-text"></i> رسالة</a></li>
+          </ul>
+        </div>
+
+        <!-- اللغة -->
+        <div class="dropdown">
+          <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="اللغة">
+            <i class="bi bi-globe2"></i>
+            <span class="d-none d-sm-inline">{{ current_lang()|upper if current_lang else 'AR' }}</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="/lang/ar">العربية</a></li>
+            <li><a class="dropdown-item" href="/lang/en">English</a></li>
+            <li><a class="dropdown-item" href="/lang/fr">Français</a></li>
+          </ul>
+        </div>
+
+        <!-- الحساب -->
+        {% if session_user %}
+        <div class="dropdown">
+          <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
+            <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
+            <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
+            {% if session_user.status == 'approved' %}<i class="bi bi-patch-check-fill verify" title="موثّق"></i>{% endif %}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> صفحتي</a></li>
+            <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
+            <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a></li>
+            <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a></li>
+
+            {# ✅ جديد: البلاغات مرئية للأدمن أو المود من قائمة الحساب أيضًا #}
             {% if session_user.role == 'admin' or session_user.get('is_mod') %}
-              <a role="menuitem" class="topmenu-item" href="/admin/reports">📸 البلاغات</a>
+              <li><a class="dropdown-item" href="/admin/reports">📸 البلاغات</a></li>
             {% endif %}
 
             {% if session_user.role == 'admin' %}
-              <hr class="topmenu-sep" role="separator">
-              <a role="menuitem" class="topmenu-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a>
-            {% endif %}
-          {% endif %}
-        </nav>
-
-        <!-- الشعار -->
-        <a class="brand d-flex align-items-center gap-2 text-decoration:none me-2" href="/">
-          <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR" style="height:48px">
-          <span class="visually-hidden">SEVOR</span>
-        </a>
-
-        <!-- ===== شريط البحث (عنصر + مدينة) ===== -->
-        <form class="search searchbar flex-grow-1" action="/search" method="get" role="search" dir="rtl">
-          <div class="searchbar-wrap">
-            <i class="bi bi-search"></i>
-
-            <!-- نصف 1: العنصر -->
-            <div class="field">
-              <input class="form-control form-control-sm" type="search" name="q" id="qTop"
-                     placeholder="ابحث عن عنصر (سيارة، كاميرا…)"
-                     value="{{ request.query_params.get('q','') if request else '' }}" autocomplete="off">
-            </div>
-
-            <div class="sep" aria-hidden="true"></div>
-
-            <!-- نصف 2: المدينة -->
-            <div class="field">
-              <span class="k">المدينة</span>
-              <input class="form-control form-control-sm" type="text" id="cityTop" name="city"
-                     placeholder="مونتريال، الجزائر…" autocomplete="off"
-                     value="{{ request.query_params.get('city','') if request else '' }}">
-            </div>
-
-            <!-- إحداثيات تُملأ عند الاختيار -->
-            <input type="hidden" id="latTop" name="lat" value="{{ request.query_params.get('lat','') if request else '' }}">
-            <!-- ✅ نستخدم lng (ليس lon) -->
-            <input type="hidden" id="lngTop" name="lng" value="{{ request.query_params.get('lng','') if request else '' }}">
-          </div>
-
-          <!-- قائمة اقتراحات المدن -->
-          <div id="citySuggest" class="city-suggest" aria-label="اقتراحات المدن"></div>
-        </form>
-
-        <!-- typeahead لديك (بحث حسابات/عناصر) -->
-        <div id="typeaheadPanel" class="typeahead d-none"></div>
-
-        <div class="actions d-flex align-items-center gap-2 ms-auto">
-          <a href="/messages" class="btn btn-ghost btn-sm" title="الرسائل">
-            <img class="icon-img" src="/static/img/msg.png" alt="Messages" style="width:24px;height:24px">
-          </a>
-
-          {% if session_user %}
-            <a href="/favorites" class="btn btn-ghost btn-sm" title="مفضلتي">
-              <i class="bi bi-heart-fill" style="font-size:20px; color:#a944ec;"></i>
-            </a>
-          {% endif %}
-
-          {% if session_user and session_user.is_support %}
-            <a class="btn btn-outline-secondary btn-sm" href="/cs/inbox" title="صندوق خدمة الزبائن (CS)">
-              <i class="bi bi-headset"></i>
-            </a>
-          {% endif %}
-          <a class="btn btn-outline-secondary btn-sm" href="/support/new" title="الدعم">
-            <i class="bi bi-life-preserver"></i>
-          </a>
-
-          {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
-          <button class="btn btn-ghost btn-sm position-relative" id="notifOpen" type="button" title="الإشعارات">
-            <img class="icon-img" src="/static/img/notfi.png" alt="Notifications" style="width:24px;height:24px">
-            {% if unread > 0 %}
-              <span class="notif-ping"></span>
-              <span class="notif-count">{{ unread if unread < 100 else '99+' }}</span>
-            {% endif %}
-          </button>
-
-          <!-- إنشاء -->
-          <div class="dropdown">
-            <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown">
-              <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">إنشاء</span>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="/owner/items/new"><i class="bi bi-box"></i> عنصر جديد</a></li>
-              <li><a class="dropdown-item" href="/messages"><i class="bi bi-chat-left-text"></i> رسالة</a></li>
-            </ul>
-          </div>
-
-          <!-- اللغة -->
-          <div class="dropdown">
-            <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="اللغة">
-              <i class="bi bi-globe2"></i>
-              <span class="d-none d-sm-inline">{{ current_lang()|upper if current_lang else 'AR' }}</span>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="/lang/ar">العربية</a></li>
-              <li><a class="dropdown-item" href="/lang/en">English</a></li>
-              <li><a class="dropdown-item" href="/lang/fr">Français</a></li>
-            </ul>
-          </div>
-
-          <!-- الحساب -->
-          {% if session_user %}
-          <div class="dropdown">
-            <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
-              <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
-              <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
-              {% if session_user.status == 'approved' %}<i class="bi bi-patch-check-fill verify" title="موثّق"></i>{% endif %}
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> صفحتي</a></li>
-              <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
-              <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a></li>
-              <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a></li>
-
-              {% if session_user.role == 'admin' or session_user.get('is_mod') %}
-                <li><a class="dropdown-item" href="/admin/reports">📸 البلاغات</a></li>
-              {% endif %}
-
-              {% if session_user.role == 'admin' %}
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a></li>
-              {% endif %}
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right"></i> خروج</a></li>
-            </ul>
-          </div>
-          {% else %}
-            <a class="btn btn-ghost btn-sm" href="/login">دخول</a>
-            <a class="btn btn-primary btn-sm" href="/register">تسجيل</a>
-          {% endif %}
+              <li><a class="dropdown-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a></li>
+            {% endif %}
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right"></i> خروج</a></li>
+          </ul>
         </div>
-      </div>
-    </header>
-
-    <!-- تبويبات أعلى (موبايل) -->
-    <nav class="m-top-tabs d-lg-none px-3 pb-2" role="tablist" aria-label="أقسام عليا">
-      <a href="/" class="m-tab {% if request and request.url.path == '/' %}is-active{% endif %}" role="tab"
-         aria-selected="{{ 'true' if request and request.url.path == '/' else 'false' }}">Home</a>
-
-      {% if session_user %}
-        <a href="/notifications" class="m-tab {% if request and request.url.path.startswith('/notifications') %}is-active{% endif %}" role="tab">
-          إشعارات
-          {% set unread_top = (request.state.unread_messages|default(0))|int if request else 0 %}
-          <small id="mNotifBadge" {% if unread_top<=0 %}style="display:none"{% endif %} class="ms-1">
-            {{ unread_top if unread_top < 100 else '99+' }}
-          </small>
-        </a>
-        <a href="/payout/settings" class="m-tab {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" role="tab">تحويلات</a>
-        {% if session_user.role == 'admin' %}
-          <a href="/admin" class="m-tab {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" role="tab">لوحة أدمين</a>
+        {% else %}
+          <a class="btn btn-ghost btn-sm" href="/login">دخول</a>
+          <a class="btn btn-primary btn-sm" href="/register">تسجيل</a>
         {% endif %}
-      {% else %}
-        <a href="/login" class="m-tab" role="tab">إشعارات</a>
-        <a href="/login" class="m-tab" role="tab">تحويلات</a>
-      {% endif %}
-    </nav>
-
-    <!-- ===== Page ===== -->
-    <main class="page container-fluid main-flex-fill min-vh-100">
-      {% if session_user and session_user.status == 'approved' and not session_user.payouts_enabled %}
-        <div class="stripe-callout alert alert-warning d-flex justify-content-between align-items:center mb-3">
-          <div>💸 لبدء استلام الأرباح، اربط <strong>Stripe Connect</strong>.</div>
-          <a class="btn btn-sm btn-primary" href="/payout/settings">ربط الآن</a>
-        </div>
-      {% endif %}
-
-      {% if message %}<div class="alert alert-info">{{ message }}</div>{% endif %}
-      {% block content %}{% endblock %}
-    </main>
-
-    <!-- لوحة إشعارات جانبية -->
-    <div class="notif-panel" id="notifPanel" aria-hidden="true">
-      <div class="notif-panel__header d-flex justify-content-between align-items-center">
-        <strong>الإشعارات</strong>
-        <button class="btn btn-ghost btn-sm" id="notifClose"><i class="bi bi-x-lg"></i></button>
-      </div>
-      <div class="notif-panel__body" id="notifBody">
-        <div class="small text-muted">لا توجد إشعارات جديدة.</div>
       </div>
     </div>
-    <div class="scrim" id="scrim"></div>
+  </header>
+
+  <!-- تبويبات أعلى (موبايل) -->
+  <nav class="m-top-tabs d-lg-none px-3 pb-2" role="tablist" aria-label="أقسام عليا">
+    <a href="/" class="m-tab {% if request and request.url.path == '/' %}is-active{% endif %}" role="tab"
+       aria-selected="{{ 'true' if request and request.url.path == '/' else 'false' }}">Home</a>
 
     {% if session_user %}
-      <a href="/owner/items/new" class="fab d-lg-none btn btn-primary rounded-circle shadow" title="عنصر جديد" style="width:56px;height:56px;display:flex;align-items:center;justify-content:center">
-        <i class="bi bi-plus-lg"></i>
+      <a href="/notifications" class="m-tab {% if request and request.url.path.startswith('/notifications') %}is-active{% endif %}" role="tab">
+        إشعارات
+        {% set unread_top = (request.state.unread_messages|default(0))|int if request else 0 %}
+        <small id="mNotifBadge" {% if unread_top<=0 %}style="display:none"{% endif %} class="ms-1">
+          {{ unread_top if unread_top < 100 else '99+' }}
+        </small>
       </a>
+      <a href="/payout/settings" class="m-tab {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" role="tab">تحويلات</a>
+      {% if session_user.role == 'admin' %}
+        <a href="/admin" class="m-tab {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" role="tab">لوحة أدمين</a>
+      {% endif %}
+    {% else %}
+      <a href="/login" class="m-tab" role="tab">إشعارات</a>
+      <a href="/login" class="m-tab" role="tab">تحويلات</a>
+    {% endif %}
+  </nav>
+
+  <!-- ===== Page ===== -->
+  <main class="page container-fluid main-flex-fill min-vh-100">
+    {% if session_user and session_user.status == 'approved' and not session_user.payouts_enabled %}
+      <div class="stripe-callout alert alert-warning d-flex justify-content-between align-items:center mb-3">
+        <div>💸 لبدء استلام الأرباح، اربط <strong>Stripe Connect</strong>.</div>
+        <a class="btn btn-sm btn-primary" href="/payout/settings">ربط الآن</a>
+      </div>
     {% endif %}
 
-    <!-- شريط سفلي (موبايل) -->
-    <nav class="mobile-tabbar d-lg-none">
-      <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
-        <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home"><span>الرئيسية</span>
+    {% if message %}<div class="alert alert-info">{{ message }}</div>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- لوحة إشعارات جانبية -->
+  <div class="notif-panel" id="notifPanel" aria-hidden="true">
+    <div class="notif-panel__header d-flex justify-content-between align-items-center">
+      <strong>الإشعارات</strong>
+      <button class="btn btn-ghost btn-sm" id="notifClose"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="notif-panel__body" id="notifBody">
+      <div class="small text-muted">لا توجد إشعارات جديدة.</div>
+    </div>
+  </div>
+  <div class="scrim" id="scrim"></div>
+
+  {% if session_user %}
+    <a href="/owner/items/new" class="fab d-lg-none btn btn-primary rounded-circle shadow" title="عنصر جديد" style="width:56px;height:56px;display:flex;align-items:center;justify-content:center">
+      <i class="bi bi-plus-lg"></i>
+    </a>
+  {% endif %}
+
+  <!-- شريط سفلي (موبايل) -->
+  <nav class="mobile-tabbar d-lg-none">
+    <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
+      <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home"><span>الرئيسية</span>
+    </a>
+
+    {% if session_user %}
+      <a href="/favorites" class="{% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}">
+        <img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav"><span>مفضلتي</span>
       </a>
+      <a href="/bookings" class="{% if request and request.url.path.startswith('/bookings') %}is-active{% endif %}">
+        <img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>حجوزاتي</span>
+      </a>
+      <a href="/messages" class="{% if request and request.url.path.startswith('/messages') %}is-active{% endif %}">
+        <img class="tab-img" src="/static/img/msg.png" alt="Messages"><span>الرسائل</span>
+      </a>
+      <a href="/profile" class="{% if request and request.url.path.startswith('/profile') %}is-active{% endif %}">
+        <img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile"><span>بروفايلي</span>
+      </a>
+    {% else %}
+      <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav"><span>مفضلتي</span></a>
+      <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>حجوزاتي</span></a>
+      <a href="/login"><img class="tab-img" src="/static/img/msg.png" alt="Messages"><span>الرسائل</span></a>
+      <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile"><span>بروفايلي</span></a>
+    {% endif %}
+  </nav>
 
-      {% if session_user %}
-        <a href="/favorites" class="{% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}">
-          <img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav"><span>مفضلتي</span>
-        </a>
-        <a href="/bookings" class="{% if request and request.url.path.startswith('/bookings') %}is-active{% endif %}">
-          <img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>حجوزاتي</span>
-        </a>
-        <a href="/messages" class="{% if request and request.url.path.startswith('/messages') %}is-active{% endif %}">
-          <img class="tab-img" src="/static/img/msg.png" alt="Messages"><span>الرسائل</span>
-        </a>
-        <a href="/profile" class="{% if request and request.url.path.startswith('/profile') %}is-active{% endif %}">
-          <img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile"><span>بروفايلي</span>
-        </a>
-      {% else %}
-        <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav"><span>مفضلتي</span></a>
-        <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>حجوزاتي</span></a>
-        <a href="/login"><img class="tab-img" src="/static/img/msg.png" alt="Messages"><span>الرسائل</span></a>
-        <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile"><span>بروفايلي</span></a>
-      {% endif %}
-    </nav>
+  </div><!-- /#page-wrapper -->
 
-    </div><!-- /#page-wrapper -->
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  {% block scripts %}{% endblock %}
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    {% block scripts %}{% endblock %}
-
-    <!-- Safe-area -->
-    <script>
-    (function(){
-      var root = document.documentElement;
-      function computeSafe(){
-        var safe = 0;
-        try{
-          var probe = document.createElement('div');
-          probe.style.cssText = 'position:fixed; bottom:0; left:0; right:0; height:constant(safe-area-inset-bottom); height:env(safe-area-inset-bottom); pointer-events:none; opacity:0;';
-          document.body.appendChild(probe);
-          safe = Math.max(0, probe.getBoundingClientRect().height || 0);
-          probe.remove();
-        }catch(_){}
-        var isIOS = /iphone|ipod|ipad/i.test(navigator.userAgent);
-        var isStandalone = (window.navigator.standalone === true) || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-        if (isIOS && isStandalone && safe < 8) safe = 16;
-        root.style.setProperty('--safe-bottom', safe + 'px');
-      }
-      computeSafe();
-      window.addEventListener('resize', computeSafe);
-      if (window.visualViewport){
-        visualViewport.addEventListener('resize', computeSafe);
-        visualViewport.addEventListener('scroll', computeSafe);
-      }
-    })();
-    </script>
-
-    <!-- زر ☰ (قائمة سريعة) -->
-    <script>
-    (function(){
-      const btn  = document.getElementById('menuBtn');
-      const menu = document.getElementById('quickMenu');
-      if(!btn || !menu) return;
-      if (window.__quickMenuInit) return;
-      window.__quickMenuInit = true;
-
-      function open(){ menu.classList.add('is-open'); menu.removeAttribute('hidden'); btn.setAttribute('aria-expanded','true');
-        setTimeout(()=>{ document.addEventListener('click', onDoc, true); document.addEventListener('keydown', onKey); },0); }
-      function close(){ menu.classList.remove('is-open'); menu.setAttribute('hidden',''); btn.setAttribute('aria-expanded','false');
-        document.removeEventListener('click', onDoc, true); document.removeEventListener('keydown', onKey); }
-      function toggle(){ menu.classList.contains('is-open') ? close() : open(); }
-      function onDoc(e){ if (e.target===btn || btn.contains(e.target) || menu.contains(e.target)) return; close(); }
-      function onKey(e){ if (e.key==='Escape'){ close(); btn.focus(); } }
-      btn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); toggle(); });
-      menu.addEventListener('click', function(e){ e.stopPropagation(); });
-    })();
-    </script>
-
-    <!-- Typeahead لعناصر/حسابات -->
-    <script>
-    (function initTypeahead(){
-      if (window.__typeaheadInit) return; window.__typeaheadInit = true;
-
-      var form  = document.querySelector('form.search');
-      var input = form ? form.querySelector('input[name="q"]') : null;
-      var panel = document.getElementById('typeaheadPanel');
-      if (!form || !input || !panel) return;
-
-      var tm = null, activeIndex = -1;
-      function hide(){ panel.classList.add('d-none'); panel.innerHTML = ""; activeIndex = -1; }
-      function show(){ panel.classList.remove('d-none'); }
-      function esc(s){ return String(s||"").replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c]; }); }
-
-      function normalizePayload(data){
-        var usersArr = (data && data.users) ? data.users : [];
-        var itemsArr = (data && data.items) ? data.items : [];
-        var users = usersArr.map(function(u){
-          var name = u.name || ((u.first_name||"") + " " + (u.last_name||"")).trim();
-          return { id:u.id, name:name, avatar:u.avatar||u.avatar_path||"", url:u.url||("/users/"+u.id) };
-        });
-        var items = itemsArr.map(function(it){
-          return { id:it.id, title:it.title||"", image:it.image||it.image_path||"", city:it.city||"", url:it.url||("/items/"+it.id) };
-        });
-        return { users: users, items: items };
-      }
-
-      function render(data){
-        var norm = normalizePayload(data);
-        var users = norm.users, items = norm.items, html = [];
-        if (users.length){
-          html.push('<div class="typeahead-group">حسابات</div>');
-          users.forEach(function(u){ html.push('<div class="typeahead-item" data-url="'+u.url+'"><i class="bi bi-person-circle"></i><div class="flex-grow-1"><div>'+esc(u.name)+'</div><div class="k">الملف الشخصي</div></div></div>'); });
-        }
-        if (items.length){
-          html.push('<div class="typeahead-group">عناصر</div>');
-          items.forEach(function(it){
-            var city = it.city ? ' — <span class="k">'+esc(it.city)+'</span>' : '';
-            html.push('<div class="typeahead-item" data-url="'+it.url+'"><i class="bi bi-box-seam"></i><div class="flex-grow-1"><div>'+esc(it.title)+city+'</div><div class="k">تفاصيل العنصر</div></div></div>');
-          });
-        }
-        if (!html.length){ hide(); return; }
-        panel.innerHTML = html.join(""); show();
-      }
-
-      function search(q){
-        if (!q || q.trim().length < 2) { hide(); return; }
-        fetch('/api/search?q='+encodeURIComponent(q.trim()))
-          .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-          .then(render).catch(hide);
-      }
-
-      input.addEventListener('input', function(){ clearTimeout(tm); tm = setTimeout(function(){ search(input.value); }, 180); });
-      panel.addEventListener('click', function(e){
-        var row = e.target.closest('.typeahead-item'); if (!row) return;
-        window.location.href = row.getAttribute('data-url');
-      });
-
-      input.addEventListener('keydown', function(e){
-        if (panel.classList.contains('d-none')) return;
-        var rows = Array.prototype.slice.call(panel.querySelectorAll('.typeahead-item'));
-        if (!rows.length) return;
-        if (e.key === 'ArrowDown'){ e.preventDefault(); setActive(rows, activeIndex+1); }
-        else if (e.key === 'ArrowUp'){ e.preventDefault(); setActive(rows, activeIndex-1); }
-        else if (e.key === 'Enter'){ if (activeIndex>=0 && rows[activeIndex]){ e.preventDefault(); rows[activeIndex].click(); } }
-        else if (e.key === 'Escape'){ hide(); }
-      });
-
-      document.addEventListener('click', function(e){ if (!panel.contains(e.target) && e.target !== input){ hide(); } });
-
-      function setActive(rows, i){
-        rows.forEach(function(r){ r.classList.remove('active'); });
-        if (i < 0) i = rows.length-1;
-        if (i >= rows.length) i = 0;
-        activeIndex = i; rows[activeIndex].classList.add('active');
-        rows[activeIndex].scrollIntoView({block:'nearest'});
-      }
-    })();
-    </script>
-
-    <!-- ===== Autocomplete للمدينة: لغة الإدخال + إزالة التكرار + lng ===== -->
-    <script>
-    (function cityAutocomplete(){
-      if (window.__cityAutoInit) return; window.__cityAutoInit = true;
-
-      const input = document.getElementById('cityTop');
-      const panel = document.getElementById('citySuggest');
-      const latEl = document.getElementById('latTop');
-      const lngEl = document.getElementById('lngTop');
-      const form  = input ? input.closest('form') : null;
-      if(!input || !panel || !form) return;
-
-      let tm = null, lastList = [], active = -1;
-
-      function detectLang(q){
-        const s = (q||'').trim();
-        if (/[\u0600-\u06FF]/.test(s)) return 'ar';
-        const hasFrMarks = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(s);
-        const frWords = /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
-        const enWords = /\b(new|city|county|state|united|kingdom|usa|us|uk)\b/i.test(s);
-        if (hasFrMarks || frWords) return 'fr';
-        if (enWords) return 'en';
-        const prefs = (navigator.languages || [navigator.language || 'en']).map(x=>x.slice(0,2).toLowerCase());
-        if (prefs.includes('fr')) return 'fr';
-        if (prefs.includes('en')) return 'en';
-        if (prefs.includes('ar')) return 'ar';
-        return 'en';
-      }
-
-      function esc(s){ return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
-      function hide(){ panel.style.display='none'; panel.innerHTML=""; lastList=[]; active=-1; }
-      function show(){ panel.style.display='block'; }
-
-      const ALLOWED = new Set(['city','town','village','municipality']);
-      const FALLBACK = new Set(['state','province']);
-      function normalizePlace(p){
-        const a = p.address || {};
-        const type = (p.type || '').toLowerCase();
-        const cc = (a.country_code || '').toLowerCase();
-        const city = a.city || a.town || a.village || a.municipality || a.state || a.province || (p.display_name||'').split(',')[0];
-        const prioMap = {city:1, town:2, village:3, municipality:3, state:6, province:6, administrative:8, county:8, region:8};
-        const prio = prioMap[type] ?? 9;
-        const country = a.country || '';
-        return { city, country, cc, label: city + (country ? ', ' + country : ''), lat:p.lat, lon:p.lon, type, prio };
-      }
-      function dedupeByCountry(list){
-        const best = new Map();
-        for(const raw of list){
-          const n = normalizePlace(raw);
-          if (!n.city || !n.cc) continue;
-          const key = (n.city.trim().toLowerCase() + '|' + n.cc);
-          const prev = best.get(key);
-          if (!prev || n.prio < prev.prio) best.set(key, n);
-        }
-        return Array.from(best.values());
-      }
-
-      async function query(q){
-        const lang = detectLang(q);
-        const u = 'https://nominatim.openstreetmap.org/search'
-                + '?format=json&addressdetails=1&namedetails=0&extratags=0'
-                + '&limit=30&accept-language=' + encodeURIComponent(lang)
-                + '&q=' + encodeURIComponent(q);
-        const r = await fetch(u, { headers: { 'Accept': 'application/json' }});
-        if(!r.ok) return [];
-        const data = await r.json();
-
-        let filtered = data.filter(x => ALLOWED.has((x.type||'').toLowerCase()));
-        if (!filtered.length) filtered = data.filter(x => FALLBACK.has((x.type||'').toLowerCase()));
-        if (!filtered.length) filtered = data;
-
-        return dedupeByCountry(filtered);
-      }
-
-      function render(list){
-        if(!Array.isArray(list) || list.length===0){ hide(); return; }
-        lastList = list.slice(0, 6);
-        const html = [
-          '<div class="typeahead-group">مدن/مناطق</div>',
-          ...lastList.map((p,i)=>(
-            '<div class="row" data-i="'+i+'"><i class="bi bi-geo-alt"></i>'
-            + '<div><div>'+esc(p.label)+'</div><div class="sub">lat '+esc(p.lat)+' — lng '+esc(p.lon)+'</div></div></div>'
-          ))
-        ].join('');
-        panel.innerHTML = html; show(); active = -1;
-      }
-
-      function pick(i){
-        const p = lastList[i]; if(!p) return;
-        input.value = p.label;
-        if (latEl) latEl.value = p.lat || '';
-        if (lngEl) lngEl.value = p.lon || '';
-        try{
-          document.cookie = "city="+encodeURIComponent(p.label)+";path=/;SameSite=Lax";
-          document.cookie = "lat="+(p.lat||"")+";path=/;SameSite=Lax";
-          document.cookie = "lng="+(p.lon||"")+";path=/;SameSite=Lax";
-        }catch(_){}
-        hide();
-      }
-
-      input.addEventListener('input', function(){
-        clearTimeout(tm);
-        const q = input.value.trim();
-        if (latEl) latEl.value = '';
-        if (lngEl) lngEl.value = '';
-        if (q.length < 2){ hide(); return; }
-        tm = setTimeout(async ()=>{ try{ const list = await query(q); render(list); }catch(_){ hide(); } }, 220);
-      });
-      panel.addEventListener('click', function(e){
-        const row = e.target.closest('.row'); if(!row) return;
-        pick(Number(row.getAttribute('data-i')||'-1'));
-      });
-
-      // Enter/OK: إرسال النموذج حتى لو التركيز على المدينة
-      input.addEventListener('keydown', function(e){
-        if (panel.style.display !== 'block') {
-          if (e.key === 'Enter') { e.preventDefault(); form.submit(); }
-          return;
-        }
-        const rows = Array.prototype.slice.call(panel.querySelectorAll('.row'));
-        if (!rows.length) return;
-        if (e.key === 'ArrowDown'){ e.preventDefault(); active = (active+1) % rows.length; markActive(rows); }
-        else if (e.key === 'ArrowUp'){ e.preventDefault(); active = (active-1 + rows.length) % rows.length; markActive(rows); }
-        else if (e.key === 'Enter'){
-          e.preventDefault();
-          if (active >= 0 && rows[active]) { rows[active].click(); }
-          else { form.submit(); }
-        } else if (e.key === 'Escape'){ hide(); }
-      });
-      function markActive(rows){
-        rows.forEach(r=>r.classList.remove('active'));
-        if (active>=0 && rows[active]){ rows[active].classList.add('active'); rows[active].scrollIntoView({block:'nearest'}); }
-      }
-
-      // Enter أيضًا من خانة q
-      const qInput = document.getElementById('qTop');
-      qInput?.addEventListener('keydown', function(e){
-        if (e.key === 'Enter'){ e.preventDefault(); form.submit(); }
-      });
-
-      // إغلاق عند النقر خارج
-      document.addEventListener('click', function(e){ if (e.target === input || panel.contains(e.target)) return; hide(); });
-    })();
-    </script>
-
-    <!-- كشف وضع التطبيق وإضافة كلاس html.pwa -->
-    <script>
-      (function(){
-        var isStandalone = false;
-        try {
-          isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
-                         || (window.navigator.standalone === true);
-        } catch(_) {}
-        if (isStandalone) { document.documentElement.classList.add('pwa'); }
-      })();
-    </script>
-
-    <style id="safearea-white-under-navbar">
-    @media (max-width: 768px){
-      .mobile-tabbar{
-        z-index: 2147483647 !important;
-        background: #fff !important;
-      }
-      body::after{
-        content: "";
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        height: calc(
-          max(
-            env(safe-area-inset-bottom, 0px),
-            var(--safe-b, 0px),
-            var(--safe-bottom, 0px)
-          ) + 9px
-        );
-        background: #fff;
-        z-index: 2147483646;
-        pointer-events: none;
-      }
+  <!-- Safe-area -->
+  <script>
+  (function(){
+    var root = document.documentElement;
+    function computeSafe(){
+      var safe = 0;
+      try{
+        var probe = document.createElement('div');
+        probe.style.cssText = 'position:fixed; bottom:0; left:0; right:0; height:constant(safe-area-inset-bottom); height:env(safe-area-inset-bottom); pointer-events:none; opacity:0;';
+        document.body.appendChild(probe);
+        safe = Math.max(0, probe.getBoundingClientRect().height || 0);
+        probe.remove();
+      }catch(_){}
+      var isIOS = /iphone|ipod|ipad/i.test(navigator.userAgent);
+      var isStandalone = (window.navigator.standalone === true) || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+      if (isIOS && isStandalone && safe < 8) safe = 16;
+      root.style.setProperty('--safe-bottom', safe + 'px');
     }
-    </style>
+    computeSafe();
+    window.addEventListener('resize', computeSafe);
+    if (window.visualViewport){
+      visualViewport.addEventListener('resize', computeSafe);
+      visualViewport.addEventListener('scroll', computeSafe);
+    }
+  })();
+  </script>
 
-    <!-- تتبّع بسيط/Heartbeat -->
-    <script>
+  <!-- زر ☰ (قائمة سريعة) -->
+  <script>
+  (function(){
+    const btn  = document.getElementById('menuBtn');
+    const menu = document.getElementById('quickMenu');
+    if(!btn || !menu) return;
+    if (window.__quickMenuInit) return;
+    window.__quickMenuInit = true;
+
+    function open(){ menu.classList.add('is-open'); menu.removeAttribute('hidden'); btn.setAttribute('aria-expanded','true');
+      setTimeout(()=>{ document.addEventListener('click', onDoc, true); document.addEventListener('keydown', onKey); },0); }
+    function close(){ menu.classList.remove('is-open'); menu.setAttribute('hidden',''); btn.setAttribute('aria-expanded','false');
+      document.removeEventListener('click', onDoc, true); document.removeEventListener('keydown', onKey); }
+    function toggle(){ menu.classList.contains('is-open') ? close() : open(); }
+    function onDoc(e){ if (e.target===btn || btn.contains(e.target) || menu.contains(e.target)) return; close(); }
+    function onKey(e){ if (e.key==='Escape'){ close(); btn.focus(); } }
+    btn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); toggle(); });
+    menu.addEventListener('click', function(e){ e.stopPropagation(); });
+  })();
+  </script>
+
+  <!-- Typeahead لعناصر/حسابات (كما هو لديك) -->
+  <script>
+  (function initTypeahead(){
+    if (window.__typeaheadInit) return; window.__typeaheadInit = true;
+
+    var form  = document.querySelector('form.search');
+    var input = form ? form.querySelector('input[name="q"]') : null;
+    var panel = document.getElementById('typeaheadPanel');
+    if (!form || !input || !panel) return;
+
+    var tm = null, activeIndex = -1;
+    function hide(){ panel.classList.add('d-none'); panel.innerHTML = ""; activeIndex = -1; }
+    function show(){ panel.classList.remove('d-none'); }
+    function esc(s){ return String(s||"").replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c]; }); }
+
+    function normalizePayload(data){
+      var usersArr = (data && data.users) ? data.users : [];
+      var itemsArr = (data && data.items) ? data.items : [];
+      var users = usersArr.map(function(u){
+        var name = u.name || ((u.first_name||"") + " " + (u.last_name||"")).trim();
+        return { id:u.id, name:name, avatar:u.avatar||u.avatar_path||"", url:u.url||("/users/"+u.id) };
+      });
+      var items = itemsArr.map(function(it){
+        return { id:it.id, title:it.title||"", image:it.image||it.image_path||"", city:it.city||"", url:it.url||("/items/"+it.id) };
+      });
+      return { users: users, items: items };
+    }
+
+    function render(data){
+      var norm = normalizePayload(data);
+      var users = norm.users, items = norm.items, html = [];
+      if (users.length){
+        html.push('<div class="typeahead-group">حسابات</div>');
+        users.forEach(function(u){ html.push('<div class="typeahead-item" data-url="'+u.url+'"><i class="bi bi-person-circle"></i><div class="flex-grow-1"><div>'+esc(u.name)+'</div><div class="k">الملف الشخصي</div></div></div>'); });
+      }
+      if (items.length){
+        html.push('<div class="typeahead-group">عناصر</div>');
+        items.forEach(function(it){
+          var city = it.city ? ' — <span class="k">'+esc(it.city)+'</span>' : '';
+          html.push('<div class="typeahead-item" data-url="'+it.url+'"><i class="bi bi-box-seam"></i><div class="flex-grow-1"><div>'+esc(it.title)+city+'</div><div class="k">تفاصيل العنصر</div></div></div>');
+        });
+      }
+      if (!html.length){ hide(); return; }
+      panel.innerHTML = html.join(""); show();
+    }
+
+    function search(q){
+      if (!q || q.trim().length < 2) { hide(); return; }
+      fetch('/api/search?q='+encodeURIComponent(q.trim()))
+        .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+        .then(render).catch(hide);
+    }
+
+    input.addEventListener('input', function(){ clearTimeout(tm); tm = setTimeout(function(){ search(input.value); }, 180); });
+    panel.addEventListener('click', function(e){
+      var row = e.target.closest('.typeahead-item'); if (!row) return;
+      window.location.href = row.getAttribute('data-url');
+    });
+     
+
+     
+    input.addEventListener('keydown', function(e){
+      if (panel.classList.contains('d-none')) return;
+      var rows = Array.prototype.slice.call(panel.querySelectorAll('.typeahead-item'));
+      if (!rows.length) return;
+      if (e.key === 'ArrowDown'){ e.preventDefault(); setActive(rows, activeIndex+1); }
+      else if (e.key === 'ArrowUp'){ e.preventDefault(); setActive(rows, activeIndex-1); }
+      else if (e.key === 'Enter'){ if (activeIndex>=0 && rows[activeIndex]){ e.preventDefault(); rows[activeIndex].click(); } }
+      else if (e.key === 'Escape'){ hide(); }
+    });
+
+    document.addEventListener('click', function(e){ if (!panel.contains(e.target) && e.target !== input){ hide(); } });
+
+    function setActive(rows, i){
+      rows.forEach(function(r){ r.classList.remove('active'); });
+      if (i < 0) i = rows.length-1;
+      if (i >= rows.length) i = 0;
+      activeIndex = i; rows[activeIndex].classList.add('active');
+      rows[activeIndex].scrollIntoView({block:'nearest'});
+    }
+  })();
+  </script>
+
+  <!-- ===== Autocomplete للمدينة: لغة الإدخال + إزالة التكرار داخل البلد + استخدام lng ===== -->
+  <script>
+  (function cityAutocomplete(){
+    if (window.__cityAutoInit) return; window.__cityAutoInit = true;
+
+    const input = document.getElementById('cityTop');
+    const panel = document.getElementById('citySuggest');
+    const latEl = document.getElementById('latTop');
+    const lngEl = document.getElementById('lngTop');   // ✅ بدل lonTop
+    const form  = input ? input.closest('form') : null;
+    if(!input || !panel || !form) return;
+
+    let tm = null, lastList = [], active = -1;
+
+    function detectLang(q){
+      const s = (q||'').trim();
+      if (/[\u0600-\u06FF]/.test(s)) return 'ar'; // عربي
+      const hasFrMarks = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(s);
+      const frWords = /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
+      const enWords = /\b(new|city|county|state|united|kingdom|usa|us|uk)\b/i.test(s);
+      if (hasFrMarks أو frWords) return 'fr';
+      if (enWords) return 'en';
+      const prefs = (navigator.languages || [navigator.language || 'en']).map(x=>x.slice(0,2).toLowerCase());
+      if (prefs.includes('fr')) return 'fr';
+      if (prefs.includes('en')) return 'en';
+      if (prefs.includes('ar')) return 'ar';
+      return 'en';
+    }
+
+    function esc(s){ return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
+    function hide(){ panel.style.display='none'; panel.innerHTML=""; lastList=[]; active=-1; }
+    function show(){ panel.style.display='block'; }
+
+    const ALLOWED = new Set(['city','town','village','municipality']);
+    const FALLBACK = new Set(['state','province']);
+    function normalizePlace(p){
+      const a = p.address || {};
+      const type = (p.type || '').toLowerCase();
+      const cc = (a.country_code || '').toLowerCase();
+      const city = a.city || a.town || a.village || a.municipality || a.state || a.province || (p.display_name||'').split(',')[0];
+      const prioMap = {city:1, town:2, village:3, municipality:3, state:6, province:6, administrative:8, county:8, region:8};
+      const prio = prioMap[type] ?? 9;
+      const country = a.country || '';
+      return { city, country, cc, label: city + (country ? ', ' + country : ''), lat:p.lat, lon:p.lon, type, prio };
+    }
+    function dedupeByCountry(list){
+      const best = new Map();
+      for(const raw of list){
+        const n = normalizePlace(raw);
+        if (!n.city || !n.cc) continue;
+        const key = (n.city.trim().toLowerCase() + '|' + n.cc);
+        const prev = best.get(key);
+        if (!prev || n.prio < prev.prio) best.set(key, n);
+      }
+      return Array.from(best.values());
+    }
+
+    async function query(q){
+      const lang = detectLang(q);
+      const u = 'https://nominatim.openstreetmap.org/search'
+              + '?format=json&addressdetails=1&namedetails=0&extratags=0'
+              + '&limit=30&accept-language=' + encodeURIComponent(lang)
+              + '&q=' + encodeURIComponent(q);
+      const r = await fetch(u, { headers: { 'Accept': 'application/json' }});
+      if(!r.ok) return [];
+      const data = await r.json();
+
+      let filtered = data.filter(x => ALLOWED.has((x.type||'').toLowerCase()));
+      if (!filtered.length) filtered = data.filter(x => FALLBACK.has((x.type||'').toLowerCase()));
+      if (!filtered.length) filtered = data;
+
+      return dedupeByCountry(filtered);
+    }
+
+    function render(list){
+      if(!Array.isArray(list) || list.length===0){ hide(); return; }
+      lastList = list.slice(0, 6);
+      const html = [
+        '<div class="typeahead-group">مدن/مناطق</div>',
+        ...lastList.map((p,i)=>(
+          '<div class="row" data-i="'+i+'"><i class="bi bi-geo-alt"></i>'
+          + '<div><div>'+esc(p.label)+'</div><div class="sub">lat '+esc(p.lat)+' — lng '+esc(p.lon)+'</div></div></div>'
+        ))
+      ].join('');
+      panel.innerHTML = html; show(); active = -1;
+    }
+
+    function pick(i){
+      const p = lastList[i]; if(!p) return;
+      input.value = p.label;
+      if (latEl) latEl.value = p.lat || '';
+      if (lngEl) lngEl.value = p.lon || '';
+      try{
+        document.cookie = "city="+encodeURIComponent(p.label)+";path=/;SameSite=Lax";
+        document.cookie = "lat="+(p.lat||"")+";path=/;SameSite=Lax";
+        document.cookie = "lng="+(p.lon||"")+";path=/;SameSite=Lax";   // ✅ كوكي باسم lng
+      }catch(_){}
+      hide();
+    }
+
+    input.addEventListener('input', function(){
+      clearTimeout(tm);
+      const q = input.value.trim();
+      if (latEl) latEl.value = '';
+      if (lngEl) lngEl.value = '';
+      if (q.length < 2){ hide(); return; }
+      tm = setTimeout(async ()=>{ try{ const list = await query(q); render(list); }catch(_){ hide(); } }, 220);
+    });
+    panel.addEventListener('click', function(e){
+      const row = e.target.closest('.row'); if(!row) return;
+      pick(Number(row.getAttribute('data-i')||'-1'));
+    });
+
+    // Enter/OK: إرسال النموذج حتى لو التركيز على المدينة
+    input.addEventListener('keydown', function(e){
+      if (panel.style.display !== 'block') {
+        if (e.key === 'Enter') { e.preventDefault(); form.submit(); }
+        return;
+      }
+      const rows = Array.prototype.slice.call(panel.querySelectorAll('.row'));
+      if (!rows.length) return;
+      if (e.key === 'ArrowDown'){ e.preventDefault(); active = (active+1) % rows.length; markActive(rows); }
+      else if (e.key === 'ArrowUp'){ e.preventDefault(); active = (active-1 + rows.length) % rows.length; markActive(rows); }
+      else if (e.key === 'Enter'){
+        e.preventDefault();
+        if (active >= 0 && rows[active]) { rows[active].click(); }
+        else { form.submit(); }
+      } else if (e.key === 'Escape'){ hide(); }
+    });
+    function markActive(rows){
+      rows.forEach(r=>r.classList.remove('active'));
+      if (active>=0 && rows[active]){ rows[active].classList.add('active'); rows[active].scrollIntoView({block:'nearest'}); }
+    }
+
+    // Enter أيضًا من خانة q
+    const qInput = document.getElementById('qTop');
+    qInput?.addEventListener('keydown', function(e){
+      if (e.key === 'Enter'){ e.preventDefault(); form.submit(); }
+    });
+
+    // إغلاق عند النقر خارج
+    document.addEventListener('click', function(e){ if (e.target === input || panel.contains(e.target)) return; hide(); });
+  })();
+  </script>
+
+  <!-- كشف وضع التطبيق وإضافة كلاس html.pwa -->
+  <script>
     (function(){
-      function uuid(){
-        return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-          (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-        );
-      }
-      const KEY = "sv_session_id";
-      let sid = localStorage.getItem(KEY);
-      if(!sid){ sid = uuid(); localStorage.setItem(KEY, sid); }
-      const USER_ID = {{ (session_user.id if session_user else 'null') | safe }};
-
-      async function postJSON(url, data){
-        try {
-          await fetch(url, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(data) });
-        } catch(e){}
-      }
-      postJSON("/api/metrics/track", { session_id: sid, user_id: USER_ID });
-
-      async function ping(){
-        try{
-          await fetch("/api/metrics/heartbeat", {
-            method:"POST", headers:{ "Content-Type":"application/json" },
-            body: JSON.stringify({ session_id: sid, user_id: USER_ID })
-          });
-        }catch(e){}
-      }
-      setInterval(ping, 30000);
-      setTimeout(ping, 5000);
+      var isStandalone = false;
+      try {
+        isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+                       || (window.navigator.standalone === true);
+      } catch(_) {}
+      if (isStandalone) { document.documentElement.classList.add('pwa'); }
     })();
-    </script>
+  </script>
 
-    <!-- إشعارات: CS-grant يفتح دائمًا /cs/inbox -->
- <script>
+  <style id="safearea-white-under-navbar">
+  @media (max-width: 768px){
+    .mobile-tabbar{
+      z-index: 2147483647 !important;
+      background: #fff !important;
+    }
+
+    body::after{
+      content: "";
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: calc(
+        max(
+          env(safe-area-inset-bottom, 0px),
+          var(--safe-b, 0px),
+          var(--safe-bottom, 0px)
+        ) + 9px
+      );
+      background: #fff;
+      z-index: 2147483646;
+      pointer-events: none;
+    }
+  }
+</style>
+
+<script>
+(function(){
+  // معرّف جلسة ثابت لكل متصفح
+  function uuid(){
+    return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+    );
+  }
+  const KEY = "sv_session_id";
+  let sid = localStorage.getItem(KEY);
+  if(!sid){ sid = uuid(); localStorage.setItem(KEY, sid); }
+
+  // لو تمرّرون current_user في الجينجا—خذه؛ وإلا null
+  const USER_ID = {{ (session_user.id if session_user else 'null') | safe }};
+
+  async function postJSON(url, data){
+    try {
+      await fetch(url, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(data) });
+    } catch(e){}
+  }
+
+  // زيارة أولى
+  postJSON("/api/metrics/track", { session_id: sid, user_id: USER_ID });
+
+  // نبضات للحفاظ على "متصل الآن"
+  async function ping(){
+    try{
+      await fetch("/api/metrics/heartbeat", {
+        method:"POST", headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ session_id: sid, user_id: USER_ID })
+      });
+    }catch(e){}
+  }
+  setInterval(ping, 30000);
+  setTimeout(ping, 5000);
+})();
+</script>
+<script>
 (function initNotifications(){
   if (window.__notifInit) return; window.__notifInit = true;
 
@@ -755,34 +760,28 @@
   const bodyEl = document.getElementById('notifBody');
   const close  = document.getElementById('notifClose');
   const scrim  = document.getElementById('scrim');
+
   if (!btn || !panel || !bodyEl) return;
 
+  // عناصر الشارة فوق الجرس (إذا غير موجودة ننشئها)
   let ping  = btn.querySelector('.notif-ping');
   let count = btn.querySelector('.notif-count');
   if (!ping){  ping  = document.createElement('span'); ping.className='notif-ping';  ping.style.display='none'; btn.appendChild(ping); }
   if (!count){ count = document.createElement('span'); count.className='notif-count'; count.style.display='none'; btn.appendChild(count); }
 
-  let lastTs = 0;
+  let lastTs = 0;  // آخر توقيت استلمناه من السيرفر
+  let pollTm = null;
 
   function setBadge(n){
     if (!n || n<=0){ ping.style.display='none'; count.style.display='none'; }
-    else { ping.style.display='block'; count.style.display='block'; count.textContent = (n>99 ? '99+' : n); }
+    else {
+      ping.style.display='block';
+      count.style.display='block';
+      count.textContent = (n>99 ? '99+' : n);
+    }
   }
-  function esc(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
 
-  // ✅ نعتمد على الحقلين kind/type أو النص
-  function isCSGrant(it){
-    const title = String(it.title||'');
-    const body  = String(it.body||'');
-    const typ   = String(it.type||it.kind||'').toLowerCase();
-    return (
-      title.includes('تم منحك صلاحية خدمة الزبائن') ||
-      title.includes('تم منحك خدمة الزبائن') ||
-      (title.includes('صلاحية') && title.includes('خدمة الزبائن')) ||
-      body.includes('خدمة الزبائن') ||
-      typ === 'role'
-    );
-  }
+  function esc(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
 
   function renderItems(items){
     if (!items || !items.length){
@@ -790,15 +789,15 @@
       return;
     }
     bodyEl.innerHTML = items.map(it=>{
-      let url = it.url || "#";
-      if (isCSGrant(it)) url = "/cs/inbox";
-      return `<a class="notif-row" href="${esc(url)}">
+      const href = it.url ? (' href="'+esc(it.url)+'"') : '';
+      return `<a class="notif-row"${href}>
         <div class="fw-bold">${esc(it.title||'إشعار')}</div>
         ${it.body ? '<div class="small text-muted">'+esc(it.body)+'</div>' : ''}
       </a>`;
     }).join('');
   }
 
+  // ✅ دوال آمنة تتعامل مع 401 بدون ريديركت
   async function safeGET(url){
     try{
       const r = await fetch(url, {cache:'no-store', credentials:'same-origin'});
@@ -826,6 +825,7 @@
     if (j && !j.unauthorized) setBadge(Number(j.count||0));
     if (j && j.unauthorized) setBadge(0);
   }
+
   async function loadInitial(){
     const j = await safeGET('/api/notifications/poll?since=0');
     if (!j || j.unauthorized){
@@ -836,11 +836,13 @@
     lastTs = Number(j.now||Math.floor(Date.now()/1000));
     renderItems(j.items||[]);
   }
+
   async function pollOnce(){
     const j = await safeGET('/api/notifications/poll?since='+(lastTs||0));
-    if (!j || j.unauthorized) return;
+    if (!j || j.unauthorized) return; // لا شيء — جلسة غير مصرح بها أو فشل
     lastTs = Number(j.now||Math.floor(Date.now()/1000));
     const items = Array.isArray(j.items) ? j.items : [];
+    // لو اللوحة مفتوحة نعرض الكل، لو مغلقة نحدّث الشارة فقط
     if (panel.classList.contains('is-open')){
       if (items.length===0){ await loadInitial(); }
       else { renderItems(items); }
@@ -848,6 +850,7 @@
       if (items.length>0){ await fetchUnreadCount(); }
     }
   }
+
   async function markAllRead(){
     const j = await safePOST('/api/notifications/mark_all_read');
     if (!j || j.unauthorized) return;
@@ -871,91 +874,29 @@
   scrim?.addEventListener('click', ()=>closePanel());
   document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closePanel(); });
 
+  // بدء تشغيل: اسحب العداد ثم ابدأ polling
   fetchUnreadCount();
-  setInterval(pollOnce, 20000);
+  pollTm = setInterval(pollOnce, 20000); // كل 20 ثانية
 })();
+</script>
+<script>
+document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const form = e.target;
+  const data = new FormData(form);
+  const res = await fetch(form.action, { method:'POST', body:data });
+  const out = await res.json().catch(()=>({}));
+  if (res.ok && out.ok){
+    alert('✅ تم إرسال البلاغ. شكرًا لك!');
+    // اغلق المودال:
+    const m = bootstrap.Modal.getInstance(document.getElementById('reportModal'));
+    m?.hide();
+  }else{
+    alert('❌ تعذّر إرسال البلاغ. حاول لاحقًا.');
+  }
+});
 </script>
 
 
-    <!-- تصحيح عام: أي إشعار نصّه يمنح CS → /cs/inbox (لوحات/صفحات/موبايل) -->
-    <script>
-    (function fixCSGrantLinksEverywhere(){
-      if (window.__fixCSGrant) return; window.__fixCSGrant = true;
-
-      function isCSGrantText(txt){
-        if (!txt) return false;
-        const t = String(txt).trim();
-        return (
-          t.includes('تم منحك صلاحية خدمة الزبائن') ||
-          t.includes('تم منحك خدمة الزبائن') ||
-          (t.includes('صلاحية') && t.includes('خدمة الزبائن') && t.includes('CS'))
-        );
-      }
-
-      function rewriteAnchor(a){
-        try{
-          if (!a) return;
-          const label = (a.getAttribute('data-title') || a.title || a.innerText || a.textContent || '').trim();
-          if (isCSGrantText(label)){
-            a.setAttribute('href', '/cs/inbox');
-            a.setAttribute('data-cs-rewritten', '1');
-          }
-        }catch(_){}
-      }
-
-      function sweep(root){
-        const anchors = root.querySelectorAll('a, .notif-row[href]');
-        anchors.forEach(rewriteAnchor);
-      }
-
-      // أول تحميل
-      sweep(document);
-
-      // مراقبة أي تغيّر DOM ليتم التصحيح تلقائيًا
-      const mo = new MutationObserver((muts)=>{
-        for (const m of muts){
-          if (m.type === 'childList'){
-            m.addedNodes.forEach(node=>{
-              if (node.nodeType === 1){
-                if (node.matches('a, .notif-row[href]')) rewriteAnchor(node);
-                sweep(node);
-              }
-            });
-          } else if (m.type === 'attributes' && m.target && m.target.nodeType === 1 && (m.target.matches('a') || m.target.matches('.notif-row'))){
-            rewriteAnchor(m.target);
-          }
-        }
-      });
-      mo.observe(document.documentElement, { childList:true, subtree:true, attributes:true, attributeFilter:['href','title','data-title'] });
-
-      // حارس أخير: لحظة النقر
-      document.addEventListener('click', function(e){
-        const a = e.target.closest('a, .notif-row[href]');
-        if (!a) return;
-        const txt = (a.getAttribute('data-title') || a.title || a.innerText || a.textContent || '').trim();
-        if (isCSGrantText(txt)){
-          a.href = '/cs/inbox';
-        }
-      }, true);
-    })();
-    </script>
-
-    <!-- إرسال بلاغ (إن وجد) -->
-    <script>
-    document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      const form = e.target;
-      const data = new FormData(form);
-      const res = await fetch(form.action, { method:'POST', body:data });
-      const out = await res.json().catch(()=>({}));
-      if (res.ok && out.ok){
-        alert('✅ تم إرسال البلاغ. شكرًا لك!');
-        const m = bootstrap.Modal.getInstance(document.getElementById('reportModal'));
-        m?.hide();
-      }else{
-        alert('❌ تعذّر إرسال البلاغ. حاول لاحقًا.');
-      }
-    });
-    </script>
-  </body>
+</body>
 </html>
