@@ -1,7 +1,7 @@
 # app/models.py
 from datetime import datetime, date
 from sqlalchemy import (
-    Column, Integer, String, DateTime, ForeignKey, Text, Date, Boolean, Float, event
+    Column, Integer, String, DateTime, ForeignKey, Text, Date, Boolean, Float, event, func
 )
 from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.sql import literal
@@ -85,7 +85,7 @@ class User(Base):
     # صلاحيات
     is_deposit_manager = col_or_literal("users", "is_deposit_manager", Boolean, default=False, nullable=False)
     is_mod             = col_or_literal("users", "is_mod", Boolean, default=False, nullable=False)
-    # ✅ جديد: موظف خدمة الزبائن
+    # ✅ موظف خدمة الزبائن
     is_support         = col_or_literal("users", "is_support", Boolean, default=False, nullable=False)
 
     # العلاقات
@@ -190,7 +190,7 @@ class Item(Base):
     is_active     = Column(String(10), default="yes")
     created_at    = Column(DateTime, default=datetime.utcnow)
 
-    owner          = relationship("User", back_populates="items")
+    owner           = relationship("User", back_populates="items")
     message_threads = relationship("MessageThread", back_populates="item", cascade="all, delete-orphan")
     favorited_by    = relationship("Favorite", back_populates="item", cascade="all, delete-orphan")
 
@@ -224,7 +224,14 @@ class MessageThread(Base):
     user_a = relationship("User", foreign_keys=[user_a_id])
     user_b = relationship("User", foreign_keys=[user_b_id])
     item   = relationship("Item", back_populates="message_threads")
-messages = relationship("SupportMessage", back_populates="ticket", order_by=SupportMessage.created_at.asc())
+
+    # ✅ العلاقة الصحيحة لرسائل الدردشة
+    messages = relationship(
+        "Message",
+        back_populates="thread",
+        cascade="all, delete-orphan",
+        order_by="Message.created_at"
+    )
 
 
 class Message(Base):
@@ -236,6 +243,7 @@ class Message(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     is_read = col_or_literal("messages", "is_read", Boolean, default=False, nullable=False)
     read_at  = col_or_literal("messages", "read_at",  DateTime, nullable=True)
+
     thread = relationship("MessageThread", back_populates="messages")
     sender  = relationship("User", foreign_keys=[sender_id], back_populates="sent_messages")
 
@@ -528,38 +536,37 @@ def _on_user_before_update(mapper, conn, u):
 
 
 # =========================
-# ✅ دعم التذاكر (خارج الـ events)
+# ✅ دعم التذاكر (Support)
 # =========================
 class SupportTicket(Base):
     __tablename__ = "support_tickets"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
-    agent_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     subject  = Column(String(200), nullable=False)
-    status   = Column(String(20), nullable=False, default="open")  # open / assigned / closed
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # ✅ أعمدة PostgreSQL التي أنشأتها
+    status        = Column(String(20), nullable=False, default="new", index=True)  # new | open | resolved
+    assigned_to_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    last_msg_at   = Column(DateTime, nullable=True)
+    updated_at    = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    resolved_at   = Column(DateTime, nullable=True)
+
+    # شارات/معلومات إضافية
     last_from = Column(String(10), nullable=False, default="user")  # user / agent
     unread_for_user  = Column(Boolean, nullable=False, default=False)
     unread_for_agent = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
-    user  = relationship("User", foreign_keys=[user_id], lazy="joined")
-    agent = relationship("User", foreign_keys=[agent_id], lazy="joined")
+    # علاقات
+    user     = relationship("User", foreign_keys=[user_id], lazy="joined")
+    assignee = relationship("User", foreign_keys=[assigned_to_id], lazy="joined")
+
     messages = relationship(
         "SupportMessage",
         back_populates="ticket",
         cascade="all, delete-orphan",
-        order_by="SupportMessage.created_at.asc()"
-        status = Column(String(20), default="new", index=True)          # new | open | resolved
-    assigned_to_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    last_msg_at = Column(DateTime, nullable=True)
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
-    resolved_at = Column(DateTime, nullable=True)
-
-    assignee = relationship("User", foreign_keys=[assigned_to_id])
-
+        order_by="SupportMessage.created_at"
     )
 
 
