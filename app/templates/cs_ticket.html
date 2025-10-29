@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+  <h3>تذكرة #{{ticket.id}} (CS)</h3>
+  <p class="text-muted">{{ticket.subject}} — العميل: {{ticket.user.full_name}}</p>
+  <div class="card">
+    <div class="card-body">
+      {% for m in msgs %}
+        <div class="mb-3">
+          <div class="small text-muted">{{m.created_at}} — {{'العميل' if m.sender_role=='user' else 'الدعم'}}</div>
+          <div>{{m.body}}</div>
+        </div>
+        <hr/>
+      {% endfor %}
+      <form method="post" action="/cs/ticket/{{ticket.id}}/reply">
+        <textarea name="body" class="form-control mb-2" rows="4" placeholder="ردّ الدعم..."></textarea>
+        <button class="btn btn-primary">إرسال</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

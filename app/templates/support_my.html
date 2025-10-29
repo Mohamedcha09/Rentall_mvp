@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center">
+    <h3>تذاكري</h3>
+    <a class="btn btn-primary" href="/support/new">+ تذكرة جديدة</a>
+  </div>
+  <div class="list-group mt-3">
+    {% for t in tickets %}
+      <a class="list-group-item list-group-item-action" href="/support/ticket/{{t.id}}">
+        #{{t.id}} — {{t.subject}} <small class="text-muted">({{t.status}})</small>
+      </a>
+    {% else %}
+      <div class="text-muted">لا توجد تذاكر بعد.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

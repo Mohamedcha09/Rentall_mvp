@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+  <h3>صندوق خدمة الزبائن (CS)</h3>
+  <div class="list-group mt-3">
+    {% for t in tickets %}
+      <a class="list-group-item list-group-item-action d-flex justify-content-between" href="/cs/ticket/{{t.id}}">
+        <span>#{{t.id}} — {{t.subject}} <small class="text-muted">({{t.status}})</small></span>
+        {% if t.unread_for_agent %}<span class="badge bg-danger">جديد</span>{% endif %}
+      </a>
+    {% else %}
+      <div class="text-muted">لا توجد تذاكر حالياً.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

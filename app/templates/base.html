@@ -236,6 +236,16 @@
 
         {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
         <button class="btn btn-ghost btn-sm position-relative" id="notifOpen" title="الإشعارات">
+        {% if session_user and session_user.is_support %}
+  <a class="btn btn-outline-secondary btn-sm" href="/cs/inbox" title="صندوق خدمة الزبائن (CS)">
+    <i class="bi bi-headset"></i>
+  </a>
+{% endif %}
+
+<a class="btn btn-outline-secondary btn-sm" href="/support/new" title="الدعم">
+  <i class="bi bi-life-preserver"></i>
+</a>
+
           <img class="icon-img" src="/static/img/notfi.png" alt="Notifications" style="width:24px;height:24px">
           {% if unread > 0 %}
             <span class="notif-ping"></span>
