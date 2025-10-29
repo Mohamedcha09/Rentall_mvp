@@ -67,7 +67,7 @@ from .routes_metrics import router as metrics_router
 from .reports import router as reports_router
 from .admin_reports import router as admin_reports_router
 from .support import router as support_router
-from app.routes import cs as cs_routes
+import app.cs as cs_routes
 
 # -----------------------------------------------------------------------------
 # إنشاء التطبيق
