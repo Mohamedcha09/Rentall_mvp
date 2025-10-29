@@ -1,16 +1,109 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container py-4">
-  <h3>صندوق خدمة الزبائن (CS)</h3>
-  <div class="list-group mt-3">
-    {% for t in tickets %}
-      <a class="list-group-item list-group-item-action d-flex justify-content-between" href="/cs/ticket/{{t.id}}">
-        <span>#{{t.id}} — {{t.subject}} <small class="text-muted">({{t.status}})</small></span>
-        {% if t.unread_for_agent %}<span class="badge bg-danger">جديد</span>{% endif %}
-      </a>
-    {% else %}
-      <div class="text-muted">لا توجد تذاكر حالياً.</div>
-    {% endfor %}
+<div class="container py-3">
+
+  <h4 class="mb-3">مركز الرسائل (CS Inbox)</h4>
+
+  <div class="row g-3">
+    <!-- القسم 1: جديدة -->
+    <div class="col-12 col-lg-4">
+      <div class="card h-100">
+        <div class="card-header fw-bold">جديدة</div>
+        <div class="list-group list-group-flush">
+          {% if data.new %}
+            {% for t in data.new %}
+              <div class="list-group-item d-flex justify-content-between align-items-start">
+                <div class="me-2">
+                  <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'بدون عنوان' }}</div>
+                  <div class="small text-muted">
+                    فتح: {{ (t.created_at|string)[:16] }}
+                    {% if t.last_msg_at %} · آخر نشاط: {{ (t.last_msg_at|string)[:16] }}{% endif %}
+                  </div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-sm btn-outline-primary" onclick="assignSelf({{t.id}})">تولّي</button>
+                  <a class="btn btn-sm btn-primary" href="/cs/inbox?focus={{t.id}}">فتح</a>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="list-group-item text-muted">لا يوجد تذاكر جديدة.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- القسم 2: قيد المراجعة -->
+    <div class="col-12 col-lg-4">
+      <div class="card h-100">
+        <div class="card-header fw-bold">قيد المراجعة</div>
+        <div class="list-group list-group-flush">
+          {% if data.in_review %}
+            {% for t in data.in_review %}
+              <div class="list-group-item">
+                <div class="d-flex justify-content-between">
+                  <div class="me-2">
+                    <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'بدون عنوان' }}</div>
+                    <div class="small text-muted">
+                      {% if t.assigned_to_id %}مكلّف: {{ t.assigned_to_id }} · {% endif %}
+                      آخر نشاط: {{ (t.last_msg_at or t.updated_at or t.created_at)|string  }}
+                    </div>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <a class="btn btn-sm btn-primary" href="/cs/inbox?focus={{t.id}}">فتح</a>
+                    <button class="btn btn-sm btn-success" onclick="resolveTicket({{t.id}})">تمّ الحل</button>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="list-group-item text-muted">لا يوجد تذاكر قيد المراجعة.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- القسم 3: منتهية -->
+    <div class="col-12 col-lg-4">
+      <div class="card h-100">
+        <div class="card-header fw-bold">منتهية</div>
+        <div class="list-group list-group-flush">
+          {% if data.resolved %}
+            {% for t in data.resolved %}
+              <div class="list-group-item d-flex justify-content-between align-items-start">
+                <div class="me-2">
+                  <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'بدون عنوان' }}</div>
+                  <div class="small text-muted">
+                    أُغلقت: {{ (t.resolved_at or t.updated_at or t.last_msg_at or t.created_at)|string }}
+                  </div>
+                </div>
+                <a class="btn btn-sm btn-outline-secondary" href="/cs/inbox?focus={{t.id}}">استعراض</a>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="list-group-item text-muted">لا يوجد تذاكر منتهية.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
   </div>
+
 </div>
+
+<script>
+async function resolveTicket(id){
+  try{
+    const r = await fetch(`/cs/tickets/${id}/resolve`, {method:'POST'});
+    if(!r.ok) throw 0;
+    location.reload();
+  }catch(e){ alert('تعذّر إغلاق التذكرة'); }
+}
+async function assignSelf(id){
+  try{
+    const r = await fetch(`/cs/tickets/${id}/assign_self`, {method:'POST'});
+    if(!r.ok) throw 0;
+    location.reload();
+  }catch(e){ alert('تعذّر التولّي'); }
+}
+</script>
 {% endblock %}

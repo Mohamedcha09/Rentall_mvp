@@ -21,7 +21,23 @@ def _require_login(request: Request):
         return None
     return u
 
+def bump_ticket_on_message(db, ticket_id, author_user, is_cs_author: bool):
+    t = db.get(SupportTicket, ticket_id)
+    if not t:
+        return
+    t.last_msg_at = datetime.utcnow()
+    t.updated_at = datetime.utcnow()
+    if is_cs_author:
+        t.assigned_to_id = author_user.id
+        if t.status in (None, "new", "resolved"):
+            t.status = "open"
+    else:
+        # رسالة من العميل — لو كانت مغلقة نعيد فتحها تلقائيًا
+        if t.status == "resolved":
+            t.status = "open"
+    db.commit()
 
+    
 def _ensure_cs_session(db: Session, request: Request):
     """
     ✅ تُستخدم كـ "fallback" ذكي:
