@@ -1,65 +1,65 @@
-# داخل main.py (أو ملفك الرئيسي اللي فيه app)
-from fastapi import Request, Depends, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import or_
+# app/cs.py
 from datetime import datetime
+from fastapi import APIRouter, Request, Depends
+from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
+from sqlalchemy import desc
 
-# عدّل الاستيراد حسب مشروعك:
 from .database import get_db
-from .models import SupportTicket, User  # تأكد من المسار الصحيح
+from .models import SupportTicket
 
-def now_utc(): 
-    return datetime.utcnow()
+templates = Jinja2Templates(directory="app/templates")
 
-def require_cs_user(request: Request):
-    u = getattr(request.state, "session_user", None)
-    ok = bool(u and (getattr(u, "is_support", False) or getattr(u, "is_mod", False) or getattr(u, "role", "") == "admin"))
-    if not ok:
-        raise HTTPException(status_code=403, detail="CS only")
-    return u
+router = APIRouter(prefix="/cs", tags=["cs"])
 
-@app.get("/cs/inbox")
-def cs_inbox(request: Request, db: Session = Depends(get_db), user: User = Depends(require_cs_user)):
-    q_new = (db.query(SupportTicket)
-               .filter(SupportTicket.status == "new")
-               .order_by(SupportTicket.last_msg_at.desc().nullslast(),
-                         SupportTicket.created_at.desc()))
+@router.get("/inbox")
+def cs_inbox(request: Request, db: Session = Depends(get_db)):
+    base_q = db.query(SupportTicket)
 
-    q_open = (db.query(SupportTicket)
-               .filter(SupportTicket.status == "open", SupportTicket.resolved_at.is_(None))
-               .order_by(SupportTicket.last_msg_at.desc().nullslast(),
-                         SupportTicket.updated_at.desc().nullslast(),
-                         SupportTicket.created_at.desc()))
+    new_tickets = (
+        base_q.filter(SupportTicket.status == "new")
+              .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
+              .all()
+    )
+    open_tickets = (
+        base_q.filter(SupportTicket.status == "open")
+              .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
+              .all()
+    )
+    resolved_tickets = (
+        base_q.filter(SupportTicket.status == "resolved")
+              .order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
+              .all()
+    )
 
-    q_done = (db.query(SupportTicket)
-               .filter(or_(SupportTicket.status == "resolved", SupportTicket.resolved_at.isnot(None)))
-               .order_by(SupportTicket.resolved_at.desc().nullslast(),
-                         SupportTicket.updated_at.desc().nullslast(),
-                         SupportTicket.last_msg_at.desc().nullslast()))
+    return templates.TemplateResponse(
+        "cs_inbox.html",
+        {
+            "request": request,
+            "title": "CS Inbox",
+            "new_tickets": new_tickets,          # الجزء الأول: جديدة/غير مقروءة
+            "open_tickets": open_tickets,        # الجزء الثاني: قيد المراجعة (حوار مستمر)
+            "resolved_tickets": resolved_tickets # الجزء الثالث: تم حلها
+        }
+    )
 
-    data = {"new": q_new.all(), "in_review": q_open.all(), "resolved": q_done.all()}
-    # ⬅️ اسم القالب هنا بدون مجلد فرعي:
-    return request.app.state.templates.TemplateResponse("cs_inbox.html", {"request": request, "data": data})
+@router.post("/{ticket_id}/resolve")
+def resolve_ticket(ticket_id: int, db: Session = Depends(get_db)):
+    t = db.get(SupportTicket, ticket_id)
+    if t:
+        t.status = "resolved"
+        t.resolved_at = datetime.utcnow()
+        t.updated_at = datetime.utcnow()
+        db.commit()
+    # ارجع لصندوق الوارد بعد التحديث
+    return RedirectResponse(url="/cs/inbox", status_code=303)
 
-@app.post("/cs/tickets/{tid}/resolve")
-def cs_ticket_resolve(tid: int, db: Session = Depends(get_db), user: User = Depends(require_cs_user)):
-    t = db.get(SupportTicket, tid)
-    if not t: raise HTTPException(404, "Ticket not found")
-    t.status = "resolved"
-    t.resolved_at = now_utc()
-    t.updated_at = now_utc()
-    db.commit()
-    return {"ok": True}
-
-@app.post("/cs/tickets/{tid}/assign_self")
-def cs_ticket_assign_self(tid: int, request: Request, db: Session = Depends(get_db), user: User = Depends(require_cs_user)):
-    t = db.get(SupportTicket, tid)
-    if not t: raise HTTPException(404, "Ticket not found")
-    t.assigned_to_id = user.id
-    if t.status == "new":
+@router.post("/{ticket_id}/reopen")
+def reopen_ticket(ticket_id: int, db: Session = Depends(get_db)):
+    t = db.get(SupportTicket, ticket_id)
+    if t:
         t.status = "open"
-    if not t.last_msg_at:
-        t.last_msg_at = now_utc()
-    t.updated_at = now_utc()
-    db.commit()
-    return {"ok": True}
+        t.updated_at = datetime.utcnow()
+        db.commit()
+    return RedirectResponse(url="/cs/inbox", status_code=303)
