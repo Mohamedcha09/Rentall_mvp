@@ -141,12 +141,18 @@
     }
   </style>
 
-  <style>
-.dropdown-toggle::after {
+<style>
+/* 🚫 إزالة السهم الافتراضي من كل أزرار القوائم المنسدلة */
+.dropdown-toggle::after,
+.btn.dropdown-toggle::after,
+button.dropdown-toggle::after {
   display: none !important;
-  content: none !important;
+  content: "" !important;
+  border: 0 !important;
+  margin: 0 !important;
 }
 </style>
+
 
 
   {% block head %}{% endblock %}
