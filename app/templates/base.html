@@ -505,7 +505,9 @@
       var row = e.target.closest('.typeahead-item'); if (!row) return;
       window.location.href = row.getAttribute('data-url');
     });
+     
 
+     
     input.addEventListener('keydown', function(e){
       if (panel.classList.contains('d-none')) return;
       var rows = Array.prototype.slice.call(panel.querySelectorAll('.typeahead-item'));
