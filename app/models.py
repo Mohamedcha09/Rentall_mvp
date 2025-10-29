@@ -552,6 +552,14 @@ class SupportTicket(Base):
         back_populates="ticket",
         cascade="all, delete-orphan",
         order_by="SupportMessage.created_at.asc()"
+        status = Column(String(20), default="new", index=True)          # new | open | resolved
+    assigned_to_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    last_msg_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    resolved_at = Column(DateTime, nullable=True)
+
+    assignee = relationship("User", foreign_keys=[assigned_to_id])
+    
     )
 
 
