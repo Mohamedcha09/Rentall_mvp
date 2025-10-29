@@ -17,34 +17,28 @@ router = APIRouter(prefix="/cs", tags=["cs"])
 def cs_inbox(request: Request, db: Session = Depends(get_db)):
     base_q = db.query(SupportTicket)
 
-    new_tickets = (
-        base_q.filter(SupportTicket.status == "new")
-              .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
-              .all()
-    )
-    open_tickets = (
-        base_q.filter(SupportTicket.status == "open")
-              .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
-              .all()
-    )
-    resolved_tickets = (
-        base_q.filter(SupportTicket.status == "resolved")
-              .order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
-              .all()
-    )
+    data = {
+        "new": base_q.filter(SupportTicket.status == "new")
+                     .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
+                     .all(),
+        "in_review": base_q.filter(SupportTicket.status == "open")
+                     .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
+                     .all(),
+        "resolved": base_q.filter(SupportTicket.status == "resolved")
+                     .order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
+                     .all(),
+    }
 
     return templates.TemplateResponse(
         "cs_inbox.html",
         {
             "request": request,
             "title": "CS Inbox",
-            "new_tickets": new_tickets,          # الجزء الأول: جديدة/غير مقروءة
-            "open_tickets": open_tickets,        # الجزء الثاني: قيد المراجعة (حوار مستمر)
-            "resolved_tickets": resolved_tickets # الجزء الثالث: تم حلها
+            "data": data
         }
     )
 
-@router.post("/{ticket_id}/resolve")
+@router.post("/tickets/{ticket_id}/resolve")
 def resolve_ticket(ticket_id: int, db: Session = Depends(get_db)):
     t = db.get(SupportTicket, ticket_id)
     if t:
@@ -52,13 +46,16 @@ def resolve_ticket(ticket_id: int, db: Session = Depends(get_db)):
         t.resolved_at = datetime.utcnow()
         t.updated_at = datetime.utcnow()
         db.commit()
-    # ارجع لصندوق الوارد بعد التحديث
     return RedirectResponse(url="/cs/inbox", status_code=303)
 
-@router.post("/{ticket_id}/reopen")
-def reopen_ticket(ticket_id: int, db: Session = Depends(get_db)):
+@router.post("/tickets/{ticket_id}/assign_self")
+def assign_self(ticket_id: int, request: Request, db: Session = Depends(get_db)):
+    user = request.session.get("user")
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
     t = db.get(SupportTicket, ticket_id)
     if t:
+        t.assigned_to_id = user["id"]
         t.status = "open"
         t.updated_at = datetime.utcnow()
         db.commit()
