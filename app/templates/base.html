@@ -909,6 +909,72 @@
       }
     });
     </script>
+<script>
+/* ================================
+   Force CS-grant notifications → /cs/inbox
+   يغطي كل قوائم الإشعارات (اللوحة الجانبية، الصفحة المستقلة، شيت الموبايل)
+   ================================ */
+(function fixCSGrantLinksEverywhere(){
+  if (window.__fixCSGrant) return; window.__fixCSGrant = true;
 
+  function isCSGrantText(txt){
+    if (!txt) return false;
+    const t = String(txt).trim();
+    // غطِّ كل الصيغ الشائعة في لقطاتك:
+    return (
+      t.includes('تم منحك صلاحية خدمة الزبائن') ||      // الصيغة الأساسية
+      t.includes('تم منحك خدمة الزبائن') ||             // صيغة مختصرة
+      (t.includes('صلاحية') && t.includes('خدمة الزبائن') && t.includes('CS')) // مع (CS)
+    );
+  }
+
+  function rewriteAnchor(a){
+    try{
+      if (!a || !a.href) return;
+      const label = (a.getAttribute('data-title') || a.title || a.innerText || a.textContent || '').trim();
+      if (isCSGrantText(label)){
+        a.setAttribute('href', '/cs/inbox');
+        a.setAttribute('data-cs-rewritten', '1');
+      }
+    }catch(_){}
+  }
+
+  function sweep(root){
+    // كل الروابط المحتملة داخل قوائم الإشعارات
+    const anchors = root.querySelectorAll('a, .notif-row[href]');
+    anchors.forEach(rewriteAnchor);
+  }
+
+  // أول تحميل
+  sweep(document);
+
+  // أي تغيّر لاحق في DOM (لوائح تُحمّل ديناميكيًا)
+  const mo = new MutationObserver((muts)=>{
+    for (const m of muts){
+      if (m.type === 'childList'){
+        m.addedNodes.forEach(node=>{
+          if (node.nodeType === 1){
+            if (node.matches('a, .notif-row[href]')) rewriteAnchor(node);
+            sweep(node);
+          }
+        });
+      } else if (m.type === 'attributes' && m.target && m.target.nodeType === 1 && (m.target.matches('a') || m.target.matches('.notif-row'))){
+        rewriteAnchor(m.target);
+      }
+    }
+  });
+  mo.observe(document.documentElement, { childList:true, subtree:true, attributes:true, attributeFilter:['href','title','data-title'] });
+
+  // منع أي ربط خاطئ لحظة النقر (حارس أخير)
+  document.addEventListener('click', function(e){
+    const a = e.target.closest('a, .notif-row[href]');
+    if (!a) return;
+    const txt = (a.getAttribute('data-title') || a.title || a.innerText || a.textContent || '').trim();
+    if (isCSGrantText(txt)){
+      a.href = '/cs/inbox';
+    }
+  }, true);
+})();
+</script>
   </body>
 </html>
