@@ -22,11 +22,32 @@ def _require_login(request: Request):
     return u
 
 
-def _require_cs(request: Request):
-    u = _require_login(request)
-    if not u or not u.get("is_support", False):
+def _ensure_cs_session(db: Session, request: Request):
+    """
+    ✅ تُستخدم كـ "fallback" ذكي:
+    - إن كانت الجلسة لا تحمل is_support=True لكن المستخدم في DB صار CS،
+      نحدّث الجلسة فورًا داخل نفس الطلب ونُعيد session_user المحدَّث.
+    - إن لم يكن مسجلاً أو لم يكن CS فعلاً، نُعيد None.
+    """
+    sess = request.session.get("user") or {}
+    uid = sess.get("id")
+    if not uid:
         return None
-    return u
+
+    # لو الجلسة فيها is_support=True بالفعل، ارجعها كما هي
+    if bool(sess.get("is_support", False)):
+        return sess
+
+    # جلسة قديمة؟ تحقق من DB
+    u_db = db.get(User, uid)
+    if u_db and bool(getattr(u_db, "is_support", False)):
+        # حدّث الجلسة في نفس الطلب ثم أعدها
+        sess["is_support"] = True
+        request.session["user"] = sess
+        return sess
+
+    # ليس CS فعلاً
+    return None
 
 
 # ✅ دالة ترسل إشعارًا لكل موظف CS عند فتح تذكرة جديدة
@@ -36,8 +57,8 @@ def _notify_support_agents_on_new_ticket(db: Session, ticket: SupportTicket):
         .filter(User.is_support == True, User.status == "approved")
         .all()
     )
-    # لو عندك صفحة تفاصيل تذكرة للـ CS استخدم الرابط المباشر:
-    url = f"/cs/ticket/{ticket.id}"  # بدّلها إلى "/cs/inbox" لو تفضّل الصندوق العام
+    # يمكنك الإبقاء على الرابط المباشر للتذكرة أو جعله /cs/inbox حسب تفضيل الفريق
+    url = f"/cs/ticket/{ticket.id}"
     title = "🎫 تذكرة دعم جديدة"
     body = f"#{ticket.id} — {ticket.subject or ''}".strip()
 
@@ -57,6 +78,7 @@ def _notify_support_agents_on_new_ticket(db: Session, ticket: SupportTicket):
 
 
 # ========== واجهة العميل ==========
+
 @router.get("/support/new", response_class=HTMLResponse)
 def support_new(request: Request):
     u = _require_login(request)
@@ -165,29 +187,42 @@ def support_ticket_view(tid: int, request: Request, db: Session = Depends(get_db
 
 
 # ========== واجهة موظف خدمة الزبائن (CS) ==========
+
 @router.get("/cs/inbox", response_class=HTMLResponse)
 def cs_inbox(request: Request, db: Session = Depends(get_db)):
+    """
+    ✅ قبل أي تحويل، نفحص إن كانت الجلسة قديمة:
+      - لو المستخدم في DB يملك is_support=True لكن الجلسة لا، نحدّث الجلسة ونسمح بالدخول.
+      - لو لا يملك صلاحية CS فعلاً، نعيده إلى /support/my.
+    """
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
-    if not u.get("is_support", False):
-        # ✅ مسجل دخول لكن ليس CS → رجّعه لتذاكره بدل صفحة login
+
+    # فحص/تحديث الجلسة عند أول دخول
+    u_cs = _ensure_cs_session(db, request)
+    if not u_cs:
+        # مسجل دخول لكن ليس CS → رجّعه لتذاكره بدل صفحة login
         return RedirectResponse("/support/my", status_code=303)
 
     tickets = db.query(SupportTicket).order_by(SupportTicket.updated_at.desc()).all()
     return request.app.templates.TemplateResponse(
         "cs_inbox.html",
-        {"request": request, "session_user": u, "tickets": tickets, "title": "صندوق خدمة الزبائن"},
+        {"request": request, "session_user": u_cs, "tickets": tickets, "title": "صندوق خدمة الزبائن"},
     )
 
 
 @router.get("/cs/ticket/{tid}", response_class=HTMLResponse)
 def cs_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
+    """
+    ✅ نفس منطق تحديث الجلسة كما في /cs/inbox
+    """
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
-    if not u.get("is_support", False):
-        # ✅ مسجل دخول لكن ليس CS
+
+    u_cs = _ensure_cs_session(db, request)
+    if not u_cs:
         return RedirectResponse("/support/my", status_code=303)
 
     t = db.query(SupportTicket).filter(SupportTicket.id == tid).first()
@@ -203,7 +238,7 @@ def cs_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
         "cs_ticket.html",
         {
             "request": request,
-            "session_user": u,
+            "session_user": u_cs,
             "ticket": t,
             "msgs": msgs,
             "title": f"تذكرة #{t.id} (CS)",

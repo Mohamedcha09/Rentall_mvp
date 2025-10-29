@@ -170,7 +170,6 @@
             <a role="menuitem" class="topmenu-item" href="/dm/deposits"><i class="bi bi-shield-exclamation"></i> قضايا الوديعة</a>
           {% endif %}
 
-          {# ✅ جديد: رابط البلاغات للأدمن أو المود (is_mod) #}
           {% if session_user.role == 'admin' or session_user.get('is_mod') %}
             <a role="menuitem" class="topmenu-item" href="/admin/reports">📸 البلاغات</a>
           {% endif %}
@@ -193,7 +192,6 @@
         <div class="searchbar-wrap">
           <i class="bi bi-search"></i>
 
-          <!-- نصف 1: العنصر -->
           <div class="field">
             <input class="form-control form-control-sm" type="search" name="q" id="qTop"
                    placeholder="ابحث عن عنصر (سيارة، كاميرا…)"
@@ -202,7 +200,6 @@
 
           <div class="sep" aria-hidden="true"></div>
 
-          <!-- نصف 2: المدينة -->
           <div class="field">
             <span class="k">المدينة</span>
             <input class="form-control form-control-sm" type="text" id="cityTop" name="city"
@@ -210,13 +207,10 @@
                    value="{{ request.query_params.get('city','') if request else '' }}">
           </div>
 
-          <!-- إحداثيات تُملأ عند الاختيار -->
           <input type="hidden" id="latTop" name="lat" value="{{ request.query_params.get('lat','') if request else '' }}">
-          <!-- ✅ تعديل: نستخدم lng (ليس lon) -->
           <input type="hidden" id="lngTop" name="lng" value="{{ request.query_params.get('lng','') if request else '' }}">
         </div>
 
-        <!-- قائمة اقتراحات المدن -->
         <div id="citySuggest" class="city-suggest" aria-label="اقتراحات المدن"></div>
       </form>
 
@@ -224,28 +218,20 @@
       <div id="typeaheadPanel" class="typeahead d-none"></div>
 
       <div class="actions d-flex align-items-center gap-2 ms-auto">
-        <a href="/messages" class="btn btn-ghost btn-sm" title="الرسائل">
-          <img class="icon-img" src="/static/img/msg.png" alt="Messages" style="width:24px;height:24px">
-        </a>
 
-        {% if session_user %}
-          <a href="/favorites" class="btn btn-ghost btn-sm" title="مفضلتي">
-            <i class="bi bi-heart-fill" style="font-size:20px; color:#a944ec;"></i>
+        <!-- أزرار CS/Support (خارج زر الجرس لتفادي التعارض) -->
+        {% if session_user and session_user.is_support %}
+          <a class="btn btn-outline-secondary btn-sm" href="/cs/inbox" title="صندوق خدمة الزبائن (CS)">
+            <i class="bi bi-headset"></i>
           </a>
         {% endif %}
+        <a class="btn btn-outline-secondary btn-sm" href="/support/new" title="فتح تذكرة دعم">
+          <i class="bi bi-life-preserver"></i>
+        </a>
 
+        <!-- الجرس -->
         {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
         <button class="btn btn-ghost btn-sm position-relative" id="notifOpen" title="الإشعارات">
-        {% if session_user and session_user.is_support %}
-  <a class="btn btn-outline-secondary btn-sm" href="/cs/inbox" title="صندوق خدمة الزبائن (CS)">
-    <i class="bi bi-headset"></i>
-  </a>
-{% endif %}
-
-<a class="btn btn-outline-secondary btn-sm" href="/support/new" title="الدعم">
-  <i class="bi bi-life-preserver"></i>
-</a>
-
           <img class="icon-img" src="/static/img/notfi.png" alt="Notifications" style="width:24px;height:24px">
           {% if unread > 0 %}
             <span class="notif-ping"></span>
@@ -290,12 +276,9 @@
             <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
             <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a></li>
             <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a></li>
-
-            {# ✅ جديد: البلاغات مرئية للأدمن أو المود من قائمة الحساب أيضًا #}
             {% if session_user.role == 'admin' or session_user.get('is_mod') %}
               <li><a class="dropdown-item" href="/admin/reports">📸 البلاغات</a></li>
             {% endif %}
-
             {% if session_user.role == 'admin' %}
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a></li>
@@ -352,6 +335,9 @@
   <div class="notif-panel" id="notifPanel" aria-hidden="true">
     <div class="notif-panel__header d-flex justify-content-between align-items-center">
       <strong>الإشعارات</strong>
+      {% if session_user and session_user.is_support %}
+        <a class="btn btn-sm btn-outline-primary" href="/cs/inbox" title="فتح مركز الرسائل">فتح مركز الرسائل</a>
+      {% endif %}
       <button class="btn btn-ghost btn-sm" id="notifClose"><i class="bi bi-x-lg"></i></button>
     </div>
     <div class="notif-panel__body" id="notifBody">
@@ -536,7 +522,7 @@
     const input = document.getElementById('cityTop');
     const panel = document.getElementById('citySuggest');
     const latEl = document.getElementById('latTop');
-    const lngEl = document.getElementById('lngTop');   // ✅ بدل lonTop
+    const lngEl = document.getElementById('lngTop');
     const form  = input ? input.closest('form') : null;
     if(!input || !panel || !form) return;
 
@@ -544,7 +530,7 @@
 
     function detectLang(q){
       const s = (q||'').trim();
-      if (/[\u0600-\u06FF]/.test(s)) return 'ar'; // عربي
+      if (/[\u0600-\u06FF]/.test(s)) return 'ar';
       const hasFrMarks = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(s);
       const frWords = /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
       const enWords = /\b(new|city|county|state|united|kingdom|usa|us|uk)\b/i.test(s);
@@ -623,7 +609,7 @@
       try{
         document.cookie = "city="+encodeURIComponent(p.label)+";path=/;SameSite=Lax";
         document.cookie = "lat="+(p.lat||"")+";path=/;SameSite=Lax";
-        document.cookie = "lng="+(p.lon||"")+";path=/;SameSite=Lax";   // ✅ كوكي باسم lng
+        document.cookie = "lng="+(p.lon||"")+";path=/;SameSite=Lax";
       }catch(_){}
       hide();
     }
@@ -641,7 +627,6 @@
       pick(Number(row.getAttribute('data-i')||'-1'));
     });
 
-    // Enter/OK: إرسال النموذج حتى لو التركيز على المدينة
     input.addEventListener('keydown', function(e){
       if (panel.style.display !== 'block') {
         if (e.key === 'Enter') { e.preventDefault(); form.submit(); }
@@ -662,13 +647,11 @@
       if (active>=0 && rows[active]){ rows[active].classList.add('active'); rows[active].scrollIntoView({block:'nearest'}); }
     }
 
-    // Enter أيضًا من خانة q
     const qInput = document.getElementById('qTop');
     qInput?.addEventListener('keydown', function(e){
       if (e.key === 'Enter'){ e.preventDefault(); form.submit(); }
     });
 
-    // إغلاق عند النقر خارج
     document.addEventListener('click', function(e){ if (e.target === input || panel.contains(e.target)) return; hide(); });
   })();
   </script>
@@ -714,7 +697,6 @@
 
 <script>
 (function(){
-  // معرّف جلسة ثابت لكل متصفح
   function uuid(){
     return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
       (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
@@ -724,7 +706,6 @@
   let sid = localStorage.getItem(KEY);
   if(!sid){ sid = uuid(); localStorage.setItem(KEY, sid); }
 
-  // لو تمرّرون current_user في الجينجا—خذه؛ وإلا null
   const USER_ID = {{ (session_user.id if session_user else 'null') | safe }};
 
   async function postJSON(url, data){
@@ -733,10 +714,8 @@
     } catch(e){}
   }
 
-  // زيارة أولى
   postJSON("/api/metrics/track", { session_id: sid, user_id: USER_ID });
 
-  // نبضات للحفاظ على "متصل الآن"
   async function ping(){
     try{
       await fetch("/api/metrics/heartbeat", {
@@ -749,6 +728,7 @@
   setTimeout(ping, 5000);
 })();
 </script>
+
 <script>
 (function initNotifications(){
   if (window.__notifInit) return; window.__notifInit = true;
@@ -761,13 +741,16 @@
 
   if (!btn || !panel || !bodyEl) return;
 
-  // عناصر الشارة فوق الجرس (إذا غير موجودة ننشئها)
+  // ✅ علم يحدد إذا كان المستخدم Support
+  const IS_SUPPORT = {{ 'true' if session_user and session_user.is_support else 'false' }};
+
+  // عناصر الشارة
   let ping  = btn.querySelector('.notif-ping');
   let count = btn.querySelector('.notif-count');
   if (!ping){  ping  = document.createElement('span'); ping.className='notif-ping';  ping.style.display='none'; btn.appendChild(ping); }
   if (!count){ count = document.createElement('span'); count.className='notif-count'; count.style.display='none'; btn.appendChild(count); }
 
-  let lastTs = 0;  // آخر توقيت استلمناه من السيرفر
+  let lastTs = 0;
   let pollTm = null;
 
   function setBadge(n){
@@ -790,14 +773,24 @@
 
   function esc(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
 
+  // ✅ هنا نفرض وجهة الإشعار للـ Support إلى /cs/inbox
+  function normalizeHref(it){
+    if (IS_SUPPORT){
+      // إن كان موجود focus/thread_id مرّره كـ query
+      const focus = it.thread_id || it.ticket_id || it.id || '';
+      return '/cs/inbox' + (focus ? ('?focus='+encodeURIComponent(focus)) : '');
+    }
+    return it.url || '#';
+  }
+
   function renderItems(items){
     if (!items || !items.length){
       bodyEl.innerHTML = '<div class="small text-muted">لا توجد إشعارات جديدة.</div>';
       return;
     }
     bodyEl.innerHTML = items.map(it=>{
-      const href = it.url ? (' href="'+esc(it.url)+'"') : '';
-      return `<a class="notif-row"${href}>
+      const href = normalizeHref(it);
+      return `<a class="notif-row" href="${esc(href)}">
         <div class="fw-bold">${esc(it.title||'إشعار')}</div>
         ${it.body ? '<div class="small text-muted">'+esc(it.body)+'</div>' : ''}
       </a>`;
@@ -811,9 +804,7 @@
       const j = await r.json();
       lastTs = Number(j.now||Math.floor(Date.now()/1000));
       const items = Array.isArray(j.items) ? j.items : [];
-      // لو اللوحة مفتوحة نعرض الكل، لو مغلقة نحدّث الشارة فقط
       if (panel.classList.contains('is-open')){
-        // عند الفتح نطلب آخر 30 مباشرة (since=0)
         if (items.length===0){ await loadInitial(); }
         else { renderItems(items); }
       } else {
@@ -851,16 +842,27 @@
     scrim.style.opacity='0'; scrim.style.pointerEvents='none';
   }
 
-  btn.addEventListener('click', (e)=>{ e.preventDefault(); panel.classList.contains('is-open') ? closePanel() : openPanel(); });
+  // ✅ سلوك زر الجرس:
+  // - Support: تحويل مباشر إلى /cs/inbox
+  // - عادي: يفتح اللوحة
+  btn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    if (IS_SUPPORT){
+      window.location.href = '/cs/inbox';
+      return;
+    }
+    panel.classList.contains('is-open') ? closePanel() : openPanel();
+  });
+
   close?.addEventListener('click', ()=>closePanel());
   scrim?.addEventListener('click', ()=>closePanel());
   document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closePanel(); });
 
-  // بدء تشغيل: اسحب العداد ثم ابدأ polling
   fetchUnreadCount();
-  pollTm = setInterval(pollOnce, 20000); // كل 20 ثانية
+  pollTm = setInterval(pollOnce, 20000);
 })();
 </script>
+
 <script>
 document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
   e.preventDefault();
@@ -870,7 +872,6 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
   const out = await res.json().catch(()=>({}));
   if (res.ok && out.ok){
     alert('✅ تم إرسال البلاغ. شكرًا لك!');
-    // اغلق المودال:
     const m = bootstrap.Modal.getInstance(document.getElementById('reportModal'));
     m?.hide();
   }else{
@@ -878,7 +879,6 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
   }
 });
 </script>
-
 
 </body>
 </html>
