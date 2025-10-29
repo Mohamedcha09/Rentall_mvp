@@ -126,9 +126,6 @@
     .notif-row{ display:block; padding:10px 8px; text-decoration:none; color:inherit; border-bottom:1px solid var(--border); border-radius:8px; }
     .notif-row:hover{ background: color-mix(in oklab, var(--surface) 92%, transparent); }
     .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2s; }
-.dropdown-toggle::after {
-  display: none !important;
-}
 
     @media (min-width:992px){
       .hamburger-btn{ display:inline-flex; align-items:center; justify-content:center; border:0; background:transparent; font-size:24px; padding:.35rem .6rem; border-radius:10px; cursor:pointer; }
@@ -143,6 +140,14 @@
       .topmenu-sep{ height:1px; border:0; background:var(--border); margin:.35rem .25rem; }
     }
   </style>
+
+  <style>
+.dropdown-toggle::after {
+  display: none !important;
+  content: none !important;
+}
+</style>
+
 
   {% block head %}{% endblock %}
 </head>
