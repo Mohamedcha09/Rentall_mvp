@@ -21,8 +21,8 @@
                   </div>
                 </div>
                 <div class="d-flex gap-2">
-                  <button class="btn btn-sm btn-outline-primary" onclick="assignSelf({{t.id}})">تولّي</button>
-                  <a class="btn btn-sm btn-primary" href="/cs/inbox?focus={{t.id}}">فتح</a>
+                  <!-- فتح = تولّي + فتح صفحة التذكرة -->
+                  <button class="btn btn-sm btn-primary" onclick="assignSelfAndOpen({{ t.id }})">فتح</button>
                 </div>
               </div>
             {% endfor %}
@@ -46,12 +46,12 @@
                     <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'بدون عنوان' }}</div>
                     <div class="small text-muted">
                       {% if t.assigned_to_id %}مكلّف: {{ t.assigned_to_id }} · {% endif %}
-                      آخر نشاط: {{ (t.last_msg_at or t.updated_at or t.created_at)|string  }}
+                      آخر نشاط: {{ (t.last_msg_at or t.updated_at or t.created_at)|string }}
                     </div>
                   </div>
                   <div class="d-flex gap-2">
-                    <a class="btn btn-sm btn-primary" href="/cs/inbox?focus={{t.id}}">فتح</a>
-                    <button class="btn btn-sm btn-success" onclick="resolveTicket({{t.id}})">تمّ الحل</button>
+                    <!-- فتح يذهب مباشرة لصفحة التذكرة -->
+                    <a class="btn btn-sm btn-primary" href="/cs/ticket/{{ t.id }}">فتح</a>
                   </div>
                 </div>
               </div>
@@ -77,7 +77,8 @@
                     أُغلقت: {{ (t.resolved_at or t.updated_at or t.last_msg_at or t.created_at)|string }}
                   </div>
                 </div>
-                <a class="btn btn-sm btn-outline-secondary" href="/cs/inbox?focus={{t.id}}">استعراض</a>
+                <!-- استعراض فقط -->
+                <a class="btn btn-sm btn-outline-secondary" href="/cs/ticket/{{ t.id }}">استعراض</a>
               </div>
             {% endfor %}
           {% else %}
@@ -90,20 +91,16 @@
 
 </div>
 
+<!-- سكربت فتح = تولّي + انتقال لصفحة التذكرة -->
 <script>
-async function resolveTicket(id){
+async function assignSelfAndOpen(id){
   try{
-    const r = await fetch(`/cs/tickets/${id}/resolve`, {method:'POST'});
-    if(!r.ok) throw 0;
-    location.reload();
-  }catch(e){ alert('تعذّر إغلاق التذكرة'); }
-}
-async function assignSelf(id){
-  try{
-    const r = await fetch(`/cs/tickets/${id}/assign_self`, {method:'POST'});
-    if(!r.ok) throw 0;
-    location.reload();
-  }catch(e){ alert('تعذّر التولّي'); }
+    const r = await fetch(`/cs/tickets/${id}/assign_self`, { method: 'POST' });
+    if(!r.ok) throw new Error();
+    window.location.href = `/cs/ticket/${id}`;
+  }catch(e){
+    alert('تعذّر فتح التذكرة');
+  }
 }
 </script>
 {% endblock %}

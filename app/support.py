@@ -146,7 +146,7 @@ def support_new_post(request: Request, db: Session = Depends(get_db)):
     t = SupportTicket(
         user_id=u["id"],
         subject=subject,
-        status="open",
+        status="new",
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
         last_from="user",
@@ -305,3 +305,83 @@ def cs_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
             "title": f"تذكرة #{t.id} (CS)",
         },
     )
+
+
+from fastapi import Form
+
+@router.post("/cs/tickets/{ticket_id}/assign_self")
+def cs_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_db)):
+    u = _require_login(request)
+    if not u: 
+        return RedirectResponse("/login", status_code=303)
+    u_cs = _ensure_cs_session(db, request)
+    if not u_cs:
+        return RedirectResponse("/support/my", status_code=303)
+
+    t = db.get(SupportTicket, ticket_id)
+    if t:
+        # التولّي + فتح
+        t.assigned_to_id = u_cs["id"]
+        t.status = "open"
+        t.updated_at = datetime.utcnow()
+        t.unread_for_agent = False
+        db.commit()
+
+    # افتح صفحة التذكرة مباشر
+    return RedirectResponse(f"/cs/ticket/{ticket_id}", status_code=303)
+
+
+@router.post("/cs/tickets/{ticket_id}/resolve")
+def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
+    u = _require_login(request)
+    if not u: 
+        return RedirectResponse("/login", status_code=303)
+    u_cs = _ensure_cs_session(db, request)
+    if not u_cs:
+        return RedirectResponse("/support/my", status_code=303)
+
+    t = db.get(SupportTicket, ticket_id)
+    if t:
+        t.status = "resolved"
+        t.resolved_at = datetime.utcnow()
+        t.updated_at = datetime.utcnow()
+        db.commit()
+    return RedirectResponse("/cs/inbox", status_code=303)
+
+
+@router.post("/cs/ticket/{tid}/reply")
+def cs_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), body: str = Form("")):
+    u = _require_login(request)
+    if not u: 
+        return RedirectResponse("/login", status_code=303)
+    u_cs = _ensure_cs_session(db, request)
+    if not u_cs:
+        return RedirectResponse("/support/my", status_code=303)
+
+    t = db.get(SupportTicket, tid)
+    if not t:
+        return RedirectResponse("/cs/inbox", status_code=303)
+
+    # أنشئ رسالة وكيل
+    m = SupportMessage(
+        ticket_id=t.id,
+        sender_id=u_cs["id"],
+        sender_role="agent",
+        body=(body or "").strip() or "(بدون نص)",
+        created_at=datetime.utcnow(),
+    )
+    db.add(m)
+
+    # حدّث حالة التذكرة
+    t.last_msg_at = datetime.utcnow()
+    t.updated_at = datetime.utcnow()
+    t.last_from = "agent"
+    if not t.assigned_to_id:
+        t.assigned_to_id = u_cs["id"]
+    if t.status in (None, "new", "resolved"):
+        t.status = "open"
+    t.unread_for_user = True
+    t.unread_for_agent = False
+
+    db.commit()
+    return RedirectResponse(f"/cs/ticket/{t.id}", status_code=303)

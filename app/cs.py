@@ -38,25 +38,3 @@ def cs_inbox(request: Request, db: Session = Depends(get_db)):
         }
     )
 
-@router.post("/tickets/{ticket_id}/resolve")
-def resolve_ticket(ticket_id: int, db: Session = Depends(get_db)):
-    t = db.get(SupportTicket, ticket_id)
-    if t:
-        t.status = "resolved"
-        t.resolved_at = datetime.utcnow()
-        t.updated_at = datetime.utcnow()
-        db.commit()
-    return RedirectResponse(url="/cs/inbox", status_code=303)
-
-@router.post("/tickets/{ticket_id}/assign_self")
-def assign_self(ticket_id: int, request: Request, db: Session = Depends(get_db)):
-    user = request.session.get("user")
-    if not user:
-        return RedirectResponse(url="/login", status_code=303)
-    t = db.get(SupportTicket, ticket_id)
-    if t:
-        t.assigned_to_id = user["id"]
-        t.status = "open"
-        t.updated_at = datetime.utcnow()
-        db.commit()
-    return RedirectResponse(url="/cs/inbox", status_code=303)
