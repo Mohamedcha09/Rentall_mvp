@@ -746,131 +746,136 @@
     </script>
 
     <!-- إشعارات: CS-grant يفتح دائمًا /cs/inbox -->
-    <script>
-    (function initNotifications(){
-      if (window.__notifInit) return; window.__notifInit = true;
+ <script>
+(function initNotifications(){
+  if (window.__notifInit) return; window.__notifInit = true;
 
-      const btn    = document.getElementById('notifOpen');
-      const panel  = document.getElementById('notifPanel');
-      const bodyEl = document.getElementById('notifBody');
-      const close  = document.getElementById('notifClose');
-      const scrim  = document.getElementById('scrim');
-      if (!btn || !panel || !bodyEl) return;
+  const btn    = document.getElementById('notifOpen');
+  const panel  = document.getElementById('notifPanel');
+  const bodyEl = document.getElementById('notifBody');
+  const close  = document.getElementById('notifClose');
+  const scrim  = document.getElementById('scrim');
+  if (!btn || !panel || !bodyEl) return;
 
-      let ping  = btn.querySelector('.notif-ping');
-      let count = btn.querySelector('.notif-count');
-      if (!ping){  ping  = document.createElement('span'); ping.className='notif-ping';  ping.style.display='none'; btn.appendChild(ping); }
-      if (!count){ count = document.createElement('span'); count.className='notif-count'; count.style.display='none'; btn.appendChild(count); }
+  let ping  = btn.querySelector('.notif-ping');
+  let count = btn.querySelector('.notif-count');
+  if (!ping){  ping  = document.createElement('span'); ping.className='notif-ping';  ping.style.display='none'; btn.appendChild(ping); }
+  if (!count){ count = document.createElement('span'); count.className='notif-count'; count.style.display='none'; btn.appendChild(count); }
 
-      let lastTs = 0;
+  let lastTs = 0;
 
-      function setBadge(n){
-        if (!n || n<=0){ ping.style.display='none'; count.style.display='none'; }
-        else { ping.style.display='block'; count.style.display='block'; count.textContent = (n>99 ? '99+' : n); }
-      }
-      function esc(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
+  function setBadge(n){
+    if (!n || n<=0){ ping.style.display='none'; count.style.display='none'; }
+    else { ping.style.display='block'; count.style.display='block'; count.textContent = (n>99 ? '99+' : n); }
+  }
+  function esc(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
 
-      function isCSGrant(it){
-        const title = String(it.title||'');
-        const body  = String(it.body||'');
-        const typ   = String(it.type||'');
-        const a = title.includes('تم منحك خدمة الزبائن');
-        const b = title.includes('تم منحك صلاحية خدمة الزبائن');
-        const c = (typ === 'role' && (title.includes('خدمة الزبائن') || body.includes('خدمة الزبائن') || body.includes('CS')));
-        return a || b || c;
-      }
+  // ✅ نعتمد على الحقلين kind/type أو النص
+  function isCSGrant(it){
+    const title = String(it.title||'');
+    const body  = String(it.body||'');
+    const typ   = String(it.type||it.kind||'').toLowerCase();
+    return (
+      title.includes('تم منحك صلاحية خدمة الزبائن') ||
+      title.includes('تم منحك خدمة الزبائن') ||
+      (title.includes('صلاحية') && title.includes('خدمة الزبائن')) ||
+      body.includes('خدمة الزبائن') ||
+      typ === 'role'
+    );
+  }
 
-      function renderItems(items){
-        if (!items || !items.length){
-          bodyEl.innerHTML = '<div class="small text-muted">لا توجد إشعارات جديدة.</div>';
-          return;
-        }
-        bodyEl.innerHTML = items.map(it=>{
-          let url = it.url || "#";
-          if (isCSGrant(it)) url = "/cs/inbox";
-          return `<a class="notif-row" href="${esc(url)}">
-            <div class="fw-bold">${esc(it.title||'إشعار')}</div>
-            ${it.body ? '<div class="small text-muted">'+esc(it.body)+'</div>' : ''}
-          </a>`;
-        }).join('');
-      }
+  function renderItems(items){
+    if (!items || !items.length){
+      bodyEl.innerHTML = '<div class="small text-muted">لا توجد إشعارات جديدة.</div>';
+      return;
+    }
+    bodyEl.innerHTML = items.map(it=>{
+      let url = it.url || "#";
+      if (isCSGrant(it)) url = "/cs/inbox";
+      return `<a class="notif-row" href="${esc(url)}">
+        <div class="fw-bold">${esc(it.title||'إشعار')}</div>
+        ${it.body ? '<div class="small text-muted">'+esc(it.body)+'</div>' : ''}
+      </a>`;
+    }).join('');
+  }
 
-      async function safeGET(url){
-        try{
-          const r = await fetch(url, {cache:'no-store', credentials:'same-origin'});
-          if (r.status === 401) return { unauthorized: true };
-          if (!r.ok) return null;
-          return await r.json();
-        }catch(_){ return null; }
-      }
-      async function safePOST(url, body){
-        try{
-          const r = await fetch(url, {
-            method:'POST',
-            headers:{ "Content-Type":"application/json" },
-            body: body ? JSON.stringify(body) : null,
-            credentials:'same-origin'
-          });
-          if (r.status === 401) return { unauthorized: true };
-          if (!r.ok) return null;
-          return await r.json().catch(()=>({ ok:true }));
-        }catch(_){ return null; }
-      }
+  async function safeGET(url){
+    try{
+      const r = await fetch(url, {cache:'no-store', credentials:'same-origin'});
+      if (r.status === 401) return { unauthorized: true };
+      if (!r.ok) return null;
+      return await r.json();
+    }catch(_){ return null; }
+  }
+  async function safePOST(url, body){
+    try{
+      const r = await fetch(url, {
+        method:'POST',
+        headers:{ "Content-Type":"application/json" },
+        body: body ? JSON.stringify(body) : null,
+        credentials:'same-origin'
+      });
+      if (r.status === 401) return { unauthorized: true };
+      if (!r.ok) return null;
+      return await r.json().catch(()=>({ ok:true }));
+    }catch(_){ return null; }
+  }
 
-      async function fetchUnreadCount(){
-        const j = await safeGET('/api/unread_count');
-        if (j && !j.unauthorized) setBadge(Number(j.count||0));
-        if (j && j.unauthorized) setBadge(0);
-      }
-      async function loadInitial(){
-        const j = await safeGET('/api/notifications/poll?since=0');
-        if (!j || j.unauthorized){
-          setBadge(0);
-          bodyEl.innerHTML = '<div class="small text-muted">سجّل دخولك لرؤية الإشعارات.</div>';
-          return;
-        }
-        lastTs = Number(j.now||Math.floor(Date.now()/1000));
-        renderItems(j.items||[]);
-      }
-      async function pollOnce(){
-        const j = await safeGET('/api/notifications/poll?since='+(lastTs||0));
-        if (!j || j.unauthorized) return;
-        lastTs = Number(j.now||Math.floor(Date.now()/1000));
-        const items = Array.isArray(j.items) ? j.items : [];
-        if (panel.classList.contains('is-open')){
-          if (items.length===0){ await loadInitial(); }
-          else { renderItems(items); }
-        } else {
-          if (items.length>0){ await fetchUnreadCount(); }
-        }
-      }
-      async function markAllRead(){
-        const j = await safePOST('/api/notifications/mark_all_read');
-        if (!j || j.unauthorized) return;
-        setBadge(0);
-      }
+  async function fetchUnreadCount(){
+    const j = await safeGET('/api/unread_count');
+    if (j && !j.unauthorized) setBadge(Number(j.count||0));
+    if (j && j.unauthorized) setBadge(0);
+  }
+  async function loadInitial(){
+    const j = await safeGET('/api/notifications/poll?since=0');
+    if (!j || j.unauthorized){
+      setBadge(0);
+      bodyEl.innerHTML = '<div class="small text-muted">سجّل دخولك لرؤية الإشعارات.</div>';
+      return;
+    }
+    lastTs = Number(j.now||Math.floor(Date.now()/1000));
+    renderItems(j.items||[]);
+  }
+  async function pollOnce(){
+    const j = await safeGET('/api/notifications/poll?since='+(lastTs||0));
+    if (!j || j.unauthorized) return;
+    lastTs = Number(j.now||Math.floor(Date.now()/1000));
+    const items = Array.isArray(j.items) ? j.items : [];
+    if (panel.classList.contains('is-open')){
+      if (items.length===0){ await loadInitial(); }
+      else { renderItems(items); }
+    } else {
+      if (items.length>0){ await fetchUnreadCount(); }
+    }
+  }
+  async function markAllRead(){
+    const j = await safePOST('/api/notifications/mark_all_read');
+    if (!j || j.unauthorized) return;
+    setBadge(0);
+  }
 
-      function openPanel(){
-        panel.classList.add('is-open');
-        panel.setAttribute('aria-hidden','false');
-        if (scrim){ scrim.style.opacity='1'; scrim.style.pointerEvents='auto'; }
-        loadInitial().then(markAllRead);
-      }
-      function closePanel(){
-        panel.classList.remove('is-open');
-        panel.setAttribute('aria-hidden','true');
-        if (scrim){ scrim.style.opacity='0'; scrim.style.pointerEvents='none'; }
-      }
+  function openPanel(){
+    panel.classList.add('is-open');
+    panel.setAttribute('aria-hidden','false');
+    if (scrim){ scrim.style.opacity='1'; scrim.style.pointerEvents='auto'; }
+    loadInitial().then(markAllRead);
+  }
+  function closePanel(){
+    panel.classList.remove('is-open');
+    panel.setAttribute('aria-hidden','true');
+    if (scrim){ scrim.style.opacity='0'; scrim.style.pointerEvents='none'; }
+  }
 
-      btn.addEventListener('click', (e)=>{ e.preventDefault(); panel.classList.contains('is-open') ? closePanel() : openPanel(); });
-      close?.addEventListener('click', ()=>closePanel());
-      scrim?.addEventListener('click', ()=>closePanel());
-      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closePanel(); });
+  btn.addEventListener('click', (e)=>{ e.preventDefault(); panel.classList.contains('is-open') ? closePanel() : openPanel(); });
+  close?.addEventListener('click', ()=>closePanel());
+  scrim?.addEventListener('click', ()=>closePanel());
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closePanel(); });
 
-      fetchUnreadCount();
-      setInterval(pollOnce, 20000);
-    })();
-    </script>
+  fetchUnreadCount();
+  setInterval(pollOnce, 20000);
+})();
+</script>
+
 
     <!-- تصحيح عام: أي إشعار نصّه يمنح CS → /cs/inbox (لوحات/صفحات/موبايل) -->
     <script>
