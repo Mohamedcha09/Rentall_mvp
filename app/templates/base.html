@@ -234,18 +234,18 @@
           </a>
         {% endif %}
 
-        {# ✅ أزرار الدعم خارج زر الجرس #}
-        {% if session_user and session_user.is_support %}
-          <a class="btn btn-outline-secondary btn-sm" href="/cs/inbox" title="صندوق خدمة الزبائن (CS)">
-            <i class="bi bi-headset"></i>
-          </a>
-        {% endif %}
-        <a class="btn btn-outline-secondary btn-sm" href="/support/new" title="الدعم">
-          <i class="bi bi-life-preserver"></i>
-        </a>
-
         {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
-        <button class="btn btn-ghost btn-sm position-relative" id="notifOpen" type="button" title="الإشعارات">
+        <button class="btn btn-ghost btn-sm position-relative" id="notifOpen" title="الإشعارات">
+        {% if session_user and session_user.is_support %}
+  <a class="btn btn-outline-secondary btn-sm" href="/cs/inbox" title="صندوق خدمة الزبائن (CS)">
+    <i class="bi bi-headset"></i>
+  </a>
+{% endif %}
+
+<a class="btn btn-outline-secondary btn-sm" href="/support/new" title="الدعم">
+  <i class="bi bi-life-preserver"></i>
+</a>
+
           <img class="icon-img" src="/static/img/notfi.png" alt="Notifications" style="width:24px;height:24px">
           {% if unread > 0 %}
             <span class="notif-ping"></span>
@@ -505,9 +505,7 @@
       var row = e.target.closest('.typeahead-item'); if (!row) return;
       window.location.href = row.getAttribute('data-url');
     });
-     
 
-     
     input.addEventListener('keydown', function(e){
       if (panel.classList.contains('d-none')) return;
       var rows = Array.prototype.slice.call(panel.querySelectorAll('.typeahead-item'));
@@ -550,7 +548,7 @@
       const hasFrMarks = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(s);
       const frWords = /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
       const enWords = /\b(new|city|county|state|united|kingdom|usa|us|uk)\b/i.test(s);
-      if (hasFrMarks أو frWords) return 'fr';
+      if (hasFrMarks || frWords) return 'fr';
       if (enWords) return 'en';
       const prefs = (navigator.languages || [navigator.language || 'en']).map(x=>x.slice(0,2).toLowerCase());
       if (prefs.includes('fr')) return 'fr';
@@ -781,6 +779,15 @@
     }
   }
 
+  async function fetchUnreadCount(){
+    try{
+      const r = await fetch('/api/unread_count', {cache:'no-store'});
+      if(!r.ok) return;
+      const j = await r.json();
+      setBadge(Number(j.count||0));
+    }catch(_){}
+  }
+
   function esc(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
 
   function renderItems(items){
@@ -797,76 +804,51 @@
     }).join('');
   }
 
-  // ✅ دوال آمنة تتعامل مع 401 بدون ريديركت
-  async function safeGET(url){
+  async function pollOnce(){
     try{
-      const r = await fetch(url, {cache:'no-store', credentials:'same-origin'});
-      if (r.status === 401) return { unauthorized: true };
-      if (!r.ok) return null;
-      return await r.json();
-    }catch(_){ return null; }
-  }
-  async function safePOST(url, body){
-    try{
-      const r = await fetch(url, {
-        method:'POST',
-        headers:{ "Content-Type":"application/json" },
-        body: body ? JSON.stringify(body) : null,
-        credentials:'same-origin'
-      });
-      if (r.status === 401) return { unauthorized: true };
-      if (!r.ok) return null;
-      return await r.json().catch(()=>({ ok:true }));
-    }catch(_){ return null; }
-  }
-
-  async function fetchUnreadCount(){
-    const j = await safeGET('/api/unread_count');
-    if (j && !j.unauthorized) setBadge(Number(j.count||0));
-    if (j && j.unauthorized) setBadge(0);
+      const r = await fetch('/api/notifications/poll?since='+(lastTs||0), {cache:'no-store'});
+      if(!r.ok) return;
+      const j = await r.json();
+      lastTs = Number(j.now||Math.floor(Date.now()/1000));
+      const items = Array.isArray(j.items) ? j.items : [];
+      // لو اللوحة مفتوحة نعرض الكل، لو مغلقة نحدّث الشارة فقط
+      if (panel.classList.contains('is-open')){
+        // عند الفتح نطلب آخر 30 مباشرة (since=0)
+        if (items.length===0){ await loadInitial(); }
+        else { renderItems(items); }
+      } else {
+        if (items.length>0){ await fetchUnreadCount(); }
+      }
+    }catch(_){}
   }
 
   async function loadInitial(){
-    const j = await safeGET('/api/notifications/poll?since=0');
-    if (!j || j.unauthorized){
-      setBadge(0);
-      bodyEl.innerHTML = '<div class="small text-muted">سجّل دخولك لرؤية الإشعارات.</div>';
-      return;
-    }
-    lastTs = Number(j.now||Math.floor(Date.now()/1000));
-    renderItems(j.items||[]);
-  }
-
-  async function pollOnce(){
-    const j = await safeGET('/api/notifications/poll?since='+(lastTs||0));
-    if (!j || j.unauthorized) return; // لا شيء — جلسة غير مصرح بها أو فشل
-    lastTs = Number(j.now||Math.floor(Date.now()/1000));
-    const items = Array.isArray(j.items) ? j.items : [];
-    // لو اللوحة مفتوحة نعرض الكل، لو مغلقة نحدّث الشارة فقط
-    if (panel.classList.contains('is-open')){
-      if (items.length===0){ await loadInitial(); }
-      else { renderItems(items); }
-    } else {
-      if (items.length>0){ await fetchUnreadCount(); }
-    }
+    try{
+      const r = await fetch('/api/notifications/poll?since=0', {cache:'no-store'});
+      if(!r.ok) return;
+      const j = await r.json();
+      lastTs = Number(j.now||Math.floor(Date.now()/1000));
+      renderItems(j.items||[]);
+    }catch(_){}
   }
 
   async function markAllRead(){
-    const j = await safePOST('/api/notifications/mark_all_read');
-    if (!j || j.unauthorized) return;
-    setBadge(0);
+    try{
+      await fetch('/api/notifications/mark_all_read', {method:'POST'});
+      setBadge(0);
+    }catch(_){}
   }
 
   function openPanel(){
     panel.classList.add('is-open');
     panel.setAttribute('aria-hidden','false');
-    if (scrim){ scrim.style.opacity='1'; scrim.style.pointerEvents='auto'; }
+    scrim.style.opacity='1'; scrim.style.pointerEvents='auto';
     loadInitial().then(markAllRead);
   }
   function closePanel(){
     panel.classList.remove('is-open');
     panel.setAttribute('aria-hidden','true');
-    if (scrim){ scrim.style.opacity='0'; scrim.style.pointerEvents='none'; }
+    scrim.style.opacity='0'; scrim.style.pointerEvents='none';
   }
 
   btn.addEventListener('click', (e)=>{ e.preventDefault(); panel.classList.contains('is-open') ? closePanel() : openPanel(); });
