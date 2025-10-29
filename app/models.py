@@ -224,7 +224,7 @@ class MessageThread(Base):
     user_a = relationship("User", foreign_keys=[user_a_id])
     user_b = relationship("User", foreign_keys=[user_b_id])
     item   = relationship("Item", back_populates="message_threads")
-    messages = relationship("Message", back_populates="thread", cascade="all, delete-orphan", order_by="Message.created_at.asc()")
+messages = relationship("SupportMessage", back_populates="ticket", order_by=SupportMessage.created_at.asc())
 
 
 class Message(Base):
@@ -559,7 +559,7 @@ class SupportTicket(Base):
     resolved_at = Column(DateTime, nullable=True)
 
     assignee = relationship("User", foreign_keys=[assigned_to_id])
-    
+
     )
 
 
