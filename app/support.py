@@ -6,6 +6,9 @@ from .database import get_db
 from .models import SupportTicket, SupportMessage, User
 from datetime import datetime
 
+# ✅ استيراد دالة الإشعارات الداخلية
+from .notifications_api import push_notification
+
 router = APIRouter()
 
 # ===== Helpers =====
@@ -20,6 +23,30 @@ def _require_cs(request: Request):
     if not u or not u.get("is_support", False):
         return None
     return u
+
+# ✅ دالة ترسل إشعارًا لكل موظف CS عند فتح تذكرة جديدة
+def _notify_support_agents_on_new_ticket(db: Session, ticket: SupportTicket):
+    agents = (
+        db.query(User)
+        .filter(User.is_support == True, User.status == "approved")
+        .all()
+    )
+    # لو عندك صفحة تفاصيل تذكرة للـ CS استخدم الرابط المباشر:
+    url = f"/cs/ticket/{ticket.id}"  # بدّلها إلى "/cs/inbox" لو تفضّل الصندوق العام
+    title = "تذكرة دعم جديدة"
+    body  = f"#{ticket.id} — {ticket.subject or ''}"
+    for ag in agents:
+        try:
+            push_notification(
+                db, ag.id,
+                title,
+                body,
+                url,
+                "ticket_new"
+            )
+        except Exception:
+            # ما نوقف العملية لو فشل إشعار واحد
+            pass
 
 # ========== واجهة العميل ==========
 @router.get("/support/new", response_class=HTMLResponse)
@@ -65,6 +92,9 @@ def support_new_post(request: Request, db: Session = Depends(get_db)):
         body=body or "(بدون نص)", created_at=datetime.utcnow()
     )
     db.add(m); db.commit()
+
+    # ✅ بعد إنشاء التذكرة بنجاح: أرسل إشعارات للـ CS
+    _notify_support_agents_on_new_ticket(db, t)
 
     return RedirectResponse(f"/support/my", status_code=303)
 
