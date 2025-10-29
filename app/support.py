@@ -27,14 +27,28 @@ def bump_ticket_on_message(db, ticket_id, author_user, is_cs_author: bool):
         return
     t.last_msg_at = datetime.utcnow()
     t.updated_at = datetime.utcnow()
+
     if is_cs_author:
-        t.assigned_to_id = author_user.id
+        # آخر رسالة من الدعم
+        t.last_from = "agent"
+        # تأكيد التعيين + إبقاءها مفتوحة
+        if not t.assigned_to_id:
+            t.assigned_to_id = author_user.id
         if t.status in (None, "new", "resolved"):
             t.status = "open"
+        # قرئت من الوكيل الآن
+        t.unread_for_agent = False
+        # لو العميل سيرى الرد: علم لغير مقروء للمستخدم
+        t.unread_for_user = True
     else:
-        # رسالة من العميل — لو كانت مغلقة نعيد فتحها تلقائيًا
+        # آخر رسالة من العميل
+        t.last_from = "user"
+        # لو كانت مغلقة نعيد فتحها
         if t.status == "resolved":
             t.status = "open"
+        # أصبحت غير مقروءة للوكيل
+        t.unread_for_agent = True
+
     db.commit()
 
 
@@ -216,22 +230,37 @@ def cs_inbox(request: Request, db: Session = Depends(get_db)):
 
     base_q = db.query(SupportTicket)
 
+    # 🎯 التعريفات:
+    # جديدة = رسائل عميل حديثة لم تُفتح بعد من أي وكيل (لا تعيين + غير مقروءة للوكيل + آخر رسالة من العميل)
+    new_q = (
+        base_q.filter(
+            SupportTicket.status.in_(("new", "open")),
+            SupportTicket.assigned_to_id.is_(None),
+            SupportTicket.unread_for_agent.is_(True),
+            SupportTicket.last_from == "user",
+        )
+        .order_by(SupportTicket.last_msg_at.desc(), SupportTicket.created_at.desc())
+    )
+
+    # قيد المراجعة = مفتوحة وعليها وكيل (معيّنة) ولم تُغلق
+    in_review_q = (
+        base_q.filter(
+            SupportTicket.status == "open",
+            SupportTicket.assigned_to_id.isnot(None),
+        )
+        .order_by(SupportTicket.last_msg_at.desc(), SupportTicket.updated_at.desc())
+    )
+
+    # منتهية = مغلقة
+    resolved_q = (
+        base_q.filter(SupportTicket.status == "resolved")
+        .order_by(SupportTicket.resolved_at.desc(), SupportTicket.updated_at.desc())
+    )
+
     data = {
-        "new": (
-            base_q.filter(SupportTicket.status == "new")
-                  .order_by(SupportTicket.last_msg_at.desc(), SupportTicket.created_at.desc())
-                  .all()
-        ),
-        "in_review": (
-            base_q.filter(SupportTicket.status == "open")
-                  .order_by(SupportTicket.last_msg_at.desc(), SupportTicket.updated_at.desc())
-                  .all()
-        ),
-        "resolved": (
-            base_q.filter(SupportTicket.status == "resolved")
-                  .order_by(SupportTicket.resolved_at.desc(), SupportTicket.updated_at.desc())
-                  .all()
-        ),
+        "new": new_q.all(),
+        "in_review": in_review_q.all(),
+        "resolved": resolved_q.all(),
     }
 
     return request.app.templates.TemplateResponse(
@@ -240,10 +269,9 @@ def cs_inbox(request: Request, db: Session = Depends(get_db)):
             "request": request,
             "session_user": u_cs,
             "title": "CS Inbox",
-            "data": data,  # ✅ أهم شيء: تمرير data كما يتوقع القالب
+            "data": data,
         },
     )
-
 
 @router.get("/cs/ticket/{tid}", response_class=HTMLResponse)
 def cs_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):

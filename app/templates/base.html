@@ -802,14 +802,12 @@ const IS_SUPPORT = {{ 'true' if session_user and (session_user.get('is_support')
   function esc(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
 
   // ✅ هنا نفرض وجهة الإشعار للـ Support إلى /cs/inbox
-  function normalizeHref(it){
-    if (IS_SUPPORT){
-      // إن كان موجود focus/thread_id مرّره كـ query
-      const focus = it.thread_id || it.ticket_id || it.id || '';
-      return '/cs/inbox' + (focus ? ('?focus='+encodeURIComponent(focus)) : '');
-    }
-    return it.url || '#';
-  }
+function normalizeHref(it){
+  // لو الإشعار فيه ticket_id نوجه مباشرة لصفحة التذكرة
+  if (it.ticket_id) return '/cs/ticket/' + encodeURIComponent(it.ticket_id);
+  return it.url || '#';
+}
+
 
   function renderItems(items){
     if (!items || !items.length){
@@ -873,14 +871,14 @@ const IS_SUPPORT = {{ 'true' if session_user and (session_user.get('is_support')
   // ✅ سلوك زر الجرس:
   // - Support: تحويل مباشر إلى /cs/inbox
   // - عادي: يفتح اللوحة
-  btn.addEventListener('click', (e)=>{
-    e.preventDefault();
-    if (IS_SUPPORT){
-      window.location.href = '/cs/inbox';
-      return;
-    }
-    panel.classList.contains('is-open') ? closePanel() : openPanel();
-  });
+// كان سابقًا:
+// ✅ الجميع يفتح اللوحة الآن
+btn.addEventListener('click', (e)=>{
+  e.preventDefault();
+  panel.classList.contains('is-open') ? closePanel() : openPanel();
+});
+
+
 
   close?.addEventListener('click', ()=>closePanel());
   scrim?.addEventListener('click', ()=>closePanel());
