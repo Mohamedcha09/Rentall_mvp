@@ -29,7 +29,7 @@ def _force_admin_flags(u) -> None:
         role = (getattr(u, "role", "") or "").lower()
         if role == "admin":
             if _has_column("users", "is_verified"): u.is_verified = True
-            if _has_column("users", "status"): u.status = "active"
+            if _has_column("users", "status"): u.status = "approved"
             if _has_column("users", "is_mod"): u.is_mod = True
             if _has_column("users", "badge_admin"): u.badge_admin = True
             if _has_column("users", "is_deposit_manager"): u.is_deposit_manager = True

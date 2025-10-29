@@ -160,6 +160,7 @@ def ensure_sqlite_columns():
     """
     هوت-فيكس أعمدة ناقصة عند استخدام SQLite فقط (يتجاهل Postgres):
       - users.is_mod / users.is_deposit_manager (لصلاحيات المود و DM)
+      - users.is_support (موظف خدمة الزبائن)  ✅ جديد
       - deposit_evidences.uploader_id
       - reports.status / reports.tag / reports.updated_at
     """
@@ -172,13 +173,15 @@ def ensure_sqlite_columns():
             return
 
         with engine.begin() as conn:
-            # ===== users: is_mod / is_deposit_manager =====
+            # ===== users: is_mod / is_deposit_manager / is_support =====
             try:
                 ucols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info('users')").all()}
                 if "is_mod" not in ucols:
                     conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_mod BOOLEAN NOT NULL DEFAULT 0;")
                 if "is_deposit_manager" not in ucols:
                     conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_deposit_manager BOOLEAN NOT NULL DEFAULT 0;")
+                if "is_support" not in ucols:  # ✅ جديد
+                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_support BOOLEAN NOT NULL DEFAULT 0;")
             except Exception as e:
                 print(f"[WARN] ensure_sqlite_columns: users.* → {e}")
 
@@ -206,10 +209,10 @@ def ensure_sqlite_columns():
     except Exception as e:
         print(f"[WARN] ensure_sqlite_columns skipped/failed: {e}")
 
-# === جديد: تهيئة أعمدة users.is_mod / users.badge_admin على جميع المحركات
+# === جديد: تهيئة أعمدة users.is_mod / users.badge_admin / users.is_support على جميع المحركات
 def ensure_users_columns():
     """
-    يضمن وجود users.is_mod و users.badge_admin على SQLite و Postgres.
+    يضمن وجود users.is_mod و users.badge_admin و users.is_support على SQLite و Postgres.
     """
     try:
         try:
@@ -224,10 +227,13 @@ def ensure_users_columns():
                     conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_mod BOOLEAN DEFAULT 0;")
                 if "badge_admin" not in cols:
                     conn.exec_driver_sql("ALTER TABLE users ADD COLUMN badge_admin BOOLEAN DEFAULT 0;")
+                if "is_support" not in cols:  # ✅ جديد
+                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_support BOOLEAN DEFAULT 0;")
             elif str(backend).startswith("postgres"):
                 conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_mod BOOLEAN DEFAULT false;")
                 conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS badge_admin BOOLEAN DEFAULT false;")
-        print("[OK] ensure_users_columns(): users.is_mod / badge_admin ready")
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_support BOOLEAN DEFAULT false;")  # ✅ جديد
+        print("[OK] ensure_users_columns(): users.is_mod / badge_admin / is_support ready")
     except Exception as e:
         print(f"[WARN] ensure_users_columns failed: {e}")
 
@@ -479,6 +485,11 @@ async def sync_user_flags(request: Request, call_next):
                         sess_user["is_deposit_manager"] = bool(getattr(db_user, "is_deposit_manager", False))
                         try:
                             sess_user["is_mod"] = bool(getattr(db_user, "is_mod", False))
+                        except Exception:
+                            pass
+                        # ✅ جديد: مزامنة علم خدمة الزبائن
+                        try:
+                            sess_user["is_support"] = bool(getattr(db_user, "is_support", False))
                         except Exception:
                             pass
                         for key in [
