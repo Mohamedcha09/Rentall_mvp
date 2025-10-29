@@ -217,82 +217,97 @@
       <!-- typeahead لديك (بحث حسابات/عناصر) -->
       <div id="typeaheadPanel" class="typeahead d-none"></div>
 
-      <div class="actions d-flex align-items-center gap-2 ms-auto">
+      <<div class="actions d-flex align-items-center gap-2 ms-auto">
 
-        <!-- أزرار CS/Support (خارج زر الجرس لتفادي التعارض) -->
-        {% if session_user and session_user.is_support %}
-          <a class="btn btn-outline-secondary btn-sm" href="/cs/inbox" title="صندوق خدمة الزبائن (CS)">
-            <i class="bi bi-headset"></i>
-          </a>
-        {% endif %}
-        <a class="btn btn-outline-secondary btn-sm" href="/support/new" title="فتح تذكرة دعم">
-          <i class="bi bi-life-preserver"></i>
-        </a>
+  {# رسائل - ثابت للجميع (مسج أيقونة) #}
+  <a href="/messages" class="btn btn-ghost btn-sm" title="الرسائل">
+    <img class="icon-img" src="/static/img/msg.png" alt="Messages" style="width:24px;height:24px">
+  </a>
 
-        <!-- الجرس -->
-        {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
-        <button class="btn btn-ghost btn-sm position-relative" id="notifOpen" title="الإشعارات">
-          <img class="icon-img" src="/static/img/notfi.png" alt="Notifications" style="width:24px;height:24px">
-          {% if unread > 0 %}
-            <span class="notif-ping"></span>
-            <span class="notif-count">{{ unread if unread < 100 else '99+' }}</span>
-          {% endif %}
-        </button>
+  {# مفضّلة (عند تسجيل الدخول) #}
+  {% if session_user %}
+    <a href="/favorites" class="btn btn-ghost btn-sm" title="مفضلتي">
+      <i class="bi bi-heart-fill" style="font-size:20px; color:#a944ec;"></i>
+    </a>
+  {% endif %}
 
-        <!-- إنشاء -->
-        <div class="dropdown">
-          <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown">
-            <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">إنشاء</span>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li><a class="dropdown-item" href="/owner/items/new"><i class="bi bi-box"></i> عنصر جديد</a></li>
-            <li><a class="dropdown-item" href="/messages"><i class="bi bi-chat-left-text"></i> رسالة</a></li>
-          </ul>
-        </div>
+  {# CS Inbox (خوذة) — يظهر فقط لمن عنده صلاحية خدمة الزبائن #}
+  {% if session_user and (session_user.is_support or session_user.get('is_support') or session_user.get('cs_enabled')) %}
+    <a class="btn btn-outline-secondary btn-sm" href="/cs/inbox" title="صندوق خدمة الزبائن (CS)">
+      <i class="bi bi-headset"></i>
+    </a>
+  {% endif %}
 
-        <!-- اللغة -->
-        <div class="dropdown">
-          <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="اللغة">
-            <i class="bi bi-globe2"></i>
-            <span class="d-none d-sm-inline">{{ current_lang()|upper if current_lang else 'AR' }}</span>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li><a class="dropdown-item" href="/lang/ar">العربية</a></li>
-            <li><a class="dropdown-item" href="/lang/en">English</a></li>
-            <li><a class="dropdown-item" href="/lang/fr">Français</a></li>
-          </ul>
-        </div>
+  {# فتح تذكرة دعم (منقذ) — للجميع #}
+  <a class="btn btn-outline-secondary btn-sm" href="/support/new" title="الدعم">
+    <i class="bi bi-life-preserver"></i>
+  </a>
 
-        <!-- الحساب -->
-        {% if session_user %}
-        <div class="dropdown">
-          <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
-            <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
-            <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
-            {% if session_user.status == 'approved' %}<i class="bi bi-patch-check-fill verify" title="موثّق"></i>{% endif %}
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> صفحتي</a></li>
-            <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
-            <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a></li>
-            <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a></li>
-            {% if session_user.role == 'admin' or session_user.get('is_mod') %}
-              <li><a class="dropdown-item" href="/admin/reports">📸 البلاغات</a></li>
-            {% endif %}
-            {% if session_user.role == 'admin' %}
-              <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a></li>
-            {% endif %}
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right"></i> خروج</a></li>
-          </ul>
-        </div>
-        {% else %}
-          <a class="btn btn-ghost btn-sm" href="/login">دخول</a>
-          <a class="btn btn-primary btn-sm" href="/register">تسجيل</a>
-        {% endif %}
-      </div>
-    </div>
+  {# زر الجرس (إشعارات) — الآن وحده داخل الزر بدون روابط أخرى بالداخل #}
+  {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
+  <button class="btn btn-ghost btn-sm position-relative" id="notifOpen" title="الإشعارات">
+    <img class="icon-img" src="/static/img/notfi.png" alt="Notifications" style="width:24px;height:24px">
+    {% if unread > 0 %}
+      <span class="notif-ping"></span>
+      <span class="notif-count">{{ unread if unread < 100 else '99+' }}</span>
+    {% endif %}
+  </button>
+
+  {# إنشاء #}
+  <div class="dropdown">
+    <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown">
+      <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">إنشاء</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li><a class="dropdown-item" href="/owner/items/new"><i class="bi bi-box"></i> عنصر جديد</a></li>
+      <li><a class="dropdown-item" href="/messages"><i class="bi bi-chat-left-text"></i> رسالة</a></li>
+    </ul>
+  </div>
+
+  {# اللغة #}
+  <div class="dropdown">
+    <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="اللغة">
+      <i class="bi bi-globe2"></i>
+      <span class="d-none d-sm-inline">{{ current_lang()|upper if current_lang else 'AR' }}</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li><a class="dropdown-item" href="/lang/ar">العربية</a></li>
+      <li><a class="dropdown-item" href="/lang/en">English</a></li>
+      <li><a class="dropdown-item" href="/lang/fr">Français</a></li>
+    </ul>
+  </div>
+
+  {# الحساب #}
+  {% if session_user %}
+  <div class="dropdown">
+    <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
+      <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
+      <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
+      {% if session_user.status == 'approved' %}<i class="bi bi-patch-check-fill verify" title="موثّق"></i>{% endif %}
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> صفحتي</a></li>
+      <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
+      <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a></li>
+      <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a></li>
+      {% if session_user.role == 'admin' or session_user.get('is_mod') %}
+        <li><a class="dropdown-item" href="/admin/reports">📸 البلاغات</a></li>
+      {% endif %}
+      {% if session_user.role == 'admin' %}
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a></li>
+      {% endif %}
+      <li><hr class="dropdown-divider"></li>
+      <li><a class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right"></i> خروج</a></li>
+    </ul>
+  </div>
+  {% else %}
+    <a class="btn btn-ghost btn-sm" href="/login">دخول</a>
+    <a class="btn btn-primary btn-sm" href="/register">تسجيل</a>
+  {% endif %}
+
+</div>
+
   </header>
 
   <!-- تبويبات أعلى (موبايل) -->
