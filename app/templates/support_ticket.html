@@ -1,56 +1,203 @@
 {# app/templates/support_ticket.html #}
 {% extends "base.html" %}
+
 {% block content %}
-<div class="container py-4">
+<div class="container py-3">
 
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-      <h3 class="mb-0">تذكرة #{{ ticket.id }}</h3>
-      <div class="text-muted small">
-        الحالة: {{ ticket.status }} · الموضوع: {{ ticket.subject or 'بدون عنوان' }}
-      </div>
-    </div>
-    <a class="btn btn-outline-secondary" href="/support/my">← تذاكري</a>
-  </div>
-
-  <div class="card">
-    <div class="card-header fw-bold">المحادثة</div>
-    <div id="msgs" class="card-body" style="max-height:60vh; overflow:auto">
-      {% if msgs and msgs|length %}
-        {% for m in msgs %}
-          <div class="d-flex {{ 'justify-content-end' if m.sender_id==session_user.id else 'justify-content-start' }} mb-2">
-            <div class="p-2 rounded"
-                 style="max-width:78%;
-                        background: {{ '#eef2ff' if m.sender_id==session_user.id else '#f8fafc' }};
-                        border:1px solid rgba(0,0,0,.08)">
-              <div class="small text-muted mb-1">
-                {{ 'أنا' if m.sender_id==session_user.id else (m.sender.first_name ~ ' ' ~ m.sender.last_name) }}
-                · {{ (m.created_at|string)[:16] }}
-              </div>
-              <div style="white-space:pre-wrap">{{ m.body }}</div>
-            </div>
-          </div>
-        {% endfor %}
-      {% else %}
-        <div class="text-muted">لا توجد رسائل بعد.</div>
+  <!-- رجوع + عنوان -->
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+      <a href="/support/my" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-right"></i> رجوع</a>
+      <h4 class="m-0">تذكرة #{{ ticket.id }}</h4>
+      {% if ticket.subject %}
+        <span class="text-muted small d-none d-sm-inline">— {{ ticket.subject }}</span>
       {% endif %}
     </div>
 
-    <div class="card-footer">
-      <form method="post" action="/support/ticket/{{ ticket.id }}/reply">
-        <div class="input-group">
-          <textarea name="body" class="form-control" rows="2" placeholder="اكتب ردّك..." required></textarea>
-          <button class="btn btn-primary" type="submit">إرسال</button>
-        </div>
-        <div class="form-text">سيصل إشعار إلى فريق الدعم عند إرسال ردّك.</div>
-      </form>
+    <div class="d-flex align-items-center gap-2">
+      {% if ticket.status == 'resolved' %}
+        <span class="badge bg-success">مغلقة</span>
+      {% elif ticket.status == 'open' %}
+        <span class="badge bg-primary">مفتوحة</span>
+      {% else %}
+        <span class="badge bg-secondary">جديدة</span>
+      {% endif %}
     </div>
   </div>
 
+  <!-- بانرات الحالة -->
+  {% if ticket.status == 'resolved' %}
+    <div class="alert alert-success d-flex justify-content-between align-items-center" role="status">
+      <div>
+        ✅ تم حلّ التذكرة وإغلاقها.
+        {% if ticket.assignee %}
+          <strong>{{ ticket.assignee.first_name or 'موظّف الدعم' }}</strong>
+        {% endif %}
+        {% if ticket.resolved_at %}
+          — <span class="text-muted">({{ (ticket.resolved_at|string)[:16] }})</span>
+        {% endif %}
+      </div>
+      <div class="small text-muted">
+        يمكنك الرد من الأسفل لإعادة فتح التذكرة تلقائيًا.
+      </div>
+    </div>
+  {% endif %}
+
+  {% if ticket.assigned_to_id and ticket.assignee %}
+    <div class="alert alert-info py-2">
+      هذه المحادثة يتابعها: <strong>{{ ticket.assignee.first_name or 'موظّف الدعم' }}</strong>.
+    </div>
+  {% endif %}
+
+  <!-- الجسم: عمودان -->
+  <div class="row g-3">
+    <!-- المحادثة -->
+    <div class="col-12 col-lg-8">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div class="fw-bold">المحادثة</div>
+          <div class="small text-muted">
+            آخر نشاط:
+            {{ (ticket.last_msg_at or ticket.updated_at or ticket.created_at)|string }}
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div id="chat" class="chat-thread">
+            {% for m in msgs %}
+              {% set is_user = (m.sender_id == session_user.id) and (m.sender_role == 'user') %}
+              {% set is_agent = (m.sender_role == 'agent') %}
+              <div class="chat-row {{ 'me' if is_user else 'them' }}">
+                <div class="bubble">
+                  <div class="meta">
+                    <span class="name">
+                      {% if is_user %}أنا{% elif m.sender and m.sender.first_name %}{{ m.sender.first_name }}{% else %}الدعم{% endif %}
+                    </span>
+                    <span class="time">{{ (m.created_at|string)[:16] }}</span>
+                  </div>
+                  <div class="text">{{ m.body | e | replace('\n','<br>') | safe }}</div>
+                </div>
+              </div>
+            {% else %}
+              <div class="text-muted">لا توجد رسائل بعد.</div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="card-footer">
+          {% if ticket.status == 'resolved' %}
+            <div class="alert alert-warning py-2 mb-2">
+              هذه التذكرة مغلقة حاليًا. إرسال رد جديد سيُعيد فتحها تلقائيًا ويُنبه موظف الدعم. 
+            </div>
+          {% endif %}
+
+          <form method="post" action="/support/ticket/{{ ticket.id }}/reply">
+            <div class="mb-2">
+              <textarea name="body" class="form-control" rows="3" placeholder="اكتب رسالتك للدعم…" required></textarea>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+              <a href="/support/my" class="btn btn-outline-secondary">إلغاء</a>
+              <button class="btn btn-primary" type="submit">إرسال</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- معلومات التذكرة -->
+    <div class="col-12 col-lg-4">
+      <div class="card h-100">
+        <div class="card-header fw-bold">تفاصيل</div>
+        <div class="list-group list-group-flush">
+          <div class="list-group-item d-flex justify-content-between">
+            <span class="text-muted">المعرف</span>
+            <span>#{{ ticket.id }}</span>
+          </div>
+          <div class="list-group-item">
+            <div class="text-muted">العنوان</div>
+            <div>{{ ticket.subject or 'بدون عنوان' }}</div>
+          </div>
+          <div class="list-group-item d-flex justify-content-between">
+            <span class="text-muted">الحالة</span>
+            <span>
+              {% if ticket.status == 'resolved' %}
+                مغلقة
+              {% elif ticket.status == 'open' %}
+                مفتوحة
+              {% else %}
+                جديدة
+              {% endif %}
+            </span>
+          </div>
+          <div class="list-group-item">
+            <div class="text-muted">تم التولّي بواسطة</div>
+            <div>
+              {% if ticket.assignee %}
+                {{ ticket.assignee.first_name or 'موظّف الدعم' }}
+              {% else %}
+                <span class="text-muted">لم تُعيّن بعد</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="list-group-item d-flex justify-content-between">
+            <span class="text-muted">أُنشئت</span>
+            <span>{{ (ticket.created_at|string)[:16] }}</span>
+          </div>
+          <div class="list-group-item d-flex justify-content-between">
+            <span class="text-muted">آخر تحديث</span>
+            <span>{{ (ticket.updated_at|string)[:16] }}</span>
+          </div>
+          {% if ticket.resolved_at %}
+            <div class="list-group-item d-flex justify-content-between">
+              <span class="text-muted">تاريخ الإغلاق</span>
+              <span>{{ (ticket.resolved_at|string)[:16] }}</span>
+            </div>
+          {% endif %}
+          {% if ticket.last_msg_at %}
+            <div class="list-group-item d-flex justify-content-between">
+              <span class="text-muted">آخر رسالة</span>
+              <span>{{ (ticket.last_msg_at|string)[:16] }}</span>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
+<style>
+/* فقاعات المحادثة */
+.chat-thread{ max-height:60vh; overflow:auto; padding:2px 4px; }
+.chat-row{ display:flex; margin:.35rem 0; }
+.chat-row.me{ justify-content:flex-end; }
+.chat-row.them{ justify-content:flex-start; }
+.chat-row .bubble{
+  max-width:92%;
+  border-radius:14px;
+  padding:.55rem .7rem;
+  border:1px solid var(--border);
+  background:#fff;
+}
+[data-theme="dark"] .chat-row .bubble{
+  background:rgba(255,255,255,.06);
+}
+.chat-row.me .bubble{
+  background:#eff6ff;
+  border-color:rgba(0,0,0,.06);
+}
+[data-theme="dark"] .chat-row.me .bubble{
+  background:rgba(124,92,255,.18);
+  border-color:rgba(255,255,255,.12);
+}
+.bubble .meta{ font-size:.8rem; opacity:.7; display:flex; gap:.5rem; margin-bottom:.25rem; }
+.bubble .text{ white-space:pre-wrap; word-break:break-word; }
+</style>
+
 <script>
-  // تمرير تلقائي لأسفل الرسائل
-  (function(){ var box = document.getElementById('msgs'); if (box) box.scrollTop = box.scrollHeight; })();
+(function(){
+  // مرّر لأسفل الرسائل
+  const chat = document.getElementById('chat');
+  if (chat){ setTimeout(()=>{ chat.scrollTop = chat.scrollHeight; }, 50); }
+})();
 </script>
 {% endblock %}
