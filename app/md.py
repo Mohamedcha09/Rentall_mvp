@@ -167,6 +167,27 @@ def md_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     if qval != "md":
         return RedirectResponse("/md/inbox", status_code=303)
 
+    # ✅ التعيين التلقائي بمجرد فتح الصفحة إذا كانت غير مُعيّنة → تتحول إلى "قيد المراجعة"
+    now = datetime.utcnow()
+    if t.assigned_to_id is None:
+        t.assigned_to_id = u_md["id"]
+        t.status = "open"                 # تنتقل من "تم إرسالها جديد من CS" إلى "قيد المراجعة"
+        t.updated_at = now
+        t.unread_for_agent = False
+        # إشعار للعميل: "تم فتح تذكرتك"
+        try:
+            agent_name = (request.session["user"].get("first_name") or "").strip() or "مدير الوديعة"
+            push_notification(
+                db,
+                t.user_id,
+                "📬 تم فتح تذكرتك",
+                f"تم فتح الرسالة من طرف {agent_name}",
+                url=f"/support/ticket/{t.id}",
+                kind="support",
+            )
+        except Exception:
+            pass
+
     # تعليم كمقروء للوكيل
     t.unread_for_agent = False
     db.commit()
@@ -314,7 +335,7 @@ def md_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
         ticket_id=t.id,
         sender_id=u_md["id"],
         sender_role="agent",
-        body=f"تم إغلاق التذكرة بواسطة {agent_name} في {now.strftime('%Y-%m-%d %H:%M')}",
+body=f"تم إغلاق التذكرة بواسطة {agent_name} (MD) في {now.strftime('%Y-%m-%d %H:%M')}",
         created_at=now,
     ))
 

@@ -298,19 +298,20 @@ def cs_transfer_queue(
     )
     db.add(msg)
 
-    # إبقاء الحالة مفتوحة + أعلام القراءة
-    t.status = "open"
+    # إبقاء الحالة مفتوحة/جديدة + أعلام القراءة
     t.last_from = "agent"
     t.last_msg_at = now
     t.updated_at = now
     t.unread_for_user = True
 
-    # مهم: عند التحويل إلى MOD نتركها غير مُعيّنة، ونعلّمها جديدة للـ agent هناك
-    if target == "mod":
+    # ✅ مهم: عندما نُحوِّل إلى MD أو MOD → تكون "جديدة" وغير معيّنة وتظهر في صندوق "تم إرسالها جديد من CS"
+    if target in ("md", "mod"):
+        t.status = "new"
         t.assigned_to_id = None
         t.unread_for_agent = True
     else:
-        # في غير ذلك: تبقى للـ CS الحالي
+        # عودة إلى CS
+        t.status = "open"
         if not t.assigned_to_id:
             t.assigned_to_id = u_cs["id"]
         t.unread_for_agent = False
@@ -340,8 +341,7 @@ def cs_transfer_queue(
         except Exception:
             pass
 
-    db.commit()
-        # إشعار مسؤولي الودائع فقط إذا التحويل إلى MD
+    # ✅ إشعار مسؤولي الودائع إذا التحويل إلى MD
     if target == "md":
         try:
             notify_mds(
@@ -353,4 +353,5 @@ def cs_transfer_queue(
         except Exception:
             pass
 
+    db.commit()
     return RedirectResponse(f"/cs/ticket/{t.id}", status_code=303)
