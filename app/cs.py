@@ -8,7 +8,7 @@ from sqlalchemy import desc, text
 
 from .database import get_db
 from .models import SupportTicket, SupportMessage, User
-from .notifications_api import push_notification, notify_mods  # ← إضافة notify_mods
+from .notifications_api import push_notification, notify_mods
 
 templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(prefix="/cs", tags=["cs"])
@@ -21,7 +21,7 @@ def _require_login(request: Request):
 
 def _ensure_cs_session(db: Session, request: Request):
     """
-    لو الجلسة لا تحتوي is_support لكن المستخدم في DB صار CS، نحدّث الجلسة الآن.
+    مزامنة علم is_support داخل الجلسة إذا تغيّر في قاعدة البيانات.
     """
     sess = request.session.get("user") or {}
     uid = sess.get("id")
@@ -47,12 +47,12 @@ def cs_inbox(request: Request, db: Session = Depends(get_db)):
 
     u_cs = _ensure_cs_session(db, request)
     if not u_cs:
-        # ليس موظف دعم → وجّه لصفحة تذاكري الخاصة بالعميل
         return RedirectResponse("/support/my", status_code=303)
 
-    base_q = db.query(SupportTicket)
+    # مهم: صناديق CS يجب أن لا تُظهر ما تم تحويله إلى MOD/MD
+    base_q = db.query(SupportTicket).filter(text("COALESCE(queue,'cs') = 'cs'"))
 
-    # جديدة: لم تُعيّن + آخر رسالة من العميل + غير مقروءة للوكيل
+    # جديدة: غير مُعيّنة + آخر رسالة من العميل + غير مقروءة للوكيل
     new_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
@@ -133,7 +133,6 @@ def cs_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_d
         t.updated_at = datetime.utcnow()
         t.unread_for_agent = False
 
-        # إشعار للعميل: "تم فتح الرسالة من طرف <اسم>"
         agent_name = (request.session["user"].get("first_name") or "").strip() or "موظّف الدعم"
         try:
             push_notification(
@@ -177,7 +176,6 @@ def cs_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
     )
     db.add(msg)
 
-    # تحديثات حالة التذكرة
     t.last_msg_at = now
     t.updated_at = now
     t.last_from = "agent"
@@ -187,7 +185,6 @@ def cs_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
     t.unread_for_user = True
     t.unread_for_agent = False
 
-    # إشعار للعميل بوجود رد
     try:
         agent_name = (request.session["user"].get("first_name") or "").strip() or "موظّف الدعم"
         push_notification(
@@ -221,14 +218,12 @@ def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
         now = datetime.utcnow()
         agent_name = (request.session["user"].get("first_name") or "").strip() or "موظّف الدعم"
 
-        # حالة التذكرة
         t.status = "resolved"
         t.resolved_at = now
         t.updated_at = now
         if not t.assigned_to_id:
             t.assigned_to_id = u_cs["id"]
 
-        # أضف رسالة نظامية
         close_msg = SupportMessage(
             ticket_id=t.id,
             sender_id=u_cs["id"],
@@ -238,7 +233,6 @@ def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
         )
         db.add(close_msg)
 
-        # علَم غير مقروء للعميل + إشعار
         t.unread_for_user = True
         try:
             push_notification(
@@ -282,7 +276,7 @@ def cs_transfer_queue(
     if not t:
         return RedirectResponse("/cs/inbox", status_code=303)
 
-    # تحديث queue مباشرة (لو العمود غير موجود، نتجاهل بصمت)
+    # تحدّيث queue مباشرة (قد لا يكون العمود مُعرّفًا في الموديل)
     try:
         db.execute(
             text("UPDATE support_tickets SET queue = :q, updated_at = now() WHERE id = :tid"),
@@ -293,6 +287,8 @@ def cs_transfer_queue(
 
     now = datetime.utcnow()
     agent_name = (request.session["user"].get("first_name") or "").strip() or "موظّف الدعم"
+
+    # رسالة نظامية توضح التحويل
     msg = SupportMessage(
         ticket_id=t.id,
         sender_id=u_cs["id"],
@@ -302,15 +298,22 @@ def cs_transfer_queue(
     )
     db.add(msg)
 
-    # إبقاء الحالة مفتوحة
+    # إبقاء الحالة مفتوحة + أعلام القراءة
     t.status = "open"
     t.last_from = "agent"
     t.last_msg_at = now
     t.updated_at = now
     t.unread_for_user = True
-    t.unread_for_agent = False
-    if not t.assigned_to_id:
-        t.assigned_to_id = u_cs["id"]
+
+    # مهم: عند التحويل إلى MOD نتركها غير مُعيّنة، ونعلّمها جديدة للـ agent هناك
+    if target == "mod":
+        t.assigned_to_id = None
+        t.unread_for_agent = True
+    else:
+        # في غير ذلك: تبقى للـ CS الحالي
+        if not t.assigned_to_id:
+            t.assigned_to_id = u_cs["id"]
+        t.unread_for_agent = False
 
     # إشعار للعميل
     try:
