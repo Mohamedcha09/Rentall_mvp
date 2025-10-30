@@ -240,10 +240,62 @@ def ensure_users_columns():
     except Exception as e:
         print(f"[WARN] ensure_users_columns failed: {e}")
 
+# === جديد: تهيئة أعمدة support_tickets لتوافق CS/MOD/MD حتى لو العمود غير محدد في الموديل
+def ensure_support_ticket_columns():
+    """
+    يضمن أعمدة support_tickets المستخدمة في استعلامات CS/MOD/MD:
+      - queue VARCHAR(10)      ← لتوجيه الطابور: cs / md / mod
+      - last_from VARCHAR(10)  ← 'user' / 'agent'
+      - last_msg_at TIMESTAMP
+      - unread_for_user BOOLEAN
+      - unread_for_agent BOOLEAN
+      - assigned_to_id INTEGER (FK لـ users.id)
+      - resolved_at TIMESTAMP
+      - updated_at TIMESTAMP
+    يعمل على SQLite و Postgres بأمان.
+    """
+    try:
+        try:
+            backend = engine.url.get_backend_name()
+        except Exception:
+            backend = getattr(getattr(engine, "dialect", None), "name", "")
+
+        with engine.begin() as conn:
+            if backend == "sqlite":
+                cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info('support_tickets')").all()}
+                if "queue" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN queue VARCHAR(10);")
+                if "last_from" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN last_from VARCHAR(10) NOT NULL DEFAULT 'user';")
+                if "last_msg_at" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN last_msg_at TIMESTAMP;")
+                if "unread_for_user" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN unread_for_user BOOLEAN NOT NULL DEFAULT 0;")
+                if "unread_for_agent" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN unread_for_agent BOOLEAN NOT NULL DEFAULT 1;")
+                if "assigned_to_id" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN assigned_to_id INTEGER;")
+                if "resolved_at" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN resolved_at TIMESTAMP;")
+                if "updated_at" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN updated_at TIMESTAMP;")
+            elif str(backend).startswith("postgres"):
+                # Postgres: استخدم IF NOT EXISTS لكل عمود
+                conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS queue VARCHAR(10);")
+                conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS last_from VARCHAR(10) NOT NULL DEFAULT 'user';")
+                conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS last_msg_at TIMESTAMP NULL;")
+                conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS unread_for_user BOOLEAN NOT NULL DEFAULT false;")
+                conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS unread_for_agent BOOLEAN NOT NULL DEFAULT true;")
+                conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS assigned_to_id INTEGER NULL;")
+                conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP NULL;")
+                conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NULL;")
+        print("[OK] ensure_support_ticket_columns(): support_tickets ready")
+    except Exception as e:
+        print(f"[WARN] ensure_support_ticket_columns failed: {e}")
+
 ensure_sqlite_columns()
 ensure_users_columns()
-ensure_support_ticket_columns()   # ⬅️ أضف هذا السطر
-
+ensure_support_ticket_columns()   # ⬅️ أصبح مُعرّفًا الآن
 
 def seed_admin():
     db = SessionLocal()
