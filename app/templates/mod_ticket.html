@@ -1,10 +1,31 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container py-3">
-  <h4 class="mb-3">تذكرة (MOD) #{{ ticket.id }}</h4>
-  <div class="mb-2 text-muted">
-    الموضوع: {{ ticket.subject or 'بدون عنوان' }} · الحالة: {{ ticket.status }} · العميل: #{{ ticket.user_id }}
+  <div class="d-flex align-items-center justify-content-between">
+    <h4 class="m-0">تذكرة (MOD) #{{ ticket.id }}</h4>
+    <a href="/mod/inbox" class="btn btn-outline-secondary btn-sm">رجوع للصندوق</a>
   </div>
+  <hr>
+
+  {% set is_resolved = (ticket.status == 'resolved') %}
+
+  <div class="mb-2 text-muted">
+    الموضوع: {{ ticket.subject or 'بدون عنوان' }}
+    · الحالة:
+    {% if is_resolved %}
+      <span class="badge bg-success">منتهية</span>
+    {% else %}
+      <span class="badge bg-warning text-dark">قيد المراجعة</span>
+    {% endif %}
+    · العميل: #{{ ticket.user_id }}
+  </div>
+
+  {% if is_resolved %}
+    <div class="alert alert-success d-flex align-items-center" role="alert">
+      <i class="bi bi-lock-fill me-2"></i>
+      <div>تم إغلاق هذه التذكرة نهائيًا — استعراض فقط، بلا رسائل جديدة.</div>
+    </div>
+  {% endif %}
 
   <div class="card mb-3">
     <div class="card-header">المحادثة</div>
@@ -12,7 +33,10 @@
       {% if msgs %}
         {% for m in msgs %}
           <div class="mb-3 {% if m.sender_role=='agent' %}text-end{% endif %}">
-            <div class="small text-muted">{{ (m.created_at|string)[:16] }} — {{ 'الدعم/المدقّق' if m.sender_role=='agent' else 'العميل' }}</div>
+            <div class="small text-muted">
+              {{ (m.created_at|string)[:16] }}
+              — {{ 'الدعم/المدقّق' if m.sender_role=='agent' else ('نظام' if m.sender_role=='system' else 'العميل') }}
+            </div>
             <div class="p-2 rounded" style="background: rgba(0,0,0,.05); white-space: pre-wrap;">{{ m.body }}</div>
           </div>
         {% endfor %}
@@ -22,20 +46,29 @@
     </div>
   </div>
 
-  <form method="post" action="/mod/ticket/{{ ticket.id }}/reply" class="card">
-    <div class="card-header">ردّ المدقّق</div>
-    <div class="card-body">
-      <textarea class="form-control mb-2" name="body" rows="3" placeholder="اكتب ردّك..."></textarea>
-      <div class="d-flex gap-2">
-        <button class="btn btn-primary" type="submit">إرسال</button>
-        <form method="post" action="/mod/tickets/{{ ticket.id }}/assign_self">
-          <button class="btn btn-outline-secondary" formaction="/mod/tickets/{{ ticket.id }}/assign_self" formmethod="post">تولّي</button>
+  {% if not is_resolved %}
+    <div class="card">
+      <div class="card-header">ردّ المدقّق</div>
+      <div class="card-body">
+        <form id="modReplyForm" method="post" action="/mod/ticket/{{ ticket.id }}/reply">
+          <textarea class="form-control mb-2" name="body" rows="3" placeholder="اكتب ردّك..." required></textarea>
         </form>
-        <form method="post" action="/mod/tickets/{{ ticket.id }}/resolve">
-          <button class="btn btn-success" formaction="/mod/tickets/{{ ticket.id }}/resolve" formmethod="post">إغلاق كتام</button>
-        </form>
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary" type="submit" form="modReplyForm">إرسال</button>
+
+          {% if not ticket.assigned_to_id %}
+            <form method="post" action="/mod/tickets/{{ ticket.id }}/assign_self" class="d-inline">
+              <button class="btn btn-outline-secondary" type="submit">تولّي</button>
+            </form>
+          {% endif %}
+
+          <form method="post" action="/mod/tickets/{{ ticket.id }}/resolve" class="d-inline"
+                onsubmit="return confirm('إغلاق نهائي للتذكرة؟');">
+            <button class="btn btn-success" type="submit">إغلاق (نهائي)</button>
+          </form>
+        </div>
       </div>
     </div>
-  </form>
+  {% endif %}
 </div>
 {% endblock %}
