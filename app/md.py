@@ -1,4 +1,3 @@
-# app/md.py
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import RedirectResponse, JSONResponse
@@ -48,7 +47,6 @@ def _ensure_md_session(db: Session, request: Request):
 @router.get("/cron/auto_close_24h")
 def auto_close_24h_md(request: Request, db: Session = Depends(get_db)):
     now = datetime.utcnow()
-    # على Postgres: نستخدم SQL مباشر على queue/last_from/last_msg_at
     rows = db.execute(
         text("""
             SELECT id FROM support_tickets
@@ -110,7 +108,7 @@ def md_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = 
     # طابور MD فقط
     base_q = db.query(SupportTicket).filter(text("COALESCE(queue, 'cs') = 'md'"))
 
-    # جديدة: غير مُعيّنة
+    # جديدة: غير مُعيّنة (قد تأتي new أو open لكن بدون معيّن)
     new_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
@@ -171,10 +169,9 @@ def md_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     now = datetime.utcnow()
     if t.assigned_to_id is None:
         t.assigned_to_id = u_md["id"]
-        t.status = "open"                 # تنتقل من "تم إرسالها جديد من CS" إلى "قيد المراجعة"
+        t.status = "open"
         t.updated_at = now
         t.unread_for_agent = False
-        # إشعار للعميل: "تم فتح تذكرتك"
         try:
             agent_name = (request.session["user"].get("first_name") or "").strip() or "مدير الوديعة"
             push_notification(
@@ -331,15 +328,18 @@ def md_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     if not t.assigned_to_id:
         t.assigned_to_id = u_md["id"]
 
+    # أعلام القراءة
+    t.unread_for_user = True
+    t.unread_for_agent = False
+
     db.add(SupportMessage(
         ticket_id=t.id,
         sender_id=u_md["id"],
         sender_role="agent",
-body=f"تم إغلاق التذكرة بواسطة {agent_name} (MD) في {now.strftime('%Y-%m-%d %H:%M')}",
+        body=f"تم إغلاق التذكرة بواسطة {agent_name} (MD) في {now.strftime('%Y-%m-%d %H:%M')}",
         created_at=now,
     ))
 
-    t.unread_for_user = True
     try:
         push_notification(
             db,
