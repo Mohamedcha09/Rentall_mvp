@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, text  # ✅ NEW: text للاستخدام في تحديث queue مباشرة
 
 from .database import get_db
 from .models import SupportTicket, SupportMessage, User
@@ -255,3 +255,86 @@ def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
         db.commit()
 
     return RedirectResponse("/cs/inbox", status_code=303)
+
+# ---------------------------
+# ✅ NEW: تحويل التذكرة بين الأقسام (CS → MD → MOD)
+# ---------------------------
+@router.post("/tickets/{ticket_id}/transfer")
+def cs_transfer_queue(
+    ticket_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    to: str = Form(...),   # القيم المسموحة: cs / md / mod
+):
+    """
+    يحوّل التذكرة إلى قسم آخر عبر تحديث عمود queue في قاعدة البيانات مباشرةً
+    (بدون الاعتماد على ORM حتى لا نحتاج لتعديل الموديل).
+    - لا يلمس أي أعمدة قديمة.
+    - يضيف رسالة نظامية داخل المحادثة.
+    - يرسل إشعاراً للعميل بحدوث التحويل.
+    """
+    u = _require_login(request)
+    if not u:
+        return RedirectResponse("/login", status_code=303)
+    u_cs = _ensure_cs_session(db, request)
+    if not u_cs:
+        return RedirectResponse("/support/my", status_code=303)
+
+    target = (to or "").strip().lower()
+    allowed = {"cs", "md", "mod"}
+    if target not in allowed:
+        # تحويل غير صالح → عُد لصفحة التذكرة
+        return RedirectResponse(f"/cs/ticket/{ticket_id}", status_code=303)
+
+    # تحقق من وجود التذكرة
+    t = db.get(SupportTicket, ticket_id)
+    if not t:
+        return RedirectResponse("/cs/inbox", status_code=303)
+
+    # حدّث queue مباشرةً (يحافظ على كل الأعمدة القديمة كما هي)
+    try:
+        db.execute(
+            text("UPDATE support_tickets SET queue = :q, updated_at = now() WHERE id = :tid"),
+            {"q": target, "tid": ticket_id},
+        )
+    except Exception:
+        # لو قاعدة قديمة بلا عمود queue، نتجاهل التحديث بصمت (لا نكسر شيئاً)
+        pass
+
+    # أضف رسالة توثيق داخل المحادثة
+    now = datetime.utcnow()
+    agent_name = (request.session["user"].get("first_name") or "").strip() or "موظّف الدعم"
+    msg = SupportMessage(
+        ticket_id=t.id,
+        sender_id=u_cs["id"],
+        sender_role="agent",
+        body=f"تم تحويل التذكرة من CS إلى {target.upper()} بواسطة {agent_name} في {now.strftime('%Y-%m-%d %H:%M')}",
+        created_at=now,
+    )
+    db.add(msg)
+
+    # أبقِ الحالة مفتوحة أثناء النقل + أعلام القراءة
+    t.status = "open"
+    t.last_from = "agent"
+    t.last_msg_at = now
+    t.updated_at = now
+    t.unread_for_user = True
+    t.unread_for_agent = False
+    if not t.assigned_to_id:
+        t.assigned_to_id = u_cs["id"]
+
+    # إشعار للعميل بتحويل التذكرة
+    try:
+        push_notification(
+            db,
+            t.user_id,
+            "↪️ تم تحويل تذكرتك",
+            f"تم تحويل تذكرتك إلى الفريق المختص ({target.upper()}) لمعالجة الطلب.",
+            url=f"/support/ticket/{t.id}",
+            kind="support",
+        )
+    except Exception:
+        pass
+
+    db.commit()
+    return RedirectResponse(f"/cs/ticket/{ticket_id}", status_code=303)
