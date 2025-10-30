@@ -2,26 +2,30 @@
 from __future__ import annotations
 from typing import Optional
 from datetime import datetime
+
 from fastapi import APIRouter, Depends, Request, HTTPException, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import or_  # ✅ لإيجاد is_mod=True أو role='admin'
+from sqlalchemy import or_
 
 from .database import get_db
 from .models import User, Notification
 
 router = APIRouter(tags=["notifications"])
 
+
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
     uid = data.get("id")
     return db.get(User, uid) if uid else None
 
+
 def _json(data: dict) -> JSONResponse:
     return JSONResponse(
         data,
-        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"}
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
     )
+
 
 # ================== Helpers ==================
 def push_notification(
@@ -32,6 +36,9 @@ def push_notification(
     url: Optional[str] = None,
     kind: str = "system",
 ) -> Notification:
+    """
+    إنشاء إشعار واحد لمستخدم محدد.
+    """
     n = Notification(
         user_id=user_id,
         title=(title or "").strip()[:200],
@@ -46,39 +53,36 @@ def push_notification(
     db.refresh(n)
     return n
 
-def notify_admins(db: Session, title: str, body: str = "", url: str = ""):
+
+def notify_admins(db: Session, title: str, body: str = "", url: str = "") -> None:
+    """
+    يرسل إشعارًا لكل المستخدمين ذوي الدور admin.
+    """
     admins = db.query(User).filter(User.role == "admin").all()
     for a in admins:
         push_notification(db, a.id, title, body, url, kind="admin")
 
-# ✅ جديد: إشعار لجميع الـ MOD + المدراء
-notify_mods(
-    db,
-    title="📥 تذكرة جديدة تحتاج مراجعة (MOD)",
-    body=f"{t.subject or '(بدون عنوان)'} — #{t.id}",
-    url=f"/mod/inbox?tid={t.id}"  # ← بدل /mod/ticket/{t.id}
-)    """
-    يرسل إشعارًا لكل مستخدم لديه is_mod=True أو role='admin'.
-    لا يغيّر أي شيء آخر.
+
+def notify_mods(db: Session, title: str, body: str = "", url: str = "") -> None:
+    """
+    يرسل إشعارًا إلى جميع المُدقّقين (is_mod=True) بالإضافة إلى المدراء (role='admin').
+    لا يكرّر الإشعار لنفس المستخدم لو كان Admin و Mod معًا.
     """
     rows = (
-        db.query(User)
+        db.query(User.id)
         .filter(or_(User.role == "admin", getattr(User, "is_mod") == True))
+        .distinct()
         .all()
     )
-    for u in rows:
-        try:
-            push_notification(db, u.id, title, body, url, kind="support")
-        except Exception:
-            # نتجاهل أي فشل لمستخدم واحد حتى لا نكسر الحلقة
-            pass
-
+    ids = [r[0] if isinstance(r, tuple) else r.id for r in rows]
+    for uid in ids:
+        push_notification(db, uid, title, body, url, kind="support")
 # ================== APIs used by frontend ==================
 
 @router.get("/api/unread_count")
 def api_unread_count(
     db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user)
+    user: Optional[User] = Depends(get_current_user),
 ):
     if not user:
         return _json({"count": 0})
@@ -88,6 +92,7 @@ def api_unread_count(
         .count()
     )
     return _json({"count": int(count)})
+
 
 @router.get("/api/notifications/poll")
 def api_poll(
@@ -106,22 +111,26 @@ def api_poll(
         .limit(30)
         .all()
     )
-    items = [{
-        "id": r.id,
-        "title": r.title,
-        "body": r.body or "",
-        "url": r.link_url or "",
-        "ts": int(r.created_at.timestamp()),
-        "kind": r.kind or "system",
-        "is_read": bool(r.is_read),
-    } for r in rows]
+    items = [
+        {
+            "id": r.id,
+            "title": r.title,
+            "body": r.body or "",
+            "url": r.link_url or "",
+            "ts": int(r.created_at.timestamp()),
+            "kind": r.kind or "system",
+            "is_read": bool(r.is_read),
+        }
+        for r in rows
+    ]
     now = int(datetime.utcnow().timestamp())
     return _json({"now": now, "items": items})
+
 
 @router.post("/api/notifications/mark_all_read")
 def mark_all_read(
     db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user)
+    user: Optional[User] = Depends(get_current_user),
 ):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -133,11 +142,12 @@ def mark_all_read(
     db.commit()
     return _json({"ok": True})
 
+
 @router.post("/api/notifications/{notif_id}/read")
 def mark_read(
     notif_id: int,
     db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user)
+    user: Optional[User] = Depends(get_current_user),
 ):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")

@@ -4,11 +4,11 @@ from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, text  # ✅ NEW: text للاستخدام في تحديث queue مباشرة
+from sqlalchemy import desc, text
 
 from .database import get_db
 from .models import SupportTicket, SupportMessage, User
-from .notifications_api import push_notification, notify_mods  # ✅ إضافة notify_mods
+from .notifications_api import push_notification, notify_mods  # ← إضافة notify_mods
 
 templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(prefix="/cs", tags=["cs"])
@@ -228,7 +228,7 @@ def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
         if not t.assigned_to_id:
             t.assigned_to_id = u_cs["id"]
 
-        # أضف رسالة نظامية في المحادثة تُظهر من أغلق ومتى
+        # أضف رسالة نظامية
         close_msg = SupportMessage(
             ticket_id=t.id,
             sender_id=u_cs["id"],
@@ -238,7 +238,7 @@ def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
         )
         db.add(close_msg)
 
-        # علَم غير مقروء للعميل + إشعار للعميل مع رابط /support/ticket/{id}
+        # علَم غير مقروء للعميل + إشعار
         t.unread_for_user = True
         try:
             push_notification(
@@ -257,22 +257,15 @@ def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     return RedirectResponse("/cs/inbox", status_code=303)
 
 # ---------------------------
-# ✅ NEW: تحويل التذكرة بين الأقسام (CS → MD → MOD)
+# تحويل التذكرة بين الأقسام (CS → MD → MOD)
 # ---------------------------
 @router.post("/tickets/{ticket_id}/transfer")
 def cs_transfer_queue(
     ticket_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    to: str = Form(...),   # القيم المسموحة: cs / md / mod
+    to: str = Form(...),  # القيم: cs / md / mod
 ):
-    """
-    يحوّل التذكرة إلى قسم آخر عبر تحديث عمود queue في قاعدة البيانات مباشرةً
-    (بدون الاعتماد على ORM حتى لا نحتاج لتعديل الموديل).
-    - لا يلمس أي أعمدة قديمة.
-    - يضيف رسالة نظامية داخل المحادثة.
-    - يرسل إشعاراً للعميل بحدوث التحويل.
-    """
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
@@ -283,25 +276,21 @@ def cs_transfer_queue(
     target = (to or "").strip().lower()
     allowed = {"cs", "md", "mod"}
     if target not in allowed:
-        # تحويل غير صالح → عُد لصفحة التذكرة
         return RedirectResponse(f"/cs/ticket/{ticket_id}", status_code=303)
 
-    # تحقق من وجود التذكرة
     t = db.get(SupportTicket, ticket_id)
     if not t:
         return RedirectResponse("/cs/inbox", status_code=303)
 
-    # حدّث queue مباشرةً (يحافظ على كل الأعمدة القديمة كما هي)
+    # تحديث queue مباشرة (لو العمود غير موجود، نتجاهل بصمت)
     try:
         db.execute(
             text("UPDATE support_tickets SET queue = :q, updated_at = now() WHERE id = :tid"),
             {"q": target, "tid": ticket_id},
         )
     except Exception:
-        # لو قاعدة قديمة بلا عمود queue، نتجاهل التحديث بصمت (لا نكسر شيئاً)
         pass
 
-    # أضف رسالة توثيق داخل المحادثة
     now = datetime.utcnow()
     agent_name = (request.session["user"].get("first_name") or "").strip() or "موظّف الدعم"
     msg = SupportMessage(
@@ -313,7 +302,7 @@ def cs_transfer_queue(
     )
     db.add(msg)
 
-    # أبقِ الحالة مفتوحة أثناء النقل + أعلام القراءة
+    # إبقاء الحالة مفتوحة
     t.status = "open"
     t.last_from = "agent"
     t.last_msg_at = now
@@ -323,25 +312,28 @@ def cs_transfer_queue(
     if not t.assigned_to_id:
         t.assigned_to_id = u_cs["id"]
 
-    # إشعار للعميل بتحويل التذكرة
+    # إشعار للعميل
     try:
         push_notification(
             db,
             t.user_id,
             "↪️ تم تحويل تذكرتك",
-            f"تم تحويل تذكرتك إلى الفريق المختص ({target.upper()}) لمعالجة الطلب.",
+            f"تم تحويل تذكرتك إلى الفريق المختص ({target.upper()}).",
             url=f"/support/ticket/{t.id}",
             kind="support",
         )
     except Exception:
         pass
 
-    # ✅ جديد: لو التحويل إلى MOD → أخطر جميع الـ MOD + المدراء
+    # إشعار المُدقّقين فقط إذا التحويل إلى MOD
     if target == "mod":
         try:
-            title = "🎫 تذكرة جديدة تحتاج مراجعة (MOD)"
-            body = f"#{t.id} — {t.subject or ''}".strip()
-            notify_mods(db, title, body, url=f"/mod/ticket/{t.id}")
+            notify_mods(
+                db,
+                title="📥 تذكرة جديدة تحتاج مراجعة (MOD)",
+                body=f"{t.subject or '(بدون عنوان)'} — #{t.id}",
+                url=f"/mod/inbox?tid={t.id}",
+            )
         except Exception:
             pass
 
