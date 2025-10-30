@@ -8,7 +8,7 @@ from sqlalchemy import desc, text  # ✅ NEW: text للاستخدام في تح�
 
 from .database import get_db
 from .models import SupportTicket, SupportMessage, User
-from .notifications_api import push_notification
+from .notifications_api import push_notification, notify_mods  # ✅ إضافة notify_mods
 
 templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(prefix="/cs", tags=["cs"])
@@ -336,5 +336,14 @@ def cs_transfer_queue(
     except Exception:
         pass
 
+    # ✅ جديد: لو التحويل إلى MOD → أخطر جميع الـ MOD + المدراء
+    if target == "mod":
+        try:
+            title = "🎫 تذكرة جديدة تحتاج مراجعة (MOD)"
+            body = f"#{t.id} — {t.subject or ''}".strip()
+            notify_mods(db, title, body, url=f"/mod/ticket/{t.id}")
+        except Exception:
+            pass
+
     db.commit()
-    return RedirectResponse(f"/cs/ticket/{ticket_id}", status_code=303)
+    return RedirectResponse(f"/cs/ticket/{t.id}", status_code=303)

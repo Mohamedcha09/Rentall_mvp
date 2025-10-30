@@ -5,6 +5,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Request, HTTPException, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import or_  # ✅ لإيجاد is_mod=True أو role='admin'
 
 from .database import get_db
 from .models import User, Notification
@@ -49,6 +50,24 @@ def notify_admins(db: Session, title: str, body: str = "", url: str = ""):
     admins = db.query(User).filter(User.role == "admin").all()
     for a in admins:
         push_notification(db, a.id, title, body, url, kind="admin")
+
+# ✅ جديد: إشعار لجميع الـ MOD + المدراء
+def notify_mods(db: Session, title: str, body: str = "", url: str = ""):
+    """
+    يرسل إشعارًا لكل مستخدم لديه is_mod=True أو role='admin'.
+    لا يغيّر أي شيء آخر.
+    """
+    rows = (
+        db.query(User)
+        .filter(or_(User.role == "admin", getattr(User, "is_mod") == True))
+        .all()
+    )
+    for u in rows:
+        try:
+            push_notification(db, u.id, title, body, url, kind="support")
+        except Exception:
+            # نتجاهل أي فشل لمستخدم واحد حتى لا نكسر الحلقة
+            pass
 
 # ================== APIs used by frontend ==================
 
