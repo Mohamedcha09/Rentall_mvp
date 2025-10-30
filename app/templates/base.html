@@ -802,11 +802,12 @@ const IS_SUPPORT = {{ 'true' if session_user and (session_user.get('is_support')
   function esc(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
 
   // ✅ هنا نفرض وجهة الإشعار للـ Support إلى /cs/inbox
+// ✅ اجعل رابط الإشعار كما هو قادم من الـ API
 function normalizeHref(it){
-  // لو الإشعار فيه ticket_id نوجه مباشرة لصفحة التذكرة
-  if (it.ticket_id) return '/cs/ticket/' + encodeURIComponent(it.ticket_id);
-  return it.url || '#';
+  if (it && it.url) return it.url;
+  return '#';
 }
+
 
 
   function renderItems(items){

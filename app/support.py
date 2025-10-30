@@ -199,8 +199,10 @@ def support_ticket_view(tid: int, request: Request, db: Session = Depends(get_db
     if not t or t.user_id != u["id"]:
         return RedirectResponse("/support/my", status_code=303)
 
-    msgs = t.messages
-    # علّم كمقروء للعميل
+    # علّم رسائل الوكيل كمقروءة + صفّر علم "غير مقروء للعميل"
+    for msg in t.messages or []:
+        if msg.sender_role == "agent" and not getattr(msg, "is_read", False):
+            msg.is_read = True
     t.unread_for_user = False
     db.commit()
 
@@ -210,7 +212,7 @@ def support_ticket_view(tid: int, request: Request, db: Session = Depends(get_db
             "request": request,
             "session_user": u,
             "ticket": t,
-            "msgs": msgs,
+            "msgs": t.messages,
             "title": f"تذكرة #{t.id}",
         },
     )
@@ -369,6 +371,7 @@ def cs_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
         sender_role="agent",
         body=(body or "").strip() or "(بدون نص)",
         created_at=datetime.utcnow(),
+        is_read=False,  # 👈 ستظهر كغير مقروءة لدى العميل
     )
     db.add(m)
 
@@ -380,8 +383,72 @@ def cs_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
         t.assigned_to_id = u_cs["id"]
     if t.status in (None, "new", "resolved"):
         t.status = "open"
-    t.unread_for_user = True
+    t.unread_for_user = True     # 👈 يراها العميل غير مقروءة
     t.unread_for_agent = False
 
     db.commit()
+
+    # ✅ إشعار للعميل مع رابط مباشر إلى تذكرته
+    try:
+        push_notification(
+            db,
+            user_id=t.user_id,
+            title="💬 رد جديد من الدعم",
+            body=f"على تذكرتك #{t.id} — {t.subject or ''}",
+            url=f"/support/ticket/{t.id}",
+            kind="support",
+        )
+    except Exception:
+        pass
+
     return RedirectResponse(f"/cs/ticket/{t.id}", status_code=303)
+
+
+
+@router.post("/support/ticket/{tid}/reply")
+def support_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), body: str = Form("")):
+    u = _require_login(request)
+    if not u:
+        return RedirectResponse("/login", status_code=303)
+
+    t = db.get(SupportTicket, tid)
+    if not t or t.user_id != u["id"]:
+        return RedirectResponse("/support/my", status_code=303)
+
+    # رسالة من العميل
+    m = SupportMessage(
+        ticket_id=t.id,
+        sender_id=u["id"],
+        sender_role="user",
+        body=(body or "").strip() or "(بدون نص)",
+        created_at=datetime.utcnow(),
+        is_read=True,  # 👈 تُعتبر مقروءة من جهة العميل
+    )
+    db.add(m)
+
+    # حدّث حالة التذكرة
+    t.last_msg_at = datetime.utcnow()
+    t.updated_at = datetime.utcnow()
+    t.last_from = "user"
+    if t.status == "resolved":
+        t.status = "open"
+    t.unread_for_agent = True    # 👈 لدى الوكيل كغير مقروءة
+    t.unread_for_user = False
+
+    db.commit()
+
+    # ✅ إشعار للوكيل المعيّن (إن موجود)
+    if t.assigned_to_id:
+        try:
+            push_notification(
+                db,
+                user_id=t.assigned_to_id,
+                title="📥 رد جديد من العميل",
+                body=f"على تذكرة #{t.id} — {t.subject or ''}",
+                url=f"/cs/ticket/{t.id}",
+                kind="support",
+            )
+        except Exception:
+            pass
+
+    return RedirectResponse(f"/support/ticket/{t.id}", status_code=303)
