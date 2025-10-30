@@ -5,28 +5,24 @@
   <h4 class="mb-3">مركز مراجعة المحتوى (MOD Inbox)</h4>
 
   <div class="row g-3">
-    <!-- القسم 1: جديدة -->
+    <!-- القسم 1: تم إرسالها جديد من طرف CS -->
     <div class="col-12 col-lg-4">
       <div class="card h-100">
-        <div class="card-header fw-bold">جديدة</div>
+        <div class="card-header fw-bold">تم إرسالها جديد من طرف CS</div>
         <div class="list-group list-group-flush">
           {% if data.new %}
             {% for t in data.new %}
-              <div class="list-group-item d-flex justify-content-between align-items-start">
-                <div class="me-2">
-                  <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'بدون عنوان' }}</div>
-                  <div class="small text-muted">
-                    فتح: {{ (t.created_at|string)[:16] }}
-                    {% if t.last_msg_at %} · آخر نشاط: {{ (t.last_msg_at|string)[:16] }}{% endif %}
-                  </div>
+              <a class="list-group-item list-group-item-action {% if data.focus_tid and data.focus_tid==t.id %}active{% endif %}"
+                 href="/mod/ticket/{{ t.id }}">
+                <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'بدون عنوان' }}</div>
+                <div class="small text-muted">
+                  فتح: {{ (t.created_at|string)[:16] }}
+                  {% if t.last_msg_at %} · آخر نشاط: {{ (t.last_msg_at|string)[:16] }}{% endif %}
                 </div>
-                <div class="d-flex gap-2">
-                  <button class="btn btn-sm btn-primary" onclick="assignSelfAndOpen({{ t.id }})">فتح</button>
-                </div>
-              </div>
+              </a>
             {% endfor %}
           {% else %}
-            <div class="list-group-item text-muted">لا يوجد تذاكر جديدة.</div>
+            <div class="list-group-item text-muted">لا يوجد جديد من CS.</div>
           {% endif %}
         </div>
       </div>
@@ -39,7 +35,7 @@
         <div class="list-group list-group-flush">
           {% if data.in_review %}
             {% for t in data.in_review %}
-              <div class="list-group-item">
+              <a class="list-group-item list-group-item-action" href="/mod/ticket/{{ t.id }}">
                 <div class="d-flex justify-content-between">
                   <div class="me-2">
                     <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'بدون عنوان' }}</div>
@@ -48,11 +44,9 @@
                       آخر نشاط: {{ (t.last_msg_at or t.updated_at or t.created_at)|string }}
                     </div>
                   </div>
-                  <div class="d-flex gap-2">
-                    <a class="btn btn-sm btn-primary" href="/mod/ticket/{{ t.id }}">فتح</a>
-                  </div>
+                  <span class="badge text-bg-secondary">فتح</span>
                 </div>
-              </div>
+              </a>
             {% endfor %}
           {% else %}
             <div class="list-group-item text-muted">لا يوجد تذاكر قيد المراجعة.</div>
@@ -68,15 +62,17 @@
         <div class="list-group list-group-flush">
           {% if data.resolved %}
             {% for t in data.resolved %}
-              <div class="list-group-item d-flex justify-content-between align-items-start">
-                <div class="me-2">
-                  <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'بدون عنوان' }}</div>
-                  <div class="small text-muted">
-                    أُغلقت: {{ (t.resolved_at or t.updated_at or t.last_msg_at or t.created_at)|string }}
+              <a class="list-group-item list-group-item-action" href="/mod/ticket/{{ t.id }}">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div class="me-2">
+                    <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'بدون عنوان' }}</div>
+                    <div class="small text-muted">
+                      أُغلقت: {{ (t.resolved_at or t.updated_at or t.last_msg_at or t.created_at)|string }}
+                    </div>
                   </div>
+                  <span class="badge text-bg-success">تم الحل</span>
                 </div>
-                <a class="btn btn-sm btn-outline-secondary" href="/mod/ticket/{{ t.id }}">استعراض</a>
-              </div>
+              </a>
             {% endfor %}
           {% else %}
             <div class="list-group-item text-muted">لا يوجد تذاكر منتهية.</div>
@@ -87,16 +83,4 @@
   </div>
 
 </div>
-
-<script>
-async function assignSelfAndOpen(id){
-  try{
-    const r = await fetch(`/mod/tickets/${id}/assign_self`, { method: 'POST' });
-    if(!r.ok) throw new Error();
-    window.location.href = `/mod/ticket/${id}`;
-  }catch(e){
-    alert('تعذّر فتح التذكرة');
-  }
-}
-</script>
 {% endblock %}

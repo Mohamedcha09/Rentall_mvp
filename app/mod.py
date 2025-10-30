@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, text  # ← نستخدم text هنا
 
 from .database import get_db
 from .models import SupportTicket, SupportMessage, User
@@ -40,17 +40,17 @@ def _ensure_mod_session(db: Session, request: Request):
 # Inbox (قائمة التذاكر للـ MOD)
 # ---------------------------
 @router.get("/inbox")
-def mod_inbox(request: Request, db: Session = Depends(get_db)):
+def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = None):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
 
     u_mod = _ensure_mod_session(db, request)
     if not u_mod:
-        # ليس MOD → لا يسمح بالدخول
         return RedirectResponse("/", status_code=303)
 
-    base_q = db.query(SupportTicket).filter(SupportTicket.queue == "mod")
+    # ⚠️ لا نستخدم SupportTicket.queue لأنه غير مُعرّف في الموديل
+    base_q = db.query(SupportTicket).filter(text("COALESCE(queue, 'cs') = 'mod'"))
 
     # جديدة: لم تُعيّن + آخر رسالة من العميل + غير مقروءة للمدقق
     new_q = (
@@ -82,6 +82,7 @@ def mod_inbox(request: Request, db: Session = Depends(get_db)):
         "new": new_q.all(),
         "in_review": in_review_q.all(),
         "resolved": resolved_q.all(),
+        "focus_tid": tid or 0,  # لو جاء tid من الإشعار
     }
 
     return templates.TemplateResponse(
@@ -101,8 +102,15 @@ def mod_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     if not u_mod:
         return RedirectResponse("/", status_code=303)
 
-    t = db.query(SupportTicket).filter(SupportTicket.id == tid, SupportTicket.queue == "mod").first()
+    # اجلب التذكرة ثم تحقق من queue عبر SQL خام (بدون لمس الموديل)
+    t = db.query(SupportTicket).filter(SupportTicket.id == tid).first()
     if not t:
+        return RedirectResponse("/mod/inbox", status_code=303)
+
+    row = db.execute(text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"), {"tid": tid}).first()
+    qval = (row[0] if row else "cs") or "cs"
+    if qval != "mod":
+        # ليست في طابور MOD
         return RedirectResponse("/mod/inbox", status_code=303)
 
     # تعليم كـ مقروء للمدقق
@@ -127,13 +135,16 @@ def mod_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_
         return RedirectResponse("/", status_code=303)
 
     t = db.get(SupportTicket, ticket_id)
-    if t and t.queue == "mod":
+    if t:
+        row = db.execute(text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"), {"tid": ticket_id}).first()
+        if not row or (row[0] or "cs") != "mod":
+            return RedirectResponse("/mod/inbox", status_code=303)
+
         t.assigned_to_id = u_mod["id"]
         t.status = "open"
         t.updated_at = datetime.utcnow()
         t.unread_for_agent = False
 
-        # إشعار للعميل
         mod_name = (request.session["user"].get("first_name") or "").strip() or "مدقّق المحتوى"
         try:
             push_notification(
@@ -164,7 +175,11 @@ def mod_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), 
         return RedirectResponse("/", status_code=303)
 
     t = db.get(SupportTicket, tid)
-    if not t or t.queue != "mod":
+    if not t:
+        return RedirectResponse("/mod/inbox", status_code=303)
+
+    row = db.execute(text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"), {"tid": tid}).first()
+    if not row or (row[0] or "cs") != "mod":
         return RedirectResponse("/mod/inbox", status_code=303)
 
     now = datetime.utcnow()
@@ -186,7 +201,6 @@ def mod_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), 
     t.unread_for_user = True
     t.unread_for_agent = False
 
-    # إشعار للعميل
     try:
         mod_name = (request.session["user"].get("first_name") or "").strip() or "مدقّق المحتوى"
         push_notification(
@@ -216,7 +230,11 @@ def mod_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db))
         return RedirectResponse("/", status_code=303)
 
     t = db.get(SupportTicket, ticket_id)
-    if t and t.queue == "mod":
+    if t:
+        row = db.execute(text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"), {"tid": ticket_id}).first()
+        if not row or (row[0] or "cs") != "mod":
+            return RedirectResponse("/mod/inbox", status_code=303)
+
         now = datetime.utcnow()
         mod_name = (request.session["user"].get("first_name") or "").strip() or "مدقّق المحتوى"
 

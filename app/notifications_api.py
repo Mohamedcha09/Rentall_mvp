@@ -52,8 +52,12 @@ def notify_admins(db: Session, title: str, body: str = "", url: str = ""):
         push_notification(db, a.id, title, body, url, kind="admin")
 
 # ✅ جديد: إشعار لجميع الـ MOD + المدراء
-def notify_mods(db: Session, title: str, body: str = "", url: str = ""):
-    """
+notify_mods(
+    db,
+    title="📥 تذكرة جديدة تحتاج مراجعة (MOD)",
+    body=f"{t.subject or '(بدون عنوان)'} — #{t.id}",
+    url=f"/mod/inbox?tid={t.id}"  # ← بدل /mod/ticket/{t.id}
+)    """
     يرسل إشعارًا لكل مستخدم لديه is_mod=True أو role='admin'.
     لا يغيّر أي شيء آخر.
     """
