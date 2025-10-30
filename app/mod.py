@@ -49,9 +49,7 @@ def _ensure_mod_session(db: Session, request: Request):
 @router.get("/cron/auto_close_24h")
 def auto_close_24h(request: Request, db: Session = Depends(get_db)):
     now = datetime.utcnow()
-    cutoff = now - timedelta(hours=24)
 
-    # تذاكر mod فقط، مفتوحة، آخر رد من agent ولم يرد العميل منذ 24h
     tickets = db.execute(
         text("""
             SELECT id FROM support_tickets
@@ -111,10 +109,8 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
 
     is_admin = _is_admin(u_mod)
 
-    # طابور mod فقط
     base_q = db.query(SupportTicket).filter(text("COALESCE(queue, 'cs') = 'mod'"))
 
-    # جديدة: لم تُعيّن بعد
     new_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
@@ -123,7 +119,6 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
     )
 
-    # قيد المراجعة: مفتوحة ومُعيّنة لمدقق
     in_review_q = (
         base_q.filter(
             SupportTicket.status == "open",
@@ -132,9 +127,6 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
     )
 
-    # منتهية:
-    # 🔹 كل mod يرى فقط تذاكره
-    # 🔹 الأدمن يرى الجميع
     resolved_q = base_q.filter(SupportTicket.status == "resolved")
     if not is_admin:
         resolved_q = resolved_q.filter(SupportTicket.assigned_to_id == u_mod["id"])
@@ -203,8 +195,8 @@ def mod_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_
     if not t:
         return RedirectResponse("/mod/inbox", status_code=303)
 
-    # 🔒 إذا مغلقة نهائياً → لا تعديل إلا للأدمن
-    if t.status == "resolved" and not _is_admin(u_mod):
+    # ✅ غلق نهائي: ممنوع التولّي للجميع (حتى الأدمن)
+    if t.status == "resolved":
         return RedirectResponse(f"/mod/ticket/{ticket_id}", status_code=303)
 
     row = db.execute(
@@ -252,8 +244,8 @@ def mod_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), 
     if not t:
         return RedirectResponse("/mod/inbox", status_code=303)
 
-    # 🔒 لا رد على المغلقة إلا للأدمن
-    if t.status == "resolved" and not _is_admin(u_mod):
+    # ✅ غلق نهائي: ممنوع الرد للجميع (حتى الأدمن)
+    if t.status == "resolved":
         return RedirectResponse(f"/mod/ticket/{t.id}", status_code=303)
 
     row = db.execute(
@@ -325,7 +317,7 @@ def mod_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db))
     now = datetime.utcnow()
     mod_name = (request.session["user"].get("first_name") or "").strip() or "مدقّق المحتوى"
 
-    # 🔒 إغلاق نهائي
+    # ✅ غلق نهائي: حالة مقفلة
     t.status = "resolved"
     t.resolved_at = now
     t.updated_at = now
@@ -336,7 +328,7 @@ def mod_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db))
         ticket_id=t.id,
         sender_id=u_mod["id"],
         sender_role="agent",
-        body=f"تم إغلاق التذكرة بواسطة {mod_name} في {now.strftime('%Y-%m-%d %H:%M')}",
+        body=f"تم إغلاق التذكرة بواسطة {mod_name} (MOD) في {now.strftime('%Y-%m-%d %H:%M')}",
         created_at=now,
     )
     db.add(close_msg)

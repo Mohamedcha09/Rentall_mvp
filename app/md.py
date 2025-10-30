@@ -1,3 +1,4 @@
+# app/md.py
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import RedirectResponse, JSONResponse
@@ -210,8 +211,8 @@ def md_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_d
     if not t:
         return RedirectResponse("/md/inbox", status_code=303)
 
-    # 🔒 مغلقة نهائيًا: لا تعديل إلا للأدمن
-    if t.status == "resolved" and not _is_admin(u_md):
+    # ✅ غلق نهائي: ممنوع التولّي للجميع (حتى الأدمن)
+    if t.status == "resolved":
         return RedirectResponse(f"/md/ticket/{ticket_id}", status_code=303)
 
     row = db.execute(text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"), {"tid": ticket_id}).first()
@@ -255,8 +256,8 @@ def md_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
     if not t:
         return RedirectResponse("/md/inbox", status_code=303)
 
-    # 🔒 لا ردّ على المغلقة إلا للأدمن
-    if t.status == "resolved" and not _is_admin(u_md):
+    # ✅ غلق نهائي: ممنوع الرد للجميع (حتى الأدمن)
+    if t.status == "resolved":
         return RedirectResponse(f"/md/ticket/{t.id}", status_code=303)
 
     row = db.execute(text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"), {"tid": tid}).first()
