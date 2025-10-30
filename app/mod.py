@@ -1,7 +1,7 @@
 # app/mod.py
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Request, Depends, Form
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, text
@@ -18,6 +18,12 @@ router = APIRouter(prefix="/mod", tags=["mod"])
 # ---------------------------
 def _require_login(request: Request):
     return request.session.get("user")
+
+def _is_admin(sess):
+    """تحقق إن كان المستخدم أدمن"""
+    if not sess:
+        return False
+    return (sess.get("role") == "admin") or bool(sess.get("is_admin"))
 
 def _ensure_mod_session(db: Session, request: Request):
     """
@@ -36,6 +42,61 @@ def _ensure_mod_session(db: Session, request: Request):
         return sess
     return None
 
+
+# ---------------------------
+# إغلاق تلقائي بعد 24h من عدم الرد من العميل
+# ---------------------------
+@router.get("/cron/auto_close_24h")
+def auto_close_24h(request: Request, db: Session = Depends(get_db)):
+    now = datetime.utcnow()
+    cutoff = now - timedelta(hours=24)
+
+    # تذاكر mod فقط، مفتوحة، آخر رد من agent ولم يرد العميل منذ 24h
+    tickets = db.execute(
+        text("""
+            SELECT id FROM support_tickets
+            WHERE COALESCE(queue, 'cs')='mod'
+              AND status IN ('open','new')
+              AND last_from='agent'
+              AND last_msg_at < (NOW() - INTERVAL '24 hours')
+        """)
+    ).fetchall()
+
+    closed_ids = []
+    for row in tickets:
+        tid = row[0]
+        t = db.get(SupportTicket, tid)
+        if not t:
+            continue
+        t.status = "resolved"
+        t.resolved_at = now
+        t.updated_at = now
+        msg = SupportMessage(
+            ticket_id=t.id,
+            sender_id=t.assigned_to_id or 0,
+            sender_role="system",
+            body=f"تم إغلاق التذكرة تلقائيًا لعدم ردّ العميل خلال 24 ساعة.",
+            created_at=now,
+        )
+        db.add(msg)
+        t.unread_for_user = True
+        try:
+            push_notification(
+                db,
+                t.user_id,
+                "⏱️ تم إغلاق التذكرة تلقائيًا",
+                f"تذكرتك #{t.id} أغلقت تلقائيًا بعد 24 ساعة دون ردّ.",
+                url=f"/support/ticket/{t.id}",
+                kind="support",
+            )
+        except Exception:
+            pass
+        closed_ids.append(t.id)
+    db.commit()
+
+    return JSONResponse({"closed": closed_ids, "count": len(closed_ids)})
+
+
 # ---------------------------
 # Inbox (قائمة التذاكر للـ MOD)
 # ---------------------------
@@ -44,15 +105,16 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
-
     u_mod = _ensure_mod_session(db, request)
     if not u_mod:
         return RedirectResponse("/", status_code=303)
 
-    # فلترة كل ما هو ضمن طابور MOD (بدون الاعتماد على خاصية queue في الموديل)
+    is_admin = _is_admin(u_mod)
+
+    # طابور mod فقط
     base_q = db.query(SupportTicket).filter(text("COALESCE(queue, 'cs') = 'mod'"))
 
-    # تم إرسالها جديد من طرف CS: غير معيّنة بعد
+    # جديدة: لم تُعيّن بعد
     new_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
@@ -61,7 +123,7 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
     )
 
-    # قيد المراجعة: مفتوحة ومُعيّنة لمدقّق
+    # قيد المراجعة: مفتوحة ومُعيّنة لمدقق
     in_review_q = (
         base_q.filter(
             SupportTicket.status == "open",
@@ -70,11 +132,13 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
     )
 
-    # منتهية
-    resolved_q = (
-        base_q.filter(SupportTicket.status == "resolved")
-        .order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
-    )
+    # منتهية:
+    # 🔹 كل mod يرى فقط تذاكره
+    # 🔹 الأدمن يرى الجميع
+    resolved_q = base_q.filter(SupportTicket.status == "resolved")
+    if not is_admin:
+        resolved_q = resolved_q.filter(SupportTicket.assigned_to_id == u_mod["id"])
+    resolved_q = resolved_q.order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
 
     data = {
         "new": new_q.all(),
@@ -87,6 +151,7 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
         "mod_inbox.html",
         {"request": request, "session_user": u_mod, "title": "MOD Inbox", "data": data},
     )
+
 
 # ---------------------------
 # عرض تذكرة MOD
@@ -118,14 +183,9 @@ def mod_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
 
     return templates.TemplateResponse(
         "mod_ticket.html",
-        {
-            "request": request,
-            "session_user": u_mod,
-            "ticket": t,
-            "msgs": t.messages,
-            "title": f"تذكرة #{t.id} (MOD)",
-        },
+        {"request": request, "session_user": u_mod, "ticket": t, "msgs": t.messages, "title": f"تذكرة #{t.id} (MOD)"},
     )
+
 
 # ---------------------------
 # تولّي التذكرة (Assign to me)
@@ -140,35 +200,41 @@ def mod_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_
         return RedirectResponse("/", status_code=303)
 
     t = db.get(SupportTicket, ticket_id)
-    if t:
-        row = db.execute(
-            text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"),
-            {"tid": ticket_id},
-        ).first()
-        if not row or (row[0] or "cs") != "mod":
-            return RedirectResponse("/mod/inbox", status_code=303)
+    if not t:
+        return RedirectResponse("/mod/inbox", status_code=303)
 
-        t.assigned_to_id = u_mod["id"]
-        t.status = "open"
-        t.updated_at = datetime.utcnow()
-        t.unread_for_agent = False
+    # 🔒 إذا مغلقة نهائياً → لا تعديل إلا للأدمن
+    if t.status == "resolved" and not _is_admin(u_mod):
+        return RedirectResponse(f"/mod/ticket/{ticket_id}", status_code=303)
 
-        mod_name = (request.session["user"].get("first_name") or "").strip() or "مدقّق المحتوى"
-        try:
-            push_notification(
-                db,
-                t.user_id,
-                "📬 تم فتح تذكرتك",
-                f"تم فتح الرسالة من طرف {mod_name}",
-                url=f"/support/ticket/{t.id}",
-                kind="support",
-            )
-        except Exception:
-            pass
+    row = db.execute(
+        text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"),
+        {"tid": ticket_id},
+    ).first()
+    if not row or (row[0] or "cs") != "mod":
+        return RedirectResponse("/mod/inbox", status_code=303)
 
-        db.commit()
+    t.assigned_to_id = u_mod["id"]
+    t.status = "open"
+    t.updated_at = datetime.utcnow()
+    t.unread_for_agent = False
 
+    mod_name = (request.session["user"].get("first_name") or "").strip() or "مدقّق المحتوى"
+    try:
+        push_notification(
+            db,
+            t.user_id,
+            "📬 تم فتح تذكرتك",
+            f"تم فتح الرسالة من طرف {mod_name}",
+            url=f"/support/ticket/{t.id}",
+            kind="support",
+        )
+    except Exception:
+        pass
+
+    db.commit()
     return RedirectResponse(f"/mod/ticket/{ticket_id}", status_code=303)
+
 
 # ---------------------------
 # ردّ المدقق على التذكرة
@@ -185,6 +251,10 @@ def mod_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), 
     t = db.get(SupportTicket, tid)
     if not t:
         return RedirectResponse("/mod/inbox", status_code=303)
+
+    # 🔒 لا رد على المغلقة إلا للأدمن
+    if t.status == "resolved" and not _is_admin(u_mod):
+        return RedirectResponse(f"/mod/ticket/{t.id}", status_code=303)
 
     row = db.execute(
         text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"),
@@ -228,8 +298,9 @@ def mod_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), 
     db.commit()
     return RedirectResponse(f"/mod/ticket/{t.id}", status_code=303)
 
+
 # ---------------------------
-# إغلاق التذكرة (Resolve)
+# إغلاق التذكرة (نهائي)
 # ---------------------------
 @router.post("/tickets/{ticket_id}/resolve")
 def mod_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
@@ -241,45 +312,47 @@ def mod_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db))
         return RedirectResponse("/", status_code=303)
 
     t = db.get(SupportTicket, ticket_id)
-    if t:
-        row = db.execute(
-            text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"),
-            {"tid": ticket_id},
-        ).first()
-        if not row or (row[0] or "cs") != "mod":
-            return RedirectResponse("/mod/inbox", status_code=303)
+    if not t:
+        return RedirectResponse("/mod/inbox", status_code=303)
 
-        now = datetime.utcnow()
-        mod_name = (request.session["user"].get("first_name") or "").strip() or "مدقّق المحتوى"
+    row = db.execute(
+        text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"),
+        {"tid": ticket_id},
+    ).first()
+    if not row or (row[0] or "cs") != "mod":
+        return RedirectResponse("/mod/inbox", status_code=303)
 
-        t.status = "resolved"
-        t.resolved_at = now
-        t.updated_at = now
-        if not t.assigned_to_id:
-            t.assigned_to_id = u_mod["id"]
+    now = datetime.utcnow()
+    mod_name = (request.session["user"].get("first_name") or "").strip() or "مدقّق المحتوى"
 
-        close_msg = SupportMessage(
-            ticket_id=t.id,
-            sender_id=u_mod["id"],
-            sender_role="agent",
-            body=f"تم إغلاق التذكرة بواسطة {mod_name} في {now.strftime('%Y-%m-%d %H:%M')}",
-            created_at=now,
+    # 🔒 إغلاق نهائي
+    t.status = "resolved"
+    t.resolved_at = now
+    t.updated_at = now
+    if not t.assigned_to_id:
+        t.assigned_to_id = u_mod["id"]
+
+    close_msg = SupportMessage(
+        ticket_id=t.id,
+        sender_id=u_mod["id"],
+        sender_role="agent",
+        body=f"تم إغلاق التذكرة بواسطة {mod_name} في {now.strftime('%Y-%m-%d %H:%M')}",
+        created_at=now,
+    )
+    db.add(close_msg)
+
+    t.unread_for_user = True
+    try:
+        push_notification(
+            db,
+            t.user_id,
+            "✅ تم حل تذكرتك (MOD)",
+            f"#{t.id} — {t.subject or ''}".strip(),
+            url=f"/support/ticket/{t.id}",
+            kind="support",
         )
-        db.add(close_msg)
+    except Exception:
+        pass
 
-        t.unread_for_user = True
-        try:
-            push_notification(
-                db,
-                t.user_id,
-                "✅ تم حل تذكرتك (MOD)",
-                f"#{t.id} — {t.subject or ''}".strip(),
-                url=f"/support/ticket/{t.id}",
-                kind="support",
-            )
-        except Exception:
-            pass
-
-        db.commit()
-
+    db.commit()
     return RedirectResponse("/mod/inbox", status_code=303)
