@@ -68,6 +68,7 @@ from .reports import router as reports_router
 from .admin_reports import router as admin_reports_router
 from .support import router as support_router
 import app.cs as cs_routes
+from . import mod as mod_routes
 
 # -----------------------------------------------------------------------------
 # إنشاء التطبيق
@@ -349,6 +350,7 @@ app.include_router(reports_router)
 app.include_router(admin_reports_router)
 app.include_router(support_router)
 app.include_router(cs_routes.router)
+app.include_router(mod_routes.router)
 
 # -----------------------------------------------------------------------------
 # مسار قديم → تحويل إلى صفحة البلاغات الجديدة

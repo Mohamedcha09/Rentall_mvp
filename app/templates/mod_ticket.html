@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+      <h4 class="mb-1">تذكرة #{{ ticket.id }} (MOD)</h4>
+      <div class="text-muted small">
+        الموضوع: <strong>{{ ticket.subject or 'بدون عنوان' }}</strong> ·
+        العميل: {{ ticket.user.full_name }} (ID {{ ticket.user_id }})
+      </div>
+      <div class="mt-2">
+        {% set st = (ticket.status or 'new') %}
+        <span class="badge {% if st=='resolved' %}bg-success{% elif st=='open' %}bg-primary{% else %}bg-secondary{% endif %}">
+          {% if st=='resolved' %}منتهية{% elif st=='open' %}قيد المراجعة{% else %}جديدة{% endif %}
+        </span>
+        {% if ticket.assigned_to_id %}
+          <span class="badge bg-outline border text-muted ms-1">مكلّف: {{ ticket.assigned_to_id }}</span>
+        {% else %}
+          <span class="badge bg-warning text-dark ms-1">غير معيّنة</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-outline-secondary btn-sm" href="/mod/inbox">العودة للصندوق</a>
+      {% if not ticket.assigned_to_id %}
+        <button class="btn btn-outline-primary btn-sm" onclick="assignSelf({{ ticket.id }})">تولّي</button>
+      {% endif %}
+      {% if ticket.status != 'resolved' %}
+        <button class="btn btn-success btn-sm" onclick="resolveTicket({{ ticket.id }})">تمّ الحل</button>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      {% if msgs and msgs|length %}
+        {% for m in msgs %}
+          <div class="d-flex {% if m.sender_role=='user' %}justify-content-end{% else %}justify-content-start{% endif %} mb-2">
+            <div class="p-2 rounded-3"
+                 style="max-width: 90%; background: {% if m.sender_role=='user' %}#eef6ff{% else %}#f5f5f7{% endif %};">
+              <div class="small text-muted mb-1">
+                {{ m.created_at }} — {{ 'العميل' if m.sender_role=='user' else 'فريق المراجعة' }}
+              </div>
+              <div dir="auto">{{ m.body | e | replace('\n','<br>') | safe }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="text-muted">لا توجد رسائل بعد.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if ticket.status != 'resolved' %}
+  <div class="card">
+    <div class="card-header fw-semibold">ردّ فريق المراجعة</div>
+    <div class="card-body">
+      <form method="post" action="/mod/ticket/{{ ticket.id }}/reply">
+        <textarea name="body" class="form-control mb-2" rows="4" placeholder="اكتب ردّك هنا..." required></textarea>
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary">إرسال</button>
+          {% if not ticket.assigned_to_id %}
+            <button class="btn btn-outline-primary" type="button" onclick="assignSelf({{ ticket.id }})">تولّي ثم أكتب</button>
+          {% endif %}
+          <button class="btn btn-outline-success ms-auto" type="button" onclick="resolveTicket({{ ticket.id }})">إنهاء كتذكرة محلولة</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <div class="alert alert-success mt-3 mb-0">هذه التذكرة مُغلقة كـ <strong>منتهية</strong>. يمكنك استعراضها فقط.</div>
+  {% endif %}
+
+</div>
+
+<script>
+async function resolveTicket(id){
+  try{
+    const r = await fetch(`/mod/tickets/${id}/resolve`, { method:'POST' });
+    if(!r.ok) throw 0;
+    window.location.href = '/mod/inbox';
+  }catch(e){
+    alert('تعذّر إغلاق التذكرة');
+  }
+}
+
+async function assignSelf(id){
+  try{
+    const r = await fetch(`/mod/tickets/${id}/assign_self`, { method:'POST' });
+    if(!r.ok) throw 0;
+    location.reload();
+  }catch(e){
+    alert('تعذّر التولّي');
+  }
+}
+</script>
+{% endblock %}
