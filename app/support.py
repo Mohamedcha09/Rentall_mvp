@@ -405,6 +405,7 @@ def cs_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
 
 
 
+
 @router.post("/support/ticket/{tid}/reply")
 def support_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), body: str = Form("")):
     u = _require_login(request)
@@ -415,40 +416,46 @@ def support_ticket_reply(tid: int, request: Request, db: Session = Depends(get_d
     if not t or t.user_id != u["id"]:
         return RedirectResponse("/support/my", status_code=303)
 
-    # رسالة من العميل
+    # إنشاء رسالة من العميل
     m = SupportMessage(
         ticket_id=t.id,
         sender_id=u["id"],
         sender_role="user",
         body=(body or "").strip() or "(بدون نص)",
         created_at=datetime.utcnow(),
-        is_read=True,  # 👈 تُعتبر مقروءة من جهة العميل
     )
     db.add(m)
 
-    # حدّث حالة التذكرة
+    # تحديث حالة التذكرة والأعلام
     t.last_msg_at = datetime.utcnow()
     t.updated_at = datetime.utcnow()
     t.last_from = "user"
     if t.status == "resolved":
         t.status = "open"
-    t.unread_for_agent = True    # 👈 لدى الوكيل كغير مقروءة
+    t.unread_for_agent = True
     t.unread_for_user = False
-
     db.commit()
 
-    # ✅ إشعار للوكيل المعيّن (إن موجود)
+    # إشعار للوكيل المعيَّن إن وجد، وإلاّ لجميع موظفي CS الموافقين
     if t.assigned_to_id:
-        try:
+        push_notification(
+            db,
+            t.assigned_to_id,
+            "💬 ردّ جديد من العميل",
+            f"#{t.id} — {t.subject or ''}",
+            url=f"/cs/ticket/{t.id}",
+            kind="support",
+        )
+    else:
+        agents = db.query(User).filter(User.is_support==True, User.status=="approved").all()
+        for ag in agents:
             push_notification(
                 db,
-                user_id=t.assigned_to_id,
-                title="📥 رد جديد من العميل",
-                body=f"على تذكرة #{t.id} — {t.subject or ''}",
+                ag.id,
+                "💬 ردّ جديد من العميل",
+                f"#{t.id} — {t.subject or ''}",
                 url=f"/cs/ticket/{t.id}",
                 kind="support",
             )
-        except Exception:
-            pass
 
     return RedirectResponse(f"/support/ticket/{t.id}", status_code=303)
