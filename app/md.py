@@ -19,28 +19,28 @@ router = APIRouter(prefix="/md", tags=["md"])
 def _require_login(request: Request):
     return request.session.get("user")
 
+def _is_admin(sess: dict | None) -> bool:
+    if not sess:
+        return False
+    return (sess.get("role") == "admin") or bool(sess.get("badge_admin"))
+
 def _ensure_md_session(db: Session, request: Request):
     """
-    مزامنة علم is_deposit_manager داخل الجلسة إذا تغيّر في قاعدة البيانات.
+    مزامنة علم is_deposit_manager (أو أي علم تعتمدونه لـ MD) داخل الجلسة إذا تغيّر.
+    نفترض أن العلم اسمه is_deposit_manager في جدول users.
     """
     sess = request.session.get("user") or {}
     uid = sess.get("id")
     if not uid:
         return None
-    # لو الجلسة تعرفه كـ MD بالفعل
-    if bool(sess.get("is_deposit_manager")) or (str(sess.get("role", "")).lower() == "admin"):
+    if bool(sess.get("is_deposit_manager")):
         return sess
-    # حدّث من القاعدة
     u_db = db.get(User, uid)
-    if u_db and (bool(getattr(u_db, "is_deposit_manager", False)) or str(getattr(u_db, "role", "")).lower() == "admin"):
-        sess["is_deposit_manager"] = bool(getattr(u_db, "is_deposit_manager", False))
+    if u_db and bool(getattr(u_db, "is_deposit_manager", False)):
+        sess["is_deposit_manager"] = True
         request.session["user"] = sess
         return sess
     return None
-
-def _is_admin(sess: dict | None) -> bool:
-    role = (sess or {}).get("role") or ""
-    return str(role).lower() == "admin"
 
 # ---------------------------
 # Inbox (قائمة التذاكر للـ MD)
@@ -55,10 +55,10 @@ def md_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = 
     if not u_md:
         return RedirectResponse("/", status_code=303)
 
-    # كل ما بطابور MD فقط (لا نعتمد على خاصية queue في الموديل)
+    # كل ما في طابور MD
     base_q = db.query(SupportTicket).filter(text("COALESCE(queue, 'cs') = 'md'"))
 
-    # القسم 1: تم إرسالها جديد من طرف CS (غير معيّنة بعد)
+    # تم إرسالها جديد من طرف CS: غير معيّنة بعد
     new_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
@@ -67,7 +67,7 @@ def md_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = 
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
     )
 
-    # القسم 2: قيد المراجعة (مفتوحة ومُعيّنة لـ MD)
+    # قيد المراجعة: مفتوحة ومُعيّنة لمدير الوديعة
     in_review_q = (
         base_q.filter(
             SupportTicket.status == "open",
@@ -76,29 +76,31 @@ def md_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = 
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
     )
 
-    # القسم 3: منتهية
-    # - إن كان أدمن: يرى كل المنتهية في طابور MD
-    # - غير ذلك: يرى فقط التي أغلقها بنفسه (resolved_by_id == u_md["id"])
-    if _is_admin(u_md):
-        resolved_q = (
-            base_q.filter(SupportTicket.status == "resolved")
-            .order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
-        )
-    else:
-        resolved_q = (
-            base_q.filter(
-                SupportTicket.status == "resolved",
-                text("COALESCE(resolved_by_id, 0) = :uid"),
-            )
-            .params(uid=int(u_md["id"]))
-            .order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
-        )
+    # منتهية (نفس منطق MOD؛ لا نستعمل أعمدة قد لا تكون موجودة في DB)
+    resolved_q = (
+        base_q.filter(SupportTicket.status == "resolved")
+        .order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
+    )
+    resolved_list = resolved_q.all()
+
+    if not _is_admin(u_md):
+        my_id = u_md["id"]
+        filtered: list[SupportTicket] = []
+        for t in resolved_list:
+            resolved_by = getattr(t, "resolved_by_id", None)
+            if resolved_by is not None:
+                if resolved_by == my_id:
+                    filtered.append(t)
+            else:
+                if (t.assigned_to_id == my_id):
+                    filtered.append(t)
+        resolved_list = filtered
 
     data = {
         "new": new_q.all(),
         "in_review": in_review_q.all(),
-        "resolved": resolved_q.all(),
-        "focus_tid": tid or 0,  # لتسليط الضوء إن وصل من إشعار
+        "resolved": resolved_list,
+        "focus_tid": tid or 0,
     }
 
     return templates.TemplateResponse(
@@ -122,19 +124,27 @@ def md_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     if not t:
         return RedirectResponse("/md/inbox", status_code=303)
 
-    # تأكيد أنها ضمن طابور MD
-    row = db.execute(text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"), {"tid": tid}).first()
+    row = db.execute(
+        text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"),
+        {"tid": tid},
+    ).first()
     qval = (row[0] if row else "cs") or "cs"
     if qval != "md":
         return RedirectResponse("/md/inbox", status_code=303)
 
-    # تعليم كـ مقروء للوكيل (MD)
+    # تعليم كـ مقروء
     t.unread_for_agent = False
     db.commit()
 
     return templates.TemplateResponse(
         "md_ticket.html",
-        {"request": request, "session_user": u_md, "ticket": t, "msgs": t.messages, "title": f"تذكرة #{t.id} (MD)"},
+        {
+            "request": request,
+            "session_user": u_md,
+            "ticket": t,
+            "msgs": t.messages,
+            "title": f"تذكرة #{t.id} (MD)",
+        },
     )
 
 # ---------------------------
@@ -150,35 +160,43 @@ def md_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_d
         return RedirectResponse("/", status_code=303)
 
     t = db.get(SupportTicket, ticket_id)
-    if t:
-        row = db.execute(text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"), {"tid": ticket_id}).first()
-        if not row or (row[0] or "cs") != "md":
-            return RedirectResponse("/md/inbox", status_code=303)
+    if not t:
+        return RedirectResponse("/md/inbox", status_code=303)
 
-        t.assigned_to_id = u_md["id"]
-        t.status = "open"
-        t.updated_at = datetime.utcnow()
-        t.unread_for_agent = False
+    # 🔒 لو مُغلقة لا نسمح بأي إجراء
+    if t.status == "resolved":
+        return RedirectResponse("/md/inbox", status_code=303)
 
-        md_name = (request.session["user"].get("first_name") or "").strip() or "مسؤول الودائع"
-        try:
-            push_notification(
-                db,
-                t.user_id,
-                "📬 تم فتح تذكرتك",
-                f"تم فتح الرسالة من طرف {md_name}",
-                url=f"/support/ticket/{t.id}",
-                kind="support",
-            )
-        except Exception:
-            pass
+    row = db.execute(
+        text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"),
+        {"tid": ticket_id},
+    ).first()
+    if not row or (row[0] or "cs") != "md":
+        return RedirectResponse("/md/inbox", status_code=303)
 
-        db.commit()
+    t.assigned_to_id = u_md["id"]
+    t.status = "open"
+    t.updated_at = datetime.utcnow()
+    t.unread_for_agent = False
 
+    md_name = (request.session["user"].get("first_name") or "").strip() or "مدير الوديعة"
+    try:
+        push_notification(
+            db,
+            t.user_id,
+            "📬 تم فتح تذكرتك",
+            f"تم فتح الرسالة من طرف {md_name}",
+            url=f"/support/ticket/{t.id}",
+            kind="support",
+        )
+    except Exception:
+        pass
+
+    db.commit()
     return RedirectResponse(f"/md/ticket/{ticket_id}", status_code=303)
 
 # ---------------------------
-# ردّ الـ MD على التذكرة
+# ردّ MD على التذكرة
 # ---------------------------
 @router.post("/ticket/{tid}/reply")
 def md_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), body: str = Form("")):
@@ -193,7 +211,14 @@ def md_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
     if not t:
         return RedirectResponse("/md/inbox", status_code=303)
 
-    row = db.execute(text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"), {"tid": tid}).first()
+    # 🔒 لو مُغلقة لا نسمح بالرد
+    if t.status == "resolved":
+        return RedirectResponse(f"/md/ticket/{t.id}", status_code=303)
+
+    row = db.execute(
+        text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"),
+        {"tid": tid},
+    ).first()
     if not row or (row[0] or "cs") != "md":
         return RedirectResponse("/md/inbox", status_code=303)
 
@@ -217,11 +242,11 @@ def md_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
     t.unread_for_agent = False
 
     try:
-        md_name = (request.session["user"].get("first_name") or "").strip() or "مسؤول الودائع"
+        md_name = (request.session["user"].get("first_name") or "").strip() or "مدير الوديعة"
         push_notification(
             db,
             t.user_id,
-            "💬 رد من فريق الودائع (MD)",
+            "💬 رد من فريق معالجة الودائع (MD)",
             f"ردّ عليك {md_name} في تذكرتك #{t.id}",
             url=f"/support/ticket/{t.id}",
             kind="support",
@@ -233,7 +258,7 @@ def md_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
     return RedirectResponse(f"/md/ticket/{t.id}", status_code=303)
 
 # ---------------------------
-# إغلاق التذكرة (Resolve) — إغلاق نهائي + تأشير من أغلق
+# إغلاق التذكرة (Resolve) — إغلاق نهائي
 # ---------------------------
 @router.post("/tickets/{ticket_id}/resolve")
 def md_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
@@ -245,60 +270,52 @@ def md_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
         return RedirectResponse("/", status_code=303)
 
     t = db.get(SupportTicket, ticket_id)
-    if t:
-        row = db.execute(text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"), {"tid": ticket_id}).first()
-        if not row or (row[0] or "cs") != "md":
-            return RedirectResponse("/md/inbox", status_code=303)
+    if not t:
+        return RedirectResponse("/md/inbox", status_code=303)
 
-        now = datetime.utcnow()
-        md_name = (request.session["user"].get("first_name") or "").strip() or "مسؤول الودائع"
+    row = db.execute(
+        text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"),
+        {"tid": ticket_id},
+    ).first()
+    if not row or (row[0] or "cs") != "md":
+        return RedirectResponse("/md/inbox", status_code=303)
 
-        # حالة التذكرة
-        t.status = "resolved"
-        t.resolved_at = now
-        t.updated_at = now
-        if not t.assigned_to_id:
-            t.assigned_to_id = u_md["id"]
+    now = datetime.utcnow()
+    md_name = (request.session["user"].get("first_name") or "").strip() or "مدير الوديعة"
 
-        # قفل نهائي + من أغلق (لو الأعمدة موجودة في الجدول سيتم التحديث، إن لم توجد نتجاهل بدون كسر)
-        try:
-            db.execute(
-                text("""
-                    UPDATE support_tickets
-                    SET resolved_locked = TRUE,
-                        resolved_by_id = :uid,
-                        updated_at = now()
-                    WHERE id = :tid
-                """),
-                {"uid": int(u_md["id"]), "tid": int(ticket_id)},
-            )
-        except Exception:
-            pass
+    t.status = "resolved"
+    t.resolved_at = now
+    t.updated_at = now
+    if not t.assigned_to_id:
+        t.assigned_to_id = u_md["id"]
 
-        # أضف رسالة نظامية
-        close_msg = SupportMessage(
-            ticket_id=t.id,
-            sender_id=u_md["id"],
-            sender_role="agent",
-            body=f"تم إغلاق التذكرة بواسطة {md_name} في {now.strftime('%Y-%m-%d %H:%M')}",
-            created_at=now,
+    # يسجّل من أغلقها (إن كان العمود موجودًا)
+    try:
+        setattr(t, "resolved_by_id", u_md["id"])
+    except Exception:
+        pass
+
+    close_msg = SupportMessage(
+        ticket_id=t.id,
+        sender_id=u_md["id"],
+        sender_role="agent",
+        body=f"تم إغلاق التذكرة بواسطة {md_name} في {now.strftime('%Y-%m-%d %H:%M')}",
+        created_at=now,
+    )
+    db.add(close_msg)
+
+    t.unread_for_user = True
+    try:
+        push_notification(
+            db,
+            t.user_id,
+            "✅ تم حل تذكرتك (MD)",
+            f"#{t.id} — {t.subject or ''}".strip(),
+            url=f"/support/ticket/{t.id}",
+            kind="support",
         )
-        db.add(close_msg)
+    except Exception:
+        pass
 
-        # إشعار للعميل
-        t.unread_for_user = True
-        try:
-            push_notification(
-                db,
-                t.user_id,
-                "✅ تم حل تذكرتك (MD)",
-                f"#{t.id} — {t.subject or ''}".strip(),
-                url=f"/support/ticket/{t.id}",
-                kind="support",
-            )
-        except Exception:
-            pass
-
-        db.commit()
-
+    db.commit()
     return RedirectResponse("/md/inbox", status_code=303)

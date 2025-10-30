@@ -242,6 +242,8 @@ def ensure_users_columns():
 
 ensure_sqlite_columns()
 ensure_users_columns()
+ensure_support_ticket_columns()   # ⬅️ أضف هذا السطر
+
 
 def seed_admin():
     db = SessionLocal()

@@ -135,10 +135,14 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
     # منتهية:
     # 🔹 كل mod يرى فقط تذاكره
     # 🔹 الأدمن يرى الجميع
-    resolved_q = base_q.filter(SupportTicket.status == "resolved")
-    if not is_admin:
-        resolved_q = resolved_q.filter(SupportTicket.assigned_to_id == u_mod["id"])
-    resolved_q = resolved_q.order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
+# منتهية:
+# - كل MOD يرى فقط ما أغلقه بنفسه (resolved_by_id)
+# - الأدمن يرى الجميع
+resolved_q = base_q.filter(SupportTicket.status == "resolved")
+if not is_admin:
+    resolved_q = resolved_q.filter(text("COALESCE(resolved_by_id, 0) = :uid")).params(uid=int(u_mod["id"]))
+resolved_q = resolved_q.order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
+
 
     data = {
         "new": new_q.all(),
