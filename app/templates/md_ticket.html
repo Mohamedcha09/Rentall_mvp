@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% set u = session_user or {} %}
+{% block content %}
+<div class="container py-3">
+  <div class="d-flex align-items-center justify-content-between">
+    <h4 class="m-0">تذكرة #{{ ticket.id }} (MD)</h4>
+    <a href="/md/inbox" class="btn btn-outline-secondary btn-sm">رجوع للصندوق</a>
+  </div>
+  <hr>
+
+  <div class="mb-2">
+    <div><strong>العنوان:</strong> {{ ticket.subject or "بدون عنوان" }}</div>
+    <div class="small text-muted">من العميل: {{ ticket.user and (ticket.user.first_name or ticket.user.email) or "عميل" }}</div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header">المحادثة</div>
+    <div class="card-body">
+      {% for m in msgs %}
+        <div class="mb-3">
+          <div class="small text-muted">
+            {{ m.created_at.strftime("%Y-%m-%d %H:%M") if m.created_at }}
+            — {{ "وكيل" if m.sender_role == "agent" else "عميل" }}
+          </div>
+          <div>{{ m.body }}</div>
+        </div>
+        <hr class="my-2">
+      {% endfor %}
+      {% if msgs|length == 0 %}
+        <div class="text-muted">لا توجد رسائل بعد.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <form method="post" action="/md/ticket/{{ ticket.id }}/reply" class="mb-3">
+    <div class="mb-2">
+      <textarea class="form-control" name="body" rows="3" placeholder="اكتب ردّك هنا..."></textarea>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary" type="submit">إرسال الرد</button>
+
+      {% if not ticket.assigned_to_id %}
+        <form method="post" action="/md/tickets/{{ ticket.id }}/assign_self">
+          <button class="btn btn-outline-secondary" type="submit">تولي التذكرة</button>
+        </form>
+      {% endif %}
+
+      <form method="post" action="/md/tickets/{{ ticket.id }}/resolve" onsubmit="return confirm('إغلاق نهائي للتذكرة؟');">
+        <button class="btn btn-success" type="submit">إغلاق (نهائي)</button>
+      </form>
+    </div>
+  </form>
+</div>
+{% endblock %}

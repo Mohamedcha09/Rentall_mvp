@@ -157,3 +157,28 @@ def mark_read(
     n.is_read = True
     db.commit()
     return _json({"ok": True})
+
+
+# === MD broadcast helper ===========================================
+# ينبه جميع مسؤولي الودائع (MD) + الأدمن بوجود تذكرة جديدة أو مهمة
+def notify_mds(db, title: str, body: str, url: str = "/md/inbox", kind: str = "support") -> int:
+    """
+    يرسل إشعارًا لكل المستخدمين الذين لديهم is_deposit_manager=True أو role='admin'
+    يعيد عدد المستلمين (best-effort).
+    """
+    sent = 0
+    try:
+        md_users = (
+            db.query(User)
+              .filter((User.is_deposit_manager == True) | (User.role == "admin"))
+              .all()
+        )
+        for u in md_users:
+            try:
+                push_notification(db, u.id, title, body, url=url, kind=kind)
+                sent += 1
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return sent

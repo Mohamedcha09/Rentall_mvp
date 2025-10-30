@@ -8,7 +8,7 @@ from sqlalchemy import desc, text
 
 from .database import get_db
 from .models import SupportTicket, SupportMessage, User
-from .notifications_api import push_notification, notify_mods
+from .notifications_api import push_notification, notify_mods, notify_mds
 
 templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(prefix="/cs", tags=["cs"])
@@ -341,4 +341,16 @@ def cs_transfer_queue(
             pass
 
     db.commit()
+        # إشعار مسؤولي الودائع فقط إذا التحويل إلى MD
+    if target == "md":
+        try:
+            notify_mds(
+                db,
+                title="📥 تذكرة جديدة تحتاج معالجة (MD)",
+                body=f"{t.subject or '(بدون عنوان)'} — #{t.id}",
+                url=f"/md/inbox?tid={t.id}",
+            )
+        except Exception:
+            pass
+
     return RedirectResponse(f"/cs/ticket/{t.id}", status_code=303)
