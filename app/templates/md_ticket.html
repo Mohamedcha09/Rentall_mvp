@@ -35,12 +35,42 @@
     {% endif %}
   </div>
 
-  {% if is_resolved %}
-    <div class="alert alert-success d-flex align-items-center" role="alert">
-      <i class="bi bi-lock-fill me-2"></i>
-      <div>تم إغلاق هذه التذكرة نهائيًا — يمكن استعراضها فقط ولا يمكن إرسال رسائل جديدة.</div>
-    </div>
-  {% endif %}
+  {% if not is_resolved %}
+  <div class="toolbar-sticky">
+    <!-- فورم الرد فقط -->
+    <form id="replyForm" method="post" action="/md/ticket/{{ ticket.id }}/reply" class="p-2">
+      <textarea class="form-control mb-2" name="body" rows="3" placeholder="اكتب ردّك هنا..." required></textarea>
+      <button class="btn btn-primary me-2" type="submit"><i class="bi bi-send"></i> إرسال الرد</button>
+    </form>
+
+    <!-- الأزرار الأخرى تكون خارج فورم الرد -->
+
+    {% if not ticket.assigned_to_id %}
+    <form method="post" action="/md/tickets/{{ ticket.id }}/assign_self" class="d-inline">
+      <button class="btn btn-outline-secondary mt-2" type="submit">
+        <i class="bi bi-person-check"></i> تولّي التذكرة
+      </button>
+    </form>
+    {% endif %}
+
+    <form method="post" action="/md/tickets/{{ ticket.id }}/transfer_to_mod"
+          onsubmit="return confirm('تحويل هذه التذكرة إلى فريق المراجعة (MOD)؟');"
+          class="d-inline">
+      <button class="btn btn-outline-warning mt-2" type="submit">
+        <i class="bi bi-arrow-left-right"></i> تحويل إلى MOD
+      </button>
+    </form>
+
+    <form method="post" action="/md/tickets/{{ ticket.id }}/resolve"
+          onsubmit="return confirm('إغلاق نهائي للتذكرة؟ لا يمكن الرجوع.');"
+          class="d-inline">
+      <button class="btn btn-success mt-2" type="submit">
+        <i class="bi bi-check2-circle"></i> إغلاق (نهائي)
+      </button>
+    </form>
+  </div>
+{% endif %}
+
 
   <div class="card shadow-sm mb-3">
     <div class="card-header d-flex align-items-center gap-2">
