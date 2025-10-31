@@ -42,6 +42,7 @@ def _ensure_md_session(db: Session, request: Request):
         return sess
     return None
 
+
 # ---------------------------
 # إغلاق تلقائي بعد 24h من عدم رد العميل (لطابور MD)
 # ---------------------------
@@ -92,9 +93,7 @@ def auto_close_24h_md(request: Request, db: Session = Depends(get_db)):
     db.commit()
     return JSONResponse({"closed": closed_ids, "count": len(closed_ids)})
 
-# ---------------------------
-# Inbox (قائمة التذاكر للـ MD)
-# ---------------------------
+
 # ---------------------------
 # Inbox (قائمة التذاكر للـ MD)
 # ---------------------------
@@ -147,7 +146,7 @@ def md_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = 
     resolved_q = resolved_q.order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
 
     data = {
-        "new": new_q.all(),                    # تم إرسالها جديد من CS
+        "new": new_q.all(),                      # تم إرسالها جديد من CS
         "from_mod": transferred_from_mod_q.all(),# ✅ القسم الجديد
         "in_review": in_review_q.all(),
         "resolved": resolved_q.all(),
@@ -179,7 +178,7 @@ def md_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     row = db.execute(text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"), {"tid": tid}).first()
     qval = (row[0] if row else "cs") or "cs"
 
-    # ✅ لو التذكرة ليست في طابور MD رجّع المستخدم لصندوق MD
+    # ✅ لو التذكرة ليست في طابور MD
     if qval != "md":
         return RedirectResponse(f"/md/inbox?tid={tid}", status_code=303)
 
@@ -216,7 +215,7 @@ def md_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_d
     if not t:
         return RedirectResponse("/md/inbox", status_code=303)
 
-    # ✅ غلق نهائي: ممنوع التولّي للجميع (حتى الأدمن)
+    # ✅ غلق نهائي: ممنوع التولّي
     if t.status == "resolved":
         return RedirectResponse(f"/md/ticket/{ticket_id}", status_code=303)
 
@@ -245,6 +244,7 @@ def md_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_d
     db.commit()
     return RedirectResponse(f"/md/ticket/{ticket_id}", status_code=303)
 
+
 # ---------------------------
 # ردّ MD على التذكرة
 # ---------------------------
@@ -261,7 +261,7 @@ def md_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
     if not t:
         return RedirectResponse("/md/inbox", status_code=303)
 
-    # ✅ غلق نهائي: ممنوع الرد للجميع (حتى الأدمن)
+    # ✅ غلق نهائي: ممنوع الرد
     if t.status == "resolved":
         return RedirectResponse(f"/md/ticket/{t.id}", status_code=303)
 
@@ -304,6 +304,7 @@ def md_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
     db.commit()
     return RedirectResponse(f"/md/ticket/{t.id}", status_code=303)
 
+
 # ---------------------------
 # إغلاق التذكرة (نهائي)
 # ---------------------------
@@ -327,7 +328,7 @@ def md_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     now = datetime.utcnow()
     agent_name = (request.session["user"].get("first_name") or "").strip() or "مدير الوديعة"
 
-    # 🔒 إغلاق نهائي (Locked)
+    # 🔒 إغلاق نهائي
     t.status = "resolved"
     t.resolved_at = now
     t.updated_at = now
@@ -414,22 +415,21 @@ def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(g
         )
         db.commit()
     except Exception:
-        db.rollback()  # نفشل الإشعار فقط، لا نلمس التحويل
+        db.rollback()  # نفشل الإشعار فقط
 
-    # 4) إشعار كل أعضاء MOD (بدون user_id=0)
+    # 4) إشعار كل أعضاء MOD
     try:
-        mod_users = db.query(User.id).filter(getattr(User, "is_mod", False) == True).all()
-        if mod_users:
-            for (mod_id,) in mod_users:
-                push_notification(
-                    db,
-                    mod_id,
-                    "📩 تذكرة جديدة من MD",
-                    f"توجد تذكرة محوّلة من إدارة الودائع (MD): #{t.id}",
-                    url=f"/mod/ticket/{t.id}",
-                    kind="support",
-                )
-            db.commit()
+        mod_users = db.query(User.id).filter(User.is_mod.is_(True)).all()
+        for (mod_id,) in mod_users:
+            push_notification(
+                db,
+                mod_id,
+                "📩 تذكرة جديدة من MD",
+                f"توجد تذكرة محوّلة من إدارة الودائع (MD): #{t.id}",
+                url=f"/mod/ticket/{t.id}",
+                kind="support",
+            )
+        db.commit()
     except Exception:
         db.rollback()
 

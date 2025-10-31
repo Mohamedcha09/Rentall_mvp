@@ -4,112 +4,112 @@
 <div class="container py-3">
   <h3 class="mb-3">صندوق الوارد (MD)</h3>
 
-  <!-- تم إرسالها جديد من طرف CS -->
-  <div class="mb-4">
-    <div class="d-flex align-items-center justify-content-between mb-2">
-      <h5 class="m-0">تم إرسالها جديد من طرف CS</h5>
-      <span class="badge bg-secondary">{{ (data.new or [])|length }}</span>
-    </div>
-    {% if data.new %}
-      <div class="list-group">
-        {% for t in data.new %}
-          <a class="list-group-item list-group-item-action {% if data.focus_tid and data.focus_tid == t.id %}active{% endif %}"
-             href="/md/ticket/{{t.id}}">
-            <div class="d-flex w-100 justify-content-between">
-              <strong>#{{t.id}} — {{ t.subject or "بدون عنوان" }}</strong>
-              <small>{{ (t.last_msg_at or t.created_at).strftime("%Y-%m-%d %H:%M") if t.last_msg_at or t.created_at }}</small>
-            </div>
-            <div class="small text-muted">
-              من: {{ t.user and (t.user.first_name or t.user.email) or "عميل" }}
-            </div>
-          </a>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div class="text-muted">لا توجد تذاكر جديدة حاليًا.</div>
-    {% endif %}
-  </div>
-
-    <!-- ✅ محوّلة من MD -->
-<div class="mb-4">
-  <div class="d-flex align-items-center justify-content-between mb-2">
-    <h5 class="m-0">تم تحويلها من MD</h5>
-    <span class="badge bg-info text-dark">{{ (data.from_md or [])|length }}</span>
-  </div>
-  {% if data.from_md %}
-    <div class="list-group">
-      {% for t in data.from_md %}
-        <a class="list-group-item list-group-item-action {% if data.focus_tid and data.focus_tid == t.id %}active{% endif %}"
-           href="/mod/ticket/{{t.id}}">
-          <div class="d-flex w-100 justify-content-between">
-            <strong>#{{t.id}} — {{ t.subject or "بدون عنوان" }}</strong>
-            <small>{{ (t.last_msg_at or t.updated_at or t.created_at)|string }}</small>
+  <div class="row g-3">
+    <!-- تم إرسالها جديد من طرف CS -->
+    <div class="col-12 col-lg-6 col-xxl-3">
+      <div class="card h-100">
+        <div class="card-header fw-bold d-flex justify-content-between">
+          <span>تم إرسالها جديد من طرف CS</span>
+          <span class="badge bg-secondary">{{ (data.new or [])|length }}</span>
+        </div>
+        {% if data.new %}
+          <div class="list-group list-group-flush">
+            {% for t in data.new %}
+              <a class="list-group-item list-group-item-action {% if data.focus_tid and data.focus_tid == t.id %}active{% endif %}"
+                 href="/md/ticket/{{t.id}}">
+                <div class="d-flex w-100 justify-content-between">
+                  <strong>#{{t.id}} — {{ t.subject or "بدون عنوان" }}</strong>
+                  <small>{{ (t.last_msg_at or t.created_at).strftime("%Y-%m-%d %H:%M") if t.last_msg_at or t.created_at }}</small>
+                </div>
+                <div class="small text-muted">من: {{ t.user and (t.user.first_name or t.user.email) or "عميل" }}</div>
+              </a>
+            {% endfor %}
           </div>
-          <div class="small text-muted">وُجهت إليكم من إدارة الودائع (MD)</div>
-        </a>
-      {% endfor %}
-    </div>
-  {% else %}
-    <div class="text-muted">لا يوجد تحويلات من MD حاليًا.</div>
-  {% endif %}
-</div>
-
-
-  <!-- قيد المراجعة -->
-  <div class="mb-4">
-    <div class="d-flex align-items-center justify-content-between mb-2">
-      <h5 class="m-0">قيد المراجعة</h5>
-      <span class="badge bg-warning text-dark">{{ (data.in_review or [])|length }}</span>
-    </div>
-    {% if data.in_review %}
-      <div class="list-group">
-        {% for t in data.in_review %}
-          <a class="list-group-item list-group-item-action"
-             href="/md/ticket/{{t.id}}">
-            <div class="d-flex w-100 justify-content-between">
-              <strong>#{{t.id}} — {{ t.subject or "بدون عنوان" }}</strong>
-              <small>{{ (t.last_msg_at or t.updated_at).strftime("%Y-%m-%d %H:%M") if t.last_msg_at or t.updated_at }}</small>
-            </div>
-            <div class="small text-muted">
-              معيّنة لـ: {{ t.assigned_to and (t.assigned_to.first_name or t.assigned_to.email) or "غير معيّنة" }}
-            </div>
-          </a>
-        {% endfor %}
+        {% else %}
+          <div class="card-body text-muted">لا توجد تذاكر جديدة حاليًا.</div>
+        {% endif %}
       </div>
-    {% else %}
-      <div class="text-muted">لا توجد تذاكر قيد المراجعة.</div>
-    {% endif %}
-  </div>
-
-  <!-- منتهية -->
-  <div class="mb-4">
-    <div class="d-flex align-items-center justify-content-between mb-2">
-      <h5 class="m-0">منتهية</h5>
-      <span class="badge bg-success">{{ (data.resolved or [])|length }}</span>
     </div>
-    {% if data.resolved %}
-      <div class="list-group">
-        {% for t in data.resolved %}
-          <a class="list-group-item list-group-item-action"
-             href="/md/ticket/{{t.id}}">
-            <div class="d-flex w-100 justify-content-between">
-              <strong>#{{t.id}} — {{ t.subject or "بدون عنوان" }}</strong>
-              <small>{{ (t.resolved_at or t.updated_at).strftime("%Y-%m-%d %H:%M") if t.resolved_at or t.updated_at }}</small>
-            </div>
-            <div class="small text-muted">
-              أغلقها: 
-              {% if t.assigned_to %}
-                {{ t.assigned_to.first_name or t.assigned_to.email }}
-              {% else %}
-                غير معروف
-              {% endif %}
-            </div>
-          </a>
-        {% endfor %}
+
+    <!-- ✅ محوّلة من MOD -->
+    <div class="col-12 col-lg-6 col-xxl-3">
+      <div class="card h-100">
+        <div class="card-header fw-bold d-flex justify-content-between">
+          <span>تم تحويلها من MOD</span>
+          <span class="badge bg-info text-dark">{{ (data.from_mod or [])|length }}</span>
+        </div>
+        <div class="list-group list-group-flush">
+          {% if data.from_mod %}
+            {% for t in data.from_mod %}
+              <a class="list-group-item list-group-item-action {% if data.focus_tid and data.focus_tid == t.id %}active{% endif %}"
+                 href="/md/ticket/{{ t.id }}">
+                <div class="d-flex w-100 justify-content-between">
+                  <strong>#{{ t.id }} — {{ t.subject or "بدون عنوان" }}</strong>
+                  <small>{{ (t.last_msg_at or t.updated_at or t.created_at)|string }}</small>
+                </div>
+                <div class="small text-muted">وُجهت إليكم من فريق MOD</div>
+              </a>
+            {% endfor %}
+          {% else %}
+            <div class="list-group-item text-muted">لا يوجد تحويلات من MOD حاليًا.</div>
+          {% endif %}
+        </div>
       </div>
-    {% else %}
-      <div class="text-muted">لا توجد تذاكر منتهية للعرض.</div>
-    {% endif %}
+    </div>
+
+    <!-- قيد المراجعة -->
+    <div class="col-12 col-lg-6 col-xxl-3">
+      <div class="card h-100">
+        <div class="card-header fw-bold d-flex justify-content-between">
+          <span>قيد المراجعة</span>
+          <span class="badge bg-warning text-dark">{{ (data.in_review or [])|length }}</span>
+        </div>
+        <div class="list-group list-group-flush">
+          {% if data.in_review %}
+            {% for t in data.in_review %}
+              <a class="list-group-item list-group-item-action" href="/md/ticket/{{t.id}}">
+                <div class="d-flex w-100 justify-content-between">
+                  <strong>#{{t.id}} — {{ t.subject or "بدون عنوان" }}</strong>
+                  <small>{{ (t.last_msg_at or t.updated_at).strftime("%Y-%m-%d %H:%M") if t.last_msg_at or t.updated_at }}</small>
+                </div>
+                <div class="small text-muted">
+                  معيّنة لـ: {{ t.assigned_to and (t.assigned_to.first_name or t.assigned_to.email) or "غير معيّنة" }}
+                </div>
+              </a>
+            {% endfor %}
+          {% else %}
+            <div class="list-group-item text-muted">لا توجد تذاكر قيد المراجعة.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- منتهية -->
+    <div class="col-12 col-lg-6 col-xxl-3">
+      <div class="card h-100">
+        <div class="card-header fw-bold d-flex justify-content-between">
+          <span>منتهية</span>
+          <span class="badge bg-success">{{ (data.resolved or [])|length }}</span>
+        </div>
+        <div class="list-group list-group-flush">
+          {% if data.resolved %}
+            {% for t in data.resolved %}
+              <a class="list-group-item list-group-item-action" href="/md/ticket/{{t.id}}">
+                <div class="d-flex w-100 justify-content-between">
+                  <strong>#{{t.id}} — {{ t.subject or "بدون عنوان" }}</strong>
+                  <small>{{ (t.resolved_at or t.updated_at).strftime("%Y-%m-%d %H:%M") if t.resolved_at or t.updated_at }}</small>
+                </div>
+                <div class="small text-muted">
+                  أغلقها: {% if t.assigned_to %}{{ t.assigned_to.first_name or t.assigned_to.email }}{% else %}غير معروف{% endif %}
+                </div>
+              </a>
+            {% endfor %}
+          {% else %}
+            <div class="list-group-item text-muted">لا توجد تذاكر منتهية للعرض.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}

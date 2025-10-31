@@ -98,9 +98,6 @@ def auto_close_24h(request: Request, db: Session = Depends(get_db)):
 # ---------------------------
 # Inbox (قائمة التذاكر للـ MOD)
 # ---------------------------
-# ---------------------------
-# Inbox (قائمة التذاكر للـ MOD)
-# ---------------------------
 @router.get("/inbox")
 def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = None):
     u = _require_login(request)
@@ -119,7 +116,6 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
             SupportTicket.assigned_to_id.is_(None),
-            # last_from != 'system' OR NULL
             text("(last_from IS NULL OR last_from <> 'system')")
         )
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
@@ -151,8 +147,8 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
     resolved_q = resolved_q.order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
 
     data = {
-        "new": new_q.all(),                    # تم إرسالها جديد من CS
-        "from_md": transferred_from_md_q.all(),# ✅ القسم الجديد
+        "new": new_q.all(),                      # تم إرسالها جديد من CS
+        "from_md": transferred_from_md_q.all(),  # ✅ القسم الجديد
         "in_review": in_review_q.all(),
         "resolved": resolved_q.all(),
         "focus_tid": tid or 0,
@@ -162,7 +158,6 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
         "mod_inbox.html",
         {"request": request, "session_user": u_mod, "title": "MOD Inbox", "data": data},
     )
-
 
 
 # ---------------------------
@@ -187,7 +182,7 @@ def mod_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     ).first()
     qval = (row[0] if row else "cs") or "cs"
 
-    # ✅ لو التذكرة ليست في طابور MOD رجّع المستخدم لصندوق MOD (مش MD)
+    # ✅ لو التذكرة ليست في طابور MOD
     if qval != "mod":
         return RedirectResponse(f"/mod/inbox?tid={tid}", status_code=303)
 
@@ -217,7 +212,7 @@ def mod_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_
     if not t:
         return RedirectResponse("/mod/inbox", status_code=303)
 
-    # ✅ غلق نهائي: ممنوع التولّي للجميع (حتى الأدمن)
+    # ✅ غلق نهائي: ممنوع التولّي
     if t.status == "resolved":
         return RedirectResponse(f"/mod/ticket/{ticket_id}", status_code=303)
 
@@ -266,7 +261,7 @@ def mod_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), 
     if not t:
         return RedirectResponse("/mod/inbox", status_code=303)
 
-    # ✅ غلق نهائي: ممنوع الرد للجميع (حتى الأدمن)
+    # ✅ غلق نهائي: ممنوع الرد
     if t.status == "resolved":
         return RedirectResponse(f"/mod/ticket/{t.id}", status_code=303)
 
@@ -339,7 +334,7 @@ def mod_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db))
     now = datetime.utcnow()
     mod_name = (request.session["user"].get("first_name") or "").strip() or "مدقّق المحتوى"
 
-    # ✅ غلق نهائي: حالة مقفلة
+    # ✅ غلق نهائي
     t.status = "resolved"
     t.resolved_at = now
     t.updated_at = now
@@ -375,8 +370,6 @@ def mod_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db))
 # ---------------------------
 # تحويل التذكرة إلى مدير الوديعة (MD)
 # ---------------------------
-# ---------------------------
-# تحويل التذكرة إلى مدير الوديعة (MD)
 @router.post("/tickets/{ticket_id}/transfer_to_md")
 def mod_transfer_to_md(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
@@ -428,20 +421,19 @@ def mod_transfer_to_md(ticket_id: int, request: Request, db: Session = Depends(g
     except Exception:
         db.rollback()
 
-    # 4) إشعار كل أعضاء MD (is_deposit_manager = True)
+    # 4) إشعار كل أعضاء MD
     try:
-        md_users = db.query(User.id).filter(getattr(User, "is_deposit_manager", False) == True).all()
-        if md_users:
-            for (md_id,) in md_users:
-                push_notification(
-                    db,
-                    md_id,
-                    "📩 تذكرة جديدة من MOD",
-                    f"توجد تذكرة محوّلة من فريق المراجعة (MOD): #{t.id}",
-                    url=f"/md/ticket/{t.id}",
-                    kind="support",
-                )
-            db.commit()
+        md_users = db.query(User.id).filter(User.is_deposit_manager.is_(True)).all()
+        for (md_id,) in md_users:
+            push_notification(
+                db,
+                md_id,
+                "📩 تذكرة جديدة من MOD",
+                f"توجد تذكرة محوّلة من فريق المراجعة (MOD): #{t.id}",
+                url=f"/md/ticket/{t.id}",
+                kind="support",
+            )
+        db.commit()
     except Exception:
         db.rollback()
 
