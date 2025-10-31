@@ -53,7 +53,7 @@ def auto_close_24h(request: Request, db: Session = Depends(get_db)):
     tickets = db.execute(
         text("""
             SELECT id FROM support_tickets
-            WHERE COALESCE(queue, 'cs')='mod'
+            WHERE LOWER(COALESCE(queue, 'cs'))='mod'
               AND status IN ('open','new')
               AND last_from='agent'
               AND last_msg_at < (NOW() - INTERVAL '24 hours')
@@ -109,24 +109,24 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
 
     is_admin = _is_admin(u_mod)
 
-    base_q = db.query(SupportTicket).filter(text("COALESCE(queue, 'cs') = 'mod'"))
+    base_q = db.query(SupportTicket).filter(text("LOWER(COALESCE(queue, 'cs')) = 'mod'"))
 
-    # ✅ جديدة من CS (تستثني التحويلات)
+    # ✅ جديدة من CS (تستثني المحوَّلة)
     new_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
             SupportTicket.assigned_to_id.is_(None),
-            text("(last_from IS NULL OR last_from NOT IN ('system_from_mod','system_from_md'))")
+            text("(last_from IS NULL OR last_from <> 'system')")
         )
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
     )
 
-    # ✅ محوّلة من MD (غير معيّنة وآخر حدث system_from_md)
+    # ✅ محوّلة من MD (غير معيّنة وآخر حدث system)
     transferred_from_md_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
             SupportTicket.assigned_to_id.is_(None),
-            text("last_from = 'system_from_md'")
+            text("last_from = 'system'")
         )
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
     )
@@ -177,7 +177,7 @@ def mod_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
         return RedirectResponse("/mod/inbox", status_code=303)
 
     row = db.execute(
-        text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"),
+        text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"),
         {"tid": tid},
     ).first()
     qval = (row[0] if row else "cs") or "cs"
@@ -217,7 +217,7 @@ def mod_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_
         return RedirectResponse(f"/mod/ticket/{ticket_id}", status_code=303)
 
     row = db.execute(
-        text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"),
+        text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"),
         {"tid": ticket_id},
     ).first()
     if not row or (row[0] or "cs") != "mod":
@@ -266,7 +266,7 @@ def mod_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), 
         return RedirectResponse(f"/mod/ticket/{t.id}", status_code=303)
 
     row = db.execute(
-        text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"),
+        text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"),
         {"tid": tid},
     ).first()
     if not row or (row[0] or "cs") != "mod":
@@ -325,7 +325,7 @@ def mod_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db))
         return RedirectResponse("/mod/inbox", status_code=303)
 
     row = db.execute(
-        text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"),
+        text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"),
         {"tid": ticket_id},
     ).first()
     if not row or (row[0] or "cs") != "mod":
@@ -392,7 +392,7 @@ def mod_transfer_to_md(ticket_id: int, request: Request, db: Session = Depends(g
     t.status = "open"
     t.updated_at = now
     t.last_msg_at = now
-    t.last_from = "system_from_mod"
+    t.last_from = "system"
     t.unread_for_agent = False
     t.unread_for_user = True
 

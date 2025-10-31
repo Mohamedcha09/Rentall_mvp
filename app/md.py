@@ -52,7 +52,7 @@ def auto_close_24h_md(request: Request, db: Session = Depends(get_db)):
     rows = db.execute(
         text("""
             SELECT id FROM support_tickets
-            WHERE COALESCE(queue, 'cs')='md'
+            WHERE LOWER(COALESCE(queue, 'cs'))='md'
               AND status IN ('open','new')
               AND last_from='agent'
               AND last_msg_at < (NOW() - INTERVAL '24 hours')
@@ -108,24 +108,24 @@ def md_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = 
 
     is_admin = _is_admin(u_md)
 
-    base_q = db.query(SupportTicket).filter(text("COALESCE(queue, 'cs') = 'md'"))
+    base_q = db.query(SupportTicket).filter(text("LOWER(COALESCE(queue, 'cs')) = 'md'"))
 
-    # ✅ جديدة من CS (تستثني التحويلات)
+    # ✅ جديدة من CS (تستثني المحوَّلة)
     new_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
             SupportTicket.assigned_to_id.is_(None),
-            text("(last_from IS NULL OR last_from NOT IN ('system_from_mod','system_from_md'))")
+            text("(last_from IS NULL OR last_from <> 'system')")
         )
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
     )
 
-    # ✅ محوّلة من MOD (غير معيّنة وآخر حدث system_from_mod)
+    # ✅ محوّلة من MOD (غير معيّنة وآخر حدث system)
     transferred_from_mod_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
             SupportTicket.assigned_to_id.is_(None),
-            text("last_from = 'system_from_mod'")
+            text("last_from = 'system'")
         )
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
     )
@@ -175,7 +175,7 @@ def md_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     if not t:
         return RedirectResponse("/md/inbox", status_code=303)
 
-    row = db.execute(text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"), {"tid": tid}).first()
+    row = db.execute(text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"), {"tid": tid}).first()
     qval = (row[0] if row else "cs") or "cs"
 
     # ✅ لو التذكرة ليست في طابور MD
@@ -219,7 +219,7 @@ def md_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_d
     if t.status == "resolved":
         return RedirectResponse(f"/md/ticket/{ticket_id}", status_code=303)
 
-    row = db.execute(text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"), {"tid": ticket_id}).first()
+    row = db.execute(text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"), {"tid": ticket_id}).first()
     if not row or (row[0] or "cs") != "md":
         return RedirectResponse("/md/inbox", status_code=303)
 
@@ -265,7 +265,7 @@ def md_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
     if t.status == "resolved":
         return RedirectResponse(f"/md/ticket/{t.id}", status_code=303)
 
-    row = db.execute(text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"), {"tid": tid}).first()
+    row = db.execute(text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"), {"tid": tid}).first()
     if not row or (row[0] or "cs") != "md":
         return RedirectResponse("/md/inbox", status_code=303)
 
@@ -321,7 +321,7 @@ def md_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     if not t:
         return RedirectResponse("/md/inbox", status_code=303)
 
-    row = db.execute(text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"), {"tid": ticket_id}).first()
+    row = db.execute(text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"), {"tid": ticket_id}).first()
     if not row or (row[0] or "cs") != "md":
         return RedirectResponse("/md/inbox", status_code=303)
 
@@ -388,7 +388,7 @@ def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(g
     t.status = "open"
     t.updated_at = now
     t.last_msg_at = now
-    t.last_from = "system_from_md"
+    t.last_from = "system"
     t.unread_for_agent = False
     t.unread_for_user = True
 
