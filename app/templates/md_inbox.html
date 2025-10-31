@@ -30,6 +30,31 @@
     {% endif %}
   </div>
 
+  <!-- ✅ محوّلة من MOD -->
+<div class="mb-4">
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h5 class="m-0">تم تحويلها من MOD</h5>
+    <span class="badge bg-info text-dark">{{ (data.from_mod or [])|length }}</span>
+  </div>
+  {% if data.from_mod %}
+    <div class="list-group">
+      {% for t in data.from_mod %}
+        <a class="list-group-item list-group-item-action {% if data.focus_tid and data.focus_tid == t.id %}active{% endif %}"
+           href="/md/ticket/{{t.id}}">
+          <div class="d-flex w-100 justify-content-between">
+            <strong>#{{t.id}} — {{ t.subject or "بدون عنوان" }}</strong>
+            <small>{{ (t.last_msg_at or t.updated_at or t.created_at)|string }}</small>
+          </div>
+          <div class="small text-muted">وُجهت إليكم من فريق MOD</div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-muted">لا يوجد تحويلات من MOD حاليًا.</div>
+  {% endif %}
+</div>
+
+
   <!-- قيد المراجعة -->
   <div class="mb-4">
     <div class="d-flex align-items-center justify-content-between mb-2">

@@ -95,6 +95,9 @@ def auto_close_24h_md(request: Request, db: Session = Depends(get_db)):
 # ---------------------------
 # Inbox (قائمة التذاكر للـ MD)
 # ---------------------------
+# ---------------------------
+# Inbox (قائمة التذاكر للـ MD)
+# ---------------------------
 @router.get("/inbox")
 def md_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = None):
     u = _require_login(request)
@@ -106,19 +109,29 @@ def md_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = 
 
     is_admin = _is_admin(u_md)
 
-    # طابور MD فقط
     base_q = db.query(SupportTicket).filter(text("COALESCE(queue, 'cs') = 'md'"))
 
-    # جديدة: غير مُعيّنة (قد تأتي new أو open لكن بدون معيّن)
+    # ✅ جديدة من CS (تستثني المحوَّلة)
     new_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
             SupportTicket.assigned_to_id.is_(None),
+            text("(last_from IS NULL OR last_from <> 'system')")
         )
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
     )
 
-    # قيد المراجعة: مفتوحة ومُعيّنة لمدير الوديعة
+    # ✅ محوّلة من MOD (غير معيّنة وآخر حدث system)
+    transferred_from_mod_q = (
+        base_q.filter(
+            SupportTicket.status.in_(("new", "open")),
+            SupportTicket.assigned_to_id.is_(None),
+            text("last_from = 'system'")
+        )
+        .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
+    )
+
+    # قيد المراجعة: مفتوحة ومُعيّنة
     in_review_q = (
         base_q.filter(
             SupportTicket.status == "open",
@@ -127,14 +140,15 @@ def md_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = 
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
     )
 
-    # منتهية: الأدمن يرى الجميع، وغير الأدمن يرى ما تولّاه فقط
+    # منتهية
     resolved_q = base_q.filter(SupportTicket.status == "resolved")
     if not is_admin:
         resolved_q = resolved_q.filter(SupportTicket.assigned_to_id == u_md["id"])
     resolved_q = resolved_q.order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
 
     data = {
-        "new": new_q.all(),
+        "new": new_q.all(),                    # تم إرسالها جديد من CS
+        "from_mod": transferred_from_mod_q.all(),# ✅ القسم الجديد
         "in_review": in_review_q.all(),
         "resolved": resolved_q.all(),
         "focus_tid": tid or 0,
@@ -144,6 +158,7 @@ def md_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = 
         "md_inbox.html",
         {"request": request, "session_user": u_md, "title": "MD Inbox", "data": data},
     )
+
 
 # ---------------------------
 # عرض تذكرة MD
