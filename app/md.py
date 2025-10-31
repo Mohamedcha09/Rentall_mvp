@@ -365,7 +365,6 @@ def md_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
 # ---------------------------
 # تحويل التذكرة إلى المدقّق (MOD)
 # ---------------------------
-
 @router.post("/tickets/{ticket_id}/transfer_to_mod")
 def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
@@ -385,11 +384,11 @@ def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(g
 
     now = datetime.utcnow()
     t.queue = "mod"
-    t.assigned_to_id = None        # تصبح غير مُعيّنة في طابور MOD
+    t.assigned_to_id = None
     t.status = "open"
     t.updated_at = now
     t.last_msg_at = now
-    t.last_from = "system"
+    t.last_from = "system"  # ✅ ضروري حتى يظهر في "تم تحويلها من MD"
     t.unread_for_agent = False
     t.unread_for_user = True
 
@@ -401,18 +400,31 @@ def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(g
         created_at=now,
     ))
 
+    # إشعار للعميل
     try:
         push_notification(
             db,
             t.user_id,
             "🔁 تم تحويل تذكرتك",
-            f"تم تحويل تذكرتك #{t.id} إلى فريق المراجعة (MOD) للمتابعة.",
+            f"تذكرتك #{t.id} تم تحويلها إلى فريق المراجعة (MOD).",
             url=f"/support/ticket/{t.id}",
             kind="support",
         )
     except Exception:
         pass
 
+    # إشعار لفريق MOD
+    try:
+        push_notification(
+            db,
+            0,
+            "📩 تذكرة جديدة من MD",
+            f"توجد تذكرة جديدة محولة من إدارة الودائع (MD): #{t.id}",
+            url=f"/mod/ticket/{t.id}",
+            kind="support",
+        )
+    except Exception:
+        pass
+
     db.commit()
-    # 👍 ابقِ المستخدم في صندوق MD (لا تفترض أنه يملك صلاحية MOD)
     return RedirectResponse("/md/inbox", status_code=303)

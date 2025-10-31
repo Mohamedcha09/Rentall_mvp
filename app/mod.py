@@ -396,11 +396,11 @@ def mod_transfer_to_md(ticket_id: int, request: Request, db: Session = Depends(g
 
     now = datetime.utcnow()
     t.queue = "md"
-    t.assigned_to_id = None         # تصبح غير مُعيّنة في طابور MD
+    t.assigned_to_id = None
     t.status = "open"
     t.updated_at = now
     t.last_msg_at = now
-    t.last_from = "system"
+    t.last_from = "system"  # ✅ ضروري حتى يظهر في "تم تحويلها من MOD"
     t.unread_for_agent = False
     t.unread_for_user = True
 
@@ -412,18 +412,31 @@ def mod_transfer_to_md(ticket_id: int, request: Request, db: Session = Depends(g
         created_at=now,
     ))
 
+    # إشعار للعميل
     try:
         push_notification(
             db,
             t.user_id,
             "🔁 تم تحويل تذكرتك",
-            f"تم تحويل تذكرتك #{t.id} إلى إدارة الودائع (MD) للمتابعة.",
+            f"تذكرتك #{t.id} تم تحويلها إلى إدارة الودائع (MD).",
             url=f"/support/ticket/{t.id}",
             kind="support",
         )
     except Exception:
         pass
 
+    # إشعار لفريق MD
+    try:
+        push_notification(
+            db,
+            0,
+            "📩 تذكرة جديدة من MOD",
+            f"توجد تذكرة جديدة محولة من فريق المراجعة (MOD): #{t.id}",
+            url=f"/md/ticket/{t.id}",
+            kind="support",
+        )
+    except Exception:
+        pass
+
     db.commit()
-    # 👍 ابقِ المستخدم في صندوق MOD
     return RedirectResponse("/mod/inbox", status_code=303)
