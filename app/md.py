@@ -108,43 +108,35 @@ def md_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = 
 
     is_admin = _is_admin(u_md)
 
-    base_q = db.query(SupportTicket).filter(
-        text("LOWER(COALESCE(queue, 'cs')) = 'md'")
-    )
+    base_q = db.query(SupportTicket).filter(text("LOWER(COALESCE(queue,'cs'))='md'"))
 
-    # جديدة من CS (ليست محوّلة من أنظمة أخرى)
-    new_q = (
-        base_q.filter(
-            SupportTicket.status.in_(("new", "open")),
-            SupportTicket.assigned_to_id.is_(None),
-            text(
-                "(last_from IS NULL OR LOWER(last_from) NOT IN ('system_md','system_mod'))"
-            ),
-        )
-        .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
-    )
+from_mod_q = base_q.filter(
+    SupportTicket.status.in_(("new","open")),
+    SupportTicket.assigned_to_id.is_(None),
+    text("""
+      (
+        SELECT sm.body FROM support_messages sm
+        WHERE sm.ticket_id = support_tickets.id AND LOWER(sm.sender_role)='system'
+        ORDER BY sm.created_at DESC
+        LIMIT 1
+      ) LIKE '%[XFER_MOD_TO_MD]%'
+    """)
+).order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
 
-    # محوّلة من MOD (آخر حدث system_mod أو system برسالة تحويل من MOD)
-    transferred_from_mod_q = (
-        base_q.filter(
-            SupportTicket.status.in_(("new", "open")),
-            SupportTicket.assigned_to_id.is_(None),
-            text(
-                """
-                (
-                  LOWER(COALESCE(last_from,'')) IN ('system_mod','system')
-                  AND EXISTS (
-                    SELECT 1 FROM support_messages sm
-                    WHERE sm.ticket_id = support_tickets.id
-                      AND LOWER(sm.sender_role)='system'
-                      AND sm.body ILIKE '%فريق المراجعة (MOD)%'
-                  )
-                )
-                """
-            ),
-        )
-        .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
+new_q = base_q.filter(
+    SupportTicket.status.in_(("new","open")),
+    SupportTicket.assigned_to_id.is_(None),
+).filter(text("""
+    NOT (
+      (
+        SELECT sm.body FROM support_messages sm
+        WHERE sm.ticket_id = support_tickets.id AND LOWER(sm.sender_role)='system'
+        ORDER BY sm.created_at DESC
+        LIMIT 1
+      ) LIKE '%[XFER_MOD_TO_MD]%'
     )
+""")).order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
+
 
     # قيد المراجعة: مفتوحة ومُعيّنة
     in_review_q = (
@@ -399,7 +391,7 @@ def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(g
     t.status = "open"
     t.updated_at = now
     t.last_msg_at = now
-    t.last_from = "system_md"
+    t.last_from = "system"
     t.unread_for_agent = False
     t.unread_for_user = True
 
@@ -407,7 +399,7 @@ def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(g
         ticket_id=t.id,
         sender_id=u_md["id"],
         sender_role="system",
-        body="🔁 تم تحويل التذكرة إلى فريق المراجعة (MOD) لمتابعة الحالة.",
+        body="[XFER_MD_TO_MOD] 🔁 تم تحويل التذكرة إلى فريق المراجعة (MOD) لمتابعة الحالة.",
         created_at=now,
     ))
 

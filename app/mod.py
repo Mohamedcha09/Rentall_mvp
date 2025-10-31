@@ -109,43 +109,35 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
 
     is_admin = _is_admin(u_mod)
 
-    base_q = db.query(SupportTicket).filter(
-        text("LOWER(COALESCE(queue, 'cs')) = 'mod'")
-    )
+    base_q = db.query(SupportTicket).filter(text("LOWER(COALESCE(queue,'cs'))='mod'"))
 
-    # جديدة من CS (ليست محوّلة)
-    new_q = (
-        base_q.filter(
-            SupportTicket.status.in_(("new", "open")),
-            SupportTicket.assigned_to_id.is_(None),
-            text(
-                "(last_from IS NULL OR LOWER(last_from) NOT IN ('system_md','system_mod'))"
-            ),
-        )
-        .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
-    )
+from_md_q = base_q.filter(
+    SupportTicket.status.in_(("new","open")),
+    SupportTicket.assigned_to_id.is_(None),
+    text("""
+      (
+        SELECT sm.body FROM support_messages sm
+        WHERE sm.ticket_id = support_tickets.id AND LOWER(sm.sender_role)='system'
+        ORDER BY sm.created_at DESC
+        LIMIT 1
+      ) LIKE '%[XFER_MD_TO_MOD]%'
+    """)
+).order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
 
-    # محوّلة من MD
-    transferred_from_md_q = (
-        base_q.filter(
-            SupportTicket.status.in_(("new", "open")),
-            SupportTicket.assigned_to_id.is_(None),
-            text(
-                """
-                (
-                  LOWER(COALESCE(last_from,'')) IN ('system_md','system')
-                  AND EXISTS (
-                    SELECT 1 FROM support_messages sm
-                    WHERE sm.ticket_id = support_tickets.id
-                      AND LOWER(sm.sender_role)='system'
-                      AND sm.body ILIKE '%من إدارة الودائع (MD)%'
-                  )
-                )
-                """
-            ),
-        )
-        .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
+new_q = base_q.filter(
+    SupportTicket.status.in_(("new","open")),
+    SupportTicket.assigned_to_id.is_(None),
+).filter(text("""
+    NOT (
+      (
+        SELECT sm.body FROM support_messages sm
+        WHERE sm.ticket_id = support_tickets.id AND LOWER(sm.sender_role)='system'
+        ORDER BY sm.created_at DESC
+        LIMIT 1
+      ) LIKE '%[XFER_MD_TO_MOD]%'
     )
+""")).order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
+
 
     # قيد المراجعة
     in_review_q = (
@@ -406,7 +398,7 @@ def mod_transfer_to_md(ticket_id: int, request: Request, db: Session = Depends(g
     t.status = "open"
     t.updated_at = now
     t.last_msg_at = now
-    t.last_from = "system_mod"
+    t.last_from = "system"
     t.unread_for_agent = False
     t.unread_for_user = True
 
@@ -414,7 +406,7 @@ def mod_transfer_to_md(ticket_id: int, request: Request, db: Session = Depends(g
         ticket_id=t.id,
         sender_id=u_mod["id"],
         sender_role="system",
-        body="🔁 تم تحويل التذكرة إلى إدارة الودائع (MD) لمتابعة الحالة.",
+        body="[XFER_MOD_TO_MD] 🔁 تم تحويل التذكرة إلى إدارة الودائع (MD) لمتابعة الحالة.",
         created_at=now,
     ))
 
