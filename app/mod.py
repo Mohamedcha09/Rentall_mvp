@@ -122,13 +122,30 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
     )
 
     # ✅ محوّلة من MD (غير معيّنة وآخر حدث system)
-    transferred_from_md_q = (
-        base_q.filter(
-            SupportTicket.status.in_(("new", "open")),
-            SupportTicket.assigned_to_id.is_(None),
-            text("last_from = 'system'")
+    # ✅ محوّلة من MD (آخر رسالة نظام تقول: إلى فريق المراجعة (MOD))
+transferred_from_md_q = (
+    base_q.filter(
+        SupportTicket.status.in_(("new", "open")),
+        SupportTicket.assigned_to_id.is_(None),
+        text("""
+        EXISTS (
+            SELECT 1
+            FROM support_messages sm
+            WHERE sm.ticket_id = support_tickets.id
+              AND sm.sender_role = 'system'
+              AND sm.created_at = (
+                  SELECT MAX(created_at)
+                  FROM support_messages
+                  WHERE ticket_id = support_tickets.id
+                    AND sender_role = 'system'
+              )
+              AND sm.body LIKE '%%إلى فريق المراجعة (MOD)%%'
         )
-        .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
+        """),
+    )
+    .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
+)
+ .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
     )
 
     # قيد المراجعة: مفتوحة ومُعيّنة
