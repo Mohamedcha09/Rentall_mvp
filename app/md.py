@@ -377,18 +377,17 @@ def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(g
     t = db.get(SupportTicket, ticket_id)
     if not t:
         return RedirectResponse("/md/inbox", status_code=303)
-
-    # لا تحويل لو كانت مغلقة نهائياً
     if t.status == "resolved":
         return RedirectResponse(f"/md/ticket/{ticket_id}", status_code=303)
 
     now = datetime.utcnow()
+    # 1) انقل التذكرة إلى mod وسجّل رسالة system
     t.queue = "mod"
     t.assigned_to_id = None
     t.status = "open"
     t.updated_at = now
     t.last_msg_at = now
-    t.last_from = "system"  # ✅ ضروري حتى يظهر في "تم تحويلها من MD"
+    t.last_from = "system"
     t.unread_for_agent = False
     t.unread_for_user = True
 
@@ -400,7 +399,10 @@ def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(g
         created_at=now,
     ))
 
-    # إشعار للعميل
+    # 2) ثبّت التحويل أولًا
+    db.commit()
+
+    # 3) إشعار العميل
     try:
         push_notification(
             db,
@@ -410,21 +412,25 @@ def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(g
             url=f"/support/ticket/{t.id}",
             kind="support",
         )
+        db.commit()
     except Exception:
-        pass
+        db.rollback()  # نفشل الإشعار فقط، لا نلمس التحويل
 
-    # إشعار لفريق MOD
+    # 4) إشعار كل أعضاء MOD (بدون user_id=0)
     try:
-        push_notification(
-            db,
-            0,
-            "📩 تذكرة جديدة من MD",
-            f"توجد تذكرة جديدة محولة من إدارة الودائع (MD): #{t.id}",
-            url=f"/mod/ticket/{t.id}",
-            kind="support",
-        )
+        mod_users = db.query(User.id).filter(getattr(User, "is_mod", False) == True).all()
+        if mod_users:
+            for (mod_id,) in mod_users:
+                push_notification(
+                    db,
+                    mod_id,
+                    "📩 تذكرة جديدة من MD",
+                    f"توجد تذكرة محوّلة من إدارة الودائع (MD): #{t.id}",
+                    url=f"/mod/ticket/{t.id}",
+                    kind="support",
+                )
+            db.commit()
     except Exception:
-        pass
+        db.rollback()
 
-    db.commit()
     return RedirectResponse("/md/inbox", status_code=303)
