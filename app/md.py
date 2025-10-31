@@ -163,30 +163,19 @@ def md_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
 
     row = db.execute(text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"), {"tid": tid}).first()
     qval = (row[0] if row else "cs") or "cs"
-    if qval != "md":
-    return RedirectResponse(f"/mod/inbox?tid={tid}", status_code=303)
 
-    # ✅ التعيين التلقائي بمجرد فتح الصفحة إذا كانت غير مُعيّنة → تتحول إلى "قيد المراجعة"
+    # ✅ لو التذكرة ليست في طابور MD رجّع المستخدم لصندوق MD
+    if qval != "md":
+        return RedirectResponse(f"/md/inbox?tid={tid}", status_code=303)
+
+    # ✅ التعيين التلقائي لو غير مُعيّنة
     now = datetime.utcnow()
     if t.assigned_to_id is None:
         t.assigned_to_id = u_md["id"]
         t.status = "open"
         t.updated_at = now
-        t.unread_for_agent = False
-        try:
-            agent_name = (request.session["user"].get("first_name") or "").strip() or "مدير الوديعة"
-            push_notification(
-                db,
-                t.user_id,
-                "📬 تم فتح تذكرتك",
-                f"تم فتح الرسالة من طرف {agent_name}",
-                url=f"/support/ticket/{t.id}",
-                kind="support",
-            )
-        except Exception:
-            pass
 
-    # تعليم كمقروء للوكيل
+    # ✅ علّم رسائل الوكيل كمقروءة
     t.unread_for_agent = False
     db.commit()
 
@@ -194,6 +183,7 @@ def md_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
         "md_ticket.html",
         {"request": request, "session_user": u_md, "ticket": t, "msgs": t.messages, "title": f"تذكرة #{t.id} (MD)"},
     )
+
 
 # ---------------------------
 # تولّي التذكرة (Assign to me)

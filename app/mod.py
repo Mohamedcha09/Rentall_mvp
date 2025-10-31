@@ -166,15 +166,16 @@ def mod_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
         {"tid": tid},
     ).first()
     qval = (row[0] if row else "cs") or "cs"
-    if qval != "mod":
-            return RedirectResponse(f"/md/inbox?tid={tid}", status_code=303)
 
-    # تعليم كـ مقروء للمدقق
+    # ✅ لو التذكرة ليست في طابور MOD رجّع المستخدم لصندوق MOD (مش MD)
+    if qval != "mod":
+        return RedirectResponse(f"/mod/inbox?tid={tid}", status_code=303)
+
+    # ✅ علّم رسائل الوكيل كمقروءة
     t.unread_for_agent = False
     db.commit()
 
     return templates.TemplateResponse(
-        
         "mod_ticket.html",
         {"request": request, "session_user": u_mod, "ticket": t, "msgs": t.messages, "title": f"تذكرة #{t.id} (MOD)"},
     )
