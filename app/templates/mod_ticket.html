@@ -1,86 +1,97 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container py-3">
+<style>
+  .ticket-wrap{max-width:980px;margin:auto}
+  .chip{font-size:.8rem;padding:.25rem .55rem;border:1px solid var(--border);border-radius:999px;background:rgba(255,255,255,.03)}
+  .msg{border-radius:14px;padding:.6rem .8rem;white-space:pre-wrap}
+  .msg-user{background:rgba(25,135,84,.08);border:1px solid rgba(25,135,84,.2)}
+  .msg-agent{background:rgba(13,110,253,.08);border:1px solid rgba(13,110,253,.2)}
+  .msg-system{background:rgba(108,117,125,.08);border:1px dashed rgba(108,117,125,.35);font-style:italic}
+  .msg-meta{font-size:.78rem;color:#888}
+  .card-chat{max-height:58vh;overflow:auto}
+  .toolbar-sticky{position:sticky;bottom:0;z-index:2;background:linear-gradient(to top, rgba(0,0,0,.06), transparent 42%);padding-top:.4rem;border-top:1px solid rgba(255,255,255,.08)}
+  .badge-locked{background:linear-gradient(135deg,#198754,#157347)}
+</style>
+
+<div class="container py-3 ticket-wrap" dir="rtl">
   <div class="d-flex align-items-center justify-content-between">
     <h4 class="m-0">تذكرة (MOD) #{{ ticket.id }}</h4>
-    <a href="/mod/inbox" class="btn btn-outline-secondary btn-sm">رجوع للصندوق</a>
+    <a href="/mod/inbox" class="btn btn-outline-secondary btn-sm"><i class="bi bi-inbox"></i> رجوع للصندوق</a>
   </div>
-  <hr>
+  <hr class="my-3">
 
   {% set is_resolved = (ticket.status == 'resolved') %}
 
-  <div class="mb-2 text-muted">
-    الموضوع: {{ ticket.subject or 'بدون عنوان' }}
-    · الحالة:
+  <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+    <span class="chip"><i class="bi bi-tag"></i> الموضوع: {{ ticket.subject or 'بدون عنوان' }}</span>
+    <span class="chip"><i class="bi bi-person"></i> العميل: #{{ ticket.user_id }}</span>
     {% if is_resolved %}
-      <span class="badge bg-success">منتهية</span>
+      <span class="chip text-bg-success border-0"><i class="bi bi-lock-fill"></i> منتهية</span>
     {% else %}
-      <span class="badge bg-warning text-dark">قيد المراجعة</span>
+      <span class="chip text-bg-warning border-0 text-dark"><i class="bi bi-hourglass-split"></i> قيد المراجعة</span>
     {% endif %}
-    · العميل: #{{ ticket.user_id }}
+    {% if ticket.assigned_to_id %}
+      <span class="chip"><i class="bi bi-person-badge"></i> مُعيّنة إلى: #{{ ticket.assigned_to_id }}</span>
+    {% endif %}
   </div>
 
   {% if is_resolved %}
     <div class="alert alert-success d-flex align-items-center" role="alert">
       <i class="bi bi-lock-fill me-2"></i>
-      <div>تم إغلاق هذه التذكرة نهائيًا — استعراض فقط، بلا رسائل جديدة.</div>
+      <div>تم إغلاق هذه التذكرة نهائيًا — استعراض فقط، لا يمكن إرسال رسائل جديدة.</div>
     </div>
   {% endif %}
 
-  <div class="card mb-3">
-    <div class="card-header">المحادثة</div>
-    <div class="card-body">
-      {% if msgs %}
+  <div class="card shadow-sm mb-3">
+    <div class="card-header d-flex align-items-center gap-2">
+      <i class="bi bi-chat-dots"></i> المحادثة
+      <span class="ms-auto small text-muted">آخر تحديث: {{ ticket.updated_at and (ticket.updated_at|string)[:16] }}</span>
+    </div>
+    <div class="card-body card-chat">
+      {% if msgs and msgs|length %}
         {% for m in msgs %}
-          <div class="mb-3 {% if m.sender_role=='agent' %}text-end{% endif %}">
-            <div class="small text-muted">
-              {{ (m.created_at|string)[:16] }}
-              — {{ 'الدعم/المدقّق' if m.sender_role=='agent' else ('نظام' if m.sender_role=='system' else 'العميل') }}
+          {% set who = (m.sender_role or '').lower() %}
+          <div class="mb-3 {% if who=='agent' %}text-end{% endif %}">
+            <div class="msg-meta mb-1">
+              {{ (m.created_at|string)[:16] }} — 
+              {% if who=='agent' %}الدعم/المدقّق{% elif who=='system' %}نظام{% else %}العميل{% endif %}
             </div>
-            <div class="p-2 rounded" style="background: rgba(0,0,0,.05); white-space: pre-wrap;">{{ m.body }}</div>
+            <div class="msg
+                        {% if who=='agent' %}msg-agent{% elif who=='system' %}msg-system{% else %}msg-user{% endif %}">
+              {{ m.body }}
+            </div>
           </div>
         {% endfor %}
       {% else %}
         <div class="text-muted">لا توجد رسائل بعد.</div>
       {% endif %}
     </div>
-  </div>
-
-  {% if not is_resolved %}
-    <div class="card">
-      <div class="card-header">ردّ المدقّق</div>
-      <div class="card-body">
-        <form id="modReplyForm" method="post" action="/mod/ticket/{{ ticket.id }}/reply">
+    {% if not is_resolved %}
+      <div class="toolbar-sticky">
+        <form id="modReplyForm" method="post" action="/mod/ticket/{{ ticket.id }}/reply" class="p-2">
           <textarea class="form-control mb-2" name="body" rows="3" placeholder="اكتب ردّك..." required></textarea>
-        </form>
-        <form method="post" action="/mod/tickets/{{ ticket.id }}/transfer_to_md"
-      onsubmit="return confirm('هل ترغب بتحويل هذه التذكرة إلى إدارة الودائع (MD)؟');"
-      class="d-inline">
-  <button class="btn btn-outline-warning" type="submit">🔁 تحويل إلى MD</button>
-</form>
-<form method="post"
-      action="/mod/tickets/{{ ticket.id }}/transfer_to_md"
-      onsubmit="return confirm('تحويل هذه التذكرة إلى إدارة الودائع (MD)؟');"
-      class="d-inline">
-  <button class="btn btn-outline-warning" type="submit">🔁 تحويل إلى MD</button>
-</form>
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-primary" type="submit" form="modReplyForm"><i class="bi bi-send"></i> إرسال</button>
 
-        <div class="d-flex gap-2">
-          <button class="btn btn-primary" type="submit" form="modReplyForm">إرسال</button>
+            {% if not ticket.assigned_to_id %}
+              <form method="post" action="/mod/tickets/{{ ticket.id }}/assign_self" class="d-inline">
+                <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-person-check"></i> تولّي</button>
+              </form>
+            {% endif %}
 
-          {% if not ticket.assigned_to_id %}
-            <form method="post" action="/mod/tickets/{{ ticket.id }}/assign_self" class="d-inline">
-              <button class="btn btn-outline-secondary" type="submit">تولّي</button>
+            <form method="post" action="/mod/tickets/{{ ticket.id }}/transfer_to_md"
+                  onsubmit="return confirm('تحويل التذكرة إلى إدارة الودائع (MD)؟');" class="d-inline">
+              <button class="btn btn-outline-warning" type="submit"><i class="bi bi-arrow-left-right"></i> تحويل إلى MD</button>
             </form>
-          {% endif %}
 
-          <form method="post" action="/mod/tickets/{{ ticket.id }}/resolve" class="d-inline"
-                onsubmit="return confirm('إغلاق نهائي للتذكرة؟');">
-            <button class="btn btn-success" type="submit">إغلاق (نهائي)</button>
-          </form>
-        </div>
+            <form method="post" action="/mod/tickets/{{ ticket.id }}/resolve" class="d-inline"
+                  onsubmit="return confirm('إغلاق نهائي للتذكرة؟ لا يمكن الرجوع.');">
+              <button class="btn btn-success" type="submit"><i class="bi bi-check2-circle"></i> إغلاق (نهائي)</button>
+            </form>
+          </div>
+        </form>
       </div>
-    </div>
-  {% endif %}
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

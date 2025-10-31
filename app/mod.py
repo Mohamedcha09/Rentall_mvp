@@ -167,7 +167,7 @@ def mod_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     ).first()
     qval = (row[0] if row else "cs") or "cs"
     if qval != "mod":
-        return RedirectResponse("/mod/inbox", status_code=303)
+    return RedirectResponse(f"/md/inbox?tid={tid}", status_code=303)
 
     # تعليم كـ مقروء للمدقق
     t.unread_for_agent = False
@@ -404,4 +404,4 @@ def mod_transfer_to_md(ticket_id: int, request: Request, db: Session = Depends(g
         pass
 
     db.commit()
-    return RedirectResponse("/mod/inbox", status_code=303)
+return RedirectResponse(f"/md/inbox?tid={t.id}", status_code=303)

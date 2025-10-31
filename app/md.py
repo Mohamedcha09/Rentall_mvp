@@ -164,7 +164,7 @@ def md_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     row = db.execute(text("SELECT COALESCE(queue,'cs') FROM support_tickets WHERE id=:tid"), {"tid": tid}).first()
     qval = (row[0] if row else "cs") or "cs"
     if qval != "md":
-        return RedirectResponse("/md/inbox", status_code=303)
+    return RedirectResponse(f"/mod/inbox?tid={tid}", status_code=303)
 
     # ✅ التعيين التلقائي بمجرد فتح الصفحة إذا كانت غير مُعيّنة → تتحول إلى "قيد المراجعة"
     now = datetime.utcnow()
@@ -408,4 +408,4 @@ def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(g
         pass
 
     db.commit()
-    return RedirectResponse("/md/inbox", status_code=303)
+return RedirectResponse(f"/mod/inbox?tid={t.id}", status_code=303)
