@@ -109,37 +109,29 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
 
     is_admin = _is_admin(u_mod)
 
-    base_q = db.query(SupportTicket).filter(text("LOWER(COALESCE(queue,'cs'))='mod'"))
+    base_q = db.query(SupportTicket).filter(text("LOWER(COALESCE(queue, 'cs')) = 'mod'"))
 
-from_md_q = base_q.filter(
-    SupportTicket.status.in_(("new","open")),
-    SupportTicket.assigned_to_id.is_(None),
-    text("""
-      (
-        SELECT sm.body FROM support_messages sm
-        WHERE sm.ticket_id = support_tickets.id AND LOWER(sm.sender_role)='system'
-        ORDER BY sm.created_at DESC
-        LIMIT 1
-      ) LIKE '%[XFER_MD_TO_MOD]%'
-    """)
-).order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
-
-new_q = base_q.filter(
-    SupportTicket.status.in_(("new","open")),
-    SupportTicket.assigned_to_id.is_(None),
-).filter(text("""
-    NOT (
-      (
-        SELECT sm.body FROM support_messages sm
-        WHERE sm.ticket_id = support_tickets.id AND LOWER(sm.sender_role)='system'
-        ORDER BY sm.created_at DESC
-        LIMIT 1
-      ) LIKE '%[XFER_MD_TO_MOD]%'
+    # ✅ جديدة من CS (تستثني المحوَّلة من أنظمة أخرى)
+    new_q = (
+        base_q.filter(
+            SupportTicket.status.in_(("new", "open")),
+            SupportTicket.assigned_to_id.is_(None),
+            text("(last_from IS NULL OR (last_from <> 'system_md' AND last_from <> 'system_mod'))")
+        )
+        .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
     )
-""")).order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
 
+    # ✅ محوّلة من MD (غير معيّنة وآخر حدث system_md)
+    transferred_from_md_q = (
+        base_q.filter(
+            SupportTicket.status.in_(("new", "open")),
+            SupportTicket.assigned_to_id.is_(None),
+            text("last_from = 'system_md'")
+        )
+        .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
+    )
 
-    # قيد المراجعة
+    # قيد المراجعة: مفتوحة ومُعيّنة
     in_review_q = (
         base_q.filter(
             SupportTicket.status == "open",
@@ -152,13 +144,11 @@ new_q = base_q.filter(
     resolved_q = base_q.filter(SupportTicket.status == "resolved")
     if not is_admin:
         resolved_q = resolved_q.filter(SupportTicket.assigned_to_id == u_mod["id"])
-    resolved_q = resolved_q.order_by(
-        desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at)
-    )
+    resolved_q = resolved_q.order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
 
     data = {
         "new": new_q.all(),
-        "from_md": transferred_from_md_q.all(),
+        "from_md": transferred_from_md_q.all(),   # 👈 تظهر هنا المحوّلة من MD
         "in_review": in_review_q.all(),
         "resolved": resolved_q.all(),
         "focus_tid": tid or 0,
@@ -168,6 +158,7 @@ new_q = base_q.filter(
         "mod_inbox.html",
         {"request": request, "session_user": u_mod, "title": "MOD Inbox", "data": data},
     )
+
 
 
 
