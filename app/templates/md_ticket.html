@@ -56,6 +56,13 @@
           <textarea class="form-control" name="body" rows="3" placeholder="اكتب ردّك هنا..." required></textarea>
         </div>
       </form>
+      <form method="post"
+      action="/md/tickets/{{ ticket.id }}/transfer_to_mod"
+      onsubmit="return confirm('تحويل هذه التذكرة إلى فريق المراجعة (MOD)؟');"
+      class="d-inline">
+  <button class="btn btn-outline-warning" type="submit">🔁 تحويل إلى MOD</button>
+</form>
+
 
       <div class="d-flex gap-2">
         <button class="btn btn-primary" type="submit" form="replyForm">إرسال الرد</button>

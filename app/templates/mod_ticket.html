@@ -53,6 +53,18 @@
         <form id="modReplyForm" method="post" action="/mod/ticket/{{ ticket.id }}/reply">
           <textarea class="form-control mb-2" name="body" rows="3" placeholder="اكتب ردّك..." required></textarea>
         </form>
+        <form method="post" action="/mod/tickets/{{ ticket.id }}/transfer_to_md"
+      onsubmit="return confirm('هل ترغب بتحويل هذه التذكرة إلى إدارة الودائع (MD)؟');"
+      class="d-inline">
+  <button class="btn btn-outline-warning" type="submit">🔁 تحويل إلى MD</button>
+</form>
+<form method="post"
+      action="/mod/tickets/{{ ticket.id }}/transfer_to_md"
+      onsubmit="return confirm('تحويل هذه التذكرة إلى إدارة الودائع (MD)؟');"
+      class="d-inline">
+  <button class="btn btn-outline-warning" type="submit">🔁 تحويل إلى MD</button>
+</form>
+
         <div class="d-flex gap-2">
           <button class="btn btn-primary" type="submit" form="modReplyForm">إرسال</button>
 

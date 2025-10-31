@@ -355,3 +355,57 @@ def md_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
 
     db.commit()
     return RedirectResponse("/md/inbox", status_code=303)
+
+
+# ---------------------------
+# تحويل التذكرة إلى المدقّق (MOD)
+# ---------------------------
+@router.post("/tickets/{ticket_id}/transfer_to_mod")
+def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(get_db)):
+    u = _require_login(request)
+    if not u:
+        return RedirectResponse("/login", status_code=303)
+    u_md = _ensure_md_session(db, request)
+    if not u_md:
+        return RedirectResponse("/", status_code=303)
+
+    t = db.get(SupportTicket, ticket_id)
+    if not t:
+        return RedirectResponse("/md/inbox", status_code=303)
+
+    # لا تحويل لو كانت مغلقة نهائياً
+    if t.status == "resolved":
+        return RedirectResponse(f"/md/ticket/{ticket_id}", status_code=303)
+
+    now = datetime.utcnow()
+    t.queue = "mod"
+    t.assigned_to_id = None        # تصبح غير مُعيّنة في طابور MOD
+    t.status = "open"
+    t.updated_at = now
+    t.last_msg_at = now
+    t.last_from = "system"
+    t.unread_for_agent = False
+    t.unread_for_user = True
+
+    db.add(SupportMessage(
+        ticket_id=t.id,
+        sender_id=u_md["id"],
+        sender_role="system",
+        body="🔁 تم تحويل التذكرة إلى فريق المراجعة (MOD) لمتابعة الحالة.",
+        created_at=now,
+    ))
+
+    try:
+        push_notification(
+            db,
+            t.user_id,
+            "🔁 تم تحويل تذكرتك",
+            f"تم تحويل تذكرتك #{t.id} إلى فريق المراجعة (MOD) للمتابعة.",
+            url=f"/support/ticket/{t.id}",
+            kind="support",
+        )
+    except Exception:
+        pass
+
+    db.commit()
+    return RedirectResponse("/md/inbox", status_code=303)
