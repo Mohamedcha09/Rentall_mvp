@@ -16,7 +16,7 @@
           <div class="list-group list-group-flush">
             {% for t in data.new %}
               <a class="list-group-item list-group-item-action {% if data.focus_tid and data.focus_tid == t.id %}active{% endif %}"
-                 href="/mod/ticket/{{t.id}}">
+                 href="/md/ticket/{{t.id}}">
                 <div class="d-flex w-100 justify-content-between">
                   <strong>#{{t.id}} — {{ t.subject or "بدون عنوان" }}</strong>
                   <small>{{ (t.last_msg_at or t.created_at).strftime("%Y-%m-%d %H:%M") if t.last_msg_at or t.created_at }}</small>

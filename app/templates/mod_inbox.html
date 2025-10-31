@@ -42,7 +42,7 @@
           {% if data.from_md %}
             {% for t in data.from_md %}
               <a class="list-group-item list-group-item-action {% if data.focus_tid and data.focus_tid == t.id %}active{% endif %}"
-                 href="/md/ticket/{{ t.id }}">
+                 href="/mod/ticket/{{ t.id }}">
                 <div class="d-flex w-100 justify-content-between">
                   <strong>#{{ t.id }} — {{ t.subject or "بدون عنوان" }}</strong>
                   <small>{{ (t.last_msg_at or t.updated_at or t.created_at)|string }}</small>
