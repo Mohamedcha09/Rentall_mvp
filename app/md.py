@@ -110,22 +110,22 @@ def md_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = 
 
     base_q = db.query(SupportTicket).filter(text("LOWER(COALESCE(queue, 'cs')) = 'md'"))
 
-    # ✅ جديدة من CS (تستثني المحوَّلة)
+    # ✅ جديدة من CS (تستثني المحوَّلة من أنظمة أخرى)
     new_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
             SupportTicket.assigned_to_id.is_(None),
-            text("(last_from IS NULL OR last_from <> 'system')")
+            text("(last_from IS NULL OR (last_from <> 'system_md' AND last_from <> 'system_mod'))")
         )
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
     )
 
-    # ✅ محوّلة من MOD (غير معيّنة وآخر حدث system)
+    # ✅ محوّلة من MOD (غير معيّنة وآخر حدث system_mod)
     transferred_from_mod_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
             SupportTicket.assigned_to_id.is_(None),
-            text("last_from = 'system'")
+            text("last_from = 'system_mod'")
         )
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
     )
@@ -146,8 +146,8 @@ def md_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = 
     resolved_q = resolved_q.order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
 
     data = {
-        "new": new_q.all(),                      # تم إرسالها جديد من CS
-        "from_mod": transferred_from_mod_q.all(),# ✅ القسم الجديد
+        "new": new_q.all(),
+        "from_mod": transferred_from_mod_q.all(),   # 👈 تظهر هنا المحوّلة من MOD
         "in_review": in_review_q.all(),
         "resolved": resolved_q.all(),
         "focus_tid": tid or 0,
@@ -178,18 +178,15 @@ def md_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     row = db.execute(text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"), {"tid": tid}).first()
     qval = (row[0] if row else "cs") or "cs"
 
-    # ✅ لو التذكرة ليست في طابور MD
     if qval != "md":
         return RedirectResponse(f"/md/inbox?tid={tid}", status_code=303)
 
-    # ✅ التعيين التلقائي لو غير مُعيّنة
     now = datetime.utcnow()
     if t.assigned_to_id is None:
         t.assigned_to_id = u_md["id"]
         t.status = "open"
         t.updated_at = now
 
-    # ✅ علّم رسائل الوكيل كمقروءة
     t.unread_for_agent = False
     db.commit()
 
@@ -215,7 +212,6 @@ def md_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_d
     if not t:
         return RedirectResponse("/md/inbox", status_code=303)
 
-    # ✅ غلق نهائي: ممنوع التولّي
     if t.status == "resolved":
         return RedirectResponse(f"/md/ticket/{ticket_id}", status_code=303)
 
@@ -261,7 +257,6 @@ def md_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
     if not t:
         return RedirectResponse("/md/inbox", status_code=303)
 
-    # ✅ غلق نهائي: ممنوع الرد
     if t.status == "resolved":
         return RedirectResponse(f"/md/ticket/{t.id}", status_code=303)
 
@@ -328,14 +323,12 @@ def md_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     now = datetime.utcnow()
     agent_name = (request.session["user"].get("first_name") or "").strip() or "مدير الوديعة"
 
-    # 🔒 إغلاق نهائي
     t.status = "resolved"
     t.resolved_at = now
     t.updated_at = now
     if not t.assigned_to_id:
         t.assigned_to_id = u_md["id"]
 
-    # أعلام القراءة
     t.unread_for_user = True
     t.unread_for_agent = False
 
@@ -382,13 +375,13 @@ def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(g
         return RedirectResponse(f"/md/ticket/{ticket_id}", status_code=303)
 
     now = datetime.utcnow()
-    # 1) انقل التذكرة إلى mod وسجّل رسالة system
+    # 1) انقل التذكرة إلى mod وسجّل رسالة system_md (اتجاه: MD → MOD)
     t.queue = "mod"
     t.assigned_to_id = None
     t.status = "open"
     t.updated_at = now
     t.last_msg_at = now
-    t.last_from = "system"
+    t.last_from = "system_md"
     t.unread_for_agent = False
     t.unread_for_user = True
 

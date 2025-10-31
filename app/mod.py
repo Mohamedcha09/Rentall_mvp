@@ -111,22 +111,22 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
 
     base_q = db.query(SupportTicket).filter(text("LOWER(COALESCE(queue, 'cs')) = 'mod'"))
 
-    # ✅ جديدة من CS (تستثني المحوَّلة)
+    # ✅ جديدة من CS (تستثني المحوَّلة من أنظمة أخرى)
     new_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
             SupportTicket.assigned_to_id.is_(None),
-            text("(last_from IS NULL OR last_from <> 'system')")
+            text("(last_from IS NULL OR (last_from <> 'system_md' AND last_from <> 'system_mod'))")
         )
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
     )
 
-    # ✅ محوّلة من MD (غير معيّنة وآخر حدث system)
+    # ✅ محوّلة من MD (غير معيّنة وآخر حدث system_md)
     transferred_from_md_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
             SupportTicket.assigned_to_id.is_(None),
-            text("last_from = 'system'")
+            text("last_from = 'system_md'")
         )
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
     )
@@ -147,8 +147,8 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
     resolved_q = resolved_q.order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
 
     data = {
-        "new": new_q.all(),                      # تم إرسالها جديد من CS
-        "from_md": transferred_from_md_q.all(),  # ✅ القسم الجديد
+        "new": new_q.all(),
+        "from_md": transferred_from_md_q.all(),   # 👈 تظهر هنا المحوّلة من MD
         "in_review": in_review_q.all(),
         "resolved": resolved_q.all(),
         "focus_tid": tid or 0,
@@ -182,11 +182,9 @@ def mod_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     ).first()
     qval = (row[0] if row else "cs") or "cs"
 
-    # ✅ لو التذكرة ليست في طابور MOD
     if qval != "mod":
         return RedirectResponse(f"/mod/inbox?tid={tid}", status_code=303)
 
-    # ✅ علّم رسائل الوكيل كمقروءة
     t.unread_for_agent = False
     db.commit()
 
@@ -212,7 +210,6 @@ def mod_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_
     if not t:
         return RedirectResponse("/mod/inbox", status_code=303)
 
-    # ✅ غلق نهائي: ممنوع التولّي
     if t.status == "resolved":
         return RedirectResponse(f"/mod/ticket/{ticket_id}", status_code=303)
 
@@ -261,7 +258,6 @@ def mod_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), 
     if not t:
         return RedirectResponse("/mod/inbox", status_code=303)
 
-    # ✅ غلق نهائي: ممنوع الرد
     if t.status == "resolved":
         return RedirectResponse(f"/mod/ticket/{t.id}", status_code=303)
 
@@ -334,7 +330,6 @@ def mod_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db))
     now = datetime.utcnow()
     mod_name = (request.session["user"].get("first_name") or "").strip() or "مدقّق المحتوى"
 
-    # ✅ غلق نهائي
     t.status = "resolved"
     t.resolved_at = now
     t.updated_at = now
@@ -386,13 +381,13 @@ def mod_transfer_to_md(ticket_id: int, request: Request, db: Session = Depends(g
         return RedirectResponse(f"/mod/ticket/{ticket_id}", status_code=303)
 
     now = datetime.utcnow()
-    # 1) انقل التذكرة إلى md وسجّل رسالة system
+    # 1) انقل التذكرة إلى md وسجّل رسالة system_mod (اتجاه: MOD → MD)
     t.queue = "md"
     t.assigned_to_id = None
     t.status = "open"
     t.updated_at = now
     t.last_msg_at = now
-    t.last_from = "system"
+    t.last_from = "system_mod"
     t.unread_for_agent = False
     t.unread_for_user = True
 
