@@ -109,27 +109,40 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
 
     is_admin = _is_admin(u_mod)
 
-    base_q = db.query(SupportTicket).filter(text("LOWER(COALESCE(queue, 'cs')) = 'mod'"))
+base_q = db.query(SupportTicket).filter(text("LOWER(COALESCE(queue,'cs'))='mod'"))
 
-    # ✅ جديدة من CS (تستثني المحوَّلة من أنظمة أخرى)
-    new_q = (
-        base_q.filter(
-            SupportTicket.status.in_(("new", "open")),
-            SupportTicket.assigned_to_id.is_(None),
-            text("(last_from IS NULL OR (last_from <> 'system_md' AND last_from <> 'system_mod'))")
-        )
-        .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
+# جديدة من CS: نستثني أي شيء تم تحويله من أنظمة أخرى (system_md/system_mod) 
+new_q = (
+    base_q.filter(
+        SupportTicket.status.in_(("new", "open")),
+        SupportTicket.assigned_to_id.is_(None),
+        # لا تكون آخر جهة system_md أو system_mod (مع بقاء التوافق مع 'system' القديم)
+        text("(last_from IS NULL OR LOWER(last_from) NOT IN ('system_md','system_mod'))")
     )
+    .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
+)
 
-    # ✅ محوّلة من MD (غير معيّنة وآخر حدث system_md)
-    transferred_from_md_q = (
-        base_q.filter(
-            SupportTicket.status.in_(("new", "open")),
-            SupportTicket.assigned_to_id.is_(None),
-            text("last_from = 'system_md'")
+# محوّلة من MD:
+transferred_from_md_q = (
+    base_q.filter(
+        SupportTicket.status.in_(("new", "open")),
+        SupportTicket.assigned_to_id.is_(None),
+        # تقبل آخر_جهة = system_md (الجديدة) أو system (قديمة) بشرط وجود رسالة system تدل على التحويل من MD
+        text("""
+        (
+          LOWER(COALESCE(last_from,'')) IN ('system_md','system')
+          AND EXISTS (
+            SELECT 1 FROM support_messages sm
+            WHERE sm.ticket_id = support_tickets.id
+              AND LOWER(sm.sender_role)='system'
+              AND sm.body ILIKE '%من إدارة الودائع (MD)%'
+          )
         )
-        .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
+        """)
     )
+    .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
+)
+
 
     # قيد المراجعة: مفتوحة ومُعيّنة
     in_review_q = (
