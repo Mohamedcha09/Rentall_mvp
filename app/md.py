@@ -350,6 +350,7 @@ def md_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
 # ---------------------------
 # تحويل التذكرة إلى المدقّق (MOD)
 # ---------------------------
+
 @router.post("/tickets/{ticket_id}/transfer_to_mod")
 def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
@@ -398,4 +399,5 @@ def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(g
         pass
 
     db.commit()
-return RedirectResponse(f"/mod/inbox?tid={t.id}", status_code=303)
+    # 👍 ابقِ المستخدم في صندوق MD (لا تفترض أنه يملك صلاحية MOD)
+    return RedirectResponse("/md/inbox", status_code=303)
