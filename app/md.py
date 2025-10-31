@@ -108,36 +108,43 @@ def md_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = 
 
     is_admin = _is_admin(u_md)
 
-base_q = db.query(SupportTicket).filter(text("LOWER(COALESCE(queue,'cs'))='md'"))
-
-new_q = (
-    base_q.filter(
-        SupportTicket.status.in_(("new","open")),
-        SupportTicket.assigned_to_id.is_(None),
-        text("(last_from IS NULL OR LOWER(last_from) NOT IN ('system_md','system_mod'))")
+    base_q = db.query(SupportTicket).filter(
+        text("LOWER(COALESCE(queue, 'cs')) = 'md'")
     )
-    .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
-)
 
-transferred_from_mod_q = (
-    base_q.filter(
-        SupportTicket.status.in_(("new","open")),
-        SupportTicket.assigned_to_id.is_(None),
-        text("""
-        (
-          LOWER(COALESCE(last_from,'')) IN ('system_mod','system')
-          AND EXISTS (
-            SELECT 1 FROM support_messages sm
-            WHERE sm.ticket_id = support_tickets.id
-              AND LOWER(sm.sender_role)='system'
-              AND sm.body ILIKE '%فريق المراجعة (MOD)%'
-          )
+    # جديدة من CS (ليست محوّلة من أنظمة أخرى)
+    new_q = (
+        base_q.filter(
+            SupportTicket.status.in_(("new", "open")),
+            SupportTicket.assigned_to_id.is_(None),
+            text(
+                "(last_from IS NULL OR LOWER(last_from) NOT IN ('system_md','system_mod'))"
+            ),
         )
-        """)
+        .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
     )
-    .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
-)
 
+    # محوّلة من MOD (آخر حدث system_mod أو system برسالة تحويل من MOD)
+    transferred_from_mod_q = (
+        base_q.filter(
+            SupportTicket.status.in_(("new", "open")),
+            SupportTicket.assigned_to_id.is_(None),
+            text(
+                """
+                (
+                  LOWER(COALESCE(last_from,'')) IN ('system_mod','system')
+                  AND EXISTS (
+                    SELECT 1 FROM support_messages sm
+                    WHERE sm.ticket_id = support_tickets.id
+                      AND LOWER(sm.sender_role)='system'
+                      AND sm.body ILIKE '%فريق المراجعة (MOD)%'
+                  )
+                )
+                """
+            ),
+        )
+        .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
+    )
 
     # قيد المراجعة: مفتوحة ومُعيّنة
     in_review_q = (
@@ -152,11 +159,13 @@ transferred_from_mod_q = (
     resolved_q = base_q.filter(SupportTicket.status == "resolved")
     if not is_admin:
         resolved_q = resolved_q.filter(SupportTicket.assigned_to_id == u_md["id"])
-    resolved_q = resolved_q.order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
+    resolved_q = resolved_q.order_by(
+        desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at)
+    )
 
     data = {
-        "new": new_q.all(),
-        "from_mod": transferred_from_mod_q.all(),   # 👈 تظهر هنا المحوّلة من MOD
+        "new": new_q.all(),                     # تم إرسالها جديد من CS
+        "from_mod": transferred_from_mod_q.all(),  # ✅ تظهر التحويلات من MOD هنا
         "in_review": in_review_q.all(),
         "resolved": resolved_q.all(),
         "focus_tid": tid or 0,
