@@ -153,6 +153,23 @@ button.dropdown-toggle::after {
 }
 </style>
 
+<style>
+/* ⬆️ رفع شريط الموبايل فوق خط iPhone + مساحة تمرير إضافية */
+@media (max-width: 768px){
+  .mobile-tabbar{
+    bottom: calc( max(var(--safe-bottom), var(--safe-bottom-legacy)) + 8px ) !important;
+  }
+  /* زيادة المساحة أسفل الجسم والصفحة بما يتناسب مع الرفع */
+  body{
+    padding-bottom: calc( 84px + max(var(--safe-bottom), var(--safe-bottom-legacy)) ) !important;
+  }
+  .page{
+    padding-bottom: calc( 108px + max(var(--safe-bottom), var(--safe-bottom-legacy)) ) !important;
+  }
+}
+</style>
+
+
 
 
   {% block head %}{% endblock %}
