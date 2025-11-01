@@ -182,18 +182,37 @@ button.dropdown-toggle::after {
 </style>
 
 <style>
-/* ⬇️ نقل زر + إلى أسفل الشاشة (على اليمين فوق شريط التبويب) */
+/* ✅ إصلاح نهائي: نقل زر + البنفسجي إلى أسفل الشاشة (يمين أو وسط حسب ذوقك) */
 @media (max-width: 768px){
+
+  /* موضع الزر العائم */
   .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
     position: fixed !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 84px) !important;
+    bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--safe-bottom, 0px)) + 78px) !important;
+    right: 20px !important;
     z-index: 2147483647 !important;
     transform: none !important;
   }
+
+  /* مظهر الزر */
+  .fab i, .add-item-btn i{
+    font-size: 22px !important;
+  }
+
+  .fab{
+    width: 58px !important;
+    height: 58px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #6C63FF !important;
+    color: #fff !important;
+    box-shadow: 0 6px 20px rgba(0,0,0,.25) !important;
+  }
 }
 </style>
+
 
 
 
