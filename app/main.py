@@ -51,7 +51,7 @@ from .disputes import router as disputes_router
 from .routes_search import router as search_router
 from .routes_users import router as users_router
 from .admin_badges import router as admin_badges_router
-from .bookings import router as bookings_router
+from .routes_bookings import router as bookings_router
 from .notifications import router as notifs_router
 from .notifications_api import router as notifications_router
 from .split_test import router as split_test_router
