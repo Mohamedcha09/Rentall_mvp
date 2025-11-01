@@ -333,6 +333,13 @@ button.dropdown-toggle::after {
 @media (max-width: 768px){
   .m-top-tabs{ display:flex !important; }             /* تُعرض على الهاتف فقط */
 }
+/* أيقونة دائرية صغيرة قبل النص */
+.sheet__item .with-ic{ display:inline-flex; align-items:center; gap:.5rem; }
+.sheet__item .ic{
+  width:22px; height:22px; border-radius:50%;
+  object-fit:cover; flex:0 0 22px;
+}
+
 </style>
 
 
@@ -1113,12 +1120,62 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
 
     <div class="sheet__body">
       <ul class="sheet__list">
-        <li><a class="sheet__item" href="/profile"><span><i class="bi bi-person"></i> صفحتي</span><i class="bi bi-chevron-left"></i></a></li>
-        <li><a class="sheet__item" href="/favorites"><span><i class="bi bi-heart-fill"></i> مفضلتي</span><i class="bi bi-chevron-left"></i></a></li>
-        <li><a class="sheet__item" href="/bookings"><span><i class="bi bi-calendar2-check"></i> حجوزاتي</span><i class="bi bi-chevron-left"></i></a></li>
-        <li><a class="sheet__item" href="/settings"><span><i class="bi bi-gear"></i> الإعدادات</span><i class="bi bi-chevron-left"></i></a></li>
-        <li><a class="sheet__item text-danger" href="/logout"><span><i class="bi bi-box-arrow-right"></i> خروج</span><i class="bi bi-chevron-left"></i></a></li>
-      </ul>
+  <!-- مراسلة الدعم — أصفر -->
+  <li>
+    <a class="sheet__item" href="/support/new">
+      <span class="with-ic">
+        <img class="ic" src="/static/icons/sfer.png" alt="" width="22" height="22">
+        مراسلة الدعم
+      </span>
+      <i class="bi bi-chevron-left"></i>
+    </a>
+  </li>
+
+  <!-- حسابي — أخضر -->
+  <li>
+    <a class="sheet__item" href="/profile">
+      <span class="with-ic">
+        <img class="ic" src="/static/icons/vert.png" alt="" width="22" height="22">
+        حسابي
+      </span>
+      <i class="bi bi-chevron-left"></i>
+    </a>
+  </li>
+
+  <!-- مفضلتي — بنفسجي -->
+  <li>
+    <a class="sheet__item" href="/favorites">
+      <span class="with-ic">
+        <img class="ic" src="/static/icons/mov.png" alt="" width="22" height="22">
+        مفضلتي
+      </span>
+      <i class="bi bi-chevron-left"></i>
+    </a>
+  </li>
+
+  <!-- الإعدادات — رمادي -->
+  <li>
+    <a class="sheet__item" href="/settings">
+      <span class="with-ic">
+        <img class="ic" src="/static/icons/ramdi.png" alt="" width="22" height="22">
+        الإعدادات
+      </span>
+      <i class="bi bi-chevron-left"></i>
+    </a>
+  </li>
+
+  <!-- خروج — أحمر -->
+  <li>
+    <a class="sheet__item text-danger" href="/logout">
+      <span class="with-ic">
+        <img class="ic" src="/static/icons/roge.png" alt="" width="22" height="22">
+        خروج
+      </span>
+      <i class="bi bi-chevron-left"></i>
+    </a>
+  </li>
+</ul>
+
     </div>
   </div>
 
