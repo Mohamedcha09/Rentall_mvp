@@ -1,12 +1,104 @@
 {% extends "base.html" %}
 {% block content %}
 
+<style>
+/* ===========================
+   WhatsApp Web (Light) — HARD OVERRIDE
+   =========================== */
+:root{
+  --wa-bg:#ffffff;        /* خلفية عامة */
+  --wa-panel:#ffffff;     /* خلفية قائمة المحادثات */
+  --wa-hover:#f5f5f5;     /* لون الهوفر */
+  --wa-line:#ececec;      /* فاصل بين العناصر */
+  --wa-text:#111;         /* نص أساسي */
+  --wa-muted:#6b7280;     /* نص ثانوي */
+  --wa-accent:#008069;    /* زر / لون أساسي */
+  --wa-badge:#25D366;     /* شارة غير المقروء */
+}
+
+html body{ background:var(--wa-bg) !important; color:var(--wa-text) !important; }
+
+/* عنوان الصفحة وأزرارها */
+html body h3.mb-0{ color:#111 !important; font-weight:700 !important; }
+html body .btn.btn-outline-secondary.btn-sm{
+  border-color:var(--wa-line) !important; color:#333 !important; background:#fff !important;
+}
+html body .btn.btn-outline-secondary.btn-sm:hover{ background:var(--wa-hover) !important; }
+
+/* تنبيهات */
+html body .alert{ border-radius:12px !important; }
+html body .alert-light{ background:#fafafa !important; border:1px solid var(--wa-line) !important; }
+html body .alert-warning{ background:#fff9e6 !important; border:1px solid #ffe8a3 !important; }
+
+/* قائمة المحادثات كستايل واتساب */
+html body .list-group{
+  background:var(--wa-panel) !important;
+  border:1px solid var(--wa-line) !important;
+  border-radius:14px !important;
+  overflow:hidden !important;
+}
+
+html body .list-group .list-group-item,
+html body .list-group .list-group-item.list-group-item-action{
+  background:#fff !important;
+  border:0 !important;
+  border-bottom:1px solid var(--wa-line) !important;
+  padding:.9rem 1rem !important;
+  transition:background .15s ease !important;
+}
+html body .list-group .list-group-item:last-child{ border-bottom:0 !important; }
+html body .list-group .list-group-item:hover{ background:var(--wa-hover) !important; }
+
+/* سطر المحادثة الداخلي */
+html body .list-group .list-group-item .d-flex{ align-items:center !important; gap:.9rem !important; }
+
+/* الصورة (أفاتار) — نكسر الـinline style */
+html body .list-group .list-group-item img{
+  width:48px !important; height:48px !important;
+  border-radius:50% !important; object-fit:cover !important;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.04) !important;
+}
+
+/* الاسم */
+html body .list-group .list-group-item strong.fs-6{
+  font-weight:700 !important; color:#111 !important; font-size:1rem !important;
+  display:flex !important; align-items:center !important; gap:.35rem !important;
+}
+
+/* شارة التحقق */
+html body .verified-badge{
+  width:16px !important; height:16px !important; display:inline-block !important;
+  vertical-align:middle !important;
+}
+
+/* سطر العنوان الفرعي */
+html body .list-group .list-group-item .text-muted.small{
+  color:var(--wa-muted) !important; font-size:.85rem !important;
+}
+
+/* التاريخ يمين */
+html body .list-group .list-group-item .text-nowrap.text-muted.small{
+  color:#939aa3 !important; font-size:.82rem !important;
+}
+
+/* شارة غير المقروء (خضراء مدوّرة) */
+html body .list-group .badge.rounded-pill,
+html body .list-group .badge.bg-danger{
+  background:var(--wa-badge) !important; color:#fff !important; border:0 !important;
+  border-radius:999px !important; padding:.25rem .55rem !important; font-weight:700 !important;
+}
+
+/* إزالة تأثيرات Bootstrap الافتراضية التي قد تعاند */
+html body .list-group .list-group-item.bg-transparent{ background:#fff !important; }
+html body .list-group .list-group-item.text-white{ color:#111 !important; }
+html body .list-group .list-group-item.border-secondary{ border:0 !important; }
+</style>
+
 <div class="d-flex align-items-center justify-content-between mb-3">
   <h3 class="mb-0">الرسائل</h3>
   <a class="btn btn-outline-secondary btn-sm" href="/messages">تحديث</a>
 </div>
 
-<!-- تنبيه: الحساب غير الموافق عليه -->
 {% if session_user and session_user.status != 'approved' %}
   <div class="alert alert-warning">
     حسابك ما زال <strong>قيد المراجعة</strong>. لا يمكنك مراسلة المستخدمين حالياً،
@@ -19,7 +111,7 @@
     {% for t in threads %}
       <a href="/messages/{{ t.id }}" class="list-group-item list-group-item-action py-3">
         <div class="d-flex align-items-center gap-3">
-          <img src="{{ t.item_image }}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:.5rem;">
+          <img src="{{ t.item_image }}" alt="">
           <div class="flex-grow-1">
             <div class="d-flex align-items-center gap-2">
               <strong class="fs-6">

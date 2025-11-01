@@ -2,101 +2,13 @@
 {% block content %}
 
 <style>
-/* ===========================
-   WA Light — MAX OVERRIDE
-   (قوّة قصوى ضد أي ستايل سابق)
-   =========================== */
-:root{
-  --wa-bg:#fff; --wa-panel:#f7f7f7; --wa-hover:#f0f0f0; --wa-line:#e5e7eb;
-  --wa-text:#222; --wa-muted:#6b7280; --wa-accent:#008069;
-  --wa-badge:#25D366; --wa-bubble:#e9f3f0; --wa-bubble-me:#dff9eb;
-}
-
-/* خلفية وألوان عامة */
-html body{ background:var(--wa-bg) !important; color:var(--wa-text) !important; }
-html body .text-muted, html body .small.text-muted{ color:var(--wa-muted) !important; }
-
-/* بطاقات */
-html body .card.card{ background:var(--wa-panel) !important; border:1px solid var(--wa-line) !important; border-radius:14px !important; overflow:hidden !important; }
-html body .card .card-body{ color:var(--wa-text) !important; }
-
-/* تقسيم اللوحتين */
-html body .col-md-4>.card{ background:var(--wa-panel) !important; }
-html body .col-md-8>.card{ background:#fff !important; }
-
-/* قائمة المحادثات */
-html body .thread-row.thread-row{
-  display:flex !important; align-items:center !important; gap:.65rem !important;
-  padding:.7rem .9rem !important; border-bottom:1px solid var(--wa-line) !important; transition:background .15s !important;
-}
-html body .thread-row.thread-row:hover{ background:var(--wa-hover) !important; }
-html body .thread-row a{ text-decoration:none !important; color:inherit !important; display:flex !important; align-items:center !important; gap:.65rem !important; flex:1 !important; }
-html body .avatar{
-  width:42px !important; height:42px !important; flex:0 0 42px !important; border-radius:50% !important;
-  background:#e0e0e0 !important; color:#333 !important; display:flex !important; align-items:center !important; justify-content:center !important; font-weight:800 !important;
-}
-html body .thread-title .fw-bold{ color:#111 !important; }
-html body .thread-title .small, html body .thread-title .text-muted{ color:var(--wa-muted) !important; }
-
-/* عدّاد غير المقروء (لو كان bg-danger) */
-html body .badge, html body .badge.bg-danger{
-  background:var(--wa-badge) !important; color:#fff !important; border:0 !important;
-  border-radius:999px !important; padding:.25rem .5rem !important; font-weight:700 !important;
-}
-
-/* رأس الدردشة */
-html body .col-md-8 .d-flex h5{ color:#111 !important; font-weight:700 !important; }
-html body .btn.btn-outline-light{
-  color:#333 !important; border-color:var(--wa-line) !important; background:#fff !important;
-}
-html body .btn.btn-outline-light:hover{ background:var(--wa-hover) !important; }
-
-/* منطقة الرسائل */
-html body .list-group.list-group{
-  display:flex !important; flex-direction:column !important; gap:6px !important;
-  background:transparent !important; border:0 !important;
-  max-height:calc(100vh - 320px) !important; overflow:auto !important; padding:8px !important;
-}
-html body .list-group::-webkit-scrollbar{ width:8px; }
-html body .list-group::-webkit-scrollbar-thumb{ background:#ddd; border-radius:999px; }
-
-/* فقاعات الرسائل – نكسر أي كلاسات Bootstrap داخلها */
-html body .list-group .list-group-item,
-html body .list-group .list-group-item.list-group-item,
-html body .list-group .list-group-item.bg-transparent,
-html body .list-group .list-group-item.text-white,
-html body .list-group .list-group-item.border-secondary{
-  background:var(--wa-bubble) !important; color:#111 !important; border:0 !important;
-  border-radius:12px 12px 12px 0 !important; display:inline-block !important;
-  max-width:75% !important; padding:.6rem .8rem !important; box-shadow:none !important;
-}
-
-/* فقاعاتي */
-html body .list-group .list-group-item.me{ 
-  align-self:flex-end !important;
-  background:var(--wa-bubble-me) !important; border-radius:12px 12px 0 12px !important;
-}
-
-/* النص الصغير داخل الفقاعة */
-html body .list-group .list-group-item .small,
-html body .list-group .list-group-item .text-muted{ color:var(--wa-muted) !important; font-size:.82rem !important; }
-
-/* شريط الإدخال */
-html body .input-group .form-control{
-  background:#f2f2f2 !important; border:0 !important; color:#111 !important; padding:.7rem .9rem !important;
-}
-html body .input-group .form-control::placeholder{ color:#999 !important; }
-html body .input-group .btn-primary{
-  background:var(--wa-accent) !important; border:0 !important; font-weight:700 !important;
-}
-html body .input-group .btn-primary:hover{ filter:brightness(1.08) !important; }
-
-/* أشياء متفرقة من Bootstrap قد تُعاند */
-html body .border-secondary{ border-color:transparent !important; }
-html body .bg-transparent{ background:transparent !important; } /* سيتم استبدالها فوق في عناصر الرسائل */
-html body .text-white{ color:var(--wa-text) !important; }      /* كسر white داخل العناصر */
+  .badge-icon{height:18px;width:18px;margin-inline-start:6px;vertical-align:middle;display:inline-block;}
+  .thread-row{display:flex;align-items:center;gap:.6rem;padding:.5rem .75rem;border-bottom:1px solid rgba(255,255,255,.1);}
+  .thread-row a{text-decoration:none;color:inherit;display:flex;align-items:center;gap:.6rem;flex:1;}
+  .avatar{width:36px;height:36px;border-radius:50%;background:#e9ecef;color:#222;display:flex;align-items:center;justify-content:center;font-weight:700;}
+  .thread-title{flex:1;}
+  .thread-title .small{opacity:.8;}
 </style>
-
 
 <div class="row">
   <div class="col-md-4">
@@ -106,6 +18,7 @@ html body .text-white{ color:var(--wa-text) !important; }      /* كسر white �
         {% if threads and threads|length %}
           <div class="list">
             {% for t in threads %}
+              {# حدّد الطرف الآخر #}
               {% set other = t.other_user %}
               {% set name = (other.first_name ~ ' ' ~ other.last_name) if other else 'مستخدم' %}
               {% set created = other.created_at if other and other.created_at else None %}
@@ -176,7 +89,7 @@ html body .text-white{ color:var(--wa-text) !important; }      /* كسر white �
           {% if thread.messages and thread.messages|length %}
             <div class="list-group">
               {% for m in thread.messages %}
-                <div class="list-group-item bg-transparent text-white border-secondary{% if m.sender_id == session_user.id %} me{% endif %}">
+                <div class="list-group-item bg-transparent text-white border-secondary">
                   <div class="small text-muted">{{ m.sender.first_name }} · {{ m.created_at.strftime("%Y-%m-%d %H:%M") }}</div>
                   <div>{{ m.body }}</div>
                 </div>
@@ -200,8 +113,8 @@ html body .text-white{ color:var(--wa-text) !important; }      /* كسر white �
   </div>
 </div>
 
+<!-- سكربت شارات عام لهذه الصفحة -->
 <script>
-/* شاراتك كما هي */
 (function(){
   function daysFrom(iso){ if(!iso) return 99999; const d=new Date(iso); if(isNaN(d)) return 99999; return Math.floor((Date.now()-d.getTime())/86400000); }
   function add(src,alt){ const i=document.createElement('img'); i.src=src; i.alt=alt; i.className='badge-icon'; return i; }
@@ -211,15 +124,20 @@ html body .text-white{ color:var(--wa-text) !important; }      /* كسر white �
     const verified=Number(box.dataset.verified||0)===1;
     const fiveStar=Number(box.dataset.stars5||0);
     const returnsOk=Number(box.dataset.returns||0);
+
     if(role==='admin'){ box.appendChild(add('/static/img/adm.png','Admin')); }
+
     const allowYellow=(role!=='admin'), allowGreen=(role!=='admin'), allowViolet=(role!=='admin');
+
     if(allowYellow && days<60){ box.appendChild(add('/static/img/jaune.png','New')); }
     else if(allowGreen && days>=60 && days<365){ box.appendChild(add('/static/img/ProVert.png','Pro Green')); }
     else if(days>=365){ box.appendChild(add('/static/img/ProGold.png','Pro Gold')); }
+
     if(allowViolet && (verified || fiveStar>=20)){ box.appendChild(add('/static/img/violet.png','Trust')); }
     if(returnsOk>=10){ box.appendChild(add('/static/img/Vert.png','Safe Renter')); }
     if(fiveStar>=10){ box.appendChild(add('/static/img/orange.png','Top Rated')); }
   }
+
   document.querySelectorAll('.auto-badges').forEach(renderOne);
 })();
 </script>
