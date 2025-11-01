@@ -343,35 +343,38 @@ button.dropdown-toggle::after {
 </style>
 
 <style>
-/* حاوية موحّدة للأيقونة */
-.iconbox{
-  width: 36px;            /* حجم الحاوية الثابت */
-  height: 36px;
-  border-radius: 50%;
-  background: #f5f7fb;    /* خلفية خفيفة (اختياري) */
-  display: grid;
-  place-items: center;     /* توسيط عمودي/أفقي */
-  flex: 0 0 36px;          /* منع التمدد */
-}
-
-/* الصورة نفسها داخل الحاوية */
-.iconbox > img{
-  width: 22px;             /* حجم الرمز الداخلي */
+/* أيقونة PNG موحّدة المقاس داخل الـ bottom sheet */
+.sheet__png{
+  width: 22px;              /* المقاس الظاهر لكل الأيقونات */
   height: 22px;
-  object-fit: contain;     /* يحافظ على النسبة ويمنع القص */
-  object-position: center;
-  display: block;
-  pointer-events: none;    /* لا يسحب عند الضغط المطوّل */
-  user-select: none;
+  display:inline-block;
+  background-image: var(--img);
+  background-size: cover;   /* يملأ الصندوق ويتجاهل الهوامش الشفافة */
+  background-position:center;
+  background-repeat:no-repeat;
+  border-radius:50%;
+  flex:0 0 22px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.06) inset; /* لمسة بسيطة مثل Blossom */
+  vertical-align: -3px;
 }
-
-/* محاذاة العنصر النصّي مع الأيقونة */
-.sheet__item span.label{
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
+/* صف العنصر في القائمة */
+.sheet__item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px 16px;
+  text-decoration:none;
+  color:inherit;
 }
+.sheet__item .left{
+  display:flex; align-items:center; gap:12px;
+}
+.sheet__item .label{ font-weight:700; }
+.sheet__item .chev{ opacity:.5; }
 </style>
+
+
 
 
 
@@ -1152,58 +1155,53 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
 
     <div class="sheet__body">
       <ul class="sheet__list">
-  <!-- مراسلة الدعم — أصفر -->
   <li>
     <a class="sheet__item" href="/support/new">
-      <span class="with-ic">
-        <img class="ic" src="/static/iconblossom/sfer.png" alt="" width="22" height="22">
-        مراسلة الدعم
+      <span class="left">
+        <span class="sheet__png" style="--img: url('/static/iconblossom/sfer.png');"></span>
+        <span class="label">مراسلة الدعم</span>
       </span>
-      <i class="bi bi-chevron-left"></i>
+      <i class="bi bi-chevron-left chev"></i>
     </a>
   </li>
 
-  <!-- حسابي — أخضر -->
   <li>
     <a class="sheet__item" href="/profile">
-      <span class="with-ic">
-        <img class="ic" src="/static/iconblossom/vert.png" alt="" width="22" height="22">
-        حسابي
+      <span class="left">
+        <span class="sheet__png" style="--img: url('/static/iconblossom/vert.png');"></span>
+        <span class="label">حسابي</span>
       </span>
-      <i class="bi bi-chevron-left"></i>
+      <i class="bi bi-chevron-left chev"></i>
     </a>
   </li>
 
-  <!-- مفضلتي — بنفسجي -->
   <li>
     <a class="sheet__item" href="/favorites">
-      <span class="with-ic">
-        <img class="ic" src="/static/iconblossom/mov.png" alt="" width="22" height="22">
-        مفضلتي
+      <span class="left">
+        <span class="sheet__png" style="--img: url('/static/iconblossom/mov.png');"></span>
+        <span class="label">مفضلتي</span>
       </span>
-      <i class="bi bi-chevron-left"></i>
+      <i class="bi bi-chevron-left chev"></i>
     </a>
   </li>
 
-  <!-- الإعدادات — رمادي -->
   <li>
     <a class="sheet__item" href="/settings">
-      <span class="with-ic">
-        <img class="ic" src="/static/iconblossom/ramdi.png" alt="" width="22" height="22">
-        الإعدادات
+      <span class="left">
+        <span class="sheet__png" style="--img: url('/static/iconblossom/ramdi.png');"></span>
+        <span class="label">الإعدادات</span>
       </span>
-      <i class="bi bi-chevron-left"></i>
+      <i class="bi bi-chevron-left chev"></i>
     </a>
   </li>
 
-  <!-- خروج — أحمر -->
   <li>
     <a class="sheet__item text-danger" href="/logout">
-      <span class="with-ic">
-        <img class="ic" src="/static/iconblossom/roge.png" alt="" width="22" height="22">
-        خروج
+      <span class="left">
+        <span class="sheet__png" style="--img: url('/static/iconblossom/roge.png');"></span>
+        <span class="label">خروج</span>
       </span>
-      <i class="bi bi-chevron-left"></i>
+      <i class="bi bi-chevron-left chev"></i>
     </a>
   </li>
 </ul>
