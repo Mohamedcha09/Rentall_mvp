@@ -320,6 +320,22 @@ button.dropdown-toggle::after {
 }
 </style>
 
+<style>
+/* 💡 لوحة البروفايل المنبثقة موبايل فقط */
+@media (min-width: 769px){
+  #profileSheet, #profileScrim{ display:none !important; }
+}
+</style>
+
+<style>
+/* 💡 تبويبات الأعلى (Home/إشعارات/تحويلات) موبايل فقط */
+.m-top-tabs{ display:none !important; }                /* افتراضيًا مخفية */
+@media (max-width: 768px){
+  .m-top-tabs{ display:flex !important; }             /* تُعرض على الهاتف فقط */
+}
+</style>
+
+
 
   {% block head %}{% endblock %}
 </head>
