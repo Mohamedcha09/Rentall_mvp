@@ -213,9 +213,39 @@ button.dropdown-toggle::after {
 }
 </style>
 
+<style>
+/* == iOS-like top tabs (purple top bar) == */
+.m-top-tabs{
+  display:flex; gap:18px; align-items:flex-end;
+  padding:0 14px; margin-top:6px; 
+  border-bottom:1px solid var(--border);
+  background:transparent;
+}
+.m-top-tabs .m-tab{
+  position:relative; display:inline-flex; align-items:center; 
+  padding:12px 6px 10px; /* مساحة مريحة للنقر */
+  font-weight:700; font-size:15px;
+  text-decoration:none; border:0; background:transparent;
+  color:var(--muted);
+  transition:color .15s ease;
+}
+.m-top-tabs .m-tab:hover{ color:color-mix(in oklab, var(--text) 60%, transparent); }
 
+/* شريط بنفسجي في أعلى التبويب المفعّل */
+.m-top-tabs .m-tab::before{
+  content:""; position:absolute; inset-inline:0; top:0;
+  height:3px; background:#6C63FF; border-radius:3px;
+  opacity:0; transform:scaleX(.25); transform-origin:center;
+  transition:transform .18s ease, opacity .12s ease;
+}
+.m-top-tabs .m-tab.is-active{ color:var(--text); }
+.m-top-tabs .m-tab.is-active::before{ opacity:1; transform:scaleX(1); }
 
-
+/* وضع داكن */
+[data-theme="dark"] .m-top-tabs{ border-bottom:1px solid var(--border); }
+[data-theme="dark"] .m-top-tabs .m-tab{ color:#9ca3af; }
+[data-theme="dark"] .m-top-tabs .m-tab.is-active{ color:#e5e7eb; }
+</style>
 
 
   {% block head %}{% endblock %}
