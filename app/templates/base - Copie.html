@@ -1,787 +1,1338 @@
 <!-- app/templates/base.html -->
 <!doctype html>
 <html lang="ar" dir="rtl">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{ title or "RentAll" }}</title>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{{ title or "RentAll" }}</title>
 
-    <!-- Bootstrap & Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
-    <!-- ستايل خارجي -->
-<link href="/static/style.css?v=99" rel="stylesheet">
+  <!-- CSS خارجي -->
+  <link href="/static/style.css?v=1" rel="stylesheet">
 
-    <style>
-      /* ===== Typeahead ===== */
-      .search{ position:relative; }
-      .typeahead{
-        position:absolute; inset-inline:0; top: calc(100% + .25rem);
-        background: var(--surface,#fff); color: var(--text,#212529);
-        border: 1px solid rgba(0,0,0,.1); border-radius:.75rem;
-        box-shadow: 0 14px 36px rgba(0,0,0,.18); z-index:2000; overflow:hidden;
+  <!-- PWA -->
+  <link rel="manifest" href="{{ url_for('static', path='manifest.json') }}">
+  <meta name="theme-color" content="#ffffff">
+  <script> if ("serviceWorker" in navigator) { navigator.serviceWorker.register("/static/sw.js"); } </script>
+
+  <style>
+    :root{
+      --text:#111827; --muted:#6b7280; --panel:#f8fafc; --surface:#ffffff; --border:rgba(0,0,0,.08);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-bottom-legacy: constant(safe-area-inset-bottom, 0px);
+    }
+    body{ color:var(--text); background:#f4f6fb; }
+    [data-theme="dark"]{
+      --text:#e5e7eb; --muted:#9ca3af; --panel:#0b1220; --surface:#0f172a; --border:rgba(255,255,255,.12);
+      background:#0b1020;
+    }
+
+    /* Topbar */
+    .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; }
+
+    /* Searchbar (عنصر + مدينة) */
+    .searchbar{ position:relative; max-width:760px; margin-inline:auto; }
+    .searchbar-wrap{
+      display:flex; align-items:center; gap:10px;
+      background:#fff; border:1px solid var(--border);
+      border-radius:999px; padding:10px 14px;
+      box-shadow:0 6px 20px rgba(0,0,0,.06);
+    }
+    body[data-theme="dark"] .searchbar-wrap{
+      background:rgba(255,255,255,.06); border-color:var(--border); backdrop-filter:saturate(120%) blur(6px);
+    }
+    .searchbar i.bi-search{font-size:18px; opacity:.7}
+    .searchbar input{ border:0; outline:0; background:transparent; color:inherit; font-size:16px; }
+    .searchbar .field{ flex:1; display:flex; align-items:center; gap:10px; }
+    .searchbar .sep{ width:1px; height:24px; background:var(--border); }
+    .searchbar .k{ opacity:.55; font-size:.9rem; white-space:nowrap }
+
+    /* Panel اقتراحات المدينة */
+    .city-suggest{
+      position:absolute; inset-inline:14px; top: calc(100% + 8px);
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius:14px;
+      box-shadow: 0 14px 36px rgba(0,0,0,.18); z-index:2200; overflow:hidden;
+      display:none; max-height:320px; overflow:auto;
+    }
+    .city-suggest .row{ padding:10px 12px; cursor:pointer; display:flex; gap:8px; align-items:baseline; }
+    .city-suggest .row:hover{ background: color-mix(in oklab, var(--text) 8%, transparent); }
+    .city-suggest .sub{ opacity:.6; font-size:.85em }
+
+    /* Typeahead لديك (حسابات/عناصر) */
+    .typeahead{
+      position:absolute; inset-inline:0; top: calc(100% + .25rem);
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius:.75rem;
+      box-shadow: 0 14px 36px rgba(0,0,0,.18); z-index:2000; overflow:hidden;
+    }
+    .typeahead.d-none{ display:none; }
+    .typeahead-group{ padding:.45rem .75rem; font-size:.85rem; opacity:.7; border-bottom:1px solid var(--border) }
+    .typeahead-item{ padding:.65rem .8rem; display:flex; gap:.6rem; align-items:center; cursor:pointer; }
+    .typeahead-item:hover, .typeahead-item.active{ background: rgba(124,92,255,.12); }
+    .typeahead-item .k{ opacity:.65; font-size:.85em }
+
+    /* جرس */
+    #notifOpen{ position: relative; }
+    #notifOpen .notif-count{
+      position:absolute; top:-6px; inset-inline-end:-6px; background:#d43aff; color:#fff;
+      font-size:12px; line-height:18px; min-width:18px; height:18px; padding:0 4px; border-radius:10px; text-align:center;
+    }
+    #notifOpen .notif-ping{
+      position:absolute; top:-2px; inset-inline-end:-2px; width:8px; height:8px; background:#d43aff; border-radius:50%;
+      box-shadow:0 0 0 6px rgba(212,58,255,.18);
+    }
+
+    .sidebar{ width:268px; flex:0 0 268px; border-inline-end:1px solid var(--border); background:var(--surface); }
+    .sidebar[data-collapsed="true"]{ width:84px; flex-basis:84px; }
+    @media (max-width:991.98px){ .sidebar{ display:none !important; } }
+
+    body{ padding-bottom: calc(76px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
+
+    @media (max-width: 768px){
+      .mobile-tabbar{
+        position: fixed; inset-inline: 0; bottom: 0; height: 64px;
+        display: grid; grid-template-columns: repeat(5,1fr); align-items: center;
+        background: #fff; border-top: 1px solid var(--border);
+        padding: 6px 8px calc(6px + max(var(--safe-bottom), var(--safe-bottom-legacy)));
+        z-index: 2147483647; border-radius: 16px 16px 0 0;
       }
-      .typeahead.d-none{ display:none; }
-      .typeahead-group{ padding:.4rem .7rem; font-size:.8rem; opacity:.7; border-bottom:1px solid rgba(0,0,0,.06) }
-      .typeahead-item{ padding:.6rem .75rem; display:flex; gap:.6rem; align-items:center; cursor:pointer; }
-      .typeahead-item:hover, .typeahead-item.active{ background: rgba(124,92,255,.12); }
-      .typeahead-item .k{ opacity:.65; font-size:.85em }
-
-      /* ===== عام ===== */
-      .actions .btn-plain{
-        border:0 !important; background:transparent !important; box-shadow:none !important;
-        padding:.2rem .35rem !important; line-height:1;
+      .mobile-tabbar a{ text-decoration:none; color:#6b7280; font-size:.82rem; display:flex; flex-direction:column; align-items:center; gap:4px; }
+      .mobile-tabbar .tab-img{ width:22px; height:22px; object-fit:contain; opacity:.7; transition:opacity .15s, transform .15s; }
+      .mobile-tabbar a.is-active{ color:#111827; font-weight:700; }
+      .mobile-tabbar a.is-active .tab-img{ opacity:1; transform:scale(1.06); }
+      .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
+        position: fixed !important; right: 16px !important;
+        bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 86px) !important;
+        z-index: 2147483647 !important;
       }
-      .icon-img{ width:24px; height:24px; display:block; }
-      .btn-plain:hover{ transform:translateY(-1px); }
+      .page{ padding-bottom: calc(100px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
+    }
 
-      .topbar .search .search__input{
-        height:44px !important; border-radius:999px !important; border:0 !important;
-        background:#f4f6fb !important; color:#3b4152 !important;
+    .notif-panel{
+      position: fixed; top:0; inset-inline-end:-420px; width:360px; max-width:88vw; height:100vh;
+      background: var(--surface); color: var(--text);
+      border-inline-start:1px solid var(--border);
+      box-shadow: -14px 0 36px rgba(0,0,0,.25);
+      z-index:2300; display:flex; flex-direction:column; transition:.25s ease;
+    }
+    .notif-panel.is-open{ inset-inline-end:0; }
+    .notif-panel__header{ padding:12px 14px; border-bottom:1px solid var(--border); }
+    .notif-panel__body{ padding:10px 14px; overflow:auto; }
+    .notif-row{ display:block; padding:10px 8px; text-decoration:none; color:inherit; border-bottom:1px solid var(--border); border-radius:8px; }
+    .notif-row:hover{ background: color-mix(in oklab, var(--surface) 92%, transparent); }
+    .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2s; }
+
+    @media (min-width:992px){
+      .hamburger-btn{ display:inline-flex; align-items:center; justify-content:center; border:0; background:transparent; font-size:24px; padding:.35rem .6rem; border-radius:10px; cursor:pointer; }
+      .hamburger-btn:hover{ background: color-mix(in oklab, var(--text,#111827) 8%, transparent); color:#fff; }
+      .topmenu{
+        position:absolute; inset-inline-start:14px; top:calc(100% + 8px);
+        min-width:260px; background: linear-gradient(180deg, var(--surface,#111827), var(--panel,#0f172a));
+        border:1px solid var(--border); border-radius:14px; padding:8px; box-shadow:0 18px 40px rgba(0,0,0,.30); z-index:2400;
       }
-      body[data-theme="dark"] .topbar .search .search__input{
-        background:rgba(255,255,255,.08) !important;
-        border:1px solid var(--border) !important; color:var(--text) !important;
-      }
-      .topbar .search .search__icon{ inset-inline-start:16px !important; opacity:.6 !important; font-size:1.05rem; }
-      .topbar .search .search__input::placeholder{ font-size:1.05rem; letter-spacing:.2px; color:#8b95a7; }
-      body[data-theme="dark"] .topbar .search .search__input::placeholder{ color: color-mix(in oklab, var(--text) 60%, transparent); }
+      .topmenu[hidden]{ display:none; } .topmenu a{ display:block; padding:.55rem .65rem; border-radius:10px; color:inherit; text-decoration:none; }
+      .topmenu a:hover{ background: color-mix(in oklab, var(--text,#fff) 8%, transparent); }
+      .topmenu-sep{ height:1px; border:0; background:var(--border); margin:.35rem .25rem; }
+    }
+  </style>
 
-      /* إشعار الجرس */
-      #notifOpen{ position: relative; }
-      #notifOpen .notif-count{
-        position:absolute; top:-6px; inset-inline-end:-6px;
-        background:#d43aff; color:#fff; font-size:12px; line-height:18px;
-        min-width:18px; height:18px; padding:0 4px; border-radius:10px; text-align:center;
-      }
-      #notifOpen .notif-ping{
-        position:absolute; top:-2px; inset-inline-end:-2px; width:8px; height:8px;
-        background:#d43aff; border-radius:50%; box-shadow: 0 0 0 6px rgba(212,58,255,.18);
-      }
+<style>
+/* 🚫 إزالة السهم الافتراضي من كل أزرار القوائم المنسدلة */
+.dropdown-toggle::after,
+.btn.dropdown-toggle::after,
+button.dropdown-toggle::after {
+  display: none !important;
+  content: "" !important;
+  border: 0 !important;
+  margin: 0 !important;
+}
+</style>
 
-      .notif-panel{
-        position: fixed; top:0; inset-inline-end:-420px; width:360px; max-width:88vw; height:100vh;
-        background: var(--panel); color: var(--text);
-        border-inline-start:1px solid var(--border);
-        box-shadow: -14px 0 36px rgba(0,0,0,.25);
-        z-index:2300; display:flex; flex-direction:column; transition:.25s ease;
-      }
-      .notif-panel.is-open{ inset-inline-end:0; }
-      .notif-panel__header{ padding:12px 14px; border-bottom:1px solid var(--border); }
-      .notif-panel__body{ padding:10px 14px; overflow:auto; }
-      .notif-row{
-        display:block; padding:10px 8px; text-decoration:none; color:inherit;
-        border-bottom:1px solid var(--border); border-radius:8px;
-      }
-      .notif-row:hover{ background: color-mix(in oklab, var(--surface) 92%, transparent); }
-      .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2s; }
-      .scrim.is-show{ opacity:1; pointer-events:auto; }
+<style>
+/* ✅ رفع الشريط السفلي بدون إعادة تدفق (لا قفزة للأعلى) */
+@media (max-width: 768px){
+  :root{ --tabbar-lift: 27px; } /* عدّلها 6–14px حسب ذوقك */
 
-      /* ===== الشعار وأزرار أعلى ===== */
-      .brand-logo{ height:56px; vertical-align:middle }
-      @media (max-width:768px){ .brand-logo{ height:40px } }
+  .mobile-tabbar{
+    transform: translateY(calc(-1 * var(--tabbar-lift)));
+    will-change: transform; /* سلاسة على iOS */
+  }
 
-      /* ========= زر ☰ والقائمة المنسدلة (سطح المكتب فقط) ========= */
-      @media (min-width: 992px){
-        .topbar__inner{ position:relative; }
+  /* إبقاء زر + فوقه بنفس الرفع */
+  .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
+    bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 86px + var(--tabbar-lift)) !important;
+  }
 
-        /* إخفاء السايدبار على سطح المكتب — يبقى في الـ DOM */
-        .sidebar{ display:none !important; }
-        .page{ margin-inline: 0 !important; }
+  /* تمديد الخلفية البيضاء تحت الـhome indicator نفس مقدار الرفع */
+  body::after{
+    height: calc(
+      max(
+        env(safe-area-inset-bottom, 0px),
+        var(--safe-b, 0px),
+        var(--safe-bottom, 0px)
+      ) + 30px + var(--tabbar-lift)
+    );
+  }
+}
+</style>
 
-        /* زر الهامبورغر */
-        .hamburger-btn{
-          display:inline-flex; align-items:center; justify-content:center;
-          border:0; background:transparent; font-size:24px; line-height:1;
-          padding:.35rem .6rem; border-radius:10px; cursor:pointer;
-        }
-        .hamburger-btn:hover{
-          background: color-mix(in oklab, var(--text, #fff) 8%, transparent);
-        }
+<style>
+/* ✅ إصلاح نهائي: نقل زر + البنفسجي إلى أسفل الشاشة (يمين أو وسط حسب ذوقك) */
+@media (max-width: 768px){
 
-        /* القائمة العلوية */
-        .topmenu{
-          position:absolute; inset-inline-start:14px; top:calc(100% + 8px);
-          min-width:260px;
-          background: linear-gradient(180deg, var(--surface,#111827), var(--panel,#0f172a));
-          border:1px solid var(--border, rgba(255,255,255,.12));
-          border-radius:14px; padding:8px;
-          box-shadow:0 18px 40px rgba(0,0,0,.30);
-          z-index:2400;
-        }
-        .topmenu[hidden]{ display:none; }
-        .topmenu a{
-          display:block; padding:.55rem .65rem; border-radius:10px; color:inherit; text-decoration:none;
-        }
-        .topmenu a:hover{
-          background: color-mix(in oklab, var(--text, #fff) 8%, transparent);
-        }
-        .topmenu-sep{
-          height:1px; border:0; background:var(--border, rgba(255,255,255,.12));
-          margin:.35rem .25rem;
-        }
-      }
+  /* موضع الزر العائم */
+  .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
+    position: fixed !important;
+    bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--safe-bottom, 0px)) + 78px) !important;
+    right: 20px !important;
+    z-index: 2147483647 !important;
+    transform: none !important;
+  }
 
-      /* تعريفات قديمة لزر السايدبار (مُعطّل الآن لكن أبقيناه) */
-      #sidebarToggle .topbar-ok{ width:24px; height:24px; display:block; }
-      #sidebarToggle{ border:0; }
+  /* مظهر الزر */
+  .fab i, .add-item-btn i{
+    font-size: 22px !important;
+  }
 
-      /* ===== الشريط الجانبي (أيقونات صور) ===== */
-      .side-link .side-icon{ width:22px; height:22px; object-fit:contain }
+  .fab{
+    width: 58px !important;
+    height: 58px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #6C63FF !important;
+    color: #fff !important;
+    box-shadow: 0 6px 20px rgba(0,0,0,.25) !important;
+  }
+}
+</style>
 
-      /* ===== تبويب الجوال (الأسفل) ===== */
-      @media (max-width: 768px){
-        .mobile-tabbar{
-          position: fixed; inset-inline: 0; bottom: 0; height: 64px;
-          background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 96%, transparent),
-                                               color-mix(in oklab, var(--panel) 94%, transparent));
-          border-top:1px solid var(--border);
-          display: grid; grid-template-columns: repeat(4,1fr);
-          backdrop-filter: blur(14px) saturate(120%);
-          z-index: 2100;
-        }
-        .mobile-tabbar a{
-          display:flex; flex-direction:column; align-items:center; justify-content:center;
-          gap:4px; text-decoration:none; color: var(--muted); font-size:.8rem;
-        }
-        .mobile-tabbar .tab-img{ width:22px; height:22px; object-fit:contain; opacity:.55; transition:.15s; }
-        .mobile-tabbar a.is-active{ color: var(--text); }
-        .mobile-tabbar a.is-active .tab-img{ opacity:1; transform:scale(1.06); }
-        .page{ padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
-      }
+<style>
+/* ===== Top tabs centered + bottom purple underline ===== */
+.m-top-tabs{
+  display:flex !important;
+  justify-content:center !important;   /* ⬅️ توسيط العناصر */
+  align-items:flex-end;
+  gap:28px;                             /* مسافة بين التبويبات */
+  padding:0 14px;
+  margin-top:6px;
+  border-bottom:1px solid var(--border);
+  background:transparent;
+}
 
-      @media (max-width:768px){
-        .actions .dropdown:first-of-type{ display:none !important; } /* منيو إنشاء فقط */
-      }
+/* إلغاء الكبسولة/الخلفية البيضاء القديمة */
+.m-top-tabs .m-tab{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+  border-radius:0 !important;
+  padding:12px 2px 14px;               /* راحة للنقر */
+  font-weight:800;
+  font-size:15px;
+  color:var(--muted);
+  text-decoration:none;
+  transition:color .15s ease;
+}
+.m-top-tabs .m-tab:hover{ color:color-mix(in oklab, var(--text) 60%, transparent); }
+.m-top-tabs .m-tab.is-active{ color:var(--text); }
 
-      .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; outline:none !important; }
-    </style>
+/* الشريط البنفسجي من الأسفل (وليس الأعلى) */
+.m-top-tabs .m-tab::after{
+  content:"";
+  position:absolute;
+  left:0; right:0; bottom:-1px;        /* ⬅️ أسفل */
+  height:3px;
+  background:#6C63FF;                  /* بنفسجي */
+  border-radius:3px;
+  opacity:0;
+  transform:scaleX(.25);
+  transform-origin:center;
+  transition:transform .18s ease, opacity .12s ease;
+}
+.m-top-tabs .m-tab.is-active::after{
+  opacity:1;
+  transform:scaleX(1);
+}
 
-    {% block head %}{% endblock %}
-  </head>
+/* وضع داكن */
+[data-theme="dark"] .m-top-tabs{ border-bottom:1px solid var(--border); }
+[data-theme="dark"] .m-top-tabs .m-tab{ color:#9ca3af; }
+[data-theme="dark"] .m-top-tabs .m-tab.is-active{ color:#e5e7eb; }
+</style>
 
-  <!-- data-can-dm من السيرفر -->
-  <body class="theme" data-theme="dark"
-        data-can-dm="{{ 1 if session_user and (session_user.can_manage_deposits or session_user.is_deposit_manager or ((session_user.role or '')|lower == 'admin')) else 0 }}">
+<style>
+/* ===== Mobile Profile Bottom Sheet ===== */
+@media (max-width: 768px){
+  .sheet-scrim{
+    position:fixed; inset:0; background:rgba(0,0,0,.35);
+    z-index:2147483646; opacity:0; pointer-events:none; transition:.2s ease;
+  }
+  .sheet{
+    position:fixed; left:0; right:0; bottom:0;
+    height:min(78vh, 660px);
+    background:#fff; color:var(--text);
+    border-radius:18px 18px 0 0;
+    box-shadow:0 -18px 40px rgba(0,0,0,.28);
+    z-index:2147483647;
+    transform:translateY(100%);
+    transition:transform .24s ease;
+    display:flex; flex-direction:column;
+    padding-bottom:calc(8px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px)));
+  }
+  .sheet.is-open{ transform:translateY(0); }
+  .sheet-scrim.is-open{ opacity:1; pointer-events:auto; }
 
-    <div id="page-wrapper"><!-- غلاف ملء الشاشة -->
+  .sheet__drag{
+    width:46px; height:5px; border-radius:10px; background:#d1d5db;
+    margin:8px auto 6px;
+  }
+  .sheet__header{
+    padding:6px 16px 10px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .sheet__profile{
+    display:flex; align-items:center; gap:10px;
+  }
+  .sheet__avatar{
+    width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background: #f2f3f7; font-weight:800;
+  }
+  .sheet__name{ font-weight:800; line-height:1.1; }
+  .sheet__handle{ font-size:.9rem; opacity:.7; }
+  .sheet__share{ background:#6C63FF; color:#fff; border:0; padding:.4rem .7rem; border-radius:999px; font-weight:700 }
 
-    <!-- ===== Topbar ===== -->
-    <header class="topbar">
-      <div class="topbar__inner container-fluid">
+  .sheet__body{ padding:4px 10px 10px; overflow:auto; }
+  .sheet__list{ list-style:none; margin:0; padding:0; }
+  .sheet__item{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 10px; border-bottom:1px solid var(--border);
+    text-decoration:none; color:inherit;
+  }
+  .sheet__item i{ font-size:18px; opacity:.8; margin-inline-start:6px; }
+}
+</style>
 
-        <!-- زر ☰ -->
-        <button id="menuBtn" class="hamburger-btn" type="button"
-                aria-haspopup="true" aria-expanded="false" aria-controls="quickMenu" title="القائمة">☰</button>
+<style>
+/* 💡 لوحة البروفايل المنبثقة موبايل فقط */
+@media (min-width: 769px){
+  #profileSheet, #profileScrim{ display:none !important; }
+}
+</style>
 
-        <!-- القائمة الصغيرة المنسدلة (استبدل القديمة بهذه) -->
-<nav id="quickMenu" class="topmenu" hidden role="menu" aria-label="قائمة الموقع">
-  <a role="menuitem" class="topmenu-item" href="/">
-    <i class="bi bi-house"></i><span>الرئيسية</span>
-  </a>
+<style>
+/* 💡 تبويبات الأعلى (Home/إشعارات/تحويلات) موبايل فقط */
+.m-top-tabs{ display:none !important; }                /* افتراضيًا مخفية */
+@media (max-width: 768px){
+  .m-top-tabs{ display:flex !important; }             /* تُعرض على الهاتف فقط */
+}
+</style>
 
-  <a role="menuitem" class="topmenu-item" href="/items">
-    <i class="bi bi-box-seam"></i><span>العناصر</span>
-  </a>
+<style>
+/* صف العنصر في القائمة */
+.sheet__item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px 16px;
+  text-decoration:none;
+  color:inherit;
+}
+.sheet__item .left{
+  display:flex; align-items:center; gap:12px;
+}
+.sheet__item .label{ font-weight:700; }
+.sheet__item .chev{ opacity:.5; }
+</style>
 
-  {% if session_user %}
-    <a role="menuitem" class="topmenu-item" href="/favorites">
-      <i class="bi bi-heart-fill"></i><span>مفضلتي</span>
-    </a>
+<style id="ic-pack">
+  /* ==== أساس الأيقونات الدائرية ==== */
+  :root{ --ic: 28px; }          /* حجم افتراضي لكل الأيقونات */
 
-    <a role="menuitem" class="topmenu-item" href="/profile">
-      <i class="bi bi-person-circle"></i><span>صفحتي</span>
-    </a>
+  .ic{
+    width:var(--ic);
+    height:var(--ic);
+    display:inline-block;
+    position:relative;
+    border-radius:50%;
+    overflow:hidden;
+    vertical-align:-3px;
+    flex:0 0 var(--ic);
+  }
+  .ic::after{
+    content:"";
+    position:absolute; inset:0;
+    background-position:center;
+    background-repeat:no-repeat;
+    background-size:88%;
+    image-rendering:auto;
+  }
+  [data-theme="dark"] .ic{
+    box-shadow:0 0 0 1px rgba(255,255,255,.08) inset;
+  }
 
-    <a role="menuitem" class="topmenu-item" href="/bookings">
-      <i class="bi bi-calendar2-check"></i><span>حجوزاتي</span>
-    </a>
+  /* ==== ربط الصور ==== */
+  .ic--support  { --img: url('/static/iconblossom/sfer.png'); }
+  .ic--profile  { --img: url('/static/iconblossom/vert.png'); }
+  .ic--fav      { --img: url('/static/iconblossom/mov.png'); }
+  .ic--settings { --img: url('/static/iconblossom/ramdi.png'); }
+  .ic--logout   { --img: url('/static/iconblossom/roge.png'); }
+  .ic--cc       { --img: url('/static/iconblossom/cc.png'); }
+  .ic::after{ background-image: var(--img); }
 
-    <a role="menuitem" class="topmenu-item" href="/payout/settings">
-      <i class="bi bi-cash-stack"></i><span>التحويلات</span>
-    </a>
+  /* ==== تخصيص كل أيقونة لوحدها (سطح المكتب) ==== */
+  .ic--support  { --ic: 34px; }  /* مراسلة الدعم */
+  .ic--profile  { --ic: 30px; }  /* حسابي */
+  .ic--fav      { --ic: 28px; }  /* مفضلتي */
+  .ic--settings { --ic: 28px; }  /* الإعدادات */
+  .ic--logout   { --ic: 32px; }  /* خروج */
+  .ic--cc       { --ic: 36px; }  /* تذاكري */
 
-    <a role="menuitem" class="topmenu-item" href="/owner/items">
-      <i class="bi bi-collection"></i><span>أشيائي</span>
-    </a>
+  /* ==== أحجام الموبايل فقط ==== */
+  @media (max-width:768px){
+    .ic--support  { --ic: 38px; }
+    .ic--profile  { --ic: 34px; }
+    .ic--fav      { --ic: 38px; }
+    .ic--settings { --ic: 42px; }
+    .ic--logout   { --ic: 36px; }
+    .ic--cc       { --ic: 40px; }
+  }
+</style>
 
-    {% if session_user.get('can_manage_deposits') %}
-      <a role="menuitem" class="topmenu-item" href="/dm/deposits">
-        <i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>
-      </a>
-    {% endif %}
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <div id="page-wrapper">
 
-    {% if session_user.role == 'admin' %}
-      <hr class="topmenu-sep" role="separator">
-      <a role="menuitem" class="topmenu-item" href="/admin">
-        <i class="bi bi-speedometer2"></i><span>لوحة الأدمين</span>
-      </a>
-    {% endif %}
-  {% endif %}
-</nav>
+  <!-- ===== Topbar ===== -->
+  <header class="topbar">
+    <div class="topbar__inner container-fluid d-flex align-items-center gap-2 py-2">
 
-        <!-- الشعار -->
-        <a class="brand d-flex align-items-center gap-2 text-decoration-none" href="/">
-          <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR">
-          <span class="visually-hidden">SEVOR</span>
-        </a>
+      <!-- زر ☰ -->
+      <button id="menuBtn" class="hamburger-btn d-none d-lg-inline" type="button"
+              aria-haspopup="true" aria-expanded="false" aria-controls="quickMenu" title="القائمة">☰</button>
 
-        <!-- البحث -->
-        <form class="search flex-grow-1" action="/search" method="get" role="search" style="max-width:760px">
-          <i class="bi bi-search search__icon"></i>
-          <input class="form-control form-control-sm search__input" type="search" name="q"
-                 placeholder="ابحث عن عنصر أو مستخدم…" value="{{ request.query_params.get('q','') if request else '' }}">
-        </form>
-        <div id="typeaheadPanel" class="typeahead d-none"></div>
-
-        <div class="actions d-flex align-items-center gap-2">
-          <a href="/messages" class="btn-plain btn-messages" title="الرسائل">
-            <img class="icon-img" src="/static/img/msg.png" alt="Messages">
-          </a>
-
-          {% if session_user %}
-          <a href="/favorites" class="btn-plain" title="مفضلتي">
-            <i class="bi bi-heart-fill" style="font-size:20px; color:#a944ec;"></i>
-          </a>
-          {% endif %}
-
-          {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
-          <button class="btn-plain position-relative" id="notifOpen" title="الإشعارات">
-            <img class="icon-img" src="/static/img/notfi.png" alt="Notifications">
-            {% if unread > 0 %}
-              <span class="notif-ping"></span>
-              <span class="notif-count">{{ unread if unread < 100 else '99+' }}</span>
-            {% endif %}
-          </button>
-
-          <!-- إنشاء -->
-          <div class="dropdown">
-            <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown">
-              <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">إنشاء</span>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="/owner/items/new"><i class="bi bi-box"></i> عنصر جديد</a></li>
-              <li><a class="dropdown-item" href="/messages"><i class="bi bi-chat-left-text"></i> رسالة</a></li>
-            </ul>
-          </div>
-
-          
-          <!-- اللغة -->
-          <div class="dropdown lang-switch">
-            <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="الlanguage">
-              <i class="bi bi-globe2"></i>
-              <span class="d-none d-sm-inline">{{ current_lang()|upper if current_lang else 'AR' }}</span>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item d-flex align-items-center" href="/lang/ar">العربية</a></li>
-              <li><a class="dropdown-item d-flex align-items-center" href="/lang/en">English</a></li>
-              <li><a class="dropdown-item d-flex align-items-center" href="/lang/fr">Français</a></li>
-            </ul>
-          </div>
-
-          <!-- الحساب -->
-          {% if session_user %}
-            <div class="dropdown">
-              <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
-                <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
-                <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
-                {% if session_user.status == 'approved' %}
-                  <i class="bi bi-patch-check-fill verify" title="موثّق"></i>
-                {% endif %}
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> صفحتي</a></li>
-                <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
-                <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a></li>
-                <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a></li>
-                {% if session_user.role == 'admin' %}
-                  <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a></li>
-                {% endif %}
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right"></i> خروج</a></li>
-              </ul>
-            </div>
-          {% else %}
-            <a class="btn btn-ghost btn-sm" href="/login">دخول</a>
-            <a class="btn btn-primary btn-sm" href="/register">تسجيل</a>
-          {% endif %}
-        </div>
-      </div>
-    </header>
-    <!-- /Topbar -->
-
-    <!-- ===== Sidebar (يبقى في الـ DOM لكن مخفي على سطح المكتب عبر CSS) ===== -->
-    <aside class="sidebar" id="appSidebar" data-collapsed="false">
-      <nav class="sidebar__nav">
-        <a class="side-link {% if request and request.url.path == '/' %}is-active{% endif %}" href="/" data-tooltip="الرئيسية">
-          <img class="side-icon" src="{{ url_for('static', path='images/home.png') }}" alt="home"><span>الرئيسية</span>
-        </a>
-        <a class="side-link {% if request and request.url.path.startswith('/items') %}is-active{% endif %}" href="/items" data-tooltip="كل العناصر">
-          <img class="side-icon" src="{{ url_for('static', path='images/tout.png') }}" alt="tout"><span>كل العناصر</span>
-        </a>
+      <!-- القائمة المنسدلة (ديسكتوب) -->
+      <nav id="quickMenu" class="topmenu" hidden role="menu" aria-label="قائمة الموقع">
+        <a role="menuitem" class="topmenu-item" href="/"><i class="bi bi-house"></i> الرئيسية</a>
+        <a role="menuitem" class="topmenu-item" href="/items"><i class="bi bi-box-seam"></i> العناصر</a>
 
         {% if session_user %}
-          <a class="side-link {% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}" href="/favorites" data-tooltip="مفضلتي">
-            <img class="side-icon" src="{{ url_for('static', path='images/save.png') }}" alt="save"><span>مفضلتي</span>
-          </a>
-          <a class="side-link {% if request and request.url.path.startswith('/profile') %}is-active{% endif %}" href="/profile" data-tooltip="صفحتي">
-            <img class="side-icon" src="{{ url_for('static', path='images/profil.png') }}" alt="profil"><span>صفحتي</span>
-          </a>
-          <a class="side-link {% if request and request.url.path.startswith('/owner/items') %}is-active{% endif %}" href="/owner/items" data-tooltip="أشيائي">
-            <img class="side-icon" src="{{ url_for('static', path='images/page.png') }}" alt="page"><span>أشيائي</span>
-          </a>
-          <a class="side-link {% if request and request.url.path.startswith('/bookings') %}is-active{% endif %}" href="/bookings" data-tooltip="حجوزاتي">
-            <img class="side-icon" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>حجوزاتي</span>
-          </a>
+          <a role="menuitem" class="topmenu-item" href="/favorites"><i class="bi bi-heart-fill"></i> مفضلتي</a>
+          <a role="menuitem" class="topmenu-item" href="/profile"><i class="bi bi-person-circle"></i> صفحتي</a>
+          <a role="menuitem" class="topmenu-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a>
+          <a role="menuitem" class="topmenu-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a>
+          <a role="menuitem" class="topmenu-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a>
+          <a role="menuitem" class="topmenu-item" href="/support/my"><i class="bi bi-ticket-detailed"></i> تذاكري</a>
 
           {% if session_user.get('can_manage_deposits') %}
-            <a class="side-link {% if request and request.url.path.startswith('/dm/deposits') %}is-active{% endif %}"
-               href="/dm/deposits" data-tooltip="قضايا الوديعة">
-              <i class="bi bi-shield-exclamation"></i><span>قضايا الوديعة</span>
-            </a>
+            <a role="menuitem" class="topmenu-item" href="/dm/deposits"><i class="bi bi-shield-exclamation"></i> قضايا الوديعة</a>
           {% endif %}
 
-          <a class="side-link {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" href="/payout/settings" data-tooltip="التحويلات">
-            <img class="side-icon" src="{{ url_for('static', path='images/cart.png') }}" alt="cart"><span>التحويلات</span>
-          </a>
+          {% if session_user.role == 'admin' or session_user.get('is_mod') %}
+            <a role="menuitem" class="topmenu-item" href="/admin/reports">📸 البلاغات</a>
+          {% endif %}
 
           {% if session_user.role == 'admin' %}
-            <div class="side-sep"></div>
-            <a class="side-link {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" href="/admin" data-tooltip="لوحة الأدمين">
-              <i class="bi bi-speedometer2"></i> <span>لوحة الأدمين</span>
-            </a>
+            <hr class="topmenu-sep" role="separator">
+            <a role="menuitem" class="topmenu-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a>
           {% endif %}
         {% endif %}
       </nav>
-      <button class="collapse-pin btn btn-ghost btn-sm mt-auto" id="pinSidebar" title="طي/تثبيت">
-        <i class="bi bi-chevron-double-left"></i><span class="ms-2 d-none d-xl-inline">طيّ الشريط</span>
-      </button>
-    </aside>
 
-    <!-- ===== Page ===== -->
-    <main class="page container-fluid main-flex-fill min-vh-100">
-      {% if session_user and session_user.status == 'approved' and not session_user.payouts_enabled %}
-        <div class="stripe-callout alert alert-warning d-flex justify-content-between align-items-center mb-3">
-          <div>💸 لبدء استلام الأرباح، اربط <strong>Stripe Connect</strong>.</div>
-          <a class="btn btn-sm btn-primary" href="/payout/settings">ربط الآن</a>
+      <!-- الشعار -->
+      <a class="brand d-flex align-items-center gap-2 text-decoration:none me-2" href="/">
+        <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR" style="height:48px" loading="lazy">
+        <span class="visually-hidden">SEVOR</span>
+      </a>
+
+      <!-- ===== شريط البحث (عنصر + مدينة) ===== -->
+      <form class="search searchbar flex-grow-1" action="/search" method="get" role="search" dir="rtl">
+        <div class="searchbar-wrap">
+          <i class="bi bi-search"></i>
+
+          <div class="field">
+            <input class="form-control form-control-sm" type="search" name="q" id="qTop"
+                   placeholder="ابحث عن عنصر (سيارة، كاميرا…)"
+                   value="{{ request.query_params.get('q','') if request else '' }}" autocomplete="off">
+          </div>
+
+          <div class="sep" aria-hidden="true"></div>
+
+          <div class="field">
+            <span class="k">المدينة</span>
+            <input class="form-control form-control-sm" type="text" id="cityTop" name="city"
+                   placeholder="مونتريال، الجزائر…" autocomplete="off"
+                   value="{{ request.query_params.get('city','') if request else '' }}">
+          </div>
+
+          <input type="hidden" id="latTop" name="lat" value="{{ request.query_params.get('lat','') if request else '' }}">
+          <input type="hidden" id="lngTop" name="lng" value="{{ request.query_params.get('lng','') if request else '' }}">
         </div>
+
+        <div id="citySuggest" class="city-suggest" aria-label="اقتراحات المدن"></div>
+      </form>
+
+      <!-- typeahead لديك (بحث حسابات/عناصر) -->
+      <div id="typeaheadPanel" class="typeahead d-none"></div>
+
+  <div class="actions d-flex align-items-center gap-2 ms-auto">
+  {# رسائل - ثابت للجميع (مسج أيقونة) #}
+  <a href="/messages" class="btn btn-ghost btn-sm" title="الرسائل">
+    <img class="icon-img" src="/static/img/msg.png" alt="Messages" style="width:24px;height:24px" loading="lazy">
+  </a>
+
+  {# مفضّلة (عند تسجيل الدخول) #}
+  {% if session_user %}
+    <a href="/favorites" class="btn btn-ghost btn-sm" title="مفضلتي">
+      <i class="bi bi-heart-fill" style="font-size:20px; color:#a944ec;"></i>
+    </a>
+  {% endif %}
+
+  {# CS Inbox (خوذة) — يظهر فقط لمن عنده صلاحية خدمة الزبائن #}
+  {% if session_user and (session_user.is_support or session_user.get('is_support') or session_user.get('cs_enabled')) %}
+    <a class="btn btn-outline-secondary btn-sm" href="/cs/inbox" title="صندوق خدمة الزبائن (CS)">
+      <i class="bi bi-headset"></i>
+    </a>
+  {% endif %}
+
+  {# فتح تذكرة دعم (منقذ) — للجميع #}
+  <a class="btn btn-outline-secondary btn-sm" href="/support/new" title="الدعم">
+    <i class="bi bi-life-preserver"></i>
+  </a>
+
+  {# زر الجرس (إشعارات) — الآن وحده داخل الزر بدون روابط أخرى بالداخل #}
+  {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
+  <button class="btn btn-ghost btn-sm position-relative" id="notifOpen" title="الإشعارات" aria-haspopup="true" aria-expanded="false">
+    <img class="icon-img" src="/static/img/notfi.png" alt="Notifications" style="width:24px;height:24px" loading="lazy">
+    {% if unread > 0 %}
+      <span class="notif-ping"></span>
+      <span class="notif-count">{{ unread if unread < 100 else '99+' }}</span>
+    {% endif %}
+  </button>
+
+  {# إنشاء #}
+  <div class="dropdown">
+    <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown">
+      <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">إنشاء</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li><a class="dropdown-item" href="/owner/items/new"><i class="bi bi-box"></i> عنصر جديد</a></li>
+      <li><a class="dropdown-item" href="/messages"><i class="bi bi-chat-left-text"></i> رسالة</a></li>
+    </ul>
+  </div>
+
+  {# اللغة #}
+  <div class="dropdown">
+    <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="اللغة">
+      <i class="bi bi-globe2"></i>
+      <span class="d-none d-sm-inline">{{ current_lang()|upper if current_lang else 'AR' }}</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li><a class="dropdown-item" href="/lang/ar">العربية</a></li>
+      <li><a class="dropdown-item" href="/lang/en">English</a></li>
+      <li><a class="dropdown-item" href="/lang/fr">Français</a></li>
+    </ul>
+  </div>
+
+  {# الحساب #}
+  {% if session_user %}
+  <div class="dropdown">
+    <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown" aria-label="قائمة الحساب">
+      {% if session_user.avatar_path %}
+        <img src="{{ session_user.avatar_path }}" alt="" class="rounded-circle" style="width:28px;height:28px;object-fit:cover">
+      {% else %}
+        <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
       {% endif %}
+      <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
+      {% if session_user.status == 'approved' %}<i class="bi bi-patch-check-fill verify" title="موثّق"></i>{% endif %}
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> صفحتي</a></li>
+      <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
+      <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a></li>
+      <li><a class="dropdown-item" href="/support/my"><i class="bi bi-ticket-detailed"></i> تذاكري</a></li>
+      <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a></li>
+      {% if session_user.role == 'admin' or session_user.get('is_mod') %}
+        <li><a class="dropdown-item" href="/admin/reports">📸 البلاغات</a></li>
+      {% endif %}
+      {% if session_user.role == 'admin' %}
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a></li>
+      {% endif %}
+      <li><hr class="dropdown-divider"></li>
+      <li><a id="logoutLink" class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right"></i> خروج</a></li>
+    </ul>
+  </div>
+  {% else %}
+    <a class="btn btn-ghost btn-sm" href="/login">دخول</a>
+    <a class="btn btn-primary btn-sm" href="/register">تسجيل</a>
+  {% endif %}
 
-      {% if message %}<div class="alert alert-info">{{ message }}</div>{% endif %}
-      {% block content %}{% endblock %}
-    </main>
+</div>
 
-    <!-- لوحة إشعارات جانبية -->
-    <div class="notif-panel" id="notifPanel" aria-hidden="true">
-      <div class="notif-panel__header d-flex justify-content-between align-items-center">
-        <strong>الإشعارات</strong>
-        <button class="btn btn-ghost btn-sm" id="notifClose"><i class="bi bi-x-lg"></i></button>
-      </div>
-      <div class="notif-panel__body" id="notifBody">
-        <div class="small text-muted">لا توجد إشعارات جديدة.</div>
-      </div>
-    </div>
-    <div class="scrim" id="scrim"></div>
+  </header>
+
+  <!-- تبويبات أعلى (موبايل) -->
+  <nav class="m-top-tabs d-lg-none px-3 pb-2" role="tablist" aria-label="أقسام عليا">
+    <a href="/" class="m-tab {% if request and request.url.path == '/' %}is-active{% endif %}" role="tab"
+       aria-selected="{{ 'true' if request and request.url.path == '/' else 'false' }}">Home</a>
 
     {% if session_user %}
-      <a href="/owner/items/new" class="fab d-lg-none" title="عنصر جديد"><i class="bi bi-plus-lg"></i></a>
+      <a href="/notifications" class="m-tab {% if request and request.url.path.startswith('/notifications') %}is-active{% endif %}" role="tab">
+        إشعارات
+        {% set unread_top = (request.state.unread_messages|default(0))|int if request else 0 %}
+        <small id="mNotifBadge" {% if unread_top<=0 %}style="display:none"{% endif %} class="ms-1">
+          {{ unread_top if unread_top < 100 else '99+' }}
+        </small>
+      </a>
+      <a href="/payout/settings" class="m-tab {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" role="tab">تحويلات</a>
+      {% if session_user.role == 'admin' %}
+        <a href="/admin" class="m-tab {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" role="tab">لوحة أدمين</a>
+      {% endif %}
+    {% else %}
+      <a href="/login" class="m-tab" role="tab">إشعارات</a>
+      <a href="/login" class="m-tab" role="tab">تحويلات</a>
     {% endif %}
+  </nav>
 
-    <!-- ===== تبويب الجوال ===== -->
-    <nav class="mobile-tabbar d-lg-none">
-      <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
-        <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home">
-        <span>الرئيسية</span>
-      </a>
-      <a href="/items" class="{% if request and request.url.path.startswith('/items') %}is-active{% endif %}">
-        <img class="tab-img" src="{{ url_for('static', path='images/tout.png') }}" alt="items">
-        <span>العناصر</span>
-      </a>
-      {% if session_user %}
-      <a href="/favorites" class="{% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}">
-        <img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav">
-        <span>مفضلتي</span>
-      </a>
-      {% endif %}
-      <a href="/profile" class="{% if request and request.url.path.startswith('/profile') %}is-active{% endif %}">
-        <img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile">
-        <span>صفحتي</span>
-      </a>
+  <!-- ===== Page ===== -->
+<!-- ===== Page ===== -->
+<main class="page container-fluid main-flex-fill min-vh-100">
 
-      {% if session_user and session_user.get('can_manage_deposits') %}
-        <a href="/dm/deposits" class="{% if request and request.url.path.startswith('/dm/deposits') %}is-active{% endif %}">
-          <i class="bi bi-shield-exclamation"></i>
-          <span>قضايا الوديعة</span>
-        </a>
-      {% endif %}
-    </nav>
-
-    </div><!-- /#page-wrapper -->
-
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    {% block scripts %}{% endblock %}
-
+  {# ✅ تنبيه الخروج #}
+  {% if request and request.query_params.get('logged_out') %}
+    <div class="alert alert-success my-2">تم تسجيل خروجك بنجاح 👋</div>
     <script>
-      // Sidebar open/collapse (لن يعمل الآن لأنه لا يوجد زر sidebarToggle، لكن أبقيته كما هو)
-      const sidebar   = document.getElementById('appSidebar');
-      const pinBtn    = document.getElementById('pinSidebar');
-      const toggleBtn = document.getElementById('sidebarToggle'); // غير موجود الآن؛ لا مشكلة
-      const saved     = localStorage.getItem('sidebar_collapsed');
-      if (saved === 'true') collapseSidebar(true);
-
-      toggleBtn?.addEventListener('click', () => {
-        if (window.matchMedia('(max-width: 991.98px)').matches) {
-          sidebar.classList.toggle('is-open');
-          document.getElementById('scrim').classList.toggle('is-show', sidebar.classList.contains('is-open'));
-        } else {
-          collapseSidebar(sidebar.dataset.collapsed !== 'true');
-        }
-      });
-      pinBtn?.addEventListener('click', () => collapseSidebar(sidebar.dataset.collapsed !== 'true'));
-
-      function collapseSidebar(yes){
-        if (yes){
-          sidebar.dataset.collapsed = 'true';
-          document.documentElement.style.setProperty('--sidebar-w', '84px');
-          localStorage.setItem('sidebar_collapsed','true');
-        }else{
-          sidebar.dataset.collapsed = 'false';
-          document.documentElement.style.setProperty('--sidebar-w', '268px');
-          localStorage.setItem('sidebar_collapsed','false');
-        }
-      }
-
-      // Theme toggle
-      const themeToggle = document.getElementById('themeToggle');
-      const sunIcon = document.getElementById('sunIcon');
-      const moonIcon = document.getElementById('moonIcon');
-      const savedTheme = localStorage.getItem('theme_mode');
-      if (savedTheme) setTheme(savedTheme);
-
-      themeToggle?.addEventListener('click', () => {
-        const current = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
-        setTheme(current);
-      });
-
-      function setTheme(mode){
-        document.body.dataset.theme = mode;
-        localStorage.setItem('theme_mode', mode);
-        const dark = mode === 'dark';
-        sunIcon.classList.toggle('d-none', !dark);
-        moonIcon.classList.toggle('d-none', dark);
-      }
-
-      // Notif panel
-      const notifOpen  = document.getElementById('notifOpen');
-      const notifClose = document.getElementById('notifClose');
-      const panel      = document.getElementById('notifPanel');
-      const body       = document.getElementById('notifBody');
-      const scrim      = document.getElementById('scrim');
-
-      function openPanel(){ panel?.classList.add('is-open'); scrim?.classList.add('is-show'); }
-      function closePanel(){ panel?.classList.remove('is-open'); scrim?.classList.remove('is-show'); }
-      notifOpen?.addEventListener('click', openPanel);
-      notifClose?.addEventListener('click', closePanel);
-      scrim?.addEventListener('click', closePanel);
+      try{ localStorage.clear(); sessionStorage.clear(); }catch(_){}
+      (async function(){ try{ if('caches' in window){ const names=await caches.keys(); for(const n of names){ await caches.delete(n);} } }catch(_){}})();
     </script>
+  {% endif %}
 
-    <!-- سكربت زر ☰ (مُوحّد ومحسّن) -->
-    <!-- [إصلاح نهائي لزر ☰] -->
+  {% if session_user and session_user.status == 'approved' and not session_user.payouts_enabled %}
+    <div class="stripe-callout alert alert-warning d-flex justify-content-between align-items:center mb-3">
+      <div>💸 لبدء استلام الأرباح، اربط <strong>Stripe Connect</strong>.</div>
+      <a class="btn btn-sm btn-primary" href="/payout/settings">ربط الآن</a>
+    </div>
+  {% endif %}
+
+  {% if message %}<div class="alert alert-info">{{ message }}</div>{% endif %}
+  {% block content %}{% endblock %}
+</main>
+
+
+  <!-- لوحة إشعارات جانبية -->
+  <div class="notif-panel" id="notifPanel" aria-hidden="true">
+    <div class="notif-panel__header d-flex justify-content-between align-items-center">
+      <strong>الإشعارات</strong>
+      {% if session_user and session_user.is_support %}
+        <a class="btn btn-sm btn-outline-primary" href="/cs/inbox" title="فتح مركز الرسائل">فتح مركز الرسائل</a>
+      {% endif %}
+      <button class="btn btn-ghost btn-sm" id="notifClose" aria-label="إغلاق"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="notif-panel__body" id="notifBody">
+      <div class="small text-muted">لا توجد إشعارات جديدة.</div>
+    </div>
+  </div>
+  <div class="scrim" id="scrim"></div>
+
+  {% if session_user %}
+    <a href="/owner/items/new" class="fab d-lg-none btn btn-primary rounded-circle shadow" title="عنصر جديد" style="width:56px;height:56px;display:flex;align-items:center;justify-content:center">
+      <i class="bi bi-plus-lg"></i>
+    </a>
+  {% endif %}
+
+  <!-- شريط سفلي (موبايل) -->
+  <nav class="mobile-tabbar d-lg-none" aria-label="شريط ملاحة سفلي">
+    <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
+      <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home" loading="lazy"><span>الرئيسية</span>
+    </a>
+
+    {% if session_user %}
+      <a href="/favorites" class="{% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}">
+        <img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav" loading="lazy"><span>مفضلتي</span>
+      </a>
+      <a href="/bookings" class="{% if request and request.url.path.startswith('/bookings') %}is-active{% endif %}">
+        <img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour" loading="lazy"><span>حجوزاتي</span>
+      </a>
+      <a href="/messages" class="{% if request and request.url.path.startswith('/messages') %}is-active{% endif %}">
+        <img class="tab-img" src="/static/img/msg.png" alt="Messages" loading="lazy"><span>الرسائل</span>
+      </a>
+      <a href="/profile" class="{% if request and request.url.path.startswith('/profile') %}is-active{% endif %}">
+        <img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile" loading="lazy"><span>بروفايلي</span>
+      </a>
+    {% else %}
+      <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav" loading="lazy"><span>مفضلتي</span></a>
+      <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour" loading="lazy"><span>حجوزاتي</span></a>
+      <a href="/login"><img class="tab-img" src="/static/img/msg.png" alt="Messages" loading="lazy"><span>الرسائل</span></a>
+      <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile" loading="lazy"><span>بروفايلي</span></a>
+    {% endif %}
+  </nav>
+
+  </div><!-- /#page-wrapper -->
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  {% block scripts %}{% endblock %}
+
+  <!-- Safe-area -->
+  <script>
+  (function(){
+    var root = document.documentElement;
+    function computeSafe(){
+      var safe = 0;
+      try{
+        var probe = document.createElement('div');
+        probe.style.cssText = 'position:fixed; bottom:0; left:0; right:0; height:constant(safe-area-inset-bottom); height:env(safe-area-inset-bottom); pointer-events:none; opacity:0;';
+        document.body.appendChild(probe);
+        safe = Math.max(0, probe.getBoundingClientRect().height || 0);
+        probe.remove();
+      }catch(_){}
+      var isIOS = /iphone|ipod|ipad/i.test(navigator.userAgent);
+      var isStandalone = (window.navigator.standalone === true) || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+      if (isIOS && isStandalone && safe < 8) safe = 16;
+      root.style.setProperty('--safe-bottom', safe + 'px');
+    }
+    computeSafe();
+    window.addEventListener('resize', computeSafe);
+    if (window.visualViewport){
+      visualViewport.addEventListener('resize', computeSafe);
+      visualViewport.addEventListener('scroll', computeSafe);
+    }
+  })();
+  </script>
+
+  <!-- زر ☰ (قائمة سريعة) -->
+  <script>
+  (function(){
+    const btn  = document.getElementById('menuBtn');
+    const menu = document.getElementById('quickMenu');
+    if(!btn || !menu) return;
+    if (window.__quickMenuInit) return;
+    window.__quickMenuInit = true;
+
+    function open(){ menu.classList.add('is-open'); menu.removeAttribute('hidden'); btn.setAttribute('aria-expanded','true');
+      setTimeout(()=>{ document.addEventListener('click', onDoc, true); document.addEventListener('keydown', onKey); },0); }
+    function close(){ menu.classList.remove('is-open'); menu.setAttribute('hidden',''); btn.setAttribute('aria-expanded','false');
+      document.removeEventListener('click', onDoc, true); document.removeEventListener('keydown', onKey); }
+    function toggle(){ menu.classList.contains('is-open') ? close() : open(); }
+    function onDoc(e){ if (e.target===btn || btn.contains(e.target) || menu.contains(e.target)) return; close(); }
+    function onKey(e){ if (e.key==='Escape'){ close(); btn.focus(); } }
+    btn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); toggle(); });
+    menu.addEventListener('click', function(e){ e.stopPropagation(); });
+  })();
+  </script>
+
+  <!-- Typeahead لعناصر/حسابات (كما هو لديك) -->
+  <script>
+  (function initTypeahead(){
+    if (window.__typeaheadInit) return; window.__typeaheadInit = true;
+
+    var form  = document.querySelector('form.search');
+    var input = form ? form.querySelector('input[name="q"]') : null;
+    var panel = document.getElementById('typeaheadPanel');
+    if (!form || !input || !panel) return;
+
+    var tm = null, activeIndex = -1;
+    function hide(){ panel.classList.add('d-none'); panel.innerHTML = ""; activeIndex = -1; }
+    function show(){ panel.classList.remove('d-none'); }
+    function esc(s){ return String(s||"").replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c] }); }
+
+    function normalizePayload(data){
+      var usersArr = (data && data.users) ? data.users : [];
+      var itemsArr = (data && data.items) ? data.items : [];
+      var users = usersArr.map(function(u){
+        var name = u.name || ((u.first_name||"") + " " + (u.last_name||"")).trim();
+        return { id:u.id, name:name, avatar:u.avatar||u.avatar_path||"", url:u.url||("/users/"+u.id) };
+      });
+      var items = itemsArr.map(function(it){
+        return { id:it.id, title:it.title||"", image:it.image||it.image_path||"", city:it.city||"", url:it.url||("/items/"+it.id) };
+      });
+      return { users: users, items: items };
+    }
+
+    function render(data){
+      var norm = normalizePayload(data);
+      var users = norm.users, items = norm.items, html = [];
+      if (users.length){
+        html.push('<div class="typeahead-group">حسابات</div>');
+        users.forEach(function(u){ html.push('<div class="typeahead-item" data-url="'+u.url+'"><i class="bi bi-person-circle"></i><div class="flex-grow-1"><div>'+esc(u.name)+'</div><div class="k">الملف الشخصي</div></div></div>'); });
+      }
+      if (items.length){
+        html.push('<div class="typeahead-group">عناصر</div>');
+        items.forEach(function(it){
+          var city = it.city ? ' — <span class="k">'+esc(it.city)+'</span>' : '';
+          html.push('<div class="typeahead-item" data-url="'+it.url+'"><i class="bi bi-box-seam"></i><div class="flex-grow-1"><div>'+esc(it.title)+city+'</div><div class="k">تفاصيل العنصر</div></div></div>');
+        });
+      }
+      if (!html.length){ hide(); return; }
+      panel.innerHTML = html.join(""); show();
+    }
+
+    function search(q){
+      if (!q || q.trim().length < 2) { hide(); return; }
+      fetch('/api/search?q='+encodeURIComponent(q.trim()))
+        .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+        .then(render).catch(hide);
+    }
+
+    input.addEventListener('input', function(){ clearTimeout(tm); tm = setTimeout(function(){ search(input.value); }, 180); });
+    panel.addEventListener('click', function(e){
+      var row = e.target.closest('.typeahead-item'); if (!row) return;
+      window.location.href = row.getAttribute('data-url');
+    });
+
+    input.addEventListener('keydown', function(e){
+      if (panel.classList.contains('d-none')) return;
+      var rows = Array.prototype.slice.call(panel.querySelectorAll('.typeahead-item'));
+      if (!rows.length) return;
+      if (e.key === 'ArrowDown'){ e.preventDefault(); setActive(rows, activeIndex+1); }
+      else if (e.key === 'ArrowUp'){ e.preventDefault(); setActive(rows, activeIndex-1); }
+      else if (e.key === 'Enter'){ if (activeIndex>=0 && rows[activeIndex]){ e.preventDefault(); rows[activeIndex].click(); } }
+      else if (e.key === 'Escape'){ hide(); }
+    });
+
+    document.addEventListener('click', function(e){ if (!panel.contains(e.target) && e.target !== input){ hide(); } });
+
+    function setActive(rows, i){
+      rows.forEach(function(r){ r.classList.remove('active'); });
+      if (i < 0) i = rows.length-1;
+      if (i >= rows.length) i = 0;
+      activeIndex = i; rows[activeIndex].classList.add('active');
+      rows[activeIndex].scrollIntoView({block:'nearest'});
+    }
+  })();
+  </script>
+
+  <!-- ===== Autocomplete للمدينة: لغة الإدخال + إزالة التكرار داخل البلد + استخدام lng ===== -->
+  <script>
+  (function cityAutocomplete(){
+    if (window.__cityAutoInit) return; window.__cityAutoInit = true;
+
+    const input = document.getElementById('cityTop');
+    const panel = document.getElementById('citySuggest');
+    const latEl = document.getElementById('latTop');
+    const lngEl = document.getElementById('lngTop');
+    const form  = input ? input.closest('form') : null;
+    if(!input || !panel || !form) return;
+
+    let tm = null, lastList = [], active = -1;
+
+    function detectLang(q){
+      const s = (q||'').trim();
+      if (/[\u0600-\u06FF]/.test(s)) return 'ar';
+      const hasFrMarks = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(s);
+      const frWords = /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
+      const enWords = /\b(new|city|county|state|united|kingdom|usa|us|uk)\b/i.test(s);
+      if (hasFrMarks || frWords) return 'fr';
+      if (enWords) return 'en';
+      const prefs = (navigator.languages || [navigator.language || 'en']).map(x=>x.slice(0,2).toLowerCase());
+      if (prefs.includes('fr')) return 'fr';
+      if (prefs.includes('en')) return 'en';
+      if (prefs.includes('ar')) return 'ar';
+      return 'en';
+    }
+
+    function esc(s){ return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
+    function hide(){ panel.style.display='none'; panel.innerHTML=""; lastList=[]; active=-1; }
+    function show(){ panel.style.display='block'; }
+
+    const ALLOWED = new Set(['city','town','village','municipality']);
+    const FALLBACK = new Set(['state','province']);
+    function normalizePlace(p){
+      const a = p.address || {};
+      const type = (p.type || '').toLowerCase();
+      const cc = (a.country_code || '').toLowerCase();
+      const city = a.city || a.town || a.village || a.municipality || a.state || a.province || (p.display_name||'').split(',')[0];
+      const prioMap = {city:1, town:2, village:3, municipality:3, state:6, province:6, administrative:8, county:8, region:8};
+      const prio = prioMap[type] ?? 9;
+      const country = a.country || '';
+      return { city, country, cc, label: city + (country ? ', ' + country : ''), lat:p.lat, lon:p.lon, type, prio };
+    }
+    function dedupeByCountry(list){
+      const best = new Map();
+      for(const raw of list){
+        const n = normalizePlace(raw);
+        if (!n.city || !n.cc) continue;
+        const key = (n.city.trim().toLowerCase() + '|' + n.cc);
+        const prev = best.get(key);
+        if (!prev || n.prio < prev.prio) best.set(key, n);
+      }
+      return Array.from(best.values());
+    }
+
+    async function query(q){
+      const lang = detectLang(q);
+      const u = 'https://nominatim.openstreetmap.org/search'
+              + '?format=json&addressdetails=1&namedetails=0&extratags=0'
+              + '&limit=30&accept-language=' + encodeURIComponent(lang)
+              + '&q=' + encodeURIComponent(q);
+      const r = await fetch(u, { headers: { 'Accept': 'application/json' }});
+      if(!r.ok) return [];
+      const data = await r.json();
+
+      let filtered = data.filter(x => ALLOWED.has((x.type||'').toLowerCase()));
+      if (!filtered.length) filtered = data.filter(x => FALLBACK.has((x.type||'').toLowerCase()));
+      if (!filtered.length) filtered = data;
+
+      return dedupeByCountry(filtered);
+    }
+
+    function render(list){
+      if(!Array.isArray(list) || list.length===0){ hide(); return; }
+      lastList = list.slice(0, 6);
+      const html = [
+        '<div class="typeahead-group">مدن/مناطق</div>',
+        ...lastList.map((p,i)=>(
+          '<div class="row" data-i="'+i+'"><i class="bi bi-geo-alt"></i>'
+          + '<div><div>'+esc(p.label)+'</div><div class="sub">lat '+esc(p.lat)+' — lng '+esc(p.lon)+'</div></div></div>'
+        ))
+      ].join('');
+      panel.innerHTML = html; show(); active = -1;
+    }
+
+    function pick(i){
+      const p = lastList[i]; if(!p) return;
+      input.value = p.label;
+      if (latEl) latEl.value = p.lat || '';
+      if (lngEl) lngEl.value = p.lon || '';
+      try{
+        document.cookie = "city="+encodeURIComponent(p.label)+";path=/;SameSite=Lax";
+        document.cookie = "lat="+(p.lat||"")+";path=/;SameSite=Lax";
+        document.cookie = "lng="+(p.lon||"")+";path=/;SameSite=Lax";
+      }catch(_){}
+      hide();
+    }
+
+    input.addEventListener('input', function(){
+      clearTimeout(tm);
+      const q = input.value.trim();
+      if (latEl) latEl.value = '';
+      if (lngEl) lngEl.value = '';
+      if (q.length < 2){ hide(); return; }
+      tm = setTimeout(async ()=>{ try{ const list = await query(q); render(list); }catch(_){ hide(); } }, 220);
+    });
+    panel.addEventListener('click', function(e){
+      const row = e.target.closest('.row'); if(!row) return;
+      pick(Number(row.getAttribute('data-i')||'-1'));
+    });
+
+    input.addEventListener('keydown', function(e){
+      if (panel.style.display !== 'block') {
+        if (e.key === 'Enter') { e.preventDefault(); form.submit(); }
+        return;
+      }
+      const rows = Array.prototype.slice.call(panel.querySelectorAll('.row'));
+      if (!rows.length) return;
+      if (e.key === 'ArrowDown'){ e.preventDefault(); active = (active+1) % rows.length; markActive(rows); }
+      else if (e.key === 'ArrowUp'){ e.preventDefault(); active = (active-1 + rows.length) % rows.length; markActive(rows); }
+      else if (e.key === 'Enter'){
+        e.preventDefault();
+        if (active >= 0 && rows[active]) { rows[active].click(); }
+        else { form.submit(); }
+      } else if (e.key === 'Escape'){ hide(); }
+    });
+    function markActive(rows){
+      rows.forEach(r=>r.classList.remove('active'));
+      if (active>=0 && rows[active]){ rows[active].classList.add('active'); rows[active].scrollIntoView({block:'nearest'}); }
+    }
+
+    const qInput = document.getElementById('qTop');
+    qInput?.addEventListener('keydown', function(e){
+      if (e.key === 'Enter'){ e.preventDefault(); form.submit(); }
+    });
+
+    document.addEventListener('click', function(e){ if (e.target === input || panel.contains(e.target)) return; hide(); });
+  })();
+  </script>
+
+  <!-- كشف وضع التطبيق وإضافة كلاس html.pwa -->
+  <script>
+    (function(){
+      var isStandalone = false;
+      try {
+        isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+                       || (window.navigator.standalone === true);
+      } catch(_) {}
+      if (isStandalone) { document.documentElement.classList.add('pwa'); }
+    })();
+  </script>
+
+  <style id="safearea-white-under-navbar">
+  @media (max-width: 768px){
+    .mobile-tabbar{
+      z-index: 2147483647 !important;
+      background: #fff !important;
+    }
+
+    body::after{
+      content: "";
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: calc(
+        max(
+          env(safe-area-inset-bottom, 0px),
+          var(--safe-b, 0px),
+          var(--safe-bottom, 0px)
+        ) + 9px
+      );
+      background: #fff;
+      z-index: 2147483646;
+      pointer-events: none;
+    }
+  }
+</style>
+
 <script>
 (function(){
-  const btn  = document.getElementById('menuBtn');
-  const menu = document.getElementById('quickMenu');
-  if(!btn || !menu) return;
+  function uuid(){
+    return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+    );
+  }
+  const KEY = "sv_session_id";
+  let sid = localStorage.getItem(KEY);
+  if(!sid){ sid = uuid(); localStorage.setItem(KEY, sid); }
 
-  // امنع التهيئة المكررة
-  if (window.__quickMenuInit) return;
-  window.__quickMenuInit = true;
+  const USER_ID = {{ (session_user.id if session_user else 'null') | safe }};
 
-  function open(){
-    menu.classList.add('is-open');     // ← أضفنا كلاس
-    menu.removeAttribute('hidden');    // ← أزلنا الـ hidden
-    btn.setAttribute('aria-expanded','true');
-    setTimeout(()=>{
-      document.addEventListener('click', onDoc, true);
-      document.addEventListener('keydown', onKey);
-    },0);
+  async function postJSON(url, data){
+    try {
+      await fetch(url, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(data) });
+    } catch(e){}
   }
 
-  function close(){
-    menu.classList.remove('is-open');  // ← نحذف الكلاس
-    menu.setAttribute('hidden','');    // ← نعيد الـ hidden
-    btn.setAttribute('aria-expanded','false');
-    document.removeEventListener('click', onDoc, true);
-    document.removeEventListener('keydown', onKey);
+  postJSON("/api/metrics/track", { session_id: sid, user_id: USER_ID });
+
+  async function ping(){
+    try{
+      await fetch("/api/metrics/heartbeat", {
+        method:"POST", headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ session_id: sid, user_id: USER_ID })
+      });
+    }catch(e){}
   }
-
-  function toggle(){ menu.classList.contains('is-open') ? close() : open(); }
-
-  function onDoc(e){
-    if (e.target===btn || btn.contains(e.target) || menu.contains(e.target)) return;
-    close();
-  }
-
-  function onKey(e){ if (e.key==='Escape'){ close(); btn.focus(); } }
-
-  btn.addEventListener('click', function(e){
-    e.preventDefault();
-    e.stopPropagation();
-    toggle();
-  });
-
-  menu.addEventListener('click', function(e){ e.stopPropagation(); });
+  setInterval(ping, 30000);
+  setTimeout(ping, 5000);
 })();
 </script>
-    <!-- Typeahead -->
-    <script>
-    (function initTypeahead(){
-      if (window.__typeaheadInit) return;
-      window.__typeaheadInit = true;
 
-      var form  = document.querySelector('form.search');
-      var input = form ? form.querySelector('input[name="q"]') : null;
-      var panel = document.getElementById('typeaheadPanel');
-      if (!form || !input || !panel) return;
+<script>
+(function initNotifications(){
+  if (window.__notifInit) return; window.__notifInit = true;
 
-      var tm = null, activeIndex = -1;
+  const btn    = document.getElementById('notifOpen');
+  const panel  = document.getElementById('notifPanel');
+  const bodyEl = document.getElementById('notifBody');
+  const close  = document.getElementById('notifClose');
+  const scrim  = document.getElementById('scrim');
 
-      function hide(){ panel.classList.add('d-none'); panel.innerHTML = ""; activeIndex = -1; }
-      function show(){ panel.classList.remove('d-none'); }
-      function esc(s){
-  return String(s||"").replace(/[&<>"']/g, function(c){
-    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  if (!btn || !panel || !bodyEl) return;
+
+  // ✅ علم يحدد إذا كان المستخدم Support
+const IS_SUPPORT = {{ 'true' if session_user and (session_user.get('is_support') or session_user.is_support) else 'false' }};
+
+  // عناصر الشارة
+  let ping  = btn.querySelector('.notif-ping');
+  let count = btn.querySelector('.notif-count');
+  if (!ping){  ping  = document.createElement('span'); ping.className='notif-ping';  ping.style.display='none'; btn.appendChild(ping); }
+  if (!count){ count = document.createElement('span'); count.className='notif-count'; count.style.display='none'; btn.appendChild(count); }
+
+  let lastTs = 0;
+  let pollTm = null;
+
+  function setBadge(n){
+    if (!n || n<=0){ ping.style.display='none'; count.style.display='none'; }
+    else {
+      ping.style.display='block';
+      count.style.display='block';
+      count.textContent = (n>99 ? '99+' : n);
+    }
+  }
+
+  async function fetchUnreadCount(){
+    try{
+      const r = await fetch('/api/unread_count', {cache:'no-store'});
+      if(!r.ok) return;
+      const j = await r.json();
+      setBadge(Number(j.count||0));
+    }catch(_){}
+  }
+
+  function esc(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
+
+  // ✅ اجعل رابط الإشعار كما هو قادم من الـ API
+  function normalizeHref(it){
+    if (it && it.url) return it.url;
+    return '#';
+  }
+
+  function renderItems(items){
+    if (!items || !items.length){
+      bodyEl.innerHTML = '<div class="small text-muted">لا توجد إشعارات جديدة.</div>';
+      return;
+    }
+    bodyEl.innerHTML = items.map(it=>{
+      const href = normalizeHref(it);
+      return `<a class="notif-row" href="${esc(href)}">
+        <div class="fw-bold">${esc(it.title||'إشعار')}</div>
+        ${it.body ? '<div class="small text-muted">'+esc(it.body)+'</div>' : ''}
+      </a>`;
+    }).join('');
+  }
+
+  async function pollOnce(){
+    try{
+      const r = await fetch('/api/notifications/poll?since='+(lastTs||0), {cache:'no-store'});
+      if(!r.ok) return;
+      const j = await r.json();
+      lastTs = Number(j.now||Math.floor(Date.now()/1000));
+      const items = Array.isArray(j.items) ? j.items : [];
+      if (panel.classList.contains('is-open')){
+        if (items.length===0){ await loadInitial(); }
+        else { renderItems(items); }
+      } else {
+        if (items.length>0){ await fetchUnreadCount(); }
+      }
+    }catch(_){}
+  }
+
+  async function loadInitial(){
+    try{
+      const r = await fetch('/api/notifications/poll?since=0', {cache:'no-store'});
+      if(!r.ok) return;
+      const j = await r.json();
+      lastTs = Number(j.now||Math.floor(Date.now()/1000));
+      renderItems(j.items||[]);
+    }catch(_){}
+  }
+
+  async function markAllRead(){
+    try{
+      await fetch('/api/notifications/mark_all_read', {method:'POST'});
+    }catch(_){}
+    setBadge(0);
+  }
+
+  function openPanel(){
+    panel.classList.add('is-open');
+    panel.setAttribute('aria-hidden','false');
+    scrim.style.opacity='1'; scrim.style.pointerEvents='auto';
+    loadInitial().then(markAllRead);
+    btn.setAttribute('aria-expanded','true');
+  }
+  function closePanel(){
+    panel.classList.remove('is-open');
+    panel.setAttribute('aria-hidden','true');
+    scrim.style.opacity='0'; scrim.style.pointerEvents='none';
+    btn.setAttribute('aria-expanded','false');
+  }
+
+  // ✅ الجميع يفتح اللوحة الآن
+  btn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    panel.classList.contains('is-open') ? closePanel() : openPanel();
   });
-}
 
-      function normalizePayload(data){
-        var usersArr = (data && data.users) ? data.users : [];
-        var itemsArr = (data && data.items) ? data.items : [];
+  close?.addEventListener('click', ()=>closePanel());
+  scrim?.addEventListener('click', ()=>closePanel());
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closePanel(); });
 
-        var users = usersArr.map(function(u){
-          var name = u.name || ((u.first_name||"") + " " + (u.last_name||"")).trim();
-          return { id:u.id, name:name, avatar:u.avatar||u.avatar_path||"", url:u.url||("/users/"+u.id) };
-        });
+  fetchUnreadCount();
+  pollTm = setInterval(pollOnce, 20000);
+})();
+</script>
 
-        var items = itemsArr.map(function(it){
-          return { id:it.id, title:it.title||"", image:it.image||it.image_path||"", city:it.city||"", url:it.url||("/items/"+it.id) };
-        });
+<script>
+document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const form = e.target;
+  const data = new FormData(form);
+  const res = await fetch(form.action, { method:'POST', body:data });
+  const out = await res.json().catch(()=>({}));
+  if (res.ok && out.ok){
+    alert('✅ تم إرسال البلاغ. شكرًا لك!');
+    const m = bootstrap.Modal.getInstance(document.getElementById('reportModal'));
+    m?.hide();
+  }else{
+    alert('❌ تعذّر إرسال البلاغ. حاول لاحقًا.');
+  }
+});
+</script>
+  ...
+  <script>
+    // هنا آخر سكربتاتك مثل الإشعارات
+  </script>
 
-        return { users: users, items: items };
-      }
+  <!-- ✅ Profile Bottom Sheet (mobile only) -->
+  <div id="profileScrim" class="sheet-scrim" hidden></div>
 
-      function render(data){
-        var norm = normalizePayload(data);
-        var users = norm.users, items = norm.items, html = [];
+  <div id="profileSheet" class="sheet" hidden aria-hidden="true" role="dialog" aria-label="قائمة البروفايل">
+    <div class="sheet__drag"></div>
+    <div class="sheet__header">
+      <div class="sheet__profile">
+        <div class="sheet__avatar">
+  {% if session_user and session_user.avatar_path %}
+    <img src="{{ session_user.avatar_path }}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:50%">
+  {% else %}
+    {{ (session_user.first_name or 'ح')[:1] if session_user else 'ز' }}
+  {% endif %}
+</div>
 
-        if (users.length){
-          html.push('<div class="typeahead-group">حسابات</div>');
-          users.forEach(function(u){
-            html.push('<div class="typeahead-item" data-url="'+u.url+'"><i class="bi bi-person-circle"></i><div class="flex-grow-1"><div>'+esc(u.name)+'</div><div class="k">الملف الشخصي</div></div></div>');
-          });
-        }
+        <div>
+          <div class="sheet__name">{{ session_user.first_name or 'المستخدم' }}</div>
+          <div class="sheet__handle">@{{ session_user.username or 'user' }}</div>
+        </div>
+      </div>
+      <button class="sheet__share" type="button">Share</button>
+    </div>
 
-        if (items.length){
-          html.push('<div class="typeahead-group">عناصر</div>');
-          items.forEach(function(it){
-            var city = it.city ? ' — <span class="k">'+esc(it.city)+'</span>' : '';
-            html.push('<div class="typeahead-item" data-url="'+it.url+'"><i class="bi bi-box-seam"></i><div class="flex-grow-1"><div>'+esc(it.title)+city+'</div><div class="k">تفاصيل العنصر</div></div></div>');
-          });
-        }
+    <div class="sheet__body">
+<ul class="sheet__list">
 
-        if (!html.length){ hide(); return; }
-        panel.innerHTML = html.join(""); show();
-      }
+  <!-- حسابي -->
+  <li>
+    <a class="sheet__item" href="/profile">
+      <span class="left">
+        <span class="ic ic--profile"></span>
+        <span class="label">حسابي</span>
+      </span>
+      <i class="bi bi-chevron-left chev"></i>
+    </a>
+  </li>
 
-      function search(q){
-        if (!q || q.trim().length < 2) { hide(); return; }
-        fetch('/api/search?q='+encodeURIComponent(q.trim()))
-          .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-          .then(render).catch(hide);
-      }
+  <!-- مفضلتي -->
+  <li>
+    <a class="sheet__item" href="/favorites">
+      <span class="left">
+        <span class="ic ic--fav"></span>
+        <span class="label">مفضلتي</span>
+      </span>
+      <i class="bi bi-chevron-left chev"></i>
+    </a>
+  </li>
 
-      input.addEventListener('input', function(){ clearTimeout(tm); tm = setTimeout(function(){ search(input.value); }, 180); });
-      panel.addEventListener('click', function(e){
-        var row = e.target.closest('.typeahead-item'); if (!row) return;
-        window.location.href = row.getAttribute('data-url');
+  <!-- الإعدادات -->
+  <li>
+    <a class="sheet__item" href="/settings">
+      <span class="left">
+        <span class="ic ic--settings"></span>
+        <span class="label">الإعدادات</span>
+      </span>
+      <i class="bi bi-chevron-left chev"></i>
+    </a>
+  </li>
+
+  <!-- تذاكري -->
+  <li>
+    <a class="sheet__item" href="/support/my">
+      <span class="left">
+        <span class="ic ic--cc"></span>
+        <span class="label">تذاكري</span>
+      </span>
+      <i class="bi bi-chevron-left chev"></i>
+    </a>
+  </li>
+
+  <!-- مراسلة الدعم (الأيقونة الصفراء) -->
+  <li>
+    <a class="sheet__item" href="/support/new">
+      <span class="left">
+        <span class="ic ic--support"></span>
+        <span class="label">مراسلة الدعم</span>
+      </span>
+      <i class="bi bi-chevron-left chev"></i>
+    </a>
+  </li>
+
+  <!-- خروج -->
+  <li>
+    <a class="sheet__item text-danger" href="/logout" id="logoutSheet">
+      <span class="left">
+        <span class="ic ic--logout"></span>
+        <span class="label">خروج</span>
+      </span>
+      <i class="bi bi-chevron-left chev"></i>
+    </a>
+  </li>
+
+</ul>
+
+    </div>
+  </div>
+
+  <script>
+  (function initProfileSheet(){
+    if (window.__profileSheetInit) return; window.__profileSheetInit = true;
+    const isMobile = window.matchMedia('(max-width: 768px)');
+    const sheet = document.getElementById('profileSheet');
+    const scrim = document.getElementById('profileScrim');
+    if (!sheet || !scrim) return;
+    function show(){ sheet.hidden=false; scrim.hidden=false; requestAnimationFrame(()=>{ sheet.classList.add('is-open'); scrim.classList.add('is-open'); }); }
+    function hide(){ sheet.classList.remove('is-open'); scrim.classList.remove('is-open'); setTimeout(()=>{ sheet.hidden=true; scrim.hidden=true; },220); }
+    scrim.addEventListener('click', hide);
+    document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') hide(); });
+    const profTab = document.querySelector('.mobile-tabbar a[href="/profile"]');
+    if (profTab){ profTab.addEventListener('click',(e)=>{ if(isMobile.matches){ e.preventDefault(); show(); } }); }
+
+    // 🔒 توحيد سلوك الخروج (POST + تنظيف التخزين + مسح كاش) من داخل الـ Sheet أيضًا
+    function wireLogout(a){
+      if(!a) return;
+      a.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        try{
+          let r = await fetch('/logout', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}', credentials:'same-origin'});
+          if(!r.ok && r.status !== 405){ /* قد يكون GET فقط */ }
+        }catch(_){}
+        try{ localStorage.clear(); sessionStorage.clear(); }catch(_){}
+        try{ if('caches' in window){ const names=await caches.keys(); for(const n of names){ await caches.delete(n);} } }catch(_){}
+        const u = new URL(window.location.href);
+        u.searchParams.set('logged_out','1');
+        window.location.href = u.pathname + u.search;
       });
+    }
+    wireLogout(document.getElementById('logoutSheet'));
+  })();
+  </script>
 
-      input.addEventListener('keydown', function(e){
-        if (panel.classList.contains('d-none')) return;
-        var rows = Array.prototype.slice.call(panel.querySelectorAll('.typeahead-item'));
-        if (!rows.length) return;
-        if (e.key === 'ArrowDown'){ e.preventDefault(); setActive(rows, activeIndex+1); }
-        else if (e.key === 'ArrowUp'){ e.preventDefault(); setActive(rows, activeIndex-1); }
-        else if (e.key === 'Enter'){ if (activeIndex>=0 && rows[activeIndex]){ e.preventDefault(); rows[activeIndex].click(); } }
-        else if (e.key === 'Escape'){ hide(); }
-      });
-
-      document.addEventListener('click', function(e){ if (!panel.contains(e.target) && e.target !== input){ hide(); } });
-
-      function setActive(rows, i){
-        rows.forEach(function(r){ r.classList.remove('active'); });
-        if (i < 0) i = rows.length-1;
-        if (i >= rows.length) i = 0;
-        activeIndex = i; rows[activeIndex].classList.add('active');
-        rows[activeIndex].scrollIntoView({block:'nearest'});
-      }
-    })();
-    </script>
-
-    <!-- إشعارات (Polling مبسّط) -->
-    <script>
-    (function notifSystem(){
-      if (window.__notifInit) return; window.__notifInit = true;
-
-      const notifOpen  = document.getElementById('notifOpen');
-      const notifClose = document.getElementById('notifClose');
-      const panel      = document.getElementById('notifPanel');
-      const body       = document.getElementById('notifBody');
-      const scrim      = document.getElementById('scrim');
-
-      // عناصر العدّاد على الجرس
-      let countEl = notifOpen?.querySelector('.notif-count');
-      if (!countEl){ countEl = document.createElement('span'); countEl.className='notif-count'; countEl.style.display='none'; notifOpen?.appendChild(countEl); }
-      let pingEl = notifOpen?.querySelector('.notif-ping');
-      if (!pingEl){ pingEl = document.createElement('span'); pingEl.className='notif-ping'; pingEl.style.display='none'; notifOpen?.appendChild(pingEl); }
-
-      function setBell(n){
-        if (!countEl || !pingEl) return;
-        if (n>0){ countEl.textContent = (n>99 ? '99+' : String(n)); countEl.style.display = ''; pingEl.style.display = ''; }
-        else{ countEl.textContent = ''; countEl.style.display = 'none'; pingEl.style.display = 'none'; }
-      }
-
-      function esc(s){
-  return String(s||"").replace(/[&<>"']/g, function(c){
-    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
-  });
-}
-
-      // نحاول أول مسار يشتغل عندك (بدون تعديل الباك)
-      const FEEDS = [
-        '/api/notifications/poll',
-        '/api/notifications',
-        '/notifications/json'
-      ];
-
-      async function fetchFirst(urls){
-        for (const u of urls){
-          try{
-            const r = await fetch(u, {credentials:'include'});
-            if (r.ok){
-              const data = await r.json();
-              return {data, url:u};
-            }
-          }catch(_){}
-        }
-        return {data:null, url:null};
-      }
-
-      function normalize(data){
-        const items = (data && (data.items || data.notifications || data)) || [];
-        const unread = Number(data && (data.unread ?? data.count ?? 0)) || 0;
-        return {
-          unread,
-          items: items.map(n => ({
-            title: n.title || n.subject || 'إشعار',
-            meta:  n.body  || n.text || n.message || '',
-            link:  n.link_url || n.url || '#',
-            kind:  n.kind || 'info',
-            is_read: !!(n.is_read),
-            created_at: n.created_at || n.time || ''
-          }))
-        };
-      }
-
-      function renderList(list){
-        body.innerHTML = '';
-        if (!list.items.length){
-          body.innerHTML = '<div class="small text-muted">لا توجد إشعارات جديدة.</div>';
+  <!-- ✅ توحيد سلوك الخروج من قائمة الحساب الرئيسية أيضًا -->
+  <script>
+  (function(){
+    const a = document.getElementById('logoutLink');
+    if(!a) return;
+    a.addEventListener('click', async function(e){
+      e.preventDefault();
+      try{
+        let r = await fetch('/logout', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}', credentials:'same-origin'});
+        if(!r.ok && r.status !== 405){
+          // لو السيرفر لا يقبل POST سنسقط على GET
+          location.href = '/logout?via=get';
           return;
         }
-        list.items.forEach(n=>{
-          const a = document.createElement('a');
-          a.className='notif-row'; a.href=n.link||'#';
-          a.innerHTML = `
-            <div class="fw-bold">${esc(n.title)}</div>
-            ${n.meta ? `<div class="k small">${esc(n.meta)}</div>` : ''}
-          `;
-          body.appendChild(a);
-        });
+      }catch(_){
+        location.href = '/logout?via=get';
+        return;
       }
-
-      let prevCount = -1;
-      function refreshUnread(){
-        fetch('/api/notifs/unread_count', {credentials:'include'})
-          .then(r=>r.ok?r.json():{count:0})
-          .then(d=>{
-            const n = parseInt(d.count||0);
-            setBell(n);
-            if (n !== prevCount){
-              prevCount = n;
-              document.dispatchEvent(new CustomEvent('unread:changed', {detail:{count:n}}));
-            }
-          })
-          .catch(()=>{});
-      }
-      refreshUnread();
-      setInterval(refreshUnread, 30*1000);
-
-      function openPanel(){ panel?.classList.add('is-open'); scrim?.classList.add('is-show'); loadPanel(); }
-      function closePanel(){ panel?.classList.remove('is-open'); scrim?.classList.remove('is-show'); }
-      notifOpen?.addEventListener('click', openPanel);
-      notifClose?.addEventListener('click', closePanel);
-      scrim?.addEventListener('click', closePanel);
-
-      async function loadPanel(){
-        body.innerHTML = '<div class="small text-muted">جارِ التحميل…</div>';
-        const {data} = await fetchFirst(FEEDS);
-        const norm = normalize(data||{});
-        renderList(norm);
-        if (typeof norm.unread === 'number') setBell(norm.unread);
-        try{
-          await fetch('/api/notifications/mark_all_read', {method:'POST', credentials:'include'});
-          setTimeout(refreshUnread, 800);
-        }catch(_){}
-      }
-    })();
-    </script>
-
-    <!-- سكربت مزامنة صلاحية MD من السيرفر فقط -->
-    <script>
-    (function roleAutoToggle(){
-      if (window.__dmSyncInit) return; window.__dmSyncInit = true;
-
-      function syncFromMe(){
-        return fetch('/api/me', {credentials:'include'})
-          .then(r => r.ok ? r.json() : Promise.reject())
-          .then(data => {
-            const flag = !!(data && (data.can_manage_deposits || data.is_deposit_manager || data.canDM));
-            if (flag) { showDM(); } else { hideDM(); }
-          })
-          .catch(()=>{});
-      }
-
-      // فحص أوّلي
-      syncFromMe();
-
-      // عند تغيّر عدّاد الإشعارات (حدث يُطلقه notifSystem)
-      document.addEventListener('unread:changed', () => {
-        syncFromMe();
-      });
-
-      // شبكة أمان خلال أول دقيقتين
-      let checks = 0;
-      const timer = setInterval(() => {
-        checks += 1;
-        syncFromMe();
-        if (checks >= 8) clearInterval(timer);
-      }, 15000);
-    })();
-    </script>
-
-  </body>
+      try{ localStorage.clear(); sessionStorage.clear(); }catch(_){}
+      try{ if('caches' in window){ const names=await caches.keys(); for(const n of names){ await caches.delete(n);} } }catch(_){}
+      const u = new URL(window.location.href);
+      u.searchParams.set('logged_out','1');
+      window.location.href = u.pathname + u.search;
+    });
+  })();
+  </script>
+</body>
 </html>
