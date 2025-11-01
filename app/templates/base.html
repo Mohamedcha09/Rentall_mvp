@@ -154,17 +154,29 @@ button.dropdown-toggle::after {
 </style>
 
 <style>
-/* ⬆️ رفع شريط الموبايل فوق خط iPhone + مساحة تمرير إضافية */
+/* ✅ رفع الشريط السفلي بدون إعادة تدفق (لا قفزة للأعلى) */
 @media (max-width: 768px){
+  :root{ --tabbar-lift: 10px; } /* عدّلها 6–14px حسب ذوقك */
+
   .mobile-tabbar{
-    bottom: calc( max(var(--safe-bottom), var(--safe-bottom-legacy)) + 8px ) !important;
+    transform: translateY(calc(-1 * var(--tabbar-lift)));
+    will-change: transform; /* سلاسة على iOS */
   }
-  /* زيادة المساحة أسفل الجسم والصفحة بما يتناسب مع الرفع */
-  body{
-    padding-bottom: calc( 84px + max(var(--safe-bottom), var(--safe-bottom-legacy)) ) !important;
+
+  /* إبقاء زر + فوقه بنفس الرفع */
+  .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
+    bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 86px + var(--tabbar-lift)) !important;
   }
-  .page{
-    padding-bottom: calc( 108px + max(var(--safe-bottom), var(--safe-bottom-legacy)) ) !important;
+
+  /* تمديد الخلفية البيضاء تحت الـhome indicator نفس مقدار الرفع */
+  body::after{
+    height: calc(
+      max(
+        env(safe-area-inset-bottom, 0px),
+        var(--safe-b, 0px),
+        var(--safe-bottom, 0px)
+      ) + 9px + var(--tabbar-lift)
+    );
   }
 }
 </style>
