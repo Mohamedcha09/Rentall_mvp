@@ -1,5 +1,5 @@
 # app/auth.py
-from fastapi import APIRouter, Depends, Request, Form, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, Request, Form, UploadFile, File, HTTPException, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -570,14 +570,28 @@ def reset_post(
 
 # ============ Logout ============
 # في نهاية دالة logout بملف app/auth.py
+SESSION_COOKIE = os.getenv("SESSION_COOKIE", "session")
+
 @router.get("/logout")
 def logout(request: Request):
+    # امسح الجلسة
     request.session.clear()
-    r = _maybe_redirect_canonical(request)
-    if r:
-        return r
-    # أضف باراميتر صغير لرسالة في الصفحة الرئيسية
-    return RedirectResponse(url="/?logged_out=1", status_code=303)
+
+    # جهّز إعادة التوجيه مع رسالة نجاح
+    resp = RedirectResponse(url="/?logged_out=1", status_code=303)
+
+    # احذف كوكي الجلسة محليًا
+    try:
+        resp.delete_cookie(SESSION_COOKIE)
+        # جرّب حذفها أيضاً على الدومين الأعلى لو كنت تستخدمه
+        host = request.url.hostname or ""
+        if "." in host:
+            root_domain = "." + ".".join(host.split(".")[-2:])
+            resp.delete_cookie(SESSION_COOKIE, domain=root_domain)
+    except Exception:
+        pass
+
+    return resp
 
 @router.get("/dev/admin-login")
 def dev_admin_login(request: Request, db: Session = Depends(get_db)):

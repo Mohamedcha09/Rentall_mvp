@@ -1188,8 +1188,13 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
     <div class="sheet__header">
       <div class="sheet__profile">
         <div class="sheet__avatar">
-          {{ (session_user.first_name or 'ح')[:1] if session_user else 'ز' }}
-        </div>
+  {% if session_user and session_user.avatar_path %}
+    <img src="{{ session_user.avatar_path }}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:50%">
+  {% else %}
+    {{ (session_user.first_name or 'ح')[:1] if session_user else 'ز' }}
+  {% endif %}
+</div>
+
         <div>
           <div class="sheet__name">{{ session_user.first_name or 'المستخدم' }}</div>
           <div class="sheet__handle">@{{ session_user.username or 'user' }}</div>
@@ -1244,6 +1249,17 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
       <i class="bi bi-chevron-left chev"></i>
     </a>
   </li>
+  <!-- مراسلة الدعم (الأيقونة الصفراء) -->
+  <li>
+    <a class="sheet__item" href="/messages/support">
+      <span class="left">
+        <span class="ic ic--support"></span>
+        <span class="label">مراسلة الدعم</span>
+      </span>
+      <i class="bi bi-chevron-left chev"></i>
+    </a>
+  </li>
+
 
   <!-- خروج -->
   <li>
