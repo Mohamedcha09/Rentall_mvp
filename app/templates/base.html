@@ -181,6 +181,21 @@ button.dropdown-toggle::after {
 }
 </style>
 
+<style>
+/* ⬇️ نقل زر + إلى أسفل الشاشة (على اليمين فوق شريط التبويب) */
+@media (max-width: 768px){
+  .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
+    position: fixed !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 84px) !important;
+    z-index: 2147483647 !important;
+    transform: none !important;
+  }
+}
+</style>
+
+
 
 
 
