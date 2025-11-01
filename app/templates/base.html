@@ -411,6 +411,43 @@ button.dropdown-toggle::after {
   }
 </style>
 
+<style id="guest-mobile-only">
+/* واجهة ضيف مبسّطة — موبايل فقط */
+@media (max-width: 768px){
+
+  /* إخفاء العناصر العلوية للضيف */
+  body[data-auth="0"] #menuBtn,
+  body[data-auth="0"] #quickMenu,
+  body[data-auth="0"] .searchbar,
+  body[data-auth="0"] .m-top-tabs,
+  body[data-auth="0"] #notifOpen,
+  body[data-auth="0"] .stripe-callout,   /* تنبيه Stripe */
+  body[data-auth="0"] .fab,              /* زر + العائم */
+  body[data-auth="0"] .sheet,            /* شيت البروفايل */
+  body[data-auth="0"] .sheet-scrim { 
+    display: none !important;
+  }
+
+  /* من قسم actions: اترك فقط دخول/تسجيل، وأخفِ الباقي للضيف */
+  body[data-auth="0"] .actions > *:not(a[href="/login"]):not(a[href="/register"]){
+    display: none !important;
+  }
+
+  /* تبويب سفلي: اترك “الرئيسية” فقط */
+  body[data-auth="0"] .mobile-tabbar a:nth-child(n+2){
+    display: none !important;
+  }
+  body[data-auth="0"] .mobile-tabbar{
+    grid-template-columns: 1fr !important; /* عمود واحد */
+  }
+
+  /* مساحة سفلية مناسبة بدون زر + */
+  body[data-auth="0"] .page{
+    padding-bottom: calc(76px + max(var(--safe-bottom), var(--safe-bottom-legacy))) !important;
+  }
+}
+</style>
+
 
 
 
@@ -418,7 +455,7 @@ button.dropdown-toggle::after {
 
   {% block head %}{% endblock %}
 </head>
-<body>
+<body data-auth="{{ '1' if session_user else '0' }}">
   <div id="page-wrapper">
 
   <!-- ===== Topbar ===== -->
