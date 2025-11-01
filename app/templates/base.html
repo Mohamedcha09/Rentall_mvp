@@ -91,26 +91,55 @@
     .sidebar[data-collapsed="true"]{ width:84px; flex-basis:84px; }
     @media (max-width:991.98px){ .sidebar{ display:none !important; } }
 
-    body{ padding-bottom: calc(76px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
+    /* ⬇️ رفعت البادينغ بسبب تكبير شريط الأسفل */
+    body{ padding-bottom: calc(92px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
 
     @media (max-width: 768px){
       .mobile-tabbar{
-        position: fixed; inset-inline: 0; bottom: 0; height: 64px;
+        position: fixed; inset-inline: 0; bottom: 0; height: 76px; /* كان 64 */
         display: grid; grid-template-columns: repeat(5,1fr); align-items: center;
         background: #fff; border-top: 1px solid var(--border);
-        padding: 6px 8px calc(6px + max(var(--safe-bottom), var(--safe-bottom-legacy)));
+        padding: 10px 10px calc(10px + max(var(--safe-bottom), var(--safe-bottom-legacy)));
         z-index: 2147483647; border-radius: 16px 16px 0 0;
       }
-      .mobile-tabbar a{ text-decoration:none; color:#6b7280; font-size:.82rem; display:flex; flex-direction:column; align-items:center; gap:4px; }
-      .mobile-tabbar .tab-img{ width:22px; height:22px; object-fit:contain; opacity:.7; transition:opacity .15s, transform .15s; }
-      .mobile-tabbar a.is-active{ color:#111827; font-weight:700; }
-      .mobile-tabbar a.is-active .tab-img{ opacity:1; transform:scale(1.06); }
+      .mobile-tabbar a{
+        text-decoration:none; color:#6b7280; font-size:.95rem; /* كان .82 */
+        display:flex; flex-direction:column; align-items:center; gap:6px; /* كان 4px */
+        line-height:1.1;
+      }
+      .mobile-tabbar .tab-img{
+        width:28px; height:28px; object-fit:contain; /* كان 22px */
+        opacity:.85; transition:opacity .15s, transform .15s;
+      }
+      .mobile-tabbar a.is-active{ color:#111827; font-weight:800; }
+      .mobile-tabbar a.is-active .tab-img{ opacity:1; transform:scale(1.07); }
+
+      /* زر + الدائري أسفل يمين فوق الشريط — تكبير وتحريك لأسفل */
       .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
         position: fixed !important; right: 16px !important;
-        bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 86px) !important;
+        bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 96px) !important; /* كان 86px */
+        z-index: 2147483647 !important;
+        width: 64px !important; height: 64px !important; /* تكبير الزر */
+        border-radius: 50% !important; display:flex !important;
+        align-items:center; justify-content:center;
+        box-shadow: 0 10px 28px rgba(0,0,0,.22) !important;
+        padding: 0 !important;
+      }
+      .fab i, .btn-fab i, [class*="fab"] i{ font-size: 26px; }
+
+      /* في حال ظهر زر إنشاء (dropdown) كمختصر على الموبايل */
+      .actions .dropdown:first-of-type{
+        position: fixed !important; right: 16px !important;
+        bottom: calc(max(var(--safe-bottom), var(--safe-bottom-legacy)) + 96px) !important;
         z-index: 2147483647 !important;
       }
-      .page{ padding-bottom: calc(100px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
+      .actions .dropdown:first-of-type > .btn.btn-primary{
+        width:64px; height:64px; border-radius:50%;
+        display:flex; align-items:center; justify-content:center;
+        box-shadow: 0 10px 28px rgba(0,0,0,.22);
+        padding:0;
+      }
+      .page{ padding-bottom: calc(110px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
     }
 
     .notif-panel{
@@ -703,6 +732,7 @@ button.dropdown-toggle::after {
       background: #fff !important;
     }
 
+    /* محدث لارتفاع الشريط الجديد */
     body::after{
       content: "";
       position: fixed;
@@ -714,7 +744,7 @@ button.dropdown-toggle::after {
           env(safe-area-inset-bottom, 0px),
           var(--safe-b, 0px),
           var(--safe-bottom, 0px)
-        ) + 9px
+        ) + 12px
       );
       background: #fff;
       z-index: 2147483646;
@@ -801,14 +831,11 @@ const IS_SUPPORT = {{ 'true' if session_user and (session_user.get('is_support')
 
   function esc(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
 
-  // ✅ هنا نفرض وجهة الإشعار للـ Support إلى /cs/inbox
-// ✅ اجعل رابط الإشعار كما هو قادم من الـ API
-function normalizeHref(it){
-  if (it && it.url) return it.url;
-  return '#';
-}
-
-
+  // ✅ اجعل رابط الإشعار كما هو قادم من الـ API
+  function normalizeHref(it){
+    if (it && it.url) return it.url;
+    return '#';
+  }
 
   function renderItems(items){
     if (!items || !items.length){
@@ -869,17 +896,11 @@ function normalizeHref(it){
     scrim.style.opacity='0'; scrim.style.pointerEvents='none';
   }
 
-  // ✅ سلوك زر الجرس:
-  // - Support: تحويل مباشر إلى /cs/inbox
-  // - عادي: يفتح اللوحة
-// كان سابقًا:
-// ✅ الجميع يفتح اللوحة الآن
-btn.addEventListener('click', (e)=>{
-  e.preventDefault();
-  panel.classList.contains('is-open') ? closePanel() : openPanel();
-});
-
-
+  // الجميع يفتح اللوحة الآن
+  btn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    panel.classList.contains('is-open') ? closePanel() : openPanel();
+  });
 
   close?.addEventListener('click', ()=>closePanel());
   scrim?.addEventListener('click', ()=>closePanel());
