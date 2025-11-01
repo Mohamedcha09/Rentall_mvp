@@ -1,6 +1,6 @@
 /* =========================================================
    R E N T A L L  —  Ultra Glass UI (Light-only)
-   يعمل مع base.html — الوضع الأبيض فقط
+   يعمل مستقلاً عن base.html
    ========================================================= */
 
 /* ------------ ألوان ومتغيرات عامة (أبيض فقط) ------------ */
@@ -27,12 +27,16 @@
   --sidebar-w: 268px;
   --radius:16px;
 
-  --brand:#5900ff; /* إضافي للتاب بار */
+  --brand:#5900ff;
+
+  /* safe-area props (قد تُضبط من JS في base، لكن لدينا fallbacks) */
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top:    env(safe-area-inset-top, 0px);
 }
 
 /* ------------ الأساسيات ------------ */
 html,body{min-height:100%}
-html, body { height: 100%; } /* ملء الشاشة */
+html, body { height: 100%; }
 body{
   background:
     radial-gradient(1100px 800px at 80% -10%, rgba(124,92,255,.12), transparent 45%),
@@ -81,29 +85,6 @@ small, .small{ color:var(--muted)!important }
 .alert{ border-radius:14px }
 .alert-warning{ color:inherit }
 
-/* ------------ شريط علوي زجاجي ------------ */
-.topbar{
-  position:fixed; inset:0 0 auto 0; height:64px;
-  background: linear-gradient(180deg, var(--glass), color-mix(in oklab, var(--glass) 75%, transparent));
-  backdrop-filter: blur(14px) saturate(120%);
-  border-bottom:1px solid var(--border);
-  z-index:2000;
-}
-.topbar__inner{ display:grid; grid-template-columns:auto auto 1fr auto; gap:10px; align-items:center; padding:8px 14px }
-.brand__name{ font-weight:800; letter-spacing:.3px }
-
-/* ------------ البحث ------------ */
-.search{ position:relative; margin-inline:8px; max-width:760px; width:100% }
-.search__icon{ position:absolute; inset-inline-start:12px; top:50%; transform:translateY(-50%); opacity:.7; pointer-events:none }
-.search__input{
-  padding-inline:38px 14px; height:40px; border-radius:999px;
-  background: #f4f6fb;
-  border:1px solid var(--border); color:#3b4152;
-  transition: box-shadow .15s ease, border-color .15s ease, background .2s ease;
-}
-.search__input::placeholder{ color:#8b95a7 }
-.search__input:focus{ outline:none; box-shadow:0 0 0 4px var(--ring); border-color:color-mix(in oklab, var(--primary) 50%, var(--border)) }
-
 /* ------------ أفاتار ووسام التوثيق ------------ */
 .avatar{
   width:26px; height:26px; border-radius:50%;
@@ -122,19 +103,6 @@ small, .small{ color:var(--muted)!important }
 }
 .verify{ color:#1aa7ff; filter: drop-shadow(0 0 6px rgba(85,213,255,.35)) }
 
-/* ------------ إشعارات ------------ */
-.notif-ping{
-  position:absolute; inset-inline-start:2px; top:2px; width:10px; height:10px; border-radius:50%;
-  background:#ff6b6b; border:1px solid color-mix(in oklab, var(--bg) 92%, black);
-  box-shadow:0 0 0 0 rgba(255,107,107,.35);
-  animation:ping 1.6s cubic-bezier(0,0,.2,1) infinite;
-}
-@keyframes ping{0%{box-shadow:0 0 0 0 rgba(255,107,107,.35)}70%{box-shadow:0 0 0 10px rgba(255,107,107,0)}100%{box-shadow:0 0 0 0 rgba(255,107,107,0)}}
-.notif-count{
-  position:absolute; inset-inline-start:-6px; bottom:-6px; font-size:.68rem; padding:.05rem .35rem; border-radius:999px;
-  background:#ff6b6b; color:#fff; border:1px solid color-mix(in oklab, var(--bg) 90%, black)
-}
-
 /* ------------ المساحة الرئيسية ------------ */
 .page{
   padding: calc(64px + 18px) 20px 28px;
@@ -142,12 +110,8 @@ small, .small{ color:var(--muted)!important }
   max-width: 1280px;
   transition: margin-inline-start .22s ease;
 }
-@media (max-width: 991.98px){ .page{ margin-inline:0; padding: calc(64px + 12px) 12px 20px } }
-
-/* ==== Full-screen on desktop ==== */
+@media (max-width: 991.98px){ .page{ margin-inline:0; padding: calc(56px + 10px) 12px 110px } }
 @media (min-width: 992px){ .page{ max-width: none; } }
-
-/* تقليل الحافة الداخلية */
 .page{ padding-inline: 12px 20px; }
 @media (max-width: 991.98px){ .page{ margin-inline: 0; } }
 
@@ -182,14 +146,8 @@ small, .small{ color:var(--muted)!important }
   transition: transform .22s ease;
 }
 .card.spot:hover .spot-media > img{ transform:scale(1.02) }
-.spot-overlay{
-  position:absolute; inset:0;
-  background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,.10));
-  pointer-events:none;
-}
-.price-badge, .category-chip{
-  position:absolute; top:10px; z-index:2; border-radius:999px;
-}
+.spot-overlay{ position:absolute; inset:0; background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,.10)); pointer-events:none; }
+.price-badge, .category-chip{ position:absolute; top:10px; z-index:2; border-radius:999px; }
 .price-badge{
   inset-inline-start:10px; padding:.3rem .55rem; font-weight:700; font-size:.9rem;
   background: rgba(0,0,0,.55); backdrop-filter: blur(8px);
@@ -244,41 +202,39 @@ small, .small{ color:var(--muted)!important }
 .hcard{ scroll-snap-align: start; }
 .hcard .spot-media{ aspect-ratio: 16/11; }
 
-.section-head{
-  display:flex; align-items:center; justify-content:space-between;
-  margin: 8px 4px 10px;
-}
+.section-head{ display:flex; align-items:center; justify-content:space-between; margin: 8px 4px 10px; }
 .section-title{ font-weight:800; font-size:1.05rem }
-.arrow-btn{
-  border:1px solid var(--border); background:transparent; border-radius:10px;
-  width:36px; height:36px; display:grid; place-items:center;
-}
+.arrow-btn{ border:1px solid var(--border); background:transparent; border-radius:10px; width:36px; height:36px; display:grid; place-items:center; }
 .arrow-btn:disabled{ opacity:.4 }
 
-.mixed-grid{
-  display:grid; gap:12px;
-  grid-template-columns: repeat(auto-fill, minmax(180px,1fr));
-}
+.mixed-grid{ display:grid; gap:12px; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); }
 @media (min-width:576px){ .mixed-grid{ grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); } }
 
-/* ===== أيقونات أعلى (تحسين) ===== */
-.actions .btn-icon{ border:0!important; background:transparent!important; padding:.15rem .35rem!important; box-shadow:none!important; }
-.actions .btn-icon i{ font-size:1.35rem; line-height:1; filter:none; }
-.actions .btn-ghost.btn-icon{ border-color: transparent!important; }
-.actions .msg-icon i{ color:#6a57ff; }
-.actions .notif-icon i{ color:#18c2a1; }
-.actions .btn-icon:hover{ transform: translateY(-1px); }
-
-/* ===== Search pill (تحسين مظهر البحث في التوب بار) ===== */
-.topbar .search .search__input{
-  height: 44px !important;
-  border-radius: 999px !important;
-  border: 0 !important;
-  background: #f4f6fb !important;
-  color: #444 !important;
+/****************************************************
+ *  عناصر علوية للموبايل (Tabs)
+ ****************************************************/
+.m-top-tabs{
+  position: sticky; top: 56px; z-index: 2000;
+  display: grid; grid-auto-flow: column; gap: 8px; padding: 8px 12px;
+  background: linear-gradient(180deg, rgba(0,0,0,.00), rgba(0,0,0,.04));
+  backdrop-filter: blur(12px) saturate(120%);
+  border-bottom: 1px solid var(--border);
 }
-.topbar .search .search__icon{ inset-inline-start: 16px !important; opacity: .6 !important; font-size: 1.05rem; }
-.topbar .search .search__input::placeholder{ font-size: 1.05rem; letter-spacing: .2px; color: #8b95a7; }
+.m-top-tabs .m-tab{
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 36px; padding: 0 12px; font-weight: 700; font-size: .92rem; border-radius: 999px;
+  color: var(--muted); text-decoration: none; border: 1px solid transparent;
+  background: color-mix(in oklab, var(--panel) 98%, transparent);
+  transition: background .15s ease, color .15s ease, transform .12s ease, border-color .15s ease;
+}
+.m-top-tabs .m-tab:hover{ transform: translateY(-1px); }
+.m-top-tabs .m-tab.is-active{
+  color: var(--text);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 98%, transparent),
+                                       color-mix(in oklab, var(--panel) 96%, transparent));
+  border-color: color-mix(in oklab, var(--primary) 35%, var(--border));
+  box-shadow: 0 10px 28px rgba(0,0,0,.08);
+}
 
 /* ===== زرّ المفضلة فوق الصورة ===== */
 .spot-media{ position:relative; overflow:hidden; border-radius:16px 16px 0 0 }
@@ -294,7 +250,7 @@ small, .small{ color:var(--muted)!important }
 .fav-btn.is-fav{ background:#a944ec; }
 .fav-btn.is-fav .bi{ color:#fff }
 
-/* ===== قائمة ثلاث خطوط علوية ===== */
+/* ===== قائمة همبرغر علوية (ديسكتوب فقط هنا كستايل عام) ===== */
 .topmenu{
   position: fixed;
   top: 58px;
@@ -328,151 +284,79 @@ small, .small{ color:var(--muted)!important }
 .hamburger-btn:hover{ background: color-mix(in oklab, var(--text) 6%, transparent); }
 
 /****************************************************
- *  Mobile-only Addons (Airbnb-like)
+ *  مـــــهــــم: شريط الموبايل السفلي (الإصدار النهائي)
+ *  ثابت عند أسفل الجهاز + مرفوع 6px عن خط iPhone
  ****************************************************/
-.m-top-tabs{
-  position: sticky; top: 56px; z-index: 2000;
-  display: grid; grid-auto-flow: column; gap: 8px; padding: 8px 12px;
-  background: linear-gradient(180deg, rgba(0,0,0,.00), rgba(0,0,0,.04));
-  backdrop-filter: blur(12px) saturate(120%);
-  border-bottom: 1px solid var(--border);
-}
-.m-top-tabs .m-tab{
-  display: inline-flex; align-items: center; justify-content: center;
-  height: 36px; padding: 0 12px; font-weight: 700; font-size: .92rem; border-radius: 999px;
-  color: var(--muted); text-decoration: none; border: 1px solid transparent;
-  background: color-mix(in oklab, var(--panel) 98%, transparent);
-  transition: background .15s ease, color .15s ease, transform .12s ease, border-color .15s ease;
-}
-.m-top-tabs .m-tab:hover{ transform: translateY(-1px); }
-.m-top-tabs .m-tab.is-active{
-  color: var(--text);
-  background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 98%, transparent),
-                                       color-mix(in oklab, var(--panel) 96%, transparent));
-  border-color: color-mix(in oklab, var(--primary) 35%, var(--border));
-  box-shadow: 0 10px 28px rgba(0,0,0,.08);
-}
+@media (max-width:768px){
 
-/* ===== Bottom mobile tabbar (5 tabs) ===== */
-.mobile-tabbar{
-  position: fixed !important; inset-inline: 0; bottom: 0; height: 64px;
-  background: linear-gradient(180deg,
-              color-mix(in oklab, var(--surface) 98%, transparent),
-              color-mix(in oklab, var(--panel) 96%, transparent));
-  border-top: 1px solid var(--border);
-  backdrop-filter: blur(14px) saturate(120%);
-  z-index: 2300; display: block;
-}
-.mobile-tabbar .tabbar-inner{ height: 100%; display: grid; grid-template-columns: repeat(5, 1fr); }
-.mobile-tabbar a{
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  height: 100%; font-size: .8rem; font-weight: 600; color: var(--muted); text-decoration: none;
-  transition: color .15s ease, transform .12s ease, opacity .15s ease;
-}
-.mobile-tabbar .tab-img{ width: 22px; height: 22px; object-fit: contain; opacity: .55; transition: opacity .15s ease, transform .12s ease; }
-.mobile-tabbar a.is-active{ color: var(--text); }
-.mobile-tabbar a.is-active .tab-img{ opacity: 1; transform: translateY(-1px) scale(1.06); }
-.mobile-tabbar a.is-active::after{
-  content:""; display:block; width: 26px; height: 3px; border-radius: 3px; margin-top: 3px; background: var(--primary);
-}
-
-/* ===== Mobile topbar compact ===== */
-@media (max-width: 768px){
-  .topbar{ height: 56px; border-bottom: 1px solid var(--border); }
-  .topbar__inner{ grid-template-columns: 1fr; gap: 8px; padding: 8px 12px; }
-  .brand, .sidebar, .collapse-pin{ display: none !important; }
-  .search{ margin: 0; }
-  .search .search__input{
-    height: 44px !important; border-radius: 999px !important; padding-inline: 44px 44px !important;
-    background: #ffffff !important; color: #222 !important; box-shadow: 0 8px 24px rgba(0,0,0,.08); text-align: center;
-  }
-  .search .search__input:focus{ text-align: start; }
-  .search .search__icon{ inset-inline-start: 14px !important; top: 50%; transform: translateY(-50%); opacity: .55 !important; font-size: 1.15rem !important; }
-
-  .page{
-    margin-inline: 0 !important;
-    padding: calc(56px + 10px) 12px 110px !important;
-    padding-bottom: calc(90px + env(safe-area-inset-bottom)) !important;
-  }
-}
-
-/* ===== Cards / media polish on mobile ===== */
-@media (max-width: 768px){
-  .home-grid{ grid-template-columns: repeat(auto-fill, minmax(170px,1fr)); gap: 12px; }
-  .card.spot{ border-radius: 16px; overflow: hidden; }
-  .spot-media{ aspect-ratio: 16/10; border-bottom: 1px solid var(--border); }
-  .card.spot .card-body{ padding: .6rem .6rem .7rem; }
-  .spot-title{
-    margin: .1rem 0 .4rem; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
-    overflow: hidden; min-height: 2.6em;
-  }
-  .city-chip{
-    max-width: 65%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    padding: .15rem .45rem; border-radius: 999px; background: rgba(0,0,0,.03); border: 1px solid var(--border);
-  }
-}
-
-/* ===== Floating Action Button spacing over tabbar ===== */
-@media (max-width: 768px){ .fab{ bottom: calc(74px + env(safe-area-inset-bottom, 0px)); } }
-
-/* ===== Small helpers ===== */
-.m-hide-desktop{ display: none; }
-@media (max-width: 992px){
-  .m-hide-desktop{ display: initial; }
-  .d-lg-none .m-hide-desktop{ display: initial; }
-}
-
-/* ---- Fix: bottom bar = 5 cols ---- */
-@media (max-width: 768px){
+  /* لمنع أي قواعد قديمة: نجبر الموضع والقيم */
   .mobile-tabbar{
+    position: fixed !important;
+    inset-inline: 0 !important;
+    /* ارفعه 6px فوق الـ home indicator */
+    bottom: calc(max(var(--safe-bottom, 0px), env(safe-area-inset-bottom, 0px)) + 6px) !important;
+    height: 76px !important;
+
     display: grid !important;
-    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-    align-items: center; gap: 0; padding: 0 !important; height: 64px !important;
-  }
-  .mobile-tabbar > a{
-    display: flex !important; flex-direction: column; align-items: center; justify-content: center;
-    gap: 4px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    font-size: .78rem; line-height: 1.1;
-  }
-  .mobile-tabbar .tab-img{ width: 22px; height: 22px; flex-shrink: 0; }
-  .mobile-tabbar > a.is-active::after{
-    content:""; display:block; width:26px; height:3px; border-radius:3px; background: var(--primary); margin-top:3px;
-  }
-}
+    grid-template-columns: repeat(5,1fr) !important;
+    align-items: center !important;
 
-/* === إخفاء زر ☰ وإصلاح شريط الموبايل === */
-@media (max-width: 768px){
+    background:#fff !important;
+    border-top:1px solid var(--border) !important;
+    backdrop-filter: blur(14px) saturate(120%) !important;
+
+    /* Padding داخلي مع مراعاة الـsafe-area */
+    padding: 10px 10px calc(12px + max(var(--safe-bottom,0px), env(safe-area-inset-bottom,0px))) !important;
+
+    border-radius:16px 16px 0 0 !important;
+    z-index:2147483647 !important;
+  }
+  .mobile-tabbar a{
+    text-decoration:none !important; color:#6b7280 !important;
+    font-size:.95rem !important; display:flex !important; flex-direction:column !important;
+    align-items:center !important; gap:6px !important; line-height:1.1 !important;
+  }
+  .mobile-tabbar .tab-img{ width:28px !important; height:28px !important; object-fit:contain !important; opacity:.92; transition:opacity .15s, transform .15s; }
+  .mobile-tabbar a.is-active{ color:#111827 !important; font-weight:800 !important; }
+  .mobile-tabbar a.is-active .tab-img{ opacity:1; transform:scale(1.07); }
+
+  /* خلفية بيضاء أسفل الجهاز حتى لا يظهر شريط iOS على المحتوى */
+  body::after{
+    content:""; position:fixed; left:0; right:0; bottom:0;
+    height: calc(max(var(--safe-bottom,0px), env(safe-area-inset-bottom,0px)) + 12px) !important;
+    background:#fff; z-index:2147483646; pointer-events:none;
+  }
+
+  /* مساحة آمنة للمحتوى أسفل الصفحة */
+  .page{ padding-bottom: calc(130px + max(var(--safe-bottom,0px), env(safe-area-inset-bottom,0px))) !important; }
+
+  /* زر + البنفسجي فوق الشريط ~14px */
+  .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
+    position: fixed !important; right:16px !important;
+    bottom: calc(max(var(--safe-bottom,0px), env(safe-area-inset-bottom,0px)) + 90px) !important;
+    z-index:2147483647 !important; width:64px !important; height:64px !important;
+    border-radius:50% !important; display:flex !important; align-items:center !important; justify-content:center !important;
+    padding:0 !important; box-shadow:0 10px 28px rgba(0,0,0,.22) !important;
+  }
+
+  /* إخفاء عناصر علوية غير ضرورية على الموبايل فقط */
   #menuBtn{ display:none !important; }
-  .topbar .actions{ display:none !important; }
-  .brand{ display:none !important; }
-  .topbar__inner{ grid-template-columns: 1fr !important; padding: 8px 12px !important; }
-  .topbar{ height: 56px !important; border: none !important; }
 }
 
-/* ========================= */
-/*     إضافات عصرية         */
-/* ========================= */
-
+/* ===== أيقونات وتفعيل لِون العلامة في التاب ===== */
 .mobile-tabbar a { font-weight: 600; }
-.mobile-tabbar a i { opacity: .6; transition: opacity .15s ease, transform .15s ease; }
 .mobile-tabbar a.is-active { color: var(--brand) !important; }
-.mobile-tabbar a.is-active i { opacity: 1; transform: translateY(-1px); }
 .mobile-tabbar a.is-active::after{
   content:""; display:block; width:28px; height:3px; border-radius:3px; background: var(--brand); margin-top:4px;
 }
-.mobile-tabbar a .tab-icon--active{ display:none; }
-.mobile-tabbar a.is-active .tab-icon{ display:none; }
-.mobile-tabbar a.is-active .tab-icon--active{ display:block; }
 
 /* ===== تحسينات التمرير/السكرول ===== */
 *{ scrollbar-width:thin; scrollbar-color: color-mix(in oklab, var(--text) 22%, transparent) transparent }
 *::-webkit-scrollbar{ height:10px; width:10px }
 *::-webkit-scrollbar-thumb{ background:color-mix(in oklab, var(--text) 22%, transparent); border-radius:20px }
 *::-webkit-scrollbar-track{ background:transparent }
-.topbar{ z-index:2000 }
-.dropdown-menu{ z-index:2200 }
 
-/* ------------ لوح الإشعارات ------------ */
+/* ------------ لوح الإشعارات (ستايل مستقل) ------------ */
 .notif-panel{
   position:fixed; top:64px; bottom:0; inset-inline-end:-380px; width:360px;
   background:linear-gradient(180deg, var(--surface), var(--panel));
@@ -494,7 +378,7 @@ small, .small{ color:var(--muted)!important }
 /* ------------ إضافات متنوعة ------------ */
 .stripe-callout{ border:1px dashed color-mix(in oklab, var(--primary) 35%, var(--border)) }
 .fab{
-  position:fixed; inset-inline-end:16px; bottom:16px; width:54px; height:54px; border-radius:50%;
+  inset-inline-end:16px; bottom:16px; width:54px; height:54px; border-radius:50%;
   display:grid; place-items:center; color:#fff; text-decoration:none;
   background:linear-gradient(135deg,var(--primary),var(--primary-2));
   box-shadow:0 16px 40px rgba(124,92,255,.25), 0 0 0 0 rgba(124,92,255,.25);
@@ -504,138 +388,33 @@ small, .small{ color:var(--muted)!important }
 .fab:active{ transform:scale(.96) }
 
 /* =========================================================
-   HERO — صورة كاملة + حواف دائرية + كرت أصغر على الديسكتوب
+   HERO — إظهار الصورة كاملة + حواف دائرية
    ========================================================= */
-
-/* الإطار العام للسلايدر */
 .hero-carousel{
   position:relative;
-  border-radius:18px;
+  border-radius:22px;
   overflow:hidden;
-  box-shadow:0 14px 34px rgba(0,0,0,.08);
+  box-shadow:0 10px 40px rgba(0,0,0,0.1);
+  background:#f7f8fb;
 }
-
-/* تمنح الحواف الدائرية لكل طبقات السلايدر */
+.edge-bleed{ margin-inline:auto !important; width:100%; }
 .hero-carousel .carousel-inner,
 .hero-carousel .carousel-item,
+.hero-carousel .carousel-item img{ border-radius:22px; overflow:hidden; }
 .hero-carousel .carousel-item img{
-  border-radius:18px;
-  overflow:hidden;
+  width:100%; height:auto; aspect-ratio:3/2;
+  object-fit:contain !important; object-position:center; background:#eef2f7; display:block;
 }
-
-/* نسبة أبعاد موحّدة (مثل الهاتف) */
-.hero-carousel .carousel-item{
-  aspect-ratio: 16 / 9;    /* غيّرها 4/3 أو 21/9 حسب صورك */
-}
-
-/* الصورة تظهر كاملة (بدون قص) على كل الأجهزة */
-.hero-carousel .carousel-item img{
-  width:100%;
-  height:100%;
-  object-fit:contain;       /* مهم: لا قص إطلاقًا */
-  object-position:center;
-  background:#eef2f7;       /* يملأ الفراغ حول الصورة */
-  display:block;
-}
-
-/* لا طبقات تلاشي أو edge-bleed */
-.hero-carousel::before,
-.hero-carousel::after{ display:none !important; }
-
-/* مؤشرات وأسهُم أسهل */
 .hero-carousel .carousel-control-prev,
 .hero-carousel .carousel-control-next{ width:8%; }
-.hero-carousel .carousel-indicators [data-bs-target]{ width:10px; height:10px; border-radius:50%; }
-
-/* الديسكتوب: لا تمدّ لحواف الشاشة، واجعله كرتًا أنيقًا */
-@media (min-width:992px){
-  .edge-bleed{ margin-inline:auto !important; width:auto !important; } /* تعطيل edge-bleed */
-  .hero-carousel{ max-width:1100px; margin:0 auto 14px; border-radius:22px; }
-  .home-shelves{ margin-top:16px !important; } /* لا ترفعها فوق البانر */
-}
-
-/* الجوال: يبقى 16:9 مع الحواف الدائرية */
-@media (max-width:576px){
-  .hero-carousel .carousel-item{ aspect-ratio:16/9; }
-}
-/* =========================================================
-   🎯 HERO SLIDER — إظهار الصورة كاملة + حواف دائرية
-   ========================================================= */
-
-/* إطار السلايدر */
-.hero-carousel {
-  position: relative;
-  border-radius: 22px; /* حواف ناعمة */
-  overflow: hidden;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-  background: #f7f8fb;
-}
-
-/* إلغاء أي تأثيرات أو تمديد قديم */
-.edge-bleed { 
-  margin-inline: auto !important;
-  width: 100%;
-}
-
-/* كل طبقات السلايدر لها نفس الحواف */
-.hero-carousel .carousel-inner,
-.hero-carousel .carousel-item,
-.hero-carousel .carousel-item img {
-  border-radius: 22px;
-  overflow: hidden;
-}
-
-/* الصورة تظهر كاملة بدون قص */
-.hero-carousel .carousel-item img {
-  width: 100%;
-  height: auto;                /* يضبط الارتفاع تلقائي حسب العرض */
-  aspect-ratio: 3 / 2;         /* لأن صورك 1536x1024 (3:2) */
-  object-fit: contain !important; /* عرض كامل بدون قص */
-  object-position: center;
-  background: #eef2f7;         /* لون خلفية لطيف خلف الصورة */
-  display: block;
-}
-
-/* إلغاء التلاشي أو الطبقات الزائدة */
-.hero-carousel::before,
-.hero-carousel::after {
-  display: none !important;
-}
-
-/* تحسين الأزرار */
-.hero-carousel .carousel-control-prev,
-.hero-carousel .carousel-control-next {
-  width: 8%;
-}
 .hero-carousel .carousel-control-prev-icon,
-.hero-carousel .carousel-control-next-icon {
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+.hero-carousel .carousel-control-next-icon{ filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+.hero-carousel .carousel-indicators{ display:none !important; }
+@media (max-width:768px){
+  .hero-carousel{ border-radius:18px; }
+  .hero-carousel .carousel-item img{ aspect-ratio:3/2; height:auto; }
 }
-
-/* إخفاء المؤشرات إذا لا تريدها */
-.hero-carousel .carousel-indicators {
-  display: none !important;
-}
-
-/* الهواتف: ضبط ارتفاع مناسب */
-@media (max-width: 768px) {
-  .hero-carousel {
-    border-radius: 18px;
-  }
-  .hero-carousel .carousel-item img {
-    aspect-ratio: 3 / 2;
-    height: auto;
-  }
-}
-
-/* الكمبيوتر: لا تمد للحواف واجعلها بطاقة أنيقة */
-@media (min-width: 992px) {
-  .hero-carousel {
-    max-width: 1100px;
-    margin: 0 auto 20px;
-    border-radius: 24px;
-  }
-  .home-shelves {
-    margin-top: 18px !important;
-  }
+@media (min-width:992px){
+  .hero-carousel{ max-width:1100px; margin:0 auto 20px; border-radius:24px; }
+  .home-shelves{ margin-top:18px !important; }
 }
