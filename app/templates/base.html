@@ -343,20 +343,7 @@ button.dropdown-toggle::after {
 </style>
 
 <style>
-/* أيقونة PNG موحّدة المقاس داخل الـ bottom sheet */
-.sheet__png{
-  width: 22px;              /* المقاس الظاهر لكل الأيقونات */
-  height: 22px;
-  display:inline-block;
-  background-image: var(--img);
-  background-size: cover;   /* يملأ الصندوق ويتجاهل الهوامش الشفافة */
-  background-position:center;
-  background-repeat:no-repeat;
-  border-radius:50%;
-  flex:0 0 22px;
-  box-shadow: 0 0 0 1px rgba(0,0,0,.06) inset; /* لمسة بسيطة مثل Blossom */
-  vertical-align: -3px;
-}
+
 /* صف العنصر في القائمة */
 .sheet__item{
   display:flex;
@@ -374,6 +361,38 @@ button.dropdown-toggle::after {
 .sheet__item .chev{ opacity:.5; }
 </style>
 
+<style>
+  :root{
+    --profile-ic: 28px;     /* قطر الدائرة الموحدة */
+    --glyph-base: .72;      /* نسبة حجم الرمز داخل الدائرة (غيّرها لو حبيت) */
+  }
+
+  .sheet__png{
+    /* إطار الدائرة الموحّدة */
+    width: var(--profile-ic);
+    height: var(--profile-ic);
+    border-radius: 50%;
+    display: inline-block;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.06) inset; /* حلقة خفيفة */
+    vertical-align: -3px;
+
+    /* قيمة افتراضية لضبط التكبير لكل صورة (يمكن تعديلها لكل عنصر) */
+    --scale: 1;
+  }
+
+  /* نرسم الصورة كخلفية داخل نفس الدائرة بنسبة ثابتة */
+  .sheet__png::after{
+    content:"";
+    position:absolute; inset:0;
+    background-image: var(--img);
+    background-repeat:no-repeat;
+    background-position:center;
+    /* حجم الرمز = قطر الدائرة × النسبة × معامل الضبط */
+    background-size: calc(var(--profile-ic) * var(--glyph-base) * var(--scale)) auto;
+  }
+</style>
 
 
 
@@ -1156,54 +1175,56 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
     <div class="sheet__body">
       <ul class="sheet__list">
   <li>
-    <a class="sheet__item" href="/support/new">
-      <span class="left">
-        <span class="sheet__png" style="--img: url('/static/iconblossom/sfer.png');"></span>
-        <span class="label">مراسلة الدعم</span>
-      </span>
-      <i class="bi bi-chevron-left chev"></i>
-    </a>
-  </li>
+  <a class="sheet__item" href="/support/new">
+    <span class="left">
+      <!-- كانت أصغر؟ كبّرها شعره -->
+      <span class="sheet__png" style="--img:url('/static/iconblossom/sfer.png'); --scale:1.10;"></span>
+      <span class="label">مراسلة الدعم</span>
+    </span>
+    <i class="bi bi-chevron-left chev"></i>
+  </a>
+</li>
 
-  <li>
-    <a class="sheet__item" href="/profile">
-      <span class="left">
-        <span class="sheet__png" style="--img: url('/static/iconblossom/vert.png');"></span>
-        <span class="label">حسابي</span>
-      </span>
-      <i class="bi bi-chevron-left chev"></i>
-    </a>
-  </li>
+<li>
+  <a class="sheet__item" href="/profile">
+    <span class="left">
+      <span class="sheet__png" style="--img:url('/static/iconblossom/vert.png'); --scale:1.06;"></span>
+      <span class="label">حسابي</span>
+    </span>
+    <i class="bi bi-chevron-left chev"></i>
+  </a>
+</li>
 
-  <li>
-    <a class="sheet__item" href="/favorites">
-      <span class="left">
-        <span class="sheet__png" style="--img: url('/static/iconblossom/mov.png');"></span>
-        <span class="label">مفضلتي</span>
-      </span>
-      <i class="bi bi-chevron-left chev"></i>
-    </a>
-  </li>
+<li>
+  <a class="sheet__item" href="/favorites">
+    <span class="left">
+      <span class="sheet__png" style="--img:url('/static/iconblossom/mov.png'); --scale:1.08;"></span>
+      <span class="label">مفضلتي</span>
+    </span>
+    <i class="bi bi-chevron-left chev"></i>
+  </a>
+</li>
 
-  <li>
-    <a class="sheet__item" href="/settings">
-      <span class="left">
-        <span class="sheet__png" style="--img: url('/static/iconblossom/ramdi.png');"></span>
-        <span class="label">الإعدادات</span>
-      </span>
-      <i class="bi bi-chevron-left chev"></i>
-    </a>
-  </li>
+<li>
+  <a class="sheet__item" href="/settings">
+    <span class="left">
+      <span class="sheet__png" style="--img:url('/static/iconblossom/ramdi.png'); --scale:1.00;"></span>
+      <span class="label">الإعدادات</span>
+    </span>
+    <i class="bi bi-chevron-left chev"></i>
+  </a>
+</li>
 
-  <li>
-    <a class="sheet__item text-danger" href="/logout">
-      <span class="left">
-        <span class="sheet__png" style="--img: url('/static/iconblossom/roge.png');"></span>
-        <span class="label">خروج</span>
-      </span>
-      <i class="bi bi-chevron-left chev"></i>
-    </a>
-  </li>
+<li>
+  <a class="sheet__item text-danger" href="/logout">
+    <span class="left">
+      <span class="sheet__png" style="--img:url('/static/iconblossom/roge.png'); --scale:1.12;"></span>
+      <span class="label">خروج</span>
+    </span>
+    <i class="bi bi-chevron-left chev"></i>
+  </a>
+</li>
+
 </ul>
 
     </div>
