@@ -356,104 +356,11 @@ button.dropdown-toggle::after {
 .sheet__item .chev{ opacity:.5; }
 </style>
 
-<style id="ic-pack-fix">
-  /* متغير بسيط لو احتجته لاحقًا */
-  :root{ --profile-ic:28px; }
 
-  /* تنظيف أي ستايل قديم محتمل */
-  .sheet__png, .sheet__png::after{ all:unset; }
+<style id="ic-pack">
+  /* ==== أساس الأيقونات الدائرية ==== */
+  :root{ --ic: 28px; }          /* حجم افتراضي لكل الأيقونات */
 
-  /* قاعدة مشتركة: دائرة موحَّدة */
-  .ic-circle{
-    width:28px !important;
-    height:28px !important;
-    border-radius:50% !important;
-    display:inline-block !important;
-    position:relative !important;
-    overflow:hidden !important;
-    box-shadow:0 0 0 1px rgba(0,0,0,.06) inset !important;
-    vertical-align:-3px;
-  }
-  .ic-circle::after{
-    content:"";
-    position:absolute; inset:0;
-    background-repeat:no-repeat !important;
-    background-position:center !important;
-  }
-
-  /* مراسلة الدعم */
-  .ic-support{ composes: ic-circle; } /* تجاهلها لو المتصفح لا يدعم، سنكرّر القواعد أدناه */
-  .ic-support{
-    width:28px !important; height:28px !important; border-radius:50% !important;
-    display:inline-block !important; position:relative !important; overflow:hidden !important;
-    box-shadow:0 0 0 1px rgba(0,0,0,.06) inset !important;
-  }
-  .ic-support::after{
-    background-image:url('/static/iconblossom/sfer.png') !important;
-    background-size:88% !important; /* امتلاء مناسب */
-  }
-
-  /* حسابي */
-  .ic-profile{
-    width:28px !important; height:28px !important; border-radius:50% !important;
-    display:inline-block !important; position:relative !important; overflow:hidden !important;
-    box-shadow:0 0 0 1px rgba(0,0,0,.06) inset !important;
-  }
-  .ic-profile::after{
-    background-image:url('/static/iconblossom/vert.png') !important;
-    background-size:90% !important;
-  }
-
-  /* مفضلتي */
-  .ic-fav{
-    width:28px !important; height:28px !important; border-radius:50% !important;
-    display:inline-block !important; position:relative !important; overflow:hidden !important;
-    box-shadow:0 0 0 1px rgba(0,0,0,.06) inset !important;
-  }
-  .ic-fav::after{
-    background-image:url('/static/iconblossom/mov.png') !important;
-    background-size:88% !important;
-  }
-
-  /* الإعدادات */
-  .ic-settings{
-    width:28px !important; height:28px !important; border-radius:50% !important;
-    display:inline-block !important; position:relative !important; overflow:hidden !important;
-    box-shadow:0 0 0 1px rgba(0,0,0,.06) inset !important;
-  }
-  .ic-settings::after{
-    background-image:url('/static/iconblossom/ramdi.png') !important;
-    background-size:86% !important;
-  }
-
-  /* خروج */
-  .ic-logout{
-    width:28px !important; height:28px !important; border-radius:50% !important;
-    display:inline-block !important; position:relative !important; overflow:hidden !important;
-    box-shadow:0 0 0 1px rgba(0,0,0,.06) inset !important;
-  }
-  .ic-logout::after{
-    background-image:url('/static/iconblossom/roge.png') !important;
-    background-size:92% !important;
-  }
-
-  /* تذاكري (cc) — الأيقونة الجديدة */
-.ic-cc{
-  width:28px;height:28px;border-radius:50%;display:inline-block;position:relative;overflow:hidden;
-  box-shadow:0 0 0 1px rgba(0,0,0,.06) inset;
-}
-.ic-cc::after{
-  content:"";position:absolute;inset:0;
-  background:url('/static/iconblossom/cc.png') center no-repeat;  /* تأكد من وجود الملف */
-  background-size:80%;
-}
-</style>
-
-<style id="ic-pack-fix">
-  /* حجم موحّد للأيقونة الدائرية */
-  :root{ --ic: 28px; }
-
-  /* صندوق الأيقونة الموحّد */
   .ic{
     width:var(--ic);
     height:var(--ic);
@@ -462,7 +369,7 @@ button.dropdown-toggle::after {
     border-radius:50%;
     overflow:hidden;
     box-shadow:0 0 0 1px rgba(0,0,0,.06) inset;
-    vertical-align:-3px;               /* محاذاة أجمل للنص */
+    vertical-align:-3px;
     flex:0 0 var(--ic);
   }
   .ic::after{
@@ -470,30 +377,40 @@ button.dropdown-toggle::after {
     position:absolute; inset:0;
     background-position:center;
     background-repeat:no-repeat;
-    background-size:88%;               /* غطّي داخليًا بنسبة ثابتة */
+    background-size:88%;
     image-rendering:auto;
   }
+  [data-theme="dark"] .ic{
+    box-shadow:0 0 0 1px rgba(255,255,255,.08) inset;
+  }
 
-  /* مظهر داكن/فاتح ثابت */
-  [data-theme="dark"] .ic{ box-shadow:0 0 0 1px rgba(255,255,255,.08) inset; }
-
-  /* خرائط الصور عبر متغير CSS */
-  .ic--support{ --img: url('/static/iconblossom/sfer.png'); }
-  .ic--profile{ --img: url('/static/iconblossom/vert.png'); }
-  .ic--fav    { --img: url('/static/iconblossom/mov.png'); }
-  .ic--settings{--img: url('/static/iconblossom/ramdi.png'); }
-  .ic--logout { --img: url('/static/iconblossom/roge.png'); }
-  .ic--cc     { --img: url('/static/iconblossom/cc.png'); } /* تذاكري */
-
-  /* ربط المتغير بالصورة الفعلية */
+  /* ==== ربط الصور ==== */
+  .ic--support  { --img: url('/static/iconblossom/sfer.png'); }
+  .ic--profile  { --img: url('/static/iconblossom/vert.png'); }
+  .ic--fav      { --img: url('/static/iconblossom/mov.png'); }
+  .ic--settings { --img: url('/static/iconblossom/ramdi.png'); }
+  .ic--logout   { --img: url('/static/iconblossom/roge.png'); }
+  .ic--cc       { --img: url('/static/iconblossom/cc.png'); }
   .ic::after{ background-image: var(--img); }
 
-  /* لو أردت تغيير المقاس مستقبلاً لموبايل فقط */
+  /* ==== تخصيص كل أيقونة لوحدها (سطح المكتب) ==== */
+  .ic--support  { --ic: 34px; }  /* مراسلة الدعم */
+  .ic--profile  { --ic: 30px; }  /* حسابي */
+  .ic--fav      { --ic: 28px; }  /* مفضلتي */
+  .ic--settings { --ic: 28px; }  /* الإعدادات */
+  .ic--logout   { --ic: 32px; }  /* خروج */
+  .ic--cc       { --ic: 36px; }  /* تذاكري */
+
+  /* ==== أحجام الموبايل فقط ==== */
   @media (max-width:768px){
-    :root{ --ic: 28px; } /* عدّل الرقم لو رغبت */
+    .ic--support  { --ic: 38px; }
+    .ic--profile  { --ic: 34px; }
+    .ic--fav      { --ic: 32px; }
+    .ic--settings { --ic: 32px; }
+    .ic--logout   { --ic: 36px; }
+    .ic--cc       { --ic: 40px; }
   }
 </style>
-
 
 
 
