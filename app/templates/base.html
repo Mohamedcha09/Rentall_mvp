@@ -503,6 +503,43 @@ body[data-auth="0"] .actions a[href="/register"]{
   display:inline-flex !important;
 }
 </style>
+<style>
+  /* ===== Pills: دخول / تسجيل ===== */
+  .actions{ gap:8px; }
+
+  .btn-chip{
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:8px 14px; border-radius:999px; font-weight:800;
+    line-height:1; font-size:.95rem; text-decoration:none;
+    border:1px solid transparent; transition:.15s ease;
+    box-shadow:0 4px 14px rgba(0,0,0,.06);
+  }
+  .btn-chip--ghost{
+    background:#fff; color:#6C63FF; border-color:#e5e7eb;
+  }
+  .btn-chip--ghost:hover{ background:#f8f8ff; border-color:#d9d9ff; }
+  .btn-chip--primary{
+    background:#6C63FF; color:#fff; border-color:#6C63FF;
+  }
+  .btn-chip--primary:hover{ filter:brightness(.98); }
+
+  /* وضع داكن */
+  [data-theme="dark"] .btn-chip--ghost{
+    background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.18);
+  }
+
+  /* اجعل البحث ظاهرًا للضيف (كان مخفيًا) */
+  body[data-auth="0"] .searchbar{
+    display:block !important;
+  }
+
+  /* لا تُخْفِ أزرار الدخول/التسجيل داخل actions للضيف */
+  body[data-auth="0"] .actions > *{ display:none !important; }
+  body[data-auth="0"] .actions a[href="/login"],
+  body[data-auth="0"] .actions a[href="/register"]{
+    display:inline-flex !important;
+  }
+</style>
 
 
 
@@ -666,10 +703,11 @@ body[data-auth="0"] .actions a[href="/register"]{
       <li><a class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right"></i> خروج</a></li>
     </ul>
   </div>
-  {% else %}
-    <a class="btn btn-ghost btn-sm" href="/login">دخول</a>
-    <a class="btn btn-primary btn-sm" href="/register">تسجيل</a>
-  {% endif %}
+{% else %}
+  <a class="btn-chip btn-chip--ghost btn-login" href="/login">دخول</a>
+  <a class="btn-chip btn-chip--primary btn-register" href="/register">تسجيل</a>
+{% endif %}
+
 
 </div>
 
