@@ -2,13 +2,115 @@
 {% block content %}
 
 <style>
-  .badge-icon{height:18px;width:18px;margin-inline-start:6px;vertical-align:middle;display:inline-block;}
-  .thread-row{display:flex;align-items:center;gap:.6rem;padding:.5rem .75rem;border-bottom:1px solid rgba(255,255,255,.1);}
-  .thread-row a{text-decoration:none;color:inherit;display:flex;align-items:center;gap:.6rem;flex:1;}
-  .avatar{width:36px;height:36px;border-radius:50%;background:#e9ecef;color:#222;display:flex;align-items:center;justify-content:center;font-weight:700;}
-  .thread-title{flex:1;}
-  .thread-title .small{opacity:.8;}
+/* ===========================
+   WhatsApp Web Look (Light)
+   =========================== */
+:root{
+  --wa-bg:#ffffff;
+  --wa-panel:#f7f7f7;
+  --wa-hover:#f0f0f0;
+  --wa-line:#e0e0e0;
+  --wa-text:#222;
+  --wa-muted:#666;
+  --wa-accent:#008069;
+  --wa-badge:#25D366;
+  --wa-bubble:#e9f3f0;
+  --wa-bubble-me:#dff9eb;
+}
+
+/* خلفية عامة فاتحة */
+body{ background:var(--wa-bg); color:var(--wa-text); }
+
+/* الكروت */
+.card{
+  background:var(--wa-panel);
+  border:1px solid var(--wa-line);
+  border-radius:14px;
+  overflow:hidden;
+}
+.card-body{ color:var(--wa-text); }
+
+/* تقسيم اللوحتين */
+.col-md-4 .card{ background:var(--wa-panel); }
+.col-md-8 .card{ background:#fff; }
+
+/* قائمة المحادثات */
+.thread-row{
+  display:flex;align-items:center;gap:.65rem;
+  padding:.7rem .9rem;
+  border-bottom:1px solid var(--wa-line);
+  transition:background .15s ease;
+}
+.thread-row:hover{ background:var(--wa-hover); }
+.thread-row a{ text-decoration:none;color:inherit;display:flex;align-items:center;gap:.65rem;flex:1; }
+
+.avatar{
+  width:42px;height:42px;border-radius:50%;
+  background:#e0e0e0;color:#333;display:flex;
+  align-items:center;justify-content:center;
+  font-weight:700;
+}
+
+.thread-title .fw-bold{ color:#111; }
+.thread-title .small{ color:var(--wa-muted); }
+
+.badge{
+  background:var(--wa-badge)!important;
+  color:#fff;border:0;
+  border-radius:999px;
+  padding:.25rem .5rem;
+  font-weight:700;
+}
+
+/* رأس الدردشة */
+.col-md-8 .d-flex h5{ font-weight:700; }
+.btn-outline-light{
+  color:#333!important;
+  border-color:var(--wa-line)!important;
+}
+.btn-outline-light:hover{
+  background:var(--wa-hover)!important;
+}
+
+/* الرسائل */
+.list-group{
+  display:flex;flex-direction:column;gap:6px;
+  background:transparent;border:0;
+  max-height:calc(100vh - 320px);
+  overflow:auto;padding:8px;
+}
+.list-group-item{
+  background:var(--wa-bubble)!important;
+  border:0!important;
+  border-radius:12px 12px 12px 0;
+  display:inline-block;
+  max-width:75%;
+  padding:.6rem .8rem;
+  color:#111;
+}
+.list-group-item.me{
+  align-self:flex-end;
+  background:var(--wa-bubble-me)!important;
+  border-radius:12px 12px 0 12px;
+}
+.list-group-item .small{ color:var(--wa-muted)!important; }
+
+/* إدخال الرسالة */
+.input-group .form-control{
+  background:#f2f2f2;
+  border:0;
+  color:#111;
+  padding:.7rem .9rem;
+}
+.input-group .form-control::placeholder{ color:#999; }
+.input-group .btn-primary{
+  background:var(--wa-accent);
+  border:0;
+  font-weight:700;
+}
+.input-group .btn-primary:hover{ filter:brightness(1.08); }
 </style>
+
 
 <div class="row">
   <div class="col-md-4">

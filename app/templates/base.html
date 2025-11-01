@@ -365,32 +365,62 @@ button.dropdown-toggle::after {
   :root{
     --profile-ic: 28px;     /* قطر الدائرة الموحدة */
     --glyph-base: .72;      /* نسبة حجم الرمز داخل الدائرة (غيّرها لو حبيت) */
-  }
+/* مراسلة الدعم */
+.ic-support{
+  width:28px;height:28px;border-radius:50%;display:inline-block;position:relative;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(0,0,0,.06) inset;
+}
+.ic-support::after{
+  content:"";position:absolute;inset:0;
+  background:url('/static/iconblossom/sfer.png') center no-repeat;
+  background-size:78%;
+}
 
-  .sheet__png{
-    /* إطار الدائرة الموحّدة */
-    width: var(--profile-ic);
-    height: var(--profile-ic);
-    border-radius: 50%;
-    display: inline-block;
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 0 0 1px rgba(0,0,0,.06) inset; /* حلقة خفيفة */
-    vertical-align: -3px;
+/* حسابي */
+.ic-profile{
+  width:28px;height:28px;border-radius:50%;display:inline-block;position:relative;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(0,0,0,.06) inset;
+}
+.ic-profile::after{
+  content:"";position:absolute;inset:0;
+  background:url('/static/iconblossom/vert.png') center no-repeat;
+  background-size:82%;
+}
 
-    /* قيمة افتراضية لضبط التكبير لكل صورة (يمكن تعديلها لكل عنصر) */
-    --scale: 1;
-  }
+/* مفضلتي */
+.ic-fav{
+  width:28px;height:28px;border-radius:50%;display:inline-block;position:relative;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(0,0,0,.06) inset;
+}
+.ic-fav::after{
+  content:"";position:absolute;inset:0;
+  background:url('/static/iconblossom/mov.png') center no-repeat;
+  background-size:80%;
+}
 
-  /* نرسم الصورة كخلفية داخل نفس الدائرة بنسبة ثابتة */
-  .sheet__png::after{
-    content:"";
-    position:absolute; inset:0;
-    background-image: var(--img);
-    background-repeat:no-repeat;
-    background-position:center;
-    /* حجم الرمز = قطر الدائرة × النسبة × معامل الضبط */
-    background-size: calc(var(--profile-ic) * var(--glyph-base) * var(--scale)) auto;
+/* الإعدادات */
+.ic-settings{
+  width:28px;height:28px;border-radius:50%;display:inline-block;position:relative;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(0,0,0,.06) inset;
+}
+.ic-settings::after{
+  content:"";position:absolute;inset:0;
+  background:url('/static/iconblossom/ramdi.png') center no-repeat;
+  background-size:76%;
+}
+
+/* خروج */
+.ic-logout{
+  width:28px;height:28px;border-radius:50%;display:inline-block;position:relative;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(0,0,0,.06) inset;
+}
+.ic-logout::after{
+  content:"";position:absolute;inset:0;
+  background:url('/static/iconblossom/roge.png') center no-repeat;
+  background-size:84%;
+}
+
+
   }
 </style>
 
@@ -1177,8 +1207,7 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
   <li>
   <a class="sheet__item" href="/support/new">
     <span class="left">
-      <!-- كانت أصغر؟ كبّرها شعره -->
-      <span class="sheet__png" style="--img:url('/static/iconblossom/sfer.png'); --scale:1.10;"></span>
+      <span class="ic-support"></span>
       <span class="label">مراسلة الدعم</span>
     </span>
     <i class="bi bi-chevron-left chev"></i>
@@ -1188,7 +1217,7 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
 <li>
   <a class="sheet__item" href="/profile">
     <span class="left">
-      <span class="sheet__png" style="--img:url('/static/iconblossom/vert.png'); --scale:1.06;"></span>
+      <span class="ic-profile"></span>
       <span class="label">حسابي</span>
     </span>
     <i class="bi bi-chevron-left chev"></i>
@@ -1198,7 +1227,7 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
 <li>
   <a class="sheet__item" href="/favorites">
     <span class="left">
-      <span class="sheet__png" style="--img:url('/static/iconblossom/mov.png'); --scale:1.08;"></span>
+      <span class="ic-fav"></span>
       <span class="label">مفضلتي</span>
     </span>
     <i class="bi bi-chevron-left chev"></i>
@@ -1208,7 +1237,7 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
 <li>
   <a class="sheet__item" href="/settings">
     <span class="left">
-      <span class="sheet__png" style="--img:url('/static/iconblossom/ramdi.png'); --scale:1.00;"></span>
+      <span class="ic-settings"></span>
       <span class="label">الإعدادات</span>
     </span>
     <i class="bi bi-chevron-left chev"></i>
@@ -1218,7 +1247,7 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
 <li>
   <a class="sheet__item text-danger" href="/logout">
     <span class="left">
-      <span class="sheet__png" style="--img:url('/static/iconblossom/roge.png'); --scale:1.12;"></span>
+      <span class="ic-logout"></span>
       <span class="label">خروج</span>
     </span>
     <i class="bi bi-chevron-left chev"></i>
