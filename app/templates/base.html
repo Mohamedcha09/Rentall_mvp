@@ -342,6 +342,38 @@ button.dropdown-toggle::after {
 
 </style>
 
+<style>
+/* حاوية موحّدة للأيقونة */
+.iconbox{
+  width: 36px;            /* حجم الحاوية الثابت */
+  height: 36px;
+  border-radius: 50%;
+  background: #f5f7fb;    /* خلفية خفيفة (اختياري) */
+  display: grid;
+  place-items: center;     /* توسيط عمودي/أفقي */
+  flex: 0 0 36px;          /* منع التمدد */
+}
+
+/* الصورة نفسها داخل الحاوية */
+.iconbox > img{
+  width: 22px;             /* حجم الرمز الداخلي */
+  height: 22px;
+  object-fit: contain;     /* يحافظ على النسبة ويمنع القص */
+  object-position: center;
+  display: block;
+  pointer-events: none;    /* لا يسحب عند الضغط المطوّل */
+  user-select: none;
+}
+
+/* محاذاة العنصر النصّي مع الأيقونة */
+.sheet__item span.label{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+</style>
+
+
 
 
   {% block head %}{% endblock %}
