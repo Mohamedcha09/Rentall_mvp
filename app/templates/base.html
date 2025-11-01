@@ -214,38 +214,61 @@ button.dropdown-toggle::after {
 </style>
 
 <style>
-/* == iOS-like top tabs (purple top bar) == */
+/* ===== Top tabs centered + bottom purple underline ===== */
 .m-top-tabs{
-  display:flex; gap:18px; align-items:flex-end;
-  padding:0 14px; margin-top:6px; 
+  display:flex !important;
+  justify-content:center !important;   /* ⬅️ توسيط العناصر */
+  align-items:flex-end;
+  gap:28px;                             /* مسافة بين التبويبات */
+  padding:0 14px;
+  margin-top:6px;
   border-bottom:1px solid var(--border);
   background:transparent;
 }
+
+/* إلغاء الكبسولة/الخلفية البيضاء القديمة */
 .m-top-tabs .m-tab{
-  position:relative; display:inline-flex; align-items:center; 
-  padding:12px 6px 10px; /* مساحة مريحة للنقر */
-  font-weight:700; font-size:15px;
-  text-decoration:none; border:0; background:transparent;
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+  border-radius:0 !important;
+  padding:12px 2px 14px;               /* راحة للنقر */
+  font-weight:800;
+  font-size:15px;
   color:var(--muted);
+  text-decoration:none;
   transition:color .15s ease;
 }
 .m-top-tabs .m-tab:hover{ color:color-mix(in oklab, var(--text) 60%, transparent); }
+.m-top-tabs .m-tab.is-active{ color:var(--text); }
 
-/* شريط بنفسجي في أعلى التبويب المفعّل */
-.m-top-tabs .m-tab::before{
-  content:""; position:absolute; inset-inline:0; top:0;
-  height:3px; background:#6C63FF; border-radius:3px;
-  opacity:0; transform:scaleX(.25); transform-origin:center;
+/* الشريط البنفسجي من الأسفل (وليس الأعلى) */
+.m-top-tabs .m-tab::after{
+  content:"";
+  position:absolute;
+  left:0; right:0; bottom:-1px;        /* ⬅️ أسفل */
+  height:3px;
+  background:#6C63FF;                  /* بنفسجي */
+  border-radius:3px;
+  opacity:0;
+  transform:scaleX(.25);
+  transform-origin:center;
   transition:transform .18s ease, opacity .12s ease;
 }
-.m-top-tabs .m-tab.is-active{ color:var(--text); }
-.m-top-tabs .m-tab.is-active::before{ opacity:1; transform:scaleX(1); }
+.m-top-tabs .m-tab.is-active::after{
+  opacity:1;
+  transform:scaleX(1);
+}
 
 /* وضع داكن */
 [data-theme="dark"] .m-top-tabs{ border-bottom:1px solid var(--border); }
 [data-theme="dark"] .m-top-tabs .m-tab{ color:#9ca3af; }
 [data-theme="dark"] .m-top-tabs .m-tab.is-active{ color:#e5e7eb; }
 </style>
+
 
 
   {% block head %}{% endblock %}
