@@ -70,6 +70,7 @@ from .support import router as support_router
 import app.cs as cs_routes
 from . import mod as mod_routes
 from .md import router as md_router   # ⬅️ جديد
+from app.settings import router as settings_router
 
 # -----------------------------------------------------------------------------
 # إنشاء التطبيق
@@ -407,6 +408,7 @@ app.include_router(support_router)
 app.include_router(cs_routes.router)
 app.include_router(mod_routes.router)
 app.include_router(md_router)         # ⬅️ جديد
+app.include_router(settings_router)
 
 # -----------------------------------------------------------------------------
 # مسار قديم → تحويل إلى صفحة البلاغات الجديدة

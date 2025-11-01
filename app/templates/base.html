@@ -608,17 +608,25 @@ button.dropdown-toggle::after {
   </nav>
 
   <!-- ===== Page ===== -->
-  <main class="page container-fluid main-flex-fill min-vh-100">
-    {% if session_user and session_user.status == 'approved' and not session_user.payouts_enabled %}
-      <div class="stripe-callout alert alert-warning d-flex justify-content-between align-items:center mb-3">
-        <div>💸 لبدء استلام الأرباح، اربط <strong>Stripe Connect</strong>.</div>
-        <a class="btn btn-sm btn-primary" href="/payout/settings">ربط الآن</a>
-      </div>
-    {% endif %}
+<!-- ===== Page ===== -->
+<main class="page container-fluid main-flex-fill min-vh-100">
 
-    {% if message %}<div class="alert alert-info">{{ message }}</div>{% endif %}
-    {% block content %}{% endblock %}
-  </main>
+  {# ✅ تنبيه الخروج #}
+  {% if request and request.query_params.get('logged_out') %}
+    <div class="alert alert-success my-2">تم تسجيل خروجك بنجاح 👋</div>
+  {% endif %}
+
+  {% if session_user and session_user.status == 'approved' and not session_user.payouts_enabled %}
+    <div class="stripe-callout alert alert-warning d-flex justify-content-between align-items:center mb-3">
+      <div>💸 لبدء استلام الأرباح، اربط <strong>Stripe Connect</strong>.</div>
+      <a class="btn btn-sm btn-primary" href="/payout/settings">ربط الآن</a>
+    </div>
+  {% endif %}
+
+  {% if message %}<div class="alert alert-info">{{ message }}</div>{% endif %}
+  {% block content %}{% endblock %}
+</main>
+
 
   <!-- لوحة إشعارات جانبية -->
   <div class="notif-panel" id="notifPanel" aria-hidden="true">
@@ -1191,70 +1199,65 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
     </div>
 
     <div class="sheet__body">
-      <ul class="sheet__list">
+<ul class="sheet__list">
+
+  <!-- حسابي -->
   <li>
-  <a class="sheet__item" href="/support/new">
-    <span class="left">
-      <span class="ic ic--support"></span>
-      <span class="label">مراسلة الدعم</span>
-    </span>
-    <i class="bi bi-chevron-left chev"></i>
-  </a>
-</li>
+    <a class="sheet__item" href="/profile">
+      <span class="left">
+        <span class="ic ic--profile"></span>
+        <span class="label">حسابي</span>
+      </span>
+      <i class="bi bi-chevron-left chev"></i>
+    </a>
+  </li>
 
-<li>
-  <a class="sheet__item" href="/profile">
-    <span class="left">
-      <span class="ic ic--profile"></span>
-      <span class="label">حسابي</span>
-    </span>
-    <i class="bi bi-chevron-left chev"></i>
-  </a>
-</li>
+  <!-- مفضلتي -->
+  <li>
+    <a class="sheet__item" href="/favorites">
+      <span class="left">
+        <span class="ic ic--fav"></span>
+        <span class="label">مفضلتي</span>
+      </span>
+      <i class="bi bi-chevron-left chev"></i>
+    </a>
+  </li>
 
-<li>
-  <a class="sheet__item" href="/favorites">
-    <span class="left">
-      <span class="ic ic--fav"></span>
-      <span class="label">مفضلتي</span>
-    </span>
-    <i class="bi bi-chevron-left chev"></i>
-  </a>
-</li>
+  <!-- الإعدادات -->
+  <li>
+    <a class="sheet__item" href="/settings">
+      <span class="left">
+        <span class="ic ic--settings"></span>
+        <span class="label">الإعدادات</span>
+      </span>
+      <i class="bi bi-chevron-left chev"></i>
+    </a>
+  </li>
 
-<li>
-  <a class="sheet__item" href="/settings">
-    <span class="left">
-      <span class="ic ic--settings"></span>
-      <span class="label">الإعدادات</span>
-    </span>
-    <i class="bi bi-chevron-left chev"></i>
-  </a>
-</li>
+  <!-- تذاكري -->
+  <li>
+    <a class="sheet__item" href="/support/my">
+      <span class="left">
+        <span class="ic ic--cc"></span>
+        <span class="label">تذاكري</span>
+      </span>
+      <i class="bi bi-chevron-left chev"></i>
+    </a>
+  </li>
 
-<li>
-  <a class="sheet__item text-danger" href="/logout">
-    <span class="left">
-      <span class="ic ic--logout"></span>
-      <span class="label">خروج</span>
-    </span>
-    <i class="bi bi-chevron-left chev"></i>
-  </a>
-</li>
-
-<li>
-  <a class="sheet__item" href="/support/my">
-    <span class="left">
-      <span class="ic ic--cc"></span>
-      <span class="label">تذاكري</span>
-    </span>
-    <i class="bi bi-chevron-left chev"></i>
-  </a>
-</li>
-
-
+  <!-- خروج -->
+  <li>
+    <a class="sheet__item text-danger" href="/logout">
+      <span class="left">
+        <span class="ic ic--logout"></span>
+        <span class="label">خروج</span>
+      </span>
+      <i class="bi bi-chevron-left chev"></i>
+    </a>
+  </li>
 
 </ul>
+
 
     </div>
   </div>

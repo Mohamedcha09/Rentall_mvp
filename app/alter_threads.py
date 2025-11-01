@@ -20,3 +20,7 @@ c.execute("PRAGMA table_info(message_threads)")
 print("الأعمدة الموجودة بعد:", [r[1] for r in c.fetchall()])
 
 conn.close()
+
+
+
+

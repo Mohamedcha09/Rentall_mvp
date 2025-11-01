@@ -1,5 +1,5 @@
 # app/auth.py
-from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
+from fastapi import APIRouter, Depends, Request, Form, UploadFile, File, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -569,14 +569,15 @@ def reset_post(
     return RedirectResponse(url="/login?reset_ok=1", status_code=303)
 
 # ============ Logout ============
+# في نهاية دالة logout بملف app/auth.py
 @router.get("/logout")
 def logout(request: Request):
     request.session.clear()
-    # بعد الخروج: حوّل للدومين الأساسي لو لازم
     r = _maybe_redirect_canonical(request)
     if r:
         return r
-    return RedirectResponse(url="/", status_code=303)
+    # أضف باراميتر صغير لرسالة في الصفحة الرئيسية
+    return RedirectResponse(url="/?logged_out=1", status_code=303)
 
 @router.get("/dev/admin-login")
 def dev_admin_login(request: Request, db: Session = Depends(get_db)):
@@ -595,3 +596,100 @@ def dev_admin_login(request: Request, db: Session = Depends(get_db)):
     if r:
         return r
     return RedirectResponse("/", status_code=303)
+
+
+
+
+
+@router.get("/settings")
+def settings_get(request: Request, db: Session = Depends(get_db)):
+    sess = request.session.get("user")
+    if not sess:
+        return RedirectResponse("/login", status_code=303)
+    u = db.query(User).filter(User.id == sess["id"]).first()
+    return request.app.templates.TemplateResponse(
+        "settings.html",
+        {"request": request, "title": "الإعدادات", "u": u, "session_user": sess}
+    )
+
+@router.post("/settings/profile")
+def settings_profile_post(
+    request: Request,
+    db: Session = Depends(get_db),
+    first_name: str = Form(""),
+    last_name: str = Form(""),
+    email: str = Form(""),
+    avatar: UploadFile = File(None),
+):
+    sess = request.session.get("user")
+    if not sess:
+        return RedirectResponse("/login", status_code=303)
+
+    u = db.query(User).filter(User.id == sess["id"]).first()
+    if not u:
+        raise HTTPException(404, "User not found")
+
+    # تحديث البيانات
+    u.first_name = (first_name or "").strip()
+    u.last_name  = (last_name or "").strip()
+    new_email    = (email or "").strip().lower()
+
+    # تحقق تكرار البريد لو تغيّر
+    if new_email and new_email != u.email:
+        exists = db.query(User).filter(User.email == new_email).first()
+        if exists:
+            return RedirectResponse("/settings?err=email_used", status_code=303)
+        u.email = new_email
+        # (اختياري) جعله غير مفعّل حتى يؤكد بريدًا جديدًا
+        try:
+            u.is_verified = False
+        except Exception:
+            pass
+
+    # صورة جديدة
+    if avatar:
+        saved = _save_any(avatar, AVATARS_DIR, [".jpg", ".jpeg", ".png", ".webp"])
+        if saved:
+            u.avatar_path = saved
+
+    db.add(u); db.commit(); db.refresh(u)
+
+    # مزامنة الجلسة
+    request.session["user"] = {
+        **sess,
+        "first_name": u.first_name,
+        "last_name": u.last_name,
+        "email": u.email,
+        "avatar_path": getattr(u, "avatar_path", None) or None,
+        "is_verified": bool(getattr(u, "is_verified", False)),
+    }
+    return RedirectResponse("/settings?saved=1", status_code=303)
+
+@router.post("/settings/password")
+def settings_password_post(
+    request: Request,
+    db: Session = Depends(get_db),
+    current: str = Form(...),
+    password: str = Form(...),
+    confirm: str = Form(...),
+):
+    sess = request.session.get("user")
+    if not sess:
+        return RedirectResponse("/login", status_code=303)
+    u = db.query(User).filter(User.id == sess["id"]).first()
+    if not u:
+        raise HTTPException(404, "User not found")
+
+    current = _normalize_form_password(current or "")
+    password = _normalize_form_password(password or "")
+    confirm  = _normalize_form_password(confirm or "")
+
+    if not verify_password(current, u.password_hash):
+        return RedirectResponse("/settings?err=bad_current", status_code=303)
+    if not password or password != confirm:
+        return RedirectResponse("/settings?err=mismatch", status_code=303)
+
+    u.password_hash = hash_password(password)
+    db.add(u); db.commit()
+
+    return RedirectResponse("/settings?pwd_ok=1", status_code=303)
