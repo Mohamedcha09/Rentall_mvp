@@ -156,7 +156,7 @@ button.dropdown-toggle::after {
 <style>
 /* ✅ رفع الشريط السفلي بدون إعادة تدفق (لا قفزة للأعلى) */
 @media (max-width: 768px){
-  :root{ --tabbar-lift: 20px; } /* عدّلها 6–14px حسب ذوقك */
+  :root{ --tabbar-lift: 24px; } /* عدّلها 6–14px حسب ذوقك */
 
   .mobile-tabbar{
     transform: translateY(calc(-1 * var(--tabbar-lift)));
@@ -175,7 +175,7 @@ button.dropdown-toggle::after {
         env(safe-area-inset-bottom, 0px),
         var(--safe-b, 0px),
         var(--safe-bottom, 0px)
-      ) + 15px + var(--tabbar-lift)
+      ) + 16px + var(--tabbar-lift)
     );
   }
 }
