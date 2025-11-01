@@ -333,12 +333,7 @@ button.dropdown-toggle::after {
 @media (max-width: 768px){
   .m-top-tabs{ display:flex !important; }             /* تُعرض على الهاتف فقط */
 }
-/* أيقونة دائرية صغيرة قبل النص */
-.sheet__item .with-ic{ display:inline-flex; align-items:center; gap:.5rem; }
-.sheet__item .ic{
-  width:22px; height:22px; border-radius:50%;
-  object-fit:cover; flex:0 0 22px;
-}
+
 
 </style>
 
@@ -453,6 +448,52 @@ button.dropdown-toggle::after {
   background-size:80%;
 }
 </style>
+
+<style id="ic-pack-fix">
+  /* حجم موحّد للأيقونة الدائرية */
+  :root{ --ic: 28px; }
+
+  /* صندوق الأيقونة الموحّد */
+  .ic{
+    width:var(--ic);
+    height:var(--ic);
+    display:inline-block;
+    position:relative;
+    border-radius:50%;
+    overflow:hidden;
+    box-shadow:0 0 0 1px rgba(0,0,0,.06) inset;
+    vertical-align:-3px;               /* محاذاة أجمل للنص */
+    flex:0 0 var(--ic);
+  }
+  .ic::after{
+    content:"";
+    position:absolute; inset:0;
+    background-position:center;
+    background-repeat:no-repeat;
+    background-size:88%;               /* غطّي داخليًا بنسبة ثابتة */
+    image-rendering:auto;
+  }
+
+  /* مظهر داكن/فاتح ثابت */
+  [data-theme="dark"] .ic{ box-shadow:0 0 0 1px rgba(255,255,255,.08) inset; }
+
+  /* خرائط الصور عبر متغير CSS */
+  .ic--support{ --img: url('/static/iconblossom/sfer.png'); }
+  .ic--profile{ --img: url('/static/iconblossom/vert.png'); }
+  .ic--fav    { --img: url('/static/iconblossom/mov.png'); }
+  .ic--settings{--img: url('/static/iconblossom/ramdi.png'); }
+  .ic--logout { --img: url('/static/iconblossom/roge.png'); }
+  .ic--cc     { --img: url('/static/iconblossom/cc.png'); } /* تذاكري */
+
+  /* ربط المتغير بالصورة الفعلية */
+  .ic::after{ background-image: var(--img); }
+
+  /* لو أردت تغيير المقاس مستقبلاً لموبايل فقط */
+  @media (max-width:768px){
+    :root{ --ic: 28px; } /* عدّل الرقم لو رغبت */
+  }
+</style>
+
 
 
 
@@ -1238,7 +1279,7 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
   <li>
   <a class="sheet__item" href="/support/new">
     <span class="left">
-      <span class="ic-support"></span>
+      <span class="ic ic--support"></span>
       <span class="label">مراسلة الدعم</span>
     </span>
     <i class="bi bi-chevron-left chev"></i>
@@ -1248,7 +1289,7 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
 <li>
   <a class="sheet__item" href="/profile">
     <span class="left">
-      <span class="ic-profile"></span>
+      <span class="ic ic--profile"></span>
       <span class="label">حسابي</span>
     </span>
     <i class="bi bi-chevron-left chev"></i>
@@ -1258,7 +1299,7 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
 <li>
   <a class="sheet__item" href="/favorites">
     <span class="left">
-      <span class="ic-fav"></span>
+      <span class="ic ic--fav"></span>
       <span class="label">مفضلتي</span>
     </span>
     <i class="bi bi-chevron-left chev"></i>
@@ -1268,7 +1309,7 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
 <li>
   <a class="sheet__item" href="/settings">
     <span class="left">
-      <span class="ic-settings"></span>
+      <span class="ic ic--settings"></span>
       <span class="label">الإعدادات</span>
     </span>
     <i class="bi bi-chevron-left chev"></i>
@@ -1278,7 +1319,7 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
 <li>
   <a class="sheet__item text-danger" href="/logout">
     <span class="left">
-      <span class="ic-logout"></span>
+      <span class="ic ic--logout"></span>
       <span class="label">خروج</span>
     </span>
     <i class="bi bi-chevron-left chev"></i>
@@ -1288,12 +1329,13 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
 <li>
   <a class="sheet__item" href="/support/my">
     <span class="left">
-      <span class="ic-cc"></span>
+      <span class="ic ic--cc"></span>
       <span class="label">تذاكري</span>
     </span>
     <i class="bi bi-chevron-left chev"></i>
   </a>
 </li>
+
 
 
 </ul>

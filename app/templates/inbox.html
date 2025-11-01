@@ -1,97 +1,103 @@
 {% extends "base.html" %}
 {% block content %}
 
+{# لو ما وصل thread من السيرفر، اختر أول واحد تلقائيًا #}
+{% set current = thread if thread else (threads[0] if threads and threads|length else None) %}
+
 <style>
 /* ===========================
-   WhatsApp Web (Light) — HARD OVERRIDE
+   WhatsApp Web (Light) — Same Page
    =========================== */
 :root{
-  --wa-bg:#ffffff;        /* خلفية عامة */
-  --wa-panel:#ffffff;     /* خلفية قائمة المحادثات */
-  --wa-hover:#f5f5f5;     /* لون الهوفر */
-  --wa-line:#ececec;      /* فاصل بين العناصر */
-  --wa-text:#111;         /* نص أساسي */
-  --wa-muted:#6b7280;     /* نص ثانوي */
-  --wa-accent:#008069;    /* زر / لون أساسي */
-  --wa-badge:#25D366;     /* شارة غير المقروء */
+  --wa-bg:#fff; --wa-panel:#fff; --wa-hover:#f5f5f5; --wa-line:#ececec;
+  --wa-text:#111; --wa-muted:#6b7280; --wa-accent:#008069; --wa-badge:#25D366;
+  --wa-bubble:#e9f3f0; --wa-bubble-me:#dff9eb;
+}
+html body{ background:var(--wa-bg); color:var(--wa-text); }
+
+/* الحاوية الرئيسية بنمط عمودين مثل واتساب */
+.chat-shell{
+  display:grid;
+  grid-template-columns: 360px 1fr; /* يسار ثابت + يمين يتمدّد */
+  gap:12px;
+  min-height: calc(100vh - 220px);
 }
 
-html body{ background:var(--wa-bg) !important; color:var(--wa-text) !important; }
-
-/* عنوان الصفحة وأزرارها */
-html body h3.mb-0{ color:#111 !important; font-weight:700 !important; }
-html body .btn.btn-outline-secondary.btn-sm{
-  border-color:var(--wa-line) !important; color:#333 !important; background:#fff !important;
-}
-html body .btn.btn-outline-secondary.btn-sm:hover{ background:var(--wa-hover) !important; }
-
-/* تنبيهات */
-html body .alert{ border-radius:12px !important; }
-html body .alert-light{ background:#fafafa !important; border:1px solid var(--wa-line) !important; }
-html body .alert-warning{ background:#fff9e6 !important; border:1px solid #ffe8a3 !important; }
-
-/* قائمة المحادثات كستايل واتساب */
-html body .list-group{
-  background:var(--wa-panel) !important;
-  border:1px solid var(--wa-line) !important;
-  border-radius:14px !important;
-  overflow:hidden !important;
+/* لو شاشة صغيرة نُظهر عمود واحد (القائمة) */
+@media (max-width: 992px){
+  .chat-shell{ grid-template-columns: 1fr; }
+  .pane-right{ display:none; }           /* أخفِ الدردشة على الموبايل افتراضيًا */
+  .pane-right.is-open{ display:block; }  /* يمكن إظهارها بجافاسكربت لاحقًا إن أردت */
 }
 
-html body .list-group .list-group-item,
-html body .list-group .list-group-item.list-group-item-action{
-  background:#fff !important;
-  border:0 !important;
-  border-bottom:1px solid var(--wa-line) !important;
-  padding:.9rem 1rem !important;
-  transition:background .15s ease !important;
+/* البطاقات العامة */
+.card{ background:var(--wa-panel) !important; border:1px solid var(--wa-line) !important; border-radius:14px !important; overflow:hidden; }
+.card-body{ padding:0 !important; }
+
+/* ===== يسار: قائمة المحادثات ===== */
+.pane-left .header{
+  padding:14px 16px; border-bottom:1px solid var(--wa-line);
+  display:flex; align-items:center; justify-content:space-between;
 }
-html body .list-group .list-group-item:last-child{ border-bottom:0 !important; }
-html body .list-group .list-group-item:hover{ background:var(--wa-hover) !important; }
-
-/* سطر المحادثة الداخلي */
-html body .list-group .list-group-item .d-flex{ align-items:center !important; gap:.9rem !important; }
-
-/* الصورة (أفاتار) — نكسر الـinline style */
-html body .list-group .list-group-item img{
-  width:48px !important; height:48px !important;
-  border-radius:50% !important; object-fit:cover !important;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,.04) !important;
+.pane-left .search{
+  margin:10px 12px; padding:8px 12px; border:1px solid var(--wa-line);
+  border-radius:10px; font-size:.95rem; width:calc(100% - 24px);
 }
-
-/* الاسم */
-html body .list-group .list-group-item strong.fs-6{
-  font-weight:700 !important; color:#111 !important; font-size:1rem !important;
-  display:flex !important; align-items:center !important; gap:.35rem !important;
+.thread-list{ max-height: calc(100vh - 280px); overflow:auto; }
+.thread-row{
+  display:flex; align-items:center; gap:.75rem; padding:.8rem .95rem;
+  border-bottom:1px solid var(--wa-line); text-decoration:none; color:inherit;
+  transition:background .15s ease;
 }
-
-/* شارة التحقق */
-html body .verified-badge{
-  width:16px !important; height:16px !important; display:inline-block !important;
-  vertical-align:middle !important;
+.thread-row:hover{ background:var(--wa-hover); }
+.thread-row.active{ background:#f0f7f5; }
+.avatar{
+  width:48px; height:48px; border-radius:50%; flex:0 0 48px;
+  background:#e0e0e0; color:#333; display:flex; align-items:center; justify-content:center; font-weight:800;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.04);
 }
-
-/* سطر العنوان الفرعي */
-html body .list-group .list-group-item .text-muted.small{
-  color:var(--wa-muted) !important; font-size:.85rem !important;
+.thread-title{ flex:1; min-width:0; }
+.thread-title .name{ font-weight:700; color:#111; display:flex; align-items:center; gap:.35rem; }
+.thread-title .sub{ color:var(--wa-muted); font-size:.86rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.thread-meta{ color:#939aa3; font-size:.82rem; text-wrap:nowrap; }
+.badge-unread{
+  background:var(--wa-badge); color:#fff; border-radius:999px; font-weight:700;
+  padding:.15rem .5rem; font-size:.78rem;
 }
 
-/* التاريخ يمين */
-html body .list-group .list-group-item .text-nowrap.text-muted.small{
-  color:#939aa3 !important; font-size:.82rem !important;
+/* ===== يمين: الدردشة ===== */
+.pane-right{ position:relative; }
+.chat-header{
+  padding:14px 16px; border-bottom:1px solid var(--wa-line);
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
 }
-
-/* شارة غير المقروء (خضراء مدوّرة) */
-html body .list-group .badge.rounded-pill,
-html body .list-group .badge.bg-danger{
-  background:var(--wa-badge) !important; color:#fff !important; border:0 !important;
-  border-radius:999px !important; padding:.25rem .55rem !important; font-weight:700 !important;
+.chat-header .peer{ display:flex; align-items:center; gap:.6rem; }
+.chat-header .peer .name{ font-weight:700; }
+.chat-body{
+  padding:10px; height:calc(100vh - 360px); overflow:auto; background:#fff;
+  display:flex; flex-direction:column; gap:6px;
 }
+.msg{
+  max-width:75%; padding:.6rem .8rem; border-radius:12px 12px 12px 0; background:var(--wa-bubble);
+  color:#111; align-self:flex-start;
+}
+.msg.me{
+  align-self:flex-end; background:var(--wa-bubble-me); border-radius:12px 12px 0 12px;
+}
+.msg .meta{ color:var(--wa-muted); font-size:.8rem; margin-bottom:2px; }
+.chat-input{
+  border-top:1px solid var(--wa-line); padding:10px; background:#fff;
+}
+.chat-input .form-control{
+  background:#f2f2f2; border:0; color:#111; padding:.75rem .9rem;
+}
+.chat-input .form-control::placeholder{ color:#999; }
+.chat-input .btn-primary{ background:var(--wa-accent); border:0; font-weight:700; }
 
-/* إزالة تأثيرات Bootstrap الافتراضية التي قد تعاند */
-html body .list-group .list-group-item.bg-transparent{ background:#fff !important; }
-html body .list-group .list-group-item.text-white{ color:#111 !important; }
-html body .list-group .list-group-item.border-secondary{ border:0 !important; }
+/* كسر ستايلات Bootstrap المتداخلة */
+.list-group, .list-group-item{ all:unset; } /* نبدأ من الصفر */
+.list-group{ display:block; }
+.text-muted{ color:var(--wa-muted) !important; }
 </style>
 
 <div class="d-flex align-items-center justify-content-between mb-3">
@@ -106,42 +112,110 @@ html body .list-group .list-group-item.border-secondary{ border:0 !important; }
   </div>
 {% endif %}
 
-{% if threads and threads|length %}
-  <div class="list-group">
-    {% for t in threads %}
-      <a href="/messages/{{ t.id }}" class="list-group-item list-group-item-action py-3">
-        <div class="d-flex align-items-center gap-3">
-          <img src="{{ t.item_image }}" alt="">
-          <div class="flex-grow-1">
-            <div class="d-flex align-items-center gap-2">
-              <strong class="fs-6">
+<div class="chat-shell">
+  <!-- ========== يسار: قائمة المحادثات ========== -->
+  <div class="pane-left card">
+    <div class="header">
+      <div class="fw-bold">محادثاتي</div>
+      <a class="btn btn-sm btn-outline-secondary" href="/messages">تحديث</a>
+    </div>
+
+    <input class="search" type="search" placeholder="ابحث عن محادثة..." oninput="
+      const q=this.value.trim().toLowerCase();
+      document.querySelectorAll('.thread-row').forEach(r=>{
+        const name=r.getAttribute('data-name')||'';
+        r.style.display = name.includes(q)?'flex':'none';
+      });
+    ">
+
+    <div class="thread-list">
+      {% if threads and threads|length %}
+        {% for t in threads %}
+          {% set is_active = current and (t.id == current.id) %}
+          <a href="/messages/{{ t.id }}"
+             class="thread-row {{ 'active' if is_active else '' }}"
+             data-name="{{ (t.other_fullname or '')|lower }}">
+            <div class="avatar">
+              {% set nm = t.other_fullname or 'مستخدم' %}
+              {% set p = nm.split(' ') %}
+              {{ (p[0][:1] ~ (p[1][:1] if p|length>1 else ''))|upper }}
+            </div>
+            <div class="thread-title">
+              <div class="name">
                 {{ t.other_fullname }}
                 {% if t.other_verified %}
-                  <img src="/static/verified.png" class="verified-badge" alt="verified">
+                  <img src="/static/verified.png" alt="verified" style="width:16px;height:16px">
                 {% endif %}
-              </strong>
-              {% set c = t.unread_count|int %}
-              {% if c > 0 %}
-                <span class="badge rounded-pill bg-danger">
-                  {% if c > 9 %}+9{% else %}{{ c }}{% endif %}
-                </span>
+                {% set c = t.unread_count|int %}
+                {% if c > 0 %}
+                  <span class="badge-unread">{% if c > 9 %}+9{% else %}{{ c }}{% endif %}</span>
+                {% endif %}
+              </div>
+              {% if t.item_title %}
+                <div class="sub">بخصوص: {{ t.item_title }}</div>
               {% endif %}
             </div>
-            {% if t.item_title %}
-              <div class="text-muted small">بخصوص: {{ t.item_title }}</div>
-            {% endif %}
+            <div class="thread-meta">
+              {{ t.last_message_at.strftime("%Y-%m-%d") if t.last_message_at else "" }}
+            </div>
+          </a>
+        {% endfor %}
+      {% else %}
+        <div class="p-3 text-muted">لا توجد محادثات بعد.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ========== يمين: الدردشة ========== -->
+  <div class="pane-right card {{ 'is-open' if current else '' }}">
+    {% if current %}
+      {% set other = current.other_user %}
+      <div class="chat-header">
+        <div class="peer">
+          <div class="avatar">
+            {% set nm = current.other_fullname or (other.first_name ~ ' ' ~ other.last_name if other else 'مستخدم') %}
+            {% set p = nm.split(' ') %}
+            {{ (p[0][:1] ~ (p[1][:1] if p|length>1 else ''))|upper }}
           </div>
-          <div class="text-nowrap text-muted small">
-            آخر تواصل {{ t.last_message_at.strftime("%d-%m-%Y") if t.last_message_at else "" }}
+          <div>
+            <div class="name">{{ nm }}</div>
+            {% if current.item_title %}<div class="text-muted small">بخصوص: {{ current.item_title }}</div>{% endif %}
           </div>
         </div>
-      </a>
-    {% endfor %}
+        {% if other %}<a class="btn btn-sm btn-outline-secondary" href="/u/{{ other.id }}">الملف العام</a>{% endif %}
+      </div>
+
+      <div id="chatBody" class="chat-body">
+        {% if current.messages and current.messages|length %}
+          {% for m in current.messages %}
+            <div class="msg {% if session_user and m.sender_id==session_user.id %}me{% endif %}">
+              <div class="meta">{{ m.sender.first_name }} · {{ m.created_at.strftime("%Y-%m-%d %H:%M") }}</div>
+              <div>{{ m.body }}</div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-muted p-3">لا رسائل بعد.</div>
+        {% endif %}
+      </div>
+
+      <form class="chat-input" method="post" action="/messages/{{ current.id }}/send">
+        <div class="input-group">
+          <input type="text" name="body" class="form-control" placeholder="اكتب رسالة..." required>
+          <button class="btn btn-primary">إرسال</button>
+        </div>
+      </form>
+    {% else %}
+      <div class="p-4 text-muted">اختر محادثة من القائمة.</div>
+    {% endif %}
   </div>
-{% else %}
-  <div class="alert alert-light border">
-    لا توجد محادثات بعد.
-  </div>
-{% endif %}
+</div>
+
+<script>
+/* تمرير تلقائي لأسفل الدردشة */
+(function(){
+  const el = document.getElementById('chatBody');
+  if(el) el.scrollTop = el.scrollHeight;
+})();
+</script>
 
 {% endblock %}
