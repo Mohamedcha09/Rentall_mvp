@@ -361,68 +361,99 @@ button.dropdown-toggle::after {
 .sheet__item .chev{ opacity:.5; }
 </style>
 
-<style>
-  :root{
-    --profile-ic: 28px;     /* قطر الدائرة الموحدة */
-    --glyph-base: .72;      /* نسبة حجم الرمز داخل الدائرة (غيّرها لو حبيت) */
-/* مراسلة الدعم */
-.ic-support{
-  width:28px;height:28px;border-radius:50%;display:inline-block;position:relative;overflow:hidden;
-  box-shadow:0 0 0 1px rgba(0,0,0,.06) inset;
-}
-.ic-support::after{
-  content:"";position:absolute;inset:0;
-  background:url('/static/iconblossom/sfer.png') center no-repeat;
-  background-size:78%;
-}
+<style id="ic-pack-fix">
+  /* متغير بسيط لو احتجته لاحقًا */
+  :root{ --profile-ic:28px; }
 
-/* حسابي */
-.ic-profile{
-  width:28px;height:28px;border-radius:50%;display:inline-block;position:relative;overflow:hidden;
-  box-shadow:0 0 0 1px rgba(0,0,0,.06) inset;
-}
-.ic-profile::after{
-  content:"";position:absolute;inset:0;
-  background:url('/static/iconblossom/vert.png') center no-repeat;
-  background-size:82%;
-}
+  /* تنظيف أي ستايل قديم محتمل */
+  .sheet__png, .sheet__png::after{ all:unset; }
 
-/* مفضلتي */
-.ic-fav{
+  /* قاعدة مشتركة: دائرة موحَّدة */
+  .ic-circle{
+    width:28px !important;
+    height:28px !important;
+    border-radius:50% !important;
+    display:inline-block !important;
+    position:relative !important;
+    overflow:hidden !important;
+    box-shadow:0 0 0 1px rgba(0,0,0,.06) inset !important;
+    vertical-align:-3px;
+  }
+  .ic-circle::after{
+    content:"";
+    position:absolute; inset:0;
+    background-repeat:no-repeat !important;
+    background-position:center !important;
+  }
+
+  /* مراسلة الدعم */
+  .ic-support{ composes: ic-circle; } /* تجاهلها لو المتصفح لا يدعم، سنكرّر القواعد أدناه */
+  .ic-support{
+    width:28px !important; height:28px !important; border-radius:50% !important;
+    display:inline-block !important; position:relative !important; overflow:hidden !important;
+    box-shadow:0 0 0 1px rgba(0,0,0,.06) inset !important;
+  }
+  .ic-support::after{
+    background-image:url('/static/iconblossom/sfer.png') !important;
+    background-size:88% !important; /* امتلاء مناسب */
+  }
+
+  /* حسابي */
+  .ic-profile{
+    width:28px !important; height:28px !important; border-radius:50% !important;
+    display:inline-block !important; position:relative !important; overflow:hidden !important;
+    box-shadow:0 0 0 1px rgba(0,0,0,.06) inset !important;
+  }
+  .ic-profile::after{
+    background-image:url('/static/iconblossom/vert.png') !important;
+    background-size:90% !important;
+  }
+
+  /* مفضلتي */
+  .ic-fav{
+    width:28px !important; height:28px !important; border-radius:50% !important;
+    display:inline-block !important; position:relative !important; overflow:hidden !important;
+    box-shadow:0 0 0 1px rgba(0,0,0,.06) inset !important;
+  }
+  .ic-fav::after{
+    background-image:url('/static/iconblossom/mov.png') !important;
+    background-size:88% !important;
+  }
+
+  /* الإعدادات */
+  .ic-settings{
+    width:28px !important; height:28px !important; border-radius:50% !important;
+    display:inline-block !important; position:relative !important; overflow:hidden !important;
+    box-shadow:0 0 0 1px rgba(0,0,0,.06) inset !important;
+  }
+  .ic-settings::after{
+    background-image:url('/static/iconblossom/ramdi.png') !important;
+    background-size:86% !important;
+  }
+
+  /* خروج */
+  .ic-logout{
+    width:28px !important; height:28px !important; border-radius:50% !important;
+    display:inline-block !important; position:relative !important; overflow:hidden !important;
+    box-shadow:0 0 0 1px rgba(0,0,0,.06) inset !important;
+  }
+  .ic-logout::after{
+    background-image:url('/static/iconblossom/roge.png') !important;
+    background-size:92% !important;
+  }
+
+  /* تذاكري (cc) — الأيقونة الجديدة */
+.ic-cc{
   width:28px;height:28px;border-radius:50%;display:inline-block;position:relative;overflow:hidden;
   box-shadow:0 0 0 1px rgba(0,0,0,.06) inset;
 }
-.ic-fav::after{
+.ic-cc::after{
   content:"";position:absolute;inset:0;
-  background:url('/static/iconblossom/mov.png') center no-repeat;
+  background:url('/static/iconblossom/cc.png') center no-repeat;  /* تأكد من وجود الملف */
   background-size:80%;
 }
-
-/* الإعدادات */
-.ic-settings{
-  width:28px;height:28px;border-radius:50%;display:inline-block;position:relative;overflow:hidden;
-  box-shadow:0 0 0 1px rgba(0,0,0,.06) inset;
-}
-.ic-settings::after{
-  content:"";position:absolute;inset:0;
-  background:url('/static/iconblossom/ramdi.png') center no-repeat;
-  background-size:76%;
-}
-
-/* خروج */
-.ic-logout{
-  width:28px;height:28px;border-radius:50%;display:inline-block;position:relative;overflow:hidden;
-  box-shadow:0 0 0 1px rgba(0,0,0,.06) inset;
-}
-.ic-logout::after{
-  content:"";position:absolute;inset:0;
-  background:url('/static/iconblossom/roge.png') center no-repeat;
-  background-size:84%;
-}
-
-
-  }
 </style>
+
 
 
 
@@ -1253,6 +1284,17 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
     <i class="bi bi-chevron-left chev"></i>
   </a>
 </li>
+
+<li>
+  <a class="sheet__item" href="/support/my">
+    <span class="left">
+      <span class="ic-cc"></span>
+      <span class="label">تذاكري</span>
+    </span>
+    <i class="bi bi-chevron-left chev"></i>
+  </a>
+</li>
+
 
 </ul>
 
