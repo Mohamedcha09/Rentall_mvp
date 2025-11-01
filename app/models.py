@@ -535,7 +535,7 @@ def _on_user_before_update(mapper, conn, u):
     _force_admin_flags(u)
 
 
-# =========================
+
 # ✅ دعم التذاكر (Support)
 # =========================
 class SupportTicket(Base):
@@ -545,22 +545,26 @@ class SupportTicket(Base):
     user_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
     subject  = Column(String(200), nullable=False)
 
-    # ✅ أعمدة PostgreSQL التي أنشأتها
-    status        = Column(String(20), nullable=False, default="new", index=True)  # new | open | resolved
+    # 👇 أهم سطر: اجعل queue عمودًا حقيقيًا (مع fallback لو القاعدة قديمة)
+    queue = col_or_literal("support_tickets", "queue", String(10), default="cs", nullable=False, index=True)
+    # new | open | resolved
+    status        = Column(String(20), nullable=False, default="new", index=True)
     assigned_to_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
     last_msg_at   = Column(DateTime, nullable=True)
     updated_at    = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     resolved_at   = Column(DateTime, nullable=True)
 
-    # شارات/معلومات إضافية
-    last_from = Column(String(10), nullable=False, default="user")  # user / agent
+    # 👇 وسّعنا الطول إلى 12 حتى تستوعب system_mod بأمان
+    last_from = Column(String(12), nullable=False, default="user")  # user / agent / system_md / system_mod
     unread_for_user  = Column(Boolean, nullable=False, default=False)
     unread_for_agent = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
     # علاقات
-    user     = relationship("User", foreign_keys=[user_id], lazy="joined")
-    assignee = relationship("User", foreign_keys=[assigned_to_id], lazy="joined")
+    user = relationship("User", foreign_keys=[user_id], lazy="joined")
+    # 👇 سمِّها assigned_to لأن القوالب لديك تستخدم هذا الاسم
+    assigned_to = relationship("User", foreign_keys=[assigned_to_id], lazy="joined")
 
     messages = relationship(
         "SupportMessage",
@@ -576,7 +580,7 @@ class SupportMessage(Base):
     id = Column(Integer, primary_key=True, index=True)
     ticket_id = Column(Integer, ForeignKey("support_tickets.id"), nullable=False)
     sender_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    sender_role = Column(String(10), nullable=False, default="user")  # user / agent
+    sender_role = Column(String(10), nullable=False, default="user")  # user / agent / system
     body = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     is_read   = Column(Boolean, nullable=False, default=False)
