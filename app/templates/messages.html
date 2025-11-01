@@ -3,114 +3,126 @@
 
 <style>
 /* ===========================
-   WhatsApp Web Look (Light)
+   WhatsApp Web Look (Light)  — FORCE
+   (لا تعديل على الـHTML)
    =========================== */
 :root{
   --wa-bg:#ffffff;
   --wa-panel:#f7f7f7;
   --wa-hover:#f0f0f0;
-  --wa-line:#e0e0e0;
+  --wa-line:#e5e7eb;
   --wa-text:#222;
-  --wa-muted:#666;
+  --wa-muted:#6b7280;
   --wa-accent:#008069;
   --wa-badge:#25D366;
-  --wa-bubble:#e9f3f0;
-  --wa-bubble-me:#dff9eb;
+  --wa-bubble:#e9f3f0;      /* رسائل الطرف الآخر */
+  --wa-bubble-me:#dff9eb;   /* رسائلي */
 }
 
-/* خلفية عامة فاتحة */
-body{ background:var(--wa-bg); color:var(--wa-text); }
+/* خلفية وألوان عامة */
+body{ background:var(--wa-bg) !important; color:var(--wa-text) !important; }
+.text-muted{ color:var(--wa-muted) !important; }
 
-/* الكروت */
+/* بطاقات (لوحات) */
 .card{
-  background:var(--wa-panel);
-  border:1px solid var(--wa-line);
-  border-radius:14px;
-  overflow:hidden;
+  background:var(--wa-panel) !important;
+  border:1px solid var(--wa-line) !important;
+  border-radius:14px !important;
+  overflow:hidden !important;
 }
-.card-body{ color:var(--wa-text); }
+.card-body{ color:var(--wa-text) !important; }
 
 /* تقسيم اللوحتين */
-.col-md-4 .card{ background:var(--wa-panel); }
-.col-md-8 .card{ background:#fff; }
+.col-md-4 .card{ background:var(--wa-panel) !important; }
+.col-md-8 .card{ background:#fff !important; }
 
-/* قائمة المحادثات */
+/* قائمة المحادثات (يسار) */
 .thread-row{
-  display:flex;align-items:center;gap:.65rem;
-  padding:.7rem .9rem;
-  border-bottom:1px solid var(--wa-line);
-  transition:background .15s ease;
+  display:flex !important; align-items:center !important; gap:.65rem !important;
+  padding:.7rem .9rem !important;
+  border-bottom:1px solid var(--wa-line) !important;
+  transition:background .15s ease !important;
 }
-.thread-row:hover{ background:var(--wa-hover); }
-.thread-row a{ text-decoration:none;color:inherit;display:flex;align-items:center;gap:.65rem;flex:1; }
+.thread-row:last-child{ border-bottom:0 !important; }
+.thread-row:hover{ background:var(--wa-hover) !important; }
+
+.thread-row a{
+  text-decoration:none !important;
+  color:inherit !important;
+  display:flex !important; align-items:center !important; gap:.65rem !important; flex:1 !important;
+}
 
 .avatar{
-  width:42px;height:42px;border-radius:50%;
-  background:#e0e0e0;color:#333;display:flex;
-  align-items:center;justify-content:center;
-  font-weight:700;
+  width:42px !important; height:42px !important; flex:0 0 42px !important;
+  border-radius:50% !important;
+  background:#e0e0e0 !important; color:#333 !important;
+  display:flex !important; align-items:center !important; justify-content:center !important;
+  font-weight:800 !important; letter-spacing:.3px !important;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.04) !important;
 }
 
-.thread-title .fw-bold{ color:#111; }
-.thread-title .small{ color:var(--wa-muted); }
+.thread-title .fw-bold{ color:#111 !important; }
+.thread-title .small, .thread-title .text-muted{ color:var(--wa-muted) !important; }
 
-.badge{
-  background:var(--wa-badge)!important;
-  color:#fff;border:0;
-  border-radius:999px;
-  padding:.25rem .5rem;
-  font-weight:700;
+/* عدّاد غير المقروء (حتى لو كانت bg-danger) */
+.badge{ border-radius:999px !important; font-weight:700 !important; padding:.25rem .5rem !important; }
+.badge.bg-danger, .badge:not(.bg-secondary){
+  background:var(--wa-badge) !important; color:#fff !important; border:0 !important;
 }
 
-/* رأس الدردشة */
-.col-md-8 .d-flex h5{ font-weight:700; }
-.btn-outline-light{
-  color:#333!important;
-  border-color:var(--wa-line)!important;
+/* رأس الدردشة يمين */
+.col-md-8 .d-flex h5{ font-weight:700 !important; color:#111 !important; margin:0 !important; }
+.btn.btn-outline-light{
+  color:#333 !important; border-color:var(--wa-line) !important; background:#fff !important;
 }
-.btn-outline-light:hover{
-  background:var(--wa-hover)!important;
-}
+.btn.btn-outline-light:hover{ background:var(--wa-hover) !important; }
 
-/* الرسائل */
+/* منطقة الرسائل */
 .list-group{
-  display:flex;flex-direction:column;gap:6px;
-  background:transparent;border:0;
-  max-height:calc(100vh - 320px);
-  overflow:auto;padding:8px;
+  display:flex !important; flex-direction:column !important; gap:6px !important;
+  background:transparent !important; border:0 !important;
+  max-height:calc(100vh - 320px) !important; overflow:auto !important; padding:8px !important;
 }
+.list-group::-webkit-scrollbar{ width:8px }
+.list-group::-webkit-scrollbar-thumb{ background:#ddd; border-radius:999px }
+
+/* فقاعات الرسائل */
 .list-group-item{
-  background:var(--wa-bubble)!important;
-  border:0!important;
-  border-radius:12px 12px 12px 0;
-  display:inline-block;
-  max-width:75%;
-  padding:.6rem .8rem;
-  color:#111;
+  background:var(--wa-bubble) !important;
+  color:#111 !important;
+  border:0 !important;
+  border-radius:12px 12px 12px 0 !important;
+  display:inline-block !important;
+  max-width:75% !important;
+  padding:.6rem .8rem !important;
+  box-shadow:none !important;
 }
+/* كسر كلاسات bootstrap داخل عنصر الرسالة */
+.list-group-item.text-white{ color:#111 !important; }
+.list-group-item.bg-transparent{ background:var(--wa-bubble) !important; }
+.list-group-item.border-secondary{ border-color:transparent !important; }
+
+/* فقاعاتي */
 .list-group-item.me{
-  align-self:flex-end;
-  background:var(--wa-bubble-me)!important;
-  border-radius:12px 12px 0 12px;
+  align-self:flex-end !important;
+  background:var(--wa-bubble-me) !important;
+  border-radius:12px 12px 0 12px !important;
 }
-.list-group-item .small{ color:var(--wa-muted)!important; }
 
-/* إدخال الرسالة */
+/* ميتا داخل الفقاعة */
+.list-group-item .small, .list-group-item .text-muted{ color:var(--wa-muted) !important; font-size:.82rem !important; }
+
+/* شريط الإدخال */
 .input-group .form-control{
-  background:#f2f2f2;
-  border:0;
-  color:#111;
-  padding:.7rem .9rem;
+  background:#f2f2f2 !important; border:0 !important; color:#111 !important;
+  padding:.7rem .9rem !important;
 }
-.input-group .form-control::placeholder{ color:#999; }
+.input-group .form-control::placeholder{ color:#999 !important; }
 .input-group .btn-primary{
-  background:var(--wa-accent);
-  border:0;
-  font-weight:700;
+  background:var(--wa-accent) !important; border:0 !important; font-weight:700 !important;
 }
-.input-group .btn-primary:hover{ filter:brightness(1.08); }
+.input-group .btn-primary:hover{ filter:brightness(1.08) !important; }
 </style>
-
 
 <div class="row">
   <div class="col-md-4">
@@ -120,7 +132,6 @@ body{ background:var(--wa-bg); color:var(--wa-text); }
         {% if threads and threads|length %}
           <div class="list">
             {% for t in threads %}
-              {# حدّد الطرف الآخر #}
               {% set other = t.other_user %}
               {% set name = (other.first_name ~ ' ' ~ other.last_name) if other else 'مستخدم' %}
               {% set created = other.created_at if other and other.created_at else None %}
@@ -191,7 +202,7 @@ body{ background:var(--wa-bg); color:var(--wa-text); }
           {% if thread.messages and thread.messages|length %}
             <div class="list-group">
               {% for m in thread.messages %}
-                <div class="list-group-item bg-transparent text-white border-secondary">
+                <div class="list-group-item bg-transparent text-white border-secondary{% if m.sender_id == session_user.id %} me{% endif %}">
                   <div class="small text-muted">{{ m.sender.first_name }} · {{ m.created_at.strftime("%Y-%m-%d %H:%M") }}</div>
                   <div>{{ m.body }}</div>
                 </div>
@@ -215,8 +226,8 @@ body{ background:var(--wa-bg); color:var(--wa-text); }
   </div>
 </div>
 
-<!-- سكربت شارات عام لهذه الصفحة -->
 <script>
+/* شاراتك كما هي */
 (function(){
   function daysFrom(iso){ if(!iso) return 99999; const d=new Date(iso); if(isNaN(d)) return 99999; return Math.floor((Date.now()-d.getTime())/86400000); }
   function add(src,alt){ const i=document.createElement('img'); i.src=src; i.alt=alt; i.className='badge-icon'; return i; }
@@ -226,20 +237,15 @@ body{ background:var(--wa-bg); color:var(--wa-text); }
     const verified=Number(box.dataset.verified||0)===1;
     const fiveStar=Number(box.dataset.stars5||0);
     const returnsOk=Number(box.dataset.returns||0);
-
     if(role==='admin'){ box.appendChild(add('/static/img/adm.png','Admin')); }
-
     const allowYellow=(role!=='admin'), allowGreen=(role!=='admin'), allowViolet=(role!=='admin');
-
     if(allowYellow && days<60){ box.appendChild(add('/static/img/jaune.png','New')); }
     else if(allowGreen && days>=60 && days<365){ box.appendChild(add('/static/img/ProVert.png','Pro Green')); }
     else if(days>=365){ box.appendChild(add('/static/img/ProGold.png','Pro Gold')); }
-
     if(allowViolet && (verified || fiveStar>=20)){ box.appendChild(add('/static/img/violet.png','Trust')); }
     if(returnsOk>=10){ box.appendChild(add('/static/img/Vert.png','Safe Renter')); }
     if(fiveStar>=10){ box.appendChild(add('/static/img/orange.png','Top Rated')); }
   }
-
   document.querySelectorAll('.auto-badges').forEach(renderOne);
 })();
 </script>
