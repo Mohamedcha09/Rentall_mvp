@@ -73,7 +73,7 @@
                   <small>{{ (t.last_msg_at or t.updated_at).strftime("%Y-%m-%d %H:%M") if t.last_msg_at or t.updated_at }}</small>
                 </div>
                 <div class="small text-muted">
-                  معيّنة لـ: {{ t.assigned_to and (t.assigned_to.first_name or t.assigned_to.email) or "غير معيّنة" }}
+                  معيّنة لـ: {{ t.assignee and (t.assignee.first_name or t.assignee.email) or "غير معيّنة" }}
                 </div>
               </a>
             {% endfor %}

@@ -427,7 +427,7 @@ def mod_transfer_to_md(ticket_id: int, request: Request, db: Session = Depends(g
                 md_id,
                 "📩 تذكرة جديدة من MOD",
                 f"توجد تذكرة محوّلة من فريق المراجعة (MOD): #{t.id}",
-                url=f"/md/ticket/{t.id}",
+                url=f"/md/inbox?tid={t.id}",
                 kind="support",
             )
         db.commit()
