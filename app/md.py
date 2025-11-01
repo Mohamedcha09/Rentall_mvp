@@ -382,7 +382,7 @@ def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(g
     t.status = "open"
     t.updated_at = now
     t.last_msg_at = now
-    t.last_from = "system"
+    t.last_from = "system_md"  # ⬅️ مهم: كي تظهر في قسم "تم تحويلها من MD" عند MOD
     t.unread_for_agent = False
     t.unread_for_user = True
 
