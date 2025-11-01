@@ -269,6 +269,56 @@ button.dropdown-toggle::after {
 [data-theme="dark"] .m-top-tabs .m-tab.is-active{ color:#e5e7eb; }
 </style>
 
+<style>
+/* ===== Mobile Profile Bottom Sheet ===== */
+@media (max-width: 768px){
+  .sheet-scrim{
+    position:fixed; inset:0; background:rgba(0,0,0,.35);
+    z-index:2147483646; opacity:0; pointer-events:none; transition:.2s ease;
+  }
+  .sheet{
+    position:fixed; left:0; right:0; bottom:0;
+    height:min(78vh, 660px);
+    background:#fff; color:var(--text);
+    border-radius:18px 18px 0 0;
+    box-shadow:0 -18px 40px rgba(0,0,0,.28);
+    z-index:2147483647;
+    transform:translateY(100%);
+    transition:transform .24s ease;
+    display:flex; flex-direction:column;
+    padding-bottom:calc(8px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px)));
+  }
+  .sheet.is-open{ transform:translateY(0); }
+  .sheet-scrim.is-open{ opacity:1; pointer-events:auto; }
+
+  .sheet__drag{
+    width:46px; height:5px; border-radius:10px; background:#d1d5db;
+    margin:8px auto 6px;
+  }
+  .sheet__header{
+    padding:6px 16px 10px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .sheet__profile{
+    display:flex; align-items:center; gap:10px;
+  }
+  .sheet__avatar{
+    width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background: #f2f3f7; font-weight:800;
+  }
+  .sheet__name{ font-weight:800; line-height:1.1; }
+  .sheet__handle{ font-size:.9rem; opacity:.7; }
+  .sheet__share{ background:#6C63FF; color:#fff; border:0; padding:.4rem .7rem; border-radius:999px; font-weight:700 }
+
+  .sheet__body{ padding:4px 10px 10px; overflow:auto; }
+  .sheet__list{ list-style:none; margin:0; padding:0; }
+  .sheet__item{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 10px; border-bottom:1px solid var(--border);
+    text-decoration:none; color:inherit;
+  }
+  .sheet__item i{ font-size:18px; opacity:.8; margin-inline-start:6px; }
+}
+</style>
 
 
   {% block head %}{% endblock %}
@@ -1022,6 +1072,57 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
   }
 });
 </script>
+  ...
+  <script>
+    // هنا آخر سكربتاتك مثل الإشعارات
+  </script>
+
+  <!-- ✅ Profile Bottom Sheet (mobile only) -->
+  <div id="profileScrim" class="sheet-scrim" hidden></div>
+
+  <div id="profileSheet" class="sheet" hidden aria-hidden="true" role="dialog" aria-label="قائمة البروفايل">
+    <div class="sheet__drag"></div>
+    <div class="sheet__header">
+      <div class="sheet__profile">
+        <div class="sheet__avatar">
+          {{ (session_user.first_name or 'ح')[:1] if session_user else 'ز' }}
+        </div>
+        <div>
+          <div class="sheet__name">{{ session_user.first_name or 'المستخدم' }}</div>
+          <div class="sheet__handle">@{{ session_user.username or 'user' }}</div>
+        </div>
+      </div>
+      <button class="sheet__share" type="button">Share</button>
+    </div>
+
+    <div class="sheet__body">
+      <ul class="sheet__list">
+        <li><a class="sheet__item" href="/profile"><span><i class="bi bi-person"></i> صفحتي</span><i class="bi bi-chevron-left"></i></a></li>
+        <li><a class="sheet__item" href="/favorites"><span><i class="bi bi-heart-fill"></i> مفضلتي</span><i class="bi bi-chevron-left"></i></a></li>
+        <li><a class="sheet__item" href="/bookings"><span><i class="bi bi-calendar2-check"></i> حجوزاتي</span><i class="bi bi-chevron-left"></i></a></li>
+        <li><a class="sheet__item" href="/settings"><span><i class="bi bi-gear"></i> الإعدادات</span><i class="bi bi-chevron-left"></i></a></li>
+        <li><a class="sheet__item text-danger" href="/logout"><span><i class="bi bi-box-arrow-right"></i> خروج</span><i class="bi bi-chevron-left"></i></a></li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+  (function initProfileSheet(){
+    if (window.__profileSheetInit) return; window.__profileSheetInit = true;
+    const isMobile = window.matchMedia('(max-width: 768px)');
+    const sheet = document.getElementById('profileSheet');
+    const scrim = document.getElementById('profileScrim');
+    if (!sheet || !scrim) return;
+    function show(){ sheet.hidden=false; scrim.hidden=false; requestAnimationFrame(()=>{ sheet.classList.add('is-open'); scrim.classList.add('is-open'); }); }
+    function hide(){ sheet.classList.remove('is-open'); scrim.classList.remove('is-open'); setTimeout(()=>{ sheet.hidden=true; scrim.hidden=true; },220); }
+    scrim.addEventListener('click', hide);
+    document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') hide(); });
+    const profTab = document.querySelector('.mobile-tabbar a[href="/profile"]');
+    if (profTab){ profTab.addEventListener('click',(e)=>{ if(isMobile.matches){ e.preventDefault(); show(); } }); }
+  })();
+  </script>
+</body>
+</html>
 
 </body>
 </html>
