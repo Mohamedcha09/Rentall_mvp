@@ -182,6 +182,11 @@ def md_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     if qval != "md":
         return RedirectResponse(f"/md/inbox?tid={tid}", status_code=303)
 
+    now = datetime.utcnow()
+    if t.assigned_to_id is None:
+        t.assigned_to_id = u_md["id"]
+        t.status = "open"
+        t.updated_at = now
 
     t.unread_for_agent = False
     db.commit()
@@ -415,7 +420,7 @@ def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(g
                 mod_id,
                 "📩 تذكرة جديدة من MD",
                 f"توجد تذكرة محوّلة من إدارة الودائع (MD): #{t.id}",
-                url=f"/mod/inbox?tid={t.id}",
+                url=f"/mod/ticket/{t.id}",
                 kind="support",
             )
         db.commit()

@@ -29,12 +29,10 @@
       <span class="chip text-bg-success border-0"><i class="bi bi-lock-fill"></i> منتهية</span>
     {% else %}
       <span class="chip text-bg-warning border-0 text-dark"><i class="bi bi-hourglass-split"></i> قيد المراجعة</span>
-    {% if ticket.assignee %}
-    <span class="chip"><i class="bi bi-person-badge"></i>
-      مُعيّنة إلى: {{ ticket.assignee.first_name or ticket.assignee.email }}
-    </span>
     {% endif %}
-
+    {% if ticket.assigned_to_id %}
+      <span class="chip"><i class="bi bi-person-badge"></i> مُعيّنة إلى: #{{ ticket.assigned_to_id }}</span>
+    {% endif %}
   </div>
 
   <div class="card shadow-sm mb-3">
