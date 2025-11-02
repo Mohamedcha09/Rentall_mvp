@@ -1,345 +1,139 @@
-{# app/templates/dm_case.html #}
+{# app/templates/dm_queue.html #}
 {% extends "base.html" %}
 
-{# موحّد سياق: يدعم bk أو booking ويقي من الغياب #}
-{% set B = (bk if bk is defined else (booking if booking is defined else None)) %}
-
-{% block title %}قضية وديعة{% if B %} #{{ B.id }}{% endif %}{% endblock %}
+{% block title %}قضايا الوديعة{% endblock %}
 
 {% block head %}
 <style>
-  .case-wrap{max-width:1100px;margin:auto}
-  .badge-chip{
-    display:inline-flex;gap:.5rem;align-items:center;
-    padding:.35rem .6rem;border:1px solid var(--border,#e5e7eb);
-    border-radius:999px;font-weight:700
-  }
-  .k{opacity:.7}
-  .box{border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:12px;background:#fff}
-  .ev-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
-  .ev-card{border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:8px;background:#fff}
-  .ev-card img, .ev-card video{width:100%;height:120px;object-fit:cover;border-radius:8px}
-  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-  .muted{opacity:.6}
-  .acts{display:flex;flex-wrap:wrap;gap:8px}
-  .btn{cursor:pointer}
-  .alert-mini{padding:.6rem .8rem}
+  .queue-wrap{max-width:1100px;margin:auto}
+  .chip{padding:.35rem .6rem;border:1px solid var(--border,#e5e7eb);border-radius:999px}
+  .muted{opacity:.65}
+  .row-item{border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:12px;background:#fff}
+  .stat{display:flex;gap:12px;flex-wrap:wrap}
+  .stat > div{background:#fff;border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:8px 10px}
+  .table thead th{white-space:nowrap}
+  .searchbar{display:flex;gap:8px;flex-wrap:wrap}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="case-wrap card p-3 p-md-4">
+<div class="queue-wrap">
 
-  {% if not B %}
-    <div class="alert alert-danger">
-      لا توجد بيانات للقضية في السياق (bk/booking مفقود). عُد للقائمة:
-      <a href="/dm/deposits" class="alert-link">قائمة القضايا</a>
-    </div>
-  {% else %}
-
-  <!-- Header -->
-  <div class="d-flex justify-content-between align-items-start flex-wrap">
-    <div class="mb-2">
-      <h4 class="mb-1">قضية وديعة — الحجز #{{ B.id }}</h4>
-      <div class="k">
-        العنصر:
-        {% if item %}
-          <strong>{{ item.title }}</strong> — <a href="/items/{{ item.id }}">صفحة العنصر</a>
-        {% else %}
-          —
-        {% endif %}
-      </div>
-      <div class="k">
-        الفترة:
-        {{ B.start_date if B.start_date else '—' }}
-        →
-        {{ B.end_date if B.end_date else '—' }}
-        {% if B.days %} ({{ B.days }} يوم){% endif %}
-      </div>
-    </div>
-    <div class="d-flex flex-column align-items-end gap-2">
-      <span class="badge-chip"><i class="bi bi-bookmark-check"></i> حالة الحجز: {{ B.status or '—' }}</span>
-      <span class="badge-chip"><i class="bi bi-shield-lock"></i> حالة الوديعة: {{ B.deposit_status or 'none' }}</span>
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h4 class="m-0">قضايا الوديعة</h4>
+    <div class="searchbar">
+      <form class="d-flex gap-2" method="get" action="/dm/deposits">
+        <input class="form-control" name="q" value="{{ q or '' }}" placeholder="ابحث (#حجز، بريد، اسم)…">
+        <select class="form-select" name="status">
+          <option value="">كل الحالات</option>
+          <option value="new" {{ 'selected' if status=='new' }}>جديدة</option>
+          <option value="awaiting_renter" {{ 'selected' if status=='awaiting_renter' }}>بانتظار رد المستأجر</option>
+          <option value="awaiting_manager" {{ 'selected' if status=='awaiting_manager' }}>بانتظار قرار DM</option>
+          <option value="finalized" {{ 'selected' if status=='finalized' }}>مغلقة</option>
+        </select>
+        <button class="btn btn-primary">بحث</button>
+      </form>
+      <a class="btn btn-light" href="/dm/deposits">إعادة التعيين</a>
     </div>
   </div>
 
-  <hr>
-
-  <div class="row g-3">
-    <!-- Left -->
-    <div class="col-12 col-lg-7">
-
-      <!-- معلومات الطرفين -->
-      <div class="box mb-3">
-        <div class="d-flex justify-content-between align-items-center">
-          <div>
-            <div class="k">المستأجر</div>
-            <div class="fw-bold">{{ B.renter.full_name if B.renter else '—' }}</div>
-            <div class="muted small">{{ B.renter.email if B.renter else '' }}</div>
-          </div>
-          <div>
-            <div class="k">المالك</div>
-            <div class="fw-bold">{{ B.owner.full_name if B.owner else '—' }}</div>
-            <div class="muted small">{{ B.owner.email if B.owner else '' }}</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- أزرار الإدارة -->
-      <div class="box mb-3">
-        <h6 class="mb-2">قرار متحكّم الوديعة</h6>
-
-        <div class="alert alert-warning alert-mini mb-3">
-          ملاحظة: يمكنك إما <strong>فتح مهلة 24 ساعة</strong> ليتمكن المستأجر من الرد، أو <strong>تنفيذ قرار نهائي</strong> الآن.
-        </div>
-
-        <div class="acts mb-2">
-          <!-- إطلاق كامل -->
-          <form method="post" action="/dm/deposits/{{ B.id }}/decision" class="d-inline">
-            <input type="hidden" name="decision" value="release">
-            <button class="btn btn-success">
-              <i class="bi bi-arrow-repeat"></i> إطلاق الوديعة بالكامل
-            </button>
-          </form>
-        </div>
-
-        <!-- خصم (نهائي أو فتح مهلة) -->
-        <div class="box mt-2">
-          <form method="post" action="/dm/deposits/{{ B.id }}/decision" id="withholdDecisionForm" class="row g-2">
-            <input type="hidden" name="decision" value="withhold">
-            <div class="col-12 col-md-4">
-              <label class="form-label">المبلغ (CAD)</label>
-              <input type="number" min="1" step="1" name="amount" class="form-control" placeholder="0">
-            </div>
-            <div class="col-12 col-md-8">
-              <label class="form-label">السبب</label>
-              <input type="text" name="reason" class="form-control" placeholder="تلخيص السبب…">
-            </div>
-            <div class="col-12 d-flex gap-2">
-              <button name="finalize" value="1" class="btn btn-danger">
-                <i class="bi bi-shield-exclamation"></i> خصم نهائي الآن
-              </button>
-              <button name="finalize" value="0" class="btn btn-outline-warning">
-                <i class="bi bi-hourglass-split"></i> فتح مهلة 24 ساعة
-              </button>
-            </div>
-          </form>
-        </div>
-
-        <!-- مسار بديل لبدء المهلة -->
-        <details class="mt-2">
-          <summary class="k">بدء المهلة عبر مسار مستقل</summary>
-          <form method="post" action="/dm/deposits/{{ B.id }}/start-window" class="row g-2 mt-2">
-            <div class="col-12 col-md-4">
-              <label class="form-label">المبلغ (CAD)</label>
-              <input type="number" min="1" step="1" name="amount" class="form-control">
-            </div>
-            <div class="col-12 col-md-8">
-              <label class="form-label">السبب</label>
-              <input type="text" name="reason" class="form-control">
-            </div>
-            <div class="col-12">
-              <button class="btn btn-outline-warning"><i class="bi bi-hourglass-split"></i> بدء مهلة 24 ساعة</button>
-            </div>
-          </form>
-        </details>
-      </div>
-
-      <!-- الأدلة -->
-      <div class="box mb-3">
-        <h6 class="mb-2">الأدلة المرفوعة</h6>
-
-        {% set all_evs = (B.deposit_evidences if B and B.deposit_evidences is defined else []) %}
-        {% set owner_evs = (all_evs | selectattr('side','equalto','owner') | list) %}
-        {% set renter_evs = (all_evs | selectattr('side','equalto','renter') | list) %}
-        {% set mgr_evs   = (all_evs | selectattr('side','equalto','manager') | list) %}
-
-        {% if owner_evs or renter_evs or mgr_evs or (ev_list is defined and ev_list) %}
-          {% if owner_evs %}
-            <div class="mb-2 fw-bold">أدلة المالك</div>
-            <div class="ev-grid mb-3">
-              {% for ev in owner_evs %}
-                <div class="ev-card">
-                  {% if ev.kind in ['image',''] %}
-                    <a href="{{ ev.file_path }}" target="_blank"><img src="{{ ev.file_path }}" alt=""></a>
-                  {% elif ev.kind == 'video' %}
-                    <video src="{{ ev.file_path }}" controls></video>
-                  {% else %}
-                    <div class="mono small"><a href="{{ ev.file_path }}" target="_blank">{{ ev.file_path }}</a></div>
-                  {% endif %}
-                  {% if ev.description %}<div class="mt-1 small k">{{ ev.description }}</div>{% endif %}
-                  <div class="muted mono small">{{ ev.created_at }}</div>
-                </div>
-              {% endfor %}
-            </div>
-          {% endif %}
-
-          {% if renter_evs %}
-            <div class="mb-2 fw-bold">أدلة المستأجر</div>
-            <div class="ev-grid mb-3">
-              {% for ev in renter_evs %}
-                <div class="ev-card">
-                  {% if ev.kind in ['image',''] %}
-                    <a href="{{ ev.file_path }}" target="_blank"><img src="{{ ev.file_path }}" alt=""></a>
-                  {% elif ev.kind == 'video' %}
-                    <video src="{{ ev.file_path }}" controls></video>
-                  {% else %}
-                    <div class="mono small"><a href="{{ ev.file_path }}" target="_blank">{{ ev.file_path }}</a></div>
-                  {% endif %}
-                  {% if ev.description %}<div class="mt-1 small k">{{ ev.description }}</div>{% endif %}
-                  <div class="muted mono small">{{ ev.created_at }}</div>
-                </div>
-              {% endfor %}
-            </div>
-          {% endif %}
-
-          {% if mgr_evs %}
-            <div class="mb-2 fw-bold">أدلة من المتحكّم</div>
-            <div class="ev-grid mb-3">
-              {% for ev in mgr_evs %}
-                <div class="ev-card">
-                  {% if ev.kind in ['image',''] %}
-                    <a href="{{ ev.file_path }}" target="_blank"><img src="{{ ev.file_path }}" alt=""></a>
-                  {% elif ev.kind == 'video' %}
-                    <video src="{{ ev.file_path }}" controls></video>
-                  {% else %}
-                    <div class="mono small"><a href="{{ ev.file_path }}" target="_blank">{{ ev.file_path }}</a></div>
-                  {% endif %}
-                  {% if ev.description %}<div class="mt-1 small k">{{ ev.description }}</div>{% endif %}
-                  <div class="muted mono small">{{ ev.created_at }}</div>
-                </div>
-              {% endfor %}
-            </div>
-          {% endif %}
-
-          {# توافق قديم: روابط ملفات على القرص عبر ev_list #}
-          {% if ev_list is defined and ev_list %}
-            <div class="mb-2 fw-bold">أدلة (توافق قديم — ملفات على القرص)</div>
-            <div class="ev-grid">
-              {% for u in ev_list %}
-                <div class="ev-card">
-                  {% if u.endswith('.mp4') or u.endswith('.mov') or u.endswith('.m4v') or u.endswith('.avi') or u.endswith('.wmv') %}
-                    <video src="{{ u }}" controls></video>
-                  {% else %}
-                    <a href="{{ u }}" target="_blank"><img src="{{ u }}" alt=""></a>
-                  {% endif %}
-                  <div class="mono small mt-1">{{ u }}</div>
-                </div>
-              {% endfor %}
-            </div>
-          {% endif %}
-
-        {% else %}
-          <div class="alert alert-secondary alert-mini">لا توجد أدلة بعد.</div>
-        {% endif %}
-
-        {% if has_renter_reply is defined and has_renter_reply %}
-          <div class="alert alert-info alert-mini mt-3">
-            المستأجر قام بالرد ورفع أدلة/تعليق.
-          </div>
-        {% endif %}
-      </div>
-
-      <!-- سجل التدقيق -->
-      <div class="box mb-3">
-        <h6 class="mb-2">سجل القضية</h6>
-        {% set audits = (B.deposit_audits if B and B.deposit_audits is defined else []) %}
-        {% if audits and audits|length %}
-          <div class="table-responsive">
-            <table class="table table-sm align-middle">
-              <thead>
-                <tr>
-                  <th>الزمن</th>
-                  <th>الفاعل</th>
-                  <th>الإجراء</th>
-                  <th>المبلغ</th>
-                  <th>ملاحظات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for a in audits %}
-                  <tr>
-                    <td class="mono small">{{ a.created_at }}</td>
-                    <td>
-                      {{ a.actor.full_name if a.actor else a.actor_id }}
-                      {% if a.actor_role %}<span class="muted">({{ a.actor_role }})</span>{% endif %}
-                    </td>
-                    <td class="mono">{{ a.action }}</td>
-                    <td>{{ a.amount or 0 }}</td>
-                    <td class="small">{{ a.reason or a.details }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        {% else %}
-          <div class="muted">لا توجد سجلات بعد.</div>
-        {% endif %}
-      </div>
-
-    </div>
-
-    <!-- Right -->
-    <div class="col-12 col-lg-5">
-
-      <div class="box">
-        <h6 class="mb-2">ملخص مالي</h6>
-        <div class="d-flex justify-content-between">
-          <span>مبلغ الإيجار</span>
-          <strong>{{ (B.rent_amount if B and B.rent_amount is defined else (B.total_amount if B and B.total_amount is defined else 0)) }}$</strong>
-        </div>
-        <div class="d-flex justify-content-between">
-          <span>الوديعة المطلوبة</span>
-          <strong>{{ (B.hold_deposit_amount if B and B.hold_deposit_amount is defined else (B.deposit_amount if B and B.deposit_amount is defined else 0)) }}$</strong>
-        </div>
-        <div class="d-flex justify-content-between">
-          <span>المقتطع حتى الآن</span>
-          <strong>{{ (B.deposit_charged_amount if B and B.deposit_charged_amount is defined else 0) }}$</strong>
-        </div>
-        <div class="d-flex justify-content-between">
-          <span>Stripe rent</span>
-          <strong>{{ (B.online_status if B and B.online_status is defined else '—') }}</strong>
-        </div>
-        <hr>
-        <div class="mono small k">
-          {% if B.accepted_at %}accepted_at: {{ B.accepted_at }}<br>{% endif %}
-          {% if B.picked_up_at %}picked_up_at: {{ B.picked_up_at }}<br>{% endif %}
-          {% if B.returned_at %}returned_at: {{ B.returned_at }}<br>{% endif %}
-          {% if B.return_confirmed_by_owner_at %}owner_confirmed_at: {{ B.return_confirmed_by_owner_at }}<br>{% endif %}
-          {% if B.rent_released_at %}rent_released_at: {{ B.rent_released_at }}<br>{% endif %}
-          {% if B.renter_response_deadline_at %}renter_deadline: {{ B.renter_response_deadline_at }}<br>{% endif %}
-          {% if B.dm_decision_deadline_at %}dm_deadline: {{ B.dm_decision_deadline_at }}<br>{% endif %}
-        </div>
-      </div>
-
-      <div class="box mt-3">
-        <h6 class="mb-2">إجراءات</h6>
-
-        <form method="post" action="/dm/deposits/{{ B.id }}/claim" class="d-inline">
-          <button class="btn btn-outline-primary">
-            <i class="bi bi-person-check"></i> استلام/تعيين القضية لي
-          </button>
-        </form>
-
-        <a class="btn btn-outline-secondary ms-1" href="/deposits/{{ B.id }}/evidence/form">
-          <i class="bi bi-cloud-upload"></i> رفع أدلة جديدة (يدوي)
-        </a>
-
-        <a class="btn btn-light ms-1" href="/dm/deposits">
-          <i class="bi bi-list-task"></i> العودة للقائمة
-        </a>
-      </div>
-
-      {% if B.owner_return_note %}
-      <div class="box mt-3">
-        <h6 class="mb-2">ملاحظات المالك عن الإرجاع</h6>
-        <div class="small">{{ B.owner_return_note }}</div>
-      </div>
-      {% endif %}
-
-    </div>
+  {# أرقام سريعة اختيارية لو تم تمريرها من الراوتر #}
+  {% if counters is defined and counters %}
+  <div class="stat mb-3">
+    <div>جديدة: <strong>{{ counters.new or 0 }}</strong></div>
+    <div>بانتظار المستأجر: <strong>{{ counters.awaiting_renter or 0 }}</strong></div>
+    <div>بانتظار DM: <strong>{{ counters.awaiting_manager or 0 }}</strong></div>
+    <div>مغلقة: <strong>{{ counters.finalized or 0 }}</strong></div>
   </div>
-
   {% endif %}
+
+  {% set LIST = cases if cases is defined else (items if items is defined else []) %}
+
+  {% if LIST and LIST|length %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>العنصر</th>
+            <th>المستأجر</th>
+            <th>المالك</th>
+            <th>الفترة</th>
+            <th>حالة الحجز</th>
+            <th>حالة الوديعة</th>
+            <th>آخر تحديث</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for B in LIST %}
+            <tr>
+              <td class="mono">#{{ B.id }}</td>
+              <td style="min-width:220px;">
+                {% if B.item %}
+                  <div class="fw-semibold"><a href="/items/{{ B.item.id }}" target="_blank">{{ B.item.title }}</a></div>
+                {% else %}
+                  <div class="fw-semibold">—</div>
+                {% endif %}
+                <div class="muted small">حجز: {{ B.created_at or '' }}</div>
+              </td>
+
+              <td>
+                {% if B.renter %}
+                  <div class="fw-semibold">{{ B.renter.full_name }}</div>
+                  <div class="muted small">{{ B.renter.email }}</div>
+                {% else %}—{% endif %}
+              </td>
+
+              <td>
+                {% if B.owner %}
+                  <div class="fw-semibold">{{ B.owner.full_name }}</div>
+                  <div class="muted small">{{ B.owner.email }}</div>
+                {% else %}—{% endif %}
+              </td>
+
+              <td>
+                <div class="mono small">
+                  {{ B.start_date or '—' }} → {{ B.end_date or '—' }}
+                </div>
+                {% if B.days %}<div class="muted small">{{ B.days }} يوم</div>{% endif %}
+              </td>
+
+              <td><span class="chip">{{ B.status or '—' }}</span></td>
+              <td><span class="chip">{{ B.deposit_status or '—' }}</span></td>
+
+              <td class="mono small">
+                {{ B.updated_at or B.returned_at or B.accepted_at or B.created_at or '' }}
+              </td>
+
+              <td class="text-end">
+                <a class="btn btn-outline-primary btn-sm" href="/dm/deposits/{{ B.id }}">
+                  فتح القضية
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {# ترقيم صفحات اختياري #}
+    {% if pagination is defined and pagination %}
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <div class="muted small">الصفحة {{ pagination.page }} من {{ pagination.pages }}</div>
+        <div class="d-flex gap-2">
+          {% if pagination.prev_url %}<a class="btn btn-light btn-sm" href="{{ pagination.prev_url }}">السابق</a>{% endif %}
+          {% if pagination.next_url %}<a class="btn btn-light btn-sm" href="{{ pagination.next_url }}">التالي</a>{% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+  {% else %}
+    <div class="row-item">
+      لا توجد قضايا مطابقة حالياً.
+      <span class="muted">جرّب إزالة فلاتر البحث.</span>
+    </div>
+  {% endif %}
+
 </div>
 {% endblock %}
