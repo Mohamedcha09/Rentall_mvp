@@ -229,7 +229,6 @@
               </div>
             {% endif %}
           </div>
-          <!-- ✅ تم تصحيح المسار هنا -->
           <form method="get" action="/deposits/{{ booking.id }}/report">
             <button class="btn btn-outline-danger btn-wide">
               <i class="bi bi-exclamation-octagon"></i> فتح بلاغ وديعة (مشكلة/ضرر/تأخير)
@@ -298,8 +297,9 @@
   </div>
 </div>
 
-<!-- UX: تعطيل الأزرار أثناء التحويل + منطق التحديث -->
+<!-- ===== JS (مرتب، دوال قبل الاستخدام) ===== -->
 <script>
+  // تعطيل الأزرار أثناء الإرسال
   function wireDisableOnSubmit(formId, btnId, text){
     var f = document.getElementById(formId);
     if(!f) return;
@@ -311,27 +311,29 @@
       }
     });
   }
-  wireDisableOnSubmit('stripePayRentForm','stripePayRentBtn','جاري تحويلك إلى الدفع…');
-  wireDisableOnSubmit('stripeDepositForm','stripeDepositBtn','جاري تحويلك إلى الدفع…');
 
+  // تحديث واجهة "الإيجار مدفوع"
   function markRentPaidUI(){
     var wrap = document.getElementById('rentActionWrap');
     if(!wrap) return;
     wrap.innerHTML = '<button class="btn btn-success btn-wide me-1" disabled><i class="bi bi-check2-circle"></i> تم دفع الإيجار ✅</button>';
   }
-  <script>
+
+  // تحديث واجهة "الوديعة محجوزة" + تحويل للخطوة التالية
   function markDepositHeldUI(){
     var wrap = document.getElementById('depositActionWrap');
     if(!wrap) return;
     wrap.innerHTML = '<button class="btn btn-success btn-wide" disabled><i class="bi bi-shield-check"></i> تم حجز الوديعة ✅</button>';
-    // ✅ انتقال تلقائي بعد لحظة قصيرة
     setTimeout(function(){
       window.location.href = "/bookings/flow/{{ booking.id }}/next";
     }, 600);
   }
-</script>
 
+  // ربط الأزرار
+  wireDisableOnSubmit('stripePayRentForm','stripePayRentBtn','جاري تحويلك إلى الدفع…');
+  wireDisableOnSubmit('stripeDepositForm','stripeDepositBtn','جاري تحويلك إلى الدفع…');
 
+  // قراءة الحالة من الـ DOM attributes
   (function(){
     try{
       var box = document.getElementById('onlineBox');
@@ -339,13 +341,11 @@
       var rentAuth = box.getAttribute('data-rent-authorized') === '1';
       var depHeld  = box.getAttribute('data-deposit-held') === '1';
       if(rentAuth){ markRentPaidUI(); }
-      if(depHeld){ markDepositHeldUI(); }
-      if(rentAuth && depHeld){
-        window.location.href = "/bookings/flow/{{ booking.id }}?ready=1";
-      }
+      if(depHeld){  markDepositHeldUI(); }
     }catch(e){}
   })();
 
+  // مزامنة الحالة من الـ API
   (function(){
     var bookingId = {{ booking.id }};
     fetch('/api/stripe/checkout/state/' + bookingId, {credentials:'same-origin'})
@@ -353,14 +353,16 @@
       .then(state => {
         try{
           if(state.rent_authorized){ markRentPaidUI(); }
-          if(state.deposit_held){ markDepositHeldUI(); }
+          if(state.deposit_held){   markDepositHeldUI(); }
           if(state.ready_for_pickup){
-            window.location.href = "/bookings/flow/{{ booking.id }}?ready=1";
+            // توحيد التحويل للخطوة التالية
+            window.location.href = "/bookings/flow/{{ booking.id }}/next";
           }
         }catch(e){}
       }).catch(()=>{});
   })();
 
+  // عدّاد مهلة الاعتراض (إن وُجد)
   {% if dispute_deadline_iso %}
   try{
     if(window.initCountdown){
