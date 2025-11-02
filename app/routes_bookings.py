@@ -811,3 +811,12 @@ def booking_flow_next(
     require_auth(user)
     _ = require_booking(db, booking_id)
     return RedirectResponse(url=f"/bookings/flow/{booking_id}?ready=1", status_code=303)
+
+# ===== شِمّات لمسارات الدفع المنفصلة → تحويل للمسار الموحّد =====
+@router.post("/api/stripe/checkout/rent/{booking_id}")
+def shim_checkout_rent(booking_id: int):
+    return RedirectResponse(url=f"/api/stripe/checkout/all/{booking_id}?only=rent", status_code=303)
+
+@router.post("/api/stripe/checkout/deposit/{booking_id}")
+def shim_checkout_deposit(booking_id: int):
+    return RedirectResponse(url=f"/api/stripe/checkout/all/{booking_id}?only=deposit", status_code=303)

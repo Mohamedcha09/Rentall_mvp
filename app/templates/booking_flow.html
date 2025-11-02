@@ -298,6 +298,7 @@
 </div>
 
 <!-- ===== JS (مرتب، دوال قبل الاستخدام) ===== -->
+<!-- ===== JS (مرتب، دوال قبل الاستخدام) ===== -->
 <script>
   // تعطيل الأزرار أثناء الإرسال
   function wireDisableOnSubmit(formId, btnId, text){
@@ -312,28 +313,32 @@
     });
   }
 
-  // تحديث واجهة "الإيجار مدفوع"
+  // تحديث "الإيجار مدفوع"
   function markRentPaidUI(){
     var wrap = document.getElementById('rentActionWrap');
     if(!wrap) return;
-    wrap.innerHTML = '<button class="btn btn-success btn-wide me-1" disabled><i class="bi bi-check2-circle"></i> تم دفع الإيجار ✅</button>';
+    if (!wrap.querySelector('#rentPaidBadge')){
+      wrap.innerHTML = '<button id="rentPaidBadge" class="btn btn-success btn-wide me-1" disabled><i class="bi bi-check2-circle"></i> تم دفع الإيجار ✅</button>';
+    }
   }
 
-  // تحديث واجهة "الوديعة محجوزة" + تحويل للخطوة التالية
+  // تحديث "الوديعة محجوزة" + انتقال
   function markDepositHeldUI(){
     var wrap = document.getElementById('depositActionWrap');
     if(!wrap) return;
-    wrap.innerHTML = '<button class="btn btn-success btn-wide" disabled><i class="bi bi-shield-check"></i> تم حجز الوديعة ✅</button>';
+    if (!wrap.querySelector('#depositHeldBadge')){
+      wrap.innerHTML = '<button id="depositHeldBadge" class="btn btn-success btn-wide" disabled><i class="bi bi-shield-check"></i> تم حجز الوديعة ✅</button>';
+    }
     setTimeout(function(){
       window.location.href = "/bookings/flow/{{ booking.id }}/next";
-    }, 600);
+    }, 500);
   }
 
-  // ربط الأزرار
+  // اربط الأزرار (لو موجودة)
   wireDisableOnSubmit('stripePayRentForm','stripePayRentBtn','جاري تحويلك إلى الدفع…');
   wireDisableOnSubmit('stripeDepositForm','stripeDepositBtn','جاري تحويلك إلى الدفع…');
 
-  // قراءة الحالة من الـ DOM attributes
+  // أولاً: اقرأ الحالة من خصائص الـDOM (حقن السيرفر)
   (function(){
     try{
       var box = document.getElementById('onlineBox');
@@ -345,24 +350,42 @@
     }catch(e){}
   })();
 
-  // مزامنة الحالة من الـ API
+  // ثانياً: Poll قوي من API (يتحمّل تأخير الويبهوك)
   (function(){
     var bookingId = {{ booking.id }};
-    fetch('/api/stripe/checkout/state/' + bookingId, {credentials:'same-origin'})
-      .then(r => r.ok ? r.json() : {})
-      .then(state => {
-        try{
-          if(state.rent_authorized){ markRentPaidUI(); }
-          if(state.deposit_held){   markDepositHeldUI(); }
-          if(state.ready_for_pickup){
-            // توحيد التحويل للخطوة التالية
-            window.location.href = "/bookings/flow/{{ booking.id }}/next";
-          }
-        }catch(e){}
-      }).catch(()=>{});
+    var tries = 0, maxTries = 30;
+
+    function checkOnce(){
+      fetch('/api/stripe/checkout/state/' + bookingId, {credentials:'same-origin', cache: 'no-store'})
+        .then(r => r.ok ? r.json() : {})
+        .then(state => {
+          try{
+            if(state.rent_authorized){ markRentPaidUI(); }
+            if(state.deposit_held){   markDepositHeldUI(); }
+            if(state.ready_for_pickup){
+              window.location.href = "/bookings/flow/{{ booking.id }}/next";
+              return;
+            }
+          }catch(e){}
+          retry();
+        })
+        .catch(retry);
+    }
+
+    function retry(){
+      tries++;
+      if(tries > maxTries) return;
+      var delay = (tries < 8) ? 1000 : Math.min(8000, 1000 + tries*700);
+      setTimeout(checkOnce, delay);
+    }
+
+    checkOnce();
+    document.addEventListener('visibilitychange', function(){ if(!document.hidden){ tries = 0; checkOnce(); }});
+    window.addEventListener('pageshow', function(){ tries = 0; checkOnce(); });
+    window.addEventListener('focus', function(){ tries = 0; checkOnce(); });
   })();
 
-  // عدّاد مهلة الاعتراض (إن وُجد)
+  // عدّاد المهلة (إن وُجد)
   {% if dispute_deadline_iso %}
   try{
     if(window.initCountdown){
@@ -374,4 +397,5 @@
   }catch(e){}
   {% endif %}
 </script>
+
 {% endblock %}
