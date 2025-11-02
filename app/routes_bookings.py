@@ -772,3 +772,42 @@ def api_create_deposit_hold(
     db.commit()
     return {"ok": True, "deposit_hold_intent_id": _get_deposit_pi_id(bk)}
 
+# ✅ حالة Stripe Checkout للأزرار في واجهة flow
+@router.get("/api/stripe/checkout/state/{booking_id}")
+def api_stripe_checkout_state(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if not (is_renter(user, bk) or is_owner(user, bk)):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    # نعتبر الدفع ناجحًا لو online_status أحد هذه القيم (حسب منطقك/الويبهوك)
+    rent_ok = str(getattr(bk, "online_status", "") or "").lower() in (
+        "authorized", "captured", "succeeded", "paid"
+    )
+    # نعتبر الوديعة محجوزة لو deposit_status أحد هذه القيم
+    dep_ok = str(getattr(bk, "deposit_status", "") or "").lower() in (
+        "held", "authorized"
+    )
+
+    ready = bool(rent_ok and dep_ok)  # لو الاثنين نجحوا → جاهز للخطوة التالية
+    return _json({
+        "rent_authorized": rent_ok,
+        "deposit_held": dep_ok,
+        "ready_for_pickup": ready
+    })
+
+
+@router.get("/bookings/flow/{booking_id}/next")
+def booking_flow_next(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    # الآن فقط نحيل لخطوة تالية (عدّل الوجهة لاحقًا كما تحب)
+    require_auth(user)
+    _ = require_booking(db, booking_id)
+    return RedirectResponse(url=f"/bookings/flow/{booking_id}?ready=1", status_code=303)

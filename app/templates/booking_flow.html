@@ -109,8 +109,9 @@
 
           <!-- الدفع أونلاين بأزرار منفصلة -->
           <div class="box" id="onlineBox"
-               data-rent-authorized="{{ '1' if booking.online_status == 'authorized' else '0' }}"
-               data-deposit-held="{{ '1' if booking.deposit_status == 'held' else '0' }}">
+     data-rent-authorized="{{ '1' if booking.online_status in ['authorized','captured','succeeded','paid'] else '0' }}"
+     data-deposit-held="{{ '1' if booking.deposit_status in ['held','authorized'] else '0' }}">
+
             <div class="mb-2">الدفع <strong>أونلاين (Stripe Checkout)</strong></div>
 
             {% if not owner_pe %}
@@ -129,8 +130,8 @@
               </div>
             {% endif %}
 
-            {% set rent_paid = (booking.online_status == 'authorized') %}
-            {% set deposit_ok = (booking.deposit_status == 'held') %}
+{% set rent_paid = (booking.online_status in ['authorized','captured','succeeded','paid']) %}
+{% set deposit_ok = (booking.deposit_status in ['held','authorized']) %}
 
             <!-- زر: دفع الإيجار فقط (يتحوّل لعبارة تم الدفع) -->
             <div id="rentActionWrap" class="d-inline">
@@ -318,11 +319,18 @@
     if(!wrap) return;
     wrap.innerHTML = '<button class="btn btn-success btn-wide me-1" disabled><i class="bi bi-check2-circle"></i> تم دفع الإيجار ✅</button>';
   }
+  <script>
   function markDepositHeldUI(){
     var wrap = document.getElementById('depositActionWrap');
     if(!wrap) return;
     wrap.innerHTML = '<button class="btn btn-success btn-wide" disabled><i class="bi bi-shield-check"></i> تم حجز الوديعة ✅</button>';
+    // ✅ انتقال تلقائي بعد لحظة قصيرة
+    setTimeout(function(){
+      window.location.href = "/bookings/flow/{{ booking.id }}/next";
+    }, 600);
   }
+</script>
+
 
   (function(){
     try{
@@ -340,7 +348,7 @@
 
   (function(){
     var bookingId = {{ booking.id }};
-fetch('/api/bookings/' + bookingId + '/state', { credentials:'same-origin' })
+    fetch('/api/stripe/checkout/state/' + bookingId, {credentials:'same-origin'})
       .then(r => r.ok ? r.json() : {})
       .then(state => {
         try{
