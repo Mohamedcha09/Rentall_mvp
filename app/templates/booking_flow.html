@@ -340,7 +340,7 @@
 
   (function(){
     var bookingId = {{ booking.id }};
-    fetch('/api/stripe/checkout/state/' + bookingId, {credentials:'same-origin'})
+fetch('/api/bookings/' + bookingId + '/state', { credentials:'same-origin' })
       .then(r => r.ok ? r.json() : {})
       .then(state => {
         try{
