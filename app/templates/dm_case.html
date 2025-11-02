@@ -122,12 +122,7 @@
 </div>
 
 
-      {# ===== إشعار المستأجر لرفع أدلة (الموديول الثاني) ===== #}
-      <div class="box mb-3">
-        <div class="d-flex align-items-center gap-2 mb-2">
-          <i class="bi bi-bell"></i>
-          <h6 class="m-0">إشعار المستأجر لرفع أدلة</h6>
-        </div>
+    
         <form method="post" action="/dm/deposits/{{ bk.id }}/nudge-renter" class="d-flex gap-2 flex-wrap">
           <input type="hidden" name="kind" value="evidence_nudge">
           <input class="form-control" name="note" placeholder="رسالة قصيرة (اختياري)" style="max-width:420px">
@@ -139,24 +134,6 @@
           </a>
         </form>
         <div class="k small mt-2">سيصل للمستأجر إشعار داخل الموقع + إيميل يحتوي رابط النموذج.</div>
-      </div>
-
-      <!-- ردود/أدلة المستأجر -->
-      <div class="box">
-        <h6 class="mb-2"><i class="bi bi-person-bounding-box me-1"></i> المستأجر</h6>
-        {% if has_renter_reply %}
-          <div class="alert alert-success alert-mini mb-2">هناك رد/أدلة من المستأجر.</div>
-        {% else %}
-          <div class="alert alert-warning alert-mini mb-2">لا يوجد رد من المستأجر حتى الآن.</div>
-        {% endif %}
-        <div class="d-flex gap-2 flex-wrap">
-          <a class="btn btn-outline-secondary btn-sm" href="/bookings/flow/{{ bk.id }}" target="_blank">
-            فتح صفحة الحجز (للاطلاع على كل الأدلة)
-          </a>
-          <a class="btn btn-sm btn-light" href="/deposits/{{ bk.id }}/evidence/form" target="_blank">
-            رابط نموذج رفع الأدلة (للمشاركة مع الأطراف)
-          </a>
-        </div>
       </div>
 
       <!-- إجراءات المراجع DM -->

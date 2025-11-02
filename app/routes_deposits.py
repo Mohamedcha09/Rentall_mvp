@@ -1246,6 +1246,110 @@ def _deadline_overdue_rows(db: Session) -> List[Booking]:
     return q.all()
 
 @router.get("/dm/deposits/check-window")  # alias
+def _auto_capture_for_booking(db: Session, bk: Booking) -> bool:
+    """
+    يحاول عمل capture تلقائي بالمبلغ dm_decision_amount إذا:
+    - الحالة awaiting_renter
+    - انتهت المهلة renter_response_deadline_at
+    - لا يوجد رد renter_response_at
+    - القرار dm_decision == 'withhold' وبمبلغ > 0
+    - يوجد PaymentIntent صالح
+    يرجع True إذا نجح الخصم (أو عُدّ ناجحًا)، وإلا False.
+    """
+    now = datetime.utcnow()
+    amt = int(getattr(bk, "dm_decision_amount", 0) or 0)
+    if amt <= 0:
+        return False
+
+    if getattr(bk, "deposit_status", "") != "awaiting_renter":
+        return False
+    if getattr(bk, "renter_response_deadline_at", None) and bk.renter_response_deadline_at > now:
+        return False
+    # إن كان المستأجر ردّ، لا نخصم تلقائيًا
+    if getattr(bk, "renter_response_at", None):
+        return False
+    if getattr(bk, "dm_decision", "") != "withhold":
+        return False
+
+    pi_id = _get_deposit_pi_id(bk)
+    captured_ok = False
+    charge_id = None
+
+    if pi_id:
+        try:
+            pi = stripe.PaymentIntent.capture(pi_id, amount_to_capture=amt * 100)
+            captured_ok = bool(pi and pi.get("status") in ("succeeded", "requires_capture") or True)
+            charge_id = (pi.get("latest_charge")
+                         or ((pi.get("charges") or {}).get("data") or [{}])[0].get("id"))
+        except Exception:
+            captured_ok = False
+
+    # حتى لو ما عندنا PI صالح، نثبت القرار إداريًا (no_deposit) حتى ما تتعطل القضية
+    bk.deposit_status = "partially_withheld" if captured_ok else "no_deposit"
+    bk.deposit_charged_amount = (bk.deposit_charged_amount or 0) + (amt if captured_ok else 0)
+    bk.status = "closed"
+    bk.dm_decision_at = now
+    bk.updated_at = now
+
+    try:
+        _audit(
+            db, actor=None, bk=bk, action="auto_withhold_on_deadline",
+            details={"amount": amt, "pi": pi_id, "captured": captured_ok, "charge_id": charge_id}
+        )
+    except Exception:
+        pass
+
+    db.commit()
+
+    # إشعارات نهائية للطرفين + إداريين
+    amt_txt = _fmt_money(amt)
+    reason_txt = _short_reason(getattr(bk, "dm_decision_note", "") or "")
+    try:
+        push_notification(
+            db, bk.owner_id, "تم تنفيذ الخصم التلقائي",
+            f"تم اقتطاع {amt_txt} CAD من الوديعة لحجز #{bk.id}" + (f" — السبب: {reason_txt}" if reason_txt else ""),
+            f"/bookings/flow/{bk.id}", "deposit"
+        )
+        push_notification(
+            db, bk.renter_id, "تم تنفيذ الخصم التلقائي",
+            f"تم اقتطاع {amt_txt} CAD من وديعتك لحجز #{bk.id}" + (f" — السبب: {reason_txt}" if reason_txt else ""),
+            f"/bookings/flow/{bk.id}", "deposit"
+        )
+        notify_admins(db, "خصم تلقائي بعد انتهاء المهلة", f"حجز #{bk.id} — {amt_txt} CAD.", f"/dm/deposits/{bk.id}")
+        notify_dms(db, "خصم تلقائي بعد انتهاء المهلة", f"تم التنفيذ لحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+    except Exception:
+        pass
+
+    # Emails
+    try:
+        renter_email = _user_email(db, bk.renter_id)
+        owner_email  = _user_email(db, bk.owner_id)
+        case_url     = f"{BASE_URL}/bookings/flow/{bk.id}"
+        if owner_email:
+            send_email(owner_email, f"تنفيذ خصم تلقائي — #{bk.id}",
+                       f"<p>تم اقتطاع {amt_txt} CAD من الوديعة بعد انتهاء مهلة 24h.</p>"
+                       f'<p><a href="{case_url}">تفاصيل الحجز</a></p>')
+        if renter_email:
+            send_email(renter_email, f"تم خصم مبلغ من وديعتك — #{bk.id}",
+                       f"<p>تم اقتطاع {amt_txt} CAD من وديعتك بعد انتهاء مهلة الرد.</p>"
+                       f'<p><a href="{case_url}">تفاصيل الحجز</a></p>')
+    except Exception:
+        pass
+
+    # تحويل للمالك إن كان لديه حساب Stripe متكامل
+    if captured_ok:
+        try:
+            owner: User = db.get(User, bk.owner_id)
+            if owner and getattr(owner, "stripe_account_id", None) and getattr(owner, "payouts_enabled", False):
+                stripe.Transfer.create(
+                    amount=amt * 100, currency="cad",
+                    destination=owner.stripe_account_id, source_transaction=charge_id
+                )
+        except Exception:
+            pass
+
+    return captured_ok
+
 def cron_check_window(
     request: Request,
     token: str = "",
@@ -1257,48 +1361,34 @@ def cron_check_window(
         raise HTTPException(status_code=401, detail="Invalid cron token")
 
     rows = _deadline_overdue_rows(db)
-    count = 0
-    for bk in rows:
-        count += 1
-        # لا ننفّذ خصم تلقائي — فقط إشعارات للتدخل
+count = 0
+done = 0
+skipped = 0
+
+for bk in rows:
+    count += 1
+    try:
+        ok = _auto_capture_for_booking(db, bk)
+        if ok:
+            done += 1
+        else:
+            skipped += 1
+            try:
+                notify_dms(db, "انتهاء مهلة — تدخّل مطلوب",
+                           f"حجز #{bk.id}: لم نتمكن من الخصم تلقائيًا.", f"/dm/deposits/{bk.id}")
+                notify_admins(db, "انتهاء مهلة — تدخّل مطلوب",
+                              f"حجز #{bk.id}: لم نتمكن من الخصم تلقائيًا.", f"/dm/deposits/{bk.id}")
+            except Exception:
+                pass
+    except Exception:
+        skipped += 1
         try:
-            push_notification(
-                db, bk.owner_id, "انتهاء مهلة ردّ المستأجر",
-                f"انتهت مهلة 24h للحجز #{bk.id} دون ردّ، سيتابع DM.",
-                f"/dm/deposits/{bk.id}", "deposit"
-            )
-        except Exception:
-            pass
-        try:
-            notify_dms(db, "انتهاء مهلة — تدخّل مطلوب", f"انتهت مهلة ردّ المستأجر للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
-            notify_admins(db, "انتهاء مهلة — تدخّل مطلوب", f"انتهت مهلة ردّ المستأجر للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+            notify_admins(db, "خطأ أثناء الخصم التلقائي",
+                          f"حجز #{bk.id}: حدث استثناء أثناء المعالجة.", f"/dm/deposits/{bk.id}")
         except Exception:
             pass
 
-        # Emails: للـ DMs + Admin
-        try:
-            dms_em    = _dm_emails_only(db)
-            admins_em = _admin_emails(db)
-            case_url  = f"{BASE_URL}/dm/deposits/{bk.id}"
-            subject   = f"[Action Needed] انتهت مهلة 24h — #{bk.id}"
-            body_html = f"<p>انتهت مهلة ردّ المستأجر للحجز #{bk.id} دون ردّ.</p><p><a href=\"{case_url}\">فتح القضية</a></p>"
-            for em in dms_em:
-                send_email(em, subject, body_html)
-            for em in admins_em:
-                send_email(em, subject, body_html)
-        except Exception:
-            pass
-
-        # وضع القضية قيد المراجعة إن لم تكن كذلك
-        try:
-            if getattr(bk, "status", "") != "in_review":
-                bk.status = "in_review"
-                bk.updated_at = datetime.utcnow()
-                db.commit()
-        except Exception:
-            pass
-
-    return JSONResponse({"ok": True, "checked": count})
+return JSONResponse({"ok": True, "checked": count, "auto_captured": done, "manual_needed": skipped})
 
 
 @router.post("/dm/deposits/{booking_id}/nudge-renter", response_model=None)
