@@ -122,20 +122,6 @@
 </div>
 
 
-    
-        <form method="post" action="/dm/deposits/{{ bk.id }}/nudge-renter" class="d-flex gap-2 flex-wrap">
-          <input type="hidden" name="kind" value="evidence_nudge">
-          <input class="form-control" name="note" placeholder="رسالة قصيرة (اختياري)" style="max-width:420px">
-          <button class="btn btn-outline-primary">
-            <i class="bi bi-send"></i> إرسال إشعار الآن
-          </button>
-          <a class="btn btn-light" href="/deposits/{{ bk.id }}/evidence/form" target="_blank">
-            فتح نموذج رفع الأدلة (معاينة)
-          </a>
-        </form>
-        <div class="k small mt-2">سيصل للمستأجر إشعار داخل الموقع + إيميل يحتوي رابط النموذج.</div>
-      </div>
-
       <!-- إجراءات المراجع DM -->
       <div class="box">
         <h6 class="mb-3"><i class="bi bi-hammer me-1"></i> إجراءات متحكّم الوديعة (DM)</h6>
