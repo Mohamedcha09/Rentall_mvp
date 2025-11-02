@@ -15,6 +15,14 @@
   .acts form{display:inline}
   .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;}
   .alert-mini{padding:.6rem .8rem}
+  .locked{position:relative;opacity:.6;pointer-events:none}
+  .locked::after{
+    content:"القضية مغلقة — لا يمكن تعديلها";
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.6);backdrop-filter:saturate(0.6) blur(2px);
+    font-weight:600;color:#444;border-radius:12px
+  }
 </style>
 {% if bk.renter_response_deadline_at %}
   <script defer src="/static/js/countdown.js"></script>
@@ -22,6 +30,11 @@
 {% endblock %}
 
 {% block content %}
+{# اعتبر القضية “مقفلة” إذا كان الحجز مغلقاً أو تم إرجاع/اقتطاع الوديعة نهائياً #}
+{% set is_locked = (bk.status in ['closed','completed']) 
+                    or (bk.deposit_status in ['refunded','partially_withheld','no_deposit']) 
+                    or (bk.dm_decision in ['release','withhold'] and bk.dm_decision_at) %}
+
 <div class="case-wrap">
   <div class="d-flex justify-content-between align-items-start flex-wrap mb-2">
     <div class="mb-2">
@@ -39,6 +52,9 @@
     <div class="d-flex flex-column align-items-end gap-1">
       <span class="chip">حالة الحجز: {{ bk.status or '—' }}</span>
       <span class="chip">حالة الوديعة: {{ bk.deposit_status or '—' }}</span>
+      {% if is_locked %}
+        <span class="chip" style="background:#f8f9fa">🔒 مغلقة</span>
+      {% endif %}
     </div>
   </div>
 
@@ -46,7 +62,7 @@
     <!-- يسار: تفاصيل و إجراءات -->
     <div class="grid">
 
-      {# ===== بلاغ المالك + أدلته (الموديول الأول) ===== #}
+      {# ===== بلاغ المالك + أدلته ===== #}
       {% if bk.owner_report_type or bk.owner_report_reason or (bk.deposit_evidences and bk.deposit_evidences|length) %}
         <div class="box mb-3">
           <div class="d-flex align-items-center gap-2 mb-2">
@@ -66,7 +82,6 @@
             </div>
           {% endif %}
 
-          {# أول 6 أدلة مرفوعة من المالك (صور/فيديو) #}
           {% if bk.deposit_evidences and bk.deposit_evidences|length %}
             {% set owner_evs = bk.deposit_evidences | selectattr('side','equalto','owner') | list %}
             {% if owner_evs and owner_evs|length %}
@@ -94,39 +109,38 @@
         </div>
       {% endif %}
 
-      {# ===== أدلة المستأجر (صور/فيديو) ===== #}
-<div class="box mb-3">
-  <div class="d-flex align-items-center gap-2 mb-2">
-    <i class="bi bi-person-bounding-box"></i>
-    <h6 class="m-0">أدلة المستأجر</h6>
-  </div>
-  {% set renter_evs = bk.deposit_evidences | selectattr('side','equalto','renter') | list %}
-  {% if renter_evs and renter_evs|length %}
-    <div class="d-flex flex-wrap" style="gap:8px">
-      {% for ev in renter_evs[:12] %}
-        {% set _is_video = (ev.kind == 'video') or (ev.file_path and ('.mp4' in ev.file_path or '.mov' in ev.file_path or '.m4v' in ev.file_path)) %}
-        <a href="{{ ev.file_path }}" target="_blank" class="d-inline-block">
-          {% if _is_video %}
-            <video src="{{ ev.file_path }}" muted
-                   style="width:88px;height:88px;border-radius:10px;object-fit:cover;border:1px solid var(--border)"></video>
-          {% else %}
-            <img src="{{ ev.file_path }}"
-                 style="width:88px;height:88px;border-radius:10px;object-fit:cover;border:1px solid var(--border)" />
-          {% endif %}
-        </a>
-      {% endfor %}
-    </div>
-  {% else %}
-    <div class="muted">لا توجد أدلة مرفوعة من المستأجر حتى الآن.</div>
-  {% endif %}
-</div>
+      {# ===== أدلة المستأجر ===== #}
+      <div class="box mb-3">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="bi bi-person-bounding-box"></i>
+          <h6 class="m-0">أدلة المستأجر</h6>
+        </div>
+        {% set renter_evs = bk.deposit_evidences | selectattr('side','equalto','renter') | list %}
+        {% if renter_evs and renter_evs|length %}
+          <div class="d-flex flex-wrap" style="gap:8px">
+            {% for ev in renter_evs[:12] %}
+              {% set _is_video = (ev.kind == 'video') or (ev.file_path and ('.mp4' in ev.file_path or '.mov' in ev.file_path or '.m4v' in ev.file_path)) %}
+              <a href="{{ ev.file_path }}" target="_blank" class="d-inline-block">
+                {% if _is_video %}
+                  <video src="{{ ev.file_path }}" muted
+                         style="width:88px;height:88px;border-radius:10px;object-fit:cover;border:1px solid var(--border)"></video>
+                {% else %}
+                  <img src="{{ ev.file_path }}"
+                       style="width:88px;height:88px;border-radius:10px;object-fit:cover;border:1px solid var(--border)" />
+                {% endif %}
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="muted">لا توجد أدلة مرفوعة من المستأجر حتى الآن.</div>
+        {% endif %}
+      </div>
 
-
-      <!-- إجراءات المراجع DM -->
-      <div class="box">
+      {# ===== إجراءات DM ===== #}
+      <div class="box {% if is_locked %}locked{% endif %}">
         <h6 class="mb-3"><i class="bi bi-hammer me-1"></i> إجراءات متحكّم الوديعة (DM)</h6>
 
-        {% if bk.deposit_status == 'awaiting_renter' and bk.renter_response_deadline_at %}
+        {% if not is_locked and bk.deposit_status == 'awaiting_renter' and bk.renter_response_deadline_at %}
           <div class="alert alert-info alert-mini mb-3">
             نافذة ردّ المستأجر مفتوحة — التنفيذ التلقائي بعد نهاية المهلة إن لم يردّ.
             <div class="mt-1 mono">
@@ -136,59 +150,65 @@
           </div>
         {% endif %}
 
-        <div class="acts mb-2">
-          <!-- فتح نافذة 24h (withhold pending) -->
-          <form method="post" action="/dm/deposits/{{ bk.id }}/start-window" class="d-inline-block">
-            <div class="row g-2 align-items-end">
-              <div class="col-auto">
-                <label class="form-label">المبلغ (CAD)</label>
-                <input class="form-control" type="number" name="amount" min="1" step="1" required>
+        {% if not is_locked %}
+          <div class="acts mb-2">
+            <!-- فتح نافذة 24h -->
+            <form method="post" action="/dm/deposits/{{ bk.id }}/start-window" class="d-inline-block js-confirm-window">
+              <div class="row g-2 align-items-end">
+                <div class="col-auto">
+                  <label class="form-label">المبلغ (CAD)</label>
+                  <input class="form-control" type="number" name="amount" min="1" step="1" required>
+                </div>
+                <div class="col-auto">
+                  <label class="form-label">السبب</label>
+                  <input class="form-control" type="text" name="reason" placeholder="وصف مختصر" />
+                </div>
+                <div class="col-auto">
+                  <button class="btn btn-warning">
+                    <i class="bi bi-hourglass-split"></i> فتح مهلة 24h
+                  </button>
+                </div>
               </div>
-              <div class="col-auto">
-                <label class="form-label">السبب</label>
-                <input class="form-control" type="text" name="reason" placeholder="وصف مختصر" />
-              </div>
-              <div class="col-auto">
-                <button class="btn btn-warning">
-                  <i class="bi bi-hourglass-split"></i> فتح مهلة 24h
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
+            </form>
+          </div>
 
-        <div class="acts mb-2">
-          <!-- خصم نهائي الآن -->
-          <form method="post" action="/dm/deposits/{{ bk.id }}/decision" class="d-inline-block">
-            <input type="hidden" name="decision" value="withhold">
-            <input type="hidden" name="finalize" value="1">
-            <div class="row g-2 align-items-end">
-              <div class="col-auto">
-                <label class="form-label">المبلغ (CAD)</label>
-                <input class="form-control" type="number" name="amount" min="1" step="1" required>
+          <div class="acts mb-2">
+            <!-- خصم نهائي الآن -->
+            <form method="post" action="/dm/deposits/{{ bk.id }}/decision" class="d-inline-block js-confirm-final-withhold">
+              <input type="hidden" name="decision" value="withhold">
+              <input type="hidden" name="finalize" value="1">
+              <div class="row g-2 align-items-end">
+                <div class="col-auto">
+                  <label class="form-label">المبلغ (CAD)</label>
+                  <input class="form-control" type="number" name="amount" min="1" step="1" required>
+                </div>
+                <div class="col-auto">
+                  <label class="form-label">السبب</label>
+                  <input class="form-control" type="text" name="reason" placeholder="وصف مختصر" />
+                </div>
+                <div class="col-auto">
+                  <button class="btn btn-danger">
+                    <i class="bi bi-shield-shaded"></i> خصم نهائي الآن
+                  </button>
+                </div>
               </div>
-              <div class="col-auto">
-                <label class="form-label">السبب</label>
-                <input class="form-control" type="text" name="reason" placeholder="وصف مختصر" />
-              </div>
-              <div class="col-auto">
-                <button class="btn btn-danger">
-                  <i class="bi bi-shield-shaded"></i> خصم نهائي الآن
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
+            </form>
+          </div>
 
-        <div class="acts">
-          <!-- إرجاع كامل -->
-          <form method="post" action="/dm/deposits/{{ bk.id }}/decision">
-            <input type="hidden" name="decision" value="release">
-            <button class="btn btn-outline-success">
-              <i class="bi bi-check2-circle"></i> إرجاع الوديعة بالكامل
-            </button>
-          </form>
-        </div>
+          <div class="acts">
+            <!-- إرجاع كامل -->
+            <form method="post" action="/dm/deposits/{{ bk.id }}/decision" class="js-confirm-final-release">
+              <input type="hidden" name="decision" value="release">
+              <button class="btn btn-outline-success">
+                <i class="bi bi-check2-circle"></i> إرجاع الوديعة بالكامل
+              </button>
+            </form>
+          </div>
+        {% else %}
+          <div class="alert alert-secondary m-0">
+            تم إعلان القرار النهائي لهذه القضية — يمكن مراقبتها فقط.
+          </div>
+        {% endif %}
       </div>
 
       <!-- لوج مختصر -->
@@ -251,4 +271,39 @@
   }catch(e){}
 </script>
 {% endif %}
+
+<script>
+  // تأكيدات قبل الإجراءات النهائية
+  (function(){
+    const q = sel => document.querySelector(sel);
+
+    const confirmWithhold = q('.js-confirm-final-withhold');
+    if (confirmWithhold){
+      confirmWithhold.addEventListener('submit', function(ev){
+        const amt = this.querySelector('input[name="amount"]').value || 0;
+        const reason = this.querySelector('input[name="reason"]').value || '';
+        const ok = confirm(`تأكيد الخصم النهائي الآن بمبلغ ${amt} CAD؟` + (reason ? `\nالسبب: ${reason}` : ''));
+        if(!ok){ ev.preventDefault(); }
+      });
+    }
+
+    const confirmRelease = q('.js-confirm-final-release');
+    if (confirmRelease){
+      confirmRelease.addEventListener('submit', function(ev){
+        const ok = confirm('تأكيد إرجاع الوديعة بالكامل الآن؟');
+        if(!ok){ ev.preventDefault(); }
+      });
+    }
+
+    const confirmWindow = q('.js-confirm-window');
+    if (confirmWindow){
+      confirmWindow.addEventListener('submit', function(ev){
+        const amt = this.querySelector('input[name="amount"]').value || 0;
+        const reason = this.querySelector('input[name="reason"]').value || '';
+        const ok = confirm(`فتح مهلة 24 ساعة لاقتطاع ${amt} CAD؟` + (reason ? `\nالسبب: ${reason}` : ''));
+        if(!ok){ ev.preventDefault(); }
+      });
+    }
+  })();
+</script>
 {% endblock %}

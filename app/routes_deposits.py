@@ -10,12 +10,6 @@ import mimetypes
 # --- NEW: Cloudinary ---
 import cloudinary
 import cloudinary.uploader
-# ملاحظة: Cloudinary يقرأ الإعدادات من CLOUDINARY_URL تلقائيًا.
-# أو يمكنك تهيئته يدويًا:
-# cloudinary.config(cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-#                   api_key=os.getenv("CLOUDINARY_API_KEY"),
-#                   api_secret=os.getenv("CLOUDINARY_API_SECRET"),
-#                   secure=True)
 
 from fastapi import (
     APIRouter,
@@ -24,40 +18,35 @@ from fastapi import (
     HTTPException,
     Form,
     UploadFile,
-    File, BackgroundTasks
+    File
 )
 from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
-# NOTE: if using SQLAlchemy 2.0+ Core text, keep import below
-from sqlalchemy import or_, text
+from sqlalchemy import or_, and_, text
 
 from .database import get_db, engine as _engine
 from .models import Booking, Item, User
 from .notifications_api import push_notification, notify_admins
 
-# ✅ نمرّر الدالة للقوالب التي تحتاج label للفئة
+# ✅ تمرير label الفئة للقوالب
 try:
     from .utils import category_label
 except Exception:
-    category_label = lambda c: c  # fallback بسيط
+    category_label = lambda c: c
 
-# ===== SMTP Email (fallback) =====
-# سيتم استبداله لاحقًا بـ app/emailer.py؛ هنا نضمن عدم كسر التنفيذ إن لم يوجد.
+# ===== Email fallback =====
 try:
     from .email_service import send_email
 except Exception:
     def send_email(to, subject, html_body, text_body=None, cc=None, bcc=None, reply_to=None):
-        return False  # NO-OP مؤقتًا
+        return False
 
-# ===== fallbacks لا تحذف شيئًا — فقط لو غير موجودات =====
-# notify_dms غير مستوردة في أعلى الملف لكن تستعمل لاحقًا
+# ===== notify_dms fallback =====
 try:
-    from .notifications_api import notify_dms  # إن كانت موجودة
+    from .notifications_api import notify_dms
 except Exception:
     def notify_dms(db, title, body, url=None):
-        """Fallback فعّال: يرسل إشعارًا لكل مديري الوديعة + الإداريين بدل أن يكون صامتًا."""
         try:
-            # أرسل Push لكل DM
             dms = db.query(User).filter(User.is_deposit_manager == True).all()
             for u in dms:
                 try:
@@ -70,7 +59,6 @@ except Exception:
                     )
                 except Exception:
                     pass
-            # ولو حاب، نبعت إشعار إداري عام كذلك
             try:
                 notify_admins(db, title or "تنبيه — الوديعة", body or "", url or "/dm/deposits")
             except Exception:
@@ -79,31 +67,15 @@ except Exception:
             pass
         return True
 
-
-# _audit تستعمل كثيرًا — نوفر fallback إن لم تكن مستوردة من مكان آخر
+# ===== audit fallback =====
 try:
-    from .audit import audit_action as _audit  # إن كانت موجودة عندك
+    from .audit import audit_action as _audit
 except Exception:
     def _audit(db, actor, bk, action, details=None):
         return None
 
 BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
-CRON_TOKEN = os.getenv("CRON_TOKEN", "dev-cron-token")  # رمز حماية للكرون اليدوي
-
-def _user_email(db: Session, user_id: int) -> str | None:
-    u = db.get(User, user_id) if user_id else None
-    return (u.email or None) if u else None
-
-def _admin_emails(db: Session) -> list[str]:
-    admins = db.query(User).filter(
-        ((User.role == "admin") | (User.is_deposit_manager == True))
-    ).all()
-    return [a.email for a in admins if getattr(a, "email", None)]
-
-# إيميلات الـ DMs فقط (بدون الإداريين، للفصل عند الحاجة)
-def _dm_emails_only(db: Session) -> list[str]:
-    dms = db.query(User).filter(User.is_deposit_manager == True).all()
-    return [u.email for u in dms if getattr(u, "email", None)]
+CRON_TOKEN = os.getenv("CRON_TOKEN", "dev-cron-token")
 
 router = APIRouter(tags=["deposits"])
 
@@ -170,13 +142,12 @@ def _save_evidence_files(booking_id: int, files: List[UploadFile] | None) -> Lis
         saved.append(safe_name)
     return saved
 
-# >>> NEW: حفظ محلي + رفع Cloudinary وإرجاع [(local_name, secure_url)]
+# >>> حفظ محلي + رفع Cloudinary [(local_name, secure_url)]
 def _save_evidence_files_and_cloud(booking_id: int, files: List[UploadFile] | None) -> List[tuple[str, str]]:
     saved_names = _save_evidence_files(booking_id, files)
     results: List[tuple[str, str]] = []
     folder = _booking_folder(booking_id)
     for name in saved_names:
-        # رابط بديل محلي لو فشل الرفع
         url = f"/uploads/deposits/{booking_id}/{name}"
         try:
             full_path = os.path.join(folder, name)
@@ -184,15 +155,14 @@ def _save_evidence_files_and_cloud(booking_id: int, files: List[UploadFile] | No
                 full_path,
                 folder=f"deposits/{booking_id}",
                 public_id=os.path.splitext(name)[0],
-                resource_type="auto"  # يدعم صور/فيديو تلقائيًا
+                resource_type="auto"
             )
             url = up.get("secure_url") or url
         except Exception:
-            # لا نكسر الفلو — نبقى على الرابط المحلي
             pass
         results.append((name, url))
     return results
-# <<< NEW
+# <<<
 
 def _list_evidence_files(booking_id: int) -> List[str]:
     folder = _booking_folder(booking_id)
@@ -252,16 +222,19 @@ def _short_reason(txt: str | None, limit: int = 120) -> str:
         return s
     return s[: limit - 1] + "…"
 
-# ====== موحِّد قراءة/كتابة معرّف الـPaymentIntent للوديعة ======
+def _is_closed(bk: Booking) -> bool:
+    ds = (getattr(bk, "deposit_status", "") or "").lower()
+    st = (getattr(bk, "status", "") or "").lower()
+    return (st == "closed") or (ds in {"refunded", "partially_withheld", "no_deposit"})
+
+# ====== قراءة/كتابة معرّف الـPI ======
 def _get_deposit_pi_id(bk: Booking) -> Optional[str]:
-    """ يرجع معرّف الـ PaymentIntent سواءً في الحقل الجديد أو القديم. """
     return (
         getattr(bk, "deposit_hold_intent_id", None)
         or getattr(bk, "deposit_hold_id", None)
     )
 
 def _set_deposit_pi_id(bk: Booking, pi_id: Optional[str]) -> None:
-    """ ضبط قيمة الـ PI في كلا الحقلين للتوافق الخلفي. """
     try:
         setattr(bk, "deposit_hold_intent_id", pi_id)
     except Exception:
@@ -272,7 +245,6 @@ def _set_deposit_pi_id(bk: Booking, pi_id: Optional[str]) -> None:
         pass
 
 def _has_renter_reply(db: Session, booking_id: int, bk: Booking | None = None) -> bool:
-    """ هل رفع المستأجر أي أدلة/ملفات؟ (مع توافق أعمدة file_path/file) """
     try:
         if bk is not None and getattr(bk, "renter_response_at", None):
             return True
@@ -292,38 +264,64 @@ def _has_renter_reply(db: Session, booking_id: int, bk: Booking | None = None) -
     except Exception:
         return False
 
-# ============ قائمة القضايا (DM) ============
+# ============ قائمة القضايا (مع فلاتر) ============
 @router.get("/dm/deposits")
 def dm_queue(
     request: Request,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
+    state: Literal["all", "new", "awaiting_renter", "awaiting_dm", "closed"] = "all",
+    q: Optional[str] = None,
 ):
     require_auth(user)
     if not can_manage_deposits(user):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # فحص كلا الحقلين deposit_hold_intent_id و deposit_hold_id إن وُجد القديم
-    deposit_hold_old_expr = (
-        text("deposit_hold_id IS NOT NULL") if hasattr(Booking, "deposit_hold_id")
-        else text("0")
-    )
+    # دعم الحقل القديم deposit_hold_id إن وُجد
+    deposit_hold_old_expr = text("deposit_hold_id IS NOT NULL") if hasattr(Booking, "deposit_hold_id") else text("0")
 
-    q = (
-        db.query(Booking)
-        .filter(
-            or_(
-                Booking.deposit_hold_intent_id.isnot(None),
-                deposit_hold_old_expr,
-                Booking.deposit_status.in_(["held", "in_dispute", "partially_withheld", "awaiting_renter"]),
-                Booking.status.in_(["returned", "in_review"]),
-            )
+    base_filters = [
+        or_(
+            Booking.deposit_hold_intent_id.isnot(None),
+            deposit_hold_old_expr,
+            Booking.deposit_status.in_(["held", "in_dispute", "partially_withheld", "awaiting_renter", "no_deposit", "refunded"]),
+            Booking.status.in_(["returned", "in_review", "closed"]),
         )
-        .order_by(Booking.updated_at.desc() if hasattr(Booking, "updated_at") else Booking.id.desc())
-    )
+    ]
 
-    cases: List[Booking] = q.all()
+    # تطبيق فلتر الحالة
+    if state == "awaiting_renter":
+        base_filters.append(Booking.deposit_status == "awaiting_renter")
+    elif state == "closed":
+        base_filters.append(or_(Booking.status == "closed",
+                                Booking.deposit_status.in_(["refunded", "partially_withheld", "no_deposit"])))
+    elif state in ("new", "awaiting_dm"):
+        base_filters.append(Booking.deposit_status == "in_dispute")
+        # لم يُسند بعد
+        if hasattr(Booking, "dm_assignee_id"):
+            base_filters.append(or_(Booking.dm_assignee_id.is_(None), Booking.dm_assignee_id == 0))
 
+    qset = db.query(Booking).filter(and_(*base_filters))
+
+    # البحث
+    if q:
+        q = q.strip()
+        # #123 أو بريد أو جزء من عنوان العنصر
+        if q.startswith("#") and q[1:].isdigit():
+            qset = qset.filter(Booking.id == int(q[1:]))
+        elif q.isdigit():
+            qset = qset.filter(Booking.id == int(q))
+        else:
+            # join على Item عند الحاجة
+            qset = qset.join(Item, Item.id == Booking.item_id, isouter=True)
+            like = f"%{q}%"
+            qset = qset.filter(or_(Item.title.ilike(like), Booking.owner_email.ilike(like) if hasattr(Booking, "owner_email") else text("0"),
+                                   Booking.renter_email.ilike(like) if hasattr(Booking, "renter_email") else text("0")))
+
+    order_col = Booking.updated_at.desc() if hasattr(Booking, "updated_at") else Booking.id.desc()
+    cases: List[Booking] = qset.order_by(order_col).all()
+
+    # prefetch items
     item_ids = {b.item_id for b in cases}
     items: List[Item] = db.query(Item).filter(Item.id.in_(item_ids)).all() if item_ids else []
     items_map: Dict[int, Item] = {it.id: it for it in items}
@@ -336,11 +334,13 @@ def dm_queue(
             "session_user": request.session.get("user"),
             "cases": cases,
             "items_map": items_map,
-            "category_label": category_label,  # تمريرها لو احتاج القالب
+            "category_label": category_label,
+            "state": state,
+            "q": q or "",
         },
     )
 
-# ============ صفحة القضية للمراجع ============
+# ============ صفحة القضية ============
 @router.get("/dm/deposits/{booking_id}")
 def dm_case_page(
     booking_id: int,
@@ -370,7 +370,8 @@ def dm_case_page(
             "evidence": evidence_urls,
             "ev_list": evidence_urls,
             "has_renter_reply": has_renter_reply,
-            "category_label": category_label,  # ✅ إصلاح: تمرير الدالة التي يستخدمها القالب
+            "category_label": category_label,
+            "is_closed": _is_closed(bk),
         },
     )
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
@@ -386,7 +387,7 @@ def dm_decision(
     decision: Literal["release", "withhold"] = Form(...),
     amount: int = Form(0),
     reason: str = Form(""),
-    finalize: int = Form(0),   # 0/1 من الزر
+    finalize: int = Form(0),
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
@@ -395,23 +396,23 @@ def dm_decision(
         raise HTTPException(status_code=403, detail="Access denied")
 
     bk = require_booking(db, booking_id)
+    if _is_closed(bk):
+        raise HTTPException(status_code=400, detail="case already closed")
+
     pi_id = _get_deposit_pi_id(bk)
     now = datetime.utcnow()
 
     def _notify_final(title_owner: str, body_owner: str, title_renter: str, body_renter: str):
-        # الإشعار النهائي يوجّه الطرفين لتدفّق الحجز (كما كان)
         push_notification(db, bk.owner_id,  title_owner,  body_owner,  f"/bookings/flow/{bk.id}", "deposit")
         push_notification(db, bk.renter_id, title_renter, body_renter, f"/bookings/flow/{bk.id}", "deposit")
         notify_admins(db, "إشعار قرار نهائي", f"حجز #{bk.id} — {decision}", f"/dm/deposits/{bk.id}")
 
     try:
         if decision == "release":
-            # إرجاع كامل
             if pi_id:
                 try:
                     stripe.PaymentIntent.cancel(pi_id)
                 except Exception:
-                    # لو كان مُلغى/مُلتقط مسبقًا لا توقف العملية الإدارية
                     pass
 
             bk.deposit_status = "refunded"
@@ -431,7 +432,6 @@ def dm_decision(
                 "تم إعلان القرار النهائي", f"تم إرجاع وديعتك بالكامل لحجز #{bk.id}."
             )
 
-            # ===== Emails: قرار نهائي — إرجاع كامل =====
             try:
                 renter_email = _user_email(db, bk.renter_id)
                 owner_email  = _user_email(db, bk.owner_id)
@@ -453,7 +453,6 @@ def dm_decision(
             amt = max(0, int(amount or 0))
 
             if finalize:
-                # خصم نهائي الآن
                 if amt <= 0:
                     raise HTTPException(status_code=400, detail="Invalid amount")
 
@@ -462,16 +461,13 @@ def dm_decision(
 
                 if pi_id:
                     try:
-                        # Stripe يستقبل المبلغ بالسنت
                         pi = stripe.PaymentIntent.capture(pi_id, amount_to_capture=amt * 100)
-                        # لو نجح الكابتشر أو رجع requires_capture (نعدّه نجاحًا لعدم كسر التدفق)
                         captured_ok = bool(pi and pi.get("status") in ("succeeded", "requires_capture") or True)
                         charge_id = (pi.get("latest_charge") or
                                      ((pi.get("charges") or {}).get("data") or [{}])[0].get("id"))
                     except Exception:
                         captured_ok = False
 
-                # تحديث الحالة إدارياً (حتى لو ما في PI)
                 bk.deposit_status = "partially_withheld" if captured_ok else "no_deposit"
                 bk.dm_decision = "withhold"
                 bk.dm_decision_amount = amt
@@ -487,7 +483,6 @@ def dm_decision(
                 )
                 db.commit()
 
-                # محاولة تحويل للمالك (لو لديه Stripe متكامل)
                 try:
                     owner: User = db.get(User, bk.owner_id)
                     if captured_ok and owner and getattr(owner, "stripe_account_id", None) and getattr(owner, "payouts_enabled", False):
@@ -500,7 +495,6 @@ def dm_decision(
                 except Exception:
                     pass
 
-                # إشعارات نهائية
                 amt_txt = _fmt_money(amt)
                 reason_txt = _short_reason(reason)
                 if captured_ok:
@@ -518,7 +512,6 @@ def dm_decision(
                         f"تثبيت قرار اقتطاع {amt_txt} CAD على وديعتك للحجز #{bk.id}، لكن لا توجد وديعة محجوزة."
                     )
 
-                # ===== Emails: قرار نهائي — اقتطاع =====
                 try:
                     renter_email = _user_email(db, bk.renter_id)
                     owner_email  = _user_email(db, bk.owner_id)
@@ -537,7 +530,7 @@ def dm_decision(
 
                 return RedirectResponse(url=f"/dm/deposits/{bk.id}?final=1", status_code=303)
 
-            # ليس نهائي الآن → مهلة 24 ساعة
+            # مهلة 24h (غير نهائي)
             if amt <= 0:
                 raise HTTPException(status_code=400, detail="Invalid amount")
             deadline = now + timedelta(hours=24)
@@ -574,7 +567,6 @@ def dm_decision(
             notify_admins(db, "قرار خصم قيد الانتظار",
                           f"اقتطاع مقترح {amt_txt} CAD — حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
 
-            # ===== Emails: بدء نافذة 24 ساعة (عبر decision) =====
             try:
                 renter_email = _user_email(db, bk.renter_id)
                 owner_email  = _user_email(db, bk.owner_id)
@@ -637,14 +629,11 @@ def report_deposit_issue_page(
     require_auth(user)
     bk = require_booking(db, booking_id)
 
-    # ✅ ريديركت ذكي حسب الدور:
     if user.id != bk.owner_id:
-        if can_manage_deposits(user):  # DM/Admin
+        if can_manage_deposits(user):
             return RedirectResponse(url=f"/dm/deposits/{bk.id}", status_code=303)
-        # مشارك آخر (مستأجر) أو زائر → تدفق الحجز
         return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
-    # المالك فقط يرى صفحة إنشاء البلاغ
     item = db.get(Item, bk.item_id)
     return request.app.templates.TemplateResponse(
         "deposit_report.html",
@@ -655,10 +644,9 @@ def report_deposit_issue_page(
             "bk": bk,
             "booking": bk,
             "item": item,
-            "category_label": category_label,  # نمررها لو احتاج القالب
+            "category_label": category_label,
         },
     )
-
 
 @router.post("/deposits/{booking_id}/report")
 def report_deposit_issue(
@@ -677,22 +665,19 @@ def report_deposit_issue(
     if _get_deposit_pi_id(bk) is None:
         raise HTTPException(status_code=400, detail="No deposit hold found")
 
-    # 1) حفظ محلي + رفع Cloudinary (يرجع [(local_name, secure_url)])
     saved_pairs = _save_evidence_files_and_cloud(bk.id, files)
 
-    # 2) تسجيل كل ملف كـ Evidence في DB مع side='owner' ورابط Cloudinary
     try:
         from .models import DepositEvidence
         for name, url in saved_pairs:
             db.add(DepositEvidence(
                 booking_id=bk.id,
-                uploader_id=user.id,        # المالك هو الرافع هنا
+                uploader_id=user.id,
                 side="owner",
-                kind="image",               # ممكن لاحقاً نستنتجه من الامتداد
-                file_path=url,              # رابط Cloudinary أو المحلي fallback
+                kind="image",
+                file_path=url,
                 description=(description or None),
             ))
-        # حفظ معلومات البلاغ على الحجز
         try:
             bk.owner_report_type = (issue_type or None)
             bk.owner_report_reason = (description or None)
@@ -704,22 +689,17 @@ def report_deposit_issue(
         db.rollback()
         pass
 
-    # 3) تحديث حالات الحجز/الوديعة
     bk.deposit_status = "in_dispute"
     bk.status = "in_review"
     bk.updated_at = datetime.utcnow()
-
-    # إبقاء ملاحظة المالك القديمة + إضافة الحالية
     try:
         note_old = (getattr(bk, "owner_return_note", "") or "").strip()
         note_new = f"[{issue_type}] {description}".strip()
         setattr(bk, "owner_return_note", (note_old + ("\n" if note_old and note_new else "") + note_new))
     except Exception:
         pass
-
     db.commit()
 
-    # ===== إشعارات وبريد =====
     push_notification(
         db, bk.renter_id, "بلاغ وديعة جديد",
         f"قام المالك بالإبلاغ عن مشكلة ({issue_type}) بخصوص الحجز #{bk.id}.",
@@ -776,9 +756,7 @@ def report_deposit_issue(
         status_code=200
     )
 
-# =========================
-# >>> نموذج/رفع أدلّة (الطرفين) — إشعار فوري للطرف الآخر + DMs + إيميل
-# =========================
+# ========================= أدلة الطرفين =========================
 @router.post("/deposits/{booking_id}/evidence/upload")
 def evidence_upload(
     booking_id: int,
@@ -789,13 +767,13 @@ def evidence_upload(
 ):
     require_auth(user)
     bk = require_booking(db, booking_id)
+    if _is_closed(bk):
+        raise HTTPException(status_code=400, detail="case already closed")
     if user.id not in (bk.owner_id, bk.renter_id):
         raise HTTPException(status_code=403, detail="Not participant in this booking")
 
-    # 1) حفظ + رفع
     saved_pairs = _save_evidence_files_and_cloud(bk.id, files)
 
-    # 2) سجّل الأدلة
     try:
         from .models import DepositEvidence
         side_val = "owner" if user.id == bk.owner_id else "renter"
@@ -813,7 +791,6 @@ def evidence_upload(
         db.rollback()
         pass
 
-    # 3) تحديث الحالة
     now = datetime.utcnow()
     try:
         setattr(bk, "updated_at", now)
@@ -821,11 +798,8 @@ def evidence_upload(
             bk.status = "in_review"
         if getattr(bk, "deposit_status", "") == "awaiting_renter":
             bk.deposit_status = "in_dispute"
-
-        # ✅ جديد: لو الرافع هو المستأجر، اعتبره ردّاً صريحًا
         if user.id == bk.renter_id:
             setattr(bk, "renter_response_at", now)
-
         db.commit()
     except Exception:
         db.rollback()
@@ -834,7 +808,6 @@ def evidence_upload(
     other_id = bk.renter_id if user.id == bk.owner_id else bk.owner_id
     who = "المالك" if user.id == bk.owner_id else "المستأجر"
 
-    # إشعارات
     try:
         push_notification(db, other_id, "أدلة جديدة في القضية",
                           f"{who} قام برفع أدلة جديدة للحجز #{bk.id}.",
@@ -846,7 +819,6 @@ def evidence_upload(
     except Exception:
         pass
 
-    # إيميلات
     try:
         other_email = _user_email(db, other_id)
         dms_em      = _dm_emails_only(db)
@@ -871,7 +843,6 @@ def evidence_upload(
 
     return RedirectResponse(url=f"/bookings/flow/{bk.id}?evidence=1", status_code=303)
 
-
 # ==== ردّ المستأجر ====
 @router.post("/deposits/{booking_id}/renter-response")
 def renter_response_to_issue(
@@ -882,6 +853,8 @@ def renter_response_to_issue(
 ):
     require_auth(user)
     bk = require_booking(db, booking_id)
+    if _is_closed(bk):
+        raise HTTPException(status_code=400, detail="case already closed")
     if user.id != bk.renter_id:
         raise HTTPException(status_code=403, detail="Only renter can respond")
     if bk.deposit_status not in ("in_dispute", "awaiting_renter"):
@@ -891,7 +864,6 @@ def renter_response_to_issue(
         now = datetime.utcnow()
         setattr(bk, "updated_at", now)
         setattr(bk, "renter_response_at", now)
-        # إن كان في مهلة awaiting_renter → نعيده للمراجعة
         if getattr(bk, "deposit_status", "") == "awaiting_renter":
             bk.deposit_status = "in_dispute"
             bk.status = "in_review"
@@ -899,7 +871,6 @@ def renter_response_to_issue(
         pass
     db.commit()
 
-    # إشعارات داخلية
     push_notification(
         db, bk.owner_id, "رد من المستأجر",
         f"ردّ المستأجر على بلاغ الوديعة لحجز #{bk.id}.",
@@ -910,7 +881,6 @@ def renter_response_to_issue(
 
     _audit(db, actor=user, bk=bk, action="renter_response", details={"comment": renter_comment})
 
-    # Emails: لصاحب الغرض + DMs
     try:
         owner_email = _user_email(db, bk.owner_id)
         dms_em      = _dm_emails_only(db)
@@ -958,7 +928,6 @@ def dm_claim_case(
     except Exception:
         pass
 
-    # 🔔 إشعارات: تعيينك لمراجعة القضية
     try:
         push_notification(
             db, user.id,
@@ -975,7 +944,6 @@ def dm_claim_case(
     except Exception:
         pass
 
-    # ✉️ Emails: للمراجع نفسه + المالك + المستأجر
     try:
         reviewer_email = _user_email(db, user.id)
         case_url = f"{BASE_URL}/dm/deposits/{bk.id}"
@@ -1007,7 +975,7 @@ def dm_claim_case(
 
     return RedirectResponse(f"/dm/deposits/{bk.id}", status_code=303)
 
-# ===== DEBUG / أدوات مساعدة =====
+# ===== DEBUG =====
 @router.get("/debug/uploads/{booking_id}")
 def debug_uploads(booking_id: int, request: Request):
     APP_ROOT_RT = os.path.dirname(os.path.dirname(__file__))
@@ -1054,7 +1022,7 @@ def dm_case_context(
         "evidence": ev,
     }
 
-# ===== بدء مهلة ردّ المستأجر 24h + إشعار =====
+# ===== مهلة 24h =====
 @router.post("/dm/deposits/{booking_id}/start-window")
 def dm_start_renter_window(
     booking_id: int,
@@ -1068,6 +1036,8 @@ def dm_start_renter_window(
         raise HTTPException(status_code=403, detail="Access denied")
 
     bk = require_booking(db, booking_id)
+    if _is_closed(bk):
+        raise HTTPException(status_code=400, detail="case already closed")
 
     amt = max(0, int(amount or 0))
     if amt <= 0:
@@ -1096,7 +1066,6 @@ def dm_start_renter_window(
 
     db.commit()
 
-    # إشعارات داخلية
     try:
         push_notification(
             db, bk.renter_id, "تنبيه: قرار خصم قيد الانتظار",
@@ -1116,7 +1085,6 @@ def dm_start_renter_window(
     except Exception:
         pass
 
-    # Emails: بدء نافذة 24 ساعة
     try:
         renter_email = _user_email(db, bk.renter_id)
         owner_email  = _user_email(db, bk.owner_id)
@@ -1161,110 +1129,18 @@ def dm_start_renter_window(
 
     return RedirectResponse(url=f"/dm/deposits/{bk.id}?started=1", status_code=303)
 
-# ====== ALIASES v4 لتجنّب اصطدام الراوتر القديم ======
-@router.post("/dm/deposits/v4/{booking_id}/decision")
-def dm_decision_v4(
-    booking_id: int,
-    decision: Literal["release", "withhold"] = Form(...),
-    amount: int = Form(0),
-    reason: str = Form(""),
-    finalize: int = Form(0),
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
-    # يستدعي نفس المنطق بالضبط
-    return dm_decision(
-        booking_id=booking_id,
-        decision=decision,
-        amount=amount,
-        reason=reason,
-        finalize=finalize,
-        db=db,
-        user=user,
-    )
-
-@router.post("/dm/deposits/v4/{booking_id}/start-window")
-def dm_start_renter_window_v4(
-    booking_id: int,
-    amount: int = Form(0),
-    reason: str = Form(""),
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
-    return dm_start_renter_window(
-        booking_id=booking_id,
-        amount=amount,
-        reason=reason,
-        db=db,
-        user=user,
-    )
-
 # =========================
-# >>> نموذج/رفع أدلّة (الطرفين) — إشعار فوري للطرف الآخر + DMs + إيميل
+# >>> داخلي: خصم تلقائي بعد انتهاء المهلة
 # =========================
-@router.get("/deposits/{booking_id}/evidence/form")
-def evidence_form(
-    booking_id: int,
-    request: Request,
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
-    require_auth(user)
-    bk = require_booking(db, booking_id)
-    if user.id not in (bk.owner_id, bk.renter_id):
-        raise HTTPException(status_code=403, detail="Not participant in this booking")
-
-    item = db.get(Item, bk.item_id)
-    return request.app.templates.TemplateResponse(
-        "deposit_evidence_form.html",
-        {
-            "request": request,
-            "title": f"رفع أدلة — حجز #{bk.id}",
-            "session_user": request.session.get("user"),
-            "bk": bk,
-            "item": item,
-            "category_label": category_label,
-        },
-    )
-
-# =========================
-# >>> كرون — فحص انتهاء نافذة 24h دون ردّ
-# إشعار إلى DM + Admin بالبريد والإشعارات الداخليّة
-# =========================
-def _deadline_overdue_rows(db: Session) -> List[Booking]:
-    now = datetime.utcnow()
-    q = (
-        db.query(Booking)
-        .filter(
-            Booking.deposit_status == "awaiting_renter",
-            Booking.renter_response_deadline_at.isnot(None),
-            Booking.renter_response_deadline_at < now,
-        )
-        .order_by(Booking.renter_response_deadline_at.asc())
-    )
-    return q.all()
-
-# ❗️❗️ إصلاح أساسي: هذه دالة مساعدة داخلية — بدون أي ديكوريتر HTTP
 def _auto_capture_for_booking(db: Session, bk: Booking) -> bool:
-    """
-    يحاول عمل capture تلقائي بالمبلغ dm_decision_amount إذا:
-    - الحالة awaiting_renter
-    - انتهت المهلة renter_response_deadline_at
-    - لا يوجد رد renter_response_at
-    - القرار dm_decision == 'withhold' وبمبلغ > 0
-    - يوجد PaymentIntent صالح
-    يرجع True إذا نجح الخصم (أو عُدّ ناجحًا)، وإلا False.
-    """
     now = datetime.utcnow()
     amt = int(getattr(bk, "dm_decision_amount", 0) or 0)
     if amt <= 0:
         return False
-
     if getattr(bk, "deposit_status", "") != "awaiting_renter":
         return False
     if getattr(bk, "renter_response_deadline_at", None) and bk.renter_response_deadline_at > now:
         return False
-    # إن كان المستأجر ردّ، لا نخصم تلقائيًا
     if getattr(bk, "renter_response_at", None):
         return False
     if getattr(bk, "dm_decision", "") != "withhold":
@@ -1283,7 +1159,6 @@ def _auto_capture_for_booking(db: Session, bk: Booking) -> bool:
         except Exception:
             captured_ok = False
 
-    # حتى لو ما عندنا PI صالح، نثبت القرار إداريًا (no_deposit) حتى ما تتعطل القضية
     bk.deposit_status = "partially_withheld" if captured_ok else "no_deposit"
     bk.deposit_charged_amount = (bk.deposit_charged_amount or 0) + (amt if captured_ok else 0)
     bk.status = "closed"
@@ -1300,7 +1175,6 @@ def _auto_capture_for_booking(db: Session, bk: Booking) -> bool:
 
     db.commit()
 
-    # إشعارات نهائية للطرفين + إداريين
     amt_txt = _fmt_money(amt)
     reason_txt = _short_reason(getattr(bk, "dm_decision_note", "") or "")
     try:
@@ -1319,23 +1193,6 @@ def _auto_capture_for_booking(db: Session, bk: Booking) -> bool:
     except Exception:
         pass
 
-    # Emails
-    try:
-        renter_email = _user_email(db, bk.renter_id)
-        owner_email  = _user_email(db, bk.owner_id)
-        case_url     = f"{BASE_URL}/bookings/flow/{bk.id}"
-        if owner_email:
-            send_email(owner_email, f"تنفيذ خصم تلقائي — #{bk.id}",
-                       f"<p>تم اقتطاع {amt_txt} CAD من الوديعة بعد انتهاء مهلة 24h.</p>"
-                       f'<p><a href="{case_url}">تفاصيل الحجز</a></p>')
-        if renter_email:
-            send_email(renter_email, f"تم خصم مبلغ من وديعتك — #{bk.id}",
-                       f"<p>تم اقتطاع {amt_txt} CAD من وديعتك بعد انتهاء مهلة الرد.</p>"
-                       f'<p><a href="{case_url}">تفاصيل الحجز</a></p>')
-    except Exception:
-        pass
-
-    # تحويل للمالك إن كان لديه حساب Stripe متكامل
     if captured_ok:
         try:
             owner: User = db.get(User, bk.owner_id)
@@ -1354,21 +1211,13 @@ def cron_check_window(
     db: Session = Depends(get_db),
     token: str | None = None,
 ):
-    """
-    تفقد المهلات المنتهية:
-    - يحاول الخصم التلقائي إن توفرت الشروط
-    - وإلا يرسل إشعارًا للـ DM/Admin للتدخل اليدوي
-    """
-    # حماية بسيطة بالـ token (اختياري): اسم المتغير في البيئة CRON_TOKEN
     cron_token = os.getenv("CRON_TOKEN") or ""
     if cron_token:
         if token != cron_token:
-            # اسمح للأدمن بتشغيله يدويًا من المتصفح حتى لو ما فيه توكن
             sess = request.session.get("user") or {}
             if not (sess.get("role") == "admin" or bool(sess.get("is_admin"))):
                 raise HTTPException(status_code=403, detail="forbidden")
 
-    # اختر الحجوزات التي انتهت مهلة الرد ولم يصل رد من المستأجر
     rows = _deadline_overdue_rows(db)
 
     count = 0
@@ -1382,7 +1231,6 @@ def cron_check_window(
             if ok:
                 done += 1
             else:
-                # الشروط غير مكتملة (مثلاً لا PI أو لا مبلغ) -> إشعار للتدخل
                 skipped += 1
                 try:
                     notify_dms(
@@ -1411,29 +1259,38 @@ def cron_check_window(
             except Exception:
                 pass
 
-    return {"checked": count, "auto_captured": done, "need_manual": skipped}
+    return {"checked": count, "captured": done, "needs_manual": skipped}
 
-# ✅ مسار GET صحيح لتشغيل الفحص يدويًا (بدلاً من وضع ديكوريتر على دالة داخلية)
+# endpoint عام لتشغيل الكرون يدويًا
 @router.get("/dm/deposits/check-window")
-def dm_check_window(
+def run_check_window(
     request: Request,
     db: Session = Depends(get_db),
-    token: Optional[str] = None,
+    token: Optional[str] = None
 ):
-    """
-    يدويًا من المتصفح/الكرون: يفحص القضايا المنتهية المهلة ويطبّق المنطق.
-    يحترم CRON_TOKEN إن كان معيّنًا.
-    """
     return cron_check_window(request=request, db=db, token=token)
 
+def _deadline_overdue_rows(db: Session) -> List[Booking]:
+    now = datetime.utcnow()
+    q = (
+        db.query(Booking)
+        .filter(
+            Booking.deposit_status == "awaiting_renter",
+            Booking.renter_response_deadline_at.isnot(None),
+            Booking.renter_response_deadline_at < now,
+        )
+        .order_by(Booking.renter_response_deadline_at.asc())
+    )
+    return q.all()
+
+# ===== ترويج بسيط للمستأجر لرفع الأدلة =====
 @router.post("/dm/deposits/{booking_id}/nudge-renter", response_model=None)
 def dm_nudge_renter(
     booking_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    note: Annotated[Optional[str], Form()] = None,  # ✅ الافتراضي خارج Form
+    note: Annotated[Optional[str], Form()] = None,
 ):
-    """إرسال إشعار للمستأجر لرفع الأدلة الخاصة بالوديعة."""
     sess = request.session.get("user") or {}
     if not (sess.get("role") == "admin" or sess.get("is_dm")):
         raise HTTPException(status_code=403, detail="forbidden")
