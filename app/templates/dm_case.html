@@ -46,38 +46,71 @@
     <!-- يسار: تفاصيل و إجراءات -->
     <div class="grid">
 
-      <!-- بلاغ المالك -->
-      <div class="box">
-        <h6 class="mb-2"><i class="bi bi-exclamation-octagon me-1"></i> بلاغ المالك</h6>
-        <div class="mb-1">
-          النوع: <strong>{{ bk.owner_report_type or '—' }}</strong>
-        </div>
-        {% if bk.owner_report_reason %}
-          <div class="mb-2">{{ bk.owner_report_reason }}</div>
-        {% endif %}
-
-        {# شبكة أدلة المالك (من ev_list التي مررتها) #}
-        {% set owner_evs = [] %}
-        {% if ev_list %}
-          {% set owner_evs = ev_list %}
-        {% elif evidence %}
-          {% set owner_evs = evidence %}
-        {% endif %}
-
-        {% if owner_evs and owner_evs|length %}
-          <div class="grid-ev mt-2">
-            {% for url in owner_evs %}
-              {% set lower = url|lower %}
-              {% if lower.endswith('.mp4') or lower.endswith('.mov') or lower.endswith('.m4v') or lower.endswith('.avi') or lower.endswith('.wmv') %}
-                <video class="thumb" src="{{ url }}" muted controls></video>
-              {% else %}
-                <a href="{{ url }}" target="_blank"><img class="thumb" src="{{ url }}" alt=""></a>
-              {% endif %}
-            {% endfor %}
+      {# ===== بلاغ المالك + أدلته (الموديول الأول) ===== #}
+      {% if bk.owner_report_type or bk.owner_report_reason or (bk.deposit_evidences and bk.deposit_evidences|length) %}
+        <div class="box mb-3">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <i class="bi bi-exclamation-octagon"></i>
+            <h6 class="m-0">بلاغ المالك</h6>
           </div>
-        {% else %}
-          <div class="muted">لا توجد أدلة مرفوعة بعد.</div>
-        {% endif %}
+
+          <div class="mb-1">
+            <div class="k">النوع:</div>
+            <div class="fw-semibold">{{ bk.owner_report_type or '—' }}</div>
+          </div>
+
+          {% if bk.owner_report_reason %}
+            <div class="mb-2">
+              <div class="k">الوصف:</div>
+              <div style="white-space:pre-wrap">{{ bk.owner_report_reason }}</div>
+            </div>
+          {% endif %}
+
+          {# أول 6 أدلة مرفوعة من المالك (صور/فيديو) #}
+          {% if bk.deposit_evidences and bk.deposit_evidences|length %}
+            {% set owner_evs = bk.deposit_evidences | selectattr('side','equalto','owner') | list %}
+            {% if owner_evs and owner_evs|length %}
+              <div class="d-flex flex-wrap" style="gap:8px">
+                {% for ev in owner_evs[:6] %}
+                  {% if ev.kind == 'video' or (ev.file_path and ('.mp4' in ev.file_path or '.mov' in ev.file_path or '.m4v' in ev.file_path)) %}
+                    <a href="{{ ev.file_path }}" target="_blank" class="d-inline-block">
+                      <video src="{{ ev.file_path }}" muted
+                             style="width:88px;height:88px;border-radius:10px;object-fit:cover;border:1px solid var(--border)"></video>
+                    </a>
+                  {% else %}
+                    <a href="{{ ev.file_path }}" target="_blank" class="d-inline-block">
+                      <img src="{{ ev.file_path }}"
+                           style="width:88px;height:88px;border-radius:10px;object-fit:cover;border:1px solid var(--border)"/>
+                    </a>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="muted">لا توجد أدلة مرفوعة بعد.</div>
+            {% endif %}
+          {% else %}
+            <div class="muted">لا توجد أدلة مرفوعة بعد.</div>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {# ===== إشعار المستأجر لرفع أدلة (الموديول الثاني) ===== #}
+      <div class="box mb-3">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="bi bi-bell"></i>
+          <h6 class="m-0">إشعار المستأجر لرفع أدلة</h6>
+        </div>
+        <form method="post" action="/dm/deposits/{{ bk.id }}/nudge-renter" class="d-flex gap-2 flex-wrap">
+          <input type="hidden" name="kind" value="evidence_nudge">
+          <input class="form-control" name="note" placeholder="رسالة قصيرة (اختياري)" style="max-width:420px">
+          <button class="btn btn-outline-primary">
+            <i class="bi bi-send"></i> إرسال إشعار الآن
+          </button>
+          <a class="btn btn-light" href="/deposits/{{ bk.id }}/evidence/form" target="_blank">
+            فتح نموذج رفع الأدلة (معاينة)
+          </a>
+        </form>
+        <div class="k small mt-2">سيصل للمستأجر إشعار داخل الموقع + إيميل يحتوي رابط النموذج.</div>
       </div>
 
       <!-- ردود/أدلة المستأجر -->
