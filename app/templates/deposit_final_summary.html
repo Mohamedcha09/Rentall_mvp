@@ -1,0 +1,128 @@
+{# صفحة ملخص نهائي للوديعة — تُعرض للطرفين #}
+{% extends "base.html" %}
+{% block title %}النتيجة النهائية — حجز #{{ bk.id }}{% endblock %}
+
+{% block head %}
+<style>
+  .wrap{max-width:1100px;margin:auto}
+  .card{border:1px solid var(--border,#e5e7eb);background:#fff;border-radius:14px;padding:16px}
+  .k{opacity:.7}
+  .chip{padding:.35rem .6rem;border:1px solid var(--border,#e5e7eb);border-radius:999px}
+  .grid{display:grid;gap:12px}
+  .evs{display:flex;flex-wrap:wrap;gap:8px}
+  .evs img,.evs video{width:88px;height:88px;border-radius:10px;object-fit:cover;border:1px solid var(--border,#e5e7eb)}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+  .ok{color:#198754} .bad{color:#dc3545}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <h4 class="mb-2">النتيجة النهائية — حجز #{{ bk.id }}</h4>
+
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    <span class="chip">حالة الحجز: {{ bk.status or '—' }}</span>
+    <span class="chip">حالة الوديعة: {{ bk.deposit_status or '—' }}</span>
+    {% if bk.dm_decision %}
+      <span class="chip">قرار DM: {{ bk.dm_decision }}</span>
+    {% endif %}
+  </div>
+
+  <div class="grid" style="grid-template-columns: 1fr 370px;">
+
+    <!-- يسار: تفاصيل العنصر + الأدلة -->
+    <div class="grid">
+      <div class="card">
+        <h6 class="mb-2">العنصر</h6>
+        <div class="d-flex gap-3">
+          <img src="{{ (('/' ~ item.image_path) if item and item.image_path and item.image_path[0] != '/' else (item.image_path or '/static/placeholder.jpg')) }}"
+               style="width:110px;height:110px;object-fit:cover;border-radius:10px" alt="">
+          <div>
+            <div class="fw-bold">{{ item.title if item else '—' }}</div>
+            <div class="k">{{ category_label(item.category) if item and item.category else '—' }}</div>
+            <div class="k">السعر اليومي: {{ item.price_per_day if item else 0 }} CAD</div>
+            <div class="k">المدة: {{ bk.start_date }} → {{ bk.end_date }} ({{ bk.days }} يوم)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h6 class="mb-2"><i class="bi bi-exclamation-octagon me-1"></i> بلاغ المالك</h6>
+        <div class="k">النوع: <b>{{ bk.owner_report_type or '—' }}</b></div>
+        {% if bk.owner_report_reason %}
+          <div class="mt-1" style="white-space:pre-wrap">{{ bk.owner_report_reason }}</div>
+        {% endif %}
+        {% set owner_evs = (bk.deposit_evidences or []) | selectattr('side','equalto','owner') | list %}
+        <div class="evs mt-2">
+          {% if owner_evs and owner_evs|length %}
+            {% for ev in owner_evs[:12] %}
+              {% set _v = (ev.kind=='video') or (ev.file_path and ('.mp4' in ev.file_path or '.mov' in ev.file_path or '.m4v' in ev.file_path)) %}
+              <a href="{{ ev.file_path }}" target="_blank">
+                {% if _v %}<video src="{{ ev.file_path }}" muted></video>{% else %}<img src="{{ ev.file_path }}">{% endif %}
+              </a>
+            {% endfor %}
+          {% else %}
+            <div class="k">لا توجد أدلة من المالك.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card">
+        <h6 class="mb-2"><i class="bi bi-person-bounding-box me-1"></i> أدلة المستأجر</h6>
+        {% set renter_evs = (bk.deposit_evidences or []) | selectattr('side','equalto','renter') | list %}
+        <div class="evs">
+          {% if renter_evs and renter_evs|length %}
+            {% for ev in renter_evs[:12] %}
+              {% set _v = (ev.kind=='video') or (ev.file_path and ('.mp4' in ev.file_path or '.mov' in ev.file_path or '.m4v' in ev.file_path)) %}
+              <a href="{{ ev.file_path }}" target="_blank">
+                {% if _v %}<video src="{{ ev.file_path }}" muted></video>{% else %}<img src="{{ ev.file_path }}">{% endif %}
+              </a>
+            {% endfor %}
+          {% else %}
+            <div class="k">لا توجد أدلة من المستأجر.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- يمين: ملخص مالي نهائي -->
+    {% set hold_amt = (bk.hold_deposit_amount or bk.deposit_amount or 0) %}
+    {% set charged = (bk.deposit_charged_amount or (bk.dm_decision_amount if bk.dm_decision=='withhold' else 0) or 0) %}
+    {% set refunded = (hold_amt - charged) if hold_amt else 0 %}
+    <div class="grid">
+      <div class="card">
+        <h6 class="mb-2">ملخص مالي — الوديعة</h6>
+        <div class="d-flex justify-content-between"><span>قيمة الوديعة المحتجزة</span><b>{{ hold_amt }} CAD</b></div>
+        <div class="d-flex justify-content-between"><span>المقتطع نهائيًا</span>
+          <b class="{{ charged>0 and 'bad' or '' }}">{{ charged }} CAD</b></div>
+        <div class="d-flex justify-content-between"><span>المعاد للمستأجر</span>
+          <b class="{{ refunded>0 and 'ok' or '' }}">{{ refunded }} CAD</b></div>
+        {% if bk.dm_decision_note %}
+          <hr>
+          <div class="k"><span class="mono">السبب:</span> {{ bk.dm_decision_note }}</div>
+        {% endif %}
+      </div>
+
+      <div class="card">
+        <h6 class="mb-2">ملخص الإيجار</h6>
+        <div class="d-flex justify-content-between"><span>السعر اليومي</span><b>{{ item.price_per_day if item else 0 }} CAD</b></div>
+        <div class="d-flex justify-content-between"><span>عدد الأيام</span><b>{{ bk.days }}</b></div>
+        <div class="d-flex justify-content-between"><span>مجموع الإيجار (تقريبي)</span>
+          <b>{{ (item.price_per_day or 0) * (bk.days or 0) if item else 0 }} CAD</b></div>
+      </div>
+
+      <div class="card">
+        <div class="k mono small">
+          {% if bk.dm_decision_at %}dm_decision_at: {{ bk.dm_decision_at }}<br>{% endif %}
+          {% if bk.returned_at %}returned_at: {{ bk.returned_at }}<br>{% endif %}
+          {% if bk.accepted_at %}accepted_at: {{ bk.accepted_at }}<br>{% endif %}
+        </div>
+        <div class="mt-2">
+          <a class="btn btn-outline-secondary btn-sm" href="/bookings/flow/{{ bk.id }}">الرجوع إلى تدفّق الحجز</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

@@ -101,6 +101,9 @@ ALLOWED_EXTS = {
     ".heic", ".heif", ".bmp", ".tiff",
 }
 
+def _final_summary_url(bk_id: int) -> str:
+    return f"/bookings/{bk_id}/deposit/summary"
+
 def _booking_folder(booking_id: int) -> str:
     app_root_runtime = os.path.dirname(os.path.dirname(__file__))
     uploads_base_rt  = os.path.join(app_root_runtime, "uploads")
@@ -1319,3 +1322,34 @@ def dm_nudge_renter(
 
     request.session["flash_ok"] = "تم إرسال الإشعار للمستأجر."
     return RedirectResponse(url=f"/dm/deposits/{booking_id}", status_code=303)
+
+
+@router.get("/bookings/{booking_id}/deposit/summary")
+def deposit_final_summary(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    # يجب أن يكون المالك أو المستأجر أو DM/Admin
+    bk = require_booking(db, booking_id)
+    u = user
+    if not u:
+        raise HTTPException(status_code=401, detail="login required")
+    is_participant = (u.id in (bk.owner_id, bk.renter_id))
+    is_dm_or_admin = can_manage_deposits(u)
+    if not (is_participant or is_dm_or_admin):
+        raise HTTPException(status_code=403, detail="forbidden")
+
+    item = db.get(Item, bk.item_id)
+    return request.app.templates.TemplateResponse(
+        "deposit_final_summary.html",
+        {
+            "request": request,
+            "title": f"النتيجة النهائية — #{bk.id}",
+            "bk": bk,
+            "item": item,
+            "session_user": request.session.get("user"),
+            "category_label": category_label,
+        },
+    )
