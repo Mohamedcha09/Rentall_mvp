@@ -1,286 +1,203 @@
+{# app/templates/dm_case.html #}
 {% extends "base.html" %}
+{% block title %}قضية وديعة — #{{ bk.id }}{% endblock %}
 
 {% block head %}
 <style>
-  .flow-card{max-width:1000px;margin:auto}
-  .state-badge{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border:1px solid var(--border);border-radius:999px;font-weight:700}
+  .case-wrap{max-width:1100px;margin:auto}
+  .box{border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:14px;background:#fff}
+  .muted{opacity:.65}
+  .grid{display:grid;gap:10px}
+  .grid-ev{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+  .thumb{width:100%;aspect-ratio:1/1;border-radius:10px;object-fit:cover;border:1px solid var(--border,#e5e7eb)}
+  .chip{padding:.35rem .6rem;border:1px solid var(--border,#e5e7eb);border-radius:999px}
   .k{opacity:.7}
-  .acts{display:flex;flex-wrap:wrap;gap:10px}
   .acts form{display:inline}
-  .hint{background:color-mix(in oklab,var(--surface) 92%,transparent);border:1px dashed var(--border);border-radius:12px;padding:10px 12px}
-  .box{border:1px solid var(--border);border-radius:12px;padding:12px}
   .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;}
-  .btn-wide{min-width:220px}
-  .badge-dot{display:inline-flex;gap:6px;align-items:center}
-  .badge-dot i{font-size:10px}
-  .muted{opacity:.6}
   .alert-mini{padding:.6rem .8rem}
 </style>
-{% if dispute_deadline_iso %}
+{% if bk.renter_response_deadline_at %}
   <script defer src="/static/js/countdown.js"></script>
 {% endif %}
 {% endblock %}
 
 {% block content %}
-<div class="flow-card card p-3 p-md-4">
-
-  <!-- Header -->
-  <div class="d-flex justify-content-between align-items-start flex-wrap">
+<div class="case-wrap">
+  <div class="d-flex justify-content-between align-items-start flex-wrap mb-2">
     <div class="mb-2">
-      <h4 class="mb-1">الحجز #{{ booking.id }}</h4>
+      <h4 class="mb-1">قضية وديعة — حجز #{{ bk.id }}</h4>
       <div class="k">
-        العنصر: <strong>{{ item_title or (item.title if item else '—') }}</strong>
-        {% if item %} — <a href="/items/{{ item.id }}">فتح صفحة العنصر</a>{% endif %}
+        العنصر:
+        {% if item %}
+          <strong>{{ item.title }}</strong> — <a href="/items/{{ item.id }}" target="_blank">فتح صفحة العنصر</a>
+        {% else %}
+          —
+        {% endif %}
       </div>
-      <div class="k">الفترة: {{ booking.start_date }} → {{ booking.end_date }} ({{ booking.days }} يوم)</div>
+      <div class="k">الفترة: {{ bk.start_date }} → {{ bk.end_date }} ({{ bk.days }} يوم)</div>
     </div>
-    <span class="state-badge mt-1">
-      <i class="bi bi-flag"></i>
-      <span>الحالة: {{ booking.status }}</span>
-    </span>
+    <div class="d-flex flex-column align-items-end gap-1">
+      <span class="chip">حالة الحجز: {{ bk.status or '—' }}</span>
+      <span class="chip">حالة الوديعة: {{ bk.deposit_status or '—' }}</span>
+    </div>
   </div>
 
-  <hr>
+  <div class="grid" style="grid-template-columns: 1fr 360px;">
+    <!-- يسار: تفاصيل و إجراءات -->
+    <div class="grid">
 
-  <div class="row g-3">
-    <!-- Left column: actions / flow -->
-    <div class="col-12 col-lg-7">
-
-      {# ======= المرحلة: طلب جديد ======= #}
-      {% if booking.status in ['requested'] %}
-        {% if is_owner %}
-          <h5 class="mb-2">طلب جديد ينتظر موافقتك</h5>
-
-          <div class="box mb-2">
-            <div class="mb-2">أدخل <strong>الوديعة (ديبو)</strong> المطلوبة (الافتراضي = سعر اليوم × 5)</div>
-            <form method="post" action="/bookings/{{ booking.id }}/owner/decision" class="row g-2 align-items-end">
-              <input type="hidden" name="decision" value="accepted">
-              <div class="col-12 col-md-6">
-                <label class="form-label">قيمة الوديعة</label>
-                <input id="depositInput" name="deposit_amount" type="number" min="0" step="1" class="form-control"
-                       value="{{ booking.deposit_amount or 0 }}">
-                <div class="form-text k">يمكنك تغيير القيمة قبل القبول.</div>
-              </div>
-              <div class="col-12 col-md-6">
-                <button class="btn btn-success w-100"><i class="bi bi-check2-circle"></i> قبول بالوديعة</button>
-              </div>
-            </form>
-          </div>
-
-          <div class="acts">
-            <form method="post" action="/bookings/{{ booking.id }}/owner/decision">
-              <input type="hidden" name="decision" value="rejected">
-              <button class="btn btn-outline-danger"><i class="bi bi-x-lg"></i> رفض</button>
-            </form>
-          </div>
-
-          <script>
-            (function () {
-              try {
-                var inp = document.getElementById('depositInput');
-                if (!inp) return;
-                var current = parseInt(inp.value || '0', 10);
-                if (!current || current <= 0) {
-                  var pricePerDay = parseInt('{{ (item.price_per_day or 0)|int }}', 10) || 0;
-                  var defVal = pricePerDay * 5;
-                  inp.value = defVal;
-                }
-              } catch (e) {}
-            })();
-          </script>
-
-        {% elif is_renter %}
-          <div class="hint">تم إرسال طلبك. بانتظار موافقة المالك…</div>
+      <!-- بلاغ المالك -->
+      <div class="box">
+        <h6 class="mb-2"><i class="bi bi-exclamation-octagon me-1"></i> بلاغ المالك</h6>
+        <div class="mb-1">
+          النوع: <strong>{{ bk.owner_report_type or '—' }}</strong>
+        </div>
+        {% if bk.owner_report_reason %}
+          <div class="mb-2">{{ bk.owner_report_reason }}</div>
         {% endif %}
-      {% endif %}
 
-      {# ======= المرحلة: مقبول – اختيار الدفع ======= #}
-      {% if booking.status in ['accepted'] %}
-        {% if is_renter %}
-          <h5 class="mb-2">اختر طريقة الدفع</h5>
+        {# شبكة أدلة المالك (من ev_list التي مررتها) #}
+        {% set owner_evs = [] %}
+        {% if ev_list %}
+          {% set owner_evs = ev_list %}
+        {% elif evidence %}
+          {% set owner_evs = evidence %}
+        {% endif %}
 
-          <!-- الدفع كاش -->
-          <div class="box mb-2">
-            <div class="mb-2">الدفع <strong>كاش عند الاستلام</strong></div>
-            <form method="post" action="/bookings/{{ booking.id }}/pay-cash">
-              <button class="btn btn-secondary btn-wide"><i class="bi bi-cash-stack"></i> سأدفع كاش</button>
-            </form>
-          </div>
-
-          <!-- الدفع أونلاين -->
-          <div class="box">
-            <div class="mb-2">الدفع <strong>أونلاين (Stripe Checkout)</strong></div>
-
-            {% if not owner_pe %}
-              <div class="alert alert-warning alert-mini">
-                لا يمكن الدفع أونلاين الآن لأن <strong>المالك</strong> لم يُكمل تفعيل حساب الاستلام بعد.
-                {% if owner and owner.id == session_user.id %}
-                  <div class="mt-2">
-                    <a class="btn btn-primary btn-sm" href="/connect/onboard">
-                      <i class="bi bi-person-badge"></i> أكمل التحقق الآن
-                    </a>
-                    <small class="d-block k mt-1">بعد إكمال التحقق البنكي والهوية سيصبح الدفع أونلاين متاحًا.</small>
-                  </div>
-                {% else %}
-                  <small class="d-block k mt-1">رجاءً اطلب من المالك إكمال التحقق البنكي والهوية ليتاح الدفع أونلاين.</small>
-                {% endif %}
-              </div>
-            {% endif %}
-
-            <!-- الدفع الموحّد: إيجار + وديعة في نفس العملية -->
-            <form id="stripePayAllForm" method="post" action="/api/stripe/checkout/all/{{ booking.id }}">
-              <div class="row g-2">
-                <div class="col-6">
-                  <label class="form-label">مبلغ الإيجار</label>
-                  <input class="form-control" type="number" value="{{ booking.rent_amount or booking.total_amount or 0 }}" disabled>
-                </div>
-                <div class="col-6">
-                  <label class="form-label">الوديعة (ديبو)</label>
-                  <input class="form-control" type="number" value="{{ booking.deposit_amount or booking.hold_deposit_amount or 0 }}" disabled>
-                </div>
-                <div class="col-12 mt-2">
-                  <button id="stripePayAllBtn" class="btn btn-primary btn-wide"
-                          {% if not owner_pe %}disabled aria-disabled="true" title="المالك لم يفعل الاستلام بعد"{% endif %}>
-                    <i class="bi bi-credit-card"></i> ادفع الآن (الإيجار + الوديعة)
-                  </button>
-                </div>
-              </div>
-            </form>
-
-            <!-- الأزرار القديمة (إبقاؤها دون حذف) -->
-            <div class="mt-3">
-              <div class="muted small mb-1">أو يمكنك استخدام الأزرار المنفصلة (كما كانت):</div>
-              <form id="stripePayRentForm" method="post" action="/api/stripe/checkout/rent/{{ booking.id }}" class="d-inline">
-                <button id="stripePayRentBtn" class="btn btn-outline-primary btn-sm me-1"
-                        {% if not owner_pe %}disabled aria-disabled="true"{% endif %}>
-                  <i class="bi bi-credit-card-2-front"></i> دفع الإيجار فقط
-                </button>
-              </form>
-
-              {% if (booking.deposit_amount or booking.hold_deposit_amount) and (booking.deposit_amount or booking.hold_deposit_amount) > 0 %}
-              <form class="d-inline" method="post" action="/api/stripe/checkout/deposit/{{ booking.id }}">
-                <button class="btn btn-outline-secondary btn-sm"
-                        {% if not owner_pe %}disabled aria-disabled="true"{% endif %}>
-                  <i class="bi bi-shield-lock"></i> حجز الوديعة فقط
-                </button>
-              </form>
+        {% if owner_evs and owner_evs|length %}
+          <div class="grid-ev mt-2">
+            {% for url in owner_evs %}
+              {% set lower = url|lower %}
+              {% if lower.endswith('.mp4') or lower.endswith('.mov') or lower.endswith('.m4v') or lower.endswith('.avi') or lower.endswith('.wmv') %}
+                <video class="thumb" src="{{ url }}" muted controls></video>
+              {% else %}
+                <a href="{{ url }}" target="_blank"><img class="thumb" src="{{ url }}" alt=""></a>
               {% endif %}
-            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="muted">لا توجد أدلة مرفوعة بعد.</div>
+        {% endif %}
+      </div>
 
-            <div class="k mt-2">
-              سيتم تحويلك إلى صفحة دفع آمنة من Stripe لإدخال بيانات بطاقتك.
-              بعد النجاح ستعود تلقائيًا لصفحة الحجز، وسنحدّث الحالة.
+      <!-- ردود/أدلة المستأجر -->
+      <div class="box">
+        <h6 class="mb-2"><i class="bi bi-person-bounding-box me-1"></i> المستأجر</h6>
+        {% if has_renter_reply %}
+          <div class="alert alert-success alert-mini mb-2">هناك رد/أدلة من المستأجر.</div>
+        {% else %}
+          <div class="alert alert-warning alert-mini mb-2">لا يوجد رد من المستأجر حتى الآن.</div>
+        {% endif %}
+        <div class="d-flex gap-2 flex-wrap">
+          <a class="btn btn-outline-secondary btn-sm" href="/bookings/flow/{{ bk.id }}" target="_blank">
+            فتح صفحة الحجز (للاطلاع على كل الأدلة)
+          </a>
+          <a class="btn btn-sm btn-light" href="/deposits/{{ bk.id }}/evidence/form" target="_blank">
+            رابط نموذج رفع الأدلة (للمشاركة مع الأطراف)
+          </a>
+        </div>
+      </div>
+
+      <!-- إجراءات المراجع DM -->
+      <div class="box">
+        <h6 class="mb-3"><i class="bi bi-hammer me-1"></i> إجراءات متحكّم الوديعة (DM)</h6>
+
+        {% if bk.deposit_status == 'awaiting_renter' and bk.renter_response_deadline_at %}
+          <div class="alert alert-info alert-mini mb-3">
+            نافذة ردّ المستأجر مفتوحة — التنفيذ التلقائي بعد نهاية المهلة إن لم يردّ.
+            <div class="mt-1 mono">
+              ينتهي في:
+              <span id="deadlineCountdown">{{ bk.renter_response_deadline_at }}</span>
             </div>
           </div>
-        {% elif is_owner %}
-          <div class="hint">تم قبول الطلب. بانتظار أن يختار المستأجر طريقة الدفع…</div>
+        {% endif %}
 
-          {% if not owner_pe %}
-            <div class="alert alert-warning mt-2 alert-mini">
-              لكي يتمكّن المستأجر من الدفع أونلاين وتحويل المبلغ لك، أكمل تفعيل حسابك البنكي:
-              <div class="mt-2">
-                <a class="btn btn-primary btn-sm" href="/connect/onboard">
-                  <i class="bi bi-person-badge"></i> أكمل التحقق الآن
-                </a>
+        <div class="acts mb-2">
+          <!-- فتح نافذة 24h (withhold pending) -->
+          <form method="post" action="/dm/deposits/{{ bk.id }}/start-window" class="d-inline-block">
+            <div class="row g-2 align-items-end">
+              <div class="col-auto">
+                <label class="form-label">المبلغ (CAD)</label>
+                <input class="form-control" type="number" name="amount" min="1" step="1" required>
+              </div>
+              <div class="col-auto">
+                <label class="form-label">السبب</label>
+                <input class="form-control" type="text" name="reason" placeholder="وصف مختصر" />
+              </div>
+              <div class="col-auto">
+                <button class="btn btn-warning">
+                  <i class="bi bi-hourglass-split"></i> فتح مهلة 24h
+                </button>
               </div>
             </div>
-          {% endif %}
-        {% endif %}
-      {% endif %}
-
-      {# ======= المرحلة: تم الدفع ======= #}
-      {% if booking.status in ['paid'] %}
-        {% if is_renter %}
-          <h5>جاهز للاستلام</h5>
-          <div class="hint">عند استلامك الغرض من المالك، اضغط الزر أدناه.</div>
-          <form class="mt-2" method="post" action="/bookings/{{ booking.id }}/picked-up">
-            <button class="btn btn-success btn-wide"><i class="bi bi-bag-check"></i> تم استلام الغرض</button>
           </form>
-        {% elif is_owner %}
-          <div class="hint">تم الدفع. بانتظار أن يؤكد المستأجر أنه استلم الغرض.</div>
-          <form class="mt-2" method="post" action="/bookings/{{ booking.id }}/owner/confirm_delivered">
-            <button class="btn btn-outline-success btn-sm"><i class="bi bi-hand-thumbs-up"></i> علِّم تمّ التسليم</button>
-          </form>
-        {% endif %}
-      {% endif %}
+        </div>
 
-      {# ======= المرحلة: تم الاستلام ======= #}
-      {% if booking.status in ['picked_up'] %}
-        {% if is_renter %}
-          <h5>الغرض لديك الآن</h5>
-          <div class="hint">عند إرجاع الغرض للمالك، اضغط:</div>
-          <form class="mt-2" method="post" action="/bookings/{{ booking.id }}/mark-returned">
-            <button class="btn btn-warning btn-wide"><i class="bi bi-arrow-return-left"></i> تم إرجاع الغرض</button>
-          </form>
-        {% elif is_owner %}
-          <div class="hint">المستأجر استلم الغرض. عند إرجاعه ستظهر لك خطوات تأكيد الإرجاع والوديعة.</div>
-        {% endif %}
-      {% endif %}
-
-      {# ======= المرحلة: تم الإرجاع / قيد مراجعة الوديعة ======= #}
-      {% if booking.status in ['returned', 'in_review'] %}
-        {% if is_owner %}
-          <h5 class="mb-2">الإرجاع معلَّم — المراجعة</h5>
-          <div class="hint mb-2">
-            لديك مهلة للاعتراض عبر فتح بلاغ وديعة إذا كانت هناك مشكلة:
-            {% if dispute_deadline_iso %}
-              <div class="mt-2">
-                <span class="badge-dot"><i class="bi bi-circle-fill"></i> العدّاد حتى نهاية مهلة الاعتراض:</span>
-                <div id="deadlineCountdown" class="mono fw-bold"></div>
+        <div class="acts mb-2">
+          <!-- خصم نهائي الآن -->
+          <form method="post" action="/dm/deposits/{{ bk.id }}/decision" class="d-inline-block">
+            <input type="hidden" name="decision" value="withhold">
+            <input type="hidden" name="finalize" value="1">
+            <div class="row g-2 align-items-end">
+              <div class="col-auto">
+                <label class="form-label">المبلغ (CAD)</label>
+                <input class="form-control" type="number" name="amount" min="1" step="1" required>
               </div>
-            {% endif %}
-          </div>
-          <form method="post" action="/bookings/{{ booking.id }}/owner/open_deposit_issue">
-            <button class="btn btn-outline-danger btn-wide">
-              <i class="bi bi-exclamation-octagon"></i> فتح بلاغ وديعة (مشكلة/ضرر/تأخير)
+              <div class="col-auto">
+                <label class="form-label">السبب</label>
+                <input class="form-control" type="text" name="reason" placeholder="وصف مختصر" />
+              </div>
+              <div class="col-auto">
+                <button class="btn btn-danger">
+                  <i class="bi bi-shield-shaded"></i> خصم نهائي الآن
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="acts">
+          <!-- إرجاع كامل -->
+          <form method="post" action="/dm/deposits/{{ bk.id }}/decision">
+            <input type="hidden" name="decision" value="release">
+            <button class="btn btn-outline-success">
+              <i class="bi bi-check2-circle"></i> إرجاع الوديعة بالكامل
             </button>
           </form>
-          <div class="k small mt-2">إن لم تفتح بلاغًا ضمن المهلة، تُفرج الوديعة تلقائيًا للمستأجر حسب السياسة.</div>
-
-        {% elif is_renter %}
-          <div class="hint">تم تعليم الإرجاع. بانتظار الإدارة/متحكّم الوديعة لاتخاذ قرار الوديعة.</div>
-          {% if dispute_deadline_iso %}
-            <div class="k small mt-2">مهلة اعتراض المالك مازالت سارية — سيتم الإفراج تلقائيًا بعد انتهائها إذا لا توجد بلاغات.</div>
-          {% endif %}
-        {% elif session_user and session_user.role == 'admin' %}
-          <div class="hint">هذا الحجز بانتظار قرار الوديعة من الإدارة/متحكّم الوديعة.</div>
-        {% endif %}
-      {% endif %}
-
-      {# ======= حالات منتهية ======= #}
-      {% if booking.status in ['closed','rejected','completed'] %}
-        <div class="alert alert-info">
-          {% if booking.status in ['closed','completed'] %}
-            العملية مكتملة ✅
-          {% else %}
-            تم رفض الحجز ❌
-          {% endif %}
         </div>
-      {% endif %}
+      </div>
 
+      <!-- لوج مختصر -->
+      <div class="box">
+        <h6 class="mb-2"><i class="bi bi-journal-text me-1"></i> ملخص تقني</h6>
+        <div class="mono small k">
+          deposit_status={{ bk.deposit_status }} |
+          dm_decision={{ bk.dm_decision }} |
+          dm_amount={{ bk.dm_decision_amount }} |
+          renter_deadline={{ bk.renter_response_deadline_at }}
+        </div>
+      </div>
     </div>
 
-    <!-- Right column: summary -->
-    <div class="col-12 col-lg-5">
+    <!-- يمين: ملخص مالي وعام -->
+    <div class="grid">
       <div class="box">
         <h6 class="mb-2">ملخص الدفع</h6>
-        <div class="d-flex justify-content-between"><span>طريقة الدفع</span><strong>{{ booking.payment_method or '—' }}</strong></div>
-        <div class="d-flex justify-content-between"><span>مبلغ الإيجار</span><strong>{{ booking.rent_amount or booking.total_amount or 0 }}$</strong></div>
-        <div class="d-flex justify-content-between"><span>الوديعة المحتجزة</span><strong>{{ booking.hold_deposit_amount or booking.deposit_amount or 0 }}$</strong></div>
-        <div class="d-flex justify-content-between"><span>حالة التحصيل الأونلاين</span><strong>{{ booking.online_status or '—' }}</strong></div>
-        <div class="d-flex justify-content-between"><span>حالة الوديعة</span><strong>{{ booking.deposit_status or '—' }}</strong></div>
+        <div class="d-flex justify-content-between"><span>طريقة الدفع</span><strong>{{ bk.payment_method or '—' }}</strong></div>
+        <div class="d-flex justify-content-between"><span>الإيجار</span><strong>{{ bk.rent_amount or bk.total_amount or 0 }}$</strong></div>
+        <div class="d-flex justify-content-between"><span>الوديعة المحتجزة</span><strong>{{ bk.hold_deposit_amount or bk.deposit_amount or 0 }}$</strong></div>
+        <div class="d-flex justify-content-between"><span>المحصول المقتطع</span><strong>{{ bk.deposit_charged_amount or 0 }}$</strong></div>
         <hr>
         <div class="k mono small">
-          {% if booking.accepted_at %}accepted_at: {{ booking.accepted_at }}<br>{% endif %}
-          {% if booking.picked_up_at %}picked_up_at: {{ booking.picked_up_at }}<br>{% endif %}
-          {% if booking.returned_at %}returned_at: {{ booking.returned_at }}<br>{% endif %}
-          {% if booking.return_confirmed_by_owner_at %}owner_confirmed_at: {{ booking.return_confirmed_by_owner_at }}<br>{% endif %}
-          {% if booking.rent_released_at %}rent_released_at: {{ booking.rent_released_at }}<br>{% endif %}
+          {% if bk.accepted_at %}accepted_at: {{ bk.accepted_at }}<br>{% endif %}
+          {% if bk.picked_up_at %}picked_up_at: {{ bk.picked_up_at }}<br>{% endif %}
+          {% if bk.returned_at %}returned_at: {{ bk.returned_at }}<br>{% endif %}
+          {% if bk.dm_decision_at %}dm_decision_at: {{ bk.dm_decision_at }}<br>{% endif %}
         </div>
       </div>
 
       {% if item %}
-      <div class="box mt-3">
+      <div class="box">
         <h6 class="mb-2">العنصر</h6>
         <div class="d-flex gap-3">
           <img src="{{ (('/' ~ item.image_path) if item.image_path and item.image_path[0] != '/' else (item.image_path or '/static/placeholder.jpg')) }}"
@@ -289,7 +206,7 @@
             <div class="fw-bold">{{ item.title }}</div>
             <div class="k">{{ category_label(item.category) if item and item.category else '—' }}</div>
             <div class="k">السعر اليومي: {{ item.price_per_day }}$</div>
-            <a class="small" href="/items/{{ item.id }}">فتح صفحة العنصر</a>
+            <a class="small" href="/items/{{ item.id }}" target="_blank">فتح صفحة العنصر</a>
           </div>
         </div>
       </div>
@@ -298,33 +215,16 @@
   </div>
 </div>
 
-<!-- UX: تعطيل الأزرار أثناء التحويل -->
+{% if bk.renter_response_deadline_at %}
 <script>
-  function wireDisableOnSubmit(formId, btnId, text){
-    var f = document.getElementById(formId);
-    if(!f) return;
-    f.addEventListener('submit', function(){
-      var btn = document.getElementById(btnId);
-      if(btn){
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> ' + (text || 'جاري تحويلك...');
-      }
-    });
-  }
-  wireDisableOnSubmit('stripePayAllForm','stripePayAllBtn','جاري تحويلك إلى الدفع…');
-  wireDisableOnSubmit('stripePayRentForm','stripePayRentBtn','جاري تحويلك إلى الدفع…');
-
-  {% if dispute_deadline_iso %}
   try{
     if(window.initCountdown){
-      initCountdown('deadlineCountdown','{{ dispute_deadline_iso }}');
+      initCountdown('deadlineCountdown','{{ bk.renter_response_deadline_at }}');
     }else{
       var el = document.getElementById('deadlineCountdown');
-      if(el){
-        el.textContent = new Date('{{ dispute_deadline_iso }}').toLocaleString();
-      }
+      if(el){ el.textContent = new Date('{{ bk.renter_response_deadline_at }}').toLocaleString(); }
     }
   }catch(e){}
-  {% endif %}
 </script>
+{% endif %}
 {% endblock %}

@@ -69,6 +69,7 @@
           {% for B in LIST %}
             <tr>
               <td class="mono">#{{ B.id }}</td>
+
               <td style="min-width:220px;">
                 {% if B.item %}
                   <div class="fw-semibold"><a href="/items/{{ B.item.id }}" target="_blank">{{ B.item.title }}</a></div>
@@ -76,6 +77,38 @@
                   <div class="fw-semibold">—</div>
                 {% endif %}
                 <div class="muted small">حجز: {{ B.created_at or '' }}</div>
+
+                {# ==== معاينة البلاغ + أول صورتين من الأدلة (مضافة حسب طلبك) ==== #}
+                {% if B.owner_report_type or B.owner_report_reason %}
+                  <div class="muted small mt-1">
+                    <span class="badge bg-warning-subtle text-dark">بلاغ: {{ B.owner_report_type or '—' }}</span>
+                    {% if B.owner_report_reason %}
+                      <span class="ms-2">{{ B.owner_report_reason[:120] }}{% if B.owner_report_reason|length > 120 %}…{% endif %}</span>
+                    {% endif %}
+                  </div>
+                {% endif %}
+
+                {% if B.deposit_evidences and B.deposit_evidences|length %}
+                  {% set owner_evs = B.deposit_evidences | selectattr('side','equalto','owner') | list %}
+                  {% if owner_evs and owner_evs|length %}
+                    <div class="d-flex gap-2 mt-2">
+                      {% for ev in owner_evs[:2] %}
+                        {% if ev.kind == 'video' %}
+                          <a href="{{ ev.file_path }}" target="_blank" title="فتح الفيديو">
+                            <video src="{{ ev.file_path }}" muted
+                                   style="width:56px;height:56px;border-radius:8px;object-fit:cover"></video>
+                          </a>
+                        {% else %}
+                          <a href="{{ ev.file_path }}" target="_blank" title="فتح الصورة">
+                            <img src="{{ ev.file_path }}"
+                                 style="width:56px;height:56px;border-radius:8px;object-fit:cover"/>
+                          </a>
+                        {% endif %}
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                {% endif %}
+                {# ==== /المعاينة ==== #}
               </td>
 
               <td>
