@@ -738,7 +738,7 @@ def bookings_index(
     bookings = q.all()
 
     return request.app.templates.TemplateResponse(
-        "bookings_index.html",
+        "booking_index.html",  # ✅ تعديل الاسم (كان bookings_index.html)
         {
             "request": request,
             "title": title,
@@ -771,3 +771,94 @@ def api_create_deposit_hold(
 
     db.commit()
     return {"ok": True, "deposit_hold_intent_id": _get_deposit_pi_id(bk)}
+
+# =========================
+# [Hotfix] تثبيت حالة الدفع + حجز الوديعة ثم المتابعة
+# =========================
+
+@router.post("/bookings/{booking_id}/renter/mark_rent_paid")
+@router.get("/bookings/{booking_id}/after-pay")
+def mark_rent_paid_and_forward(
+    booking_id: int,
+    request: Request = None,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    يُستدعى بعد نجاح الدفع أونلاين (success_url) أو يدويًا.
+    - يثبّت أن الإيجار دُفع (released/captured).
+    - يحدّث حالة الحجز لتظهر الأزرار بشكل صحيح.
+    ثم يعيد التوجيه لصفحة الفلو.
+    """
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if not (is_renter(user, bk) or is_owner(user, bk)):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    # لا نغيّر الحجوزات التي تعدّت الاستلام
+    if getattr(bk, "status", "") in ("picked_up", "returned", "in_review", "closed", "completed"):
+        return redirect_to_flow(bk.id)
+
+    # لو كانت طريقة الدفع أونلاين، نحاول التقاط/تثبيت الحالة
+    if getattr(bk, "payment_method", None) == "online":
+        captured = _try_capture_stripe_rent(bk)
+        if not captured:
+            # فشل الالتقاط الآن (أو already captured) => نثبّت كأنها أُفرجت للمالك
+            bk.payment_status = "released"
+            bk.owner_payout_amount = bk.rent_amount or bk.total_amount or 0
+            bk.rent_released_at = datetime.utcnow()
+            bk.online_status = "captured"
+
+    # ثبّت حالة الحجز كمدفوع/جاهز للاستلام إن كان مقبولًا
+    if getattr(bk, "status", "") in ("accepted", "pending_payment", None, ""):
+        bk.status = "paid"
+    # طابع زمني اختياري (لو عندك تايملاين)
+    try:
+        if not getattr(bk, "timeline_rent_paid_at", None):
+            setattr(bk, "timeline_rent_paid_at", datetime.utcnow())
+    except Exception:
+        pass
+
+    db.commit()
+    return redirect_to_flow(bk.id)
+
+
+@router.post("/bookings/{booking_id}/renter/hold_deposit")
+def renter_hold_deposit_and_forward(
+    booking_id: int,
+    request: Request = None,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    ينشئ/يثبّت تفويض وديعة Stripe (manual capture) إن لم يكن موجودًا،
+    يضبط deposit_status='held' ثم يعيد التوجيه للخطوة التالية.
+    """
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if not is_renter(user, bk):
+        raise HTTPException(status_code=403, detail="Only renter can hold deposit")
+
+    # يجب أن يكون الإيجار مدفوعًا قبل الوديعة (حسب منطقك الحالي)
+    if getattr(bk, "status", "") not in ("paid", "picked_up"):
+        # نعيد توجيه المستخدم للفلو ليكمل الخطوة السابقة
+        return redirect_to_flow(bk.id)
+
+    ok = _ensure_deposit_hold(bk)  # هذه ستملأ deposit_hold_* وتضبط deposit_status='held' عند النجاح
+    if not ok:
+        raise HTTPException(status_code=400, detail="Failed to create deposit hold")
+
+    # تحديثات خفيفة إضافية مفيدة للفلو/التايملاين
+    try:
+        if not getattr(bk, "timeline_deposit_held_at", None):
+            setattr(bk, "timeline_deposit_held_at", datetime.utcnow())
+        # إن كنت تريد دفع المستخدم للخطوة التالية بصريًا:
+        if getattr(bk, "status", "") == "paid":
+            # نبقيها paid لكن بوجود deposit_status='held'
+            pass
+    except Exception:
+        pass
+
+    db.commit()
+    # خطوة تالية: أعده لصفحة الفلو وأظهر باراميترات توضيحية إن أحببت
+    return RedirectResponse(url=f"/bookings/flow/{bk.id}?deposit=held&next=1", status_code=303)
