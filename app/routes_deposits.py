@@ -1306,9 +1306,8 @@ def dm_nudge_renter(
     booking_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    note: Annotated[Optional[str], Form(None)] = None,
+    note: Annotated[Optional[str], Form()] = None,  # ✅ الافتراضي خارج Form
 ):
-
     """إرسال إشعار للمستأجر لرفع الأدلة الخاصة بالوديعة."""
     sess = request.session.get("user") or {}
     if not (sess.get("role") == "admin" or sess.get("is_dm")):
@@ -1325,7 +1324,6 @@ def dm_nudge_renter(
     if note:
         msg += f"\nملاحظة: {note}"
 
-    # إشعار داخل الموقع (إن متاح)
     try:
         push_notification(
             db=db,
@@ -1335,8 +1333,7 @@ def dm_nudge_renter(
             url=link,
         )
     except Exception:
-        pass  # لا تفشل الصفحة إن تعطل الإشعار
+        pass
 
-    # رسالة نجاح للمستخدم في الواجهة
     request.session["flash_ok"] = "تم إرسال الإشعار للمستأجر."
     return RedirectResponse(url=f"/dm/deposits/{booking_id}", status_code=303)
