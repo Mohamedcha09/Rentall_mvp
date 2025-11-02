@@ -94,6 +94,34 @@
         </div>
       {% endif %}
 
+      {# ===== أدلة المستأجر (صور/فيديو) ===== #}
+<div class="box mb-3">
+  <div class="d-flex align-items-center gap-2 mb-2">
+    <i class="bi bi-person-bounding-box"></i>
+    <h6 class="m-0">أدلة المستأجر</h6>
+  </div>
+  {% set renter_evs = bk.deposit_evidences | selectattr('side','equalto','renter') | list %}
+  {% if renter_evs and renter_evs|length %}
+    <div class="d-flex flex-wrap" style="gap:8px">
+      {% for ev in renter_evs[:12] %}
+        {% set _is_video = (ev.kind == 'video') or (ev.file_path and ('.mp4' in ev.file_path or '.mov' in ev.file_path or '.m4v' in ev.file_path)) %}
+        <a href="{{ ev.file_path }}" target="_blank" class="d-inline-block">
+          {% if _is_video %}
+            <video src="{{ ev.file_path }}" muted
+                   style="width:88px;height:88px;border-radius:10px;object-fit:cover;border:1px solid var(--border)"></video>
+          {% else %}
+            <img src="{{ ev.file_path }}"
+                 style="width:88px;height:88px;border-radius:10px;object-fit:cover;border:1px solid var(--border)" />
+          {% endif %}
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="muted">لا توجد أدلة مرفوعة من المستأجر حتى الآن.</div>
+  {% endif %}
+</div>
+
+
       {# ===== إشعار المستأجر لرفع أدلة (الموديول الثاني) ===== #}
       <div class="box mb-3">
         <div class="d-flex align-items-center gap-2 mb-2">

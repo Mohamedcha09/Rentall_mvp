@@ -24,7 +24,7 @@ from fastapi import (
     HTTPException,
     Form,
     UploadFile,
-    File,
+    File,BackgroundTasks
 )
 from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
@@ -55,8 +55,30 @@ try:
     from .notifications_api import notify_dms  # إن كانت موجودة
 except Exception:
     def notify_dms(db, title, body, url=None):
-        # fallback صامت
-        return None
+        """Fallback فعّال: يرسل إشعارًا لكل مديري الوديعة + الإداريين بدل أن يكون صامتًا."""
+        try:
+            # أرسل Push لكل DM
+            dms = db.query(User).filter(User.is_deposit_manager == True).all()
+            for u in dms:
+                try:
+                    push_notification(
+                        db, u.id,
+                        title or "تنبيه — الوديعة",
+                        body or "",
+                        url or "/dm/deposits",
+                        "deposit"
+                    )
+                except Exception:
+                    pass
+            # ولو حاب، نبعت إشعار إداري عام كذلك
+            try:
+                notify_admins(db, title or "تنبيه — الوديعة", body or "", url or "/dm/deposits")
+            except Exception:
+                pass
+        except Exception:
+            pass
+        return True
+
 
 # _audit تستعمل كثيرًا — نوفر fallback إن لم تكن مستوردة من مكان آخر
 try:
@@ -791,7 +813,7 @@ def evidence_upload(
         db.rollback()
         pass
 
-    # 3) تحديث الحالة
+        # 3) تحديث الحالة
     now = datetime.utcnow()
     try:
         setattr(bk, "updated_at", now)
@@ -799,10 +821,16 @@ def evidence_upload(
             bk.status = "in_review"
         if getattr(bk, "deposit_status", "") == "awaiting_renter":
             bk.deposit_status = "in_dispute"
+
+        # ✅ جديد: لو الرافع هو المستأجر، اعتبره ردّاً صريحًا
+        if user.id == bk.renter_id:
+            setattr(bk, "renter_response_at", now)
+
         db.commit()
     except Exception:
         db.rollback()
         pass
+
 
     other_id = bk.renter_id if user.id == bk.owner_id else bk.owner_id
     who = "المالك" if user.id == bk.owner_id else "المستأجر"
