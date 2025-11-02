@@ -1273,61 +1273,43 @@ def cron_check_window(
 
     return JSONResponse({"ok": True, "checked": count})
 
-    @router.post("/dm/deposits/{booking_id}/nudge-renter")
+
+@router.post("/dm/deposits/{booking_id}/nudge-renter")
 def dm_nudge_renter(
     booking_id: int,
-    kind: str = Form("evidence_nudge"),
-    note: str = Form(""),
+    request: Request,
     db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
+    note: str | None = Form(None),
+    background: BackgroundTasks | None = None,
 ):
-    require_auth(user)
-    if not can_manage_deposits(user):
-        raise HTTPException(status_code=403, detail="Access denied")
+    """إرسال إشعار للمستأجر لرفع الأدلة الخاصة بالوديعة."""
+    sess = request.session.get("user") or {}
+    if not (sess.get("role") == "admin" or sess.get("is_dm")):
+        raise HTTPException(status_code=403, detail="forbidden")
 
-    bk = require_booking(db, booking_id)
-    now = datetime.utcnow()
+    bk = db.get(Booking, booking_id)
+    if not bk:
+        raise HTTPException(status_code=404, detail="booking not found")
+    if not bk.renter_id:
+        raise HTTPException(status_code=400, detail="booking has no renter")
 
-    # تحديث طفيف للحجز (لإظهار آخر نشاط)
-    try:
-        setattr(bk, "updated_at", now)
-        db.commit()
-    except Exception:
-        db.rollback()
-
-    # إعداد الروابط
-    ev_url   = f"{BASE_URL}/deposits/{bk.id}/evidence/form"
-    case_url = f"{BASE_URL}/dm/deposits/{bk.id}"
-
-    # نصوص الإشعار
-    title = "رجاءً: ارفع أدلتك لقضية الوديعة"
-    body  = ("يوجد بلاغ وديعة مفتوح على هذا الحجز. "
-             "الرجاء رفع أدلتك وشروحاتك عبر النموذج.")
+    link = f"/deposits/{booking_id}/evidence/form"
+    msg = f"نرجو رفع أدلتك بخصوص وديعة الحجز #{booking_id}.\nالرابط: {link}"
     if note:
-        body += f" — ملاحظة المراجع: {note}"
+        msg += f"\nملاحظة: {note}"
 
-    # إشعار داخلي للمستأجر
+    # إشعار داخل الموقع (إن متاح)
     try:
-        push_notification(db, bk.renter_id, title, body, f"/deposits/{bk.id}/evidence/form", "deposit")
+        push_notification(
+            db=db,
+            user_id=bk.renter_id,
+            title="طلب رفع أدلة للوديعة",
+            body=msg,
+            url=link,
+        )
     except Exception:
-        pass
+        pass  # لا تفشل الصفحة إن تعطل الإشعار
 
-    # إيميل للمستأجر
-    try:
-        renter_email = _user_email(db, bk.renter_id)
-        if renter_email:
-            send_email(
-                renter_email,
-                "تنبيه: مطلوب أدلة لقضية الوديعة",
-                f"<p>{body}</p><p><a href=\"{ev_url}\">فتح نموذج رفع الأدلة</a></p>"
-            )
-    except Exception:
-        pass
-
-    # إشعار إداري اختياري
-    try:
-        notify_admins(db, "Nudge Renter — Evidence", f"تم تنبيه المستأجر في الحجز #{bk.id}.", case_url)
-    except Exception:
-        pass
-
-    return RedirectResponse(url=f"/dm/deposits/{bk.id}?nudge=1", status_code=303)
+    # رسالة نجاح للمستخدم في الواجهة
+    request.session["flash_ok"] = "تم إرسال الإشعار للمستأجر."
+    return RedirectResponse(url=f"/dm/deposits/{booking_id}", status_code=303)
