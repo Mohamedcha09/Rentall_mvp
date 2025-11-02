@@ -24,7 +24,7 @@ from fastapi import (
     HTTPException,
     Form,
     UploadFile,
-    File,BackgroundTasks
+    File, BackgroundTasks
 )
 from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
@@ -813,7 +813,7 @@ def evidence_upload(
         db.rollback()
         pass
 
-        # 3) تحديث الحالة
+    # 3) تحديث الحالة
     now = datetime.utcnow()
     try:
         setattr(bk, "updated_at", now)
@@ -830,7 +830,6 @@ def evidence_upload(
     except Exception:
         db.rollback()
         pass
-
 
     other_id = bk.renter_id if user.id == bk.owner_id else bk.owner_id
     who = "المالك" if user.id == bk.owner_id else "المستأجر"
@@ -1245,7 +1244,7 @@ def _deadline_overdue_rows(db: Session) -> List[Booking]:
     )
     return q.all()
 
-@router.get("/dm/deposits/check-window")  # alias
+# ❗️❗️ إصلاح أساسي: هذه دالة مساعدة داخلية — بدون أي ديكوريتر HTTP
 def _auto_capture_for_booking(db: Session, bk: Booking) -> bool:
     """
     يحاول عمل capture تلقائي بالمبلغ dm_decision_amount إذا:
@@ -1412,9 +1411,20 @@ def cron_check_window(
             except Exception:
                 pass
 
-    return JSONResponse(
-        {"ok": True, "checked": count, "auto_captured": done, "manual_needed": skipped}
-    )
+    return {"checked": count, "auto_captured": done, "need_manual": skipped}
+
+# ✅ مسار GET صحيح لتشغيل الفحص يدويًا (بدلاً من وضع ديكوريتر على دالة داخلية)
+@router.get("/dm/deposits/check-window")
+def dm_check_window(
+    request: Request,
+    db: Session = Depends(get_db),
+    token: Optional[str] = None,
+):
+    """
+    يدويًا من المتصفح/الكرون: يفحص القضايا المنتهية المهلة ويطبّق المنطق.
+    يحترم CRON_TOKEN إن كان معيّنًا.
+    """
+    return cron_check_window(request=request, db=db, token=token)
 
 @router.post("/dm/deposits/{booking_id}/nudge-renter", response_model=None)
 def dm_nudge_renter(
