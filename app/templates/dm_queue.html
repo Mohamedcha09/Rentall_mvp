@@ -1,7 +1,10 @@
 {# app/templates/dm_case.html #}
 {% extends "base.html" %}
 
-{% block title %}قضية وديعة #{{ bk.id }}{% endblock %}
+{# موحّد سياق: يدعم bk أو booking ويقي من الغياب #}
+{% set B = (bk if bk is defined else (booking if booking is defined else None)) %}
+
+{% block title %}قضية وديعة{% if B %} #{{ B.id }}{% endif %}{% endblock %}
 
 {% block head %}
 <style>
@@ -27,10 +30,17 @@
 {% block content %}
 <div class="case-wrap card p-3 p-md-4">
 
+  {% if not B %}
+    <div class="alert alert-danger">
+      لا توجد بيانات للقضية في السياق (bk/booking مفقود). عُد للقائمة:
+      <a href="/dm/deposits" class="alert-link">قائمة القضايا</a>
+    </div>
+  {% else %}
+
   <!-- Header -->
   <div class="d-flex justify-content-between align-items-start flex-wrap">
     <div class="mb-2">
-      <h4 class="mb-1">قضية وديعة — الحجز #{{ bk.id }}</h4>
+      <h4 class="mb-1">قضية وديعة — الحجز #{{ B.id }}</h4>
       <div class="k">
         العنصر:
         {% if item %}
@@ -39,11 +49,17 @@
           —
         {% endif %}
       </div>
-      <div class="k">الفترة: {{ bk.start_date }} → {{ bk.end_date }}{% if bk.days %} ({{ bk.days }} يوم){% endif %}</div>
+      <div class="k">
+        الفترة:
+        {{ B.start_date if B.start_date else '—' }}
+        →
+        {{ B.end_date if B.end_date else '—' }}
+        {% if B.days %} ({{ B.days }} يوم){% endif %}
+      </div>
     </div>
     <div class="d-flex flex-column align-items-end gap-2">
-      <span class="badge-chip"><i class="bi bi-bookmark-check"></i> حالة الحجز: {{ bk.status }}</span>
-      <span class="badge-chip"><i class="bi bi-shield-lock"></i> حالة الوديعة: {{ bk.deposit_status or 'none' }}</span>
+      <span class="badge-chip"><i class="bi bi-bookmark-check"></i> حالة الحجز: {{ B.status or '—' }}</span>
+      <span class="badge-chip"><i class="bi bi-shield-lock"></i> حالة الوديعة: {{ B.deposit_status or 'none' }}</span>
     </div>
   </div>
 
@@ -58,13 +74,13 @@
         <div class="d-flex justify-content-between align-items-center">
           <div>
             <div class="k">المستأجر</div>
-            <div class="fw-bold">{{ bk.renter.full_name if bk.renter else '—' }}</div>
-            <div class="muted small">{{ bk.renter.email if bk.renter else '' }}</div>
+            <div class="fw-bold">{{ B.renter.full_name if B.renter else '—' }}</div>
+            <div class="muted small">{{ B.renter.email if B.renter else '' }}</div>
           </div>
           <div>
             <div class="k">المالك</div>
-            <div class="fw-bold">{{ bk.owner.full_name if bk.owner else '—' }}</div>
-            <div class="muted small">{{ bk.owner.email if bk.owner else '' }}</div>
+            <div class="fw-bold">{{ B.owner.full_name if B.owner else '—' }}</div>
+            <div class="muted small">{{ B.owner.email if B.owner else '' }}</div>
           </div>
         </div>
       </div>
@@ -79,7 +95,7 @@
 
         <div class="acts mb-2">
           <!-- إطلاق كامل -->
-          <form method="post" action="/dm/deposits/{{ bk.id }}/decision" class="d-inline">
+          <form method="post" action="/dm/deposits/{{ B.id }}/decision" class="d-inline">
             <input type="hidden" name="decision" value="release">
             <button class="btn btn-success">
               <i class="bi bi-arrow-repeat"></i> إطلاق الوديعة بالكامل
@@ -89,7 +105,7 @@
 
         <!-- خصم (نهائي أو فتح مهلة) -->
         <div class="box mt-2">
-          <form method="post" action="/dm/deposits/{{ bk.id }}/decision" id="withholdDecisionForm" class="row g-2">
+          <form method="post" action="/dm/deposits/{{ B.id }}/decision" id="withholdDecisionForm" class="row g-2">
             <input type="hidden" name="decision" value="withhold">
             <div class="col-12 col-md-4">
               <label class="form-label">المبلغ (CAD)</label>
@@ -113,7 +129,7 @@
         <!-- مسار بديل لبدء المهلة -->
         <details class="mt-2">
           <summary class="k">بدء المهلة عبر مسار مستقل</summary>
-          <form method="post" action="/dm/deposits/{{ bk.id }}/start-window" class="row g-2 mt-2">
+          <form method="post" action="/dm/deposits/{{ B.id }}/start-window" class="row g-2 mt-2">
             <div class="col-12 col-md-4">
               <label class="form-label">المبلغ (CAD)</label>
               <input type="number" min="1" step="1" name="amount" class="form-control">
@@ -133,12 +149,12 @@
       <div class="box mb-3">
         <h6 class="mb-2">الأدلة المرفوعة</h6>
 
-        {% set all_evs = bk.deposit_evidences or [] %}
+        {% set all_evs = (B.deposit_evidences if B and B.deposit_evidences is defined else []) %}
         {% set owner_evs = (all_evs | selectattr('side','equalto','owner') | list) %}
         {% set renter_evs = (all_evs | selectattr('side','equalto','renter') | list) %}
         {% set mgr_evs   = (all_evs | selectattr('side','equalto','manager') | list) %}
 
-        {% if owner_evs or renter_evs or mgr_evs or (ev_list and ev_list|length) %}
+        {% if owner_evs or renter_evs or mgr_evs or (ev_list is defined and ev_list) %}
           {% if owner_evs %}
             <div class="mb-2 fw-bold">أدلة المالك</div>
             <div class="ev-grid mb-3">
@@ -196,8 +212,8 @@
             </div>
           {% endif %}
 
-          {# توافق قديم: ملفات موجودة على القرص وتم تمرير روابطها في ev_list #}
-          {% if ev_list and ev_list|length %}
+          {# توافق قديم: روابط ملفات على القرص عبر ev_list #}
+          {% if ev_list is defined and ev_list %}
             <div class="mb-2 fw-bold">أدلة (توافق قديم — ملفات على القرص)</div>
             <div class="ev-grid">
               {% for u in ev_list %}
@@ -217,7 +233,7 @@
           <div class="alert alert-secondary alert-mini">لا توجد أدلة بعد.</div>
         {% endif %}
 
-        {% if has_renter_reply %}
+        {% if has_renter_reply is defined and has_renter_reply %}
           <div class="alert alert-info alert-mini mt-3">
             المستأجر قام بالرد ورفع أدلة/تعليق.
           </div>
@@ -227,8 +243,8 @@
       <!-- سجل التدقيق -->
       <div class="box mb-3">
         <h6 class="mb-2">سجل القضية</h6>
-        {% set audits = bk.deposit_audits or [] %}
-        {% if audits %}
+        {% set audits = (B.deposit_audits if B and B.deposit_audits is defined else []) %}
+        {% if audits and audits|length %}
           <div class="table-responsive">
             <table class="table table-sm align-middle">
               <thead>
@@ -246,7 +262,7 @@
                     <td class="mono small">{{ a.created_at }}</td>
                     <td>
                       {{ a.actor.full_name if a.actor else a.actor_id }}
-                      <span class="muted">({{ a.actor_role }})</span>
+                      {% if a.actor_role %}<span class="muted">({{ a.actor_role }})</span>{% endif %}
                     </td>
                     <td class="mono">{{ a.action }}</td>
                     <td>{{ a.amount or 0 }}</td>
@@ -270,42 +286,42 @@
         <h6 class="mb-2">ملخص مالي</h6>
         <div class="d-flex justify-content-between">
           <span>مبلغ الإيجار</span>
-          <strong>{{ bk.rent_amount or bk.total_amount or 0 }}$</strong>
+          <strong>{{ (B.rent_amount if B and B.rent_amount is defined else (B.total_amount if B and B.total_amount is defined else 0)) }}$</strong>
         </div>
         <div class="d-flex justify-content-between">
           <span>الوديعة المطلوبة</span>
-          <strong>{{ bk.hold_deposit_amount or bk.deposit_amount or 0 }}$</strong>
+          <strong>{{ (B.hold_deposit_amount if B and B.hold_deposit_amount is defined else (B.deposit_amount if B and B.deposit_amount is defined else 0)) }}$</strong>
         </div>
         <div class="d-flex justify-content-between">
           <span>المقتطع حتى الآن</span>
-          <strong>{{ bk.deposit_charged_amount or 0 }}$</strong>
+          <strong>{{ (B.deposit_charged_amount if B and B.deposit_charged_amount is defined else 0) }}$</strong>
         </div>
         <div class="d-flex justify-content-between">
           <span>Stripe rent</span>
-          <strong>{{ bk.online_status or '—' }}</strong>
+          <strong>{{ (B.online_status if B and B.online_status is defined else '—') }}</strong>
         </div>
         <hr>
         <div class="mono small k">
-          {% if bk.accepted_at %}accepted_at: {{ bk.accepted_at }}<br>{% endif %}
-          {% if bk.picked_up_at %}picked_up_at: {{ bk.picked_up_at }}<br>{% endif %}
-          {% if bk.returned_at %}returned_at: {{ bk.returned_at }}<br>{% endif %}
-          {% if bk.return_confirmed_by_owner_at %}owner_confirmed_at: {{ bk.return_confirmed_by_owner_at }}<br>{% endif %}
-          {% if bk.rent_released_at %}rent_released_at: {{ bk.rent_released_at }}<br>{% endif %}
-          {% if bk.renter_response_deadline_at %}renter_deadline: {{ bk.renter_response_deadline_at }}<br>{% endif %}
-          {% if bk.dm_decision_deadline_at %}dm_deadline: {{ bk.dm_decision_deadline_at }}<br>{% endif %}
+          {% if B.accepted_at %}accepted_at: {{ B.accepted_at }}<br>{% endif %}
+          {% if B.picked_up_at %}picked_up_at: {{ B.picked_up_at }}<br>{% endif %}
+          {% if B.returned_at %}returned_at: {{ B.returned_at }}<br>{% endif %}
+          {% if B.return_confirmed_by_owner_at %}owner_confirmed_at: {{ B.return_confirmed_by_owner_at }}<br>{% endif %}
+          {% if B.rent_released_at %}rent_released_at: {{ B.rent_released_at }}<br>{% endif %}
+          {% if B.renter_response_deadline_at %}renter_deadline: {{ B.renter_response_deadline_at }}<br>{% endif %}
+          {% if B.dm_decision_deadline_at %}dm_deadline: {{ B.dm_decision_deadline_at }}<br>{% endif %}
         </div>
       </div>
 
       <div class="box mt-3">
         <h6 class="mb-2">إجراءات</h6>
 
-        <form method="post" action="/dm/deposits/{{ bk.id }}/claim" class="d-inline">
+        <form method="post" action="/dm/deposits/{{ B.id }}/claim" class="d-inline">
           <button class="btn btn-outline-primary">
             <i class="bi bi-person-check"></i> استلام/تعيين القضية لي
           </button>
         </form>
 
-        <a class="btn btn-outline-secondary ms-1" href="/deposits/{{ bk.id }}/evidence/form">
+        <a class="btn btn-outline-secondary ms-1" href="/deposits/{{ B.id }}/evidence/form">
           <i class="bi bi-cloud-upload"></i> رفع أدلة جديدة (يدوي)
         </a>
 
@@ -314,14 +330,16 @@
         </a>
       </div>
 
-      {% if bk.owner_return_note %}
+      {% if B.owner_return_note %}
       <div class="box mt-3">
         <h6 class="mb-2">ملاحظات المالك عن الإرجاع</h6>
-        <div class="small">{{ bk.owner_return_note }}</div>
+        <div class="small">{{ B.owner_return_note }}</div>
       </div>
       {% endif %}
 
     </div>
   </div>
+
+  {% endif %}
 </div>
 {% endblock %}
