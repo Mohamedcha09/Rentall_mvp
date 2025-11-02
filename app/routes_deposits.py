@@ -406,9 +406,11 @@ def dm_decision(
     now = datetime.utcnow()
 
     def _notify_final(title_owner: str, body_owner: str, title_renter: str, body_renter: str):
-        push_notification(db, bk.owner_id,  title_owner,  body_owner,  f"/bookings/flow/{bk.id}", "deposit")
-        push_notification(db, bk.renter_id, title_renter, body_renter, f"/bookings/flow/{bk.id}", "deposit")
-        notify_admins(db, "إشعار قرار نهائي", f"حجز #{bk.id} — {decision}", f"/dm/deposits/{bk.id}")
+    final_url = _final_summary_url(bk.id)  # ==> "/bookings/{id}/deposit/summary"
+    push_notification(db, bk.owner_id,  title_owner,  body_owner,  final_url, "deposit")
+    push_notification(db, bk.renter_id, title_renter, body_renter, final_url, "deposit")
+    # الإدمن يظل يفتح صفحة DM (زي ما هو أو غيّره لو حاب)
+    notify_admins(db, "إشعار قرار نهائي", f"حجز #{bk.id} — {decision}", f"/dm/deposits/{bk.id}")
 
     try:
         if decision == "release":
@@ -438,19 +440,21 @@ def dm_decision(
             try:
                 renter_email = _user_email(db, bk.renter_id)
                 owner_email  = _user_email(db, bk.owner_id)
-                case_url = f"{BASE_URL}/bookings/flow/{bk.id}"
-                if owner_email:
-                    send_email(owner_email, f"قرار نهائي — إرجاع وديعة #{bk.id}",
-                               f"<p>تم إرجاع الوديعة بالكامل لحجز #{bk.id}.</p>"
-                               f'<p><a href="{case_url}">تفاصيل الحجز</a></p>')
-                if renter_email:
-                    send_email(renter_email, f"قرار نهائي — إرجاع وديعتك #{bk.id}",
-                               f"<p>تم إرجاع وديعتك بالكامل لحجز #{bk.id}.</p>"
-                               f'<p><a href="{case_url}">تفاصيل الحجز</a></p>')
+                case_url = f"{BASE_URL}{_final_summary_url(bk.id)}"  # ==> BASE_URL + "/bookings/{id}/deposit/summary"
+if owner_email:
+    send_email(owner_email, f"قرار نهائي — إرجاع وديعة #{bk.id}",
+               f"<p>تم إرجاع الوديعة بالكامل لحجز #{bk.id}.</p>"
+               f'<p><a href="{case_url}">تفاصيل القرار النهائي</a></p>')
+if renter_email:
+    send_email(renter_email, f"قرار نهائي — إرجاع وديعتك #{bk.id}",
+               f"<p>تم إرجاع وديعتك بالكامل لحجز #{bk.id}.</p>"
+               f'<p><a href="{case_url}">تفاصيل القرار النهائي</a></p>')
+
             except Exception:
                 pass
 
-            return RedirectResponse(url=f"/dm/deposits/{bk.id}?final=1", status_code=303)
+            return RedirectResponse(url=_final_summary_url(bk.id), status_code=303)
+
 
         elif decision == "withhold":
             amt = max(0, int(amount or 0))
@@ -518,20 +522,22 @@ def dm_decision(
                 try:
                     renter_email = _user_email(db, bk.renter_id)
                     owner_email  = _user_email(db, bk.owner_id)
-                    case_url = f"{BASE_URL}/bookings/flow/{bk.id}"
-                    if owner_email:
-                        send_email(owner_email, f"قرار نهائي — اقتطاع {amt_txt} CAD — #{bk.id}",
-                                   f"<p>تم اقتطاع {amt_txt} CAD من وديعة الحجز #{bk.id}.</p>"
-                                   f'<p><a href="{case_url}">تفاصيل الحجز</a></p>')
-                    if renter_email:
-                        send_email(renter_email, f"قرار نهائي — خصم {amt_txt} CAD من وديعتك — #{bk.id}",
-                                   f"<p>تم خصم {amt_txt} CAD من وديعتك لحجز #{bk.id}."
-                                   + (f" — السبب: {reason_txt}" if reason_txt else "")
-                                   + f'</p><p><a href="{case_url}">تفاصيل الحجز</a></p>')
+                    case_url = f"{BASE_URL}{_final_summary_url(bk.id)}"
+send_email(owner_email,
+           f"قرار نهائي — اقتطاع {amt_txt} CAD — #{bk.id}",
+           f"<p>تم اقتطاع {amt_txt} CAD من وديعة الحجز #{bk.id}.</p>"
+           f'<p><a href="{case_url}">تفاصيل القرار النهائي</a></p>')
+send_email(renter_email,
+           f"قرار نهائي — خصم {amt_txt} CAD من وديعتك — #{bk.id}",
+           f"<p>تم خصم {amt_txt} CAD من وديعتك لحجز #{bk.id}"
+           + (f" — السبب: {reason_txt}" if reason_txt else "")
+           + f'</p><p><a href="{case_url}">تفاصيل القرار النهائي</a></p>')
+
                 except Exception:
                     pass
 
-                return RedirectResponse(url=f"/dm/deposits/{bk.id}?final=1", status_code=303)
+                return RedirectResponse(url=_final_summary_url(bk.id), status_code=303)
+
 
             # مهلة 24h (غير نهائي)
             if amt <= 0:
