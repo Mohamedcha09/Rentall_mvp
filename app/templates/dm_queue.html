@@ -1,4 +1,4 @@
-{# templates/dm_case.html #}
+{# app/templates/dm_case.html #}
 {% extends "base.html" %}
 
 {% block title %}قضية وديعة #{{ bk.id }}{% endblock %}
@@ -6,9 +6,13 @@
 {% block head %}
 <style>
   .case-wrap{max-width:1100px;margin:auto}
-  .badge-chip{display:inline-flex;gap:.5rem;align-items:center;padding:.35rem .6rem;border:1px solid var(--border,#e5e7eb);border-radius:999px;font-weight:700}
+  .badge-chip{
+    display:inline-flex;gap:.5rem;align-items:center;
+    padding:.35rem .6rem;border:1px solid var(--border,#e5e7eb);
+    border-radius:999px;font-weight:700
+  }
   .k{opacity:.7}
-  .box{border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:12px}
+  .box{border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:12px;background:#fff}
   .ev-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
   .ev-card{border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:8px;background:#fff}
   .ev-card img, .ev-card video{width:100%;height:120px;object-fit:cover;border-radius:8px}
@@ -35,7 +39,7 @@
           —
         {% endif %}
       </div>
-      <div class="k">الفترة: {{ bk.start_date }} → {{ bk.end_date }} ({{ bk.days }} يوم)</div>
+      <div class="k">الفترة: {{ bk.start_date }} → {{ bk.end_date }}{% if bk.days %} ({{ bk.days }} يوم){% endif %}</div>
     </div>
     <div class="d-flex flex-column align-items-end gap-2">
       <span class="badge-chip"><i class="bi bi-bookmark-check"></i> حالة الحجز: {{ bk.status }}</span>
@@ -240,7 +244,10 @@
                 {% for a in audits %}
                   <tr>
                     <td class="mono small">{{ a.created_at }}</td>
-                    <td>{{ a.actor.full_name if a.actor else a.actor_id }} <span class="muted">({{ a.actor_role }})</span></td>
+                    <td>
+                      {{ a.actor.full_name if a.actor else a.actor_id }}
+                      <span class="muted">({{ a.actor_role }})</span>
+                    </td>
                     <td class="mono">{{ a.action }}</td>
                     <td>{{ a.amount or 0 }}</td>
                     <td class="small">{{ a.reason or a.details }}</td>
@@ -261,10 +268,22 @@
 
       <div class="box">
         <h6 class="mb-2">ملخص مالي</h6>
-        <div class="d-flex justify-content-between"><span>مبلغ الإيجار</span><strong>{{ bk.rent_amount or bk.total_amount or 0 }}$</strong></div>
-        <div class="d-flex justify-content-between"><span>الوديعة المطلوبة</span><strong>{{ bk.hold_deposit_amount or bk.deposit_amount or 0 }}$</strong></div>
-        <div class="d-flex justify-content-between"><span>المقتطع حتى الآن</span><strong>{{ bk.deposit_charged_amount or 0 }}$</strong></div>
-        <div class="d-flex justify-content_between"><span>Stripe rent</span><strong>{{ bk.online_status or '—' }}</strong></div>
+        <div class="d-flex justify-content-between">
+          <span>مبلغ الإيجار</span>
+          <strong>{{ bk.rent_amount or bk.total_amount or 0 }}$</strong>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span>الوديعة المطلوبة</span>
+          <strong>{{ bk.hold_deposit_amount or bk.deposit_amount or 0 }}$</strong>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span>المقتطع حتى الآن</span>
+          <strong>{{ bk.deposit_charged_amount or 0 }}$</strong>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span>Stripe rent</span>
+          <strong>{{ bk.online_status or '—' }}</strong>
+        </div>
         <hr>
         <div class="mono small k">
           {% if bk.accepted_at %}accepted_at: {{ bk.accepted_at }}<br>{% endif %}
