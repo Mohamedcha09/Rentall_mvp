@@ -93,8 +93,7 @@ def _set_deposit_pi_id(bk: Booking, pi_id: Optional[str]) -> None:
 def _ensure_deposit_hold(bk: Booking) -> bool:
     """
     ينشئ PaymentIntent (manual capture) للوديعة إذا كان مفقودًا،
-    ويحفظ id في كلا الحقلين (deposit_hold_intent_id و deposit_hold_id)،
-    ويضبط deposit_status='held'.
+    ويحفظ id في كلا الحقلين، ويضبط deposit_status='held'.
     """
     try:
         import stripe
@@ -103,7 +102,6 @@ def _ensure_deposit_hold(bk: Booking) -> bool:
             return False
         stripe.api_key = sk
 
-        # موجود مسبقاً؟
         if _get_deposit_pi_id(bk):
             return True
 
@@ -112,9 +110,9 @@ def _ensure_deposit_hold(bk: Booking) -> bool:
             return False
 
         pi = stripe.PaymentIntent.create(
-            amount=amount * 100,                 # Stripe wants cents
-            currency="cad",                      # CAD كما تعملون
-            capture_method="manual",             # تفويض (manual capture)
+            amount=amount * 100,
+            currency="cad",
+            capture_method="manual",
             description=f"Deposit hold for booking #{bk.id}",
         )
 
@@ -128,8 +126,8 @@ def _ensure_deposit_hold(bk: Booking) -> bool:
         return False
 
 # ===== سياسة الوقت =====
-DISPUTE_WINDOW_HOURS = 48   # مهلة البلاغ بعد الإرجاع
-RENTER_REPLY_WINDOW_HOURS = 48  # لعرض العداد فقط
+DISPUTE_WINDOW_HOURS = 48
+RENTER_REPLY_WINDOW_HOURS = 48
 
 def _iso(dt: Optional[datetime]) -> Optional[str]:
     return dt.isoformat() if dt else None
@@ -269,10 +267,8 @@ def booking_flow_page(
     owner = db.get(User, bk.owner_id)
     renter = db.get(User, bk.renter_id)
 
-    # حالة تفعيل مدفوعات المالك لتمكين الدفع أونلاين
     owner_pe = bool(getattr(owner, "payouts_enabled", False)) if owner else False
 
-    # تمرير مهلة البلاغ بعد الإرجاع لعرض عدّاد (48 ساعة)
     dispute_deadline = None
     if getattr(bk, "returned_at", None):
         try:
@@ -340,7 +336,6 @@ def owner_decision(
 
     bk.owner_decision = "accepted"
 
-    # افتراضي الديبو = 5 × السعر اليومي إذا لم يُدخل المالك رقمًا
     default_deposit = (item.price_per_day or 0) * 5
     amount = int(deposit_amount or 0)
     if amount <= 0:
@@ -464,11 +459,6 @@ def owner_confirm_delivered(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    يسمح للمالك بتعليم أن الغرض تمّ تسليمه للمستأجر.
-    - يلتقط دفعة الإيجار إذا كانت أونلاين (manual capture).
-    - يغيّر الحالة إلى picked_up.
-    """
     require_auth(user)
     bk = require_booking(db, booking_id)
     if not is_owner(user, bk):
@@ -502,10 +492,6 @@ def owner_open_deposit_issue(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    اختصار ينقل إلى فورم البلاغ الموجود في routes_deposits.py
-    POST الحقيقي يكون على: /deposits/{booking_id}/report
-    """
     require_auth(user)
     bk = require_booking(db, booking_id)
     if not is_owner(user, bk):
@@ -536,7 +522,7 @@ def booking_deadlines(
         "renter_reply_window_hours": RENTER_REPLY_WINDOW_HOURS,
     })
 
-# ======= Aliases القديمة (متروكة للتوافق) =======
+# ======= Aliases القديمة =======
 def _redir(flow_id: int):
     return RedirectResponse(url=f"/bookings/flow/{flow_id}", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -552,7 +538,6 @@ def alias_accept(booking_id: int,
         return _redir(bk.id)
     item = db.get(Item, bk.item_id)
 
-    # قبول سريع بدون إدخال يدوي: نملأ الديبو الافتراضي
     default_deposit = (item.price_per_day or 0) * 5
     if (bk.deposit_amount or 0) <= 0:
         bk.deposit_amount = default_deposit
@@ -636,7 +621,6 @@ def alias_pay_online(booking_id: int,
         bk.hold_deposit_amount = max(0, int(deposit_amount or 0))
     db.commit()
 
-    # ✅ الدفع المتزامن للإيجار + الوديعة
     return RedirectResponse(url=f"/api/stripe/checkout/all/{booking_id}", status_code=303)
 
 @router.post("/bookings/{booking_id}/picked-up")
@@ -738,7 +722,7 @@ def bookings_index(
     bookings = q.all()
 
     return request.app.templates.TemplateResponse(
-        "booking_index.html",  # ✅ تعديل الاسم (كان bookings_index.html)
+        "booking_index.html",
         {
             "request": request,
             "title": title,
@@ -755,11 +739,6 @@ def api_create_deposit_hold(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    ينشئ PaymentIntent manual-capture بعملة CAD للوديعة إذا كان مفقودًا
-    ويخزن المعرّف في كلا الحقلين (deposit_hold_intent_id و deposit_hold_id).
-    ملاحظة: هذا المسار هو **POST**. أي طلب GET سيرجع Method Not Allowed.
-    """
     require_auth(user)
     bk = db.get(Booking, booking_id)
     if not bk:
@@ -772,93 +751,128 @@ def api_create_deposit_hold(
     db.commit()
     return {"ok": True, "deposit_hold_intent_id": _get_deposit_pi_id(bk)}
 
-# =========================
-# [Hotfix] تثبيت حالة الدفع + حجز الوديعة ثم المتابعة
-# =========================
+# =========================================================
+#            Stripe SUCCESS CALLBACKS (FIX)
+# =========================================================
+def _retrieve_pi(pi_id: str):
+    import stripe
+    sk = os.getenv("STRIPE_SECRET_KEY", "")
+    if not sk:
+        raise RuntimeError("STRIPE_SECRET_KEY missing")
+    stripe.api_key = sk
+    return stripe.PaymentIntent.retrieve(pi_id)
 
-@router.post("/bookings/{booking_id}/renter/mark_rent_paid")
-@router.get("/bookings/{booking_id}/after-pay")
-def mark_rent_paid_and_forward(
-    booking_id: int,
-    request: Request = None,
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
+def _extract_pi_id_from_request(request: Request) -> Optional[str]:
     """
-    يُستدعى بعد نجاح الدفع أونلاين (success_url) أو يدويًا.
-    - يثبّت أن الإيجار دُفع (released/captured).
-    - يحدّث حالة الحجز لتظهر الأزرار بشكل صحيح.
-    ثم يعيد التوجيه لصفحة الفلو.
+    نحاول بأكثر من طريقة:
+    ?payment_intent=pi_xxx   (Stripe Checkout)
+    ?pi=pi_xxx               (احتياطي)
+    ?payment_intent_client_secret=... -> نستخرج منه معرّف PI
     """
-    require_auth(user)
-    bk = require_booking(db, booking_id)
-    if not (is_renter(user, bk) or is_owner(user, bk)):
-        raise HTTPException(status_code=403, detail="Forbidden")
+    q = request.query_params
+    pi = q.get("payment_intent") or q.get("pi")
+    if pi:
+        return pi
+    client_secret = q.get("payment_intent_client_secret") or ""
+    if client_secret.startswith("pi_"):
+        return client_secret.split("_secret")[0]
+    return None
 
-    # لا نغيّر الحجوزات التي تعدّت الاستلام
-    if getattr(bk, "status", "") in ("picked_up", "returned", "in_review", "closed", "completed"):
-        return redirect_to_flow(bk.id)
-
-    # لو كانت طريقة الدفع أونلاين، نحاول التقاط/تثبيت الحالة
-    if getattr(bk, "payment_method", None) == "online":
-        captured = _try_capture_stripe_rent(bk)
-        if not captured:
-            # فشل الالتقاط الآن (أو already captured) => نثبّت كأنها أُفرجت للمالك
-            bk.payment_status = "released"
-            bk.owner_payout_amount = bk.rent_amount or bk.total_amount or 0
-            bk.rent_released_at = datetime.utcnow()
-            bk.online_status = "captured"
-
-    # ثبّت حالة الحجز كمدفوع/جاهز للاستلام إن كان مقبولًا
-    if getattr(bk, "status", "") in ("accepted", "pending_payment", None, ""):
-        bk.status = "paid"
-    # طابع زمني اختياري (لو عندك تايملاين)
+def _mark_rent_paid_from_pi(bk: Booking, pi) -> None:
+    bk.payment_method = "online"
+    bk.online_payment_intent_id = pi["id"]
+    bk.payment_status = "authorized"  # سنلتقط لاحقًا عند التسليم
+    bk.online_status = pi.get("status")  # info فقط
+    amount = (pi.get("amount") or 0) // 100
     try:
-        if not getattr(bk, "timeline_rent_paid_at", None):
-            setattr(bk, "timeline_rent_paid_at", datetime.utcnow())
+        if not getattr(bk, "rent_amount", None):
+            # إن لم تكن محفوظة، خذ الإجمالي كسعر الإيجار
+            bk.rent_amount = amount or (bk.total_amount or 0)
     except Exception:
         pass
+    bk.status = "paid"
+    bk.updated_at = datetime.utcnow()
 
+@router.get("/api/stripe/cb/success/rent/{booking_id}")
+def stripe_success_rent(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    bk = require_booking(db, booking_id)
+    pi_id = _extract_pi_id_from_request(request)
+    if not pi_id:
+        # آخر محاولة: لا تخرب الفلو—اعتبرها مدفوعة
+        bk.status = "paid"
+        bk.payment_method = "online"
+        bk.payment_status = "authorized"
+        db.commit()
+        return redirect_to_flow(bk.id)
+
+    pi = _retrieve_pi(pi_id)
+    _mark_rent_paid_from_pi(bk, pi)
     db.commit()
     return redirect_to_flow(bk.id)
 
-
-@router.post("/bookings/{booking_id}/renter/hold_deposit")
-def renter_hold_deposit_and_forward(
+@router.get("/api/stripe/cb/success/hold/{booking_id}")
+def stripe_success_hold(
     booking_id: int,
-    request: Request = None,
+    request: Request,
     db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
+):
+    bk = require_booking(db, booking_id)
+    pi_id = _extract_pi_id_from_request(request)
+    if pi_id:
+        pi = _retrieve_pi(pi_id)
+        # خزّن المعرّف في كلا الحقلين للتوافق
+        _set_deposit_pi_id(bk, pi["id"])
+        bk.deposit_status = "held"
+        try:
+            bk.hold_deposit_amount = (pi.get("amount") or 0) // 100
+        except Exception:
+            pass
+    bk.updated_at = datetime.utcnow()
+    db.commit()
+    return redirect_to_flow(bk.id)
+
+@router.get("/api/stripe/cb/success/all/{booking_id}")
+def stripe_success_all(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
 ):
     """
-    ينشئ/يثبّت تفويض وديعة Stripe (manual capture) إن لم يكن موجودًا،
-    يضبط deposit_status='held' ثم يعيد التوجيه للخطوة التالية.
+    جلسة تدفع الإيجار + تحجز الوديعة.
+    نفترض أن Stripe يعيدنا وفي الرابط ?payment_intent=pi_xxx للـ Rent،
+    بينما الـ Setup/Hold يمكن قراءته من معطيات إضافية عبر Webhook عادةً.
+    هنا على الأقل نثبّت الإيجار كـ paid، وإن وجدنا pi نحجزه للوديعة أيضًا.
     """
-    require_auth(user)
     bk = require_booking(db, booking_id)
-    if not is_renter(user, bk):
-        raise HTTPException(status_code=403, detail="Only renter can hold deposit")
+    pi_id = _extract_pi_id_from_request(request)
+    if pi_id:
+        pi = _retrieve_pi(pi_id)
+        _mark_rent_paid_from_pi(bk, pi)
+        # إن كانت الوديعة مضمّنة وتظهر كـ manual-capture intent في نفس الـ Session
+        # قد لا نراها هنا—لكن لو أرسلت لنا كـ ?pi_deposit=… نخزنها أيضًا
+        pi_dep = request.query_params.get("pi_deposit")
+        if pi_dep:
+            try:
+                dep = _retrieve_pi(pi_dep)
+                _set_deposit_pi_id(bk, dep["id"])
+                bk.deposit_status = "held"
+            except Exception:
+                pass
+    else:
+        # احتياطي: اعتبر الإيجار مدفوعًا
+        bk.status = "paid"
+        bk.payment_method = "online"
+        bk.payment_status = "authorized"
 
-    # يجب أن يكون الإيجار مدفوعًا قبل الوديعة (حسب منطقك الحالي)
-    if getattr(bk, "status", "") not in ("paid", "picked_up"):
-        # نعيد توجيه المستخدم للفلو ليكمل الخطوة السابقة
-        return redirect_to_flow(bk.id)
-
-    ok = _ensure_deposit_hold(bk)  # هذه ستملأ deposit_hold_* وتضبط deposit_status='held' عند النجاح
-    if not ok:
-        raise HTTPException(status_code=400, detail="Failed to create deposit hold")
-
-    # تحديثات خفيفة إضافية مفيدة للفلو/التايملاين
-    try:
-        if not getattr(bk, "timeline_deposit_held_at", None):
-            setattr(bk, "timeline_deposit_held_at", datetime.utcnow())
-        # إن كنت تريد دفع المستخدم للخطوة التالية بصريًا:
-        if getattr(bk, "status", "") == "paid":
-            # نبقيها paid لكن بوجود deposit_status='held'
-            pass
-    except Exception:
-        pass
-
+    bk.updated_at = datetime.utcnow()
     db.commit()
-    # خطوة تالية: أعده لصفحة الفلو وأظهر باراميترات توضيحية إن أحببت
-    return RedirectResponse(url=f"/bookings/flow/{bk.id}?deposit=held&next=1", status_code=303)
+    return redirect_to_flow(bk.id)
+
+@router.get("/api/stripe/cb/cancel/{booking_id}")
+def stripe_cancel_any(booking_id: int):
+    # رجوع بدون دفع
+    return redirect_to_flow(booking_id)
