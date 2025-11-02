@@ -1352,44 +1352,69 @@ def _auto_capture_for_booking(db: Session, bk: Booking) -> bool:
 
 def cron_check_window(
     request: Request,
-    token: str = "",
     db: Session = Depends(get_db),
+    token: str | None = None,
 ):
-    # حماية بالرمز
-    t = request.query_params.get("token", token)
-    if t != CRON_TOKEN:
-        raise HTTPException(status_code=401, detail="Invalid cron token")
+    """
+    تفقد المهلات المنتهية:
+    - يحاول الخصم التلقائي إن توفرت الشروط
+    - وإلا يرسل إشعارًا للـ DM/Admin للتدخل اليدوي
+    """
+    # حماية بسيطة بالـ token (اختياري): اسم المتغير في البيئة CRON_TOKEN
+    cron_token = os.getenv("CRON_TOKEN") or ""
+    if cron_token:
+        if token != cron_token:
+            # اسمح للأدمن بتشغيله يدويًا من المتصفح حتى لو ما فيه توكن
+            sess = request.session.get("user") or {}
+            if not (sess.get("role") == "admin" or bool(sess.get("is_admin"))):
+                raise HTTPException(status_code=403, detail="forbidden")
 
+    # اختر الحجوزات التي انتهت مهلة الرد ولم يصل رد من المستأجر
     rows = _deadline_overdue_rows(db)
-count = 0
-done = 0
-skipped = 0
 
-for bk in rows:
-    count += 1
-    try:
-        ok = _auto_capture_for_booking(db, bk)
-        if ok:
-            done += 1
-        else:
+    count = 0
+    done = 0
+    skipped = 0
+
+    for bk in rows:
+        count += 1
+        try:
+            ok = _auto_capture_for_booking(db, bk)
+            if ok:
+                done += 1
+            else:
+                # الشروط غير مكتملة (مثلاً لا PI أو لا مبلغ) -> إشعار للتدخل
+                skipped += 1
+                try:
+                    notify_dms(
+                        db,
+                        "انتهاء مهلة — تدخّل مطلوب",
+                        f"حجز #{bk.id}: لم نتمكن من الخصم تلقائيًا.",
+                        f"/dm/deposits/{bk.id}",
+                    )
+                    notify_admins(
+                        db,
+                        "انتهاء مهلة — تدخّل مطلوب",
+                        f"حجز #{bk.id}: لم نتمكن من الخصم تلقائيًا.",
+                        f"/dm/deposits/{bk.id}",
+                    )
+                except Exception:
+                    pass
+        except Exception:
             skipped += 1
             try:
-                notify_dms(db, "انتهاء مهلة — تدخّل مطلوب",
-                           f"حجز #{bk.id}: لم نتمكن من الخصم تلقائيًا.", f"/dm/deposits/{bk.id}")
-                notify_admins(db, "انتهاء مهلة — تدخّل مطلوب",
-                              f"حجز #{bk.id}: لم نتمكن من الخصم تلقائيًا.", f"/dm/deposits/{bk.id}")
+                notify_admins(
+                    db,
+                    "خطأ أثناء الخصم التلقائي",
+                    f"حجز #{bk.id}: حدث استثناء أثناء المعالجة.",
+                    f"/dm/deposits/{bk.id}",
+                )
             except Exception:
                 pass
-    except Exception:
-        skipped += 1
-        try:
-            notify_admins(db, "خطأ أثناء الخصم التلقائي",
-                          f"حجز #{bk.id}: حدث استثناء أثناء المعالجة.", f"/dm/deposits/{bk.id}")
-        except Exception:
-            pass
 
-return JSONResponse({"ok": True, "checked": count, "auto_captured": done, "manual_needed": skipped})
-
+    return JSONResponse(
+        {"ok": True, "checked": count, "auto_captured": done, "manual_needed": skipped}
+    )
 
 @router.post("/dm/deposits/{booking_id}/nudge-renter", response_model=None)
 def dm_nudge_renter(
