@@ -113,8 +113,13 @@ app.add_middleware(
 async def force_primary_domain(request: Request, call_next):
     try:
         host = request.headers.get("host", "")
+        path = request.url.path
         primary = os.environ.get("COOKIE_DOMAIN", "sevor.net")
-        # أي دومين غير الأساسي يتحوّل 301 إلى sevor.net مع نفس المسار والكويري
+
+        # ✅ تخطى التحويل إذا كان المسار Webhook Stripe
+        if path.startswith("/webhooks/"):
+            return await call_next(request)
+
         if host and host != primary:
             new_url = f"https://{primary}{request.url.path}"
             if request.url.query:
