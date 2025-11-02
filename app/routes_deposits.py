@@ -1,6 +1,6 @@
 # app/routes_deposits.py
 from __future__ import annotations
-from typing import Optional, Literal, List, Dict
+from typing import Optional, Literal, List, Dict, Annotated
 from datetime import datetime, timedelta
 import os
 import shutil
@@ -1245,7 +1245,6 @@ def _deadline_overdue_rows(db: Session) -> List[Booking]:
     )
     return q.all()
 
-@router.get("/internal/cron/check-window")
 @router.get("/dm/deposits/check-window")  # alias
 def cron_check_window(
     request: Request,
@@ -1302,14 +1301,14 @@ def cron_check_window(
     return JSONResponse({"ok": True, "checked": count})
 
 
-@router.post("/dm/deposits/{booking_id}/nudge-renter")
+@router.post("/dm/deposits/{booking_id}/nudge-renter", response_model=None)
 def dm_nudge_renter(
     booking_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    note: str | None = Form(None),
-    background: BackgroundTasks | None = None,
+    note: Annotated[Optional[str], Form(None)] = None,
 ):
+
     """إرسال إشعار للمستأجر لرفع الأدلة الخاصة بالوديعة."""
     sess = request.session.get("user") or {}
     if not (sess.get("role") == "admin" or sess.get("is_dm")):
