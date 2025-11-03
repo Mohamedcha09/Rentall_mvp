@@ -9,12 +9,34 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from .models import User, Item, Booking, FreezeDeposit
 from .utils import category_label  # إن لم يوجد، أزل الاستيراد أو وفّر دالة بديلة
+from sqlalchemy import text
 
 router = APIRouter(tags=["bookings"])
 
 # ---------------------------------------------------
 # Helper: احضار المستخدم من السيشن (يرجع None إن لم يسجّل)
 # ---------------------------------------------------
+def _ensure_reviews_table(db: Session):
+    sql = """
+    CREATE TABLE IF NOT EXISTS reviews(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      booking_id INTEGER NOT NULL,
+      item_id INTEGER,
+      reviewer_id INTEGER NOT NULL,
+      reviewee_user_id INTEGER,
+      role TEXT NOT NULL,              -- renter_to_item | owner_to_user
+      rating INTEGER NOT NULL,
+      comment TEXT,
+      created_at TEXT NOT NULL
+    );
+    """
+    db.execute(text(sql))
+
+def _insert_review(db: Session, **kw):
+    keys = ",".join(kw.keys())
+    vals = ",".join([f":{k}" for k in kw.keys()])
+    db.execute(text(f"INSERT INTO reviews({keys}) VALUES({vals})"), kw)
+
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
     uid = data.get("id")
@@ -330,3 +352,72 @@ def bookings_index(
             "view": view,
         },
     )
+
+
+@router.post("/reviews/renter/{booking_id}")
+def renter_review_and_return(
+    booking_id: int,
+    request: Request,
+    rating: int = Form(...),
+    comment: str = Form(""),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    ensure_logged_in(user)
+    b: Booking = db.get(Booking, booking_id)
+    if not b: raise HTTPException(status_code=404)
+    ensure_booking_side(user, b, "renter")
+    if b.status not in ("picked_up", "returned"):
+        return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
+
+    _ensure_reviews_table(db)
+    _insert_review(
+        db,
+        booking_id=b.id,
+        item_id=b.item_id,
+        reviewer_id=user.id,
+        reviewee_user_id=None,
+        role="renter_to_item",
+        rating=max(1, min(5, int(rating))),
+        comment=(comment or "").strip(),
+        created_at=datetime.utcnow().isoformat()
+    )
+
+    # علّم الإرجاع إن لم يكن معلّمًا
+    if b.status == "picked_up":
+        b.status = "returned"
+        b.returned_at = datetime.utcnow()
+    db.commit()
+    return RedirectResponse(url=f"/bookings/{b.id}?r_reviewed=1", status_code=303)
+
+
+@router.post("/reviews/owner/{booking_id}")
+def owner_review_renter(
+    booking_id: int,
+    request: Request,
+    rating: int = Form(...),
+    comment: str = Form(""),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    ensure_logged_in(user)
+    b: Booking = db.get(Booking, booking_id)
+    if not b: raise HTTPException(status_code=404)
+    ensure_booking_side(user, b, "owner")
+    if b.status not in ("returned", "in_review", "closed"):
+        return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
+
+    _ensure_reviews_table(db)
+    _insert_review(
+        db,
+        booking_id=b.id,
+        item_id=None,
+        reviewer_id=user.id,
+        reviewee_user_id=b.renter_id,
+        role="owner_to_user",
+        rating=max(1, min(5, int(rating))),
+        comment=(comment or "").strip(),
+        created_at=datetime.utcnow().isoformat()
+    )
+    db.commit()
+    return RedirectResponse(url=f"/bookings/{b.id}?o_reviewed=1", status_code=303)
