@@ -541,6 +541,33 @@ body[data-auth="0"] .actions a[href="/register"]{
   }
 </style>
 
+<style id="modal-guard">
+  /* اجعل المودال أعلى كل شيء */
+  .modal { z-index: 1070 !important; }
+  .modal-backdrop { z-index: 1060 !important; }
+
+  /* أي طبقات قد تظهر فوق المودال تُخفى أثناء فتحه */
+  body.modal-open #typeaheadPanel,
+  body.modal-open #citySuggest,
+  body.modal-open .notif-panel,
+  body.modal-open #profileSheet,
+  body.modal-open #profileScrim,
+  body.modal-open .sheet,
+  body.modal-open .sheet-scrim {
+    display: none !important;
+  }
+
+  /* الحارس: لو لأي سبب وُجد أكثر من خلفية للمودال، اترك واحدة فقط */
+  .modal-backdrop + .modal-backdrop { display: none !important; }
+
+  /* طبقة safe-area البيضاء تبقى أسفل المودال */
+  body::after { z-index: 1000 !important; }
+
+  /* منع أي رجفة انتقال وقت فتح/غلق المودال */
+  .modal.fade .modal-dialog { transition: none !important; }
+  body.modal-open { padding-right: 0 !important; }
+</style>
+
 
 
 
@@ -1502,8 +1529,27 @@ document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
     if (profTab){ profTab.addEventListener('click',(e)=>{ if(isMobile.matches){ e.preventDefault(); show(); } }); }
   })();
   </script>
-</body>
-</html>
+
+  <script id="modal-guard-js">
+(function(){
+  function hidePanels(){
+    try{
+      document.getElementById('typeaheadPanel')?.classList.add('d-none');
+      const city = document.getElementById('citySuggest');
+      if (city){ city.style.display = 'none'; city.innerHTML = ''; }
+      document.getElementById('notifPanel')?.classList.remove('is-open');
+      const scrim = document.getElementById('scrim');
+      if (scrim){ scrim.style.opacity='0'; scrim.style.pointerEvents='none'; }
+      // شيت البروفايل
+      const sheet = document.getElementById('profileSheet');
+      const sheetScrim = document.getElementById('profileScrim');
+      if (sheet){ sheet.classList.remove('is-open'); sheet.hidden = true; }
+      if (sheetScrim){ sheetScrim.classList.remove('is-open'); sheetScrim.hidden = true; }
+    }catch(_){}
+  }
+  document.addEventListener('show.bs.modal', hidePanels, true);
+})();
+</script>
 
 </body>
 </html>

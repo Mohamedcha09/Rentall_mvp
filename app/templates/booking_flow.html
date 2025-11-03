@@ -233,7 +233,8 @@
           </button>
 
           <!-- Modal: تقييم المستأجر للعنصر (يرسل تقييم + يعلّم الإرجاع) -->
-          <div class="modal fade" id="rateRenterModal" tabindex="-1" aria-hidden="true">
+          <div class="modal fade" id="rateRenterModal" tabindex="-1"  aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+
             <div class="modal-dialog">
               <form class="modal-content" method="post" action="/reviews/renter/{{ booking.id }}">
                 <div class="modal-header">
