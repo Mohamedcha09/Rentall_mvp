@@ -16,9 +16,7 @@
   .muted{opacity:.6}
   .alert-mini{padding:.6rem .8rem}
 
-  /* =========================
-     إصلاح رجفة المودال (iOS/Safari/Bootstrap)
-     ========================= */
+  /* ===== إصلاح رجفة المودال (iOS/Safari/Bootstrap) ===== */
   .modal, .modal-backdrop{
     will-change: opacity, transform;
     -webkit-transform: translateZ(0);
@@ -229,7 +227,7 @@
             <i class="bi bi-stars"></i> تم إرجاع الغرض + تقييم
           </button>
 
-          <!-- ✅ مودال صحيح (كتلة واحدة) -->
+          <!-- ✅ مودال واحد فقط: تقييم + تعليم الإرجاع -->
           <div class="modal fade" id="rateRenterModal" tabindex="-1" aria-hidden="true"
                data-bs-backdrop="static" data-bs-keyboard="false">
             <div class="modal-dialog">
@@ -275,8 +273,7 @@
             {% if dispute_deadline_iso %}
               <div class="mt-2">
                 <span class="badge-dot"><i class="bi bi-circle-fill"></i> العدّاد حتى نهاية مهلة الاعتراض:</span>
-                <!-- ✅ عدّاد يعمل تلقائيًا -->
-                <div class="mono fw-bold">
+                <div id="deadlineCountdown" class="mono fw-bold">
                   <span class="countdown" data-deadline="{{ dispute_deadline_iso }}"></span>
                 </div>
               </div>
@@ -288,7 +285,7 @@
             </button>
           </form>
 
-          <!-- تقييم المالك للمستأجر يظهر هنا -->
+          <!-- تقييم المالك للمستأجر -->
           <div class="box mt-3">
             <h6 class="mb-2">قيّم المستأجر</h6>
             <form method="post" action="/reviews/owner/{{ booking.id }}" class="d-flex flex-column gap-2">
@@ -392,7 +389,7 @@
     }
   }
 
-  // تحديث "الوديعة محجوزة" (بدون أي redirect)
+  // تحديث "الوديعة محجوزة"
   function markDepositHeldUI(){
     var wrap = document.getElementById('depositActionWrap');
     if(!wrap) return;
@@ -405,7 +402,7 @@
   wireDisableOnSubmit('stripePayRentForm','stripePayRentBtn','جاري تحويلك إلى الدفع…');
   wireDisableOnSubmit('stripeDepositForm','stripeDepositBtn','جاري تحويلك إلى الدفع…');
 
-  // أولاً: اقرأ الحالة من خصائص الـDOM (حقن السيرفر)
+  // اقرأ الحالة من خصائص الـDOM (حقن السيرفر)
   (function(){
     try{
       var box = document.getElementById('onlineBox');
@@ -425,6 +422,7 @@
     var bookingId = {{ booking.id }};
     var params = new URLSearchParams(location.search);
 
+    // لو رجعنا من /next (?ready=1) لا نعمل polling
     if (params.has('ready')) return;
 
     var tries = 0, maxTries = 30, redirected = false;
@@ -432,6 +430,7 @@
     function modalOpen(){ return !!document.querySelector('.modal.show'); }
 
     function checkOnce(){
+      // أوقف الاستعلام مؤقتًا إذا فيه مودال مفتوح (منع اهتزاز)
       if (modalOpen()){ setTimeout(checkOnce, 1500); return; }
 
       fetch('/api/stripe/checkout/state/' + bookingId, {credentials:'same-origin', cache: 'no-store'})
@@ -442,7 +441,7 @@
             if(state.deposit_held){   markDepositHeldUI(); }
 
             if(state.ready_for_pickup && !redirected){
-              redirected = true;
+              redirected = true; // امنع أي تحويل لاحق
               location.assign("/bookings/flow/{{ booking.id }}/next");
               return;
             }
@@ -461,11 +460,30 @@
 
     checkOnce();
 
+    // إعادة تنشيط ذكي عند عودة الصفحة
     document.addEventListener('hidden.bs.modal', function(){ tries = 0; checkOnce(); });
-    document.addEventListener('visibilitychange', function(){ if (!document.hidden && !redirected && !params.has('ready')) { tries = 0; checkOnce(); } });
-    window.addEventListener('pageshow', function(){ if(!redirected && !params.has('ready')) { tries = 0; checkOnce(); } });
-    window.addEventListener('focus', function(){ if(!redirected && !params.has('ready')) { tries = 0; checkOnce(); } });
+    document.addEventListener('visibilitychange', function(){
+      if (!document.hidden && !redirected && !params.has('ready')) { tries = 0; checkOnce(); }
+    });
+    window.addEventListener('pageshow', function(){
+      if(!redirected && !params.has('ready')) { tries = 0; checkOnce(); }
+    });
+    window.addEventListener('focus', function(){
+      if(!redirected && !params.has('ready')) { tries = 0; checkOnce(); }
+    });
   })();
+
+  // عدّاد المهلة (إن وُجد)
+  {% if dispute_deadline_iso %}
+  try{
+    if(window.initCountdown){
+      initCountdown('deadlineCountdown','{{ dispute_deadline_iso }}');
+    }else{
+      var el = document.getElementById('deadlineCountdown');
+      if(el){ el.textContent = new Date('{{ dispute_deadline_iso }}').toLocaleString(); }
+    }
+  }catch(e){}
+  {% endif %}
 </script>
 
 {% endblock %}
