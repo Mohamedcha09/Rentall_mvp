@@ -375,15 +375,14 @@
 
   // تحديث "الوديعة محجوزة" + انتقال
   function markDepositHeldUI(){
-    var wrap = document.getElementById('depositActionWrap');
-    if(!wrap) return;
-    if (!wrap.querySelector('#depositHeldBadge')){
-      wrap.innerHTML = '<button id="depositHeldBadge" class="btn btn-success btn-wide" disabled><i class="bi bi-shield-check"></i> تم حجز الوديعة ✅</button>';
-    }
-    setTimeout(function(){
-      window.location.href = "/bookings/flow/{{ booking.id }}/next";
-    }, 500);
+  var wrap = document.getElementById('depositActionWrap');
+  if(!wrap) return;
+  if (!wrap.querySelector('#depositHeldBadge')){
+    wrap.innerHTML = '<button id="depositHeldBadge" class="btn btn-success btn-wide" disabled><i class="bi bi-shield-check"></i> تم حجز الوديعة ✅</button>';
   }
+  // ⛔️ لا redirect من هنا
+}
+
 
   // اربط الأزرار (لو موجودة)
   wireDisableOnSubmit('stripePayRentForm','stripePayRentBtn','جاري تحويلك إلى الدفع…');
@@ -403,38 +402,49 @@
 
   // ثانياً: Poll قوي من API (يتحمّل تأخير الويبهوك)
   (function(){
-    var bookingId = {{ booking.id }};
-    var tries = 0, maxTries = 30;
+  var bookingId = {{ booking.id }};
+  var params = new URLSearchParams(location.search);
 
-    function checkOnce(){
-      fetch('/api/stripe/checkout/state/' + bookingId, {credentials:'same-origin', cache: 'no-store'})
-        .then(r => r.ok ? r.json() : {})
-        .then(state => {
-          try{
-            if(state.rent_authorized){ markRentPaidUI(); }
-            if(state.deposit_held){   markDepositHeldUI(); }
-            if(state.ready_for_pickup){
-              window.location.href = "/bookings/flow/{{ booking.id }}/next";
-              return;
-            }
-          }catch(e){}
-          retry();
-        })
-        .catch(retry);
-    }
+  // ✅ لو رجعنا بالفعل من /next (يعني عندنا ?ready=1)
+  // لا تعمل polling ولا تحويلات إضافية
+  if (params.has('ready')) {
+    return;
+  }
 
-    function retry(){
-      tries++;
-      if(tries > maxTries) return;
-      var delay = (tries < 8) ? 1000 : Math.min(8000, 1000 + tries*700);
-      setTimeout(checkOnce, delay);
-    }
+  var tries = 0, maxTries = 30;
 
-    checkOnce();
-    document.addEventListener('visibilitychange', function(){ if(!document.hidden){ tries = 0; checkOnce(); }});
-    window.addEventListener('pageshow', function(){ tries = 0; checkOnce(); });
-    window.addEventListener('focus', function(){ tries = 0; checkOnce(); });
-  })();
+  function checkOnce(){
+    fetch('/api/stripe/checkout/state/' + bookingId, {credentials:'same-origin', cache: 'no-store'})
+      .then(r => r.ok ? r.json() : {})
+      .then(state => {
+        try{
+          if(state.rent_authorized){ markRentPaidUI(); }
+          if(state.deposit_held){   markDepositHeldUI(); }
+
+          // التحويل الوحيد المسموح به — من نتيجة API فقط
+          if(state.ready_for_pickup){
+            window.location.href = "/bookings/flow/{{ booking.id }}/next";
+            return;
+          }
+        }catch(e){}
+        retry();
+      })
+      .catch(retry);
+  }
+
+  function retry(){
+    tries++;
+    if(tries > maxTries) return;
+    var delay = (tries < 8) ? 1000 : Math.min(8000, 1000 + tries*700);
+    setTimeout(checkOnce, delay);
+  }
+
+  checkOnce();
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden){ tries = 0; checkOnce(); }});
+  window.addEventListener('pageshow', function(){ tries = 0; checkOnce(); });
+  window.addEventListener('focus', function(){ tries = 0; checkOnce(); });
+})();
+
 
   // عدّاد المهلة (إن وُجد)
   {% if dispute_deadline_iso %}
