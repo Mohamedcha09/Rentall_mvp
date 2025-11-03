@@ -812,6 +812,86 @@ body[data-auth="0"] .actions a[href="/register"]{
   {% block scripts %}{% endblock %}
 
   <!-- Safe-area -->
+
+  <!-- === SAFE MODE KILL-SWITCH ========================================= -->
+<script>
+(function(){
+  // فعّل الوضع الآمن إذا وُجد ?safe=1 أو إذا كان محفوظًا في localStorage
+  const url = new URL(location.href);
+  const SAFE = url.searchParams.has('safe') || localStorage.getItem('SAFE_MODE') === '1';
+
+  if (!SAFE) return;
+  // ثبّت الـSafe Mode (حتى بدون ?safe في المرّة القادمة)
+  localStorage.setItem('SAFE_MODE', '1');
+  window.__SAFE_MODE__ = true;
+
+  // 1) ألغِ كل الأنيميشن/الترانزيشن + اهتزاز المودال
+  const css = `
+    * { animation: none !important; transition: none !important; }
+    html, body { scroll-behavior: auto !important; }
+    body.modal-open { padding-right: 0 !important; }
+    .modal, .modal-backdrop { transition: none !important; }
+  `;
+  const style = document.createElement('style');
+  style.setAttribute('data-safe-style','');
+  style.appendChild(document.createTextNode(css));
+  document.documentElement.appendChild(style);
+
+  // 2) ألغِ الـService Worker ونظّف كل الكاشات
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(list => {
+      list.forEach(reg => reg.unregister());
+    }).catch(()=>{});
+  }
+  if ('caches' in window) {
+    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).catch(()=>{});
+  }
+
+  // 3) خَلِّ كل طلبات الشبكة "no-store" لتفادي أي كاش
+  const _fetch = window.fetch;
+  window.fetch = function(input, init){
+    try{
+      // عطّل استعلامات الحالة التي تعمل polling (تُسبب الرجفة)
+      const url = (typeof input === 'string') ? input : (input && input.url) || '';
+      if (url.includes('/api/stripe/checkout/state/')) {
+        // ارجع ردًا فارغًا يُوقف أي تحويل/تحديث واجهة
+        return Promise.resolve(new Response(JSON.stringify({ rent_authorized:false, deposit_held:false, ready_for_pickup:false }), { headers:{'Content-Type':'application/json'} }));
+      }
+      // إجبار no-store
+      const opts = Object.assign({}, init || {}, { cache: 'no-store', headers: Object.assign({}, (init && init.headers)||{}, {'Cache-Control':'no-store'}) });
+      return _fetch(input, opts);
+    }catch(_){
+      return _fetch(input, init);
+    }
+  };
+
+  // 4) عطِّل requestAnimationFrame (مصدر رجفات أحيانًا)
+  window.requestAnimationFrame = function(cb){ /* no-op in SAFE mode */ return 0; };
+
+  // 5) عطّل أي countdown/تايمرات مشهورة بأسماء عامة (بدون كسر الموقع)
+  //   - لو سكربت العدّاد يعرّف initCountdown سنجعله no-op
+  Object.defineProperty(window, 'initCountdown', { value: function(){}, writable: false });
+
+  // 6) منع فتح/غلق المودال من إحداث تغيّر تخطيط مفاجئ
+  document.addEventListener('show.bs.modal', function(){ document.body.style.paddingRight = '0px'; }, true);
+  document.addEventListener('hidden.bs.modal', function(){ document.body.style.paddingRight = '0px'; }, true);
+
+  // 7) شارة صغيرة لتعرف أن الوضع الآمن شغال
+  document.addEventListener('DOMContentLoaded', function(){
+    const badge = document.createElement('div');
+    badge.textContent = 'SAFE MODE';
+    Object.assign(badge.style, {
+      position:'fixed', insetInlineEnd:'8px', insetBlockStart:'8px',
+      padding:'4px 8px', font:'12px/1.2 system-ui,Segoe UI,Arial',
+      background:'#222', color:'#fff', borderRadius:'6px', zIndex:'2147483647', opacity:'.8'
+    });
+    document.body.appendChild(badge);
+  });
+
+})();
+</script>
+<!-- ================================================================== -->
+
   <script>
   (function(){
     var root = document.documentElement;
