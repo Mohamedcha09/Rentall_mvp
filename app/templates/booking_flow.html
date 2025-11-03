@@ -373,16 +373,14 @@
     }
   }
 
-  // تحديث "الوديعة محجوزة" + انتقال
+  // تحديث "الوديعة محجوزة" (بدون أي redirect)
   function markDepositHeldUI(){
-  var wrap = document.getElementById('depositActionWrap');
-  if(!wrap) return;
-  if (!wrap.querySelector('#depositHeldBadge')){
-    wrap.innerHTML = '<button id="depositHeldBadge" class="btn btn-success btn-wide" disabled><i class="bi bi-shield-check"></i> تم حجز الوديعة ✅</button>';
+    var wrap = document.getElementById('depositActionWrap');
+    if(!wrap) return;
+    if (!wrap.querySelector('#depositHeldBadge')){
+      wrap.innerHTML = '<button id="depositHeldBadge" class="btn btn-success btn-wide" disabled><i class="bi bi-shield-check"></i> تم حجز الوديعة ✅</button>';
+    }
   }
-  // ⛔️ لا redirect من هنا
-}
-
 
   // اربط الأزرار (لو موجودة)
   wireDisableOnSubmit('stripePayRentForm','stripePayRentBtn','جاري تحويلك إلى الدفع…');
@@ -400,51 +398,72 @@
     }catch(e){}
   })();
 
-  // ثانياً: Poll قوي من API (يتحمّل تأخير الويبهوك)
+  /* ===== Polling Stripe state (محمي من التشغيل المزدوج وموقوف أثناء المودال) ===== */
   (function(){
-  var bookingId = {{ booking.id }};
-  var params = new URLSearchParams(location.search);
+    // حماية من التشغيل مرتين
+    if (window.__FLOW_POLLER__ && window.__FLOW_POLLER__.started) {
+      console.debug('flow poller already running — skip');
+      return;
+    }
+    window.__FLOW_POLLER__ = { started:true };
 
-  // ✅ لو رجعنا بالفعل من /next (يعني عندنا ?ready=1)
-  // لا تعمل polling ولا تحويلات إضافية
-  if (params.has('ready')) {
-    return;
-  }
+    var bookingId = {{ booking.id }};
+    var params = new URLSearchParams(location.search);
 
-  var tries = 0, maxTries = 30;
+    // لو رجعنا من /next (?ready=1) لا نعمل polling
+    if (params.has('ready')) return;
 
-  function checkOnce(){
-    fetch('/api/stripe/checkout/state/' + bookingId, {credentials:'same-origin', cache: 'no-store'})
-      .then(r => r.ok ? r.json() : {})
-      .then(state => {
-        try{
-          if(state.rent_authorized){ markRentPaidUI(); }
-          if(state.deposit_held){   markDepositHeldUI(); }
+    var tries = 0, maxTries = 30, redirected = false;
 
-          // التحويل الوحيد المسموح به — من نتيجة API فقط
-          if(state.ready_for_pickup){
-            window.location.href = "/bookings/flow/{{ booking.id }}/next";
-            return;
-          }
-        }catch(e){}
-        retry();
-      })
-      .catch(retry);
-  }
+    function modalOpen(){
+      return !!document.querySelector('.modal.show');
+    }
 
-  function retry(){
-    tries++;
-    if(tries > maxTries) return;
-    var delay = (tries < 8) ? 1000 : Math.min(8000, 1000 + tries*700);
-    setTimeout(checkOnce, delay);
-  }
+    function checkOnce(){
+      // أوقف الاستعلام مؤقتًا إذا فيه مودال مفتوح (منع اهتزاز)
+      if (modalOpen()){
+        setTimeout(checkOnce, 1500);
+        return;
+      }
 
-  checkOnce();
-  document.addEventListener('visibilitychange', function(){ if(!document.hidden){ tries = 0; checkOnce(); }});
-  window.addEventListener('pageshow', function(){ tries = 0; checkOnce(); });
-  window.addEventListener('focus', function(){ tries = 0; checkOnce(); });
-})();
+      fetch('/api/stripe/checkout/state/' + bookingId, {credentials:'same-origin', cache: 'no-store'})
+        .then(r => r.ok ? r.json() : {})
+        .then(state => {
+          try{
+            if(state.rent_authorized){ markRentPaidUI(); }
+            if(state.deposit_held){   markDepositHeldUI(); }
 
+            if(state.ready_for_pickup && !redirected){
+              redirected = true; // امنع أي تحويل لاحق
+              location.assign("/bookings/flow/{{ booking.id }}/next");
+              return;
+            }
+          }catch(e){}
+          retry();
+        })
+        .catch(retry);
+    }
+
+    function retry(){
+      tries++;
+      if(tries > maxTries || redirected) return;
+      var delay = (tries < 8) ? 1000 : Math.min(8000, 1000 + tries*700);
+      setTimeout(checkOnce, delay);
+    }
+
+    checkOnce();
+
+    // إعادة تنشيط ذكي عند العودة للصفحة
+    document.addEventListener('visibilitychange', function(){
+      if (!document.hidden && !redirected && !params.has('ready')) { tries = 0; checkOnce(); }
+    });
+    window.addEventListener('pageshow', function(){
+      if(!redirected && !params.has('ready')) { tries = 0; checkOnce(); }
+    });
+    window.addEventListener('focus', function(){
+      if(!redirected && !params.has('ready')) { tries = 0; checkOnce(); }
+    });
+  })();
 
   // عدّاد المهلة (إن وُجد)
   {% if dispute_deadline_iso %}
