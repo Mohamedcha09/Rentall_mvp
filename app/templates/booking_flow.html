@@ -26,11 +26,8 @@
     -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
   }
-  /* أوقف انتقال حركة المودال لتجنّب إعادة رسم مزعجة */
   .modal.fade .modal-dialog{ transition: none !important; }
-  /* لا تغيّر Bootstrap حشو الـbody عند ظهور الـscrollbar الوهمي */
   body.modal-open{ padding-right:0 !important; }
-  /* عند فتح المودال، أوقف أي أنيميشن/ترانزيشن عامة تقلّب الخلفية */
   body.modal-open *{ animation:none !important; transition:none !important; }
 </style>
 
@@ -232,14 +229,14 @@
             <i class="bi bi-stars"></i> تم إرجاع الغرض + تقييم
           </button>
 
-          <!-- Modal: تقييم المستأجر للعنصر (يرسل تقييم + يعلّم الإرجاع) -->
-          <div class="modal fade" id="rateRenterModal" tabindex="-1"  aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-
+          <!-- ✅ مودال صحيح (كتلة واحدة) -->
+          <div class="modal fade" id="rateRenterModal" tabindex="-1" aria-hidden="true"
+               data-bs-backdrop="static" data-bs-keyboard="false">
             <div class="modal-dialog">
               <form class="modal-content" method="post" action="/reviews/renter/{{ booking.id }}">
                 <div class="modal-header">
                   <h5 class="modal-title">قيّم العنصر</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
                 </div>
                 <div class="modal-body">
                   <div class="mb-2">
@@ -278,7 +275,10 @@
             {% if dispute_deadline_iso %}
               <div class="mt-2">
                 <span class="badge-dot"><i class="bi bi-circle-fill"></i> العدّاد حتى نهاية مهلة الاعتراض:</span>
-                <div id="deadlineCountdown" class="mono fw-bold"></div>
+                <!-- ✅ عدّاد يعمل تلقائيًا -->
+                <div class="mono fw-bold">
+                  <span class="countdown" data-deadline="{{ dispute_deadline_iso }}"></span>
+                </div>
               </div>
             {% endif %}
           </div>
@@ -419,31 +419,20 @@
 
   /* ===== Polling Stripe state (محمي من التشغيل المزدوج وموقوف أثناء المودال) ===== */
   (function(){
-    // حماية من التشغيل مرتين
-    if (window.__FLOW_POLLER__ && window.__FLOW_POLLER__.started) {
-      console.debug('flow poller already running — skip');
-      return;
-    }
+    if (window.__FLOW_POLLER__ && window.__FLOW_POLLER__.started) return;
     window.__FLOW_POLLER__ = { started:true };
 
     var bookingId = {{ booking.id }};
     var params = new URLSearchParams(location.search);
 
-    // لو رجعنا من /next (?ready=1) لا نعمل polling
     if (params.has('ready')) return;
 
     var tries = 0, maxTries = 30, redirected = false;
 
-    function modalOpen(){
-      return !!document.querySelector('.modal.show');
-    }
+    function modalOpen(){ return !!document.querySelector('.modal.show'); }
 
     function checkOnce(){
-      // أوقف الاستعلام مؤقتًا إذا فيه مودال مفتوح (منع اهتزاز)
-      if (modalOpen()){
-        setTimeout(checkOnce, 1500);
-        return;
-      }
+      if (modalOpen()){ setTimeout(checkOnce, 1500); return; }
 
       fetch('/api/stripe/checkout/state/' + bookingId, {credentials:'same-origin', cache: 'no-store'})
         .then(r => r.ok ? r.json() : {})
@@ -453,7 +442,7 @@
             if(state.deposit_held){   markDepositHeldUI(); }
 
             if(state.ready_for_pickup && !redirected){
-              redirected = true; // امنع أي تحويل لاحق
+              redirected = true;
               location.assign("/bookings/flow/{{ booking.id }}/next");
               return;
             }
@@ -472,30 +461,11 @@
 
     checkOnce();
 
-    // إعادة تنشيط ذكي عند العودة للصفحة
     document.addEventListener('hidden.bs.modal', function(){ tries = 0; checkOnce(); });
-    document.addEventListener('visibilitychange', function(){
-      if (!document.hidden && !redirected && !params.has('ready')) { tries = 0; checkOnce(); }
-    });
-    window.addEventListener('pageshow', function(){
-      if(!redirected && !params.has('ready')) { tries = 0; checkOnce(); }
-    });
-    window.addEventListener('focus', function(){
-      if(!redirected && !params.has('ready')) { tries = 0; checkOnce(); }
-    });
+    document.addEventListener('visibilitychange', function(){ if (!document.hidden && !redirected && !params.has('ready')) { tries = 0; checkOnce(); } });
+    window.addEventListener('pageshow', function(){ if(!redirected && !params.has('ready')) { tries = 0; checkOnce(); } });
+    window.addEventListener('focus', function(){ if(!redirected && !params.has('ready')) { tries = 0; checkOnce(); } });
   })();
-
-  // عدّاد المهلة (إن وُجد)
-  {% if dispute_deadline_iso %}
-  try{
-    if(window.initCountdown){
-      initCountdown('deadlineCountdown','{{ dispute_deadline_iso }}');
-    }else{
-      var el = document.getElementById('deadlineCountdown');
-      if(el){ el.textContent = new Date('{{ dispute_deadline_iso }}').toLocaleString(); }
-    }
-  }catch(e){}
-  {% endif %}
 </script>
 
 {% endblock %}

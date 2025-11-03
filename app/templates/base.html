@@ -449,47 +449,6 @@ button.dropdown-toggle::after {
 </style>
 
 
-<style id="guest-mobile-only">
-/* واجهة ضيف مبسّطة — موبايل فقط */
-@media (max-width: 768px){
-
-  /* لا تُخفِ شريط البحث بعد الآن */
-  body[data-auth="0"] .searchbar{
-    display:block !important;
-  }
-
-  /* ما زلنا نُخفي باقي عناصر الهيدر الثقيلة للضيف */
-  body[data-auth="0"] #menuBtn,
-  body[data-auth="0"] #quickMenu,
-  body[data-auth="0"] .m-top-tabs,
-  body[data-auth="0"] #notifOpen,
-  body[data-auth="0"] .stripe-callout,
-  body[data-auth="0"] .fab,
-  body[data-auth="0"] .sheet,
-  body[data-auth="0"] .sheet-scrim {
-    display: none !important;
-  }
-
-  /* داخل actions: أخفِ كل شيء عدا دخول/تسجيل */
-  body[data-auth="0"] .actions > *:not(a[href="/login"]):not(a[href="/register"]){
-    display: none !important;
-  }
-
-  /* تبويب سفلي: اترك “الرئيسية” فقط */
-  body[data-auth="0"] .mobile-tabbar a:nth-child(n+2){
-    display: none !important;
-  }
-  body[data-auth="0"] .mobile-tabbar{
-    grid-template-columns: 1fr !important;
-  }
-
-  /* مساحة سفلية مناسبة بدون زر + */
-  body[data-auth="0"] .page{
-    padding-bottom: calc(76px + max(var(--safe-bottom), var(--safe-bottom-legacy))) !important;
-  }
-}
-</style>
-
 <!-- ✅ تأكيد ظهور أزرار دخول/تسجيل في أقصى الطرف -->
 <style>
 body[data-auth="0"] .actions{
@@ -1227,6 +1186,11 @@ body[data-auth="0"] .actions a[href="/register"]{
     }
   }
 </style>
+<style id="modal-safearea-fix">
+  /* عند فتح المودال، اخفِ طبقة safe-area حتى لا تغطيه */
+  body.modal-open::after{ display:none !important; }
+</style>
+
 
 <script>
 (function(){
