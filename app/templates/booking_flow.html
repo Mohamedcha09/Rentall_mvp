@@ -15,7 +15,25 @@
   .badge-dot i{font-size:10px}
   .muted{opacity:.6}
   .alert-mini{padding:.6rem .8rem}
+
+  /* =========================
+     إصلاح رجفة المودال (iOS/Safari/Bootstrap)
+     ========================= */
+  .modal, .modal-backdrop{
+    will-change: opacity, transform;
+    -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+  }
+  /* أوقف انتقال حركة المودال لتجنّب إعادة رسم مزعجة */
+  .modal.fade .modal-dialog{ transition: none !important; }
+  /* لا تغيّر Bootstrap حشو الـbody عند ظهور الـscrollbar الوهمي */
+  body.modal-open{ padding-right:0 !important; }
+  /* عند فتح المودال، أوقف أي أنيميشن/ترانزيشن عامة تقلّب الخلفية */
+  body.modal-open *{ animation:none !important; transition:none !important; }
 </style>
+
 {% if dispute_deadline_iso %}
   <script defer src="/static/js/countdown.js"></script>
 {% endif %}
@@ -109,8 +127,8 @@
 
           <!-- الدفع أونلاين بأزرار منفصلة -->
           <div class="box" id="onlineBox"
-     data-rent-authorized="{{ '1' if booking.online_status in ['authorized','captured','succeeded','paid'] else '0' }}"
-     data-deposit-held="{{ '1' if booking.deposit_status in ['held','authorized'] else '0' }}">
+               data-rent-authorized="{{ '1' if booking.online_status in ['authorized','captured','succeeded','paid'] else '0' }}"
+               data-deposit-held="{{ '1' if booking.deposit_status in ['held','authorized'] else '0' }}">
 
             <div class="mb-2">الدفع <strong>أونلاين (Stripe Checkout)</strong></div>
 
@@ -130,8 +148,8 @@
               </div>
             {% endif %}
 
-{% set rent_paid = (booking.online_status in ['authorized','captured','succeeded','paid']) %}
-{% set deposit_ok = (booking.deposit_status in ['held','authorized']) %}
+            {% set rent_paid = (booking.online_status in ['authorized','captured','succeeded','paid']) %}
+            {% set deposit_ok = (booking.deposit_status in ['held','authorized']) %}
 
             <!-- زر: دفع الإيجار فقط (يتحوّل لعبارة تم الدفع) -->
             <div id="rentActionWrap" class="d-inline">
@@ -454,6 +472,7 @@
     checkOnce();
 
     // إعادة تنشيط ذكي عند العودة للصفحة
+    document.addEventListener('hidden.bs.modal', function(){ tries = 0; checkOnce(); });
     document.addEventListener('visibilitychange', function(){
       if (!document.hidden && !redirected && !params.has('ready')) { tries = 0; checkOnce(); }
     });
