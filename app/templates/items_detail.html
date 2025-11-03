@@ -332,6 +332,41 @@
   </div>
 </div>
 <!-- ▴▴ END ADD ▴▴ -->
+<div class="hr"></div>
+
+<!-- === تقييمات المستأجرين للمنشور === -->
+<div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <h5 style="margin:0">التقييمات</h5>
+    <span class="badge-pill">
+      ⭐ {{ item_rating_avg or 0 }}/5 — {{ item_rating_count or 0 }} مراجعة
+    </span>
+  </div>
+
+  {% if item_reviews and item_reviews|length %}
+    <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px">
+      {% for r in item_reviews %}
+        <div class="card-glass" style="padding:12px">
+          <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
+            <div>
+              <strong>مستأجر</strong>
+              <span class="small-muted">• {{ r.created_at.strftime("%Y-%m-%d") if r.created_at else "" }}</span>
+            </div>
+            <div title="{{ r.stars }} / 5">
+              {% for _ in range(r.stars) %}⭐{% endfor %}
+              {% for _ in range(5 - r.stars) %}☆{% endfor %}
+            </div>
+          </div>
+          {% if r.comment %}
+            <div style="margin-top:6px;white-space:pre-wrap">{{ r.comment }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="small-muted" style="margin-top:6px">لا توجد مراجعات بعد.</div>
+  {% endif %}
+</div>
 
 <!-- ===============  Lightbox & Gallery JS (خفيف)  =============== -->
 <script>

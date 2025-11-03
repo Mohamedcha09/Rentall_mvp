@@ -151,4 +151,20 @@ def user_profile(user_id: int, request: Request, db: Session = Depends(get_db)):
         "session_user": (request.session or {}).get("user"),
     }
 
+    ur_avg = db.query(func.coalesce(func.avg(UserReview.stars), 0)).filter(UserReview.target_user_id == user.id).scalar() or 0
+ur_cnt = db.query(func.count(UserReview.id)).filter(UserReview.target_user_id == user.id).scalar() or 0
+ur_list = (
+    db.query(UserReview)
+    .filter(UserReview.target_user_id == user.id)
+    .order_by(UserReview.created_at.desc())
+    .limit(30)
+    .all()
+)
+
+context.update({
+    "renter_reviews_avg": round(float(ur_avg), 2),
+    "renter_reviews_count": int(ur_cnt),
+    "renter_reviews": ur_list,
+})
+
     return request.app.templates.TemplateResponse("user.html", context)

@@ -587,3 +587,56 @@ class SupportMessage(Base):
 
     ticket = relationship("SupportTicket", back_populates="messages")
     sender = relationship("User", lazy="joined")
+
+
+# =========================
+# Reviews (تعليقات/تقييمات)
+# =========================
+class ItemReview(Base):
+    """
+    تقييم المستأجر للـ Item (يظهر على صفحة المنشور).
+    rater_id = المستأجر الذي حجز وأرجع
+    item_id  = العنصر الذي استأجره
+    booking_id لتفادي التكرار ولمطابقة الحجز
+    """
+    __tablename__ = "item_reviews"
+    id = Column(Integer, primary_key=True, index=True)
+
+    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=False, index=True)
+    item_id    = Column(Integer, ForeignKey("items.id"),    nullable=False, index=True)
+    rater_id   = Column(Integer, ForeignKey("users.id"),    nullable=False, index=True)
+
+    stars   = Column(Integer, nullable=False, default=5)  # 1..5
+    comment = Column(Text, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    item   = relationship("Item", lazy="joined", backref="item_reviews")
+    rater  = relationship("User", lazy="joined")
+
+    # منع التكرار: تقييم واحد لكل (booking_id) من جهة المستأجر
+    __table_args__ = (
+        # لو عندك Alembic استعمل UniqueConstraint، وإلا يظل منطق التطبيق يمنع التكرار
+    )
+    
+
+class UserReview(Base):
+    """
+    تقييم المالك للمستأجر (يظهر في بروفايل المستأجر).
+    owner_id = المالك صاحب العنصر
+    target_user_id = المستأجر الذي تم تقييمه
+    """
+    __tablename__ = "user_reviews"
+    id = Column(Integer, primary_key=True, index=True)
+
+    booking_id     = Column(Integer, ForeignKey("bookings.id"), nullable=False, index=True)
+    owner_id       = Column(Integer, ForeignKey("users.id"),    nullable=False, index=True)
+    target_user_id = Column(Integer, ForeignKey("users.id"),    nullable=False, index=True)
+
+    stars   = Column(Integer, nullable=False, default=5)
+    comment = Column(Text, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    owner       = relationship("User", foreign_keys=[owner_id],       lazy="joined")
+    target_user = relationship("User", foreign_keys=[target_user_id],  lazy="joined")

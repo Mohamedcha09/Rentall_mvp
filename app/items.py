@@ -137,9 +137,17 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             {"request": request, "item": None, "session_user": request.session.get("user")}
         )
 
+    from sqlalchemy import func
+    from .models import User, ItemReview
     item.category_label = category_label(item.category)
     owner = db.query(User).get(item.owner_id)
     owner_badges = get_user_badges(owner, db) if owner else []
+
+    # تقييمات هذا المنشور (من المستأجرين)
+    reviews_q = db.query(ItemReview).filter(ItemReview.item_id == item.id).order_by(ItemReview.created_at.desc())
+    reviews = reviews_q.all()
+    avg_stars = db.query(func.coalesce(func.avg(ItemReview.stars), 0)).filter(ItemReview.item_id == item.id).scalar() or 0
+    cnt_stars = db.query(func.count(ItemReview.id)).filter(ItemReview.item_id == item.id).scalar() or 0
 
     return request.app.templates.TemplateResponse(
         "items_detail.html",
@@ -149,6 +157,10 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             "owner": owner,
             "owner_badges": owner_badges,
             "session_user": request.session.get("user"),
+            # جديد:
+            "item_reviews": reviews,
+            "item_rating_avg": round(float(avg_stars), 2),
+            "item_rating_count": int(cnt_stars),
         }
     )
 
