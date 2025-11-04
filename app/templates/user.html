@@ -1,12 +1,23 @@
 {% extends "base.html" %}
 {% block content %}
 
+{# ====== Helper: يبني مسار صورة صالح سواء كان http(s) أو مسار محلي ====== #}
+{% macro build_src(p) -%}
+  {%- set s = (p or '') -%}
+  {%- if s.startswith('http://') or s.startswith('https://') -%}
+    {{- s -}}
+  {%- else -%}
+    {# لو المسار يبدأ بـ / نتركه، وإلا نضيف / في أوله #}
+    {{- '/' ~ s.lstrip('/') if s else '/static/placeholder.png' -}}
+  {%- endif -%}
+{%- endmacro %}
+
 <section class="card p-3 p-md-4 mb-3">
   <div class="d-flex align-items-start align-items-md-center gap-3 flex-column flex-md-row">
 
     <div class="flex-shrink-0">
       {% if profile_user.avatar_path %}
-        <img src="/{{ profile_user.avatar_path }}"
+        <img src="{{ build_src(profile_user.avatar_path) }}"
              alt="avatar"
              class="rounded-circle"
              style="width:86px;height:86px;object-fit:cover;border:1px solid var(--border)">
@@ -17,8 +28,6 @@
         </div>
       {% endif %}
     </div>
-
-
 
     <div class="flex-grow-1 w-100">
       <div class="d-flex flex-wrap align-items-center gap-2">
@@ -42,6 +51,7 @@
       <div class="text-muted small mt-2 d-flex flex-wrap gap-3">
         {% if created_at_str %}<span><i class="bi bi-calendar-check"></i> انضمّ: {{ created_at_str }}</span>{% endif %}
         <span><i class="bi bi-box"></i> عناصر معروضة: {{ stats.items_count or 0 }}</span>
+        {# legacy rating fields إن وجدت #}
         {% if rating_count and rating_value %}
           <span><i class="bi bi-star-fill"></i> {{ "%.1f"|format(rating_value) }} ({{ rating_count }})</span>
         {% endif %}
@@ -54,7 +64,7 @@
 
     <div class="d-flex gap-2 ms-md-auto">
       {% if session_user and session_user.id != profile_user.id %}
-        <a href="/messages/new?to={{ user.id }}" class="btn btn-primary">
+        <a href="/messages/new?to={{ profile_user.id }}" class="btn btn-primary">
           <i class="bi bi-chat-text"></i> مراسلة
         </a>
       {% endif %}
@@ -80,7 +90,7 @@
     <div class="card p-3 h-100">
       <div class="d-flex align-items-center justify-content-between">
         <div>
-          <div class="text-muted small">تقييم</div>
+          <div class="text-muted small">تقييم (قديم)</div>
           <div class="fs-4 fw-bold">
             {% if rating_count and rating_value %}{{ "%.1f"|format(rating_value) }}{% else %}—{% endif %}
           </div>
@@ -131,6 +141,7 @@
 </ul>
 
 <div class="tab-content" id="userTabsContent">
+  {# ========= تبويب العناصر ========= #}
   <div class="tab-pane fade show active" id="pane-items" role="tabpanel" aria-labelledby="tab-items">
     {% if items and items|length > 0 %}
       <div class="row g-3">
@@ -139,7 +150,7 @@
             <article class="card h-100">
               <div class="position-relative" style="aspect-ratio:16/10;overflow:hidden;border-bottom:1px solid var(--border);background:rgba(255,255,255,.04);">
                 {% if it.image_path %}
-                  <img src="/{{ it.image_path }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+                  <img src="{{ build_src(it.image_path) }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
                 {% else %}
                   <div class="d-grid place-items-center text-muted" style="width:100%;height:100%;">لا صورة</div>
                 {% endif %}
@@ -170,6 +181,7 @@
     {% endif %}
   </div>
 
+  {# ========= تبويب حول المستخدم ========= #}
   <div class="tab-pane fade" id="pane-about" role="tabpanel" aria-labelledby="tab-about">
     <div class="card p-3">
       <div class="row g-3">
@@ -192,31 +204,46 @@
     </div>
   </div>
 
-  <h5>تقييمه كمستأجر</h5>
-<div class="text-muted">⭐ {{ renter_reviews_avg }}/5 — {{ renter_reviews_count }} مراجعة</div>
-{% for r in renter_reviews %}
-  <div class="card p-2 my-2">
-    <div class="d-flex justify-content-between">
-      <div class="small text-muted">من مالك</div>
-      <div>
-        {% for _ in range(r.stars) %}⭐{% endfor %}{% for _ in range(5-r.stars) %}☆{% endfor %}
-      </div>
-    </div>
-    {% if r.comment %}<div class="mt-1">{{ r.comment }}</div>{% endif %}
-    <div class="small text-muted">{{ r.created_at.strftime("%Y-%m-%d") if r.created_at else "" }}</div>
-  </div>
-{% endfor %}
-
-
+  {# ========= تبويب المراجعات ========= #}
   <div class="tab-pane fade" id="pane-reviews" role="tabpanel" aria-labelledby="tab-reviews">
     <div class="card p-3">
-      {% if rating_count and rating_value %}
-        <div class="d-flex align-items-center gap-3 mb-3">
-          <div class="display-6 fw-bold">{{ "%.1f"|format(rating_value) }}</div>
-          <div class="text-muted">بناءً على {{ rating_count }} مراجعة</div>
+
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <h5 class="m-0">تقييمه كمستأجر</h5>
+        <span class="badge bg-light text-dark">
+          ⭐ {{ renter_reviews_avg }}/5 — {{ renter_reviews_count }} مراجعة
+        </span>
+      </div>
+
+      {% if renter_reviews_count > 0 %}
+        <div class="d-flex flex-column gap-2">
+          {% for r in renter_reviews %}
+            <div class="border rounded p-2">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="small text-muted">من مالك #{{ r.owner_id }}</div>
+                <div title="{{ r.stars }} / 5">
+                  {% for _ in range(r.stars) %}⭐{% endfor %}
+                  {% for _ in range(5 - r.stars) %}☆{% endfor %}
+                </div>
+              </div>
+              {% if r.comment %}
+                <div class="mt-1">{{ r.comment }}</div>
+              {% endif %}
+              <div class="small text-muted mt-1">{{ r.created_at.strftime("%Y-%m-%d") if r.created_at else "" }}</div>
+            </div>
+          {% endfor %}
         </div>
       {% else %}
-        <div class="text-muted text-center">لا توجد مراجعات بعد.</div>
+        <div class="text-muted">لا توجد مراجعات بعد.</div>
+      {% endif %}
+
+      {# إن كنت تريد إظهار “التقييم القديم” أيضًا داخل نفس التبويب، اترك الكتلة التالية #}
+      {% if rating_count and rating_value %}
+        <hr>
+        <div class="d-flex align-items-center gap-3">
+          <div class="display-6 fw-bold">{{ "%.1f"|format(rating_value) }}</div>
+          <div class="text-muted">(نظام التقييم القديم) — {{ rating_count }} مراجعة</div>
+        </div>
       {% endif %}
     </div>
   </div>

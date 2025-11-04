@@ -254,21 +254,26 @@
           </form>
 
           <!-- تقييم المالك للمستأجر -->
-          <div class="box mt-3">
-            <h6 class="mb-2">قيّم المستأجر</h6>
-            <form method="post" action="/reviews/owner/{{ booking.id }}" class="d-flex flex-column gap-2">
-              <div class="d-flex gap-1" id="starsO">
-                {% for n in [1,2,3,4,5] %}
-                  <input class="d-none" type="radio" name="rating" id="o{{n}}" value="{{n}}" {% if n==5 %}checked{% endif %}>
-                  <label for="o{{n}}" class="btn btn-outline-warning btn-sm"><i class="bi bi-star-fill"></i> {{n}}</label>
-                {% endfor %}
-              </div>
-              <textarea name="comment" class="form-control" rows="2" placeholder="ملاحظة عن التزام المستأجر (اختياري)"></textarea>
-              <div>
-                <button class="btn btn-primary btn-sm"><i class="bi bi-send"></i> حفظ التقييم</button>
-              </div>
-            </form>
-          </div>
+<div class="box mt-3">
+  <h6 class="mb-2">قيّم المستأجر</h6>
+  <form method="post" action="/reviews/owner/{{ booking.id }}" class="d-flex flex-column gap-2" id="ownerRateForm">
+    <div class="d-flex gap-1" id="starsO" role="radiogroup" aria-label="تقييم المستأجر">
+      {% for n in [1,2,3,4,5] %}
+        <input class="d-none" type="radio" name="rating" id="o{{n}}" value="{{n}}" {% if n==5 %}checked{% endif %}>
+        <label for="o{{n}}" class="btn btn-outline-warning btn-sm star-btn" data-val="{{n}}">
+          <i class="bi bi-star-fill"></i> {{n}}
+        </label>
+      {% endfor %}
+    </div>
+    <textarea name="comment" class="form-control" rows="2" placeholder="ملاحظة عن التزام المستأجر (اختياري)"></textarea>
+    <div>
+      <button class="btn btn-primary btn-sm" id="ownerRateSubmit">
+        <i class="bi bi-send"></i> حفظ التقييم
+      </button>
+    </div>
+  </form>
+</div>
+
 
           <div class="k small mt-2">إن لم تفتح بلاغًا ضمن المهلة، تُفرج الوديعة تلقائيًا للمستأجر حسب السياسة.</div>
 
@@ -452,6 +457,43 @@
     }
   }catch(e){}
   {% endif %}
+</script>
+
+<script>
+  // تفعيل بصري لأزرار النجوم + منع إرسال مزدوج
+  (function () {
+    try {
+      var wrap = document.getElementById('starsO');
+      if (wrap) {
+        function syncActive(val) {
+          wrap.querySelectorAll('.star-btn').forEach(function (b) {
+            b.classList.toggle('btn-warning', b.dataset.val === val);
+            b.classList.toggle('btn-outline-warning', b.dataset.val !== val);
+          });
+        }
+        wrap.addEventListener('click', function (e) {
+          var b = e.target.closest('.star-btn');
+          if (!b) return;
+          var val = b.dataset.val;
+          var inp = document.getElementById('o' + val);
+          if (inp) { inp.checked = true; }
+          syncActive(val);
+        });
+        // حالة أولية
+        var checked = wrap.querySelector('input[type=radio]:checked');
+        syncActive(checked ? checked.value : '5');
+      }
+
+      var frm = document.getElementById('ownerRateForm');
+      var btn = document.getElementById('ownerRateSubmit');
+      if (frm && btn) {
+        frm.addEventListener('submit', function () {
+          btn.disabled = true;
+          btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الحفظ…';
+        });
+      }
+    } catch (e) {}
+  })();
 </script>
 
 {% endblock %}
