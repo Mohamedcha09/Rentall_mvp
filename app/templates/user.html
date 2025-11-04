@@ -7,7 +7,6 @@
   {%- if s.startswith('http://') or s.startswith('https://') -%}
     {{- s -}}
   {%- else -%}
-    {# لو المسار يبدأ بـ / نتركه، وإلا نضيف / في أوله #}
     {{- '/' ~ s.lstrip('/') if s else '/static/placeholder.png' -}}
   {%- endif -%}
 {%- endmacro %}
@@ -53,7 +52,12 @@
         <span><i class="bi bi-box"></i> عناصر معروضة: {{ stats.items_count or 0 }}</span>
         {# legacy rating fields إن وجدت #}
         {% if rating_count and rating_value %}
-          <span><i class="bi bi-star-fill"></i> {{ "%.1f"|format(rating_value) }} ({{ rating_count }})</span>
+          <span>
+            <i class="bi bi-star-fill"></i>
+            <a class="link-underline link-underline-opacity-0" href="/users/{{ profile_user.id }}?tab=reviews" title="عرض المراجعات">
+              {{ "%.1f"|format(rating_value) }} ({{ rating_count }})
+            </a>
+          </span>
         {% endif %}
       </div>
 
@@ -86,8 +90,9 @@
       </div>
     </div>
   </div>
+
   <div class="col-6 col-md-3">
-    <div class="card p-3 h-100">
+    <div class="card p-3 h-100 position-relative">
       <div class="d-flex align-items-center justify-content-between">
         <div>
           <div class="text-muted small">تقييم (قديم)</div>
@@ -100,8 +105,11 @@
       <div class="small text-muted mt-1">
         {% if rating_count %}{{ rating_count }} مراجعة{% else %}لا توجد مراجعات{% endif %}
       </div>
+      {# جعل البطاقة كلها قابلة للنقر وتفتح تبويب المراجعات #}
+      <a href="/users/{{ profile_user.id }}?tab=reviews" class="stretched-link" aria-label="المراجعات"></a>
     </div>
   </div>
+
   <div class="col-6 col-md-3">
     <div class="card p-3 h-100">
       <div class="d-flex align-items-center justify-content-between">
@@ -115,6 +123,7 @@
       </div>
     </div>
   </div>
+
   <div class="col-6 col-md-3">
     <div class="card p-3 h-100">
       <div class="d-flex align-items-center justify-content-between">
@@ -136,8 +145,8 @@
     <button class="nav-link" id="tab-about" data-bs-toggle="tab" data-bs-target="#pane-about" type="button" role="tab">حول المستخدم</button>
   </li>
   <li class="nav-item" role="presentation">
-    <div class="card p-3 h-100 position-relative">
-  <a href="/users/{{ profile_user.id }}?tab=reviews" class="stretched-link" aria-label="المراجعات"></a>
+    {# تبويب صحيح للمراجعات #}
+    <button class="nav-link" id="tab-reviews" data-bs-toggle="tab" data-bs-target="#pane-reviews" type="button" role="tab">المراجعات</button>
   </li>
 </ul>
 
@@ -238,7 +247,6 @@
         <div class="text-muted">لا توجد مراجعات بعد.</div>
       {% endif %}
 
-      {# إن كنت تريد إظهار “التقييم القديم” أيضًا داخل نفس التبويب، اترك الكتلة التالية #}
       {% if rating_count and rating_value %}
         <hr>
         <div class="d-flex align-items-center gap-3">
