@@ -32,7 +32,6 @@ def renter_rate_page(
     db: Session = Depends(get_db),
 ):
     u = _require_login(request)
-
     bk: Booking | None = db.query(Booking).filter(Booking.id == booking_id).first()
     if not bk:
         raise HTTPException(status_code=404, detail="booking not found")
@@ -45,6 +44,7 @@ def renter_rate_page(
             "request": request,
             "title": f"تقييم الحجز #{bk.id}",
             "booking": bk,
+            "session_user": request.session.get("user"),  # ✅ مهم
         },
     )
 
