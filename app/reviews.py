@@ -12,17 +12,20 @@ from .models import Booking, ItemReview, UserReview
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 templates = Jinja2Templates(directory="app/templates")
 
+
 def _require_login(request: Request):
     u = (request.session or {}).get("user")
     if not u:
         raise HTTPException(status_code=401, detail="not logged in")
     return u
 
+
 def _int(v, d=0):
     try:
         return int(v)
-    except:
+    except Exception:
         return d
+
 
 # =============== صفحة التقييم للمستأجر (GET) ===============
 @router.get("/renter/{booking_id}")
@@ -44,9 +47,10 @@ def renter_rate_page(
             "request": request,
             "title": f"تقييم الحجز #{bk.id}",
             "booking": bk,
-            "session_user": request.session.get("user"),  # ✅ مهم
+            "session_user": request.session.get("user"),
         },
     )
+
 
 # =============== 1) المستأجر يقيّم العنصر + نعلّم (تم الإرجاع) ===============
 @router.post("/renter/{booking_id}")
@@ -70,8 +74,8 @@ def renter_rates_item(
         and_(ItemReview.booking_id == bk.id, ItemReview.rater_id == u["id"])
     ).first()
     if exists:
-       return RedirectResponse(url=f"/items/{bk.item_id}#reviews", status_code=303)
-
+        # ✳️ لا نذهب لصفحة المنشور، نرجع مباشرة لصفحة الحجز
+        return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
     stars = max(1, min(5, _int(rating, 5)))
     ir = ItemReview(
@@ -83,16 +87,16 @@ def renter_rates_item(
     )
     db.add(ir)
 
-    # تعليم "تم الإرجاع" هنا (بدون المرور على /bookings/{id}/mark-returned)
+    # تعليم "تم الإرجاع"
     if not bk.returned_at:
         bk.returned_at = datetime.utcnow()
     if bk.status not in ("returned", "in_review", "completed", "closed"):
         bk.status = "returned"
 
     db.commit()
-    # ارجع لصفحة الحجز بعد الإرسال
-    return RedirectResponse(url=f"/items/{bk.item_id}#reviews", status_code=303)
 
+    # ✳️ بعد الحفظ نرجّع المستخدم لصفحة الحجز (وليس صفحة المنشور)
+    return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
 
 # =============== 2) المالك يقيّم المستأجر ===============
@@ -122,7 +126,6 @@ def owner_rates_renter(
     if exists:
         return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
-
     stars = max(1, min(5, _int(rating, 5)))
     ur = UserReview(
         booking_id=bk.id,
@@ -134,4 +137,3 @@ def owner_rates_renter(
     db.add(ur)
     db.commit()
     return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
-
