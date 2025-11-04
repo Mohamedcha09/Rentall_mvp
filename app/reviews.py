@@ -70,7 +70,7 @@ def renter_rates_item(
         and_(ItemReview.booking_id == bk.id, ItemReview.rater_id == u["id"])
     ).first()
     if exists:
-        return RedirectResponse(url=f"/bookings/{bk.id}", status_code=303)
+        return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
     stars = max(1, min(5, _int(rating, 5)))
     ir = ItemReview(
@@ -90,7 +90,8 @@ def renter_rates_item(
 
     db.commit()
     # ارجع لصفحة الحجز بعد الإرسال
-    return RedirectResponse(url=f"/bookings/{bk.id}", status_code=303)
+    return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
+
 
 # =============== 2) المالك يقيّم المستأجر ===============
 @router.post("/owner/{booking_id}")
@@ -117,7 +118,8 @@ def owner_rates_renter(
         )
     ).first()
     if exists:
-        return RedirectResponse(url=f"/bookings/{bk.id}", status_code=303)
+        return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
+
 
     stars = max(1, min(5, _int(rating, 5)))
     ur = UserReview(
@@ -129,4 +131,5 @@ def owner_rates_renter(
     )
     db.add(ur)
     db.commit()
-    return RedirectResponse(url=f"/bookings/{bk.id}", status_code=303)
+    return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
+
