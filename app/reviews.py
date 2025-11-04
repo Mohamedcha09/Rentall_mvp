@@ -70,7 +70,7 @@ def renter_rates_item(
         and_(ItemReview.booking_id == bk.id, ItemReview.rater_id == u["id"])
     ).first()
     if exists:
-       return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
+       return RedirectResponse(url=f"/items/{bk.item_id}#reviews", status_code=303)
 
 
     stars = max(1, min(5, _int(rating, 5)))
