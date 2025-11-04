@@ -346,12 +346,28 @@
   {% if item_reviews and item_reviews|length %}
     <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px">
       {% for r in item_reviews %}
-        <div class="card-glass" style="padding:12px">
-          <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
-            <div>
-              <strong>مستأجر</strong>
-              <span class="small-muted">• {{ r.created_at.strftime("%Y-%m-%d") if r.created_at else "" }}</span>
-            </div>
+  <div class="card-glass" style="padding:12px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <img src="{{ r.rater.avatar_path or url_for('static', path='placeholder.png') }}" 
+           alt="avatar" style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:1px solid var(--stroke-soft)">
+      <div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <strong>{{ r.rater.first_name }} {{ r.rater.last_name }}</strong>
+          <span class="small-muted">• {{ r.created_at.strftime("%Y-%m-%d") if r.created_at else "" }}</span>
+        </div>
+        <div title="{{ r.stars }} / 5">
+          {% for _ in range(r.stars) %}⭐{% endfor %}
+          {% for _ in range(5 - r.stars) %}☆{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {% if r.comment %}
+      <div style="margin-top:6px;white-space:pre-wrap">{{ r.comment }}</div>
+    {% endif %}
+  </div>
+{% endfor %}
+
             <div title="{{ r.stars }} / 5">
               {% for _ in range(r.stars) %}⭐{% endfor %}
               {% for _ in range(5 - r.stars) %}☆{% endfor %}
