@@ -4,10 +4,11 @@ from fastapi import APIRouter, Depends, Request, HTTPException, Form
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
+from fastapi.templating import Jinja2Templates
 
 from .database import get_db
 from .models import Booking, ItemReview, UserReview
-
+templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 
 def _require_login(request: Request):
@@ -20,7 +21,7 @@ def _int(v, d=0):
     try: return int(v)
     except: return d
 
-# =============== 1) المستأجر يقيّم العنصر + يعلّم "تم الإرجاع" ===============
+# ====== تعديل تحويل POST الحالي ======
 @router.post("/renter/{booking_id}")
 def renter_rates_item(
     booking_id: int,
@@ -37,17 +38,14 @@ def renter_rates_item(
     if bk.renter_id != u["id"]:
         raise HTTPException(status_code=403, detail="not your booking")
 
-    # لا تسمح بالتكرار لنفس الحجز من نفس المستأجر
     exists = db.query(ItemReview).filter(
         and_(ItemReview.booking_id == bk.id, ItemReview.rater_id == u["id"])
     ).first()
     if exists:
-        # فقط ارجاع دون إنشاء
-        return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
+        # رجوع إلى صفحة الحجز
+        return RedirectResponse(url=f"/bookings/{bk.id}", status_code=303)
 
     stars = max(1, min(5, _int(rating, 5)))
-
-    # أنشئ مراجعة العنصر
     ir = ItemReview(
         booking_id=bk.id,
         item_id=bk.item_id,
@@ -57,15 +55,15 @@ def renter_rates_item(
     )
     db.add(ir)
 
-    # علّم الحجز "تم الإرجاع" إن لم يكن معلماً
+    # لو لم يكن مُعلّمًا، علّم الإرجاع
     if not bk.returned_at:
         bk.returned_at = datetime.utcnow()
     if bk.status not in ("returned", "in_review", "completed", "closed"):
         bk.status = "returned"
 
     db.commit()
-    return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
-
+    # ⬅️ بعد حفظ التقييم ارجع لصفحة الحجز
+    return RedirectResponse(url=f"/bookings/{bk.id}", status_code=303)
 
 # =============== 2) المالك يقيّم المستأجر (يظهر في بروفايل المستأجر) ===============
 @router.post("/owner/{booking_id}")
@@ -106,3 +104,25 @@ def owner_rates_renter(
     db.add(ur)
     db.commit()
     return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
+
+@router.get("/renter/{booking_id}")
+def renter_rate_page(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    u = _require_login(request)
+    bk: Booking | None = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not bk:
+        raise HTTPException(status_code=404, detail="booking not found")
+    if bk.renter_id != u["id"]:
+        raise HTTPException(status_code=403, detail="not your booking")
+
+    return templates.TemplateResponse(
+        "reviews_renter.html",
+        {
+            "request": request,
+            "title": f"تقييم الحجز #{bk.id}",
+            "booking": bk,
+        },
+    )

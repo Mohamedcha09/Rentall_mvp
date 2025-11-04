@@ -245,6 +245,7 @@ def booking_picked_up(
 # ---------------------------------------------------
 # (4) المستأجر يضغط “تم إرجاع الغرض”
 # ---------------------------------------------------
+# (4) المستأجر يضغط “تم إرجاع الغرض”
 @router.post("/bookings/{booking_id}/mark-returned")
 def booking_mark_returned(
     booking_id: int,
@@ -264,7 +265,8 @@ def booking_mark_returned(
     b.status = "returned"
     b.returned_at = datetime.utcnow()
     db.commit()
-    return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
+    # ⬅️ بعد التعليم، اذهب مباشرة لصفحة التقييم المستقلة
+    return RedirectResponse(url=f"/reviews/renter/{b.id}", status_code=303)
 
 # ---------------------------------------------------
 # (5) المالك يؤكد الإرجاع ويقرر مصير الديبو

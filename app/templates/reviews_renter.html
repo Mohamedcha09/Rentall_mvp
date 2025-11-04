@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container" style="max-width:720px">
+  <div class="card p-3 p-md-4 my-3">
+    <h4 class="mb-1">تقييم العنصر — الحجز #{{ booking.id }}</h4>
+    <div class="text-muted mb-3">اختر التقييم وأرسل ملاحظتك (اختياري)</div>
+
+    <form method="post" action="/reviews/renter/{{ booking.id }}">
+      <div class="mb-3">
+        <label class="form-label fw-bold">تقييمك</label>
+        <div class="d-flex gap-2 flex-wrap">
+          {% for n in [1,2,3,4,5] %}
+            <input class="btn-check" type="radio" name="rating" id="r{{n}}" value="{{n}}" {% if n==5 %}checked{% endif %}>
+            <label class="btn btn-outline-warning" for="r{{n}}"><i class="bi bi-star-fill"></i> {{n}}</label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-bold">تعليق (اختياري)</label>
+        <textarea class="form-control" name="comment" rows="3" placeholder="كيف كانت تجربتك؟"></textarea>
+      </div>
+
+      <div class="d-flex gap-2">
+        <a class="btn btn-secondary" href="/bookings/{{ booking.id }}">رجوع</a>
+        <button class="btn btn-primary">
+          <i class="bi bi-check2-circle"></i> إرسال التقييم
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
