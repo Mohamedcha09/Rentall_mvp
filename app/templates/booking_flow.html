@@ -220,17 +220,17 @@
       {% if booking.status in ['picked_up'] %}
   {% if is_renter %}
     <h5>الغرض لديك الآن</h5>
-    <div class="hint">عند إرجاع الغرض للمالك، اضغط الزر أدناه. بعدها سنأخذك مباشرة لصفحة التقييم.</div>
+    <div class="hint">عند إرجاع الغرض للمالك، اضغط الزر أدناه. بعدها ستنتقل لصفحة التقييم.</div>
 
-    <form class="mt-2" method="post" action="/bookings/{{ booking.id }}/mark-returned">
-      <button class="btn btn-warning btn-wide">
-        <i class="bi bi-box-arrow-in-left"></i> تم إرجاع الغرض
-      </button>
-    </form>
+    <!-- انتقل مباشرةً لصفحة التقييم -->
+    <a class="btn btn-warning btn-wide" href="/reviews/renter/{{ booking.id }}">
+      <i class="bi bi-box-arrow-in-left"></i> تم إرجاع الغرض — تابع للتقييم
+    </a>
   {% elif is_owner %}
     <div class="hint">المستأجر استلم الغرض. عند إرجاعه ستظهر لك خطوات تأكيد الإرجاع والوديعة.</div>
   {% endif %}
 {% endif %}
+
 
       {# ======= المرحلة: تم الإرجاع / قيد مراجعة الوديعة ======= #}
       {% if booking.status in ['returned', 'in_review'] %}

@@ -8,8 +8,9 @@ from fastapi.templating import Jinja2Templates
 
 from .database import get_db
 from .models import Booking, ItemReview, UserReview
-templates = Jinja2Templates(directory="app/templates")
+
 router = APIRouter(prefix="/reviews", tags=["reviews"])
+templates = Jinja2Templates(directory="app/templates")
 
 def _require_login(request: Request):
     u = (request.session or {}).get("user")
@@ -18,10 +19,36 @@ def _require_login(request: Request):
     return u
 
 def _int(v, d=0):
-    try: return int(v)
-    except: return d
+    try:
+        return int(v)
+    except:
+        return d
 
-# ====== تعديل تحويل POST الحالي ======
+# =============== صفحة التقييم للمستأجر (GET) ===============
+@router.get("/renter/{booking_id}")
+def renter_rate_page(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    u = _require_login(request)
+
+    bk: Booking | None = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not bk:
+        raise HTTPException(status_code=404, detail="booking not found")
+    if bk.renter_id != u["id"]:
+        raise HTTPException(status_code=403, detail="not your booking")
+
+    return templates.TemplateResponse(
+        "reviews_renter.html",
+        {
+            "request": request,
+            "title": f"تقييم الحجز #{bk.id}",
+            "booking": bk,
+        },
+    )
+
+# =============== 1) المستأجر يقيّم العنصر + نعلّم (تم الإرجاع) ===============
 @router.post("/renter/{booking_id}")
 def renter_rates_item(
     booking_id: int,
@@ -38,11 +65,11 @@ def renter_rates_item(
     if bk.renter_id != u["id"]:
         raise HTTPException(status_code=403, detail="not your booking")
 
+    # منع تكرار تقييم نفس الحجز من نفس المستأجر
     exists = db.query(ItemReview).filter(
         and_(ItemReview.booking_id == bk.id, ItemReview.rater_id == u["id"])
     ).first()
     if exists:
-        # رجوع إلى صفحة الحجز
         return RedirectResponse(url=f"/bookings/{bk.id}", status_code=303)
 
     stars = max(1, min(5, _int(rating, 5)))
@@ -55,17 +82,17 @@ def renter_rates_item(
     )
     db.add(ir)
 
-    # لو لم يكن مُعلّمًا، علّم الإرجاع
+    # تعليم "تم الإرجاع" هنا (بدون المرور على /bookings/{id}/mark-returned)
     if not bk.returned_at:
         bk.returned_at = datetime.utcnow()
     if bk.status not in ("returned", "in_review", "completed", "closed"):
         bk.status = "returned"
 
     db.commit()
-    # ⬅️ بعد حفظ التقييم ارجع لصفحة الحجز
+    # ارجع لصفحة الحجز بعد الإرسال
     return RedirectResponse(url=f"/bookings/{bk.id}", status_code=303)
 
-# =============== 2) المالك يقيّم المستأجر (يظهر في بروفايل المستأجر) ===============
+# =============== 2) المالك يقيّم المستأجر ===============
 @router.post("/owner/{booking_id}")
 def owner_rates_renter(
     booking_id: int,
@@ -82,7 +109,6 @@ def owner_rates_renter(
     if bk.owner_id != u["id"]:
         raise HTTPException(status_code=403, detail="not your booking")
 
-    # منع التكرار: تقييم واحد من نفس المالك لنفس المستأجر على نفس الحجز
     exists = db.query(UserReview).filter(
         and_(
             UserReview.booking_id == bk.id,
@@ -91,7 +117,7 @@ def owner_rates_renter(
         )
     ).first()
     if exists:
-        return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
+        return RedirectResponse(url=f"/bookings/{bk.id}", status_code=303)
 
     stars = max(1, min(5, _int(rating, 5)))
     ur = UserReview(
@@ -103,26 +129,4 @@ def owner_rates_renter(
     )
     db.add(ur)
     db.commit()
-    return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
-
-@router.get("/renter/{booking_id}")
-def renter_rate_page(
-    booking_id: int,
-    request: Request,
-    db: Session = Depends(get_db),
-):
-    u = _require_login(request)
-    bk: Booking | None = db.query(Booking).filter(Booking.id == booking_id).first()
-    if not bk:
-        raise HTTPException(status_code=404, detail="booking not found")
-    if bk.renter_id != u["id"]:
-        raise HTTPException(status_code=403, detail="not your booking")
-
-    return templates.TemplateResponse(
-        "reviews_renter.html",
-        {
-            "request": request,
-            "title": f"تقييم الحجز #{bk.id}",
-            "booking": bk,
-        },
-    )
+    return RedirectResponse(url=f"/bookings/{bk.id}", status_code=303)
