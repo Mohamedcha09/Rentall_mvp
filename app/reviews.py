@@ -91,8 +91,7 @@ def renter_rates_item(
 
     db.commit()
     # ارجع لصفحة الحجز بعد الإرسال
-    return RedirectResponse(url=f"/items/{bk.item_id}#reviews", status_code=303)
-
+    return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
 
 # =============== 2) المالك يقيّم المستأجر ===============
