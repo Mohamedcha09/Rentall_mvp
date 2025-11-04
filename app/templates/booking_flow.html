@@ -279,9 +279,13 @@
   {% else %}
     <!-- ✍️ أول مرة: النموذج فعّال -->
     <form method="post" action="/reviews/owner/{{ booking.id }}" class="d-flex flex-column gap-2" id="ownerRateForm">
+      <!-- ✅ حقل مخفي مضمون الإرسال -->
+      <input type="hidden" name="rating" id="ownerRatingVal" value="5">
+
       <div class="d-flex gap-1" id="starsO" role="radiogroup" aria-label="تقييم المستأجر">
         {% for n in [1,2,3,4,5] %}
-          <input class="d-none" type="radio" name="rating" id="o{{n}}" value="{{n}}" {% if n==5 %}checked{% endif %}>
+          <!-- الراديوات بلا name؛ استخدامها بصري فقط -->
+          <input class="d-none" type="radio" id="o{{n}}" value="{{n}}" {% if n==5 %}checked{% endif %}>
           <label for="o{{n}}" class="btn btn-outline-warning btn-sm star-btn" data-val="{{n}}">
             <i class="bi bi-star-fill"></i> {{n}}
           </label>
@@ -355,7 +359,8 @@
       <div class="box mt-3">
         <h6 class="mb-2">العنصر</h6>
         <div class="d-flex gap-3">
-          <img src="{{ (('/' ~ item.image_path) if item.image_path and item.image_path[0] != '/' else (item.image_path or '/static/placeholder.jpg')) }}"
+          <!-- ✅ استخدام build_src لمنع /https%3A/… -->
+          <img src="{{ (item and item.image_path) and (item.image_path.startswith('http://') or item.image_path.startswith('https://')) and item.image_path or ('/' ~ (item.image_path or '').lstrip('/')) if item else '/static/placeholder.jpg' }}"
                style="width:96px;height:96px;object-fit:cover;border-radius:10px" alt="">
           <div>
             <div class="fw-bold">{{ item.title }}</div>
@@ -491,25 +496,30 @@
   {% endif %}
 </script>
 
+<!-- نجوم التقييم: ربط بصري + إرسال آمن + تعطيل بعد الإرسال -->
 <script>
-  // تفعيل بصري لأزرار النجوم + منع إرسال مزدوج
   (function () {
     try {
       var wrap = document.getElementById('starsO');
+      var hidden = document.getElementById('ownerRatingVal');
+
+      function syncActive(val) {
+        if (hidden) hidden.value = val;              // القيمة التي ستُرسل
+        if (!wrap) return;
+        wrap.querySelectorAll('.star-btn').forEach(function (b) {
+          b.classList.toggle('btn-warning', b.dataset.val === val);
+          b.classList.toggle('btn-outline-warning', b.dataset.val !== val);
+        });
+      }
+
       if (wrap) {
-        function syncActive(val) {
-          wrap.querySelectorAll('.star-btn').forEach(function (b) {
-            b.classList.toggle('btn-warning', b.dataset.val === val);
-            b.classList.toggle('btn-outline-warning', b.dataset.val !== val);
-          });
-        }
         wrap.addEventListener('click', function (e) {
           var b = e.target.closest('.star-btn');
           if (!b) return;
           var val = b.dataset.val;
           var inp = document.getElementById('o' + val);
-          if (inp) { inp.checked = true; }
-          syncActive(val);
+          if (inp) inp.checked = true;              // للتناسق البصري فقط
+          syncActive(val);                           // تحديث الحقل المخفي
         });
         // حالة أولية
         var checked = wrap.querySelector('input[type=radio]:checked');
@@ -520,69 +530,18 @@
       var btn = document.getElementById('ownerRateSubmit');
       if (frm && btn) {
         frm.addEventListener('submit', function () {
+          // تعطيل الزر والمدخلات (منع الإرسال المزدوج)
           btn.disabled = true;
           btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الحفظ…';
-        });
-      }
-    } catch (e) {}
-  })();
-</script>
-<script>
-  (function () {
-    try {
-      var wrap = document.getElementById('starsO');
-      if (wrap) {
-        function syncActive(val) {
-          wrap.querySelectorAll('.star-btn').forEach(function (b) {
-            b.classList.toggle('btn-warning', b.dataset.val === val);
-            b.classList.toggle('btn-outline-warning', b.dataset.val !== val);
-          });
-        }
-        wrap.addEventListener('click', function (e) {
-          var b = e.target.closest('.star-btn');
-          if (!b) return;
-          var val = b.dataset.val;
-          var inp = document.getElementById('o' + val);
-          if (inp) { inp.checked = true; }
-          syncActive(val);
-        });
-        var checked = wrap.querySelector('input[type=radio]:checked');
-        syncActive(checked ? checked.value : '5');
-      }
-
-      var frm = document.getElementById('ownerRateForm');
-      var btn = document.getElementById('ownerRateSubmit');
-      if (frm && btn) {
-        frm.addEventListener('submit', function () {
-          // تعطيل الزر
-          btn.disabled = true;
-          btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الحفظ…';
-
-          // 🔒 تعطيل كل مدخلات النموذج فورًا (نجوم + تعليق)
           frm.querySelectorAll('input, textarea, button, .star-btn').forEach(function(el){
-            if (el.tagName === 'TEXTAREA') { el.setAttribute('readonly', 'readonly'); }
+            if (el.tagName === 'TEXTAREA') el.setAttribute('readonly','readonly');
             el.classList.add('disabled');
-            el.setAttribute('disabled', 'disabled');
+            el.setAttribute('disabled','disabled');
           });
-
-          // 🟡 (اختياري) استبدال شريط النجوم بقراءة فقط إلى حين إعادة التحميل
-          var chosen = (frm.querySelector('input[name=rating]:checked') || {}).value || '5';
-          var comment = (frm.querySelector('textarea[name=comment]') || {}).value || '';
-          var preview = document.createElement('div');
-          preview.className = 'alert alert-success mt-2';
-          preview.innerHTML =
-            'تم حفظ التقييم… <span class="ms-1">⭐ '.concat(chosen, '/5</span>') +
-            (comment ? '<div class="mt-1 small text-muted">'+ comment.replace(/</g,'&lt;') +'</div>' : '');
-          // ضع المعاينة بعد العنوان مباشرة
-          var title = frm.previousElementSibling; // <h6 class="mb-2">قيّم المستأجر</h6>
-          if (title && title.tagName === 'H6') {
-            title.insertAdjacentElement('afterend', preview);
-          }
         });
       }
     } catch (e) {}
   })();
 </script>
-
 
 {% endblock %}
