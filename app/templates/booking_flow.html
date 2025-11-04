@@ -223,13 +223,17 @@
           <div class="hint">عند إرجاع الغرض للمالك، اضغط الزر ثم قيّم تجربتك.</div>
 
           <!-- زر يفتح مودال التقييم + الإرجاع -->
-          <button class="btn btn-warning btn-wide" data-bs-toggle="modal" data-bs-target="#rateRenterModal">
+          <button class="btn btn-warning btn-wide"
+        data-bs-toggle="modal"
+        data-bs-target="#rateRenterModal-{{ booking.id }}">
+
             <i class="bi bi-stars"></i> تم إرجاع الغرض + تقييم
           </button>
 
           <!-- ✅ مودال واحد فقط: تقييم + تعليم الإرجاع -->
-          <div class="modal fade" id="rateRenterModal" tabindex="-1" aria-hidden="true"
-               data-bs-backdrop="static" data-bs-keyboard="false">
+          <div class="modal fade" id="rateRenterModal-{{ booking.id }}" tabindex="-1" aria-hidden="true"
+     data-bs-backdrop="static" data-bs-keyboard="false">
+
             <div class="modal-dialog">
               <form class="modal-content" method="post" action="/reviews/renter/{{ booking.id }}">
                 <div class="modal-header">
