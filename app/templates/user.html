@@ -136,7 +136,8 @@
     <button class="nav-link" id="tab-about" data-bs-toggle="tab" data-bs-target="#pane-about" type="button" role="tab">حول المستخدم</button>
   </li>
   <li class="nav-item" role="presentation">
-    <button class="nav-link" id="tab-reviews" data-bs-toggle="tab" data-bs-target="#pane-reviews" type="button" role="tab">المراجعات</button>
+    <div class="card p-3 h-100 position-relative">
+  <a href="/users/{{ profile_user.id }}?tab=reviews" class="stretched-link" aria-label="المراجعات"></a>
   </li>
 </ul>
 
@@ -250,4 +251,18 @@
 </div>
 
 <div class="py-2"></div>
+
+<script>
+(function(){
+  try{
+    var p = new URLSearchParams(location.search);
+    var want = p.get('tab') || (location.hash || '').replace('#','');
+    if(want === 'reviews'){
+      var btn = document.getElementById('tab-reviews');
+      if(btn){ btn.click(); }
+    }
+  }catch(e){}
+})();
+</script>
+
 {% endblock %}

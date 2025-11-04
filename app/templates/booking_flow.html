@@ -256,23 +256,55 @@
           <!-- تقييم المالك للمستأجر -->
 <div class="box mt-3">
   <h6 class="mb-2">قيّم المستأجر</h6>
-  <form method="post" action="/reviews/owner/{{ booking.id }}" class="d-flex flex-column gap-2" id="ownerRateForm">
-    <div class="d-flex gap-1" id="starsO" role="radiogroup" aria-label="تقييم المستأجر">
-      {% for n in [1,2,3,4,5] %}
-        <input class="d-none" type="radio" name="rating" id="o{{n}}" value="{{n}}" {% if n==5 %}checked{% endif %}>
-        <label for="o{{n}}" class="btn btn-outline-warning btn-sm star-btn" data-val="{{n}}">
-          <i class="bi bi-star-fill"></i> {{n}}
-        </label>
-      {% endfor %}
+
+  {% if owner_already_rated and owner_prev_review %}
+    <!-- ✅ سبق وقيّمت: عرض قراءة فقط -->
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <div class="text-warning">
+        {% for _ in range(owner_prev_review.stars) %}⭐{% endfor %}
+        {% for _ in range(5 - owner_prev_review.stars) %}☆{% endfor %}
+      </div>
+      <span class="small text-muted">تم حفظ تقييمك لهذا الحجز.</span>
     </div>
-    <textarea name="comment" class="form-control" rows="2" placeholder="ملاحظة عن التزام المستأجر (اختياري)"></textarea>
-    <div>
-      <button class="btn btn-primary btn-sm" id="ownerRateSubmit">
-        <i class="bi bi-send"></i> حفظ التقييم
-      </button>
+    {% if owner_prev_review.comment %}
+      <div class="p-2 rounded" style="border:1px solid var(--border);background:rgba(255,255,255,.04)">
+        {{ owner_prev_review.comment }}
+      </div>
+    {% endif %}
+    <div class="mt-2">
+      <a class="btn btn-outline-primary btn-sm" href="/users/{{ booking.renter_id }}?tab=reviews">
+        عرض كل مراجعات المستأجر
+      </a>
     </div>
-  </form>
+  {% else %}
+    <!-- ✍️ أول مرة: النموذج فعّال -->
+    <form method="post" action="/reviews/owner/{{ booking.id }}" class="d-flex flex-column gap-2" id="ownerRateForm">
+      <div class="d-flex gap-1" id="starsO" role="radiogroup" aria-label="تقييم المستأجر">
+        {% for n in [1,2,3,4,5] %}
+          <input class="d-none" type="radio" name="rating" id="o{{n}}" value="{{n}}" {% if n==5 %}checked{% endif %}>
+          <label for="o{{n}}" class="btn btn-outline-warning btn-sm star-btn" data-val="{{n}}">
+            <i class="bi bi-star-fill"></i> {{n}}
+          </label>
+        {% endfor %}
+      </div>
+      <textarea name="comment" class="form-control" rows="2" placeholder="ملاحظة عن التزام المستأجر (اختياري)"></textarea>
+      <div>
+        <button class="btn btn-primary btn-sm" id="ownerRateSubmit">
+          <i class="bi bi-send"></i> حفظ التقييم
+        </button>
+      </div>
+    </form>
+  {% endif %}
 </div>
+
+<!-- 🔎 ملخص تقييمه كمستأجر + رابط مباشر -->
+<div class="hint mt-2">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div class="small">تقييمه كمستأجر: ⭐ {{ renter_reviews_avg }}/5 — {{ renter_reviews_count }} مراجعة</div>
+    <a class="btn btn-ghost btn-sm" href="/users/{{ booking.renter_id }}?tab=reviews">فتح صفحة المراجعات</a>
+  </div>
+</div>
+
 
 
           <div class="k small mt-2">إن لم تفتح بلاغًا ضمن المهلة، تُفرج الوديعة تلقائيًا للمستأجر حسب السياسة.</div>

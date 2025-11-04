@@ -14,7 +14,7 @@ from sqlalchemy import text
 router = APIRouter(tags=["bookings"])
 
 # ---------------------------------------------------
-# Helper: احضار المستخدم من السيشن (يرجع None إن لم يسجّل)
+# Helpers: التقييمات (جدول + إدخال + قراءات صغيرة)
 # ---------------------------------------------------
 def _ensure_reviews_table(db: Session):
     sql = """
@@ -37,6 +37,18 @@ def _insert_review(db: Session, **kw):
     vals = ",".join([f":{k}" for k in kw.keys()])
     db.execute(text(f"INSERT INTO reviews({keys}) VALUES({vals})"), kw)
 
+# helpers قراءة سريعة
+def _row_or_none(db: Session, sql: str, **p):
+    r = db.execute(text(sql), p).fetchone()
+    return dict(r._mapping) if r else None
+
+def _scalar_or_zero(db: Session, sql: str, **p) -> int:
+    r = db.execute(text(sql), p).scalar()
+    return int(r or 0)
+
+# ---------------------------------------------------
+# Helper: احضار المستخدم من السيشن (يرجع None إن لم يسجّل)
+# ---------------------------------------------------
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
     uid = data.get("id")
@@ -83,6 +95,46 @@ def booking_flow_page(
     owner_is_you = is_owner
     renter_is_you = is_renter
 
+    # ===== معلومات التقييم: هل سبق أن قيّم المالك هذا المستأجر في هذا الحجز؟ + ملخص تقييمه كمستأجر
+    owner_already_rated = False
+    owner_prev_review = None
+    renter_reviews_avg = 0.0
+    renter_reviews_count = 0
+
+    try:
+        _ensure_reviews_table(db)
+
+        if is_owner:
+            owner_prev_review = _row_or_none(
+                db,
+                """
+                SELECT id, rating AS stars, comment, created_at
+                FROM reviews
+                WHERE booking_id=:bid AND reviewer_id=:rid
+                      AND reviewee_user_id=:uid AND role='owner_to_user'
+                LIMIT 1
+                """,
+                bid=b.id, rid=user.id, uid=b.renter_id
+            )
+            owner_already_rated = bool(owner_prev_review)
+
+        if b.renter_id:
+            renter_reviews_avg = db.execute(
+                text("SELECT ROUND(AVG(rating),2) FROM reviews WHERE role='owner_to_user' AND reviewee_user_id=:u"),
+                {"u": b.renter_id}
+            ).scalar() or 0.0
+            renter_reviews_count = _scalar_or_zero(
+                db,
+                "SELECT COUNT(*) FROM reviews WHERE role='owner_to_user' AND reviewee_user_id=:u",
+                u=b.renter_id
+            )
+    except Exception:
+        # لا تكسر الصفحة لو الجدول غير موجود أو قاعدة نوع مختلف
+        owner_already_rated = False
+        owner_prev_review = None
+        renter_reviews_avg = 0.0
+        renter_reviews_count = 0
+
     # تمرير كل شيء للقالب
     return request.app.templates.TemplateResponse(
         "booking_flow.html",
@@ -95,6 +147,11 @@ def booking_flow_page(
             "item_title": item_title,
             "is_owner": is_owner,
             "is_renter": is_renter,
+            # إضافات التقييم:
+            "owner_already_rated": owner_already_rated,
+            "owner_prev_review": owner_prev_review,
+            "renter_reviews_avg": renter_reviews_avg,
+            "renter_reviews_count": renter_reviews_count,
             "category_label": category_label if "category_label" in globals() else (lambda c: c),
         },
     )
@@ -245,7 +302,6 @@ def booking_picked_up(
 # ---------------------------------------------------
 # (4) المستأجر يضغط “تم إرجاع الغرض”
 # ---------------------------------------------------
-# (4) المستأجر يضغط “تم إرجاع الغرض”
 @router.post("/bookings/{booking_id}/mark-returned")
 def booking_mark_returned(
     booking_id: int,
@@ -270,8 +326,6 @@ def booking_mark_returned(
 
 # ---------------------------------------------------
 # (5) المالك يؤكد الإرجاع ويقرر مصير الديبو
-#     - action = ok          → إرجاع الديبو بالكامل
-#     - action = charge      → اقتطاع amount من الديبو (جزئي/كامل)
 # ---------------------------------------------------
 @router.post("/bookings/{booking_id}/owner-confirm-return")
 def owner_confirm_return(
@@ -325,7 +379,7 @@ def owner_confirm_return(
     return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
 
 # ---------------------------------------------------
-# قائمة الحجوزات (مختصر للمالك/المستأجر) — اختياري موجود لديك مسبقًا
+# قائمة الحجوزات (مختصر للمالك/المستأجر)
 # ---------------------------------------------------
 @router.get("/bookings")
 def bookings_index(
@@ -343,9 +397,8 @@ def bookings_index(
     q = q.order_by(Booking.created_at.desc())
     bookings = q.all()
 
-    # صفحة بسيطة (يمكنك إبقاء صفحتك الحالية)
     return request.app.templates.TemplateResponse(
-        "bookings_index.html",  # لو لا يوجد عندك هذا القالب، أنشئ واحدًا بسيطًا أو غيّر الاسم لقالبك الحالي
+        "bookings_index.html",
         {
             "request": request,
             "title": "حجوزاتي" if view == "renter" else "حجوزات على ممتلكاتي",
@@ -355,7 +408,9 @@ def bookings_index(
         },
     )
 
-
+# ---------------------------------------------------
+# تقييم المستأجر للعنصر (بعد الإرجاع)
+# ---------------------------------------------------
 @router.post("/reviews/renter/{booking_id}")
 def renter_review_and_return(
     booking_id: int,
@@ -392,7 +447,9 @@ def renter_review_and_return(
     db.commit()
     return RedirectResponse(url=f"/bookings/{b.id}?r_reviewed=1", status_code=303)
 
-
+# ---------------------------------------------------
+# تقييم المالك للمستأجر — مرة واحدة فقط لكل حجز
+# ---------------------------------------------------
 @router.post("/reviews/owner/{booking_id}")
 def owner_review_renter(
     booking_id: int,
@@ -410,6 +467,20 @@ def owner_review_renter(
         return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
 
     _ensure_reviews_table(db)
+
+    # منع التقييم المكرر لنفس الحجز من نفس المالك لنفس المستخدم
+    exists = _scalar_or_zero(
+        db,
+        """
+        SELECT COUNT(*) FROM reviews
+        WHERE booking_id=:bid AND reviewer_id=:rid
+              AND reviewee_user_id=:uid AND role='owner_to_user'
+        """,
+        bid=b.id, rid=user.id, uid=b.renter_id
+    )
+    if exists:
+        return RedirectResponse(url=f"/bookings/{b.id}?o_reviewed=1", status_code=303)
+
     _insert_review(
         db,
         booking_id=b.id,
