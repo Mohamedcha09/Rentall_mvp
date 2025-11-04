@@ -544,4 +544,59 @@
   })();
 </script>
 
+<script>
+  (function () {
+    try {
+      var wrap   = document.getElementById('starsO');
+      var hidden = document.getElementById('ownerRatingVal');
+
+      function syncActive(val) {
+        if (hidden) hidden.value = val; // هذه القيمة هي التي ستُرسل
+        if (!wrap) return;
+        wrap.querySelectorAll('.star-btn').forEach(function (b) {
+          b.classList.toggle('btn-warning',          b.dataset.val === val);
+          b.classList.toggle('btn-outline-warning',  b.dataset.val !== val);
+        });
+      }
+
+      if (wrap) {
+        wrap.addEventListener('click', function (e) {
+          var b = e.target.closest('.star-btn');
+          if (!b) return;
+          var val = b.dataset.val;
+          var inp = document.getElementById('o' + val); // راديوات للعرض فقط
+          if (inp) inp.checked = true;
+          syncActive(val);
+        });
+        var checked = wrap.querySelector('input[type=radio]:checked');
+        syncActive(checked ? checked.value : '5');
+      }
+
+      var frm = document.getElementById('ownerRateForm');
+      var btn = document.getElementById('ownerRateSubmit');
+      if (frm && btn) {
+        frm.addEventListener('submit', function () {
+          // تأكيد القيمة قبل الإرسال
+          var chosen = (wrap && wrap.querySelector('input[type=radio]:checked'))
+                        ? wrap.querySelector('input[type=radio]:checked').value
+                        : (hidden && hidden.value) || '5';
+          if (hidden) hidden.value = chosen;
+
+          // عطّل فقط ما لا يؤثر على الإرسال
+          btn.disabled = true;
+          btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الحفظ…';
+
+          // لا تلمس input[name=rating] إطلاقًا
+          frm.querySelectorAll('#starsO input[type=radio], textarea, .star-btn').forEach(function (el) {
+            if (el.tagName === 'TEXTAREA') el.setAttribute('readonly', 'readonly');
+            el.classList.add('disabled');
+            el.setAttribute('disabled', 'disabled');
+          });
+        });
+      }
+    } catch (e) {}
+  })();
+</script>
+
+
 {% endblock %}
