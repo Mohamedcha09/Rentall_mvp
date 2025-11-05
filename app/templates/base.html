@@ -417,6 +417,102 @@
     }
   </style>
 
+  <style>
+/* 1) اقتل الطبقة البيضاء تحت الشريط تمامًا */
+#safearea-white-under-navbar{ display:none !important; }
+body::after{ display:none !important; }
+
+/* 2) شريط سفلي — ستايل زجاجي رمادي (Telegram-ish) */
+@media (max-width: 768px){
+  :root{ --tabbar-lift: 27px; }
+
+  .mobile-tabbar{
+    position: fixed !important;
+    left: 10px !important; right: 10px !important;
+    bottom: calc(10px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important;
+    height: 64px !important;
+
+    /* زجاج رمادي شفاف مثل تيليجرام */
+    background: rgba(44, 44, 46, 0.65) !important; /* iOS system gray */
+    backdrop-filter: blur(18px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+
+    border-radius: 28px !important;
+    /* حافة داخلية خفيفة + ظل ناعم */
+    box-shadow:
+      0 8px 20px rgba(0,0,0,0.35),
+      0 0 0 1px rgba(255,255,255,0.08) inset !important;
+
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+    align-items: center !important;
+    padding: 8px 12px !important;
+    border-top: none !important;
+    z-index: 2147483647 !important;
+
+    /* الرفع فوق الهوم-إنديكيتر */
+    transform: translateY(calc(-1 * var(--tabbar-lift)));
+    transition: transform .25s ease;
+  }
+
+  /* ألوان النصوص فوق الخلفية الغامقة */
+  .mobile-tabbar a{
+    position: relative !important;
+    height: 100% !important;
+    border-radius: 18px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 3px !important;
+    text-decoration: none !important;
+    color: #f2f2f7 !important;   /* iOS label on dark */
+    font-size: 11px !important;
+    line-height: 1 !important;
+  }
+
+  .mobile-tabbar .tab-img{
+    width: 24px !important; height: 24px !important;
+    object-fit: contain !important;
+    opacity: .95 !important;
+    transform: translateZ(0);
+    transition: opacity .15s, transform .15s !important;
+    filter: drop-shadow(0 1px 0 rgba(0,0,0,.25)); /* لمعان بسيط */
+  }
+
+  /* تبويب مفعّل: حبة فاتحة شفافة مثل تيليجرام */
+  .mobile-tabbar a.is-active{
+    color: #ffffff !important;
+    background: rgba(255,255,255,0.12) !important;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.18) inset,
+      0 2px 8px rgba(0,0,0,0.25) !important;
+  }
+  .mobile-tabbar a.is-active .tab-img{
+    opacity: 1 !important;
+    transform: scale(1.06) !important;
+  }
+
+  /* شارة عدّاد */
+  .mobile-tabbar .badge-dot{
+    position: absolute !important; top: 6px !important; transform: translateX(12px);
+    min-width: 20px; height: 20px; line-height: 20px; font-size: 11px;
+    border-radius: 999px; background: #ff3b30; color: #fff;
+    box-shadow: 0 2px 6px rgba(255,59,48,0.35);
+    text-align:center;
+  }
+}
+
+/* 3) في الوضع الداكن أبقِ نفس الخلفية الزجاجية (لا تُبدّلها لأبيض) */
+[data-theme="dark"] .mobile-tabbar{
+  background: rgba(28,28,30,0.7) !important;
+  box-shadow:
+    0 8px 20px rgba(0,0,0,0.45),
+    0 0 0 1px rgba(255,255,255,0.08) inset !important;
+}
+</style>
+
+
   {% block head %}{% endblock %}
 </head>
 <body data-auth="{{ '1' if session_user else '0' }}">
