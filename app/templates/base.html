@@ -548,8 +548,17 @@
 
 
 </head>
+
 {# ===== Helper: يبني src صحيح سواء https أو مسار محلي ===== #}
 {% macro build_src(p) -%}
+  {%- set s = (p or '') -%}
+  {%- if s.startswith('http://') or s.startswith('https://') -%}
+    {{- s -}}
+  {%- else -%}
+    {{- '/' ~ s.lstrip('/') if s else '' -}}
+  {%- endif -%}
+{%- endmacro %}
+
 {# ===== Helper: avatar_src — يُعيد رابط آمن لصورة الحساب ===== #}
 {% macro avatar_src(p) -%}
   {%- set s = (p or '') -%}
@@ -562,13 +571,6 @@
   {%- endif -%}
 {%- endmacro %}
 
-  {%- set s = (p or '') -%}
-  {%- if s.startswith('http://') or s.startswith('https://') -%}
-    {{- s -}}
-  {%- else -%}
-    {{- '/' ~ s.lstrip('/') if s else '' -}}
-  {%- endif -%}
-{%- endmacro %}
 
 <body data-auth="{{ '1' if session_user else '0' }}" class="{% if show_tabbar %}has-tabbar{% endif %}">
   <div id="page-wrapper">
