@@ -532,12 +532,23 @@ bien mainetain ou non !<!-- app/templates/base.html -->
 </style>
 
 
-  {% block head %}{% endblock %}
+{% block head %}{% endblock %}
 {% set _path = request.url.path if request else '' %}
 {% set is_home = (_path == '/' or _path == '') %}
 
+{# اخفِ التاب بار فقط في الإشعارات/التحويلات/الأدمين #}
+{% set hide_tabbar = request and (
+    _path.startswith('/notifications') or
+    _path.startswith('/payout') or
+    _path.startswith('/admin')
+) %}
+
+{# أظهره في كل مكان آخر #}
+{% set show_tabbar = (not hide_tabbar) %}
+
+
 </head>
-<body data-auth="{{ '1' if session_user else '0' }}" class="{% if is_home %}has-tabbar{% endif %}">
+<body data-auth="{{ '1' if session_user else '0' }}" class="{% if show_tabbar %}has-tabbar{% endif %}">
   <div id="page-wrapper">
 
   <!-- ===== Topbar ===== -->
@@ -766,7 +777,7 @@ bien mainetain ou non !<!-- app/templates/base.html -->
 
 
   <!-- شريط سفلي (موبايل) -->
-{% if is_home %}
+{% if show_tabbar %}
   <nav class="mobile-tabbar d-lg-none">
     <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
       <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home"><span>الرئيسية</span>
@@ -793,6 +804,7 @@ bien mainetain ou non !<!-- app/templates/base.html -->
     {% endif %}
   </nav>
 {% endif %}
+
 
   </div><!-- /#page-wrapper -->
 
