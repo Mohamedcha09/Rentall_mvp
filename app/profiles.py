@@ -1,60 +1,98 @@
 # app/profiles.py
+from __future__ import annotations
+
 from fastapi import APIRouter, Request, Depends, UploadFile, File, Form
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime
-import os, secrets, shutil
+import os, secrets
 
 from .database import get_db
-from .models import User, Item, Rating
+from .models import User, Item, Rating, Document
 from .utils_badges import get_user_badges
-# --- Cloudinary (مثبّت لديك) ---
+
+# --- Cloudinary ---
 import cloudinary
 import cloudinary.uploader
 
-# يقرأ من CLOUDINARY_URL أو من المفاتيح الفردية إن أحببت
-cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME")
-api_key    = os.environ.get("CLOUDINARY_API_KEY")
-api_secret = os.environ.get("CLOUDINARY_API_SECRET")
-if cloud_name and api_key and api_secret:
+CLOUD_NAME = os.environ.get("CLOUDINARY_CLOUD_NAME")
+API_KEY    = os.environ.get("CLOUDINARY_API_KEY")
+API_SECRET = os.environ.get("CLOUDINARY_API_SECRET")
+
+if CLOUD_NAME and API_KEY and API_SECRET:
     cloudinary.config(
-        cloud_name=cloud_name,
-        api_key=api_key,
-        api_secret=api_secret,
+        cloud_name=CLOUD_NAME,
+        api_key=API_KEY,
+        api_secret=API_SECRET,
         secure=True,
     )
 
-# --- استبدل الدالة القديمة بهذه ---
-def _upload_cloudinary(fileobj: UploadFile, folder: str = "sevor/avatars") -> str | None:
+# -----------------------------
+# Helpers: Cloudinary Uploaders
+# -----------------------------
+def _ensure_cloudinary_keys() -> None:
+    if not (CLOUD_NAME and API_KEY and API_SECRET):
+        raise RuntimeError("Cloudinary credentials missing on server")
+
+def _upload_avatar_cloudinary(fileobj: UploadFile, *, folder: str = "sevor/avatars") -> str:
     """
-    يرفع الملف إلى Cloudinary ويُرجع secure_url.
-    يقبل الملفات حتى لو بدون امتداد، ويتحقق من نوع الـ MIME بدل الامتداد.
+    يرفع الأفاتار إلى Cloudinary ويعيد secure_url.
+    يَقبل HEIC/HEIF ويُحوّل الناتج إلى JPG ثابت لكسر مشاكل الكاش/الدعم.
     """
     if not fileobj:
-        return None
+        raise ValueError("no file provided")
 
-    # تحقّق آمن من نوع المحتوى بدل الامتداد
     ctype = (fileobj.content_type or "").lower()
     if not ctype.startswith("image/"):
-        return None
+        raise ValueError("invalid content type")
 
-    try:
-        # public_id عشوائي حتى لا نعيد استخدام نفس الرابط
-        public_id = f"{secrets.token_hex(12)}"
-        res = cloudinary.uploader.upload(
-            fileobj.file,
-            folder=folder,
-            public_id=public_id,
-            overwrite=True,
-            resource_type="image",
-            # خلي Cloudinary يعمل النسخ المفضّل تلقائيًا
-            transformation=[{"quality": "auto:good"}, {"fetch_format": "auto"}],
-        )
-        return res.get("secure_url") or res.get("url")
-    except Exception:
-        return None
+    _ensure_cloudinary_keys()
 
+    public_id = f"{secrets.token_hex(12)}"
+    res = cloudinary.uploader.upload(
+        fileobj.file,
+        folder=folder,
+        public_id=public_id,
+        overwrite=True,
+        resource_type="image",
+        format="jpg",  # نحصل على مخرجات موحّدة
+        transformation=[{"quality": "auto:good"}],
+        invalidate=True,  # تنظيف كاش CDN إن تغيّر الملف
+    )
+    url = res.get("secure_url") or res.get("url")
+    if not url:
+        raise RuntimeError("cloudinary upload failed")
+    return url
+
+def _upload_doc_cloudinary(fileobj: UploadFile, *, folder: str = "sevor/ids") -> str:
+    """
+    يرفع وثيقة (صورة/ PDF) إلى Cloudinary ويعيد secure_url.
+    resource_type='auto' للسماح بـ PDF.
+    """
+    if not fileobj:
+        raise ValueError("no file provided")
+
+    ctype = (fileobj.content_type or "").lower()
+    if not (ctype.startswith("image/") or ctype == "application/pdf"):
+        raise ValueError("invalid document type")
+
+    _ensure_cloudinary_keys()
+
+    public_id = f"{secrets.token_hex(12)}"
+    res = cloudinary.uploader.upload(
+        fileobj.file,
+        folder=folder,
+        public_id=public_id,
+        overwrite=True,
+        resource_type="auto",
+        invalidate=True,
+        transformation=[{"quality": "auto:good"}] if ctype.startswith("image/") else None,
+    )
+    url = res.get("secure_url") or res.get("url")
+    if not url:
+        raise RuntimeError("cloudinary upload failed")
+    return url
 
 
 router = APIRouter()
@@ -62,16 +100,14 @@ router = APIRouter()
 # ======================== صفحة ملفّي ========================
 @router.get("/profile")
 def profile(request: Request, db: Session = Depends(get_db)):
-    # استخدم جلسة تسجيل الدخول فقط للحصول على ID ثم اجلب نسخة حديثة من DB
     u = request.session.get("user")
     if not u:
         return RedirectResponse(url="/login", status_code=303)
 
-    me: User | None = db.query(User).get(u["id"])
+    me: User | None = db.get(User, u["id"])
     if not me:
         return RedirectResponse(url="/login", status_code=303)
 
-    # احرص على نسخة حديثة
     db.refresh(me)
 
     # إحصائيات العناصر
@@ -82,38 +118,27 @@ def profile(request: Request, db: Session = Depends(get_db)):
         .count()
     )
 
-    # التقييمات: متوسط + عدد + آخر 5 مراجعات
+    # التقييمات
     ratings_q = db.query(Rating).filter(Rating.rated_user_id == me.id)
     ratings_count = ratings_q.count()
-
-    avg_stars_val = (
-        db.query(func.avg(Rating.stars))
-        .filter(Rating.rated_user_id == me.id)
-        .scalar()
-    )
+    avg_stars_val = db.query(func.avg(Rating.stars)).filter(Rating.rated_user_id == me.id).scalar()
     avg_stars = round(float(avg_stars_val), 1) if avg_stars_val is not None else 0.0
 
     last_reviews = ratings_q.order_by(Rating.created_at.desc()).limit(5).all()
-
-    # أسماء المقيمين
     reviews_view = []
     for r in last_reviews:
-        rater = db.query(User).get(r.rater_id)
+        rater = db.get(User, r.rater_id)
         reviews_view.append(
             {
                 "stars": r.stars,
                 "comment": r.comment or "",
                 "created_at": r.created_at,
-                "rater_name": f"{rater.first_name} {rater.last_name}" if rater else "مستخدم",
+                "rater_name": f"{(rater.first_name or '').strip()} {(rater.last_name or '').strip()}".strip() if rater else "مستخدم",
             }
         )
 
     joined_at = me.created_at or datetime.utcnow()
-
-    # 🟡 احسب شاراتي (قائمة/قاموس حسب ما يرجعه utils_badges)
     my_badges = get_user_badges(me, db)
-
-    # مرّر فلاغ Stripe بشكل صريح (تجنّب getattr داخل Jinja)
     payouts_enabled = bool(getattr(me, "payouts_enabled", False))
 
     return request.app.templates.TemplateResponse(
@@ -121,20 +146,15 @@ def profile(request: Request, db: Session = Depends(get_db)):
         {
             "request": request,
             "title": "صفحتي",
-            "session_user": u,           # لا يُستخدم للعرض، بس متاح لو احتجته في القالب
-            "user": me,                  # الكائن الكامل من DB (يحمل حقول الشارات أيضًا)
-            "badges": my_badges,         # شارات محسوبة (للوضع الآلي بالشروط)
+            "session_user": u,
+            "user": me,
+            "badges": my_badges,
             "payouts_enabled": payouts_enabled,
-
-            # إحصائيات
             "items_count": items_count,
             "items_active_count": items_active_count,
-
-            # تقييمات
             "avg_stars": avg_stars,
             "ratings_count": ratings_count,
             "reviews": reviews_view,
-
             "joined_at": joined_at,
         },
     )
@@ -143,58 +163,55 @@ def profile(request: Request, db: Session = Depends(get_db)):
 # ======================== صفحة عامة لمستخدم ========================
 @router.get("/u/{user_id}")
 def public_profile(user_id: int, request: Request, db: Session = Depends(get_db)):
-    user: User | None = db.query(User).get(user_id)
+    user: User | None = db.get(User, user_id)
     if not user:
         return RedirectResponse(url="/", status_code=303)
 
-    # اجلب عناصره
     items = (
         db.query(Item)
         .filter(Item.owner_id == user.id)
         .order_by(Item.created_at.desc())
         .all()
     )
-    view_items = []
-    for it in items:
-        view_items.append({
+    view_items = [
+        {
             "id": it.id,
             "title": it.title,
             "image_path": it.image_path,
             "price_per_day": it.price_per_day,
             "category": it.category,
-        })
+        }
+        for it in items
+    ]
 
-    # تقييماته
     ratings = (
         db.query(Rating)
         .filter(Rating.rated_user_id == user.id)
         .order_by(Rating.created_at.desc())
         .all()
     )
-
     reviews = []
     for r in ratings:
-        rater = db.query(User).get(r.rater_id)
+        rater = db.get(User, r.rater_id)
         reviews.append({
             "stars": r.stars,
             "comment": r.comment or "",
             "created_at": r.created_at,
-            "rater_name": f"{rater.first_name} {rater.last_name}" if rater else "مستخدم",
+            "rater_name": f"{(rater.first_name or '').strip()} {(rater.last_name or '').strip()}".strip() if rater else "مستخدم",
         })
 
     ratings_count = len(ratings)
     avg_stars = float(sum([r.stars for r in ratings]) / ratings_count) if ratings_count else 0.0
 
-    # 🟣 شارات صاحب الصفحة العامة
     badges_user = get_user_badges(user, db)
 
     return request.app.templates.TemplateResponse(
         "user_public.html",
         {
             "request": request,
-            "title": f"{user.first_name} {user.last_name}",
-            "user": user,                 # الكائن من DB (يحمل حقول الشارات)
-            "badges": badges_user,        # الشارات المحسوبة بالشروط
+            "title": f"{(user.first_name or '').strip()} {(user.last_name or '').strip()}".strip(),
+            "user": user,
+            "badges": badges_user,
             "items": view_items,
             "reviews": reviews,
             "ratings_count": ratings_count,
@@ -205,31 +222,12 @@ def public_profile(user_id: int, request: Request, db: Session = Depends(get_db)
 
 
 # ========================== رفع/تصحيح الوثائق ==========================
-UPLOADS_ROOT = os.environ.get("UPLOADS_DIR", "uploads")
-AVATARS_DIR = os.path.join(UPLOADS_ROOT, "avatars")
-IDS_DIR = os.path.join(UPLOADS_ROOT, "ids")
-os.makedirs(AVATARS_DIR, exist_ok=True)
-os.makedirs(IDS_DIR, exist_ok=True)
-
-def _save_any(fileobj: UploadFile | None, folder: str, allow_exts: list[str]):
-    """حفظ ملف مع توليد اسم آمن وإرجاع المسار (أو None إن لم يُرفع/نوع غير مسموح)."""
-    if not fileobj:
-        return None
-    ext = os.path.splitext(fileobj.filename)[1].lower()
-    if ext not in allow_exts:
-        return None
-    fname = f"{secrets.token_hex(10)}{ext}"
-    fpath = os.path.join(folder, fname)
-    with open(fpath, "wb") as f:
-        shutil.copyfileobj(fileobj.file, f)
-    return fpath.replace("\\", "/")
-
 @router.get("/profile/docs")
 def profile_docs_get(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user")
     if not u:
         return RedirectResponse(url="/login", status_code=303)
-    user = db.query(User).get(u["id"])
+    user = db.get(User, u["id"])
     return request.app.templates.TemplateResponse(
         "profile_docs.html",
         {"request": request, "title": "تصحيح بيانات التحقق", "user": user, "session_user": u}
@@ -252,38 +250,32 @@ def profile_docs_post(
     if not u:
         return RedirectResponse(url="/login", status_code=303)
 
-    user: User | None = db.query(User).get(u["id"])
+    user: User | None = db.get(User, u["id"])
     if not user:
         return RedirectResponse(url="/login", status_code=303)
 
     message = None
 
     if action == "avatar":
-        # 1) جرّب Cloudinary أولًا
-        new_url = _upload_cloudinary(avatar, folder="sevor/avatars")
-        # 2) لو فشل (احتياط) خزّنه محليًا
-        if not new_url:
-            new_url = _save_any(avatar, AVATARS_DIR, [".jpg", ".jpeg", ".png", ".webp"])
-
-        if new_url:
+        try:
+            if not avatar:
+                raise ValueError("no file")
+            new_url = _upload_avatar_cloudinary(avatar, folder="sevor/avatars")
             user.avatar_path = new_url
             db.commit()
-            # ✅ حدّث الجلسة فورًا حتى تظهر الصورة في النافبار/الشيت
-            try:
-                sess = request.session.get("user") or {}
-                sess["avatar_path"] = new_url
-                request.session["user"] = sess
-            except Exception:
-                pass
+
+            # تحديث الجلسة فورًا ليظهر الأفاتار الجديد في الواجهة
+            sess = request.session.get("user") or {}
+            sess["avatar_path"] = new_url
+            request.session["user"] = sess
+
             message = "تم تحديث صورة الحساب بنجاح."
-        else:
-            message = "صورة غير صالحة. يُقبل JPG/PNG/WebP."
+        except Exception as e:
+            message = "تعذّر رفع الصورة. تأكد من الملف وحاول مرة أخرى."
 
     elif action == "documents":
-        doc = (user.documents[0] if user.documents else None)
-        from .models import Document
-        if not doc:
-            doc = Document(user_id=user.id)
+        # أنشئ/حدّث سجل الوثيقة
+        doc = user.documents[0] if user.documents else Document(user_id=user.id)
 
         if doc_type:
             doc.doc_type = doc_type
@@ -295,22 +287,27 @@ def profile_docs_post(
             except Exception:
                 pass
 
-        fp = _save_any(doc_front, IDS_DIR, [".jpg", ".jpeg", ".png", ".pdf"])
-        if fp:
-            doc.file_front_path = fp
-        bp = _save_any(doc_back, IDS_DIR, [".jpg", ".jpeg", ".png", ".pdf"])
-        if bp:
-            doc.file_back_path = bp
+        # ارفع للـ Cloudinary (صورة أو PDF)
+        try:
+            if doc_front:
+                doc.file_front_path = _upload_doc_cloudinary(doc_front, folder="sevor/ids")
+            if doc_back:
+                doc.file_back_path = _upload_doc_cloudinary(doc_back, folder="sevor/ids")
+        except Exception:
+            # حتى لو فشل رفع أحدهما، نُكمل بما تيسّر
+            pass
 
         doc.review_status = "pending"
         doc.reviewed_at = None
+
         if doc not in user.documents:
             db.add(doc)
         db.commit()
+
         message = "تم حفظ الوثائق وإرسالها للمراجعة."
 
     # حدّث النسخة بعد الحفظ
-    user = db.query(User).get(u["id"])
+    user = db.get(User, u["id"])
     return request.app.templates.TemplateResponse(
         "profile_docs.html",
         {
@@ -318,6 +315,6 @@ def profile_docs_post(
             "title": "تصحيح بيانات التحقق",
             "user": user,
             "session_user": u,
-            "message": message
+            "message": message,
         }
     )
