@@ -550,5 +550,64 @@
   })();
 </script>
 
+<script>
+(function () {
+  try {
+    var wrap   = document.getElementById('starsO');
+    var hidden = document.getElementById('ownerRatingVal');
+
+    function syncActive(val) {
+      if (hidden) hidden.value = val; // القيمة التي ستُرسل
+      if (!wrap) return;
+      wrap.querySelectorAll('.star-btn').forEach(function (b) {
+        b.classList.toggle('btn-warning', b.dataset.val === val);
+        b.classList.toggle('btn-outline-warning', b.dataset.val !== val);
+      });
+    }
+
+    if (wrap) {
+      wrap.addEventListener('click', function (e) {
+        var b = e.target.closest('.star-btn');
+        if (!b) return;
+        var val = b.dataset.val;
+        var inp = document.getElementById('o' + val); // راديوات للعرض فقط
+        if (inp) inp.checked = true;
+        syncActive(val);
+      });
+      var checked = wrap.querySelector('input[type=radio]:checked');
+      syncActive(checked ? checked.value : '5');
+    }
+
+    var frm = document.getElementById('ownerRateForm');
+    var btn = document.getElementById('ownerRateSubmit');
+    if (frm && btn) {
+      frm.addEventListener('submit', function (e) {
+        // تأكيد القيمة قبل الإرسال
+        var chosen = (wrap && wrap.querySelector('input[type=radio]:checked'))
+                      ? wrap.querySelector('input[type=radio]:checked').value
+                      : (hidden && hidden.value) || '5';
+        if (hidden) hidden.value = chosen;
+
+        // عطّل الزر والمدخلات بعد الضغط مباشرة
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الحفظ…';
+
+        // تعطيل النجوم والنص بعد الإرسال
+        wrap.querySelectorAll('.star-btn').forEach(function (b) {
+          b.classList.add('disabled');
+          b.setAttribute('disabled', 'disabled');
+        });
+        var txt = frm.querySelector('textarea');
+        if (txt) {
+          txt.setAttribute('readonly', 'readonly');
+          txt.classList.add('disabled');
+        }
+      });
+    }
+  } catch (e) {}
+})();
+</script>
+
+
 
 {% endblock %}
