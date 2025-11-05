@@ -231,7 +231,6 @@
   {% endif %}
 {% endif %}
 
-
       {# ======= المرحلة: تم الإرجاع / قيد مراجعة الوديعة ======= #}
       {% if booking.status in ['returned', 'in_review'] %}
         {% if is_owner %}
@@ -309,8 +308,6 @@
   </div>
 </div>
 
-
-
           <div class="k small mt-2">إن لم تفتح بلاغًا ضمن المهلة، تُفرج الوديعة تلقائيًا للمستأجر حسب السياسة.</div>
 
         {% elif is_renter %}
@@ -359,7 +356,6 @@
       <div class="box mt-3">
         <h6 class="mb-2">العنصر</h6>
         <div class="d-flex gap-3">
-          <!-- ✅ استخدام build_src لمنع /https%3A/… -->
           <img src="{{ (item and item.image_path) and (item.image_path.startswith('http://') or item.image_path.startswith('https://')) and item.image_path or ('/' ~ (item.image_path or '').lstrip('/')) if item else '/static/placeholder.jpg' }}"
                style="width:96px;height:96px;object-fit:cover;border-radius:10px" alt="">
           <div>
@@ -424,15 +420,13 @@
     }catch(e){}
   })();
 
-  /* ===== Polling Stripe state (محمي من التشغيل المزدوج وموقوف أثناء المودال) ===== */
+  /* ===== Polling Stripe state ===== */
   (function(){
     if (window.__FLOW_POLLER__ && window.__FLOW_POLLER__.started) return;
     window.__FLOW_POLLER__ = { started:true };
 
     var bookingId = {{ booking.id }};
     var params = new URLSearchParams(location.search);
-
-    // لو رجعنا من /next (?ready=1) لا نعمل polling
     if (params.has('ready')) return;
 
     var tries = 0, maxTries = 30, redirected = false;
@@ -440,7 +434,6 @@
     function modalOpen(){ return !!document.querySelector('.modal.show'); }
 
     function checkOnce(){
-      // أوقف الاستعلام مؤقتًا إذا فيه مودال مفتوح (منع اهتزاز)
       if (modalOpen()){ setTimeout(checkOnce, 1500); return; }
 
       fetch('/api/stripe/checkout/state/' + bookingId, {credentials:'same-origin', cache: 'no-store'})
@@ -451,7 +444,7 @@
             if(state.deposit_held){   markDepositHeldUI(); }
 
             if(state.ready_for_pickup && !redirected){
-              redirected = true; // امنع أي تحويل لاحق
+              redirected = true;
               location.assign("/bookings/flow/{{ booking.id }}/next");
               return;
             }
@@ -470,7 +463,6 @@
 
     checkOnce();
 
-    // إعادة تنشيط ذكي عند عودة الصفحة
     document.addEventListener('hidden.bs.modal', function(){ tries = 0; checkOnce(); });
     document.addEventListener('visibilitychange', function(){
       if (!document.hidden && !redirected && !params.has('ready')) { tries = 0; checkOnce(); }
@@ -496,60 +488,7 @@
   {% endif %}
 </script>
 
-<script>
-  (function () {
-    try {
-      var wrap   = document.getElementById('starsO');
-      var hidden = document.getElementById('ownerRatingVal');
-
-      function syncActive(val) {
-        if (hidden) hidden.value = val; // هذه القيمة هي التي ستُرسل
-        if (!wrap) return;
-        wrap.querySelectorAll('.star-btn').forEach(function (b) {
-          b.classList.toggle('btn-warning',          b.dataset.val === val);
-          b.classList.toggle('btn-outline-warning',  b.dataset.val !== val);
-        });
-      }
-
-      if (wrap) {
-        wrap.addEventListener('click', function (e) {
-          var b = e.target.closest('.star-btn');
-          if (!b) return;
-          var val = b.dataset.val;
-          var inp = document.getElementById('o' + val); // راديوات للعرض فقط
-          if (inp) inp.checked = true;
-          syncActive(val);
-        });
-        var checked = wrap.querySelector('input[type=radio]:checked');
-        syncActive(checked ? checked.value : '5');
-      }
-
-      var frm = document.getElementById('ownerRateForm');
-      var btn = document.getElementById('ownerRateSubmit');
-      if (frm && btn) {
-        frm.addEventListener('submit', function () {
-          // تأكيد القيمة قبل الإرسال
-          var chosen = (wrap && wrap.querySelector('input[type=radio]:checked'))
-                        ? wrap.querySelector('input[type=radio]:checked').value
-                        : (hidden && hidden.value) || '5';
-          if (hidden) hidden.value = chosen;
-
-          // عطّل فقط ما لا يؤثر على الإرسال
-          btn.disabled = true;
-          btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الحفظ…';
-
-          // لا تلمس input[name=rating] إطلاقًا
-          frm.querySelectorAll('#starsO input[type=radio], textarea, .star-btn').forEach(function (el) {
-            if (el.tagName === 'TEXTAREA') el.setAttribute('readonly', 'readonly');
-            el.classList.add('disabled');
-            el.setAttribute('disabled', 'disabled');
-          });
-        });
-      }
-    } catch (e) {}
-  })();
-</script>
-
+<!-- ===== سكربت النجوم (نسخة وحيدة) ===== -->
 <script>
 (function () {
   try {
@@ -581,18 +520,17 @@
     var frm = document.getElementById('ownerRateForm');
     var btn = document.getElementById('ownerRateSubmit');
     if (frm && btn) {
-      frm.addEventListener('submit', function (e) {
+      frm.addEventListener('submit', function () {
         // تأكيد القيمة قبل الإرسال
         var chosen = (wrap && wrap.querySelector('input[type=radio]:checked'))
                       ? wrap.querySelector('input[type=radio]:checked').value
                       : (hidden && hidden.value) || '5';
         if (hidden) hidden.value = chosen;
 
-        // عطّل الزر والمدخلات بعد الضغط مباشرة
+        // تعطيل الزر + النجوم + مربع النص بعد الضغط مباشرة
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الحفظ…';
 
-        // تعطيل النجوم والنص بعد الإرسال
         wrap.querySelectorAll('.star-btn').forEach(function (b) {
           b.classList.add('disabled');
           b.setAttribute('disabled', 'disabled');
@@ -607,7 +545,5 @@
   } catch (e) {}
 })();
 </script>
-
-
 
 {% endblock %}
