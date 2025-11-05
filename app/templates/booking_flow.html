@@ -258,7 +258,7 @@
           </form>
 
           <!-- تقييم المالك للمستأجر -->
-<div class="box mt-3">
+<div class="box mt-3" id="ownerRateBox">
   <h6 class="mb-2">قيّم المستأجر</h6>
 
   {% if owner_already_rated and owner_prev_review %}
@@ -486,14 +486,19 @@
   {% endif %}
 </script>
 
-<!-- ===== Script des étoiles (UNE seule version) ===== -->
+<!-- ===== Script des étoiles (lock + localStorage) ===== -->
 <script>
 (function () {
   try {
-    var wrap   = document.getElementById('starsO');
-    var frm    = document.getElementById('ownerRateForm');
-    var btn    = document.getElementById('ownerRateSubmit');
-    var hidden = document.getElementById('ownerRatingVal');
+    var wrap    = document.getElementById('starsO');
+    var frm     = document.getElementById('ownerRateForm');
+    var btn     = document.getElementById('ownerRateSubmit');
+    var hidden  = document.getElementById('ownerRatingVal');
+    var txt     = frm ? frm.querySelector('textarea') : null;
+    var box     = document.getElementById('ownerRateBox');
+
+    // مفتاح فريد لكل (حجز × مستخدم)
+    var KEY = 'ownerRated:' + {{ booking.id }} + ':' + ({{ session_user.id if session_user else 0 }});
 
     function syncActive(val){
       if(hidden) hidden.value = val;
@@ -504,6 +509,57 @@
       });
     }
 
+    function lockUI(){
+      if (btn){ btn.disabled = true; }
+      if (wrap){
+        wrap.style.pointerEvents = 'none';
+        wrap.querySelectorAll('.star-btn').forEach(function(b){
+          b.classList.add('disabled');
+          b.setAttribute('disabled','disabled');
+        });
+        wrap.querySelectorAll('input[type=radio]').forEach(function(r){ r.disabled = true; });
+      }
+      if (txt){
+        txt.setAttribute('readonly','readonly');
+        txt.classList.add('disabled');
+      }
+    }
+
+    function replaceWithDoneView(stars, comment){
+      if (!box) return;
+      var s = parseInt(stars || '5', 10);
+      var starsText = '★★★★★'.slice(0,s) + '☆☆☆☆☆'.slice(0,5-s);
+      var safeC = (comment || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      box.innerHTML = ''
+        + '<h6 class="mb-2">قيّم المستأجر</h6>'
+        + '<div class="d-flex align-items-center gap-2 mb-2">'
+        + '  <div class="text-warning">'+ starsText +'</div>'
+        + '  <span class="small text-muted">تم حفظ تقييمك لهذا الحجز.</span>'
+        + '</div>'
+        + (safeC ? ('<div class="p-2 rounded" style="border:1px solid var(--border);background:rgba(255,255,255,.04)">' + safeC + '</div>') : '')
+        + '<div class="mt-2"><a class="btn btn-outline-primary btn-sm" href="/users/{{ booking.renter_id }}?tab=reviews">عرض كل مراجعات المستأجر</a></div>';
+    }
+
+    // حالة أولية للنجوم
+    if (wrap){
+      var checked = wrap.querySelector('input[type=radio]:checked');
+      syncActive(checked ? checked.value : '5');
+    }
+
+    // 🔐 لو سبق الإرسال (حتى لو رجعت الصفحة) — اقفل أو بدّل العرض
+    if (localStorage.getItem(KEY)){
+      if (frm){
+        // اختر أيهما تفضل: قفل فقط أو استبدال العرض
+        // lockUI();
+        var chosen = (wrap && wrap.querySelector('input[type=radio]:checked'))
+                      ? wrap.querySelector('input[type=radio]:checked').value
+                      : (hidden && hidden.value) || '5';
+        var comment = txt ? txt.value : '';
+        replaceWithDoneView(chosen, comment);
+      }
+    }
+
+    // تفاعل النجوم
     if (wrap){
       wrap.addEventListener('click', function(e){
         var b = e.target.closest('.star-btn');
@@ -513,44 +569,26 @@
         if(inp) inp.checked = true;
         syncActive(val);
       });
-
-      var checked = wrap.querySelector('input[type=radio]:checked');
-      syncActive(checked ? checked.value : '5');
     }
 
+    // عند الإرسال: قفل فوري + تخزين محلي + اترك الفورم يرسل
     if (frm && btn){
       frm.addEventListener('submit', function(e){
-        // anti double-clic
         if (frm.dataset.locked === '1'){ e.preventDefault(); return; }
         frm.dataset.locked = '1';
 
-        // verrouille la valeur envoyée
         var chosen = (wrap && wrap.querySelector('input[type=radio]:checked'))
                       ? wrap.querySelector('input[type=radio]:checked').value
                       : (hidden && hidden.value) || '5';
         if (hidden) hidden.value = chosen;
 
-        // désactiver bouton
+        // خزن إشارة “تم التقييم”
+        try{ localStorage.setItem(KEY, '1'); }catch(_){}
+
+        // قفل فوري
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الحفظ…';
-
-        // désactiver étoiles (+ inputs radio)
-        if (wrap){
-          wrap.style.pointerEvents = 'none';
-          wrap.querySelectorAll('.star-btn').forEach(function(b){
-            b.classList.add('disabled');
-          });
-          wrap.querySelectorAll('input[type=radio]').forEach(function(r){
-            r.disabled = true;
-          });
-        }
-
-        // désactiver zone de texte
-        var txt = frm.querySelector('textarea');
-        if (txt){
-          txt.setAttribute('readonly','readonly');
-          txt.classList.add('disabled');
-        }
+        lockUI();
       }, {capture:true});
     }
   } catch(e){}
