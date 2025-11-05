@@ -24,7 +24,7 @@
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --safe-bottom-legacy: constant(safe-area-inset-bottom, 0px);
-      --tabbar-lift: 27px; /* رفع الشريط السفلي قليلًا */
+      --tabbar-lift: 20px; /* رفع الشريط السفلي قليلًا */
     }
     body{ color:var(--text); background:#f4f6fb; }
     [data-theme="dark"]{
@@ -459,7 +459,7 @@
       0 0 0 1px var(--glass-stroke) inset,
       0 2px 0 0 var(--glass-inner) inset !important;
 
-    transform: translateY(-27px); /* رفع الشريط فوق الهوم-إنديكيتر */
+    transform: translateY(calc(-1 * var(--tabbar-lift)));
     transition: transform .25s ease;
   }
 
