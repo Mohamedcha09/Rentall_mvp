@@ -318,8 +318,7 @@
     body.modal-open { padding-right: 0 !important; }
   </style>
 
-<style id="glass-tabbar">
-
+  
     /* =========================
    GLASS UI – Mobile Tabbar
    (فقط ستايل، بدون تغيير HTML)
@@ -507,81 +506,9 @@
   
 
 
-</style>
+  </style>
 
-<style id="sheet-align-fix">
-  /* محاذاة عناصر صفّ الشيت */
-  #profileSheet .sheet__item{ display:flex; align-items:center; }
-  #profileSheet .sheet__item .left{ display:flex; align-items:center; gap:10px; }
-
-  /* ارفع النص لمنتصف الأيقونة تمامًا */
-  #profileSheet .sheet__item .label{
-    display:flex; align-items:center;
-    line-height:1; margin:0; padding:0;
-  }
-
-  /* ألغِ الانزياح العمودي للأيقونة داخل الشيت فقط */
-  #profileSheet .ic{ vertical-align:0; }
-
-  /* نُغزة 1px لأجل iOS (اختياري) */
-  @supports (-webkit-touch-callout: none){
-    #profileSheet .sheet__item .label{ position:relative; top:-1px; }
-  }
-</style>
-
-<style id="glass-topbar">
-  /* ===== Glass UI – Topbar ===== */
-  .topbar {
-    position: sticky;
-    top: 0;
-    z-index: 2147483646;
-    backdrop-filter: blur(18px) saturate(180%);
-    -webkit-backdrop-filter: blur(18px) saturate(180%);
-    background:
-      linear-gradient(135deg, rgba(108,99,255,.20), rgba(0,212,255,.10)),
-      rgba(44,44,46,.55) !important;
-    box-shadow:
-      0 4px 20px rgba(0,0,0,.25),
-      0 0 0 1px rgba(255,255,255,.08) inset !important;
-    border: none !important;
-  }
-
-  .topbar__inner {
-    backdrop-filter: none !important;
-    background: transparent !important;
-  }
-
-  .topbar .brand-logo {
-    filter: drop-shadow(0 1px 2px rgba(0,0,0,.4));
-  }
-
-  /* نصوص وأزرار واضحة فوق الزجاج */
-  .topbar, .topbar * {
-    color: #f2f2f7 !important;
-  }
-
-  .topbar input,
-  .searchbar-wrap {
-    background: rgba(255,255,255,.10) !important;
-    border-color: rgba(255,255,255,.15) !important;
-    color: #fff !important;
-  }
-
-  .searchbar input::placeholder {
-    color: rgba(255,255,255,.6) !important;
-  }
-
-  /* وضع داكن */
-  [data-theme="dark"] .topbar {
-    background:
-      linear-gradient(135deg, rgba(108,99,255,.18), rgba(0,212,255,.08)),
-      rgba(28,28,30,.6) !important;
-    box-shadow:
-      0 4px 20px rgba(0,0,0,.45),
-      0 0 0 1px rgba(255,255,255,.08) inset !important;
-  }
-</style>
-
+  
 
   {% block head %}{% endblock %}
 </head>
