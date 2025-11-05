@@ -1,18 +1,48 @@
-{# templates/profile.html #}
+{# app/templates/profile.html #}
 {% extends "base.html" %}
 {% from "_badges.html" import render_badges %}
 {% block content %}
 
-<div class="d-flex align-items-center gap-2 mb-2">
-  <h2 class="m-0">{{ user.first_name }} {{ user.last_name }}</h2>
-  {{ render_badges(user, '20px') }}
+{# helper: يبني src صحيح سواء كان http(s) أو مسار محلي #}
+{% macro build_src(p) -%}
+  {%- set s = (p or '') -%}
+  {%- if s.startswith('http://') or s.startswith('https://') -%}
+    {{- s -}}
+  {%- else -%}
+    {{- '/' ~ s.lstrip('/') if s else '' -}}
+  {%- endif -%}
+{%- endmacro %}
+
+{# نقرأ من session_user دومًا لصور البروفايل #}
+{% set u = session_user or user %}
+
+<div class="d-flex align-items-center gap-3 mb-3">
+  <div class="rounded-circle border" style="width:64px;height:64px;overflow:hidden">
+    {% if u and u.avatar_path %}
+      <img
+        src="{{ build_src(u.avatar_path) }}"
+        alt="avatar"
+        referrerpolicy="no-referrer"
+        style="width:100%;height:100%;object-fit:cover">
+    {% else %}
+      <div class="w-100 h-100 d-flex align-items-center justify-content-center fw-bold">
+        {{ (u.first_name or u.email or 'U')[:1] | upper if u else 'U' }}
+      </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="d-flex align-items-center gap-2">
+      <h2 class="m-0">{{ (u.first_name or user.first_name) }} {{ (u.last_name or user.last_name) }}</h2>
+      {{ render_badges(user, '20px') }}
+    </div>
+    <div class="text-muted small mt-1">
+      البريد: {{ u.email or user.email }} · الهاتف: {{ u.phone or user.phone or '—' }}
+      · عضو منذ: {{ (user.created_at.strftime('%d-%m-%Y') if user.created_at) }}
+    </div>
+  </div>
 </div>
 
-<div class="text-muted mb-3 small">
-  البريد: {{ user.email }} · الهاتف: {{ user.phone or '—' }}
-  · عضو منذ: {{ user.created_at.strftime('%d-%m-%Y') if user.created_at }}
-</div>
-
-{# ... بقية صفحتك كما هي ... #}
+{# ... بقية صفحتك كما هي (قوائم عناصر، تقييمات، الخ) ... #}
 
 {% endblock %}

@@ -30,7 +30,8 @@
       <div class="card-body">
         <h5 class="mb-3">صورة الحساب (التُقِطت بالكاميرا)</h5>
         {% if user.avatar_path %}
-          <img src="/{{ user.avatar_path }}" alt="avatar" style="width:120px;height:120px;object-fit:cover;border-radius:12px;border:1px solid var(--border)">
+          <img src="{{ build_src(session_user.avatar_path or user.avatar_path) }}"
+ alt="avatar" style="width:120px;height:120px;object-fit:cover;border-radius:12px;border:1px solid var(--border)">
         {% else %}
           <div class="text-muted small mb-2">لا توجد صورة بعد.</div>
         {% endif %}

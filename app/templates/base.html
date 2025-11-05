@@ -548,6 +548,16 @@
 
 
 </head>
+{# ===== Helper: يبني src صحيح سواء https أو مسار محلي ===== #}
+{% macro build_src(p) -%}
+  {%- set s = (p or '') -%}
+  {%- if s.startswith('http://') or s.startswith('https://') -%}
+    {{- s -}}
+  {%- else -%}
+    {{- '/' ~ s.lstrip('/') if s else '' -}}
+  {%- endif -%}
+{%- endmacro %}
+
 <body data-auth="{{ '1' if session_user else '0' }}" class="{% if show_tabbar %}has-tabbar{% endif %}">
   <div id="page-wrapper">
 
@@ -686,13 +696,14 @@
           <div class="dropdown">
             <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
   {% if session_user and session_user.avatar_path %}
-    <img src="{{ session_user.avatar_path }}"
-         alt=""
-         referrerpolicy="no-referrer"
-         style="width:28px;height:28px;object-fit:cover;border-radius:50%">
-  {% else %}
-    <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
-  {% endif %}
+  <img src="{{ build_src(session_user.avatar_path) }}"
+       alt=""
+       referrerpolicy="no-referrer"
+       style="width:28px;height:28px;object-fit:cover;border-radius:50%">
+{% else %}
+  <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
+{% endif %}
+
   <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
   {% if session_user.status == 'approved' %}<i class="bi bi-patch-check-fill verify" title="موثّق"></i>{% endif %}
 </button>
@@ -1328,13 +1339,14 @@
       <div class="sheet__profile">
         <div class="sheet__avatar">
   {% if session_user and session_user.avatar_path %}
-    <img src="{{ session_user.avatar_path }}"
-         alt=""
-         referrerpolicy="no-referrer"
-         style="width:56px;height:56px;object-fit:cover;border-radius:50%">
-  {% else %}
-    {{ (session_user.first_name or 'ح')[:1] if session_user else 'ز' }}
-  {% endif %}
+  <img src="{{ build_src(session_user.avatar_path) }}"
+       alt=""
+       referrerpolicy="no-referrer"
+       style="width:56px;height:56px;object-fit:cover;border-radius:50%">
+{% else %}
+  {{ (session_user.first_name or 'ح')[:1] if session_user else 'ز' }}
+{% endif %}
+
 </div>
 
         <div>
