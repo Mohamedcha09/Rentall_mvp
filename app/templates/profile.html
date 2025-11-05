@@ -1,5 +1,8 @@
 {# app/templates/profile.html #}
 {% extends "base.html" %}
+{% from "base.html" import avatar_src, build_src %}
+{% set _ava3 = avatar_src(u.avatar_path if u else '') %}
+
 {% from "_badges.html" import render_badges %}
 {% block content %}
 
