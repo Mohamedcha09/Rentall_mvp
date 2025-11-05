@@ -234,6 +234,8 @@ def profile_docs_get(request: Request, db: Session = Depends(get_db)):
         "profile_docs.html",
         {"request": request, "title": "تصحيح بيانات التحقق", "user": user, "session_user": u}
     )
+
+
 @router.post("/profile/docs")
 def profile_docs_post(
     request: Request,
@@ -256,23 +258,26 @@ def profile_docs_post(
 
     message = None
 
-        if action == "avatar":
-        new_url = _upload_cloudinary(avatar)  # حاول Cloudinary دائماً أولاً
-
-        # ⚠️ اختياري: اسمح بالحفظ المحلي فقط في بيئة التطوير
-        if not new_url and os.environ.get("ENV", "dev") == "dev":
+    if action == "avatar":
+        # 1) جرّب Cloudinary أولًا
+        new_url = _upload_cloudinary(avatar, folder="sevor/avatars")
+        # 2) لو فشل (احتياط) خزّنه محليًا
+        if not new_url:
             new_url = _save_any(avatar, AVATARS_DIR, [".jpg", ".jpeg", ".png", ".webp"])
 
         if new_url:
             user.avatar_path = new_url
             db.commit()
-            # تحديث الجلسة حتى يظهر فوراً في النافبار والشيت
-            sess = dict(request.session.get("user") or {})
-            sess["avatar_path"] = new_url
-            request.session["user"] = sess
+            # ✅ حدّث الجلسة فورًا حتى تظهر الصورة في النافبار/الشيت
+            try:
+                sess = request.session.get("user") or {}
+                sess["avatar_path"] = new_url
+                request.session["user"] = sess
+            except Exception:
+                pass
             message = "تم تحديث صورة الحساب بنجاح."
         else:
-            message = "صورة غير صالحة أو حدث خطأ في الرفع."
+            message = "صورة غير صالحة. يُقبل JPG/PNG/WebP."
 
     elif action == "documents":
         doc = (user.documents[0] if user.documents else None)
