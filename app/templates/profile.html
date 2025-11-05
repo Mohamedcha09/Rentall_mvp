@@ -4,7 +4,28 @@
    ============================================================ #}
 
 {% extends "base.html" %}
-{% from "base.html" import avatar_src, build_src %}
+
+{# == ماكروز محلية بدل الاستيراد من base.html == #}
+{% macro build_src(p) -%}
+  {%- set s = (p or '') -%}
+  {%- if s.startswith('http://') or s.startswith('https://') -%}
+    {{- s -}}
+  {%- else -%}
+    {{- '/' ~ s.lstrip('/') if s else '' -}}
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro avatar_src(p) -%}
+  {%- set s = (p or '') -%}
+  {%- if s.startswith('http://') or s.startswith('https://') -%}
+    {{- s -}}
+  {%- elif s and (not s.startswith('/uploads/')) -%}
+    {{- '/' ~ s.lstrip('/') -}}
+  {%- else -%}
+    {{- '/static/placeholder.png' -}}
+  {%- endif -%}
+{%- endmacro %}
+
 {% from "_badges.html" import render_badges %}
 {% block content %}
 
