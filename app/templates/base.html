@@ -550,6 +550,18 @@
 </head>
 {# ===== Helper: يبني src صحيح سواء https أو مسار محلي ===== #}
 {% macro build_src(p) -%}
+{# ===== Helper: avatar_src — يُعيد رابط آمن لصورة الحساب ===== #}
+{% macro avatar_src(p) -%}
+  {%- set s = (p or '') -%}
+  {%- if s.startswith('http://') or s.startswith('https://') -%}
+    {{- s -}}
+  {%- elif s and (not s.startswith('/uploads/')) -%}
+    {{- '/' ~ s.lstrip('/') -}}
+  {%- else -%}
+    {{- '/static/placeholder.png' -}}
+  {%- endif -%}
+{%- endmacro %}
+
   {%- set s = (p or '') -%}
   {%- if s.startswith('http://') or s.startswith('https://') -%}
     {{- s -}}
@@ -695,14 +707,17 @@
         {% if session_user %}
           <div class="dropdown">
             <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
-  {% if session_user and session_user.avatar_path %}
-  <img src="{{ build_src(session_user.avatar_path) }}"
+  {% set _ava = avatar_src(session_user.avatar_path if session_user else '') %}
+{% if _ava and not _ava.endswith('placeholder.png') %}
+  <img src="{{ _ava }}"
        alt=""
        referrerpolicy="no-referrer"
+       onerror="this.onerror=null;this.src='/static/placeholder.png'"
        style="width:28px;height:28px;object-fit:cover;border-radius:50%">
 {% else %}
   <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
 {% endif %}
+
 
   <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
   {% if session_user.status == 'approved' %}<i class="bi bi-patch-check-fill verify" title="موثّق"></i>{% endif %}
@@ -1338,14 +1353,17 @@
     <div class="sheet__header">
       <div class="sheet__profile">
         <div class="sheet__avatar">
-  {% if session_user and session_user.avatar_path %}
-  <img src="{{ build_src(session_user.avatar_path) }}"
+  {% set _ava2 = avatar_src(session_user.avatar_path if session_user else '') %}
+{% if _ava2 and not _ava2.endswith('placeholder.png') %}
+  <img src="{{ _ava2 }}"
        alt=""
        referrerpolicy="no-referrer"
+       onerror="this.onerror=null;this.src='/static/placeholder.png'"
        style="width:56px;height:56px;object-fit:cover;border-radius:50%">
 {% else %}
   {{ (session_user.first_name or 'ح')[:1] if session_user else 'ز' }}
 {% endif %}
+
 
 </div>
 
