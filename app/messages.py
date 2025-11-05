@@ -14,6 +14,18 @@ router = APIRouter()
 def require_login(request: Request):
     return request.session.get("user")
 
+# NEW: دالة مساعدة لتحويل أي مسار لصورة إلى رابط آمن
+def _safe_url(p: str | None, fallback: str = "/static/placeholder.svg") -> str:
+    s = (p or "").strip()
+    if not s:
+        return fallback
+    if s.lower().startswith("http://") or s.lower().startswith("https://"):
+        return s
+    s = s.replace("\\", "/")
+    if not s.startswith("/"):
+        s = "/" + s
+    return s
+
 # NEW: هل حساب المستخدم مقيد (ليس approved)؟
 def is_account_limited(request: Request) -> bool:
     u = request.session.get("user")
@@ -82,14 +94,22 @@ def inbox(request: Request, db: Session = Depends(get_db)):
                 if getattr(item, "image_path", None):
                     item_image = "/" + item.image_path.replace("\\", "/")
 
+        # NEW: حقول إضافية للواجهة (لا نحذف القديم)
+        other_avatar = _safe_url(getattr(other, "avatar_path", None), "/static/placeholder.svg")
+        item_image = _safe_url(item_image, "/static/placeholder.svg")
+        other_verified = bool(other.is_verified) if other else False
+        other_created_iso = other.created_at.isoformat() if (other and other.created_at) else ""
+
         view_threads.append({
             "id": t.id,
             "other_fullname": f"{other.first_name} {other.last_name}" if other else "مستخدم",
             "last_message_at": t.last_message_at,
             "item_title": item_title,
-            "item_image": item_image,
+            "item_image": item_image,                     # قديم + نظّفناه
             "unread_count": unread_map.get(t.id, 0),
-            "other_verified": bool(other.is_verified) if other else False,  # ✅ موجود
+            "other_verified": other_verified,             # ✅ موجود
+            "other_avatar": other_avatar,                 # ✅ جديد
+            "other_created_iso": other_created_iso,       # ✅ جديد
         })
 
     return request.app.templates.TemplateResponse(
@@ -236,6 +256,10 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
             if getattr(item, "image_path", None):
                 item_image = "/" + item.image_path.replace("\\", "/")
 
+    # NEW: نمرر أفاتار الطرف الآخر للواجهة (بدون حذف أي قيم قديمة)
+    other_avatar = _safe_url(getattr(other, "avatar_path", None), "/static/placeholder.svg")
+    item_image = _safe_url(item_image, "/static/placeholder.svg")
+
     return request.app.templates.TemplateResponse(
         "thread.html",
         {
@@ -244,6 +268,7 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
             "thread": thr,
             "messages": msgs,
             "other": other,
+            "other_avatar": other_avatar,     # جديد
             "item_title": item_title,
             "item_image": item_image,
             "session_user": u,
