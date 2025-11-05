@@ -496,54 +496,6 @@
   {% endif %}
 </script>
 
-<!-- نجوم التقييم: ربط بصري + إرسال آمن + تعطيل بعد الإرسال -->
-<script>
-  (function () {
-    try {
-      var wrap = document.getElementById('starsO');
-      var hidden = document.getElementById('ownerRatingVal');
-
-      function syncActive(val) {
-        if (hidden) hidden.value = val;              // القيمة التي ستُرسل
-        if (!wrap) return;
-        wrap.querySelectorAll('.star-btn').forEach(function (b) {
-          b.classList.toggle('btn-warning', b.dataset.val === val);
-          b.classList.toggle('btn-outline-warning', b.dataset.val !== val);
-        });
-      }
-
-      if (wrap) {
-        wrap.addEventListener('click', function (e) {
-          var b = e.target.closest('.star-btn');
-          if (!b) return;
-          var val = b.dataset.val;
-          var inp = document.getElementById('o' + val);
-          if (inp) inp.checked = true;              // للتناسق البصري فقط
-          syncActive(val);                           // تحديث الحقل المخفي
-        });
-        // حالة أولية
-        var checked = wrap.querySelector('input[type=radio]:checked');
-        syncActive(checked ? checked.value : '5');
-      }
-
-      var frm = document.getElementById('ownerRateForm');
-      var btn = document.getElementById('ownerRateSubmit');
-      if (frm && btn) {
-        frm.addEventListener('submit', function () {
-          // تعطيل الزر والمدخلات (منع الإرسال المزدوج)
-          btn.disabled = true;
-          btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الحفظ…';
-          frm.querySelectorAll('input, textarea, button, .star-btn').forEach(function(el){
-            if (el.tagName === 'TEXTAREA') el.setAttribute('readonly','readonly');
-            el.classList.add('disabled');
-            el.setAttribute('disabled','disabled');
-          });
-        });
-      }
-    } catch (e) {}
-  })();
-</script>
-
 <script>
   (function () {
     try {
