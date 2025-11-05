@@ -538,6 +538,99 @@
     0 14px 30px rgba(0,0,0,.45),
     0 0 0 1px rgba(255,255,255,.08) inset,
     0 2px 0 0 rgba(255,255,255,.05) inset !important;
+
+  /* ===== Profile Bottom Sheet — Glass Style (match mobile tabbar) ===== */
+@media (max-width: 768px){
+  /* هيدر زجاجي */
+  #profileSheet{
+    background:
+      linear-gradient(135deg, var(--glass-grad1), var(--glass-grad2)),
+      var(--glass-bg) !important;
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+    box-shadow:
+      0 -18px 40px rgba(0,0,0,.35),
+      0 0 0 1px var(--glass-stroke) inset,
+      0 2px 0 0 var(--glass-inner) inset !important;
+    color:#fff;  /* نص فاتح فوق الزجاج */
+  }
+  /* تباين محتوى الجسم */
+  #profileSheet .sheet__body{
+    background: rgba(255,255,255,.08);
+    border-radius: 14px 14px 0 0;
+    margin: 6px 8px 8px;
+    padding: 4px 0 8px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.06) inset,
+      0 -1px 0 rgba(0,0,0,.05) inset;
+  }
+
+  /* بطاقة البروفايل أعلى الشيت */
+  #profileSheet .sheet__avatar{
+    background: rgba(255,255,255,.14) !important;
+    color:#fff; font-weight:800;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.18) inset;
+  }
+  #profileSheet .sheet__name{ color:#fff; }
+  #profileSheet .sheet__handle{ color: rgba(255,255,255,.8); }
+
+  /* زر Share بنفس ستايل الحبوب */
+  #profileSheet .sheet__share{
+    background:#6C63FF !important; color:#fff !important; border:0 !important;
+    box-shadow: 0 8px 18px rgba(108,99,255,.35);
+  }
+
+  /* عناصر القائمة: ارتفاع، سهم يسار، أيقونة يمين */
+  #profileSheet .sheet__item{
+    background: transparent;
+    position: relative;
+    padding: 14px 14px;
+    border-bottom: 1px solid rgba(255,255,255,.12);
+    color:#f2f2f7;
+  }
+  #profileSheet .sheet__item:hover{
+    background: rgba(255,255,255,.10);
+  }
+  /* السهم */
+  #profileSheet .sheet__item .chev{
+    color:#fff; opacity:.85;
+  }
+  /* تسمية */
+  #profileSheet .sheet__item .label{
+    font-weight:800; letter-spacing:.1px;
+  }
+
+  /* الأيقونات الدائرية — نفس باك أيقوناتك */
+  #profileSheet .ic{
+    box-shadow: 0 0 0 1px rgba(255,255,255,.10) inset;
+  }
+
+  /* عنصر خروج باللون الأحمر */
+  #profileSheet .sheet__item.text-danger{
+    color:#ff6b6b !important;
+  }
+  #profileSheet .sheet__item.text-danger:hover{
+    background: rgba(255,107,107,.12) !important;
+  }
+}
+
+/* تحسين تباين على الوضع الفاتح أيضاً */
+@media (max-width: 768px){
+  [data-theme="light"] #profileSheet{
+    color:#111;
+  }
+  [data-theme="light"] #profileSheet .sheet__body{
+    background: rgba(255,255,255,.6);
+  }
+  [data-theme="light"] #profileSheet .sheet__item{
+    border-bottom: 1px solid rgba(0,0,0,.06);
+    color:#111;
+  }
+  [data-theme="light"] #profileSheet .sheet__item:hover{
+    background: rgba(0,0,0,.04);
+  }
+}
+  
 }
 
   </style>
