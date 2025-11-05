@@ -685,10 +685,18 @@ bien mainetain ou non !<!-- app/templates/base.html -->
         {% if session_user %}
           <div class="dropdown">
             <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
-              <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
-              <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
-              {% if session_user.status == 'approved' %}<i class="bi bi-patch-check-fill verify" title="موثّق"></i>{% endif %}
-            </button>
+  {% if session_user and session_user.avatar_path %}
+    <img src="{{ session_user.avatar_path }}"
+         alt=""
+         referrerpolicy="no-referrer"
+         style="width:28px;height:28px;object-fit:cover;border-radius:50%">
+  {% else %}
+    <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
+  {% endif %}
+  <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
+  {% if session_user.status == 'approved' %}<i class="bi bi-patch-check-fill verify" title="موثّق"></i>{% endif %}
+</button>
+
             <ul class="dropdown-menu dropdown-menu-end">
               <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> صفحتي</a></li>
               <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
@@ -1319,12 +1327,16 @@ bien mainetain ou non !<!-- app/templates/base.html -->
     <div class="sheet__header">
       <div class="sheet__profile">
         <div class="sheet__avatar">
-          {% if session_user and session_user.avatar_path %}
-            <img src="{{ session_user.avatar_path }}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:50%">
-          {% else %}
-            {{ (session_user.first_name or 'ح')[:1] if session_user else 'ز' }}
-          {% endif %}
-        </div>
+  {% if session_user and session_user.avatar_path %}
+    <img src="{{ session_user.avatar_path }}"
+         alt=""
+         referrerpolicy="no-referrer"
+         style="width:56px;height:56px;object-fit:cover;border-radius:50%">
+  {% else %}
+    {{ (session_user.first_name or 'ح')[:1] if session_user else 'ز' }}
+  {% endif %}
+</div>
+
         <div>
           <div class="sheet__name">{{ session_user.first_name or 'المستخدم' }}</div>
           <div class="sheet__handle">@{{ session_user.username or 'user' }}</div>

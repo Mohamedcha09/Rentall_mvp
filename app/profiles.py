@@ -9,6 +9,47 @@ import os, secrets, shutil
 from .database import get_db
 from .models import User, Item, Rating
 from .utils_badges import get_user_badges
+# --- Cloudinary (مثبّت لديك) ---
+import cloudinary
+import cloudinary.uploader
+
+# يقرأ من CLOUDINARY_URL أو من المفاتيح الفردية إن أحببت
+cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME")
+api_key    = os.environ.get("CLOUDINARY_API_KEY")
+api_secret = os.environ.get("CLOUDINARY_API_SECRET")
+if cloud_name and api_key and api_secret:
+    cloudinary.config(
+        cloud_name=cloud_name,
+        api_key=api_key,
+        api_secret=api_secret,
+        secure=True,
+    )
+
+def _upload_cloudinary(fileobj: UploadFile, folder: str = "avatars") -> str | None:
+    """
+    يرفع الملف إلى Cloudinary ويُرجع URL آمن جاهز للعرض.
+    يرجّع None لو لم يكن ملفًا أو لو امتداد غير مقبول.
+    """
+    if not fileobj:
+        return None
+    ext = (os.path.splitext(fileobj.filename or "")[1] or "").lower()
+    if ext not in [".jpg", ".jpeg", ".png", ".webp"]:
+        return None
+    try:
+        res = cloudinary.uploader.upload(
+            fileobj.file,
+            folder=folder,
+            overwrite=True,
+            resource_type="image",
+            transformation=[
+                {"quality": "auto:good"},   # ضغط ذكي
+                {"fetch_format": "auto"},    # webp/avif تلقائيًا عند العرض
+            ],
+        )
+        return res.get("secure_url")
+    except Exception:
+        return None
+
 
 router = APIRouter()
 
@@ -211,13 +252,25 @@ def profile_docs_post(
     message = None
 
     if action == "avatar":
-        new_path = _save_any(avatar, AVATARS_DIR, [".jpg", ".jpeg", ".png", ".webp"])
-        if new_path:
-            user.avatar_path = new_path
-            message = "تم تحديث صورة الحساب بنجاح."
-            db.commit()
-        else:
-            message = "صورة غير صالحة. يُقبل JPG/PNG/WebP."
+    # 1) جرّب Cloudinary أولًا
+    new_url = _upload_cloudinary(avatar, folder="sevor/avatars")
+    # 2) لو فشل (احتياط) خزّنه محليًا
+    if not new_url:
+        new_url = _save_any(avatar, AVATARS_DIR, [".jpg", ".jpeg", ".png", ".webp"])
+
+    if new_url:
+        user.avatar_path = new_url
+        db.commit()
+        # ✅ حدّث الجلسة فورًا حتى تظهر الصورة في النافبار/الشيت
+        try:
+            sess = request.session.get("user") or {}
+            sess["avatar_path"] = new_url
+            request.session["user"] = sess
+        except Exception:
+            pass
+        message = "تم تحديث صورة الحساب بنجاح."
+    else:
+        message = "صورة غير صالحة. يُقبل JPG/PNG/WebP."
 
     elif action == "documents":
         doc = (user.documents[0] if user.documents else None)
