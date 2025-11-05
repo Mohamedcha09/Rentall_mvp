@@ -94,7 +94,8 @@ bien mainetain ou non !<!-- app/templates/base.html -->
     @media (max-width:991.98px){ .sidebar{ display:none !important; } }
 
     /* مساحة أسفل عامة (لضمان عدم اختفاء المحتوى خلف التاب بار) */
-    body{ padding-bottom: calc(92px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
+    .has-tabbar{ padding-bottom: calc(92px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
+
 
     /* لوحة إشعارات جانبية */
     .notif-panel{
@@ -532,8 +533,11 @@ bien mainetain ou non !<!-- app/templates/base.html -->
 
 
   {% block head %}{% endblock %}
+{% set _path = request.url.path if request else '' %}
+{% set is_home = (_path == '/' or _path == '') %}
+
 </head>
-<body data-auth="{{ '1' if session_user else '0' }}">
+<body data-auth="{{ '1' if session_user else '0' }}" class="{% if is_home %}has-tabbar{% endif %}">
   <div id="page-wrapper">
 
   <!-- ===== Topbar ===== -->
@@ -754,13 +758,15 @@ bien mainetain ou non !<!-- app/templates/base.html -->
   </div>
   <div class="scrim" id="scrim"></div>
 
-  {% if session_user %}
-    <a href="/owner/items/new" class="fab d-lg-none btn btn-primary rounded-circle shadow" title="عنصر جديد" style="width:56px;height:56px;display:flex;align-items:center;justify-content:center">
-      <i class="bi bi-plus-lg"></i>
-    </a>
-  {% endif %}
+  {% if session_user and is_home %}
+  <a href="/owner/items/new" class="fab d-lg-none btn btn-primary rounded-circle shadow" title="عنصر جديد" style="width:56px;height:56px;display:flex;align-items:center;justify-content:center">
+    <i class="bi bi-plus-lg"></i>
+  </a>
+{% endif %}
+
 
   <!-- شريط سفلي (موبايل) -->
+{% if is_home %}
   <nav class="mobile-tabbar d-lg-none">
     <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
       <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home"><span>الرئيسية</span>
@@ -786,6 +792,7 @@ bien mainetain ou non !<!-- app/templates/base.html -->
       <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile"><span>بروفايلي</span></a>
     {% endif %}
   </nav>
+{% endif %}
 
   </div><!-- /#page-wrapper -->
 
