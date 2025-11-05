@@ -1122,16 +1122,6 @@ body::after{ display:none !important; }
     })();
   </script>
 
-  <!-- طبقة بيضاء تحت الـhome indicator + إخفاؤها مع المودال -->
-  <style id="safearea-white-under-navbar">
-    @media (max-width: 768px){
-      .mobile-tabbar{ background: #fff !important; }
-      body::after{
-        content: ""; position: fixed; left: 0; right: 0; bottom: 0;
-        height: calc(max(env(safe-area-inset-bottom, 0px), var(--safe-b, 0px), var(--safe-bottom, 0px)) + 9px);
-        background: #fff; z-index: 2147483646; pointer-events: none;
-      }
-    }
   </style>
   <style id="modal-safearea-fix"> body.modal-open::after{ display:none !important; } </style>
 
