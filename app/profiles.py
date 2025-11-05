@@ -25,30 +25,36 @@ if cloud_name and api_key and api_secret:
         secure=True,
     )
 
-def _upload_cloudinary(fileobj: UploadFile, folder: str = "avatars") -> str | None:
+# --- استبدل الدالة القديمة بهذه ---
+def _upload_cloudinary(fileobj: UploadFile, folder: str = "sevor/avatars") -> str | None:
     """
-    يرفع الملف إلى Cloudinary ويُرجع URL آمن جاهز للعرض.
-    يرجّع None لو لم يكن ملفًا أو لو امتداد غير مقبول.
+    يرفع الملف إلى Cloudinary ويُرجع secure_url.
+    يقبل الملفات حتى لو بدون امتداد، ويتحقق من نوع الـ MIME بدل الامتداد.
     """
     if not fileobj:
         return None
-    ext = (os.path.splitext(fileobj.filename or "")[1] or "").lower()
-    if ext not in [".jpg", ".jpeg", ".png", ".webp"]:
+
+    # تحقّق آمن من نوع المحتوى بدل الامتداد
+    ctype = (fileobj.content_type or "").lower()
+    if not ctype.startswith("image/"):
         return None
+
     try:
+        # public_id عشوائي حتى لا نعيد استخدام نفس الرابط
+        public_id = f"{secrets.token_hex(12)}"
         res = cloudinary.uploader.upload(
             fileobj.file,
             folder=folder,
+            public_id=public_id,
             overwrite=True,
             resource_type="image",
-            transformation=[
-                {"quality": "auto:good"},   # ضغط ذكي
-                {"fetch_format": "auto"},    # webp/avif تلقائيًا عند العرض
-            ],
+            # خلي Cloudinary يعمل النسخ المفضّل تلقائيًا
+            transformation=[{"quality": "auto:good"}, {"fetch_format": "auto"}],
         )
-        return res.get("secure_url")
+        return res.get("secure_url") or res.get("url")
     except Exception:
         return None
+
 
 
 router = APIRouter()
@@ -250,26 +256,23 @@ def profile_docs_post(
 
     message = None
 
-    if action == "avatar":
-        # 1) جرّب Cloudinary أولًا
-        new_url = _upload_cloudinary(avatar, folder="sevor/avatars")
-        # 2) لو فشل (احتياط) خزّنه محليًا
-        if not new_url:
+        if action == "avatar":
+        new_url = _upload_cloudinary(avatar)  # حاول Cloudinary دائماً أولاً
+
+        # ⚠️ اختياري: اسمح بالحفظ المحلي فقط في بيئة التطوير
+        if not new_url and os.environ.get("ENV", "dev") == "dev":
             new_url = _save_any(avatar, AVATARS_DIR, [".jpg", ".jpeg", ".png", ".webp"])
 
         if new_url:
             user.avatar_path = new_url
             db.commit()
-            # ✅ حدّث الجلسة فورًا حتى تظهر الصورة في النافبار/الشيت
-            try:
-                sess = request.session.get("user") or {}
-                sess["avatar_path"] = new_url
-                request.session["user"] = sess
-            except Exception:
-                pass
+            # تحديث الجلسة حتى يظهر فوراً في النافبار والشيت
+            sess = dict(request.session.get("user") or {})
+            sess["avatar_path"] = new_url
+            request.session["user"] = sess
             message = "تم تحديث صورة الحساب بنجاح."
         else:
-            message = "صورة غير صالحة. يُقبل JPG/PNG/WebP."
+            message = "صورة غير صالحة أو حدث خطأ في الرفع."
 
     elif action == "documents":
         doc = (user.documents[0] if user.documents else None)
