@@ -109,6 +109,13 @@ def profile(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=303)
 
     db.refresh(me)
+    # مزامنة الجلسة مع الأفاتار من القاعدة (حتى لا تظهر "1")
+if me.avatar_path:
+    u = request.session.get("user") or {}
+    if u.get("avatar_path") != me.avatar_path:
+        u["avatar_path"] = me.avatar_path
+        request.session["user"] = u
+
 
     # إحصائيات العناصر
     items_count = db.query(Item).filter(Item.owner_id == me.id).count()
