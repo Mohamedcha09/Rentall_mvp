@@ -88,18 +88,30 @@
   </div>
 </section>
 
-<section class="row g-3 mb-3">
-  <div class="col-6 col-md-3">
-    <div class="card p-3 h-100">
-      <div class="d-flex align-items-center justify-content-between">
-        <div>
-          <div class="text-muted small">العناصر</div>
-          <div class="fs-4 fw-bold">{{ stats.items_count or 0 }}</div>
+<div class="col-6 col-md-3">
+  <div class="card p-3 h-100 position-relative">
+    <div class="d-flex align-items-center justify-content-between">
+      <div>
+        <div class="text-muted small">تقييم كمستأجر</div>
+        <div class="fs-4 fw-bold">
+          {% if renter_reviews_count and renter_reviews_count > 0 %}
+            <span class="num-ltr" dir="ltr">&lrm;{{ '%.1f'|format(renter_reviews_avg|float) }}/5</span>
+          {% else %}—{% endif %}
         </div>
-        <i class="bi bi-box fs-3 opacity-75"></i>
       </div>
+      <i class="bi bi-star-fill fs-3 opacity-75"></i>
     </div>
+    <div class="small text-muted mt-1">
+      {% if renter_reviews_count and renter_reviews_count > 0 %}
+        {{ renter_reviews_count }} مراجعة
+      {% else %}
+        لا توجد مراجعات
+      {% endif %}
+    </div>
+    <a href="/users/{{ profile_user.id }}?tab=reviews" class="stretched-link" aria-label="المراجعات"></a>
   </div>
+</div>
+
 
   <div class="col-6 col-md-3">
     <div class="card p-3 h-100 position-relative">
