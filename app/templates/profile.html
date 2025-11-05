@@ -1,44 +1,33 @@
-{# app/templates/profile.html #}
+{# ============================================================
+   app/templates/profile.html
+   صفحة الحساب الشخصي — تعمل مع Cloudinary
+   ============================================================ #}
+
 {% extends "base.html" %}
 {% from "base.html" import avatar_src, build_src %}
-{% set _ava3 = avatar_src(u.avatar_path if u else '') %}
-
 {% from "_badges.html" import render_badges %}
 {% block content %}
 
-{# helper: يبني src صحيح سواء كان http(s) أو مسار محلي #}
-{% macro build_src(p) -%}
-  {%- set s = (p or '') -%}
-  {%- if s.startswith('http://') or s.startswith('https://') -%}
-    {{- s -}}
-  {%- else -%}
-    {{- '/' ~ s.lstrip('/') if s else '' -}}
-  {%- endif -%}
-{%- endmacro %}
-
-{# نقرأ من session_user دومًا لصور البروفايل #}
 {% set u = session_user or user %}
 
 <div class="d-flex align-items-center gap-3 mb-3">
   <div class="rounded-circle border" style="width:64px;height:64px;overflow:hidden">
     {% set _ava3 = avatar_src(u.avatar_path if u else '') %}
-{% if _ava3 and not _ava3.endswith('placeholder.png') %}
-  <img
-    src="{{ _ava3 }}"
-    alt="avatar"
-    referrerpolicy="no-referrer"
-    onerror="this.onerror=null;this.src='/static/placeholder.png'"
-    style="width:100%;height:100%;object-fit:cover">
-{% else %}
-  <div class="w-100 h-100 d-flex align-items-center justify-content-center fw-bold">
-    {{ (u.first_name or u.email or 'U')[:1] | upper if u else 'U' }}
-  </div>
-{% endif %}
-
+    {% if _ava3 and not _ava3.endswith('placeholder.png') %}
+      <img src="{{ _ava3 }}"
+           alt="avatar"
+           referrerpolicy="no-referrer"
+           onerror="this.onerror=null;this.src='/static/placeholder.png'"
+           style="width:100%;height:100%;object-fit:cover">
+    {% else %}
+      <div class="w-100 h-100 d-flex align-items-center justify-content-center fw-bold">
+        {{ (u.first_name or u.email or 'U')[:1] | upper if u else 'U' }}
+      </div>
+    {% endif %}
   </div>
 
   <div>
-    <div class="d-flex align-items-center gap-2">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
       <h2 class="m-0">{{ (u.first_name or user.first_name) }} {{ (u.last_name or user.last_name) }}</h2>
       {{ render_badges(user, '20px') }}
     </div>
@@ -49,6 +38,44 @@
   </div>
 </div>
 
-{# ... بقية صفحتك كما هي (قوائم عناصر، تقييمات، الخ) ... #}
+<hr class="my-3">
+
+<div class="row gy-3">
+  <div class="col-md-6">
+    <div class="card p-3">
+      <h5 class="mb-2">📦 إعلاناتي</h5>
+      <div>عدد العناصر: <strong>{{ items_count }}</strong></div>
+      <div>الفعالة: <strong>{{ items_active_count }}</strong></div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card p-3">
+      <h5 class="mb-2">⭐ التقييمات</h5>
+      <div>المتوسط: <strong>{{ avg_stars }}/5</strong></div>
+      <div>عدد المراجعات: <strong>{{ ratings_count }}</strong></div>
+    </div>
+  </div>
+</div>
+
+{% if reviews and reviews|length %}
+<hr class="my-4">
+<h5>آخر المراجعات</h5>
+<ul class="list-group">
+  {% for r in reviews %}
+    <li class="list-group-item">
+      <div class="fw-bold text-warning">★ {{ r.stars }}/5</div>
+      <div class="text-muted small">{{ r.created_at.strftime('%d-%m-%Y') if r.created_at }}</div>
+      <div class="mt-1">{{ r.comment or '—' }}</div>
+      <div class="text-muted small">من: {{ r.rater_name }}</div>
+    </li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<hr class="my-4">
+<div class="text-center">
+  <a href="/profile/docs" class="btn btn-outline-primary">📄 تعديل الوثائق أو صورة الحساب</a>
+</div>
 
 {% endblock %}
