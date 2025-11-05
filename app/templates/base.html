@@ -318,136 +318,7 @@
     body.modal-open { padding-right: 0 !important; }
   </style>
 
-  <!-- شريط موبايل سفلي (نسخة واحدة زجاجية Telegram) -->
-  <style>
-    /* 1) اقتل أي طبقة بيضاء أسفل الشريط */
-    #safearea-white-under-navbar{ display:none !important; }
-    body::after{ display:none !important; }
-
-    @media (max-width: 768px){
-      html body{ padding-bottom: calc(92px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important; }
-
-      .mobile-tabbar{
-        position: fixed !important;
-        left: 10px !important; right: 10px !important;
-        bottom: calc(10px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important;
-        height: 64px !important;
-
-        /* زجاج رمادي شفاف مثل تيليجرام */
-        background: rgba(44, 44, 46, 0.65) !important; /* iOS system gray */
-        backdrop-filter: blur(18px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
-
-        border-radius: 28px !important;
-        box-shadow:
-          0 8px 20px rgba(0,0,0,0.35),
-          0 0 0 1px rgba(255,255,255,0.08) inset !important;
-
-        display: grid !important;
-        grid-template-columns: repeat(5, 1fr) !important;
-        align-items: center !important;
-        padding: 8px 12px !important;
-        border-top: none !important;
-        z-index: 2147483647 !important;
-        transform: translateY(calc(-1 * var(--tabbar-lift)));
-        transition: transform .25s ease;
-      }
-
-      .mobile-tabbar a{
-        position: relative !important;
-        height: 100% !important;
-        border-radius: 18px !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: 4px !important;
-        text-decoration: none !important;
-        color: #f2f2f7 !important;   /* وضوح عالي */
-        font-size: 12px !important;
-        font-weight: 600 !important;
-        line-height: 1 !important;
-      }
-
-      .mobile-tabbar .tab-img{
-        width: 24px !important; height: 24px !important;
-        object-fit: contain !important;
-        opacity: .95 !important;
-        transform: translateZ(0);
-        transition: opacity .15s, transform .15s !important;
-        filter: drop-shadow(0 1px 0 rgba(0,0,0,.25));
-      }
-
-      .mobile-tabbar a.is-active{
-        color: #ffffff !important;
-        background: rgba(255,255,255,0.12) !important;
-        box-shadow:
-          0 0 0 1px rgba(255,255,255,0.18) inset,
-          0 2px 8px rgba(0,0,0,0.25) !important;
-      }
-      .mobile-tabbar a.is-active .tab-img{
-        opacity: 1 !important;
-        transform: scale(1.06) !important;
-      }
-
-      .mobile-tabbar .badge-dot{
-        position: absolute !important; top: 6px !important; transform: translateX(12px);
-        min-width: 20px; height: 20px; line-height: 20px; font-size: 11px;
-        border-radius: 999px; background: #ff3b30; color: #fff;
-        box-shadow: 0 2px 6px rgba(255,59,48,0.35);
-        text-align:center;
-      }
-
-      /* زر + العائم — نفس ستايل الزجاج تبع التاب بار */
-@media (max-width: 768px){
-  .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
-    position: fixed !important;
-    bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--safe-bottom, 0px)) + 78px + var(--tabbar-lift)) !important;
-    right: 20px !important;
-    z-index: 2147483647 !important;
-
-    width: 58px !important;
-    height: 58px !important;
-    border-radius: 50% !important;
-
-    /* الزجاج نفس المتغيّرات المستخدمة للتاب بار */
-    background:
-      linear-gradient(135deg, var(--glass-grad1), var(--glass-grad2)),
-      var(--glass-bg) !important;
-    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
-
-    box-shadow:
-      0 14px 30px rgba(0,0,0,.35),
-      0 0 0 1px var(--glass-stroke) inset,
-      0 2px 0 0 var(--glass-inner) inset !important;
-
-    color:#fff !important;
-    border:none !important;
-    transform: translateZ(0);
-    transition: transform .15s ease, box-shadow .15s ease;
-  }
-  .fab i, .add-item-btn i{ font-size:22px !important; color:inherit !important; }
-
-  .fab:hover{ transform: scale(1.04); }
-  .fab:active{
-    transform: scale(0.98);
-    box-shadow:
-      0 8px 18px rgba(0,0,0,.35),
-      0 0 0 1px var(--glass-stroke) inset,
-      0 2px 0 0 var(--glass-inner) inset !important;
-  }
-}
-
-
-    /* وضع داكن: نفس الخلفية الزجاجية */
-    [data-theme="dark"] .mobile-tabbar{
-      background: rgba(28,28,30,0.7) !important;
-      box-shadow:
-        0 8px 20px rgba(0,0,0,0.45),
-        0 0 0 1px rgba(255,255,255,0.08) inset !important;
-    }
-
+  
     /* =========================
    GLASS UI – Mobile Tabbar
    (فقط ستايل، بدون تغيير HTML)
@@ -633,7 +504,7 @@
   }
 }
   
-}
+
 
   </style>
 
