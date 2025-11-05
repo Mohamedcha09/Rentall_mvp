@@ -28,25 +28,16 @@ if CLOUD_NAME and API_KEY and API_SECRET:
         secure=True,
     )
 
-# -----------------------------
-# Helpers: Cloudinary Uploaders
-# -----------------------------
 def _ensure_cloudinary_keys() -> None:
     if not (CLOUD_NAME and API_KEY and API_SECRET):
         raise RuntimeError("Cloudinary credentials missing on server")
 
 def _upload_avatar_cloudinary(fileobj: UploadFile, *, folder: str = "sevor/avatars") -> str:
-    """
-    يرفع الأفاتار إلى Cloudinary ويعيد secure_url.
-    يَقبل HEIC/HEIF ويُحوّل الناتج إلى JPG ثابت لكسر مشاكل الكاش/الدعم.
-    """
     if not fileobj:
         raise ValueError("no file provided")
-
     ctype = (fileobj.content_type or "").lower()
     if not ctype.startswith("image/"):
         raise ValueError("invalid content type")
-
     _ensure_cloudinary_keys()
 
     public_id = f"{secrets.token_hex(12)}"
@@ -56,9 +47,9 @@ def _upload_avatar_cloudinary(fileobj: UploadFile, *, folder: str = "sevor/avata
         public_id=public_id,
         overwrite=True,
         resource_type="image",
-        format="jpg",  # نحصل على مخرجات موحّدة
+        format="jpg",
         transformation=[{"quality": "auto:good"}],
-        invalidate=True,  # تنظيف كاش CDN إن تغيّر الملف
+        invalidate=True,
     )
     url = res.get("secure_url") or res.get("url")
     if not url:
@@ -66,17 +57,11 @@ def _upload_avatar_cloudinary(fileobj: UploadFile, *, folder: str = "sevor/avata
     return url
 
 def _upload_doc_cloudinary(fileobj: UploadFile, *, folder: str = "sevor/ids") -> str:
-    """
-    يرفع وثيقة (صورة/ PDF) إلى Cloudinary ويعيد secure_url.
-    resource_type='auto' للسماح بـ PDF.
-    """
     if not fileobj:
         raise ValueError("no file provided")
-
     ctype = (fileobj.content_type or "").lower()
     if not (ctype.startswith("image/") or ctype == "application/pdf"):
         raise ValueError("invalid document type")
-
     _ensure_cloudinary_keys()
 
     public_id = f"{secrets.token_hex(12)}"
@@ -94,7 +79,6 @@ def _upload_doc_cloudinary(fileobj: UploadFile, *, folder: str = "sevor/ids") ->
         raise RuntimeError("cloudinary upload failed")
     return url
 
-
 router = APIRouter()
 
 # ======================== صفحة ملفّي ========================
@@ -109,13 +93,13 @@ def profile(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=303)
 
     db.refresh(me)
-    # مزامنة الجلسة مع الأفاتار من القاعدة (حتى لا تظهر "1")
-if me.avatar_path:
-    u = request.session.get("user") or {}
-    if u.get("avatar_path") != me.avatar_path:
-        u["avatar_path"] = me.avatar_path
-        request.session["user"] = u
 
+    # مزامنة الجلسة مع الأفاتار من القاعدة (حتى لا تظهر "1")
+    if me.avatar_path:
+        sess = request.session.get("user") or {}
+        if sess.get("avatar_path") != me.avatar_path:
+            sess["avatar_path"] = me.avatar_path
+            request.session["user"] = sess
 
     # إحصائيات العناصر
     items_count = db.query(Item).filter(Item.owner_id == me.id).count()
@@ -165,7 +149,6 @@ if me.avatar_path:
             "joined_at": joined_at,
         },
     )
-
 
 # ======================== صفحة عامة لمستخدم ========================
 @router.get("/u/{user_id}")
@@ -227,7 +210,6 @@ def public_profile(user_id: int, request: Request, db: Session = Depends(get_db)
         }
     )
 
-
 # ========================== رفع/تصحيح الوثائق ==========================
 @router.get("/profile/docs")
 def profile_docs_get(request: Request, db: Session = Depends(get_db)):
@@ -239,7 +221,6 @@ def profile_docs_get(request: Request, db: Session = Depends(get_db)):
         "profile_docs.html",
         {"request": request, "title": "تصحيح بيانات التحقق", "user": user, "session_user": u}
     )
-
 
 @router.post("/profile/docs")
 def profile_docs_post(
@@ -277,11 +258,10 @@ def profile_docs_post(
             request.session["user"] = sess
 
             message = "تم تحديث صورة الحساب بنجاح."
-        except Exception as e:
+        except Exception:
             message = "تعذّر رفع الصورة. تأكد من الملف وحاول مرة أخرى."
 
     elif action == "documents":
-        # أنشئ/حدّث سجل الوثيقة
         doc = user.documents[0] if user.documents else Document(user_id=user.id)
 
         if doc_type:
@@ -294,14 +274,12 @@ def profile_docs_post(
             except Exception:
                 pass
 
-        # ارفع للـ Cloudinary (صورة أو PDF)
         try:
             if doc_front:
                 doc.file_front_path = _upload_doc_cloudinary(doc_front, folder="sevor/ids")
             if doc_back:
                 doc.file_back_path = _upload_doc_cloudinary(doc_back, folder="sevor/ids")
         except Exception:
-            # حتى لو فشل رفع أحدهما، نُكمل بما تيسّر
             pass
 
         doc.review_status = "pending"
@@ -313,7 +291,6 @@ def profile_docs_post(
 
         message = "تم حفظ الوثائق وإرسالها للمراجعة."
 
-    # حدّث النسخة بعد الحفظ
     user = db.get(User, u["id"])
     return request.app.templates.TemplateResponse(
         "profile_docs.html",
