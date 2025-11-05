@@ -397,20 +397,47 @@
         text-align:center;
       }
 
-      /* زر + العائم */
-      .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
-        position: fixed !important;
-        bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--safe-bottom, 0px)) + 78px + var(--tabbar-lift)) !important;
-        right: 20px !important;
-        z-index: 2147483647 !important;
-        transform: none !important;
-        width: 58px !important; height: 58px !important; border-radius: 50% !important;
-        display: flex !important; align-items: center !important; justify-content: center !important;
-        background: #6C63FF !important; color: #fff !important;
-        box-shadow: 0 6px 20px rgba(0,0,0,.25) !important;
-      }
-      .fab i, .add-item-btn i{ font-size: 22px !important; }
-    }
+      /* زر + العائم — نفس ستايل الزجاج تبع التاب بار */
+@media (max-width: 768px){
+  .fab, .floating-btn, .add-item-btn, .add-post-btn, .btn-fab, [class*="fab"]{
+    position: fixed !important;
+    bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--safe-bottom, 0px)) + 78px + var(--tabbar-lift)) !important;
+    right: 20px !important;
+    z-index: 2147483647 !important;
+
+    width: 58px !important;
+    height: 58px !important;
+    border-radius: 50% !important;
+
+    /* الزجاج نفس المتغيّرات المستخدمة للتاب بار */
+    background:
+      linear-gradient(135deg, var(--glass-grad1), var(--glass-grad2)),
+      var(--glass-bg) !important;
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+
+    box-shadow:
+      0 14px 30px rgba(0,0,0,.35),
+      0 0 0 1px var(--glass-stroke) inset,
+      0 2px 0 0 var(--glass-inner) inset !important;
+
+    color:#fff !important;
+    border:none !important;
+    transform: translateZ(0);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .fab i, .add-item-btn i{ font-size:22px !important; color:inherit !important; }
+
+  .fab:hover{ transform: scale(1.04); }
+  .fab:active{
+    transform: scale(0.98);
+    box-shadow:
+      0 8px 18px rgba(0,0,0,.35),
+      0 0 0 1px var(--glass-stroke) inset,
+      0 2px 0 0 var(--glass-inner) inset !important;
+  }
+}
+
 
     /* وضع داكن: نفس الخلفية الزجاجية */
     [data-theme="dark"] .mobile-tabbar{
@@ -739,9 +766,10 @@
   <div class="scrim" id="scrim"></div>
 
   {% if session_user %}
-    <a href="/owner/items/new" class="fab d-lg-none btn btn-primary rounded-circle shadow" title="عنصر جديد" style="width:56px;height:56px;display:flex;align-items:center;justify-content:center">
-      <i class="bi bi-plus-lg"></i>
-    </a>
+    <a href="/owner/items/new" class="fab d-lg-none btn btn-primary rounded-circle shadow" title="عنصر جديد">
+  <i class="bi bi-plus-lg"></i>
+</a>
+
   {% endif %}
 
   <!-- شريط سفلي (موبايل) -->
