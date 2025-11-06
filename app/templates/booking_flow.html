@@ -214,13 +214,21 @@
       enctype="multipart/form-data"
       class="d-grid gap-2">
 
-  <input class="form-control"
-         type="file"
-         name="files"
-         accept="image/*"
-         capture="environment"
-         multiple
-         required>
+  <div class="row g-2">
+  {% for n in [1,2,3,4,5,6] %}
+  <div class="col-6">
+    <label class="form-label small">صورة {{ n }}</label>
+    <input class="form-control"
+           type="file"
+           name="files"
+           accept="image/*"
+           capture="environment"
+           required>
+  </div>
+  {% endfor %}
+</div>
+<div class="form-text k">التقط 6 صور (كل حقل يفتح الكاميرا مرة).</div>
+
 
   <div class="form-text k">التقط حتى 6 صور (سيُحفظ أول 6 فقط).</div>
 
@@ -253,13 +261,21 @@
       enctype="multipart/form-data"
       class="d-grid gap-2">
 
-  <input class="form-control"
-         type="file"
-         name="files"
-         accept="image/*"
-         capture="environment"
-         multiple
-         required>
+  <div class="row g-2">
+  {% for n in [1,2,3,4,5,6] %}
+  <div class="col-6">
+    <label class="form-label small">صورة {{ n }}</label>
+    <input class="form-control"
+           type="file"
+           name="files"
+           accept="image/*"
+           capture="environment"
+           required>
+  </div>
+  {% endfor %}
+</div>
+<div class="form-text k">التقط 6 صور (كل حقل يفتح الكاميرا مرة).</div>
+
 
   <div class="form-text k">التقط حتى 6 صور (سيُحفظ أول 6 فقط).</div>
 
