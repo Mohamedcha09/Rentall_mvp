@@ -213,6 +213,31 @@
           <form class="mt-2" method="post" action="/bookings/{{ booking.id }}/picked-up">
             <button class="btn btn-success btn-wide"><i class="bi bi-bag-check"></i> تم استلام الغرض</button>
           </form>
+          <!-- NEW: التقط صور الاستلام (6 صور) قبل تعليم الاستلام -->
+<button class="btn btn-success btn-wide mt-2" data-bs-toggle="modal" data-bs-target="#pickupProofModal">
+  <i class="bi bi-camera"></i> تم الاستلام — التقط 6 صور
+</button>
+
+<div class="modal fade" id="pickupProofModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" method="post" action="/bookings/{{ booking.id }}/pickup-proof-upload" enctype="multipart/form-data">
+      <div class="modal-header">
+        <h5 class="modal-title">صور الاستلام (6 صور)</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2 small k">التقط 6 صور واضحة للغرض وقت الاستلام.</div>
+        <input class="form-control" type="file" name="files" accept="image/*" capture="environment" multiple required>
+        <div class="form-text">مسموح حتى 6 صور؛ سيتم تجاهل الزيادة.</div>
+        <textarea class="form-control mt-2" name="comment" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary"><i class="bi bi-upload"></i> رفع الصور وتعليم تم الاستلام</button>
+      </div>
+    </form>
+  </div>
+</div>
+
         {% elif is_owner %}
           <div class="hint">تم الدفع. بانتظار أن يؤكد المستأجر أنه استلم الغرض.</div>
           <form class="mt-2" method="post" action="/bookings/{{ booking.id }}/owner/confirm_delivered">
@@ -231,6 +256,32 @@
     <a class="btn btn-warning btn-wide" href="/reviews/renter/{{ booking.id }}">
       <i class="bi bi-box-arrow-in-left"></i> تم إرجاع الغرض — تابع للتقييم
     </a>
+
+    <!-- NEW: التقط صور الإرجاع (6 صور) قبل الانتقال للتقييم -->
+<button class="btn btn-outline-warning btn-wide mt-2" data-bs-toggle="modal" data-bs-target="#returnProofModal">
+  <i class="bi bi-camera"></i> تم الإرجاع + تقييم — التقط 6 صور
+</button>
+
+<div class="modal fade" id="returnProofModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" method="post" action="/bookings/{{ booking.id }}/return-proof-upload" enctype="multipart/form-data">
+      <div class="modal-header">
+        <h5 class="modal-title">صور الإرجاع (6 صور)</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2 small k">التقط 6 صور واضحة للغرض وقت الإرجاع.</div>
+        <input class="form-control" type="file" name="files" accept="image/*" capture="environment" multiple required>
+        <div class="form-text">مسموح حتى 6 صور؛ سيتم تجاهل الزيادة.</div>
+        <textarea class="form-control mt-2" name="comment" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary"><i class="bi bi-upload"></i> رفع الصور والانتقال للتقييم</button>
+      </div>
+    </form>
+  </div>
+</div>
+
   {% elif is_owner %}
     <div class="hint">المستأجر استلم الغرض. عند إرجاعه ستظهر لك خطوات تأكيد الإرجاع والوديعة.</div>
   {% endif %}

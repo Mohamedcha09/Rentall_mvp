@@ -83,6 +83,51 @@
           {% endif %}
         </div>
       </div>
+
+      <!-- NEW: أدلة المستأجر — قبل الاستلام -->
+<div class="card mt-2">
+  <h6 class="mb-2">أدلة المستأجر — قبل الاستلام</h6>
+  {% set renter_pick = (bk.deposit_evidences or [])
+                        | selectattr('side','equalto','renter')
+                        | selectattr('description','defined')
+                        | selectattr('description','search','\\[pickup_renter\\]')
+                        | list %}
+  <div class="evs">
+    {% if renter_pick and renter_pick|length %}
+      {% for ev in renter_pick[:12] %}
+        {% set _v = (ev.kind=='video') or (ev.file_path and ('.mp4' in ev.file_path or '.mov' in ev.file_path or '.m4v' in ev.file_path)) %}
+        <a href="{{ ev.file_path }}" target="_blank">
+          {% if _v %}<video src="{{ ev.file_path }}" muted></video>{% else %}<img src="{{ ev.file_path }}">{% endif %}
+        </a>
+      {% endfor %}
+    {% else %}
+      <div class="k">لا توجد صور قبل الاستلام من المستأجر.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- NEW: أدلة المستأجر — بعد الإرجاع -->
+<div class="card mt-2">
+  <h6 class="mb-2">أدلة المستأجر — بعد الإرجاع</h6>
+  {% set renter_ret = (bk.deposit_evidences or [])
+                       | selectattr('side','equalto','renter')
+                       | selectattr('description','defined')
+                       | selectattr('description','search','\\[return_renter\\]')
+                       | list %}
+  <div class="evs">
+    {% if renter_ret and renter_ret|length %}
+      {% for ev in renter_ret[:12] %}
+        {% set _v = (ev.kind=='video') or (ev.file_path and ('.mp4' in ev.file_path or '.mov' in ev.file_path or '.m4v' in ev.file_path)) %}
+        <a href="{{ ev.file_path }}" target="_blank">
+          {% if _v %}<video src="{{ ev.file_path }}" muted></video>{% else %}<img src="{{ ev.file_path }}">{% endif %}
+        </a>
+      {% endfor %}
+    {% else %}
+      <div class="k">لا توجد صور بعد الإرجاع من المستأجر.</div>
+    {% endif %}
+  </div>
+</div>
+
     </div>
 
     <!-- يمين: ملخص مالي نهائي -->

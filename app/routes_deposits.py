@@ -6,6 +6,7 @@ import os
 import shutil
 import stripe
 import mimetypes
+from fastapi import BackgroundTasks
 
 # --- NEW: Cloudinary ---
 import cloudinary
@@ -27,6 +28,12 @@ from sqlalchemy import or_, and_, text
 from .database import get_db, engine as _engine
 from .models import Booking, Item, User
 from .notifications_api import push_notification, notify_admins
+
+
+try:
+    from .models import DepositEvidence
+except Exception:
+    DepositEvidence = None
 
 # ✅ تمرير label الفئة للقوالب
 try:
@@ -246,6 +253,14 @@ def _short_reason(txt: str | None, limit: int = 120) -> str:
     if len(s) <= limit:
         return s
     return s[: limit - 1] + "…"
+# NEW: helper — tag description safely with a phase marker
+def _tagged_desc(phase: str, txt: str | None) -> str:
+    phase = (phase or "").strip().lower()
+    base = txt or ""
+    if phase in ("pickup", "return"):
+        return f"[{phase}_renter] {base}".strip()
+    return base.strip()
+
 
 def _is_closed(bk: Booking) -> bool:
     ds = (getattr(bk, "deposit_status", "") or "").lower()
@@ -1389,3 +1404,123 @@ def deposit_final_summary(
             "category_label": category_label,
         },
     )
+
+
+# =========================================================
+# NEW: Renter camera uploads that also move booking status
+# =========================================================
+
+@router.post("/bookings/{booking_id}/pickup-proof-upload")
+def renter_pickup_proof_upload(
+    booking_id: int,
+    files: List[UploadFile] | None = File(None),
+    comment: str = Form(""),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+    background_tasks: BackgroundTasks = None,
+):
+    """
+    يرفع المستأجر صور الاستلام (حتى 6) + يحوّل الحالة إلى picked_up إن كانت مؤهلة.
+    تُوسم الأدلة بـ [pickup_renter].
+    """
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if user.id != bk.renter_id:
+        raise HTTPException(status_code=403, detail="renter only")
+    if (bk.status or "").lower() not in ("paid",):
+        return RedirectResponse(url=f"/bookings/{bk.id}", status_code=303)
+
+    saved_pairs = _save_evidence_files_and_cloud(bk.id, files)
+
+    try:
+        if DepositEvidence:
+            for name, url in saved_pairs[:6]:
+                db.add(DepositEvidence(
+                    booking_id=bk.id,
+                    uploader_id=user.id,
+                    side="renter",
+                    kind="image",
+                    file_path=url,
+                    description=_tagged_desc("pickup", comment),
+                ))
+            db.commit()
+    except Exception:
+        db.rollback()
+
+    bk.status = "picked_up"
+    bk.picked_up_at = datetime.utcnow()
+
+    try:
+        if (bk.payment_method or "") == "online":
+            bk.owner_payout_amount = bk.rent_amount or 0
+            bk.rent_released_at = datetime.utcnow()
+            bk.online_status = "captured"
+    except Exception:
+        pass
+
+    bk.updated_at = datetime.utcnow()
+    db.commit()
+
+    try:
+        push_notification(
+            db, bk.owner_id, "تم الاستلام",
+            f"المستأجر أكّد الاستلام للحجز #{bk.id} ورفع صور الاستلام.",
+            f"/bookings/flow/{bk.id}", "deposit"
+        )
+    except Exception:
+        pass
+
+    return RedirectResponse(url=f"/bookings/{bk.id}", status_code=303)
+
+
+@router.post("/bookings/{booking_id}/return-proof-upload")
+def renter_return_proof_upload(
+    booking_id: int,
+    files: List[UploadFile] | None = File(None),
+    comment: str = Form(""),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    يرفع المستأجر صور الإرجاع (حتى 6) + يحوّل الحالة إلى returned ثم يوجِّه لصفحة التقييم.
+    تُوسم الأدلة بـ [return_renter].
+    """
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if user.id != bk.renter_id:
+        raise HTTPException(status_code=403, detail="renter only")
+    if (bk.status or "").lower() not in ("picked_up",):
+        return RedirectResponse(url=f"/bookings/{bk.id}", status_code=303)
+
+    saved_pairs = _save_evidence_files_and_cloud(bk.id, files)
+
+    try:
+        if DepositEvidence:
+            for name, url in saved_pairs[:6]:
+                db.add(DepositEvidence(
+                    booking_id=bk.id,
+                    uploader_id=user.id,
+                    side="renter",
+                    kind="image",
+                    file_path=url,
+                    description=_tagged_desc("return", comment),
+                ))
+            db.commit()
+    except Exception:
+        db.rollback()
+
+    bk.status = "returned"
+    bk.returned_at = datetime.utcnow()
+    bk.updated_at = datetime.utcnow()
+    db.commit()
+
+    try:
+        push_notification(
+            db, bk.owner_id, "تم الإرجاع",
+            f"المستأجر أرجع الغرض ورفع صور الإرجاع للحجز #{bk.id}.",
+            f"/bookings/flow/{bk.id}", "deposit"
+        )
+    except Exception:
+        pass
+
+    return RedirectResponse(url=f"/reviews/renter/{bk.id}", status_code=303)
