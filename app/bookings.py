@@ -11,11 +11,48 @@ from .database import get_db
 from .models import User, Item, Booking, FreezeDeposit
 from .utils import category_label  # إن لم يوجد، أزل الاستيراد أو وفّر دالة بديلة
 
+import json
+from typing import List
+from fastapi import UploadFile, File
+
+# --- Cloudinary (لو عندك إعداد مسبق يكفي الاستيراد) ---
+try:
+    import cloudinary
+    import cloudinary.uploader
+except Exception:
+    cloudinary = None
+
 router = APIRouter(tags=["bookings"])
 
 # ---------------------------------------------------
 # Helpers: جدول المراجعات + إدراج
 # ---------------------------------------------------
+
+def _upload_images_to_cloudinary(files: List[UploadFile]) -> List[str]:
+    """
+    يرفع حتى 6 صور ويعيد قائمة روابط secure_url. يتجاهل الملفات غير الصورية.
+    """
+    urls = []
+    if not files:
+        return urls
+    if cloudinary is None:
+        # لو Cloudinary غير متوفر، نرجّع قائمة فاضية (أو ارفع محليًا لو تحب)
+        return urls
+    for f in files[:6]:
+        try:
+            ct = (f.content_type or "").lower()
+            if not ct.startswith("image/"):
+                continue
+            up = cloudinary.uploader.upload(f.file, folder="sevor/booking_photos", resource_type="image")
+            url = up.get("secure_url") or up.get("url")
+            if url:
+                urls.append(url)
+        except Exception:
+            # تجاهل أي فشل في ملف واحد واستمر
+            continue
+    return urls
+
+
 def _ensure_reviews_table(db: Session):
     sql = """
     CREATE TABLE IF NOT EXISTS reviews(
@@ -441,3 +478,71 @@ def owner_review_renter(
     )
     db.commit()
     return RedirectResponse(url=f"/bookings/{b.id}?o_reviewed=1", status_code=303)
+
+
+@router.post("/bookings/{booking_id}/upload-photos")
+async def booking_upload_photos_and_advance(
+    booking_id: int,
+    request: Request,
+    side: Literal["pickup", "return"] = Form(...),   # "pickup" عند الاستلام، "return" عند الإرجاع
+    files: List[UploadFile] = File(default_factory=list),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    زر واحد:
+      - يفتح الكاميرا من الواجهة (input capture) لالتقاط حتى 6 صور.
+      - يرفع الصور إلى Cloudinary.
+      - يحدّث حالة الحجز ويتقدّم تلقائيًا للخطوة التالية.
+    الرد بصيغة JSON يحوي next_url لتوجيه الواجهة.
+    """
+    ensure_logged_in(user)
+    b: Booking = db.get(Booking, booking_id)
+    if not b:
+        raise HTTPException(status_code=404, detail="booking not found")
+    ensure_booking_side(user, b, "renter")
+
+    # تحقّق الحالة المناسبة حسب المرحلة
+    if side == "pickup" and b.status not in ("paid",):
+        return {"ok": False, "reason": "bad_state", "next_url": f"/bookings/{b.id}"}
+    if side == "return" and b.status not in ("picked_up",):
+        return {"ok": False, "reason": "bad_state", "next_url": f"/bookings/{b.id}"}
+
+    # ارفع الصور
+    urls = _upload_images_to_cloudinary(files)
+
+    # خزّن الروابط في الحجز
+    if side == "pickup":
+        exists = []
+        try:
+            exists = json.loads(b.pickup_photos_json or "[]")
+        except Exception:
+            exists = []
+        exists.extend(urls)
+        b.pickup_photos_json = json.dumps(exists[:6], ensure_ascii=False)
+
+        # نفس منطق booking_picked_up القديم
+        b.status = "picked_up"
+        b.picked_up_at = datetime.utcnow()
+        if b.payment_method == "online":
+            b.owner_payout_amount = b.rent_amount or 0
+            b.rent_released_at = datetime.utcnow()
+            b.online_status = "captured"
+
+        db.commit()
+        return {"ok": True, "count": len(urls), "next_url": f"/bookings/{b.id}"}
+
+    else:  # side == "return"
+        exists = []
+        try:
+            exists = json.loads(b.return_photos_json or "[]")
+        except Exception:
+            exists = []
+        exists.extend(urls)
+        b.return_photos_json = json.dumps(exists[:6], ensure_ascii=False)
+
+        # نفس منطق mark-returned القديم
+        b.status = "returned"
+        b.returned_at = datetime.utcnow()
+        db.commit()
+        return {"ok": True, "count": len(urls), "next_url": f"/reviews/renter/{b.id}"}

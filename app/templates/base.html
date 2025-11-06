@@ -1429,5 +1429,91 @@
   })();
   </script>
 
+  <script>
+/**
+ * زر واحد للكاميرا + الرفع + الانتقال.
+ * الاستخدام من أي صفحة:
+ *   SV_CaptureAndGo.open({ bookingId: 123, side: 'pickup'|'return' })
+ */
+(function(){
+  if (window.SV_CaptureAndGo) return;
+  window.SV_CaptureAndGo = (function(){
+    // عنصر input مخفي لإطلاق الكاميرا (موبايل يدعم capture)
+    let fileInput = null;
+    function ensureInput(){
+      if (fileInput) return fileInput;
+      fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.multiple = true;
+      fileInput.capture = 'environment'; // كاميرا خلفية
+      fileInput.style.display = 'none';
+      document.body.appendChild(fileInput);
+      return fileInput;
+    }
+
+    // شريط تقدم بسيط
+    let overlay = null;
+    function showOverlay(text){
+      if (!overlay){
+        overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2147483647;display:flex;align-items:center;justify-content:center;color:#fff';
+        overlay.innerHTML = '<div style="background:rgba(0,0,0,.55);padding:18px 22px;border-radius:12px;font:600 14px system-ui">يرفع الصور…</div>';
+        document.body.appendChild(overlay);
+      }
+      overlay.firstChild.textContent = text || 'يرفع الصور…';
+      overlay.style.display = 'flex';
+    }
+    function hideOverlay(){ if (overlay) overlay.style.display = 'none'; }
+
+    async function upload({bookingId, side, files}){
+      const fd = new FormData();
+      fd.append('side', side);
+      const list = Array.prototype.slice.call(files || []);
+      list.slice(0,6).forEach(f => fd.append('files', f, f.name || 'photo.jpg'));
+      const res = await fetch(`/bookings/${bookingId}/upload-photos`, { method:'POST', body: fd });
+      const out = await res.json().catch(()=>({ ok:false }));
+      return out;
+    }
+
+    async function open({bookingId, side}){
+      try{
+        const input = ensureInput();
+        input.value = ''; // امسح أي اختيار سابق
+        return new Promise((resolve) => {
+          input.onchange = async function(){
+            const chosen = input.files;
+            if (!chosen || !chosen.length){ resolve(false); return; }
+            showOverlay('يرفع الصور…');
+            try{
+              const out = await upload({ bookingId, side, files: chosen });
+              hideOverlay();
+              if (out && out.ok){
+                window.location.assign(out.next_url || `/bookings/${bookingId}`);
+              }else{
+                alert('تعذّر الرفع. سنعيدك للصفحة.');
+                window.location.assign(`/bookings/${bookingId}`);
+              }
+              resolve(true);
+            }catch(e){
+              hideOverlay();
+              alert('حصل خطأ أثناء الرفع.');
+              resolve(false);
+            }
+          };
+          // أطلق مُلتقط الكاميرا
+          input.click();
+        });
+      }catch(e){
+        alert('الكاميرا غير مدعومة على هذا المتصفح. التقط صورًا من المعرض.');
+      }
+    }
+
+    return { open };
+  })();
+})();
+</script>
+
+
 </body>
 </html>

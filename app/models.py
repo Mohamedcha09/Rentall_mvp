@@ -371,6 +371,9 @@ class Booking(Base):
     deposit_amount  = col_or_literal("bookings", "deposit_amount", Integer, nullable=False, default=0)
     deposit_hold_id = col_or_literal("bookings", "deposit_hold_id", String(120), nullable=True)
     deposit_charged_amount = col_or_literal("bookings", "deposit_charged_amount", Integer, nullable=False, default=0)
+    # صور الاستلام والإرجاع (JSON نصّي: قائمة روابط)
+    pickup_photos_json = col_or_literal("bookings", "pickup_photos_json", Text, nullable=True)
+    return_photos_json  = col_or_literal("bookings", "return_photos_json",  Text, nullable=True)
 
     # لائحة DM
     returned_at        = col_or_literal("bookings", "returned_at", DateTime, nullable=True)

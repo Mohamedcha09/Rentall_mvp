@@ -28,7 +28,7 @@
   body.modal-open{ padding-right:0 !important; }
   body.modal-open *{ animation:none !important; transition:none !important; }
 
-  /* 🔒 Désactivation visuelle/interactive après envoi de l’avis */
+  /* 🔒 بعد إرسال التقييم */
   .star-btn.disabled{ pointer-events:none; opacity:.6; cursor:default; }
   textarea.disabled{ pointer-events:none; opacity:.6; }
   button[disabled]{ pointer-events:none; }
@@ -112,7 +112,7 @@
         {% endif %}
       {% endif %}
 
-      {# ======= المرحلة: مقبول – الدفع أونلاين بأزرار منفصلة ======= #}
+      {# ======= المرحلة: مقبول ======= #}
       {% if booking.status in ['accepted'] %}
         {% if is_renter %}
           <h5 class="mb-2">اختر طريقة الدفع</h5>
@@ -125,7 +125,7 @@
             </form>
           </div>
 
-          <!-- الدفع أونلاين بأزرار منفصلة -->
+          <!-- الدفع أونلاين -->
           <div class="box" id="onlineBox"
                data-rent-authorized="{{ '1' if booking.online_status in ['authorized','captured','succeeded','paid'] else '0' }}"
                data-deposit-held="{{ '1' if booking.deposit_status in ['held','authorized'] else '0' }}">
@@ -151,7 +151,6 @@
             {% set rent_paid = (booking.online_status in ['authorized','captured','succeeded','paid']) %}
             {% set deposit_ok = (booking.deposit_status in ['held','authorized']) %}
 
-            <!-- زر: دفع الإيجار فقط (يتحوّل لعبارة تم الدفع) -->
             <div id="rentActionWrap" class="d-inline">
               {% if rent_paid %}
                 <button id="rentPaidBadge" class="btn btn-success btn-wide me-1" disabled>
@@ -167,7 +166,6 @@
               {% endif %}
             </div>
 
-            <!-- زر: حجز الوديعة فقط (يختفي عند الحجز) -->
             {% if (booking.deposit_amount or booking.hold_deposit_amount) and (booking.deposit_amount or booking.hold_deposit_amount) > 0 %}
             <div id="depositActionWrap" class="d-inline">
               {% if deposit_ok %}
@@ -205,38 +203,39 @@
         {% endif %}
       {% endif %}
 
-      {# ======= المرحلة: تم الدفع (جاهز للاستلام) ======= #}
+      {# ======= المرحلة: تم الدفع (زر واحد يفتح المودال) ======= #}
       {% if booking.status in ['paid'] %}
         {% if is_renter %}
           <h5>جاهز للاستلام</h5>
-          <div class="hint">عند استلامك الغرض من المالك، اضغط الزر أدناه.</div>
-          <form class="mt-2" method="post" action="/bookings/{{ booking.id }}/picked-up">
-            <button class="btn btn-success btn-wide"><i class="bi bi-bag-check"></i> تم استلام الغرض</button>
-          </form>
-          <!-- NEW: التقط صور الاستلام (6 صور) قبل تعليم الاستلام -->
-<button class="btn btn-success btn-wide mt-2" data-bs-toggle="modal" data-bs-target="#pickupProofModal">
-  <i class="bi bi-camera"></i> تم الاستلام — التقط 6 صور
-</button>
+          <div class="hint">التقط صور الاستلام قبل التثبيت.</div>
 
-<div class="modal fade" id="pickupProofModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <form class="modal-content" method="post" action="/bookings/{{ booking.id }}/pickup-proof-upload" enctype="multipart/form-data">
-      <div class="modal-header">
-        <h5 class="modal-title">صور الاستلام (6 صور)</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
-      </div>
-      <div class="modal-body">
-        <div class="mb-2 small k">التقط 6 صور واضحة للغرض وقت الاستلام.</div>
-        <input class="form-control" type="file" name="files" accept="image/*" capture="environment" multiple required>
-        <div class="form-text">مسموح حتى 6 صور؛ سيتم تجاهل الزيادة.</div>
-        <textarea class="form-control mt-2" name="comment" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-primary"><i class="bi bi-upload"></i> رفع الصور وتعليم تم الاستلام</button>
-      </div>
-    </form>
-  </div>
-</div>
+          <!-- ✅ زر واحد فقط يفتح مودال الصور -->
+          <button class="btn btn-success btn-wide" data-bs-toggle="modal" data-bs-target="#pickupProofModal">
+            <i class="bi bi-camera"></i> تم الاستلام — التقط 6 صور
+          </button>
+
+          <!-- مودال صور الاستلام -->
+          <div class="modal fade" id="pickupProofModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+              <form class="modal-content" method="post" action="/bookings/{{ booking.id }}/pickup-proof-upload" enctype="multipart/form-data">
+                <div class="modal-header">
+                  <h5 class="modal-title">صور الاستلام (حتى 6 صور)</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="mb-2 small k">التقط صور واضحة وقت الاستلام.</div>
+                  <input class="form-control" type="file" name="files" accept="image/*" capture="environment" multiple required>
+                  <div class="form-text">سنحتفظ بأول 6 صور فقط.</div>
+                  <textarea class="form-control mt-2" name="comment" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
+                </div>
+                <div class="modal-footer">
+                  <button class="btn btn-primary">
+                    <i class="bi bi-upload"></i> رفع الصور وتعليم تم الاستلام
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
 
         {% elif is_owner %}
           <div class="hint">تم الدفع. بانتظار أن يؤكد المستأجر أنه استلم الغرض.</div>
@@ -246,46 +245,44 @@
         {% endif %}
       {% endif %}
 
-      {# ======= المرحلة: تم الاستلام ======= #}
+      {# ======= المرحلة: تم الاستلام (زر واحد يفتح المودال) ======= #}
       {% if booking.status in ['picked_up'] %}
-  {% if is_renter %}
-    <h5>الغرض لديك الآن</h5>
-    <div class="hint">عند إرجاع الغرض للمالك، اضغط الزر أدناه. بعدها ستنتقل لصفحة التقييم.</div>
+        {% if is_renter %}
+          <h5>الغرض لديك الآن</h5>
+          <div class="hint">عند الإرجاع، التقط 6 صور وسيتم تحويلك بعدها للتقييم.</div>
 
-    <!-- انتقل مباشرةً لصفحة التقييم -->
-    <a class="btn btn-warning btn-wide" href="/reviews/renter/{{ booking.id }}">
-      <i class="bi bi-box-arrow-in-left"></i> تم إرجاع الغرض — تابع للتقييم
-    </a>
+          <!-- ✅ زر واحد فقط يفتح مودال صور الإرجاع -->
+          <button class="btn btn-warning btn-wide" data-bs-toggle="modal" data-bs-target="#returnProofModal">
+            <i class="bi bi-camera"></i> تم الإرجاع + تقييم — التقط 6 صور
+          </button>
 
-    <!-- NEW: التقط صور الإرجاع (6 صور) قبل الانتقال للتقييم -->
-<button class="btn btn-outline-warning btn-wide mt-2" data-bs-toggle="modal" data-bs-target="#returnProofModal">
-  <i class="bi bi-camera"></i> تم الإرجاع + تقييم — التقط 6 صور
-</button>
+          <!-- مودال صور الإرجاع -->
+          <div class="modal fade" id="returnProofModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+              <form class="modal-content" method="post" action="/bookings/{{ booking.id }}/return-proof-upload" enctype="multipart/form-data">
+                <div class="modal-header">
+                  <h5 class="modal-title">صور الإرجاع (حتى 6 صور)</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="mb-2 small k">التقط صور واضحة وقت الإرجاع.</div>
+                  <input class="form-control" type="file" name="files" accept="image/*" capture="environment" multiple required>
+                  <div class="form-text">سنحتفظ بأول 6 صور فقط.</div>
+                  <textarea class="form-control mt-2" name="comment" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
+                </div>
+                <div class="modal-footer">
+                  <button class="btn btn-primary">
+                    <i class="bi bi-upload"></i> رفع الصور والانتقال للتقييم
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
 
-<div class="modal fade" id="returnProofModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <form class="modal-content" method="post" action="/bookings/{{ booking.id }}/return-proof-upload" enctype="multipart/form-data">
-      <div class="modal-header">
-        <h5 class="modal-title">صور الإرجاع (6 صور)</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
-      </div>
-      <div class="modal-body">
-        <div class="mb-2 small k">التقط 6 صور واضحة للغرض وقت الإرجاع.</div>
-        <input class="form-control" type="file" name="files" accept="image/*" capture="environment" multiple required>
-        <div class="form-text">مسموح حتى 6 صور؛ سيتم تجاهل الزيادة.</div>
-        <textarea class="form-control mt-2" name="comment" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-primary"><i class="bi bi-upload"></i> رفع الصور والانتقال للتقييم</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-  {% elif is_owner %}
-    <div class="hint">المستأجر استلم الغرض. عند إرجاعه ستظهر لك خطوات تأكيد الإرجاع والوديعة.</div>
-  {% endif %}
-{% endif %}
+        {% elif is_owner %}
+          <div class="hint">المستأجر استلم الغرض. عند الإرجاع ستظهر لك خطوات تأكيد الإرجاع والوديعة.</div>
+        {% endif %}
+      {% endif %}
 
       {# ======= المرحلة: تم الإرجاع / قيد مراجعة الوديعة ======= #}
       {% if booking.status in ['returned', 'in_review'] %}
@@ -309,60 +306,54 @@
           </form>
 
           <!-- تقييم المالك للمستأجر -->
-<div class="box mt-3" id="ownerRateBox">
-  <h6 class="mb-2">قيّم المستأجر</h6>
+          <div class="box mt-3" id="ownerRateBox">
+            <h6 class="mb-2">قيّم المستأجر</h6>
 
-  {% if owner_already_rated and owner_prev_review %}
-    <!-- ✅ سبق وقيّمت: عرض قراءة فقط -->
-    <div class="d-flex align-items-center gap-2 mb-2">
-      <div class="text-warning">
-        {% for _ in range(owner_prev_review.stars) %}⭐{% endfor %}
-        {% for _ in range(5 - owner_prev_review.stars) %}☆{% endfor %}
-      </div>
-      <span class="small text-muted">تم حفظ تقييمك لهذا الحجز.</span>
-    </div>
-    {% if owner_prev_review.comment %}
-      <div class="p-2 rounded" style="border:1px solid var(--border);background:rgba(255,255,255,.04)">
-        {{ owner_prev_review.comment }}
-      </div>
-    {% endif %}
-    <div class="mt-2">
-      <a class="btn btn-outline-primary btn-sm" href="/users/{{ booking.renter_id }}?tab=reviews">
-        عرض كل مراجعات المستأجر
-      </a>
-    </div>
-  {% else %}
-    <!-- ✍️ أول مرة: النموذج فعّال -->
-    <form method="post" action="/reviews/owner/{{ booking.id }}" class="d-flex flex-column gap-2" id="ownerRateForm">
-      <!-- ✅ حقل مخفي مضمون الإرسال -->
-      <input type="hidden" name="rating" id="ownerRatingVal" value="5">
+            {% if owner_already_rated and owner_prev_review %}
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <div class="text-warning">
+                  {% for _ in range(owner_prev_review.stars) %}⭐{% endfor %}
+                  {% for _ in range(5 - owner_prev_review.stars) %}☆{% endfor %}
+                </div>
+                <span class="small text-muted">تم حفظ تقييمك لهذا الحجز.</span>
+              </div>
+              {% if owner_prev_review.comment %}
+                <div class="p-2 rounded" style="border:1px solid var(--border);background:rgba(255,255,255,.04)">
+                  {{ owner_prev_review.comment }}
+                </div>
+              {% endif %}
+              <div class="mt-2">
+                <a class="btn btn-outline-primary btn-sm" href="/users/{{ booking.renter_id }}?tab=reviews">
+                  عرض كل مراجعات المستأجر
+                </a>
+              </div>
+            {% else %}
+              <form method="post" action="/reviews/owner/{{ booking.id }}" class="d-flex flex-column gap-2" id="ownerRateForm">
+                <input type="hidden" name="rating" id="ownerRatingVal" value="5">
+                <div class="d-flex gap-1" id="starsO" role="radiogroup" aria-label="تقييم المستأجر">
+                  {% for n in [1,2,3,4,5] %}
+                    <input class="d-none" type="radio" id="o{{n}}" value="{{n}}" {% if n==5 %}checked{% endif %}>
+                    <label for="o{{n}}" class="btn btn-outline-warning btn-sm star-btn" data-val="{{n}}">
+                      <i class="bi bi-star-fill"></i> {{n}}
+                    </label>
+                  {% endfor %}
+                </div>
+                <textarea name="comment" class="form-control" rows="2" placeholder="ملاحظة عن التزام المستأجر (اختياري)"></textarea>
+                <div>
+                  <button class="btn btn-primary btn-sm" id="ownerRateSubmit">
+                    <i class="bi bi-send"></i> حفظ التقييم
+                  </button>
+                </div>
+              </form>
+            {% endif %}
+          </div>
 
-      <div class="d-flex gap-1" id="starsO" role="radiogroup" aria-label="تقييم المستأجر">
-        {% for n in [1,2,3,4,5] %}
-          <!-- الراديوات بلا name؛ استخدامها بصري فقط -->
-          <input class="d-none" type="radio" id="o{{n}}" value="{{n}}" {% if n==5 %}checked{% endif %}>
-          <label for="o{{n}}" class="btn btn-outline-warning btn-sm star-btn" data-val="{{n}}">
-            <i class="bi bi-star-fill"></i> {{n}}
-          </label>
-        {% endfor %}
-      </div>
-      <textarea name="comment" class="form-control" rows="2" placeholder="ملاحظة عن التزام المستأجر (اختياري)"></textarea>
-      <div>
-        <button class="btn btn-primary btn-sm" id="ownerRateSubmit">
-          <i class="bi bi-send"></i> حفظ التقييم
-        </button>
-      </div>
-    </form>
-  {% endif %}
-</div>
-
-<!-- 🔎 ملخص تقييمه كمستأجر + رابط مباشر -->
-<div class="hint mt-2">
-  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-    <div class="small">تقييمه كمستأجر: ⭐ {{ renter_reviews_avg }}/5 — {{ renter_reviews_count }} مراجعة</div>
-    <a class="btn btn-ghost btn-sm" href="/users/{{ booking.renter_id }}?tab=reviews">فتح صفحة المراجعات</a>
-  </div>
-</div>
+          <div class="hint mt-2">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <div class="small">تقييمه كمستأجر: ⭐ {{ renter_reviews_avg }}/5 — {{ renter_reviews_count }} مراجعة</div>
+              <a class="btn btn-ghost btn-sm" href="/users/{{ booking.renter_id }}?tab=reviews">فتح صفحة المراجعات</a>
+            </div>
+          </div>
 
           <div class="k small mt-2">إن لم تفتح بلاغًا ضمن المهلة، تُفرج الوديعة تلقائيًا للمستأجر حسب السياسة.</div>
 
@@ -427,7 +418,7 @@
   </div>
 </div>
 
-<!-- ===== JS (général) ===== -->
+<!-- ===== JS (عام) ===== -->
 <script>
   function wireDisableOnSubmit(formId, btnId, text){
     var f = document.getElementById(formId);
@@ -537,7 +528,7 @@
   {% endif %}
 </script>
 
-<!-- ===== Script des étoiles (lock + localStorage) ===== -->
+<!-- ===== Script تقييم المالك (قفل + localStorage) ===== -->
 <script>
 (function () {
   try {
@@ -548,7 +539,6 @@
     var txt     = frm ? frm.querySelector('textarea') : null;
     var box     = document.getElementById('ownerRateBox');
 
-    // مفتاح فريد لكل (حجز × مستخدم)
     var KEY = 'ownerRated:' + {{ booking.id }} + ':' + ({{ session_user.id if session_user else 0 }});
 
     function syncActive(val){
@@ -591,17 +581,13 @@
         + '<div class="mt-2"><a class="btn btn-outline-primary btn-sm" href="/users/{{ booking.renter_id }}?tab=reviews">عرض كل مراجعات المستأجر</a></div>';
     }
 
-    // حالة أولية للنجوم
     if (wrap){
       var checked = wrap.querySelector('input[type=radio]:checked');
       syncActive(checked ? checked.value : '5');
     }
 
-    // 🔐 لو سبق الإرسال (حتى لو رجعت الصفحة) — اقفل أو بدّل العرض
     if (localStorage.getItem(KEY)){
       if (frm){
-        // اختر أيهما تفضل: قفل فقط أو استبدال العرض
-        // lockUI();
         var chosen = (wrap && wrap.querySelector('input[type=radio]:checked'))
                       ? wrap.querySelector('input[type=radio]:checked').value
                       : (hidden && hidden.value) || '5';
@@ -610,7 +596,6 @@
       }
     }
 
-    // تفاعل النجوم
     if (wrap){
       wrap.addEventListener('click', function(e){
         var b = e.target.closest('.star-btn');
@@ -622,7 +607,6 @@
       });
     }
 
-    // عند الإرسال: قفل فوري + تخزين محلي + اترك الفورم يرسل
     if (frm && btn){
       frm.addEventListener('submit', function(e){
         if (frm.dataset.locked === '1'){ e.preventDefault(); return; }
@@ -633,10 +617,8 @@
                       : (hidden && hidden.value) || '5';
         if (hidden) hidden.value = chosen;
 
-        // خزن إشارة “تم التقييم”
         try{ localStorage.setItem(KEY, '1'); }catch(_){}
 
-        // قفل فوري
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الحفظ…';
         lockUI();
