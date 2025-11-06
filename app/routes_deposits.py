@@ -1419,10 +1419,6 @@ def renter_pickup_proof_upload(
     user: Optional[User] = Depends(get_current_user),
     background_tasks: BackgroundTasks = None,
 ):
-    """
-    يرفع المستأجر صور الاستلام (حتى 6) + يحوّل الحالة إلى picked_up إن كانت مؤهلة.
-    تُوسم الأدلة بـ [pickup_renter].
-    """
     require_auth(user)
     bk = require_booking(db, booking_id)
     if user.id != bk.renter_id:
@@ -1449,7 +1445,6 @@ def renter_pickup_proof_upload(
 
     bk.status = "picked_up"
     bk.picked_up_at = datetime.utcnow()
-
     try:
         if (bk.payment_method or "") == "online":
             bk.owner_payout_amount = bk.rent_amount or 0
@@ -1457,7 +1452,6 @@ def renter_pickup_proof_upload(
             bk.online_status = "captured"
     except Exception:
         pass
-
     bk.updated_at = datetime.utcnow()
     db.commit()
 
@@ -1470,8 +1464,14 @@ def renter_pickup_proof_upload(
     except Exception:
         pass
 
-    return RedirectResponse(url=f"/bookings/{bk.id}", status_code=303)
-
+    # ==== توجيه صحيح
+    try:
+        next_url = (request.query_params.get("next") or "").strip() if request else ""
+    except Exception:
+        next_url = ""
+    if not next_url:
+        next_url = f"/bookings/flow/{bk.id}"
+    return RedirectResponse(url=next_url, status_code=303)
 
 @router.post("/bookings/{booking_id}/return-proof-upload")
 def renter_return_proof_upload(
@@ -1481,10 +1481,6 @@ def renter_return_proof_upload(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    يرفع المستأجر صور الإرجاع (حتى 6) + يحوّل الحالة إلى returned ثم يوجِّه لصفحة التقييم.
-    تُوسم الأدلة بـ [return_renter].
-    """
     require_auth(user)
     bk = require_booking(db, booking_id)
     if user.id != bk.renter_id:
@@ -1523,4 +1519,11 @@ def renter_return_proof_upload(
     except Exception:
         pass
 
-    return RedirectResponse(url=f"/reviews/renter/{bk.id}", status_code=303)
+    # ==== توجيه صحيح
+    try:
+        next_url = (request.query_params.get("next") or "").strip() if request else ""
+    except Exception:
+        next_url = ""
+    if not next_url:
+        next_url = f"/reviews/renter/{bk.id}"
+    return RedirectResponse(url=next_url, status_code=303)
