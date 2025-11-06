@@ -208,36 +208,21 @@
         {% if is_renter %}
           <h5>جاهز للاستلام</h5>
           <div class="hint">التقط صور الاستلام قبل التثبيت.</div>
-          <!-- 📷 مودال الاستلام بكاميرا مباشرة -->
-<form method="post"
-      action="/bookings/{{ booking.id }}/pickup-proof-upload?next=/bookings/flow/{{ booking.id }}/next"
-      enctype="multipart/form-data"
-      class="d-grid gap-2">
+<!-- 📷 الاستلام — زر واحد يلتقط 6 صور ويرفعها -->
+<div class="box mb-2">
+  <div class="mb-2">التقط صور الاستلام قبل التثبيت.</div>
 
-  <div class="row g-2">
-  {% for n in [1,2,3,4,5,6] %}
-  <div class="col-6">
-    <label class="form-label small">صورة {{ n }}</label>
-    <input class="form-control"
-           type="file"
-           name="files"
-           accept="image/*"
-           capture="environment"
-           required>
+  <div class="d-grid gap-2">
+    <textarea id="pickupComment" class="form-control" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
+
+    <button type="button" id="pickupCaptureBtn" class="btn btn-success btn-wide">
+      <i class="bi bi-camera"></i> التقط 6 صور بالكاميرا ثم الرفع والمتابعة
+    </button>
+
+    <div id="pickupCaptureStatus" class="k small"></div>
   </div>
-  {% endfor %}
 </div>
-<div class="form-text k">التقط 6 صور (كل حقل يفتح الكاميرا مرة).</div>
 
-
-  <div class="form-text k">التقط حتى 6 صور (سيُحفظ أول 6 فقط).</div>
-
-  <textarea class="form-control" name="comment" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
-
-  <button class="btn btn-success btn-wide">
-    <i class="bi bi-camera"></i> التقاط الصور بالكاميرا ثم الرفع والمتابعة
-  </button>
-</form>
 
 
 
@@ -255,36 +240,21 @@
           <div class="hint">عند الإرجاع، التقط 6 صور وسيتم تحويلك بعدها للتقييم.</div>
 
 
-          <!-- 📷 مودال الإرجاع بكاميرا مباشرة -->
-<form method="post"
-      action="/bookings/{{ booking.id }}/return-proof-upload?next=/reviews/renter/{{ booking.id }}"
-      enctype="multipart/form-data"
-      class="d-grid gap-2">
+<!-- 📷 الإرجاع — زر واحد يلتقط 6 صور ويرفعها -->
+<div class="box mb-2">
+  <div class="mb-2">عند الإرجاع، التقط 6 صور وسيتم تحويلك للتقييم.</div>
 
-  <div class="row g-2">
-  {% for n in [1,2,3,4,5,6] %}
-  <div class="col-6">
-    <label class="form-label small">صورة {{ n }}</label>
-    <input class="form-control"
-           type="file"
-           name="files"
-           accept="image/*"
-           capture="environment"
-           required>
+  <div class="d-grid gap-2">
+    <textarea id="returnComment" class="form-control" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
+
+    <button type="button" id="returnCaptureBtn" class="btn btn-warning btn-wide">
+      <i class="bi bi-camera"></i> التقط 6 صور بالكاميرا ثم الرفع والانتقال للتقييم
+    </button>
+
+    <div id="returnCaptureStatus" class="k small"></div>
   </div>
-  {% endfor %}
 </div>
-<div class="form-text k">التقط 6 صور (كل حقل يفتح الكاميرا مرة).</div>
 
-
-  <div class="form-text k">التقط حتى 6 صور (سيُحفظ أول 6 فقط).</div>
-
-  <textarea class="form-control" name="comment" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
-
-  <button class="btn btn-warning btn-wide">
-    <i class="bi bi-camera"></i> التقاط الصور بالكاميرا ثم الرفع والانتقال للتقييم
-  </button>
-</form>
 
 
 
@@ -637,6 +607,106 @@
 })();
 </script>
 
+<script>
+(function(){
+  // إعداد عام: زر يفتح الكاميرا 6 مرات ويجمع الملفات ويرفعها للـendpoint
+  function setupAutoCapture(buttonId, commentId, postUrl, nextUrl, statusId){
+    var btn     = document.getElementById(buttonId);
+    var noteEl  = document.getElementById(commentId);
+    var status  = document.getElementById(statusId);
+    if(!btn) return;
+
+    var MAX = 6;                 // عدد الصور المطلوبة
+    var collected = [];          // الملفات التي جمعناها
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.setAttribute('capture','environment'); // الكاميرا الخلفية
+    // مهم: بدون multiple حتى يرغم iOS على التقاط صورة واحدة في كل مرة
+
+    function updateStatus(){
+      if(!status) return;
+      status.textContent = 'تم التقاط ' + collected.length + ' / ' + MAX;
+    }
+
+    function openCameraOnce(){
+      try { input.value = ''; } catch(_){}
+      input.click();
+    }
+
+    input.addEventListener('change', function(){
+      var f = input.files && input.files[0];
+      if(f){
+        collected.push(f);
+        updateStatus();
+      }
+      if(collected.length < MAX){
+        // افتح الكاميرا مجددًا حتى نصل 6
+        setTimeout(openCameraOnce, 300);
+      }else{
+        // ارفع الآن
+        uploadNow();
+      }
+    });
+
+    function uploadNow(){
+      if(!collected.length) return;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الرفع…';
+      if(status) status.textContent = 'جاري الرفع…';
+
+      var fd = new FormData();
+      // append بنفس اسم الحقل الذي يستقبله الباك "files"
+      for(var i=0;i<collected.length && i<MAX;i++){
+        fd.append('files', collected[i], collected[i].name || ('photo'+(i+1)+'.jpg'));
+      }
+      if(noteEl && noteEl.value){ fd.append('comment', noteEl.value); }
+
+      fetch(postUrl, { method:'POST', body: fd, credentials:'same-origin' })
+        .then(function(r){
+          // بعض الأطر ترجع RedirectResponse؛ fetch يتبعها لكنه لا يغيّر location
+          // لذلك نوجّه يدويًا إلى nextUrl عند النجاح
+          if(!r.ok) throw new Error('upload failed');
+          return r.text(); // لا نحتاج المحتوى
+        })
+        .then(function(){
+          window.location.assign(nextUrl || window.location.href);
+        })
+        .catch(function(){
+          btn.disabled = false;
+          btn.innerHTML = btn.dataset.orig || 'إعادة المحاولة';
+          if(status) status.textContent = 'تعذّر الرفع. حاول مجددًا.';
+          collected = [];
+        });
+    }
+
+    btn.addEventListener('click', function(){
+      collected = [];
+      btn.dataset.orig = btn.innerHTML;
+      updateStatus();
+      openCameraOnce();
+    });
+  }
+
+  // تفعيل الاستلام
+  setupAutoCapture(
+    'pickupCaptureBtn',
+    'pickupComment',
+    '/bookings/{{ booking.id }}/pickup-proof-upload?next=/bookings/flow/{{ booking.id }}/next',
+    '/bookings/flow/{{ booking.id }}/next',
+    'pickupCaptureStatus'
+  );
+
+  // تفعيل الإرجاع
+  setupAutoCapture(
+    'returnCaptureBtn',
+    'returnComment',
+    '/bookings/{{ booking.id }}/return-proof-upload?next=/reviews/renter/{{ booking.id }}',
+    '/reviews/renter/{{ booking.id }}',
+    'returnCaptureStatus'
+  );
+})();
+</script>
 
 
 
