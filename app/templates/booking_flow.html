@@ -32,6 +32,8 @@
   .star-btn.disabled{ pointer-events:none; opacity:.6; cursor:default; }
   textarea.disabled{ pointer-events:none; opacity:.6; }
   button[disabled]{ pointer-events:none; }
+  .num-ltr{ direction:ltr; unicode-bidi:isolate; white-space:nowrap; font-variant-numeric:tabular-nums; }
+
 </style>
 
 {% if dispute_deadline_iso %}
@@ -219,7 +221,8 @@
       <i class="bi bi-camera"></i> التقط 6 صور بالكاميرا ثم الرفع والمتابعة
     </button>
 
-    <div id="pickupCaptureStatus" class="k small"></div>
+    <div id="pickupCaptureStatus" class="k small num-ltr"></div>
+
   </div>
 </div>
 
@@ -251,7 +254,8 @@
       <i class="bi bi-camera"></i> التقط 6 صور بالكاميرا ثم الرفع والانتقال للتقييم
     </button>
 
-    <div id="returnCaptureStatus" class="k small"></div>
+    <div id="returnCaptureStatus" class="k small num-ltr"></div>
+
   </div>
 </div>
 
@@ -616,17 +620,33 @@
     var status  = document.getElementById(statusId);
     if(!btn) return;
 
-    var MAX = 6;                 // عدد الصور المطلوبة
-    var collected = [];          // الملفات التي جمعناها
+    var MAX = 6;
+
+    // مفتاح تخزين يختلف بين الاستلام/الإرجاع وبحسب الحجز
+    var KEY = 'cap:' + buttonId + ':{{ booking.id }}';
+
+    // نجمع الملفات هنا (في الذاكرة)
+    var collected = [];
+
+    // نقرأ التقدّم السابق (إن وُجد) لأن iOS قد يجمّد الصفحة لحظة فتح الكاميرا
+    var savedCount = 0;
+    try { savedCount = parseInt(localStorage.getItem(KEY) || '0', 10) || 0; } catch(_){}
+    // ملاحظة: لا يمكن استرجاع الملفات ذاتها بعد التجميد؛ نحفظ العدد فقط لعرضه للمستخدم.
+
+    // عنصر input واحد نعيد فتحه كل مرة
     var input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
     input.setAttribute('capture','environment'); // الكاميرا الخلفية
-    // مهم: بدون multiple حتى يرغم iOS على التقاط صورة واحدة في كل مرة
+    // لا نستخدم multiple: نجبر iOS على الالتقاط صورة واحدة بكل مرة
 
-    function updateStatus(){
+    function ui(text){
       if(!status) return;
-      status.textContent = 'تم التقاط ' + collected.length + ' / ' + MAX;
+      status.textContent = text;
+    }
+    function updateStatus(){
+      var c = collected.length || savedCount || 0;
+      ui('تم التقاط ' + c + ' / ' + MAX);
     }
 
     function openCameraOnce(){
@@ -638,25 +658,31 @@
       var f = input.files && input.files[0];
       if(f){
         collected.push(f);
+        try { localStorage.setItem(KEY, String(collected.length)); } catch(_){}
         updateStatus();
       }
+
       if(collected.length < MAX){
-        // افتح الكاميرا مجددًا حتى نصل 6
         setTimeout(openCameraOnce, 300);
       }else{
-        // ارفع الآن
         uploadNow();
       }
     });
 
     function uploadNow(){
-      if(!collected.length) return;
+      if(!collected.length){
+        // لو عندنا عدد محفوظ بدون ملفات فعلية (صفحة أُنعشت)، نبدأ من جديد بعد إبلاغ المستخدم بالعداد
+        savedCount = 0;
+        try { localStorage.removeItem(KEY); } catch(_){}
+        updateStatus();
+        return;
+      }
+
       btn.disabled = true;
       btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الرفع…';
-      if(status) status.textContent = 'جاري الرفع…';
+      ui('جاري الرفع…');
 
       var fd = new FormData();
-      // append بنفس اسم الحقل الذي يستقبله الباك "files"
       for(var i=0;i<collected.length && i<MAX;i++){
         fd.append('files', collected[i], collected[i].name || ('photo'+(i+1)+'.jpg'));
       }
@@ -664,27 +690,42 @@
 
       fetch(postUrl, { method:'POST', body: fd, credentials:'same-origin' })
         .then(function(r){
-          // بعض الأطر ترجع RedirectResponse؛ fetch يتبعها لكنه لا يغيّر location
-          // لذلك نوجّه يدويًا إلى nextUrl عند النجاح
           if(!r.ok) throw new Error('upload failed');
-          return r.text(); // لا نحتاج المحتوى
+          return r.text();
         })
         .then(function(){
+          try { localStorage.removeItem(KEY); } catch(_){}
           window.location.assign(nextUrl || window.location.href);
         })
         .catch(function(){
           btn.disabled = false;
           btn.innerHTML = btn.dataset.orig || 'إعادة المحاولة';
-          if(status) status.textContent = 'تعذّر الرفع. حاول مجددًا.';
-          collected = [];
+          ui('تعذّر الرفع. حاول مجددًا.');
         });
     }
 
     btn.addEventListener('click', function(){
       collected = [];
+      try { localStorage.setItem(KEY, '0'); } catch(_){}
       btn.dataset.orig = btn.innerHTML;
       updateStatus();
       openCameraOnce();
+    });
+
+    // إظهار العداد المحفوظ لو رجعنا من الخلفية
+    updateStatus();
+    window.addEventListener('focus', updateStatus);
+    window.addEventListener('pageshow', updateStatus);
+    document.addEventListener('visibilitychange', function(){
+      if(!document.hidden) updateStatus();
+    });
+
+    // (اختياري) تحذير قبل الخروج إن لم نُكمل 6 صور
+    window.addEventListener('beforeunload', function(e){
+      if (collected.length > 0 && collected.length < MAX){
+        e.preventDefault();
+        e.returnValue = '';
+      }
     });
   }
 
@@ -707,6 +748,7 @@
   );
 })();
 </script>
+
 
 
 
