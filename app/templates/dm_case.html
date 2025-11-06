@@ -1,4 +1,4 @@
-{# app/templates/dm_case.html #}
+{# app/templates/dm_case.html — نسخة كاملة بعد التقسيم (استلام/إرجاع/أخرى) #}
 {% extends "base.html" %}
 {% block title %}قضية وديعة — #{{ bk.id }}{% endblock %}
 
@@ -8,7 +8,6 @@
   .box{border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:14px;background:#fff}
   .muted{opacity:.65}
   .grid{display:grid;gap:10px}
-  .grid-ev{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
   .thumb{width:100%;aspect-ratio:1/1;border-radius:10px;object-fit:cover;border:1px solid var(--border,#e5e7eb)}
   .chip{padding:.35rem .6rem;border:1px solid var(--border,#e5e7eb);border-radius:999px}
   .k{opacity:.7}
@@ -23,6 +22,8 @@
     background:rgba(255,255,255,.6);backdrop-filter:saturate(0.6) blur(2px);
     font-weight:600;color:#444;border-radius:12px
   }
+  .ev-grid{display:flex;flex-wrap:wrap;gap:8px}
+  .ev-thumb{width:88px;height:88px;border-radius:10px;object-fit:cover;border:1px solid var(--border)}
 </style>
 {% if bk.renter_response_deadline_at %}
   <script defer src="/static/js/countdown.js"></script>
@@ -31,8 +32,8 @@
 
 {% block content %}
 {# اعتبر القضية “مقفلة” إذا كان الحجز مغلقاً أو تم إرجاع/اقتطاع الوديعة نهائياً #}
-{% set is_locked = (bk.status in ['closed','completed']) 
-                    or (bk.deposit_status in ['refunded','partially_withheld','no_deposit']) 
+{% set is_locked = (bk.status in ['closed','completed'])
+                    or (bk.deposit_status in ['refunded','partially_withheld','no_deposit'])
                     or (bk.dm_decision in ['release','withhold'] and bk.dm_decision_at) %}
 
 <div class="case-wrap">
@@ -43,98 +44,130 @@
         العنصر:
         {% if item %}
           <strong>{{ item.title }}</strong> — <a href="/items/{{ item.id }}" target="_blank">فتح صفحة العنصر</a>
-        {% else %}
-          —
-        {% endif %}
+        {% else %} — {% endif %}
       </div>
       <div class="k">الفترة: {{ bk.start_date }} → {{ bk.end_date }} ({{ bk.days }} يوم)</div>
     </div>
     <div class="d-flex flex-column align-items-end gap-1">
       <span class="chip">حالة الحجز: {{ bk.status or '—' }}</span>
       <span class="chip">حالة الوديعة: {{ bk.deposit_status or '—' }}</span>
-      {% if is_locked %}
-        <span class="chip" style="background:#f8f9fa">🔒 مغلقة</span>
-      {% endif %}
+      {% if is_locked %}<span class="chip" style="background:#f8f9fa">🔒 مغلقة</span>{% endif %}
     </div>
   </div>
 
   <div class="grid" style="grid-template-columns: 1fr 360px;">
-    <!-- يسار: تفاصيل و إجراءات -->
+    <!-- يسار: تفاصيل وإجراءات -->
     <div class="grid">
 
       {# ===== بلاغ المالك + أدلته ===== #}
       {% if bk.owner_report_type or bk.owner_report_reason or (bk.deposit_evidences and bk.deposit_evidences|length) %}
-        <div class="box mb-3">
-          <div class="d-flex align-items-center gap-2 mb-2">
-            <i class="bi bi-exclamation-octagon"></i>
-            <h6 class="m-0">بلاغ المالك</h6>
-          </div>
-
-          <div class="mb-1">
-            <div class="k">النوع:</div>
-            <div class="fw-semibold">{{ bk.owner_report_type or '—' }}</div>
-          </div>
-
-          {% if bk.owner_report_reason %}
-            <div class="mb-2">
-              <div class="k">الوصف:</div>
-              <div style="white-space:pre-wrap">{{ bk.owner_report_reason }}</div>
-            </div>
-          {% endif %}
-
-          {% if bk.deposit_evidences and bk.deposit_evidences|length %}
-            {% set owner_evs = bk.deposit_evidences | selectattr('side','equalto','owner') | list %}
-            {% if owner_evs and owner_evs|length %}
-              <div class="d-flex flex-wrap" style="gap:8px">
-                {% for ev in owner_evs[:6] %}
-                  {% if ev.kind == 'video' or (ev.file_path and ('.mp4' in ev.file_path or '.mov' in ev.file_path or '.m4v' in ev.file_path)) %}
-                    <a href="{{ ev.file_path }}" target="_blank" class="d-inline-block">
-                      <video src="{{ ev.file_path }}" muted
-                             style="width:88px;height:88px;border-radius:10px;object-fit:cover;border:1px solid var(--border)"></video>
-                    </a>
-                  {% else %}
-                    <a href="{{ ev.file_path }}" target="_blank" class="d-inline-block">
-                      <img src="{{ ev.file_path }}"
-                           style="width:88px;height:88px;border-radius:10px;object-fit:cover;border:1px solid var(--border)"/>
-                    </a>
-                  {% endif %}
-                {% endfor %}
-              </div>
-            {% else %}
-              <div class="muted">لا توجد أدلة مرفوعة بعد.</div>
-            {% endif %}
-          {% else %}
-            <div class="muted">لا توجد أدلة مرفوعة بعد.</div>
-          {% endif %}
-        </div>
-      {% endif %}
-
-      {# ===== أدلة المستأجر ===== #}
       <div class="box mb-3">
         <div class="d-flex align-items-center gap-2 mb-2">
-          <i class="bi bi-person-bounding-box"></i>
-          <h6 class="m-0">أدلة المستأجر</h6>
+          <i class="bi bi-exclamation-octagon"></i>
+          <h6 class="m-0">بلاغ المالك</h6>
         </div>
-        {% set renter_evs = bk.deposit_evidences | selectattr('side','equalto','renter') | list %}
-        {% if renter_evs and renter_evs|length %}
-          <div class="d-flex flex-wrap" style="gap:8px">
-            {% for ev in renter_evs[:12] %}
+
+        <div class="mb-1">
+          <div class="k">النوع:</div>
+          <div class="fw-semibold">{{ bk.owner_report_type or '—' }}</div>
+        </div>
+
+        {% if bk.owner_report_reason %}
+        <div class="mb-2">
+          <div class="k">الوصف:</div>
+          <div style="white-space:pre-wrap">{{ bk.owner_report_reason }}</div>
+        </div>
+        {% endif %}
+
+        {% set owner_evs = bk.deposit_evidences | selectattr('side','equalto','owner') | list %}
+        {% if owner_evs and owner_evs|length %}
+          <div class="ev-grid">
+            {% for ev in owner_evs[:6] %}
               {% set _is_video = (ev.kind == 'video') or (ev.file_path and ('.mp4' in ev.file_path or '.mov' in ev.file_path or '.m4v' in ev.file_path)) %}
               <a href="{{ ev.file_path }}" target="_blank" class="d-inline-block">
                 {% if _is_video %}
-                  <video src="{{ ev.file_path }}" muted
-                         style="width:88px;height:88px;border-radius:10px;object-fit:cover;border:1px solid var(--border)"></video>
+                  <video src="{{ ev.file_path }}" muted class="ev-thumb"></video>
                 {% else %}
-                  <img src="{{ ev.file_path }}"
-                       style="width:88px;height:88px;border-radius:10px;object-fit:cover;border:1px solid var(--border)" />
+                  <img src="{{ ev.file_path }}" class="ev-thumb"/>
                 {% endif %}
               </a>
             {% endfor %}
           </div>
         {% else %}
-          <div class="muted">لا توجد أدلة مرفوعة من المستأجر حتى الآن.</div>
+          <div class="muted">لا توجد أدلة مرفوعة بعد.</div>
         {% endif %}
       </div>
+      {% endif %}
+
+      {# ===== أدلة المستأجر — عند الاستلام ===== #}
+      <div class="box mb-3">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="bi bi-person-bounding-box"></i>
+          <h6 class="m-0">أدلة المستأجر — عند الاستلام</h6>
+        </div>
+        {% if renter_pickup and renter_pickup|length %}
+          <div class="ev-grid">
+            {% for ev in renter_pickup[:12] %}
+              {% set _is_video = (ev.kind == 'video') or (ev.file_path and ('.mp4' in ev.file_path or '.mov' in ev.file_path or '.m4v' in ev.file_path)) %}
+              <a href="{{ ev.file_path }}" target="_blank" class="d-inline-block">
+                {% if _is_video %}
+                  <video src="{{ ev.file_path }}" muted class="ev-thumb"></video>
+                {% else %}
+                  <img src="{{ ev.file_path }}" class="ev-thumb"/>
+                {% endif %}
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="muted">لا توجد صور استلام من المستأجر.</div>
+        {% endif %}
+      </div>
+
+      {# ===== أدلة المستأجر — عند الإرجاع ===== #}
+      <div class="box mb-3">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="bi bi-arrow-return-left"></i>
+          <h6 class="m-0">أدلة المستأجر — عند الإرجاع</h6>
+        </div>
+        {% if renter_return and renter_return|length %}
+          <div class="ev-grid">
+            {% for ev in renter_return[:12] %}
+              {% set _is_video = (ev.kind == 'video') or (ev.file_path and ('.mp4' in ev.file_path or '.mov' in ev.file_path or '.m4v' in ev.file_path)) %}
+              <a href="{{ ev.file_path }}" target="_blank" class="d-inline-block">
+                {% if _is_video %}
+                  <video src="{{ ev.file_path }}" muted class="ev-thumb"></video>
+                {% else %}
+                  <img src="{{ ev.file_path }}" class="ev-thumb"/>
+                {% endif %}
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="muted">لا توجد صور إرجاع من المستأجر.</div>
+        {% endif %}
+      </div>
+
+      {# ===== (اختياري) أدلة أخرى للمستأجر ===== #}
+      {% if renter_other and renter_other|length %}
+      <div class="box mb-3">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="bi bi-images"></i>
+          <h6 class="m-0">أدلة أخرى للمستأجر</h6>
+        </div>
+        <div class="ev-grid">
+          {% for ev in renter_other[:12] %}
+            {% set _is_video = (ev.kind == 'video') or (ev.file_path and ('.mp4' in ev.file_path or '.mov' in ev.file_path or '.m4v' in ev.file_path)) %}
+            <a href="{{ ev.file_path }}" target="_blank" class="d-inline-block">
+              {% if _is_video %}
+                <video src="{{ ev.file_path }}" muted class="ev-thumb"></video>
+              {% else %}
+                <img src="{{ ev.file_path }}" class="ev-thumb"/>
+              {% endif %}
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
 
       {# ===== إجراءات DM ===== #}
       <div class="box {% if is_locked %}locked{% endif %}">
@@ -144,8 +177,7 @@
           <div class="alert alert-info alert-mini mb-3">
             نافذة ردّ المستأجر مفتوحة — التنفيذ التلقائي بعد نهاية المهلة إن لم يردّ.
             <div class="mt-1 mono">
-              ينتهي في:
-              <span id="deadlineCountdown">{{ bk.renter_response_deadline_at }}</span>
+              ينتهي في: <span id="deadlineCountdown">{{ bk.renter_response_deadline_at }}</span>
             </div>
           </div>
         {% endif %}
@@ -161,7 +193,7 @@
                 </div>
                 <div class="col-auto">
                   <label class="form-label">السبب</label>
-                  <input class="form-control" type="text" name="reason" placeholder="وصف مختصر" />
+                  <input class="form-control" type="text" name="reason" placeholder="وصف مختصر">
                 </div>
                 <div class="col-auto">
                   <button class="btn btn-warning">
@@ -184,7 +216,7 @@
                 </div>
                 <div class="col-auto">
                   <label class="form-label">السبب</label>
-                  <input class="form-control" type="text" name="reason" placeholder="وصف مختصر" />
+                  <input class="form-control" type="text" name="reason" placeholder="وصف مختصر">
                 </div>
                 <div class="col-auto">
                   <button class="btn btn-danger">
@@ -227,10 +259,18 @@
     <div class="grid">
       <div class="box">
         <h6 class="mb-2">ملخص الدفع</h6>
-        <div class="d-flex justify-content-between"><span>طريقة الدفع</span><strong>{{ bk.payment_method or '—' }}</strong></div>
-        <div class="d-flex justify-content-between"><span>الإيجار</span><strong>{{ bk.rent_amount or bk.total_amount or 0 }}$</strong></div>
-        <div class="d-flex justify-content-between"><span>الوديعة المحتجزة</span><strong>{{ bk.hold_deposit_amount or bk.deposit_amount or 0 }}$</strong></div>
-        <div class="d-flex justify-content-between"><span>المحصول المقتطع</span><strong>{{ bk.deposit_charged_amount or 0 }}$</strong></div>
+        <div class="d-flex justify-content-between">
+          <span>طريقة الدفع</span><strong>{{ bk.payment_method or '—' }}</strong>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span>الإيجار</span><strong>{{ bk.rent_amount or bk.total_amount or 0 }}$</strong>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span>الوديعة المحتجزة</span><strong>{{ bk.hold_deposit_amount or bk.deposit_amount or 0 }}$</strong>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span>المحصول المقتطع</span><strong>{{ bk.deposit_charged_amount or 0 }}$</strong>
+        </div>
         <hr>
         <div class="k mono small">
           {% if bk.accepted_at %}accepted_at: {{ bk.accepted_at }}<br>{% endif %}

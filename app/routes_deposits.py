@@ -303,6 +303,23 @@ def _has_renter_reply(db: Session, booking_id: int, bk: Booking | None = None) -
             return c > 0
     except Exception:
         return False
+# --- NEW: split renter evidences by phase tag ---
+def _split_renter_evidence(bk):
+    try:
+        evs = list(getattr(bk, "deposit_evidences", []) or [])
+    except Exception:
+        evs = []
+    renters = [e for e in evs if (getattr(e, "side", "") or "").lower() == "renter"]
+    pickup, ret, other = [], [], []
+    for e in renters:
+        desc = (getattr(e, "description", "") or "").strip().lower()
+        if desc.startswith("[pickup_renter]"):
+            pickup.append(e)
+        elif desc.startswith("[return_renter]"):
+            ret.append(e)
+        else:
+            other.append(e)
+    return pickup, ret, other
 
 # ============ قائمة القضايا (مع فلاتر) ============
 @router.get("/dm/deposits")
@@ -394,6 +411,8 @@ def dm_case_page(
 
     bk = require_booking(db, booking_id)
     item = db.get(Item, bk.item_id)
+    renter_pickup, renter_return, renter_other = _split_renter_evidence(bk)
+
 
     evidence_urls = [str(u) for u in _evidence_urls(request, bk.id) if u]
     has_renter_reply = _has_renter_reply(db, bk.id, bk)
@@ -412,6 +431,11 @@ def dm_case_page(
             "has_renter_reply": has_renter_reply,
             "category_label": category_label,
             "is_closed": _is_closed(bk),
+            "renter_pickup": renter_pickup,
+            "renter_return": renter_return,
+            "renter_other": renter_other,
+
+            
         },
     )
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
