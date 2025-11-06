@@ -722,9 +722,11 @@ def report_deposit_issue(
         raise HTTPException(status_code=403, detail="Only owner can report issue")
     # --- بديل محسّن ---
     pi_id = _get_deposit_pi_id(bk)
-if not pi_id:
-    if (bk.payment_method or "").lower() not in ("cash", "manual") and (bk.hold_deposit_amount or 0) <= 0:
-        raise HTTPException(status_code=400, detail="No deposit hold found")
+
+    # ---- من هنا إلى نهاية الدالة يجب أن يبقى داخل الدالة (مُزاح 4 مسافات) ----
+    if not pi_id:
+        if (bk.payment_method or "").lower() not in ("cash", "manual") and (bk.hold_deposit_amount or 0) <= 0:
+            raise HTTPException(status_code=400, detail="No deposit hold found")
 
     saved_pairs = _save_evidence_files_and_cloud(bk.id, files)
 
