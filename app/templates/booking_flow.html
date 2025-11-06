@@ -214,33 +214,54 @@
             <i class="bi bi-camera"></i> تم الاستلام — التقط 6 صور
           </button>
 
-          <!-- مودال صور الاستلام -->
-          <div class="modal fade" id="pickupProofModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-              <form class="modal-content" method="post" action="/bookings/{{ booking.id }}/pickup-proof-upload" enctype="multipart/form-data">
-                <div class="modal-header">
-                  <h5 class="modal-title">صور الاستلام (حتى 6 صور)</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
-                </div>
-                <div class="modal-body">
-                  <div class="mb-2 small k">التقط صور واضحة وقت الاستلام.</div>
-                  <input class="form-control" type="file" name="files" accept="image/*" capture="environment" multiple required>
-                  <div class="form-text">سنحتفظ بأول 6 صور فقط.</div>
-                  <textarea class="form-control mt-2" name="comment" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
-                </div>
-                <div class="modal-footer">
-                  <button class="btn btn-primary">
-                    <i class="bi bi-upload"></i> رفع الصور وتعليم تم الاستلام
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
+          <!-- 📷 مودال الاستلام بكاميرا مباشرة -->
+<div class="modal fade" id="pickupProofModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">صور الاستلام — التقط 6 صور</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+      </div>
+      <div class="modal-body">
+        <div class="ratio ratio-4x3 mb-2" style="background:#000;border-radius:10px;overflow:hidden">
+          <video id="cam_pickup" autoplay playsinline muted></video>
+          <canvas id="can_pickup" class="d-none"></canvas>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div class="small k">الملتقط: <span id="count_pickup">0</span>/6</div>
+          <button id="retake_pickup" class="btn btn-outline-secondary btn-sm" type="button">إعادة ضبط</button>
+        </div>
+
+        <textarea id="note_pickup" class="form-control mb-2" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
+
+        <div class="d-grid gap-2">
+          <button id="snap_pickup" class="btn btn-primary" type="button">
+            <i class="bi bi-camera"></i> التقط صورة
+          </button>
+          <button id="send_pickup" class="btn btn-success" type="button" disabled>
+            <i class="bi bi-upload"></i> رفع 6 صور والانتقال
+          </button>
+        </div>
+
+        <!-- Fallback إذا فشلت الكاميرا -->
+        <div id="fallback_pickup" class="mt-3 d-none">
+          <div class="alert alert-warning small mb-2">تعذر فتح الكاميرا. يمكنك اختيار الصور يدويًا:</div>
+          <form id="fallback_pickup_form" method="post" action="/bookings/{{ booking.id }}/pickup-proof-upload" enctype="multipart/form-data">
+            <input class="form-control" type="file" name="files" accept="image/*" multiple required>
+            <textarea class="form-control mt-2" name="comment" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
+            <button class="btn btn-primary mt-2">رفع الصور</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 
         {% elif is_owner %}
           <div class="hint">تم الدفع. بانتظار أن يؤكد المستأجر أنه استلم الغرض.</div>
           <form class="mt-2" method="post" action="/bookings/{{ booking.id }}/owner/confirm_delivered">
-            <button class="btn btn-outline-success btn-sm"><i class="bi bi-hand-thumbs-up"></i> علِّم تمّ التسليم</button>
           </form>
         {% endif %}
       {% endif %}
@@ -256,28 +277,50 @@
             <i class="bi bi-camera"></i> تم الإرجاع + تقييم — التقط 6 صور
           </button>
 
-          <!-- مودال صور الإرجاع -->
-          <div class="modal fade" id="returnProofModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-              <form class="modal-content" method="post" action="/bookings/{{ booking.id }}/return-proof-upload" enctype="multipart/form-data">
-                <div class="modal-header">
-                  <h5 class="modal-title">صور الإرجاع (حتى 6 صور)</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
-                </div>
-                <div class="modal-body">
-                  <div class="mb-2 small k">التقط صور واضحة وقت الإرجاع.</div>
-                  <input class="form-control" type="file" name="files" accept="image/*" capture="environment" multiple required>
-                  <div class="form-text">سنحتفظ بأول 6 صور فقط.</div>
-                  <textarea class="form-control mt-2" name="comment" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
-                </div>
-                <div class="modal-footer">
-                  <button class="btn btn-primary">
-                    <i class="bi bi-upload"></i> رفع الصور والانتقال للتقييم
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
+          <!-- 📷 مودال الإرجاع بكاميرا مباشرة -->
+<div class="modal fade" id="returnProofModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">صور الإرجاع — التقط 6 صور</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+      </div>
+      <div class="modal-body">
+        <div class="ratio ratio-4x3 mb-2" style="background:#000;border-radius:10px;overflow:hidden">
+          <video id="cam_return" autoplay playsinline muted></video>
+          <canvas id="can_return" class="d-none"></canvas>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div class="small k">الملتقط: <span id="count_return">0</span>/6</div>
+          <button id="retake_return" class="btn btn-outline-secondary btn-sm" type="button">إعادة ضبط</button>
+        </div>
+
+        <textarea id="note_return" class="form-control mb-2" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
+
+        <div class="d-grid gap-2">
+          <button id="snap_return" class="btn btn-primary" type="button">
+            <i class="bi bi-camera"></i> التقط صورة
+          </button>
+          <button id="send_return" class="btn btn-warning" type="button" disabled>
+            <i class="bi bi-upload"></i> رفع 6 صور والانتقال للتقييم
+          </button>
+        </div>
+
+        <!-- Fallback إذا فشلت الكاميرا -->
+        <div id="fallback_return" class="mt-3 d-none">
+          <div class="alert alert-warning small mb-2">تعذر فتح الكاميرا. يمكنك اختيار الصور يدويًا:</div>
+          <form id="fallback_return_form" method="post" action="/bookings/{{ booking.id }}/return-proof-upload" enctype="multipart/form-data">
+            <input class="form-control" type="file" name="files" accept="image/*" multiple required>
+            <textarea class="form-control mt-2" name="comment" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
+            <button class="btn btn-primary mt-2">رفع الصور</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 
         {% elif is_owner %}
           <div class="hint">المستأجر استلم الغرض. عند الإرجاع ستظهر لك خطوات تأكيد الإرجاع والوديعة.</div>
@@ -627,5 +670,116 @@
   } catch(e){}
 })();
 </script>
+
+<script>
+(function(){
+  async function startCamera(videoEl){
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } }, audio: false
+      });
+      videoEl.srcObject = stream;
+      return stream;
+    }catch(e){ return null; }
+  }
+  function stopCamera(stream){ try{ stream.getTracks().forEach(t=>t.stop()); }catch(_){ } }
+
+  function captureBlob(videoEl, canvasEl, quality=0.92){
+    const w = videoEl.videoWidth || 1280, h = videoEl.videoHeight || 720;
+    canvasEl.width = w; canvasEl.height = h;
+    const ctx = canvasEl.getContext('2d'); ctx.drawImage(videoEl, 0, 0, w, h);
+    return new Promise(res=>canvasEl.toBlob(b=>res(b),'image/jpeg',quality));
+  }
+
+  async function uploadSet(url, blobs, note){
+    const fd = new FormData();
+    blobs.slice(0,6).forEach((b,i)=> fd.append('files', b, `photo_${i+1}.jpg`));
+    if(note) fd.append('comment', note);
+    const r = await fetch(url, { method:'POST', body: fd, credentials:'same-origin' });
+    if(!r.ok) throw new Error('upload failed');
+    return r;
+  }
+
+  function initCameraModal(cfg){
+    const modalEl = document.getElementById(cfg.modalId);
+    if(!modalEl) return;
+
+    let video = document.getElementById(cfg.videoId);
+    let canvas = document.getElementById(cfg.canvasId);
+    let countEl = document.getElementById(cfg.countId);
+    let snap = document.getElementById(cfg.snapBtn);
+    let send = document.getElementById(cfg.sendBtn);
+    let retake = document.getElementById(cfg.retakeBtn);
+    let note = document.getElementById(cfg.noteId);
+    let fallbackWrap = document.getElementById(cfg.fallbackWrapId);
+
+    let stream = null; let blobs = [];
+
+    function updateUI(){
+      countEl.textContent = String(blobs.length);
+      send.disabled = (blobs.length !== 6);
+      snap.disabled = (blobs.length >= 6);
+    }
+    function resetAll(){ blobs = []; updateUI(); }
+
+    modalEl.addEventListener('shown.bs.modal', async ()=>{
+      resetAll();
+      stream = await startCamera(video);
+      if(!stream){ fallbackWrap.classList.remove('d-none'); }
+      else{ fallbackWrap.classList.add('d-none'); }
+    });
+
+    modalEl.addEventListener('hidden.bs.modal', ()=>{
+      if(stream){ stopCamera(stream); stream=null; }
+      resetAll();
+    });
+
+    retake.addEventListener('click', resetAll);
+
+    snap.addEventListener('click', async ()=>{
+      if(blobs.length>=6) return;
+      const b = await captureBlob(video, canvas, 0.92);
+      if(b) blobs.push(b);
+      updateUI();
+    });
+
+    send.addEventListener('click', async ()=>{
+      if(blobs.length!==6) return;
+      try{
+        send.disabled = true;
+        const original = send.innerHTML;
+        send.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الرفع…';
+        await uploadSet(cfg.uploadUrl, blobs, note.value.trim());
+        if(stream){ stopCamera(stream); stream=null; }
+        const m = bootstrap.Modal.getInstance(modalEl); if(m) m.hide();
+        location.assign(cfg.onDoneRedirect);
+      }catch(e){
+        alert('فشل الرفع. حاول مرة أخرى.');
+        send.disabled = false;
+        send.innerHTML = original;
+      }
+    });
+  }
+
+  // ► مودال الاستلام
+  initCameraModal({
+    modalId:'pickupProofModal', videoId:'cam_pickup', canvasId:'can_pickup',
+    countId:'count_pickup', snapBtn:'snap_pickup', sendBtn:'send_pickup',
+    retakeBtn:'retake_pickup', noteId:'note_pickup', fallbackWrapId:'fallback_pickup',
+    uploadUrl:'/bookings/{{ booking.id }}/pickup-proof-upload',
+    onDoneRedirect:'/bookings/flow/{{ booking.id }}/next'
+  });
+
+  // ► مودال الإرجاع
+  initCameraModal({
+    modalId:'returnProofModal', videoId:'cam_return', canvasId:'can_return',
+    countId:'count_return', snapBtn:'snap_return', sendBtn:'send_return',
+    retakeBtn:'retake_return', noteId:'note_return', fallbackWrapId:'fallback_return',
+    uploadUrl:'/bookings/{{ booking.id }}/return-proof-upload',
+    onDoneRedirect:'/reviews/renter/{{ booking.id }}'
+  });
+})();
+</script>
+
 
 {% endblock %}
