@@ -420,6 +420,7 @@ def dm_case_page(
     resp.headers["X-Route-Version"] = "deposits-v4"
     return resp
 
+
 # ============ تنفيذ القرار (نهائي/انتظار) ============
 @router.post("/dm/deposits/{booking_id}/decision")
 def dm_decision(
@@ -683,12 +684,14 @@ def report_deposit_issue_page(
     require_auth(user)
     bk = require_booking(db, booking_id)
 
+    # المالك فقط يفتح نموذج البلاغ، وDM/Admin يُحوَّل لصفحة القضية
     if user.id != bk.owner_id:
         if can_manage_deposits(user):
             return RedirectResponse(url=f"/dm/deposits/{bk.id}", status_code=303)
         return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
     item = db.get(Item, bk.item_id)
+
     return request.app.templates.TemplateResponse(
         "deposit_report.html",
         {
@@ -701,6 +704,7 @@ def report_deposit_issue_page(
             "category_label": category_label,
         },
     )
+
 
 @router.post("/deposits/{booking_id}/report")
 def report_deposit_issue(
@@ -717,9 +721,8 @@ def report_deposit_issue(
     if user.id != bk.owner_id:
         raise HTTPException(status_code=403, detail="Only owner can report issue")
     # --- بديل محسّن ---
-pi_id = _get_deposit_pi_id(bk)
+    pi_id = _get_deposit_pi_id(bk)
 if not pi_id:
-    # لو الدفع كاش أو مبلغ وديعة موجود محليًا → اعتبرها صالحة
     if (bk.payment_method or "").lower() not in ("cash", "manual") and (bk.hold_deposit_amount or 0) <= 0:
         raise HTTPException(status_code=400, detail="No deposit hold found")
 
@@ -1484,6 +1487,7 @@ def renter_return_proof_upload(
     comment: str = Form(""),
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
+    request: Request = None,   # ← أضف هذا
 ):
     require_auth(user)
     bk = require_booking(db, booking_id)
