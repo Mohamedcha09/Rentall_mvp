@@ -221,7 +221,8 @@
       <i class="bi bi-camera"></i> التقط 6 صور بالكاميرا ثم الرفع والمتابعة
     </button>
 
-    <div id="pickupCaptureStatus" class="k small num-ltr"></div>
+    <div id="pickupCaptureStatus" class="k small"><span id="pickupCount" class="num-ltr">0/6</span></div>
+
 
   </div>
 </div>
@@ -254,7 +255,7 @@
       <i class="bi bi-camera"></i> التقط 6 صور بالكاميرا ثم الرفع والانتقال للتقييم
     </button>
 
-    <div id="returnCaptureStatus" class="k small num-ltr"></div>
+    <div id="returnCaptureStatus" class="k small"><span id="returnCount" class="num-ltr">0/6</span></div>
 
   </div>
 </div>
@@ -613,53 +614,55 @@
 
 <script>
 (function(){
-  // إعداد عام: زر يفتح الكاميرا 6 مرات ويجمع الملفات ويرفعها للـendpoint
-  function setupAutoCapture(buttonId, commentId, postUrl, nextUrl, statusId){
-    var btn     = document.getElementById(buttonId);
-    var noteEl  = document.getElementById(commentId);
-    var status  = document.getElementById(statusId);
+  // سكربت ثابت يمنع تصفير العداد عند كل ضغطة ويقفل الزر أثناء الالتقاط
+  function setupAutoCapture(opts){
+    var btn      = document.getElementById(opts.buttonId);
+    var noteEl   = document.getElementById(opts.commentId);
+    var statusEl = document.getElementById(opts.statusId);
+    var countEl  = document.getElementById(opts.countId);
     if(!btn) return;
 
     var MAX = 6;
-
-    // مفتاح تخزين يختلف بين الاستلام/الإرجاع وبحسب الحجز
-    var KEY = 'cap:' + buttonId + ':{{ booking.id }}';
-
-    // نجمع الملفات هنا (في الذاكرة)
     var collected = [];
+    var inProgress = false;    // يمنع بدء تسلسل جديد أثناء التسلسل الحالي
 
-    // نقرأ التقدّم السابق (إن وُجد) لأن iOS قد يجمّد الصفحة لحظة فتح الكاميرا
-    var savedCount = 0;
-    try { savedCount = parseInt(localStorage.getItem(KEY) || '0', 10) || 0; } catch(_){}
-    // ملاحظة: لا يمكن استرجاع الملفات ذاتها بعد التجميد؛ نحفظ العدد فقط لعرضه للمستخدم.
-
-    // عنصر input واحد نعيد فتحه كل مرة
+    // input واحد يُعاد استخدامه لكل لقطة
     var input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.setAttribute('capture','environment'); // الكاميرا الخلفية
-    // لا نستخدم multiple: نجبر iOS على الالتقاط صورة واحدة بكل مرة
+    input.setAttribute('capture','environment'); // كاميرا خلفية
 
-    function ui(text){
-      if(!status) return;
-      status.textContent = text;
+    function setCount(n){ if(countEl) countEl.textContent = n + '/' + MAX; }
+    function setMsg(msg){
+      if(!statusEl) return;
+      var after = statusEl.querySelector('.msg');
+      if(!after){
+        after = document.createElement('span');
+        after.className = 'msg';
+        after.style.marginInlineStart = '6px';
+        statusEl.appendChild(after);
+      }
+      after.textContent = msg || '';
     }
-    function updateStatus(){
-      var c = collected.length || savedCount || 0;
-      ui('تم التقاط ' + c + ' / ' + MAX);
-    }
+    function openCameraOnce(){ try{ input.value=''; }catch(_){ } input.click(); }
 
-    function openCameraOnce(){
-      try { input.value = ''; } catch(_){}
-      input.click();
-    }
-
+    // يُستدعى بعد خروج صورة من الكاميرا
     input.addEventListener('change', function(){
+      if(!inProgress) return; // حماية إضافية
       var f = input.files && input.files[0];
       if(f){
         collected.push(f);
-        try { localStorage.setItem(KEY, String(collected.length)); } catch(_){}
-        updateStatus();
+        setCount(collected.length);
+      }else{
+        // المستخدم ألغى الالتقاط
+        if(collected.length===0){
+          inProgress = false;
+          btn.disabled = false;
+          btn.innerHTML = btn.dataset.origHtml || btn.innerHTML;
+          setCount(0);
+          setMsg('أُلغيت.');
+          return;
+        }
       }
 
       if(collected.length < MAX){
@@ -670,82 +673,64 @@
     });
 
     function uploadNow(){
-      if(!collected.length){
-        // لو عندنا عدد محفوظ بدون ملفات فعلية (صفحة أُنعشت)، نبدأ من جديد بعد إبلاغ المستخدم بالعداد
-        savedCount = 0;
-        try { localStorage.removeItem(KEY); } catch(_){}
-        updateStatus();
-        return;
-      }
+      if(!collected.length) return;
 
-      btn.disabled = true;
+      setMsg('جاري الرفع…');
       btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الرفع…';
-      ui('جاري الرفع…');
 
       var fd = new FormData();
       for(var i=0;i<collected.length && i<MAX;i++){
-        fd.append('files', collected[i], collected[i].name || ('photo'+(i+1)+'.jpg'));
+        fd.append('files', collected[i], collected[i].name || ('photo'+(i+1)+'.jpg')); // اسم الحقل: files
       }
       if(noteEl && noteEl.value){ fd.append('comment', noteEl.value); }
 
-      fetch(postUrl, { method:'POST', body: fd, credentials:'same-origin' })
-        .then(function(r){
-          if(!r.ok) throw new Error('upload failed');
-          return r.text();
-        })
-        .then(function(){
-          try { localStorage.removeItem(KEY); } catch(_){}
-          window.location.assign(nextUrl || window.location.href);
-        })
+      fetch(opts.postUrl, { method:'POST', body: fd, credentials:'same-origin' })
+        .then(function(r){ if(!r.ok) throw new Error('upload failed'); return r.text(); })
+        .then(function(){ window.location.assign(opts.nextUrl || window.location.href); })
         .catch(function(){
+          // فشل الرفع: أعد الزر لوضعه الطبيعي واسمح بمحاولة جديدة
+          inProgress = false;
           btn.disabled = false;
-          btn.innerHTML = btn.dataset.orig || 'إعادة المحاولة';
-          ui('تعذّر الرفع. حاول مجددًا.');
+          btn.innerHTML = btn.dataset.origHtml || 'إعادة المحاولة';
+          setMsg('تعذّر الرفع. حاول مجددًا.');
+          collected = [];
+          setCount(0);
         });
     }
 
+    // بداية التسلسل—يُسمح بضغطـة واحدة فقط
     btn.addEventListener('click', function(){
-      collected = [];
-      try { localStorage.setItem(KEY, '0'); } catch(_){}
-      btn.dataset.orig = btn.innerHTML;
-      updateStatus();
+      if(inProgress) return;       // تجاهل الضغطات المتكررة
+      inProgress = true;
+      collected = [];              // تصفير مرة واحدة فقط عند البداية
+      btn.dataset.origHtml = btn.innerHTML;
+      btn.disabled = true;         // قفل الزر لمنع البدء من جديد
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الالتقاط…';
+      setCount(0);
+      setMsg('جاري الالتقاط…');
       openCameraOnce();
-    });
-
-    // إظهار العداد المحفوظ لو رجعنا من الخلفية
-    updateStatus();
-    window.addEventListener('focus', updateStatus);
-    window.addEventListener('pageshow', updateStatus);
-    document.addEventListener('visibilitychange', function(){
-      if(!document.hidden) updateStatus();
-    });
-
-    // (اختياري) تحذير قبل الخروج إن لم نُكمل 6 صور
-    window.addEventListener('beforeunload', function(e){
-      if (collected.length > 0 && collected.length < MAX){
-        e.preventDefault();
-        e.returnValue = '';
-      }
     });
   }
 
   // تفعيل الاستلام
-  setupAutoCapture(
-    'pickupCaptureBtn',
-    'pickupComment',
-    '/bookings/{{ booking.id }}/pickup-proof-upload?next=/bookings/flow/{{ booking.id }}/next',
-    '/bookings/flow/{{ booking.id }}/next',
-    'pickupCaptureStatus'
-  );
+  setupAutoCapture({
+    buttonId: 'pickupCaptureBtn',
+    commentId:'pickupComment',
+    statusId: 'pickupCaptureStatus',
+    countId:  'pickupCount',
+    postUrl:  '/bookings/{{ booking.id }}/pickup-proof-upload?next=/bookings/flow/{{ booking.id }}/next',
+    nextUrl:  '/bookings/flow/{{ booking.id }}/next'
+  });
 
   // تفعيل الإرجاع
-  setupAutoCapture(
-    'returnCaptureBtn',
-    'returnComment',
-    '/bookings/{{ booking.id }}/return-proof-upload?next=/reviews/renter/{{ booking.id }}',
-    '/reviews/renter/{{ booking.id }}',
-    'returnCaptureStatus'
-  );
+  setupAutoCapture({
+    buttonId: 'returnCaptureBtn',
+    commentId:'returnComment',
+    statusId: 'returnCaptureStatus',
+    countId:  'returnCount',
+    postUrl:  '/bookings/{{ booking.id }}/return-proof-upload?next=/reviews/renter/{{ booking.id }}',
+    nextUrl:  '/reviews/renter/{{ booking.id }}'
+  });
 })();
 </script>
 
