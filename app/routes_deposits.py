@@ -716,7 +716,11 @@ def report_deposit_issue(
     bk = require_booking(db, booking_id)
     if user.id != bk.owner_id:
         raise HTTPException(status_code=403, detail="Only owner can report issue")
-    if _get_deposit_pi_id(bk) is None:
+    # --- بديل محسّن ---
+pi_id = _get_deposit_pi_id(bk)
+if not pi_id:
+    # لو الدفع كاش أو مبلغ وديعة موجود محليًا → اعتبرها صالحة
+    if (bk.payment_method or "").lower() not in ("cash", "manual") and (bk.hold_deposit_amount or 0) <= 0:
         raise HTTPException(status_code=400, detail="No deposit hold found")
 
     saved_pairs = _save_evidence_files_and_cloud(bk.id, files)
