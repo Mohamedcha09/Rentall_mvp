@@ -12,7 +12,7 @@ from .models import User, Item, Booking, FreezeDeposit
 from .utils import category_label  # إن لم يوجد، أزل الاستيراد أو وفّر دالة بديلة
 
 import json
-from typing import List
+from typing import List, Optional
 from fastapi import UploadFile, File
 
 # --- Cloudinary (لو عندك إعداد مسبق يكفي الاستيراد) ---
@@ -27,6 +27,15 @@ router = APIRouter(tags=["bookings"])
 # ---------------------------------------------------
 # Helpers: جدول المراجعات + إدراج
 # ---------------------------------------------------
+def _safe_next(next_raw: str | None, booking_id: int, fallback: str) -> str:
+    nxt = (next_raw or "").strip()
+    if not nxt:
+        nxt = fallback
+    # منع روابط خارجية
+    if not nxt.startswith("/"):
+        nxt = fallback
+    return nxt.replace("{id}", str(booking_id))
+ 
 
 def _upload_images_to_cloudinary(files: List[UploadFile]) -> List[str]:
     """
@@ -546,3 +555,104 @@ async def booking_upload_photos_and_advance(
         b.returned_at = datetime.utcnow()
         db.commit()
         return {"ok": True, "count": len(urls), "next_url": f"/reviews/renter/{b.id}"}
+
+
+
+@router.post("/bookings/{booking_id}/pickup-proof-upload")
+async def pickup_proof_upload(
+    booking_id: int,
+    request: Request,
+    files: List[UploadFile] = File(default_factory=list),
+    comment: str = Form("", alias="comment"),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    ensure_logged_in(user)
+    b: Booking = db.get(Booking, booking_id)
+    if not b:
+        raise HTTPException(status_code=404, detail="booking not found")
+    ensure_booking_side(user, b, "renter")
+    if b.status not in ("paid",):
+        return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
+
+    # ارفع وخزّن أول 6 صور
+    urls = _upload_images_to_cloudinary(files)
+    try:
+        exists = json.loads(b.pickup_photos_json or "[]")
+    except Exception:
+        exists = []
+    exists.extend(urls)
+    b.pickup_photos_json = json.dumps(exists[:6], ensure_ascii=False)
+
+    # تقدّم الحالة مثل booking_picked_up
+    b.status = "picked_up"
+    b.picked_up_at = datetime.utcnow()
+    if b.payment_method == "online":
+        b.owner_payout_amount = b.rent_amount or 0
+        b.rent_released_at = datetime.utcnow()
+        b.online_status = "captured"
+    db.commit()
+
+    # اقرأ next من الـ query أو الـ form
+    next_q = request.query_params.get("next") or (await request.form()).get("next")
+    next_url = _safe_next(next_q, b.id, fallback=f"/bookings/flow/{b.id}/next")
+    return RedirectResponse(url=next_url, status_code=303)
+
+
+@router.post("/bookings/{booking_id}/return-proof-upload")
+async def return_proof_upload(
+    booking_id: int,
+    request: Request,
+    files: List[UploadFile] = File(default_factory=list),
+    comment: str = Form("", alias="comment"),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    ensure_logged_in(user)
+    b: Booking = db.get(Booking, booking_id)
+    if not b:
+        raise HTTPException(status_code=404, detail="booking not found")
+    ensure_booking_side(user, b, "renter")
+    if b.status not in ("picked_up",):
+        return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
+
+    urls = _upload_images_to_cloudinary(files)
+    try:
+        exists = json.loads(b.return_photos_json or "[]")
+    except Exception:
+        exists = []
+    exists.extend(urls)
+    b.return_photos_json = json.dumps(exists[:6], ensure_ascii=False)
+
+    b.status = "returned"
+    b.returned_at = datetime.utcnow()
+    db.commit()
+
+    next_q = request.query_params.get("next") or (await request.form()).get("next")
+    next_url = _safe_next(next_q, b.id, fallback=f"/reviews/renter/{b.id}")
+    return RedirectResponse(url=next_url, status_code=303)
+
+
+@router.get("/bookings/flow/{booking_id}/next")
+def bookings_flow_next(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    ensure_logged_in(user)
+    b: Booking = db.get(Booking, booking_id)
+    if not b:
+        raise HTTPException(status_code=404, detail="booking not found")
+    ensure_booking_side(user, b, "any")
+
+    # حدّد أين يذهب حسب الحالة
+    if b.status in ("paid", "requested", "accepted"):
+        goto = f"/bookings/{b.id}"
+    elif b.status == "picked_up":
+        goto = f"/reviews/renter/{b.id}"
+    elif b.status in ("returned", "in_review", "closed", "completed"):
+        goto = f"/bookings/{b.id}"
+    else:
+        goto = f"/bookings/{b.id}"
+    return RedirectResponse(url=goto, status_code=303)
