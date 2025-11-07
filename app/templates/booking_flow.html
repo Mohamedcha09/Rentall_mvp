@@ -2,27 +2,93 @@
 
 {% block head %}
 <style>
-  .flow-card{max-width:1000px;margin:auto}
-  .state-badge{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border:1px solid var(--border);border-radius:999px;font-weight:700}
+  /* ===== موبايل فاخر على نمط Uber/Airbnb ===== */
+  :root{
+    --mobile-radius:18px;
+    --glass: color-mix(in oklab, var(--surface) 85%, transparent);
+    --shadow: 0 10px 24px rgba(16,24,40,.08), 0 4px 8px rgba(16,24,40,.06);
+    --accent-grad: linear-gradient(135deg,#8b5cf6, #5b9df9);
+  }
+
+  .flow-card{max-width:900px;margin:auto}
+  .state-badge{
+    display:inline-flex;gap:8px;align-items:center;padding:6px 12px;
+    border-radius:999px;font-weight:700;
+    background:var(--glass); border:1px solid var(--border);
+    box-shadow:var(--shadow);
+  }
   .k{opacity:.7}
   .acts{display:flex;flex-wrap:wrap;gap:10px}
   .acts form{display:inline}
-  .hint{background:color-mix(in oklab,var(--surface) 92%,transparent);border:1px dashed var(--border);border-radius:12px;padding:10px 12px}
-  .box{border:1px solid var(--border);border-radius:12px;padding:12px}
-  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;}
+
+  /* بطاقات زجاجية ناعمة */
+  .box{
+    border:1px solid var(--border);
+    border-radius:var(--mobile-radius);
+    padding:14px;
+    background:var(--glass);
+    box-shadow:var(--shadow);
+  }
+  .hint{
+    background: color-mix(in oklab,var(--surface) 92%, transparent);
+    border:1px dashed var(--border);
+    border-radius:var(--mobile-radius);
+    padding:12px 14px;
+  }
+
+  /* أزرار كبيرة واضحة للموبايل */
   .btn-wide{min-width:220px}
+  @media (max-width: 576px){
+    .btn-wide{min-width:unset;width:100%}
+    .flow-card{padding:8px}
+  }
+
+  /* زر الكاميرا مميز */
+  .btn-camera{
+    border:none;
+    background:var(--accent-grad);
+    color:#fff;
+    font-weight:700;
+    border-radius:14px;
+    padding:14px 16px;
+    box-shadow:var(--shadow);
+  }
+
+  /* عدّاد 1/6 */
+  .progress-dots{display:flex;gap:6px;align-items:center}
+  .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:color-mix(in oklab,var(--muted) 50%, transparent);
+    opacity:.5
+  }
+  .dot.on{background:color-mix(in oklab,#8b5cf6 70%, #5b9df9 30%); opacity:1}
+
+  /* خط زمني جميل للوقت */
+  .timeline{display:flex;flex-direction:column;gap:10px}
+  .tl-item{
+    display:flex;gap:10px;align-items:flex-start;
+    padding:10px;border-radius:12px;
+    border:1px solid var(--border); background:var(--surface);
+  }
+  .tl-icon{
+    width:36px;height:36px;flex:0 0 36px;border-radius:10px;
+    display:grid;place-items:center;color:#fff;
+    background:var(--accent-grad); box-shadow:var(--shadow);
+  }
+  .tl-body{font-size:.95rem}
+  .tl-title{font-weight:700}
+  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;}
+  .muted{opacity:.6}
   .badge-dot{display:inline-flex;gap:6px;align-items:center}
   .badge-dot i{font-size:10px}
-  .muted{opacity:.6}
+
   .alert-mini{padding:.6rem .8rem}
 
   /* Fix tremble modal (iOS/Safari/Bootstrap) */
   .modal, .modal-backdrop{
     will-change: opacity, transform;
-    -webkit-transform: translateZ(0);
-            transform: translateZ(0);
-    -webkit-backface-visibility: hidden;
-            backface-visibility: hidden;
+    -webkit-transform: translateZ(0); transform: translateZ(0);
+    -webkit-backface-visibility: hidden; backface-visibility: hidden;
   }
   .modal.fade .modal-dialog{ transition: none !important; }
   body.modal-open{ padding-right:0 !important; }
@@ -33,7 +99,6 @@
   textarea.disabled{ pointer-events:none; opacity:.6; }
   button[disabled]{ pointer-events:none; }
   .num-ltr{ direction:ltr; unicode-bidi:isolate; white-space:nowrap; font-variant-numeric:tabular-nums; }
-
 </style>
 
 {% if dispute_deadline_iso %}
@@ -41,9 +106,7 @@
 {% endif %}
 
 <!-- 🔒 حارس يمنع الـ poller أثناء التصوير/الرفع -->
-<script>
-  window.__CAPTURE_ACTIVE__ = false;
-</script>
+<script> window.__CAPTURE_ACTIVE__ = false; </script>
 {% endblock %}
 
 {% block content %}
@@ -68,10 +131,10 @@
   <hr>
 
   <div class="row g-3">
-    <!-- Left column: actions / flow -->
+    <!-- Left column -->
     <div class="col-12 col-lg-7">
 
-      {# ======= المرحلة: طلب جديد ======= #}
+      {# ======= requested ======= #}
       {% if booking.status in ['requested'] %}
         {% if is_owner %}
           <h5 class="mb-2">طلب جديد ينتظر موافقتك</h5>
@@ -119,12 +182,12 @@
         {% endif %}
       {% endif %}
 
-      {# ======= المرحلة: مقبول ======= #}
+      {# ======= accepted ======= #}
       {% if booking.status in ['accepted'] %}
         {% if is_renter %}
           <h5 class="mb-2">اختر طريقة الدفع</h5>
 
-          <!-- الدفع كاش -->
+          <!-- كاش -->
           <div class="box mb-2">
             <div class="mb-2">الدفع <strong>كاش عند الاستلام</strong></div>
             <form method="post" action="/bookings/{{ booking.id }}/pay-cash">
@@ -132,7 +195,7 @@
             </form>
           </div>
 
-          <!-- الدفع أونلاين -->
+          <!-- أونلاين -->
           <div class="box" id="onlineBox"
                data-rent-authorized="{{ '1' if booking.online_status in ['authorized','captured','succeeded','paid'] else '0' }}"
                data-deposit-held="{{ '1' if booking.deposit_status in ['held','authorized'] else '0' }}">
@@ -210,60 +273,68 @@
         {% endif %}
       {% endif %}
 
-      {# ======= المرحلة: تم الدفع (زر واحد) ======= #}
+      {# ======= paid ======= #}
       {% if booking.status in ['paid'] %}
         {% if is_renter %}
           <h5>جاهز للاستلام</h5>
           <div class="hint">التقط صور الاستلام قبل التثبيت.</div>
-<!-- 📷 الاستلام — زر واحد يلتقط 6 صور ويرفعها -->
-<div class="box mb-2">
-  <div class="mb-2">التقط صور الاستلام قبل التثبيت.</div>
 
-  <div class="d-grid gap-2">
-    <textarea id="pickupComment" class="form-control" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
+          <!-- 📷 الاستلام — زر واحد -->
+          <div class="box mb-2">
+            <div class="mb-2">التقط صور الاستلام قبل التثبيت.</div>
+            <div class="d-grid gap-2">
+              <textarea id="pickupComment" class="form-control" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
 
-    <button type="button" id="pickupCaptureBtn" class="btn btn-success btn-wide">
-      <i class="bi bi-camera"></i> التقط 6 صور بالكاميرا ثم الرفع والمتابعة
-    </button>
+              <button type="button" id="pickupCaptureBtn" class="btn-camera">
+                <i class="bi bi-camera"></i> التقط 6 صور بالكاميرا ثم الرفع والمتابعة
+              </button>
 
-    <div id="pickupCaptureStatus" class="k small"><span id="pickupCount" class="num-ltr">0/6</span></div>
-  </div>
-</div>
-
+              <div id="pickupCaptureStatus" class="k small d-flex align-items-center justify-content-between">
+                <span class="num-ltr" id="pickupCount">0/6</span>
+                <div class="progress-dots">
+                  <span class="dot" id="p1"></span><span class="dot" id="p2"></span><span class="dot" id="p3"></span>
+                  <span class="dot" id="p4"></span><span class="dot" id="p5"></span><span class="dot" id="p6"></span>
+                </div>
+              </div>
+            </div>
+          </div>
         {% elif is_owner %}
           <div class="hint">تم الدفع. بانتظار أن يؤكد المستأجر أنه استلم الغرض.</div>
-          <form class="mt-2" method="post" action="/bookings/{{ booking.id }}/owner/confirm_delivered">
-          </form>
+          <form class="mt-2" method="post" action="/bookings/{{ booking.id }}/owner/confirm_delivered"></form>
         {% endif %}
       {% endif %}
 
-      {# ======= المرحلة: تم الاستلام (زر واحد) ======= #}
+      {# ======= picked_up ======= #}
       {% if booking.status in ['picked_up'] %}
         {% if is_renter %}
           <h5>الغرض لديك الآن</h5>
           <div class="hint">عند الإرجاع، التقط 6 صور وسيتم تحويلك بعدها للتقييم.</div>
 
-<!-- 📷 الإرجاع — زر واحد يلتقط 6 صور ويرفعها -->
-<div class="box mb-2">
-  <div class="mb-2">عند الإرجاع، التقط 6 صور وسيتم تحويلك للتقييم.</div>
+          <!-- 📷 الإرجاع — زر واحد -->
+          <div class="box mb-2">
+            <div class="mb-2">عند الإرجاع، التقط 6 صور وسيتم تحويلك للتقييم.</div>
+            <div class="d-grid gap-2">
+              <textarea id="returnComment" class="form-control" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
 
-  <div class="d-grid gap-2">
-    <textarea id="returnComment" class="form-control" rows="2" placeholder="ملاحظة (اختياري)"></textarea>
+              <button type="button" id="returnCaptureBtn" class="btn-camera">
+                <i class="bi bi-camera"></i> التقط 6 صور بالكاميرا ثم الرفع والانتقال للتقييم
+              </button>
 
-    <button type="button" id="returnCaptureBtn" class="btn btn-warning btn-wide">
-      <i class="bi bi-camera"></i> التقط 6 صور بالكاميرا ثم الرفع والانتقال للتقييم
-    </button>
-
-    <div id="returnCaptureStatus" class="k small"><span id="returnCount" class="num-ltr">0/6</span></div>
-  </div>
-</div>
-
+              <div id="returnCaptureStatus" class="k small d-flex align-items-center justify-content-between">
+                <span class="num-ltr" id="returnCount">0/6</span>
+                <div class="progress-dots">
+                  <span class="dot" id="r1"></span><span class="dot" id="r2"></span><span class="dot" id="r3"></span>
+                  <span class="dot" id="r4"></span><span class="dot" id="r5"></span><span class="dot" id="r6"></span>
+                </div>
+              </div>
+            </div>
+          </div>
         {% elif is_owner %}
           <div class="hint">المستأجر استلم الغرض. عند الإرجاع ستظهر لك خطوات تأكيد الإرجاع والوديعة.</div>
         {% endif %}
       {% endif %}
 
-      {# ======= المرحلة: تم الإرجاع / قيد مراجعة الوديعة ======= #}
+      {# ======= returned / in_review ======= #}
       {% if booking.status in ['returned', 'in_review'] %}
         {% if is_owner %}
           <h5 class="mb-2">الإرجاع معلَّم — المراجعة</h5>
@@ -369,12 +440,58 @@
         <div class="d-flex justify-content-between"><span>حالة التحصيل الأونلاين</span><strong>{{ booking.online_status or '—' }}</strong></div>
         <div class="d-flex justify-content-between"><span>حالة الوديعة</span><strong>{{ booking.deposit_status or '—' }}</strong></div>
         <hr>
-        <div class="k mono small">
-          {% if booking.accepted_at %}accepted_at: {{ booking.accepted_at }}<br>{% endif %}
-          {% if booking.picked_up_at %}picked_up_at: {{ booking.picked_up_at }}<br>{% endif %}
-          {% if booking.returned_at %}returned_at: {{ booking.returned_at }}<br>{% endif %}
-          {% if booking.return_confirmed_by_owner_at %}owner_confirmed_at: {{ booking.return_confirmed_by_owner_at }}<br>{% endif %}
-          {% if booking.rent_released_at %}rent_released_at: {{ booking.rent_released_at }}<br>{% endif %}
+
+        {# 🔁 بدّلنا عرض الحقول الخام بخط زمني مفهوم #}
+        <div class="timeline">
+          {% if booking.accepted_at %}
+          <div class="tl-item">
+            <div class="tl-icon">✅</div>
+            <div class="tl-body">
+              <div class="tl-title">تم قبول الطلب ✅</div>
+              <div class="muted mono num-ltr">{{ booking.accepted_at }}</div>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if booking.picked_up_at %}
+          <div class="tl-item">
+            <div class="tl-icon">📦</div>
+            <div class="tl-body">
+              <div class="tl-title">تم الاستلام 📦</div>
+              <div class="muted mono num-ltr">{{ booking.picked_up_at }}</div>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if booking.returned_at %}
+          <div class="tl-item">
+            <div class="tl-icon">🔄</div>
+            <div class="tl-body">
+              <div class="tl-title">تم الإرجاع 🔄</div>
+              <div class="muted mono num-ltr">{{ booking.returned_at }}</div>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if booking.return_confirmed_by_owner_at %}
+          <div class="tl-item">
+            <div class="tl-icon">🧾</div>
+            <div class="tl-body">
+              <div class="tl-title">تأكيد الإرجاع من المالك 🧾</div>
+              <div class="muted mono num-ltr">{{ booking.return_confirmed_by_owner_at }}</div>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if booking.rent_released_at %}
+          <div class="tl-item">
+            <div class="tl-icon">💸</div>
+            <div class="tl-body">
+              <div class="tl-title">تم تحويل مبلغ الإيجار 💸</div>
+              <div class="muted mono num-ltr">{{ booking.rent_released_at }}</div>
+            </div>
+          </div>
+          {% endif %}
         </div>
       </div>
 
@@ -450,13 +567,10 @@
     if (params.has('ready')) return;
 
     var tries = 0, maxTries = 30, redirected = false;
-
     function modalOpen(){ return !!document.querySelector('.modal.show'); }
 
     function checkOnce(){
-      // ⛔ لا تفحص أثناء التصوير/الرفع
       if (window.__CAPTURE_ACTIVE__) { setTimeout(checkOnce, 1200); return; }
-
       if (modalOpen()){ setTimeout(checkOnce, 1500); return; }
 
       fetch('/api/stripe/checkout/state/' + bookingId, {credentials:'same-origin', cache: 'no-store'})
@@ -465,7 +579,6 @@
           try{
             if(state.rent_authorized){ markRentPaidUI(); }
             if(state.deposit_held){   markDepositHeldUI(); }
-
             if(state.ready_for_pickup && !redirected){
               redirected = true;
               location.assign("/bookings/flow/{{ booking.id }}/next");
@@ -610,10 +723,9 @@
 })();
 </script>
 
-<!-- ===== زر واحد يلتقط حتى 6 صور — مع إيقاف الـ poller أثناء العملية ===== -->
+<!-- ===== زر واحد يلتقط حتى 6 صور + نقاط تقدم ===== -->
 <script>
 (function(){
-  // نسخة iOS-safe: كل لقطة تتطلب ضغط المستخدم. لا نستخدم فتح تلقائي للكاميرا.
   function setupAutoCapture(opts){
     var btn      = document.getElementById(opts.buttonId);
     var noteEl   = document.getElementById(opts.commentId);
@@ -623,16 +735,22 @@
 
     var MAX = 6;
     var collected = [];
-    var uploading = false;     // أثناء الرفع فقط
-    var started   = false;     // بدأنا التسلسل أم لا
+    var uploading = false;
+    var started   = false;
 
     var input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.setAttribute('capture','environment'); // كاميرا خلفية
-    // ✳️ لا نضغط input.click() إلا من ضغط المستخدم
+    input.setAttribute('capture','environment');
 
-    function setCount(n){ if(countEl) countEl.textContent = n + '/' + MAX; }
+    function setCount(n){
+      if(countEl) countEl.textContent = n + '/' + MAX;
+      // فعّل نقاط التقدّم إن كانت موجودة
+      for(var i=1;i<=MAX;i++){
+        var d = document.getElementById((opts.prefix||'') + i);
+        if(d){ d.classList.toggle('on', i<=n); }
+      }
+    }
     function setMsg(msg){
       if(!statusEl) return;
       var after = statusEl.querySelector('.msg');
@@ -651,24 +769,18 @@
       return '<i class="bi bi-upload"></i> رفع الصور';
     }
     function refreshUI(){
-      btn.disabled = uploading ? true : false;    // يمكن الضغط بين اللقطات
+      btn.disabled = uploading ? true : false;
       btn.innerHTML = label(collected.length+1);
       setCount(collected.length);
     }
 
     input.addEventListener('change', function(){
-      // يأتي هنا بعد رجوع الكاميرا
       var f = input.files && input.files[0];
       if(f){
         collected.push(f);
         setMsg('تمت إضافة صورة');
         refreshUI();
-        // لا نفتح الكاميرا تلقائيًا — ننتظر ضغط المستخدم التالي
-        if(collected.length >= MAX){
-          // جاهز للرفع
-        }
       }else{
-        // المستخدم ألغى
         if(!started){
           collected = [];
           setMsg('أُلغيت.');
@@ -684,6 +796,7 @@
     function uploadNow(){
       if(!collected.length || uploading) return;
       uploading = true;
+      window.__CAPTURE_ACTIVE__ = true;
       refreshUI();
       setMsg('جاري الرفع…');
 
@@ -698,6 +811,7 @@
         .then(function(){ window.location.assign(opts.nextUrl || window.location.href); })
         .catch(function(){
           uploading = false;
+          window.__CAPTURE_ACTIVE__ = false;
           setMsg('تعذّر الرفع. حاول مجددًا.');
           refreshUI();
         });
@@ -705,44 +819,41 @@
 
     btn.addEventListener('click', function(){
       if(uploading) return;
-
       started = true;
 
       if(collected.length >= MAX){
-        // عند 6 صور → ارفع
         uploadNow();
         return;
       }
-
-      // افتح الكاميرا فقط نتيجة هذا الضغط (تفاعل المستخدم)
       try{ input.value=''; }catch(_){}
       input.click();
       refreshUI();
     });
 
-    // تهيئة أولية
     setMsg('…');
     refreshUI();
   }
 
-  // تفعيل الاستلام
+  // الاستلام
   setupAutoCapture({
     buttonId: 'pickupCaptureBtn',
     commentId:'pickupComment',
     statusId: 'pickupCaptureStatus',
     countId:  'pickupCount',
     postUrl:  '/bookings/{{ booking.id }}/pickup-proof-upload?next=/bookings/flow/{{ booking.id }}/next',
-    nextUrl:  '/bookings/flow/{{ booking.id }}/next'
+    nextUrl:  '/bookings/flow/{{ booking.id }}/next',
+    prefix:   'p'  // لنقاط التقدّم
   });
 
-    // تفعيل الإرجاع
+  // الإرجاع
   setupAutoCapture({
     buttonId: 'returnCaptureBtn',
     commentId:'returnComment',
     statusId: 'returnCaptureStatus',
     countId:  'returnCount',
     postUrl:  '/bookings/{{ booking.id }}/return-proof-upload?next=/reviews/renter/{{ booking.id }}',
-    nextUrl:  '/reviews/renter/{{ booking.id }}'
+    nextUrl:  '/reviews/renter/{{ booking.id }}',
+    prefix:   'r'
   });
 })();
 </script>
