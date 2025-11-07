@@ -3,8 +3,9 @@
 {% block head %}
 <style>
   .cardish{border:1px solid var(--border);border-radius:14px;padding:16px}
-  .illus-box{display:flex;align-items:center;justify-content:center;padding:24px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}
+  .illus-box{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}
   .illus-box img{display:block;max-width:420px;width:88%;height:auto;object-fit:contain;opacity:.98}
+  .illus-hint{margin-top:10px;opacity:.9;text-align:center;font-size:.95rem}
 </style>
 {% endblock %}
 
@@ -28,6 +29,7 @@
   {# ✅ عرض صورة الحالة فقط #}
   <div class="illus-box">
     <img id="stateImg" src="{{ url_for('static', path='photo/fon.png') }}" alt="Stripe Connect state">
+    <div id="hint" class="illus-hint d-none"></div>
   </div>
 </div>
 {% endblock %}
@@ -37,11 +39,24 @@
 (function(){
   const imgEl  = document.getElementById('stateImg');
   const kycBtn = document.getElementById('kycBtn');
+  const hintEl = document.getElementById('hint');
 
-  const FON = "{{ url_for('static', path='photo/fon.png') }}"; // الكل false / غير مكتمل
+  const FON = "{{ url_for('static', path='photo/fon.png') }}"; // الكل false أو تقدم ضعيف
   const BON = "{{ url_for('static', path='photo/bon.png') }}"; // الكل true / مكتمل
+  const ZON = "{{ url_for('static', path='photo/zon.png') }}"; // واحدة فقط false (شبه مكتمل)
 
   function show(el, yes){ el?.classList.toggle('d-none', !yes); }
+
+  function makeHint(missing){
+    if(!missing.length) return "";
+    const map = {
+      payouts_enabled: "تفعيل السحب البنكي (payouts_enabled)",
+      charges_enabled: "السماح بالتحصيل (charges_enabled)",
+      details_submitted: "رفع مستندات الهوية KYC (details_submitted)"
+    };
+    const pretty = missing.map(k=>map[k]||k);
+    return "ينقص لإكمال التفعيل: " + pretty.join("، ");
+  }
 
   async function load(){
     try{
@@ -53,18 +68,49 @@
       const charges = !!d.charges_enabled;
       const details = !!d.details_submitted;
 
-      const allFalse = !payouts && !charges && !details;
-      const allTrue  =  payouts &&  charges &&  details;
+      const vals = [payouts, charges, details];
+      const trueCount = vals.filter(Boolean).length;
 
-      // اختر الصورة حسب الحالة
-      imgEl.src = allTrue ? BON : FON;
+      // حدد الصورة حسب الشرط المطلوب:
+      // - 3 true  => BON
+      // - 2 true + 1 false => ZON + سبب النقص
+      // - غير ذلك (0 true أو 1 true) => FON
+      let src = FON;
+      let missing = [];
+      if (trueCount === 3){
+        src = BON;
+      } else if (trueCount === 2){
+        src = ZON;
+        if (!payouts) missing.push("payouts_enabled");
+        if (!charges) missing.push("charges_enabled");
+        if (!details) missing.push("details_submitted");
+      } else {
+        // حالتا 0 أو 1 ترو: نعرض FON، ويمكن أيضاً إظهار ما ينقص إن أحببت
+        missing = [];
+        if (!payouts) missing.push("payouts_enabled");
+        if (!charges) missing.push("charges_enabled");
+        if (!details) missing.push("details_submitted");
+      }
+
+      imgEl.src = src;
+
+      // نص السبب يظهر فقط عند الحالة الوسطية (واحدة false)
+      if (trueCount === 2){
+        hintEl.textContent = makeHint(missing);
+        show(hintEl, true);
+      } else {
+        hintEl.textContent = "";
+        show(hintEl, false);
+      }
 
       // نظهر زر KYC إذا لم تكتمل كل القيم
-      show(kycBtn, !allTrue);
+      show(kycBtn, trueCount !== 3);
     }catch(e){
       console.error(e);
       // في حالة الخطأ نظهر حالة غير مكتمل
       imgEl.src = FON;
+      hintEl.textContent = "تعذّر جلب الحالة الآن. حاول مجددًا أو أكمل التحقق.";
+      show(hintEl, true);
       show(kycBtn, true);
     }
   }
