@@ -11,8 +11,19 @@
   .notif-card:hover{ background: color-mix(in oklab, var(--surface) 94%, transparent); }
   .notif-title{ font-weight:800; font-size:1rem; margin-bottom:4px; }
   .notif-meta{ opacity:.7; font-size:.9rem; }
+
+  /* حالة الفراغ: نعرض الصورة فقط */
   .notif-empty{
-    text-align:center; padding:30px 10px; opacity:.7;
+    text-align:center; padding:30px 10px;
+  }
+  .notif-empty img{
+    display:block;
+    margin: 10px auto;
+    max-width: 260px;   /* حد أقصى لعرض الصورة */
+    width: 70%;         /* يستجيب للموبايل */
+    height: auto;
+    object-fit: contain;
+    opacity: 0.95;      /* لمسة خفيفة */
   }
 </style>
 {% endblock %}
@@ -27,8 +38,11 @@
 {% block scripts %}
 <script>
 (function(){
-  const list = document.getElementById('notifList');
+  const list  = document.getElementById('notifList');
   const badge = document.getElementById('mNotifBadge');
+
+  // مسار صورة الحالة الفارغة (ton.png) من مجلد static/photo
+  const EMPTY_IMG = "{{ url_for('static', path='photo/ton.png') }}";
 
   const FEEDS = [
     '/api/notifications/poll',
@@ -38,7 +52,7 @@
 
   function esc(s){
     return String(s||"").replace(/[&<>"']/g, c =>
-      ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+      ({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c]));
   }
 
   async function fetchFirst(urls){
@@ -69,7 +83,11 @@
   function render(norm){
     list.innerHTML = '';
     if (!norm.items.length){
-      list.innerHTML = '<div class="notif-empty">لا توجد إشعارات.</div>';
+      // لا نص — صورة فقط عند عدم وجود إشعارات
+      list.innerHTML = `
+        <div class="notif-empty">
+          <img src="${EMPTY_IMG}" alt="لا إشعارات">
+        </div>`;
       return;
     }
     norm.items.forEach(n=>{
@@ -91,7 +109,11 @@
   }
 
   async function load(){
-    list.innerHTML = '<div class="notif-empty">جارِ التحميل…</div>';
+    // شاشة تحميل خفيفة (بدون نص مزعج)
+    list.innerHTML = `
+      <div class="notif-empty">
+        <img src="${EMPTY_IMG}" alt="">
+      </div>`;
     const data = await fetchFirst(FEEDS);
     const norm = normalize(data||{});
     render(norm);
