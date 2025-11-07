@@ -613,7 +613,7 @@
 <!-- ===== زر واحد يلتقط حتى 6 صور — مع إيقاف الـ poller أثناء العملية ===== -->
 <script>
 (function(){
-  // سكربت يمنع تصفير العداد عند كل ضغطة ويقفل الزر أثناء الالتقاط/الرفع
+  // نسخة iOS-safe: كل لقطة تتطلب ضغط المستخدم. لا نستخدم فتح تلقائي للكاميرا.
   function setupAutoCapture(opts){
     var btn      = document.getElementById(opts.buttonId);
     var noteEl   = document.getElementById(opts.commentId);
@@ -623,13 +623,14 @@
 
     var MAX = 6;
     var collected = [];
-    var inProgress = false;    // يمنع بدء تسلسل جديد أثناء التسلسل الحالي
+    var uploading = false;     // أثناء الرفع فقط
+    var started   = false;     // بدأنا التسلسل أم لا
 
-    // input واحد يُعاد استخدامه لكل لقطة
     var input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
     input.setAttribute('capture','environment'); // كاميرا خلفية
+    // ✳️ لا نضغط input.click() إلا من ضغط المستخدم
 
     function setCount(n){ if(countEl) countEl.textContent = n + '/' + MAX; }
     function setMsg(msg){
@@ -643,78 +644,85 @@
       }
       after.textContent = msg || '';
     }
-    function openCameraOnce(){ try{ input.value=''; }catch(_){ } input.click(); }
+    function label(next){
+      if(uploading) return '<span class="spinner-border spinner-border-sm me-1"></span> جاري الرفع…';
+      if(!started || collected.length===0) return '<i class="bi bi-camera"></i> التقط أول صورة';
+      if(next < MAX) return '<i class="bi bi-camera"></i> التقط الصورة التالية';
+      return '<i class="bi bi-upload"></i> رفع الصور';
+    }
+    function refreshUI(){
+      btn.disabled = uploading ? true : false;    // يمكن الضغط بين اللقطات
+      btn.innerHTML = label(collected.length+1);
+      setCount(collected.length);
+    }
 
-    // يُستدعى بعد خروج صورة من الكاميرا
     input.addEventListener('change', function(){
-      if(!inProgress) return; // حماية إضافية
+      // يأتي هنا بعد رجوع الكاميرا
       var f = input.files && input.files[0];
       if(f){
         collected.push(f);
-        setCount(collected.length);
+        setMsg('تمت إضافة صورة');
+        refreshUI();
+        // لا نفتح الكاميرا تلقائيًا — ننتظر ضغط المستخدم التالي
+        if(collected.length >= MAX){
+          // جاهز للرفع
+        }
       }else{
-        // المستخدم ألغى الالتقاط
-        if(collected.length===0){
-          inProgress = false;
-          window.__CAPTURE_ACTIVE__ = false; // 🔓 إيقاف الحارس عند الإلغاء
-          btn.disabled = false;
-          btn.innerHTML = btn.dataset.origHtml || btn.innerHTML;
-          setCount(0);
+        // المستخدم ألغى
+        if(!started){
+          collected = [];
           setMsg('أُلغيت.');
-          return;
+          refreshUI();
+        }else{
+          setMsg('يمكنك المتابعة أو الرفع.');
+          refreshUI();
         }
       }
-
-      if(collected.length < MAX){
-        setTimeout(openCameraOnce, 300);
-      }else{
-        uploadNow();
-      }
+      try{ input.value=''; }catch(_){}
     });
 
     function uploadNow(){
-      if(!collected.length) return;
-
+      if(!collected.length || uploading) return;
+      uploading = true;
+      refreshUI();
       setMsg('جاري الرفع…');
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الرفع…';
 
       var fd = new FormData();
       for(var i=0;i<collected.length && i<MAX;i++){
-        fd.append('files', collected[i], collected[i].name || ('photo'+(i+1)+'.jpg')); // اسم الحقل: files
+        fd.append('files', collected[i], collected[i].name || ('photo'+(i+1)+'.jpg'));
       }
       if(noteEl && noteEl.value){ fd.append('comment', noteEl.value); }
 
       fetch(opts.postUrl, { method:'POST', body: fd, credentials:'same-origin' })
         .then(function(r){ if(!r.ok) throw new Error('upload failed'); return r.text(); })
-        .then(function(){
-          window.__CAPTURE_ACTIVE__ = false; // 🔓 قبل التحويل
-          window.location.assign(opts.nextUrl || window.location.href);
-        })
+        .then(function(){ window.location.assign(opts.nextUrl || window.location.href); })
         .catch(function(){
-          // فشل الرفع: أعد الزر لوضعه الطبيعي واسمح بمحاولة جديدة
-          inProgress = false;
-          window.__CAPTURE_ACTIVE__ = false; // 🔓 عند الفشل
-          btn.disabled = false;
-          btn.innerHTML = btn.dataset.origHtml || 'إعادة المحاولة';
+          uploading = false;
           setMsg('تعذّر الرفع. حاول مجددًا.');
-          collected = [];
-          setCount(0);
+          refreshUI();
         });
     }
 
-    // بداية التسلسل—يُسمح بضغطـة واحدة فقط
     btn.addEventListener('click', function(){
-      if(inProgress) return;       // تجاهل الضغطات المتكررة
-      inProgress = true;
-      window.__CAPTURE_ACTIVE__ = true; // 🔒 ابدأ الحراسة
-      collected = [];              // تصفير مرة واحدة فقط عند البداية
-      btn.dataset.origHtml = btn.innerHTML;
-      btn.disabled = true;         // قفل الزر لمنع البدء من جديد
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> جاري الالتقاط…';
-      setCount(0);
-      setMsg('جاري الالتقاط…');
-      openCameraOnce();
+      if(uploading) return;
+
+      started = true;
+
+      if(collected.length >= MAX){
+        // عند 6 صور → ارفع
+        uploadNow();
+        return;
+      }
+
+      // افتح الكاميرا فقط نتيجة هذا الضغط (تفاعل المستخدم)
+      try{ input.value=''; }catch(_){}
+      input.click();
+      refreshUI();
     });
+
+    // تهيئة أولية
+    setMsg('…');
+    refreshUI();
   }
 
   // تفعيل الاستلام
@@ -727,7 +735,7 @@
     nextUrl:  '/bookings/flow/{{ booking.id }}/next'
   });
 
-  // تفعيل الإرجاع
+    // تفعيل الإرجاع
   setupAutoCapture({
     buttonId: 'returnCaptureBtn',
     commentId:'returnComment',
