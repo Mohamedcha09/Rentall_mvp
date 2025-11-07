@@ -15,13 +15,25 @@
 {% endif %}
 
 <style>
-  .thread-row{display:flex;align-items:center;gap:.75rem;padding:.65rem .8rem;border-bottom:1px solid rgba(0,0,0,.06);}
+  .thread-row{
+    display:flex;align-items:center;gap:.75rem;
+    padding:.65rem .8rem;border-bottom:1px solid rgba(0,0,0,.06);
+  }
   .thread-row:hover{background:rgba(0,0,0,.02)}
   .avatar{width:40px;height:40px;border-radius:50%;overflow:hidden;flex:0 0 40px;background:#f2f3f5;}
   .avatar img{width:100%;height:100%;object-fit:cover;display:block}
   .thumb{width:44px;height:44px;border-radius:10px;overflow:hidden;background:#f2f3f5;flex:0 0 44px;}
   .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+
+  /* حالة الفراغ */
+  .empty-box{padding:24px 8px;text-align:center;}
+  .empty-box img{
+    display:block;margin:10px auto;max-width:300px;width:75%;
+    height:auto;object-fit:contain;opacity:.98;
+  }
 </style>
+
+{% set EMPTY_IMG = url_for('static', path='photo/mon.png') %}
 
 {% if threads and threads|length %}
   <div class="list-group">
@@ -64,8 +76,8 @@
     {% endfor %}
   </div>
 {% else %}
-  <div class="alert alert-light border">
-    لا توجد محادثات بعد.
+  <div class="empty-box">
+    <img src="{{ EMPTY_IMG }}" alt="لا توجد محادثات">
   </div>
 {% endif %}
 
