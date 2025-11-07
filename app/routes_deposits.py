@@ -1407,7 +1407,6 @@ def dm_nudge_renter(
     request.session["flash_ok"] = "تم إرسال الإشعار للمستأجر."
     return RedirectResponse(url=f"/dm/deposits/{booking_id}", status_code=303)
 
-
 @router.get("/bookings/{booking_id}/deposit/summary")
 def deposit_final_summary(
     booking_id: int,
@@ -1427,27 +1426,22 @@ def deposit_final_summary(
 
     item = db.get(Item, bk.item_id)
     # تقسيم أدلة المستأجر حسب المرحلة
-renter_pickup, renter_return, renter_other = _split_renter_evidence(bk)
+    renter_pickup, renter_return, renter_other = _split_renter_evidence(bk)
 
-return request.app.templates.TemplateResponse(
-    "deposit_final_summary.html",
-    {
-        "request": request,
-        "title": f"النتيجة النهائية — #{bk.id}",
-        "bk": bk,
-        "item": item,
-        "session_user": request.session.get("user"),
-        "category_label": category_label,
-        "renter_pickup": renter_pickup,
-        "renter_return": renter_return,
-        "renter_other": renter_other,
-    },
-)
-
-
-# =========================================================
-# NEW: Renter camera uploads that also move booking status
-# =========================================================
+    return request.app.templates.TemplateResponse(
+        "deposit_final_summary.html",
+        {
+            "request": request,
+            "title": f"النتيجة النهائية — #{bk.id}",
+            "bk": bk,
+            "item": item,
+            "session_user": request.session.get("user"),
+            "category_label": category_label,
+            "renter_pickup": renter_pickup,
+            "renter_return": renter_return,
+            "renter_other": renter_other,
+        },
+    )
 
 @router.post("/bookings/{booking_id}/pickup-proof-upload")
 def renter_pickup_proof_upload(
