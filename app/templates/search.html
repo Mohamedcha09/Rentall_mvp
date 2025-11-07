@@ -1,40 +1,107 @@
+{# app/templates/search.html #}
 {% extends "base.html" %}
+
 {% block content %}
 
+{# نحسب أطوال النتائج مرة واحدة #}
+{% set items_len = (items|length if items is defined and items else 0) %}
+{% set users_len = (users|length if users is defined and users else 0) %}
+{% set all_empty = (items_len == 0 and users_len == 0) %}
+
+<style>
+  /* شريط البحث الفخم */
+  .search-wrap{
+    background: color-mix(in oklab, var(--surface) 88%, transparent);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.04);
+  }
+  .search-wrap .form-control{
+    border: none; background: transparent; box-shadow: none;
+  }
+  .search-wrap .btn{ border-radius: 12px; }
+
+  /* بطاقات النتائج */
+  .lux-card{
+    border:1px solid var(--border);
+    background: color-mix(in oklab, var(--surface) 96%, transparent);
+    border-radius:16px; overflow:hidden;
+    box-shadow: 0 8px 26px rgba(0,0,0,.05);
+  }
+  .lux-card .card-header{
+    background: transparent; border-bottom: 1px dashed var(--border);
+    font-weight:800;
+  }
+
+  /* شبكة العناصر */
+  .row-items{display:grid; gap:14px; grid-template-columns:1fr;}
+  @media (min-width:576px){ .row-items{ grid-template-columns: 1fr; } }
+
+  /* عنصر نتيجة */
+  .result-item{display:flex; gap:12px; align-items:center; text-decoration:none; color:inherit; padding:6px; border-radius:12px;}
+  .result-item:hover{ background: color-mix(in oklab, var(--surface) 90%, transparent); }
+  .result-thumb{width:140px; aspect-ratio:16/9; border-radius:12px; overflow:hidden; background:#eef1f4; flex:0 0 140px;}
+  .result-thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+  .badge-soft{background: color-mix(in oklab, var(--primary, #6c5ce7) 18%, white); border:1px solid var(--border);}
+
+  /* حالة الفراغ داخل البطاقة */
+  .empty-box{
+    display:flex; align-items:center; justify-content:center;
+    min-height:180px; padding:16px;
+  }
+  .empty-box img{ max-width:300px; width:80%; height:auto; object-fit:contain; opacity:.98; }
+
+  /* حالة الفراغ الكامل للصفحة */
+  .empty-all{
+    display:flex; align-items:center; justify-content:center; padding:28px;
+  }
+  .empty-all img{ max-width:420px; width:86%; height:auto; object-fit:contain; opacity:.98; }
+
+  /* عنوان أنيق */
+  .section-title{
+    font-weight:900; letter-spacing:.2px;
+    border-inline-start: 4px solid color-mix(in oklab, var(--primary, #6c5ce7) 65%, black);
+    padding-inline-start:10px;
+  }
+</style>
+
 <section class="mb-3">
-  <form class="card card-search" action="/search" method="get">
-    <div class="card-body d-flex gap-2 align-items-center">
+  <form class="search-wrap" action="/search" method="get">
+    <div class="d-flex gap-2 align-items-center">
       <i class="bi bi-search"></i>
       <input class="form-control" type="search" name="q" value="{{ q or '' }}"
              placeholder="ابحث عن عنصر أو مستخدم…">
-      <button class="btn btn-primary">بحث</button>
+      <button class="btn btn-primary px-4">بحث</button>
     </div>
   </form>
 </section>
 
-<h4 class="mb-3">نتائج البحث عن: <span class="text-info">{{ q or '—' }}</span></h4>
+<h4 class="mb-3 section-title">نتائج البحث عن: <span class="text-info">{{ q or '—' }}</span></h4>
 
-<div class="row g-3">
-  <!-- قسم العناصر -->
-  <div class="col-12 col-lg-6">
-    <div class="card h-100">
-      <div class="card-header fw-bold">العناصر المطابقة</div>
-      <div class="card-body">
-        {% if items and items|length > 0 %}
-          <div class="row row-cols-1 g-3">
-            {% for it in items %}
-              <div class="col">
-                <a class="d-flex gap-3 text-decoration-none text-reset align-items-center"
-                   href="/items/{{ it.id }}">
-                  <div class="ratio ratio-16x9" style="max-width: 160px;">
+{% if all_empty %}
+  {# كلا القائمتين فارغ → نخفي البطاقتين ونُظهر aon.png #}
+  <div class="empty-all">
+    <img src="{{ url_for('static', path='photo/aon.png') }}" alt="لا نتائج">
+  </div>
+{% else %}
+  <div class="row g-3">
+
+    {# بطاقة العناصر المطابقة #}
+    <div class="col-12 col-lg-6">
+      <div class="card lux-card h-100">
+        <div class="card-header">العناصر المطابقة</div>
+        <div class="card-body">
+          {% if items_len > 0 %}
+            <div class="row-items">
+              {% for it in items %}
+                <a class="result-item" href="/items/{{ it.id }}">
+                  <div class="result-thumb">
                     {% if it.image_path %}
-                      {# ✅ إذا كان الرابط يبدأ بـ http(s) نستخدمه كما هو، وإلا نضيف / للمسار المحلي #}
                       {% set src = it.image_path if it.image_path.startswith('http') else '/' ~ it.image_path.lstrip('/') %}
-                      <img src="{{ src }}" class="rounded object-fit-cover" alt="{{ it.title }}">
+                      <img src="{{ src }}" alt="{{ it.title }}">
                     {% else %}
-                      <div class="rounded d-flex align-items-center justify-content-center bg-dark-subtle">
-                        <span class="small text-muted">بدون صورة</span>
-                      </div>
+                      <img src="/static/placeholder.png" alt="">
                     {% endif %}
                   </div>
                   <div class="flex-grow-1">
@@ -42,52 +109,59 @@
                     <div class="small text-muted mt-1 d-flex align-items-center gap-2">
                       {% if it.city %}<span>🏙️ {{ it.city }}</span>{% endif %}
                       {% if it.price_per_day is not none %}
-                        <span class="badge bg-primary-subtle text-white">{{ it.price_per_day }} د/يوم</span>
+                        <span class="badge badge-soft">{{ it.price_per_day }} د/يوم</span>
                       {% endif %}
                     </div>
                   </div>
                 </a>
-              </div>
-            {% endfor %}
-          </div>
-        {% else %}
-          <div class="text-muted">لا توجد عناصر مطابقة.</div>
-        {% endif %}
+              {% endfor %}
+            </div>
+          {% else %}
+            {# العناصر فارغة → صورة kon.png داخل البطاقة بدل النص #}
+            <div class="empty-box">
+              <img src="{{ url_for('static', path='photo/kon.png') }}" alt="لا عناصر">
+            </div>
+          {% endif %}
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- قسم المستخدمين -->
-  <div class="col-12 col-lg-6">
-    <div class="card h-100">
-      <div class="card-header fw-bold">المستخدمون المطابقون</div>
-      <div class="card-body">
-        {% if users and users|length > 0 %}
-          <ul class="list-group list-group-flush">
-            {% for u in users %}
-              <li class="list-group-item d-flex align-items-center gap-3">
-                {% if u.avatar_path %}
-                  {% set avatar_src = u.avatar_path if u.avatar_path.startswith('http') else '/' ~ u.avatar_path.lstrip('/') %}
-                  <img src="{{ avatar_src }}" class="rounded-circle" style="width:40px;height:40px;object-fit:cover" alt="{{ u.name }}">
-                {% else %}
-                  <div class="rounded-circle d-flex align-items-center justify-content-center"
-                       style="width:40px;height:40px;background:rgba(255,255,255,.08);border:1px solid var(--border)">
-                    <span>👤</span>
+    {# بطاقة المستخدمين المطابقين #}
+    <div class="col-12 col-lg-6">
+      <div class="card lux-card h-100">
+        <div class="card-header">المستخدمون المطابقون</div>
+        <div class="card-body">
+          {% if users_len > 0 %}
+            <ul class="list-group list-group-flush">
+              {% for u in users %}
+                <li class="list-group-item d-flex align-items-center gap-3" style="background:transparent;border-color:var(--border)">
+                  {% if u.avatar_path %}
+                    {% set avatar_src = u.avatar_path if u.avatar_path.startswith('http') else '/' ~ u.avatar_path.lstrip('/') %}
+                    <img src="{{ avatar_src }}" class="rounded-circle" style="width:42px;height:42px;object-fit:cover" alt="{{ u.name }}">
+                  {% else %}
+                    <div class="rounded-circle d-flex align-items-center justify-content-center"
+                         style="width:42px;height:42px;background:rgba(0,0,0,.05);border:1px solid var(--border)">
+                      <span>👤</span>
+                    </div>
+                  {% endif %}
+                  <div class="flex-grow-1">
+                    <div class="fw-bold text-truncate">{{ u.name }}</div>
                   </div>
-                {% endif %}
-                <div class="flex-grow-1">
-                  <div class="fw-bold text-truncate">{{ u.name }}</div>
-                </div>
-                <a class="btn btn-sm btn-primary" href="/users/{{ u.id }}">عرض</a>
-              </li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <div class="text-muted">لا يوجد مستخدمون مطابقون.</div>
-        {% endif %}
+                  <a class="btn btn-sm btn-primary" href="/users/{{ u.id }}">عرض</a>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            {# المستخدمون فارغون → صورة don.png داخل البطاقة بدل النص #}
+            <div class="empty-box">
+              <img src="{{ url_for('static', path='photo/don.png') }}" alt="لا مستخدمين">
+            </div>
+          {% endif %}
+        </div>
       </div>
     </div>
+
   </div>
-</div>
+{% endif %}
 
 {% endblock %}
