@@ -35,8 +35,17 @@
       <div class="card">
         <h6 class="mb-2">العنصر</h6>
         <div class="d-flex gap-3">
-          <img src="{{ (('/' ~ item.image_path) if item and item.image_path and item.image_path[0] != '/' else (item.image_path or '/static/placeholder.jpg')) }}"
-               style="width:110px;height:110px;object-fit:cover;border-radius:10px" alt="">
+          {# صورة آمنة #}
+          {% set img = '/static/placeholder.jpg' %}
+          {% if item and item.image_path %}
+            {% if item.image_path.startswith('http://') or item.image_path.startswith('https://') %}
+              {% set img = item.image_path %}
+            {% else %}
+              {% set img = '/' ~ item.image_path.lstrip('/') %}
+            {% endif %}
+          {% endif %}
+          <img src="{{ img }}" style="width:110px;height:110px;object-fit:cover;border-radius:10px" alt="">
+
           <div>
             <div class="fw-bold">{{ item.title if item else '—' }}</div>
             <div class="k">{{ category_label(item.category) if item and item.category else '—' }}</div>
@@ -84,49 +93,39 @@
         </div>
       </div>
 
-      <!-- NEW: أدلة المستأجر — قبل الاستلام -->
-<div class="card mt-2">
-  <h6 class="mb-2">أدلة المستأجر — قبل الاستلام</h6>
-  {% set renter_pick = (bk.deposit_evidences or [])
-                        | selectattr('side','equalto','renter')
-                        | selectattr('description','defined')
-                        | selectattr('description','search','\\[pickup_renter\\]')
-                        | list %}
-  <div class="evs">
-    {% if renter_pick and renter_pick|length %}
-      {% for ev in renter_pick[:12] %}
-        {% set _v = (ev.kind=='video') or (ev.file_path and ('.mp4' in ev.file_path or '.mov' in ev.file_path or '.m4v' in ev.file_path)) %}
-        <a href="{{ ev.file_path }}" target="_blank">
-          {% if _v %}<video src="{{ ev.file_path }}" muted></video>{% else %}<img src="{{ ev.file_path }}">{% endif %}
-        </a>
-      {% endfor %}
-    {% else %}
-      <div class="k">لا توجد صور قبل الاستلام من المستأجر.</div>
-    {% endif %}
-  </div>
-</div>
+      <!-- أدلة المستأجر — قبل الاستلام -->
+      <div class="card mt-2">
+        <h6 class="mb-2">أدلة المستأجر — قبل الاستلام</h6>
+        <div class="evs">
+          {% if renter_pickup and renter_pickup|length %}
+            {% for ev in renter_pickup[:12] %}
+              {% set _v = (ev.kind=='video') or (ev.file_path and ('.mp4' in ev.file_path or '.mov' in ev.file_path or '.m4v' in ev.file_path)) %}
+              <a href="{{ ev.file_path }}" target="_blank">
+                {% if _v %}<video src="{{ ev.file_path }}" muted></video>{% else %}<img src="{{ ev.file_path }}">{% endif %}
+              </a>
+            {% endfor %}
+          {% else %}
+            <div class="k">لا توجد صور قبل الاستلام من المستأجر.</div>
+          {% endif %}
+        </div>
+      </div>
 
-<!-- NEW: أدلة المستأجر — بعد الإرجاع -->
-<div class="card mt-2">
-  <h6 class="mb-2">أدلة المستأجر — بعد الإرجاع</h6>
-  {% set renter_ret = (bk.deposit_evidences or [])
-                       | selectattr('side','equalto','renter')
-                       | selectattr('description','defined')
-                       | selectattr('description','search','\\[return_renter\\]')
-                       | list %}
-  <div class="evs">
-    {% if renter_ret and renter_ret|length %}
-      {% for ev in renter_ret[:12] %}
-        {% set _v = (ev.kind=='video') or (ev.file_path and ('.mp4' in ev.file_path or '.mov' in ev.file_path or '.m4v' in ev.file_path)) %}
-        <a href="{{ ev.file_path }}" target="_blank">
-          {% if _v %}<video src="{{ ev.file_path }}" muted></video>{% else %}<img src="{{ ev.file_path }}">{% endif %}
-        </a>
-      {% endfor %}
-    {% else %}
-      <div class="k">لا توجد صور بعد الإرجاع من المستأجر.</div>
-    {% endif %}
-  </div>
-</div>
+      <!-- أدلة المستأجر — بعد الإرجاع -->
+      <div class="card mt-2">
+        <h6 class="mb-2">أدلة المستأجر — بعد الإرجاع</h6>
+        <div class="evs">
+          {% if renter_return and renter_return|length %}
+            {% for ev in renter_return[:12] %}
+              {% set _v = (ev.kind=='video') or (ev.file_path and ('.mp4' in ev.file_path or '.mov' in ev.file_path or '.m4v' in ev.file_path)) %}
+              <a href="{{ ev.file_path }}" target="_blank">
+                {% if _v %}<video src="{{ ev.file_path }}" muted></video>{% else %}<img src="{{ ev.file_path }}">{% endif %}
+              </a>
+            {% endfor %}
+          {% else %}
+            <div class="k">لا توجد صور بعد الإرجاع من المستأجر.</div>
+          {% endif %}
+        </div>
+      </div>
 
     </div>
 

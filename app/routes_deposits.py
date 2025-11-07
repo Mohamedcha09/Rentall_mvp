@@ -1426,17 +1426,23 @@ def deposit_final_summary(
         raise HTTPException(status_code=403, detail="forbidden")
 
     item = db.get(Item, bk.item_id)
-    return request.app.templates.TemplateResponse(
-        "deposit_final_summary.html",
-        {
-            "request": request,
-            "title": f"النتيجة النهائية — #{bk.id}",
-            "bk": bk,
-            "item": item,
-            "session_user": request.session.get("user"),
-            "category_label": category_label,
-        },
-    )
+    # تقسيم أدلة المستأجر حسب المرحلة
+renter_pickup, renter_return, renter_other = _split_renter_evidence(bk)
+
+return request.app.templates.TemplateResponse(
+    "deposit_final_summary.html",
+    {
+        "request": request,
+        "title": f"النتيجة النهائية — #{bk.id}",
+        "bk": bk,
+        "item": item,
+        "session_user": request.session.get("user"),
+        "category_label": category_label,
+        "renter_pickup": renter_pickup,
+        "renter_return": renter_return,
+        "renter_other": renter_other,
+    },
+)
 
 
 # =========================================================
