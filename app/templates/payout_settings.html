@@ -1,9 +1,10 @@
+{# app/templates/payout_connect.html #}
 {% extends "base.html" %}
 {% block head %}
 <style>
   .cardish{border:1px solid var(--border);border-radius:14px;padding:16px}
-  .k{opacity:.65}
-  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+  .illus-box{display:flex;align-items:center;justify-content:center;padding:24px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}
+  .illus-box img{display:block;max-width:420px;width:88%;height:auto;object-fit:contain;opacity:.98}
 </style>
 {% endblock %}
 
@@ -16,49 +17,17 @@
       ليتلقّى <strong>المالك</strong> الأموال إلى حسابه البنكي عبر Stripe،
       اربط حساب <strong>Stripe Connect</strong> وأكمل التحقق (KYC).
     </p>
-    <p class="mb-2">
-      ستقوم المنصة باقتطاع <strong>8%</strong> من كل عملية كرسوم خدمة.
-    </p>
+    <p class="mb-2">ستقوم المنصة باقتطاع <strong>8%</strong> من كل عملية كرسوم خدمة.</p>
     <div class="d-flex flex-wrap gap-2 align-items-center">
       <a class="btn btn-primary" href="/payout/connect/start">ابدأ الربط الآن</a>
       <button id="chkBtn" class="btn btn-outline-secondary">تحقّق من الحالة</button>
-      <!-- هذا الزر نظهره فقط عند الحاجة عبر الجافاسكربت -->
       <button id="kycBtn" class="btn btn-warning d-none">أكمل التحقق الآن</button>
     </div>
   </div>
 
-  <div class="row g-3">
-    <div class="col-12 col-lg-7">
-      <div class="cardish">
-        <h5 class="mb-3">حالة حسابك</h5>
-
-        <div class="mb-2"><span class="k">Stripe Account ID:</span>
-          <code class="mono" id="accId">—</code></div>
-        <div class="mb-2"><span class="k">payouts_enabled:</span>
-          <span id="payouts">—</span></div>
-        <div class="mb-2"><span class="k">charges_enabled:</span>
-          <span id="charges">—</span></div>
-        <div class="mb-2"><span class="k">details_submitted:</span>
-          <span id="details">—</span></div>
-
-        <div class="alert alert-warning mt-3 d-none" id="callout">
-          لم يكتمل التحقق بعد. اضغط <strong>أكمل التحقق الآن</strong> لرفع الهوية/الصورة وإضافة حسابك البنكي.
-        </div>
-        <div class="alert alert-success mt-3 d-none" id="okcall">
-          🎉 حسابك الآن <strong>مفعّل بالكامل</strong> ويمكنك استلام الأرباح!
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-lg-5">
-      <div class="cardish">
-        <h6 class="mb-2">ملاحظات</h6>
-        <ul class="mb-0">
-          <li>الوضع الحالي: مفاتيح اختبار <code>pk_test/sk_test</code> (إن كنت في وضع الاختبار).</li>
-          <li>بعد إكمال KYC وإضافة بنك، يصبح <code>payouts_enabled = true</code>.</li>
-        </ul>
-      </div>
-    </div>
+  {# ✅ عرض صورة الحالة فقط #}
+  <div class="illus-box">
+    <img id="stateImg" src="{{ url_for('static', path='photo/fon.png') }}" alt="Stripe Connect state">
   </div>
 </div>
 {% endblock %}
@@ -66,17 +35,13 @@
 {% block scripts %}
 <script>
 (function(){
-  const accId   = document.getElementById('accId');
-  const payouts = document.getElementById('payouts');
-  const charges = document.getElementById('charges');
-  const details = document.getElementById('details');
+  const imgEl  = document.getElementById('stateImg');
+  const kycBtn = document.getElementById('kycBtn');
 
-  const callout = document.getElementById('callout');
-  const okcall  = document.getElementById('okcall');
-  const kycBtn  = document.getElementById('kycBtn');
+  const FON = "{{ url_for('static', path='photo/fon.png') }}"; // الكل false / غير مكتمل
+  const BON = "{{ url_for('static', path='photo/bon.png') }}"; // الكل true / مكتمل
 
-  function set(val, el){ el.textContent = (val===true)?'true':(val===false)?'false':(val||'—'); }
-  function show(el, yes){ el.classList.toggle('d-none', !yes); }
+  function show(el, yes){ el?.classList.toggle('d-none', !yes); }
 
   async function load(){
     try{
@@ -84,27 +49,29 @@
       if(!r.ok) throw new Error('status failed');
       const d = await r.json();
 
-      set(d.account_id || '—', accId);
-      set(d.payouts_enabled, payouts);
-      set(d.charges_enabled, charges);
-      set(d.details_submitted, details);
+      const payouts = !!d.payouts_enabled;
+      const charges = !!d.charges_enabled;
+      const details = !!d.details_submitted;
 
-      const needKyc = !!d.connected && !!d.charges_enabled && !d.payouts_enabled;
-      const fullyOk = !!d.payouts_enabled && !!d.charges_enabled;
+      const allFalse = !payouts && !charges && !details;
+      const allTrue  =  payouts &&  charges &&  details;
 
-      show(callout, needKyc);
-      show(kycBtn, needKyc);
-      show(okcall, fullyOk);
+      // اختر الصورة حسب الحالة
+      imgEl.src = allTrue ? BON : FON;
 
+      // نظهر زر KYC إذا لم تكتمل كل القيم
+      show(kycBtn, !allTrue);
     }catch(e){
       console.error(e);
-      show(callout, true);
+      // في حالة الخطأ نظهر حالة غير مكتمل
+      imgEl.src = FON;
+      show(kycBtn, true);
     }
   }
 
   document.getElementById('chkBtn')?.addEventListener('click', e => { e.preventDefault(); load(); });
 
-  // زر "أكمل التحقق الآن" → نطلب لينك الـ Onboarding من الباكند
+  // زر "أكمل التحقق الآن" → نطلب رابط Onboarding من الباك-إند
   kycBtn?.addEventListener('click', async (e)=>{
     e.preventDefault();
     try{
