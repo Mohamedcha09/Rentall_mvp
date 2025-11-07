@@ -1,3 +1,4 @@
+{# app/templates/favorites.html #}
 {% extends "base.html" %}
 
 {% block head %}
@@ -8,6 +9,13 @@
   }
   @media (max-width:480px){
     .favorites-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+  }
+
+  /* حالة الفراغ: صورة فقط */
+  .empty-box{ padding:24px 8px; text-align:center; }
+  .empty-box img{
+    display:block; margin:10px auto; max-width:320px; width:76%;
+    height:auto; object-fit:contain; opacity:.98;
   }
 </style>
 {% endblock %}
@@ -47,7 +55,10 @@
     {% endfor %}
   </div>
 {% else %}
-  <div class="alert alert-secondary glass mt-2">لا توجد عناصر في المفضلة بعد.</div>
+  {# صورة الحالة الفارغة: son.png #}
+  <div class="empty-box">
+    <img src="{{ url_for('static', path='photo/son.png') }}" alt="لا توجد عناصر في المفضلة">
+  </div>
 {% endif %}
 {% endblock %}
 
