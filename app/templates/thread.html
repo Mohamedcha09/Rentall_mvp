@@ -38,13 +38,13 @@
     {% endfor %}
   </div>
 {% else %}
-  <div class="text-muted mb-3">لا رسائل بعد.</div>
+  <div class="text-muted mb-3">No messages yet.</div>
 {% endif %}
 
 <form class="mt-2" method="post" action="/messages/{{ thread.id }}">
   <div class="input-group">
-    <input type="text" name="body" class="form-control" placeholder="اكتب رسالة..." required>
-    <button class="btn btn-primary">إرسال</button>
+    <input type="text" name="body" class="form-control" placeholder="Write a message..." required>
+    <button class="btn btn-primary">Send</button>
   </div>
 </form>
 

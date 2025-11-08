@@ -1,10 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h3 class="mb-3">إدارة الضمانات (Placeholder)</h3>
+<div style="direction:ltr; text-align:left;">
+
+<h3 class="mb-3">Deposit Management (Placeholder)</h3>
 
 <div class="alert alert-info">
-  هذه صفحة إدارية تمهيدية لمتابعة الضمانات. لاحقًا يمكن ربطها بمنصة دفع (Stripe/PayPal) أو سياسة كاش.
+  This is a preliminary admin page to track deposits. You can later connect it to a payment platform (Stripe/PayPal) or a cash policy.
 </div>
 
 {% if deposits and deposits|length %}
@@ -13,12 +15,12 @@
       <thead>
         <tr>
           <th>#</th>
-          <th>المستخدم</th>
-          <th>العنصر</th>
-          <th>المبلغ</th>
-          <th>الحالة</th>
-          <th>ملاحظة</th>
-          <th>تحديث الحالة</th>
+          <th>User</th>
+          <th>Item</th>
+          <th>Amount</th>
+          <th>Status</th>
+          <th>Note</th>
+          <th>Update Status</th>
         </tr>
       </thead>
       <tbody>
@@ -51,8 +53,8 @@
                   <option value="released" {% if d.status=='released' %}selected{% endif %}>released</option>
                   <option value="canceled" {% if d.status=='canceled' %}selected{% endif %}>canceled</option>
                 </select>
-                <input type="text" name="note" class="form-control form-control-sm" placeholder="ملاحظة (اختياري)">
-                <button class="btn btn-sm btn-primary">حفظ</button>
+                <input type="text" name="note" class="form-control form-control-sm" placeholder="Note (optional)">
+                <button class="btn btn-sm btn-primary">Save</button>
               </form>
             </td>
           </tr>
@@ -61,7 +63,9 @@
     </table>
   </div>
 {% else %}
-  <div class="text-muted">لا توجد سجلات.</div>
+  <div class="text-muted">No records.</div>
 {% endif %}
+
+</div>
 
 {% endblock %}

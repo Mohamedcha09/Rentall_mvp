@@ -23,30 +23,33 @@
   .faq .accordion-body { background: rgba(255,255,255,.02); }
 </style>
 
+<div style="direction:ltr; text-align:left;">
+
 <!-- ======= Hero ======= -->
 <section class="about-hero mb-4">
   <div class="row align-items-center">
     <div class="col-lg-7">
-      <div class="mini-badge mb-2">عن المنصّة</div>
-      <h1 class="fw-bold mb-3">RentAll — شارك ما لا تستخدم، واستأجر ما تحتاجه مؤقتًا</h1>
+      <div class="mini-badge mb-2">About the Platform</div>
+      <h1 class="fw-bold mb-3">RentAll — Share what you don’t use, rent what you need temporarily</h1>
       <p class="lead">
-        منصّة تشاركية تربط بين <strong>المالكين</strong> الذين يمتلكون أشياء لا تُستخدم دائمًا، و<strong>المستأجرين</strong> الذين يحتاجونها لفترة محدودة.
-        نوفر تجربة آمنة ومرنة باعتماد الحسابات، محادثات داخلية، وتقييمات شفافة.
+        A peer-to-peer marketplace connecting <strong>owners</strong> who have items sitting idle with
+        <strong>renters</strong> who need them for a limited time. We provide a safe, flexible experience with
+        account verification, in-app messaging, and transparent reviews.
       </p>
       <div class="d-flex flex-wrap gap-2 mt-3">
-        <span class="chip">تحقق من الهوية</span>
-        <span class="chip">خيوط محادثة لكل منتج</span>
-        <span class="chip">تصنيفات ذكية</span>
-        <span class="chip">رئيسية ديناميكية</span>
+        <span class="chip">ID Verification</span>
+        <span class="chip">Per-item Message Threads</span>
+        <span class="chip">Smart Categories</span>
+        <span class="chip">Dynamic Home</span>
       </div>
       <div class="mt-4 d-flex flex-wrap gap-2">
         {% if not session_user %}
-          <a class="btn btn-primary btn-lg" href="/register">إنشاء حساب</a>
-          <a class="btn btn-outline-light btn-lg" href="/login">دخول</a>
-          <a class="btn btn-outline-secondary btn-lg" href="/">استكشف كضيف</a>
+          <a class="btn btn-primary btn-lg" href="/register">Create Account</a>
+          <a class="btn btn-outline-light btn-lg" href="/login">Log In</a>
+          <a class="btn btn-outline-secondary btn-lg" href="/">Browse as Guest</a>
         {% else %}
-          <a class="btn btn-primary btn-lg" href="/">استكشف العناصر</a>
-          <a class="btn btn-outline-light btn-lg" href="/profile">صفحتي</a>
+          <a class="btn btn-primary btn-lg" href="/">Explore Items</a>
+          <a class="btn btn-outline-light btn-lg" href="/profile">My Profile</a>
         {% endif %}
       </div>
     </div>
@@ -58,31 +61,31 @@
   </div>
 </section>
 
-<!-- ======= Stats (اختياري: مرّر قيم حقيقية من باك-إند) ======= -->
+<!-- ======= Stats (optional: pass real values from backend) ======= -->
 <section class="mb-4">
   <div class="row g-3">
     <div class="col-6 col-md-3">
       <div class="glass p-3 text-center">
         <div class="h2 mb-1">{{ stats_items or 128 }}</div>
-        <div class="text-muted">عنصر متاح</div>
+        <div class="text-muted">Items Available</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
       <div class="glass p-3 text-center">
         <div class="h2 mb-1">{{ stats_users or 64 }}</div>
-        <div class="text-muted">مستخدم موثق</div>
+        <div class="text-muted">Verified Users</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
       <div class="glass p-3 text-center">
         <div class="h2 mb-1">{{ stats_cities or 6 }}</div>
-        <div class="text-muted">مدن مغطّاة</div>
+        <div class="text-muted">Cities Covered</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
       <div class="glass p-3 text-center">
         <div class="h2 mb-1">{{ stats_success or '98%' }}</div>
-        <div class="text-muted">رضا المستخدمين</div>
+        <div class="text-muted">User Satisfaction</div>
       </div>
     </div>
   </div>
@@ -92,31 +95,32 @@
 <section class="glass p-4 mb-4">
   <div class="row g-4">
     <div class="col-lg-6">
-      <h4 class="mb-2">ما هو RentAll؟</h4>
+      <h4 class="mb-2">What is RentAll?</h4>
       <p class="text-muted">
-        سوق تشاركي لتأجير أي شيء بشكل مؤقت: سيارات، معدات تصوير، أدوات بناء، إلكترونيات، ألعاب، معدات تخييم وسفر… إلخ.
-        بدل ما تشتري شيء غالي وتستخدمه قليلًا، استأجره بأمان ووفّر، ودع الغرض ينتج دخلًا لصاحبه.
+        A peer marketplace to rent almost anything short-term: cars, camera gear, construction tools,
+        electronics, games, camping & travel equipment, and more. Instead of buying something expensive
+        you’ll rarely use, rent it safely and save—while helping owners earn.
       </p>
       <div class="d-flex flex-wrap gap-2">
-        <span class="badge bg-secondary">سيارات</span>
-        <span class="badge bg-secondary">معدات تصوير</span>
-        <span class="badge bg-secondary">أدوات بناء</span>
-        <span class="badge bg-secondary">إلكترونيات</span>
-        <span class="badge bg-secondary">ألعاب</span>
-        <span class="badge bg-secondary">تخييم وسفر</span>
-        <span class="badge bg-secondary">آلات موسيقية</span>
+        <span class="badge bg-secondary">Cars</span>
+        <span class="badge bg-secondary">Camera Gear</span>
+        <span class="badge bg-secondary">Construction Tools</span>
+        <span class="badge bg-secondary">Electronics</span>
+        <span class="badge bg-secondary">Games</span>
+        <span class="badge bg-secondary">Camping & Travel</span>
+        <span class="badge bg-secondary">Musical Instruments</span>
       </div>
     </div>
     <div class="col-lg-6">
-      <h4 class="mb-2">لماذا الآن؟</h4>
+      <h4 class="mb-2">Why Now?</h4>
       <p class="text-muted">
-        نحن نعيش اقتصاد الاستخدام بدل التملك: احتياج قصير، تكاليف عالية، ومساحات تخزين محدودة.
-        RentAll يقلل الهدر ويرفع الاستفادة عبر مطابقة سريعة وآمنة بين العرض والطلب.
+        We live in a use-instead-of-own economy: short-term needs, high costs, and limited storage.
+        RentAll reduces waste and increases utility by safely matching supply with demand.
       </p>
       <ul class="text-muted m-0">
-        <li><span class="tick">✔</span> تقليل كلفة التملك على المستأجر.</li>
-        <li><span class="tick">✔</span> دخل إضافي للمالكين.</li>
-        <li><span class="tick">✔</span> مجتمع موثوق مبني على التقييمات.</li>
+        <li><span class="tick">✔</span> Lower ownership costs for renters.</li>
+        <li><span class="tick">✔</span> Extra income for owners.</li>
+        <li><span class="tick">✔</span> A trusted community built on reviews.</li>
       </ul>
     </div>
   </div>
@@ -127,47 +131,47 @@
   <div class="row g-3">
     <div class="col-md-6">
       <div class="glass p-3 h-100">
-        <h4 class="mb-3">كيف تعمل المنصّة؟</h4>
+        <h4 class="mb-3">How Does It Work?</h4>
         <div class="step mb-2">
           <div class="step-num">1</div>
-          <div>أنشئ حسابك وارفع وثيقة رسمية (بطاقة/رخصة/جواز). الأدمين يعتمد الحسابات للثقة.</div>
+          <div>Create your account and upload an official ID (card/driver’s license/passport). Admins verify accounts for trust.</div>
         </div>
         <div class="step mb-2">
           <div class="step-num">2</div>
-          <div>استعرض حسب التصنيف والمكان. صفحة رئيسية ديناميكية تقترح عناصر جديدة بكل زيارة.</div>
+          <div>Browse by category and location. A dynamic home page suggests fresh items on every visit.</div>
         </div>
         <div class="step mb-2">
           <div class="step-num">3</div>
-          <div>تواصل مع المالك عبر الرسائل. كل منتج له خيط محادثة منفصل — ما في خلط.</div>
+          <div>Message the owner. Each item has its own dedicated message thread—no mix-ups.</div>
         </div>
         <div class="step">
           <div class="step-num">4</div>
-          <div>حدّد المدة، استلم، استخدم، أعد الغرض. قيّم التجربة لبناء سمعة موثوقة للجميع.</div>
+          <div>Choose the duration, receive, use, and return the item. Leave a review to build a trustworthy reputation.</div>
         </div>
       </div>
     </div>
     <div class="col-md-6">
       <div class="glass p-3 h-100">
-        <h4 class="mb-3">الأدوار داخل المنصّة</h4>
+        <h4 class="mb-3">Roles on the Platform</h4>
         <div class="d-flex align-items-start gap-2 mb-2">
           <div class="feature-icon">👤</div>
           <div>
-            <strong>المستخدم</strong>
-            <div class="text-muted">يستكشف العناصر، يراسل المالكين، يحجز ويراجع التجارب.</div>
+            <strong>User</strong>
+            <div class="text-muted">Explores items, messages owners, books rentals, and leaves reviews.</div>
           </div>
         </div>
         <div class="d-flex align-items-start gap-2 mb-2">
           <div class="feature-icon">🧳</div>
           <div>
-            <strong>المالك</strong>
-            <div class="text-muted">ينشر العناصر، يحدّد السعر اليومي، يتلقى الرسائل والتقييمات.</div>
+            <strong>Owner</strong>
+            <div class="text-muted">Publishes items, sets daily pricing, receives messages and ratings.</div>
           </div>
         </div>
         <div class="d-flex align-items-start gap-2">
           <div class="feature-icon">🛡️</div>
           <div>
-            <strong>الأدمين</strong>
-            <div class="text-muted">يعتمد الحسابات بالوثائق، يراقب السلوكيات، يتحكم بالتبليغات، ويوقف المخالفات.</div>
+            <strong>Admin</strong>
+            <div class="text-muted">Manually verifies IDs, monitors behavior, manages reports, and takes action on violations.</div>
           </div>
         </div>
       </div>
@@ -177,14 +181,14 @@
 
 <!-- ======= Trust & Safety ======= -->
 <section class="glass p-4 mb-4">
-  <h4 class="mb-3">الثقة والأمان</h4>
+  <h4 class="mb-3">Trust & Safety</h4>
   <div class="row g-3">
     <div class="col-md-4">
       <div class="d-flex align-items-start gap-2">
         <div class="feature-icon">🔒</div>
         <div>
-          <strong>توثيق الحسابات</strong>
-          <div class="text-muted">الأدمين يعتمد الحسابات يدويًا بعد الاطلاع على الوثائق الرسمية.</div>
+          <strong>Account Verification</strong>
+          <div class="text-muted">Admins manually approve accounts after reviewing official documents.</div>
         </div>
       </div>
     </div>
@@ -192,8 +196,8 @@
       <div class="d-flex align-items-start gap-2">
         <div class="feature-icon">💬</div>
         <div>
-          <strong>محادثات منفصلة لكل منتج</strong>
-          <div class="text-muted">خيوط الرسائل مرتبطة بالعنصر لتفادي أي خلط بين الطلبات.</div>
+          <strong>Separate Threads per Item</strong>
+          <div class="text-muted">Message threads are tied to the item to avoid mixing requests.</div>
         </div>
       </div>
     </div>
@@ -201,32 +205,33 @@
       <div class="d-flex align-items-start gap-2">
         <div class="feature-icon">⭐</div>
         <div>
-          <strong>نظام التقييمات</strong>
-          <div class="text-muted">سمعة شفافة لكل مستخدم بعد كل عملية تأجير، تساعد في الاختيار.</div>
+          <strong>Rating System</strong>
+          <div class="text-muted">Transparent reputation after each rental helps everyone choose wisely.</div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ======= Pricing / Model (توضيحي) ======= -->
+<!-- ======= Pricing / Model (illustrative) ======= -->
 <section class="mb-4">
   <div class="row g-3">
     <div class="col-md-6">
       <div class="glass p-3 h-100">
-        <h4 class="mb-2">نموذج العمل (مبدئي)</h4>
+        <h4 class="mb-2">Business Model (Initial)</h4>
         <p class="text-muted m-0">
-          السعر يُحدده المالك، والدفع عند التسليم أو باتفاق الطرفين (لاحقًا يمكن إضافة بوابات دفع). قد نضيف عمولة رمزية مستقبلًا لتغطية التشغيل.
+          Owners set prices; payment on handover or by mutual agreement (payment gateways can be added later).
+          A small service fee may be introduced in the future to cover operations.
         </p>
       </div>
     </div>
     <div class="col-md-6">
       <div class="glass p-3 h-100">
-        <h4 class="mb-2">سياسات مختصرة</h4>
+        <h4 class="mb-2">Short Policies</h4>
         <ul class="text-muted m-0">
-          <li>مسؤولية الاستخدام على المستأجر، مع التزام الإرجاع بحالة جيدة.</li>
-          <li>المالك يلتزم بوصف واضح وصور حقيقية.</li>
-          <li>المخالفات تُرفع للأدمين لاتخاذ الإجراء.</li>
+          <li>Renter is responsible for proper use and must return items in good condition.</li>
+          <li>Owner must provide clear descriptions and real photos.</li>
+          <li>Violations can be reported to admins for action.</li>
         </ul>
       </div>
     </div>
@@ -235,17 +240,17 @@
 
 <!-- ======= FAQ ======= -->
 <section class="glass p-4 mb-4 faq">
-  <h4 class="mb-3">أسئلة شائعة</h4>
+  <h4 class="mb-3">FAQs</h4>
   <div class="accordion" id="faq">
     <div class="accordion-item">
       <h2 class="accordion-header" id="q1">
         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#a1">
-          هل أحتاج وثائق لتفعيل حسابي؟
+          Do I need documents to activate my account?
         </button>
       </h2>
       <div id="a1" class="accordion-collapse collapse" data-bs-parent="#faq">
         <div class="accordion-body text-muted">
-          نعم، بطاقة هوية أو رخصة قيادة أو جواز سفر، للمراجعة اليدوية من الأدمين قبل السماح بالتعاملات.
+          Yes—an ID card, driver’s license, or passport. Admins perform manual review before enabling transactions.
         </div>
       </div>
     </div>
@@ -253,12 +258,12 @@
     <div class="accordion-item">
       <h2 class="accordion-header" id="q2">
         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#a2">
-          كيف أتأكد أن رسائلي لا تختلط بين عدة منتجات؟
+          How do I make sure my messages don’t get mixed across items?
         </button>
       </h2>
       <div id="a2" class="accordion-collapse collapse" data-bs-parent="#faq">
         <div class="accordion-body text-muted">
-          كل منتج يملك خيط محادثة مستقل مرتبط بـ <code>item_id</code>، وهذا يمنع الخلط حتى لنفس المالك.
+          Each item has a dedicated thread linked by <code>item_id</code>, preventing mix-ups even with the same owner.
         </div>
       </div>
     </div>
@@ -266,12 +271,12 @@
     <div class="accordion-item">
       <h2 class="accordion-header" id="q3">
         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#a3">
-          هل يوجد دفع إلكتروني؟
+          Is online payment available?
         </button>
       </h2>
       <div id="a3" class="accordion-collapse collapse" data-bs-parent="#faq">
         <div class="accordion-body text-muted">
-          حاليًا الدفع عند التسليم أو حسب الاتفاق. لاحقًا سنضيف بوابات دفع وتأمين اختياري لبعض الأصناف.
+          Currently, payment is on handover or as agreed. Payment gateways and optional insurance for some categories will be added later.
         </div>
       </div>
     </div>
@@ -280,44 +285,44 @@
 
 <!-- ======= Roadmap ======= -->
 <section class="glass p-4 mb-4">
-  <h4 class="mb-3">خارطة الطريق</h4>
+  <h4 class="mb-3">Roadmap</h4>
   <div class="row g-3">
     <div class="col-md-4">
       <div class="p-3 h-100" style="border-left: 2px dashed rgba(255,255,255,.15);">
         <div class="d-flex align-items-center gap-2 mb-2">
-          <div class="roadmap-dot"></div><strong>المرحلة 1 — النسخة التجريبية</strong>
+          <div class="roadmap-dot"></div><strong>Phase 1 — Beta</strong>
         </div>
         <ul class="text-muted m-0">
-          <li>حسابات موثّقة يدويًا</li>
-          <li>تصنيفات + بحث أساسي</li>
-          <li>مراسلة داخلية لكل منتج</li>
-          <li>تقييمات بعد الإرجاع</li>
+          <li>Manual ID-verified accounts</li>
+          <li>Categories + basic search</li>
+          <li>Per-item messaging</li>
+          <li>Post-return reviews</li>
         </ul>
       </div>
     </div>
     <div class="col-md-4">
       <div class="p-3 h-100" style="border-left: 2px dashed rgba(255,255,255,.15);">
         <div class="d-flex align-items-center gap-2 mb-2">
-          <div class="roadmap-dot"></div><strong>المرحلة 2 — التجربة المحسّنة</strong>
+          <div class="roadmap-dot"></div><strong>Phase 2 — Improved Experience</strong>
         </div>
         <ul class="text-muted m-0">
-          <li>بوابات دفع</li>
-          <li>إشعارات لحظية</li>
-          <li>قائمة أمنيات</li>
-          <li>فلترة متقدمة بالموقع والسعر</li>
+          <li>Payment gateways</li>
+          <li>Real-time notifications</li>
+          <li>Wishlist</li>
+          <li>Advanced filters (location & price)</li>
         </ul>
       </div>
     </div>
     <div class="col-md-4">
       <div class="p-3 h-100">
         <div class="d-flex align-items-center gap-2 mb-2">
-          <div class="roadmap-dot"></div><strong>المرحلة 3 — التوسّع</strong>
+          <div class="roadmap-dot"></div><strong>Phase 3 — Expansion</strong>
         </div>
         <ul class="text-muted m-0">
-          <li>تأمين اختياري على أصناف</li>
-          <li>توسيع المدن</li>
-          <li>لوحة تحليلات للمالكين</li>
-          <li>عروض وباقات خاصة</li>
+          <li>Optional insurance on categories</li>
+          <li>More cities</li>
+          <li>Owner analytics dashboard</li>
+          <li>Special offers & bundles</li>
         </ul>
       </div>
     </div>
@@ -329,19 +334,20 @@
   <div class="glass p-4">
     <div class="row align-items-center g-3">
       <div class="col-lg-8">
-        <h4 class="mb-2">جاهز تشارك اللي ما تستخدمه؟ أو تستأجر اللي تحتاجه مؤقتًا؟</h4>
-        <p class="text-muted m-0">ابدأ بخطوة بسيطة — {% if not session_user %}أنشئ حسابك مجانًا أو{% endif %} استكشف العناصر المتاحة الآن.</p>
+        <h4 class="mb-2">Ready to share what you don’t use—or rent what you need?</h4>
+        <p class="text-muted m-0">Start with a simple step — {% if not session_user %}create your free account or{% endif %} explore available items now.</p>
       </div>
       <div class="col-lg-4 d-flex gap-2 justify-content-lg-end">
-        <a class="btn btn-outline-light btn-lg" href="/items">استكشف العناصر</a>
+        <a class="btn btn-outline-light btn-lg" href="/items">Explore Items</a>
         {% if not session_user %}
-          <a class="btn btn-primary btn-lg" href="/register">إنشاء حساب</a>
+          <a class="btn btn-primary btn-lg" href="/register">Create Account</a>
         {% else %}
-          <a class="btn btn-primary btn-lg" href="/profile">اذهب إلى صفحتي</a>
+          <a class="btn btn-primary btn-lg" href="/profile">Go to My Profile</a>
         {% endif %}
       </div>
     </div>
   </div>
 </section>
 
+</div>
 {% endblock %}

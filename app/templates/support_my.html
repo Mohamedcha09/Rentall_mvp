@@ -3,13 +3,13 @@
 <div class="container py-4">
 
   <div class="d-flex justify-content-between align-items-center">
-    <h3>تذاكري</h3>
-    <a class="btn btn-primary" href="/support/new">+ تذكرة جديدة</a>
+    <h3>My Tickets</h3>
+    <a class="btn btn-primary" href="/support/new">+ New Ticket</a>
   </div>
 
   <div class="list-group mt-3">
     {% for t in tickets %}
-      {# نحسب عدد رسائل CS غير المقروءة من الحقول المتوفرة #}
+      {# Calculate number of unread CS messages from the available fields #}
       {% set unread_cs = (t.messages
           | selectattr('sender_role','equalto','agent')
           | selectattr('is_read','equalto',False)
@@ -18,26 +18,26 @@
       <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
          href="/support/ticket/{{t.id}}">
         <div class="me-2">
-          <div class="fw-semibold">#{{t.id}} — {{t.subject or 'بدون عنوان'}}</div>
+          <div class="fw-semibold">#{{t.id}} — {{t.subject or 'Untitled'}}</div>
           <div class="small text-muted">
-            الحالة: {{ t.status or 'new' }}
-            {% if t.last_msg_at %} · آخر نشاط: {{ (t.last_msg_at|string)[:16] }}{% endif %}
+            Status: {{ t.status or 'new' }}
+            {% if t.last_msg_at %} · Last activity: {{ (t.last_msg_at|string)[:16] }}{% endif %}
           </div>
         </div>
 
         <div class="d-flex align-items-center gap-2">
           {% if unread_cs > 0 %}
-            <span class="badge rounded-pill text-bg-primary" title="رسائل جديدة من الدعم">
+            <span class="badge rounded-pill text-bg-primary" title="New messages from support">
               {{ unread_cs }}
             </span>
           {% elif t.unread_for_user %}
-            <span class="badge rounded-pill text-bg-primary" title="رسائل جديدة من الدعم">•</span>
+            <span class="badge rounded-pill text-bg-primary" title="New messages from support">•</span>
           {% endif %}
           <i class="bi bi-chevron-left opacity-50"></i>
         </div>
       </a>
     {% else %}
-      <div class="text-muted">لا توجد تذاكر بعد.</div>
+      <div class="text-muted">No tickets yet.</div>
     {% endfor %}
   </div>
 

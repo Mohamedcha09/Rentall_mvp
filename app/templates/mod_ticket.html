@@ -14,30 +14,30 @@
 
 <div class="container py-3 ticket-wrap" dir="rtl">
   <div class="d-flex align-items-center justify-content-between">
-    <h4 class="m-0">تذكرة (MOD) #{{ ticket.id }}</h4>
-    <a href="/mod/inbox" class="btn btn-outline-secondary btn-sm"><i class="bi bi-inbox"></i> رجوع للصندوق</a>
+    <h4 class="m-0">Ticket (MOD) #{{ ticket.id }}</h4>
+    <a href="/mod/inbox" class="btn btn-outline-secondary btn-sm"><i class="bi bi-inbox"></i> Back to Inbox</a>
   </div>
   <hr class="my-3">
 
   {% set is_resolved = (ticket.status == 'resolved') %}
 
   <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
-    <span class="chip"><i class="bi bi-tag"></i> الموضوع: {{ ticket.subject or 'بدون عنوان' }}</span>
-    <span class="chip"><i class="bi bi-person"></i> العميل: #{{ ticket.user_id }}</span>
+    <span class="chip"><i class="bi bi-tag"></i> Subject: {{ ticket.subject or 'No title' }}</span>
+    <span class="chip"><i class="bi bi-person"></i> Customer: #{{ ticket.user_id }}</span>
     {% if is_resolved %}
-      <span class="chip text-bg-success border-0"><i class="bi bi-lock-fill"></i> منتهية</span>
+      <span class="chip text-bg-success border-0"><i class="bi bi-lock-fill"></i> Resolved</span>
     {% else %}
-      <span class="chip text-bg-warning border-0 text-dark"><i class="bi bi-hourglass-split"></i> قيد المراجعة</span>
+      <span class="chip text-bg-warning border-0 text-dark"><i class="bi bi-hourglass-split"></i> In Review</span>
     {% endif %}
     {% if ticket.assigned_to_id %}
-      <span class="chip"><i class="bi bi-person-badge"></i> مُعيّنة إلى: #{{ ticket.assigned_to_id }}</span>
+      <span class="chip"><i class="bi bi-person-badge"></i> Assigned to: #{{ ticket.assigned_to_id }}</span>
     {% endif %}
   </div>
 
   <div class="card shadow-sm mb-3">
     <div class="card-header d-flex align-items-center gap-2">
-      <i class="bi bi-chat-dots"></i> المحادثة
-      <span class="ms-auto small text-muted">آخر تحديث: {{ ticket.updated_at and (ticket.updated_at|string)[:16] }}</span>
+      <i class="bi bi-chat-dots"></i> Conversation
+      <span class="ms-auto small text-muted">Last update: {{ ticket.updated_at and (ticket.updated_at|string)[:16] }}</span>
     </div>
     <div class="card-body card-chat">
       {% if msgs and msgs|length %}
@@ -45,8 +45,8 @@
           {% set who = (m.sender_role or '').lower() %}
           <div class="mb-3 {% if who=='agent' %}text-end{% endif %}">
             <div class="msg-meta mb-1">
-              {{ (m.created_at|string)[:16] }} — 
-              {% if who=='agent' %}الدعم/المدقّق{% elif who=='system' %}نظام{% else %}العميل{% endif %}
+              {{ (m.created_at|string)[:16] }} —
+              {% if who=='agent' %}Support/Reviewer{% elif who=='system' %}System{% else %}Customer{% endif %}
             </div>
             <div class="msg {% if who=='agent' %}msg-agent{% elif who=='system' %}msg-system{% else %}msg-user{% endif %}">
               {{ m.body }}
@@ -54,41 +54,41 @@
           </div>
         {% endfor %}
       {% else %}
-        <div class="text-muted">لا توجد رسائل بعد.</div>
+        <div class="text-muted">No messages yet.</div>
       {% endif %}
     </div>
   </div>
 
   {% if not is_resolved %}
     <div class="toolbar-sticky">
-      <!-- فورم الرد (مستقل) -->
+      <!-- Reply form (standalone) -->
       <form id="modReplyForm" method="post" action="/mod/ticket/{{ ticket.id }}/reply" class="p-2">
-        <textarea class="form-control mb-2" name="body" rows="3" placeholder="اكتب ردّك..." required></textarea>
-        <button class="btn btn-primary me-2" type="submit"><i class="bi bi-send"></i> إرسال</button>
+        <textarea class="form-control mb-2" name="body" rows="3" placeholder="Type your reply..." required></textarea>
+        <button class="btn btn-primary me-2" type="submit"><i class="bi bi-send"></i> Send</button>
       </form>
 
-      <!-- الأزرار الأخرى كل زر داخل فورم مستقل -->
+      <!-- Other buttons, each in its own form -->
       {% if not ticket.assigned_to_id %}
       <form method="post" action="/mod/tickets/{{ ticket.id }}/assign_self" class="d-inline">
         <button class="btn btn-outline-secondary mt-2" type="submit">
-          <i class="bi bi-person-check"></i> تولّي
+          <i class="bi bi-person-check"></i> Take Over
         </button>
       </form>
       {% endif %}
 
       <form method="post" action="/mod/tickets/{{ ticket.id }}/transfer_to_md"
-            onsubmit="return confirm('تحويل التذكرة إلى إدارة الودائع (MD)؟');"
+            onsubmit="return confirm('Transfer this ticket to Deposits Management (MD)?');"
             class="d-inline">
         <button class="btn btn-outline-warning mt-2" type="submit">
-          <i class="bi bi-arrow-left-right"></i> تحويل إلى MD
+          <i class="bi bi-arrow-left-right"></i> Transfer to MD
         </button>
       </form>
 
       <form method="post" action="/mod/tickets/{{ ticket.id }}/resolve"
-            onsubmit="return confirm('إغلاق نهائي للتذكرة؟ لا يمكن الرجوع.');"
+            onsubmit="return confirm('Final closure of the ticket? This cannot be undone.');"
             class="d-inline">
         <button class="btn btn-success mt-2" type="submit">
-          <i class="bi bi-check2-circle"></i> إغلاق (نهائي)
+          <i class="bi bi-check2-circle"></i> Close (Final)
         </button>
       </form>
     </div>

@@ -1,6 +1,6 @@
-{# app/templates/dm_case.html — نسخة كاملة بعد التقسيم (استلام/إرجاع/أخرى) #}
+{# app/templates/dm_case.html — Full version after the split (Pickup/Return/Other) #}
 {% extends "base.html" %}
-{% block title %}قضية وديعة — #{{ bk.id }}{% endblock %}
+{% block title %}Deposit Case — #{{ bk.id }}{% endblock %}
 
 {% block head %}
 <style>
@@ -16,7 +16,7 @@
   .alert-mini{padding:.6rem .8rem}
   .locked{position:relative;opacity:.6;pointer-events:none}
   .locked::after{
-    content:"القضية مغلقة — لا يمكن تعديلها";
+    content:"Case is closed — no edits allowed";
     position:absolute;inset:0;
     display:flex;align-items:center;justify-content:center;
     background:rgba(255,255,255,.6);backdrop-filter:saturate(0.6) blur(2px);
@@ -31,7 +31,7 @@
 {% endblock %}
 
 {% block content %}
-{# اعتبر القضية “مقفلة” إذا كان الحجز مغلقاً أو تم إرجاع/اقتطاع الوديعة نهائياً #}
+{# Consider the case “locked” if the booking is closed or if the deposit was returned/charged finally #}
 {% set is_locked = (bk.status in ['closed','completed'])
                     or (bk.deposit_status in ['refunded','partially_withheld','no_deposit'])
                     or (bk.dm_decision in ['release','withhold'] and bk.dm_decision_at) %}
@@ -39,42 +39,42 @@
 <div class="case-wrap">
   <div class="d-flex justify-content-between align-items-start flex-wrap mb-2">
     <div class="mb-2">
-      <h4 class="mb-1">قضية وديعة — حجز #{{ bk.id }}</h4>
+      <h4 class="mb-1">Deposit Case — Booking #{{ bk.id }}</h4>
       <div class="k">
-        العنصر:
+        Item:
         {% if item %}
-          <strong>{{ item.title }}</strong> — <a href="/items/{{ item.id }}" target="_blank">فتح صفحة العنصر</a>
+          <strong>{{ item.title }}</strong> — <a href="/items/{{ item.id }}" target="_blank">Open item page</a>
         {% else %} — {% endif %}
       </div>
-      <div class="k">الفترة: {{ bk.start_date }} → {{ bk.end_date }} ({{ bk.days }} يوم)</div>
+      <div class="k">Period: {{ bk.start_date }} → {{ bk.end_date }} ({{ bk.days }} days)</div>
     </div>
     <div class="d-flex flex-column align-items-end gap-1">
-      <span class="chip">حالة الحجز: {{ bk.status or '—' }}</span>
-      <span class="chip">حالة الوديعة: {{ bk.deposit_status or '—' }}</span>
-      {% if is_locked %}<span class="chip" style="background:#f8f9fa">🔒 مغلقة</span>{% endif %}
+      <span class="chip">Booking status: {{ bk.status or '—' }}</span>
+      <span class="chip">Deposit status: {{ bk.deposit_status or '—' }}</span>
+      {% if is_locked %}<span class="chip" style="background:#f8f9fa">🔒 Closed</span>{% endif %}
     </div>
   </div>
 
   <div class="grid" style="grid-template-columns: 1fr 360px;">
-    <!-- يسار: تفاصيل وإجراءات -->
+    <!-- Left: Details & Actions -->
     <div class="grid">
 
-      {# ===== بلاغ المالك + أدلته ===== #}
+      {# ===== Owner report + evidence ===== #}
       {% if bk.owner_report_type or bk.owner_report_reason or (bk.deposit_evidences and bk.deposit_evidences|length) %}
       <div class="box mb-3">
         <div class="d-flex align-items-center gap-2 mb-2">
           <i class="bi bi-exclamation-octagon"></i>
-          <h6 class="m-0">بلاغ المالك</h6>
+          <h6 class="m-0">Owner Report</h6>
         </div>
 
         <div class="mb-1">
-          <div class="k">النوع:</div>
+          <div class="k">Type:</div>
           <div class="fw-semibold">{{ bk.owner_report_type or '—' }}</div>
         </div>
 
         {% if bk.owner_report_reason %}
         <div class="mb-2">
-          <div class="k">الوصف:</div>
+          <div class="k">Description:</div>
           <div style="white-space:pre-wrap">{{ bk.owner_report_reason }}</div>
         </div>
         {% endif %}
@@ -94,16 +94,16 @@
             {% endfor %}
           </div>
         {% else %}
-          <div class="muted">لا توجد أدلة مرفوعة بعد.</div>
+          <div class="muted">No evidence uploaded yet.</div>
         {% endif %}
       </div>
       {% endif %}
 
-      {# ===== أدلة المستأجر — عند الاستلام ===== #}
+      {# ===== Renter evidence — at pickup ===== #}
       <div class="box mb-3">
         <div class="d-flex align-items-center gap-2 mb-2">
           <i class="bi bi-person-bounding-box"></i>
-          <h6 class="m-0">أدلة المستأجر — عند الاستلام</h6>
+          <h6 class="m-0">Renter Evidence — at Pickup</h6>
         </div>
         {% if renter_pickup and renter_pickup|length %}
           <div class="ev-grid">
@@ -119,15 +119,15 @@
             {% endfor %}
           </div>
         {% else %}
-          <div class="muted">لا توجد صور استلام من المستأجر.</div>
+          <div class="muted">No pickup photos from the renter.</div>
         {% endif %}
       </div>
 
-      {# ===== أدلة المستأجر — عند الإرجاع ===== #}
+      {# ===== Renter evidence — at return ===== #}
       <div class="box mb-3">
         <div class="d-flex align-items-center gap-2 mb-2">
           <i class="bi bi-arrow-return-left"></i>
-          <h6 class="m-0">أدلة المستأجر — عند الإرجاع</h6>
+          <h6 class="m-0">Renter Evidence — at Return</h6>
         </div>
         {% if renter_return and renter_return|length %}
           <div class="ev-grid">
@@ -143,16 +143,16 @@
             {% endfor %}
           </div>
         {% else %}
-          <div class="muted">لا توجد صور إرجاع من المستأجر.</div>
+          <div class="muted">No return photos from the renter.</div>
         {% endif %}
       </div>
 
-      {# ===== (اختياري) أدلة أخرى للمستأجر ===== #}
+      {# ===== (Optional) Other renter evidence ===== #}
       {% if renter_other and renter_other|length %}
       <div class="box mb-3">
         <div class="d-flex align-items-center gap-2 mb-2">
           <i class="bi bi-images"></i>
-          <h6 class="m-0">أدلة أخرى للمستأجر</h6>
+          <h6 class="m-0">Other Renter Evidence</h6>
         </div>
         <div class="ev-grid">
           {% for ev in renter_other[:12] %}
@@ -169,35 +169,35 @@
       </div>
       {% endif %}
 
-      {# ===== إجراءات DM ===== #}
+      {# ===== DM actions ===== #}
       <div class="box {% if is_locked %}locked{% endif %}">
-        <h6 class="mb-3"><i class="bi bi-hammer me-1"></i> إجراءات متحكّم الوديعة (DM)</h6>
+        <h6 class="mb-3"><i class="bi bi-hammer me-1"></i> Deposit Manager (DM) Actions</h6>
 
         {% if not is_locked and bk.deposit_status == 'awaiting_renter' and bk.renter_response_deadline_at %}
           <div class="alert alert-info alert-mini mb-3">
-            نافذة ردّ المستأجر مفتوحة — التنفيذ التلقائي بعد نهاية المهلة إن لم يردّ.
+            Renter response window is open — automatic execution after the deadline if there’s no response.
             <div class="mt-1 mono">
-              ينتهي في: <span id="deadlineCountdown">{{ bk.renter_response_deadline_at }}</span>
+              Ends at: <span id="deadlineCountdown">{{ bk.renter_response_deadline_at }}</span>
             </div>
           </div>
         {% endif %}
 
         {% if not is_locked %}
           <div class="acts mb-2">
-            <!-- فتح نافذة 24h -->
+            <!-- Open 24h window -->
             <form method="post" action="/dm/deposits/{{ bk.id }}/start-window" class="d-inline-block js-confirm-window">
               <div class="row g-2 align-items-end">
                 <div class="col-auto">
-                  <label class="form-label">المبلغ (CAD)</label>
+                  <label class="form-label">Amount (CAD)</label>
                   <input class="form-control" type="number" name="amount" min="1" step="1" required>
                 </div>
                 <div class="col-auto">
-                  <label class="form-label">السبب</label>
-                  <input class="form-control" type="text" name="reason" placeholder="وصف مختصر">
+                  <label class="form-label">Reason</label>
+                  <input class="form-control" type="text" name="reason" placeholder="Short description">
                 </div>
                 <div class="col-auto">
                   <button class="btn btn-warning">
-                    <i class="bi bi-hourglass-split"></i> فتح مهلة 24h
+                    <i class="bi bi-hourglass-split"></i> Open 24h Window
                   </button>
                 </div>
               </div>
@@ -205,22 +205,22 @@
           </div>
 
           <div class="acts mb-2">
-            <!-- خصم نهائي الآن -->
+            <!-- Final withhold now -->
             <form method="post" action="/dm/deposits/{{ bk.id }}/decision" class="d-inline-block js-confirm-final-withhold">
               <input type="hidden" name="decision" value="withhold">
               <input type="hidden" name="finalize" value="1">
               <div class="row g-2 align-items-end">
                 <div class="col-auto">
-                  <label class="form-label">المبلغ (CAD)</label>
+                  <label class="form-label">Amount (CAD)</label>
                   <input class="form-control" type="number" name="amount" min="1" step="1" required>
                 </div>
                 <div class="col-auto">
-                  <label class="form-label">السبب</label>
-                  <input class="form-control" type="text" name="reason" placeholder="وصف مختصر">
+                  <label class="form-label">Reason</label>
+                  <input class="form-control" type="text" name="reason" placeholder="Short description">
                 </div>
                 <div class="col-auto">
                   <button class="btn btn-danger">
-                    <i class="bi bi-shield-shaded"></i> خصم نهائي الآن
+                    <i class="bi bi-shield-shaded"></i> Final Withhold Now
                   </button>
                 </div>
               </div>
@@ -228,24 +228,24 @@
           </div>
 
           <div class="acts">
-            <!-- إرجاع كامل -->
+            <!-- Full release -->
             <form method="post" action="/dm/deposits/{{ bk.id }}/decision" class="js-confirm-final-release">
               <input type="hidden" name="decision" value="release">
               <button class="btn btn-outline-success">
-                <i class="bi bi-check2-circle"></i> إرجاع الوديعة بالكامل
+                <i class="bi bi-check2-circle"></i> Release Full Deposit
               </button>
             </form>
           </div>
         {% else %}
           <div class="alert alert-secondary m-0">
-            تم إعلان القرار النهائي لهذه القضية — يمكن مراقبتها فقط.
+            The final decision for this case has been issued — view only.
           </div>
         {% endif %}
       </div>
 
-      <!-- لوج مختصر -->
+      <!-- Short log -->
       <div class="box">
-        <h6 class="mb-2"><i class="bi bi-journal-text me-1"></i> ملخص تقني</h6>
+        <h6 class="mb-2"><i class="bi bi-journal-text me-1"></i> Technical Summary</h6>
         <div class="mono small k">
           deposit_status={{ bk.deposit_status }} |
           dm_decision={{ bk.dm_decision }} |
@@ -255,21 +255,21 @@
       </div>
     </div>
 
-    <!-- يمين: ملخص مالي وعام -->
+    <!-- Right: Financial & general summary -->
     <div class="grid">
       <div class="box">
-        <h6 class="mb-2">ملخص الدفع</h6>
+        <h6 class="mb-2">Payment Summary</h6>
         <div class="d-flex justify-content-between">
-          <span>طريقة الدفع</span><strong>{{ bk.payment_method or '—' }}</strong>
+          <span>Payment method</span><strong>{{ bk.payment_method or '—' }}</strong>
         </div>
         <div class="d-flex justify-content-between">
-          <span>الإيجار</span><strong>{{ bk.rent_amount or bk.total_amount or 0 }}$</strong>
+          <span>Rent</span><strong>{{ bk.rent_amount or bk.total_amount or 0 }}$</strong>
         </div>
         <div class="d-flex justify-content-between">
-          <span>الوديعة المحتجزة</span><strong>{{ bk.hold_deposit_amount or bk.deposit_amount or 0 }}$</strong>
+          <span>Deposit held</span><strong>{{ bk.hold_deposit_amount or bk.deposit_amount or 0 }}$</strong>
         </div>
         <div class="d-flex justify-content-between">
-          <span>المحصول المقتطع</span><strong>{{ bk.deposit_charged_amount or 0 }}$</strong>
+          <span>Amount charged</span><strong>{{ bk.deposit_charged_amount or 0 }}$</strong>
         </div>
         <hr>
         <div class="k mono small">
@@ -282,15 +282,15 @@
 
       {% if item %}
       <div class="box">
-        <h6 class="mb-2">العنصر</h6>
+        <h6 class="mb-2">Item</h6>
         <div class="d-flex gap-3">
           <img src="{{ (('/' ~ item.image_path) if item.image_path and item.image_path[0] != '/' else (item.image_path or '/static/placeholder.jpg')) }}"
                style="width:96px;height:96px;object-fit:cover;border-radius:10px" alt="">
           <div>
             <div class="fw-bold">{{ item.title }}</div>
             <div class="k">{{ category_label(item.category) if item and item.category else '—' }}</div>
-            <div class="k">السعر اليومي: {{ item.price_per_day }}$</div>
-            <a class="small" href="/items/{{ item.id }}" target="_blank">فتح صفحة العنصر</a>
+            <div class="k">Daily price: {{ item.price_per_day }}$</div>
+            <a class="small" href="/items/{{ item.id }}" target="_blank">Open item page</a>
           </div>
         </div>
       </div>
@@ -313,7 +313,7 @@
 {% endif %}
 
 <script>
-  // تأكيدات قبل الإجراءات النهائية
+  // Confirmations before final actions
   (function(){
     const q = sel => document.querySelector(sel);
 
@@ -322,7 +322,7 @@
       confirmWithhold.addEventListener('submit', function(ev){
         const amt = this.querySelector('input[name="amount"]').value || 0;
         const reason = this.querySelector('input[name="reason"]').value || '';
-        const ok = confirm(`تأكيد الخصم النهائي الآن بمبلغ ${amt} CAD؟` + (reason ? `\nالسبب: ${reason}` : ''));
+        const ok = confirm(`Confirm final withhold of ${amt} CAD now?` + (reason ? `\nReason: ${reason}` : ''));
         if(!ok){ ev.preventDefault(); }
       });
     }
@@ -330,7 +330,7 @@
     const confirmRelease = q('.js-confirm-final-release');
     if (confirmRelease){
       confirmRelease.addEventListener('submit', function(ev){
-        const ok = confirm('تأكيد إرجاع الوديعة بالكامل الآن؟');
+        const ok = confirm('Confirm releasing the full deposit now?');
         if(!ok){ ev.preventDefault(); }
       });
     }
@@ -340,7 +340,7 @@
       confirmWindow.addEventListener('submit', function(ev){
         const amt = this.querySelector('input[name="amount"]').value || 0;
         const reason = this.querySelector('input[name="reason"]').value || '';
-        const ok = confirm(`فتح مهلة 24 ساعة لاقتطاع ${amt} CAD؟` + (reason ? `\nالسبب: ${reason}` : ''));
+        const ok = confirm(`Open a 24-hour window to withhold ${amt} CAD?` + (reason ? `\nReason: ${reason}` : ''));
         if(!ok){ ev.preventDefault(); }
       });
     }

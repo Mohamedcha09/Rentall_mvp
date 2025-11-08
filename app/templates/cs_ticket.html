@@ -5,80 +5,80 @@
   <!-- Header -->
   <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
     <div>
-      <h4 class="mb-1">تذكرة (CS) #{{ ticket.id }}</h4>
+      <h4 class="mb-1">Ticket (CS) #{{ ticket.id }}</h4>
 
       <div class="text-muted small">
-        الموضوع: <strong>{{ ticket.subject or 'بدون عنوان' }}</strong> ·
-        العميل: {{ ticket.user.full_name }} (ID {{ ticket.user_id }})
+        Subject: <strong>{{ ticket.subject or 'No Title' }}</strong> ·
+        Client: {{ ticket.user.full_name }} (ID {{ ticket.user_id }})
       </div>
 
       <div class="mt-2 d-flex flex-wrap align-items-center gap-1">
-        {# حالة التذكرة #}
+        {# Ticket Status #}
         {% set st = (ticket.status or 'new') %}
         <span class="badge {% if st=='resolved' %}bg-success{% elif st=='open' %}bg-primary{% else %}bg-secondary{% endif %}">
-          {% if st=='resolved' %}منتهية{% elif st=='open' %}قيد المراجعة{% else %}جديدة{% endif %}
+          {% if st=='resolved' %}Resolved{% elif st=='open' %}In Review{% else %}New{% endif %}
         </span>
 
-        {# المكلّف #}
+        {# Assigned Agent #}
         {% if ticket.assigned_to_id %}
-          <span class="badge bg-outline border text-muted">مكلّف: {{ ticket.assigned_to_id }}</span>
+          <span class="badge bg-outline border text-muted">Assigned To: {{ ticket.assigned_to_id }}</span>
         {% else %}
-          <span class="badge bg-warning text-dark">غير معيّنة</span>
+          <span class="badge bg-warning text-dark">Unassigned</span>
         {% endif %}
 
-        {# القسم الحالي (queue) مع افتراضي cs #}
+        {# Current Queue (default cs) #}
         <span class="badge bg-info text-dark">
-          القسم: {{ (ticket.queue|default('cs'))|upper }}
+          Queue: {{ (ticket.queue|default('cs'))|upper }}
         </span>
       </div>
     </div>
 
-    <!-- أزرار أعلى -->
+    <!-- Top Buttons -->
     <div class="d-flex flex-wrap gap-2">
-      <a class="btn btn-outline-secondary btn-sm" href="/cs/inbox">العودة للصندوق</a>
+      <a class="btn btn-outline-secondary btn-sm" href="/cs/inbox">Back to Inbox</a>
 
       {% if not ticket.assigned_to_id %}
-        <button class="btn btn-outline-primary btn-sm" onclick="assignSelf({{ ticket.id }})">تولّي</button>
+        <button class="btn btn-outline-primary btn-sm" onclick="assignSelf({{ ticket.id }})">Take Ownership</button>
       {% endif %}
 
       {% if ticket.status != 'resolved' %}
-        <button class="btn btn-success btn-sm" onclick="resolveTicket({{ ticket.id }})">تمّ الحل</button>
+        <button class="btn btn-success btn-sm" onclick="resolveTicket({{ ticket.id }})">Mark as Resolved</button>
       {% endif %}
     </div>
   </div>
 
-  <!-- شريط تحويل الأقسام -->
+  <!-- Queue Transfer Bar -->
   <div class="card mb-3">
     <div class="card-body d-flex flex-wrap gap-2 align-items-center">
-      <div class="fw-semibold me-2">تحويل إلى قسم:</div>
+      <div class="fw-semibold me-2">Transfer to Department:</div>
 
-      <!-- تحويل إلى MD -->
+      <!-- Transfer to MD -->
       <form method="post" action="/cs/tickets/{{ ticket.id }}/transfer" class="m-0">
         <input type="hidden" name="to" value="md">
-        <button class="btn btn-outline-dark btn-sm" type="submit" title="تحويل التذكرة إلى قسم MD (إدارة الودائع)">
+        <button class="btn btn-outline-dark btn-sm" type="submit" title="Transfer ticket to MD (Deposit Management)">
           MD
         </button>
       </form>
 
-      <!-- تحويل إلى MOD -->
+      <!-- Transfer to MOD -->
       <form method="post" action="/cs/tickets/{{ ticket.id }}/transfer" class="m-0">
         <input type="hidden" name="to" value="mod">
-        <button class="btn btn-outline-dark btn-sm" type="submit" title="تحويل التذكرة إلى قسم MOD (المراجعين)">
+        <button class="btn btn-outline-dark btn-sm" type="submit" title="Transfer ticket to MOD (Moderators)">
           MOD
         </button>
       </form>
 
-      <!-- (اختياري) إعادة إلى CS لإرجاعها للقسم الأساسي -->
+      <!-- (Optional) Return to CS -->
       <form method="post" action="/cs/tickets/{{ ticket.id }}/transfer" class="m-0 ms-auto">
         <input type="hidden" name="to" value="cs">
-        <button class="btn btn-outline-secondary btn-sm" type="submit" title="إرجاع التذكرة إلى قسم CS">
-          رجوع إلى CS
+        <button class="btn btn-outline-secondary btn-sm" type="submit" title="Return ticket to CS">
+          Return to CS
         </button>
       </form>
     </div>
   </div>
 
-  <!-- الرسائل -->
+  <!-- Messages -->
   <div class="card mb-3">
     <div class="card-body">
       {% if msgs and msgs|length %}
@@ -87,36 +87,36 @@
             <div class="p-2 rounded-3"
                  style="max-width: 90%; background: {% if m.sender_role=='user' %}#eef6ff{% else %}#f5f5f7{% endif %};">
               <div class="small text-muted mb-1">
-                {{ m.created_at }} — {{ 'العميل' if m.sender_role=='user' else 'الدعم' }}
+                {{ m.created_at }} — {{ 'Client' if m.sender_role=='user' else 'Support' }}
               </div>
               <div dir="auto">{{ m.body | e | replace('\n','<br>') | safe }}</div>
             </div>
           </div>
         {% endfor %}
       {% else %}
-        <div class="text-muted">لا توجد رسائل بعد.</div>
+        <div class="text-muted">No messages yet.</div>
       {% endif %}
     </div>
   </div>
 
-  <!-- نموذج رد الوكيل (إن لم تكن منتهية) -->
+  <!-- Agent Reply Form (if not resolved) -->
   {% if ticket.status != 'resolved' %}
   <div class="card">
-    <div class="card-header fw-semibold">ردّ الدعم</div>
+    <div class="card-header fw-semibold">Support Reply</div>
     <div class="card-body">
       <form method="post" action="/cs/ticket/{{ ticket.id }}/reply">
-        <textarea name="body" class="form-control mb-2" rows="4" placeholder="اكتب ردّك هنا..." required></textarea>
+        <textarea name="body" class="form-control mb-2" rows="4" placeholder="Write your reply here..." required></textarea>
         <div class="d-flex gap-2">
-          <button class="btn btn-primary">إرسال</button>
+          <button class="btn btn-primary">Send</button>
 
           {% if not ticket.assigned_to_id %}
             <button class="btn btn-outline-primary" type="button" onclick="assignSelf({{ ticket.id }})">
-              تولّي ثم أكتب
+              Take Ownership then Reply
             </button>
           {% endif %}
 
           <button class="btn btn-outline-success ms-auto" type="button" onclick="resolveTicket({{ ticket.id }})">
-            إنهاء كتذكرة محلولة
+            Mark as Solved
           </button>
         </div>
       </form>
@@ -124,7 +124,7 @@
   </div>
   {% else %}
   <div class="alert alert-success mt-3 mb-0">
-    هذه التذكرة مُغلقة كـ <strong>منتهية</strong>. يمكنك استعراضها فقط.
+    This ticket is <strong>Resolved</strong>. You can only view it.
   </div>
   {% endif %}
 
@@ -138,7 +138,7 @@ async function resolveTicket(id){
     if(!r.ok) throw 0;
     window.location.href = '/cs/inbox';
   }catch(e){
-    alert('تعذّر إغلاق التذكرة');
+    alert('Failed to close the ticket');
   }
 }
 async function assignSelf(id){
@@ -147,7 +147,7 @@ async function assignSelf(id){
     if(!r.ok) throw 0;
     location.reload();
   }catch(e){
-    alert('تعذّر التولّي');
+    alert('Failed to take ownership');
   }
 }
 </script>

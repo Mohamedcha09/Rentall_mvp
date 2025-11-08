@@ -4,16 +4,16 @@
   <div class="col-md-7">
     <div class="card">
       {% if item.image_path %}
-        <img src="/{{ item.image_path }}" class="card-img-top" style="max-height:360px;object-fit:cover">
+        <img src="/{{ item.image_path }}" class="card-img-top" style="max-height:360px;object-fit:cover" alt="{{ item.title }}">
       {% endif %}
       <div class="card-body">
         <h3 class="mb-1">{{ item.title }}</h3>
         <div class="text-muted small mb-2">{{ item.city or '' }} · {{ item.category_label }}</div>
-        <div class="mb-2">سعر اليوم: <strong>{{ item.price_per_day }}</strong> د</div>
-        <div class="mb-2">المدة: <strong>{{ days }}</strong> يوم</div>
-        <div class="mb-2">من: <strong>{{ start_date }}</strong> إلى: <strong>{{ end_date }}</strong></div>
+        <div class="mb-2">Daily price: <strong>{{ item.price_per_day }}</strong> DZD</div>
+        <div class="mb-2">Duration: <strong>{{ days }}</strong> days</div>
+        <div class="mb-2">From: <strong>{{ start_date }}</strong> to <strong>{{ end_date }}</strong></div>
         <hr>
-        <div class="fs-5">الإجمالي: <strong>{{ total }}</strong> د</div>
+        <div class="fs-5">Total: <strong>{{ total }}</strong> DZD</div>
       </div>
     </div>
   </div>
@@ -21,21 +21,22 @@
   <div class="col-md-5">
     <div class="card">
       <div class="card-body">
-        <h5 class="mb-3">إتمام الاستئجار</h5>
+        <h5 class="mb-3">Complete Rental</h5>
         <div class="alert alert-warning small">
-          هذه نسخة تجريبية — لا يوجد دفع حقيقي بعد. سنضيف الدفع وربط العمولات لاحقاً.
+          This is a demo version — no real payment is processed yet. Payment and commission linking will be added later.
         </div>
-        <<form method="post" action="/checkout/confirm">
-  <input type="hidden" name="item_id" value="{{ item.id }}">
-  <input type="hidden" name="days" value="{{ days }}">
-  <input type="hidden" name="start_date" value="{{ start_date }}">
-  <input type="hidden" name="end_date" value="{{ end_date }}">
-  <input type="hidden" name="price_per_day" value="{{ item.price_per_day }}">
-  <input type="hidden" name="total" value="{{ total }}">
-  <button class="btn btn-success w-100">تأكيد الطلب</button>
-</form>
 
-        <a href="/items/{{ item.id }}" class="btn btn-outline-light w-100 mt-2">رجوع</a>
+        <form method="post" action="/checkout/confirm">
+          <input type="hidden" name="item_id" value="{{ item.id }}">
+          <input type="hidden" name="days" value="{{ days }}">
+          <input type="hidden" name="start_date" value="{{ start_date }}">
+          <input type="hidden" name="end_date" value="{{ end_date }}">
+          <input type="hidden" name="price_per_day" value="{{ item.price_per_day }}">
+          <input type="hidden" name="total" value="{{ total }}">
+          <button class="btn btn-success w-100">Confirm Order</button>
+        </form>
+
+        <a href="/items/{{ item.id }}" class="btn btn-outline-light w-100 mt-2">Back</a>
       </div>
     </div>
   </div>

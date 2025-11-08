@@ -17,16 +17,16 @@
 {% block content %}
 <div class="dm-wrap">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="m-0">لوحة متحكّم الوديعة</h4>
+    <h4 class="m-0">Deposit Manager Dashboard</h4>
     <div class="dm-tabs d-flex gap-2">
-      <a href="/deposit-manager?view=pending" class="{% if view=='pending' %}active{% endif %}">قيد الانتظار</a>
-      <a href="/deposit-manager?view=in_review" class="{% if view=='in_review' %}active{% endif %}">تحت المراجعة</a>
-      <a href="/deposit-manager?view=resolved" class="{% if view=='resolved' %}active{% endif %}">محسومة</a>
+      <a href="/deposit-manager?view=pending" class="{% if view=='pending' %}active{% endif %}">Pending</a>
+      <a href="/deposit-manager?view=in_review" class="{% if view=='in_review' %}active{% endif %}">In Review</a>
+      <a href="/deposit-manager?view=resolved" class="{% if view=='resolved' %}active{% endif %}">Resolved</a>
     </div>
   </div>
 
   {% if not rows or rows|length == 0 %}
-    <div class="dm-empty">لا توجد قضايا في هذا التبويب.</div>
+    <div class="dm-empty">No cases in this tab.</div>
   {% else %}
     <div class="row-gap">
       {% for bk in rows %}
@@ -34,27 +34,27 @@
         <div class="d-flex justify-content-between align-items-start">
           <div>
             <div class="d-flex align-items-center gap-2">
-              <strong>حجز #{{ bk.id }}</strong>
+              <strong>Booking #{{ bk.id }}</strong>
               <span class="badge-soft mono k">{{ bk.status or '—' }}</span>
-              <span class="badge-soft mono k">وديعة: {{ bk.deposit_status or '—' }}</span>
+              <span class="badge-soft mono k">Deposit: {{ bk.deposit_status or '—' }}</span>
             </div>
             <div class="k">
-              عنصر: <a href="/items/{{ bk.item_id }}">#{{ bk.item_id }}</a> ·
-              مالك: <a href="/users/{{ bk.owner_id }}">#{{ bk.owner_id }}</a> ·
-              مستأجر: <a href="/users/{{ bk.renter_id }}">#{{ bk.renter_id }}</a>
+              Item: <a href="/items/{{ bk.item_id }}">#{{ bk.item_id }}</a> ·
+              Owner: <a href="/users/{{ bk.owner_id }}">#{{ bk.owner_id }}</a> ·
+              Renter: <a href="/users/{{ bk.renter_id }}">#{{ bk.renter_id }}</a>
             </div>
             <div class="k mono small mt-1">
-              من {{ bk.start_date }} إلى {{ bk.end_date }} · أيام: {{ bk.days }} · إجمالي الإيجار: {{ bk.total_amount }}$
+              From {{ bk.start_date }} to {{ bk.end_date }} · Days: {{ bk.days }} · Rent total: {{ bk.total_amount }}$
             </div>
             <div class="k mono small">
-              الدفوعات: {{ bk.payment_method or '—' }} · حالة أونلاين: {{ bk.online_status or '—' }}
+              Payments: {{ bk.payment_method or '—' }} · Online status: {{ bk.online_status or '—' }}
             </div>
             <div class="k mono small">
-              الديبو المطلوب/الممسوك: {{ bk.deposit_amount or bk.hold_deposit_amount or 0 }}$ · المخصوم: {{ bk.deposit_charged_amount or 0 }}$
+              Requested/Held deposit: {{ bk.deposit_amount or bk.hold_deposit_amount or 0 }}$ · Charged: {{ bk.deposit_charged_amount or 0 }}$
             </div>
           </div>
           <div>
-            <a class="btn btn-outline-light btn-sm" href="/bookings/flow/{{ bk.id }}">فتح صفحة الحجز</a>
+            <a class="btn btn-outline-light btn-sm" href="/bookings/flow/{{ bk.id }}">Open booking page</a>
           </div>
         </div>
 
@@ -62,63 +62,63 @@
 
         <div class="acts">
           {% if view == 'pending' %}
-            <!-- استلام/Claim ينقل الحالة إلى in_review -->
+            <!-- Claiming moves the case to in_review -->
             <form method="post" action="/deposit-manager/{{ bk.id }}/claim" class="d-inline">
               <button class="btn btn-primary btn-sm">
-                <i class="bi bi-clipboard-check"></i> استلام القضية (Claim)
+                <i class="bi bi-clipboard-check"></i> Claim case
               </button>
             </form>
           {% endif %}
 
           {% if view in ['in_review','pending'] %}
-            <!-- طلب معلومات إضافية -->
+            <!-- Request additional information -->
             <form method="post" action="/deposit-manager/{{ bk.id }}/need-info" class="d-inline">
               <input type="hidden" name="target" value="owner">
-              <input type="hidden" name="message" value="يرجى رفع صور/فيديو يوضح الحالة قبل وبعد.">
+              <input type="hidden" name="message" value="Please upload photos/video showing the condition before and after.">
               <button class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-image"></i> طلب معلومات من المالك
+                <i class="bi bi-image"></i> Request info from owner
               </button>
             </form>
 
             <form method="post" action="/deposit-manager/{{ bk.id }}/need-info" class="d-inline">
               <input type="hidden" name="target" value="renter">
-              <input type="hidden" name="message" value="يرجى تقديم توضيحات وصور مضادّة لحجج المالك.">
+              <input type="hidden" name="message" value="Please provide clarifications and counter-photos against the owner's claim.">
               <button class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-question-circle"></i> طلب معلومات من المستأجر
+                <i class="bi bi-question-circle"></i> Request info from renter
               </button>
             </form>
 
-            <!-- قرار نهائي: نوجّه لنموذج القرار الموحّد (/deposits/{id}/decision) عبر dm_decide -->
+            <!-- Final decision: direct to the unified decision form (/deposits/{id}/decision) via dm_decide -->
             <div class="mt-2 p-2" style="border:1px solid var(--border);border-radius:10px">
               <form method="post" action="/deposit-manager/{{ bk.id }}/decide" class="row g-2">
                 <div class="col-md-4">
-                  <label class="form-label small k">نوع القرار</label>
+                  <label class="form-label small k">Decision type</label>
                   <select class="form-select form-select-sm" name="decision" required>
-                    <option value="refund_all">ردّ كامل الوديعة</option>
-                    <option value="refund_partial">ردّ جزئي (أدخل المبلغ)</option>
-                    <option value="withhold_all">حجز كامل الوديعة</option>
+                    <option value="refund_all">Refund full deposit</option>
+                    <option value="refund_partial">Partial refund (enter amount)</option>
+                    <option value="withhold_all">Withhold full deposit</option>
                   </select>
                 </div>
                 <div class="col-md-3">
-                  <label class="form-label small k">مبلغ جزئي (إن وُجد)</label>
+                  <label class="form-label small k">Partial amount (if any)</label>
                   <input class="form-control form-control-sm" type="number" min="0" name="amount" placeholder="0">
                 </div>
                 <div class="col-md-5">
-                  <label class="form-label small k">سبب القرار</label>
-                  <input class="form-control form-control-sm" type="text" name="reason" placeholder="مثال: خدوش متوسطة + تأخير يوم">
+                  <label class="form-label small k">Decision reason</label>
+                  <input class="form-control form-control-sm" type="text" name="reason" placeholder="e.g., Moderate scratches + 1-day delay">
                 </div>
                 <div class="col-12 mt-1">
                   <button class="btn btn-success btn-sm">
-                    <i class="bi bi-shield-check"></i> تنفيذ القرار
+                    <i class="bi bi-shield-check"></i> Execute decision
                   </button>
-                  <span class="small k ms-2">سيتم تنفيذ العملية عبر مسار القرار الموحّد ثم العودة.</span>
+                  <span class="small k ms-2">The operation will be executed via the unified decision route, then return.</span>
                 </div>
               </form>
             </div>
           {% endif %}
 
           {% if view == 'resolved' %}
-            <span class="k">هذه القضية مُقفلة/محسومة.</span>
+            <span class="k">This case is closed/resolved.</span>
           {% endif %}
         </div>
       </div>

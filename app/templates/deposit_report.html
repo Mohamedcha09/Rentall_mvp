@@ -1,26 +1,26 @@
 {% extends "base.html" %}
-{% block title %}فتح بلاغ وديعة — حجز #{{ bk.id }}{% endblock %}
+{% block title %}Open Deposit Report — Booking #{{ bk.id }}{% endblock %}
 
 {% block content %}
 <div class="container">
-  <h2>فتح بلاغ وديعة — حجز #{{ bk.id }}</h2>
-  <p>العنصر: <strong>{{ item.title if item else "—" }}</strong></p>
+  <h2>Open Deposit Report — Booking #{{ bk.id }}</h2>
+  <p>Item: <strong>{{ item.title if item else "—" }}</strong></p>
 
   <form action="/deposits/{{ bk.id }}/report" method="post" enctype="multipart/form-data" class="card" style="padding:16px;gap:12px;">
-    <label>نوع المشكلة</label>
+    <label>Issue Type</label>
     <select name="issue_type" required>
-      <option value="">— اختر —</option>
-      <option value="delay">تأخير في الإرجاع</option>
-      <option value="damage">أضرار</option>
-      <option value="loss">فقدان</option>
-      <option value="theft">سرقة</option>
+      <option value="">— Select —</option>
+      <option value="delay">Return Delay</option>
+      <option value="damage">Damage</option>
+      <option value="loss">Loss</option>
+      <option value="theft">Theft</option>
     </select>
 
-    <label>وصف مختصر لما حدث</label>
-    <textarea name="description" rows="4" placeholder="الرجاء ذكر التفاصيل، التواريخ، والقيمة التقريبية للأضرار (إن وجدت)"></textarea>
+    <label>Brief Description of the Incident</label>
+    <textarea name="description" rows="4" placeholder="Please include details, dates, and approximate damage value (if any)"></textarea>
 
-    <label>إرفاق أدلة (صور/فيديو) — يمكنك اختيار عدة ملفات</label>
-    <!-- التعديل هنا: توسيع accept لدعم image/* و video/* و HEIC/HEIF مع الامتدادات الموجودة أصلًا -->
+    <label>Attach Evidence (Photos/Videos) — You can select multiple files</label>
+    <!-- Modified: expanded accept to support image/*, video/*, and HEIC/HEIF along with existing extensions -->
     <input
       type="file"
       name="files"
@@ -29,11 +29,11 @@
     />
 
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
-      <a class="btn btn-secondary" href="/bookings/flow/{{ bk.id }}">إلغاء</a>
-      <button class="btn btn-danger" type="submit">إرسال البلاغ</button>
+      <a class="btn btn-secondary" href="/bookings/flow/{{ bk.id }}">Cancel</a>
+      <button class="btn btn-danger" type="submit">Submit Report</button>
     </div>
   </form>
 
-  <p class="muted" style="margin-top:12px;">ستظهر القضية لفريق مراجعة الوديعة بعد الإرسال.</p>
+  <p class="muted" style="margin-top:12px;">The case will appear to the deposit review team after submission.</p>
 </div>
 {% endblock %}

@@ -2,87 +2,87 @@
 {% block content %}
 <div class="container py-3">
 
-  <h4 class="mb-3">مركز الرسائل (CS Inbox)</h4>
+  <h4 class="mb-3">Message Center (CS Inbox)</h4>
 
   <div class="row g-3">
-    <!-- القسم 1: جديدة -->
+    <!-- Section 1: New -->
     <div class="col-12 col-lg-4">
       <div class="card h-100">
-        <div class="card-header fw-bold">جديدة</div>
+        <div class="card-header fw-bold">New</div>
         <div class="list-group list-group-flush">
           {% if data.new %}
             {% for t in data.new %}
               <div class="list-group-item d-flex justify-content-between align-items-start">
                 <div class="me-2">
-                  <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'بدون عنوان' }}</div>
+                  <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'No Title' }}</div>
                   <div class="small text-muted">
-                    فتح: {{ (t.created_at|string)[:16] }}
-                    {% if t.last_msg_at %} · آخر نشاط: {{ (t.last_msg_at|string)[:16] }}{% endif %}
+                    Opened: {{ (t.created_at|string)[:16] }}
+                    {% if t.last_msg_at %} · Last Activity: {{ (t.last_msg_at|string)[:16] }}{% endif %}
                   </div>
                 </div>
                 <div class="d-flex gap-2">
-                  <!-- فتح = تولّي + فتح صفحة التذكرة -->
-                  <button class="btn btn-sm btn-primary" onclick="assignSelfAndOpen({{ t.id }})">فتح</button>
+                  <!-- Open = Assign + Open Ticket Page -->
+                  <button class="btn btn-sm btn-primary" onclick="assignSelfAndOpen({{ t.id }})">Open</button>
                 </div>
               </div>
             {% endfor %}
           {% else %}
-            <div class="list-group-item text-muted">لا يوجد تذاكر جديدة.</div>
+            <div class="list-group-item text-muted">No new tickets.</div>
           {% endif %}
         </div>
       </div>
     </div>
 
-    <!-- القسم 2: قيد المراجعة -->
+    <!-- Section 2: In Review -->
     <div class="col-12 col-lg-4">
       <div class="card h-100">
-        <div class="card-header fw-bold">قيد المراجعة</div>
+        <div class="card-header fw-bold">In Review</div>
         <div class="list-group list-group-flush">
           {% if data.in_review %}
             {% for t in data.in_review %}
               <div class="list-group-item">
                 <div class="d-flex justify-content-between">
                   <div class="me-2">
-                    <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'بدون عنوان' }}</div>
+                    <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'No Title' }}</div>
                     <div class="small text-muted">
-                      {% if t.assigned_to_id %}مكلّف: {{ t.assigned_to_id }} · {% endif %}
-                      آخر نشاط: {{ (t.last_msg_at or t.updated_at or t.created_at)|string }}
+                      {% if t.assigned_to_id %}Assigned To: {{ t.assigned_to_id }} · {% endif %}
+                      Last Activity: {{ (t.last_msg_at or t.updated_at or t.created_at)|string }}
                     </div>
                   </div>
                   <div class="d-flex gap-2">
-                    <!-- فتح يذهب مباشرة لصفحة التذكرة -->
-                    <a class="btn btn-sm btn-primary" href="/cs/ticket/{{ t.id }}">فتح</a>
+                    <!-- Open goes directly to the ticket page -->
+                    <a class="btn btn-sm btn-primary" href="/cs/ticket/{{ t.id }}">Open</a>
                   </div>
                 </div>
               </div>
             {% endfor %}
           {% else %}
-            <div class="list-group-item text-muted">لا يوجد تذاكر قيد المراجعة.</div>
+            <div class="list-group-item text-muted">No tickets under review.</div>
           {% endif %}
         </div>
       </div>
     </div>
 
-    <!-- القسم 3: منتهية -->
+    <!-- Section 3: Resolved -->
     <div class="col-12 col-lg-4">
       <div class="card h-100">
-        <div class="card-header fw-bold">منتهية</div>
+        <div class="card-header fw-bold">Resolved</div>
         <div class="list-group list-group-flush">
           {% if data.resolved %}
             {% for t in data.resolved %}
               <div class="list-group-item d-flex justify-content-between align-items-start">
                 <div class="me-2">
-                  <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'بدون عنوان' }}</div>
+                  <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'No Title' }}</div>
                   <div class="small text-muted">
-                    أُغلقت: {{ (t.resolved_at or t.updated_at or t.last_msg_at or t.created_at)|string }}
+                    Closed: {{ (t.resolved_at or t.updated_at or t.last_msg_at or t.created_at)|string }}
                   </div>
                 </div>
-                <!-- استعراض فقط -->
-                <a class="btn btn-sm btn-outline-secondary" href="/cs/ticket/{{ t.id }}">استعراض</a>
+                <!-- View Only -->
+                <a class="btn btn-sm btn-outline-secondary" href="/cs/ticket/{{ t.id }}">View</a>
               </div>
             {% endfor %}
           {% else %}
-            <div class="list-group-item text-muted">لا يوجد تذاكر منتهية.</div>
+            <div class="list-group-item text-muted">No resolved tickets.</div>
           {% endif %}
         </div>
       </div>
@@ -91,7 +91,7 @@
 
 </div>
 
-<!-- سكربت فتح = تولّي + انتقال لصفحة التذكرة -->
+<!-- Script: Open = Assign + Redirect to Ticket Page -->
 <script>
 async function assignSelfAndOpen(id){
   try{
@@ -99,7 +99,7 @@ async function assignSelfAndOpen(id){
     if(!r.ok) throw new Error();
     window.location.href = `/cs/ticket/${id}`;
   }catch(e){
-    alert('تعذّر فتح التذكرة');
+    alert('Failed to open the ticket');
   }
 }
 </script>

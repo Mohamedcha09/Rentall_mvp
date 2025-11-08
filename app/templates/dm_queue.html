@@ -1,7 +1,7 @@
 {# app/templates/dm_queue.html #}
 {% extends "base.html" %}
 
-{% block title %}قضايا الوديعة{% endblock %}
+{% block title %}Deposit Cases{% endblock %}
 
 {% block head %}
 <style>
@@ -20,30 +20,30 @@
 <div class="queue-wrap">
 
   <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <h4 class="m-0">قضايا الوديعة</h4>
+    <h4 class="m-0">Deposit Cases</h4>
     <div class="searchbar">
       <form class="d-flex gap-2" method="get" action="/dm/deposits">
-        <input class="form-control" name="q" value="{{ q or '' }}" placeholder="ابحث (#حجز، بريد، اسم)…">
+        <input class="form-control" name="q" value="{{ q or '' }}" placeholder="Search (booking #, email, name)…">
         <select class="form-select" name="status">
-          <option value="">كل الحالات</option>
-          <option value="new" {{ 'selected' if status=='new' }}>جديدة</option>
-          <option value="awaiting_renter" {{ 'selected' if status=='awaiting_renter' }}>بانتظار رد المستأجر</option>
-          <option value="awaiting_manager" {{ 'selected' if status=='awaiting_manager' }}>بانتظار قرار DM</option>
-          <option value="finalized" {{ 'selected' if status=='finalized' }}>مغلقة</option>
+          <option value="">All statuses</option>
+          <option value="new" {{ 'selected' if status=='new' }}>New</option>
+          <option value="awaiting_renter" {{ 'selected' if status=='awaiting_renter' }}>Awaiting renter response</option>
+          <option value="awaiting_manager" {{ 'selected' if status=='awaiting_manager' }}>Awaiting DM decision</option>
+          <option value="finalized" {{ 'selected' if status=='finalized' }}>Closed</option>
         </select>
-        <button class="btn btn-primary">بحث</button>
+        <button class="btn btn-primary">Search</button>
       </form>
-      <a class="btn btn-light" href="/dm/deposits">إعادة التعيين</a>
+      <a class="btn btn-light" href="/dm/deposits">Reset</a>
     </div>
   </div>
 
-  {# أرقام سريعة اختيارية لو تم تمريرها من الراوتر #}
+  {# Optional quick numbers if passed from the router #}
   {% if counters is defined and counters %}
   <div class="stat mb-3">
-    <div>جديدة: <strong>{{ counters.new or 0 }}</strong></div>
-    <div>بانتظار المستأجر: <strong>{{ counters.awaiting_renter or 0 }}</strong></div>
-    <div>بانتظار DM: <strong>{{ counters.awaiting_manager or 0 }}</strong></div>
-    <div>مغلقة: <strong>{{ counters.finalized or 0 }}</strong></div>
+    <div>New: <strong>{{ counters.new or 0 }}</strong></div>
+    <div>Awaiting renter: <strong>{{ counters.awaiting_renter or 0 }}</strong></div>
+    <div>Awaiting DM: <strong>{{ counters.awaiting_manager or 0 }}</strong></div>
+    <div>Closed: <strong>{{ counters.finalized or 0 }}</strong></div>
   </div>
   {% endif %}
 
@@ -55,13 +55,13 @@
         <thead>
           <tr>
             <th>#</th>
-            <th>العنصر</th>
-            <th>المستأجر</th>
-            <th>المالك</th>
-            <th>الفترة</th>
-            <th>حالة الحجز</th>
-            <th>حالة الوديعة</th>
-            <th>آخر تحديث</th>
+            <th>Item</th>
+            <th>Renter</th>
+            <th>Owner</th>
+            <th>Period</th>
+            <th>Booking Status</th>
+            <th>Deposit Status</th>
+            <th>Last Update</th>
             <th></th>
           </tr>
         </thead>
@@ -76,12 +76,12 @@
                 {% else %}
                   <div class="fw-semibold">—</div>
                 {% endif %}
-                <div class="muted small">حجز: {{ B.created_at or '' }}</div>
+                <div class="muted small">Booking: {{ B.created_at or '' }}</div>
 
-                {# ==== معاينة البلاغ + أول صورتين من الأدلة (مضافة حسب طلبك) ==== #}
+                {# ==== Report preview + first two evidence thumbnails (added as requested) ==== #}
                 {% if B.owner_report_type or B.owner_report_reason %}
                   <div class="muted small mt-1">
-                    <span class="badge bg-warning-subtle text-dark">بلاغ: {{ B.owner_report_type or '—' }}</span>
+                    <span class="badge bg-warning-subtle text-dark">Report: {{ B.owner_report_type or '—' }}</span>
                     {% if B.owner_report_reason %}
                       <span class="ms-2">{{ B.owner_report_reason[:120] }}{% if B.owner_report_reason|length > 120 %}…{% endif %}</span>
                     {% endif %}
@@ -94,12 +94,12 @@
                     <div class="d-flex gap-2 mt-2">
                       {% for ev in owner_evs[:2] %}
                         {% if ev.kind == 'video' %}
-                          <a href="{{ ev.file_path }}" target="_blank" title="فتح الفيديو">
+                          <a href="{{ ev.file_path }}" target="_blank" title="Open video">
                             <video src="{{ ev.file_path }}" muted
                                    style="width:56px;height:56px;border-radius:8px;object-fit:cover"></video>
                           </a>
                         {% else %}
-                          <a href="{{ ev.file_path }}" target="_blank" title="فتح الصورة">
+                          <a href="{{ ev.file_path }}" target="_blank" title="Open image">
                             <img src="{{ ev.file_path }}"
                                  style="width:56px;height:56px;border-radius:8px;object-fit:cover"/>
                           </a>
@@ -108,7 +108,7 @@
                     </div>
                   {% endif %}
                 {% endif %}
-                {# ==== /المعاينة ==== #}
+                {# ==== /preview ==== #}
               </td>
 
               <td>
@@ -129,7 +129,7 @@
                 <div class="mono small">
                   {{ B.start_date or '—' }} → {{ B.end_date or '—' }}
                 </div>
-                {% if B.days %}<div class="muted small">{{ B.days }} يوم</div>{% endif %}
+                {% if B.days %}<div class="muted small">{{ B.days }} days</div>{% endif %}
               </td>
 
               <td><span class="chip">{{ B.status or '—' }}</span></td>
@@ -141,7 +141,7 @@
 
               <td class="text-end">
                 <a class="btn btn-outline-primary btn-sm" href="/dm/deposits/{{ B.id }}">
-                  فتح القضية
+                  Open Case
                 </a>
               </td>
             </tr>
@@ -150,21 +150,21 @@
       </table>
     </div>
 
-    {# ترقيم صفحات اختياري #}
+    {# Optional pagination #}
     {% if pagination is defined and pagination %}
       <div class="d-flex justify-content-between align-items-center mt-3">
-        <div class="muted small">الصفحة {{ pagination.page }} من {{ pagination.pages }}</div>
+        <div class="muted small">Page {{ pagination.page }} of {{ pagination.pages }}</div>
         <div class="d-flex gap-2">
-          {% if pagination.prev_url %}<a class="btn btn-light btn-sm" href="{{ pagination.prev_url }}">السابق</a>{% endif %}
-          {% if pagination.next_url %}<a class="btn btn-light btn-sm" href="{{ pagination.next_url }}">التالي</a>{% endif %}
+          {% if pagination.prev_url %}<a class="btn btn-light btn-sm" href="{{ pagination.prev_url }}">Prev</a>{% endif %}
+          {% if pagination.next_url %}<a class="btn btn-light btn-sm" href="{{ pagination.next_url }}">Next</a>{% endif %}
         </div>
       </div>
     {% endif %}
 
   {% else %}
     <div class="row-item">
-      لا توجد قضايا مطابقة حالياً.
-      <span class="muted">جرّب إزالة فلاتر البحث.</span>
+      No matching cases right now.
+      <span class="muted">Try removing filters.</span>
     </div>
   {% endif %}
 

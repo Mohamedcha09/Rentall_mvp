@@ -15,18 +15,18 @@ h4 small{font-size:14px;color:var(--text-secondary)}
 {% block content %}
 <div class="queue-wrap">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="m-0">قضايا الوديعة
+    <h4 class="m-0">Deposit Cases
       <small class="ms-2 text-muted">({{ view_label }})</small>
     </h4>
-    <a href="/" class="btn btn-outline-light btn-sm">← رجوع</a>
+    <a href="/" class="btn btn-outline-light btn-sm">← Back</a>
   </div>
 
   {% include "deposit_manager_nav.html" %}
 
   <div class="search-box">
     <form method="get" class="d-flex">
-      <input class="form-control form-control-sm me-2" name="q" placeholder="ابحث برقم الحجز أو اسم العنصر" value="{{ q or '' }}">
-      <button class="btn btn-outline-light btn-sm">بحث</button>
+      <input class="form-control form-control-sm me-2" name="q" placeholder="Search by booking number or item name" value="{{ q or '' }}">
+      <button class="btn btn-outline-light btn-sm">Search</button>
     </form>
   </div>
 
@@ -37,7 +37,7 @@ h4 small{font-size:14px;color:var(--text-secondary)}
           <div>
             <span class="badge-id">#{{ c.booking_id }}</span>
             <strong>{{ c.item_title or '—' }}</strong><br>
-            <span class="small k">من {{ c.owner_name or '—' }} → إلى {{ c.renter_name or '—' }}</span>
+            <span class="small k">From {{ c.owner_name or '—' }} → To {{ c.renter_name or '—' }}</span>
           </div>
           <div class="text-end">
             <div class="case-status">{{ c.status_label or c.status }}</div>
@@ -45,17 +45,17 @@ h4 small{font-size:14px;color:var(--text-secondary)}
           </div>
         </div>
         <div class="mt-2 small k mono">
-          وديعة: {{ c.deposit_amount }}$ — بلاغ: {{ c.issue_type or '—' }}
+          Deposit: {{ c.deposit_amount }}$ — Report: {{ c.issue_type or '—' }}
         </div>
         <div class="mt-2">
           <a href="/deposit-case/{{ c.booking_id }}" class="btn btn-sm btn-success">
-            فتح القضية
+            Open Case
           </a>
         </div>
       </div>
     {% endfor %}
   {% else %}
-    <div class="alert alert-secondary text-center">لا توجد قضايا في هذا القسم.</div>
+    <div class="alert alert-secondary text-center">No cases found in this section.</div>
   {% endif %}
 </div>
 {% endblock %}

@@ -29,26 +29,26 @@
 {% block content %}
 <div class="container py-3">
   <div class="evidence-card">
-    <h3>📎 رفع أدلة — الحجز #{{ bk.id }}</h3>
+    <h3>📎 Upload Evidence — Booking #{{ bk.id }}</h3>
     <p class="mb-3">
-      يمكنك رفع صور أو مقاطع فيديو أو مستندات، وإضافة ملاحظات لتوضيح موقفك في القضية.
+      You can upload photos, videos, or documents, and add notes to clarify your position in the case.
     </p>
 
     <form method="post" action="/deposits/{{ bk.id }}/evidence/upload" enctype="multipart/form-data">
       <div class="mb-3">
-        <label class="form-label fw-bold">الملفات (مسموح: صور / فيديو)</label>
+        <label class="form-label fw-bold">Files (Allowed: Images / Video)</label>
         <input type="file" name="files" class="form-control" multiple required>
       </div>
 
       <div class="mb-3">
-        <label class="form-label fw-bold">تعليق (اختياري)</label>
+        <label class="form-label fw-bold">Comment (Optional)</label>
         <textarea name="comment" class="form-control" rows="3"
-                  placeholder="اكتب شرحًا مختصرًا للأدلة..."></textarea>
+                  placeholder="Write a brief explanation of the evidence..."></textarea>
       </div>
 
       <div class="d-grid gap-2 mt-4">
-        <button type="submit" class="btn btn-primary">رفع الأدلة الآن</button>
-        <a href="/bookings/flow/{{ bk.id }}" class="btn btn-outline-secondary">العودة إلى تفاصيل الحجز</a>
+        <button type="submit" class="btn btn-primary">Upload Evidence Now</button>
+        <a href="/bookings/flow/{{ bk.id }}" class="btn btn-outline-secondary">Back to Booking Details</a>
       </div>
     </form>
   </div>

@@ -14,13 +14,13 @@
   <div class="col-md-4">
     <div class="card">
       <div class="card-body">
-        <h5 class="mb-3">محادثاتي</h5>
+        <h5 class="mb-3">My Conversations</h5>
         {% if threads and threads|length %}
           <div class="list">
             {% for t in threads %}
-              {# حدّد الطرف الآخر #}
+              {# Determine the other party #}
               {% set other = t.other_user %}
-              {% set name = (other.first_name ~ ' ' ~ other.last_name) if other else 'مستخدم' %}
+              {% set name = (other.first_name ~ ' ' ~ other.last_name) if other else 'User' %}
               {% set created = other.created_at if other and other.created_at else None %}
               {% set created_iso = created.isoformat() if created else '' %}
               {% set role = other.role if other and other.role else 'user' %}
@@ -54,7 +54,7 @@
             {% endfor %}
           </div>
         {% else %}
-          لا توجد محادثات بعد.
+          No conversations yet.
         {% endif %}
       </div>
     </div>
@@ -65,7 +65,7 @@
       <div class="card-body">
         {% if thread %}
           {% set other = thread.other_user %}
-          {% set name = (other.first_name ~ ' ' ~ other.last_name) if other else 'مستخدم' %}
+          {% set name = (other.first_name ~ ' ' ~ other.last_name) if other else 'User' %}
           {% set created = other.created_at if other and other.created_at else None %}
           {% set created_iso = created.isoformat() if created else '' %}
           {% set role = other.role if other and other.role else 'user' %}
@@ -82,7 +82,7 @@
                     data-returns="0"></span>
             </h5>
             {% if other %}
-              <a class="btn btn-sm btn-outline-light" href="/u/{{ other.id }}">الملف العام</a>
+              <a class="btn btn-sm btn-outline-light" href="/u/{{ other.id }}">Public Profile</a>
             {% endif %}
           </div>
 
@@ -96,24 +96,24 @@
               {% endfor %}
             </div>
           {% else %}
-            <div class="text-muted">لا رسائل بعد.</div>
+            <div class="text-muted">No messages yet.</div>
           {% endif %}
 
           <form class="mt-3" method="post" action="/messages/{{ thread.id }}/send">
             <div class="input-group">
-              <input type="text" name="body" class="form-control" placeholder="اكتب رسالة..." required>
-              <button class="btn btn-primary">إرسال</button>
+              <input type="text" name="body" class="form-control" placeholder="Type a message..." required>
+              <button class="btn btn-primary">Send</button>
             </div>
           </form>
         {% else %}
-          <div class="text-muted">اختر محادثة من القائمة.</div>
+          <div class="text-muted">Select a conversation from the list.</div>
         {% endif %}
       </div>
     </div>
   </div>
 </div>
 
-<!-- سكربت شارات عام لهذه الصفحة -->
+<!-- General badges script for this page -->
 <script>
 (function(){
   function daysFrom(iso){ if(!iso) return 99999; const d=new Date(iso); if(isNaN(d)) return 99999; return Math.floor((Date.now()-d.getTime())/86400000); }

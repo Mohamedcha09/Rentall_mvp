@@ -1,73 +1,73 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container" style="max-width:760px">
-  <h3 class="mb-3">الإعدادات</h3>
+  <h3 class="mb-3">Settings</h3>
 
   {% if request.query_params.get('saved') %}
-    <div class="alert alert-success">تم حفظ بيانات الملف الشخصي ✅</div>
+    <div class="alert alert-success">Profile data saved ✅</div>
   {% endif %}
   {% if request.query_params.get('pwd_ok') %}
-    <div class="alert alert-success">تم تغيير كلمة المرور ✅</div>
+    <div class="alert alert-success">Password changed ✅</div>
   {% endif %}
   {% if request.query_params.get('err') == 'email_used' %}
-    <div class="alert alert-danger">هذا البريد مستخدم من قبل.</div>
+    <div class="alert alert-danger">This email is already in use.</div>
   {% elif request.query_params.get('err') == 'bad_current' %}
-    <div class="alert alert-danger">كلمة السر الحالية غير صحيحة.</div>
+    <div class="alert alert-danger">Current password is incorrect.</div>
   {% elif request.query_params.get('err') == 'mismatch' %}
-    <div class="alert alert-danger">كلمتا السر الجديدتان غير متطابقتين.</div>
+    <div class="alert alert-danger">The new passwords do not match.</div>
   {% endif %}
 
   <div class="card mb-4">
-    <div class="card-header fw-bold">الملف الشخصي</div>
+    <div class="card-header fw-bold">Profile</div>
     <div class="card-body">
       <form method="post" action="/settings/profile" enctype="multipart/form-data" class="vstack gap-3">
         <div class="row g-3">
           <div class="col-sm-6">
-            <label class="form-label">الاسم</label>
+            <label class="form-label">First name</label>
             <input class="form-control" name="first_name" value="{{ u.first_name or '' }}">
           </div>
           <div class="col-sm-6">
-            <label class="form-label">اللقب</label>
+            <label class="form-label">Last name</label>
             <input class="form-control" name="last_name" value="{{ u.last_name or '' }}">
           </div>
         </div>
         <div>
-          <label class="form-label">البريد الإلكتروني</label>
+          <label class="form-label">Email</label>
           <input class="form-control" type="email" name="email" value="{{ u.email or '' }}">
-          <div class="form-text">عند تغيير البريد قد تحتاج لإعادة التفعيل.</div>
+          <div class="form-text">Changing your email may require re-verification.</div>
         </div>
         <div>
-          <label class="form-label">صورة الحساب</label>
+          <label class="form-label">Profile picture</label>
           <input class="form-control" type="file" name="avatar" accept=".jpg,.jpeg,.png,.webp">
           {% if u.avatar_path %}<img src="{{ u.avatar_path }}" alt="" class="mt-2 rounded-circle" style="width:64px;height:64px;object-fit:cover">{% endif %}
         </div>
         <div class="text-end">
-          <button class="btn btn-primary">حفظ</button>
+          <button class="btn btn-primary">Save</button>
         </div>
       </form>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-header fw-bold">تغيير كلمة المرور</div>
+    <div class="card-header fw-bold">Change password</div>
     <div class="card-body">
       <form method="post" action="/settings/password" class="vstack gap-3">
         <div>
-          <label class="form-label">كلمة السر الحالية</label>
+          <label class="form-label">Current password</label>
           <input class="form-control" type="password" name="current">
         </div>
         <div class="row g-3">
           <div class="col-sm-6">
-            <label class="form-label">كلمة سر جديدة</label>
+            <label class="form-label">New password</label>
             <input class="form-control" type="password" name="password">
           </div>
           <div class="col-sm-6">
-            <label class="form-label">تأكيد كلمة السر</label>
+            <label class="form-label">Confirm password</label>
             <input class="form-control" type="password" name="confirm">
           </div>
         </div>
         <div class="text-end">
-          <button class="btn btn-outline-primary">تحديث كلمة السر</button>
+          <button class="btn btn-outline-primary">Update password</button>
         </div>
       </form>
     </div>

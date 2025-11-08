@@ -12,25 +12,25 @@
   .notif-title{ font-weight:800; font-size:1rem; margin-bottom:4px; }
   .notif-meta{ opacity:.7; font-size:.9rem; }
 
-  /* حالة الفراغ: نعرض الصورة فقط */
+  /* Empty state: show image only */
   .notif-empty{
     text-align:center; padding:30px 10px;
   }
   .notif-empty img{
     display:block;
     margin: 10px auto;
-    max-width: 260px;   /* حد أقصى لعرض الصورة */
-    width: 70%;         /* يستجيب للموبايل */
+    max-width: 260px;   /* Max width for the image */
+    width: 70%;         /* Responsive on mobile */
     height: auto;
     object-fit: contain;
-    opacity: 0.95;      /* لمسة خفيفة */
+    opacity: 0.95;      /* Subtle touch */
   }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="notif-page container">
-  <h1 class="h5 fw-bold my-3">الإشعارات</h1>
+  <h1 class="h5 fw-bold my-3">Notifications</h1>
   <div id="notifList"></div>
 </div>
 {% endblock %}
@@ -41,7 +41,7 @@
   const list  = document.getElementById('notifList');
   const badge = document.getElementById('mNotifBadge');
 
-  // مسار صورة الحالة الفارغة (ton.png) من مجلد static/photo
+  // Empty-state image path (ton.png) from static/photo
   const EMPTY_IMG = "{{ url_for('static', path='photo/ton.png') }}";
 
   const FEEDS = [
@@ -71,7 +71,7 @@
     return {
       unread,
       items: items.map(n => ({
-        title: n.title || n.subject || 'إشعار',
+        title: n.title || n.subject || 'Notification',
         meta:  n.body  || n.text || n.message || '',
         link:  n.link_url || n.url || '#',
         is_read: !!n.is_read,
@@ -83,10 +83,10 @@
   function render(norm){
     list.innerHTML = '';
     if (!norm.items.length){
-      // لا نص — صورة فقط عند عدم وجود إشعارات
+      // No text — image only when there are no notifications
       list.innerHTML = `
         <div class="notif-empty">
-          <img src="${EMPTY_IMG}" alt="لا إشعارات">
+          <img src="${EMPTY_IMG}" alt="No notifications">
         </div>`;
       return;
     }
@@ -109,7 +109,7 @@
   }
 
   async function load(){
-    // شاشة تحميل خفيفة (بدون نص مزعج)
+    // Light loading screen (no noisy text)
     list.innerHTML = `
       <div class="notif-empty">
         <img src="${EMPTY_IMG}" alt="">

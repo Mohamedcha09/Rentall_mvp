@@ -2,14 +2,14 @@
 {% block content %}
 <div class="container py-3">
 
-  <h4 class="mb-3">مركز مراجعة المحتوى (MOD Inbox)</h4>
+  <h4 class="mb-3">Content Review Center (MOD Inbox)</h4>
 
   <div class="row g-3">
-    <!-- القسم 1: تم إرسالها جديد من طرف CS -->
+    <!-- Section 1: Newly Sent by CS -->
     <div class="col-12 col-lg-6 col-xxl-3">
       <div class="card h-100">
         <div class="card-header fw-bold d-flex justify-content-between">
-          <span>تم إرسالها جديد من طرف CS</span>
+          <span>Newly Sent by CS</span>
           <span class="badge bg-secondary">{{ (data.new or [])|length }}</span>
         </div>
         <div class="list-group list-group-flush">
@@ -17,25 +17,25 @@
             {% for t in data.new %}
               <a class="list-group-item list-group-item-action {% if data.focus_tid and data.focus_tid==t.id %}active{% endif %}"
                  href="/mod/ticket/{{ t.id }}">
-                <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'بدون عنوان' }}</div>
+                <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'No title' }}</div>
                 <div class="small text-muted">
-                  فتح: {{ (t.created_at|string)[:16] }}
-                  {% if t.last_msg_at %} · آخر نشاط: {{ (t.last_msg_at|string)[:16] }}{% endif %}
+                  Opened: {{ (t.created_at|string)[:16] }}
+                  {% if t.last_msg_at %} · Last activity: {{ (t.last_msg_at|string)[:16] }}{% endif %}
                 </div>
               </a>
             {% endfor %}
           {% else %}
-            <div class="list-group-item text-muted">لا يوجد جديد من CS.</div>
+            <div class="list-group-item text-muted">No new items from CS.</div>
           {% endif %}
         </div>
       </div>
     </div>
 
-    <!-- القسم 2: ✅ محوّلة من MD -->
+    <!-- Section 2: ✅ Transferred from MD -->
     <div class="col-12 col-lg-6 col-xxl-3">
       <div class="card h-100">
         <div class="card-header fw-bold d-flex justify-content-between">
-          <span>تم تحويلها من MD</span>
+          <span>Transferred from MD</span>
           <span class="badge bg-info text-dark">{{ (data.from_md or [])|length }}</span>
         </div>
         <div class="list-group list-group-flush">
@@ -44,67 +44,67 @@
               <a class="list-group-item list-group-item-action {% if data.focus_tid and data.focus_tid == t.id %}active{% endif %}"
                  href="/mod/ticket/{{ t.id }}">
                 <div class="d-flex w-100 justify-content-between">
-                  <strong>#{{ t.id }} — {{ t.subject or "بدون عنوان" }}</strong>
+                  <strong>#{{ t.id }} — {{ t.subject or "No title" }}</strong>
                   <small>{{ (t.last_msg_at or t.updated_at or t.created_at)|string }}</small>
                 </div>
-                <div class="small text-muted">وُجهت إليكم من إدارة الودائع (MD)</div>
+                <div class="small text-muted">Directed to you from Deposits Management (MD)</div>
               </a>
             {% endfor %}
           {% else %}
-            <div class="list-group-item text-muted">لا يوجد تحويلات من MD حاليًا.</div>
+            <div class="list-group-item text-muted">No transfers from MD at the moment.</div>
           {% endif %}
         </div>
       </div>
     </div>
 
-    <!-- القسم 3: قيد المراجعة -->
+    <!-- Section 3: In Review -->
     <div class="col-12 col-lg-6 col-xxl-3">
       <div class="card h-100">
-        <div class="card-header fw-bold">قيد المراجعة</div>
+        <div class="card-header fw-bold">In Review</div>
         <div class="list-group list-group-flush">
           {% if data.in_review %}
             {% for t in data.in_review %}
               <a class="list-group-item list-group-item-action" href="/mod/ticket/{{ t.id }}">
                 <div class="d-flex justify-content-between">
                   <div class="me-2">
-                    <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'بدون عنوان' }}</div>
+                    <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'No title' }}</div>
                     <div class="small text-muted">
-                      {% if t.assigned_to_id %}مكلّف: {{ t.assigned_to_id }} · {% endif %}
-                      آخر نشاط: {{ (t.last_msg_at or t.updated_at or t.created_at)|string }}
+                      {% if t.assigned_to_id %}Assigned to: {{ t.assigned_to_id }} · {% endif %}
+                      Last activity: {{ (t.last_msg_at or t.updated_at or t.created_at)|string }}
                     </div>
                   </div>
-                  <span class="badge text-bg-secondary">فتح</span>
+                  <span class="badge text-bg-secondary">Open</span>
                 </div>
               </a>
             {% endfor %}
           {% else %}
-            <div class="list-group-item text-muted">لا يوجد تذاكر قيد المراجعة.</div>
+            <div class="list-group-item text-muted">No tickets in review.</div>
           {% endif %}
         </div>
       </div>
     </div>
 
-    <!-- القسم 4: منتهية -->
+    <!-- Section 4: Resolved -->
     <div class="col-12 col-lg-6 col-xxl-3">
       <div class="card h-100">
-        <div class="card-header fw-bold">منتهية</div>
+        <div class="card-header fw-bold">Resolved</div>
         <div class="list-group list-group-flush">
           {% if data.resolved %}
             {% for t in data.resolved %}
               <a class="list-group-item list-group-item-action" href="/mod/ticket/{{ t.id }}">
                 <div class="d-flex justify-content-between align-items-start">
                   <div class="me-2">
-                    <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'بدون عنوان' }}</div>
+                    <div class="fw-semibold">#{{ t.id }} — {{ t.subject or 'No title' }}</div>
                     <div class="small text-muted">
-                      أُغلقت: {{ (t.resolved_at or t.updated_at or t.last_msg_at or t.created_at)|string }}
+                      Closed: {{ (t.resolved_at or t.updated_at or t.last_msg_at or t.created_at)|string }}
                     </div>
                   </div>
-                  <span class="badge text-bg-success">تم الحل</span>
+                  <span class="badge text-bg-success">Resolved</span>
                 </div>
               </a>
             {% endfor %}
           {% else %}
-            <div class="list-group-item text-muted">لا يوجد تذاكر منتهية.</div>
+            <div class="list-group-item text-muted">No resolved tickets.</div>
           {% endif %}
         </div>
       </div>

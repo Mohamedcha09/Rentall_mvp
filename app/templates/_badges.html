@@ -1,16 +1,16 @@
 {# app/templates/_badges.html #}
 {% macro render_badges(u, size='18px') -%}
-  {# يدعم dict (session_user) أو كائن ORM (User) #}
+  {# Supports dict (session_user) or ORM object (User) #}
   {% set is_dict = u is mapping %}
 
-  {# موثّق #}
+  {# Verified #}
   {% if is_dict %}
     {% set is_verified = u.get('is_verified', False) %}
   {% else %}
     {% set is_verified = (u|attr('is_verified')) if (u is not none and (u|attr('is_verified') is not undefined)) else False %}
   {% endif %}
 
-  {# جديد < شهرين أو فلاغ أصفر يدوي #}
+  {# New (<2 months) or manually flagged yellow #}
   {% if is_dict %}
     {% set is_new_under_2m = u.get('is_new_under_2m', False) %}
     {% set badge_new_yellow = u.get('badge_new_yellow', False) %}
@@ -20,22 +20,22 @@
   {% endif %}
   {% set show_yellow = is_new_under_2m or badge_new_yellow %}
 
-  {# فقط شارتين: أصفر وبنفسجي #}
+  {# Only two badges: yellow and purple #}
   {% if show_yellow %}
     <img
       src="/static/img/jaune.png"
-      alt="جديد"
-      title="حساب جديد"
-      style="height:{{ size }};width:auto;vertical-align:middle;margin-inline-end:.25rem;"
+      alt="New"
+      title="New Account"
+      style="height:{{ size }};width:auto;vertical-align:middle;margin-inline-start:.25rem;"
     >
   {% endif %}
 
   {% if is_verified %}
     <img
       src="/static/img/violet.png"
-      alt="موثّق"
-      title="حساب موثّق من الإدارة"
-      style="height:{{ size }};width:auto;vertical-align:middle;margin-inline-end:.25rem;"
+      alt="Verified"
+      title="Verified Account by Admin"
+      style="height:{{ size }};width:auto;vertical-align:middle;margin-inline-start:.25rem;"
     >
   {% endif %}
 {%- endmacro %}

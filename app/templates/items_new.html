@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>إضافة عنصر جديد</h2>
+<h2>Add New Item</h2>
 
 <form method="post" enctype="multipart/form-data" id="newItemForm">
   <div class="mb-3">
-    <label class="form-label">العنوان</label>
+    <label class="form-label">Title</label>
     <input type="text" name="title" class="form-control" required>
   </div>
 
   <div class="mb-3">
-    <label class="form-label">التصنيف</label>
+    <label class="form-label">Category</label>
     <select class="form-select" name="category" required>
       {% for cat in categories %}
         <option value="{{ cat.key }}">{{ cat.label }}</option>
@@ -19,53 +19,53 @@
   </div>
 
   <div class="mb-3">
-    <label class="form-label">الوصف</label>
+    <label class="form-label">Description</label>
     <textarea name="description" class="form-control" rows="4"></textarea>
   </div>
 
   <div class="row">
     <div class="col-md-6 mb-3 position-relative">
-      <label class="form-label">المدينة</label>
+      <label class="form-label">City</label>
 
-      <!-- حقل المدينة -->
-      <input type="text" name="city" id="cityNew" class="form-control" placeholder="اكتب المدينة / المنطقة…" autocomplete="off">
+      <!-- City field -->
+      <input type="text" name="city" id="cityNew" class="form-control" placeholder="Type the city / area…" autocomplete="off">
 
-      <!-- قائمة الاقتراحات -->
+      <!-- Suggestions list -->
       <div id="cityNewSuggest" class="border rounded mt-1 bg-white shadow-sm"
            style="display:none; position:absolute; z-index:1000; max-height:260px; overflow:auto; inset-inline:0;"></div>
 
-      <!-- GPS + نصف قطر (اختياري) -->
+      <!-- GPS + radius (optional) -->
       <div class="d-flex gap-2 mt-2">
-        <button type="button" id="useMyLocNew" class="btn btn-outline-secondary btn-sm">📍 استخدم موقعي</button>
+        <button type="button" id="useMyLocNew" class="btn btn-outline-secondary btn-sm">📍 Use my location</button>
         <input type="number" id="radiusNew" class="form-control form-control-sm" style="max-width:110px"
                placeholder="km" value="25" min="1">
       </div>
-      <small class="text-muted d-block mt-1">اختر مدينة من القائمة أو استخدم موقعك. عند الاختيار يتم حفظ الإحداثيات تلقائيًا.</small>
+      <small class="text-muted d-block mt-1">Pick a city from the list or use your location. When selected, coordinates are saved automatically.</small>
 
-      <!-- إحداثيات مخفية -->
+      <!-- Hidden coordinates -->
       <input type="hidden" name="latitude" id="latNew">
       <input type="hidden" name="longitude" id="lngNew">
     </div>
 
     <div class="col-md-6 mb-3">
-      <label class="form-label">السعر/اليوم</label>
+      <label class="form-label">Price/day</label>
       <input type="number" name="price_per_day" class="form-control" value="0" min="0">
     </div>
   </div>
 
   <div class="mb-3">
-    <label class="form-label">صورة</label>
+    <label class="form-label">Image</label>
     <input type="file" name="image" class="form-control" accept=".jpg,.jpeg,.png">
   </div>
 
-  <button class="btn btn-primary">حفظ</button>
-  <a href="/items" class="btn btn-outline-light">رجوع</a>
+  <button class="btn btn-primary">Save</button>
+  <a href="/items" class="btn btn-outline-light">Back</a>
 </form>
 {% endblock %}
 
 {% block scripts %}
 <script>
-/* ============ زر GPS كما هو ============ */
+/* ============ GPS button as-is ============ */
 (function(){
   const btn = document.getElementById('useMyLocNew');
   const latEl = document.getElementById('latNew');
@@ -80,19 +80,19 @@
   }
 
   btn?.addEventListener('click', function(){
-    if(!navigator.geolocation){ alert('المتصفح لا يدعم تحديد الموقع.'); return; }
+    if(!navigator.geolocation){ alert('Your browser does not support geolocation.'); return; }
     const r = radEl?.value || "25";
     navigator.geolocation.getCurrentPosition(function(pos){
       const {latitude, longitude} = pos.coords;
       if (latEl) latEl.value = latitude;
       if (lngEl) lngEl.value = longitude;
       setCookie('radius_km', r);
-      alert('تم حفظ موقعك (إحداثيات) لهذا الإعلان.');
-    }, function(){ alert('تعذر الحصول على موقعك.'); });
+      alert('Your location (coordinates) has been saved for this listing.');
+    }, function(){ alert('Could not get your location.'); });
   });
 })();
 
-/* ============ Autocomplete للمدينة (مطابق للهيدر) ============ */
+/* ============ City Autocomplete (matches the header) ============ */
 (function cityNewAutocomplete(){
   const input = document.getElementById('cityNew');
   const panel = document.getElementById('cityNewSuggest');
@@ -103,16 +103,16 @@
 
   let tm=null, lastList=[], active=-1;
 
-  // كشف اللغة بحسب ما يكتب المستخدم
+  // Detect language based on user typing
   function detectLang(q){
     const s = (q||'').trim();
-    if (/[\u0600-\u06FF]/.test(s)) return 'ar';                       // عربي
-    const hasFrMarks = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(s);  // حروف فرنسية
+    if (/[\u0600-\u06FF]/.test(s)) return 'ar';                       // Arabic
+    const hasFrMarks = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(s);  // French letters
     const frWords = /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
     const enWords = /\b(new|city|county|state|united|kingdom|usa|us|uk)\b/i.test(s);
     if (hasFrMarks || frWords) return 'fr';
     if (enWords) return 'en';
-    // افتراضي: تفضيلات المتصفح
+    // Default: browser preferences
     const prefs = (navigator.languages || [navigator.language||'en']).map(x=>x.slice(0,2).toLowerCase());
     if (prefs.includes('fr')) return 'fr';
     if (prefs.includes('en')) return 'en';
@@ -166,7 +166,7 @@
     if(!Array.isArray(list) || !list.length){ hide(); return; }
     lastList = list.slice(0,8);
     const html = [
-      '<div class="px-2 py-1 small text-muted border-bottom">مدن/مناطق</div>',
+      '<div class="px-2 py-1 small text-muted border-bottom">Cities/Areas</div>',
       ...lastList.map((p,i)=>(
         '<div class="py-2 px-2 d-flex gap-2 align-items-start city-row" data-i="'+i+'" style="cursor:pointer">'
         + '<i class="bi bi-geo-alt"></i>'
@@ -198,7 +198,7 @@
     pick(Number(row.getAttribute('data-i')||'-1'));
   });
 
-  // أسهم + Enter
+  // Arrows + Enter
   input.addEventListener('keydown', function(e){
     if (panel.style.display !== 'block') return;
     const rows = Array.prototype.slice.call(panel.querySelectorAll('.city-row'));
@@ -213,12 +213,12 @@
     if (active>=0 && rows[active]){ rows[active].classList.add('bg-light'); rows[active].scrollIntoView({block:'nearest'}); }
   }
 
-  // إغلاق عند النقر خارج
+  // Close when clicking outside
   document.addEventListener('click', (e)=>{ if (!panel.contains(e.target) && e.target !== input){ hide(); } });
 
-  // تأكيد قبل الإرسال: لو المستخدم كتب يدويًا بدون اختيار، نترك city كما هي (lat/lon قد تكون فارغة)
+  // Before submit confirmation: if user typed manually without selecting, keep city as-is (lat/lon may be empty)
   form?.addEventListener('submit', function(){
-    // لا شيء إضافي — السيرفر سيستقبل city + (lat/lon إن وُجدت)
+    // Nothing extra — server will receive city + (lat/lon if present)
   });
 })();
 </script>

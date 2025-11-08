@@ -2,53 +2,53 @@
 
 {% block content %}
 <div class="container" style="max-width:840px">
-  <h3 class="mb-3">حجز: {{ item.title }}</h3>
+  <h3 class="mb-3">Booking: {{ item.title }}</h3>
 
   {% if request.query_params.get('err') == 'dates' %}
-    <div class="alert alert-danger">الرجاء اختيار تاريخ بداية ونهاية صحيحين.</div>
+    <div class="alert alert-danger">Please choose valid start and end dates.</div>
   {% endif %}
 
   <div class="card shadow-sm">
     <div class="card-body">
-      <!-- المسار الصحيح حسب الراوتر: POST /bookings -->
+      <!-- Correct route path per router: POST /bookings -->
       <form method="post" action="/bookings" class="row g-3">
         <input type="hidden" name="item_id" value="{{ item.id }}">
 
         <div class="col-12 col-md-6">
-          <label class="form-label">من</label>
+          <label class="form-label">From</label>
           <input type="date" name="start_date" class="form-control" required value="{{ start_default }}">
         </div>
 
         <div class="col-12 col-md-6">
-          <label class="form-label">إلى</label>
+          <label class="form-label">To</label>
           <input type="date" name="end_date" class="form-control" required value="{{ end_default }}">
         </div>
 
         <div class="col-12 col-md-6">
-          <label class="form-label">عدد الأيام</label>
+          <label class="form-label">Number of days</label>
           <input type="number" name="days" class="form-control" min="1" value="{{ days_default }}" required>
         </div>
 
         <div class="col-12">
-          <label class="form-label d-block">طريقة الدفع</label>
+          <label class="form-label d-block">Payment method</label>
           <div class="d-flex flex-column gap-2">
             <label class="form-check">
               <input class="form-check-input" type="radio" name="pay_method" value="online" checked>
-              <span class="form-check-label">أونلاين (عن طريق الموقع)</span>
+              <span class="form-check-label">Online (via the site)</span>
             </label>
             <label class="form-check">
               <input class="form-check-input" type="radio" name="pay_method" value="cash">
-              <span class="form-check-label">كاش عند التسليم</span>
+              <span class="form-check-label">Cash on pickup</span>
             </label>
           </div>
           <div class="form-text mt-2">
-            السعر اليومي الحالي: <strong>{{ item.price_per_day }} د.ج</strong>
+            Current daily price: <strong>{{ item.price_per_day }} DZD</strong>
           </div>
         </div>
 
         <div class="col-12 d-flex justify-content-end gap-2 mt-3">
-          <a href="/items/{{ item.id }}" class="btn btn-light">رجوع</a>
-          <button class="btn btn-primary" type="submit">متابعة</button>
+          <a href="/items/{{ item.id }}" class="btn btn-light">Back</a>
+          <button class="btn btn-primary" type="submit">Continue</button>
         </div>
       </form>
     </div>

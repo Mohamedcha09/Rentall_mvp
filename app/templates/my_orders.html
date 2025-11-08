@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<h3 class="mb-3">طلباتي</h3>
+<h3 class="mb-3">My Orders</h3>
 
 {% if orders and orders|length %}
   <div class="row g-3">
@@ -14,8 +14,8 @@
             <div class="col-8">
               <div class="card-body">
                 <h5 class="card-title mb-1">{{ o.title }}</h5>
-                <div class="small text-muted mb-1">المدة: {{ o.days }} يوم · من {{ o.start_date }} إلى {{ o.end_date }}</div>
-                <div class="mb-2">الإجمالي: <strong>{{ o.total }}</strong> د</div>
+                <div class="small text-muted mb-1">Duration: {{ o.days }} days · from {{ o.start_date }} to {{ o.end_date }}</div>
+                <div class="mb-2">Total: <strong>{{ o.total }}</strong> D</div>
                 <span class="badge
                   {% if o.status=='pending' %} bg-warning text-dark
                   {% elif o.status=='paid' %} bg-success
@@ -31,8 +31,8 @@
     {% endfor %}
   </div>
 {% else %}
-  <div class="alert alert-info">لا توجد طلبات بعد.</div>
+  <div class="alert alert-info">No orders yet.</div>
 {% endif %}
 
-<a class="btn btn-outline-light mt-3" href="/">العودة للرئيسية</a>
+<a class="btn btn-outline-light mt-3" href="/">Back to Home</a>
 {% endblock %}

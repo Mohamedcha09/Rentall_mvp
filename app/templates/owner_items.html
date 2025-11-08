@@ -17,7 +17,7 @@
 
 <div class="d-flex align-items-center justify-content-between mb-3">
   <h3 class="mb-0">
-    أشيائي — {{ me.first_name }} {{ me.last_name }}
+    My Items — {{ me.first_name }} {{ me.last_name }}
     <span id="badges-owner-self"
           data-role="{{ _role }}"
           data-created="{{ _created_iso }}"
@@ -28,7 +28,7 @@
           data-returns="{{ _returns_success_count }}">
     </span>
   </h3>
-  <a class="btn btn-primary" href="/owner/items/new">+ أضف عنصر</a>
+  <a class="btn btn-primary" href="/owner/items/new">+ Add Item</a>
 </div>
 
 {% if items and items|length %}
@@ -42,14 +42,14 @@
           <div class="card-body">
             <h6 class="card-title">{{ it.title }}</h6>
             <div class="d-flex justify-content-between align-items-center">
-              <a href="/items/{{ it.id }}" class="btn btn-sm btn-outline-light">فتح</a>
+              <a href="/items/{{ it.id }}" class="btn btn-sm btn-outline-light">Open</a>
               <span class="small text-muted">{{ it.category }}</span>
             </div>
             <div class="mt-2">
               <span class="badge {% if it.is_active=='yes' %}bg-success{% else %}bg-secondary{% endif %}">
-                {% if it.is_active=='yes' %}نشط{% else %}غير نشط{% endif %}
+                {% if it.is_active=='yes' %}Active{% else %}Inactive{% endif %}
               </span>
-              <span class="badge bg-dark-subtle text-dark">{{ it.price_per_day }} د/يوم</span>
+              <span class="badge bg-dark-subtle text-dark">{{ it.price_per_day }} /day</span>
             </div>
           </div>
         </div>
@@ -57,7 +57,7 @@
     {% endfor %}
   </div>
 {% else %}
-  <div class="alert alert-light text-dark">لا توجد عناصر حتى الآن. ابدأ بإضافة أول عنصر لك.</div>
+  <div class="alert alert-light text-dark">No items yet. Start by adding your first item.</div>
 {% endif %}
 
 <script>

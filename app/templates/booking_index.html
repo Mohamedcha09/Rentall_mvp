@@ -12,17 +12,17 @@
     }
   </style>
 
-  {# صورة الحالة الفارغة:
-     كمستأجر => xon.png
-     كمالك   => ron.png #}
+  {# Empty state image:
+     as renter => xon.png
+     as owner  => ron.png #}
   {% set EMPTY_IMG = (url_for('static', path='photo/xon.png') if view=='renter'
                       else url_for('static', path='photo/ron.png')) %}
 
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h4>{{ title }}</h4>
     <div class="btn-group">
-      <a class="btn btn-sm {% if view=='renter' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="/bookings?view=renter">كمستأجر</a>
-      <a class="btn btn-sm {% if view=='owner' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="/bookings?view=owner">كمالك</a>
+      <a class="btn btn-sm {% if view=='renter' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="/bookings?view=renter">As renter</a>
+      <a class="btn btn-sm {% if view=='owner' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="/bookings?view=owner">As owner</a>
     </div>
   </div>
 
@@ -32,8 +32,8 @@
         <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
            href="/bookings/flow/{{ b.id }}">
           <div>
-            <div class="fw-bold">الحجز #{{ b.id }} — الحالة: {{ b.status }}</div>
-            <div class="small text-muted">{{ b.start_date }} → {{ b.end_date }} ({{ b.days }} يوم)</div>
+            <div class="fw-bold">Booking #{{ b.id }} — Status: {{ b.status }}</div>
+            <div class="small text-muted">{{ b.start_date }} → {{ b.end_date }} ({{ b.days }} days)</div>
           </div>
           <i class="bi bi-chevron-left"></i>
         </a>

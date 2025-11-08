@@ -2,16 +2,16 @@
 {% block content %}
 <div class="container py-3" style="max-width:900px">
   <div class="d-flex align-items-center justify-content-between mb-2">
-    <h4 class="fw-bold">تذكرة #{{ ticket.id }} — {{ ticket.subject }}</h4>
+    <h4 class="fw-bold">Ticket #{{ ticket.id }} — {{ ticket.subject }}</h4>
     <div class="d-flex gap-2">
       {% if is_agent and ticket.status != 'closed' %}
       <form action="/admin/support/claim/{{ ticket.id }}" method="post">
         <button class="btn btn-outline-secondary btn-sm" type="submit">
-          {% if ticket.agent %}تحويل لي{% else %}استلام التذكرة{% endif %}
+          {% if ticket.agent %}Transfer to me{% else %}Claim ticket{% endif %}
         </button>
       </form>
       <form action="/admin/support/close/{{ ticket.id }}" method="post">
-        <button class="btn btn-outline-danger btn-sm" type="submit">إغلاق</button>
+        <button class="btn btn-outline-danger btn-sm" type="submit">Close</button>
       </form>
       {% endif %}
     </div>
@@ -30,18 +30,18 @@
         </div>
       {% endfor %}
       {% if not messages or messages|length == 0 %}
-        <div class="text-muted">لا رسائل بعد.</div>
+        <div class="text-muted">No messages yet.</div>
       {% endif %}
     </div>
   </div>
 
   {% if ticket.status != 'closed' %}
   <form action="/support/t/{{ ticket.id }}/send" method="post" class="d-flex gap-2">
-    <textarea class="form-control" name="body" rows="2" placeholder="اكتب رسالتك…" required></textarea>
-    <button class="btn btn-primary" type="submit">إرسال</button>
+    <textarea class="form-control" name="body" rows="2" placeholder="Write your message…" required></textarea>
+    <button class="btn btn-primary" type="submit">Send</button>
   </form>
   {% else %}
-  <div class="alert alert-warning">هذه التذكرة مغلقة.</div>
+  <div class="alert alert-warning">This ticket is closed.</div>
   {% endif %}
 </div>
 {% endblock %}

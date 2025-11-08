@@ -1,6 +1,6 @@
 <!-- app/templates/base.html -->  
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -10,7 +10,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
-  <!-- CSS خارجي -->
+  <!-- External CSS -->
   <link href="/static/style.css?v=3" rel="stylesheet">
 
 
@@ -25,7 +25,7 @@
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --safe-bottom-legacy: constant(safe-area-inset-bottom, 0px);
-      --tabbar-lift: 20px; /* رفع الشريط السفلي قليلًا */
+      --tabbar-lift: 20px; /* lift bottom bar a bit */
     }
     body{ color:var(--text); background:#f4f6fb; }
     [data-theme="dark"]{
@@ -36,7 +36,7 @@
     /* Topbar */
     .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; }
 
-    /* Searchbar (عنصر + مدينة) */
+    /* Searchbar (item + city) */
     .searchbar{ position:relative; max-width:760px; margin-inline:auto; }
     .searchbar-wrap{
       display:flex; align-items:center; gap:10px;
@@ -53,7 +53,7 @@
     .searchbar .sep{ width:1px; height:24px; background:var(--border); }
     .searchbar .k{ opacity:.55; font-size:.9rem; white-space:nowrap }
 
-    /* Panel اقتراحات المدينة */
+    /* City suggestions panel */
     .city-suggest{
       position:absolute; inset-inline:14px; top: calc(100% + 8px);
       background: var(--surface); color: var(--text);
@@ -65,7 +65,7 @@
     .city-suggest .row:hover{ background: color-mix(in oklab, var(--text) 8%, transparent); }
     .city-suggest .sub{ opacity:.6; font-size:.85em }
 
-    /* Typeahead لديك (حسابات/عناصر) */
+    /* Your typeahead (accounts/items) */
     .typeahead{
       position:absolute; inset-inline:0; top: calc(100% + .25rem);
       background: var(--surface); color: var(--text);
@@ -78,7 +78,7 @@
     .typeahead-item:hover, .typeahead-item.active{ background: rgba(124,92,255,.12); }
     .typeahead-item .k{ opacity:.65; font-size:.85em }
 
-    /* جرس */
+    /* Bell */
     #notifOpen{ position: relative; }
     #notifOpen .notif-count{
       position:absolute; top:-6px; inset-inline-end:-6px; background:#d43aff; color:#fff;
@@ -93,11 +93,11 @@
     .sidebar[data-collapsed="true"]{ width:84px; flex-basis:84px; }
     @media (max-width:991.98px){ .sidebar{ display:none !important; } }
 
-    /* مساحة أسفل عامة (لضمان عدم اختفاء المحتوى خلف التاب بار) */
+    /* Global bottom space (to keep content above the tab bar) */
     .has-tabbar{ padding-bottom: calc(92px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
 
 
-    /* لوحة إشعارات جانبية */
+    /* Side notifications panel */
     .notif-panel{
       position: fixed; top:0; inset-inline-end:-420px; width:360px; max-width:88vw; height:100vh;
       background: var(--surface); color: var(--text);
@@ -112,7 +112,7 @@
     .notif-row:hover{ background: color-mix(in oklab, var(--surface) 92%, transparent); }
     .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2s; }
 
-    /* تبويبات أعلى (موبايل فقط) — توسيط + شريط بنفسجي سفلي */
+    /* Top tabs (mobile only) — centered + purple bottom bar */
     .m-top-tabs{
       display:none !important;
       justify-content:center; align-items:flex-end; gap:28px;
@@ -140,7 +140,7 @@
     }
   </style>
 
-  <!-- إزالة مثلث القوائم المنسدلة -->
+  <!-- Remove dropdown caret triangle -->
   <style>
     .dropdown-toggle::after,
     .btn.dropdown-toggle::after,
@@ -152,7 +152,7 @@
     }
   </style>
 
-  <!-- Bottom Sheet (بروفايل) موبايل فقط -->
+  <!-- Bottom Sheet (profile) mobile only -->
   <style>
     @media (max-width: 768px){
       .sheet-scrim{
@@ -196,7 +196,7 @@
     }
   </style>
 
-  <!-- حِزمة الأيقونات الدائرية (PNG) -->
+  <!-- Circular icon pack (PNG) -->
   <style id="ic-pack">
     :root{ --ic: 28px; }
     .ic{
@@ -218,7 +218,7 @@
     .ic--cc       { --img: url('/static/iconblossom/cc.png'); }
     .ic::after{ background-image: var(--img); }
 
-    /* تخصيصات سطح المكتب */
+    /* Desktop tweaks */
     .ic--support  { --ic: 34px; }
     .ic--profile  { --ic: 30px; }
     .ic--fav      { --ic: 28px; }
@@ -226,7 +226,7 @@
     .ic--logout   { --ic: 32px; }
     .ic--cc       { --ic: 36px; }
 
-    /* موبايل */
+    /* Mobile */
     @media (max-width:768px){
       .ic--support  { --ic: 38px; }
       .ic--profile  { --ic: 34px; }
@@ -237,7 +237,7 @@
     }
   </style>
 
-  <!-- واجهة ضيف مبسّطة — موبايل فقط -->
+  <!-- Simplified guest UI — mobile only -->
   <style id="guest-mobile-only">
     @media (max-width: 768px){
       body[data-auth="0"] #menuBtn,
@@ -250,23 +250,23 @@
       body[data-auth="0"] .sheet,
       body[data-auth="0"] .sheet-scrim { display: none !important; }
 
-      /* في actions اترك فقط دخول/تسجيل */
+      /* In actions leave only Login/Register */
       body[data-auth="0"] .actions > *:not(a[href="/login"]):not(a[href="/register"]){
         display: none !important;
       }
 
-      /* تبويب سفلي: اترك “الرئيسية” فقط */
+      /* Bottom tab: keep “Home” only */
       body[data-auth="0"] .mobile-tabbar a:nth-child(n+2){ display: none !important; }
       body[data-auth="0"] .mobile-tabbar{ grid-template-columns: 1fr !important; }
 
-      /* مساحة سفلية مناسبة بدون زر + */
+      /* Proper bottom space without + button */
       body[data-auth="0"] .page{
         padding-bottom: calc(76px + max(var(--safe-bottom), var(--safe-bottom-legacy))) !important;
       }
     }
   </style>
 
-  <!-- إبراز أزرار دخول/تسجيل كـ Pills -->
+  <!-- Highlight Login/Register as pills -->
   <style>
     body[data-auth="0"] .actions{
       display:flex !important; align-items:center !important; gap:8px !important;
@@ -291,10 +291,10 @@
     .btn-chip--primary:hover{ filter:brightness(.98); }
     [data-theme="dark"] .btn-chip--ghost{ background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.18); }
 
-    /* اجعل البحث ظاهرًا للضيف */
+    /* Keep search visible for guest */
     body[data-auth="0"] .searchbar{ display:block !important; }
 
-    /* لا تُخفِ أزرار الدخول/التسجيل داخل actions للضيف */
+    /* Don’t hide guest login/register within actions */
     body[data-auth="0"] .actions > *{ display:none !important; }
     body[data-auth="0"] .actions a[href="/login"],
     body[data-auth="0"] .actions a[href="/register"]{
@@ -302,7 +302,7 @@
     }
   </style>
 
-  <!-- Modal Guard + إصلاحات الطبقات -->
+  <!-- Modal guard + z-index fixes -->
   <style id="modal-guard">
     .modal { z-index: 1070 !important; }
     .modal-backdrop { z-index: 1060 !important; }
@@ -324,17 +324,17 @@
 
     /* =========================
    GLASS UI – Mobile Tabbar
-   (فقط ستايل، بدون تغيير HTML)
+   (style only, no HTML change)
    ========================= */
 @media (max-width: 768px){
   :root{
     --glass-blur: 16px;
     --glass-sat: 199%;
-    --glass-bg: rgba(56, 56, 56, .35);              /* أساس زجاجي غامق */
-    --glass-grad1: rgba(108, 99, 255, .18);         /* بنفسجي */
-    --glass-grad2: rgba(0, 212, 255, .12);          /* سماوي */
-    --glass-stroke: rgba(255,255,255,.125);         /* حافة زجاجية */
-    --glass-inner: rgba(255,255,255,.06);           /* لمعان داخلي */
+    --glass-bg: rgba(56, 56, 56, .35);              /* dark glass base */
+    --glass-grad1: rgba(108, 99, 255, .18);         /* purple */
+    --glass-grad2: rgba(0, 212, 255, .12);          /* cyan */
+    --glass-stroke: rgba(255,255,255,.125);         /* glass edge */
+    --glass-inner: rgba(255,255,255,.06);           /* inner gloss */
     --tabbar-h: 64px;
     --tabbar-radius: 22px;
   }
@@ -348,14 +348,14 @@
     align-items: center !important; padding: 8px 12px !important; border-top: none !important;
     z-index: 2147483647 !important; border-radius: var(--tabbar-radius) !important;
 
-    /* الزجاج: Blur + Saturate + خلفية + تدرّج */
+    /* Glass: Blur + Saturate + bg + gradient */
     background:
       linear-gradient(135deg, var(--glass-grad1), var(--glass-grad2)),
       var(--glass-bg) !important;
     backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
 
-    /* حدود ولمعة خفيفة مثل اللقطة */
+    /* edges & subtle highlight like the mock */
     box-shadow:
       0 14px 30px rgba(0,0,0,.35),
       0 0 0 1px var(--glass-stroke) inset,
@@ -365,7 +365,7 @@
     transition: transform .25s ease;
   }
 
-  /* نصوص وأيقونات داخل التاب */
+  /* Text & icons inside tabs */
   .mobile-tabbar a{
     position: relative !important;
     height: 100% !important;
@@ -382,7 +382,7 @@
     transition: transform .15s ease, opacity .15s ease !important;
   }
 
-  /* حالة نشِطة مثل “حبّة” مضيئة */
+  /* Active “pill” feel */
   .mobile-tabbar a.is-active{
     background: rgba(255,255,255,.14) !important;
     box-shadow:
@@ -394,7 +394,7 @@
     opacity: 1 !important; transform: scale(1.06) !important;
   }
 
-  /* شارة عدّاد */
+  /* Badge dot */
   .mobile-tabbar .badge-dot{
     position: absolute !important; top: 6px !important; transform: translateX(12px);
     min-width: 20px; height: 20px; line-height: 20px; font-size: 11px;
@@ -404,7 +404,7 @@
   }
 }
 
-/* وضع داكن: نحافظ على نفس الإحساس لكن أغمق قليلًا */
+/* Dark mode tune */
 [data-theme="dark"] .mobile-tabbar{
   background:
     linear-gradient(135deg, rgba(108,99,255,.16), rgba(0,212,255,.10)),
@@ -417,7 +417,7 @@
 
   /* ===== Profile Bottom Sheet — Glass Style (match mobile tabbar) ===== */
 @media (max-width: 768px){
-  /* هيدر زجاجي */
+  /* Glassy header */
   #profileSheet{
     background:
       linear-gradient(135deg, var(--glass-grad1), var(--glass-grad2)),
@@ -428,9 +428,9 @@
       0 -18px 40px rgba(0,0,0,.35),
       0 0 0 1px var(--glass-stroke) inset,
       0 2px 0 0 var(--glass-inner) inset !important;
-    color:#fff;  /* نص فاتح فوق الزجاج */
+    color:#fff;  /* light text over glass */
   }
-  /* تباين محتوى الجسم */
+  /* Body contrast */
   #profileSheet .sheet__body{
     background: rgba(255,255,255,.08);
     border-radius: 14px 14px 0 0;
@@ -441,7 +441,7 @@
       0 -1px 0 rgba(0,0,0,.05) inset;
   }
 
-  /* بطاقة البروفايل أعلى الشيت */
+  /* Profile card atop sheet */
   #profileSheet .sheet__avatar{
     background: rgba(255,255,255,.14) !important;
     color:#fff; font-weight:800;
@@ -450,13 +450,13 @@
   #profileSheet .sheet__name{ color:#fff; }
   #profileSheet .sheet__handle{ color: rgba(255,255,255,.8); }
 
-  /* زر Share بنفس ستايل الحبوب */
+  /* Share button */
   #profileSheet .sheet__share{
     background:#6C63FF !important; color:#fff !important; border:0 !important;
     box-shadow: 0 8px 18px rgba(108,99,255,.35);
   }
 
-  /* عناصر القائمة: ارتفاع، سهم يسار، أيقونة يمين */
+  /* List items: height, chevron right, icon left */
   #profileSheet .sheet__item{
     background: transparent;
     position: relative;
@@ -467,21 +467,21 @@
   #profileSheet .sheet__item:hover{
     background: rgba(255,255,255,.10);
   }
-  /* السهم */
+  /* chevron */
   #profileSheet .sheet__item .chev{
     color:#fff; opacity:.85;
   }
-  /* تسمية */
+  /* label */
   #profileSheet .sheet__item .label{
     font-weight:800; letter-spacing:.1px;
   }
 
-  /* الأيقونات الدائرية — نفس باك أيقوناتك */
+  /* circular icons — same pack */
   #profileSheet .ic{
     box-shadow: 0 0 0 1px rgba(255,255,255,.10) inset;
   }
 
-  /* عنصر خروج باللون الأحمر */
+  /* Logout item in red */
   #profileSheet .sheet__item.text-danger{
     color:#ff6b6b !important;
   }
@@ -490,7 +490,7 @@
   }
 }
 
-/* تحسين تباين على الوضع الفاتح أيضاً */
+/* Light mode tweaks */
 @media (max-width: 768px){
   [data-theme="light"] #profileSheet{
     color:#111;
@@ -512,20 +512,20 @@
   </style>
 
   <style id="sheet-align-fix">
-  /* محاذاة عناصر صفّ الشيت */
+  /* Align sheet row items */
   #profileSheet .sheet__item{ display:flex; align-items:center; }
   #profileSheet .sheet__item .left{ display:flex; align-items:center; gap:10px; }
 
-  /* ارفع النص لمنتصف الأيقونة تمامًا */
+  /* Vertically center text next to icon */
   #profileSheet .sheet__item .label{
     display:flex; align-items:center;
     line-height:1; margin:0; padding:0;
   }
 
-  /* ألغِ الانزياح العمودي للأيقونة داخل الشيت فقط */
+  /* Cancel vertical offset of icon in sheet only */
   #profileSheet .ic{ vertical-align:0; }
 
-  /* نُغزة 1px لأجل iOS (اختياري) */
+  /* 1px nudge for iOS (optional) */
   @supports (-webkit-touch-callout: none){
     #profileSheet .sheet__item .label{ position:relative; top:-1px; }
   }
@@ -533,7 +533,7 @@
 <style>
   .immersive-back{
     position: fixed;
-    inset-inline-start: 12px;            /* RTL: يظهر يسارًا */
+    inset-inline-start: 12px;
     inset-block-start: calc(var(--safe-top, 0px) + 12px);
     z-index: 2147483647;
     display: inline-flex; align-items: center; justify-content: center;
@@ -558,20 +558,20 @@
 {% set _path = request.url.path if request else '' %}
 {% set is_home = (_path == '/' or _path == '') %}
 
-{# اخفِ التاب بار فقط في الإشعارات/التحويلات/الأدمين #}
+{# Hide tabbar only on notifications/payout/admin #}
 {% set hide_tabbar = request and (
     _path.startswith('/notifications') or
     _path.startswith('/payout') or
     _path.startswith('/admin')
 ) %}
 
-{# أظهره في كل مكان آخر #}
+{# Show it everywhere else #}
 {% set show_tabbar = (not hide_tabbar) %}
 
 
 </head>
 
-{# ===== Helper: يبني src صحيح سواء https أو مسار محلي ===== #}
+{# ===== Helper: builds a correct src whether https or local path ===== #}
 {% macro build_src(p) -%}
   {%- set s = (p or '') -%}
   {%- if s.startswith('http://') or s.startswith('https://') -%}
@@ -581,7 +581,7 @@
   {%- endif -%}
 {%- endmacro %}
 
-{# ===== Helper: avatar_src — يُعيد رابط آمن لصورة الحساب ===== #}
+{# ===== Helper: avatar_src — returns a safe URL for avatar ===== #}
 {% macro avatar_src(p) -%}
   {%- set s = (p or '') -%}
   {%- if s.startswith('http://') or s.startswith('https://') -%}
@@ -604,60 +604,60 @@
   <header class="topbar">
     <div class="topbar__inner container-fluid d-flex align-items-center gap-2 py-2">
 
-      <!-- زر ☰ -->
+      <!-- ☰ button -->
       <button id="menuBtn" class="hamburger-btn d-none d-lg-inline" type="button"
-              aria-haspopup="true" aria-expanded="false" aria-controls="quickMenu" title="القائمة">☰</button>
+              aria-haspopup="true" aria-expanded="false" aria-controls="quickMenu" title="Menu">☰</button>
 
-      <!-- القائمة المنسدلة (ديسكتوب) -->
-      <nav id="quickMenu" class="topmenu" hidden role="menu" aria-label="قائمة الموقع">
-        <a role="menuitem" class="topmenu-item" href="/"><i class="bi bi-house"></i> الرئيسية</a>
-        <a role="menuitem" class="topmenu-item" href="/items"><i class="bi bi-box-seam"></i> العناصر</a>
+      <!-- Dropdown (desktop) -->
+      <nav id="quickMenu" class="topmenu" hidden role="menu" aria-label="Site menu">
+        <a role="menuitem" class="topmenu-item" href="/"><i class="bi bi-house"></i> Home</a>
+        <a role="menuitem" class="topmenu-item" href="/items"><i class="bi bi-box-seam"></i> Items</a>
 
         {% if session_user %}
-          <a role="menuitem" class="topmenu-item" href="/favorites"><i class="bi bi-heart-fill"></i> مفضلتي</a>
-          <a role="menuitem" class="topmenu-item" href="/profile"><i class="bi bi-person-circle"></i> صفحتي</a>
-          <a role="menuitem" class="topmenu-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a>
-          <a role="menuitem" class="topmenu-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a>
-          <a role="menuitem" class="topmenu-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a>
+          <a role="menuitem" class="topmenu-item" href="/favorites"><i class="bi bi-heart-fill"></i> My Favorites</a>
+          <a role="menuitem" class="topmenu-item" href="/profile"><i class="bi bi-person-circle"></i> My Profile</a>
+          <a role="menuitem" class="topmenu-item" href="/bookings"><i class="bi bi-calendar2-check"></i> My Bookings</a>
+          <a role="menuitem" class="topmenu-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> Payouts</a>
+          <a role="menuitem" class="topmenu-item" href="/owner/items"><i class="bi bi-collection"></i> My Items</a>
 
           {% if session_user.get('can_manage_deposits') %}
-            <a role="menuitem" class="topmenu-item" href="/dm/deposits"><i class="bi bi-shield-exclamation"></i> قضايا الوديعة</a>
+            <a role="menuitem" class="topmenu-item" href="/dm/deposits"><i class="bi bi-shield-exclamation"></i> Deposit Cases</a>
           {% endif %}
 
           {% if session_user.role == 'admin' or session_user.get('is_mod') %}
-            <a role="menuitem" class="topmenu-item" href="/admin/reports">📸 البلاغات</a>
+            <a role="menuitem" class="topmenu-item" href="/admin/reports">📸 Reports</a>
           {% endif %}
 
           {% if session_user.role == 'admin' %}
             <hr class="topmenu-sep" role="separator">
-            <a role="menuitem" class="topmenu-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a>
+            <a role="menuitem" class="topmenu-item" href="/admin"><i class="bi bi-speedometer2"></i> Admin Panel</a>
           {% endif %}
         {% endif %}
       </nav>
 
-      <!-- الشعار -->
+      <!-- Brand -->
       <a class="brand d-flex align-items-center gap-2 text-decoration:none me-2" href="/">
         <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR" style="height:48px">
         <span class="visually-hidden">SEVOR</span>
       </a>
 
-      <!-- ===== شريط البحث (عنصر + مدينة) ===== -->
-      <form class="search searchbar flex-grow-1" action="/search" method="get" role="search" dir="rtl">
+      <!-- ===== Search bar (item + city) ===== -->
+      <form class="search searchbar flex-grow-1" action="/search" method="get" role="search" dir="ltr">
         <div class="searchbar-wrap">
           <i class="bi bi-search"></i>
 
           <div class="field">
             <input class="form-control form-control-sm" type="search" name="q" id="qTop"
-                   placeholder="ابحث عن عنصر (سيارة، كاميرا…)"
+                   placeholder="Search an item (car, camera…)"
                    value="{{ request.query_params.get('q','') if request else '' }}" autocomplete="off">
           </div>
 
           <div class="sep" aria-hidden="true"></div>
 
           <div class="field">
-            <span class="k">المدينة</span>
+            <span class="k">City</span>
             <input class="form-control form-control-sm" type="text" id="cityTop" name="city"
-                   placeholder="مونتريال، الجزائر…" autocomplete="off"
+                   placeholder="Montreal, Algiers…" autocomplete="off"
                    value="{{ request.query_params.get('city','') if request else '' }}">
           </div>
 
@@ -665,40 +665,40 @@
           <input type="hidden" id="lngTop" name="lng" value="{{ request.query_params.get('lng','') if request else '' }}">
         </div>
 
-        <div id="citySuggest" class="city-suggest" aria-label="اقتراحات المدن"></div>
+        <div id="citySuggest" class="city-suggest" aria-label="City suggestions"></div>
       </form>
 
-      <!-- typeahead لديك (بحث حسابات/عناصر) -->
+      <!-- Your typeahead (accounts/items) -->
       <div id="typeaheadPanel" class="typeahead d-none"></div>
 
       <div class="actions d-flex align-items-center gap-2 ms-auto">
-        <!-- رسائل -->
-        <a href="/messages" class="btn btn-ghost btn-sm" title="الرسائل">
+        <!-- Messages -->
+        <a href="/messages" class="btn btn-ghost btn-sm" title="Messages">
           <img class="icon-img" src="/static/img/msg.png" alt="Messages" style="width:24px;height:24px">
         </a>
 
-        <!-- مفضّلة -->
+        <!-- Favorites -->
         {% if session_user %}
-          <a href="/favorites" class="btn btn-ghost btn-sm" title="مفضلتي">
+          <a href="/favorites" class="btn btn-ghost btn-sm" title="My Favorites">
             <i class="bi bi-heart-fill" style="font-size:20px; color:#a944ec;"></i>
           </a>
         {% endif %}
 
         <!-- CS Inbox -->
         {% if session_user and (session_user.is_support or session_user.get('is_support') or session_user.get('cs_enabled')) %}
-          <a class="btn btn-outline-secondary btn-sm" href="/cs/inbox" title="صندوق خدمة الزبائن (CS)">
+          <a class="btn btn-outline-secondary btn-sm" href="/cs/inbox" title="Customer Support Inbox (CS)">
             <i class="bi bi-headset"></i>
           </a>
         {% endif %}
 
-        <!-- تذكرة دعم -->
-        <a class="btn btn-outline-secondary btn-sm" href="/support/new" title="الدعم">
+        <!-- Support ticket -->
+        <a class="btn btn-outline-secondary btn-sm" href="/support/new" title="Support">
           <i class="bi bi-life-preserver"></i>
         </a>
 
-        <!-- زر الجرس -->
+        <!-- Bell -->
         {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
-        <button class="btn btn-ghost btn-sm position-relative" id="notifOpen" title="الإشعارات">
+        <button class="btn btn-ghost btn-sm position-relative" id="notifOpen" title="Notifications">
           <img class="icon-img" src="/static/img/notfi.png" alt="Notifications" style="width:24px;height:24px">
           {% if unread > 0 %}
             <span class="notif-ping"></span>
@@ -706,22 +706,22 @@
           {% endif %}
         </button>
 
-        <!-- إنشاء -->
+        <!-- Create -->
         <div class="dropdown">
           <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown">
-            <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">إنشاء</span>
+            <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">Create</span>
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
-            <li><a class="dropdown-item" href="/owner/items/new"><i class="bi bi-box"></i> عنصر جديد</a></li>
-            <li><a class="dropdown-item" href="/messages"><i class="bi bi-chat-left-text"></i> رسالة</a></li>
+            <li><a class="dropdown-item" href="/owner/items/new"><i class="bi bi-box"></i> New Item</a></li>
+            <li><a class="dropdown-item" href="/messages"><i class="bi bi-chat-left-text"></i> Message</a></li>
           </ul>
         </div>
 
-        <!-- اللغة -->
+        <!-- Language -->
         <div class="dropdown">
-          <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="اللغة">
+          <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="Language">
             <i class="bi bi-globe2"></i>
-            <span class="d-none d-sm-inline">{{ current_lang()|upper if current_lang else 'AR' }}</span>
+            <span class="d-none d-sm-inline">{{ current_lang()|upper if current_lang else 'EN' }}</span>
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
             <li><a class="dropdown-item" href="/lang/ar">العربية</a></li>
@@ -730,7 +730,7 @@
           </ul>
         </div>
 
-        <!-- الحساب -->
+        <!-- Account -->
         {% if session_user %}
           <div class="dropdown">
             <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
@@ -742,33 +742,33 @@
        onerror="this.onerror=null;this.src='/static/placeholder.png'"
        style="width:28px;height:28px;object-fit:cover;border-radius:50%">
 {% else %}
-  <div class="avatar ring">{{ (session_user.first_name or 'ح')[:1] }}</div>
+  <div class="avatar ring">{{ (session_user.first_name or 'A')[:1] }}</div>
 {% endif %}
 
 
   <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
-  {% if session_user.status == 'approved' %}<i class="bi bi-patch-check-fill verify" title="موثّق"></i>{% endif %}
+  {% if session_user.status == 'approved' %}<i class="bi bi-patch-check-fill verify" title="Verified"></i>{% endif %}
 </button>
 
             <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> صفحتي</a></li>
-              <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> أشيائي</a></li>
-              <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> حجوزاتي</a></li>
-              <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> التحويلات</a></li>
+              <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> My Profile</a></li>
+              <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> My Items</a></li>
+              <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> My Bookings</a></li>
+              <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> Payouts</a></li>
               {% if session_user.role == 'admin' or session_user.get('is_mod') %}
-                <li><a class="dropdown-item" href="/admin/reports">📸 البلاغات</a></li>
+                <li><a class="dropdown-item" href="/admin/reports">📸 Reports</a></li>
               {% endif %}
               {% if session_user.role == 'admin' %}
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="/admin"><i class="bi bi-speedometer2"></i> لوحة الأدمين</a></li>
+                <li><a class="dropdown-item" href="/admin"><i class="bi bi-speedometer2"></i> Admin Panel</a></li>
               {% endif %}
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right"></i> خروج</a></li>
+              <li><a class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
             </ul>
           </div>
         {% else %}
-          <a class="btn-chip btn-chip--ghost btn-login" href="/login">دخول</a>
-          <a class="btn-chip btn-chip--primary btn-register" href="/register">تسجيل</a>
+          <a class="btn-chip btn-chip--ghost btn-login" href="/login">Login</a>
+          <a class="btn-chip btn-chip--primary btn-register" href="/register">Sign Up</a>
         {% endif %}
       </div>
     </div>
@@ -776,32 +776,32 @@
   {% endif %}
 
 {% if not immersive %}
-  <!-- تبويبات أعلى (موبايل) -->
-  <nav class="m-top-tabs d-lg-none px-3 pb-2" role="tablist" aria-label="أقسام عليا">
+  <!-- Top tabs (mobile) -->
+  <nav class="m-top-tabs d-lg-none px-3 pb-2" role="tablist" aria-label="Top sections">
     <a href="/" class="m-tab {% if request and request.url.path == '/' %}is-active{% endif %}" role="tab"
        aria-selected="{{ 'true' if request and request.url.path == '/' else 'false' }}">Home</a>
 
     {% if session_user %}
       <a href="/notifications" class="m-tab {% if request and request.url.path.startswith('/notifications') %}is-active{% endif %}" role="tab">
-        إشعارات
+        Notifications
         {% set unread_top = (request.state.unread_messages|default(0))|int if request else 0 %}
         <small id="mNotifBadge" {% if unread_top<=0 %}style="display:none"{% endif %} class="ms-1">
           {{ unread_top if unread_top < 100 else '99+' }}
         </small>
       </a>
-      <a href="/payout/settings" class="m-tab {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" role="tab">تحويلات</a>
+      <a href="/payout/settings" class="m-tab {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" role="tab">Payouts</a>
       {% if session_user.role == 'admin' %}
-        <a href="/admin" class="m-tab {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" role="tab">لوحة أدمين</a>
+        <a href="/admin" class="m-tab {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" role="tab">Admin</a>
       {% endif %}
     {% else %}
-      <a href="/login" class="m-tab" role="tab">إشعارات</a>
-      <a href="/login" class="m-tab" role="tab">تحويلات</a>
+      <a href="/login" class="m-tab" role="tab">Notifications</a>
+      <a href="/login" class="m-tab" role="tab">Payouts</a>
     {% endif %}
   </nav>
 {% endif %}
 {% if immersive %}
-  <a class="immersive-back" href="/bookings" title="رجوع">
-    <i class="bi bi-chevron-right"></i>   {# RTL: سهم رجوع #}
+  <a class="immersive-back" href="/bookings" title="Back">
+    <i class="bi bi-chevron-left"></i>
   </a>
 {% endif %}
 
@@ -809,14 +809,14 @@
   <main class="page container-fluid main-flex-fill min-vh-100">
 
     {% if request and request.query_params.get('logged_out') %}
-      <div class="alert alert-success my-2">تم تسجيل خروجك بنجاح 👋</div>
+      <div class="alert alert-success my-2">You have been logged out successfully 👋</div>
     {% endif %}
 
     {% if not immersive and session_user and session_user.status == 'approved' and not session_user.payouts_enabled %}
 
       <div class="stripe-callout alert alert-warning d-flex justify-content-between align-items:center mb-3">
-        <div>💸 لبدء استلام الأرباح، اربط <strong>Stripe Connect</strong>.</div>
-        <a class="btn btn-sm btn-primary" href="/payout/settings">ربط الآن</a>
+        <div>💸 To start receiving earnings, connect <strong>Stripe Connect</strong>.</div>
+        <a class="btn btn-sm btn-primary" href="/payout/settings">Connect Now</a>
       </div>
     {% endif %}
 
@@ -824,53 +824,53 @@
     {% block content %}{% endblock %}
   </main>
 
-  <!-- لوحة إشعارات جانبية -->
+  <!-- Side notifications panel -->
   <div class="notif-panel" id="notifPanel" aria-hidden="true">
     <div class="notif-panel__header d-flex justify-content-between align-items-center">
-      <strong>الإشعارات</strong>
+      <strong>Notifications</strong>
       {% if session_user and session_user.is_support %}
-        <a class="btn btn-sm btn-outline-primary" href="/cs/inbox" title="فتح مركز الرسائل">فتح مركز الرسائل</a>
+        <a class="btn btn-sm btn-outline-primary" href="/cs/inbox" title="Open Message Center">Open Message Center</a>
       {% endif %}
       <button class="btn btn-ghost btn-sm" id="notifClose"><i class="bi bi-x-lg"></i></button>
     </div>
     <div class="notif-panel__body" id="notifBody">
-      <div class="small text-muted">لا توجد إشعارات جديدة.</div>
+      <div class="small text-muted">No new notifications.</div>
     </div>
   </div>
   <div class="scrim" id="scrim"></div>
 
   {% if session_user and is_home %}
-  <a href="/owner/items/new" class="fab d-lg-none btn btn-primary rounded-circle shadow" title="عنصر جديد" style="width:56px;height:56px;display:flex;align-items:center;justify-content:center">
+  <a href="/owner/items/new" class="fab d-lg-none btn btn-primary rounded-circle shadow" title="New Item" style="width:56px;height:56px;display:flex;align-items:center;justify-content:center">
     <i class="bi bi-plus-lg"></i>
   </a>
 {% endif %}
 
 
-  <!-- شريط سفلي (موبايل) -->
+  <!-- Bottom bar (mobile) -->
 {% if show_tabbar and not immersive %}
   <nav class="mobile-tabbar d-lg-none">
     <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
-      <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home"><span>الرئيسية</span>
+      <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home"><span>Home</span>
     </a>
 
     {% if session_user %}
       <a href="/favorites" class="{% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}">
-        <img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav"><span>مفضلتي</span>
+        <img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav"><span>Favorites</span>
       </a>
       <a href="/bookings" class="{% if request and request.url.path.startswith('/bookings') %}is-active{% endif %}">
-        <img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>حجوزاتي</span>
+        <img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>Bookings</span>
       </a>
       <a href="/messages" class="{% if request and request.url.path.startswith('/messages') %}is-active{% endif %}">
-        <img class="tab-img" src="/static/img/msg.png" alt="Messages"><span>الرسائل</span>
+        <img class="tab-img" src="/static/img/msg.png" alt="Messages"><span>Messages</span>
       </a>
       <a href="/profile" class="{% if request and request.url.path.startswith('/profile') %}is-active{% endif %}">
-        <img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile"><span>بروفايلي</span>
+        <img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile"><span>Profile</span>
       </a>
     {% else %}
-      <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav"><span>مفضلتي</span></a>
-      <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>حجوزاتي</span></a>
-      <a href="/login"><img class="tab-img" src="/static/img/msg.png" alt="Messages"><span>الرسائل</span></a>
-      <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile"><span>بروفايلي</span></a>
+      <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav"><span>Favorites</span></a>
+      <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>Bookings</span></a>
+      <a href="/login"><img class="tab-img" src="/static/img/msg.png" alt="Messages"><span>Messages</span></a>
+      <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile"><span>Profile</span></a>
     {% endif %}
   </nav>
 {% endif %}
@@ -945,7 +945,7 @@
   </script>
   <!-- ================================================================== -->
 
-  <!-- حساب الـ safe-area -->
+  <!-- Compute safe-area -->
   <script>
   (function(){
     var root = document.documentElement;
@@ -972,7 +972,7 @@
   })();
   </script>
 
-  <!-- زر ☰ (قائمة سريعة) -->
+  <!-- ☰ button (quick menu) -->
   <script>
   (function(){
     const btn  = document.getElementById('menuBtn');
@@ -993,7 +993,7 @@
   })();
   </script>
 
-  <!-- Typeahead لعناصر/حسابات -->
+  <!-- Typeahead for items/accounts -->
   <script>
   (function initTypeahead(){
     if (window.__typeaheadInit) return; window.__typeaheadInit = true;
@@ -1025,14 +1025,14 @@
       var norm = normalizePayload(data);
       var users = norm.users, items = norm.items, html = [];
       if (users.length){
-        html.push('<div class="typeahead-group">حسابات</div>');
-        users.forEach(function(u){ html.push('<div class="typeahead-item" data-url="'+u.url+'"><i class="bi bi-person-circle"></i><div class="flex-grow-1"><div>'+esc(u.name)+'</div><div class="k">الملف الشخصي</div></div></div>'); });
+        html.push('<div class="typeahead-group">Accounts</div>');
+        users.forEach(function(u){ html.push('<div class="typeahead-item" data-url="'+u.url+'"><i class="bi bi-person-circle"></i><div class="flex-grow-1"><div>'+esc(u.name)+'</div><div class="k">Profile</div></div></div>'); });
       }
       if (items.length){
-        html.push('<div class="typeahead-group">عناصر</div>');
+        html.push('<div class="typeahead-group">Items</div>');
         items.forEach(function(it){
           var city = it.city ? ' — <span class="k">'+esc(it.city)+'</span>' : '';
-          html.push('<div class="typeahead-item" data-url="'+it.url+'"><i class="bi bi-box-seam"></i><div class="flex-grow-1"><div>'+esc(it.title)+city+'</div><div class="k">تفاصيل العنصر</div></div></div>');
+          html.push('<div class="typeahead-item" data-url="'+it.url+'"><i class="bi bi-box-seam"></i><div class="flex-grow-1"><div>'+esc(it.title)+city+'</div><div class="k">Item details</div></div></div>');
         });
       }
       if (!html.length){ hide(); return; }
@@ -1074,7 +1074,7 @@
   })();
   </script>
 
-  <!-- Autocomplete للمدينة -->
+  <!-- City autocomplete -->
   <script>
   (function cityAutocomplete(){
     if (window.__cityAutoInit) return; window.__cityAutoInit = true;
@@ -1152,7 +1152,7 @@
       if(!Array.isArray(list) || list.length===0){ hide(); return; }
       lastList = list.slice(0, 6);
       const html = [
-        '<div class="typeahead-group">مدن/مناطق</div>',
+        '<div class="typeahead-group">Cities/Areas</div>',
         ...lastList.map((p,i)=>(
           '<div class="row" data-i="'+i+'"><i class="bi bi-geo-alt"></i>'
           + '<div><div>'+esc(p.label)+'</div><div class="sub">lat '+esc(p.lat)+' — lng '+esc(p.lon)+'</div></div></div>'
@@ -1216,7 +1216,7 @@
   })();
   </script>
 
-  <!-- كشف وضع التطبيق وإضافة كلاس html.pwa -->
+  <!-- Detect app mode and add html.pwa -->
   <script>
     (function(){
       var isStandalone = false;
@@ -1300,13 +1300,13 @@
 
     function renderItems(items){
       if (!items || !items.length){
-        bodyEl.innerHTML = '<div class="small text-muted">لا توجد إشعارات جديدة.</div>';
+        bodyEl.innerHTML = '<div class="small text-muted">No new notifications.</div>';
         return;
       }
       bodyEl.innerHTML = items.map(it=>{
         const href = normalizeHref(it);
         return `<a class="notif-row" href="${esc(href)}">
-          <div class="fw-bold">${esc(it.title||'إشعار')}</div>
+          <div class="fw-bold">${esc(it.title||'Notification')}</div>
           ${it.body ? '<div class="small text-muted">'+esc(it.body)+'</div>' : ''}
         </a>`;
       }).join('');
@@ -1364,7 +1364,7 @@
   })();
   </script>
 
-  <!-- إرسال بلاغ (إن وُجد فورم) -->
+  <!-- Submit report (if a form exists) -->
   <script>
   document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
     e.preventDefault();
@@ -1373,18 +1373,18 @@
     const res = await fetch(form.action, { method:'POST', body:data });
     const out = await res.json().catch(()=>({}));
     if (res.ok && out.ok){
-      alert('✅ تم إرسال البلاغ. شكرًا لك!');
+      alert('✅ Report sent. Thank you!');
       const m = bootstrap.Modal.getInstance(document.getElementById('reportModal'));
       m?.hide();
     }else{
-      alert('❌ تعذّر إرسال البلاغ. حاول لاحقًا.');
+      alert('❌ Failed to send report. Try again later.');
     }
   });
   </script>
 
   <!-- Profile Bottom Sheet (mobile only) -->
   <div id="profileScrim" class="sheet-scrim" hidden></div>
-  <div id="profileSheet" class="sheet" hidden aria-hidden="true" role="dialog" aria-label="قائمة البروفايل">
+  <div id="profileSheet" class="sheet" hidden aria-hidden="true" role="dialog" aria-label="Profile menu">
     <div class="sheet__drag"></div>
     <div class="sheet__header">
       <div class="sheet__profile">
@@ -1397,14 +1397,14 @@
        onerror="this.onerror=null;this.src='/static/placeholder.png'"
        style="width:56px;height:56px;object-fit:cover;border-radius:50%">
 {% else %}
-  {{ (session_user.first_name or 'ح')[:1] if session_user else 'ز' }}
+  {{ (session_user.first_name or 'A')[:1] if session_user else 'U' }}
 {% endif %}
 
 
 </div>
 
         <div>
-          <div class="sheet__name">{{ session_user.first_name or 'المستخدم' }}</div>
+          <div class="sheet__name">{{ session_user.first_name or 'User' }}</div>
           <div class="sheet__handle">@{{ session_user.username or 'user' }}</div>
         </div>
       </div>
@@ -1413,12 +1413,12 @@
 
     <div class="sheet__body">
       <ul class="sheet__list">
-        <li><a class="sheet__item" href="/profile"><span class="left"><span class="ic ic--profile"></span><span class="label">حسابي</span></span><i class="bi bi-chevron-left chev"></i></a></li>
-        <li><a class="sheet__item" href="/favorites"><span class="left"><span class="ic ic--fav"></span><span class="label">مفضلتي</span></span><i class="bi bi-chevron-left chev"></i></a></li>
-        <li><a class="sheet__item" href="/settings"><span class="left"><span class="ic ic--settings"></span><span class="label">الإعدادات</span></span><i class="bi bi-chevron-left chev"></i></a></li>
-        <li><a class="sheet__item" href="/support/my"><span class="left"><span class="ic ic--cc"></span><span class="label">تذاكري</span></span><i class="bi bi-chevron-left chev"></i></a></li>
-        <li><a class="sheet__item" href="/support/new"><span class="left"><span class="ic ic--support"></span><span class="label">مراسلة الدعم</span></span><i class="bi bi-chevron-left chev"></i></a></li>
-        <li><a class="sheet__item text-danger" href="/logout"><span class="left"><span class="ic ic--logout"></span><span class="label">خروج</span></span><i class="bi bi-chevron-left chev"></i></a></li>
+        <li><a class="sheet__item" href="/profile"><span class="left"><span class="ic ic--profile"></span><span class="label">My Account</span></span><i class="bi bi-chevron-right chev"></i></a></li>
+        <li><a class="sheet__item" href="/favorites"><span class="left"><span class="ic ic--fav"></span><span class="label">My Favorites</span></span><i class="bi bi-chevron-right chev"></i></a></li>
+        <li><a class="sheet__item" href="/settings"><span class="left"><span class="ic ic--settings"></span><span class="label">Settings</span></span><i class="bi bi-chevron-right chev"></i></a></li>
+        <li><a class="sheet__item" href="/support/my"><span class="left"><span class="ic ic--cc"></span><span class="label">My Tickets</span></span><i class="bi bi-chevron-right chev"></i></a></li>
+        <li><a class="sheet__item" href="/support/new"><span class="left"><span class="ic ic--support"></span><span class="label">Contact Support</span></span><i class="bi bi-chevron-right chev"></i></a></li>
+        <li><a class="sheet__item text-danger" href="/logout"><span class="left"><span class="ic ic--logout"></span><span class="label">Logout</span></span><i class="bi bi-chevron-right chev"></i></a></li>
       </ul>
     </div>
   </div>
@@ -1439,7 +1439,7 @@
   })();
   </script>
 
-  <!-- عند فتح أي مودال، أخفِ الألواح العائمة -->
+  <!-- When opening any modal, hide floating panels -->
   <script id="modal-guard-js">
   (function(){
     function hidePanels(){
@@ -1462,14 +1462,14 @@
 
   <script>
 /**
- * زر واحد للكاميرا + الرفع + الانتقال.
- * الاستخدام من أي صفحة:
+ * Single button to open camera + upload + navigate.
+ * Usage from any page:
  *   SV_CaptureAndGo.open({ bookingId: 123, side: 'pickup'|'return' })
  */
 (function(){
   if (window.SV_CaptureAndGo) return;
   window.SV_CaptureAndGo = (function(){
-    // عنصر input مخفي لإطلاق الكاميرا (موبايل يدعم capture)
+    // Hidden input to trigger camera (mobile supports capture)
     let fileInput = null;
     function ensureInput(){
       if (fileInput) return fileInput;
@@ -1477,22 +1477,22 @@
       fileInput.type = 'file';
       fileInput.accept = 'image/*';
       fileInput.multiple = true;
-      fileInput.capture = 'environment'; // كاميرا خلفية
+      fileInput.capture = 'environment'; // back camera
       fileInput.style.display = 'none';
       document.body.appendChild(fileInput);
       return fileInput;
     }
 
-    // شريط تقدم بسيط
+    // Simple progress overlay
     let overlay = null;
     function showOverlay(text){
       if (!overlay){
         overlay = document.createElement('div');
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2147483647;display:flex;align-items:center;justify-content:center;color:#fff';
-        overlay.innerHTML = '<div style="background:rgba(0,0,0,.55);padding:18px 22px;border-radius:12px;font:600 14px system-ui">يرفع الصور…</div>';
+        overlay.innerHTML = '<div style="background:rgba(0,0,0,.55);padding:18px 22px;border-radius:12px;font:600 14px system-ui">Uploading photos…</div>';
         document.body.appendChild(overlay);
       }
-      overlay.firstChild.textContent = text || 'يرفع الصور…';
+      overlay.firstChild.textContent = text || 'Uploading photos…';
       overlay.style.display = 'flex';
     }
     function hideOverlay(){ if (overlay) overlay.style.display = 'none'; }
@@ -1510,33 +1510,33 @@
     async function open({bookingId, side}){
       try{
         const input = ensureInput();
-        input.value = ''; // امسح أي اختيار سابق
+        input.value = ''; // clear previous
         return new Promise((resolve) => {
           input.onchange = async function(){
             const chosen = input.files;
             if (!chosen || !chosen.length){ resolve(false); return; }
-            showOverlay('يرفع الصور…');
+            showOverlay('Uploading photos…');
             try{
               const out = await upload({ bookingId, side, files: chosen });
               hideOverlay();
               if (out && out.ok){
                 window.location.assign(out.next_url || `/bookings/${bookingId}`);
               }else{
-                alert('تعذّر الرفع. سنعيدك للصفحة.');
+                alert('Upload failed. We’ll take you back to the page.');
                 window.location.assign(`/bookings/${bookingId}`);
               }
               resolve(true);
             }catch(e){
               hideOverlay();
-              alert('حصل خطأ أثناء الرفع.');
+              alert('An error occurred during upload.');
               resolve(false);
             }
           };
-          // أطلق مُلتقط الكاميرا
+          // trigger camera
           input.click();
         });
       }catch(e){
-        alert('الكاميرا غير مدعومة على هذا المتصفح. التقط صورًا من المعرض.');
+        alert('Camera not supported on this browser. Please pick photos from the gallery.');
       }
     }
 

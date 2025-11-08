@@ -1,6 +1,6 @@
-{# صفحة ملخص نهائي للوديعة — تُعرض للطرفين #}
+{# Final deposit summary page — shown to both parties #}
 {% extends "base.html" %}
-{% block title %}النتيجة النهائية — حجز #{{ bk.id }}{% endblock %}
+{% block title %}Final Result — Booking #{{ bk.id }}{% endblock %}
 
 {% block head %}
 <style>
@@ -18,24 +18,24 @@
 
 {% block content %}
 <div class="wrap">
-  <h4 class="mb-2">النتيجة النهائية — حجز #{{ bk.id }}</h4>
+  <h4 class="mb-2">Final Result — Booking #{{ bk.id }}</h4>
 
   <div class="d-flex flex-wrap gap-2 mb-3">
-    <span class="chip">حالة الحجز: {{ bk.status or '—' }}</span>
-    <span class="chip">حالة الوديعة: {{ bk.deposit_status or '—' }}</span>
+    <span class="chip">Booking Status: {{ bk.status or '—' }}</span>
+    <span class="chip">Deposit Status: {{ bk.deposit_status or '—' }}</span>
     {% if bk.dm_decision %}
-      <span class="chip">قرار DM: {{ bk.dm_decision }}</span>
+      <span class="chip">DM Decision: {{ bk.dm_decision }}</span>
     {% endif %}
   </div>
 
   <div class="grid" style="grid-template-columns: 1fr 370px;">
 
-    <!-- يسار: تفاصيل العنصر + الأدلة -->
+    <!-- Left: Item details + evidence -->
     <div class="grid">
       <div class="card">
-        <h6 class="mb-2">العنصر</h6>
+        <h6 class="mb-2">Item</h6>
         <div class="d-flex gap-3">
-          {# صورة آمنة #}
+          {# Safe image #}
           {% set img = '/static/placeholder.jpg' %}
           {% if item and item.image_path %}
             {% if item.image_path.startswith('http://') or item.image_path.startswith('https://') %}
@@ -49,15 +49,15 @@
           <div>
             <div class="fw-bold">{{ item.title if item else '—' }}</div>
             <div class="k">{{ category_label(item.category) if item and item.category else '—' }}</div>
-            <div class="k">السعر اليومي: {{ item.price_per_day if item else 0 }} CAD</div>
-            <div class="k">المدة: {{ bk.start_date }} → {{ bk.end_date }} ({{ bk.days }} يوم)</div>
+            <div class="k">Daily Price: {{ item.price_per_day if item else 0 }} CAD</div>
+            <div class="k">Period: {{ bk.start_date }} → {{ bk.end_date }} ({{ bk.days }} days)</div>
           </div>
         </div>
       </div>
 
       <div class="card">
-        <h6 class="mb-2"><i class="bi bi-exclamation-octagon me-1"></i> بلاغ المالك</h6>
-        <div class="k">النوع: <b>{{ bk.owner_report_type or '—' }}</b></div>
+        <h6 class="mb-2"><i class="bi bi-exclamation-octagon me-1"></i> Owner Report</h6>
+        <div class="k">Type: <b>{{ bk.owner_report_type or '—' }}</b></div>
         {% if bk.owner_report_reason %}
           <div class="mt-1" style="white-space:pre-wrap">{{ bk.owner_report_reason }}</div>
         {% endif %}
@@ -71,13 +71,13 @@
               </a>
             {% endfor %}
           {% else %}
-            <div class="k">لا توجد أدلة من المالك.</div>
+            <div class="k">No evidence from the owner.</div>
           {% endif %}
         </div>
       </div>
 
       <div class="card">
-        <h6 class="mb-2"><i class="bi bi-person-bounding-box me-1"></i> أدلة المستأجر</h6>
+        <h6 class="mb-2"><i class="bi bi-person-bounding-box me-1"></i> Renter Evidence</h6>
         {% set renter_evs = (bk.deposit_evidences or []) | selectattr('side','equalto','renter') | list %}
         <div class="evs">
           {% if renter_evs and renter_evs|length %}
@@ -88,14 +88,14 @@
               </a>
             {% endfor %}
           {% else %}
-            <div class="k">لا توجد أدلة من المستأجر.</div>
+            <div class="k">No evidence from the renter.</div>
           {% endif %}
         </div>
       </div>
 
-      <!-- أدلة المستأجر — قبل الاستلام -->
+      <!-- Renter evidence — before pickup -->
       <div class="card mt-2">
-        <h6 class="mb-2">أدلة المستأجر — قبل الاستلام</h6>
+        <h6 class="mb-2">Renter Evidence — Before Pickup</h6>
         <div class="evs">
           {% if renter_pickup and renter_pickup|length %}
             {% for ev in renter_pickup[:12] %}
@@ -105,14 +105,14 @@
               </a>
             {% endfor %}
           {% else %}
-            <div class="k">لا توجد صور قبل الاستلام من المستأجر.</div>
+            <div class="k">No pre-pickup photos from the renter.</div>
           {% endif %}
         </div>
       </div>
 
-      <!-- أدلة المستأجر — بعد الإرجاع -->
+      <!-- Renter evidence — after return -->
       <div class="card mt-2">
-        <h6 class="mb-2">أدلة المستأجر — بعد الإرجاع</h6>
+        <h6 class="mb-2">Renter Evidence — After Return</h6>
         <div class="evs">
           {% if renter_return and renter_return|length %}
             {% for ev in renter_return[:12] %}
@@ -122,36 +122,36 @@
               </a>
             {% endfor %}
           {% else %}
-            <div class="k">لا توجد صور بعد الإرجاع من المستأجر.</div>
+            <div class="k">No post-return photos from the renter.</div>
           {% endif %}
         </div>
       </div>
 
     </div>
 
-    <!-- يمين: ملخص مالي نهائي -->
+    <!-- Right: final financial summary -->
     {% set hold_amt = (bk.hold_deposit_amount or bk.deposit_amount or 0) %}
     {% set charged = (bk.deposit_charged_amount or (bk.dm_decision_amount if bk.dm_decision=='withhold' else 0) or 0) %}
     {% set refunded = (hold_amt - charged) if hold_amt else 0 %}
     <div class="grid">
       <div class="card">
-        <h6 class="mb-2">ملخص مالي — الوديعة</h6>
-        <div class="d-flex justify-content-between"><span>قيمة الوديعة المحتجزة</span><b>{{ hold_amt }} CAD</b></div>
-        <div class="d-flex justify-content-between"><span>المقتطع نهائيًا</span>
+        <h6 class="mb-2">Financial Summary — Deposit</h6>
+        <div class="d-flex justify-content-between"><span>Held Deposit Amount</span><b>{{ hold_amt }} CAD</b></div>
+        <div class="d-flex justify-content-between"><span>Final Charge</span>
           <b class="{{ charged>0 and 'bad' or '' }}">{{ charged }} CAD</b></div>
-        <div class="d-flex justify-content-between"><span>المعاد للمستأجر</span>
+        <div class="d-flex justify-content-between"><span>Refunded to Renter</span>
           <b class="{{ refunded>0 and 'ok' or '' }}">{{ refunded }} CAD</b></div>
         {% if bk.dm_decision_note %}
           <hr>
-          <div class="k"><span class="mono">السبب:</span> {{ bk.dm_decision_note }}</div>
+          <div class="k"><span class="mono">Reason:</span> {{ bk.dm_decision_note }}</div>
         {% endif %}
       </div>
 
       <div class="card">
-        <h6 class="mb-2">ملخص الإيجار</h6>
-        <div class="d-flex justify-content-between"><span>السعر اليومي</span><b>{{ item.price_per_day if item else 0 }} CAD</b></div>
-        <div class="d-flex justify-content-between"><span>عدد الأيام</span><b>{{ bk.days }}</b></div>
-        <div class="d-flex justify-content-between"><span>مجموع الإيجار (تقريبي)</span>
+        <h6 class="mb-2">Rent Summary</h6>
+        <div class="d-flex justify-content-between"><span>Daily Price</span><b>{{ item.price_per_day if item else 0 }} CAD</b></div>
+        <div class="d-flex justify-content-between"><span>Number of Days</span><b>{{ bk.days }}</b></div>
+        <div class="d-flex justify-content-between"><span>Total Rent (Approx.)</span>
           <b>{{ (item.price_per_day or 0) * (bk.days or 0) if item else 0 }} CAD</b></div>
       </div>
 
@@ -162,7 +162,7 @@
           {% if bk.accepted_at %}accepted_at: {{ bk.accepted_at }}<br>{% endif %}
         </div>
         <div class="mt-2">
-          <a class="btn btn-outline-secondary btn-sm" href="/bookings/flow/{{ bk.id }}">الرجوع إلى تدفّق الحجز</a>
+          <a class="btn btn-outline-secondary btn-sm" href="/bookings/flow/{{ bk.id }}">Back to Booking Flow</a>
         </div>
       </div>
     </div>

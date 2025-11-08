@@ -2,14 +2,14 @@
 {% set u = session_user or {} %}
 {% block content %}
 <div class="container py-3">
-  <h3 class="mb-3">صندوق الوارد (MD)</h3>
+  <h3 class="mb-3">Inbox (MD)</h3>
 
   <div class="row g-3">
-    <!-- تم إرسالها جديد من طرف CS -->
+    <!-- Newly sent by CS -->
     <div class="col-12 col-lg-6 col-xxl-3">
       <div class="card h-100">
         <div class="card-header fw-bold d-flex justify-content-between">
-          <span>تم إرسالها جديد من طرف CS</span>
+          <span>Newly sent by CS</span>
           <span class="badge bg-secondary">{{ (data.new or [])|length }}</span>
         </div>
         {% if data.new %}
@@ -18,24 +18,24 @@
               <a class="list-group-item list-group-item-action {% if data.focus_tid and data.focus_tid == t.id %}active{% endif %}"
                  href="/md/ticket/{{t.id}}">
                 <div class="d-flex w-100 justify-content-between">
-                  <strong>#{{t.id}} — {{ t.subject or "بدون عنوان" }}</strong>
+                  <strong>#{{t.id}} — {{ t.subject or "No subject" }}</strong>
                   <small>{{ (t.last_msg_at or t.created_at).strftime("%Y-%m-%d %H:%M") if t.last_msg_at or t.created_at }}</small>
                 </div>
-                <div class="small text-muted">من: {{ t.user and (t.user.first_name or t.user.email) or "عميل" }}</div>
+                <div class="small text-muted">From: {{ t.user and (t.user.first_name or t.user.email) or "Customer" }}</div>
               </a>
             {% endfor %}
           </div>
         {% else %}
-          <div class="card-body text-muted">لا توجد تذاكر جديدة حاليًا.</div>
+          <div class="card-body text-muted">There are no new tickets at the moment.</div>
         {% endif %}
       </div>
     </div>
 
-    <!-- ✅ محوّلة من MOD -->
+    <!-- ✅ Forwarded from MOD -->
     <div class="col-12 col-lg-6 col-xxl-3">
       <div class="card h-100">
         <div class="card-header fw-bold d-flex justify-content-between">
-          <span>تم تحويلها من MOD</span>
+          <span>Forwarded from MOD</span>
           <span class="badge bg-info text-dark">{{ (data.from_mod or [])|length }}</span>
         </div>
         <div class="list-group list-group-flush">
@@ -44,24 +44,24 @@
               <a class="list-group-item list-group-item-action {% if data.focus_tid and data.focus_tid == t.id %}active{% endif %}"
                  href="/md/ticket/{{ t.id }}">
                 <div class="d-flex w-100 justify-content-between">
-                  <strong>#{{ t.id }} — {{ t.subject or "بدون عنوان" }}</strong>
+                  <strong>#{{ t.id }} — {{ t.subject or "No subject" }}</strong>
                   <small>{{ (t.last_msg_at or t.updated_at or t.created_at)|string }}</small>
                 </div>
-                <div class="small text-muted">وُجهت إليكم من فريق MOD</div>
+                <div class="small text-muted">Assigned to you by the MOD team</div>
               </a>
             {% endfor %}
           {% else %}
-            <div class="list-group-item text-muted">لا يوجد تحويلات من MOD حاليًا.</div>
+            <div class="list-group-item text-muted">No forwards from MOD at the moment.</div>
           {% endif %}
         </div>
       </div>
     </div>
 
-    <!-- قيد المراجعة -->
+    <!-- In review -->
     <div class="col-12 col-lg-6 col-xxl-3">
       <div class="card h-100">
         <div class="card-header fw-bold d-flex justify-content-between">
-          <span>قيد المراجعة</span>
+          <span>In Review</span>
           <span class="badge bg-warning text-dark">{{ (data.in_review or [])|length }}</span>
         </div>
         <div class="list-group list-group-flush">
@@ -69,26 +69,26 @@
             {% for t in data.in_review %}
               <a class="list-group-item list-group-item-action" href="/md/ticket/{{t.id}}">
                 <div class="d-flex w-100 justify-content-between">
-                  <strong>#{{t.id}} — {{ t.subject or "بدون عنوان" }}</strong>
+                  <strong>#{{t.id}} — {{ t.subject or "No subject" }}</strong>
                   <small>{{ (t.last_msg_at or t.updated_at).strftime("%Y-%m-%d %H:%M") if t.last_msg_at or t.updated_at }}</small>
                 </div>
                 <div class="small text-muted">
-                  معيّنة لـ: {{ t.assignee and (t.assignee.first_name or t.assignee.email) or "غير معيّنة" }}
+                  Assigned to: {{ t.assignee and (t.assignee.first_name or t.assignee.email) or "Unassigned" }}
                 </div>
               </a>
             {% endfor %}
           {% else %}
-            <div class="list-group-item text-muted">لا توجد تذاكر قيد المراجعة.</div>
+            <div class="list-group-item text-muted">There are no tickets under review.</div>
           {% endif %}
         </div>
       </div>
     </div>
 
-    <!-- منتهية -->
+    <!-- Resolved -->
     <div class="col-12 col-lg-6 col-xxl-3">
       <div class="card h-100">
         <div class="card-header fw-bold d-flex justify-content-between">
-          <span>منتهية</span>
+          <span>Resolved</span>
           <span class="badge bg-success">{{ (data.resolved or [])|length }}</span>
         </div>
         <div class="list-group list-group-flush">
@@ -96,16 +96,16 @@
             {% for t in data.resolved %}
               <a class="list-group-item list-group-item-action" href="/md/ticket/{{t.id}}">
                 <div class="d-flex w-100 justify-content-between">
-                  <strong>#{{t.id}} — {{ t.subject or "بدون عنوان" }}</strong>
+                  <strong>#{{t.id}} — {{ t.subject or "No subject" }}</strong>
                   <small>{{ (t.resolved_at or t.updated_at).strftime("%Y-%m-%d %H:%M") if t.resolved_at or t.updated_at }}</small>
                 </div>
                 <div class="small text-muted">
-                  أغلقها: {% if t.assigned_to %}{{ t.assigned_to.first_name or t.assigned_to.email }}{% else %}غير معروف{% endif %}
+                  Closed by: {% if t.assigned_to %}{{ t.assigned_to.first_name or t.assigned_to.email }}{% else %}Unknown{% endif %}
                 </div>
               </a>
             {% endfor %}
           {% else %}
-            <div class="list-group-item text-muted">لا توجد تذاكر منتهية للعرض.</div>
+            <div class="list-group-item text-muted">There are no resolved tickets to display.</div>
           {% endif %}
         </div>
       </div>

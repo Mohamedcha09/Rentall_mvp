@@ -11,22 +11,22 @@
 
 {% block content %}
 <div class="container" style="max-width:920px">
-  <h3 class="mb-3">إعداد استلام الأرباح (Stripe Connect)</h3>
+  <h3 class="mb-3">Payout Setup (Stripe Connect)</h3>
 
   <div class="cardish mb-3">
     <p class="mb-2">
-      ليتلقّى <strong>المالك</strong> الأموال إلى حسابه البنكي عبر Stripe،
-      اربط حساب <strong>Stripe Connect</strong> وأكمل التحقق (KYC).
+      For the <strong>owner</strong> to receive funds to their bank account via Stripe,
+      connect a <strong>Stripe Connect</strong> account and complete verification (KYC).
     </p>
-    <p class="mb-2">ستقوم المنصة باقتطاع <strong>8%</strong> من كل عملية كرسوم خدمة.</p>
+    <p class="mb-2">The platform will take a <strong>8%</strong> service fee from every transaction.</p>
     <div class="d-flex flex-wrap gap-2 align-items-center">
-      <a class="btn btn-primary" href="/payout/connect/start">ابدأ الربط الآن</a>
-      <button id="chkBtn" class="btn btn-outline-secondary">تحقّق من الحالة</button>
-      <button id="kycBtn" class="btn btn-warning d-none">أكمل التحقق الآن</button>
+      <a class="btn btn-primary" href="/payout/connect/start">Start connecting now</a>
+      <button id="chkBtn" class="btn btn-outline-secondary">Check status</button>
+      <button id="kycBtn" class="btn btn-warning d-none">Complete verification now</button>
     </div>
   </div>
 
-  {# ✅ عرض صورة الحالة فقط #}
+  {# ✅ Show state image only #}
   <div class="illus-box">
     <img id="stateImg" src="{{ url_for('static', path='photo/fon.png') }}" alt="Stripe Connect state">
     <div id="hint" class="illus-hint d-none"></div>
@@ -41,21 +41,21 @@
   const kycBtn = document.getElementById('kycBtn');
   const hintEl = document.getElementById('hint');
 
-  const FON = "{{ url_for('static', path='photo/fon.png') }}"; // الكل false أو تقدم ضعيف
-  const BON = "{{ url_for('static', path='photo/bon.png') }}"; // الكل true / مكتمل
-  const ZON = "{{ url_for('static', path='photo/zon.png') }}"; // واحدة فقط false (شبه مكتمل)
+  const FON = "{{ url_for('static', path='photo/fon.png') }}"; // all false or low progress
+  const BON = "{{ url_for('static', path='photo/bon.png') }}"; // all true / completed
+  const ZON = "{{ url_for('static', path='photo/zon.png') }}"; // only one false (almost done)
 
   function show(el, yes){ el?.classList.toggle('d-none', !yes); }
 
   function makeHint(missing){
     if(!missing.length) return "";
     const map = {
-      payouts_enabled: "تفعيل السحب البنكي (payouts_enabled)",
-      charges_enabled: "السماح بالتحصيل (charges_enabled)",
-      details_submitted: "رفع مستندات الهوية KYC (details_submitted)"
+      payouts_enabled: "Enable bank payouts (payouts_enabled)",
+      charges_enabled: "Allow charging (charges_enabled)",
+      details_submitted: "Upload identity documents KYC (details_submitted)"
     };
     const pretty = missing.map(k=>map[k]||k);
-    return "ينقص لإكمال التفعيل: " + pretty.join("، ");
+    return "Missing to complete activation: " + pretty.join(", ");
   }
 
   async function load(){
@@ -71,10 +71,10 @@
       const vals = [payouts, charges, details];
       const trueCount = vals.filter(Boolean).length;
 
-      // حدد الصورة حسب الشرط المطلوب:
+      // Choose image by required condition:
       // - 3 true  => BON
-      // - 2 true + 1 false => ZON + سبب النقص
-      // - غير ذلك (0 true أو 1 true) => FON
+      // - 2 true + 1 false => ZON + show missing reason
+      // - otherwise (0 or 1 true) => FON
       let src = FON;
       let missing = [];
       if (trueCount === 3){
@@ -85,7 +85,7 @@
         if (!charges) missing.push("charges_enabled");
         if (!details) missing.push("details_submitted");
       } else {
-        // حالتا 0 أو 1 ترو: نعرض FON، ويمكن أيضاً إظهار ما ينقص إن أحببت
+        // 0 or 1 true: show FON and we can also list what is missing
         missing = [];
         if (!payouts) missing.push("payouts_enabled");
         if (!charges) missing.push("charges_enabled");
@@ -94,7 +94,7 @@
 
       imgEl.src = src;
 
-      // نص السبب يظهر فقط عند الحالة الوسطية (واحدة false)
+      // Show the reason text only for the middle state (one false)
       if (trueCount === 2){
         hintEl.textContent = makeHint(missing);
         show(hintEl, true);
@@ -103,13 +103,13 @@
         show(hintEl, false);
       }
 
-      // نظهر زر KYC إذا لم تكتمل كل القيم
+      // Show KYC button if not all values are completed
       show(kycBtn, trueCount !== 3);
     }catch(e){
       console.error(e);
-      // في حالة الخطأ نظهر حالة غير مكتمل
+      // On error show incomplete state
       imgEl.src = FON;
-      hintEl.textContent = "تعذّر جلب الحالة الآن. حاول مجددًا أو أكمل التحقق.";
+      hintEl.textContent = "Failed to fetch status now. Try again or complete verification.";
       show(hintEl, true);
       show(kycBtn, true);
     }
@@ -117,7 +117,7 @@
 
   document.getElementById('chkBtn')?.addEventListener('click', e => { e.preventDefault(); load(); });
 
-  // زر "أكمل التحقق الآن" → نطلب رابط Onboarding من الباك-إند
+  // "Complete verification now" → request onboarding link from backend
   kycBtn?.addEventListener('click', async (e)=>{
     e.preventDefault();
     try{
@@ -127,7 +127,7 @@
     }catch(err){ console.error(err); }
   });
 
-  // تحميل تلقائي عند فتح الصفحة
+  // Auto load on page open
   load();
 })();
 </script>

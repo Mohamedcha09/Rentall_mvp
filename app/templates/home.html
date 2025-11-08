@@ -4,7 +4,7 @@
 {% block head %}
 <style>
 /* =========================================
-   أساسيات السلايدر والقسم
+   Slider & section basics
    ========================================= */
 .hrow{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 6px 12px;-webkit-overflow-scrolling:touch}
 .hrow::-webkit-scrollbar{height:8px}
@@ -13,7 +13,7 @@
 .hcard{min-width:206px;max-width:206px}
 @media (max-width:1199.98px){.hcard{min-width:220px;max-width:220px}}
 @media (max-width:991.98px){.hcard{min-width:240px;max-width:240px}}
-@media (max-width:576px){.hcard{min-width:42vw;max-width:42vw}} /* هاتف ~2.3 كرت */
+@media (max-width:576px){.hcard{min-width:42vw;max-width:42vw}} /* Phone ~2.3 cards */
 
 .section-head{margin:12px 2px 8px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .section-title{font-weight:800;font-size:1.05rem}
@@ -21,47 +21,47 @@
 .arrow-btn:hover{background:color-mix(in oklab,var(--text) 8%,transparent)}
 .section-head .row-nav{display:flex;gap:8px;align-items:center}
 
-/* ❌ أخفِ أزرار السهم على الهاتف فقط */
+/* ❌ Hide arrow buttons on phones only */
 @media (max-width:576px){
   .section-head .row-nav,
   .section-head .arrow-btn{display:none !important}
 }
 
 /* =========================================
-   البطاقة (Airbnb-like) — شكل موحّد
+   Card (Airbnb-like) — unified look
    ========================================= */
 .spot{position:relative;border:none;background:transparent;box-shadow:none;border-radius:14px;overflow:visible}
 .spot-media{position:relative;aspect-ratio:1/1 !important;border-radius:14px;overflow:hidden;background:transparent}
 .spot-media img{display:block;width:100%;height:100% !important;object-fit:cover !important;object-position:center;border-radius:14px;aspect-ratio:auto !important}
 .spot-overlay{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.12))}
 
-/* عناصر فوق الصورة */
+/* Elements on top of the image */
 .category-chip{position:absolute;top:10px;left:10px;padding:5px 10px;font-size:.75rem;font-weight:700;color:#111;background:rgba(255,255,255,.96);border:1px solid rgba(0,0,0,.06);border-radius:999px;box-shadow:0 3px 8px rgba(0,0,0,.08);backdrop-filter:blur(8px);z-index:2}
 .fav-btn{position:absolute;top:10px;right:10px;width:32px;height:32px;border:1px solid rgba(0,0,0,.1);background:#fff;border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,.1);cursor:pointer;z-index:3}
 .fav-btn .bi{font-size:15px;color:#111}
 .fav-btn.is-fav{background:#111;border-color:#111}
 .fav-btn.is-fav .bi{color:#fff}
 
-/* ===== السعر — كـ "سطر" تحت الصورة، لا يغطي أي عنصر =====
-   ملاحظة: العنصر موجود داخل .spot-media لذلك نُنزله خارجها بصريًا */
+/* ===== Price — as a "line" below the image, does not cover any element =====
+   Note: element is inside .spot-media so we visually push it outside */
 .price-badge{
   position:absolute;
   left:12px;
-  top:100%;                 /* أسفل الصورة مباشرة */
-  transform:translateY(8px);/* مسافة صغيرة */
-  background:transparent;   /* بدون خلفية */
+  top:100%;                 /* right under the image */
+  transform:translateY(8px);/* small offset */
+  background:transparent;   /* no background */
   color:#111;
   font-weight:800;
   font-size:.95rem;
   padding:0;
   border:none;
   border-radius:0;
-  z-index:1;                /* أقل من القلب/التصنيف */
-  pointer-events:none;      /* لا يتداخل مع الضغط على البطاقة */
+  z-index:1;                /* lower than heart/category */
+  pointer-events:none;      /* does not block card clicks */
 }
-.spot-body{padding:28px 4px 0;background:transparent;text-align:start} /* مسافة للسعر أسفل الصورة */
+.spot-body{padding:28px 4px 0;background:transparent;text-align:start} /* spacing for price below image */
 
-/* نصوص تحت الصورة */
+/* Text under the image */
 .spot-title{font-weight:800;color:#111;font-size:clamp(.9rem,.86rem + .2vw,.98rem);margin-bottom:4px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 .owner-avatar--placeholder{display:none}
 .city-chip{background:none;border:none;padding:0;color:#6b7280;font-size:.86rem}
@@ -69,7 +69,7 @@
 .spot-footer small{color:#111;font-weight:800;font-size:.88rem}
 
 /* =========================================
-   شبكة "كل العناصر" — 2–3–4–5–6 أعمدة
+   “All items” grid — 2–3–4–5–6 columns
    ========================================= */
 .mixed-grid{display:grid;gap:14px;padding-inline:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
 @media (min-width:576px){ .mixed-grid{grid-template-columns:repeat(3,minmax(0,1fr))} }
@@ -77,14 +77,14 @@
 @media (min-width:992px){ .mixed-grid{grid-template-columns:repeat(5,minmax(0,1fr))} }
 @media (min-width:1200px){ .mixed-grid{grid-template-columns:repeat(6,minmax(0,1fr))} }
 
-/* نفس شكل السلايدر داخل "كل العناصر" */
+/* Same slider look inside “All items” */
 .home-shelves .mixed-grid>.spot{border:none;background:transparent;box-shadow:none;border-radius:14px}
 .home-shelves .mixed-grid .spot-media{aspect-ratio:1/1 !important;border-radius:14px;overflow:hidden}
 .home-shelves .mixed-grid .spot-media img{width:100%;height:100% !important;object-fit:cover !important;border-radius:14px;aspect-ratio:auto !important}
 .home-shelves .mixed-grid .category-chip{top:8px;left:8px;padding:4px 9px;font-size:.74rem}
 .home-shelves .mixed-grid .fav-btn{top:8px;right:8px;width:28px;height:28px}
 .home-shelves .mixed-grid .fav-btn .bi{font-size:14px}
-/* السعر أسفل الصورة لكل البطاقات كذلك */
+/* Price under the image for all cards as well */
 .home-shelves .mixed-grid .price-badge{
   left:10px; top:100%; transform:translateY(8px);
   background:transparent; color:#111; font-weight:800; font-size:.92rem; padding:0; border:none; border-radius:0; z-index:1; pointer-events:none;
@@ -92,7 +92,7 @@
 @supports(padding:max(0px)){ .home-shelves{padding-bottom:max(84px, env(safe-area-inset-bottom,0))} }
 
 /* =========================================
-   HERO (بانر علوي) — بدون تغيير
+   HERO (top banner) — unchanged
    ========================================= */
 .edge-bleed{margin-inline:auto;width:100%;display:flex;justify-content:center}
 .hero-carousel{position:relative;max-width:420px;margin:8px auto 14px;border-radius:18px;overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,.08)}
@@ -104,7 +104,7 @@
 .hero-carousel .carousel-indicators,.hero-carousel .carousel-caption{display:none}
 .hero-carousel .carousel-control-prev,.hero-carousel .carousel-control-next{width:10%}
 
-/* Desktop card-wrap تحت الهيرو */
+/* Desktop card-wrap under hero */
 @media (min-width:992px){
   .edge-bleed{margin-inline:auto;width:auto}
   .hero-carousel{max-width:950px;margin:0 auto 14px}
@@ -113,7 +113,7 @@
 }
 
 /* =========================================
-   Top Strip (3 سلايدر عمودية)
+   Top Strip (3 vertical sliders)
    ========================================= */
 .top-strip-wrap{margin:12px 0 6px}
 .top-strip-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
@@ -131,7 +131,7 @@
 }
 
 /* =========================================
-   شريط الموقع (Locbar)
+   Location bar (Locbar)
    ========================================= */
 :root{
   --sevor-brand:#6C63FF;
@@ -172,41 +172,41 @@
 }
 
 /* =========================================
-   تحسينات صغيرة للهاتف
+   Small mobile tweaks
    ========================================= */
 @media (max-width:576px){
   .hero-carousel{max-width:92%}
   .category-chip{top:8px;left:8px;padding:4px 9px;font-size:.74rem}
   .fav-btn{top:8px;right:8px;width:28px;height:28px}
   .fav-btn .bi{font-size:14px}
-  .spot-body{padding:26px 2px 0}          /* مساحة للسعر على الهاتف أيضًا */
+  .spot-body{padding:26px 2px 0}          /* space for price on mobile too */
   .spot-title{font-size:.9rem}
   .spot-footer small{font-size:.86rem}
 }
 
 /* =========================================
-   تثبيت المربّع على كل الشاشات (تأكيد)
+   Force square card on all screens (confirmation)
    ========================================= */
 .spot-media,
 .home-shelves .mixed-grid .spot-media{aspect-ratio:1/1 !important}
 .spot-media img,
 .home-shelves .mixed-grid .spot-media img{height:100% !important;object-fit:cover !important}
 
-/* لو كان هناك أي قاعدة خارجية تغيّر النسبة على دِسك توب */
+/* If any external rule changes ratio on desktop */
 @media (min-width:577px){
   .spot-media{aspect-ratio:1/1 !important}
   .spot-media img{height:100% !important}
 }
 
-/* =====[ ADD-ON | لا تعدّل ما فوق ]================================== */
-/* إبقاء الصور مربعة (تأكيد) */
+/* =====[ ADD-ON | do not edit above ]================================== */
+/* Keep images square (confirmation) */
 .spot-media{aspect-ratio:1/1!important}
 .spot-media img{height:100%!important;object-fit:cover!important}
 
-/* لا نريد شارة السعر فوق الصورة إطلاقًا */
+/* We do not want the price badge on top of the image at all */
 .price-badge{display:none!important}
 
-/* شكل البيانات تحت العنوان: سعر ← مدينة ← تقييم */
+/* Data layout under title: Price → City → Rating */
 .spot-meta{
   display:flex;
   flex-direction:column;
@@ -219,14 +219,14 @@
 .spot-rating{font-weight:800;color:#111;font-size:.9rem}
 .spot-rating::before{content:"★ ";font-weight:900}
 
-/* تقليل التباعد لأننا لا نستخدم price-badge تحت الصورة */
+/* Reduce spacing since we don’t use the below-image price-badge */
 .spot-body{padding:10px 4px 0}
 
-/* إخفاء السطور القديمة (لا نحذف HTML) حتى لا تتكرر المعلومات */
+/* Hide the old lines (do not delete HTML) to avoid duplicate info */
 .owner-line{display:none!important}
 .spot-footer{display:none!important}
 
-/* ===== Locbar Compact (إضافات فقط) ===== */
+/* ===== Locbar Compact (additions only) ===== */
 .home-locbar.locbar--compact{
   padding:8px 10px;
   border-radius:12px;
@@ -235,7 +235,7 @@
   background:#fff;
 }
 
-/* نحط العناصر بسطر واحد وبحجم صغير */
+/* Put elements in one row and smaller size */
 .locbar--compact{
   display:grid;
   grid-template-columns: 1fr auto auto auto;
@@ -251,7 +251,7 @@
   justify-content:start;
 }
 
-/* حقل المدينة صغير وبسيط */
+/* Small, simple city field */
 .locbar--compact #homeCityInput{
   height:38px;
   border-radius:10px;
@@ -263,7 +263,7 @@
   box-shadow:none;
 }
 
-/* زر GPS و”تطبيق“ صغيرين */
+/* GPS and “Apply” buttons smaller */
 .locbar--compact .btn{
   height:38px;
   padding:0 10px;
@@ -283,7 +283,7 @@
   box-shadow:none;
 }
 
-/* زر الإلغاء كرابط صغير */
+/* Cancel button as a small link */
 .locbar--compact #homeClearGPS{
   padding:0 6px;
   margin:0;
@@ -293,7 +293,7 @@
   color:var(--sevor-danger);
 }
 
-/* قائمة الاقتراحات أخفّ وأصغر */
+/* Lighter, smaller suggestions list */
 .locbar--compact #homeCitySugg{
   border-radius:10px;
   box-shadow:0 6px 18px rgba(2,6,23,.08);
@@ -302,12 +302,12 @@
 }
 .locbar--compact #homeCitySugg>div{padding:.5rem .6rem}
 @media (max-width:576px){
-  /* على الموبايل صفّين: (المدينة + GPS) فوق، (تطبيق + إلغاء) تحت */
+  /* On mobile, two rows: (city + GPS) above, (Apply + Cancel) below */
   .locbar--compact{
     grid-template-columns: 1fr auto;
     row-gap:6px;
   }
-  .locbar--compact .col-12.col-md-2.d-grid{
+  .locbar--compact .col-6.col-md-2.d-grid{
     grid-column: 1 / -1;
     justify-content:space-between;
   }
@@ -315,7 +315,7 @@
   .locbar--compact #homeCityInput{height:36px; font-size:.9rem}
 }
 
-/* ===== Locbar: سطر واحد صغير وبسيط (Overrides) ===== */
+/* ===== Locbar: single simple row (Overrides) ===== */
 .home-locbar.locbar--compact{
   padding:6px 8px;
   border-radius:12px;
@@ -324,20 +324,20 @@
   gap:8px;
 }
 
-/* شبكة بعرض واحد: حقل المدينة يتمدد + زر GPS + تطبيق + إلغاء */
+/* Single-row grid: city field grows + GPS + Apply + Cancel */
 .locbar--compact{
   display:grid;
-  grid-template-columns: 1fr auto auto auto; /* سطر واحد دائمًا */
+  grid-template-columns: 1fr auto auto auto; /* always one row */
   align-items:center;
   column-gap:8px;
 }
 
-/* إزالة هوامش الأعمدة الإفتراضية من Bootstrap داخل الشريط */
+/* Remove default Bootstrap column spacing inside the bar */
 .locbar--compact .col-12.col-md-5,
 .locbar--compact .col-6.col-md-2,
 .locbar--compact .col-12.col-md-2{padding:0;margin:0}
 
-/* مجموعة أزرار GPS/إلغاء تكون أفقية دائمًا */
+/* GPS/Cancel group always horizontal */
 .locbar--compact .col-6.col-md-2.d-grid{
   display:grid !important;
   grid-auto-flow:column;
@@ -345,7 +345,7 @@
   justify-content:start;
 }
 
-/* مدخل المدينة صغير ونظيف */
+/* Smaller, clean city input */
 .locbar--compact #homeCityInput{
   height:36px;
   font-size:.9rem;
@@ -356,7 +356,7 @@
   box-shadow:none;
 }
 
-/* كل الأزرار بنفس الارتفاع الصغير */
+/* All buttons same small height */
 .locbar--compact .btn{
   height:36px;
   padding:0 12px;
@@ -366,7 +366,7 @@
   white-space:nowrap;
 }
 
-/* زر GPS بسيط (أيقونة فقط مقترح) */
+/* Simple GPS button (icon only suggested) */
 .locbar--compact #homeUseGPS{
   background:#fff;
   border:1px solid var(--border);
@@ -375,13 +375,13 @@
 }
 .locbar--compact #homeUseGPS::before{content:"📍";margin-inline-end:0}
 
-/* زر تطبيق بسيط دون ظل */
+/* Apply button without shadow */
 .locbar--compact .btn.btn-primary{
   background:var(--sevor-brand);
   box-shadow:none;
 }
 
-/* إلغاء كرابط صغير بمحاذاة السطر */
+/* Cancel as a small inline link */
 .locbar--compact #homeClearGPS{
   padding:0 6px;
   margin:0;
@@ -392,7 +392,7 @@
   border:none;
 }
 
-/* قائمة الاقتراحات أخف */
+/* Lighter suggestions */
 .locbar--compact #homeCitySugg{
   border-radius:10px;
   box-shadow:0 6px 18px rgba(2,6,23,.08);
@@ -401,7 +401,7 @@
 }
 .locbar--compact #homeCitySugg>div{padding:.5rem .6rem}
 
-/* أحجام أصغر قليلًا على الشاشات الصغيرة جدًا */
+/* Slightly smaller sizes on very small screens */
 @media (max-width:420px){
   .locbar--compact #homeCityInput{height:32px;font-size:.86rem}
   .locbar--compact .btn{height:32px;font-size:.86rem;padding:0 8px}
@@ -417,7 +417,7 @@
   gap:6px !important;
 }
 
-/* شبكة ثابتة: حقل يتمدد + GPS + تطبيق + إلغاء (سطر واحد) */
+/* Fixed grid: growing field + GPS + Apply + Cancel (one line) */
 @media (max-width:576px){
   .locbar--compact{
     display:grid !important;
@@ -426,14 +426,14 @@
     column-gap:6px !important;
     row-gap:0 !important;
   }
-  /* أحجام صغيرة موحّدة */
+  /* Uniform small sizes */
   .locbar--compact #homeCityInput,
   .locbar--compact .btn{
     height:34px !important;
     font-size:.86rem !important;
     border-radius:10px !important;
   }
-  /* مدخل المدينة يَتمدّد ولا يُجبِر على سطر جديد */
+  /* City input grows and doesn’t force a new line */
   .locbar--compact #homeCityInput{
     min-width:0 !important;
     padding-inline:10px !important;
@@ -441,7 +441,7 @@
     border:1px solid var(--border) !important;
     box-shadow:none !important;
   }
-  /* أزرار مصغّرة وبسيطة */
+  /* Compact buttons */
   .locbar--compact #homeUseGPS{
     padding:0 10px !important;
     background:#fff !important;
@@ -463,7 +463,7 @@
     border:none !important;
     background:transparent !important;
   }
-  /* ألغِ أي قواعد قد تجعل الشبكة صفّين */
+  /* Cancel any rules that might make the grid wrap to two rows */
   .locbar--compact .col-12.col-md-5,
   .locbar--compact .col-6.col-md-2,
   .locbar--compact .col-12.col-md-2{padding:0 !important; margin:0 !important}
@@ -478,7 +478,7 @@
 /* ======== MOBILE ONE-LINE LOCBAR (FINAL HARD OVERRIDE) ======== */
 @media (max-width:576px){
 
-  /* حوّل صفّ البوتستراب إلى Flex بدون لفّ */
+  /* Turn the Bootstrap row into a no-wrap Flex row */
   .home-locbar.locbar--compact.row{
     display:flex !important;
     flex-wrap:nowrap !important;
@@ -492,7 +492,7 @@
     --bs-gutter-y:0 !important;
   }
 
-  /* ألغِ هوامش/أبعاد الأعمدة الافتراضية كي لا تنزل لسطر جديد */
+  /* Remove default column margins/sizes so they don’t wrap */
   .home-locbar.locbar--compact.row > [class*="col-"]{
     width:auto !important;
     flex:0 0 auto !important;
@@ -501,26 +501,26 @@
     min-width:0 !important;
   }
 
-  /* حقل المدينة يتمدد ويأخذ المساحة */
+  /* City field grows and takes available space */
   .home-locbar.locbar--compact .col-12.col-md-5{
     flex:1 1 auto !important;
     min-width:0 !important;
   }
 
-  /* مجموعة GPS تبقى أفقية دائمًا */
+  /* GPS group always horizontal */
   .home-locbar.locbar--compact .col-6.col-md-2.d-grid{
     display:flex !important;
     align-items:center !important;
     gap:8px !important;
   }
 
-  /* حاوية زر البحث تبقى بحجمها ولا تتمدّد */
+  /* Search button container keeps its size and doesn’t grow */
   .home-locbar.locbar--compact .col-12.col-md-2.d-grid{
     display:flex !important;
     align-items:center !important;
   }
 
-  /* مقاسات موحّدة وصغيرة */
+  /* Unified compact sizes */
   .home-locbar.locbar--compact .btn{
     height:34px !important;
     border-radius:10px !important;
@@ -538,7 +538,7 @@
     box-shadow:none !important;
   }
 
-  /* زر GPS = أيقونة فقط (لمنع أي نص) */
+  /* GPS button = icon only (no text) */
   #homeUseGPS{
     font-size:0 !important;
     background:#fff !important;
@@ -554,13 +554,13 @@
     transform:translateY(1px);
   }
 
-  /* زر البحث بسيط */
+  /* Simple search button */
   .home-locbar.locbar--compact .btn.btn-primary{
     background:var(--sevor-brand) !important;
     box-shadow:none !important;
   }
 
-  /* زر الإلغاء كرابط صغير على نفس السطر */
+  /* Cancel as a small inline link on same row */
   #homeClearGPS{
     padding:0 6px !important;
     height:auto !important;
@@ -571,7 +571,7 @@
     background:transparent !important;
   }
 
-  /* أخفِ أي عناصر زائدة (مثل نصف القطر) إن ظهرت بالخطأ */
+  /* Hide any extra elements (like radius) if they accidentally appear */
   #homeRadius,
   .home-locbar:has(#homeRadius) .col-6.col-md-3{
     display:none !important;
@@ -587,10 +587,10 @@
 
 {% block content %}
 
-<!-- HERO (صور فقط) -->
+<!-- HERO (images only) -->
 <div class="edge-bleed">
   <div id="heroCarousel" class="carousel slide hero-carousel mb-0"
-       data-bs-ride="carousel" data-bs-interval="5000" data-bs-touch="true" aria-label="عروض رئيسية">
+       data-bs-ride="carousel" data-bs-interval="5000" data-bs-touch="true" aria-label="Main slides">
 
     <div class="carousel-inner">
       {% if banners and banners|length > 0 %}
@@ -602,49 +602,49 @@
       {% endif %}
     </div>
 
-    <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" aria-label="السابق">
+    <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" aria-label="Previous">
       <span class="carousel-control-prev-icon" aria-hidden="true"></span>
     </button>
-    <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next" aria-label="التالي">
+    <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next" aria-label="Next">
       <span class="carousel-control-next-icon" aria-hidden="true"></span>
     </button>
   </div>
 </div>
 <!-- /HERO -->
 
-<!-- ✅ شريط تحكّم للموقع (مدينة / GPS) -->
+<!-- ✅ Location controls bar (City / GPS) -->
 <section class="container-xl my-3">
 <form class="row g-2 align-items-center home-locbar locbar--compact" action="/" method="get" role="search" id="homeLocForm">
     <div class="col-12 col-md-5">
-      <input type="text" class="form-control" id="homeCityInput" name="city" placeholder="اكتب المدينة / المنطقة …" autocomplete="off">
-      <!-- اقتراحات المدن -->
+      <input type="text" class="form-control" id="homeCityInput" name="city" placeholder="Type city / area …" autocomplete="off">
+      <!-- City suggestions -->
       <div id="homeCitySugg" class="border rounded mt-1 bg-white shadow-sm" style="display:none; position:absolute; z-index:1000; max-height:260px; overflow:auto"></div>
     </div>
-    <!-- ❌ تمت إزالة خانة km 25 بالكامل -->
+    <!-- ❌ The 25 km field removed entirely -->
     <div class="col-6 col-md-2 d-grid">
-<button type="button" id="homeUseGPS" class="btn btn-outline-secondary" aria-label="استخدم موقعي" title="استخدم موقعي"></button>
-<button type="button" id="homeClearGPS" class="btn btn-link btn-sm">إلغاء</button>
+<button type="button" id="homeUseGPS" class="btn btn-outline-secondary" aria-label="Use my location" title="Use my location"></button>
+<button type="button" id="homeClearGPS" class="btn btn-link btn-sm">Clear</button>
 
     </div>
     <div class="col-12 col-md-2 d-grid">
-<button class="btn btn-primary" type="submit">بحث</button>
+<button class="btn btn-primary" type="submit">Search</button>
     </div>
 
-    <!-- حقول خفية للإحداثيات -->
+    <!-- Hidden fields for coordinates -->
     <input type="hidden" id="homeLat" name="lat">
     <input type="hidden" id="homeLng" name="lng">
   </form>
 </section>
 <!-- /loc bar -->
 
-<!-- رفوف المنتجات البيضاء تحت البانر -->
+<!-- White product shelves under the banner -->
 <div class="home-shelves container-xl">
 
-{# ==== سلايدر “بالقرب منك / شائع” ==== #}
+{# ==== “Near you / Popular” slider ==== #}
 {% set nearby = (nearby_items if nearby_items is defined else popular_items)|default([]) %}
 {% if nearby %}
   <div class="section-head">
-    <div class="section-title">شائع بالقرب منك</div>
+    <div class="section-title">Popular Near You</div>
     <div class="d-flex gap-2">
       <button class="arrow-btn" data-snap-prev="#row-near"><i class="bi bi-chevron-right"></i></button>
       <button class="arrow-btn" data-snap-next="#row-near"><i class="bi bi-chevron-left"></i></button>
@@ -659,23 +659,23 @@
           <div class="spot-overlay"></div>
 
           {% if it.price_per_day is defined %}
-            <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
+            <span class="price-badge">{{ it.price_per_day|default(0) }}$ /day</span>
           {% endif %}
           {% if it.category is defined %}
             <span class="category-chip">{{ category_label(it.category) }}</span>
           {% endif %}
 
-          <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="إضافة إلى المفضلة">
+          <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="Add to favorites">
             <i class="bi bi-heart"></i>
           </button>
         </div>
 
         <div class="card-body spot-body">
           <div class="spot-title">{{ it.title }}</div>
-            <!-- NEW: سعر → مدينة → تقييم -->
+            <!-- NEW: Price → City → Rating -->
   <div class="spot-meta">
     {% if it.price_per_day is defined %}
-      <div class="spot-price"><strong>{{ it.price_per_day|default(0) }}$</strong> <span>/يوم</span></div>
+      <div class="spot-price"><strong>{{ it.price_per_day|default(0) }}$</strong> <span>/day</span></div>
     {% endif %}
     <div class="spot-city">{{ it.city or '—' }}</div>
     <div class="spot-rating">{{ it.rating|default(4.8) }}</div>
@@ -685,7 +685,7 @@
             <span class="city-chip">{{ it.city or '—' }}</span>
           </div>
           <div class="spot-footer">
-            <small class="text-muted">تقييم {{ it.rating|default(4.8) }}</small>
+            <small class="text-muted">Rating {{ it.rating|default(4.8) }}</small>
             <i class="bi bi-arrow-left-short"></i>
           </div>
         </div>
@@ -694,23 +694,23 @@
   </div>
 {% endif %}
 
-{# ==== سلايدر حسب التصنيف ==== #}
+{# ==== Slider by category ==== #}
 {% set cats_map = (items_by_category if items_by_category is defined else {}) %}
 {% for code, lst in cats_map.items() %}
   {% if lst and lst|length > 0 %}
     <div class="section-head mt-3">
       <div class="section-title">{{ category_label(code) }}</div>
-      <a class="text-muted small" href="/items?category={{ code }}">عرض الكل</a>
-      <!-- (إضافة جديدة) أزرار تنقل السلايدر لهذا التصنيف -->
+      <a class="text-muted small" href="/items?category={{ code }}">View all</a>
+      <!-- (New) Slider nav buttons for this category -->
       <div class="row-nav">
-        <button class="arrow-btn" data-snap-prev="#row-{{ code }}" aria-label="السابق">
+        <button class="arrow-btn" data-snap-prev="#row-{{ code }}" aria-label="Previous">
           <i class="bi bi-chevron-right"></i>
         </button>
-        <button class="arrow-btn" data-snap-next="#row-{{ code }}" aria-label="التالي">
+        <button class="arrow-btn" data-snap-next="#row-{{ code }}" aria-label="Next">
           <i class="bi bi-chevron-left"></i>
         </button>
       </div>
-      <!-- /إضافة -->
+      <!-- /new -->
     </div>
 
     <div id="row-{{ code }}" class="hrow">
@@ -721,21 +721,21 @@
             <div class="spot-overlay"></div>
 
             {% if it.price_per_day is defined %}
-              <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
+              <span class="price-badge">{{ it.price_per_day|default(0) }}$ /day</span>
             {% endif %}
             <span class="category-chip">{{ category_label(it.category) }}</span>
 
-            <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="إضافة إلى المفضلة">
+            <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="Add to favorites">
               <i class="bi bi-heart"></i>
             </button>
           </div>
 
           <div class="card-body spot-body">
             <div class="spot-title">{{ it.title }}</div>
-              <!-- NEW: سعر → مدينة → تقييم -->
+              <!-- NEW: Price → City → Rating -->
   <div class="spot-meta">
     {% if it.price_per_day is defined %}
-      <div class="spot-price"><strong>{{ it.price_per_day|default(0) }}$</strong> <span>/يوم</span></div>
+      <div class="spot-price"><strong>{{ it.price_per_day|default(0) }}$</strong> <span>/day</span></div>
     {% endif %}
     <div class="spot-city">{{ it.city or '—' }}</div>
     <div class="spot-rating">{{ it.rating|default(4.8) }}</div>
@@ -745,7 +745,7 @@
               <span class="city-chip">{{ it.city or '—' }}</span>
             </div>
             <div class="spot-footer">
-              <small class="text-muted">تقييم {{ it.rating|default(4.8) }}</small>
+              <small class="text-muted">Rating {{ it.rating|default(4.8) }}</small>
               <i class="bi bi-arrow-left-short"></i>
             </div>
           </div>
@@ -756,7 +756,7 @@
 {% endfor %}
 
 {# ============================================================
-   ░ Top Strip (3 carousels) — يوضع هنا فوق “كل العناصر” ░
+   ░ Top Strip (3 carousels) — placed here above “All items” ░
    ============================================================ #}
 {% set cols = top_strip_cols|default([[],[],[]]) %}
 {% set total = (cols[0]|length) + (cols[1]|length) + (cols[2]|length) %}
@@ -765,7 +765,7 @@
 <div class="top-strip-wrap">
   <div class="top-strip-grid">
 
-    {# === العمود 1 (5 ثواني) === #}
+    {# === Column 1 (5 seconds) === #}
     <div class="top-strip-col">
       <div id="topStrip1" class="carousel slide top-strip" data-bs-ride="carousel" data-bs-interval="5000" data-bs-touch="true" aria-label="Top strip 1">
         <div class="carousel-inner">
@@ -775,16 +775,16 @@
             </div>
           {% endfor %}
         </div>
-        <button class="carousel-control-prev" type="button" data-bs-target="#topStrip1" data-bs-slide="prev" aria-label="السابق">
+        <button class="carousel-control-prev" type="button" data-bs-target="#topStrip1" data-bs-slide="prev" aria-label="Previous">
           <span class="carousel-control-prev-icon" aria-hidden="true"></span>
         </button>
-        <button class="carousel-control-next" type="button" data-bs-target="#topStrip1" data-bs-slide="next" aria-label="التالي">
+        <button class="carousel-control-next" type="button" data-bs-target="#topStrip1" data-bs-slide="next" aria-label="Next">
           <span class="carousel-control-next-icon" aria-hidden="true"></span>
         </button>
       </div>
     </div>
 
-    {# === العمود 2 (8 ثواني) === #}
+    {# === Column 2 (8 seconds) === #}
     <div class="top-strip-col">
       <div id="topStrip2" class="carousel slide top-strip" data-bs-ride="carousel" data-bs-interval="8000" data-bs-touch="true" aria-label="Top strip 2">
         <div class="carousel-inner">
@@ -794,16 +794,16 @@
             </div>
           {% endfor %}
         </div>
-        <button class="carousel-control-prev" type="button" data-bs-target="#topStrip2" data-bs-slide="prev" aria-label="السابق">
+        <button class="carousel-control-prev" type="button" data-bs-target="#topStrip2" data-bs-slide="prev" aria-label="Previous">
           <span class="carousel-control-prev-icon" aria-hidden="true"></span>
         </button>
-        <button class="carousel-control-next" type="button" data-bs-target="#topStrip2" data-bs-slide="next" aria-label="التالي">
+        <button class="carousel-control-next" type="button" data-bs-target="#topStrip2" data-bs-slide="next" aria-label="Next">
           <span class="carousel-control-next-icon" aria-hidden="true"></span>
         </button>
       </div>
     </div>
 
-    {# === العمود 3 (10 ثواني) === #}
+    {# === Column 3 (10 seconds) === #}
     <div class="top-strip-col">
       <div id="topStrip3" class="carousel slide top-strip" data-bs-ride="carousel" data-bs-interval="10000" data-bs-touch="true" aria-label="Top strip 3">
         <div class="carousel-inner">
@@ -813,10 +813,10 @@
             </div>
           {% endfor %}
         </div>
-        <button class="carousel-control-prev" type="button" data-bs-target="#topStrip3" data-bs-slide="prev" aria-label="السابق">
+        <button class="carousel-control-prev" type="button" data-bs-target="#topStrip3" data-bs-slide="prev" aria-label="Previous">
           <span class="carousel-control-prev-icon" aria-hidden="true"></span>
         </button>
-        <button class="carousel-control-next" type="button" data-bs-target="#topStrip3" data-bs-slide="next" aria-label="التالي">
+        <button class="carousel-control-next" type="button" data-bs-target="#topStrip3" data-bs-slide="next" aria-label="Next">
           <span class="carousel-control-next-icon" aria-hidden="true"></span>
         </button>
       </div>
@@ -827,13 +827,13 @@
 {% endif %}
 {# ===== /Top Strip ===== #}
 
-{# ==== شبكة “كل العناصر” ==== #}
+{# ==== “All items” grid ==== #}
 {% set all_items_list =
       (all_items if all_items is defined else
        mixed_items if mixed_items is defined else
        items if items is defined else []) %}
 <div class="section-head mt-3">
-  <div class="section-title">كل العناصر</div>
+  <div class="section-title">All Items</div>
 </div>
 
 {% if all_items_list and all_items_list|length > 0 %}
@@ -848,17 +848,17 @@
             <span class="category-chip">{{ category_label(it.category) }}</span>
           {% endif %}
 
-          <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="إضافة إلى المفضلة">
+          <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="Add to favorites">
             <i class="bi bi-heart"></i>
           </button>
         </div>
 
         <div class="card-body spot-body">
           <div class="spot-title">{{ it.title }}</div>
-            <!-- NEW: سعر → مدينة → تقييم -->
+            <!-- NEW: Price → City → Rating -->
   <div class="spot-meta">
     {% if it.price_per_day is defined %}
-      <div class="spot-price"><strong>{{ it.price_per_day|default(0) }}$</strong> <span>/يوم</span></div>
+      <div class="spot-price"><strong>{{ it.price_per_day|default(0) }}$</strong> <span>/day</span></div>
     {% endif %}
     <div class="spot-city">{{ it.city or '—' }}</div>
     <div class="spot-rating">{{ it.rating|default(4.8) }}</div>
@@ -869,7 +869,7 @@
           </div>
           <div class="spot-footer">
             {% if it.price_per_day is defined %}
-              <small class="text-muted">يوم/ {{ it.price_per_day|default(0) }}$</small>
+              <small class="text-muted">per day / {{ it.price_per_day|default(0) }}$</small>
             {% endif %}
             <i class="bi bi-arrow-left-short"></i>
           </div>
@@ -878,7 +878,7 @@
     {% endfor %}
   </div>
 {% else %}
-  <div class="alert alert-secondary glass mt-2">لا توجد عناصر حتى الآن.</div>
+  <div class="alert alert-secondary glass mt-2">No items yet.</div>
 {% endif %}
 
 </div> <!-- /.home-shelves -->
@@ -892,7 +892,7 @@
 </script>
 
 <script>
-  /* ===== أزرار التمرير ===== */
+  /* ===== Scroll buttons ===== */
   function snap(el, dir=1){
     const node = document.querySelector(el);
     if(!node) return;
@@ -906,7 +906,7 @@
     b.addEventListener('click', ()=> snap(b.dataset.snapNext, +1));
   });
 
-  /* ===== بيانات المفضلات ===== */
+  /* ===== Favorites data ===== */
   const IS_AUTH = (document.querySelector('meta[name="is-auth"]')?.content === '1');
   let FAVORITES_IDS = [];
   try{
@@ -952,13 +952,13 @@
       if(!add && i >= 0) FAVORITES_IDS.splice(i,1);
     }catch(err){
       console.error(err);
-      alert('تعذّر حفظ المفضلة مؤقتًا.');
+      alert('Could not save favorite for now.');
     }
   });
 
   markExistingFavorites();
 
-  /* إيقاف/تشغيل الـ HERO عند المرور */
+  /* Pause/Resume HERO on hover */
   document.addEventListener('DOMContentLoaded', function () {
     const el = document.getElementById('heroCarousel');
     if (!el) return;
@@ -973,14 +973,14 @@
   });
 
   /* ============================================
-     ✅ شريط الموقع (مدينة/GPS/نصف قطر) — البحث فقط
+     ✅ Location bar (City/GPS/Radius) — search only
      ============================================ */
   (function homeLocBar(){
     const form   = document.getElementById('homeLocForm');
     const cityEl = document.getElementById('homeCityInput');
     const latEl  = document.getElementById('homeLat');
     const lngEl  = document.getElementById('homeLng');
-    const rEl    = document.getElementById('homeRadius'); // قد لا يوجد — لا مشكلة
+    const rEl    = document.getElementById('homeRadius'); // may not exist — OK
     const gpsBtn = document.getElementById('homeUseGPS');
     const clearBtn = document.getElementById('homeClearGPS');
     const sugg   = document.getElementById('homeCitySugg');
@@ -999,7 +999,7 @@
       try{ document.cookie = name+"=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax"; }catch(_){}
     }
 
-    // تهيئة بسيطة (بدون تغيير على الباقي)
+    // Simple init (without changing the rest)
     try{
       const url = new URL(location.href);
       const c   = url.searchParams.get('city') || getCookie('city') || "";
@@ -1012,9 +1012,9 @@
       if (rEl)    rEl.value    = rad;
     }catch(_){}
 
-    // 📍 GPS (كما هو)
+    // 📍 GPS (as-is)
     gpsBtn?.addEventListener('click', function(){
-      if (!navigator.geolocation){ alert('المتصفح لا يدعم تحديد الموقع.'); return; }
+      if (!navigator.geolocation){ alert('Browser does not support geolocation.'); return; }
       const rad = (rEl && rEl.value) ? rEl.value : "25";
       navigator.geolocation.getCurrentPosition(function(pos){
         const lat = pos.coords.latitude, lng = pos.coords.longitude;
@@ -1027,10 +1027,10 @@
         u.searchParams.set('radius_km', rad);
         u.searchParams.delete('city');
         location.href = u.toString();
-      }, function(){ alert('تعذر الحصول على موقعك.'); });
+      }, function(){ alert('Could not get your location.'); });
     });
 
-    // ❌ إلغاء الموقـع (كما هو)
+    // ❌ Clear location (as-is)
     clearBtn?.addEventListener('click', function(){
       delCookie('lat'); delCookie('lng'); delCookie('radius_km');
       const u = new URL(location.href);
@@ -1039,7 +1039,7 @@
       location.href = u.toString();
     });
 
-    // حفظ المدينة يدويًا
+    // Save city manually
     cityEl?.addEventListener('change', function(){
       const c = (cityEl.value||"").trim();
       setCookie('city', c);
@@ -1047,13 +1047,13 @@
     });
 
     /* ==========================
-       ✅ اقتراح مدينة واحدة فقط
+       ✅ Single city suggestion only
        ========================== */
     let t=null;
     function hideSugg(){ if(sugg){ sugg.style.display='none'; sugg.innerHTML=''; } }
     function showSugg(){ if(sugg){ sugg.style.display='block'; } }
 
-    // اكتشاف لغة الإدخال: ar / fr / en
+    // Input language detection: ar / fr / en
     function detectLang(q){
       const s=(q||'').trim();
       if (/[\u0600-\u06FF]/.test(s)) return 'ar';
@@ -1063,24 +1063,24 @@
       return 'en';
     }
 
-    // أنواع الأماكن المقبولة كـ "مدينة"
+    // Place types accepted as “city”
     const ALLOWED = new Set(['city','town','village','municipality']);
     const FALLBACK = new Set(['state','province']);
 
-    // تحويل نتيجة Nominatim لشكل موحّد
+    // Normalize Nominatim result
     function normalizePlace(p){
       const a=p.address||{};
       const type=(p.type||'').toLowerCase();
       const cc=(a.country_code||'').toLowerCase();
       const city=a.city||a.town||a.village||a.municipality||a.state||a.province||(p.display_name||'').split(',')[0];
       const country=a.country||'';
-      // أولوية أعلى للمدينة ثم البلدة… (رقم أصغر = أفضل)
+      // Higher priority for city then town… (smaller number = better)
       const prioMap={city:1,town:2,village:3,municipality:3,state:6,province:6,administrative:8,county:8,region:8};
       const prio=prioMap[type]??9;
       return { city, country, cc, lat:p.lat, lon:p.lon, type, prio };
     }
 
-    // إزالة التكرار داخل نفس البلد واختيار الأفضل
+    // Deduplicate within same country and pick best
     function pickBestUnique(list){
       const best=new Map();
       for(const p of list){
@@ -1110,20 +1110,20 @@
           if(!r.ok){ hideSugg(); return; }
           let data = await r.json();
 
-          // 1) احتفظ فقط بأنواع المدن، وإن لم توجد خذ fallback، وإن لم توجد خذ الكل
+          // 1) Keep only city-like types; if none, use fallback; if none, keep all
           let filtered = data.filter(x=>ALLOWED.has((x.type||'').toLowerCase()));
           if(!filtered.length) filtered = data.filter(x=>FALLBACK.has((x.type||'').toLowerCase()));
           if(!filtered.length) filtered = data;
 
-          // 2) أزل التكرار داخل كل بلد واختر الأفضل
+          // 2) Dedupe per country and pick best priority
           const unique = pickBestUnique(filtered);
 
-          // 3) اختر نتيجة واحدة فقط (الأعلى أولوية)
+          // 3) Pick a single top result (highest priority)
           unique.sort((a,b)=>a.prio-b.prio);
           const best = unique[0];
           if(!best){ hideSugg(); return; }
 
-          // 4) اعرضها كـ "City, Country"
+          // 4) Show as "City, Country"
           const label = (best.city||'').trim() + (best.country?`, ${best.country}`:'');
           sugg.innerHTML =
             `<div class="py-2 px-2" data-best="1" style="cursor:pointer">
@@ -1137,7 +1137,7 @@
       }, 250);
     });
 
-    // اختيار الاقتراح الوحيد
+    // Picking the single suggestion
     sugg?.addEventListener('click', ()=>{
       const label = (sugg.querySelector('[data-best] span')?.textContent||'').trim();
       const lat = sugg.dataset.lat||'';
@@ -1162,13 +1162,13 @@
       location.href = u.toString();
     });
 
-    // إخفاء القائمة عند النقر خارجها
+    // Hide list when clicking outside
     document.addEventListener('click', (e)=>{
       if (!sugg) return;
       if (!sugg.contains(e.target) && e.target !== cityEl){ hideSugg(); }
     });
 
-    // زر "تطبيق" (كما هو)
+    // “Apply” button (as-is)
     form?.addEventListener('submit', function(e){
       e.preventDefault();
       const c   = (cityEl?.value || "").trim();
@@ -1195,10 +1195,10 @@
     });
   })();
 
-  /* ===== (إضافة جديدة) سحب بالإصبع/الماوس + عجلة أفقية لكل hrow ===== */
+  /* ===== (New addition) Drag by finger/mouse + horizontal wheel for each hrow ===== */
   (function enhancers(){
     document.querySelectorAll('.hrow').forEach(row=>{
-      // سحب/إفلات
+      // drag-to-scroll
       let down=false, start=0, startLeft=0, pid=null;
       row.addEventListener('pointerdown', e=>{
         down=true; pid=e.pointerId; row.setPointerCapture(pid);
@@ -1213,7 +1213,7 @@
       row.addEventListener('pointercancel', up);
       row.addEventListener('mouseleave', up);
 
-      // عجلة الفأرة → تمرير أفقي
+      // mouse wheel → horizontal scroll
       row.addEventListener('wheel', e=>{
         if(Math.abs(e.deltaY) > Math.abs(e.deltaX)){
           row.scrollLeft += e.deltaY;

@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container py-3">
-  <h3 class="mb-3">البلاغات</h3>
+  <h3 class="mb-3">Reports</h3>
 
   <div class="row g-3">
     <div class="col-lg-6">
       <div class="card">
-        <div class="card-header bg-warning-subtle fw-bold">غير مدروسة</div>
+        <div class="card-header bg-warning-subtle fw-bold">Unreviewed</div>
         <div class="list-group list-group-flush">
           {% for r in pending %}
             <a class="list-group-item list-group-item-action" href="/admin/reports/{{ r.id }}">
-              🚩 #{{ r.id }} — {{ 'صورة #' ~ r.image_index if r.image_index is not none else 'منشور' }} #{{ r.item_id }}
-              <div class="small text-muted">السبب: {{ r.reason }}</div>
+              🚩 #{{ r.id }} — {{ 'Image #' ~ r.image_index if r.image_index is not none else 'Item' }} #{{ r.item_id }}
+              <div class="small text-muted">Reason: {{ r.reason }}</div>
             </a>
           {% else %}
-            <div class="list-group-item text-muted">لا يوجد بلاغات معلّقة.</div>
+            <div class="list-group-item text-muted">No pending reports.</div>
           {% endfor %}
         </div>
       </div>
@@ -22,18 +22,18 @@
 
     <div class="col-lg-6">
       <div class="card">
-        <div class="card-header bg-success-subtle fw-bold">تمت دراستها</div>
+        <div class="card-header bg-success-subtle fw-bold">Reviewed</div>
         <div class="list-group list-group-flush">
           {% for r in processed %}
             <a class="list-group-item list-group-item-action" href="/admin/reports/{{ r.id }}">
-              ✅ #{{ r.id }} — {{ 'صورة #' ~ r.image_index if r.image_index is not none else 'منشور' }} #{{ r.item_id }}
+              ✅ #{{ r.id }} — {{ 'Image #' ~ r.image_index if r.image_index is not none else 'Item' }} #{{ r.item_id }}
               <div class="small text-muted">
-                الحالة: {{ r.status }}{% if r.tag %} — {{ r.tag }}{% endif %}
+                Status: {{ r.status }}{% if r.tag %} — {{ r.tag }}{% endif %}
               </div>
-              {% if r.note %}<div class="small text-muted">ملاحظة: {{ r.note }}</div>{% endif %}
+              {% if r.note %}<div class="small text-muted">Note: {{ r.note }}</div>{% endif %}
             </a>
           {% else %}
-            <div class="list-group-item text-muted">لا يوجد بلاغات منتهية.</div>
+            <div class="list-group-item text-muted">No completed reports.</div>
           {% endfor %}
         </div>
       </div>

@@ -11,7 +11,7 @@
     .favorites-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
   }
 
-  /* حالة الفراغ: صورة فقط */
+  /* Empty state: image only */
   .empty-box{ padding:24px 8px; text-align:center; }
   .empty-box img{
     display:block; margin:10px auto; max-width:320px; width:76%;
@@ -21,7 +21,7 @@
 {% endblock %}
 
 {% block content %}
-<h4 class="mb-3">❤️ مفضلتي</h4>
+<h4 class="mb-3">❤️ My Favorites</h4>
 
 {% if items and items|length > 0 %}
   <div class="favorites-grid">
@@ -32,13 +32,13 @@
           <div class="spot-overlay"></div>
 
           {% if it.price_per_day is defined %}
-            <span class="price-badge">{{ it.price_per_day|default(0) }}$ /يوم</span>
+            <span class="price-badge">{{ it.price_per_day|default(0) }}$ /day</span>
           {% endif %}
           {% if it.category is defined %}
             <span class="category-chip">{{ category_label(it.category) }}</span>
           {% endif %}
 
-          <!-- زر المفضلة (معلّم مسبقاً كـ is-fav هنا) -->
+          <!-- Favorite button (pre-marked as is-fav here) -->
           <button class="fav-btn is-fav" type="button" data-id="{{ it.id }}" aria-pressed="true">
             <i class="bi bi-heart-fill"></i>
           </button>
@@ -55,16 +55,16 @@
     {% endfor %}
   </div>
 {% else %}
-  {# صورة الحالة الفارغة: son.png #}
+  {# Empty state image: son.png #}
   <div class="empty-box">
-    <img src="{{ url_for('static', path='photo/son.png') }}" alt="لا توجد عناصر في المفضلة">
+    <img src="{{ url_for('static', path='photo/son.png') }}" alt="No items in favorites">
   </div>
 {% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // تفعيل/تعطيل المفضلة عبر API الصحيح /api/favorites/{id}
+  // Toggle favorite via the correct API /api/favorites/{id}
   document.addEventListener('click', async (e)=>{
     const btn = e.target.closest('.fav-btn');
     if(!btn) return;
@@ -80,7 +80,7 @@
       const res = await fetch(`/api/favorites/${id}`, { method });
       if(!res.ok) throw new Error('bad response');
 
-      // حدّث الزر محليًا
+      // Update the button locally
       btn.classList.toggle('is-fav', !isFav);
       const icon = btn.querySelector('.bi');
       if(icon){
@@ -90,7 +90,7 @@
       btn.setAttribute('aria-pressed', String(!isFav));
     }catch(err){
       console.error(err);
-      alert('تعذّر حفظ التغيير في المفضلة مؤقتًا.');
+      alert('Failed to save favorite change temporarily.');
     }
   });
 </script>

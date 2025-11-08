@@ -2,11 +2,11 @@
 {% block content %}
 <div class="container py-3">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">تفاصيل البلاغ #{{ r.id }}</h3>
+    <h3 class="mb-0">Report Details #{{ r.id }}</h3>
     <div class="d-flex gap-2">
-      <a href="/admin/reports" class="btn btn-outline-secondary">⬅️ رجوع إلى البلاغات</a>
+      <a href="/admin/reports" class="btn btn-outline-secondary">⬅️ Back to Reports</a>
       {% if item_id %}
-        <a href="/items/{{ item_id }}" class="btn btn-outline-primary" target="_blank">🔗 عرض المنشور</a>
+        <a href="/items/{{ item_id }}" class="btn btn-outline-primary" target="_blank">🔗 View Item</a>
       {% endif %}
     </div>
   </div>
@@ -14,19 +14,19 @@
   <div class="row g-3">
     <div class="col-lg-7">
       <div class="card">
-        <div class="card-header fw-bold">البيانات</div>
+        <div class="card-header fw-bold">Data</div>
         <div class="card-body">
           <div class="row gy-2">
-            <div class="col-6"><b>الحالة:</b> {{ r.status or '—' }}</div>
-            <div class="col-6"><b>الوسم:</b> {{ r.tag or '—' }}</div>
-            <div class="col-6"><b>المنشور:</b> {{ item_id or '—' }}</div>
-            <div class="col-6"><b>الصورة:</b> {{ r.image_index if r.image_index is not none else '—' }}</div>
-            <div class="col-12"><b>السبب:</b> {{ r.reason or '—' }}</div>
-            <div class="col-12"><b>ملاحظة:</b> {{ r.note or '—' }}</div>
-            <div class="col-6"><b>أُنشئ:</b> {{ r.created_at or '—' }}</div>
-            <div class="col-6"><b>آخر تحديث:</b> {{ r.updated_at or '—' }}</div>
-            <div class="col-6"><b>المبلِّغ:</b> {{ r.reporter_id or '—' }}</div>
-            <div class="col-6"><b>مالك المنشور:</b> {{ owner_id or '—' }}</div>
+            <div class="col-6"><b>Status:</b> {{ r.status or '—' }}</div>
+            <div class="col-6"><b>Tag:</b> {{ r.tag or '—' }}</div>
+            <div class="col-6"><b>Item:</b> {{ item_id or '—' }}</div>
+            <div class="col-6"><b>Image:</b> {{ r.image_index if r.image_index is not none else '—' }}</div>
+            <div class="col-12"><b>Reason:</b> {{ r.reason or '—' }}</div>
+            <div class="col-12"><b>Note:</b> {{ r.note or '—' }}</div>
+            <div class="col-6"><b>Created:</b> {{ r.created_at or '—' }}</div>
+            <div class="col-6"><b>Last Updated:</b> {{ r.updated_at or '—' }}</div>
+            <div class="col-6"><b>Reporter:</b> {{ r.reporter_id or '—' }}</div>
+            <div class="col-6"><b>Item Owner:</b> {{ owner_id or '—' }}</div>
           </div>
         </div>
       </div>
@@ -34,35 +34,35 @@
 
     <div class="col-lg-5">
       {% if is_pending %}
-      <!-- قرارات للبلاغ المعلّق -->
+      <!-- Decisions for Pending Report -->
       <div class="card">
-        <div class="card-header bg-warning-subtle fw-bold">اتخاذ قرار</div>
+        <div class="card-header bg-warning-subtle fw-bold">Make a Decision</div>
         <div class="card-body">
           <form method="post" action="/admin/reports/{{ r.id }}/decision" class="row g-2">
             <input type="hidden" name="note" id="noteInput">
             <div class="col-12">
-              <label class="form-label">ملاحظة القرار</label>
-              <textarea id="noteArea" class="form-control" rows="2" placeholder="ملاحظاتك (اختياري)"></textarea>
+              <label class="form-label">Decision Note</label>
+              <textarea id="noteArea" class="form-control" rows="2" placeholder="Your notes (optional)"></textarea>
             </div>
             <div class="col-12 d-flex flex-wrap gap-2">
-              <button name="action" value="suspend_item" class="btn btn-warning">⏸️ إيقاف المنشور</button>
-              <button name="action" value="delete_item"  class="btn btn-danger">🗑️ حذف المنشور</button>
-              <button name="action" value="reject_report" class="btn btn-secondary">❌ رفض البلاغ</button>
-              <button name="action" value="close_only" class="btn btn-outline-dark">📁 إغلاق البلاغ فقط</button>
+              <button name="action" value="suspend_item" class="btn btn-warning">⏸️ Suspend Item</button>
+              <button name="action" value="delete_item"  class="btn btn-danger">🗑️ Delete Item</button>
+              <button name="action" value="reject_report" class="btn btn-secondary">❌ Reject Report</button>
+              <button name="action" value="close_only" class="btn btn-outline-dark">📁 Close Report Only</button>
             </div>
           </form>
         </div>
       </div>
       {% else %}
-      <!-- أزرار بعد المعالجة -->
+      <!-- Buttons after Processing -->
       <div class="card">
-        <div class="card-header bg-success-subtle fw-bold">إجراءات إضافية</div>
+        <div class="card-header bg-success-subtle fw-bold">Additional Actions</div>
         <div class="card-body">
           <form method="post" action="/admin/reports/{{ r.id }}/decision" class="d-flex flex-wrap gap-2 mb-2">
-            <button name="action" value="restore_item" class="btn btn-success">♻️ استرجاع المنشور</button>
+            <button name="action" value="restore_item" class="btn btn-success">♻️ Restore Item</button>
           </form>
           <form method="post" action="/admin/reports/{{ r.id }}/reopen" class="d-flex flex-wrap gap-2">
-            <button class="btn btn-outline-primary">🔄 إعادة فتح البلاغ</button>
+            <button class="btn btn-outline-primary">🔄 Reopen Report</button>
           </form>
         </div>
       </div>
@@ -74,7 +74,7 @@
 
 {% block scripts %}
 <script>
-  // فقط لنسخ الملاحظة المخزنة في الـ textarea إلى حقل "note" عند إرسال أي زر
+  // Only to copy the note stored in the textarea to the "note" field when any button is submitted
   (function(){
     const form = document.querySelector('form[action*="/decision"]');
     if (!form) return;

@@ -2,27 +2,83 @@
 
 {% block head %}
 <style>
-  /* إخفاء النّافبار/السايدبار في صفحة الدخول فقط + ملء الشاشة */
+  /* Hide navbar/sidebar on login page + full screen layout */
   .topbar, .sidebar, .mobile-tabbar { display:none !important; }
   .page{
     margin:0 !important; padding:0 !important;
     min-height: 100dvh; min-height: 100svh;
-    display:grid; grid-template-columns: 1fr 520px;
+    display:grid; grid-template-columns: 520px 1fr;
     background:
-      radial-gradient(1200px 900px at 85% -10%, rgba(124,92,255,.14), transparent 45%),
-      radial-gradient(900px 700px at -10% 110%, rgba(0,229,168,.08), transparent 40%),
+      radial-gradient(1200px 900px at 15% -10%, rgba(124,92,255,.14), transparent 45%),
+      radial-gradient(900px 700px at 110% 110%, rgba(0,229,168,.08), transparent 40%),
       var(--bg);
   }
   @media (max-width: 980px){
     .page{ grid-template-columns: 1fr; }
   }
 
-  /* العمود الأيسر (العرض/الهويرو) */
+  /* Left column (login card) */
+  .login-col{
+    display:flex; align-items:center; justify-content:center;
+    padding: clamp(16px, 4vw, 36px);
+    background: linear-gradient(180deg, color-mix(in oklab, var(--panel) 92%, transparent),
+                                        color-mix(in oklab, var(--panel) 84%, transparent));
+    border-inline-end: 1px solid var(--border);
+  }
+  .card-login{
+    width:100%; max-width: 460px;
+    background: linear-gradient(180deg, color-mix(in oklab, var(--card) 96%, transparent),
+                                        color-mix(in oklab, var(--card) 88%, transparent));
+    border:1px solid var(--border);
+    border-radius: 18px; box-shadow: var(--shadow);
+    padding: 18px 18px 20px;
+  }
+  .card-login .head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 10px;
+  }
+  .head .title{ font-weight:800; opacity:.9 }
+
+  /* Password field with eye toggle */
+  .pw-wrap{ position: relative; }
+  .pw-input{
+    padding-inline-end: 44px !important;  /* Reserve space for the toggle on the right */
+  }
+  .pw-toggle{
+    position:absolute; inset-inline-end: 8px; top: 50%;
+    transform: translateY(-50%);
+    width: 36px; height: 36px; border-radius: 12px;
+    border:1px solid var(--border);
+    display:grid; place-items:center;
+    background: rgba(255,255,255,.06);
+    cursor:pointer;
+  }
+  .pw-toggle i{ font-size: 18px; opacity:.9 }
+
+  /* Buttons */
+  .btn-primary{
+    background: linear-gradient(135deg, var(--primary), var(--primary-2));
+    border:0; box-shadow:0 12px 28px rgba(124,92,255,.28);
+  }
+  .btn-success{ box-shadow:0 12px 28px rgba(34,197,94,.25); }
+
+  /* Input fields */
+  .form-control{
+    height: 48px; border-radius: 14px;
+    background: color-mix(in oklab, var(--panel) 92%, transparent);
+    border:1px solid var(--border); color: var(--text);
+  }
+  .form-control:focus{
+    box-shadow:0 0 0 4px var(--ring);
+    border-color: color-mix(in oklab, var(--primary) 60%, var(--border));
+  }
+
+  /* Right column (hero) */
   .hero{
     display:flex; align-items:center; justify-content:center;
     padding: clamp(24px, 6vw, 80px);
   }
-  .hero-inner{ max-width: 780px; width:100%; }
+  .hero-inner{ max-width: 780px; width:100%; text-align:left; }
   .brand-row{
     display:flex; align-items:center; gap:12px; margin-bottom: 18px;
   }
@@ -40,125 +96,66 @@
   .hero p{
     color: var(--muted); font-size: clamp(14px, 1.4vw, 16px);
   }
-
-  /* العمود الأيمن (بطاقة الدخول) */
-  .login-col{
-    display:flex; align-items:center; justify-content:center;
-    padding: clamp(16px, 4vw, 36px);
-    background: linear-gradient(180deg, color-mix(in oklab, var(--panel) 92%, transparent),
-                                        color-mix(in oklab, var(--panel) 84%, transparent));
-    border-inline-start: 1px solid var(--border);
-  }
-  .card-login{
-    width:100%; max-width: 460px;
-    background: linear-gradient(180deg, color-mix(in oklab, var(--card) 96%, transparent),
-                                        color-mix(in oklab, var(--card) 88%, transparent));
-    border:1px solid var(--border);
-    border-radius: 18px; box-shadow: var(--shadow);
-    padding: 18px 18px 20px;
-  }
-  .card-login .head{
-    display:flex; align-items:center; justify-content:space-between;
-    margin-bottom: 10px;
-  }
-  .head .title{ font-weight:800; opacity:.9 }
-
-  /* حقل كلمة السر مع زر العين بدون أن يغطي النص */
-  .pw-wrap{ position: relative; }
-  .pw-input{
-    padding-inline-start: 44px !important;   /* نحجز مكان زر العين على اليسار (RTL) */
-  }
-  .pw-toggle{
-    position:absolute; inset-inline-start: 8px; top: 50%;
-    transform: translateY(-50%);
-    width: 36px; height: 36px; border-radius: 12px;
-    border:1px solid var(--border);
-    display:grid; place-items:center;
-    background: rgba(255,255,255,.06);
-    cursor:pointer;
-  }
-  .pw-toggle i{ font-size: 18px; opacity:.9 }
-
-  /* أزرار */
-  .btn-primary{
-    background: linear-gradient(135deg, var(--primary), var(--primary-2));
-    border:0; box-shadow:0 12px 28px rgba(124,92,255,.28);
-  }
-  .btn-success{ box-shadow:0 12px 28px rgba(34,197,94,.25); }
-
-  /* تنسيق الحقول */
-  .form-control{
-    height: 48px; border-radius: 14px;
-    background: color-mix(in oklab, var(--panel) 92%, transparent);
-    border:1px solid var(--border); color: var(--text);
-  }
-  .form-control:focus{
-    box-shadow:0 0 0 4px var(--ring);
-    border-color: color-mix(in oklab, var(--primary) 60%, var(--border));
-  }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="hero">
-  <div class="hero-inner">
-    <div class="brand-row">
-      <!-- لوغو واسم الموقع كما طلبت -->
-      <img class="logo" src="{{ url_for('static', path='images/ok.png') }}" alt="SEVOR">
-      <div class="name">SEVOR</div>
-    </div>
-
-    <h1>ابقَ على تواصل مع الأشياء التي تحتاجها في حياتك اليومية.</h1>
-    <p>
-      استأجر ما تريد بسهولة وأمان؛ إدارة محادثاتك، مدفوعاتك، وإشعاراتك — كلها في مكانٍ واحد.
-    </p>
-  </div>
-</div>
-
 <div class="login-col">
   <div class="card-login">
     <div class="head">
-      <div class="title">تسجيل الدخول</div>
-      <!-- أزلت الشارة/المربّع الصغير نهائياً -->
+      <div class="title">Login</div>
     </div>
 
     <form method="post" action="/login" novalidate>
       <div class="mb-3">
-        <label class="form-label">البريد الإلكتروني</label>
+        <label class="form-label">Email</label>
         <input type="email" class="form-control" name="email" placeholder="name@example.com" required>
       </div>
 
       <div class="mb-2 pw-wrap">
-        <label class="form-label">كلمة المرور</label>
+        <label class="form-label">Password</label>
         <input id="pw" type="password" class="form-control pw-input" name="password" required>
-        <button class="pw-toggle" type="button" aria-label="إظهار/إخفاء كلمة المرور">
+        <button class="pw-toggle" type="button" aria-label="Show/Hide Password">
           <i class="bi bi-eye-slash"></i>
         </button>
       </div>
 
       <div class="text-muted small mb-3">
-        يتم تشفير كلمات المرور، ونستعمل التحقّق بخطوتين لحماية حسابك.
+        Passwords are encrypted, and two-step verification is used to secure your account.
       </div>
 
-      <button type="submit" class="btn btn-primary w-100 mb-2">دخول</button>
-      <a href="/register" class="btn btn-success w-100">إنشاء حساب جديد</a>
+      <button type="submit" class="btn btn-primary w-100 mb-2">Login</button>
+      <a href="/register" class="btn btn-success w-100">Create New Account</a>
 
-      <!-- ✅ الإضافة الوحيدة: رابط نسيت كلمة المرور -->
       <div class="text-center mt-2">
-        <a href="/forgot" class="text-muted">نسيت كلمة المرور؟</a>
+        <a href="/forgot" class="text-muted">Forgot Password?</a>
       </div>
 
       {% if request.query_params.get('err') %}
-        <div class="alert alert-danger mt-3 mb-0">البريد أو كلمة المرور غير صحيحة.</div>
+        <div class="alert alert-danger mt-3 mb-0">Incorrect email or password.</div>
       {% endif %}
     </form>
 
-    <div class="small text-center text-muted mt-3">©️ SEVOR — كل الحقوق محفوظة</div>
+    <div class="small text-center text-muted mt-3">©️ SEVOR — All rights reserved</div>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="brand-row">
+      <img class="logo" src="{{ url_for('static', path='images/ok.png') }}" alt="SEVOR">
+      <div class="name">SEVOR</div>
+    </div>
+
+    <h1>Stay connected with the things you need in your everyday life.</h1>
+    <p>
+      Rent what you need easily and safely — manage your chats, payments, and notifications all in one place.
+    </p>
   </div>
 </div>
 
 <script>
-  // زر إظهار/إخفاء كلمة المرور — بدون تغطية حقل الإدخال
+  // Password show/hide toggle
   (function(){
     const btn = document.querySelector('.pw-toggle');
     const input = document.getElementById('pw');

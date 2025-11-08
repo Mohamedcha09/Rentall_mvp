@@ -25,12 +25,12 @@
 
 {% block content %}
 <div class="report-ok">
-  <h2>✅ تم إرسال البلاغ بنجاح</h2>
-  <p>تم إرسال بلاغ الوديعة للحجز رقم <strong>#{{ bk.id }}</strong> وهو الآن قيد المراجعة من الإدارة.</p>
+  <h2>✅ Report Submitted Successfully</h2>
+  <p>The deposit report for booking number <strong>#{{ bk.id }}</strong> has been sent and is now under review by the administration.</p>
 
   <div class="d-grid gap-2 mt-3" style="max-width:300px;margin:auto;">
-    <a href="/bookings/flow/{{ bk.id }}" class="btn btn-primary">عرض تفاصيل الحجز</a>
-    <a href="/dm/deposits/{{ bk.id }}" class="btn btn-outline-secondary">فتح صفحة القضية</a>
+    <a href="/bookings/flow/{{ bk.id }}" class="btn btn-primary">View Booking Details</a>
+    <a href="/dm/deposits/{{ bk.id }}" class="btn btn-outline-secondary">Open Case Page</a>
   </div>
 </div>
 {% endblock %}

@@ -3,7 +3,7 @@
 {% block content %}
 
 <style>
-/* —— الأساس الأصلي ——————————————————————————— */
+/* —— Original base ——————————————————————————— */
 :root{
   --bg-1:#0b1220; --bg-2:#0f172a; --card:#0f172acc;
   --stroke:rgba(255,255,255,.12); --stroke-soft:rgba(255,255,255,.08);
@@ -44,18 +44,18 @@
 .owner-avatar{width:62px;height:62px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--stroke)}
 .hr{border:0;height:1px;background:var(--stroke-soft);margin:14px 0}
 
-/* —— موبايل Airbnb ——————————————————————————— */
+/* —— Mobile Airbnb ——————————————————————————— */
 @media (max-width:768px){
   body{background:#fff;color:#111}
   .items-shell{padding:0;margin:0;max-width:none}
   .grid-2{display:block}
 
-  /* الغلاف */
+  /* Cover */
   .gallery{background:#000;border:0}
   .gallery-main{height:58vh;max-height:520px;border-radius:0}
   .gallery-main img{object-fit:cover}
 
-  /* أزرار عائمة + عدّاد */
+  /* Floating buttons + counter */
   .air-fab,.air-fab-right .air-fab{
     appearance:none;border:0;cursor:pointer;width:44px;height:44px;border-radius:50%;
     background:rgba(255,255,255,.9);box-shadow:0 8px 20px rgba(0,0,0,.18);
@@ -65,7 +65,7 @@
   .air-fab-right{position:absolute;top:16px;right:12px;display:flex;gap:10px}
   .air-pager{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.65);color:#fff;font-weight:600;padding:6px 10px;border-radius:10px;font-size:12px}
 
-  /* الورقة البيضاء الدائرية */
+  /* White rounded sheet */
   .card-glass{background:transparent;border:0;box-shadow:none}
   .air-sheet{background:#fff;color:#111;margin-top:-24px;border-top-left-radius:28px;border-top-right-radius:28px;padding:22px 18px 10px;box-shadow:0 -6px 20px rgba(0,0,0,.06);border:1px solid #eee;border-bottom:0}
 
@@ -73,21 +73,21 @@
   .small-muted{color:#6b7280!important}
   .hr{background:#eee}
 
-  /* شريط الحجز السفلي */
+  /* Bottom booking bar */
   .air-sticky{position:sticky;bottom:0;z-index:20;background:#fff;border-top:1px solid #eee;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
   .air-price{display:flex;flex-direction:column;line-height:1.2}
   .air-price .now{font-weight:800;font-size:18px}
   .air-price .per{color:#6b7280;font-size:12px}
   .air-cta{flex:0 0 auto;min-width:140px;text-align:center;padding:12px 16px;border-radius:12px;font-weight:700;color:#fff;background:linear-gradient(90deg,#ff385c,#e61e4d);border:0;text-decoration:none;display:inline-block}
 
-  /* شارة الغار الذهبية حول التقييم */
+  /* Golden laurel badge around rating */
   .laurel-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 12px 0}
   .laurel-mid{display:flex;align-items:center;gap:10px;flex:1;justify-content:center}
   .laurel{height:20px;width:auto;opacity:.95}
   .score{font-weight:800;font-size:18px;color:#111;display:flex;align-items:center;gap:6px}
   .score small{color:#6b7280;font-weight:600}
 
-  /* التعليقات (بطاقات سحابية قابلة للسحب) */
+  /* Reviews (cloud-like swipeable cards) */
   .rv-strip{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 12px 2px}
   .rv-card{scroll-snap-align:start;flex:0 0 84vw;background:#fff;border:1px solid #eee;border-radius:16px;padding:14px;box-shadow:0 6px 14px rgba(0,0,0,.05)}
   .rv-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
@@ -97,22 +97,22 @@
   .rv-more{display:inline-block;margin-top:4px;font-weight:600}
   .btn-outline-pale{display:block;width:100%;text-align:center;border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:10px 14px;font-weight:700}
 
-  /* Bottom-Sheet للبلاغ (Bootstrap offcanvas) */
+  /* Bottom-Sheet for report (Bootstrap offcanvas) */
   .offcanvas-bottom{border-top-left-radius:18px;border-top-right-radius:18px}
 }
 </style>
 
 <section class="items-shell">
   {% if not item %}
-    <div class="card-glass"><div class="card-body"><div class="alert alert-danger">العنصر غير موجود.</div></div></div>
+    <div class="card-glass"><div class="card-body"><div class="alert alert-danger">Item not found.</div></div></div>
   {% else %}
 
   <div class="grid-2">
-    <!-- ————— بطاقة/معرض العنصر ————— -->
+    <!-- ————— Item card/gallery ————— -->
     <div class="card-glass">
       <div class="gallery">
 
-        {# جمع الصور #}
+        {# Gather images #}
         {% set _srcs = [] %}
         {% if item.image_path %}
           {% set _raw = item.image_path %}
@@ -131,24 +131,24 @@
         <div class="gallery-main" id="gMain">
           {% if current %}
             <img id="mainImg" src="{{ build_src(current) }}" alt="item image">
-            <button class="gallery-zoom" id="zoomBtn">تكبير الصورة</button>
+            <button class="gallery-zoom" id="zoomBtn">Zoom image</button>
           {% else %}
-            <div style="display:grid;place-items:center;height:100%;color:#8b94a7;font-size:13px">لا توجد صورة</div>
+            <div style="display:grid;place-items:center;height:100%;color:#8b94a7;font-size:13px">No image</div>
           {% endif %}
 
-          <!-- ⋮ قائمة -->
+          <!-- ⋮ Menu -->
           <div class="gallery-menu dropdown">
-            <button class="btn-menu" data-bs-toggle="dropdown" aria-expanded="false" title="خيارات">⋮</button>
+            <button class="btn-menu" data-bs-toggle="dropdown" aria-expanded="false" title="Options">⋮</button>
             <ul class="dropdown-menu dropdown-menu-end">
-              <li><button class="dropdown-item" data-bs-toggle="offcanvas" data-bs-target="#reportSheet" id="openReportBtn" type="button">🚩 الإبلاغ عن المنشور</button></li>
+              <li><button class="dropdown-item" data-bs-toggle="offcanvas" data-bs-target="#reportSheet" id="openReportBtn" type="button">🚩 Report listing</button></li>
             </ul>
           </div>
 
-          <!-- أزرار موبايل عائمة + عداد -->
-          <button type="button" class="air-fab" onclick="history.back()" aria-label="رجوع"><i class="bi bi-arrow-left"></i></button>
+          <!-- Mobile floating buttons + counter -->
+          <button type="button" class="air-fab" onclick="history.back()" aria-label="Back"><i class="bi bi-arrow-left"></i></button>
           <div class="air-fab-right">
-            <button type="button" aria-label="مشاركة" class="air-fab" onclick="navigator.share ? navigator.share({url:location.href}) : alert('انسخ الرابط يدويًا');"><i class="bi bi-share"></i></button>
-            <button type="button" aria-label="حفظ" class="air-fab"><i class="bi bi-heart"></i></button>
+            <button type="button" aria-label="Share" class="air-fab" onclick="navigator.share ? navigator.share({url:location.href}) : alert('Copy the link manually');"><i class="bi bi-share"></i></button>
+            <button type="button" aria-label="Save" class="air-fab"><i class="bi bi-heart"></i></button>
           </div>
           <div class="air-pager" id="airPager">1/1</div>
         </div>
@@ -163,36 +163,36 @@
         {% endif %}
       </div>
 
-      <!-- ——— ورقة المحتوى الدائرية (موبايل) ——— -->
+      <!-- ——— Rounded content sheet (mobile) ——— -->
       <div class="card-body air-sheet">
         <h2 class="card-title">{{ item.title }}</h2>
         <div class="small-muted" style="margin-bottom:8px">
-          {{ item.category_label }} • {{ item.city or "بدون مدينة" }} • {{ owner and owner.country or "" }}
+          {{ item.category_label }} • {{ item.city or "No city" }} • {{ owner and owner.country or "" }}
         </div>
 
-        <!-- صف الغار الذهبي + التقييم داخلها -->
+        <!-- Golden laurel row + rating inside it -->
         {% set _avg = item_rating_avg or 0 %}
         {% set _cnt = item_rating_count or 0 %}
         <div class="laurel-row">
           <div class="score">⭐ {{ '%.2f'|format(_avg) }} <small>/ 5</small></div>
           <div class="laurel-mid">
             <img class="laurel" src="{{ url_for('static', path='photo/ion.png') }}" alt="laurel left">
-            <span style="font-weight:800">مُفضّل لدى الزوار</span>
+            <span style="font-weight:800">Visitor Favorite</span>
             <img class="laurel" src="{{ url_for('static', path='photo/ion2.png') }}" alt="laurel right">
           </div>
-          <div class="score">{{ _cnt }} <small>مراجعة</small></div>
+          <div class="score">{{ _cnt }} <small>review(s)</small></div>
         </div>
 
         {% if item.description %}
           <p style="white-space:pre-wrap;line-height:1.9;color:#374151">{{ item.description }}</p>
         {% else %}
-          <div class="badge-pill">لا يوجد وصف</div>
+          <div class="badge-pill">No description</div>
         {% endif %}
 
         <div class="hr"></div>
 
-        <!-- التعليقات كسلايدر أفقي -->
-        <h5 style="margin:0 0 8px 0">التعليقات</h5>
+        <!-- Reviews as a horizontal slider -->
+        <h5 style="margin:0 0 8px 0">Reviews</h5>
         {% if item_reviews and item_reviews|length %}
           <div class="rv-strip">
             {% for r in item_reviews %}
@@ -201,7 +201,7 @@
                   {% set avatar = (r.rater.avatar_path if r.rater and r.rater.avatar_path else url_for('static', path='placeholder.png')) %}
                   <img class="rv-ava" src="{{ avatar }}" alt="avatar">
                   <div>
-                    <div style="font-weight:700">{{ (r.rater.first_name ~ ' ' ~ r.rater.last_name) if r.rater else 'مستأجر' }}</div>
+                    <div style="font-weight:700">{{ (r.rater.first_name ~ ' ' ~ r.rater.last_name) if r.rater else 'Renter' }}</div>
                     <div class="rv-meta">{{ r.city or '' }} <span>•</span> {{ r.created_at.strftime("%B %Y") if r.created_at }}</div>
                   </div>
                 </div>
@@ -210,56 +210,56 @@
                 </div>
                 {% if r.comment %}
                   <div style="margin-top:6px;white-space:pre-wrap">{{ r.comment }}</div>
-                  <a href="/items/{{ item.id }}#review-{{ r.id }}" class="rv-more">عرض المزيد</a>
+                  <a href="/items/{{ item.id }}#review-{{ r.id }}" class="rv-more">View more</a>
                 {% endif %}
               </div>
             {% endfor %}
           </div>
-          <a href="/items/{{ item.id }}#all-reviews" class="btn-outline-pale">عرض كل {{ _cnt }} تعليقًا</a>
+          <a href="/items/{{ item.id }}#all-reviews" class="btn-outline-pale">View all {{ _cnt }} review(s)</a>
         {% else %}
-          <div class="small-muted">لا توجد مراجعات بعد.</div>
+          <div class="small-muted">No reviews yet.</div>
         {% endif %}
 
         <div class="hr"></div>
 
-        <!-- أزرار -->
+        <!-- Buttons -->
         <div class="btns-row">
           {% if owner %}
-            <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">💬 تواصل مع المالك</a>
+            <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">💬 Contact owner</a>
             {% if session_user and session_user.status == 'approved' and session_user.id != owner.id %}
-              <a class="btnx btnx-green" href="/bookings/new?item_id={{ item.id }}">✅ احجز الآن</a>
+              <a class="btnx btnx-green" href="/bookings/new?item_id={{ item.id }}">✅ Book now</a>
             {% elif not session_user %}
-              <a class="btnx btnx-primary" href="/login">سجّل الدخول للحجز</a>
+              <a class="btnx btnx-primary" href="/login">Log in to book</a>
             {% else %}
-              <span class="badge-pill" title="يلزم تفعيل الحساب للحجز">حسابك غير مُفعل للحجز</span>
+              <span class="badge-pill" title="Account activation required to book">Your account isn’t activated for booking</span>
             {% endif %}
           {% endif %}
-          <a class="btnx btnx-ghost" href="/items">↩︎ رجوع للقائمة</a>
+          <a class="btnx btnx-ghost" href="/items">↩︎ Back to list</a>
         </div>
       </div>
 
-      <!-- شريط الحجز السفلي -->
+      <!-- Bottom booking bar -->
       <div class="air-sticky">
         <div class="air-price">
-          <span class="now">{{ item.price_per_day }} {{ item.currency or 'د.ك' }}</span>
-          <span class="per">لكل يوم</span>
+          <span class="now">{{ item.price_per_day }} {{ item.currency or 'KWD' }}</span>
+          <span class="per">per day</span>
         </div>
         {% if owner and session_user and session_user.status == 'approved' and session_user.id != owner.id %}
-          <a class="air-cta" href="/bookings/new?item_id={{ item.id }}">احجز الآن</a>
+          <a class="air-cta" href="/bookings/new?item_id={{ item.id }}">Book now</a>
         {% elif not session_user %}
-          <a class="air-cta" href="/login">سجّل للدفع</a>
+          <a class="air-cta" href="/login">Sign in to pay</a>
         {% else %}
-          <a class="air-cta" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">تواصل</a>
+          <a class="air-cta" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">Contact</a>
         {% endif %}
       </div>
     </div>
 
-    <!-- ————— بطاقة المالك ————— -->
+    <!-- ————— Owner card ————— -->
     <div class="card-glass">
       <div class="card-body">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
-          <h5 style="margin:0">المالك</h5>
-          <span class="badge-pill">Stripe Connect • استلام الأرباح</span>
+          <h5 style="margin:0">Owner</h5>
+          <span class="badge-pill">Stripe Connect • Receive earnings</span>
         </div>
 
         {% if owner %}
@@ -270,16 +270,16 @@
                 <strong>{{ owner.first_name }} {{ owner.last_name }}</strong>
                 {{ render_badges(owner_badges, 22) }}
               </div>
-              <div class="small-muted">عضو منذ {{ owner.created_at.strftime("%Y-%m-%d") if owner.created_at else "" }}</div>
+              <div class="small-muted">Member since {{ owner.created_at.strftime("%Y-%m-%d") if owner.created_at else "" }}</div>
             </div>
           </div>
           <div class="hr"></div>
           <div class="btns-row">
-            <a href="/users/{{ owner.id }}" class="btnx btnx-ghost">👤 الملف العام</a>
-            <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">راسل المالك</a>
+            <a href="/users/{{ owner.id }}" class="btnx btnx-ghost">👤 Public profile</a>
+            <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">Message owner</a>
           </div>
         {% else %}
-          <div class="small-muted">لا تتوفر معلومات المالك.</div>
+          <div class="small-muted">Owner information not available.</div>
         {% endif %}
       </div>
     </div>
@@ -288,11 +288,11 @@
   {% endif %}
 </section>
 
-<!-- —— Bottom Sheet: الإبلاغ عن المنشور —————————————————————— -->
+<!-- —— Bottom Sheet: Report listing —————————————————————— -->
 <div class="offcanvas offcanvas-bottom" tabindex="-1" id="reportSheet" aria-labelledby="reportLabel" dir="rtl">
   <div class="offcanvas-header">
-    <h5 class="offcanvas-title" id="reportLabel">🚩 الإبلاغ عن المنشور</h5>
-    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="إغلاق"></button>
+    <h5 class="offcanvas-title" id="reportLabel">🚩 Report listing</h5>
+    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
   </div>
   <div class="offcanvas-body small">
     <form method="post" action="/reports" id="reportForm">
@@ -300,22 +300,22 @@
       <input type="hidden" name="image_index" id="rf_image_index" value="0">
       <input type="hidden" name="image_url" id="rf_image_url" value="">
       <div class="mb-3">
-        <label class="form-label">السبب</label>
+        <label class="form-label">Reason</label>
         <select class="form-select" name="reason" required>
-          <option value="" selected disabled>اختر سبب البلاغ</option>
-          <option value="nudity">محتوى غير لائق/عُري</option>
-          <option value="violence">عنف/كراهية</option>
-          <option value="scam">احتيال/خداع</option>
-          <option value="copyright">حقوق ملكية</option>
-          <option value="spam">إزعاج/سبام</option>
-          <option value="other">أخرى</option>
+          <option value="" selected disabled>Select a report reason</option>
+          <option value="nudity">Inappropriate content/Nudity</option>
+          <option value="violence">Violence/Hate</option>
+          <option value="scam">Scam/Fraud</option>
+          <option value="copyright">Copyright</option>
+          <option value="spam">Spam</option>
+          <option value="other">Other</option>
         </select>
       </div>
       <div class="mb-3">
-        <label class="form-label">ملاحظات إضافية</label>
-        <textarea class="form-control" name="note" rows="3" placeholder="اكتب تفاصيل تساعدنا في المراجعة…"></textarea>
+        <label class="form-label">Additional notes</label>
+        <textarea class="form-control" name="note" rows="3" placeholder="Write details that help us review…"></textarea>
       </div>
-      <button class="btn btn-danger w-100" type="submit">إرسال البلاغ</button>
+      <button class="btn btn-danger w-100" type="submit">Submit report</button>
     </form>
   </div>
 </div>
@@ -333,7 +333,7 @@
     if(!lb){
       lb=document.createElement('div');
       lb.className='lightbox';
-      lb.innerHTML='<button class="close">إغلاق ✕</button><img alt="preview">';
+      lb.innerHTML='<button class="close">Close ✕</button><img alt="preview">';
       document.body.appendChild(lb);
       lb.querySelector('.close').onclick=()=>lb.classList.remove('show');
       lb.onclick=(e)=>{ if(e.target===lb) lb.classList.remove('show'); };
@@ -342,13 +342,13 @@
   }
   if(zoomBtn && main){ zoomBtn.addEventListener('click', ()=>openLightbox(main.src)); }
 
-  // عدّاد الصور
+  // Image counter
   function setPager(i,t){ if(pager){ pager.textContent=(i+1)+'/'+t; } }
   let activeIdx=0;
   function totalImgs(){ return thumbs ? thumbs.querySelectorAll('img').length : (main?1:0); }
   setPager(activeIdx,totalImgs());
 
-  // تبديل الصورة من المصغّرات
+  // Switch image from thumbnails
   if(thumbs && main){
     thumbs.addEventListener('click', (e)=>{
       const t=e.target;
@@ -358,19 +358,19 @@
         t.classList.add('active');
         activeIdx=parseInt(t.getAttribute('data-index')||'0',10)||0;
         setPager(activeIdx,totalImgs());
-        // تعبئة قيم البلاغ
+        // Fill report values
         document.getElementById('rf_image_index')?.setAttribute('value', String(activeIdx));
         document.getElementById('rf_image_url')?.setAttribute('value', t.dataset.src || t.src || '');
       }
     });
-    // سحب أفقي
+    // Horizontal drag
     let sx=0,dx=0;
     thumbs.addEventListener('touchstart',e=>{sx=e.touches[0].clientX},{passive:true});
     thumbs.addEventListener('touchmove',e=>{dx=e.touches[0].clientX-sx},{passive:true});
     thumbs.addEventListener('touchend',()=>{thumbs.scrollBy({left:-dx,behavior:'smooth'});sx=dx=0});
   }
 
-  // أسهم الكيبورد
+  // Keyboard arrows
   function step(dir){
     if(!thumbs) return;
     const imgs=[...thumbs.querySelectorAll('img')];
@@ -381,7 +381,7 @@
   }
   window.addEventListener('keydown',e=>{ if(e.key==='ArrowRight')step(+1); if(e.key==='ArrowLeft')step(-1); });
 
-  // عند فتح Sheet البلاغ لأول مرة، جهّز القيم الحالية
+  // When the report Sheet opens for the first time, prepare current values
   const reportSheet = document.getElementById('reportSheet');
   reportSheet?.addEventListener('show.bs.offcanvas', ()=>{
     const activeThumb=document.querySelector('#thumbs img.active')||document.querySelector('#thumbs img');

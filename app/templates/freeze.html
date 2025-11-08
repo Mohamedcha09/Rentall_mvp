@@ -2,31 +2,31 @@
 {% block content %}
 
 <div class="d-flex align-items-center justify-content-between mb-3">
-  <h3 class="mb-0">الضمانات (Placeholder)</h3>
-  <a href="/freeze" class="btn btn-sm btn-outline-light">تحديث</a>
+  <h3 class="mb-0">Guarantees (Placeholder)</h3>
+  <a href="/freeze" class="btn btn-sm btn-outline-light">Refresh</a>
 </div>
 
 <div class="alert alert-warning">
-  هذا مجرد قالب تمهيدي لميزة «التجميد/الضمان» — لا يوجد تعامل مالي فعلي الآن.
+  This is just a preliminary template for the “Freeze/Guarantee” feature — there is no real financial processing right now.
 </div>
 
 <div class="card mb-3">
   <div class="card-body">
     <form method="post" action="/freeze/create" class="row g-2 align-items-end">
       <div class="col-md-3">
-        <label class="form-label">رقم العنصر (اختياري)</label>
-        <input type="number" name="item_id" class="form-control" placeholder="مثال: 101">
+        <label class="form-label">Item ID (optional)</label>
+        <input type="number" name="item_id" class="form-control" placeholder="e.g., 101">
       </div>
       <div class="col-md-3">
-        <label class="form-label">قيمة الضمان</label>
-        <input type="number" name="amount" class="form-control" placeholder="مثال: 500" required>
+        <label class="form-label">Guarantee Amount</label>
+        <input type="number" name="amount" class="form-control" placeholder="e.g., 500" required>
       </div>
       <div class="col-md-4">
-        <label class="form-label">ملاحظة (اختياري)</label>
-        <input type="text" name="note" class="form-control" placeholder="مثال: ضمان عند الاستلام">
+        <label class="form-label">Note (optional)</label>
+        <input type="text" name="note" class="form-control" placeholder="e.g., Guarantee at pickup">
       </div>
       <div class="col-md-2">
-        <button class="btn btn-primary w-100">تسجيل</button>
+        <button class="btn btn-primary w-100">Record</button>
       </div>
     </form>
   </div>
@@ -38,11 +38,11 @@
       <div class="list-group-item">
         <div class="d-flex justify-content-between align-items-center">
           <div>
-            <div class="fw-bold">ضمان #{{ d.id }}</div>
+            <div class="fw-bold">Guarantee #{{ d.id }}</div>
             <div class="small text-muted">
-              عنصر: {{ d.item_id or '-' }} ·
-              المبلغ: {{ d.amount }} ·
-              الحالة:
+              Item: {{ d.item_id or '-' }} ·
+              Amount: {{ d.amount }} ·
+              Status:
               <span class="badge
                 {% if d.status == 'held' %}bg-warning text-dark
                 {% elif d.status == 'released' %}bg-success
@@ -51,7 +51,7 @@
                 {{ d.status }}
               </span>
             </div>
-            {% if d.note %}<div class="small text-muted">ملاحظة: {{ d.note }}</div>{% endif %}
+            {% if d.note %}<div class="small text-muted">Note: {{ d.note }}</div>{% endif %}
           </div>
           <div class="text-muted small">{{ d.created_at }}</div>
         </div>
@@ -59,7 +59,7 @@
     {% endfor %}
   </div>
 {% else %}
-  <div class="text-muted">لا توجد سجلات بعد.</div>
+  <div class="text-muted">No records yet.</div>
 {% endif %}
 
 {% endblock %}

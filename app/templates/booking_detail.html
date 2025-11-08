@@ -2,7 +2,7 @@
 {% block content %}
 
 {% if not booking %}
-  <div class="alert alert-danger">الحجز غير موجود.</div>
+  <div class="alert alert-danger">Booking not found.</div>
 {% else %}
 <div class="row g-3">
   <div class="col-md-7">
@@ -11,11 +11,11 @@
         <img src="/{{ item.image_path }}" class="card-img-top" style="max-height:360px;object-fit:cover" alt="">
       {% endif %}
       <div class="card-body">
-        <h4 class="mb-2">تفاصيل الحجز #{{ booking.id }}</h4>
+        <h4 class="mb-2">Booking Details #{{ booking.id }}</h4>
 
         {% if item %}
           <div class="mb-2">
-            <div class="small text-muted">العنصر</div>
+            <div class="small text-muted">Item</div>
             <div class="fw-bold">{{ item.title }}</div>
             <div class="text-muted small">{{ item.city or '' }} · {{ item.category or '' }}</div>
           </div>
@@ -23,23 +23,23 @@
 
         <div class="row g-2">
           <div class="col-6">
-            <div class="small text-muted">من</div>
+            <div class="small text-muted">From</div>
             <div class="fw-bold">{{ booking.start_date }}</div>
           </div>
           <div class="col-6">
-            <div class="small text-muted">إلى</div>
+            <div class="small text-muted">To</div>
             <div class="fw-bold">{{ booking.end_date }}</div>
           </div>
         </div>
 
         <div class="row g-2 mt-2">
           <div class="col-6">
-            <div class="small text-muted">عدد الأيام</div>
+            <div class="small text-muted">Number of days</div>
             <div class="fw-bold">{{ booking.days }}</div>
           </div>
           <div class="col-6">
-            <div class="small text-muted">الإجمالي</div>
-            <div class="fw-bold">{{ booking.total_amount }} د.ج</div>
+            <div class="small text-muted">Total</div>
+            <div class="fw-bold">{{ booking.total_amount }} DZD</div>
           </div>
         </div>
 
@@ -60,69 +60,69 @@
   <div class="col-md-5">
     <div class="card mb-3">
       <div class="card-body">
-        <h6 class="mb-3">الأطراف</h6>
+        <h6 class="mb-3">Parties</h6>
 
         <div class="d-flex align-items-center justify-content-between">
           <div>
-            <div class="small text-muted">المالك</div>
+            <div class="small text-muted">Owner</div>
             <div class="fw-bold">
               {{ owner.first_name }} {{ owner.last_name }}
               {% if owner.is_verified %}
-                <img src="/static/verified.png" class="verified-badge" alt="موثّق">
+                <img src="/static/verified.png" class="verified-badge" alt="Verified">
               {% endif %}
             </div>
           </div>
-          <a class="btn btn-sm btn-outline-light" href="/u/{{ owner.id }}">الملف العام</a>
+          <a class="btn btn-sm btn-outline-light" href="/u/{{ owner.id }}">Public profile</a>
         </div>
 
         <hr>
 
         <div class="d-flex align-items-center justify-content-between">
           <div>
-            <div class="small text-muted">المستأجر</div>
+            <div class="small text-muted">Renter</div>
             <div class="fw-bold">
               {{ renter.first_name }} {{ renter.last_name }}
               {% if renter.is_verified %}
-                <img src="/static/verified.png" class="verified-badge" alt="موثّق">
+                <img src="/static/verified.png" class="verified-badge" alt="Verified">
               {% endif %}
             </div>
           </div>
-          <a class="btn btn-sm btn-outline-light" href="/messages/start?user_id={{ renter.id }}&item_id={{ item.id }}">مراسلة</a>
+          <a class="btn btn-sm btn-outline-light" href="/messages/start?user_id={{ renter.id }}&item_id={{ item.id }}">Message</a>
         </div>
       </div>
     </div>
 
-    <!-- أزرار الإجراءات حسب الدور والحالة -->
+    <!-- Action buttons based on role and status -->
     <div class="card">
       <div class="card-body">
         {% if session_user.id == owner.id %}
           {% if booking.status == 'pending' %}
             <form method="post" action="/bookings/{{ booking.id }}/confirm" class="d-inline">
-              <button class="btn btn-success">اعتماد الطلب</button>
+              <button class="btn btn-success">Approve Request</button>
             </form>
             <form method="post" action="/bookings/{{ booking.id }}/reject" class="d-inline">
-              <button class="btn btn-danger">رفض</button>
+              <button class="btn btn-danger">Reject</button>
             </form>
           {% else %}
-            <div class="text-muted small">لا توجد إجراءات متاحة الآن للمالك.</div>
+            <div class="text-muted small">No actions available now for the owner.</div>
           {% endif %}
         {% elif session_user.id == renter.id %}
           {% if booking.status == 'pending' %}
             <form method="post" action="/bookings/{{ booking.id }}/cancel" class="d-inline">
-              <button class="btn btn-outline-danger">إلغاء الطلب</button>
+              <button class="btn btn-outline-danger">Cancel Request</button>
             </form>
           {% elif booking.status == 'confirmed' %}
-            <a class="btn btn-primary" href="/checkout/{{ booking.id }}">ادفع الآن</a>
+            <a class="btn btn-primary" href="/checkout/{{ booking.id }}">Pay Now</a>
           {% elif booking.status == 'paid' %}
-            <div class="alert alert-success mb-0">تم الدفع بنجاح ✅</div>
+            <div class="alert alert-success mb-0">Payment completed successfully ✅</div>
           {% endif %}
         {% endif %}
       </div>
     </div>
 
     <div class="d-grid gap-2 mt-3">
-      <a class="btn btn-outline-light" href="/items/{{ item.id }}">رجوع للعنصر</a>
-      <a class="btn btn-outline-secondary" href="/bookings/new?item_id={{ item.id }}">حجز جديد</a>
+      <a class="btn btn-outline-light" href="/items/{{ item.id }}">Back to item</a>
+      <a class="btn btn-outline-secondary" href="/bookings/new?item_id={{ item.id }}">New booking</a>
     </div>
   </div>
 </div>

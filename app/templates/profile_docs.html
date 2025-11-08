@@ -2,7 +2,7 @@
 {% extends "base.html" %}
 {% block content %}
 
-{# helper: يبني src صحيح سواء كان http(s) أو مسار محلي #}
+{# helper: builds a correct src whether http(s) or a local path #}
 {% macro build_src(p) -%}
   {%- set s = (p or '') -%}
   {%- if s.startswith('http://') or s.startswith('https://') -%}
@@ -12,14 +12,14 @@
   {%- endif -%}
 {%- endmacro %}
 
-{# نقرأ صورة الحساب من session_user لضمان أحدث نسخة #}
+{# read the account photo from session_user to ensure the latest copy #}
 {% set u = session_user %}
 {% set d = (user.documents|first) %}
 
-<h2 class="mb-3">تصحيح بيانات التحقق</h2>
+<h2 class="mb-3">Verification Data Correction</h2>
 <p class="text-muted">
-هنا يمكنك إعادة رفع <strong>صورة الحساب</strong> و/أو <strong>الوثائق</strong> إذا طلب الأدمين ذلك.
-بعد الإرسال، سيقوم الأدمين بمراجعتها مرة أخرى.
+Here you can re-upload your <strong>account photo</strong> and/or <strong>documents</strong> if the admins requested it.
+After submission, the admins will review them again.
 </p>
 
 {% if message %}
@@ -30,12 +30,12 @@
   <div class="col-md-6">
     <div class="card mb-3">
       <div class="card-body">
-        <h5 class="mb-3">صورة الحساب (وجهك)</h5>
+        <h5 class="mb-3">Account Photo (Your Face)</h5>
 
         {% set current_avatar = (u.avatar_path if u and u.avatar_path else user.avatar_path) %}
         {% if current_avatar %}
           <div class="mb-2">
-            <div class="small text-muted mb-1">الصورة الحالية:</div>
+            <div class="small text-muted mb-1">Current photo:</div>
             <img
               src="{{ build_src(current_avatar) }}"
               class="rounded border"
@@ -43,16 +43,16 @@
               referrerpolicy="no-referrer">
           </div>
         {% else %}
-          <div class="text-muted small mb-2">لا توجد صورة حالية.</div>
+          <div class="text-muted small mb-2">No current photo.</div>
         {% endif %}
 
         <form method="post" action="/profile/docs" enctype="multipart/form-data">
           <input type="hidden" name="action" value="avatar">
           <div class="mb-2">
-            <label class="form-label">ارفع صورة جديدة (JPG/PNG/WebP)</label>
+            <label class="form-label">Upload a new photo (JPG/PNG/WebP)</label>
             <input class="form-control" type="file" name="avatar" accept="image/*" required>
           </div>
-          <button class="btn btn-primary btn-sm">حفظ الصورة</button>
+          <button class="btn btn-primary btn-sm">Save Photo</button>
         </form>
       </div>
     </div>
@@ -61,41 +61,41 @@
   <div class="col-md-6">
     <div class="card mb-3">
       <div class="card-body">
-        <h5 class="mb-3">وثائق الهوية</h5>
+        <h5 class="mb-3">Identity Documents</h5>
 
         <div class="row g-3">
           <div class="col-12">
             <div class="small text-muted">
-              الوثيقة الحالية:
+              Current document:
               {% if d %}
-                <strong>{{ d.doc_type or "-" }}</strong> · بلد الإصدار: <strong>{{ d.country or "-" }}</strong> · الصلاحية: <strong>{{ d.expiry_date or "-" }}</strong>
+                <strong>{{ d.doc_type or "-" }}</strong> · Issuing country: <strong>{{ d.country or "-" }}</strong> · Expiry: <strong>{{ d.expiry_date or "-" }}</strong>
               {% else %}
-                لا يوجد سجل وثيقة بعد
+                No document record yet
               {% endif %}
             </div>
           </div>
 
           <div class="col-6">
-            <div class="small text-muted mb-1">الوجه الأمامي</div>
+            <div class="small text-muted mb-1">Front side</div>
             {% if d and d.file_front_path %}
               <img
                 src="{{ build_src(d.file_front_path) }}"
                 class="img-fluid rounded border"
                 style="max-height:160px;object-fit:cover;">
             {% else %}
-              <div class="text-muted small">غير مرفوع</div>
+              <div class="text-muted small">Not uploaded</div>
             {% endif %}
           </div>
 
           <div class="col-6">
-            <div class="small text-muted mb-1">الوجه الخلفي</div>
+            <div class="small text-muted mb-1">Back side</div>
             {% if d and d.file_back_path %}
               <img
                 src="{{ build_src(d.file_back_path) }}"
                 class="img-fluid rounded border"
                 style="max-height:160px;object-fit:cover;">
             {% else %}
-              <div class="text-muted small">غير مرفوع</div>
+              <div class="text-muted small">Not uploaded</div>
             {% endif %}
           </div>
         </div>
@@ -107,43 +107,43 @@
 
           <div class="row g-2">
             <div class="col-md-4">
-              <label class="form-label">نوع الوثيقة</label>
+              <label class="form-label">Document type</label>
               <select class="form-select" name="doc_type" required>
-                <option value="id_card"        {% if d and d.doc_type=='id_card' %}selected{% endif %}>بطاقة هوية</option>
-                <option value="driver_license" {% if d and d.doc_type=='driver_license' %}selected{% endif %}>رخصة قيادة</option>
-                <option value="passport"       {% if d and d.doc_type=='passport' %}selected{% endif %}>جواز سفر</option>
+                <option value="id_card"        {% if d and d.doc_type=='id_card' %}selected{% endif %}>ID Card</option>
+                <option value="driver_license" {% if d and d.doc_type=='driver_license' %}selected{% endif %}>Driver’s License</option>
+                <option value="passport"       {% if d and d.doc_type=='passport' %}selected{% endif %}>Passport</option>
               </select>
             </div>
             <div class="col-md-4">
-              <label class="form-label">بلد الإصدار</label>
+              <label class="form-label">Issuing country</label>
               <input class="form-control" type="text" name="doc_country" value="{{ d.country if d else '' }}" required>
             </div>
             <div class="col-md-4">
-              <label class="form-label">تاريخ الانتهاء</label>
+              <label class="form-label">Expiration date</label>
               <input class="form-control" type="date" name="doc_expiry" value="{{ d.expiry_date if d and d.expiry_date }}">
             </div>
           </div>
 
           <div class="mt-2">
-            <label class="form-label">صورة الوجه الأمامي (JPG/PNG/PDF)</label>
+            <label class="form-label">Front side image (JPG/PNG/PDF)</label>
             <input class="form-control" type="file" name="doc_front" accept=".jpg,.jpeg,.png,.pdf">
           </div>
           <div class="mt-2">
-            <label class="form-label">صورة الوجه الخلفي (اختياري)</label>
+            <label class="form-label">Back side image (optional)</label>
             <input class="form-control" type="file" name="doc_back" accept=".jpg,.jpeg,.png,.pdf">
           </div>
 
           <div class="form-text text-muted mt-2">
-            إذا طلب الأدمين <strong>تصحيح</strong>، ستُعرض ملاحظته في الرسائل. بعد إعادة الرفع اضغط “حفظ الوثائق”.
+            If the admin requested a <strong>correction</strong>, their note will appear in messages. After re-uploading, click “Save Documents”.
           </div>
 
-          <button class="btn btn-primary btn-sm mt-2">حفظ الوثائق</button>
+          <button class="btn btn-primary btn-sm mt-2">Save Documents</button>
         </form>
       </div>
     </div>
   </div>
 </div>
 
-<a href="/profile" class="btn btn-outline-light">رجوع إلى صفحتي</a>
+<a href="/profile" class="btn btn-outline-light">Back to my profile</a>
 
 {% endblock %}

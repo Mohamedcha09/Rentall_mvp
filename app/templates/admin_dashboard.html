@@ -1,34 +1,34 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container py-4">
-  <h3 class="mb-4">لوحة الأدمين</h3>
+<div class="container py-4" style="direction:ltr; text-align:left;">
+  <h3 class="mb-4">Admin Dashboard</h3>
 
-  <!-- ===== إحصائيات الزيارات ===== -->
+  <!-- ===== Traffic Metrics ===== -->
   <div class="card mb-4">
     <div class="card-body">
       <div class="row g-3 text-center">
         <div class="col-6 col-lg-3">
           <div class="p-3 rounded-3 border">
-            <div class="small text-muted">زوار اليوم</div>
+            <div class="small text-muted">Visitors Today</div>
             <div id="m_today" class="fs-3 fw-bold">—</div>
           </div>
         </div>
         <div class="col-6 col-lg-3">
           <div class="p-3 rounded-3 border">
-            <div class="small text-muted">زوار هذا الشهر</div>
+            <div class="small text-muted">Visitors This Month</div>
             <div id="m_month" class="fs-3 fw-bold">—</div>
           </div>
         </div>
         <div class="col-6 col-lg-3">
           <div class="p-3 rounded-3 border">
-            <div class="small text-muted">زوار هذه السنة</div>
+            <div class="small text-muted">Visitors This Year</div>
             <div id="m_year" class="fs-3 fw-bold">—</div>
           </div>
         </div>
         <div class="col-6 col-lg-3">
           <div class="p-3 rounded-3 border">
-            <div class="small text-muted">المتصلون الآن</div>
+            <div class="small text-muted">Online Now</div>
             <div id="m_online" class="fs-3 fw-bold">—</div>
           </div>
         </div>
@@ -57,7 +57,7 @@
         type: "line",
         data: {
           labels: d.labels || [],
-          datasets: [{ label: "زوار فريدون", data: d.values || [], tension: .3, fill: false }]
+          datasets: [{ label: "Unique Visitors", data: d.values || [], tension: .3, fill: false }]
         },
         options: { responsive: true, plugins: { legend: { display: true } }, scales: { y: { beginAtZero: true } } }
       });
@@ -65,33 +65,33 @@
   })();
   </script>
 
-  <!-- ==================== في انتظار الموافقة ==================== -->
+  <!-- ==================== Pending Approval ==================== -->
   <div class="card mb-4">
     <div class="card-header d-flex align-items-center justify-content-between">
-      <strong>في انتظار الموافقة</strong>
+      <strong>Pending Approval</strong>
       <span class="badge bg-secondary">{{ pending_users|length }}</span>
     </div>
     <div class="card-body p-0">
       {% if not pending_users %}
-        <div class="p-3 text-muted">لا يوجد طلبات حالياً.</div>
+        <div class="p-3 text-muted">No requests at the moment.</div>
       {% else %}
       <div class="table-responsive">
         <table class="table mb-0 align-middle">
           <thead>
             <tr>
               <th>#</th>
-              <th>الاسم</th>
-              <th>البريد</th>
-              <th>الهاتف</th>
-              <th>صورة الحساب</th>
-              <th>هوية (أمامي/خلفي)</th>
-              <th>توثيق البريد</th>
-              <th class="text-end">إجراءات</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Avatar</th>
+              <th>ID (Front/Back)</th>
+              <th>Email Verification</th>
+              <th class="text-end">Actions</th>
             </tr>
           </thead>
           <tbody>
             {% for row in pending_users %}
-              {# يدعم الشكلين: row.u أو row نفسه User #}
+              {# supports both shapes: row.u or row itself (User) #}
               {% set u = row.u if row is mapping and 'u' in row else row %}
               {% set docs = u.documents or [] %}
               {% if row is mapping and 'latest_doc' in row %}
@@ -105,7 +105,7 @@
               <td>{{ u.email }}</td>
               <td>{{ u.phone }}</td>
 
-              <!-- صورة الحساب -->
+              <!-- Avatar -->
               <td>
                 {% if u.avatar_path %}
                   <a href="{{ u.avatar_path | media_url }}" target="_blank" rel="noopener">
@@ -117,40 +117,40 @@
                 {% endif %}
               </td>
 
-              <!-- صور الهوية -->
+              <!-- ID images -->
               <td>
                 {% if d and d.file_front_path %}
-                  <a href="{{ d.file_front_path | media_url }}" target="_blank" title="الوجه الأمامي" rel="noopener">
+                  <a href="{{ d.file_front_path | media_url }}" target="_blank" title="Front" rel="noopener">
                     <img src="{{ d.file_front_path | media_url }}" style="width:60px;height:40px;object-fit:cover;border-radius:4px;margin-inline-end:6px">
                   </a>
                 {% endif %}
                 {% if d and d.file_back_path %}
-                  <a href="{{ d.file_back_path | media_url }}" target="_blank" title="الوجه الخلفي" rel="noopener">
+                  <a href="{{ d.file_back_path | media_url }}" target="_blank" title="Back" rel="noopener">
                     <img src="{{ d.file_back_path | media_url }}" style="width:60px;height:40px;object-fit:cover;border-radius:4px">
                   </a>
                 {% endif %}
                 {% if not (d and (d.file_front_path or d.file_back_path)) %}
-                  <span class="text-muted">لا توجد وثيقة</span>
+                  <span class="text-muted">No document</span>
                 {% endif %}
               </td>
 
               <td>
                 {% if u.is_verified|default(false) %}
-                  <span class="badge bg-success">موثّق</span>
+                  <span class="badge bg-success">Verified</span>
                 {% else %}
-                  <span class="badge bg-warning text-dark">غير موثّق</span>
+                  <span class="badge bg-warning text-dark">Unverified</span>
                 {% endif %}
               </td>
 
               <td class="text-end">
                 <form method="post" action="/admin/users/{{ u.id }}/approve" class="d-inline">
-                  <button class="btn btn-sm btn-success">موافقة</button>
+                  <button class="btn btn-sm btn-success">Approve</button>
                 </form>
                 <form method="post" action="/admin/users/{{ u.id }}/reject" class="d-inline">
-                  <button class="btn btn-sm btn-outline-danger">رفض</button>
+                  <button class="btn btn-sm btn-outline-danger">Reject</button>
                 </form>
                 <form method="post" action="/admin/users/{{ u.id }}/message" class="d-inline">
-                  <button class="btn btn-sm btn-outline-primary">مراسلة</button>
+                  <button class="btn btn-sm btn-outline-primary">Message</button>
                 </form>
               </td>
             </tr>
@@ -162,32 +162,32 @@
     </div>
   </div>
 
-  <!-- ==================== كل المستخدمين ==================== -->
+  <!-- ==================== All Users ==================== -->
   <div class="card">
     <div class="card-header d-flex align-items-center justify-content-between">
-      <strong>كل المستخدمين</strong>
+      <strong>All Users</strong>
       <span class="badge bg-secondary">{{ all_users|length }}</span>
     </div>
     <div class="card-body p-0">
       {% if not all_users %}
-        <div class="p-3 text-muted">لا يوجد مستخدمون.</div>
+        <div class="p-3 text-muted">No users.</div>
       {% else %}
       <div class="table-responsive">
         <table class="table mb-0 align-middle">
           <thead>
             <tr>
               <th>#</th>
-              <th>الاسم</th>
-              <th>البريد</th>
-              <th>الحالة</th>
-              <th>الدور</th>
-              <th>صورة الحساب</th>
-              <th>هوية (أ/خ)</th>
-              <th>توثيق</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Status</th>
+              <th>Role</th>
+              <th>Avatar</th>
+              <th>ID (F/B)</th>
+              <th>Verification</th>
               <th>MD</th>
               <th>MOD</th>
-              <th>CS</th>  {# ✅ جديد: عمود خدمة الزبائن #}
-              <th class="text-end">إجراءات</th>
+              <th>CS</th>  {# Customer Support column #}
+              <th class="text-end">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -204,17 +204,17 @@
               <td>
                 {{ u.first_name }} {{ u.last_name }}
                 {% if u.is_mod|default(false) %}
-                  <span class="badge bg-secondary ms-1" title="مدقّق محتوى">MOD</span>
+                  <span class="badge bg-secondary ms-1" title="Content Moderator">MOD</span>
                 {% endif %}
               </td>
               <td>{{ u.email }}</td>
               <td>
                 {% if u.status == 'approved' %}
-                  <span class="badge bg-success">مقبول</span>
+                  <span class="badge bg-success">Approved</span>
                 {% elif u.status == 'rejected' %}
-                  <span class="badge bg-danger">مرفوض</span>
+                  <span class="badge bg-danger">Rejected</span>
                 {% else %}
-                  <span class="badge bg-secondary">معلّق</span>
+                  <span class="badge bg-secondary">Pending</span>
                 {% endif %}
               </td>
               <td>
@@ -235,25 +235,25 @@
               </td>
               <td>
                 {% if d and d.file_front_path %}
-                  <a href="{{ d.file_front_path | media_url }}" target="_blank" title="أمامي" rel="noopener">
+                  <a href="{{ d.file_front_path | media_url }}" target="_blank" title="Front" rel="noopener">
                     <img src="{{ d.file_front_path | media_url }}" style="width:44px;height:30px;object-fit:cover;border-radius:4px;margin-inline-end:4px">
                   </a>
                 {% endif %}
                 {% if d and d.file_back_path %}
-                  <a href="{{ d.file_back_path | media_url }}" target="_blank" title="خلفي" rel="noopener">
+                  <a href="{{ d.file_back_path | media_url }}" target="_blank" title="Back" rel="noopener">
                     <img src="{{ d.file_back_path | media_url }}" style="width:44px;height:30px;object-fit:cover;border-radius:4px">
                   </a>
                 {% endif %}
               </td>
               <td>
                 {% if u.is_verified|default(false) %}
-                  <span class="badge bg-success">موثّق</span>
+                  <span class="badge bg-success">Verified</span>
                   <form method="post" action="/admin/users/{{ u.id }}/unverify" class="d-inline">
-                    <button class="btn btn-sm btn-outline-warning">إلغاء</button>
+                    <button class="btn btn-sm btn-outline-warning">Unverify</button>
                   </form>
                 {% else %}
                   <form method="post" action="/admin/users/{{ u.id }}/verify" class="d-inline">
-                    <button class="btn btn-sm btn-outline-success">توثيق</button>
+                    <button class="btn btn-sm btn-outline-success">Verify</button>
                   </form>
                 {% endif %}
               </td>
@@ -276,7 +276,7 @@
                 {% endif %}
               </td>
 
-              <!-- ✅ CS: خدمة الزبائن -->
+              <!-- CS -->
               <td>
                 {% if u.is_support|default(false) %}
                   <span class="badge bg-success">CS</span>
@@ -289,44 +289,44 @@
                 {# MD actions #}
                 {% if u.is_deposit_manager|default(false) %}
                   <form method="post" action="/admin/users/{{ u.id }}/deposit_manager/disable" class="d-inline">
-                    <button class="btn btn-sm btn-outline-danger">إلغاء MD</button>
+                    <button class="btn btn-sm btn-outline-danger">Disable MD</button>
                   </form>
                 {% else %}
                   <form method="post" action="/admin/users/{{ u.id }}/deposit_manager/enable" class="d-inline">
-                    <button class="btn btn-sm btn-outline-primary">منح MD</button>
+                    <button class="btn btn-sm btn-outline-primary">Enable MD</button>
                   </form>
                 {% endif %}
 
                 {# MOD actions #}
                 {% if u.is_mod|default(false) %}
                   <form method="post" action="/admin/users/{{ u.id }}/mod/disable" class="d-inline">
-                    <button class="btn btn-sm btn-outline-danger">إلغاء MOD</button>
+                    <button class="btn btn-sm btn-outline-danger">Disable MOD</button>
                   </form>
                 {% else %}
                   <form method="post" action="/admin/users/{{ u.id }}/mod/enable" class="d-inline">
-                    <button class="btn btn-sm btn-outline-primary">منح MOD</button>
+                    <button class="btn btn-sm btn-outline-primary">Enable MOD</button>
                   </form>
                 {% endif %}
 
-                {# ✅ CS actions: منح/إلغاء خدمة الزبائن #}
+                {# CS actions #}
                 {% if u.is_support|default(false) %}
                   <form method="post" action="/admin/users/{{ u.id }}/cs/disable" class="d-inline">
-                    <button class="btn btn-sm btn-outline-danger">إلغاء CS</button>
+                    <button class="btn btn-sm btn-outline-danger">Disable CS</button>
                   </form>
                 {% else %}
                   <form method="post" action="/admin/users/{{ u.id }}/cs/enable" class="d-inline">
-                    <button class="btn btn-sm btn-outline-primary">منح CS</button>
+                    <button class="btn btn-sm btn-outline-primary">Enable CS</button>
                   </form>
                 {% endif %}
 
                 {% if u.status != 'approved' %}
                   <form method="post" action="/admin/users/{{ u.id }}/approve" class="d-inline">
-                    <button class="btn btn-sm btn-success">موافقة</button>
+                    <button class="btn btn-sm btn-success">Approve</button>
                   </form>
                 {% endif %}
 
                 <form method="post" action="/admin/users/{{ u.id }}/message" class="d-inline">
-                  <button class="btn btn-sm btn-outline-primary">مراسلة</button>
+                  <button class="btn btn-sm btn-outline-primary">Message</button>
                 </form>
               </td>
             </tr>

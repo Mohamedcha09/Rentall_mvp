@@ -4,18 +4,18 @@
 
 {% block head %}
 <style>
-/* ============ أساس ألوان واضحة وتباين ============ */
+/* ============ Base: clear colors & contrast ============ */
 html[dir="rtl"] body{color:#0f172a}
 h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
 .small,.text-muted,.chip,.pill{color:#6b7280}
 
-/* ============ بطاقات (نفس الرئيسية) ============ */
+/* ============ Cards (same as Home) ============ */
 .spot{position:relative;border:none;background:transparent;box-shadow:none;border-radius:14px}
 .spot-media{position:relative;aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:#eef2f7}
 .spot-media img{width:100%;height:100%;object-fit:cover}
 .spot-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.1))}
 .category-chip{position:absolute;top:8px;left:8px;padding:4px 9px;font-size:.74rem;font-weight:800;color:#111;background:#fff;border:1px solid rgba(0,0,0,.06);border-radius:999px;box-shadow:0 3px 8px rgba(0,0,0,.08)}
-.fav-btn{display:none}   /* ما نحتاج قلب هنا */
+.fav-btn{display:none}   /* No heart needed here */
 .spot-body{padding:10px 4px 0}
 .spot-title{font-weight:800;color:#111;font-size:clamp(.92rem,.86rem + .2vw,1rem);margin-bottom:4px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 .spot-meta{display:flex;flex-direction:column;gap:2px;margin-top:4px}
@@ -26,19 +26,19 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
 .spot-rating::before{content:"★ ";font-weight:900}
 .owner-line,.spot-footer,.price-badge{display:none}
 
-/* شبكة العناصر 2-3-4-5-6 أعمدة مثل الرئيسية */
+/* Items grid 2-3-4-5-6 columns like Home */
 .grid-items{display:grid;gap:14px;padding-inline:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
 @media (min-width:576px){ .grid-items{grid-template-columns:repeat(3,minmax(0,1fr))} }
 @media (min-width:768px){ .grid-items{grid-template-columns:repeat(4,minmax(0,1fr))} }
 @media (min-width:992px){ .grid-items{grid-template-columns:repeat(5,minmax(0,1fr))} }
 @media (min-width:1200px){ .grid-items{grid-template-columns:repeat(6,minmax(0,1fr))} }
 
-/* ============ شريط أدوات التصنيفات (قابل للتمرير) ============ */
+/* ============ Categories toolbar (scrollable) ============ */
 .toolbar{display:flex;gap:8px;align-items:center;overflow:auto hidden;white-space:nowrap}
 .pill{padding:8px 12px;border-radius:999px;border:1px solid rgba(0,0,0,.08);background:#fff;color:#0f172a;text-decoration:none}
 .pill.active{border-color:#6C63FF;background:#f4f3ff}
 
-/* ============ شريط الموقع ONE-LINE لكل الشاشات ============ */
+/* ============ ONE-LINE location bar for all screens ============ */
 .items-locbar{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,.06);
   padding:8px 10px;margin-block:14px;display:flex;flex-wrap:nowrap;gap:6px;align-items:center}
 .items-locbar .col{padding:0;margin:0}
@@ -54,14 +54,14 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
   #itemsUseGPS::before{content:"📍";font-size:18px;line-height:1;display:inline-block;transform:translateY(1px)}
 }
 
-/* قائمة اقتراحات المدينة */
+/* City suggestion list */
 #itemsCitySugg{display:none;position:absolute;inset-inline:0;top:calc(100% + 6px);z-index:1000;max-height:240px;overflow:auto;
   background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,.08)}
 #itemsCitySugg>div{padding:.5rem .6rem;font-size:.95rem;color:#0f172a;border-top:1px solid rgba(0,0,0,.04);cursor:pointer}
 #itemsCitySugg>div:first-child{border-top:none}
 #itemsCitySugg>div:hover{background:#f7f7fb}
 
-/* رأس القسم */
+/* Section header */
 .section-title{font-weight:900;font-size:1.05rem}
 </style>
 {% endblock %}
@@ -71,17 +71,17 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
 <section class="container" style="max-width:1200px;margin:auto">
   <div class="d-flex align-items-center justify-content-between mb-2" style="gap:8px">
     <div class="d-flex align-items-center" style="gap:10px">
-      <h2 class="mb-0">العناصر</h2>
+      <h2 class="mb-0">Items</h2>
       <span class="pill" style="font-size:.82rem">
-        {% if current_category %}التصنيف: <b>{{ current_category }}</b>{% else %}كل التصنيفات{% endif %}
+        {% if current_category %}Category: <b>{{ current_category }}</b>{% else %}All categories{% endif %}
       </span>
       <span class="pill" style="font-size:.82rem">
-        الترتيب: {% if current_sort == 'new' %}الأحدث{% else %}عشوائي{% endif %}
+        Sort: {% if current_sort == 'new' %}Newest{% else %}Random{% endif %}
       </span>
     </div>
 
     <div class="toolbar">
-      <a class="pill {% if not current_category %}active{% endif %}" href="/items">الكل</a>
+      <a class="pill {% if not current_category %}active{% endif %}" href="/items">All</a>
       {% for cat in categories %}
         {% set key = cat.key if cat.key is defined else (cat.code if cat.code is defined else cat) %}
         {% set label = cat.label if cat.label is defined else (cat.name if cat.name is defined else key) %}
@@ -92,23 +92,23 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
       {% endfor %}
       {% set base_q = (current_category and ('&category=' ~ current_category)) or '' %}
       <a class="pill {% if current_sort != 'new' %}active{% endif %}"
-         href="/items?sort=random{{ base_q }}{% if selected_city %}&city={{ selected_city | urlencode }}{% endif %}{% if lat %}&lat={{ lat }}{% endif %}{% if lng %}&lng={{ lng }}{% endif %}">عشوائي</a>
+         href="/items?sort=random{{ base_q }}{% if selected_city %}&city={{ selected_city | urlencode }}{% endif %}{% if lat %}&lat={{ lat }}{% endif %}{% if lng %}&lng={{ lng }}{% endif %}">Random</a>
       <a class="pill {% if current_sort == 'new' %}active{% endif %}"
-         href="/items?sort=new{{ base_q }}{% if selected_city %}&city={{ selected_city | urlencode }}{% endif %}{% if lat %}&lat={{ lat }}{% endif %}{% if lng %}&lng={{ lng }}{% endif %}">الأحدث</a>
+         href="/items?sort=new{{ base_q }}{% if selected_city %}&city={{ selected_city | urlencode }}{% endif %}{% if lat %}&lat={{ lat }}{% endif %}{% if lng %}&lng={{ lng }}{% endif %}">Newest</a>
     </div>
   </div>
 
-  {# ========= شريط الموقع (ONE-LINE) ========= #}
+  {# ========= Location bar (ONE-LINE) ========= #}
   <form id="itemsLocForm" class="items-locbar" action="/items" method="get" role="search" novalidate>
     <div class="col col--input">
       <input type="text" class="form-control" id="itemsCityInput" name="city"
-             placeholder="اكتب المدينة / المنطقة …" autocomplete="off" value="{{ selected_city or '' }}">
+             placeholder="Type city / area …" autocomplete="off" value="{{ selected_city or '' }}">
       <div id="itemsCitySugg"></div>
     </div>
 
-    <button type="button" id="itemsUseGPS" class="btn" aria-label="استخدم موقعي">GPS</button>
-    <button class="btn" id="itemsSearchBtn" type="submit">بحث</button>
-    <button type="button" id="itemsClearGPS" class="btn btn-link">إلغاء</button>
+    <button type="button" id="itemsUseGPS" class="btn" aria-label="Use my location">GPS</button>
+    <button class="btn" id="itemsSearchBtn" type="submit">Search</button>
+    <button type="button" id="itemsClearGPS" class="btn btn-link">Clear</button>
 
     <input type="hidden" id="itemsLat" name="lat" value="{{ lat or '' }}">
     <input type="hidden" id="itemsLng" name="lng" value="{{ lng or '' }}">
@@ -116,7 +116,7 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
     {% if current_sort %}<input type="hidden" name="sort" value="{{ current_sort }}">{% endif %}
   </form>
 
-  {# ========= شبكة العناصر ========= #}
+  {# ========= Items grid ========= #}
   {% if items and items|length %}
     <div class="grid-items">
       {% for it in items %}
@@ -136,7 +136,7 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
             <div class="spot-title" title="{{ it.title }}">{{ it.title }}</div>
             <div class="spot-meta">
               {% if it.price_per_day is defined %}
-                <div class="spot-price"><strong>{{ it.price_per_day }}</strong> <span>/يوم</span></div>
+                <div class="spot-price"><strong>{{ it.price_per_day }}</strong> <span>/day</span></div>
               {% endif %}
               <div class="spot-city">{{ it.city or '—' }}</div>
               <div class="spot-rating">{{ it.rating|default(4.8) }}</div>
@@ -146,14 +146,14 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
       {% endfor %}
     </div>
   {% else %}
-    <div class="alert alert-secondary mt-3">لا توجد عناصر ضمن هذا الاختيار.</div>
+    <div class="alert alert-secondary mt-3">No items match this selection.</div>
   {% endif %}
 </section>
 {% endblock %}
 
 {% block scripts %}
 <script>
-/* ===== منطق شريط الموقع (مدينة/GPS) ===== */
+/* ===== Location bar logic (City/GPS) ===== */
 (function itemsLocBar(){
   const form   = document.getElementById('itemsLocForm');
   const cityEl = document.getElementById('itemsCityInput');
@@ -167,7 +167,7 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
   function getCookie(n){const m=document.cookie.match(new RegExp('(?:^| )'+n+'=([^;]+)'));return m?decodeURIComponent(m[1]):"";}
   function delCookie(n){try{document.cookie=n+"=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax";}catch(_){}} 
 
-  // تهيئة بسيطة
+  // Simple init
   try{
     const u=new URL(location.href);
     const c=u.searchParams.get('city')||getCookie('city')||"";
@@ -178,7 +178,7 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
 
   // GPS
   gpsBtn?.addEventListener('click',()=>{
-    if(!navigator.geolocation){alert('المتصفح لا يدعم تحديد الموقع.');return;}
+    if(!navigator.geolocation){alert('Your browser does not support geolocation.');return;}
     navigator.geolocation.getCurrentPosition(pos=>{
       const lat=pos.coords.latitude,lng=pos.coords.longitude;
       setCookie('lat',lat);setCookie('lng',lng);setCookie('city',"");
@@ -186,10 +186,10 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
       const u=new URL(location.href);
       u.searchParams.set('lat',lat);u.searchParams.set('lng',lng);u.searchParams.delete('city');
       location.href=u.toString();
-    },()=>alert('تعذر الحصول على موقعك.'));
+    },()=>alert('Could not get your location.'));
   });
 
-  // إلغاء
+  // Clear
   clearBtn?.addEventListener('click',()=>{
     delCookie('lat');delCookie('lng');
     const u=new URL(location.href);
@@ -198,13 +198,13 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
     location.href=u.toString();
   });
 
-  // حفظ المدينة يدويًا
+  // Save city manually
   cityEl?.addEventListener('change',()=>{
     setCookie('city',(cityEl.value||"").trim());
     setCookie('lat',"");setCookie('lng',"");
   });
 
-  /* ===== اقتراح مدينة واحدة ===== */
+  /* ===== Single city suggestion ===== */
   let t=null;
   const ALLOWED=new Set(['city','town','village','municipality']);
   const FALLBACK=new Set(['state','province']);
@@ -259,7 +259,7 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
     },250);
   });
 
-  // اختيار الاقتراح
+  // Pick suggestion
   sugg?.addEventListener('click',()=>{
     const label=(sugg.querySelector('[data-best] span')?.textContent||'').trim();
     const lat=sugg.dataset.lat||'';const lon=sugg.dataset.lon||'';
@@ -275,7 +275,7 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
     location.href=u.toString();
   });
 
-  // submit يدوي
+  // Manual submit
   form?.addEventListener('submit',function(e){
     e.preventDefault();
     const c=(cityEl?.value||"").trim();
@@ -299,7 +299,7 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
     location.href=u.toString();
   });
 
-  // إخفاء الاقتراحات عند النقر خارجها
+  // Hide suggestions when clicking outside
   document.addEventListener('click',(e)=>{ if(sugg && !sugg.contains(e.target) && e.target!==cityEl){hideSugg();} });
 })();
 </script>

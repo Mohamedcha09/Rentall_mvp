@@ -2,22 +2,22 @@
 {% block content %}
 
 <style>
-/* لجعل 3.0/5 تظهر بخط مستقيم في صفحات RTL */
+/* Make 3.0/5 render left-to-right in RTL pages */
 .num-ltr{
-  direction:ltr;              /* إجبار الاتجاه إلى اليسار */
-  unicode-bidi:isolate;       /* عزل اتجاه النص */
-  white-space:nowrap;         /* منع التفاف السطر */
-  font-variant-numeric:tabular-nums; /* أرقام متراصة إن دعم الخط */
+  direction:ltr;              /* Force LTR */
+  unicode-bidi:isolate;       /* Isolate text direction */
+  white-space:nowrap;         /* Prevent line wrap */
+  font-variant-numeric:tabular-nums; /* Tabular numbers if font supports it */
 }
 
-/* شريط إحصاءات أفقي بدلاً من الشبكة العمودية */
+/* Horizontal stats strip instead of vertical grid */
 .stats-strip{
   display:flex; gap:10px; padding:4px 2px; margin-bottom:12px;
   overflow-x:auto; overscroll-behavior-x:contain;
   -webkit-overflow-scrolling:touch;
 }
 .stats-chip{
-  min-width:210px;            /* غيّرها 180–240 حسب رغبتك */
+  min-width:210px;            /* Change to 180–240 as you like */
   border:1px solid var(--border);
   border-radius:12px;
   padding:14px;
@@ -31,7 +31,7 @@
 }
 </style>
 
-{# ====== Helper: يبني مسار صورة صالح سواء كان http(s) أو مسار محلي ====== #}
+{# ====== Helper: build a valid image src whether it's http(s) or local path ====== #}
 {% macro build_src(p) -%}
   {%- set s = (p or '') -%}
   {%- if s.startswith('http://') or s.startswith('https://') -%}
@@ -68,23 +68,23 @@
           <span class="d-inline-flex align-items-center gap-1 px-2 py-1 rounded-3"
                 style="border:1px solid var(--border);background:rgba(124,92,255,.15);">
             <i class="bi bi-patch-check-fill" style="color:#72d3ff"></i>
-            <span class="small">موثّق</span>
+            <span class="small">Verified</span>
           </span>
         {% endif %}
 
         {% if is_new %}
-          <span class="badge rounded-pill bg-warning text-dark">جديد</span>
+          <span class="badge rounded-pill bg-warning text-dark">New</span>
         {% endif %}
       </div>
 
       <div class="text-muted small mt-2 d-flex flex-wrap gap-3">
-        {% if created_at_str %}<span><i class="bi bi-calendar-check"></i> انضمّ: {{ created_at_str }}</span>{% endif %}
-        <span><i class="bi bi-box"></i> عناصر معروضة: {{ stats.items_count or 0 }}</span>
-        {# رابط سريع لصفحة المراجعات + المتوسط الجديد إن أردت عرضه هنا أيضاً #}
+        {% if created_at_str %}<span><i class="bi bi-calendar-check"></i> Joined: {{ created_at_str }}</span>{% endif %}
+        <span><i class="bi bi-box"></i> Listed items: {{ stats.items_count or 0 }}</span>
+        {# Quick link to reviews page + new average (if you also want to show it here) #}
         {% if renter_reviews_count and renter_reviews_count > 0 %}
           <span>
             <i class="bi bi-star-fill"></i>
-            <a class="link-underline link-underline-opacity-0" href="/users/{{ profile_user.id }}?tab=reviews" title="عرض المراجعات">
+            <a class="link-underline link-underline-opacity-0" href="/users/{{ profile_user.id }}?tab=reviews" title="View reviews">
               <span class="num-ltr" dir="ltr">&lrm;{{ '%.1f'|format((renter_reviews_avg|float)) }}/5</span> ({{ renter_reviews_count }})
             </a>
           </span>
@@ -99,32 +99,32 @@
     <div class="d-flex gap-2 ms-md-auto">
       {% if session_user and session_user.id != profile_user.id %}
         <a href="/messages/new?to={{ profile_user.id }}" class="btn btn-primary">
-          <i class="bi bi-chat-text"></i> مراسلة
+          <i class="bi bi-chat-text"></i> Message
         </a>
       {% endif %}
-      <a class="btn btn-ghost" href="/items?owner={{ profile_user.id }}"><i class="bi bi-grid"></i> كل عناصره</a>
+      <a class="btn btn-ghost" href="/items?owner={{ profile_user.id }}"><i class="bi bi-grid"></i> All their items</a>
     </div>
 
   </div>
 </section>
 
-{# ===================== شريط الإحصاءات الأفقي ===================== #}
+{# ===================== Horizontal statistics strip ===================== #}
 <section class="mb-3">
   <div class="stats-strip">
 
-    <!-- العناصر -->
+    <!-- Items -->
     <div class="stats-chip d-flex align-items-center justify-content-between">
       <div>
-        <div class="text-muted small">العناصر</div>
+        <div class="text-muted small">Items</div>
         <div class="fs-4 fw-bold">{{ stats.items_count or 0 }}</div>
       </div>
       <i class="bi bi-box fs-3"></i>
     </div>
 
-    <!-- تقييم كمستأجر (الجديد) -->
+    <!-- Rating as Renter (new) -->
     <div class="stats-chip d-flex align-items-center justify-content-between position-relative">
       <div>
-        <div class="text-muted small">تقييم كمستأجر</div>
+        <div class="text-muted small">Renter rating</div>
         <div class="fs-4 fw-bold">
           {% if renter_reviews_count and renter_reviews_count > 0 %}
             <span class="num-ltr" dir="ltr">&lrm;{{ '%.1f'|format((renter_reviews_avg|float)) }}/5</span>
@@ -132,29 +132,29 @@
         </div>
         <div class="small text-muted mt-1">
           {% if renter_reviews_count and renter_reviews_count > 0 %}
-            {{ renter_reviews_count }} مراجعة
-          {% else %}لا توجد مراجعات{% endif %}
+            {{ renter_reviews_count }} review(s)
+          {% else %}No reviews{% endif %}
         </div>
       </div>
       <i class="bi bi-star-fill fs-3"></i>
-      <a href="/users/{{ profile_user.id }}?tab=reviews" class="stretched-link" aria-label="المراجعات"></a>
+      <a href="/users/{{ profile_user.id }}?tab=reviews" class="stretched-link" aria-label="Reviews"></a>
     </div>
 
-    <!-- الحالة -->
+    <!-- Status -->
     <div class="stats-chip d-flex align-items-center justify-content-between">
       <div>
-        <div class="text-muted small">الحالة</div>
+        <div class="text-muted small">Status</div>
         <div class="fs-6 fw-bold">
-          {% if is_verified %}<span class="text-success">موثّق</span>{% else %}<span class="text-muted">عادي</span>{% endif %}
+          {% if is_verified %}<span class="text-success">Verified</span>{% else %}<span class="text-muted">Standard</span>{% endif %}
         </div>
       </div>
       <i class="bi bi-shield-check fs-3"></i>
     </div>
 
-    <!-- عضو منذ -->
+    <!-- Member since -->
     <div class="stats-chip d-flex align-items-center justify-content-between">
       <div>
-        <div class="text-muted small">عضو منذ</div>
+        <div class="text-muted small">Member since</div>
         <div class="fs-6 fw-bold">{{ created_at_str or '—' }}</div>
       </div>
       <i class="bi bi-calendar3 fs-3"></i>
@@ -162,22 +162,22 @@
 
   </div>
 </section>
-{# =================== نهاية الشريط الأفقي (لا يوجد "تقييم قديم") =================== #}
+{# =================== End of horizontal strip (no "old rating") =================== #}
 
 <ul class="nav nav-pills mb-3" id="userTabs" role="tablist">
   <li class="nav-item" role="presentation">
-    <button class="nav-link active" id="tab-items" data-bs-toggle="tab" data-bs-target="#pane-items" type="button" role="tab">العناصر المعروضة</button>
+    <button class="nav-link active" id="tab-items" data-bs-toggle="tab" data-bs-target="#pane-items" type="button" role="tab">Listed items</button>
   </li>
   <li class="nav-item" role="presentation">
-    <button class="nav-link" id="tab-about" data-bs-toggle="tab" data-bs-target="#pane-about" type="button" role="tab">حول المستخدم</button>
+    <button class="nav-link" id="tab-about" data-bs-toggle="tab" data-bs-target="#pane-about" type="button" role="tab">About user</button>
   </li>
   <li class="nav-item" role="presentation">
-    <button class="nav-link" id="tab-reviews" data-bs-toggle="tab" data-bs-target="#pane-reviews" type="button" role="tab">المراجعات</button>
+    <button class="nav-link" id="tab-reviews" data-bs-toggle="tab" data-bs-target="#pane-reviews" type="button" role="tab">Reviews</button>
   </li>
 </ul>
 
 <div class="tab-content" id="userTabsContent">
-  {# ========= تبويب العناصر ========= #}
+  {# ========= Items tab ========= #}
   <div class="tab-pane fade show active" id="pane-items" role="tabpanel" aria-labelledby="tab-items">
     {% if items and items|length > 0 %}
       <div class="row g-3">
@@ -188,11 +188,11 @@
                 {% if it.image_path %}
                   <img src="{{ build_src(it.image_path) }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
                 {% else %}
-                  <div class="d-grid place-items-center text-muted" style="width:100%;height:100%;">لا صورة</div>
+                  <div class="d-grid place-items-center text-muted" style="width:100%;height:100%;">No image</div>
                 {% endif %}
                 <div class="position-absolute top-0 start-0 m-2 px-2 py-1 rounded-pill text-white"
                      style="background:rgba(0,0,0,.55);backdrop-filter:blur(6px);border:1px solid var(--border);font-weight:700;">
-                  {{ it.price_per_day }} د/يوم
+                  {{ it.price_per_day }} D/day
                 </div>
                 {% if it.category_label %}
                   <div class="position-absolute top-0 end-0 m-2 px-2 py-1 rounded-pill small"
@@ -204,7 +204,7 @@
               <div class="card-body d-flex flex-column">
                 <h6 class="mb-1 text-truncate" title="{{ it.title }}">{{ it.title }}</h6>
                 <div class="mt-auto d-flex justify-content-between align-items-center">
-                  <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">تفاصيل</a>
+                  <a href="/items/{{ it.id }}" class="btn btn-sm btn-primary">Details</a>
                   <span class="small text-muted">{% if it.created_at %}{{ it.created_at.strftime("%Y-%m-%d") }}{% endif %}</span>
                 </div>
               </div>
@@ -213,41 +213,41 @@
         {% endfor %}
       </div>
     {% else %}
-      <div class="card p-3 text-center text-muted">لا توجد عناصر معروضة لهذا المستخدم حالياً.</div>
+      <div class="card p-3 text-center text-muted">This user has no listed items currently.</div>
     {% endif %}
   </div>
 
-  {# ========= تبويب حول المستخدم ========= #}
+  {# ========= About user tab ========= #}
   <div class="tab-pane fade" id="pane-about" role="tabpanel" aria-labelledby="tab-about">
     <div class="card p-3">
       <div class="row g-3">
         <div class="col-md-6">
-          <div class="mb-2"><strong>الاسم الكامل</strong></div>
+          <div class="mb-2"><strong>Full name</strong></div>
           <div class="text-muted">{{ profile_user.first_name }} {{ profile_user.last_name }}</div>
         </div>
         <div class="col-md-6">
-          <div class="mb-2"><strong>الحالة</strong></div>
+          <div class="mb-2"><strong>Status</strong></div>
           <div>
-            {% if is_verified %}<span class="badge bg-success">موثّق</span>{% else %}<span class="badge bg-secondary">عادي</span>{% endif %}
-            {% if is_new %}<span class="badge bg-warning text-dark ms-1">جديد</span>{% endif %}
+            {% if is_verified %}<span class="badge bg-success">Verified</span>{% else %}<span class="badge bg-secondary">Standard</span>{% endif %}
+            {% if is_new %}<span class="badge bg-warning text-dark ms-1">New</span>{% endif %}
           </div>
         </div>
         <div class="col-md-6">
-          <div class="mb-2"><strong>عضو منذ</strong></div>
+          <div class="mb-2"><strong>Member since</strong></div>
           <div class="text-muted">{{ created_at_str or '—' }}</div>
         </div>
       </div>
     </div>
   </div>
 
-  {# ========= تبويب المراجعات ========= #}
+  {# ========= Reviews tab ========= #}
   <div class="tab-pane fade" id="pane-reviews" role="tabpanel" aria-labelledby="tab-reviews">
     <div class="card p-3">
 
       <div class="d-flex align-items-center gap-2 mb-2">
-        <h5 class="m-0">تقييمه كمستأجر</h5>
+        <h5 class="m-0">Rating as renter</h5>
         <span class="badge bg-light text-dark">
-          ⭐ <span class="num-ltr" dir="ltr">&lrm;{{ renter_reviews_avg }}/5</span> — {{ renter_reviews_count }} مراجعة
+          ⭐ <span class="num-ltr" dir="ltr">&lrm;{{ renter_reviews_avg }}/5</span> — {{ renter_reviews_count }} review(s)
         </span>
       </div>
 
@@ -256,7 +256,7 @@
           {% for r in renter_reviews %}
             <div class="border rounded p-2">
               <div class="d-flex align-items-center justify-content-between">
-                <div class="small text-muted">من مالك #{{ r.owner_id }}</div>
+                <div class="small text-muted">From owner #{{ r.owner_id }}</div>
                 <div title="{{ r.stars }} / 5">
                   {% for _ in range(r.stars) %}⭐{% endfor %}
                   {% for _ in range(5 - r.stars) %}☆{% endfor %}
@@ -270,17 +270,17 @@
           {% endfor %}
         </div>
       {% else %}
-        <div class="text-muted">لا توجد مراجعات بعد.</div>
+        <div class="text-muted">No reviews yet.</div>
       {% endif %}
 
-      {# (اختياري) عرض نظام التقييم القديم أسفل الصفحة إن توفّر #}
+      {# (Optional) Show legacy rating system at the bottom if available #}
       {% if rating_count and rating_value %}
         <hr>
         <div class="d-flex align-items-center gap-3">
           <div class="display-6 fw-bold">
             <span class="num-ltr" dir="ltr">&lrm;{{ '%.1f'|format(rating_value) }}/5</span>
           </div>
-          <div class="text-muted">(نظام التقييم القديم) — {{ rating_count }} مراجعة</div>
+          <div class="text-muted">(Legacy rating system) — {{ rating_count }} review(s)</div>
         </div>
       {% endif %}
     </div>
