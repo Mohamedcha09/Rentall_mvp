@@ -133,7 +133,18 @@
 }
 
 /* نجوم أبيض/رمادي عامة */
-.stars-bw{display:inline-flex;gap:2px;font-size:14px;line-height:1}
+.stars-bw{
+  display:inline-flex;
+  gap:4px;              /* ← زدنا المسافة لتصبح موحدة بين كل النجوم */
+  font-size:16px;
+  line-height:1;
+  letter-spacing:0;     /* ← تأكد من إلغاء أي تباعد إضافي */
+}
+.stars-bw span{
+  display:inline-block;
+  width:1em;            /* ← يجعل كل نجمة بنفس العرض */
+  text-align:center;    /* ← لتوسيط النجمة داخل المربع */
+}
 .stars-bw .full{color:#111}
 .stars-bw .empty{color:#bdbdbd}
 </style>
