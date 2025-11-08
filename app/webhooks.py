@@ -5,7 +5,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from .database import SessionLocal
-# سنستعمل المعالج الحقيقي من pay_api
+# We will use the real handler from pay_api
 from .pay_api import _handle_checkout_completed
 
 router = APIRouter()
@@ -13,16 +13,16 @@ router = APIRouter()
 @router.get("/stripe/webhook/ping")
 def webhook_ping():
     """
-    فحص سريع أن المسار شغّال (لا يتطلب توقيع).
+    Quick check that the route is working (does not require a signature).
     """
     return {"ok": True, "msg": "stripe webhook endpoint is alive"}
 
 @router.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
     """
-    هذا المسار يستقبل Webhooks من Stripe (عندك الإندبوينت مضبوط عليه).
-    بعد التحقق من التوقيع، نحول الحدث إلى نفس المعالج المستخدم داخل pay_api.py
-    كي يتم تحديث الحجز في قاعدة البيانات، وبالتالي تختفي الأزرار تلقائيًا.
+    This route receives Webhooks from Stripe (your endpoint is configured to it).
+    After verifying the signature, we forward the event to the same handler used inside pay_api.py
+    so the booking gets updated in the database, and the buttons disappear automatically.
     """
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
@@ -36,13 +36,13 @@ async def stripe_webhook(request: Request):
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=400)
 
-    # لوج تشخيصي مفيد
+    # Useful diagnostic log
     try:
         print("✅ Webhook received:", event.get("type"))
     except Exception:
         pass
 
-    # >>> أهم سطرين: استدعاء نفس منطق التحديث الحقيقي
+    # >>> The two most important lines: call the same real update logic
     if event.get("type") == "checkout.session.completed":
         session_obj = event["data"]["object"]
         db = SessionLocal()

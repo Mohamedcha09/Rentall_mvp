@@ -6,10 +6,10 @@ from sqlalchemy.orm import Session
 
 from .database import get_db
 from .models import User, Item, Favorite
-from .utils import category_label  # ← نحتاجه في صفحة القالب
+from .utils import category_label  # ← we need it in the template page
 
 # -------------------------
-# Helper: احضار المستخدم من السيشن (يرجع None بدل الاستثناء)
+# Helper: fetch current user from session (returns None instead of raising)
 # -------------------------
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
@@ -19,7 +19,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optiona
     return db.get(User, uid)
 
 # ======================================================
-# API: /api/favorites  (إضافة/حذف/جلب معرفات المفضلات)
+# API: /api/favorites  (add/remove/fetch favorite IDs)
 # ======================================================
 api = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
@@ -29,7 +29,7 @@ def list_favorite_ids(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """يرجع قائمة IDs للعناصر الموجودة في المفضلة للمستخدم الحالي."""
+    """Returns a list of IDs for items in the current user's favorites."""
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -43,7 +43,7 @@ def add_favorite(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """أضف عنصراً إلى المفضلة."""
+    """Add an item to favorites."""
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -66,7 +66,7 @@ def remove_favorite(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """احذف عنصراً من المفضلة."""
+    """Remove an item from favorites."""
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -79,7 +79,7 @@ def remove_favorite(
     return {"ok": True}
 
 # ============================================
-# صفحة: /favorites  (تعرض عناصر المستخدم المفضلة)
+# Page: /favorites  (displays the user's favorite items)
 # ============================================
 page = APIRouter(tags=["favorites"])
 
@@ -90,8 +90,8 @@ def favorites_page(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    صفحة واجهة تُظهر كل العناصر المفضلة للمستخدم الحالي.
-    إذا لم يكن مسجّلاً، نعيده لصفحة الدخول.
+    UI page that shows all favorite items for the current user.
+    If not logged in, redirect to the login page.
     """
     if not user:
         return RedirectResponse(url="/login?next=/favorites", status_code=303)
@@ -112,15 +112,15 @@ def favorites_page(
         "favorites.html",
         {
             "request": request,
-            "title": "مفضّلتي",
+            "title": "My Favorites",
             "session_user": request.session.get("user"),
-            "items": items,                # ← اسم الحقل الذي يستخدمه favorites.html
+            "items": items,                # ← field name used by favorites.html
             "category_label": category_label,
         },
     )
 
 # ==========
-# Router واحد
+# Single router
 # ==========
 router = APIRouter()
 router.include_router(api)

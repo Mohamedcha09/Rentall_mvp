@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from .models import SupportTicket, SupportMessage, User
 
-# ✅ استيراد دالة الإشعارات الداخلية
+# ✅ import internal notifications function
 from .notifications_api import push_notification
 
 router = APIRouter()
@@ -29,24 +29,24 @@ def bump_ticket_on_message(db, ticket_id, author_user, is_cs_author: bool):
     t.updated_at = datetime.utcnow()
 
     if is_cs_author:
-        # آخر رسالة من الدعم
+        # last message from support
         t.last_from = "agent"
-        # تأكيد التعيين + إبقاءها مفتوحة
+        # confirm assignment + keep it open
         if not t.assigned_to_id:
             t.assigned_to_id = author_user.id
         if t.status in (None, "new", "resolved"):
             t.status = "open"
-        # قرئت من الوكيل الآن
+        # read by agent now
         t.unread_for_agent = False
-        # لو العميل سيرى الرد: علم لغير مقروء للمستخدم
+        # mark as unread for user so they will see the reply
         t.unread_for_user = True
     else:
-        # آخر رسالة من العميل
+        # last message from the customer
         t.last_from = "user"
-        # لو كانت مغلقة نعيد فتحها
+        # if closed, reopen it
         if t.status == "resolved":
             t.status = "open"
-        # أصبحت غير مقروءة للوكيل
+        # became unread for agent
         t.unread_for_agent = True
 
     db.commit()
@@ -54,42 +54,42 @@ def bump_ticket_on_message(db, ticket_id, author_user, is_cs_author: bool):
 
 def _ensure_cs_session(db: Session, request: Request):
     """
-    ✅ تُستخدم كـ "fallback" ذكي:
-    - إن كانت الجلسة لا تحمل is_support=True لكن المستخدم في DB صار CS،
-      نحدّث الجلسة فورًا داخل نفس الطلب ونُعيد session_user المحدَّث.
-    - إن لم يكن مسجلاً أو لم يكن CS فعلاً، نُعيد None.
+    ✅ Used as a smart "fallback":
+    - If the session does not have is_support=True but the user in DB has become CS,
+      update the session immediately within the same request and return the updated session_user.
+    - If not logged in or not actually CS, return None.
     """
     sess = request.session.get("user") or {}
     uid = sess.get("id")
     if not uid:
         return None
 
-    # لو الجلسة فيها is_support=True بالفعل، ارجعها كما هي
+    # if session already has is_support=True, return it as-is
     if bool(sess.get("is_support", False)):
         return sess
 
-    # جلسة قديمة؟ تحقق من DB
+    # old session? verify with DB
     u_db = db.get(User, uid)
     if u_db and bool(getattr(u_db, "is_support", False)):
-        # حدّث الجلسة في نفس الطلب ثم أعدها
+        # update session in the same request then return it
         sess["is_support"] = True
         request.session["user"] = sess
         return sess
 
-    # ليس CS فعلاً
+    # not actually CS
     return None
 
 
-# ✅ دالة ترسل إشعارًا لكل موظف CS عند فتح تذكرة جديدة
+# ✅ function to notify all CS agents when a new ticket is opened
 def _notify_support_agents_on_new_ticket(db: Session, ticket: SupportTicket):
     agents = (
         db.query(User)
         .filter(User.is_support == True, User.status == "approved")
         .all()
     )
-    # يمكنك الإبقاء على الرابط المباشر للتذكرة أو جعله /cs/inbox حسب تفضيل الفريق
+    # you can keep the direct ticket link or make it /cs/inbox per team preference
     url = f"/cs/ticket/{ticket.id}"
-    title = "🎫 تذكرة دعم جديدة"
+    title = "🎫 New support ticket"
     body = f"#{ticket.id} — {ticket.subject or ''}".strip()
 
     for ag in agents:
@@ -100,14 +100,14 @@ def _notify_support_agents_on_new_ticket(db: Session, ticket: SupportTicket):
                 title,
                 body,
                 url,
-                "support",  # نوع الإشعار
+                "support",  # notification kind
             )
         except Exception:
-            # لا نوقف إنشاء التذكرة إذا فشل إشعار واحد
+            # do not block ticket creation if one notification fails
             pass
 
 
-# ========== واجهة العميل ==========
+# ========== Customer UI ==========
 
 @router.get("/support/new", response_class=HTMLResponse)
 def support_new(request: Request):
@@ -116,7 +116,7 @@ def support_new(request: Request):
         return RedirectResponse("/login", status_code=303)
     return request.app.templates.TemplateResponse(
         "support_new.html",
-        {"request": request, "session_user": u, "title": "مراسلة الدعم"},
+        {"request": request, "session_user": u, "title": "Contact Support"},
     )
 
 
@@ -126,7 +126,7 @@ def support_new_post(request: Request, db: Session = Depends(get_db)):
     if not u:
         return RedirectResponse("/login", status_code=303)
 
-    # Starlette يحفظ آخر فورم في request._form — نوفر بديل آمن لو غير متاح
+    # Starlette stores the last form in request._form — provide a safe fallback if unavailable
     form = getattr(request, "_form", None)
     if form is None:
         import anyio
@@ -140,9 +140,9 @@ def support_new_post(request: Request, db: Session = Depends(get_db)):
     body = form.get("body", "").strip() if form else ""
 
     if not subject:
-        subject = "بدون عنوان"
+        subject = "No subject"
 
-    # إنشاء التذكرة + أول رسالة
+    # create ticket + first message
     t = SupportTicket(
         user_id=u["id"],
         subject=subject,
@@ -160,13 +160,13 @@ def support_new_post(request: Request, db: Session = Depends(get_db)):
         ticket_id=t.id,
         sender_id=u["id"],
         sender_role="user",
-        body=body or "(بدون نص)",
+        body=body or "(no text)",
         created_at=datetime.utcnow(),
     )
     db.add(m)
     db.commit()
 
-    # ✅ بعد إنشاء التذكرة بنجاح: أرسل إشعارات للـ CS
+    # ✅ after successful creation: notify CS agents
     _notify_support_agents_on_new_ticket(db, t)
 
     return RedirectResponse("/support/my", status_code=303)
@@ -185,7 +185,7 @@ def support_my(request: Request, db: Session = Depends(get_db)):
     )
     return request.app.templates.TemplateResponse(
         "support_my.html",
-        {"request": request, "session_user": u, "tickets": tickets, "title": "تذاكري"},
+        {"request": request, "session_user": u, "tickets": tickets, "title": "My Tickets"},
     )
 
 
@@ -199,7 +199,7 @@ def support_ticket_view(tid: int, request: Request, db: Session = Depends(get_db
     if not t or t.user_id != u["id"]:
         return RedirectResponse("/support/my", status_code=303)
 
-    # علّم رسائل الوكيل كمقروءة + صفّر علم "غير مقروء للعميل"
+    # mark agent messages as read + reset "unread for user" flag
     for msg in t.messages or []:
         if msg.sender_role == "agent" and not getattr(msg, "is_read", False):
             msg.is_read = True
@@ -213,7 +213,7 @@ def support_ticket_view(tid: int, request: Request, db: Session = Depends(get_db
             "session_user": u,
             "ticket": t,
             "msgs": t.messages,
-            "title": f"تذكرة #{t.id}",
+            "title": f"Ticket #{t.id}",
         },
     )
 
@@ -229,17 +229,17 @@ def support_ticket_reply(tid: int, request: Request, db: Session = Depends(get_d
     if not t or t.user_id != u["id"]:
         return RedirectResponse("/support/my", status_code=303)
 
-    # إنشاء رسالة من العميل
+    # create a customer message
     m = SupportMessage(
         ticket_id=t.id,
         sender_id=u["id"],
         sender_role="user",
-        body=(body or "").strip() or "(بدون نص)",
+        body=(body or "").strip() or "(no text)",
         created_at=datetime.utcnow(),
     )
     db.add(m)
 
-    # تحديث حالة التذكرة والأعلام
+    # update ticket state and flags
     t.last_msg_at = datetime.utcnow()
     t.updated_at = datetime.utcnow()
     t.last_from = "user"
@@ -249,12 +249,12 @@ def support_ticket_reply(tid: int, request: Request, db: Session = Depends(get_d
     t.unread_for_user = False
     db.commit()
 
-    # إشعار للوكيل المعيَّن إن وجد، وإلاّ لجميع موظفي CS الموافقين
+    # notify the assigned agent if any, otherwise all approved CS staff
     if t.assigned_to_id:
         push_notification(
             db,
             t.assigned_to_id,
-            "💬 ردّ جديد من العميل",
+            "💬 New customer reply",
             f"#{t.id} — {t.subject or ''}",
             url=f"/cs/ticket/{t.id}",
             kind="support",
@@ -265,7 +265,7 @@ def support_ticket_reply(tid: int, request: Request, db: Session = Depends(get_d
             push_notification(
                 db,
                 ag.id,
-                "💬 ردّ جديد من العميل",
+                "💬 New customer reply",
                 f"#{t.id} — {t.subject or ''}",
                 url=f"/cs/ticket/{t.id}",
                 kind="support",

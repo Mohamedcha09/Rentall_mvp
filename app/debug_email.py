@@ -4,7 +4,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.orm import Session
 
-from .email_service import send_email   # ✅ استخدام SendGrid
+from .email_service import send_email   # ✅ Using SendGrid
 from .database import get_db
 from .models import User
 
@@ -21,7 +21,7 @@ def _admin_only(u: User | None):
 
 @router.get("/admin/debug/email/env")
 def email_env(request: Request, db: Session = Depends(get_db)):
-    """إظهار متغيرات SendGrid الأساسية."""
+    """Show basic SendGrid environment variables."""
     u = _me(request, db); _admin_only(u)
     return {
         "SENDGRID_API_KEY": bool(os.getenv("SENDGRID_API_KEY")),
@@ -31,7 +31,7 @@ def email_env(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/admin/debug/email/send")
 def email_send(request: Request, db: Session = Depends(get_db), to: str | None = None):
-    """إرسال رسالة تجريبية عبر SendGrid."""
+    """Send a test email through SendGrid."""
     u = _me(request, db); _admin_only(u)
     to_addr = (to or os.getenv("TEST_EMAIL_TO") or getattr(u, "email", None))
     if not to_addr:
@@ -41,5 +41,5 @@ def email_send(request: Request, db: Session = Depends(get_db), to: str | None =
     ok = send_email(to_addr, "RentAll — SendGrid test", html, text_body="SendGrid test — OK")
     return {"ok": bool(ok), "to": to_addr, "via": "sendgrid"}
 
-# (اختياري) إذا أردت إبقاء تشخيص SMTP القديم فاحذف الاستيرادات الخاصة به
-# أو اتركه لكن لا تعتمد عليه لأن الإرسال صار عبر SendGrid الآن.
+# (Optional) If you want to keep the old SMTP diagnostics, remove its imports
+# or leave them, but don't rely on them since sending is now handled via SendGrid.

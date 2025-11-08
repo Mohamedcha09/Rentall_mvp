@@ -11,21 +11,21 @@ def _months_since(dt: Optional[datetime]) -> int:
 
 def get_user_badges(user: User, db=None) -> List[str]:
     """
-    يعيد قائمة أسماء صور الشارات المتوفرة لديك فقط:
-      - 'jaune'  : حساب جديد أقل من شهرين
-      - 'violet' : ثقة/موثوق (يفعّلها الأدمِن عبر is_verified أو badge_purple_trust)
+    Returns the list of badge image names you currently support:
+      - 'jaune'  : New account (less than two months old)
+      - 'violet' : Trusted/Verified (enabled by admin via is_verified or badge_purple_trust)
 
-    الصور المتوقعة:
+    Expected images:
       static/img/jaune.png
       static/img/violet.png
     """
     badges: List[str] = []
 
-    # البنفسجي: ثقة (إدارة الأدمِن)
+    # Purple: trust (admin-controlled)
     if bool(getattr(user, "is_verified", False)) or bool(getattr(user, "badge_purple_trust", False)):
         badges.append("violet")
 
-    # الأصفر: جديد (أقل من شهرين)
+    # Yellow: new (less than two months)
     months = _months_since(getattr(user, "created_at", None))
     if months < 2:
         badges.append("jaune")

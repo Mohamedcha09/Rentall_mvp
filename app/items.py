@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 import os, secrets, shutil
 
-# Cloudinary (رفع الصور إلى السحابة)
+# Cloudinary (upload images to the cloud)
 import cloudinary
 import cloudinary.uploader
 
@@ -16,7 +16,7 @@ from .utils_badges import get_user_badges
 
 router = APIRouter()
 
-# جذر مجلد الرفع المحلي (مُعلن أيضاً في main.py بالـ /uploads)
+# Root of the local uploads folder (also mounted in main.py at /uploads)
 UPLOADS_ROOT = os.environ.get(
     "UPLOADS_DIR",
     os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")), "uploads")
@@ -42,19 +42,19 @@ def _ext_ok(filename: str) -> bool:
     return ext in [".jpg", ".jpeg", ".png", ".webp"]
 
 def _local_public_url(fname: str) -> str:
-    # عنوان يمكن فتحه عبر StaticFiles('/uploads' -> UPLOADS_ROOT)
+    # URL accessible via StaticFiles('/uploads' -> UPLOADS_ROOT)
     return f"/uploads/items/{fname}"
 
 
-# ================= قائمة العناصر =================
+# ================= Items list =================
 @router.get("/items")
 def items_list(
     request: Request,
     db: Session = Depends(get_db),
     category: str = None,
     sort: str = None,               # sort=random|new
-    city: str = None,               # اسم المدينة (مثال: "Paris, France")
-    lat: float | None = None,       # إحداثيات اختيارية (من الاقتراح/GPS)
+    city: str = None,               # city name (e.g., "Paris, France")
+    lat: float | None = None,       # optional coordinates (from suggestion/GPS)
     lng: float | None = None,
 ):
     q = db.query(Item).filter(Item.is_active == "yes")
@@ -63,7 +63,7 @@ def items_list(
         q = q.filter(Item.category == category)
         current_category = category
 
-    # فلترة بالمدينة (اسمياً فقط)
+    # Filter by city (name-based only)
     applied_name_filter = False
     if city:
         short = (city or "").split(",")[0].strip()
@@ -74,9 +74,9 @@ def items_list(
                     func.lower(Item.city).like(f"%{(city or '').lower()}%")
                 )
             )
-            applied_name_filter = True  # متروكة لو أردت استخدامها لاحقاً
+            applied_name_filter = True  # left here if you want to use it later
 
-    # الترتيب بالمسافة إن توفرت إحداثيات
+    # Sort by distance if coordinates were provided
     applied_distance_sort = False
     if lat is not None and lng is not None:
         dist2 = (
@@ -86,7 +86,7 @@ def items_list(
         q = q.order_by(dist2.asc())
         applied_distance_sort = True
 
-    # وإلا استخدم sort=new|random
+    # Otherwise use sort=new|random
     s = (sort or request.query_params.get("sort") or "random").lower()
     current_sort = s
     if not applied_distance_sort:
@@ -97,7 +97,7 @@ def items_list(
 
     items = q.all()
 
-    # تجهيز بيانات العرض
+    # Prepare view data
     for it in items:
         it.category_label = category_label(it.category)
         it.owner_badges = get_user_badges(it.owner, db) if it.owner else []
@@ -106,7 +106,7 @@ def items_list(
         "items.html",
         {
             "request": request,
-            "title": "العناصر",
+            "title": "Items",
             "items": items,
             "categories": CATEGORIES,
             "current_category": current_category,
@@ -116,12 +116,12 @@ def items_list(
             "selected_city": city or "",
             "lat": lat,
             "lng": lng,
-            # لا نمرر immersive هنا → تبقى الهيدر/النافبار ظاهرة
+            # we do not pass immersive here → header/navbar remain visible
         }
     )
 
 
-# ================= تفاصيل عنصر =================
+# ================= Item details =================
 @router.get("/items/{item_id}")
 def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     item = db.query(Item).get(item_id)
@@ -132,7 +132,7 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
                 "request": request,
                 "item": None,
                 "session_user": request.session.get("user"),
-                "immersive": True,  # حتى صفحة الخطأ تكون بدون هيدر/نافبار
+                "immersive": True,  # even the error page is immersive (no header/navbar)
             }
         )
 
@@ -143,7 +143,7 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     owner = db.query(User).get(item.owner_id)
     owner_badges = get_user_badges(owner, db) if owner else []
 
-    # تقييمات هذا المنشور (من المستأجرين)
+    # Reviews for this listing (from renters)
     reviews_q = (
         db.query(ItemReview)
         .filter(ItemReview.item_id == item.id)
@@ -172,13 +172,13 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             "item_reviews": reviews,
             "item_rating_avg": round(float(avg_stars), 2),
             "item_rating_count": int(cnt_stars),
-            # ★ التعديل المهم: وضع الصفحة «مغمورة» لإخفاء الهيدر والنافبارين
+            # ★ important change: make the page “immersive” to hide header and navbars
             "immersive": True,
         }
     )
 
 
-# ================= عناصر المالك =================
+# ================= Owner's items =================
 @router.get("/owner/items")
 def my_items(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user")
@@ -199,16 +199,16 @@ def my_items(request: Request, db: Session = Depends(get_db)):
         "owner_items.html",
         {
             "request": request,
-            "title": "أشيائي",
+            "title": "My Items",
             "items": items,
             "session_user": u,
             "account_limited": is_account_limited(request),
-            # هنا تبقى واجهة الموقع كاملة (لا immersive)
+            # here the full site UI remains (not immersive)
         }
     )
 
 
-# ================= إضافة عنصر جديد =================
+# ================= Add a new item =================
 @router.get("/owner/items/new")
 def item_new_get(request: Request):
     if not require_approved(request):
@@ -218,7 +218,7 @@ def item_new_get(request: Request):
         "items_new.html",
         {
             "request": request,
-            "title": "إضافة عنصر",
+            "title": "Add Item",
             "categories": CATEGORIES,
             "session_user": request.session.get("user"),
             "account_limited": is_account_limited(request),
@@ -244,18 +244,18 @@ def item_new_post(
 
     u = request.session.get("user")
 
-    # المسار النهائي الذي سنخزنه في DB (Cloudinary URL أو مسار محلي /uploads/..)
+    # final path to store in DB (Cloudinary URL or local path /uploads/..)
     image_path_for_db = None
 
     if image and image.filename:
-        # 1) تأكيد الامتداد
+        # 1) ensure extension
         if _ext_ok(image.filename):
-            # 2) اسم ملف آمن محلي (للـ fallback)
+            # 2) safe local filename (fallback)
             ext = os.path.splitext(image.filename)[1].lower()
             fname = f"{u['id']}_{secrets.token_hex(8)}{ext}"
             fpath = os.path.join(ITEMS_DIR, fname)
 
-            # 3) محاولة الرفع إلى Cloudinary
+            # 3) try uploading to Cloudinary
             uploaded_url = None
             try:
                 up = cloudinary.uploader.upload(
@@ -268,7 +268,7 @@ def item_new_post(
             except Exception:
                 uploaded_url = None
 
-            # 4) إن فشل الرفع السحابي → حفظ محلي
+            # 4) if cloud upload fails → save locally
             if not uploaded_url:
                 try:
                     try:
@@ -288,7 +288,7 @@ def item_new_post(
             except Exception:
                 pass
 
-    # إنشاء السجل
+    # create the record
     it = Item(
         owner_id=u["id"],
         title=title,

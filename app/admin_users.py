@@ -18,7 +18,7 @@ def _admin_only(sess: dict | None):
     if not sess or (sess.get("role","").lower() != "admin"):
         raise HTTPException(status_code=403, detail="admin only")
 
-# ===== صفحة لوحة الأدمِن لطلبات الموافقة =====
+# ===== Admin dashboard page for approval requests =====
 @router.get("/admin/users")
 def admin_users_page(request: Request, db: Session = Depends(get_db)):
     sess = _me(request); _admin_only(sess)
@@ -26,7 +26,7 @@ def admin_users_page(request: Request, db: Session = Depends(get_db)):
     pending = db.query(User).filter(User.status != "approved").order_by(User.id.desc()).all()
     all_users = db.query(User).order_by(User.id.desc()).all()
 
-    # نجلب آخر وثيقة (إن وجدت) لكل مستخدم لعرضها في القالب لو احتجت لاحقاً
+    # Get the latest document (if any) for each user to display in the template if needed later
     for u in all_users:
         try:
             u.latest_doc = None
@@ -45,7 +45,7 @@ def admin_users_page(request: Request, db: Session = Depends(get_db)):
         }
     )
 
-# ===== موافقة الحساب =====
+# ===== Account approval =====
 @router.post("/admin/users/{user_id}/approve")
 def admin_user_approve(user_id: int, request: Request, db: Session = Depends(get_db)):
     sess = _me(request); _admin_only(sess)
@@ -57,28 +57,28 @@ def admin_user_approve(user_id: int, request: Request, db: Session = Depends(get
     u.status = "approved"
     db.add(u); db.commit()
 
-    # إيميل إشعار الموافقة
+    # Approval notification email
     try:
         site = os.getenv("SITE_URL") or os.getenv("BASE_URL") or ""
         html = f"""
         <div style="font-family:Tahoma,Arial,sans-serif;direction:rtl;text-align:right;line-height:1.8">
-          <h3>تمت الموافقة على حسابك ✅</h3>
-          <p>مرحبًا {u.first_name}! تم تفعيل حسابك بالكامل ويمكنك الآن إجراء الحجوزات.</p>
+          <h3>Your account has been approved ✅</h3>
+          <p>Hello {u.first_name}! Your account has been fully activated, and you can now make bookings.</p>
           <p style="margin:18px 0">
             <a href="{site or '/'}" style="background:#16a34a;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:700">
-              ابدأ الآن
+              Start now
             </a>
           </p>
-          <p style="color:#666;font-size:13px">شكرًا لاستخدامك RentAll 🌟</p>
+          <p style="color:#666;font-size:13px">Thank you for using RentAll 🌟</p>
         </div>
         """
-        send_email(u.email, "تمت الموافقة على حسابك — RentAll", html, text_body="تمت الموافقة على حسابك ويمكنك الآن الحجز.")
+        send_email(u.email, "Your account has been approved — RentAll", html, text_body="Your account has been approved, and you can now make bookings.")
     except Exception:
         pass
 
     return RedirectResponse(url="/admin/users", status_code=303)
 
-# ===== رفض الحساب (اختياري) =====
+# ===== Account rejection (optional) =====
 @router.post("/admin/users/{user_id}/reject")
 def admin_user_reject(user_id: int, request: Request, db: Session = Depends(get_db)):
     sess = _me(request); _admin_only(sess)
@@ -89,7 +89,7 @@ def admin_user_reject(user_id: int, request: Request, db: Session = Depends(get_
     db.add(u); db.commit()
     return RedirectResponse(url="/admin/users", status_code=303)
 
-# ===== توثيق/إلغاء توثيق البريد يدويًا (اختياري) =====
+# ===== Manually verify/unverify email (optional) =====
 @router.post("/admin/users/{user_id}/verify")
 def admin_user_verify(user_id: int, request: Request, db: Session = Depends(get_db)):
     sess = _me(request); _admin_only(sess)
@@ -110,7 +110,7 @@ def admin_user_unverify(user_id: int, request: Request, db: Session = Depends(ge
     db.add(u); db.commit()
     return RedirectResponse(url="/admin/users", status_code=303)
 
-# ===== منح/سحب صلاحية متحكم الوديعة (MD) — وفق قالبك =====
+# ===== Grant/Revoke Deposit Manager (MD) privilege — based on your template =====
 @router.post("/admin/users/{user_id}/deposit_manager/enable")
 def admin_user_enable_md(user_id: int, request: Request, db: Session = Depends(get_db)):
     sess = _me(request); _admin_only(sess)
@@ -129,9 +129,9 @@ def admin_user_disable_md(user_id: int, request: Request, db: Session = Depends(
     db.add(u); db.commit()
     return RedirectResponse(url="/admin/users", status_code=303)
 
-# ===== (اختياري) زر مراسلة المستخدم لاحقًا =====
+# ===== (Optional) Button to message user later =====
 @router.post("/admin/users/{user_id}/message")
 def admin_user_message(user_id: int, request: Request, db: Session = Depends(get_db)):
     sess = _me(request); _admin_only(sess)
-    # بإمكانك إعادة التوجيه لصفحة الرسائل مع user_id
+    # You can redirect to the messages page with user_id
     return RedirectResponse(url=f"/messages/start?user_id={user_id}", status_code=303)

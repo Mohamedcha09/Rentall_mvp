@@ -13,7 +13,7 @@ from .notifications_api import push_notification
 
 router = APIRouter()
 
-# ---------- عام ----------
+# ---------- General ----------
 def _require_login(request: Request):
     return request.session.get("user")
 
@@ -24,17 +24,17 @@ def dispute_new(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=303)
     return request.app.templates.TemplateResponse(
         "dispute_new.html",
-        {"request": request, "session_user": u, "title": "فتح نزاع"}
+        {"request": request, "session_user": u, "title": "Open Dispute"}
     )
 
-# ---------- Helpers مشتركة ----------
+# ---------- Shared Helpers ----------
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
     uid = data.get("id")
     return db.get(User, uid) if uid else None
 
 def require_dm(user: Optional[User]):
-    # ملاحظة: الملف الرسمي يستخدم is_deposit_manager/admin، هنا نحافظ على can_manage_deposits للتوافق
+    # Note: the official file uses is_deposit_manager/admin; here we keep can_manage_deposits for compatibility
     if not user or not getattr(user, "can_manage_deposits", False):
         raise HTTPException(status_code=403, detail="Deposit Manager only")
 
@@ -51,14 +51,14 @@ def _stripe():
 
 def _notify_after_decision(db: Session, bk: Booking, title_owner: str, title_renter: str, body: str):
     """
-    بعد قرار متحكّم الوديعة، نوجّه كلا الطرفين إلى صفحة القضية.
+    After the deposit manager's decision, direct both parties to the case page.
     """
     link = f"/dm/deposits/{bk.id}"
     push_notification(db, bk.owner_id, title_owner, body, link, "deposit")
     push_notification(db, bk.renter_id, title_renter, body, link, "deposit")
 
 # ============================================================
-# ⚠️ نُقِلَت مسارات DM هنا إلى Prefix "dm-compat" لمنع التعارض
+# ⚠️ DM routes were moved here under the "dm-compat" prefix to avoid conflicts
 # ============================================================
 
 @router.get("/dm-compat/deposits")
@@ -68,8 +68,8 @@ def dm_queue_compat(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    نسخة توافقية لا تتعارض مع المسار الرسمي في routes_deposits.py
-    يُفضّل استخدام /dm/deposits من الملف الرسمي.
+    Compatibility version that does not conflict with the official route in routes_deposits.py
+    Prefer using /dm/deposits from the official file.
     """
     require_dm(user)
 
@@ -90,7 +90,7 @@ def dm_queue_compat(
         "dm_queue.html",
         {
             "request": request,
-            "title": "قضايا الوديعة (توافق)",
+            "title": "Deposit Cases (Compat)",
             "session_user": request.session.get("user"),
             "cases": cases,
             "items_map": items_map,
@@ -106,7 +106,7 @@ def dm_case_compat(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    شاشة ملف وديعة (نسخة توافقية). المسار الرسمي: /dm/deposits/{booking_id} في routes_deposits.py
+    Deposit case screen (compat version). Official route: /dm/deposits/{booking_id} in routes_deposits.py
     """
     require_dm(user)
 
@@ -122,10 +122,10 @@ def dm_case_compat(
         "dm_case.html",
         {
             "request": request,
-            "title": f"قضية وديعة #{bk.id} (توافق)",
+            "title": f"Deposit Case #{bk.id} (Compat)",
             "session_user": request.session.get("user"),
-            "booking": bk,  # الاسم الذي قد يعتمد عليه القالب
-            "bk": bk,       # والتسمية القديمة أيضاً
+            "booking": bk,  # name that the template may depend on
+            "bk": bk,       # old naming as well
             "item": item,
             "item_title": (item.title if item else "—"),
             "owner": owner,
@@ -145,7 +145,7 @@ def dm_decide_compat(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    تنفيذ قرار (نسخة توافقية). المسار الرسمي موجود في routes_deposits.py
+    Execute a decision (compat version). The official route exists in routes_deposits.py
     """
     require_dm(user)
     bk = db.get(Booking, booking_id)
@@ -175,9 +175,9 @@ def dm_decide_compat(
 
         _notify_after_decision(
             db, bk,
-            "تم الإفراج عن الوديعة",
-            "تم الإفراج عن وديعتك",
-            f"قرار متحكّم الوديعة: إفراج كامل. السبب: {reason or '—'}",
+            "Deposit released",
+            "Your deposit was released",
+            f"Deposit manager decision: Full release. Reason: {reason or '—'}",
         )
         return RedirectResponse(url=f"/dm/deposits/{bk.id}", status_code=303)
 
@@ -231,18 +231,18 @@ def dm_decide_compat(
 
     _notify_after_decision(
         db, bk,
-        "قرار وديعة: اقتطاع للمالك",
-        "قرار وديعة: تم اقتطاع جزء من وديعتك",
-        f"المبلغ المقتطع: {amount}$ — السبب: {reason or '—'}",
+        "Deposit decision: Owner charged",
+        "Deposit decision: A part of your deposit was charged",
+        f"Withheld amount: {amount}$ — Reason: {reason or '—'}",
     )
     return RedirectResponse(url=f"/dm/deposits/{bk.id}", status_code=303)
 
 
 # ------------------------------------------------------------
-# ✅ إصلاح التعارض مع صفحة البلاغ الرسمية:
-#   كان هذا الملف يُعرِّف GET /deposits/{booking_id}/report كـ Redirect
-#   وهذا يُخفي صفحة النموذج الحقيقية (الموجودة في routes_deposits.py).
-#   نقلناه لمسار LEGACY منفصل آمن:
+# ✅ Fix conflict with the official report page:
+#   This file used to define GET /deposits/{booking_id}/report as a Redirect
+#   and that hides the actual form page (which exists in routes_deposits.py).
+#   We moved it to a separate safe LEGACY route:
 # ------------------------------------------------------------
 @router.get("/deposits/{booking_id}/report-legacy")
 def deposit_report_legacy_redirect(
@@ -252,10 +252,10 @@ def deposit_report_legacy_redirect(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    مسار قديم للروابط التاريخية فقط.
-    - لو المستخدم DM → نرسله لصفحة القضية /dm/deposits/{id}
-    - غير ذلك → نرسله لتدفّق الحجز /bookings/flow/{id}
-    صفحة النموذج الرسمية موجودة على: GET /deposits/{booking_id}/report (في routes_deposits.py)
+    Legacy route for historical links only.
+    - If the user is a DM → send them to the case page /dm/deposits/{id}
+    - Otherwise → send them to the booking flow /bookings/flow/{id}
+    The official form page is at: GET /deposits/{booking_id}/report (in routes_deposits.py)
     """
     if user and getattr(user, "can_manage_deposits", False):
         return RedirectResponse(url=f"/dm/deposits/{booking_id}", status_code=303)

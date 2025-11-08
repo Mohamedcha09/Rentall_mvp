@@ -16,13 +16,13 @@ def require_approved(request: Request):
     return u and u.get("status") == "approved"
 
 # ================================
-# حساب المالك لاستلام الأموال (واجهة)
+# Owner account to receive funds (UI)
 # ================================
 @router.get("/wallet/connect")
 def wallet_connect(request: Request):
     """
-    صفحة مبسّطة تُظهر زر (ربط Stripe) — تبقي على قالبك الحالي إن رغبت،
-    لكن الزر سيحوّل إلى /payout/connect/start الحقيقي.
+    A simplified page that shows a (Stripe Connect) button — keep your current template if you wish,
+    but the button will redirect to the real /payout/connect/start.
     """
     u = require_login(request)
     if not u:
@@ -32,7 +32,7 @@ def wallet_connect(request: Request):
         "wallet_connect.html",
         {
             "request": request,
-            "title": "إعداد حساب الاستلام",
+            "title": "Payout Account Setup",
             "session_user": u,
             "connect_start_url": "/payout/connect/start",
             "connect_refresh_url": "/payout/connect/refresh",
@@ -42,27 +42,27 @@ def wallet_connect(request: Request):
 @router.post("/wallet/connect")
 def wallet_connect_post(request: Request):
     """
-    دعم لأي فورم قديم: نحول فورًا لمسار البدء الحقيقي في payout_connect.py
+    Support for any old form: immediately redirect to the real start path in payout_connect.py
     """
     return RedirectResponse(url="/payout/connect/start", status_code=303)
 
 @router.get("/payout/settings")
 def payout_settings(request: Request):
     """
-    صفحة إعدادات التحويل — تُظهر حالة الحساب من الـ session
-    (تتحدّث تلقائيًا عبر الميدلوير في main.py بعد استدعاء /payout/connect/refresh).
-    وتعرض أزرار (بدء/إعادة) الربط.
+    Payout settings page — shows the account state from the session
+    (it auto-refreshes via middleware in main.py after calling /payout/connect/refresh).
+    And displays buttons to (start/retry) the connection.
     """
     u = require_login(request)
     if not u:
         return RedirectResponse(url="/login", status_code=303)
 
-    # نمرّر روابط الربط/التحديث للقالب:
+    # Pass the connect/refresh links to the template:
     return request.app.templates.TemplateResponse(
         "payout_settings.html",
         {
             "request": request,
-            "title": "إعدادات التحويل",
+            "title": "Payout Settings",
             "session_user": u,
             "connect_start_url": "/payout/connect/start",
             "connect_refresh_url": "/payout/connect/refresh",
@@ -70,7 +70,7 @@ def payout_settings(request: Request):
     )
 
 # =========================================
-# صفحة دفع التأمين/الحجز للمستأجر (Placeholder)
+# Deposit/checkout page for the renter (Placeholder)
 # =========================================
 @router.get("/checkout/deposit/{item_id}")
 def checkout_deposit(item_id: int, request: Request, db: Session = Depends(get_db)):
@@ -82,13 +82,13 @@ def checkout_deposit(item_id: int, request: Request, db: Session = Depends(get_d
     if not item or item.is_active != "yes":
         return RedirectResponse(url="/items", status_code=303)
 
-    # لاحقاً: اقرأ security_deposit الحقيقي من DB إن أضفت العمود.
+    # Later: read the real security_deposit from DB if you add the column.
     security_deposit = getattr(item, "security_deposit", None) or 100
     return request.app.templates.TemplateResponse(
         "checkout_deposit.html",
         {
             "request": request,
-            "title": "تأمين/حجز",
+            "title": "Deposit/Reservation",
             "session_user": u,
             "item": item,
             "security_deposit": security_deposit,
@@ -97,34 +97,34 @@ def checkout_deposit(item_id: int, request: Request, db: Session = Depends(get_d
 
 @router.post("/checkout/deposit/{item_id}")
 def checkout_deposit_post(item_id: int, request: Request):
-    # لاحقاً: إنشاء جلسة Stripe أو تفويض تأمين.
+    # Later: create Stripe session or deposit authorization.
     return RedirectResponse(url="/my/rentals", status_code=303)
 
 # =====================
-# صفحات “لوحاتي”
+# “My dashboards” pages
 # =====================
-@router.get("/my/rentals")         # كمستأجر
+@router.get("/my/rentals")         # As renter
 def my_rentals(request: Request):
     u = require_login(request)
     if not u:
         return RedirectResponse(url="/login", status_code=303)
     return request.app.templates.TemplateResponse(
         "my_rentals.html",
-        {"request": request, "title": "طلباتي (مستأجر)", "session_user": u}
+        {"request": request, "title": "My Rentals (Renter)", "session_user": u}
     )
 
-@router.get("/my/orders")          # كمالك
+@router.get("/my/orders")          # As owner
 def my_orders(request: Request):
     u = require_login(request)
     if not u:
         return RedirectResponse(url="/login", status_code=303)
     return request.app.templates.TemplateResponse(
         "my_orders.html",
-        {"request": request, "title": "طلباتي (مالك)", "session_user": u}
+        {"request": request, "title": "My Orders (Owner)", "session_user": u}
     )
 
 # ================
-# نزاع/بلاغ
+# Dispute/Report
 # ================
 @router.get("/dispute/new")
 def dispute_new(request: Request):
@@ -133,16 +133,16 @@ def dispute_new(request: Request):
         return RedirectResponse(url="/login", status_code=303)
     return request.app.templates.TemplateResponse(
         "dispute_new.html",
-        {"request": request, "title": "فتح نزاع", "session_user": u}
+        {"request": request, "title": "Open Dispute", "session_user": u}
     )
 
 @router.post("/dispute/new")
 def dispute_new_post(request: Request, reason: str = Form(...)):
-    # لاحقاً: نحفظ النزاع في DB ونعلم الأدمين
+    # Later: save the dispute in DB and notify admins
     return RedirectResponse(url="/my/rentals", status_code=303)
 
 # ==============================
-# لوحة أدمين للمدفوعات (Placeholder)
+# Admin payments dashboard (Placeholder)
 # ==============================
 @router.get("/admin/payouts")
 def admin_payouts(request: Request):
@@ -152,5 +152,5 @@ def admin_payouts(request: Request):
 
     return request.app.templates.TemplateResponse(
         "admin_payouts.html",
-        {"request": request, "title": "تحويلات/دفعات", "session_user": u}
+        {"request": request, "title": "Transfers/Payouts", "session_user": u}
     )

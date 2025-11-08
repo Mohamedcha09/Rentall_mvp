@@ -16,12 +16,12 @@ def require_admin(request: Request) -> bool:
     u = request.session.get("user")
     return bool(u and u.get("role") == "admin")
 
-# ====== واجهة المستخدم ======
+# ====== UI ======
 @router.get("/freeze")
 def freeze_list(request: Request, db: Session = Depends(get_db)):
     """
-    صفحة Placeholder: تعرض كل عمليات "الضمان" الخاصة بالمستخدم الحالي.
-    لا توجد عمليات مالية—مجرد تسجيل وواجهة توضيحية.
+    Placeholder page: shows all "guarantee" operations for the current user.
+    No financial operations—just logging and an illustrative UI.
     """
     u = require_login(request)
     if not u:
@@ -37,7 +37,7 @@ def freeze_list(request: Request, db: Session = Depends(get_db)):
         "freeze.html",
         {
             "request": request,
-            "title": "الضمانات (Placeholder)",
+            "title": "Guarantees (Placeholder)",
             "deposits": deposits,
             "session_user": u,
         }
@@ -52,8 +52,8 @@ def freeze_create(
     note: str = Form("")
 ):
     """
-    إنشاء سجل ضمان "شكلي" (planned). لا يوجد أي سحب/تجميد حقيقي.
-    الهدف فقط تجهيز الواجهة المستقبلية.
+    Create a "mock" guarantee record (planned). No actual hold/freeze.
+    The goal is only to prepare the future UI.
     """
     u = require_login(request)
     if not u:
@@ -70,7 +70,7 @@ def freeze_create(
     db.commit()
     return RedirectResponse(url="/freeze", status_code=303)
 
-# ====== لوحة الأدمين ======
+# ====== Admin panel ======
 @router.get("/admin/freeze")
 def admin_freeze_list(request: Request, db: Session = Depends(get_db)):
     if not require_admin(request):
@@ -85,7 +85,7 @@ def admin_freeze_list(request: Request, db: Session = Depends(get_db)):
         "admin_freeze.html",
         {
             "request": request,
-            "title": "إدارة الضمانات (Placeholder)",
+            "title": "Manage Guarantees (Placeholder)",
             "deposits": deposits,
             "session_user": request.session.get("user"),
         }

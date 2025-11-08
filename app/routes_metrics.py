@@ -8,7 +8,7 @@ from .models_metrics import Visit, OnlineSession
 
 router = APIRouter()
 
-ONLINE_WINDOW_SECONDS = 120  # اعتبره "متصل الآن" إن تحرّك خلال آخر دقيقتين
+ONLINE_WINDOW_SECONDS = 120  # Consider "online now" if there was activity in the last two minutes
 
 def _client_ip(request: Request) -> str:
     xff = request.headers.get("x-forwarded-for")

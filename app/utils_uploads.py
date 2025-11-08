@@ -6,32 +6,32 @@ import uuid
 from pathlib import Path
 from typing import Literal, Optional, Tuple
 
-# ملاحظة: مشروعك يركّب الـ uploads في app/main.py على:
+# Note: your project mounts uploads in app/main.py at:
 #   UPLOADS_DIR = <root>/uploads
-# هذا الملف يبني نفس المسارات بشكل آمن.
+# This file builds the same paths safely.
 
-# جذر ملفات الرفع بالنسبة لبنية مشروعك الحالية:
+# Root upload directories based on your current project structure:
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 UPLOADS_DIR = PROJECT_DIR / "uploads"      # ../uploads
 DEPOSITS_DIR = UPLOADS_DIR / "deposits"    # ../uploads/deposits
 
-# الامتدادات المسموح بها
+# Allowed extensions
 ALLOWED_IMAGE_EXTS = {"jpg", "jpeg", "png", "webp", "gif"}
 ALLOWED_VIDEO_EXTS = {"mp4", "mov", "webm"}
 ALLOWED_DOC_EXTS   = {"pdf"}
 ALLOWED_ALL_EXTS = ALLOWED_IMAGE_EXTS | ALLOWED_VIDEO_EXTS | ALLOWED_DOC_EXTS
 
-# تطبيع أسماء الملفات
+# Filename normalization
 _filename_keep = re.compile(r"[^A-Za-z0-9._-]+")
 
 
 def ensure_dirs(path: Path) -> None:
-    """ينشئ المجلدات إذا لم تكن موجودة (آمن للتوازي)."""
+    """Create directories if they don't exist (safe for concurrency)."""
     path.mkdir(parents=True, exist_ok=True)
 
 
 def split_name_ext(name: str) -> Tuple[str, str]:
-    """يفصل الاسم عن الامتداد ويعيد (الاسم بدون الامتداد, الامتداد بدون النقطة)."""
+    """Split name from extension and return (name without extension, extension without dot)."""
     name = name or ""
     if "." not in name:
         return name, ""
@@ -40,7 +40,7 @@ def split_name_ext(name: str) -> Tuple[str, str]:
 
 
 def normalize_base_name(base: str) -> str:
-    """ينظّف الاسم الأساسي ليكون آمن ضمن نظام الملفات."""
+    """Sanitize the base name to be filesystem-safe."""
     base = base or ""
     base = base.strip().replace(" ", "_")
     base = _filename_keep.sub("-", base)
@@ -50,10 +50,10 @@ def normalize_base_name(base: str) -> str:
 
 def safe_filename(original: str, *, force_ext: Optional[str] = None, with_uuid: bool = True) -> str:
     """
-    يولد اسم ملف آمن:
-      - ينظّف الاسم
-      - يحافظ على الامتداد أو يفرض امتداداً معيّناً
-      - يمكن أن يضيف UUID لتفادي التصادم
+    Generate a safe filename:
+      - sanitize the name
+      - keep the extension or force a specific one
+      - optionally append a UUID to avoid collisions
     """
     base, ext = split_name_ext(original)
     base = normalize_base_name(base)
@@ -68,7 +68,7 @@ def safe_filename(original: str, *, force_ext: Optional[str] = None, with_uuid: 
 
 
 def is_allowed_ext(ext: str, kind: Optional[Literal["image", "video", "doc"]] = None) -> bool:
-    """يتحقق من سماحية الامتداد اختيارياً حسب نوع الملف."""
+    """Check if an extension is allowed, optionally constrained by kind."""
     ext = (ext or "").lower().strip(".")
     if not ext:
         return False
@@ -82,7 +82,7 @@ def is_allowed_ext(ext: str, kind: Optional[Literal["image", "video", "doc"]] = 
 
 
 def classify_kind(ext: str) -> Literal["image", "video", "doc"]:
-    """يصنّف الامتداد إلى نوع منطقي للاستخدام في قاعدة البيانات."""
+    """Classify an extension into a logical kind for DB usage."""
     e = (ext or "").lower().strip(".")
     if e in ALLOWED_IMAGE_EXTS:
         return "image"
@@ -97,17 +97,17 @@ def build_deposit_evidence_path(
     original_filename: str,
 ) -> Path:
     """
-    يبني مساراً آمناً لتخزين دليل وديعة:
+    Build a safe storage path for deposit evidence:
       uploads/deposits/{booking_id}/{side}/{uuid}.{ext}
 
-    يُرجع المسار الكامل على القرص (Path).
+    Returns the absolute path on disk (Path).
     """
     _, ext = split_name_ext(original_filename)
     ext = ext.lower().strip(".")
     if not is_allowed_ext(ext):
         raise ValueError(f"Extension '.{ext}' not allowed")
 
-    # نستخدم UUID قصير + الامتداد
+    # Use a short UUID + the extension
     file_name = f"{uuid.uuid4().hex}.{ext}"
     folder = DEPOSITS_DIR / str(int(booking_id)) / side
     ensure_dirs(folder)
@@ -116,18 +116,18 @@ def build_deposit_evidence_path(
 
 def to_public_uploads_path(full_path: Path) -> str:
     """
-    يحوّل مساراً مطلقاً داخل مجلد /uploads إلى مسار يمكن تقديمه عبر الويب:
-      مثال: '.../<root>/uploads/deposits/5/owner/xxx.jpg' -> '/uploads/deposits/5/owner/xxx.jpg'
+    Convert an absolute path under /uploads to a web-servable path:
+      Example: '.../<root>/uploads/deposits/5/owner/xxx.jpg' -> '/uploads/deposits/5/owner/xxx.jpg'
     """
     p = str(full_path).replace("\\", "/")
     key = "/uploads/"
     if key in p:
-        return p[p.index(key):]  # يبدأ بـ /uploads/...
-    # fallback: إن لم ينجح القصّ لأي سبب، أعد المسار كما هو
+        return p[p.index(key):]  # starts with /uploads/...
+    # fallback: if slicing fails for any reason, return the original string
     return p
 
 
 def map_kind_from_filename(name: str) -> Literal["image", "video", "doc"]:
-    """Shortcut: استنتاج النوع من اسم الملف فقط."""
+    """Shortcut: infer kind from filename only."""
     _, ext = split_name_ext(name)
     return classify_kind(ext)

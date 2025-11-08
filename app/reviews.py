@@ -27,7 +27,7 @@ def _int(v, d=0):
         return d
 
 
-# =============== صفحة التقييم للمستأجر (GET) ===============
+# =============== Renter rating page (GET) ===============
 @router.get("/renter/{booking_id}")
 def renter_rate_page(
     booking_id: int,
@@ -45,14 +45,14 @@ def renter_rate_page(
         "reviews_renter.html",
         {
             "request": request,
-            "title": f"تقييم الحجز #{bk.id}",
+            "title": f"Rate booking #{bk.id}",
             "booking": bk,
             "session_user": request.session.get("user"),
         },
     )
 
 
-# =============== 1) المستأجر يقيّم العنصر + نعلّم (تم الإرجاع) ===============
+# =============== 1) Renter rates the item + mark as (returned) ===============
 @router.post("/renter/{booking_id}")
 def renter_rates_item(
     booking_id: int,
@@ -69,12 +69,12 @@ def renter_rates_item(
     if bk.renter_id != u["id"]:
         raise HTTPException(status_code=403, detail="not your booking")
 
-    # منع تكرار تقييم نفس الحجز من نفس المستأجر
+    # Prevent duplicate rating for the same booking by the same renter
     exists = db.query(ItemReview).filter(
         and_(ItemReview.booking_id == bk.id, ItemReview.rater_id == u["id"])
     ).first()
     if exists:
-        # ✳️ لا نذهب لصفحة المنشور، نرجع مباشرة لصفحة الحجز
+        # ✳️ Do not go to the listing page; return directly to the booking page
         return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
     stars = max(1, min(5, _int(rating, 5)))
@@ -87,7 +87,7 @@ def renter_rates_item(
     )
     db.add(ir)
 
-    # تعليم "تم الإرجاع"
+    # Mark "returned"
     if not bk.returned_at:
         bk.returned_at = datetime.utcnow()
     if bk.status not in ("returned", "in_review", "completed", "closed"):
@@ -95,11 +95,11 @@ def renter_rates_item(
 
     db.commit()
 
-    # ✳️ بعد الحفظ نرجّع المستخدم لصفحة الحجز (وليس صفحة المنشور)
+    # ✳️ After saving, send the user back to the booking page (not the listing page)
     return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
 
-# =============== 2) المالك يقيّم المستأجر ===============
+# =============== 2) Owner rates the renter ===============
 @router.post("/owner/{booking_id}")
 def owner_rates_renter(
     booking_id: int,

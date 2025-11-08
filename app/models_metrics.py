@@ -20,7 +20,7 @@ Index('ix_visits_day_session', Visit.day, Visit.session_id, unique=False)
 
 class OnlineSession(Base):
     __tablename__ = "online_sessions"
-    session_id = Column(String(64), primary_key=True)  # فريد لكل متصفح/جهاز
+    session_id = Column(String(64), primary_key=True)  # Unique per browser/device
     user_id = Column(Integer, nullable=True)
     ip = Column(String(64), nullable=True)
     user_agent = Column(String(255), nullable=True)

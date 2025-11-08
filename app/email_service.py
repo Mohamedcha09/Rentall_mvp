@@ -1,4 +1,3 @@
-# app/email_service.py
 from __future__ import annotations
 import os
 import requests
@@ -11,7 +10,7 @@ except Exception:
     pass
 
 # =========================
-# إعدادات SendGrid من .env
+# SendGrid settings from .env
 # =========================
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 FROM_EMAIL = (os.getenv("FROM_EMAIL", "") or "").split("#", 1)[0].strip()
@@ -20,7 +19,7 @@ FROM_NAME  = (os.getenv("FROM_NAME", "Rentall Notifications") or "").strip()
 SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send"
 
 def _normalize_list(value: Optional[Union[str, Iterable[str]]]) -> List[str]:
-    """يحوّل قيمة واحدة أو قائمة إلى قائمة نظيفة بدون فراغات"""
+    """Converts a single value or a list into a clean list without spaces"""
     if not value:
         return []
     if isinstance(value, str):
@@ -37,19 +36,19 @@ def send_email(
     reply_to: Optional[str] = None,
 ) -> bool:
     """
-    إرسال بريد إلكتروني عبر SendGrid API.
-    يُرجع True عند النجاح أو False عند الفشل.
+    Send an email via the SendGrid API.
+    Returns True on success or False on failure.
     """
     if not SENDGRID_API_KEY:
-        print("[email_service] ❌ SENDGRID_API_KEY مفقود من .env")
+        print("[email_service] ❌ SENDGRID_API_KEY is missing from .env")
         return False
     if not FROM_EMAIL:
-        print("[email_service] ❌ FROM_EMAIL مفقود من .env")
+        print("[email_service] ❌ FROM_EMAIL is missing from .env")
         return False
 
     recipients = _normalize_list(to)
     if not recipients:
-        print("[email_service] ⚠️ لا يوجد مستلم محدد")
+        print("[email_service] ⚠️ No recipient specified")
         return False
 
     payload = {
@@ -66,7 +65,7 @@ def send_email(
         ],
     }
 
-    # دعم cc / bcc
+    # Support cc / bcc
     cc_list = _normalize_list(cc)
     bcc_list = _normalize_list(bcc)
     if cc_list:
@@ -96,7 +95,7 @@ def send_email(
         return False
 
 
-# اختبار سريع من الطرف المحلي (اختياري)
+# Quick local test (optional)
 if __name__ == "__main__":
     test_to = os.getenv("TEST_EMAIL_TO", FROM_EMAIL)
     ok = send_email(
@@ -106,5 +105,3 @@ if __name__ == "__main__":
         text_body="It works! This is a test email via SendGrid."
     )
     print("Test send:", "OK ✅" if ok else "FAILED ❌")
-
-

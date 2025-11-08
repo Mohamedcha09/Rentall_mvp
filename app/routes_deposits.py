@@ -35,7 +35,7 @@ try:
 except Exception:
     DepositEvidence = None
 
-# ✅ تمرير label الفئة للقوالب
+# ✅ pass category label to templates
 try:
     from .utils import category_label
 except Exception:
@@ -59,7 +59,7 @@ except Exception:
                 try:
                     push_notification(
                         db, u.id,
-                        title or "تنبيه — الوديعة",
+                        title or "Alert — Deposit",
                         body or "",
                         url or "/dm/deposits",
                         "deposit"
@@ -67,7 +67,7 @@ except Exception:
                 except Exception:
                     pass
             try:
-                notify_admins(db, title or "تنبيه — الوديعة", body or "", url or "/dm/deposits")
+                notify_admins(db, title or "Alert — Deposit", body or "", url or "/dm/deposits")
             except Exception:
                 pass
         except Exception:
@@ -81,7 +81,7 @@ except Exception:
     def _audit(db, actor, bk, action, details=None):
         return None
 
-# ===== helpers email list fallbacks (تجنّب NameError) =====
+# ===== helpers email list fallbacks (avoid NameError) =====
 def _user_email(db: Session, user_id: int) -> Optional[str]:
     try:
         u = db.get(User, user_id) if user_id else None
@@ -118,7 +118,7 @@ if not stripe.api_key:
     except Exception:
         pass
 
-# ============ مسارات (ملفات) الأدلة ============
+# ============ Evidence (files) paths ============
 APP_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 UPLOADS_BASE = os.path.join(APP_ROOT, "uploads")
 DEPOSIT_UPLOADS = os.path.join(UPLOADS_BASE, "deposits")
@@ -174,7 +174,7 @@ def _save_evidence_files(booking_id: int, files: List[UploadFile] | None) -> Lis
         saved.append(safe_name)
     return saved
 
-# >>> حفظ محلي + رفع Cloudinary [(local_name, secure_url)]
+# >>> Local save + Cloudinary upload [(local_name, secure_url)]
 def _save_evidence_files_and_cloud(booking_id: int, files: List[UploadFile] | None) -> List[tuple[str, str]]:
     saved_names = _save_evidence_files(booking_id, files)
     results: List[tuple[str, str]] = []
@@ -215,7 +215,7 @@ def _evidence_urls(request: Request, booking_id: int) -> List[str]:
     files = _list_evidence_files(booking_id)
     return [f"{base}/{str(name)}" for name in files]
 
-# ============ Helpers عامة ============
+# ============ General Helpers ============
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
     uid = data.get("id")
@@ -267,7 +267,7 @@ def _is_closed(bk: Booking) -> bool:
     st = (getattr(bk, "status", "") or "").lower()
     return (st == "closed") or (ds in {"refunded", "partially_withheld", "no_deposit"})
 
-# ====== قراءة/كتابة معرّف الـPI ======
+# ====== Read/Write PI id ======
 def _get_deposit_pi_id(bk: Booking) -> Optional[str]:
     return (
         getattr(bk, "deposit_hold_intent_id", None)
@@ -321,7 +321,7 @@ def _split_renter_evidence(bk):
             other.append(e)
     return pickup, ret, other
 
-# ============ قائمة القضايا (مع فلاتر) ============
+# ============ Issues queue (with filters) ============
 @router.get("/dm/deposits")
 def dm_queue(
     request: Request,
@@ -334,7 +334,7 @@ def dm_queue(
     if not can_manage_deposits(user):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # دعم الحقل القديم deposit_hold_id إن وُجد
+    # support legacy field deposit_hold_id if present
     deposit_hold_old_expr = text("deposit_hold_id IS NOT NULL") if hasattr(Booking, "deposit_hold_id") else text("0")
 
     base_filters = [
@@ -346,7 +346,7 @@ def dm_queue(
         )
     ]
 
-    # تطبيق فلتر الحالة
+    # apply state filter
     if state == "awaiting_renter":
         base_filters.append(Booking.deposit_status == "awaiting_renter")
     elif state == "closed":
@@ -354,22 +354,22 @@ def dm_queue(
                                 Booking.deposit_status.in_(["refunded", "partially_withheld", "no_deposit"])))
     elif state in ("new", "awaiting_dm"):
         base_filters.append(Booking.deposit_status == "in_dispute")
-        # لم يُسند بعد
+        # not yet assigned
         if hasattr(Booking, "dm_assignee_id"):
             base_filters.append(or_(Booking.dm_assignee_id.is_(None), Booking.dm_assignee_id == 0))
 
     qset = db.query(Booking).filter(and_(*base_filters))
 
-    # البحث
+    # search
     if q:
         q = q.strip()
-        # #123 أو بريد أو جزء من عنوان العنصر
+        # #123 or email or part of item title
         if q.startswith("#") and q[1:].isdigit():
             qset = qset.filter(Booking.id == int(q[1:]))
         elif q.isdigit():
             qset = qset.filter(Booking.id == int(q))
         else:
-            # join على Item عند الحاجة
+            # join Item when needed
             qset = qset.join(Item, Item.id == Booking.item_id, isouter=True)
             like = f"%{q}%"
             qset = qset.filter(or_(Item.title.ilike(like), Booking.owner_email.ilike(like) if hasattr(Booking, "owner_email") else text("0"),
@@ -387,7 +387,7 @@ def dm_queue(
         "dm_queue.html",
         {
             "request": request,
-            "title": "قضايا الوديعة",
+            "title": "Deposit Cases",
             "session_user": request.session.get("user"),
             "cases": cases,
             "items_map": items_map,
@@ -397,7 +397,7 @@ def dm_queue(
         },
     )
 
-# ============ صفحة القضية ============
+# ============ Case page ============
 @router.get("/dm/deposits/{booking_id}")
 def dm_case_page(
     booking_id: int,
@@ -421,7 +421,7 @@ def dm_case_page(
         "dm_case.html",
         {
             "request": request,
-            "title": f"قضية وديعة #{bk.id}",
+            "title": f"Deposit Case #{bk.id}",
             "session_user": request.session.get("user"),
             "bk": bk,
             "booking": bk,
@@ -445,7 +445,7 @@ def dm_case_page(
     return resp
 
 
-# ============ تنفيذ القرار (نهائي/انتظار) ============
+# ============ Decision execution (final/pending) ============
 @router.post("/dm/deposits/{booking_id}/decision")
 def dm_decision(
     booking_id: int,
@@ -471,8 +471,8 @@ def dm_decision(
         final_url = _final_summary_url(bk.id)  # ==> "/bookings/{id}/deposit/summary"
         push_notification(db, bk.owner_id,  title_owner,  body_owner,  final_url, "deposit")
         push_notification(db, bk.renter_id, title_renter, body_renter, final_url, "deposit")
-        # الإدمن يظل يفتح صفحة DM
-        notify_admins(db, "إشعار قرار نهائي", f"حجز #{bk.id} — {decision}", f"/dm/deposits/{bk.id}")
+        # Admin keeps DM page open
+        notify_admins(db, "Final Decision Notice", f"Booking #{bk.id} — {decision}", f"/dm/deposits/{bk.id}")
 
     try:
         if decision == "release":
@@ -495,8 +495,8 @@ def dm_decision(
             db.commit()
 
             _notify_final(
-                "تم إعلان القرار النهائي", f"تم إرجاع وديعة الحجز #{bk.id} بالكامل.",
-                "تم إعلان القرار النهائي", f"تم إرجاع وديعتك بالكامل لحجز #{bk.id}."
+                "Final Decision Announced", f"The deposit for booking #{bk.id} has been fully refunded.",
+                "Final Decision Announced", f"Your deposit has been fully refunded for booking #{bk.id}."
             )
 
             try:
@@ -506,16 +506,16 @@ def dm_decision(
                 if owner_email:
                     send_email(
                         owner_email,
-                        f"قرار نهائي — إرجاع وديعة #{bk.id}",
-                        f"<p>تم إرجاع الوديعة بالكامل لحجز #{bk.id}.</p>"
-                        f'<p><a href="{case_url}">تفاصيل القرار النهائي</a></p>'
+                        f"Final Decision — Deposit Refund #{bk.id}",
+                        f"<p>The deposit was fully refunded for booking #{bk.id}.</p>"
+                        f'<p><a href="{case_url}">Final decision details</a></p>'
                     )
                 if renter_email:
                     send_email(
                         renter_email,
-                        f"قرار نهائي — إرجاع وديعتك #{bk.id}",
-                        f"<p>تم إرجاع وديعتك بالكامل لحجز #{bk.id}.</p>"
-                        f'<p><a href="{case_url}">تفاصيل القرار النهائي</a></p>'
+                        f"Final Decision — Your Deposit Refund #{bk.id}",
+                        f"<p>Your deposit was fully refunded for booking #{bk.id}.</p>"
+                        f'<p><a href="{case_url}">Final decision details</a></p>'
                     )
             except Exception:
                 pass
@@ -572,17 +572,17 @@ def dm_decision(
                 reason_txt = _short_reason(reason)
                 if captured_ok:
                     _notify_final(
-                        "تم إعلان القرار النهائي",
-                        f"تم اقتطاع {amt_txt} CAD من الوديعة في الحجز #{bk.id}" + (f" — السبب: {reason_txt}" if reason_txt else ""),
-                        "تم إعلان القرار النهائي",
-                        f"تم اقتطاع {amt_txt} CAD من وديعتك في الحجز #{bk.id}" + (f" — السبب: {reason_txt}" if reason_txt else "")
+                        "Final Decision Announced",
+                        f"{amt_txt} CAD was deducted from the deposit in booking #{bk.id}" + (f" — reason: {reason_txt}" if reason_txt else ""),
+                        "Final Decision Announced",
+                        f"{amt_txt} CAD was deducted from your deposit in booking #{bk.id}" + (f" — reason: {reason_txt}" if reason_txt else "")
                     )
                 else:
                     _notify_final(
-                        "تم إعلان القرار النهائي",
-                        f"تثبيت قرار اقتطاع {amt_txt} CAD للحجز #{bk.id} (لا توجد وديعة مُحجوزة للخصم).",
-                        "تم إعلان القرار النهائي",
-                        f"تثبيت قرار اقتطاع {amt_txt} CAD على وديعتك للحجز #{bk.id}، لكن لا توجد وديعة محجوزة."
+                        "Final Decision Announced",
+                        f"Withholding {amt_txt} CAD for booking #{bk.id} confirmed (no held deposit available to charge).",
+                        "Final Decision Announced",
+                        f"Withholding {amt_txt} CAD from your deposit for booking #{bk.id} confirmed, but there is no held deposit."
                     )
 
                 try:
@@ -592,24 +592,24 @@ def dm_decision(
                     if owner_email:
                         send_email(
                             owner_email,
-                            f"قرار نهائي — اقتطاع {amt_txt} CAD — #{bk.id}",
-                            f"<p>تم اقتطاع {amt_txt} CAD من وديعة الحجز #{bk.id}.</p>"
-                            f'<p><a href="{case_url}">تفاصيل القرار النهائي</a></p>'
+                            f"Final Decision — Withheld {amt_txt} CAD — #{bk.id}",
+                            f"<p>{amt_txt} CAD was withheld from the deposit for booking #{bk.id}.</p>"
+                            f'<p><a href="{case_url}">Final decision details</a></p>'
                         )
                     if renter_email:
                         send_email(
                             renter_email,
-                            f"قرار نهائي — خصم {amt_txt} CAD من وديعتك — #{bk.id}",
-                            f"<p>تم خصم {amt_txt} CAD من وديعتك لحجز #{bk.id}"
-                            + (f" — السبب: {reason_txt}" if reason_txt else "")
-                            + f'</p><p><a href="{case_url}">تفاصيل القرار النهائي</a></p>'
+                            f"Final Decision — {amt_txt} CAD withheld from your deposit — #{bk.id}",
+                            f"<p>{amt_txt} CAD was withheld from your deposit for booking #{bk.id}"
+                            + (f" — reason: {reason_txt}" if reason_txt else "")
+                            + f'</p><p><a href="{case_url}">Final decision details</a></p>'
                         )
                 except Exception:
                     pass
 
                 return RedirectResponse(url=_final_summary_url(bk.id), status_code=303)
 
-            # مهلة 24h (غير نهائي)
+            # 24h window (not final)
             if amt <= 0:
                 raise HTTPException(status_code=400, detail="Invalid amount")
             deadline = now + timedelta(hours=24)
@@ -630,21 +630,21 @@ def dm_decision(
             amt_txt = _fmt_money(amt)
             reason_txt = _short_reason(reason)
             push_notification(
-                db, bk.owner_id, "قرار خصم قيد الانتظار",
-                (f"تم فتح قرار خصم بمبلغ {amt_txt} CAD على الحجز #{bk.id}"
-                 + (f" — السبب: {reason_txt}" if reason_txt else "")
-                 + ". سيتم التنفيذ تلقائيًا بعد 24 ساعة ما لم يرد المستأجر."),
+                db, bk.owner_id, "Pending Deduction Decision",
+                (f"A deduction decision of {amt_txt} CAD was opened for booking #{bk.id}"
+                 + (f" — reason: {reason_txt}" if reason_txt else "")
+                 + ". It will be executed automatically after 24 hours unless the renter responds."),
                 f"/dm/deposits/{bk.id}", "deposit"
             )
             push_notification(
-                db, bk.renter_id, "تنبيه: قرار خصم على وديعتك",
-                (f"يوجد قرار خصم بمبلغ {amt_txt} CAD على وديعتك في الحجز #{bk.id}"
-                 + (f" — السبب: {reason_txt}" if reason_txt else "")
-                 + ". لديك 24 ساعة للرد ورفع أدلة."),
+                db, bk.renter_id, "Alert: Deduction Decision on Your Deposit",
+                (f"There is a deduction decision of {amt_txt} CAD on your deposit for booking #{bk.id}"
+                 + (f" — reason: {reason_txt}" if reason_txt else "")
+                 + ". You have 24 hours to respond and upload evidence."),
                 f"/deposits/{bk.id}/evidence/form", "deposit"
             )
-            notify_admins(db, "قرار خصم قيد الانتظار",
-                          f"اقتطاع مقترح {amt_txt} CAD — حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+            notify_admins(db, "Pending Deduction Decision",
+                          f"Proposed deduction {amt_txt} CAD — booking #{bk.id}.", f"/dm/deposits/{bk.id}")
 
             try:
                 renter_email = _user_email(db, bk.renter_id)
@@ -657,32 +657,32 @@ def dm_decision(
                 if renter_email:
                     send_email(
                         renter_email,
-                        f"تنبيه: قرار خصم على وديعتك — #{bk.id}",
-                        f"<p>يوجد قرار خصم بمبلغ {amt_txt} CAD على وديعتك للحجز #{bk.id}."
-                        f" لديك حتى <b>{deadline_str}</b> للرد ورفع الأدلة.</p>"
-                        f'<p><a href="{ev_url}">رفع الأدلة</a></p>'
+                        f"Alert: Deduction Decision on Your Deposit — #{bk.id}",
+                        f"<p>There is a deduction decision of <b>{amt_txt} CAD</b> on your deposit for booking #{bk.id}."
+                        f" You have until <b>{deadline_str}</b> to respond and upload evidence.</p>"
+                        f'<p><a href="{ev_url}">Upload Evidence</a></p>'
                     )
                 if owner_email:
                     send_email(
                         owner_email,
-                        f"تم بدء مهلة ردّ المستأجر — #{bk.id}",
-                        f"<p>فُتحت مهلة 24 ساعة لتنفيذ قرار الخصم بمبلغ {amt_txt} CAD."
-                        f" التنفيذ تلقائيًا بعد انتهاء المهلة ما لم يردّ المستأجر.</p>"
-                        f'<p><a href="{case_url}">صفحة القضية</a></p>'
+                        f"Renter Response Window Started — #{bk.id}",
+                        f"<p>A 24-hour window has been opened to execute a deduction decision of {amt_txt} CAD."
+                        f" It will be executed automatically after the window ends unless the renter responds.</p>"
+                        f'<p><a href="{case_url}">Case Page</a></p>'
                     )
                 for em in admins_em:
                     send_email(
                         em,
                         f"[Admin] awaiting_renter — #{bk.id}",
-                        f"<p>اقتطاع مقترح بمبلغ {amt_txt} CAD للحجز #{bk.id}.</p>"
-                        f'<p><a href="{case_url}">فتح القضية</a></p>'
+                        f"<p>Proposed deduction of {amt_txt} CAD for booking #{bk.id}.</p>"
+                        f'<p><a href="{case_url}">Open Case</a></p>'
                     )
                 for em in dms_em:
                     send_email(
                         em,
                         f"[DM] awaiting_renter — #{bk.id}",
-                        f"<p>تم فتح مهلة ردّ المستأجر لقرار خصم للحجز #{bk.id}.</p>"
-                        f'<p><a href="{case_url}">إدارة القضية</a></p>'
+                        f"<p>The renter response window for a deduction decision has been opened for booking #{bk.id}.</p>"
+                        f'<p><a href="{case_url}">Manage Case</a></p>'
                     )
             except Exception:
                 pass
@@ -697,7 +697,7 @@ def dm_decision(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe deposit operation failed: {e}")
 
-# ===================== بلاغ الوديعة =====================
+# ===================== Deposit report =====================
 @router.get("/deposits/{booking_id}/report")
 def report_deposit_issue_page(
     booking_id: int,
@@ -708,7 +708,7 @@ def report_deposit_issue_page(
     require_auth(user)
     bk = require_booking(db, booking_id)
 
-    # المالك فقط يفتح نموذج البلاغ، وDM/Admin يُحوَّل لصفحة القضية
+    # Only owner opens the report form, DM/Admin get redirected to the case page
     if user.id != bk.owner_id:
         if can_manage_deposits(user):
             return RedirectResponse(url=f"/dm/deposits/{bk.id}", status_code=303)
@@ -720,7 +720,7 @@ def report_deposit_issue_page(
         "deposit_report.html",
         {
             "request": request,
-            "title": f"فتح بلاغ وديعة — حجز #{bk.id}",
+            "title": f"Open Deposit Report — Booking #{bk.id}",
             "session_user": request.session.get("user"),
             "bk": bk,
             "booking": bk,
@@ -744,10 +744,10 @@ def report_deposit_issue(
     bk = require_booking(db, booking_id)
     if user.id != bk.owner_id:
         raise HTTPException(status_code=403, detail="Only owner can report issue")
-    # --- بديل محسّن ---
+    # --- improved alternative ---
     pi_id = _get_deposit_pi_id(bk)
 
-    # ---- من هنا إلى نهاية الدالة يجب أن يبقى داخل الدالة (مُزاح 4 مسافات) ----
+    # ---- from here to the end of the function must remain inside the function (indented by 4 spaces) ----
     if not pi_id:
         if (bk.payment_method or "").lower() not in ("cash", "manual") and (bk.hold_deposit_amount or 0) <= 0:
             raise HTTPException(status_code=400, detail="No deposit hold found")
@@ -788,14 +788,14 @@ def report_deposit_issue(
     db.commit()
 
     push_notification(
-        db, bk.renter_id, "بلاغ وديعة جديد",
-        f"قام المالك بالإبلاغ عن مشكلة ({issue_type}) بخصوص الحجز #{bk.id}.",
+        db, bk.renter_id, "New Deposit Report",
+        f"The owner reported an issue ({issue_type}) for booking #{bk.id}.",
         f"/bookings/flow/{bk.id}", "deposit"
     )
-    notify_dms(db, "بلاغ وديعة جديد — بانتظار المراجعة",
-               f"بلاغ جديد للحجز #{bk.id}.", "/dm/deposits")
-    notify_admins(db, "مراجعة ديبو مطلوبة",
-                  f"بلاغ جديد بخصوص حجز #{bk.id}.", "/dm/deposits")
+    notify_dms(db, "New Deposit Report — Pending Review",
+               f"New report for booking #{bk.id}.", "/dm/deposits")
+    notify_admins(db, "Deposit Review Required",
+                  f"New deposit report for booking #{bk.id}.", "/dm/deposits")
 
     _audit(db, actor=user, bk=bk, action="owner_report_issue",
            details={"issue_type": issue_type, "desc": description, "files": [p[0] for p in saved_pairs]})
@@ -810,25 +810,25 @@ def report_deposit_issue(
         if renter_email:
             send_email(
                 renter_email,
-                f"بلاغ وديعة جديد — #{bk.id}",
-                f"<p>قام المالك بالإبلاغ عن مشكلة (<b>{issue_type}</b>) بخصوص الحجز #{bk.id}.</p>"
-                f'<p><a href="{flow_url}">فتح تفاصيل الحجز</a></p>'
+                f"New Deposit Report — #{bk.id}",
+                f"<p>The owner reported an issue (<b>{issue_type}</b>) regarding booking #{bk.id}.</p>"
+                f'<p><a href="{flow_url}">Open booking details</a></p>'
             )
         if owner_email:
             send_email(
                 owner_email,
-                f"تم إرسال بلاغ الوديعة — #{bk.id}",
-                f"<p>تم تقديم بلاغك ({issue_type}) بنجاح للحجز #{bk.id} وهو الآن قيد المراجعة.</p>"
-                f'<p><a href="{flow_url}">تفاصيل الحجز</a></p>'
+                f"Deposit Report Submitted — #{bk.id}",
+                f"<p>Your report ({issue_type}) for booking #{bk.id} was submitted successfully and is now under review.</p>"
+                f'<p><a href="{flow_url}">Booking details</a></p>'
             )
         for em in admins_em:
-            send_email(em, f"[Admin] بلاغ وديعة جديد — #{bk.id}",
-                       f"<p>بلاغ وديعة جديد من المالك بخصوص الحجز #{bk.id}.</p>"
-                       f'<p><a href="{case_url}">فتح القضية</a></p>')
+            send_email(em, f"[Admin] New Deposit Report — #{bk.id}",
+                       f"<p>New deposit report from the owner for booking #{bk.id}.</p>"
+                       f'<p><a href="{case_url}">Open case</a></p>')
         for em in dms_em:
-            send_email(em, f"[DM] بلاغ وديعة جديد — #{bk.id}",
-                       f"<p>بلاغ جديد بانتظار المراجعة للحجز #{bk.id}.</p>"
-                       f'<p><a href="{case_url}">إدارة القضية</a></p>')
+            send_email(em, f"[DM] New Deposit Report — #{bk.id}",
+                       f"<p>New report pending review for booking #{bk.id}.</p>"
+                       f'<p><a href="{case_url}">Manage case</a></p>')
     except Exception:
         pass
 
@@ -836,14 +836,14 @@ def report_deposit_issue(
         "deposit_report_ok.html",
         {
             "request": request,
-            "title": "تم إرسال البلاغ",
+            "title": "Report Submitted",
             "session_user": request.session.get("user"),
             "bk": bk,
         },
         status_code=200
     )
 
-# ========================= أدلة الطرفين =========================
+# ========================= Evidence for both parties =========================
 @router.post("/deposits/{booking_id}/evidence/upload")
 def evidence_upload(
     booking_id: int,
@@ -893,14 +893,14 @@ def evidence_upload(
         pass
 
     other_id = bk.renter_id if user.id == bk.owner_id else bk.owner_id
-    who = "المالك" if user.id == bk.owner_id else "المستأجر"
+    who = "Owner" if user.id == bk.owner_id else "Renter"
 
     try:
-        push_notification(db, other_id, "أدلة جديدة في القضية",
-                          f"{who} قام برفع أدلة جديدة للحجز #{bk.id}.",
+        push_notification(db, other_id, "New Evidence in Case",
+                          f"{who} uploaded new evidence for booking #{bk.id}.",
                           f"/bookings/flow/{bk.id}", "deposit")
-        notify_dms(db, "أدلة جديدة — تحديث القضية",
-                   f"تم رفع أدلة جديدة للحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+        notify_dms(db, "New Evidence — Case Updated",
+                   f"New evidence uploaded for booking #{bk.id}.", f"/dm/deposits/{bk.id}")
         _audit(db, actor=user, bk=bk, action="evidence_upload",
                details={"by": who, "files": [p[0] for p in saved_pairs], "comment": comment})
     except Exception:
@@ -914,23 +914,23 @@ def evidence_upload(
         if other_email:
             send_email(
                 other_email,
-                f"أدلة جديدة مرفوعة — #{bk.id}",
-                f"<p>{who} قام برفع أدلة جديدة على قضية الوديعة للحجز #{bk.id}.</p>"
-                f'<p><a href="{flow_url}">عرض الحجز</a></p>'
+                f"New Evidence Uploaded — #{bk.id}",
+                f"<p>{who} uploaded new evidence for the deposit case on booking #{bk.id}.</p>"
+                f'<p><a href="{flow_url}">View booking</a></p>'
             )
         for em in dms_em:
             send_email(
                 em,
-                f"[DM] أدلة جديدة — #{bk.id}",
-                f"<p>تم رفع أدلة جديدة على القضية لحجز #{bk.id}.</p>"
-                f'<p><a href="{case_url}">فتح القضية</a></p>'
+                f"[DM] New Evidence — #{bk.id}",
+                f"<p>New evidence has been uploaded for the case for booking #{bk.id}.</p>"
+                f'<p><a href="{case_url}">Open case</a></p>'
             )
     except Exception:
         pass
 
     return RedirectResponse(url=f"/bookings/flow/{bk.id}?evidence=1", status_code=303)
 
-# ==== ردّ المستأجر ====
+# ==== Renter reply ====
 @router.post("/deposits/{booking_id}/renter-response")
 def renter_response_to_issue(
     booking_id: int,
@@ -959,12 +959,12 @@ def renter_response_to_issue(
     db.commit()
 
     push_notification(
-        db, bk.owner_id, "رد من المستأجر",
-        f"ردّ المستأجر على بلاغ الوديعة لحجز #{bk.id}.",
+        db, bk.owner_id, "Renter Responded",
+        f"The renter responded to the deposit report for booking #{bk.id}.",
         f"/bookings/flow/{bk.id}", "deposit"
     )
-    notify_admins(db, "رد وديعة جديد", f"ردّ المستأجر في قضية حجز #{bk.id}.", f"/dm/deposits/{bk.id}")
-    notify_dms(db, "ردّ المستأجر — تحديث القضية", f"تلقى الحجز #{bk.id} ردًا من المستأجر.", f"/dm/deposits/{bk.id}")
+    notify_admins(db, "New Deposit Reply", f"Renter replied in case for booking #{bk.id}.", f"/dm/deposits/{bk.id}")
+    notify_dms(db, "Renter Reply — Case Updated", f"Booking #{bk.id} received a renter reply.", f"/dm/deposits/{bk.id}")
 
     _audit(db, actor=user, bk=bk, action="renter_response", details={"comment": renter_comment})
 
@@ -976,23 +976,23 @@ def renter_response_to_issue(
         if owner_email:
             send_email(
                 owner_email,
-                f"ردّ المستأجر على بلاغك — #{bk.id}",
-                f"<p>وصل ردّ من المستأجر على بلاغ الوديعة للحجز #{bk.id}.</p>"
-                f'<p><a href="{flow_url}">عرض تفاصيل الحجز</a></p>'
+                f"Renter responded to your report — #{bk.id}",
+                f"<p>A renter response was received on the deposit report for booking #{bk.id}.</p>"
+                f'<p><a href="{flow_url}">View booking details</a></p>'
             )
         for em in dms_em:
             send_email(
                 em,
-                f"[DM] ردّ مستأجر أثناء المهلة — #{bk.id}",
-                f"<p>تلقى الحجز #{bk.id} ردّ المستأجر خلال مهلة الـ 24 ساعة.</p>"
-                f'<p><a href="{case_url}">فتح القضية</a></p>'
+                f"[DM] Renter reply during window — #{bk.id}",
+                f"<p>Booking #{bk.id} received a renter reply during the 24-hour window.</p>"
+                f'<p><a href="{case_url}">Open case</a></p>'
             )
     except Exception:
         pass
 
     return RedirectResponse(f"/dm/deposits/{bk.id}", status_code=303)
 
-# ==== استلام القضية (Claim) ====
+# ==== Claim case (DM) ====
 @router.post("/dm/deposits/{booking_id}/claim")
 def dm_claim_case(
     booking_id: int,
@@ -1018,14 +1018,14 @@ def dm_claim_case(
     try:
         push_notification(
             db, user.id,
-            "تم تعيينك لمراجعة قضية",
-            f"تم إسناد قضية وديعة #{bk.id} لك.",
+            "You have been assigned to review a case",
+            f"Deposit case #{bk.id} was assigned to you.",
             f"/dm/deposits/{bk.id}",
             "deposit",
         )
         notify_admins(
-            db, "Assign — تم تعيين مراجع",
-            f"تم تعيين {user.id} لمراجعة قضية #{bk.id}.",
+            db, "Assign — Reviewer Assigned",
+            f"{user.id} was assigned to review case #{bk.id}.",
             f"/dm/deposits/{bk.id}",
         )
     except Exception:
@@ -1037,25 +1037,25 @@ def dm_claim_case(
         if reviewer_email:
             send_email(
                 reviewer_email,
-                f"تم تعيينك لمراجعة قضية — #{bk.id}",
-                f"<p>قضية وديعة #{bk.id} أُسندت إليك للمراجعة.</p>"
-                f'<p><a href="{case_url}">فتح القضية</a></p>'
+                f"You have been assigned to review a case — #{bk.id}",
+                f"<p>Deposit case #{bk.id} has been assigned to you for review.</p>"
+                f'<p><a href="{case_url}">Open case</a></p>'
             )
         owner_email  = _user_email(db, bk.owner_id)
         renter_email = _user_email(db, bk.renter_id)
         if owner_email:
             send_email(
                 owner_email,
-                f"تعيين مراجع لقضية الوديعة — #{bk.id}",
-                f"<p>تم تعيين مراجع لقضية الوديعة الخاصة بحجز #{bk.id}.</p>"
-                f'<p><a href="{case_url}">تفاصيل القضية</a></p>'
+                f"A reviewer was assigned for the deposit case — #{bk.id}",
+                f"<p>A reviewer has been assigned to the deposit case for booking #{bk.id}.</p>"
+                f'<p><a href="{case_url}">Case details</a></p>'
             )
         if renter_email:
             send_email(
                 renter_email,
-                f"تعيين مراجع لقضية الوديعة — #{bk.id}",
-                f"<p>تم تعيين مراجع لقضية الوديعة الخاصة بحجز #{bk.id}.</p>"
-                f'<p><a href="{case_url}">تفاصيل القضية</a></p>'
+                f"A reviewer was assigned for the deposit case — #{bk.id}",
+                f"<p>A reviewer has been assigned to the deposit case for booking #{bk.id}.</p>"
+                f'<p><a href="{case_url}">Case details</a></p>'
             )
     except Exception:
         pass
@@ -1109,7 +1109,7 @@ def dm_case_context(
         "evidence": ev,
     }
 
-# ===== مهلة 24h =====
+# ===== 24h window =====
 @router.post("/dm/deposits/{booking_id}/start-window")
 def dm_start_renter_window(
     booking_id: int,
@@ -1155,18 +1155,18 @@ def dm_start_renter_window(
 
     try:
         push_notification(
-            db, bk.renter_id, "تنبيه: قرار خصم قيد الانتظار",
-            f"يوجد قرار خصم بمبلغ {amt} على وديعتك في حجز #{bk.id}. لديك 24 ساعة للرد ورفع أدلة.",
+            db, bk.renter_id, "Alert: Pending Deduction Decision",
+            f"There is a deduction decision of {amt} on your deposit for booking #{bk.id}. You have 24 hours to respond and upload evidence.",
             f"/deposits/{bk.id}/evidence/form", "deposit"
         )
         push_notification(
-            db, bk.owner_id, "تم تفعيل مهلة ردّ المستأجر",
-            f"تم فتح قرار خصم بمبلغ {amt} على الحجز #{bk.id}. التنفيذ سيكون تلقائيًا بعد 24 ساعة إن لم يرد المستأجر.",
+            db, bk.owner_id, "Renter Response Window Activated",
+            f"A deduction decision of {amt} for booking #{bk.id} was opened. It will execute automatically after 24 hours if the renter does not respond.",
             f"/dm/deposits/{bk.id}", "deposit"
         )
         notify_admins(
-            db, "قرار خصم قيد الانتظار",
-            f"DM فعّل مهلة 24h للحجز #{bk.id} (amount={amt}).",
+            db, "Pending Deduction Decision",
+            f"DM activated 24h window for booking #{bk.id} (amount={amt}).",
             f"/dm/deposits/{bk.id}"
         )
     except Exception:
@@ -1184,32 +1184,32 @@ def dm_start_renter_window(
         if renter_email:
             send_email(
                 renter_email,
-                f"تنبيه: قرار خصم على وديعتك — #{bk.id}",
-                f"<p>يوجد قرار خصم بمبلغ {amt} CAD على وديعتك للحجز #{bk.id}."
-                f" لديك حتى <b>{deadline_str}</b> للرد ورفع الأدلة.</p>"
-                f'<p><a href="{ev_url}">رفع الأدلة</a></p>'
+                f"Alert: Deduction Decision on Your Deposit — #{bk.id}",
+                f"<p>There is a deduction decision of {amt} CAD on your deposit for booking #{bk.id}."
+                f" You have until <b>{deadline_str}</b> to respond and upload evidence.</p>"
+                f'<p><a href="{ev_url}">Upload Evidence</a></p>'
             )
         if owner_email:
             send_email(
                 owner_email,
-                f"تم بدء مهلة ردّ المستأجر — #{bk.id}",
-                f"<p>فُتحت مهلة 24 ساعة لتنفيذ قرار الخصم بمبلغ {amt} CAD."
-                f" التنفيذ تلقائيًا بعد انتهاء المهلة ما لم يردّ المستأجر.</p>"
-                f'<p><a href="{case_url}">صفحة القضية</a></p>'
+                f"Renter Response Window Started — #{bk.id}",
+                f"<p>A 24-hour window has been opened to execute a deduction decision of {amt} CAD."
+                f" It will be executed automatically after the window ends unless the renter responds.</p>"
+                f'<p><a href="{case_url}">Case Page</a></p>'
             )
         for em in admins_em:
             send_email(
                 em,
                 f"[Admin] awaiting_renter — #{bk.id}",
-                f"<p>اقتطاع مقترح بمبلغ {amt} CAD للحجز #{bk.id}.</p>"
-                f'<p><a href="{case_url}">فتح القضية</a></p>'
+                f"<p>Proposed deduction of {amt} CAD for booking #{bk.id}.</p>"
+                f'<p><a href="{case_url}">Open case</a></p>'
             )
         for em in dms_em:
             send_email(
                 em,
                 f"[DM] awaiting_renter — #{bk.id}",
-                f"<p>تم فتح مهلة ردّ المستأجر لقرار خصم للحجز #{bk.id}.</p>"
-                f'<p><a href="{case_url}">إدارة القضية</a></p>'
+                f"<p>The renter response window for a deduction decision has been opened for booking #{bk.id}.</p>"
+                f'<p><a href="{case_url}">Manage case</a></p>'
             )
     except Exception:
         pass
@@ -1217,7 +1217,7 @@ def dm_start_renter_window(
     return RedirectResponse(url=f"/dm/deposits/{bk.id}?started=1", status_code=303)
 
 # =========================
-# >>> داخلي: خصم تلقائي بعد انتهاء المهلة
+# >>> Internal: auto deduction after window ends
 # =========================
 def _auto_capture_for_booking(db: Session, bk: Booking) -> bool:
     now = datetime.utcnow()
@@ -1266,17 +1266,17 @@ def _auto_capture_for_booking(db: Session, bk: Booking) -> bool:
     reason_txt = _short_reason(getattr(bk, "dm_decision_note", "") or "")
     try:
         push_notification(
-            db, bk.owner_id, "تم تنفيذ الخصم التلقائي",
-            f"تم اقتطاع {amt_txt} CAD من الوديعة لحجز #{bk.id}" + (f" — السبب: {reason_txt}" if reason_txt else ""),
+            db, bk.owner_id, "Automatic Deduction Executed",
+            f"{amt_txt} CAD was deducted from the deposit for booking #{bk.id}" + (f" — reason: {reason_txt}" if reason_txt else ""),
             f"/bookings/flow/{bk.id}", "deposit"
         )
         push_notification(
-            db, bk.renter_id, "تم تنفيذ الخصم التلقائي",
-            f"تم اقتطاع {amt_txt} CAD من وديعتك لحجز #{bk.id}" + (f" — السبب: {reason_txt}" if reason_txt else ""),
+            db, bk.renter_id, "Automatic Deduction Executed",
+            f"{amt_txt} CAD was deducted from your deposit for booking #{bk.id}" + (f" — reason: {reason_txt}" if reason_txt else ""),
             f"/bookings/flow/{bk.id}", "deposit"
         )
-        notify_admins(db, "خصم تلقائي بعد انتهاء المهلة", f"حجز #{bk.id} — {amt_txt} CAD.", f"/dm/deposits/{bk.id}")
-        notify_dms(db, "خصم تلقائي بعد انتهاء المهلة", f"تم التنفيذ لحجز #{bk.id}.", f"/dm/deposits/{bk.id}")
+        notify_admins(db, "Automatic Deduction After Deadline", f"Booking #{bk.id} — {amt_txt} CAD.", f"/dm/deposits/{bk.id}")
+        notify_dms(db, "Automatic Deduction After Deadline", f"Executed for booking #{bk.id}.", f"/dm/deposits/{bk.id}")
     except Exception:
         pass
 
@@ -1322,14 +1322,14 @@ def cron_check_window(
                 try:
                     notify_dms(
                         db,
-                        "انتهاء مهلة — تدخّل مطلوب",
-                        f"حجز #{bk.id}: لم نتمكن من الخصم تلقائيًا.",
+                        "Deadline Passed — Manual Intervention Needed",
+                        f"Booking #{bk.id}: automatic deduction could not be performed.",
                         f"/dm/deposits/{bk.id}",
                     )
                     notify_admins(
                         db,
-                        "انتهاء مهلة — تدخّل مطلوب",
-                        f"حجز #{bk.id}: لم نتمكن من الخصم تلقائيًا.",
+                        "Deadline Passed — Manual Intervention Needed",
+                        f"Booking #{bk.id}: automatic deduction could not be performed.",
                         f"/dm/deposits/{bk.id}",
                     )
                 except Exception:
@@ -1339,8 +1339,8 @@ def cron_check_window(
             try:
                 notify_admins(
                     db,
-                    "خطأ أثناء الخصم التلقائي",
-                    f"حجز #{bk.id}: حدث استثناء أثناء المعالجة.",
+                    "Error During Automatic Deduction",
+                    f"Booking #{bk.id}: an exception occurred during processing.",
                     f"/dm/deposits/{bk.id}",
                 )
             except Exception:
@@ -1348,7 +1348,7 @@ def cron_check_window(
 
     return {"checked": count, "captured": done, "needs_manual": skipped}
 
-# endpoint عام لتشغيل الكرون يدويًا
+# public endpoint to run cron manually
 @router.get("/dm/deposits/check-window")
 def run_check_window(
     request: Request,
@@ -1370,7 +1370,7 @@ def _deadline_overdue_rows(db: Session) -> List[Booking]:
     )
     return q.all()
 
-# ===== ترويج بسيط للمستأجر لرفع الأدلة =====
+# ===== Simple nudge to renter to upload evidence =====
 @router.post("/dm/deposits/{booking_id}/nudge-renter", response_model=None)
 def dm_nudge_renter(
     booking_id: int,
@@ -1389,22 +1389,22 @@ def dm_nudge_renter(
         raise HTTPException(status_code=400, detail="booking has no renter")
 
     link = f"/deposits/{booking_id}/evidence/form"
-    msg = f"نرجو رفع أدلتك بخصوص وديعة الحجز #{booking_id}.\nالرابط: {link}"
+    msg = f"Please upload your evidence regarding the deposit for booking #{booking_id}.\nLink: {link}"
     if note:
-        msg += f"\nملاحظة: {note}"
+        msg += f"\nNote: {note}"
 
     try:
         push_notification(
             db=db,
             user_id=bk.renter_id,
-            title="طلب رفع أدلة للوديعة",
+            title="Request to Upload Deposit Evidence",
             body=msg,
             url=link,
         )
     except Exception:
         pass
 
-    request.session["flash_ok"] = "تم إرسال الإشعار للمستأجر."
+    request.session["flash_ok"] = "Notification sent to the renter."
     return RedirectResponse(url=f"/dm/deposits/{booking_id}", status_code=303)
 
 @router.get("/bookings/{booking_id}/deposit/summary")
@@ -1414,7 +1414,7 @@ def deposit_final_summary(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    # يجب أن يكون المالك أو المستأجر أو DM/Admin
+    # must be owner or renter or DM/Admin
     bk = require_booking(db, booking_id)
     u = user
     if not u:
@@ -1425,14 +1425,14 @@ def deposit_final_summary(
         raise HTTPException(status_code=403, detail="forbidden")
 
     item = db.get(Item, bk.item_id)
-    # تقسيم أدلة المستأجر حسب المرحلة
+    # split renter evidence by phase
     renter_pickup, renter_return, renter_other = _split_renter_evidence(bk)
 
     return request.app.templates.TemplateResponse(
         "deposit_final_summary.html",
         {
             "request": request,
-            "title": f"النتيجة النهائية — #{bk.id}",
+            "title": f"Final Result — #{bk.id}",
             "bk": bk,
             "item": item,
             "session_user": request.session.get("user"),
@@ -1490,14 +1490,14 @@ def renter_pickup_proof_upload(
 
     try:
         push_notification(
-            db, bk.owner_id, "تم الاستلام",
-            f"المستأجر أكّد الاستلام للحجز #{bk.id} ورفع صور الاستلام.",
+            db, bk.owner_id, "Picked Up",
+            f"The renter confirmed pickup for booking #{bk.id} and uploaded pickup photos.",
             f"/bookings/flow/{bk.id}", "deposit"
         )
     except Exception:
         pass
 
-    # ==== توجيه صحيح
+    # ==== correct redirect
     try:
         next_url = (request.query_params.get("next") or "").strip() if request else ""
     except Exception:
@@ -1513,7 +1513,7 @@ def renter_return_proof_upload(
     comment: str = Form(""),
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
-    request: Request = None,   # ← أضف هذا
+    request: Request = None,   # ← add this
 ):
     require_auth(user)
     bk = require_booking(db, booking_id)
@@ -1546,14 +1546,14 @@ def renter_return_proof_upload(
 
     try:
         push_notification(
-            db, bk.owner_id, "تم الإرجاع",
-            f"المستأجر أرجع الغرض ورفع صور الإرجاع للحجز #{bk.id}.",
+            db, bk.owner_id, "Returned",
+            f"The renter returned the item and uploaded return photos for booking #{bk.id}.",
             f"/bookings/flow/{bk.id}", "deposit"
         )
     except Exception:
         pass
 
-    # ==== توجيه صحيح
+    # ==== correct redirect
     try:
         next_url = (request.query_params.get("next") or "").strip() if request else ""
     except Exception:

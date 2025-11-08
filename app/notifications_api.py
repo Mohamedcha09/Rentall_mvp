@@ -37,7 +37,7 @@ def push_notification(
     kind: str = "system",
 ) -> Notification:
     """
-    إنشاء إشعار واحد لمستخدم محدد.
+    Create a single notification for a specific user.
     """
     n = Notification(
         user_id=user_id,
@@ -56,7 +56,7 @@ def push_notification(
 
 def notify_admins(db: Session, title: str, body: str = "", url: str = "") -> None:
     """
-    يرسل إشعارًا لكل المستخدمين ذوي الدور admin.
+    Send a notification to all users with the admin role.
     """
     admins = db.query(User).filter(User.role == "admin").all()
     for a in admins:
@@ -65,8 +65,8 @@ def notify_admins(db: Session, title: str, body: str = "", url: str = "") -> Non
 
 def notify_mods(db: Session, title: str, body: str = "", url: str = "") -> None:
     """
-    يرسل إشعارًا إلى جميع المُدقّقين (is_mod=True) بالإضافة إلى المدراء (role='admin').
-    لا يكرّر الإشعار لنفس المستخدم لو كان Admin و Mod معًا.
+    Send a notification to all moderators (is_mod=True) plus admins (role='admin').
+    Does not duplicate notifications for users who are both Admin and Mod.
     """
     rows = (
         db.query(User.id)
@@ -77,6 +77,8 @@ def notify_mods(db: Session, title: str, body: str = "", url: str = "") -> None:
     ids = [r[0] if isinstance(r, tuple) else r.id for r in rows]
     for uid in ids:
         push_notification(db, uid, title, body, url, kind="support")
+
+
 # ================== APIs used by frontend ==================
 
 @router.get("/api/unread_count")
@@ -160,11 +162,11 @@ def mark_read(
 
 
 # === MD broadcast helper ===========================================
-# ينبه جميع مسؤولي الودائع (MD) + الأدمن بوجود تذكرة جديدة أو مهمة
+# Notifies all Deposit Managers (MD) + Admins about a new ticket or task
 def notify_mds(db, title: str, body: str, url: str = "/md/inbox", kind: str = "support") -> int:
     """
-    يرسل إشعارًا لكل المستخدمين الذين لديهم is_deposit_manager=True أو role='admin'
-    يعيد عدد المستلمين (best-effort).
+    Sends a notification to all users who have is_deposit_manager=True or role='admin'.
+    Returns the number of recipients (best-effort).
     """
     sent = 0
     try:

@@ -12,7 +12,7 @@ router = APIRouter(tags=["debug-cloudinary"])
 @router.get("/debug/cloudinary", response_class=JSONResponse)
 def cloudinary_info():
     cfg = cloudinary.config(secure=True)
-    # لا نُرجع الأسرار؛ فقط معلومات عامة للتأكد من التحميل
+    # We do not return secrets; only general information to verify upload
     return {
         "cloud_name": cfg.cloud_name,
         "api_key_present": bool(cfg.api_key),
@@ -22,27 +22,27 @@ def cloudinary_info():
 
 @router.get("/debug/cloudinary/form", response_class=HTMLResponse)
 def cloudinary_form():
-    # صفحة HTML صغيرة للرفع من المتصفح مباشرة
+    # Small HTML page to upload directly from the browser
     return """
     <html><body>
-      <h3>رفع اختبار إلى Cloudinary</h3>
+      <h3>Test Upload to Cloudinary</h3>
       <form action="/debug/cloudinary/upload" method="post" enctype="multipart/form-data">
         <input type="file" name="file" accept="image/*,video/*" required />
-        <button type="submit">رفع</button>
+        <button type="submit">Upload</button>
       </form>
-      <p>أو جرّب توليد صورة 1x1 (بدون ملف): <a href="/debug/cloudinary/generate">/debug/cloudinary/generate</a></p>
+      <p>Or try generating a 1x1 image (without a file): <a href="/debug/cloudinary/generate">/debug/cloudinary/generate</a></p>
     </body></html>
     """
 
 @router.post("/debug/cloudinary/upload")
 async def cloudinary_upload(file: UploadFile = File(...)):
-    # نرفع أي ملف (صورة/فيديو) مباشرة إلى كلوديناري
+    # Upload any file (image/video) directly to Cloudinary
     content = await file.read()
     public_id = f"debug/{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}"
     up = cloudinary.uploader.upload(
         content,
         public_id=public_id,
-        resource_type="auto",   # يدعم صور/فيديو تلقائيًا
+        resource_type="auto",   # Automatically supports images/videos
         folder="debug"
     )
     return {
@@ -57,8 +57,8 @@ async def cloudinary_upload(file: UploadFile = File(...)):
 
 @router.get("/debug/cloudinary/generate")
 def cloudinary_generate():
-    # نرفع صورة PNG شفافة 1x1 من داخل الكود (بدون إنترنت وبدون ملف خارجي)
-    # data URI لصورة 1x1
+    # Upload a transparent 1x1 PNG image from code (without internet or external file)
+    # data URI for a 1x1 image
     data_uri = (
         "data:image/png;base64,"
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAF"

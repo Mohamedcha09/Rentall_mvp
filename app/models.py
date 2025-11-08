@@ -6,16 +6,16 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.sql import literal
 
-# ✅ استيراد الدوال/الكائنات الصحيحة من database (بدون تعريف محلي لـ _has_column)
+# ✅ Import the correct functions/objects from database (without locally defining _has_column)
 from .database import Base, engine, _has_column
 
 # -------------------------
-# Helper: عمود إن وُجد وإلا literal(None)
+# Helper: real Column if it exists, otherwise literal(None)
 # -------------------------
 def col_or_literal(table: str, name: str, type_, **kwargs):
     """
-    لو العمود موجود فعلاً في الجدول → Column(type_, **kwargs)
-    لو غير موجود (في قواعد قديمة) → column_property(literal(None)) حتى لا تنكسر النماذج.
+    If the column actually exists in the table → Column(type_, **kwargs)
+    If it doesn't exist (in older schemas) → column_property(literal(None)) so models don't break.
     """
     if _has_column(table, name):
         return Column(type_, **kwargs)
@@ -24,7 +24,7 @@ def col_or_literal(table: str, name: str, type_, **kwargs):
 
 # === Force admin flags helper ===
 def _force_admin_flags(u) -> None:
-    """اضبط جميع أعلام التفعيل للأدمن مهما كانت الشروط الأخرى."""
+    """Set all activation flags for admin regardless of other conditions."""
     try:
         role = (getattr(u, "role", "") or "").lower()
         if role == "admin":
@@ -37,7 +37,7 @@ def _force_admin_flags(u) -> None:
             if _has_column("users", "verified_at") and not getattr(u, "verified_at", None):
                 u.verified_at = datetime.utcnow()
     except Exception:
-        # لا تكسر أي شيء لو أعمدة ناقصة
+        # Don't break anything if columns are missing
         pass
 
 
@@ -73,7 +73,7 @@ class User(Base):
     updated_at  = col_or_literal("users", "updated_at", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     avatar_path = col_or_literal("users", "avatar_path", String(500), nullable=True)
 
-    # شارات
+    # Badges
     badge_admin         = col_or_literal("users", "badge_admin", Boolean, default=False)
     badge_new_yellow    = col_or_literal("users", "badge_new_yellow", Boolean, default=False)
     badge_pro_green     = col_or_literal("users", "badge_pro_green", Boolean, default=False)
@@ -82,13 +82,13 @@ class User(Base):
     badge_renter_green  = col_or_literal("users", "badge_renter_green", Boolean, default=False)
     badge_orange_stars  = col_or_literal("users", "badge_orange_stars", Boolean, default=False)
 
-    # صلاحيات
+    # Permissions
     is_deposit_manager = col_or_literal("users", "is_deposit_manager", Boolean, default=False, nullable=False)
     is_mod             = col_or_literal("users", "is_mod", Boolean, default=False, nullable=False)
-    # ✅ موظف خدمة الزبائن
+    # ✅ Customer Support staff
     is_support         = col_or_literal("users", "is_support", Boolean, default=False, nullable=False)
 
-    # العلاقات
+    # Relationships
     documents        = relationship("Document", back_populates="user", cascade="all, delete-orphan")
     items            = relationship("Item", back_populates="owner", cascade="all, delete-orphan")
     favorites        = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
@@ -96,15 +96,15 @@ class User(Base):
     ratings_given    = relationship("Rating", foreign_keys="Rating.rater_id", back_populates="rater")
     ratings_received = relationship("Rating", foreign_keys="Rating.rated_user_id", back_populates="rated_user")
 
-    # علاقات الحجوزات
+    # Booking relationships
     bookings_rented = relationship("Booking", foreign_keys="[Booking.renter_id]", back_populates="renter")
     bookings_owned  = relationship("Booking", foreign_keys="[Booking.owner_id]", back_populates="owner")
 
-    # علاقات البلاغات/الإجراءات (اختيارية)
+    # Reports/actions relationships (optional)
     reports_filed  = relationship("Report", foreign_keys="[Report.reporter_id]", back_populates="reporter", cascade="all, delete-orphan")
     report_actions = relationship("ReportActionLog", foreign_keys="[ReportActionLog.actor_id]", back_populates="actor", cascade="all, delete-orphan")
 
-    # توثيق
+    # Verification
     if _has_column("users", "verified_by_id"):
         verified_by = relationship(
             "User",
@@ -180,7 +180,7 @@ class Item(Base):
     description = Column(Text, nullable=True)
     city = Column(String(120), nullable=True)
 
-    # إحداثيات اختيارية
+    # Optional coordinates
     latitude  = col_or_literal("items", "latitude",  Float,  nullable=True)
     longitude = col_or_literal("items", "longitude", Float,  nullable=True)
 
@@ -225,7 +225,7 @@ class MessageThread(Base):
     user_b = relationship("User", foreign_keys=[user_b_id])
     item   = relationship("Item", back_populates="message_threads")
 
-    # ✅ العلاقة الصحيحة لرسائل الدردشة
+    # ✅ Correct relationship for chat messages
     messages = relationship(
         "Message",
         back_populates="thread",
@@ -317,7 +317,7 @@ class Notification(Base):
         overlaps="notifications,user"
     )
 
-# علاقة عكسيّة اختيارية
+# Optional reverse relationship
 try:
     User.notifications
 except Exception:
@@ -371,15 +371,15 @@ class Booking(Base):
     deposit_amount  = col_or_literal("bookings", "deposit_amount", Integer, nullable=False, default=0)
     deposit_hold_id = col_or_literal("bookings", "deposit_hold_id", String(120), nullable=True)
     deposit_charged_amount = col_or_literal("bookings", "deposit_charged_amount", Integer, nullable=False, default=0)
-    # صور الاستلام والإرجاع (JSON نصّي: قائمة روابط)
+    # Pickup/return photos (text JSON: list of links)
     pickup_photos_json = col_or_literal("bookings", "pickup_photos_json", Text, nullable=True)
     return_photos_json  = col_or_literal("bookings", "return_photos_json",  Text, nullable=True)
 
-    # لائحة DM
+    # DM list
     returned_at        = col_or_literal("bookings", "returned_at", DateTime, nullable=True)
     owner_return_note  = col_or_literal("bookings", "owner_return_note", Text, nullable=True)
 
-    # حقول التايملاين
+    # Timeline fields
     accepted_at                     = col_or_literal("bookings", "accepted_at", DateTime, nullable=True)
     rejected_at                     = col_or_literal("bookings", "rejected_at", DateTime, nullable=True)
     picked_up_at                    = col_or_literal("bookings", "picked_up_at", DateTime, nullable=True)
@@ -390,12 +390,12 @@ class Booking(Base):
     timeline_paid_at                = col_or_literal("bookings", "timeline_paid_at", DateTime, nullable=True)
     timeline_renter_received_at     = col_or_literal("bookings", "timeline_renter_received_at", DateTime, nullable=True)
 
-    # فحص الإرجاع ومهلة الإفراج التلقائي
+    # Return check and auto-release deadline
     return_check_no_problem  = col_or_literal("bookings", "return_check_no_problem", Boolean, default=False)
     return_check_submitted_at = col_or_literal("bookings", "return_check_submitted_at", DateTime, nullable=True)
     deposit_auto_release_at   = col_or_literal("bookings", "deposit_auto_release_at", DateTime, nullable=True)
 
-    # مسار النزاع
+    # Dispute path
     dispute_opened_at  = col_or_literal("bookings", "dispute_opened_at", DateTime, nullable=True)
     renter_response_at = col_or_literal("bookings", "renter_response_at", DateTime, nullable=True)
     dm_decision_at     = col_or_literal("bookings", "dm_decision_at", DateTime, nullable=True)
@@ -422,12 +422,12 @@ class Booking(Base):
     else:
         dm_closed_by_id = column_property(literal(None))
 
-    # علاقات
+    # Relationships
     item   = relationship("Item", backref="bookings")
     renter = relationship("User", foreign_keys=[renter_id], back_populates="bookings_rented")
     owner  = relationship("User", foreign_keys=[owner_id], back_populates="bookings_owned")
 
-    # سجلات وأدلة الوديعة
+    # Deposit logs & evidences
     deposit_audits = relationship(
         "DepositAuditLog",
         back_populates="booking",
@@ -455,7 +455,7 @@ class DepositAuditLog(Base):
     action     = Column(String(40), nullable=False)  # open_dispute / renter_reply / dm_release / dm_withhold / auto_release ...
     amount     = Column(Integer, nullable=False, default=0)
     reason     = Column(Text, nullable=True)
-    details    = Column(Text, nullable=True)         # JSON نصّي/تفاصيل إضافية
+    details    = Column(Text, nullable=True)         # Text JSON / additional details
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
     booking = relationship("Booking", back_populates="deposit_audits")
@@ -470,10 +470,10 @@ class DepositEvidence(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     booking_id  = Column(Integer, ForeignKey("bookings.id"), nullable=False)
-    uploader_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # nullable لتوافق قواعد قديمة
+    uploader_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # nullable for compatibility with older schemas
     side        = Column(String(20), nullable=False)        # owner / renter / manager
     kind        = Column(String(20), nullable=False, default="image")  # image / video / doc / note
-    file_path   = Column(String(600), nullable=True)   # مسار الملف إن وجد
+    file_path   = Column(String(600), nullable=True)   # file path if present
     description = Column(Text, nullable=True)
     created_at  = Column(DateTime, default=datetime.utcnow, index=True)
 
@@ -482,7 +482,7 @@ class DepositEvidence(Base):
 
 
 # =========================
-# Reports (بلاغات)
+# Reports
 # =========================
 class Report(Base):
     __tablename__ = "reports"
@@ -508,7 +508,7 @@ class Report(Base):
 
 
 # =========================
-# Report Action Log (قرارات المراجعين)
+# Report Action Log (reviewers' decisions)
 # =========================
 class ReportActionLog(Base):
     __tablename__ = "report_action_logs"
@@ -524,7 +524,7 @@ class ReportActionLog(Base):
     actor  = relationship("User", back_populates="report_actions", lazy="joined")
 
 
-# === SQLAlchemy events: فعّل الأدمن دائمًا ===
+# === SQLAlchemy events: always enable admin ===
 @event.listens_for(User, "load")
 def _on_user_load(u, ctx):
     _force_admin_flags(u)
@@ -539,7 +539,7 @@ def _on_user_before_update(mapper, conn, u):
 
 
 
-# ✅ دعم التذاكر (Support)
+# ✅ Support (tickets)
 # =========================
 class SupportTicket(Base):
     __tablename__ = "support_tickets"
@@ -548,7 +548,7 @@ class SupportTicket(Base):
     user_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
     subject  = Column(String(200), nullable=False)
 
-    # 👇 أهم سطر: اجعل queue عمودًا حقيقيًا (مع fallback لو القاعدة قديمة)
+    # 👇 Most important line: make queue a real column (with fallback if DB is old)
     queue = col_or_literal("support_tickets", "queue", String(10), default="cs", nullable=False, index=True)
     # new | open | resolved
     status        = Column(String(20), nullable=False, default="new", index=True)
@@ -558,15 +558,15 @@ class SupportTicket(Base):
     updated_at    = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     resolved_at   = Column(DateTime, nullable=True)
 
-    # 👇 وسّعنا الطول إلى 12 حتى تستوعب system_mod بأمان
+    # 👇 Extended length to 12 to safely fit system_mod
     last_from = Column(String(12), nullable=False, default="user")  # user / agent / system_md / system_mod
     unread_for_user  = Column(Boolean, nullable=False, default=False)
     unread_for_agent = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
-    # علاقات
+    # Relationships
     user = relationship("User", foreign_keys=[user_id], lazy="joined")
-    # 👇 سمِّها assigned_to لأن القوالب لديك تستخدم هذا الاسم
+    # 👇 Name it assigned_to because your templates use this name
     assigned_to = relationship("User", foreign_keys=[assigned_to_id], lazy="joined")
 
     messages = relationship(
@@ -593,14 +593,14 @@ class SupportMessage(Base):
 
 
 # =========================
-# Reviews (تعليقات/تقييمات)
+# Reviews (comments/ratings)
 # =========================
 class ItemReview(Base):
     """
-    تقييم المستأجر للـ Item (يظهر على صفحة المنشور).
-    rater_id = المستأجر الذي حجز وأرجع
-    item_id  = العنصر الذي استأجره
-    booking_id لتفادي التكرار ولمطابقة الحجز
+    Renter's rating for the Item (shown on the listing page).
+    rater_id = the renter who booked and returned
+    item_id  = the item they rented
+    booking_id to avoid duplication and match the booking
     """
     __tablename__ = "item_reviews"
     id = Column(Integer, primary_key=True, index=True)
@@ -617,17 +617,17 @@ class ItemReview(Base):
     item   = relationship("Item", lazy="joined", backref="item_reviews")
     rater  = relationship("User", lazy="joined")
 
-    # منع التكرار: تقييم واحد لكل (booking_id) من جهة المستأجر
+    # Prevent duplication: one review per (booking_id) from the renter side
     __table_args__ = (
-        # لو عندك Alembic استعمل UniqueConstraint، وإلا يظل منطق التطبيق يمنع التكرار
+        # If you have Alembic use UniqueConstraint, otherwise app logic still prevents duplicates
     )
     
 
 class UserReview(Base):
     """
-    تقييم المالك للمستأجر (يظهر في بروفايل المستأجر).
-    owner_id = المالك صاحب العنصر
-    target_user_id = المستأجر الذي تم تقييمه
+    Owner's rating for the renter (shown on the renter's profile).
+    owner_id = the owner of the item
+    target_user_id = the renter being rated
     """
     __tablename__ = "user_reviews"
     id = Column(Integer, primary_key=True, index=True)

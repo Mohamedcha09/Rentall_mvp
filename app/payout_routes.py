@@ -22,8 +22,8 @@ def _stripe_key_ok() -> bool:
 
 def _refresh_connect_status(db: Session, user: User) -> None:
     """
-    يُحدّث حالة payouts_enabled من Stripe للحساب المرتبط بالمستخدم.
-    يُستدعى عند الرجوع من Stripe (return/refresh).
+    Updates payouts_enabled status from Stripe for the user’s connected account.
+    Called when returning from Stripe (return/refresh).
     """
     if not user or not user.stripe_account_id:
         return
@@ -38,11 +38,11 @@ def _refresh_connect_status(db: Session, user: User) -> None:
             db.add(user)
             db.commit()
     except Exception:
-        # نتجاهل الخطأ بهدوء — الصفحة ستعرض للمستخدم أنه لم يكتمل الربط
+        # Quietly ignore errors — the page will show the user that linking is not complete
         pass
 
 
-# ===== 1) صفحة إعدادات التحويل للمالك =====
+# ===== 1) Owner payout settings page =====
 @router.get("/payout/settings")
 def payout_settings(request: Request, db: Session = Depends(get_db)):
     sess = _require_login(request)
@@ -55,7 +55,7 @@ def payout_settings(request: Request, db: Session = Depends(get_db)):
 
     ctx = {
         "request": request,
-        "title": "إعدادات التحويل (Stripe Connect)",
+        "title": "Payout Settings (Stripe Connect)",
         "session_user": request.session.get("user"),
         "has_api_key": _stripe_key_ok(),
         "stripe_account_id": getattr(db_user, "stripe_account_id", None),
@@ -64,22 +64,22 @@ def payout_settings(request: Request, db: Session = Depends(get_db)):
     return request.app.templates.TemplateResponse("payout_settings.html", ctx)
 
 
-# ===== 2) زر "ابدأ الربط" (يحوّل لمسار pay_api) =====
+# ===== 2) “Start linking” button (redirects to pay_api route) =====
 @router.post("/payout/connect/start")
 def payout_connect_start_proxy(request: Request):
     """
-    هذا مجرد Proxy لتسهيل الاستدعاء من القالب.
-    سيحوّل مباشرة إلى مسار Stripe الذي بداخل pay_api.py
+    This is just a proxy to simplify calling from the template.
+    It redirects directly to the Stripe route inside pay_api.py
     """
     return RedirectResponse(url="/api/stripe/connect/start", status_code=303)
 
 
-# ===== 3) مسارات العودة/التحديث من Stripe (تتوافق مع pay_api.py) =====
+# ===== 3) Return/refresh routes from Stripe (compatible with pay_api.py) =====
 @router.get("/payouts/return")
 def payouts_return(request: Request, db: Session = Depends(get_db)):
     """
-    Stripe يعود إلى هذا المسار بعد إكمال الـ Onboarding.
-    نحدّث حالة الحساب محليًا ثم نعيد المالك إلى صفحة الإعدادات.
+    Stripe returns to this route after completing the onboarding.
+    We update the local account status, then send the owner back to the settings page.
     """
     sess = _require_login(request)
     if not sess:
@@ -88,15 +88,15 @@ def payouts_return(request: Request, db: Session = Depends(get_db)):
     db_user = db.query(User).get(sess["id"])
     _refresh_connect_status(db, db_user)
 
-    # نعيده للصفحة (ستعرض الحالة المحدثة)
+    # Send back to the page (it will display the updated status)
     return RedirectResponse(url="/payout/settings", status_code=303)
 
 
 @router.get("/payouts/refresh")
 def payouts_refresh(request: Request, db: Session = Depends(get_db)):
     """
-    Stripe يستدعي هذا عند الضغط على "رجوع" أثناء عملية Onboarding.
-    نعيد المستخدم لصفحة الإعدادات ونحاول تحديث الحالة.
+    Stripe calls this when pressing “Back” during onboarding.
+    We return the user to the settings page and try to refresh the status.
     """
     sess = _require_login(request)
     if not sess:
@@ -108,11 +108,11 @@ def payouts_refresh(request: Request, db: Session = Depends(get_db)):
     return RedirectResponse(url="/payout/settings", status_code=303)
 
 
-# ===== 4) فحص صحة إعداد المفتاح (اختياري لعرض رسالة مفيدة) =====
+# ===== 4) Key setup health check (optional to show a helpful message) =====
 @router.get("/payout/debug-key")
 def payout_debug_key():
     key = os.getenv("STRIPE_SECRET_KEY", "") or ""
     if not key:
-        return HTMLResponse("<h4>STRIPE_SECRET_KEY غير مضبوط</h4>", status_code=500)
+        return HTMLResponse("<h4>STRIPE_SECRET_KEY is not set</h4>", status_code=500)
     mode = "TEST" if key.startswith("sk_test_") else ("LIVE" if key.startswith("sk_live_") else "UNKNOWN")
     return HTMLResponse(f"<pre>Stripe key is set.\nMode: {mode}\nValue (masked): {key[:8]}...{key[-4:]}</pre>")

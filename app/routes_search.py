@@ -8,13 +8,13 @@ from .models import User, Item
 
 router = APIRouter()
 
-# ✅ ثابت: نصف قطر الأرض (لـ Haversine)
+# ✅ Constant: Earth radius (for Haversine)
 EARTH_RADIUS_KM = 6371.0
 
 
 def _clean_name(first: str, last: str, uid: int) -> str:
     """
-    يبني الاسم الكامل بشكل سليم حتى لو كان أحد الحقلين فاضي.
+    Build a proper full name even if one of the fields is empty.
     """
     f = (first or "").strip()
     l = (last or "").strip()
@@ -27,8 +27,8 @@ def _clean_name(first: str, last: str, uid: int) -> str:
 
 def _to_float(v, default=None):
     """
-    يحوّل القيمة إلى float إذا كانت صالحة وغير فارغة.
-    يعيد default لو فشل التحويل أو كانت القيمة None/"".
+    Convert a value to float if valid and non-empty.
+    Return default if conversion fails or the value is None/"".
     """
     if v is None:
         return default
@@ -41,13 +41,13 @@ def _to_float(v, default=None):
         return default
 
 
-# ✅ دالة فلترة ذكية للمدينة أو GPS (أولوية GPS)
+# ✅ Smart city/GPS filter (GPS has priority)
 def _apply_city_or_gps_filter(qs, city: str | None, lat: float | None, lng: float | None, radius_km: float | None):
     """
-    يطبّق فلترة حسب GPS (إن وجد) أو حسب المدينة.
+    Apply filtering by GPS (if provided) or by city.
     """
     if lat is not None and lng is not None and radius_km:
-        # مسافة Haversine: تعطي المسافة بين نقطتين على الكرة الأرضية
+        # Haversine distance: distance between two points on a sphere
         distance_expr = EARTH_RADIUS_KM * func.acos(
             func.cos(func.radians(lat)) *
             func.cos(func.radians(Item.latitude)) *
@@ -61,31 +61,31 @@ def _apply_city_or_gps_filter(qs, city: str | None, lat: float | None, lng: floa
             distance_expr <= radius_km
         )
     elif city:
-        # فلترة بسيطة بالمدينة (غير حساسة لحالة الأحرف)
+        # Simple case-insensitive city filter
         qs = qs.filter(Item.city.ilike(f"%{city.strip()}%"))
     return qs
 
 
-# ✅ API: بحث سريع (يُستخدم في الاقتراحات)
+# ✅ API: quick search (used for suggestions/autocomplete)
 @router.get("/api/search")
 def api_search(
     q: str = "",
     city: str | None = Query(None),
-    # 🔧 استلام lat/lng/lon/radius كنصوص ثم تحويلها يدويًا لتفادي خطأ التحويل عندما تكون ""
+    # 🔧 Receive lat/lng/lon/radius as strings then convert manually to avoid casting errors when they are ""
     lat: str | None = Query(None),
     lng: str | None = Query(None),
-    lon: str | None = Query(None),          # قبول lon أيضًا من الـURL
+    lon: str | None = Query(None),          # Accept lon alias from URL
     radius_km: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
     """
-    بحث حيّ (autocomplete) يدعم الفلترة بالمدينة أو GPS.
+    Live search (autocomplete) with optional city or GPS filtering.
     """
-    # ✅ دمج lon داخل lng إن وُجد
+    # ✅ Merge lon into lng if present
     if (lng is None or str(lng).strip() == "") and lon not in (None, ""):
         lng = lon
 
-    # ✅ تحويل القيم إلى float بأمان
+    # ✅ Safely convert values to float
     lat_f = _to_float(lat)
     lng_f = _to_float(lng)
     radius_f = _to_float(radius_km, default=25.0)
@@ -96,7 +96,7 @@ def api_search(
 
     pattern = f"%{q}%"
 
-    # المستخدمون
+    # Users
     users_rows = (
         db.query(User.id, User.first_name, User.last_name)
         .filter(
@@ -118,7 +118,7 @@ def api_search(
         for (uid, first, last) in users_rows
     ]
 
-    # العناصر
+    # Items
     items_q = (
         db.query(Item.id, Item.title, Item.city)
         .filter(
@@ -146,7 +146,7 @@ def api_search(
     return {"users": users, "items": items}
 
 
-# ✅ صفحة نتائج البحث الكاملة
+# ✅ Full search results page
 @router.get("/search")
 def search_page(
     request: Request,
@@ -154,15 +154,15 @@ def search_page(
     city: str | None = Query(None),
     lat: str | None = Query(None),
     lng: str | None = Query(None),
-    lon: str | None = Query(None),          # ✅ قبول lon أيضًا
+    lon: str | None = Query(None),          # ✅ Accept lon alias
     radius_km: str | None = Query(None),
     db: Session = Depends(get_db)
 ):
     """
-    صفحة نتائج البحث الرئيسية (تُعرض فيها كل النتائج).
-    تدعم الفلترة بالمدينة أو GPS تمامًا مثل الـ API.
+    Main search results page (shows all results).
+    Supports city or GPS filtering exactly like the API.
     """
-    # ✅ ضمّن lon في lng لو كانت lng مفقودة
+    # ✅ Include lon in lng if lng is missing
     if (lng is None or str(lng).strip() == "") and lon not in (None, ""):
         lng = lon
 
@@ -170,7 +170,7 @@ def search_page(
     users = []
     items = []
 
-    # ✅ قراءة القيم من الكوكي إذا لم تُرسل في الـURL (الاسمين lng/lon)
+    # ✅ Read values from cookies if not provided in the URL (both lng/lon names)
     try:
         if not city:
             city = request.cookies.get("city")
@@ -191,7 +191,7 @@ def search_page(
     except Exception:
         pass
 
-    # ✅ تحويل نهائي إلى float مع افتراض 25 كم كافتراضي
+    # ✅ Final conversion to float with 25 km as default
     lat_f = _to_float(lat)
     lng_f = _to_float(lng)
     radius_f = _to_float(radius_km, default=25.0)
@@ -199,7 +199,7 @@ def search_page(
     if len(q) >= 2:
         pattern = f"%{q}%"
 
-        # المستخدمون
+        # Users
         users_rows = (
             db.query(User.id, User.first_name, User.last_name, User.avatar_path)
             .filter(
@@ -221,7 +221,7 @@ def search_page(
             for (uid, first, last, avatar) in users_rows
         ]
 
-        # العناصر
+        # Items
         items_q = (
             db.query(Item.id, Item.title, Item.city, Item.image_path)
             .filter(
@@ -247,19 +247,19 @@ def search_page(
             for (iid, title, city, img) in items_rows
         ]
 
-    # ✅ إرجاع الصفحة
+    # ✅ Return the page
     return request.app.templates.TemplateResponse(
         "search.html",
         {
             "request": request,
-            "title": "نتائج البحث",
+            "title": "Search Results",
             "q": q,
             "users": users,
             "items": items,
             "session_user": request.session.get("user"),
             "selected_city": city or "",
             "lat": lat_f,
-            "lng": lng_f,               # ✅ نمرّر القيم المحوّلة
+            "lng": lng_f,               # ✅ pass converted values
             "radius_km": radius_f
         },
     )

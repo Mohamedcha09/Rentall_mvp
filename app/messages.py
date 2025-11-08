@@ -14,7 +14,7 @@ router = APIRouter()
 def require_login(request: Request):
     return request.session.get("user")
 
-# NEW: دالة مساعدة لتحويل أي مسار لصورة إلى رابط آمن
+# NEW: helper to convert any image path to a safe URL
 def _safe_url(p: str | None, fallback: str = "/static/placeholder.svg") -> str:
     s = (p or "").strip()
     if not s:
@@ -26,14 +26,14 @@ def _safe_url(p: str | None, fallback: str = "/static/placeholder.svg") -> str:
         s = "/" + s
     return s
 
-# NEW: هل حساب المستخدم مقيد (ليس approved)؟
+# NEW: is the user account limited (not approved)?
 def is_account_limited(request: Request) -> bool:
     u = request.session.get("user")
     if not u:
         return False
     return u.get("status") != "approved"
 
-# NEW: أدوات مساعدة للأدمِن
+# NEW: admin helpers
 def get_first_admin(db: Session) -> User | None:
     return db.query(User).filter(User.role == "admin").order_by(User.id.asc()).first()
 
@@ -48,7 +48,7 @@ def inbox(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=303)
     uid = u["id"]
 
-    # كل خيوط المستخدم
+    # all threads for the user
     threads = (
         db.query(MessageThread)
         .filter((MessageThread.user_a_id == uid) | (MessageThread.user_b_id == uid))
@@ -56,7 +56,7 @@ def inbox(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
-    # لو الحساب مقيد: أعرض فقط خيوط الدعم مع الأدمِن
+    # if the account is limited: show only support threads with admin
     if is_account_limited(request):
         filtered = []
         for t in threads:
@@ -66,7 +66,7 @@ def inbox(request: Request, db: Session = Depends(get_db)):
                 filtered.append(t)
         threads = filtered
 
-    # IDs الخيوط لحساب غير المقروء
+    # thread IDs to compute unread counts
     thread_ids = [t.id for t in threads] or [-1]
     unread_rows = (
         db.query(Message.thread_id, func.count(Message.id))
@@ -85,7 +85,7 @@ def inbox(request: Request, db: Session = Depends(get_db)):
         other_id = t.user_b_id if t.user_a_id == uid else t.user_a_id
         other = db.query(User).get(other_id)
 
-        # بيانات العنصر المرتبط بالخيط (إن وجد)
+        # item data linked to the thread (if any)
         item_title, item_image = "", "/static/placeholder.svg"
         if getattr(t, "item_id", None):
             item = db.query(Item).get(t.item_id)
@@ -94,7 +94,7 @@ def inbox(request: Request, db: Session = Depends(get_db)):
                 if getattr(item, "image_path", None):
                     item_image = "/" + item.image_path.replace("\\", "/")
 
-        # NEW: حقول إضافية للواجهة (لا نحذف القديم)
+        # NEW: extra fields for the UI (we don't remove the old ones)
         other_avatar = _safe_url(getattr(other, "avatar_path", None), "/static/placeholder.svg")
         item_image = _safe_url(item_image, "/static/placeholder.svg")
         other_verified = bool(other.is_verified) if other else False
@@ -102,28 +102,28 @@ def inbox(request: Request, db: Session = Depends(get_db)):
 
         view_threads.append({
             "id": t.id,
-            "other_fullname": f"{other.first_name} {other.last_name}" if other else "مستخدم",
+            "other_fullname": f"{other.first_name} {other.last_name}" if other else "User",
             "last_message_at": t.last_message_at,
             "item_title": item_title,
-            "item_image": item_image,                     # قديم + نظّفناه
+            "item_image": item_image,                     # old + sanitized
             "unread_count": unread_map.get(t.id, 0),
-            "other_verified": other_verified,             # ✅ موجود
-            "other_avatar": other_avatar,                 # ✅ جديد
-            "other_created_iso": other_created_iso,       # ✅ جديد
+            "other_verified": other_verified,             # ✅ present
+            "other_avatar": other_avatar,                 # ✅ new
+            "other_created_iso": other_created_iso,       # ✅ new
         })
 
     return request.app.templates.TemplateResponse(
         "inbox.html",
         {
             "request": request,
-            "title": "الرسائل",
+            "title": "Messages",
             "threads": view_threads,
             "session_user": u,
             "account_limited": is_account_limited(request),  # NEW
         }
     )
 
-# NEW: خيط دعم مع الأدمِن
+# NEW: support thread with admin
 @router.get("/messages/support")
 def support_thread(request: Request, db: Session = Depends(get_db)):
     u = require_login(request)
@@ -133,10 +133,10 @@ def support_thread(request: Request, db: Session = Depends(get_db)):
 
     admin = get_first_admin(db)
     if not admin:
-        # لو ما عندنا أدمِن أصلاً نرجّع لصندوق الرسائل
+        # if there is no admin at all, return to inbox
         return RedirectResponse(url="/messages", status_code=303)
 
-    # ابحث عن خيط موجود بيني وبين الأدمِن (بدون عنصر)
+    # find an existing thread between me and admin (without item)
     thr = (
         db.query(MessageThread)
         .filter(
@@ -168,8 +168,8 @@ def start_thread(
     item_id: int = 0
 ):
     """
-    يبدأ خيط محادثة بين المستخدم الحالي و user_id،
-    ويُثبِّت الخيط على item_id إن كان مُرسلًا.
+    start a conversation thread between the current user and user_id,
+    and pin the thread to item_id if provided.
     """
     u = require_login(request)
     if not u:
@@ -180,11 +180,11 @@ def start_thread(
     if not other or other.id == me:
         return RedirectResponse(url="/messages", status_code=303)
 
-    # NEW: لو الحساب مقيد ولا يراسل أدمِن → حوّله لدعم
+    # NEW: if the account is limited and not messaging an admin → redirect to support
     if is_account_limited(request) and not is_admin_user(other):
         return RedirectResponse(url="/messages/support", status_code=303)
 
-    # ابحث عن خيط لنفس الثنائي ولنفس الـ item_id (أو NULL)
+    # look for a thread for the same pair and same item_id (or NULL)
     q = db.query(MessageThread).filter(
         ((MessageThread.user_a_id == me) & (MessageThread.user_b_id == other.id)) |
         ((MessageThread.user_a_id == other.id) & (MessageThread.user_b_id == me))
@@ -212,7 +212,7 @@ def start_thread(
 @router.get("/messages/{thread_id}")
 def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db)):
     """
-    عرض محادثة معينة + وسم الرسائل الواردة كمقروءة.
+    display a specific conversation + mark incoming messages as read.
     """
     u = require_login(request)
     if not u:
@@ -222,13 +222,13 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
     if not thr or (u["id"] not in [thr.user_a_id, thr.user_b_id]):
         return RedirectResponse(url="/messages", status_code=303)
 
-    # NEW: لو الحساب مقيد وتكلّم مع غير أدمِن → حوّله للدعم
+    # NEW: if the account is limited and the other party is not admin → redirect to support
     other_id = thr.user_b_id if thr.user_a_id == u["id"] else thr.user_a_id
     other = db.query(User).get(other_id)
     if is_account_limited(request) and not is_admin_user(other):
         return RedirectResponse(url="/messages/support", status_code=303)
 
-    # اجلب الرسائل الأقدم فالأحدث
+    # fetch messages oldest to newest
     msgs = (
         db.query(Message)
         .filter(Message.thread_id == thr.id)
@@ -236,7 +236,7 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
         .all()
     )
 
-    # علّم رسائل الطرف الآخر كمقروءة
+    # mark other party's messages as read
     changed = False
     for m in msgs:
         if m.sender_id != u["id"] and not m.is_read:
@@ -247,7 +247,7 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
     if changed:
         db.commit()
 
-    # معلومات العنصر (إن وجد)
+    # item info (if any)
     item_title, item_image = "", "/static/placeholder.svg"
     if getattr(thr, "item_id", None):
         item = db.query(Item).get(thr.item_id)
@@ -256,7 +256,7 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
             if getattr(item, "image_path", None):
                 item_image = "/" + item.image_path.replace("\\", "/")
 
-    # NEW: نمرر أفاتار الطرف الآخر للواجهة (بدون حذف أي قيم قديمة)
+    # NEW: pass the other party's avatar to the template (without removing any old values)
     other_avatar = _safe_url(getattr(other, "avatar_path", None), "/static/placeholder.svg")
     item_image = _safe_url(item_image, "/static/placeholder.svg")
 
@@ -264,15 +264,15 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
         "thread.html",
         {
             "request": request,
-            "title": "محادثة",
+            "title": "Conversation",
             "thread": thr,
             "messages": msgs,
             "other": other,
-            "other_avatar": other_avatar,     # جديد
+            "other_avatar": other_avatar,     # new
             "item_title": item_title,
             "item_image": item_image,
             "session_user": u,
-            "account_limited": is_account_limited(request),  # NEW: للقالب
+            "account_limited": is_account_limited(request),  # NEW: for template
         }
     )
 
@@ -285,7 +285,7 @@ def thread_send(
     body: str = Form(...)
 ):
     """
-    إرسال رسالة داخل خيط محدد.
+    send a message inside a specific thread.
     """
     u = require_login(request)
     if not u:
@@ -295,7 +295,7 @@ def thread_send(
     if not thr or (u["id"] not in [thr.user_a_id, thr.user_b_id]):
         return RedirectResponse(url="/messages", status_code=303)
 
-    # NEW: منع الإرسال لغير الأدمِن لو الحساب مقيد
+    # NEW: block sending to non-admin if the account is limited
     other_id = thr.user_b_id if thr.user_a_id == u["id"] else thr.user_a_id
     other = db.query(User).get(other_id)
     if is_account_limited(request) and not is_admin_user(other):
@@ -304,7 +304,7 @@ def thread_send(
     if not body.strip():
         return RedirectResponse(url=f"/messages/{thr.id}", status_code=303)
 
-    # إنشاء الرسالة
+    # create message
     msg = Message(
         thread_id=thr.id,
         sender_id=u["id"],
@@ -314,7 +314,7 @@ def thread_send(
     )
     db.add(msg)
 
-    # تحديث آخر وقت تواصل
+    # update last contact time
     thr.last_message_at = datetime.utcnow()
     db.commit()
 
@@ -323,7 +323,7 @@ def thread_send(
 
 def unread_count(user_id: int, db: Session) -> int:
     """
-    عدد الرسائل غير المقروءة للمستخدم عبر كل الخيوط.
+    number of unread messages for the user across all threads.
     """
     return (
         db.query(Message)
@@ -339,8 +339,8 @@ def unread_count(user_id: int, db: Session) -> int:
 
 def unread_grouped(user_id: int, db: Session):
     """
-    إرجاع (thread_id, count) للمحادثات التي تحتوي رسائل غير مقروءة،
-    مع اسم الطرف الآخر وعنوان العنصر (إن وجد).
+    return (thread_id, count) for conversations that contain unread messages,
+    with the other party's name and the item title (if any).
     """
     rows = (
         db.query(Message.thread_id, func.count(Message.id).label("cnt"))
@@ -361,7 +361,7 @@ def unread_grouped(user_id: int, db: Session):
             continue
         other_id = thr.user_b_id if thr.user_a_id == user_id else thr.user_a_id
         other = db.query(User).get(other_id)
-        other_name = f"{other.first_name} {other.last_name}" if other else "مستخدم"
+        other_name = f"{other.first_name} {other.last_name}" if other else "User"
 
         item_title = ""
         if getattr(thr, "item_id", None):
@@ -374,7 +374,7 @@ def unread_grouped(user_id: int, db: Session):
             "count": int(cnt),
             "other_name": other_name,
             "item_title": item_title,
-            "other_verified": bool(other.is_verified) if other else False,  # ✅ بقيت
+            "other_verified": bool(other.is_verified) if other else False,  # ✅ kept
         })
     return result
 

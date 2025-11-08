@@ -19,7 +19,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optiona
 def _json(data: dict) -> JSONResponse:
     return JSONResponse(data, headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
 
-# ========= helper: إنشاء إشعار واحد =========
+# ========= helper: create a single notification =========
 def push_notif(
     db: Session,
     user_id: int,
@@ -28,7 +28,7 @@ def push_notif(
     *,
     kind: str = "info",
     link_url: str | None = None,
-    do_commit: bool = True,           # <-- المهم: نعمل commit افتراضيًا
+    do_commit: bool = True,           # <-- Important: commit by default
 ) -> Optional[Notification]:
     if not user_id or not (title or "").strip():
         return None
@@ -52,7 +52,7 @@ def push_notif(
         db.flush()
     return n
 
-# ========= API القديمة (تبقى كما هي) =========
+# ========= Old API (kept as-is) =========
 @router.get("/api/notifs/unread_count")
 def unread_count_legacy(
     request: Request, db: Session = Depends(get_db), user: Optional[User] = Depends(get_current_user)
@@ -106,8 +106,8 @@ def mark_all_read_legacy(
     db.commit()
     return JSONResponse({"ok": True})
 
-# ========= ALIASES لمسارات الواجهة الجديدة =========
-# حتى لو الواجهة تضرب /api/unread_count و /api/notifications/poll تشتغل من نفس الراوتر
+# ========= ALIASES for the new frontend routes =========
+# Even if the frontend hits /api/unread_count and /api/notifications/poll, they work from the same router
 
 @router.get("/api/unread_count")
 def api_unread_count(db: Session = Depends(get_db), user: Optional[User] = Depends(get_current_user)):

@@ -36,7 +36,7 @@ def _get_booking(db: Session, booking_id: int) -> Booking:
     return bk
 
 
-# --------------- قائمة القضايا ---------------
+# --------------- Cases list ---------------
 @router.get("/deposit-manager")
 def dm_index(
     request: Request,
@@ -45,10 +45,10 @@ def dm_index(
     view: Literal["pending", "in_review", "resolved"] = "pending",
 ):
     """
-    تبويب بسيط:
-      - pending   : القضايا التي تحتاج قرار (deposit_status in ['in_dispute','held']) وحالة الحجز ليست مغلقة
-      - in_review : الحجز في حالة in_review (مفتوحة وتحت المراجعة)
-      - resolved  : الحجز مغلق/مكتمل وفيه قرار وديعة نهائي
+    Simple tabs:
+      - pending   : cases that need a decision (deposit_status in ['in_dispute','held']) and booking is not closed
+      - in_review : booking has status in_review (open and under review)
+      - resolved  : booking is closed/completed and has a final deposit decision
     """
     require_manager(user)
 
@@ -69,7 +69,7 @@ def dm_index(
 
     rows = q.order_by(Booking.updated_at.desc().nullslast(), Booking.created_at.desc().nullslast()).all()
 
-    # نمرر كل شيء للقالب
+    # Pass everything to the template
     return request.app.templates.TemplateResponse(
         "deposit_manager_index.html",
         {
@@ -82,7 +82,7 @@ def dm_index(
     )
 
 
-# --------------- استلام/Claim القضية ---------------
+# --------------- Claim the case ---------------
 @router.post("/deposit-manager/{booking_id}/claim")
 def dm_claim(
     booking_id: int,
@@ -91,12 +91,12 @@ def dm_claim(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    تعليم القضية أنها قيد المراجعة (لا نضيف أعمدة جديدة؛ فقط نضبط status=in_review)
+    Mark the case as under review (we don't add new columns; we just set status=in_review)
     """
     require_manager(user)
     bk = _get_booking(db, booking_id)
 
-    # حالات منطقية للاستلام
+    # Logical states for claiming
     if bk.deposit_status not in ["in_dispute", "held"]:
         return RedirectResponse(url="/deposit-manager?view=resolved", status_code=303)
 
@@ -104,27 +104,27 @@ def dm_claim(
     bk.updated_at = datetime.utcnow()
     db.commit()
 
-    # إشعار الطرفين أن القضية دخلت قيد المراجعة
+    # Notify both parties that the case is now under review
     push_notification(
-        db, bk.owner_id, "قضية الوديعة قيد المراجعة",
-        f"تم استلام القضية #{bk.id} من قِبل متحكّم الوديعة.",
+        db, bk.owner_id, "Deposit case under review",
+        f"Case #{bk.id} has been claimed by the deposit manager.",
         f"/bookings/flow/{bk.id}", "deposit"
     )
     push_notification(
-        db, bk.renter_id, "قضية الوديعة قيد المراجعة",
-        f"تم استلام القضية #{bk.id} من قِبل متحكّم الوديعة.",
+        db, bk.renter_id, "Deposit case under review",
+        f"Case #{bk.id} has been claimed by the deposit manager.",
         f"/bookings/flow/{bk.id}", "deposit"
     )
 
     return RedirectResponse(url="/deposit-manager?view=in_review", status_code=303)
 
 
-# --------------- طلب معلومات/أدلة إضافية ---------------
+# --------------- Request more info/evidence ---------------
 @router.post("/deposit-manager/{booking_id}/need-info")
 def dm_need_info(
     booking_id: int,
     target: Literal["owner", "renter"] = Form(...),
-    message: str = Form("يرجى تزويدنا بمعلومات/صور إضافية لدعم موقفك."),
+    message: str = Form("Please provide additional information/photos to support your position."),
     request: Request = None,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
@@ -132,22 +132,22 @@ def dm_need_info(
     require_manager(user)
     bk = _get_booking(db, booking_id)
 
-    # نترك الحالة in_review كما هي
+    # Keep status as in_review
     bk.updated_at = datetime.utcnow()
     db.commit()
 
-    # نرسل إشعار للمطلوب منه
+    # Send a notification to the requested party
     target_user_id = bk.owner_id if target == "owner" else bk.renter_id
     push_notification(
-        db, target_user_id, "طلب معلومات إضافية",
-        message or "نرجو تزويدنا بتفاصيل إضافية.",
+        db, target_user_id, "Additional information requested",
+        message or "Please provide more details.",
         f"/bookings/flow/{bk.id}", "deposit"
     )
 
     return RedirectResponse(url="/deposit-manager?view=in_review", status_code=303)
 
 
-# --------------- تنفيذ القرار النهائي (يوجّه لمسار القرار في routes_deposits.py) ---------------
+# --------------- Execute the final decision (redirects to the decision route in routes_deposits.py) ---------------
 @router.post("/deposit-manager/{booking_id}/decide")
 def dm_decide(
     booking_id: int,
@@ -158,13 +158,13 @@ def dm_decide(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    نستخدم مسار القرار الذي كتبناه في routes_deposits.py
-    فقط نعيد توجيه POST إلى /dm/deposits/{booking_id}/decision
-    باستخدام 307 للحفاظ على نفس طريقة الطلب (POST) ونفس جسم النموذج.
+    We use the decision route written in routes_deposits.py.
+    We only redirect the POST to /dm/deposits/{booking_id}/decision
+    using 307 to preserve the same request method (POST) and the same form body.
     """
     require_manager(user)
 
-    # مهم: 307 يحافظ على POST وجسم الطلب ولا نحط القيم في الـQueryString
+    # Important: 307 preserves POST and the body; we don't put values in the QueryString
     return RedirectResponse(
         url=f"/dm/deposits/{booking_id}/decision",
         status_code=307

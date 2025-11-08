@@ -14,7 +14,7 @@ BADGE_FIELDS = [
     "badge_purple_trust",
     "badge_renter_green",
     "badge_orange_stars",
-    # ملاحظة: badge_admin إن أردتها يدويًا يمكنك إضافتها هنا أيضاً
+    # Note: badge_admin can be added here manually if desired
 ]
 
 def _require_admin(request: Request) -> dict | None:
@@ -31,7 +31,7 @@ def _back(user_id: int | None = None):
 
 @router.post("/admin/users/{user_id}/badges")
 def admin_badges_save(user_id: int, request: Request, db: Session = Depends(get_db)):
-    """يحفظ الشارات من الفورم (checkbox names = BADGE_FIELDS)."""
+    """Saves badges from the form (checkbox names = BADGE_FIELDS)."""
     if not _require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
@@ -39,22 +39,22 @@ def admin_badges_save(user_id: int, request: Request, db: Session = Depends(get_
     if not user:
         return _back()
 
-    form = request._form  # يتم تحميلها داخليًا بواسطة Starlette عند POST
+    form = request._form  # Loaded internally by Starlette when POST
     if form is None:
-        # احتياط: لو لم تُحمّل، استخدم request.form()
-        # لكن FastAPI يقوم بهذا نيابةً عنا عادةً.
+        # Fallback: if not loaded, use request.form()
+        # But FastAPI usually does this automatically.
         pass
 
-    # عيّن False للجميع ثم فعّل الموجود في الفورم
+    # Set all to False, then activate those present in the form
     for f in BADGE_FIELDS:
         setattr(user, f, False)
 
-    # فعِّل الموجودين في البيانات المُرسلة
+    # Activate those found in the submitted data
     for name in BADGE_FIELDS:
         if name in request.query_params or name in (request._form or {}):
             setattr(user, name, True)
 
-    # تعارض: الأصفر مع الـ Pro
+    # Conflict: yellow with Pro
     if getattr(user, "badge_pro_gold", False) or getattr(user, "badge_pro_green", False):
         setattr(user, "badge_new_yellow", False)
 
@@ -73,7 +73,7 @@ def admin_badges_clear(user_id: int, request: Request, db: Session = Depends(get
     db.commit()
     return _back(user_id)
 
-# (اختياري) نقاط تشغيل/إيقاف فردية
+# (Optional) Individual enable/disable points
 @router.post("/admin/badges/{user_id}/set/{name}")
 def admin_badges_set(user_id: int, name: str, request: Request, db: Session = Depends(get_db)):
     if not _require_admin(request):

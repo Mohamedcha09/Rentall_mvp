@@ -16,12 +16,12 @@ from .models import Booking, User
 from .notifications_api import push_notification, notify_admins
 
 # ===== SMTP Email (fallback) =====
-# سيتم استبداله لاحقًا بـ app/emailer.py؛ هنا نضمن عدم كسر التنفيذ إن لم يوجد.
+# Will be replaced later by app/emailer.py; here we ensure execution doesn’t break if it doesn’t exist.
 try:
     from .email_service import send_email
 except Exception:
     def send_email(to, subject, html_body, text_body=None, cc=None, bcc=None, reply_to=None):
-        return False  # NO-OP مؤقتًا
+        return False  # Temporary NO-OP
 
 BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
 
@@ -38,7 +38,7 @@ def _admin_emails(db: Session) -> list[str]:
 router = APIRouter(tags=["deposit-evidence"])
 
 # =========================
-# إعدادات الحفظ / الامتدادات
+# Storage settings / extensions
 # =========================
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
@@ -50,10 +50,10 @@ ALLOWED_VIDEO_EXTS = {"mp4", "mov", "webm"}
 ALLOWED_DOC_EXTS   = {"pdf"}
 ALLOWED_ALL_EXTS = ALLOWED_IMAGE_EXTS | ALLOWED_VIDEO_EXTS | ALLOWED_DOC_EXTS
 
-MAX_FILES_PER_REQUEST = 10  # حماية بسيطة
+MAX_FILES_PER_REQUEST = 10  # Simple protection
 
 # =========================
-# Helpers: هوية المستخدم/الحجز
+# Helpers: user/booking identity
 # =========================
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
@@ -81,7 +81,7 @@ def user_side_for_booking(user: User, bk: Booking) -> Literal["owner","renter","
     raise HTTPException(status_code=403, detail="Forbidden")
 
 # =========================
-# Helpers: ملفات ومسارات
+# Helpers: files and paths
 # =========================
 def safe_ext(filename: str) -> str:
     ext = (filename.rsplit(".", 1)[-1] if "." in filename else "").lower().strip()
@@ -108,7 +108,7 @@ def save_upload_file(dst_path: Path, up: UploadFile) -> None:
             f.write(chunk)
 
 # =========================
-# Helpers: طبقة توافق مع الجدول (uploader_id/by_user_id, file_path/file)
+# Helpers: compatibility layer with table (uploader_id/by_user_id, file_path/file)
 # =========================
 def _evidence_cols() -> Dict[str, bool]:
     cols = {
@@ -205,7 +205,7 @@ def _select_evidence_rows(booking_id: int) -> List[Dict[str, Any]]:
         return [dict(r) for r in rows]
 
 # =========================
-# API: رفع الأدلة (صور/فيديو/مستندات + ملاحظة)
+# API: upload evidence (images/videos/docs + note)
 # =========================
 @router.post("/deposits/{booking_id}/evidence/upload")
 async def upload_deposit_evidence(
@@ -217,11 +217,11 @@ async def upload_deposit_evidence(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    يرفع أدلة من الطرفين (المالك/المستأجر) أو المتحكّم (manager).
-    - يحفظ الملفات تحت: /uploads/deposits/{booking_id}/{side}/<uuid>.<ext>
-    - يُدخل الصفوف في deposit_evidences مع دعم (uploader_id/by_user_id) و (file_path/file)
-    - إذا لم تُرسل ملفات وأُرسلت ملاحظة -> يسجّل evidence من النوع note (بدون ملف)
-    - يُرسل إشعارات
+    Uploads evidence from both sides (owner/renter) or the manager.
+    - Saves files under: /uploads/deposits/{booking_id}/{side}/<uuid>.<ext>
+    - Inserts rows into deposit_evidences with support for (uploader_id/by_user_id) and (file_path/file)
+    - If no files are sent and a note is sent -> records note-type evidence (no file)
+    - Sends notifications
     """
     require_auth(user)
     bk = require_booking(db, booking_id)
@@ -239,7 +239,7 @@ async def upload_deposit_evidence(
     evidence_dir = DEPOSITS_DIR / str(bk.id) / side
     ensure_dirs(evidence_dir)
 
-    # 1) ملاحظة فقط
+    # 1) Note only
     if not files and comment:
         ev_id = _insert_evidence_row({
             "booking_id": bk.id,
@@ -254,7 +254,7 @@ async def upload_deposit_evidence(
             saved_any = True
             saved_ids.append(ev_id)
 
-    # 2) ملفات
+    # 2) Files
     for up in files:
         filename = up.filename or ""
         ext = safe_ext(filename)
@@ -270,7 +270,7 @@ async def upload_deposit_evidence(
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to store file: {e}")
 
-        # ✅ مسار عام ثابت لعرض الصور/الفيديو فورًا
+        # ✅ Stable public path to preview images/videos immediately
         rel_path = f"/uploads/deposits/{bk.id}/{side}/{stored_name}"
 
         kind = classify_kind(ext)
@@ -298,12 +298,12 @@ async def upload_deposit_evidence(
     except Exception:
         pass
 
-    # ===== المرحلة: لو كان status للوديعة awaiting_renter وردّ المستأجر → قلبها نزاع وإشعارات للـ DM =====
+    # ===== Phase: if deposit_status is awaiting_renter and the renter replied → switch to dispute and notify DMs =====
     try:
         current_status = (getattr(bk, "deposit_status", None) or "").lower()
         if side == "renter" and current_status == "awaiting_renter":
             try:
-                bk.deposit_status = "in_dispute"   # ← يجعل الواجهة تعرض أزرار المراجعة
+                bk.deposit_status = "in_dispute"   # ← makes the UI show review buttons
                 bk.status = "in_review"
             except Exception:
                 pass
@@ -337,22 +337,22 @@ async def upload_deposit_evidence(
             except Exception:
                 pass
 
-            # 🔔 إشعارات — لاحظ الروابط تذهب إلى صفحة DM للمراجعة
+            # 🔔 Notifications — note links go to DM page for review
             try:
                 push_notification(
-                    db, bk.owner_id, "ردّ المستأجر على قرار الخصم",
-                    f"قام المستأجر برفع أدلة/ملاحظة على الحجز #{bk.id}.",
+                    db, bk.owner_id, "Renter reply to deduction decision",
+                    f"The renter uploaded evidence/note for booking #{bk.id}.",
                     f"/dm/deposits/{bk.id}", "deposit"
                 )
                 notify_admins(
-                    db, "ردّ مستأجر جديد بخصوص قرار الخصم",
-                    f"تم استلام أدلة من المستأجر على الحجز #{bk.id}.",
+                    db, "New renter reply regarding deduction decision",
+                    f"Evidence received from renter for booking #{bk.id}.",
                     f"/dm/deposits/{bk.id}"
                 )
             except Exception:
                 pass
 
-            # ✉️ بريد: إشعار لأصحاب الصلاحية
+            # ✉️ Email: notify authorized roles
             try:
                 owner_email = _user_email(db, bk.owner_id)
                 admins_em = _admin_emails(db)
@@ -360,16 +360,16 @@ async def upload_deposit_evidence(
                 if owner_email:
                     send_email(
                         owner_email,
-                        f"ردّ المستأجر على وديعة #{bk.id}",
-                        f"<p>قام المستأجر برفع أدلة/ملاحظة. الحالة الآن: نزاع مفتوح.</p>"
-                        f'<p><a href="{case_url}">فتح القضية</a></p>'
+                        f"Renter reply on deposit #{bk.id}",
+                        f"<p>The renter uploaded evidence/note. Status now: open dispute.</p>"
+                        f'<p><a href="{case_url}">Open case</a></p>'
                     )
                 for em in admins_em:
                     send_email(
                         em,
                         f"[DM] Renter responded — #{bk.id}",
-                        f"<p>المستأجر أضاف أدلة — القضية أصبحت in_dispute.</p>"
-                        f'<p><a href="{case_url}">فتح القضية</a></p>'
+                        f"<p>The renter added evidence — case became in_dispute.</p>"
+                        f'<p><a href="{case_url}">Open case</a></p>'
                     )
             except Exception:
                 pass
@@ -381,37 +381,37 @@ async def upload_deposit_evidence(
     except Exception:
         pass
 
-    # إشعارات افتراضية حسب جهة الرفع (روابط التدفق العادي للطرف المقابل)
+    # Default notifications by side (links to normal flow page for the other party)
     try:
         if side == "owner":
             push_notification(
-                db, bk.renter_id, "أدلة جديدة من المالك",
-                f"تم رفع أدلة جديدة على قضية وديعة الحجز #{bk.id}.",
+                db, bk.renter_id, "New evidence from owner",
+                f"New evidence was uploaded on the deposit case for booking #{bk.id}.",
                 f"/bookings/flow/{bk.id}", "deposit"
             )
         elif side == "renter":
             push_notification(
-                db, bk.owner_id, "رد وأدلة من المستأجر",
-                f"قام المستأجر بإضافة أدلة/ملاحظة على قضية وديعة الحجز #{bk.id}.",
+                db, bk.owner_id, "Renter reply and evidence",
+                f"The renter added evidence/note on the deposit case for booking #{bk.id}.",
                 f"/bookings/flow/{bk.id}", "deposit"
             )
         else:
             push_notification(
-                db, bk.owner_id, "تحديث على القضية",
-                f"قام متحكّم الوديعة برفع/إرفاق أدلة على قضية #{bk.id}.",
+                db, bk.owner_id, "Case updated",
+                f"The deposit manager uploaded/attached evidence for case #{bk.id}.",
                 f"/bookings/flow/{bk.id}", "deposit"
             )
             push_notification(
-                db, bk.renter_id, "تحديث على القضية",
-                f"قام متحكّم الوديعة برفع/إرفاق أدلة على قضية #{bk.id}.",
+                db, bk.renter_id, "Case updated",
+                f"The deposit manager uploaded/attached evidence for case #{bk.id}.",
                 f"/bookings/flow/{bk.id}", "deposit"
             )
-        # إشعار إداري (لو تريد فتح صفحة DM مباشرة يمكن تعديل الرابط هنا أيضًا)
-        notify_admins(db, "Evidence uploaded", f"حجز #{bk.id} — side={side}", f"/bookings/flow/{bk.id}")
+        # Administrative notification (if you want to open the DM page directly you can also change the link here)
+        notify_admins(db, "Evidence uploaded", f"Booking #{bk.id} — side={side}", f"/bookings/flow/{bk.id}")
     except Exception:
         pass
 
-    # ✉️ بريد: إشعار للطرف المقابل + روابط مناسبة
+    # ✉️ Email: notify the other party + appropriate links
     try:
         case_url = f"{BASE_URL}/bookings/flow/{bk.id}"
         if side == "owner":
@@ -419,27 +419,27 @@ async def upload_deposit_evidence(
             if em:
                 send_email(
                     em,
-                    f"أدلة جديدة من المالك — #{bk.id}",
-                    f"<p>أضاف المالك أدلة/ملاحظة لقضية الوديعة.</p>"
-                    f'<p><a href="{case_url}">تفاصيل الحجز</a></p>'
+                    f"New evidence from owner — #{bk.id}",
+                    f"<p>The owner added evidence/note for the deposit case.</p>"
+                    f'<p><a href="{case_url}">Booking details</a></p>'
                 )
         elif side == "renter":
             em = _user_email(db, bk.owner_id)
             if em:
                 send_email(
                     em,
-                    f"أدلة من المستأجر — #{bk.id}",
-                    f"<p>أضاف المستأجر أدلة/ملاحظة لقضية الوديعة.</p>"
-                    f'<p><a href="{case_url}">تفاصيل الحجز</a></p>'
+                    f"Evidence from renter — #{bk.id}",
+                    f"<p>The renter added evidence/note for the deposit case.</p>"
+                    f'<p><a href="{case_url}">Booking details</a></p>'
                 )
         else:
             for em in (_user_email(db, bk.owner_id), _user_email(db, bk.renter_id)):
                 if em:
                     send_email(
                         em,
-                        f"تحديث من المتحكّم — #{bk.id}",
-                        f"<p>قام متحكّم الوديعة بإضافة مرفقات/ملاحظة.</p>"
-                        f'<p><a href="{case_url}">تفاصيل الحجز</a></p>'
+                        f"Update from deposit manager — #{bk.id}",
+                        f"<p>The deposit manager added attachments/note.</p>"
+                        f'<p><a href="{case_url}">Booking details</a></p>'
                     )
     except Exception:
         pass
@@ -451,7 +451,7 @@ async def upload_deposit_evidence(
     return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
 # =========================
-# API: جلب الأدلة بشكل JSON
+# API: fetch evidence as JSON
 # =========================
 @router.get("/deposits/{booking_id}/evidence")
 def list_deposit_evidence(
@@ -484,7 +484,7 @@ def list_deposit_evidence(
     })
 
 # =========================
-# (اختياري) نموذج HTML بسيط للرفع
+# (Optional) simple HTML upload form
 # =========================
 @router.get("/deposits/{booking_id}/evidence/form")
 def simple_evidence_form(
@@ -498,28 +498,28 @@ def simple_evidence_form(
     _ = user_side_for_booking(user, bk)
 
     html = f"""
-    <html lang="ar">
+    <html lang="en">
       <head>
         <meta charset="utf-8" />
-        <title>رفع أدلة — حجز #{bk.id}</title>
+        <title>Upload Evidence — Booking #{bk.id}</title>
       </head>
       <body style="font-family: sans-serif; padding:20px">
-        <h3>رفع أدلة — حجز #{bk.id}</h3>
+        <h3>Upload Evidence — Booking #{bk.id}</h3>
         <form method="post" action="/deposits/{bk.id}/evidence/upload" enctype="multipart/form-data">
           <div>
-            <label>الوصف (اختياري)</label><br/>
-            <textarea name="description" rows="3" cols="60" placeholder="ملاحظة قصيرة…"></textarea>
+            <label>Description (optional)</label><br/>
+            <textarea name="description" rows="3" cols="60" placeholder="Short note…"></textarea>
           </div>
           <div style="margin-top:8px">
-            <label>ملفات (اختياري | حتى {MAX_FILES_PER_REQUEST})</label><br/>
+            <label>Files (optional | up to {MAX_FILES_PER_REQUEST})</label><br/>
             <input type="file" name="files" multiple />
             <div style="opacity:.7;font-size:12px;margin-top:4px">
-              المسموح: صور (jpg/png/webp/gif) — فيديو (mp4/mov/webm) — مستند (pdf)
+              Allowed: Images (jpg/png/webp/gif) — Video (mp4/mov/webm) — Document (pdf)
             </div>
           </div>
           <div style="margin-top:12px">
-            <button type="submit">رفع</button>
-            <a href="/bookings/flow/{bk.id}" style="margin-right:8px">رجوع لصفحة الحجز</a>
+            <button type="submit">Upload</button>
+            <a href="/bookings/flow/{bk.id}" style="margin-right:8px">Back to booking</a>
           </div>
         </form>
       </body>
@@ -527,7 +527,7 @@ def simple_evidence_form(
     """
     return HTMLResponse(html)
 
-# ---------- تحويل روابط الإشعارات/الروابط القديمة إلى صفحة الـ DM ----------
+# ---------- Redirect old notification/links to DM page ----------
 @router.get("/deposits/{booking_id}/report")
 def deposit_report_redirect(
     booking_id: int,
@@ -536,10 +536,10 @@ def deposit_report_redirect(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    بعض الإشعارات القديمة ترسل إلى /deposits/{id}/report.
-    هنا نعيد التوجيه تلقائيًا:
-      - إذا كان المستخدم متحكّم الوديعة/أدمِن → صفحة قضية الوديعة
-      - غير ذلك → صفحة تدفّق الحجز
+    Some old notifications point to /deposits/{id}/report.
+    Here we auto-redirect:
+      - If the user is a deposit manager/admin → deposit case page
+      - Otherwise → booking flow page
     """
     if user and (getattr(user, "is_deposit_manager", False) or (getattr(user, "role", "") or "").lower() == "admin"):
         return RedirectResponse(url=f"/dm/deposits/{booking_id}", status_code=303)

@@ -14,22 +14,22 @@ from .database import get_db, engine
 from .models import User, Item
 
 # =========================
-# استيرادات اختيارية لحماية التشغيل لو الجداول/الخدمات غير متوفرة
+# Optional imports to keep runtime safe if tables/services are unavailable
 # =========================
 try:
-    from .models import Report, ReportActionLog  # مضافة في models.py
+    from .models import Report, ReportActionLog  # added in models.py
 except Exception:  # pragma: no cover
     Report = None
     ReportActionLog = None
 
 try:
-    from .notifications_api import push_notification  # إشعارات داخلية
+    from .notifications_api import push_notification  # internal notifications
 except Exception:  # pragma: no cover
     def push_notification(db: Session, user_id: int, title: str, body: str, link_url: str = "/", kind: str = "info"):
         return None
 
 try:
-    from .email_service import send_email  # بريد (اختياري)
+    from .email_service import send_email  # email (optional)
 except Exception:  # pragma: no cover
     def send_email(*args, **kwargs):
         return None
@@ -40,11 +40,11 @@ BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:
 
 
 # =====================================================
-# هوت-فيكس تلقائي لإضافة أعمدة ناقصة في جدول reports (Postgres)
+# Auto hot-fix to add missing columns to the reports table (Postgres)
 # =====================================================
 def _ensure_reports_columns():
     """
-    لو تعمل على Postgres وكانت أعمدة معينة غير موجودة نضيفها بأمان.
+    If you are on Postgres and certain columns are missing, add them safely.
     """
     try:
         backend = engine.url.get_backend_name()
@@ -62,7 +62,7 @@ def _ensure_reports_columns():
         except Exception as e:
             print("[WARN] ensure reports columns failed:", e)
 
-# شغّل الفِكس مرة واحدة عند تحميل الملف
+# Run the fix once on module load
 _ensure_reports_columns()
 
 
@@ -90,15 +90,15 @@ def _get_item_owner_id(db: Session, item_id: int) -> Optional[int]:
 
 def _set_item_state(db: Session, item_id: int, *, state: str):
     """
-    يغير حالة العنصر بشكل متوافق:
-    - لو يوجد عمود status: نستخدم active/suspended/deleted
-    - وإلا نستخدم is_active = yes/no
+    Change the item's state compatibly:
+    - If there is a 'status' column: use active/suspended/deleted
+    - Otherwise use is_active = yes/no
     """
     it = db.query(Item).get(item_id)
     if not it:
         raise HTTPException(status_code=404, detail="item-not-found")
 
-    # تفضيل عمود status إن وُجد
+    # Prefer 'status' column if present
     if hasattr(it, "status"):
         if state == "active":
             it.status = "active"
@@ -107,7 +107,7 @@ def _set_item_state(db: Session, item_id: int, *, state: str):
         elif state == "deleted":
             it.status = "deleted"
     else:
-        # توافق مع السكيمة القديمة
+        # Backward compatibility with old schema
         if state in ("suspended", "deleted"):
             setattr(it, "is_active", "no")
         elif state == "active":
@@ -126,24 +126,24 @@ def _notify_owner_and_moderators(
     reason: str,
     image_index: Optional[int] = None,
 ):
-    """إشعار المالك + كل الأدمن والمودز عند إنشاء بلاغ."""
-    label = f"بلاغ على المنشور #{item_id}"
+    """Notify the owner + all admins and mods when a report is created."""
+    label = f"Report on listing #{item_id}"
     if image_index is not None:
-        label = f"بلاغ على صورة #{image_index} من المنشور #{item_id}"
+        label = f"Report on image #{image_index} of listing #{item_id}"
 
-    body = f"المبلِّغ: {reporter_name}\nالسبب: {reason}"
+    body = f"Reporter: {reporter_name}\nReason: {reason}"
 
-    owner_link = f"/items/{item_id}"   # المالك → يفتح منشوره
-    mod_link   = "/admin/reports"      # الأدمن/المود → صفحة البلاغات
+    owner_link = f"/items/{item_id}"   # owner → opens their listing
+    mod_link   = "/admin/reports"      # admin/mod → reports page
 
-    # 1) المالك
+    # 1) Owner
     if owner_id:
         try:
             push_notification(db, owner_id, "🚩 " + label, body, owner_link, "report")
         except Exception:
             pass
 
-    # 2) كل الأدمن + كل المودز
+    # 2) All admins + all mods
     try:
         moderators = (
             db.query(User)
@@ -158,43 +158,43 @@ def _notify_owner_and_moderators(
     except Exception:
         pass
 
-    # (اختياري) بريد للأدمن فقط
+    # (Optional) Email admins only
     try:
         admins = db.query(User).filter(User.role == "admin").all()
         for a in admins:
-            subj = "🚩 بلاغ جديد"
+            subj = "🚩 New report"
             html = f"""
               <div style="direction:rtl;text-align:right;font-family:Tahoma,Arial,sans-serif;line-height:1.8">
-                <h3>🚩 بلاغ جديد</h3>
-                <p><b>المبلِّغ:</b> {reporter_name}</p>
-                <p><b>السبب:</b> {reason}</p>
-                <p><a href="{BASE_URL}/admin/reports" target="_blank">فتح لوحة البلاغات</a></p>
+                <h3>🚩 New Report</h3>
+                <p><b>Reporter:</b> {reporter_name}</p>
+                <p><b>Reason:</b> {reason}</p>
+                <p><a href="{BASE_URL}/admin/reports" target="_blank">Open reports dashboard</a></p>
               </div>
             """
-            send_email(a.email, subj, html, text_body=f"بلاغ جديد — {label}\n{body}\n{BASE_URL}/admin/reports")
+            send_email(a.email, subj, html, text_body=f"New report — {label}\n{body}\n{BASE_URL}/admin/reports")
     except Exception:
         pass
 
 
 def _notify_owner_on_moderation(db: Session, item_id: int, action: str, reason: str = ""):
     """
-    إشعار مالك المنشور عند الإيقاف أو الحذف.
+    Notify the owner when their listing is suspended or deleted.
     action: suspend_item | delete_item | remove_item (alias)
     """
     owner_id = _get_item_owner_id(db, item_id)
     if not owner_id:
         return
 
-    # توحيد اسم الإجراء
+    # Normalize action name
     if action == "remove_item":
         action = "delete_item"
 
     if action == "suspend_item":
-        title = "⏸️ تم إيقاف منشورك"
-        body  = f"تم إيقاف منشورك رقم #{item_id} بسبب البلاغ (السبب: {reason})."
+        title = "⏸️ Your listing was suspended"
+        body  = f"Your listing #{item_id} was suspended due to a report (reason: {reason})."
     elif action == "delete_item":
-        title = "🗑️ تم حذف منشورك"
-        body  = f"تم حذف منشورك رقم #{item_id} بعد مراجعة البلاغ (السبب: {reason})."
+        title = "🗑️ Your listing was removed"
+        body  = f"Your listing #{item_id} was removed after review (reason: {reason})."
     else:
         return
 
@@ -214,7 +214,7 @@ def _build_report_instance(
     payload: Optional[Dict[str, Any]] = None,
 ):
     """
-    إنشاء كائن Report مع مراعاة اختلاف السكيمة.
+    Build a Report object while accounting for schema variations.
     """
     if Report is None:
         raise HTTPException(status_code=500, detail="Report model is missing")
@@ -272,25 +272,25 @@ def _log_action(db: Session, report_id: int, actor_id: int, action: str, note: O
 
 
 # =========================
-# API: إنشاء بلاغ (المسار الرئيسي)
+# API: create a report (main endpoint)
 # =========================
 @router.post("/reports")
 async def create_report(
     request: Request,
     db: Session = Depends(get_db),
 
-    # ندعم Form وكذلك JSON
+    # Support both Form and JSON
     item_id: int = Form(None),
     reason: str = Form(None),
     note: str | None = Form(None),
     image_index: int | None = Form(None),
 ):
     """
-    ينشئ بلاغًا على منشور/صورة. يقبل Form أو JSON.
+    Creates a report on a listing/image. Accepts Form or JSON.
     """
     u = _require_login(request)
 
-    # السماح بإرسال JSON (mobile/SPA)
+    # Allow JSON payload (mobile/SPA)
     if item_id is None or reason is None:
         try:
             data = await request.json()
@@ -309,12 +309,12 @@ async def create_report(
     if not item_id or not reason:
         raise HTTPException(status_code=422, detail="missing-required-fields")
 
-    # تحقّق من وجود العنصر ومعرفة المالك
+    # Verify item exists and get owner
     owner_id = _get_item_owner_id(db, item_id)
     if not owner_id:
         raise HTTPException(status_code=404, detail="item-not-found")
 
-    # أنشئ البلاغ
+    # Create the report
     try:
         report = _build_report_instance(
             reporter_id=int(u["id"]),
@@ -333,10 +333,10 @@ async def create_report(
         db.rollback()
         raise HTTPException(status_code=500, detail="failed-to-create-report") from e
 
-    # سجلّ الإجراء الأولي "submitted"
+    # Log the initial action "submitted"
     _log_action(db, getattr(report, "id", 0), int(u["id"]), "submitted", note)
 
-    # إشعار المالك + الأدمن/المود
+    # Notify owner + admins/mods
     try:
         reporter_name = f"{u.get('first_name','').strip()} {u.get('last_name','').strip()}".strip() or f"User#{u['id']}"
         _notify_owner_and_moderators(db, owner_id, reporter_name, int(item_id), str(reason), image_index)
@@ -346,7 +346,7 @@ async def create_report(
     return JSONResponse(
         {
             "ok": True,
-            "message": "تم إرسال البلاغ، شكرًا لمساهمتك.",
+            "message": "Report submitted, thank you for your contribution.",
             "report_id": getattr(report, "id", None),
             "status": getattr(report, "status", "pending"),
         },
@@ -355,7 +355,7 @@ async def create_report(
 
 
 # =========================
-# (توافق قديم) /reports/new → يعيد استخدام نفس المنطق
+# (Legacy compatibility) /reports/new → reuse the same logic
 # =========================
 @router.post("/reports/new")
 async def create_report_legacy(
@@ -377,7 +377,7 @@ async def create_report_legacy(
 
 
 # =========================
-# صفحة إدارة البلاغات
+# Reports management page
 # =========================
 @router.get("/admin/reports")
 def admin_reports_page(request: Request, db: Session = Depends(get_db)):
@@ -385,7 +385,7 @@ def admin_reports_page(request: Request, db: Session = Depends(get_db)):
     if not sess:
         return RedirectResponse(url="/login", status_code=303)
 
-    # تحقّق صارم من القاعدة (لا تعتمد على أعلام الجلسة فقط)
+    # Strict DB check (don’t rely only on session flags)
     me = db.query(User).filter(User.id == int(sess.get("id", 0))).first()
     is_admin = (getattr(me, "role", "") or "").lower() == "admin"
     is_mod   = bool(getattr(me, "is_mod", False))
@@ -417,7 +417,7 @@ def admin_reports_page(request: Request, db: Session = Depends(get_db)):
         "reports.html",
         {
             "request": request,
-            "title": "البلاغات",
+            "title": "Reports",
             "pending": pending,
             "processed": processed,
             "reports": reports,
@@ -427,7 +427,7 @@ def admin_reports_page(request: Request, db: Session = Depends(get_db)):
 
 
 # =========================
-# مسارات القرارات (إيقاف/حذف/استرجاع/إغلاق/إعادة فتح)
+# Decision routes (suspend/delete/restore/close/reopen)
 # =========================
 @router.post("/admin/reports/{report_id}/decision")
 def reports_decision(
@@ -445,12 +445,12 @@ def reports_decision(
 
     item_id = getattr(r, "item_id", None)
 
-    # توحيد alias
+    # Normalize alias
     normalized = action
     if normalized == "remove_item":
         normalized = "delete_item"
 
-    # نغيّر حالة المنشور حسب القرار
+    # Change item state according to decision
     if normalized == "suspend_item" and item_id:
         _set_item_state(db, int(item_id), state="suspended")
         _notify_owner_on_moderation(db, int(item_id), "suspend_item", getattr(r, "reason", "") or "")
@@ -469,9 +469,9 @@ def reports_decision(
     else:
         raise HTTPException(status_code=400, detail="bad-action")
 
-    # تحديث البلاغ
+    # Update report
     if hasattr(r, "status"):
-        # إذا رفضنا البلاغ → نغلقه، وباقي الحالات كذلك
+        # If we rejected the report → close it, and likewise for the other cases
         r.status = "closed"
     if note and hasattr(r, "note"):
         r.note = (note or "").strip()
@@ -482,7 +482,7 @@ def reports_decision(
     db.commit()
     _log_action(db, getattr(r, "id", 0), int(sess["id"]), f"decision:{normalized}", note)
 
-    # رجوع للوحة البلاغات
+    # Back to the reports dashboard
     return RedirectResponse(url="/admin/reports", status_code=303)
 
 
@@ -505,20 +505,20 @@ def reports_reopen(report_id: int, request: Request, db: Session = Depends(get_d
 
 
 # =========================
-# مسار تشخيصي سريع: /reports/_diag
+# Quick diagnostic route: /reports/_diag
 # =========================
 @router.get("/reports/_diag")
 def reports_diag(request: Request, db: Session = Depends(get_db)):
     """
-    يُفيد في التشخيص: يفحص وجود الجدول والأعمدة ويحاول إدراج سجلّ تجريبي.
-    فعّل DEBUG_REPORTS=1 لإتاحة الإدراج التجريبي.
+    Useful for diagnostics: checks table/columns existence and attempts an example insert.
+    Enable DEBUG_REPORTS=1 to allow the example insert.
     """
     info: Dict[str, Any] = {"ok": True}
 
-    # هل المستخدم داخل؟
+    # Is the user logged in?
     info["logged_in"] = bool(request.session.get("user"))
 
-    # هل جدول reports موجود؟
+    # Does the 'reports' table exist?
     try:
         with engine.begin() as conn:
             res = conn.exec_driver_sql(
@@ -531,7 +531,7 @@ def reports_diag(request: Request, db: Session = Depends(get_db)):
         info["table_exists"] = False
         info["error_list_columns"] = str(e)
 
-    # محاولة إدراج سجل تجريبي (اختياري)
+    # Try inserting a sample record (optional)
     do_insert = os.getenv("DEBUG_REPORTS", "0") == "1"
     if do_insert and Report is not None and info.get("table_exists"):
         try:
@@ -554,7 +554,7 @@ def reports_diag(request: Request, db: Session = Depends(get_db)):
     return JSONResponse(info)
 
     # =========================
-# صفحة تفاصيل بلاغ واحد
+# Single report details page
 # =========================
 @router.get("/admin/reports/{report_id}")
 def admin_report_detail_page(report_id: int, request: Request, db: Session = Depends(get_db)):
@@ -576,17 +576,17 @@ def admin_report_detail_page(report_id: int, request: Request, db: Session = Dep
         "report_detail.html",
         {
             "request": request,
-            "title": f"بلاغ #{getattr(r,'id', '')}",
+            "title": f"Report #{getattr(r,'id', '')}",
             "r": r,
             "item_id": item_id,
             "owner_id": owner_id,
             "is_pending": is_pending,
-            "session_user": sess,  # ✅ مهم
+            "session_user": sess,  # ✅ important
         }
     )
 
 
 @router.get("/mod/reports")
 def legacy_mod_reports_redirect():
-    # تحويل أي رابط قديم /mod/reports إلى المسار الجديد
+    # Redirect any old link /mod/reports to the new path
     return RedirectResponse(url="/admin/reports", status_code=308)

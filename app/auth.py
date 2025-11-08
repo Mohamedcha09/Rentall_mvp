@@ -10,7 +10,7 @@ from .database import get_db
 from .models import User, Document
 from .utils import hash_password, verify_password, MAX_FORM_PASSWORD_CHARS
 
-# (اختياري) إشعارات داخلية
+# (Optional) Internal notifications
 try:
     from .notifications_api import push_notification  # noqa: F401
 except Exception:
@@ -19,17 +19,17 @@ except Exception:
 # ======= Email System =======
 from .email_service import send_email
 
-# ===== روابط موقّعة =====
+# ===== Signed links =====
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
-# ==== بيئة / روابط أساسية ====
+# ==== Environment / base links ====
 SITE_URL = (os.getenv("SITE_URL") or "").rstrip("/")
 BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
 
 router = APIRouter()
 
-# توحيد مجلدات الرفع مع main.py (على مستوى جذر المشروع)
+# Unify upload folders with main.py (at project root level)
 APP_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 UPLOADS_ROOT = os.environ.get("UPLOADS_DIR", os.path.join(APP_ROOT, "uploads"))
 IDS_DIR = os.path.join(UPLOADS_ROOT, "ids")
@@ -39,13 +39,13 @@ os.makedirs(AVATARS_DIR, exist_ok=True)
 
 # ===== helpers =====
 def _normalize_form_password(pwd: str) -> str:
-    """قص بسيط لإدخال كلمة السر لتفادي كلمات سر عملاقة."""
+    """Simple trim for password input to avoid extremely large passwords."""
     if pwd is None:
         return ""
     return pwd[:MAX_FORM_PASSWORD_CHARS]
 
 def _save_any(fileobj: UploadFile | None, folder: str, allow_exts: list[str]) -> str | None:
-    """حفظ ملف بصورة آمنة مع توليد اسم عشوائي وإرجاع المسار."""
+    """Safely save a file with a random name and return the path."""
     if not fileobj:
         return None
     ext = os.path.splitext(fileobj.filename or "")[1].lower()
@@ -55,7 +55,7 @@ def _save_any(fileobj: UploadFile | None, folder: str, allow_exts: list[str]) ->
     fpath = os.path.join(folder, fname)
     with open(fpath, "wb") as f:
         shutil.copyfileobj(fileobj.file, f)
-    # ارجع مسارًا يبدأ بـ / ليعمل مع StaticFiles("/uploads", ...)
+    # Return a path starting with / to work with StaticFiles("/uploads", ...)
     rel = os.path.relpath(fpath, APP_ROOT).replace("\\", "/")
     return "/" + rel if not rel.startswith("/") else rel
 
@@ -67,17 +67,17 @@ def _pwd_signer() -> URLSafeTimedSerializer:
 
 def _maybe_redirect_canonical(request: Request) -> RedirectResponse | None:
     """
-    لو SITE_URL مضبوط وهو مختلف عن الدومين الحالي، حوّل لنفس الـ path على الدومين الأساسي.
+    If SITE_URL is set and differs from the current domain, redirect to the same path on the primary domain.
     """
     try:
         if not SITE_URL:
             return None
-        # لو نفس الهوست، لا تعمل شيء
+        # If same host, do nothing
         current_host = request.url.hostname or ""
         target_host = SITE_URL.replace("https://", "").replace("http://", "").split("/")[0]
         if current_host == target_host:
             return None
-        # ابنِ رابط التحويل بنفس المسار والكويري
+        # Build redirect link with same path and query
         path = request.url.path
         query = request.url.query or ""
         redirect_to = f"{SITE_URL}{path}"
@@ -90,13 +90,13 @@ def _maybe_redirect_canonical(request: Request) -> RedirectResponse | None:
 # ============ Login ============
 @router.get("/login")
 def login_get(request: Request):
-    # توجيه للدومين الأساسي لو لزم
+    # Redirect to primary domain if needed
     r = _maybe_redirect_canonical(request)
     if r:
         return r
     return request.app.templates.TemplateResponse(
         "auth_login.html",
-        {"request": request, "title": "دخول", "session_user": request.session.get("user")}
+        {"request": request, "title": "Login", "session_user": request.session.get("user")}
     )
 
 @router.post("/login")
@@ -114,7 +114,7 @@ def login_post(
     if not ok:
         return RedirectResponse(url="/login?err=1", status_code=303)
 
-    # ✅ الأدمن: فعّل كاملًا دائمًا
+    # ✅ Admin: always fully enabled
     role = str(getattr(user, "role", "") or "").lower()
     if role == "admin":
         changed = False
@@ -125,12 +125,12 @@ def login_post(
             except Exception:
                 pass
             changed = True
-        # اتساق الحالة
+        # State consistency
         if (getattr(user, "status", "pending") or "").lower() not in ("active", "approved"):
-            # اختر "active" كحالة دخول
+            # Choose "active" as login state
             user.status = "active"
             changed = True
-        # (اختياري) جعله مدير ودائع تلقائيًا إن كان الحقل موجود
+        # (Optional) make them a deposit manager automatically if the field exists
         try:
             if not bool(getattr(user, "is_deposit_manager", False)):
                 user.is_deposit_manager = True
@@ -142,14 +142,14 @@ def login_post(
             db.commit()
             db.refresh(user)
     else:
-        # 🧱 المستخدم العادي: يتطلب تحقق البريد
+        # 🧱 Regular user: requires email verification
         if not bool(getattr(user, "is_verified", False)):
-            # اعد توجيه صفحة verify-email مع تمرير البريد
+            # Redirect to verify-email page with email passed through
             query = urlencode({"email": email})
             return RedirectResponse(url=f"/verify-email?{query}", status_code=303)
 
-    # ✅ أنشئ الجلسة وسجّل الدخول
-       # ✅ أنشئ الجلسة وسجّل الدخول
+    # ✅ Create session and log in
+       # ✅ Create session and log in
     request.session["user"] = {
         "id": user.id,
         "first_name": getattr(user, "first_name", ""),
@@ -160,12 +160,12 @@ def login_post(
         "status": getattr(user, "status", "active"),
         "is_verified": bool(getattr(user, "is_verified", False)),
         "avatar_path": getattr(user, "avatar_path", None) or None,
-        # أعلام إضافية
+        # Extra flags
         "is_deposit_manager": bool(getattr(user, "is_deposit_manager", False)),
-        "is_mod": bool(getattr(user, "is_mod", False)),   # ✅ مهم لظهور “البلاغات”
+        "is_mod": bool(getattr(user, "is_mod", False)),   # ✅ Important for showing “Reports”
     }
 
-    # لو SITE_URL مضبوط ودخلت من دومين آخر، رجّعه للدومين الأساسي
+    # If SITE_URL is set and you logged in from a different domain, send back to primary domain
     r = _maybe_redirect_canonical(request)
     if r:
         return r
@@ -179,7 +179,7 @@ def register_get(request: Request):
         return r
     return request.app.templates.TemplateResponse(
         "auth_register.html",
-        {"request": request, "title": "تسجيل", "session_user": request.session.get("user")}
+        {"request": request, "title": "Register", "session_user": request.session.get("user")}
     )
 
 @router.post("/register")
@@ -201,20 +201,20 @@ def register_post(
     email = (email or "").strip().lower()
     password = _normalize_form_password(password or "")
 
-    # تحقق من وجود المستخدم
+    # Check if user exists
     exists = db.query(User).filter(User.email == email).first()
     if exists:
         return request.app.templates.TemplateResponse(
             "auth_register.html",
             {
                 "request": request,
-                "title": "تسجيل",
-                "message": "هذا البريد مستخدم بالفعل",
+                "title": "Register",
+                "message": "This email is already in use.",
                 "session_user": request.session.get("user"),
             },
         )
 
-    # حفظ الوثائق
+    # Save documents
     front_path = _save_any(doc_front, IDS_DIR, [".jpg", ".jpeg", ".png", ".pdf"])
     back_path = _save_any(doc_back, IDS_DIR, [".jpg", ".jpeg", ".png", ".pdf"]) if doc_back else None
     avatar_path = _save_any(avatar, AVATARS_DIR, [".jpg", ".jpeg", ".png", ".webp"])
@@ -223,13 +223,13 @@ def register_post(
             "auth_register.html",
             {
                 "request": request,
-                "title": "تسجيل",
-                "message": "صورة الحساب مطلوبة ويجب أن تكون صورة (JPG/PNG/WebP).",
+                "title": "Register",
+                "message": "Profile image is required and must be an image (JPG/PNG/WebP).",
                 "session_user": request.session.get("user"),
             },
         )
 
-    # إنشاء المستخدم
+    # Create user
     u = User(
         first_name=first_name,
         last_name=last_name,
@@ -244,7 +244,7 @@ def register_post(
     db.commit()
     db.refresh(u)
 
-    # تسجيل الوثيقة
+    # Record document
     expiry = None
     if doc_expiry:
         try:
@@ -264,7 +264,7 @@ def register_post(
     db.add(d)
     db.commit()
 
-    # ===== إرسال بريد التفعيل =====
+    # ===== Send activation email =====
     try:
         s = _signer()
         token = s.dumps({"uid": u.id, "email": u.email})
@@ -273,13 +273,13 @@ def register_post(
         subj = "Activate your account — RentAll"
 
         html = f"""<!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>تفعيل الحساب</title>
+  <title>Account activation</title>
 </head>
-<body style="margin:0;padding:0;background:#0f172a;color:#eaf0ff;font-family:Arial,'Segoe UI',Tahoma,sans-serif;direction:rtl;">
+<body style="margin:0;padding:0;background:#0f172a;color:#eaf0ff;font-family:Arial,'Segoe UI',Tahoma,sans-serif;direction:ltr;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#0f172a;">
     <tr>
       <td align="center" style="padding:24px 12px;">
@@ -291,9 +291,9 @@ def register_post(
           </tr>
           <tr>
             <td style="padding:22px;">
-              <h2 style="margin:0 0 10px 0;font-weight:800;font-size:22px;line-height:1.4;color:#eaf0ff;">مرحبًا {first_name} 👋</h2>
+              <h2 style="margin:0 0 10px 0;font-weight:800;font-size:22px;line-height:1.4;color:#eaf0ff;">Hello {first_name} 👋</h2>
               <p style="margin:0 0 16px 0;font-size:15px;line-height:1.8;color:#cdd7ee;">
-                شكرًا لتسجيلك في <b>RentAll</b>. لتأمين حسابك والبدء، اضغط على الزر أدناه لتفعيل بريدك الإلكتروني:
+                Thanks for signing up to <b>RentAll</b>. To secure your account and get started, click the button below to verify your email:
               </p>
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:18px auto;">
                 <tr>
@@ -302,12 +302,12 @@ def register_post(
                        style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;
                               font-weight:700;font-size:18px;line-height:48px;border-radius:12px;
                               padding:0 26px;min-width:200px;text-align:center;cursor:pointer;">
-                      تفعيل الحساب
+                      Activate account
                     </a>
                   </td>
                 </tr>
               </table>
-              <p style="margin:22px 0 6px 0;font-size:14px;color:#93a4c9;">إن لم يعمل الزر، انسخ وافتح هذا الرابط:</p>
+              <p style="margin:22px 0 6px 0;font-size:14px;color:#93a4c9;">If the button doesn’t work, copy and open this link:</p>
               <p dir="ltr" style="margin:0 0 16px 0;font-size:14px;word-break:break-all;">
                 <a href="{verify_url}" style="color:#60a5fa;text-decoration:underline;" target="_blank">{verify_url}</a>
               </p>
@@ -325,20 +325,20 @@ def register_post(
 </body>
 </html>"""
 
-        text = f"مرحبًا {first_name}\n\nفعّل حسابك عبر الرابط:\n{verify_url}\n\nإن لم تكن أنت، تجاهل الرسالة."
+        text = f"Hello {first_name}\n\nActivate your account using the link:\n{verify_url}\n\nIf this wasn’t you, please ignore this message."
         send_email(u.email, subj, html, text_body=text)
     except Exception:
         pass
 
-    # ✅ نرسل لصفحة التحقق من البريد
+    # ✅ Send to email verification page
     return RedirectResponse(url=f"/verify-email?email={u.email}&sent=1", status_code=303)
 
 # ============ Email Verify Wall ============
 @router.get("/verify-email")
 def verify_email_page(request: Request, email: str = "", db: Session = Depends(get_db)):
     """
-    لو البريد الموجود في الكويري هو أدمن أو حسابه مفعّل -> رجّعه للصفحة الرئيسية حتى بدون جلسة.
-    غير كذا اعرض صفحة التحقق.
+    If the email in the query belongs to an admin or is verified -> redirect to home even without a session.
+    Otherwise show the verification page.
     """
     r = _maybe_redirect_canonical(request)
     if r:
@@ -348,11 +348,11 @@ def verify_email_page(request: Request, email: str = "", db: Session = Depends(g
     role = str((u or {}).get("role") or "").lower()
     isv  = bool((u or {}).get("is_verified"))
 
-    # لو فيه جلسة ومفعّل/أدمن -> للصفحة الرئيسية
+    # If there is a session and it’s verified/admin -> to homepage
     if role == "admin" or isv:
         return RedirectResponse("/", status_code=303)
 
-    # لو جالك ايميل بالكويري وتبين أنه verified/admin في القاعدة -> رجّعه للبيت
+    # If an email is provided via query and it appears verified/admin in DB -> redirect home
     em = (email or "").strip().lower()
     if em:
         user = db.query(User).filter(User.email == em).first()
@@ -362,18 +362,18 @@ def verify_email_page(request: Request, email: str = "", db: Session = Depends(g
             if db_role == "admin" or db_isv:
                 return RedirectResponse("/", status_code=303)
 
-    # باقي الحالات: اعرض الصفحة
+    # Other cases: show the page
     return request.app.templates.TemplateResponse(
         "verify_email.html",
-        {"request": request, "title": "تحقق من بريدك", "email": em, "session_user": u or None},
+        {"request": request, "title": "Verify your email", "email": em, "session_user": u or None},
     )
 
-# ============ تفعيل الحساب عبر الرابط ============
+# ============ Activate account via link ============
 @router.get("/activate/verify")
 def verify_from_email(request: Request, token: str = "", db: Session = Depends(get_db)):
     """
-    يفكّ توقيع التوكن ويُفعّل الحساب مباشرة: is_verified=True و status=active
-    ثم يوجّه للصفحة الرئيسية.
+    Decode the token and activate the account immediately: is_verified=True and status=active
+    then redirect to homepage.
     """
     r = _maybe_redirect_canonical(request)
     if r:
@@ -382,7 +382,7 @@ def verify_from_email(request: Request, token: str = "", db: Session = Depends(g
     if not token:
         return RedirectResponse(url="/verify-email", status_code=303)
     try:
-        data = _signer().loads(token, max_age=48 * 3600)  # صلاحية 48 ساعة
+        data = _signer().loads(token, max_age=48 * 3600)  # 48 hours validity
         uid = int(data.get("uid", 0))
         email = (data.get("email") or "").strip().lower()
     except SignatureExpired:
@@ -406,7 +406,7 @@ def verify_from_email(request: Request, token: str = "", db: Session = Depends(g
     db.commit()
     db.refresh(user)
 
-    # سجّل الجلسة مباشرةً
+    # Log the session directly
     request.session["user"] = {
         "id": user.id,
         "first_name": getattr(user, "first_name", ""),
@@ -430,7 +430,7 @@ def forgot_get(request: Request):
         return r
     return request.app.templates.TemplateResponse(
         "auth_forgot.html",
-        {"request": request, "title": "إعادة تعيين كلمة المرور", "session_user": request.session.get("user")}
+        {"request": request, "title": "Reset password", "session_user": request.session.get("user")}
     )
 
 @router.post("/forgot")
@@ -438,8 +438,8 @@ def forgot_post(request: Request, db: Session = Depends(get_db), email: str = Fo
     email = (email or "").strip().lower()
     user = db.query(User).filter(User.email == email).first()
 
-    # نُظهر دائمًا نفس الرسالة
-    msg = "إن وُجد حساب مطابق، سنرسل رابط إعادة تعيين كلمة المرور إلى بريدك إن شاء الله."
+    # Always show the same message
+    msg = "If a matching account exists, we'll send a password reset link to your email."
 
     try:
         if user:
@@ -450,34 +450,34 @@ def forgot_post(request: Request, db: Session = Depends(get_db), email: str = Fo
             subj = "Reset your password — RentAll"
 
             html = f"""<!doctype html>
-<html lang="ar" dir="rtl">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>إعادة تعيين كلمة المرور</title></head>
+<html lang="en" dir="ltr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Password reset</title></head>
 <body style="margin:0;padding:0;background:#0f172a;color:#eaf0ff;font-family:Arial,'Segoe UI',Tahoma,sans-serif;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#0f172a;">
     <tr><td align="center" style="padding:24px 12px;">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#111827;border:1px solid #223049;border-radius:16px;overflow:hidden;">
         <tr>
           <td style="padding:20px 22px;background:#0f172a;border-bottom:1px solid #223049;">
-            <span style="display:inline-block;background:rgba(124,92,255,.15);border:1px solid rgba(124,92,255,.35);color:#d8cfff;padding:6px 10px;border-radius:999px;font-size:13px;">إعادة تعيين كلمة المرور</span>
+            <span style="display:inline-block;background:rgba(124,92,255,.15);border:1px solid rgba(124,92,255,.35);color:#d8cfff;padding:6px 10px;border-radius:999px;font-size:13px;">Password reset</span>
           </td>
         </tr>
         <tr><td style="padding:22px;">
-          <p style="margin:0 0 10px 0;color:#cdd7ee">لقد طُلِب إعادة تعيين كلمة المرور لحسابك على <b>RentAll</b>.</p>
-          <p style="margin:0 0 14px 0;color:#cdd7ee">اضغط الزر أدناه وأدخل كلمة مرور جديدة:</p>
+          <p style="margin:0 0 10px 0;color:#cdd7ee">A password reset was requested for your <b>RentAll</b> account.</p>
+          <p style="margin:0 0 14px 0;color:#cdd7ee">Click the button below and enter a new password:</p>
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:18px auto;">
             <tr><td bgcolor="#7c5cff" style="border-radius:12px;">
               <a href="{reset_url}" target="_blank"
                  style="display:inline-block;background:#7c5cff;color:#ffffff;text-decoration:none;font-weight:700;
                         font-size:18px;line-height:48px;border-radius:12px;padding:0 26px;min-width:220px;text-align:center;">
-                إعادة التعيين الآن
+                Reset now
               </a>
             </td></tr>
           </table>
-          <p style="margin:18px 0 6px 0;font-size:14px;color:#93a4c9;">إن لم يعمل الزر، استخدم الرابط التالي:</p>
+          <p style="margin:18px 0 6px 0;font-size:14px;color:#93a4c9;">If the button doesn't work, use this link:</p>
           <p dir="ltr" style="margin:0 0 10px 0;word-break:break-all;">
             <a href="{reset_url}" style="color:#bda7ff;text-decoration:underline" target="_blank">{reset_url}</a>
           </p>
-          <p style="margin:12px 0 0 0;font-size:12px;color:#7f8db0;">يتنهي صلاحية هذا الرابط بعد ساعتين.</p>
+          <p style="margin:12px 0 0 0;font-size:12px;color:#7f8db0;">This link expires in two hours.</p>
         </td></tr>
         <tr><td style="padding:14px 22px;background:#0b1220;color:#94a3b8;font-size:11px;text-align:center;">©️ {year} RentAll</td></tr>
       </table>
@@ -486,17 +486,17 @@ def forgot_post(request: Request, db: Session = Depends(get_db), email: str = Fo
 </body>
 </html>"""
 
-            text = f"إعادة تعيين كلمة المرور:\n{reset_url}\n(الرابط صالح لساعتين)"
+            text = f"Password reset:\n{reset_url}\n(The link is valid for two hours)"
             send_email(user.email, subj, html, text_body=text)
     except Exception:
         pass
 
     return request.app.templates.TemplateResponse(
         "auth_forgot.html",
-        {"request": request, "title": "إعادة تعيين كلمة المرور", "info": msg, "session_user": request.session.get("user")}
+        {"request": request, "title": "Reset password", "info": msg, "session_user": request.session.get("user")}
     )
 
-# 3) صفحة إدخال كلمة مرور جديدة (من خلال الرابط)
+# 3) New password entry page (via link)
 @router.get("/reset-password")
 def reset_get(request: Request, token: str = ""):
     r = _maybe_redirect_canonical(request)
@@ -506,10 +506,10 @@ def reset_get(request: Request, token: str = ""):
         return RedirectResponse(url="/forgot", status_code=303)
     return request.app.templates.TemplateResponse(
         "auth_reset_password.html",
-        {"request": request, "title": "تعيين كلمة مرور جديدة", "token": token, "session_user": request.session.get("user")}
+        {"request": request, "title": "Set a new password", "token": token, "session_user": request.session.get("user")}
     )
 
-# 4) حفظ كلمة المرور الجديدة
+# 4) Save the new password
 @router.post("/reset-password")
 def reset_post(
     request: Request,
@@ -526,14 +526,14 @@ def reset_post(
             "auth_reset_password.html",
             {
                 "request": request,
-                "title": "تعيين كلمة مرور جديدة",
+                "title": "Set a new password",
                 "token": token,
-                "error": "كلمتا المرور غير متطابقتين.",
+                "error": "Passwords do not match.",
                 "session_user": request.session.get("user"),
             },
         )
 
-    # تحقق/فك التوقيع — صلاحية ساعتين
+    # Verify/unsign — two-hour validity
     try:
         data = _pwd_signer().loads(token, max_age=2*60*60)
         uid = int(data.get("uid", 0))
@@ -541,19 +541,19 @@ def reset_post(
     except SignatureExpired:
         return request.app.templates.TemplateResponse(
             "auth_reset_password.html",
-            {"request": request, "title": "تعيين كلمة مرور جديدة", "error": "انتهت صلاحية الرابط. اطلب رابطًا جديدًا.", "token": "", "session_user": request.session.get("user")},
+            {"request": request, "title": "Set a new password", "error": "The link has expired. Request a new link.", "token": "", "session_user": request.session.get("user")},
         )
     except BadSignature:
         return request.app.templates.TemplateResponse(
             "auth_reset_password.html",
-            {"request": request, "title": "تعيين كلمة مرور جديدة", "error": "رابط غير صالح.", "token": "", "session_user": request.session.get("user")},
+            {"request": request, "title": "Set a new password", "error": "Invalid link.", "token": "", "session_user": request.session.get("user")},
         )
 
     user = db.query(User).filter(User.id == uid, User.email == email).first()
     if not user:
         return request.app.templates.TemplateResponse(
             "auth_reset_password.html",
-            {"request": request, "title": "تعيين كلمة مرور جديدة", "error": "الحساب غير موجود.", "token": "", "session_user": request.session.get("user")},
+            {"request": request, "title": "Set a new password", "error": "Account not found.", "token": "", "session_user": request.session.get("user")},
         )
 
     user.password_hash = hash_password(password)
@@ -562,28 +562,28 @@ def reset_post(
 
     try:
         if 'push_notification' in globals():
-            push_notification(user_id=user.id, title="تم تغيير كلمة المرور", body="تم تحديث كلمة مرور حسابك بنجاح.")
+            push_notification(user_id=user.id, title="Password changed", body="Your account password has been updated successfully.")
     except Exception:
         pass
 
     return RedirectResponse(url="/login?reset_ok=1", status_code=303)
 
 # ============ Logout ============
-# في نهاية دالة logout بملف app/auth.py
+# At the end of the logout function in app/auth.py
 SESSION_COOKIE = os.getenv("SESSION_COOKIE", "session")
 
 @router.get("/logout")
 def logout(request: Request):
-    # امسح الجلسة
+    # Clear session
     request.session.clear()
 
-    # جهّز إعادة التوجيه مع رسالة نجاح
+    # Prepare redirect with success message
     resp = RedirectResponse(url="/?logged_out=1", status_code=303)
 
-    # احذف كوكي الجلسة محليًا
+    # Delete session cookie locally
     try:
         resp.delete_cookie(SESSION_COOKIE)
-        # جرّب حذفها أيضاً على الدومين الأعلى لو كنت تستخدمه
+        # Also try deleting it on the parent domain if you use one
         host = request.url.hostname or ""
         if "." in host:
             root_domain = "." + ".".join(host.split(".")[-2:])
@@ -595,7 +595,7 @@ def logout(request: Request):
 
 @router.get("/dev/admin-login")
 def dev_admin_login(request: Request, db: Session = Depends(get_db)):
-    # إدخال سريع للأدمن لاختبار الجلسات (احذِفه بعد ما تخلّص)
+    # Quick admin sign-in to test sessions (remove it once you’re done)
     user = db.query(User).filter(User.email == "admin@example.com").first()
     if not user:
         return RedirectResponse("/login", status_code=303)
@@ -623,7 +623,7 @@ def settings_get(request: Request, db: Session = Depends(get_db)):
     u = db.query(User).filter(User.id == sess["id"]).first()
     return request.app.templates.TemplateResponse(
         "settings.html",
-        {"request": request, "title": "الإعدادات", "u": u, "session_user": sess}
+        {"request": request, "title": "Settings", "u": u, "session_user": sess}
     )
 
 @router.post("/settings/profile")
@@ -643,24 +643,24 @@ def settings_profile_post(
     if not u:
         raise HTTPException(404, "User not found")
 
-    # تحديث البيانات
+    # Update data
     u.first_name = (first_name or "").strip()
     u.last_name  = (last_name or "").strip()
     new_email    = (email or "").strip().lower()
 
-    # تحقق تكرار البريد لو تغيّر
+    # Check email duplication if changed
     if new_email and new_email != u.email:
         exists = db.query(User).filter(User.email == new_email).first()
         if exists:
             return RedirectResponse("/settings?err=email_used", status_code=303)
         u.email = new_email
-        # (اختياري) جعله غير مفعّل حتى يؤكد بريدًا جديدًا
+        # (Optional) make them unverified until they confirm the new email
         try:
             u.is_verified = False
         except Exception:
             pass
 
-    # صورة جديدة
+    # New image
     if avatar:
         saved = _save_any(avatar, AVATARS_DIR, [".jpg", ".jpeg", ".png", ".webp"])
         if saved:
@@ -668,7 +668,7 @@ def settings_profile_post(
 
     db.add(u); db.commit(); db.refresh(u)
 
-    # مزامنة الجلسة
+    # Sync session
     request.session["user"] = {
         **sess,
         "first_name": u.first_name,

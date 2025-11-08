@@ -9,7 +9,7 @@ DATABASE_URL = (
     or "sqlite:///./app.db"
 )
 
-# future=True حتى نستخدم SQLAlchemy 2.x API
+# future=True to use SQLAlchemy 2.x API
 engine = create_engine(DATABASE_URL, pool_pre_ping=True, future=True)
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)

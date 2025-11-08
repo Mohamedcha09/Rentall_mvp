@@ -1,4 +1,3 @@
-
 # ===== activate.py ====
 import os, secrets, shutil
 from datetime import datetime
@@ -52,7 +51,7 @@ def activate_get(request: Request, db: Session = Depends(get_db)):
 
     return request.app.templates.TemplateResponse(
         "activate.html",
-        {"request": request, "title": "إكمال التفعيل", "user": user, "docs": docs,
+        {"request": request, "title": "Complete Activation", "user": user, "docs": docs,
          "review_note": review_note, "session_user": sess}
     )
 
@@ -101,7 +100,7 @@ def activate_update_document(
     db.commit()
     return RedirectResponse(url="/activate", status_code=303)
 
-# ===== تفعيل البريد عبر التوكن =====
+# ===== Email Activation via Token =====
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 def _signer() -> URLSafeTimedSerializer:
@@ -114,20 +113,20 @@ def activate_verify(token: str, request: Request, db: Session = Depends(get_db))
     try:
         data = s.loads(token, max_age=60 * 60 * 24 * 3)
     except SignatureExpired:
-        raise HTTPException(status_code=400, detail="انتهت صلاحية رابط التفعيل.")
+        raise HTTPException(status_code=400, detail="Activation link has expired.")
     except BadSignature:
-        raise HTTPException(status_code=400, detail="رابط التفعيل غير صالح.")
+        raise HTTPException(status_code=400, detail="Invalid activation link.")
 
     uid = int((data or {}).get("uid") or 0)
     email = ((data or {}).get("email") or "").strip().lower()
     if not uid or not email:
-        raise HTTPException(status_code=400, detail="بيانات التفعيل ناقصة.")
+        raise HTTPException(status_code=400, detail="Incomplete activation data.")
 
     user = db.query(User).get(uid)
     if not user or (user.email or "").lower() != email:
-        raise HTTPException(status_code=404, detail="المستخدم غير موجود.")
+        raise HTTPException(status_code=404, detail="User not found.")
 
-    # ✅ تفعيل البريد فقط (لا نغيّر status)
+    # ✅ Activate email only (do not change status)
     try:
         user.is_verified = True
         if hasattr(user, "verified_at"):
@@ -138,7 +137,7 @@ def activate_verify(token: str, request: Request, db: Session = Depends(get_db))
     except Exception:
         pass
 
-    # تسجيل دخول تلقائي
+    # Automatic login
     request.session["user"] = {
         "id": user.id,
         "first_name": user.first_name,

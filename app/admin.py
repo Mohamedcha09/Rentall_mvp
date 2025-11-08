@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 
 from .database import get_db
 from .models import User, Document, MessageThread, Message
-from .notifications_api import push_notification  # إشعار داخل الموقع
-from .email_service import send_email             # إرسال البريد عبر SendGrid
+from .notifications_api import push_notification  # In-site notification
+from .email_service import send_email             # Send email via SendGrid
 
 router = APIRouter()
 
@@ -25,7 +25,7 @@ def require_admin(request: Request) -> bool:
 
 
 def _open_or_create_admin_thread(db: Session, admin_id: int, user_id: int) -> MessageThread:
-    """افتح أو أنشئ خيط رسائل بين الأدمِن والمستخدم."""
+    """Open or create a message thread between the admin and the user."""
     thread = (
         db.query(MessageThread)
         .filter(
@@ -44,21 +44,21 @@ def _open_or_create_admin_thread(db: Session, admin_id: int, user_id: int) -> Me
 
 
 def _refresh_session_user_if_self(request: Request, user: User) -> None:
-    """لو الأدمِن عدّل نفسه، حدّث القيم داخل session حتى تظهر فورًا في الواجهة."""
+    """If the admin edited their own record, refresh values inside session so they appear immediately in the UI."""
     sess = request.session.get("user")
     if not sess or sess.get("id") != user.id:
         return
     sess["role"] = user.role
     sess["status"] = user.status
     sess["is_verified"] = bool(user.is_verified)
-    # أعلام الشارات
+    # Badge flags
     for k in [
         "badge_admin", "badge_new_yellow", "badge_pro_green", "badge_pro_gold",
         "badge_purple_trust", "badge_renter_green", "badge_orange_stars",
     ]:
         if hasattr(user, k):
             sess[k] = getattr(user, k)
-    # صلاحيات خاصة
+    # Special permissions
     if hasattr(user, "is_deposit_manager"):
         sess["is_deposit_manager"] = bool(getattr(user, "is_deposit_manager", False))
     if hasattr(user, "is_mod"):
@@ -69,7 +69,7 @@ def _refresh_session_user_if_self(request: Request, user: User) -> None:
 
 
 # ---------------------------
-# لوحة الأدمِن
+# Admin dashboard
 # ---------------------------
 @router.get("/admin")
 def admin_dashboard(request: Request, db: Session = Depends(get_db)):
@@ -88,7 +88,7 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
         "admin_dashboard.html",
         {
             "request": request,
-            "title": "لوحة الأدمين",
+            "title": "Admin Dashboard",
             "pending_users": pending_users,
             "all_users": all_users,
             "session_user": request.session.get("user"),
@@ -97,13 +97,13 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
 
 
 # ---------------------------
-# قرارات التسجيل
+# Registration decisions
 # ---------------------------
 @router.post("/admin/users/{user_id}/approve")
 def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
     """
-    موافقة الأدمن: نفعّل زر الحجز عبر تغيير status إلى approved،
-    ونرسل بريداً يوضّح الحالة.
+    Admin approval: enable booking by setting status to approved,
+    and send an email indicating the state.
     """
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
@@ -121,20 +121,20 @@ def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
     db.commit()
     _refresh_session_user_if_self(request, user)
 
-    # إرسال إيميل بحسب حالة تفعيل البريد
+    # Send email based on email-verification state
     try:
         home_url = f"{BASE_URL}/"
         logo = f"{BASE_URL}/static/images/ok.png"
         brand = f"{BASE_URL}/static/images/base.png"
 
         if bool(getattr(user, "is_verified", False)):
-            subject = "تم تفعيل حسابك 100% — يمكنك الحجز الآن 🎉"
+            subject = "Your account is 100% activated — You can book now 🎉"
             year = datetime.utcnow().year
             html = f"""<!doctype html>
-<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>تفعيل 100%</title></head>
+<html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>100% Activation</title></head>
 <body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,'Segoe UI',sans-serif;">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0">تم تفعيل حسابك 100% — يمكنك الحجز الآن</div>
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0">Your account is 100% activated — You can book now</div>
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b0f1a;padding:24px 12px">
     <tr><td align="center">
       <table role="presentation" width="640" cellspacing="0" cellpadding="0"
@@ -148,38 +148,38 @@ def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
           </td>
         </tr>
         <tr><td style="padding:28px 26px">
-          <h2 style="margin:0 0 12px;font-size:22px;color:#fff;">مرحبًا {user.first_name or ''} 👋</h2>
+          <h2 style="margin:0 0 12px;font-size:22px;color:#fff;">Hi {user.first_name or ''} 👋</h2>
           <p style="margin:0 0 12px;line-height:1.9;color:#cbd5e1">
-            تمت موافقة الأدمين على حسابك، وحسابك الآن <b style="color:#fff">مفعّل 100%</b>.
+            Admin approval completed and your account is now <b style="color:#fff">100% activated</b>.
           </p>
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:26px auto">
             <tr><td bgcolor="#16a34a" style="border-radius:10px;">
               <a href="{home_url}" target="_blank"
                  style="font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:16px;text-decoration:none;
                         padding:14px 22px;display:inline-block;color:#ffffff;border-radius:10px;font-weight:700">
-                ابدأ الآن
+                Start now
               </a>
             </td></tr>
           </table>
         </td></tr>
         <tr><td style="padding:18px 24px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
-          إذا لم تطلب هذه العملية، تجاهل الرسالة.
+          If you didn’t request this action, please ignore this message.
         </td></tr>
       </table>
       <div style="color:#64748b;font-size:11px;margin-top:12px">&copy; {year} RentAll</div>
     </td></tr>
   </table>
 </body></html>"""
-            text = f"مرحبًا {user.first_name}\n\nتم تفعيل حسابك 100% ويمكنك الآن الحجز.\n{home_url}"
+            text = f"Hi {user.first_name}\n\nYour account is 100% activated and you can now book.\n{home_url}"
         else:
             verify_page = f"{BASE_URL}/verify-email?email={user.email}"
-            subject = "تمت موافقة الأدمن — فعّل بريدك لإكمال 100%"
+            subject = "Admin approved — Verify your email to reach 100%"
             year = datetime.utcnow().year
             html = f"""<!doctype html>
-<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>أكمل تفعيل البريد</title></head>
+<html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Complete Email Verification</title></head>
 <body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,'Segoe UI',sans-serif;">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0">تمت الموافقة — أكمل تفعيل البريد لإتمام حسابك</div>
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0">Approval complete — Finish email verification to complete your account</div>
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b0f1a;padding:24px 12px">
     <tr><td align="center">
       <table role="presentation" width="640" cellspacing="0" cellpadding="0"
@@ -193,29 +193,29 @@ def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
           </td>
         </tr>
         <tr><td style="padding:28px 26px">
-          <h2 style="margin:0 0 12px;font-size:22px;color:#fff;">مرحبًا {user.first_name or ''} 👋</h2>
+          <h2 style="margin:0 0 12px;font-size:22px;color:#fff;">Hi {user.first_name or ''} 👋</h2>
           <p style="margin:0 0 12px;line-height:1.9;color:#cbd5e1">
-            تمت موافقة الأدمين على حسابك. بقي خطوة واحدة لإكمال التفعيل 100%: <b style="color:#fff">فعّل بريدك</b>.
+            Admin has approved your account. One step left to reach 100%: <b style="color:#fff">verify your email</b>.
           </p>
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:26px auto">
             <tr><td bgcolor="#2563eb" style="border-radius:10px;">
               <a href="{verify_page}" target="_blank"
                  style="font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:16px;text-decoration:none;
                         padding:14px 22px;display:inline-block;color:#ffffff;border-radius:10px;font-weight:700">
-                تعليمات التفعيل
+                Activation instructions
               </a>
             </td></tr>
           </table>
         </td></tr>
         <tr><td style="padding:18px 24px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
-          إذا لم تطلب هذه العملية، تجاهل الرسالة.
+          If you didn’t request this action, please ignore this message.
         </td></tr>
       </table>
       <div style="color:#64748b;font-size:11px;margin-top:12px">&copy; {year} RentAll</div>
     </td></tr>
   </table>
 </body></html>"""
-            text = f"مرحبًا {user.first_name}\n\nتمت موافقة الأدمن. لإكمال 100% فعّل بريدك من رسالة التفعيل.\n{verify_page}"
+            text = f"Hi {user.first_name}\n\nAdmin has approved your account. To reach 100%, verify your email from the verification message.\n{verify_page}"
 
         send_email(user.email, subject, html, text_body=text)
     except Exception:
@@ -240,16 +240,16 @@ def reject_user(user_id: int, request: Request, db: Session = Depends(get_db)):
     db.commit()
     _refresh_session_user_if_self(request, user)
 
-    # إيميل رفض (اختياري)
+    # Rejection email (optional)
     try:
-        subject = "لم يتم قبول حسابك حالياً"
+        subject = "Your account was not accepted at this time"
         html = f"""
-        <div style="font-family:Tahoma,Arial,sans-serif;direction:rtl;text-align:right;line-height:1.8">
-          <p>نعتذر، لم يتم قبول حسابك حالياً. يمكنك إعادة رفع صور واضحة لبطاقتك وصورتك الشخصية ثم طلب المراجعة مرة أخرى.</p>
-          <p><a href="{BASE_URL}/activate">إكمال التفعيل</a></p>
+        <div style="font-family:Tahoma,Arial,sans-serif;direction:ltr;text-align:left;line-height:1.8">
+          <p>Sorry, your account was not accepted at this time. You can re-upload clear photos of your ID and your selfie, then request another review.</p>
+          <p><a href="{BASE_URL}/activate">Complete activation</a></p>
         </div>
         """
-        send_email(user.email, subject, html, text_body="لم يتم قبول حسابك حالياً.")
+        send_email(user.email, subject, html, text_body="Your account was not accepted at this time.")
     except Exception:
         pass
 
@@ -257,7 +257,7 @@ def reject_user(user_id: int, request: Request, db: Session = Depends(get_db)):
 
 
 # ---------------------------
-# التوثيق (Verification)
+# Verification
 # ---------------------------
 @router.post("/admin/users/{user_id}/verify")
 def verify_user(user_id: int, request: Request, db: Session = Depends(get_db)):
@@ -301,7 +301,7 @@ def unverify_user(user_id: int, request: Request, db: Session = Depends(get_db))
 
 
 # ---------------------------
-# مراجعة وثائق فردية
+# Review individual documents
 # ---------------------------
 @router.post("/admin/documents/{doc_id}/approve")
 def approve_document(doc_id: int, request: Request, db: Session = Depends(get_db)):
@@ -332,7 +332,7 @@ def reject_document(doc_id: int, request: Request, db: Session = Depends(get_db)
 
 
 # ---------------------------
-# مراسلة المستخدم + طلب تصحيح
+# Message the user + request a fix
 # ---------------------------
 @router.post("/admin/users/{user_id}/message")
 def admin_message_user(user_id: int, request: Request, db: Session = Depends(get_db)):
@@ -347,7 +347,7 @@ def admin_message_user(user_id: int, request: Request, db: Session = Depends(get
 
     first_msg = db.query(Message).filter(Message.thread_id == thread.id).first()
     if not first_msg:
-        db.add(Message(thread_id=thread.id, sender_id=admin["id"], body="مرحبًا! يرجى استكمال/تصحيح بيانات التحقق."))
+        db.add(Message(thread_id=thread.id, sender_id=admin["id"], body="Hello! Please complete/fix your verification data."))
         db.commit()
 
     return RedirectResponse(url=f"/messages/{thread.id}", status_code=303)
@@ -358,7 +358,7 @@ def admin_request_fix(
     user_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    reason: str = Form("نحتاج صورة أوضح أو وثيقة صالحة."),
+    reason: str = Form("We need a clearer photo or a valid document."),
 ):
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
@@ -383,7 +383,7 @@ def admin_request_fix(
 
     thread = _open_or_create_admin_thread(db, admin["id"], user_id)
     fix_link = "/profile/docs"
-    body = f"مرحبًا {user.first_name}،\nهناك ملاحظات على مستندات التحقق:\n- {reason}\nيرجى التصحيح هنا: {fix_link}"
+    body = f"Hello {user.first_name},\nThere are notes on your verification documents:\n- {reason}\nPlease fix them here: {fix_link}"
     db.add(Message(thread_id=thread.id, sender_id=admin["id"], body=body))
     db.commit()
 
@@ -391,7 +391,7 @@ def admin_request_fix(
 
 
 # ---------------------------
-# إدارة الشارات (Badges)
+# Badges management
 # ---------------------------
 @router.post("/users/{user_id}/badges")
 def set_badges(
@@ -417,7 +417,7 @@ def set_badges(
 
 
 # ---------------------------
-# إدارة صلاحية متحكّم الوديعة (MD)
+# Deposit Manager (DM) permission management
 # ---------------------------
 @router.post("/admin/users/{user_id}/deposit_manager/enable")
 def enable_deposit_manager(user_id: int, request: Request, db: Session = Depends(get_db)):
@@ -430,25 +430,25 @@ def enable_deposit_manager(user_id: int, request: Request, db: Session = Depends
         db.commit()
         _refresh_session_user_if_self(request, u)
 
-        # إشعار داخل الموقع
+        # In-site notification
         push_notification(
             db, u.id,
-            "تم منحك دور متحكّم الوديعة 🎉",
-            "يمكنك الآن مراجعة الودائع واتخاذ القرارات.",
+            "You’ve been granted the Deposit Manager role 🎉",
+            "You can now review deposits and make decisions.",
             "/dm/deposits",
             "role"
         )
 
-        # بريد: قبول الدور
+        # Email: role granted
         try:
-            subject = "🎉 تم منحك دور متحكّم الوديعة — أهلاً بك في لوحة المراجعة"
+            subject = "🎉 Deposit Manager role granted — Welcome to the review panel"
             home = f"{BASE_URL}/dm/deposits"
             logo = f"{BASE_URL}/static/images/ok.png"
             brand = f"{BASE_URL}/static/images/base.png"
             year = datetime.utcnow().year
             html = f"""<!doctype html>
-<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>تم منحك دور متحكّم الوديعة</title></head>
+<html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Deposit Manager role granted</title></head>
 <body style="margin:0;background:#0b0f1a;font-family:Tahoma,Arial,sans-serif;color:#e5e7eb">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;background:#0b0f1a">
     <tr><td align="center">
@@ -465,20 +465,20 @@ def enable_deposit_manager(user_id: int, request: Request, db: Session = Depends
           </td>
         </tr>
         <tr><td style="padding:28px 26px">
-          <h2 style="margin:0 0 10px;color:#fff">مرحبًا {u.first_name or 'صديقنا'} 🎉</h2>
+          <h2 style="margin:0 0 10px;color:#fff">Hello {u.first_name or 'friend'} 🎉</h2>
           <p style="margin:0 0 12px;line-height:1.9;color:#cbd5e1">
-            تم منحك <b style="color:#fff">دور متحكّم الوديعة</b>. يمكنك الآن الدخول إلى لوحة إدارة القضايا،
-            مراجعة الأدلة، و اتخاذ القرارات النهائية.
+            You’ve been granted the <b style="color:#fff">Deposit Manager</b> role. You can now access the cases panel,
+            review evidence, and make final decisions.
           </p>
           <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:22px auto">
             <tr><td bgcolor="#16a34a" style="border-radius:12px">
               <a href="{home}" target="_blank"
                  style="display:inline-block;padding:14px 22px;color:#fff;text-decoration:none;font-weight:700;border-radius:12px">
-                 فتح لوحة الودائع
+                 Open deposit panel
               </a>
             </td></tr>
           </table>
-          <p style="margin:8px 0 0;color:#94a3b8;font-size:13px">نصيحة: فعّل التنبيهات لتصلك تحديثات القضايا فورًا.</p>
+          <p style="margin:8px 0 0;color:#94a3b8;font-size:13px">Tip: enable notifications to receive case updates instantly.</p>
         </td></tr>
         <tr><td style="padding:16px 22px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
           &copy; {year} RentAll
@@ -487,7 +487,7 @@ def enable_deposit_manager(user_id: int, request: Request, db: Session = Depends
     </td></tr>
   </table>
 </body></html>"""
-            text = f"تم منحك دور متحكّم الوديعة. لوحة الإدارة: {home}"
+            text = f"You’ve been granted the Deposit Manager role. Admin panel: {home}"
             send_email(u.email, subject, html, text_body=text)
         except Exception:
             pass
@@ -508,31 +508,31 @@ def disable_deposit_manager(user_id: int, request: Request, db: Session = Depend
 
         push_notification(
             db, u.id,
-            "تم إلغاء دور متحكّم الوديعة",
-            "لم تعد تملك صلاحية إدارة الودائع.",
+            "Deposit Manager role removed",
+            "You no longer have permission to manage deposits.",
             "/",
             "role"
         )
 
-        # بريد: إلغاء الدور
+        # Email: role removed
         try:
-            subject = "تم إلغاء دور متحكّم الوديعة"
+            subject = "Deposit Manager role removed"
             home = f"{BASE_URL}/"
             year = datetime.utcnow().year
             html = f"""<!doctype html>
-<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>إلغاء الصلاحية</title></head>
+<html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Permission removed</title></head>
 <body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,sans-serif">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;background:#0b0f1a">
     <tr><td align="center">
       <table role="presentation" width="640" cellpadding="0" cellspacing="0"
              style="width:100%;max-width:640px;border-radius:18px;overflow:hidden;background:#0f172a;border:1px solid #1f2937">
         <tr><td style="padding:26px 24px">
-          <h3 style="margin:0 0 8px;color:#fff">تم إلغاء دور متحكّم الوديعة</h3>
+          <h3 style="margin:0 0 8px;color:#fff">Deposit Manager role removed</h3>
           <p style="margin:0;line-height:1.9;color:#cbd5e1">
-            تم إلغاء صلاحية إدارة الودائع من حسابك. لا يزال بإمكانك استخدام بقية مزايا الموقع كالمعتاد.
+            The permission to manage deposits has been removed from your account. You can still use the rest of the site features as usual.
           </p>
-          <p style="margin:18px 0 0"><a href="{home}" style="color:#60a5fa;text-decoration:none">العودة للصفحة الرئيسية</a></p>
+          <p style="margin:18px 0 0"><a href="{home}" style="color:#60a5fa;text-decoration:none">Back to homepage</a></p>
         </td></tr>
         <tr><td style="padding:14px 22px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
           &copy; {year} RentAll
@@ -541,7 +541,7 @@ def disable_deposit_manager(user_id: int, request: Request, db: Session = Depend
     </td></tr>
   </table>
 </body></html>"""
-            text = f"تم إلغاء دور متحكّم الوديعة من حسابك. لمزيد من التفاصيل: {home}"
+            text = f"The Deposit Manager role has been removed from your account. For more details: {home}"
             send_email(u.email, subject, html, text_body=text)
         except Exception:
             pass
@@ -550,11 +550,11 @@ def disable_deposit_manager(user_id: int, request: Request, db: Session = Depend
 
 
 # ---------------------------
-# إدارة صلاحية MOD (مدقّق محتوى)
+# MOD permission (content moderator) management
 # ---------------------------
 @router.post("/admin/users/{user_id}/mod/enable")
 def enable_mod(user_id: int, request: Request, db: Session = Depends(get_db)):
-    """يمنح صلاحية مُدقّق المحتوى (MOD) للمستخدم."""
+    """Grant the Content Moderator (MOD) permission to the user."""
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
@@ -567,8 +567,8 @@ def enable_mod(user_id: int, request: Request, db: Session = Depends(get_db)):
         try:
             push_notification(
                 db, u.id,
-                "🎉 تم منحك دور مُدقّق المحتوى (MOD)",
-                "يمكنك الآن مراجعة البلاغات واتخاذ الإجراءات المناسبة.",
+                "🎉 You’ve been granted the Content Moderator (MOD) role",
+                "You can now review reports and take appropriate actions.",
                 "/mod/reports",
                 "role"
             )
@@ -576,23 +576,23 @@ def enable_mod(user_id: int, request: Request, db: Session = Depends(get_db)):
             pass
 
         try:
-            subject = "🎉 تم منحك صلاحية مُدقّق المحتوى (MOD)"
+            subject = "🎉 MOD permission granted"
             home = f"{BASE_URL}/mod/reports"
             year = datetime.utcnow().year
             html = f"""<!doctype html>
-<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>تم منحك صلاحية MOD</title></head>
+<html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MOD permission granted</title></head>
 <body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,sans-serif">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;background:#0b0f1a">
     <tr><td align="center">
       <table role="presentation" width="640" cellpadding="0" cellspacing="0"
              style="width:100%;max-width:640px;border-radius:18px;overflow:hidden;background:#0f172a;border:1px solid #1f2937">
         <tr><td style="padding:26px 24px">
-          <h3 style="margin:0 0 8px;color:#fff">تم منحك صلاحية مُدقّق المحتوى</h3>
+          <h3 style="margin:0 0 8px;color:#fff">Content Moderator permission granted</h3>
           <p style="margin:0;line-height:1.9;color:#cbd5e1">
-            يمكنك الآن الوصول إلى لوحة البلاغات واتخاذ قرارات الحذف/الرفض/التحذير.
+            You can now access the reports dashboard and make delete/reject/warn decisions.
           </p>
-          <p style="margin:18px 0 0"><a href="{home}" style="color:#60a5fa;text-decoration:none">فتح لوحة البلاغات</a></p>
+          <p style="margin:18px 0 0"><a href="{home}" style="color:#60a5fa;text-decoration:none">Open reports dashboard</a></p>
         </td></tr>
         <tr><td style="padding:14px 22px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
           &copy; {year} RentAll
@@ -601,7 +601,7 @@ def enable_mod(user_id: int, request: Request, db: Session = Depends(get_db)):
     </td></tr>
   </table>
 </body></html>"""
-            text = f"تم منحك صلاحية مُدقّق المحتوى (MOD). ابدأ من هنا: {home}"
+            text = f"You’ve been granted the Content Moderator (MOD) permission. Start here: {home}"
             send_email(u.email, subject, html, text_body=text)
         except Exception:
             pass
@@ -611,7 +611,7 @@ def enable_mod(user_id: int, request: Request, db: Session = Depends(get_db)):
 
 @router.post("/admin/users/{user_id}/mod/disable")
 def disable_mod(user_id: int, request: Request, db: Session = Depends(get_db)):
-    """يسحب صلاحية مُدقّق المحتوى (MOD) من المستخدم."""
+    """Revoke the Content Moderator (MOD) permission from the user."""
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
@@ -624,8 +624,8 @@ def disable_mod(user_id: int, request: Request, db: Session = Depends(get_db)):
         try:
             push_notification(
                 db, u.id,
-                "تم إلغاء صلاحية مُدقّق المحتوى",
-                "لم تعد تملك صلاحية مراجعة البلاغات.",
+                "Content Moderator permission removed",
+                "You no longer have permission to review reports.",
                 "/",
                 "role"
             )
@@ -633,23 +633,23 @@ def disable_mod(user_id: int, request: Request, db: Session = Depends(get_db)):
             pass
 
         try:
-            subject = "تم إلغاء صلاحية مُدقّق المحتوى (MOD)"
+            subject = "Content Moderator (MOD) permission removed"
             home = f"{BASE_URL}/"
             year = datetime.utcnow().year
             html = f"""<!doctype html>
-<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>إلغاء صلاحية MOD</title></head>
+<html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MOD permission removed</title></head>
 <body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,sans-serif">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;background:#0b0f1a">
     <tr><td align="center">
       <table role="presentation" width="640" cellpadding="0" cellspacing="0"
              style="width:100%;max-width:640px;border-radius:18px;overflow:hidden;background:#0f172a;border:1px solid #1f2937">
         <tr><td style="padding:26px 24px">
-          <h3 style="margin:0 0 8px;color:#fff">تم إلغاء صلاحية مُدقّق المحتوى</h3>
+          <h3 style="margin:0 0 8px;color:#fff">Content Moderator permission removed</h3>
           <p style="margin:0;line-height:1.9;color:#cbd5e1">
-            تم سحب صلاحية مراجعة البلاغات من حسابك. لا يزال بإمكانك استخدام بقية مزايا الموقع كالمعتاد.
+            The permission to review reports has been revoked from your account. You can still use the rest of the site features as usual.
           </p>
-          <p style="margin:18px 0 0"><a href="{home}" style="color:#60a5fa;text-decoration:none">العودة للصفحة الرئيسية</a></p>
+          <p style="margin:18px 0 0"><a href="{home}" style="color:#60a5fa;text-decoration:none">Back to homepage</a></p>
         </td></tr>
         <tr><td style="padding:14px 22px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
           &copy; {year} RentAll
@@ -658,7 +658,7 @@ def disable_mod(user_id: int, request: Request, db: Session = Depends(get_db)):
     </td></tr>
   </table>
 </body></html>"""
-            text = f"تم إلغاء صلاحية مُدقّق المحتوى من حسابك. لمزيد من التفاصيل: {home}"
+            text = f"The Content Moderator permission has been removed from your account. For more details: {home}"
             send_email(u.email, subject, html, text_body=text)
         except Exception:
             pass
@@ -667,11 +667,11 @@ def disable_mod(user_id: int, request: Request, db: Session = Depends(get_db)):
 
 
 # ---------------------------
-# إدارة صلاحية CS (خدمة الزبائن)
+# CS permission (customer support) management
 # ---------------------------
 @router.post("/admin/users/{user_id}/cs/enable")
 def enable_support(user_id: int, request: Request, db: Session = Depends(get_db)):
-    """منح صلاحية موظف خدمة الزبائن (CS)."""
+    """Grant Customer Support (CS) permission."""
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
@@ -684,8 +684,8 @@ def enable_support(user_id: int, request: Request, db: Session = Depends(get_db)
         try:
             push_notification(
                 db, u.id,
-                "🎧 تم منحك صلاحية خدمة الزبائن (CS)",
-                "يمكنك الآن الوصول إلى صندوق تذاكر الدعم.",
+                "🎧 Customer Support (CS) permission granted",
+                "You can now access the support ticket inbox.",
                 "/cs/inbox",
                 "role"
             )
@@ -693,23 +693,23 @@ def enable_support(user_id: int, request: Request, db: Session = Depends(get_db)
             pass
 
         try:
-            subject = "🎧 تم منحك صلاحية خدمة الزبائن (CS)"
+            subject = "🎧 Customer Support (CS) permission granted"
             home = f"{BASE_URL}/cs/inbox"
             year = datetime.utcnow().year
             html = f"""<!doctype html>
-<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>تم منحك صلاحية CS</title></head>
+<html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CS permission granted</title></head>
 <body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,sans-serif">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;background:#0b0f1a">
     <tr><td align="center">
       <table role="presentation" width="640" cellpadding="0" cellspacing="0"
              style="width:100%;max-width:640px;border-radius:18px;overflow:hidden;background:#0f172a;border:1px solid #1f2937">
         <tr><td style="padding:26px 24px">
-          <h3 style="margin:0 0 8px;color:#fff">تم منحك صلاحية خدمة الزبائن</h3>
+          <h3 style="margin:0 0 8px;color:#fff">Customer Support permission granted</h3>
           <p style="margin:0;line-height:1.9;color:#cbd5e1">
-            يمكنك الآن تعيين/الرد على التذاكر في لوحة الدعم.
+            You can now assign/respond to tickets in the support panel.
           </p>
-          <p style="margin:18px 0 0"><a href="{home}" style="color:#60a5fa;text-decoration:none">دخول صندوق الوارد</a></p>
+          <p style="margin:18px 0 0"><a href="{home}" style="color:#60a5fa;text-decoration:none">Open inbox</a></p>
         </td></tr>
         <tr><td style="padding:14px 22px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
           &copy; {year} RentAll
@@ -718,7 +718,7 @@ def enable_support(user_id: int, request: Request, db: Session = Depends(get_db)
     </td></tr>
   </table>
 </body></html>"""
-            text = f"تم منحك صلاحية خدمة الزبائن (CS). لوحة الدعم: {home}"
+            text = f"Customer Support (CS) permission granted. Support panel: {home}"
             send_email(u.email, subject, html, text_body=text)
         except Exception:
             pass
@@ -728,7 +728,7 @@ def enable_support(user_id: int, request: Request, db: Session = Depends(get_db)
 
 @router.post("/admin/users/{user_id}/cs/disable")
 def disable_support(user_id: int, request: Request, db: Session = Depends(get_db)):
-    """إلغاء صلاحية موظف خدمة الزبائن (CS)."""
+    """Revoke Customer Support (CS) permission."""
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
@@ -741,8 +741,8 @@ def disable_support(user_id: int, request: Request, db: Session = Depends(get_db
         try:
             push_notification(
                 db, u.id,
-                "تم إلغاء صلاحية خدمة الزبائن",
-                "لم تعد تملك صلاحية إدارة تذاكر الدعم.",
+                "Customer Support permission removed",
+                "You no longer have permission to manage support tickets.",
                 "/",
                 "role"
             )
@@ -750,23 +750,23 @@ def disable_support(user_id: int, request: Request, db: Session = Depends(get_db
             pass
 
         try:
-            subject = "تم إلغاء صلاحية خدمة الزبائن (CS)"
+            subject = "Customer Support (CS) permission removed"
             home = f"{BASE_URL}/"
             year = datetime.utcnow().year
             html = f"""<!doctype html>
-<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>إلغاء صلاحية CS</title></head>
+<html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CS permission removed</title></head>
 <body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,sans-serif">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;background:#0b0f1a">
     <tr><td align="center">
       <table role="presentation" width="640" cellpadding="0" cellspacing="0"
              style="width:100%;max-width:640px;border-radius:18px;overflow:hidden;background:#0f172a;border:1px solid #1f2937">
         <tr><td style="padding:26px 24px">
-          <h3 style="margin:0 0 8px;color:#fff">تم إلغاء صلاحية خدمة الزبائن</h3>
+          <h3 style="margin:0 0 8px;color:#fff">Customer Support permission removed</h3>
           <p style="margin:0;line-height:1.9;color:#cbd5e1">
-            تم سحب صلاحية إدارة تذاكر الدعم من حسابك.
+            The permission to manage support tickets has been revoked from your account.
           </p>
-          <p style="margin:18px 0 0"><a href="{home}" style="color:#60a5fa;text-decoration:none">العودة للصفحة الرئيسية</a></p>
+          <p style="margin:18px 0 0"><a href="{home}" style="color:#60a5fa;text-decoration:none">Back to homepage</a></p>
         </td></tr>
         <tr><td style="padding:14px 22px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
           &copy; {year} RentAll
@@ -775,7 +775,7 @@ def disable_support(user_id: int, request: Request, db: Session = Depends(get_db
     </td></tr>
   </table>
 </body></html>"""
-            text = f"تم إلغاء صلاحية خدمة الزبائن (CS) من حسابك. تفاصيل أكثر: {home}"
+            text = f"The Customer Support (CS) permission has been removed from your account. More details: {home}"
             send_email(u.email, subject, html, text_body=text)
         except Exception:
             pass

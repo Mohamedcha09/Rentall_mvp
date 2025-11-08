@@ -1,8 +1,8 @@
 # app/admin_reports.py
 """
-جسر بسيط لإعادة تصدير راوتر البلاغات الإداري:
-- يبقي main.py كما هو (لا حاجة لتغييره)
-- يعيد استخدام نفس الراوتر الموجود داخل app/reports.py
+A simple bridge to re-export the admin reports router:
+- Keeps main.py unchanged (no need to modify it)
+- Reuses the same router defined inside app/reports.py
 """
 
-from .reports import router  # نفس الراوتر الذي يقدّم /admin/reports
+from .reports import router  # Same router that serves /admin/reports

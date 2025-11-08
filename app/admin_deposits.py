@@ -17,28 +17,28 @@ def _require_admin(request: Request) -> bool:
     return bool(u and u.get("role") == "admin")
 
 def _sync_session_if_self(request: Request, user: User) -> None:
-    """لو الأدمِن عدّل نفسه، حدّث الجلسة مباشرة."""
+    """If the admin modified their own data, update the session immediately."""
     sess = request.session.get("user")
     if not sess or sess.get("id") != user.id:
         return
-    # قيَم تظهر في الواجهات
+    # Values displayed in the interfaces
     sess["role"] = user.role
     sess["status"] = user.status
-    # الحقل الجديد: is_deposit_manager
+    # New field: is_deposit_manager
     try:
         sess["is_deposit_manager"] = bool(getattr(user, "is_deposit_manager", False))
     except Exception:
         pass
 
 # =========================
-# صفحة: إدارة متحكّمي الوديعة
+# Page: Deposit Managers Management
 # =========================
 @router.get("/admin/deposit-managers")
 def deposit_managers_index(request: Request, db: Session = Depends(get_db)):
     if not _require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
-    # كل المستخدمين + من لديه الصلاحية
+    # All users + those who have the permission
     users = (
         db.query(User)
         .order_by(User.created_at.desc().nullslast())
@@ -49,14 +49,14 @@ def deposit_managers_index(request: Request, db: Session = Depends(get_db)):
         "admin_deposit_managers.html",
         {
             "request": request,
-            "title": "إدارة متحكّمي الوديعة",
+            "title": "Deposit Managers Management",
             "users": users,
             "session_user": request.session.get("user"),
         },
     )
 
 # =========================
-# POST: منح الصلاحية
+# POST: Grant Permission
 # =========================
 @router.post("/admin/deposit-managers/{user_id}/grant")
 def grant_deposit_manager(user_id: int, request: Request, db: Session = Depends(get_db)):
@@ -65,12 +65,12 @@ def grant_deposit_manager(user_id: int, request: Request, db: Session = Depends(
 
     u = db.query(User).get(user_id)
     if u:
-        # لو عمود is_deposit_manager غير موجود في DB قديمة،
-        # col_or_literal في models.py سيرجعه None — نحاول الحفظ إذا كان فعليًا موجودًا.
+        # If column is_deposit_manager doesn’t exist in an old DB,
+        # col_or_literal in models.py will return None — try to save if it actually exists.
         try:
             u.is_deposit_manager = True
         except Exception:
-            # لا شيء: في قواعد قديمة لن يُخزَّن، لكن لا نكسر التدفق.
+            # Nothing: in old databases it won’t be stored, but we won’t break the flow.
             pass
         db.add(u)
         db.commit()
@@ -79,7 +79,7 @@ def grant_deposit_manager(user_id: int, request: Request, db: Session = Depends(
     return RedirectResponse(url="/admin/deposit-managers", status_code=303)
 
 # =========================
-# POST: سحب الصلاحية
+# POST: Revoke Permission
 # =========================
 @router.post("/admin/deposit-managers/{user_id}/revoke")
 def revoke_deposit_manager(user_id: int, request: Request, db: Session = Depends(get_db)):
@@ -99,7 +99,7 @@ def revoke_deposit_manager(user_id: int, request: Request, db: Session = Depends
     return RedirectResponse(url="/admin/deposit-managers", status_code=303)
 
 # =========================
-# API JSON (اختياري للاستخدام في واجهة Ajax)
+# API JSON (optional for Ajax interface usage)
 # =========================
 @router.get("/api/admin/deposit-managers")
 def api_list_deposit_managers(request: Request, db: Session = Depends(get_db)):
@@ -141,7 +141,7 @@ def api_toggle_deposit_manager(
     try:
         u.is_deposit_manager = bool(enable)
     except Exception:
-        # في قاعدة قديمة بدون العمود، لن يتم التخزين
+        # In an old database without the column, it won’t be stored
         return JSONResponse({"ok": False, "reason": "column_missing"}, status_code=200)
 
     db.add(u)

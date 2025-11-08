@@ -20,7 +20,7 @@ def rate_get(user_id: int, request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/", status_code=303)
     return request.app.templates.TemplateResponse(
         "rate.html",
-        {"request": request, "title": "تقييم مستخدم", "rated": rated, "session_user": u}
+        {"request": request, "title": "Rate User", "rated": rated, "session_user": u}
     )
 
 @router.post("/rate/{user_id}")

@@ -21,7 +21,7 @@ def _require_login(request: Request):
 
 def _ensure_cs_session(db: Session, request: Request):
     """
-    مزامنة علم is_support داخل الجلسة إذا تغيّر في قاعدة البيانات.
+    Synchronize is_support flag inside the session if it changes in the database.
     """
     sess = request.session.get("user") or {}
     uid = sess.get("id")
@@ -37,7 +37,7 @@ def _ensure_cs_session(db: Session, request: Request):
     return None
 
 # ---------------------------
-# Inbox (قائمة التذاكر للـ CS)
+# Inbox (Ticket list for CS)
 # ---------------------------
 @router.get("/inbox")
 def cs_inbox(request: Request, db: Session = Depends(get_db)):
@@ -49,10 +49,10 @@ def cs_inbox(request: Request, db: Session = Depends(get_db)):
     if not u_cs:
         return RedirectResponse("/support/my", status_code=303)
 
-    # مهم: صناديق CS يجب أن لا تُظهر ما تم تحويله إلى MOD/MD
+    # Important: CS inbox should not show tickets transferred to MOD/MD
     base_q = db.query(SupportTicket).filter(text("COALESCE(queue,'cs') = 'cs'"))
 
-    # جديدة: غير مُعيّنة + آخر رسالة من العميل + غير مقروءة للوكيل
+    # New: unassigned + last message from client + unread for agent
     new_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
@@ -63,7 +63,7 @@ def cs_inbox(request: Request, db: Session = Depends(get_db)):
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
     )
 
-    # قيد المراجعة: مفتوحة ومُعيّنة لوكيل
+    # In review: open and assigned to agent
     in_review_q = (
         base_q.filter(
             SupportTicket.status == "open",
@@ -72,7 +72,7 @@ def cs_inbox(request: Request, db: Session = Depends(get_db)):
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
     )
 
-    # منتهية
+    # Resolved
     resolved_q = (
         base_q.filter(SupportTicket.status == "resolved")
         .order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
@@ -90,7 +90,7 @@ def cs_inbox(request: Request, db: Session = Depends(get_db)):
     )
 
 # ---------------------------
-# عرض تذكرة CS
+# View CS Ticket
 # ---------------------------
 @router.get("/ticket/{tid}")
 def cs_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
@@ -105,17 +105,17 @@ def cs_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     if not t:
         return RedirectResponse("/cs/inbox", status_code=303)
 
-    # تعليم كـ مقروء للوكيل
+    # Mark as read for the agent
     t.unread_for_agent = False
     db.commit()
 
     return templates.TemplateResponse(
         "cs_ticket.html",
-        {"request": request, "session_user": u_cs, "ticket": t, "msgs": t.messages, "title": f"تذكرة #{t.id} (CS)"},
+        {"request": request, "session_user": u_cs, "ticket": t, "msgs": t.messages, "title": f"Ticket #{t.id} (CS)"},
     )
 
 # ---------------------------
-# تولّي التذكرة (Assign to me)
+# Take ownership of the ticket (Assign to me)
 # ---------------------------
 @router.post("/tickets/{ticket_id}/assign_self")
 def cs_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_db)):
@@ -133,13 +133,13 @@ def cs_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_d
         t.updated_at = datetime.utcnow()
         t.unread_for_agent = False
 
-        agent_name = (request.session["user"].get("first_name") or "").strip() or "موظّف الدعم"
+        agent_name = (request.session["user"].get("first_name") or "").strip() or "Support Agent"
         try:
             push_notification(
                 db,
                 t.user_id,
-                "📬 تم فتح تذكرتك",
-                f"تم فتح الرسالة من طرف {agent_name}",
+                "📬 Your ticket has been opened",
+                f"The message has been opened by {agent_name}",
                 url=f"/support/ticket/{t.id}",
                 kind="support",
             )
@@ -151,7 +151,7 @@ def cs_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_d
     return RedirectResponse(f"/cs/ticket/{ticket_id}", status_code=303)
 
 # ---------------------------
-# ردّ الوكيل على التذكرة
+# Agent reply to ticket
 # ---------------------------
 @router.post("/ticket/{tid}/reply")
 def cs_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), body: str = Form("")):
@@ -171,7 +171,7 @@ def cs_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
         ticket_id=t.id,
         sender_id=u_cs["id"],
         sender_role="agent",
-        body=(body or "").strip() or "(بدون نص)",
+        body=(body or "").strip() or "(no text)",
         created_at=now,
     )
     db.add(msg)
@@ -186,12 +186,12 @@ def cs_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
     t.unread_for_agent = False
 
     try:
-        agent_name = (request.session["user"].get("first_name") or "").strip() or "موظّف الدعم"
+        agent_name = (request.session["user"].get("first_name") or "").strip() or "Support Agent"
         push_notification(
             db,
             t.user_id,
-            "💬 رد من الدعم",
-            f"ردّ عليك {agent_name} في تذكرتك #{t.id}",
+            "💬 Reply from support",
+            f"{agent_name} replied to your ticket #{t.id}",
             url=f"/support/ticket/{t.id}",
             kind="support",
         )
@@ -202,7 +202,7 @@ def cs_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
     return RedirectResponse(f"/cs/ticket/{t.id}", status_code=303)
 
 # ---------------------------
-# إغلاق التذكرة (Resolve)
+# Close the ticket (Resolve)
 # ---------------------------
 @router.post("/tickets/{ticket_id}/resolve")
 def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
@@ -216,7 +216,7 @@ def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     t = db.get(SupportTicket, ticket_id)
     if t:
         now = datetime.utcnow()
-        agent_name = (request.session["user"].get("first_name") or "").strip() or "موظّف الدعم"
+        agent_name = (request.session["user"].get("first_name") or "").strip() or "Support Agent"
 
         t.status = "resolved"
         t.resolved_at = now
@@ -228,7 +228,7 @@ def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
             ticket_id=t.id,
             sender_id=u_cs["id"],
             sender_role="agent",
-            body=f"تم إغلاق التذكرة بواسطة {agent_name} في {now.strftime('%Y-%m-%d %H:%M')}",
+            body=f"Ticket closed by {agent_name} at {now.strftime('%Y-%m-%d %H:%M')}",
             created_at=now,
         )
         db.add(close_msg)
@@ -238,7 +238,7 @@ def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
             push_notification(
                 db,
                 t.user_id,
-                "✅ تم حل تذكرتك",
+                "✅ Your ticket has been resolved",
                 f"#{t.id} — {t.subject or ''}".strip(),
                 url=f"/support/ticket/{t.id}",
                 kind="support",
@@ -251,14 +251,14 @@ def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     return RedirectResponse("/cs/inbox", status_code=303)
 
 # ---------------------------
-# تحويل التذكرة بين الأقسام (CS → MD → MOD)
+# Transfer ticket between departments (CS → MD → MOD)
 # ---------------------------
 @router.post("/tickets/{ticket_id}/transfer")
 def cs_transfer_queue(
     ticket_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    to: str = Form(...),  # القيم: cs / md / mod
+    to: str = Form(...),  # values: cs / md / mod
 ):
     u = _require_login(request)
     if not u:
@@ -276,7 +276,7 @@ def cs_transfer_queue(
     if not t:
         return RedirectResponse("/cs/inbox", status_code=303)
 
-    # تحدّيث queue مباشرة (قد لا يكون العمود مُعرّفًا في الموديل)
+    # Update queue directly (the column might not be defined in the model)
     try:
         db.execute(
             text("UPDATE support_tickets SET queue = :q, updated_at = now() WHERE id = :tid"),
@@ -286,68 +286,68 @@ def cs_transfer_queue(
         pass
 
     now = datetime.utcnow()
-    agent_name = (request.session["user"].get("first_name") or "").strip() or "موظّف الدعم"
+    agent_name = (request.session["user"].get("first_name") or "").strip() or "Support Agent"
 
-    # رسالة نظامية توضح التحويل
+    # System message to explain transfer
     msg = SupportMessage(
         ticket_id=t.id,
         sender_id=u_cs["id"],
         sender_role="agent",
-        body=f"تم تحويل التذكرة من CS إلى {target.upper()} بواسطة {agent_name} في {now.strftime('%Y-%m-%d %H:%M')}",
+        body=f"Ticket transferred from CS to {target.upper()} by {agent_name} at {now.strftime('%Y-%m-%d %H:%M')}",
         created_at=now,
     )
     db.add(msg)
 
-    # إبقاء الحالة مفتوحة/جديدة + أعلام القراءة
+    # Keep status open/new + unread flags
     t.last_from = "agent"
     t.last_msg_at = now
     t.updated_at = now
     t.unread_for_user = True
 
-    # ✅ مهم: عندما نُحوِّل إلى MD أو MOD → تكون "جديدة" وغير معيّنة وتظهر في صندوق "تم إرسالها جديد من CS"
+    # ✅ Important: when transferring to MD or MOD → mark as 'new' and unassigned so it appears in 'New from CS' inbox
     if target in ("md", "mod"):
         t.status = "new"
         t.assigned_to_id = None
         t.unread_for_agent = True
     else:
-        # عودة إلى CS
+        # Back to CS
         t.status = "open"
         if not t.assigned_to_id:
             t.assigned_to_id = u_cs["id"]
         t.unread_for_agent = False
 
-    # إشعار للعميل
+    # Notify client
     try:
         push_notification(
             db,
             t.user_id,
-            "↪️ تم تحويل تذكرتك",
-            f"تم تحويل تذكرتك إلى الفريق المختص ({target.upper()}).",
+            "↪️ Your ticket has been transferred",
+            f"Your ticket has been transferred to the appropriate team ({target.upper()}).",
             url=f"/support/ticket/{t.id}",
             kind="support",
         )
     except Exception:
         pass
 
-    # إشعار المُدقّقين فقط إذا التحويل إلى MOD
+    # Notify moderators only if transfer to MOD
     if target == "mod":
         try:
             notify_mods(
                 db,
-                title="📥 تذكرة جديدة تحتاج مراجعة (MOD)",
-                body=f"{t.subject or '(بدون عنوان)'} — #{t.id}",
+                title="📥 New ticket requires review (MOD)",
+                body=f"{t.subject or '(No subject)'} — #{t.id}",
                 url=f"/mod/inbox?tid={t.id}",
             )
         except Exception:
             pass
 
-    # ✅ إشعار مسؤولي الودائع إذا التحويل إلى MD
+    # ✅ Notify deposit managers if transfer to MD
     if target == "md":
         try:
             notify_mds(
                 db,
-                title="📥 تذكرة جديدة تحتاج معالجة (MD)",
-                body=f"{t.subject or '(بدون عنوان)'} — #{t.id}",
+                title="📥 New ticket requires processing (MD)",
+                body=f"{t.subject or '(No subject)'} — #{t.id}",
                 url=f"/md/inbox?tid={t.id}",
             )
         except Exception:

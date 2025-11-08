@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from .database import get_db
-from .models import User, Item, UserReview   # ← استخدمنا UserReview بدل Rating
+from .models import User, Item, UserReview   # ← we used UserReview instead of Rating
 
-# ===== [اختياري: إرسال إيميل موحّد] =====
+# ===== [Optional: unified email sender] =====
 import os
 BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
 
@@ -43,12 +43,12 @@ def _is_new(created_at: datetime | None, days: int = 60) -> bool:
 
 @router.get("/users/{user_id}")
 def user_profile(user_id: int, request: Request, db: Session = Depends(get_db)):
-    # 1) المستخدم
+    # 1) the user
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # 2) عناصره المفعّلة
+    # 2) their active items
     items = (
         db.query(Item)
         .filter(Item.owner_id == user.id, Item.is_active == "yes")
@@ -56,7 +56,7 @@ def user_profile(user_id: int, request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
-    # 3) إحصاءات بسيطة
+    # 3) simple stats
     items_count = (
         db.query(func.count(Item.id))
         .filter(Item.owner_id == user.id, Item.is_active == "yes")
@@ -65,14 +65,14 @@ def user_profile(user_id: int, request: Request, db: Session = Depends(get_db)):
     )
     stats = {"items_count": items_count}
 
-    # 4) شارات/حالة
+    # 4) badges/status
     created_at = getattr(user, "created_at", None)
     is_new = _is_new(created_at, days=60)
     is_verified = bool(getattr(user, "is_verified", False)) or (user.status == "approved")
     created_at_str = created_at.strftime("%Y-%m-%d") if created_at else ""
 
-    # 5) تقييمه **كمستأجر** من جدول UserReview
-    #    target_user_id = المستأجر الذي تلقّى التقييم
+    # 5) their rating **as a renter** from UserReview table
+    #    target_user_id = the renter who received the review
     renter_avg = (
         db.query(func.coalesce(func.avg(UserReview.stars), 0.0))
         .filter(UserReview.target_user_id == user.id)
@@ -106,11 +106,11 @@ def user_profile(user_id: int, request: Request, db: Session = Depends(get_db)):
         "rating_value": None,
         "rating_count": None,
         "session_user": (request.session or {}).get("user"),
-        # تقييمات الملاك لهذا المستخدم كمستأجر:
+        # owner reviews for this user as a renter:
         "renter_reviews_avg": round(float(renter_avg), 2),
         "renter_reviews_count": int(renter_cnt),
         "renter_reviews": renter_reviews,
     }
 
-    # ملاحظة: تمبلِيت عرض البروفايل عندك اسمه user.html
+    # Note: your profile display template is named user.html
     return request.app.templates.TemplateResponse("user.html", context)

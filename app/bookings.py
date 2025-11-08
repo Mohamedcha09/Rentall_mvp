@@ -9,13 +9,13 @@ from sqlalchemy import text
 
 from .database import get_db
 from .models import User, Item, Booking, FreezeDeposit
-from .utils import category_label  # إن لم يوجد، أزل الاستيراد أو وفّر دالة بديلة
+from .utils import category_label  # If not available, remove the import or provide an alternative function
 
 import json
 from typing import List, Optional
 from fastapi import UploadFile, File
 
-# --- Cloudinary (لو عندك إعداد مسبق يكفي الاستيراد) ---
+# --- Cloudinary (if you already have it configured, importing is enough) ---
 try:
     import cloudinary
     import cloudinary.uploader
@@ -25,13 +25,13 @@ except Exception:
 router = APIRouter(tags=["bookings"])
 
 # ---------------------------------------------------
-# Helpers: جدول المراجعات + إدراج
+# Helpers: reviews table + insert
 # ---------------------------------------------------
 def _safe_next(next_raw: str | None, booking_id: int, fallback: str) -> str:
     nxt = (next_raw or "").strip()
     if not nxt:
         nxt = fallback
-    # منع روابط خارجية
+    # Prevent external links
     if not nxt.startswith("/"):
         nxt = fallback
     return nxt.replace("{id}", str(booking_id))
@@ -39,13 +39,13 @@ def _safe_next(next_raw: str | None, booking_id: int, fallback: str) -> str:
 
 def _upload_images_to_cloudinary(files: List[UploadFile]) -> List[str]:
     """
-    يرفع حتى 6 صور ويعيد قائمة روابط secure_url. يتجاهل الملفات غير الصورية.
+    Upload up to 6 images and return a list of secure_url links. Non-image files are ignored.
     """
     urls = []
     if not files:
         return urls
     if cloudinary is None:
-        # لو Cloudinary غير متوفر، نرجّع قائمة فاضية (أو ارفع محليًا لو تحب)
+        # If Cloudinary is unavailable, return an empty list (or save locally if you prefer)
         return urls
     for f in files[:6]:
         try:
@@ -57,7 +57,7 @@ def _upload_images_to_cloudinary(files: List[UploadFile]) -> List[str]:
             if url:
                 urls.append(url)
         except Exception:
-            # تجاهل أي فشل في ملف واحد واستمر
+            # Ignore failure on a single file and continue
             continue
     return urls
 
@@ -77,7 +77,7 @@ def _ensure_reviews_table(db: Session):
     );
     """
     db.execute(text(sql))
-    # فهرس يمنع تكرار تقييم المالك لنفس الحجز
+    # Index prevents the owner from rating the same booking more than once
     db.execute(text("""
       CREATE UNIQUE INDEX IF NOT EXISTS reviews_unique_owner_once
       ON reviews(booking_id, role, reviewer_id)
@@ -89,7 +89,7 @@ def _insert_review(db: Session, **kw):
     db.execute(text(f"INSERT INTO reviews({keys}) VALUES({vals})"), kw)
 
 def _get_owner_review(db: Session, booking_id: int, owner_id: int):
-    """يرجع تقييم المالك (إن وجد) لهذا الحجز كقاموس بسيط."""
+    """Returns the owner's review (if any) for this booking as a simple dict."""
     _ensure_reviews_table(db)
     row = db.execute(
         text("""
@@ -105,7 +105,7 @@ def _get_owner_review(db: Session, booking_id: int, owner_id: int):
     return dict(row) if row else None
 
 # ---------------------------------------------------
-# احضار المستخدم من السيشن
+# Get user from session
 # ---------------------------------------------------
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
@@ -128,7 +128,7 @@ def ensure_booking_side(u: User, b: Booking, as_role: Literal["owner","renter","
         raise HTTPException(status_code=403, detail="renter action only")
 
 # ---------------------------------------------------
-# صفحة “العملية الواحدة” لحجز واحد
+# “Single flow” page for one booking
 # ---------------------------------------------------
 @router.get("/bookings/{booking_id}")
 def booking_flow_page(
@@ -148,10 +148,10 @@ def booking_flow_page(
     is_owner = (user.id == b.owner_id)
     is_renter = (user.id == b.renter_id)
 
-    # تجهيز نصوص مساعدة
+    # Prepare helper texts
     item_title = it.title if it else f"#{b.item_id}"
 
-    # 🔒 جلب تقييم المالك إن وُجد لنعطّل النموذج في القالب
+    # 🔒 Fetch owner review if present to disable the form in the template
     owner_prev_review = _get_owner_review(db, b.id, b.owner_id) if is_owner else None
     owner_already_rated = bool(owner_prev_review)
 
@@ -159,7 +159,7 @@ def booking_flow_page(
         "booking_flow.html",
         {
             "request": request,
-            "title": f"الحجز #{b.id}",
+            "title": f"Booking #{b.id}",
             "session_user": request.session.get("user"),
             "booking": b,
             "item": it,
@@ -173,7 +173,7 @@ def booking_flow_page(
     )
 
 # ---------------------------------------------------
-# (1) المالك يوافق أو يرفض
+# (1) Owner accepts or rejects
 # ---------------------------------------------------
 @router.post("/bookings/{booking_id}/accept")
 def booking_accept(
@@ -216,7 +216,7 @@ def booking_reject(
     return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
 
 # ---------------------------------------------------
-# (2) اختيار الدفع
+# (2) Payment choice
 # ---------------------------------------------------
 @router.post("/bookings/{booking_id}/pay-cash")
 def booking_pay_cash(
@@ -254,7 +254,7 @@ def booking_pay_online_placeholder(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    Placeholder: لا يوجد Stripe فعلي.
+    Placeholder: no real Stripe.
     """
     ensure_logged_in(user)
     b: Booking = db.get(Booking, booking_id)
@@ -277,7 +277,7 @@ def booking_pay_online_placeholder(
     return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
 
 # ---------------------------------------------------
-# (3) تأكيد الاستلام
+# (3) Pickup confirmation
 # ---------------------------------------------------
 @router.post("/bookings/{booking_id}/picked-up")
 def booking_picked_up(
@@ -307,7 +307,7 @@ def booking_picked_up(
     return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
 
 # ---------------------------------------------------
-# (4) تعليم الإرجاع (ثم توجيه صفحة التقييم للمستأجر)
+# (4) Mark return (then redirect renter to review page)
 # ---------------------------------------------------
 @router.post("/bookings/{booking_id}/mark-returned")
 def booking_mark_returned(
@@ -331,7 +331,7 @@ def booking_mark_returned(
     return RedirectResponse(url=f"/reviews/renter/{b.id}", status_code=303)
 
 # ---------------------------------------------------
-# (5) تأكيد المالك للإرجاع + مصير الوديعة
+# (5) Owner confirms return + deposit outcome
 # ---------------------------------------------------
 @router.post("/bookings/{booking_id}/owner-confirm-return")
 def owner_confirm_return(
@@ -379,7 +379,7 @@ def owner_confirm_return(
     return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
 
 # ---------------------------------------------------
-# قائمة الحجوزات
+# Bookings list
 # ---------------------------------------------------
 @router.get("/bookings")
 def bookings_index(
@@ -401,7 +401,7 @@ def bookings_index(
         "bookings_index.html",
         {
             "request": request,
-            "title": "حجوزاتي" if view == "renter" else "حجوزات على ممتلكاتي",
+            "title": "My bookings" if view == "renter" else "Bookings on my items",
             "session_user": request.session.get("user"),
             "bookings": bookings,
             "view": view,
@@ -409,7 +409,7 @@ def bookings_index(
     )
 
 # ---------------------------------------------------
-# مراجعة المستأجر للعنصر
+# Renter review for the item
 # ---------------------------------------------------
 @router.post("/reviews/renter/{booking_id}")
 def renter_review_and_return(
@@ -448,7 +448,7 @@ def renter_review_and_return(
     return RedirectResponse(url=f"/bookings/{b.id}?r_reviewed=1", status_code=303)
 
 # ---------------------------------------------------
-# مراجعة المالك للمستأجر (مرة واحدة فقط)
+# Owner review of renter (only once)
 # ---------------------------------------------------
 @router.post("/reviews/owner/{booking_id}")
 def owner_review_renter(
@@ -469,7 +469,7 @@ def owner_review_renter(
 
     _ensure_reviews_table(db)
 
-    # ✅ امنع التكرار: إن كان هناك تقييم سابق لنفس المالك والحجز، لا نُدرج جديدًا
+    # ✅ Prevent duplicates: if there is an existing review by the same owner for the same booking, do not insert a new one
     prev = _get_owner_review(db, b.id, user.id)
     if prev:
         return RedirectResponse(url=f"/bookings/{b.id}?o_reviewed=1", status_code=303)
@@ -493,17 +493,17 @@ def owner_review_renter(
 async def booking_upload_photos_and_advance(
     booking_id: int,
     request: Request,
-    side: Literal["pickup", "return"] = Form(...),   # "pickup" عند الاستلام، "return" عند الإرجاع
+    side: Literal["pickup", "return"] = Form(...),   # "pickup" at pickup, "return" at return
     files: List[UploadFile] = File(default_factory=list),
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    زر واحد:
-      - يفتح الكاميرا من الواجهة (input capture) لالتقاط حتى 6 صور.
-      - يرفع الصور إلى Cloudinary.
-      - يحدّث حالة الحجز ويتقدّم تلقائيًا للخطوة التالية.
-    الرد بصيغة JSON يحوي next_url لتوجيه الواجهة.
+    One button:
+      - Opens the camera from the UI (input capture) to take up to 6 photos.
+      - Uploads photos to Cloudinary.
+      - Updates booking state and automatically advances to the next step.
+    Response is JSON with next_url for UI redirection.
     """
     ensure_logged_in(user)
     b: Booking = db.get(Booking, booking_id)
@@ -511,16 +511,16 @@ async def booking_upload_photos_and_advance(
         raise HTTPException(status_code=404, detail="booking not found")
     ensure_booking_side(user, b, "renter")
 
-    # تحقّق الحالة المناسبة حسب المرحلة
+    # Validate proper state per phase
     if side == "pickup" and b.status not in ("paid",):
         return {"ok": False, "reason": "bad_state", "next_url": f"/bookings/{b.id}"}
     if side == "return" and b.status not in ("picked_up",):
         return {"ok": False, "reason": "bad_state", "next_url": f"/bookings/{b.id}"}
 
-    # ارفع الصور
+    # Upload photos
     urls = _upload_images_to_cloudinary(files)
 
-    # خزّن الروابط في الحجز
+    # Store links in the booking
     if side == "pickup":
         exists = []
         try:
@@ -530,7 +530,7 @@ async def booking_upload_photos_and_advance(
         exists.extend(urls)
         b.pickup_photos_json = json.dumps(exists[:6], ensure_ascii=False)
 
-        # نفس منطق booking_picked_up القديم
+        # Same logic as old booking_picked_up
         b.status = "picked_up"
         b.picked_up_at = datetime.utcnow()
         if b.payment_method == "online":
@@ -550,7 +550,7 @@ async def booking_upload_photos_and_advance(
         exists.extend(urls)
         b.return_photos_json = json.dumps(exists[:6], ensure_ascii=False)
 
-        # نفس منطق mark-returned القديم
+        # Same logic as old mark-returned
         b.status = "returned"
         b.returned_at = datetime.utcnow()
         db.commit()
@@ -575,7 +575,7 @@ async def pickup_proof_upload(
     if b.status not in ("paid",):
         return RedirectResponse(url=f"/bookings/{b.id}", status_code=303)
 
-    # ارفع وخزّن أول 6 صور
+    # Upload and store first 6 photos
     urls = _upload_images_to_cloudinary(files)
     try:
         exists = json.loads(b.pickup_photos_json or "[]")
@@ -584,7 +584,7 @@ async def pickup_proof_upload(
     exists.extend(urls)
     b.pickup_photos_json = json.dumps(exists[:6], ensure_ascii=False)
 
-    # تقدّم الحالة مثل booking_picked_up
+    # Advance state like booking_picked_up
     b.status = "picked_up"
     b.picked_up_at = datetime.utcnow()
     if b.payment_method == "online":
@@ -593,7 +593,7 @@ async def pickup_proof_upload(
         b.online_status = "captured"
     db.commit()
 
-    # اقرأ next من الـ query أو الـ form
+    # Read next from query or form
     next_q = request.query_params.get("next") or (await request.form()).get("next")
     next_url = _safe_next(next_q, b.id, fallback=f"/bookings/flow/{b.id}/next")
     return RedirectResponse(url=next_url, status_code=303)
@@ -646,7 +646,7 @@ def bookings_flow_next(
         raise HTTPException(status_code=404, detail="booking not found")
     ensure_booking_side(user, b, "any")
 
-    # حدّد أين يذهب حسب الحالة
+    # Decide where to go based on state
     if b.status in ("paid", "requested", "accepted"):
         goto = f"/bookings/{b.id}"
     elif b.status == "picked_up":

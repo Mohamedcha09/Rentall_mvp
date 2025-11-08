@@ -19,7 +19,7 @@ def payout_settings(request: Request, db: Session = Depends(get_db)):
     me: User = db.query(User).get(u["id"])
     return request.app.templates.TemplateResponse(
         "payout_settings.html",
-        {"request": request, "title": "إعدادات التحويل", "user": me, "session_user": u,
+        {"request": request, "title": "Payout Settings", "user": me, "session_user": u,
          "pk": os.environ.get("STRIPE_PUBLISHABLE_KEY")}
     )
 
@@ -29,13 +29,13 @@ def payout_connect(request: Request, db: Session = Depends(get_db)):
     if not u: return _need_login()
     me: User = db.query(User).get(u["id"])
 
-    # أنشئ حساب Express إن لم يوجد
+    # Create an Express account if it doesn't exist
     if not me.stripe_account_id:
         acct = stripe.Account.create(type="express", country="US", capabilities={"transfers":{"requested":True}})
         me.stripe_account_id = acct["id"]
         db.commit()
 
-    # أنشئ رابط Onboarding
+    # Create an onboarding link
     link = stripe.AccountLink.create(
         account = me.stripe_account_id,
         refresh_url = "http://127.0.0.1:8000/payout/settings",

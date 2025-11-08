@@ -1,15 +1,15 @@
 # app/main.py
 
-# 1) حمّل .env مبكرًا جدًا
+# 1) Load .env as early as possible
 from dotenv import load_dotenv
 load_dotenv()
 
-# 2) إعدادات عامة
+# 2) General settings
 import os
 import random
 import difflib
 
-# 3) Cloudinary (اختياري)
+# 3) Cloudinary (optional)
 import cloudinary
 import cloudinary.uploader
 cloudinary.config(
@@ -19,7 +19,7 @@ cloudinary.config(
     secure=True,
 )
 
-# 4) FastAPI & أُسس المشروع
+# 4) FastAPI & project foundations
 from fastapi import FastAPI, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -33,7 +33,7 @@ from .database import Base, engine, SessionLocal, get_db
 from .models import User, Item
 from .utils import CATEGORIES, category_label
 
-# 5) الروترات
+# 5) Routers
 from .auth import router as auth_router
 from .admin import router as admin_router
 from .items import router as items_router
@@ -71,9 +71,9 @@ import app.cs as cs_routes
 from . import mod as mod_routes
 from .md import router as md_router 
 from .reviews import router as reviews_router
-  # ⬅️ جديد
+  # ⬅️ New
 # -----------------------------------------------------------------------------
-# إنشاء التطبيق
+# Create the app
 # -----------------------------------------------------------------------------
 app = FastAPI()
 
@@ -92,10 +92,10 @@ def whoami(request: Request, db: Session = Depends(get_db)):
     }
 
 # -----------------------------------------------------------------------------
-# الجلسات (الكوكيز آمنة على الإنتاج فقط) + ضبط الدومين
+# Sessions (cookies are secure only in production) + set domain
 # -----------------------------------------------------------------------------
 SITE_URL = os.environ.get("SITE_URL", "")
-COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN", "sevor.net")   # ← مهم جدًا
+COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN", "sevor.net")   # ← Very important
 HTTPS_ONLY_COOKIES = bool(int(os.environ.get("HTTPS_ONLY_COOKIES", "1" if SITE_URL.startswith("https") else "0")))
 
 app.add_middleware(
@@ -105,11 +105,11 @@ app.add_middleware(
     same_site="lax",
     https_only=HTTPS_ONLY_COOKIES,
     max_age=60 * 60 * 24 * 30,
-    domain=COOKIE_DOMAIN,  # ← يضمن أن الكوكيز تُكتَب لدومين sevor.net
+    domain=COOKIE_DOMAIN,  # ← ensures cookies are written for sevor.net
 )
 
 # -----------------------------------------------------------------------------
-# فرض التحويل إلى الدومين الأساسي (sevor.net) لمنع ضياع الجلسة
+# Enforce redirect to the primary domain (sevor.net) to prevent session loss
 # -----------------------------------------------------------------------------
 @app.middleware("http")
 async def force_primary_domain(request: Request, call_next):
@@ -118,7 +118,7 @@ async def force_primary_domain(request: Request, call_next):
         path = request.url.path
         primary = os.environ.get("COOKIE_DOMAIN", "sevor.net")
 
-        # ✅ تخطى التحويل إذا كان المسار Webhook Stripe
+        # ✅ Skip redirect if the path is a Stripe Webhook
         if path.startswith("/webhooks/"):
             return await call_next(request)
 
@@ -138,7 +138,7 @@ BASE_DIR = os.path.dirname(__file__)
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
-# اجعل مجلد الرفع موحّدًا على مستوى المشروع (خارج app/)
+# Make the uploads folder unified at the project level (outside app/)
 APP_ROOT = os.path.abspath(os.path.join(BASE_DIR, ".."))
 UPLOADS_DIR = os.path.join(APP_ROOT, "uploads")
 os.makedirs(UPLOADS_DIR, exist_ok=True)
@@ -150,7 +150,7 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 app.templates = templates
 
 def media_url(path: str | None) -> str:
-    """يُرجع رابط Cloudinary كما هو، أو يسبق المسار المحلي بـ '/'."""
+    """Returns the Cloudinary URL as-is, or prefixes a local path with '/'."""
     if not path:
         return ""
     p = str(path).strip()
@@ -161,15 +161,15 @@ def media_url(path: str | None) -> str:
 app.templates.env.filters["media_url"] = media_url
 
 # -----------------------------------------------------------------------------
-# قواعد البيانات
+# Database
 # -----------------------------------------------------------------------------
 Base.metadata.create_all(bind=engine)
 
 def ensure_sqlite_columns():
     """
-    هوت-فيكس أعمدة ناقصة عند استخدام SQLite فقط (يتجاهل Postgres):
-      - users.is_mod / users.is_deposit_manager (لصلاحيات المود و DM)
-      - users.is_support (موظف خدمة الزبائن)  ✅ جديد
+    Hot-fix missing columns when using SQLite only (ignored on Postgres):
+      - users.is_mod / users.is_deposit_manager (for mod and DM privileges)
+      - users.is_support (customer support agent)  ✅ New
       - deposit_evidences.uploader_id
       - reports.status / reports.tag / reports.updated_at
     """
@@ -189,7 +189,7 @@ def ensure_sqlite_columns():
                     conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_mod BOOLEAN NOT NULL DEFAULT 0;")
                 if "is_deposit_manager" not in ucols:
                     conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_deposit_manager BOOLEAN NOT NULL DEFAULT 0;")
-                if "is_support" not in ucols:  # ✅ جديد
+                if "is_support" not in ucols:  # ✅ New
                     conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_support BOOLEAN NOT NULL DEFAULT 0;")
             except Exception as e:
                 print(f"[WARN] ensure_sqlite_columns: users.* → {e}")
@@ -218,10 +218,10 @@ def ensure_sqlite_columns():
     except Exception as e:
         print(f"[WARN] ensure_sqlite_columns skipped/failed: {e}")
 
-# === جديد: تهيئة أعمدة users.is_mod / users.badge_admin / users.is_support على جميع المحركات
+# === New: initialize users.is_mod / users.badge_admin / users.is_support columns on all backends
 def ensure_users_columns():
     """
-    يضمن وجود users.is_mod و users.badge_admin و users.is_support على SQLite و Postgres.
+    Ensures users.is_mod, users.badge_admin, and users.is_support exist on SQLite and Postgres.
     """
     try:
         try:
@@ -236,29 +236,29 @@ def ensure_users_columns():
                     conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_mod BOOLEAN DEFAULT 0;")
                 if "badge_admin" not in cols:
                     conn.exec_driver_sql("ALTER TABLE users ADD COLUMN badge_admin BOOLEAN DEFAULT 0;")
-                if "is_support" not in cols:  # ✅ جديد
+                if "is_support" not in cols:  # ✅ New
                     conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_support BOOLEAN DEFAULT 0;")
             elif str(backend).startswith("postgres"):
                 conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_mod BOOLEAN DEFAULT false;")
                 conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS badge_admin BOOLEAN DEFAULT false;")
-                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_support BOOLEAN DEFAULT false;")  # ✅ جديد
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_support BOOLEAN DEFAULT false;")  # ✅ New
         print("[OK] ensure_users_columns(): users.is_mod / badge_admin / is_support ready")
     except Exception as e:
         print(f"[WARN] ensure_users_columns failed: {e}")
 
-# === جديد: تهيئة أعمدة support_tickets لتوافق CS/MOD/MD حتى لو العمود غير محدد في الموديل
+# === New: initialize support_tickets columns to support CS/MOD/MD even if the column is not defined in the model
 def ensure_support_ticket_columns():
     """
-    يضمن أعمدة support_tickets المستخدمة في استعلامات CS/MOD/MD:
-      - queue VARCHAR(10)      ← لتوجيه الطابور: cs / md / mod
+    Ensures support_tickets columns used by CS/MOD/MD:
+      - queue VARCHAR(10)      ← queue routing: cs / md / mod
       - last_from VARCHAR(10)  ← 'user' / 'agent'
       - last_msg_at TIMESTAMP
       - unread_for_user BOOLEAN
       - unread_for_agent BOOLEAN
-      - assigned_to_id INTEGER (FK لـ users.id)
+      - assigned_to_id INTEGER (FK to users.id)
       - resolved_at TIMESTAMP
       - updated_at TIMESTAMP
-    يعمل على SQLite و Postgres بأمان.
+    Works safely on both SQLite and Postgres.
     """
     try:
         try:
@@ -286,7 +286,7 @@ def ensure_support_ticket_columns():
                 if "updated_at" not in cols:
                     conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN updated_at TIMESTAMP;")
             elif str(backend).startswith("postgres"):
-                # Postgres: استخدم IF NOT EXISTS لكل عمود
+                # Postgres: use IF NOT EXISTS for each column
                 conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS queue VARCHAR(10);")
                 conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS last_from VARCHAR(10) NOT NULL DEFAULT 'user';")
                 conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS last_msg_at TIMESTAMP NULL;")
@@ -301,7 +301,7 @@ def ensure_support_ticket_columns():
 
 ensure_sqlite_columns()
 ensure_users_columns()
-ensure_support_ticket_columns()   # ⬅️ أصبح مُعرّفًا الآن
+ensure_support_ticket_columns()   # ⬅️ Now defined
 
 def seed_admin():
     db = SessionLocal()
@@ -324,12 +324,12 @@ def seed_admin():
         db.close()
 seed_admin()
 
-# إظهار حالة تفعيل المدفوعات (اختياري)
+# Show payouts enablement (optional)
 PAYOUTS_ENABLED = os.getenv("ENABLE_PAYOUTS", "0") == "1"
 print("[OK] payouts enabled via env" if PAYOUTS_ENABLED else "[INFO] payouts disabled (set ENABLE_PAYOUTS=1)")
 
 # -----------------------------------------------------------------------------
-# صور الواجهة (Hero + Top slider)
+# UI images (Hero + Top slider)
 # -----------------------------------------------------------------------------
 BANNERS_DIR = os.path.join(STATIC_DIR, "img", "banners")
 BANNERS_URL_PREFIX = "/static/img/banners"
@@ -376,7 +376,7 @@ def split_into_three_columns(urls: list[str]) -> list[list[str]]:
     return cols
 
 # -----------------------------------------------------------------------------
-# تسجيل الروترات
+# Register routers
 # -----------------------------------------------------------------------------
 app.include_router(auth_router)
 app.include_router(admin_router)
@@ -413,16 +413,16 @@ app.include_router(support_router)
 app.include_router(cs_routes.router)
 app.include_router(mod_routes.router)
 app.include_router(reviews_router)
-app.include_router(md_router)         # ⬅️ جديد
+app.include_router(md_router)         # ⬅️ New
 # -----------------------------------------------------------------------------
-# مسار قديم → تحويل إلى صفحة البلاغات الجديدة
+# Legacy path → redirect to the new reports page
 # -----------------------------------------------------------------------------
 @app.get("/mod/reports")
 def legacy_mod_reports_redirect():
     return RedirectResponse(url="/admin/reports", status_code=308)
 
 # -----------------------------------------------------------------------------
-# الصفحات العامة
+# Public pages
 # -----------------------------------------------------------------------------
 def _cat_code(cat) -> str:
     if isinstance(cat, dict):
@@ -531,7 +531,7 @@ def api_unread_count(request: Request, db: Session = Depends(get_db)):
     return JSONResponse({"count": unread_count(u["id"], db)})
 
 # -----------------------------------------------------------------------------
-# مزامنة أعلام المستخدم من القاعدة إلى الجلسة
+# Sync user flags from DB into session
 # -----------------------------------------------------------------------------
 @app.middleware("http")
 async def sync_user_flags(request: Request, call_next):
@@ -553,7 +553,7 @@ async def sync_user_flags(request: Request, call_next):
                             sess_user["is_mod"] = bool(getattr(db_user, "is_mod", False))
                         except Exception:
                             pass
-                        # ✅ جديد: مزامنة علم خدمة الزبائن
+                        # ✅ New: sync customer support flag
                         try:
                             sess_user["is_support"] = bool(getattr(db_user, "is_support", False))
                         except Exception:
@@ -580,7 +580,7 @@ async def sync_user_flags(request: Request, call_next):
     return response
 
 # -----------------------------------------------------------------------------
-# خدمات بسيطة
+# Simple services
 # -----------------------------------------------------------------------------
 @app.get("/healthz")
 def healthz():
@@ -598,4 +598,4 @@ def notifications_page(request: Request):
     u = request.session.get("user")
     if not u:
         return RedirectResponse(url="/login", status_code=303)
-    return templates.TemplateResponse("notifications.html", {"request": request, "session_user": u, "title": "الإشعارات"})
+    return templates.TemplateResponse("notifications.html", {"request": request, "session_user": u, "title": "Notifications"})

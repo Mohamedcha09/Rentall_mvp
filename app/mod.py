@@ -20,14 +20,14 @@ def _require_login(request: Request):
     return request.session.get("user")
 
 def _is_admin(sess):
-    """تحقق إن كان المستخدم أدمن"""
+    """Check if the user is admin"""
     if not sess:
         return False
     return (sess.get("role") == "admin") or bool(sess.get("is_admin"))
 
 def _ensure_mod_session(db: Session, request: Request):
     """
-    مزامنة علم is_mod داخل الجلسة إذا تغيّر في قاعدة البيانات.
+    Sync the is_mod flag inside the session if it changed in the database.
     """
     sess = request.session.get("user") or {}
     uid = sess.get("id")
@@ -44,7 +44,7 @@ def _ensure_mod_session(db: Session, request: Request):
 
 
 # ---------------------------
-# إغلاق تلقائي بعد 24h من عدم الرد من العميل
+# Auto-close after 24h of no customer reply
 # ---------------------------
 @router.get("/cron/auto_close_24h")
 def auto_close_24h(request: Request, db: Session = Depends(get_db)):
@@ -73,7 +73,7 @@ def auto_close_24h(request: Request, db: Session = Depends(get_db)):
             ticket_id=t.id,
             sender_id=t.assigned_to_id or 0,
             sender_role="system",
-            body=f"تم إغلاق التذكرة تلقائيًا لعدم ردّ العميل خلال 24 ساعة.",
+            body=f"The ticket was automatically closed due to no customer reply within 24 hours.",
             created_at=now,
         )
         db.add(msg)
@@ -82,8 +82,8 @@ def auto_close_24h(request: Request, db: Session = Depends(get_db)):
             push_notification(
                 db,
                 t.user_id,
-                "⏱️ تم إغلاق التذكرة تلقائيًا",
-                f"تذكرتك #{t.id} أغلقت تلقائيًا بعد 24 ساعة دون ردّ.",
+                "⏱️ Ticket auto-closed",
+                f"Your ticket #{t.id} was automatically closed after 24 hours without a reply.",
                 url=f"/support/ticket/{t.id}",
                 kind="support",
             )
@@ -96,7 +96,7 @@ def auto_close_24h(request: Request, db: Session = Depends(get_db)):
 
 
 # ---------------------------
-# Inbox (قائمة التذاكر للـ MOD)
+# Inbox (tickets list for MOD)
 # ---------------------------
 @router.get("/inbox")
 def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = None):
@@ -111,7 +111,7 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
 
     base_q = db.query(SupportTicket).filter(text("LOWER(COALESCE(queue, 'cs')) = 'mod'"))
 
-    # ✅ جديدة من CS (تستثني المحوَّلة من أنظمة أخرى)
+    # ✅ New from CS (excludes those transferred from other systems)
     new_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
@@ -121,7 +121,7 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
     )
 
-    # ✅ محوّلة من MD (غير معيّنة وآخر حدث system_md)
+    # ✅ Transferred from MD (unassigned and last event is system_md)
     transferred_from_md_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
@@ -131,7 +131,7 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
     )
 
-    # قيد المراجعة: مفتوحة ومُعيّنة
+    # In review: open and assigned
     in_review_q = (
         base_q.filter(
             SupportTicket.status == "open",
@@ -140,7 +140,7 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
     )
 
-    # منتهية
+    # Resolved
     resolved_q = base_q.filter(SupportTicket.status == "resolved")
     if not is_admin:
         resolved_q = resolved_q.filter(SupportTicket.assigned_to_id == u_mod["id"])
@@ -148,7 +148,7 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
 
     data = {
         "new": new_q.all(),
-        "from_md": transferred_from_md_q.all(),   # 👈 تظهر هنا المحوّلة من MD
+        "from_md": transferred_from_md_q.all(),   # 👈 shows those transferred from MD here
         "in_review": in_review_q.all(),
         "resolved": resolved_q.all(),
         "focus_tid": tid or 0,
@@ -163,7 +163,7 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
 
 
 # ---------------------------
-# عرض تذكرة MOD
+# View a MOD ticket
 # ---------------------------
 @router.get("/ticket/{tid}")
 def mod_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
@@ -192,12 +192,12 @@ def mod_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
 
     return templates.TemplateResponse(
         "mod_ticket.html",
-        {"request": request, "session_user": u_mod, "ticket": t, "msgs": t.messages, "title": f"تذكرة #{t.id} (MOD)"},
+        {"request": request, "session_user": u_mod, "ticket": t, "msgs": t.messages, "title": f"Ticket #{t.id} (MOD)"},
     )
 
 
 # ---------------------------
-# تولّي التذكرة (Assign to me)
+# Take over the ticket (Assign to me)
 # ---------------------------
 @router.post("/tickets/{ticket_id}/assign_self")
 def mod_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_db)):
@@ -227,13 +227,13 @@ def mod_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_
     t.updated_at = datetime.utcnow()
     t.unread_for_agent = False
 
-    mod_name = (request.session["user"].get("first_name") or "").strip() or "مدقّق المحتوى"
+    mod_name = (request.session["user"].get("first_name") or "").strip() or "Content Moderator"
     try:
         push_notification(
             db,
             t.user_id,
-            "📬 تم فتح تذكرتك",
-            f"تم فتح الرسالة من طرف {mod_name}",
+            "📬 Your ticket was opened",
+            f"Your message was opened by {mod_name}",
             url=f"/support/ticket/{t.id}",
             kind="support",
         )
@@ -245,7 +245,7 @@ def mod_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_
 
 
 # ---------------------------
-# ردّ المدقق على التذكرة
+# Moderator reply to the ticket
 # ---------------------------
 @router.post("/ticket/{tid}/reply")
 def mod_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), body: str = Form("")):
@@ -275,7 +275,7 @@ def mod_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), 
         ticket_id=t.id,
         sender_id=u_mod["id"],
         sender_role="agent",
-        body=(body or "").strip() or "(بدون نص)",
+        body=(body or "").strip() or "(No text)",
         created_at=now,
     )
     db.add(msg)
@@ -290,12 +290,12 @@ def mod_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), 
     t.unread_for_agent = False
 
     try:
-        mod_name = (request.session["user"].get("first_name") or "").strip() or "مدقّق المحتوى"
+        mod_name = (request.session["user"].get("first_name") or "").strip() or "Content Moderator"
         push_notification(
             db,
             t.user_id,
-            "💬 رد من فريق المراجعة (MOD)",
-            f"ردّ عليك {mod_name} في تذكرتك #{t.id}",
+            "💬 Reply from Review Team (MOD)",
+            f"{mod_name} replied to your ticket #{t.id}",
             url=f"/support/ticket/{t.id}",
             kind="support",
         )
@@ -307,7 +307,7 @@ def mod_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), 
 
 
 # ---------------------------
-# إغلاق التذكرة (نهائي)
+# Resolve the ticket (final)
 # ---------------------------
 @router.post("/tickets/{ticket_id}/resolve")
 def mod_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
@@ -330,7 +330,7 @@ def mod_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db))
         return RedirectResponse("/mod/inbox", status_code=303)
 
     now = datetime.utcnow()
-    mod_name = (request.session["user"].get("first_name") or "").strip() or "مدقّق المحتوى"
+    mod_name = (request.session["user"].get("first_name") or "").strip() or "Content Moderator"
 
     t.status = "resolved"
     t.resolved_at = now
@@ -342,7 +342,7 @@ def mod_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db))
         ticket_id=t.id,
         sender_id=u_mod["id"],
         sender_role="agent",
-        body=f"تم إغلاق التذكرة بواسطة {mod_name} (MOD) في {now.strftime('%Y-%m-%d %H:%M')}",
+        body=f"The ticket was closed by {mod_name} (MOD) on {now.strftime('%Y-%m-%d %H:%M')}",
         created_at=now,
     )
     db.add(close_msg)
@@ -352,7 +352,7 @@ def mod_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db))
         push_notification(
             db,
             t.user_id,
-            "✅ تم حل تذكرتك (MOD)",
+            "✅ Your ticket has been resolved (MOD)",
             f"#{t.id} — {t.subject or ''}".strip(),
             url=f"/support/ticket/{t.id}",
             kind="support",
@@ -365,7 +365,7 @@ def mod_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db))
 
 
 # ---------------------------
-# تحويل التذكرة إلى مدير الوديعة (MD)
+# Transfer the ticket to Deposit Manager (MD)
 # ---------------------------
 @router.post("/tickets/{ticket_id}/transfer_to_md")
 def mod_transfer_to_md(ticket_id: int, request: Request, db: Session = Depends(get_db)):
@@ -383,13 +383,13 @@ def mod_transfer_to_md(ticket_id: int, request: Request, db: Session = Depends(g
         return RedirectResponse(f"/mod/ticket/{ticket_id}", status_code=303)
 
     now = datetime.utcnow()
-    # 1) انقل التذكرة إلى md وسجّل رسالة system_mod (اتجاه: MOD → MD)
+    # 1) Move the ticket to md and record a system_mod message (direction: MOD → MD)
     t.queue = "md"
     t.assigned_to_id = None
     t.status = "open"
     t.updated_at = now
     t.last_msg_at = now
-    t.last_from = "system_mod"  # ⬅️ مهم: كي تظهر في قسم "تم تحويلها من MOD" عند MD
+    t.last_from = "system_mod"  # ⬅️ Important: so it appears under "Transferred from MOD" for MD
     t.unread_for_agent = False
     t.unread_for_user = True
 
@@ -397,20 +397,20 @@ def mod_transfer_to_md(ticket_id: int, request: Request, db: Session = Depends(g
         ticket_id=t.id,
         sender_id=u_mod["id"],
         sender_role="system",
-        body="[XFER_MOD_TO_MD] 🔁 تم تحويل التذكرة إلى إدارة الودائع (MD) لمتابعة الحالة.",
+        body="[XFER_MOD_TO_MD] 🔁 The ticket has been transferred to Deposit Management (MD) for further handling.",
         created_at=now,
     ))
 
-    # 2) ثبّت التحويل أولًا
+    # 2) Persist the transfer first
     db.commit()
 
-    # 3) إشعار العميل
+    # 3) Notify the customer
     try:
         push_notification(
             db,
             t.user_id,
-            "🔁 تم تحويل تذكرتك",
-            f"تذكرتك #{t.id} تم تحويلها إلى إدارة الودائع (MD).",
+            "🔁 Your ticket was transferred",
+            f"Your ticket #{t.id} has been transferred to Deposit Management (MD).",
             url=f"/support/ticket/{t.id}",
             kind="support",
         )
@@ -418,15 +418,15 @@ def mod_transfer_to_md(ticket_id: int, request: Request, db: Session = Depends(g
     except Exception:
         db.rollback()
 
-    # 4) إشعار كل أعضاء MD
+    # 4) Notify all MD members
     try:
         md_users = db.query(User.id).filter(User.is_deposit_manager.is_(True)).all()
         for (md_id,) in md_users:
             push_notification(
                 db,
                 md_id,
-                "📩 تذكرة جديدة من MOD",
-                f"توجد تذكرة محوّلة من فريق المراجعة (MOD): #{t.id}",
+                "📩 New ticket from MOD",
+                f"There is a ticket transferred from the Review Team (MOD): #{t.id}",
                 url=f"/md/ticket/{t.id}",
                 kind="support",
             )

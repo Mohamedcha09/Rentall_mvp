@@ -20,7 +20,7 @@ _IMG_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 # Helpers: serialization
 # ==========================
 def _serialize(i: Item) -> dict:
-    """حوّل صف Item إلى dict آمن للقالب."""
+    """Convert an Item row into a template-safe dict."""
     return {
         "id": getattr(i, "id", None),
         "title": getattr(i, "title", "") or "",
@@ -36,7 +36,7 @@ def _serialize(i: Item) -> dict:
 # Geo / City filter
 # ==========================
 def _apply_city_or_gps_filter(qs, city: str | None, lat: float | None, lng: float | None, radius_km: float | None):
-    """طبّق فلتر مدينة أو نصف قطر (Haversine/acos تقريبية)."""
+    """Apply a city filter or a radius filter (approximate Haversine/acos)."""
     if lat is not None and lng is not None and radius_km:
         distance_expr = EARTH_RADIUS_KM * func.acos(
             func.cos(func.radians(lat)) *
@@ -55,9 +55,9 @@ def _apply_city_or_gps_filter(qs, city: str | None, lat: float | None, lng: floa
     return qs
 
 
-# فلترة مرنة حسب التصنيف (تدعم key أو label أو مطابقة جزئية قديمة)
+# Flexible category filtering (supports key or label or legacy partial match)
 def _apply_category_filter(qs, code: str, label: str):
-    # لو عندك البيانات مخزنة بالـ key (vehicle) أو بالـ label (مركبات) أو مشتقة منها
+    # Whether the data is stored by key (vehicle) or by label (Vehicles) or derived
     return qs.filter(
         or_(
             Item.category == code,
@@ -72,14 +72,14 @@ def _apply_category_filter(qs, code: str, label: str):
 # Static images helpers
 # ==========================
 def _static_root() -> Path:
-    # مجلد static داخل app/
+    # static folder inside app/
     return Path(__file__).resolve().parent / "static"
 
 
 def _list_static_images_try(paths: list[str]) -> list[str]:
     """
-    يحاول قراءة الصور من عدة مسارات داخل /static.
-    يرجّع روابط مثل /static/... مع URL-encoding.
+    Try to read images from several paths under /static.
+    Returns URLs like /static/... with URL-encoding.
     """
     base = _static_root()
     urls: list[str] = []
@@ -96,14 +96,14 @@ def _list_static_images_try(paths: list[str]) -> list[str]:
 
 
 def _pick_banners_from_static(max_count: int = 8) -> list[str]:
-    # يدعم: /static/img/banners و /static/banners
+    # Supports: /static/img/banners and /static/banners
     candidates = _list_static_images_try(["img/banners", "banners"])
     random.shuffle(candidates)
     return candidates[:max_count]
 
 
 def _pick_topstrip_from_static(limit_per_col: int = 12) -> list[list[str]]:
-    # يدعم: /static/img/top_slider | /static/img/topstrip | /static/top_slider | /static/topstrip
+    # Supports: /static/img/top_slider | /static/img/topstrip | /static/top_slider | /static/topstrip
     imgs = _list_static_images_try(["img/top_slider", "img/topstrip", "top_slider", "topstrip"])
     cols = [[], [], []]
     if not imgs:
@@ -143,11 +143,11 @@ def home_page(
     radius_km: float | None = Query(None),
     db: Session = Depends(get_db),
 ):
-    # alias للباراميتر
+    # alias for the parameter
     if lng is None and lon is not None:
         lng = lon
 
-    # قراءة الكوكيز لو الباراميترات ناقصة
+    # Read cookies if parameters are missing
     try:
         if not city:
             city = request.cookies.get("city") or None
@@ -169,14 +169,14 @@ def home_page(
     filtered_q = _apply_city_or_gps_filter(base_q, city, lat, lng, radius_km)
     filtering_active = (lat is not None and lng is not None and radius_km) or (city not in (None, ""))
 
-    # سلايدر "بالقرب منك / شائع"
+    # Slider “Near you / Popular”
     if filtering_active:
         nearby_rows = filtered_q.order_by(Item.created_at.desc()).limit(20).all()
     else:
         nearby_rows = base_q.order_by(func.random()).limit(20).all()
     nearby_items = [_serialize(i) for i in nearby_rows]
 
-    # سلايدر لكل تصنيف — (تصحيح مهم: CATEGORIES قائمة قواميس)
+    # Slider for each category — (Important fix: CATEGORIES is a list of dicts)
     items_by_category: dict[str, list[dict]] = {}
     for cat in CATEGORIES:
         code = cat.get("key", "")
@@ -185,10 +185,10 @@ def home_page(
             continue
 
         q_cat = base_q
-        # طبّق فلترة الموقع إذا موجودة
+        # Apply location filter if present
         if filtering_active:
             q_cat = _apply_city_or_gps_filter(q_cat, city, lat, lng, radius_km)
-        # فلترة مرنة على التصنيف
+        # Flexible category filter
         q_cat = _apply_category_filter(q_cat, code, label)
 
         rows = q_cat.order_by(func.random()).limit(12).all()
@@ -196,31 +196,31 @@ def home_page(
         if lst:
             items_by_category[code] = lst
 
-    # شبكة "كل العناصر"
+    # Grid “All items”
     if filtering_active:
         all_rows = filtered_q.order_by(Item.created_at.desc()).limit(60).all()
     else:
         all_rows = base_q.order_by(func.random()).limit(60).all()
     all_items = [_serialize(i) for i in all_rows]
 
-    # الميديا: بانرز و Top-Strip من static
+    # Media: banners and top-strip from static
     banners = _pick_banners_from_static(max_count=8)
     top_strip_cols = _pick_topstrip_from_static(limit_per_col=12)
 
-    # fallback لو فاضيين
+    # Fallback if both are empty
     if not banners and all(len(c) == 0 for c in top_strip_cols):
         fb_banners, fb_cols = _fallback_media_from_items(db)
         banners = fb_banners or banners
         top_strip_cols = fb_cols or top_strip_cols
 
-    # لو ما لقينا بانرز إطلاقًا، خذ من صور العناصر
+    # If we found no banners at all, take from item images
     if not banners:
         candidates = nearby_items[:5] or all_items[:5]
         banners = [i["image_path"] for i in candidates if i.get("image_path")]
 
     ctx = {
         "request": request,
-        "title": "الرئيسية",
+        "title": "Home",
         "nearby_items": nearby_items,
         "items_by_category": items_by_category,
         "all_items": all_items,
@@ -230,12 +230,12 @@ def home_page(
         "lat": lat,
         "lng": lng,
         "radius_km": radius_km or 25.0,
-        "category_label": _category_label,  # متاحة في القالب
+        "category_label": _category_label,  # available in template
         "session_user": getattr(request, "session", {}).get("user") if hasattr(request, "session") else None,
         "favorites_ids": [],
     }
 
-    # استخدم templates المسجّلة على التطبيق لو موجودة
+    # Use app-registered templates if available
     templates = getattr(request.app, "templates", None)
     if templates:
         try:
@@ -244,7 +244,7 @@ def home_page(
             pass
         return templates.TemplateResponse("home.html", ctx)
 
-    # لو ما فيه templates على app، أنشئ واحدة محليًا
+    # If the app has no templates attribute, create one locally
     from starlette.templating import Jinja2Templates
     templates = Jinja2Templates(directory="app/templates")
     templates.env.globals["category_label"] = _category_label

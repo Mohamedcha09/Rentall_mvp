@@ -81,7 +81,7 @@ def _upload_doc_cloudinary(fileobj: UploadFile, *, folder: str = "sevor/ids") ->
 
 router = APIRouter()
 
-# ======================== صفحة ملفّي ========================
+# ======================== My Profile Page ========================
 @router.get("/profile")
 def profile(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user")
@@ -94,14 +94,14 @@ def profile(request: Request, db: Session = Depends(get_db)):
 
     db.refresh(me)
 
-    # مزامنة الجلسة مع الأفاتار من القاعدة (حتى لا تظهر "1")
+    # Sync session with avatar from DB (so “1” doesn’t show)
     if me.avatar_path:
         sess = request.session.get("user") or {}
         if sess.get("avatar_path") != me.avatar_path:
             sess["avatar_path"] = me.avatar_path
             request.session["user"] = sess
 
-    # إحصائيات العناصر
+    # Item statistics
     items_count = db.query(Item).filter(Item.owner_id == me.id).count()
     items_active_count = (
         db.query(Item)
@@ -109,7 +109,7 @@ def profile(request: Request, db: Session = Depends(get_db)):
         .count()
     )
 
-    # التقييمات
+    # Ratings
     ratings_q = db.query(Rating).filter(Rating.rated_user_id == me.id)
     ratings_count = ratings_q.count()
     avg_stars_val = db.query(func.avg(Rating.stars)).filter(Rating.rated_user_id == me.id).scalar()
@@ -124,7 +124,7 @@ def profile(request: Request, db: Session = Depends(get_db)):
                 "stars": r.stars,
                 "comment": r.comment or "",
                 "created_at": r.created_at,
-                "rater_name": f"{(rater.first_name or '').strip()} {(rater.last_name or '').strip()}".strip() if rater else "مستخدم",
+                "rater_name": f"{(rater.first_name or '').strip()} {(rater.last_name or '').strip()}".strip() if rater else "User",
             }
         )
 
@@ -136,7 +136,7 @@ def profile(request: Request, db: Session = Depends(get_db)):
         "profile.html",
         {
             "request": request,
-            "title": "صفحتي",
+            "title": "My Profile",
             "session_user": u,
             "user": me,
             "badges": my_badges,
@@ -150,7 +150,7 @@ def profile(request: Request, db: Session = Depends(get_db)):
         },
     )
 
-# ======================== صفحة عامة لمستخدم ========================
+# ======================== Public User Page ========================
 @router.get("/u/{user_id}")
 def public_profile(user_id: int, request: Request, db: Session = Depends(get_db)):
     user: User | None = db.get(User, user_id)
@@ -187,7 +187,7 @@ def public_profile(user_id: int, request: Request, db: Session = Depends(get_db)
             "stars": r.stars,
             "comment": r.comment or "",
             "created_at": r.created_at,
-            "rater_name": f"{(rater.first_name or '').strip()} {(rater.last_name or '').strip()}".strip() if rater else "مستخدم",
+            "rater_name": f"{(rater.first_name or '').strip()} {(rater.last_name or '').strip()}".strip() if rater else "User",
         })
 
     ratings_count = len(ratings)
@@ -210,7 +210,7 @@ def public_profile(user_id: int, request: Request, db: Session = Depends(get_db)
         }
     )
 
-# ========================== رفع/تصحيح الوثائق ==========================
+# ========================== Upload/Fix Documents ==========================
 @router.get("/profile/docs")
 def profile_docs_get(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user")
@@ -219,14 +219,14 @@ def profile_docs_get(request: Request, db: Session = Depends(get_db)):
     user = db.get(User, u["id"])
     return request.app.templates.TemplateResponse(
         "profile_docs.html",
-        {"request": request, "title": "تصحيح بيانات التحقق", "user": user, "session_user": u}
+        {"request": request, "title": "Verification Correction", "user": user, "session_user": u}
     )
 
 @router.post("/profile/docs")
 def profile_docs_post(
     request: Request,
     db: Session = Depends(get_db),
-    action: str = Form(...),              # "avatar" أو "documents"
+    action: str = Form(...),              # "avatar" or "documents"
     avatar: UploadFile = File(None),
     doc_type: str = Form(None),
     doc_country: str = Form(None),
@@ -252,14 +252,14 @@ def profile_docs_post(
             user.avatar_path = new_url
             db.commit()
 
-            # تحديث الجلسة فورًا ليظهر الأفاتار الجديد في الواجهة
+            # Update session immediately so the new avatar appears in the UI
             sess = request.session.get("user") or {}
             sess["avatar_path"] = new_url
             request.session["user"] = sess
 
-            message = "تم تحديث صورة الحساب بنجاح."
+            message = "Profile picture updated successfully."
         except Exception:
-            message = "تعذّر رفع الصورة. تأكد من الملف وحاول مرة أخرى."
+            message = "Failed to upload the image. Check the file and try again."
 
     elif action == "documents":
         doc = user.documents[0] if user.documents else Document(user_id=user.id)
@@ -289,14 +289,14 @@ def profile_docs_post(
             db.add(doc)
         db.commit()
 
-        message = "تم حفظ الوثائق وإرسالها للمراجعة."
+        message = "Documents saved and sent for review."
 
     user = db.get(User, u["id"])
     return request.app.templates.TemplateResponse(
         "profile_docs.html",
         {
             "request": request,
-            "title": "تصحيح بيانات التحقق",
+            "title": "Verification Correction",
             "user": user,
             "session_user": u,
             "message": message,

@@ -1,22 +1,22 @@
 # app/utils.py
 from passlib.context import CryptContext
 
-# ندعم عدة مخططات حتى يستطيع verify التعامل مع هاشات قديمة
-# ونضبط الافتراضي على bcrypt_sha256 (يتفادى حد 72 بايت تلقائياً)
+# Support multiple schemes so verify can handle legacy hashes
+# Default to bcrypt_sha256 (automatically avoids the 72-byte limit)
 pwd_context = CryptContext(
     schemes=["bcrypt_sha256", "bcrypt", "pbkdf2_sha256"],
     default="bcrypt_sha256",
     deprecated="auto",
 )
 
-# حدود اختيارية لإدخال كلمة السر من الفورم
+# Optional limits for password input from forms
 BCRYPT_MAX_BYTES = 72
 MAX_FORM_PASSWORD_CHARS = 128
 
 def _truncate_for_bcrypt(password: str) -> str:
     """
-    قص احتياطي فقط إذا تم التحقق/الهاش عبر bcrypt التقليدي.
-    bcrypt_sha256 لا يحتاج هذا، لكن لن يضر.
+    Fallback truncation only if verification/hashing uses classic bcrypt.
+    bcrypt_sha256 doesn’t need this, but it won’t hurt.
     """
     if password is None:
         return ""
@@ -27,41 +27,41 @@ def _truncate_for_bcrypt(password: str) -> str:
 
 def hash_password(password: str) -> str:
     """
-    إنشاء هاش جديد باستخدام default في الـ CryptContext (bcrypt_sha256).
+    Create a new hash using the CryptContext default (bcrypt_sha256).
     """
     safe = password or ""
     try:
         return pwd_context.hash(safe)
     except Exception:
-        # fallback نادر في بيئات غريبة
+        # Rare fallback in unusual environments
         return pwd_context.hash(_truncate_for_bcrypt(safe))
 
 def verify_password(plain: str, hashed: str) -> bool:
     """
-    التحقق يدعم bcrypt_sha256 و bcrypt و pbkdf2_sha256 تلقائياً.
+    Verification automatically supports bcrypt_sha256, bcrypt, and pbkdf2_sha256.
     """
     try:
-        # المحاولة مباشرة (لو كان الهاش bcrypt_sha256 أو pbkdf2_sha256)
+        # Try directly (if the hash is bcrypt_sha256 or pbkdf2_sha256)
         if pwd_context.verify(plain or "", hashed or ""):
             return True
-        # محاولة ثانية مقصوصة في حال كان الهاش bcrypt تقليدي
+        # Second attempt with truncation in case the hash is classic bcrypt
         return pwd_context.verify(_truncate_for_bcrypt(plain or ""), hashed or "")
     except Exception:
         return False
 
-# ===== التصنيفات =====
+# ===== Categories =====
 CATEGORIES = [
-    {"key": "vehicle",     "label": "مركبات"},
-    {"key": "housing",     "label": "سكن وإقامات"},
-    {"key": "electronics", "label": "إلكترونيات"},
-    {"key": "furniture",   "label": "أثاث"},
-    {"key": "clothing",    "label": "ملابس"},
-    {"key": "tools",       "label": "معدات وأدوات"},
-    {"key": "other",       "label": "أخرى"},
+    {"key": "vehicle",     "label": "Vehicles"},
+    {"key": "housing",     "label": "Housing & Stays"},
+    {"key": "electronics", "label": "Electronics"},
+    {"key": "furniture",   "label": "Furniture"},
+    {"key": "clothing",    "label": "Clothing"},
+    {"key": "tools",       "label": "Tools & Equipment"},
+    {"key": "other",       "label": "Other"},
 ]
 
 def category_label(key: str) -> str:
     for c in CATEGORIES:
         if c["key"] == key:
             return c["label"]
-    return "أخرى"
+    return "Other"

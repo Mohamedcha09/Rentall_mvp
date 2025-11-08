@@ -13,10 +13,10 @@ from .database import get_db
 from .models import Booking, Item, User
 from .notifications_api import push_notification, notify_admins
 
-# ===== إضافة: خدمة بريد موحّدة (HTML) + سقوط نصي =====
+# ===== Addition: Unified email service (HTML) + text fallback =====
 BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
 try:
-    # ستتوفر لاحقًا في app/emailer.py
+    # Will be available later in app/emailer.py
     from .emailer import send_email as _templated_send_email  # (to, subject, html_body, text_body=None, ...)
 except Exception:
     _templated_send_email = None
@@ -32,8 +32,8 @@ def _strip_html(html: str) -> str:
         return html
 
 def send_email(to_email: str, subject: str, html_body: str, text_body: str | None = None) -> bool:
-    """يحاول emailer.send_email ثم يسقط لإرسال نصي عبر SMTP test_email.py لديك (إن مُعد)؛
-       هنا نكتفي بالمحاولة عبر emailer فقط (fallback آمن بصمت)."""
+    """Try emailer.send_email then fall back to plain text via your SMTP test_email.py (if configured);
+       here we only attempt via emailer (silent safe fallback)."""
     try:
         if _templated_send_email:
             ok = bool(_templated_send_email(to_email, subject, html_body, text_body=text_body))
@@ -41,19 +41,19 @@ def send_email(to_email: str, subject: str, html_body: str, text_body: str | Non
                 return True
     except Exception:
         pass
-    # سقوط صامت (بدون SMTP خام هنا كي لا نكرر الكود) — لن يكسر التدفق.
+    # Silent fallback (no raw SMTP here to avoid duplicated code) — will not break the flow.
     return False
 
 # ================= Stripe Config =================
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")  # sk_test_... / sk_live_...
 
-# ⚠️ حدّد رابط موقعك في ENV تحت SITE_URL (بدون / في النهاية)
+# ⚠️ Set your site link in ENV under SITE_URL (no trailing /)
 SITE_URL = (os.getenv("SITE_URL", "http://localhost:8000") or "").rstrip("/")
 
-# نجعل CAD الافتراضي لضمان التطابق مع بقية النظام
+# Make CAD the default to match the rest of the system
 CURRENCY = (os.getenv("CURRENCY", "cad") or "cad").lower()
 
-# نسبة عمولة المنصّة (اختياري)
+# Platform fee percentage (optional)
 PLATFORM_FEE_PCT = int(os.getenv("PLATFORM_FEE_PCT", "0"))
 
 if not stripe.api_key:
@@ -82,14 +82,14 @@ def flow_redirect(bid: int) -> RedirectResponse:
     return RedirectResponse(url=f"/bookings/flow/{bid}", status_code=303)
 
 def can_manage_deposits(u: Optional[User]) -> bool:
-    """ Admin أو من لديه is_deposit_manager=True """
+    """ Admin or has is_deposit_manager=True """
     if not u:
         return False
     if (getattr(u, "role", "") or "").lower() == "admin":
         return True
     return bool(getattr(u, "is_deposit_manager", False))
 
-# توحيد قراءة/كتابة معرّف تفويض الوديعة (PI)
+# Unify reading/writing the deposit authorization identifier (PI)
 def _get_deposit_pi_id(bk: Booking) -> Optional[str]:
     return (
         getattr(bk, "deposit_hold_intent_id", None)
@@ -106,7 +106,7 @@ def _set_deposit_pi_id(bk: Booking, pi_id: Optional[str]) -> None:
     except Exception:
         pass
 
-# ====== Helpers إضافية للفواتير ======
+# ====== Additional helpers for invoices ======
 def _fmt_money_cents(amount_cents: int, currency: str | None = None) -> str:
     try:
         unit = (currency or CURRENCY or "cad").upper()
@@ -137,43 +137,43 @@ def _compose_invoice_html(
     charge_id: str | None,
     when: datetime,
 ) -> tuple[str, str]:
-    """يرجع (html, text)."""
+    """Returns (html, text)."""
     item_title = getattr(item, "title", "") or "Item"
     renter_name = (getattr(renter, "first_name", "") or "").strip() or "Customer"
     order_dt = when.strftime("%Y-%m-%d %H:%M UTC")
     booking_url = f"{SITE_URL}/bookings/flow/{bk.id}"
     html = f"""
     <div style="font-family:Arial,Helvetica,sans-serif;line-height:1.6">
-      <h3>إيصال الدفع — حجز #{bk.id}</h3>
-      <p>مرحبًا {renter_name},</p>
-      <p>تم تسجيل دفعتك بنجاح.</p>
+      <h3>Payment Receipt — Booking #{bk.id}</h3>
+      <p>Hello {renter_name},</p>
+      <p>Your payment has been recorded successfully.</p>
       <table style="border-collapse:collapse;min-width:320px">
-        <tr><td style="padding:4px 8px"><b>العنصر</b></td><td style="padding:4px 8px">{item_title}</td></tr>
-        <tr><td style="padding:4px 8px"><b>رقم الحجز</b></td><td style="padding:4px 8px">#{bk.id}</td></tr>
-        <tr><td style="padding:4px 8px"><b>التاريخ</b></td><td style="padding:4px 8px">{order_dt}</td></tr>
-        <tr><td style="padding:4px 8px"><b>المبلغ</b></td><td style="padding:4px 8px">{amount_txt}</td></tr>
-        <tr><td style="padding:4px 8px"><b>العملة</b></td><td style="padding:4px 8px">{currency.upper()}</td></tr>
+        <tr><td style="padding:4px 8px"><b>Item</b></td><td style="padding:4px 8px">{item_title}</td></tr>
+        <tr><td style="padding:4px 8px"><b>Booking Number</b></td><td style="padding:4px 8px">#{bk.id}</td></tr>
+        <tr><td style="padding:4px 8px"><b>Date</b></td><td style="padding:4px 8px">{order_dt}</td></tr>
+        <tr><td style="padding:4px 8px"><b>Amount</b></td><td style="padding:4px 8px">{amount_txt}</td></tr>
+        <tr><td style="padding:4px 8px"><b>Currency</b></td><td style="padding:4px 8px">{currency.upper()}</td></tr>
         <tr><td style="padding:4px 8px"><b>PaymentIntent</b></td><td style="padding:4px 8px">{pi_id or "-"}</td></tr>
         <tr><td style="padding:4px 8px"><b>Charge</b></td><td style="padding:4px 8px">{charge_id or "-"}</td></tr>
       </table>
       <p style="margin-top:12px">
-        يمكنك متابعة الحجز من هنا: <a href="{booking_url}">{booking_url}</a>
+        You can follow the booking here: <a href="{booking_url}">{booking_url}</a>
       </p>
-      <p style="color:#888;font-size:12px">هذه الرسالة للتأكيد ولا تتطلب أي إجراء.</p>
+      <p style="color:#888;font-size:12px">This message is for confirmation and requires no action.</p>
     </div>
     """
     text = (
-        f"إيصال الدفع — حجز #{bk.id}\n\n"
-        f"مرحبًا {renter_name},\n"
-        f"تم تسجيل دفعتك بنجاح.\n\n"
-        f"العنصر: {item_title}\n"
-        f"رقم الحجز: #{bk.id}\n"
-        f"التاريخ: {order_dt}\n"
-        f"المبلغ: {amount_txt}\n"
-        f"العملة: {currency.upper()}\n"
+        f"Payment Receipt — Booking #{bk.id}\n\n"
+        f"Hello {renter_name},\n"
+        f"Your payment has been recorded successfully.\n\n"
+        f"Item: {item_title}\n"
+        f"Booking Number: #{bk.id}\n"
+        f"Date: {order_dt}\n"
+        f"Amount: {amount_txt}\n"
+        f"Currency: {currency.upper()}\n"
         f"PaymentIntent: {pi_id or '-'}\n"
         f"Charge: {charge_id or '-'}\n\n"
-        f"رابط الحجز: {booking_url}\n"
+        f"Booking link: {booking_url}\n"
     )
     return html, text
 
@@ -188,10 +188,10 @@ def start_checkout_all(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    إنشاء Checkout Session واحدة تشمل:
-    - مبلغ الإيجار (يذهب إلى المالك عبر destination charge)
-    - الوديعة (تدخل ضمن نفس الـ PaymentIntent وتُعتبر محجوزة لدينا)
-    نعلّم الـ PI في الويبهوك بقيمة metadata=all.
+    Create a single Checkout Session that includes:
+    - Rent amount (goes to owner via destination charge)
+    - Deposit (enters the same PaymentIntent and is considered held by us)
+    We mark the PI in the webhook with metadata=all.
     """
     require_auth(user)
     bk = require_booking(db, booking_id)
@@ -214,7 +214,7 @@ def start_checkout_all(
 
     app_fee_cents = (rent_cents * PLATFORM_FEE_PCT) // 100 if PLATFORM_FEE_PCT > 0 else 0
 
-    # نبني payment_intent_data بدون None
+    # Build payment_intent_data without None
     pi_data = {
         "metadata": {"kind": "all", "booking_id": str(bk.id)},
         "transfer_data": {"destination": owner.stripe_account_id},
@@ -264,9 +264,9 @@ def connect_start(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    يبدأ إنشاء/إكمال حساب Stripe Connect للمالك.
-    - إن لم يوجد stripe_account_id ننشئ Account (Express).
-    - ننشئ AccountLink للتحويل إلى صفحة Stripe.
+    Starts creating/completing the owner's Stripe Connect account.
+    - If stripe_account_id doesn't exist, create Account (Express).
+    - Create AccountLink to redirect to Stripe's page.
     """
     require_auth(user)
 
@@ -297,7 +297,7 @@ def connect_status(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    يجلب حالة حساب المالك من Stripe ويحدّث payouts_enabled في قاعدة البيانات.
+    Fetch the owner's account status from Stripe and update payouts_enabled in the database.
     """
     require_auth(user)
     if not getattr(user, "stripe_account_id", None):
@@ -323,7 +323,7 @@ def connect_status(
     })
 
 
-# ============ (B) Checkout: Rent فقط (manual capture + destination) ============
+# ============ (B) Checkout: Rent only (manual capture + destination) ============
 @router.post("/api/stripe/checkout/rent/{booking_id}")
 def start_checkout_rent(
     booking_id: int,
@@ -331,10 +331,10 @@ def start_checkout_rent(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    - يُنشئ Session لتفويض مبلغ الإيجار (capture لاحقًا عند الاستلام).
-    - تحويل الوجهة لحساب المالك عبر transfer_data.destination (Destination Charge).
-    - تطبيق عمولة المنصّة application_fee_amount إن وُجدت.
-    - بعد نجاح الـ Checkout، webhook يحدّث الحجز.
+    - Creates a Session to authorize the rent amount (capture later at pickup).
+    - Destination transfer to the owner's account via transfer_data.destination (Destination Charge).
+    - Apply platform fee application_fee_amount if present.
+    - After Checkout succeeds, the webhook updates the booking.
     """
     require_auth(user)
     bk = require_booking(db, booking_id)
@@ -386,7 +386,7 @@ def start_checkout_rent(
     return RedirectResponse(url=session.url, status_code=303)
 
 
-# ============ (C) Checkout: Deposit فقط (manual capture, no transfer) ============
+# ============ (C) Checkout: Deposit only (manual capture, no transfer) ============
 @router.post("/api/stripe/checkout/deposit/{booking_id}")
 def start_checkout_deposit(
     booking_id: int,
@@ -394,7 +394,7 @@ def start_checkout_deposit(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    يُنشئ Session لتفويض الديبو (hold) بدون تحويل. القرار لاحقًا عبر resolve_deposit.
+    Creates a Session to authorize the deposit (hold) with no transfer. Decision later via resolve_deposit.
     """
     require_auth(user)
     bk = require_booking(db, booking_id)
@@ -436,9 +436,9 @@ def start_checkout_deposit(
     return RedirectResponse(url=session.url, status_code=303)
 
 
-# ============ (D) Webhook: تثبيت نتائج Checkout ============
+# ============ (D) Webhook: Persist Checkout results ============
 def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
-    """منطق المعالجة الفعلي للويبهوك (نستدعيه من المسار أدناه)."""
+    """Actual processing logic for the webhook (called from the route below)."""
     intent_id = session_obj.get("payment_intent")
     pi = stripe.PaymentIntent.retrieve(intent_id) if intent_id else None
     md = (pi.metadata or {}) if pi else {}
@@ -449,43 +449,43 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     if not bk:
         return
 
-    # ====== تجهيز بيانات الفاتورة من الـ Session/PI ======
-    amount_total_cents = int(session_obj.get("amount_total") or 0)  # إجمالي جلسة Checkout
+    # ====== Prepare invoice data from Session/PI ======
+    amount_total_cents = int(session_obj.get("amount_total") or 0)  # Total Checkout session amount
     currency = (session_obj.get("currency") or CURRENCY or "cad").lower()
     charge_id = _latest_charge_id(pi)
     when = datetime.utcnow()
 
-    # سنحتاج بيانات العنصر والمستأجر لبناء الفاتورة
+    # We'll need item and renter data to build the invoice
     renter = db.get(User, bk.renter_id) if bk.renter_id else None
     item = db.get(Item, bk.item_id) if bk.item_id else None
 
     if kind == "rent":
-        # مفوّض الإيجار — لا نغيّر الحجز إلى paid إلا إذا كانت الوديعة محجوزة مسبقًا
+        # Rent authorized — we do not set booking to paid unless deposit is already held
         bk.online_payment_intent_id = pi.id
         bk.online_status = "authorized"
 
-        # إن كانت الوديعة محجوزة بالفعل، يصبح الحجز جاهزًا للاستلام
+        # If the deposit is already held, the booking becomes ready for pickup
         if (bk.deposit_status or "").lower() == "held":
             bk.status = "paid"
             bk.timeline_paid_at = datetime.utcnow()
             db.commit()
-            push_notification(db, bk.owner_id, "تم تفويض دفعة الإيجار",
-                              f"حجز #{bk.id}: التفويض جاهز. سلّم الغرض عند الموعد.",
+            push_notification(db, bk.owner_id, "Rent payment authorized",
+                              f"Booking #{bk.id}: Authorization ready. Hand over the item at the scheduled time.",
                               f"/bookings/flow/{bk.id}", "booking")
-            push_notification(db, bk.renter_id, "تم تفويض الإيجار + الوديعة محجوزة",
-                              f"حجز #{bk.id}. يمكنك استلام الغرض الآن.",
+            push_notification(db, bk.renter_id, "Rent authorized + deposit held",
+                              f"Booking #{bk.id}. You can pick up the item now.",
                               f"/bookings/flow/{bk.id}", "booking")
         else:
-            # فقط إشعار بأن الإيجار تفوَّض ويجب حجز الوديعة لإكمال العملية
+            # Notify that rent is authorized and deposit must be held to complete the process
             db.commit()
-            push_notification(db, bk.owner_id, "تم تفويض دفعة الإيجار",
-                              f"حجز #{bk.id}: انتظر حجز الوديعة قبل التسليم.",
+            push_notification(db, bk.owner_id, "Rent payment authorized",
+                              f"Booking #{bk.id}: Wait for the deposit hold before delivery.",
                               f"/bookings/flow/{bk.id}", "booking")
-            push_notification(db, bk.renter_id, "تم تفويض الإيجار",
-                              f"حجز #{bk.id}: رجاءً أكمل حجز الوديعة للانتقال للاستلام.",
+            push_notification(db, bk.renter_id, "Rent authorized",
+                              f"Booking #{bk.id}: Please complete the deposit hold to proceed to pickup.",
                               f"/bookings/flow/{bk.id}", "booking")
 
-        # إيصال الإيجار اختياري — نبقيه كما هو
+        # Rent receipt optional — keep as is
         try:
             renter_email = _user_email(db, bk.renter_id)
             amt_cents = amount_total_cents if amount_total_cents > 0 else int(max(0, (bk.total_amount or 0)) * 100)
@@ -501,7 +501,7 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
                     charge_id=charge_id,
                     when=when,
                 )
-                send_email(renter_email, f"🧾 إيصال الدفع — حجز #{bk.id}", html, text_body=text)
+                send_email(renter_email, f"🧾 Payment Receipt — Booking #{bk.id}", html, text_body=text)
         except Exception:
             pass
 
@@ -509,12 +509,12 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
         _set_deposit_pi_id(bk, pi.id)
         bk.deposit_status = "held"
 
-        # إذا كان الإيجار مفوضًا بالفعل، نُتم العملية ونحوّل إلى paid
+        # If rent is already authorized, complete the process and switch to paid
         if (bk.online_status or "").lower() == "authorized":
             bk.status = "paid"
             bk.timeline_paid_at = datetime.utcnow()
 
-            # إرسال الإيصال الكامل (الإيجار + الوديعة) عند اكتمال الاثنين
+            # Send the full receipt (rent + deposit) when both are complete
             try:
                 renter_email = _user_email(db, bk.renter_id)
                 amt_cents = (
@@ -533,28 +533,28 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
                         charge_id=charge_id,
                         when=when,
                     )
-                    send_email(renter_email, f"🧾 إيصال الدفع — حجز #{bk.id}", html, text_body=text)
+                    send_email(renter_email, f"🧾 Payment Receipt — Booking #{bk.id}", html, text_body=text)
             except Exception:
                 pass
 
             db.commit()
-            push_notification(db, bk.owner_id, "اكتمل الدفع",
-                              f"حجز #{bk.id}: الإيجار مفوَّض والوديعة محجوزة.",
+            push_notification(db, bk.owner_id, "Payment completed",
+                              f"Booking #{bk.id}: Rent authorized and deposit held.",
                               f"/bookings/flow/{bk.id}", "booking")
-            push_notification(db, bk.renter_id, "جاهز للاستلام",
-                              f"حجز #{bk.id}: يمكنك استلام الغرض الآن.",
+            push_notification(db, bk.renter_id, "Ready for pickup",
+                              f"Booking #{bk.id}: You can pick up the item now.",
                               f"/bookings/flow/{bk.id}", "booking")
         else:
             db.commit()
-            push_notification(db, bk.owner_id, "تم حجز الديبو",
-                              f"حجز #{bk.id}: الديبو محجوز. بانتظار تفويض الإيجار.",
+            push_notification(db, bk.owner_id, "Deposit held",
+                              f"Booking #{bk.id}: Deposit held. Waiting for rent authorization.",
                               f"/bookings/flow/{bk.id}", "deposit")
-            push_notification(db, bk.renter_id, "تم حجز الديبو",
-                              f"حجز #{bk.id}: أكمل دفع الإيجار للانتقال للاستلام.",
+            push_notification(db, bk.renter_id, "Deposit held",
+                              f"Booking #{bk.id}: Complete the rent payment to proceed to pickup.",
                               f"/bookings/flow/{bk.id}", "deposit")
 
     elif kind == "all":
-        # دفع الإيجار + اعتبار الوديعة محجوزة على نفس الـ PI
+        # Rent paid + deposit considered held on the same PI
         bk.online_payment_intent_id = pi.id
         _set_deposit_pi_id(bk, pi.id)
         bk.online_status = "authorized"
@@ -562,14 +562,14 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
         bk.status = "paid"
         bk.timeline_paid_at = datetime.utcnow()
         db.commit()
-        push_notification(db, bk.owner_id, "تم الدفع الكامل",
-                          f"حجز #{bk.id}: تم دفع الإيجار وحجز الوديعة معًا.",
+        push_notification(db, bk.owner_id, "Full payment completed",
+                          f"Booking #{bk.id}: Rent paid and deposit held together.",
                           f"/bookings/flow/{bk.id}", "booking")
-        push_notification(db, bk.renter_id, "تم الدفع بنجاح",
-                          f"تم دفع الإيجار والوديعة معًا لحجز #{bk.id}.",
+        push_notification(db, bk.renter_id, "Payment successful",
+                          f"Rent and deposit were paid together for booking #{bk.id}.",
                           f"/bookings/flow/{bk.id}", "booking")
 
-        # إيصال الإجمالي
+        # Total receipt
         try:
             renter_email = _user_email(db, bk.renter_id)
             amt_cents = amount_total_cents if amount_total_cents > 0 else (
@@ -588,7 +588,7 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
                     charge_id=charge_id,
                     when=when,
                 )
-                send_email(renter_email, f"🧾 إيصال الدفع — حجز #{bk.id}", html, text_body=text)
+                send_email(renter_email, f"🧾 Payment Receipt — Booking #{bk.id}", html, text_body=text)
         except Exception:
             pass
 
@@ -609,11 +609,11 @@ def _webhook_handler_factory() -> Callable:
         return JSONResponse({"ok": True})
     return _handler
 
-# ⚠️ مهم: نستخدم مسار واحد هنا لتفادي التعارض مع app/webhooks.py
+# ⚠️ Important: use a single route here to avoid conflicts with app/webhooks.py
 router.post("/webhooks/stripe")(_webhook_handler_factory())
 
 
-# ============ (E) التقاط مبلغ الإيجار يدويًا ============
+# ============ (E) Capture the rent amount manually ============
 @router.post("/api/stripe/capture-rent/{booking_id}")
 def capture_rent(
     booking_id: int,
@@ -621,8 +621,8 @@ def capture_rent(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    يلتقط مبلغ الإيجار المُفوّض ويرسله لحساب المالك.
-    عادة نربطه بزر "تم الاستلام".
+    Captures the authorized rent amount and sends it to the owner's account.
+    Usually tied to the "Picked Up" button.
     """
     require_auth(user)
     bk = require_booking(db, booking_id)
@@ -638,13 +638,13 @@ def capture_rent(
     bk.online_status = "captured"
     bk.rent_released_at = datetime.utcnow()
     db.commit()
-    push_notification(db, bk.owner_id, "تم تحويل مبلغ الإيجار",
-                      f"حجز #{bk.id}: تم تحويل المبلغ لك.",
+    push_notification(db, bk.owner_id, "Rent amount transferred",
+                      f"Booking #{bk.id}: The amount has been transferred to you.",
                       f"/bookings/flow/{bk.id}", "booking")
     return flow_redirect(bk.id)
 
 
-# ============ (F) قرار الوديعة: Admin/Deposit Manager ============
+# ============ (F) Deposit decision: Admin/Deposit Manager ============
 @router.post("/api/stripe/deposit/resolve/{booking_id}")
 def resolve_deposit(
     booking_id: int,
@@ -654,11 +654,11 @@ def resolve_deposit(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    بعد الإرجاع:
-      - refund_all        : إلغاء التفويض بالكامل.
-      - withhold_all      : اقتطاع كامل الديبو لصالح المالك.
-      - withhold_partial  : اقتطاع جزء من الديبو.
-    متاح فقط لمن لديه صلاحية (Admin أو Deposit Manager).
+    After return:
+      - refund_all        : Cancel the authorization in full.
+      - withhold_all      : Capture the full deposit in favor of the owner.
+      - withhold_partial  : Capture part of the deposit.
+    Available only to users with permission (Admin or Deposit Manager).
     """
     require_auth(user)
     if not can_manage_deposits(user):
@@ -699,16 +699,16 @@ def resolve_deposit(
 
     db.commit()
 
-    notify_admins(db, "تم تنفيذ قرار وديعة", f"حجز #{bk.id}: {action}.", f"/bookings/flow/{bk.id}")
-    push_notification(db, bk.owner_id, "قرار الوديعة",
-                      f"تم تنفيذ القرار: {action}.", f"/bookings/flow/{bk.id}", "deposit")
-    push_notification(db, bk.renter_id, "قرار الوديعة",
-                      f"تم تنفيذ القرار: {action}.", f"/bookings/flow/{bk.id}", "deposit")
+    notify_admins(db, "Deposit decision executed", f"Booking #{bk.id}: {action}.", f"/bookings/flow/{bk.id}")
+    push_notification(db, bk.owner_id, "Deposit decision",
+                      f"Decision executed: {action}.", f"/bookings/flow/{bk.id}", "deposit")
+    push_notification(db, bk.renter_id, "Deposit decision",
+                      f"Decision executed: {action}.", f"/bookings/flow/{bk.id}", "deposit")
 
     return flow_redirect(bk.id)
 
 
-# ============ (G) (اختياري) API لـ Elements (PaymentIntent مباشر) ============
+# ============ (G) (Optional) API for Elements (direct PaymentIntent) ============
 @router.post("/api/checkout/{booking_id}/intent")
 def create_payment_intent_elements(
     booking_id: int,
@@ -716,8 +716,8 @@ def create_payment_intent_elements(
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    بديل اختياري لو أردت استخدام Stripe Elements بدل Checkout.
-    ينشئ PaymentIntent بمبلغ الإيجار (manual capture) + metadata فقط.
+    Optional alternative if you want to use Stripe Elements instead of Checkout.
+    Creates a PaymentIntent with the rent amount (manual capture) + metadata only.
     """
     require_auth(user)
     bk = require_booking(db, booking_id)
@@ -752,7 +752,7 @@ def create_payment_intent_elements(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe error: {e}")
 
-    # نحفظ حالة انتظار
+    # Save pending state
     bk.payment_method = "online"
     bk.online_status = "pending_authorization"
     bk.online_payment_intent_id = pi.id
@@ -761,10 +761,10 @@ def create_payment_intent_elements(
     return {"clientSecret": pi.client_secret}
 
 
-# >>> NEW: Endpoint حالة بسيط لتفعيل/تعطيل الأزرار في الواجهة
+# >>> NEW: Simple status endpoint to enable/disable buttons in the frontend
 @router.get("/api/stripe/checkout/state/{booking_id}")
 def checkout_state(booking_id: int, db: Session = Depends(get_db), user: Optional[User] = Depends(get_current_user)):
-    """يرجّع إذا كان الإيجار مُفوَّضًا والوديعة محجوزة؛ مفيد لتغيير نص الأزرار في الواجهة."""
+    """Returns whether rent is authorized and deposit is held; useful to change button texts in the UI."""
     require_auth(user)
     bk = require_booking(db, booking_id)
     return {
