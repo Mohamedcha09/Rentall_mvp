@@ -184,7 +184,6 @@
       .sheet__name{ font-weight:800; line-height:1.1; }
       .sheet__handle{ font-size:.9rem; opacity:.7; }
       .sheet__share{ background:#6C63FF; color:#fff; border:0; padding:.4rem .7rem; border-radius:999px; font-weight:700 }
-      .verify{ color:#6C63FF; font-size:16px; vertical-align:-1px; }
 
       .sheet__body{ padding:4px 10px 10px; overflow:auto; }
       .sheet__list{ list-style:none; margin:0; padding:0; }
@@ -633,26 +632,22 @@
   {%- set s = (p or '') -%}
   {%- if s.startswith('http://') or s.startswith('https://') -%}
     {{- s -}}
-  {%- elif s -%}
-    {{- '/' ~ s.lstrip('/') -}}
   {%- else -%}
-    {{- '/static/placeholder.png' -}}
+    {{- '/' ~ s.lstrip('/') if s else '' -}}
   {%- endif -%}
 {%- endmacro %}
-
 
 {# ===== Helper: avatar_src — returns a safe URL for avatar ===== #}
 {% macro avatar_src(p) -%}
   {%- set s = (p or '') -%}
   {%- if s.startswith('http://') or s.startswith('https://') -%}
     {{- s -}}
-  {%- elif s -%}
+  {%- elif s and (not s.startswith('/uploads/')) -%}
     {{- '/' ~ s.lstrip('/') -}}
   {%- else -%}
     {{- '/static/placeholder.png' -}}
   {%- endif -%}
 {%- endmacro %}
-
 
 
 
