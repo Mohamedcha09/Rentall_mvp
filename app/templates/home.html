@@ -594,6 +594,9 @@
     0 2px 0 0 rgba(255,255,255,.06) inset !important;
   color:#fff !important;
 }
+
+.home-locbar input{ color:inherit; } /* سيتم استبداله بالأسود من خطوة 1 */
+
 .home-locbar #homeCityInput{
   background: rgba(255,255,255,.18) !important;
   border:1px solid rgba(255,255,255,.16) !important;
@@ -779,6 +782,32 @@
   }
 }
 </style>
+
+<style id="ios-mobile-input-fix">
+/* نص وأسهم الكتابة في مدخل المدينة على الجوال يكون أسود */
+@media (max-width: 768px){
+  #homeCityInput,
+  .home-locbar input{
+    color:#111 !important;
+    -webkit-text-fill-color:#111 !important;   /* iOS */
+    caret-color:#111 !important;
+    background: rgba(255,255,255,.92) !important; /* خلفية فاتحة واضحة */
+    border-color: rgba(0,0,0,.08) !important;
+  }
+  #homeCityInput::placeholder,
+  .home-locbar input::placeholder{
+    color:#6b7280 !important;
+    opacity:1 !important;
+  }
+
+  /* لو المتصفح عمل AutoFill أصفر على iOS */
+  #homeCityInput:-webkit-autofill{
+    -webkit-text-fill-color:#111 !important;
+    transition: background-color 600000s 0s !important;
+  }
+}
+</style>
+
 
 
 {% endblock %}
