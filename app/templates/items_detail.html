@@ -90,12 +90,14 @@
   .small-muted{color:#717171!important;font-size:14px;line-height:1.5}
   .hr{background:#e5e7eb}
 
-  /* ===== Fixed Bottom Booking Bar ===== */
+  /* ======= Fixed Bottom Booking Bar ======= */
   .air-fixed{
-    position:fixed;left:0;right:0;
-    bottom:calc(env(safe-area-inset-bottom,0px));
-    z-index:50;background:#fff;border-top:1px solid #eee;
-    padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px
+    position:fixed !important; left:0; right:0;
+    bottom:calc(env(safe-area-inset-bottom,0px) + 0px);
+    z-index:10000; background:#fff; border-top:1px solid #eee;
+    padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px;
+    -webkit-backdrop-filter:saturate(160%) blur(10px); backdrop-filter:saturate(160%) blur(10px);
+    box-shadow:0 -6px 18px rgba(0,0,0,.08);
   }
   .air-price{display:flex;flex-direction:column;line-height:1.2}
   .air-price .now{font-weight:800;font-size:20px}
@@ -142,6 +144,7 @@
     <!-- ===== Item / Gallery ===== -->
     <div class="card-glass">
       <div class="gallery">
+        {# Gather images #}
         {% set _srcs = [] %}
         {% if item.image_path %}
           {% set _raw = item.image_path %}
@@ -199,7 +202,7 @@
           {{ item.category_label or item.category }} • {{ item.city or "No city" }} • {{ owner and owner.country or "" }}
         </div>
 
-        {# Rating row (black/gray stars) #}
+        {# Rating row with black/gray stars #}
         {% set _avg = item_rating_avg or 0 %}
         {% set _cnt = item_rating_count or 0 %}
         <div class="laurel-row">
@@ -278,7 +281,7 @@
       </div>
 
       <!-- ===== Bottom Booking Bar (Fixed) ===== -->
-      <div class="air-fixed">
+      <div class="air-fixed" id="airBar">
         <div class="air-price">
           <span class="now">{{ item.price_per_day }} {{ item.currency or 'KWD' }}</span>
           <span class="per">per day</span>
@@ -363,9 +366,9 @@
 (function(){
   const main  = document.getElementById('mainImg');
   const thumbs= document.getElementById('thumbs');
-  const zoomBtn=document.getElementById('zoomBtn');
   const pager = document.getElementById('airPager');
   const heroFade = document.getElementById('heroFade');
+  const airBar = document.getElementById('airBar');
 
   /* ==== Lightbox ==== */
   let lb=null;
@@ -380,7 +383,6 @@
     }
     lb.querySelector('img').src=src; lb.classList.add('show');
   }
-  if(zoomBtn && main){ zoomBtn.addEventListener('click', ()=>openLightbox(main.src)); }
 
   /* ==== Image counter ==== */
   function setPager(i,t){ if(pager){ pager.textContent=(i+1)+'/'+t; } }
@@ -408,17 +410,6 @@
     thumbs.addEventListener('touchend',()=>{thumbs.scrollBy({left:-dx,behavior:'smooth'});sx=dx=0});
   }
 
-  /* ==== Keyboard arrows ==== */
-  function step(dir){
-    if(!thumbs) return;
-    const imgs=[...thumbs.querySelectorAll('img')];
-    if(imgs.length<=1) return;
-    let i=imgs.findIndex(n=>n.classList.contains('active')); if(i<0) i=0;
-    let j=(i+dir+imgs.length)%imgs.length; imgs[j].click();
-    imgs[j].scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});
-  }
-  window.addEventListener('keydown',e=>{ if(e.key==='ArrowRight')step(+1); if(e.key==='ArrowLeft')step(-1); });
-
   /* ==== Parallax + Fade (Airbnb-like) ==== */
   const gMain = document.getElementById('gMain');
   function onScroll(){
@@ -427,25 +418,27 @@
     const h = rect.height || 1;
     const visibleTop = Math.max(0, -rect.top);
     const p = Math.min(1, visibleTop / (h * .35));
-
     const scale = 1 + (visibleTop>0 ? Math.min(visibleTop/1000, .06) : 0);
     main.style.transform = `scale(${scale}) translateY(${visibleTop* -0.06}px)`;
     main.style.opacity = String(1 - p*0.85);
-
     if(heroFade) heroFade.style.opacity = String(p);
   }
   window.addEventListener('scroll', onScroll, {passive:true});
   onScroll();
 
-  /* ==== Prepare report values ==== */
-  const reportSheet = document.getElementById('reportSheet');
-  reportSheet?.addEventListener('show.bs.offcanvas', ()=>{
-    const activeThumb=document.querySelector('#thumbs img.active')||document.querySelector('#thumbs img');
-    const idx=activeThumb?parseInt(activeThumb.getAttribute('data-index')||'0',10)||0:0;
-    const url=activeThumb?(activeThumb.dataset.src||activeThumb.src||(main?.src||'')):(main?.src||'');
-    document.getElementById('rf_image_index')?.setAttribute('value', String(idx));
-    document.getElementById('rf_image_url')?.setAttribute('value', url);
-  });
+  /* ==== FORCE the bar to be fixed & visible on iOS ==== */
+  function portalBar(){
+    if(!airBar) return;
+    // انقله إلى <body> لتجنب مشاكل position:fixed داخل عناصر بفلتر/تحويلات
+    if(airBar.parentElement !== document.body){
+      document.body.appendChild(airBar);
+    }
+    // وفر مساحة تحت المحتوى كي لا يغطيه الشريط
+    const pad = airBar.offsetHeight + 12;
+    document.body.style.paddingBottom = pad + 'px';
+  }
+  portalBar();
+  window.addEventListener('resize', portalBar);
 })();
 </script>
 
