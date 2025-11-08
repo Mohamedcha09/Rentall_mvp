@@ -3,254 +3,128 @@
 {% block content %}
 
 <style>
-/* ===============  Glass & Modern UI (الأسلوب الأصلي لديك)  =============== */
+/* —— الأساس الأصلي ——————————————————————————— */
 :root{
-  --bg-1:#0b1220;
-  --bg-2:#0f172a;
-  --card:#0f172acc;
-  --stroke:rgba(255,255,255,.12);
-  --stroke-soft:rgba(255,255,255,.08);
-  --txt:#eaf0ff;
-  --muted:#9fb0d8;
-  --brand:#3b82f6;
-  --brand-2:#22d3ee;
-  --ok:#10b981;
-  --warn:#f59e0b;
-  --glass:rgba(255,255,255,.06);
+  --bg-1:#0b1220; --bg-2:#0f172a; --card:#0f172acc;
+  --stroke:rgba(255,255,255,.12); --stroke-soft:rgba(255,255,255,.08);
+  --txt:#eaf0ff; --muted:#9fb0d8; --brand:#3b82f6; --ok:#10b981;
+  --warn:#f59e0b; --glass:rgba(255,255,255,.06);
   --shadow:0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
 }
+.items-shell{max-width:1100px;margin:18px auto;padding:0 12px}
+.grid-2{display:grid;gap:18px;grid-template-columns:1.2fr .8fr}
+@media (max-width:920px){.grid-2{grid-template-columns:1fr}}
+.card-glass{background:linear-gradient(180deg,var(--glass),transparent);border:1px solid var(--stroke);border-radius:16px;overflow:hidden;backdrop-filter:blur(8px);box-shadow:var(--shadow)}
+.card-body{padding:18px}
+.card-title{margin:0 0 8px 0;font-weight:800;letter-spacing:.2px}
+.small-muted{color:var(--muted);font-size:13px}
+.badge-pill{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid var(--stroke);background:rgba(255,255,255,.05);font-size:12px;color:var(--muted)}
+.gallery{background:#0c1324;border-bottom:1px solid var(--stroke-soft)}
+.gallery-main{position:relative;aspect-ratio:16/10;width:100%;background:#0a0f1e}
+.gallery-main img{width:100%;height:100%;object-fit:cover;display:block}
+.gallery-zoom{position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,.45);border:1px solid var(--stroke);border-radius:12px;padding:8px 12px;font-size:13px;color:#fff;cursor:pointer;backdrop-filter:blur(6px)}
+.gallery-menu{position:absolute;top:10px;right:10px}
+.gallery-menu .btn-menu{background:rgba(0,0,0,.45);color:#fff;border:1px solid var(--stroke);border-radius:12px;padding:6px 10px;line-height:1;font-weight:700}
+.gallery-menu .dropdown-menu{border-radius:12px;overflow:hidden;border:1px solid var(--stroke)}
+.thumbs{display:flex;gap:10px;padding:12px;overflow-x:auto;background:linear-gradient(180deg,rgba(255,255,255,.03),transparent)}
+.thumbs img{width:86px;height:60px;object-fit:cover;border-radius:10px;border:1px solid var(--stroke-soft);cursor:pointer;opacity:.85;transition:transform .15s ease,opacity .15s ease,box-shadow .15s ease}
+.thumbs img:hover{transform:translateY(-2px);opacity:1;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.thumbs img.active{outline:2px solid var(--brand);opacity:1}
+.btnx{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;font-weight:700;text-decoration:none;cursor:pointer;user-select:none;border:1px solid var(--stroke);backdrop-filter:blur(8px);background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));color:var(--txt);transition:transform .12s ease,background .2s ease,border-color .2s ease}
+.btnx:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.2)}
+.btnx-primary{border-color:rgba(59,130,246,.6);background:linear-gradient(180deg,rgba(59,130,246,.35),rgba(59,130,246,.1))}
+.btnx-green{border-color:rgba(16,185,129,.6);background:linear-gradient(180deg,rgba(16,185,129,.35),rgba(16,185,129,.1))}
+.btnx-ghost{border-color:var(--stroke);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))}
+.btns-row{display:flex;flex-wrap:wrap;gap:10px}
+.lightbox{position:fixed;inset:0;display:none;place-items:center;z-index:9999;background:rgba(0,0,0,.8)}
+.lightbox.show{display:grid}
+.lightbox img{max-width:92vw;max-height:88vh;border-radius:14px;border:1px solid var(--stroke)}
+.lightbox .close{position:absolute;top:18px;right:18px;background:rgba(0,0,0,.6);border:1px solid var(--stroke);color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer}
+.owner-row{display:flex;align-items:center;gap:12px}
+.owner-avatar{width:62px;height:62px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--stroke)}
+.hr{border:0;height:1px;background:var(--stroke-soft);margin:14px 0}
 
-.items-shell{
-  max-width:1100px;margin:18px auto;padding:0 12px;
-}
+/* —— موبايل Airbnb ——————————————————————————— */
+@media (max-width:768px){
+  body{background:#fff;color:#111}
+  .items-shell{padding:0;margin:0;max-width:none}
+  .grid-2{display:block}
 
-.grid-2{
-  display:grid;gap:18px;
-  grid-template-columns:1.2fr .8fr;
-}
-@media (max-width: 920px){
-  .grid-2{ grid-template-columns:1fr; }
-}
+  /* الغلاف */
+  .gallery{background:#000;border:0}
+  .gallery-main{height:58vh;max-height:520px;border-radius:0}
+  .gallery-main img{object-fit:cover}
 
-.card-glass{
-  background:linear-gradient(180deg, var(--glass), transparent);
-  border:1px solid var(--stroke);
-  border-radius:16px; overflow:hidden; backdrop-filter: blur(8px);
-  box-shadow: var(--shadow);
-}
-
-.card-body{ padding:18px; }
-.card-title{ margin:0 0 8px 0; font-weight:800; letter-spacing:.2px; }
-.small-muted{ color:var(--muted); font-size:13px; }
-.badge-pill{
-  display:inline-block; padding:6px 10px; border-radius:999px;
-  border:1px solid var(--stroke); background:rgba(255,255,255,.05);
-  font-size:12px; color:var(--muted);
-}
-
-/* ===============  Gallery  =============== */
-.gallery{
-  background: #0c1324; border-bottom:1px solid var(--stroke-soft);
-}
-.gallery-main{
-  position:relative; aspect-ratio: 16/10; width:100%;
-  background: #0a0f1e;
-}
-.gallery-main img{
-  width:100%; height:100%; object-fit:cover; display:block;
-}
-.gallery-zoom{
-  position:absolute; bottom:10px; right:10px;
-  background:rgba(0,0,0,.45);
-  border:1px solid var(--stroke); border-radius:12px;
-  padding:8px 12px; font-size:13px; color:#fff; cursor:pointer;
-  backdrop-filter: blur(6px);
-}
-/* زر القائمة ⋮ أعلى الصورة */
-.gallery-menu{
-  position:absolute; top:10px; right:10px;
-}
-.gallery-menu .btn-menu{
-  background:rgba(0,0,0,.45); color:#fff; border:1px solid var(--stroke);
-  border-radius:12px; padding:6px 10px; line-height:1; font-weight:700;
-}
-.gallery-menu .dropdown-menu{
-  border-radius:12px; overflow:hidden; border:1px solid var(--stroke);
-}
-
-.thumbs{
-  display:flex; gap:10px; padding:12px; overflow-x:auto;
-  background:linear-gradient(180deg, rgba(255,255,255,.03), transparent);
-}
-.thumbs img{
-  width:86px; height:60px; object-fit:cover; border-radius:10px;
-  border:1px solid var(--stroke-soft); cursor:pointer; opacity:.85;
-  transition:transform .15s ease, opacity .15s ease, box-shadow .15s ease;
-}
-.thumbs img:hover{ transform:translateY(-2px); opacity:1; box-shadow:0 4px 14px rgba(0,0,0,.25); }
-.thumbs img.active{ outline:2px solid var(--brand); opacity:1; }
-
-/* ===============  Buttons  =============== */
-.btnx{
-  display:inline-flex; align-items:center; gap:8px;
-  padding:10px 16px; border-radius:12px; font-weight:700;
-  text-decoration:none; cursor:pointer; user-select:none;
-  border:1px solid var(--stroke); backdrop-filter: blur(8px);
-  background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
-  color:var(--txt); transition: transform .12s ease, background .2s ease, border-color .2s ease;
-}
-.btnx:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.2); }
-.btnx-primary{
-  border-color: rgba(59,130,246,.6);
-  background: linear-gradient(180deg, rgba(59,130,246,.35), rgba(59,130,246,.1));
-}
-.btnx-green{
-  border-color: rgba(16,185,129,.6);
-  background: linear-gradient(180deg, rgba(16,185,129,.35), rgba(16,185,129,.1));
-}
-.btnx-ghost{
-  border-color: var(--stroke);
-  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-}
-.btns-row{ display:flex; flex-wrap:wrap; gap:10px; }
-
-/* ===============  Lightbox  =============== */
-.lightbox{
-  position:fixed; inset:0; display:none; place-items:center; z-index:9999;
-  background:rgba(0,0,0,.8);
-}
-.lightbox.show{ display:grid; }
-.lightbox img{ max-width:92vw; max-height:88vh; border-radius:14px; border:1px solid var(--stroke); }
-.lightbox .close{
-  position:absolute; top:18px; right:18px;
-  background:rgba(0,0,0,.6); border:1px solid var(--stroke);
-  color:#fff; padding:8px 12px; border-radius:10px; cursor:pointer;
-}
-
-/* ===============  Owner card  =============== */
-.owner-row{ display:flex; align-items:center; gap:12px; }
-.owner-avatar{
-  width:62px;height:62px;border-radius:50%;object-fit:cover;
-  box-shadow:0 0 0 2px var(--stroke);
-}
-
-.hr{ border:0; height:1px; background:var(--stroke-soft); margin:14px 0; }
-
-/* ===== Airbnb-like Mobile Detail (ONLY <=768px) ===== */
-@media (max-width: 768px){
-
-  /* ألوان فاتحة وشعور iOS */
-  body{ background:#fff; color:#111; }
-  .items-shell{ padding:0; margin:0; max-width:none; }
-  .grid-2{ display:block; }
-
-  /* صورة الغلاف */
-  .gallery{ background:#000; border:0; }
-  .gallery-main{
-    height: 58vh; max-height: 520px; aspect-ratio:auto;
-    border-radius:0;
+  /* أزرار عائمة + عدّاد */
+  .air-fab,.air-fab-right .air-fab{
+    appearance:none;border:0;cursor:pointer;width:44px;height:44px;border-radius:50%;
+    background:rgba(255,255,255,.9);box-shadow:0 8px 20px rgba(0,0,0,.18);
+    display:grid;place-items:center;font-size:18px;line-height:1
   }
-  .gallery-main img{ object-fit:cover; }
+  .air-fab{position:absolute;top:16px;left:12px}
+  .air-fab-right{position:absolute;top:16px;right:12px;display:flex;gap:10px}
+  .air-pager{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.65);color:#fff;font-weight:600;padding:6px 10px;border-radius:10px;font-size:12px}
 
-  /* أزرار عائمة أعلى الصورة */
-  .air-fab, .air-fab-right .air-fab{
-    appearance:none; border:0; cursor:pointer;
-    width:44px; height:44px; border-radius:50%;
-    background:rgba(255,255,255,.9);
-    box-shadow:0 8px 20px rgba(0,0,0,.18);
-    display:grid; place-items:center; font-size:18px; line-height:1;
-  }
-  .air-fab{ position:absolute; top:16px; left:12px; }
-  .air-fab-right{ position:absolute; top:16px; right:12px; display:flex; gap:10px; }
-  .air-pager{
-    position:absolute; bottom:12px; right:12px;
-    background:rgba(0,0,0,.65); color:#fff; font-weight:600;
-    padding:6px 10px; border-radius:10px; font-size:12px;
-  }
+  /* الورقة البيضاء الدائرية */
+  .card-glass{background:transparent;border:0;box-shadow:none}
+  .air-sheet{background:#fff;color:#111;margin-top:-24px;border-top-left-radius:28px;border-top-right-radius:28px;padding:22px 18px 10px;box-shadow:0 -6px 20px rgba(0,0,0,.06);border:1px solid #eee;border-bottom:0}
 
-  /* الورقة البيضاء التي تتراكب فوق الصورة */
-  .card-glass{ background:transparent; border:0; box-shadow:none; }
-  .card-glass > .card-body:first-of-type{
-    background:#fff; color:#111;
-    margin-top:-22px; border-top-left-radius:24px; border-top-right-radius:24px;
-    padding:20px 18px 10px;
-    box-shadow: 0 -6px 20px rgba(0,0,0,.06);
-    border:1px solid #eee;
-  }
+  .card-title{font-size:22px;font-weight:800;margin-bottom:6px;color:#111}
+  .small-muted{color:#6b7280!important}
+  .hr{background:#eee}
 
-  /* العناوين والأسطر التعريفية */
-  .card-title{ font-size:22px; font-weight:800; margin-bottom:6px; color:#111; }
-  .small-muted{ color:#6b7280 !important; }
-  .hr{ background:#eee; }
+  /* شريط الحجز السفلي */
+  .air-sticky{position:sticky;bottom:0;z-index:20;background:#fff;border-top:1px solid #eee;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .air-price{display:flex;flex-direction:column;line-height:1.2}
+  .air-price .now{font-weight:800;font-size:18px}
+  .air-price .per{color:#6b7280;font-size:12px}
+  .air-cta{flex:0 0 auto;min-width:140px;text-align:center;padding:12px 16px;border-radius:12px;font-weight:700;color:#fff;background:linear-gradient(90deg,#ff385c,#e61e4d);border:0;text-decoration:none;display:inline-block}
 
-  /* أزرار الإجراءات داخل المحتوى */
-  .btns-row .btnx{
-    border:1px solid #e5e7eb; background:#fff; color:#111; box-shadow:none;
-  }
-  .btnx-primary{
-    background:linear-gradient(180deg,#ff385c 0%,#e61e4d 100%); color:#fff; border-color:transparent;
-  }
-  .btnx-green{
-    background:linear-gradient(180deg,#34d399 0%,#10b981 100%); color:#fff; border-color:transparent;
-  }
+  /* شارة الغار الذهبية حول التقييم */
+  .laurel-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 12px 0}
+  .laurel-mid{display:flex;align-items:center;gap:10px;flex:1;justify-content:center}
+  .laurel{height:20px;width:auto;opacity:.95}
+  .score{font-weight:800;font-size:18px;color:#111;display:flex;align-items:center;gap:6px}
+  .score small{color:#6b7280;font-weight:600}
 
-  /* شريط الحجز السفلي (Sticky) */
-  .air-sticky{
-    position:sticky; bottom:0; z-index:20;
-    background:#fff; border-top:1px solid #eee; padding:12px 14px;
-    display:flex; align-items:center; justify-content:space-between; gap:12px;
-  }
-  .air-price{
-    display:flex; flex-direction:column; line-height:1.2;
-  }
-  .air-price .now{ font-weight:800; font-size:18px; }
-  .air-price .per{ color:#6b7280; font-size:12px; }
-  .air-cta{
-    flex:0 0 auto; min-width:140px; text-align:center;
-    padding:12px 16px; border-radius:12px; font-weight:700; color:#fff;
-    background:linear-gradient(90deg,#ff385c,#e61e4d);
-    border:0; text-decoration:none; display:inline-block;
-  }
+  /* التعليقات (بطاقات سحابية قابلة للسحب) */
+  .rv-strip{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 12px 2px}
+  .rv-card{scroll-snap-align:start;flex:0 0 84vw;background:#fff;border:1px solid #eee;border-radius:16px;padding:14px;box-shadow:0 6px 14px rgba(0,0,0,.05)}
+  .rv-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .rv-ava{width:40px;height:40px;border-radius:50%;object-fit:cover}
+  .rv-meta{color:#6b7280;font-size:12px}
+  .rv-stars{font-size:13px;color:#111}
+  .rv-more{display:inline-block;margin-top:4px;font-weight:600}
+  .btn-outline-pale{display:block;width:100%;text-align:center;border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:10px 14px;font-weight:700}
 
-  /* إخفاء الكرت الجانبي الطويل (اختياري) */
-  .items-shell .card-glass:nth-of-type(2){ border:0; }
+  /* Bottom-Sheet للبلاغ (Bootstrap offcanvas) */
+  .offcanvas-bottom{border-top-left-radius:18px;border-top-right-radius:18px}
 }
 </style>
 
 <section class="items-shell">
   {% if not item %}
-    <div class="card-glass">
-      <div class="card-body"><div class="alert alert-danger">العنصر غير موجود.</div></div>
-    </div>
+    <div class="card-glass"><div class="card-body"><div class="alert alert-danger">العنصر غير موجود.</div></div></div>
   {% else %}
 
   <div class="grid-2">
-
-    <!-- =================== بطاقة/معرض العنصر =================== -->
+    <!-- ————— بطاقة/معرض العنصر ————— -->
     <div class="card-glass">
       <div class="gallery">
 
-        {# مصادر الصور: قيمة واحدة أو متعددة مفصولة , أو | #}
+        {# جمع الصور #}
         {% set _srcs = [] %}
         {% if item.image_path %}
           {% set _raw = item.image_path %}
-          {% if ',' in _raw %}
-            {% set _srcs = _raw.split(',') %}
-          {% elif '|' in _raw %}
-            {% set _srcs = _raw.split('|') %}
-          {% else %}
-            {% set _srcs = [_raw] %}
-          {% endif %}
+          {% if ',' in _raw %}{% set _srcs = _raw.split(',') %}
+          {% elif '|' in _raw %}{% set _srcs = _raw.split('|') %}
+          {% else %}{% set _srcs = [_raw] %}{% endif %}
         {% endif %}
-
         {% set current = _srcs[0] if _srcs else None %}
 
-        {# دالة build_src #}
         {% macro build_src(p) -%}
           {%- set s = (p or '') -%}
-          {%- if not (s.startswith('http') or s.startswith('/')) -%}
-            {%- set s = '/' + s -%}
-          {%- endif -%}
+          {%- if not (s.startswith('http') or s.startswith('/')) -%}{%- set s = '/' + s -%}{%- endif -%}
           {{- s -}}
         {%- endmacro %}
 
@@ -259,37 +133,24 @@
             <img id="mainImg" src="{{ build_src(current) }}" alt="item image">
             <button class="gallery-zoom" id="zoomBtn">تكبير الصورة</button>
           {% else %}
-            <div style="display:grid;place-items:center;height:100%;color:var(--muted);font-size:13px">لا توجد صورة</div>
+            <div style="display:grid;place-items:center;height:100%;color:#8b94a7;font-size:13px">لا توجد صورة</div>
           {% endif %}
 
-          <!-- زر ⋮ -->
+          <!-- ⋮ قائمة -->
           <div class="gallery-menu dropdown">
             <button class="btn-menu" data-bs-toggle="dropdown" aria-expanded="false" title="خيارات">⋮</button>
             <ul class="dropdown-menu dropdown-menu-end">
-              <li>
-                <button class="dropdown-item" id="openReportBtn" type="button">🚩 الإبلاغ عن الصورة/المنشور</button>
-              </li>
+              <li><button class="dropdown-item" data-bs-toggle="offcanvas" data-bs-target="#reportSheet" id="openReportBtn" type="button">🚩 الإبلاغ عن المنشور</button></li>
             </ul>
           </div>
 
-          <!-- ===== أزرار الموبايل العائمة + عدّاد الصور (Airbnb) ===== -->
-          <!-- زر رجوع يسار -->
-          <button type="button" class="air-fab" onclick="history.back()" aria-label="رجوع">
-            <i class="bi bi-arrow-left"></i>
-          </button>
-          <!-- يمين: مشاركة + حفظ -->
+          <!-- أزرار موبايل عائمة + عداد -->
+          <button type="button" class="air-fab" onclick="history.back()" aria-label="رجوع"><i class="bi bi-arrow-left"></i></button>
           <div class="air-fab-right">
-            <button type="button" aria-label="مشاركة" class="air-fab"
-                    onclick="navigator.share ? navigator.share({url:location.href}) : alert('انسخ الرابط يدويًا');">
-              <i class="bi bi-share"></i>
-            </button>
-            <button type="button" aria-label="حفظ" class="air-fab">
-              <i class="bi bi-heart"></i>
-            </button>
+            <button type="button" aria-label="مشاركة" class="air-fab" onclick="navigator.share ? navigator.share({url:location.href}) : alert('انسخ الرابط يدويًا');"><i class="bi bi-share"></i></button>
+            <button type="button" aria-label="حفظ" class="air-fab"><i class="bi bi-heart"></i></button>
           </div>
-          <!-- عدّاد الصور -->
           <div class="air-pager" id="airPager">1/1</div>
-          <!-- ================================================ -->
         </div>
 
         {% if _srcs|length > 1 %}
@@ -302,28 +163,69 @@
         {% endif %}
       </div>
 
-      <div class="card-body">
+      <!-- ——— ورقة المحتوى الدائرية (موبايل) ——— -->
+      <div class="card-body air-sheet">
         <h2 class="card-title">{{ item.title }}</h2>
         <div class="small-muted" style="margin-bottom:8px">
-          {{ item.category_label }} • {{ item.city or "بدون مدينة" }}
+          {{ item.category_label }} • {{ item.city or "بدون مدينة" }} • {{ owner and owner.country or "" }}
         </div>
-        <div style="font-size:22px; font-weight:800; margin:6px 0 12px 0">
-          {{ item.price_per_day }} <span style="font-size:14px;color:var(--muted)">د/يوم</span>
+
+        <!-- صف الغار الذهبي + التقييم داخلها -->
+        {% set _avg = item_rating_avg or 0 %}
+        {% set _cnt = item_rating_count or 0 %}
+        <div class="laurel-row">
+          <div class="score">⭐ {{ '%.2f'|format(_avg) }} <small>/ 5</small></div>
+          <div class="laurel-mid">
+            <img class="laurel" src="{{ url_for('static', path='photo/ion.png') }}" alt="laurel left">
+            <span style="font-weight:800">مُفضّل لدى الزوار</span>
+            <img class="laurel" src="{{ url_for('static', path='photo/ion2.png') }}" alt="laurel right">
+          </div>
+          <div class="score">{{ _cnt }} <small>مراجعة</small></div>
         </div>
 
         {% if item.description %}
-          <p style="white-space:pre-wrap;line-height:1.9;color:#cdd7ee">{{ item.description }}</p>
+          <p style="white-space:pre-wrap;line-height:1.9;color:#374151">{{ item.description }}</p>
         {% else %}
           <div class="badge-pill">لا يوجد وصف</div>
         {% endif %}
 
         <div class="hr"></div>
 
+        <!-- التعليقات كسلايدر أفقي -->
+        <h5 style="margin:0 0 8px 0">التعليقات</h5>
+        {% if item_reviews and item_reviews|length %}
+          <div class="rv-strip">
+            {% for r in item_reviews %}
+              <div class="rv-card">
+                <div class="rv-head">
+                  {% set avatar = (r.rater.avatar_path if r.rater and r.rater.avatar_path else url_for('static', path='placeholder.png')) %}
+                  <img class="rv-ava" src="{{ avatar }}" alt="avatar">
+                  <div>
+                    <div style="font-weight:700">{{ (r.rater.first_name ~ ' ' ~ r.rater.last_name) if r.rater else 'مستأجر' }}</div>
+                    <div class="rv-meta">{{ r.city or '' }} <span>•</span> {{ r.created_at.strftime("%B %Y") if r.created_at }}</div>
+                  </div>
+                </div>
+                <div class="rv-stars" title="{{ r.stars }} / 5">
+                  {% for _ in range(r.stars) %}⭐{% endfor %}{% for _ in range(5 - r.stars) %}☆{% endfor %}
+                </div>
+                {% if r.comment %}
+                  <div style="margin-top:6px;white-space:pre-wrap">{{ r.comment }}</div>
+                  <a href="/items/{{ item.id }}#review-{{ r.id }}" class="rv-more">عرض المزيد</a>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+          <a href="/items/{{ item.id }}#all-reviews" class="btn-outline-pale">عرض كل {{ _cnt }} تعليقًا</a>
+        {% else %}
+          <div class="small-muted">لا توجد مراجعات بعد.</div>
+        {% endif %}
+
+        <div class="hr"></div>
+
+        <!-- أزرار -->
         <div class="btns-row">
           {% if owner %}
-            <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">
-              💬 تواصل مع المالك
-            </a>
+            <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">💬 تواصل مع المالك</a>
             {% if session_user and session_user.status == 'approved' and session_user.id != owner.id %}
               <a class="btnx btnx-green" href="/bookings/new?item_id={{ item.id }}">✅ احجز الآن</a>
             {% elif not session_user %}
@@ -336,10 +238,10 @@
         </div>
       </div>
 
-      <!-- ===== شريط الحجز السفلي (موبايل فقط عبر media query) ===== -->
+      <!-- شريط الحجز السفلي -->
       <div class="air-sticky">
         <div class="air-price">
-          <span class="now">{{ item.price_per_day }} د.ك</span>
+          <span class="now">{{ item.price_per_day }} {{ item.currency or 'د.ك' }}</span>
           <span class="per">لكل يوم</span>
         </div>
         {% if owner and session_user and session_user.status == 'approved' and session_user.id != owner.id %}
@@ -350,11 +252,9 @@
           <a class="air-cta" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">تواصل</a>
         {% endif %}
       </div>
-      <!-- ========================================================== -->
-
     </div>
 
-    <!-- =================== بطاقة المالك =================== -->
+    <!-- ————— بطاقة المالك ————— -->
     <div class="card-glass">
       <div class="card-body">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
@@ -364,22 +264,16 @@
 
         {% if owner %}
           <div class="owner-row">
-            <img class="owner-avatar"
-                 src="{{ owner.avatar_path or url_for('static', path='placeholder.png') }}"
-                 alt="owner">
+            <img class="owner-avatar" src="{{ owner.avatar_path or url_for('static', path='placeholder.png') }}" alt="owner">
             <div>
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 <strong>{{ owner.first_name }} {{ owner.last_name }}</strong>
                 {{ render_badges(owner_badges, 22) }}
               </div>
-              <div class="small-muted">
-                عضو منذ {{ owner.created_at.strftime("%Y-%m-%d") if owner.created_at else "" }}
-              </div>
+              <div class="small-muted">عضو منذ {{ owner.created_at.strftime("%Y-%m-%d") if owner.created_at else "" }}</div>
             </div>
           </div>
-
           <div class="hr"></div>
-
           <div class="btns-row">
             <a href="/users/{{ owner.id }}" class="btnx btnx-ghost">👤 الملف العام</a>
             <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">راسل المالك</a>
@@ -394,197 +288,109 @@
   {% endif %}
 </section>
 
-<!-- مودال الإبلاغ -->
-<div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportLabel" aria-hidden="true" dir="rtl">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form method="post" action="/reports" id="reportForm">
-        <div class="modal-header">
-          <h5 class="modal-title" id="reportLabel">🚩 الإبلاغ عن الصورة/المنشور</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
-        </div>
-        <div class="modal-body">
-          <input type="hidden" name="item_id" value="{{ item.id }}">
-          <input type="hidden" name="image_index" id="rf_image_index" value="0">
-          <input type="hidden" name="image_url" id="rf_image_url" value="">
-
-          <div class="mb-3">
-            <label class="form-label">السبب</label>
-            <select class="form-select" name="reason" required>
-              <option value="" selected disabled>اختر سبب البلاغ</option>
-              <option value="nudity">محتوى غير لائق/عُري</option>
-              <option value="violence">عنف/كراهية</option>
-              <option value="scam">احتيال/خداع</option>
-              <option value="copyright">حقوق ملكية</option>
-              <option value="spam">سبام/مزعج</option>
-              <option value="other">أخرى</option>
-            </select>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">ملاحظات إضافية (اختياري)</label>
-            <textarea class="form-control" name="note" rows="3" placeholder="اكتب تفاصيل تساعدنا في المراجعة…"></textarea>
-          </div>
-
-          <div class="small text-muted">
-            سيتم إرسال البلاغ مع رقم الصورة الحالية ورابطها ليتولى فريق المراجعة التحقق.
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
-          <button type="submit" class="btn btn-danger">إرسال البلاغ</button>
-        </div>
-      </form>
-    </div>
+<!-- —— Bottom Sheet: الإبلاغ عن المنشور —————————————————————— -->
+<div class="offcanvas offcanvas-bottom" tabindex="-1" id="reportSheet" aria-labelledby="reportLabel" dir="rtl">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="reportLabel">🚩 الإبلاغ عن المنشور</h5>
+    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="إغلاق"></button>
+  </div>
+  <div class="offcanvas-body small">
+    <form method="post" action="/reports" id="reportForm">
+      <input type="hidden" name="item_id" value="{{ item.id }}">
+      <input type="hidden" name="image_index" id="rf_image_index" value="0">
+      <input type="hidden" name="image_url" id="rf_image_url" value="">
+      <div class="mb-3">
+        <label class="form-label">السبب</label>
+        <select class="form-select" name="reason" required>
+          <option value="" selected disabled>اختر سبب البلاغ</option>
+          <option value="nudity">محتوى غير لائق/عُري</option>
+          <option value="violence">عنف/كراهية</option>
+          <option value="scam">احتيال/خداع</option>
+          <option value="copyright">حقوق ملكية</option>
+          <option value="spam">إزعاج/سبام</option>
+          <option value="other">أخرى</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">ملاحظات إضافية</label>
+        <textarea class="form-control" name="note" rows="3" placeholder="اكتب تفاصيل تساعدنا في المراجعة…"></textarea>
+      </div>
+      <button class="btn btn-danger w-100" type="submit">إرسال البلاغ</button>
+    </form>
   </div>
 </div>
 
-<div class="hr"></div>
-
-<!-- === تقييمات المستأجرين للمنشور === -->
-<div>
-  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <h5 style="margin:0">التقييمات</h5>
-    <span class="badge-pill">
-      ⭐ {{ item_rating_avg or 0 }}/5 — {{ item_rating_count or 0 }} مراجعة
-    </span>
-  </div>
-
-  {% if item_reviews and item_reviews|length %}
-    <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px">
-      {% for r in item_reviews %}
-        <div class="card-glass" style="padding:12px">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            {% set avatar = (r.rater.avatar_path if r.rater and r.rater.avatar_path else url_for('static', path='placeholder.png')) %}
-            <img src="{{ avatar }}"
-                 alt="avatar" style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:1px solid var(--stroke-soft)">
-            <div>
-              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                <strong>{{ (r.rater.first_name ~ ' ' ~ r.rater.last_name) if r.rater else 'مستأجر' }}</strong>
-                <span class="small-muted">• {{ r.created_at.strftime("%Y-%m-%d") if r.created_at else "" }}</span>
-              </div>
-              <div title="{{ r.stars }} / 5">
-                {% for _ in range(r.stars) %}⭐{% endfor %}
-                {% for _ in range(5 - r.stars) %}☆{% endfor %}
-              </div>
-            </div>
-          </div>
-
-          {% if r.comment %}
-            <div style="margin-top:6px;white-space:pre-wrap">{{ r.comment }}</div>
-          {% endif %}
-        </div>
-      {% endfor %}
-    </div>
-  {% else %}
-    <div class="small-muted" style="margin-top:6px">لا توجد مراجعات بعد.</div>
-  {% endif %}
-</div>
-
-<!-- ===============  Lightbox & Gallery JS (مضاف له عدّاد الصور)  =============== -->
 <script>
 (function(){
   const main = document.getElementById('mainImg');
   const thumbs = document.getElementById('thumbs');
   const zoomBtn = document.getElementById('zoomBtn');
+  const pager = document.getElementById('airPager');
 
   // Lightbox
-  let lb = null;
+  let lb=null;
   function openLightbox(src){
     if(!lb){
-      lb = document.createElement('div');
-      lb.className = 'lightbox';
-      lb.innerHTML = '<button class="close">إغلاق ✕</button><img alt="preview">';
+      lb=document.createElement('div');
+      lb.className='lightbox';
+      lb.innerHTML='<button class="close">إغلاق ✕</button><img alt="preview">';
       document.body.appendChild(lb);
-      lb.querySelector('.close').onclick = () => lb.classList.remove('show');
-      lb.onclick = (e)=>{ if(e.target===lb) lb.classList.remove('show'); };
+      lb.querySelector('.close').onclick=()=>lb.classList.remove('show');
+      lb.onclick=(e)=>{ if(e.target===lb) lb.classList.remove('show'); };
     }
-    lb.querySelector('img').src = src;
-    lb.classList.add('show');
+    lb.querySelector('img').src=src; lb.classList.add('show');
   }
+  if(zoomBtn && main){ zoomBtn.addEventListener('click', ()=>openLightbox(main.src)); }
 
-  if(zoomBtn && main){
-    zoomBtn.addEventListener('click', ()=> openLightbox(main.src));
-  }
+  // عدّاد الصور
+  function setPager(i,t){ if(pager){ pager.textContent=(i+1)+'/'+t; } }
+  let activeIdx=0;
+  function totalImgs(){ return thumbs ? thumbs.querySelectorAll('img').length : (main?1:0); }
+  setPager(activeIdx,totalImgs());
 
-  // عدّاد الصور أعلى اليمين
-  const pager = document.getElementById('airPager');
-  function setPager(idx, total){
-    if(pager){ pager.textContent = (idx+1) + '/' + total; }
-  }
-
-  // تبديل الرئيسي عند الضغط على المصغّرات
-  let activeIdx = 0;
-  function totalImgsFn(){
-    if(thumbs) return thumbs.querySelectorAll('img').length;
-    return main ? 1 : 0;
-  }
-  setPager(activeIdx, totalImgsFn());
-
+  // تبديل الصورة من المصغّرات
   if(thumbs && main){
     thumbs.addEventListener('click', (e)=>{
-      const t = e.target;
+      const t=e.target;
       if(t.tagName==='IMG'){
-        main.src = t.dataset.src || t.src;
+        main.src=t.dataset.src||t.src;
         [...thumbs.querySelectorAll('img')].forEach(i=>i.classList.remove('active'));
         t.classList.add('active');
-
-        // تحديث حقول البلاغ مع الصورة الجديدة
-        try{
-          activeIdx = parseInt(t.getAttribute('data-index') || '0', 10) || 0;
-          document.getElementById('rf_image_index')?.setAttribute('value', String(activeIdx));
-          document.getElementById('rf_image_url')?.setAttribute('value', t.dataset.src || t.src || '');
-        }catch(_){}
-
-        setPager(activeIdx, totalImgsFn());
+        activeIdx=parseInt(t.getAttribute('data-index')||'0',10)||0;
+        setPager(activeIdx,totalImgs());
+        // تعبئة قيم البلاغ
+        document.getElementById('rf_image_index')?.setAttribute('value', String(activeIdx));
+        document.getElementById('rf_image_url')?.setAttribute('value', t.dataset.src || t.src || '');
       }
     });
-
-    // سحب على الهاتف
-    let sx=0, dx=0;
-    thumbs.addEventListener('touchstart', e=>{ sx=e.touches[0].clientX; }, {passive:true});
-    thumbs.addEventListener('touchmove', e=>{ dx=e.touches[0].clientX - sx; }, {passive:true});
-    thumbs.addEventListener('touchend', ()=>{
-      thumbs.scrollBy({left: -dx, behavior:'smooth'});
-      sx=dx=0;
-    });
+    // سحب أفقي
+    let sx=0,dx=0;
+    thumbs.addEventListener('touchstart',e=>{sx=e.touches[0].clientX},{passive:true});
+    thumbs.addEventListener('touchmove',e=>{dx=e.touches[0].clientX-sx},{passive:true});
+    thumbs.addEventListener('touchend',()=>{thumbs.scrollBy({left:-dx,behavior:'smooth'});sx=dx=0});
   }
 
-  // أسهم الكيبورد لتبديل الصور
+  // أسهم الكيبورد
   function step(dir){
     if(!thumbs) return;
-    const imgs = [...thumbs.querySelectorAll('img')];
+    const imgs=[...thumbs.querySelectorAll('img')];
     if(imgs.length<=1) return;
-    let i = imgs.findIndex(n=>n.classList.contains('active'));
-    if(i<0) i = 0;
-    let j = (i + dir + imgs.length) % imgs.length;
-    imgs[j].click();
-    imgs[j].scrollIntoView({behavior:'smooth', inline:'center', block:'nearest'});
-    activeIdx = j;
-    setPager(activeIdx, imgs.length);
+    let i=imgs.findIndex(n=>n.classList.contains('active')); if(i<0) i=0;
+    let j=(i+dir+imgs.length)%imgs.length; imgs[j].click();
+    imgs[j].scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});
   }
-  window.addEventListener('keydown', (e)=>{
-    if(e.key==='ArrowRight') step(+1);
-    if(e.key==='ArrowLeft') step(-1);
+  window.addEventListener('keydown',e=>{ if(e.key==='ArrowRight')step(+1); if(e.key==='ArrowLeft')step(-1); });
+
+  // عند فتح Sheet البلاغ لأول مرة، جهّز القيم الحالية
+  const reportSheet = document.getElementById('reportSheet');
+  reportSheet?.addEventListener('show.bs.offcanvas', ()=>{
+    const activeThumb=document.querySelector('#thumbs img.active')||document.querySelector('#thumbs img');
+    const idx=activeThumb?parseInt(activeThumb.getAttribute('data-index')||'0',10)||0:0;
+    const url=activeThumb?(activeThumb.dataset.src||activeThumb.src||(main?.src||'')):(main?.src||'');
+    document.getElementById('rf_image_index')?.setAttribute('value', String(idx));
+    document.getElementById('rf_image_url')?.setAttribute('value', url);
   });
 
-  // فتح مودال البلاغ وتعبئة القيم الابتدائية
-  const openReportBtn = document.getElementById('openReportBtn');
-  if(openReportBtn){
-    openReportBtn.addEventListener('click', function(){
-      const activeThumb = document.querySelector('#thumbs img.active') || document.querySelector('#thumbs img');
-      const idx = activeThumb ? parseInt(activeThumb.getAttribute('data-index') || '0', 10) || 0 : 0;
-      const url = activeThumb ? (activeThumb.dataset.src || activeThumb.src || (main?.src||'')) : (main?.src||'');
-
-      const idxEl = document.getElementById('rf_image_index');
-      const urlEl = document.getElementById('rf_image_url');
-      if(idxEl) idxEl.setAttribute('value', String(idx));
-      if(urlEl) urlEl.setAttribute('value', url);
-
-      const m = new bootstrap.Modal(document.getElementById('reportModal'));
-      m.show();
-    });
-  }
 })();
 </script>
 
