@@ -4,66 +4,65 @@
 {% block content %}
 
 <style>
-/* ===== Base (Desktop) =================================================== */
+/* ====== Base (Desktop) ====== */
 :root{
-  --txt:#111; --muted:#717171; --border:#e5e7eb; --divider:#eee;
-  --cta1:#ff385c; --cta2:#e61e4d; /* Airbnb-like gradient */
+  --bg-1:#0b1220; --bg-2:#0f172a; --card:#0f172acc;
+  --stroke:rgba(255,255,255,.12); --stroke-soft:rgba(255,255,255,.08);
+  --txt:#eaf0ff; --muted:#9fb0d8; --brand:#3b82f6; --ok:#10b981;
+  --glass:rgba(255,255,255,.06);
+  --shadow:0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
 }
 .items-shell{max-width:1100px;margin:18px auto;padding:0 12px}
 .grid-2{display:grid;gap:18px;grid-template-columns:1.2fr .8fr}
 @media (max-width:920px){.grid-2{grid-template-columns:1fr}}
-.card-glass{background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.04)}
+.card-glass{background:linear-gradient(180deg,var(--glass),transparent);border:1px solid var(--stroke);border-radius:16px;overflow:hidden;backdrop-filter:blur(8px);box-shadow:var(--shadow)}
 .card-body{padding:18px}
-.card-title{margin:0 0 8px 0;font-weight:800;letter-spacing:.2px;color:#111}
-.small-muted{color:var(--muted);font-size:14px}
-.badge-pill{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:#fff;font-size:12px;color:var(--muted)}
-.gallery{background:#000}
-.gallery-main{position:relative;aspect-ratio:16/10;width:100%;background:#000}
-.gallery-main img{width:100%;height:100%;object-fit:cover;display:block}
-.gallery-zoom{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.25);border-radius:12px;padding:6px 10px;font-size:12px;color:#fff;cursor:pointer}
+.card-title{margin:0 0 8px 0;font-weight:800;letter-spacing:.2px}
+.small-muted{color:var(--muted);font-size:13px}
+.badge-pill{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid var(--stroke);background:rgba(255,255,255,.05);font-size:12px;color:var(--muted)}
+.gallery{background:#0c1324;border-bottom:1px solid var(--stroke-soft)}
+.gallery-main{position:relative;aspect-ratio:16/10;width:100%;background:#0a0f1e;overflow:hidden}
+.gallery-main img{width:100%;height:100%;object-fit:cover;display:block;transform-origin:center}
+.gallery-zoom{position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,.45);border:1px solid var(--stroke);border-radius:12px;padding:8px 12px;font-size:13px;color:#fff;cursor:pointer;backdrop-filter:blur(6px)}
 .gallery-menu{position:absolute;top:10px;right:10px}
-.gallery-menu .btn-menu{background:rgba(255,255,255,.9);color:#111;border:1px solid var(--border);border-radius:12px;padding:6px 10px;line-height:1;font-weight:700}
-.gallery-menu .dropdown-menu{border-radius:12px;overflow:hidden;border:1px solid var(--border)}
-.thumbs{display:flex;gap:10px;padding:12px;overflow-x:auto;background:#fff;scroll-snap-type:x mandatory}
-.thumbs img{width:86px;height:60px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:pointer;opacity:.9;transition:transform .15s ease,opacity .15s ease,box-shadow .15s ease;scroll-snap-align:center}
-.thumbs img:hover{transform:translateY(-2px);opacity:1;box-shadow:0 4px 14px rgba(0,0,0,.12)}
-.thumbs img.active{outline:2px solid #111;opacity:1}
-.btnx{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;font-weight:700;text-decoration:none;cursor:pointer;user-select:none;border:1px solid var(--border);background:#fff;color:#111;transition:transform .12s ease,background .2s ease,border-color .2s ease}
-.btnx:hover{transform:translateY(-1px)}
-.btnx-primary{background:#fff;border-color:#cbd5e1}
-.btnx-green{background:#fff;border-color:#cbd5e1}
-.btnx-ghost{background:#fff}
+.gallery-menu .btn-menu{background:rgba(0,0,0,.45);color:#fff;border:1px solid var(--stroke);border-radius:12px;padding:6px 10px;line-height:1;font-weight:700}
+.gallery-menu .dropdown-menu{border-radius:12px;overflow:hidden;border:1px solid var(--stroke)}
+.thumbs{display:flex;gap:10px;padding:12px;overflow-x:auto;background:linear-gradient(180deg,rgba(255,255,255,.03),transparent);scroll-snap-type:x mandatory}
+.thumbs img{width:86px;height:60px;object-fit:cover;border-radius:10px;border:1px solid var(--stroke-soft);cursor:pointer;opacity:.85;transition:transform .15s ease,opacity .15s ease,box-shadow .15s ease;scroll-snap-align:center}
+.thumbs img:hover{transform:translateY(-2px);opacity:1;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.thumbs img.active{outline:2px solid var(--brand);opacity:1}
+.btnx{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;font-weight:700;text-decoration:none;cursor:pointer;user-select:none;border:1px solid var(--stroke);backdrop-filter:blur(8px);background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));color:var(--txt);transition:transform .12s ease,background .2s ease,border-color .2s ease}
+.btnx:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.2)}
+.btnx-primary{border-color:rgba(59,130,246,.6);background:linear-gradient(180deg,rgba(59,130,246,.35),rgba(59,130,246,.1))}
+.btnx-green{border-color:rgba(16,185,129,.6);background:linear-gradient(180deg,rgba(16,185,129,.35),rgba(16,185,129,.1))}
+.btnx-ghost{border-color:var(--stroke);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))}
 .btns-row{display:flex;flex-wrap:wrap;gap:10px}
 .lightbox{position:fixed;inset:0;display:none;place-items:center;z-index:9999;background:rgba(0,0,0,.8)}
 .lightbox.show{display:grid}
-.lightbox img{max-width:92vw;max-height:88vh;border-radius:14px;border:1px solid rgba(255,255,255,.2)}
-.lightbox .close{position:absolute;top:18px;right:18px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.2);color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer}
+.lightbox img{max-width:92vw;max-height:88vh;border-radius:14px;border:1px solid var(--stroke)}
+.lightbox .close{position:absolute;top:18px;right:18px;background:rgba(0,0,0,.6);border:1px solid var(--stroke);color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer}
 .owner-row{display:flex;align-items:center;gap:12px}
-.owner-avatar{width:62px;height:62px;border-radius:50%;object-fit:cover;border:1px solid var(--border)}
-.hr{border:0;height:1px;background:var(--divider);margin:14px 0}
+.owner-avatar{width:62px;height:62px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--stroke)}
+.hr{border:0;height:1px;background:var(--stroke-soft);margin:14px 0}
 
-/* ===== Airbnb-like Stars (black/gray, no emoji) ========================= */
-.stars{display:inline-flex;gap:2px;line-height:1}
-.star{font-size:16px}
-.star.full{color:#111}
-.star.empty{color:#c7c7c7}
-.star.half{
-  /* half fill using gradient clip */
-  background:linear-gradient(90deg,#111 50%, #c7c7c7 50%);
-  -webkit-background-clip:text;background-clip:text;color:transparent;
-}
-
-/* ===== Mobile layout ===================================================== */
+/* ====== Mobile + Airbnb look ====== */
 @media (max-width:768px){
   body{background:#fff;color:#111}
   .items-shell{padding:0;margin:0;max-width:none}
   .grid-2{display:block}
 
-  /* Cover */
+  /* --- Parallax Hero --- */
   .gallery{background:#000;border:0}
   .gallery-main{height:58vh;max-height:520px;border-radius:0}
+  .gallery-main img{object-fit:cover;will-change:transform,opacity}
+  /* غشاء تلاشي أسفل الصورة */
+  .hero-fade{
+    position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(to bottom, rgba(0,0,0,0) 40%, rgba(0,0,0,.05) 58%, rgba(255,255,255,1) 100%);
+    opacity:.0;transition:opacity .25s ease;
+  }
 
-  /* Floating buttons + counter */
+  /* أزرار عائمة + عدّاد */
   .air-fab,.air-fab-right .air-fab{
     appearance:none;border:0;cursor:pointer;width:44px;height:44px;border-radius:50%;
     background:rgba(255,255,255,.9);box-shadow:0 8px 20px rgba(0,0,0,.18);
@@ -73,23 +72,45 @@
   .air-fab-right{position:absolute;top:16px;right:12px;display:flex;gap:10px}
   .air-pager{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:6px 10px;border-radius:10px;font-size:12px;border:1px solid rgba(255,255,255,.25)}
 
-  /* White rounded sheet */
+  /* الورقة البيضاء المنحنية + حد فاصل ناعم */
   .card-glass{background:transparent;border:0;box-shadow:none}
   .air-sheet{
-    background:#fff;color:#111;margin-top:-24px;border-top-left-radius:28px;border-top-right-radius:28px;
-    padding:22px 18px 120px; /* مساحة أسفل حتى لا يغطيها الشريط الثابت */
-    box-shadow:0 -6px 20px rgba(0,0,0,.06);border:1px solid #eee;border-bottom:0
+    background:#fff;color:#111;margin-top:-24px;
+    border-top-left-radius:28px;border-top-right-radius:28px;
+    padding:22px 18px 120px; /* نزيد أسفل لظهور الشريط الثابت */
+    box-shadow:0 -6px 20px rgba(0,0,0,.06);border:1px solid #eee;border-bottom:0;position:relative;
+  }
+  .air-sheet::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:14px;border-top-left-radius:28px;border-top-right-radius:28px;
+    background:linear-gradient(to bottom, rgba(0,0,0,.06), rgba(0,0,0,0));
+    opacity:.35;pointer-events:none
   }
 
-  .card-title{font-size:28px;font-weight:800;margin-bottom:6px}
-  .small-muted{color:var(--muted)!important}
-  .hr{background:#eee}
+  /* تايبوغرافيا */
+  .card-title{font-size:28px;font-weight:800;margin-bottom:6px;color:#111;letter-spacing:.2px}
+  .small-muted{color:#717171!important;font-size:14px;line-height:1.5}
+  .hr{background:#e5e7eb}
 
-  /* Laurel + scores row */
+  /* ====== Bottom Booking Bar (ثابت) ====== */
+  .air-fixed{
+    position:fixed;left:0;right:0;
+    bottom:calc(env(safe-area-inset-bottom,0px));
+    z-index:50;background:#fff;border-top:1px solid #eee;
+    padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px
+  }
+  .air-price{display:flex;flex-direction:column;line-height:1.2}
+  .air-price .now{font-weight:800;font-size:20px}
+  .air-price .per{color:#717171;font-size:12px}
+  .air-cta{
+    flex:0 0 auto;min-width:150px;text-align:center;height:48px;line-height:48px;padding:0 20px;border-radius:14px;
+    font-weight:700;color:#fff;background:linear-gradient(90deg,#ff385c,#e61e4d);border:0;text-decoration:none;display:inline-block
+  }
+
+  /* إكليل / لاوريل */
   .laurel-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 12px 0}
   .laurel-mid{display:flex;align-items:center;gap:10px;flex:1;justify-content:center}
   .laurel{height:20px;width:auto;opacity:.95}
-  .score{font-weight:800;font-size:18px;color:#111;display:flex;align-items:center;gap:8px}
+  .score{font-weight:800;font-size:18px;color:#111;display:flex;align-items:center;gap:6px}
   .score small{color:#6b7280;font-weight:600}
 
   /* Reviews */
@@ -98,36 +119,21 @@
   .rv-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
   .rv-ava{width:40px;height:40px;border-radius:50%;object-fit:cover}
   .rv-meta{color:#6b7280;font-size:12px}
-  .rv-stars .star{font-size:14px}
+  .rv-stars{font-size:13px}
+  .rv-stars .full{color:#111}
+  .rv-stars .empty{color:#bdbdbd}
+  .rv-more{display:inline-block;margin-top:4px;font-weight:600}
+  .btn-outline-pale{display:block;width:100%;text-align:center;border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:10px 14px;font-weight:700}
 
-  /* ===== Fixed booking bar like Airbnb (ALWAYS visible) ================= */
-  .air-fixed{
-    position:fixed;left:0;right:0;bottom:0;z-index:50;
-    background:#fff;border-top:1px solid #eee;
-    padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;
-  }
-  .air-price{display:flex;flex-direction:column;line-height:1.2}
-  .air-price .now{font-weight:800;font-size:20px;color:#111}
-  .air-price .per{color:#717171;font-size:12px}
-  .air-cta{
-    flex:0 0 auto;min-width:140px;text-align:center;height:48px;line-height:48px;padding:0 18px;
-    border-radius:12px;font-weight:700;color:#fff;background:linear-gradient(90deg,var(--cta1),var(--cta2));
-    border:0;text-decoration:none;display:inline-block
-  }
+  /* Bottom-Sheet */
+  .offcanvas-bottom{border-top-left-radius:18px;border-top-right-radius:18px}
 }
-</style>
 
-{# ==== Stars macro (black/gray) ========================================= #}
-{% macro render_stars(value, out_of=5) -%}
-  {%- set full = (value|int) -%}
-  {%- set half = 1 if (value - full) >= 0.5 and full < out_of else 0 -%}
-  {%- set empty = out_of - full - half -%}
-  <span class="stars" aria-label="{{ value }} / {{ out_of }}">
-    {%- for _ in range(full) -%}<span class="star full">★</span>{%- endfor -%}
-    {%- if half -%}<span class="star half">★</span>{%- endif -%}
-    {%- for _ in range(empty) -%}<span class="star empty">★</span>{%- endfor -%}
-  </span>
-{%- endmacro %}
+/* نجوم التقييم بالأبيض والأسود في أي مكان عام */
+.stars-bw{display:inline-flex;gap:2px;font-size:14px;line-height:1}
+.stars-bw .full{color:#111}
+.stars-bw .empty{color:#bdbdbd}
+</style>
 
 <section class="items-shell">
   {% if not item %}
@@ -135,10 +141,10 @@
   {% else %}
 
   <div class="grid-2">
-    <!-- ================== Item / Gallery ================== -->
+    <!-- ===== Item / Gallery ===== -->
     <div class="card-glass">
       <div class="gallery">
-        {# Collect images #}
+        {# Gather images #}
         {% set _srcs = [] %}
         {% if item.image_path %}
           {% set _raw = item.image_path %}
@@ -157,7 +163,8 @@
         <div class="gallery-main" id="gMain">
           {% if current %}
             <img id="mainImg" src="{{ build_src(current) }}" alt="item image">
-            <button class="gallery-zoom" id="zoomBtn">Zoom 1/1</button>
+            <div class="hero-fade" id="heroFade"></div>
+            <button class="gallery-zoom" id="zoomBtn">Zoom image</button>
           {% else %}
             <div style="display:grid;place-items:center;height:100%;color:#8b94a7;font-size:13px">No image</div>
           {% endif %}
@@ -170,7 +177,7 @@
             </ul>
           </div>
 
-          <!-- Floating buttons + counter -->
+          <!-- FABs + Counter -->
           <button type="button" class="air-fab" onclick="history.back()" aria-label="Back"><i class="bi bi-arrow-left"></i></button>
           <div class="air-fab-right">
             <button type="button" aria-label="Share" class="air-fab" onclick="navigator.share ? navigator.share({url:location.href}) : alert('Copy the link manually');"><i class="bi bi-share"></i></button>
@@ -189,20 +196,26 @@
         {% endif %}
       </div>
 
-      <!-- ===== White rounded sheet (content) ===== -->
+      <!-- ===== White Rounded Sheet ===== -->
       <div class="card-body air-sheet">
         <h2 class="card-title">{{ item.title }}</h2>
         <div class="small-muted" style="margin-bottom:8px">
           {{ item.category_label or item.category }} • {{ item.city or "No city" }} • {{ owner and owner.country or "" }}
         </div>
 
-        {# Rating + Laurel row #}
+        {# Rating row with black/gray stars #}
         {% set _avg = item_rating_avg or 0 %}
         {% set _cnt = item_rating_count or 0 %}
         <div class="laurel-row">
           <div class="score">
-            {{ render_stars(_avg) }}
-            <span>{{ '%.2f'|format(_avg) }} <small>/ 5</small></span>
+            <span class="stars-bw" aria-label="{{ '%.2f'|format(_avg) }} out of 5">
+              {% set full = _avg|round(0, 'floor')|int %}
+              {% set half = 1 if _avg - full >= 0.5 else 0 %}
+              {% for i in range(0, full) %}<span class="full">★</span>{% endfor %}
+              {% if half %}<span class="full">★</span>{% endif %}
+              {% for i in range(0, 5 - full - half) %}<span class="empty">☆</span>{% endfor %}
+            </span>
+            <small>{{ '%.2f'|format(_avg) }} / 5</small>
           </div>
           <div class="laurel-mid">
             <img class="laurel" src="{{ url_for('static', path='photo/ion.png') }}" alt="laurel left">
@@ -213,14 +226,14 @@
         </div>
 
         {% if item.description %}
-          <p style="white-space:pre-wrap;line-height:1.8;color:#333">{{ item.description }}</p>
+          <p style="white-space:pre-wrap;line-height:1.9;color:#374151">{{ item.description }}</p>
         {% else %}
           <div class="badge-pill">No description</div>
         {% endif %}
 
         <div class="hr"></div>
 
-        <!-- ===== Reviews (horizontal cards) ===== -->
+        <!-- Reviews slider -->
         <h5 style="margin:0 0 8px 0">Reviews</h5>
         {% if item_reviews and item_reviews|length %}
           <div class="rv-strip">
@@ -235,23 +248,24 @@
                   </div>
                 </div>
                 <div class="rv-stars" title="{{ r.stars }} / 5">
-                  {{ render_stars(r.stars) }}
+                  {% for _ in range(r.stars) %}<span class="full">★</span>{% endfor %}
+                  {% for _ in range(5 - r.stars) %}<span class="empty">☆</span>{% endfor %}
                 </div>
                 {% if r.comment %}
                   <div style="margin-top:6px;white-space:pre-wrap">{{ r.comment }}</div>
-                  <a href="/items/{{ item.id }}#review-{{ r.id }}" class="rv-more" style="font-weight:600">View more</a>
+                  <a href="/items/{{ item.id }}#review-{{ r.id }}" class="rv-more">View more</a>
                 {% endif %}
               </div>
             {% endfor %}
           </div>
-          <a href="/items/{{ item.id }}#all-reviews" class="btnx" style="width:100%;justify-content:center;border-radius:999px">View all {{ _cnt }} review(s)</a>
+          <a href="/items/{{ item.id }}#all-reviews" class="btn-outline-pale">View all {{ _cnt }} review(s)</a>
         {% else %}
           <div class="small-muted">No reviews yet.</div>
         {% endif %}
 
         <div class="hr"></div>
 
-        <!-- ===== Inline buttons (optional) ===== -->
+        <!-- Buttons (desktop/extra) -->
         <div class="btns-row">
           {% if owner %}
             <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">💬 Contact owner</a>
@@ -267,7 +281,7 @@
         </div>
       </div>
 
-      <!-- ===== Fixed booking bar (ALWAYS visible) ===== -->
+      <!-- ===== Bottom Booking Bar (Fixed) ===== -->
       <div class="air-fixed">
         <div class="air-price">
           <span class="now">{{ item.price_per_day }} {{ item.currency or 'KWD' }}</span>
@@ -283,7 +297,7 @@
       </div>
     </div>
 
-    <!-- ================== Owner card ================== -->
+    <!-- ===== Owner Card ===== -->
     <div class="card-glass">
       <div class="card-body">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
@@ -317,7 +331,7 @@
   {% endif %}
 </section>
 
-<!-- ===== Bottom Sheet: Report listing =================================== -->
+<!-- ===== Report Bottom Sheet ===== -->
 <div class="offcanvas offcanvas-bottom" tabindex="-1" id="reportSheet" aria-labelledby="reportLabel" dir="rtl">
   <div class="offcanvas-header">
     <h5 class="offcanvas-title" id="reportLabel">🚩 Report listing</h5>
@@ -351,12 +365,13 @@
 
 <script>
 (function(){
-  const main = document.getElementById('mainImg');
-  const thumbs = document.getElementById('thumbs');
-  const zoomBtn = document.getElementById('zoomBtn');
+  const main  = document.getElementById('mainImg');
+  const thumbs= document.getElementById('thumbs');
+  const zoomBtn=document.getElementById('zoomBtn');
   const pager = document.getElementById('airPager');
+  const heroFade = document.getElementById('heroFade');
 
-  // Lightbox
+  /* ==== Lightbox ==== */
   let lb=null;
   function openLightbox(src){
     if(!lb){
@@ -371,13 +386,13 @@
   }
   if(zoomBtn && main){ zoomBtn.addEventListener('click', ()=>openLightbox(main.src)); }
 
-  // Pager
-  function setPager(i,t){ if(pager){ pager.textContent=(t? (i+1)+'/'+t : ''); } }
+  /* ==== Image counter ==== */
+  function setPager(i,t){ if(pager){ pager.textContent=(i+1)+'/'+t; } }
   let activeIdx=0;
   function totalImgs(){ return thumbs ? thumbs.querySelectorAll('img').length : (main?1:0); }
   setPager(activeIdx,totalImgs());
 
-  // Switch image from thumbnails
+  /* ==== Switch image ==== */
   if(thumbs && main){
     thumbs.addEventListener('click', (e)=>{
       const t=e.target;
@@ -387,19 +402,17 @@
         t.classList.add('active');
         activeIdx=parseInt(t.getAttribute('data-index')||'0',10)||0;
         setPager(activeIdx,totalImgs());
-        // Report helpers
         document.getElementById('rf_image_index')?.setAttribute('value', String(activeIdx));
         document.getElementById('rf_image_url')?.setAttribute('value', t.dataset.src || t.src || '');
       }
     });
-    // Swipe assist
     let sx=0,dx=0;
     thumbs.addEventListener('touchstart',e=>{sx=e.touches[0].clientX},{passive:true});
     thumbs.addEventListener('touchmove',e=>{dx=e.touches[0].clientX-sx},{passive:true});
     thumbs.addEventListener('touchend',()=>{thumbs.scrollBy({left:-dx,behavior:'smooth'});sx=dx=0});
   }
 
-  // Keyboard arrows
+  /* ==== Keyboard arrows ==== */
   function step(dir){
     if(!thumbs) return;
     const imgs=[...thumbs.querySelectorAll('img')];
@@ -410,7 +423,31 @@
   }
   window.addEventListener('keydown',e=>{ if(e.key==='ArrowRight')step(+1); if(e.key==='ArrowLeft')step(-1); });
 
-  // Prepare report values on open
+  /* ==== Parallax + Fade (Airbnb-like) ==== */
+  const gMain = document.getElementById('gMain');
+  let lastY = 0;
+  function onScroll(){
+    if(!gMain || !main) return;
+    // مقدار التقدّم فوق الصورة (0 → 1 تقريبًا)
+    const rect = gMain.getBoundingClientRect();
+    const h = rect.height || 1;
+    const visibleTop = Math.max(0, -rect.top); // كم صعدنا
+    const p = Math.min(1, visibleTop / (h * .35)); // شدة التلاشي
+
+    // تكبير طفيف ثم تلاشي
+    const scale = 1 + (visibleTop>0 ? Math.min(visibleTop/1000, .06) : 0);
+    main.style.transform = `scale(${scale}) translateY(${visibleTop* -0.06}px)`;
+    main.style.opacity = String(1 - p*0.85);
+
+    // غشاء التلاشي إلى الأبيض
+    if(heroFade) heroFade.style.opacity = String(p);
+
+    lastY = window.scrollY||0;
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+
+  /* ==== Prepare report values ==== */
   const reportSheet = document.getElementById('reportSheet');
   reportSheet?.addEventListener('show.bs.offcanvas', ()=>{
     const activeThumb=document.querySelector('#thumbs img.active')||document.querySelector('#thumbs img');
