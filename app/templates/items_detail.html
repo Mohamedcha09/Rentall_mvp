@@ -92,13 +92,16 @@
 
   /* ======= Fixed Bottom Booking Bar ======= */
   .air-fixed{
-    position:fixed !important; left:0; right:0;
-    bottom:calc(env(safe-area-inset-bottom,0px) + 0px);
-    z-index:10000; background:#fff; border-top:1px solid #eee;
-    padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px;
-    -webkit-backdrop-filter:saturate(160%) blur(10px); backdrop-filter:saturate(160%) blur(10px);
-    box-shadow:0 -6px 18px rgba(0,0,0,.08);
-  }
+  position:fixed !important; left:0; right:0;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 0px);
+  z-index:10000;
+  background:#ffffff !important;
+  border-top:1px solid #eee;
+  padding:12px 16px;
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  box-shadow:0 -6px 18px rgba(0,0,0,.08);
+}
+
   .air-price{display:flex;flex-direction:column;line-height:1.2}
   .air-price .now{font-weight:800;font-size:20px}
   .air-price .per{color:#717171;font-size:12px}
