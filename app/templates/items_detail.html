@@ -286,13 +286,8 @@
           <span class="now">{{ item.price_per_day }} {{ item.currency or 'KWD' }}</span>
           <span class="per">per day</span>
         </div>
-        {% if owner and session_user and session_user.status == 'approved' and session_user.id != owner.id %}
-          <a class="air-cta" href="/bookings/new?item_id={{ item.id }}">Book now</a>
-        {% elif not session_user %}
-          <a class="air-cta" href="/login">Sign in to pay</a>
-        {% else %}
-          <a class="air-cta" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">Contact</a>
-        {% endif %}
+        <a class="air-cta" href="/bookings/new?item_id={{ item.id }}">Book now</a>
+
       </div>
     </div>
 
