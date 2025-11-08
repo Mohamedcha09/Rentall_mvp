@@ -578,6 +578,136 @@
   }
 }
 
+/* ======= HOME.GLASS OVERRIDES (paste at end of home.html <style>) ======= */
+
+/* 1) Locbar زجاجي بنفس التدرّج (بنفسجي→سماوي) */
+.home-locbar{
+  background:
+    linear-gradient(135deg, rgba(108,99,255,.14), rgba(0,212,255,.10)),
+    rgba(56,56,56,.28) !important;
+  backdrop-filter: blur(16px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(190%) !important;
+  border:1px solid rgba(255,255,255,.18) !important;
+  box-shadow:
+    0 18px 40px rgba(0,0,0,.22),
+    0 0 0 1px rgba(255,255,255,.10) inset,
+    0 2px 0 0 rgba(255,255,255,.06) inset !important;
+  color:#fff !important;
+}
+.home-locbar #homeCityInput{
+  background: rgba(255,255,255,.18) !important;
+  border:1px solid rgba(255,255,255,.16) !important;
+  color:#fff !important;
+}
+.home-locbar #homeCityInput::placeholder{ color:rgba(255,255,255,.85) !important; }
+#homeCitySugg{
+  background: rgba(28,28,30,.85) !important;
+  color:#fff !important;
+  border:1px solid rgba(255,255,255,.12) !important;
+  backdrop-filter: blur(14px) saturate(170%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(170%) !important;
+}
+#homeCitySugg>div{ border-top-color: rgba(255,255,255,.10) !important; }
+#homeCitySugg>div:hover{ background: rgba(255,255,255,.10) !important; }
+
+/* أزرار GPS / Search / Clear زجاجية */
+#homeUseGPS,
+.home-locbar .btn.btn-primary,
+#homeClearGPS{
+  background:
+    linear-gradient(135deg, rgba(108,99,255,.18), rgba(0,212,255,.12)),
+    rgba(56,56,56,.30) !important;
+  border:1px solid rgba(255,255,255,.22) !important;
+  color:#fff !important;
+  box-shadow:
+    0 12px 28px rgba(0,0,0,.22),
+    0 0 0 1px rgba(255,255,255,.10) inset,
+    0 2px 0 0 rgba(255,255,255,.06) inset !important;
+}
+.home-locbar .btn.btn-primary{
+  font-weight:900;
+}
+#homeClearGPS{
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,.10)),
+    rgba(56,56,56,.22) !important;
+}
+
+/* دارك مود لتوافق الألوان */
+[data-theme="dark"] .home-locbar{
+  background:
+    linear-gradient(135deg, rgba(108,99,255,.16), rgba(0,212,255,.10)),
+    rgba(28,28,30,.66) !important;
+  border-color: rgba(255,255,255,.10) !important;
+}
+[data-theme="dark"] #homeCitySugg{
+  background: rgba(17,17,23,.92) !important;
+}
+
+/* 2) أزرار السلايدر (الأسهم) زجاجية */
+.arrow-btn{
+  background:
+    linear-gradient(135deg, rgba(108,99,255,.16), rgba(0,212,255,.10)),
+    rgba(56,56,56,.28) !important;
+  border:1px solid rgba(255,255,255,.18) !important;
+  color:#fff !important;
+  backdrop-filter: blur(12px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+  box-shadow:
+    0 10px 24px rgba(0,0,0,.20),
+    0 0 0 1px rgba(255,255,255,.10) inset,
+    0 2px 0 0 rgba(255,255,255,.05) inset !important;
+}
+.arrow-btn .bi{ filter: drop-shadow(0 1px 0 rgba(0,0,0,.25)); }
+
+/* 3) كروت العناصر: قلب + شارة التصنيف بزجاج خفيف */
+.fav-btn{
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.22), rgba(255,255,255,.14)),
+    rgba(56,56,56,.28) !important;
+  border:1px solid rgba(255,255,255,.30) !important;
+  color:#fff !important;
+  backdrop-filter: blur(10px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(180%) !important;
+}
+.fav-btn .bi{ color:#fff !important; }
+.fav-btn.is-fav{
+  background:
+    linear-gradient(135deg, rgba(108,99,255,.28), rgba(0,212,255,.16)),
+    rgba(56,56,56,.35) !important;
+  border-color: rgba(255,255,255,.32) !important;
+}
+.category-chip{
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.92), rgba(255,255,255,.82)) !important;
+  border:1px solid rgba(0,0,0,.06) !important;
+  color:#111 !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* 4) حواف الصور + ظل أفخم مثل Airbnb */
+.spot-media{
+  border-radius:16px !important;
+  box-shadow: 0 14px 34px rgba(0,0,0,.10) !important;
+}
+.spot-media img{ border-radius:16px !important; }
+
+/* 5) لمسة نصية: العنوان/الميتا داكنة متوافقة */
+.spot-title{ color:#0f172a !important; }
+.spot-price, .spot-rating{ color:#111 !important; }
+.spot-city{ color:#6b7280 !important; }
+
+/* 6) ألواح “home-shelves” تبقى نظيفة على الديسكتوب */
+@media (min-width:992px){
+  .home-shelves{
+    background:#fff !important;
+    border-radius:18px 18px 0 0 !important;
+    box-shadow:0 8px 26px rgba(0,0,0,.06) !important;
+  }
+}
+
+
 
 
 </style>
