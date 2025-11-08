@@ -3,7 +3,7 @@
 {% block content %}
 
 <style>
-/* ===============  Glass & Modern UI  =============== */
+/* ===============  Glass & Modern UI (الأسلوب الأصلي لديك)  =============== */
 :root{
   --bg-1:#0b1220;
   --bg-2:#0f172a;
@@ -135,6 +135,86 @@
 }
 
 .hr{ border:0; height:1px; background:var(--stroke-soft); margin:14px 0; }
+
+/* ===== Airbnb-like Mobile Detail (ONLY <=768px) ===== */
+@media (max-width: 768px){
+
+  /* ألوان فاتحة وشعور iOS */
+  body{ background:#fff; color:#111; }
+  .items-shell{ padding:0; margin:0; max-width:none; }
+  .grid-2{ display:block; }
+
+  /* صورة الغلاف */
+  .gallery{ background:#000; border:0; }
+  .gallery-main{
+    height: 58vh; max-height: 520px; aspect-ratio:auto;
+    border-radius:0;
+  }
+  .gallery-main img{ object-fit:cover; }
+
+  /* أزرار عائمة أعلى الصورة */
+  .air-fab, .air-fab-right .air-fab{
+    appearance:none; border:0; cursor:pointer;
+    width:44px; height:44px; border-radius:50%;
+    background:rgba(255,255,255,.9);
+    box-shadow:0 8px 20px rgba(0,0,0,.18);
+    display:grid; place-items:center; font-size:18px; line-height:1;
+  }
+  .air-fab{ position:absolute; top:16px; left:12px; }
+  .air-fab-right{ position:absolute; top:16px; right:12px; display:flex; gap:10px; }
+  .air-pager{
+    position:absolute; bottom:12px; right:12px;
+    background:rgba(0,0,0,.65); color:#fff; font-weight:600;
+    padding:6px 10px; border-radius:10px; font-size:12px;
+  }
+
+  /* الورقة البيضاء التي تتراكب فوق الصورة */
+  .card-glass{ background:transparent; border:0; box-shadow:none; }
+  .card-glass > .card-body:first-of-type{
+    background:#fff; color:#111;
+    margin-top:-22px; border-top-left-radius:24px; border-top-right-radius:24px;
+    padding:20px 18px 10px;
+    box-shadow: 0 -6px 20px rgba(0,0,0,.06);
+    border:1px solid #eee;
+  }
+
+  /* العناوين والأسطر التعريفية */
+  .card-title{ font-size:22px; font-weight:800; margin-bottom:6px; color:#111; }
+  .small-muted{ color:#6b7280 !important; }
+  .hr{ background:#eee; }
+
+  /* أزرار الإجراءات داخل المحتوى */
+  .btns-row .btnx{
+    border:1px solid #e5e7eb; background:#fff; color:#111; box-shadow:none;
+  }
+  .btnx-primary{
+    background:linear-gradient(180deg,#ff385c 0%,#e61e4d 100%); color:#fff; border-color:transparent;
+  }
+  .btnx-green{
+    background:linear-gradient(180deg,#34d399 0%,#10b981 100%); color:#fff; border-color:transparent;
+  }
+
+  /* شريط الحجز السفلي (Sticky) */
+  .air-sticky{
+    position:sticky; bottom:0; z-index:20;
+    background:#fff; border-top:1px solid #eee; padding:12px 14px;
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+  }
+  .air-price{
+    display:flex; flex-direction:column; line-height:1.2;
+  }
+  .air-price .now{ font-weight:800; font-size:18px; }
+  .air-price .per{ color:#6b7280; font-size:12px; }
+  .air-cta{
+    flex:0 0 auto; min-width:140px; text-align:center;
+    padding:12px 16px; border-radius:12px; font-weight:700; color:#fff;
+    background:linear-gradient(90deg,#ff385c,#e61e4d);
+    border:0; text-decoration:none; display:inline-block;
+  }
+
+  /* إخفاء الكرت الجانبي الطويل (اختياري) */
+  .items-shell .card-glass:nth-of-type(2){ border:0; }
+}
 </style>
 
 <section class="items-shell">
@@ -191,6 +271,25 @@
               </li>
             </ul>
           </div>
+
+          <!-- ===== أزرار الموبايل العائمة + عدّاد الصور (Airbnb) ===== -->
+          <!-- زر رجوع يسار -->
+          <button type="button" class="air-fab" onclick="history.back()" aria-label="رجوع">
+            <i class="bi bi-arrow-left"></i>
+          </button>
+          <!-- يمين: مشاركة + حفظ -->
+          <div class="air-fab-right">
+            <button type="button" aria-label="مشاركة" class="air-fab"
+                    onclick="navigator.share ? navigator.share({url:location.href}) : alert('انسخ الرابط يدويًا');">
+              <i class="bi bi-share"></i>
+            </button>
+            <button type="button" aria-label="حفظ" class="air-fab">
+              <i class="bi bi-heart"></i>
+            </button>
+          </div>
+          <!-- عدّاد الصور -->
+          <div class="air-pager" id="airPager">1/1</div>
+          <!-- ================================================ -->
         </div>
 
         {% if _srcs|length > 1 %}
@@ -236,6 +335,23 @@
           <a class="btnx btnx-ghost" href="/items">↩︎ رجوع للقائمة</a>
         </div>
       </div>
+
+      <!-- ===== شريط الحجز السفلي (موبايل فقط عبر media query) ===== -->
+      <div class="air-sticky">
+        <div class="air-price">
+          <span class="now">{{ item.price_per_day }} د.ك</span>
+          <span class="per">لكل يوم</span>
+        </div>
+        {% if owner and session_user and session_user.status == 'approved' and session_user.id != owner.id %}
+          <a class="air-cta" href="/bookings/new?item_id={{ item.id }}">احجز الآن</a>
+        {% elif not session_user %}
+          <a class="air-cta" href="/login">سجّل للدفع</a>
+        {% else %}
+          <a class="air-cta" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">تواصل</a>
+        {% endif %}
+      </div>
+      <!-- ========================================================== -->
+
     </div>
 
     <!-- =================== بطاقة المالك =================== -->
@@ -266,7 +382,6 @@
 
           <div class="btns-row">
             <a href="/users/{{ owner.id }}" class="btnx btnx-ghost">👤 الملف العام</a>
-
             <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">راسل المالك</a>
           </div>
         {% else %}
@@ -366,7 +481,7 @@
   {% endif %}
 </div>
 
-<!-- ===============  Lightbox & Gallery JS (خفيف)  =============== -->
+<!-- ===============  Lightbox & Gallery JS (مضاف له عدّاد الصور)  =============== -->
 <script>
 (function(){
   const main = document.getElementById('mainImg');
@@ -392,7 +507,20 @@
     zoomBtn.addEventListener('click', ()=> openLightbox(main.src));
   }
 
+  // عدّاد الصور أعلى اليمين
+  const pager = document.getElementById('airPager');
+  function setPager(idx, total){
+    if(pager){ pager.textContent = (idx+1) + '/' + total; }
+  }
+
   // تبديل الرئيسي عند الضغط على المصغّرات
+  let activeIdx = 0;
+  function totalImgsFn(){
+    if(thumbs) return thumbs.querySelectorAll('img').length;
+    return main ? 1 : 0;
+  }
+  setPager(activeIdx, totalImgsFn());
+
   if(thumbs && main){
     thumbs.addEventListener('click', (e)=>{
       const t = e.target;
@@ -403,10 +531,12 @@
 
         // تحديث حقول البلاغ مع الصورة الجديدة
         try{
-          const idx = parseInt(t.getAttribute('data-index') || '0', 10) || 0;
-          document.getElementById('rf_image_index')?.setAttribute('value', String(idx));
+          activeIdx = parseInt(t.getAttribute('data-index') || '0', 10) || 0;
+          document.getElementById('rf_image_index')?.setAttribute('value', String(activeIdx));
           document.getElementById('rf_image_url')?.setAttribute('value', t.dataset.src || t.src || '');
         }catch(_){}
+
+        setPager(activeIdx, totalImgsFn());
       }
     });
 
@@ -430,6 +560,8 @@
     let j = (i + dir + imgs.length) % imgs.length;
     imgs[j].click();
     imgs[j].scrollIntoView({behavior:'smooth', inline:'center', block:'nearest'});
+    activeIdx = j;
+    setPager(activeIdx, imgs.length);
   }
   window.addEventListener('keydown', (e)=>{
     if(e.key==='ArrowRight') step(+1);
