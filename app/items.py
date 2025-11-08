@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_   # ← أضفنا or_ للفلترة بالمدينة
+from sqlalchemy import func, or_
 import os, secrets, shutil
 
 # Cloudinary (رفع الصور إلى السحابة)
@@ -63,11 +63,9 @@ def items_list(
         q = q.filter(Item.category == category)
         current_category = category
 
-    # ===== فلترة صارمة بالمدينة =====
-    # نُظهر فقط العناصر التي مدينتها تطابق الاسم المُدخل (جزئياً) — لا نوسّع لمدن أخرى
+    # فلترة بالمدينة (اسمياً فقط)
     applied_name_filter = False
     if city:
-        # مثال: "Paris, France" → "Paris"
         short = (city or "").split(",")[0].strip()
         if short:
             q = q.filter(
@@ -76,16 +74,11 @@ def items_list(
                     func.lower(Item.city).like(f"%{(city or '').lower()}%")
                 )
             )
-            applied_name_filter = True
+            applied_name_filter = True  # متروكة لو أردت استخدامها لاحقاً
 
-    # ===== الترتيب =====
-    # إذا لدينا إحداثيات، نرتّب بها فقط داخل النتائج الحالية (لا نضيف مدن مجاورة)
+    # الترتيب بالمسافة إن توفرت إحداثيات
     applied_distance_sort = False
     if lat is not None and lng is not None:
-        # لا نُجبر وجود إحداثيات على كل العناصر كي لا نخسر عناصر مدينتها مطابقة لكن بدون lat/lng
-        # لو أردت استبعاد العناصر التي بلا إحداثيات، أزل التعليق التالي:
-        # q = q.filter(Item.latitude.isnot(None), Item.longitude.isnot(None))
-
         dist2 = (
             (Item.latitude - float(lat)) * (Item.latitude - float(lat))
             + (Item.longitude - float(lng)) * (Item.longitude - float(lng))
@@ -93,7 +86,7 @@ def items_list(
         q = q.order_by(dist2.asc())
         applied_distance_sort = True
 
-    # إن لم نرتب بالمسافة، استخدم sort=new|random
+    # وإلا استخدم sort=new|random
     s = (sort or request.query_params.get("sort") or "random").lower()
     current_sort = s
     if not applied_distance_sort:
@@ -123,6 +116,7 @@ def items_list(
             "selected_city": city or "",
             "lat": lat,
             "lng": lng,
+            # لا نمرر immersive هنا → تبقى الهيدر/النافبار ظاهرة
         }
     )
 
@@ -134,20 +128,38 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     if not item:
         return request.app.templates.TemplateResponse(
             "items_detail.html",
-            {"request": request, "item": None, "session_user": request.session.get("user")}
+            {
+                "request": request,
+                "item": None,
+                "session_user": request.session.get("user"),
+                "immersive": True,  # حتى صفحة الخطأ تكون بدون هيدر/نافبار
+            }
         )
 
-    from sqlalchemy import func
+    from sqlalchemy import func as _func
     from .models import User, ItemReview
+
     item.category_label = category_label(item.category)
     owner = db.query(User).get(item.owner_id)
     owner_badges = get_user_badges(owner, db) if owner else []
 
     # تقييمات هذا المنشور (من المستأجرين)
-    reviews_q = db.query(ItemReview).filter(ItemReview.item_id == item.id).order_by(ItemReview.created_at.desc())
+    reviews_q = (
+        db.query(ItemReview)
+        .filter(ItemReview.item_id == item.id)
+        .order_by(ItemReview.created_at.desc())
+    )
     reviews = reviews_q.all()
-    avg_stars = db.query(func.coalesce(func.avg(ItemReview.stars), 0)).filter(ItemReview.item_id == item.id).scalar() or 0
-    cnt_stars = db.query(func.count(ItemReview.id)).filter(ItemReview.item_id == item.id).scalar() or 0
+    avg_stars = (
+        db.query(_func.coalesce(_func.avg(ItemReview.stars), 0))
+        .filter(ItemReview.item_id == item.id)
+        .scalar() or 0
+    )
+    cnt_stars = (
+        db.query(_func.count(ItemReview.id))
+        .filter(ItemReview.item_id == item.id)
+        .scalar() or 0
+    )
 
     return request.app.templates.TemplateResponse(
         "items_detail.html",
@@ -157,10 +169,11 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             "owner": owner,
             "owner_badges": owner_badges,
             "session_user": request.session.get("user"),
-            # جديد:
             "item_reviews": reviews,
             "item_rating_avg": round(float(avg_stars), 2),
             "item_rating_count": int(cnt_stars),
+            # ★ التعديل المهم: وضع الصفحة «مغمورة» لإخفاء الهيدر والنافبارين
+            "immersive": True,
         }
     )
 
@@ -190,6 +203,7 @@ def my_items(request: Request, db: Session = Depends(get_db)):
             "items": items,
             "session_user": u,
             "account_limited": is_account_limited(request),
+            # هنا تبقى واجهة الموقع كاملة (لا immersive)
         }
     )
 
@@ -222,7 +236,7 @@ def item_new_post(
     city: str = Form(""),
     price_per_day: int = Form(0),
     image: UploadFile = File(None),
-    latitude: float | None = Form(None),   # نخزن الإحداثيات إن وُجدت
+    latitude: float | None = Form(None),
     longitude: float | None = Form(None),
 ):
     if not require_approved(request):
