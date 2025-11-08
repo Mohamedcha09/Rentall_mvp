@@ -707,8 +707,60 @@
   }
 }
 
+/* ==== MOBILE GLASS FIX (≤576px) — paste at the very END ==== */
+@media (max-width:576px){
 
+  /* الشريط نفسه (حتى لو كان .row) */
+  .home-locbar.locbar--compact,
+  .home-locbar.locbar--compact.row{
+    background:
+      linear-gradient(135deg, rgba(108,99,255,.18), rgba(0,212,255,.12)),
+      rgba(40,40,40,.30) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(190%) !important;
+    backdrop-filter: blur(16px) saturate(190%) !important;
+    border:1px solid rgba(255,255,255,.22) !important;
+    box-shadow:
+      0 12px 28px rgba(0,0,0,.22),
+      0 0 0 1px rgba(255,255,255,.10) inset,
+      0 2px 0 rgba(255,255,255,.06) inset !important;
+    color:#fff !important;
+  }
 
+  /* الحقول والأزرار زجاجية وخفيفة */
+  .home-locbar.locbar--compact #homeCityInput,
+  .home-locbar.locbar--compact .btn{
+    background: rgba(255,255,255,.20) !important;
+    border:1px solid rgba(255,255,255,.22) !important;
+    color:#fff !important;
+    box-shadow:
+      0 8px 18px rgba(0,0,0,.18),
+      0 0 0 1px rgba(255,255,255,.08) inset !important;
+  }
+  .home-locbar.locbar--compact #homeCityInput::placeholder{
+    color: rgba(255,255,255,.85) !important;
+  }
+
+  /* زر GPS يبقى أيقونة فقط لكن بزجاج */
+  .home-locbar.locbar--compact #homeUseGPS{
+    font-size:0 !important;
+    padding:0 10px !important;
+  }
+  .home-locbar.locbar--compact #homeUseGPS::before{
+    content:"📍" !important;
+    font-size:18px !important;
+    line-height:1 !important;
+  }
+
+  /* قائمة الاقتراحات زجاجية داكنة */
+  .home-locbar.locbar--compact #homeCitySugg{
+    background: rgba(28,28,30,.85) !important;
+    color:#fff !important;
+    border:1px solid rgba(255,255,255,.12) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(170%) !important;
+    backdrop-filter: blur(14px) saturate(170%) !important;
+    box-shadow: 0 6px 18px rgba(2,6,23,.18) !important;
+  }
+}
 
 </style>
 
