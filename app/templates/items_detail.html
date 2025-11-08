@@ -1,3 +1,4 @@
+{# app/templates/item_show.html #}
 {% extends "base.html" %}
 {% from "_badges.html" import render_badges %}
 {% block content %}
@@ -26,8 +27,8 @@
 .gallery-menu{position:absolute;top:10px;right:10px}
 .gallery-menu .btn-menu{background:rgba(0,0,0,.45);color:#fff;border:1px solid var(--stroke);border-radius:12px;padding:6px 10px;line-height:1;font-weight:700}
 .gallery-menu .dropdown-menu{border-radius:12px;overflow:hidden;border:1px solid var(--stroke)}
-.thumbs{display:flex;gap:10px;padding:12px;overflow-x:auto;background:linear-gradient(180deg,rgba(255,255,255,.03),transparent)}
-.thumbs img{width:86px;height:60px;object-fit:cover;border-radius:10px;border:1px solid var(--stroke-soft);cursor:pointer;opacity:.85;transition:transform .15s ease,opacity .15s ease,box-shadow .15s ease}
+.thumbs{display:flex;gap:10px;padding:12px;overflow-x:auto;background:linear-gradient(180deg,rgba(255,255,255,.03),transparent);scroll-snap-type:x mandatory}
+.thumbs img{width:86px;height:60px;object-fit:cover;border-radius:10px;border:1px solid var(--stroke-soft);cursor:pointer;opacity:.85;transition:transform .15s ease,opacity .15s ease,box-shadow .15s ease;scroll-snap-align:center}
 .thumbs img:hover{transform:translateY(-2px);opacity:1;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .thumbs img.active{outline:2px solid var(--brand);opacity:1}
 .btnx{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;font-weight:700;text-decoration:none;cursor:pointer;user-select:none;border:1px solid var(--stroke);backdrop-filter:blur(8px);background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));color:var(--txt);transition:transform .12s ease,background .2s ease,border-color .2s ease}
@@ -63,22 +64,23 @@
   }
   .air-fab{position:absolute;top:16px;left:12px}
   .air-fab-right{position:absolute;top:16px;right:12px;display:flex;gap:10px}
-  .air-pager{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.65);color:#fff;font-weight:600;padding:6px 10px;border-radius:10px;font-size:12px}
+  .air-pager{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:6px 10px;border-radius:10px;font-size:12px;border:1px solid rgba(255,255,255,.25)}
 
   /* White rounded sheet */
   .card-glass{background:transparent;border:0;box-shadow:none}
-  .air-sheet{background:#fff;color:#111;margin-top:-24px;border-top-left-radius:28px;border-top-right-radius:28px;padding:22px 18px 10px;box-shadow:0 -6px 20px rgba(0,0,0,.06);border:1px solid #eee;border-bottom:0}
+  .air-sheet{background:#fff;color:#111;margin-top:-24px;border-top-left-radius:28px;border-top-right-radius:28px;padding:22px 18px 96px;box-shadow:0 -6px 20px rgba(0,0,0,.06);border:1px solid #eee;border-bottom:0}
 
-  .card-title{font-size:22px;font-weight:800;margin-bottom:6px;color:#111}
-  .small-muted{color:#6b7280!important}
-  .hr{background:#eee}
+  /* Typography match Airbnb */
+  .card-title{font-size:28px;font-weight:800;margin-bottom:6px;color:#111;letter-spacing:.2px}
+  .small-muted{color:#717171!important;font-size:14px;line-height:1.5}
+  .hr{background:#e5e7eb}
 
   /* Bottom booking bar */
   .air-sticky{position:sticky;bottom:0;z-index:20;background:#fff;border-top:1px solid #eee;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
   .air-price{display:flex;flex-direction:column;line-height:1.2}
-  .air-price .now{font-weight:800;font-size:18px}
-  .air-price .per{color:#6b7280;font-size:12px}
-  .air-cta{flex:0 0 auto;min-width:140px;text-align:center;padding:12px 16px;border-radius:12px;font-weight:700;color:#fff;background:linear-gradient(90deg,#ff385c,#e61e4d);border:0;text-decoration:none;display:inline-block}
+  .air-price .now{font-weight:800;font-size:20px}
+  .air-price .per{color:#717171;font-size:12px}
+  .air-cta{flex:0 0 auto;min-width:140px;text-align:center;height:48px;line-height:48px;padding:0 18px;border-radius:12px;font-weight:700;color:#fff;background:linear-gradient(90deg,#ff385c,#e61e4d);border:0;text-decoration:none;display:inline-block}
 
   /* Golden laurel badge around rating */
   .laurel-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 12px 0}
@@ -167,7 +169,7 @@
       <div class="card-body air-sheet">
         <h2 class="card-title">{{ item.title }}</h2>
         <div class="small-muted" style="margin-bottom:8px">
-          {{ item.category_label }} • {{ item.city or "No city" }} • {{ owner and owner.country or "" }}
+          {{ item.category_label or item.category }} • {{ item.city or "No city" }} • {{ owner and owner.country or "" }}
         </div>
 
         <!-- Golden laurel row + rating inside it -->
@@ -196,7 +198,7 @@
         {% if item_reviews and item_reviews|length %}
           <div class="rv-strip">
             {% for r in item_reviews %}
-              <div class="rv-card">
+              <div class="rv-card" id="review-{{ r.id }}">
                 <div class="rv-head">
                   {% set avatar = (r.rater.avatar_path if r.rater and r.rater.avatar_path else url_for('static', path='placeholder.png')) %}
                   <img class="rv-ava" src="{{ avatar }}" alt="avatar">
@@ -381,7 +383,7 @@
   }
   window.addEventListener('keydown',e=>{ if(e.key==='ArrowRight')step(+1); if(e.key==='ArrowLeft')step(-1); });
 
-  // When the report Sheet opens for the first time, prepare current values
+  // Prepare report values on open
   const reportSheet = document.getElementById('reportSheet');
   reportSheet?.addEventListener('show.bs.offcanvas', ()=>{
     const activeThumb=document.querySelector('#thumbs img.active')||document.querySelector('#thumbs img');
