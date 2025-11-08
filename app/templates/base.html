@@ -554,6 +554,7 @@
   }
 </style>
 
+
 <style id="font-setup">
   /* === Minimal Luxury Typography ===
      - العناوين: Cormorant Garamond (فخم/مجلات)
@@ -607,6 +608,70 @@
   [data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3 { color:#eef2ff; }
   [data-theme="dark"] p { color:#cbd5e1; }
 </style>
+
+<style id="fix-fab">
+  /* متغيّرات افتراضية */
+  :root{
+    --sv-tabbar: 64px;            /* يتحدث تلقائياً عبر JS أدناه */
+    --sv-lift: 20px;              /* مقدار رفع التاب بار لديك */
+    --sv-fab-gap: 14px;           /* مسافة إضافية فوق التاب بار */
+    --glass-blur: 16px;
+    --glass-sat: 199%;
+    --glass-bg: rgba(56,56,56,.35);
+    --glass-g1: rgba(108,99,255,.18);  /* purple */
+    --glass-g2: rgba(0,212,255,.12);   /* cyan */
+    --glass-stroke: rgba(255,255,255,.125);
+    --glass-inner: rgba(255,255,255,.06);
+  }
+
+  /* شكل الزر الزجاجي */
+  #fabAdd{
+    position: fixed;
+    right: 16px;
+    bottom: 16px;                 /* يتبدل على الموبايل أدناه */
+    width: 58px; height: 58px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    text-decoration: none;
+    color: #fff !important;
+    z-index: 2147483648 !important;  /* أعلى من التاب بار */
+    border: 0 !important;
+
+    /* زجاج مطابق للتاب بار */
+    background:
+      linear-gradient(135deg, var(--glass-g1), var(--glass-g2)),
+      var(--glass-bg) !important;
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+    box-shadow:
+      0 14px 30px rgba(0,0,0,.35),
+      0 0 0 1px var(--glass-stroke) inset,
+      0 2px 0 0 var(--glass-inner) inset !important;
+  }
+  #fabAdd i{ font-size: 24px; filter: drop-shadow(0 1px 0 rgba(0,0,0,.25)); }
+  #fabAdd:active{ transform: scale(.96); }
+
+  /* ارفع الزر فوق التاب بار على الموبايل */
+  @media (max-width: 768px){
+    #fabAdd{
+      bottom: calc(var(--sv-tabbar) + var(--sv-lift)
+                   + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))
+                   + var(--sv-fab-gap)) !important;
+    }
+  }
+
+  /* دارك مود مطابق */
+  [data-theme="dark"] #fabAdd{
+    background:
+      linear-gradient(135deg, rgba(108,99,255,.16), rgba(0,212,255,.10)),
+      rgba(28,28,30,.66) !important;
+    box-shadow:
+      0 14px 30px rgba(0,0,0,.45),
+      0 0 0 1px rgba(255,255,255,.08) inset,
+      0 2px 0 0 rgba(255,255,255,.05) inset !important;
+  }
+</style>
+
 
 
 {% block head %}{% endblock %}
@@ -896,10 +961,16 @@
   <div class="scrim" id="scrim"></div>
 
   {% if session_user and is_home %}
-  <a href="/owner/items/new" class="fab d-lg-none btn btn-primary rounded-circle shadow" title="New Item" style="width:56px;height:56px;display:flex;align-items:center;justify-content:center">
+  <!-- FAB: Glass + مرفوع فوق التاب بار -->
+  <a id="fabAdd"
+     href="/owner/items/new"
+     class="d-lg-none"
+     title="New Item"
+     aria-label="New Item">
     <i class="bi bi-plus-lg"></i>
   </a>
 {% endif %}
+
 
 
   <!-- Bottom bar (mobile) -->
@@ -1600,6 +1671,28 @@
   })();
 })();
 </script>
+
+<script>
+/* يقرأ ارتفاع .mobile-tabbar الحقيقي ويضبط --sv-tabbar تلقائياً */
+(function(){
+  function setFabOffset(){
+    var bar = document.querySelector('.mobile-tabbar');
+    var h = 64;
+    if (bar){
+      var r = bar.getBoundingClientRect();
+      h = Math.max(48, Math.round(r.height || 64));
+    }
+    document.documentElement.style.setProperty('--sv-tabbar', h + 'px');
+  }
+  setFabOffset();
+  window.addEventListener('resize', setFabOffset);
+  window.addEventListener('orientationchange', setFabOffset);
+  // إعادة الحساب بعد رندر التاب بار/الفونت
+  setTimeout(setFabOffset, 100);
+  setTimeout(setFabOffset, 500);
+})();
+</script>
+
 
 {% set immersive = immersive|default(false) %}
 </body>
