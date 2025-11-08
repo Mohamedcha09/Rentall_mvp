@@ -594,9 +594,6 @@
     0 2px 0 0 rgba(255,255,255,.06) inset !important;
   color:#fff !important;
 }
-
-.home-locbar input{ color:inherit; } /* سيتم استبداله بالأسود من خطوة 1 */
-
 .home-locbar #homeCityInput{
   background: rgba(255,255,255,.18) !important;
   border:1px solid rgba(255,255,255,.16) !important;
@@ -712,102 +709,8 @@
 
 
 
-<style id="locbar-glass-mobile">
-/* زجاجي للجوال */
-@media (max-width: 768px){
-  .home-locbar{
-    background:
-      linear-gradient(135deg, rgba(108,99,255,.16), rgba(0,212,255,.10)),
-      rgba(255,255,255,.65) !important;
-    backdrop-filter: blur(14px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
-    border: 1px solid rgba(255,255,255,.45) !important;
-    box-shadow: 0 10px 26px rgba(0,0,0,.12) !important;
-  }
-
-  /* حقل المدينة أبيض واضح، نص أسود */
-  #homeCityInput{
-    background: rgba(255,255,255,.92) !important;
-    border: 1px solid rgba(0,0,0,.08) !important;
-    color:#111 !important;
-    -webkit-text-fill-color:#111 !important;
-    caret-color:#111 !important;
-  }
-
-  /* زر GPS زجاجي فاتح */
-  #homeUseGPS{
-    background: rgba(255,255,255,.75) !important;
-    border: 1px solid rgba(255,255,255,.45) !important;
-    box-shadow: 0 2px 10px rgba(0,0,0,.10) !important;
-  }
-
-  /* زر Search بزجاج تدرّج بنفسجي/سماوي */
-  .home-locbar .btn.btn-primary{
-    background:
-      linear-gradient(135deg, rgba(108,99,255,.85), rgba(0,212,255,.65)) !important;
-    border: 0 !important;
-    color:#fff !important;
-    box-shadow:
-      0 10px 24px rgba(108,99,255,.32),
-      0 0 0 1px rgba(255,255,255,.18) inset !important;
-  }
-
-  /* رابط Clear كـ “نص” داخل نفس الشريط */
-  #homeClearGPS{
-    background: transparent !important;
-    border: none !important;
-  }
-}
-
-/* الوضع الداكن نفس الشعور الزجاجي */
-[data-theme="dark"] .home-locbar{
-  background:
-    linear-gradient(135deg, rgba(108,99,255,.14), rgba(0,212,255,.10)),
-    rgba(28,28,30,.66) !important;
-  border: 1px solid rgba(255,255,255,.10) !important;
-}
-</style>
 
 </style>
-<style id="top-searchbar-glass-mobile">
-@media (max-width: 768px){
-  .searchbar-wrap{
-    background:
-      linear-gradient(135deg, rgba(108,99,255,.16), rgba(0,212,255,.10)),
-      rgba(255,255,255,.65) !important;
-    backdrop-filter: blur(14px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
-    border: 1px solid rgba(255,255,255,.45) !important;
-    box-shadow: 0 10px 26px rgba(0,0,0,.12) !important;
-  }
-}
-</style>
-
-<style id="ios-mobile-input-fix">
-/* نص وأسهم الكتابة في مدخل المدينة على الجوال يكون أسود */
-@media (max-width: 768px){
-  #homeCityInput,
-  .home-locbar input{
-    color:#111 !important;
-    -webkit-text-fill-color:#111 !important;   /* iOS */
-    caret-color:#111 !important;
-    background: rgba(255,255,255,.92) !important; /* خلفية فاتحة واضحة */
-    border-color: rgba(0,0,0,.08) !important;
-  }
-  #homeCityInput::placeholder,
-  .home-locbar input::placeholder{
-    color:#6b7280 !important;
-    opacity:1 !important;
-  }
-
-  /* لو المتصفح عمل AutoFill أصفر على iOS */
-  #homeCityInput:-webkit-autofill{
-    -webkit-text-fill-color:#111 !important;
-    transition: background-color 600000s 0s !important;
-  }
-}
-</style>
-
 
 
 {% endblock %}
