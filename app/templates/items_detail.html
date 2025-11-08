@@ -157,9 +157,7 @@
         <div class="gallery-main" id="gMain">
           {% if current %}
             <img id="mainImg" src="{{ build_src(current) }}" alt="item image">
-            <div class="fade-bottom" id="fadeBottom"></div>
-            <button class="gallery-zoom" id="zoomBtn">Zoom image</button>
-          {% else %}
+            <div class="fade-bottom" id="fadeBottom"></div>          {% else %}
             <div style="display:grid;place-items:center;height:100%;color:#8b94a7;font-size:13px">No image</div>
           {% endif %}
 
