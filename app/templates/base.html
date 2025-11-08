@@ -11,7 +11,8 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
   <!-- External CSS -->
-  <link href="/static/style.css?v=4" rel="stylesheet">
+  <link href="/static/style.css?v=5" rel="stylesheet">
+
 
 
   <!-- PWA -->
@@ -19,7 +20,7 @@
   <meta name="theme-color" content="#ffffff">
   <script> if ("serviceWorker" in navigator) { navigator.serviceWorker.register("/static/sw.js"); } </script>
 
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <style>
     :root{
@@ -553,33 +554,60 @@
   }
 </style>
 
-
 <style id="font-setup">
-  /* استخدم Plus Jakarta Sans لكل عناصر الواجهة */
+  /* === Minimal Luxury Typography ===
+     - العناوين: Cormorant Garamond (فخم/مجلات)
+     - النص: Work Sans (حديث وواضح)
+  */
+  :root{
+    --font-head: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+    --font-body: 'Work Sans', -apple-system, BlinkMacSystemFont, "Segoe UI",
+                 Roboto, Helvetica, Arial, sans-serif;
+    /* لو تستخدم Bootstrap: */
+    --bs-body-font-family: var(--font-body);
+  }
+
   html, body, input, button, textarea, select {
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont,
-                 "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+    font-family: var(--font-body) !important;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     line-height: 1.6;
-    letter-spacing: .1px; /* لمسة حديثة مثل fintech */
+    letter-spacing: 0.1px; /* لمسة خفيفة */
+    color: #111827;
   }
 
-  /* أوزان العناوين */
-  h1{ font-weight:800; }
-  h2{ font-weight:700; }
-  h3,h4{ font-weight:600; }
-  h5,h6,strong,button{ font-weight:600; }
+  /* العناوين الفخمة */
+  h1, h2, h3 {
+    font-family: var(--font-head);
+    font-weight: 600;      /* 600 يعطي حضور بدون مبالغة */
+    letter-spacing: 0.2px;
+    color: #0f172a;
+  }
+  h4, h5, h6 {
+    font-family: var(--font-body);
+    font-weight: 700;
+    letter-spacing: 0.1px;
+  }
+  strong, b, button { font-weight: 600; }
 
-  /* أرقام متساوية العرض للأسعار والنِّسب */
+  /* أحجام (معقولة) + تدرّج للهاتف */
+  h1 { font-size: clamp(1.9rem, 2.5vw + 1.2rem, 2.7rem); line-height: 1.18; }
+  h2 { font-size: clamp(1.6rem, 1.8vw + 1.0rem, 2.1rem); line-height: 1.22; }
+  h3 { font-size: clamp(1.25rem, 1.2vw + .9rem, 1.5rem); line-height: 1.28; }
+
+  /* أرقام ثابتة العرض للأسعار والنِّسب */
   .num, .price, .percent { font-variant-numeric: tabular-nums; }
 
-  /* لو كنت تستخدم Bootstrap: اجعل الخط الافتراضي للإطار هو نفسه */
-  :root{
-    --bs-body-font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont,
-                           "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  }
+  /* نص الفقرات */
+  p { color:#374151; }
+
+  /* تحسين بسيط للوضع الداكن إن كنت تفعّله */
+  [data-theme="dark"] html,
+  [data-theme="dark"] body { color: #e5e7eb; }
+  [data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3 { color:#eef2ff; }
+  [data-theme="dark"] p { color:#cbd5e1; }
 </style>
+
 
 {% block head %}{% endblock %}
 {% set immersive = immersive|default(false) %}
