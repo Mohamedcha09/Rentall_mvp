@@ -55,14 +55,13 @@
   .gallery{background:#000;border:0}
   .gallery-main{height:58vh;max-height:520px;border-radius:0}
   .gallery-main img{object-fit:cover;will-change:transform,opacity}
-  /* غشاء تلاشي أسفل الصورة */
   .hero-fade{
     position:absolute;inset:0;pointer-events:none;
     background:linear-gradient(to bottom, rgba(0,0,0,0) 40%, rgba(0,0,0,.05) 58%, rgba(255,255,255,1) 100%);
     opacity:.0;transition:opacity .25s ease;
   }
 
-  /* أزرار عائمة + عدّاد */
+  /* FABs + Counter */
   .air-fab,.air-fab-right .air-fab{
     appearance:none;border:0;cursor:pointer;width:44px;height:44px;border-radius:50%;
     background:rgba(255,255,255,.9);box-shadow:0 8px 20px rgba(0,0,0,.18);
@@ -72,12 +71,12 @@
   .air-fab-right{position:absolute;top:16px;right:12px;display:flex;gap:10px}
   .air-pager{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:6px 10px;border-radius:10px;font-size:12px;border:1px solid rgba(255,255,255,.25)}
 
-  /* الورقة البيضاء المنحنية + حد فاصل ناعم */
+  /* الورقة البيضاء المنحنية + حد ناعم */
   .card-glass{background:transparent;border:0;box-shadow:none}
   .air-sheet{
     background:#fff;color:#111;margin-top:-24px;
     border-top-left-radius:28px;border-top-right-radius:28px;
-    padding:22px 18px 120px; /* نزيد أسفل لظهور الشريط الثابت */
+    padding:22px 18px 120px;
     box-shadow:0 -6px 20px rgba(0,0,0,.06);border:1px solid #eee;border-bottom:0;position:relative;
   }
   .air-sheet::before{
@@ -86,12 +85,12 @@
     opacity:.35;pointer-events:none
   }
 
-  /* تايبوغرافيا */
+  /* Typography */
   .card-title{font-size:28px;font-weight:800;margin-bottom:6px;color:#111;letter-spacing:.2px}
   .small-muted{color:#717171!important;font-size:14px;line-height:1.5}
   .hr{background:#e5e7eb}
 
-  /* ====== Bottom Booking Bar (ثابت) ====== */
+  /* ===== Fixed Bottom Booking Bar ===== */
   .air-fixed{
     position:fixed;left:0;right:0;
     bottom:calc(env(safe-area-inset-bottom,0px));
@@ -106,7 +105,7 @@
     font-weight:700;color:#fff;background:linear-gradient(90deg,#ff385c,#e61e4d);border:0;text-decoration:none;display:inline-block
   }
 
-  /* إكليل / لاوريل */
+  /* Laurel */
   .laurel-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 12px 0}
   .laurel-mid{display:flex;align-items:center;gap:10px;flex:1;justify-content:center}
   .laurel{height:20px;width:auto;opacity:.95}
@@ -125,11 +124,10 @@
   .rv-more{display:inline-block;margin-top:4px;font-weight:600}
   .btn-outline-pale{display:block;width:100%;text-align:center;border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:10px 14px;font-weight:700}
 
-  /* Bottom-Sheet */
   .offcanvas-bottom{border-top-left-radius:18px;border-top-right-radius:18px}
 }
 
-/* نجوم التقييم بالأبيض والأسود في أي مكان عام */
+/* نجوم أبيض/رمادي عامة */
 .stars-bw{display:inline-flex;gap:2px;font-size:14px;line-height:1}
 .stars-bw .full{color:#111}
 .stars-bw .empty{color:#bdbdbd}
@@ -144,7 +142,6 @@
     <!-- ===== Item / Gallery ===== -->
     <div class="card-glass">
       <div class="gallery">
-        {# Gather images #}
         {% set _srcs = [] %}
         {% if item.image_path %}
           {% set _raw = item.image_path %}
@@ -202,7 +199,7 @@
           {{ item.category_label or item.category }} • {{ item.city or "No city" }} • {{ owner and owner.country or "" }}
         </div>
 
-        {# Rating row with black/gray stars #}
+        {# Rating row (black/gray stars) #}
         {% set _avg = item_rating_avg or 0 %}
         {% set _cnt = item_rating_count or 0 %}
         <div class="laurel-row">
@@ -424,24 +421,18 @@
 
   /* ==== Parallax + Fade (Airbnb-like) ==== */
   const gMain = document.getElementById('gMain');
-  let lastY = 0;
   function onScroll(){
     if(!gMain || !main) return;
-    // مقدار التقدّم فوق الصورة (0 → 1 تقريبًا)
     const rect = gMain.getBoundingClientRect();
     const h = rect.height || 1;
-    const visibleTop = Math.max(0, -rect.top); // كم صعدنا
-    const p = Math.min(1, visibleTop / (h * .35)); // شدة التلاشي
+    const visibleTop = Math.max(0, -rect.top);
+    const p = Math.min(1, visibleTop / (h * .35));
 
-    // تكبير طفيف ثم تلاشي
     const scale = 1 + (visibleTop>0 ? Math.min(visibleTop/1000, .06) : 0);
     main.style.transform = `scale(${scale}) translateY(${visibleTop* -0.06}px)`;
     main.style.opacity = String(1 - p*0.85);
 
-    // غشاء التلاشي إلى الأبيض
     if(heroFade) heroFade.style.opacity = String(p);
-
-    lastY = window.scrollY||0;
   }
   window.addEventListener('scroll', onScroll, {passive:true});
   onScroll();
