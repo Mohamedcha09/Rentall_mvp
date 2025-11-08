@@ -638,4 +638,72 @@ small, .small{ color:var(--muted)!important }
   .home-shelves {
     margin-top: 18px !important;
   }
+
+/* === FAB over glass tabbar (mobile) =========================== */
+@media (max-width: 768px){
+  :root{
+    --fab-gap: 14px;                 /* مسافة إضافية فوق التاب بار */
+    --glass-blur: 16px;
+    --glass-sat: 199%;
+    --glass-bg: rgba(56,56,56,.35);
+    --glass-grad1: rgba(108,99,255,.18);
+    --glass-grad2: rgba(0,212,255,.12);
+    --glass-stroke: rgba(255,255,255,.125);
+    --glass-inner: rgba(255,255,255,.06);
+    --tabbar-h: 64px;                /* نفس القيم المستخدمة للتاب بار */
+    --tabbar-radius: 22px;
+  }
+
+  /* ارفع الزر فوق التاب بار وخليه زجاجي */
+  .fab{
+    /* ارفع: ارتفاع التاب بار + مقدار الرفع + الحافة الآمنة + فجوة صغيرة */
+    bottom: calc(var(--tabbar-h) + var(--tabbar-lift) + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px)) + var(--fab-gap)) !important;
+    inset-inline-end: 16px !important;
+
+    /* زجاجي بنفس ستايل التاب بار */
+    background:
+      linear-gradient(135deg, var(--glass-grad1), var(--glass-grad2)),
+      var(--glass-bg) !important;
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+
+    /* حافة ولمعة خفيفة مثل التاب بار */
+    box-shadow:
+      0 14px 30px rgba(0,0,0,.35),
+      0 0 0 1px var(--glass-stroke) inset,
+      0 2px 0 0 var(--glass-inner) inset !important;
+
+    border: 0 !important;
+    color: #fff !important;                 /* لون الأيقونة */
+    width: 56px !important;
+    height: 56px !important;
+    z-index: 2147483648 !important;         /* أعلى من التاب بار */
+  }
+
+  /* أي خلفية من Bootstrap تتلغى */
+  .fab.btn, .fab.btn-primary{
+    background: none !important;
+  }
+
+  /* أيقونة الـ + */
+  .fab i{
+    font-size: 22px;
+    filter: drop-shadow(0 1px 0 rgba(0,0,0,.25));
+  }
+
+  /* لمسة تفاعل */
+  .fab:active{ transform: scale(.96) translateZ(0); }
+}
+
+/* اختياري: لو كنت تريد الستايل الزجاجي للـ FAB أيضاً في الدارك */
+[data-theme="dark"] .fab{
+  background:
+    linear-gradient(135deg, rgba(108,99,255,.16), rgba(0,212,255,.10)),
+    rgba(28,28,30,.66) !important;
+  box-shadow:
+    0 14px 30px rgba(0,0,0,.45),
+    0 0 0 1px rgba(255,255,255,.08) inset,
+    0 2px 0 0 rgba(255,255,255,.05) inset !important;
+}
+
 }
