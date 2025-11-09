@@ -435,7 +435,7 @@
         <!-- Bottom Booking Bar (موحّد) -->
         <div class="air-fixed" id="airBar">
           <div class="air-price">
-            <span class="now">{{ item.price_per_day }} {{ item.currency or 'KWD' }}</span>
+            <span class="now">{{ item.price_per_day }} {{ item.currency or '$' }}</span>
             <span class="per">per day</span>
           </div>
           <a class="air-cta" href="/bookings/new?item_id={{ item.id }}">Book now</a>
