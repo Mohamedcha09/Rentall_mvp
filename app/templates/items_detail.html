@@ -23,9 +23,6 @@
 .gallery{background:#0c1324;border-bottom:1px solid var(--stroke-soft)}
 .gallery-main{position:relative;aspect-ratio:16/10;width:100%;background:#0a0f1e;overflow:hidden}
 .gallery-main img{width:100%;height:100%;object-fit:cover;display:block;transform-origin:center}
-.gallery-menu{position:absolute;top:10px;right:10px}
-.gallery-menu .btn-menu{background:rgba(0,0,0,.45);color:#fff;border:1px solid var(--stroke);border-radius:12px;padding:6px 10px;line-height:1;font-weight:700}
-.gallery-menu .dropdown-menu{border-radius:12px;overflow:hidden;border:1px solid var(--stroke)}
 .thumbs{display:flex;gap:10px;padding:12px;overflow-x:auto;background:linear-gradient(180deg,rgba(255,255,255,.03),transparent);scroll-snap-type:x mandatory}
 .thumbs img{width:86px;height:60px;object-fit:cover;border-radius:10px;border:1px solid var(--stroke-soft);cursor:pointer;opacity:.85;transition:transform .15s ease,opacity .15s ease,box-shadow .15s ease;scroll-snap-align:center}
 .thumbs img:hover{transform:translateY(-2px);opacity:1;box-shadow:0 4px 14px rgba(0,0,0,.25)}
@@ -44,24 +41,30 @@
 .owner-avatar{width:62px;height:62px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--stroke)}
 .hr{border:0;height:1px;background:var(--stroke-soft);margin:14px 0}
 
-/* ===== Stars (black/gray) ===== */
-.stars-bw,.rv-stars{display:inline-flex;gap:4px;font-size:16px;line-height:1;letter-spacing:0}
-.stars-bw span,.rv-stars span{display:inline-block;width:1em;text-align:center}
-.stars-bw .full,.rv-stars .full{color:#111}
-.stars-bw .empty,.rv-stars .empty{color:#bdbdbd}
+/* ====== Stars/Reviews row (top) ====== */
+.stat-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 10px 0}
+.stat-left,.stat-right{display:flex;align-items:center;gap:8px}
+.stat-right a{font-weight:800;text-decoration:none;color:#111}
+.stat-right a .muted{color:#717171}
 
-/* ===== Laurel row (rating-only between two images) ===== */
-.laurel-wrap{display:flex;align-items:center;justify-content:center;gap:14px;margin:8px 0 10px}
-.laurel{height:20px;width:auto;opacity:.95}
-.rating-center{display:flex;align-items:center;gap:8px}
-.rating-center .num{font-weight:800;color:#111}
-.rating-center small{color:#6b7280;font-weight:600}
+/* ====== Stars style (black/gray) ====== */
+.stars-bw{display:inline-flex;gap:4px;font-size:16px;line-height:1;letter-spacing:0}
+.stars-bw span{display:inline-block;width:1em;text-align:center}
+.stars-bw .full{color:#111}
+.stars-bw .empty{color:#bdbdbd}
+
+/* Reviews card stars */
+.rv-stars{display:inline-flex;gap:4px;font-size:16px;line-height:1;letter-spacing:0}
+.rv-stars span{display:inline-block;width:1em;text-align:center}
+.rv-stars .full{color:#111}
+.rv-stars .empty{color:#bdbdbd}
 
 /* ====== Mobile + Airbnb look ====== */
 @media (max-width:768px){
   body{background:#fff;color:#111}
   .items-shell{padding:0;margin:0;max-width:none}
   .grid-2{display:block}
+
   .gallery{background:#fff;border:0}
   .gallery-main{height:58vh;max-height:520px;border-radius:0}
   .gallery-main img{object-fit:cover;will-change:transform,opacity}
@@ -70,17 +73,25 @@
     background:linear-gradient(to bottom, rgba(0,0,0,0) 40%, rgba(0,0,0,.05) 58%, rgba(255,255,255,1) 100%);
     opacity:.0;transition:opacity .25s ease;
   }
+
+  /* FABs */
+  .air-fab,.air-fab-right .air-fab{
+    appearance:none;border:0;cursor:pointer;width:44px;height:44px;border-radius:50%;
+    background:rgba(255,255,255,.95);box-shadow:0 8px 20px rgba(0,0,0,.18);
+    display:grid;place-items:center;font-size:18px;line-height:1
+  }
+  .air-fab-left{position:absolute;left:12px;top:calc(8px + env(safe-area-inset-top,0px));z-index:10001}
+  .air-fab-right{position:absolute;right:12px;top:calc(8px + env(safe-area-inset-top,0px));display:flex;gap:10px;z-index:10001}
+
+  .air-pager{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:6px 10px;border-radius:10px;font-size:12px;border:1px solid rgba(255,255,255,.25)}
+
+  /* White sheet */
   .card-glass{background:transparent;border:0;box-shadow:none}
   .air-sheet{
     background:#fff;color:#111;margin-top:-24px;
     border-top-left-radius:28px;border-top-right-radius:28px;
     padding:22px 18px 120px;
     box-shadow:0 -6px 20px rgba(0,0,0,.06);border:1px solid #eee;border-bottom:0;position:relative;
-  }
-  .air-sheet::before{
-    content:"";position:absolute;top:0;left:0;right:0;height:14px;border-top-left-radius:28px;border-top-right-radius:28px;
-    background:linear-gradient(to bottom, rgba(0,0,0,.06), rgba(0,0,0,0));
-    opacity:.35;pointer-events:none
   }
   .card-title{font-size:28px;font-weight:800;margin-bottom:6px;color:#111;letter-spacing:.2px}
   .small-muted{color:#717171!important;font-size:14px;line-height:1.5}
@@ -89,69 +100,30 @@
   /* Bottom booking bar */
   .air-fixed{
     position:fixed !important; left:0; right:0; bottom:0;
-    z-index:10000;background:#fff !important;border-top:1px solid #eee;
+    z-index:10000; background:#fff !important; border-top:1px solid #eee;
     padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
     display:flex; align-items:center; justify-content:space-between; gap:12px;
     box-shadow:0 -6px 18px rgba(0,0,0,.08);
   }
-  .air-underlay{
-    position:fixed; left:0; right:0; bottom:0;
-    height:calc(18px + env(safe-area-inset-bottom,0px));
-    background:#fff; z-index:9999; pointer-events:none;
-  }
+  .air-underlay{position:fixed;left:0;right:0;bottom:0;height:calc(18px + env(safe-area-inset-bottom,0px));background:#fff;z-index:9999;pointer-events:none}
   .air-price{display:flex;flex-direction:column;line-height:1.2}
   .air-price .now{font-weight:800;font-size:20px}
   .air-price .per{color:#717171;font-size:12px}
-  .air-cta{
-    flex:0 0 auto;min-width:150px;text-align:center;height:48px;line-height:48px;padding:0 20px;border-radius:14px;
-    font-weight:700;color:#fff;background:linear-gradient(90deg,#ff385c,#e61e4d);border:0;text-decoration:none;display:inline-block
-  }
+  .air-cta{flex:0 0 auto;min-width:150px;text-align:center;height:48px;line-height:48px;padding:0 20px;border-radius:14px;font-weight:700;color:#fff;background:linear-gradient(90deg,#ff385c,#e61e4d);border:0;text-decoration:none;display:inline-block}
 
-  /* Reviews cards */
-  .rv-strip{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 12px 2px}
-  .rv-card{scroll-snap-align:start;flex:0 0 84vw;background:#fff;border:1px solid #eee;border-radius:16px;padding:14px;box-shadow:0 6px 14px rgba(0,0,0,.05)}
-  .rv-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
-  .rv-ava{width:40px;height:40px;border-radius:50%;object-fit:cover}
-  .rv-meta{color:#6b7280;font-size:12px}
-  .rv-stars{font-size:13px}
-  .btn-outline-pale{display:block;width:100%;text-align:center;border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:10px 14px;font-weight:700}
-
-  /* ====== FABs (enforced) ====== */
-  body.item-page #flowBackBtn,
-  body.item-page .btn-back,
-  body.item-page .back-button,
-  body.item-page .nav-back,
-  body.item-page header .air-fab,
-  body.item-page .navbar .air-fab,
-  body.item-page .gallery > .air-fab:not(.keep){ display:none !important; }
-
-  .air-fab-left,.air-fab-right{
-    position:absolute; top:calc(8px + env(safe-area-inset-top,0px));
-    z-index:10020; display:flex; gap:10px;
-  }
-  .air-fab-left{ left:12px; }
-  .air-fab-right{ right:12px; }
-
-  .air-fab{
-    appearance:none;border:0;cursor:pointer;width:44px;height:44px;border-radius:50%;
-    background:rgba(255,255,255,.95); box-shadow:0 8px 20px rgba(0,0,0,.18);
-    display:grid; place-items:center; font-size:18px; line-height:1;
-  }
-
-  .air-pager{
-    position:absolute; bottom:12px; right:12px;
-    background:rgba(0,0,0,.55); color:#fff; font-weight:600;
-    padding:6px 10px; border-radius:10px; font-size:12px;
-    border:1px solid rgba(255,255,255,.25); z-index:10010;
-  }
-
-  body.item-page{ margin-top:0 !important; padding-top:0 !important; }
-  .items-shell{ margin-top:0 !important; }
-  .gallery{ margin-top:calc(-1 * env(safe-area-inset-top, 0px)); }
-  .gallery-main{ height:calc(58vh + env(safe-area-inset-top, 0px)); border-radius:0; }
+  /* Hide any foreign back fab inside gallery */
+  .gallery > .air-fab{display:none !important}
 }
 
-/* تأثيرات بسيطة للقلب */
+/* Remove top gap on mobile */
+@media (max-width:768px){
+  html, body.item-page{background:#fff !important;margin:0 !important;padding:0 !important}
+  body.item-page .items-shell{margin-top:0 !important;padding-top:0 !important}
+  body.item-page .gallery{background:#fff !important;border:0 !important;margin-top:calc(-1 * env(safe-area-inset-top, 0px)) !important}
+  body.item-page .gallery-main{border-radius:0 !important;height:calc(58vh + env(safe-area-inset-top, 0px)) !important;padding-top:env(safe-area-inset-top, 0px) !important}
+}
+
+/* Tiny effects */
 .air-fab.is-on { background: rgba(255,255,255,.95); }
 @keyframes fav-pop { 0%{transform:scale(1)} 40%{transform:scale(1.25)} 100%{transform:scale(1)} }
 .air-fab.fav-anim { animation: fav-pop .25s ease; }
@@ -166,6 +138,7 @@
     <!-- ===== Item / Gallery ===== -->
     <div class="card-glass">
       <div class="gallery">
+        {# Gather images #}
         {% set _srcs = [] %}
         {% if item.image_path %}
           {% set _raw = item.image_path %}
@@ -189,35 +162,15 @@
             <div style="display:grid;place-items:center;height:100%;color:#8b94a7;font-size:13px">No image</div>
           {% endif %}
 
-          <!-- ⋮ Menu (desktop) -->
-          <div class="gallery-menu dropdown d-none d-md-block">
-            <button class="btn-menu" data-bs-toggle="dropdown" aria-expanded="false" title="Options">⋮</button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><button class="dropdown-item" data-bs-toggle="offcanvas" data-bs-target="#reportSheet" id="openReportBtn" type="button">🚩 Report listing</button></li>
-            </ul>
-          </div>
-
-          <!-- يسار: رجوع (أبيض) -->
+          <!-- FABs -->
           <div class="air-fab-left d-md-none">
             <a class="air-fab keep" href="javascript:history.length>1?history.back():'/'" aria-label="Back">
               <i class="bi bi-arrow-left"></i>
             </a>
           </div>
-
-          <!-- يمين: مشاركة + حفظ (أبيض) -->
           <div class="air-fab-right d-md-none">
-            <button type="button"
-                    class="air-fab js-share keep"
-                    aria-label="Share"
-                    data-title="{{ item.title }}"
-                    data-url="{{ request.url }}">
-              <i class="bi bi-share"></i>
-            </button>
-            <button type="button"
-                    class="air-fab js-fav keep"
-                    aria-label="Save"
-                    data-item-id="{{ item.id }}"
-                    data-on="{{ 1 if is_favorite else 0 }}">
+            <button type="button" class="air-fab js-share keep" aria-label="Share" data-title="{{ item.title }}" data-url="{{ request.url }}"><i class="bi bi-share"></i></button>
+            <button type="button" class="air-fab js-fav keep" aria-label="Save" data-item-id="{{ item.id }}" data-on="{{ 1 if is_favorite else 0 }}">
               <i class="bi {% if is_favorite %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
             </button>
           </div>
@@ -238,31 +191,43 @@
       <!-- ===== White Rounded Sheet ===== -->
       <div class="card-body air-sheet">
         <h2 class="card-title">{{ item.title }}</h2>
-        <div class="small-muted" style="margin-bottom:8px">
+        <div class="small-muted" style="margin-bottom:6px">
           {{ item.category_label or item.category }} • {{ item.city or "No city" }} • {{ owner and owner.country or "" }}
         </div>
 
-        {# ======= RATING ONLY between ion.png and ion2.png ======= #}
+        {# ===== TOP STATS: Stars left + Reviews count right ===== #}
         {% set _avg = item_rating_avg or 0 %}
-        <div class="laurel-wrap">
-          <img class="laurel" src="{{ url_for('static', path='photo/ion.png') }}" alt="">
-          <div class="rating-center" aria-label="{{ '%.2f'|format(_avg) }} out of 5">
-            <span class="stars-bw">
+        {% set _cnt = item_rating_count or 0 %}
+        <div class="stat-row">
+          <div class="stat-left">
+            <span class="stars-bw" aria-label="{{ '%.2f'|format(_avg) }} out of 5">
               {% set full = _avg|round(0, 'floor')|int %}
               {% set half = 1 if _avg - full >= 0.5 else 0 %}
               {% for i in range(0, full) %}<span class="full">★</span>{% endfor %}
               {% if half %}<span class="full">★</span>{% endif %}
               {% for i in range(0, 5 - full - half) %}<span class="empty">☆</span>{% endfor %}
             </span>
-            <span class="num">{{ '%.2f'|format(_avg) }} / 5</span>
+            <small class="num-ltr">{{ '%.2f'|format(_avg) }} / 5</small>
           </div>
-          <img class="laurel" src="{{ url_for('static', path='photo/ion2.png') }}" alt="">
+          <div class="stat-right">
+            <a href="#reviews">
+              <span class="num-ltr">{{ _cnt }}</span>
+              <span class="muted">review(s)</span>
+            </a>
+          </div>
         </div>
+
+        {# ===== DESCRIPTION FIRST ===== #}
+        {% if item.description %}
+          <p style="white-space:pre-wrap;line-height:1.9;color:#374151">{{ item.description }}</p>
+        {% else %}
+          <div class="badge-pill">No description</div>
+        {% endif %}
 
         <div class="hr"></div>
 
-        <!-- ===== Reviews slider ===== -->
-        <h5 style="margin:0 0 8px 0">Reviews</h5>
+        <!-- ===== REVIEWS ===== -->
+        <h5 id="reviews" style="margin:0 0 8px 0">Reviews</h5>
         {% if item_reviews and item_reviews|length %}
           <div class="rv-strip">
             {% for r in item_reviews %}
@@ -286,7 +251,7 @@
               </div>
             {% endfor %}
           </div>
-          <a href="/items/{{ item.id }}#all-reviews" class="btn-outline-pale">View all {{ item_rating_count or 0 }} review(s)</a>
+          <a href="/items/{{ item.id }}#all-reviews" class="btn-outline-pale">View all {{ _cnt }} review(s)</a>
         {% else %}
           <div class="small-muted">No reviews yet.</div>
         {% endif %}
@@ -307,24 +272,24 @@
           {% endif %}
           <a class="btnx btnx-ghost" href="/items">↩︎ Back to list</a>
         </div>
-      </div>
 
-      <!-- ===== Bottom Booking Bar (Fixed) ===== -->
-      <div class="air-fixed" id="airBar">
-        <div class="air-price">
-          <span class="now">{{ item.price_per_day }} {{ item.currency or 'KWD' }}</span>
-          <span class="per">per day</span>
+        <!-- Bottom Booking Bar -->
+        <div class="air-fixed" id="airBar">
+          <div class="air-price">
+            <span class="now">{{ item.price_per_day }} {{ item.currency or 'KWD' }}</span>
+            <span class="per">per day</span>
+          </div>
+          {% if owner and session_user and session_user.status == 'approved' and session_user.id != owner.id %}
+            <a class="air-cta" href="/bookings/new?item_id={{ item.id }}">Book now</a>
+          {% elif not session_user %}
+            <a class="air-cta" href="/login">Sign in to pay</a>
+          {% else %}
+            <a class="air-cta" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">Contact</a>
+          {% endif %}
         </div>
-        {% if owner and session_user and session_user.status == 'approved' and session_user.id != owner.id %}
-          <a class="air-cta" href="/bookings/new?item_id={{ item.id }}">Book now</a>
-        {% elif not session_user %}
-          <a class="air-cta" href="/login">Sign in to pay</a>
-        {% else %}
-          <a class="air-cta" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">Contact</a>
-        {% endif %}
       </div>
+      <div class="air-underlay" id="airUnder"></div>
     </div>
-    <div class="air-underlay" id="airUnder"></div>
 
     <!-- ===== Owner Card ===== -->
     <div class="card-glass">
@@ -355,24 +320,14 @@
         {% endif %}
       </div>
     </div>
-  </div>
 
-  <div class="hr d-md-none"></div>
-  <p class="air-report-bottom d-md-none" style="text-align:center">
-    <a href="#reportSheet" class="air-report-link" data-bs-toggle="offcanvas" data-bs-target="#reportSheet" aria-controls="reportSheet">🚩 Report this listing</a>
-  </p>
+  </div>
 
   {% endif %}
 </section>
 
-<!-- ===== Report Bottom Sheet ===== -->
-<div class="offcanvas offcanvas-top"
-     tabindex="-1"
-     id="reportSheet"
-     aria-labelledby="reportLabel"
-     dir="rtl"
-     data-bs-scroll="true"
-     data-bs-backdrop="true">
+<!-- ===== Report Bottom Sheet (kept) ===== -->
+<div class="offcanvas offcanvas-top" tabindex="-1" id="reportSheet" aria-labelledby="reportLabel" dir="rtl" data-bs-scroll="true" data-bs-backdrop="true">
   <div class="offcanvas-header">
     <h5 class="offcanvas-title" id="reportLabel">🚩 Report listing</h5>
     <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
@@ -411,7 +366,7 @@
   const heroFade = document.getElementById('heroFade');
   const airBar = document.getElementById('airBar');
 
-  /* Image counter */
+  /* Counter */
   function setPager(i,t){ if(pager){ pager.textContent=(i+1)+'/'+t; } }
   let activeIdx=0;
   function totalImgs(){ return thumbs ? thumbs.querySelectorAll('img').length : (main?1:0); }
@@ -462,12 +417,9 @@
   portalBar();
   window.addEventListener('resize', portalBar);
   window.addEventListener('orientationchange', portalBar);
-
   document.body.classList.add('item-page');
 })();
 </script>
-
-<script>document.body.classList.add('item-page');</script>
 
 <script>
 /* Share + Favorite */
@@ -479,13 +431,8 @@
       const title = shareBtn.dataset.title || document.title;
       try {
         if (navigator.share) { await navigator.share({ title, url }); }
-        else if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(url); alert('Link copied ✔');
-        } else {
-          const ta = document.createElement('textarea');
-          ta.value = url; document.body.appendChild(ta); ta.select();
-          document.execCommand('copy'); ta.remove(); alert('Link copied ✔');
-        }
+        else if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(url); alert('Link copied ✔'); }
+        else { const ta=document.createElement('textarea'); ta.value=url; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); alert('Link copied ✔'); }
       } catch(e){}
     });
   }
@@ -501,17 +448,12 @@
       favBtn.classList.remove('fav-anim'); void favBtn.offsetWidth; favBtn.classList.add('fav-anim');
     }
     favBtn.addEventListener('click', async () => {
-      try{
-        const res = await fetch('/api/favorites/toggle', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({ item_id: favBtn.dataset.itemId })
-        });
+      const itemId = favBtn.dataset.itemId;
+      try {
+        const res = await fetch('/api/favorites/toggle', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ item_id: itemId }) });
         if (res.status === 401) { location.href = '/login?next=' + encodeURIComponent(location.pathname); return; }
-        const data = await res.json();
-        if (data && data.ok) setOn(!!data.favorited);
-      }catch(e){
-        setOn(favBtn.dataset.on !== '1');
-      }
+        const data = await res.json(); if (data && data.ok) setOn(!!data.favorited);
+      } catch(e){ setOn(favBtn.dataset.on !== '1'); }
     });
     setOn(favBtn.dataset.on === '1');
   }
@@ -519,29 +461,14 @@
 </script>
 
 <script>
-/* ضبط حقول البلاغ */
+/* Seed report form with current image */
 (function(){
-  const main  = document.getElementById('mainImg');
+  const main = document.getElementById('mainImg');
   if (main) {
     const initSrc = main.getAttribute('src') || '';
     document.getElementById('rf_image_index')?.setAttribute('value','0');
     document.getElementById('rf_image_url')?.setAttribute('value', initSrc);
   }
-})();
-</script>
-
-<script>
-/* theme-color لهذه الصفحة */
-(function(){
-  var m = document.querySelector('meta[name="theme-color"]');
-  if(m){ m.setAttribute('content', '#ffffff'); }
-  var ms = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-  if(!ms){
-    ms = document.createElement('meta');
-    ms.setAttribute('name','apple-mobile-web-app-status-bar-style');
-    document.head.appendChild(ms);
-  }
-  ms.setAttribute('content','default');
 })();
 </script>
 
