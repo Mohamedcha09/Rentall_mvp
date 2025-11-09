@@ -141,7 +141,27 @@
 .air-fab.is-on { background: rgba(255,255,255,.95); }
 @keyframes fav-pop { 0%{transform:scale(1)} 40%{transform:scale(1.25)} 100%{transform:scale(1)} }
 .air-fab.fav-anim { animation: fav-pop .25s ease; }
+
+/* ==== Kill top gap from base header (mobile, this page only) ==== */
+@media (max-width: 768px){
+  /* 1) امنع أي حجز مساحة أعلى الصفحة */
+  html, body.item-page{ margin-top:0 !important; padding-top:0 !important; scroll-padding-top:0 !important; }
+  .item-page #page-wrapper{ padding-top:0 !important; }           /* يتغلّب على style inline في الـdiv */
+
+  /* 2) أخفِ شريط الترويسة إن وُجد (أسماء شائعة) */
+  .item-page .navbar,
+  .item-page .appbar,
+  .item-page .site-nav,
+  .item-page .airbar-top{ display:none !important; }
+
+  /* 3) الصوره العلوية تلتصق بالحافة العلوية مع احترام الـsafe area */
+  .gallery{ margin-top:calc(-1 * env(safe-area-inset-top,0px)) !important; }
+  .gallery-main{ height:calc(58vh + env(safe-area-inset-top,0px)) !important; border-radius:0 !important; }
+}
+
 </style>
+
+
 
 <section class="items-shell">
   {% if not item %}
@@ -514,6 +534,14 @@
   // Initial state
   paint(favBtn.dataset.on === '1');
 })();
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.body.classList.add('item-page');          // للتأكد
+  var pw = document.getElementById('page-wrapper');
+  if (pw) pw.style.paddingTop = '0px';               // يلغي inline padding-top=85px
+});
 </script>
 
 {% endblock %}
