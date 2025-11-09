@@ -428,6 +428,53 @@
 }
 </style>
 
+<style>
+/* ===== Mobile hard-override ===== */
+@media (max-width:768px){
+  /* موضع الحاويتين وثقلهما فوق كل شيء */
+  .air-fab-left,
+  .air-fab-right{
+    position:absolute !important;
+    top:calc(8px + env(safe-area-inset-top,0px)) !important;
+    z-index:10050 !important;
+  }
+  .air-fab-left{ left:12px !important; display:flex !important; gap:10px !important; }
+  .air-fab-right{ right:12px !important; display:flex !important; gap:10px !important; }
+
+  /* شكل الأزرار وإجبار ظهورها */
+  .air-fab,
+  .air-fab-right .air-fab,
+  .air-fab-left .air-fab{
+    display:grid !important;
+    place-items:center !important;
+    width:44px !important; height:44px !important; border-radius:50% !important;
+    background:rgba(255,255,255,.95) !important;
+    box-shadow:0 8px 20px rgba(0,0,0,.18) !important;
+    opacity:1 !important; visibility:visible !important;
+    z-index:10051 !important;
+    border:0 !important;
+  }
+
+  /* أي زر رجوع “أسود/عام” يظهر داخل المعرض نحذفه بصريًا */
+  .gallery > .air-fab:not(.keep),
+  .gallery .btn-back,
+  .gallery .back-button,
+  .gallery .nav-back,
+  .gallery .header-back{
+    display:none !important;
+  }
+
+  /* لا تسمح لأي غطاء أن يحجب الأزرار */
+  .gallery-main,
+  .gallery-main *{
+    z-index:auto;
+  }
+  .hero-fade{ z-index:1 !important; }
+  .air-fab-left, .air-fab-right{ z-index:10050 !important; } /* أعلى من الهيرو */
+}
+</style>
+
+
 
 <section class="items-shell">
   {% if not item %}
@@ -480,22 +527,13 @@
           <!-- FABs + Counter (يمين تبقى كما هي) -->
           <div class="air-fab-right">
             <!-- مشاركة -->
-            <button type="button"
-                    class="air-fab js-share"
-                    aria-label="Share"
-                    data-title="{{ item.title }}"
-                    data-url="{{ request.url }}">
-              <i class="bi bi-share"></i>
-            </button>
-
-            <!-- مفضّلة -->
-            <button type="button"
-                    class="air-fab js-fav"
-                    aria-label="Save"
-                    data-item-id="{{ item.id }}"
-                    data-on="{{ 1 if is_favorite else 0 }}">
-              <i class="bi {% if is_favorite %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
-            </button>
+            <div id="afRight" class="air-fab-right">
+  <button type="button" class="air-fab js-share keep" aria-label="Share"
+          data-title="{{ item.title }}" data-url="{{ request.url }}"><i class="bi bi-share"></i></button>
+  <button type="button" class="air-fab js-fav keep" aria-label="Save"
+          data-item-id="{{ item.id }}" data-on="{{ 1 if is_favorite else 0 }}">
+    <i class="bi {% if is_favorite %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+  </button>
           </div>
 
           <div class="air-pager" id="airPager">1/1</div>
@@ -875,6 +913,81 @@
   }
 
   /* باقي سكربتاتك كما هي… */
+})();
+</script>
+
+<script>
+(function(){
+  const gMain   = document.getElementById('gMain');
+  if(!gMain) return;
+
+  /* 1) إزالة أي زر غريب داخل المعرض (غير مُعلّم بـ .keep) */
+  [...gMain.querySelectorAll('.air-fab')]
+    .filter(el => !el.classList.contains('keep') && !el.closest('.air-fab-left') && !el.closest('.air-fab-right'))
+    .forEach(el => el.remove());
+
+  /* 2) تأكيد وجود الحاويتين وإنشاءهما إن لزم */
+  let afLeft  = document.getElementById('afLeft');
+  let afRight = document.getElementById('afRight');
+
+  if(!afLeft){
+    afLeft = document.createElement('div');
+    afLeft.id = 'afLeft';
+    afLeft.className = 'air-fab-left d-md-none';
+    afLeft.innerHTML = (
+      '<a class="air-fab keep" href="javascript:history.length>1?history.back():\'/\'" aria-label="Back">' +
+      '<i class="bi bi-arrow-left"></i></a>'
+    );
+    gMain.appendChild(afLeft);
+  }
+  if(!afRight){
+    afRight = document.createElement('div');
+    afRight.id = 'afRight';
+    afRight.className = 'air-fab-right';
+    afRight.innerHTML = (
+      '<button type="button" class="air-fab js-share keep" aria-label="Share"><i class="bi bi-share"></i></button>' +
+      '<button type="button" class="air-fab js-fav keep" aria-label="Save"><i class="bi bi-heart"></i></button>'
+    );
+    gMain.appendChild(afRight);
+  }
+
+  /* 3) رفع الطبقات فوق أي غطاء */
+  const setZ = () => {
+    const zTop = 10050;
+    afLeft.style.zIndex  = zTop;
+    afRight.style.zIndex = zTop;
+    const hf = document.getElementById('heroFade');
+    if(hf) hf.style.zIndex = 1;
+  };
+  setZ();
+  window.addEventListener('scroll', setZ, {passive:true});
+  window.addEventListener('resize', setZ);
+
+  /* 4) سلوك المشاركة (لو أنشأنا الأزرار ديناميكيًا) */
+  const shareBtn = afRight.querySelector('.js-share');
+  if(shareBtn && !shareBtn._wired){
+    shareBtn._wired = true;
+    shareBtn.addEventListener('click', async () => {
+      const url = shareBtn.dataset.url || location.href;
+      const title = shareBtn.dataset.title || document.title;
+      try {
+        if (navigator.share) { await navigator.share({ title, url }); }
+        else if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(url); alert('Link copied ✔');
+        } else {
+          const ta=document.createElement('textarea'); ta.value=url; document.body.appendChild(ta);
+          ta.select(); document.execCommand('copy'); ta.remove(); alert('Link copied ✔');
+        }
+      } catch(e){}
+    });
+  }
+
+  /* 5) ملء حقول البلاغ بصورة المعاينة الحالية */
+  const mainImg = document.getElementById('mainImg');
+  if (mainImg){
+    document.getElementById('rf_image_index')?.setAttribute('value','0');
+    document.getElementById('rf_image_url')?.setAttribute('value', mainImg.getAttribute('src') || '');
+  }
 })();
 </script>
 
