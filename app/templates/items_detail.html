@@ -294,6 +294,801 @@
   }
 </style>
 
+{# app/templates/items_detail.html #}
+{% extends "base.html" %}
+{% from "_badges.html" import render_badges %}
+{% block content %}
+
+<style>
+/* ====== Base (Desktop) ====== */
+:root{
+  --bg-1:#0b1220; --bg-2:#0f172a; --card:#0f172acc;
+  --stroke:rgba(255,255,255,.12); --stroke-soft:rgba(255,255,255,.08);
+  --txt:#eaf0ff; --muted:#9fb0d8; --brand:#3b82f6; --ok:#10b981;
+  --glass:rgba(255,255,255,.06);
+  --shadow:0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
+}
+.items-shell{max-width:1100px;margin:18px auto;padding:0 12px}
+.grid-2{display:grid;gap:18px;grid-template-columns:1.2fr .8fr}
+@media (max-width:920px){.grid-2{grid-template-columns:1fr}}
+.card-glass{background:linear-gradient(180deg,var(--glass),transparent);border:1px solid var(--stroke);border-radius:16px;overflow:hidden;backdrop-filter:blur(8px);box-shadow:var(--shadow)}
+.card-body{padding:18px}
+.card-title{margin:0 0 8px 0;font-weight:800;letter-spacing:.2px}
+.small-muted{color:var(--muted);font-size:13px}
+.badge-pill{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid var(--stroke);background:rgba(255,255,255,.05);font-size:12px;color:var(--muted)}
+.gallery{background:#0c1324;border-bottom:1px solid var(--stroke-soft)}
+.gallery-main{position:relative;aspect-ratio:16/10;width:100%;background:#0a0f1e;overflow:hidden}
+.gallery-main img{width:100%;height:100%;object-fit:cover;display:block;transform-origin:center}
+.gallery-menu{position:absolute;top:10px;right:10px}
+.gallery-menu .btn-menu{background:rgba(0,0,0,.45);color:#fff;border:1px solid var(--stroke);border-radius:12px;padding:6px 10px;line-height:1;font-weight:700}
+.gallery-menu .dropdown-menu{border-radius:12px;overflow:hidden;border:1px solid var(--stroke)}
+.thumbs{display:flex;gap:10px;padding:12px;overflow-x:auto;background:linear-gradient(180deg,rgba(255,255,255,.03),transparent);scroll-snap-type:x mandatory}
+.thumbs img{width:86px;height:60px;object-fit:cover;border-radius:10px;border:1px solid var(--stroke-soft);cursor:pointer;opacity:.85;transition:transform .15s ease,opacity .15s ease,box-shadow .15s ease;scroll-snap-align:center}
+.thumbs img:hover{transform:translateY(-2px);opacity:1;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.thumbs img.active{outline:2px solid var(--brand);opacity:1}
+.btnx{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;font-weight:700;text-decoration:none;cursor:pointer;user-select:none;border:1px solid var(--stroke);backdrop-filter:blur(8px);background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));color:var(--txt);transition:transform .12s ease,background .2s ease,border-color .2s ease}
+.btnx:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.2)}
+.btnx-primary{border-color:rgba(59,130,246,.6);background:linear-gradient(180deg,rgba(59,130,246,.35),rgba(59,130,246,.1))}
+.btnx-green{border-color:rgba(16,185,129,.6);background:linear-gradient(180deg,rgba(16,185,129,.35),rgba(16,185,129,.1))}
+.btnx-ghost{border-color:var(--stroke);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))}
+.btns-row{display:flex;flex-wrap:wrap;gap:10px}
+.owner-row{display:flex;align-items:center;gap:12px}
+.owner-avatar{width:62px;height:62px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--stroke)}
+.hr{border:0;height:1px;background:var(--stroke-soft);margin:14px 0}
+
+/* Stars */
+.stars-bw,.rv-stars{display:inline-flex;gap:4px;font-size:16px;line-height:1;letter-spacing:0}
+.stars-bw span,.rv-stars span{display:inline-block;width:1em;text-align:center}
+.stars-bw .full,.rv-stars .full{color:#111}
+.stars-bw .empty,.rv-stars .empty{color:#bdbdbd}
+
+/* Top stats row */
+.stat-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 10px}
+.stat-left,.stat-right{display:flex;align-items:center;gap:8px}
+.stat-right a{font-weight:800;text-decoration:none;color:#111}
+.stat-right a .muted{color:#717171}
+
+/* ===== Similar items — unified ===== */
+.sim-wrap{ margin:16px 0 8px }
+.sim-row{ display:flex; gap:16px; overflow-x:auto; scroll-snap-type:x mandatory; padding:2px 12px 16px; -webkit-overflow-scrolling:touch; }
+.sim-card{
+  position:relative; scroll-snap-align:start; flex:0 0 78vw; max-width:78vw;
+  background:#fff; border-radius:16px; padding:16px;
+  box-shadow:0 10px 26px rgba(17,24,39,.10); border:1px solid rgba(17,24,39,.06);
+}
+@media(min-width:768px){ .sim-card{ flex:0 0 300px; max-width:300px } }
+
+/* الغلاف */
+.sim-media{ position:relative; border-radius:16px; overflow:hidden; }
+.sim-img{
+  width:100%; display:block;
+  aspect-ratio:16/9;             /* يتحكم في الارتفاع */
+  object-fit:cover;
+  height:auto;                    /* مهم: لا min/max ثابت */
+}
+
+/* العناصر الطافية فوق الصورة */
+.sim-chip, .sim-rate{
+  position:absolute; top:10px; z-index:2;
+  height:28px; line-height:28px; padding:0 10px;
+  display:inline-flex; align-items:center; gap:6px;
+  border-radius:999px; background:#fff; color:#111;
+  border:1px solid #e5e7eb; font-weight:700; font-size:13px;
+}
+.sim-chip{ left:10px; font-weight:600; }
+.sim-rate{ right:56px; }          /* مسافة لزر القلب */
+.sim-rate.empty{ display:none; }  /* أخفي الدائرة عند عدم وجود تقييم */
+.sim-rate .star{ font-size:14px }
+
+/* زر القلب */
+.sim-fav{
+  position:absolute; top:10px; right:10px; z-index:3;
+  width:40px; height:40px; border-radius:50%; display:grid; place-items:center;
+  background:#fff; border:1px solid #e5e7eb; box-shadow:0 8px 18px rgba(0,0,0,.12);
+  cursor:pointer;
+}
+.sim-fav i{ font-size:18px }
+.sim-fav.on i{ color:var(--brand1) }
+
+/* النص أسفل الصورة */
+.sim-body{ padding-top:12px }
+.sim-title{
+  font-weight:800; font-size:19px; color:#111; margin:0 0 8px 0;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+.sim-sub{ color:#6b7280; font-size:13px; margin:0 0 10px 0; line-height:1.45 }
+
+/* سطر الميتاداتا */
+.sim-meta{
+  display:flex; align-items:center; gap:12px; color:#6b7280;
+  font-size:13.5px; line-height:1.45; font-variant-numeric:tabular-nums;
+  margin-bottom:14px;
+}
+.sim-meta .vsep{ width:1px; height:14px; background:#e5e7eb; flex:0 0 1px; opacity:.9; }
+
+/* فاصل منقّط */
+.sim-cut{ margin:0 0 12px 0; border:0; height:0; border-top:1px dashed rgba(17,24,39,.18); }
+
+/* الأسعار */
+.sim-price-row{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+.sim-price-old{ color:#9ca3af; text-decoration:line-through; font-size:14.5px; }
+.sim-price-now{ color:#111; font-weight:900; font-size:21px; }
+.sim-unit{ color:#6b7280; font-size:12.5px; margin-left:4px; }
+
+/* تفاعل */
+.sim-card:hover{ box-shadow:0 14px 30px rgba(17,24,39,.14) }
+
+/* ===== Mobile look ===== */
+@media (max-width:768px){
+  body{background:#fff;color:#111}
+  .items-shell{padding:0;margin:0;max-width:none}
+  .grid-2{display:block}
+  .gallery{background:#fff;border:0}
+  .gallery-main{height:58vh;max-height:520px;border-radius:0}
+  .gallery-main img{object-fit:cover;will-change:transform,opacity}
+  .hero-fade{
+    position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(to bottom, rgba(0,0,0,0) 40%, rgba(0,0,0,.05) 58%, #fff 100%);
+    opacity:.0;transition:opacity .25s ease;
+  }
+  .card-glass{background:transparent;border:0;box-shadow:none}
+  .air-sheet{
+    background:#fff;color:#111;margin-top:-24px;
+    border-top-left-radius:28px;border-top-right-radius:28px;
+    padding:22px 18px 18px;
+    box-shadow:0 -6px 20px rgba(0,0,0,.06);border:1px solid #eee;border-bottom:0;position:relative;
+  }
+  .air-sheet::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:14px;border-top-left-radius:28px;border-top-right-radius:28px;
+    background:linear-gradient(to bottom, rgba(0,0,0,.06), rgba(0,0,0,0));
+    opacity:.35;pointer-events:none
+  }
+  .card-title{font-size:28px;font-weight:800;margin-bottom:6px;color:#111;letter-spacing:.2px}
+  .small-muted{color:#717171!important;font-size:14px;line-height:1.5}
+  .hr{background:#e5e7eb}
+
+  /* Bottom booking bar */
+  .air-fixed{
+    position:fixed !important; left:0; right:0; bottom:0;
+    z-index:10000;background:#fff !important;border-top:1px solid #eee;
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    box-shadow:0 -6px 18px rgba(0,0,0,.08);
+  }
+  .air-underlay{
+    position:fixed; left:0; right:0; bottom:0;
+    height:calc(18px + env(safe-area-inset-bottom,0px));
+    background:#fff; z-index:9999; pointer-events:none;
+  }
+  .air-price{display:flex;flex-direction:column;line-height:1.2}
+  .air-price .now{font-weight:800;font-size:20px}
+  .air-price .per{color:#717171;font-size:12px}
+  .air-cta{
+    flex:0 0 auto;min-width:150px;text-align:center;height:48px;line-height:48px;padding:0 20px;border-radius:14px;
+    font-weight:700;color:#fff;background:linear-gradient(90deg,#ff385c,#e61e4d);border:0;text-decoration:none;display:inline-block
+  }
+
+  /* Reviews cards */
+  .rv-strip{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 12px 2px}
+  .rv-card{scroll-snap-align:start;flex:0 0 84vw;background:#fff;border:1px solid #eee;border-radius:16px;padding:14px;box-shadow:0 6px 14px rgba(0,0,0,.05)}
+  .rv-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .rv-ava{width:40px;height:40px;border-radius:50%;object-fit:cover}
+  .rv-meta{color:#6b7280;font-size:12px}
+  .rv-stars{font-size:13px}
+
+  /* FABs */
+  .air-fab-left,.air-fab-right{
+    position:absolute; top:calc(8px + env(safe-area-inset-top,0px));
+    z-index:10020; display:flex; gap:10px;
+  }
+  .air-fab-left{ left:12px; }
+  .air-fab-right{ right:12px; }
+  .air-fab{
+    appearance:none;border:0;cursor:pointer;width:44px;height:44px;border-radius:50%;
+    background:rgba(255,255,255,.95); box-shadow:0 8px 20px rgba(0,0,0,.18);
+    display:grid; place-items:center; font-size:18px; line-height:1;
+  }
+
+  .air-pager{
+    position:absolute; bottom:12px; right:12px;
+    background:rgba(0,0,0,.55); color:#fff; font-weight:600;
+    padding:6px 10px; border-radius:10px; font-size:12px;
+    border:1px solid rgba(255,255,255,.25); z-index:10010;
+  }
+
+  body.item-page{ margin-top:0 !important; padding-top:0 !important; }
+  .items-shell{ margin-top:0 !important; }
+  .gallery{ margin-top:calc(-1 * env(safe-area-inset-top, 0px)); }
+  .gallery-main{ height:calc(58vh + env(safe-area-inset-top, 0px)); border-radius:0; }
+}
+
+/* Heart micro-anim */
+.air-fab.is-on { background: rgba(255,255,255,.95); }
+@keyframes fav-pop { 0%{transform:scale(1)} 40%{transform:scale(1.25)} 100%{transform:scale(1)} }
+.air-fab.fav-anim { animation: fav-pop .25s ease; }
+
+/* ==== Kill top gap from base header (mobile, this page only) ==== */
+@media (max-width: 768px){
+  html, body.item-page{ margin-top:0 !important; padding-top:0 !important; scroll-padding-top:0 !important; }
+  .item-page #page-wrapper{ padding-top:0 !important; }
+  .item-page .navbar,
+  .item-page .appbar,
+  .item-page .site-nav,
+  .item-page .airbar-top{ display:none !important; }
+  .gallery{ margin-top:calc(-1 * env(safe-area-inset-top,0px)) !important; }
+  .gallery-main{ height:calc(58vh + env(safe-area-inset-top,0px)) !important; border-radius:0 !important; }
+}
+
+/* ===== Mobile hero like Airbnb (bordered card) ===== */
+@media (max-width:768px){
+  .gallery{ margin-top:0 !important; background:#fff; border:0; padding:12px; }
+  .gallery-main{
+    height:58vh !important;
+    max-height:520px !important;
+    border-radius:24px !important;
+    overflow:hidden !important;
+  }
+}
+
+/* ======= Brand unify (purple → sky) ======= */
+:root{
+  --brand1:#8b5cf6; --brand2:#22d3ee;
+  --brand-grad:linear-gradient(135deg,var(--brand1),var(--brand2));
+  --brand-ring: color-mix(in oklab, var(--brand2) 60%, white);
+  --btn-glass: color-mix(in oklab, white 12%, transparent);
+  --btn-glass-strong: color-mix(in oklab, white 18%, transparent);
+  --btn-shadow: 0 10px 22px rgba(24, 24, 38, .18), 0 4px 10px rgba(24, 24, 38, .12);
+  --btn-shadow-strong: 0 14px 30px rgba(24, 24, 38, .22), 0 6px 14px rgba(24, 24, 38, .16);
+}
+
+/* Buttons unify */
+.btnx,.air-cta,.item-page .btn{
+  appearance:none;border:0;border-radius:14px;font-weight:800;letter-spacing:.2px;text-decoration:none;line-height:1;height:48px;padding:0 20px;display:inline-flex;align-items:center;justify-content:center;transition:transform .12s ease, box-shadow .2s ease, background .3s ease, opacity .2s ease;will-change:transform;
+}
+.btnx-primary,.btnx-green,.air-cta,.item-page .btn.btn-primary{
+  background:var(--brand-grad); color:#fff !important; box-shadow:var(--btn-shadow);
+}
+.btnx-primary:hover,.btnx-green:hover,.air-cta:hover,.item-page .btn.btn-primary:hover{
+  transform:translateY(-1px); box-shadow:var(--btn-shadow-strong); filter:saturate(1.08);
+}
+.btnx-primary:active,.btnx-green:active,.air-cta:active,.item-page .btn.btn-primary:active{
+  transform:translateY(0); filter:saturate(1);
+}
+.btnx-ghost,.item-page .btn.btn-outline-secondary{
+  background:var(--btn-glass); color:#111;
+  border:1px solid color-mix(in oklab, var(--brand2) 25%, rgba(0,0,0,.12));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35);
+}
+.btnx-ghost:hover,.item-page .btn.btn-outline-secondary:hover{
+  background:var(--btn-glass-strong); transform:translateY(-1px);
+}
+#reportSheet .btn.btn-danger{ background:var(--brand-grad); border:0; color:#fff; box-shadow:var(--btn-shadow); }
+#reportSheet .btn.btn-danger:hover{ box-shadow:var(--btn-shadow-strong); transform:translateY(-1px); }
+.btnx:focus-visible,.air-cta:focus-visible,.item-page .btn:focus-visible{ outline:0; box-shadow:0 0 0 4px var(--brand-ring); }
+.air-cta{ min-width:160px; height:52px; line-height:52px; padding:0 22px; border-radius:16px; }
+.air-fab{ background:rgba(255,255,255,.9); border:1px solid rgba(0,0,0,.06); box-shadow:0 8px 20px rgba(0,0,0,.16); }
+@media (prefers-reduced-motion:reduce){ .btnx,.air-cta,.item-page .btn{ transition:none; } }
+.btnx-lightwide{ display:block; width:100%; text-align:center; padding:14px 18px; border-radius:16px; background:rgba(255,255,255,.75); border:1px solid #e5e7eb; color:#111; font-weight:800; box-shadow:0 10px 22px rgba(0,0,0,.06); }
+.btnx-lightwide:hover{ background:#fff }
+.btns-row{ display:flex; gap:12px; flex-wrap:nowrap; justify-content:space-between; width:100%; }
+.btns-row .btnx{ flex:1 1 0; text-align:center; height:52px; border-radius:16px; }
+@media (max-width:480px){ .btns-row .btnx{ height:50px; } }
+</style>
+
+<style>
+  /* اجعل الشيت أعلى من الشريط */
+  #reportSheet{ z-index:11000; --bs-offcanvas-height:85vh; }
+  .offcanvas-backdrop{ z-index:10990; }
+
+  /* ستايل النجمة المتدرّج */
+  .sim-rate .star{
+    font-size:16px;
+    background:linear-gradient(135deg,#7529f9,#00ccff);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 4px rgba(59,130,246,.4));
+  }
+</style>
+
+<section class="items-shell">
+  {% if not item %}
+    <div class="card-glass"><div class="card-body"><div class="alert alert-danger">Item not found.</div></div></div>
+  {% else %}
+
+  <div class="grid-2">
+    <!-- ===== Item / Gallery ===== -->
+    <div class="card-glass">
+      <div class="gallery">
+        {% set _srcs = [] %}
+        {% if item.image_path %}
+          {% set _raw = item.image_path %}
+          {% if ',' in _raw %}{% set _srcs = _raw.split(',') %}
+          {% elif '|' in _raw %}{% set _srcs = _raw.split('|') %}
+          {% else %}{% set _srcs = [_raw] %}{% endif %}
+        {% endif %}
+        {% set current = _srcs[0] if _srcs else None %}
+
+        {% macro build_src(p) -%}
+          {%- set s = (p or '') -%}
+          {%- if not (s.startswith('http') or s.startswith('/')) -%}{%- set s = '/' + s -%}{%- endif -%}
+          {{- s -}}
+        {%- endmacro %}
+
+        <div class="gallery-main" id="gMain">
+          {% if current %}
+            <img id="mainImg" src="{{ build_src(current) }}" alt="item image">
+            <div class="hero-fade" id="heroFade"></div>
+          {% else %}
+            <div style="display:grid;place-items:center;height:100%;color:#8b94a7;font-size:13px">No image</div>
+          {% endif %}
+
+          <!-- ⋮ Menu (desktop) -->
+          <div class="gallery-menu dropdown d-none d-md-block">
+            <button class="btn-menu" data-bs-toggle="dropdown" aria-expanded="false" title="Options">⋮</button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><button class="dropdown-item" data-bs-toggle="offcanvas" data-bs-target="#reportSheet" id="openReportBtn" type="button">🚩 Report listing</button></li>
+            </ul>
+          </div>
+
+          <!-- FAB left/right -->
+          <div class="air-fab-left d-md-none">
+            <a class="air-fab keep" href="javascript:history.length>1?history.back():'/'" aria-label="Back">
+              <i class="bi bi-arrow-left"></i>
+            </a>
+          </div>
+          <div class="air-fab-right d-md-none">
+            <button type="button" class="air-fab js-share keep" aria-label="Share" data-title="{{ item.title }}" data-url="{{ request.url }}"><i class="bi bi-share"></i></button>
+            <button type="button" class="air-fab js-fav keep" aria-label="Save" data-item-id="{{ item.id }}" data-on="{{ 1 if is_favorite else 0 }}">
+              <i class="bi {% if is_favorite %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+            </button>
+          </div>
+
+          <div class="air-pager" id="airPager">1/1</div>
+
+          {% if _srcs|length > 1 %}
+            <div class="thumbs" id="thumbs">
+              {% for s in _srcs %}
+                {% set src = build_src(s.strip()) %}
+                <img data-src="{{ src }}" data-index="{{ loop.index0 }}" class="{% if loop.index0==0 %}active{% endif %}" src="{{ src }}" alt="thumb {{ loop.index }}">
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- ===== White Rounded Sheet ===== -->
+      <div class="card-body air-sheet">
+        <h2 class="card-title">{{ item.title }}</h2>
+        <div class="small-muted" style="margin-bottom:6px">
+          {{ item.category_label or item.category }} • {{ item.city or "No city" }} • {{ owner and owner.country or "" }}
+        </div>
+
+        {# Top stats #}
+        {% set _avg = item_rating_avg or 0 %}
+        {% set _cnt = item_rating_count or 0 %}
+        <div class="stat-row">
+          <div class="stat-left">
+            <span class="stars-bw" aria-label="{{ '%.2f'|format(_avg) }} out of 5">
+              {% set full = _avg|round(0, 'floor')|int %}
+              {% set half = 1 if _avg - full >= 0.5 else 0 %}
+              {% for i in range(0, full) %}<span class="full">★</span>{% endfor %}
+              {% if half %}<span class="full">★</span>{% endif %}
+              {% for i in range(0, 5 - full - half) %}<span class="empty">☆</span>{% endfor %}
+            </span>
+            <small class="num-ltr">{{ '%.2f'|format(_avg) }} / 5</small>
+          </div>
+          <div class="stat-right">
+            <a href="#reviews"><span class="num-ltr">{{ _cnt }}</span> <span class="muted">review(s)</span></a>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        {# Description BEFORE reviews #}
+        {% if item.description %}
+          <p style="white-space:pre-wrap;line-height:1.9;color:#374151">{{ item.description }}</p>
+        {% else %}
+          <div class="badge-pill">No description</div>
+        {% endif %}
+
+        <div class="hr"></div>
+
+        <!-- Buttons -->
+        <div class="btns-row">
+          {% if owner %}
+            {% if session_user %}
+              <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">Contact</a>
+            {% else %}
+              <a class="btnx btnx-primary" href="/login?next={{ request.url | urlencode }}">Contact</a>
+            {% endif %}
+          {% endif %}
+          <a class="btnx btnx-ghost" href="/items">↩︎ Back to list</a>
+        </div>
+
+        <!-- Bottom Booking Bar -->
+        <div class="air-fixed" id="airBar" role="region" aria-label="Booking bar">
+          <div class="air-price">
+            <span class="now">{{ item.price_per_day }} {{ item.currency or '$' }}</span>
+            <span class="per">per day</span>
+          </div>
+          <a class="air-cta" href="/bookings/new?item_id={{ item.id }}">Book now</a>
+        </div>
+      </div>
+      <div class="air-underlay" id="airUnder"></div>
+    </div>
+
+    <!-- ===== REVIEWS ===== -->
+    <div class="hr"></div>
+    <section id="reviews" class="rv-wrap" aria-label="Reviews">
+      <h5 style="margin:0 0 10px 0">Reviews</h5>
+
+      {% set _avg = item_rating_avg or 0 %}
+      {% set _cnt = item_rating_count or 0 %}
+
+      {% if item_reviews and item_reviews|length %}
+        <div class="rv-strip">
+          {% for r in item_reviews %}
+            <div class="rv-card" id="review-{{ r.id }}">
+              <div class="rv-head">
+                {% set avatar = (r.rater.avatar_path if r.rater and r.rater.avatar_path else url_for('static', path='placeholder.png')) %}
+                <img class="rv-ava" src="{{ avatar }}" alt="avatar">
+                <div>
+                  <div style="font-weight:700">{{ (r.rater.first_name ~ ' ' ~ r.rater.last_name) if r.rater else 'Renter' }}</div>
+                  <div class="rv-meta">{{ r.city or '' }} <span>•</span> {{ r.created_at.strftime("%B %Y") if r.created_at }}</div>
+                </div>
+              </div>
+
+              <div class="rv-stars" title="{{ r.stars }} / 5">
+                {% for _ in range(r.stars) %}<span class="full">★</span>{% endfor %}
+                {% for _ in range(5 - r.stars) %}<span class="empty">☆</span>{% endfor %}
+              </div>
+
+              {% if r.comment %}
+                <div style="margin-top:6px;white-space:pre-wrap">{{ r.comment }}</div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+
+        <a href="/items/{{ item.id }}/reviews" class="btnx btnx-lightwide" style="margin-top:10px">
+          View all {{ _cnt }} review(s)
+        </a>
+      {% else %}
+        <div class="small-muted">No reviews yet.</div>
+      {% endif %}
+    </section>
+    <div class="hr"></div>
+
+    {% if similar_items and similar_items|length %}
+    <section class="sim-wrap" aria-label="Similar near you">
+      <h5 style="margin:0 0 10px 0">Similar near you</h5>
+
+      <!-- مهم: لفّ الكروت داخل sim-row -->
+      <div class="sim-row">
+        {% for s in similar_items %}
+          {% set cover = (s.image_path.split(',')[0] if s.image_path and ',' in s.image_path
+                          else (s.image_path.split('|')[0] if s.image_path and '|' in s.image_path
+                          else s.image_path)) %}
+          {% if cover and not (cover.startswith('http') or cover.startswith('/')) %}
+            {% set cover = '/' ~ cover %}
+          {% endif %}
+
+          <a class="sim-card" href="/items/{{ s.id }}">
+            <div class="sim-media">
+              <img class="sim-img" src="{{ cover or url_for('static', path='placeholder.png') }}" alt="{{ s.title|e }}">
+
+              <div class="sim-chip">{{ s.category_label or s.category }}</div>
+
+              {% set s_avg_raw = s.avg_stars or s.rating_avg or s.average_rating or s.avg or s.stars_avg or s.starsAverage or s.score or s.rating %}
+              {% if s_avg_raw is not none and (s_avg_raw|string).strip() not in ('', 'None', 'null') %}
+                {% set s_avg = ((s_avg_raw|string).replace(',', '.')|float) %}
+              {% else %}
+                {% set s_avg = none %}
+              {% endif %}
+              {% set has_rating = (s_avg is not none and s_avg > 0) %}
+              <div class="sim-rate {{ '' if has_rating else 'empty' }}"
+                   aria-label="{{ has_rating and ('%.1f'|format(s_avg) ~ ' stars') or 'No ratings yet' }}">
+                {% if has_rating %}<span class="star">★</span>{{ '%.1f'|format(s_avg) }}{% endif %}
+              </div>
+
+              <button type="button" class="sim-fav js-sim-fav" data-item-id="{{ s.id }}" aria-label="Save">
+                <i class="bi bi-heart"></i>
+              </button>
+            </div>
+
+            <div class="sim-body">
+              <div class="sim-title">{{ s.title }}</div>
+              <div class="sim-sub">{{ s.subtype or s.kind or s.category_label or s.category }}</div>
+
+              <div class="sim-meta">
+                <span>{{ s.city or '—' }}</span>
+                <i class="vsep" aria-hidden="true"></i>
+                <span>{{ (s.distance_km|string + ' km') if s.distance_km is defined else 'Nearby' }}</span>
+              </div>
+
+              <hr class="sim-cut">
+
+              <div class="sim-price-row">
+                {% if s.old_price_per_day %}
+                  <div class="sim-price-old">{{ s.old_price_per_day }} {{ s.currency or '$' }}</div>
+                {% else %}
+                  <div></div>
+                {% endif %}
+                <div class="sim-price-now">
+                  {{ s.price_per_day }} {{ s.currency or '$' }} <span class="sim-unit">/ day</span>
+                </div>
+              </div>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+
+      <a class="btnx btnx-lightwide" href="/items?category={{ item.category | urlencode }}&city={{ item.city | urlencode }}">
+        View more in {{ item.city or 'area' }}
+      </a>
+    </section>
+    <div class="hr"></div>
+    {% endif %}
+
+    <!-- ===== Owner Card ===== -->
+    <div class="card-glass">
+      <div class="card-body">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+          <h5 style="margin:0">Owner</h5>
+          <span class="badge-pill">Stripe Connect • Receive earnings</span>
+        </div>
+
+        {% if owner %}
+          <div class="owner-row">
+            <img class="owner-avatar" src="{{ owner.avatar_path or url_for('static', path='placeholder.png') }}" alt="owner">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <strong>{{ owner.first_name }} {{ owner.last_name }}</strong>
+                {{ render_badges(owner_badges, 22) }}
+              </div>
+              <div class="small-muted">Member since {{ owner.created_at.strftime("%Y-%m-%d") if owner.created_at else "" }}</div>
+            </div>
+          </div>
+          <div class="hr"></div>
+          <div class="btns-row">
+            <a href="/users/{{ owner.id }}" class="btnx btnx-ghost">👤 Public profile</a>
+          </div>
+        {% else %}
+          <div class="small-muted">Owner information not available.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="hr d-md-none"></div>
+
+  {% endif %}
+</section>
+
+{% if item %}
+<!-- ===== زر الإبلاغ أسفل الصفحة ===== -->
+<div class="container" style="max-width:900px;padding:0 12px;">
+  <button class="btn btn-outline-secondary w-100" type="button"
+          data-bs-toggle="offcanvas" data-bs-target="#reportSheet">
+    🚩 Report this listing
+  </button>
+</div>
+
+<!-- ===== Report Bottom Sheet ===== -->
+<div class="offcanvas offcanvas-top" tabindex="-1" id="reportSheet" aria-labelledby="reportLabel" dir="rtl" data-bs-scroll="true" data-bs-backdrop="true">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="reportLabel">🚩 Report listing</h5>
+    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body small">
+    <form method="post" action="/reports" id="reportForm">
+      <input type="hidden" name="item_id" value="{{ item.id }}">
+      <input type="hidden" name="image_index" id="rf_image_index" value="0">
+      <input type="hidden" name="image_url" id="rf_image_url" value="">
+      <div class="mb-3">
+        <label class="form-label">Reason</label>
+        <select class="form-select" name="reason" required>
+          <option value="" selected disabled>Select a report reason</option>
+          <option value="nudity">Inappropriate content/Nudity</option>
+          <option value="violence">Violence/Hate</option>
+          <option value="scam">Scam/Fraud</option>
+          <option value="copyright">Copyright</option>
+          <option value="spam">Spam</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Additional notes</label>
+        <textarea class="form-control" name="note" rows="3" placeholder="Write details that help us review…"></textarea>
+      </div>
+      <button class="btn btn-danger w-100" type="submit">Submit report</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<script>
+/* Gallery pager + parallax + fixed bar */
+(function(){
+  const main  = document.getElementById('mainImg');
+  const thumbs= document.getElementById('thumbs');
+  const pager = document.getElementById('airPager');
+  const heroFade = document.getElementById('heroFade');
+  const airBar = document.getElementById('airBar');
+
+  function setPager(i,t){ if(pager){ pager.textContent=(i+1)+'/'+t; } }
+  let activeIdx=0;
+  function totalImgs(){ return thumbs ? thumbs.querySelectorAll('img').length : (main?1:0); }
+  setPager(activeIdx,totalImgs());
+
+  if(thumbs && main){
+    thumbs.addEventListener('click', (e)=>{
+      const t=e.target;
+      if(t.tagName==='IMG'){
+        main.src=t.dataset.src||t.src;
+        [...thumbs.querySelectorAll('img')].forEach(i=>i.classList.remove('active'));
+        t.classList.add('active');
+        activeIdx=parseInt(t.getAttribute('data-index')||'0',10)||0;
+        setPager(activeIdx,totalImgs());
+        document.getElementById('rf_image_index')?.setAttribute('value', String(activeIdx));
+        document.getElementById('rf_image_url')?.setAttribute('value', t.dataset.src || t.src || '');
+      }
+    });
+  }
+
+  const gMain = document.getElementById('gMain');
+  function onScroll(){
+    if(!gMain || !main) return;
+    const rect = gMain.getBoundingClientRect();
+    const h = rect.height || 1;
+    const visibleTop = Math.max(0, -rect.top);
+    const p = Math.min(1, visibleTop / (h * .35));
+    const scale = 1 + (visibleTop>0 ? Math.min(visibleTop/1000, .06) : 0);
+    main.style.transform = `scale(${scale}) translateY(${visibleTop* -0.06}px)`;
+    main.style.opacity = String(1 - p*0.85);
+    if(heroFade) heroFade.style.opacity = String(p);
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+
+  function portalBar(){
+    if(!airBar) return;
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      if(airBar.parentElement !== document.body){ document.body.appendChild(airBar); }
+      const under = document.getElementById('airUnder');
+      if(under && under.parentElement !== document.body){ document.body.appendChild(under); }
+      const pad = (airBar.offsetHeight || 64) + 12;
+      document.body.style.paddingBottom = pad + 'px';
+      document.documentElement.style.setProperty('--airbar-h', pad + 'px');
+    } else {
+      const container = document.querySelector('.air-sheet');
+      if (container && airBar.parentElement !== container) container.appendChild(airBar);
+      document.body.style.paddingBottom = '';
+      document.documentElement.style.removeProperty('--airbar-h');
+    }
+  }
+  portalBar();
+  window.addEventListener('resize', portalBar);
+  window.addEventListener('orientationchange', portalBar);
+
+  if (window.visualViewport) {
+    const onVV = () => {
+      const vh = window.visualViewport.height || window.innerHeight;
+      const kbOpen = vh < window.innerHeight * 0.9;
+      if (kbOpen) document.body.style.paddingBottom = '12px';
+      else portalBar();
+    };
+    window.visualViewport.addEventListener('resize', onVV);
+    window.visualViewport.addEventListener('scroll', onVV);
+  }
+
+  document.body.classList.add('item-page');
+})();
+</script>
+
+<script>
+/* Share + Favorite (optimistic) */
+(function () {
+  const shareBtn = document.querySelector('.js-share');
+  if (shareBtn) {
+    shareBtn.addEventListener('click', async () => {
+      const url = shareBtn.dataset.url || location.href;
+      const title = shareBtn.dataset.title || document.title;
+      try {
+        if (navigator.share) { await navigator.share({ title, url }); }
+        else if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(url); alert('Link copied ✔');
+        } else {
+          const ta=document.createElement('textarea');
+          ta.value=url; document.body.appendChild(ta); ta.select();
+          document.execCommand('copy'); ta.remove(); alert('Link copied ✔');
+        }
+      } catch(_) {}
+    });
+  }
+
+  const favBtn = document.querySelector('.js-fav');
+  if (!favBtn) return;
+  const icon = favBtn.querySelector('i');
+
+  function paint(on){
+    favBtn.dataset.on = on ? '1' : '0';
+    favBtn.classList.toggle('is-on', !!on);
+    icon.classList.toggle('bi-heart-fill', !!on);
+    icon.classList.toggle('bi-heart', !on);
+    favBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    favBtn.classList.remove('fav-anim'); void favBtn.offsetWidth; favBtn.classList.add('fav-anim');
+  }
+
+  async function toggleFavorite() {
+    const next = favBtn.dataset.on !== '1';
+    paint(next);
+    try {
+      const res = await fetch('/api/favorites/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ item_id: favBtn.dataset.itemId })
+      });
+      if (res.status === 401) {
+        paint(!next);
+        location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
+        return;
+      }
+      let data = null;
+      const ct = res.headers.get('content-type') || '';
+      if (ct.includes('application/json')) data = await res.json(); else await res.text();
+      if (data && data.ok && typeof data.favorited === 'boolean') { paint(!!data.favorited); }
+    } catch (e) { paint(!next); }
+  }
+
+  favBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(); });
+  paint(favBtn.dataset.on === '1');
+})();
+</script>
+
+<script>
+/* صفر أي padding-top محقون من القالب */
+document.addEventListener('DOMContentLoaded', function () {
+  document.body.classList.add('item-page');
+  var pw = document.getElementById('page-wrapper');
+  if (pw) pw.style.paddingTop = '0px';
+  document.documentElement.style.setProperty('--appbar-h','0px','important');
+  ['.page','#page-wrapper','main'].forEach(sel=>{
+    document.querySelectorAll(sel).forEach(el=>{
+      el.style.setProperty('padding-top','0px','important');
+      el.style.setProperty('margin-top','0px','important');
+      el.style.setProperty('border-top','0px','important');
+    });
+  });
+});
+</script>
+
+<script>
+/* اخفِ الشريط عند فتح الشيت */
+(function(){
+  const oc = document.getElementById('reportSheet');
+  const bar = document.getElementById('airBar');
+  const under = document.getElementById('airUnder');
+  if(!oc) return;
+
+  oc.addEventListener('shown.bs.offcanvas', function(){
+    if(bar){ bar.style.display = 'none'; }
+    if(under){ under.style.display = 'none'; }
+    document.body.style.overflow = 'hidden';
+  });
+
+  oc.addEventListener('hidden.bs.offcanvas', function(){
+    if(bar){ bar.style.display = ''; }
+    if(under){ under.style.display = ''; }
+    document.body.style.overflow = '';
+  });
+})();
+</script>
+
+{% endblock %}
+
+
 <section class="items-shell">
   {% if not item %}
     <div class="card-glass"><div class="card-body"><div class="alert alert-danger">Item not found.</div></div></div>
