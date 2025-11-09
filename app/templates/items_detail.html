@@ -196,9 +196,8 @@
 
 /* ===== إصلاح أعلى صفحة المنشور على الموبايل فقط ===== */
 @media (max-width:768px){
-  /* 2-1) خلي خلفية الصفحة سوداء في هذه الصفحة فقط لإخفاء أي حواف بيضاء */
   html, body.item-page{ 
-    background:#000 !important;
+    background:#fff !important;
     margin:0 !important;
     padding:0 !important;
   }
@@ -304,7 +303,7 @@
 
   /* 3) اسحب المعرض ليَمسّ أعلى الشاشة مع احترام الـ safe-area */
   body.item-page .gallery{
-    background:#000 !important;           /* لا نغيّر الثيم؛ فقط لإخفاء أي حافة فاتحة */
+    background:#fff !important;
     border:0 !important;
     margin-top:calc(-1 * env(safe-area-inset-top, 0px)) !important;
   }
@@ -659,7 +658,8 @@ document.body.classList.add('item-page');
 (function(){
   // بدّل لون شريط المتصفح أعلى iOS لهذه الصفحة فقط
   var m = document.querySelector('meta[name="theme-color"]');
-  if(m){ m.setAttribute('content', '#000000'); }
+  if(m){ m.setAttribute('content', '#ffffff'); }
+
 
   // لو عندك PWA/Standalone يمكن إضافة هذا أيضاً اختيارياً:
   var ms = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
@@ -668,7 +668,7 @@ document.body.classList.add('item-page');
     ms.setAttribute('name','apple-mobile-web-app-status-bar-style');
     document.head.appendChild(ms);
   }
-  ms.setAttribute('content','black-translucent');
+  ms.setAttribute('content','default'); 
 })();
 </script>
 
