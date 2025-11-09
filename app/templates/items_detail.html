@@ -52,7 +52,7 @@
   .grid-2{display:block}
 
   /* --- Parallax Hero --- */
-  .gallery{background:#000;border:0}
+  .gallery{background:#fff;border:0}
   .gallery-main{height:58vh;max-height:520px;border-radius:0}
   .gallery-main img{object-fit:cover;will-change:transform,opacity}
   .hero-fade{
@@ -210,7 +210,7 @@
 
   /* 2-3) اجعل الهيرو/المعرض يلمس أعلى الشاشة (يعالج النوتش والـsafe-area) */
   body.item-page .gallery{
-    background:#000 !important;
+    background:#fff !important;
     border:0 !important;
     margin-top:calc(-1 * env(safe-area-inset-top, 0px)) !important;
   }
@@ -323,7 +323,7 @@
 
   /* 5) منع أي فراغ علوي بسبب مطاط iOS قدر الإمكان */
   html, body.item-page{
-    background:#000 !important;
+    background:#fff !important;
     margin:0 !important;
     padding:0 !important;
     overscroll-behavior-y: none;
