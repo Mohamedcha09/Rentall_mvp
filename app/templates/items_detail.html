@@ -52,7 +52,23 @@
 .stat-right a{font-weight:800;text-decoration:none;color:#111}
 .stat-right a .muted{color:#717171}
 
-/* Mobile look */
+/* ===== Similar items stripe ===== */
+.sim-wrap{ margin:14px 0 6px 0; }
+.sim-row{ display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; padding:2px 2px 10px 2px; }
+.sim-card{ scroll-snap-align:start; flex:0 0 68vw; max-width:68vw; background:#fff; border:1px solid #eee; border-radius:16px; overflow:hidden; box-shadow:0 6px 14px rgba(0,0,0,.05); }
+@media(min-width:768px){ .sim-card{ flex:0 0 260px; max-width:260px; } }
+.sim-img{ width:100%; aspect-ratio:16/12; object-fit:cover; display:block; }
+.sim-body{ padding:10px 12px; }
+.sim-title{ font-weight:800; margin:0 0 4px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sim-meta{ color:#6b7280; font-size:12px; display:flex; align-items:center; gap:6px; }
+.sim-price{ font-weight:800; margin-top:6px; }
+
+/* ===== إخفاء قسم Similar في الموبايل كما طلبت ===== */
+@media (max-width:768px){
+  .sim-wrap{ display:none !important; }
+}
+
+/* ===== Mobile look ===== */
 @media (max-width:768px){
   body{background:#fff;color:#111}
   .items-shell{padding:0;margin:0;max-width:none}
@@ -117,7 +133,6 @@
   }
   .air-fab-left{ left:12px; }
   .air-fab-right{ right:12px; }
-
   .air-fab{
     appearance:none;border:0;cursor:pointer;width:44px;height:44px;border-radius:50%;
     background:rgba(255,255,255,.95); box-shadow:0 8px 20px rgba(0,0,0,.18);
@@ -154,23 +169,20 @@
   .gallery-main{ height:calc(58vh + env(safe-area-inset-top,0px)) !important; border-radius:0 !important; }
 }
 
-/* ===== Fullscreen hero (mobile) ===== */
 /* ===== Mobile hero like Airbnb ===== */
 @media (max-width:768px){
   .gallery{ margin-top:0 !important; background:#fff; border:0; padding:12px; }
   .gallery-main{
-    height:58vh !important;          /* ارتفاع مريح مثل Airbnb */
+    height:58vh !important;
     max-height:520px !important;
-    border-radius:24px !important;    /* حواف دائرية */
+    border-radius:24px !important;
     overflow:hidden !important;
   }
 }
 
-
-/* ======= Site brand (purple → sky) ======= */
+/* ======= Brand unify (purple → sky) ======= */
 :root{
-  --brand1:#8b5cf6;          /* purple */
-  --brand2:#22d3ee;          /* sky/cyan */
+  --brand1:#8b5cf6; --brand2:#22d3ee;
   --brand-grad:linear-gradient(135deg,var(--brand1),var(--brand2));
   --brand-ring: color-mix(in oklab, var(--brand2) 60%, white);
   --btn-glass: color-mix(in oklab, white 12%, transparent);
@@ -179,156 +191,45 @@
   --btn-shadow-strong: 0 14px 30px rgba(24, 24, 38, .22), 0 6px 14px rgba(24, 24, 38, .16);
 }
 
-/* ======= Base button override (links .btnx + bootstrap .btn in this page) ======= */
-.btnx,
-.air-cta,
-.item-page .btn{
-  appearance:none;
-  border:0;
-  border-radius:14px;
-  font-weight:800;
-  letter-spacing:.2px;
-  text-decoration:none;
-  line-height:1;
-  height:48px;
-  padding:0 20px;
-  display:inline-flex; align-items:center; justify-content:center;
-  transition:transform .12s ease, box-shadow .2s ease, background .3s ease, opacity .2s ease;
-  will-change:transform;
+/* Buttons unify */
+.btnx,.air-cta,.item-page .btn{
+  appearance:none;border:0;border-radius:14px;font-weight:800;letter-spacing:.2px;text-decoration:none;line-height:1;height:48px;padding:0 20px;display:inline-flex;align-items:center;justify-content:center;transition:transform .12s ease, box-shadow .2s ease, background .3s ease, opacity .2s ease;will-change:transform;
 }
-
-/* Primary (brand gradient, white text) */
-.btnx-primary,
-.btnx-green,              /* نستخدم نفس الكلاس القديم لكن بنمط موحّد */
-.air-cta,
-.item-page .btn.btn-primary{
-  background:var(--brand-grad);
-  color:#fff !important;
-  box-shadow:var(--btn-shadow);
+.btnx-primary,.btnx-green,.air-cta,.item-page .btn.btn-primary{
+  background:var(--brand-grad); color:#fff !important; box-shadow:var(--btn-shadow);
 }
-.btnx-primary:hover,
-.btnx-green:hover,
-.air-cta:hover,
-.item-page .btn.btn-primary:hover{
-  transform:translateY(-1px);
-  box-shadow:var(--btn-shadow-strong);
-  filter:saturate(1.08);
+.btnx-primary:hover,.btnx-green:hover,.air-cta:hover,.item-page .btn.btn-primary:hover{
+  transform:translateY(-1px); box-shadow:var(--btn-shadow-strong); filter:saturate(1.08);
 }
-.btnx-primary:active,
-.btnx-green:active,
-.air-cta:active,
-.item-page .btn.btn-primary:active{
-  transform:translateY(0);
-  filter:saturate(1);
+.btnx-primary:active,.btnx-green:active,.air-cta:active,.item-page .btn.btn-primary:active{
+  transform:translateY(0); filter:saturate(1);
 }
-
-/* Ghost (زجاجي بإطار ملوّن بالبراند) */
-.btnx-ghost,
-.item-page .btn.btn-outline-secondary{
-  background:var(--btn-glass);
-  color:#111;
+.btnx-ghost,.item-page .btn.btn-outline-secondary{
+  background:var(--btn-glass); color:#111;
   border:1px solid color-mix(in oklab, var(--brand2) 25%, rgba(0,0,0,.12));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.35);
 }
-.btnx-ghost:hover,
-.item-page .btn.btn-outline-secondary:hover{
-  background:var(--btn-glass-strong);
-  transform:translateY(-1px);
+.btnx-ghost:hover,.item-page .btn.btn-outline-secondary:hover{
+  background:var(--btn-glass-strong); transform:translateY(-1px);
 }
-
-/* Danger داخل ورقة الإبلاغ — نحافظ على البراند بدلاً من الأحمر */
-#reportSheet .btn.btn-danger{
-  background:var(--brand-grad);
-  border:0;
-  color:#fff;
-  box-shadow:var(--btn-shadow);
-}
+#reportSheet .btn.btn-danger{ background:var(--brand-grad); border:0; color:#fff; box-shadow:var(--btn-shadow); }
 #reportSheet .btn.btn-danger:hover{ box-shadow:var(--btn-shadow-strong); transform:translateY(-1px); }
-
-/* حواف تركيز واضحة */
-.btnx:focus-visible,
-.air-cta:focus-visible,
-.item-page .btn:focus-visible{
-  outline:0;
-  box-shadow:0 0 0 4px var(--brand-ring);
-}
-
-/* ارتفاع زر الشريط السفلي ثابت */
-.air-cta{
-  min-width:160px;
-  height:52px; line-height:52px; padding:0 22px; border-radius:16px;
-}
-
-/* أزرار الدوائر العائمة (رجوع/مشاركة/قلب) زجاجية بيضاء */
-.air-fab{
-  background:rgba(255,255,255,.9);
-  border:1px solid rgba(0,0,0,.06);
-  box-shadow:0 8px 20px rgba(0,0,0,.16);
-}
-
-/* احترام تقليل الحركة */
-@media (prefers-reduced-motion:reduce){
-  .btnx,.air-cta,.item-page .btn{ transition:none; }
-}
-
-/* زر عريض فاتح لعرض كل المراجعات */
-.btnx-lightwide{
-  display:block; width:100%; text-align:center;
-  padding:14px 18px; border-radius:16px;
-  background:rgba(255,255,255,.75);
-  border:1px solid #e5e7eb;
-  color:#111; font-weight:800;
-  box-shadow:0 10px 22px rgba(0,0,0,.06);
-}
+.btnx:focus-visible,.air-cta:focus-visible,.item-page .btn:focus-visible{ outline:0; box-shadow:0 0 0 4px var(--brand-ring); }
+.air-cta{ min-width:160px; height:52px; line-height:52px; padding:0 22px; border-radius:16px; }
+.air-fab{ background:rgba(255,255,255,.9); border:1px solid rgba(0,0,0,.06); box-shadow:0 8px 20px rgba(0,0,0,.16); }
+@media (prefers-reduced-motion:reduce){ .btnx,.air-cta,.item-page .btn{ transition:none; } }
+.btnx-lightwide{ display:block; width:100%; text-align:center; padding:14px 18px; border-radius:16px; background:rgba(255,255,255,.75); border:1px solid #e5e7eb; color:#111; font-weight:800; box-shadow:0 10px 22px rgba(0,0,0,.06); }
 .btnx-lightwide:hover{ background:#fff }
-
-/* أزرار الصفحة: أفقيان وبعرض متساوٍ */
-.btns-row{
-  display:flex;
-  gap:12px;
-  flex-wrap:nowrap;          /* لا تنزل أسطر */
-  justify-content:space-between;
-  width:100%;
-}
-.btns-row .btnx{
-  flex:1 1 0;                /* نفس العرض */
-  text-align:center;
-  height:52px;
-  border-radius:16px;
-}
-@media (max-width:480px){
-  .btns-row .btnx{ height:50px; }
-}
-
-/* ===== Similar items stripe ===== */
-.sim-wrap{ margin:14px 0 6px 0; }
-.sim-row{
-  display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory;
-  padding:2px 2px 10px 2px;
-}
-.sim-card{
-  scroll-snap-align:start; flex:0 0 68vw; max-width:68vw;
-  background:#fff; border:1px solid #eee; border-radius:16px; overflow:hidden;
-  box-shadow:0 6px 14px rgba(0,0,0,.05);
-}
-@media(min-width:768px){ .sim-card{ flex:0 0 260px; max-width:260px; } }
-.sim-img{ width:100%; aspect-ratio:16/12; object-fit:cover; display:block; }
-.sim-body{ padding:10px 12px; }
-.sim-title{ font-weight:800; margin:0 0 4px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.sim-meta{ color:#6b7280; font-size:12px; display:flex; align-items:center; gap:6px; }
-.sim-price{ font-weight:800; margin-top:6px; }
-
-
+.btns-row{ display:flex; gap:12px; flex-wrap:nowrap; justify-content:space-between; width:100%; }
+.btns-row .btnx{ flex:1 1 0; text-align:center; height:52px; border-radius:16px; }
+@media (max-width:480px){ .btns-row .btnx{ height:50px; } }
 
 </style>
 
 <style>
   /* اجعل الشيت أعلى من الشريط */
-  #reportSheet{ z-index: 11000; /* أعلى من 10000 */ 
-                /* كِبَر الارتفاع لشيت الأعلى (offcanvas-top) */
-                --bs-offcanvas-height: 85vh;
-  }
-  .offcanvas-backdrop{ z-index: 10990; }
+  #reportSheet{ z-index:11000; --bs-offcanvas-height:85vh; }
+  .offcanvas-backdrop{ z-index:10990; }
 </style>
 
 
@@ -405,7 +306,7 @@
           {{ item.category_label or item.category }} • {{ item.city or "No city" }} • {{ owner and owner.country or "" }}
         </div>
 
-        {# Top stats: stars left + reviews count right #}
+        {# Top stats #}
         {% set _avg = item_rating_avg or 0 %}
         {% set _cnt = item_rating_count or 0 %}
         <div class="stat-row">
@@ -435,22 +336,20 @@
 
         <div class="hr"></div>
 
-        <!-- ===== Buttons (صفحة العنصر فقط، غير الثابت) ===== -->
-<div class="btns-row">
-  {% if owner %}
-    {% if session_user %}
-      <!-- الآن زر الصفحة يفتح مراسلة المالك -->
-      <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">Contact</a>
-    {% else %}
-      <!-- لو غير مسجّل، نوجّهه لتسجيل الدخول ثم الرجوع لهذه الصفحة -->
-      <a class="btnx btnx-primary" href="/login?next={{ request.url | urlencode }}">Contact</a>
-    {% endif %}
-  {% endif %}
-  <a class="btnx btnx-ghost" href="/items">↩︎ Back to list</a>
-</div>
+        <!-- Buttons -->
+        <div class="btns-row">
+          {% if owner %}
+            {% if session_user %}
+              <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">Contact</a>
+            {% else %}
+              <a class="btnx btnx-primary" href="/login?next={{ request.url | urlencode }}">Contact</a>
+            {% endif %}
+          {% endif %}
+          <a class="btnx btnx-ghost" href="/items">↩︎ Back to list</a>
+        </div>
 
-        <!-- Bottom Booking Bar (موحّد) -->
-        <div class="air-fixed" id="airBar">
+        <!-- Bottom Booking Bar -->
+        <div class="air-fixed" id="airBar" role="region" aria-label="Booking bar">
           <div class="air-price">
             <span class="now">{{ item.price_per_day }} {{ item.currency or '$' }}</span>
             <span class="per">per day</span>
@@ -461,79 +360,77 @@
       <div class="air-underlay" id="airUnder"></div>
     </div>
 
-    <!-- ===== REVIEWS (يظهر مباشرة فوق Owner) ===== -->
-<div class="hr"></div>
-<section id="reviews" class="rv-wrap" aria-label="Reviews">
-  <h5 style="margin:0 0 10px 0">Reviews</h5>
+    <!-- ===== REVIEWS ===== -->
+    <div class="hr"></div>
+    <section id="reviews" class="rv-wrap" aria-label="Reviews">
+      <h5 style="margin:0 0 10px 0">Reviews</h5>
 
-  {% set _avg = item_rating_avg or 0 %}
-  {% set _cnt = item_rating_count or 0 %}
+      {% set _avg = item_rating_avg or 0 %}
+      {% set _cnt = item_rating_count or 0 %}
 
-  {% if item_reviews and item_reviews|length %}
-    <div class="rv-strip">
-      {% for r in item_reviews %}
-        <div class="rv-card" id="review-{{ r.id }}">
-          <div class="rv-head">
-            {% set avatar = (r.rater.avatar_path if r.rater and r.rater.avatar_path else url_for('static', path='placeholder.png')) %}
-            <img class="rv-ava" src="{{ avatar }}" alt="avatar">
-            <div>
-              <div style="font-weight:700">{{ (r.rater.first_name ~ ' ' ~ r.rater.last_name) if r.rater else 'Renter' }}</div>
-              <div class="rv-meta">{{ r.city or '' }} <span>•</span> {{ r.created_at.strftime("%B %Y") if r.created_at }}</div>
+      {% if item_reviews and item_reviews|length %}
+        <div class="rv-strip">
+          {% for r in item_reviews %}
+            <div class="rv-card" id="review-{{ r.id }}">
+              <div class="rv-head">
+                {% set avatar = (r.rater.avatar_path if r.rater and r.rater.avatar_path else url_for('static', path='placeholder.png')) %}
+                <img class="rv-ava" src="{{ avatar }}" alt="avatar">
+                <div>
+                  <div style="font-weight:700">{{ (r.rater.first_name ~ ' ' ~ r.rater.last_name) if r.rater else 'Renter' }}</div>
+                  <div class="rv-meta">{{ r.city or '' }} <span>•</span> {{ r.created_at.strftime("%B %Y") if r.created_at }}</div>
+                </div>
+              </div>
+
+              <div class="rv-stars" title="{{ r.stars }} / 5">
+                {% for _ in range(r.stars) %}<span class="full">★</span>{% endfor %}
+                {% for _ in range(5 - r.stars) %}<span class="empty">☆</span>{% endfor %}
+              </div>
+
+              {% if r.comment %}
+                <div style="margin-top:6px;white-space:pre-wrap">{{ r.comment }}</div>
+              {% endif %}
             </div>
-          </div>
-
-          <div class="rv-stars" title="{{ r.stars }} / 5">
-            {% for _ in range(r.stars) %}<span class="full">★</span>{% endfor %}
-            {% for _ in range(5 - r.stars) %}<span class="empty">☆</span>{% endfor %}
-          </div>
-
-          {% if r.comment %}
-            <div style="margin-top:6px;white-space:pre-wrap">{{ r.comment }}</div>
-          {% endif %}
+          {% endfor %}
         </div>
-      {% endfor %}
-    </div>
 
-    <!-- زر كبير لعرض كل التعليقات -->
-    <a href="/items/{{ item.id }}/reviews" class="btnx btnx-lightwide" style="margin-top:10px">
-      View all {{ _cnt }} review(s)
-    </a>
-  {% else %}
-    <div class="small-muted">No reviews yet.</div>
-  {% endif %}
-</section>
-<div class="hr"></div>
-
-{% if similar_items and similar_items|length %}
-  <section class="sim-wrap" aria-label="Similar nearby">
-    <h5 style="margin:0 0 10px 0">Similar near you</h5>
-    <div class="sim-row">
-      {% for s in similar_items %}
-        {% set cover = (s.image_path.split(',')[0] if s.image_path and ',' in s.image_path
-                        else (s.image_path.split('|')[0] if s.image_path and '|' in s.image_path
-                        else s.image_path)) %}
-        {% if cover and not (cover.startswith('http') or cover.startswith('/')) %}
-          {% set cover = '/' ~ cover %}
-        {% endif %}
-        <a class="sim-card" href="/items/{{ s.id }}">
-          <img class="sim-img" src="{{ cover or url_for('static', path='placeholder.png') }}" alt="">
-          <div class="sim-body">
-            <div class="sim-title">{{ s.title }}</div>
-            <div class="sim-meta">
-              <span>{{ s.city or '—' }}</span>
-              <span>•</span>
-              <span>{{ s.category_label or s.category }}</span>
-            </div>
-            <div class="sim-price">{{ s.price_per_day }} {{ s.currency or '$' }} <small class="sim-meta">/ day</small></div>
-          </div>
+        <a href="/items/{{ item.id }}/reviews" class="btnx btnx-lightwide" style="margin-top:10px">
+          View all {{ _cnt }} review(s)
         </a>
-      {% endfor %}
-    </div>
-    <a class="btnx btnx-lightwide" href="/items?category={{ item.category | urlencode }}&city={{ item.city | urlencode }}">View more in {{ item.city or 'area' }}</a>
-  </section>
-  <div class="hr"></div>
-{% endif %}
+      {% else %}
+        <div class="small-muted">No reviews yet.</div>
+      {% endif %}
+    </section>
+    <div class="hr"></div>
 
+    {% if similar_items and similar_items|length %}
+      <section class="sim-wrap" aria-label="Similar nearby">
+        <h5 style="margin:0 0 10px 0">Similar near you</h5>
+        <div class="sim-row">
+          {% for s in similar_items %}
+            {% set cover = (s.image_path.split(',')[0] if s.image_path and ',' in s.image_path
+                            else (s.image_path.split('|')[0] if s.image_path and '|' in s.image_path
+                            else s.image_path)) %}
+            {% if cover and not (cover.startswith('http') or cover.startswith('/')) %}
+              {% set cover = '/' ~ cover %}
+            {% endif %}
+            <a class="sim-card" href="/items/{{ s.id }}">
+              <img class="sim-img" src="{{ cover or url_for('static', path='placeholder.png') }}" alt="">
+              <div class="sim-body">
+                <div class="sim-title">{{ s.title }}</div>
+                <div class="sim-meta">
+                  <span>{{ s.city or '—' }}</span>
+                  <span>•</span>
+                  <span>{{ s.category_label or s.category }}</span>
+                </div>
+                <div class="sim-price">{{ s.price_per_day }} {{ s.currency or '$' }} <small class="sim-meta">/ day</small></div>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+        <a class="btnx btnx-lightwide" href="/items?category={{ item.category | urlencode }}&city={{ item.city | urlencode }}">View more in {{ item.city or 'area' }}</a>
+      </section>
+      <div class="hr"></div>
+    {% endif %}
 
     <!-- ===== Owner Card ===== -->
     <div class="card-glass">
@@ -566,13 +463,11 @@
   </div>
 
   <div class="hr d-md-none"></div>
-  <p class="air-report-bottom d-md-none" style="text-align:center">
-    <a href="#reportSheet" class="air-report-link" data-bs-toggle="offcanvas" data-bs-target="#reportSheet" aria-controls="reportSheet">🚩 Report this listing</a>
-  </p>
 
   {% endif %}
 </section>
 
+{% if item %}
 <!-- ===== Report Bottom Sheet ===== -->
 <div class="offcanvas offcanvas-top" tabindex="-1" id="reportSheet" aria-labelledby="reportLabel" dir="rtl" data-bs-scroll="true" data-bs-backdrop="true">
   <div class="offcanvas-header">
@@ -604,6 +499,7 @@
     </form>
   </div>
 </div>
+{% endif %}
 
 <script>
 /* Gallery pager + parallax + fixed bar */
@@ -651,16 +547,38 @@
 
   function portalBar(){
     if(!airBar) return;
-    if(airBar.parentElement !== document.body){ document.body.appendChild(airBar); }
-    const under = document.getElementById('airUnder');
-    if(under && under.parentElement !== document.body){ document.body.appendChild(under); }
-    const pad = (airBar.offsetHeight || 64) + 12;
-    document.body.style.paddingBottom = pad + 'px';
-    document.documentElement.style.setProperty('--airbar-h', pad + 'px');
+    // انقل الشريط والـ underlay إلى body على الموبايل فقط
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      if(airBar.parentElement !== document.body){ document.body.appendChild(airBar); }
+      const under = document.getElementById('airUnder');
+      if(under && under.parentElement !== document.body){ document.body.appendChild(under); }
+      const pad = (airBar.offsetHeight || 64) + 12;
+      document.body.style.paddingBottom = pad + 'px';
+      document.documentElement.style.setProperty('--airbar-h', pad + 'px');
+    } else {
+      // ديسكتوب: أرجعه لمكانه الأصلي ولا تضف padding
+      const container = document.querySelector('.air-sheet');
+      if (container && airBar.parentElement !== container) container.appendChild(airBar);
+      document.body.style.paddingBottom = '';
+      document.documentElement.style.removeProperty('--airbar-h');
+    }
   }
   portalBar();
   window.addEventListener('resize', portalBar);
   window.addEventListener('orientationchange', portalBar);
+
+  // تعامل أفضل مع لوحة المفاتيح في iOS/Android
+  if (window.visualViewport) {
+    const onVV = () => {
+      const vh = window.visualViewport.height || window.innerHeight;
+      // عندما تفتح الكيبورد، قلّل paddingBottom لكي لا يختفي الزر
+      const kbOpen = vh < window.innerHeight * 0.9;
+      if (kbOpen) document.body.style.paddingBottom = '12px';
+      else portalBar();
+    };
+    window.visualViewport.addEventListener('resize', onVV);
+    window.visualViewport.addEventListener('scroll', onVV);
+  }
 
   document.body.classList.add('item-page');
 })();
@@ -754,12 +672,11 @@ document.addEventListener('DOMContentLoaded', function () {
     oc.addEventListener('shown.bs.offcanvas', function(){
       if(bar){ bar.style.display = 'none'; }
       if(under){ under.style.display = 'none'; }
-      // منع تحرّك الخلفية على iOS
       document.body.style.overflow = 'hidden';
     });
 
     oc.addEventListener('hidden.bs.offcanvas', function(){
-      if(bar){ bar.style.display = ''; }   // يرجع للوضع الطبيعي (flex)
+      if(bar){ bar.style.display = ''; }
       if(under){ under.style.display = ''; }
       document.body.style.overflow = '';
     });
