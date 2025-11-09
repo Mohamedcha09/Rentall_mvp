@@ -194,7 +194,56 @@
   .air-fab-right{ top:calc(8px + env(safe-area-inset-top, 0px)); }
 }
 
+/* ===== إصلاح أعلى صفحة المنشور على الموبايل فقط ===== */
+@media (max-width:768px){
+  /* 2-1) خلي خلفية الصفحة سوداء في هذه الصفحة فقط لإخفاء أي حواف بيضاء */
+  html, body.item-page{ 
+    background:#000 !important;
+    margin:0 !important;
+    padding:0 !important;
+  }
+
+  /* 2-2) تأكد أن حاوية الصفحة ما عندها مسافة علوية */
+  body.item-page .items-shell{ 
+    margin-top:0 !important; 
+    padding-top:0 !important;
+  }
+
+  /* 2-3) اجعل الهيرو/المعرض يلمس أعلى الشاشة (يعالج النوتش والـsafe-area) */
+  body.item-page .gallery{
+    background:#000 !important;
+    border:0 !important;
+    margin-top:calc(-1 * env(safe-area-inset-top, 0px)) !important;
+  }
+  body.item-page .gallery-main{
+    border-radius:0 !important;
+    height:calc(58vh + env(safe-area-inset-top, 0px)) !important;
+    padding-top:env(safe-area-inset-top, 0px) !important;
+  }
+
+  /* 2-4) أخفِ زر الرجوع الدائري فقط، واترك أزرار المشاركة والحفظ */
+  body.item-page .gallery > .air-fab{ 
+    display:none !important; 
+  }
+  /* لو حبيت ترفع أزرار اليمين تحت النوتش */
+  body.item-page .air-fab-right{ 
+    top:calc(8px + env(safe-area-inset-top, 0px)) !important; 
+  }
+}
+
+@media (max-width:768px){
+  body.item-page .air-sheet::before{ background:transparent; }
+}
+
+@media (max-width:768px){
+  body.item-page .navbar{ display:none !important; }
+}
+
+
+
 </style>
+
+
 
 <section class="items-shell">
   {% if not item %}
@@ -515,5 +564,8 @@ document.body.classList.add('item-page');
 
 })();
 </script>
+
+<script>document.body.classList.add('item-page');</script>
+
 
 {% endblock %}
