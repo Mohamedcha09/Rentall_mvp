@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, and_
 import os, secrets, shutil
 
 # Cloudinary (upload images to the cloud)
@@ -10,12 +10,9 @@ import cloudinary
 import cloudinary.uploader
 
 from .database import get_db
-from .models import Item, User, ItemReview  
+from .models import Item, User, ItemReview, Favorite as _Fav
 from .utils import CATEGORIES, category_label
 from .utils_badges import get_user_badges
-from .models import Favorite as _Fav  # ← نحتاجه لحساب حالة المفضلة
-from sqlalchemy import func, and_, or_
-from math import radians
 
 router = APIRouter()
 
@@ -28,11 +25,12 @@ ITEMS_DIR = os.path.join(UPLOADS_ROOT, "items")
 os.makedirs(ITEMS_DIR, exist_ok=True)
 
 
-
-
+# ---------------- Similar items helpers ----------------
 def _haversine_expr(lat1, lon1, lat2, lon2):
-    # مسافة بالكيلومتر (تقريب كروي) – تُعاد كتعبير SQL
-    # 6371 = نصف قطر الأرض كم
+    """
+    SQL expression for great-circle distance (km).
+    6371 = Earth radius in km.
+    """
     return 6371 * 2 * func.asin(
         func.sqrt(
             func.pow(func.sin(func.radians(lat2 - lat1) / 2), 2) +
@@ -42,8 +40,16 @@ def _haversine_expr(lat1, lon1, lat2, lon2):
         )
     )
 
-def get_similar_items(db: Session, item):
+
+def get_similar_items(db: Session, item: Item):
+    """
+    يختار حتى 10 عناصر:
+    1) نفس الصنف وقريبة جغرافياً (≤ 50 كم) إن وُجد lat/lng
+    2) وإلا نفس المدينة نصياً
+    3) وإلا سقوط احتياطي: من نفس الصنف عشوائي
+    """
     limit = 10
+
     base_q = db.query(Item).filter(
         Item.is_active == "yes",
         Item.category == item.category,
@@ -51,12 +57,15 @@ def get_similar_items(db: Session, item):
     )
 
     results = []
-    # 1) أولاً: نفس المدينة (أو قريب جغرافياً إن وُجد lat/lng)
+
+    # 1) قرب جغرافي
     if item.latitude is not None and item.longitude is not None:
+        # مرّر قيم الـ item كأرقام بايثون، وحقّق التعبير على أعمدة Item
         dist_expr = _haversine_expr(
-            func.cast(item.latitude, func.FLOAT),
-            func.cast(item.longitude, func.FLOAT),
-            Item.latitude, Item.longitude
+            float(item.latitude),
+            float(item.longitude),
+            Item.latitude,
+            Item.longitude
         )
         nearby = base_q.filter(
             Item.latitude.isnot(None),
@@ -65,14 +74,13 @@ def get_similar_items(db: Session, item):
         ).order_by(func.random()).limit(limit).all()
         results.extend(nearby)
 
-    # إذا لا يوجد إحداثيات أو لم نكمل العدد، جرّب المدينة نصياً
+    # 2) نفس المدينة نصياً
     if len(results) < limit and item.city:
         remain = limit - len(results)
         city_q = base_q.filter(
-            Item.city.ilike(item.city)  # يمكن تبديلها بـ ilike(f"%{item.city}%")
+            Item.city.ilike(f"%{(item.city or '').strip()}%")
         ).order_by(func.random()).limit(remain).all()
 
-        # منع التكرار
         existing_ids = {x.id for x in results}
         for it in city_q:
             if it.id not in existing_ids:
@@ -80,7 +88,7 @@ def get_similar_items(db: Session, item):
                 if len(results) >= limit:
                     break
 
-    # 2) سقوط احتياطي: فقط نفس الصنف إن ما كفّى
+    # 3) سقوط احتياطي
     if len(results) < limit:
         remain = limit - len(results)
         more = base_q.order_by(func.random()).limit(remain).all()
@@ -93,30 +101,12 @@ def get_similar_items(db: Session, item):
 
     return results[:limit]
 
-# داخل دالة عرض العنصر:
-similar_items = get_similar_items(db, item)
-# ثم مرّرها إلى القالب:
-return templates.TemplateResponse(
-    "item_detail.html",
-    {
-        "request": request,
-        "item": item,
-        "owner": owner,
-        "item_reviews": item_reviews,
-        "item_rating_avg": item_rating_avg,
-        "item_rating_count": item_rating_count,
-        # الجديد:
-        "similar_items": similar_items,
-        "session_user": session_user,
-        "owner_badges": owner_badges,
-        "is_favorite": is_favorite,
-    }
-)
 
 # ---------------- Helpers ----------------
 def require_approved(request: Request):
     u = request.session.get("user")
     return u and u.get("status") == "approved"
+
 
 def is_account_limited(request: Request) -> bool:
     u = request.session.get("user")
@@ -124,11 +114,13 @@ def is_account_limited(request: Request) -> bool:
         return False
     return u.get("status") != "approved"
 
+
 def _ext_ok(filename: str) -> bool:
     if not filename:
         return False
     ext = os.path.splitext(filename.lower())[1]
     return ext in [".jpg", ".jpeg", ".png", ".webp"]
+
 
 def _local_public_url(fname: str) -> str:
     # URL accessible via StaticFiles('/uploads' -> UPLOADS_ROOT)
@@ -142,8 +134,8 @@ def items_list(
     db: Session = Depends(get_db),
     category: str = None,
     sort: str = None,               # sort=random|new
-    city: str = None,               # city name (e.g., "Paris, France")
-    lat: float | None = None,       # optional coordinates (from suggestion/GPS)
+    city: str = None,               # "Paris, France"
+    lat: float | None = None,
     lng: float | None = None,
 ):
     q = db.query(Item).filter(Item.is_active == "yes")
@@ -163,7 +155,7 @@ def items_list(
                     func.lower(Item.city).like(f"%{(city or '').lower()}%")
                 )
             )
-            applied_name_filter = True  # left here if you want to use it later
+            applied_name_filter = True
 
     # Sort by distance if coordinates were provided
     applied_distance_sort = False
@@ -205,7 +197,6 @@ def items_list(
             "selected_city": city or "",
             "lat": lat,
             "lng": lng,
-            # we do not pass immersive here → header/navbar remain visible
         }
     )
 
@@ -215,24 +206,24 @@ def items_list(
 def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     item = db.query(Item).get(item_id)
     if not item:
+        # ⚠️ اسم القالب الصحيح: item_detail.html (بدون s)
         return request.app.templates.TemplateResponse(
-            "items_detail.html",
+            "item_detail.html",
             {
                 "request": request,
                 "item": None,
                 "session_user": request.session.get("user"),
-                "immersive": True,  # even the error page is immersive (no header/navbar)
+                "immersive": True,
             }
         )
 
     from sqlalchemy import func as _func
-    from .models import User, ItemReview
 
     item.category_label = category_label(item.category)
     owner = db.query(User).get(item.owner_id)
     owner_badges = get_user_badges(owner, db) if owner else []
 
-    # Reviews for this listing (from renters)
+    # Reviews
     reviews_q = (
         db.query(ItemReview)
         .filter(ItemReview.item_id == item.id)
@@ -250,7 +241,7 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
         .scalar() or 0
     )
 
-    # ← NEW: compute favorite state for the logged-in user
+    # Favorite state
     session_u = request.session.get("user")
     is_favorite = False
     if session_u:
@@ -258,8 +249,14 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             user_id=session_u["id"], item_id=item.id
         ).first() is not None
 
+    # ✅ Bring similar items
+    similar_items = get_similar_items(db, item)
+    # أعطِ كل عنصر label للإظهار في القالب
+    for s in similar_items:
+        s.category_label = category_label(s.category)
+
     return request.app.templates.TemplateResponse(
-        "items_detail.html",
+        "item_detail.html",
         {
             "request": request,
             "item": item,
@@ -269,10 +266,10 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             "item_reviews": reviews,
             "item_rating_avg": round(float(avg_stars), 2),
             "item_rating_count": int(cnt_stars),
-            # ★ important change: make the page “immersive” to hide header and navbars
             "immersive": True,
-            # ← NEW: pass favorite state to template
             "is_favorite": is_favorite,
+            # ✅ pass to template
+            "similar_items": similar_items,
         }
     )
 
@@ -302,7 +299,6 @@ def my_items(request: Request, db: Session = Depends(get_db)):
             "items": items,
             "session_user": u,
             "account_limited": is_account_limited(request),
-            # here the full site UI remains (not immersive)
         }
     )
 
@@ -347,14 +343,11 @@ def item_new_post(
     image_path_for_db = None
 
     if image and image.filename:
-        # 1) ensure extension
         if _ext_ok(image.filename):
-            # 2) safe local filename (fallback)
             ext = os.path.splitext(image.filename)[1].lower()
             fname = f"{u['id']}_{secrets.token_hex(8)}{ext}"
             fpath = os.path.join(ITEMS_DIR, fname)
 
-            # 3) try uploading to Cloudinary
             uploaded_url = None
             try:
                 up = cloudinary.uploader.upload(
@@ -367,7 +360,6 @@ def item_new_post(
             except Exception:
                 uploaded_url = None
 
-            # 4) if cloud upload fails → save locally
             if not uploaded_url:
                 try:
                     try:
@@ -387,7 +379,6 @@ def item_new_post(
             except Exception:
                 pass
 
-    # create the record
     it = Item(
         owner_id=u["id"],
         title=title,
@@ -405,13 +396,13 @@ def item_new_post(
     return RedirectResponse(url=f"/items/{it.id}", status_code=303)
 
 
+# ================= All reviews page =================
 @router.get("/items/{item_id}/reviews")
 def item_reviews_all(request: Request, item_id: int, db: Session = Depends(get_db)):
     item = db.query(Item).get(item_id)
     if not item:
         return RedirectResponse(url="/items", status_code=303)
 
-    # كل التعليقات الخاصة بهذا العنصر (أحدث أولًا)
     q = (
         db.query(ItemReview)
         .filter(ItemReview.item_id == item.id)
@@ -419,7 +410,6 @@ def item_reviews_all(request: Request, item_id: int, db: Session = Depends(get_d
     )
     reviews = q.all()
 
-    # متوسّط وعدد النجوم
     avg = db.query(func.coalesce(func.avg(ItemReview.stars), 0)).filter(ItemReview.item_id == item.id).scalar() or 0
     cnt = db.query(func.count(ItemReview.id)).filter(ItemReview.item_id == item.id).scalar() or 0
 
