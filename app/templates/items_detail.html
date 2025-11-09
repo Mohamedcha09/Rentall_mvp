@@ -1,4 +1,4 @@
-{# app/templates/item_show.html #}
+{# app/templates/item_detail.html #}
 {% extends "base.html" %}
 {% from "_badges.html" import render_badges %}
 {% block content %}
@@ -36,27 +36,23 @@
 .btnx-green{border-color:rgba(16,185,129,.6);background:linear-gradient(180deg,rgba(16,185,129,.35),rgba(16,185,129,.1))}
 .btnx-ghost{border-color:var(--stroke);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))}
 .btns-row{display:flex;flex-wrap:wrap;gap:10px}
-.lightbox{position:fixed;inset:0;display:none;place-items:center;z-index:9999;background:rgba(0,0,0,.8)}
-.lightbox.show{display:grid}
-.lightbox img{max-width:92vw;max-height:88vh;border-radius:14px;border:1px solid var(--stroke)}
-.lightbox .close{position:absolute;top:18px;right:18px;background:rgba(0,0,0,.6);border:1px solid var(--stroke);color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer}
 .owner-row{display:flex;align-items:center;gap:12px}
 .owner-avatar{width:62px;height:62px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--stroke)}
 .hr{border:0;height:1px;background:var(--stroke-soft);margin:14px 0}
 
-/* ===== Stars (black/gray) ===== */
+/* Stars */
 .stars-bw,.rv-stars{display:inline-flex;gap:4px;font-size:16px;line-height:1;letter-spacing:0}
 .stars-bw span,.rv-stars span{display:inline-block;width:1em;text-align:center}
 .stars-bw .full,.rv-stars .full{color:#111}
 .stars-bw .empty,.rv-stars .empty{color:#bdbdbd}
 
-/* ===== Top stats row ===== */
+/* Top stats row */
 .stat-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 10px}
 .stat-left,.stat-right{display:flex;align-items:center;gap:8px}
 .stat-right a{font-weight:800;text-decoration:none;color:#111}
 .stat-right a .muted{color:#717171}
 
-/* ====== Mobile look ====== */
+/* Mobile look */
 @media (max-width:768px){
   body{background:#fff;color:#111}
   .items-shell{padding:0;margin:0;max-width:none}
@@ -66,7 +62,7 @@
   .gallery-main img{object-fit:cover;will-change:transform,opacity}
   .hero-fade{
     position:absolute;inset:0;pointer-events:none;
-    background:linear-gradient(to bottom, rgba(0,0,0,0) 40%, rgba(0,0,0,.05) 58%, rgba(255,255,255,1) 100%);
+    background:linear-gradient(to bottom, rgba(0,0,0,0) 40%, rgba(0,0,0,.05) 58%, #fff 100%);
     opacity:.0;transition:opacity .25s ease;
   }
   .card-glass{background:transparent;border:0;box-shadow:none}
@@ -113,17 +109,8 @@
   .rv-ava{width:40px;height:40px;border-radius:50%;object-fit:cover}
   .rv-meta{color:#6b7280;font-size:12px}
   .rv-stars{font-size:13px}
-  .btn-outline-pale{display:block;width:100%;text-align:center;border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:10px 14px;font-weight:700}
 
-  /* ====== FABs enforced ====== */
-  body.item-page #flowBackBtn,
-  body.item-page .btn-back,
-  body.item-page .back-button,
-  body.item-page .nav-back,
-  body.item-page header .air-fab,
-  body.item-page .navbar .air-fab,
-  body.item-page .gallery > .air-fab:not(.keep){ display:none !important; }
-
+  /* FABs */
   .air-fab-left,.air-fab-right{
     position:absolute; top:calc(8px + env(safe-area-inset-top,0px));
     z-index:10020; display:flex; gap:10px;
@@ -229,7 +216,7 @@
           {{ item.category_label or item.category }} • {{ item.city or "No city" }} • {{ owner and owner.country or "" }}
         </div>
 
-        {# ===== Top stats: stars left + reviews count right ===== #}
+        {# Top stats: stars left + reviews count right #}
         {% set _avg = item_rating_avg or 0 %}
         {% set _cnt = item_rating_count or 0 %}
         <div class="stat-row">
@@ -250,7 +237,7 @@
 
         <div class="hr"></div>
 
-        {# ===== Description BEFORE reviews ===== #}
+        {# Description BEFORE reviews #}
         {% if item.description %}
           <p style="white-space:pre-wrap;line-height:1.9;color:#374151">{{ item.description }}</p>
         {% else %}
@@ -291,7 +278,7 @@
 
         <div class="hr"></div>
 
-        <!-- Buttons (desktop/extra) -->
+        <!-- Buttons -->
         <div class="btns-row">
           {% if owner %}
             <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">💬 Contact owner</a>
@@ -364,13 +351,7 @@
 </section>
 
 <!-- ===== Report Bottom Sheet ===== -->
-<div class="offcanvas offcanvas-top"
-     tabindex="-1"
-     id="reportSheet"
-     aria-labelledby="reportLabel"
-     dir="rtl"
-     data-bs-scroll="true"
-     data-bs-backdrop="true">
+<div class="offcanvas offcanvas-top" tabindex="-1" id="reportSheet" aria-labelledby="reportLabel" dir="rtl" data-bs-scroll="true" data-bs-backdrop="true">
   <div class="offcanvas-header">
     <h5 class="offcanvas-title" id="reportLabel">🚩 Report listing</h5>
     <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
@@ -402,6 +383,7 @@
 </div>
 
 <script>
+/* Gallery pager + parallax + fixed bar */
 (function(){
   const main  = document.getElementById('mainImg');
   const thumbs= document.getElementById('thumbs');
@@ -429,7 +411,6 @@
     });
   }
 
-  /* Parallax + Fade */
   const gMain = document.getElementById('gMain');
   function onScroll(){
     if(!gMain || !main) return;
@@ -445,7 +426,6 @@
   window.addEventListener('scroll', onScroll, {passive:true});
   onScroll();
 
-  /* Fix bottom bar on iOS */
   function portalBar(){
     if(!airBar) return;
     if(airBar.parentElement !== document.body){ document.body.appendChild(airBar); }
@@ -464,84 +444,9 @@
 </script>
 
 <script>
-/* Share + Favorite */
-(function(){
-  const shareBtn = document.querySelector('.js-share');
-  if (shareBtn) {
-    shareBtn.addEventListener('click', async () => {
-      const url = shareBtn.dataset.url || location.href;
-      const title = shareBtn.dataset.title || document.title;
-      try {
-        if (navigator.share) { await navigator.share({ title, url }); }
-        else if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(url); alert('Link copied ✔');
-        } else {
-          const ta = document.createElement('textarea'); ta.value = url; document.body.appendChild(ta); ta.select();
-          document.execCommand('copy'); ta.remove(); alert('Link copied ✔');
-        }
-      } catch(e){}
-    });
-  }
-
-  const favBtn = document.querySelector('.js-fav');
-  if (favBtn) {
-    const icon = favBtn.querySelector('i');
-    function setOn(on){
-      favBtn.dataset.on = on ? '1':'0';
-      favBtn.classList.toggle('is-on', !!on);
-      icon.classList.toggle('bi-heart-fill', !!on);
-      icon.classList.toggle('bi-heart', !on);
-      favBtn.classList.remove('fav-anim'); void favBtn.offsetWidth; favBtn.classList.add('fav-anim');
-    }
-    favBtn.addEventListener('click', async () => {
-      try{
-        const res = await fetch('/api/favorites/toggle', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({ item_id: favBtn.dataset.itemId })
-        });
-        if (res.status === 401) { location.href = '/login?next=' + encodeURIComponent(location.pathname); return; }
-        const data = await res.json();
-        if (data && data.ok) setOn(!!data.favorited);
-      }catch(e){
-        setOn(favBtn.dataset.on !== '1');
-      }
-    });
-    setOn(favBtn.dataset.on === '1');
-  }
-})();
-</script>
-
-<script>
-/* Seed report form */
-(function(){
-  const main  = document.getElementById('mainImg');
-  if (main) {
-    const initSrc = main.getAttribute('src') || '';
-    document.getElementById('rf_image_index')?.setAttribute('value','0');
-    document.getElementById('rf_image_url')?.setAttribute('value', initSrc);
-  }
-})();
-</script>
-
-<script>
-/* theme-color لهذه الصفحة */
-(function(){
-  var m = document.querySelector('meta[name="theme-color"]');
-  if(m){ m.setAttribute('content', '#ffffff'); }
-  var ms = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-  if(!ms){
-    ms = document.createElement('meta');
-    ms.setAttribute('name','apple-mobile-web-app-status-bar-style');
-    document.head.appendChild(ms);
-  }
-  ms.setAttribute('content','default');
-})();
-</script>
-
-<script>
-/* Share + Favorite (fixed, optimistic UI) */
+/* Share + Favorite (optimistic) */
 (function () {
-  // ===== Share =====
+  // Share
   const shareBtn = document.querySelector('.js-share');
   if (shareBtn) {
     shareBtn.addEventListener('click', async () => {
@@ -560,10 +465,9 @@
     });
   }
 
-  // ===== Favorite (FIX) =====
+  // Favorite
   const favBtn = document.querySelector('.js-fav');
   if (!favBtn) return;
-
   const icon = favBtn.querySelector('i');
 
   function paint(on){
@@ -572,17 +476,13 @@
     icon.classList.toggle('bi-heart-fill', !!on);
     icon.classList.toggle('bi-heart', !on);
     favBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-    // pop animation
     favBtn.classList.remove('fav-anim'); void favBtn.offsetWidth; favBtn.classList.add('fav-anim');
   }
 
-  // اجعل الزر يعمل حتى لو فشل الطلب (optimistic UI)
   async function toggleFavorite() {
-    // 1) UI أولًا
     const next = favBtn.dataset.on !== '1';
-    paint(next);
+    paint(next); // UI first
 
-    // 2) اطلب الخادم بهدوء
     try {
       const res = await fetch('/api/favorites/toggle', {
         method: 'POST',
@@ -592,39 +492,28 @@
       });
 
       if (res.status === 401) {
-        // رجّع الـUI لو كان غير مسجّل
         paint(!next);
         location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
         return;
       }
 
-      // أحيانًا الخادم يعيد HTML أو نص — لا تكسر الـUI
       let data = null;
       const ct = res.headers.get('content-type') || '';
-      if (ct.includes('application/json')) data = await res.json();
-      else await res.text();
+      if (ct.includes('application/json')) data = await res.json(); else await res.text();
 
-      // لو الخادم قال نتيجة مخالفة، صحّح الـUI
       if (data && data.ok && typeof data.favorited === 'boolean') {
         paint(!!data.favorited);
       }
     } catch (e) {
-      // فشل الشبكة: ارجع للحالة السابقة
-      paint(!next);
+      paint(!next); // rollback on network failure
     }
   }
 
-  // اربط بالنقر على الزر أو الأيقونة داخله
-  favBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toggleFavorite();
-  });
+  favBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(); });
 
-  // ادهن الحالة الابتدائية
+  // Initial state
   paint(favBtn.dataset.on === '1');
 })();
 </script>
-
 
 {% endblock %}

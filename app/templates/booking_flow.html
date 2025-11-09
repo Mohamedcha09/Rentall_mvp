@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% set immersive = true %}
+
 {% block head %}
 <style>
   /* ===== Mobile luxe style like Uber/Airbnb ===== */
@@ -99,6 +100,44 @@
   textarea.disabled{ pointer-events:none; opacity:.6; }
   button[disabled]{ pointer-events:none; }
   .num-ltr{ direction:ltr; unicode-bidi:isolate; white-space:nowrap; font-variant-numeric:tabular-nums; }
+
+  /* ===== Mobile Hero (image header) ===== */
+  @media (max-width:576px){
+    .m-hero-wrap{margin:-8px -8px 8px -8px}
+    .m-hero{position:relative}
+    .m-hero img{width:100%;height:240px;object-fit:cover;border-radius:0 0 14px 14px}
+    .m-hero .overlay{
+      position:absolute;inset:0;
+      background: linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,.0) 60%);
+      border-radius:0 0 14px 14px;
+    }
+    .m-hero .inside{
+      position:absolute;left:12px;right:12px;bottom:12px;
+      display:flex;justify-content:space-between;align-items:end;gap:8px;
+      color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.45)
+    }
+    .m-hero .title{font-size:18px;font-weight:700}
+    .m-hero .meta{opacity:.9}
+    .m-hero .state-badge{
+      backdrop-filter: blur(8px);
+      background: rgba(0,0,0,.35);
+      color:#fff;border-color: rgba(255,255,255,.3);
+    }
+  }
+
+  /* ===== Sticky Action Bar (mobile) ===== */
+  @media (max-width: 576px){
+    .sticky-actions{
+      position: fixed; left: 0; right: 0; bottom: 0;
+      padding: 10px 12px; z-index: 1040;
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid var(--border);
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .sticky-actions .btn{ height: 48px; font-weight: 700; border-radius: 14px; }
+    .page-bottom-spacer{ height: 74px; }
+  }
 </style>
 
 {% if dispute_deadline_iso %}
@@ -112,8 +151,27 @@
 {% block content %}
 <div class="flow-card card p-3 p-md-4">
 
-  <!-- Header -->
-  <div class="d-flex justify-content-between align-items-start flex-wrap">
+  {# ===== Mobile HERO (image header) ===== #}
+  {% if item %}
+  <div class="m-hero-wrap d-sm-none">
+    <div class="m-hero">
+      <img src="{{ (item and item.image_path) and (item.image_path.startswith('http://') or item.image_path.startswith('https://')) and item.image_path or ('/' ~ (item.image_path or '').lstrip('/')) if item else '/static/placeholder.jpg' }}" alt="">
+      <div class="overlay"></div>
+      <div class="inside">
+        <div>
+          <div class="title">{{ item.title }}</div>
+          <div class="meta">{{ category_label(item.category) }} • {{ item.price_per_day }}$/day</div>
+        </div>
+        <span class="state-badge">
+          <i class="bi bi-flag"></i><span>{{ booking.status }}</span>
+        </span>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Header (desktop + tablet view) -->
+  <div class="d-none d-sm-flex justify-content-between align-items-start flex-wrap">
     <div class="mb-2">
       <h4 class="mb-1">Booking #{{ booking.id }}</h4>
       <div class="k">
@@ -128,7 +186,7 @@
     </span>
   </div>
 
-  <hr>
+  <hr class="d-none d-sm-block">
 
   <div class="row g-3">
     <!-- Left column -->
@@ -137,7 +195,7 @@
       {# ======= requested ======= #}
       {% if booking.status in ['requested'] %}
         {% if is_owner %}
-          <h5 class="mb-2">New request awaiting your approval</h5>
+          <h5 class="mb-2 d-none d-sm-block">New request awaiting your approval</h5>
 
           <div class="box mb-2">
             <div class="mb-2">Enter the required <strong>deposit</strong> (default = daily price × 5)</div>
@@ -145,17 +203,17 @@
               <input type="hidden" name="decision" value="accepted">
               <div class="col-12 col-md-6">
                 <label class="form-label">Deposit amount</label>
-                <input id="depositInput" name="deposit_amount" type="number" min="0" step="1" class="form-control"
+                <input id="depositInput" name="deposit_amount" type="number" min="0" step="0.01" class="form-control"
                        value="{{ booking.deposit_amount or 0 }}">
                 <div class="form-text k">You can change it before accepting.</div>
               </div>
-              <div class="col-12 col-md-6">
+              <div class="col-12 col-md-6 d-none d-sm-block">
                 <button class="btn btn-success w-100"><i class="bi bi-check2-circle"></i> Accept with deposit</button>
               </div>
             </form>
           </div>
 
-          <div class="acts">
+          <div class="acts d-none d-sm-flex">
             <form method="post" action="/bookings/{{ booking.id }}/owner/decision">
               <input type="hidden" name="decision" value="rejected">
               <button class="btn btn-outline-danger"><i class="bi bi-x-lg"></i> Reject</button>
@@ -167,10 +225,10 @@
               try {
                 var inp = document.getElementById('depositInput');
                 if (!inp) return;
-                var current = parseInt(inp.value || '0', 10);
+                var current = parseFloat(inp.value || '0');
                 if (!current || current <= 0) {
-                  var pricePerDay = parseInt('{{ (item.price_per_day or 0)|int }}', 10) || 0;
-                  var defVal = pricePerDay * 5;
+                  var pricePerDay = parseFloat('{{ (item.price_per_day or 0)|float }}') || 0;
+                  var defVal = Math.max(0, +(pricePerDay * 5).toFixed(2));
                   inp.value = defVal;
                 }
               } catch (e) {}
@@ -276,11 +334,11 @@
       {# ======= paid ======= #}
       {% if booking.status in ['paid'] %}
         {% if is_renter %}
-          <h5>Ready for pickup</h5>
-          <div class="hint">Capture pickup photos before confirming.</div>
+          <h5 class="d-none d-sm-block">Ready for pickup</h5>
+          <div class="hint d-none d-sm-block">Capture pickup photos before confirming.</div>
 
-          <!-- 📷 Pickup — single button -->
-          <div class="box mb-2">
+          <!-- 📷 Pickup — single button (desktop/tablet area) -->
+          <div class="box mb-2 d-none d-sm-block">
             <div class="mb-2">Capture pickup photos before confirming.</div>
             <div class="d-grid gap-2">
               <textarea id="pickupComment" class="form-control" rows="2" placeholder="Note (optional)"></textarea>
@@ -307,11 +365,11 @@
       {# ======= picked_up ======= #}
       {% if booking.status in ['picked_up'] %}
         {% if is_renter %}
-          <h5>You have the item now</h5>
-          <div class="hint">On return, capture 6 photos; you’ll be taken to rating afterwards.</div>
+          <h5 class="d-none d-sm-block">You have the item now</h5>
+          <div class="hint d-none d-sm-block">On return, capture 6 photos; you’ll be taken to rating afterwards.</div>
 
-          <!-- 📷 Return — single button -->
-          <div class="box mb-2">
+          <!-- 📷 Return — single button (desktop/tablet area) -->
+          <div class="box mb-2 d-none d-sm-block">
             <div class="mb-2">On return, capture 6 photos and you’ll be sent to the rating step.</div>
             <div class="d-grid gap-2">
               <textarea id="returnComment" class="form-control" rows="2" placeholder="Note (optional)"></textarea>
@@ -512,6 +570,9 @@
       {% endif %}
     </div>
   </div>
+
+  <!-- Spacer so content doesn't hide behind sticky bar on mobile -->
+  <div class="page-bottom-spacer d-sm-none"></div>
 </div>
 
 <!-- ===== JS (general) ===== -->
@@ -745,7 +806,6 @@
 
     function setCount(n){
       if(countEl) countEl.textContent = n + '/' + MAX;
-      // Turn on progress dots if present
       for(var i=1;i<=MAX;i++){
         var d = document.getElementById((opts.prefix||'') + i);
         if(d){ d.classList.toggle('on', i<=n); }
@@ -834,7 +894,7 @@
     refreshUI();
   }
 
-  // Pickup
+  // Desktop/tablet buttons (existing)
   setupAutoCapture({
     buttonId: 'pickupCaptureBtn',
     commentId:'pickupComment',
@@ -845,7 +905,6 @@
     prefix:   'p'
   });
 
-  // Return
   setupAutoCapture({
     buttonId: 'returnCaptureBtn',
     commentId:'returnComment',
@@ -856,6 +915,48 @@
     prefix:   'r'
   });
 })();
+</script>
+
+<!-- ===== Sticky Action Bar (mobile) ===== -->
+{% if booking.status in ['requested'] and is_owner %}
+  <div class="sticky-actions d-sm-none">
+    <form method="post" action="/bookings/{{ booking.id }}/owner/decision">
+      <input type="hidden" name="decision" value="rejected">
+      <button class="btn btn-outline-danger w-100"><i class="bi bi-x-lg"></i> رفض</button>
+    </form>
+    <form method="post" action="/bookings/{{ booking.id }}/owner/decision">
+      <input type="hidden" name="decision" value="accepted">
+      <button class="btn btn-success w-100"><i class="bi bi-check2-circle"></i> قبول + وديعة</button>
+    </form>
+  </div>
+{% endif %}
+
+{% if booking.status in ['paid'] and is_renter %}
+  <div class="sticky-actions d-sm-none">
+    <button type="button" id="pickupCaptureBtnSticky" class="btn btn-camera w-100" style="grid-column:1/-1">
+      <i class="bi bi-camera"></i> التقط 6 صور للاستلام
+    </button>
+  </div>
+{% endif %}
+
+{% if booking.status in ['picked_up'] and is_renter %}
+  <div class="sticky-actions d-sm-none">
+    <button type="button" id="returnCaptureBtnSticky" class="btn btn-camera w-100" style="grid-column:1/-1">
+      <i class="bi bi-camera"></i> التقط 6 صور للإرجاع
+    </button>
+  </div>
+{% endif %}
+
+<script>
+  /* Proxy sticky buttons to original capture buttons (single logic source) */
+  (function(){
+    function proxy(srcId, targetId){
+      var s=document.getElementById(srcId), t=document.getElementById(targetId);
+      if(s&&t) s.addEventListener('click', ()=>t.click());
+    }
+    proxy('pickupCaptureBtnSticky','pickupCaptureBtn');
+    proxy('returnCaptureBtnSticky','returnCaptureBtn');
+  })();
 </script>
 
 {% endblock %}
