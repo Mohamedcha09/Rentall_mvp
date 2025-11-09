@@ -70,7 +70,7 @@ def get_similar_items(db: Session, item: Item):
         nearby = base_q.filter(
             Item.latitude.isnot(None),
             Item.longitude.isnot(None),
-            dist_expr <= 50  # ضمن 50 كم
+            dist_expr <= 100  # ضمن 50 كم
         ).order_by(func.random()).limit(limit).all()
         results.extend(nearby)
 
