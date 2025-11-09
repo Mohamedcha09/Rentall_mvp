@@ -273,6 +273,18 @@
   .btnx,.air-cta,.item-page .btn{ transition:none; }
 }
 
+/* زر عريض فاتح لعرض كل المراجعات */
+.btnx-lightwide{
+  display:block; width:100%; text-align:center;
+  padding:14px 18px; border-radius:16px;
+  background:rgba(255,255,255,.75);
+  border:1px solid #e5e7eb;
+  color:#111; font-weight:800;
+  box-shadow:0 10px 22px rgba(0,0,0,.06);
+}
+.btnx-lightwide:hover{ background:#fff }
+
+
 </style>
 
 <section class="items-shell">
@@ -378,11 +390,19 @@
 
         <div class="hr"></div>
 
-        <!-- ===== Buttons (موحّدة) ===== -->
-        <div class="btns-row">
-          <a class="btnx btnx-green" href="/bookings/new?item_id={{ item.id }}">✅ Book now</a>
-          <a class="btnx btnx-ghost" href="/items">↩︎ Back to list</a>
-        </div>
+        <!-- ===== Buttons (صفحة العنصر فقط، غير الثابت) ===== -->
+<div class="btns-row">
+  {% if owner %}
+    {% if session_user %}
+      <!-- الآن زر الصفحة يفتح مراسلة المالك -->
+      <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">💬 Contact owner</a>
+    {% else %}
+      <!-- لو غير مسجّل، نوجّهه لتسجيل الدخول ثم الرجوع لهذه الصفحة -->
+      <a class="btnx btnx-primary" href="/login?next={{ request.url | urlencode }}">💬 Contact owner</a>
+    {% endif %}
+  {% endif %}
+  <a class="btnx btnx-ghost" href="/items">↩︎ Back to list</a>
+</div>
 
         <!-- Bottom Booking Bar (موحّد) -->
         <div class="air-fixed" id="airBar">
@@ -395,6 +415,50 @@
       </div>
       <div class="air-underlay" id="airUnder"></div>
     </div>
+
+    <!-- ===== REVIEWS (يظهر مباشرة فوق Owner) ===== -->
+<div class="hr"></div>
+<section id="reviews" class="rv-wrap" aria-label="Reviews">
+  <h5 style="margin:0 0 10px 0">Reviews</h5>
+
+  {% set _avg = item_rating_avg or 0 %}
+  {% set _cnt = item_rating_count or 0 %}
+
+  {% if item_reviews and item_reviews|length %}
+    <div class="rv-strip">
+      {% for r in item_reviews %}
+        <div class="rv-card" id="review-{{ r.id }}">
+          <div class="rv-head">
+            {% set avatar = (r.rater.avatar_path if r.rater and r.rater.avatar_path else url_for('static', path='placeholder.png')) %}
+            <img class="rv-ava" src="{{ avatar }}" alt="avatar">
+            <div>
+              <div style="font-weight:700">{{ (r.rater.first_name ~ ' ' ~ r.rater.last_name) if r.rater else 'Renter' }}</div>
+              <div class="rv-meta">{{ r.city or '' }} <span>•</span> {{ r.created_at.strftime("%B %Y") if r.created_at }}</div>
+            </div>
+          </div>
+
+          <div class="rv-stars" title="{{ r.stars }} / 5">
+            {% for _ in range(r.stars) %}<span class="full">★</span>{% endfor %}
+            {% for _ in range(5 - r.stars) %}<span class="empty">☆</span>{% endfor %}
+          </div>
+
+          {% if r.comment %}
+            <div style="margin-top:6px;white-space:pre-wrap">{{ r.comment }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- زر كبير لعرض كل التعليقات -->
+    <a href="/items/{{ item.id }}#all-reviews" class="btnx btnx-lightwide" style="margin-top:10px">
+      View all {{ _cnt }} review(s)
+    </a>
+  {% else %}
+    <div class="small-muted">No reviews yet.</div>
+  {% endif %}
+</section>
+<div class="hr"></div>
+
 
     <!-- ===== Owner Card ===== -->
     <div class="card-glass">
