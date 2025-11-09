@@ -138,6 +138,25 @@
     .sticky-actions .btn{ height: 48px; font-weight: 700; border-radius: 14px; }
     .page-bottom-spacer{ height: 74px; }
   }
+
+  /* ==== flow-only (booking pages) ==== */
+.flow-only-fab{
+  position:fixed; left:12px; top:calc(12px + env(safe-area-inset-top,0px));
+  z-index:10020;
+}
+.flow-only-btn{
+  appearance:none; border:0; width:44px; height:44px; border-radius:50%;
+  display:grid; place-items:center; cursor:pointer;
+  background:#2f2f33;            /* دائرة داكنة */
+  box-shadow:0 8px 20px rgba(0,0,0,.25);
+  color:#fff;                     /* السهم أبيض داخلها */
+  font-size:18px; line-height:1;
+}
+/* فراغ علوي صغير لموبایل (اختياري) */
+@media (max-width:576px){
+  #flowTopSpace{ height: env(safe-area-inset-top, 0px); }
+}
+
 </style>
 
 {% if dispute_deadline_iso %}
@@ -576,6 +595,20 @@
   <div class="page-bottom-spacer d-sm-none"></div>
 </div>
 
+<!-- ==== flow-only UI (booking pages only) ==== -->
+<div id="flowBack" class="flow-only-fab js-flow-only" hidden>
+  <button class="flow-only-btn" type="button"
+          onclick="history.length>1 ? history.back() : location.assign('/')"
+          aria-label="Back">
+    <!-- سهم أبيض -->
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M5.854 3.146a.5.5 0 0 1 0 .708L3.707 6H14.5a.5.5 0 0 1 0 1H3.707l2.147 2.146a.5.5 0 1 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 0 1 .708 0z"/>
+    </svg>
+  </button>
+</div>
+<div id="flowTopSpace" class="js-flow-only" hidden></div>
+
+
 <!-- ===== JS (general) ===== -->
 <script>
   function wireDisableOnSubmit(formId, btnId, text){
@@ -959,5 +992,32 @@
     proxy('returnCaptureBtnSticky','returnCaptureBtn');
   })();
 </script>
+
+<script>
+(function(){
+  // يظهر فقط عندما يبدأ المسار بـ /bookings
+  var onBooking = /^\/bookings(\/|$)/.test(location.pathname);
+
+  var back  = document.getElementById('flowBack');
+  var space = document.getElementById('flowTopSpace');
+
+  if (onBooking){
+    if (back)  back.hidden  = false;
+    if (space) space.hidden = false;
+  } else {
+    // أمان: لا تترك أي أثر خارج صفحات الحجز
+    document.querySelectorAll('.js-flow-only').forEach(function(el){ el.remove(); });
+  }
+
+  // لو جاء من تنقل تاريخي/عودة، نعيد التحقق
+  window.addEventListener('pageshow', function(){
+    var stillBooking = /^\/bookings(\/|$)/.test(location.pathname);
+    if (!stillBooking){
+      document.querySelectorAll('.js-flow-only').forEach(function(el){ el.remove(); });
+    }
+  });
+})();
+</script>
+
 
 {% endblock %}
