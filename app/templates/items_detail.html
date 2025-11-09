@@ -538,4 +538,93 @@
 })();
 </script>
 
+<script>
+/* Share + Favorite (fixed, optimistic UI) */
+(function () {
+  // ===== Share =====
+  const shareBtn = document.querySelector('.js-share');
+  if (shareBtn) {
+    shareBtn.addEventListener('click', async () => {
+      const url = shareBtn.dataset.url || location.href;
+      const title = shareBtn.dataset.title || document.title;
+      try {
+        if (navigator.share) { await navigator.share({ title, url }); }
+        else if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(url); alert('Link copied ✔');
+        } else {
+          const ta=document.createElement('textarea');
+          ta.value=url; document.body.appendChild(ta); ta.select();
+          document.execCommand('copy'); ta.remove(); alert('Link copied ✔');
+        }
+      } catch(_) {}
+    });
+  }
+
+  // ===== Favorite (FIX) =====
+  const favBtn = document.querySelector('.js-fav');
+  if (!favBtn) return;
+
+  const icon = favBtn.querySelector('i');
+
+  function paint(on){
+    favBtn.dataset.on = on ? '1' : '0';
+    favBtn.classList.toggle('is-on', !!on);
+    icon.classList.toggle('bi-heart-fill', !!on);
+    icon.classList.toggle('bi-heart', !on);
+    favBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    // pop animation
+    favBtn.classList.remove('fav-anim'); void favBtn.offsetWidth; favBtn.classList.add('fav-anim');
+  }
+
+  // اجعل الزر يعمل حتى لو فشل الطلب (optimistic UI)
+  async function toggleFavorite() {
+    // 1) UI أولًا
+    const next = favBtn.dataset.on !== '1';
+    paint(next);
+
+    // 2) اطلب الخادم بهدوء
+    try {
+      const res = await fetch('/api/favorites/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ item_id: favBtn.dataset.itemId })
+      });
+
+      if (res.status === 401) {
+        // رجّع الـUI لو كان غير مسجّل
+        paint(!next);
+        location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
+        return;
+      }
+
+      // أحيانًا الخادم يعيد HTML أو نص — لا تكسر الـUI
+      let data = null;
+      const ct = res.headers.get('content-type') || '';
+      if (ct.includes('application/json')) data = await res.json();
+      else await res.text();
+
+      // لو الخادم قال نتيجة مخالفة، صحّح الـUI
+      if (data && data.ok && typeof data.favorited === 'boolean') {
+        paint(!!data.favorited);
+      }
+    } catch (e) {
+      // فشل الشبكة: ارجع للحالة السابقة
+      paint(!next);
+    }
+  }
+
+  // اربط بالنقر على الزر أو الأيقونة داخله
+  favBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFavorite();
+  });
+
+  // ادهن الحالة الابتدائية
+  paint(favBtn.dataset.on === '1');
+})();
+</script>
+
+
 {% endblock %}
