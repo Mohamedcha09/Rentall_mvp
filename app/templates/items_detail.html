@@ -1,4 +1,4 @@
-{# app/templates/items_detail.html #}  
+{# app/templates/items_detail.html #}
 {% extends "base.html" %}
 {% from "_badges.html" import render_badges %}
 {% block content %}
@@ -64,7 +64,12 @@
 
 /* الغلاف */
 .sim-media{ position:relative; border-radius:16px; overflow:hidden; }
-.sim-img{ width:100%; display:block; aspect-ratio:16/9; object-fit:cover; height:auto; }
+.sim-img{
+  width:100%; display:block;
+  aspect-ratio:16/9;             /* يتحكم في الارتفاع */
+  object-fit:cover;
+  height:auto;                    /* مهم: لا min/max ثابت */
+}
 
 /* العناصر الطافية فوق الصورة */
 .sim-chip, .sim-rate{
@@ -75,11 +80,11 @@
   border:1px solid #e5e7eb; font-weight:700; font-size:13px;
 }
 .sim-chip{ left:10px; font-weight:600; }
-.sim-rate{ right:56px; }
-.sim-rate.empty{ display:none; }
+.sim-rate{ right:56px; }          /* مسافة لزر القلب */
+.sim-rate.empty{ display:none; }  /* أخفي الدائرة عند عدم وجود تقييم */
 .sim-rate .star{ font-size:14px }
 
-/* زر القلب فوق الصورة (لن نحذفه — سنخفيه فقط) */
+/* زر القلب */
 .sim-fav{
   position:absolute; top:10px; right:10px; z-index:3;
   width:40px; height:40px; border-radius:50%; display:grid; place-items:center;
@@ -88,42 +93,31 @@
 }
 .sim-fav i{ font-size:18px }
 .sim-fav.on i{ color:var(--brand1) }
-/* إخفاء القلب العلوي بدون حذف الكود */
-.sim-card .sim-fav{ display:none; }
 
 /* النص أسفل الصورة */
-.sim-body{ padding-top:12px; position:relative; }
+.sim-body{ padding-top:12px }
 .sim-title{
-  font-weight:800; font-size:19px; color:#111; margin:0 0 6px 0;
-  padding-right:44px; /* مساحة لزر القلب الداخلي */
-  line-height:1.2;
+  font-weight:800; font-size:19px; color:#111; margin:0 0 8px 0;
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
 }
-.sim-sub{ color:#6b7280; font-size:13px; margin:0 0 6px 0; line-height:1.35 }
+.sim-sub{ color:#6b7280; font-size:13px; margin:0 0 10px 0; line-height:1.45 }
+
+/* سطر الميتاداتا */
 .sim-meta{
-  display:flex; align-items:center; gap:10px; color:#6b7280;
-  font-size:13.5px; line-height:1.35; font-variant-numeric:tabular-nums;
-  margin-bottom:10px;
+  display:flex; align-items:center; gap:12px; color:#6b7280;
+  font-size:13.5px; line-height:1.45; font-variant-numeric:tabular-nums;
+  margin-bottom:14px;
 }
 .sim-meta .vsep{ width:1px; height:14px; background:#e5e7eb; flex:0 0 1px; opacity:.9; }
-.sim-cut{ margin:6px 0 10px 0; border:0; height:0; border-top:1px dashed rgba(17,24,39,.18); }
+
+/* فاصل منقّط */
+.sim-cut{ margin:0 0 12px 0; border:0; height:0; border-top:1px dashed rgba(17,24,39,.18); }
 
 /* الأسعار */
 .sim-price-row{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
 .sim-price-old{ color:#9ca3af; text-decoration:line-through; font-size:14.5px; }
 .sim-price-now{ color:#111; font-weight:900; font-size:21px; }
 .sim-unit{ color:#6b7280; font-size:12.5px; margin-left:4px; }
-
-/* زر القلب بجانب العنوان داخل الكرت */
-.sim-fav-inline{
-  position:absolute; top:0; right:0;
-  width:32px; height:32px; border-radius:999px;
-  display:grid; place-items:center; cursor:pointer;
-  background:#fff; border:1px solid #e5e7eb;
-  box-shadow:0 6px 14px rgba(0,0,0,.08);
-}
-.sim-fav-inline i{ font-size:18px; }
-.sim-fav-inline.on i{ color:var(--brand1); }
 
 /* تفاعل */
 .sim-card:hover{ box-shadow:0 14px 30px rgba(17,24,39,.14) }
@@ -473,6 +467,7 @@
     <section class="sim-wrap" aria-label="Similar near you">
       <h5 style="margin:0 0 10px 0">Similar near you</h5>
 
+      <!-- مهم: لفّ الكروت داخل sim-row -->
       <div class="sim-row">
         {% for s in similar_items %}
           {% set cover = (s.image_path.split(',')[0] if s.image_path and ',' in s.image_path
@@ -506,14 +501,6 @@
             </div>
 
             <div class="sim-body">
-              <!-- زر القلب بجانب العنوان داخل الكرت (إضافة بدون حذف القديم) -->
-              <button type="button"
-                      class="sim-fav-inline js-sim-fav"
-                      data-item-id="{{ s.id }}"
-                      aria-label="Save">
-                <i class="bi bi-heart"></i>
-              </button>
-
               <div class="sim-title">{{ s.title }}</div>
               <div class="sim-sub">{{ s.subtype or s.kind or s.category_label or s.category }}</div>
 
@@ -804,18 +791,3 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 {% endblock %}
-
-{# ======== PRESERVED DUPLICATE (commented so Jinja ignores it) ========
-app/templates/items_detail.html (second copy as you sent it): 
-{# app/templates/items_detail.html #}
-{% extends "base.html" %}
-{% from "_badges.html" import render_badges %}
-{% block content_dup %}
-
-{# ——— تركت النسخة الثانية من كودك كما هي (بدون أي حذف) ——— #}
-{# لن تُعرض لأنها داخل block آخر اسمه content_dup، لكنها تبقى محفوظة في الملف كما طلبت #}
-
-{{ caller() if false }}
-
-{% endblock %}
-#}
