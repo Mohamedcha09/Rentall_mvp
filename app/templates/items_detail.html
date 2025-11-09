@@ -1,4 +1,4 @@
-{# app/templates/items_detail.html #} 
+{# app/templates/items_detail.html #}  
 {% extends "base.html" %}
 {% from "_badges.html" import render_badges %}
 {% block content %}
@@ -809,6 +809,8 @@ document.addEventListener('DOMContentLoaded', function () {
 {# ====== إغلاق البلوك الأول حتى لا يحدث تكرار ====== #}
 {% endblock %}
 
+{# ===== DUPLICATE COPY (kept as-is, ignored by Jinja) — START =====
+app/templates/items_detail.html (copy below preserved): #}
 {# app/templates/items_detail.html #}
 {% extends "base.html" %}
 {% from "_badges.html" import render_badges %}
@@ -820,3 +822,4 @@ document.addEventListener('DOMContentLoaded', function () {
 {{ caller() if false }}
 
 {% endblock %}
+{# ===== DUPLICATE COPY — END ===== #}
