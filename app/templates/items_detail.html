@@ -23,6 +23,7 @@
 .gallery{background:#0c1324;border-bottom:1px solid var(--stroke-soft)}
 .gallery-main{position:relative;aspect-ratio:16/10;width:100%;background:#0a0f1e;overflow:hidden}
 .gallery-main img{width:100%;height:100%;object-fit:cover;display:block;transform-origin:center}
+.gallery-zoom{position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,.45);border:1px solid var(--stroke);border-radius:12px;padding:8px 12px;font-size:13px;color:#fff;cursor:pointer;backdrop-filter:blur(6px)}
 .gallery-menu{position:absolute;top:10px;right:10px}
 .gallery-menu .btn-menu{background:rgba(0,0,0,.45);color:#fff;border:1px solid var(--stroke);border-radius:12px;padding:6px 10px;line-height:1;font-weight:700}
 .gallery-menu .dropdown-menu{border-radius:12px;overflow:hidden;border:1px solid var(--stroke)}
@@ -44,17 +45,13 @@
 .owner-avatar{width:62px;height:62px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--stroke)}
 .hr{border:0;height:1px;background:var(--stroke-soft);margin:14px 0}
 
-/* ====== Stars (black/gray) ====== */
-.stars-bw,.rv-stars{display:inline-flex;gap:4px;font-size:16px;line-height:1;letter-spacing:0}
-.stars-bw span,.rv-stars span{display:inline-block;width:1em;text-align:center}
-.stars-bw .full,.rv-stars .full{color:#111}
-.stars-bw .empty,.rv-stars .empty{color:#bdbdbd}
-
 /* ====== Mobile + Airbnb look ====== */
 @media (max-width:768px){
   body{background:#fff;color:#111}
   .items-shell{padding:0;margin:0;max-width:none}
   .grid-2{display:block}
+
+  /* --- Parallax Hero --- */
   .gallery{background:#fff;border:0}
   .gallery-main{height:58vh;max-height:520px;border-radius:0}
   .gallery-main img{object-fit:cover;will-change:transform,opacity}
@@ -63,6 +60,24 @@
     background:linear-gradient(to bottom, rgba(0,0,0,0) 40%, rgba(0,0,0,.05) 58%, rgba(255,255,255,1) 100%);
     opacity:.0;transition:opacity .25s ease;
   }
+
+  /* FABs + Counter */
+  .air-fab,.air-fab-right .air-fab{
+    appearance:none;border:0;cursor:pointer;width:44px;height:44px;border-radius:50%;
+    background:rgba(255,255,255,.9);box-shadow:0 8px 20px rgba(0,0,0,.18);
+    display:grid;place-items:center;font-size:18px;line-height:1
+  }
+  .air-fab{position:absolute;top:16px;left:12px}
+  .air-fab-right{position:absolute;top:16px;right:12px;display:flex;gap:10px}
+
+  /* ===== ADD: حاوية اليسار للموبايل (سهم الرجوع) ===== */
+  .air-fab-left{position:absolute;left:12px;display:flex;gap:10px;
+    top:calc(8px + env(safe-area-inset-top, 0px)); z-index:10001;}
+  .air-fab-right{top:calc(8px + env(safe-area-inset-top, 0px)); z-index:10001;}
+
+  .air-pager{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:6px 10px;border-radius:10px;font-size:12px;border:1px solid rgba(255,255,255,.25)}
+
+  /* الورقة البيضاء المنحنية + حد ناعم */
   .card-glass{background:transparent;border:0;box-shadow:none}
   .air-sheet{
     background:#fff;color:#111;margin-top:-24px;
@@ -75,14 +90,18 @@
     background:linear-gradient(to bottom, rgba(0,0,0,.06), rgba(0,0,0,0));
     opacity:.35;pointer-events:none
   }
+
+  /* Typography */
   .card-title{font-size:28px;font-weight:800;margin-bottom:6px;color:#111;letter-spacing:.2px}
   .small-muted{color:#717171!important;font-size:14px;line-height:1.5}
   .hr{background:#e5e7eb}
 
-  /* Bottom booking bar */
+  /* ======= Fixed Bottom Booking Bar ======= */
   .air-fixed{
     position:fixed !important; left:0; right:0; bottom:0;
-    z-index:10000;background:#fff !important;border-top:1px solid #eee;
+    z-index:10000;
+    background:#fff !important;
+    border-top:1px solid #eee;
     padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
     display:flex; align-items:center; justify-content:space-between; gap:12px;
     box-shadow:0 -6px 18px rgba(0,0,0,.08);
@@ -90,8 +109,11 @@
   .air-underlay{
     position:fixed; left:0; right:0; bottom:0;
     height:calc(18px + env(safe-area-inset-bottom,0px));
-    background:#fff; z-index:9999; pointer-events:none;
+    background:#fff;
+    z-index:9999;
+    pointer-events:none;
   }
+
   .air-price{display:flex;flex-direction:column;line-height:1.2}
   .air-price .now{font-weight:800;font-size:20px}
   .air-price .per{color:#717171;font-size:12px}
@@ -100,37 +122,402 @@
     font-weight:700;color:#fff;background:linear-gradient(90deg,#ff385c,#e61e4d);border:0;text-decoration:none;display:inline-block
   }
 
-  /* Reviews cards */
+  /* Laurel */
+  .laurel-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 12px 0}
+  .laurel-mid{display:flex;align-items:center;gap:10px;flex:1;justify-content:center}
+  .laurel{height:20px;width:auto;opacity:.95}
+  .score{font-weight:800;font-size:18px;color:#111;display:flex;align-items:center;gap:6px}
+  .score small{color:#6b7280;font-weight:600}
+
+  /* Reviews */
   .rv-strip{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 12px 2px}
   .rv-card{scroll-snap-align:start;flex:0 0 84vw;background:#fff;border:1px solid #eee;border-radius:16px;padding:14px;box-shadow:0 6px 14px rgba(0,0,0,.05)}
   .rv-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
   .rv-ava{width:40px;height:40px;border-radius:50%;object-fit:cover}
   .rv-meta{color:#6b7280;font-size:12px}
   .rv-stars{font-size:13px}
+  .rv-stars .full{color:#111}
+  .rv-stars .empty{color:#bdbdbd}
+  .rv-more{display:inline-block;margin-top:4px;font-weight:600}
   .btn-outline-pale{display:block;width:100%;text-align:center;border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:10px 14px;font-weight:700}
 
-  /* ====== FABs (enforced) ====== */
-  /* اخفِ أي زر عام يأتي من base أو ملفات أخرى داخل هذه الصفحة */
+  .offcanvas-bottom{border-top-left-radius:18px;border-top-right-radius:18px}
+}
+
+/* نجوم أبيض/رمادي عامة — سطور موحّدة لكل النجوم */
+.stars-bw{
+  display:inline-flex;
+  gap:4px;
+  font-size:16px;
+  line-height:1;
+  letter-spacing:0;
+}
+.stars-bw span{
+  display:inline-block;
+  width:1em;
+  text-align:center;
+}
+.stars-bw .full{color:#111}
+.stars-bw .empty{color:#bdbdbd}
+
+/* مساافات متساوية لنجوم التعليقات */
+.rv-stars{
+  display:inline-flex;
+  gap:4px;
+  font-size:16px;
+  line-height:1;
+  letter-spacing:0;
+}
+.rv-stars span{
+  display:inline-block;
+  width:1em;
+  text-align:center;
+}
+.rv-stars .full{color:#111}
+.rv-stars .empty{color:#bdbdbd}
+
+/* إزالة الفراغ العلوي في صفحة المنشور */
+@media (max-width:768px){
+  body.item-page{
+    margin-top:0 !important;
+    padding-top:0 !important;
+  }
+  .items-shell{ margin-top:0 !important; }
+
+  /* سحب الصورة للأعلى حتى تلمس الحافة */
+  .gallery{
+    margin-top:calc(-1 * env(safe-area-inset-top, 0px));
+  }
+  .gallery-main{
+    height:calc(58vh + env(safe-area-inset-top, 0px));
+  }
+
+  /* تأمين الأزرار من النوتش */
+  .air-fab{ top:calc(8px + env(safe-area-inset-top, 0px)); }
+  .air-fab-right{ top:calc(8px + env(safe-area-inset-top, 0px)); }
+}
+
+/* ===== إصلاح أعلى صفحة المنشور على الموبايل فقط ===== */
+@media (max-width:768px){
+  html, body.item-page{ 
+    background:#fff !important;
+    margin:0 !important;
+    padding:0 !important;
+  }
+  body.item-page .items-shell{ 
+    margin-top:0 !important; 
+    padding-top:0 !important;
+  }
+  body.item-page .gallery{
+    background:#fff !important;
+    border:0 !important;
+    margin-top:calc(-1 * env(safe-area-inset-top, 0px)) !important;
+  }
+  body.item-page .gallery-main{
+    border-radius:0 !important;
+    height:calc(58vh + env(safe-area-inset-top, 0px)) !important;
+    padding-top:env(safe-area-inset-top, 0px) !important;
+  }
+
+  /* أخفِ زر الرجوع الدائري المباشر فقط داخل المعرض */
+  body.item-page .gallery > .air-fab{ 
+    display:none !important; 
+  }
+  /* أزرار اليمين تبقى أسفل النوتش */
+  body.item-page .air-fab-right{ 
+    top:calc(8px + env(safe-area-inset-top, 0px)) !important; 
+  }
+}
+
+@media (max-width:768px){
+  body.item-page [class^="pt-"], 
+  body.item-page [class*=" pt-"],
+  body.item-page [class^="mt-"], 
+  body.item-page [class*=" mt-"]{
+    padding-top:0 !important;
+    margin-top:0 !important;
+  }
+}
+</style>
+
+<!-- === إضافة خفيفة أسفل الملف (مكرّرة لدعم بعض الأجهزة) === -->
+<style>
+@media (max-width:768px){
+  body.item-page{ margin-top:0!important; padding-top:0!important; }
+  body.item-page .items-shell{ margin-top:0!important; padding-top:0!important; }
+  body.item-page .gallery{
+    margin-top:calc(-1 * env(safe-area-inset-top,0px)) !important;
+    border-top:0 !important;
+    padding-top:0 !important;
+  }
+  body.item-page .gallery-main{
+    height:calc(58vh + env(safe-area-inset-top,0px)) !important;
+    border-radius:0 !important;
+  }
+  body.item-page .gallery > .air-fab{ display:none !important; }
+  body.item-page .air-fab-right{
+    top:calc(8px + env(safe-area-inset-top,0px)) !important;
+  }
+}
+/* دعم iOS الأقدم (constant) */
+@media (max-width:768px){
+  body.item-page .gallery{
+    margin-top:calc(-1 * constant(safe-area-inset-top,0px)) !important;
+  }
+  body.item-page .gallery-main{
+    height:calc(58vh + constant(safe-area-inset-top,0px)) !important;
+  }
+}
+/* ========= FINAL TOP FIX (item page only) ========= */
+@media (max-width:768px){
+  body.item-page header,
+  body.item-page .navbar,
+  body.item-page #topbar,
+  body.item-page .site-header{
+    display:none !important;
+  }
+  body.item-page main,
+  body.item-page .content,
+  body.item-page .items-shell{
+    margin-top:0 !important;
+    padding-top:0 !important;
+  }
+  body.item-page .gallery{
+    background:#fff !important;
+    border:0 !important;
+    margin-top:calc(-1 * env(safe-area-inset-top, 0px)) !important;
+  }
+  body.item-page .gallery-main{
+    border-radius:0 !important;
+    height:calc(58vh + env(safe-area-inset-top, 0px)) !important;
+    padding-top:env(safe-area-inset-top, 0px) !important;
+  }
+  /* أخفاء الطفل المباشر فقط كما سبق */
+  body.item-page .gallery > .air-fab{ display:none !important; }
+  body.item-page .air-fab-right .air-fab{
+  display:grid !important;
+}
+
+  html, body.item-page{
+    background:#fff !important;
+    margin:0 !important;
+    padding:0 !important;
+    overscroll-behavior-y: none;
+  }
+}
+
+/* تأثيرات بسيطة للقلب عند التفعيل (كما هي) */
+.air-fab.is-on { background: rgba(255,255,255,.95); }
+.air-fab.is-on i { filter: drop-shadow(0 1px 2px rgba(0,0,0,.15)); }
+@keyframes fav-pop { 0%{transform:scale(1)} 40%{transform:scale(1.25)} 100%{transform:scale(1)} }
+.air-fab.fav-anim { animation: fav-pop .25s ease; }
+
+/* ===== ADD: رابط البلاغ أسفل الصفحة (موبايل) ===== */
+@media (max-width:768px){
+  .air-report-bottom{
+    margin:14px 0 0 0;
+    padding:8px 16px calc(18px + env(safe-area-inset-bottom,0px));
+    text-align:center;
+  }
+  .air-report-link{
+    font-weight:700;
+    text-decoration:underline;
+    color:#111;
+  }
+}
+</style>
+
+<style>
+@media (max-width:768px){
+  /* اخفِ قائمة الثلاث نقاط كليًا على الموبايل */
+  .gallery-menu{ display:none !important; }
+
+  /* تأكيد ظهور أزرار اليمين فوق الصورة */
+  .air-fab-right{ 
+    display:flex !important;
+    top:calc(8px + env(safe-area-inset-top,0px));
+    right:12px; z-index:10002;
+  }
+}
+</style>
+
+<style>
+@media (max-width:768px){
+  .offcanvas-top{
+    border-bottom-left-radius:18px;
+    border-bottom-right-radius:18px;
+    padding-top:calc(8px + env(safe-area-inset-top,0px));
+  }
+}
+
+@media (max-width:768px){
+  .offcanvas-top{
+    border-bottom-left-radius:18px;
+    border-bottom-right-radius:18px;
+
+    /* احترام النوتش */
+    padding-top:calc(10px + env(safe-area-inset-top,0px));
+
+    /* مهم: حساب ارتفاع شريط Contact الحقيقي */
+    padding-bottom:calc(14px + var(--airbar-h, 80px) + env(safe-area-inset-bottom,0px));
+
+    /* اجعل الارتفاع عمليًا كامل الشاشة */
+    height:auto;
+    max-height:calc(100dvh - env(safe-area-inset-top,0px));
+    overscroll-behavior:contain;
+  }
+  .offcanvas-top.show{ transform:none; }
+  .offcanvas-top{ --bs-offcanvas-height: calc(100dvh - env(safe-area-inset-top,0px)); }
+}
+
+@media (max-width:768px){
+  .air-fab-left{
+    position:absolute; left:12px; display:flex; gap:10px;
+    top:calc(8px + env(safe-area-inset-top,0px)); z-index:10001;
+  }
+  .air-fab-right{
+    position:absolute; right:12px; display:flex; gap:10px;
+    top:calc(8px + env(safe-area-inset-top,0px)); z-index:10002;
+  }
+}
+
+</style>
+
+<style>
+@media (max-width:768px){
+  /* تأكيد ظهور الحاوية يمين الصورة */
+  .air-fab-right{
+    position:absolute !important;
+    top:calc(8px + env(safe-area-inset-top,0px)) !important;
+    right:12px !important;
+    display:flex !important;
+    gap:10px;
+    z-index:10020 !important; /* أعلى من أي عناصر أخرى */
+  }
+  /* تأكيد ظهور الأزرار نفسها */
+  .air-fab-right .air-fab{
+    display:grid !important;
+    opacity:1 !important;
+    visibility:visible !important;
+    z-index:10021 !important;
+  }
+  /* في حال كان هناك أي قاعدة عامة كانت تخفي كل .air-fab على الموبايل */
+  .air-fab{ display:grid; }
+}
+</style>
+<style>
+@media (max-width:768px){
+  /* أخفِ أي زر رجوع عام في الهيدر على صفحة المنشور */
+  body.item-page .btn-back,
+  body.item-page .back-button,
+  body.item-page .nav-back,
+  body.item-page .header-back,
+  body.item-page header .air-fab,
+  body.item-page .navbar .air-fab {
+    display:none !important;
+  }
+
+  /* أبقِ زر الرجوع الأبيض الخاص بالمعرض فقط */
+  .air-fab-left .air-fab{
+    display:grid !important;
+    z-index:10022 !important;
+  }
+
+  /* ولو وُجد زر .air-fab كابن مباشر للـ .gallery (الأسود) اخفه */
+  .gallery > .air-fab{ display:none !important; }
+}
+</style>
+
+<style>
+/* ===== Mobile hard-override ===== */
+@media (max-width:768px){
+  /* موضع الحاويتين وثقلهما فوق كل شيء */
+  .air-fab-left,
+  .air-fab-right{
+    position:absolute !important;
+    top:calc(8px + env(safe-area-inset-top,0px)) !important;
+    z-index:10050 !important;
+  }
+  .air-fab-left{ left:12px !important; display:flex !important; gap:10px !important; }
+  .air-fab-right{ right:12px !important; display:flex !important; gap:10px !important; }
+
+  /* شكل الأزرار وإجبار ظهورها */
+  .air-fab,
+  .air-fab-right .air-fab,
+  .air-fab-left .air-fab{
+    display:grid !important;
+    place-items:center !important;
+    width:44px !important; height:44px !important; border-radius:50% !important;
+    background:rgba(255,255,255,.95) !important;
+    box-shadow:0 8px 20px rgba(0,0,0,.18) !important;
+    opacity:1 !important; visibility:visible !important;
+    z-index:10051 !important;
+    border:0 !important;
+  }
+
+  /* أي زر رجوع “أسود/عام” يظهر داخل المعرض نحذفه بصريًا */
+  .gallery > .air-fab:not(.keep),
+  .gallery .btn-back,
+  .gallery .back-button,
+  .gallery .nav-back,
+  .gallery .header-back{
+    display:none !important;
+  }
+
+  /* لا تسمح لأي غطاء أن يحجب الأزرار */
+  .gallery-main,
+  .gallery-main *{
+    z-index:auto;
+  }
+  .hero-fade{ z-index:1 !important; }
+  .air-fab-left, .air-fab-right{ z-index:10050 !important; } /* أعلى من الهيرو */
+}
+</style>
+
+<style>
+  /* اخفاء زر الرجوع الأسود العائم داخل صفحة العناصر فقط */
+  body.item-page #flowBackBtn{ display:none !important; }
+
+  /* لو الزر يُرسم كزر عائم عام باسم air-fab داخل الجاليري */
+  body.item-page .air-fab{ display:none !important; }
+
+  /* لو عندك صنف بديل لزر الرجوع */
+  body.item-page .air-fab-left,
+  body.item-page .air-fab-back{ display:none !important; }
+</style>
+
+
+<style>
+/* ===== FAB: صفحة item فقط ===== */
+@media (max-width:768px){
+  /* أخفِ أي زر عام يأتي من base أو ملفات أخرى */
   body.item-page #flowBackBtn,
   body.item-page .btn-back,
   body.item-page .back-button,
   body.item-page .nav-back,
   body.item-page header .air-fab,
   body.item-page .navbar .air-fab,
-  body.item-page .gallery > .air-fab:not(.keep){ display:none !important; }
+  body.item-page .gallery > .air-fab:not(.keep) {  /* الزر الأسود داخل المعرض */
+    display:none !important;
+  }
 
   /* حاويات الصفحة الحالية فقط */
-  .air-fab-left,.air-fab-right{
-    position:absolute; top:calc(8px + env(safe-area-inset-top,0px));
-    z-index:10020; display:flex; gap:10px;
+  .air-fab-left,
+  .air-fab-right{
+    position:absolute; 
+    top:calc(8px + env(safe-area-inset-top,0px));
+    z-index:10020;
+    display:flex; gap:10px;
   }
   .air-fab-left{ left:12px; }
   .air-fab-right{ right:12px; }
 
   /* شكل الزر الأبيض */
   .air-fab{
-    appearance:none;border:0;cursor:pointer;width:44px;height:44px;border-radius:50%;
-    background:rgba(255,255,255,.95); box-shadow:0 8px 20px rgba(0,0,0,.18);
+    appearance:none; border:0; cursor:pointer;
+    width:44px; height:44px; border-radius:50%;
+    background:rgba(255,255,255,.95);
+    box-shadow:0 8px 20px rgba(0,0,0,.18);
     display:grid; place-items:center; font-size:18px; line-height:1;
   }
 
@@ -141,19 +528,9 @@
     padding:6px 10px; border-radius:10px; font-size:12px;
     border:1px solid rgba(255,255,255,.25); z-index:10010;
   }
-
-  /* إزالة الفراغ أعلى الصفحة وتثبيت الهيرو */
-  body.item-page{ margin-top:0 !important; padding-top:0 !important; }
-  .items-shell{ margin-top:0 !important; }
-  .gallery{ margin-top:calc(-1 * env(safe-area-inset-top, 0px)); }
-  .gallery-main{ height:calc(58vh + env(safe-area-inset-top, 0px)); border-radius:0; }
 }
-
-/* تأثيرات بسيطة للقلب */
-.air-fab.is-on { background: rgba(255,255,255,.95); }
-@keyframes fav-pop { 0%{transform:scale(1)} 40%{transform:scale(1.25)} 100%{transform:scale(1)} }
-.air-fab.fav-anim { animation: fav-pop .25s ease; }
 </style>
+
 
 <section class="items-shell">
   {% if not item %}
@@ -164,6 +541,7 @@
     <!-- ===== Item / Gallery ===== -->
     <div class="card-glass">
       <div class="gallery">
+        {# Gather images #}
         {% set _srcs = [] %}
         {% if item.image_path %}
           {% set _raw = item.image_path %}
@@ -179,46 +557,31 @@
           {{- s -}}
         {%- endmacro %}
 
-        <div class="gallery-main" id="gMain">
-          {% if current %}
-            <img id="mainImg" src="{{ build_src(current) }}" alt="item image">
-            <div class="hero-fade" id="heroFade"></div>
-          {% else %}
-            <div style="display:grid;place-items:center;height:100%;color:#8b94a7;font-size:13px">No image</div>
-          {% endif %}
+        <!-- يسار: رجوع -->
+<div class="air-fab-left d-md-none">
+  <a class="air-fab keep" href="javascript:history.length>1?history.back():'/'" aria-label="Back">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+</div>
 
-          <!-- ⋮ Menu (desktop) -->
-          <div class="gallery-menu dropdown d-none d-md-block">
-            <button class="btn-menu" data-bs-toggle="dropdown" aria-expanded="false" title="Options">⋮</button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><button class="dropdown-item" data-bs-toggle="offcanvas" data-bs-target="#reportSheet" id="openReportBtn" type="button">🚩 Report listing</button></li>
-            </ul>
-          </div>
+<!-- يمين: مشاركة + حفظ -->
+<div class="air-fab-right d-md-none">
+  <button type="button"
+          class="air-fab js-share keep"
+          aria-label="Share"
+          data-title="{{ item.title }}"
+          data-url="{{ request.url }}">
+    <i class="bi bi-share"></i>
+  </button>
+  <button type="button"
+          class="air-fab js-fav keep"
+          aria-label="Save"
+          data-item-id="{{ item.id }}"
+          data-on="{{ 1 if is_favorite else 0 }}">
+    <i class="bi {% if is_favorite %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+  </button>
+</div>
 
-          <!-- يسار: رجوع (أبيض) -->
-          <div class="air-fab-left d-md-none">
-            <a class="air-fab keep" href="javascript:history.length>1?history.back():'/'" aria-label="Back">
-              <i class="bi bi-arrow-left"></i>
-            </a>
-          </div>
-
-          <!-- يمين: مشاركة + حفظ (أبيض) -->
-          <div class="air-fab-right d-md-none">
-            <button type="button"
-                    class="air-fab js-share keep"
-                    aria-label="Share"
-                    data-title="{{ item.title }}"
-                    data-url="{{ request.url }}">
-              <i class="bi bi-share"></i>
-            </button>
-            <button type="button"
-                    class="air-fab js-fav keep"
-                    aria-label="Save"
-                    data-item-id="{{ item.id }}"
-                    data-on="{{ 1 if is_favorite else 0 }}">
-              <i class="bi {% if is_favorite %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
-            </button>
-          </div>
 
           <div class="air-pager" id="airPager">1/1</div>
 
@@ -240,6 +603,7 @@
           {{ item.category_label or item.category }} • {{ item.city or "No city" }} • {{ owner and owner.country or "" }}
         </div>
 
+        {# Rating row with black/gray stars #}
         {% set _avg = item_rating_avg or 0 %}
         {% set _cnt = item_rating_count or 0 %}
         <div class="laurel-row">
@@ -315,7 +679,9 @@
           {% endif %}
           <a class="btnx btnx-ghost" href="/items">↩︎ Back to list</a>
         </div>
-      </div>
+
+        <!-- ===== ADD: رابط البلاغ بأسفل الصفحة (موبايل فقط) ===== -->
+        
 
       <!-- ===== Bottom Booking Bar (Fixed) ===== -->
       <div class="air-fixed" id="airBar">
@@ -363,12 +729,17 @@
         {% endif %}
       </div>
     </div>
-  </div>
 
+  </div>
   <div class="hr d-md-none"></div>
-  <p class="air-report-bottom d-md-none" style="text-align:center">
-    <a href="#reportSheet" class="air-report-link" data-bs-toggle="offcanvas" data-bs-target="#reportSheet" aria-controls="reportSheet">🚩 Report this listing</a>
+  <p class="air-report-bottom d-md-none">
+    <a href="#reportSheet"
+       class="air-report-link"
+       data-bs-toggle="offcanvas"
+       data-bs-target="#reportSheet"
+       aria-controls="reportSheet">🚩 Report this listing</a>
   </p>
+
 
   {% endif %}
 </section>
@@ -419,7 +790,7 @@
   const heroFade = document.getElementById('heroFade');
   const airBar = document.getElementById('airBar');
 
-  /* Lightbox (kept ready if أردت تكبير الصورة) */
+  /* ==== Lightbox ==== */
   let lb=null;
   function openLightbox(src){
     if(!lb){
@@ -433,13 +804,13 @@
     lb.querySelector('img').src=src; lb.classList.add('show');
   }
 
-  /* Image counter */
+  /* ==== Image counter ==== */
   function setPager(i,t){ if(pager){ pager.textContent=(i+1)+'/'+t; } }
   let activeIdx=0;
   function totalImgs(){ return thumbs ? thumbs.querySelectorAll('img').length : (main?1:0); }
   setPager(activeIdx,totalImgs());
 
-  /* Switch image */
+  /* ==== Switch image ==== */
   if(thumbs && main){
     thumbs.addEventListener('click', (e)=>{
       const t=e.target;
@@ -453,9 +824,13 @@
         document.getElementById('rf_image_url')?.setAttribute('value', t.dataset.src || t.src || '');
       }
     });
+    let sx=0,dx=0;
+    thumbs.addEventListener('touchstart',e=>{sx=e.touches[0].clientX},{passive:true});
+    thumbs.addEventListener('touchmove',e=>{dx=e.touches[0].clientX-sx},{passive:true});
+    thumbs.addEventListener('touchend',()=>{thumbs.scrollBy({left:-dx,behavior:'smooth'});sx=dx=0});
   }
 
-  /* Airbnb-like parallax+fade */
+  /* ==== Parallax + Fade (Airbnb-like) ==== */
   const gMain = document.getElementById('gMain');
   function onScroll(){
     if(!gMain || !main) return;
@@ -471,47 +846,73 @@
   window.addEventListener('scroll', onScroll, {passive:true});
   onScroll();
 
-  /* Fix bottom bar on iOS */
+  /* ==== FORCE the bar to be fixed & visible on iOS ==== */
   function portalBar(){
-    if(!airBar) return;
-    if(airBar.parentElement !== document.body){ document.body.appendChild(airBar); }
-    const under = document.getElementById('airUnder');
-    if(under && under.parentElement !== document.body){ document.body.appendChild(under); }
-    const pad = (airBar.offsetHeight || 64) + 12;
-    document.body.style.paddingBottom = pad + 'px';
-    document.documentElement.style.setProperty('--airbar-h', pad + 'px');
+  if(!airBar) return;
+  if(airBar.parentElement !== document.body){
+    document.body.appendChild(airBar);
   }
+  const under = document.getElementById('airUnder');
+  if(under && under.parentElement !== document.body){
+    document.body.appendChild(under);
+  }
+  const pad = (airBar.offsetHeight || 64) + 12; // ارتفاع الشريط + مسافة
+  document.body.style.paddingBottom = pad + 'px';
+
+  /* الجديد: مرّر الارتفاع إلى CSS ليستعمله الـ offcanvas */
+  document.documentElement.style.setProperty('--airbar-h', pad + 'px');
+}
+
   portalBar();
   window.addEventListener('resize', portalBar);
   window.addEventListener('orientationchange', portalBar);
-
   document.body.classList.add('item-page');
+
 })();
 </script>
 
 <script>document.body.classList.add('item-page');</script>
+<script>
+(function(){
+  // theme color لهذه الصفحة فقط
+  var m = document.querySelector('meta[name="theme-color"]');
+  if(m){ m.setAttribute('content', '#ffffff'); }
+
+  var ms = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+  if(!ms){
+    ms = document.createElement('meta');
+    ms.setAttribute('name','apple-mobile-web-app-status-bar-style');
+    document.head.appendChild(ms);
+  }
+  ms.setAttribute('content','default'); 
+})();
+</script>
 
 <script>
-/* Share + Favorite (نسخة واحدة فقط) */
 (function(){
+  // Share
   const shareBtn = document.querySelector('.js-share');
   if (shareBtn) {
     shareBtn.addEventListener('click', async () => {
       const url = shareBtn.dataset.url || location.href;
       const title = shareBtn.dataset.title || document.title;
       try {
-        if (navigator.share) { await navigator.share({ title, url }); }
-        else if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(url); alert('Link copied ✔');
+        if (navigator.share) {
+          await navigator.share({ title, url });
+        } else if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(url);
+          alert('Link copied ✔');
         } else {
           const ta = document.createElement('textarea');
           ta.value = url; document.body.appendChild(ta); ta.select();
-          document.execCommand('copy'); ta.remove(); alert('Link copied ✔');
+          document.execCommand('copy'); document.body.removeChild(ta);
+          alert('Link copied ✔');
         }
-      } catch(e){}
+      } catch(e){ /* user cancelled */ }
     });
   }
 
+  // Favorite toggle
   const favBtn = document.querySelector('.js-fav');
   if (favBtn) {
     const icon = favBtn.querySelector('i');
@@ -520,51 +921,125 @@
       favBtn.classList.toggle('is-on', !!on);
       icon.classList.toggle('bi-heart-fill', !!on);
       icon.classList.toggle('bi-heart', !on);
-      favBtn.classList.remove('fav-anim'); void favBtn.offsetWidth; favBtn.classList.add('fav-anim');
+      favBtn.classList.remove('fav-anim');
+      void favBtn.offsetWidth;
+      favBtn.classList.add('fav-anim');
     }
+
     favBtn.addEventListener('click', async () => {
-      try{
+      const itemId = favBtn.dataset.itemId;
+      try {
         const res = await fetch('/api/favorites/toggle', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({ item_id: favBtn.dataset.itemId })
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ item_id: itemId })
         });
         if (res.status === 401) { location.href = '/login?next=' + encodeURIComponent(location.pathname); return; }
         const data = await res.json();
         if (data && data.ok) setOn(!!data.favorited);
-      }catch(e){
+      } catch(e){
         setOn(favBtn.dataset.on !== '1');
       }
     });
+
     setOn(favBtn.dataset.on === '1');
   }
 })();
 </script>
 
 <script>
-/* ضبط الحقول الافتراضية لصفحة البلاغ */
 (function(){
   const main  = document.getElementById('mainImg');
+  // ... موجودة بقية المتغيرات
+
+  /* اضبط الحقول الافتراضية للصورة الحالية */
   if (main) {
     const initSrc = main.getAttribute('src') || '';
     document.getElementById('rf_image_index')?.setAttribute('value','0');
     document.getElementById('rf_image_url')?.setAttribute('value', initSrc);
   }
+
+  /* باقي سكربتاتك كما هي… */
 })();
 </script>
 
 <script>
-/* تهيئة meta theme-color لهذه الصفحة */
 (function(){
-  var m = document.querySelector('meta[name="theme-color"]');
-  if(m){ m.setAttribute('content', '#ffffff'); }
-  var ms = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-  if(!ms){
-    ms = document.createElement('meta');
-    ms.setAttribute('name','apple-mobile-web-app-status-bar-style');
-    document.head.appendChild(ms);
+  const gMain   = document.getElementById('gMain');
+  if(!gMain) return;
+
+  /* 1) إزالة أي زر غريب داخل المعرض (غير مُعلّم بـ .keep) */
+  [...gMain.querySelectorAll('.air-fab')]
+    .filter(el => !el.classList.contains('keep') && !el.closest('.air-fab-left') && !el.closest('.air-fab-right'))
+    .forEach(el => el.remove());
+
+  /* 2) تأكيد وجود الحاويتين وإنشاءهما إن لزم */
+  let afLeft  = document.getElementById('afLeft');
+  let afRight = document.getElementById('afRight');
+
+  if(!afLeft){
+    afLeft = document.createElement('div');
+    afLeft.id = 'afLeft';
+    afLeft.className = 'air-fab-left d-md-none';
+    afLeft.innerHTML = (
+      '<a class="air-fab keep" href="javascript:history.length>1?history.back():\'/\'" aria-label="Back">' +
+      '<i class="bi bi-arrow-left"></i></a>'
+    );
+    gMain.appendChild(afLeft);
   }
-  ms.setAttribute('content','default');
+  if(!afRight){
+    afRight = document.createElement('div');
+    afRight.id = 'afRight';
+    afRight.className = 'air-fab-right';
+    afRight.innerHTML = (
+      '<button type="button" class="air-fab js-share keep" aria-label="Share"><i class="bi bi-share"></i></button>' +
+      '<button type="button" class="air-fab js-fav keep" aria-label="Save"><i class="bi bi-heart"></i></button>'
+    );
+    gMain.appendChild(afRight);
+  }
+
+  /* 3) رفع الطبقات فوق أي غطاء */
+  const setZ = () => {
+    const zTop = 10050;
+    afLeft.style.zIndex  = zTop;
+    afRight.style.zIndex = zTop;
+    const hf = document.getElementById('heroFade');
+    if(hf) hf.style.zIndex = 1;
+  };
+  setZ();
+  window.addEventListener('scroll', setZ, {passive:true});
+  window.addEventListener('resize', setZ);
+
+  /* 4) سلوك المشاركة (لو أنشأنا الأزرار ديناميكيًا) */
+  const shareBtn = afRight.querySelector('.js-share');
+  if(shareBtn && !shareBtn._wired){
+    shareBtn._wired = true;
+    shareBtn.addEventListener('click', async () => {
+      const url = shareBtn.dataset.url || location.href;
+      const title = shareBtn.dataset.title || document.title;
+      try {
+        if (navigator.share) { await navigator.share({ title, url }); }
+        else if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(url); alert('Link copied ✔');
+        } else {
+          const ta=document.createElement('textarea'); ta.value=url; document.body.appendChild(ta);
+          ta.select(); document.execCommand('copy'); ta.remove(); alert('Link copied ✔');
+        }
+      } catch(e){}
+    });
+  }
+
+  /* 5) ملء حقول البلاغ بصورة المعاينة الحالية */
+  const mainImg = document.getElementById('mainImg');
+  if (mainImg){
+    document.getElementById('rf_image_index')?.setAttribute('value','0');
+    document.getElementById('rf_image_url')?.setAttribute('value', mainImg.getAttribute('src') || '');
+  }
 })();
 </script>
+
+<script>document.body.classList.add('item-page');</script>
+
+
 
 {% endblock %}
