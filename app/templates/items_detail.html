@@ -64,10 +64,7 @@
 
 /* الغلاف */
 .sim-media{ position:relative; border-radius:16px; overflow:hidden; }
-.sim-img{
-  width:100%; display:block;
-  aspect-ratio:16/9; object-fit:cover; height:auto;
-}
+.sim-img{ width:100%; display:block; aspect-ratio:16/9; object-fit:cover; height:auto; }
 
 /* العناصر الطافية فوق الصورة */
 .sim-chip, .sim-rate{
@@ -806,11 +803,10 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 </script>
 
-{# ====== إغلاق البلوك الأول حتى لا يحدث تكرار ====== #}
 {% endblock %}
 
-{# ===== DUPLICATE COPY (kept as-is, ignored by Jinja) — START =====
-app/templates/items_detail.html (copy below preserved): #}
+{# ======== PRESERVED DUPLICATE (commented so Jinja ignores it) ========
+app/templates/items_detail.html (second copy as you sent it): 
 {# app/templates/items_detail.html #}
 {% extends "base.html" %}
 {% from "_badges.html" import render_badges %}
@@ -822,4 +818,4 @@ app/templates/items_detail.html (copy below preserved): #}
 {{ caller() if false }}
 
 {% endblock %}
-{# ===== DUPLICATE COPY — END ===== #}
+#}
