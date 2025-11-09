@@ -56,13 +56,6 @@
 .stat-right a{font-weight:800;text-decoration:none;color:#111}
 .stat-right a .muted{color:#717171}
 
-/* ===== Laurel row (rating-only between two images) ===== */
-.laurel-wrap{display:flex;align-items:center;justify-content:center;gap:14px;margin:8px 0 10px}
-.laurel{height:20px;width:auto;opacity:.95}
-.rating-center{display:flex;align-items:center;gap:8px}
-.rating-center .num{font-weight:800;color:#111}
-.rating-center small{color:#6b7280;font-weight:600}
-
 /* ====== Mobile look ====== */
 @media (max-width:768px){
   body{background:#fff;color:#111}
@@ -253,22 +246,6 @@
           <div class="stat-right">
             <a href="#reviews"><span class="num-ltr">{{ _cnt }}</span> <span class="muted">review(s)</span></a>
           </div>
-        </div>
-
-        {# ===== Rating-only row between two images ===== #}
-        <div class="laurel-wrap">
-          <img class="laurel" src="{{ url_for('static', path='photo/ion.png') }}" alt="">
-          <div class="rating-center" aria-label="{{ '%.2f'|format(_avg) }} out of 5">
-            <span class="stars-bw">
-              {% set full = _avg|round(0, 'floor')|int %}
-              {% set half = 1 if _avg - full >= 0.5 else 0 %}
-              {% for i in range(0, full) %}<span class="full">★</span>{% endfor %}
-              {% if half %}<span class="full">★</span>{% endif %}
-              {% for i in range(0, 5 - full - half) %}<span class="empty">☆</span>{% endfor %}
-            </span>
-            <span class="num">{{ '%.2f'|format(_avg) }} / 5</span>
-          </div>
-          <img class="laurel" src="{{ url_for('static', path='photo/ion2.png') }}" alt="">
         </div>
 
         <div class="hr"></div>
