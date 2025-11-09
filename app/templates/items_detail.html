@@ -383,6 +383,51 @@
 
 </style>
 
+<style>
+@media (max-width:768px){
+  /* تأكيد ظهور الحاوية يمين الصورة */
+  .air-fab-right{
+    position:absolute !important;
+    top:calc(8px + env(safe-area-inset-top,0px)) !important;
+    right:12px !important;
+    display:flex !important;
+    gap:10px;
+    z-index:10020 !important; /* أعلى من أي عناصر أخرى */
+  }
+  /* تأكيد ظهور الأزرار نفسها */
+  .air-fab-right .air-fab{
+    display:grid !important;
+    opacity:1 !important;
+    visibility:visible !important;
+    z-index:10021 !important;
+  }
+  /* في حال كان هناك أي قاعدة عامة كانت تخفي كل .air-fab على الموبايل */
+  .air-fab{ display:grid; }
+}
+</style>
+<style>
+@media (max-width:768px){
+  /* أخفِ أي زر رجوع عام في الهيدر على صفحة المنشور */
+  body.item-page .btn-back,
+  body.item-page .back-button,
+  body.item-page .nav-back,
+  body.item-page .header-back,
+  body.item-page header .air-fab,
+  body.item-page .navbar .air-fab {
+    display:none !important;
+  }
+
+  /* أبقِ زر الرجوع الأبيض الخاص بالمعرض فقط */
+  .air-fab-left .air-fab{
+    display:grid !important;
+    z-index:10022 !important;
+  }
+
+  /* ولو وُجد زر .air-fab كابن مباشر للـ .gallery (الأسود) اخفه */
+  .gallery > .air-fab{ display:none !important; }
+}
+</style>
+
 
 <section class="items-shell">
   {% if not item %}
@@ -816,5 +861,22 @@
   }
 })();
 </script>
+
+<script>
+(function(){
+  const main  = document.getElementById('mainImg');
+  // ... موجودة بقية المتغيرات
+
+  /* اضبط الحقول الافتراضية للصورة الحالية */
+  if (main) {
+    const initSrc = main.getAttribute('src') || '';
+    document.getElementById('rf_image_index')?.setAttribute('value','0');
+    document.getElementById('rf_image_url')?.setAttribute('value', initSrc);
+  }
+
+  /* باقي سكربتاتك كما هي… */
+})();
+</script>
+
 
 {% endblock %}
