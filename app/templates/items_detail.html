@@ -69,6 +69,12 @@
   }
   .air-fab{position:absolute;top:16px;left:12px}
   .air-fab-right{position:absolute;top:16px;right:12px;display:flex;gap:10px}
+
+  /* ===== ADD: حاوية اليسار للموبايل (سهم الرجوع) ===== */
+  .air-fab-left{position:absolute;left:12px;display:flex;gap:10px;
+    top:calc(8px + env(safe-area-inset-top, 0px)); z-index:10001;}
+  .air-fab-right{top:calc(8px + env(safe-area-inset-top, 0px)); z-index:10001;}
+
   .air-pager{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:6px 10px;border-radius:10px;font-size:12px;border:1px solid rgba(255,255,255,.25)}
 
   /* الورقة البيضاء المنحنية + حد ناعم */
@@ -92,23 +98,21 @@
 
   /* ======= Fixed Bottom Booking Bar ======= */
   .air-fixed{
-  position:fixed !important; left:0; right:0; bottom:0;
-  z-index:10000;
-  background:#fff !important;
-  border-top:1px solid #eee;
-  padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
-  display:flex; align-items:center; justify-content:space-between; gap:12px;
-  box-shadow:0 -6px 18px rgba(0,0,0,.08);
-}
-.air-underlay{
-  position:fixed; left:0; right:0; bottom:0;
-  height:calc(18px + env(safe-area-inset-bottom,0px));
-  background:#fff;
-  z-index:9999;
-  pointer-events:none;
-}
-
-
+    position:fixed !important; left:0; right:0; bottom:0;
+    z-index:10000;
+    background:#fff !important;
+    border-top:1px solid #eee;
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    box-shadow:0 -6px 18px rgba(0,0,0,.08);
+  }
+  .air-underlay{
+    position:fixed; left:0; right:0; bottom:0;
+    height:calc(18px + env(safe-area-inset-bottom,0px));
+    background:#fff;
+    z-index:9999;
+    pointer-events:none;
+  }
 
   .air-price{display:flex;flex-direction:column;line-height:1.2}
   .air-price .now{font-weight:800;font-size:20px}
@@ -143,15 +147,15 @@
 /* نجوم أبيض/رمادي عامة — سطور موحّدة لكل النجوم */
 .stars-bw{
   display:inline-flex;
-  gap:4px;            /* مسافة ثابتة بين كل نجمة ونجمة */
+  gap:4px;
   font-size:16px;
   line-height:1;
-  letter-spacing:0;   /* إلغاء أي تباعد إضافي */
+  letter-spacing:0;
 }
 .stars-bw span{
   display:inline-block;
-  width:1em;          /* يجعل عرض كل نجمة متساويًا */
-  text-align:center;  /* توسيط رمز النجمة داخل المربع */
+  width:1em;
+  text-align:center;
 }
 .stars-bw .full{color:#111}
 .stars-bw .empty{color:#bdbdbd}
@@ -159,14 +163,14 @@
 /* مساافات متساوية لنجوم التعليقات */
 .rv-stars{
   display:inline-flex;
-  gap:4px;          /* نفس المسافة بين كل نجمة */
-  font-size:16px;   /* وحّد الحجم مع السطر العلوي (عدّلها لو تحب) */
+  gap:4px;
+  font-size:16px;
   line-height:1;
-  letter-spacing:0; /* منع أي تباعد إضافي من الخط */
+  letter-spacing:0;
 }
 .rv-stars span{
   display:inline-block;
-  width:1em;        /* عرض ثابت لكل نجمة = توزيع متساوٍ */
+  width:1em;
   text-align:center;
 }
 .rv-stars .full{color:#111}
@@ -178,7 +182,6 @@
     margin-top:0 !important;
     padding-top:0 !important;
   }
-
   .items-shell{ margin-top:0 !important; }
 
   /* سحب الصورة للأعلى حتى تلمس الحافة */
@@ -201,14 +204,10 @@
     margin:0 !important;
     padding:0 !important;
   }
-
-  /* 2-2) تأكد أن حاوية الصفحة ما عندها مسافة علوية */
   body.item-page .items-shell{ 
     margin-top:0 !important; 
     padding-top:0 !important;
   }
-
-  /* 2-3) اجعل الهيرو/المعرض يلمس أعلى الشاشة (يعالج النوتش والـsafe-area) */
   body.item-page .gallery{
     background:#fff !important;
     border:0 !important;
@@ -220,18 +219,17 @@
     padding-top:env(safe-area-inset-top, 0px) !important;
   }
 
-  /* 2-4) أخفِ زر الرجوع الدائري فقط، واترك أزرار المشاركة والحفظ */
+  /* أخفِ زر الرجوع الدائري المباشر فقط داخل المعرض */
   body.item-page .gallery > .air-fab{ 
     display:none !important; 
   }
-  /* لو حبيت ترفع أزرار اليمين تحت النوتش */
+  /* أزرار اليمين تبقى أسفل النوتش */
   body.item-page .air-fab-right{ 
     top:calc(8px + env(safe-area-inset-top, 0px)) !important; 
   }
 }
 
 @media (max-width:768px){
-  /* ازالة أي padding/margin علوي قادم من pt-*/mt-* داخل صفحة المنشور فقط */
   body.item-page [class^="pt-"], 
   body.item-page [class*=" pt-"],
   body.item-page [class^="mt-"], 
@@ -240,17 +238,13 @@
     margin-top:0 !important;
   }
 }
-
 </style>
 
-<!-- === ضع هذا البلوك في أسفل الملف (إضافة فقط) === -->
+<!-- === إضافة خفيفة أسفل الملف (مكرّرة لدعم بعض الأجهزة) === -->
 <style>
 @media (max-width:768px){
-  /* إزالة أي مسافات علوية لهذه الصفحة فقط */
   body.item-page{ margin-top:0!important; padding-top:0!important; }
   body.item-page .items-shell{ margin-top:0!important; padding-top:0!important; }
-
-  /* اسحب المعرض للأعلى بقدر الـ safe-area و زد ارتفاعه بنفس المقدار */
   body.item-page .gallery{
     margin-top:calc(-1 * env(safe-area-inset-top,0px)) !important;
     border-top:0 !important;
@@ -260,19 +254,12 @@
     height:calc(58vh + env(safe-area-inset-top,0px)) !important;
     border-radius:0 !important;
   }
-
-  /* أخفِ زر الرجوع الدائري فقط (الزر الأيسر داخل الصورة) */
-  body.item-page .gallery > .air-fab{
-    display:none !important;
-  }
-
-  /* ارفع أزرار اليمين أسفل النوتش */
+  body.item-page .gallery > .air-fab{ display:none !important; }
   body.item-page .air-fab-right{
     top:calc(8px + env(safe-area-inset-top,0px)) !important;
   }
 }
-
-/* دعم iOS الأقدم (constant) – إضافة اختيارية */
+/* دعم iOS الأقدم (constant) */
 @media (max-width:768px){
   body.item-page .gallery{
     margin-top:calc(-1 * constant(safe-area-inset-top,0px)) !important;
@@ -281,27 +268,20 @@
     height:calc(58vh + constant(safe-area-inset-top,0px)) !important;
   }
 }
-
 /* ========= FINAL TOP FIX (item page only) ========= */
 @media (max-width:768px){
-
-  /* 1) أخفِ أي ترويسة/ناڤبار علوية قد تضيف padding-top أو margin-top */
   body.item-page header,
   body.item-page .navbar,
   body.item-page #topbar,
   body.item-page .site-header{
     display:none !important;
   }
-
-  /* 2) صفّر أي padding/margin علوي في الحاويات العامة */
   body.item-page main,
   body.item-page .content,
   body.item-page .items-shell{
     margin-top:0 !important;
     padding-top:0 !important;
   }
-
-  /* 3) اسحب المعرض ليَمسّ أعلى الشاشة مع احترام الـ safe-area */
   body.item-page .gallery{
     background:#fff !important;
     border:0 !important;
@@ -312,16 +292,10 @@
     height:calc(58vh + env(safe-area-inset-top, 0px)) !important;
     padding-top:env(safe-area-inset-top, 0px) !important;
   }
+  /* أخفاء الطفل المباشر فقط كما سبق */
+  body.item-page .gallery .air-fab{ display:none !important; }
+  body.item-page .air-fab-right .air-fab{ display:grid !important; }
 
-  /* 4) إخفاء سهم الرجوع الدائري فقط — إبقاء أزرار المشاركة/الحفظ */
-  body.item-page .gallery .air-fab{               /* أي زر مفرد داخل المعرض */
-    display:none !important;
-  }
-  body.item-page .air-fab-right .air-fab{         /* أزرار اليمين تبقى ظاهرة */
-    display:grid !important;
-  }
-
-  /* 5) منع أي فراغ علوي بسبب مطاط iOS قدر الإمكان */
   html, body.item-page{
     background:#fff !important;
     margin:0 !important;
@@ -330,13 +304,26 @@
   }
 }
 
+/* تأثيرات بسيطة للقلب عند التفعيل (كما هي) */
 .air-fab.is-on { background: rgba(255,255,255,.95); }
 .air-fab.is-on i { filter: drop-shadow(0 1px 2px rgba(0,0,0,.15)); }
 @keyframes fav-pop { 0%{transform:scale(1)} 40%{transform:scale(1.25)} 100%{transform:scale(1)} }
 .air-fab.fav-anim { animation: fav-pop .25s ease; }
 
+/* ===== ADD: رابط البلاغ أسفل الصفحة (موبايل) ===== */
+@media (max-width:768px){
+  .air-report-bottom{
+    margin:14px 0 0 0;
+    padding:8px 16px calc(18px + env(safe-area-inset-bottom,0px));
+    text-align:center;
+  }
+  .air-report-link{
+    font-weight:700;
+    text-decoration:underline;
+    color:#111;
+  }
+}
 </style>
-
 
 <section class="items-shell">
   {% if not item %}
@@ -371,7 +358,7 @@
             <div style="display:grid;place-items:center;height:100%;color:#8b94a7;font-size:13px">No image</div>
           {% endif %}
 
-          <!-- ⋮ Menu -->
+          <!-- ⋮ Menu (تبقى كما هي) -->
           <div class="gallery-menu dropdown">
             <button class="btn-menu" data-bs-toggle="dropdown" aria-expanded="false" title="Options">⋮</button>
             <ul class="dropdown-menu dropdown-menu-end">
@@ -379,40 +366,45 @@
             </ul>
           </div>
 
-          <!-- FABs + Counter -->
-<a class="air-fab" href="/" aria-label="Home"><i class="bi bi-arrow-left"></i></a>
-
-<div class="air-fab-right">
-  <!-- مشاركة -->
-  <button type="button"
-          class="air-fab js-share"
-          aria-label="Share"
-          data-title="{{ item.title }}"
-          data-url="{{ request.url }}">
-    <i class="bi bi-share"></i>
-  </button>
-
-  <!-- مفضّلة -->
-  <button type="button"
-          class="air-fab js-fav"
-          aria-label="Save"
-          data-item-id="{{ item.id }}"
-          data-on="{{ 1 if is_favorite else 0 }}">
-    <i class="bi {% if is_favorite %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
-  </button>
-</div>
-
-<div class="air-pager" id="airPager">1/1</div>
-
-
-        {% if _srcs|length > 1 %}
-          <div class="thumbs" id="thumbs">
-            {% for s in _srcs %}
-              {% set src = build_src(s.strip()) %}
-              <img data-src="{{ src }}" data-index="{{ loop.index0 }}" class="{% if loop.index0==0 %}active{% endif %}" src="{{ src }}" alt="thumb {{ loop.index }}">
-            {% endfor %}
+          <!-- ===== ADD: يسار الصورة — سهم الرجوع داخل حاوية الموبايل ===== -->
+          <div class="air-fab-left d-md-none">
+            <a class="air-fab" href="javascript:history.length>1?history.back():'/'" aria-label="Back">
+              <i class="bi bi-arrow-left"></i>
+            </a>
           </div>
-        {% endif %}
+
+          <!-- FABs + Counter (يمين تبقى كما هي) -->
+          <div class="air-fab-right">
+            <!-- مشاركة -->
+            <button type="button"
+                    class="air-fab js-share"
+                    aria-label="Share"
+                    data-title="{{ item.title }}"
+                    data-url="{{ request.url }}">
+              <i class="bi bi-share"></i>
+            </button>
+
+            <!-- مفضّلة -->
+            <button type="button"
+                    class="air-fab js-fav"
+                    aria-label="Save"
+                    data-item-id="{{ item.id }}"
+                    data-on="{{ 1 if is_favorite else 0 }}">
+              <i class="bi {% if is_favorite %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+            </button>
+          </div>
+
+          <div class="air-pager" id="airPager">1/1</div>
+
+          {% if _srcs|length > 1 %}
+            <div class="thumbs" id="thumbs">
+              {% for s in _srcs %}
+                {% set src = build_src(s.strip()) %}
+                <img data-src="{{ src }}" data-index="{{ loop.index0 }}" class="{% if loop.index0==0 %}active{% endif %}" src="{{ src }}" alt="thumb {{ loop.index }}">
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
       </div>
 
       <!-- ===== White Rounded Sheet ===== -->
@@ -498,6 +490,16 @@
           {% endif %}
           <a class="btnx btnx-ghost" href="/items">↩︎ Back to list</a>
         </div>
+
+        <!-- ===== ADD: رابط البلاغ بأسفل الصفحة (موبايل فقط) ===== -->
+        <div class="hr d-md-none"></div>
+        <p class="air-report-bottom d-md-none">
+          <a href="#reportSheet"
+             class="air-report-link"
+             data-bs-toggle="offcanvas"
+             data-bs-target="#reportSheet"
+             aria-controls="reportSheet">🚩 Report this listing</a>
+        </p>
       </div>
 
       <!-- ===== Bottom Booking Bar (Fixed) ===== -->
@@ -516,7 +518,6 @@
       </div>
     </div>
     <div class="air-underlay" id="airUnder"></div>
-
 
     <!-- ===== Owner Card ===== -->
     <div class="card-glass">
@@ -650,27 +651,21 @@
 
   /* ==== FORCE the bar to be fixed & visible on iOS ==== */
   function portalBar(){
-  if(!airBar) return;
-
-  // انقل الشريط إلى <body>
-  if(airBar.parentElement !== document.body){
-    document.body.appendChild(airBar);
+    if(!airBar) return;
+    if(airBar.parentElement !== document.body){
+      document.body.appendChild(airBar);
+    }
+    const under = document.getElementById('airUnder');
+    if(under && under.parentElement !== document.body){
+      document.body.appendChild(under);
+    }
+    const pad = (airBar.offsetHeight || 64) + 12;
+    document.body.style.paddingBottom = pad + 'px';
   }
-
-  // انقل الطبقة البيضاء إلى <body>
-  const under = document.getElementById('airUnder');
-  if(under && under.parentElement !== document.body){
-    document.body.appendChild(under);
-  }
-
-  // مساحة أسفل الصفحة حتى لا يغطي الشريط المحتوى
-  const pad = (airBar.offsetHeight || 64) + 12;
-  document.body.style.paddingBottom = pad + 'px';
-}
-portalBar();
-window.addEventListener('resize', portalBar);
-window.addEventListener('orientationchange', portalBar);
-document.body.classList.add('item-page');
+  portalBar();
+  window.addEventListener('resize', portalBar);
+  window.addEventListener('orientationchange', portalBar);
+  document.body.classList.add('item-page');
 
 })();
 </script>
@@ -678,12 +673,10 @@ document.body.classList.add('item-page');
 <script>document.body.classList.add('item-page');</script>
 <script>
 (function(){
-  // بدّل لون شريط المتصفح أعلى iOS لهذه الصفحة فقط
+  // theme color لهذه الصفحة فقط
   var m = document.querySelector('meta[name="theme-color"]');
   if(m){ m.setAttribute('content', '#ffffff'); }
 
-
-  // لو عندك PWA/Standalone يمكن إضافة هذا أيضاً اختيارياً:
   var ms = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
   if(!ms){
     ms = document.createElement('meta');
@@ -709,13 +702,12 @@ document.body.classList.add('item-page');
           await navigator.clipboard.writeText(url);
           alert('Link copied ✔');
         } else {
-          // Fallback قديم
           const ta = document.createElement('textarea');
           ta.value = url; document.body.appendChild(ta); ta.select();
           document.execCommand('copy'); document.body.removeChild(ta);
           alert('Link copied ✔');
         }
-      } catch(e){ /* المستخدم أغلق sheet */ }
+      } catch(e){ /* user cancelled */ }
     });
   }
 
@@ -728,7 +720,7 @@ document.body.classList.add('item-page');
       favBtn.classList.toggle('is-on', !!on);
       icon.classList.toggle('bi-heart-fill', !!on);
       icon.classList.toggle('bi-heart', !on);
-      favBtn.classList.remove('fav-anim'); // لإعادة تشغيل الأنيميشن
+      favBtn.classList.remove('fav-anim');
       void favBtn.offsetWidth;
       favBtn.classList.add('fav-anim');
     }
@@ -745,12 +737,10 @@ document.body.classList.add('item-page');
         const data = await res.json();
         if (data && data.ok) setOn(!!data.favorited);
       } catch(e){
-        // فشل الشبكة: اعكس محليًا كتجربة
         setOn(favBtn.dataset.on !== '1');
       }
     });
 
-    // حالة البداية
     setOn(favBtn.dataset.on === '1');
   }
 })();
