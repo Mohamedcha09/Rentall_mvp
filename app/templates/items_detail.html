@@ -159,6 +159,30 @@
   .gallery-main{ height:calc(58vh + env(safe-area-inset-top,0px)) !important; border-radius:0 !important; }
 }
 
+/* ===== Fullscreen hero (mobile) + لا حجز مساحة من القالب ===== */
+@media (max-width:768px){
+  /* صفّر المتغير الذي يحقن padding من الـbase */
+  :root{ --appbar-h:0px !important; }
+
+  /* صفّر أي padding/margin أعلى من الحاويات العليا */
+  body.item-page{ margin-top:0 !important; padding-top:0 !important; }
+  .item-page .page,
+  .item-page #page-wrapper,
+  .item-page main{
+    padding-top:0 !important;
+    margin-top:0 !important;
+    border-top:0 !important;
+  }
+
+  /* اجعل الصورة تملأ الشاشة بالكامل */
+  .gallery{ margin-top:0 !important; }
+  .gallery-main{
+    height:calc(100dvh + env(safe-area-inset-top,0px)) !important; /* ملء الشاشة */
+    max-height:none !important;
+    border-radius:0 !important;
+  }
+}
+
 </style>
 
 
@@ -541,6 +565,22 @@ document.addEventListener('DOMContentLoaded', function () {
   document.body.classList.add('item-page');          // للتأكد
   var pw = document.getElementById('page-wrapper');
   if (pw) pw.style.paddingTop = '0px';               // يلغي inline padding-top=85px
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // صفّر أي حقن inline من القالب
+  document.body.classList.add('item-page');
+  document.documentElement.style.setProperty('--appbar-h','0px','important');
+
+  ['.page','#page-wrapper','main'].forEach(sel=>{
+    document.querySelectorAll(sel).forEach(el=>{
+      el.style.setProperty('padding-top','0px','important');
+      el.style.setProperty('margin-top','0px','important');
+      el.style.setProperty('border-top','0px','important');
+    });
+  });
 });
 </script>
 
