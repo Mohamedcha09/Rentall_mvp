@@ -231,6 +231,16 @@
   }
 }
 
+@media (max-width:768px){
+  /* ازالة أي padding/margin علوي قادم من pt-*/mt-* داخل صفحة المنشور فقط */
+  body.item-page [class^="pt-"], 
+  body.item-page [class*=" pt-"],
+  body.item-page [class^="mt-"], 
+  body.item-page [class*=" mt-"]{
+    padding-top:0 !important;
+    margin-top:0 !important;
+  }
+}
 
 </style>
 
@@ -645,6 +655,22 @@ document.body.classList.add('item-page');
 </script>
 
 <script>document.body.classList.add('item-page');</script>
+<script>
+(function(){
+  // بدّل لون شريط المتصفح أعلى iOS لهذه الصفحة فقط
+  var m = document.querySelector('meta[name="theme-color"]');
+  if(m){ m.setAttribute('content', '#000000'); }
+
+  // لو عندك PWA/Standalone يمكن إضافة هذا أيضاً اختيارياً:
+  var ms = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+  if(!ms){
+    ms = document.createElement('meta');
+    ms.setAttribute('name','apple-mobile-web-app-status-bar-style');
+    document.head.appendChild(ms);
+  }
+  ms.setAttribute('content','black-translucent');
+})();
+</script>
 
 
 {% endblock %}
