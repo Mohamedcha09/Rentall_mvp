@@ -294,7 +294,9 @@
   }
   /* أخفاء الطفل المباشر فقط كما سبق */
   body.item-page .gallery .air-fab{ display:none !important; }
-  body.item-page .air-fab-right .air-fab{ display:grid !important; }
+  body.item-page .air-fab-right .air-fab{
+  display:grid !important;
+}
 
   html, body.item-page{
     background:#fff !important;
@@ -347,6 +349,40 @@
     padding-top:calc(8px + env(safe-area-inset-top,0px));
   }
 }
+
+@media (max-width:768px){
+  .offcanvas-top{
+    /* زوايا عليا دائرية كما هي */
+    border-bottom-left-radius:18px;
+    border-bottom-right-radius:18px;
+
+    /* احترام الـ notch */
+    padding-top:calc(10px + env(safe-area-inset-top,0px));
+    /* مساحة سفلية حتى لا يغطيها شريط Contact */
+    padding-bottom:calc(14px + env(safe-area-inset-bottom,0px));
+
+    /* اجعل الارتفاع عمليًا كامل الشاشة */
+    height:auto; /* لتسمح بالمحتوى */
+    max-height:calc(100dvh - env(safe-area-inset-top,0px));
+    overscroll-behavior:contain;
+  }
+  /* عندما تُفتح: لا تُبقِ أي ترانزلايت يمنع الظهور الكامل */
+  .offcanvas-top.show{ transform:none; }
+}
+@media (max-width:768px){
+  .offcanvas-top{ --bs-offcanvas-height: calc(100dvh - env(safe-area-inset-top,0px)); }
+}
+@media (max-width:768px){
+  .air-fab-left{
+    position:absolute; left:12px; display:flex; gap:10px;
+    top:calc(8px + env(safe-area-inset-top,0px)); z-index:10001;
+  }
+  .air-fab-right{
+    position:absolute; right:12px; display:flex; gap:10px;
+    top:calc(8px + env(safe-area-inset-top,0px)); z-index:10002;
+  }
+}
+
 </style>
 
 
@@ -517,15 +553,7 @@
         </div>
 
         <!-- ===== ADD: رابط البلاغ بأسفل الصفحة (موبايل فقط) ===== -->
-        <div class="hr d-md-none"></div>
-        <p class="air-report-bottom d-md-none">
-          <a href="#reportSheet"
-             class="air-report-link"
-             data-bs-toggle="offcanvas"
-             data-bs-target="#reportSheet"
-             aria-controls="reportSheet">🚩 Report this listing</a>
-        </p>
-      </div>
+        
 
       <!-- ===== Bottom Booking Bar (Fixed) ===== -->
       <div class="air-fixed" id="airBar">
@@ -575,6 +603,16 @@
     </div>
 
   </div>
+  <div class="hr d-md-none"></div>
+  <p class="air-report-bottom d-md-none">
+    <a href="#reportSheet"
+       class="air-report-link"
+       data-bs-toggle="offcanvas"
+       data-bs-target="#reportSheet"
+       aria-controls="reportSheet">🚩 Report this listing</a>
+  </p>
+
+
   {% endif %}
 </section>
 
