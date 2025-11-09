@@ -144,48 +144,31 @@
 
 /* ==== Kill top gap from base header (mobile, this page only) ==== */
 @media (max-width: 768px){
-  /* 1) امنع أي حجز مساحة أعلى الصفحة */
   html, body.item-page{ margin-top:0 !important; padding-top:0 !important; scroll-padding-top:0 !important; }
-  .item-page #page-wrapper{ padding-top:0 !important; }           /* يتغلّب على style inline في الـdiv */
-
-  /* 2) أخفِ شريط الترويسة إن وُجد (أسماء شائعة) */
+  .item-page #page-wrapper{ padding-top:0 !important; }
   .item-page .navbar,
   .item-page .appbar,
   .item-page .site-nav,
   .item-page .airbar-top{ display:none !important; }
-
-  /* 3) الصوره العلوية تلتصق بالحافة العلوية مع احترام الـsafe area */
   .gallery{ margin-top:calc(-1 * env(safe-area-inset-top,0px)) !important; }
   .gallery-main{ height:calc(58vh + env(safe-area-inset-top,0px)) !important; border-radius:0 !important; }
 }
 
-/* ===== Fullscreen hero (mobile) + لا حجز مساحة من القالب ===== */
+/* ===== Fullscreen hero (mobile) ===== */
 @media (max-width:768px){
-  /* صفّر المتغير الذي يحقن padding من الـbase */
   :root{ --appbar-h:0px !important; }
-
-  /* صفّر أي padding/margin أعلى من الحاويات العليا */
   body.item-page{ margin-top:0 !important; padding-top:0 !important; }
   .item-page .page,
   .item-page #page-wrapper,
-  .item-page main{
-    padding-top:0 !important;
-    margin-top:0 !important;
-    border-top:0 !important;
-  }
-
-  /* اجعل الصورة تملأ الشاشة بالكامل */
+  .item-page main{ padding-top:0 !important; margin-top:0 !important; border-top:0 !important; }
   .gallery{ margin-top:0 !important; }
   .gallery-main{
-    height:calc(100dvh + env(safe-area-inset-top,0px)) !important; /* ملء الشاشة */
+    height:calc(100dvh + env(safe-area-inset-top,0px)) !important;
     max-height:none !important;
     border-radius:0 !important;
   }
 }
-
 </style>
-
-
 
 <section class="items-shell">
   {% if not item %}
@@ -290,66 +273,19 @@
 
         <div class="hr"></div>
 
-        <!-- ===== REVIEWS ===== -->
-        <h5 id="reviews" style="margin:0 0 8px 0">Reviews</h5>
-        {% if item_reviews and item_reviews|length %}
-          <div class="rv-strip">
-            {% for r in item_reviews %}
-              <div class="rv-card" id="review-{{ r.id }}">
-                <div class="rv-head">
-                  {% set avatar = (r.rater.avatar_path if r.rater and r.rater.avatar_path else url_for('static', path='placeholder.png')) %}
-                  <img class="rv-ava" src="{{ avatar }}" alt="avatar">
-                  <div>
-                    <div style="font-weight:700">{{ (r.rater.first_name ~ ' ' ~ r.rater.last_name) if r.rater else 'Renter' }}</div>
-                    <div class="rv-meta">{{ r.city or '' }} <span>•</span> {{ r.created_at.strftime("%B %Y") if r.created_at }}</div>
-                  </div>
-                </div>
-                <div class="rv-stars" title="{{ r.stars }} / 5">
-                  {% for _ in range(r.stars) %}<span class="full">★</span>{% endfor %}
-                  {% for _ in range(5 - r.stars) %}<span class="empty">☆</span>{% endfor %}
-                </div>
-                {% if r.comment %}
-                  <div style="margin-top:6px;white-space:pre-wrap">{{ r.comment }}</div>
-                  <a href="/items/{{ item.id }}#review-{{ r.id }}" class="rv-more">View more</a>
-                {% endif %}
-              </div>
-            {% endfor %}
-          </div>
-          <a href="/items/{{ item.id }}#all-reviews" class="btn-outline-pale">View all {{ _cnt }} review(s)</a>
-        {% else %}
-          <div class="small-muted">No reviews yet.</div>
-        {% endif %}
-
-        <div class="hr"></div>
-
-        <!-- Buttons -->
+        <!-- ===== Buttons (موحّدة) ===== -->
         <div class="btns-row">
-          {% if owner %}
-            <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">💬 Contact owner</a>
-            {% if session_user and session_user.status == 'approved' and session_user.id != owner.id %}
-              <a class="btnx btnx-green" href="/bookings/new?item_id={{ item.id }}">✅ Book now</a>
-            {% elif not session_user %}
-              <a class="btnx btnx-primary" href="/login">Log in to book</a>
-            {% else %}
-              <span class="badge-pill" title="Account activation required to book">Your account isn’t activated for booking</span>
-            {% endif %}
-          {% endif %}
+          <a class="btnx btnx-green" href="/bookings/new?item_id={{ item.id }}">✅ Book now</a>
           <a class="btnx btnx-ghost" href="/items">↩︎ Back to list</a>
         </div>
 
-        <!-- Bottom Booking Bar -->
+        <!-- Bottom Booking Bar (موحّد) -->
         <div class="air-fixed" id="airBar">
           <div class="air-price">
             <span class="now">{{ item.price_per_day }} {{ item.currency or 'KWD' }}</span>
             <span class="per">per day</span>
           </div>
-          {% if owner and session_user and session_user.status == 'approved' and session_user.id != owner.id %}
-            <a class="air-cta" href="/bookings/new?item_id={{ item.id }}">Book now</a>
-          {% elif not session_user %}
-            <a class="air-cta" href="/login">Sign in to pay</a>
-          {% else %}
-            <a class="air-cta" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">Contact</a>
-          {% endif %}
+          <a class="air-cta" href="/bookings/new?item_id={{ item.id }}">Book now</a>
         </div>
       </div>
       <div class="air-underlay" id="airUnder"></div>
@@ -377,7 +313,6 @@
           <div class="hr"></div>
           <div class="btns-row">
             <a href="/users/{{ owner.id }}" class="btnx btnx-ghost">👤 Public profile</a>
-            <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">Message owner</a>
           </div>
         {% else %}
           <div class="small-muted">Owner information not available.</div>
@@ -490,7 +425,6 @@
 <script>
 /* Share + Favorite (optimistic) */
 (function () {
-  // Share
   const shareBtn = document.querySelector('.js-share');
   if (shareBtn) {
     shareBtn.addEventListener('click', async () => {
@@ -509,7 +443,6 @@
     });
   }
 
-  // Favorite
   const favBtn = document.querySelector('.js-fav');
   if (!favBtn) return;
   const icon = favBtn.querySelector('i');
@@ -525,8 +458,7 @@
 
   async function toggleFavorite() {
     const next = favBtn.dataset.on !== '1';
-    paint(next); // UI first
-
+    paint(next);
     try {
       const res = await fetch('/api/favorites/toggle', {
         method: 'POST',
@@ -534,46 +466,30 @@
         credentials: 'same-origin',
         body: JSON.stringify({ item_id: favBtn.dataset.itemId })
       });
-
       if (res.status === 401) {
         paint(!next);
         location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
         return;
       }
-
       let data = null;
       const ct = res.headers.get('content-type') || '';
       if (ct.includes('application/json')) data = await res.json(); else await res.text();
-
-      if (data && data.ok && typeof data.favorited === 'boolean') {
-        paint(!!data.favorited);
-      }
-    } catch (e) {
-      paint(!next); // rollback on network failure
-    }
+      if (data && data.ok && typeof data.favorited === 'boolean') { paint(!!data.favorited); }
+    } catch (e) { paint(!next); }
   }
 
   favBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(); });
-
-  // Initial state
   paint(favBtn.dataset.on === '1');
 })();
 </script>
 
 <script>
+/* صفر أي padding-top محقون من القالب */
 document.addEventListener('DOMContentLoaded', function () {
-  document.body.classList.add('item-page');          // للتأكد
-  var pw = document.getElementById('page-wrapper');
-  if (pw) pw.style.paddingTop = '0px';               // يلغي inline padding-top=85px
-});
-</script>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  // صفّر أي حقن inline من القالب
   document.body.classList.add('item-page');
+  var pw = document.getElementById('page-wrapper');
+  if (pw) pw.style.paddingTop = '0px';
   document.documentElement.style.setProperty('--appbar-h','0px','important');
-
   ['.page','#page-wrapper','main'].forEach(sel=>{
     document.querySelectorAll(sel).forEach(el=>{
       el.style.setProperty('padding-top','0px','important');
