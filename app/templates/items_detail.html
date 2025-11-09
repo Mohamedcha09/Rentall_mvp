@@ -315,6 +315,18 @@
 @media (prefers-reduced-motion:reduce){
   .sim-card, .sim-media::after{ transition:none }
 }
+/* Badge عند وجود تقييم تبقى كما هي (لا تغيّرها) */
+/* Placeholder عند عدم وجود تقييم */
+.sim-rate.empty{
+  height:8px; line-height:8px; padding:0; width:48px;
+  border-radius:999px;
+  background:rgba(17,24,39,.14);
+  border:0;
+  display:inline-block;
+}
+.sim-rate.empty .star{ display:none; }
+
+
 </style>
 
 
@@ -505,13 +517,16 @@
             <img class="sim-img" src="{{ cover or url_for('static', path='placeholder.png') }}"
                  alt="{{ s.title|e }}">
 
-            {# شارة التقييم #}
-            {% set s_avg = (s.avg_stars if s.avg_stars is defined else (s.rating_avg if s.rating_avg is defined else None)) %}
-            {% if s_avg %}
-              <div class="sim-rate" aria-label="{{ '%.1f'|format(s_avg) }} stars">
-                <span class="star">⭐</span>{{ '%.1f'|format(s_avg) }}
-              </div>
-            {% endif %}
+            {# شارة التقييم: دائماً موجودة #}
+{% set s_avg = (s.avg_stars if s.avg_stars is defined else (s.rating_avg if s.rating_avg is defined else None)) %}
+{% set has_rating = (s_avg is not none and s_avg|float > 0) %}
+<div class="sim-rate {{ '' if has_rating else 'empty' }}"
+     aria-label="{{ has_rating and ('%.1f'|format(s_avg) ~ ' stars') or 'No ratings yet' }}">
+  {% if has_rating %}
+    <span class="star">⭐</span>{{ '%.1f'|format(s_avg) }}
+  {% endif %}
+</div>
+
 
             {# شارة الفئة #}
             <div class="sim-pill">{{ s.category_label or s.category }}</div>
