@@ -330,6 +330,11 @@
   }
 }
 
+.air-fab.is-on { background: rgba(255,255,255,.95); }
+.air-fab.is-on i { filter: drop-shadow(0 1px 2px rgba(0,0,0,.15)); }
+@keyframes fav-pop { 0%{transform:scale(1)} 40%{transform:scale(1.25)} 100%{transform:scale(1)} }
+.air-fab.fav-anim { animation: fav-pop .25s ease; }
+
 </style>
 
 
@@ -375,14 +380,30 @@
           </div>
 
           <!-- FABs + Counter -->
-          <a class="air-fab" href="/" aria-label="Home"><i class="bi bi-arrow-left"></i></a>
+<a class="air-fab" href="/" aria-label="Home"><i class="bi bi-arrow-left"></i></a>
 
-          <div class="air-fab-right">
-            <button type="button" aria-label="Share" class="air-fab" onclick="navigator.share ? navigator.share({url:location.href}) : alert('Copy the link manually');"><i class="bi bi-share"></i></button>
-            <button type="button" aria-label="Save" class="air-fab"><i class="bi bi-heart"></i></button>
-          </div>
-          <div class="air-pager" id="airPager">1/1</div>
-        </div>
+<div class="air-fab-right">
+  <!-- مشاركة -->
+  <button type="button"
+          class="air-fab js-share"
+          aria-label="Share"
+          data-title="{{ item.title }}"
+          data-url="{{ request.url }}">
+    <i class="bi bi-share"></i>
+  </button>
+
+  <!-- مفضّلة -->
+  <button type="button"
+          class="air-fab js-fav"
+          aria-label="Save"
+          data-item-id="{{ item.id }}"
+          data-on="{{ 1 if is_favorite else 0 }}">
+    <i class="bi {% if is_favorite %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+  </button>
+</div>
+
+<div class="air-pager" id="airPager">1/1</div>
+
 
         {% if _srcs|length > 1 %}
           <div class="thumbs" id="thumbs">
@@ -670,6 +691,68 @@ document.body.classList.add('item-page');
     document.head.appendChild(ms);
   }
   ms.setAttribute('content','default'); 
+})();
+</script>
+
+<script>
+(function(){
+  // Share
+  const shareBtn = document.querySelector('.js-share');
+  if (shareBtn) {
+    shareBtn.addEventListener('click', async () => {
+      const url = shareBtn.dataset.url || location.href;
+      const title = shareBtn.dataset.title || document.title;
+      try {
+        if (navigator.share) {
+          await navigator.share({ title, url });
+        } else if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(url);
+          alert('Link copied ✔');
+        } else {
+          // Fallback قديم
+          const ta = document.createElement('textarea');
+          ta.value = url; document.body.appendChild(ta); ta.select();
+          document.execCommand('copy'); document.body.removeChild(ta);
+          alert('Link copied ✔');
+        }
+      } catch(e){ /* المستخدم أغلق sheet */ }
+    });
+  }
+
+  // Favorite toggle
+  const favBtn = document.querySelector('.js-fav');
+  if (favBtn) {
+    const icon = favBtn.querySelector('i');
+    function setOn(on){
+      favBtn.dataset.on = on ? '1':'0';
+      favBtn.classList.toggle('is-on', !!on);
+      icon.classList.toggle('bi-heart-fill', !!on);
+      icon.classList.toggle('bi-heart', !on);
+      favBtn.classList.remove('fav-anim'); // لإعادة تشغيل الأنيميشن
+      void favBtn.offsetWidth;
+      favBtn.classList.add('fav-anim');
+    }
+
+    favBtn.addEventListener('click', async () => {
+      const itemId = favBtn.dataset.itemId;
+      try {
+        const res = await fetch('/api/favorites/toggle', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ item_id: itemId })
+        });
+        if (res.status === 401) { location.href = '/login?next=' + encodeURIComponent(location.pathname); return; }
+        const data = await res.json();
+        if (data && data.ok) setOn(!!data.favorited);
+      } catch(e){
+        // فشل الشبكة: اعكس محليًا كتجربة
+        setOn(favBtn.dataset.on !== '1');
+      }
+    });
+
+    // حالة البداية
+    setOn(favBtn.dataset.on === '1');
+  }
 })();
 </script>
 
