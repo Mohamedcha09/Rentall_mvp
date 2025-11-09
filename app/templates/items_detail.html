@@ -92,15 +92,23 @@
 
   /* ======= Fixed Bottom Booking Bar ======= */
   .air-fixed{
-  position:fixed !important; left:0; right:0;
-  bottom:calc(env(safe-area-inset-bottom,0px) + 0px);
+  position:fixed !important; left:0; right:0; bottom:0;
   z-index:10000;
-  background:#ffffff !important;
+  background:#fff !important;
   border-top:1px solid #eee;
-  padding:12px 16px;
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
   display:flex; align-items:center; justify-content:space-between; gap:12px;
   box-shadow:0 -6px 18px rgba(0,0,0,.08);
 }
+.air-underlay{
+  position:fixed; left:0; right:0; bottom:0;
+  height:calc(18px + env(safe-area-inset-bottom,0px));
+  background:#fff;
+  z-index:9999;
+  pointer-events:none;
+}
+
+
 
   .air-price{display:flex;flex-direction:column;line-height:1.2}
   .air-price .now{font-weight:800;font-size:20px}
@@ -132,21 +140,39 @@
   .offcanvas-bottom{border-top-left-radius:18px;border-top-right-radius:18px}
 }
 
-/* نجوم أبيض/رمادي عامة */
+/* نجوم أبيض/رمادي عامة — سطور موحّدة لكل النجوم */
 .stars-bw{
   display:inline-flex;
-  gap:4px;              /* ← زدنا المسافة لتصبح موحدة بين كل النجوم */
+  gap:4px;            /* مسافة ثابتة بين كل نجمة ونجمة */
   font-size:16px;
   line-height:1;
-  letter-spacing:0;     /* ← تأكد من إلغاء أي تباعد إضافي */
+  letter-spacing:0;   /* إلغاء أي تباعد إضافي */
 }
 .stars-bw span{
   display:inline-block;
-  width:1em;            /* ← يجعل كل نجمة بنفس العرض */
-  text-align:center;    /* ← لتوسيط النجمة داخل المربع */
+  width:1em;          /* يجعل عرض كل نجمة متساويًا */
+  text-align:center;  /* توسيط رمز النجمة داخل المربع */
 }
 .stars-bw .full{color:#111}
 .stars-bw .empty{color:#bdbdbd}
+
+/* مساافات متساوية لنجوم التعليقات */
+.rv-stars{
+  display:inline-flex;
+  gap:4px;          /* نفس المسافة بين كل نجمة */
+  font-size:16px;   /* وحّد الحجم مع السطر العلوي (عدّلها لو تحب) */
+  line-height:1;
+  letter-spacing:0; /* منع أي تباعد إضافي من الخط */
+}
+.rv-stars span{
+  display:inline-block;
+  width:1em;        /* عرض ثابت لكل نجمة = توزيع متساوٍ */
+  text-align:center;
+}
+.rv-stars .full{color:#111}
+.rv-stars .empty{color:#bdbdbd}
+
+
 </style>
 
 <section class="items-shell">
@@ -309,6 +335,8 @@
         {% endif %}
       </div>
     </div>
+    <div class="air-underlay" id="airUnder"></div>
+
 
     <!-- ===== Owner Card ===== -->
     <div class="card-glass">
@@ -442,17 +470,27 @@
 
   /* ==== FORCE the bar to be fixed & visible on iOS ==== */
   function portalBar(){
-    if(!airBar) return;
-    // انقله إلى <body> لتجنب مشاكل position:fixed داخل عناصر بفلتر/تحويلات
-    if(airBar.parentElement !== document.body){
-      document.body.appendChild(airBar);
-    }
-    // وفر مساحة تحت المحتوى كي لا يغطيه الشريط
-    const pad = airBar.offsetHeight + 12;
-    document.body.style.paddingBottom = pad + 'px';
+  if(!airBar) return;
+
+  // انقل الشريط إلى <body>
+  if(airBar.parentElement !== document.body){
+    document.body.appendChild(airBar);
   }
-  portalBar();
-  window.addEventListener('resize', portalBar);
+
+  // انقل الطبقة البيضاء إلى <body>
+  const under = document.getElementById('airUnder');
+  if(under && under.parentElement !== document.body){
+    document.body.appendChild(under);
+  }
+
+  // مساحة أسفل الصفحة حتى لا يغطي الشريط المحتوى
+  const pad = (airBar.offsetHeight || 64) + 12;
+  document.body.style.paddingBottom = pad + 'px';
+}
+portalBar();
+window.addEventListener('resize', portalBar);
+window.addEventListener('orientationchange', portalBar);
+
 })();
 </script>
 
