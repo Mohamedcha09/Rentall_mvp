@@ -4,6 +4,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_, and_
 import os, secrets, shutil
+import unicodedata
 
 # Cloudinary (upload images to the cloud)
 import cloudinary
@@ -25,7 +26,14 @@ ITEMS_DIR = os.path.join(UPLOADS_ROOT, "items")
 os.makedirs(ITEMS_DIR, exist_ok=True)
 
 
-# ---------------- Similar items helpers ----------------
+# ---------------- Utilities ----------------
+def _strip_accents(s: str) -> str:
+    if not s:
+        return ""
+    # يحوّل Montréal -> Montreal
+    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+
+
 def _haversine_expr(lat1, lon1, lat2, lon2):
     """
     SQL expression for great-circle distance (km).
@@ -40,23 +48,8 @@ def _haversine_expr(lat1, lon1, lat2, lon2):
         )
     )
 
+
 # ---------------- Similar items helpers ----------------
-import unicodedata
-
-def _strip_accents(s: str) -> str:
-    if not s: return ""
-    # يحوّل Montréal -> Montreal
-    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
-
-def _haversine_expr(lat1, lon1, lat2, lon2):
-    return 6371 * 2 * func.asin(
-        func.sqrt(
-            func.pow(func.sin(func.radians(lat2 - lat1) / 2), 2) +
-            func.cos(func.radians(lat1)) *
-            func.cos(func.radians(lat2)) *
-            func.pow(func.sin(func.radians(lon2 - lon1) / 2), 2)
-        )
-    )
 def get_similar_items(db: Session, item: Item):
     """
     يرجّع عناصر مشابهة (نفس الفئة + قرب جغرافي ≤ 50 كم إن توفر lat/lng،
@@ -106,18 +99,18 @@ def get_similar_items(db: Session, item: Item):
             base_q
             .add_columns(dist_expr)
             .filter(Item.latitude.isnot(None), Item.longitude.isnot(None))
-            .having(dist_expr <= 50)          # باستخدام label أعلاه
+            .filter(dist_expr <= 50)   # ← بدلاً من HAVING
             .order_by(func.random())
             .limit(limit)
             .all()
         )
 
         for it, avg_stars, rating_count, distance_km in nearby_rows:
-            if it.id in picked_ids: 
+            if it.id in picked_ids:
                 continue
-            it.avg_stars = float(avg_stars) if avg_stars is not None else None
+            it.avg_stars    = float(avg_stars) if avg_stars is not None else None
             it.rating_count = int(rating_count or 0)
-            it.distance_km = float(distance_km) if distance_km is not None else None
+            it.distance_km  = float(distance_km) if distance_km is not None else None
             results.append(it)
             picked_ids.add(it.id)
 
@@ -140,19 +133,19 @@ def get_similar_items(db: Session, item: Item):
             .all()
         )
 
-        for it, avg_stars, rating_count in city_rows:
+        for row in city_rows:
+            # مخرجات هذه الاستعلام بدون عمود المسافة: (Item, avg_stars, rating_count)
+            it, avg_stars, rating_count = row
             if it.id in picked_ids:
                 continue
-            it.avg_stars = float(avg_stars) if avg_stars is not None else None
+            it.avg_stars    = float(avg_stars) if avg_stars is not None else None
             it.rating_count = int(rating_count or 0)
-            # لا توجد مسافة هنا
             results.append(it)
             picked_ids.add(it.id)
             if len(results) >= limit:
                 break
 
     return results[:limit]
-
 
 
 # ---------------- Helpers ----------------
