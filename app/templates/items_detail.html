@@ -818,31 +818,4 @@ document.addEventListener('DOMContentLoaded', function () {
   })();
 </script>
 
-<script>
-(function(){
-  document.querySelectorAll('.js-sim-fav').forEach(btn=>{
-    const ic = btn.querySelector('i');
-    function paint(on){
-      btn.classList.toggle('on', !!on);
-      ic.classList.toggle('bi-heart-fill', !!on);
-      ic.classList.toggle('bi-heart', !on);
-    }
-    btn.addEventListener('click', async (e)=>{
-      e.preventDefault(); e.stopPropagation();
-      const id = btn.dataset.itemId;
-      const next = !btn.classList.contains('on');
-      paint(next);
-      try{
-        const r = await fetch('/api/favorites/toggle', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          credentials:'same-origin', body:JSON.stringify({item_id:id})
-        });
-        if(r.status===401){ paint(!next); location.href='/login?next='+encodeURIComponent(location.pathname+location.search); }
-      }catch{ paint(!next); }
-    });
-  });
-})();
-</script>
-
-
 {% endblock %}
