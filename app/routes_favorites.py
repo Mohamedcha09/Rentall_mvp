@@ -1,15 +1,16 @@
+# app/api_favorites.py
 from typing import List, Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from .database import get_db
 from .models import User, Item, Favorite
-from .utils import category_label  # ← we need it in the template page
+from .utils import category_label
 
 # -------------------------
-# Helper: fetch current user from session (returns None instead of raising)
+# Helper: current user (None if not logged)
 # -------------------------
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
@@ -19,7 +20,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optiona
     return db.get(User, uid)
 
 # ======================================================
-# API: /api/favorites  (add/remove/fetch favorite IDs)
+# API: /api/favorites  (add/remove/fetch/toggle)
 # ======================================================
 api = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
@@ -29,12 +30,9 @@ def list_favorite_ids(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """Returns a list of IDs for items in the current user's favorites."""
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-
-    ids = [fav.item_id for fav in db.query(Favorite).filter_by(user_id=user.id).all()]
-    return ids
+    return [fav.item_id for fav in db.query(Favorite).filter_by(user_id=user.id).all()]
 
 @api.post("/{item_id}")
 def add_favorite(
@@ -43,18 +41,14 @@ def add_favorite(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """Add an item to favorites."""
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-
     item = db.get(Item, item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
-
     exists = db.query(Favorite).filter_by(user_id=user.id, item_id=item_id).first()
     if exists:
         return {"ok": True, "msg": "already"}
-
     db.add(Favorite(user_id=user.id, item_id=item_id))
     db.commit()
     return {"ok": True}
@@ -66,20 +60,45 @@ def remove_favorite(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """Remove an item from favorites."""
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
-
     fav = db.query(Favorite).filter_by(user_id=user.id, item_id=item_id).first()
     if not fav:
         raise HTTPException(status_code=404, detail="Not in favorites")
-
     db.delete(fav)
     db.commit()
     return {"ok": True}
 
+# -------- Toggle --------
+class FavToggleIn(BaseModel):
+    item_id: int
+
+@api.post("/toggle")
+def toggle_favorite(
+    payload: FavToggleIn,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    item = db.get(Item, payload.item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    fav = db.query(Favorite).filter_by(user_id=user.id, item_id=payload.item_id).first()
+    if fav:
+        db.delete(fav)
+        db.commit()
+        return {"ok": True, "favorited": False}
+
+    db.add(Favorite(user_id=user.id, item_id=payload.item_id))
+    db.commit()
+    return {"ok": True, "favorited": True}
+
+
 # ============================================
-# Page: /favorites  (displays the user's favorite items)
+# Page: /favorites (اختياري إن كنت تستعمل صفحة مفضلات)
 # ============================================
 page = APIRouter(tags=["favorites"])
 
@@ -89,10 +108,6 @@ def favorites_page(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    UI page that shows all favorite items for the current user.
-    If not logged in, redirect to the login page.
-    """
     if not user:
         return RedirectResponse(url="/login?next=/favorites", status_code=303)
 
@@ -114,7 +129,7 @@ def favorites_page(
             "request": request,
             "title": "My Favorites",
             "session_user": request.session.get("user"),
-            "items": items,                # ← field name used by favorites.html
+            "items": items,
             "category_label": category_label,
         },
     )

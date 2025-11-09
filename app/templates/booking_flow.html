@@ -554,20 +554,21 @@
       </div>
 
       {% if item %}
-      <div class="box mt-3">
-        <h6 class="mb-2">Item</h6>
-        <div class="d-flex gap-3">
-          <img src="{{ (item and item.image_path) and (item.image_path.startswith('http://') or item.image_path.startswith('https://')) and item.image_path or ('/' ~ (item.image_path or '').lstrip('/')) if item else '/static/placeholder.jpg' }}"
-               style="width:96px;height:96px;object-fit:cover;border-radius:10px" alt="">
-          <div>
-            <div class="fw-bold">{{ item.title }}</div>
-            <div class="k">{{ category_label(item.category) }}</div>
-            <div class="k">Daily price: {{ item.price_per_day }}$</div>
-            <a class="small" href="/items/{{ item.id }}">Open item page</a>
-          </div>
-        </div>
-      </div>
-      {% endif %}
+<div class="box mt-3 d-none d-md-block">   {# اخفِ على الهاتف، وأظهر من md (>=768px) فما فوق #}
+  <h6 class="mb-2">Item</h6>
+  <div class="d-flex gap-3">
+    <img src="{{ (item and item.image_path) and (item.image_path.startswith('http://') or item.image_path.startswith('https://')) and item.image_path or ('/' ~ (item.image_path or '').lstrip('/')) if item else '/static/placeholder.jpg' }}"
+         style="width:96px;height:96px;object-fit:cover;border-radius:10px" alt="">
+    <div>
+      <div class="fw-bold">{{ item.title }}</div>
+      <div class="k">{{ category_label(item.category) }}</div>
+      <div class="k">Daily price: {{ item.price_per_day }}$</div>
+      <a class="small" href="/items/{{ item.id }}">Open item page</a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
     </div>
   </div>
 

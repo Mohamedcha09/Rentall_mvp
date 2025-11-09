@@ -13,6 +13,7 @@ from .database import get_db
 from .models import Item, User
 from .utils import CATEGORIES, category_label
 from .utils_badges import get_user_badges
+from .models import Favorite as _Fav  # ← نحتاجه لحساب حالة المفضلة
 
 router = APIRouter()
 
@@ -161,6 +162,14 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
         .scalar() or 0
     )
 
+    # ← NEW: compute favorite state for the logged-in user
+    session_u = request.session.get("user")
+    is_favorite = False
+    if session_u:
+        is_favorite = db.query(_Fav.id).filter_by(
+            user_id=session_u["id"], item_id=item.id
+        ).first() is not None
+
     return request.app.templates.TemplateResponse(
         "items_detail.html",
         {
@@ -174,6 +183,8 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             "item_rating_count": int(cnt_stars),
             # ★ important change: make the page “immersive” to hide header and navbars
             "immersive": True,
+            # ← NEW: pass favorite state to template
+            "is_favorite": is_favorite,
         }
     )
 
