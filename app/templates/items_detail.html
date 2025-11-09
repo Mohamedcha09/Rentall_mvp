@@ -272,6 +272,55 @@
     height:calc(58vh + constant(safe-area-inset-top,0px)) !important;
   }
 }
+
+/* ========= FINAL TOP FIX (item page only) ========= */
+@media (max-width:768px){
+
+  /* 1) أخفِ أي ترويسة/ناڤبار علوية قد تضيف padding-top أو margin-top */
+  body.item-page header,
+  body.item-page .navbar,
+  body.item-page #topbar,
+  body.item-page .site-header{
+    display:none !important;
+  }
+
+  /* 2) صفّر أي padding/margin علوي في الحاويات العامة */
+  body.item-page main,
+  body.item-page .content,
+  body.item-page .items-shell{
+    margin-top:0 !important;
+    padding-top:0 !important;
+  }
+
+  /* 3) اسحب المعرض ليَمسّ أعلى الشاشة مع احترام الـ safe-area */
+  body.item-page .gallery{
+    background:#000 !important;           /* لا نغيّر الثيم؛ فقط لإخفاء أي حافة فاتحة */
+    border:0 !important;
+    margin-top:calc(-1 * env(safe-area-inset-top, 0px)) !important;
+  }
+  body.item-page .gallery-main{
+    border-radius:0 !important;
+    height:calc(58vh + env(safe-area-inset-top, 0px)) !important;
+    padding-top:env(safe-area-inset-top, 0px) !important;
+  }
+
+  /* 4) إخفاء سهم الرجوع الدائري فقط — إبقاء أزرار المشاركة/الحفظ */
+  body.item-page .gallery .air-fab{               /* أي زر مفرد داخل المعرض */
+    display:none !important;
+  }
+  body.item-page .air-fab-right .air-fab{         /* أزرار اليمين تبقى ظاهرة */
+    display:grid !important;
+  }
+
+  /* 5) منع أي فراغ علوي بسبب مطاط iOS قدر الإمكان */
+  html, body.item-page{
+    background:#000 !important;
+    margin:0 !important;
+    padding:0 !important;
+    overscroll-behavior-y: none;
+  }
+}
+
 </style>
 
 
