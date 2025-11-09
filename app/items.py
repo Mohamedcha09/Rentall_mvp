@@ -10,7 +10,7 @@ import cloudinary
 import cloudinary.uploader
 
 from .database import get_db
-from .models import Item, User
+from .models import Item, User, ItemReview  
 from .utils import CATEGORIES, category_label
 from .utils_badges import get_user_badges
 from .models import Favorite as _Fav  # ← نحتاجه لحساب حالة المفضلة
@@ -315,3 +315,35 @@ def item_new_post(
     db.add(it)
     db.commit()
     return RedirectResponse(url=f"/items/{it.id}", status_code=303)
+
+
+@router.get("/items/{item_id}/reviews")
+def item_reviews_all(request: Request, item_id: int, db: Session = Depends(get_db)):
+    item = db.query(Item).get(item_id)
+    if not item:
+        return RedirectResponse(url="/items", status_code=303)
+
+    # كل التعليقات الخاصة بهذا العنصر (أحدث أولًا)
+    q = (
+        db.query(ItemReview)
+        .filter(ItemReview.item_id == item.id)
+        .order_by(ItemReview.created_at.desc())
+    )
+    reviews = q.all()
+
+    # متوسّط وعدد النجوم
+    avg = db.query(func.coalesce(func.avg(ItemReview.stars), 0)).filter(ItemReview.item_id == item.id).scalar() or 0
+    cnt = db.query(func.count(ItemReview.id)).filter(ItemReview.item_id == item.id).scalar() or 0
+
+    return request.app.templates.TemplateResponse(
+        "items_reviews.html",
+        {
+            "request": request,
+            "title": f"All reviews • {item.title}",
+            "item": item,
+            "reviews": reviews,
+            "avg": round(float(avg), 2),
+            "cnt": int(cnt),
+            "session_user": request.session.get("user"),
+        }
+    )

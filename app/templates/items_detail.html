@@ -284,6 +284,24 @@
 }
 .btnx-lightwide:hover{ background:#fff }
 
+/* أزرار الصفحة: أفقيان وبعرض متساوٍ */
+.btns-row{
+  display:flex;
+  gap:12px;
+  flex-wrap:nowrap;          /* لا تنزل أسطر */
+  justify-content:space-between;
+  width:100%;
+}
+.btns-row .btnx{
+  flex:1 1 0;                /* نفس العرض */
+  text-align:center;
+  height:52px;
+  border-radius:16px;
+}
+@media (max-width:480px){
+  .btns-row .btnx{ height:50px; }
+}
+
 
 </style>
 
@@ -450,7 +468,7 @@
     </div>
 
     <!-- زر كبير لعرض كل التعليقات -->
-    <a href="/items/{{ item.id }}#all-reviews" class="btnx btnx-lightwide" style="margin-top:10px">
+    <a href="/items/{{ item.id }}/reviews" class="btnx btnx-lightwide" style="margin-top:10px">
       View all {{ _cnt }} review(s)
     </a>
   {% else %}

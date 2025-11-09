@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+  .rev-wrap{max-width:960px;margin:18px auto;padding:0 12px}
+  .rev-head{
+    display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+    margin-bottom:14px
+  }
+  .rev-title{margin:0;font-weight:800}
+  .rev-meta{color:#6b7280}
+  .stars-big{font-size:20px;letter-spacing:0}
+  .stars-big .full{color:#111}
+  .stars-big .empty{color:#c4c4c4}
+  .rev-list{display:flex;flex-direction:column;gap:12px}
+  .rev-card{
+    background:#fff;border:1px solid #e5e7eb;border-radius:16px;
+    padding:14px;box-shadow:0 6px 14px rgba(0,0,0,.05)
+  }
+  .rev-user{display:flex;align-items:center;gap:10px}
+  .rev-ava{width:40px;height:40px;border-radius:50%;object-fit:cover}
+  .rev-when{color:#6b7280;font-size:12px}
+  .rev-body{white-space:pre-wrap;margin-top:6px}
+  .topbar{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .btnx{appearance:none;border:0;border-radius:14px;font-weight:800;letter-spacing:.2px;text-decoration:none;line-height:1;height:44px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;transition:transform .12s ease,box-shadow .2s ease,background .3s ease,opacity .2s ease}
+  .btnx-primary{background:linear-gradient(135deg,#8b5cf6,#22d3ee);color:#fff;box-shadow:0 10px 22px rgba(24,24,38,.18)}
+  .btnx-primary:hover{transform:translateY(-1px);box-shadow:0 14px 30px rgba(24,24,38,.22)}
+  .btnx-ghost{background:color-mix(in oklab, white 12%, transparent); color:#111; border:1px solid color-mix(in oklab, #22d3ee 25%, rgba(0,0,0,.12)); box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+  .btns-row{display:flex;gap:12px}
+  .btns-row .btnx{flex:1 1 0}
+</style>
+
+<section class="rev-wrap">
+  <div class="rev-head">
+    <div>
+      <h2 class="rev-title">All reviews • {{ item.title }}</h2>
+      <div class="rev-meta">
+        <span class="stars-big" aria-label="{{ '%.2f'|format(avg) }} out of 5">
+          {% set full = (avg|round(0, 'floor'))|int %}
+          {% set half = 1 if avg - full >= 0.5 else 0 %}
+          {% for _ in range(0, full) %}<span class="full">★</span>{% endfor %}
+          {% if half %}<span class="full">★</span>{% endif %}
+          {% for _ in range(0, 5 - full - half) %}<span class="empty">☆</span>{% endfor %}
+        </span>
+        <span class="num-ltr"> {{ '%.2f'|format(avg) }} / 5 • {{ cnt }} review(s)</span>
+      </div>
+    </div>
+    <a class="btnx btnx-ghost" href="/items/{{ item.id }}">↩︎ Back</a>
+  </div>
+
+  {% if reviews and reviews|length %}
+    <div class="rev-list">
+      {% for r in reviews %}
+        <article class="rev-card" id="r-{{ r.id }}">
+          <div class="rev-user">
+            {% set ava = (r.rater.avatar_path if r.rater and r.rater.avatar_path else url_for('static', path='placeholder.png')) %}
+            <img class="rev-ava" src="{{ ava }}" alt="avatar">
+            <div>
+              <div style="font-weight:700">{{ (r.rater.first_name ~ ' ' ~ r.rater.last_name) if r.rater else 'Renter' }}</div>
+              <div class="rev-when">{{ r.created_at.strftime("%B %Y") if r.created_at }}</div>
+            </div>
+          </div>
+          <div style="margin-top:6px" title="{{ r.stars }} / 5">
+            {% for _ in range(r.stars) %}<span class="full">★</span>{% endfor %}
+            {% for _ in range(5 - r.stars) %}<span class="empty">☆</span>{% endfor %}
+          </div>
+          {% if r.comment %}
+            <div class="rev-body">{{ r.comment }}</div>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="alert alert-info">No reviews yet.</div>
+  {% endif %}
+
+  <div style="height:12px"></div>
+  <div class="btns-row">
+    <a class="btnx btnx-primary" href="/bookings/new?item_id={{ item.id }}">Book now</a>
+    <a class="btnx btnx-ghost" href="/items">Browse items</a>
+  </div>
+</section>
+
+{% endblock %}
