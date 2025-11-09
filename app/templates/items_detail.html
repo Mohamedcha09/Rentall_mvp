@@ -235,6 +235,88 @@
   .offcanvas-backdrop{ z-index:10990; }
 </style>
 
+<style>
+/* ===== Similar items — new card design ===== */
+.sim-wrap{ margin:16px 0 8px }
+.sim-row{
+  display:flex; gap:14px; overflow-x:auto; scroll-snap-type:x mandatory;
+  padding:2px 12px 14px; -webkit-overflow-scrolling:touch;
+}
+.sim-card{
+  position:relative; scroll-snap-align:start; flex:0 0 78vw; max-width:78vw;
+  background:#fff; border-radius:20px; padding:16px;
+  box-shadow:0 12px 30px rgba(17,24,39,.12); border:1px solid rgba(17,24,39,.06);
+}
+@media(min-width:768px){ .sim-card{ flex:0 0 300px; max-width:300px } }
+
+.sim-media{ position:relative; border-radius:16px; overflow:hidden; }
+.sim-img{ width:100%; aspect-ratio:16/9; object-fit:cover; display:block; }
+
+/* Overlays */
+.sim-rate, .sim-pill{
+  position:absolute; top:10px; z-index:2; height:28px; line-height:28px;
+  padding:0 10px; border-radius:999px; background:#fff; color:#111;
+  border:1px solid #e5e7eb; font-weight:700; font-size:13px;
+  display:inline-flex; align-items:center; gap:6px;
+}
+.sim-rate{ right:10px; }
+.sim-rate .star{ font-size:14px }
+.sim-pill{ left:10px; font-weight:600; opacity:.95 }
+
+.sim-logo{
+  position:absolute; left:10px; bottom:10px; width:34px; height:34px; z-index:2;
+  border-radius:50%; object-fit:cover; box-shadow:0 0 0 2px #fff, 0 8px 18px rgba(0,0,0,.18);
+}
+
+/* Favorite button (hit target >= 40x40) */
+.sim-fav{
+  position:absolute; right:10px; bottom:-20px; z-index:3;
+  width:42px; height:42px; border-radius:50%; display:grid; place-items:center;
+  background:#fff; border:1px solid #e5e7eb; box-shadow:0 10px 22px rgba(0,0,0,.12);
+  cursor:pointer;
+}
+.sim-fav i{ font-size:18px }
+.sim-fav.on i{ color:var(--brand1) }
+
+/* Content */
+.sim-body{ padding-top:16px }
+.sim-title{
+  font-weight:800; font-size:18px; color:#111; margin:0 0 6px 0;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+.sim-sub{ color:#6b7280; font-size:14px; margin-bottom:6px; }
+.sim-meta{
+  color:#6b7280; font-size:13px; font-variant-numeric:tabular-nums;
+  display:flex; align-items:center; gap:8px;
+}
+.sim-meta .sep{ opacity:.5 }
+
+/* Voucher-like divider */
+.sim-cut{
+  margin:12px 0; border:0; height:0; border-top:1px dashed rgba(17,24,39,.15);
+}
+
+/* Price row */
+.sim-price-row{
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+}
+.sim-price-old{ color:#9ca3af; text-decoration:line-through; font-size:14px }
+.sim-price-now{ color:#111; font-weight:900; font-size:20px }
+.sim-unit{ color:#6b7280; font-size:12px }
+
+/* Interactions */
+.sim-card:focus-within,
+.sim-card:hover{ box-shadow:0 16px 32px rgba(17,24,39,.16) }
+.sim-media::after{
+  content:""; position:absolute; inset:0; background:transparent; transition:background .15s ease;
+}
+.sim-card:hover .sim-media::after{ background:rgba(0,0,0,.05) }
+
+@media (prefers-reduced-motion:reduce){
+  .sim-card, .sim-media::after{ transition:none }
+}
+</style>
+
 
 <section class="items-shell">
   {% if not item %}
@@ -406,34 +488,84 @@
     <div class="hr"></div>
 
     {% if similar_items and similar_items|length %}
-      <section class="sim-wrap" aria-label="Similar nearby">
-        <h5 style="margin:0 0 10px 0">Similar near you</h5>
-        <div class="sim-row">
-          {% for s in similar_items %}
-            {% set cover = (s.image_path.split(',')[0] if s.image_path and ',' in s.image_path
-                            else (s.image_path.split('|')[0] if s.image_path and '|' in s.image_path
-                            else s.image_path)) %}
-            {% if cover and not (cover.startswith('http') or cover.startswith('/')) %}
-              {% set cover = '/' ~ cover %}
-            {% endif %}
-            <a class="sim-card" href="/items/{{ s.id }}">
-              <img class="sim-img" src="{{ cover or url_for('static', path='placeholder.png') }}" alt="">
-              <div class="sim-body">
-                <div class="sim-title">{{ s.title }}</div>
-                <div class="sim-meta">
-                  <span>{{ s.city or '—' }}</span>
-                  <span>•</span>
-                  <span>{{ s.category_label or s.category }}</span>
-                </div>
-                <div class="sim-price">{{ s.price_per_day }} {{ s.currency or '$' }} <small class="sim-meta">/ day</small></div>
+  <section class="sim-wrap" aria-label="Similar near you">
+    <h5 style="margin:0 0 10px 0">Similar near you</h5>
+
+    <div class="sim-row">
+      {% for s in similar_items %}
+        {% set cover = (s.image_path.split(',')[0] if s.image_path and ',' in s.image_path
+                        else (s.image_path.split('|')[0] if s.image_path and '|' in s.image_path
+                        else s.image_path)) %}
+        {% if cover and not (cover.startswith('http') or cover.startswith('/')) %}
+          {% set cover = '/' ~ cover %}
+        {% endif %}
+
+        <a class="sim-card" href="/items/{{ s.id }}">
+          <div class="sim-media">
+            <img class="sim-img" src="{{ cover or url_for('static', path='placeholder.png') }}"
+                 alt="{{ s.title|e }}">
+
+            {# شارة التقييم #}
+            {% set s_avg = (s.avg_stars if s.avg_stars is defined else (s.rating_avg if s.rating_avg is defined else None)) %}
+            {% if s_avg %}
+              <div class="sim-rate" aria-label="{{ '%.1f'|format(s_avg) }} stars">
+                <span class="star">⭐</span>{{ '%.1f'|format(s_avg) }}
               </div>
-            </a>
-          {% endfor %}
-        </div>
-        <a class="btnx btnx-lightwide" href="/items?category={{ item.category | urlencode }}&city={{ item.city | urlencode }}">View more in {{ item.city or 'area' }}</a>
-      </section>
-      <div class="hr"></div>
-    {% endif %}
+            {% endif %}
+
+            {# شارة الفئة #}
+            <div class="sim-pill">{{ s.category_label or s.category }}</div>
+
+            {# شعار (إن وجد) — يمكنك تمرير s.owner.avatar_path من السيرفر #}
+            {% if s.owner and s.owner.avatar_path %}
+              <img class="sim-logo" src="{{ s.owner.avatar_path }}" alt="">
+            {% endif %}
+          </div>
+
+          <button type="button" class="sim-fav js-sim-fav"
+                  data-item-id="{{ s.id }}" aria-label="Save">
+            <i class="bi bi-heart"></i>
+          </button>
+
+          <div class="sim-body">
+            <div class="sim-title">{{ s.title }}</div>
+            <div class="sim-sub">
+              {{ s.subtype or s.kind or s.category_label or s.category }}
+            </div>
+
+            <div class="sim-meta">
+              <span>{{ s.city or '—' }}</span>
+              <span class="sep">•</span>
+              <span>{{ (s.distance_km|string + ' km') if s.distance_km is defined else 'Nearby' }}</span>
+              {# مثال للوقت/المدّة إن توفرت #}
+              {# <span class="sep">•</span><span>17:00–17:45</span> #}
+            </div>
+
+            <hr class="sim-cut">
+
+            <div class="sim-price-row">
+              {% if s.old_price_per_day %}
+                <div class="sim-price-old">{{ s.old_price_per_day }} {{ s.currency or '$' }}</div>
+              {% else %}
+                <div></div>
+              {% endif %}
+              <div class="sim-price-now">
+                {{ s.price_per_day }} {{ s.currency or '$' }}
+                <span class="sim-unit">/ day</span>
+              </div>
+            </div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+
+    <a class="btnx btnx-lightwide"
+       href="/items?category={{ item.category | urlencode }}&city={{ item.city | urlencode }}">
+      View more in {{ item.city or 'area' }}
+    </a>
+  </section>
+  <div class="hr"></div>
+{% endif %}
 
     <!-- ===== Owner Card ===== -->
     <div class="card-glass">
@@ -685,5 +817,32 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   })();
 </script>
+
+<script>
+(function(){
+  document.querySelectorAll('.js-sim-fav').forEach(btn=>{
+    const ic = btn.querySelector('i');
+    function paint(on){
+      btn.classList.toggle('on', !!on);
+      ic.classList.toggle('bi-heart-fill', !!on);
+      ic.classList.toggle('bi-heart', !on);
+    }
+    btn.addEventListener('click', async (e)=>{
+      e.preventDefault(); e.stopPropagation();
+      const id = btn.dataset.itemId;
+      const next = !btn.classList.contains('on');
+      paint(next);
+      try{
+        const r = await fetch('/api/favorites/toggle', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          credentials:'same-origin', body:JSON.stringify({item_id:id})
+        });
+        if(r.status===401){ paint(!next); location.href='/login?next='+encodeURIComponent(location.pathname+location.search); }
+      }catch{ paint(!next); }
+    });
+  });
+})();
+</script>
+
 
 {% endblock %}
