@@ -172,6 +172,27 @@
 .rv-stars .full{color:#111}
 .rv-stars .empty{color:#bdbdbd}
 
+/* إزالة الفراغ العلوي في صفحة المنشور */
+@media (max-width:768px){
+  body.item-page{
+    margin-top:0 !important;
+    padding-top:0 !important;
+  }
+
+  .items-shell{ margin-top:0 !important; }
+
+  /* سحب الصورة للأعلى حتى تلمس الحافة */
+  .gallery{
+    margin-top:calc(-1 * env(safe-area-inset-top, 0px));
+  }
+  .gallery-main{
+    height:calc(58vh + env(safe-area-inset-top, 0px));
+  }
+
+  /* تأمين الأزرار من النوتش */
+  .air-fab{ top:calc(8px + env(safe-area-inset-top, 0px)); }
+  .air-fab-right{ top:calc(8px + env(safe-area-inset-top, 0px)); }
+}
 
 </style>
 
@@ -490,6 +511,7 @@
 portalBar();
 window.addEventListener('resize', portalBar);
 window.addEventListener('orientationchange', portalBar);
+document.body.classList.add('item-page');
 
 })();
 </script>
