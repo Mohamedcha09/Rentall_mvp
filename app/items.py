@@ -40,19 +40,37 @@ def _haversine_expr(lat1, lon1, lat2, lon2):
         )
     )
 
+# ---------------- Similar items helpers ----------------
+import unicodedata
+
+def _strip_accents(s: str) -> str:
+    if not s: return ""
+    # يحوّل Montréal -> Montreal
+    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+
+def _haversine_expr(lat1, lon1, lat2, lon2):
+    return 6371 * 2 * func.asin(
+        func.sqrt(
+            func.pow(func.sin(func.radians(lat2 - lat1) / 2), 2) +
+            func.cos(func.radians(lat1)) *
+            func.cos(func.radians(lat2)) *
+            func.pow(func.sin(func.radians(lon2 - lon1) / 2), 2)
+        )
+    )
 
 def get_similar_items(db: Session, item: Item):
     """
-    يختار حتى 10 عناصر:
-    1) نفس الصنف وقريبة جغرافياً (≤ 50 كم) إن وُجد lat/lng
-    2) وإلا نفس المدينة نصياً
-    3) وإلا سقوط احتياطي: من نفس الصنف عشوائي
+    نرجّع عناصر مشابهة فقط إذا كانت:
+      - من نفس الفئة EXACT
+      - وبالقرب الجغرافي <= 50 كم (إن وُجد lat/lng)
+      - أو من نفس المدينة نصياً بعد إزالة التشكيل (الجزء قبل الفاصلة)
+    لا يوجد fallback عشوائي.
     """
     limit = 10
 
     base_q = db.query(Item).filter(
         Item.is_active == "yes",
-        Item.category == item.category,
+        Item.category == item.category,   # نفس الصنف فقط
         Item.id != item.id
     )
 
@@ -60,26 +78,41 @@ def get_similar_items(db: Session, item: Item):
 
     # 1) قرب جغرافي
     if item.latitude is not None and item.longitude is not None:
-        # مرّر قيم الـ item كأرقام بايثون، وحقّق التعبير على أعمدة Item
         dist_expr = _haversine_expr(
             float(item.latitude),
             float(item.longitude),
             Item.latitude,
             Item.longitude
         )
-        nearby = base_q.filter(
-            Item.latitude.isnot(None),
-            Item.longitude.isnot(None),
-            dist_expr <= 100  # ضمن 50 كم
-        ).order_by(func.random()).limit(limit).all()
+        nearby = (
+            base_q.filter(
+                Item.latitude.isnot(None),
+                Item.longitude.isnot(None),
+                dist_expr <= 50
+            )
+            .order_by(func.random())
+            .limit(limit)
+            .all()
+        )
         results.extend(nearby)
 
-    # 2) نفس المدينة نصياً
+    # 2) نفس المدينة (بعد إزالة التشكيل) إذا لازال عندنا أماكن فاضية
     if len(results) < limit and item.city:
         remain = limit - len(results)
-        city_q = base_q.filter(
-            Item.city.ilike(f"%{(item.city or '').strip()}%")
-        ).order_by(func.random()).limit(remain).all()
+        short = (item.city or "").split(",")[0].strip()
+        short_norm = _strip_accents(short).lower()
+
+        city_q = (
+            base_q.filter(
+                or_(
+                    func.lower(Item.city).like(f"%{short.lower()}%"),
+                    func.lower(Item.city).like(f"%{short_norm}%")
+                )
+            )
+            .order_by(func.random())
+            .limit(remain)
+            .all()
+        )
 
         existing_ids = {x.id for x in results}
         for it in city_q:
@@ -88,18 +121,9 @@ def get_similar_items(db: Session, item: Item):
                 if len(results) >= limit:
                     break
 
-    # 3) سقوط احتياطي
-    if len(results) < limit:
-        remain = limit - len(results)
-        more = base_q.order_by(func.random()).limit(remain).all()
-        existing_ids = {x.id for x in results}
-        for it in more:
-            if it.id not in existing_ids:
-                results.append(it)
-                if len(results) >= limit:
-                    break
-
+    # 3) لا fallback عشوائي — التزم بالمدينة/المسافة فقط
     return results[:limit]
+
 
 
 # ---------------- Helpers ----------------
