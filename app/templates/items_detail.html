@@ -305,6 +305,16 @@
 
 </style>
 
+<style>
+  /* اجعل الشيت أعلى من الشريط */
+  #reportSheet{ z-index: 11000; /* أعلى من 10000 */ 
+                /* كِبَر الارتفاع لشيت الأعلى (offcanvas-top) */
+                --bs-offcanvas-height: 85vh;
+  }
+  .offcanvas-backdrop{ z-index: 10990; }
+</style>
+
+
 <section class="items-shell">
   {% if not item %}
     <div class="card-glass"><div class="card-body"><div class="alert alert-danger">Item not found.</div></div></div>
@@ -413,10 +423,10 @@
   {% if owner %}
     {% if session_user %}
       <!-- الآن زر الصفحة يفتح مراسلة المالك -->
-      <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">💬 Contact owner</a>
+      <a class="btnx btnx-primary" href="/messages/start?user_id={{ owner.id }}&item_id={{ item.id }}">Contact</a>
     {% else %}
       <!-- لو غير مسجّل، نوجّهه لتسجيل الدخول ثم الرجوع لهذه الصفحة -->
-      <a class="btnx btnx-primary" href="/login?next={{ request.url | urlencode }}">💬 Contact owner</a>
+      <a class="btnx btnx-primary" href="/login?next={{ request.url | urlencode }}">Contact</a>
     {% endif %}
   {% endif %}
   <a class="btnx btnx-ghost" href="/items">↩︎ Back to list</a>
@@ -685,6 +695,28 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 });
+</script>
+<script>
+  // عند فتح الشيت: اخفِ الشريط السفلي، وعند الإغلاق: أظهره
+  (function(){
+    const oc = document.getElementById('reportSheet');
+    const bar = document.getElementById('airBar');
+    const under = document.getElementById('airUnder');
+    if(!oc) return;
+
+    oc.addEventListener('shown.bs.offcanvas', function(){
+      if(bar){ bar.style.display = 'none'; }
+      if(under){ under.style.display = 'none'; }
+      // منع تحرّك الخلفية على iOS
+      document.body.style.overflow = 'hidden';
+    });
+
+    oc.addEventListener('hidden.bs.offcanvas', function(){
+      if(bar){ bar.style.display = ''; }   // يرجع للوضع الطبيعي (flex)
+      if(under){ under.style.display = ''; }
+      document.body.style.overflow = '';
+    });
+  })();
 </script>
 
 {% endblock %}
