@@ -14,6 +14,8 @@ from .models import Item, User, ItemReview
 from .utils import CATEGORIES, category_label
 from .utils_badges import get_user_badges
 from .models import Favorite as _Fav  # ← نحتاجه لحساب حالة المفضلة
+from sqlalchemy import func, and_, or_
+from math import radians
 
 router = APIRouter()
 
@@ -24,6 +26,92 @@ UPLOADS_ROOT = os.environ.get(
 )
 ITEMS_DIR = os.path.join(UPLOADS_ROOT, "items")
 os.makedirs(ITEMS_DIR, exist_ok=True)
+
+
+
+
+def _haversine_expr(lat1, lon1, lat2, lon2):
+    # مسافة بالكيلومتر (تقريب كروي) – تُعاد كتعبير SQL
+    # 6371 = نصف قطر الأرض كم
+    return 6371 * 2 * func.asin(
+        func.sqrt(
+            func.pow(func.sin(func.radians(lat2 - lat1) / 2), 2) +
+            func.cos(func.radians(lat1)) *
+            func.cos(func.radians(lat2)) *
+            func.pow(func.sin(func.radians(lon2 - lon1) / 2), 2)
+        )
+    )
+
+def get_similar_items(db: Session, item):
+    limit = 10
+    base_q = db.query(Item).filter(
+        Item.is_active == "yes",
+        Item.category == item.category,
+        Item.id != item.id
+    )
+
+    results = []
+    # 1) أولاً: نفس المدينة (أو قريب جغرافياً إن وُجد lat/lng)
+    if item.latitude is not None and item.longitude is not None:
+        dist_expr = _haversine_expr(
+            func.cast(item.latitude, func.FLOAT),
+            func.cast(item.longitude, func.FLOAT),
+            Item.latitude, Item.longitude
+        )
+        nearby = base_q.filter(
+            Item.latitude.isnot(None),
+            Item.longitude.isnot(None),
+            dist_expr <= 50  # ضمن 50 كم
+        ).order_by(func.random()).limit(limit).all()
+        results.extend(nearby)
+
+    # إذا لا يوجد إحداثيات أو لم نكمل العدد، جرّب المدينة نصياً
+    if len(results) < limit and item.city:
+        remain = limit - len(results)
+        city_q = base_q.filter(
+            Item.city.ilike(item.city)  # يمكن تبديلها بـ ilike(f"%{item.city}%")
+        ).order_by(func.random()).limit(remain).all()
+
+        # منع التكرار
+        existing_ids = {x.id for x in results}
+        for it in city_q:
+            if it.id not in existing_ids:
+                results.append(it)
+                if len(results) >= limit:
+                    break
+
+    # 2) سقوط احتياطي: فقط نفس الصنف إن ما كفّى
+    if len(results) < limit:
+        remain = limit - len(results)
+        more = base_q.order_by(func.random()).limit(remain).all()
+        existing_ids = {x.id for x in results}
+        for it in more:
+            if it.id not in existing_ids:
+                results.append(it)
+                if len(results) >= limit:
+                    break
+
+    return results[:limit]
+
+# داخل دالة عرض العنصر:
+similar_items = get_similar_items(db, item)
+# ثم مرّرها إلى القالب:
+return templates.TemplateResponse(
+    "item_detail.html",
+    {
+        "request": request,
+        "item": item,
+        "owner": owner,
+        "item_reviews": item_reviews,
+        "item_rating_avg": item_rating_avg,
+        "item_rating_count": item_rating_count,
+        # الجديد:
+        "similar_items": similar_items,
+        "session_user": session_user,
+        "owner_badges": owner_badges,
+        "is_favorite": is_favorite,
+    }
+)
 
 # ---------------- Helpers ----------------
 def require_approved(request: Request):
