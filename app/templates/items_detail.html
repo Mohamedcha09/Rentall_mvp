@@ -44,11 +44,18 @@
 .owner-avatar{width:62px;height:62px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--stroke)}
 .hr{border:0;height:1px;background:var(--stroke-soft);margin:14px 0}
 
-/* ====== Stars (black/gray) ====== */
+/* ===== Stars (black/gray) ===== */
 .stars-bw,.rv-stars{display:inline-flex;gap:4px;font-size:16px;line-height:1;letter-spacing:0}
 .stars-bw span,.rv-stars span{display:inline-block;width:1em;text-align:center}
 .stars-bw .full,.rv-stars .full{color:#111}
 .stars-bw .empty,.rv-stars .empty{color:#bdbdbd}
+
+/* ===== Laurel row (rating-only between two images) ===== */
+.laurel-wrap{display:flex;align-items:center;justify-content:center;gap:14px;margin:8px 0 10px}
+.laurel{height:20px;width:auto;opacity:.95}
+.rating-center{display:flex;align-items:center;gap:8px}
+.rating-center .num{font-weight:800;color:#111}
+.rating-center small{color:#6b7280;font-weight:600}
 
 /* ====== Mobile + Airbnb look ====== */
 @media (max-width:768px){
@@ -110,7 +117,6 @@
   .btn-outline-pale{display:block;width:100%;text-align:center;border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:10px 14px;font-weight:700}
 
   /* ====== FABs (enforced) ====== */
-  /* اخفِ أي زر عام يأتي من base أو ملفات أخرى داخل هذه الصفحة */
   body.item-page #flowBackBtn,
   body.item-page .btn-back,
   body.item-page .back-button,
@@ -119,7 +125,6 @@
   body.item-page .navbar .air-fab,
   body.item-page .gallery > .air-fab:not(.keep){ display:none !important; }
 
-  /* حاويات الصفحة الحالية فقط */
   .air-fab-left,.air-fab-right{
     position:absolute; top:calc(8px + env(safe-area-inset-top,0px));
     z-index:10020; display:flex; gap:10px;
@@ -127,14 +132,12 @@
   .air-fab-left{ left:12px; }
   .air-fab-right{ right:12px; }
 
-  /* شكل الزر الأبيض */
   .air-fab{
     appearance:none;border:0;cursor:pointer;width:44px;height:44px;border-radius:50%;
     background:rgba(255,255,255,.95); box-shadow:0 8px 20px rgba(0,0,0,.18);
     display:grid; place-items:center; font-size:18px; line-height:1;
   }
 
-  /* عدّاد الصور */
   .air-pager{
     position:absolute; bottom:12px; right:12px;
     background:rgba(0,0,0,.55); color:#fff; font-weight:600;
@@ -142,7 +145,6 @@
     border:1px solid rgba(255,255,255,.25); z-index:10010;
   }
 
-  /* إزالة الفراغ أعلى الصفحة وتثبيت الهيرو */
   body.item-page{ margin-top:0 !important; padding-top:0 !important; }
   .items-shell{ margin-top:0 !important; }
   .gallery{ margin-top:calc(-1 * env(safe-area-inset-top, 0px)); }
@@ -240,36 +242,26 @@
           {{ item.category_label or item.category }} • {{ item.city or "No city" }} • {{ owner and owner.country or "" }}
         </div>
 
+        {# ======= RATING ONLY between ion.png and ion2.png ======= #}
         {% set _avg = item_rating_avg or 0 %}
-        {% set _cnt = item_rating_count or 0 %}
-        <div class="laurel-row">
-          <div class="score">
-            <span class="stars-bw" aria-label="{{ '%.2f'|format(_avg) }} out of 5">
+        <div class="laurel-wrap">
+          <img class="laurel" src="{{ url_for('static', path='photo/ion.png') }}" alt="">
+          <div class="rating-center" aria-label="{{ '%.2f'|format(_avg) }} out of 5">
+            <span class="stars-bw">
               {% set full = _avg|round(0, 'floor')|int %}
               {% set half = 1 if _avg - full >= 0.5 else 0 %}
               {% for i in range(0, full) %}<span class="full">★</span>{% endfor %}
               {% if half %}<span class="full">★</span>{% endif %}
               {% for i in range(0, 5 - full - half) %}<span class="empty">☆</span>{% endfor %}
             </span>
-            <small>{{ '%.2f'|format(_avg) }} / 5</small>
+            <span class="num">{{ '%.2f'|format(_avg) }} / 5</span>
           </div>
-          <div class="laurel-mid">
-            <img class="laurel" src="{{ url_for('static', path='photo/ion.png') }}" alt="laurel left">
-            <span style="font-weight:800">Visitor Favorite</span>
-            <img class="laurel" src="{{ url_for('static', path='photo/ion2.png') }}" alt="laurel right">
-          </div>
-          <div class="score">{{ _cnt }} <small>review(s)</small></div>
+          <img class="laurel" src="{{ url_for('static', path='photo/ion2.png') }}" alt="">
         </div>
-
-        {% if item.description %}
-          <p style="white-space:pre-wrap;line-height:1.9;color:#374151">{{ item.description }}</p>
-        {% else %}
-          <div class="badge-pill">No description</div>
-        {% endif %}
 
         <div class="hr"></div>
 
-        <!-- Reviews slider -->
+        <!-- ===== Reviews slider ===== -->
         <h5 style="margin:0 0 8px 0">Reviews</h5>
         {% if item_reviews and item_reviews|length %}
           <div class="rv-strip">
@@ -294,7 +286,7 @@
               </div>
             {% endfor %}
           </div>
-          <a href="/items/{{ item.id }}#all-reviews" class="btn-outline-pale">View all {{ _cnt }} review(s)</a>
+          <a href="/items/{{ item.id }}#all-reviews" class="btn-outline-pale">View all {{ item_rating_count or 0 }} review(s)</a>
         {% else %}
           <div class="small-muted">No reviews yet.</div>
         {% endif %}
@@ -419,20 +411,6 @@
   const heroFade = document.getElementById('heroFade');
   const airBar = document.getElementById('airBar');
 
-  /* Lightbox (kept ready if أردت تكبير الصورة) */
-  let lb=null;
-  function openLightbox(src){
-    if(!lb){
-      lb=document.createElement('div');
-      lb.className='lightbox';
-      lb.innerHTML='<button class="close">Close ✕</button><img alt="preview">';
-      document.body.appendChild(lb);
-      lb.querySelector('.close').onclick=()=>lb.classList.remove('show');
-      lb.onclick=(e)=>{ if(e.target===lb) lb.classList.remove('show'); };
-    }
-    lb.querySelector('img').src=src; lb.classList.add('show');
-  }
-
   /* Image counter */
   function setPager(i,t){ if(pager){ pager.textContent=(i+1)+'/'+t; } }
   let activeIdx=0;
@@ -455,7 +433,7 @@
     });
   }
 
-  /* Airbnb-like parallax+fade */
+  /* Parallax + Fade */
   const gMain = document.getElementById('gMain');
   function onScroll(){
     if(!gMain || !main) return;
@@ -492,7 +470,7 @@
 <script>document.body.classList.add('item-page');</script>
 
 <script>
-/* Share + Favorite (نسخة واحدة فقط) */
+/* Share + Favorite */
 (function(){
   const shareBtn = document.querySelector('.js-share');
   if (shareBtn) {
@@ -541,7 +519,7 @@
 </script>
 
 <script>
-/* ضبط الحقول الافتراضية لصفحة البلاغ */
+/* ضبط حقول البلاغ */
 (function(){
   const main  = document.getElementById('mainImg');
   if (main) {
@@ -553,7 +531,7 @@
 </script>
 
 <script>
-/* تهيئة meta theme-color لهذه الصفحة */
+/* theme-color لهذه الصفحة */
 (function(){
   var m = document.querySelector('meta[name="theme-color"]');
   if(m){ m.setAttribute('content', '#ffffff'); }
