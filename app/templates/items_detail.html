@@ -168,6 +168,111 @@
     border-radius:0 !important;
   }
 }
+
+/* ======= Site brand (purple → sky) ======= */
+:root{
+  --brand1:#8b5cf6;          /* purple */
+  --brand2:#22d3ee;          /* sky/cyan */
+  --brand-grad:linear-gradient(135deg,var(--brand1),var(--brand2));
+  --brand-ring: color-mix(in oklab, var(--brand2) 60%, white);
+  --btn-glass: color-mix(in oklab, white 12%, transparent);
+  --btn-glass-strong: color-mix(in oklab, white 18%, transparent);
+  --btn-shadow: 0 10px 22px rgba(24, 24, 38, .18), 0 4px 10px rgba(24, 24, 38, .12);
+  --btn-shadow-strong: 0 14px 30px rgba(24, 24, 38, .22), 0 6px 14px rgba(24, 24, 38, .16);
+}
+
+/* ======= Base button override (links .btnx + bootstrap .btn in this page) ======= */
+.btnx,
+.air-cta,
+.item-page .btn{
+  appearance:none;
+  border:0;
+  border-radius:14px;
+  font-weight:800;
+  letter-spacing:.2px;
+  text-decoration:none;
+  line-height:1;
+  height:48px;
+  padding:0 20px;
+  display:inline-flex; align-items:center; justify-content:center;
+  transition:transform .12s ease, box-shadow .2s ease, background .3s ease, opacity .2s ease;
+  will-change:transform;
+}
+
+/* Primary (brand gradient, white text) */
+.btnx-primary,
+.btnx-green,              /* نستخدم نفس الكلاس القديم لكن بنمط موحّد */
+.air-cta,
+.item-page .btn.btn-primary{
+  background:var(--brand-grad);
+  color:#fff !important;
+  box-shadow:var(--btn-shadow);
+}
+.btnx-primary:hover,
+.btnx-green:hover,
+.air-cta:hover,
+.item-page .btn.btn-primary:hover{
+  transform:translateY(-1px);
+  box-shadow:var(--btn-shadow-strong);
+  filter:saturate(1.08);
+}
+.btnx-primary:active,
+.btnx-green:active,
+.air-cta:active,
+.item-page .btn.btn-primary:active{
+  transform:translateY(0);
+  filter:saturate(1);
+}
+
+/* Ghost (زجاجي بإطار ملوّن بالبراند) */
+.btnx-ghost,
+.item-page .btn.btn-outline-secondary{
+  background:var(--btn-glass);
+  color:#111;
+  border:1px solid color-mix(in oklab, var(--brand2) 25%, rgba(0,0,0,.12));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35);
+}
+.btnx-ghost:hover,
+.item-page .btn.btn-outline-secondary:hover{
+  background:var(--btn-glass-strong);
+  transform:translateY(-1px);
+}
+
+/* Danger داخل ورقة الإبلاغ — نحافظ على البراند بدلاً من الأحمر */
+#reportSheet .btn.btn-danger{
+  background:var(--brand-grad);
+  border:0;
+  color:#fff;
+  box-shadow:var(--btn-shadow);
+}
+#reportSheet .btn.btn-danger:hover{ box-shadow:var(--btn-shadow-strong); transform:translateY(-1px); }
+
+/* حواف تركيز واضحة */
+.btnx:focus-visible,
+.air-cta:focus-visible,
+.item-page .btn:focus-visible{
+  outline:0;
+  box-shadow:0 0 0 4px var(--brand-ring);
+}
+
+/* ارتفاع زر الشريط السفلي ثابت */
+.air-cta{
+  min-width:160px;
+  height:52px; line-height:52px; padding:0 22px; border-radius:16px;
+}
+
+/* أزرار الدوائر العائمة (رجوع/مشاركة/قلب) زجاجية بيضاء */
+.air-fab{
+  background:rgba(255,255,255,.9);
+  border:1px solid rgba(0,0,0,.06);
+  box-shadow:0 8px 20px rgba(0,0,0,.16);
+}
+
+/* احترام تقليل الحركة */
+@media (prefers-reduced-motion:reduce){
+  .btnx,.air-cta,.item-page .btn{ transition:none; }
+}
+
 </style>
 
 <section class="items-shell">
