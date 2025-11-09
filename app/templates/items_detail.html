@@ -326,6 +326,12 @@
 }
 .sim-rate.empty .star{ display:none; }
 
+.sim-rate.empty{
+  height:8px; line-height:8px; padding:0; width:48px;
+  border-radius:999px; background:rgba(17,24,39,.14);
+  border:0; display:inline-block;
+}
+.sim-rate.empty .star{ display:none; }
 
 </style>
 
@@ -517,9 +523,26 @@
             <img class="sim-img" src="{{ cover or url_for('static', path='placeholder.png') }}"
                  alt="{{ s.title|e }}">
 
-            {# شارة التقييم: دائماً موجودة #}
-{% set s_avg = (s.avg_stars if s.avg_stars is defined else (s.rating_avg if s.rating_avg is defined else None)) %}
-{% set has_rating = (s_avg is not none and s_avg|float > 0) %}
+            {# ==== شارة التقييم — مرنة مع جميع الأسماء + تدعم "2,74" ==== #}
+{% set s_avg_raw =
+      s.avg_stars
+   or s.rating_avg
+   or s.average_rating
+   or s.avg
+   or s.stars_avg
+   or s.starsAverage
+   or s.score
+   or s.rating
+%}
+
+{% if s_avg_raw is not none and (s_avg_raw|string).strip() not in ('', 'None', 'null') %}
+  {% set s_avg = ((s_avg_raw|string).replace(',', '.')|float) %}
+{% else %}
+  {% set s_avg = none %}
+{% endif %}
+
+{% set has_rating = (s_avg is not none and s_avg > 0) %}
+
 <div class="sim-rate {{ '' if has_rating else 'empty' }}"
      aria-label="{{ has_rating and ('%.1f'|format(s_avg) ~ ' stars') or 'No ratings yet' }}">
   {% if has_rating %}
