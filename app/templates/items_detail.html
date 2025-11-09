@@ -474,6 +474,17 @@
 }
 </style>
 
+<style>
+  /* اخفاء زر الرجوع الأسود العائم داخل صفحة العناصر فقط */
+  body.item-page #flowBackBtn{ display:none !important; }
+
+  /* لو الزر يُرسم كزر عائم عام باسم air-fab داخل الجاليري */
+  body.item-page .air-fab{ display:none !important; }
+
+  /* لو عندك صنف بديل لزر الرجوع */
+  body.item-page .air-fab-left,
+  body.item-page .air-fab-back{ display:none !important; }
+</style>
 
 
 <section class="items-shell">
@@ -990,6 +1001,9 @@
   }
 })();
 </script>
+
+<script>document.body.classList.add('item-page');</script>
+
 
 
 {% endblock %}
