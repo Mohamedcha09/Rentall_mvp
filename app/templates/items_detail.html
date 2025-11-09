@@ -141,6 +141,43 @@
 .air-fab.is-on { background: rgba(255,255,255,.95); }
 @keyframes fav-pop { 0%{transform:scale(1)} 40%{transform:scale(1.25)} 100%{transform:scale(1)} }
 .air-fab.fav-anim { animation: fav-pop .25s ease; }
+
+/* اخفاء زر الرجوع العائم (السهم الأسود) في item_detail فقط */
+.item-page .air-fab-left { 
+  display: none !important;
+}
+
+/* لو عندك أي سهم داخل الترويسة بأيقونة Bootstrap */
+.item-page .bi-arrow-left {
+  display: none !important;
+}
+
+/* إزالة أي فراغ علوي في هذه الصفحة فقط */
+.item-page,
+.item-page body {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* لو كان الفراغ من الـgallery نفسها */
+.item-page .gallery {
+  margin-top: 0 !important;
+}
+
+/* تأكيد أن الغطاء العلوي لا يخلق فراغًا */
+.item-page .hero-fade {
+  opacity: 0 !important;
+}
+
+.item-page .top-spacer,
+.item-page .navbar-placeholder,
+.item-page .app-top-spacer {
+  display: none !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
 </style>
 
 <section class="items-shell">
