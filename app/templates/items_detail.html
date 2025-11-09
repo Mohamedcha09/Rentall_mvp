@@ -293,7 +293,7 @@
     padding-top:env(safe-area-inset-top, 0px) !important;
   }
   /* أخفاء الطفل المباشر فقط كما سبق */
-  body.item-page .gallery .air-fab{ display:none !important; }
+  body.item-page .gallery > .air-fab{ display:none !important; }
   body.item-page .air-fab-right .air-fab{
   display:grid !important;
 }
@@ -352,26 +352,24 @@
 
 @media (max-width:768px){
   .offcanvas-top{
-    /* زوايا عليا دائرية كما هي */
     border-bottom-left-radius:18px;
     border-bottom-right-radius:18px;
 
-    /* احترام الـ notch */
+    /* احترام النوتش */
     padding-top:calc(10px + env(safe-area-inset-top,0px));
-    /* مساحة سفلية حتى لا يغطيها شريط Contact */
-    padding-bottom:calc(14px + env(safe-area-inset-bottom,0px));
+
+    /* مهم: حساب ارتفاع شريط Contact الحقيقي */
+    padding-bottom:calc(14px + var(--airbar-h, 80px) + env(safe-area-inset-bottom,0px));
 
     /* اجعل الارتفاع عمليًا كامل الشاشة */
-    height:auto; /* لتسمح بالمحتوى */
+    height:auto;
     max-height:calc(100dvh - env(safe-area-inset-top,0px));
     overscroll-behavior:contain;
   }
-  /* عندما تُفتح: لا تُبقِ أي ترانزلايت يمنع الظهور الكامل */
   .offcanvas-top.show{ transform:none; }
-}
-@media (max-width:768px){
   .offcanvas-top{ --bs-offcanvas-height: calc(100dvh - env(safe-area-inset-top,0px)); }
 }
+
 @media (max-width:768px){
   .air-fab-left{
     position:absolute; left:12px; display:flex; gap:10px;
@@ -617,7 +615,13 @@
 </section>
 
 <!-- ===== Report Bottom Sheet ===== -->
-<div class="offcanvas offcanvas-top" tabindex="-1" id="reportSheet" aria-labelledby="reportLabel" dir="rtl">
+<div class="offcanvas offcanvas-top"
+     tabindex="-1"
+     id="reportSheet"
+     aria-labelledby="reportLabel"
+     dir="rtl"
+     data-bs-scroll="true"
+     data-bs-backdrop="true">
   <div class="offcanvas-header">
     <h5 class="offcanvas-title" id="reportLabel">🚩 Report listing</h5>
     <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
@@ -714,17 +718,21 @@
 
   /* ==== FORCE the bar to be fixed & visible on iOS ==== */
   function portalBar(){
-    if(!airBar) return;
-    if(airBar.parentElement !== document.body){
-      document.body.appendChild(airBar);
-    }
-    const under = document.getElementById('airUnder');
-    if(under && under.parentElement !== document.body){
-      document.body.appendChild(under);
-    }
-    const pad = (airBar.offsetHeight || 64) + 12;
-    document.body.style.paddingBottom = pad + 'px';
+  if(!airBar) return;
+  if(airBar.parentElement !== document.body){
+    document.body.appendChild(airBar);
   }
+  const under = document.getElementById('airUnder');
+  if(under && under.parentElement !== document.body){
+    document.body.appendChild(under);
+  }
+  const pad = (airBar.offsetHeight || 64) + 12; // ارتفاع الشريط + مسافة
+  document.body.style.paddingBottom = pad + 'px';
+
+  /* الجديد: مرّر الارتفاع إلى CSS ليستعمله الـ offcanvas */
+  document.documentElement.style.setProperty('--airbar-h', pad + 'px');
+}
+
   portalBar();
   window.addEventListener('resize', portalBar);
   window.addEventListener('orientationchange', portalBar);
