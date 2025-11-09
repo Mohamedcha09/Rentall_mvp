@@ -333,9 +333,6 @@
 }
 .sim-rate.empty .star{ display:none; }
 
-</style>
-
-<style>
 .sim-rate {
   position:absolute;
   top:10px; right:10px;
@@ -343,25 +340,23 @@
   font-weight:700;
   padding:4px 10px;
   border-radius:999px;
+  background:rgba(255,255,255,0.15); /* خلفية شفافة */
+  backdrop-filter:blur(8px);
   color:white;
-  background:linear-gradient(135deg,#7c3aed,#3b82f6); /* بنفسجي → أزرق سماوي */
   box-shadow:0 2px 8px rgba(0,0,0,.25);
 }
 
+/* هنا ستايل النجمة نفسها */
 .sim-rate .star {
-  display:inline-block;
-  font-size:14px;
-  filter:drop-shadow(0 1px 2px rgba(0,0,0,.2));
+  font-size:16px;
+  background:linear-gradient(135deg,#7c3aed,#3b82f6); /* بنفسجي → أزرق سماوي */
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent; /* يجعل النجمة تأخذ لون التدرّج */
+  filter:drop-shadow(0 0 4px rgba(59,130,246,.4));
 }
 
-.sim-rate.empty {
-  height:8px;
-  width:48px;
-  border-radius:999px;
-  background:rgba(255,255,255,.12);
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);
-}
 </style>
+
 
 
 
