@@ -208,7 +208,7 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     if not item:
         # ⚠️ اسم القالب الصحيح: item_detail.html (بدون s)
         return request.app.templates.TemplateResponse(
-            "item_detail.html",
+            "items_detail.html",
             {
                 "request": request,
                 "item": None,
@@ -256,7 +256,7 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
         s.category_label = category_label(s.category)
 
     return request.app.templates.TemplateResponse(
-        "item_detail.html",
+        "items_detail.html",
         {
             "request": request,
             "item": item,
