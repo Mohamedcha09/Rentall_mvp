@@ -57,71 +57,100 @@ def _haversine_expr(lat1, lon1, lat2, lon2):
             func.pow(func.sin(func.radians(lon2 - lon1) / 2), 2)
         )
     )
-
 def get_similar_items(db: Session, item: Item):
     """
-    نرجّع عناصر مشابهة فقط إذا كانت:
-      - من نفس الفئة EXACT
-      - وبالقرب الجغرافي <= 50 كم (إن وُجد lat/lng)
-      - أو من نفس المدينة نصياً بعد إزالة التشكيل (الجزء قبل الفاصلة)
-    لا يوجد fallback عشوائي.
+    يرجّع عناصر مشابهة (نفس الفئة + قرب جغرافي ≤ 50 كم إن توفر lat/lng،
+    وإلا فمطابقة المدينة نصياً بعد إزالة التشكيل). يحقن avg_stars و rating_count
+    داخل كل عنصر ليقرأها القالب مباشرة.
     """
     limit = 10
 
-    base_q = db.query(Item).filter(
-        Item.is_active == "yes",
-        Item.category == item.category,   # نفس الصنف فقط
-        Item.id != item.id
+    # ---------- تجميعة التقييمات ----------
+    rev_agg = (
+        db.query(
+            ItemReview.item_id.label("iid"),
+            func.avg(ItemReview.stars).label("avg_stars"),
+            func.count(ItemReview.id).label("rating_count"),
+        )
+        .group_by(ItemReview.item_id)
+        .subquery()
+    )
+
+    base_q = (
+        db.query(
+            Item,
+            rev_agg.c.avg_stars,
+            rev_agg.c.rating_count,
+        )
+        .outerjoin(rev_agg, rev_agg.c.iid == Item.id)
+        .filter(
+            Item.is_active == "yes",
+            Item.category == item.category,
+            Item.id != item.id,
+        )
     )
 
     results = []
+    picked_ids = set()
 
-    # 1) قرب جغرافي
+    # 1) قرب جغرافي (≤ 50 كم) إن توفّر lat/lng
     if item.latitude is not None and item.longitude is not None:
         dist_expr = _haversine_expr(
             float(item.latitude),
             float(item.longitude),
             Item.latitude,
-            Item.longitude
-        )
-        nearby = (
-            base_q.filter(
-                Item.latitude.isnot(None),
-                Item.longitude.isnot(None),
-                dist_expr <= 50
-            )
+            Item.longitude,
+        ).label("distance_km")
+
+        nearby_rows = (
+            base_q
+            .add_columns(dist_expr)
+            .filter(Item.latitude.isnot(None), Item.longitude.isnot(None))
+            .having(dist_expr <= 50)          # باستخدام label أعلاه
             .order_by(func.random())
             .limit(limit)
             .all()
         )
-        results.extend(nearby)
 
-    # 2) نفس المدينة (بعد إزالة التشكيل) إذا لازال عندنا أماكن فاضية
+        for it, avg_stars, rating_count, distance_km in nearby_rows:
+            if it.id in picked_ids: 
+                continue
+            it.avg_stars = float(avg_stars) if avg_stars is not None else None
+            it.rating_count = int(rating_count or 0)
+            it.distance_km = float(distance_km) if distance_km is not None else None
+            results.append(it)
+            picked_ids.add(it.id)
+
+    # 2) نفس المدينة نصياً (بعد إزالة التشكيل) لملء الباقي
     if len(results) < limit and item.city:
         remain = limit - len(results)
         short = (item.city or "").split(",")[0].strip()
         short_norm = _strip_accents(short).lower()
 
-        city_q = (
-            base_q.filter(
+        city_rows = (
+            base_q
+            .filter(
                 or_(
                     func.lower(Item.city).like(f"%{short.lower()}%"),
-                    func.lower(Item.city).like(f"%{short_norm}%")
+                    func.lower(Item.city).like(f"%{short_norm}%"),
                 )
             )
             .order_by(func.random())
-            .limit(remain)
+            .limit(remain * 2)  # هامش صغير للازدواجيات
             .all()
         )
 
-        existing_ids = {x.id for x in results}
-        for it in city_q:
-            if it.id not in existing_ids:
-                results.append(it)
-                if len(results) >= limit:
-                    break
+        for it, avg_stars, rating_count in city_rows:
+            if it.id in picked_ids:
+                continue
+            it.avg_stars = float(avg_stars) if avg_stars is not None else None
+            it.rating_count = int(rating_count or 0)
+            # لا توجد مسافة هنا
+            results.append(it)
+            picked_ids.add(it.id)
+            if len(results) >= limit:
+                break
 
-    # 3) لا fallback عشوائي — التزم بالمدينة/المسافة فقط
     return results[:limit]
 
 
