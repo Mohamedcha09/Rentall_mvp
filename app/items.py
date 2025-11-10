@@ -17,7 +17,7 @@ from .utils_badges import get_user_badges
 
 router = APIRouter()
 
-# Root of the local uploads folder (also mounted in main.py at /uploads)
+# ---------- Uploads config ----------
 UPLOADS_ROOT = os.environ.get(
     "UPLOADS_DIR",
     os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")), "uploads")
@@ -26,11 +26,11 @@ ITEMS_DIR = os.path.join(UPLOADS_ROOT, "items")
 os.makedirs(ITEMS_DIR, exist_ok=True)
 
 
-# ---------------- Utilities ----------------
+# ================= Utilities =================
 def _strip_accents(s: str) -> str:
+    """يحذف التشكيل/اللكنات: Montréal -> Montreal"""
     if not s:
         return ""
-    # يحوّل Montréal -> Montreal
     return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
 
 
@@ -49,7 +49,7 @@ def _haversine_expr(lat1, lon1, lat2, lon2):
     )
 
 
-# ---------------- Similar items helpers ----------------
+# ================= Similar items helpers =================
 def get_similar_items(db: Session, item: Item):
     """
     يرجّع عناصر مشابهة (نفس الفئة + قرب جغرافي ≤ 50 كم إن توفر lat/lng،
@@ -58,7 +58,7 @@ def get_similar_items(db: Session, item: Item):
     """
     limit = 10
 
-    # ---------- تجميعة التقييمات ----------
+    # تجميعة التقييمات
     rev_agg = (
         db.query(
             ItemReview.item_id.label("iid"),
@@ -99,7 +99,7 @@ def get_similar_items(db: Session, item: Item):
             base_q
             .add_columns(dist_expr)
             .filter(Item.latitude.isnot(None), Item.longitude.isnot(None))
-            .filter(dist_expr <= 50)   # ← بدلاً من HAVING
+            .filter(dist_expr <= 50)
             .order_by(func.random())
             .limit(limit)
             .all()
@@ -129,7 +129,7 @@ def get_similar_items(db: Session, item: Item):
                 )
             )
             .order_by(func.random())
-            .limit(remain * 2)  # هامش صغير للازدواجيات
+            .limit(remain * 2)  # هامش للازدواجيات
             .all()
         )
 
@@ -148,7 +148,7 @@ def get_similar_items(db: Session, item: Item):
     return results[:limit]
 
 
-# ---------------- Helpers ----------------
+# ================= Small helpers =================
 def require_approved(request: Request):
     u = request.session.get("user")
     return u and u.get("status") == "approved"
@@ -252,7 +252,7 @@ def items_list(
 def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     item = db.query(Item).get(item_id)
     if not item:
-        # ⚠️ اسم القالب الصحيح: item_detail.html (بدون s)
+        # يعرض صفحة العنصر مع رسالة "Item not found."
         return request.app.templates.TemplateResponse(
             "items_detail.html",
             {
@@ -287,7 +287,7 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
         .scalar() or 0
     )
 
-    # Favorite state
+    # Favorite state (لزر القلب الكبير في الهيرو)
     session_u = request.session.get("user")
     is_favorite = False
     if session_u:
@@ -295,18 +295,21 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             user_id=session_u["id"], item_id=item.id
         ).first() is not None
 
-    # ✅ Bring similar items
+    # Bring similar items
     similar_items = get_similar_items(db, item)
-    # أعطِ كل عنصر label للإظهار في القالب
     for s in similar_items:
         s.category_label = category_label(s.category)
-    # ✅ IDs العناصر المفضلة لتمييز القلوب عند التحميل
-favorite_ids = []
-if session_u:
-    favorite_ids = [row[0] for row in db.query(_Fav.item_id)
-                               .filter(_Fav.user_id == session_u["id"])
-                               .all()]
 
+    # IDs العناصر المفضلة لتمييز القلوب داخل "Similar near you"
+    favorite_ids = []
+    if session_u:
+        favorite_ids = [
+            row[0] for row in db.query(_Fav.item_id)
+                                .filter(_Fav.user_id == session_u["id"])
+                                .all()
+        ]
+
+    # ⬇️ مهم: الـ return خارج if session_u دائماً
     return request.app.templates.TemplateResponse(
         "items_detail.html",
         {
@@ -320,10 +323,8 @@ if session_u:
             "item_rating_count": int(cnt_stars),
             "immersive": True,
             "is_favorite": is_favorite,
-            # ✅ pass to template
             "similar_items": similar_items,
-            "favorite_ids": favorite_ids,   # ⬅️ أضِف هذا
-
+            "favorite_ids": favorite_ids,
         }
     )
 
@@ -393,7 +394,7 @@ def item_new_post(
 
     u = request.session.get("user")
 
-    # final path to store in DB (Cloudinary URL or local path /uploads/..)
+    # final path to store in DB (Cloudinary URL أو مسار محلي)
     image_path_for_db = None
 
     if image and image.filename:
@@ -415,6 +416,7 @@ def item_new_post(
                 uploaded_url = None
 
             if not uploaded_url:
+                # fallback إلى التخزين المحلي
                 try:
                     try:
                         image.file.seek(0)
