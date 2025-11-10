@@ -80,7 +80,6 @@
   border:1px solid #e5e7eb; font-weight:700; font-size:13px;
 }
 .sim-chip{ left:10px; font-weight:600; }
-.sim-rate{ right:56px; }          /* مسافة لزر القلب */
 .sim-rate.empty{ display:none; }  /* أخفي الدائرة عند عدم وجود تقييم */
 .sim-rate .star{ font-size:14px }
 
@@ -328,6 +327,89 @@
 
 /* هوامش البطاقة أقل قليلًا */
 .sim-card{ padding:14px; }
+
+/* ======= Move rating stars (★) to top right ======= */
+.sim-rate{
+  position:absolute;
+  top:10px; 
+  right:10px;           /* ← أقصى اليمين */
+  z-index:3;
+  height:28px; 
+  line-height:28px; 
+  padding:0 10px;
+  display:inline-flex; 
+  align-items:center; 
+  gap:6px;
+  border-radius:999px; 
+  background:#fff; 
+  color:#111;
+  border:1px solid #e5e7eb; 
+  font-weight:700; 
+  font-size:13px;
+  box-shadow:0 4px 10px rgba(0,0,0,.08);
+}
+.sim-rate .star{
+  font-size:15px;
+  background:linear-gradient(135deg,#8b5cf6,#22d3ee);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+
+
+/* ——— تكثيف المسافات مثل TooGoodToGo ——— */
+.sim-head{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  margin:0 0 4px 0;                    /* رأس البطاقة قريب */
+}
+.sim-title{
+  margin:0; padding:0;
+  font-weight:800; font-size:18px; line-height:1.15;
+  /* لو كان عندك -webkit-line-clamp؛ يظل شغال */
+}
+.sim-sub{
+  color:#6b7280; font-size:13px;
+  margin:0; line-height:1.2;           /* لا هوامش زائدة */
+}
+.sim-meta{
+  display:flex; align-items:center; gap:8px;
+  color:#6b7280; font-size:13px;
+  margin:2px 0 6px 0; line-height:1.2; /* أقرب للسطرين فوق */
+}
+.sim-meta .vsep{ height:12px; }
+
+/* ——— قلب بدون دائرة + تدرّج البنفسجي→السماوي ——— */
+:root{
+  --brand1:#8b5cf6;   /* بنفسجي */
+  --brand2:#22d3ee;   /* أزرق سماوي */
+}
+.sim-head .sim-fav{
+  position:static;           /* بجانب العنوان */
+  width:auto; height:auto;   /* نلغي أبعاد الدائرة القديمة */
+  padding:0; margin:0;
+  background:transparent; border:0; box-shadow:none;
+  display:inline-grid; place-items:center;
+  cursor:pointer;
+}
+.sim-head .sim-fav i{
+  font-size:22px; line-height:1;
+  background:linear-gradient(135deg,var(--brand1),var(--brand2));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 3px rgba(139,92,246,.35));
+  transition:transform .12s ease;
+}
+.sim-head .sim-fav:hover i{ transform:translateY(-1px); }
+
+/* عندما تتبدّل للأيقونة المعبّأة نحافظ على نفس التدرّج */
+.sim-head .sim-fav i.bi-heart-fill{
+  background:linear-gradient(135deg,var(--brand1),var(--brand2));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+
+/* نتأكد أن القواعد القديمة (الدائرة البيضاء) لا تؤثر هنا */
+.sim-media .sim-fav{ position:absolute; }        /* للنسخ التي فوق الصورة فقط */
+
 
 </style>
 
