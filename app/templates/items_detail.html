@@ -305,16 +305,23 @@
 }
 
 /* القلب عند العنوان (غير متموضع فوق الصورة) */
+/* القلب بجانب العنوان — قابل للنقر فوق الرابط دائمًا */
 .sim-head .sim-fav{
-  position:static;               /* يلغى التمركز المطلق */
-  width:36px; height:36px;       /* أصغر قليلًا */
+  position:static;            /* يبقى بجانب العنوان */
+  width:36px; height:36px;
   border-radius:50%;
   display:grid; place-items:center;
   background:#fff;
   border:1px solid #e5e7eb;
   box-shadow:0 6px 14px rgba(0,0,0,.10);
   cursor:pointer;
+
+  z-index:5;                  /* ↑ فوق أي طبقة */
+  pointer-events:auto;        /* يستقبل النقر دائمًا */
+  -webkit-tap-highlight-color:transparent;
 }
+.sim-head .sim-fav i{ pointer-events:none; } /* لو ضغطت على <i> نفسها */
+
 
 /* أي قلب داخل الصورة يبقى بأسلوبه القديم (لو بقي في بطاقات أخرى) */
 .sim-media .sim-fav{
@@ -1044,65 +1051,96 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 })();
 </script>
-
 <script>
-/* Favorite inside "Similar near you" cards (POST/DELETE + fallback) */
-document.addEventListener('click', async (e) => {
-  const fav = e.target.closest('.js-sim-fav');
-  if (!fav) return;
+/* Favorite inside "Similar near you" cards — robust on iOS:
+   نمنع التنقّل على مستوى pointerdown/touchstart بمرحلة capture قبل <a> */
 
-  e.preventDefault();
-  e.stopPropagation();
+(function(){
+  async function toggleFav(fav){
+    const id   = fav.dataset.itemId;
+    const icon = fav.querySelector('i');
+    const wasFilled = icon.classList.contains('bi-heart-fill');
 
-  const id = fav.dataset.itemId;
-  const icon = fav.querySelector('i');
-  const wasFilled = icon.classList.contains('bi-heart-fill');
+    // واجهة تفاؤلية
+    icon.classList.toggle('bi-heart-fill', !wasFilled);
+    icon.classList.toggle('bi-heart', wasFilled);
+    fav.classList.toggle('on', !wasFilled);
 
-  // تفاؤلي: بدّل الأيقونة فورًا
-  icon.classList.toggle('bi-heart-fill', !wasFilled);
-  icon.classList.toggle('bi-heart', wasFilled);
-  fav.classList.toggle('on', !wasFilled);
-
-  try {
-    // المسار القياسي مثل باقي الصفحات
-    let res = await fetch(`/api/favorites/${id}`, {
-      method: wasFilled ? 'DELETE' : 'POST',
-      credentials: 'same-origin'
-    });
-
-    // إن لم يوجد هذا المسار في بيئتك، ارجع للتوغّل كخطة بديلة
-    if (res.status === 404) {
-      res = await fetch('/api/favorites/toggle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ item_id: id })
+    try{
+      let res = await fetch(`/api/favorites/${id}`, {
+        method: wasFilled ? 'DELETE' : 'POST',
+        credentials: 'same-origin'
       });
-    }
 
-    // غير مسجّل: ارجع الحالة بصريًا ثم وجّهه لتسجيل الدخول
-    if (res.status === 401) {
+      // رجوع للمسار /toggle إن لم يوجد POST/DELETE
+      if(res.status === 404){
+        res = await fetch('/api/favorites/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ item_id: id })
+        });
+      }
+
+      // غير مسجّل: ارجع الحالة ووجّه لتسجيل الدخول
+      if(res.status === 401){
+        icon.classList.toggle('bi-heart-fill', wasFilled);
+        icon.classList.toggle('bi-heart', !wasFilled);
+        fav.classList.toggle('on', wasFilled);
+        location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
+        return;
+      }
+
+      // فشل: ارجع الحالة
+      if(!res.ok){
+        icon.classList.toggle('bi-heart-fill', wasFilled);
+        icon.classList.toggle('bi-heart', !wasFilled);
+        fav.classList.toggle('on', wasFilled);
+      }
+    }catch(_){
+      // خطأ شبكة: ارجع الحالة
       icon.classList.toggle('bi-heart-fill', wasFilled);
       icon.classList.toggle('bi-heart', !wasFilled);
       fav.classList.toggle('on', wasFilled);
-      location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
-      return;
     }
-
-    // فشل آخر: ارجع الحالة
-    if (!res.ok) {
-      icon.classList.toggle('bi-heart-fill', wasFilled);
-      icon.classList.toggle('bi-heart', !wasFilled);
-      fav.classList.toggle('on', wasFilled);
-    }
-  } catch (_) {
-    // خطأ شبكة: ارجع الحالة
-    icon.classList.toggle('bi-heart-fill', wasFilled);
-    icon.classList.toggle('bi-heart', !wasFilled);
-    fav.classList.toggle('on', wasFilled);
   }
-}, { passive: false });
+
+  function findFavTarget(e){
+    const fav = e.target.closest('.js-sim-fav');
+    return fav && document.contains(fav) ? fav : null;
+  }
+
+  // نمنع التنقّل مبكرًا جدًا قبل <a> كي لا يقطع حدث النقر
+  ['pointerdown','touchstart'].forEach(evt=>{
+    document.addEventListener(evt, function(e){
+      const fav = findFavTarget(e);
+      if(!fav) return;
+      e.preventDefault();
+      e.stopPropagation();
+    }, { passive:false, capture:true });
+  });
+
+  // الحدث الرئيسي للنقر
+  document.addEventListener('click', function(e){
+    const fav = findFavTarget(e);
+    if(!fav) return;
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFav(fav);
+  }, { passive:false, capture:true });
+
+  // دعم Enter/Space على span[role=button]
+  document.addEventListener('keydown', function(e){
+    if(e.key !== 'Enter' && e.key !== ' ') return;
+    const fav = findFavTarget(e);
+    if(!fav) return;
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFav(fav);
+  }, true);
+})();
 </script>
+
 
 
 
