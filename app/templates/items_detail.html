@@ -976,6 +976,82 @@
 @media (min-width: 992px){
   .gallery{ border: 0; background: transparent; }
   .air-sheet{ border-top-left-radius: 18px; border-top-right-radius: 18px; }
+
+  /* ====== DESKTOP FIX ONLY (>=992px) ====== */
+@media (min-width:992px){
+
+  /* تخطيط عمودين واضح: اليسار المنشور، اليمين Reviews ثابت */
+  .items-shell{
+    display:grid !important;
+    grid-template-columns:minmax(680px,1fr) 380px !important;
+    column-gap:24px !important;
+    align-items:start !important;
+    max-width:1200px !important;
+    margin:28px auto !important;
+    padding:0 18px !important;
+    background: #f4f6fb !important;
+  }
+
+  /* الكارد الكبيرة تبقى في العمود الأيسر */
+  .items-shell > .grid-2{ grid-column:1 !important; }
+
+  /* Reviews ثابتة أعلى يمين */
+  #reviews{
+    grid-column:2 !important;
+    grid-row:1 !important;
+    position:sticky !important;
+    top:16px !important;
+    margin:0 !important;
+    background:#fff !important;
+    border:1px solid #e6eaf5 !important;
+    border-radius:16px !important;
+    padding:14px !important;
+    box-shadow:0 10px 24px rgba(16,24,40,.06) !important;
+  }
+  /* داخل لوحة الريفيو لا سكرول أفقي ولا جريد */
+  #reviews .rv-strip{ display:block !important; overflow:visible !important; padding:0 !important; }
+  #reviews .rv-card{ display:none !important; }         /* كلها مخفية */
+  #reviews .rv-card.active{ display:block !important; } /* الحالية فقط */
+
+  /* زر "View all…" بجانب الريفيو نخفيه على الديسكتوب */
+  #reviews + a.btnx-lightwide{ display:none !important; }
+
+  /* ===== “Similar near you” سلايدر ومتوسّطة ===== */
+  .sim-wrap{
+    grid-column:1 / -1 !important;         /* تمتد عبر العمودين */
+    width:min(1100px,92vw) !important;
+    margin:22px auto 10px auto !important; /* بالوسط */
+  }
+  .sim-row{
+    display:flex !important;
+    gap:16px !important;
+    overflow-x:auto !important;
+    scroll-snap-type:x mandatory !important;
+    padding:2px 8px 16px !important;
+  }
+  .sim-card{
+    flex:0 0 300px !important;
+    max-width:300px !important;
+    scroll-snap-align:start !important;
+  }
+
+  /* ===== Owner بالوسط تحت السيميلر ===== */
+  .card-glass:has(.owner-row){
+    grid-column:1 / -1 !important;
+    width:min(900px,92vw) !important;
+    margin:14px auto 0 auto !important;    /* بالوسط */
+    background:#fff !important;
+    border:1px solid #e6eaf5 !important;
+    border-radius:16px !important;
+    box-shadow:0 10px 24px rgba(16,24,40,.06) !important;
+  }
+  .owner-row{ justify-content:center !important; }
+  .btns-row{ justify-content:center !important; }
+
+  /* تأكيد عدم وجود جريد سابق للسيميلر/الريفيو يفسد التخطيط */
+  .rv-strip, .sim-row{ grid-template-columns:none !important; }
+}
+
 }
 </style>
 
