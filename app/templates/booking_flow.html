@@ -1009,8 +1009,77 @@
     0 0 0 3px rgba(255,255,255,.14),
     0 8px 24px rgba(0,0,0,.25);
 }
+/* === Owner (requested) sticky bar — raise + glass red/green === */
+@media (max-width:576px){
+
+  /* ارفع الشريط فوق خط الآيفون مع خلفية زجاجية فخمة */
+  .sticky-actions.owner-actions{
+    bottom: 0;
+    transform: translate3d(0,-14px,0);                 /* الرفع */
+    padding: 12px 12px calc(18px + env(safe-area-inset-bottom,0px));
+    background: color-mix(in oklab, var(--surface) 86%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(120%);
+            backdrop-filter: blur(14px) saturate(120%);
+    border-top: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+    box-shadow: 0 -12px 30px rgba(0,0,0,.28);
+    z-index: 1060;
+    gap: 12px;                                         /* مسافة بين الزرين */
+  }
+
+  /* زِد الفراغ بالصفحة حتى لا يختفي المحتوى تحت الشريط المرتفع */
+  .page-bottom-spacer{ height: calc(98px + env(safe-area-inset-bottom,0px)) !important; }
+
+  /* أساس الزر على الموبايل (يغلب Bootstrap) */
+  .sticky-actions.owner-actions .btn{
+    height: 52px;
+    border-radius: 16px !important;
+    font-weight: 800;
+    letter-spacing: .2px;
+    border: 1px solid rgba(255,255,255,.22) !important;
+    color:#fff !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.18) !important;
+  }
+
+  /* أخضر زجاجي */
+  .sticky-actions.owner-actions .btn.btn-glass-green{
+    background: linear-gradient(180deg, rgba(34,197,94,.88), rgba(16,185,129,.76)) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(130%);
+            backdrop-filter: blur(12px) saturate(130%);
+    box-shadow: 0 8px 24px rgba(16,185,129,.30), inset 0 1px 0 rgba(255,255,255,.18) !important;
+  }
+
+  /* أحمر زجاجي */
+  .sticky-actions.owner-actions .btn.btn-glass-red{
+    background: linear-gradient(180deg, rgba(244,63,94,.90), rgba(239,68,68,.78)) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(130%);
+            backdrop-filter: blur(12px) saturate(130%);
+    box-shadow: 0 8px 24px rgba(239,68,68,.30), inset 0 1px 0 rgba(255,255,255,.18) !important;
+  }
+
+  /* تفاعل لطيف */
+  .sticky-actions.owner-actions .btn:hover{ filter: brightness(1.05); }
+  .sticky-actions.owner-actions .btn:active{ transform: translateY(1px); }
+  .sticky-actions.owner-actions .btn:focus{
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255,255,255,.14), 0 8px 24px rgba(0,0,0,.25) !important;
+  }
+}
+
+/* في حال بقيت الأزرار القديمة بدون الكلاسات الجديدة، لوّنها حسب الترتيب (احتياطي) */
+@media (max-width:576px){
+  .sticky-actions.owner-actions form:first-child .btn{
+    background: linear-gradient(180deg, rgba(244,63,94,.90), rgba(239,68,68,.78)) !important;
+    color:#fff !important;
+  }
+  .sticky-actions.owner-actions form:last-child .btn{
+    background: linear-gradient(180deg, rgba(34,197,94,.88), rgba(16,185,129,.76)) !important;
+    color:#fff !important;
+  }
+}
+
 
 })();
+
 </script>
 
 
