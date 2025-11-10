@@ -1020,11 +1020,11 @@
   <div class="sticky-actions owner-actions d-sm-none">
     <form method="post" action="/bookings/{{ booking.id }}/owner/decision">
       <input type="hidden" name="decision" value="rejected">
-      <button class="btn btn-glass-red w-100"><i class="bi bi-x-lg"></i> رفض</button>
+      <button class="btn btn-glass-red w-100"><i class="bi bi-x-lg"></i>Reject</button>
     </form>
     <form method="post" action="/bookings/{{ booking.id }}/owner/decision">
       <input type="hidden" name="decision" value="accepted">
-      <button class="btn btn-glass-green w-100"><i class="bi bi-check2-circle"></i> قبول + وديعة</button>
+      <button class="btn btn-glass-green w-100"><i class="bi bi-check2-circle"></i>Accept + Deposit</button>
     </form>
   </div>
 {% endif %}
