@@ -241,6 +241,8 @@ def start_checkout_all(
             payment_intent_data=pi_data,
             automatic_tax={"enabled": True},
             tax_id_collection={"enabled": True},
+            billing_address_collection="required",
+            customer_creation="always",
             line_items=[
                 {
                     "quantity": 1,
@@ -383,6 +385,8 @@ def start_checkout_rent(
             payment_intent_data=pi_data,
             automatic_tax={"enabled": True},
             tax_id_collection={"enabled": True},
+            billing_address_collection="required",
+            customer_creation="always",
             line_items=[
                 {
                     "quantity": 1,
@@ -437,6 +441,8 @@ def start_checkout_deposit(
             },
             automatic_tax={"enabled": True},
             tax_id_collection={"enabled": True},
+            billing_address_collection="required",
+            customer_creation="always",
             line_items=[
                 {
                     "quantity": 1,

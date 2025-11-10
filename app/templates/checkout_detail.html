@@ -1,6 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
 
+{# ==== متغيرات العرض (العملة والرسوم التقديرية) ==== #}
+{% set currency = (CURRENCY or 'CAD')|upper %}
+{% set rent = (booking.total_amount or 0.0) %}
+{% set sevor_fee = (rent * 0.01) %}
+{% set processing_fee_est = (rent * 0.029) + 0.30 %}
+
 <h3 class="mb-3">Payment for Booking #{{ booking.id }}</h3>
 
 <div class="card">
@@ -8,55 +14,67 @@
     <div class="mb-2">Item: <strong>{{ item.title }}</strong></div>
     <div class="mb-2">Owner: {{ owner.first_name }} {{ owner.last_name }}</div>
     <div class="mb-2">Dates: from {{ booking.start_date }} to {{ booking.end_date }}</div>
-    <div class="mb-3">Amount: <strong>{{ booking.total_amount }} {{ (CURRENCY or 'USD') | upper }}</strong></div>
+    <div class="mb-3">Amount: <strong>{{ "%.2f"|format(rent) }} {{ currency }}</strong></div>
 
     {% if booking.status != 'confirmed' %}
       <div class="alert alert-warning">The booking is not in the "confirmed" state.</div>
     {% else %}
+
+      {# ✅ هنا نضع ملخص الطلب قبل الفورم #}
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5 class="mb-3">Order summary</h5>
+
+          <div class="d-flex justify-content-between">
+            <span>Rent for (“{{ item.title }}”)</span>
+            <strong>{{ "%.2f"|format(rent) }} {{ currency }}</strong>
+          </div>
+
+          <hr class="my-2">
+
+          <div class="d-flex justify-content-between">
+            <span>Sous-total</span>
+            <strong>{{ "%.2f"|format(rent) }} {{ currency }}</strong>
+          </div>
+
+          <div class="d-flex justify-content-between">
+            <span>Sevor Fee (1%)</span>
+            <strong>{{ "%.2f"|format(sevor_fee) }} {{ currency }}</strong>
+          </div>
+
+          <div class="d-flex justify-content-between text-muted">
+            <span>Taxe</span>
+            <span>Calculated at Stripe</span>
+          </div>
+
+          <div class="d-flex justify-content-between text-muted">
+            <span>Stripe processing (est.)</span>
+            <span>{{ "%.2f"|format(processing_fee_est) }} {{ currency }}</span>
+          </div>
+
+          <hr class="my-2">
+
+          <div class="d-flex justify-content-between">
+            <span>Total (before tax)</span>
+            <strong>{{ "%.2f"|format(rent + sevor_fee + processing_fee_est) }} {{ currency }}</strong>
+          </div>
+
+          <div class="small text-muted mt-2">
+            الضرائب تُحسب بدقّة في صفحة Stripe حسب العنوان.
+            “Sevor Fee (1%)” تُقتطع تلقائيًا عبر Stripe كـ application fee ولن تظهر كسطر داخل صفحة Stripe.
+            “Stripe processing (est.)” للعرض فقط (إلا إذا قررت تحصيلها فعليًا).
+          </div>
+        </div>
+      </div>
+      {# ✅ نهاية الملخص #}
+
+      {# ✅ فورم الدفع (بدون تداخل أو تكرار) #}
       <form id="pay-form">
-      {% if booking.status != 'confirmed' %}
-  <div class="alert alert-warning">The booking is not in the "confirmed" state.</div>
-{% else %}
-
-  <!-- ✅ Order summary block -->
-  <div class="card mb-3">
-    <div class="card-body">
-      <h5 class="mb-3">Order summary</h5>
-
-      <div class="d-flex justify-content-between">
-        <span>Subtotal (rent)</span>
-        <strong>{{ "%.2f"|format(booking.total_amount or 0) }} {{ currency }}</strong>
-      </div>
-
-      <div class="d-flex justify-content-between">
-        <span>Sevor Fee (1%)</span>
-        <strong>{{ "%.2f"|format((booking.total_amount or 0) * 0.01) }} {{ currency }}</strong>
-      </div>
-
-      <div class="d-flex justify-content-between text-muted small">
-        <span>Taxes</span>
-        <span>Calculated at checkout</span>
-      </div>
-
-      <hr>
-      <div class="d-flex justify-content-between">
-        <span>Estimated total (before tax)</span>
-        <strong>{{ "%.2f"|format((booking.total_amount or 0) * 1.01) }} {{ currency }}</strong>
-      </div>
-
-      <div class="text-muted small mt-2">
-        Exact taxes appear on the Stripe page based on your address.
-      </div>
-    </div>
-  </div>
-  <!-- ✅ End of summary -->
-
-  <form id="pay-form">
-
         <div id="payment-element"></div>
         <button class="btn btn-primary mt-3" id="submit-btn" type="submit">Pay Now</button>
         <div id="pay-msg" class="mt-3 text-muted small"></div>
       </form>
+
     {% endif %}
   </div>
 </div>
@@ -68,7 +86,7 @@
   const msgEl  = document.getElementById('pay-msg');
   const setMsg = (t) => { if (msgEl) msgEl.textContent = t || ""; };
 
-  // The publishable key comes from the router/env: pk = os.getenv("STRIPE_PUBLISHABLE_KEY")
+  // مفتاح Stripe العلني يجب أن ترسله من الباك: pk
   const stripe = Stripe("{{ pk }}");
 
   function urlParam(name){
@@ -76,7 +94,6 @@
     return url.searchParams.get(name);
   }
 
-  // If we returned from 3D Secure, display the PaymentIntent status
   async function showStatusFromReturn(){
     const clientSecret = urlParam('payment_intent_client_secret');
     if (!clientSecret) return false;
@@ -116,7 +133,6 @@
 
   {% if booking.status == 'confirmed' %}
   (async function init(){
-    // If we came back from redirect, show status and stop
     if (await showStatusFromReturn()) return;
 
     try {
@@ -132,10 +148,7 @@
 
         const { error } = await stripe.confirmPayment({
           elements,
-          confirmParams: {
-            // Return to the same page after 3D Secure verification
-            return_url: window.location.href.split("?")[0]
-          }
+          confirmParams: { return_url: window.location.href.split("?")[0] }
         });
 
         if (error) {
