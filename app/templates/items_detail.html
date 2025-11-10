@@ -466,6 +466,24 @@
   opacity: 0.8; /* يظهر بشكل أوضح */
 }
 
+/* تصغير المسافة بين الصورة وحدود البطاقة */
+.sim-card {
+  padding: 10px !important;         /* كانت 14 أو 16px — الآن أقل */
+  border-radius: 16px;
+}
+
+/* جعل الصورة تملأ البطاقة تقريبًا */
+.sim-media {
+  margin: 0 !important;             /* يلغي أي مسافة إضافية */
+  border-radius: 14px !important;   /* نفس شكل البطاقة تقريبًا */
+  overflow: hidden;
+}
+
+/* تعديل المسافات أسفل الصورة لتبدو مضغوطة أكثر */
+.sim-body {
+  padding-top: 8px !important;      /* كانت 12px — أصبحت أصغر */
+}
+
 </style>
 
 <section class="items-shell">
