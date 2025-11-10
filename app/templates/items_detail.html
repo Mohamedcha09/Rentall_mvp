@@ -531,14 +531,16 @@
 
 <style>
   .sim-head .sim-fav{
-    position: relative !important;  /* فوق الرابط */
+    position: relative !important;
     z-index: 5 !important;
     pointer-events: auto !important;
   }
   .sim-head .sim-fav i{
-    pointer-events: none !important; /* حتى يصعد الحدث للـ<span> */
+    pointer-events: none !important;
   }
+  a.sim-card{ cursor:pointer; }
 </style>
+
 
 
 <section class="items-shell">
@@ -1065,9 +1067,8 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 })();
 </script>
-<script>
-/* Favorite inside "Similar near you" cards — robust on iOS:
-   نمنع التنقّل على مستوى pointerdown/touchstart بمرحلة capture قبل <a> */
+
+
 <script>
 /* Favorite in Similar cards — simple, robust on iOS/Android */
 (function () {
@@ -1076,7 +1077,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const icon = fav.querySelector('i');
     const wasFilled = icon.classList.contains('bi-heart-fill');
 
-    // واجهة تفاؤلية
+    // تفاؤلي
     icon.classList.toggle('bi-heart-fill', !wasFilled);
     icon.classList.toggle('bi-heart', wasFilled);
     fav.classList.toggle('on', !wasFilled);
@@ -1119,7 +1120,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  // تفويض نقر بسيط: نمنع تنقل <a> فقط عندما الهدف هو القلب
+  // تفويض: امنع تنقّل <a> فقط إذا الهدف هو القلب
   document.addEventListener('click', function(e){
     const fav = e.target.closest('.js-sim-fav');
     if (!fav) return;
@@ -1129,7 +1130,7 @@ document.addEventListener('DOMContentLoaded', function () {
     toggleFav(fav);
   }, true);
 
-  // دعم Enter/Space
+  // دعم لوحة المفاتيح
   document.addEventListener('keydown', function(e){
     if (e.key !== 'Enter' && e.key !== ' ') return;
     const fav = e.target.closest('.js-sim-fav');
@@ -1138,9 +1139,15 @@ document.addEventListener('DOMContentLoaded', function () {
     e.stopPropagation();
     toggleFav(fav);
   }, true);
-})();
-</script>
 
+  // فallback للتنقّل على iOS داخل الحاوية القابلة للتمرير
+  document.addEventListener('click', function(e){
+    const card = e.target.closest('a.sim-card');
+    if (!card) return;
+    if (e.target.closest('.js-sim-fav')) return; // لو ضغط قلب، لا ننتقل
+    if (e.defaultPrevented) { window.location.assign(card.href); }
+  }, false);
+})();
 </script>
 
 
