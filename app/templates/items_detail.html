@@ -410,6 +410,17 @@
 /* نتأكد أن القواعد القديمة (الدائرة البيضاء) لا تؤثر هنا */
 .sim-media .sim-fav{ position:absolute; }        /* للنسخ التي فوق الصورة فقط */
 
+/* لوجو/أفاتار المالك أسفل يسار الصورة */
+.sim-logo{
+  position:absolute; left:10px; bottom:10px; z-index:3;
+  width:38px; height:38px; border-radius:50%; object-fit:cover;
+  background:#fff; border:2px solid #fff;
+  box-shadow:0 6px 14px rgba(0,0,0,.18);
+}
+@media (max-width:768px){
+  .sim-logo{ width:36px; height:36px; }
+}
+
 
 </style>
 
@@ -599,6 +610,19 @@
           <a class="sim-card" href="/items/{{ s.id }}">
             <div class="sim-media">
               <img class="sim-img" src="{{ cover or url_for('static', path='placeholder.png') }}" alt="{{ s.title|e }}">
+              {# مصدر الأفاتار (عدّل اسم الحقل حسب بياناتك) #}
+{% set logo_src =
+     (s.owner_avatar_path if s.owner_avatar_path else
+     (s.owner and s.owner.avatar_path) if s.owner else
+     None) %}
+{% if logo_src and not (logo_src.startswith('http') or logo_src.startswith('/')) %}
+  {% set logo_src = '/' ~ logo_src %}
+{% endif %}
+
+{% if logo_src %}
+  <img class="sim-logo" src="{{ logo_src }}" alt="owner logo">
+{% endif %}
+
 
               <div class="sim-chip">{{ s.category_label or s.category }}</div>
 
