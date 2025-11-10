@@ -475,6 +475,42 @@
         <div class="pay-note mt-2">
           You’ll be redirected to Stripe to complete the card details. After success you’ll return here and statuses will update.
         </div>
+        {# === Order summary (قبل الأزرار مباشرة) === #}
+<div class="card mb-2">
+  <div class="card-body">
+    <h6 class="mb-2">Order summary</h6>
+
+    {% set currency = (CURRENCY or 'CAD')|upper %}
+    {% set rent = (booking.total_amount or 0.0)|float %}
+    {% set processing_fee = (rent * (STRIPE_PROCESSING_PCT or 0.029)) + ((STRIPE_PROCESSING_FIXED_CENTS or 30) / 100.0) %}
+
+    <div class="d-flex justify-content-between">
+      <span>Rent</span>
+      <strong>{{ "%.2f"|format(rent) }} {{ currency }}</strong>
+    </div>
+
+    <div class="d-flex justify-content-between">
+      <span>Processing fee</span>
+      <strong>{{ "%.2f"|format(processing_fee) }} {{ currency }}</strong>
+    </div>
+
+    <div class="d-flex justify-content-between text-muted">
+      <span>Taxes</span><span>Calculated at Stripe</span>
+    </div>
+
+    <hr class="my-2">
+    <div class="d-flex justify-content-between">
+      <span>Total (before tax)</span>
+      <strong>{{ "%.2f"|format(rent + processing_fee) }} {{ currency }}</strong>
+    </div>
+
+    <div class="small text-muted mt-2">
+      • Sevor يأخذ 1% من الإيجار ضمن التحويل للمالك.<br>
+      • Processing fee تُدفع كسطر منفصل وتُحتسب عليها الضرائب داخل Stripe.
+    </div>
+  </div>
+</div>
+
       </div>
     </div>
   {% elif is_owner %}
