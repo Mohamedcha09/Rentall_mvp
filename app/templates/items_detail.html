@@ -292,6 +292,43 @@
     -webkit-text-fill-color:transparent;
     filter:drop-shadow(0 0 4px rgba(59,130,246,.4));
   }
+
+  /* رأس البطاقة: عنوان يسار + قلب يمين */
+.sim-head{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  margin:0 0 6px 0;              /* تقارب مثل الصورة الثانية */
+}
+
+/* العنوان أكثر إحكامًا */
+.sim-title{
+  margin:0; padding:0;
+  font-weight:800; font-size:18px; line-height:1.2; /* أصغر وقريب */
+}
+
+/* القلب عند العنوان (غير متموضع فوق الصورة) */
+.sim-head .sim-fav{
+  position:static;               /* يلغى التمركز المطلق */
+  width:36px; height:36px;       /* أصغر قليلًا */
+  border-radius:50%;
+  display:grid; place-items:center;
+  background:#fff;
+  border:1px solid #e5e7eb;
+  box-shadow:0 6px 14px rgba(0,0,0,.10);
+  cursor:pointer;
+}
+
+/* أي قلب داخل الصورة يبقى بأسلوبه القديم (لو بقي في بطاقات أخرى) */
+.sim-media .sim-fav{
+  position:absolute; top:10px; right:10px;
+}
+
+/* سطر الوصف والمسافات — تقارب مثل المثال */
+.sim-sub{ color:#6b7280; font-size:13px; margin:0 0 6px 0; line-height:1.35; }
+.sim-meta{ gap:10px; font-size:13px; margin-bottom:8px; line-height:1.35; }
+
+/* هوامش البطاقة أقل قليلًا */
+.sim-card{ padding:14px; }
+
 </style>
 
 <section class="items-shell">
@@ -494,14 +531,17 @@
                    aria-label="{{ has_rating and ('%.1f'|format(s_avg) ~ ' stars') or 'No ratings yet' }}">
                 {% if has_rating %}<span class="star">★</span>{{ '%.1f'|format(s_avg) }}{% endif %}
               </div>
-
-              <button type="button" class="sim-fav js-sim-fav" data-item-id="{{ s.id }}" aria-label="Save">
-                <i class="bi bi-heart"></i>
-              </button>
             </div>
 
             <div class="sim-body">
-              <div class="sim-title">{{ s.title }}</div>
+  <div class="sim-head">
+    <div class="sim-title">{{ s.title }}</div>
+    <span role="button" tabindex="0"
+          class="sim-fav js-sim-fav" data-item-id="{{ s.id }}" aria-label="Save">
+      <i class="bi bi-heart"></i>
+    </span>
+  </div>
+
               <div class="sim-sub">{{ s.subtype or s.kind or s.category_label or s.category }}</div>
 
               <div class="sim-meta">
@@ -789,5 +829,27 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 })();
 </script>
+
+<script>
+document.addEventListener('click', function(e){
+  const fav = e.target.closest('.js-sim-fav');
+  if(!fav) return;
+  e.preventDefault();
+  e.stopPropagation();
+
+  // تبديل فوري شكليًا
+  const i = fav.querySelector('i');
+  if(i){ i.classList.toggle('bi-heart'); i.classList.toggle('bi-heart-fill'); }
+  fav.classList.toggle('on');
+
+  // نداء API (اختياري)
+  fetch('/api/favorites/toggle', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin',
+    body: JSON.stringify({ item_id: fav.dataset.itemId })
+  }).catch(()=>{});
+}, {passive:false});
+</script>
+
 
 {% endblock %}
