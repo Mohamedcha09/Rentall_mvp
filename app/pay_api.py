@@ -21,7 +21,6 @@ try:
 except Exception:
     _templated_send_email = None
 
-
 def _strip_html(html: str) -> str:
     try:
         import re
@@ -31,7 +30,6 @@ def _strip_html(html: str) -> str:
         return txt.strip()
     except Exception:
         return html
-
 
 def send_email(to_email: str, subject: str, html_body: str, text_body: str | None = None) -> bool:
     """Try emailer.send_email then fall back to plain text via your SMTP test_email.py (if configured);
@@ -45,7 +43,6 @@ def send_email(to_email: str, subject: str, html_body: str, text_body: str | Non
         pass
     # Silent fallback (no raw SMTP here to avoid duplicated code) — will not break the flow.
     return False
-
 
 # ================= Stripe Config =================
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")  # sk_test_... / sk_live_...
@@ -71,11 +68,9 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optiona
     uid = data.get("id")
     return db.get(User, uid) if uid else None
 
-
 def require_auth(u: Optional[User]):
     if not u:
         raise HTTPException(status_code=401, detail="Unauthorized")
-
 
 def require_booking(db: Session, bid: int) -> Booking:
     bk = db.get(Booking, bid)
@@ -83,10 +78,8 @@ def require_booking(db: Session, bid: int) -> Booking:
         raise HTTPException(status_code=404, detail="Booking not found")
     return bk
 
-
 def flow_redirect(bid: int) -> RedirectResponse:
     return RedirectResponse(url=f"/bookings/flow/{bid}", status_code=303)
-
 
 def can_manage_deposits(u: Optional[User]) -> bool:
     """ Admin or has is_deposit_manager=True """
@@ -96,14 +89,12 @@ def can_manage_deposits(u: Optional[User]) -> bool:
         return True
     return bool(getattr(u, "is_deposit_manager", False))
 
-
 # Unify reading/writing the deposit authorization identifier (PI)
 def _get_deposit_pi_id(bk: Booking) -> Optional[str]:
     return (
         getattr(bk, "deposit_hold_intent_id", None)
         or getattr(bk, "deposit_hold_id", None)
     )
-
 
 def _set_deposit_pi_id(bk: Booking, pi_id: Optional[str]) -> None:
     try:
@@ -115,7 +106,6 @@ def _set_deposit_pi_id(bk: Booking, pi_id: Optional[str]) -> None:
     except Exception:
         pass
 
-
 # ====== Additional helpers for invoices ======
 def _fmt_money_cents(amount_cents: int, currency: str | None = None) -> str:
     try:
@@ -123,7 +113,6 @@ def _fmt_money_cents(amount_cents: int, currency: str | None = None) -> str:
         return f"{amount_cents/100:,.2f} {unit}"
     except Exception:
         return str(amount_cents)
-
 
 def _latest_charge_id(pi: dict | stripe.PaymentIntent | None) -> str | None:
     try:
@@ -134,11 +123,9 @@ def _latest_charge_id(pi: dict | stripe.PaymentIntent | None) -> str | None:
     except Exception:
         return None
 
-
 def _user_email(db: Session, user_id: int) -> str | None:
     u = db.get(User, user_id) if user_id else None
     return (u.email or None) if u else None
-
 
 def _compose_invoice_html(
     bk: Booking,
@@ -239,10 +226,6 @@ def start_checkout_all(
         session = stripe.checkout.Session.create(
             mode="payment",
             payment_intent_data=pi_data,
-            automatic_tax={"enabled": True},
-            tax_id_collection={"enabled": True},
-            billing_address_collection="required",
-            customer_creation="always",
             line_items=[
                 {
                     "quantity": 1,
@@ -383,20 +366,14 @@ def start_checkout_rent(
         session = stripe.checkout.Session.create(
             mode="payment",
             payment_intent_data=pi_data,
-            automatic_tax={"enabled": True},
-            tax_id_collection={"enabled": True},
-            billing_address_collection="required",
-            customer_creation="always",
-            line_items=[
-                {
-                    "quantity": 1,
-                    "price_data": {
-                        "currency": CURRENCY,
-                        "product_data": {"name": f"Rent for '{item.title}' (#{bk.id})"},
-                        "unit_amount": amount_cents,
-                    },
-                }
-            ],
+            line_items=[{
+                "quantity": 1,
+                "price_data": {
+                    "currency": CURRENCY,
+                    "product_data": {"name": f"Rent for '{item.title}' (#{bk.id})"},
+                    "unit_amount": amount_cents,
+                },
+            }],
             success_url=f"{SITE_URL}/bookings/flow/{bk.id}?rent_ok=1&sid={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{SITE_URL}/bookings/flow/{bk.id}?cancel=1",
         )
@@ -439,20 +416,14 @@ def start_checkout_deposit(
                 "capture_method": "manual",
                 "metadata": {"kind": "deposit", "booking_id": str(bk.id)},
             },
-            automatic_tax={"enabled": True},
-            tax_id_collection={"enabled": True},
-            billing_address_collection="required",
-            customer_creation="always",
-            line_items=[
-                {
-                    "quantity": 1,
-                    "price_data": {
-                        "currency": CURRENCY,
-                        "product_data": {"name": f"Deposit hold for '{item.title}' (#{bk.id})"},
-                        "unit_amount": dep * 100,
-                    },
-                }
-            ],
+            line_items=[{
+                "quantity": 1,
+                "price_data": {
+                    "currency": CURRENCY,
+                    "product_data": {"name": f"Deposit hold for '{item.title}' (#{bk.id})"},
+                    "unit_amount": dep * 100,
+                },
+            }],
             success_url=f"{SITE_URL}/bookings/flow/{bk.id}?deposit_ok=1&sid={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{SITE_URL}/bookings/flow/{bk.id}?cancel=1",
         )
@@ -637,7 +608,6 @@ def _webhook_handler_factory() -> Callable:
 
         return JSONResponse({"ok": True})
     return _handler
-
 
 # ⚠️ Important: use a single route here to avoid conflicts with app/webhooks.py
 router.post("/webhooks/stripe")(_webhook_handler_factory())
