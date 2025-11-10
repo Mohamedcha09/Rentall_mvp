@@ -539,6 +539,165 @@
     pointer-events: none !important;
   }
   a.sim-card{ cursor:pointer; }
+
+  /* ================================
+   DESKTOP POLISH (>= 992px ONLY)
+   ضع هذا البلوك في آخر الملف
+   ================================ */
+@media (min-width: 992px){
+
+  /* خلفية هادئة ونص داكن */
+  body{ background:#f6f7fb !important; color:#111 !important; }
+
+  /* حاوية أوسع وهوامش متساوية */
+  .items-shell{ max-width:1220px; padding:0 20px; margin:28px auto; }
+
+  /* شبكة مريحة: محتوى عريض + عمود ثانوي أضيق لو لزم */
+  .grid-2{
+    display:grid; gap:22px;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr);
+    align-items:start;
+  }
+
+  /* كارد أبيض نظيف بدل الزجاج */
+  .card-glass{
+    background:#fff !important;
+    border:1px solid #e6eaf5 !important;
+    border-radius:20px !important;
+    box-shadow:0 8px 28px rgba(16,24,40,.08) !important;
+    overflow:hidden;
+  }
+  .card-body{ padding:24px !important; }
+
+  /* الجاليري: حواف، ظل خفيف، ارتفاع ثابت مريح */
+  .gallery{
+    background:#fff !important; border:0 !important; padding:16px;
+  }
+  .gallery-main{
+    aspect-ratio:auto; height:540px; max-height:62vh;
+    border-radius:16px; overflow:hidden; background:#0a0f1e;
+    box-shadow:0 8px 24px rgba(0,0,0,.12);
+  }
+  .gallery-main img{ object-fit:cover; }
+  .gallery-menu .btn-menu{
+    background:rgba(255,255,255,.9); color:#111;
+    border-color:#e6eaf5;
+  }
+
+  /* مصغّرات واضحة بمحاذاة أجمل */
+  .thumbs{
+    padding:14px 2px 2px; gap:12px;
+    background:transparent;
+  }
+  .thumbs img{
+    width:110px; height:74px; border-radius:12px;
+    border:1px solid #e6eaf5 !important; opacity:.95;
+  }
+  .thumbs img:hover{ transform:translateY(-3px) scale(1.02); box-shadow:0 8px 18px rgba(0,0,0,.12); }
+  .thumbs img.active{ outline:2px solid #8b5cf6; }
+
+  /* الورقة البيضاء (air-sheet) تصبح بطاقة أولى مرتبة */
+  .air-sheet{
+    background:#fff !important; color:#111 !important;
+    margin-top:16px; border:1px solid #e6eaf5; border-radius:20px;
+    padding:24px 24px 20px !important; box-shadow:0 8px 24px rgba(16,24,40,.06);
+  }
+  .air-sheet::before{ display:none; }
+
+  /* عناوين ونصوص أوضح على الديسكتوب */
+  .card-title{ font-size:32px !important; margin-bottom:8px !important; letter-spacing:.1px; }
+  .small-muted{ color:#6b7280 !important; font-size:14px !important; }
+
+  .hr{ background:#e6eaf5 !important; height:1px !important; margin:16px 0 !important; }
+
+  /* شريط السعر والزر (يبقى داخل الكارد على الديسكتوب) */
+  #airBar{
+    position:static !important; box-shadow:none !important; border:0 !important;
+    padding:0 !important; background:transparent !important; display:flex; gap:14px;
+    align-items:center; justify-content:space-between;
+  }
+  #airUnder{ display:none !important; }
+  .air-price .now{ font-size:22px !important; }
+  .air-cta{ height:48px !important; line-height:48px !important; border-radius:14px !important; padding:0 22px !important; }
+
+  /* صف الإحصاءات أعلى الوصف */
+  .stat-row{ margin:6px 0 12px !important; }
+  .stars-bw .full{ color:#111; }
+  .stars-bw .empty{ color:#c7cbd6; }
+
+  /* ===== Reviews: شبكة بدل سكرول أفقي على الديسكتوب ===== */
+  .rv-strip{
+    display:grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap:16px !important; overflow:visible !important; padding:0 !important;
+  }
+  .rv-card{
+    background:#fff !important; border:1px solid #e6eaf5 !important;
+    border-radius:16px !important; box-shadow:0 8px 20px rgba(16,24,40,.06) !important;
+    padding:16px !important;
+  }
+  .rv-head{ margin-bottom:8px !important; }
+  .rv-meta{ color:#6b7280 !important; }
+
+  /* ===== Similar: شبكة نظيفة بدل سكرول أفقي ===== */
+  .sim-wrap{ margin:8px 0 0; }
+  .sim-row{
+    display:grid !important; gap:18px !important;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+    overflow:visible !important; padding:4px 0 0 !important;
+  }
+  .sim-card{
+    max-width:none !important; flex:none !important; scroll-snap-align:none !important;
+    background:#fff; border:1px solid #e6eaf5; border-radius:16px;
+    padding:14px; box-shadow:0 10px 24px rgba(16,24,40,.08);
+    transition:transform .12s ease, box-shadow .2s ease;
+  }
+  .sim-card:hover{ transform:translateY(-2px); box-shadow:0 14px 30px rgba(16,24,40,.12); }
+  .sim-media{ border-radius:14px; overflow:hidden; }
+  .sim-img{ height:180px; }
+  .sim-chip,.sim-rate{
+    background:#fff; border:1px solid #e6eaf5;
+  }
+  .sim-title{ font-size:18px; line-height:1.25; margin:6px 0 6px; }
+  .sim-sub{ color:#6b7280; margin:0 0 6px; }
+  .sim-meta{ gap:10px; margin-bottom:10px; }
+  .sim-price-old{ font-size:13px; }
+  .sim-price-now{ font-size:18px; }
+  .sim-unit{ font-size:12px; }
+
+  /* زر القلب بجانب العنوان بدون مشاكل تراكب */
+  .sim-head .sim-fav{
+    position:static; width:auto; height:auto; background:transparent; border:0; box-shadow:none;
+  }
+  .sim-head .sim-fav i{
+    font-size:22px; background:linear-gradient(135deg,#8b5cf6,#22d3ee);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 3px rgba(139,92,246,.28));
+  }
+
+  /* كارد المالك */
+  .owner-row .owner-avatar{ box-shadow:none; border:1px solid #e6eaf5; }
+  .badge-pill{
+    background:#f9fafb; border:1px solid #e6eaf5; color:#6b7280;
+  }
+
+  /* أزرار موحّدة أخف على الديسكتوب */
+  .btnx,.air-cta,.item-page .btn{
+    box-shadow:0 10px 22px rgba(24,24,38,.10);
+  }
+  .btnx-ghost,.item-page .btn.btn-outline-secondary{
+    background:#fff; border:1px solid #e6eaf5;
+  }
+
+  /* تباعد عام أنظف بين الأقسام داخل العمود */
+  .grid-2 > * + *{ margin-top:0; }
+  .hr.d-md-none{ display:none !important; } /* الفاصل الخاص بالموبايل نخفيه على الديسكتوب */
+
+  /* إصلاحات صغيرة لتباين عناصر سوداء قديمة */
+  .stars-bw .full,.rv-stars .full{ color:#111 !important; }
+  .rv-stars .empty{ color:#c7cbd6 !important; }
+}
+
 </style>
 
 
