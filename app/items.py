@@ -48,6 +48,38 @@ def _haversine_expr(lat1, lon1, lat2, lon2):
         )
     )
 
+def _to_float_or_none(v):
+    """
+    يحوّل أي قيمة إلى float أو None بأمان:
+    - "" أو None => None
+    - "45,5" => 45.5
+    - أرقام فعلية تُحوّل مباشرة
+    - أي خطأ يرجع None
+    """
+    try:
+        if v is None:
+            return None
+        if isinstance(v, (int, float)):
+            return float(v)
+        s = str(v).strip()
+        if s == "":
+            return None
+        s = s.replace(",", ".")
+        return float(s)
+    except Exception:
+        return None
+
+def _to_int_or_default(v, default=0):
+    try:
+        if v is None:
+            return int(default)
+        s = str(v).strip()
+        if s == "":
+            return int(default)
+        return int(float(s.replace(",", ".")))
+    except Exception:
+        return int(default)
+
 
 # ================= Similar items helpers =================
 def get_similar_items(db: Session, item: Item):
@@ -134,7 +166,6 @@ def get_similar_items(db: Session, item: Item):
         )
 
         for row in city_rows:
-            # مخرجات هذه الاستعلام بدون عمود المسافة: (Item, avg_stars, rating_count)
             it, avg_stars, rating_count = row
             if it.id in picked_ids:
                 continue
@@ -309,7 +340,6 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
                                 .all()
         ]
 
-    # ⬇️ مهم: الـ return خارج if session_u دائماً
     return request.app.templates.TemplateResponse(
         "items_detail.html",
         {
@@ -384,15 +414,21 @@ def item_new_post(
     category: str = Form(...),
     description: str = Form(""),
     city: str = Form(""),
-    price_per_day: int = Form(0),
+    price_per_day_raw: str = Form("0"),
     image: UploadFile = File(None),
-    latitude: float | None = Form(None),
-    longitude: float | None = Form(None),
+    # نستقبل كنصوص ثم نحوّل بأمان لتفادي أخطاء pydantic v2 عند ""
+    latitude_raw: str = Form(""),
+    longitude_raw: str = Form(""),
 ):
     if not require_approved(request):
         return RedirectResponse(url="/login", status_code=303)
 
     u = request.session.get("user")
+
+    # تحويلات آمنة
+    latitude = _to_float_or_none(latitude_raw)
+    longitude = _to_float_or_none(longitude_raw)
+    price_per_day = _to_int_or_default(price_per_day_raw, default=0)
 
     # final path to store in DB (Cloudinary URL أو مسار محلي)
     image_path_for_db = None
@@ -449,6 +485,10 @@ def item_new_post(
     )
     db.add(it)
     db.commit()
+    try:
+        db.refresh(it)  # لضمان وجود id بعد commit في بعض السائقين
+    except Exception:
+        pass
     return RedirectResponse(url=f"/items/{it.id}", status_code=303)
 
 
