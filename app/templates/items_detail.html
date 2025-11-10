@@ -816,6 +816,89 @@
 
 </style>
 
+<style>
+/* ===== Desktop layout only ===== */
+@media (min-width:1024px){
+
+  /* عمودين: يسار المنشور، يمين التعليقات */
+  .grid-2{
+    grid-template-columns: minmax(640px, 1fr) 420px;
+    align-items: start;
+    column-gap: 22px;
+  }
+
+  /* لا أشرطة فاصلة داخل الشبكة */
+  .grid-2 > .hr{ display:none !important; }
+
+  /* ===== Reviews كعمود يمين “بطاقة لاصقة” تتبدّل كل 3 ثواني ===== */
+  #reviews{
+    position: sticky; top: 92px;
+    max-height: calc(100vh - 120px);
+    overflow: hidden;
+    background: #fff; color:#111;
+    border: 1px solid #e6eaf5;
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: 0 12px 28px rgba(17,24,39,.08);
+    /* تأكد أنها تُعامل كعنصر عمود ثاني */
+    grid-column: 2 / 3;
+  }
+  #reviews > h5{ margin: 2px 0 10px 0; }
+
+  /* نخلي مسار الكروت داخلي بدل سطر أفقي */
+  #reviews .rv-strip{
+    display:block; overflow:hidden; padding:0; margin:0;
+  }
+  #reviews .rv-card{
+    display:none;               /* جميعها مخفية… */
+    border:1px solid #eef2ff !important;
+    background:#fff !important;
+    border-radius:14px !important;
+    box-shadow:0 8px 18px rgba(0,0,0,.05) !important;
+    padding:12px !important; margin:0 !important;
+  }
+  #reviews .rv-card.active{    /* …إلا الكارت الحالية */
+    display:block;
+  }
+  #reviews .rv-head{ margin-bottom:6px; }
+  #reviews .rv-meta{ color:#6b7280; }
+
+  /* زر "View all…" الخاص بالموبايل نخفيه على الدِسكتوب */
+  #reviews + a.btnx-lightwide{ display:none !important; }
+
+  /* ===== Similar & Owner في الوسط أسفل الشبكة ===== */
+
+  /* الكتلة “Similar near you” تمتد العرض وتتوسّط */
+  .sim-wrap{
+    grid-column: 1 / -1;          /* تمتد عبر العمودين */
+    width: min(1100px, 92vw);
+    margin: 22px auto 10px auto;
+  }
+
+  /* بطاقات similar تبقى كما هي، فقط نزيد هوامش بسيطة */
+  .sim-row{ padding-left: 6px; padding-right: 6px; }
+
+  /* بطاقة الـOwner تتوسّط وتمتد العرض */
+  .owner-card{
+    grid-column: 1 / -1;
+    width: min(1100px, 92vw);
+    margin: 14px auto 0 auto;
+    background:#fff;
+    border:1px solid #e6eaf5;
+    box-shadow:0 10px 26px rgba(17,24,39,.08);
+  }
+
+  /* زر “Report this listing” أسفله بنفس المحاذاة الوسطى */
+  .container:has(> button[data-bs-target="#reportSheet"]){
+    grid-column: 1 / -1;
+    width: min(1100px, 92vw);
+    margin: 14px auto 24px auto;
+  }
+
+  /* خلفية الصفحة على الدِسكتوب تبقى الفاتحة الموحّدة */
+  body{ background:#f4f6fb; }
+}
+</style>
 
 
 <section class="items-shell">
@@ -1425,6 +1508,49 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 </script>
 
+<script>
+/* Desktop: rotate one review card every 3s in the sidebar */
+(function(){
+  // لا يمس الموبايل
+  const mql = window.matchMedia('(min-width:1024px)');
+  function setup(){
+    // نطبّق الدوران فقط على الدِسكتوب
+    if (!mql.matches) return;
+
+    const rv = document.getElementById('reviews');
+    if (!rv) return;
+    const strip = rv.querySelector('.rv-strip');
+    if (!strip) return;
+
+    const cards = Array.from(strip.querySelectorAll('.rv-card'));
+    if (!cards.length) return;
+
+    // فعّل أول كارت
+    let idx = 0;
+    cards.forEach(c => c.classList.remove('active'));
+    cards[0].classList.add('active');
+
+    // دوّر كل 3 ثواني
+    let timer = rv.__timer__;
+    if (timer) clearInterval(timer);
+    timer = setInterval(()=>{
+      cards[idx].classList.remove('active');
+      idx = (idx + 1) % cards.length;
+      cards[idx].classList.add('active');
+    }, 3000);
+    rv.__timer__ = timer;
+  }
+
+  setup();
+  // لو كبرت/صغّرت النافذة بدّل السلوك
+  window.addEventListener('resize', () => {
+    const rv = document.getElementById('reviews');
+    if (!rv) return;
+    if (!mql.matches && rv.__timer__){ clearInterval(rv.__timer__); rv.__timer__ = null; }
+    if (mql.matches && !rv.__timer__) setup();
+  });
+})();
+</script>
 
 
 

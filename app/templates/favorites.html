@@ -133,6 +133,54 @@
   }
 </style>
 
+<style>
+  /* ======== Favorites layout unified ======== */
+
+  /* على الحاسوب: صف أفقي قابل للتمرير */
+  .favorites-grid{
+    display:flex;
+    gap:16px;
+    overflow-x:auto;
+    scroll-snap-type:x mandatory;
+    padding:4px 12px 20px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .favorites-grid > .sim-card{
+    flex:0 0 300px;             /* عرض البطاقة */
+    max-width:300px;
+    scroll-snap-align:start;
+  }
+
+  /* ======== على الهاتف: عمودين ======== */
+  @media (max-width:768px){
+    .favorites-grid{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0,1fr));
+      gap:14px;
+      overflow:visible;
+      padding:0 10px 20px;
+    }
+    .favorites-grid > .sim-card{
+      flex:none;
+      width:100%;
+      max-width:none;
+    }
+  }
+
+  /* ===== تحسينات طفيفة لتناسق البطاقات ===== */
+  .sim-card{
+    border-radius:16px;
+    background:#fff;
+    box-shadow:0 10px 26px rgba(17,24,39,.10);
+    border:1px solid rgba(17,24,39,.06);
+  }
+  .favorites-grid::-webkit-scrollbar{height:8px;}
+  .favorites-grid::-webkit-scrollbar-thumb{
+    background:rgba(0,0,0,.15);border-radius:4px;
+  }
+</style>
+
+
 {% endblock %}
 
 {% block content %}
