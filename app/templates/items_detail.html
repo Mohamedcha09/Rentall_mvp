@@ -900,6 +900,86 @@
 }
 </style>
 
+<style>
+/* ===== Desktop only — لا يغيّر الموبايل ===== */
+@media (min-width: 992px){
+
+  /* نحول الصفحة لشبكة على مستوى items-shell
+     حتى نضع الـ Reviews يمين بدون تغيير الـ HTML */
+  .items-shell{
+    max-width: 1200px;
+    display: grid;
+    grid-template-columns: 1.35fr .65fr; /* يسار عريض + يمين أضيق */
+    column-gap: 24px;
+    align-items: start;
+  }
+
+  /* العمود الأيسر: الكارد الكبيرة تبقى في العمود 1 */
+  .items-shell > .grid-2{ grid-column: 1; }
+
+  /* العمود الأيمن: قسم الـ Reviews نرفعه لأعلى ونثبّته */
+  .items-shell > #reviews{
+    grid-column: 2;
+    grid-row: 1;                  /* بجانب الصورة مباشرة */
+    position: sticky;
+    top: 24px;                    /* يثبت تحت الترويسة */
+    background: #fff;
+    border: 1px solid #e7e9f1;
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: 0 10px 24px rgba(16,24,40,.06);
+  }
+  /* عنوان القسم */
+  #reviews > h5{ margin: 0 0 10px 0; }
+
+  /* بطاقات الريفيو داخل اللوحة اليمنى تبدو أنظف */
+  #reviews .rv-strip{ display: block; padding: 0; overflow: visible; }
+  #reviews .rv-card{
+    background: #fff;
+    border: 1px solid #eef0f6;
+    border-radius: 14px;
+    padding: 12px;
+    box-shadow: 0 6px 14px rgba(0,0,0,.05);
+    margin-bottom: 10px;
+  }
+  #reviews .btnx-lightwide{ width: 100%; margin-top: 8px; }
+
+  /* خلي الزر الطويل أو العناصر تحت الصورة ما تدخل تحت اللوحة اليمنى */
+  .items-shell .air-sheet,
+  .items-shell .card-glass{
+    /* لا شيء يتأثر، تبقى في العمود الأيسر تلقائيًا */
+  }
+
+  /* توسيط Similar و Owner تحت الصف الأول */
+  .items-shell > .sim-wrap,
+  .items-shell > .card-glass:has(.owner-row){
+    grid-column: 1 / -1;          /* يمتد عبر العمودين */
+    max-width: 980px;
+    margin: 22px auto 10px;
+  }
+
+  /* سطر "Similar near you" كسلايدر تمرير أفقي أنظف في الدِسكتوب */
+  .sim-row{
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 16px;
+    padding: 2px 6px 16px;
+  }
+  .sim-card{ flex: 0 0 300px; max-width: 300px; scroll-snap-align: start; }
+
+  /* توسيط محتوى Owner */
+  .owner-row{ justify-content: center; }
+  .btns-row{ justify-content: center; }
+}
+
+/* تحسينات شكلية خفيفة للدِسكتوب فقط */
+@media (min-width: 992px){
+  .gallery{ border: 0; background: transparent; }
+  .air-sheet{ border-top-left-radius: 18px; border-top-right-radius: 18px; }
+}
+</style>
+
+
 
 <section class="items-shell">
   {% if not item %}
