@@ -529,6 +529,17 @@
   
 </style>
 
+<style>
+  .sim-head .sim-fav{
+    position: relative !important;  /* فوق الرابط */
+    z-index: 5 !important;
+    pointer-events: auto !important;
+  }
+  .sim-head .sim-fav i{
+    pointer-events: none !important; /* حتى يصعد الحدث للـ<span> */
+  }
+</style>
+
 
 <section class="items-shell">
   {% if not item %}
@@ -1057,8 +1068,9 @@ document.addEventListener('DOMContentLoaded', function () {
 <script>
 /* Favorite inside "Similar near you" cards — robust on iOS:
    نمنع التنقّل على مستوى pointerdown/touchstart بمرحلة capture قبل <a> */
-
-(function(){
+<script>
+/* Favorite in Similar cards — simple, robust on iOS/Android */
+(function () {
   async function toggleFav(fav){
     const id   = fav.dataset.itemId;
     const icon = fav.querySelector('i');
@@ -1075,8 +1087,7 @@ document.addEventListener('DOMContentLoaded', function () {
         credentials: 'same-origin'
       });
 
-      // رجوع للمسار /toggle إن لم يوجد POST/DELETE
-      if(res.status === 404){
+      if (res.status === 404){
         res = await fetch('/api/favorites/toggle', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1085,8 +1096,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
       }
 
-      // غير مسجّل: ارجع الحالة ووجّه لتسجيل الدخول
-      if(res.status === 401){
+      if (res.status === 401){
+        // ارجع الحالة ووجّه لتسجيل الدخول
         icon.classList.toggle('bi-heart-fill', wasFilled);
         icon.classList.toggle('bi-heart', !wasFilled);
         fav.classList.toggle('on', wasFilled);
@@ -1094,13 +1105,13 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
-      // فشل: ارجع الحالة
-      if(!res.ok){
+      if (!res.ok){
+        // فشل السيرفر: ارجع الحالة
         icon.classList.toggle('bi-heart-fill', wasFilled);
         icon.classList.toggle('bi-heart', !wasFilled);
         fav.classList.toggle('on', wasFilled);
       }
-    }catch(_){
+    } catch (_) {
       // خطأ شبكة: ارجع الحالة
       icon.classList.toggle('bi-heart-fill', wasFilled);
       icon.classList.toggle('bi-heart', !wasFilled);
@@ -1108,40 +1119,28 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  function findFavTarget(e){
-    const fav = e.target.closest('.js-sim-fav');
-    return fav && document.contains(fav) ? fav : null;
-  }
-
-  // نمنع التنقّل مبكرًا جدًا قبل <a> كي لا يقطع حدث النقر
-  ['pointerdown','touchstart'].forEach(evt=>{
-    document.addEventListener(evt, function(e){
-      const fav = findFavTarget(e);
-      if(!fav) return;
-      e.preventDefault();
-      e.stopPropagation();
-    }, { passive:false, capture:true });
-  });
-
-  // الحدث الرئيسي للنقر
+  // تفويض نقر بسيط: نمنع تنقل <a> فقط عندما الهدف هو القلب
   document.addEventListener('click', function(e){
-    const fav = findFavTarget(e);
-    if(!fav) return;
+    const fav = e.target.closest('.js-sim-fav');
+    if (!fav) return;
     e.preventDefault();
     e.stopPropagation();
+    e.stopImmediatePropagation();
     toggleFav(fav);
-  }, { passive:false, capture:true });
+  }, true);
 
-  // دعم Enter/Space على span[role=button]
+  // دعم Enter/Space
   document.addEventListener('keydown', function(e){
-    if(e.key !== 'Enter' && e.key !== ' ') return;
-    const fav = findFavTarget(e);
-    if(!fav) return;
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const fav = e.target.closest('.js-sim-fav');
+    if (!fav) return;
     e.preventDefault();
     e.stopPropagation();
     toggleFav(fav);
   }, true);
 })();
+</script>
+
 </script>
 
 
