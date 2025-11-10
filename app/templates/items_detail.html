@@ -518,6 +518,26 @@
 
   /* ===== الاستثناء: “الشريط الثابت” يبقى أبيض صافٍ ===== */
   .air-fixed{ background:#fff !important; }
+
+  /* زر القلب أعلى يمين عنوان البطاقة (خارج الدائرة) */
+.sim-head .sim-fav{
+  position: static;
+  width: auto; height: auto;
+  padding: 0; margin: 0;
+  background: transparent; border: 0; box-shadow: none;
+  display: inline-grid; place-items: center;
+  cursor: pointer;
+}
+.sim-head .sim-fav i{
+  font-size: 22px; line-height: 1;
+  background: linear-gradient(135deg, var(--brand1), var(--brand2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 3px rgba(139,92,246,.35));
+  transition: transform .12s ease;
+}
+.sim-head .sim-fav:hover i{ transform: translateY(-1px); }
+
 </style>
 
 <section class="items-shell">
@@ -735,14 +755,19 @@
               </div>
             </div>
 
-            <div class="sim-body">
-  <div class="sim-head">
-    <div class="sim-title">{{ s.title }}</div>
-    <span role="button" tabindex="0"
-          class="sim-fav js-sim-fav" data-item-id="{{ s.id }}" aria-label="Save">
-      <i class="bi bi-heart"></i>
-    </span>
-  </div>
+            <div class="sim-head">
+  <div class="sim-title">{{ s.title }}</div>
+
+  <!-- زر حقيقي خارج تدفق الرابط -->
+  <button type="button"
+          class="sim-fav js-sim-fav"
+          data-item-id="{{ s.id }}"
+          aria-label="Save"
+          aria-pressed="false">
+    <i class="bi bi-heart"></i>
+  </button>
+</div>
+
 
               <div class="sim-sub">{{ s.subtype or s.kind or s.category_label or s.category }}</div>
 
@@ -1047,57 +1072,62 @@ document.addEventListener('click', async (e) => {
   const fav = e.target.closest('.js-sim-fav');
   if (!fav) return;
 
+  // أوقف أي سلوك افتراضي قبل أي شيء
   e.preventDefault();
   e.stopPropagation();
+  if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
 
   const id = fav.dataset.itemId;
   const icon = fav.querySelector('i');
   const wasFilled = icon.classList.contains('bi-heart-fill');
 
-  // تفاؤلي: بدّل الأيقونة فورًا
+  // تفاؤلي
   icon.classList.toggle('bi-heart-fill', !wasFilled);
   icon.classList.toggle('bi-heart', wasFilled);
   fav.classList.toggle('on', !wasFilled);
+  fav.setAttribute('aria-pressed', String(!wasFilled));
 
   try {
-    // المسار القياسي مثل باقي الصفحات
     let res = await fetch(`/api/favorites/${id}`, {
       method: wasFilled ? 'DELETE' : 'POST',
       credentials: 'same-origin'
     });
 
-    // إن لم يوجد هذا المسار في بيئتك، ارجع للتوغّل كخطة بديلة
     if (res.status === 404) {
       res = await fetch('/api/favorites/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ item_id: id })
+        body: JSON.stringify({ item_id: Number(id) })
       });
     }
 
-    // غير مسجّل: ارجع الحالة بصريًا ثم وجّهه لتسجيل الدخول
     if (res.status === 401) {
+      // ارجع الحالة ووجّه لتسجيل الدخول
       icon.classList.toggle('bi-heart-fill', wasFilled);
       icon.classList.toggle('bi-heart', !wasFilled);
       fav.classList.toggle('on', wasFilled);
+      fav.setAttribute('aria-pressed', String(wasFilled));
       location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
       return;
     }
 
-    // فشل آخر: ارجع الحالة
     if (!res.ok) {
+      // فشل آخر: تراجع بصري
       icon.classList.toggle('bi-heart-fill', wasFilled);
       icon.classList.toggle('bi-heart', !wasFilled);
       fav.classList.toggle('on', wasFilled);
+      fav.setAttribute('aria-pressed', String(wasFilled));
     }
   } catch (_) {
-    // خطأ شبكة: ارجع الحالة
+    // خطأ شبكة: تراجع بصري
     icon.classList.toggle('bi-heart-fill', wasFilled);
     icon.classList.toggle('bi-heart', !wasFilled);
     fav.classList.toggle('on', wasFilled);
+    fav.setAttribute('aria-pressed', String(wasFilled));
   }
 }, { passive: false });
+
 </script>
 
 
