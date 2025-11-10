@@ -948,22 +948,87 @@
     nextUrl:  '/reviews/renter/{{ booking.id }}',
     prefix:   'r'
   });
+
+  /* === Owner sticky actions: رفع الشريط + زجاجي فخم للأزرار === */
+@media (max-width:576px){
+  /* ارفع الشريط قليلاً فوق سطر iPhone + ظل ناعم */
+  .sticky-actions.owner-actions{
+    bottom: 0;
+    transform: translateY(-8px); /* الرفع */
+    padding: 12px 12px calc(14px + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in oklab, var(--surface) 86%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(120%);
+            backdrop-filter: blur(14px) saturate(120%);
+    border-top: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+    box-shadow: 0 -10px 28px rgba(0,0,0,.28);
+    z-index: 1060;
+    gap: 12px; /* مسافة أوضح بين الزرين */
+  }
+  .sticky-actions.owner-actions .btn{
+    height: 52px;
+    border-radius: 16px;
+    font-weight: 800;
+    letter-spacing: .2px;
+  }
+}
+
+/* —— زجاجي أخضر —— */
+.btn-glass-green{
+  color:#fff;
+  border:1px solid rgba(255,255,255,.22);
+  background:
+    linear-gradient(180deg, rgba(34,197,94,.85), rgba(16,185,129,.75));
+  -webkit-backdrop-filter: blur(12px) saturate(130%);
+          backdrop-filter: blur(12px) saturate(130%);
+  box-shadow:
+    0 8px 24px rgba(16,185,129,.30),
+    inset 0 1px 0 rgba(255,255,255,.18);
+}
+.btn-glass-green:active{ transform: translateY(1px); }
+.btn-glass-green:hover{ filter: brightness(1.05); }
+
+/* —— زجاجي أحمر —— */
+.btn-glass-red{
+  color:#fff;
+  border:1px solid rgba(255,255,255,.22);
+  background:
+    linear-gradient(180deg, rgba(244,63,94,.88), rgba(239,68,68,.76));
+  -webkit-backdrop-filter: blur(12px) saturate(130%);
+          backdrop-filter: blur(12px) saturate(130%);
+  box-shadow:
+    0 8px 24px rgba(239,68,68,.30),
+    inset 0 1px 0 rgba(255,255,255,.18);
+}
+.btn-glass-red:active{ transform: translateY(1px); }
+.btn-glass-red:hover{ filter: brightness(1.05); }
+
+/* فوكس أنيق بدون توهج مزعج */
+.btn-glass-green:focus, .btn-glass-red:focus{
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,.14),
+    0 8px 24px rgba(0,0,0,.25);
+}
+
 })();
 </script>
 
+
+
 <!-- ===== Sticky Action Bar (mobile) ===== -->
 {% if booking.status in ['requested'] and is_owner %}
-  <div class="sticky-actions d-sm-none">
+  <div class="sticky-actions owner-actions d-sm-none">
     <form method="post" action="/bookings/{{ booking.id }}/owner/decision">
       <input type="hidden" name="decision" value="rejected">
-      <button class="btn btn-outline-danger w-100"><i class="bi bi-x-lg"></i> رفض</button>
+      <button class="btn btn-glass-red w-100"><i class="bi bi-x-lg"></i> رفض</button>
     </form>
     <form method="post" action="/bookings/{{ booking.id }}/owner/decision">
       <input type="hidden" name="decision" value="accepted">
-      <button class="btn btn-success w-100"><i class="bi bi-check2-circle"></i> قبول + وديعة</button>
+      <button class="btn btn-glass-green w-100"><i class="bi bi-check2-circle"></i> قبول + وديعة</button>
     </form>
   </div>
 {% endif %}
+
 
 {% if booking.status in ['paid'] and is_renter %}
   <div class="sticky-actions d-sm-none">
