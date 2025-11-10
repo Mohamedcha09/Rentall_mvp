@@ -3,6 +3,7 @@
 
 {% block head %}
 <style>
+  /* ===== Grid الأساسية لصفحة المفضّلة ===== */
   .favorites-grid{
     display:grid; gap:14px;
     grid-template-columns: repeat(auto-fill, minmax(220px,1fr));
@@ -11,7 +12,93 @@
     .favorites-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
   }
 
-  /* Empty state: image only */
+  /* ====== مقتطف ستايل بطاقات Similar (تم تكييفه للشبكة) ====== */
+
+  .sim-card{
+    position:relative; display:block;
+    background:#fff; border-radius:16px; padding:14px;
+    box-shadow:0 10px 26px rgba(17,24,39,.10); border:1px solid rgba(17,24,39,.06);
+    text-decoration:none; color:inherit;
+  }
+  .sim-card:hover{ box-shadow:0 14px 30px rgba(17,24,39,.14) }
+
+  .sim-media{ position:relative; border-radius:14px; overflow:hidden; }
+  .sim-img{ width:100%; display:block; aspect-ratio:16/9; object-fit:cover; height:auto; }
+
+  /* شارة التصنيف */
+  .sim-chip{
+    position:absolute; top:10px; left:10px; z-index:2;
+    height:28px; line-height:28px; padding:0 10px;
+    display:inline-flex; align-items:center; gap:6px;
+    border-radius:999px; background:#fff; color:#111;
+    border:1px solid #e5e7eb; font-weight:600; font-size:13px;
+  }
+
+  /* تقييم أعلى اليمين — يختفي إذا ما في تقييم */
+  .sim-rate{
+    position:absolute; top:10px; right:10px; z-index:2;
+    height:28px; line-height:28px; padding:0 10px;
+    display:inline-flex; align-items:center; gap:6px;
+    border-radius:999px; background:#fff; color:#111;
+    border:1px solid #e5e7eb; font-weight:700; font-size:13px;
+    box-shadow:0 4px 10px rgba(0,0,0,.08);
+  }
+  .sim-rate.empty{ display:none; }
+  .sim-rate .star{
+    font-size:15px;
+    background:linear-gradient(135deg,#8b5cf6,#22d3ee);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+
+  /* أفاتار/لوجو المالك بأسفل اليسار مع حلقة متدرّجة */
+  :root{ --brand1:#8b5cf6; --brand2:#22d3ee; }
+  .sim-logo{
+    position:absolute; left:10px; bottom:10px; z-index:2;
+    width:36px; height:36px; border-radius:50%; object-fit:cover;
+    padding:2px; background:linear-gradient(135deg,var(--brand1),var(--brand2));
+    box-shadow:0 6px 14px rgba(0,0,0,.18);
+  }
+
+  .sim-body{ padding-top:8px; }
+  .sim-head{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    margin:0 0 4px 0;
+  }
+  .sim-title{
+    margin:0; padding:0; font-weight:800; font-size:18px; line-height:1.15;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+
+  /* قلب بجانب العنوان بتدرّج (مثل صفحة Similar) */
+  .sim-fav{
+    position:static; width:auto; height:auto; padding:0; margin:0;
+    background:transparent; border:0; box-shadow:none; display:inline-grid; place-items:center;
+    cursor:pointer;
+  }
+  .sim-fav i{
+    font-size:22px; line-height:1;
+    background:linear-gradient(135deg,var(--brand1),var(--brand2));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 3px rgba(139,92,246,.35));
+    transition:transform .12s ease;
+  }
+  .sim-fav:hover i{ transform:translateY(-1px); }
+
+  .sim-sub{ color:#6b7280; font-size:13px; margin:0; line-height:1.2; }
+  .sim-meta{
+    display:flex; align-items:center; gap:8px; color:#6b7280;
+    font-size:13px; margin:2px 0 6px 0; line-height:1.2;
+  }
+  .sim-meta .vsep{ width:1px; height:12px; background:#e5e7eb; opacity:.9; }
+
+  .sim-cut{ margin:2px 0 4px 0; border:0; height:0; border-top:1.8px dashed rgba(0,0,0,.18); opacity:.8; }
+
+  .sim-price-row{ display:flex; align-items:baseline; justify-content:space-between; gap:6px; margin-top:-2px; }
+  .sim-price-old{ font-size:12.5px; color:#9ca3af; text-decoration:line-through; }
+  .sim-price-now{ font-size:15.5px; font-weight:800; color:#111; }
+  .sim-unit{ font-size:11px; color:#6b7280; margin-left:4px; }
+
+  /* حالة فارغة: الصورة فقط */
   .empty-box{ padding:24px 8px; text-align:center; }
   .empty-box img{
     display:block; margin:10px auto; max-width:320px; width:76%;
@@ -25,37 +112,92 @@
 
 {% if items and items|length > 0 %}
   <div class="favorites-grid">
-    {% for it in items %}
-      <a href="/items/{{ it.id }}" class="card spot text-decoration-none">
-        <div class="spot-media">
-          <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
-          <div class="spot-overlay"></div>
+    {% for s in items %}
+      {# اختيار أول صورة من image_path (يدعم ',' أو '|' أو مفردة) #}
+      {% set cover = (s.image_path.split(',')[0] if s.image_path and ',' in s.image_path
+                      else (s.image_path.split('|')[0] if s.image_path and '|' in s.image_path
+                      else s.image_path)) %}
+      {% if cover and not (cover.startswith('http') or cover.startswith('/')) %}
+        {% set cover = '/' ~ cover %}
+      {% endif %}
 
-          {% if it.price_per_day is defined %}
-            <span class="price-badge">{{ it.price_per_day|default(0) }}$ /day</span>
-          {% endif %}
-          {% if it.category is defined %}
-            <span class="category-chip">{{ category_label(it.category) }}</span>
+      {# مصدر أفاتار المالك (اختياري) #}
+      {% set logo_src =
+           (s.owner_avatar_path if s.owner_avatar_path else
+           (s.owner and s.owner.avatar_path) if s.owner else
+           None) %}
+      {% if logo_src and not (logo_src.startswith('http') or logo_src.startswith('/')) %}
+        {% set logo_src = '/' ~ logo_src %}
+      {% endif %}
+
+      {# محاولة قراءة متوسط التقييم من عدة أسماء حقول ممكنة #}
+      {% set s_avg_raw = s.avg_stars or s.rating_avg or s.average_rating or s.avg or s.stars_avg or s.starsAverage or s.score or s.rating %}
+      {% if s_avg_raw is not none and (s_avg_raw|string).strip() not in ('', 'None', 'null') %}
+        {% set s_avg = ((s_avg_raw|string).replace(',', '.')|float) %}
+      {% else %}
+        {% set s_avg = none %}
+      {% endif %}
+      {% set has_rating = (s_avg is not none and s_avg > 0) %}
+
+      {# هل هو محفوظ؟ في صفحة المفضلة كلها محفوظة، لكن نُبقي العلامة للـUI #}
+      {% set is_saved = true %}
+
+      <a class="sim-card" href="/items/{{ s.id }}">
+        <div class="sim-media">
+          <img class="sim-img" src="{{ cover or url_for('static', path='placeholder.png') }}"
+               alt="{{ s.title|e }}" loading="lazy" decoding="async">
+
+          {% if logo_src %}
+            <img class="sim-logo" src="{{ logo_src }}" alt="owner logo">
           {% endif %}
 
-          <!-- Favorite button (pre-marked as is-fav here) -->
-          <button class="fav-btn is-fav" type="button" data-id="{{ it.id }}" aria-pressed="true">
-            <i class="bi bi-heart-fill"></i>
-          </button>
+          {% if s.category is defined %}
+            <div class="sim-chip">{{ category_label(s.category) if category_label else (s.category_label or s.category) }}</div>
+          {% endif %}
+
+          <div class="sim-rate {{ '' if has_rating else 'empty' }}"
+               aria-label="{{ has_rating and ('%.1f'|format(s_avg) ~ ' stars') or 'No ratings yet' }}">
+            {% if has_rating %}<span class="star">★</span>{{ '%.1f'|format(s_avg) }}{% endif %}
+          </div>
         </div>
 
-        <div class="card-body spot-body">
-          <div class="spot-title">{{ it.title }}</div>
-          <div class="owner-line">
-            <div class="owner-avatar--placeholder">🏷️</div>
-            <span class="city-chip">{{ it.city or '—' }}</span>
+        <div class="sim-body">
+          <div class="sim-head">
+            <div class="sim-title">{{ s.title }}</div>
+            <span role="button" tabindex="0"
+                  class="sim-fav js-fav {{ 'on' if is_saved else '' }}"
+                  data-item-id="{{ s.id }}" aria-pressed="{{ 'true' if is_saved else 'false' }}">
+              <i class="bi {{ 'bi-heart-fill' if is_saved else 'bi-heart' }}"></i>
+            </span>
+          </div>
+
+          <div class="sim-sub">{{ s.subtype or s.kind or (s.category_label or s.category) }}</div>
+
+          <div class="sim-meta">
+            <span>{{ s.city or '—' }}</span>
+            <i class="vsep" aria-hidden="true"></i>
+            <span>Saved</span>
+          </div>
+
+          <hr class="sim-cut">
+
+          <div class="sim-price-row">
+            {% if s.old_price_per_day %}
+              <div class="sim-price-old">{{ s.old_price_per_day }} {{ s.currency or '$' }}</div>
+            {% else %}
+              <div></div>
+            {% endif %}
+            {% if s.price_per_day is defined %}
+              <div class="sim-price-now">
+                {{ s.price_per_day }} {{ s.currency or '$' }} <span class="sim-unit">/ day</span>
+              </div>
+            {% endif %}
           </div>
         </div>
       </a>
     {% endfor %}
   </div>
 {% else %}
-  {# Empty state image: son.png #}
   <div class="empty-box">
     <img src="{{ url_for('static', path='photo/son.png') }}" alt="No items in favorites">
   </div>
@@ -64,34 +206,87 @@
 
 {% block scripts %}
 <script>
-  // Toggle favorite via the correct API /api/favorites/{id}
-  document.addEventListener('click', async (e)=>{
-    const btn = e.target.closest('.fav-btn');
-    if(!btn) return;
+/* زر المفضلة داخل البطاقة (نفس سلوك Similar): تفاؤلي + /api/favorites/{id} */
+(function () {
+  async function toggleFav(el){
+    const id   = el.dataset.itemId;
+    const icon = el.querySelector('i');
+    const wasFilled = icon.classList.contains('bi-heart-fill');
 
-    e.preventDefault();
-    e.stopPropagation();
-
-    const id = Number(btn.dataset.id);
-    const isFav = btn.classList.contains('is-fav');
-    const method = isFav ? 'DELETE' : 'POST';
+    // تفاؤلي
+    icon.classList.toggle('bi-heart-fill', !wasFilled);
+    icon.classList.toggle('bi-heart', wasFilled);
+    el.classList.toggle('on', !wasFilled);
+    el.setAttribute('aria-pressed', String(!wasFilled));
 
     try{
-      const res = await fetch(`/api/favorites/${id}`, { method });
-      if(!res.ok) throw new Error('bad response');
+      let res = await fetch(`/api/favorites/${id}`, {
+        method: wasFilled ? 'DELETE' : 'POST',
+        credentials: 'same-origin'
+      });
 
-      // Update the button locally
-      btn.classList.toggle('is-fav', !isFav);
-      const icon = btn.querySelector('.bi');
-      if(icon){
-        icon.classList.toggle('bi-heart-fill', !isFav);
-        icon.classList.toggle('bi-heart', isFav);
+      if (res.status === 404){
+        res = await fetch('/api/favorites/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ item_id: id })
+        });
       }
-      btn.setAttribute('aria-pressed', String(!isFav));
-    }catch(err){
-      console.error(err);
-      alert('Failed to save favorite change temporarily.');
+
+      if (res.status === 401){
+        // ارجع الحالة ووجّه لتسجيل الدخول
+        icon.classList.toggle('bi-heart-fill', wasFilled);
+        icon.classList.toggle('bi-heart', !wasFilled);
+        el.classList.toggle('on', wasFilled);
+        el.setAttribute('aria-pressed', String(wasFilled));
+        location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
+        return;
+      }
+
+      if (!res.ok){
+        // فشل السيرفر: ارجع الحالة
+        icon.classList.toggle('bi-heart-fill', wasFilled);
+        icon.classList.toggle('bi-heart', !wasFilled);
+        el.classList.toggle('on', wasFilled);
+        el.setAttribute('aria-pressed', String(wasFilled));
+      }
+    } catch (_) {
+      // خطأ شبكة: ارجع الحالة
+      icon.classList.toggle('bi-heart-fill', wasFilled);
+      icon.classList.toggle('bi-heart', !wasFilled);
+      el.classList.toggle('on', wasFilled);
+      el.setAttribute('aria-pressed', String(wasFilled));
     }
-  });
+  }
+
+  // تفويض: منع تنقّل <a> فقط إذا الهدف هو القلب
+  document.addEventListener('click', function(e){
+    const fav = e.target.closest('.js-fav');
+    if (!fav) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    toggleFav(fav);
+  }, true);
+
+  // دعم لوحة المفاتيح
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const fav = e.target.closest('.js-fav');
+    if (!fav) return;
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFav(fav);
+  }, true);
+
+  // فallback للتنقّل داخل البطاقة إن مُنع الحدث
+  document.addEventListener('click', function(e){
+    const card = e.target.closest('a.sim-card');
+    if (!card) return;
+    if (e.target.closest('.js-fav')) return; // لو ضغط قلب، لا ننتقل
+    if (e.defaultPrevented) { window.location.assign(card.href); }
+  }, false);
+})();
 </script>
 {% endblock %}
