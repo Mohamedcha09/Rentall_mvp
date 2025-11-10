@@ -485,6 +485,40 @@
 }
 
 </style>
+<style>
+  /* ===== Unify near-white backgrounds to #f4f6fb (except fixed bar) ===== */
+  :root{ --near:#f4f6fb; }
+
+  /* الخلفية العامة */
+  body{ background:var(--near) !important; }
+
+  /* غلاف الجاليري على الموبايل (كان #fff) */
+  @media (max-width:768px){
+    .gallery{ background:var(--near) !important; border:0 !important; }
+  }
+
+  /* ورقة المحتوى البيضاء (air-sheet) */
+  .air-sheet{ background:var(--near) !important; color:#111; }
+
+  /* بطاقات الريفيو (كانت #fff) */
+  .rv-card{
+    background:var(--near) !important;
+    border-color:#e6eaf5 !important;      /* حدود أنعم تناسب الخلفية الجديدة */
+    box-shadow:0 6px 14px rgba(0,0,0,.04) !important;
+  }
+
+  /* بطاقة العناصر المشابهة إن أردتها بنفس الخلفية (اختياري) */
+  /* .sim-card{ background:var(--near) !important; } */
+
+  /* أسفل الصفحة (الـ underlay) يمشي مع خلفية الموقع */
+  .air-underlay{ background:var(--near) !important; }
+
+  /* الأزرار العريضة “عرض كل المراجعات…” تبقى مقروءة */
+  .btnx-lightwide{ border-color:#e6eaf5 !important; }
+
+  /* ===== الاستثناء: “الشريط الثابت” يبقى أبيض صافٍ ===== */
+  .air-fixed{ background:#fff !important; }
+</style>
 
 <section class="items-shell">
   {% if not item %}
