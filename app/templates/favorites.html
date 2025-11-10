@@ -105,6 +105,34 @@
     height:auto; object-fit:contain; opacity:.98;
   }
 </style>
+
+<style>
+  /* استبدل الكتلة القديمة الخاصة بـ .favorites-grid بهذا */
+  .favorites-grid{
+    display: flex;
+    flex-direction: column;    /* عمودي */
+    gap: 18px;                 /* مسافة بين البطاقات */
+    max-width: 600px;          /* عرض مناسب للموبايل والتابلت */
+    margin: 0 auto;            /* توسيطها في الصفحة */
+    padding: 0 12px;
+  }
+
+  /* اجعل البطاقة تملأ العرض تقريباً */
+  .sim-card{
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* على الشاشات الصغيرة تأكد أنها تبقى عمودية */
+  @media (max-width:768px){
+    .favorites-grid{
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+  }
+</style>
+
 {% endblock %}
 
 {% block content %}
