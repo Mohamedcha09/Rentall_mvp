@@ -748,10 +748,13 @@
             <div class="sim-body">
   <div class="sim-head">
     <div class="sim-title">{{ s.title }}</div>
-    <span role="button" tabindex="0"
-          class="sim-fav js-sim-fav" data-item-id="{{ s.id }}" aria-label="Save">
-      <i class="bi bi-heart"></i>
-    </span>
+    {% set is_saved = favorite_ids and (s.id in favorite_ids) %}
+<span role="button" tabindex="0"
+      class="sim-fav js-sim-fav {{ 'on' if is_saved else '' }}"
+      data-item-id="{{ s.id }}" aria-label="Save">
+  <i class="bi {{ 'bi-heart-fill' if is_saved else 'bi-heart' }}"></i>
+</span>
+
   </div>
 
               <div class="sim-sub">{{ s.subtype or s.kind or s.category_label or s.category }}</div>

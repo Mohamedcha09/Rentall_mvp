@@ -300,6 +300,12 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     # أعطِ كل عنصر label للإظهار في القالب
     for s in similar_items:
         s.category_label = category_label(s.category)
+    # ✅ IDs العناصر المفضلة لتمييز القلوب عند التحميل
+favorite_ids = []
+if session_u:
+    favorite_ids = [row[0] for row in db.query(_Fav.item_id)
+                               .filter(_Fav.user_id == session_u["id"])
+                               .all()]
 
     return request.app.templates.TemplateResponse(
         "items_detail.html",
@@ -316,6 +322,8 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             "is_favorite": is_favorite,
             # ✅ pass to template
             "similar_items": similar_items,
+            "favorite_ids": favorite_ids,   # ⬅️ أضِف هذا
+
         }
     )
 
