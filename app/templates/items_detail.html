@@ -697,6 +697,122 @@
   .stars-bw .full,.rv-stars .full{ color:#111 !important; }
   .rv-stars .empty{ color:#c7cbd6 !important; }
 }
+/* ================================
+   DESKTOP FULL STYLE (>=992px)
+   يحافظ على الموبايل كما هو
+==================================*/
+@media (min-width: 992px){
+
+  /* خلفية ونص عام للديسكتوب */
+  body{
+    background: #f4f6fb !important;
+    color: #111 !important;
+  }
+
+  /* الحاوية والعمودان */
+  .items-shell{max-width: 1200px; padding: 28px 18px; margin: 28px auto;}
+  .grid-2{
+    display: grid; gap: 22px;
+    grid-template-columns: 1.15fr .85fr;  /* المعرض يسار/المعلومات يمين */
+    align-items: start;
+  }
+
+  /* ===== المعرض (يسار) ===== */
+  .gallery{
+    background: #fff; border: 1px solid rgba(17,24,39,.08);
+    border-radius: 16px; padding: 12px;
+    box-shadow: 0 10px 26px rgba(17,24,39,.06);
+  }
+  .gallery-main{
+    aspect-ratio: 16/10; height: auto; border-radius: 12px; overflow: hidden;
+  }
+  .gallery-main img{object-fit: cover;}
+  .thumbs{
+    background: linear-gradient(180deg, rgba(0,0,0,.02), transparent);
+    border-top: 1px solid rgba(17,24,39,.06);
+    padding: 10px 8px;
+  }
+
+  /* قائمة ⋮ تظهر دائمًا بالديسكتوب */
+  .gallery-menu{display:block !important}
+
+  /* ===== لوحة المعلومات (يمين) ===== */
+  .air-sheet{
+    background:#fff !important; color:#111 !important;
+    border: 1px solid rgba(17,24,39,.08); border-radius: 16px;
+    padding: 22px 18px 20px; margin-top: 0;
+    box-shadow: 0 10px 26px rgba(17,24,39,.06);
+  }
+  .card-title{font-size:26px; font-weight:800; margin: 0 0 8px}
+  .small-muted{color:#6b7280 !important}
+  .hr{background: rgba(17,24,39,.08) !important}
+
+  /* الأزرار */
+  .btnx,.air-cta{height:48px; border-radius:14px}
+  .btnx-ghost{color:#111}
+  .btns-row{gap:12px}
+
+  /* أخفِ شريط الحجز السفلي على الديسكتوب */
+  .air-fixed, .air-underlay{display:none !important}
+
+  /* ================= Reviews =================
+     تحويل الشريط الأفقي إلى شبكة نظيفة */
+  .rv-wrap{ margin-top: 8px }
+  .rv-strip{
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+    overflow: visible; padding: 0;
+  }
+
+  .rv-card{
+    background:#fff !important;
+    border:1px solid rgba(17,24,39,.08) !important;
+    border-radius:16px; padding:14px;
+    box-shadow:0 8px 18px rgba(17,24,39,.06) !important;
+  }
+
+  /* لا تجعل أي نص داخل البطاقة يكبر بشكل غريب */
+  .rv-card *{ font-size: 14px; line-height: 1.5 }
+  .rv-head{ display:flex; align-items:center; gap:10px; margin-bottom:6px }
+  .rv-ava{ width:46px; height:46px; border-radius:50%; object-fit:cover }
+  .rv-meta{ color:#6b7280; font-size:12.5px }
+  .rv-stars{ font-size:14px; margin-top:4px }
+  /* لو دخلت أرقام/وقت فقط مثل "17:58" نحافظ على حجم طبيعي */
+  .rv-card h1, .rv-card h2, .rv-card h3{ font-size:16px; margin: 0 }
+  .rv-card time, .rv-card .time, .rv-card .num-ltr{ font-variant-numeric: tabular-nums }
+
+  /* زر "View all review(s)" */
+  .btnx-lightwide{
+    max-width: 420px; margin: 10px auto 0; display:block;
+  }
+
+  /* ============ Similar near you ============ */
+  .sim-wrap{ margin-top: 8px }
+  .sim-row{
+    display:grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap:18px; overflow:visible; padding:0 !important;
+  }
+  @media (min-width: 1400px){
+    .sim-row{ grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  }
+  .sim-card{
+    max-width:none; flex:0 0 auto;
+    background:#fff; border:1px solid rgba(17,24,39,.08);
+    box-shadow:0 10px 26px rgba(17,24,39,.08);
+    border-radius:16px; padding:14px;
+  }
+  .sim-media{ border-radius:14px; overflow:hidden }
+  .sim-title{ color:#111; font-size:18px; margin-bottom:6px }
+  .sim-sub,.sim-meta{ color:#6b7280 }
+  .sim-cut{ margin:6px 0 10px !important }
+
+  /* ===== تفاصيل صغيرة إضافية ===== */
+  .stat-row{ margin-bottom: 12px }
+  .stars-bw .full{ color:#111 }      /* نجوم تقييم أسود نقي */
+  .stars-bw .empty{ color:#bdbdbd }
+}
 
 </style>
 
