@@ -931,9 +931,8 @@
   document.body.classList.add('item-page');
 })();
 </script>
-
 <script>
-/* Share + Favorite (optimistic) */
+/* Share + Favorite (optimistic with POST/DELETE first, toggle as fallback) */
 (function () {
   const shareBtn = document.querySelector('.js-share');
   if (shareBtn) {
@@ -966,32 +965,43 @@
     favBtn.classList.remove('fav-anim'); void favBtn.offsetWidth; favBtn.classList.add('fav-anim');
   }
 
-  async function toggleFavorite() {
+  async function toggleFavorite(){
+    const id   = favBtn.dataset.itemId;
     const next = favBtn.dataset.on !== '1';
-    paint(next);
+    paint(next); // تفاؤلي
+
     try {
-      const res = await fetch('/api/favorites/toggle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ item_id: favBtn.dataset.itemId })
-      });
-      if (res.status === 401) {
+      // المسار الأساسي الموثوق: /api/favorites/{id} بـ POST/DELETE
+      const method = next ? 'POST' : 'DELETE';
+      let res = await fetch(`/api/favorites/${id}`, { method, credentials: 'same-origin' });
+
+      // في حال 404 (بيئة لا تدعم هذا المسار)، نرجع إلى /toggle
+      if (res.status === 404) {
+        res = await fetch('/api/favorites/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ item_id: id })
+        });
+      }
+
+      if (res.status === 401 || res.type === 'opaqueredirect' || (res.redirected && !res.url.includes('/api/'))) {
         paint(!next);
         location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
         return;
       }
-      let data = null;
-      const ct = res.headers.get('content-type') || '';
-      if (ct.includes('application/json')) data = await res.json(); else await res.text();
-      if (data && data.ok && typeof data.favorited === 'boolean') { paint(!!data.favorited); }
-    } catch (e) { paint(!next); }
+
+      if (!res.ok) paint(!next);
+    } catch (e) {
+      paint(!next);
+    }
   }
 
   favBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(); });
   paint(favBtn.dataset.on === '1');
 })();
 </script>
+
 
 <script>
 /* صفر أي padding-top محقون من القالب */
