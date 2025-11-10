@@ -411,16 +411,40 @@
 .sim-media .sim-fav{ position:absolute; }        /* للنسخ التي فوق الصورة فقط */
 
 /* لوجو/أفاتار المالك أسفل يسار الصورة */
+/* حلقة متدرّجة (بنفسجي → سماوي) حول صورة المالك */
 .sim-logo{
   position:absolute; left:10px; bottom:10px; z-index:3;
   width:38px; height:38px; border-radius:50%; object-fit:cover;
-  background:#fff; border:2px solid #fff;
+  display:block;
+  padding:2px;                               /* يخلق سماكة الحلقة */
+  background:linear-gradient(135deg,var(--brand1),var(--brand2));
+  border:0;                                  /* لا إطار أبيض */
   box-shadow:0 6px 14px rgba(0,0,0,.18);
 }
-@media (max-width:768px){
-  .sim-logo{ width:36px; height:36px; }
+@media (max-width:768px){ .sim-logo{ width:36px; height:36px; } }
+
+
+/* سعر صغير ونظيف مثل TooGoodToGo */
+.sim-price-row{ gap:6px; align-items:baseline; }
+.sim-price-old{
+  font-size:12.5px; color:#9ca3af; text-decoration:line-through;
+}
+.sim-price-now{
+  font-size:16px; font-weight:800; color:#111;   /* ← كان 21px */
+}
+.sim-unit{
+  font-size:11.5px; color:#6b7280; margin-left:4px;
 }
 
+/* لو تحب تبقيه أصغر قليلًا على الموبايل فقط */
+@media (max-width:768px){
+  .sim-price-now{ font-size:15.5px; }
+  .sim-price-old{ font-size:12px; }
+  .sim-unit{ font-size:11px; }
+}
+
+/* شُدّ الفاصل المنقّط قبل السعر مثل TGTG */
+.sim-cut{ margin:6px 0 8px 0; border-top:1px dashed rgba(17,24,39,.18); }
 
 </style>
 
