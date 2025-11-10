@@ -226,6 +226,8 @@ def start_checkout_all(
         session = stripe.checkout.Session.create(
             mode="payment",
             payment_intent_data=pi_data,
+            automatic_tax={"enabled": True},
+            tax_id_collection={"enabled": True},
             line_items=[
                 {
                     "quantity": 1,
@@ -364,18 +366,22 @@ def start_checkout_rent(
 
     try:
         session = stripe.checkout.Session.create(
-            mode="payment",
-            payment_intent_data=pi_data,
-            line_items=[{
-                "quantity": 1,
-                "price_data": {
-                    "currency": CURRENCY,
-                    "product_data": {"name": f"Rent for '{item.title}' (#{bk.id})"},
-                    "unit_amount": amount_cents,
-                },
-            }],
-            success_url=f"{SITE_URL}/bookings/flow/{bk.id}?rent_ok=1&sid={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{SITE_URL}/bookings/flow/{bk.id}?cancel=1",
+    mode="payment",
+    payment_intent_data=pi_data,
+    automatic_tax={"enabled": True},
+    tax_id_collection={"enabled": True},
+    line_items=[{
+        "quantity": 1,
+        "price_data": {
+            "currency": CURRENCY,
+            "product_data": {"name": f"Rent for '{item.title}' (#{bk.id})"},
+            "unit_amount": amount_cents,
+        },
+    }],
+    success_url=f"{SITE_URL}/bookings/flow/{bk.id}?rent_ok=1&sid={{CHECKOUT_SESSION_ID}}",
+    cancel_url=f"{SITE_URL}/bookings/flow/{bk.id}?cancel=1",
+)
+ cancel_url=f"{SITE_URL}/bookings/flow/{bk.id}?cancel=1",
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe error: {e}")
@@ -411,22 +417,25 @@ def start_checkout_deposit(
 
     try:
         session = stripe.checkout.Session.create(
-            mode="payment",
-            payment_intent_data={
-                "capture_method": "manual",
-                "metadata": {"kind": "deposit", "booking_id": str(bk.id)},
-            },
-            line_items=[{
-                "quantity": 1,
-                "price_data": {
-                    "currency": CURRENCY,
-                    "product_data": {"name": f"Deposit hold for '{item.title}' (#{bk.id})"},
-                    "unit_amount": dep * 100,
-                },
-            }],
-            success_url=f"{SITE_URL}/bookings/flow/{bk.id}?deposit_ok=1&sid={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{SITE_URL}/bookings/flow/{bk.id}?cancel=1",
-        )
+    mode="payment",
+    payment_intent_data={
+        "capture_method": "manual",
+        "metadata": {"kind": "deposit", "booking_id": str(bk.id)},
+    },
+    automatic_tax={"enabled": True},
+    tax_id_collection={"enabled": True},
+    line_items=[{
+        "quantity": 1,
+        "price_data": {
+            "currency": CURRENCY,
+            "product_data": {"name": f"Deposit hold for '{item.title}' (#{bk.id})"},
+            "unit_amount": dep * 100,
+        },
+    }],
+    success_url=f"{SITE_URL}/bookings/flow/{bk.id}?deposit_ok=1&sid={{CHECKOUT_SESSION_ID}}",
+    cancel_url=f"{SITE_URL}/bookings/flow/{bk.id}?cancel=1",
+)
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe error: {e}")
 

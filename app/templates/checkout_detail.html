@@ -14,6 +14,45 @@
       <div class="alert alert-warning">The booking is not in the "confirmed" state.</div>
     {% else %}
       <form id="pay-form">
+      {% if booking.status != 'confirmed' %}
+  <div class="alert alert-warning">The booking is not in the "confirmed" state.</div>
+{% else %}
+
+  <!-- ✅ Order summary block -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="mb-3">Order summary</h5>
+
+      <div class="d-flex justify-content-between">
+        <span>Subtotal (rent)</span>
+        <strong>{{ "%.2f"|format(booking.total_amount or 0) }} {{ currency }}</strong>
+      </div>
+
+      <div class="d-flex justify-content-between">
+        <span>Sevor Fee (1%)</span>
+        <strong>{{ "%.2f"|format((booking.total_amount or 0) * 0.01) }} {{ currency }}</strong>
+      </div>
+
+      <div class="d-flex justify-content-between text-muted small">
+        <span>Taxes</span>
+        <span>Calculated at checkout</span>
+      </div>
+
+      <hr>
+      <div class="d-flex justify-content-between">
+        <span>Estimated total (before tax)</span>
+        <strong>{{ "%.2f"|format((booking.total_amount or 0) * 1.01) }} {{ currency }}</strong>
+      </div>
+
+      <div class="text-muted small mt-2">
+        Exact taxes appear on the Stripe page based on your address.
+      </div>
+    </div>
+  </div>
+  <!-- ✅ End of summary -->
+
+  <form id="pay-form">
+
         <div id="payment-element"></div>
         <button class="btn btn-primary mt-3" id="submit-btn" type="submit">Pay Now</button>
         <div id="pay-msg" class="mt-3 text-muted small"></div>

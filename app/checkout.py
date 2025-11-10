@@ -32,6 +32,8 @@ def checkout_detail(booking_id: int, request: Request, db: Session = Depends(get
 
     # Stripe publishable key for the client (Elements)
     pk = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+    currency = (os.getenv("CURRENCY", "cad") or "cad").upper()
+
 
     # Render the template checkout_detail.html
     # This template calls /api/checkout/{booking_id}/intent from pay_api.py
@@ -44,6 +46,7 @@ def checkout_detail(booking_id: int, request: Request, db: Session = Depends(get
             "item": item,
             "owner": owner,
             "pk": pk,
+            "currency": currency,          # ⬅️ أضف هذا السطر
             "session_user": sess,  # for navbar
         },
     )
