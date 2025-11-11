@@ -394,6 +394,9 @@ class Booking(Base):
     return_check_no_problem  = col_or_literal("bookings", "return_check_no_problem", Boolean, default=False)
     return_check_submitted_at = col_or_literal("bookings", "return_check_submitted_at", DateTime, nullable=True)
     deposit_auto_release_at   = col_or_literal("bookings", "deposit_auto_release_at", DateTime, nullable=True)
+    # models.py (داخل class Booking)
+    loc_country = Column(String(4), nullable=True)  # مثال: "CA"
+    loc_sub     = Column(String(8), nullable=True)  # مثال: "QC"
 
     # Dispute path
     dispute_opened_at  = col_or_literal("bookings", "dispute_opened_at", DateTime, nullable=True)

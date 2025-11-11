@@ -1,3 +1,4 @@
+# app/routes_bookings.py  (أو اسمك الحالي)
 from __future__ import annotations
 from typing import Optional, Literal
 from datetime import datetime, date, timedelta
@@ -15,11 +16,7 @@ from .notifications_api import push_notification, notify_admins
 
 router = APIRouter(tags=["bookings"])
 
-# ==== Adapter: يستعمل utili_geo و utili_tax الموجودة لديك (بدون جداول محلية) ====
-import os
-from fastapi import Request
-
-# نحاول أكثر من اسم/دالة حتى نغطي اختلافات المشروع
+# ===== utili_geo (كلها اختيارية، نتعامل مع الاختلاف بين المشاريع) =====
 try:
     from .utili_geo import (
         geo_from_request as _geo_req,
@@ -29,7 +26,7 @@ try:
 except Exception:
     _geo_req = _geo_locate = _geo_session = None
 
-# ==== utili_tax imports (safe/optional) ====
+# ===== utili_tax (اختياري) =====
 try:
     from .utili_tax import compute_order_taxes as _tax_order
 except Exception:
@@ -46,40 +43,44 @@ except Exception:
     _tax_ca = None
 
 
-
+# ========================================
+# Geo adapters
+# ========================================
 def _adapter_geo_from_request(request: Request) -> dict:
-    """يرجّع {"country": .., "sub": ..} مع دعم ?loc=CA-QC وقراءة مفاتيح الجلسة الفعلية."""
-    # 1) override يدوي: ?loc=CA-QC
+    """
+    يرجّع {"country": .., "sub": ..}
+    يدعم override عبر ?loc=CA-QC
+    ويحاول قراءة الجلسة utili_geo.* لو موجودة.
+    """
+    # 1) ?loc=CA-QC أو ?loc=CA
     loc_q = request.query_params.get("loc")
     if loc_q:
-        p = loc_q.replace("_","-").strip().upper().split("-")
+        p = loc_q.replace("_", "-").strip().upper().split("-")
         return {"country": p[0], "sub": (p[1] if len(p) > 1 else None)}
 
-    # 2) utili_geo (لو موجودة)
+    # 2) utili_geo لو متاحة
     for fn in (_geo_req, _geo_locate, _geo_session):
         if callable(fn):
             try:
                 g = fn(request)
                 if isinstance(g, dict):
                     country = (g.get("country") or g.get("cc") or "").upper() or None
-                    sub     = (g.get("sub") or g.get("region") or g.get("prov") or "").upper() or None
+                    sub = (g.get("sub") or g.get("region") or g.get("prov") or "").upper() or None
                     if country:
                         return {"country": country, "sub": sub}
             except Exception:
                 pass
 
-    # 3) قراءة مباشرة من مفاتيح الجلسة الفعلية (المحفوظه بواسطة utils_geo.persist_location_to_session)
+    # 3) مفاتيح الجلسة الشائعة
     s = getattr(request, "session", {}) or {}
     country = (s.get("geo_country") or s.get("country") or s.get("geo", {}).get("country") or "")
-    region  = (s.get("geo_region")  or s.get("region")  or s.get("geo", {}).get("region")  or "")
-
+    region  = (s.get("geo_region") or s.get("region")  or s.get("geo", {}).get("region")  or "")
     country = (str(country).upper().strip() or None)
-    sub     = (str(region).upper().strip()  or None)
-
+    sub     = (str(region).upper().strip() or None)
     if country:
         return {"country": country, "sub": sub}
 
-    # 4) fallback قديم إن وُجد
+    # 4) fallback قديم
     if s.get("loc"):
         p = str(s["loc"]).upper().split("-")
         return {"country": p[0], "sub": (p[1] if len(p) > 1 else None)}
@@ -87,25 +88,41 @@ def _adapter_geo_from_request(request: Request) -> dict:
     return {"country": None, "sub": None}
 
 
+def _loc_qs_for_user(u: Optional[User]) -> str:
+    if not u:
+        return ""
+    country = (getattr(u, "country", None) or getattr(u, "geo_country", None) or "").strip().upper()
+    sub     = (getattr(u, "region", None) or getattr(u, "state", None) or getattr(u, "geo_region", None) or "").strip().upper()
+    if country and sub:
+        return f"?loc={country}-{sub}"
+    if country:
+        return f"?loc={country}"
+    return ""
+
+
+def _loc_qs_for_booking(bk: Booking) -> str:
+    c = (getattr(bk, "loc_country", "") or "").strip().upper()
+    s = (getattr(bk, "loc_sub", "") or "").strip().upper()
+    if c and s:
+        return f"?loc={c}-{s}"
+    if c:
+        return f"?loc={c}"
+    return ""
+
+
+# ========================================
+# Taxes
+# ========================================
 def _adapter_taxes_for_request(request: Request, subtotal: float) -> dict:
     """
-    يُوحّد المخرجات إلى شكل واحد يفهمه القالب:
-    {
-      "mode": "computed" أو "stripe",
-      "currency": "CAD",
-      "country": "CA" أو None,
-      "sub": "QC" أو None,
-      "tax_lines": [{"name":"GST","rate":0.05,"amount":1.23}, ...],
-      "tax_total": 1.23 أو None,
-      "grand_total": subtotal + tax_total (إن وُجد)
-    }
+    يوحّد مخرجات الضرائب إلى شكل واحد يفهمه القالب.
     """
     currency = (os.getenv("CURRENCY", "CAD") or "CAD").upper()
     geo = _adapter_geo_from_request(request)
     country = (geo.get("country") or "").upper() or None
     sub     = (geo.get("sub") or "").upper() or None
 
-    # 1) utili_tax: compute_order_taxes(subtotal, {"country","sub"})
+    # 1) utili_tax: compute_order_taxes
     if callable(_tax_order):
         try:
             res = _tax_order(subtotal, {"country": country, "sub": sub}) or {}
@@ -129,7 +146,7 @@ def _adapter_taxes_for_request(request: Request, subtotal: float) -> dict:
         except Exception:
             pass
 
-    # 2) utili_tax: compute_taxes(subtotal, country, sub)
+    # 2) utili_tax: compute_taxes
     if callable(_tax_compute):
         try:
             res = _tax_compute(subtotal, country=country, sub=sub) or {}
@@ -153,7 +170,7 @@ def _adapter_taxes_for_request(request: Request, subtotal: float) -> dict:
         except Exception:
             pass
 
-    # 3) مثال خاص كندا (لو عندك compute_ca_taxes)
+    # 3) مثال كندا
     if callable(_tax_ca) and country == "CA":
         try:
             lines, total = _tax_ca(subtotal, sub=sub or "QC")
@@ -179,17 +196,17 @@ def _adapter_taxes_for_request(request: Request, subtotal: float) -> dict:
         except Exception:
             pass
 
-    # 4) لا شيء → خليه لسترايب
+    # 4) فشل → نتركها لسترايب
     return {
         "mode": "stripe",
         "currency": currency, "country": country, "sub": sub,
-        "tax_lines": [],
-        "tax_total": None,
-        "grand_total": subtotal,
+        "tax_lines": [], "tax_total": None, "grand_total": subtotal,
     }
 
 
-# ===== Helpers =====
+# ========================================
+# Helpers
+# ========================================
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
     uid = data.get("id")
@@ -213,23 +230,6 @@ def is_owner(user: User, bk: Booking) -> bool:
 
 def redirect_to_flow(booking_id: int) -> RedirectResponse:
     return RedirectResponse(url=f"/bookings/flow/{booking_id}", status_code=303)
-# ==== Build ?loc=... for links (from user's stored location) ====
-def _loc_qs_for_user(u: Optional[User]) -> str:
-    if not u:
-        return ""
-    country = (getattr(u, "country", None) or getattr(u, "geo_country", None) or "").strip().upper()
-    sub     = (getattr(u, "region", None)  or getattr(u, "state", None) or getattr(u, "geo_region", None) or "").strip().upper()
-    if country and sub:
-        return f"?loc={country}-{sub}"
-    if country:
-        return f"?loc={country}"
-    return ""
-def _loc_qs_for_booking(bk: Booking) -> str:
-    c = (getattr(bk, "loc_country", "") or "").strip().upper()
-    s = (getattr(bk, "loc_sub", "") or "").strip().upper()
-    if c and s: return f"?loc={c}-{s}"
-    if c:       return f"?loc={c}"
-    return ""
 
 def _parse_date(s: str) -> date:
     return datetime.strptime(s, "%Y-%m-%d").date()
@@ -244,7 +244,10 @@ def _booking_order_col():
         return Booking.timeline_created_at.desc()
     return Booking.id.desc()
 
-# ===== Stripe helpers for rent capture =====
+
+# ========================================
+# Stripe helpers
+# ========================================
 def _try_capture_stripe_rent(bk: Booking) -> bool:
     try:
         import stripe
@@ -263,7 +266,8 @@ def _try_capture_stripe_rent(bk: Booking) -> bool:
     except Exception:
         return False
 
-# ===== Deposit PI unifier =====
+
+# Deposit PI unifier
 def _get_deposit_pi_id(bk: Booking) -> Optional[str]:
     return (
         getattr(bk, "deposit_hold_intent_id", None)
@@ -280,12 +284,9 @@ def _set_deposit_pi_id(bk: Booking, pi_id: Optional[str]) -> None:
     except Exception:
         pass
 
-# ====== Create a Stripe deposit authorization (manual capture) and store it on the booking ======
 def _ensure_deposit_hold(bk: Booking) -> bool:
     """
-    Creates a PaymentIntent (manual capture) for the deposit if missing,
-    stores the id in both fields (deposit_hold_intent_id and deposit_hold_id),
-    and sets deposit_status='held'.
+    ينشئ PaymentIntent (manual capture) للتأمين إن لم يكن موجودًا.
     """
     try:
         import stripe
@@ -294,7 +295,6 @@ def _ensure_deposit_hold(bk: Booking) -> bool:
             return False
         stripe.api_key = sk
 
-        # Already exists?
         if _get_deposit_pi_id(bk):
             return True
 
@@ -303,9 +303,9 @@ def _ensure_deposit_hold(bk: Booking) -> bool:
             return False
 
         pi = stripe.PaymentIntent.create(
-            amount=amount * 100,                 # Stripe wants cents
-            currency="cad",                      # CAD as you use
-            capture_method="manual",             # Authorization (manual capture)
+            amount=amount * 100,
+            currency=(os.getenv("CURRENCY", "CAD") or "CAD").lower(),
+            capture_method="manual",
             description=f"Deposit hold for booking #{bk.id}",
         )
 
@@ -318,15 +318,20 @@ def _ensure_deposit_hold(bk: Booking) -> bool:
     except Exception:
         return False
 
-# ===== Time policy =====
-DISPUTE_WINDOW_HOURS = 48   # Dispute window after return
-RENTER_REPLY_WINDOW_HOURS = 48  # For showing the countdown only
+
+# ========================================
+# Policy / constants
+# ========================================
+DISPUTE_WINDOW_HOURS = 48
+RENTER_REPLY_WINDOW_HOURS = 48
 
 def _iso(dt: Optional[datetime]) -> Optional[str]:
     return dt.isoformat() if dt else None
 
 
-# ===== UI: Create page =====
+# ========================================
+# UI: Create page
+# ========================================
 @router.get("/bookings/new")
 def booking_new_page(
     request: Request,
@@ -350,7 +355,10 @@ def booking_new_page(
     }
     return request.app.templates.TemplateResponse("booking_new.html", ctx)
 
-# ===== Create booking =====
+
+# ========================================
+# Create booking
+# ========================================
 @router.post("/bookings")
 async def create_booking(
     request: Request,
@@ -445,7 +453,10 @@ async def create_booking(
             status_code=303
         )
 
-# ===== Flow page =====
+
+# ========================================
+# Flow page
+# ========================================
 @router.get("/bookings/flow/{booking_id}")
 def booking_flow_page(
     booking_id: int,
@@ -457,14 +468,13 @@ def booking_flow_page(
     bk = require_booking(db, booking_id)
     if not (is_renter(user, bk) or is_owner(user, bk)):
         raise HTTPException(status_code=403, detail="Forbidden")
+
     item   = db.get(Item, bk.item_id)
     owner  = db.get(User, bk.owner_id)
     renter = db.get(User, bk.renter_id)
 
-    # Owner payouts activation state to enable online payment
     owner_pe = bool(getattr(owner, "payouts_enabled", False)) if owner else False
 
-    # Dispute window (48h) after return
     dispute_deadline = None
     if getattr(bk, "returned_at", None):
         try:
@@ -472,7 +482,7 @@ def booking_flow_page(
         except Exception:
             dispute_deadline = None
 
-    # === Fees & taxes (احسبها قبل ctx) ===
+    # === Fees & taxes
     try:
         rent_amount = float(getattr(bk, "total_amount", 0.0) or 0.0)
     except Exception:
@@ -480,21 +490,21 @@ def booking_flow_page(
 
     pct         = float(os.getenv("STRIPE_PROCESSING_PCT", "0.029") or 0.029)
     fixed_cents = int(os.getenv("STRIPE_PROCESSING_FIXED_CENTS", "30") or 30)
-    processing_fee       = round(rent_amount * pct + (fixed_cents / 100.0), 2)
-    subtotal_before_tax  = round(rent_amount + processing_fee, 2)
-    taxes_ctx            = _adapter_taxes_for_request(request, subtotal_before_tax)
-    # 🗺️ Save renter's location snapshot once (for notifications later)
+    processing_fee      = round(rent_amount * pct + (fixed_cents / 100.0), 2)
+    subtotal_before_tax = round(rent_amount + processing_fee, 2)
+    taxes_ctx           = _adapter_taxes_for_request(request, subtotal_before_tax)
+
+    # 🗺️ Snapshot للموقع مرة واحدة
     geo = _adapter_geo_from_request(request)
     try:
-       if not getattr(bk, "loc_country", None) and geo.get("country"):
-           bk.loc_country = geo.get("country")
-       if not getattr(bk, "loc_sub", None) and geo.get("sub"):
-           bk.loc_sub = geo.get("sub")
-       if (bk.loc_country or bk.loc_sub):
-           db.commit()
+        if not getattr(bk, "loc_country", None) and geo.get("country"):
+            bk.loc_country = geo.get("country")
+        if not getattr(bk, "loc_sub", None) and geo.get("sub"):
+            bk.loc_sub = geo.get("sub")
+        if (bk.loc_country or bk.loc_sub):
+            db.commit()
     except Exception:
-       pass
-
+        pass
 
     ctx = {
         "request": request,
@@ -522,7 +532,6 @@ def booking_flow_page(
         "dispute_deadline_iso": _iso(dispute_deadline),
         "renter_reply_hours": RENTER_REPLY_WINDOW_HOURS,
 
-        # ↓↓↓ هذه القيم الآن جاهزة لأننا حسبناها فوق
         "rent_amount": rent_amount,
         "processing_fee": processing_fee,
         "subtotal_before_tax": subtotal_before_tax,
@@ -531,11 +540,12 @@ def booking_flow_page(
         "STRIPE_PROCESSING_PCT": pct,
         "STRIPE_PROCESSING_FIXED_CENTS": fixed_cents,
     }
-
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
 
 
-# ===== Owner decision =====
+# ========================================
+# Owner decision
+# ========================================
 @router.post("/bookings/{booking_id}/owner/decision")
 def owner_decision(
     booking_id: int,
@@ -560,14 +570,16 @@ def owner_decision(
         bk.rejected_at = datetime.utcnow()
         bk.timeline_owner_decided_at = datetime.utcnow()
         db.commit()
-        push_notification(db, bk.renter_id, "Booking rejected",
-                          f"Your request on '{item.title}' was rejected.",
-                          f"/bookings/flow/{bk.id}", "booking")
+        push_notification(
+            db, bk.renter_id, "Booking rejected",
+            f"Your request on '{item.title}' was rejected.",
+            f"/bookings/flow/{bk.id}", "booking"
+        )
         return redirect_to_flow(bk.id)
 
     bk.owner_decision = "accepted"
 
-    # Default deposit = 5 × daily price if the owner didn’t enter a number
+    # Default deposit
     default_deposit = (item.price_per_day or 0) * 5
     amount = int(deposit_amount or 0)
     if amount <= 0:
@@ -587,13 +599,13 @@ def owner_decision(
         f"On '{item.title}'. Choose a payment method{dep_txt}.",
         link,
         "booking"
-)
-return redirect_to_flow(bk.id)
-  
+    )
+    return redirect_to_flow(bk.id)
 
 
-
-# ===== Choose payment method =====
+# ========================================
+# Renter chooses payment
+# ========================================
 @router.post("/bookings/{booking_id}/renter/choose_payment")
 def renter_choose_payment(
     booking_id: int,
@@ -617,20 +629,27 @@ def renter_choose_payment(
         bk.status = "paid"
         bk.timeline_payment_method_chosen_at = datetime.utcnow()
         db.commit()
-        push_notification(db, bk.owner_id, "Renter chose cash",
-                          f"Booking '{item.title}'. Payment will be made on pickup.",
-                          f"/bookings/flow/{bk.id}", "booking")
+        push_notification(
+            db, bk.owner_id, "Renter chose cash",
+            f"Booking '{item.title}'. Payment will be made on pickup.",
+            f"/bookings/flow/{bk.id}", "booking"
+        )
         return redirect_to_flow(bk.id)
 
     bk.payment_method = "online"
     bk.timeline_payment_method_chosen_at = datetime.utcnow()
     db.commit()
-    push_notification(db, bk.owner_id, "Online payment chosen",
-                      f"Booking '{item.title}'. Waiting for renter to pay.",
-                      f"/bookings/flow/{bk.id}", "booking")
+    push_notification(
+        db, bk.owner_id, "Online payment chosen",
+        f"Booking '{item.title}'. Waiting for renter to pay.",
+        f"/bookings/flow/{bk.id}", "booking"
+    )
     return redirect_to_flow(bk.id)
 
-# ===== Online payment — block if owner hasn’t enabled payouts =====
+
+# ========================================
+# Renter pays online (block if owner payouts disabled)
+# ========================================
 @router.post("/bookings/{booking_id}/renter/pay_online")
 def renter_pay_online(
     booking_id: int,
@@ -650,10 +669,13 @@ def renter_pay_online(
     if not owner_pe:
         raise HTTPException(status_code=409, detail="Owner payouts not enabled")
 
-    # ✅ Simultaneous payment for rent + deposit in a single session
+    # دفع الإيجار + الحجز معًا
     return RedirectResponse(url=f"/api/stripe/checkout/all/{booking_id}", status_code=303)
 
-# ===== Renter confirms receipt =====
+
+# ========================================
+# Renter confirms receipt
+# ========================================
 @router.post("/bookings/{booking_id}/renter/confirm_received")
 def renter_confirm_received(
     booking_id: int,
@@ -684,26 +706,28 @@ def renter_confirm_received(
     bk.timeline_renter_received_at = datetime.utcnow()
     db.commit()
 
-    push_notification(db, bk.owner_id, "Renter picked up the item",
-                      f"'{item.title}'. Reminder about the return date.",
-                      f"/bookings/flow/{bk.id}", "booking")
-    push_notification(db, bk.renter_id, "Pickup confirmed",
-                      f"Don’t forget to return '{item.title}' on time.",
-                      f"/bookings/flow/{bk.id}", "booking")
+    push_notification(
+        db, bk.owner_id, "Renter picked up the item",
+        f"'{item.title}'. Reminder about the return date.",
+        f"/bookings/flow/{bk.id}", "booking"
+    )
+    push_notification(
+        db, bk.renter_id, "Pickup confirmed",
+        f"Don’t forget to return '{item.title}' on time.",
+        f"/bookings/flow/{bk.id}", "booking"
+    )
     return redirect_to_flow(bk.id)
 
-# ===== Owner confirms delivery =====
+
+# ========================================
+# Owner confirms delivery
+# ========================================
 @router.post("/bookings/{booking_id}/owner/confirm_delivered")
 def owner_confirm_delivered(
     booking_id: int,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    Allows the owner to mark that the item was delivered to the renter.
-    - Captures the rent payment if it was online (manual capture).
-    - Changes the status to picked_up.
-    """
     require_auth(user)
     bk = require_booking(db, booking_id)
     if not is_owner(user, bk):
@@ -725,29 +749,33 @@ def owner_confirm_delivered(
     bk.picked_up_at = datetime.utcnow()
     db.commit()
 
-    push_notification(db, bk.renter_id, "Item delivered",
-                      f"The owner delivered '{item.title}'. Enjoy your rental.",
-                      f"/bookings/flow/{bk.id}", "booking")
+    push_notification(
+        db, bk.renter_id, "Item delivered",
+        f"The owner delivered '{item.title}'. Enjoy your rental.",
+        f"/bookings/flow/{bk.id}", "booking"
+    )
     return redirect_to_flow(bk.id)
 
-# ===== Shortcut to open a deposit dispute =====
+
+# ========================================
+# Deposit dispute shortcut
+# ========================================
 @router.post("/bookings/{booking_id}/owner/open_deposit_issue")
 def owner_open_deposit_issue(
     booking_id: int,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    """
-    Shortcut that redirects to the dispute form located in routes_deposits.py
-    The real POST is at: /deposits/{booking_id}/report
-    """
     require_auth(user)
     bk = require_booking(db, booking_id)
     if not is_owner(user, bk):
         raise HTTPException(status_code=403, detail="Only owner")
     return RedirectResponse(url=f"/deposits/{bk.id}/report", status_code=303)
 
-# ===== API returns the dispute window and renter-reply window in ISO =====
+
+# ========================================
+# Deadlines JSON
+# ========================================
 @router.get("/api/bookings/{booking_id}/deadlines")
 def booking_deadlines(
     booking_id: int,
@@ -771,7 +799,10 @@ def booking_deadlines(
         "renter_reply_window_hours": RENTER_REPLY_WINDOW_HOURS,
     })
 
-# ======= Old aliases (left for compatibility) =======
+
+# ========================================
+# Old aliases (back-compat)
+# ========================================
 def _redir(flow_id: int):
     return RedirectResponse(url=f"/bookings/flow/{flow_id}", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -787,7 +818,6 @@ def alias_accept(booking_id: int,
         return _redir(bk.id)
     item = db.get(Item, bk.item_id)
 
-    # Quick accept without manual input: fill default deposit
     default_deposit = (item.price_per_day or 0) * 5
     if (bk.deposit_amount or 0) <= 0:
         bk.deposit_amount = default_deposit
@@ -797,17 +827,16 @@ def alias_accept(booking_id: int,
     bk.accepted_at = datetime.utcnow()
     bk.timeline_owner_decided_at = datetime.utcnow()
     db.commit()
+
     renter = db.get(User, bk.renter_id)
     link   = f"/bookings/flow/{bk.id}{_loc_qs_for_user(renter)}"
     push_notification(
         db, bk.renter_id, "Booking accepted",
         f"On '{item.title}'. Choose a payment method.",
-        link,  # was f"/bookings/flow/{bk.id}"
+        link,
         "booking"
     )
     return _redir(bk.id)
-
-
 
 @router.api_route("/bookings/{booking_id}/reject", methods=["POST", "GET"])
 def alias_reject(booking_id: int,
@@ -819,15 +848,19 @@ def alias_reject(booking_id: int,
         raise HTTPException(status_code=403, detail="Only owner can reject")
     if bk.status != "requested":
         return _redir(bk.id)
+
     item = db.get(Item, bk.item_id)
     bk.status = "rejected"
     bk.owner_decision = "rejected"
     bk.rejected_at = datetime.utcnow()
     bk.timeline_owner_decided_at = datetime.utcnow()
     db.commit()
-    push_notification(db, bk.renter_id, "Booking rejected",
-                      f"Your request on '{item.title}' was rejected.",
-                      f"/bookings/flow/{bk.id}", "booking")
+
+    push_notification(
+        db, bk.renter_id, "Booking rejected",
+        f"Your request on '{item.title}' was rejected.",
+        f"/bookings/flow/{bk.id}", "booking"
+    )
     return _redir(bk.id)
 
 @router.post("/bookings/{booking_id}/pay-cash")
@@ -840,6 +873,7 @@ def alias_pay_cash(booking_id: int,
         raise HTTPException(status_code=403, detail="Only renter")
     if bk.status != "accepted":
         return _redir(bk.id)
+
     item = db.get(Item, bk.item_id)
     bk.payment_method = "cash"
     bk.online_status = None
@@ -848,9 +882,12 @@ def alias_pay_cash(booking_id: int,
     bk.status = "paid"
     bk.timeline_payment_method_chosen_at = datetime.utcnow()
     db.commit()
-    push_notification(db, bk.owner_id, "Renter chose cash",
-                      f"Booking '{item.title}'. Payment will be made on pickup.",
-                      f"/bookings/flow/{bk.id}", "booking")
+
+    push_notification(
+        db, bk.owner_id, "Renter chose cash",
+        f"Booking '{item.title}'. Payment will be made on pickup.",
+        f"/bookings/flow/{bk.id}", "booking"
+    )
     return _redir(bk.id)
 
 @router.post("/bookings/{booking_id}/pay-online")
@@ -878,7 +915,6 @@ def alias_pay_online(booking_id: int,
         bk.hold_deposit_amount = max(0, int(deposit_amount or 0))
     db.commit()
 
-    # ✅ Simultaneous payment for rent + deposit
     return RedirectResponse(url=f"/api/stripe/checkout/all/{booking_id}", status_code=303)
 
 @router.post("/bookings/{booking_id}/picked-up")
@@ -905,9 +941,11 @@ def alias_picked_up(booking_id: int,
             bk.payment_status = "released"
 
     db.commit()
-    push_notification(db, bk.owner_id, "Renter picked up the item",
-                      f"'{item.title}'. Reminder about the return date.",
-                      f"/bookings/flow/{bk.id}", "booking")
+    push_notification(
+        db, bk.owner_id, "Renter picked up the item",
+        f"'{item.title}'. Reminder about the return date.",
+        f"/bookings/flow/{bk.id}", "booking"
+    )
     return _redir(bk.id)
 
 @router.post("/bookings/{booking_id}/mark-returned")
@@ -926,95 +964,27 @@ def alias_mark_returned(booking_id: int,
     bk.returned_at = datetime.utcnow()
     db.commit()
 
-    push_notification(db, bk.owner_id, "Return marked",
-                      f"The item '{item.title}' was returned. Waiting for admin review of the deposit.",
-                      f"/bookings/flow/{bk.id}", "deposit")
-    push_notification(db, bk.renter_id, "Deposit under review",
-                      f"You will be notified after the admin reviews the deposit for booking '{item.title}'.",
-                      f"/bookings/flow/{bk.id}", "deposit")
-    notify_admins(db, "Deposit review required",
-                  f"Booking #{bk.id} needs a deposit decision.", f"/bookings/flow/{bk.id}")
+    push_notification(
+        db, bk.owner_id, "Return marked",
+        f"The item '{item.title}' was returned. Waiting for admin review of the deposit.",
+        f"/bookings/flow/{bk.id}", "deposit"
+    )
+    push_notification(
+        db, bk.renter_id, "Deposit under review",
+        f"You will be notified after the admin reviews the deposit for booking '{item.title}'.",
+        f"/bookings/flow/{bk.id}", "deposit"
+    )
+    notify_admins(
+        db, "Deposit review required",
+        f"Booking #{bk.id} needs a deposit decision.",
+        f"/bookings/flow/{bk.id}"
+    )
     return _redir(bk.id)
 
-# ===== Booking JSON state =====
-@router.get("/api/bookings/{booking_id}/state")
-def booking_state(
-    booking_id: int,
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
-    require_auth(user)
-    bk = require_booking(db, booking_id)
-    if not (is_renter(user, bk) or is_owner(user, bk)):
-        raise HTTPException(status_code=403, detail="Forbidden")
 
-    return _json({
-        "id": bk.id,
-        "status": bk.status,
-        "owner_decision": bk.owner_decision,
-        "payment_method": bk.payment_method,
-        "payment_status": bk.payment_status,
-        "deposit_amount": bk.deposit_amount,
-        "deposit_status": bk.deposit_status,
-    })
-
-# ===== Booking list page =====
-@router.get("/bookings")
-def bookings_index(
-    request: Request,
-    view: Literal["renter", "owner"] = "renter",
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
-    require_auth(user)
-
-    q = db.query(Booking)
-    if view == "owner":
-        q = q.filter(Booking.owner_id == user.id)
-        title = "Bookings on my items"
-    else:
-        q = q.filter(Booking.renter_id == user.id)
-        title = "My bookings"
-
-    q = q.order_by(_booking_order_col())
-    bookings = q.all()
-
-    return request.app.templates.TemplateResponse(
-        "booking_index.html",  # ✅ Name adjusted (was bookings_index.html)
-        {
-            "request": request,
-            "title": title,
-            "session_user": request.session.get("user"),
-            "bookings": bookings,
-            "view": view,
-        },
-    )
-
-# ===== Quick route to manually create a deposit authorization =====
-@router.post("/api/stripe/hold/{booking_id}")
-def api_create_deposit_hold(
-    booking_id: int,
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
-    """
-    Creates a manual-capture PaymentIntent in CAD for the deposit if missing
-    and stores the identifier in both fields (deposit_hold_intent_id and deposit_hold_id).
-    Note: this route is **POST**. Any GET request will return Method Not Allowed.
-    """
-    require_auth(user)
-    bk = db.get(Booking, booking_id)
-    if not bk:
-        raise HTTPException(status_code=404, detail="Booking not found")
-
-    ok = _ensure_deposit_hold(bk)
-    if not ok:
-        raise HTTPException(status_code=400, detail="Failed to create deposit hold")
-
-    db.commit()
-    return {"ok": True, "deposit_hold_intent_id": _get_deposit_pi_id(bk)}
-
-# ✅ Stripe Checkout state for buttons in the flow UI
+# ========================================
+# Stripe checkout state (UI helper)
+# ========================================
 @router.get("/api/stripe/checkout/state/{booking_id}")
 def api_stripe_checkout_state(
     booking_id: int,
@@ -1026,16 +996,14 @@ def api_stripe_checkout_state(
     if not (is_renter(user, bk) or is_owner(user, bk)):
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    # We consider rent successful if online_status is one of these values (per your logic/webhook)
     rent_ok = str(getattr(bk, "online_status", "") or "").lower() in (
         "authorized", "captured", "succeeded", "paid"
     )
-    # We consider deposit held if deposit_status is one of these values
     dep_ok = str(getattr(bk, "deposit_status", "") or "").lower() in (
         "held", "authorized"
     )
 
-    ready = bool(rent_ok and dep_ok)  # If both succeeded → ready for the next step
+    ready = bool(rent_ok and dep_ok)
     return _json({
         "rent_authorized": rent_ok,
         "deposit_held": dep_ok,
@@ -1043,18 +1011,23 @@ def api_stripe_checkout_state(
     })
 
 
+# ========================================
+# Next step redirect (placeholder)
+# ========================================
 @router.get("/bookings/flow/{booking_id}/next")
 def booking_flow_next(
     booking_id: int,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    # For now we just redirect to a “next step” (adjust the destination later as you like)
     require_auth(user)
     _ = require_booking(db, booking_id)
     return RedirectResponse(url=f"/bookings/flow/{booking_id}?ready=1", status_code=303)
 
-# ===== Shims for separate payment routes → redirect to the unified route =====
+
+# ========================================
+# Shims
+# ========================================
 @router.post("/api/stripe/checkout/rent/{booking_id}")
 def shim_checkout_rent(booking_id: int):
     return RedirectResponse(url=f"/api/stripe/checkout/all/{booking_id}?only=rent", status_code=303)
