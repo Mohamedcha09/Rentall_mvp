@@ -72,7 +72,9 @@ import app.cs as cs_routes
 from . import mod as mod_routes
 from .md import router as md_router 
 from .reviews import router as reviews_router
-  # ⬅️ New
+from .routes_geo import router as geo_router
+
+
 # -----------------------------------------------------------------------------
 # Create the app
 # -----------------------------------------------------------------------------
@@ -414,7 +416,9 @@ app.include_router(support_router)
 app.include_router(cs_routes.router)
 app.include_router(mod_routes.router)
 app.include_router(reviews_router)
-app.include_router(md_router)         # ⬅️ New
+app.include_router(md_router) 
+app.include_router(geo_router)
+ # ⬅️ New
 # -----------------------------------------------------------------------------
 # Legacy path → redirect to the new reports page
 # -----------------------------------------------------------------------------
@@ -616,14 +620,3 @@ async def geo_session_middleware(request: Request, call_next):
     response = await call_next(request)
     return response
 
-
-# routes_geo.py (مثال)
-router = APIRouter()
-
-@router.post("/api/geo/set")
-def api_geo_set(request: Request, lat: float = Query(...), lon: float = Query(...)):
-    s = request.session
-    s["geo_enabled"] = True
-    s["geo_lat"] = lat
-    s["geo_lon"] = lon
-    return {"ok": True}
