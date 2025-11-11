@@ -475,14 +475,16 @@
         <div class="pay-note mt-2">
           You’ll be redirected to Stripe to complete the card details. After success you’ll return here and statuses will update.
         </div>
-        {# === Order summary (قبل الأزرار مباشرة) === #}
+        {# === Order summary (ذكي مع utili_tax) === #}
 <div class="card mb-2">
   <div class="card-body">
     <h6 class="mb-2">Order summary</h6>
 
     {% set currency = (CURRENCY or 'CAD')|upper %}
-    {% set rent = (booking.total_amount or 0.0)|float %}
-    {% set processing_fee = (rent * (STRIPE_PROCESSING_PCT or 0.029)) + ((STRIPE_PROCESSING_FIXED_CENTS or 30) / 100.0) %}
+    {% set rent = (booking.total_amount or rent_amount or 0.0)|float %}
+    {% set fee  = (processing_fee is defined) and processing_fee or
+                  ((rent * (STRIPE_PROCESSING_PCT or 0.029)) + ((STRIPE_PROCESSING_FIXED_CENTS or 30) / 100.0)) %}
+    {% set sub_before_tax = (subtotal_before_tax is defined) and subtotal_before_tax or (rent + fee) %}
 
     <div class="d-flex justify-content-between">
       <span>Rent</span>
@@ -491,24 +493,47 @@
 
     <div class="d-flex justify-content-between">
       <span>Processing fee</span>
-      <strong>{{ "%.2f"|format(processing_fee) }} {{ currency }}</strong>
+      <strong>{{ "%.2f"|format(fee) }} {{ currency }}</strong>
     </div>
 
-    <div class="d-flex justify-content-between text-muted">
-      <span>Taxes</span><span>Calculated at Stripe</span>
-    </div>
-
-    <hr class="my-2">
-    <div class="d-flex justify-content-between">
-      <span>Total (before tax)</span>
-      <strong>{{ "%.2f"|format(rent + processing_fee) }} {{ currency }}</strong>
-    </div>
+    {% if taxes and taxes.mode == 'computed' and taxes.tax_lines and (taxes.tax_lines|length > 0) %}
+      <hr class="my-2">
+      {% for t in taxes.tax_lines %}
+        <div class="d-flex justify-content-between">
+          <span>{{ t.name }} {{ (t.rate * 100)|round(3) }}%</span>
+          <strong>{{ "%.2f"|format(t.amount) }} {{ currency }}</strong>
+        </div>
+      {% endfor %}
+      <div class="d-flex justify-content-between">
+        <span><strong>Taxes total</strong></span>
+        <strong>{{ "%.2f"|format(taxes.tax_total or (0.0)) }} {{ currency }}</strong>
+      </div>
+      <hr class="my-2">
+      <div class="d-flex justify-content-between">
+        <span>Total</span>
+        <strong>{{ "%.2f"|format(taxes.grand_total or (sub_before_tax)) }} {{ currency }}</strong>
+      </div>
+      <div class="small text-muted mt-2">
+        • Location: {{ taxes.country or '—' }}{% if taxes.sub %}-{{ taxes.sub }}{% endif %}.
+      </div>
+    {% else %}
+      <div class="d-flex justify-content-between text-muted mt-1">
+        <span>Taxes</span><span>Calculated at Stripe</span>
+      </div>
+      <hr class="my-2">
+      <div class="d-flex justify-content-between">
+        <span>Total (before tax)</span>
+        <strong>{{ "%.2f"|format(sub_before_tax) }} {{ currency }}</strong>
+      </div>
+    {% endif %}
 
     <div class="small text-muted mt-2">
       • Sevor يأخذ 1% من الإيجار ضمن التحويل للمالك.<br>
-      • Processing fee تُدفع كسطر منفصل وتُحتسب عليها الضرائب داخل Stripe.
+      • Processing fee تُدفع كسطر منفصل وتُحتسب عليها الضرائب داخل Stripe (إن كان fallback).
     </div>
   </div>
+</div>
+
 </div>
 
       </div>

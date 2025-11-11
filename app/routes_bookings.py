@@ -15,6 +15,168 @@ from .notifications_api import push_notification, notify_admins
 
 router = APIRouter(tags=["bookings"])
 
+# ==== Adapter: يستعمل utili_geo و utili_tax الموجودة لديك (بدون جداول محلية) ====
+import os
+from fastapi import Request
+
+# نحاول أكثر من اسم/دالة حتى نغطي اختلافات المشروع
+try:
+    from .utili_geo import (
+        geo_from_request as _geo_req,
+        locate_from_request as _geo_locate,
+        locate_from_session as _geo_session,
+    )
+except Exception:
+    _geo_req = _geo_locate = _geo_session = None
+
+try:
+    from .utili_tax import (
+        compute_order_taxes as _tax_order,   # (subtotal: float, geo: {"country","sub"}) -> dict
+        compute_taxes       as _tax_compute, # (subtotal, country='CA', sub='QC') -> dict
+        compute_ca_taxes    as _tax_ca,      # (subtotal, sub='QC') -> (lines, total)
+    )
+except Exception:
+    _tax_order = _tax_compute = _tax_ca = None
+
+
+def _adapter_geo_from_request(request: Request) -> dict:
+    """يرجّع {"country": "CA/US/EU/...", "sub": "QC/ON/CA-STATE/..."} مع دعم override بـ ?loc=CA-QC."""
+    # 1) override يدوي عبر query: ?loc=CA-QC
+    loc_q = request.query_params.get("loc")
+    if loc_q:
+        p = loc_q.strip().upper().split("-")
+        return {"country": p[0], "sub": (p[1] if len(p) > 1 else None)}
+
+    # 2) utili_geo
+    for fn in (_geo_req, _geo_locate, _geo_session):
+        if callable(fn):
+            try:
+                g = fn(request)
+                if isinstance(g, dict):
+                    country = (g.get("country") or g.get("cc") or "").upper() or None
+                    sub     = (g.get("sub") or g.get("region") or g.get("prov") or "").upper() or None
+                    if country:
+                        return {"country": country, "sub": sub}
+            except Exception:
+                pass
+
+    # 3) سِـيشن (إن كنت تخزّن loc أو geo)
+    s = request.session or {}
+    if s.get("loc"):
+        p = str(s["loc"]).upper().split("-")
+        return {"country": p[0], "sub": (p[1] if len(p) > 1 else None)}
+    g = s.get("geo") or {}
+    if isinstance(g, dict):
+        country = (g.get("country") or g.get("cc") or "").upper() or None
+        sub     = (g.get("sub") or g.get("region") or g.get("prov") or "").upper() or None
+        if country:
+            return {"country": country, "sub": sub}
+
+    return {"country": None, "sub": None}
+
+
+def _adapter_taxes_for_request(request: Request, subtotal: float) -> dict:
+    """
+    يُوحّد المخرجات إلى شكل واحد يفهمه القالب:
+    {
+      "mode": "computed" أو "stripe",
+      "currency": "CAD",
+      "country": "CA" أو None,
+      "sub": "QC" أو None,
+      "tax_lines": [{"name":"GST","rate":0.05,"amount":1.23}, ...],
+      "tax_total": 1.23 أو None,
+      "grand_total": subtotal + tax_total (إن وُجد)
+    }
+    """
+    currency = (os.getenv("CURRENCY", "CAD") or "CAD").upper()
+    geo = _adapter_geo_from_request(request)
+    country = (geo.get("country") or "").upper() or None
+    sub     = (geo.get("sub") or "").upper() or None
+
+    # 1) utili_tax: compute_order_taxes(subtotal, {"country","sub"})
+    if callable(_tax_order):
+        try:
+            res = _tax_order(subtotal, {"country": country, "sub": sub}) or {}
+            lines = res.get("lines") or res.get("tax_lines") or []
+            total = res.get("total") or res.get("tax_total")
+            gtot  = res.get("grand_total") or (subtotal + (total or 0.0))
+            norm_lines = []
+            for t in lines:
+                norm_lines.append({
+                    "name": t.get("name") or t.get("code") or "TAX",
+                    "rate": float(t.get("rate") or 0.0),
+                    "amount": float(t.get("amount") or 0.0),
+                })
+            return {
+                "mode": "computed",
+                "currency": currency, "country": country, "sub": sub,
+                "tax_lines": norm_lines,
+                "tax_total": None if total is None else float(total),
+                "grand_total": float(gtot),
+            }
+        except Exception:
+            pass
+
+    # 2) utili_tax: compute_taxes(subtotal, country, sub)
+    if callable(_tax_compute):
+        try:
+            res = _tax_compute(subtotal, country=country, sub=sub) or {}
+            lines = res.get("lines") or res.get("tax_lines") or []
+            total = res.get("total") or res.get("tax_total")
+            gtot  = res.get("grand_total") or (subtotal + (total or 0.0))
+            norm_lines = []
+            for t in lines:
+                norm_lines.append({
+                    "name": t.get("name") or t.get("code") or "TAX",
+                    "rate": float(t.get("rate") or 0.0),
+                    "amount": float(t.get("amount") or 0.0),
+                })
+            return {
+                "mode": "computed",
+                "currency": currency, "country": country, "sub": sub,
+                "tax_lines": norm_lines,
+                "tax_total": None if total is None else float(total),
+                "grand_total": float(gtot),
+            }
+        except Exception:
+            pass
+
+    # 3) مثال خاص كندا (لو عندك compute_ca_taxes)
+    if callable(_tax_ca) and country == "CA":
+        try:
+            lines, total = _tax_ca(subtotal, sub=sub or "QC")
+            norm_lines = []
+            for t in (lines or []):
+                if isinstance(t, dict):
+                    name = t.get("name") or t.get("code") or "TAX"
+                    rate = float(t.get("rate") or 0.0)
+                    amt  = float(t.get("amount") or 0.0)
+                else:
+                    name = (t[0] if len(t) > 0 else "TAX")
+                    rate = float(t[1] if len(t) > 1 else 0.0)
+                    amt  = float(t[2] if len(t) > 2 else round(subtotal * rate, 2))
+                norm_lines.append({"name": name, "rate": rate, "amount": amt})
+            total = float(total or sum(x["amount"] for x in norm_lines))
+            return {
+                "mode": "computed",
+                "currency": currency, "country": country, "sub": sub,
+                "tax_lines": norm_lines,
+                "tax_total": total,
+                "grand_total": round(subtotal + total, 2),
+            }
+        except Exception:
+            pass
+
+    # 4) لا شيء → خليه لسترايب
+    return {
+        "mode": "stripe",
+        "currency": currency, "country": country, "sub": sub,
+        "tax_lines": [],
+        "tax_total": None,
+        "grand_total": subtotal,
+    }
+
+
 # ===== Helpers =====
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
@@ -305,7 +467,28 @@ def booking_flow_page(
         "is_completed": (bk.status == "completed"),
         "dispute_deadline_iso": _iso(dispute_deadline),
         "renter_reply_hours": RENTER_REPLY_WINDOW_HOURS,
+        "rent_amount": rent_amount,
+        "processing_fee": processing_fee,
+        "subtotal_before_tax": subtotal_before_tax,
+        "taxes": taxes_ctx,
+        "CURRENCY": (os.getenv("CURRENCY", "CAD") or "CAD").upper(),
+        "STRIPE_PROCESSING_PCT": pct,
+        "STRIPE_PROCESSING_FIXED_CENTS": fixed_cents,
+
     }
+    # === Fees & taxes ===
+try:
+    rent_amount = float(getattr(bk, "total_amount", 0.0) or 0.0)
+except Exception:
+    rent_amount = 0.0
+
+pct = float(os.getenv("STRIPE_PROCESSING_PCT", "0.029") or 0.029)
+fixed_cents = int(os.getenv("STRIPE_PROCESSING_FIXED_CENTS", "30") or 30)
+processing_fee = round(rent_amount * pct + (fixed_cents / 100.0), 2)
+subtotal_before_tax = round(rent_amount + processing_fee, 2)
+
+taxes_ctx = _adapter_taxes_for_request(request, subtotal_before_tax)
+
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
 
 # ===== Owner decision =====
