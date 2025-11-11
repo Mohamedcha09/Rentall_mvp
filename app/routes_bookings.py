@@ -15,6 +15,7 @@ from .utils import category_label
 from .notifications_api import push_notification, notify_admins
 
 router = APIRouter(tags=["bookings"])
+DEFAULT_CA_SUB = os.getenv("DEFAULT_CA_SUB", "QC").upper()
 
 # ===== Optional geo/tax adapters (project-to-project compatibility) =====
 try:
@@ -114,31 +115,27 @@ def _loc_qs_for_user(u: Optional[User]) -> str:
     country = (getattr(u, "country", None) or getattr(u, "geo_country", None) or "").strip().upper()
     sub = (getattr(u, "region", None) or getattr(u, "state", None)
            or getattr(u, "geo_region", None) or "").strip().upper()
+    # ✅ لا نُخرج رابطًا إلا إذا توفّر country + sub
     if country and sub:
         return f"?loc={country}-{sub}"
-    if country:
-        return f"?loc={country}"
     return ""
-
 
 def _loc_qs_for_booking(bk: Booking) -> str:
     c = (getattr(bk, "loc_country", "") or "").strip().upper()
     s = (getattr(bk, "loc_sub", "") or "").strip().upper()
+    # ✅ لا نُخرج country فقط
     if c and s:
         return f"?loc={c}-{s}"
-    if c:
-        return f"?loc={c}"
     return ""
-
 
 def _loc_qs_from_geo(geo: Dict[str, Optional[str]]) -> str:
     c = (geo.get("country") or "").strip().upper()
     s = (geo.get("sub") or "").strip().upper()
+    # ✅ لا نُخرج country فقط
     if c and s:
         return f"?loc={c}-{s}"
-    if c:
-        return f"?loc={c}"
     return ""
+
 
 
 def _best_loc_qs(bk: Booking, renter: Optional[User] = None) -> str:
@@ -537,33 +534,63 @@ def booking_flow(
     renter = db.get(User, bk.renter_id)
 
     # ✅ Respect explicit ?loc=... (no redirect), otherwise compute a single redirect to lock it in
-    current_loc = request.query_params.get("loc")
-    if current_loc is not None:
-        p = current_loc.replace("_", "-").strip().upper().split("-")
-        cur_country = p[0] if p else None
-        cur_sub = p[1] if len(p) > 1 else None
+current_loc = request.query_params.get("loc")
+if current_loc is not None:
+    p = current_loc.replace("_", "-").strip().upper().split("-")
+    cur_country = p[0] if p else None
+    cur_sub = p[1] if len(p) > 1 else None
 
-        changed = False
-        if cur_country and getattr(bk, "loc_country", None) != cur_country:
-            bk.loc_country = cur_country
-            changed = True
-        if (cur_sub or "") != (getattr(bk, "loc_sub", None) or ""):
-            bk.loc_sub = cur_sub
-            changed = True
-        if changed:
-            db.commit()
-        # No redirect if user pinned loc via query
-    else:
-        desired_qs = _loc_qs_for_booking(bk) or _loc_qs_for_user(renter)
-        if not desired_qs:
-            geo_guess = _adapter_geo_from_request(request)
-            desired_qs = _loc_qs_from_geo(geo_guess)
-        if desired_qs:
-            base = f"/bookings/flow/{bk.id}"
+    # ✅ لو country موجود وsub ناقصة → حاول الإكمال ثم أعد التوجيه مرة واحدة
+    if cur_country and not cur_sub:
+        guess_sub = None
+        # من لقطة الحجز
+        guess_sub = guess_sub or (getattr(bk, "loc_sub", None) or "").strip().upper() or None
+        # من بروفايل المستأجر
+        if not guess_sub and renter:
+            guess_sub = (getattr(renter, "region", None) or getattr(renter, "state", None)
+                         or getattr(renter, "geo_region", None) or "")
+            guess_sub = str(guess_sub).strip().upper() or None
+        # من الجلسة
+        if not guess_sub:
+            s = getattr(request, "session", {}) or {}
+            guess_sub = (s.get("geo_region") or s.get("region")
+                         or (s.get("geo", {}) or {}).get("region") or "")
+            guess_sub = str(guess_sub).strip().upper() or None
+        # افتراضي كندي إن بقينا بلا شيء
+        if not guess_sub and cur_country == "CA":
+            guess_sub = DEFAULT_CA_SUB
+
+        if guess_sub:
+            # أعِد توجيهًا إلى رابط مُطَبَّع يحوي COUNTRY-SUB + بقية البارامترات
+            base = f"/bookings/flow/{bk.id}?loc={cur_country}-{guess_sub}"
             others = [(k, v) for k, v in request.query_params.items() if k != "loc"]
             tail = "&".join([f"{k}={v}" for k, v in others])
-            url = f"{base}{desired_qs}" + (f"&{tail}" if tail else "")
+            url = base + (f"&{tail}" if tail else "")
             return RedirectResponse(url=url, status_code=303)
+
+    # لو وصلنا هنا: إمّا link كامل، أو ناقص ولم نستطع الإكمال → نحدّث لقطة الحجز قدر المستطاع
+    changed = False
+    if cur_country and getattr(bk, "loc_country", None) != cur_country:
+        bk.loc_country = cur_country
+        changed = True
+    if (cur_sub or "") != (getattr(bk, "loc_sub", None) or ""):
+        bk.loc_sub = cur_sub
+        changed = True
+    if changed:
+        db.commit()
+else:
+    # المسار السابق كما هو، مع إعادة التوجيه مرة واحدة إذا عرفنا loc كامل (country+sub)
+    desired_qs = _loc_qs_for_booking(bk) or _loc_qs_for_user(renter)
+    if not desired_qs:
+        geo_guess = _adapter_geo_from_request(request)
+        desired_qs = _loc_qs_from_geo(geo_guess)
+    if desired_qs:
+        base = f"/bookings/flow/{bk.id}"
+        others = [(k, v) for k, v in request.query_params.items() if k != "loc"]
+        tail = "&".join([f"{k}={v}" for k, v in others])
+        url = f"{base}{desired_qs}" + (f"&{tail}" if tail else "")
+        return RedirectResponse(url=url, status_code=303)
+
 
     owner_pe = bool(getattr(owner, "payouts_enabled", False)) if owner else False
 
