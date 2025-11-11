@@ -229,6 +229,12 @@ def _adapter_taxes_for_request(request: Request, subtotal: float) -> dict:
 # ========================================
 # Helpers
 # ========================================
+def _loc_qs_from_geo(geo: dict) -> str:
+    c = (geo.get("country") or "").strip().upper()
+    s = (geo.get("sub") or "").strip().upper()
+    if c and s: return f"?loc={c}-{s}"
+    if c:       return f"?loc={c}"
+    return ""
 
 def _loc_qs_from_geo(geo: dict) -> str:
     c = (geo.get("country") or "").strip().upper()
@@ -512,41 +518,36 @@ async def create_booking(
 # Flow page
 # ========================================
 @router.get("/bookings/flow/{booking_id}")
-def booking_flow_page(
-    booking_id: int,
-    request: Request,
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
-    require_auth(user)
-    bk = require_booking(db, booking_id)
-    if not (is_renter(user, bk) or is_owner(user, bk)):
-        raise HTTPException(status_code=403, detail="Forbidden")
+# ✅ احترام ?loc=... إن وُجد: لا نعيد التوجيه، ونحدّث لقطة الحجز منه
+current_loc = request.query_params.get("loc")
+if current_loc is not None:
+    p = current_loc.replace("_", "-").strip().upper().split("-")
+    cur_country = p[0] if p else None
+    cur_sub = p[1] if len(p) > 1 else None
 
-    item   = db.get(Item, bk.item_id)
-    owner  = db.get(User, bk.owner_id)
-    renter = db.get(User, bk.renter_id)
-
-    # ⬅️ نوفر الحجز/المستأجر لـ _adapter_geo_from_request (انظر الخطوة 2)
-    request.state.booking = bk
-    request.state.renter = renter
-
-    # ✅ تطبيع الـURL: إن دخلت بـ ?loc=CA فقط ولدينا sub معروف → نعيد التوجيه إلى ?loc=CA-SUB
-        # ✅ تطبيع الـURL: نحاول أولاً من لقطة الحجز أو حساب المستأجر،
-    # وإذا لم نجد مقاطعة، نكمّلها من session/headers عبر _adapter_geo_from_request
+    changed = False
+    if cur_country and getattr(bk, "loc_country", None) != cur_country:
+        bk.loc_country = cur_country
+        changed = True
+    if (cur_sub or "") != (getattr(bk, "loc_sub", None) or ""):
+        bk.loc_sub = cur_sub
+        changed = True
+    if changed:
+        db.commit()
+    # لا Redirect إطلاقاً عندما يحدّد المستخدم loc بنفسه
+else:
+    # لا يوجد ?loc → نشتق أفضل قيمة ونوجّه مرة واحدة لتثبيتها
     desired_qs = _loc_qs_for_booking(bk) or _loc_qs_for_user(renter)
     if not desired_qs:
         geo_guess = _adapter_geo_from_request(request)
         desired_qs = _loc_qs_from_geo(geo_guess)
-
-    current_loc = request.query_params.get("loc")
-    if desired_qs and (current_loc is None or desired_qs != f"?loc={current_loc}"):
-        # نحتفظ بباقي الاستعلامات إن وُجدت
+    if desired_qs:
         base = f"/bookings/flow/{bk.id}"
         others = [(k, v) for k, v in request.query_params.items() if k != "loc"]
         tail = "&".join([f"{k}={v}" for k, v in others])
         url = f"{base}{desired_qs}" + (f"&{tail}" if tail else "")
         return RedirectResponse(url=url, status_code=303)
+
 
     owner_pe = bool(getattr(owner, "payouts_enabled", False)) if owner else False
 
