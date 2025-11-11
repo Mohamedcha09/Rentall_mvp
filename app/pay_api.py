@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from datetime import datetime
 from typing import Optional, Literal, Callable
+from decimal import Decimal, ROUND_HALF_UP, ROUND_CEILING  # ← NEW
 
 import stripe
 from fastapi import APIRouter, Depends, Request, HTTPException, Form
@@ -231,8 +232,12 @@ def _compose_invoice_html(
 
 # ===== Processing fee helper =====
 def _processing_fee_cents_for_rent(rent_cents: int) -> int:
-    # أبسط صيغة تقريبية
-    return int(round(rent_cents * STRIPE_PROCESSING_PCT + STRIPE_PROCESSING_FIXED_CENTS))
+    # أبسط صيغة تقريبية — تقـريب لأعلى سنت لتفادي النقص (NEW)
+    base = Decimal(rent_cents)
+    pct  = Decimal(str(STRIPE_PROCESSING_PCT))
+    fx   = Decimal(STRIPE_PROCESSING_FIXED_CENTS)
+    fee  = (base * pct) + fx
+    return int(fee.to_integral_value(rounding=ROUND_CEILING))
 
 # ============================================================
 # Checkout: Rent + Deposit together
@@ -813,6 +818,7 @@ def create_payment_intent_elements(
         metadata={"kind": "rent", "booking_id": str(bk.id)},
         transfer_data={"destination": owner.stripe_account_id, "amount": transfer_amount},
         automatic_payment_methods={"enabled": True},
+        automatic_tax={"enabled": True},  # ← NEW (optional, safe)
     )
 
     try:
