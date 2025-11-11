@@ -290,7 +290,6 @@ def start_checkout_all(
     transfer_amount = max(0, rent_cents - platform_fee_cents)
     processing_cents = _processing_fee_cents_for_rent(rent_cents)
 
-    # اضف ?loc= الأنسب لكل روابط الرجوع
     renter = db.get(User, bk.renter_id) if bk.renter_id else None
     qs = _best_loc_qs(bk, renter)
     success_url = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
@@ -305,63 +304,63 @@ def start_checkout_all(
         },
     }
 
-    
-        # === Build line_items with explicit taxes if available ===
-        renter = db.get(User, bk.renter_id) if bk.renter_id else None
-        geo = _geo_for_booking_and_user(bk, renter)
-        subtotal_before_tax_cents = rent_cents + processing_cents
-        line_items = [
-            {
-                "quantity": 1,
-                "price_data": {
-                    "currency": CURRENCY,
-                    "product_data": {"name": f"Rent for '{item.title}' (#{bk.id})"},
-                    "unit_amount": rent_cents,
-                    "tax_behavior": "exclusive",
-                },
+    # === Build line_items with explicit taxes if available ===
+    geo = _geo_for_booking_and_user(bk, renter)
+    subtotal_before_tax_cents = rent_cents + processing_cents
+    line_items = [
+        {
+            "quantity": 1,
+            "price_data": {
+                "currency": CURRENCY,
+                "product_data": {"name": f"Rent for '{item.title}' (#{bk.id})"},
+                "unit_amount": rent_cents,
+                "tax_behavior": "exclusive",
             },
-            {
-                "quantity": 1,
-                "price_data": {
-                    "currency": CURRENCY,
-                    "product_data": {"name": "Processing fee"},
-                    "unit_amount": processing_cents,
-                    "tax_behavior": "exclusive",
-                },
+        },
+        {
+            "quantity": 1,
+            "price_data": {
+                "currency": CURRENCY,
+                "product_data": {"name": "Processing fee"},
+                "unit_amount": processing_cents,
+                "tax_behavior": "exclusive",
             },
-        ]
-    
-        if dep_cents > 0:
-            line_items.append({
-                "quantity": 1,
-                "price_data": {
-                    "currency": CURRENCY,
-                    "product_data": {"name": f"Deposit for '{item.title}' (#{bk.id})"},
-                    "unit_amount": dep_cents,
-                    "tax_behavior": "exclusive",
-                },
-            })
-            subtotal_before_tax_cents += dep_cents
-        
+        },
+    ]
+
+    if dep_cents > 0:
+        line_items.append({
+            "quantity": 1,
+            "price_data": {
+                "currency": CURRENCY,
+                "product_data": {"name": f"Deposit for '{item.title}' (#{bk.id})"},
+                "unit_amount": dep_cents,
+                "tax_behavior": "exclusive",
+            },
+        })
+        subtotal_before_tax_cents += dep_cents
+
+    tax_lines = []
+    try:
+        if geo.get("country"):
+            _calc = compute_order_taxes(subtotal_before_tax_cents/100.0, geo)
+            for t in (_calc.get("lines") or []):
+                amt_cents = int(round(float(t.get("amount") or 0.0) * 100))
+                if amt_cents > 0:
+                    tax_lines.append({
+                        "quantity": 1,
+                        "price_data": {
+                            "currency": CURRENCY,
+                            "product_data": {"name": f"{t.get('name','Tax')} {round(float(t.get('rate',0))*100,3)}%"},
+                            "unit_amount": amt_cents,
+                        },
+                    })
+    except Exception:
         tax_lines = []
-        try:
-            if geo.get("country"):
-                _calc = compute_order_taxes(subtotal_before_tax_cents/100.0, geo)
-                for t in (_calc.get("lines") or []):
-                    amt_cents = int(round(float(t.get("amount") or 0.0) * 100))
-                    if amt_cents > 0:
-                        tax_lines.append({
-                            "quantity": 1,
-                            "price_data": {
-                                "currency": CURRENCY,
-                                "product_data": {"name": f"{t.get('name','Tax')} {round(float(t.get('rate',0))*100,3)}%"},
-                                "unit_amount": amt_cents,
-                            },
-                        })
-        except Exception:
-            tax_lines = []
-        automatic_tax_payload = {"enabled": False} if tax_lines else {"enabled": True}
-        line_items.extend(tax_lines)
+
+    automatic_tax_payload = {"enabled": False} if tax_lines else {"enabled": True}
+    line_items.extend(tax_lines)
+
     try:
         session = stripe.checkout.Session.create(
             mode="payment",
@@ -381,7 +380,6 @@ def start_checkout_all(
     bk.online_status = "pending_authorization"
     db.commit()
     return RedirectResponse(url=session.url, status_code=303)
-
 # ============ (A) Stripe Connect Onboarding ============
 @router.post("/api/stripe/connect/start")
 def connect_start(
@@ -472,7 +470,7 @@ def start_checkout_rent(
     success_url = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
     cancel_url  = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
 
-    pi_data: dict = {
+    pi_data = {
         "capture_method": "manual",
         "metadata": {"kind": "rent", "booking_id": str(bk.id)},
         "transfer_data": {
@@ -481,79 +479,60 @@ def start_checkout_rent(
         },
     }
 
-    
-        # === Build line_items with explicit taxes if available ===
-        renter = db.get(User, bk.renter_id) if bk.renter_id else None
-        geo = _geo_for_booking_and_user(bk, renter)
-        subtotal_before_tax_cents = rent_cents + processing_cents
-        line_items = [
-            {
-                "quantity": 1,
-                "price_data": {
-                    "currency": CURRENCY,
-                    "product_data": {"name": f"Rent for '{item.title}' (#{bk.id})"},
-                    "unit_amount": rent_cents,
-                    "tax_behavior": "exclusive",
-                },
+    # === Build line_items with explicit taxes if available ===
+    geo = _geo_for_booking_and_user(bk, renter)
+    subtotal_before_tax_cents = rent_cents + processing_cents
+    line_items = [
+        {
+            "quantity": 1,
+            "price_data": {
+                "currency": CURRENCY,
+                "product_data": {"name": f"Rent for '{item.title}' (#{bk.id})"},
+                "unit_amount": rent_cents,
+                "tax_behavior": "exclusive",
             },
-            {
-                "quantity": 1,
-                "price_data": {
-                    "currency": CURRENCY,
-                    "product_data": {"name": "Processing fee"},
-                    "unit_amount": processing_cents,
-                    "tax_behavior": "exclusive",
-                },
+        },
+        {
+            "quantity": 1,
+            "price_data": {
+                "currency": CURRENCY,
+                "product_data": {"name": "Processing fee"},
+                "unit_amount": processing_cents,
+                "tax_behavior": "exclusive",
             },
-        ]
-    
+        },
+    ]
+
+    tax_lines = []
+    try:
+        if geo.get("country"):
+            _calc = compute_order_taxes(subtotal_before_tax_cents/100.0, geo)
+            for t in (_calc.get("lines") or []):
+                amt_cents = int(round(float(t.get("amount") or 0.0) * 100))
+                if amt_cents > 0:
+                    tax_lines.append({
+                        "quantity": 1,
+                        "price_data": {
+                            "currency": CURRENCY,
+                            "product_data": {"name": f"{t.get('name','Tax')} {round(float(t.get('rate',0))*100,3)}%"},
+                            "unit_amount": amt_cents,
+                        },
+                    })
+    except Exception:
         tax_lines = []
-        try:
-            if geo.get("country"):
-                _calc = compute_order_taxes(subtotal_before_tax_cents/100.0, geo)
-                for t in (_calc.get("lines") or []):
-                    amt_cents = int(round(float(t.get("amount") or 0.0) * 100))
-                    if amt_cents > 0:
-                        tax_lines.append({
-                            "quantity": 1,
-                            "price_data": {
-                                "currency": CURRENCY,
-                                "product_data": {"name": f"{t.get('name','Tax')} {round(float(t.get('rate',0))*100,3)}%"},
-                                "unit_amount": amt_cents,
-                            },
-                        })
-        except Exception:
-            tax_lines = []
-        automatic_tax_payload = {"enabled": False} if tax_lines else {"enabled": True}
-        line_items.extend(tax_lines)
+
+    automatic_tax_payload = {"enabled": False} if tax_lines else {"enabled": True}
+    line_items.extend(tax_lines)
+
     try:
         session = stripe.checkout.Session.create(
             mode="payment",
             payment_intent_data=pi_data,
-            automatic_tax={"enabled": True},
+            automatic_tax=automatic_tax_payload,
             tax_id_collection={"enabled": True},
             billing_address_collection="required",
             customer_creation="always",
-            line_items=[
-                {
-                    "quantity": 1,
-                    "price_data": {
-                        "currency": CURRENCY,
-                        "product_data": {"name": f"Rent for '{item.title}' (#{bk.id})"},
-                        "unit_amount": rent_cents,
-                        "tax_behavior": "exclusive",
-                    },
-                },
-                {
-                    "quantity": 1,
-                    "price_data": {
-                        "currency": CURRENCY,
-                        "product_data": {"name": "Processing fee"},
-                        "unit_amount": processing_cents,
-                        "tax_behavior": "exclusive",
-                    },
-                },
-            ],
+            line_items=line_items,
             success_url=f"{success_url}&rent_ok=1&sid={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{cancel_url}&cancel=1",
         )
@@ -811,6 +790,7 @@ def capture_rent(
     bk.online_status = "captured"
     bk.rent_released_at = datetime.utcnow()
     db.commit()
+
     # إشعار + رابط مع ?loc=
     renter = db.get(User, bk.renter_id) if bk.renter_id else None
     qs = _best_loc_qs(bk, renter)
