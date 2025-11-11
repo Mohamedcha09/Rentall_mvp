@@ -427,20 +427,32 @@ def booking_flow_page(
     bk = require_booking(db, booking_id)
     if not (is_renter(user, bk) or is_owner(user, bk)):
         raise HTTPException(status_code=403, detail="Forbidden")
-    item = db.get(Item, bk.item_id)
-    owner = db.get(User, bk.owner_id)
+    item   = db.get(Item, bk.item_id)
+    owner  = db.get(User, bk.owner_id)
     renter = db.get(User, bk.renter_id)
 
     # Owner payouts activation state to enable online payment
     owner_pe = bool(getattr(owner, "payouts_enabled", False)) if owner else False
 
-    # Pass the dispute window after return to display a countdown (48 hours)
+    # Dispute window (48h) after return
     dispute_deadline = None
     if getattr(bk, "returned_at", None):
         try:
             dispute_deadline = bk.returned_at + timedelta(hours=DISPUTE_WINDOW_HOURS)
         except Exception:
             dispute_deadline = None
+
+    # === Fees & taxes (احسبها قبل ctx) ===
+    try:
+        rent_amount = float(getattr(bk, "total_amount", 0.0) or 0.0)
+    except Exception:
+        rent_amount = 0.0
+
+    pct         = float(os.getenv("STRIPE_PROCESSING_PCT", "0.029") or 0.029)
+    fixed_cents = int(os.getenv("STRIPE_PROCESSING_FIXED_CENTS", "30") or 30)
+    processing_fee       = round(rent_amount * pct + (fixed_cents / 100.0), 2)
+    subtotal_before_tax  = round(rent_amount + processing_fee, 2)
+    taxes_ctx            = _adapter_taxes_for_request(request, subtotal_before_tax)
 
     ctx = {
         "request": request,
@@ -467,6 +479,8 @@ def booking_flow_page(
         "is_completed": (bk.status == "completed"),
         "dispute_deadline_iso": _iso(dispute_deadline),
         "renter_reply_hours": RENTER_REPLY_WINDOW_HOURS,
+
+        # ↓↓↓ هذه القيم الآن جاهزة لأننا حسبناها فوق
         "rent_amount": rent_amount,
         "processing_fee": processing_fee,
         "subtotal_before_tax": subtotal_before_tax,
@@ -474,22 +488,10 @@ def booking_flow_page(
         "CURRENCY": (os.getenv("CURRENCY", "CAD") or "CAD").upper(),
         "STRIPE_PROCESSING_PCT": pct,
         "STRIPE_PROCESSING_FIXED_CENTS": fixed_cents,
-
     }
-    # === Fees & taxes ===
-try:
-    rent_amount = float(getattr(bk, "total_amount", 0.0) or 0.0)
-except Exception:
-    rent_amount = 0.0
-
-pct = float(os.getenv("STRIPE_PROCESSING_PCT", "0.029") or 0.029)
-fixed_cents = int(os.getenv("STRIPE_PROCESSING_FIXED_CENTS", "30") or 30)
-processing_fee = round(rent_amount * pct + (fixed_cents / 100.0), 2)
-subtotal_before_tax = round(rent_amount + processing_fee, 2)
-
-taxes_ctx = _adapter_taxes_for_request(request, subtotal_before_tax)
 
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
+
 
 # ===== Owner decision =====
 @router.post("/bookings/{booking_id}/owner/decision")
