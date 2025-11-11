@@ -20,53 +20,64 @@
       <div class="alert alert-warning">The booking is not in the "confirmed" state.</div>
     {% else %}
 
-      {# ✅ هنا نضع ملخص الطلب قبل الفورم #}
-      <div class="card mb-3">
-        <div class="card-body">
-          <h5 class="mb-3">Order summary</h5>
+      {# ===== ORDER SUMMARY ===== #}
+<div class="card mb-3">
+  <div class="card-body">
+    <h5 class="mb-3">Order summary</h5>
 
-          <div class="d-flex justify-content-between">
-            <span>Rent for (“{{ item.title }}”)</span>
-            <strong>{{ "%.2f"|format(rent) }} {{ currency }}</strong>
-          </div>
+    <div class="d-flex justify-content-between">
+      <span>Rent for (“{{ item.title }}”)</span>
+      <strong>{{ "%.2f"|format(rent_amount) }} {{ CURRENCY }}</strong>
+    </div>
 
-          <hr class="my-2">
+    <hr class="my-2">
 
-          <div class="d-flex justify-content-between">
-            <span>Sous-total</span>
-            <strong>{{ "%.2f"|format(rent) }} {{ currency }}</strong>
-          </div>
+    <div class="d-flex justify-content-between">
+      <span>Sub-total</span>
+      <strong>{{ "%.2f"|format(subtotal_before_tax) }} {{ CURRENCY }}</strong>
+    </div>
 
-          <div class="d-flex justify-content-between">
-            <span>Sevor Fee (1%)</span>
-            <strong>{{ "%.2f"|format(sevor_fee) }} {{ currency }}</strong>
-          </div>
-
-          <div class="d-flex justify-content-between text-muted">
-            <span>Taxe</span>
-            <span>Calculated at Stripe</span>
-          </div>
-
-          <div class="d-flex justify-content-between text-muted">
-            <span>Stripe processing (est.)</span>
-            <span>{{ "%.2f"|format(processing_fee_est) }} {{ currency }}</span>
-          </div>
-
-          <hr class="my-2">
-
-          <div class="d-flex justify-content-between">
-            <span>Total (before tax)</span>
-            <strong>{{ "%.2f"|format(rent + sevor_fee + processing_fee_est) }} {{ currency }}</strong>
-          </div>
-
-          <div class="small text-muted mt-2">
-            الضرائب تُحسب بدقّة في صفحة Stripe حسب العنوان.
-            “Sevor Fee (1%)” تُقتطع تلقائيًا عبر Stripe كـ application fee ولن تظهر كسطر داخل صفحة Stripe.
-            “Stripe processing (est.)” للعرض فقط (إلا إذا قررت تحصيلها فعليًا).
-          </div>
+    {# ===== Taxes block ===== #}
+    {% if taxes and taxes.mode == 'computed' and taxes.tax_lines and taxes.tax_lines|length > 0 %}
+      {% for t in taxes.tax_lines %}
+        <div class="d-flex justify-content-between">
+          <span>{{ t.name }} ({{ (t.rate * 100)|round(2) }}%)</span>
+          <strong>{{ "%.2f"|format(t.amount) }} {{ CURRENCY }}</strong>
         </div>
+      {% endfor %}
+
+      <div class="d-flex justify-content-between mt-1">
+        <span class="fw-semibold">Tax total</span>
+        <strong>{{ "%.2f"|format(taxes.tax_total) }} {{ CURRENCY }}</strong>
       </div>
-      {# ✅ نهاية الملخص #}
+
+      <hr class="my-2">
+
+      <div class="d-flex justify-content-between">
+        <span>Total (incl. tax)</span>
+        <strong>{{ "%.2f"|format(taxes.grand_total) }} {{ CURRENCY }}</strong>
+      </div>
+
+    {% else %}
+      <div class="d-flex justify-content-between text-muted">
+        <span>Taxes</span>
+        <span>Calculated at Stripe</span>
+      </div>
+
+      <hr class="my-2">
+      <div class="d-flex justify-content-between">
+        <span>Total (before tax)</span>
+        <strong>{{ "%.2f"|format(subtotal_before_tax) }} {{ CURRENCY }}</strong>
+      </div>
+    {% endif %}
+
+    <div class="small text-muted mt-2">
+      Stripe processing is included in the Sub-total (per your env % + fixed).
+      Taxes are computed here when your region is known (e.g., CA-QC). If not, Stripe will finalize them at checkout.
+    </div>
+  </div>
+</div>
+
 
       {# ✅ فورم الدفع (بدون تداخل أو تكرار) #}
       <form id="pay-form">
