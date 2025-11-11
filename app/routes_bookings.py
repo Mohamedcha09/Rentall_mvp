@@ -486,7 +486,9 @@ async def create_booking(
             f"On '{item.title}'. Click to view details.",
             f"/bookings/flow/{bk.id}", "booking"
         )
-        return redirect_to_flow(bk.id)
+        renter = db.get(User, bk.renter_id)
+        return redirect_to_flow_with_loc(bk, renter)
+
 
     except HTTPException:
         raise
@@ -638,7 +640,9 @@ def owner_decision(
             f"Your request on '{item.title}' was rejected.",
             f"/bookings/flow/{bk.id}", "booking"
         )
-        return redirect_to_flow(bk.id)
+        renter = db.get(User, bk.renter_id)
+        return redirect_to_flow_with_loc(bk, renter)
+
 
     bk.owner_decision = "accepted"
 
@@ -666,7 +670,9 @@ def owner_decision(
         link,
         "booking"
     )
-    return redirect_to_flow(bk.id)
+    renter = db.get(User, bk.renter_id)
+    return redirect_to_flow_with_loc(bk, renter)
+
 
 
 # ========================================
@@ -700,7 +706,9 @@ def renter_choose_payment(
             f"Booking '{item.title}'. Payment will be made on pickup.",
             f"/bookings/flow/{bk.id}", "booking"
         )
-        return redirect_to_flow(bk.id)
+        renter = db.get(User, bk.renter_id)
+        return redirect_to_flow_with_loc(bk, renter)
+
 
     bk.payment_method = "online"
     bk.timeline_payment_method_chosen_at = datetime.utcnow()
@@ -710,7 +718,9 @@ def renter_choose_payment(
         f"Booking '{item.title}'. Waiting for renter to pay.",
         f"/bookings/flow/{bk.id}", "booking"
     )
-    return redirect_to_flow(bk.id)
+    renter = db.get(User, bk.renter_id)
+    return redirect_to_flow_with_loc(bk, renter)
+
 
 
 # ========================================
@@ -782,7 +792,9 @@ def renter_confirm_received(
         f"Don’t forget to return '{item.title}' on time.",
         f"/bookings/flow/{bk.id}", "booking"
     )
-    return redirect_to_flow(bk.id)
+    renter = db.get(User, bk.renter_id)
+    return redirect_to_flow_with_loc(bk, renter)
+
 
 
 # ========================================
@@ -799,7 +811,9 @@ def owner_confirm_delivered(
     if not is_owner(user, bk):
         raise HTTPException(status_code=403, detail="Only owner can confirm delivery")
     if bk.status not in ("paid",):
-        return redirect_to_flow(bk.id)
+        renter = db.get(User, bk.renter_id)
+        return redirect_to_flow_with_loc(bk, renter)
+
 
     item = db.get(Item, bk.item_id)
 
@@ -820,7 +834,9 @@ def owner_confirm_delivered(
         f"The owner delivered '{item.title}'. Enjoy your rental.",
         f"/bookings/flow/{bk.id}", "booking"
     )
-    return redirect_to_flow(bk.id)
+    renter = db.get(User, bk.renter_id)
+    return redirect_to_flow_with_loc(bk, renter)
+
 
 
 # ========================================
