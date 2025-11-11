@@ -66,6 +66,48 @@ if not stripe.api_key:
 
 router = APIRouter(tags=["payments"])
 
+# ================= Geo QS helpers (مستقلة عن أي ملف خارجي) =================
+def _loc_qs_for_user(u: Optional[User]) -> str:
+    if not u:
+        return ""
+    country = (getattr(u, "country", None) or getattr(u, "geo_country", None) or "").strip().upper()
+    sub     = (getattr(u, "region", None)  or getattr(u, "state", None) or getattr(u, "geo_region", None) or "").strip().upper()
+    if country and sub:
+        return f"?loc={country}-{sub}"
+    if country:
+        # اختيار افتراضي لكندا: QC إن غابت الـsub
+        if country == "CA":
+            return f"?loc=CA-QC"
+        return f"?loc={country}"
+    return ""
+
+def _loc_qs_for_booking(bk: Optional[Booking]) -> str:
+    if not bk:
+        return ""
+    c = (getattr(bk, "loc_country", "") or "").strip().upper()
+    s = (getattr(bk, "loc_sub", "") or "").strip().upper()
+    if c and s:
+        return f"?loc={c}-{s}"
+    if c:
+        if c == "CA":
+            return f"?loc=CA-QC"
+        return f"?loc={c}"
+    return ""
+
+def _best_loc_qs(bk: Optional[Booking], renter: Optional[User]) -> str:
+    return _loc_qs_for_booking(bk) or _loc_qs_for_user(renter) or ""
+
+def _append_qs(url: str, qs: str) -> str:
+    if not qs:
+        return url
+    if "?" in url:
+        # دمج مع استعلامات موجودة
+        base, tail = url.split("?", 1)
+        if qs.startswith("?"):
+            qs = qs[1:]
+        return f"{base}?{qs}&{tail}" if tail else f"{base}?{qs}"
+    return f"{url}{qs}"
+
 # ================= Helpers =================
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
@@ -82,8 +124,17 @@ def require_booking(db: Session, bid: int) -> Booking:
         raise HTTPException(status_code=404, detail="Booking not found")
     return bk
 
-def flow_redirect(bid: int) -> RedirectResponse:
-    return RedirectResponse(url=f"/bookings/flow/{bid}", status_code=303)
+def flow_redirect(bid: int, db: Session = None) -> RedirectResponse:
+    """
+    تحويل إلى صفحة الـflow مع ?loc= الأفضل (من لقطة الحجز أو حساب المستأجر).
+    """
+    if db:
+        bk = db.get(Booking, bid)
+        renter = db.get(User, bk.renter_id) if (bk and bk.renter_id) else None
+        qs = _best_loc_qs(bk, renter)
+    else:
+        qs = ""
+    return RedirectResponse(url=_append_qs(f"/bookings/flow/{bid}", qs), status_code=303)
 
 def can_manage_deposits(u: Optional[User]) -> bool:
     if not u:
@@ -180,12 +231,11 @@ def _compose_invoice_html(
 
 # ===== Processing fee helper =====
 def _processing_fee_cents_for_rent(rent_cents: int) -> int:
-    # أبسط صيغة تقريبية: نسبة × الإيجار + ثابت (بالسنت)
-    # (يمكن لاحقًا عمل "gross-up" لو أردت تغطية رسوم Stripe على كامل العملية بدقة)
+    # أبسط صيغة تقريبية
     return int(round(rent_cents * STRIPE_PROCESSING_PCT + STRIPE_PROCESSING_FIXED_CENTS))
 
 # ============================================================
-# Checkout: Rent + Deposit together (نفس الجلسة) — مع سطر Processing fee
+# Checkout: Rent + Deposit together
 # ============================================================
 @router.post("/api/stripe/checkout/all/{booking_id}")
 def start_checkout_all(
@@ -198,7 +248,7 @@ def start_checkout_all(
     if user.id != bk.renter_id:
         raise HTTPException(status_code=403, detail="Only renter can pay")
     if bk.status not in ("accepted", "requested"):
-        return flow_redirect(bk.id)
+        return flow_redirect(bk.id, db)
 
     item = db.get(Item, bk.item_id)
     if not item:
@@ -210,19 +260,24 @@ def start_checkout_all(
     rent_cents = int(max(0, (bk.total_amount or 0)) * 100)
     dep_cents  = int(max(0, (bk.deposit_amount or getattr(bk, "hold_deposit_amount", 0) or 0)) * 100)
     if rent_cents <= 0 and dep_cents <= 0:
-        return flow_redirect(bk.id)
+        return flow_redirect(bk.id, db)
 
     platform_fee_cents = int(round(rent_cents * (PLATFORM_FEE_PCT / 100.0)))
-    transfer_amount = max(0, rent_cents - platform_fee_cents)  # ما يصل للمالك
-
+    transfer_amount = max(0, rent_cents - platform_fee_cents)
     processing_cents = _processing_fee_cents_for_rent(rent_cents)
 
+    # اضف ?loc= الأنسب لكل روابط الرجوع
+    renter = db.get(User, bk.renter_id) if bk.renter_id else None
+    qs = _best_loc_qs(bk, renter)
+    success_url = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
+    cancel_url  = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
+
     pi_data = {
-        "capture_method": "manual",  # نقبض لاحقًا عند "Picked up"
+        "capture_method": "manual",
         "metadata": {"kind": "all", "booking_id": str(bk.id)},
         "transfer_data": {
             "destination": owner.stripe_account_id,
-            "amount": transfer_amount,  # المبلغ للمالك = الإيجار − 1%
+            "amount": transfer_amount,
         },
     }
 
@@ -234,7 +289,7 @@ def start_checkout_all(
             tax_id_collection={"enabled": True},
             billing_address_collection="required",
             customer_creation="always",
-            line_items=[
+            line_items=[li for li in [
                 {
                     "quantity": 1,
                     "price_data": {
@@ -253,7 +308,6 @@ def start_checkout_all(
                         "tax_behavior": "exclusive",
                     },
                 },
-                # العربون لا نُحوّل منه للمالك هنا
                 {
                     "quantity": 1,
                     "price_data": {
@@ -263,9 +317,9 @@ def start_checkout_all(
                         "tax_behavior": "exclusive",
                     },
                 } if dep_cents > 0 else None,
-            ],
-            success_url=f"{SITE_URL}/bookings/flow/{bk.id}?all_ok=1&sid={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{SITE_URL}/bookings/flow/{bk.id}?cancel=1",
+            ] if li is not None],
+            success_url=f"{success_url}&all_ok=1&sid={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{cancel_url}&cancel=1",
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe error: {e}")
@@ -331,7 +385,7 @@ def connect_status(
         "capabilities": acc.get("capabilities", {}),
     })
 
-# ============ (B) Checkout: Rent only (manual capture + destination + processing fee) ============
+# ============ (B) Checkout: Rent only ============
 @router.post("/api/stripe/checkout/rent/{booking_id}")
 def start_checkout_rent(
     booking_id: int,
@@ -343,7 +397,7 @@ def start_checkout_rent(
     if user.id != bk.renter_id:
         raise HTTPException(status_code=403, detail="Only renter can pay")
     if bk.status not in ("accepted", "requested"):
-        return flow_redirect(bk.id)
+        return flow_redirect(bk.id, db)
 
     item = db.get(Item, bk.item_id)
     if not item:
@@ -354,14 +408,19 @@ def start_checkout_rent(
 
     rent_cents = int(max(0, (bk.total_amount or 0)) * 100)
     if rent_cents <= 0:
-        return flow_redirect(bk.id)
+        return flow_redirect(bk.id, db)
 
     platform_fee_cents = int(round(rent_cents * (PLATFORM_FEE_PCT / 100.0)))
-    transfer_amount = max(0, rent_cents - platform_fee_cents)  # ما يصل للمالك
+    transfer_amount = max(0, rent_cents - platform_fee_cents)
     processing_cents = _processing_fee_cents_for_rent(rent_cents)
 
+    renter = db.get(User, bk.renter_id) if bk.renter_id else None
+    qs = _best_loc_qs(bk, renter)
+    success_url = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
+    cancel_url  = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
+
     pi_data: dict = {
-        "capture_method": "manual",  # نقبض لاحقًا عند الاستلام
+        "capture_method": "manual",
         "metadata": {"kind": "rent", "booking_id": str(bk.id)},
         "transfer_data": {
             "destination": owner.stripe_account_id,
@@ -397,8 +456,8 @@ def start_checkout_rent(
                     },
                 },
             ],
-            success_url=f"{SITE_URL}/bookings/flow/{bk.id}?rent_ok=1&sid={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{SITE_URL}/bookings/flow/{bk.id}?cancel=1",
+            success_url=f"{success_url}&rent_ok=1&sid={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{cancel_url}&cancel=1",
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe error: {e}")
@@ -408,7 +467,7 @@ def start_checkout_rent(
     db.commit()
     return RedirectResponse(url=session.url, status_code=303)
 
-# ============ (C) Checkout: Deposit only (manual capture, no transfer) ============
+# ============ (C) Checkout: Deposit only ============
 @router.post("/api/stripe/checkout/deposit/{booking_id}")
 def start_checkout_deposit(
     booking_id: int,
@@ -422,11 +481,16 @@ def start_checkout_deposit(
 
     dep = int(max(0, bk.deposit_amount or getattr(bk, "hold_deposit_amount", 0) or 0))
     if dep <= 0:
-        return flow_redirect(bk.id)
+        return flow_redirect(bk.id, db)
 
     item = db.get(Item, bk.item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
+
+    renter = db.get(User, bk.renter_id) if bk.renter_id else None
+    qs = _best_loc_qs(bk, renter)
+    success_url = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
+    cancel_url  = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
 
     try:
         session = stripe.checkout.Session.create(
@@ -435,7 +499,6 @@ def start_checkout_deposit(
                 "capture_method": "manual",
                 "metadata": {"kind": "deposit", "booking_id": str(bk.id)},
             },
-            # عادة لا نفعِّل ضرائب على العربون، لكن إن أردت:
             automatic_tax={"enabled": True},
             tax_id_collection={"enabled": True},
             billing_address_collection="required",
@@ -451,8 +514,8 @@ def start_checkout_deposit(
                     },
                 }
             ],
-            success_url=f"{SITE_URL}/bookings/flow/{bk.id}?deposit_ok=1&sid={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{SITE_URL}/bookings/flow/{bk.id}?cancel=1",
+            success_url=f"{success_url}&deposit_ok=1&sid={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{cancel_url}&cancel=1",
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe error: {e}")
@@ -481,6 +544,7 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
 
     renter = db.get(User, bk.renter_id) if bk.renter_id else None
     item = db.get(Item, bk.item_id) if bk.item_id else None
+    qs = _best_loc_qs(bk, renter)
 
     if kind == "rent":
         bk.online_payment_intent_id = pi.id
@@ -489,20 +553,28 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
             bk.status = "paid"
             bk.timeline_paid_at = datetime.utcnow()
             db.commit()
-            push_notification(db, bk.owner_id, "Rent payment authorized",
-                              f"Booking #{bk.id}: Authorization ready. Hand over the item at the scheduled time.",
-                              f"/bookings/flow/{bk.id}", "booking")
-            push_notification(db, bk.renter_id, "Rent authorized + deposit held",
-                              f"Booking #{bk.id}. You can pick up the item now.",
-                              f"/bookings/flow/{bk.id}", "booking")
+            push_notification(
+                db, bk.owner_id, "Rent payment authorized",
+                f"Booking #{bk.id}: Authorization ready. Hand over the item at the scheduled time.",
+                _append_qs(f"/bookings/flow/{bk.id}", qs), "booking"
+            )
+            push_notification(
+                db, bk.renter_id, "Rent authorized + deposit held",
+                f"Booking #{bk.id}. You can pick up the item now.",
+                _append_qs(f"/bookings/flow/{bk.id}", qs), "booking"
+            )
         else:
             db.commit()
-            push_notification(db, bk.owner_id, "Rent payment authorized",
-                              f"Booking #{bk.id}: Wait for the deposit hold before delivery.",
-                              f"/bookings/flow/{bk.id}", "booking")
-            push_notification(db, bk.renter_id, "Rent authorized",
-                              f"Booking #{bk.id}: Please complete the deposit hold to proceed to pickup.",
-                              f"/bookings/flow/{bk.id}", "booking")
+            push_notification(
+                db, bk.owner_id, "Rent payment authorized",
+                f"Booking #{bk.id}: Wait for the deposit hold before delivery.",
+                _append_qs(f"/bookings/flow/{bk.id}", qs), "booking"
+            )
+            push_notification(
+                db, bk.renter_id, "Rent authorized",
+                f"Booking #{bk.id}: Please complete the deposit hold to proceed to pickup.",
+                _append_qs(f"/bookings/flow/{bk.id}", qs), "booking"
+            )
 
         try:
             renter_email = _user_email(db, bk.renter_id)
@@ -543,20 +615,28 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
                 pass
 
             db.commit()
-            push_notification(db, bk.owner_id, "Payment completed",
-                              f"Booking #{bk.id}: Rent authorized and deposit held.",
-                              f"/bookings/flow/{bk.id}", "booking")
-            push_notification(db, bk.renter_id, "Ready for pickup",
-                              f"Booking #{bk.id}: You can pick up the item now.",
-                              f"/bookings/flow/{bk.id}", "booking")
+            push_notification(
+                db, bk.owner_id, "Payment completed",
+                f"Booking #{bk.id}: Rent authorized and deposit held.",
+                _append_qs(f"/bookings/flow/{bk.id}", qs), "booking"
+            )
+            push_notification(
+                db, bk.renter_id, "Ready for pickup",
+                f"Booking #{bk.id}: You can pick up the item now.",
+                _append_qs(f"/bookings/flow/{bk.id}", qs), "booking"
+            )
         else:
             db.commit()
-            push_notification(db, bk.owner_id, "Deposit held",
-                              f"Booking #{bk.id}: Deposit held. Waiting for rent authorization.",
-                              f"/bookings/flow/{bk.id}", "deposit")
-            push_notification(db, bk.renter_id, "Deposit held",
-                              f"Booking #{bk.id}: Complete the rent payment to proceed to pickup.",
-                              f"/bookings/flow/{bk.id}", "deposit")
+            push_notification(
+                db, bk.owner_id, "Deposit held",
+                f"Booking #{bk.id}: Deposit held. Waiting for rent authorization.",
+                _append_qs(f"/bookings/flow/{bk.id}", qs), "deposit"
+            )
+            push_notification(
+                db, bk.renter_id, "Deposit held",
+                f"Booking #{bk.id}: Complete the rent payment to proceed to pickup.",
+                _append_qs(f"/bookings/flow/{bk.id}", qs), "deposit"
+            )
 
     elif kind == "all":
         bk.online_payment_intent_id = pi.id
@@ -566,12 +646,16 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
         bk.status = "paid"
         bk.timeline_paid_at = datetime.utcnow()
         db.commit()
-        push_notification(db, bk.owner_id, "Full payment completed",
-                          f"Booking #{bk.id}: Rent paid and deposit held together.",
-                          f"/bookings/flow/{bk.id}", "booking")
-        push_notification(db, bk.renter_id, "Payment successful",
-                          f"Rent and deposit were paid together for booking #{bk.id}.",
-                          f"/bookings/flow/{bk.id}", "booking")
+        push_notification(
+            db, bk.owner_id, "Full payment completed",
+            f"Booking #{bk.id}: Rent paid and deposit held together.",
+            _append_qs(f"/bookings/flow/{bk.id}", qs), "booking"
+        )
+        push_notification(
+            db, bk.renter_id, "Payment successful",
+            f"Rent and deposit were paid together for booking #{bk.id}.",
+            _append_qs(f"/bookings/flow/{bk.id}", qs), "booking"
+        )
 
         try:
             renter_email = _user_email(db, bk.renter_id)
@@ -618,7 +702,7 @@ def capture_rent(
     require_auth(user)
     bk = require_booking(db, booking_id)
     if not getattr(bk, "online_payment_intent_id", None):
-        return flow_redirect(bk.id)
+        return flow_redirect(bk.id, db)
 
     try:
         stripe.PaymentIntent.capture(bk.online_payment_intent_id)
@@ -629,10 +713,15 @@ def capture_rent(
     bk.online_status = "captured"
     bk.rent_released_at = datetime.utcnow()
     db.commit()
-    push_notification(db, bk.owner_id, "Rent amount transferred",
-                      f"Booking #{bk.id}: The amount has been transferred to you.",
-                      f"/bookings/flow/{bk.id}", "booking")
-    return flow_redirect(bk.id)
+    # إشعار + رابط مع ?loc=
+    renter = db.get(User, bk.renter_id) if bk.renter_id else None
+    qs = _best_loc_qs(bk, renter)
+    push_notification(
+        db, bk.owner_id, "Rent amount transferred",
+        f"Booking #{bk.id}: The amount has been transferred to you.",
+        _append_qs(f"/bookings/flow/{bk.id}", qs), "booking"
+    )
+    return flow_redirect(bk.id, db)
 
 # ============ (F) Deposit decision ============
 @router.post("/api/stripe/deposit/resolve/{booking_id}")
@@ -650,7 +739,7 @@ def resolve_deposit(
     bk = require_booking(db, booking_id)
     pi_id = _get_deposit_pi_id(bk)
     if not pi_id:
-        return flow_redirect(bk.id)
+        return flow_redirect(bk.id, db)
 
     dep = int(max(0, bk.deposit_amount or getattr(bk, "hold_deposit_amount", 0) or 0))
     try:
@@ -682,13 +771,15 @@ def resolve_deposit(
 
     db.commit()
 
-    notify_admins(db, "Deposit decision executed", f"Booking #{bk.id}: {action}.", f"/bookings/flow/{bk.id}")
+    renter = db.get(User, bk.renter_id) if bk.renter_id else None
+    qs = _best_loc_qs(bk, renter)
+    notify_admins(db, "Deposit decision executed", f"Booking #{bk.id}: {action}.", _append_qs(f"/bookings/flow/{bk.id}", qs))
     push_notification(db, bk.owner_id, "Deposit decision",
-                      f"Decision executed: {action}.", f"/bookings/flow/{bk.id}", "deposit")
+                      f"Decision executed: {action}.", _append_qs(f"/bookings/flow/{bk.id}", qs), "deposit")
     push_notification(db, bk.renter_id, "Deposit decision",
-                      f"Decision executed: {action}.", f"/bookings/flow/{bk.id}", "deposit")
+                      f"Decision executed: {action}.", _append_qs(f"/bookings/flow/{bk.id}", qs), "deposit")
 
-    return flow_redirect(bk.id)
+    return flow_redirect(bk.id, db)
 
 # ============ (G) Elements (اختياري) ============
 @router.post("/api/checkout/{booking_id}/intent")
