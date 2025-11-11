@@ -72,8 +72,7 @@ import app.cs as cs_routes
 from . import mod as mod_routes
 from .md import router as md_router 
 from .reviews import router as reviews_router
-from .routes_geo import router as geo_router
-
+from .routes_geo import router as geo_router 
 
 # -----------------------------------------------------------------------------
 # Create the app
@@ -417,8 +416,7 @@ app.include_router(cs_routes.router)
 app.include_router(mod_routes.router)
 app.include_router(reviews_router)
 app.include_router(md_router) 
-app.include_router(geo_router)
- # ⬅️ New
+app.include_router(geo_router) # ⬅️ New
 # -----------------------------------------------------------------------------
 # Legacy path → redirect to the new reports page
 # -----------------------------------------------------------------------------
@@ -609,14 +607,10 @@ def notifications_page(request: Request):
 @app.middleware("http")
 async def geo_session_middleware(request: Request, call_next):
     try:
-        # لا نلمس الويبهوك
         if request.url.path.startswith("/webhooks/"):
             return await call_next(request)
-        # خزّن/حدّث القيم في session
-        persist_location_to_session(request)
+        persist_location_to_session(request)   # ⬅️ هام
     except Exception:
-        # لا نكسر الطلب لو حصل خطأ
         pass
-    response = await call_next(request)
-    return response
+    return await call_next(request)
 

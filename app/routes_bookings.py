@@ -40,13 +40,14 @@ except Exception:
 
 
 def _adapter_geo_from_request(request: Request) -> dict:
-    # 1) override يدوي عبر ?loc=CA-QC
+    """يرجّع {"country": .., "sub": ..} مع دعم ?loc=CA-QC وقراءة مفاتيح الجلسة الفعلية."""
+    # 1) override يدوي: ?loc=CA-QC
     loc_q = request.query_params.get("loc")
     if loc_q:
-        p = loc_q.strip().upper().split("-")
+        p = loc_q.replace("_","-").strip().upper().split("-")
         return {"country": p[0], "sub": (p[1] if len(p) > 1 else None)}
 
-    # 2) utili_geo
+    # 2) utili_geo (لو موجودة)
     for fn in (_geo_req, _geo_locate, _geo_session):
         if callable(fn):
             try:
@@ -59,24 +60,21 @@ def _adapter_geo_from_request(request: Request) -> dict:
             except Exception:
                 pass
 
-    # 3) الجلسة: اقرأ المفاتيح التي تضعها utils_geo.persist_location_to_session
-    s = request.session or {}
-    if s.get("geo_country"):                      # ← هذا الجزء هو المفقود
-        return {
-            "country": (s.get("geo_country") or "").upper() or None,
-            "sub":     (s.get("geo_region")  or "").upper() or None,
-        }
+    # 3) قراءة مباشرة من مفاتيح الجلسة الفعلية (المحفوظه بواسطة utils_geo.persist_location_to_session)
+    s = getattr(request, "session", {}) or {}
+    country = (s.get("geo_country") or s.get("country") or s.get("geo", {}).get("country") or "")
+    region  = (s.get("geo_region")  or s.get("region")  or s.get("geo", {}).get("region")  or "")
 
+    country = (str(country).upper().strip() or None)
+    sub     = (str(region).upper().strip()  or None)
+
+    if country:
+        return {"country": country, "sub": sub}
+
+    # 4) fallback قديم إن وُجد
     if s.get("loc"):
         p = str(s["loc"]).upper().split("-")
         return {"country": p[0], "sub": (p[1] if len(p) > 1 else None)}
-
-    g = s.get("geo") or {}
-    if isinstance(g, dict):
-        country = (g.get("country") or g.get("cc") or "").upper() or None
-        sub     = (g.get("sub") or g.get("region") or g.get("prov") or "").upper() or None
-        if country:
-            return {"country": country, "sub": sub}
 
     return {"country": None, "sub": None}
 
