@@ -29,14 +29,22 @@ try:
 except Exception:
     _geo_req = _geo_locate = _geo_session = None
 
+# ==== utili_tax imports (safe/optional) ====
 try:
-    from .utili_tax import (
-        compute_order_taxes as _tax_order,   # (subtotal: float, geo: {"country","sub"}) -> dict
-        compute_taxes       as _tax_compute, # (subtotal, country='CA', sub='QC') -> dict
-        compute_ca_taxes    as _tax_ca,      # (subtotal, sub='QC') -> (lines, total)
-    )
+    from .utili_tax import compute_order_taxes as _tax_order
 except Exception:
-    _tax_order = _tax_compute = _tax_ca = None
+    _tax_order = None
+
+try:
+    from .utili_tax import compute_taxes as _tax_compute
+except Exception:
+    _tax_compute = None
+
+try:
+    from .utili_tax import compute_ca_taxes as _tax_ca
+except Exception:
+    _tax_ca = None
+
 
 
 def _adapter_geo_from_request(request: Request) -> dict:
