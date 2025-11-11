@@ -562,18 +562,19 @@ def owner_decision(
 
     dep_txt = f" with a {bk.deposit_amount}$ deposit" if (bk.deposit_amount or 0) > 0 else ""
 
-# NEW: build link with renter's location so taxes/images page load correctly
-renter = db.get(User, bk.renter_id)
-loc_qs = _loc_qs_for_user(renter)
-link   = f"/bookings/flow/{bk.id}{loc_qs}"
+    # NEW: build link with renter's location so taxes/images page load correctly
+    renter = db.get(User, bk.renter_id)
+    loc_qs = _loc_qs_for_user(renter)
+    link   = f"/bookings/flow/{bk.id}{loc_qs}"
 
-push_notification(
-    db, bk.renter_id, "Booking accepted",
-    f"On '{item.title}'. Choose a payment method{dep_txt}.",
-    link,  # was f"/bookings/flow/{bk.id}"
-    "booking"
-)
-return redirect_to_flow(bk.id)
+    push_notification(
+        db, bk.renter_id, "Booking accepted",
+        f"On '{item.title}'. Choose a payment method{dep_txt}.",
+        link,  # was f"/bookings/flow/{bk.id}"
+        "booking"
+    )
+    return redirect_to_flow(bk.id)
+
 
 
 # ===== Choose payment method =====
@@ -781,14 +782,15 @@ def alias_accept(booking_id: int,
     bk.timeline_owner_decided_at = datetime.utcnow()
     db.commit()
     renter = db.get(User, bk.renter_id)
-link   = f"/bookings/flow/{bk.id}{_loc_qs_for_user(renter)}"
-push_notification(
-    db, bk.renter_id, "Booking accepted",
-    f"On '{item.title}'. Choose a payment method.",
-    link,  # was f"/bookings/flow/{bk.id}"
-    "booking"
-)
-return _redir(bk.id)
+    link   = f"/bookings/flow/{bk.id}{_loc_qs_for_user(renter)}"
+    push_notification(
+        db, bk.renter_id, "Booking accepted",
+        f"On '{item.title}'. Choose a payment method.",
+        link,  # was f"/bookings/flow/{bk.id}"
+        "booking"
+    )
+    return _redir(bk.id)
+
 
 
 @router.api_route("/bookings/{booking_id}/reject", methods=["POST", "GET"])
