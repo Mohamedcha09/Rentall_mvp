@@ -1,4 +1,4 @@
-# app/routes_bookings.py  (أو اسمك الحالي)
+# app/routes_bookings.py
 from __future__ import annotations
 from typing import Optional, Literal
 from datetime import datetime, date, timedelta
@@ -16,7 +16,7 @@ from .notifications_api import push_notification, notify_admins
 
 router = APIRouter(tags=["bookings"])
 
-# ===== utili_geo (كلها اختيارية، نتعامل مع الاختلاف بين المشاريع) =====
+# ===== utili_geo (اختياري: نتعامل مع اختلاف الأسماء بين المشاريع) =====
 try:
     from .utili_geo import (
         geo_from_request as _geo_req,
@@ -50,7 +50,7 @@ def _adapter_geo_from_request(request: Request) -> dict:
     """
     يرجّع {"country": .., "sub": ..}
     يدعم override عبر ?loc=CA-QC
-    ويحاول قراءة الجلسة utili_geo.* لو موجودة.
+    ويحاول قراءة الجلسة/ utili_geo لو موجودة.
     """
     # 1) ?loc=CA-QC أو ?loc=CA
     loc_q = request.query_params.get("loc")
@@ -74,9 +74,9 @@ def _adapter_geo_from_request(request: Request) -> dict:
     # 3) مفاتيح الجلسة الشائعة
     s = getattr(request, "session", {}) or {}
     country = (s.get("geo_country") or s.get("country") or s.get("geo", {}).get("country") or "")
-    region  = (s.get("geo_region") or s.get("region")  or s.get("geo", {}).get("region")  or "")
+    region  = (s.get("geo_region")  or s.get("region")  or s.get("geo", {}).get("region")  or "")
     country = (str(country).upper().strip() or None)
-    sub     = (str(region).upper().strip() or None)
+    sub     = (str(region).upper().strip()  or None)
     if country:
         return {"country": country, "sub": sub}
 
@@ -92,7 +92,7 @@ def _loc_qs_for_user(u: Optional[User]) -> str:
     if not u:
         return ""
     country = (getattr(u, "country", None) or getattr(u, "geo_country", None) or "").strip().upper()
-    sub     = (getattr(u, "region", None) or getattr(u, "state", None) or getattr(u, "geo_region", None) or "").strip().upper()
+    sub     = (getattr(u, "region", None)  or getattr(u, "state", None) or getattr(u, "geo_region", None) or "").strip().upper()
     if country and sub:
         return f"?loc={country}-{sub}"
     if country:
@@ -494,14 +494,19 @@ def booking_flow_page(
     subtotal_before_tax = round(rent_amount + processing_fee, 2)
     taxes_ctx           = _adapter_taxes_for_request(request, subtotal_before_tax)
 
-    # 🗺️ Snapshot للموقع مرة واحدة
+    # 🗺️ Snapshot للموقع مرة واحدة (مع تعزيز sub من الضرائب لو توفّر)
     geo = _adapter_geo_from_request(request)
+    if (not geo.get("sub")) and isinstance(taxes_ctx, dict) and taxes_ctx.get("sub"):
+        geo["sub"] = taxes_ctx["sub"]
     try:
+        updated = False
         if not getattr(bk, "loc_country", None) and geo.get("country"):
             bk.loc_country = geo.get("country")
+            updated = True
         if not getattr(bk, "loc_sub", None) and geo.get("sub"):
             bk.loc_sub = geo.get("sub")
-        if (bk.loc_country or bk.loc_sub):
+            updated = True
+        if updated:
             db.commit()
     except Exception:
         pass
@@ -592,7 +597,10 @@ def owner_decision(
     db.commit()
 
     dep_txt = f" with a {bk.deposit_amount}$ deposit" if (bk.deposit_amount or 0) > 0 else ""
-    link = f"/bookings/flow/{bk.id}{_loc_qs_for_booking(bk)}"
+    # ✅ نختار أفضل استعلام للموقع: من لقطة الحجز أو من حساب المستأجر
+    renter = db.get(User, bk.renter_id)
+    qs = _loc_qs_for_booking(bk) or _loc_qs_for_user(renter)
+    link = f"/bookings/flow/{bk.id}{qs}"
 
     push_notification(
         db, bk.renter_id, "Booking accepted",
@@ -669,7 +677,7 @@ def renter_pay_online(
     if not owner_pe:
         raise HTTPException(status_code=409, detail="Owner payouts not enabled")
 
-    # دفع الإيجار + الحجز معًا
+    # دفع الإيجار + التأمين معًا
     return RedirectResponse(url=f"/api/stripe/checkout/all/{booking_id}", status_code=303)
 
 
@@ -829,7 +837,8 @@ def alias_accept(booking_id: int,
     db.commit()
 
     renter = db.get(User, bk.renter_id)
-    link   = f"/bookings/flow/{bk.id}{_loc_qs_for_user(renter)}"
+    qs = _loc_qs_for_booking(bk) or _loc_qs_for_user(renter)
+    link = f"/bookings/flow/{bk.id}{qs}"
     push_notification(
         db, bk.renter_id, "Booking accepted",
         f"On '{item.title}'. Choose a payment method.",
