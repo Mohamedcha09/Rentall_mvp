@@ -40,8 +40,7 @@ except Exception:
 
 
 def _adapter_geo_from_request(request: Request) -> dict:
-    """يرجّع {"country": "CA/US/EU/...", "sub": "QC/ON/CA-STATE/..."} مع دعم override بـ ?loc=CA-QC."""
-    # 1) override يدوي عبر query: ?loc=CA-QC
+    # 1) override يدوي عبر ?loc=CA-QC
     loc_q = request.query_params.get("loc")
     if loc_q:
         p = loc_q.strip().upper().split("-")
@@ -60,11 +59,18 @@ def _adapter_geo_from_request(request: Request) -> dict:
             except Exception:
                 pass
 
-    # 3) سِـيشن (إن كنت تخزّن loc أو geo)
+    # 3) الجلسة: اقرأ المفاتيح التي تضعها utils_geo.persist_location_to_session
     s = request.session or {}
+    if s.get("geo_country"):                      # ← هذا الجزء هو المفقود
+        return {
+            "country": (s.get("geo_country") or "").upper() or None,
+            "sub":     (s.get("geo_region")  or "").upper() or None,
+        }
+
     if s.get("loc"):
         p = str(s["loc"]).upper().split("-")
         return {"country": p[0], "sub": (p[1] if len(p) > 1 else None)}
+
     g = s.get("geo") or {}
     if isinstance(g, dict):
         country = (g.get("country") or g.get("cc") or "").upper() or None
