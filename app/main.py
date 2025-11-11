@@ -32,6 +32,7 @@ from sqlalchemy.orm import Session
 from .database import Base, engine, SessionLocal, get_db
 from .models import User, Item
 from .utils import CATEGORIES, category_label
+from .utils_geo import persist_location_to_session
 
 # 5) Routers
 from .auth import router as auth_router
@@ -599,3 +600,18 @@ def notifications_page(request: Request):
     if not u:
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse("notifications.html", {"request": request, "session_user": u, "title": "Notifications"})
+
+
+@app.middleware("http")
+async def geo_session_middleware(request: Request, call_next):
+    try:
+        # لا نلمس الويبهوك
+        if request.url.path.startswith("/webhooks/"):
+            return await call_next(request)
+        # خزّن/حدّث القيم في session
+        persist_location_to_session(request)
+    except Exception:
+        # لا نكسر الطلب لو حصل خطأ
+        pass
+    response = await call_next(request)
+    return response
