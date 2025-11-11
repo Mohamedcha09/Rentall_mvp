@@ -213,6 +213,17 @@ def is_owner(user: User, bk: Booking) -> bool:
 
 def redirect_to_flow(booking_id: int) -> RedirectResponse:
     return RedirectResponse(url=f"/bookings/flow/{booking_id}", status_code=303)
+# ==== Build ?loc=... for links (from user's stored location) ====
+def _loc_qs_for_user(u: Optional[User]) -> str:
+    if not u:
+        return ""
+    country = (getattr(u, "country", None) or getattr(u, "geo_country", None) or "").strip().upper()
+    sub     = (getattr(u, "region", None)  or getattr(u, "state", None) or getattr(u, "geo_region", None) or "").strip().upper()
+    if country and sub:
+        return f"?loc={country}-{sub}"
+    if country:
+        return f"?loc={country}"
+    return ""
 
 def _parse_date(s: str) -> date:
     return datetime.strptime(s, "%Y-%m-%d").date()
@@ -550,10 +561,20 @@ def owner_decision(
     db.commit()
 
     dep_txt = f" with a {bk.deposit_amount}$ deposit" if (bk.deposit_amount or 0) > 0 else ""
-    push_notification(db, bk.renter_id, "Booking accepted",
-                      f"On '{item.title}'. Choose a payment method{dep_txt}.",
-                      f"/bookings/flow/{bk.id}", "booking")
-    return redirect_to_flow(bk.id)
+
+# NEW: build link with renter's location so taxes/images page load correctly
+renter = db.get(User, bk.renter_id)
+loc_qs = _loc_qs_for_user(renter)
+link   = f"/bookings/flow/{bk.id}{loc_qs}"
+
+push_notification(
+    db, bk.renter_id, "Booking accepted",
+    f"On '{item.title}'. Choose a payment method{dep_txt}.",
+    link,  # was f"/bookings/flow/{bk.id}"
+    "booking"
+)
+return redirect_to_flow(bk.id)
+
 
 # ===== Choose payment method =====
 @router.post("/bookings/{booking_id}/renter/choose_payment")
@@ -759,10 +780,16 @@ def alias_accept(booking_id: int,
     bk.accepted_at = datetime.utcnow()
     bk.timeline_owner_decided_at = datetime.utcnow()
     db.commit()
-    push_notification(db, bk.renter_id, "Booking accepted",
-                      f"On '{item.title}'. Choose a payment method.",
-                      f"/bookings/flow/{bk.id}", "booking")
-    return _redir(bk.id)
+    renter = db.get(User, bk.renter_id)
+link   = f"/bookings/flow/{bk.id}{_loc_qs_for_user(renter)}"
+push_notification(
+    db, bk.renter_id, "Booking accepted",
+    f"On '{item.title}'. Choose a payment method.",
+    link,  # was f"/bookings/flow/{bk.id}"
+    "booking"
+)
+return _redir(bk.id)
+
 
 @router.api_route("/bookings/{booking_id}/reject", methods=["POST", "GET"])
 def alias_reject(booking_id: int,
