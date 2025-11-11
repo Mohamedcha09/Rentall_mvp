@@ -1226,6 +1226,35 @@
   });
 })();
 </script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.querySelector("form");   // استبدلها بالـ form الحقيقي للـ Continue
+  const btn = form?.querySelector("button[type=submit]");
+  if (!form || !btn) return;
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault(); // نوقف الإرسال مؤقتًا حتى نحصل على الموقع
+
+    if (!navigator.geolocation) {
+      alert("⚠️ المتصفح لا يدعم تحديد الموقع الجغرافي.");
+      form.submit();
+      return;
+    }
+
+    // اطلب إذن الموقع
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const { latitude, longitude } = pos.coords;
+      // أرسل الإحداثيات إلى السيرفر (لتخزينها أو تحديد المنطقة)
+      await fetch(`/api/geo/set?lat=${latitude}&lon=${longitude}`, { method: "POST" });
+
+      // بعد النجاح أرسل الفورم فعليًا
+      form.submit();
+    }, (err) => {
+      alert("❌ لا يمكن المتابعة بدون تفعيل الموقع. يرجى السماح بالوصول إلى الموقع.");
+    }, { enableHighAccuracy: true });
+  });
+});
+</script>
 
 
 {% endblock %}
