@@ -1,6 +1,6 @@
 # app/routes_bookings.py
 from __future__ import annotations
-from typing import Optional, Literal
+from typing import Optional, Literal, Dict
 from datetime import datetime, date, timedelta
 import os
 
@@ -16,7 +16,7 @@ from .notifications_api import push_notification, notify_admins
 
 router = APIRouter(tags=["bookings"])
 
-# ===== utili_geo (اختياري: نتعامل مع اختلاف الأسماء بين المشاريع) =====
+# ===== Optional geo/tax adapters (project-to-project compatibility) =====
 try:
     from .utili_geo import (
         geo_from_request as _geo_req,
@@ -26,7 +26,6 @@ try:
 except Exception:
     _geo_req = _geo_locate = _geo_session = None
 
-# ===== utili_tax (اختياري) =====
 try:
     from .utili_tax import compute_order_taxes as _tax_order
 except Exception:
@@ -44,43 +43,42 @@ except Exception:
 
 
 # ========================================
-# Geo adapters
+# Geo helpers/adapters
 # ========================================
 def _adapter_geo_from_request(request: Request) -> dict:
     """
-    يرجّع {"country": .., "sub": ..}
-    يدعم override عبر ?loc=CA أو ?loc=CA-QC ويكمل sub عند توفرها.
+    Returns {"country": .., "sub": ..} from one of:
+    - explicit ?loc=CA-QC or ?loc=CA (then try to complete sub)
+    - utili_geo helpers if present
+    - session fallbacks
     """
-    # 0) نقرأ لقطة من الحجز/المستخدم لو متاحة في request.state (نملأها لاحقًا داخل flow)
+    # Snapshot already attached by upstream middleware/route?
     bk = getattr(request.state, "booking", None)
     renter = getattr(request.state, "renter", None)
 
-    # 1) ?loc=...
+    # 1) Honor ?loc=...
     loc_q = request.query_params.get("loc")
     if loc_q:
         p = loc_q.replace("_", "-").strip().upper().split("-")
         country = p[0] if p else None
         sub = p[1] if len(p) > 1 else None
-        # إن كانت sub ناقصة، نحاول تكملتها من الحجز/المستأجر/الجلسة
         if country and not sub:
-            # من لقطة الحجز
+            # try to complete sub from booking / renter / session
             if bk:
                 s = (getattr(bk, "loc_sub", "") or "").strip().upper()
                 if s:
                     sub = s
-            # من حساب المستأجر
             if not sub and renter:
-                s = (getattr(renter, "region", None) or getattr(renter, "state", None) or
-                     getattr(renter, "geo_region", None) or "")
+                s = (getattr(renter, "region", None) or getattr(renter, "state", None)
+                     or getattr(renter, "geo_region", None) or "")
                 sub = str(s).strip().upper() or None
-            # من الجلسة
             if not sub:
                 s = getattr(request, "session", {}) or {}
-                s = (s.get("geo_region") or s.get("region") or s.get("geo", {}).get("region") or "")
+                s = (s.get("geo_region") or s.get("region") or (s.get("geo", {}) or {}).get("region") or "")
                 sub = str(s).strip().upper() or None
         return {"country": country, "sub": sub}
 
-    # 2) utili_geo إن وُجدت
+    # 2) utili_geo (if available)
     for fn in (_geo_req, _geo_locate, _geo_session):
         if callable(fn):
             try:
@@ -93,16 +91,16 @@ def _adapter_geo_from_request(request: Request) -> dict:
             except Exception:
                 pass
 
-    # 3) الجلسة
+    # 3) session fallback
     s = getattr(request, "session", {}) or {}
-    country = (s.get("geo_country") or s.get("country") or s.get("geo", {}).get("country") or "")
-    region  = (s.get("geo_region")  or s.get("region")  or s.get("geo", {}).get("region")  or "")
+    country = (s.get("geo_country") or s.get("country") or (s.get("geo", {}) or {}).get("country") or "")
+    region = (s.get("geo_region") or s.get("region") or (s.get("geo", {}) or {}).get("region") or "")
     country = (str(country).upper().strip() or None)
-    sub     = (str(region).upper().strip()  or None)
+    sub = (str(region).upper().strip() or None)
     if country:
         return {"country": country, "sub": sub}
 
-    # 4) fallback قديم
+    # 4) old fallback
     if s.get("loc"):
         p = str(s["loc"]).upper().split("-")
         return {"country": p[0], "sub": (p[1] if len(p) > 1 else None)}
@@ -114,7 +112,8 @@ def _loc_qs_for_user(u: Optional[User]) -> str:
     if not u:
         return ""
     country = (getattr(u, "country", None) or getattr(u, "geo_country", None) or "").strip().upper()
-    sub     = (getattr(u, "region", None)  or getattr(u, "state", None) or getattr(u, "geo_region", None) or "").strip().upper()
+    sub = (getattr(u, "region", None) or getattr(u, "state", None)
+           or getattr(u, "geo_region", None) or "").strip().upper()
     if country and sub:
         return f"?loc={country}-{sub}"
     if country:
@@ -132,25 +131,61 @@ def _loc_qs_for_booking(bk: Booking) -> str:
     return ""
 
 
+def _loc_qs_from_geo(geo: Dict[str, Optional[str]]) -> str:
+    c = (geo.get("country") or "").strip().upper()
+    s = (geo.get("sub") or "").strip().upper()
+    if c and s:
+        return f"?loc={c}-{s}"
+    if c:
+        return f"?loc={c}"
+    return ""
+
+
+def _best_loc_qs(bk: Booking, renter: Optional[User] = None) -> str:
+    """
+    Priority:
+      1) booking snapshot (loc_country + loc_sub)
+      2) booking country only
+      3) renter profile
+      else: ""
+    """
+    qs = _loc_qs_for_booking(bk)
+    if qs:
+        return qs
+    if renter:
+        qs = _loc_qs_for_user(renter)
+        if qs:
+            return qs
+    return ""
+
+
+def redirect_to_flow_with_loc(bk: Booking, renter: Optional[User] = None) -> RedirectResponse:
+    return RedirectResponse(
+        url=f"/bookings/flow/{bk.id}{_best_loc_qs(bk, renter)}",
+        status_code=303
+    )
+
+
 # ========================================
-# Taxes
+# Taxes adapter (unified shape for templates)
 # ========================================
 def _adapter_taxes_for_request(request: Request, subtotal: float) -> dict:
     """
-    يوحّد مخرجات الضرائب إلى شكل واحد يفهمه القالب.
+    Normalize different tax calculators into:
+      { mode, currency, country, sub, tax_lines[], tax_total, grand_total }
     """
     currency = (os.getenv("CURRENCY", "CAD") or "CAD").upper()
     geo = _adapter_geo_from_request(request)
     country = (geo.get("country") or "").upper() or None
-    sub     = (geo.get("sub") or "").upper() or None
+    sub = (geo.get("sub") or "").upper() or None
 
-    # 1) utili_tax: compute_order_taxes
+    # 1) utili_tax.compute_order_taxes
     if callable(_tax_order):
         try:
             res = _tax_order(subtotal, {"country": country, "sub": sub}) or {}
             lines = res.get("lines") or res.get("tax_lines") or []
             total = res.get("total") or res.get("tax_total")
-            gtot  = res.get("grand_total") or (subtotal + (total or 0.0))
+            gtot = res.get("grand_total") or (subtotal + (total or 0.0))
             norm_lines = []
             for t in lines:
                 norm_lines.append({
@@ -168,13 +203,13 @@ def _adapter_taxes_for_request(request: Request, subtotal: float) -> dict:
         except Exception:
             pass
 
-    # 2) utili_tax: compute_taxes
+    # 2) utili_tax.compute_taxes
     if callable(_tax_compute):
         try:
             res = _tax_compute(subtotal, country=country, sub=sub) or {}
             lines = res.get("lines") or res.get("tax_lines") or []
             total = res.get("total") or res.get("tax_total")
-            gtot  = res.get("grand_total") or (subtotal + (total or 0.0))
+            gtot = res.get("grand_total") or (subtotal + (total or 0.0))
             norm_lines = []
             for t in lines:
                 norm_lines.append({
@@ -192,7 +227,7 @@ def _adapter_taxes_for_request(request: Request, subtotal: float) -> dict:
         except Exception:
             pass
 
-    # 3) مثال كندا
+    # 3) example-CA helper
     if callable(_tax_ca) and country == "CA":
         try:
             lines, total = _tax_ca(subtotal, sub=sub or "QC")
@@ -201,11 +236,11 @@ def _adapter_taxes_for_request(request: Request, subtotal: float) -> dict:
                 if isinstance(t, dict):
                     name = t.get("name") or t.get("code") or "TAX"
                     rate = float(t.get("rate") or 0.0)
-                    amt  = float(t.get("amount") or 0.0)
+                    amt = float(t.get("amount") or 0.0)
                 else:
                     name = (t[0] if len(t) > 0 else "TAX")
                     rate = float(t[1] if len(t) > 1 else 0.0)
-                    amt  = float(t[2] if len(t) > 2 else round(subtotal * rate, 2))
+                    amt = float(t[2] if len(t) > 2 else round(subtotal * rate, 2))
                 norm_lines.append({"name": name, "rate": rate, "amount": amt})
             total = float(total or sum(x["amount"] for x in norm_lines))
             return {
@@ -218,7 +253,7 @@ def _adapter_taxes_for_request(request: Request, subtotal: float) -> dict:
         except Exception:
             pass
 
-    # 4) فشل → نتركها لسترايب
+    # 4) fallback → Stripe
     return {
         "mode": "stripe",
         "currency": currency, "country": country, "sub": sub,
@@ -227,73 +262,15 @@ def _adapter_taxes_for_request(request: Request, subtotal: float) -> dict:
 
 
 # ========================================
-# Helpers
+# Misc helpers
 # ========================================
-def _loc_qs_from_geo(geo: dict) -> str:
-    c = (geo.get("country") or "").strip().upper()
-    s = (geo.get("sub") or "").strip().upper()
-    if c and s: return f"?loc={c}-{s}"
-    if c:       return f"?loc={c}"
-    return ""
+def _iso(dt: Optional[datetime]) -> Optional[str]:
+    return dt.isoformat() if dt else None
 
-def _loc_qs_from_geo(geo: dict) -> str:
-    c = (geo.get("country") or "").strip().upper()
-    s = (geo.get("sub") or "").strip().upper()
-    if c and s: return f"?loc={c}-{s}"
-    if c:       return f"?loc={c}"
-    return ""
-
-def _best_loc_qs(bk: Booking, renter: Optional[User]=None) -> str:
-    """
-    نختار أفضل استعلام للموقع بالترتيب:
-    1) لقطة الحجز (loc_country + loc_sub)
-    2) لقطة الحجز (loc_country فقط)
-    3) حساب المستأجر (country + region/state)
-    وإلا: "".
-    """
-    qs = _loc_qs_for_booking(bk)
-    if qs:
-        return qs
-    if renter:
-        qs = _loc_qs_for_user(renter)
-        if qs:
-            return qs
-    return ""
-def redirect_to_flow_with_loc(bk: Booking, renter: Optional[User]=None) -> RedirectResponse:
-    return RedirectResponse(
-        url=f"/bookings/flow/{bk.id}{_best_loc_qs(bk, renter)}",
-        status_code=303
-    )
-
-def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
-    data = request.session.get("user") or {}
-    uid = data.get("id")
-    return db.get(User, uid) if uid else None
-
-def require_auth(user: Optional[User]):
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-def require_booking(db: Session, booking_id: int) -> Booking:
-    bk = db.get(Booking, booking_id)
-    if not bk:
-        raise HTTPException(status_code=404, detail="Booking not found")
-    return bk
-
-def is_renter(user: User, bk: Booking) -> bool:
-    return bool(user) and user.id == bk.renter_id
-
-def is_owner(user: User, bk: Booking) -> bool:
-    return bool(user) and user.id == bk.owner_id
-
-def redirect_to_flow(booking_id: int) -> RedirectResponse:
-    return RedirectResponse(url=f"/bookings/flow/{booking_id}", status_code=303)
-
-def _parse_date(s: str) -> date:
-    return datetime.strptime(s, "%Y-%m-%d").date()
 
 def _json(data: dict) -> JSONResponse:
     return JSONResponse(data, headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
+
 
 def _booking_order_col():
     if hasattr(Booking, "created_at"):
@@ -301,6 +278,43 @@ def _booking_order_col():
     if hasattr(Booking, "timeline_created_at"):
         return Booking.timeline_created_at.desc()
     return Booking.id.desc()
+
+
+# ========================================
+# Auth helpers
+# ========================================
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
+    data = request.session.get("user") or {}
+    uid = data.get("id")
+    return db.get(User, uid) if uid else None
+
+
+def require_auth(user: Optional[User]):
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+def require_booking(db: Session, booking_id: int) -> Booking:
+    bk = db.get(Booking, booking_id)
+    if not bk:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return bk
+
+
+def is_renter(user: User, bk: Booking) -> bool:
+    return bool(user) and user.id == bk.renter_id
+
+
+def is_owner(user: User, bk: Booking) -> bool:
+    return bool(user) and user.id == bk.owner_id
+
+
+def redirect_to_flow(booking_id: int) -> RedirectResponse:
+    return RedirectResponse(url=f"/bookings/flow/{booking_id}", status_code=303)
+
+
+def _parse_date(s: str) -> date:
+    return datetime.strptime(s, "%Y-%m-%d").date()
 
 
 # ========================================
@@ -325,12 +339,10 @@ def _try_capture_stripe_rent(bk: Booking) -> bool:
         return False
 
 
-# Deposit PI unifier
+# Deposit PI (unify legacy names)
 def _get_deposit_pi_id(bk: Booking) -> Optional[str]:
-    return (
-        getattr(bk, "deposit_hold_intent_id", None)
-        or getattr(bk, "deposit_hold_id", None)
-    )
+    return getattr(bk, "deposit_hold_intent_id", None) or getattr(bk, "deposit_hold_id", None)
+
 
 def _set_deposit_pi_id(bk: Booking, pi_id: Optional[str]) -> None:
     try:
@@ -342,10 +354,9 @@ def _set_deposit_pi_id(bk: Booking, pi_id: Optional[str]) -> None:
     except Exception:
         pass
 
+
 def _ensure_deposit_hold(bk: Booking) -> bool:
-    """
-    ينشئ PaymentIntent (manual capture) للتأمين إن لم يكن موجودًا.
-    """
+    """Create manual-capture PaymentIntent for deposit if missing."""
     try:
         import stripe
         sk = os.getenv("STRIPE_SECRET_KEY", "")
@@ -366,7 +377,6 @@ def _ensure_deposit_hold(bk: Booking) -> bool:
             capture_method="manual",
             description=f"Deposit hold for booking #{bk.id}",
         )
-
         _set_deposit_pi_id(bk, pi["id"])
         try:
             bk.deposit_status = "held"
@@ -382,9 +392,6 @@ def _ensure_deposit_hold(bk: Booking) -> bool:
 # ========================================
 DISPUTE_WINDOW_HOURS = 48
 RENTER_REPLY_WINDOW_HOURS = 48
-
-def _iso(dt: Optional[datetime]) -> Optional[str]:
-    return dt.isoformat() if dt else None
 
 
 # ========================================
@@ -503,7 +510,6 @@ async def create_booking(
         renter = db.get(User, bk.renter_id)
         return redirect_to_flow_with_loc(bk, renter)
 
-
     except HTTPException:
         raise
     except Exception:
@@ -518,36 +524,46 @@ async def create_booking(
 # Flow page
 # ========================================
 @router.get("/bookings/flow/{booking_id}")
-# ✅ احترام ?loc=... إن وُجد: لا نعيد التوجيه، ونحدّث لقطة الحجز منه
-current_loc = request.query_params.get("loc")
-if current_loc is not None:
-    p = current_loc.replace("_", "-").strip().upper().split("-")
-    cur_country = p[0] if p else None
-    cur_sub = p[1] if len(p) > 1 else None
+def booking_flow(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    item = db.get(Item, bk.item_id)
+    owner = db.get(User, bk.owner_id)
+    renter = db.get(User, bk.renter_id)
 
-    changed = False
-    if cur_country and getattr(bk, "loc_country", None) != cur_country:
-        bk.loc_country = cur_country
-        changed = True
-    if (cur_sub or "") != (getattr(bk, "loc_sub", None) or ""):
-        bk.loc_sub = cur_sub
-        changed = True
-    if changed:
-        db.commit()
-    # لا Redirect إطلاقاً عندما يحدّد المستخدم loc بنفسه
-else:
-    # لا يوجد ?loc → نشتق أفضل قيمة ونوجّه مرة واحدة لتثبيتها
-    desired_qs = _loc_qs_for_booking(bk) or _loc_qs_for_user(renter)
-    if not desired_qs:
-        geo_guess = _adapter_geo_from_request(request)
-        desired_qs = _loc_qs_from_geo(geo_guess)
-    if desired_qs:
-        base = f"/bookings/flow/{bk.id}"
-        others = [(k, v) for k, v in request.query_params.items() if k != "loc"]
-        tail = "&".join([f"{k}={v}" for k, v in others])
-        url = f"{base}{desired_qs}" + (f"&{tail}" if tail else "")
-        return RedirectResponse(url=url, status_code=303)
+    # ✅ Respect explicit ?loc=... (no redirect), otherwise compute a single redirect to lock it in
+    current_loc = request.query_params.get("loc")
+    if current_loc is not None:
+        p = current_loc.replace("_", "-").strip().upper().split("-")
+        cur_country = p[0] if p else None
+        cur_sub = p[1] if len(p) > 1 else None
 
+        changed = False
+        if cur_country and getattr(bk, "loc_country", None) != cur_country:
+            bk.loc_country = cur_country
+            changed = True
+        if (cur_sub or "") != (getattr(bk, "loc_sub", None) or ""):
+            bk.loc_sub = cur_sub
+            changed = True
+        if changed:
+            db.commit()
+        # No redirect if user pinned loc via query
+    else:
+        desired_qs = _loc_qs_for_booking(bk) or _loc_qs_for_user(renter)
+        if not desired_qs:
+            geo_guess = _adapter_geo_from_request(request)
+            desired_qs = _loc_qs_from_geo(geo_guess)
+        if desired_qs:
+            base = f"/bookings/flow/{bk.id}"
+            others = [(k, v) for k, v in request.query_params.items() if k != "loc"]
+            tail = "&".join([f"{k}={v}" for k, v in others])
+            url = f"{base}{desired_qs}" + (f"&{tail}" if tail else "")
+            return RedirectResponse(url=url, status_code=303)
 
     owner_pe = bool(getattr(owner, "payouts_enabled", False)) if owner else False
 
@@ -558,19 +574,19 @@ else:
         except Exception:
             dispute_deadline = None
 
-    # === Fees & taxes كالعادة…
+    # Fees & taxes
     try:
         rent_amount = float(getattr(bk, "total_amount", 0.0) or 0.0)
     except Exception:
         rent_amount = 0.0
 
-    pct         = float(os.getenv("STRIPE_PROCESSING_PCT", "0.029") or 0.029)
+    pct = float(os.getenv("STRIPE_PROCESSING_PCT", "0.029") or 0.029)
     fixed_cents = int(os.getenv("STRIPE_PROCESSING_FIXED_CENTS", "30") or 30)
-    processing_fee      = round(rent_amount * pct + (fixed_cents / 100.0), 2)
+    processing_fee = round(rent_amount * pct + (fixed_cents / 100.0), 2)
     subtotal_before_tax = round(rent_amount + processing_fee, 2)
-    taxes_ctx           = _adapter_taxes_for_request(request, subtotal_before_tax)
+    taxes_ctx = _adapter_taxes_for_request(request, subtotal_before_tax)
 
-    # 🗺️ Snapshot للموقع: نحفظ country و sub فورًا إن لم تكن محفوظة
+    # Save snapshot if missing
     geo = _adapter_geo_from_request(request)
     try:
         updated = False
@@ -584,7 +600,6 @@ else:
             db.commit()
     except Exception:
         pass
-
 
     ctx = {
         "request": request,
@@ -658,7 +673,7 @@ def owner_decision(
         renter = db.get(User, bk.renter_id)
         return redirect_to_flow_with_loc(bk, renter)
 
-
+    # accepted
     bk.owner_decision = "accepted"
 
     # Default deposit
@@ -673,8 +688,30 @@ def owner_decision(
     bk.status = "accepted"
     db.commit()
 
+    # ✅ Snapshot geo immediately so notifications/links include ?loc=CA-QC
+    try:
+        renter = db.get(User, bk.renter_id)
+        geo_now = _adapter_geo_from_request(request) if request else {"country": None, "sub": None}
+
+        if (geo_now.get("country") or "").upper() and not (geo_now.get("sub") or ""):
+            cand = (getattr(renter, "region", None) or getattr(renter, "state", None)
+                    or getattr(renter, "geo_region", None))
+            if cand:
+                geo_now["sub"] = str(cand).strip().upper()
+
+        changed = False
+        if geo_now.get("country") and getattr(bk, "loc_country", None) != geo_now["country"]:
+            bk.loc_country = geo_now["country"].upper()
+            changed = True
+        if geo_now.get("sub") and (getattr(bk, "loc_sub", None) or "").upper() != geo_now["sub"].upper():
+            bk.loc_sub = geo_now["sub"].upper()
+            changed = True
+        if changed:
+            db.commit()
+    except Exception:
+        pass
+
     dep_txt = f" with a {bk.deposit_amount}$ deposit" if (bk.deposit_amount or 0) > 0 else ""
-    # ✅ نختار أفضل استعلام للموقع: من لقطة الحجز أو من حساب المستأجر
     renter = db.get(User, bk.renter_id)
     qs = _loc_qs_for_booking(bk) or _loc_qs_for_user(renter)
     link = f"/bookings/flow/{bk.id}{qs}"
@@ -685,9 +722,7 @@ def owner_decision(
         link,
         "booking"
     )
-    renter = db.get(User, bk.renter_id)
     return redirect_to_flow_with_loc(bk, renter)
-
 
 
 # ========================================
@@ -724,7 +759,6 @@ def renter_choose_payment(
         renter = db.get(User, bk.renter_id)
         return redirect_to_flow_with_loc(bk, renter)
 
-
     bk.payment_method = "online"
     bk.timeline_payment_method_chosen_at = datetime.utcnow()
     db.commit()
@@ -735,7 +769,6 @@ def renter_choose_payment(
     )
     renter = db.get(User, bk.renter_id)
     return redirect_to_flow_with_loc(bk, renter)
-
 
 
 # ========================================
@@ -760,7 +793,7 @@ def renter_pay_online(
     if not owner_pe:
         raise HTTPException(status_code=409, detail="Owner payouts not enabled")
 
-    # دفع الإيجار + التأمين معًا
+    # Pay rent + deposit together
     return RedirectResponse(url=f"/api/stripe/checkout/all/{booking_id}", status_code=303)
 
 
@@ -811,9 +844,8 @@ def renter_confirm_received(
     return redirect_to_flow_with_loc(bk, renter)
 
 
-
 # ========================================
-# Owner confirms delivery
+# Owner confirms delivery (mirror path)
 # ========================================
 @router.post("/bookings/{booking_id}/owner/confirm_delivered")
 def owner_confirm_delivered(
@@ -828,7 +860,6 @@ def owner_confirm_delivered(
     if bk.status not in ("paid",):
         renter = db.get(User, bk.renter_id)
         return redirect_to_flow_with_loc(bk, renter)
-
 
     item = db.get(Item, bk.item_id)
 
@@ -851,7 +882,6 @@ def owner_confirm_delivered(
     )
     renter = db.get(User, bk.renter_id)
     return redirect_to_flow_with_loc(bk, renter)
-
 
 
 # ========================================
@@ -1124,7 +1154,7 @@ def booking_flow_next(
 
 
 # ========================================
-# Shims
+# Shims to single endpoints
 # ========================================
 @router.post("/api/stripe/checkout/rent/{booking_id}")
 def shim_checkout_rent(booking_id: int):
