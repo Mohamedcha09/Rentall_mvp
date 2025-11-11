@@ -607,10 +607,14 @@ def notifications_page(request: Request):
 @app.middleware("http")
 async def geo_session_middleware(request: Request, call_next):
     try:
+        # لا نلمس الويبهوك
         if request.url.path.startswith("/webhooks/"):
             return await call_next(request)
-        persist_location_to_session(request)   # ⬅️ هام
+        # خزّن/حدّث القيم في session
+        persist_location_to_session(request)
     except Exception:
+        # لا نكسر الطلب لو حصل خطأ
         pass
-    return await call_next(request)
+    response = await call_next(request)
+    return response
 
