@@ -229,6 +229,14 @@ def _adapter_taxes_for_request(request: Request, subtotal: float) -> dict:
 # ========================================
 # Helpers
 # ========================================
+
+def _loc_qs_from_geo(geo: dict) -> str:
+    c = (geo.get("country") or "").strip().upper()
+    s = (geo.get("sub") or "").strip().upper()
+    if c and s: return f"?loc={c}-{s}"
+    if c:       return f"?loc={c}"
+    return ""
+
 def _best_loc_qs(bk: Booking, renter: Optional[User]=None) -> str:
     """
     نختار أفضل استعلام للموقع بالترتيب:
@@ -524,7 +532,13 @@ def booking_flow_page(
     request.state.renter = renter
 
     # ✅ تطبيع الـURL: إن دخلت بـ ?loc=CA فقط ولدينا sub معروف → نعيد التوجيه إلى ?loc=CA-SUB
-    desired_qs = _best_loc_qs(bk, renter)
+        # ✅ تطبيع الـURL: نحاول أولاً من لقطة الحجز أو حساب المستأجر،
+    # وإذا لم نجد مقاطعة، نكمّلها من session/headers عبر _adapter_geo_from_request
+    desired_qs = _loc_qs_for_booking(bk) or _loc_qs_for_user(renter)
+    if not desired_qs:
+        geo_guess = _adapter_geo_from_request(request)
+        desired_qs = _loc_qs_from_geo(geo_guess)
+
     current_loc = request.query_params.get("loc")
     if desired_qs and (current_loc is None or desired_qs != f"?loc={current_loc}"):
         # نحتفظ بباقي الاستعلامات إن وُجدت
