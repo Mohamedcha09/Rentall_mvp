@@ -52,8 +52,8 @@ def _adapter_geo_from_request(request: Request) -> dict:
     - explicit ?loc=CA-QC or ?loc=CA (then try to complete sub)
     - utili_geo helpers if present
     - session fallbacks
+    - finally: CA default sub if missing
     """
-    # Snapshot already attached by upstream middleware/route?
     bk = getattr(request.state, "booking", None)
     renter = getattr(request.state, "renter", None)
 
@@ -75,8 +75,12 @@ def _adapter_geo_from_request(request: Request) -> dict:
                 sub = str(s).strip().upper() or None
             if not sub:
                 s = getattr(request, "session", {}) or {}
-                s = (s.get("geo_region") or s.get("region") or (s.get("geo", {}) or {}).get("region") or "")
+                s = (s.get("geo_region") or s.get("region")
+                     or (s.get("geo", {}) or {}).get("region") or "")
                 sub = str(s).strip().upper() or None
+        # ✅ تطبيع نهائي
+        if country == "CA" and not sub:
+            sub = DEFAULT_CA_SUB
         return {"country": country, "sub": sub}
 
     # 2) utili_geo (if available)
@@ -87,6 +91,8 @@ def _adapter_geo_from_request(request: Request) -> dict:
                 if isinstance(g, dict):
                     country = (g.get("country") or g.get("cc") or "").upper() or None
                     sub = (g.get("sub") or g.get("region") or g.get("prov") or "").upper() or None
+                    if country == "CA" and not sub:
+                        sub = DEFAULT_CA_SUB
                     if country:
                         return {"country": country, "sub": sub}
             except Exception:
@@ -94,17 +100,25 @@ def _adapter_geo_from_request(request: Request) -> dict:
 
     # 3) session fallback
     s = getattr(request, "session", {}) or {}
-    country = (s.get("geo_country") or s.get("country") or (s.get("geo", {}) or {}).get("country") or "")
-    region = (s.get("geo_region") or s.get("region") or (s.get("geo", {}) or {}).get("region") or "")
+    country = (s.get("geo_country") or s.get("country")
+               or (s.get("geo", {}) or {}).get("country") or "")
+    region = (s.get("geo_region") or s.get("region")
+              or (s.get("geo", {}) or {}).get("region") or "")
     country = (str(country).upper().strip() or None)
     sub = (str(region).upper().strip() or None)
+    if country == "CA" and not sub:
+        sub = DEFAULT_CA_SUB
     if country:
         return {"country": country, "sub": sub}
 
     # 4) old fallback
     if s.get("loc"):
         p = str(s["loc"]).upper().split("-")
-        return {"country": p[0], "sub": (p[1] if len(p) > 1 else None)}
+        country = p[0]
+        sub = (p[1] if len(p) > 1 else None)
+        if country == "CA" and not sub:
+            sub = DEFAULT_CA_SUB
+        return {"country": country, "sub": sub}
 
     return {"country": None, "sub": None}
 
@@ -115,7 +129,6 @@ def _loc_qs_for_user(u: Optional[User]) -> str:
     country = (getattr(u, "country", None) or getattr(u, "geo_country", None) or "").strip().upper()
     sub = (getattr(u, "region", None) or getattr(u, "state", None)
            or getattr(u, "geo_region", None) or "").strip().upper()
-    # ✅ لا نُخرج رابطًا إلا إذا توفّر country + sub
     if country and sub:
         return f"?loc={country}-{sub}"
     return ""
@@ -123,7 +136,6 @@ def _loc_qs_for_user(u: Optional[User]) -> str:
 def _loc_qs_for_booking(bk: Booking) -> str:
     c = (getattr(bk, "loc_country", "") or "").strip().upper()
     s = (getattr(bk, "loc_sub", "") or "").strip().upper()
-    # ✅ لا نُخرج country فقط
     if c and s:
         return f"?loc={c}-{s}"
     return ""
@@ -131,10 +143,10 @@ def _loc_qs_for_booking(bk: Booking) -> str:
 def _loc_qs_from_geo(geo: Dict[str, Optional[str]]) -> str:
     c = (geo.get("country") or "").strip().upper()
     s = (geo.get("sub") or "").strip().upper()
-    # ✅ لا نُخرج country فقط
     if c and s:
         return f"?loc={c}-{s}"
     return ""
+
 
 
 
