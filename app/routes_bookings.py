@@ -224,6 +224,12 @@ def _loc_qs_for_user(u: Optional[User]) -> str:
     if country:
         return f"?loc={country}"
     return ""
+def _loc_qs_for_booking(bk: Booking) -> str:
+    c = (getattr(bk, "loc_country", "") or "").strip().upper()
+    s = (getattr(bk, "loc_sub", "") or "").strip().upper()
+    if c and s: return f"?loc={c}-{s}"
+    if c:       return f"?loc={c}"
+    return ""
 
 def _parse_date(s: str) -> date:
     return datetime.strptime(s, "%Y-%m-%d").date()
@@ -318,6 +324,7 @@ RENTER_REPLY_WINDOW_HOURS = 48  # For showing the countdown only
 
 def _iso(dt: Optional[datetime]) -> Optional[str]:
     return dt.isoformat() if dt else None
+
 
 # ===== UI: Create page =====
 @router.get("/bookings/new")
@@ -476,6 +483,18 @@ def booking_flow_page(
     processing_fee       = round(rent_amount * pct + (fixed_cents / 100.0), 2)
     subtotal_before_tax  = round(rent_amount + processing_fee, 2)
     taxes_ctx            = _adapter_taxes_for_request(request, subtotal_before_tax)
+    # 🗺️ Save renter's location snapshot once (for notifications later)
+    geo = _adapter_geo_from_request(request)
+    try:
+       if not getattr(bk, "loc_country", None) and geo.get("country"):
+           bk.loc_country = geo.get("country")
+       if not getattr(bk, "loc_sub", None) and geo.get("sub"):
+           bk.loc_sub = geo.get("sub")
+       if (bk.loc_country or bk.loc_sub):
+           db.commit()
+    except Exception:
+       pass
+
 
     ctx = {
         "request": request,
@@ -561,19 +580,16 @@ def owner_decision(
     db.commit()
 
     dep_txt = f" with a {bk.deposit_amount}$ deposit" if (bk.deposit_amount or 0) > 0 else ""
-
-    # NEW: build link with renter's location so taxes/images page load correctly
-    renter = db.get(User, bk.renter_id)
-    loc_qs = _loc_qs_for_user(renter)
-    link   = f"/bookings/flow/{bk.id}{loc_qs}"
+    link = f"/bookings/flow/{bk.id}{_loc_qs_for_booking(bk)}"
 
     push_notification(
         db, bk.renter_id, "Booking accepted",
         f"On '{item.title}'. Choose a payment method{dep_txt}.",
-        link,  # was f"/bookings/flow/{bk.id}"
+        link,
         "booking"
-    )
-    return redirect_to_flow(bk.id)
+)
+return redirect_to_flow(bk.id)
+  
 
 
 
