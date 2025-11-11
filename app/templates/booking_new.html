@@ -48,10 +48,39 @@
 
         <div class="col-12 d-flex justify-content-end gap-2 mt-3">
           <a href="/items/{{ item.id }}" class="btn btn-light">Back</a>
-          <button class="btn btn-primary" type="submit">Continue</button>
+          <button id="bookingContinue" class="btn btn-primary" type="submit">Continue</button>
         </div>
       </form>
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("bookingCreateForm");
+  const btn  = document.getElementById("bookingContinue") || form?.querySelector('button[type="submit"]');
+  if (!form || !btn) return;
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault(); // أوقف الإرسال مؤقتًا
+
+    if (!navigator.geolocation) {
+      alert("⚠️ المتصفح لا يدعم تحديد الموقع الجغرافي.");
+      form.submit();    // كمل بدون موقع
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const { latitude, longitude } = pos.coords;
+      try {
+        await fetch(`/api/geo/set?lat=${latitude}&lon=${longitude}`, { method: "POST" });
+      } catch (_) { /* تجاهل الفشل */ }
+      form.submit(); // أرسل الحجز بعد تخزين الموقع
+    }, () => {
+      alert("❌ لا يمكن المتابعة بدون تفعيل الموقع. يرجى السماح بالوصول إلى الموقع.");
+    }, { enableHighAccuracy: true });
+  });
+});
+</script>
+
 {% endblock %}

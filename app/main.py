@@ -20,7 +20,7 @@ cloudinary.config(
 )
 
 # 4) FastAPI & project foundations
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request, Depends, APIRouter, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -615,3 +615,15 @@ async def geo_session_middleware(request: Request, call_next):
         pass
     response = await call_next(request)
     return response
+
+
+# routes_geo.py (مثال)
+router = APIRouter()
+
+@router.post("/api/geo/set")
+def api_geo_set(request: Request, lat: float = Query(...), lon: float = Query(...)):
+    s = request.session
+    s["geo_enabled"] = True
+    s["geo_lat"] = lat
+    s["geo_lon"] = lon
+    return {"ok": True}

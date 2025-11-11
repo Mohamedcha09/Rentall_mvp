@@ -21,4 +21,4 @@ def locate_from_request(request: Request):  # alias
 
 def locate_from_session(request: Request):  # alias
     info = persist_location_to_session(request) or {}
-    return {"country": info.get("geo_country"), "sub": info.get("geo_region")}
+    return {"country": info.get("country"), "sub": info.get("region")}
