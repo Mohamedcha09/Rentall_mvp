@@ -404,8 +404,6 @@ def item_new_get(request: Request):
             "account_limited": is_account_limited(request),
         }
     )
-
-
 @router.post("/owner/items/new")
 def item_new_post(
     request: Request,
@@ -414,9 +412,9 @@ def item_new_post(
     category: str = Form(...),
     description: str = Form(""),
     city: str = Form(""),
-    price_per_day_raw: str = Form("0"),
+    price_raw: str = Form("0"),          # ← بدلاً من price_per_day_raw
+    currency: str = Form("CAD"),         # ← عملة المنشور
     image: UploadFile = File(None),
-    # نستقبل كنصوص ثم نحوّل بأمان لتفادي أخطاء pydantic v2 عند ""
     latitude_raw: str = Form(""),
     longitude_raw: str = Form(""),
 ):
@@ -426,13 +424,23 @@ def item_new_post(
     u = request.session.get("user")
 
     # تحويلات آمنة
-    latitude = _to_float_or_none(latitude_raw)
+    latitude  = _to_float_or_none(latitude_raw)
     longitude = _to_float_or_none(longitude_raw)
-    price_per_day = _to_int_or_default(price_per_day_raw, default=0)
 
-    # final path to store in DB (Cloudinary URL أو مسار محلي)
+    # سعر عشري (نقبل 0.01) ونقصّه للصفر لو خطأ
+    try:
+        price = float(str(price_raw).replace(",", ".").strip() or "0")
+        if price < 0: price = 0.0
+    except Exception:
+        price = 0.0
+
+    # تحقّق العملة
+    currency = (currency or "CAD").upper().strip()
+    if currency not in {"CAD","USD","EUR"}:
+        currency = "CAD"
+
+    # === معالجة الصورة كما لديك (بدون تغيير) ===
     image_path_for_db = None
-
     if image and image.filename:
         if _ext_ok(image.filename):
             ext = os.path.splitext(image.filename)[1].lower()
@@ -452,12 +460,9 @@ def item_new_post(
                 uploaded_url = None
 
             if not uploaded_url:
-                # fallback إلى التخزين المحلي
                 try:
-                    try:
-                        image.file.seek(0)
-                    except Exception:
-                        pass
+                    try: image.file.seek(0)
+                    except Exception: pass
                     with open(fpath, "wb") as f:
                         shutil.copyfileobj(image.file, f)
                     image_path_for_db = _local_public_url(fname)
@@ -471,26 +476,30 @@ def item_new_post(
             except Exception:
                 pass
 
+    # === إنشاء السجل ===
     it = Item(
         owner_id=u["id"],
         title=title,
         description=description,
         city=city,
-        price_per_day=price_per_day,
-        image_path=image_path_for_db,
-        is_active="yes",
         category=category,
+        is_active="yes",
         latitude=latitude,
         longitude=longitude,
+
+        # الجديد:
+        currency=currency,          # ← يحفظ العملة الأصلية للمنشور
+        price=price,                # ← الحقل الجديد المطابق للـ DB
+        price_per_day=price,        # ← تعبئة للحقل القديم حتى تعمل القوالب الحالية
+        image_path=image_path_for_db,
     )
     db.add(it)
     db.commit()
     try:
-        db.refresh(it)  # لضمان وجود id بعد commit في بعض السائقين
+        db.refresh(it)
     except Exception:
         pass
     return RedirectResponse(url=f"/items/{it.id}", status_code=303)
-
 
 # ================= All reviews page =================
 @router.get("/items/{item_id}/reviews")

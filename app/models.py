@@ -179,6 +179,8 @@ class Item(Base):
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     city = Column(String(120), nullable=True)
+    currency = Column(String(3), nullable=False, default='CAD')        # CAD / USD / EUR
+    price    = Column(Numeric(12, 2), nullable=False, default=0)       # السعر الأساسي (نخزّنه للمرونة)
 
     # Optional coordinates
     latitude  = col_or_literal("items", "latitude",  Float,  nullable=True)
