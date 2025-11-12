@@ -1,7 +1,7 @@
 # app/models.py
 from datetime import datetime, date
 from sqlalchemy import (
-    Column, Integer, String, DateTime, ForeignKey, Text, Date, Boolean, Float, event, func, Numeric
+    Column, Integer, String, DateTime, ForeignKey, Text, Date, Boolean, Float, event, func, Numeric, UniqueConstraint
 )
 from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.sql import literal
@@ -595,6 +595,22 @@ class SupportMessage(Base):
 
     ticket = relationship("SupportTicket", back_populates="messages")
     sender = relationship("User", lazy="joined")
+
+# =========================
+# FX rates (daily)
+# =========================
+class FxRate(Base):
+    __tablename__ = "fx_rates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    base = Column(String(3), nullable=False, index=True)   # CAD / USD / EUR
+    quote = Column(String(3), nullable=False, index=True)  # CAD / USD / EUR
+    rate = Column(Float, nullable=False)                   # 1 base => rate quote
+    effective_date = Column(Date, nullable=False, index=True)
+
+    __table_args__ = (
+        UniqueConstraint("base", "quote", "effective_date", name="uix_fx_base_quote_day"),
+    )
 
 
 # =========================

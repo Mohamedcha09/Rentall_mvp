@@ -10,6 +10,10 @@ import random
 import difflib
 from datetime import date
 from typing import Optional
+import requests
+
+from datetime import datetime, timedelta
+from .models import FxRate  # ← بجانب استيراد User, Item
 
 # 3) Cloudinary (optional)
 import cloudinary
@@ -168,6 +172,74 @@ app.templates.env.filters["media_url"] = media_url
 # Currencies (NEW)
 # -----------------------------------------------------------------------------
 SUPPORTED_CURRENCIES = ["CAD", "USD", "EUR"]
+# ---------- FX storage helpers ----------
+def _fx_upsert(db: Session, base: str, quote: str, rate: float, day: date):
+    """insert-or-update صف واحد لليوم المعطى."""
+    q_sel = text("""
+        SELECT id FROM fx_rates
+        WHERE base=:b AND quote=:q AND effective_date=:d
+        LIMIT 1
+    """)
+    row = db.execute(q_sel, {"b": base, "q": quote, "d": day}).fetchone()
+    if row:
+        db.execute(
+            text("UPDATE fx_rates SET rate=:r WHERE id=:id"),
+            {"r": rate, "id": row[0]}
+        )
+    else:
+        db.add(FxRate(base=base, quote=quote, rate=rate, effective_date=day))
+
+def _fx_fetch_today_from_api() -> dict[str, float]:
+    """
+    يجلب أسعار اليوم من API مجاني (exchangerate.host).
+    سنجلب EUR→(USD,CAD) ثم نستنتج بقية الأزواج والانعكاسات.
+    """
+    resp = requests.get(
+        "https://api.exchangerate.host/latest",
+        params={"base": "EUR", "symbols": "USD,CAD"},
+        timeout=10
+    )
+    data = resp.json()
+    eur_usd = float(data["rates"]["USD"])
+    eur_cad = float(data["rates"]["CAD"])
+    # انعكاسات + التزاوج بين USD↔CAD
+    usd_eur = 1.0 / eur_usd
+    cad_eur = 1.0 / eur_cad
+    usd_cad = eur_cad / eur_usd
+    cad_usd = 1.0 / usd_cad
+    return {
+        "EUR->USD": eur_usd, "USD->EUR": usd_eur,
+        "EUR->CAD": eur_cad, "CAD->EUR": cad_eur,
+        "USD->CAD": usd_cad, "CAD->USD": cad_usd,
+        "CAD->CAD": 1.0, "USD->USD": 1.0, "EUR->EUR": 1.0,
+    }
+
+def fx_sync_today(db: Session) -> None:
+    """يضمن وجود أسعار اليوم في الجدول (يجلب من الإنترنت ويحدّث/يُدرج)."""
+    today = date.today()
+    rates = _fx_fetch_today_from_api()
+    for k, r in rates.items():
+        base, quote = k.split("->")
+        _fx_upsert(db, base, quote, float(r), today)
+    db.commit()
+
+app.state.fx_last_sync_at: datetime | None = None
+
+def _fx_ensure_daily_sync():
+    """يشغَّل عند الإقلاع وأول طلب في اليوم فقط."""
+    try:
+        now = datetime.utcnow()
+        if app.state.fx_last_sync_at and (now - app.state.fx_last_sync_at) < timedelta(hours=20):
+            return
+        db = SessionLocal()
+        try:
+            fx_sync_today(db)
+            app.state.fx_last_sync_at = now
+            print("[OK] FX synced")
+        finally:
+            db.close()
+    except Exception as e:
+        print("[WARN] FX sync failed:", e)
 
 def geoip_guess_currency(request: Request) -> str:
     """
@@ -244,6 +316,14 @@ def fx_convert(db: Session, amount: float | int | None, base: str, quote: str) -
 
     # فشل → رجّع المبلغ كما هو
     return amt
+def _convert_filter(amount, base, quote):
+    db = SessionLocal()
+    try:
+        return fx_convert(db, amount, (base or "CAD"), (quote or "CAD"))
+    finally:
+        db.close()
+
+templates.env.filters["convert"] = _convert_filter
 
 def _format_money(amount: float | int, cur: str) -> str:
     """تنسيق بسيط للأرقام (فواصل آلاف + خانتان عشريتان) مع رمز العملة."""
@@ -481,6 +561,12 @@ def _get_session_user(request: Request) -> Optional[dict]:
         return request.session.get("user")
     except Exception:
         return None
+
+@app.middleware("http")
+async def fx_autosync_mw(request: Request, call_next):
+    _fx_ensure_daily_sync()
+    return await call_next(request)
+
 
 @app.middleware("http")
 async def currency_middleware(request: Request, call_next):
@@ -874,3 +960,8 @@ async def geo_session_middleware(request: Request, call_next):
         pass
     response = await call_next(request)
     return response
+
+
+@app.on_event("startup")
+def _startup_fx_seed():
+    _fx_ensure_daily_sync()
