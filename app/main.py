@@ -190,19 +190,21 @@ def _fx_upsert(db: Session, base: str, quote: str, rate: float, day: date):
         db.add(FxRate(base=base, quote=quote, rate=rate, effective_date=day))
 
 def _fx_fetch_today_from_api() -> dict[str, float]:
-    """
-    يجلب أسعار اليوم من API مجاني (exchangerate.host).
-    سنجلب EUR→(USD,CAD) ثم نستنتج بقية الأزواج والانعكاسات.
-    """
-    resp = requests.get(
-        "https://api.exchangerate.host/latest",
-        params={"base": "EUR", "symbols": "USD,CAD"},
-        timeout=10
-    )
-    data = resp.json()
-    eur_usd = float(data["rates"]["USD"])
-    eur_cad = float(data["rates"]["CAD"])
-    # انعكاسات + التزاوج بين USD↔CAD
+    try:
+        resp = requests.get(
+            "https://api.exchangerate.host/latest",
+            params={"base": "EUR", "symbols": "USD,CAD"},
+            timeout=10
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        eur_usd = float(data["rates"]["USD"])
+        eur_cad = float(data["rates"]["CAD"])
+    except Exception:
+        # Fallback محافظ إن فشل الجلب (أرقام تقريبية – لن تمنع العمل)
+        eur_usd = 1.08
+        eur_cad = 1.47
+
     usd_eur = 1.0 / eur_usd
     cad_eur = 1.0 / eur_cad
     usd_cad = eur_cad / eur_usd
@@ -214,14 +216,20 @@ def _fx_fetch_today_from_api() -> dict[str, float]:
         "CAD->CAD": 1.0, "USD->USD": 1.0, "EUR->EUR": 1.0,
     }
 
+
 def fx_sync_today(db: Session) -> None:
-    """يضمن وجود أسعار اليوم في الجدول (يجلب من الإنترنت ويحدّث/يُدرج)."""
     today = date.today()
-    rates = _fx_fetch_today_from_api()
+    try:
+        rates = _fx_fetch_today_from_api()
+    except Exception:
+        rates = {
+            "CAD->CAD": 1.0, "USD->USD": 1.0, "EUR->EUR": 1.0,
+        }  # أقل شيء لمنع الفراغ
     for k, r in rates.items():
         base, quote = k.split("->")
         _fx_upsert(db, base, quote, float(r), today)
     db.commit()
+
 
 app.state.fx_last_sync_at: datetime | None = None
 
