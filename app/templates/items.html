@@ -117,29 +117,30 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
   </form>
 
   {# ========= Items grid ========= #}
-  {% if items and items|length %}
+  {% if items_view and items_view|length %}
     <div class="grid-items">
-      {% for it in items %}
-        <a href="/items/{{ it.id }}" class="spot text-decoration-none">
+      {% for it in items_view %}
+        <a href="/items/{{ it.item.id }}" class="spot text-decoration-none">
           <div class="spot-media">
-            {% if it.image_path %}
-              <img src="{{ it.image_path | media_url }}" alt="">
+            {% if it.item.image_path %}
+              <img src="{{ it.item.image_path | media_url }}" alt="">
             {% else %}
               <img src="/static/placeholder.jpg" alt="">
             {% endif %}
             <div class="spot-overlay"></div>
-            {% if it.category_label %}
-              <span class="category-chip">{{ it.category_label }}</span>
+            {% if it.item.category_label %}
+              <span class="category-chip">{{ it.item.category_label }}</span>
             {% endif %}
           </div>
           <div class="spot-body">
-            <div class="spot-title" title="{{ it.title }}">{{ it.title }}</div>
+            <div class="spot-title" title="{{ it.item.title }}">{{ it.item.title }}</div>
             <div class="spot-meta">
-              {% if it.price_per_day is defined %}
-                <div class="spot-price"><strong>{{ it.price_per_day }}</strong> <span>/day</span></div>
-              {% endif %}
-              <div class="spot-city">{{ it.city or '—' }}</div>
-              <div class="spot-rating">{{ it.rating|default(4.8) }}</div>
+              <div class="spot-price">
+                <strong>{{ it.display_price | money(display_currency) }}</strong>
+                <span>/day</span>
+              </div>
+              <div class="spot-city">{{ it.item.city or '—' }}</div>
+              <div class="spot-rating">{{ it.item.avg_stars|default(it.item.rating)|default(4.8) }}</div>
             </div>
           </div>
         </a>

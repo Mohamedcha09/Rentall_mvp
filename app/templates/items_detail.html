@@ -1134,6 +1134,24 @@
           {{ item.category_label or item.category }} • {{ item.city or "No city" }} • {{ owner and owner.country or "" }}
         </div>
 
+        {# كتلة السعر الرئيسية + سطر السعر الأصلي #}
+<div class="price-lead" style="margin:6px 0 8px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+  <div class="lead-now" style="font-weight:800;font-size:1.1rem">
+    {% if display_price is defined and display_currency is defined %}
+      {{ display_price | money(display_currency) }}
+    {% else %}
+      {{ item.price | money(item.currency) }}
+    {% endif %}
+    <span class="small-muted">/ day</span>
+  </div>
+
+  <div class="lead-old small-muted" style="font-size:.9rem">
+    السعر الأصلي:
+    {{ item.price | money(item.currency) }}
+  </div>
+</div>
+
+
         {# Top stats #}
         {% set _avg = item_rating_avg or 0 %}
         {% set _cnt = item_rating_count or 0 %}
@@ -1179,7 +1197,15 @@
         <!-- Bottom Booking Bar -->
         <div class="air-fixed" id="airBar" role="region" aria-label="Booking bar">
           <div class="air-price">
-            <span class="now">{{ item.price_per_day }} {{ item.currency or '$' }}</span>
+            {# السعر المحوَّل بعملة العرض #}
+<span class="now">
+  {% if display_price is defined and display_currency is defined %}
+    {{ display_price | money(display_currency) }}
+  {% else %}
+    {{ item.price | money(item.currency) }} {# fallback لو لم تُمرَّر المتغيّرات #}
+  {% endif %}
+</span>
+
             <span class="per">per day</span>
           </div>
           <a class="air-cta" href="/bookings/new?item_id={{ item.id }}">Book now</a>

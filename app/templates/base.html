@@ -794,6 +794,8 @@
       <div id="typeaheadPanel" class="typeahead d-none"></div>
 
       <div class="actions d-flex align-items-center gap-2 ms-auto">
+      {% set _cur = display_currency(request) %}
+
         <!-- Messages -->
         <a href="/messages" class="btn btn-ghost btn-sm" title="Messages">
           <img class="icon-img" src="/static/img/msg.png" alt="Messages" style="width:24px;height:24px">
@@ -851,6 +853,38 @@
             <li><a class="dropdown-item" href="/lang/fr">Français</a></li>
           </ul>
         </div>
+        <!-- Currency -->
+<div class="dropdown">
+  <button
+    class="btn btn-ghost btn-sm d-flex align-items-center gap-1"
+    data-bs-toggle="dropdown"
+    title="Currency"
+    aria-label="Currency"
+  >
+    <i class="bi bi-cash-coin"></i>
+    <span class="d-none d-sm-inline">{{ _cur }}</span>
+  </button>
+
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li class="dropdown-header">Display currency</li>
+    <li>
+      <a class="dropdown-item {% if _cur == 'CAD' %}active{% endif %}" href="/set-currency?cur=CAD">
+        CAD — Canadian Dollar
+      </a>
+    </li>
+    <li>
+      <a class="dropdown-item {% if _cur == 'USD' %}active{% endif %}" href="/set-currency?cur=USD">
+        USD — US Dollar
+      </a>
+    </li>
+    <li>
+      <a class="dropdown-item {% if _cur == 'EUR' %}active{% endif %}" href="/set-currency?cur=EUR">
+        EUR — Euro
+      </a>
+    </li>
+  </ul>
+</div>
+
 
         <!-- Account -->
         {% if session_user %}

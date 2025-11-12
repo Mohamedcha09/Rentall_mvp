@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, or_, and_
 import os, secrets, shutil
 import unicodedata
+from datetime import date
+from typing import Optional
 
 # Cloudinary (upload images to the cloud)
 import cloudinary
@@ -24,6 +26,70 @@ UPLOADS_ROOT = os.environ.get(
 )
 ITEMS_DIR = os.path.join(UPLOADS_ROOT, "items")
 os.makedirs(ITEMS_DIR, exist_ok=True)
+
+
+# ================= Currency helpers (NEW) =================
+def _display_currency(request: Request) -> str:
+    """
+    تستخرج عملة العرض من middleware (إن وُجدت) وإلا ترجع CAD.
+    """
+    try:
+        cur = getattr(request.state, "display_currency", None)
+        if not cur:
+            return "CAD"
+        return str(cur).upper()
+    except Exception:
+        return "CAD"
+
+
+def fx_convert_smart(db: Session, amount: Optional[float], base: str, quote: str) -> float:
+    """
+    تحويل آمن باستخدام جدول FxRate (إن وُجد في models.py) أو الإرجاع كما هو عند التعذّر.
+    - يأخذ سعر اليوم (effective_date = today)، وإن لم يوجد فأحدث سجل متاح.
+    - إذا لم نجد الجدول/السعر، نعيد المبلغ كما هو لو كانت العملات مختلفة (fallback).
+    """
+    try:
+        if amount is None:
+            return 0.0
+        base = (base or "CAD").upper()
+        quote = (quote or "CAD").upper()
+        if base == quote:
+            return float(amount)
+
+        # نحاول استدعاء FxRate من models إن كان موجوداً
+        try:
+            from .models import FxRate  # type: ignore
+        except Exception:
+            # لا يوجد جدول معدلات → fallback: أعد نفس المبلغ
+            return float(amount)
+
+        # ابحث عن سعر اليوم
+        today = date.today()
+        row = (
+            db.query(FxRate)
+            .filter(FxRate.base == base, FxRate.quote == quote, FxRate.effective_date == today)
+            .order_by(FxRate.id.desc())
+            .first()
+        )
+        if not row:
+            # خذ أحدث سجل متاح
+            row = (
+                db.query(FxRate)
+                .filter(FxRate.base == base, FxRate.quote == quote)
+                .order_by(FxRate.effective_date.desc(), FxRate.id.desc())
+                .first()
+            )
+        if row and getattr(row, "rate", None):
+            return float(amount) * float(row.rate)
+
+        # لا يوجد سعر معروف
+        return float(amount)
+    except Exception:
+        # أي خطأ غير متوقع → لا تكسر الصفحة
+        try:
+            return float(amount or 0.0)
+        except Exception:
+            return 0.0
 
 
 # ================= Utilities =================
@@ -260,12 +326,31 @@ def items_list(
         it.category_label = category_label(it.category)
         it.owner_badges = get_user_badges(it.owner, db) if it.owner else []
 
+    # ===== NEW: build items_view with converted display prices =====
+    disp_cur = _display_currency(request)
+    items_view = []
+    for it in items:
+        # سعر التخزين يبقى بعملة المنشور item.currency
+        # العرض فقط يتحوّل إلى disp_cur
+        try:
+            base_cur = (it.currency or "CAD").upper()
+        except Exception:
+            base_cur = "CAD"
+        disp_price = fx_convert_smart(db, getattr(it, "price", getattr(it, "price_per_day", 0.0)), base_cur, disp_cur)
+        items_view.append({
+            "item": it,
+            "display_price": float(disp_price),
+            "display_currency": disp_cur,
+        })
+
     return request.app.templates.TemplateResponse(
         "items.html",
         {
             "request": request,
             "title": "Items",
-            "items": items,
+            "items": items,                 # يبقى كما هو (توافقاً مع قوالبك الحالية)
+            "items_view": items_view,       # الجديد: قائمة مع الأسعار المحوّلة
+            "display_currency": disp_cur,   # مفيدة لو أردت استخدامها في القالب
             "categories": CATEGORIES,
             "current_category": current_category,
             "session_user": request.session.get("user"),
@@ -340,6 +425,12 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
                                 .all()
         ]
 
+    # ===== NEW: display price for details =====
+    disp_cur = _display_currency(request)
+    base_cur = (getattr(item, "currency", None) or "CAD").upper()
+    src_amount = getattr(item, "price", getattr(item, "price_per_day", 0.0))
+    display_price = fx_convert_smart(db, src_amount, base_cur, disp_cur)
+
     return request.app.templates.TemplateResponse(
         "items_detail.html",
         {
@@ -355,6 +446,10 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             "is_favorite": is_favorite,
             "similar_items": similar_items,
             "favorite_ids": favorite_ids,
+
+            # NEW:
+            "display_price": float(display_price),
+            "display_currency": disp_cur,
         }
     )
 
@@ -376,12 +471,26 @@ def my_items(request: Request, db: Session = Depends(get_db)):
         it.category_label = category_label(it.category)
         it.owner_badges = get_user_badges(it.owner, db) if it.owner else []
 
+    # (اختياري) يمكن تمرير عرض الأسعار هنا أيضاً إن رغبت:
+    disp_cur = _display_currency(request)
+    owner_items_view = []
+    for it in items:
+        base_cur = (getattr(it, "currency", None) or "CAD").upper()
+        src_amount = getattr(it, "price", getattr(it, "price_per_day", 0.0))
+        owner_items_view.append({
+            "item": it,
+            "display_price": fx_convert_smart(db, src_amount, base_cur, disp_cur),
+            "display_currency": disp_cur,
+        })
+
     return request.app.templates.TemplateResponse(
         "owner_items.html",
         {
             "request": request,
             "title": "My Items",
-            "items": items,
+            "items": items,                     # توافقي
+            "items_view": owner_items_view,     # محوّل
+            "display_currency": disp_cur,
             "session_user": u,
             "account_limited": is_account_limited(request),
         }

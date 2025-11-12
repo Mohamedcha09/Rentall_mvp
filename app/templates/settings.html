@@ -3,11 +3,15 @@
 <div class="container" style="max-width:760px">
   <h3 class="mb-3">Settings</h3>
 
+  {# رسائل نجاح/أخطاء عامة #}
   {% if request.query_params.get('saved') %}
     <div class="alert alert-success">Profile data saved ✅</div>
   {% endif %}
   {% if request.query_params.get('pwd_ok') %}
     <div class="alert alert-success">Password changed ✅</div>
+  {% endif %}
+  {% if request.query_params.get('cur_saved') %}
+    <div class="alert alert-success">Currency updated ✅</div>
   {% endif %}
   {% if request.query_params.get('err') == 'email_used' %}
     <div class="alert alert-danger">This email is already in use.</div>
@@ -17,6 +21,7 @@
     <div class="alert alert-danger">The new passwords do not match.</div>
   {% endif %}
 
+  {# ================= Profile ================= #}
   <div class="card mb-4">
     <div class="card-header fw-bold">Profile</div>
     <div class="card-body">
@@ -39,7 +44,9 @@
         <div>
           <label class="form-label">Profile picture</label>
           <input class="form-control" type="file" name="avatar" accept=".jpg,.jpeg,.png,.webp">
-          {% if u.avatar_path %}<img src="{{ u.avatar_path }}" alt="" class="mt-2 rounded-circle" style="width:64px;height:64px;object-fit:cover">{% endif %}
+          {% if u.avatar_path %}
+            <img src="{{ u.avatar_path }}" alt="" class="mt-2 rounded-circle" style="width:64px;height:64px;object-fit:cover">
+          {% endif %}
         </div>
         <div class="text-end">
           <button class="btn btn-primary">Save</button>
@@ -48,7 +55,8 @@
     </div>
   </div>
 
-  <div class="card">
+  {# ================= Change Password ================= #}
+  <div class="card mb-4">
     <div class="card-header fw-bold">Change password</div>
     <div class="card-body">
       <form method="post" action="/settings/password" class="vstack gap-3">
@@ -72,6 +80,30 @@
       </form>
     </div>
   </div>
+
+  {# ================= Currency (NEW) ================= #}
+  {% set _cur = (u.display_currency or request.cookies.get('disp_cur') or 'CAD') %}
+  <div class="card">
+    <div class="card-header fw-bold">Currency</div>
+    <div class="card-body">
+      <form method="post" action="/settings/currency" class="vstack gap-3">
+        <div>
+          <label class="form-label">Display currency</label>
+          <select class="form-select" name="currency" required>
+            <option value="CAD" {% if _cur == 'CAD' %}selected{% endif %}>CAD — Canadian Dollar</option>
+            <option value="USD" {% if _cur == 'USD' %}selected{% endif %}>USD — US Dollar</option>
+            <option value="EUR" {% if _cur == 'EUR' %}selected{% endif %}>EUR — Euro</option>
+          </select>
+          <div class="form-text">
+            Prices across the site will be shown in your selected currency. This won’t change how owners set their listing currency.
+          </div>
+        </div>
+        <div class="text-end">
+          <button class="btn btn-outline-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 </div>
 {% endblock %}
-<main class="page container-fluid main-flex-fill min-vh-100">

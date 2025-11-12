@@ -8,6 +8,8 @@ load_dotenv()
 import os
 import random
 import difflib
+from datetime import date
+from typing import Optional
 
 # 3) Cloudinary (optional)
 import cloudinary
@@ -20,13 +22,13 @@ cloudinary.config(
 )
 
 # 4) FastAPI & project foundations
-from fastapi import FastAPI, Request, Depends, APIRouter, Query
+from fastapi import FastAPI, Request, Depends, APIRouter, Query, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response
 from starlette.middleware.sessions import SessionMiddleware
 
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, text
 from sqlalchemy.orm import Session
 
 from .database import Base, engine, SessionLocal, get_db
@@ -70,9 +72,9 @@ from .admin_reports import router as admin_reports_router
 from .support import router as support_router
 import app.cs as cs_routes
 from . import mod as mod_routes
-from .md import router as md_router 
+from .md import router as md_router
 from .reviews import router as reviews_router
-from .routes_geo import router as geo_router 
+from .routes_geo import router as geo_router
 
 # -----------------------------------------------------------------------------
 # Create the app
@@ -161,6 +163,100 @@ def media_url(path: str | None) -> str:
     return p if p.startswith("/") else "/" + p
 
 app.templates.env.filters["media_url"] = media_url
+
+# -----------------------------------------------------------------------------
+# Currencies (NEW)
+# -----------------------------------------------------------------------------
+SUPPORTED_CURRENCIES = ["CAD", "USD", "EUR"]
+
+def geoip_guess_currency(request: Request) -> str:
+    """
+    تخمين بسيط لعملة العرض من البلد/المنطقة الموجودة في الـ session (تمتلئ عبر utils_geo).
+    fallback = CAD إن لم تتوفر معلومات.
+    """
+    try:
+        sess_geo = request.session.get("geo") or {}
+        country = (sess_geo.get("country") or "").upper()
+        if country == "CA":
+            return "CAD"
+        if country == "US":
+            return "USD"
+        # دول اليورو (للتبسيط: أي بلد غير CA/US نرجعه EUR)
+        return "EUR"
+    except Exception:
+        return "CAD"
+
+def _fetch_rate(db: Session, base: str, quote: str) -> Optional[float]:
+    """
+    اقرأ سعر الصرف من جدول fx_rates.
+    1) جرّب effective_date = اليوم
+    2) إن لم يوجد، خذ أحدث سجل متاح لتلك العملة (أكبر effective_date)
+    """
+    if base == quote:
+        return 1.0
+    # اليوم
+    today = date.today().isoformat()
+    q1 = text(
+        "SELECT rate FROM fx_rates WHERE base=:b AND quote=:q AND effective_date=:d LIMIT 1"
+    )
+    r1 = db.execute(q1, {"b": base, "q": quote, "d": today}).fetchone()
+    if r1 and r1[0] is not None:
+        return float(r1[0])
+    # أحدث تاريخ متاح
+    q2 = text(
+        """
+        SELECT rate FROM fx_rates
+        WHERE base=:b AND quote=:q
+        ORDER BY effective_date DESC
+        LIMIT 1
+        """
+    )
+    r2 = db.execute(q2, {"b": base, "q": quote}).fetchone()
+    if r2 and r2[0] is not None:
+        return float(r2[0])
+    return None
+
+def fx_convert(db: Session, amount: float | int | None, base: str, quote: str) -> float:
+    """
+    يحوّل مبلغ من base إلى quote باستخدام fx_rates.
+    إن لم يجد سعراً مباشراً، يحاول via CAD كجسر (base→CAD→quote) للتغطية.
+    """
+    try:
+        amt = float(amount or 0)
+    except Exception:
+        amt = 0.0
+    base = (base or "CAD").upper()
+    quote = (quote or "CAD").upper()
+    if base == quote:
+        return amt
+
+    # مباشرة
+    r = _fetch_rate(db, base, quote)
+    if r:
+        return amt * r
+
+    # جسر عبر CAD
+    if base != "CAD" and quote != "CAD":
+        r1 = _fetch_rate(db, base, "CAD")
+        r2 = _fetch_rate(db, "CAD", quote)
+        if r1 and r2:
+            return amt * r1 * r2
+
+    # فشل → رجّع المبلغ كما هو
+    return amt
+
+def _format_money(amount: float | int, cur: str) -> str:
+    """تنسيق بسيط للأرقام (فواصل آلاف + خانتان عشريتان) مع رمز العملة."""
+    try:
+        val = float(amount or 0)
+    except Exception:
+        val = 0.0
+    s = f"{val:,.2f}".replace(",", "X").replace(".", ",").replace("X", " ")
+    return f"{s} {cur}"
+
+# اجعل أدوات العملة متاحة خارجياً أيضًا لو احتجت في ملفات أخرى:
+app.state.fx_convert = fx_convert
+app.state.supported_currencies = SUPPORTED_CURRENCIES
 
 # -----------------------------------------------------------------------------
 # Database
@@ -378,6 +474,89 @@ def split_into_three_columns(urls: list[str]) -> list[list[str]]:
     return cols
 
 # -----------------------------------------------------------------------------
+# Currency Middleware + Jinja globals/filters (NEW)
+# -----------------------------------------------------------------------------
+def _get_session_user(request: Request) -> Optional[dict]:
+    try:
+        return request.session.get("user")
+    except Exception:
+        return None
+
+@app.middleware("http")
+async def currency_middleware(request: Request, call_next):
+    """
+    يحدد عملة العرض لكل طلب وفق الأولوية:
+      1) كوكي disp_cur (اختيار يدوي)
+      2) users.display_currency إذا كان المستخدم مسجّلًا
+      3) تخمين GeoIP (أو CAD افتراضيًا)
+    ويثبت القيمة في request.state.display_currency + يكتب/يحدّث الكوكي.
+    """
+    try:
+        # لا نلمس الويبهوك
+        if request.url.path.startswith("/webhooks/"):
+            return await call_next(request)
+
+        chosen = request.cookies.get("disp_cur")
+        sess_user = _get_session_user(request)
+
+        if chosen and chosen.upper() in SUPPORTED_CURRENCIES:
+            disp = chosen.upper()
+        else:
+            # جرّب تفضيل المستخدم من قاعدة البيانات
+            disp = None
+            if sess_user and "id" in sess_user:
+                try:
+                    db_gen = get_db()
+                    db: Session = next(db_gen)
+                    db_user = db.query(User).filter(User.id == sess_user["id"]).first()
+                    if db_user and getattr(db_user, "display_currency", None):
+                        dc = str(db_user.display_currency).upper()
+                        if dc in SUPPORTED_CURRENCIES:
+                            disp = dc
+                    try:
+                        next(db_gen)
+                    except StopIteration:
+                        pass
+                except Exception:
+                    pass
+
+            # وإلا استخدم التخمين
+            if not disp:
+                disp = geoip_guess_currency(request)
+
+        # خزّن في state
+        request.state.display_currency = disp
+
+        # اكتب الكوكي دائمًا (يجعلها ثابتة للزائر)
+        response = await call_next(request)
+        try:
+            response.set_cookie(
+                "disp_cur",
+                disp,
+                max_age=60 * 60 * 24 * 180,  # 180 يوم
+                httponly=False,
+                samesite="lax",
+                domain=COOKIE_DOMAIN,
+                secure=HTTPS_ONLY_COOKIES,
+            )
+        except Exception:
+            pass
+        return response
+
+    except Exception:
+        # لا نكسر الطلب لو حصل خطأ
+        return await call_next(request)
+
+# اجعل عملة العرض متاحة للتمبليت عبر global callable
+templates.env.globals["display_currency"] = lambda request: getattr(request.state, "display_currency", "CAD")
+
+# فلتر money(amount, cur)
+def _money_filter(amount, cur="CAD"):
+    return _format_money(amount, (cur or "CAD").upper())
+
+templates.env.filters["money"] = _money_filter
+
+# -----------------------------------------------------------------------------
 # Register routers
 # -----------------------------------------------------------------------------
 app.include_router(auth_router)
@@ -415,8 +594,9 @@ app.include_router(support_router)
 app.include_router(cs_routes.router)
 app.include_router(mod_routes.router)
 app.include_router(reviews_router)
-app.include_router(md_router) 
-app.include_router(geo_router) # ⬅️ New
+app.include_router(md_router)
+app.include_router(geo_router)  # ⬅️ New
+
 # -----------------------------------------------------------------------------
 # Legacy path → redirect to the new reports page
 # -----------------------------------------------------------------------------
@@ -583,6 +763,84 @@ async def sync_user_flags(request: Request, call_next):
     return response
 
 # -----------------------------------------------------------------------------
+# Currency routes (NEW)
+# -----------------------------------------------------------------------------
+@app.get("/set-currency")
+def set_currency_quick(cur: str, request: Request, db: Session = Depends(get_db)):
+    """
+    تغيير سريع عبر GET (من الهيدر). يتحقق ثم يكتب الكوكي،
+    وإن كان المستخدم مسجّلاً يحدّث users.display_currency.
+    """
+    cur = (cur or "").upper()
+    referer = request.headers.get("referer") or "/"
+    if cur not in SUPPORTED_CURRENCIES:
+        return RedirectResponse(url=referer, status_code=303)
+
+    # اكتب الكوكي
+    resp = RedirectResponse(url=referer, status_code=303)
+    try:
+        resp.set_cookie(
+            "disp_cur",
+            cur,
+            max_age=60 * 60 * 24 * 180,
+            httponly=False,
+            samesite="lax",
+            domain=COOKIE_DOMAIN,
+            secure=HTTPS_ONLY_COOKIES,
+        )
+    except Exception:
+        pass
+
+    # حدّث المستخدم (إن وُجد)
+    sess_user = request.session.get("user")
+    if sess_user and "id" in sess_user:
+        try:
+            u = db.query(User).filter(User.id == sess_user["id"]).first()
+            if u:
+                u.display_currency = cur
+                db.commit()
+        except Exception:
+            db.rollback()
+    return resp
+
+@app.post("/settings/currency")
+def settings_currency(cur: str = Form(...), request: Request = None, db: Session = Depends(get_db)):
+    """
+    الاستمارة الرسمية من صفحة الإعدادات.
+    """
+    cur = (cur or "").upper()
+    referer = request.headers.get("referer") or "/settings"
+    if cur not in SUPPORTED_CURRENCIES:
+        return RedirectResponse(url=referer, status_code=303)
+
+    resp = RedirectResponse(url=referer, status_code=303)
+    # اكتب الكوكي
+    try:
+        resp.set_cookie(
+            "disp_cur",
+            cur,
+            max_age=60 * 60 * 24 * 180,
+            httponly=False,
+            samesite="lax",
+            domain=COOKIE_DOMAIN,
+            secure=HTTPS_ONLY_COOKIES,
+        )
+    except Exception:
+        pass
+
+    # حدّث المستخدم (إن وُجد)
+    sess_user = request.session.get("user")
+    if sess_user and "id" in sess_user:
+        try:
+            u = db.query(User).filter(User.id == sess_user["id"]).first()
+            if u:
+                u.display_currency = cur
+                db.commit()
+        except Exception:
+            db.rollback()
+    return resp
+
+# -----------------------------------------------------------------------------
 # Simple services
 # -----------------------------------------------------------------------------
 @app.get("/healthz")
@@ -603,7 +861,6 @@ def notifications_page(request: Request):
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse("notifications.html", {"request": request, "session_user": u, "title": "Notifications"})
 
-
 @app.middleware("http")
 async def geo_session_middleware(request: Request, call_next):
     try:
@@ -617,4 +874,3 @@ async def geo_session_middleware(request: Request, call_next):
         pass
     response = await call_next(request)
     return response
-
