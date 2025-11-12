@@ -404,6 +404,8 @@ def item_new_get(request: Request):
             "account_limited": is_account_limited(request),
         }
     )
+
+
 @router.post("/owner/items/new")
 def item_new_post(
     request: Request,
@@ -412,11 +414,15 @@ def item_new_post(
     category: str = Form(...),
     description: str = Form(""),
     city: str = Form(""),
-    price_raw: str = Form("0"),          # ← بدلاً من price_per_day_raw
-    currency: str = Form("CAD"),         # ← عملة المنشور
+
+    # ← أسماء الحقول مطابقة للنموذج
+    price: str = Form("0"),
+    currency: str = Form("CAD"),
     image: UploadFile = File(None),
-    latitude_raw: str = Form(""),
-    longitude_raw: str = Form(""),
+
+    # ← مطابقة للنموذج (latitude / longitude)
+    latitude: str = Form(""),
+    longitude: str = Form(""),
 ):
     if not require_approved(request):
         return RedirectResponse(url="/login", status_code=303)
@@ -424,22 +430,23 @@ def item_new_post(
     u = request.session.get("user")
 
     # تحويلات آمنة
-    latitude  = _to_float_or_none(latitude_raw)
-    longitude = _to_float_or_none(longitude_raw)
+    lat = _to_float_or_none(latitude)
+    lng = _to_float_or_none(longitude)
 
-    # سعر عشري (نقبل 0.01) ونقصّه للصفر لو خطأ
+    # سعر عشري
     try:
-        price = float(str(price_raw).replace(",", ".").strip() or "0")
-        if price < 0: price = 0.0
+        _price = float(str(price).replace(",", ".").strip() or "0")
+        if _price < 0:
+            _price = 0.0
     except Exception:
-        price = 0.0
+        _price = 0.0
 
     # تحقّق العملة
     currency = (currency or "CAD").upper().strip()
-    if currency not in {"CAD","USD","EUR"}:
+    if currency not in {"CAD", "USD", "EUR"}:
         currency = "CAD"
 
-    # === معالجة الصورة كما لديك (بدون تغيير) ===
+    # معالجة الصورة (كما هو عندك)
     image_path_for_db = None
     if image and image.filename:
         if _ext_ok(image.filename):
@@ -476,7 +483,7 @@ def item_new_post(
             except Exception:
                 pass
 
-    # === إنشاء السجل ===
+    # إنشاء السجل
     it = Item(
         owner_id=u["id"],
         title=title,
@@ -484,13 +491,13 @@ def item_new_post(
         city=city,
         category=category,
         is_active="yes",
-        latitude=latitude,
-        longitude=longitude,
+        latitude=lat,
+        longitude=lng,
 
-        # الجديد:
-        currency=currency,          # ← يحفظ العملة الأصلية للمنشور
-        price=price,                # ← الحقل الجديد المطابق للـ DB
-        price_per_day=price,        # ← تعبئة للحقل القديم حتى تعمل القوالب الحالية
+        # الجديد/الموحّد:
+        currency=currency,
+        price=_price,
+        price_per_day=_price,   # لتوافق القوالب الحالية
         image_path=image_path_for_db,
     )
     db.add(it)

@@ -66,10 +66,22 @@
   <!-- ▲▲ السعر + العملة ▲▲ -->
 </div>
 
-    <div class="col-md-6 mb-3">
-      <label class="form-label">Price/day</label>
-      <input type="number" name="price_per_day" class="form-control" value="0" min="0">
-    </div>
+    <div class="col-md-3 mb-3">
+  <label class="form-label">Price / day</label>
+  <input type="number" name="price" class="form-control" value="0" min="0" step="0.01" required>
+  <small class="text-muted">Amount the owner sets.</small>
+</div>
+
+<div class="col-md-3 mb-3">
+  <label class="form-label">Currency</label>
+  <select class="form-select" name="currency" required>
+    <option value="CAD">CAD</option>
+    <option value="USD">USD</option>
+    <option value="EUR">EUR</option>
+  </select>
+  <small class="text-muted">Required (original listing currency).</small>
+</div>
+
   </div>
 
   <div class="mb-3">
