@@ -1,6 +1,6 @@
 # app/models_metrics.py
 from datetime import datetime, date
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Float, Numeric
+from sqlalchemy import Column, Integer, String, DateTime, Date, Index
 from .database import Base
 
 class Visit(Base):
