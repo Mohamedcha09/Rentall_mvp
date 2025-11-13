@@ -1143,7 +1143,12 @@
     {% elif base_amount is defined and base_currency is defined %}
       {{ base_amount | money(base_currency) }}
     {% else %}
-      {{ item.price | money(item.currency) }}
+      {% if display_price is defined %}
+  {{ display_price | money(display_currency) }}
+{% else %}
+  {{ item.price | money(item.currency) }}
+{% endif %}
+
     {% endif %}
     <span class="small-muted">/ day</span>
   </div>
@@ -1201,7 +1206,12 @@
   {% if display_price is defined and display_currency is defined %}
     {{ display_price | money(display_currency) }}
   {% else %}
-    {{ item.price | money(item.currency) }} {# fallback لو لم تُمرَّر المتغيّرات #}
+    {% if display_price is defined %}
+  {{ display_price | money(display_currency) }}
+{% else %}
+  {{ item.price | money(item.currency) }}
+{% endif %}
+{# fallback لو لم تُمرَّر المتغيّرات #}
   {% endif %}
 </span>
 
@@ -1329,9 +1339,14 @@
                 {% else %}
                   <div></div>
                 {% endif %}
-                <div class="sim-price-now">
-                  {{ s.price_per_day }} {{ s.currency or '$' }} <span class="sim-unit">/ day</span>
-                </div>
+                  <div class="sim-price-now">
+    {% if s.display_price is defined and s.display_currency is defined %}
+      {{ s.display_price | money(s.display_currency) }} <span class="sim-unit">/ day</span>
+    {% else %}
+      {{ s.price_per_day }} {{ s.currency or '$' }} <span class="sim-unit">/ day</span>
+    {% endif %}
+  </div>
+
               </div>
             </div>
           </a>

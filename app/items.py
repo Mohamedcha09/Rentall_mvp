@@ -410,9 +410,22 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
         ).first() is not None
 
     # Bring similar items
+        # Bring similar items
     similar_items = get_similar_items(db, item)
     for s in similar_items:
+        # اسم الفئة (مثل قبل)
         s.category_label = category_label(s.category)
+
+        # ===== NEW: حساب سعر العرض لكل عنصر مشابه =====
+        base_cur_s = (getattr(s, "currency", None) or "CAD").upper()
+        # نفضّل price_per_day، لو مش موجود نرجع إلى price
+        src_amount_s = getattr(s, "price_per_day", None)
+        if src_amount_s is None:
+            src_amount_s = getattr(s, "price", 0.0)
+
+        # السعر المحوَّل بعملة العرض الحالية
+        s.display_price = fx_convert_smart(db, src_amount_s, base_cur_s, disp_cur)
+        s.display_currency = disp_cur
 
     # IDs العناصر المفضلة لتمييز القلوب داخل "Similar near you"
     favorite_ids = []
