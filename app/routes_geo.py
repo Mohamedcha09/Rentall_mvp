@@ -1,12 +1,17 @@
-# app/routes_geo.py
-from fastapi import APIRouter, Request, Query
+from fastapi import APIRouter, Request
 
 router = APIRouter()
 
-@router.post("/api/geo/set")
-def api_geo_set(request: Request, lat: float = Query(...), lon: float = Query(...)):
-    s = request.session
-    s["geo_enabled"] = True
-    s["geo_lat"] = lat
-    s["geo_lon"] = lon
-    return {"ok": True}
+@router.get("/geo/set")
+def geo_set(request: Request, loc: str = "US"):
+    loc = (loc or "US").upper()
+    request.session["geo"] = {"country": loc}
+    return {"ok": True, "country": loc}
+
+@router.get("/geo/debug")
+def geo_debug(request: Request):
+    return {
+        "session_geo": request.session.get("geo"),
+        "disp_cur_cookie": request.cookies.get("disp_cur"),
+        "state_display_currency": getattr(request.state, "display_currency", None),
+    }
