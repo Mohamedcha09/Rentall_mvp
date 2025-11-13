@@ -365,6 +365,7 @@ def items_list(
 @router.get("/items/{item_id}")
 def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     item = db.query(Item).get(item_id)
+    disp_cur = _display_currency(request)
     if not item:
         # يعرض صفحة العنصر مع رسالة "Item not found."
         return request.app.templates.TemplateResponse(
