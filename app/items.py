@@ -360,14 +360,13 @@ def items_list(
         }
     )
 
-# ================= Item details =================
+
 @router.get("/items/{item_id}")
 def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
-    # 1) نحصل على العنصر
     item = db.query(Item).get(item_id)
 
-    # 2) نحدد عملة العرض في أول السطر (مهم جداً)
-    disp_cur = request.state.display_currency
+    # ✔ ✔ ✔ الحل النهائي
+    disp_cur = _display_currency(request)
 
     if not item:
         return request.app.templates.TemplateResponse(
@@ -382,12 +381,10 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
 
     from sqlalchemy import func as _func
 
-    # 3) تجهيز بيانات العنصر
     item.category_label = category_label(item.category)
     owner = db.query(User).get(item.owner_id)
     owner_badges = get_user_badges(owner, db) if owner else []
 
-    # 4) المراجعات
     reviews_q = (
         db.query(ItemReview)
         .filter(ItemReview.item_id == item.id)
@@ -407,7 +404,6 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
         .scalar() or 0
     )
 
-    # 5) هل هو مفضل؟
     session_u = request.session.get("user")
     is_favorite = False
     if session_u:
@@ -415,9 +411,7 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             user_id=session_u["id"], item_id=item.id
         ).first() is not None
 
-    # 6) العناصر المشابهة
     similar_items = get_similar_items(db, item)
-
     for s in similar_items:
         s.category_label = category_label(s.category)
 
@@ -429,7 +423,6 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
         s.display_price = fx_convert_smart(db, src_amount_s, base_cur_s, disp_cur)
         s.display_currency = disp_cur
 
-    # 7) المعرفات المفضلة
     favorite_ids = []
     if session_u:
         favorite_ids = [
@@ -438,16 +431,13 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
                                 .all()
         ]
 
-    # 8) السعر الحقيقي للعنصر الأساسي
     base_cur = (getattr(item, "currency", None) or "CAD").upper()
-
     src_amount = getattr(item, "price_per_day", None)
     if src_amount is None:
         src_amount = getattr(item, "price", 0.0)
 
     display_price = fx_convert_smart(db, src_amount, base_cur, disp_cur)
 
-    # 9) عرض القالب
     return request.app.templates.TemplateResponse(
         "items_detail.html",
         {
