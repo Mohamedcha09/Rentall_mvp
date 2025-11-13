@@ -366,6 +366,7 @@ def items_list(
 def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     item = db.query(Item).get(item_id)
     if not item:
+        # يعرض صفحة العنصر مع رسالة "Item not found."
         return request.app.templates.TemplateResponse(
             "items_detail.html",
             {
@@ -375,6 +376,9 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
                 "immersive": True,
             }
         )
+
+    # ✅ نحدد عملة العرض هنا في البداية
+    disp_cur = _display_currency(request)
 
     from sqlalchemy import func as _func
 
@@ -400,7 +404,7 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
         .scalar() or 0
     )
 
-    # Favorite
+    # Favorite state (لزر القلب الكبير في الهيرو)
     session_u = request.session.get("user")
     is_favorite = False
     if session_u:
@@ -408,22 +412,24 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             user_id=session_u["id"], item_id=item.id
         ).first() is not None
 
-    # ---- FIX: عرفنا disp_cur قبل استخدامه ---
-    disp_cur = _display_currency(request)
-
-    # Similar items
+    # Bring similar items
     similar_items = get_similar_items(db, item)
     for s in similar_items:
+        # اسم الفئة (مثل قبل)
         s.category_label = category_label(s.category)
+
+        # ===== NEW: حساب سعر العرض لكل عنصر مشابه =====
         base_cur_s = (getattr(s, "currency", None) or "CAD").upper()
+        # نفضّل price_per_day، لو مش موجود نرجع إلى price
         src_amount_s = getattr(s, "price_per_day", None)
         if src_amount_s is None:
             src_amount_s = getattr(s, "price", 0.0)
 
+        # السعر المحوَّل بعملة العرض الحالية
         s.display_price = fx_convert_smart(db, src_amount_s, base_cur_s, disp_cur)
         s.display_currency = disp_cur
 
-    # Favorite IDs
+    # IDs العناصر المفضلة لتمييز القلوب داخل "Similar near you"
     favorite_ids = []
     if session_u:
         favorite_ids = [
@@ -432,11 +438,14 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
                                 .all()
         ]
 
-    # Main item display price
+    # ===== NEW: display price for details =====
     base_cur = (getattr(item, "currency", None) or "CAD").upper()
+
+    # نفضّل السعر اليومي، وإذا غير موجود نرجع للسعر العادي
     src_amount = getattr(item, "price_per_day", None)
     if src_amount is None:
         src_amount = getattr(item, "price", 0.0)
+
     display_price = fx_convert_smart(db, src_amount, base_cur, disp_cur)
 
     return request.app.templates.TemplateResponse(
@@ -455,10 +464,11 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             "similar_items": similar_items,
             "favorite_ids": favorite_ids,
 
+            # NEW:
             "display_price": float(display_price),
             "display_currency": disp_cur,
-            "base_amount": float(src_amount),
-            "base_currency": base_cur,
+            "base_amount": float(src_amount),   # ← الأساس
+            "base_currency": base_cur,          # ← عملة المنشور الأصلية
         }
     )
 
