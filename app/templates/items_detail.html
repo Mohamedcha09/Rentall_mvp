@@ -1134,11 +1134,14 @@
           {{ item.category_label or item.category }} • {{ item.city or "No city" }} • {{ owner and owner.country or "" }}
         </div>
 
-        {# كتلة السعر الرئيسية + سطر السعر الأصلي #}
+{# كتلة السعر الرئيسية + سطر السعر الأصلي #}
 <div class="price-lead" style="margin:6px 0 8px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
   <div class="lead-now" style="font-weight:800;font-size:1.1rem">
+    {# السعر المحوَّل بعملة العرض #}
     {% if display_price is defined and display_currency is defined %}
       {{ display_price | money(display_currency) }}
+    {% elif base_amount is defined and base_currency is defined %}
+      {{ base_amount | money(base_currency) }}
     {% else %}
       {{ item.price | money(item.currency) }}
     {% endif %}
@@ -1147,9 +1150,14 @@
 
   <div class="lead-old small-muted" style="font-size:.9rem">
     السعر الأصلي:
-    {{ item.price | money(item.currency) }}
+    {% if base_amount is defined and base_currency is defined %}
+      {{ base_amount | money(base_currency) }}
+    {% else %}
+      {{ item.price | money(item.currency) }}
+    {% endif %}
   </div>
 </div>
+
 
 
         {# Top stats #}

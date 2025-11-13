@@ -425,10 +425,15 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
                                 .all()
         ]
 
-    # ===== NEW: display price for details =====
+        # ===== NEW: display price for details =====
     disp_cur = _display_currency(request)
     base_cur = (getattr(item, "currency", None) or "CAD").upper()
-    src_amount = getattr(item, "price", getattr(item, "price_per_day", 0.0))
+
+    # نفضّل السعر اليومي، وإذا غير موجود نرجع للسعر العادي
+    src_amount = getattr(item, "price_per_day", None)
+    if src_amount is None:
+        src_amount = getattr(item, "price", 0.0)
+
     display_price = fx_convert_smart(db, src_amount, base_cur, disp_cur)
 
     return request.app.templates.TemplateResponse(
@@ -450,8 +455,11 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             # NEW:
             "display_price": float(display_price),
             "display_currency": disp_cur,
+            "base_amount": float(src_amount),   # ← الأساس
+            "base_currency": base_cur,          # ← عملة المنشور الأصلية
         }
     )
+
 
 
 # ================= Owner's items =================
