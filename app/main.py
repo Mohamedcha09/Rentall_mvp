@@ -173,20 +173,29 @@ app.templates.env.filters["media_url"] = media_url
 # -----------------------------------------------------------------------------
 SUPPORTED_CURRENCIES = ["CAD", "USD", "EUR"]
 # ---------- FX storage helpers ----------
+# ---------- FX storage helpers ----------
 def _fx_upsert(db: Session, base: str, quote: str, rate: float, day: date):
     """insert-or-update صف واحد لليوم المعطى."""
+    # نتحقق هل يوجد صف لنفس اليوم والزوج base/quote
     q_sel = text("""
-        SELECT id FROM fx_rates
-        WHERE base=:b AND quote=:q AND effective_date=:d
+        SELECT rate FROM fx_rates
+        WHERE base = :b AND quote = :q AND effective_date = :d
         LIMIT 1
     """)
     row = db.execute(q_sel, {"b": base, "q": quote, "d": day}).fetchone()
+
     if row:
+        # حدّث السطر الموجود باستعمال المفاتيح الثلاثة، بدون استخدام id
         db.execute(
-            text("UPDATE fx_rates SET rate=:r WHERE id=:id"),
-            {"r": rate, "id": row[0]}
+            text("""
+                UPDATE fx_rates
+                SET rate = :r
+                WHERE base = :b AND quote = :q AND effective_date = :d
+            """),
+            {"r": rate, "b": base, "q": quote, "d": day}
         )
     else:
+        # لا يوجد صف → أضف صف جديد
         db.add(FxRate(base=base, quote=quote, rate=rate, effective_date=day))
 
 def _fx_fetch_today_from_api() -> dict[str, float]:
