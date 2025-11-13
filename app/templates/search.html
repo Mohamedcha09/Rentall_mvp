@@ -99,7 +99,7 @@
                     <div class="small text-muted mt-1 d-flex align-items-center gap-2">
                       {% if it.city %}<span>🏙️ {{ it.city }}</span>{% endif %}
                       {% if it.price_per_day is not none %}
-                        <span class="badge badge-soft">{{ it.price_per_day }} D/day</span>
+                        <span class="badge badge-soft">{{ it.display_price }} {{ it.display_currency }} D/day</span>
                       {% endif %}
                     </div>
                   </div>

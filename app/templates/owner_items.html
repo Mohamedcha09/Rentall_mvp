@@ -49,7 +49,7 @@
               <span class="badge {% if it.is_active=='yes' %}bg-success{% else %}bg-secondary{% endif %}">
                 {% if it.is_active=='yes' %}Active{% else %}Inactive{% endif %}
               </span>
-              <span class="badge bg-dark-subtle text-dark">{{ it.price_per_day }} /day</span>
+              <span class="badge bg-dark-subtle text-dark">{{ it.display_price }} {{ it.display_currency }}/day</span>
             </div>
           </div>
         </div>

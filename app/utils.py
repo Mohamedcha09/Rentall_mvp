@@ -65,3 +65,13 @@ def category_label(key: str) -> str:
         if c["key"] == key:
             return c["label"]
     return "Other"
+
+
+def fx_convert(amount: float, base: str, quote: str, rates: dict):
+    if base == quote:
+        return round(amount, 2)
+    key = (base, quote)
+    rate = rates.get(key)
+    if not rate:
+        return round(amount, 2)
+    return round(amount * rate, 2)
