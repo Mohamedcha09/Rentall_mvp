@@ -606,8 +606,8 @@ async def currency_middleware(request: Request, call_next):
         chosen = request.cookies.get("disp_cur")
         sess_user = _get_session_user(request)
 
-        if chosen and chosen.upper() in SUPPORTED_CURRENCIES:
-            disp = chosen.upper()
+        if sess_user and sess_user.get("display_currency") in SUPPORTED_CURRENCIES:
+            disp = sess_user["display_currency"]
         else:
             # جرّب تفضيل المستخدم من قاعدة البيانات
             disp = None
@@ -911,28 +911,18 @@ def set_currency_quick(cur: str, request: Request, db: Session = Depends(get_db)
     return resp
 
 @app.post("/settings/currency")
-def settings_currency(cur: str = Form(...), request: Request = None, db: Session = Depends(get_db)):
+def settings_currency(
+    request: Request,
+    cur: str = Form(...),
+    db: Session = Depends(get_db),
+):
     cur = (cur or "").upper()
     referer = request.headers.get("referer") or "/settings"
+
     if cur not in SUPPORTED_CURRENCIES:
         return RedirectResponse(url=referer, status_code=303)
 
-    resp = RedirectResponse(url=referer + "?cur_saved=1", status_code=303)
-    # الكوكي
-    try:
-        resp.set_cookie(
-            "disp_cur",
-            cur,
-            max_age=60 * 60 * 24 * 180,
-            httponly=False,
-            samesite="lax",
-            domain=COOKIE_DOMAIN,
-            secure=HTTPS_ONLY_COOKIES,
-        )
-    except Exception:
-        pass
-
-    # تحديث المستخدم في قاعدة البيانات (لو مسجّل دخول)
+    # --- 1) عدل المستخدم في قاعدة البيانات ---
     sess_user = request.session.get("user")
     if sess_user and "id" in sess_user:
         try:
@@ -940,8 +930,24 @@ def settings_currency(cur: str = Form(...), request: Request = None, db: Session
             if u:
                 u.display_currency = cur
                 db.commit()
+
+            # أيضاً عدل النسخة داخل session فوراً
+            sess_user["display_currency"] = cur
+            request.session["user"] = sess_user
         except Exception:
             db.rollback()
+
+    # --- 2) اكتب الكوكي الجديدة فوراً ---
+    resp = RedirectResponse(url=referer + "?cur_saved=1", status_code=303)
+    resp.set_cookie(
+        "disp_cur",
+        cur,
+        max_age=60 * 60 * 24 * 180,
+        httponly=False,
+        samesite="lax",
+        domain=COOKIE_DOMAIN,
+        secure=HTTPS_ONLY_COOKIES,
+    )
 
     return resp
 
