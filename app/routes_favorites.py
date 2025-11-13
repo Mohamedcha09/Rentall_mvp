@@ -140,7 +140,7 @@ def favorites_page(
     enriched = []
     for it in items:
         base = it.currency or "CAD"
-        price = it.price_per_day or it.price or 0
+        price = getattr(it, "price_per_day", None) or getattr(it, "price", 0)
 
         enriched.append({
             "id": it.id,
@@ -148,7 +148,13 @@ def favorites_page(
             "image_path": it.image_path,
             "city": it.city,
             "category": it.category,
-            "rating": it.rating or 4.8,
+
+            # FIXED: safe rating field
+            "rating": (
+                getattr(it, "avg_stars", None)
+                or getattr(it, "rating_avg", None)
+                or 4.8
+            ),
 
             # Converted price
             "display_price": fx_convert(price, base, user_cur, fx),
