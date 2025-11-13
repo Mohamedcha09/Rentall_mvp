@@ -131,6 +131,7 @@
 {% if items and items|length > 0 %}
   <div class="favorites-grid">
     {% for s in items %}
+
       {% set cover = (s.image_path.split(',')[0] if s.image_path and ',' in s.image_path
                       else (s.image_path.split('|')[0] if s.image_path and '|' in s.image_path
                       else s.image_path)) %}
@@ -138,80 +139,40 @@
         {% set cover = '/' ~ cover %}
       {% endif %}
 
-      {% set logo_src =
-           (s.owner_avatar_path if s.owner_avatar_path else
-           (s.owner and s.owner.avatar_path) if s.owner else None) %}
-      {% if logo_src and not (logo_src.startswith('http') or logo_src.startswith('/')) %}
-        {% set logo_src = '/' ~ logo_src %}
-      {% endif %}
-
-      {% set s_avg_raw = s.avg_stars or s.rating_avg or s.average_rating or s.avg or s.stars_avg or s.starsAverage or s.score or s.rating %}
-      {% if s_avg_raw is not none and (s_avg_raw|string).strip() not in ('', 'None', 'null') %}
-        {% set s_avg = ((s_avg_raw|string).replace(',', '.')|float) %}
-      {% else %}
-        {% set s_avg = none %}
-      {% endif %}
-      {% set has_rating = (s_avg is not none and s_avg > 0) %}
-      {% set is_saved = true %}
-
       <a class="sim-card" href="/items/{{ s.id }}">
         <div class="sim-media">
-          <img class="sim-img" src="{{ cover or url_for('static', path='placeholder.png') }}"
-               alt="{{ s.title|e }}" loading="lazy" decoding="async">
+          <img class="sim-img"
+               src="{{ cover or url_for('static', path='placeholder.png') }}"
+               alt="{{ s.title|e }}">
 
-          {% if logo_src %}
-            <img class="sim-logo" src="{{ logo_src }}" alt="owner logo">
-          {% endif %}
+          <div class="sim-chip">{{ category_label(s.category) }}</div>
 
-          {% if s.category is defined %}
-            <div class="sim-chip">{{ category_label(s.category) if category_label else (s.category_label or s.category) }}</div>
-          {% endif %}
-
-          <div class="sim-rate {{ '' if has_rating else 'empty' }}"
-               aria-label="{{ has_rating and ('%.1f'|format(s_avg) ~ ' stars') or 'No ratings yet' }}">
-            {% if has_rating %}<span class="star">★</span>{{ '%.1f'|format(s_avg) }}{% endif %}
+          <div class="sim-rate">
+            <span class="star">★</span>{{ '%.1f'|format(s.rating) }}
           </div>
         </div>
 
         <div class="sim-body">
-          <div class="sim-head">
-            <div class="sim-title">{{ s.title }}</div>
-            <span role="button" tabindex="0"
-                  class="sim-fav js-fav {{ 'on' if is_saved else '' }}"
-                  data-item-id="{{ s.id }}" aria-pressed="{{ 'true' if is_saved else 'false' }}">
-              <i class="bi {{ 'bi-heart-fill' if is_saved else 'bi-heart' }}"></i>
-            </span>
-          </div>
-
-          <div class="sim-sub">{{ s.subtype or s.kind or (s.category_label or s.category) }}</div>
-
-          <div class="sim-meta">
-            <span>{{ s.city or '—' }}</span>
-            <i class="vsep" aria-hidden="true"></i>
-            <span>Saved</span>
-          </div>
+          <div class="sim-title">{{ s.title }}</div>
+          <div class="sim-sub">{{ s.city or '—' }}</div>
 
           <hr class="sim-cut">
 
           <div class="sim-price-row">
-            {% if s.old_price_per_day %}
-              <div class="sim-price-old">{{ s.old_price_per_day }} {{ s.currency or '$' }}</div>
-            {% else %}
-              <div></div>
-            {% endif %}
-            {% if s.price_per_day is defined %}
-              <div class="sim-price-now">
-                {{ s.display_price }} {{ s.display_currency }}<span class="sim-unit">/ day</span>
-              </div>
-            {% endif %}
+            <div class="sim-price-now">
+              {{ s.display_price }} {{ s.display_currency }}
+              <span class="sim-unit">/ day</span>
+            </div>
           </div>
         </div>
       </a>
+
     {% endfor %}
   </div>
+
 {% else %}
   <div class="empty-box">
-    <img src="{{ url_for('static', path='photo/son.png') }}" alt="No items in favorites">
+    <img src="{{ url_for('static', path='photo/son.png') }}">
   </div>
 {% endif %}
 {% endblock %}
@@ -226,8 +187,8 @@
 
     icon.classList.toggle('bi-heart-fill', !wasFilled);
     icon.classList.toggle('bi-heart', wasFilled);
-    el.classList.toggle('on', !wasFilled);
-    el.setAttribute('aria-pressed', String(!wasFilled));
+    el.classList.toggle('on', !WasFilled);
+    el.setAttribute('aria-pressed', String(!WasFilled));
 
     try{
       let res = await fetch(`/api/favorites/${id}`, {
@@ -237,9 +198,9 @@
       if (!res.ok) throw new Error();
     }catch{
       icon.classList.toggle('bi-heart-fill', wasFilled);
-      icon.classList.toggle('bi-heart', !wasFilled);
+      icon.classList.toggle('bi-heart', !WasFilled);
       el.classList.toggle('on', wasFilled);
-      el.setAttribute('aria-pressed', String(wasFilled));
+      el.setAttribute('aria-pressed', String(WasFilled));
     }
   }
 
