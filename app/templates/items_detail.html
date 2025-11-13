@@ -1141,7 +1141,7 @@
     {% if display_price is defined and display_currency is defined %}
       {{ display_price | money(display_currency) }}
     {% else %}
-      {{ item.price | money(item.currency) }}
+      {{ display_price | money(display_currency) }}
     {% endif %}
     <span class="small-muted">/ day</span>
   </div>
@@ -1198,7 +1198,7 @@
   {% if display_price is defined and display_currency is defined %}
     {{ display_price | money(display_currency) }}
   {% else %}
-    {{ item.price | money(item.currency) }}
+    {{ display_price | money(display_currency) }}
   {% endif %}
 </span>
 
