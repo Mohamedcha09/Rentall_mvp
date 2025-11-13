@@ -912,16 +912,13 @@ def set_currency_quick(cur: str, request: Request, db: Session = Depends(get_db)
 
 @app.post("/settings/currency")
 def settings_currency(cur: str = Form(...), request: Request = None, db: Session = Depends(get_db)):
-    """
-    الاستمارة الرسمية من صفحة الإعدادات.
-    """
     cur = (cur or "").upper()
     referer = request.headers.get("referer") or "/settings"
     if cur not in SUPPORTED_CURRENCIES:
         return RedirectResponse(url=referer, status_code=303)
 
-    resp = RedirectResponse(url=referer, status_code=303)
-    # اكتب الكوكي
+    resp = RedirectResponse(url=referer + "?cur_saved=1", status_code=303)
+    # الكوكي
     try:
         resp.set_cookie(
             "disp_cur",
@@ -935,7 +932,7 @@ def settings_currency(cur: str = Form(...), request: Request = None, db: Session
     except Exception:
         pass
 
-    # حدّث المستخدم (إن وُجد)
+    # تحديث المستخدم في قاعدة البيانات (لو مسجّل دخول)
     sess_user = request.session.get("user")
     if sess_user and "id" in sess_user:
         try:
@@ -945,6 +942,7 @@ def settings_currency(cur: str = Form(...), request: Request = None, db: Session
                 db.commit()
         except Exception:
             db.rollback()
+
     return resp
 
 # -----------------------------------------------------------------------------
