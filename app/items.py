@@ -367,7 +367,7 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     item = db.query(Item).get(item_id)
 
     # 2) نحدد عملة العرض في أول السطر (مهم جداً)
-    disp_cur = _display_currency(request)
+    disp_cur = request.state.display_currency
 
     if not item:
         return request.app.templates.TemplateResponse(

@@ -604,6 +604,8 @@ async def currency_middleware(request: Request, call_next):
             return await call_next(request)
 
         chosen = request.cookies.get("disp_cur")
+        if chosen in SUPPORTED_CURRENCIES:
+            disp = chosen
         sess_user = _get_session_user(request)
 
         if sess_user and sess_user.get("display_currency") in SUPPORTED_CURRENCIES:
