@@ -7,7 +7,7 @@ from urllib.parse import quote
 import random
 
 from .database import get_db
-from .models import Item
+from .models import Item, FxRate        # ← مهم جداً
 from .utils import CATEGORIES, category_label as _category_label
 
 router = APIRouter()
@@ -16,11 +16,41 @@ EARTH_RADIUS_KM = 6371.0
 _IMG_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
 
-# ==========================
-# Helpers: serialization
-# ==========================
+# ======================================================
+# 1) تحميل أسعار الصرف من قاعدة البيانات (24h)
+# ======================================================
+def load_fx_dict(db: Session):
+    """
+    يرجع dict بالشكل:
+    {("EUR","CAD"):1.45 , ("USD","CAD"):1.36 , ...}
+    """
+    rows = (
+        db.query(FxRate.base, FxRate.quote, FxRate.rate)
+        .filter(FxRate.effective_date == func.current_date())
+        .all()
+    )
+    rates = {}
+    for base, quote, rate in rows:
+        rates[(base.strip(), quote.strip())] = float(rate)
+    return rates
+
+
+def fx_convert(amount: float, base: str, quote: str, rates: dict):
+    """تحويل السعر بين العملات باستخدام fx_rates."""
+    if base == quote:
+        return round(amount, 2)
+
+    key = (base, quote)
+    if key not in rates:
+        return round(amount, 2)
+
+    return round(amount * rates[key], 2)
+
+
+# ======================================================
+# 2) Serialize basic fields
+# ======================================================
 def _serialize(i: Item) -> dict:
-    """Convert an Item row into a template-safe dict."""
     return {
         "id": getattr(i, "id", None),
         "title": getattr(i, "title", "") or "",
@@ -29,14 +59,14 @@ def _serialize(i: Item) -> dict:
         "category": getattr(i, "category", "") or "",
         "price_per_day": getattr(i, "price_per_day", None),
         "rating": getattr(i, "rating", 4.8) or 4.8,
+        "currency": getattr(i, "currency", "CAD"),   # ← مهم جداً
     }
 
 
-# ==========================
-# Geo / City filter
-# ==========================
-def _apply_city_or_gps_filter(qs, city: str | None, lat: float | None, lng: float | None, radius_km: float | None):
-    """Apply a city filter or a radius filter (approximate Haversine/acos)."""
+# ======================================================
+# 3) تطبيق الفلتر الجغرافي
+# ======================================================
+def _apply_city_or_gps_filter(qs, city, lat, lng, radius_km):
     if lat is not None and lng is not None and radius_km:
         distance_expr = EARTH_RADIUS_KM * func.acos(
             func.cos(func.radians(lat)) *
@@ -55,9 +85,7 @@ def _apply_city_or_gps_filter(qs, city: str | None, lat: float | None, lng: floa
     return qs
 
 
-# Flexible category filtering (supports key or label or legacy partial match)
 def _apply_category_filter(qs, code: str, label: str):
-    # Whether the data is stored by key (vehicle) or by label (Vehicles) or derived
     return qs.filter(
         or_(
             Item.category == code,
@@ -68,19 +96,14 @@ def _apply_category_filter(qs, code: str, label: str):
     )
 
 
-# ==========================
-# Static images helpers
-# ==========================
+# ======================================================
+# 4) Static banners / top-strip
+# ======================================================
 def _static_root() -> Path:
-    # static folder inside app/
     return Path(__file__).resolve().parent / "static"
 
 
 def _list_static_images_try(paths: list[str]) -> list[str]:
-    """
-    Try to read images from several paths under /static.
-    Returns URLs like /static/... with URL-encoding.
-    """
     base = _static_root()
     urls: list[str] = []
     for rel in paths:
@@ -96,14 +119,12 @@ def _list_static_images_try(paths: list[str]) -> list[str]:
 
 
 def _pick_banners_from_static(max_count: int = 8) -> list[str]:
-    # Supports: /static/img/banners and /static/banners
     candidates = _list_static_images_try(["img/banners", "banners"])
     random.shuffle(candidates)
     return candidates[:max_count]
 
 
 def _pick_topstrip_from_static(limit_per_col: int = 12) -> list[list[str]]:
-    # Supports: /static/img/top_slider | /static/img/topstrip | /static/top_slider | /static/topstrip
     imgs = _list_static_images_try(["img/top_slider", "img/topstrip", "top_slider", "topstrip"])
     cols = [[], [], []]
     if not imgs:
@@ -114,25 +135,9 @@ def _pick_topstrip_from_static(limit_per_col: int = 12) -> list[list[str]]:
     return cols
 
 
-def _fallback_media_from_items(db: Session, limit: int = 24):
-    rows = (
-        db.query(Item.image_path)
-        .filter(Item.is_active == "yes", Item.image_path.isnot(None), Item.image_path != "")
-        .order_by(Item.created_at.desc())
-        .limit(limit)
-        .all()
-    )
-    imgs = [r[0] for r in rows if r[0]]
-    banners = imgs[:5]
-    cols = [[], [], []]
-    for i, src in enumerate(imgs[5:]):
-        cols[i % 3].append(src)
-    return banners, cols
-
-
-# ==========================
-# Route
-# ==========================
+# ======================================================
+# 5) Route — HOME PAGE
+# ======================================================
 @router.get("/")
 def home_page(
     request: Request,
@@ -143,80 +148,104 @@ def home_page(
     radius_km: float | None = Query(None),
     db: Session = Depends(get_db),
 ):
-    # alias for the parameter
+
+    # alias
     if lng is None and lon is not None:
         lng = lon
 
-    # Read cookies if parameters are missing
+    # Read cookies if empty
     try:
         if not city:
             city = request.cookies.get("city") or None
+
         if lat is None:
             c_lat = request.cookies.get("lat")
             if c_lat not in (None, ""):
                 lat = float(c_lat)
+
         if lng is None:
             c_lng = request.cookies.get("lng") or request.cookies.get("lon")
             if c_lng not in (None, ""):
                 lng = float(c_lng)
+
         if not radius_km:
             ck = request.cookies.get("radius_km")
             radius_km = float(ck) if ck else None
     except Exception:
         pass
 
+    # ====================================
+    # تحديد عملة المستخدم
+    # ====================================
+    session_user = getattr(request, "session", {}).get("user")
+    if session_user and session_user.get("display_currency"):
+        user_currency = session_user["display_currency"]
+    else:
+        user_currency = request.cookies.get("disp_cur") or "CAD"
+
+    # تحميل أسعار الصرف
+    rates = load_fx_dict(db)
+
+    # تطبيق الفلتر
     base_q = db.query(Item).filter(Item.is_active == "yes")
     filtered_q = _apply_city_or_gps_filter(base_q, city, lat, lng, radius_km)
     filtering_active = (lat is not None and lng is not None and radius_km) or (city not in (None, ""))
 
-    # Slider “Near you / Popular”
+    # Nearby items
     if filtering_active:
         nearby_rows = filtered_q.order_by(Item.created_at.desc()).limit(20).all()
     else:
         nearby_rows = base_q.order_by(func.random()).limit(20).all()
+
     nearby_items = [_serialize(i) for i in nearby_rows]
 
-    # Slider for each category — (Important fix: CATEGORIES is a list of dicts)
+    # تطبيق تحويل السعر
+    for it in nearby_items:
+        base = it.get("currency", "CAD")
+        price = it.get("price_per_day") or 0
+        it["display_price"] = fx_convert(price, base, user_currency, rates)
+        it["display_currency"] = user_currency
+
+    # Category sliders
     items_by_category: dict[str, list[dict]] = {}
     for cat in CATEGORIES:
         code = cat.get("key", "")
         label = cat.get("label", "")
-        if not code and not label:
-            continue
 
         q_cat = base_q
-        # Apply location filter if present
         if filtering_active:
             q_cat = _apply_city_or_gps_filter(q_cat, city, lat, lng, radius_km)
-        # Flexible category filter
         q_cat = _apply_category_filter(q_cat, code, label)
 
         rows = q_cat.order_by(func.random()).limit(12).all()
         lst = [_serialize(i) for i in rows]
+
+        # Apply FX
+        for it in lst:
+            base = it.get("currency", "CAD")
+            price = it.get("price_per_day") or 0
+            it["display_price"] = fx_convert(price, base, user_currency, rates)
+            it["display_currency"] = user_currency
+
         if lst:
             items_by_category[code] = lst
 
-    # Grid “All items”
+    # All items grid
     if filtering_active:
         all_rows = filtered_q.order_by(Item.created_at.desc()).limit(60).all()
     else:
         all_rows = base_q.order_by(func.random()).limit(60).all()
+
     all_items = [_serialize(i) for i in all_rows]
 
-    # Media: banners and top-strip from static
+    for it in all_items:
+        base = it.get("currency", "CAD")
+        price = it.get("price_per_day") or 0
+        it["display_price"] = fx_convert(price, base, user_currency, rates)
+        it["display_currency"] = user_currency
+
     banners = _pick_banners_from_static(max_count=8)
     top_strip_cols = _pick_topstrip_from_static(limit_per_col=12)
-
-    # Fallback if both are empty
-    if not banners and all(len(c) == 0 for c in top_strip_cols):
-        fb_banners, fb_cols = _fallback_media_from_items(db)
-        banners = fb_banners or banners
-        top_strip_cols = fb_cols or top_strip_cols
-
-    # If we found no banners at all, take from item images
-    if not banners:
-        candidates = nearby_items[:5] or all_items[:5]
-        banners = [i["image_path"] for i in candidates if i.get("image_path")]
 
     ctx = {
         "request": request,
@@ -230,21 +259,16 @@ def home_page(
         "lat": lat,
         "lng": lng,
         "radius_km": radius_km or 25.0,
-        "category_label": _category_label,  # available in template
-        "session_user": getattr(request, "session", {}).get("user") if hasattr(request, "session") else None,
+        "category_label": _category_label,
+        "session_user": session_user,
         "favorites_ids": [],
     }
 
-    # Use app-registered templates if available
     templates = getattr(request.app, "templates", None)
     if templates:
-        try:
-            templates.env.globals["category_label"] = _category_label
-        except Exception:
-            pass
+        templates.env.globals["category_label"] = _category_label
         return templates.TemplateResponse("home.html", ctx)
 
-    # If the app has no templates attribute, create one locally
     from starlette.templating import Jinja2Templates
     templates = Jinja2Templates(directory="app/templates")
     templates.env.globals["category_label"] = _category_label
