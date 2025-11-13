@@ -264,18 +264,29 @@ def _fx_ensure_daily_sync():
 
 def geoip_guess_currency(request: Request) -> str:
     """
-    تخمين بسيط لعملة العرض من البلد/المنطقة الموجودة في الـ session (تمتلئ عبر utils_geo).
-    fallback = CAD إن لم تتوفر معلومات.
+    يختار عملة العرض حسب البلد في الـ session:
+      - CA  → CAD
+      - US  → USD
+      - دول الأورو → EUR
+      - باقي العالم → USD
     """
     try:
         sess_geo = request.session.get("geo") or {}
         country = (sess_geo.get("country") or "").upper()
+
         if country == "CA":
             return "CAD"
         if country == "US":
             return "USD"
-        # دول اليورو (للتبسيط: أي بلد غير CA/US نرجعه EUR)
-        return "EUR"
+
+        euro_countries = {
+            "FR","DE","ES","IT","PT","NL","BE","LU","IE","FI",
+            "AT","GR","CY","EE","LV","LT","MT","SI","SK","HR"
+        }
+        if country in euro_countries:
+            return "EUR"
+
+        return "USD"
     except Exception:
         return "CAD"
 
@@ -592,57 +603,45 @@ async def fx_autosync_mw(request: Request, call_next):
 @app.middleware("http")
 async def currency_middleware(request: Request, call_next):
     """
-    يحدد عملة العرض لكل طلب وفق الأولوية:
-      1) كوكي disp_cur (اختيار يدوي)
-      2) users.display_currency إذا كان المستخدم مسجّلًا
-      3) تخمين GeoIP (أو CAD افتراضيًا)
-    ويثبت القيمة في request.state.display_currency + يكتب/يحدّث الكوكي.
+    أولويات اختيار عملة العرض:
+      1) المستخدم المسجّل (users.display_currency)
+      2) كوكي disp_cur إن وُجدت
+      3) التخمين من البلد geoip_guess_currency (للزائر الجديد)
     """
     try:
-        # لا نلمس الويبهوك
         if request.url.path.startswith("/webhooks/"):
             return await call_next(request)
 
-        chosen = request.cookies.get("disp_cur")
-        if chosen in SUPPORTED_CURRENCIES:
-            disp = chosen
-        sess_user = _get_session_user(request)
+        disp = None
 
+        # 1) لو المستخدم مسجل وعنده display_currency → هي الأولى
+        sess_user = request.session.get("user")
         if sess_user and sess_user.get("display_currency") in SUPPORTED_CURRENCIES:
             disp = sess_user["display_currency"]
-        else:
-            # جرّب تفضيل المستخدم من قاعدة البيانات
-            disp = None
-            if sess_user and "id" in sess_user:
-                try:
-                    db_gen = get_db()
-                    db: Session = next(db_gen)
-                    db_user = db.query(User).filter(User.id == sess_user["id"]).first()
-                    if db_user and getattr(db_user, "display_currency", None):
-                        dc = str(db_user.display_currency).upper()
-                        if dc in SUPPORTED_CURRENCIES:
-                            disp = dc
-                    try:
-                        next(db_gen)
-                    except StopIteration:
-                        pass
-                except Exception:
-                    pass
 
-            # وإلا استخدم التخمين
-            if not disp:
-                disp = geoip_guess_currency(request)
+        # 2) كوكي
+        if not disp:
+            chosen = request.cookies.get("disp_cur")
+            if chosen in SUPPORTED_CURRENCIES:
+                disp = chosen
 
-        # خزّن في state
+        # 3) تخمين البلد
+        if not disp:
+            disp = geoip_guess_currency(request)
+
+        if disp not in SUPPORTED_CURRENCIES:
+            disp = "CAD"
+
         request.state.display_currency = disp
 
-        # اكتب الكوكي دائمًا (يجعلها ثابتة للزائر)
         response = await call_next(request)
+
+        # نكتب الكوكي بالعملة النهائية
         try:
             response.set_cookie(
                 "disp_cur",
                 disp,
-                max_age=60 * 60 * 24 * 180,  # 180 يوم
+                max_age=60 * 60 * 24 * 180,
                 httponly=False,
                 samesite="lax",
                 domain=COOKIE_DOMAIN,
@@ -650,10 +649,10 @@ async def currency_middleware(request: Request, call_next):
             )
         except Exception:
             pass
+
         return response
 
     except Exception:
-        # لا نكسر الطلب لو حصل خطأ
         return await call_next(request)
 
 # اجعل عملة العرض متاحة للتمبليت عبر global callable
