@@ -1147,15 +1147,6 @@
     {% endif %}
     <span class="small-muted">/ day</span>
   </div>
-
-  <div class="lead-old small-muted" style="font-size:.9rem">
-    السعر الأصلي:
-    {% if base_amount is defined and base_currency is defined %}
-      {{ base_amount | money(base_currency) }}
-    {% else %}
-      {{ item.price | money(item.currency) }}
-    {% endif %}
-  </div>
 </div>
 
 
