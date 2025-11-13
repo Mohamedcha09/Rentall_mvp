@@ -89,7 +89,7 @@
       <form method="post" action="/settings/currency" class="vstack gap-3">
         <div>
           <label class="form-label">Display currency</label>
-          <select class="form-select" name="currency" required>
+          <select class="form-select" name="cur" required>
             <option value="CAD" {% if _cur == 'CAD' %}selected{% endif %}>CAD — Canadian Dollar</option>
             <option value="USD" {% if _cur == 'USD' %}selected{% endif %}>USD — US Dollar</option>
             <option value="EUR" {% if _cur == 'EUR' %}selected{% endif %}>EUR — Euro</option>
