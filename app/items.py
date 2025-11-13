@@ -44,9 +44,8 @@ def _display_currency(request: Request) -> str:
 
 def fx_convert_smart(db: Session, amount: Optional[float], base: str, quote: str) -> float:
     """
-    تحويل آمن باستخدام جدول FxRate (إن وُجد في models.py) أو الإرجاع كما هو عند التعذّر.
-    - يأخذ سعر اليوم (effective_date = today)، وإن لم يوجد فأحدث سجل متاح.
-    - إذا لم نجد الجدول/السعر، نعيد المبلغ كما هو لو كانت العملات مختلفة (fallback).
+    تحويل آمن باستخدام جدول FxRate.
+    يأخذ سعر اليوم، وإن لم يوجد → أحدث تاريخ متاح.
     """
     try:
         if amount is None:
@@ -56,36 +55,35 @@ def fx_convert_smart(db: Session, amount: Optional[float], base: str, quote: str
         if base == quote:
             return float(amount)
 
-        # نحاول استدعاء FxRate من models إن كان موجوداً
-        try:
-            from .models import FxRate  # type: ignore
-        except Exception:
-            # لا يوجد جدول معدلات → fallback: أعد نفس المبلغ
-            return float(amount)
+        from .models import FxRate  # الموديل اللي عندك
 
-        # ابحث عن سعر اليوم
         today = date.today()
+
+        # جرّب سعر اليوم
         row = (
             db.query(FxRate)
-            .filter(FxRate.base == base, FxRate.quote == quote, FxRate.effective_date == today)
-            .order_by(FxRate.id.desc())
+            .filter(
+                FxRate.base == base,
+                FxRate.quote == quote,
+                FxRate.effective_date == today,
+            )
             .first()
         )
+
         if not row:
-            # خذ أحدث سجل متاح
+            # خذ أحدث تاريخ متاح
             row = (
                 db.query(FxRate)
                 .filter(FxRate.base == base, FxRate.quote == quote)
-                .order_by(FxRate.effective_date.desc(), FxRate.id.desc())
+                .order_by(FxRate.effective_date.desc())
                 .first()
             )
+
         if row and getattr(row, "rate", None):
             return float(amount) * float(row.rate)
 
-        # لا يوجد سعر معروف
         return float(amount)
     except Exception:
-        # أي خطأ غير متوقع → لا تكسر الصفحة
         try:
             return float(amount or 0.0)
         except Exception:
