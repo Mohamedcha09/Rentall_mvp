@@ -1140,15 +1140,8 @@
     {# السعر المحوَّل بعملة العرض #}
     {% if display_price is defined and display_currency is defined %}
       {{ display_price | money(display_currency) }}
-    {% elif base_amount is defined and base_currency is defined %}
-      {{ base_amount | money(base_currency) }}
     {% else %}
-      {% if display_price is defined %}
-  {{ display_price | money(display_currency) }}
-{% else %}
-  {{ item.price | money(item.currency) }}
-{% endif %}
-
+      {{ item.price | money(item.currency) }}
     {% endif %}
     <span class="small-muted">/ day</span>
   </div>
@@ -1201,17 +1194,11 @@
         <!-- Bottom Booking Bar -->
         <div class="air-fixed" id="airBar" role="region" aria-label="Booking bar">
           <div class="air-price">
-            {# السعر المحوَّل بعملة العرض #}
-<span class="now">
+          <span class="now">
   {% if display_price is defined and display_currency is defined %}
     {{ display_price | money(display_currency) }}
   {% else %}
-    {% if display_price is defined %}
-  {{ display_price | money(display_currency) }}
-{% else %}
-  {{ item.price | money(item.currency) }}
-{% endif %}
-{# fallback لو لم تُمرَّر المتغيّرات #}
+    {{ item.price | money(item.currency) }}
   {% endif %}
 </span>
 
