@@ -360,13 +360,20 @@ def items_list(
         }
     )
 
-
 @router.get("/items/{item_id}")
 def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     item = db.query(Item).get(item_id)
 
-    # ✔ ✔ ✔ الحل النهائي
-    disp_cur = _display_currency(request)
+    # READ display currency EXACTLY LIKE HOME
+    session_u = request.session.get("user")
+    disp_cur = None
+    if session_u and session_u.get("display_currency"):
+        disp_cur = session_u["display_currency"].upper()
+    else:
+        disp_cur = getattr(request.state, "display_currency", "CAD").upper()
+
+    # Inject in request.state (important for money filter)
+    request.state.display_currency = disp_cur
 
     if not item:
         return request.app.templates.TemplateResponse(
@@ -374,68 +381,55 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             {
                 "request": request,
                 "item": None,
-                "session_user": request.session.get("user"),
+                "session_user": session_u,
                 "immersive": True,
+                "display_currency": disp_cur,
             }
         )
 
     from sqlalchemy import func as _func
 
+    # category + owner
     item.category_label = category_label(item.category)
     owner = db.query(User).get(item.owner_id)
     owner_badges = get_user_badges(owner, db) if owner else []
 
-    reviews_q = (
+    # ---------- Reviews ----------
+    reviews = (
         db.query(ItemReview)
         .filter(ItemReview.item_id == item.id)
         .order_by(ItemReview.created_at.desc())
+        .all()
     )
-    reviews = reviews_q.all()
+    avg_stars = db.query(_func.coalesce(_func.avg(ItemReview.stars), 0)).filter(ItemReview.item_id == item.id).scalar() or 0
+    cnt_stars = db.query(_func.count(ItemReview.id)).filter(ItemReview.item_id == item.id).scalar() or 0
 
-    avg_stars = (
-        db.query(_func.coalesce(_func.avg(ItemReview.stars), 0))
-        .filter(ItemReview.item_id == item.id)
-        .scalar() or 0
-    )
-
-    cnt_stars = (
-        db.query(_func.count(ItemReview.id))
-        .filter(ItemReview.item_id == item.id)
-        .scalar() or 0
-    )
-
-    session_u = request.session.get("user")
+    # ---------- Favorite ----------
     is_favorite = False
     if session_u:
         is_favorite = db.query(_Fav.id).filter_by(
-            user_id=session_u["id"], item_id=item.id
+            user_id=session_u["id"],
+            item_id=item.id
         ).first() is not None
 
+    # ---------- Similar items ----------
     similar_items = get_similar_items(db, item)
     for s in similar_items:
         s.category_label = category_label(s.category)
-
-        base_cur_s = (getattr(s, "currency", None) or "CAD").upper()
-        src_amount_s = getattr(s, "price_per_day", None)
-        if src_amount_s is None:
-            src_amount_s = getattr(s, "price", 0.0)
-
-        s.display_price = fx_convert_smart(db, src_amount_s, base_cur_s, disp_cur)
+        base_s = (s.currency or "CAD").upper()
+        src_s = getattr(s, "price_per_day", None) or getattr(s, "price", 0)
+        s.display_price = fx_convert_smart(db, src_s, base_s, disp_cur)
         s.display_currency = disp_cur
 
     favorite_ids = []
     if session_u:
         favorite_ids = [
-            row[0] for row in db.query(_Fav.item_id)
-                                .filter(_Fav.user_id == session_u["id"])
-                                .all()
+            r[0] for r in db.query(_Fav.item_id).filter(_Fav.user_id == session_u["id"]).all()
         ]
 
-    base_cur = (getattr(item, "currency", None) or "CAD").upper()
-    src_amount = getattr(item, "price_per_day", None)
-    if src_amount is None:
-        src_amount = getattr(item, "price", 0.0)
-
+    # ---------- PRICE of main item ----------
+    base_cur = (item.currency or "CAD").upper()
+    src_amount = getattr(item, "price_per_day", None) or getattr(item, "price", 0)
     display_price = fx_convert_smart(db, src_amount, base_cur, disp_cur)
 
     return request.app.templates.TemplateResponse(
@@ -445,12 +439,13 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             "item": item,
             "owner": owner,
             "owner_badges": owner_badges,
-            "session_user": request.session.get("user"),
+            "session_user": session_u,
             "item_reviews": reviews,
-            "item_rating_avg": round(float(avg_stars), 2),
+            "item_rating_avg": float(avg_stars),
             "item_rating_count": int(cnt_stars),
             "immersive": True,
             "is_favorite": is_favorite,
+
             "similar_items": similar_items,
             "favorite_ids": favorite_ids,
 
