@@ -599,18 +599,18 @@ class SupportMessage(Base):
 # =========================
 # FX rates (daily)
 # =========================
+# داخل app/models.py
+
 class FxRate(Base):
     __tablename__ = "fx_rates"
 
-    id = Column(Integer, primary_key=True, index=True)
-    base = Column(String(3), nullable=False, index=True)   # CAD / USD / EUR
-    quote = Column(String(3), nullable=False, index=True)  # CAD / USD / EUR
-    rate = Column(Float, nullable=False)                   # 1 base => rate quote
-    effective_date = Column(Date, nullable=False, index=True)
+    # نستخدم الثلاثة أعمدة كمفتاح أساسي مركّب، بدون أي id
+    base = Column(String(3), primary_key=True)
+    quote = Column(String(3), primary_key=True)
+    effective_date = Column(Date, primary_key=True)
 
-    __table_args__ = (
-        UniqueConstraint("base", "quote", "effective_date", name="uix_fx_base_quote_day"),
-    )
+    # سعر الصرف
+    rate = Column(Float, nullable=False)
 
 
 # =========================
