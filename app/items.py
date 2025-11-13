@@ -360,14 +360,16 @@ def items_list(
         }
     )
 
-
 # ================= Item details =================
 @router.get("/items/{item_id}")
 def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
+    # 1) نحصل على العنصر
     item = db.query(Item).get(item_id)
+
+    # 2) نحدد عملة العرض في أول السطر (مهم جداً)
     disp_cur = _display_currency(request)
+
     if not item:
-        # يعرض صفحة العنصر مع رسالة "Item not found."
         return request.app.templates.TemplateResponse(
             "items_detail.html",
             {
@@ -378,34 +380,34 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             }
         )
 
-    # ✅ نحدد عملة العرض هنا في البداية
-    disp_cur = _display_currency(request)
-
     from sqlalchemy import func as _func
 
+    # 3) تجهيز بيانات العنصر
     item.category_label = category_label(item.category)
     owner = db.query(User).get(item.owner_id)
     owner_badges = get_user_badges(owner, db) if owner else []
 
-    # Reviews
+    # 4) المراجعات
     reviews_q = (
         db.query(ItemReview)
         .filter(ItemReview.item_id == item.id)
         .order_by(ItemReview.created_at.desc())
     )
     reviews = reviews_q.all()
+
     avg_stars = (
         db.query(_func.coalesce(_func.avg(ItemReview.stars), 0))
         .filter(ItemReview.item_id == item.id)
         .scalar() or 0
     )
+
     cnt_stars = (
         db.query(_func.count(ItemReview.id))
         .filter(ItemReview.item_id == item.id)
         .scalar() or 0
     )
 
-    # Favorite state (لزر القلب الكبير في الهيرو)
+    # 5) هل هو مفضل؟
     session_u = request.session.get("user")
     is_favorite = False
     if session_u:
@@ -413,24 +415,21 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             user_id=session_u["id"], item_id=item.id
         ).first() is not None
 
-    # Bring similar items
+    # 6) العناصر المشابهة
     similar_items = get_similar_items(db, item)
+
     for s in similar_items:
-        # اسم الفئة (مثل قبل)
         s.category_label = category_label(s.category)
 
-        # ===== NEW: حساب سعر العرض لكل عنصر مشابه =====
         base_cur_s = (getattr(s, "currency", None) or "CAD").upper()
-        # نفضّل price_per_day، لو مش موجود نرجع إلى price
         src_amount_s = getattr(s, "price_per_day", None)
         if src_amount_s is None:
             src_amount_s = getattr(s, "price", 0.0)
 
-        # السعر المحوَّل بعملة العرض الحالية
         s.display_price = fx_convert_smart(db, src_amount_s, base_cur_s, disp_cur)
         s.display_currency = disp_cur
 
-    # IDs العناصر المفضلة لتمييز القلوب داخل "Similar near you"
+    # 7) المعرفات المفضلة
     favorite_ids = []
     if session_u:
         favorite_ids = [
@@ -439,16 +438,16 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
                                 .all()
         ]
 
-    # ===== NEW: display price for details =====
+    # 8) السعر الحقيقي للعنصر الأساسي
     base_cur = (getattr(item, "currency", None) or "CAD").upper()
 
-    # نفضّل السعر اليومي، وإذا غير موجود نرجع للسعر العادي
     src_amount = getattr(item, "price_per_day", None)
     if src_amount is None:
         src_amount = getattr(item, "price", 0.0)
 
     display_price = fx_convert_smart(db, src_amount, base_cur, disp_cur)
 
+    # 9) عرض القالب
     return request.app.templates.TemplateResponse(
         "items_detail.html",
         {
@@ -465,14 +464,12 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             "similar_items": similar_items,
             "favorite_ids": favorite_ids,
 
-            # NEW:
             "display_price": float(display_price),
             "display_currency": disp_cur,
-            "base_amount": float(src_amount),   # ← الأساس
-            "base_currency": base_cur,          # ← عملة المنشور الأصلية
+            "base_amount": float(src_amount),
+            "base_currency": base_cur,
         }
     )
-
 
 # ================= Owner's items =================
 @router.get("/owner/items")
