@@ -187,8 +187,8 @@
 
     icon.classList.toggle('bi-heart-fill', !wasFilled);
     icon.classList.toggle('bi-heart', wasFilled);
-    el.classList.toggle('on', !WasFilled);
-    el.setAttribute('aria-pressed', String(!WasFilled));
+    el.classList.toggle('on', !wasFilled);
+    el.setAttribute('aria-pressed', String(!wasFilled));
 
     try{
       let res = await fetch(`/api/favorites/${id}`, {
@@ -198,9 +198,9 @@
       if (!res.ok) throw new Error();
     }catch{
       icon.classList.toggle('bi-heart-fill', wasFilled);
-      icon.classList.toggle('bi-heart', !WasFilled);
+      icon.classList.toggle('bi-heart', !wasFilled);
       el.classList.toggle('on', wasFilled);
-      el.setAttribute('aria-pressed', String(WasFilled));
+      el.setAttribute('aria-pressed', String(wasFilled));
     }
   }
 

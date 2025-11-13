@@ -10,9 +10,6 @@ from .database import get_db
 from .models import User, Item, Favorite, FxRate
 from .utils import category_label
 
-# -----------------------------
-# Helper: Get current user
-# -----------------------------
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
     uid = data.get("id")
@@ -20,9 +17,6 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optiona
         return None
     return db.get(User, uid)
 
-# -----------------------------
-# Load 24h FX Rates
-# -----------------------------
 def load_fx_dict(db: Session):
     rows = (
         db.query(FxRate.base, FxRate.quote, FxRate.rate)
@@ -34,39 +28,31 @@ def load_fx_dict(db: Session):
         out[(base.strip(), quote.strip())] = float(rate)
     return out
 
-def fx_convert(amount: float, base: str, quote: str, fx: dict):
+def fx_convert(amount, base, quote, fx):
+    try:
+        amount = float(amount)
+    except:
+        amount = 0.0
+
     if base == quote:
         return round(amount, 2)
+
     key = (base, quote)
     if key not in fx:
         return round(amount, 2)
-    return round(amount * fx[key], 2)
 
-# ===========================================================
-# API CRUD
-# ===========================================================
+    return round(amount * float(fx[key]), 2)
+
 api = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
 @api.get("/", response_model=List[int])
-def list_favorite_ids(
-    request: Request,
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
+def list_favorite_ids(request: Request, db: Session = Depends(get_db), user: Optional[User] = Depends(get_current_user)):
     if not user:
         raise HTTPException(401, "Unauthorized")
-    return [
-        fav.item_id
-        for fav in db.query(Favorite).filter_by(user_id=user.id).all()
-    ]
+    return [fav.item_id for fav in db.query(Favorite).filter_by(user_id=user.id).all()]
 
 @api.post("/{item_id}")
-def add_favorite(
-    item_id: int,
-    request: Request,
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
+def add_favorite(item_id: int, request: Request, db: Session = Depends(get_db), user: Optional[User] = Depends(get_current_user)):
     if not user:
         raise HTTPException(401, "Unauthorized")
 
@@ -83,12 +69,7 @@ def add_favorite(
     return {"ok": True}
 
 @api.delete("/{item_id}")
-def remove_favorite(
-    item_id: int,
-    request: Request,
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
+def remove_favorite(item_id: int, request: Request, db: Session = Depends(get_db), user: Optional[User] = Depends(get_current_user)):
     if not user:
         raise HTTPException(401, "Unauthorized")
 
@@ -100,17 +81,10 @@ def remove_favorite(
     db.commit()
     return {"ok": True}
 
-# ===========================================================
-# PAGE: /favorites
-# ===========================================================
 page = APIRouter(tags=["favorites"])
 
 @page.get("/favorites")
-def favorites_page(
-    request: Request,
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
+def favorites_page(request: Request, db: Session = Depends(get_db), user: Optional[User] = Depends(get_current_user)):
     if not user:
         return RedirectResponse("/login?next=/favorites", 303)
 
@@ -127,7 +101,6 @@ def favorites_page(
         if it:
             items.append(it)
 
-    # Determine preferred currency
     session_user = request.session.get("user") or {}
     if session_user.get("display_currency"):
         user_cur = session_user["display_currency"]
@@ -136,11 +109,10 @@ def favorites_page(
 
     fx = load_fx_dict(db)
 
-    # Build final items
     enriched = []
     for it in items:
         base = it.currency or "CAD"
-        price = getattr(it, "price_per_day", None) or getattr(it, "price", 0)
+        amount = getattr(it, "price_per_day", None) or getattr(it, "price", 0)
 
         enriched.append({
             "id": it.id,
@@ -148,16 +120,8 @@ def favorites_page(
             "image_path": it.image_path,
             "city": it.city,
             "category": it.category,
-
-            # FIXED: safe rating field
-            "rating": (
-                getattr(it, "avg_stars", None)
-                or getattr(it, "rating_avg", None)
-                or 4.8
-            ),
-
-            # Converted price
-            "display_price": fx_convert(price, base, user_cur, fx),
+            "rating": getattr(it, "avg_stars", None) or getattr(it, "rating_avg", None) or 4.8,
+            "display_price": fx_convert(amount, base, user_cur, fx),
             "display_currency": user_cur,
         })
 
@@ -172,7 +136,6 @@ def favorites_page(
         },
     )
 
-# Combine routes
 router = APIRouter()
 router.include_router(api)
 router.include_router(page)
