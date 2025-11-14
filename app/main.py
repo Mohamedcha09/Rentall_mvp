@@ -606,44 +606,71 @@ async def fx_autosync_mw(request: Request, call_next):
     _fx_ensure_daily_sync()
     return await call_next(request)
 
-
 @app.middleware("http")
 async def currency_middleware(request: Request, call_next):
     """
     أولويات اختيار عملة العرض:
       1) المستخدم المسجّل (users.display_currency)
-      2) كوكي disp_cur إن وُجدت
-      3) التخمين من البلد geoip_guess_currency (للزائر الجديد)
+      2) لو geo في session مضبوط يدويًا (source == 'manual') نأخذ عملته
+      3) كوكي disp_cur إن وُجدت
+      4) التخمين من البلد geoip_guess_currency (للزائر الجديد)
     """
     try:
+        # لا نعمل أي شيء مع webhooks
         if request.url.path.startswith("/webhooks/"):
             return await call_next(request)
 
         disp = None
 
-        # 1) لو المستخدم مسجل وعنده display_currency → هي الأولى
-        sess_user = request.session.get("user")
+        # ---------- 0) نقرأ geo من الـ session ونرى إن كان يدوي ----------
+        geo_sess = None
+        manual_cur = None
+        try:
+            sess = getattr(request, "session", {}) or {}
+            geo_sess = sess.get("geo") if isinstance(sess, dict) else None
+        except Exception:
+            geo_sess = None
+
+        if isinstance(geo_sess, dict) and geo_sess.get("source") == "manual":
+            c = (geo_sess.get("currency") or "").upper()
+            if c in SUPPORTED_CURRENCIES:
+                manual_cur = c
+
+        # ---------- 1) المستخدم المسجّل (users.display_currency) ----------
+        sess_user = None
+        try:
+            sess_user = request.session.get("user")
+        except Exception:
+            sess_user = None
+
         if sess_user and sess_user.get("display_currency") in SUPPORTED_CURRENCIES:
             disp = sess_user["display_currency"]
 
-        # 2) كوكي
+        # ---------- 2) لو geo يدوي (manual) يغلِب الكوكي ----------
+        if not disp and manual_cur:
+            disp = manual_cur
+
+        # ---------- 3) كوكي disp_cur ----------
         if not disp:
             chosen = request.cookies.get("disp_cur")
             if chosen in SUPPORTED_CURRENCIES:
                 disp = chosen
 
-        # 3) تخمين البلد
+        # ---------- 4) تخمين من البلد (geoip_guess_currency) ----------
         if not disp:
             disp = geoip_guess_currency(request)
 
+        # ---------- حارس أخير ----------
         if disp not in SUPPORTED_CURRENCIES:
             disp = "CAD"
 
+        # نضعها في الـ state ليستعملها Jinja
         request.state.display_currency = disp
 
+        # نكمل الطلب
         response = await call_next(request)
 
-        # نكتب الكوكي بالعملة النهائية
+        # ونكتب الكوكي بالعملة النهائية (حتى لو كانت من geo اليدوي)
         try:
             response.set_cookie(
                 "disp_cur",
@@ -660,6 +687,7 @@ async def currency_middleware(request: Request, call_next):
         return response
 
     except Exception:
+        # في حالة أي خطأ لا نكسر الموقع
         return await call_next(request)
 
 # اجعل عملة العرض متاحة للتمبليت عبر global callable
@@ -834,7 +862,7 @@ def api_unread_count(request: Request, db: Session = Depends(get_db)):
 @app.middleware("http")
 async def sync_user_flags(request: Request, call_next):
     try:
-        if "session" in request.scope:
+        if hasattr(request, "session"):
             sess_user = request.session.get("user")
             if sess_user and "id" in sess_user:
                 db_gen = get_db()
@@ -979,34 +1007,50 @@ def notifications_page(request: Request):
     if not u:
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse("notifications.html", {"request": request, "session_user": u, "title": "Notifications"})
+
 @app.middleware("http")
 async def geo_session_middleware(request: Request, call_next):
     """
-    إصلاح نهائي:
-    - لا نلمس request.session إلا إذا كان موجودًا في request.scope
-    - منع أي AssertionError قبل currency_middleware
+    يحفظ geo في شكلين:
+      1) المفاتيح القديمة geo_country / geo_region / geo_currency …
+      2) المفتاح الموحد session["geo"] ← المهم لعمل كل شيء
     """
+
+    # 0) لو session غير متوفرة في scope (بعض أنواع الطلبات الخاصة) → مرّر الطلب مباشرة
+    if "session" not in request.scope:
+        return await call_next(request)
+
+    # 1) لو geo مضبوط يدويًا (manual من /geo/set) → لا نغيّره أبداً
     try:
-        # SessionMiddleware يضيف المفتاح "session" داخل request.scope
-        if "session" in request.scope:
-            # نقرأ ونحدّث الجيو بطريقة آمنة
+        geo_sess = request.session.get("geo")
+    except AssertionError:
+        # لو SessionMiddleware مش شغال لسبب ما، لا نكسر التطبيق
+        return await call_next(request)
+
+    if isinstance(geo_sess, dict) and geo_sess.get("source") == "manual":
+        # المستخدم غيّر البلد يدويًا (مثلاً من /geo/set?loc=US) → نتركه كما هو
+        return await call_next(request)
+
+    # 2) الحالة العادية: نحدّث الـ geo من IP / headers / ?loc
+    try:
+        if not request.url.path.startswith("/webhooks/"):
             info = persist_location_to_session(request) or {}
-            # تأكد أن info فيها country
-            if info:
+
+            try:
                 request.session["geo"] = {
                     "ip": info.get("ip"),
-                    "country": (info.get("country") or "").upper() or None,
+                    "country": info.get("country"),
                     "region": info.get("region"),
                     "city": info.get("city"),
                     "currency": info.get("currency"),
-                    "source": info.get("source") or "session"
+                    "source": info.get("source"),
                 }
-        # لو ماكو session → تخطي بدون لمس request.session
-    except Exception as e:
-        # لا نسمح للخطأ بإيقاف بقية الميدلوير
-        print("[geo middleware error]", e)
+            except Exception:
+                # لا نكسر كل الطلب لو session فشلت لأي سبب
+                pass
+    except Exception:
+        pass
 
-    # الآن دع بقية الميدلوير تشتغل مثل currency_middleware
     response = await call_next(request)
     return response
 
