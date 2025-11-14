@@ -982,6 +982,8 @@ def notifications_page(request: Request):
 
 @app.middleware("http")
 async def geo_session_middleware(request: Request, call_next):
+    if isinstance(request.session.get("geo"), dict) and request.session["geo"].get("source") == "manual":
+            return await call_next(request)
     """
     يحفظ geo في شكلين:
       1) المفاتيح القديمة geo_country / geo_region / geo_currency …
