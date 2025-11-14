@@ -264,15 +264,21 @@ def _fx_ensure_daily_sync():
 
 def geoip_guess_currency(request: Request) -> str:
     """
-    يختار عملة العرض حسب البلد في الـ session:
-      - CA  → CAD
-      - US  → USD
-      - دول الأورو → EUR
-      - باقي العالم → USD
+    تخمين بسيط لعملة العرض من البلد/المنطقة الموجودة في الـ session.
+    نحاول قراءة geo من:
+      - session["geo"]  ← الشكل الجديد
+      - أو المفاتيح القديمة geo_country / geo_currency  ← fallback
     """
     try:
-        sess_geo = request.session.get("geo") or {}
+        sess = getattr(request, "session", {}) or {}
+
+        # الشكل الجديد
+        sess_geo = sess.get("geo") or {}
         country = (sess_geo.get("country") or "").upper()
+
+        # fallback
+        if not country:
+            country = (sess.get("geo_country") or "").upper()
 
         if country == "CA":
             return "CAD"
@@ -289,6 +295,7 @@ def geoip_guess_currency(request: Request) -> str:
         return "USD"
     except Exception:
         return "CAD"
+
 
 def _fetch_rate(db: Session, base: str, quote: str) -> Optional[float]:
     """
@@ -975,17 +982,34 @@ def notifications_page(request: Request):
 
 @app.middleware("http")
 async def geo_session_middleware(request: Request, call_next):
+    """
+    يحفظ geo في شكلين:
+      1) المفاتيح القديمة geo_country / geo_region / geo_currency …
+      2) المفتاح الموحد session["geo"]  ← المهم لعمل كل شيء
+    """
     try:
-        # لا نلمس الويبهوك
-        if request.url.path.startswith("/webhooks/"):
-            return await call_next(request)
-        # خزّن/حدّث القيم في session
-        persist_location_to_session(request)
+        if not request.url.path.startswith("/webhooks/"):
+            info = persist_location_to_session(request) or {}
+
+            # اكتب المفتاح geo الجديد
+            try:
+                if hasattr(request, "session"):
+                    request.session["geo"] = {
+                        "ip": info.get("ip"),
+                        "country": info.get("country"),
+                        "region": info.get("region"),
+                        "city": info.get("city"),
+                        "currency": info.get("currency"),
+                        "source": info.get("source"),
+                    }
+            except Exception:
+                pass
     except Exception:
-        # لا نكسر الطلب لو حصل خطأ
         pass
+
     response = await call_next(request)
     return response
+
 
 
 @app.on_event("startup")
