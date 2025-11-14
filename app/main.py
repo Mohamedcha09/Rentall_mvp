@@ -979,39 +979,46 @@ def notifications_page(request: Request):
     if not u:
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse("notifications.html", {"request": request, "session_user": u, "title": "Notifications"})
-
 @app.middleware("http")
 async def geo_session_middleware(request: Request, call_next):
-    if isinstance(request.session.get("geo"), dict) and request.session["geo"].get("source") == "manual":
-            return await call_next(request)
     """
     يحفظ geo في شكلين:
       1) المفاتيح القديمة geo_country / geo_region / geo_currency …
-      2) المفتاح الموحد session["geo"]  ← المهم لعمل كل شيء
+      2) المفتاح الموحد session["geo"] ← المهم لعمل كل شيء
     """
+
+    # 0) لو session غير موجودة (بعض أنواع requests)، مرّر الطلب مباشرة
+    if not hasattr(request, "session"):
+        return await call_next(request)
+
+    # 1) لو geo مضبوط يدويًا (manual) → لا نغيره أبدًا
+    geo_sess = request.session.get("geo")
+    if isinstance(geo_sess, dict) and geo_sess.get("source") == "manual":
+        return await call_next(request)
+
+    # 2) الحالة العادية: حدث geo من ال-IP أو headers
     try:
         if not request.url.path.startswith("/webhooks/"):
             info = persist_location_to_session(request) or {}
 
-            # اكتب المفتاح geo الجديد
+            # اكتب المفتاح "geo" الموحد
             try:
-                if hasattr(request, "session"):
-                    request.session["geo"] = {
-                        "ip": info.get("ip"),
-                        "country": info.get("country"),
-                        "region": info.get("region"),
-                        "city": info.get("city"),
-                        "currency": info.get("currency"),
-                        "source": info.get("source"),
-                    }
+                request.session["geo"] = {
+                    "ip": info.get("ip"),
+                    "country": info.get("country"),
+                    "region": info.get("region"),
+                    "city": info.get("city"),
+                    "currency": info.get("currency"),
+                    "source": info.get("source"),
+                }
             except Exception:
                 pass
+
     except Exception:
         pass
 
     response = await call_next(request)
     return response
-
 
 
 @app.on_event("startup")
