@@ -19,13 +19,13 @@ def guess_currency_for(country: str | None):
     return "USD"
 
 
+
 @router.get("/geo/set")
 def geo_set(request: Request, loc: str = "US"):
     loc = (loc or "US").upper()
-
-    # نكتب الشكل الكامل الذي يحتاجه middleware و currency
     cur = guess_currency_for(loc)
 
+    # Save manual geo override
     request.session["geo"] = {
         "ip": None,
         "country": loc,
@@ -35,9 +35,18 @@ def geo_set(request: Request, loc: str = "US"):
         "source": "manual"
     }
 
-    # نكتب الكوكي أيضاً ليقرأها currency_middleware
-    response = {"ok": True, "country": loc, "currency": cur}
-    return response
+    # Final response WITH COOKIE
+    resp = JSONResponse({"ok": True, "country": loc, "currency": cur})
+    resp.set_cookie(
+        "disp_cur",
+        cur,
+        max_age=60 * 60 * 24 * 180,
+        httponly=False,
+        samesite="lax",
+        domain=COOKIE_DOMAIN,
+        secure=HTTPS_ONLY_COOKIES,
+    )
+    return resp
 
 
 @router.get("/geo/debug")
