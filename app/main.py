@@ -834,7 +834,7 @@ def api_unread_count(request: Request, db: Session = Depends(get_db)):
 @app.middleware("http")
 async def sync_user_flags(request: Request, call_next):
     try:
-        if hasattr(request, "session"):
+        if "session" in request.scope:
             sess_user = request.session.get("user")
             if sess_user and "id" in sess_user:
                 db_gen = get_db()
@@ -979,50 +979,34 @@ def notifications_page(request: Request):
     if not u:
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse("notifications.html", {"request": request, "session_user": u, "title": "Notifications"})
-
 @app.middleware("http")
 async def geo_session_middleware(request: Request, call_next):
     """
-    يحفظ geo في شكلين:
-      1) المفاتيح القديمة geo_country / geo_region / geo_currency …
-      2) المفتاح الموحد session["geo"] ← المهم لعمل كل شيء
+    إصلاح نهائي:
+    - لا نلمس request.session إلا إذا كان موجودًا في request.scope
+    - منع أي AssertionError قبل currency_middleware
     """
-
-    # 0) لو session غير متوفرة في scope (بعض أنواع الطلبات الخاصة) → مرّر الطلب مباشرة
-    if "session" not in request.scope:
-        return await call_next(request)
-
-    # 1) لو geo مضبوط يدويًا (manual من /geo/set) → لا نغيّره أبداً
     try:
-        geo_sess = request.session.get("geo")
-    except AssertionError:
-        # لو SessionMiddleware مش شغال لسبب ما، لا نكسر التطبيق
-        return await call_next(request)
-
-    if isinstance(geo_sess, dict) and geo_sess.get("source") == "manual":
-        # المستخدم غيّر البلد يدويًا (مثلاً من /geo/set?loc=US) → نتركه كما هو
-        return await call_next(request)
-
-    # 2) الحالة العادية: نحدّث الـ geo من IP / headers / ?loc
-    try:
-        if not request.url.path.startswith("/webhooks/"):
+        # SessionMiddleware يضيف المفتاح "session" داخل request.scope
+        if "session" in request.scope:
+            # نقرأ ونحدّث الجيو بطريقة آمنة
             info = persist_location_to_session(request) or {}
-
-            try:
+            # تأكد أن info فيها country
+            if info:
                 request.session["geo"] = {
                     "ip": info.get("ip"),
-                    "country": info.get("country"),
+                    "country": (info.get("country") or "").upper() or None,
                     "region": info.get("region"),
                     "city": info.get("city"),
                     "currency": info.get("currency"),
-                    "source": info.get("source"),
+                    "source": info.get("source") or "session"
                 }
-            except Exception:
-                # لا نكسر كل الطلب لو session فشلت لأي سبب
-                pass
-    except Exception:
-        pass
+        # لو ماكو session → تخطي بدون لمس request.session
+    except Exception as e:
+        # لا نسمح للخطأ بإيقاف بقية الميدلوير
+        print("[geo middleware error]", e)
 
+    # الآن دع بقية الميدلوير تشتغل مثل currency_middleware
     response = await call_next(request)
     return response
 
