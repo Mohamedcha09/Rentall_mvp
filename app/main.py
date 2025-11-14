@@ -626,11 +626,10 @@ async def currency_middleware(request: Request, call_next):
         geo_sess = None
         manual_cur = None
         try:
-            sess = getattr(request, "session", {}) or {}
-            geo_sess = sess.get("geo") if isinstance(sess, dict) else None
+            sess = request.session
+            geo_sess = sess.get("geo")
         except Exception:
             geo_sess = None
-
         if isinstance(geo_sess, dict) and geo_sess.get("source") == "manual":
             c = (geo_sess.get("currency") or "").upper()
             if c in SUPPORTED_CURRENCIES:
