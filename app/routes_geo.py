@@ -20,6 +20,8 @@ def guess_currency_for(country: str | None):
     return "USD"
 
 
+COOKIE_DOMAIN = "sevor.net"
+HTTPS_ONLY_COOKIES = True
 
 @router.get("/geo/set")
 def geo_set(request: Request, loc: str = "US"):
@@ -36,7 +38,7 @@ def geo_set(request: Request, loc: str = "US"):
         "source": "manual"
     }
 
-    # Final response WITH COOKIE
+    # Correct response with cookie
     resp = JSONResponse({"ok": True, "country": loc, "currency": cur})
     resp.set_cookie(
         "disp_cur",
