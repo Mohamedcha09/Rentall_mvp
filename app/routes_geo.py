@@ -5,7 +5,8 @@ router = APIRouter()
 @router.get("/geo/set")
 def geo_set(request: Request, loc: str = "US"):
     loc = (loc or "US").upper()
-    request.session["geo"] = {"country": loc}
+    request.session.setdefault("geo", {})
+    request.session["geo"]["country"] = loc
     return {"ok": True, "country": loc}
 
 @router.get("/geo/debug")
