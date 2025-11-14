@@ -5,8 +5,21 @@ router = APIRouter()
 @router.get("/geo/set")
 def geo_set(request: Request, loc: str = "US"):
     loc = (loc or "US").upper()
-    request.session.setdefault("geo", {})
-    request.session["geo"]["country"] = loc
+
+    # نحن لا نمسح geo، بل نكتب الشكل الكامل
+    request.session["geo"] = {
+        "ip": None,
+        "country": loc,
+        "region": None,
+        "city": None,
+        "currency": "USD" if loc == "US" else (
+            "CAD" if loc == "CA" else (
+                "EUR" if loc in ["FR", "DE", "ES", "IT", "NL", "BE", "PT", "LU", "IE", "FI", "AT", "GR", "CY", "EE", "LV", "LT", "MT", "SI", "SK", "HR"] else "USD"
+            )
+        ),
+        "source": "manual"
+    }
+
     return {"ok": True, "country": loc}
 
 @router.get("/geo/debug")
