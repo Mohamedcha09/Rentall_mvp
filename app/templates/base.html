@@ -1849,22 +1849,18 @@
       if (scrim) scrim.style.display = "block";
 
       popup.querySelectorAll("button").forEach(btn => {
-        btn.onclick = async () => {
+        btn.onclick = () => {
           const cur = btn.dataset.cur;
 
-          await fetch("/geo/set_currency", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ currency: cur })
-          });
-
+          // علّم أن البوب-أب استُخدم
           localStorage.setItem("geo_popup_done", "1");
 
-          // إخفاء قبل إعادة التحميل (شكل لطيف)
+          // إخفاء قبل الانتقال
           popup.style.display = "none";
           if (scrim) scrim.style.display = "none";
 
-          location.reload();
+          // استعمل نفس راوت تغيير العملة الرسمي
+          window.location.href = `/set-currency?cur=${cur}`;
         };
       });
 
@@ -1880,6 +1876,7 @@
   } catch(e) {}
 })();
 </script>
+
 
 
 
