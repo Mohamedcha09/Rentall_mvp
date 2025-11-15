@@ -1830,16 +1830,19 @@
 <script>
 (async function() {
   try {
+    // لو البوب أب استُخدم من قبل → لا تظهره
     if (localStorage.getItem("geo_popup_done") === "1") {
       return;
     }
 
+    // نقرأ حالة geo من السيرفر
     const res  = await fetch("/geo/debug");
     const data = await res.json();
     if (!data.ok) return;
 
     const confidence = data.confidence || "high";
 
+    // نظهر البوب أب فقط لما الثقة "low"
     if (confidence === "low") {
       const popup = document.getElementById("geoPopup");
       const scrim = document.getElementById("geoScrim");
@@ -1848,23 +1851,30 @@
       popup.style.display = "block";
       if (scrim) scrim.style.display = "block";
 
+      // عند الضغط على أي زر عملة
       popup.querySelectorAll("button").forEach(btn => {
         btn.onclick = () => {
-          const cur = btn.dataset.cur;
+          const cur = btn.dataset.cur || "USD";
 
-          // علّم أن البوب-أب استُخدم
+          // علّم أننا استعملنا البوب أب مرة
           localStorage.setItem("geo_popup_done", "1");
 
-          // إخفاء قبل الانتقال
+          // إخفاء قبل الانتقال (شكل ألطف)
           popup.style.display = "none";
           if (scrim) scrim.style.display = "none";
 
-          // استعمل نفس راوت تغيير العملة الرسمي
-          window.location.href = `/set-currency?cur=${cur}`;
+          // 👈 هنا المهم:
+          // استعمل نفس راوت الـ dropdown الرسمي: /set-currency?cur=XXX
+          const url = new URL(window.location.href);
+          url.pathname = "/set-currency";
+          url.searchParams.set("cur", cur);
+
+          // نذهب له بحيث يكتب كوكي disp_cur ويعمل redirect مثل العادي
+          window.location.href = url.toString();
         };
       });
 
-      // لو ضغط خارج الكارد (على الخلفية) → إغلاق بدون تغيير
+      // لو ضغط على الخلفية خارج الكارد → أغلق بدون تغيير العملة
       if (scrim) {
         scrim.onclick = () => {
           popup.style.display = "none";
@@ -1873,7 +1883,9 @@
         };
       }
     }
-  } catch(e) {}
+  } catch(e) {
+    // تجاهل أي خطأ بصمت
+  }
 })();
 </script>
 
