@@ -606,6 +606,54 @@ async def fx_autosync_mw(request: Request, call_next):
     _fx_ensure_daily_sync()
     return await call_next(request)
 
+
+@app.middleware("http")
+async def geo_session_middleware(request: Request, call_next):
+    """
+    يحفظ geo في شكلين:
+      1) المفاتيح القديمة geo_country / geo_region / geo_currency …
+      2) المفتاح الموحد session["geo"] ← المهم لعمل كل شيء
+    """
+
+    # 0) لو session غير متوفرة في scope (بعض أنواع الطلبات الخاصة) → مرّر الطلب مباشرة
+    if "session" not in request.scope:
+        return await call_next(request)
+
+    # 1) لو geo مضبوط يدويًا (manual من /geo/set) → لا نغيّره أبداً
+    try:
+        geo_sess = request.session.get("geo")
+    except AssertionError:
+        # لو SessionMiddleware مش شغال لسبب ما، لا نكسر التطبيق
+        return await call_next(request)
+
+    if isinstance(geo_sess, dict) and geo_sess.get("source") == "manual":
+        # المستخدم غيّر البلد يدويًا (مثلاً من /geo/set?loc=US) → نتركه كما هو
+        return await call_next(request)
+
+    # 2) الحالة العادية: نحدّث الـ geo من IP / headers / ?loc
+    try:
+        if not request.url.path.startswith("/webhooks/"):
+            info = persist_location_to_session(request) or {}
+
+            try:
+                request.session["geo"] = {
+                    "ip": info.get("ip"),
+                    "country": info.get("country"),
+                    "region": info.get("region"),
+                    "city": info.get("city"),
+                    "currency": info.get("currency"),
+                    "source": info.get("source"),
+                }
+            except Exception:
+                # لا نكسر كل الطلب لو session فشلت لأي سبب
+                pass
+    except Exception:
+        pass
+
+    response = await call_next(request)
+    return response
+
+
 @app.middleware("http")
 async def currency_middleware(request: Request, call_next):
     """
@@ -1006,52 +1054,6 @@ def notifications_page(request: Request):
     if not u:
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse("notifications.html", {"request": request, "session_user": u, "title": "Notifications"})
-
-@app.middleware("http")
-async def geo_session_middleware(request: Request, call_next):
-    """
-    يحفظ geo في شكلين:
-      1) المفاتيح القديمة geo_country / geo_region / geo_currency …
-      2) المفتاح الموحد session["geo"] ← المهم لعمل كل شيء
-    """
-
-    # 0) لو session غير متوفرة في scope (بعض أنواع الطلبات الخاصة) → مرّر الطلب مباشرة
-    if "session" not in request.scope:
-        return await call_next(request)
-
-    # 1) لو geo مضبوط يدويًا (manual من /geo/set) → لا نغيّره أبداً
-    try:
-        geo_sess = request.session.get("geo")
-    except AssertionError:
-        # لو SessionMiddleware مش شغال لسبب ما، لا نكسر التطبيق
-        return await call_next(request)
-
-    if isinstance(geo_sess, dict) and geo_sess.get("source") == "manual":
-        # المستخدم غيّر البلد يدويًا (مثلاً من /geo/set?loc=US) → نتركه كما هو
-        return await call_next(request)
-
-    # 2) الحالة العادية: نحدّث الـ geo من IP / headers / ?loc
-    try:
-        if not request.url.path.startswith("/webhooks/"):
-            info = persist_location_to_session(request) or {}
-
-            try:
-                request.session["geo"] = {
-                    "ip": info.get("ip"),
-                    "country": info.get("country"),
-                    "region": info.get("region"),
-                    "city": info.get("city"),
-                    "currency": info.get("currency"),
-                    "source": info.get("source"),
-                }
-            except Exception:
-                # لا نكسر كل الطلب لو session فشلت لأي سبب
-                pass
-    except Exception:
-        pass
-
-    response = await call_next(request)
-    return response
 
 @app.on_event("startup")
 def _startup_fx_seed():
