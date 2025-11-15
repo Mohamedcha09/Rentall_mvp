@@ -2,6 +2,9 @@
 
 {% block content %}
 <div class="container" style="max-width:840px">
+
+  {% set disp_cur = display_currency(request) %}
+
   <h3 class="mb-3">Booking: {{ item.title }}</h3>
 
   {% if request.query_params.get('err') == 'dates' %}
@@ -10,7 +13,6 @@
 
   <div class="card shadow-sm">
     <div class="card-body">
-      <!-- Correct route path per router: POST /bookings -->
       <form id="bookingCreateForm" method="post" action="/bookings" class="row g-3">
 
         <input type="hidden" name="item_id" value="{{ item.id }}">
@@ -42,8 +44,12 @@
               <span class="form-check-label">Cash on pickup</span>
             </label>
           </div>
+
           <div class="form-text mt-2">
-            Current daily price: <strong>{{ item.price_per_day }} DZD</strong>
+            Current daily price:
+            <strong>
+              {{ item.price_per_day | convert(item.currency, disp_cur) | money(disp_cur) }}
+            </strong>
           </div>
         </div>
 
@@ -51,6 +57,7 @@
           <a href="/items/{{ item.id }}" class="btn btn-light">Back</a>
           <button id="bookingContinue" class="btn btn-primary" type="submit">Continue</button>
         </div>
+
       </form>
     </div>
   </div>
@@ -63,11 +70,11 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!form || !btn) return;
 
   form.addEventListener("submit", (e) => {
-    e.preventDefault(); // أوقف الإرسال مؤقتًا
+    e.preventDefault();
 
     if (!navigator.geolocation) {
       alert("⚠️ المتصفح لا يدعم تحديد الموقع الجغرافي.");
-      form.submit();    // كمل بدون موقع
+      form.submit();
       return;
     }
 
@@ -75,10 +82,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const { latitude, longitude } = pos.coords;
       try {
         await fetch(`/api/geo/set?lat=${latitude}&lon=${longitude}`, { method: "POST" });
-      } catch (_) { /* تجاهل الفشل */ }
-      form.submit(); // أرسل الحجز بعد تخزين الموقع
+      } catch (_) {}
+      form.submit();
     }, () => {
-      alert("❌ لا يمكن المتابعة بدون تفعيل الموقع. يرجى السماح بالوصول إلى الموقع.");
+      alert("❌ لا يمكن المتابعة بدون تفعيل الموقع.");
     }, { enableHighAccuracy: true });
   });
 });
