@@ -651,83 +651,77 @@ async def geo_session_middleware(request: Request, call_next):
 
     response = await call_next(request)
     return response
+
 @app.middleware("http")
 async def currency_middleware(request: Request, call_next):
     """
     من يحدد عملة العرض؟
       1) المستخدم المسجَّل (users.display_currency) إن وجدت
-      2) session["geo"]["currency"]  سواء كانت manual أو من detect_location
+      2) session["geo"]["currency"] (manual أو auto)
       3) كوكي disp_cur
       4) geoip_guess_currency (fallback)
     """
-    try:
-        path = request.url.path or ""
-
-        # ❌ لا نلمس webhooks ولا مسارات geo
-        if path.startswith("/webhooks/") or path.startswith("/geo/"):
-            return await call_next(request)
-
-        disp = None
-
-        # --------- نقرأ الـ session مرة واحدة ---------
-        try:
-            sess = request.session or {}
-        except Exception:
-            sess = {}
-
-        sess_user = sess.get("user") or {}
-        geo_sess  = sess.get("geo") or {}
-
-        # 1) المستخدم المسجَّل له أولوية أعلى من كل شيء
-        cur_user = (sess_user.get("display_currency") or "").upper()
-        if cur_user in SUPPORTED_CURRENCIES:
-            disp = cur_user
-
-        # 2) إن لم توجد من المستخدم → استعمل عملة الـ geo (سواء manual أو auto)
-        if not disp:
-            cur_geo = (geo_sess.get("currency") or "").upper()
-            if cur_geo in SUPPORTED_CURRENCIES:
-                disp = cur_geo
-
-        # 3) إن لم توجد → كوكي disp_cur
-        if not disp:
-            cur_cookie = (request.cookies.get("disp_cur") or "").upper()
-            if cur_cookie in SUPPORTED_CURRENCIES:
-                disp = cur_cookie
-
-        # 4) آخر شيء: تخمين من البلد
-        if not disp:
-            disp = geoip_guess_currency(request)
-
-        # حارس أخير
-        if disp not in SUPPORTED_CURRENCIES:
-            disp = "CAD"
-
-        # نجعلها متاحة للتمبليت
-        request.state.display_currency = disp
-
-        # نكمل الطلب
-        response = await call_next(request)
-
-        # نكتب الكوكي بنفس العملة التي استعملناها فعليًا
-        try:
-            response.set_cookie(
-                "disp_cur",
-                disp,
-                max_age=60 * 60 * 24 * 180,
-                httponly=False,
-                samesite="lax",
-                domain=COOKIE_DOMAIN,
-                secure=HTTPS_ONLY_COOKIES,
-            )
-        except Exception:
-            pass
-
-        return response
-
-    except Exception:
-        # لو حصل أي خطأ، لا نكسر الموقع
+    # لا نلمس webhooks
+    if request.url.path.startswith("/webhooks/"):
         return await call_next(request)
+
+    # --- نقرأ الـ session بأمان ---
+    try:
+        sess = request.session or {}
+    except Exception:
+        sess = {}
+
+    sess_user = sess.get("user") or {}
+    geo_sess  = sess.get("geo") or {}
+
+    disp = None
+
+    # 1) عملة المستخدم المسجَّل
+    cur_user = (sess_user.get("display_currency") or "").upper()
+    if cur_user in SUPPORTED_CURRENCIES:
+        disp = cur_user
+
+    # 2) إن لم توجد → عملة geo (سواء source=manual أو auto)
+    if not disp:
+        cur_geo = (geo_sess.get("currency") or "").upper()
+        if cur_geo in SUPPORTED_CURRENCIES:
+            disp = cur_geo
+
+    # 3) إن لم توجد → كوكي disp_cur
+    if not disp:
+        cur_cookie = (request.cookies.get("disp_cur") or "").upper()
+        if cur_cookie in SUPPORTED_CURRENCIES:
+            disp = cur_cookie
+
+    # 4) آخر شيء: تخمين من البلد
+    if not disp:
+        disp = geoip_guess_currency(request)
+
+    # حارس أخير
+    if disp not in SUPPORTED_CURRENCIES:
+        disp = "CAD"
+
+    # نضعها في الـstate ليستعملها Jinja و /geo/debug
+    request.state.display_currency = disp
+
+    # نكمل الطلب
+    response = await call_next(request)
+
+    # نكتب الكوكي بنفس العملة المستعملة فعليًا
+    try:
+        response.set_cookie(
+            "disp_cur",
+            disp,
+            max_age=60 * 60 * 24 * 180,
+            httponly=False,
+            samesite="lax",
+            domain=COOKIE_DOMAIN,
+            secure=HTTPS_ONLY_COOKIES,
+        )
+    except Exception:
+        pass
+
+    return response
 
 # اجعل عملة العرض متاحة للتمبليت عبر global callable
 templates.env.globals["display_currency"] = lambda request: getattr(request.state, "display_currency", "CAD")
