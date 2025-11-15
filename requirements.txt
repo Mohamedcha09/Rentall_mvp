@@ -14,3 +14,4 @@ cloudinary==1.41.0
 alembic==1.17.0
 psycopg2-binary==2.9.9
 psycopg[binary]==3.2.11
+geoip2==4.7.0
