@@ -39,7 +39,6 @@ from .database import Base, engine, SessionLocal, get_db
 from .models import User, Item
 from .utils import CATEGORIES, category_label
 from .utils_geo import persist_location_to_session
-from .utili_geo import geo_from_request, locate_from_request, locate_from_session
 # 5) Routers
 from .auth import router as auth_router
 from .admin import router as admin_router
@@ -653,71 +652,63 @@ async def geo_session_middleware(request: Request, call_next):
     response = await call_next(request)
     return response
 
-
 @app.middleware("http")
 async def currency_middleware(request: Request, call_next):
     """
-    أولويات اختيار عملة العرض:
-      1) المستخدم المسجّل (users.display_currency)
-      2) لو geo في session مضبوط يدويًا (source == 'manual') نأخذ عملته
-      3) كوكي disp_cur إن وُجدت
-      4) التخمين من البلد geoip_guess_currency (للزائر الجديد)
+    من يحدد عملة العرض؟
+      1) المستخدم المسجَّل (users.display_currency) إن وجدت
+      2) session["geo"]["currency"]  سواء كانت manual أو من detect_location
+      3) كوكي disp_cur
+      4) geoip_guess_currency (fallback)
     """
     try:
-        # لا نعمل أي شيء مع webhooks
+        # لا نلمس webhooks
         if request.url.path.startswith("/webhooks/"):
             return await call_next(request)
 
         disp = None
 
-        # ---------- 0) نقرأ geo من الـ session ونرى إن كان يدوي ----------
-        geo_sess = None
-        manual_cur = None
+        # --------- نقرأ الـ session مرة واحدة ---------
         try:
-            sess = request.session
-            geo_sess = sess.get("geo")
+            sess = request.session or {}
         except Exception:
-            geo_sess = None
-        if isinstance(geo_sess, dict) and geo_sess.get("source") == "manual":
-            c = (geo_sess.get("currency") or "").upper()
-            if c in SUPPORTED_CURRENCIES:
-                manual_cur = c
+            sess = {}
 
-        # ---------- 1) المستخدم المسجّل (users.display_currency) ----------
-        sess_user = None
-        try:
-            sess_user = request.session.get("user")
-        except Exception:
-            sess_user = None
+        sess_user = sess.get("user") or {}
+        geo_sess  = sess.get("geo") or {}
 
-        if sess_user and sess_user.get("display_currency") in SUPPORTED_CURRENCIES:
-            disp = sess_user["display_currency"]
+        # 1) المستخدم المسجَّل له أولوية أعلى من كل شيء
+        cur_user = (sess_user.get("display_currency") or "").upper()
+        if cur_user in SUPPORTED_CURRENCIES:
+            disp = cur_user
 
-        # ---------- 2) لو geo يدوي (manual) يغلِب الكوكي ----------
-        if not disp and manual_cur:
-            disp = manual_cur
-
-        # ---------- 3) كوكي disp_cur ----------
+        # 2) إن لم توجد من المستخدم → استعمل عملة الـ geo (سواء manual أو auto)
         if not disp:
-            chosen = request.cookies.get("disp_cur")
-            if chosen in SUPPORTED_CURRENCIES:
-                disp = chosen
+            cur_geo = (geo_sess.get("currency") or "").upper()
+            if cur_geo in SUPPORTED_CURRENCIES:
+                disp = cur_geo
 
-        # ---------- 4) تخمين من البلد (geoip_guess_currency) ----------
+        # 3) إن لم توجد → كوكي disp_cur
+        if not disp:
+            cur_cookie = (request.cookies.get("disp_cur") or "").upper()
+            if cur_cookie in SUPPORTED_CURRENCIES:
+                disp = cur_cookie
+
+        # 4) آخر شيء: تخمين من البلد
         if not disp:
             disp = geoip_guess_currency(request)
 
-        # ---------- حارس أخير ----------
+        # حارس أخير
         if disp not in SUPPORTED_CURRENCIES:
             disp = "CAD"
 
-        # نضعها في الـ state ليستعملها Jinja
+        # نجعلها متاحة للتمبليت
         request.state.display_currency = disp
 
         # نكمل الطلب
         response = await call_next(request)
 
-        # ونكتب الكوكي بالعملة النهائية (حتى لو كانت من geo اليدوي)
+        # نكتب الكوكي بنفس العملة التي استعملناها فعليًا
         try:
             response.set_cookie(
                 "disp_cur",
@@ -734,7 +725,7 @@ async def currency_middleware(request: Request, call_next):
         return response
 
     except Exception:
-        # في حالة أي خطأ لا نكسر الموقع
+        # لو حصل أي خطأ، لا نكسر الموقع
         return await call_next(request)
 
 # اجعل عملة العرض متاحة للتمبليت عبر global callable
