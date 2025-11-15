@@ -3,6 +3,17 @@ from __future__ import annotations
 from typing import Optional, Dict
 import os
 
+import geoip2.database  # جديد
+
+GEOIP_DB_PATH = os.getenv("GEOIP_DB_PATH")
+_geoip_reader = None
+
+try:
+    if GEOIP_DB_PATH and os.path.exists(GEOIP_DB_PATH):
+        _geoip_reader = geoip2.database.Reader(GEOIP_DB_PATH)
+except Exception:
+    _geoip_reader = None
+
 # دول الاتحاد الأوروبي (الأساسية المتداولة باليورو)
 EU_COUNTRIES = {
     "AT","BE","BG","HR","CY","CZ","DK","EE","FI","FR","DE","GR",
@@ -64,15 +75,22 @@ def _get_client_ip(request) -> str:
     except Exception:
         return ""
 
+def _country_from_geoip(ip: Optional[str]) -> Optional[str]:
+    if not ip or not _geoip_reader:
+        return None
+    try:
+        resp = _geoip_reader.country(ip)
+        code = resp.country.iso_code
+        if code and code != "ZZ":
+            return code.upper()
+    except Exception:
+        return None
+    return None
+
+
 def detect_location(request) -> Dict[str, Optional[str]]:
-    """
-    ترجع dict فيها: ip / country / region / city / currency / source
-    - تعتمد على هيدرز CDN الشائعة
-    - تقبل Override للاختبار عبر كويري (?loc=CA-QC أو ?loc=US-CA أو ?loc=FR)
-    - تستخدم DEFAULT_CURRENCY لو لم نعرف البلد
-    """
     q = dict(request.query_params or {})
-    # ✅ Override للاختبار: ?loc=CA-QC أو CA/US/FR فقط
+
     loc_q = _normalize(q.get("loc") or q.get("geo") or q.get("location"))
     country_q, region_q = None, None
     if loc_q:
@@ -82,8 +100,10 @@ def detect_location(request) -> Dict[str, Optional[str]]:
         elif len(parts) >= 2:
             country_q, region_q = parts[0].upper(), parts[1].upper()
 
-    # اقرأ من الهيدرز (إن وجد)
     hdrs = request.headers
+
+    ip = _get_client_ip(request)
+
     country = country_q or None
     region  = region_q  or None
     city    = None
@@ -115,19 +135,22 @@ def detect_location(request) -> Dict[str, Optional[str]]:
                     source = f"header:{k}"
                 break
 
-    # بعض المزودين يضعون country=ZZ عندما لا يُعرف
     if country in (None, "", "ZZ"):
         country = None
 
-    # تخمين العملة
-    currency = _guess_currency(country)
+    if not country and ip:
+        geoip_country = _country_from_geoip(ip)
+        if geoip_country:
+            country = geoip_country
+            if not source:
+                source = "geoip"
 
-    ip = _get_client_ip(request)
+    currency = _guess_currency(country)
 
     return {
         "ip": ip or None,
         "country": country,
-        "region": region,    # QC/ON … أو CA/NY للولايات
+        "region": region,
         "city": city,
         "currency": currency,
         "source": source or "unknown",
