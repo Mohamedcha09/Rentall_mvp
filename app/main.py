@@ -652,13 +652,12 @@ async def geo_session_middleware(request: Request, call_next):
     response = await call_next(request)
     return response
 
-
 @app.middleware("http")
 async def currency_middleware(request: Request, call_next):
     """
     من يحدد عملة العرض؟
       1) المستخدم المسجَّل (users.display_currency) إن وجدت
-      2) session["geo"]["currency"]  سواء كانت manual أو من detect_location
+      2) session["geo"]["currency"]  (auto / header / query)
       3) كوكي disp_cur
       4) geoip_guess_currency (fallback)
     """
@@ -685,19 +684,20 @@ async def currency_middleware(request: Request, call_next):
         if cur_user in SUPPORTED_CURRENCIES:
             disp = cur_user
 
-        # 2) إن لم توجد من المستخدم → استعمل عملة الـ geo (سواء manual أو auto)
+        # 2) إن لم توجد → استعمل عملة الـ geo لكن فقط لو المصدر auto / header / query
         if not disp:
-            cur_geo = (geo_sess.get("currency") or "").upper()
-            if cur_geo in SUPPORTED_CURRENCIES:
-                disp = cur_geo
+            if geo_sess.get("source") in ("auto", "query", "header"):
+                cur_geo = (geo_sess.get("currency") or "").upper()
+                if cur_geo in SUPPORTED_CURRENCIES:
+                    disp = cur_geo
 
-        # 3) إن لم توجد → كوكي disp_cur
+        # 3) إن لم توجد → كوكي disp_cur (مرّة واحدة فقط)
         if not disp:
             cur_cookie = (request.cookies.get("disp_cur") or "").upper()
             if cur_cookie in SUPPORTED_CURRENCIES:
                 disp = cur_cookie
 
-        # 4) آخر شيء: تخمين من البلد
+        # 4) آخر شيء: تخمين من البلد (fallback)
         if not disp:
             disp = geoip_guess_currency(request)
 
