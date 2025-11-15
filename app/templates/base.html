@@ -1747,38 +1747,79 @@
 </script>
 
 <style>
+/* خلفية ضبابية تغطي الشاشة */
+.geo-scrim{
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,.45);           /* لون غامق نصف شفاف */
+  backdrop-filter: blur(10px);              /* الضبابية */
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 9998;
+  display: none;
+}
+
+/* الكارد في وسط الشاشة */
 .geo-popup {
   position: fixed;
-  bottom: 20px;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
-  background: white;
-  color: #111;
-  padding: 16px 20px;
-  border-radius: 14px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  transform: translate(-50%, -50%);
+  background: #ffffff;
+  color: #111827;
+  padding: 18px 22px;
+  border-radius: 18px;
+  box-shadow:
+    0 18px 40px rgba(15,23,42,.35),
+    0 0 0 1px rgba(148,163,184,.25);
   display: none;
   z-index: 9999;
   max-width: 90%;
-  font-family: sans-serif;
+  width: min(360px, 90%);
+  font-family: system-ui, -apple-system, "SF Pro Text", sans-serif;
+  text-align: center;
 }
 
+/* النص */
+.geo-popup div{
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* الأزرار */
 .geo-popup button {
-  margin: 8px 6px 0 6px;
-  padding: 8px 16px;
-  border-radius: 10px;
+  margin: 10px 6px 0 6px;
+  padding: 9px 20px;
+  border-radius: 999px;
   border: none;
   cursor: pointer;
   font-size: 15px;
+  font-weight: 600;
+  min-width: 96px;
+  transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
 }
 
-.geo-usd { background: #eef; }
-.geo-cad { background: #fee; }
-.geo-eur { background: #efe; }
+/* ألوان الأزرار */
+.geo-usd { background: #e0ecff; }
+.geo-cad { background: #ffe4e6; }
+.geo-eur { background: #dcfce7; }
+
+.geo-popup button:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(15,23,42,.22);
+}
+.geo-popup button:active{
+  transform: translateY(0);
+  box-shadow: none;
+}
 </style>
 
+
+<!-- الخلفية الضبابية -->
+<div id="geoScrim" class="geo-scrim"></div>
+
+<!-- كارد الـ popup -->
 <div id="geoPopup" class="geo-popup">
-  <div style="margin-bottom: 10px; font-size: 16px;">
+  <div style="margin-bottom: 10px;">
     هل تريد عرض الأسعار بعملتك؟
   </div>
   <button class="geo-usd" data-cur="USD">USD</button>
@@ -1789,42 +1830,57 @@
 <script>
 (async function() {
   try {
-    // لو المستخدم وافق مرة → لا نظهر البوب أب مرة أخرى
     if (localStorage.getItem("geo_popup_done") === "1") {
       return;
     }
 
-    // نطلب معلومات geo من السيرفر
-    const res = await fetch("/geo/debug");
+    const res  = await fetch("/geo/debug");
     const data = await res.json();
-
     if (!data.ok) return;
 
-    const sess = data.session_geo || {};
     const confidence = data.confidence || "high";
 
-    // نعرض البوب أب فقط لو الثقة ضعيفة
     if (confidence === "low") {
       const popup = document.getElementById("geoPopup");
-      popup.style.display = "block";
+      const scrim = document.getElementById("geoScrim");
 
-      // عند اختيار المستخدم عملته
+      // إظهار الخلفية + الكارد في الوسط
+      popup.style.display = "block";
+      if (scrim) scrim.style.display = "block";
+
       popup.querySelectorAll("button").forEach(btn => {
         btn.onclick = async () => {
           const cur = btn.dataset.cur;
+
           await fetch("/geo/set_currency", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({ currency: cur })
           });
+
           localStorage.setItem("geo_popup_done", "1");
+
+          // إخفاء قبل إعادة التحميل (شكل لطيف)
+          popup.style.display = "none";
+          if (scrim) scrim.style.display = "none";
+
           location.reload();
         };
       });
+
+      // لو ضغط خارج الكارد (على الخلفية) → إغلاق بدون تغيير
+      if (scrim) {
+        scrim.onclick = () => {
+          popup.style.display = "none";
+          scrim.style.display = "none";
+          localStorage.setItem("geo_popup_done", "1");
+        };
+      }
     }
   } catch(e) {}
 })();
 </script>
+
 
 
 {% set immersive = immersive|default(false) %}
