@@ -45,8 +45,9 @@ def _guess_currency(country: Optional[str]) -> str:
     if c == "CA": return "CAD"
     if c == "US": return "USD"
     if c in EU_COUNTRIES: return "EUR"
-    # افتراضي من env أو USD
-    return (os.getenv("DEFAULT_CURRENCY") or "USD").upper()
+    # باقي دول العالم → USD
+    return "USD"
+
 
 def _get_client_ip(request) -> str:
     # نحاول أخذ أفضل IP حقيقي من هيدرز الوكالات
