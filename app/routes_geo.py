@@ -28,16 +28,35 @@ def guess_currency_for(code: str) -> str:
         return "EUR"
     return "USD"  # باقي الدول = USD
 
-
-# ===========================
-#     /geo/set (الحل النهائي)
-# ===========================
 @router.get("/geo/set")
 def geo_set(request: Request, loc: str = "US"):
-    loc = (loc or "US").upper()
+    """
+    أنت فقط (كمطوّر) تستعمل هذا الروت للاختبار.
+    هنا نمنع القيم الغلط مثل XYZ أو FRANCE
+    ونقبل فقط الأكواد الصحيحة (CA / US + دول أوروبا).
+    """
+    # نطبّع المدخل
+    loc = (loc or "").strip().upper()
+
+    # لو القيمة غير صالحة → لا نلمس الجلسة ولا الكوكي
+    if not loc or loc not in ALLOWED_COUNTRIES:
+        # نقرأ ما هو مخزّن حاليًا (إن وجد) فقط للشفافية في الرد
+        geo = request.session.get("geo") or {}
+        prev_country = (geo.get("country") or "").upper() or None
+        prev_currency = geo.get("currency")
+
+        return JSONResponse({
+            "ok": True,
+            "ignored": True,          # هذا فقط معلومة لك، لا يكسر شيء في الواجهة
+            "reason": "invalid_loc",  # loc غير معروف → لم نغيّر شيئًا
+            "country": prev_country,
+            "currency": prev_currency,
+        })
+
+    # هنا loc صالح (CA / US / دولة أوروبية)
     cur = guess_currency_for(loc)
 
-    # تخزين الدولة والعمل في الجلسة
+    # نخزّن الدولة والعملة في الجلسة
     request.session["geo"] = {
         "ip": None,
         "country": loc,
