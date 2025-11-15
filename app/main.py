@@ -651,7 +651,6 @@ async def geo_session_middleware(request: Request, call_next):
 
     response = await call_next(request)
     return response
-
 @app.middleware("http")
 async def currency_middleware(request: Request, call_next):
     """
@@ -662,8 +661,10 @@ async def currency_middleware(request: Request, call_next):
       4) geoip_guess_currency (fallback)
     """
     try:
-        # لا نلمس webhooks
-        if request.url.path.startswith("/webhooks/"):
+        path = request.url.path or ""
+
+        # ❌ لا نلمس webhooks ولا مسارات geo
+        if path.startswith("/webhooks/") or path.startswith("/geo/"):
             return await call_next(request)
 
         disp = None
