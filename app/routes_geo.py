@@ -16,6 +16,8 @@ EURO_COUNTRIES = {
     "FR", "NL", "DE", "BE", "ES", "IT", "PT", "FI", "AT", "IE", "EE", "LV",
     "LT", "LU", "SK", "SI", "MT", "CY", "GR"
 }
+# كل الدول المسموح بها في /geo/set
+ALLOWED_COUNTRIES = {"CA", "US"} | EURO_COUNTRIES | EU_COUNTRIES
 
 
 # -------- تحديد العملة حسب الدولة --------
