@@ -182,3 +182,16 @@ async def geo_set_currency(request: Request, currency: str = Body(..., embed=Tru
 
     _save_geo(session, geo)
     return {"ok": True}
+
+
+@router.get("/geo/clear")
+def geo_clear(request: Request):
+    # مسح الجلسة Geo
+    request.session.pop("geo", None)
+    request.session.pop("display_currency", None)
+
+    # مسح كوكي العملة
+    response = JSONResponse({"ok": True, "cleared": True})
+    response.delete_cookie("disp_cur")  # نفس اسم الكوكي التي تستعملها
+
+    return response
