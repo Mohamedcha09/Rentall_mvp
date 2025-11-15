@@ -1746,6 +1746,85 @@
 })();
 </script>
 
+<style>
+.geo-popup {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  color: #111;
+  padding: 16px 20px;
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  display: none;
+  z-index: 9999;
+  max-width: 90%;
+  font-family: sans-serif;
+}
+
+.geo-popup button {
+  margin: 8px 6px 0 6px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.geo-usd { background: #eef; }
+.geo-cad { background: #fee; }
+.geo-eur { background: #efe; }
+</style>
+
+<div id="geoPopup" class="geo-popup">
+  <div style="margin-bottom: 10px; font-size: 16px;">
+    هل تريد عرض الأسعار بعملتك؟
+  </div>
+  <button class="geo-usd" data-cur="USD">USD</button>
+  <button class="geo-cad" data-cur="CAD">CAD</button>
+  <button class="geo-eur" data-cur="EUR">EUR</button>
+</div>
+
+<script>
+(async function() {
+  try {
+    // لو المستخدم وافق مرة → لا نظهر البوب أب مرة أخرى
+    if (localStorage.getItem("geo_popup_done") === "1") {
+      return;
+    }
+
+    // نطلب معلومات geo من السيرفر
+    const res = await fetch("/geo/debug");
+    const data = await res.json();
+
+    if (!data.ok) return;
+
+    const sess = data.session_geo || {};
+    const confidence = data.confidence || "high";
+
+    // نعرض البوب أب فقط لو الثقة ضعيفة
+    if (confidence === "low") {
+      const popup = document.getElementById("geoPopup");
+      popup.style.display = "block";
+
+      // عند اختيار المستخدم عملته
+      popup.querySelectorAll("button").forEach(btn => {
+        btn.onclick = async () => {
+          const cur = btn.dataset.cur;
+          await fetch("/geo/set_currency", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ currency: cur })
+          });
+          localStorage.setItem("geo_popup_done", "1");
+          location.reload();
+        };
+      });
+    }
+  } catch(e) {}
+})();
+</script>
 
 
 {% set immersive = immersive|default(false) %}

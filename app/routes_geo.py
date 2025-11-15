@@ -101,3 +101,13 @@ async def geo_locale(request: Request, lang: str = Body(..., embed=True)):
         return {"ok": True, "fixed": "dz"}
 
     return {"ok": True}
+
+
+@router.post("/geo/set_currency")
+async def geo_set_currency(request: Request, currency: str = Body(..., embed=True)):
+    session = request.session
+    sess_geo = session.get("session_geo") or {}
+    sess_geo["currency"] = currency.upper()
+    sess_geo["source"] = "manual"
+    session["session_geo"] = sess_geo
+    return {"ok": True}
