@@ -1054,11 +1054,3 @@ def _startup_fx_seed():
     _fx_ensure_daily_sync()
 
 
-
-@app.get("/geo/debug")
-def geo_debug(request: Request):
-    return {
-        "session_geo": request.session.get("geo"),
-        "disp_cur_cookie": request.cookies.get("disp_cur"),
-        "state_display_currency": getattr(request.state, "display_currency", None),
-    }
