@@ -1724,6 +1724,28 @@
   setTimeout(setFabOffset, 500);
 })();
 </script>
+<script>
+(function() {
+  try {
+    if (localStorage.getItem("geo_locale_done") === "1") return;
+
+    const lang = navigator.language || (navigator.languages && navigator.languages[0]);
+    if (!lang) return;
+
+    fetch("/geo/locale", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ lang: lang })
+    })
+      .then(() => {
+        localStorage.setItem("geo_locale_done", "1");
+        location.reload();
+      })
+      .catch(() => {});
+  } catch(e){}
+})();
+</script>
+
 
 
 {% set immersive = immersive|default(false) %}

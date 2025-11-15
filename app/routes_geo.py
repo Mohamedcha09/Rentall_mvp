@@ -72,3 +72,32 @@ def geo_debug(request: Request):
         "disp_cur_cookie": disp_cookie,
         "state_display_currency": state,
     }
+
+@router.post("/geo/locale")
+async def geo_locale(request: Request, lang: str = Body(..., embed=True)):
+    lang = (lang or "").lower()
+    session = request.session
+
+    sess_geo = session.get("session_geo") or {}
+
+    # لو المستخدم غيّر العملة يدويًا → لا نلمسها
+    if sess_geo.get("source") in ("manual", "settings"):
+        return {"ok": True}
+
+    # استنتاج البلد من لغة المتصفح
+    # أمثلة: fr-dz, ar-dz, fr-ca, en-us ...
+    parts = lang.split("-")
+    if len(parts) == 2:
+        country_code = parts[1].upper()
+    else:
+        country_code = None
+
+    # حالة الجزائر (الخطأ المشهور في GeoIP)
+    if country_code == "DZ":
+        sess_geo["country"] = "DZ"
+        sess_geo["currency"] = "USD"
+        sess_geo["source"] = "locale"
+        session["session_geo"] = sess_geo
+        return {"ok": True, "fixed": "dz"}
+
+    return {"ok": True}
