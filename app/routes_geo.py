@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Body
 from fastapi.responses import JSONResponse
 
-from .utils_geo import EU_COUNTRIES, GEOIP_DB_PATH, _geoip_reader, _country_from_geoip
+from .utils_geo import EU_COUNTRIES, GEOIP_DB_PATH, _geoip_reader, _country_from_geoip, detect_location
 
 
 router = APIRouter(tags=["geo"])
@@ -231,3 +231,19 @@ def geo_test_country(ip: str):
     """
     country = _country_from_geoip(ip)
     return {"ip": ip, "country": country}
+
+
+@router.get("/geo/ip")
+def geo_ip(request: Request):
+    """
+    يرجّع الـ IP الذي نراه من جهة السيرفر + البلد 
+    حسب GeoIP أو الهيدرز.
+    """
+    info = detect_location(request)
+    return {
+        "ip": info.get("ip"),
+        "country": info.get("country"),
+        "region": info.get("region"),
+        "city": info.get("city"),
+        "source": info.get("source"),
+    }
