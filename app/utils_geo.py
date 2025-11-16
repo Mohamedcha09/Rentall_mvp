@@ -2,8 +2,7 @@
 from __future__ import annotations
 from typing import Optional, Dict
 import os
-
-import geoip2.database  # جديد
+import geoip2.database
 
 GEOIP_DB_PATH = os.getenv("GEOIP_DB_PATH")
 _geoip_reader = None
@@ -14,40 +13,31 @@ try:
 except Exception:
     _geoip_reader = None
 
-# دول الاتحاد الأوروبي (الأساسية المتداولة باليورو)
 EU_COUNTRIES = {
     "AT","BE","BG","HR","CY","CZ","DK","EE","FI","FR","DE","GR",
     "HU","IE","IT","LV","LT","LU","MT","NL","PL","PT","RO","SK","SI","ES","SE"
 }
 
-# بعض المزودين (CDN/Proxy) يضيفون هيدرز جاهزة للبلد/الولاية
-# سنقرأ أوسع مجموعة ممكنة + Fallback ذكي
 HDRS_COUNTRY = [
-    "CF-IPCountry",                 # Cloudflare
-    "X-AppEngine-Country",          # Google App Engine / some proxies
-    "X-Geo-Country", "X-Country",
-    "X-Fastly-Country-Code",        # Fastly
-    "X-Akamai-Edgescape-Country",
+    "CF-IPCountry", "X-AppEngine-Country", "X-Geo-Country", "X-Country",
+    "X-Fastly-Country-Code", "X-Akamai-Edgescape-Country",
     "X-Edge-Country", "X-Ip-Country"
 ]
-# المدينة/المنطقة (قد تأتي بصيغ مختلفة)
 HDRS_REGION = [
-    "X-AppEngine-Region", "X-Geo-Region", "X-Region", "X-Edge-Region",
-    "X-Ip-Region", "X-Akamai-Edgescape-Region"
+    "X-AppEngine-Region", "X-Geo-Region", "X-Region",
+    "X-Edge-Region", "X-Ip-Region"
 ]
 HDRS_CITY = [
     "X-AppEngine-City","X-Geo-City","X-City","X-Ip-City","X-Edge-City"
 ]
 
-def _normalize(value: Optional[str]) -> Optional[str]:
-    if not value:
-        return None
-    v = str(value).strip()
+def _normalize(v: Optional[str]):
     if not v:
         return None
-    return v
+    s = str(v).strip()
+    return s or None
 
-def _two_upper(v: Optional[str]) -> Optional[str]:
+def _two_upper(v: Optional[str]):
     v = _normalize(v)
     return v.upper() if v else None
 
@@ -56,58 +46,45 @@ def _guess_currency(country: Optional[str]) -> str:
     if c == "CA": return "CAD"
     if c == "US": return "USD"
     if c in EU_COUNTRIES: return "EUR"
-    # باقي دول العالم → USD
     return "USD"
 
-
-def _get_client_ip(request) -> str:
-    # نحاول أخذ أفضل IP حقيقي من هيدرز الوكالات
+def _get_client_ip(request):
     hdrs = request.headers
-    for key in ("CF-Connecting-IP","X-Forwarded-For","X-Real-IP","X-Client-IP","X-Forwarded","Forwarded"):
+    for key in ("CF-Connecting-IP","X-Forwarded-For","X-Real-IP"):
         val = hdrs.get(key)
         if val:
-            # X-Forwarded-For قد يحتوي عدة IPs، نأخذ الأول
-            ip = str(val).split(",")[0].strip()
-            if ip:
-                return ip
-    try:
-        return request.client.host or ""
-    except Exception:
-        return ""
+            return val.split(",")[0].strip()
+    return request.client.host if request.client else ""
 
-def _country_from_geoip(ip: Optional[str]) -> Optional[str]:
+def _country_from_geoip(ip):
     if not ip or not _geoip_reader:
         return None
     try:
-        resp = _geoip_reader.country(ip)
-        code = resp.country.iso_code
-        if code and code != "ZZ":
-            return code.upper()
+        data = _geoip_reader.country(ip)
+        code = data.country.iso_code
+        return code.upper() if code else None
     except Exception:
         return None
-    return None
 
-
-def detect_location(request) -> Dict[str, Optional[str]]:
-    q = dict(request.query_params or {})
-
+def detect_location(request) -> dict:
+    q = request.query_params
     loc_q = _normalize(q.get("loc") or q.get("geo") or q.get("location"))
-    country_q, region_q = None, None
+
+    country = None
+    region = None
+    city = None
+    source = None
+
     if loc_q:
         parts = loc_q.replace("_","-").split("-")
         if len(parts) == 1:
-            country_q = parts[0].upper()
+            country = parts[0].upper()
         elif len(parts) >= 2:
-            country_q, region_q = parts[0].upper(), parts[1].upper()
+            country, region = parts[0].upper(), parts[1].upper()
+        source = "query"
 
     hdrs = request.headers
-
     ip = _get_client_ip(request)
-
-    country = country_q or None
-    region  = region_q  or None
-    city    = None
-    source  = "query" if loc_q else None
 
     if not country:
         for k in HDRS_COUNTRY:
@@ -122,8 +99,7 @@ def detect_location(request) -> Dict[str, Optional[str]]:
             v = _two_upper(hdrs.get(k))
             if v:
                 region = v
-                if not source:
-                    source = f"header:{k}"
+                source = source or f"header:{k}"
                 break
 
     if not city:
@@ -131,24 +107,19 @@ def detect_location(request) -> Dict[str, Optional[str]]:
             v = _normalize(hdrs.get(k))
             if v:
                 city = v
-                if not source:
-                    source = f"header:{k}"
+                source = source or f"header:{k}"
                 break
 
-    if country in (None, "", "ZZ"):
-        country = None
-
     if not country and ip:
-        geoip_country = _country_from_geoip(ip)
-        if geoip_country:
-            country = geoip_country
-            if not source:
-                source = "geoip"
+        c = _country_from_geoip(ip)
+        if c:
+            country = c
+            source = source or "geoip"
 
     currency = _guess_currency(country)
 
     return {
-        "ip": ip or None,
+        "ip": ip,
         "country": country,
         "region": region,
         "city": city,
@@ -156,41 +127,18 @@ def detect_location(request) -> Dict[str, Optional[str]]:
         "source": source or "unknown",
     }
 
-def persist_location_to_session(request) -> dict:
-    """
-    يكشف الموقع ويُخزّنه في session إذا لم يكن مخزّنًا أو إذا طلبنا تغييرًا عبر ?loc=...
-    يعيد نسخة القيم المخزنة.
-    """
-    sess = getattr(request, "session", None)
-    if sess is None:
-        return {}
-
-    # إذا أعطى المستخدم override، نجبر التحديث
-    has_override = any(k in request.query_params for k in ("loc","geo","location"))
-
-    if not has_override and sess.get("geo_country"):
-        # مخزّن مسبقًا — أعِد الموجود
-        return {
-            "ip": sess.get("geo_ip"),
-            "country": sess.get("geo_country"),
-            "region": sess.get("geo_region"),
-            "city": sess.get("geo_city"),
-            "currency": sess.get("geo_currency"),
-            "source": sess.get("geo_source") or "session",
-        }
-
+# ============= النسخة الجديدة فقط =============
+def persist_location_to_session(request):
+    sess = request.session
     info = detect_location(request)
-    sess["geo_ip"]       = info.get("ip")
-    sess["geo_country"]  = info.get("country")
-    sess["geo_region"]   = info.get("region")
-    sess["geo_city"]     = info.get("city")
-    sess["geo_currency"] = info.get("currency")
-    sess["geo_source"]   = info.get("source")
-    return {
-        "ip": sess["geo_ip"],
-        "country": sess["geo_country"],
-        "region": sess["geo_region"],
-        "city": sess["geo_city"],
-        "currency": sess["geo_currency"],
-        "source": sess["geo_source"],
+
+    sess["geo"] = {
+        "ip": info["ip"],
+        "country": info["country"],
+        "region": info["region"],
+        "city": info["city"],
+        "currency": info["currency"],
+        "source": info["source"],
     }
+
+    return sess["geo"]
