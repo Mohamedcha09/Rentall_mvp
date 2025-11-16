@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Body
 from fastapi.responses import JSONResponse
 
-from .utils_geo import EU_COUNTRIES  # نستخدمها للثقة (high/low)
+from .utils_geo import EU_COUNTRIES, GEOIP_DB_PATH, _geoip_reader, _country_from_geoip
 
 
 router = APIRouter(tags=["geo"])
@@ -195,3 +195,39 @@ def geo_clear(request: Request):
     response.delete_cookie("disp_cur")  # نفس اسم الكوكي التي تستعملها
 
     return response
+
+
+import os
+
+# ======================
+#   أدوات تشخيص GeoIP
+# ======================
+
+@router.get("/geo/test-db")
+def geo_test_db():
+    """
+    يفحص إذا كان ملف MaxMind موجود فعلاً في المسار المحدد.
+    """
+    path = GEOIP_DB_PATH or os.getenv("GEOIP_DB_PATH")
+    exists = bool(path and os.path.exists(path))
+    return {"db_path": path, "db_found": exists}
+
+
+@router.get("/geo/test-read")
+def geo_test_read():
+    """
+    يفحص إذا كان _geoip_reader تم تحميله بنجاح (يعني قدرنا نفتح الملف).
+    """
+    ok = _geoip_reader is not None
+    return {"reader_ok": ok}
+
+
+@router.get("/geo/test-country")
+def geo_test_country(ip: str):
+    """
+    يفحص قراءة دولة IP معيّن من قاعدة MaxMind مباشرة.
+    مثال:
+      /geo/test-country?ip=8.8.8.8
+    """
+    country = _country_from_geoip(ip)
+    return {"ip": ip, "country": country}
