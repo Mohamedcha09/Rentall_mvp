@@ -79,21 +79,11 @@ from .md import router as md_router
 from .reviews import router as reviews_router
 from .routes_geo import router as geo_router
 
-
-
 # -----------------------------------------------------------------------------
 # Create the app
 # -----------------------------------------------------------------------------
 app = FastAPI()
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=os.environ.get("SECRET_KEY", "dev-secret"),
-    session_cookie="ra_session",
-    same_site="lax",
-    https_only=HTTPS_ONLY_COOKIES,
-    max_age=60 * 60 * 24 * 30,
-    domain=COOKIE_DOMAIN,  # ← ensures cookies are written for sevor.net
-)
+
 @app.get("/whoami")
 def whoami(request: Request, db: Session = Depends(get_db)):
     sess = request.session.get("user")
@@ -115,9 +105,41 @@ SITE_URL = os.environ.get("SITE_URL", "")
 COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN", "sevor.net")   # ← Very important
 HTTPS_ONLY_COOKIES = bool(int(os.environ.get("HTTPS_ONLY_COOKIES", "1" if SITE_URL.startswith("https") else "0")))
 
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.environ.get("SECRET_KEY", "dev-secret"),
+    session_cookie="ra_session",
+    same_site="lax",
+    https_only=HTTPS_ONLY_COOKIES,
+    max_age=60 * 60 * 24 * 30,
+    domain=COOKIE_DOMAIN,  # ← ensures cookies are written for sevor.net
+)
 
+# Helper: هل الـ request فيه session من SessionMiddleware أو لا؟
+def _has_session(request: Request) -> bool:
+    try:
+        scope = getattr(request, "scope", {}) or {}
+        return "session" in scope
+    except Exception:
+        return False
+
+# -----------------------------------------------------------------------------
+# FX autosync middleware (يعمل قبل الجلسات / العملات لكنه لا يلمس request.session)
+# -----------------------------------------------------------------------------
+@app.middleware("http")
+async def fx_autosync_mw(request: Request, call_next):
+    _fx_ensure_daily_sync()
+    return await call_next(request)
+
+# -----------------------------------------------------------------------------
+# Geo session middleware
+# -----------------------------------------------------------------------------
 @app.middleware("http")
 async def geo_session_middleware(request: Request, call_next):
+
+    # لو ما فيش session في الـ scope → نكمل بدون لمس شيء
+    if not _has_session(request):
+        return await call_next(request)
 
     # إذا geo مضبوط يدويًا → لا نلمسه
     geo = request.session.get("geo")
@@ -134,6 +156,9 @@ async def geo_session_middleware(request: Request, call_next):
 
     return await call_next(request)
 
+# -----------------------------------------------------------------------------
+# Currency middleware
+# -----------------------------------------------------------------------------
 @app.middleware("http")
 async def currency_middleware(request: Request, call_next):
     """
@@ -153,13 +178,18 @@ async def currency_middleware(request: Request, call_next):
         disp = None
 
         # --------- نقرأ الـ session مرة واحدة ---------
-        try:
-            sess = request.session or {}
-        except Exception:
-            sess = {}
+        sess = {}
+        geo_sess = {}
+        sess_user = {}
 
-        sess_user = sess.get("user") or {}
-        geo_sess  = sess.get("geo") or {}
+        if _has_session(request):
+            try:
+                sess = request.session or {}
+            except Exception:
+                sess = {}
+
+            sess_user = sess.get("user") or {}
+            geo_sess = sess.get("geo") or {}
 
         # 1) المستخدم المسجَّل له أولوية أعلى من كل شيء
         cur_user = (sess_user.get("display_currency") or "").upper()
@@ -269,7 +299,7 @@ app.templates.env.filters["media_url"] = media_url
 # Currencies (NEW)
 # -----------------------------------------------------------------------------
 SUPPORTED_CURRENCIES = ["CAD", "USD", "EUR"]
-# ---------- FX storage helpers ----------
+
 # ---------- FX storage helpers ----------
 def _fx_upsert(db: Session, base: str, quote: str, rate: float, day: date):
     """
@@ -326,7 +356,6 @@ def _fx_fetch_today_from_api() -> dict[str, float]:
         "CAD->CAD": 1.0, "USD->USD": 1.0, "EUR->EUR": 1.0,
     }
 
-
 def fx_sync_today(db: Session) -> None:
     today = date.today()
     try:
@@ -339,7 +368,6 @@ def fx_sync_today(db: Session) -> None:
         base, quote = k.split("->")
         _fx_upsert(db, base, quote, float(r), today)
     db.commit()
-
 
 app.state.fx_last_sync_at: datetime | None = None
 
@@ -367,6 +395,10 @@ def geoip_guess_currency(request: Request) -> str:
       - أو المفاتيح القديمة geo_country / geo_currency  ← fallback
     """
     try:
+        if not _has_session(request):
+            # لا يوجد session → نرجع CAD كخيار آمن
+            return "CAD"
+
         sess = getattr(request, "session", {}) or {}
 
         # الشكل الجديد
@@ -452,6 +484,7 @@ def fx_convert(db: Session, amount: float | int | None, base: str, quote: str) -
 
     # فشل → رجّع المبلغ كما هو
     return amt
+
 def _convert_filter(amount, base, quote):
     db = SessionLocal()
     try:
@@ -694,14 +727,11 @@ def split_into_three_columns(urls: list[str]) -> list[list[str]]:
 # -----------------------------------------------------------------------------
 def _get_session_user(request: Request) -> Optional[dict]:
     try:
+        if not _has_session(request):
+            return None
         return request.session.get("user")
     except Exception:
         return None
-
-@app.middleware("http")
-async def fx_autosync_mw(request: Request, call_next):
-    _fx_ensure_daily_sync()
-    return await call_next(request)
 
 # اجعل عملة العرض متاحة للتمبليت عبر global callable
 templates.env.globals["display_currency"] = lambda request: getattr(request.state, "display_currency", "CAD")
@@ -778,7 +808,7 @@ def home(
     q: str | None = None,
     city: str | None = None,
 ):
-    if not request.cookies.get("seen_welcome") and not request.session.get("user"):
+    if not request.cookies.get("seen_welcome") and (not _has_session(request) or not request.session.get("user")):
         return RedirectResponse(url="/welcome", status_code=303)
 
     query = db.query(Item).filter(Item.is_active == "yes")
@@ -834,7 +864,7 @@ def home(
             "items": items,
             "categories": CATEGORIES,
             "current_category": current_category,
-            "session_user": request.session.get("user"),
+            "session_user": request.session.get("user") if _has_session(request) else None,
             "search_q": q or "",
             "search_city": city or "",
             "popular_items": popular_items,
@@ -848,7 +878,7 @@ def home(
 
 @app.get("/welcome", response_class=HTMLResponse)
 def welcome(request: Request):
-    u = request.session.get("user")
+    u = request.session.get("user") if _has_session(request) else None
     return templates.TemplateResponse("welcome.html", {"request": request, "session_user": u})
 
 @app.post("/welcome/continue")
@@ -859,12 +889,12 @@ def welcome_continue():
 
 @app.get("/about", response_class=HTMLResponse)
 def about(request: Request, db: Session = Depends(get_db)):
-    u = request.session.get("user")
+    u = request.session.get("user") if _has_session(request) else None
     return templates.TemplateResponse("about.html", {"request": request, "session_user": u})
 
 @app.get("/api/unread_count")
 def api_unread_count(request: Request, db: Session = Depends(get_db)):
-    u = request.session.get("user")
+    u = request.session.get("user") if _has_session(request) else None
     if not u:
         return JSONResponse({"count": 0})
     return JSONResponse({"count": unread_count(u["id"], db)})
@@ -875,7 +905,7 @@ def api_unread_count(request: Request, db: Session = Depends(get_db)):
 @app.middleware("http")
 async def sync_user_flags(request: Request, call_next):
     try:
-        if hasattr(request, "session"):
+        if _has_session(request):
             sess_user = request.session.get("user")
             if sess_user and "id" in sess_user:
                 db_gen = get_db()
@@ -948,15 +978,16 @@ def set_currency_quick(cur: str, request: Request, db: Session = Depends(get_db)
         pass
 
     # حدّث المستخدم (إن وُجد)
-    sess_user = request.session.get("user")
-    if sess_user and "id" in sess_user:
-        try:
-            u = db.query(User).filter(User.id == sess_user["id"]).first()
-            if u:
-                u.display_currency = cur
-                db.commit()
-        except Exception:
-            db.rollback()
+    if _has_session(request):
+        sess_user = request.session.get("user")
+        if sess_user and "id" in sess_user:
+            try:
+                u = db.query(User).filter(User.id == sess_user["id"]).first()
+                if u:
+                    u.display_currency = cur
+                    db.commit()
+            except Exception:
+                db.rollback()
     return resp
 
 @app.post("/settings/currency")
@@ -972,19 +1003,20 @@ def settings_currency(
         return RedirectResponse(url=referer, status_code=303)
 
     # --- 1) عدل المستخدم في قاعدة البيانات ---
-    sess_user = request.session.get("user")
-    if sess_user and "id" in sess_user:
-        try:
-            u = db.query(User).filter(User.id == sess_user["id"]).first()
-            if u:
-                u.display_currency = cur
-                db.commit()
+    if _has_session(request):
+        sess_user = request.session.get("user")
+        if sess_user and "id" in sess_user:
+            try:
+                u = db.query(User).filter(User.id == sess_user["id"]).first()
+                if u:
+                    u.display_currency = cur
+                    db.commit()
 
-            # أيضاً عدل النسخة داخل session فوراً
-            sess_user["display_currency"] = cur
-            request.session["user"] = sess_user
-        except Exception:
-            db.rollback()
+                # أيضاً عدل النسخة داخل session فوراً
+                sess_user["display_currency"] = cur
+                request.session["user"] = sess_user
+            except Exception:
+                db.rollback()
 
     # --- 2) اكتب الكوكي الجديدة فوراً ---
     resp = RedirectResponse(url=referer + "?cur_saved=1", status_code=303)
@@ -1016,7 +1048,7 @@ def switch_language(lang: str, request: Request):
 
 @app.get("/notifications", response_class=HTMLResponse)
 def notifications_page(request: Request):
-    u = request.session.get("user")
+    u = request.session.get("user") if _has_session(request) else None
     if not u:
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse("notifications.html", {"request": request, "session_user": u, "title": "Notifications"})
@@ -1024,5 +1056,3 @@ def notifications_page(request: Request):
 @app.on_event("startup")
 def _startup_fx_seed():
     _fx_ensure_daily_sync()
-
-
