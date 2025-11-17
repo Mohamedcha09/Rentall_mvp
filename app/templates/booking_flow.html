@@ -480,6 +480,10 @@
   <div class="card-body">
     <h6 class="mb-2">Order summary</h6>
 
+    {# ← NEW: استعمل نفس عملة العرض مثل home #}
+    {% set disp_cur = display_currency(request) %}
+    {% set currency = (disp_cur or (CURRENCY or 'CAD'))|upper %}
+
     {% set currency = (CURRENCY or 'CAD')|upper %}
     {% set rent = (booking.total_amount or rent_amount or 0.0)|float %}
     {% set fee  = (processing_fee is defined) and processing_fee or
@@ -715,12 +719,37 @@
     <div class="col-12 col-lg-5">
       <div class="box">
         <h6 class="mb-2">Payment summary</h6>
-        <div class="d-flex justify-content-between"><span>Payment method</span><strong>{{ booking.payment_method or '—' }}</strong></div>
-        <div class="d-flex justify-content-between"><span>Rent amount</span><strong>{{ booking.rent_amount or booking.total_amount or 0 }}$</strong></div>
-        <div class="d-flex justify-content-between"><span>Deposit on hold</span><strong>{{ booking.hold_deposit_amount or booking.deposit_amount or 0 }}$</strong></div>
-        <div class="d-flex justify-content-between"><span>Online charge status</span><strong>{{ booking.online_status or '—' }}</strong></div>
-        <div class="d-flex justify-content-between"><span>Deposit status</span><strong>{{ booking.deposit_status or '—' }}</strong></div>
+
+        {# NEW: نفس عملة العرض المستخدمة في كل الموقع #}
+        {% set disp_cur = display_currency(request) %}
+        {% set currency = (disp_cur or (CURRENCY or 'CAD'))|upper %}
+
+        <div class="d-flex justify-content-between">
+          <span>Payment method</span>
+          <strong>{{ booking.payment_method or '—' }}</strong>
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <span>Rent amount</span>
+          <strong>{{ booking.rent_amount or booking.total_amount or 0 }} {{ currency }}</strong>
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <span>Deposit on hold</span>
+          <strong>{{ booking.hold_deposit_amount or booking.deposit_amount or 0 }} {{ currency }}</strong>
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <span>Online charge status</span>
+          <strong>{{ booking.online_status or '—' }}</strong>
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <span>Deposit status</span>
+          <strong>{{ booking.deposit_status or '—' }}</strong>
+        </div>
         <hr>
+
 
         {# 🔁 Replaced raw fields with a readable timeline #}
         <div class="timeline">
