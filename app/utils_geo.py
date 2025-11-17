@@ -129,7 +129,17 @@ def detect_location(request) -> dict:
 
 # ============= النسخة الجديدة فقط =============
 def persist_location_to_session(request):
+    """
+    تكتشف موقع الزائر الحقيقي وتخزّنه في session["geo"]،
+    لكن إذا كان لدينا مصدر "manual" من قبل، لا تلمس الجلسة.
+    """
     sess = request.session
+
+    # لو عندنا GEO من قبل ومصدرها manual → لا نلمسه نهائياً
+    existing = sess.get("geo") or {}
+    if isinstance(existing, dict) and existing.get("source") == "manual":
+        return existing
+
     info = detect_location(request)
 
     sess["geo"] = {
@@ -138,7 +148,8 @@ def persist_location_to_session(request):
         "region": info["region"],
         "city": info["city"],
         "currency": info["currency"],
-        "source": info["source"],
+        "source": info["source"] or "auto",
     }
 
     return sess["geo"]
+

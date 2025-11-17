@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container py-5" style="max-width:640px;">
+  <div class="card shadow-sm border-0" style="border-radius:18px;">
+    <div class="card-body p-4 p-md-5">
+      <h1 class="h3 mb-3 text-center">اختر دولتك</h1>
+      <p class="text-muted text-center mb-4">
+        نستخدم دولتك لاختيار العملة الصحيحة لك، تماماً مثل Airbnb.
+      </p>
+
+      <div id="geoError" class="alert alert-danger d-none small"></div>
+
+      <div class="d-grid gap-3">
+        <button type="button" class="btn btn-outline-secondary btn-lg" onclick="chooseCountry('CA')">
+          🇨🇦  أنا في كندا (CAD)
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-lg" onclick="chooseCountry('US')">
+          🇺🇸  أنا في أمريكا (USD)
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-lg" onclick="chooseCountry('FR')">
+          🇪🇺  أنا في أوروبا (EUR)
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-lg" onclick="chooseCountry('US')">
+          🌍  باقي دول العالم (USD)
+        </button>
+      </div>
+
+      <p class="text-muted small mt-4 mb-0 text-center">
+        لن نغيّر دولتك أو عملتك بعد هذا إلا إذا طلبت ذلك من الإعدادات.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+async function chooseCountry(code){
+  const errBox = document.getElementById('geoError');
+  errBox.classList.add('d-none');
+  errBox.textContent = '';
+
+  try{
+    const res = await fetch(`/geo/set?loc=${encodeURIComponent(code)}`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+
+    const data = await res.json();
+
+    if(!data.ok){
+      if(data.error === 'country_mismatch'){
+        errBox.textContent = 'الرجاء إدخال دولتك الحقيقية.';
+      } else {
+        errBox.textContent = 'حدث خطأ، حاول مرة أخرى.';
+      }
+      errBox.classList.remove('d-none');
+      return;
+    }
+
+    // نجاح → ادخله للموقع (الرئيسية مثلاً)
+    window.location.href = '/';
+  }catch(e){
+    errBox.textContent = 'مشكلة في الاتصال، حاول من جديد.';
+    errBox.classList.remove('d-none');
+  }
+}
+</script>
+
+{% endblock %}

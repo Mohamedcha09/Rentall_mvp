@@ -137,31 +137,58 @@ async def fx_autosync_mw(request: Request, call_next):
 # --------------------------------------------------------------------------
 @app.middleware("http")
 async def geo_session_middleware(request: Request, call_next):
+    """
+    مسؤول عن:
+      - التأكد أن session["geo"] موجودة لأول مرة
+      - عدم لمس geo إذا كان source = 'manual'
+      - إجبار الزائر الجديد على صفحة اختيار الدولة /geo/pick
+    """
+    path = request.url.path or ""
 
     try:
         geo = request.session.get("geo")
     except Exception:
         return await call_next(request)
 
-    # إذا لا يوجد GEO → أنشئ GEO جديدة
+    # لو سبق و اخترنا الدولة يدوياً → لا نلمس GEO أبداً
+    if isinstance(geo, dict) and geo.get("source") == "manual":
+        return await call_next(request)
+
+    # لو لا يوجد GEO أصلاً
     if not isinstance(geo, dict) or not geo:
+        # المسارات المسموحة بدون GEO (static, geo, webhooks…)
+        allowed_prefixes = (
+            "/geo/pick",
+            "/geo/set",
+            "/geo/debug",
+            "/geo/clear",
+            "/static/",
+            "/uploads/",
+            "/webhooks/",
+            "/favicon",
+            "/manifest",
+            "/whoami",
+        )
+
+        # لو يحاول زيارة صفحة عادية بدون GEO → نعيد توجيهه إلى صفحة اختيار الدولة
+        if not any(path.startswith(pref) for pref in allowed_prefixes):
+            return RedirectResponse(url="/geo/pick", status_code=302)
+
+        # للمسارات المسموحة (مثلاً geo/debug) نقدر نكتشف GEO أو نتركها
         try:
             persist_location_to_session(request)
         except Exception:
             pass
 
     return await call_next(request)
-
 SUPPORTED_CURRENCIES = ["CAD", "USD", "EUR"]
 
-# --------------------------------------------------------------------------
-# CURRENCY MIDDLEWARE (must run AFTER geo_session_middleware)
-# --------------------------------------------------------------------------
 @app.middleware("http")
 async def currency_middleware(request: Request, call_next):
     try:
         path = request.url.path or ""
 
+        # لا نتدخل في webhooks و geo
         if path.startswith("/webhooks/") or path.startswith("/geo/"):
             return await call_next(request)
 
@@ -171,30 +198,38 @@ async def currency_middleware(request: Request, call_next):
 
         disp = None
 
+        # 1) تفضيل المستخدم من الإعدادات (display_currency)
         cur_user = (sess_user.get("display_currency") or "").upper()
         if cur_user in SUPPORTED_CURRENCIES:
             disp = cur_user
 
-        if not disp and geo_sess.get("source") in ("auto", "query", "header"):
+        # 2) إن لم يكن من المستخدم → من GEO (سواء auto أو manual)
+        if not disp:
             cur_geo = (geo_sess.get("currency") or "").upper()
             if cur_geo in SUPPORTED_CURRENCIES:
                 disp = cur_geo
 
+        # 3) إن لم يوجد → من الكوكي disp_cur
         if not disp:
             cur_cookie = (request.cookies.get("disp_cur") or "").upper()
             if cur_cookie in SUPPORTED_CURRENCIES:
                 disp = cur_cookie
 
+        # 4) أخيراً → تخمين من البلد
         if not disp:
             disp = geoip_guess_currency(request)
 
+        # حارس
         if disp not in SUPPORTED_CURRENCIES:
             disp = "CAD"
 
+        # حفظ العملة في request.state
         request.state.display_currency = disp
 
+        # تنفيذ الطلب
         response = await call_next(request)
 
+        # تحديث الكوكي دائماً بالعملة النهائية
         response.set_cookie(
             "disp_cur",
             disp,
