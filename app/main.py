@@ -226,42 +226,42 @@ async def currency_middleware(request: Request, call_next):
 
         disp = None
 
-        # 1) تفضيل المستخدم من الإعدادات (display_currency)
+        # 1) لو المستخدم عنده display_currency في الإعدادات → هي رقم 1
         cur_user = (sess_user.get("display_currency") or "").upper()
         if cur_user in SUPPORTED_CURRENCIES:
             disp = cur_user
 
-        # 2) إن لم يكن من المستخدم → من GEO (سواء auto أو manual)
-        if not disp:
-            cur_geo = (geo_sess.get("currency") or "").upper()
-            if cur_geo in SUPPORTED_CURRENCIES:
-                disp = cur_geo
-
-        # 3) إن لم يوجد → من الكوكي disp_cur
+        # 2) لو ما فيه من المستخدم → نأخذ من الكوكي disp_cur (اختيارك من الهيدر)
         if not disp:
             cur_cookie = (request.cookies.get("disp_cur") or "").upper()
             if cur_cookie in SUPPORTED_CURRENCIES:
                 disp = cur_cookie
 
-        # 4) أخيراً → تخمين من البلد
+        # 3) لو لا من المستخدم ولا من الكوكي → نأخذ من GEO في الـsession
+        if not disp:
+            cur_geo = (geo_sess.get("currency") or "").upper()
+            if cur_geo in SUPPORTED_CURRENCIES:
+                disp = cur_geo
+
+        # 4) لو ما زال فاضي → نخمن من البلد
         if not disp:
             disp = geoip_guess_currency(request)
 
-        # حارس
+        # حارس أمان
         if disp not in SUPPORTED_CURRENCIES:
             disp = "CAD"
 
-        # حفظ العملة في request.state
+        # نخزن العملة في request.state
         request.state.display_currency = disp
 
-        # تنفيذ الطلب
+        # نكمل الطلب
         response = await call_next(request)
 
-        # تحديث الكوكي دائماً بالعملة النهائية
+        # نحدّث الكوكي دائما بالعملة النهائية
         response.set_cookie(
             "disp_cur",
             disp,
-            max_age=60*60*24*180,
+            max_age=60 * 60 * 24 * 180,
             httponly=False,
             samesite="lax",
             domain=COOKIE_DOMAIN,
@@ -272,6 +272,7 @@ async def currency_middleware(request: Request, call_next):
 
     except Exception:
         return await call_next(request)
+
 
 # -----------------------------------------------------------------------------
 # Static / Templates / Uploads
