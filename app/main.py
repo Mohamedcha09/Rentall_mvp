@@ -79,11 +79,21 @@ from .md import router as md_router
 from .reviews import router as reviews_router
 from .routes_geo import router as geo_router
 
+
+
 # -----------------------------------------------------------------------------
 # Create the app
 # -----------------------------------------------------------------------------
 app = FastAPI()
-
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.environ.get("SECRET_KEY", "dev-secret"),
+    session_cookie="ra_session",
+    same_site="lax",
+    https_only=HTTPS_ONLY_COOKIES,
+    max_age=60 * 60 * 24 * 30,
+    domain=COOKIE_DOMAIN,  # ← ensures cookies are written for sevor.net
+)
 @app.get("/whoami")
 def whoami(request: Request, db: Session = Depends(get_db)):
     sess = request.session.get("user")
@@ -105,15 +115,6 @@ SITE_URL = os.environ.get("SITE_URL", "")
 COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN", "sevor.net")   # ← Very important
 HTTPS_ONLY_COOKIES = bool(int(os.environ.get("HTTPS_ONLY_COOKIES", "1" if SITE_URL.startswith("https") else "0")))
 
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=os.environ.get("SECRET_KEY", "dev-secret"),
-    session_cookie="ra_session",
-    same_site="lax",
-    https_only=HTTPS_ONLY_COOKIES,
-    max_age=60 * 60 * 24 * 30,
-    domain=COOKIE_DOMAIN,  # ← ensures cookies are written for sevor.net
-)
 
 @app.middleware("http")
 async def geo_session_middleware(request: Request, call_next):
@@ -701,103 +702,6 @@ def _get_session_user(request: Request) -> Optional[dict]:
 async def fx_autosync_mw(request: Request, call_next):
     _fx_ensure_daily_sync()
     return await call_next(request)
-
-@app.middleware("http")
-async def geo_session_middleware(request: Request, call_next):
-
-    # إذا geo مضبوط يدويًا → لا نلمسه
-    geo = request.session.get("geo")
-    if isinstance(geo, dict) and geo.get("source") == "manual":
-        return await call_next(request)
-
-    # إذا geo غير موجود → اكتب نسخة جديدة
-    if not isinstance(geo, dict):
-        try:
-            from .utils_geo import persist_location_to_session
-            persist_location_to_session(request)
-        except Exception:
-            pass
-
-    return await call_next(request)
-
-@app.middleware("http")
-async def currency_middleware(request: Request, call_next):
-    """
-    من يحدد عملة العرض؟
-      1) المستخدم المسجَّل (users.display_currency) إن وجدت
-      2) session["geo"]["currency"]  (auto / header / query)
-      3) كوكي disp_cur
-      4) geoip_guess_currency (fallback)
-    """
-    try:
-        path = request.url.path or ""
-
-        # ❌ لا نلمس webhooks ولا مسارات geo
-        if path.startswith("/webhooks/") or path.startswith("/geo/"):
-            return await call_next(request)
-
-        disp = None
-
-        # --------- نقرأ الـ session مرة واحدة ---------
-        try:
-            sess = request.session or {}
-        except Exception:
-            sess = {}
-
-        sess_user = sess.get("user") or {}
-        geo_sess  = sess.get("geo") or {}
-
-        # 1) المستخدم المسجَّل له أولوية أعلى من كل شيء
-        cur_user = (sess_user.get("display_currency") or "").upper()
-        if cur_user in SUPPORTED_CURRENCIES:
-            disp = cur_user
-
-        # 2) إن لم توجد → استعمل عملة الـ geo لكن فقط لو المصدر auto / header / query
-        if not disp:
-            if geo_sess.get("source") in ("auto", "query", "header"):
-                cur_geo = (geo_sess.get("currency") or "").upper()
-                if cur_geo in SUPPORTED_CURRENCIES:
-                    disp = cur_geo
-
-        # 3) إن لم توجد → كوكي disp_cur (مرّة واحدة فقط)
-        if not disp:
-            cur_cookie = (request.cookies.get("disp_cur") or "").upper()
-            if cur_cookie in SUPPORTED_CURRENCIES:
-                disp = cur_cookie
-
-        # 4) آخر شيء: تخمين من البلد (fallback)
-        if not disp:
-            disp = geoip_guess_currency(request)
-
-        # حارس أخير
-        if disp not in SUPPORTED_CURRENCIES:
-            disp = "CAD"
-
-        # نجعلها متاحة للتمبليت
-        request.state.display_currency = disp
-
-        # نكمل الطلب
-        response = await call_next(request)
-
-        # نكتب الكوكي بنفس العملة التي استعملناها فعليًا
-        try:
-            response.set_cookie(
-                "disp_cur",
-                disp,
-                max_age=60 * 60 * 24 * 180,
-                httponly=False,
-                samesite="lax",
-                domain=COOKIE_DOMAIN,
-                secure=HTTPS_ONLY_COOKIES,
-            )
-        except Exception:
-            pass
-
-        return response
-
-    except Exception:
-        # لو حصل أي خطأ، لا نكسر الموقع
-        return await call_next(request)
 
 # اجعل عملة العرض متاحة للتمبليت عبر global callable
 templates.env.globals["display_currency"] = lambda request: getattr(request.state, "display_currency", "CAD")
