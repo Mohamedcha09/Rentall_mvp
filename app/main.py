@@ -139,52 +139,74 @@ async def fx_autosync_mw(request: Request, call_next):
 @app.middleware("http")
 async def geo_session_middleware(request: Request, call_next):
     """
-    - لو عندنا geo.source = 'manual' → لا نفعل شيئًا (لا مودال).
-    - لو لا يوجد GEO نهائيًا → نفعّل المودال على كل الصفحات
-      ما عدا بعض المسارات المسموحة (login, signup, static, geo,...).
-    - نستخدم request.state.show_country_modal لكي يقرر الـ base.html
-      هل يعرض مودال اختيار الدولة أم لا.
+    - يملأ session['geo'] تلقائياً (IP/locale) إن كان فارغاً.
+    - يقرر هل نظهر overlay اختيار الدولة أم لا:
+        * لا يظهر في /login و /register و /static و /uploads و /geo و /api...
+        * لا يظهر إذا كانت session['geo']['source'] == 'manual'
+        * لا يظهر إذا كان cookie geo_manual_done = "1"
+        * يظهر في باقي الصفحات لأول زيارة قبل اختيار الدولة.
     """
-    path = request.url.path or ""
+    path = request.url.path or "/"
 
-    # القيمة الافتراضية: لا نعرض المودال
+    # فلاغ افتراضي للتمبلايت
+    # (Jinja سيقرأه من request.state.show_country_modal)
     try:
         request.state.show_country_modal = False
     except Exception:
         pass
 
-    # لو فشل الوصول إلى الـ session لأي سبب
+    # مسارات لا نريد عليها الـoverlay أبداً
+    EXEMPT_PREFIXES = (
+        "/static/",
+        "/uploads/",
+        "/webhooks/",
+        "/favicon",
+        "/manifest",
+        "/health",
+        "/api/",
+        "/geo/",
+    )
+    EXEMPT_EXACT = ("/login", "/login/", "/register", "/register/")
+
+    is_exempt = path.startswith(EXEMPT_PREFIXES) or path in EXEMPT_EXACT
+
+    # نقرأ geo من الـsession (إن وجدت)
     try:
         geo = request.session.get("geo")
     except Exception:
+        geo = None
+
+    # دائماً نحاول ملء geo تلقائياً لو كانت فارغة
+    if not isinstance(geo, dict) or not geo:
+        try:
+            persist_location_to_session(request)
+            geo = request.session.get("geo")
+        except Exception:
+            geo = geo or {}
+
+    # لو المسار مستثنى (login/register/static/...) => لا overlay، فقط نكمّل
+    if is_exempt:
         return await call_next(request)
 
-    # لو عندنا GEO سابقًا ومصدره manual → لا نلمس شيء ولا نعرض مودال
+    # لو سبق واختار الدولة يدوياً في جلسة سابقة
     if isinstance(geo, dict) and geo.get("source") == "manual":
         return await call_next(request)
 
-    # لو لا يوجد GEO أصلاً → نقرر هل نعرض المودال أو لا
-    if not isinstance(geo, dict) or not geo:
-        # مسارات مسموحة بدون مودال:
-        allowed_prefixes = (
-            "/geo/",        # API geo (set, debug, clear)
-            "/static/",     # CSS / JS / images
-            "/uploads/",    # صور/ملفات
-            "/webhooks/",   # webhooks
-            "/favicon",     # favicon
-            "/manifest",    # manifest / PWA
-            "/whoami",      # debug
-            "/login",       # صفحة تسجيل الدخول
-            "/signup",      # صفحة إنشاء حساب
-            "/register",    # إن وُجدت
-        )
+    # لو عندنا cookie تقول أنه اختارها سابقاً على هذا الجهاز
+    geo_done = request.cookies.get("geo_manual_done") == "1"
+    if geo_done:
+        # نترك الصفحة تعمل بدون overlay
+        return await call_next(request)
 
-        # أي مسار ليس من هذه → نعرض فوقه مودال اختيار الدولة
-        if not any(path.startswith(pref) for pref in allowed_prefixes):
-            request.state.show_country_modal = True
+    # هنا: زائر جديد على هذا الجهاز ولم يختر دولة يدوياً بعد
+    try:
+        request.state.show_country_modal = True
+    except Exception:
+        pass
 
-    return await call_next(request)
-
+    # نكمّل الطلب عادي، لكن الـbase.html سيرسم overlay فوق الصفحة
+    response = await call_next(request)
+    return response
 
 
 SUPPORTED_CURRENCIES = ["CAD", "USD", "EUR"]
