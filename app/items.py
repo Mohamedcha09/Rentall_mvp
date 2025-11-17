@@ -364,14 +364,9 @@ def items_list(
 def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     item = db.query(Item).get(item_id)
 
-    # READ display currency EXACTLY LIKE HOME
+    # نفس منطق Home: نقرأ عملة العرض من middleware / geo
     session_u = request.session.get("user")
-    disp_cur = None
-    if session_u and session_u.get("display_currency"):
-        disp_cur = session_u["display_currency"].upper()
-    else:
-        disp_cur = getattr(request.state, "display_currency", "CAD").upper()
-
+    disp_cur = _display_currency(request) 
     # Inject in request.state (important for money filter)
     request.state.display_currency = disp_cur
 
