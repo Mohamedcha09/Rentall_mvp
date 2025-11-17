@@ -203,36 +203,41 @@
   if (!root) return;
 
   async function goto(loc){
-    try{
+    try {
       const res = await fetch("/geo/set?loc=" + encodeURIComponent(loc), {
         method: "GET",
-        headers: {"X-Requested-With":"XMLHttpRequest"}
+        credentials: "include"
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
-      if (!res.ok || !data.ok){
-        console.warn("Geo set error:", data);
-        alert("We couldn't apply this location.");
-        return;
+      if (res.ok && data.ok) {
+        // 1) نخفي المودال من الـ DOM
+        root.remove();
+        // 2) نعمل reload للصفحة حتى تتحدث الأسعار والضرائب
+        window.location.reload();
+      } else {
+        // في حالة mismatch مثلاً
+        alert("We couldn't confirm your country. Please try again.");
       }
-
-      // حفظ ناجح → نغلق الـoverlay ونعيد تحميل الصفحة
-      root.remove();
-      window.location.reload();
-    }catch(e){
+    } catch (e) {
       console.error(e);
       alert("Network error, please try again.");
     }
   }
 
+  // ربط الأزرار
   root.querySelectorAll("[data-loc]").forEach(btn => {
     btn.addEventListener("click", () => goto(btn.dataset.loc));
   });
 
+  // زر "Not now"
   const cancel = root.querySelector("[data-geo-cancel]");
   if (cancel) {
-    cancel.addEventListener("click", () => { root.remove(); });
+    cancel.addEventListener("click", () => {
+      root.remove();
+    });
   }
 })();
 </script>
+

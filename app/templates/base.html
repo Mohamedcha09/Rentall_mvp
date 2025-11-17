@@ -1748,7 +1748,10 @@
 
   {# ===== Country Picker Overlay (first visit) ===== #}
   {% if request.state.show_country_modal %}
-    {% include "geo_pick.html" %}
+{# لا نظهر نافذة اختيار البلد إلا إذا لم يكن عندنا عملة عرض #}
+{% if not request.cookies.get('disp_cur') and not (request.session and request.session.get('geo')) %}
+  {% include "geo_pick.html" %}
+{% endif %}
   {% endif %}
 
 
