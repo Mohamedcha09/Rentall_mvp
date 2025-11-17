@@ -932,6 +932,8 @@
   {% endif %}
 
 {% if not immersive %}
+templates.env.filters["money"] = money
+
   <!-- Top tabs (mobile) -->
   <nav class="m-top-tabs d-lg-none px-3 pb-2" role="tablist" aria-label="Top sections">
     <a href="/" class="m-tab {% if request and request.url.path == '/' %}is-active{% endif %}" role="tab"
