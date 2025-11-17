@@ -8,16 +8,14 @@ router = APIRouter(tags=["geo"])
 COOKIE_DOMAIN = "sevor.net"
 HTTPS_ONLY_COOKIES = True
 
-# نفس القائمة للثقة
 EURO_COUNTRIES = EU_COUNTRIES
 
-# كود خاص لباقي العالم (نستقبل "WORLD" من الواجهة)
+# "WORLD" = باقي العالم
 REST_OF_WORLD = "WORLD"
 
-# الدول التي عندنا لها منطق ضرائب حقيقي (CA / US / دول اليورو)
+# دول عندنا لها منطق ضرائب خاص
 ALLOWED_COUNTRIES = {"CA", "US"} | EURO_COUNTRIES
-
-# كل القيم المسموح أن تأتي من الواجهة (باقي العالم + المسموحين)
+# كل القيم المسموحة من الواجهة
 ALLOWED_LOCS = ALLOWED_COUNTRIES | {REST_OF_WORLD}
 
 
@@ -44,13 +42,15 @@ def geo_pick(request: Request):
 @router.get("/geo/set")
 def geo_set(request: Request, loc: str = "US"):
     """
-    يضبط الدولة المختارة يدوياً (manual) مع التحقق من الدولة الحقيقية عبر GeoIP/Headers.
-    - لو الدولتان مختلفتان (مع دول مدعومة) → لا نحفظ GEO ونرجع ok=False
-    - لو نفس الدولة أو لا نستطيع اكتشاف الحقيقية → نقبل ونحفظ manual
+    نأخذ اختيار المستخدم كما هو (بدون فحص كذب IP)،
+    ونخزن:
+      - country
+      - currency
+      - source = manual
     """
     loc = (loc or "").upper()
 
-    # لو القيمة غير مسموحة أصلاً
+    # لو القيمة غير معروفة نهائياً → نتجاهلها
     if loc not in ALLOWED_LOCS:
         geo = request.session.get("geo") or {}
         return {
@@ -60,37 +60,25 @@ def geo_set(request: Request, loc: str = "US"):
             "currency": geo.get("currency"),
         }
 
-    # كشف الدولة الحقيقية من الجهاز
-    detected = detect_location(request)
-    real = (detected.get("country") or "").upper() if detected else None
+    # نقرأ معلومات تقريبية فقط (IP, city...) لو موجودة
+    detected = detect_location(request) or {}
+    real = (detected.get("country") or "").upper() or None
 
-    # لا نعمل فحص "الكذب" إلا لـ CA / US / دول اليورو
-    # أما REST_OF_WORLD فنسمح به دائماً
-    if loc != REST_OF_WORLD:
-        if real and real in ALLOWED_COUNTRIES and real != loc:
-            return JSONResponse(
-                {
-                    "ok": False,
-                    "error": "country_mismatch",
-                    "real": real,
-                },
-                status_code=400,
-            )
-
-    # لا يوجد كذب واضح → نعتمد اختيار المستخدم
+    # country في الجلسة:
+    # - لو WORLD → نخزن الدولة الحقيقية إن وُجدت، وإلا None
+    # - غير ذلك → نخزن الكود نفسه (CA/US/FR/…)
     if loc == REST_OF_WORLD:
-        # في باقي العالم: نستعمل الدولة الحقيقية إن وجدت لكن العملة دائماً USD
-        country_for_session = real if real else None
-        cur = "USD"
+        country_for_session = real
     else:
         country_for_session = loc
-        cur = guess_currency_for(loc)
+
+    cur = guess_currency_for(loc)
 
     request.session["geo"] = {
-        "ip": detected.get("ip") if detected else None,
+        "ip": detected.get("ip"),
         "country": country_for_session,
-        "region": detected.get("region") if detected else None,
-        "city": detected.get("city") if detected else None,
+        "region": detected.get("region"),
+        "city": detected.get("city"),
         "currency": cur,
         "source": "manual",
     }
