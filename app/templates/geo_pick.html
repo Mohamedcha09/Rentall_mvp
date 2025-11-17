@@ -193,31 +193,22 @@
   const root = document.getElementById("geo-overlay");
   if (!root) return;
 
-  function closeOverlay(){
-    root.remove();
+  // لما يختار بلد، نذهب مباشرةً إلى /geo/set
+  function goto(loc){
+    window.location.href = "/geo/set?loc=" + encodeURIComponent(loc);
   }
 
-  function pick(loc){
-    fetch("/geo/set?loc=" + encodeURIComponent(loc))
-      .then(r => r.json())
-      .then(data => {
-        if (!data.ok) {
-          alert("Please choose the country you are really in.");
-          return;
-        }
-        closeOverlay();
-        window.location.reload();
-      })
-      .catch(() => {
-        alert("Something went wrong. Please try again.");
-      });
-  }
-
+  // ربط الأزرار
   root.querySelectorAll("[data-loc]").forEach(btn => {
-    btn.addEventListener("click", () => pick(btn.dataset.loc));
+    btn.addEventListener("click", () => goto(btn.dataset.loc));
   });
 
+  // زر "Not now"
   const cancel = root.querySelector("[data-geo-cancel]");
-  if (cancel) cancel.addEventListener("click", closeOverlay);
+  if (cancel) {
+    cancel.addEventListener("click", () => {
+      root.remove();
+    });
+  }
 })();
 </script>
