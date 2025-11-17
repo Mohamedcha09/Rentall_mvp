@@ -1,102 +1,138 @@
-{% endblock %}
+{# app/templates/geo_pick.html #}
 
+<div id="geo-overlay" class="geo-overlay">
+  <div class="geo-backdrop"></div>
 
-<style>
-/* ===== Overlay Blur ===== */
-.geo-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  z-index: 9999;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-}
-
-/* ===== Country Modal ===== */
-.geo-modal {
-  background: white;
-  max-width: 420px;
-  width: 100%;
-  border-radius: 18px;
-  padding: 30px 26px;
-  box-shadow: 0 14px 40px rgba(0,0,0,0.25);
-  text-align: center;
-}
-
-.geo-modal h1 {
-  font-size: 22px;
-  margin-bottom: 10px;
-}
-
-.geo-modal p {
-  font-size: 14px;
-  margin-bottom: 25px;
-  color: #555;
-}
-
-.geo-btn {
-  width: 100%;
-  margin-bottom: 12px;
-  padding: 14px 12px;
-  border-radius: 12px;
-  border: 1px solid #ddd;
-  background: #fafafa;
-  font-size: 16px;
-  transition: 0.2s;
-}
-.geo-btn:hover {
-  background: #f0f0f0;
-}
-
-#errorBox {
-  display: none;
-  margin-bottom: 15px;
-  padding: 10px;
-  border-radius: 8px;
-  background: #ffe5e5;
-  color: #b00000;
-  font-size: 14px;
-}
-</style>
-
-<div class="geo-overlay">
   <div class="geo-modal">
-    <h1>اختر دولتك</h1>
-    <p>نحتاج اختيار دولتك لنعرض لك العملة الصحيحة.</p>
+    <div class="geo-header">
+      <h2>Where are you right now?</h2>
+      <p>Select the country you are currently in so we can show prices and taxes correctly.</p>
+    </div>
 
-    <div id="errorBox"></div>
+    <div class="geo-options">
+      <button class="geo-card" type="button" data-loc="CA">
+        <span class="geo-flag">🇨🇦</span>
+        <span class="geo-title">Canada</span>
+        <span class="geo-sub">Prices in CAD · local taxes</span>
+      </button>
 
-    <button class="geo-btn" onclick="chooseState('CA')">🇨🇦 أنا في كندا (CAD)</button>
-    <button class="geo-btn" onclick="chooseState('US')">🇺🇸 أنا في أمريكا (USD)</button>
-    <button class="geo-btn" onclick="chooseState('FR')">🇪🇺 أنا في أوروبا (EUR)</button>
-    <button class="geo-btn" onclick="chooseState('US')">🌍 باقي دول العالم (USD)</button>
+      <button class="geo-card" type="button" data-loc="US">
+        <span class="geo-flag">🇺🇸</span>
+        <span class="geo-title">United States</span>
+        <span class="geo-sub">Prices in USD · local taxes</span>
+      </button>
 
-    <p style="font-size:12px;color:#777;margin-top:10px;">
-      لن نعيد سؤالك مرة أخرى على هذا الجهاز.
-    </p>
+      <button class="geo-card" type="button" data-loc="FR">
+        <span class="geo-flag">🇪🇺</span>
+        <span class="geo-title">Europe (Euro)</span>
+        <span class="geo-sub">Prices in EUR · local taxes</span>
+      </button>
+    </div>
+
+    <div class="geo-footer">
+      <button type="button" class="geo-cancel" data-geo-cancel>Not now</button>
+    </div>
   </div>
 </div>
 
+<style>
+  .geo-overlay{
+    position:fixed; inset:0; z-index:9999;
+    display:flex; align-items:center; justify-content:center;
+    pointer-events:auto;
+  }
+  .geo-backdrop{
+    position:absolute; inset:0;
+    background:rgba(15,23,42,.55);
+    backdrop-filter:blur(20px);
+  }
+  .geo-modal{
+    position:relative;
+    max-width:420px; width:90%;
+    background:rgba(255,255,255,.9);
+    border-radius:24px;
+    padding:20px 18px 16px;
+    box-shadow:0 24px 70px rgba(15,23,42,.35);
+    display:flex; flex-direction:column; gap:16px;
+  }
+  @media (prefers-color-scheme: dark){
+    .geo-modal{
+      background:rgba(15,23,42,.96);
+      color:#e5e7eb;
+    }
+  }
+  .geo-header h2{
+    font-size:20px; margin:0 0 4px;
+  }
+  .geo-header p{
+    margin:0; font-size:14px; opacity:.8;
+  }
+  .geo-options{
+    display:flex; flex-direction:column; gap:10px;
+    margin-top:4px;
+  }
+  .geo-card{
+    border-radius:18px;
+    padding:10px 12px;
+    border:1px solid rgba(148,163,184,.5);
+    background:rgba(248,250,252,.9);
+    display:flex; align-items:flex-start; gap:10px;
+    cursor:pointer; width:100%; text-align:left;
+  }
+  @media (prefers-color-scheme: dark){
+    .geo-card{
+      background:rgba(15,23,42,.9);
+      border-color:rgba(148,163,184,.5);
+    }
+  }
+  .geo-card:hover{
+    box-shadow:0 10px 30px rgba(15,23,42,.25);
+    transform:translateY(-1px);
+  }
+  .geo-flag{font-size:22px;}
+  .geo-title{font-weight:600; display:block; font-size:15px;}
+  .geo-sub{font-size:12px; opacity:.8; display:block;}
+  .geo-footer{
+    display:flex; justify-content:flex-end; margin-top:4px;
+  }
+  .geo-cancel{
+    border:none; background:transparent;
+    font-size:13px; opacity:.7;
+    padding:4px 8px; cursor:pointer;
+  }
+</style>
+
 <script>
-async function chooseState(code){
-  const box = document.getElementById("errorBox");
-  box.style.display = "none";
+(function(){
+  const root = document.getElementById("geo-overlay");
+  if (!root) return;
 
-  const res = await fetch(`/geo/set?loc=${code}`);
-  const data = await res.json();
-
-  if(!data.ok){
-    box.innerText = "الرجاء إدخال دولتك الحقيقية.";
-    box.style.display = "block";
-    return;
+  function closeOverlay(){
+    root.remove();
   }
 
-  window.location.reload();
-}
-</script>
+  function pick(loc){
+    fetch("/geo/set?loc=" + encodeURIComponent(loc))
+      .then(r => r.json())
+      .then(data => {
+        if (!data.ok) {
+          alert("Please choose the country you are really in.");
+          return;
+        }
+        closeOverlay();
+        // أعد تحميل الصفحة لتطبَّق العملة والضرائب الجديدة
+        window.location.reload();
+      })
+      .catch(() => {
+        alert("Something went wrong. Please try again.");
+      });
+  }
 
-{% endblock %}
+  root.querySelectorAll("[data-loc]").forEach(btn => {
+    btn.addEventListener("click", () => pick(btn.dataset.loc));
+  });
+
+  const cancel = root.querySelector("[data-geo-cancel]");
+  if (cancel) cancel.addEventListener("click", closeOverlay);
+})();
+</script>
