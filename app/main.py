@@ -168,6 +168,10 @@ async def geo_session_middleware(request: Request, call_next):
             "/favicon",
             "/manifest",
             "/whoami",
+            "/login",
+            "/signup",
+            "/register",
+
         )
 
         # لو يحاول زيارة صفحة عادية بدون GEO → نعيد توجيهه إلى صفحة اختيار الدولة

@@ -1,68 +1,101 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="container py-5" style="max-width:640px;">
-  <div class="card shadow-sm border-0" style="border-radius:18px;">
-    <div class="card-body p-4 p-md-5">
-      <h1 class="h3 mb-3 text-center">اختر دولتك</h1>
-      <p class="text-muted text-center mb-4">
-        نستخدم دولتك لاختيار العملة الصحيحة لك، تماماً مثل Airbnb.
-      </p>
+<style>
+/* ===== Overlay Blur ===== */
+.geo-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
 
-      <div id="geoError" class="alert alert-danger d-none small"></div>
+/* ===== Country Modal ===== */
+.geo-modal {
+  background: white;
+  max-width: 420px;
+  width: 100%;
+  border-radius: 18px;
+  padding: 30px 26px;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.25);
+  text-align: center;
+}
 
-      <div class="d-grid gap-3">
-        <button type="button" class="btn btn-outline-secondary btn-lg" onclick="chooseCountry('CA')">
-          🇨🇦  أنا في كندا (CAD)
-        </button>
-        <button type="button" class="btn btn-outline-secondary btn-lg" onclick="chooseCountry('US')">
-          🇺🇸  أنا في أمريكا (USD)
-        </button>
-        <button type="button" class="btn btn-outline-secondary btn-lg" onclick="chooseCountry('FR')">
-          🇪🇺  أنا في أوروبا (EUR)
-        </button>
-        <button type="button" class="btn btn-outline-secondary btn-lg" onclick="chooseCountry('US')">
-          🌍  باقي دول العالم (USD)
-        </button>
-      </div>
+.geo-modal h1 {
+  font-size: 22px;
+  margin-bottom: 10px;
+}
 
-      <p class="text-muted small mt-4 mb-0 text-center">
-        لن نغيّر دولتك أو عملتك بعد هذا إلا إذا طلبت ذلك من الإعدادات.
-      </p>
-    </div>
+.geo-modal p {
+  font-size: 14px;
+  margin-bottom: 25px;
+  color: #555;
+}
+
+.geo-btn {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 14px 12px;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  background: #fafafa;
+  font-size: 16px;
+  transition: 0.2s;
+}
+.geo-btn:hover {
+  background: #f0f0f0;
+}
+
+#errorBox {
+  display: none;
+  margin-bottom: 15px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #ffe5e5;
+  color: #b00000;
+  font-size: 14px;
+}
+</style>
+
+<div class="geo-overlay">
+  <div class="geo-modal">
+    <h1>اختر دولتك</h1>
+    <p>نحتاج اختيار دولتك لنعرض لك العملة الصحيحة.</p>
+
+    <div id="errorBox"></div>
+
+    <button class="geo-btn" onclick="chooseState('CA')">🇨🇦 أنا في كندا (CAD)</button>
+    <button class="geo-btn" onclick="chooseState('US')">🇺🇸 أنا في أمريكا (USD)</button>
+    <button class="geo-btn" onclick="chooseState('FR')">🇪🇺 أنا في أوروبا (EUR)</button>
+    <button class="geo-btn" onclick="chooseState('US')">🌍 باقي دول العالم (USD)</button>
+
+    <p style="font-size:12px;color:#777;margin-top:10px;">
+      لن نعيد سؤالك مرة أخرى على هذا الجهاز.
+    </p>
   </div>
 </div>
 
 <script>
-async function chooseCountry(code){
-  const errBox = document.getElementById('geoError');
-  errBox.classList.add('d-none');
-  errBox.textContent = '';
+async function chooseState(code){
+  const box = document.getElementById("errorBox");
+  box.style.display = "none";
 
-  try{
-    const res = await fetch(`/geo/set?loc=${encodeURIComponent(code)}`, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' }
-    });
+  const res = await fetch(`/geo/set?loc=${code}`);
+  const data = await res.json();
 
-    const data = await res.json();
-
-    if(!data.ok){
-      if(data.error === 'country_mismatch'){
-        errBox.textContent = 'الرجاء إدخال دولتك الحقيقية.';
-      } else {
-        errBox.textContent = 'حدث خطأ، حاول مرة أخرى.';
-      }
-      errBox.classList.remove('d-none');
-      return;
-    }
-
-    // نجاح → ادخله للموقع (الرئيسية مثلاً)
-    window.location.href = '/';
-  }catch(e){
-    errBox.textContent = 'مشكلة في الاتصال، حاول من جديد.';
-    errBox.classList.remove('d-none');
+  if(!data.ok){
+    box.innerText = "الرجاء إدخال دولتك الحقيقية.";
+    box.style.display = "block";
+    return;
   }
+
+  window.location.reload();
 }
 </script>
 
