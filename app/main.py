@@ -24,7 +24,7 @@ cloudinary.config(
     api_secret=os.getenv("CLOUDINARY_API_SECRET"),
     secure=True,
 )
-from .utils_geo import persist_location_to_session, guess_currency
+from .utils_geo import persist_location_to_session
 
 # 4) FastAPI & project foundations
 from fastapi import FastAPI, Request, Depends, APIRouter, Query, Form
