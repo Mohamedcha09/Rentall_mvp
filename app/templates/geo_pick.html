@@ -12,20 +12,26 @@
     <div class="geo-options">
       <button class="geo-card" type="button" data-loc="CA">
         <span class="geo-flag">🇨🇦</span>
-        <span class="geo-title">Canada</span>
-        <span class="geo-sub">Prices in CAD · local taxes</span>
+        <span class="geo-main">
+          <span class="geo-title">Canada</span>
+          <span class="geo-sub">Prices in CAD · local taxes</span>
+        </span>
       </button>
 
       <button class="geo-card" type="button" data-loc="US">
         <span class="geo-flag">🇺🇸</span>
-        <span class="geo-title">United States</span>
-        <span class="geo-sub">Prices in USD · local taxes</span>
+        <span class="geo-main">
+          <span class="geo-title">United States</span>
+          <span class="geo-sub">Prices in USD · local taxes</span>
+        </span>
       </button>
 
       <button class="geo-card" type="button" data-loc="FR">
         <span class="geo-flag">🇪🇺</span>
-        <span class="geo-title">Europe (Euro)</span>
-        <span class="geo-sub">Prices in EUR · local taxes</span>
+        <span class="geo-main">
+          <span class="geo-title">Europe (Euro)</span>
+          <span class="geo-sub">Prices in EUR · local taxes</span>
+        </span>
       </button>
     </div>
 
@@ -36,6 +42,7 @@
 </div>
 
 <style>
+  /* ===== Overlay (glass + blur) ===== */
   .geo-overlay{
     position:fixed; inset:0; z-index:9999;
     display:flex; align-items:center; justify-content:center;
@@ -43,62 +50,141 @@
   }
   .geo-backdrop{
     position:absolute; inset:0;
-    background:rgba(15,23,42,.55);
-    backdrop-filter:blur(20px);
+    background:radial-gradient(circle at top, rgba(129,140,248,.40), rgba(15,23,42,.90));
+    backdrop-filter:blur(26px);
   }
+
+  /* ===== Modal: Sevor glass card ===== */
   .geo-modal{
     position:relative;
-    max-width:420px; width:90%;
-    background:rgba(255,255,255,.9);
-    border-radius:24px;
+    max-width:430px; width:min(430px, 92vw);
+    border-radius:28px;
     padding:20px 18px 16px;
-    box-shadow:0 24px 70px rgba(15,23,42,.35);
-    display:flex; flex-direction:column; gap:16px;
+    color:#e5e7eb;
+    background:
+      linear-gradient(135deg, rgba(148,163,184,.15), rgba(15,23,42,.95));
+    box-shadow:
+      0 26px 80px rgba(15,23,42,.75),
+      0 0 0 1px rgba(148,163,184,.25);
+    border:1px solid rgba(148,163,184,.35);
+    overflow:hidden;
   }
-  @media (prefers-color-scheme: dark){
-    .geo-modal{
-      background:rgba(15,23,42,.96);
-      color:#e5e7eb;
-    }
+  .geo-modal::before{
+    content:"";
+    position:absolute; inset:-40%;
+    background:
+      radial-gradient(circle at 0 0, rgba(139,92,246,.35), transparent 55%),
+      radial-gradient(circle at 100% 0, rgba(59,130,246,.35), transparent 55%);
+    opacity:.9;
+    mix-blend-mode:soft-light;
+    pointer-events:none;
   }
+  .geo-modal > *{
+    position:relative;
+    z-index:1;
+  }
+
   .geo-header h2{
-    font-size:20px; margin:0 0 4px;
+    font-size:19px; margin:0 0 4px;
+    letter-spacing:.02em;
   }
   .geo-header p{
-    margin:0; font-size:14px; opacity:.8;
+    margin:0; font-size:13px;
+    color:rgba(226,232,240,.85);
   }
+
+  /* ===== Options (glass tiles) ===== */
   .geo-options{
     display:flex; flex-direction:column; gap:10px;
-    margin-top:4px;
+    margin-top:14px;
   }
+
   .geo-card{
-    border-radius:18px;
-    padding:10px 12px;
-    border:1px solid rgba(148,163,184,.5);
-    background:rgba(248,250,252,.9);
-    display:flex; align-items:flex-start; gap:10px;
+    position:relative;
+    border-radius:20px;
+    padding:9px 12px;
+    border:1px solid rgba(148,163,184,.45);
+    background:
+      linear-gradient(135deg,
+        rgba(15,23,42,.65),
+        rgba(37,99,235,.30));
+    backdrop-filter:blur(18px);
+    display:flex; align-items:center; gap:10px;
     cursor:pointer; width:100%; text-align:left;
+    transition:
+      transform .18s ease-out,
+      box-shadow .18s ease-out,
+      border-color .18s ease-out,
+      background .18s ease-out;
   }
-  @media (prefers-color-scheme: dark){
-    .geo-card{
-      background:rgba(15,23,42,.9);
-      border-color:rgba(148,163,184,.5);
-    }
+
+  .geo-card::before{
+    content:"";
+    position:absolute; inset:0;
+    border-radius:inherit;
+    background:radial-gradient(circle at top left, rgba(139,92,246,.45), transparent 60%);
+    opacity:0;
+    transition:opacity .18s ease-out;
   }
+
+  .geo-card *{ position:relative; z-index:1; }
+
   .geo-card:hover{
-    box-shadow:0 10px 30px rgba(15,23,42,.25);
     transform:translateY(-1px);
+    box-shadow:0 18px 50px rgba(15,23,42,.7);
+    border-color:rgba(129,140,248,.9);
+    background:
+      linear-gradient(135deg,
+        rgba(15,23,42,.80),
+        rgba(88,80,236,.45));
   }
-  .geo-flag{font-size:22px;}
-  .geo-title{font-weight:600; display:block; font-size:15px;}
-  .geo-sub{font-size:12px; opacity:.8; display:block;}
+  .geo-card:hover::before{
+    opacity:1;
+  }
+
+  .geo-flag{
+    font-size:22px; flex-shrink:0;
+    filter:drop-shadow(0 1px 3px rgba(15,23,42,.7));
+  }
+
+  .geo-main{display:flex; flex-direction:column;}
+
+  .geo-title{
+    display:block;
+    font-weight:600;
+    font-size:14px;
+    color:#f9fafb;
+  }
+  .geo-sub{
+    display:block;
+    font-size:12px;
+    color:rgba(209,213,219,.88);
+  }
+
+  /* ===== Footer ===== */
   .geo-footer{
-    display:flex; justify-content:flex-end; margin-top:4px;
+    display:flex; justify-content:flex-end;
+    margin-top:10px;
   }
   .geo-cancel{
-    border:none; background:transparent;
-    font-size:13px; opacity:.7;
-    padding:4px 8px; cursor:pointer;
+    border:none;
+    background:transparent;
+    font-size:12px;
+    color:rgba(148,163,184,.95);
+    padding:4px 8px;
+    cursor:pointer;
+  }
+  .geo-cancel:hover{
+    color:#e5e7eb;
+  }
+
+  @media (max-width:480px){
+    .geo-modal{
+      border-radius:26px;
+      padding:18px 14px 14px;
+    }
+    .geo-header h2{font-size:18px;}
+    .geo-header p{font-size:12px;}
   }
 </style>
 
@@ -120,7 +206,6 @@
           return;
         }
         closeOverlay();
-        // أعد تحميل الصفحة لتطبَّق العملة والضرائب الجديدة
         window.location.reload();
       })
       .catch(() => {
