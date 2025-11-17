@@ -130,26 +130,21 @@ def _has_session(request: Request) -> bool:
 async def fx_autosync_mw(request: Request, call_next):
     _fx_ensure_daily_sync()
     return await call_next(request)
-
-# -----------------------------------------------------------------------------
-# Geo session middleware
-# -----------------------------------------------------------------------------
 @app.middleware("http")
 async def geo_session_middleware(request: Request, call_next):
 
-    # لو ما فيش session في الـ scope → نكمل بدون لمس شيء
-    if not _has_session(request):
-        return await call_next(request)
+    try:
+        geo = request.session.get("geo")
+    except Exception:
+        # session not ready yet
+        response = await call_next(request)
+        return response
 
-    # إذا geo مضبوط يدويًا → لا نلمسه
-    geo = request.session.get("geo")
     if isinstance(geo, dict) and geo.get("source") == "manual":
         return await call_next(request)
 
-    # إذا geo غير موجود → اكتب نسخة جديدة
     if not isinstance(geo, dict):
         try:
-            from .utils_geo import persist_location_to_session
             persist_location_to_session(request)
         except Exception:
             pass
