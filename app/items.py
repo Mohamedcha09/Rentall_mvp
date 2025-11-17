@@ -27,19 +27,67 @@ UPLOADS_ROOT = os.environ.get(
 ITEMS_DIR = os.path.join(UPLOADS_ROOT, "items")
 os.makedirs(ITEMS_DIR, exist_ok=True)
 
-
 # ================= Currency helpers (NEW) =================
 def _display_currency(request: Request) -> str:
     """
-    تستخرج عملة العرض من middleware (إن وُجدت) وإلا ترجع CAD.
+    نفس منطق الـmiddleware:
+
+    1) تفضيل المستخدم من الإعدادات: session['user']['display_currency']
+    2) لو فاضي → من GEO: session['geo']['currency']
+    3) لو فاضي → من الكوكي: disp_cur
+    4) لو مازال فاضي أو قيمة غريبة → CAD
+
+    وفي النهاية نكتب القيمة في request.state.display_currency
+    حتى كل الصفحات تستعمل نفس القيمة.
     """
+    # قائمة العملات المسموحة: نحاول أخذها من app.state، وإلا نستعمل الافتراضي
     try:
-        cur = getattr(request.state, "display_currency", None)
-        if not cur:
-            return "CAD"
-        return str(cur).upper()
+        allowed_list = getattr(request.app.state, "supported_currencies", ["CAD", "USD", "EUR"])
+        allowed = {c.upper() for c in allowed_list}
     except Exception:
-        return "CAD"
+        allowed = {"CAD", "USD", "EUR"}
+
+    disp = None
+
+    # نقرأ الـsession بأمان
+    try:
+        sess = request.session or {}
+    except Exception:
+        sess = {}
+    sess_user = sess.get("user") or {}
+    geo_sess = sess.get("geo") or {}
+
+    # 1) من إعدادات الحساب
+    cur_user = str(sess_user.get("display_currency") or "").upper()
+    if cur_user in allowed:
+        disp = cur_user
+
+    # 2) من GEO إن لم يكن من الإعدادات
+    if not disp:
+        cur_geo = str(geo_sess.get("currency") or "").upper()
+        if cur_geo in allowed:
+            disp = cur_geo
+
+    # 3) من الكوكي disp_cur إن لم يوجد
+    if not disp:
+        try:
+            cur_cookie = str(request.cookies.get("disp_cur") or "").upper()
+        except Exception:
+            cur_cookie = ""
+        if cur_cookie in allowed:
+            disp = cur_cookie
+
+    # 4) افتراضي
+    if not disp:
+        disp = "CAD"
+
+    # نكتبها في request.state حتى بقية الكود/القوالب تستعمل نفس القيمة
+    try:
+        request.state.display_currency = disp
+    except Exception:
+        pass
+
+    return disp
 
 
 def fx_convert_smart(db: Session, amount: Optional[float], base: str, quote: str) -> float:
