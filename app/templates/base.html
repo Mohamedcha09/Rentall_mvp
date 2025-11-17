@@ -1747,7 +1747,6 @@
 </script>
 
   {# ===== Country Picker Overlay (first visit) ===== #}
-  {# ===== Country Picker Overlay (first visit) ===== #}
   {# لا نظهر نافذة اختيار البلد إلا إذا لم يكن عندنا عملة عرض ولا geo في الجلسة #}
   {% if not request.cookies.get('disp_cur') and not (request.session and request.session.get('geo')) %}
     {% include "geo_pick.html" %}
