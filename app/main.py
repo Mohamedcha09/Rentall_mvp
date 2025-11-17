@@ -24,6 +24,7 @@ cloudinary.config(
     api_secret=os.getenv("CLOUDINARY_API_SECRET"),
     secure=True,
 )
+from .utils_geo import persist_location_to_session, guess_currency
 
 # 4) FastAPI & project foundations
 from fastapi import FastAPI, Request, Depends, APIRouter, Query, Form
@@ -136,15 +137,14 @@ async def fx_autosync_mw(request: Request, call_next):
 # --------------------------------------------------------------------------
 @app.middleware("http")
 async def geo_session_middleware(request: Request, call_next):
+
     try:
         geo = request.session.get("geo")
     except Exception:
         return await call_next(request)
 
-    if isinstance(geo, dict) and geo.get("source") == "manual":
-        return await call_next(request)
-
-    if not isinstance(geo, dict):
+    # إذا لا يوجد GEO → أنشئ GEO جديدة
+    if not isinstance(geo, dict) or not geo:
         try:
             persist_location_to_session(request)
         except Exception:
@@ -152,6 +152,7 @@ async def geo_session_middleware(request: Request, call_next):
 
     return await call_next(request)
 
+SUPPORTED_CURRENCIES = ["CAD", "USD", "EUR"]
 
 # --------------------------------------------------------------------------
 # CURRENCY MIDDLEWARE (must run AFTER geo_session_middleware)
@@ -241,7 +242,6 @@ app.templates.env.filters["media_url"] = media_url
 # -----------------------------------------------------------------------------
 # Currencies (NEW)
 # -----------------------------------------------------------------------------
-SUPPORTED_CURRENCIES = ["CAD", "USD", "EUR"]
 
 # ---------- FX storage helpers ----------
 def _fx_upsert(db: Session, base: str, quote: str, rate: float, day: date):
