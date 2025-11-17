@@ -1,71 +1,100 @@
-# routes_geo.py
-from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
-from .utils_geo import EU_COUNTRIES, detect_location
+# app/utils_geo.py
+import os
+from fastapi import Request
 
-router = APIRouter(tags=["geo"])
+# إن كانت عندك قاعدة بيانات GeoIP حقيقية
+# ضع مسارها هنا – وإلا لا مشكلة
+GEOIP_DB_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "GeoLite2-City.mmdb"
+)
 
-COOKIE_DOMAIN = "sevor.net"
-HTTPS_ONLY_COOKIES = True
-
-EURO_COUNTRIES = {
-    "FR","NL","DE","BE","ES","IT","PT","FI","AT","IE","EE","LV","LT","LU","SK","SI","MT","CY","GR"
+# دول الاتحاد الأوروبي
+EU_COUNTRIES = {
+    "FR","NL","DE","BE","ES","IT","PT","FI","AT","IE",
+    "EE","LV","LT","LU","SK","SI","MT","CY","GR","HR"
 }
 
-ALLOWED_COUNTRIES = {"CA","US"} | EURO_COUNTRIES | EU_COUNTRIES
+# نفس القائمة لكن للثقة
+EURO_COUNTRIES = EU_COUNTRIES.copy()
 
-def guess_currency_for(code: str):
-    code = code.upper()
-    if code == "CA": return "CAD"
-    if code == "US": return "USD"
-    if code in EURO_COUNTRIES: return "EUR"
+
+# ------------------------------
+# 1) تحديد العملة من البلد
+# ------------------------------
+def guess_currency(country: str) -> str:
+    c = (country or "").upper()
+    if c == "CA":
+        return "CAD"
+    if c == "US":
+        return "USD"
+    if c in EURO_COUNTRIES:
+        return "EUR"
     return "USD"
 
-@router.get("/geo/set")
-def geo_set(request: Request, loc: str = "US"):
-    loc = (loc or "").upper()
 
-    if loc not in ALLOWED_COUNTRIES:
-        geo = request.session.get("geo") or {}
-        return {"ok": True, "ignored": True, "country": geo.get("country"), "currency": geo.get("currency")}
+# ------------------------------
+# 2) استخلاص البلد (لو لديك Cloudflare)
+# ------------------------------
+def detect_country_from_headers(request: Request) -> str | None:
+    # Cloudflare
+    cf = request.headers.get("CF-IPCountry")
+    if cf:
+        return cf.upper()
 
-    cur = guess_currency_for(loc)
+    # Custom header (لو تستعمله)
+    h = request.headers.get("X-Country")
+    if h:
+        return h.upper()
 
+    return None
+
+
+# ------------------------------
+# 3) وظيفة رئيسية: كتابة GEO في السيشن
+# ------------------------------
+def persist_location_to_session(request: Request):
+    """
+    هذه الدالة تُستدعى من geo_session_middleware
+    وتكتب session["geo"] بالشكل الموحّد الجديد.
+    """
+
+    # 1) حاول أخذ البلد من الهيدر
+    country = detect_country_from_headers(request)
+
+    # 2) لو لم يوجد بلد → اجعله CA (حل آمن)
+    if not country:
+        country = "CA"
+
+    country = country.upper()
+
+    # 3) حدد العملة
+    currency = guess_currency(country)
+
+    # 4) الشكل الجديد الصحيح – مهم جداً
     request.session["geo"] = {
         "ip": None,
-        "country": loc,
+        "country": country,
         "region": None,
         "city": None,
-        "currency": cur,
-        "source": "manual",
+        "currency": currency,
+        "source": "auto",
     }
 
-    resp = JSONResponse({"ok": True, "country": loc, "currency": cur})
-    resp.set_cookie(
-        "disp_cur",
-        cur,
-        max_age=60*60*24*180,
-        domain=COOKIE_DOMAIN,
-        secure=HTTPS_ONLY_COOKIES,
-        httponly=False,
-        samesite="lax"
-    )
-    return resp
 
-@router.get("/geo/debug")
-def geo_debug(request: Request):
-    geo = request.session.get("geo") or {}
+# ------------------------------
+# 4) وظيفة detect_location (اختيارية)
+# ------------------------------
+def detect_location(request: Request) -> dict:
+    """
+    ترجع dict فيها معلومات البلد والعملة بعد الكتابة في session.
+    """
+
+    sess_geo = request.session.get("geo") or {}
 
     return {
         "ok": True,
-        "session_geo": geo,
-        "currency_state": getattr(request.state, "display_currency", None),
-        "cookie": request.cookies.get("disp_cur")
+        "country": sess_geo.get("country"),
+        "currency": sess_geo.get("currency"),
+        "source": sess_geo.get("source"),
     }
-
-@router.get("/geo/clear")
-def geo_clear(request: Request):
-    request.session.pop("geo", None)
-    resp = JSONResponse({"ok": True})
-    resp.delete_cookie("disp_cur")
-    return resp
