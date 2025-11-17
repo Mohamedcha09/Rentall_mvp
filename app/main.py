@@ -135,56 +135,58 @@ async def fx_autosync_mw(request: Request, call_next):
 # --------------------------------------------------------------------------
 # GEO SESSION MIDDLEWARE (must run AFTER SessionMiddleware)
 # --------------------------------------------------------------------------
+
 @app.middleware("http")
 async def geo_session_middleware(request: Request, call_next):
     """
-    مسؤول عن:
-      - التأكد أن session["geo"] موجودة لأول مرة
-      - عدم لمس geo إذا كان source = 'manual'
-      - إجبار الزائر الجديد على صفحة اختيار الدولة /geo/pick
+    - لو عندنا geo.source = 'manual' → لا نفعل شيئًا (لا مودال).
+    - لو لا يوجد GEO نهائيًا → نفعّل المودال على كل الصفحات
+      ما عدا بعض المسارات المسموحة (login, signup, static, geo,...).
+    - نستخدم request.state.show_country_modal لكي يقرر الـ base.html
+      هل يعرض مودال اختيار الدولة أم لا.
     """
     path = request.url.path or ""
 
+    # القيمة الافتراضية: لا نعرض المودال
+    try:
+        request.state.show_country_modal = False
+    except Exception:
+        pass
+
+    # لو فشل الوصول إلى الـ session لأي سبب
     try:
         geo = request.session.get("geo")
     except Exception:
         return await call_next(request)
 
-    # لو سبق و اخترنا الدولة يدوياً → لا نلمس GEO أبداً
+    # لو عندنا GEO سابقًا ومصدره manual → لا نلمس شيء ولا نعرض مودال
     if isinstance(geo, dict) and geo.get("source") == "manual":
         return await call_next(request)
 
-    # لو لا يوجد GEO أصلاً
+    # لو لا يوجد GEO أصلاً → نقرر هل نعرض المودال أو لا
     if not isinstance(geo, dict) or not geo:
-        # المسارات المسموحة بدون GEO (static, geo, webhooks…)
+        # مسارات مسموحة بدون مودال:
         allowed_prefixes = (
-            "/geo/pick",
-            "/geo/set",
-            "/geo/debug",
-            "/geo/clear",
-            "/static/",
-            "/uploads/",
-            "/webhooks/",
-            "/favicon",
-            "/manifest",
-            "/whoami",
-            "/login",
-            "/signup",
-            "/register",
-
+            "/geo/",        # API geo (set, debug, clear)
+            "/static/",     # CSS / JS / images
+            "/uploads/",    # صور/ملفات
+            "/webhooks/",   # webhooks
+            "/favicon",     # favicon
+            "/manifest",    # manifest / PWA
+            "/whoami",      # debug
+            "/login",       # صفحة تسجيل الدخول
+            "/signup",      # صفحة إنشاء حساب
+            "/register",    # إن وُجدت
         )
 
-        # لو يحاول زيارة صفحة عادية بدون GEO → نعيد توجيهه إلى صفحة اختيار الدولة
+        # أي مسار ليس من هذه → نعرض فوقه مودال اختيار الدولة
         if not any(path.startswith(pref) for pref in allowed_prefixes):
-            return RedirectResponse(url="/geo/pick", status_code=302)
-
-        # للمسارات المسموحة (مثلاً geo/debug) نقدر نكتشف GEO أو نتركها
-        try:
-            persist_location_to_session(request)
-        except Exception:
-            pass
+            request.state.show_country_modal = True
 
     return await call_next(request)
+
+
+
 SUPPORTED_CURRENCIES = ["CAD", "USD", "EUR"]
 
 @app.middleware("http")

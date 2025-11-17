@@ -1746,7 +1746,10 @@
 })();
 </script>
 
-
+  {# ===== Country Picker Overlay (first visit) ===== #}
+  {% if request.state.show_country_modal %}
+    {% include "geo_pick.html" %}
+  {% endif %}
 
 
 {% set immersive = immersive|default(false) %}
