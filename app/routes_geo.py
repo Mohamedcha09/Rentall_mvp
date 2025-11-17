@@ -11,16 +11,28 @@ HTTPS_ONLY_COOKIES = True
 # نفس القائمة للثقة
 EURO_COUNTRIES = EU_COUNTRIES
 
-REST_OF_WORLD = "ROW"  # كود خاص بنا لباقي العالم
+# كود خاص لباقي العالم (نستقبل "WORLD" من الواجهة)
+REST_OF_WORLD = "WORLD"
+
+# الدول التي عندنا لها منطق ضرائب حقيقي (CA / US / دول اليورو)
 ALLOWED_COUNTRIES = {"CA", "US"} | EURO_COUNTRIES
+
+# كل القيم المسموح أن تأتي من الواجهة (باقي العالم + المسموحين)
 ALLOWED_LOCS = ALLOWED_COUNTRIES | {REST_OF_WORLD}
+
 
 def guess_currency_for(code: str):
     c = (code or "").upper()
-    if c == "CA": return "CAD"
-    if c == "US": return "USD"
-    if c in EURO_COUNTRIES: return "EUR"
+    if c == "CA":
+        return "CAD"
+    if c == "US":
+        return "USD"
+    if c in EURO_COUNTRIES:
+        return "EUR"
+    if c == REST_OF_WORLD:
+        return "USD"
     return "USD"
+
 
 @router.get("/geo/pick", response_class=HTMLResponse)
 def geo_pick(request: Request):
@@ -33,12 +45,12 @@ def geo_pick(request: Request):
 def geo_set(request: Request, loc: str = "US"):
     """
     يضبط الدولة المختارة يدوياً (manual) مع التحقق من الدولة الحقيقية عبر GeoIP/Headers.
-    - لو الدولتان مختلفتان → لا نحفظ GEO ونرجع ok=False
+    - لو الدولتان مختلفتان (مع دول مدعومة) → لا نحفظ GEO ونرجع ok=False
     - لو نفس الدولة أو لا نستطيع اكتشاف الحقيقية → نقبل ونحفظ manual
     """
     loc = (loc or "").upper()
 
-    # لو الدولة غير مسموحة أصلاً
+    # لو القيمة غير مسموحة أصلاً
     if loc not in ALLOWED_LOCS:
         geo = request.session.get("geo") or {}
         return {
@@ -49,11 +61,11 @@ def geo_set(request: Request, loc: str = "US"):
         }
 
     # كشف الدولة الحقيقية من الجهاز
-        # كشف الدولة الحقيقية من الجهاز
     detected = detect_location(request)
     real = (detected.get("country") or "").upper() if detected else None
 
-    # لا نعمل فحص كذب إلا لـ CA / US / دول اليورو فقط
+    # لا نعمل فحص "الكذب" إلا لـ CA / US / دول اليورو
+    # أما REST_OF_WORLD فنسمح به دائماً
     if loc != REST_OF_WORLD:
         if real and real in ALLOWED_COUNTRIES and real != loc:
             return JSONResponse(
@@ -66,9 +78,8 @@ def geo_set(request: Request, loc: str = "US"):
             )
 
     # لا يوجد كذب واضح → نعتمد اختيار المستخدم
-        # لا يوجد كذب واضح → نعتمد اختيار المستخدم
     if loc == REST_OF_WORLD:
-        # في باقي العالم: نستعمل الدولة الحقيقية إن وجدت ولكن العملة دائماً USD
+        # في باقي العالم: نستعمل الدولة الحقيقية إن وجدت لكن العملة دائماً USD
         country_for_session = real if real else None
         cur = "USD"
     else:
@@ -84,8 +95,9 @@ def geo_set(request: Request, loc: str = "US"):
         "source": "manual",
     }
 
-
-    resp = JSONResponse({"ok": True, "country": loc, "currency": cur})
+    resp = JSONResponse(
+        {"ok": True, "country": country_for_session, "currency": cur}
+    )
     resp.set_cookie(
         "disp_cur",
         cur,
@@ -105,7 +117,7 @@ def geo_debug(request: Request):
         "ok": True,
         "session_geo": geo,
         "currency_state": getattr(request.state, "display_currency", None),
-        "cookie": request.cookies.get("disp_cur")
+        "cookie": request.cookies.get("disp_cur"),
     }
 
 

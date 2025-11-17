@@ -33,6 +33,15 @@
           <span class="geo-sub">Prices in EUR · local taxes</span>
         </span>
       </button>
+
+      <!-- 🔹 الخيار الجديد: بقية العالم -->
+      <button class="geo-card" type="button" data-loc="WORLD">
+        <span class="geo-flag">🌍</span>
+        <span class="geo-main">
+          <span class="geo-title">Rest of the world</span>
+          <span class="geo-sub">Prices in USD · no local taxes (yet)</span>
+        </span>
+      </button>
     </div>
 
     <div class="geo-footer">
@@ -193,23 +202,37 @@
   const root = document.getElementById("geo-overlay");
   if (!root) return;
 
-  // لما يختار بلد، نذهب مباشرةً إلى /geo/set
-    function goto(loc){
-    fetch("/geo/set?loc=" + encodeURIComponent(loc))
-      .then(r => r.json())
-      .then(data => {
-        // لو كل شيء OK نعمل reload للصفحة لكي تُطبَّق العملة الجديدة
-        if (data && data.ok) {
-          window.location.reload();
-        } else {
-          window.location.reload(); // fallback حتى لو فيه error
-        }
-      })
-      .catch(() => {
-        // في أي خطأ → فقط نعمل reload
-        window.location.reload();
+  async function goto(loc){
+    try{
+      const res = await fetch("/geo/set?loc=" + encodeURIComponent(loc), {
+        method: "GET",
+        headers: {"X-Requested-With":"XMLHttpRequest"}
       });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok){
+        console.warn("Geo set error:", data);
+        alert("We couldn't apply this location.");
+        return;
+      }
+
+      // حفظ ناجح → نغلق الـoverlay ونعيد تحميل الصفحة
+      root.remove();
+      window.location.reload();
+    }catch(e){
+      console.error(e);
+      alert("Network error, please try again.");
+    }
   }
 
+  root.querySelectorAll("[data-loc]").forEach(btn => {
+    btn.addEventListener("click", () => goto(btn.dataset.loc));
+  });
+
+  const cancel = root.querySelector("[data-geo-cancel]");
+  if (cancel) {
+    cancel.addEventListener("click", () => { root.remove(); });
+  }
 })();
 </script>
