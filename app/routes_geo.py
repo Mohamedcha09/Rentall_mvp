@@ -1,21 +1,24 @@
 # app/routes_geo.py
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
-from .utils_geo import EURO_COUNTRIES, EU_COUNTRIES
+from .utils_geo import EU_COUNTRIES
 
 router = APIRouter(tags=["geo"])
 
 COOKIE_DOMAIN = "sevor.net"
 HTTPS_ONLY_COOKIES = True
 
-ALLOWED_COUNTRIES = {"CA","US"} | EURO_COUNTRIES | EU_COUNTRIES
+# نفس القائمة للثقة
+EURO_COUNTRIES = EU_COUNTRIES
+
+ALLOWED_COUNTRIES = {"CA", "US"} | EURO_COUNTRIES
 
 
 def guess_currency_for(code: str):
-    code = (code or "").upper()
-    if code == "CA": return "CAD"
-    if code == "US": return "USD"
-    if code in EURO_COUNTRIES: return "EUR"
+    c = (code or "").upper()
+    if c == "CA": return "CAD"
+    if c == "US": return "USD"
+    if c in EURO_COUNTRIES: return "EUR"
     return "USD"
 
 
