@@ -112,8 +112,9 @@ app.add_middleware(
     same_site="lax",
     https_only=HTTPS_ONLY_COOKIES,
     max_age=60 * 60 * 24 * 30,
-    domain=COOKIE_DOMAIN,  # ← ensures cookies are written for sevor.net
+    domain=COOKIE_DOMAIN,
 )
+
 
 # Helper: هل الـ request فيه session من SessionMiddleware أو لا؟
 def _has_session(request: Request) -> bool:
@@ -130,15 +131,15 @@ def _has_session(request: Request) -> bool:
 async def fx_autosync_mw(request: Request, call_next):
     _fx_ensure_daily_sync()
     return await call_next(request)
+# --------------------------------------------------------------------------
+# GEO SESSION MIDDLEWARE (must run AFTER SessionMiddleware)
+# --------------------------------------------------------------------------
 @app.middleware("http")
 async def geo_session_middleware(request: Request, call_next):
-
     try:
         geo = request.session.get("geo")
     except Exception:
-        # session not ready yet
-        response = await call_next(request)
-        return response
+        return await call_next(request)
 
     if isinstance(geo, dict) and geo.get("source") == "manual":
         return await call_next(request)
@@ -151,115 +152,62 @@ async def geo_session_middleware(request: Request, call_next):
 
     return await call_next(request)
 
-# -----------------------------------------------------------------------------
-# Currency middleware
-# -----------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------
+# CURRENCY MIDDLEWARE (must run AFTER geo_session_middleware)
+# --------------------------------------------------------------------------
 @app.middleware("http")
 async def currency_middleware(request: Request, call_next):
-    """
-    من يحدد عملة العرض؟
-      1) المستخدم المسجَّل (users.display_currency) إن وجدت
-      2) session["geo"]["currency"]  (auto / header / query)
-      3) كوكي disp_cur
-      4) geoip_guess_currency (fallback)
-    """
     try:
         path = request.url.path or ""
 
-        # ❌ لا نلمس webhooks ولا مسارات geo
         if path.startswith("/webhooks/") or path.startswith("/geo/"):
             return await call_next(request)
 
+        sess = request.session or {}
+        sess_user = sess.get("user") or {}
+        geo_sess = sess.get("geo") or {}
+
         disp = None
 
-        # --------- نقرأ الـ session مرة واحدة ---------
-        sess = {}
-        geo_sess = {}
-        sess_user = {}
-
-        if _has_session(request):
-            try:
-                sess = request.session or {}
-            except Exception:
-                sess = {}
-
-            sess_user = sess.get("user") or {}
-            geo_sess = sess.get("geo") or {}
-
-        # 1) المستخدم المسجَّل له أولوية أعلى من كل شيء
         cur_user = (sess_user.get("display_currency") or "").upper()
         if cur_user in SUPPORTED_CURRENCIES:
             disp = cur_user
 
-        # 2) إن لم توجد → استعمل عملة الـ geo لكن فقط لو المصدر auto / header / query
-        if not disp:
-            if geo_sess.get("source") in ("auto", "query", "header"):
-                cur_geo = (geo_sess.get("currency") or "").upper()
-                if cur_geo in SUPPORTED_CURRENCIES:
-                    disp = cur_geo
+        if not disp and geo_sess.get("source") in ("auto", "query", "header"):
+            cur_geo = (geo_sess.get("currency") or "").upper()
+            if cur_geo in SUPPORTED_CURRENCIES:
+                disp = cur_geo
 
-        # 3) إن لم توجد → كوكي disp_cur (مرّة واحدة فقط)
         if not disp:
             cur_cookie = (request.cookies.get("disp_cur") or "").upper()
             if cur_cookie in SUPPORTED_CURRENCIES:
                 disp = cur_cookie
 
-        # 4) آخر شيء: تخمين من البلد (fallback)
         if not disp:
             disp = geoip_guess_currency(request)
 
-        # حارس أخير
         if disp not in SUPPORTED_CURRENCIES:
             disp = "CAD"
 
-        # نجعلها متاحة للتمبليت
         request.state.display_currency = disp
 
-        # نكمل الطلب
         response = await call_next(request)
 
-        # نكتب الكوكي بنفس العملة التي استعملناها فعليًا
-        try:
-            response.set_cookie(
-                "disp_cur",
-                disp,
-                max_age=60 * 60 * 24 * 180,
-                httponly=False,
-                samesite="lax",
-                domain=COOKIE_DOMAIN,
-                secure=HTTPS_ONLY_COOKIES,
-            )
-        except Exception:
-            pass
+        response.set_cookie(
+            "disp_cur",
+            disp,
+            max_age=60*60*24*180,
+            httponly=False,
+            samesite="lax",
+            domain=COOKIE_DOMAIN,
+            secure=HTTPS_ONLY_COOKIES,
+        )
 
         return response
 
     except Exception:
-        # لو حصل أي خطأ، لا نكسر الموقع
         return await call_next(request)
-
-# -----------------------------------------------------------------------------
-# Enforce redirect to the primary domain (sevor.net) to prevent session loss
-# -----------------------------------------------------------------------------
-@app.middleware("http")
-async def force_primary_domain(request: Request, call_next):
-    try:
-        host = request.headers.get("host", "")
-        path = request.url.path
-        primary = os.environ.get("COOKIE_DOMAIN", "sevor.net")
-
-        # ✅ Skip redirect if the path is a Stripe Webhook
-        if path.startswith("/webhooks/"):
-            return await call_next(request)
-
-        if host and host != primary:
-            new_url = f"https://{primary}{request.url.path}"
-            if request.url.query:
-                new_url += f"?{request.url.query}"
-            return RedirectResponse(new_url, status_code=301)
-    except Exception:
-        pass
-    return await call_next(request)
 
 # -----------------------------------------------------------------------------
 # Static / Templates / Uploads
