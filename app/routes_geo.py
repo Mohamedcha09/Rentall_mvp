@@ -11,8 +11,9 @@ HTTPS_ONLY_COOKIES = True
 # نفس القائمة للثقة
 EURO_COUNTRIES = EU_COUNTRIES
 
+REST_OF_WORLD = "ROW"  # كود خاص بنا لباقي العالم
 ALLOWED_COUNTRIES = {"CA", "US"} | EURO_COUNTRIES
-
+ALLOWED_LOCS = ALLOWED_COUNTRIES | {REST_OF_WORLD}
 
 def guess_currency_for(code: str):
     c = (code or "").upper()
@@ -38,7 +39,7 @@ def geo_set(request: Request, loc: str = "US"):
     loc = (loc or "").upper()
 
     # لو الدولة غير مسموحة أصلاً
-    if loc not in ALLOWED_COUNTRIES:
+    if loc not in ALLOWED_LOCS:
         geo = request.session.get("geo") or {}
         return {
             "ok": True,
@@ -48,31 +49,41 @@ def geo_set(request: Request, loc: str = "US"):
         }
 
     # كشف الدولة الحقيقية من الجهاز
+        # كشف الدولة الحقيقية من الجهاز
     detected = detect_location(request)
     real = (detected.get("country") or "").upper() if detected else None
 
-    # لو استطعنا اكتشاف دولة حقيقية و هي أيضاً من ALLOWED وكانت مختلفة → كذب
-    if real and real in ALLOWED_COUNTRIES and real != loc:
-        return JSONResponse(
-            {
-                "ok": False,
-                "error": "country_mismatch",
-                "real": real,
-            },
-            status_code=400,
-        )
+    # لا نعمل فحص كذب إلا لـ CA / US / دول اليورو فقط
+    if loc != REST_OF_WORLD:
+        if real and real in ALLOWED_COUNTRIES and real != loc:
+            return JSONResponse(
+                {
+                    "ok": False,
+                    "error": "country_mismatch",
+                    "real": real,
+                },
+                status_code=400,
+            )
 
     # لا يوجد كذب واضح → نعتمد اختيار المستخدم
-    cur = guess_currency_for(loc)
+        # لا يوجد كذب واضح → نعتمد اختيار المستخدم
+    if loc == REST_OF_WORLD:
+        # في باقي العالم: نستعمل الدولة الحقيقية إن وجدت ولكن العملة دائماً USD
+        country_for_session = real if real else None
+        cur = "USD"
+    else:
+        country_for_session = loc
+        cur = guess_currency_for(loc)
 
     request.session["geo"] = {
         "ip": detected.get("ip") if detected else None,
-        "country": loc,
+        "country": country_for_session,
         "region": detected.get("region") if detected else None,
         "city": detected.get("city") if detected else None,
         "currency": cur,
         "source": "manual",
     }
+
 
     resp = JSONResponse({"ok": True, "country": loc, "currency": cur})
     resp.set_cookie(

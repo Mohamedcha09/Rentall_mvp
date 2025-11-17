@@ -194,21 +194,22 @@
   if (!root) return;
 
   // لما يختار بلد، نذهب مباشرةً إلى /geo/set
-  function goto(loc){
-    window.location.href = "/geo/set?loc=" + encodeURIComponent(loc);
+    function goto(loc){
+    fetch("/geo/set?loc=" + encodeURIComponent(loc))
+      .then(r => r.json())
+      .then(data => {
+        // لو كل شيء OK نعمل reload للصفحة لكي تُطبَّق العملة الجديدة
+        if (data && data.ok) {
+          window.location.reload();
+        } else {
+          window.location.reload(); // fallback حتى لو فيه error
+        }
+      })
+      .catch(() => {
+        // في أي خطأ → فقط نعمل reload
+        window.location.reload();
+      });
   }
 
-  // ربط الأزرار
-  root.querySelectorAll("[data-loc]").forEach(btn => {
-    btn.addEventListener("click", () => goto(btn.dataset.loc));
-  });
-
-  // زر "Not now"
-  const cancel = root.querySelector("[data-geo-cancel]");
-  if (cancel) {
-    cancel.addEventListener("click", () => {
-      root.remove();
-    });
-  }
 })();
 </script>
