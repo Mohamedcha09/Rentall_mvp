@@ -490,6 +490,8 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
 
             "similar_items": similar_items,
             "favorite_ids": favorite_ids,
+            "converted_amount": float(display_price),
+            "converted_currency": disp_cur,
 
             "display_price": float(display_price),
             "display_currency": disp_cur,
