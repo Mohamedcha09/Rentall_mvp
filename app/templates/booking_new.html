@@ -5,6 +5,8 @@
 
 {% set item_cur = (item.currency or 'CAD')|upper %}
 
+{# disp_cur و disp_price جايين من الباك-إند (routes_bookings.py) #}
+
 <div class="container" style="max-width:840px">
 
   <h3 class="mb-3">Booking: {{ item.title }}</h3>
@@ -50,8 +52,9 @@
           <div class="form-text mt-2">
             Current daily price:
             <strong>
-              {{ money(disp_price, disp_cur) }}
+              {{ disp_price | money(disp_cur) }}
             </strong>
+            {# نفس عملة العرض التي تراها في صفحة الـ item #}
           </div>
         </div>
 
