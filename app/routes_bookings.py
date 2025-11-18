@@ -11,7 +11,7 @@ from sqlalchemy import inspect
 
 from .database import get_db
 from .models import User, Item, Booking
-from .utils import category_label
+from .utils import category_label, display_currency
 from .notifications_api import push_notification, notify_admins
 from .items import _display_currency, fx_convert_smart
 

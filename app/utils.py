@@ -75,3 +75,52 @@ def fx_convert(amount: float, base: str, quote: str, rates: dict):
     if not rate:
         return round(amount, 2)
     return round(amount * rate, 2)
+
+
+# ============================================
+# Display currency helper (GLOBAL)
+# ============================================
+def display_currency(request):
+    """
+    دالة عامة لقراءة عملة العرض من:
+    1) إعدادات الحساب session.user.display_currency
+    2) GEO session.geo.currency
+    3) الكوكي disp_cur
+    4) افتراضي CAD
+    """
+
+    allowed = {"CAD", "USD", "EUR"}
+
+    # --- session ---
+    try:
+        sess = request.session or {}
+    except Exception:
+        sess = {}
+
+    sess_user = sess.get("user") or {}
+    geo_sess  = sess.get("geo") or {}
+
+    # 1) user setting
+    cur1 = str(sess_user.get("display_currency") or "").upper()
+    if cur1 in allowed:
+        request.state.display_currency = cur1
+        return cur1
+
+    # 2) geo
+    cur2 = str(geo_sess.get("currency") or "").upper()
+    if cur2 in allowed:
+        request.state.display_currency = cur2
+        return cur2
+
+    # 3) cookie
+    try:
+        cur3 = str(request.cookies.get("disp_cur") or "").upper()
+    except Exception:
+        cur3 = ""
+    if cur3 in allowed:
+        request.state.display_currency = cur3
+        return cur3
+
+    # 4) fallback
+    request.state.display_currency = "CAD"
+    return "CAD"
