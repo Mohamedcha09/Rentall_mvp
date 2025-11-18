@@ -444,6 +444,9 @@ def booking_new_page(
     ctx = {
         "request": request,
         "user": user,
+        "session_user": request.session.get("user"),   # ← هذا هو الحل
+        "display_currency": disp_cur
+
         "item": item,
         "disp_price": disp_price,
         "item_currency": item_cur,
