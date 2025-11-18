@@ -445,8 +445,6 @@ def booking_new_page(
         "request": request,
         "user": user,
         "item": item,
-
-        "display_currency": disp_cur,
         "disp_price": disp_price,
         "item_currency": item_cur,
 
