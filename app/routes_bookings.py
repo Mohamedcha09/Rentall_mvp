@@ -410,39 +410,52 @@ RENTER_REPLY_WINDOW_HOURS = 48
 @router.get("/bookings/new")
 def booking_new_page(
     request: Request,
-    item_id: int = Query(..., description="ID of the item to book"),
+    item_id: int = Query(...),
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
     require_auth(user)
+
     item = db.get(Item, item_id)
     if not item or item.is_active != "yes":
         raise HTTPException(status_code=404, detail="Item not available")
+
+    # === 1) عملة المنشور ===
+    item_cur = (item.currency or "CAD").upper()
+
+    # === 2) عملة العرض (نفس التي تستعمل في home و items_detail) ===
+    disp_cur = _display_currency(request)
+
+    # === 3) تحويل السعر إلى عملة العرض ===
+    disp_price = fx_convert_smart(
+        src_amount=item.price_per_day,
+        src_currency=item_cur,
+        target_currency=disp_cur,
+        db=db,
+    )
+
+    # === 4) قيم افتراضية للتواريخ ===
     today = date.today()
-        # ====== NEW: same currency logic as item_detail ======
-    disp_cur = _display_currency(request)  # عملة العرض
-    base_cur = (item.currency or "CAD").upper()  # عملة المنشور الأصلية
+    start_default = today
+    end_default = today + timedelta(days=1)
+    days_default = 1
 
-    # السعر الأصلي
-    src_amount = item.price_per_day or 0
-
-    # السعر المحوّل لاستعماله في صفحة الحجز
-    display_price = fx_convert_smart(db, src_amount, base_cur, disp_cur)
-
+    # === 5) نرسل كل شيء للـ HTML ===
     ctx = {
         "request": request,
         "user": user,
         "item": item,
+
+        "display_currency": disp_cur,
+        "disp_price": disp_price,
+        "item_currency": item_cur,
+
         "start_default": start_default,
         "end_default": end_default,
         "days_default": days_default,
-        "display_currency": disp_cur,
-        "display_price": float(display_price),
-        "base_currency": base_cur,
-        "base_amount": float(src_amount),
-
     }
-    return templates.TemplateResponse("booking_new.html", ctx)
+
+    return request.app.templates.TemplateResponse("booking_new.html", ctx)
 
 
 # ========================================
