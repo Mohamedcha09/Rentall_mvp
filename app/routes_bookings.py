@@ -424,7 +424,7 @@ def booking_new_page(
     item_cur = (item.currency or "CAD").upper()
 
     # === 2) عملة العرض (نفس التي تستعمل في home و items_detail) ===
-    disp_cur = _display_currency(request)
+    disp_cur = display_currency(request)
 
     # === 3) تحويل السعر إلى عملة العرض ===
     disp_price = fx_convert_smart(
