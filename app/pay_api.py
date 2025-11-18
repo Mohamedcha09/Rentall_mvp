@@ -258,7 +258,7 @@ def _processing_fee_cents_for_rent(rent_cents: int) -> int:
     fee  = (base * pct) + fx
     return int(fee.to_integral_value(rounding=ROUND_CEILING))
 
-# ============================================================
+
 # Checkout: Rent + Deposit together
 # ============================================================
 @router.post("/api/stripe/checkout/all/{booking_id}")
@@ -281,6 +281,9 @@ def start_checkout_all(
     if not owner or not getattr(owner, "stripe_account_id", None):
         raise HTTPException(status_code=400, detail="Owner is not onboarded to Stripe")
 
+    # 🔒 NEW: عملة الـ checkout هي عملة المنشور نفسه (EUR / USD / CAD ...)
+    item_currency = (getattr(item, "currency", None) or CURRENCY).lower()
+
     rent_cents = int(max(0, (bk.total_amount or 0)) * 100)
     dep_cents  = int(max(0, (bk.deposit_amount or getattr(bk, "hold_deposit_amount", 0) or 0)) * 100)
     if rent_cents <= 0 and dep_cents <= 0:
@@ -297,7 +300,11 @@ def start_checkout_all(
 
     pi_data = {
         "capture_method": "manual",
-        "metadata": {"kind": "all", "booking_id": str(bk.id)},
+        "metadata": {
+            "kind": "all",
+            "booking_id": str(bk.id),
+            "currency": item_currency,   # (اختياري) فقط للمعلومة
+        },
         "transfer_data": {
             "destination": owner.stripe_account_id,
             "amount": transfer_amount,
@@ -311,7 +318,7 @@ def start_checkout_all(
         {
             "quantity": 1,
             "price_data": {
-                "currency": CURRENCY,
+                "currency": item_currency,   # 👈 بدل CURRENCY
                 "product_data": {"name": f"Rent for '{item.title}' (#{bk.id})"},
                 "unit_amount": rent_cents,
                 "tax_behavior": "exclusive",
@@ -320,7 +327,7 @@ def start_checkout_all(
         {
             "quantity": 1,
             "price_data": {
-                "currency": CURRENCY,
+                "currency": item_currency,   # 👈 بدل CURRENCY
                 "product_data": {"name": "Processing fee"},
                 "unit_amount": processing_cents,
                 "tax_behavior": "exclusive",
@@ -332,7 +339,7 @@ def start_checkout_all(
         line_items.append({
             "quantity": 1,
             "price_data": {
-                "currency": CURRENCY,
+                "currency": item_currency,   # 👈 بدل CURRENCY
                 "product_data": {"name": f"Deposit for '{item.title}' (#{bk.id})"},
                 "unit_amount": dep_cents,
                 "tax_behavior": "exclusive",
@@ -350,8 +357,10 @@ def start_checkout_all(
                     tax_lines.append({
                         "quantity": 1,
                         "price_data": {
-                            "currency": CURRENCY,
-                            "product_data": {"name": f"{t.get('name','Tax')} {round(float(t.get('rate',0))*100,3)}%"},
+                            "currency": item_currency,  # 👈 بدل CURRENCY
+                            "product_data": {
+                                "name": f"{t.get('name','Tax')} {round(float(t.get('rate',0))*100,3)}%"
+                            },
                             "unit_amount": amt_cents,
                         },
                     })
@@ -380,6 +389,7 @@ def start_checkout_all(
     bk.online_status = "pending_authorization"
     db.commit()
     return RedirectResponse(url=session.url, status_code=303)
+
 # ============ (A) Stripe Connect Onboarding ============
 @router.post("/api/stripe/connect/start")
 def connect_start(

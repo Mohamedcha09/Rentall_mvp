@@ -3,8 +3,7 @@
 {% block content %}
 <div class="container" style="max-width:840px">
 
-  {% set disp_cur = display_currency(request) %}
-
+  {% set disp_cur = (item.currency or 'CAD')|upper %}
   <h3 class="mb-3">Booking: {{ item.title }}</h3>
 
   {% if request.query_params.get('err') == 'dates' %}
@@ -48,8 +47,9 @@
           <div class="form-text mt-2">
             Current daily price:
             <strong>
-              {{ item.price_per_day | convert(item.currency, disp_cur) | money(disp_cur) }}
+              {{ item.price_per_day | money(disp_cur) }}
             </strong>
+
           </div>
         </div>
 

@@ -2,7 +2,7 @@
 {% block content %}
 
 {# ==== متغيرات العرض (العملة والرسوم التقديرية) ==== #}
-{% set currency = (CURRENCY or 'CAD')|upper %}
+{% set currency = (item and item.currency or CURRENCY or 'CAD')|upper %}
 {% set rent = (booking.total_amount or 0.0) %}
 {% set sevor_fee = (rent * 0.01) %}
 {% set processing_fee_est = (rent * 0.029) + 0.30 %}
