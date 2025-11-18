@@ -3,11 +3,14 @@
 
 {% block content %}
 
-{# عملة المنشور الأصلية #}
+{# 🔹 عملة المنشور (كما هي في الداتابيز) #}
 {% set item_cur = (item.currency or 'CAD')|upper %}
 
-{# لا تحويل هنا: نستخدم السعر كما هو مكتوب في المنشور #}
-{% set native_price = item.price_per_day %}
+{# 🔹 عملة العرض للمستخدم (من الـ middleware) #}
+{% set disp_cur = display_currency(request) %}
+
+{# 🔹 السعر اليومي بعد التحويل من عملة المنشور → عملة العرض #}
+{% set disp_price = item.price_per_day | convert(item_cur, disp_cur) %}
 
 <div class="container" style="max-width:840px">
 
@@ -52,12 +55,11 @@
           </div>
 
           <div class="form-text mt-2">
-Current daily price:
-<strong>
-  {{ native_price | money(item_cur) }}
-</strong>
-
-            {# مثال: 0,68 EUR أو 1,00 CAD حسب عملة العرض #}
+            Current daily price:
+            <strong>
+              {{ disp_price | money(disp_cur) }}
+            </strong>
+            {# الآن السعر بنفس عملة العرض التي رأيتها في صفحة الـ item #}
           </div>
         </div>
 
