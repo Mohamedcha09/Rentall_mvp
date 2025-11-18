@@ -484,7 +484,6 @@
     {% set disp_cur = display_currency(request) %}
     {% set currency = (disp_cur or (CURRENCY or 'CAD'))|upper %}
 
-    {% set currency = (CURRENCY or 'CAD')|upper %}
     {% set rent = (booking.total_amount or rent_amount or 0.0)|float %}
     {% set fee  = (processing_fee is defined) and processing_fee or
                   ((rent * (STRIPE_PROCESSING_PCT or 0.029)) + ((STRIPE_PROCESSING_FIXED_CENTS or 30) / 100.0)) %}
