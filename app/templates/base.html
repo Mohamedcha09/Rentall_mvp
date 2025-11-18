@@ -794,7 +794,11 @@
       <div id="typeaheadPanel" class="typeahead d-none"></div>
 
       <div class="actions d-flex align-items-center gap-2 ms-auto">
-      {% set _cur = display_currency(request) %}
+      {% if display_currency is string %}
+  {% set _cur = display_currency %}
+{% else %}
+  {% set _cur = _display_currency(request) %}
+{% endif %}
 
         <!-- Messages -->
         <a href="/messages" class="btn btn-ghost btn-sm" title="Messages">
