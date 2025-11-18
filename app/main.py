@@ -208,139 +208,30 @@ async def geo_session_middleware(request: Request, call_next):
     response = await call_next(request)
     return response
 
-SUPPORTED_CURRENCIES = ["CAD", "USD", "EUR"]
-
-@app.middleware("http")
-async def currency_middleware(request: Request, call_next):
-    """
-    يحدد عملة العرض للمستخدم.
-    الأولوية:
-      1) الكوكي disp_cur (اختيار الزائر من الهيدر أو الإعدادات الآن)
-      2) إعداد المستخدم في الـsession (users.display_currency)
-      3) العملة الموجودة في geo داخل الـsession
-      4) التخمين من البلد (geoip_guess_currency)
-    """
-    try:
-        path = request.url.path or ""
-
-        # لا نتدخل في webhooks و geo
-        if path.startswith("/webhooks/") or path.startswith("/geo/"):
-            return await call_next(request)
-
-        sess = request.session or {}
-        sess_user = sess.get("user") or {}
-        geo_sess = sess.get("geo") or {}
-
-        disp = None
-
-        # 1) أولوية أولى: الكوكي من الهيدر (اختيارك الحالي)
-        cur_cookie = (request.cookies.get("disp_cur") or "").upper()
-        if cur_cookie in SUPPORTED_CURRENCIES:
-            disp = cur_cookie
-
-        # 2) لو ما عندنا كوكي صالحة → نستعمل إعداد المستخدم من الـsession
-        if not disp:
-            cur_user = (sess_user.get("display_currency") or "").upper()
-            if cur_user in SUPPORTED_CURRENCIES:
-                disp = cur_user
-
-        # 3) لو لا كوكي ولا إعداد → نأخذ من GEO في الـsession
-        if not disp:
-            cur_geo = (geo_sess.get("currency") or "").upper()
-            if cur_geo in SUPPORTED_CURRENCIES:
-                disp = cur_geo
-
-        # 4) لو ما زال فاضي → نخمن من البلد
-        if not disp:
-            disp = geoip_guess_currency(request)
-
-        # حارس أمان
-        if disp not in SUPPORTED_CURRENCIES:
-            disp = "CAD"
-
-        # نخزن العملة في request.state (يستعملها Jinja: display_currency(request))
-        request.state.display_currency = disp
-
-        # نكمل الطلب
-        response = await call_next(request)
-
-        # نحدّث الكوكي دائما بالعملة النهائية
-        response.set_cookie(
-            "disp_cur",
-            disp,
-            max_age=60 * 60 * 24 * 180,
-            httponly=False,
-            samesite="lax",
-            domain=COOKIE_DOMAIN,
-            secure=HTTPS_ONLY_COOKIES,
-        )
-
-        return response
-
-    except Exception:
-        return await call_next(request)
-
-
-# -----------------------------------------------------------------------------
-# Static / Templates / Uploads
-# -----------------------------------------------------------------------------
-BASE_DIR = os.path.dirname(__file__)
-TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-
-# Make the uploads folder unified at the project level (outside app/)
-APP_ROOT = os.path.abspath(os.path.join(BASE_DIR, ".."))
-UPLOADS_DIR = os.path.join(APP_ROOT, "uploads")
-os.makedirs(UPLOADS_DIR, exist_ok=True)
-
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
-
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
-app.templates = templates
-
-def media_url(path: str | None) -> str:
-    """Returns the Cloudinary URL as-is, or prefixes a local path with '/'."""
-    if not path:
-        return ""
-    p = str(path).strip()
-    if p.startswith("http://") or p.startswith("https://"):
-        return p
-    return p if p.startswith("/") else "/" + p
-
-app.templates.env.filters["media_url"] = media_url
-
 # -----------------------------------------------------------------------------
 # Currencies (NEW)
 # -----------------------------------------------------------------------------
 
+SUPPORTED_CURRENCIES = ["CAD", "USD", "EUR"]
+
 # ---------- FX storage helpers ----------
 def _fx_upsert(db: Session, base: str, quote: str, rate: float, day: date):
-    """
-    insert-or-update صف واحد لليوم المعطى.
-    ملاحظة: جدول fx_rates لا يحتوي على id، المفتاح (base, quote, effective_date).
-    """
-    # هل يوجد صف لهذا (base, quote, effective_date)؟
     q_sel = text("""
-        SELECT 1
-        FROM fx_rates
-        WHERE base = :b AND quote = :q AND effective_date = :d
+        SELECT 1 FROM fx_rates
+        WHERE base=:b AND quote=:q AND effective_date=:d
         LIMIT 1
     """)
     row = db.execute(q_sel, {"b": base, "q": quote, "d": day}).fetchone()
 
     if row:
-        # حدّث السطر باستخدام المفتاح المركّب
         db.execute(
             text("""
-                UPDATE fx_rates
-                SET rate = :r
-                WHERE base = :b AND quote = :q AND effective_date = :d
+                UPDATE fx_rates SET rate=:r
+                WHERE base=:b AND quote=:q AND effective_date=:d
             """),
-            {"r": rate, "b": base, "q": quote, "d": day}
+            {"r": rate, "b": base, "q": quote, "d": day},
         )
     else:
-        # أضف صف جديد
         db.add(FxRate(base=base, quote=quote, rate=rate, effective_date=day))
 
 def _fx_fetch_today_from_api() -> dict[str, float]:
@@ -355,14 +246,14 @@ def _fx_fetch_today_from_api() -> dict[str, float]:
         eur_usd = float(data["rates"]["USD"])
         eur_cad = float(data["rates"]["CAD"])
     except Exception:
-        # Fallback محافظ إن فشل الجلب (أرقام تقريبية – لن تمنع العمل)
         eur_usd = 1.08
         eur_cad = 1.47
 
-    usd_eur = 1.0 / eur_usd
-    cad_eur = 1.0 / eur_cad
+    usd_eur = 1 / eur_usd
+    cad_eur = 1 / eur_cad
     usd_cad = eur_cad / eur_usd
-    cad_usd = 1.0 / usd_cad
+    cad_usd = 1 / usd_cad
+
     return {
         "EUR->USD": eur_usd, "USD->EUR": usd_eur,
         "EUR->CAD": eur_cad, "CAD->EUR": cad_eur,
@@ -370,157 +261,108 @@ def _fx_fetch_today_from_api() -> dict[str, float]:
         "CAD->CAD": 1.0, "USD->USD": 1.0, "EUR->EUR": 1.0,
     }
 
-def fx_sync_today(db: Session) -> None:
+def fx_sync_today(db: Session):
     today = date.today()
     try:
         rates = _fx_fetch_today_from_api()
     except Exception:
-        rates = {
-            "CAD->CAD": 1.0, "USD->USD": 1.0, "EUR->EUR": 1.0,
-        }  # أقل شيء لمنع الفراغ
+        rates = {"CAD->CAD": 1.0, "USD->USD": 1.0, "EUR->EUR": 1.0}
+
     for k, r in rates.items():
         base, quote = k.split("->")
         _fx_upsert(db, base, quote, float(r), today)
+
     db.commit()
 
-app.state.fx_last_sync_at: datetime | None = None
+app.state.fx_last_sync_at = None
 
 def _fx_ensure_daily_sync():
-    """يشغَّل عند الإقلاع وأول طلب في اليوم فقط."""
     try:
         now = datetime.utcnow()
         if app.state.fx_last_sync_at and (now - app.state.fx_last_sync_at) < timedelta(hours=20):
             return
         db = SessionLocal()
-        try:
-            fx_sync_today(db)
-            app.state.fx_last_sync_at = now
-            print("[OK] FX synced")
-        finally:
-            db.close()
+        fx_sync_today(db)
+        db.close()
+        app.state.fx_last_sync_at = now
+        print("[OK] FX synced")
     except Exception as e:
         print("[WARN] FX sync failed:", e)
 
-def geoip_guess_currency(request: Request) -> str:
-    """
-    تخمين بسيط لعملة العرض من البلد/المنطقة الموجودة في الـ session.
-    نحاول قراءة geo من:
-      - session["geo"]  ← الشكل الجديد
-      - أو المفاتيح القديمة geo_country / geo_currency  ← fallback
-    """
-    try:
-        if not _has_session(request):
-            # لا يوجد session → نرجع CAD كخيار آمن
-            return "CAD"
-
-        sess = getattr(request, "session", {}) or {}
-
-        # الشكل الجديد
-        sess_geo = sess.get("geo") or {}
-        country = (sess_geo.get("country") or "").upper()
-
-        # fallback
-        if not country:
-            country = (sess.get("geo_country") or "").upper()
-
-        if country == "CA":
-            return "CAD"
-        if country == "US":
-            return "USD"
-
-        euro_countries = {
-            "FR","DE","ES","IT","PT","NL","BE","LU","IE","FI",
-            "AT","GR","CY","EE","LV","LT","MT","SI","SK","HR"
-        }
-        if country in euro_countries:
-            return "EUR"
-
-        return "USD"
-    except Exception:
-        return "CAD"
-
-
-def _fetch_rate(db: Session, base: str, quote: str) -> Optional[float]:
-    """
-    اقرأ سعر الصرف من جدول fx_rates.
-    1) جرّب effective_date = اليوم
-    2) إن لم يوجد، خذ أحدث سجل متاح لتلك العملة (أكبر effective_date)
-    """
+def _fetch_rate(db: Session, base: str, quote: str):
     if base == quote:
         return 1.0
-    # اليوم
-    today = date.today().isoformat()
-    q1 = text(
-        "SELECT rate FROM fx_rates WHERE base=:b AND quote=:q AND effective_date=:d LIMIT 1"
-    )
-    r1 = db.execute(q1, {"b": base, "q": quote, "d": today}).fetchone()
-    if r1 and r1[0] is not None:
-        return float(r1[0])
-    # أحدث تاريخ متاح
-    q2 = text(
-        """
-        SELECT rate FROM fx_rates
-        WHERE base=:b AND quote=:q
-        ORDER BY effective_date DESC
-        LIMIT 1
-        """
-    )
-    r2 = db.execute(q2, {"b": base, "q": quote}).fetchone()
-    if r2 and r2[0] is not None:
-        return float(r2[0])
-    return None
 
-def fx_convert(db: Session, amount: float | int | None, base: str, quote: str) -> float:
-    """
-    يحوّل مبلغ من base إلى quote باستخدام fx_rates.
-    إن لم يجد سعراً مباشراً، يحاول via CAD كجسر (base→CAD→quote) للتغطية.
-    """
+    today = date.today().isoformat()
+
+    row = db.execute(
+        text("""SELECT rate FROM fx_rates
+                WHERE base=:b AND quote=:q AND effective_date=:d
+                LIMIT 1"""),
+        {"b": base, "q": quote, "d": today}
+    ).fetchone()
+
+    if row:
+        return float(row[0])
+
+    row = db.execute(
+        text("""SELECT rate FROM fx_rates
+                WHERE base=:b AND quote=:q
+                ORDER BY effective_date DESC LIMIT 1"""),
+        {"b": base, "q": quote}
+    ).fetchone()
+
+    return float(row[0]) if row else None
+
+def fx_convert(db: Session, amount, base, quote):
     try:
-        amt = float(amount or 0)
-    except Exception:
-        amt = 0.0
+        a = float(amount or 0)
+    except:
+        a = 0.0
+
     base = (base or "CAD").upper()
     quote = (quote or "CAD").upper()
-    if base == quote:
-        return amt
 
-    # مباشرة
+    if base == quote:
+        return a
+
     r = _fetch_rate(db, base, quote)
     if r:
-        return amt * r
+        return a * r
 
-    # جسر عبر CAD
     if base != "CAD" and quote != "CAD":
         r1 = _fetch_rate(db, base, "CAD")
         r2 = _fetch_rate(db, "CAD", quote)
         if r1 and r2:
-            return amt * r1 * r2
+            return a * r1 * r2
 
-    # فشل → رجّع المبلغ كما هو
-    return amt
+    return a
+
+# ---------- Jinja filters ----------
+
+def _format_money(amount, cur: str):
+    try:
+        v = float(amount or 0)
+    except:
+        v = 0.0
+    s = f"{v:,.2f}".replace(",", " ").replace(".", ",")
+    return f"{s} {cur}"
+
+def _money_filter(amount, cur="CAD"):
+    return _format_money(amount, (cur or "CAD").upper())
 
 def _convert_filter(amount, base, quote):
     db = SessionLocal()
     try:
-        return fx_convert(db, amount, (base or "CAD"), (quote or "CAD"))
+        return fx_convert(db, amount, base, quote)
     finally:
         db.close()
 
+# Register filters AFTER defining them
 templates.env.filters["money"] = _money_filter
-
-
 templates.env.filters["convert"] = _convert_filter
 
-def _format_money(amount: float | int, cur: str) -> str:
-    """تنسيق بسيط للأرقام (فواصل آلاف + خانتان عشريتان) مع رمز العملة."""
-    try:
-        val = float(amount or 0)
-    except Exception:
-        val = 0.0
-    s = f"{val:,.2f}".replace(",", "X").replace(".", ",").replace("X", " ")
-    return f"{s} {cur}"
-
-# اجعل أدوات العملة متاحة خارجياً أيضًا لو احتجت في ملفات أخرى:
+# expose utils
 app.state.fx_convert = fx_convert
 app.state.supported_currencies = SUPPORTED_CURRENCIES
 
@@ -757,7 +599,6 @@ templates.env.globals["display_currency"] = lambda request: getattr(request.stat
 def _money_filter(amount, cur="CAD"):
     return _format_money(amount, (cur or "CAD").upper())
 
-templates.env.filters["money"] = _money_filter
 
 # -----------------------------------------------------------------------------
 # Register routers
