@@ -49,13 +49,16 @@
             </label>
           </div>
 
+          <!-- ============= FIX: Symbol matching display_currency ============= -->
+          {% set symbols = {"CAD": "$", "USD": "$", "EUR": "€"} %}
+
           <div class="form-text mt-2">
             Current daily price:
             <strong>
-              {{ disp_price | money(disp_cur) }}
+              {{ symbols[disp_cur] }}{{ "%.2f"|format(disp_price) }}
             </strong>
-            {# نفس عملة العرض التي تراها في صفحة الـ item #}
           </div>
+          <!-- ================================================================= -->
         </div>
 
         <div class="col-12 d-flex justify-content-end gap-2 mt-3">
