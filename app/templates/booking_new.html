@@ -2,16 +2,17 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+{# 🔹 عملة المنشور (العملة الأصلية التي صاحب المنشور كتب بها السعر) #}
+{% set item_cur = (item.currency or 'CAD')|upper %}
+
+{# 🔹 عملة العرض للمستخدم (من الـ middleware) #}
+{% set disp_cur = display_currency(request) %}
+
+{# 🔹 السعر اليومي بعد التحويل من عملة المنشور → عملة العرض #}
+{% set disp_price = item.price_per_day | convert(item_cur, disp_cur) %}
+
 <div class="container" style="max-width:840px">
-
-  {# 🔹 عملة المنشور (التي صاحِب المنشور كتب بها السعر) #}
-  {% set item_cur = (item.currency or 'CAD')|upper %}
-
-  {# 🔹 عملة العرض للمستخدم (من middleware) #}
-  {% set disp_cur = display_currency(request) %}
-
-  {# 🔹 السعر اليومي محوَّل من عملة المنشور → عملة العرض #}
-  {% set disp_price = item.price_per_day | convert(item_cur, disp_cur) %}
 
   <h3 class="mb-3">Booking: {{ item.title }}</h3>
 
@@ -58,7 +59,7 @@
             <strong>
               {{ disp_price | money(disp_cur) }}
             </strong>
-            {# مثال: 900,00 EUR أو 1,00 CAD حسب عملة العرض #}
+            {# مثال: 0,68 EUR أو 1,00 CAD حسب عملة العرض #}
           </div>
         </div>
 
