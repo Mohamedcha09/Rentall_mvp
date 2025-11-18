@@ -334,7 +334,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optiona
     return db.get(User, uid) if uid else None
 
 
-def require_auth(user: Optional[User]):
+def require_auth(request, db):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -443,7 +443,7 @@ def booking_new(
     item_id: int = Query(...),
     db: Session = Depends(get_db),
 ):
-    user = _require_auth(request, db)
+    user = require_auth(request, db)
 
     item = db.query(Item).filter(Item.id == item_id).first()
     if not item:
