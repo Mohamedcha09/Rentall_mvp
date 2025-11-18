@@ -13,6 +13,7 @@ from .database import get_db
 from .models import User, Item, Booking
 from .utils import category_label
 from .notifications_api import push_notification, notify_admins
+from .items import _display_currency, fx_convert_smart
 
 router = APIRouter(tags=["bookings"])
 DEFAULT_CA_SUB = os.getenv("DEFAULT_CA_SUB", "QC").upper()
@@ -418,16 +419,30 @@ def booking_new_page(
     if not item or item.is_active != "yes":
         raise HTTPException(status_code=404, detail="Item not available")
     today = date.today()
+        # ====== NEW: same currency logic as item_detail ======
+    disp_cur = _display_currency(request)  # عملة العرض
+    base_cur = (item.currency or "CAD").upper()  # عملة المنشور الأصلية
+
+    # السعر الأصلي
+    src_amount = item.price_per_day or 0
+
+    # السعر المحوّل لاستعماله في صفحة الحجز
+    display_price = fx_convert_smart(db, src_amount, base_cur, disp_cur)
+
     ctx = {
         "request": request,
-        "title": "Choose booking duration",
-        "session_user": request.session.get("user"),
+        "user": user,
         "item": item,
-        "start_default": today.isoformat(),
-        "end_default": (today + timedelta(days=1)).isoformat(),
-        "days_default": 1,
+        "start_default": start_default,
+        "end_default": end_default,
+        "days_default": days_default,
+        "display_currency": disp_cur,
+        "display_price": float(display_price),
+        "base_currency": base_cur,
+        "base_amount": float(src_amount),
+
     }
-    return request.app.templates.TemplateResponse("booking_new.html", ctx)
+    return templates.TemplateResponse("booking_new.html", ctx)
 
 
 # ========================================
