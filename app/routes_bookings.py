@@ -461,8 +461,11 @@ async def create_booking(
         item = db.get(Item, item_id)
         if not item or item.is_active != "yes":
             raise HTTPException(status_code=404, detail="Item not available")
-        if item.owner_id == user.id:
-            raise HTTPException(status_code=400, detail="Owner cannot book own item")
+
+        # نسمح مؤقتًا لصاحب المنشور أن يحجز منشوره (للتجارب)
+        # إذا أردت منع هذا في المستقبل، أعد تفعيل الشرط تحت
+        # if item.owner_id == user.id:
+        #     raise HTTPException(status_code=400, detail="Owner cannot book own item")
 
         sd_str = pick("start_date", "date_from", "from")
         ed_str = pick("end_date", "date_to", "to")
