@@ -506,6 +506,16 @@ def _convert_filter(amount, base, quote):
     finally:
         db.close()
 
+def _format_money(amount: float | int, cur: str) -> str:
+    ...
+    return f"{s} {cur}"
+
+def _money_filter(amount, cur="CAD"):
+    return _format_money(amount, (cur or "CAD").upper())
+
+templates.env.filters["money"] = _money_filter
+
+
 templates.env.filters["convert"] = _convert_filter
 
 def _format_money(amount: float | int, cur: str) -> str:
