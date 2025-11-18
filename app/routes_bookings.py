@@ -10,9 +10,45 @@ from sqlalchemy.orm import Session
 from sqlalchemy import inspect
 
 from .database import get_db
-from .models import User, Item, Booking
-from .utils import category_label
+from .models import User, Item, Booking, FxRate
+from .utils import category_label, fx_convert
 from .notifications_api import push_notification, notify_admins
+
+# ===== FX helpers (for booking page) =====
+def _pick_display_currency(request: Request, item_cur: str) -> str:
+    """
+    تختار عملة العرض للمستخدم:
+    1) من الكوكيز disp_cur لو موجودة وصحيحة
+    2) لو غير موجودة: نستعمل عملة المنشور نفسه
+    """
+    cur = (request.cookies.get("disp_cur") or "").upper()
+    if cur in ("CAD", "USD", "EUR"):
+        return cur
+    return (item_cur or "CAD").upper()
+
+
+def _convert_price(amount: float, base: str, quote: str, db: Session) -> float:
+    """
+    تحويل السعر من عملة المنشور (base) إلى عملة العرض (quote)
+    باستعمال جدول FxRate.
+    لو لم نجد سعر صرف مناسب: نرجع نفس المبلغ.
+    """
+    base = (base or "CAD").upper()
+    quote = (quote or "CAD").upper()
+
+    if base == quote:
+        return round(amount or 0, 2)
+
+    rate = (
+        db.query(FxRate)
+        .filter(FxRate.base == base, FxRate.quote == quote)
+        .order_by(FxRate.fetched_at.desc())
+        .first()
+    )
+    if not rate:
+        return round(amount or 0, 2)
+
+    return round((amount or 0) * rate.rate, 2)
 
 router = APIRouter(tags=["bookings"])
 DEFAULT_CA_SUB = os.getenv("DEFAULT_CA_SUB", "QC").upper()
@@ -401,34 +437,40 @@ def _ensure_deposit_hold(bk: Booking) -> bool:
 # ========================================
 DISPUTE_WINDOW_HOURS = 48
 RENTER_REPLY_WINDOW_HOURS = 48
-
-
-# ========================================
-# UI: Create page
-# ========================================
 @router.get("/bookings/new")
-def booking_new_page(
+def booking_new(
     request: Request,
-    item_id: int = Query(..., description="ID of the item to book"),
+    item_id: int = Query(...),
     db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
 ):
-    require_auth(user)
-    item = db.get(Item, item_id)
-    if not item or item.is_active != "yes":
-        raise HTTPException(status_code=404, detail="Item not available")
+    user = _require_auth(request, db)
+
+    item = db.query(Item).filter(Item.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    # ----- التواريخ الافتراضية -----
     today = date.today()
+    start_default = today.isoformat()
+    end_default = (today + timedelta(days=1)).isoformat()
+    days_default = 1
+
+    # ----- عملة المنشور + عملة العرض + السعر المحول -----
+    item_cur = (item.currency or "CAD").upper()
+    disp_cur = _pick_display_currency(request, item_cur)
+    disp_price = _convert_price(item.price_per_day, item_cur, disp_cur, db)
+
     ctx = {
         "request": request,
-        "title": "Choose booking duration",
-        "session_user": request.session.get("user"),
+        "user": user,
         "item": item,
-        "start_default": today.isoformat(),
-        "end_default": (today + timedelta(days=1)).isoformat(),
-        "days_default": 1,
+        "start_default": start_default,
+        "end_default": end_default,
+        "days_default": days_default,
+        "disp_cur": disp_cur,
+        "disp_price": disp_price,
     }
-    return request.app.templates.TemplateResponse("booking_new.html", ctx)
-
+    return templates.TemplateResponse("booking_new.html", ctx)
 
 # ========================================
 # Create booking

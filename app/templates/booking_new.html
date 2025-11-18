@@ -6,11 +6,7 @@
 {# 🔹 عملة المنشور (كما هي في الداتابيز) #}
 {% set item_cur = (item.currency or 'CAD')|upper %}
 
-{# 🔹 عملة العرض للمستخدم (من الـ middleware) #}
-{% set disp_cur = display_currency(request) %}
-
-{# 🔹 السعر اليومي بعد التحويل من عملة المنشور → عملة العرض #}
-{% set disp_price = item.price_per_day | convert(item_cur, disp_cur) %}
+{# disp_cur و disp_price جايين من الباك-إند (routes_bookings.py) #}
 
 <div class="container" style="max-width:840px">
 
@@ -59,7 +55,7 @@
             <strong>
               {{ disp_price | money(disp_cur) }}
             </strong>
-            {# الآن السعر بنفس عملة العرض التي رأيتها في صفحة الـ item #}
+            {# نفس عملة العرض التي تراها في صفحة الـ item #}
           </div>
         </div>
 
