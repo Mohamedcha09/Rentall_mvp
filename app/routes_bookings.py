@@ -335,8 +335,15 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optiona
 
 
 def require_auth(request, db):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise RedirectResponse("/login", status_code=302)
+
+    user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise RedirectResponse("/login", status_code=302)
+
+    return user
 
 
 def require_booking(db: Session, booking_id: int) -> Booking:
