@@ -428,10 +428,10 @@ def booking_new_page(
 
     # === 3) تحويل السعر إلى عملة العرض ===
     disp_price = fx_convert_smart(
-        src_amount=item.price_per_day,
-        src_currency=item_cur,
-        target_currency=disp_cur,
-        db=db,
+        db,
+        item.price_per_day,
+        item_cur,
+        disp_cur
     )
 
     # === 4) قيم افتراضية للتواريخ ===
