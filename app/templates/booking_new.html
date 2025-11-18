@@ -47,15 +47,15 @@
             </label>
           </div>
 
-          {# ============ FIX SYMBOL HERE ============ #}
+          {# رموز العملات #}
           {% set symbols = {"CAD":"CAD", "USD":"USD", "EUR":"EUR"} %}
           {% set symbol = symbols.get(display_currency, "") %}
-          {# ========================================== #}
 
           <div class="form-text mt-2">
             Current daily price:
             <strong>
-              {{ symbol }}{{ "%.2f"|format(disp_price) }}
+              {{ "%.2f"|format(disp_price) }}
+              <span style="font-weight:700;"> {{ symbol }}</span>
             </strong>
           </div>
         </div>
