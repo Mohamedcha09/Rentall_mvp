@@ -208,11 +208,18 @@ async def geo_session_middleware(request: Request, call_next):
     response = await call_next(request)
     return response
 
-
 SUPPORTED_CURRENCIES = ["CAD", "USD", "EUR"]
 
 @app.middleware("http")
 async def currency_middleware(request: Request, call_next):
+    """
+    يحدد عملة العرض للمستخدم.
+    الأولوية:
+      1) الكوكي disp_cur (اختيار الزائر من الهيدر أو الإعدادات الآن)
+      2) إعداد المستخدم في الـsession (users.display_currency)
+      3) العملة الموجودة في geo داخل الـsession
+      4) التخمين من البلد (geoip_guess_currency)
+    """
     try:
         path = request.url.path or ""
 
@@ -226,18 +233,18 @@ async def currency_middleware(request: Request, call_next):
 
         disp = None
 
-        # 1) لو المستخدم عنده display_currency في الإعدادات → هي رقم 1
-        cur_user = (sess_user.get("display_currency") or "").upper()
-        if cur_user in SUPPORTED_CURRENCIES:
-            disp = cur_user
+        # 1) أولوية أولى: الكوكي من الهيدر (اختيارك الحالي)
+        cur_cookie = (request.cookies.get("disp_cur") or "").upper()
+        if cur_cookie in SUPPORTED_CURRENCIES:
+            disp = cur_cookie
 
-        # 2) لو ما فيه من المستخدم → نأخذ من الكوكي disp_cur (اختيارك من الهيدر)
+        # 2) لو ما عندنا كوكي صالحة → نستعمل إعداد المستخدم من الـsession
         if not disp:
-            cur_cookie = (request.cookies.get("disp_cur") or "").upper()
-            if cur_cookie in SUPPORTED_CURRENCIES:
-                disp = cur_cookie
+            cur_user = (sess_user.get("display_currency") or "").upper()
+            if cur_user in SUPPORTED_CURRENCIES:
+                disp = cur_user
 
-        # 3) لو لا من المستخدم ولا من الكوكي → نأخذ من GEO في الـsession
+        # 3) لو لا كوكي ولا إعداد → نأخذ من GEO في الـsession
         if not disp:
             cur_geo = (geo_sess.get("currency") or "").upper()
             if cur_geo in SUPPORTED_CURRENCIES:
@@ -251,7 +258,7 @@ async def currency_middleware(request: Request, call_next):
         if disp not in SUPPORTED_CURRENCIES:
             disp = "CAD"
 
-        # نخزن العملة في request.state
+        # نخزن العملة في request.state (يستعملها Jinja: display_currency(request))
         request.state.display_currency = disp
 
         # نكمل الطلب
