@@ -483,6 +483,8 @@
     {# ← NEW: استعمل نفس عملة العرض مثل home #}
     {% set disp_cur = display_currency(request) %}
     {% set currency = (disp_cur or (CURRENCY or 'CAD'))|upper %}
+    {% set native_cur = booking.currency_native or booking.currency or 'CAD' %}
+    {% set fx = fx_rate(native_cur, currency) %}
 
     {% set rent = (booking.total_amount or rent_amount or 0.0)|float %}
     {% set fee  = (processing_fee is defined) and processing_fee or
@@ -730,12 +732,12 @@
 
         <div class="d-flex justify-content-between">
           <span>Rent amount</span>
-          <strong>{{ booking.rent_amount or booking.total_amount or 0 }} {{ currency }}</strong>
+<strong>{{ "%.2f"|format(disp_rent) }} {{ currency }}</strong>
         </div>
 
         <div class="d-flex justify-content-between">
           <span>Deposit on hold</span>
-          <strong>{{ booking.hold_deposit_amount or booking.deposit_amount or 0 }} {{ currency }}</strong>
+<strong>{{ "%.2f"|format(disp_dep) }} {{ currency }}</strong>
         </div>
 
         <div class="d-flex justify-content-between">
