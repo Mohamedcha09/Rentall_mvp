@@ -862,7 +862,8 @@
               <!-- NEW: Price → City → Rating -->
   <div class="spot-meta">
     {% if it.price_per_day is defined %}
-      <strong>{{ it.display_price }}</strong> {{ it.display_symbol }} <span>/day</span>
+            <div class="spot-price"><strong>{{ it.display_price }}</strong> {{ it.display_symbol }}<span>/day</span></div>
+      
     {% endif %}
     <div class="spot-city">{{ it.city or '—' }}</div>
     <div class="spot-rating">{{ it.rating|default(4.8) }}</div>
@@ -985,7 +986,7 @@
             <!-- NEW: Price → City → Rating -->
   <div class="spot-meta">
     {% if it.price_per_day is defined %}
-      <strong>{{ it.display_price }}</strong> {{ it.display_symbol }} <span>/day</span>
+            <div class="spot-price"><strong>{{ it.display_price }}</strong> {{ it.display_symbol }}<span>/day</span></div>
     {% endif %}
     <div class="spot-city">{{ it.city or '—' }}</div>
     <div class="spot-rating">{{ it.rating|default(4.8) }}</div>
