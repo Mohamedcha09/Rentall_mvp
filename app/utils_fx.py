@@ -64,36 +64,40 @@ def convert(db: Session, amount: float, cur_from: str, cur_to: str) -> float:
     rate = get_rate(db, cur_from, cur_to)
     return float(Decimal(str(amount)) * Decimal(str(rate)))
 
-
-# -------------------------------------------------
-# 3) Store booking FX snapshot
-# -------------------------------------------------
-def snapshot_booking_fx(bk, native_cur: str, paid_cur: str, display_cur: str, db: Session):
+def make_fx_snapshot(db: Session, amount_native: float, native_cur: str, display_cur: str):
     """
-    Store all FX values inside booking model safely.
+    Returns an FX snapshot dict:
+      - currency_native
+      - amount_native
+      - currency_display
+      - amount_display
+      - currency_paid  (same as display)
+      - fx_rate_native_to_paid
+      - platform_fee_currency
     """
-
     native_cur  = native_cur.upper()
-    paid_cur    = paid_cur.upper()
     display_cur = display_cur.upper()
-
-    # Native → Paid rate
-    rate_np = get_rate(db, native_cur, paid_cur)
+    paid_cur    = display_cur       # Always pay using display currency
 
     # Native → Display
-    amount_display = convert(db, bk.amount_native, native_cur, display_cur)
+    rate_native_to_display = get_rate(db, native_cur, display_cur)
+    amount_display = round(float(amount_native) * rate_native_to_display, 2)
 
-    # Save
-    try:
-        bk.currency_native = native_cur
-        bk.currency_paid = paid_cur
-        bk.currency_display = display_cur
+    # FX rate native → paid
+    rate_native_to_paid = rate_native_to_display
 
-        bk.fx_rate_native_to_paid = rate_np
-        bk.amount_display = int(round(amount_display))
-        bk.platform_fee_currency = paid_cur
-    except Exception:
-        pass
+    return {
+        "currency_native": native_cur,
+        "amount_native": float(amount_native),
+
+        "currency_display": display_cur,
+        "amount_display": float(amount_display),
+
+        "currency_paid": paid_cur,
+        "fx_rate_native_to_paid": float(rate_native_to_paid),
+
+        "platform_fee_currency": native_cur  # platform fee uses item currency
+    }
 
 
 # -------------------------------------------------

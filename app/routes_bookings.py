@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException, Form, Query, sta
 from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import inspect
+from . import utils_fx
 
 from .database import get_db
 from .models import User, Item, Booking
@@ -514,7 +515,13 @@ async def create_booking(
         total_amount = days * max(0, price_per_day)
         # ✅ عملة المنشور
         item_currency = (item.currency or "CAD").upper()
-
+        disp_cur = _display_currency(request)   # عملة العرض
+        snapshot = utils_fx.make_fx_snapshot(
+            db=db,
+            amount_native=total_amount,
+            native_cur=item_currency,
+            display_cur=disp_cur
+)
         candidate = {
             "item_id": item.id,
             "renter_id": user.id,
@@ -524,9 +531,6 @@ async def create_booking(
             "days": days,
             "price_per_day_snapshot": price_per_day,
             "total_amount": total_amount,
-                        # ✅ NEW: snapshot العملة وقيمة الحجز في نفس عملة المنشور
-            "currency": item_currency,
-            "amount_item": total_amount,
             "status": "requested",
             "owner_decision": None,
             "payment_method": None,
@@ -535,6 +539,17 @@ async def create_booking(
             "deposit_status": None,
             "deposit_hold_id": None,
             "timeline_created_at": datetime.utcnow(),
+            "currency_native": snapshot["currency_native"],
+            "amount_native": snapshot["amount_native"],
+
+            "currency_display": snapshot["currency_display"],
+            "amount_display": snapshot["amount_display"],
+
+            "currency_paid": snapshot["currency_paid"],
+            "fx_rate_native_to_paid": snapshot["fx_rate_native_to_paid"],
+
+            "platform_fee_currency": snapshot["platform_fee_currency"],
+
         }
 
         booking_cols = {c.key for c in inspect(Booking).mapper.column_attrs}
