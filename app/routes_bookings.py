@@ -512,6 +512,8 @@ async def create_booking(
 
         price_per_day = item.price_per_day or 0
         total_amount = days * max(0, price_per_day)
+        # ✅ عملة المنشور
+        item_currency = (item.currency or "CAD").upper()
 
         candidate = {
             "item_id": item.id,
@@ -522,6 +524,9 @@ async def create_booking(
             "days": days,
             "price_per_day_snapshot": price_per_day,
             "total_amount": total_amount,
+                        # ✅ NEW: snapshot العملة وقيمة الحجز في نفس عملة المنشور
+            "currency": item_currency,
+            "amount_item": total_amount,
             "status": "requested",
             "owner_decision": None,
             "payment_method": None,

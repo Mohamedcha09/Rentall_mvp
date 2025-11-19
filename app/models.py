@@ -333,7 +333,6 @@ except Exception:
         overlaps="notifications,user"
     )
 
-
 # =========================
 # Bookings
 # =========================
@@ -349,6 +348,11 @@ class Booking(Base):
     days                    = Column(Integer, nullable=False, default=1)
     price_per_day_snapshot  = Column(Integer, nullable=False, default=0)
     total_amount            = Column(Integer, nullable=False, default=0)
+
+    # snapshot عملة وقيمة الحجز كاملة
+    currency    = col_or_literal("bookings", "currency", String(3), nullable=True)
+    amount_item = col_or_literal("bookings", "amount_item", Integer, nullable=False, default=0)
+
     status      = Column(String(20), nullable=False, default="requested")
     created_at  = Column(DateTime, default=datetime.utcnow)
     updated_at  = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -357,9 +361,11 @@ class Booking(Base):
     platform_fee             = col_or_literal("bookings", "platform_fee", Integer, nullable=False, default=0)
     rent_amount              = col_or_literal("bookings", "rent_amount", Integer, nullable=False, default=0)
     hold_deposit_amount      = col_or_literal("bookings", "hold_deposit_amount", Integer, nullable=False, default=0)
+
     online_status            = col_or_literal("bookings", "online_status", String(30), default="created")
     online_checkout_id       = col_or_literal("bookings", "online_checkout_id", String(120), nullable=True)
     online_payment_intent_id = col_or_literal("bookings", "online_payment_intent_id", String(120), nullable=True)
+
     owner_payout_amount      = col_or_literal("bookings", "owner_payout_amount", Integer, nullable=False, default=0)
     rent_released_at         = col_or_literal("bookings", "rent_released_at", DateTime, nullable=True)
 
@@ -373,7 +379,8 @@ class Booking(Base):
     deposit_amount  = col_or_literal("bookings", "deposit_amount", Integer, nullable=False, default=0)
     deposit_hold_id = col_or_literal("bookings", "deposit_hold_id", String(120), nullable=True)
     deposit_charged_amount = col_or_literal("bookings", "deposit_charged_amount", Integer, nullable=False, default=0)
-    # Pickup/return photos (text JSON: list of links)
+
+    # Pickup/return photos
     pickup_photos_json = col_or_literal("bookings", "pickup_photos_json", Text, nullable=True)
     return_photos_json  = col_or_literal("bookings", "return_photos_json",  Text, nullable=True)
 
@@ -392,13 +399,13 @@ class Booking(Base):
     timeline_paid_at                = col_or_literal("bookings", "timeline_paid_at", DateTime, nullable=True)
     timeline_renter_received_at     = col_or_literal("bookings", "timeline_renter_received_at", DateTime, nullable=True)
 
-    # Return check and auto-release deadline
     return_check_no_problem  = col_or_literal("bookings", "return_check_no_problem", Boolean, default=False)
     return_check_submitted_at = col_or_literal("bookings", "return_check_submitted_at", DateTime, nullable=True)
     deposit_auto_release_at   = col_or_literal("bookings", "deposit_auto_release_at", DateTime, nullable=True)
-    # models.py (داخل class Booking)
-    loc_country = Column(String(4), nullable=True)  # مثال: "CA"
-    loc_sub     = Column(String(8), nullable=True)  # مثال: "QC"
+
+    # geo snapshot
+    loc_country = Column(String(4), nullable=True)
+    loc_sub     = Column(String(8), nullable=True)
 
     # Dispute path
     dispute_opened_at  = col_or_literal("bookings", "dispute_opened_at", DateTime, nullable=True)
@@ -408,18 +415,20 @@ class Booking(Base):
     renter_response_deadline_at = col_or_literal("bookings", "renter_response_deadline_at", DateTime, nullable=True)
     dm_decision_deadline_at     = col_or_literal("bookings", "dm_decision_deadline_at", DateTime, nullable=True)
 
-    owner_report_type   = col_or_literal("bookings", "owner_report_type", String(20), nullable=True)  # delay/damage/loss/theft
+    owner_report_type   = col_or_literal("bookings", "owner_report_type", String(20), nullable=True)
     owner_report_reason = col_or_literal("bookings", "owner_report_reason", Text, nullable=True)
     renter_response_text = col_or_literal("bookings", "renter_response_text", Text, nullable=True)
 
-    dm_decision        = col_or_literal("bookings", "dm_decision", String(30), nullable=True)  # release/withhold/partial
+    dm_decision        = col_or_literal("bookings", "dm_decision", String(30), nullable=True)
     dm_decision_amount = col_or_literal("bookings", "dm_decision_amount", Integer, nullable=False, default=0)
     dm_decision_note   = col_or_literal("bookings", "dm_decision_note", Text, nullable=True)
 
+    # claims
     if _has_column("bookings", "dm_claimed_by_id"):
         dm_claimed_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     else:
         dm_claimed_by_id = column_property(literal(None))
+
     dm_claimed_at = col_or_literal("bookings", "dm_claimed_at", DateTime, nullable=True)
 
     if _has_column("bookings", "dm_closed_by_id"):
@@ -427,21 +436,38 @@ class Booking(Base):
     else:
         dm_closed_by_id = column_property(literal(None))
 
-    # Relationships
+    # ========================================================
+    # NEW FIELDS FOR MULTI-CURRENCY PAYMENTS (Phase 9)
+    # ========================================================
+    currency_native        = col_or_literal("bookings", "currency_native", String(3), nullable=True)
+    amount_native          = col_or_literal("bookings", "amount_native", Integer, nullable=False, default=0)
+
+    currency_display       = col_or_literal("bookings", "currency_display", String(3), nullable=True)
+    amount_display         = col_or_literal("bookings", "amount_display", Integer, nullable=False, default=0)
+
+    currency_paid          = col_or_literal("bookings", "currency_paid", String(3), nullable=True)
+    amount_paid_cents      = col_or_literal("bookings", "amount_paid_cents", Integer, nullable=False, default=0)
+
+    platform_fee_currency  = col_or_literal("bookings", "platform_fee_currency", String(3), nullable=True)
+
+    fx_rate_native_to_paid = col_or_literal("bookings", "fx_rate_native_to_paid", Numeric(12, 6), nullable=True)
+
+    tax_total              = col_or_literal("bookings", "tax_total", Numeric(12,2), nullable=True, default=0)
+    tax_currency           = col_or_literal("bookings", "tax_currency", String(3), nullable=True)
+    tax_details_json       = col_or_literal("bookings", "tax_details_json", Text, nullable=True)
+
+    # Relations
     item   = relationship("Item", backref="bookings")
     renter = relationship("User", foreign_keys=[renter_id], back_populates="bookings_rented")
     owner  = relationship("User", foreign_keys=[owner_id], back_populates="bookings_owned")
 
-    # Deposit logs & evidences
     deposit_audits = relationship(
-        "DepositAuditLog",
-        back_populates="booking",
+        "DepositAuditLog", back_populates="booking",
         cascade="all, delete-orphan",
         order_by="DepositAuditLog.created_at.desc()"
     )
     deposit_evidences = relationship(
-        "DepositEvidence",
-        back_populates="booking",
+        "DepositEvidence", back_populates="booking",
         cascade="all, delete-orphan",
         order_by="DepositEvidence.created_at.desc()"
     )
