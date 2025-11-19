@@ -7,7 +7,7 @@ from urllib.parse import quote
 import random
 
 from .database import get_db
-from .models import Item, FxRate        # ← مهم جداً
+from .models import Item, FxRate
 from .utils import CATEGORIES, category_label as _category_label
 
 router = APIRouter()
@@ -16,14 +16,8 @@ EARTH_RADIUS_KM = 6371.0
 _IMG_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
 
-# ======================================================
-# 1) تحميل أسعار الصرف من قاعدة البيانات (24h)
-# ======================================================
+# ================= FX Loader =================
 def load_fx_dict(db: Session):
-    """
-    يرجع dict بالشكل:
-    {("EUR","CAD"):1.45 , ("USD","CAD"):1.36 , ...}
-    """
     rows = (
         db.query(FxRate.base, FxRate.quote, FxRate.rate)
         .filter(FxRate.effective_date == func.current_date())
@@ -36,20 +30,14 @@ def load_fx_dict(db: Session):
 
 
 def fx_convert(amount: float, base: str, quote: str, rates: dict):
-    """تحويل السعر بين العملات باستخدام fx_rates."""
     if base == quote:
         return round(amount, 2)
-
     key = (base, quote)
     if key not in rates:
         return round(amount, 2)
-
     return round(amount * rates[key], 2)
 
 
-# ======================================================
-# 2) Serialize basic fields
-# ======================================================
 def _serialize(i: Item) -> dict:
     return {
         "id": getattr(i, "id", None),
@@ -59,13 +47,11 @@ def _serialize(i: Item) -> dict:
         "category": getattr(i, "category", "") or "",
         "price_per_day": getattr(i, "price_per_day", None),
         "rating": getattr(i, "rating", 4.8) or 4.8,
-        "currency": getattr(i, "currency", "CAD"),   # ← مهم جداً
+        "currency": getattr(i, "currency", "CAD"),
     }
 
 
-# ======================================================
-# 3) تطبيق الفلتر الجغرافي
-# ======================================================
+# ================= Filters =================
 def _apply_city_or_gps_filter(qs, city, lat, lng, radius_km):
     if lat is not None and lng is not None and radius_km:
         distance_expr = EARTH_RADIUS_KM * func.acos(
@@ -96,9 +82,7 @@ def _apply_category_filter(qs, code: str, label: str):
     )
 
 
-# ======================================================
-# 4) Static banners / top-strip
-# ======================================================
+# ================= Static loaders =================
 def _static_root() -> Path:
     return Path(__file__).resolve().parent / "static"
 
@@ -118,13 +102,13 @@ def _list_static_images_try(paths: list[str]) -> list[str]:
     return urls
 
 
-def _pick_banners_from_static(max_count: int = 8) -> list[str]:
+def _pick_banners(max_count=8):
     candidates = _list_static_images_try(["img/banners", "banners"])
     random.shuffle(candidates)
     return candidates[:max_count]
 
 
-def _pick_topstrip_from_static(limit_per_col: int = 12) -> list[list[str]]:
+def _pick_topstrip(limit_per_col=12):
     imgs = _list_static_images_try(["img/top_slider", "img/topstrip", "top_slider", "topstrip"])
     cols = [[], [], []]
     if not imgs:
@@ -135,9 +119,7 @@ def _pick_topstrip_from_static(limit_per_col: int = 12) -> list[list[str]]:
     return cols
 
 
-# ======================================================
-# 5) Route — HOME PAGE
-# ======================================================
+# ================= Home Route =================
 @router.get("/")
 def home_page(
     request: Request,
@@ -149,89 +131,86 @@ def home_page(
     db: Session = Depends(get_db),
 ):
 
-    # alias
     if lng is None and lon is not None:
         lng = lon
 
-    # Read cookies if empty
     try:
         if not city:
             city = request.cookies.get("city") or None
 
         if lat is None:
             c_lat = request.cookies.get("lat")
-            if c_lat not in (None, ""):
+            if c_lat:
                 lat = float(c_lat)
 
         if lng is None:
             c_lng = request.cookies.get("lng") or request.cookies.get("lon")
-            if c_lng not in (None, ""):
+            if c_lng:
                 lng = float(c_lng)
 
         if not radius_km:
             ck = request.cookies.get("radius_km")
-            radius_km = float(ck) if ck else None
+            if ck:
+                radius_km = float(ck)
     except Exception:
         pass
 
-    # ====================================
-    # تحديد عملة المستخدم
-    # ====================================
     session_user = getattr(request, "session", {}).get("user")
     if session_user and session_user.get("display_currency"):
         user_currency = session_user["display_currency"]
     else:
         user_currency = request.cookies.get("disp_cur") or "CAD"
 
-    # تحميل أسعار الصرف
+    # NEW: currency symbols
+    symbols = {"CAD": "$", "USD": "$", "EUR": "€"}
+
     rates = load_fx_dict(db)
 
-    # تطبيق الفلتر
     base_q = db.query(Item).filter(Item.is_active == "yes")
     filtered_q = _apply_city_or_gps_filter(base_q, city, lat, lng, radius_km)
-    filtering_active = (lat is not None and lng is not None and radius_km) or (city not in (None, ""))
+    filtering = (lat is not None and lng is not None and radius_km) or (city not in (None, ""))
 
-    # Nearby items
-    if filtering_active:
+    # ---- Nearby ----
+    if filtering:
         nearby_rows = filtered_q.order_by(Item.created_at.desc()).limit(20).all()
     else:
         nearby_rows = base_q.order_by(func.random()).limit(20).all()
 
     nearby_items = [_serialize(i) for i in nearby_rows]
 
-    # تطبيق تحويل السعر
     for it in nearby_items:
-        base = it.get("currency", "CAD")
+        base = it["currency"]
         price = it.get("price_per_day") or 0
         it["display_price"] = fx_convert(price, base, user_currency, rates)
         it["display_currency"] = user_currency
+        it["display_symbol"] = symbols.get(user_currency, user_currency)   # FIX ✔
 
-    # Category sliders
-    items_by_category: dict[str, list[dict]] = {}
+    # ---- Categories ----
+    items_by_category = {}
     for cat in CATEGORIES:
         code = cat.get("key", "")
         label = cat.get("label", "")
 
-        q_cat = base_q
-        if filtering_active:
-            q_cat = _apply_city_or_gps_filter(q_cat, city, lat, lng, radius_km)
-        q_cat = _apply_category_filter(q_cat, code, label)
+        q = base_q
+        if filtering:
+            q = _apply_city_or_gps_filter(q, city, lat, lng, radius_km)
+        q = _apply_category_filter(q, code, label)
 
-        rows = q_cat.order_by(func.random()).limit(12).all()
+        rows = q.order_by(func.random()).limit(12).all()
         lst = [_serialize(i) for i in rows]
 
-        # Apply FX
         for it in lst:
-            base = it.get("currency", "CAD")
+            base = it["currency"]
             price = it.get("price_per_day") or 0
             it["display_price"] = fx_convert(price, base, user_currency, rates)
             it["display_currency"] = user_currency
+            it["display_symbol"] = symbols.get(user_currency, user_currency)   # FIX ✔
 
         if lst:
             items_by_category[code] = lst
 
-    # All items grid
-    if filtering_active:
+    # ---- All items ----
+    if filtering:
         all_rows = filtered_q.order_by(Item.created_at.desc()).limit(60).all()
     else:
         all_rows = base_q.order_by(func.random()).limit(60).all()
@@ -239,13 +218,14 @@ def home_page(
     all_items = [_serialize(i) for i in all_rows]
 
     for it in all_items:
-        base = it.get("currency", "CAD")
+        base = it["currency"]
         price = it.get("price_per_day") or 0
         it["display_price"] = fx_convert(price, base, user_currency, rates)
         it["display_currency"] = user_currency
+        it["display_symbol"] = symbols.get(user_currency, user_currency)   # FIX ✔
 
-    banners = _pick_banners_from_static(max_count=8)
-    top_strip_cols = _pick_topstrip_from_static(limit_per_col=12)
+    banners = _pick_banners()
+    top_strip_cols = _pick_topstrip()
 
     ctx = {
         "request": request,
