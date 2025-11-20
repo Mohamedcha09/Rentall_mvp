@@ -700,6 +700,7 @@ def start_checkout_rent(
 @router.post("/api/stripe/checkout/deposit/{booking_id}")
 def start_checkout_deposit(
     booking_id: int,
+    request: Request,                   # ← مهم جدًا
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
@@ -709,34 +710,55 @@ def start_checkout_deposit(
     if user.id != bk.renter_id:
         raise HTTPException(status_code=403, detail="Only renter can pay deposit")
 
-    dep = int(max(0, bk.deposit_amount or getattr(bk, "hold_deposit_amount", 0) or 0))
-    if dep <= 0:
-        return flow_redirect(bk.id, db)
-
-    # Load item and real posting currency
+    # ----- 1) Load item -----
     item = db.get(Item, bk.item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    # Display currency (like rent)
+    # ----- 2) Native deposit -----
+    native_currency = (bk.currency_native or item.currency or CURRENCY).lower()
+    native_dep = float(bk.deposit_amount or getattr(bk, "hold_deposit_amount", 0) or 0)
+
+    if native_dep <= 0:
+        return flow_redirect(bk.id, db)
+
+    # ----- 3) Display currency (REAL) -----
     display_currency = _display_currency(request).lower()
 
-    # Deposit currency = same as display currency
-    item_currency = display_currency
+    # ----- 4) Convert deposit native → display -----
+    if native_currency == display_currency:
+        display_dep = native_dep
+        fx_rate = 1.0
+    else:
+        display_dep = fx_convert_smart(
+            db,
+            native_dep,
+            native_currency,
+            display_currency
+        )
+        if not display_dep:
+            display_dep = native_dep
+            fx_rate = 1.0
+        else:
+            fx_rate = display_dep / native_dep
 
-    # Save deposit snapshot
-    bk.deposit_currency = item_currency.upper()
-    bk.deposit_amount = dep
-    bk.hold_deposit_amount = dep
+    # ----- 5) Save snapshot -----
+    bk.deposit_currency = display_currency.upper()
+    bk.deposit_amount = native_dep
+    bk.hold_deposit_amount = native_dep
+    bk.deposit_display_amount = display_dep
+    bk.fx_rate_dep_native_to_paid = fx_rate
     db.commit()
+
+    # ----- 6) Stripe amount in cents -----
+    dep_cents = int(round(display_dep * 100))
 
     renter = db.get(User, bk.renter_id) if bk.renter_id else None
     qs = _best_loc_qs(bk, renter)
-
     success_url = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
     cancel_url  = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
 
-    # Stripe Session
+    # ----- 7) Stripe checkout -----
     try:
         session = stripe.checkout.Session.create(
             mode="payment",
@@ -745,18 +767,20 @@ def start_checkout_deposit(
                 "metadata": {
                     "kind": "deposit",
                     "booking_id": str(bk.id),
-                    "deposit_currency": item_currency,   # FIXED
+                    "currency_paid": display_currency,
+                    "currency_native": native_currency,
+                    "fx_rate": fx_rate,
                 },
             },
             line_items=[
                 {
                     "quantity": 1,
                     "price_data": {
-                        "currency": item_currency,            # FIXED
+                        "currency": display_currency,
                         "product_data": {
                             "name": f"Deposit hold for '{item.title}' (#{bk.id})"
                         },
-                        "unit_amount": dep * 100,
+                        "unit_amount": dep_cents,
                         "tax_behavior": "exclusive",
                     },
                 }
