@@ -502,55 +502,80 @@ def start_checkout_rent(
     if not owner or not getattr(owner, "stripe_account_id", None):
         raise HTTPException(status_code=400, detail="Owner is not onboarded to Stripe")
 
-    # -------------------------------
-    # 1) تحديد عملة العرض للمستخدم
-    # -------------------------------
-    display_currency = (bk.currency_display or item.currency or "cad").lower()
+    # =======================================================
+    # 1) تحديد العملة الأصلية native + المبلغ الأصلي
+    # =======================================================
+    native_currency = (bk.currency_native or item.currency or "cad").lower()
 
-    # -------------------------------
-    # 2) تحديد سعر العرض (من booking snapshot)
-    # -------------------------------
-    if bk.amount_display:
-        display_amount = float(bk.amount_display)
+    native_amount = float(
+        (bk.total_amount or 0)
+        or (bk.rent_amount or 0)
+        or (getattr(item, "price_per_day", None) or getattr(item, "price", 0))
+    )
+
+    if native_amount <= 0:
+        return flow_redirect(bk.id, db)
+
+    # =======================================================
+    # 2) تحديد عملة العرض (currency_display)
+    # =======================================================
+    display_currency = (bk.currency_display or native_currency or "cad").lower()
+
+    # =======================================================
+    # 3) تحويل native → display بنفس منطق الموقع
+    # =======================================================
+    from .items import fx_convert_smart
+
+    if native_currency == display_currency:
+        display_amount = native_amount
+        fx_rate = 1.0
     else:
-        # fallback conversion (if snapshot missing)
-        from .items import fx_convert_smart
         display_amount = fx_convert_smart(
-            amount=item.price,
-            cur_from=item.currency,
+            amount=native_amount,
+            cur_from=native_currency,
             cur_to=display_currency,
             db=db
         )
+        if not display_amount:
+            display_amount = native_amount
+            fx_rate = 1.0
+        else:
+            fx_rate = display_amount / native_amount
 
-    # -------------------------------
-    # 3) التحويل إلى cents
-    # -------------------------------
+    # =======================================================
+    # 4) Snapshot in booking
+    # =======================================================
+    bk.currency_native = native_currency.upper()
+    bk.currency_display = display_currency.upper()
+    bk.fx_rate_native_to_paid = fx_rate
+    bk.amount_display = display_amount
+    bk.rent_amount = native_amount
+    bk.currency_paid = display_currency
+
+    db.commit()
+
+    # =======================================================
+    # 5) تحويل السعر إلى cents
+    # =======================================================
     rent_cents = int(round(display_amount * 100))
 
     if rent_cents <= 0:
         return flow_redirect(bk.id, db)
 
-    # -------------------------------
-    # 4) Platform Fee
-    # -------------------------------
     platform_fee_cents = int(round(rent_cents * (PLATFORM_FEE_PCT / 100.0)))
-
     transfer_amount = max(0, rent_cents - platform_fee_cents)
     processing_cents = _processing_fee_cents_for_rent(rent_cents)
 
-    # -------------------------------
-    # 5) عملة الدفع الحقيقية
-    # -------------------------------
     currency_paid = display_currency
 
     renter = db.get(User, bk.renter_id) if bk.renter_id else None
     qs = _best_loc_qs(bk, renter)
     success_url = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
-    cancel_url  = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
+    cancel_url = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
 
-    # -------------------------------
-    # 6) Taxes
-    # -------------------------------
+    # =======================================================
+    # 6) Taxes (manual or automatic)
+    # =======================================================
     geo = _geo_for_booking_and_user(bk, renter)
     subtotal_before_tax_cents = rent_cents + processing_cents
 
@@ -592,21 +617,24 @@ def start_checkout_rent(
                             "unit_amount": amt_cents,
                         },
                     })
-    except:
+    except Exception:
         pass
 
     automatic_tax_payload = {"enabled": False} if tax_lines else {"enabled": True}
     line_items.extend(tax_lines)
 
-    # -------------------------------
-    # 7) Stripe Session
-    # -------------------------------
+    # =======================================================
+    # 7) Stripe Session + metadata snapshot
+    # =======================================================
     pi_data = {
         "capture_method": "manual",
         "metadata": {
             "kind": "rent",
             "booking_id": str(bk.id),
-            "currency_paid": currency_paid,
+            "currency_paid": display_currency,
+            "currency_display": display_currency,
+            "currency_native": native_currency,
+            "fx_rate": fx_rate,
         },
         "transfer_data": {
             "destination": owner.stripe_account_id,
@@ -629,13 +657,8 @@ def start_checkout_rent(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe error: {e}")
 
-    # Update booking snapshot
-    bk.currency_paid = currency_paid
-    bk.amount_display = display_amount
-    bk.rent_amount = display_amount
-    db.commit()
-
     return RedirectResponse(url=session.url, status_code=303)
+
 
 @router.post("/api/stripe/checkout/deposit/{booking_id}")
 def start_checkout_deposit(
