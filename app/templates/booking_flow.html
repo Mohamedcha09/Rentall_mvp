@@ -496,13 +496,15 @@
     {% set fx = fx_rate(native_cur, currency) %}
 
     {% set rent = (booking.total_amount or rent_amount or 0.0)|float %}
+    {% set disp_rent = (rent * (fx or 1.0))|round(2) %}
+
     {% set fee  = (processing_fee is defined) and processing_fee or
                   ((rent * (STRIPE_PROCESSING_PCT or 0.029)) + ((STRIPE_PROCESSING_FIXED_CENTS or 30) / 100.0)) %}
     {% set sub_before_tax = (subtotal_before_tax is defined) and subtotal_before_tax or (rent + fee) %}
 
     <div class="d-flex justify-content-between">
       <span>Rent</span>
-      <strong>{{ "%.2f"|format(rent) }} {{ currency }}</strong>
+      <strong>{{ "%.2f"|format(disp_rent) }} {{ currency }}</strong>
     </div>
 
     <div class="d-flex justify-content-between">
