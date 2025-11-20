@@ -734,6 +734,7 @@ def booking_flow(
         "STRIPE_PROCESSING_FIXED_CENTS": fixed_cents,
         "fx_rate": utils_fx.fx_rate,
     }
+    utils_fx.inject_db_for_fx(db)
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
 
 
