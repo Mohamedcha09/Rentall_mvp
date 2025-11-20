@@ -314,10 +314,11 @@
           <div class="title">{{ item.title }}</div>
 
 {% set disp_cur = display_currency(request) %}
-{% set currency = (disp_cur or (CURRENCY or 'CAD'))|upper %}
+{% set currency = (disp_cur or 'CAD')|upper %}
 {% set native_cur = item.currency or 'CAD' %}
 {% set fx = fx_rate(native_cur, currency) %}
 {% set disp_price = (item.price_per_day * (fx or 1.0))|round(2) %}
+
 
 <div class="meta">
   {{ category_label(item.category) }} • {{ disp_price }} {{ currency }}/day
@@ -484,23 +485,31 @@
         <div class="pay-note mt-2">
           You’ll be redirected to Stripe to complete the card details. After success you’ll return here and statuses will update.
         </div>
-        {# === Order summary (ذكي مع utili_tax) === #}
+
+
+
+{# === Order summary (ذكي مع utili_tax) === #}
 <div class="card mb-2">
   <div class="card-body">
     <h6 class="mb-2">Order summary</h6>
 
-    {# ← NEW: استعمل نفس عملة العرض مثل home #}
+    {# 1) نفس عملة العرض للموقع كله #}
     {% set disp_cur = display_currency(request) %}
-    {% set currency = (disp_cur or (CURRENCY or 'CAD'))|upper %}
+    {% set currency = (disp_cur or 'CAD')|upper %}
     {% set native_cur = booking.currency_native or booking.currency or 'CAD' %}
     {% set fx = fx_rate(native_cur, currency) %}
 
+    {# 2) الإيجار الأساسي (native) ثم نحوله لعملة العرض #}
     {% set rent = (booking.total_amount or rent_amount or 0.0)|float %}
     {% set disp_rent = (rent * (fx or 1.0))|round(2) %}
 
-    {% set fee  = (processing_fee is defined) and processing_fee or
-                  ((rent * (STRIPE_PROCESSING_PCT or 0.029)) + ((STRIPE_PROCESSING_FIXED_CENTS or 30) / 100.0)) %}
-    {% set sub_before_tax = (subtotal_before_tax is defined) and subtotal_before_tax or (rent + fee) %}
+    {# 3) processing fee (native) ثم نحوله #}
+    {% set fee_native = (processing_fee is defined) and processing_fee or
+                        ((rent * (STRIPE_PROCESSING_PCT or 0.029)) + ((STRIPE_PROCESSING_FIXED_CENTS or 30) / 100.0)) %}
+    {% set disp_fee = (fee_native * (fx or 1.0))|round(2) %}
+
+    {# 4) subtotal قبل الضرائب — بالعملة المعروضة #}
+    {% set disp_sub_before_tax = (disp_rent + disp_fee)|round(2) %}
 
     <div class="d-flex justify-content-between">
       <span>Rent</span>
@@ -509,26 +518,36 @@
 
     <div class="d-flex justify-content-between">
       <span>Processing fee</span>
-      <strong>{{ "%.2f"|format(fee) }} {{ currency }}</strong>
+      <strong>{{ "%.2f"|format(disp_fee) }} {{ currency }}</strong>
     </div>
 
     {% if taxes and taxes.mode == 'computed' and taxes.tax_lines and (taxes.tax_lines|length > 0) %}
       <hr class="my-2">
+
+      {# 5) كل خط ضريبة نحوله لعملة العرض #}
+      {% set disp_tax_total = 0.0 %}
       {% for t in taxes.tax_lines %}
+        {% set disp_tax = (t.amount * (fx or 1.0))|round(2) %}
+        {% set disp_tax_total = disp_tax_total + disp_tax %}
         <div class="d-flex justify-content-between">
           <span>{{ t.name }} {{ (t.rate * 100)|round(3) }}%</span>
-          <strong>{{ "%.2f"|format(t.amount) }} {{ currency }}</strong>
+          <strong>{{ "%.2f"|format(disp_tax) }} {{ currency }}</strong>
         </div>
       {% endfor %}
+
       <div class="d-flex justify-content-between">
         <span><strong>Taxes total</strong></span>
-        <strong>{{ "%.2f"|format(taxes.tax_total or (0.0)) }} {{ currency }}</strong>
+        <strong>{{ "%.2f"|format(disp_tax_total) }} {{ currency }}</strong>
       </div>
+
       <hr class="my-2">
+
+      {% set disp_grand = (disp_sub_before_tax + disp_tax_total)|round(2) %}
       <div class="d-flex justify-content-between">
         <span>Total</span>
-        <strong>{{ "%.2f"|format(taxes.grand_total or (sub_before_tax)) }} {{ currency }}</strong>
+        <strong>{{ "%.2f"|format(disp_grand) }} {{ currency }}</strong>
       </div>
+
       <div class="small text-muted mt-2">
         • Location: {{ taxes.country or '—' }}{% if taxes.sub %}-{{ taxes.sub }}{% endif %}.
       </div>
@@ -539,7 +558,7 @@
       <hr class="my-2">
       <div class="d-flex justify-content-between">
         <span>Total (before tax)</span>
-        <strong>{{ "%.2f"|format(sub_before_tax) }} {{ currency }}</strong>
+        <strong>{{ "%.2f"|format(disp_sub_before_tax) }} {{ currency }}</strong>
       </div>
     {% endif %}
 
@@ -549,6 +568,7 @@
     </div>
   </div>
 </div>
+
 
 </div>
 
@@ -734,8 +754,9 @@
 
         {# NEW: نفس عملة العرض المستخدمة في كل الموقع #}
         {% set disp_cur = display_currency(request) %}
-        {% set currency = (disp_cur or (CURRENCY or 'CAD'))|upper %}
-        {% if disp_rent is not defined or disp_dep is not defined %}
+        {% set disp_cur = display_currency(request) %}
+        {% set currency = (disp_cur or 'CAD')|upper %}
+
     {% set native_cur = booking.currency_native or booking.currency or 'CAD' %}
     {% set fx = fx_rate(native_cur, currency) %}
 
@@ -837,7 +858,7 @@
     <div>
       <div class="fw-bold">{{ item.title }}</div>
       <div class="k">{{ category_label(item.category) }}</div>
-      <div class="k">Daily price: {{ item.price_per_day }}$</div>
+      <div class="k">Daily price: {{ "%.2f"|format(disp_item_price) }} {{ item_currency }}</div>
       <a class="small" href="/items/{{ item.id }}">Open item page</a>
     </div>
   </div>
