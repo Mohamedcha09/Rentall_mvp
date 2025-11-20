@@ -732,7 +732,8 @@ def booking_flow(
         "CURRENCY": (os.getenv("CURRENCY", "CAD") or "CAD").upper(),
         "STRIPE_PROCESSING_PCT": pct,
         "STRIPE_PROCESSING_FIXED_CENTS": fixed_cents,
-        "display_currency": _display_currency(request),
+        "display_currency": _display_currency,
+        "disp_cur": _display_currency(request),
         "fx_rate": utils_fx.fx_rate,
     }
     utils_fx.inject_db_for_fx(db)
