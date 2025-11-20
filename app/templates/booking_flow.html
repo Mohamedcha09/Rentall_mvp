@@ -451,7 +451,7 @@
         {% set deposit_ok = (booking.deposit_status in ['held','authorized']) %}
 
         <div class="action-row mb-2" id="rentActionWrap">
-          {% if rent_paid %}
+          {% if rent_paid or request.query_params.get('rent_ok') %}
             <button id="rentPaidBadge" class="btn btn-success" disabled>
               <i class="bi bi-check2-circle me-1"></i> Rent paid ✅
             </button>
@@ -1304,6 +1304,22 @@
       document.querySelectorAll('.js-flow-only').forEach(function(el){ el.remove(); });
     }
   });
+})();
+</script>
+
+<script>
+(function(){
+  var params = new URLSearchParams(location.search);
+
+  // لو Stripe رجع بـ rent_ok=1 → بدّل الزر فورًا
+  if (params.has("rent_ok")) {
+    markRentPaidUI();
+  }
+
+  // لو Stripe رجع بـ deposit_ok=1 → بدّل الزر فورًا
+  if (params.has("deposit_ok")) {
+    markDepositHeldUI();
+  }
 })();
 </script>
 
