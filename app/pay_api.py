@@ -718,7 +718,11 @@ def start_checkout_deposit(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    item_currency = (item.currency or "cad").lower()
+    # Display currency (like rent)
+    display_currency = _display_currency(request).lower()
+
+    # Deposit currency = same as display currency
+    item_currency = display_currency
 
     # Save deposit snapshot
     bk.deposit_currency = item_currency.upper()
