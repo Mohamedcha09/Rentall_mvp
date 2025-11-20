@@ -505,7 +505,7 @@ def start_checkout_rent(
     # =======================================================
     # 1) تحديد العملة الأصلية native + المبلغ الأصلي
     # =======================================================
-    native_currency = (bk.currency_native or item.currency or "cad").lower()
+    native_currency = (bk.currency_native or "cad").lower()
 
     native_amount = float(
         (bk.total_amount or 0)
@@ -519,7 +519,7 @@ def start_checkout_rent(
     # =======================================================
     # 2) تحديد عملة العرض (currency_display)
     # =======================================================
-    display_currency = (bk.currency_display or native_currency or "cad").lower()
+    display_currency = (bk.currency_display or "cad").lower()
 
     # =======================================================
     # 3) تحويل native → display بنفس منطق الموقع
