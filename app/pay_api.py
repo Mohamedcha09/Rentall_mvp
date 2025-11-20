@@ -528,6 +528,7 @@ def connect_status(
 @router.post("/api/stripe/checkout/rent/{booking_id}")
 def start_checkout_rent(
     booking_id: int,
+    request: Request,  
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
