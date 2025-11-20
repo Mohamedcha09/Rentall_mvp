@@ -500,7 +500,7 @@
     {% set fx = fx_rate(native_cur, currency) %}
 
     {# 2) الإيجار الأساسي (native) ثم نحوله لعملة العرض #}
-    {% set rent = (booking.total_amount or rent_amount or 0.0)|float %}
+    {% set rent = (booking.amount_display or booking.total_amount or 0.0)|float %}
     {% set disp_rent = (rent * (fx or 1.0))|round(2) %}
 
     {# 3) processing fee (native) ثم نحوله #}
