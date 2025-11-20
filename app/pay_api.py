@@ -531,10 +531,10 @@ def start_checkout_rent(
         fx_rate = 1.0
     else:
         display_amount = fx_convert_smart(
-            amount=native_amount,
-            cur_from=native_currency,
-            cur_to=display_currency,
-            db=db
+            native_amount,
+            native_currency,
+            display_currency,
+            db
         )
         if not display_amount:
             display_amount = native_amount
