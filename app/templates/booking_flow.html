@@ -312,7 +312,16 @@
       <div class="inside">
         <div>
           <div class="title">{{ item.title }}</div>
-          <div class="meta">{{ category_label(item.category) }} • {{ item.price_per_day }}$/day</div>
+
+{% set disp_cur = display_currency(request) %}
+{% set currency = (disp_cur or (CURRENCY or 'CAD'))|upper %}
+{% set native_cur = item.currency or 'CAD' %}
+{% set fx = fx_rate(native_cur, currency) %}
+{% set disp_price = (item.price_per_day * (fx or 1.0))|round(2) %}
+
+<div class="meta">
+  {{ category_label(item.category) }} • {{ disp_price }} {{ currency }}/day
+</div>
         </div>
         <span class="state-badge">
           <i class="bi bi-flag"></i><span>{{ booking.status }}</span>
