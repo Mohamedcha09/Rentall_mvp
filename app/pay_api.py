@@ -503,10 +503,13 @@ def start_checkout_rent(
         raise HTTPException(status_code=400, detail="Owner is not onboarded to Stripe")
 
     # =======================================================
-    # 1) تحديد العملة الأصلية native + المبلغ الأصلي
+    # 1) تحديد العملة الأصلية native (بدون الرجوع لعملة المنشور)
     # =======================================================
     native_currency = (bk.currency_native or "cad").lower()
 
+    # =======================================================
+    # 2) المبلغ الأصلي بسعر المنشور
+    # =======================================================
     native_amount = float(
         (bk.total_amount or 0)
         or (bk.rent_amount or 0)
@@ -517,12 +520,12 @@ def start_checkout_rent(
         return flow_redirect(bk.id, db)
 
     # =======================================================
-    # 2) تحديد عملة العرض (currency_display)
+    # 3) تحديد عملة العرض (بدون الرجوع لعملة المنشور)
     # =======================================================
     display_currency = (bk.currency_display or "cad").lower()
 
     # =======================================================
-    # 3) تحويل native → display بنفس منطق الموقع
+    # 4) تحويل native → display
     # =======================================================
     from .items import fx_convert_smart
 
@@ -543,7 +546,7 @@ def start_checkout_rent(
             fx_rate = display_amount / native_amount
 
     # =======================================================
-    # 4) Snapshot in booking
+    # 5) تخزين snapshot
     # =======================================================
     bk.currency_native = native_currency.upper()
     bk.currency_display = display_currency.upper()
@@ -555,7 +558,7 @@ def start_checkout_rent(
     db.commit()
 
     # =======================================================
-    # 5) تحويل السعر إلى cents
+    # 6) تحويل السعر إلى cents
     # =======================================================
     rent_cents = int(round(display_amount * 100))
 
@@ -574,7 +577,7 @@ def start_checkout_rent(
     cancel_url = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
 
     # =======================================================
-    # 6) Taxes (manual or automatic)
+    # 7) Taxes (manual or automatic)
     # =======================================================
     geo = _geo_for_booking_and_user(bk, renter)
     subtotal_before_tax_cents = rent_cents + processing_cents
@@ -624,7 +627,7 @@ def start_checkout_rent(
     line_items.extend(tax_lines)
 
     # =======================================================
-    # 7) Stripe Session + metadata snapshot
+    # 8) Stripe Session + metadata snapshot
     # =======================================================
     pi_data = {
         "capture_method": "manual",
