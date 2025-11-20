@@ -501,7 +501,7 @@
 
     {# 2) الإيجار الأساسي (native) ثم نحوله لعملة العرض #}
     {% set rent = (booking.amount_display or booking.total_amount or 0.0)|float %}
-    {% set disp_rent = (rent * (fx or 1.0))|round(2) %}
+    {% set disp_rent = rent|round(2) %}
 
     {# 3) processing fee (native) ثم نحوله #}
     {% set fee_native = (processing_fee is defined) and processing_fee or
