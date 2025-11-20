@@ -1304,7 +1304,13 @@
   // لو Stripe رجع بـ deposit_ok=1 → بدّل الزر فورًا
   if (params.has("deposit_ok")) {
     markDepositHeldUI();
-  }
+
+    // 🔥 انتقال تلقائي للمرحلة التالية بعد دفع الديبو
+    setTimeout(function(){
+        window.location.assign("/bookings/flow/{{ booking.id }}/next");
+    }, 600);
+}
+
 })();
 </script>
 
