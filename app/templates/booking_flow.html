@@ -542,7 +542,7 @@
 
       <hr class="my-2">
 
-      {% set disp_grand = (disp_sub_before_tax + disp_tax_total)|round(2) %}
+      {% set disp_grand = (disp_rent + disp_fee + disp_tax_total)|round(2) %}
       <div class="d-flex justify-content-between">
         <span>Total</span>
         <strong>{{ "%.2f"|format(disp_grand) }} {{ currency }}</strong>
