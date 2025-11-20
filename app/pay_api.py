@@ -250,6 +250,7 @@ def _processing_fee_cents_for_rent(rent_cents: int) -> int:
     fee  = (base * pct) + fx
     return int(fee.to_integral_value(rounding=ROUND_CEILING))
 # Checkout: Rent + Deposit together
+
 @router.post("/api/stripe/checkout/all/{booking_id}")
 def start_checkout_all(
     booking_id: int,
@@ -277,68 +278,96 @@ def start_checkout_all(
         raise HTTPException(status_code=400, detail="Owner not onboarded")
 
     # ------------------------------------------------
-    # 2) Load FX snapshot from booking  (FIXED)
+    # 2) Get display currency (REAL)
     # ------------------------------------------------
-    currency_paid   = (bk.currency_paid or item.currency or "cad").lower()
-    display_amount  = float(bk.amount_display or bk.total_amount or 0)
+    display_currency = _display_currency(request).lower()
+
+    # ------------------------------------------------
+    # 3) Native currency from posting / booking
+    # ------------------------------------------------
     native_currency = (bk.currency_native or item.currency or "cad").lower()
 
     # ------------------------------------------------
-    # 3) Compute amounts based on DISPLAY amount
+    # 4) Native amount (base rent)
     # ------------------------------------------------
-    rent_cents = int(display_amount * 100)
-    dep_cents  = int(max(0, (bk.deposit_amount or getattr(bk, "hold_deposit_amount", 0) or 0)) * 100)
+    native_amount = float(
+        (bk.total_amount or 0)
+        or (bk.rent_amount or 0)
+        or (getattr(item, "price_per_day", None) or getattr(item, "price", 0))
+    )
+
+    if native_amount <= 0:
+        return flow_redirect(bk.id, db)
+
+    # ------------------------------------------------
+    # 5) Convert native → display
+    # ------------------------------------------------
+    from .items import fx_convert_smart
+
+    if native_currency == display_currency:
+        display_amount = native_amount
+        fx_rate = 1.0
+    else:
+        display_amount = fx_convert_smart(
+            native_amount,
+            native_currency,
+            display_currency,
+            db
+        )
+        if not display_amount:
+            display_amount = native_amount
+            fx_rate = 1.0
+        else:
+            fx_rate = display_amount / native_amount
+
+    # ------------------------------------------------
+    # 6) Save snapshot inside booking
+    # ------------------------------------------------
+    bk.currency_native = native_currency.upper()
+    bk.currency_display = display_currency.upper()
+    bk.currency_paid = display_currency
+    bk.amount_display = display_amount
+    bk.rent_amount = native_amount
+    bk.fx_rate_native_to_paid = fx_rate
+    db.commit()
+
+    # ------------------------------------------------
+    # 7) Convert to cents for Stripe
+    # ------------------------------------------------
+    rent_cents = int(round(display_amount * 100))
+
+    dep = float(bk.deposit_amount or getattr(bk, "hold_deposit_amount", 0) or 0)
+    dep_cents = int(round(dep * 100))
 
     if rent_cents <= 0 and dep_cents <= 0:
         return flow_redirect(bk.id, db)
 
-    # Platform fee (percentage)
-    platform_fee_cents = int(round(display_amount * 100 * (PLATFORM_FEE_PCT / 100.0)))
+    # platform fee
+    platform_fee_cents = int(round(rent_cents * (PLATFORM_FEE_PCT / 100.0)))
     transfer_amount = max(0, rent_cents - platform_fee_cents)
 
-    # Processing fee (Stripe fee)
+    # processing fee
     processing_cents = _processing_fee_cents_for_rent(rent_cents)
 
     # ------------------------------------------------
-    # 4) Success/cancel URL
+    # 8) success & cancel URL
     # ------------------------------------------------
-    renter = db.get(User, bk.renter_id) if bk.renter_id else None
+    renter = db.get(User, bk.renter_id)
     qs = _best_loc_qs(bk, renter)
     success_url = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
     cancel_url  = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
 
     # ------------------------------------------------
-    # 5) PaymentIntent metadata  (FIXED)
-    # ------------------------------------------------
-    pi_data = {
-        "capture_method": "manual",
-        "metadata": {
-            "kind": "all",
-            "booking_id": str(bk.id),
-
-            # snapshot metadata (correct keys)
-            "currency_paid": currency_paid,
-            "currency_display": bk.currency_display,
-            "currency_native": native_currency,
-            "fx_rate": bk.fx_rate_native_to_paid,
-        },
-        "transfer_data": {
-            "destination": owner.stripe_account_id,
-            "amount": transfer_amount,
-        },
-    }
-
-    # ------------------------------------------------
-    # 6) Line items using currency_paid  (FIXED)
+    # 9) Taxes in display currency
     # ------------------------------------------------
     geo = _geo_for_booking_and_user(bk, renter)
-    subtotal_before_tax_cents = rent_cents + processing_cents
+    subtotal_before_tax_cents = rent_cents + processing_cents + dep_cents
 
     line_items = [
         {
             "quantity": 1,
             "price_data": {
-                "currency": currency_paid,
+                "currency": display_currency,
                 "product_data": {"name": f"Rent for '{item.title}' (#{bk.id})"},
                 "unit_amount": rent_cents,
                 "tax_behavior": "exclusive",
@@ -347,7 +376,7 @@ def start_checkout_all(
         {
             "quantity": 1,
             "price_data": {
-                "currency": currency_paid,
+                "currency": display_currency,
                 "product_data": {"name": "Processing fee"},
                 "unit_amount": processing_cents,
                 "tax_behavior": "exclusive",
@@ -355,47 +384,62 @@ def start_checkout_all(
         },
     ]
 
-    # Deposit (also using display currency)
     if dep_cents > 0:
         line_items.append({
             "quantity": 1,
             "price_data": {
-                "currency": currency_paid,
+                "currency": display_currency,
                 "product_data": {"name": f"Deposit for '{item.title}' (#{bk.id})"},
                 "unit_amount": dep_cents,
                 "tax_behavior": "exclusive",
             },
         })
-        subtotal_before_tax_cents += dep_cents
 
-    # ------------------------------------------------
-    # 7) Manual taxes (still using currency_paid)
-    # ------------------------------------------------
+    # taxes
     tax_lines = []
     try:
         if geo.get("country"):
             _calc = compute_order_taxes(subtotal_before_tax_cents/100.0, geo)
-            for t in (_calc.get("lines") or []):
-                amt_cents = int(round(float(t.get("amount") or 0.0) * 100))
-                if amt_cents > 0:
+            for t in _calc.get("lines", []):
+                cents = int(round(float(t["amount"]) * 100))
+                if cents > 0:
                     tax_lines.append({
                         "quantity": 1,
                         "price_data": {
-                            "currency": currency_paid,
+                            "currency": display_currency,
                             "product_data": {
-                                "name": f"{t.get('name','Tax')} {round(float(t.get('rate',0))*100,3)}%"
+                                "name": f"{t['name']} {round(float(t['rate'])*100,3)}%"
                             },
-                            "unit_amount": amt_cents,
+                            "unit_amount": cents,
                         },
                     })
-    except Exception:
+    except:
         pass
 
     automatic_tax_payload = {"enabled": False} if tax_lines else {"enabled": True}
     line_items.extend(tax_lines)
 
     # ------------------------------------------------
-    # 8) Create Stripe Checkout Session
+    # 10) PaymentIntent metadata
+    # ------------------------------------------------
+    pi_data = {
+        "capture_method": "manual",
+        "metadata": {
+            "kind": "all",
+            "booking_id": str(bk.id),
+            "currency_paid": display_currency,
+            "currency_display": display_currency,
+            "currency_native": native_currency,
+            "fx_rate": fx_rate,
+        },
+        "transfer_data": {
+            "destination": owner.stripe_account_id,
+            "amount": transfer_amount,
+        },
+    }
+
+    # ------------------------------------------------
+    # 11) Create Stripe checkout
     # ------------------------------------------------
     try:
         session = stripe.checkout.Session.create(
@@ -413,7 +457,7 @@ def start_checkout_all(
         raise HTTPException(status_code=400, detail=f"Stripe error: {e}")
 
     # ------------------------------------------------
-    # 9) Update booking status
+    # 12) Save status
     # ------------------------------------------------
     bk.payment_method = "online"
     bk.online_status = "pending_authorization"
