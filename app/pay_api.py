@@ -1,3 +1,4 @@
+#
 from __future__ import annotations
 import os
 from datetime import datetime
@@ -13,6 +14,7 @@ from .database import get_db
 from .models import Booking, Item, User
 from .notifications_api import push_notification, notify_admins
 from .utili_tax import compute_order_taxes
+from .items import _display_currency, fx_convert_smart
 
 # ===== Email helper =====
 BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
@@ -501,12 +503,8 @@ def start_checkout_rent(
     owner = db.get(User, bk.owner_id)
     if not owner or not getattr(owner, "stripe_account_id", None):
         raise HTTPException(status_code=400, detail="Owner is not onboarded to Stripe")
-
-    # =======================================================
-    # 1) احسب المبلغ الأصلي + العملة الأصلية (native)
-    #    ثم حوّله إلى عملة العرض بنفس منطق الموقع
-    # =======================================================
-    from .items import fx_convert_smart
+    # نأخذ عملة العرض الحقيقية التي يستعملها الموقع الآن (نفس items_detail و home)
+    disp_cur = _display_currency(request).lower()
 
     # عملة المنشور / العملة الأصلية
     native_currency = (bk.currency_native or item.currency or CURRENCY or "cad").lower()
@@ -521,8 +519,8 @@ def start_checkout_rent(
     if native_amount <= 0:
         return flow_redirect(bk.id, db)
 
-    # عملة العرض (التي يرى بها المستخدم السعر في الموقع)
-    display_currency = (bk.currency_display or native_currency).lower()
+    # عملة العرض (التي يرى بها المستخدم السعر في الموقع) = من helper الموحد
+    display_currency = disp_cur
 
     # تحويل من native → display
     if native_currency == display_currency:
