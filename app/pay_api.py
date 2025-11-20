@@ -1,4 +1,4 @@
-#
+#pay_api.py
 from __future__ import annotations
 import os
 from datetime import datetime
@@ -256,6 +256,7 @@ def start_checkout_all(
     booking_id: int,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
+    request: Request = None,     # ← نحتاج request من أجل _display_currency
 ):
     require_auth(user)
     bk = require_booking(db, booking_id)
@@ -278,17 +279,17 @@ def start_checkout_all(
         raise HTTPException(status_code=400, detail="Owner not onboarded")
 
     # ------------------------------------------------
-    # 2) Get display currency (REAL)
+    # 2) Display currency (REAL) ← نفس items_detail
     # ------------------------------------------------
     display_currency = _display_currency(request).lower()
 
     # ------------------------------------------------
-    # 3) Native currency from posting / booking
+    # 3) Native currency (posting)
     # ------------------------------------------------
     native_currency = (bk.currency_native or item.currency or "cad").lower()
 
     # ------------------------------------------------
-    # 4) Native amount (base rent)
+    # 4) Base rent native
     # ------------------------------------------------
     native_amount = float(
         (bk.total_amount or 0)
@@ -302,8 +303,6 @@ def start_checkout_all(
     # ------------------------------------------------
     # 5) Convert native → display
     # ------------------------------------------------
-    from .items import fx_convert_smart
-
     if native_currency == display_currency:
         display_amount = native_amount
         fx_rate = 1.0
@@ -321,7 +320,7 @@ def start_checkout_all(
             fx_rate = display_amount / native_amount
 
     # ------------------------------------------------
-    # 6) Save snapshot inside booking
+    # 6) Save snapshot
     # ------------------------------------------------
     bk.currency_native = native_currency.upper()
     bk.currency_display = display_currency.upper()
@@ -335,22 +334,18 @@ def start_checkout_all(
     # 7) Convert to cents for Stripe
     # ------------------------------------------------
     rent_cents = int(round(display_amount * 100))
-
     dep = float(bk.deposit_amount or getattr(bk, "hold_deposit_amount", 0) or 0)
     dep_cents = int(round(dep * 100))
 
     if rent_cents <= 0 and dep_cents <= 0:
         return flow_redirect(bk.id, db)
 
-    # platform fee
     platform_fee_cents = int(round(rent_cents * (PLATFORM_FEE_PCT / 100.0)))
     transfer_amount = max(0, rent_cents - platform_fee_cents)
-
-    # processing fee
     processing_cents = _processing_fee_cents_for_rent(rent_cents)
 
     # ------------------------------------------------
-    # 8) success & cancel URL
+    # 8) Success & cancel URL
     # ------------------------------------------------
     renter = db.get(User, bk.renter_id)
     qs = _best_loc_qs(bk, renter)
@@ -395,11 +390,10 @@ def start_checkout_all(
             },
         })
 
-    # taxes
     tax_lines = []
     try:
         if geo.get("country"):
-            _calc = compute_order_taxes(subtotal_before_tax_cents/100.0, geo)
+            _calc = compute_order_taxes(subtotal_before_tax_cents / 100.0, geo)
             for t in _calc.get("lines", []):
                 cents = int(round(float(t["amount"]) * 100))
                 if cents > 0:
@@ -439,11 +433,12 @@ def start_checkout_all(
     }
 
     # ------------------------------------------------
-    # 11) Create Stripe checkout
+    # 11) Create Stripe checkout (FIXED)
     # ------------------------------------------------
     try:
         session = stripe.checkout.Session.create(
             mode="payment",
+            currency=display_currency,          # ← ← ★ المفتاح ★
             payment_intent_data=pi_data,
             automatic_tax=automatic_tax_payload,
             tax_id_collection={"enabled": True},
@@ -464,6 +459,7 @@ def start_checkout_all(
     db.commit()
 
     return RedirectResponse(url=session.url, status_code=303)
+
 # ============ (A) Stripe Connect Onboarding ============
 @router.post("/api/stripe/connect/start")
 def connect_start(
