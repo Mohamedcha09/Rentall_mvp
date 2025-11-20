@@ -309,9 +309,9 @@ def start_checkout_all(
     else:
         display_amount = fx_convert_smart(
             db,
+            native_amount,
             native_currency,
-            display_currency,
-            native_amount
+            display_currency
         )
         if not display_amount:
             display_amount = native_amount
@@ -570,9 +570,9 @@ def start_checkout_rent(
     else:
         display_amount = fx_convert_smart(
             db,
+            native_amount,
             native_currency,
-            display_currency,
-            native_amount
+            display_currency
         )
         if not display_amount:
             display_amount = native_amount
