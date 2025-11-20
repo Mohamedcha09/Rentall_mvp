@@ -1291,27 +1291,35 @@
   });
 })();
 </script>
-
 <script>
 (function(){
   var params = new URLSearchParams(location.search);
 
-  // لو Stripe رجع بـ rent_ok=1 → بدّل الزر فورًا
+  // Rent OK
   if (params.has("rent_ok")) {
     markRentPaidUI();
   }
 
-  // لو Stripe رجع بـ deposit_ok=1 → بدّل الزر فورًا
-  if (params.has("all_ok")) {
-    // نفس النتيجة: الإيجار + الديبو مدفوعين
-    markRentAuthorizedUI();
+  // Deposit only OK
+  if (params.has("deposit_ok")) {
     markDepositHeldUI();
     setTimeout(function(){
         window.location.assign("/bookings/flow/{{ booking.id }}/next");
     }, 600);
-} 
+  }
+
+  // FULL PAYMENT: rent + deposit
+  if (params.has("all_ok")) {
+    markRentPaidUI();
+    markDepositHeldUI();
+    setTimeout(function(){
+        window.location.assign("/bookings/flow/{{ booking.id }}/next");
+    }, 600);
+  }
+
 })();
 </script>
+
 
 
 {% endblock %}
