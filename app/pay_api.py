@@ -503,62 +503,21 @@ def start_checkout_rent(
         raise HTTPException(status_code=400, detail="Owner is not onboarded to Stripe")
 
     # =======================================================
-    # 1) تحديد العملة الأصلية native (بدون الرجوع لعملة المنشور)
+    # 1) نستخدم snapshot الموجود سابقًا بدون إعادة حساب FX
     # =======================================================
-    native_currency = (bk.currency_native or "cad").lower()
+    native_currency  = (bk.currency_native or "cad").lower()
+    display_currency = (bk.currency_display or native_currency).lower()
+    display_amount   = float(bk.amount_display or 0)
+    native_amount    = float(bk.rent_amount or 0)
+    fx_rate          = float(bk.fx_rate_native_to_paid or 1.0)
 
-    # =======================================================
-    # 2) المبلغ الأصلي بسعر المنشور
-    # =======================================================
-    native_amount = float(
-        (bk.total_amount or 0)
-        or (bk.rent_amount or 0)
-        or (getattr(item, "price_per_day", None) or getattr(item, "price", 0))
-    )
-
-    if native_amount <= 0:
-        return flow_redirect(bk.id, db)
-
-    # =======================================================
-    # 3) تحديد عملة العرض (بدون الرجوع لعملة المنشور)
-    # =======================================================
-    display_currency = (bk.currency_display or "cad").lower()
-
-    # =======================================================
-    # 4) تحويل native → display
-    # =======================================================
-    from .items import fx_convert_smart
-
-    if native_currency == display_currency:
+    # fallback إذا كان snapshot غير موجود
+    if display_amount <= 0:
         display_amount = native_amount
         fx_rate = 1.0
-    else:
-        display_amount = fx_convert_smart(
-            native_amount,
-            native_currency,
-            display_currency,
-            db
-        )
-        if not display_amount:
-            display_amount = native_amount
-            fx_rate = 1.0
-        else:
-            fx_rate = display_amount / native_amount
 
     # =======================================================
-    # 5) تخزين snapshot
-    # =======================================================
-    bk.currency_native = native_currency.upper()
-    bk.currency_display = display_currency.upper()
-    bk.fx_rate_native_to_paid = fx_rate
-    bk.amount_display = display_amount
-    bk.rent_amount = native_amount
-    bk.currency_paid = display_currency
-
-    db.commit()
-
-    # =======================================================
-    # 6) تحويل السعر إلى cents
+    # 2) تحويل السعر إلى cents
     # =======================================================
     rent_cents = int(round(display_amount * 100))
 
@@ -574,10 +533,10 @@ def start_checkout_rent(
     renter = db.get(User, bk.renter_id) if bk.renter_id else None
     qs = _best_loc_qs(bk, renter)
     success_url = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
-    cancel_url = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
+    cancel_url  = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
 
     # =======================================================
-    # 7) Taxes (manual or automatic)
+    # 3) Taxes (manual or automatic)
     # =======================================================
     geo = _geo_for_booking_and_user(bk, renter)
     subtotal_before_tax_cents = rent_cents + processing_cents
@@ -627,7 +586,7 @@ def start_checkout_rent(
     line_items.extend(tax_lines)
 
     # =======================================================
-    # 8) Stripe Session + metadata snapshot
+    # 4) Stripe Session + metadata snapshot
     # =======================================================
     pi_data = {
         "capture_method": "manual",
