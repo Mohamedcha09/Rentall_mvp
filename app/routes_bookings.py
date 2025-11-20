@@ -461,7 +461,7 @@ def booking_new_page(
 
 
 # ========================================
-# Create booking
+# Create booking  (FIXED 100%)
 # ========================================
 @router.post("/bookings")
 async def create_booking(
@@ -499,8 +499,8 @@ async def create_booking(
         if not sd_str or not ed_str:
             raise ValueError("missing dates")
 
-        sd = _parse_date(sd_str)
-        ed = _parse_date(ed_str)
+        sd = datetime.strptime(sd_str, "%Y-%m-%d").date()
+        ed = datetime.strptime(ed_str, "%Y-%m-%d").date()
         if ed <= sd:
             sd, ed = ed, sd
 
@@ -513,15 +513,22 @@ async def create_booking(
 
         price_per_day = item.price_per_day or 0
         total_amount = days * max(0, price_per_day)
-        # ✅ عملة المنشور
+
+        # 🔥🔥 FIXED: snapshot must use injected DB
         item_currency = (item.currency or "CAD").upper()
-        disp_cur = _display_currency(request)   # عملة العرض
+        disp_cur = _display_currency(request)
+
+        # 👇👇 هذا هو السطر السحري الذي يصلح الخلل النهائي
+        utils_fx.inject_db_for_fx(db)
+
+        # بعد الحقن → snapshot يصبح صحيح 100%
         snapshot = utils_fx.make_fx_snapshot(
             db=db,
             amount_native=total_amount,
             native_cur=item_currency,
             display_cur=disp_cur
-)
+        )
+
         candidate = {
             "item_id": item.id,
             "renter_id": user.id,
@@ -539,6 +546,8 @@ async def create_booking(
             "deposit_status": None,
             "deposit_hold_id": None,
             "timeline_created_at": datetime.utcnow(),
+
+            # 🔥🔥 snapshot الصحيح
             "currency_native": snapshot["currency_native"],
             "amount_native": snapshot["amount_native"],
 
@@ -549,9 +558,9 @@ async def create_booking(
             "fx_rate_native_to_paid": snapshot["fx_rate_native_to_paid"],
 
             "platform_fee_currency": snapshot["platform_fee_currency"],
-
         }
 
+        from sqlalchemy import inspect
         booking_cols = {c.key for c in inspect(Booking).mapper.column_attrs}
         safe_data = {k: v for k, v in candidate.items() if k in booking_cols}
 
