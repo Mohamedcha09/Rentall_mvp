@@ -515,7 +515,7 @@ def start_checkout_rent(
     else:
         # fallback conversion (if snapshot missing)
         from .items import fx_convert_smart
-        display_amount = fx_convert_sart(
+        display_amount = fx_convert_smart(
             amount=item.price,
             cur_from=item.currency,
             cur_to=display_currency,
