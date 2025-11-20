@@ -521,7 +521,7 @@
       <strong>{{ "%.2f"|format(disp_fee) }} {{ currency }}</strong>
     </div>
 
-    {% if taxes and taxes.mode == 'computed' and taxes.tax_lines and (taxes.tax_lines|length > 0) %}
+    {% if taxes and taxes.tax_lines and (taxes.tax_lines|length > 0) %}
       <hr class="my-2">
 
       {# 5) كل خط ضريبة نحوله لعملة العرض #}
