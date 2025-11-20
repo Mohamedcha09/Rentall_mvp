@@ -493,23 +493,21 @@
   <div class="card-body">
     <h6 class="mb-2">Order summary</h6>
 
-    {# 1) نفس عملة العرض للموقع كله #}
 {% set disp_cur = disp_cur %}
-    {% set currency = (disp_cur or 'CAD')|upper %}
-    {% set native_cur = booking.currency_native or booking.currency or 'CAD' %}
-    {% set fx = fx_rate(native_cur, currency) %}
+{% set currency   = (disp_cur or 'CAD')|upper %}
+{% set native_cur = booking.currency_native or booking.currency or 'CAD' %}
+{% set fx         = fx_rate(native_cur, currency) %}
 
-    {# 2) الإيجار الأساسي (native) ثم نحوله لعملة العرض #}
-    {% set rent = (booking.amount_display or booking.total_amount or 0.0)|float %}
-    {% set disp_rent = rent|round(2) %}
+{# نأخذ دائماً المبلغ الأصلي (native) ثم نحوله لعملة العرض #}
+{% set rent_native = (booking.amount_native or booking.total_amount or 0.0)|float %}
+{% set disp_rent   = (rent_native * (fx or 1.0))|round(2) %}
 
-    {# 3) processing fee (native) ثم نحوله #}
-    {% set fee_native = (processing_fee is defined) and processing_fee or
-                        ((rent * (STRIPE_PROCESSING_PCT or 0.029)) + ((STRIPE_PROCESSING_FIXED_CENTS or 30) / 100.0)) %}
-    {% set disp_fee = (fee_native * (fx or 1.0))|round(2) %}
+{# processing fee نحسبه على نفس base ثم نحوله #}
+{% set fee_native = (processing_fee is defined) and processing_fee or
+                    ((rent_native * (STRIPE_PROCESSING_PCT or 0.029)) + ((STRIPE_PROCESSING_FIXED_CENTS or 30) / 100.0)) %}
+{% set disp_fee   = (fee_native * (fx or 1.0))|round(2) %}
 
-    {# 4) subtotal قبل الضرائب — بالعملة المعروضة #}
-    {% set disp_sub_before_tax = (disp_rent + disp_fee)|round(2) %}
+{% set disp_sub_before_tax = (disp_rent + disp_fee)|round(2) %}
 
     <div class="d-flex justify-content-between">
       <span>Rent</span>
@@ -522,45 +520,32 @@
     </div>
 
     {% if taxes and taxes.tax_lines and (taxes.tax_lines|length > 0) %}
-      <hr class="my-2">
+        <hr class="my-2">
 
-      {# 5) كل خط ضريبة نحوله لعملة العرض #}
-      {% set disp_tax_total = 0.0 %}
-      {% for t in taxes.tax_lines %}
-        {% set disp_tax = (t.amount * (fx or 1.0))|round(2) %}
-        {% set disp_tax_total = disp_tax_total + disp_tax %}
-        <div class="d-flex justify-content-between">
-          <span>{{ t.name }} {{ (t.rate * 100)|round(3) }}%</span>
-          <strong>{{ "%.2f"|format(disp_tax) }} {{ currency }}</strong>
-        </div>
-      {% endfor %}
+  {# نستخدم namespace حتى يعمل الجمع داخل اللوب #}
+  {% set ns = namespace(total=0.0) %}
+  {% for t in taxes.tax_lines %}
+    {% set disp_tax = (t.amount * (fx or 1.0))|round(2) %}
+    {% set ns.total = ns.total + disp_tax %}
+    <div class="d-flex justify-content-between">
+      <span>{{ t.name }} {{ (t.rate * 100)|round(3) }}%</span>
+      <strong>{{ "%.2f"|format(disp_tax) }} {{ currency }}</strong>
+    </div>
+  {% endfor %}
 
-      <div class="d-flex justify-content-between">
-        <span><strong>Taxes total</strong></span>
-        <strong>{{ "%.2f"|format(disp_tax_total) }} {{ currency }}</strong>
-      </div>
+{% else %}
+  <div class="d-flex justify-content-between text-muted mt-1">
+    <span>Taxes</span><span>Calculated at Stripe</span>
+  </div>
+  <hr class="my-2">
 
-      <hr class="my-2">
+  {% set disp_grand = disp_sub_before_tax %}
+  <div class="d-flex justify-content-between">
+    <span>Total (before tax)</span>
+    <strong>{{ "%.2f"|format(disp_grand) }} {{ currency }}</strong>
+  </div>
+{% endif %}
 
-      {% set disp_grand = (disp_rent + disp_fee + disp_tax_total)|round(2) %}
-      <div class="d-flex justify-content-between">
-        <span>Total</span>
-        <strong>{{ "%.2f"|format(disp_grand) }} {{ currency }}</strong>
-      </div>
-
-      <div class="small text-muted mt-2">
-        • Location: {{ taxes.country or '—' }}{% if taxes.sub %}-{{ taxes.sub }}{% endif %}.
-      </div>
-    {% else %}
-      <div class="d-flex justify-content-between text-muted mt-1">
-        <span>Taxes</span><span>Calculated at Stripe</span>
-      </div>
-      <hr class="my-2">
-      <div class="d-flex justify-content-between">
-        <span>Total (before tax)</span>
-        <strong>{{ "%.2f"|format(disp_grand) }} {{ currency }}</strong>
-      </div>
-    {% endif %}
 
     <div class="small text-muted mt-2">
       • Sevor يأخذ 1% من الإيجار ضمن التحويل للمالك.<br>
