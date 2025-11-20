@@ -849,7 +849,7 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
         total_details = session_obj.get("total_details") or {}
         tax_cents = int(total_details.get("amount_tax") or 0)
         bk.tax_total = tax_cents
-        bk.tax_details_json = total_details
+        bk.tax_details_json = json.dumps(total_details)
     except Exception:
         pass
 
