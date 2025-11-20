@@ -478,7 +478,7 @@ def connect_status(
         "charges_enabled": acc.get("charges_enabled", False),
         "capabilities": acc.get("capabilities", {}),
     })
-# ============ (B) Checkout: Rent only ============
+
 @router.post("/api/stripe/checkout/rent/{booking_id}")
 def start_checkout_rent(
     booking_id: int,
@@ -502,44 +502,55 @@ def start_checkout_rent(
     if not owner or not getattr(owner, "stripe_account_id", None):
         raise HTTPException(status_code=400, detail="Owner is not onboarded to Stripe")
 
-    # NEW: use item's real currency
-    item_currency = (getattr(item, "currency", None) or CURRENCY).lower()
+    # -------------------------------
+    # 1) تحديد عملة العرض للمستخدم
+    # -------------------------------
+    display_currency = (bk.currency_display or item.currency or "cad").lower()
 
-    rent_cents = int(display_amount * 100)
+    # -------------------------------
+    # 2) تحديد سعر العرض (من booking snapshot)
+    # -------------------------------
+    if bk.amount_display:
+        display_amount = float(bk.amount_display)
+    else:
+        # fallback conversion (if snapshot missing)
+        from .items import fx_convert_smart
+        display_amount = fx_convert_sart(
+            amount=item.price,
+            cur_from=item.currency,
+            cur_to=display_currency,
+            db=db
+        )
+
+    # -------------------------------
+    # 3) التحويل إلى cents
+    # -------------------------------
+    rent_cents = int(round(display_amount * 100))
+
     if rent_cents <= 0:
         return flow_redirect(bk.id, db)
 
-    # Snapshot in database
-    try:
-        bk.currency = item_currency.upper()
-    except Exception:
-        pass
-
-    try:
-        bk.rent_amount = rent_cents // 100
-        bk.amount_item = rent_cents // 100
-    except Exception:
-        pass
-
-    platform_fee_cents = int(round(display_amount * 100 * (PLATFORM_FEE_PCT / 100.0)))
-
-    try:
-        bk.platform_fee = platform_fee_cents
-    except Exception:
-        pass
-
-    db.commit()
+    # -------------------------------
+    # 4) Platform Fee
+    # -------------------------------
+    platform_fee_cents = int(round(rent_cents * (PLATFORM_FEE_PCT / 100.0)))
 
     transfer_amount = max(0, rent_cents - platform_fee_cents)
     processing_cents = _processing_fee_cents_for_rent(rent_cents)
 
+    # -------------------------------
+    # 5) عملة الدفع الحقيقية
+    # -------------------------------
+    currency_paid = display_currency
+
     renter = db.get(User, bk.renter_id) if bk.renter_id else None
     qs = _best_loc_qs(bk, renter)
-
     success_url = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
     cancel_url  = _append_qs(f"{SITE_URL}/bookings/flow/{bk.id}", qs)
 
-    # taxes
+    # -------------------------------
+    # 6) Taxes
+    # -------------------------------
     geo = _geo_for_booking_and_user(bk, renter)
     subtotal_before_tax_cents = rent_cents + processing_cents
 
@@ -547,7 +558,7 @@ def start_checkout_rent(
         {
             "quantity": 1,
             "price_data": {
-                "currency": currency_paid,       # 👈 REAL currency
+                "currency": currency_paid,
                 "product_data": {"name": f"Rent for '{item.title}' (#{bk.id})"},
                 "unit_amount": rent_cents,
                 "tax_behavior": "exclusive",
@@ -556,8 +567,7 @@ def start_checkout_rent(
         {
             "quantity": 1,
             "price_data": {
-                "currency": currency_paid
-,
+                "currency": currency_paid,
                 "product_data": {"name": "Processing fee"},
                 "unit_amount": processing_cents,
                 "tax_behavior": "exclusive",
@@ -565,34 +575,38 @@ def start_checkout_rent(
         },
     ]
 
-    # explicit taxes
     tax_lines = []
     try:
         if geo.get("country"):
-            _calc = compute_order_taxes(subtotal_before_tax_cents/100.0, geo)
+            _calc = compute_order_taxes(subtotal_before_tax_cents / 100.0, geo)
             for t in (_calc.get("lines") or []):
-                amt_cents = int(round(float(t.get("amount") or 0.0) * 100))
+                amt_cents = int(round(float(t.get("amount") or 0) * 100))
                 if amt_cents > 0:
                     tax_lines.append({
                         "quantity": 1,
                         "price_data": {
                             "currency": currency_paid,
-                            "product_data": {"name": f"{t.get('name','Tax')} {round(float(t.get('rate',0))*100,3)}%"},
+                            "product_data": {
+                                "name": f"{t.get('name','Tax')} {round(float(t.get('rate',0))*100,3)}%"
+                            },
                             "unit_amount": amt_cents,
                         },
                     })
-    except Exception:
-        tax_lines = []
+    except:
+        pass
 
     automatic_tax_payload = {"enabled": False} if tax_lines else {"enabled": True}
     line_items.extend(tax_lines)
 
+    # -------------------------------
+    # 7) Stripe Session
+    # -------------------------------
     pi_data = {
         "capture_method": "manual",
         "metadata": {
             "kind": "rent",
             "booking_id": str(bk.id),
-            "currency": currency_paid,
+            "currency_paid": currency_paid,
         },
         "transfer_data": {
             "destination": owner.stripe_account_id,
@@ -615,8 +629,10 @@ def start_checkout_rent(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe error: {e}")
 
-    bk.payment_method = "online"
-    bk.online_status = "pending_authorization"
+    # Update booking snapshot
+    bk.currency_paid = currency_paid
+    bk.amount_display = display_amount
+    bk.rent_amount = display_amount
     db.commit()
 
     return RedirectResponse(url=session.url, status_code=303)
