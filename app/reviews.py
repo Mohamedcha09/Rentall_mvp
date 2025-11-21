@@ -8,6 +8,7 @@ from fastapi.templating import Jinja2Templates
 
 from .database import get_db
 from .models import Booking, ItemReview, UserReview
+from .utils import display_currency
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 templates = Jinja2Templates(directory="app/templates")
@@ -47,6 +48,7 @@ def renter_rate_page(
             "request": request,
             "title": f"Rate booking #{bk.id}",
             "booking": bk,
+            "display_currency": display_currency,
             "session_user": request.session.get("user"),
         },
     )
