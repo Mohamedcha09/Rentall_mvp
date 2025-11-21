@@ -1129,7 +1129,7 @@
       if(uploading) return '<span class="spinner-border spinner-border-sm me-1"></span> Uploading…';
       if(!started || collected.length===0) return '<i class="bi bi-camera"></i> Capture first photo';
       if(next < MAX) return '<i class="bi bi-camera"></i> Capture next photo';
-      return '<i class="bi bi-upload"></i> Confirm pickup';
+      return '<i class="bi bi-upload"></i> Upload photos';
     }
     function refreshUI(){
       btn.disabled = uploading ? true : false;
