@@ -417,7 +417,6 @@ def start_checkout_all(
     # 10) PaymentIntent metadata
     # ------------------------------------------------
     pi_data = {
-        "capture_method": "manual",
         "metadata": {
             "kind": "all",
             "booking_id": str(bk.id),
@@ -763,7 +762,6 @@ def start_checkout_deposit(
         session = stripe.checkout.Session.create(
             mode="payment",
             payment_intent_data={
-                "capture_method": "manual",
                 "metadata": {
                     "kind": "deposit",
                     "booking_id": str(bk.id),

@@ -1240,9 +1240,6 @@
 
 {% if booking.status in ['paid'] and is_renter %}
   <div class="sticky-actions d-sm-none">
-    <button type="button" id="pickupCaptureBtnSticky" class="btn btn-camera w-100" style="grid-column:1/-1">
-      <i class="bi bi-camera"></i> التقط 6 صور للاستلام
-    </button>
   </div>
 
   <!-- Mobile pickup UI -->
@@ -1265,9 +1262,6 @@
 
 {% if booking.status in ['picked_up'] and is_renter %}
   <div class="sticky-actions d-sm-none">
-    <button type="button" id="returnCaptureBtnSticky" class="btn btn-camera w-100" style="grid-column:1/-1">
-      <i class="bi bi-camera"></i> التقط 6 صور للإرجاع
-    </button>
   </div>
 
   <!-- Mobile return UI -->
