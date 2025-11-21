@@ -1244,7 +1244,19 @@
       <i class="bi bi-camera"></i> التقط 6 صور للاستلام
     </button>
   </div>
+
+  <!-- Mobile pickup UI -->
+  <div class="k small d-sm-none mt-2 d-flex align-items-center justify-content-between px-3">
+    <span class="num-ltr" id="pickupCountMobile">0/6</span>
+    <div class="progress-dots">
+      <span class="dot" id="p1m"></span><span class="dot" id="p2m"></span><span class="dot" id="p3m"></span>
+      <span class="dot" id="p4m"></span><span class="dot" id="p5m"></span><span class="dot" id="p6m"></span>
+    </div>
+    <span id="pickupStatusMobile" class="msg"></span>
+  </div>
 {% endif %}
+
+
 
 {% if booking.status in ['picked_up'] and is_renter %}
   <div class="sticky-actions d-sm-none">
@@ -1252,7 +1264,18 @@
       <i class="bi bi-camera"></i> التقط 6 صور للإرجاع
     </button>
   </div>
+
+  <!-- Mobile return UI -->
+  <div class="k small d-sm-none mt-2 d-flex align-items-center justify-content-between px-3">
+    <span class="num-ltr" id="returnCountMobile">0/6</span>
+    <div class="progress-dots">
+      <span class="dot" id="r1m"></span><span class="dot" id="r2m"></span><span class="dot" id="r3m"></span>
+      <span class="dot" id="r4m"></span><span class="dot" id="r5m"></span><span class="dot" id="r6m"></span>
+    </div>
+    <span id="returnStatusMobile" class="msg"></span>
+  </div>
 {% endif %}
+
 
 <script>
   /* Proxy sticky buttons to original capture buttons (single logic source) */
@@ -1320,6 +1343,30 @@
 })();
 </script>
 
+<script>
+(function(){
+  function mirrorDesktopToMobile(prefix){
+    for(let i=1;i<=6;i++){
+      let d = document.getElementById(prefix + i);
+      let m = document.getElementById(prefix + i + 'm');
+      if(d && m){
+        // عندما يشتعل الدوت Desktop → يشعل Mobile
+        let observer = new MutationObserver(()=>{
+          m.classList.toggle('on', d.classList.contains('on'));
+        });
+        observer.observe(d, {attributes:true});
+      }
+    }
+  }
+
+  // Pickup
+  mirrorDesktopToMobile('p');
+
+  // Return
+  mirrorDesktopToMobile('r');
+
+})();
+</script>
 
 
 {% endblock %}
