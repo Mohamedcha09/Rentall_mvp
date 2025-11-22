@@ -403,8 +403,6 @@ def _ensure_deposit_hold(bk: Booking) -> bool:
 # ========================================
 DISPUTE_WINDOW_HOURS = 48
 RENTER_REPLY_WINDOW_HOURS = 48
-
-
 # ========================================
 # UI: Create page
 # ========================================
@@ -425,7 +423,8 @@ def booking_new_page(
     item_cur = (item.currency or "CAD").upper()
 
     # === 2) عملة العرض (نفس التي تستعمل في home و items_detail) ===
-    
+    disp_cur = _display_currency(request)
+
     # === 3) تحويل السعر إلى عملة العرض ===
     disp_price = fx_convert_smart(
         db,
@@ -444,7 +443,7 @@ def booking_new_page(
     ctx = {
         "request": request,
         "user": user,
-        "session_user": request.session.get("user"),   # ← هذا هو الحل
+        "session_user": request.session.get("user"),   
         "display_currency": disp_cur,
 
         "item": item,
@@ -457,9 +456,6 @@ def booking_new_page(
     }
 
     return request.app.templates.TemplateResponse("booking_new.html", ctx)
-
-
-# ========================================
 # Create booking  (FIXED 100%)
 # ========================================
 @router.post("/bookings")
