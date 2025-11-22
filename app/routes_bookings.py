@@ -1337,7 +1337,7 @@ def bookings_index(
 
     "can_manage_deposits": user.can_manage_deposits,
     "is_support": user.is_support,
-    "is_admin": user.is_admin,
+    "is_admin": getattr(user, "is_admin", False),
 }
 
 }
