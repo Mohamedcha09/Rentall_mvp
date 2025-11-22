@@ -792,16 +792,11 @@ def start_checkout_deposit(
 
     return RedirectResponse(url=session.url, status_code=303)
 
-
 # ============ (D) Webhook: Persist Checkout results ============
 def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     # 1) Identify PaymentIntent
     intent_id = session_obj.get("payment_intent")
-    pi = stripe.PaymentIntent.retrieve(intent_id)
-    if pi:
-        bk.online_payment_intent_id = pi.id   # 🔥 تحديث intent الصحيح دائماً
-        db.commit()
-
+    pi = stripe.PaymentIntent.retrieve(intent_id) if intent_id else None
 
     # 2) Extract metadata correctly
     md = (pi.metadata or {}) if pi else {}
@@ -811,10 +806,19 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     # NEW: Correct key for paid currency
     currency_paid_meta = md.get("currency_paid")
 
-    # 3) Load booking
+    # ----------------------------------------------
+    # 3) Load booking  (IMPORTANT — must be BEFORE storing PI)
+    # ----------------------------------------------
     bk = db.get(Booking, booking_id) if booking_id else None
     if not bk:
         return
+
+    # ----------------------------------------------
+    # 🔥 CRITICAL FIX: always update PI inside booking
+    # ----------------------------------------------
+    if pi:
+        bk.online_payment_intent_id = pi.id
+        db.commit()
 
     renter = db.get(User, bk.renter_id) if bk.renter_id else None
     item   = db.get(Item, bk.item_id) if bk.item_id else None
@@ -831,7 +835,7 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     # 6) Platform fee currency (always CAD)
     bk.platform_fee_currency = "cad"
 
-    # 7) FX snapshot (already stored earlier, but ensure stored)
+    # 7) FX snapshot
     try:
         bk.fx_rate_native_to_paid = (
             bk.fx_rate_native_to_paid
@@ -857,7 +861,6 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     # A) Rent only
     # =====================================================
     if kind == "rent":
-        bk.online_payment_intent_id = pi.id
         bk.online_status = "authorized"
 
         if (bk.deposit_status or "").lower() == "held":
@@ -920,7 +923,6 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
         bk.deposit_status = "held"
         bk.deposit_currency = currency.upper()
 
-
         if (bk.online_status or "").lower() == "authorized":
             bk.status = "paid"
             bk.timeline_paid_at = datetime.utcnow()
@@ -957,7 +959,6 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     # C) Rent + Deposit together
     # =====================================================
     elif kind == "all":
-        bk.online_payment_intent_id = pi.id
         _set_deposit_pi_id(bk, pi.id)
 
         bk.online_status = "authorized"
