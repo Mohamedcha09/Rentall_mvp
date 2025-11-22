@@ -1292,3 +1292,41 @@ def booking_flow_next(
     return RedirectResponse(url=f"/bookings/flow/{booking_id}?ready=1", status_code=303)
 
 
+
+@router.get("/bookings")
+def bookings_index(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+    view: str = "renter"
+):
+    require_auth(user)
+
+    if view not in ("renter", "owner"):
+        view = "renter"
+
+    if view == "renter":
+        bookings = (
+            db.query(Booking)
+            .filter(Booking.renter_id == user.id)
+            .order_by(Booking.id.desc())
+            .all()
+        )
+        title = "Your bookings"
+    else:
+        bookings = (
+            db.query(Booking)
+            .filter(Booking.owner_id == user.id)
+            .order_by(Booking.id.desc())
+            .all()
+        )
+        title = "Requests on your items"
+
+    ctx = {
+        "request": request,
+        "bookings": bookings,
+        "title": title,
+        "view": view
+    }
+
+    return request.app.templates.TemplateResponse("bookings.html", ctx)
