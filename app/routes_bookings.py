@@ -1326,7 +1326,9 @@ def bookings_index(
         "request": request,
         "bookings": bookings,
         "title": title,
-        "view": view
+        "view": view,
+        "session_user": user
+
     }
 
     return request.app.templates.TemplateResponse("booking_index.html", ctx)
