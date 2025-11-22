@@ -388,3 +388,36 @@ def api_unread_summary(request: Request, db: Session = Depends(get_db)):
         "total": unread_count(u["id"], db),
         "threads": unread_grouped(u["id"], db)
     })
+
+
+# ====== Typing state memory ======
+from datetime import datetime, timedelta
+typing_state = {}   # { thread_id: { user_id: datetime_expire } }
+
+@router.post("/messages/{thread_id}/typing")
+def set_typing(thread_id: int, request: Request, db: Session = Depends(get_db)):
+    session_user = request.state.user
+
+    # نخزن typing لمدة 3 ثواني
+    if thread_id not in typing_state:
+        typing_state[thread_id] = {}
+
+    typing_state[thread_id][session_user.id] = datetime.utcnow() + timedelta(seconds=3)
+
+    return {"ok": True}
+
+@router.get("/messages/{thread_id}/typing_status")
+def typing_status(thread_id: int, request: Request):
+    session_user = request.state.user
+
+    if thread_id not in typing_state:
+        return {"typing": False}
+
+    now = datetime.utcnow()
+
+    # أي شخص آخر غيري في الشات
+    for user_id, expires_at in typing_state[thread_id].items():
+        if user_id != session_user.id and expires_at > now:
+            return {"typing": True}
+
+    return {"typing": False}

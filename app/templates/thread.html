@@ -258,4 +258,42 @@
   if (el) el.scrollTop = el.scrollHeight;
 </script>
 
+<script>
+  const threadId = {{ thread.id }};
+  const chatBox = document.getElementById("chatMessages");
+
+  // عندما تكتب
+  const input = document.querySelector(".chat-input");
+  let typingTimer;
+
+  input.addEventListener("input", () => {
+      fetch(`/messages/${threadId}/typing`, {method: "POST"});
+  });
+
+  // polling كل 1 ثانية
+  setInterval(() => {
+      fetch(`/messages/${threadId}/typing_status`)
+        .then(r => r.json())
+        .then(d => {
+            const existing = document.querySelector(".typing");
+
+            if (d.typing) {
+                if (!existing) {
+                    const div = document.createElement("div");
+                    div.className = "typing";
+                    div.innerHTML = `
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                    `;
+                    chatBox.appendChild(div);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+            } else {
+                if (existing) existing.remove();
+            }
+        });
+  }, 1000);
+</script>
+
 {% endblock %}
