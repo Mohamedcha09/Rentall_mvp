@@ -1329,4 +1329,4 @@ def bookings_index(
         "view": view
     }
 
-    return request.app.templates.TemplateResponse("bookings.html", ctx)
+    return request.app.templates.TemplateResponse("booking_index.html", ctx)
