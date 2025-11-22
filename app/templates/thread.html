@@ -129,7 +129,7 @@
       display:block;
   }
 
-  /* INPUT BAR */
+  /* INPUT BAR — FIXED iPhone */
   .chat-input-bar {
       position:fixed;
       left:0; right:0;
@@ -149,7 +149,7 @@
       border:1px solid rgba(0,0,0,0.15);
       border-radius:20px;
       padding:10px 14px;
-      font-size:15px;
+      font-size:16px !important;   /* ← FIX FOR SAFARI */
       background:rgba(255,255,255,0.9);
   }
 
@@ -160,8 +160,9 @@
       padding:10px 18px;
       border-radius:20px;
       font-weight:600;
-      font-size:15px;
+      font-size:16px !important;   /* ← FIX FOR SAFARI */
   }
+
 </style>
 
 <div class="chat-bg"></div>
@@ -211,7 +212,7 @@
 
 <script>
   const el = document.getElementById("chatMessages");
-  if(el){ el.scrollTop = el.scrollHeight; }
+  if (el) el.scrollTop = el.scrollHeight;
 </script>
 
 {% endblock %}
