@@ -762,14 +762,21 @@ def start_checkout_deposit(
         session = stripe.checkout.Session.create(
             mode="payment",
             payment_intent_data={
+                "capture_method": "manual",  # ← يجعل الديبو HOLD فقط
                 "metadata": {
                     "kind": "deposit",
                     "booking_id": str(bk.id),
+
+                    # عملة الدفع الفعلية (نفس عملة العرض)
                     "currency_paid": display_currency,
                     "currency_native": native_currency,
+                    "deposit_currency": display_currency,
+
+                    # FX المستخدم عند التحويل
                     "fx_rate": fx_rate,
                 },
             },
+
             line_items=[
                 {
                     "quantity": 1,
@@ -1049,7 +1056,7 @@ def resolve_deposit(
     deposit_currency = (pi.metadata.get("deposit_currency") or CURRENCY).lower()
 
     # Deposit amount (in original item currency)
-    dep = int(max(0, bk.deposit_amount or getattr(bk, "hold_deposit_amount", 0) or 0))
+    dep = float(bk.deposit_display_amount or 0.0)
 
     # Process actions
     try:
@@ -1063,23 +1070,26 @@ def resolve_deposit(
             # Capture the full deposit in SAME currency
             stripe.PaymentIntent.capture(
                 pi_id,
-                amount_to_capture=dep * 100  # capture in original currency
+                amount_to_capture=int(round(dep * 100))  # capture in PAID currency
             )
+
             bk.deposit_status = "claimed"
             bk.deposit_charged_amount = dep
 
         elif action == "withhold_partial":
-            amt = int(max(0, partial_amount or 0))
+            # partial_amount يُفترض أنه بنفس عملة الدفع (display currency)
+            amt = float(partial_amount or 0.0)
             if amt <= 0 or amt >= dep:
                 raise HTTPException(status_code=400, detail="Invalid partial amount")
 
             stripe.PaymentIntent.capture(
                 pi_id,
-                amount_to_capture=amt * 100  # partial amount in original currency
+                amount_to_capture=int(round(amt * 100))  # partial in PAID currency
             )
             bk.deposit_status = "partially_withheld"
-            prev = int(getattr(bk, "deposit_charged_amount", 0) or 0)
+            prev = float(getattr(bk, "deposit_charged_amount", 0) or 0.0)
             bk.deposit_charged_amount = prev + amt
+
 
         else:
             raise HTTPException(status_code=400, detail="Unknown action")

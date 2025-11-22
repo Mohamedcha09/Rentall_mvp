@@ -899,8 +899,8 @@ def renter_pay_online(
     if not owner_pe:
         raise HTTPException(status_code=409, detail="Owner payouts not enabled")
 
-    # Pay rent + deposit together
-    return RedirectResponse(url=f"/api/stripe/checkout/all/{booking_id}", status_code=303)
+    # Pay rent ONLY (rent is in display currency)
+    return RedirectResponse(url=f"/api/stripe/checkout/rent/{booking_id}", status_code=303)
 
 # ========================================
 # Renter confirms receipt
@@ -1182,7 +1182,7 @@ def alias_pay_online(booking_id: int,
         bk.hold_deposit_amount = max(0, int(deposit_amount or 0))
     db.commit()
 
-    return RedirectResponse(url=f"/api/stripe/checkout/all/{booking_id}", status_code=303)
+    return RedirectResponse(url=f"/api/stripe/checkout/rent/{booking_id}", status_code=303)
 
 @router.post("/bookings/{booking_id}/picked-up")
 def alias_picked_up(booking_id: int,
@@ -1291,14 +1291,3 @@ def booking_flow_next(
     _ = require_booking(db, booking_id)
     return RedirectResponse(url=f"/bookings/flow/{booking_id}?ready=1", status_code=303)
 
-
-# ========================================
-# Shims to single endpoints
-# ========================================
-@router.post("/api/stripe/checkout/rent/{booking_id}")
-def shim_checkout_rent(booking_id: int):
-    return RedirectResponse(url=f"/api/stripe/checkout/all/{booking_id}?only=rent", status_code=303)
-
-@router.post("/api/stripe/checkout/deposit/{booking_id}")
-def shim_checkout_deposit(booking_id: int):
-    return RedirectResponse(url=f"/api/stripe/checkout/all/{booking_id}?only=deposit", status_code=303)
