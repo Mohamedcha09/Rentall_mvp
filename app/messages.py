@@ -302,7 +302,8 @@ def thread_send(
         return RedirectResponse(url="/messages/support", status_code=303)
 
     if not body.strip():
-        return RedirectResponse(url=f"/messages/{thr.id}", status_code=303)
+        return {"ok": True}
+
 
     # create message
     msg = Message(
@@ -427,3 +428,34 @@ def typing_status(thread_id: int, request: Request):
             return {"typing": True}
 
     return {"typing": False}
+
+
+@router.get("/messages/{thread_id}/poll")
+def poll_messages(thread_id: int, request: Request, db: Session = Depends(get_db)):
+    u = require_login(request)
+    if not u:
+        return {"messages": []}
+
+    last_id = int(request.query_params.get("after", 0))
+
+    rows = (
+        db.query(Message)
+        .filter(
+            Message.thread_id == thread_id,
+            Message.id > last_id
+        )
+        .order_by(Message.id.asc())
+        .all()
+    )
+
+    return {
+        "messages": [
+            {
+                "id": m.id,
+                "body": m.body,
+                "time": m.created_at.strftime("%H:%M"),
+                "from_me": (m.sender_id == u["id"])
+            }
+            for m in rows
+        ]
+    }

@@ -1291,3 +1291,30 @@ def booking_flow_next(
     _ = require_booking(db, booking_id)
     return RedirectResponse(url=f"/bookings/flow/{booking_id}?ready=1", status_code=303)
 
+@router.get("/bookings")
+def bookings_index(
+    request: Request,
+    view: Literal["owner", "renter"] = "renter",
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    require_auth(user)
+    q = db.query(Booking)
+    if view == "owner":
+        q = q.filter(Booking.owner_id == user.id)
+    else:
+        q = q.filter(Booking.renter_id == user.id)
+    q = q.order_by(Booking.created_at.desc())
+    bookings = q.all()
+
+    return request.app.templates.TemplateResponse(
+        "bookings_index.html",
+        {
+            "request": request,
+            "title": "My bookings" if view == "renter" else "Bookings on my items",
+            "session_user": request.session.get("user"),
+            "bookings": bookings,
+            "view": view,
+        },
+    )
+

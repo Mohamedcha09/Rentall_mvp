@@ -247,7 +247,7 @@
 
   </div>
 
-  <form method="post" action="/messages/{{ thread.id }}" class="chat-input-bar">
+  <form class="chat-input-bar" onsubmit="sendMessage(event)">
     <input type="text" name="body" placeholder="Aa" class="chat-input" required>
     <button class="send-btn">Send</button>
   </form>
@@ -266,9 +266,15 @@
   const input = document.querySelector(".chat-input");
   let typingTimer;
 
-  input.addEventListener("input", () => {
-      fetch(`/messages/${threadId}/typing`, {method: "POST"});
-  });
+input.addEventListener("input", () => {
+    const txt = input.value.trim();
+
+    // طالما يكتب أو هناك نص → typing ON
+    if (txt.length > 0) {
+        fetch(`/messages/${threadId}/typing`, {method: "POST"});
+    }
+});
+
 
   // polling كل 1 ثانية
   setInterval(() => {
@@ -294,6 +300,55 @@
             }
         });
   }, 1000);
+
+
+  function stopTyping() {
+    fetch(`/messages/${threadId}/typing`, {
+        method: "POST",
+        body: "" // هذا سيعتبر أن النص فارغ → typing OFF
+    });
+}
+
+let lastMessageId = {{ messages[-1].id if messages else 0 }};
+
+setInterval(() => {
+    fetch(`/messages/${threadId}/poll?after=${lastMessageId}`)
+        .then(r => r.json())
+        .then(d => {
+            if (!d.messages || d.messages.length === 0) return;
+
+            d.messages.forEach(msg => {
+                const div = document.createElement("div");
+                div.className = "bubble " + (msg.from_me ? "me" : "other");
+                div.innerHTML = `
+                    <span class="bubble-time">${msg.time}</span>
+                    ${msg.body}
+                `;
+                chatBox.appendChild(div);
+                chatBox.scrollTop = chatBox.scrollHeight;
+                lastMessageId = msg.id;
+            });
+        });
+}, 1000);
+
+function sendMessage(e) {
+    e.preventDefault();
+
+    const txt = input.value.trim();
+    if (!txt) return;
+
+    // إرسال الرسالة بدون Refresh
+    fetch(`/messages/${threadId}`, {
+        method: "POST",
+        body: new FormData(e.target)
+    })
+    .then(() => {
+        input.value = "";   // تفريغ الحقل
+        stopTyping();       // وقف typing
+    });
+}
+
+
 </script>
 
 {% endblock %}
