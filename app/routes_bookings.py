@@ -1328,14 +1328,18 @@ def bookings_index(
     "title": title,
     "view": view,
     "session_user": {
-        "id": user.id,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "avatar": user.avatar,
-        "can_manage_deposits": user.can_manage_deposits,
-        "is_support": user.is_support,
-        "is_admin": user.is_admin,
-    }
+    "id": user.id,
+    "first_name": user.first_name,
+    "last_name": user.last_name,
+
+    # حل نهائي 100%
+    "avatar": getattr(user, "avatar_path", None),
+
+    "can_manage_deposits": user.can_manage_deposits,
+    "is_support": user.is_support,
+    "is_admin": user.is_admin,
+}
+
 }
 
 
