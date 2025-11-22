@@ -797,7 +797,11 @@ def start_checkout_deposit(
 def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     # 1) Identify PaymentIntent
     intent_id = session_obj.get("payment_intent")
-    pi = stripe.PaymentIntent.retrieve(intent_id) if intent_id else None
+    pi = stripe.PaymentIntent.retrieve(intent_id)
+    if pi:
+        bk.online_payment_intent_id = pi.id   # 🔥 تحديث intent الصحيح دائماً
+        db.commit()
+
 
     # 2) Extract metadata correctly
     md = (pi.metadata or {}) if pi else {}
