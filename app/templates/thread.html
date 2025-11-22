@@ -133,13 +133,16 @@
       display:block;
   }
 
-  /* empty state */
-  .empty-chat{
-      width:100%;
-      display:flex;
-      justify-content:center;
-      margin-top:40px;
-      opacity:.8;
+  /* ==== EMPTY CHAT ==== */
+  .empty-chat {
+      width: 100%;
+      text-align:center;
+      margin-top: 70px;
+      opacity: .95;
+  }
+  .empty-chat img {
+      width: 220px; /* ← الحجم الجديد */
+      height: auto;
   }
 
   /* ===== Typing Indicator ===== */
@@ -232,7 +235,9 @@
 
     {% if messages|length == 0 %}
     <div id="emptyState" class="empty-chat">
-        <img src="/static/photo/qon.png" style="width:160px;">
+        <img src="/static/photo/qon.png" alt="no messages">
+        <h3>No messages</h3>
+        <p>There are no messages left between you and this person.</p>
     </div>
     {% endif %}
 
