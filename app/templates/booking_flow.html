@@ -1203,10 +1203,16 @@
     commentId:'pickupComment',
     statusId: 'pickupCaptureStatus',
     countId:  'pickupCount',
-    postUrl:  '/bookings/{{ booking.id }}/pickup-proof-upload?next=/bookings/flow/{{ booking.id }}/next',
-    nextUrl:  '/bookings/flow/{{ booking.id }}/next',
+
+    // أولاً: رفع الصور
+    postUrl:  '/bookings/{{ booking.id }}/pickup-proof-upload?next=/bookings/{{ booking.id }}/renter/confirm_received',
+
+    // ثانياً: بعد الرفع مباشرة: إرسال الأموال للمالك
+    nextUrl:  '/bookings/{{ booking.id }}/renter/confirm_received',
+
     prefix:   'p'
-  });
+});
+
 
   setupAutoCapture({
     buttonId: 'returnCaptureBtn',
