@@ -141,7 +141,7 @@
       opacity: .95;
   }
   .empty-chat img {
-      width: 220px; /* ← الحجم الجديد */
+      width: 220px;
       height: auto;
   }
 
@@ -207,6 +207,19 @@
       font-size:16px !important;
       box-shadow:0 4px 12px rgba(0,0,0,.18);
   }
+
+  /* ==========================================
+      WHATSAPP POP MESSAGE ANIMATION  🔥
+     ========================================== */
+  @keyframes wspop {
+      0%   { transform: scale(0.6); opacity: 0; }
+      60%  { transform: scale(1.08); opacity: 1; }
+      100% { transform: scale(1); }
+  }
+  .new-msg {
+      animation: wspop .22s ease-out;
+  }
+
 </style>
 
 <div class="chat-bg"></div>
@@ -288,6 +301,8 @@ input.addEventListener("input", () => {
     }
 });
 
+
+/* ==== TYPING ==== */
 setInterval(() => {
       fetch(`/messages/${threadId}/typing_status`)
         .then(r => r.json())
@@ -312,6 +327,7 @@ setInterval(() => {
         });
   }, 1000);
 
+
 function stopTyping() {
     fetch(`/messages/${threadId}/typing`, {
         method: "POST",
@@ -319,8 +335,11 @@ function stopTyping() {
     });
 }
 
+
 let lastMessageId = {{ messages[-1].id if messages else 0 }};
 
+
+/* ==== POLLING FOR NEW MESSAGES ==== */
 setInterval(() => {
     fetch(`/messages/${threadId}/poll?after=${lastMessageId}`)
         .then(r => r.json())
@@ -334,7 +353,7 @@ setInterval(() => {
 
             d.messages.forEach(msg => {
                 const div = document.createElement("div");
-                div.className = "bubble " + (msg.from_me ? "me" : "other");
+                div.className = "bubble new-msg " + (msg.from_me ? "me" : "other");
                 div.innerHTML = `
                     <span class="bubble-time">${msg.time}</span>
                     ${msg.body}
@@ -346,6 +365,8 @@ setInterval(() => {
         });
 }, 1000);
 
+
+/* ==== SEND MESSAGE ==== */
 function sendMessage(e) {
     e.preventDefault();
 
@@ -361,6 +382,18 @@ function sendMessage(e) {
             emptyState.remove();
             emptyState = null;
         }
+
+        /* WhatsApp POP for my own message */
+        const div = document.createElement("div");
+        div.className = "bubble me new-msg";
+        div.innerHTML = `
+            <span class="bubble-time">{{ "%H:%M" | datetime }}</span>
+            ${txt}
+        `;
+
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
         input.value = "";
         stopTyping();
     });
