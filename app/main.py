@@ -39,7 +39,6 @@ from sqlalchemy.orm import Session
 from .database import Base, engine, SessionLocal, get_db
 from .models import User, Item
 from .utils import CATEGORIES, category_label
-from .utils_geo import persist_location_to_session
 # 5) Routers
 from .auth import router as auth_router
 from .admin import router as admin_router
