@@ -1,9 +1,26 @@
-{# app/templates/thread.html #}
 {% extends "base.html" %}
 {% block content %}
 
+<!-- ===== Hide navbars & FAB ONLY on thread page ===== -->
 <style>
-  .msg{border:1px solid rgba(0,0,0,.06);border-radius:.75rem;padding:.65rem .8rem;margin-bottom:.5rem}
+  header.topbar,
+  .m-top-tabs,
+  .mobile-tabbar,
+  #fabAdd {
+      display: none !important;
+  }
+  body.has-tabbar {
+      padding-bottom: 0 !important;
+  }
+</style>
+
+<style>
+  .msg{
+    border:1px solid rgba(0,0,0,.06);
+    border-radius:.75rem;
+    padding:.65rem .8rem;
+    margin-bottom:.5rem
+  }
 </style>
 
 <div class="d-flex align-items-center gap-2 mb-3">
