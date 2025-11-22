@@ -520,6 +520,8 @@ def connect_status(
         "capabilities": acc.get("capabilities", {}),
     })
 
+
+
 @router.post("/api/stripe/checkout/rent/{booking_id}")
 def start_checkout_rent(
     booking_id: int,
@@ -691,6 +693,12 @@ def start_checkout_rent(
             success_url=f"{success_url}&rent_ok=1&sid={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{cancel_url}&cancel=1",
         )
+        # === NEW: Save PaymentIntent ID ===
+        pi_id = session.payment_intent
+        bk.online_payment_intent_id = pi_id
+        db.commit()
+
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe error: {e}")
 
@@ -796,6 +804,11 @@ def start_checkout_deposit(
             success_url=f"{success_url}&deposit_ok=1&sid={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{cancel_url}&cancel=1",
         )
+        # === NEW: Save PaymentIntent ID ===
+        pi_id = session.payment_intent
+        bk.online_payment_intent_id = pi_id
+        db.commit()
+
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Stripe error: {e}")
