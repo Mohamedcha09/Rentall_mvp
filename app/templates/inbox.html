@@ -42,14 +42,14 @@
         <div class="avatar">
           <img src="{{ t.other_avatar }}"
                referrerpolicy="no-referrer"
-               onerror="this.onerror=null;this.src='/static/placeholder.svg'">
+               onerror="this.onerror=null;this.src='/static/img/.png'">
         </div>
 
         <div class="flex-grow-1">
           <div class="d-flex align-items-center gap-2">
             <strong class="fs-6">{{ t.other_fullname }}</strong>
             {% if t.other_verified %}
-              <img src="/static/verified.png" alt="verified" style="height:16px">
+              <img src="/static/img/.png" alt="verified" style="height:16px">
             {% endif %}
             {% set c = t.unread_count|int %}
             {% if c > 0 %}
@@ -66,7 +66,7 @@
         <div class="thumb d-none d-sm-block">
           <img src="{{ t.item_image }}"
                referrerpolicy="no-referrer"
-               onerror="this.onerror=null;this.src='/static/placeholder.svg'">
+               onerror="this.onerror=null;this.src='/static/img/.png'">
         </div>
 
         <div class="text-nowrap text-muted small">
