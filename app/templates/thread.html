@@ -133,6 +133,15 @@
       display:block;
   }
 
+  /* empty state */
+  .empty-chat{
+      width:100%;
+      display:flex;
+      justify-content:center;
+      margin-top:40px;
+      opacity:.8;
+  }
+
   /* ===== Typing Indicator ===== */
   .typing {
       display:flex;
@@ -146,6 +155,7 @@
       box-shadow:0 2px 8px rgba(0,0,0,.08);
       border:1px solid rgba(0,0,0,0.05);
   }
+
   .dot {
       width:6px; height:6px;
       background:#8b5cf6;
@@ -220,15 +230,10 @@
 <div class="chat-wrapper">
   <div class="chat-messages" id="chatMessages">
 
-    {# ========= صورة qon عندما لا توجد رسائل ========= #}
     {% if messages|length == 0 %}
-      <div style="text-align:center; padding:40px 10px; opacity:0.9;">
-          <img src="/static/photo/qon.png"
-               style="width:160px; max-width:60%; opacity:0.95;">
-          <div style="margin-top:10px; font-size:15px; color:#777;">
-              No messages yet
-          </div>
-      </div>
+    <div id="emptyState" class="empty-chat">
+        <img src="/static/photo/qon.png" style="width:160px;">
+    </div>
     {% endif %}
 
     {% for m in messages %}
@@ -246,9 +251,12 @@
 
     {% if other_is_typing %}
     <div class="typing">
-        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
     </div>
     {% endif %}
+
   </div>
 
   <form class="chat-input-bar" onsubmit="sendMessage(event)">
@@ -258,38 +266,53 @@
 </div>
 
 <script>
-const el = document.getElementById("chatMessages");
-if (el) el.scrollTop = el.scrollHeight;
+  const el = document.getElementById("chatMessages");
+  if (el) el.scrollTop = el.scrollHeight;
+</script>
 
-const threadId = {{ thread.id }};
-const chatBox = document.getElementById("chatMessages");
-const input = document.querySelector(".chat-input");
+<script>
+  const threadId = {{ thread.id }};
+  const chatBox = document.getElementById("chatMessages");
+  let emptyState = document.getElementById("emptyState");
+
+  const input = document.querySelector(".chat-input");
 
 input.addEventListener("input", () => {
-    const txt = input.value.trim();
-    if (txt.length > 0) {
+    if (input.value.trim().length > 0) {
         fetch(`/messages/${threadId}/typing`, {method: "POST"});
     }
 });
 
 setInterval(() => {
-    fetch(`/messages/${threadId}/typing_status`)
+      fetch(`/messages/${threadId}/typing_status`)
         .then(r => r.json())
         .then(d => {
             const existing = document.querySelector(".typing");
+
             if (d.typing) {
                 if (!existing) {
                     const div = document.createElement("div");
                     div.className = "typing";
-                    div.innerHTML = `<div class="dot"></div><div class="dot"></div><div class="dot"></div>`;
+                    div.innerHTML = `
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                    `;
                     chatBox.appendChild(div);
                     chatBox.scrollTop = chatBox.scrollHeight;
                 }
-            } else if (existing) {
-                existing.remove();
+            } else {
+                if (existing) existing.remove();
             }
         });
-}, 1000);
+  }, 1000);
+
+function stopTyping() {
+    fetch(`/messages/${threadId}/typing`, {
+        method: "POST",
+        body: ""
+    });
+}
 
 let lastMessageId = {{ messages[-1].id if messages else 0 }};
 
@@ -299,16 +322,21 @@ setInterval(() => {
         .then(d => {
             if (!d.messages || d.messages.length === 0) return;
 
+            if (emptyState){
+                emptyState.remove();
+                emptyState = null;
+            }
+
             d.messages.forEach(msg => {
                 const div = document.createElement("div");
                 div.className = "bubble " + (msg.from_me ? "me" : "other");
-                div.innerHTML = `<span class="bubble-time">${msg.time}</span>${msg.body}`;
+                div.innerHTML = `
+                    <span class="bubble-time">${msg.time}</span>
+                    ${msg.body}
+                `;
                 chatBox.appendChild(div);
                 chatBox.scrollTop = chatBox.scrollHeight;
                 lastMessageId = msg.id;
-
-                const emptyImage = document.querySelector("#empty-img");
-                if (emptyImage) emptyImage.remove();
             });
         });
 }, 1000);
@@ -324,9 +352,15 @@ function sendMessage(e) {
         body: new FormData(e.target)
     })
     .then(() => {
+        if (emptyState){
+            emptyState.remove();
+            emptyState = null;
+        }
         input.value = "";
+        stopTyping();
     });
 }
+
 </script>
 
 {% endblock %}
