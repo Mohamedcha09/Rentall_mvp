@@ -405,6 +405,7 @@ def start_checkout_all(
     try:
         session = stripe.checkout.Session.create(
             mode="payment",
+            payment_method_types=["card"],
             currency=display_currency,
             payment_intent_data=pi_data,
             automatic_tax=automatic_tax_payload,
@@ -655,6 +656,7 @@ def start_checkout_rent(
     try:
         session = stripe.checkout.Session.create(
             mode="payment",
+            payment_method_types=["card"],
             payment_intent_data=pi_data,
             automatic_tax=automatic_tax_payload,
             tax_id_collection={"enabled": True},
@@ -740,6 +742,7 @@ def start_checkout_deposit(
     try:
         session = stripe.checkout.Session.create(
             mode="payment",
+            payment_method_types=["card"],
             payment_intent_data={
                 "capture_method": "manual",  # ← يجعل الديبو HOLD فقط
                 "metadata": {
