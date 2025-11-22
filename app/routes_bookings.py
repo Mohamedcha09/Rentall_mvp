@@ -426,6 +426,8 @@ def booking_new_page(
 
     # === 2) عملة العرض (نفس التي تستعمل في home و items_detail) ===
     disp_cur = _display_currency(request)
+    
+    utils_fx.inject_db_for_fx(db)
 
     # === 3) تحويل السعر إلى عملة العرض ===
     disp_price = fx_convert_smart(
@@ -708,6 +710,8 @@ def booking_flow(
     except Exception:
         pass
 
+
+    utils_fx.inject_db_for_fx(db)
     ctx = {
         "request": request,
         "title": "Booking",
@@ -741,11 +745,10 @@ def booking_flow(
         "CURRENCY": (os.getenv("CURRENCY", "CAD") or "CAD").upper(),
         "STRIPE_PROCESSING_PCT": pct,
         "STRIPE_PROCESSING_FIXED_CENTS": fixed_cents,
-        "display_currency": _display_currency,
+        "display_currency": _display_currency(request),
         "disp_cur": _display_currency(request),
         "fx_rate": utils_fx.fx_rate,
     }
-    utils_fx.inject_db_for_fx(db)
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
 
 
