@@ -396,28 +396,34 @@ typing_state = {}   # { thread_id: { user_id: datetime_expire } }
 
 @router.post("/messages/{thread_id}/typing")
 def set_typing(thread_id: int, request: Request, db: Session = Depends(get_db)):
-    session_user = request.state.user
+    session_user = request.session.get("user")   # ← بدل request.state.user
+    if not session_user:
+        return {"ok": False}
 
-    # نخزن typing لمدة 3 ثواني
+    uid = session_user["id"]
+
     if thread_id not in typing_state:
         typing_state[thread_id] = {}
 
-    typing_state[thread_id][session_user.id] = datetime.utcnow() + timedelta(seconds=3)
-
+    typing_state[thread_id][uid] = datetime.utcnow() + timedelta(seconds=3)
     return {"ok": True}
+
 
 @router.get("/messages/{thread_id}/typing_status")
 def typing_status(thread_id: int, request: Request):
-    session_user = request.state.user
+    session_user = request.session.get("user")  # ← هنا أيضاً
+    if not session_user:
+        return {"typing": False}
+
+    uid = session_user["id"]
 
     if thread_id not in typing_state:
         return {"typing": False}
 
     now = datetime.utcnow()
 
-    # أي شخص آخر غيري في الشات
     for user_id, expires_at in typing_state[thread_id].items():
-        if user_id != session_user.id and expires_at > now:
+        if user_id != uid and expires_at > now:
             return {"typing": True}
 
     return {"typing": False}
