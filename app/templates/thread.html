@@ -10,27 +10,29 @@
   }
   body.has-tabbar{padding-bottom:0!important;}
 
-  /* Background — Minimal Premium */
+  /* ===== خلفية زجاجية فاخرة ===== */
   .chat-bg {
       position: fixed;
       inset: 0;
-      background: #F7F4FF; /* خلفية بسيطة وراقية */
+      background: radial-gradient(circle at 30% 20%, #ede8ff, #f7f4ff 60%);
   }
 
-  /* HEADER — Gradient Sevor */
+  /* ===== HEADER — Ultra Glass ===== */
   .chat-header {
       position: fixed;
-      top: 0;
-      left: 0; right: 0;
+      top: 0; left: 0; right: 0;
       height: 76px;
       padding: calc(env(safe-area-inset-top) + 6px) 14px 10px 14px;
-      background: linear-gradient(135deg,#8b5cf6,#5b9df9);
+      background: linear-gradient(135deg,#8b5cf6cc,#5b9df9cc);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(255,255,255,0.25);
       display:flex;
       align-items:center;
       gap:12px;
       z-index:9999;
       color:#fff;
-      box-shadow:0 4px 14px rgba(0,0,0,.08);
+      box-shadow:0 8px 22px rgba(0,0,0,.12);
   }
 
   .chat-header-back {
@@ -46,14 +48,16 @@
       align-items:center;
       justify-content:center;
       text-decoration:none;
+      transition: .2s;
   }
+  .chat-header-back:hover { background: rgba(255,255,255,.35); }
 
   .chat-header-avatar {
-      width: 46px;
-      height: 46px;
-      border-radius: 999px;
+      width: 46px; height: 46px;
+      border-radius:999px;
       object-fit: cover;
-      border: 2px solid rgba(255,255,255,0.6);
+      border: 2px solid rgba(255,255,255,0.7);
+      box-shadow:0 4px 12px rgba(0,0,0,.15);
   }
 
   .chat-header-info { flex:1; min-width:0; }
@@ -64,8 +68,6 @@
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
-      max-width:100%;
-      line-height:1.2;
       display:flex;
       gap:6px;
       align-items:center;
@@ -73,7 +75,7 @@
 
   .chat-header-verified { height:18px; flex-shrink:0; }
 
-  /* WRAPPER */
+  /* ===== WRAPPER ===== */
   .chat-wrapper {
       position: fixed;
       inset: 0;
@@ -82,7 +84,7 @@
       flex-direction:column;
   }
 
-  /* MESSAGES */
+  /* ===== MESSAGES ===== */
   .chat-messages {
       flex:1;
       overflow-y:auto;
@@ -91,14 +93,13 @@
   }
 
   .msg-avatar {
-      width:34px;
-      height:34px;
+      width:34px; height:34px;
       border-radius:999px;
       margin-bottom:4px;
       object-fit:cover;
   }
 
-  /* BUBBLES */
+  /* ===== BUBBLES ===== */
   .bubble {
       max-width:80%;
       padding:12px 16px;
@@ -106,20 +107,25 @@
       margin-bottom:12px;
       font-size:15px;
       line-height:1.45;
+      backdrop-filter:blur(8px);
   }
 
+  /* الآخر */
   .bubble.other {
-      background:#ffffff;
-      box-shadow:0 2px 10px rgba(0,0,0,0.06);
+      background:rgba(255,255,255,0.7);
+      border:1px solid rgba(0,0,0,0.05);
       border-bottom-left-radius:6px;
       margin-right:auto;
+      box-shadow:0 2px 12px rgba(0,0,0,0.06);
   }
 
+  /* أنا */
   .bubble.me {
-      background:linear-gradient(135deg,#8b5cf6dd,#5b9df9dd);
+      background:linear-gradient(135deg,#8b5cf6,#5b9df9);
       color:#fff;
       border-bottom-right-radius:6px;
       margin-left:auto;
+      box-shadow:0 4px 14px rgba(0,0,0,.18);
   }
 
   .bubble-time {
@@ -129,15 +135,43 @@
       display:block;
   }
 
-  /* INPUT BAR — FIXED & Minimal */
+  /* ===== Typing Indicator ===== */
+  .typing {
+      display:flex;
+      align-items:center;
+      gap:6px;
+      padding:10px 16px;
+      background:#ffffffb0;
+      border-radius:18px;
+      margin:10px 0;
+      width:fit-content;
+      box-shadow:0 2px 8px rgba(0,0,0,.08);
+      border:1px solid rgba(0,0,0,0.05);
+  }
+
+  .dot {
+      width:6px; height:6px;
+      background:#8b5cf6;
+      border-radius:50%;
+      animation: blink 1.4s infinite;
+  }
+  .dot:nth-child(2){ animation-delay: .2s; }
+  .dot:nth-child(3){ animation-delay: .4s; }
+
+  @keyframes blink {
+      0%{opacity:.2;}
+      50%{opacity:1;}
+      100%{opacity:.2;}
+  }
+
+  /* ===== INPUT BAR ===== */
   .chat-input-bar {
       position:fixed;
-      left:0; right:0;
-      bottom:0;
+      left:0; right:0; bottom:0;
       padding:12px;
       padding-bottom:calc(env(safe-area-inset-bottom) + 16px);
       background:#ffffffd9;
-      backdrop-filter:blur(10px);
+      backdrop-filter:blur(14px);
       display:flex;
       gap:10px;
       align-items:center;
@@ -161,8 +195,8 @@
       border-radius:20px;
       font-weight:600;
       font-size:16px !important;
+      box-shadow:0 4px 12px rgba(0,0,0,.18);
   }
-
 </style>
 
 <div class="chat-bg"></div>
@@ -201,6 +235,15 @@
         {{ m.body }}
       </div>
     {% endfor %}
+
+    <!-- ===== Typing Indicator (يظهر عند الكتابة) ===== -->
+    {% if other_is_typing %}
+    <div class="typing">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+    </div>
+    {% endif %}
 
   </div>
 
