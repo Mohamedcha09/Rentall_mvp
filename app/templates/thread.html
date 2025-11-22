@@ -10,14 +10,14 @@
   }
   body.has-tabbar{padding-bottom:0!important;}
 
-  /* Background */
+  /* Background — Minimal Premium */
   .chat-bg {
       position: fixed;
       inset: 0;
-      background: linear-gradient(180deg,#8b5cf6 0%,#5b9df9 40%,#dcecff 100%);
+      background: #F7F4FF; /* خلفية بسيطة وراقية */
   }
 
-  /* HEADER PERFECT */
+  /* HEADER — Gradient Sevor */
   .chat-header {
       position: fixed;
       top: 0;
@@ -30,7 +30,7 @@
       gap:12px;
       z-index:9999;
       color:#fff;
-      box-shadow:0 4px 14px rgba(0,0,0,.15);
+      box-shadow:0 4px 14px rgba(0,0,0,.08);
   }
 
   .chat-header-back {
@@ -98,6 +98,7 @@
       object-fit:cover;
   }
 
+  /* BUBBLES */
   .bubble {
       max-width:80%;
       padding:12px 16px;
@@ -108,15 +109,14 @@
   }
 
   .bubble.other {
-      background:rgba(255,255,255,0.85);
-      backdrop-filter:blur(6px);
-      box-shadow:0 4px 14px rgba(0,0,0,.12);
+      background:#ffffff;
+      box-shadow:0 2px 10px rgba(0,0,0,0.06);
       border-bottom-left-radius:6px;
       margin-right:auto;
   }
 
   .bubble.me {
-      background:linear-gradient(135deg,#8b5cf6,#5b9df9);
+      background:linear-gradient(135deg,#8b5cf6dd,#5b9df9dd);
       color:#fff;
       border-bottom-right-radius:6px;
       margin-left:auto;
@@ -124,20 +124,20 @@
 
   .bubble-time {
       font-size:11px;
-      opacity:.7;
+      opacity:.6;
       margin-bottom:4px;
       display:block;
   }
 
-  /* INPUT BAR — FIXED iPhone */
+  /* INPUT BAR — FIXED & Minimal */
   .chat-input-bar {
       position:fixed;
       left:0; right:0;
       bottom:0;
       padding:12px;
       padding-bottom:calc(env(safe-area-inset-bottom) + 16px);
-      background:rgba(255,255,255,0.85);
-      backdrop-filter:blur(12px);
+      background:#ffffffd9;
+      backdrop-filter:blur(10px);
       display:flex;
       gap:10px;
       align-items:center;
@@ -149,8 +149,8 @@
       border:1px solid rgba(0,0,0,0.15);
       border-radius:20px;
       padding:10px 14px;
-      font-size:16px !important;   /* ← FIX FOR SAFARI */
-      background:rgba(255,255,255,0.9);
+      font-size:16px !important;
+      background:#fff;
   }
 
   .send-btn {
@@ -160,7 +160,7 @@
       padding:10px 18px;
       border-radius:20px;
       font-weight:600;
-      font-size:16px !important;   /* ← FIX FOR SAFARI */
+      font-size:16px !important;
   }
 
 </style>
