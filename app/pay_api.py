@@ -794,37 +794,34 @@ def start_checkout_deposit(
 
 # ============ (D) Webhook: Persist Checkout results ============
 def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
+    import json
+
     # 1) Identify PaymentIntent
     intent_id = session_obj.get("payment_intent")
     pi = stripe.PaymentIntent.retrieve(intent_id) if intent_id else None
 
     # 2) Extract metadata correctly
     md = (pi.metadata or {}) if pi else {}
-    kind = md.get("kind")
+    kind = md.get("kind")              # rent / deposit / all
     booking_id = int(md.get("booking_id") or 0)
 
-    # NEW: Correct key for paid currency
     currency_paid_meta = md.get("currency_paid")
 
-    # ----------------------------------------------
-    # 3) Load booking  (IMPORTANT — must be BEFORE storing PI)
-    # ----------------------------------------------
+    # 3) Load booking
     bk = db.get(Booking, booking_id) if booking_id else None
     if not bk:
         return
 
-    # ----------------------------------------------
-    # 🔥 CRITICAL FIX: always update PI inside booking
-    # ----------------------------------------------
-    if pi:
-        bk.online_payment_intent_id = pi.id
-        db.commit()
+    # ❗❗ IMPORTANT:
+    # DO NOT TOUCH online_payment_intent_id HERE
+    # EXCEPT when kind == "rent" or kind == "all"
+    # Because deposit must NOT override rent PaymentIntent
 
     renter = db.get(User, bk.renter_id) if bk.renter_id else None
     item   = db.get(Item, bk.item_id) if bk.item_id else None
     qs = _best_loc_qs(bk, renter)
 
-    # 4) Amount paid (Stripe real amount)
+    # 4) Amount paid (total)
     amount_total_cents = int(session_obj.get("amount_total") or 0)
     bk.amount_paid_cents = amount_total_cents
 
@@ -832,7 +829,7 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     currency = (session_obj.get("currency") or currency_paid_meta or CURRENCY).lower()
     bk.currency_paid = currency
 
-    # 6) Platform fee currency (always CAD)
+    # 6) Platform fee currency
     bk.platform_fee_currency = "cad"
 
     # 7) FX snapshot
@@ -847,48 +844,57 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     # 8) Taxes snapshot
     try:
         total_details = session_obj.get("total_details") or {}
-        tax_cents = int(total_details.get("amount_tax") or 0)
-        bk.tax_total = tax_cents
+        bk.tax_total = int(total_details.get("amount_tax") or 0)
         bk.tax_details_json = json.dumps(total_details)
     except Exception:
         pass
 
-    # 9) Charge ID and timestamp
+    # 9) Charge ID & timestamp
     charge_id = _latest_charge_id(pi)
     when = datetime.utcnow()
 
     # =====================================================
-    # A) Rent only
+    #  A) RENT ONLY
     # =====================================================
     if kind == "rent":
+
+        # Save PaymentIntent for rent
+        if pi:
+            bk.online_payment_intent_id = pi.id
+
         bk.online_status = "authorized"
 
         if (bk.deposit_status or "").lower() == "held":
+            # Rent authorized + deposit held → fully paid
             bk.status = "paid"
             bk.timeline_paid_at = datetime.utcnow()
             db.commit()
 
             push_notification(
                 db, bk.owner_id, "Rent payment authorized",
-                f"Booking #{bk.id}: Authorization ready.",
+                f"Booking #{bk.id}: Authorization completed.",
                 _append_qs(f"/bookings/flow/{bk.id}", qs),
                 "booking"
             )
+
             push_notification(
-                db, bk.renter_id, "Rent authorized + deposit held",
-                f"Booking #{bk.id}: You can pick up the item now.",
+                db, bk.renter_id, "Payment authorized",
+                f"Booking #{bk.id}: You can now pick up the item.",
                 _append_qs(f"/bookings/flow/{bk.id}", qs),
                 "booking"
             )
 
         else:
+            # Waiting for deposit
             db.commit()
+
             push_notification(
-                db, bk.owner_id, "Rent payment authorized",
+                db, bk.owner_id, "Rent authorized",
                 f"Booking #{bk.id}: Waiting for deposit.",
                 _append_qs(f"/bookings/flow/{bk.id}", qs),
                 "booking"
             )
+
             push_notification(
                 db, bk.renter_id, "Rent authorized",
                 f"Booking #{bk.id}: Please complete the deposit.",
@@ -896,58 +902,66 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
                 "booking"
             )
 
-        # Send receipt
+        # Receipt
         try:
-            renter_email = _user_email(db, bk.renter_id)
-            if renter_email:
+            email = _user_email(db, bk.renter_id)
+            if email:
                 amount_txt = _fmt_money_cents(amount_total_cents, currency)
                 html, text = _compose_invoice_html(
                     bk=bk, renter=renter, item=item,
                     amount_txt=amount_txt, currency=currency,
-                    pi_id=pi.id, charge_id=charge_id, when=when,
+                    pi_id=pi.id, charge_id=charge_id, when=when
                 )
-                send_email(
-                    renter_email,
-                    f"🧾 Payment Receipt — Booking #{bk.id}",
-                    html,
-                    text_body=text,
-                )
+                send_email(email, f"🧾 Payment Receipt — Booking #{bk.id}", html, text)
         except Exception:
-            pass
+       		      pass
+
 
     # =====================================================
-    # B) Deposit only
+    #  B) DEPOSIT ONLY
     # =====================================================
     elif kind == "deposit":
-        _set_deposit_pi_id(bk, pi.id)
+
+        # Save intent ONLY for deposit
+        if pi:
+            _set_deposit_pi_id(bk, pi.id)
+
         bk.deposit_status = "held"
         bk.deposit_currency = currency.upper()
 
+        # Do NOT modify online_status here (rent status)
+        # Do NOT override online_payment_intent_id
+
         if (bk.online_status or "").lower() == "authorized":
+            # Rent already authorized → fully paid now
             bk.status = "paid"
             bk.timeline_paid_at = datetime.utcnow()
             db.commit()
 
             push_notification(
                 db, bk.owner_id, "Payment completed",
-                f"Booking #{bk.id}: Rent authorized + deposit held.",
+                f"Booking #{bk.id}: Rent + deposit done.",
                 _append_qs(f"/bookings/flow/{bk.id}", qs),
                 "booking"
             )
+
             push_notification(
                 db, bk.renter_id, "Ready for pickup",
-                f"Booking #{bk.id}: You can pick up now.",
+                f"Booking #{bk.id}: You can pick up the item.",
                 _append_qs(f"/bookings/flow/{bk.id}", qs),
                 "booking"
             )
         else:
+            # Waiting for rent
             db.commit()
+
             push_notification(
                 db, bk.owner_id, "Deposit held",
                 f"Booking #{bk.id}: Waiting for rent payment.",
                 _append_qs(f"/bookings/flow/{bk.id}", qs),
                 "deposit"
             )
+
             push_notification(
                 db, bk.renter_id, "Deposit held",
                 f"Booking #{bk.id}: Complete rent payment.",
@@ -956,10 +970,14 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
             )
 
     # =====================================================
-    # C) Rent + Deposit together
+    #  C) RENT + DEPOSIT TOGETHER
     # =====================================================
     elif kind == "all":
-        _set_deposit_pi_id(bk, pi.id)
+
+        # In ALL, both intents are the same → save for both
+        if pi:
+            bk.online_payment_intent_id = pi.id
+            _set_deposit_pi_id(bk, pi.id)
 
         bk.online_status = "authorized"
         bk.deposit_status = "held"
@@ -973,6 +991,7 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
             _append_qs(f"/bookings/flow/{bk.id}", qs),
             "booking"
         )
+
         push_notification(
             db, bk.renter_id, "Payment successful",
             f"Rent and deposit paid for booking #{bk.id}.",
