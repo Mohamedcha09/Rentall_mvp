@@ -1,5 +1,29 @@
 {% extends "base.html" %}
 {% block content %}
+
+<style>
+  /* ====== Cacher la navbar du haut ====== */
+  header.topbar,
+  .m-top-tabs {
+      display: none !important;
+  }
+
+  /* ====== Cacher la navbar du bas ====== */
+  .mobile-tabbar {
+      display: none !important;
+  }
+
+  /* ====== enlever le padding réservé au tabbar ====== */
+  body.has-tabbar {
+      padding-bottom: 0 !important;
+  }
+
+  /* ====== Cacher tabs desktop (Home / Notifications / etc.) ====== */
+  nav.desk-tabs {
+      display: none !important;
+  }
+</style>
+
 <div class="container" style="max-width:760px">
   <h3 class="mb-3">Settings</h3>
 
@@ -81,7 +105,7 @@
     </div>
   </div>
 
-  {# ================= Currency (NEW) ================= #}
+  {# ================= Currency ================= #}
   {% set _cur = (u.display_currency or request.cookies.get('disp_cur') or 'CAD') %}
   <div class="card">
     <div class="card-header fw-bold">Currency</div>
