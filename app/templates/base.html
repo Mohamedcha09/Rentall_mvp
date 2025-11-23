@@ -1751,6 +1751,39 @@
 })();
 </script>
 
+<style id="hide-header-messages">
+/* ===== Hide header ONLY on /messages (mobile only) ===== */
+@media (max-width: 768px){
+
+  body[data-path="/messages"],
+  body[data-path^="/messages/"] {
+
+    /* Hide everything from header */
+    header.topbar,
+    .m-top-tabs,
+    .searchbar,
+    .stripe-callout {
+      display: none !important;
+    }
+
+    /* Remove extra top space */
+    .page {
+      padding-top: 12px !important;
+    }
+  }
+}
+</style>
+
+<script>
+/* Attach current path to <body data-path="..."> */
+document.addEventListener('DOMContentLoaded', function(){
+  try {
+    document.body.setAttribute('data-path', location.pathname);
+  }catch(e){}
+});
+</script>
+
+
  {# ===== Country Picker Overlay (first visit) ===== #}
   {# لا نظهر نافذة اختيار البلد إلا إذا لم يكن عندنا عملة عرض ولا geo في الجلسة #}
   {% if not request.cookies.get('disp_cur') and not (request.session and request.session.get('geo')) %}
