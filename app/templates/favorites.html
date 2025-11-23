@@ -137,6 +137,25 @@
 }
 
 </style>
+
+<style>
+@media (max-width: 768px) {
+    /* إخفاء Banner Stripe Connect في الهاتف فقط */
+    .stripe-banner, 
+    .connect-banner,
+    .earnings-banner {
+        display: none !important;
+    }
+    
+    /* إخفاء أي كارد مشابه */
+    .alert,
+    .payout-warning,
+    .stripe-connect-box {
+        display: none !important;
+    }
+}
+</style>
+
 {% endblock %}
 
 {% block content %}
