@@ -44,21 +44,38 @@ def _serialize(i: Item, ratings: dict) -> dict:
     r = ratings.get(rid, {"avg": 0, "cnt": 0})
     return {
         "id": rid,
-        "title": i.title or "",
-        "image_path": i.image_path or "/static/placeholder.jpg",
-        "city": i.city or "",
-        "category": i.category or "",
-        "price_per_day": i.price_per_day,
+        "title": getattr(i, "title", "") or "",
+        "image_path": getattr(i, "image_path", None) or "/static/placeholder.jpg",
+        "city": getattr(i, "city", "") or "",
+        "category": getattr(i, "category", "") or "",
+        "price_per_day": getattr(i, "price_per_day", None),
+
+        # ⭐ التقييم الحقيقي
         "rating_avg": r["avg"],
         "rating_count": r["cnt"],
-        "currency": i.currency,
+
+        # العملة الأصلية
+        "currency": getattr(i, "currency", "CAD"),
     }
 
 
 # ================= Filters =================
-def _apply_city_filter(qs, city):
-    if city:
-        return qs.filter(Item.city.ilike(f"%{city.strip()}%"))
+def _apply_city_or_gps_filter(qs, city, lat, lng, radius_km):
+    if lat is not None and lng is not None and radius_km:
+        distance_expr = EARTH_RADIUS_KM * func.acos(
+            func.cos(func.radians(lat)) *
+            func.cos(func.radians(Item.latitude)) *
+            func.cos(func.radians(Item.longitude) - func.radians(lng)) +
+            func.sin(func.radians(lat)) *
+            func.sin(func.radians(Item.latitude))
+        )
+        qs = qs.filter(
+            Item.latitude.isnot(None),
+            Item.longitude.isnot(None),
+            distance_expr <= radius_km
+        )
+    elif city:
+        qs = qs.filter(Item.city.ilike(f"%{city.strip()}%"))
     return qs
 
 
@@ -94,23 +111,23 @@ def _list_static_images_try(paths: list[str]) -> list[str]:
 
 
 def _pick_banners(max_count=8):
-    imgs = _list_static_images_try(["img/banners", "banners"])
-    random.shuffle(imgs)
-    return imgs[:max_count]
+    candidates = _list_static_images_try(["img/banners", "banners"])
+    random.shuffle(candidates)
+    return candidates[:max_count]
 
 
 def _pick_topstrip(limit_per_col=12):
-    imgs = _list_static_images_try(["img/top_slider", "img/topstrip"])
+    imgs = _list_static_images_try(["img/top_slider", "img/topstrip", "top_slider", "topstrip"])
     cols = [[], [], []]
     if not imgs:
         return cols
     random.shuffle(imgs)
-    for i, src in enumerate(imgs[:3 * limit_per_col]):
+    for i, src in enumerate(imgs[: 3 * limit_per_col]):
         cols[i % 3].append(src)
     return cols
 
+# ==== Ratings aggregation (avg + count) ====
 
-# ==== Ratings aggregation ====
 def load_ratings_map(db: Session):
     rows = (
         db.query(
@@ -124,11 +141,10 @@ def load_ratings_map(db: Session):
     m = {}
     for r in rows:
         m[r.iid] = {
-            "avg": float(r.avg or 0),
-            "cnt": int(r.cnt),
+            "avg": float(r.avg) if r.avg is not None else 0.0,
+            "cnt": int(r.cnt or 0),
         }
     return m
-
 
 # ================= Home Route =================
 @router.get("/")
@@ -142,97 +158,101 @@ def home_page(
     db: Session = Depends(get_db),
 ):
 
-    # -------- Load cookies --------
+    if lng is None and lon is not None:
+        lng = lon
+
     try:
         if not city:
             city = request.cookies.get("city") or None
-    except:
+
+        if lat is None:
+            c_lat = request.cookies.get("lat")
+            if c_lat:
+                lat = float(c_lat)
+
+        if lng is None:
+            c_lng = request.cookies.get("lng") or request.cookies.get("lon")
+            if c_lng:
+                lng = float(c_lng)
+
+        if not radius_km:
+            ck = request.cookies.get("radius_km")
+            if ck:
+                radius_km = float(ck)
+    except Exception:
         pass
 
-    # -------- Currency --------
     session_user = getattr(request, "session", {}).get("user")
     if session_user and session_user.get("display_currency"):
         user_currency = session_user["display_currency"]
     else:
         user_currency = request.cookies.get("disp_cur") or "CAD"
 
+    # NEW: currency symbols
     symbols = {"CAD": "$", "USD": "$", "EUR": "€"}
+
     rates = load_fx_dict(db)
 
-    # -------- Base Query --------
     base_q = db.query(Item).filter(Item.is_active == "yes")
-    ratings_map = load_ratings_map(db)
+    filtered_q = _apply_city_or_gps_filter(base_q, city, lat, lng, radius_km)
+    filtering = (lat is not None and lng is not None and radius_km) or (city not in (None, ""))
 
-    # ============================================================================
-    #                               🔥 NEARBY
-    # ============================================================================
-    if city:
-        nearby_rows = (
-            _apply_city_filter(base_q, city)
-            .order_by(func.random())
-            .limit(20)
-            .all()
-        )
-        if not nearby_rows:
-            nearby_rows = base_q.order_by(func.random()).limit(20).all()
+    # ---- Nearby ----
+    if filtering:
+        nearby_rows = filtered_q.order_by(Item.created_at.desc()).limit(20).all()
     else:
         nearby_rows = base_q.order_by(func.random()).limit(20).all()
 
+    ratings_map = load_ratings_map(db)
+
     nearby_items = [_serialize(i, ratings_map) for i in nearby_rows]
+
     for it in nearby_items:
-        it["display_price"] = fx_convert(it["price_per_day"], it["currency"], user_currency, rates)
+        base = it["currency"]
+        price = it.get("price_per_day") or 0
+        it["display_price"] = fx_convert(price, base, user_currency, rates)
         it["display_currency"] = user_currency
-        it["display_symbol"] = symbols[user_currency]
+        it["display_symbol"] = symbols.get(user_currency, user_currency)   # FIX ✔
 
-    # ============================================================================
-    #                         🔥 CATEGORY SLIDERS (city → random)
-    #                         🔥 10 عناصر فقط — Random دائماً
-    # ============================================================================
+    # ---- Categories ----
     items_by_category = {}
-
     for cat in CATEGORIES:
-        code = cat.get("key")
-        label = cat.get("label")
+        code = cat.get("key", "")
+        label = cat.get("label", "")
 
-        # Try same city
-        if city:
-            q_city = _apply_category_filter(
-                _apply_city_filter(base_q, city),
-                code, label
-            )
-            city_items = q_city.order_by(func.random()).limit(10).all()
+        q = base_q
+        if filtering:
+            q = _apply_city_or_gps_filter(q, city, lat, lng, radius_km)
+        q = _apply_category_filter(q, code, label)
 
-            if city_items:
-                chosen = city_items
-            else:
-                chosen = _apply_category_filter(base_q, code, label).order_by(func.random()).limit(10).all()
-        else:
-            chosen = _apply_category_filter(base_q, code, label).order_by(func.random()).limit(10).all()
+        rows = q.order_by(func.random()).limit(12).all()
+        lst = [_serialize(i, ratings_map) for i in rows]
 
-        lst = [_serialize(i, ratings_map) for i in chosen]
-
-        # currency convert
         for it in lst:
-            it["display_price"] = fx_convert(it["price_per_day"], it["currency"], user_currency, rates)
+            base = it["currency"]
+            price = it.get("price_per_day") or 0
+            it["display_price"] = fx_convert(price, base, user_currency, rates)
             it["display_currency"] = user_currency
-            it["display_symbol"] = symbols[user_currency]
+            it["display_symbol"] = symbols.get(user_currency, user_currency)   # FIX ✔
 
-        items_by_category[code] = lst
+        if lst:
+            items_by_category[code] = lst
 
-    # ============================================================================
-    #                           🔥 ALL ITEMS
-    # ============================================================================
-    all_rows = base_q.order_by(func.random()).limit(20).all()
+    # ---- All items ----
+    if filtering:
+        all_rows = filtered_q.order_by(Item.created_at.desc()).limit(60).all()
+    else:
+        all_rows = base_q.order_by(func.random()).limit(60).all()
+
     all_items = [_serialize(i, ratings_map) for i in all_rows]
 
     for it in all_items:
-        it["display_price"] = fx_convert(it["price_per_day"], it["currency"], user_currency, rates)
+        base = it["currency"]
+        price = it.get("price_per_day") or 0
+        it["display_price"] = fx_convert(price, base, user_currency, rates)
         it["display_currency"] = user_currency
-        it["display_symbol"] = symbols[user_currency]
+        it["display_symbol"] = symbols.get(user_currency, user_currency)   # FIX ✔
 
-    # ============================================================================
-    #                           TEMPLATE
-    # ============================================================================
     banners = _pick_banners()
     top_strip_cols = _pick_topstrip()
 
@@ -247,12 +267,18 @@ def home_page(
         "selected_city": city or "",
         "lat": lat,
         "lng": lng,
-        "radius_km": radius_km,
+        "radius_km": radius_km or 25.0,
         "category_label": _category_label,
         "session_user": session_user,
         "favorites_ids": [],
     }
 
-    templates = getattr(request.app, "templates")
+    templates = getattr(request.app, "templates", None)
+    if templates:
+        templates.env.globals["category_label"] = _category_label
+        return templates.TemplateResponse("home.html", ctx)
+
+    from starlette.templating import Jinja2Templates
+    templates = Jinja2Templates(directory="app/templates")
     templates.env.globals["category_label"] = _category_label
     return templates.TemplateResponse("home.html", ctx)
