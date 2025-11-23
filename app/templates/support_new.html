@@ -1,30 +1,61 @@
 {% extends "base.html" %}
+{% block content %}
 
-{% block head %}
+<!-- ===== زر الرجوع العائم (iOS style) ===== -->
+<a href="/support/my" class="back-btn-ios">
+  <i class="bi bi-chevron-left"></i>
+</a>
+
 <style>
-/* ===== إخفاء النافبار + التاب بار + stripe banner على الهاتف ===== */
-@media (max-width: 768px){
-  body[data-path="/support/contact"],
-  body[data-path^="/support/contact"] {
+/* =====================================================
+   زر الرجوع — iOS floating button style
+   ===================================================== */
+.back-btn-ios {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 12px);
+    left: 14px;
+    z-index: 9999;
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    font-size: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    text-decoration: none;
+}
+.back-btn-ios:active { transform: scale(0.94); }
 
-    header.topbar,
-    .m-top-tabs,
-    .mobile-tabbar,
-    .stripe-callout,
-    .searchbar {
-      display: none !important;
-    }
+/* =====================================================
+   إخفاء كل شيء — navbars, tabs, stripe, search
+   ===================================================== */
+header.topbar,
+.m-top-tabs,
+nav.desk-tabs,
+.mobile-tabbar,
+.stripe-callout,
+.searchbar,
+.payout-banner,
+.connect-banner,
+.stripe-connect-banner {
+    display: none !important;
+}
 
-    .page {
-      padding-top: 14px !important;
-      padding-bottom: 14px !important;
-    }
-  }
+/* منع padding للتاب بار */
+body.has-tabbar {
+    padding-bottom: 0 !important;
 }
 </style>
-{% endblock %}
 
-{% block content %}
+<!-- =====================================================
+      Contact Support Content
+===================================================== -->
+
 <div class="container py-4" style="max-width:760px">
 
   <h3>Contact Support</h3>
@@ -45,4 +76,5 @@
   </form>
 
 </div>
+
 {% endblock %}
