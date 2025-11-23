@@ -6,6 +6,13 @@
   <i class="bi bi-chevron-left"></i>
 </a>
 
+<!-- ===== الشريط الثابت الجديد ===== -->
+<div id="settingsSticky" class="settings-sticky-bar">
+    <a href="/" class="settings-sticky-back"><i class="bi bi-chevron-left"></i></a>
+    <div class="settings-sticky-title">Settings</div>
+    <div style="width:24px"></div>
+</div>
+
 <style>
 
 /* =====================================================
@@ -58,21 +65,45 @@ body.has-tabbar { padding-bottom:0 !important; }
     transition: .3s ease;
 }
 
-/* ===== العنوان المصغّر الذي يظهر عند السكروول ===== */
-.settings-mini {
+/* ===== العنوان المصغّر (تم استبداله بالشريط الثابت) ===== */
+.settings-mini { display:none !important; }
+
+/* =====================================================
+   الشريط الثابت (Sticky Header)
+===================================================== */
+.settings-sticky-bar {
     position: fixed;
-    top: calc(env(safe-area-inset-top) + 8px);
-    right: 18px;
-    z-index: 9999;
-    font-size: 18px;
-    font-weight: 600;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 58px;
+    padding: calc(env(safe-area-inset-top) + 6px) 14px 8px 14px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     opacity: 0;
-    transform: translateY(-20px);
+    transform: translateY(-80px);
     transition: all .35s ease;
+    z-index: 99999;
 }
-.settings-mini.show {
+
+.settings-sticky-bar.show {
     opacity: 1;
     transform: translateY(0);
+}
+
+.settings-sticky-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #111;
+}
+
+.settings-sticky-back {
+    font-size: 24px;
+    color: #333;
 }
 
 /* =====================================================
@@ -175,9 +206,6 @@ section[class*="connect"] {
   <!-- العنوان الكبير -->
   <div class="settings-title">Settings</div>
 
-  <!-- العنوان المصغّر الثابت -->
-  <div id="miniTitle" class="settings-mini">Settings</div>
-
   <!-- Alerts -->
   {% if request.query_params.get('saved') %}
     <div class="alert alert-success">Profile data saved ✅</div>
@@ -262,17 +290,16 @@ section[class*="connect"] {
 </div>
 
 <!-- =====================================================
-     سكربت تأثير Airbnb — عنوان صغير يظهر عند النزول
+     سكربت الشريط الثابت — مثل Airbnb
 ===================================================== -->
 <script>
 document.addEventListener("scroll", function () {
-    const mini = document.getElementById("miniTitle");
-    if (!mini) return;
+    const bar = document.getElementById("settingsSticky");
 
-    if (window.scrollY > 70) {
-        mini.classList.add("show");
+    if (window.scrollY > 100) {
+        bar.classList.add("show");
     } else {
-        mini.classList.remove("show");
+        bar.classList.remove("show");
     }
 });
 </script>
