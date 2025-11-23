@@ -2,10 +2,139 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container py-3">
 
-  <!-- Back + Title -->
-  <div class="d-flex align-items-center justify-content-between mb-3">
+<!-- ===== زر الرجوع العائم على الموبايل فقط ===== -->
+<a href="/support/my" class="back-btn-ios d-md-none">
+  <i class="bi bi-chevron-left"></i>
+</a>
+
+<!-- ===== الشريط الثابت (Mobile Sticky Header) ===== -->
+<div id="ticketSticky" class="ticket-sticky-bar d-md-none">
+    <a href="/support/my" class="ticket-sticky-back"><i class="bi bi-chevron-left"></i></a>
+    <div class="ticket-sticky-title">Ticket #{{ ticket.id }}</div>
+    <div style="width:24px"></div>
+</div>
+
+<style>
+
+/* =====================================================
+   زر الرجوع — iOS floating button (MOBILE ONLY)
+===================================================== */
+.back-btn-ios {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 12px);
+    left: 14px;
+    z-index: 9999;
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    font-size: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    text-decoration: none;
+}
+.back-btn-ios:active { transform: scale(0.94); }
+
+/* =====================================================
+   إخفاء navbars ONLY ON MOBILE (لا تمس الحاسوب)
+===================================================== */
+@media (max-width: 768px){
+
+    header.topbar,
+    .m-top-tabs,
+    nav.desk-tabs,
+    .mobile-tabbar,
+    .stripe-callout,
+    .searchbar,
+    .payout-banner,
+    .connect-banner,
+    .stripe-connect-banner {
+        display: none !important;
+    }
+
+    body.has-tabbar { padding-bottom: 0 !important; }
+}
+
+/* =====================================================
+   Sticky Header (Mobile Only)
+===================================================== */
+.ticket-sticky-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 58px;
+    padding: calc(env(safe-area-inset-top) + 6px) 14px 8px 14px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    opacity: 0;
+    transform: translateY(-70px);
+    transition: all .35s ease;
+    z-index: 99999;
+}
+
+.ticket-sticky-bar.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.ticket-sticky-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #111;
+}
+
+.ticket-sticky-back {
+    font-size: 22px;
+    color: #333;
+}
+
+/* =====================================================
+   Chat bubbles (unchanged)
+===================================================== */
+.chat-thread{ max-height:60vh; overflow:auto; padding:2px 4px; }
+.chat-row{ display:flex; margin:.35rem 0; }
+.chat-row.me{ justify-content:flex-end; }
+.chat-row.them{ justify-content:flex-start; }
+.chat-row .bubble{
+  max-width:92%;
+  border-radius:14px;
+  padding:.55rem .7rem;
+  border:1px solid var(--border);
+  background:#fff;
+}
+[data-theme="dark"] .chat-row .bubble{
+  background:rgba(255,255,255,.06);
+}
+.chat-row.me .bubble{
+  background:#eff6ff;
+  border-color:rgba(0,0,0,.06);
+}
+[data-theme="dark"] .chat-row.me .bubble{
+  background:rgba(124,92,255,.18);
+  border-color:rgba(255,255,255,.12);
+}
+.bubble .meta{ font-size:.8rem; opacity:.7; display:flex; gap:.5rem; margin-bottom:.25rem; }
+.bubble .text{ white-space:pre-wrap; word-break:break-word; }
+
+</style>
+
+<!-- =====================================================
+      CONTENT (unchanged)
+===================================================== -->
+
+<div class="container py-3" style="max-width:900px">
+
+  <!-- DESKTOP HEADER ONLY (لا يمسه شيء) -->
+  <div class="d-none d-md-flex align-items-center justify-content-between mb-3">
     <div class="d-flex align-items-center gap-2">
       <a href="/support/my" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-right"></i> Back</a>
       <h4 class="m-0">Ticket #{{ ticket.id }}</h4>
@@ -24,6 +153,9 @@
       {% endif %}
     </div>
   </div>
+
+  <!-- MOBILE TITLE (تمت إضافته أعلى الصفحة) -->
+  <div class="d-md-none" style="height:70px"></div>
 
   <!-- Status banners -->
   {% if ticket.status == 'resolved' %}
@@ -49,7 +181,7 @@
     </div>
   {% endif %}
 
-  <!-- Body: two columns -->
+  <!-- Body -->
   <div class="row g-3">
     <!-- Conversation -->
     <div class="col-12 col-lg-8">
@@ -165,39 +297,21 @@
   </div>
 </div>
 
-<style>
-/* Chat bubbles */
-.chat-thread{ max-height:60vh; overflow:auto; padding:2px 4px; }
-.chat-row{ display:flex; margin:.35rem 0; }
-.chat-row.me{ justify-content:flex-end; }
-.chat-row.them{ justify-content:flex-start; }
-.chat-row .bubble{
-  max-width:92%;
-  border-radius:14px;
-  padding:.55rem .7rem;
-  border:1px solid var(--border);
-  background:#fff;
-}
-[data-theme="dark"] .chat-row .bubble{
-  background:rgba(255,255,255,.06);
-}
-.chat-row.me .bubble{
-  background:#eff6ff;
-  border-color:rgba(0,0,0,.06);
-}
-[data-theme="dark"] .chat-row.me .bubble{
-  background:rgba(124,92,255,.18);
-  border-color:rgba(255,255,255,.12);
-}
-.bubble .meta{ font-size:.8rem; opacity:.7; display:flex; gap:.5rem; margin-bottom:.25rem; }
-.bubble .text{ white-space:pre-wrap; word-break:break-word; }
-</style>
-
 <script>
 (function(){
-  // Scroll to bottom of messages
   const chat = document.getElementById('chat');
   if (chat){ setTimeout(()=>{ chat.scrollTop = chat.scrollHeight; }, 50); }
 })();
+
+document.addEventListener("scroll", function () {
+    const bar = document.getElementById("ticketSticky");
+
+    if (window.scrollY > 120) {
+        bar.classList.add("show");
+    } else {
+        bar.classList.remove("show");
+    }
+});
 </script>
+
 {% endblock %}
