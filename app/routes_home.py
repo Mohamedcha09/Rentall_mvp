@@ -49,12 +49,8 @@ def _serialize(i: Item, ratings: dict) -> dict:
         "city": getattr(i, "city", "") or "",
         "category": getattr(i, "category", "") or "",
         "price_per_day": getattr(i, "price_per_day", None),
-
-        # ⭐ التقييم الحقيقي
         "rating_avg": r["avg"],
         "rating_count": r["cnt"],
-
-        # العملة الأصلية
         "currency": getattr(i, "currency", "CAD"),
     }
 
@@ -90,7 +86,7 @@ def _apply_category_filter(qs, code: str, label: str):
     )
 
 
-# ================= Static loaders =================
+# ================= Static =================
 def _static_root() -> Path:
     return Path(__file__).resolve().parent / "static"
 
@@ -127,7 +123,7 @@ def _pick_topstrip(limit_per_col=12):
     return cols
 
 
-# ==== Ratings aggregation (avg + count) ====
+# ==== Ratings aggregation ====
 def load_ratings_map(db: Session):
     rows = (
         db.query(
@@ -147,7 +143,7 @@ def load_ratings_map(db: Session):
     return m
 
 
-# ================= Home Route =================
+# ================= Home =================
 @router.get("/")
 def home_page(
     request: Request,
@@ -159,7 +155,7 @@ def home_page(
     db: Session = Depends(get_db),
 ):
 
-    # ============ Load cookies + params ============
+    # ============ load cookies ============
     if lng is None and lon is not None:
         lng = lon
 
@@ -184,7 +180,8 @@ def home_page(
     except Exception:
         pass
 
-    # ============ Display currency ============
+
+    # ============ currency ============
     session_user = getattr(request, "session", {}).get("user")
     if session_user and session_user.get("display_currency"):
         user_currency = session_user["display_currency"]
@@ -192,78 +189,63 @@ def home_page(
         user_currency = request.cookies.get("disp_cur") or "CAD"
 
     symbols = {"CAD": "$", "USD": "$", "EUR": "€"}
-
     rates = load_fx_dict(db)
 
-    # ============ Base Query ============
+    # ============ Base query ============
     base_q = db.query(Item).filter(Item.is_active == "yes")
+    ratings_map = load_ratings_map(db)
 
-    # ⭐ Order by rating DESC
-    rating_desc = func.coalesce(
-        db.query(func.avg(ItemReview.stars))
-        .filter(ItemReview.item_id == Item.id)
-        .correlate(Item)
-        .as_scalar(),
-        0
-    ).desc()
-
+    # ============ GPS/City filtering ============
     filtered_q = _apply_city_or_gps_filter(base_q, city, lat, lng, radius_km)
-    filtering = (lat is not None and lng is not None and radius_km) or (city not in (None, ""))
+    filtering = (lat and lng and radius_km) or (city not in (None, ""))
 
-    # =====================================================================
-    #                           🔥 NEARBY (FULL FALLBACK)
-    # =====================================================================
+    # ============================================================================
+    #                          🔥 NEARBY (fallback city → region → country → random)
+    # ============================================================================
     nearby_rows = []
 
     if filtering:
 
-        # 1) نفس المدينة
-        city_items = (
-            filtered_q.order_by(rating_desc).limit(20).all()
-        )
+        # A) نفس المدينة
+        city_items = filtered_q.order_by(func.random()).limit(20).all()
         if city_items:
             nearby_rows = city_items
-        else:
 
-            # استخراج المقاطعة (QC من "Montreal, QC")
+        else:
             province = None
             if city and "," in city:
                 province = city.split(",")[-1].strip()
 
-            # 2) نفس المقاطعة
+            # B) نفس المقاطعة
             if province:
                 province_items = (
-                    base_q
-                    .filter(Item.region.ilike(f"%{province}%"))
-                    .order_by(rating_desc)
+                    base_q.filter(Item.region.ilike(f"%{province}%"))
+                    .order_by(func.random())
                     .limit(20)
                     .all()
                 )
                 if province_items:
                     nearby_rows = province_items
-                else:
 
-                    # 3) نفس الدولة
+                else:
+                    # C) نفس الدولة
                     country_items = (
-                        base_q
-                        .filter(Item.country.ilike("%canada%"))
-                        .order_by(rating_desc)
+                        base_q.filter(Item.country.ilike("%canada%"))
+                        .order_by(func.random())
                         .limit(20)
                         .all()
                     )
                     if country_items:
                         nearby_rows = country_items
                     else:
-                        # 4) fallback random
-                        nearby_rows = (
-                            base_q.order_by(func.random()).limit(20).all()
-                        )
+                        # D) Random fallback
+                        nearby_rows = base_q.order_by(func.random()).limit(20).all()
+
             else:
-                # If city has no province part → jump to country-level
+                # إذا لم نستطع استخراج المقاطعة
                 country_items = (
-                    base_q
-                    .filter(Item.country.ilike("%canada%"))
-                    .order_by(rating_desc)
+                    base_q.filter(Item.country.ilike("%canada%"))
+                    .order_by(func.random())
                     .limit(20)
                     .all()
                 )
@@ -275,9 +257,8 @@ def home_page(
     else:
         nearby_rows = base_q.order_by(func.random()).limit(20).all()
 
-    ratings_map = load_ratings_map(db)
+    # serialize ↓
     nearby_items = [_serialize(i, ratings_map) for i in nearby_rows]
-
     for it in nearby_items:
         base = it["currency"]
         price = it.get("price_per_day") or 0
@@ -285,21 +266,71 @@ def home_page(
         it["display_currency"] = user_currency
         it["display_symbol"] = symbols.get(user_currency, user_currency)
 
-    # =====================================================================
-    #                           🔥 CATEGORY SECTIONS
-    # =====================================================================
+    # ============================================================================
+    #                       🔥 CATEGORY SLIDERS (city → region → country → random)
+    #                       🔥 10 عناصر فقط — بدون تقييم — Random دائماً
+    # ============================================================================
     items_by_category = {}
+
     for cat in CATEGORIES:
         code = cat.get("key", "")
         label = cat.get("label", "")
 
-        q = base_q
-        if filtering:
-            q = _apply_city_or_gps_filter(q, city, lat, lng, radius_km)
-        q = _apply_category_filter(q, code, label)
+        # ====== A) نفس المدينة ======
+        q1 = _apply_category_filter(filtered_q, code, label)
+        city_items = q1.order_by(func.random()).limit(10).all()
 
-        rows = q.order_by(rating_desc, func.random()).limit(12).all()
-        lst = [_serialize(i, ratings_map) for i in rows]
+        if city_items:
+            chosen = city_items
+
+        else:
+            # ====== استخراج المقاطعة ======
+            province = None
+            if city and "," in city:
+                province = city.split(",")[-1].strip()
+
+            # ====== B) نفس المقاطعة ======
+            if province:
+                q2 = base_q.filter(Item.region.ilike(f"%{province}%"))
+                q2 = _apply_category_filter(q2, code, label)
+                region_items = q2.order_by(func.random()).limit(10).all()
+
+                if region_items:
+                    chosen = region_items
+                else:
+                    # ====== C) نفس الدولة ======
+                    q3 = base_q.filter(Item.country.ilike("%canada%"))
+                    q3 = _apply_category_filter(q3, code, label)
+                    country_items = q3.order_by(func.random()).limit(10).all()
+
+                    if country_items:
+                        chosen = country_items
+                    else:
+                        # ====== D) Random ======
+                        chosen = (
+                            _apply_category_filter(base_q, code, label)
+                            .order_by(func.random())
+                            .limit(10)
+                            .all()
+                        )
+            else:
+                # If no province
+                q3 = base_q.filter(Item.country.ilike("%canada%"))
+                q3 = _apply_category_filter(q3, code, label)
+                country_items = q3.order_by(func.random()).limit(10).all()
+
+                if country_items:
+                    chosen = country_items
+                else:
+                    chosen = (
+                        _apply_category_filter(base_q, code, label)
+                        .order_by(func.random())
+                        .limit(10)
+                        .all()
+                    )
+
+        # serialize ↓
+        lst = [_serialize(i, ratings_map) for i in chosen]
 
         for it in lst:
             base = it["currency"]
@@ -311,13 +342,12 @@ def home_page(
         if lst:
             items_by_category[code] = lst
 
-    # =====================================================================
-    #                           🔥 ALL ITEMS — always random, 20 only
-    # =====================================================================
+    # ============================================================================
+    #                           🔥 ALL ITEMS — Random + limit 20
+    # ============================================================================
     all_rows = base_q.order_by(func.random()).limit(20).all()
 
     all_items = [_serialize(i, ratings_map) for i in all_rows]
-
     for it in all_items:
         base = it["currency"]
         price = it.get("price_per_day") or 0
@@ -325,9 +355,9 @@ def home_page(
         it["display_currency"] = user_currency
         it["display_symbol"] = symbols.get(user_currency, user_currency)
 
-    # =====================================================================
-    #                           CONTEXT + TEMPLATE
-    # =====================================================================
+    # ============================================================================
+    #                           TEMPLATE
+    # ============================================================================
     banners = _pick_banners()
     top_strip_cols = _pick_topstrip()
 
