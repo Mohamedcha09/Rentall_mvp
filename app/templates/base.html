@@ -258,15 +258,23 @@
         display: none !important;
       }
 
-      /* Bottom tab: keep “Home” only */
-      body[data-auth="0"] .mobile-tabbar a:nth-child(n+2){ display: none !important; }
-      body[data-auth="0"] .mobile-tabbar{ grid-template-columns: 1fr !important; }
-
+      
       /* Proper bottom space without + button */
       body[data-auth="0"] .page{
         padding-bottom: calc(76px + max(var(--safe-bottom), var(--safe-bottom-legacy))) !important;
       }
+@media (max-width: 768px){
+  body[data-auth="0"] .mobile-tabbar a{
+    display: flex !important;
+  }
+  body[data-auth="0"] .mobile-tabbar{
+    grid-template-columns: repeat(5, 1fr) !important;
+  }
+}
+
     }
+
+    
   </style>
 
   <!-- Highlight Login/Register as pills -->
