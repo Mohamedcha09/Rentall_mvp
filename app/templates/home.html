@@ -4,8 +4,878 @@
 {% block head %}
 <style>
 /* =========================================
-   BASE CARD
+   Slider & section basics
    ========================================= */
+.hrow{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 6px 12px;-webkit-overflow-scrolling:touch}
+.hrow::-webkit-scrollbar{height:8px}
+.hrow::-webkit-scrollbar-thumb{background:color-mix(in oklab,var(--text) 18%,transparent);border-radius:999px}
+.hrow>*{scroll-snap-align:start}
+.hcard{min-width:206px;max-width:206px}
+@media (max-width:1199.98px){.hcard{min-width:220px;max-width:220px}}
+@media (max-width:991.98px){.hcard{min-width:240px;max-width:240px}}
+@media (max-width:576px){.hcard{min-width:42vw;max-width:42vw}} /* Phone ~2.3 cards */
+
+.section-head{margin:12px 2px 8px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.section-title{font-weight:800;font-size:1.05rem}
+.arrow-btn{border:1px solid var(--border);background:transparent;border-radius:12px;width:42px;height:42px;display:grid;place-items:center}
+.arrow-btn:hover{background:color-mix(in oklab,var(--text) 8%,transparent)}
+.section-head .row-nav{display:flex;gap:8px;align-items:center}
+
+/* ❌ Hide arrow buttons on phones only */
+@media (max-width:576px){
+  .section-head .row-nav,
+  .section-head .arrow-btn{display:none !important}
+}
+
+/* =========================================
+   Card (Airbnb-like) — unified look
+   ========================================= */
+.spot{position:relative;border:none;background:transparent;box-shadow:none;border-radius:14px;overflow:visible}
+.spot-media{position:relative;aspect-ratio:1/1 !important;border-radius:14px;overflow:hidden;background:transparent}
+.spot-media img{display:block;width:100%;height:100% !important;object-fit:cover !important;object-position:center;border-radius:14px;aspect-ratio:auto !important}
+.spot-overlay{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.12))}
+
+/* Elements on top of the image */
+.category-chip{position:absolute;top:10px;left:10px;padding:5px 10px;font-size:.75rem;font-weight:700;color:#111;background:rgba(255,255,255,.96);border:1px solid rgba(0,0,0,.06);border-radius:999px;box-shadow:0 3px 8px rgba(0,0,0,.08);backdrop-filter:blur(8px);z-index:2}
+.fav-btn{position:absolute;top:10px;right:10px;width:32px;height:32px;border:1px solid rgba(0,0,0,.1);background:#fff;border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,.1);cursor:pointer;z-index:3}
+.fav-btn .bi{font-size:15px;color:#111}
+.fav-btn.is-fav{background:#111;border-color:#111}
+.fav-btn.is-fav .bi{color:#fff}
+
+/* ===== Price — as a "line" below the image, does not cover any element =====
+   Note: element is inside .spot-media so we visually push it outside */
+.price-badge{
+  position:absolute;
+  left:12px;
+  top:100%;                 /* right under the image */
+  transform:translateY(8px);/* small offset */
+  background:transparent;   /* no background */
+  color:#111;
+  font-weight:800;
+  font-size:.95rem;
+  padding:0;
+  border:none;
+  border-radius:0;
+  z-index:1;                /* lower than heart/category */
+  pointer-events:none;      /* does not block card clicks */
+}
+.spot-meta{
+  margin-top:0 !important;
+  gap:0 !important;
+  padding:0 !important;
+}
+
+/* Text under the image */
+.spot-title{font-weight:800;color:#111;font-size:clamp(.9rem,.86rem + .2vw,.98rem);margin-bottom:4px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.owner-avatar--placeholder{display:none}
+.city-chip{background:none;border:none;padding:0;color:#6b7280;font-size:.86rem}
+.spot-footer{display:flex;align-items:center;justify-content:space-between;margin-top:2px}
+.spot-footer small{color:#111;font-weight:800;font-size:.88rem}
+
+/* =========================================
+   “All items” grid — 2–3–4–5–6 columns
+   ========================================= */
+.mixed-grid{display:grid;gap:14px;padding-inline:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (min-width:576px){ .mixed-grid{grid-template-columns:repeat(3,minmax(0,1fr))} }
+@media (min-width:768px){ .mixed-grid{grid-template-columns:repeat(4,minmax(0,1fr))} }
+@media (min-width:992px){ .mixed-grid{grid-template-columns:repeat(5,minmax(0,1fr))} }
+@media (min-width:1200px){ .mixed-grid{grid-template-columns:repeat(6,minmax(0,1fr))} }
+
+/* Same slider look inside “All items” */
+.home-shelves .mixed-grid>.spot{border:none;background:transparent;box-shadow:none;border-radius:14px}
+.home-shelves .mixed-grid .spot-media{aspect-ratio:1/1 !important;border-radius:14px;overflow:hidden}
+.home-shelves .mixed-grid .spot-media img{width:100%;height:100% !important;object-fit:cover !important;border-radius:14px;aspect-ratio:auto !important}
+.home-shelves .mixed-grid .category-chip{top:8px;left:8px;padding:4px 9px;font-size:.74rem}
+.home-shelves .mixed-grid .fav-btn{top:8px;right:8px;width:28px;height:28px}
+.home-shelves .mixed-grid .fav-btn .bi{font-size:14px}
+/* Price under the image for all cards as well */
+.home-shelves .mixed-grid .price-badge{
+  left:10px; top:100%; transform:translateY(8px);
+  background:transparent; color:#111; font-weight:800; font-size:.92rem; padding:0; border:none; border-radius:0; z-index:1; pointer-events:none;
+}
+@supports(padding:max(0px)){ .home-shelves{padding-bottom:max(84px, env(safe-area-inset-bottom,0))} }
+
+/* =========================================
+   HERO (top banner) — unchanged
+   ========================================= */
+.edge-bleed{margin-inline:auto;width:100%;display:flex;justify-content:center}
+.hero-carousel{position:relative;max-width:420px;margin:8px auto 14px;border-radius:18px;overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,.08)}
+@media (min-width:576px){ .hero-carousel{max-width:560px} }
+@media (min-width:992px){ .hero-carousel{max-width:720px} }
+.hero-carousel .carousel-inner,.hero-carousel .carousel-item,.hero-carousel .carousel-item img{border-radius:18px;overflow:hidden}
+.hero-carousel .carousel-item{aspect-ratio:3/2}
+.hero-carousel .carousel-item img{width:100%;height:100%;object-fit:contain;object-position:center;display:block;background:#eef2f7}
+.hero-carousel .carousel-indicators,.hero-carousel .carousel-caption{display:none}
+.hero-carousel .carousel-control-prev,.hero-carousel .carousel-control-next{width:10%}
+
+/* Desktop card-wrap under hero */
+@media (min-width:992px){
+  .edge-bleed{margin-inline:auto;width:auto}
+  .hero-carousel{max-width:950px;margin:0 auto 14px}
+  .home-shelves{background:#fff;border-radius:18px 18px 0 0;box-shadow:0 8px 26px rgba(0,0,0,.06);margin-top:-80px;padding:16px 18px 20px}
+  .home-shelves.container-xl{max-width:1320px}
+}
+
+/* =========================================
+   Top Strip (3 vertical sliders)
+   ========================================= */
+.top-strip-wrap{margin:12px 0 6px}
+.top-strip-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.top-strip{border-radius:16px;overflow:hidden;box-shadow:0 8px 26px rgba(0,0,0,.06);background:#fff;border:1px solid var(--border)}
+.top-strip .carousel-item{aspect-ratio:2/3}
+.top-strip .carousel-item img{width:100%;height:100%;object-fit:cover;display:block}
+.top-strip .carousel-indicators{display:none}
+.top-strip .carousel-control-prev,.top-strip .carousel-control-next{width:12%}
+@media (max-width:576px){
+  .top-strip-grid{grid-template-columns:1fr}
+  .top-strip-col:not(:first-child){display:none}
+  .top-strip{border-radius:14px}
+  .top-strip .carousel-item{aspect-ratio:2/3}
+  .top-strip .carousel-item img{width:100%;height:100%;object-fit:contain;object-position:center;background:#eef2f7}
+}
+
+/* =========================================
+   Location bar (Locbar)
+   ========================================= */
+:root{
+  --sevor-brand:#6C63FF;
+  --sevor-ink:#0f172a;
+  --sevor-muted:#667085;
+  --sevor-bg:#ffffff;
+  --sevor-bg-soft:#f7f7fb;
+  --sevor-danger:#ea3e41;
+}
+.home-locbar{background:var(--sevor-bg);border:1px solid var(--border);border-radius:16px;padding:14px 12px;margin-block:16px;box-shadow:0 8px 22px rgba(2,6,23,.06);align-items:center;gap:8px}
+.home-locbar .btn{height:46px;border-radius:999px;white-space:nowrap}
+#homeCityInput{height:46px;border-radius:999px;border:1px solid var(--border);background:#fafafa;color:var(--sevor-ink);padding-inline:14px;font-weight:600;letter-spacing:.2px;transition:border-color .15s,box-shadow .15s,background .15s}
+#homeCityInput::placeholder{color:#9aa3af}
+#homeCityInput:focus{background:#fff;border-color:color-mix(in oklab,var(--sevor-brand) 42%,#9aa);box-shadow:0 0 0 4px color-mix(in oklab,var(--sevor-brand) 18%, transparent);outline:none}
+.home-locbar .col-6.col-md-3:has(#homeRadius){display:none}
+#homeRadius{display:none}
+#homeUseGPS{background:var(--sevor-bg-soft);border:1px solid var(--border);color:var(--sevor-ink);font-weight:800;letter-spacing:.2px;display:flex;align-items:center;justify-content:center;gap:6px}
+#homeUseGPS::before{content:"📍";display:inline-block;transform:translateY(1px)}
+#homeUseGPS:hover{background:#eef0f6}
+#homeClearGPS{height:auto;padding:6px 8px 0;border:none;color:var(--sevor-danger);font-weight:700;text-decoration:none}
+#homeClearGPS:hover{text-decoration:underline}
+.home-locbar .btn.btn-primary{background:linear-gradient(135deg,var(--sevor-brand),color-mix(in oklab,var(--sevor-brand) 72%,#8ab));color:#fff;border:none;font-weight:900;letter-spacing:.3px;box-shadow:0 10px 24px rgba(108,99,255,.22);transition:filter .15s,transform .06s}
+.home-locbar .btn.btn-primary:hover{filter:brightness(1.03)}
+.home-locbar .btn.btn-primary:active{transform:translateY(1px)}
+#homeCitySugg{position:absolute;z-index:1000;display:none;max-height:260px;overflow:auto;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 22px rgba(2,6,23,.06)}
+#homeCitySugg>div{padding:.6rem .75rem;font-size:.95rem;color:var(--sevor-ink);border-top:1px solid rgba(2,6,23,.06);cursor:pointer}
+#homeCitySugg>div:first-child{border-top:none}
+#homeCitySugg>div:hover{background:#f5f3ff}
+@media (min-width:992px){
+  .home-locbar .col-12.col-md-5{padding-inline-end:8px}
+  .home-locbar .col-6.col-md-2.d-grid{justify-items:end}
+}
+@media (max-width:576px){
+  .home-locbar{padding:12px;border-radius:14px}
+  #homeUseGPS{margin-top:6px}
+  #homeClearGPS{margin-top:2px}
+  .home-locbar .btn.btn-primary{margin-top:6px}
+}
+@media (max-width:576px){
+  .spot-title{font-size:.9rem}
+  .spot-footer small{font-size:.86rem}
+}
+
+
+/* =========================================
+   Force square card on all screens (confirmation)
+   ========================================= */
+.spot-media,
+.home-shelves .mixed-grid .spot-media{aspect-ratio:1/1 !important}
+.spot-media img,
+.home-shelves .mixed-grid .spot-media img{height:100% !important;object-fit:cover !important}
+
+/* If any external rule changes ratio on desktop */
+@media (min-width:577px){
+  .spot-media{aspect-ratio:1/1 !important}
+  .spot-media img{height:100% !important}
+}
+
+/* =====[ ADD-ON | do not edit above ]================================== */
+/* Keep images square (confirmation) */
+.spot-media{aspect-ratio:1/1!important}
+.spot-media img{height:100%!important;object-fit:cover!important}
+
+/* We do not want the price badge on top of the image at all */
+.price-badge{display:none!important}
+
+/* Data layout under title: Price → City → Rating */
+.spot-meta{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  margin-top:4px;
+}
+.spot-price{font-weight:900;color:#111;font-size:.95rem}
+.spot-price span{font-weight:600;opacity:.85}
+.spot-city{color:#6b7280;font-size:.92rem}
+.spot-rating{font-weight:800;color:#111;font-size:.9rem}
+.spot-rating::before{content:"★ ";font-weight:900}
+
+/* Reduce spacing since we don’t use the below-image price-badge */
+.spot-body{padding:10px 4px 0}
+
+/* Hide the old lines (do not delete HTML) to avoid duplicate info */
+.owner-line{display:none!important}
+.spot-footer{display:none!important}
+
+/* ===== Locbar Compact (additions only) ===== */
+.home-locbar.locbar--compact{
+  padding:8px 10px;
+  border-radius:12px;
+  box-shadow:none;
+  gap:8px;
+  background:#fff;
+}
+
+/* Put elements in one row and smaller size */
+.locbar--compact{
+  display:grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items:center;
+}
+.locbar--compact .col-12.col-md-5,
+.locbar--compact .col-6.col-md-2,
+.locbar--compact .col-12.col-md-2{padding:0;margin:0}
+.locbar--compact .col-6.col-md-2.d-grid{
+  display:grid !important;
+  grid-auto-flow:column;
+  gap:6px;
+  justify-content:start;
+}
+
+/* Small, simple city field */
+.locbar--compact #homeCityInput{
+  height:38px;
+  border-radius:10px;
+  background:#fff;
+  font-weight:600;
+  font-size:.92rem;
+  padding-inline:10px;
+  border:1px solid var(--border);
+  box-shadow:none;
+}
+
+/* GPS and “Apply” buttons smaller */
+.locbar--compact .btn{
+  height:38px;
+  padding:0 10px;
+  border-radius:10px;
+  font-weight:700;
+  font-size:.9rem;
+  white-space:nowrap;
+}
+.locbar--compact #homeUseGPS{
+  background:#fff;
+  border:1px solid var(--border);
+  color:var(--sevor-ink);
+}
+.locbar--compact #homeUseGPS::before{content:"📍";margin-inline-end:4px}
+.locbar--compact .btn.btn-primary{
+  background:var(--sevor-brand);
+  box-shadow:none;
+}
+
+/* Cancel button as a small link */
+.locbar--compact #homeClearGPS{
+  padding:0 6px;
+  margin:0;
+  height:auto;
+  line-height:1;
+  font-weight:800;
+  color:var(--sevor-danger);
+}
+
+/* Lighter, smaller suggestions list */
+.locbar--compact #homeCitySugg{
+  border-radius:10px;
+  box-shadow:0 6px 18px rgba(2,6,23,.08);
+  max-height:220px;
+  font-size:.92rem;
+}
+.locbar--compact #homeCitySugg>div{padding:.5rem .6rem}
+@media (max-width:576px){
+  /* On mobile, two rows: (city + GPS) above, (Apply + Cancel) below */
+  .locbar--compact{
+    grid-template-columns: 1fr auto;
+    row-gap:6px;
+  }
+  .locbar--compact .col-6.col-md-2.d-grid{
+    grid-column: 1 / -1;
+    justify-content:space-between;
+  }
+  .locbar--compact .btn{height:36px; font-size:.88rem}
+  .locbar--compact #homeCityInput{height:36px; font-size:.9rem}
+}
+
+/* ===== Locbar: single simple row (Overrides) ===== */
+.home-locbar.locbar--compact{
+  padding:6px 8px;
+  border-radius:12px;
+  box-shadow:none;
+  background:#fff;
+  gap:8px;
+}
+
+/* Single-row grid: city field grows + GPS + Apply + Cancel */
+.locbar--compact{
+  display:grid;
+  grid-template-columns: 1fr auto auto auto; /* always one row */
+  align-items:center;
+  column-gap:8px;
+}
+
+/* Remove default Bootstrap column spacing inside the bar */
+.locbar--compact .col-12.col-md-5,
+.locbar--compact .col-6.col-md-2,
+.locbar--compact .col-12.col-md-2{padding:0;margin:0}
+
+/* GPS/Cancel group always horizontal */
+.locbar--compact .col-6.col-md-2.d-grid{
+  display:grid !important;
+  grid-auto-flow:column;
+  gap:8px;
+  justify-content:start;
+}
+
+/* Smaller, clean city input */
+.locbar--compact #homeCityInput{
+  height:36px;
+  font-size:.9rem;
+  border-radius:10px;
+  padding-inline:10px;
+  background:#fff;
+  border:1px solid var(--border);
+  box-shadow:none;
+}
+
+/* All buttons same small height */
+.locbar--compact .btn{
+  height:36px;
+  padding:0 12px;
+  border-radius:10px;
+  font-weight:700;
+  font-size:.9rem;
+  white-space:nowrap;
+}
+
+/* Simple GPS button (icon only suggested) */
+.locbar--compact #homeUseGPS{
+  background:#fff;
+  border:1px solid var(--border);
+  color:var(--sevor-ink);
+  padding:0 10px;
+}
+.locbar--compact #homeUseGPS::before{content:"📍";margin-inline-end:0}
+
+/* Apply button without shadow */
+.locbar--compact .btn.btn-primary{
+  background:var(--sevor-brand);
+  box-shadow:none;
+}
+
+/* Cancel as a small inline link */
+.locbar--compact #homeClearGPS{
+  padding:0 6px;
+  margin:0;
+  height:auto;
+  line-height:1;
+  font-weight:800;
+  color:var(--sevor-danger);
+  border:none;
+}
+
+/* Lighter suggestions */
+.locbar--compact #homeCitySugg{
+  border-radius:10px;
+  box-shadow:0 6px 18px rgba(2,6,23,.08);
+  max-height:220px;
+  font-size:.92rem;
+}
+.locbar--compact #homeCitySugg>div{padding:.5rem .6rem}
+
+/* Slightly smaller sizes on very small screens */
+@media (max-width:420px){
+  .locbar--compact #homeCityInput{height:32px;font-size:.86rem}
+  .locbar--compact .btn{height:32px;font-size:.86rem;padding:0 8px}
+  .locbar--compact{column-gap:6px}
+}
+
+/* ====== MOBILE ONE-LINE LOCBAR (HARD OVERRIDE) ====== */
+.home-locbar.locbar--compact{
+  padding:8px !important;
+  border-radius:12px !important;
+  background:#fff !important;
+  box-shadow:none !important;
+  gap:6px !important;
+}
+
+/* Fixed grid: growing field + GPS + Apply + Cancel (one line) */
+@media (max-width:576px){
+  .locbar--compact{
+    display:grid !important;
+    grid-template-columns: minmax(0,1fr) auto auto auto !important;
+    align-items:center !important;
+    column-gap:6px !important;
+    row-gap:0 !important;
+  }
+  /* Uniform small sizes */
+  .locbar--compact #homeCityInput,
+  .locbar--compact .btn{
+    height:34px !important;
+    font-size:.86rem !important;
+    border-radius:10px !important;
+  }
+  /* City input grows and doesn’t force a new line */
+  .locbar--compact #homeCityInput{
+    min-width:0 !important;
+    padding-inline:10px !important;
+    background:#fff !important;
+    border:1px solid var(--border) !important;
+    box-shadow:none !important;
+  }
+  /* Compact buttons */
+  .locbar--compact #homeUseGPS{
+    padding:0 10px !important;
+    background:#fff !important;
+    border:1px solid var(--border) !important;
+    color:var(--sevor-ink) !important;
+    white-space:nowrap !important;
+  }
+  .locbar--compact .btn.btn-primary{
+    padding:0 12px !important;
+    background:var(--sevor-brand) !important;
+    box-shadow:none !important;
+  }
+  .locbar--compact #homeClearGPS{
+    padding:0 6px !important;
+    height:auto !important;
+    line-height:1 !important;
+    font-weight:800 !important;
+    color:var(--sevor-danger) !important;
+    border:none !important;
+    background:transparent !important;
+  }
+  /* Cancel any rules that might make the grid wrap to two rows */
+  .locbar--compact .col-12.col-md-5,
+  .locbar--compact .col-6.col-md-2,
+  .locbar--compact .col-12.col-md-2{padding:0 !important; margin:0 !important}
+  .locbar--compact .col-6.col-md-2.d-grid{
+    display:grid !important;
+    grid-auto-flow:column !important;
+    gap:6px !important;
+    justify-content:start !important;
+  }
+}
+
+/* ======== MOBILE ONE-LINE LOCBAR (FINAL HARD OVERRIDE) ======== */
+@media (max-width:576px){
+
+  /* Turn the Bootstrap row into a no-wrap Flex row */
+  .home-locbar.locbar--compact.row{
+    display:flex !important;
+    flex-wrap:nowrap !important;
+    align-items:center !important;
+    gap:8px !important;
+    padding:8px !important;
+    background:#fff !important;
+    border-radius:12px !important;
+    box-shadow:none !important;
+    --bs-gutter-x:0 !important;
+    --bs-gutter-y:0 !important;
+  }
+
+  /* Remove default column margins/sizes so they don’t wrap */
+  .home-locbar.locbar--compact.row > [class*="col-"]{
+    width:auto !important;
+    flex:0 0 auto !important;
+    padding:0 !important;
+    margin:0 !important;
+    min-width:0 !important;
+  }
+
+  /* City field grows and takes available space */
+  .home-locbar.locbar--compact .col-12.col-md-5{
+    flex:1 1 auto !important;
+    min-width:0 !important;
+  }
+
+  /* GPS group always horizontal */
+  .home-locbar.locbar--compact .col-6.col-md-2.d-grid{
+    display:flex !important;
+    align-items:center !important;
+    gap:8px !important;
+  }
+
+  /* Search button container keeps its size and doesn’t grow */
+  .home-locbar.locbar--compact .col-12.col-md-2.d-grid{
+    display:flex !important;
+    align-items:center !important;
+  }
+
+  /* Unified compact sizes */
+  .home-locbar.locbar--compact .btn{
+    height:34px !important;
+    border-radius:10px !important;
+    font-size:.88rem !important;
+    padding:0 12px !important;
+    white-space:nowrap !important;
+  }
+  #homeCityInput{
+    height:34px !important;
+    border-radius:10px !important;
+    font-size:.88rem !important;
+    padding:0 10px !important;
+    background:#fff !important;
+    border:1px solid var(--border) !important;
+    box-shadow:none !important;
+  }
+
+  /* GPS button = icon only (no text) */
+  #homeUseGPS{
+    font-size:0 !important;
+    background:#fff !important;
+    border:1px solid var(--border) !important;
+    color:var(--sevor-ink) !important;
+    padding:0 10px !important;
+  }
+  #homeUseGPS::before{
+    content:"📍" !important;
+    font-size:18px !important;
+    line-height:1 !important;
+    display:inline-block !important;
+    transform:translateY(1px);
+  }
+
+  /* Simple search button */
+  .home-locbar.locbar--compact .btn.btn-primary{
+    background:var(--sevor-brand) !important;
+    box-shadow:none !important;
+  }
+
+  /* Cancel as a small inline link on same row */
+  #homeClearGPS{
+    padding:0 6px !important;
+    height:auto !important;
+    line-height:1 !important;
+    font-weight:800 !important;
+    color:var(--sevor-danger) !important;
+    border:none !important;
+    background:transparent !important;
+  }
+
+  /* Hide any extra elements (like radius) if they accidentally appear */
+  #homeRadius,
+  .home-locbar:has(#homeRadius) .col-6.col-md-3{
+    display:none !important;
+  }
+}
+
+/* ======= HOME.GLASS OVERRIDES (paste at end of home.html <style>) ======= */
+
+/* 1) Locbar زجاجي بنفس التدرّج (بنفسجي→سماوي) */
+.home-locbar{
+  background:
+    linear-gradient(135deg, rgba(108,99,255,.14), rgba(0,212,255,.10)),
+    rgba(56,56,56,.28) !important;
+  backdrop-filter: blur(16px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(190%) !important;
+  border:1px solid rgba(255,255,255,.18) !important;
+  box-shadow:
+    0 18px 40px rgba(0,0,0,.22),
+    0 0 0 1px rgba(255,255,255,.10) inset,
+    0 2px 0 0 rgba(255,255,255,.06) inset !important;
+  color:#fff !important;
+}
+.home-locbar #homeCityInput{
+  background: rgba(255,255,255,.18) !important;
+  border:1px solid rgba(255,255,255,.16) !important;
+  color:#fff !important;
+}
+.home-locbar #homeCityInput::placeholder{ color:rgba(255,255,255,.85) !important; }
+#homeCitySugg{
+  background: rgba(28,28,30,.85) !important;
+  color:#fff !important;
+  border:1px solid rgba(255,255,255,.12) !important;
+  backdrop-filter: blur(14px) saturate(170%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(170%) !important;
+}
+#homeCitySugg>div{ border-top-color: rgba(255,255,255,.10) !important; }
+#homeCitySugg>div:hover{ background: rgba(255,255,255,.10) !important; }
+
+/* أزرار GPS / Search / Clear زجاجية */
+#homeUseGPS,
+.home-locbar .btn.btn-primary,
+#homeClearGPS{
+  background:
+    linear-gradient(135deg, rgba(108,99,255,.18), rgba(0,212,255,.12)),
+    rgba(56,56,56,.30) !important;
+  border:1px solid rgba(255,255,255,.22) !important;
+  color:#fff !important;
+  box-shadow:
+    0 12px 28px rgba(0,0,0,.22),
+    0 0 0 1px rgba(255,255,255,.10) inset,
+    0 2px 0 0 rgba(255,255,255,.06) inset !important;
+}
+.home-locbar .btn.btn-primary{
+  font-weight:900;
+}
+#homeClearGPS{
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,.10)),
+    rgba(56,56,56,.22) !important;
+}
+
+/* دارك مود لتوافق الألوان */
+[data-theme="dark"] .home-locbar{
+  background:
+    linear-gradient(135deg, rgba(108,99,255,.16), rgba(0,212,255,.10)),
+    rgba(28,28,30,.66) !important;
+  border-color: rgba(255,255,255,.10) !important;
+}
+[data-theme="dark"] #homeCitySugg{
+  background: rgba(17,17,23,.92) !important;
+}
+
+/* 2) أزرار السلايدر (الأسهم) زجاجية */
+.arrow-btn{
+  background:
+    linear-gradient(135deg, rgba(108,99,255,.16), rgba(0,212,255,.10)),
+    rgba(56,56,56,.28) !important;
+  border:1px solid rgba(255,255,255,.18) !important;
+  color:#fff !important;
+  backdrop-filter: blur(12px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+  box-shadow:
+    0 10px 24px rgba(0,0,0,.20),
+    0 0 0 1px rgba(255,255,255,.10) inset,
+    0 2px 0 0 rgba(255,255,255,.05) inset !important;
+}
+.arrow-btn .bi{ filter: drop-shadow(0 1px 0 rgba(0,0,0,.25)); }
+
+/* 3) كروت العناصر: قلب + شارة التصنيف بزجاج خفيف */
+.fav-btn{
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.22), rgba(255,255,255,.14)),
+    rgba(56,56,56,.28) !important;
+  border:1px solid rgba(255,255,255,.30) !important;
+  color:#fff !important;
+  backdrop-filter: blur(10px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(180%) !important;
+}
+.fav-btn .bi{ color:#fff !important; }
+.fav-btn.is-fav{
+  background:
+    linear-gradient(135deg, rgba(108,99,255,.28), rgba(0,212,255,.16)),
+    rgba(56,56,56,.35) !important;
+  border-color: rgba(255,255,255,.32) !important;
+}
+.category-chip{
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.92), rgba(255,255,255,.82)) !important;
+  border:1px solid rgba(0,0,0,.06) !important;
+  color:#111 !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* 4) حواف الصور + ظل أفخم مثل Airbnb */
+.spot-media{
+  border-radius:16px !important;
+  box-shadow: 0 14px 34px rgba(0,0,0,.10) !important;
+}
+.spot-media img{ border-radius:16px !important; }
+
+/* 5) لمسة نصية: العنوان/الميتا داكنة متوافقة */
+.spot-title{ color:#0f172a !important; }
+.spot-price, .spot-rating{ color:#111 !important; }
+.spot-city{ color:#6b7280 !important; }
+
+/* 6) ألواح “home-shelves” تبقى نظيفة على الديسكتوب */
+@media (min-width:992px){
+  .home-shelves{
+    background:#fff !important;
+    border-radius:18px 18px 0 0 !important;
+    box-shadow:0 8px 26px rgba(0,0,0,.06) !important;
+  }
+}
+
+
+/* ========== FINAL HARD OVERRIDE — FIX CARD SPACING ========== */
+
+/* جعل كل العناصر تحت الصورة ملتصقة */
+.spot-body{
+  padding:6px 6px 0 !important;
+}
+
+/* العنوان أقرب */
+.spot-title{
+  margin-bottom:2px !important;
+  line-height:1.18 !important;
+}
+
+/* السعر + المدينة + التقييم */
+.spot-meta{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:0 !important;
+  margin-top:0 !important;
+  padding:0 !important;
+}
+
+/* السعر أقرب + أصغر */
+.spot-price{
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.15 !important;
+}
+
+/* المدينة قريبة جدًا تحت السعر */
+.spot-city{
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.12 !important;
+}
+
+/* التقييم ملتصق تحت المدينة */
+.spot-rating{
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.1 !important;
+}
+
+/* حذف أي footer قد يخرب الشكل */
+.spot-footer{display:none!important;}
+.owner-line{display:none!important;}
+.price-badge{display:none!important;}
+
+/* ========== SUPER HARD OVERRIDE — FIX TITLE–PRICE GAP ========== */
+
+/* 1) إزالة كل الـ padding من spot-body مهما كان فوق */
+.spot-body{
+  padding:4px 4px 0 !important;
+}
+
+/* 2) تقريب العنوان من السعر */
+.spot-title{
+  margin-top:0 !important;
+  margin-bottom:2px !important;
+  line-height:1.12 !important;
+}
+
+/* 3) السعر يصبح مباشرة تحت العنوان */
+.spot-price{
+  margin-top:0 !important;
+  line-height:1.1 !important;
+}
+
+/* 4) المدينة مباشرة تحت السعر */
+.spot-city{
+  margin-top:0 !important;
+  line-height:1.08 !important;
+}
+
+/* 5) التقييم مباشرة تحت المدينة */
+.spot-rating{
+  margin-top:0 !important;
+  line-height:1.08 !important;
+}
+
+/* 6) لمنع أي كود آخر من أخذ السيطرة */
+@media (max-width:2000px){
+  .spot-body,
+  .spot-title,
+  .spot-price,
+  .spot-city,
+  .spot-rating{
+    margin-top:0 !important;
+  }
+}
+
+/* === FIX PRICE GAP — FINAL === */
+.spot-body{
+  padding:4px 4px 0 !important;
+}
+
+.spot-title{
+  margin-top:0 !important;
+  margin-bottom:2px !important;
+  line-height:1.12 !important;
+}
+
+.spot-meta{
+  margin-top:0 !important;
+  gap:0 !important;
+}
+
+.spot-price{
+  margin:0 !important;
+  line-height:1.1 !important;
+}
+
+.spot-city{
+  margin:0 !important;
+  line-height:1.08 !important;
+}
+
+.spot-rating{
+  margin:0 !important;
+  line-height:1.08 !important;
+}
+
+/* ===== FINAL FIX — FORCE TITLE, PRICE, CITY, RATING TO STICK ===== */
+.spot-body{
+  padding:4px 4px 0 !important;
+}
+
+.spot-title{
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.1 !important;
+}
+
+.spot-meta{
+  margin:0 !important;
+  padding:0 !important;
+  gap:0 !important;
+}
+
+.spot-price{
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.1 !important;
+}
+
+.spot-city{
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.05 !important;
+}
+
+.spot-rating{
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.05 !important;
+}
+
+/* تعطيل أي footer أو كود قديم */
+.spot-footer,
+.owner-line,
+.price-badge{
+  display:none !important;
+}
+
+.spot-title{
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+
+
+/* ==== FINAL FIX (ONE TRUE FIX) ==== */
 .spot-body{
   padding:4px 6px 0 !important;
 }
@@ -13,20 +883,13 @@
 .spot-title{
   margin:0 !important;
   padding:0 !important;
-  font-weight:800;
-  color:#111;
   line-height:1.12 !important;
-  white-space:nowrap !important;
-  overflow:hidden !important;
-  text-overflow:ellipsis !important;
 }
 
 .spot-meta{
-  display:flex !important;
-  flex-direction:column !important;
-  gap:0 !important;
   margin:0 !important;
   padding:0 !important;
+  gap:0 !important;
 }
 
 .spot-price,
@@ -34,144 +897,61 @@
 .spot-rating{
   margin:0 !important;
   padding:0 !important;
-  line-height:1.06 !important;
+  line-height:1.05 !important;
+}
+
+
+/* ==============================================
+   FINAL NO-GAP FIX — Title ⟶ Price ⟶ City ⟶ Rating
+   ============================================== */
+
+.spot-body{
+  padding:4px 4px 0 !important;   /* أقل padding ممكن */
+  margin:0 !important;
+}
+
+.spot-title{
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.12 !important;
+}
+
+.spot-meta{
+  margin:0 !important;
+  padding:0 !important;
+  gap:0 !important;
 }
 
 .spot-price{
-  font-weight:900;
-  font-size:.95rem;
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.08 !important;
 }
 
 .spot-city{
-  color:#6b7280;
-  font-size:.9rem;
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.05 !important;
 }
 
 .spot-rating{
-  font-weight:800;
-  color:#111;
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.05 !important;
 }
 
-/* حذف العناصر القديمة المكررة */
+/* إلغاء أي footer قد يضيف مسافة */
 .spot-footer,
 .owner-line,
 .price-badge{
   display:none !important;
 }
 
-/* الصور */
-.spot-media{
-  aspect-ratio:1/1 !important;
-  border-radius:16px !important;
-  overflow:hidden;
-  box-shadow:0 14px 34px rgba(0,0,0,.10);
-}
-
-.spot-media img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  border-radius:16px;
-}
-
-/* CATEGORY + FAVORITE */
-.category-chip{
-  position:absolute;
-  top:10px;
-  left:10px;
-  padding:5px 10px;
-  background:#fff;
-  border-radius:999px;
-  font-size:.75rem;
-  font-weight:700;
-}
-
-.fav-btn{
-  position:absolute;
-  top:10px;
-  right:10px;
-  width:32px;
-  height:32px;
-  border-radius:999px;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  background:#fff;
-  box-shadow:0 3px 8px rgba(0,0,0,.1);
-}
-
-.fav-btn.is-fav{
-  background:#111;
-}
-
-.fav-btn.is-fav .bi{
-  color:#fff;
-}
-
-/* SLIDER */
-.hrow{
-  display:flex;
-  gap:12px;
-  overflow-x:auto;
-  scroll-snap-type:x mandatory;
-  padding:6px 6px 12px;
-}
-
-.hcard{
-  min-width:220px;
-  max-width:220px;
-}
-
-/* GRID */
-.mixed-grid{
-  display:grid;
-  gap:14px;
-  grid-template-columns:repeat(2,1fr);
-}
-
-@media (min-width:576px){ .mixed-grid{grid-template-columns:repeat(3,1fr);} }
-@media (min-width:768px){ .mixed-grid{grid-template-columns:repeat(4,1fr);} }
-@media (min-width:992px){ .mixed-grid{grid-template-columns:repeat(5,1fr);} }
-@media (min-width:1200px){ .mixed-grid{grid-template-columns:repeat(6,1fr);} }
-
-/* LOC-BAR FIXED */
-.home-locbar{
-  background:
-    linear-gradient(135deg, rgba(108,99,255,.14), rgba(0,212,255,.10)),
-    rgba(56,56,56,.28);
-  backdrop-filter:blur(14px);
-  border:1px solid rgba(255,255,255,.18);
-  padding:10px;
-  border-radius:12px;
-}
-
-#homeCityInput{
-  background:rgba(255,255,255,.18);
-  border:1px solid rgba(255,255,255,.16);
-  color:#fff;
-}
-
-.home-locbar .btn{
-  background:
-    linear-gradient(135deg, rgba(108,99,255,.18), rgba(0,212,255,.12)),
-    rgba(56,56,56,.30);
-  border:1px solid rgba(255,255,255,.22);
-  color:#fff;
-  border-radius:10px;
-  height:36px;
-}
-
-/* arrows glass */
-.arrow-btn{
-  background:
-    linear-gradient(135deg, rgba(108,99,255,.16), rgba(0,212,255,.10)),
-    rgba(56,56,56,.28);
-  border:1px solid rgba(255,255,255,.18);
-  backdrop-filter:blur(12px);
-  color:#fff;
-  border-radius:12px;
-  width:42px;
-  height:42px;
+/* يمنع العنوان من النزول لسطرين */
+.spot-title{
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
 }
 
 </style>
