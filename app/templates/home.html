@@ -805,7 +805,12 @@
       <div class="spot-price"><strong>{{ it.display_price }}</strong> {{ it.display_symbol }}<span>/day</span></div>
     {% endif %}
     <div class="spot-city">{{ it.city or '—' }}</div>
-    <div class="spot-rating">{{ it.rating|default(4.8) }}</div>
+    {% if it.rating_count > 0 %}
+  <div class="spot-rating">
+    {{ "%.1f"|format(it.rating_avg) }}
+  </div>
+{% endif %}
+
   </div>
           <div class="owner-line">
             <div class="owner-avatar--placeholder">🏷️</div>
@@ -866,7 +871,12 @@
       
     {% endif %}
     <div class="spot-city">{{ it.city or '—' }}</div>
-    <div class="spot-rating">{{ it.rating|default(4.8) }}</div>
+    {% if it.rating_count > 0 %}
+  <div class="spot-rating">
+    {{ "%.1f"|format(it.rating_avg) }}
+  </div>
+{% endif %}
+
   </div>
             <div class="owner-line">
               <div class="owner-avatar--placeholder">🏷️</div>
@@ -989,7 +999,12 @@
             <div class="spot-price"><strong>{{ it.display_price }}</strong> {{ it.display_symbol }}<span>/day</span></div>
     {% endif %}
     <div class="spot-city">{{ it.city or '—' }}</div>
-    <div class="spot-rating">{{ it.rating|default(4.8) }}</div>
+    {% if it.rating_count > 0 %}
+  <div class="spot-rating">
+    {{ "%.1f"|format(it.rating_avg) }}
+  </div>
+{% endif %}
+
   </div>
           <div class="owner-line">
             <div class="owner-avatar--placeholder">🏷️</div>

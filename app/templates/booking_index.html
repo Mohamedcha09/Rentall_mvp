@@ -1,12 +1,59 @@
+{# app/templates/booking_index.html #}
 {% extends "base.html" %}
 
 {% block content %}
 <div class="container-fluid">
 
 <style>
+/* ====== GLASS CARD STYLE ====== */
+.booking-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-radius: 18px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
 
-  /* ===== Hide topbar only on phone ===== */
-  @media (max-width: 768px) {
+.booking-thumb {
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    overflow: hidden;
+    background:#f1f1f1;
+    flex-shrink: 0;
+}
+
+.booking-thumb img {
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
+
+.booking-info .title {
+    font-weight:700;
+    font-size:16px;
+}
+
+.booking-info .status {
+    color:#4e8df6;
+    font-size:14px;
+    font-weight:600;
+}
+
+/* EMPTY IMAGE */
+.empty-box{padding:24px 8px;text-align:center;}
+.empty-box img{
+  display:block;margin:10px auto;max-width:320px;width:76%;
+  height:auto;object-fit:contain;opacity:.98;
+}
+
+/* ===== PHONE FIX ===== */
+@media (max-width: 768px) {
     header.topbar,
     .m-top-tabs,
     .notif-panels,
@@ -17,125 +64,45 @@
     body.has-tabbar{
         padding-top: 0 !important;
     }
-  }
-
-  /* ===== Booking CARD – Ultra Glass ===== */
-  .booking-card{
-      display:flex;
-      gap:12px;
-      padding:14px;
-      border-radius:18px;
-      background: color-mix(in oklab, var(--surface) 85%, transparent);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      border:1px solid rgba(255,255,255,0.18);
-      margin-bottom:14px;
-      transition: .25s;
-      box-shadow:0 6px 20px rgba(0,0,0,0.07);
-      align-items:center;
-  }
-  .booking-card:hover{
-      transform:translateY(-3px);
-  }
-
-  /* Image left */
-  .booking-thumb{
-      width:78px;
-      height:78px;
-      border-radius:14px;
-      overflow:hidden;
-      flex-shrink:0;
-      background:#f3f3f3;
-  }
-  .booking-thumb img{
-      width:100%;
-      height:100%;
-      object-fit:cover;
-  }
-
-  .booking-info{
-      flex-grow:1;
-  }
-  .booking-title{
-      font-weight:700;
-      font-size:16px;
-      margin-bottom:4px;
-  }
-  .booking-dates{
-      font-size:13px;
-      opacity:.8;
-  }
-
-  .booking-status{
-      font-size:13px;
-      font-weight:600;
-      color:#5b9df9;
-  }
-
-  .chevron{
-      font-size:22px;
-      opacity:.5;
-  }
-
-  /* ===== Empty State ===== */
-  .empty-box{padding:24px 8px;text-align:center;}
-  .empty-box img{
-    display:block;margin:10px auto;max-width:320px;width:76%;
-    height:auto;object-fit:contain;opacity:.98;
-  }
-
+}
 </style>
 
 {% set EMPTY_IMG = (url_for('static', path='photo/xon.png') if view=='renter'
                     else url_for('static', path='photo/ron.png')) %}
 
-
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h4>{{ title }}</h4>
   <div class="btn-group">
-    <a class="btn btn-sm {% if view=='renter' %}btn-primary{% else %}btn-outline-primary{% endif %}" 
-       href="/bookings?view=renter">As renter</a>
-
-    <a class="btn btn-sm {% if view=='owner' %}btn-primary{% else %}btn-outline-primary{% endif %}" 
-       href="/bookings?view=owner">As owner</a>
+    <a class="btn btn-sm {% if view=='renter' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="/bookings?view=renter">As renter</a>
+    <a class="btn btn-sm {% if view=='owner' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="/bookings?view=owner">As owner</a>
   </div>
 </div>
 
-
 {% if bookings and bookings|length %}
-  
   {% for b in bookings %}
-  <a href="/bookings/flow/{{ b.id }}" class="text-decoration-none text-reset">
-    <div class="booking-card">
+    <a class="booking-card text-decoration-none text-dark" href="/bookings/flow/{{ b.id }}">
 
         <div class="booking-thumb">
-          <img src="{{ b.item_image or '/static/placeholder.png' }}"
-               onerror="this.src='/static/placeholder.png'">
+            <img src="{{ b.item.image_path }}"
+                 referrerpolicy="no-referrer"
+                 onerror="this.src='/static/placeholder.png'">
         </div>
 
         <div class="booking-info">
-          <div class="booking-title">
-            Booking #{{ b.id }}
-          </div>
-
-          <div class="booking-status">
-            Status: {{ b.status }}
-          </div>
-
-          <div class="booking-dates">
-            {{ b.start_date }} → {{ b.end_date }} 
-            ({{ b.days }} days)
-          </div>
+            <div class="title">Booking #{{ b.id }}</div>
+            <div class="status">Status: {{ b.status }}</div>
+            <div class="text-muted small">
+                {{ b.start_date }} → {{ b.end_date }}
+                ({{ b.days }} days)
+            </div>
         </div>
 
-        <div class="chevron">›</div>
-    </div>
-  </a>
+        <i class="bi bi-chevron-right ms-auto"></i>
+    </a>
   {% endfor %}
-
 {% else %}
   <div class="empty-box">
-    <img src="{{ EMPTY_IMG }}">
+    <img src="{{ EMPTY_IMG }}" alt="">
   </div>
 {% endif %}
 

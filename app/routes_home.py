@@ -7,8 +7,9 @@ from urllib.parse import quote
 import random
 
 from .database import get_db
-from .models import Item, FxRate
+from .models import Item, FxRate, ItemReview
 from .utils import CATEGORIES, category_label as _category_label
+from sqlalchemy.sql import func
 
 router = APIRouter()
 
@@ -38,15 +39,22 @@ def fx_convert(amount: float, base: str, quote: str, rates: dict):
     return round(amount * rates[key], 2)
 
 
-def _serialize(i: Item) -> dict:
+def _serialize(i: Item, ratings: dict) -> dict:
+    rid = getattr(i, "id", None)
+    r = ratings.get(rid, {"avg": 0, "cnt": 0})
     return {
-        "id": getattr(i, "id", None),
+        "id": rid,
         "title": getattr(i, "title", "") or "",
         "image_path": getattr(i, "image_path", None) or "/static/placeholder.jpg",
         "city": getattr(i, "city", "") or "",
         "category": getattr(i, "category", "") or "",
         "price_per_day": getattr(i, "price_per_day", None),
-        "rating": getattr(i, "rating", 4.8) or 4.8,
+
+        # ⭐ التقييم الحقيقي
+        "rating_avg": r["avg"],
+        "rating_count": r["cnt"],
+
+        # العملة الأصلية
         "currency": getattr(i, "currency", "CAD"),
     }
 
@@ -118,6 +126,25 @@ def _pick_topstrip(limit_per_col=12):
         cols[i % 3].append(src)
     return cols
 
+# ==== Ratings aggregation (avg + count) ====
+
+def load_ratings_map(db: Session):
+    rows = (
+        db.query(
+            ItemReview.item_id.label("iid"),
+            func.avg(ItemReview.stars).label("avg"),
+            func.count(ItemReview.id).label("cnt"),
+        )
+        .group_by(ItemReview.item_id)
+        .all()
+    )
+    m = {}
+    for r in rows:
+        m[r.iid] = {
+            "avg": float(r.avg) if r.avg is not None else 0.0,
+            "cnt": int(r.cnt or 0),
+        }
+    return m
 
 # ================= Home Route =================
 @router.get("/")
@@ -176,7 +203,9 @@ def home_page(
     else:
         nearby_rows = base_q.order_by(func.random()).limit(20).all()
 
-    nearby_items = [_serialize(i) for i in nearby_rows]
+    ratings_map = load_ratings_map(db)
+
+    nearby_items = [_serialize(i, ratings_map) for i in nearby_rows]
 
     for it in nearby_items:
         base = it["currency"]
@@ -197,7 +226,7 @@ def home_page(
         q = _apply_category_filter(q, code, label)
 
         rows = q.order_by(func.random()).limit(12).all()
-        lst = [_serialize(i) for i in rows]
+        lst = [_serialize(i, ratings_map) for i in rows]
 
         for it in lst:
             base = it["currency"]
@@ -215,7 +244,7 @@ def home_page(
     else:
         all_rows = base_q.order_by(func.random()).limit(60).all()
 
-    all_items = [_serialize(i) for i in all_rows]
+    all_items = [_serialize(i, ratings_map) for i in all_rows]
 
     for it in all_items:
         base = it["currency"]
