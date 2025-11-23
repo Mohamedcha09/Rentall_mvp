@@ -359,8 +359,7 @@ h2 {
     }, function(){ alert('Could not get your location.'); });
   });
 })();
-
-/* ===== Autocomplete ===== */
+/* ===== Autocomplete (Same as Home) ===== */
 (function cityNewAutocomplete(){
   const input = document.getElementById('cityNew');
   const panel = document.getElementById('cityNewSuggest');
@@ -369,29 +368,29 @@ h2 {
 
   if(!input || !panel) return;
 
-  let tm=null, lastList=[], active=-1;
+  let tm=null, lastList=[];
 
-  function detectLang(q){
-    const s = (q||'').trim();
-    if (/[\u0600-\u06FF]/.test(s)) return 'ar';
-    const hasFr = /[àâçéèêëîïôûùüÿœæ]/i.test(s);
-    const frW = /\b(le|la|les|de|des|du|aux|à|sur)\b/i.test(s);
-    const enW = /\b(new|city|usa|uk|state)\b/i.test(s);
-    if (hasFr || frW) return 'fr';
-    if (enW) return 'en';
-    return 'en';
+  function esc(s){
+    return String(s||"").replace(/[&<>"']/g, c =>
+      ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])
+    );
   }
 
-  function esc(s){ return String(s||"").replace(/[&<>"']/g, c =>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
-  function hide(){ panel.style.display='none'; panel.innerHTML=''; active=-1; lastList=[]; }
-  function show(){ panel.style.display='block'; }
+  function hide(){
+    panel.style.display='none';
+    panel.innerHTML='';
+    lastList=[];
+  }
+
+  function show(){
+    panel.style.display='block';
+  }
 
   async function query(q){
-    const lang = detectLang(q);
     const url = 'https://nominatim.openstreetmap.org/search'
-              + '?format=json&addressdetails=1&limit=30&accept-language='+lang
-              + '&q='+encodeURIComponent(q);
-    const r = await fetch(url);
+              + '?format=json&addressdetails=1&limit=5'
+              + '&q=' + encodeURIComponent(q);
+    const r = await fetch(url, {headers:{'Accept-Language':'en'}});
     if(!r.ok) return [];
     return await r.json();
   }
@@ -399,44 +398,25 @@ h2 {
   function render(list){
     if(!list.length){ hide(); return; }
 
-    // ===== إزالة التكرار لكل بلد =====
-    const unique = [];
-    const seen = new Set();
-
-    for (const p of list) {
-        const city = (p.display_name || "").split(",")[0].trim();
-        const country = (p.address && p.address.country) || "";
-        const key = city + "|" + country;
-
-        if (!seen.has(key)) {
-            seen.add(key);
-            unique.push(p);
-        }
-    }
-
-    // نأخذ فقط أول نتيجتين (كندا + فرنسا غالباً)
-    const finalList = unique.slice(0, 3);
-
-    if (!finalList.length) { hide(); return; }
-
-    lastList = finalList;
+    lastList = list;
 
     panel.innerHTML =
       '<div class="px-2 py-1 small text-muted border-bottom">Cities/Areas</div>' +
-      finalList.map((p,i)=>`
-        <div class="py-2 px-2 d-flex gap-2 city-row" data-i="${i}" style="cursor:pointer">
+      list.map((p,i)=>`
+        <div class="py-2 px-2 d-flex gap-2 city-row"
+             data-i="${i}" style="cursor:pointer">
           <i class="bi bi-geo-alt"></i>
           <div>
             <div>${esc(p.display_name)}</div>
-            <div class="text-muted small">lat ${esc(p.lat)} — lon ${esc(p.lon)}</div>
+            <div class="text-muted small">
+              lat ${esc(p.lat)} — lng ${esc(p.lon)}
+            </div>
           </div>
         </div>
       `).join('');
 
     show();
-    active = -1;
-}
-
+  }
 
   function pick(i){
     const p = lastList[i]; if(!p) return;
@@ -449,12 +429,15 @@ h2 {
   input.addEventListener('input', function(){
     clearTimeout(tm);
     const q = input.value.trim();
-    latEl.value = ''; lonEl.value = '';
+    latEl.value = '';
+    lonEl.value = '';
+
     if(q.length < 2){ hide(); return; }
+
     tm = setTimeout(async()=>{
       try{ render(await query(q)); }
       catch(_){ hide(); }
-    }, 220);
+    }, 200);
   });
 
   panel.addEventListener('click', e=>{
@@ -463,6 +446,7 @@ h2 {
   });
 
 })();
+
 </script>
 
 <script>
