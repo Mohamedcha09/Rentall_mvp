@@ -356,46 +356,23 @@
           });
   }, 1000);
 
-function sendMessage(e) {
-    e.preventDefault();
+  /* SEND MESSAGE */
+  function sendMessage(e) {
+      e.preventDefault();
 
-    const txt = input.value.trim();
-    if (!txt) return;
+      const txt = input.value.trim();
+      if (!txt) return;
 
-    // نمنع تكرار الإرسال المتتابع
-    const tempId = "temp-" + Date.now();
+      fetch(`/messages/${threadId}`, {
+          method: "POST",
+          body: new FormData(e.target)
+      })
+      .then(() => {
 
-    // نضيف الرسالة مؤقتًا (POP)
-    const tempDiv = document.createElement("div");
-    tempDiv.className = "bubble me new-msg";
-    tempDiv.id = tempId;
-    tempDiv.innerHTML = `
-        <span class="bubble-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</span>
-        ${txt}
-    `;
-    chatBox.appendChild(tempDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
-
-    fetch(`/messages/${threadId}`, {
-        method: "POST",
-        body: new FormData(e.target)
-    })
-    .then(() => {
-        if (emptyState){
-            emptyState.remove();
-            emptyState = null;
-        }
-
-        input.value = "";
-        stopTyping();
-    });
-
-    // نحذف الرسالة المؤقتة عندما poll يجلب الرسالة الحقيقية
-    setTimeout(() => {
-        const el = document.getElementById(tempId);
-        if (el) el.remove();
-    }, 1500);
-}
+          if (emptyState){
+              emptyState.remove();
+              emptyState = null;
+          }
 
           const now = new Date();
           const hh = String(now.getHours()).padStart(2, "0");
