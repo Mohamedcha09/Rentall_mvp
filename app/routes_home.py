@@ -126,8 +126,8 @@ def _pick_topstrip(limit_per_col=12):
         cols[i % 3].append(src)
     return cols
 
-# ==== Ratings aggregation (avg + count) ====
 
+# ==== Ratings aggregation (avg + count) ====
 def load_ratings_map(db: Session):
     rows = (
         db.query(
@@ -146,6 +146,7 @@ def load_ratings_map(db: Session):
         }
     return m
 
+
 # ================= Home Route =================
 @router.get("/")
 def home_page(
@@ -158,6 +159,7 @@ def home_page(
     db: Session = Depends(get_db),
 ):
 
+    # ============ Load cookies + params ============
     if lng is None and lon is not None:
         lng = lon
 
@@ -182,29 +184,98 @@ def home_page(
     except Exception:
         pass
 
+    # ============ Display currency ============
     session_user = getattr(request, "session", {}).get("user")
     if session_user and session_user.get("display_currency"):
         user_currency = session_user["display_currency"]
     else:
         user_currency = request.cookies.get("disp_cur") or "CAD"
 
-    # NEW: currency symbols
     symbols = {"CAD": "$", "USD": "$", "EUR": "€"}
 
     rates = load_fx_dict(db)
 
+    # ============ Base Query ============
     base_q = db.query(Item).filter(Item.is_active == "yes")
+
+    # ⭐ Order by rating DESC
+    rating_desc = func.coalesce(
+        db.query(func.avg(ItemReview.stars))
+        .filter(ItemReview.item_id == Item.id)
+        .correlate(Item)
+        .as_scalar(),
+        0
+    ).desc()
+
     filtered_q = _apply_city_or_gps_filter(base_q, city, lat, lng, radius_km)
     filtering = (lat is not None and lng is not None and radius_km) or (city not in (None, ""))
 
-    # ---- Nearby ----
+    # =====================================================================
+    #                           🔥 NEARBY (FULL FALLBACK)
+    # =====================================================================
+    nearby_rows = []
+
     if filtering:
-        nearby_rows = filtered_q.order_by(Item.created_at.desc()).limit(20).all()
+
+        # 1) نفس المدينة
+        city_items = (
+            filtered_q.order_by(rating_desc).limit(20).all()
+        )
+        if city_items:
+            nearby_rows = city_items
+        else:
+
+            # استخراج المقاطعة (QC من "Montreal, QC")
+            province = None
+            if city and "," in city:
+                province = city.split(",")[-1].strip()
+
+            # 2) نفس المقاطعة
+            if province:
+                province_items = (
+                    base_q
+                    .filter(Item.region.ilike(f"%{province}%"))
+                    .order_by(rating_desc)
+                    .limit(20)
+                    .all()
+                )
+                if province_items:
+                    nearby_rows = province_items
+                else:
+
+                    # 3) نفس الدولة
+                    country_items = (
+                        base_q
+                        .filter(Item.country.ilike("%canada%"))
+                        .order_by(rating_desc)
+                        .limit(20)
+                        .all()
+                    )
+                    if country_items:
+                        nearby_rows = country_items
+                    else:
+                        # 4) fallback random
+                        nearby_rows = (
+                            base_q.order_by(func.random()).limit(20).all()
+                        )
+            else:
+                # If city has no province part → jump to country-level
+                country_items = (
+                    base_q
+                    .filter(Item.country.ilike("%canada%"))
+                    .order_by(rating_desc)
+                    .limit(20)
+                    .all()
+                )
+                if country_items:
+                    nearby_rows = country_items
+                else:
+                    nearby_rows = base_q.order_by(func.random()).limit(20).all()
+
     else:
         nearby_rows = base_q.order_by(func.random()).limit(20).all()
 
     ratings_map = load_ratings_map(db)
-
     nearby_items = [_serialize(i, ratings_map) for i in nearby_rows]
 
     for it in nearby_items:
@@ -212,9 +283,11 @@ def home_page(
         price = it.get("price_per_day") or 0
         it["display_price"] = fx_convert(price, base, user_currency, rates)
         it["display_currency"] = user_currency
-        it["display_symbol"] = symbols.get(user_currency, user_currency)   # FIX ✔
+        it["display_symbol"] = symbols.get(user_currency, user_currency)
 
-    # ---- Categories ----
+    # =====================================================================
+    #                           🔥 CATEGORY SECTIONS
+    # =====================================================================
     items_by_category = {}
     for cat in CATEGORIES:
         code = cat.get("key", "")
@@ -225,7 +298,7 @@ def home_page(
             q = _apply_city_or_gps_filter(q, city, lat, lng, radius_km)
         q = _apply_category_filter(q, code, label)
 
-        rows = q.order_by(func.random()).limit(12).all()
+        rows = q.order_by(rating_desc, func.random()).limit(12).all()
         lst = [_serialize(i, ratings_map) for i in rows]
 
         for it in lst:
@@ -233,16 +306,15 @@ def home_page(
             price = it.get("price_per_day") or 0
             it["display_price"] = fx_convert(price, base, user_currency, rates)
             it["display_currency"] = user_currency
-            it["display_symbol"] = symbols.get(user_currency, user_currency)   # FIX ✔
+            it["display_symbol"] = symbols.get(user_currency, user_currency)
 
         if lst:
             items_by_category[code] = lst
 
-    # ---- All items ----
-    if filtering:
-        all_rows = filtered_q.order_by(Item.created_at.desc()).limit(60).all()
-    else:
-        all_rows = base_q.order_by(func.random()).limit(60).all()
+    # =====================================================================
+    #                           🔥 ALL ITEMS — always random, 20 only
+    # =====================================================================
+    all_rows = base_q.order_by(func.random()).limit(20).all()
 
     all_items = [_serialize(i, ratings_map) for i in all_rows]
 
@@ -251,8 +323,11 @@ def home_page(
         price = it.get("price_per_day") or 0
         it["display_price"] = fx_convert(price, base, user_currency, rates)
         it["display_currency"] = user_currency
-        it["display_symbol"] = symbols.get(user_currency, user_currency)   # FIX ✔
+        it["display_symbol"] = symbols.get(user_currency, user_currency)
 
+    # =====================================================================
+    #                           CONTEXT + TEMPLATE
+    # =====================================================================
     banners = _pick_banners()
     top_strip_cols = _pick_topstrip()
 
