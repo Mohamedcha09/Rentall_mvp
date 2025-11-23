@@ -122,6 +122,20 @@
 
   .favorites-grid::-webkit-scrollbar{height:8px;}
   .favorites-grid::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;}
+
+  @media (max-width: 768px) {
+    header.topbar,
+    .m-top-tabs,
+    .notif-panels,
+    .search-wrapper,
+    .page-header {
+        display: none !important;
+    }
+    body.has-tabbar{
+        padding-top: 0 !important;
+    }
+}
+
 </style>
 {% endblock %}
 
