@@ -1,6 +1,31 @@
 {% extends "base.html" %}
+
+{% block head %}
+<style>
+/* ===== إخفاء النافبار و التاب بار في الموبايل ===== */
+@media (max-width: 768px){
+  body[data-path="/support/my"],
+  body[data-path^="/support/my"] {
+
+    header.topbar,
+    .m-top-tabs,
+    .searchbar,
+    .stripe-callout,
+    .mobile-tabbar {
+      display: none !important;
+    }
+
+    .page{
+      padding-top: 12px !important;
+      padding-bottom: 12px !important;
+    }
+  }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-4">
+<div class="container py-4" style="max-width:760px">
 
   <div class="d-flex justify-content-between align-items-center">
     <h3>My Tickets</h3>
@@ -9,33 +34,38 @@
 
   <div class="list-group mt-3">
     {% for t in tickets %}
-      {# Calculate number of unread CS messages from the available fields #}
-      {% set unread_cs = (t.messages
-          | selectattr('sender_role','equalto','agent')
-          | selectattr('is_read','equalto',False)
-          | list | length) %}
+
+      {% set unread_cs =
+        (t.messages
+        | selectattr('sender_role','equalto','agent')
+        | selectattr('is_read','equalto',False)
+        | list | length)
+      %}
 
       <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
          href="/support/ticket/{{t.id}}">
+
         <div class="me-2">
           <div class="fw-semibold">#{{t.id}} — {{t.subject or 'Untitled'}}</div>
           <div class="small text-muted">
             Status: {{ t.status or 'new' }}
-            {% if t.last_msg_at %} · Last activity: {{ (t.last_msg_at|string)[:16] }}{% endif %}
+            {% if t.last_msg_at %}
+              · Last activity: {{ (t.last_msg_at|string)[:16] }}
+            {% endif %}
           </div>
         </div>
 
         <div class="d-flex align-items-center gap-2">
           {% if unread_cs > 0 %}
-            <span class="badge rounded-pill text-bg-primary" title="New messages from support">
-              {{ unread_cs }}
-            </span>
+            <span class="badge rounded-pill text-bg-primary">{{ unread_cs }}</span>
           {% elif t.unread_for_user %}
-            <span class="badge rounded-pill text-bg-primary" title="New messages from support">•</span>
+            <span class="badge rounded-pill text-bg-primary">•</span>
           {% endif %}
           <i class="bi bi-chevron-left opacity-50"></i>
         </div>
+
       </a>
+
     {% else %}
       <div class="text-muted">No tickets yet.</div>
     {% endfor %}
