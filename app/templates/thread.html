@@ -10,14 +10,12 @@
   }
   body.has-tabbar{padding-bottom:0!important;}
 
-  /* ===== خلفية زجاجية فاخرة ===== */
   .chat-bg {
       position: fixed;
       inset: 0;
       background: radial-gradient(circle at 30% 20%, #ede8ff, #f7f4ff 60%);
   }
 
-  /* ===== HEADER — Ultra Glass ===== */
   .chat-header {
       position: fixed;
       top: 0; left: 0; right: 0;
@@ -25,7 +23,6 @@
       padding: calc(env(safe-area-inset-top) + 6px) 14px 10px 14px;
       background: linear-gradient(135deg,#8b5cf6cc,#5b9df9cc);
       backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
       border-bottom: 1px solid rgba(255,255,255,0.25);
       display:flex;
       align-items:center;
@@ -41,7 +38,6 @@
       border-radius: 999px;
       background: rgba(255,255,255,.25);
       backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
       color:#fff;
       font-size:22px;
       display:flex;
@@ -50,6 +46,7 @@
       text-decoration:none;
       transition: .2s;
   }
+
   .chat-header-back:hover { background: rgba(255,255,255,.35); }
 
   .chat-header-avatar {
@@ -75,7 +72,6 @@
 
   .chat-header-verified { height:18px; flex-shrink:0; }
 
-  /* ===== WRAPPER ===== */
   .chat-wrapper {
       position: fixed;
       inset: 0;
@@ -84,7 +80,6 @@
       flex-direction:column;
   }
 
-  /* ===== MESSAGES ===== */
   .chat-messages {
       flex:1;
       overflow-y:auto;
@@ -99,7 +94,6 @@
       object-fit:cover;
   }
 
-  /* ===== BUBBLES ===== */
   .bubble {
       max-width:80%;
       padding:12px 16px;
@@ -133,7 +127,6 @@
       display:block;
   }
 
-  /* ==== EMPTY CHAT ==== */
   .empty-chat {
       width: 100%;
       text-align:center;
@@ -145,7 +138,6 @@
       height: auto;
   }
 
-  /* ===== Typing Indicator ===== */
   .typing {
       display:flex;
       align-items:center;
@@ -156,7 +148,6 @@
       margin:10px 0;
       width:fit-content;
       box-shadow:0 2px 8px rgba(0,0,0,.08);
-      border:1px solid rgba(0,0,0,0.05);
   }
 
   .dot {
@@ -174,19 +165,13 @@
       100%{opacity:.2;}
   }
 
-  /* ==========================================
-      WHATSAPP POP MESSAGE ANIMATION  🔥
-     ========================================== */
   @keyframes wspop {
       0%   { transform: scale(0.6); opacity: 0; }
       60%  { transform: scale(1.08); opacity: 1; }
       100% { transform: scale(1); }
   }
-  .new-msg {
-      animation: wspop .22s ease-out;
-  }
+  .new-msg { animation: wspop .22s ease-out; }
 
-  /* ===== INPUT BAR ===== */
   .chat-input-bar {
       position:fixed;
       left:0; right:0; bottom:0;
@@ -224,14 +209,9 @@
 
 <div class="chat-bg"></div>
 
-<!-- HEADER -->
 <div class="chat-header">
     <a href="/messages" class="chat-header-back">‹</a>
-
-    <img src="{{ other_avatar }}"
-         class="chat-header-avatar"
-         onerror="this.src='/static/placeholder.svg'">
-
+    <img src="{{ other_avatar }}" class="chat-header-avatar" onerror="this.src='/static/placeholder.svg'">
     <div class="chat-header-info">
         <div class="chat-header-name">
             {{ other.first_name }} {{ other.last_name }}
@@ -242,7 +222,6 @@
     </div>
 </div>
 
-<!-- BODY -->
 <div class="chat-wrapper">
   <div class="chat-messages" id="chatMessages">
 
@@ -256,9 +235,7 @@
 
     {% for m in messages %}
       {% if m.sender_id != session_user.id %}
-        <img src="{{ other_avatar }}"
-             class="msg-avatar"
-             onerror="this.src='/static/placeholder.svg'">
+        <img src="{{ other_avatar }}" class="msg-avatar" onerror="this.src='/static/placeholder.svg'">
       {% endif %}
 
       <div class="bubble {% if m.sender_id == session_user.id %}me{% else %}other{% endif %}">
@@ -274,7 +251,6 @@
         <div class="dot"></div>
     </div>
     {% endif %}
-
   </div>
 
   <form class="chat-input-bar" onsubmit="sendMessage(event)">
@@ -291,14 +267,12 @@
   let emptyState = document.getElementById("emptyState");
   const input = document.querySelector(".chat-input");
 
-  /* User typing */
   input.addEventListener("input", () => {
       if (input.value.trim().length > 0) {
           fetch(`/messages/${threadId}/typing`, {method: "POST"});
       }
   });
 
-  /* Typing Status Polling */
   setInterval(() => {
       fetch(`/messages/${threadId}/typing_status`)
         .then(r => r.json())
@@ -329,8 +303,8 @@
       });
   }
 
-  /* Polling New Messages */
   let lastMessageId = {{ messages[-1].id if messages else 0 }};
+
   setInterval(() => {
       fetch(`/messages/${threadId}/poll?after=${lastMessageId}`)
           .then(r => r.json())
@@ -356,7 +330,8 @@
           });
   }, 1000);
 
-  /* SEND MESSAGE */
+
+  /* إصلاح مشكلة التكرار */
   function sendMessage(e) {
       e.preventDefault();
 
@@ -368,28 +343,16 @@
           body: new FormData(e.target)
       })
       .then(() => {
-
           if (emptyState){
               emptyState.remove();
               emptyState = null;
           }
 
-          const now = new Date();
-          const hh = String(now.getHours()).padStart(2, "0");
-          const mm = String(now.getMinutes()).padStart(2, "0");
-          const timeNow = `${hh}:${mm}`;
-
-          const div = document.createElement("div");
-          div.className = "bubble me new-msg";
-          div.innerHTML = `
-              <span class="bubble-time">${timeNow}</span>
-              ${txt}
-          `;
-          chatBox.appendChild(div);
-          chatBox.scrollTop = chatBox.scrollHeight;
-
           input.value = "";
           stopTyping();
+
+          /* ❗ لا نضيف الرسالة يدويًا
+                poll سيعرض الرسالة الحقيقية بعد أقل من ثانية */
       });
   }
 </script>
