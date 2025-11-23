@@ -1,39 +1,67 @@
 {% extends "base.html" %}
 {% block content %}
 
+<!-- ===== زر الرجوع العائم (iOS style) ===== -->
+<a href="/" class="back-btn-ios">
+  <i class="bi bi-chevron-left"></i>
+</a>
+
 <style>
-  /* ===================== إخفاء النافبار العلوي ===================== */
-  header.topbar,
-  .m-top-tabs {
-      display: none !important;
-  }
+/* =====================================================
+   زر الرجوع — iOS floating button style
+   ===================================================== */
+.back-btn-ios {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 12px);
+    left: 14px;
+    z-index: 9999;
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    font-size: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    text-decoration: none;
+}
+.back-btn-ios:active { transform: scale(0.94); }
 
-  /* ===================== إخفاء التاب بار السفلي ===================== */
-  .mobile-tabbar {
-      display: none !important;
-  }
+/* =====================================================
+   إخفاء الهيدر العلوي + تابات + تاب بار سفلي
+   ===================================================== */
+header.topbar,
+.m-top-tabs,
+nav.desk-tabs,
+.mobile-tabbar {
+    display: none !important;
+}
 
-  /* إزالة المسافة السفلى الخاصة بالتاب بار */
-  body.has-tabbar {
-      padding-bottom: 0 !important;
-  }
+/* بدون padding للتاب بار */
+body.has-tabbar {
+    padding-bottom: 0 !important;
+}
 
-  /* ===================== إخفاء تبويبات الديسكتوب ===================== */
-  nav.desk-tabs {
-      display: none !important;
-  }
-
-  /* ===================== إخفاء Banner Stripe الحقيقي ===================== */
-  .stripe-callout,
-  .payouts-callout,
-  .connect-banner,
-  .payout-banner,
-  .stripe-connect-banner,
-  .connect-now-banner {
-      display: none !important;
-  }
+/* =====================================================
+   إخفاء Banner Stripe الحقيقي (المشكلة عندك)
+   ===================================================== */
+.stripe-callout,
+.payouts-callout,
+.connect-banner,
+.payout-banner,
+.stripe-connect-banner,
+.connect-now-banner {
+    display: none !important;
+}
 </style>
 
+<!-- =====================================================
+      محتوى صفحة الإعدادات
+===================================================== -->
 <div class="container" style="max-width:760px">
 
   <h3 class="mb-3">Settings</h3>
@@ -55,12 +83,11 @@
     <div class="alert alert-danger">The new passwords do not match.</div>
   {% endif %}
 
-  <!-- ====================== Profile Section ====================== -->
+  <!-- =============== Profile Section =============== -->
   <div class="card mb-4">
     <div class="card-header fw-bold">Profile</div>
     <div class="card-body">
       <form method="post" action="/settings/profile" enctype="multipart/form-data" class="vstack gap-3">
-        
         <div class="row g-3">
           <div class="col-sm-6">
             <label class="form-label">First name</label>
@@ -89,22 +116,19 @@
         <div class="text-end">
           <button class="btn btn-primary">Save</button>
         </div>
-
       </form>
     </div>
   </div>
 
-  <!-- ====================== Password Section ====================== -->
+  <!-- =============== Change Password Section =============== -->
   <div class="card mb-4">
     <div class="card-header fw-bold">Change password</div>
     <div class="card-body">
       <form method="post" action="/settings/password" class="vstack gap-3">
-        
         <div>
           <label class="form-label">Current password</label>
           <input class="form-control" type="password" name="current">
         </div>
-
         <div class="row g-3">
           <div class="col-sm-6">
             <label class="form-label">New password</label>
@@ -115,23 +139,19 @@
             <input class="form-control" type="password" name="confirm">
           </div>
         </div>
-
         <div class="text-end">
           <button class="btn btn-outline-primary">Update password</button>
         </div>
-
       </form>
     </div>
   </div>
 
-  <!-- ====================== Currency Section ====================== -->
+  <!-- =============== Currency Section =============== -->
   {% set _cur = (u.display_currency or request.cookies.get('disp_cur') or 'CAD') %}
-  
   <div class="card">
     <div class="card-header fw-bold">Currency</div>
     <div class="card-body">
       <form method="post" action="/settings/currency" class="vstack gap-3">
-        
         <div>
           <label class="form-label">Display currency</label>
           <select class="form-select" name="cur" required>
@@ -140,11 +160,9 @@
             <option value="EUR" {% if _cur == 'EUR' %}selected{% endif %}>EUR — Euro</option>
           </select>
         </div>
-
         <div class="text-end">
           <button class="btn btn-outline-primary">Save</button>
         </div>
-
       </form>
     </div>
   </div>
