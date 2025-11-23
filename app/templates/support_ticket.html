@@ -125,6 +125,83 @@
 .bubble .meta{ font-size:.8rem; opacity:.7; display:flex; gap:.5rem; margin-bottom:.25rem; }
 .bubble .text{ white-space:pre-wrap; word-break:break-word; }
 
+
+/* =====================================================
+   Chat bubbles — Airbnb premium style
+===================================================== */
+.chat-thread{
+  max-height:60vh;
+  overflow:auto;
+  padding:6px 4px 10px;
+  background:#fafafa;
+  border-radius:16px;
+}
+
+/* صف الرسالة */
+.chat-row{
+  display:flex;
+  margin:.55rem 0;
+}
+
+/* رسائلي */
+.chat-row.me{
+  justify-content:flex-end;
+}
+
+/* رسائل الدعم */
+.chat-row.them{
+  justify-content:flex-start;
+}
+
+/* فقاقيع الرسائل */
+.chat-row .bubble{
+  max-width:84%;
+  padding:.7rem .9rem;
+  border-radius:18px;
+  background:#fff;
+  border:1px solid rgba(0,0,0,0.06);
+  box-shadow:0 1px 3px rgba(0,0,0,0.04);
+}
+
+/* رسائلي (Airbnb Blue bubble) */
+.chat-row.me .bubble{
+  background:#f1f7ff;
+  border-color:rgba(0,0,0,0.05);
+  box-shadow:0 1px 4px rgba(0,0,0,0.05);
+}
+
+/* الوضع الداكن */
+[data-theme="dark"] .chat-thread{
+  background:#0e0e12;
+}
+[data-theme="dark"] .chat-row .bubble{
+  background:rgba(255,255,255,0.08);
+  border-color:rgba(255,255,255,0.1);
+  box-shadow:none;
+}
+[data-theme="dark"] .chat-row.me .bubble{
+  background:rgba(124,92,255,0.25);
+}
+
+/* اسم + وقت */
+.bubble .meta{
+  font-size:.78rem;
+  opacity:.65;
+  display:flex;
+  gap:.45rem;
+  margin-bottom:.25rem;
+  font-weight:500;
+}
+
+/* نص الرسالة */
+.bubble .text{
+  font-size:.95rem;
+  line-height:1.35;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
+
+
 </style>
 
 <!-- =====================================================
