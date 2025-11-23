@@ -1,109 +1,237 @@
 {# ============================================================
    app/templates/profile.html
-   Profile Page — works with Cloudinary
+   Ultra Premium Profile — Sevor Glass Dashboard
    ============================================================ #}
 
 {% extends "base.html" %}
 
-{# == Local safe macros == #}
-{% macro build_src(p) -%}
-  {%- set s = (p or '') -%}
-  {%- if s.startswith('http://') or s.startswith('https://') -%}
-    {{- s -}}
-  {%- else -%}
-    {{- '/' ~ s.lstrip('/') if s else '' -}}
-  {%- endif -%}
-{%- endmacro %}
-
-{% macro avatar_src(p) -%}
-  {%- set s = (p or '') -%}
-  {%- if s.startswith('http://') or s.startswith('https://') -%}
-    {{- s -}}
-  {%- elif s and (not s.startswith('/uploads/')) -%}
-    {{- '/' ~ s.lstrip('/') -}}
-  {%- else -%}
-    {{- '/static/placeholder.png' -}}
-  {%- endif -%}
-{%- endmacro %}
-
 {% from "_badges.html" import render_badges %}
+
 {% block content %}
 
-{# 🔒 IMPORTANT:
-   Prefer database image first, then session one.
-   This ensures that if the session is missing, we don’t fall back to “1”.
-#}
-{% set db_user = user %}
-{% set sess    = session_user %}
-{% set avatar_candidate = (db_user and db_user.avatar_path) or (sess and sess.avatar_path) or '' %}
-{% set _ava3 = avatar_src(avatar_candidate) %}
+<style>
+/* ========== GLOBAL ULTRA GLASS STYLE ========== */
+.profile-glass {
+    background: color-mix(in oklab, var(--surface) 82%, transparent);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 22px;
+    padding: 24px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.14);
+}
 
-<div class="d-flex align-items-center gap-3 mb-3">
-  <div class="rounded-circle border" style="width:64px;height:64px;overflow:hidden">
-    {% if _ava3 and not _ava3.endswith('placeholder.png') %}
-      <img src="{{ _ava3 }}"
-           alt="avatar"
-           referrerpolicy="no-referrer"
-           onerror="this.onerror=null;this.src='/static/placeholder.png'"
-           style="width:100%;height:100%;object-fit:cover">
-    {% else %}
-      {# First letter only when there’s truly no image #}
-      <div class="w-100 h-100 d-flex align-items-center justify-content-center fw-bold">
-        {{ ((db_user.first_name or db_user.email or 'U')[:1] | upper) if db_user else 'U' }}
+/* Avatar */
+.p-avatar {
+    width: 96px; height: 96px;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.35);
+}
+
+.p-avatar img {
+    width: 100%; height: 100%; object-fit: cover;
+}
+
+/* Name + badges */
+.p-name {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+/* Stats section */
+.stat-box {
+    background: rgba(255,255,255,0.08);
+    padding: 16px;
+    border-radius: 16px;
+    text-align: center;
+}
+.stat-num {
+    font-size: 22px; font-weight: 700;
+}
+.stat-label {
+    font-size: 12px; opacity: 0.85;
+}
+
+/* Listings grid */
+.listing-card {
+    background: rgba(255,255,255,0.06);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: 0.25s;
+}
+.listing-card:hover {
+    transform: translateY(-3px);
+}
+.listing-card img {
+    width: 100%; height: 170px; object-fit: cover;
+}
+
+/* Reviews */
+.review-bubble {
+    background: rgba(255,255,255,0.08);
+    padding: 16px;
+    border-radius: 16px;
+    margin-bottom: 12px;
+}
+
+/* Activity timeline */
+.activity-item {
+    padding: 10px 12px;
+    border-left: 3px solid var(--brand);
+    margin-bottom: 10px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+}
+
+/* Responsive */
+@media(max-width: 768px){
+    .p-name { font-size: 24px; }
+    .p-avatar { width: 72px; height: 72px; }
+}
+</style>
+
+
+{# ============================================================
+   HEADER SECTION — USER BASIC INFO
+============================================================ #}
+
+<div class="profile-glass mb-4">
+  <div class="d-flex align-items-center gap-3">
+    
+    <div class="p-avatar">
+      {% if user.avatar_path %}
+      <img src="/{{ user.avatar_path }}" onerror="this.src='/static/placeholder.png'">
+      {% else %}
+      <img src="/static/placeholder.png">
+      {% endif %}
+    </div>
+
+    <div>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="p-name">{{ user.first_name }} {{ user.last_name }}</span>
+        {{ render_badges(user, '24px') }}
       </div>
-    {% endif %}
-  </div>
 
-  <div>
-    <div class="d-flex align-items-center gap-2 flex-wrap">
-      <h2 class="m-0">{{ (db_user.first_name or '') }} {{ (db_user.last_name or '') }}</h2>
-      {{ render_badges(db_user, '20px') }}
-    </div>
-    <div class="text-muted small mt-1">
-      Email: {{ db_user.email or '—' }} · Phone: {{ db_user.phone or '—' }}
-      · Member since: {{ (db_user.created_at.strftime('%d-%m-%Y') if db_user.created_at) }}
+      <div class="text-muted small mt-1">
+        Email: {{ user.email }} · Phone: {{ user.phone or '—' }}  
+        • Joined: {{ user.created_at.strftime('%d-%m-%Y') }}
+      </div>
     </div>
   </div>
 </div>
 
-<hr class="my-3">
 
-<div class="row gy-3">
-  <div class="col-md-6">
-    <div class="card p-3">
-      <h5 class="mb-2">📦 My Listings</h5>
-      <div>Total items: <strong>{{ items_count }}</strong></div>
-      <div>Active: <strong>{{ items_active_count }}</strong></div>
+{# ============================================================
+   STATISTICS SECTION — powerful analytics
+============================================================ #}
+
+<div class="profile-glass mb-4">
+  <h4 class="mb-3">📊 Statistics</h4>
+
+  <div class="row g-3">
+    <div class="col-4">
+      <div class="stat-box">
+        <div class="stat-num">{{ items_count }}</div>
+        <div class="stat-label">Listings</div>
+      </div>
     </div>
-  </div>
-
-  <div class="col-md-6">
-    <div class="card p-3">
-      <h5 class="mb-2">⭐ Ratings</h5>
-      <div>Average: <strong>{{ avg_stars }}/5</strong></div>
-      <div>Reviews count: <strong>{{ ratings_count }}</strong></div>
+    <div class="col-4">
+      <div class="stat-box">
+        <div class="stat-num">{{ ratings_count }}</div>
+        <div class="stat-label">Reviews</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="stat-box">
+        <div class="stat-num">{{ avg_stars or 0 }}/5</div>
+        <div class="stat-label">Rating</div>
+      </div>
     </div>
   </div>
 </div>
 
-{% if reviews and reviews|length %}
-<hr class="my-4">
-<h5>Latest Reviews</h5>
-<ul class="list-group">
-  {% for r in reviews %}
-    <li class="list-group-item">
-      <div class="fw-bold text-warning">★ {{ r.stars }}/5</div>
-      <div class="text-muted small">{{ r.created_at.strftime('%d-%m-%Y') if r.created_at }}</div>
-      <div class="mt-1">{{ r.comment or '—' }}</div>
+
+{# ============================================================
+   LISTINGS SECTION — user's items with cards
+============================================================ #}
+
+<div class="profile-glass mb-4">
+  <h4 class="mb-3">📦 My Listings</h4>
+
+  {% if listings %}
+  <div class="row g-3">
+    {% for it in listings %}
+    <div class="col-md-4 col-6">
+      <div class="listing-card">
+        <img src="/{{ it.image_path }}" onerror="this.src='/static/placeholder.png'">
+        <div class="p-2">
+          <strong>{{ it.title }}</strong>
+          <div class="text-muted small">
+            {{ it.price }} {{ it.currency }}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+    <div class="text-muted">No listings yet.</div>
+  {% endif %}
+</div>
+
+
+{# ============================================================
+   REVIEWS SECTION — comments from users
+============================================================ #}
+
+<div class="profile-glass mb-4">
+  <h4 class="mb-3">⭐ Reviews</h4>
+
+  {% if reviews %}
+    {% for r in reviews %}
+    <div class="review-bubble">
+      <div class="text-warning fw-bold">★ {{ r.stars }}/5</div>
+      <div class="text-muted small">{{ r.created_at.strftime('%d-%m-%Y') }}</div>
+      <div class="mt-1">{{ r.comment }}</div>
       <div class="text-muted small">From: {{ r.rater_name }}</div>
-    </li>
-  {% endfor %}
-</ul>
-{% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="text-muted">No reviews yet.</div>
+  {% endif %}
+</div>
 
-<hr class="my-4">
-<div class="text-center">
-  <a href="/profile/docs" class="btn btn-outline-primary">📄 Edit Documents or Profile Photo</a>
+
+{# ============================================================
+   ACTIVITY SECTION — timeline of important actions
+============================================================ #}
+
+<div class="profile-glass mb-4">
+  <h4 class="mb-3">🕒 Recent Activity</h4>
+
+  {% if activity %}
+    {% for a in activity %}
+      <div class="activity-item">
+        <div>{{ a.event }}</div>
+        <div class="small text-muted">{{ a.time }}</div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="text-muted">No recent activity.</div>
+  {% endif %}
+</div>
+
+
+{# ============================================================
+   DOCUMENTS SECTION — edit docs, photo, verification
+============================================================ #}
+
+<div class="profile-glass text-center">
+  <a href="/profile/docs" class="btn btn-outline-primary btn-lg">
+    📄 Manage Documents & Profile Photo
+  </a>
 </div>
 
 {% endblock %}
