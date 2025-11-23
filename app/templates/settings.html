@@ -1,170 +1,235 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- ===== زر الرجوع العائم (iOS style) ===== -->
+<!-- ===== Floating Back Button (iOS Style) ===== -->
 <a href="/" class="back-btn-ios">
   <i class="bi bi-chevron-left"></i>
 </a>
 
 <style>
-/* =====================================================
-   زر الرجوع — iOS floating button style
-   ===================================================== */
+/* ======================================================
+   BACK BUTTON — iOS STYLE
+====================================================== */
 .back-btn-ios {
     position: fixed;
     top: calc(env(safe-area-inset-top) + 12px);
     left: 14px;
     z-index: 9999;
-    background: rgba(255,255,255,0.88);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: rgba(255,255,255,0.90);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     width: 42px;
     height: 42px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #333;
+    color: #222;
     font-size: 20px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
     text-decoration: none;
 }
-.back-btn-ios:active { transform: scale(0.94); }
+.back-btn-ios:active { transform: scale(0.92); }
 
-/* =====================================================
-   إخفاء الهيدر العلوي + تابات + تاب بار سفلي
-   ===================================================== */
+/* ======================================================
+   HIDE NAVBARS
+====================================================== */
 header.topbar,
 .m-top-tabs,
+.mobile-tabbar,
 nav.desk-tabs,
-.mobile-tabbar {
+.stripe-callout {
     display: none !important;
 }
+body.has-tabbar { padding-bottom: 0 !important; }
 
-/* بدون padding للتاب بار */
-body.has-tabbar {
-    padding-bottom: 0 !important;
+/* ======================================================
+   AIRBNB STYLE SETTINGS
+====================================================== */
+.settings-container {
+    padding: 26px 20px;
+    max-width: 780px;
+    margin: auto;
+    font-family: system-ui, sans-serif;
 }
 
-/* =====================================================
-   إخفاء Banner Stripe الحقيقي (المشكلة عندك)
-   ===================================================== */
-.stripe-callout,
-.payouts-callout,
-.connect-banner,
-.payout-banner,
-.stripe-connect-banner,
-.connect-now-banner {
-    display: none !important;
+.settings-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 30px;
+}
+
+.section-line {
+    padding: 16px 0;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.section-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.section-label {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.section-value {
+    font-size: 17px;
+    color: #444;
+    margin-top: 6px;
+}
+
+.section-action {
+    font-weight: 600;
+    color: #222;
+    text-decoration: underline;
+}
+
+/* ========== EDIT MODE ========== */
+.edit-block {
+    margin-top: 14px;
+}
+
+.edit-description {
+    color: #666;
+    font-size: 15px;
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+
+.airbnb-input {
+    width: 100%;
+    padding: 14px 14px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    font-size: 16px;
+    margin-bottom: 12px;
+}
+
+.save-btn {
+    width: 100%;
+    padding: 14px;
+    background: #111;
+    color: white;
+    font-size: 17px;
+    font-weight: 600;
+    border-radius: 10px;
+    border: none;
+    margin-top: 10px;
+}
+
+.cancel-btn {
+    font-size: 16px;
+    font-weight: 600;
+    text-decoration: underline;
+    color: #222;
+}
+
+/* Fade-out for non-editing sections */
+.fade-disabled {
+    opacity: 0.35;
 }
 </style>
 
-<!-- =====================================================
-      محتوى صفحة الإعدادات
-===================================================== -->
-<div class="container" style="max-width:760px">
+<!-- ======================================================
+      PAGE CONTENT
+====================================================== -->
+<div class="settings-container">
 
-  <h3 class="mb-3">Settings</h3>
+  <div class="settings-title">Personal Information</div>
 
-  {% if request.query_params.get('saved') %}
-    <div class="alert alert-success">Profile data saved ✅</div>
-  {% endif %}
-  {% if request.query_params.get('pwd_ok') %}
-    <div class="alert alert-success">Password changed ✅</div>
-  {% endif %}
-  {% if request.query_params.get('cur_saved') %}
-    <div class="alert alert-success">Currency updated ✅</div>
-  {% endif %}
-  {% if request.query_params.get('err') == 'email_used' %}
-    <div class="alert alert-danger">This email is already in use.</div>
-  {% elif request.query_params.get('err') == 'bad_current' %}
-    <div class="alert alert-danger">Current password is incorrect.</div>
-  {% elif request.query_params.get('err') == 'mismatch' %}
-    <div class="alert alert-danger">The new passwords do not match.</div>
-  {% endif %}
-
-  <!-- =============== Profile Section =============== -->
-  <div class="card mb-4">
-    <div class="card-header fw-bold">Profile</div>
-    <div class="card-body">
-      <form method="post" action="/settings/profile" enctype="multipart/form-data" class="vstack gap-3">
-        <div class="row g-3">
-          <div class="col-sm-6">
-            <label class="form-label">First name</label>
-            <input class="form-control" name="first_name" value="{{ u.first_name or '' }}">
-          </div>
-          <div class="col-sm-6">
-            <label class="form-label">Last name</label>
-            <input class="form-control" name="last_name" value="{{ u.last_name or '' }}">
-          </div>
-        </div>
-
-        <div>
-          <label class="form-label">Email</label>
-          <input class="form-control" type="email" name="email" value="{{ u.email or '' }}">
-          <div class="form-text">Changing your email may require re-verification.</div>
-        </div>
-
-        <div>
-          <label class="form-label">Profile picture</label>
-          <input class="form-control" type="file" name="avatar" accept=".jpg,.jpeg,.png,.webp">
-          {% if u.avatar_path %}
-            <img src="{{ u.avatar_path }}" alt="" class="mt-2 rounded-circle" style="width:64px;height:64px;object-fit:cover">
-          {% endif %}
-        </div>
-
-        <div class="text-end">
-          <button class="btn btn-primary">Save</button>
-        </div>
-      </form>
+  <!-- ===================== LEGAL NAME ===================== -->
+  <div class="section-line {% if editing == 'name' %}{% else %}{% endif %}">
+    <div class="section-top">
+      <div class="section-label">Legal Name</div>
+      <a href="?edit=name" class="section-action">Edit</a>
     </div>
+    <div class="section-value">{{ u.first_name }} {{ u.last_name }}</div>
+
+    {% if editing == 'name' %}
+    <form method="post" action="/settings/profile" enctype="multipart/form-data" class="edit-block">
+
+      <div class="edit-description">
+        Make sure this name matches your official identity documents.
+      </div>
+
+      <input class="airbnb-input" 
+             name="first_name" 
+             placeholder="First name on ID" 
+             value="{{ u.first_name }}">
+
+      <input class="airbnb-input"
+             name="last_name"
+             placeholder="Last name on ID"
+             value="{{ u.last_name }}">
+
+      <button class="save-btn">Save</button>
+      <a href="/settings" class="cancel-btn">Cancel</a>
+    </form>
+    {% endif %}
   </div>
 
-  <!-- =============== Change Password Section =============== -->
-  <div class="card mb-4">
-    <div class="card-header fw-bold">Change password</div>
-    <div class="card-body">
-      <form method="post" action="/settings/password" class="vstack gap-3">
-        <div>
-          <label class="form-label">Current password</label>
-          <input class="form-control" type="password" name="current">
-        </div>
-        <div class="row g-3">
-          <div class="col-sm-6">
-            <label class="form-label">New password</label>
-            <input class="form-control" type="password" name="password">
-          </div>
-          <div class="col-sm-6">
-            <label class="form-label">Confirm password</label>
-            <input class="form-control" type="password" name="confirm">
-          </div>
-        </div>
-        <div class="text-end">
-          <button class="btn btn-outline-primary">Update password</button>
-        </div>
-      </form>
+  <!-- ===================== DISPLAY NAME ===================== -->
+  <div class="section-line {% if editing != 'display' and editing is defined %}fade-disabled{% endif %}">
+    <div class="section-top">
+      <div class="section-label">Display Name</div>
+      <a href="?edit=display" class="section-action">
+        {% if u.display_name %}Edit{% else %}Add{% endif %}
+      </a>
     </div>
+    <div class="section-value">
+      {% if u.display_name %}
+        {{ u.display_name }}
+      {% else %}
+        Not provided
+      {% endif %}
+    </div>
+
+    {% if editing == 'display' %}
+    <form method="post" action="/settings/display" class="edit-block">
+
+      <div class="edit-description">
+        This name will be shown to renters and owners.
+      </div>
+
+      <input class="airbnb-input" 
+             name="display_name"
+             placeholder="Display name (optional)"
+             value="{{ u.display_name or '' }}">
+
+      <button class="save-btn">Save</button>
+      <a href="/settings" class="cancel-btn">Cancel</a>
+    </form>
+    {% endif %}
   </div>
 
-  <!-- =============== Currency Section =============== -->
-  {% set _cur = (u.display_currency or request.cookies.get('disp_cur') or 'CAD') %}
-  <div class="card">
-    <div class="card-header fw-bold">Currency</div>
-    <div class="card-body">
-      <form method="post" action="/settings/currency" class="vstack gap-3">
-        <div>
-          <label class="form-label">Display currency</label>
-          <select class="form-select" name="cur" required>
-            <option value="CAD" {% if _cur == 'CAD' %}selected{% endif %}>CAD — Canadian Dollar</option>
-            <option value="USD" {% if _cur == 'USD' %}selected{% endif %}>USD — US Dollar</option>
-            <option value="EUR" {% if _cur == 'EUR' %}selected{% endif %}>EUR — Euro</option>
-          </select>
-        </div>
-        <div class="text-end">
-          <button class="btn btn-outline-primary">Save</button>
-        </div>
-      </form>
+  <!-- ===================== EMAIL ===================== -->
+  <div class="section-line {% if editing != 'email' and editing is defined %}fade-disabled{% endif %}">
+    <div class="section-top">
+      <div class="section-label">Email Address</div>
+      <a href="?edit=email" class="section-action">Edit</a>
     </div>
+    <div class="section-value">{{ u.email }}</div>
+
+    {% if editing == 'email' %}
+    <form method="post" action="/settings/email" class="edit-block">
+
+      <div class="edit-description">
+        Use an email address you always have access to.
+      </div>
+
+      <input class="airbnb-input"
+             type="email"
+             name="email"
+             placeholder="Email address"
+             value="{{ u.email }}">
+
+      <button class="save-btn">Save</button>
+      <a href="/settings" class="cancel-btn">Cancel</a>
+    </form>
+    {% endif %}
   </div>
 
 </div>
