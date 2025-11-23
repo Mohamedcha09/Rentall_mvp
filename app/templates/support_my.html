@@ -7,16 +7,23 @@
   <i class="bi bi-chevron-left"></i>
 </a>
 
+<!-- ===== الشريط الثابت (Airbnb Sticky Header) ===== -->
+<div id="ticketsSticky" class="tickets-sticky-bar">
+    <a href="/" class="tickets-sticky-back"><i class="bi bi-chevron-left"></i></a>
+    <div class="tickets-sticky-title">My Tickets</div>
+    <div style="width:24px"></div>
+</div>
+
 <style>
 /* =====================================================
    زر الرجوع — iOS floating button style
-   ===================================================== */
+===================================================== */
 .back-btn-ios {
     position: fixed;
     top: calc(env(safe-area-inset-top) + 12px);
     left: 14px;
     z-index: 9999;
-    background: rgba(255,255,255,0.88);
+    background: #F7F4FF;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     width: 42px;
@@ -34,7 +41,7 @@
 
 /* =====================================================
    إخفاء الهيدر + التابات + التاب بار + بنر Stripe
-   ===================================================== */
+===================================================== */
 header.topbar,
 .m-top-tabs,
 nav.desk-tabs,
@@ -46,15 +53,53 @@ nav.desk-tabs,
     display: none !important;
 }
 
-/* منع padding للتاب بار */
-body.has-tabbar {
-    padding-bottom: 0 !important;
+body.has-tabbar { padding-bottom: 0 !important; }
+
+/* =====================================================
+   شريط ثابت يظهر عند النزول — Airbnb style
+===================================================== */
+.tickets-sticky-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 58px;
+    padding: calc(env(safe-area-inset-top) + 6px) 14px 8px 14px;
+    background: #F7F4FF;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    opacity: 0;
+    transform: translateY(-70px);
+    transition: all .35s ease;
+    z-index: 99999;
+}
+
+.tickets-sticky-bar.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.tickets-sticky-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #111;
+}
+
+.tickets-sticky-back {
+    font-size: 22px;
+    color: #333;
+}
+
+/* =====================================================
+   العنوان في أعلى الصفحة
+===================================================== */
+h3 {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 20px;
 }
 </style>
-
-<!-- =====================================================
-      My Tickets Content
-===================================================== -->
 
 <div class="container py-4" style="max-width:760px">
 
@@ -103,5 +148,20 @@ body.has-tabbar {
   </div>
 
 </div>
+
+<!-- =====================================================
+     سكربت الشريط الثابت
+===================================================== -->
+<script>
+document.addEventListener("scroll", function () {
+    const bar = document.getElementById("ticketsSticky");
+
+    if (window.scrollY > 100) {
+        bar.classList.add("show");
+    } else {
+        bar.classList.remove("show");
+    }
+});
+</script>
 
 {% endblock %}

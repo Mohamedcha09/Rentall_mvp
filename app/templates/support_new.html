@@ -6,16 +6,23 @@
   <i class="bi bi-chevron-left"></i>
 </a>
 
+<!-- ===== الشريط الثابت (Sticky Header) ===== -->
+<div id="supportSticky" class="support-sticky-bar">
+    <a href="/support/my" class="support-sticky-back"><i class="bi bi-chevron-left"></i></a>
+    <div class="support-sticky-title">Contact Support</div>
+    <div style="width:24px"></div>
+</div>
+
 <style>
 /* =====================================================
    زر الرجوع — iOS floating button style
-   ===================================================== */
+===================================================== */
 .back-btn-ios {
     position: fixed;
     top: calc(env(safe-area-inset-top) + 12px);
     left: 14px;
     z-index: 9999;
-    background: rgba(255,255,255,0.88);
+    background: #F7F4FF;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     width: 42px;
@@ -32,8 +39,8 @@
 .back-btn-ios:active { transform: scale(0.94); }
 
 /* =====================================================
-   إخفاء كل شيء — navbars, tabs, stripe, search
-   ===================================================== */
+   إخفاء navbars + stripe + searchbars
+===================================================== */
 header.topbar,
 .m-top-tabs,
 nav.desk-tabs,
@@ -46,9 +53,51 @@ nav.desk-tabs,
     display: none !important;
 }
 
-/* منع padding للتاب بار */
-body.has-tabbar {
-    padding-bottom: 0 !important;
+body.has-tabbar { padding-bottom:0 !important; }
+
+/* =====================================================
+   الشريط الثابت (Airbnb style)
+===================================================== */
+.support-sticky-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 58px;
+    padding: calc(env(safe-area-inset-top) + 6px) 14px 8px 14px;
+    background: #F7F4FF;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    opacity: 0;
+    transform: translateY(-70px);
+    transition: all .35s ease;
+    z-index: 99999;
+}
+
+.support-sticky-bar.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.support-sticky-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #111;
+}
+
+.support-sticky-back {
+    font-size: 22px;
+    color: #333;
+}
+
+/* =====================================================
+   عنوان الصفحة العادي
+===================================================== */
+h3 {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 20px;
 }
 </style>
 
@@ -76,5 +125,20 @@ body.has-tabbar {
   </form>
 
 </div>
+
+<!-- =====================================================
+     سكربت الشريط الثابت — يظهر عند النزول
+===================================================== -->
+<script>
+document.addEventListener("scroll", function () {
+    const bar = document.getElementById("supportSticky");
+
+    if (window.scrollY > 100) {
+        bar.classList.add("show");
+    } else {
+        bar.classList.remove("show");
+    }
+});
+</script>
 
 {% endblock %}
