@@ -1,18 +1,48 @@
 {% extends "base.html" %}
+
+{% block head %}
+<style>
+/* ===== إخفاء النافبار + التاب بار + stripe banner على الهاتف ===== */
+@media (max-width: 768px){
+  body[data-path="/support/contact"],
+  body[data-path^="/support/contact"] {
+
+    header.topbar,
+    .m-top-tabs,
+    .mobile-tabbar,
+    .stripe-callout,
+    .searchbar {
+      display: none !important;
+    }
+
+    .page {
+      padding-top: 14px !important;
+      padding-bottom: 14px !important;
+    }
+  }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-4">
+<div class="container py-4" style="max-width:760px">
+
   <h3>Contact Support</h3>
+
   <form method="post" class="mt-3">
     <div class="mb-3">
       <label class="form-label">Subject</label>
       <input name="subject" class="form-control" placeholder="Enter subject">
     </div>
+
     <div class="mb-3">
       <label class="form-label">Message</label>
       <textarea name="body" class="form-control" rows="6" placeholder="Describe your issue..."></textarea>
     </div>
+
     <button class="btn btn-primary">Send</button>
     <a class="btn btn-light" href="/support/my">My Tickets</a>
   </form>
+
 </div>
 {% endblock %}
