@@ -707,6 +707,55 @@
   }
 }
 
+
+/* ========== FINAL HARD OVERRIDE — FIX CARD SPACING ========== */
+
+/* جعل كل العناصر تحت الصورة ملتصقة */
+.spot-body{
+  padding:6px 6px 0 !important;
+}
+
+/* العنوان أقرب */
+.spot-title{
+  margin-bottom:2px !important;
+  line-height:1.18 !important;
+}
+
+/* السعر + المدينة + التقييم */
+.spot-meta{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:0 !important;
+  margin-top:0 !important;
+  padding:0 !important;
+}
+
+/* السعر أقرب + أصغر */
+.spot-price{
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.15 !important;
+}
+
+/* المدينة قريبة جدًا تحت السعر */
+.spot-city{
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.12 !important;
+}
+
+/* التقييم ملتصق تحت المدينة */
+.spot-rating{
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.1 !important;
+}
+
+/* حذف أي footer قد يخرب الشكل */
+.spot-footer{display:none!important;}
+.owner-line{display:none!important;}
+.price-badge{display:none!important;}
+
 </style>
 
 
