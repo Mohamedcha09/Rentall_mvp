@@ -1,6 +1,32 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+<!-- ============================
+   إخفاء عناصر الهاتف فقط
+============================ -->
+<style>
+@media (max-width: 768px) {
+
+  /* Hide all navigation bars on mobile */
+  header.topbar,
+  .m-top-tabs,
+  nav.desk-tabs,
+  .mobile-tabbar,
+  .searchbar,
+  .stripe-callout,
+  .stripe-connect-banner,
+  .payout-banner,
+  .connect-banner {
+      display: none !important;
+  }
+
+  body.has-tabbar {
+      padding-bottom: 0 !important;
+  }
+}
+</style>
+
 <h2>Add New Item</h2>
 
 <form method="post" enctype="multipart/form-data" id="newItemForm">
@@ -20,7 +46,7 @@
 
   <div class="mb-3">
     <label class="form-label">Description</label>
-    <textarea name="description" class="form-control" rows="4"></textarea>
+    <textarea name="description" class="form-control" rows="4" required></textarea>
   </div>
 
   <div class="row">
@@ -28,7 +54,7 @@
       <label class="form-label">City</label>
 
       <!-- City field -->
-      <input type="text" name="city" id="cityNew" class="form-control" placeholder="Type the city / area…" autocomplete="off">
+      <input type="text" name="city" id="cityNew" class="form-control" placeholder="Type the city / area…" autocomplete="off" required>
 
       <!-- Suggestions list -->
       <div id="cityNewSuggest" class="border rounded mt-1 bg-white shadow-sm"
@@ -70,12 +96,13 @@
 
   <div class="mb-3">
     <label class="form-label">Image</label>
-    <input type="file" name="image" class="form-control" accept=".jpg,.jpeg,.png">
+    <input type="file" name="image" class="form-control" accept=".jpg,.jpeg,.png" required>
   </div>
 
   <button class="btn btn-primary">Save</button>
   <a href="/items" class="btn btn-outline-light">Back</a>
 </form>
+
 {% endblock %}
 
 {% block scripts %}
@@ -107,7 +134,7 @@
   });
 })();
 
-/* ============ City Autocomplete (matches the header) ============ */
+/* ============ City Autocomplete ============ */
 (function cityNewAutocomplete(){
   const input = document.getElementById('cityNew');
   const panel = document.getElementById('cityNewSuggest');
@@ -118,16 +145,14 @@
 
   let tm=null, lastList=[], active=-1;
 
-  // Detect language based on user typing
   function detectLang(q){
     const s = (q||'').trim();
-    if (/[\u0600-\u06FF]/.test(s)) return 'ar';                       // Arabic
-    const hasFrMarks = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(s);  // French letters
+    if (/[\u0600-\u06FF]/.test(s)) return 'ar';
+    const hasFrMarks = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(s);
     const frWords = /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
     const enWords = /\b(new|city|county|state|united|kingdom|usa|us|uk)\b/i.test(s);
     if (hasFrMarks || frWords) return 'fr';
     if (enWords) return 'en';
-    // Default: browser preferences
     const prefs = (navigator.languages || [navigator.language||'en']).map(x=>x.slice(0,2).toLowerCase());
     if (prefs.includes('fr')) return 'fr';
     if (prefs.includes('en')) return 'en';
@@ -225,16 +250,19 @@
   });
   function markActive(rows){
     rows.forEach(r=>r.classList.remove('bg-light'));
-    if (active>=0 && rows[active]){ rows[active].classList.add('bg-light'); rows[active].scrollIntoView({block:'nearest'}); }
+    if (active>=0 && rows[active]){
+      rows[active].classList.add('bg-light');
+      rows[active].scrollIntoView({block:'nearest'});
+    }
   }
 
-  // Close when clicking outside
-  document.addEventListener('click', (e)=>{ if (!panel.contains(e.target) && e.target !== input){ hide(); } });
-
-  // Before submit confirmation: if user typed manually without selecting, keep city as-is (lat/lon may be empty)
-  form?.addEventListener('submit', function(){
-    // Nothing extra — server will receive city + (lat/lon if present)
+  // Close on outside click
+  document.addEventListener('click', (e)=>{
+    if (!panel.contains(e.target) && e.target !== input){
+      hide();
+    }
   });
+
 })();
 </script>
 {% endblock %}
