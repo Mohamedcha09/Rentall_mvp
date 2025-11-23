@@ -760,6 +760,49 @@
 .owner-line{display:none!important;}
 .price-badge{display:none!important;}
 
+/* ========== SUPER HARD OVERRIDE — FIX TITLE–PRICE GAP ========== */
+
+/* 1) إزالة كل الـ padding من spot-body مهما كان فوق */
+.spot-body{
+  padding:4px 4px 0 !important;
+}
+
+/* 2) تقريب العنوان من السعر */
+.spot-title{
+  margin-top:0 !important;
+  margin-bottom:2px !important;
+  line-height:1.12 !important;
+}
+
+/* 3) السعر يصبح مباشرة تحت العنوان */
+.spot-price{
+  margin-top:0 !important;
+  line-height:1.1 !important;
+}
+
+/* 4) المدينة مباشرة تحت السعر */
+.spot-city{
+  margin-top:0 !important;
+  line-height:1.08 !important;
+}
+
+/* 5) التقييم مباشرة تحت المدينة */
+.spot-rating{
+  margin-top:0 !important;
+  line-height:1.08 !important;
+}
+
+/* 6) لمنع أي كود آخر من أخذ السيطرة */
+@media (max-width:2000px){
+  .spot-body,
+  .spot-title,
+  .spot-price,
+  .spot-city,
+  .spot-rating{
+    margin-top:0 !important;
+  }
+}
+
 </style>
 
 
