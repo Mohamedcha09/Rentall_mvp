@@ -258,23 +258,16 @@
         display: none !important;
       }
 
-      
+      /* Force hide bottom tabbar when guest */
+body[data-auth="0"] .mobile-tabbar {
+    display: none !important;
+}
+
       /* Proper bottom space without + button */
       body[data-auth="0"] .page{
         padding-bottom: calc(76px + max(var(--safe-bottom), var(--safe-bottom-legacy))) !important;
       }
-@media (max-width: 768px){
-  body[data-auth="0"] .mobile-tabbar a{
-    display: flex !important;
-  }
-  body[data-auth="0"] .mobile-tabbar{
-    grid-template-columns: repeat(5, 1fr) !important;
-  }
-}
-
     }
-
-    
   </style>
 
   <!-- Highlight Login/Register as pills -->
