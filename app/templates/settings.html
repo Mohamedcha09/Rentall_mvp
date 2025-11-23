@@ -34,7 +34,7 @@ body.has-tabbar { padding-bottom:0 !important; }
     top: calc(env(safe-area-inset-top) + 12px);
     left: 16px;
     z-index: 9999;
-    background: #fff;
+    background: #ff0a0a;
     width: 42px;
     height: 42px;
     border-radius: 50%;
@@ -108,6 +108,61 @@ body.has-tabbar { padding-bottom:0 !important; }
 .help-text {
     font-size: 14px;
     color: #777;
+}
+
+
+/* ===== إخفاء أي Banner مهما كان اسمه ===== */
+
+.stripe-callout,
+.payouts-callout,
+.connect-banner,
+.connect-now-banner,
+.payout-banner,
+.stripe-connect-banner,
+.connect-stripe,
+.stripe-box,
+.stripe_info,
+.stripe-info,
+.banner,
+.alert-stripe,
+.top-banner,
+.notice-stripe,
+#stripe-connect,
+[data-section="stripe"],
+div[class*="stripe"],
+section[class*="stripe"],
+div[class*="connect"],
+section[class*="connect"] {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* ===== زر Sevor — Gradient Luxury ===== */
+.air-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #8b5cf6, #5b9df9);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 17px;
+    font-weight: 600;
+    text-align: center;
+    box-shadow: 0 4px 14px rgba(91,157,249,0.25);
+    margin-top: 8px;
+    transition: 0.2s ease-in-out;
+}
+
+.air-btn:hover {
+    box-shadow: 0 6px 18px rgba(91,157,249,0.35);
+    opacity: 0.95;
+}
+
+.air-btn:active {
+    transform: scale(0.97);
 }
 
 </style>
