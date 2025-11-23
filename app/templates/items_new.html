@@ -170,15 +170,90 @@ h2 {
   }
 }
 </style>
+<style>
+/* ============================
+   BACK BUTTON — iOS Floating
+============================ */
+.back-floating {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 14px);
+    left: 16px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.90);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    z-index: 9999;
+    color: #333;
+}
+
+/* إظهار فقط على الهاتف */
+@media (min-width: 769px){
+  .back-floating { display:none; }
+}
+
+.btn-primary {
+    margin-bottom: 40px !important;
+}
+
+/* Image Upload — Airbnb Style */
+.upload-box {
+    background: #ffffff;
+    border: 1px dashed rgba(0,0,0,0.2);
+    border-radius: 18px;
+    padding: 28px;
+    text-align: center;
+    cursor: pointer;
+    transition: .25s ease;
+    color: #444;
+}
+
+.upload-box:hover {
+    background: #f3f1ff;
+    border-color: #8b5cf6;
+}
+
+.upload-box i {
+    font-size: 34px;
+    color: #8b5cf6;
+    margin-bottom: 8px;
+}
+
+#realFileInput {
+    display: none;
+}
+
+.mb-3 {
+  margin-bottom: 25px !important;
+}
+
+
+</style>
+
 
 
 <h2>Add New Item</h2>
+<a href="/owner/items" class="back-floating"><i class="bi bi-chevron-left"></i></a>
+
 
 <form method="post" enctype="multipart/form-data" id="newItemForm">
-  <div class="mb-3">
-    <label class="form-label">Title</label>
-    <input type="text" name="title" class="form-control" required>
+<div class="mb-3">
+  <label class="form-label">Image</label>
+
+  <div class="upload-box" onclick="document.getElementById('realFileInput').click()">
+      <i class="bi bi-cloud-arrow-up"></i>
+      <div class="mt-2">Upload Image</div>
   </div>
+
+  <input id="realFileInput" type="file" name="image" accept=".jpg,.jpeg,.png" required>
+</div>
+
 
   <div class="mb-3">
     <label class="form-label">Category</label>
