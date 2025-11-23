@@ -210,9 +210,10 @@
 .spot-meta{
   display:flex;
   flex-direction:column;
-  gap:2px;
-  margin-top:4px;
+  gap:1px !important;
+  margin-top:0 !important;
 }
+
 .spot-price{font-weight:900;color:#111;font-size:.95rem}
 .spot-price span{font-weight:600;opacity:.85}
 .spot-city{color:#6b7280;font-size:.92rem}
@@ -220,7 +221,7 @@
 .spot-rating::before{content:"★ ";font-weight:900}
 
 /* Reduce spacing since we don’t use the below-image price-badge */
-.spot-body{padding:10px 4px 0}
+.spot-body{padding:4px 4px 0 !important;}
 
 /* Hide the old lines (do not delete HTML) to avoid duplicate info */
 .owner-line{display:none!important}
