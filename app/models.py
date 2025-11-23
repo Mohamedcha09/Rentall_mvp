@@ -180,7 +180,7 @@ class Item(Base):
     description = Column(Text, nullable=True)
     city = Column(String(120), nullable=True)
     currency = Column(String(3), nullable=False, default='CAD')        # CAD / USD / EUR
-    price    = Column(Numeric(12, 2), nullable=False, default=0)       # السعر الأساسي (نخزّنه للمرونة)
+    price    = Column(Numeric(12, 2), nullable=False, default=0)
 
     # Optional coordinates
     latitude  = col_or_literal("items", "latitude",  Float,  nullable=True)
@@ -188,7 +188,14 @@ class Item(Base):
 
     price_per_day = Column(Integer, nullable=False, default=0)
     category      = Column(String(50), nullable=False, default="other")
+
+    # OLD single image
     image_path    = Column(String(500), nullable=True)
+
+    # NEW multiple images (10 max if you enforce limit)
+    from sqlalchemy.dialects.postgresql import ARRAY
+    image_urls = col_or_literal("items", "image_urls", ARRAY(String), default=list)
+
     is_active     = Column(String(10), default="yes")
     created_at    = Column(DateTime, default=datetime.utcnow)
 

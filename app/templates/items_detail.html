@@ -1071,14 +1071,20 @@ pointer-events:none;
     <!-- ===== Item / Gallery ===== -->
     <div class="card-glass">
       <div class="gallery">
-        {% set _srcs = [] %}
-        {% if item.image_path %}
-          {% set _raw = item.image_path %}
-          {% if ',' in _raw %}{% set _srcs = _raw.split(',') %}
-          {% elif '|' in _raw %}{% set _srcs = _raw.split('|') %}
-          {% else %}{% set _srcs = [_raw] %}{% endif %}
-        {% endif %}
-        {% set current = _srcs[0] if _srcs else None %}
+{# استخدم الصور الجديدة من DB #}
+{% set imgs = item.image_urls or [] %}
+
+{% if not imgs %}
+  {# fallback للصور القديمة لو المستخدم رفع فقط صورة واحدة #}
+  {% if item.image_path %}
+    {% set imgs = [item.image_path] %}
+  {% else %}
+    {% set imgs = [] %}
+  {% endif %}
+{% endif %}
+
+{% set current = imgs[0] if imgs else None %}
+
 
         {% macro build_src(p) -%}
           {%- set s = (p or '') -%}
@@ -1088,7 +1094,7 @@ pointer-events:none;
 
         <div class="gallery-main" id="gMain">
           {% if current %}
-            <img id="mainImg" src="{{ build_src(current) }}" alt="item image">
+            <img id="mainImg" src="{{ current }}"alt="item image">
             <div class="hero-fade" id="heroFade"></div>
           {% else %}
             <div style="display:grid;place-items:center;height:100%;color:#8b94a7;font-size:13px">No image</div>
@@ -1117,14 +1123,16 @@ pointer-events:none;
 
           <div class="air-pager" id="airPager">1/1</div>
 
-          {% if _srcs|length > 1 %}
-            <div class="thumbs" id="thumbs">
-              {% for s in _srcs %}
-                {% set src = build_src(s.strip()) %}
-                <img data-src="{{ src }}" data-index="{{ loop.index0 }}" class="{% if loop.index0==0 %}active{% endif %}" src="{{ src }}" alt="thumb {{ loop.index }}">
-              {% endfor %}
-            </div>
-          {% endif %}
+{% if imgs|length > 1 %}
+  <div class="thumbs" id="thumbs">
+    {% for s in imgs %}
+      <img data-src="{{ s }}" data-index="{{ loop.index0 }}"
+           class="{% if loop.index0==0 %}active{% endif %}"
+           src="{{ s }}">
+    {% endfor %}
+  </div>
+{% endif %}
+
         </div>
       </div>
 
