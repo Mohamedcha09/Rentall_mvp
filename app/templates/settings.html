@@ -1,71 +1,122 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- ===== زر الرجوع العائم (iOS style) ===== -->
-<a href="/" class="back-btn-ios">
+<!-- ===== زر الرجوع (iOS مثل Airbnb) ===== -->
+<a href="/" class="air-back">
   <i class="bi bi-chevron-left"></i>
 </a>
 
 <style>
-/* =====================================================
-   زر الرجوع — iOS floating button style
-   ===================================================== */
-.back-btn-ios {
-    position: fixed;
-    top: calc(env(safe-area-inset-top) + 12px);
-    left: 14px;
-    z-index: 9999;
-    background: rgba(255,255,255,0.88);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #333;
-    font-size: 20px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-    text-decoration: none;
-}
-.back-btn-ios:active { transform: scale(0.94); }
 
 /* =====================================================
-   إخفاء الهيدر العلوي + تابات + تاب بار سفلي
-   ===================================================== */
+   خلفية Airbnb — بيضاء وبسيطة
+===================================================== */
+body {
+    background: #ffffff !important;
+}
+
+/* =====================================================
+   إخفاء الهيدر + تابات + تاب بار (مثل Airbnb)
+===================================================== */
 header.topbar,
 .m-top-tabs,
 nav.desk-tabs,
 .mobile-tabbar {
     display: none !important;
 }
+body.has-tabbar { padding-bottom:0 !important; }
 
-/* بدون padding للتاب بار */
-body.has-tabbar {
-    padding-bottom: 0 !important;
+/* =====================================================
+   زر الرجوع
+===================================================== */
+.air-back {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 12px);
+    left: 16px;
+    z-index: 9999;
+    background: #fff;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(0,0,0,.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: #333;
+    backdrop-filter: blur(10px);
 }
 
 /* =====================================================
-   إخفاء Banner Stripe الحقيقي (المشكلة عندك)
-   ===================================================== */
-.stripe-callout,
-.payouts-callout,
-.connect-banner,
-.payout-banner,
-.stripe-connect-banner,
-.connect-now-banner {
-    display: none !important;
+   عنوان الصفحة — Airbnb style
+===================================================== */
+.settings-title {
+    font-size: 28px;
+    font-weight: 600;
+    margin-top: 80px;
+    margin-bottom: 24px;
 }
+
+/* =====================================================
+   البلوكات (بدل الكارد)
+===================================================== */
+.air-block {
+    padding: 24px 0;
+    border-bottom: 1px solid #ededed;
+}
+
+.air-block h4 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+/* =====================================================
+   الـ Input — ستايل Airbnb
+===================================================== */
+.air-input, .air-select {
+    width: 100%;
+    border: 1px solid #dcdcdc;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 16px;
+    background: #fafafa;
+}
+
+.air-input:focus, .air-select:focus {
+    border-color: #000;
+    background: #fff;
+    outline: none;
+}
+
+/* =====================================================
+   زر حفظ (أسود مثل Airbnb)
+===================================================== */
+.air-btn {
+    width: 100%;
+    background: #000;
+    color: #fff;
+    border-radius: 12px;
+    padding: 14px;
+    border: none;
+    font-size: 17px;
+    margin-top: 8px;
+}
+.air-btn:active { transform: scale(.97); }
+
+/* نصوص إضافية */
+.help-text {
+    font-size: 14px;
+    color: #777;
+}
+
 </style>
 
-<!-- =====================================================
-      محتوى صفحة الإعدادات
-===================================================== -->
 <div class="container" style="max-width:760px">
 
-  <h3 class="mb-3">Settings</h3>
+  <div class="settings-title">Settings</div>
 
+  <!-- Alerts -->
   {% if request.query_params.get('saved') %}
     <div class="alert alert-success">Profile data saved ✅</div>
   {% endif %}
@@ -75,96 +126,75 @@ body.has-tabbar {
   {% if request.query_params.get('cur_saved') %}
     <div class="alert alert-success">Currency updated ✅</div>
   {% endif %}
-  {% if request.query_params.get('err') == 'email_used' %}
-    <div class="alert alert-danger">This email is already in use.</div>
-  {% elif request.query_params.get('err') == 'bad_current' %}
-    <div class="alert alert-danger">Current password is incorrect.</div>
-  {% elif request.query_params.get('err') == 'mismatch' %}
-    <div class="alert alert-danger">The new passwords do not match.</div>
-  {% endif %}
 
-  <!-- =============== Profile Section =============== -->
-  <div class="card mb-4">
-    <div class="card-header fw-bold">Profile</div>
-    <div class="card-body">
-      <form method="post" action="/settings/profile" enctype="multipart/form-data" class="vstack gap-3">
-        <div class="row g-3">
-          <div class="col-sm-6">
-            <label class="form-label">First name</label>
-            <input class="form-control" name="first_name" value="{{ u.first_name or '' }}">
-          </div>
-          <div class="col-sm-6">
-            <label class="form-label">Last name</label>
-            <input class="form-control" name="last_name" value="{{ u.last_name or '' }}">
-          </div>
-        </div>
+  <!-- =====================================================
+       Profile Section
+  ====================================================== -->
+  <div class="air-block">
+    <h4>Profile</h4>
 
-        <div>
-          <label class="form-label">Email</label>
-          <input class="form-control" type="email" name="email" value="{{ u.email or '' }}">
-          <div class="form-text">Changing your email may require re-verification.</div>
-        </div>
+    <form method="post" action="/settings/profile" enctype="multipart/form-data" class="vstack gap-3">
 
-        <div>
-          <label class="form-label">Profile picture</label>
-          <input class="form-control" type="file" name="avatar" accept=".jpg,.jpeg,.png,.webp">
-          {% if u.avatar_path %}
-            <img src="{{ u.avatar_path }}" alt="" class="mt-2 rounded-circle" style="width:64px;height:64px;object-fit:cover">
-          {% endif %}
-        </div>
+      <label>First name</label>
+      <input class="air-input" name="first_name" value="{{ u.first_name or '' }}">
 
-        <div class="text-end">
-          <button class="btn btn-primary">Save</button>
-        </div>
-      </form>
-    </div>
+      <label>Last name</label>
+      <input class="air-input" name="last_name" value="{{ u.last_name or '' }}">
+
+      <label>Email</label>
+      <input class="air-input" type="email" name="email" value="{{ u.email or '' }}">
+      <div class="help-text">Changing your email may require re-verification.</div>
+
+      <label>Profile picture</label>
+      <input class="air-input" type="file" name="avatar" accept=".jpg,.jpeg,.png,.webp">
+
+      {% if u.avatar_path %}
+      <img src="{{ u.avatar_path }}" class="mt-2 rounded-circle" style="width:72px;height:72px;object-fit:cover">
+      {% endif %}
+
+      <button class="air-btn">Save</button>
+    </form>
   </div>
 
-  <!-- =============== Change Password Section =============== -->
-  <div class="card mb-4">
-    <div class="card-header fw-bold">Change password</div>
-    <div class="card-body">
-      <form method="post" action="/settings/password" class="vstack gap-3">
-        <div>
-          <label class="form-label">Current password</label>
-          <input class="form-control" type="password" name="current">
-        </div>
-        <div class="row g-3">
-          <div class="col-sm-6">
-            <label class="form-label">New password</label>
-            <input class="form-control" type="password" name="password">
-          </div>
-          <div class="col-sm-6">
-            <label class="form-label">Confirm password</label>
-            <input class="form-control" type="password" name="confirm">
-          </div>
-        </div>
-        <div class="text-end">
-          <button class="btn btn-outline-primary">Update password</button>
-        </div>
-      </form>
-    </div>
+  <!-- =====================================================
+       Change Password
+  ====================================================== -->
+  <div class="air-block">
+    <h4>Change password</h4>
+
+    <form method="post" action="/settings/password" class="vstack gap-3">
+
+      <label>Current password</label>
+      <input class="air-input" type="password" name="current">
+
+      <label>New password</label>
+      <input class="air-input" type="password" name="password">
+
+      <label>Confirm password</label>
+      <input class="air-input" type="password" name="confirm">
+
+      <button class="air-btn">Update Password</button>
+    </form>
   </div>
 
-  <!-- =============== Currency Section =============== -->
+  <!-- =====================================================
+       Currency
+  ====================================================== -->
   {% set _cur = (u.display_currency or request.cookies.get('disp_cur') or 'CAD') %}
-  <div class="card">
-    <div class="card-header fw-bold">Currency</div>
-    <div class="card-body">
-      <form method="post" action="/settings/currency" class="vstack gap-3">
-        <div>
-          <label class="form-label">Display currency</label>
-          <select class="form-select" name="cur" required>
-            <option value="CAD" {% if _cur == 'CAD' %}selected{% endif %}>CAD — Canadian Dollar</option>
-            <option value="USD" {% if _cur == 'USD' %}selected{% endif %}>USD — US Dollar</option>
-            <option value="EUR" {% if _cur == 'EUR' %}selected{% endif %}>EUR — Euro</option>
-          </select>
-        </div>
-        <div class="text-end">
-          <button class="btn btn-outline-primary">Save</button>
-        </div>
-      </form>
-    </div>
+
+  <div class="air-block">
+    <h4>Currency</h4>
+
+    <form method="post" action="/settings/currency" class="vstack gap-3">
+
+      <select class="air-select" name="cur">
+        <option value="CAD" {% if _cur == 'CAD' %}selected{% endif %}>CAD — Canadian Dollar</option>
+        <option value="USD" {% if _cur == 'USD' %}selected{% endif %}>USD — US Dollar</option>
+        <option value="EUR" {% if _cur == 'EUR' %}selected{% endif %}>EUR — Euro</option>
+      </select>
+
+      <button class="air-btn">Save</button>
+    </form>
   </div>
 
 </div>
