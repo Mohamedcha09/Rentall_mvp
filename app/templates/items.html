@@ -140,7 +140,10 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
                 <span>/day</span>
               </div>
               <div class="spot-city">{{ it.item.city or '—' }}</div>
-              <div class="spot-rating">{{ it.item.avg_stars|default(it.item.rating)|default(4.8) }}</div>
+              {% if it.item.avg_stars %}
+  <div class="spot-rating">{{ "%.1f"|format(it.item.avg_stars) }}</div>
+{% endif %}
+
             </div>
           </div>
         </a>

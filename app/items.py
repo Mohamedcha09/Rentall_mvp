@@ -366,6 +366,13 @@ def items_list(
             q = q.order_by(func.random())
 
     items = q.all()
+    for it in items:
+    avg = db.query(func.avg(ItemReview.stars)).filter(ItemReview.item_id == it.id).scalar()
+    cnt = db.query(func.count(ItemReview.id)).filter(ItemReview.item_id == it.id).scalar()
+
+    it.avg_stars = float(avg) if avg else None
+    it.rating_count = int(cnt or 0)
+
 
     # Prepare view data
     for it in items:
