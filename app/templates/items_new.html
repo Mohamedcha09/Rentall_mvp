@@ -240,17 +240,12 @@ h2 {
 
 <form method="post" enctype="multipart/form-data" id="newItemForm">
 
-<!-- Upload Image -->
 <div class="mb-3">
-  <label class="form-label">Image</label>
-
-  <div class="upload-box" onclick="document.getElementById('realFileInput').click()">
-      <i class="bi bi-cloud-arrow-up"></i>
-      <div class="mt-2">Upload Image</div>
-  </div>
-
-  <input id="realFileInput" type="file" name="image" accept=".jpg,.jpeg,.png" required>
+  <label class="form-label">Title</label>
+  <input type="text" name="title" class="form-control" placeholder="Enter a clear title…" required>
 </div>
+
+
 
 
 <!-- Category -->
@@ -308,12 +303,21 @@ h2 {
     </select>
     <small class="text-muted">Listing currency.</small>
   </div>
+<!-- Upload Image -->
+<div class="mb-3">
+  <label class="form-label">Image</label>
 
+  <div class="upload-box" onclick="document.getElementById('realFileInput').click()">
+      <i class="bi bi-cloud-arrow-up"></i>
+      <div class="mt-2">Upload Image</div>
+  </div>
+
+  <input id="realFileInput" type="file" name="image" accept=".jpg,.jpeg,.png" required>
+</div>
 </div>
 
 
 <button class="btn btn-primary">Save</button>
-<a href="/items" class="btn btn-outline-light">Back</a>
 
 </form>
 
