@@ -2,32 +2,39 @@
 {% block content %}
 
 <style>
-  /* ====== Cacher la navbar du haut ====== */
+  /* إخفاء الهيدر العلوي */
   header.topbar,
   .m-top-tabs {
       display: none !important;
   }
 
-  /* ====== Cacher la navbar du bas ====== */
+  /* إخفاء التاب بار السفلي */
   .mobile-tabbar {
       display: none !important;
   }
 
-  /* ====== enlever le padding réservé au tabbar ====== */
+  /* منع أي padding سفلي عند إخفاء التاب بار */
   body.has-tabbar {
       padding-bottom: 0 !important;
   }
 
-  /* ====== Cacher tabs desktop (Home / Notifications / etc.) ====== */
+  /* إخفاء تبويبات الديسكتوب */
   nav.desk-tabs {
+      display: none !important;
+  }
+
+  /* إخفاء بانر Stripe Connect بالكامل */
+  .connect-banner,
+  .payouts-banner,
+  .stripe-connect-banner {
       display: none !important;
   }
 </style>
 
 <div class="container" style="max-width:760px">
+
   <h3 class="mb-3">Settings</h3>
 
-  {# رسائل نجاح/أخطاء عامة #}
   {% if request.query_params.get('saved') %}
     <div class="alert alert-success">Profile data saved ✅</div>
   {% endif %}
@@ -45,7 +52,7 @@
     <div class="alert alert-danger">The new passwords do not match.</div>
   {% endif %}
 
-  {# ================= Profile ================= #}
+  <!-- =============== Profile Section =============== -->
   <div class="card mb-4">
     <div class="card-header fw-bold">Profile</div>
     <div class="card-body">
@@ -60,11 +67,13 @@
             <input class="form-control" name="last_name" value="{{ u.last_name or '' }}">
           </div>
         </div>
+
         <div>
           <label class="form-label">Email</label>
           <input class="form-control" type="email" name="email" value="{{ u.email or '' }}">
           <div class="form-text">Changing your email may require re-verification.</div>
         </div>
+
         <div>
           <label class="form-label">Profile picture</label>
           <input class="form-control" type="file" name="avatar" accept=".jpg,.jpeg,.png,.webp">
@@ -72,6 +81,7 @@
             <img src="{{ u.avatar_path }}" alt="" class="mt-2 rounded-circle" style="width:64px;height:64px;object-fit:cover">
           {% endif %}
         </div>
+
         <div class="text-end">
           <button class="btn btn-primary">Save</button>
         </div>
@@ -79,7 +89,7 @@
     </div>
   </div>
 
-  {# ================= Change Password ================= #}
+  <!-- =============== Password Section =============== -->
   <div class="card mb-4">
     <div class="card-header fw-bold">Change password</div>
     <div class="card-body">
@@ -105,7 +115,7 @@
     </div>
   </div>
 
-  {# ================= Currency ================= #}
+  <!-- =============== Currency Section =============== -->
   {% set _cur = (u.display_currency or request.cookies.get('disp_cur') or 'CAD') %}
   <div class="card">
     <div class="card-header fw-bold">Currency</div>
@@ -118,9 +128,6 @@
             <option value="USD" {% if _cur == 'USD' %}selected{% endif %}>USD — US Dollar</option>
             <option value="EUR" {% if _cur == 'EUR' %}selected{% endif %}>EUR — Euro</option>
           </select>
-          <div class="form-text">
-            Prices across the site will be shown in your selected currency. This won’t change how owners set their listing currency.
-          </div>
         </div>
         <div class="text-end">
           <button class="btn btn-outline-primary">Save</button>
@@ -130,4 +137,5 @@
   </div>
 
 </div>
+
 {% endblock %}
