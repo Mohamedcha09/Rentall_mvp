@@ -1051,6 +1051,7 @@
   /* تأكيد عدم وجود جريد سابق للسيميلر/الريفيو يفسد التخطيط */
   .rv-strip, .sim-row{ grid-template-columns:none !important; }
 }
+pointer-events:none;
 
 }
 
@@ -1204,10 +1205,19 @@
 
             <span class="per">per day</span>
           </div>
-<a class="air-cta"
-   href="/bookings/new?item_id={{ item.id }}&disp_cur={{ display_currency }}">
-  Book now
-</a>
+{% if not session_user %}
+  <a class="air-cta"
+     href="/login?next={{ request.url | urlencode }}"
+     style="opacity:0.45;">
+     Book now
+  </a>
+{% else %}
+  <a class="air-cta"
+     href="/bookings/new?item_id={{ item.id }}&disp_cur={{ display_currency }}">
+     Book now
+  </a>
+{% endif %}
+
         </div>
       </div>
       <div class="air-underlay" id="airUnder"></div>
