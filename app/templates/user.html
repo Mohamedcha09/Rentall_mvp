@@ -24,121 +24,119 @@
   background:var(--surface);
   flex:0 0 auto;
 }
-.stats-chip i{ opacity:.75; }
 .stats-strip::-webkit-scrollbar{ height:8px }
 .stats-strip::-webkit-scrollbar-thumb{
   background:rgba(0,0,0,.15); border-radius:999px;
 }
 
-/* ====================== NEW SIMILAR-CARD STYLE APPLIED TO PROFILE ITEMS ====================== */
-.profile-item-card{
+/* ====================== SIMILAR CARD DESIGN ====================== */
+.sim-card{
   background:#fff;
   border-radius:22px;
-  padding:0;
-  border:1px solid rgba(17,24,39,.08);
-  box-shadow:0 10px 26px rgba(17,24,39,.08);
-  overflow:hidden;
-  transition:transform .12s ease, box-shadow .2s ease;
-  height:100%;
+  padding:14px;
+  border:1px solid rgba(17,24,39,.06);
+  box-shadow:0 8px 26px rgba(17,24,39,.06);
+  transition:transform .18s ease, box-shadow .25s ease;
+}
+.sim-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 18px 38px rgba(17,24,39,.12);
 }
 
-.profile-item-card:hover{
-  transform:translateY(-3px);
-  box-shadow:0 18px 38px rgba(17,24,39,.16);
-}
-
-/* Image */
-.profile-item-media{
+.sim-img-box{
   position:relative;
-  border-radius:22px;
+  width:100%;
+  aspect-ratio:16 / 10;
+  border-radius:18px;
   overflow:hidden;
-  background:#f3f3f3;
+  background:#eee;
 }
 
-.profile-item-media img{
+.sim-img-box img{
   width:100%;
   height:100%;
-  aspect-ratio:16/10;
   object-fit:cover;
   display:block;
 }
 
-/* Price badge (left) */
-.profile-item-chip{
+/* Labels */
+.sim-chip{
   position:absolute;
-  top:12px;
-  left:12px;
-  padding:4px 12px;
-  border-radius:999px;
-  background:#ffffffd8;
+  top:10px;
+  left:10px;
+  padding:6px 14px;
+  background:#fff;
   border:1px solid #e5e7eb;
-  font-size:14px;
+  border-radius:999px;
+  font-size:13px;
   font-weight:700;
   color:#111;
-  backdrop-filter:blur(6px);
 }
 
-/* Category badge (right) */
-.profile-item-cat{
+.sim-cat{
   position:absolute;
-  top:12px;
-  right:12px;
-  padding:4px 12px;
-  border-radius:999px;
-  background:#ffffffd8;
+  top:10px;
+  right:10px;
+  padding:6px 14px;
+  background:#fff;
   border:1px solid #e5e7eb;
+  border-radius:999px;
   font-size:13px;
-  color:#444;
   font-weight:600;
+  color:#555;
+}
+
+/* Heart */
+.sim-heart{
+  position:absolute;
+  bottom:12px;
+  right:12px;
+  width:34px;
+  height:34px;
+  background:#ffffffcc;
   backdrop-filter:blur(6px);
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid #e5e7eb;
+  font-size:18px;
+  color:#d54df2;
 }
 
 /* Body */
-.profile-item-body{
-  padding:14px 14px 18px;
-  display:flex;
-  flex-direction:column;
+.sim-body{
+  padding-top:12px;
 }
 
-/* Title */
-.profile-item-title{
+.sim-title{
+  font-size:18px;
   font-weight:800;
-  font-size:17px;
-  margin:0 0 6px;
+  margin:0 0 4px;
   color:#111;
-  display:-webkit-box;
-  -webkit-line-clamp:2;
-  -webkit-box-orient:vertical;
-  overflow:hidden;
 }
 
-/* Meta */
-.profile-item-meta{
-  font-size:13px;
-  color:#6b7280;
+.sim-sub{
+  color:#6b728052;
+  font-size:14px;
+  margin-bottom:8px;
+  border-bottom:1px dashed #e5e7eb;
+  padding-bottom:8px;
 }
 
-/* Button */
-.profile-item-btn{
-  display:inline-block;
-  padding:8px 16px;
-  border-radius:12px;
-  background:linear-gradient(135deg,#8b5cf6,#22d3ee);
-  color:#fff;
-  font-weight:700;
-  text-decoration:none;
+.sim-price{
+  font-size:18px;
+  font-weight:900;
+  color:#111;
 }
-
 </style>
 
-{# Helper: Cloudinary-friendly paths #}
 {% macro build_src(p) -%}
-  {%- set s = (p or '') -%}
-  {%- if s.startswith('http') -%}
-    {{ s }}
-  {%- else -%}
-    {{ '/' ~ s.lstrip('/') if s else '/static/placeholder.png' }}
-  {%- endif -%}
+  {% if p and (p.startswith('http://') or p.startswith('https://')) %}
+    {{ p }}
+  {% else %}
+    {{ '/' ~ p.lstrip('/') if p else '/static/placeholder.png' }}
+  {% endif %}
 {%- endmacro %}
 
 <!-- ===================== USER HEADER ===================== -->
@@ -152,61 +150,32 @@
         style="width:86px;height:86px;object-fit:cover;border:1px solid var(--border)">
       {% else %}
         <div class="rounded-circle d-grid place-items-center"
-             style="width:86px;height:86px;background:rgba(255,255,255,.06);border:1px solid var(--border);">
+             style="width:86px;height:86px;background:rgba(255,255,255,.08);border:1px solid var(--border);">
           <span class="fw-bold fs-2">{{ (profile_user.first_name or 'U')[:1] }}</span>
         </div>
       {% endif %}
     </div>
 
     <div class="flex-grow-1 w-100">
-      <div class="d-flex flex-wrap align-items-center gap-2">
-        <h2 class="m-0 fw-bold">
-          {{ profile_user.first_name }} {{ profile_user.last_name }}
-        </h2>
-
-        {% if is_verified %}
-          <span class="d-inline-flex align-items-center gap-1 px-2 py-1 rounded-3"
-                style="border:1px solid var(--border);background:rgba(124,92,255,.15);">
-            <i class="bi bi-patch-check-fill" style="color:#72d3ff"></i>
-            <span class="small">Verified</span>
-          </span>
-        {% endif %}
-
-        {% if is_new %}
-          <span class="badge rounded-pill bg-warning text-dark">New</span>
-        {% endif %}
-      </div>
+      <h2 class="m-0 fw-bold">
+        {{ profile_user.first_name }} {{ profile_user.last_name }}
+      </h2>
 
       <div class="text-muted small mt-2 d-flex flex-wrap gap-3">
-        {% if created_at_str %}
         <span><i class="bi bi-calendar-check"></i> Joined: {{ created_at_str }}</span>
-        {% endif %}
-        <span><i class="bi bi-box"></i> Listed items: {{ stats.items_count or 0 }}</span>
+        <span><i class="bi bi-box"></i> Listed items: {{ stats.items_count }}</span>
 
-        {% if renter_reviews_count and renter_reviews_count > 0 %}
+        {% if renter_reviews_count > 0 %}
         <span>
           <i class="bi bi-star-fill"></i>
-          <a href="/users/{{ profile_user.id }}?tab=reviews" class="link-underline link-underline-opacity-0">
-            <span class="num-ltr">{{ '%.1f'|format((renter_reviews_avg|float)) }}/5</span> ({{ renter_reviews_count }})
-          </a>
+          <span class="num-ltr">{{ '%.1f'|format(renter_reviews_avg) }}/5</span>
         </span>
         {% endif %}
       </div>
 
       {% if profile_user.bio %}
-      <p class="mt-2 mb-0 text-muted">{{ profile_user.bio }}</p>
+        <p class="mt-2 mb-0 text-muted">{{ profile_user.bio }}</p>
       {% endif %}
-    </div>
-
-    <div class="d-flex gap-2 ms-md-auto">
-      {% if session_user and session_user.id != profile_user.id %}
-        <a href="/messages/start?user_id={{ profile_user.id }}" class="btn btn-primary">
-          <i class="bi bi-chat-text"></i> Message
-        </a>
-      {% endif %}
-      <a class="btn btn-ghost" href="/items?owner={{ profile_user.id }}">
-        <i class="bi bi-grid"></i> All their items
-      </a>
     </div>
 
   </div>
@@ -215,54 +184,35 @@
 <!-- ===================== STATS ===================== -->
 <section class="mb-3">
   <div class="stats-strip">
-    <div class="stats-chip d-flex align-items-center justify-content-between">
-      <div>
-        <div class="text-muted small">Items</div>
-        <div class="fs-4 fw-bold">{{ stats.items_count or 0 }}</div>
-      </div>
-      <i class="bi bi-box fs-3"></i>
+    <div class="stats-chip">
+      <div class="text-muted small">Items</div>
+      <div class="fs-4 fw-bold">{{ stats.items_count }}</div>
     </div>
 
-    <div class="stats-chip d-flex align-items-center justify-content-between position-relative">
-      <div>
-        <div class="text-muted small">Renter rating</div>
-        <div class="fs-4 fw-bold">
-          {% if renter_reviews_count > 0 %}
-            <span class="num-ltr">{{ '%.1f'|format(renter_reviews_avg|float) }}/5</span>
-          {% else %}—{% endif %}
-        </div>
-        <div class="small text-muted mt-1">
-          {% if renter_reviews_count > 0 %}
-            {{ renter_reviews_count }} review(s)
-          {% else %}No reviews{% endif %}
-        </div>
+    <div class="stats-chip">
+      <div class="text-muted small">Renter rating</div>
+      <div class="fs-4 fw-bold">
+        {% if renter_reviews_count > 0 %}
+          <span class="num-ltr">{{ '%.1f'|format(renter_reviews_avg) }}/5</span>
+        {% else %}—{% endif %}
       </div>
-      <i class="bi bi-star-fill fs-3"></i>
-      <a class="stretched-link" href="/users/{{ profile_user.id }}?tab=reviews"></a>
     </div>
 
-    <div class="stats-chip d-flex align-items-center justify-content-between">
-      <div>
-        <div class="text-muted small">Status</div>
-        <div class="fs-6 fw-bold">
-          {% if is_verified %}
-            <span class="text-success">Verified</span>
-          {% else %}
-            <span class="text-muted">Standard</span>
-          {% endif %}
-        </div>
+    <div class="stats-chip">
+      <div class="text-muted small">Status</div>
+      <div class="fs-6 fw-bold">
+        {% if is_verified %}
+          <span class="text-success">Verified</span>
+        {% else %}
+          <span class="text-muted">Standard</span>
+        {% endif %}
       </div>
-      <i class="bi bi-shield-check fs-3"></i>
     </div>
 
-    <div class="stats-chip d-flex align-items-center justify-content-between">
-      <div>
-        <div class="text-muted small">Member since</div>
-        <div class="fs-6 fw-bold">{{ created_at_str or '—' }}</div>
-      </div>
-      <i class="bi bi-calendar3 fs-3"></i>
+    <div class="stats-chip">
+      <div class="text-muted small">Member since</div>
+      <div class="fs-6 fw-bold">{{ created_at_str }}</div>
     </div>
-
   </div>
 </section>
 
@@ -281,7 +231,7 @@
 
 <div class="tab-content">
 
-  <!-- ===================== ITEMS TAB WITH NEW CARD STYLE ===================== -->
+  <!-- ===================== ITEMS TAB (SIMILAR CARD) ===================== -->
   <div class="tab-pane fade show active" id="pane-items">
 
     {% if items and items|length > 0 %}
@@ -289,37 +239,38 @@
 
         {% for it in items %}
         <div class="col-6 col-md-4 col-lg-3">
-          <article class="profile-item-card">
+          <div class="sim-card">
 
-            <div class="profile-item-media">
-              {% if it.image_path %}
-                <img src="{{ build_src(it.image_path) }}">
-              {% else %}
-                <div class="d-grid place-items-center text-muted" style="height:100%;aspect-ratio:16/10;">No image</div>
-              {% endif %}
+            <div class="sim-img-box">
+              <img src="{{ build_src(it.image_path) }}">
 
-              <div class="profile-item-chip">
-                {{ it.display_price }} {{ it.display_currency }}/day
+              <div class="sim-chip">
+                /day
               </div>
 
               {% if it.category_label %}
-              <div class="profile-item-cat">{{ it.category_label }}</div>
+              <div class="sim-cat">{{ it.category_label }}</div>
               {% endif %}
-            </div>
 
-            <div class="profile-item-body">
-              <div class="profile-item-title">{{ it.title }}</div>
-              <div class="d-flex justify-content-between align-items-center mt-auto">
-                <a href="/items/{{ it.id }}" class="profile-item-btn">Details</a>
-                <span class="profile-item-meta">
-                  {% if it.created_at %}
-                    {{ it.created_at.strftime("%Y-%m-%d") }}
-                  {% endif %}
-                </span>
+              <div class="sim-heart">
+                <i class="bi bi-heart"></i>
               </div>
             </div>
 
-          </article>
+            <div class="sim-body">
+              <div class="sim-title">{{ it.title }}</div>
+              <div class="sim-sub">
+                {{ it.category_label }} | {{ it.city or "" }}
+              </div>
+
+              <div class="sim-price">
+                {{ it.display_price }} {{ it.display_currency }}
+              </div>
+
+              <a href="/items/{{ it.id }}" class="btn btn-primary w-100 mt-2">Details</a>
+            </div>
+
+          </div>
         </div>
         {% endfor %}
 
@@ -328,96 +279,48 @@
     {% else %}
       <div class="card p-3 text-center text-muted">This user has no listed items currently.</div>
     {% endif %}
-
   </div>
 
-  <!-- ===================== ABOUT USER TAB ===================== -->
+  <!-- ===================== ABOUT ===================== -->
   <div class="tab-pane fade" id="pane-about">
     <div class="card p-3">
-      <div class="row g-3">
-        <div class="col-md-6">
-          <strong>Full name</strong>
-          <div class="text-muted">{{ profile_user.first_name }} {{ profile_user.last_name }}</div>
-        </div>
+      <strong>Full name</strong><br>
+      <span class="text-muted">{{ profile_user.first_name }} {{ profile_user.last_name }}</span>
 
-        <div class="col-md-6">
-          <strong>Status</strong>
-          <div>
-            {% if is_verified %}
-              <span class="badge bg-success">Verified</span>
-            {% else %}
-              <span class="badge bg-secondary">Standard</span>
-            {% endif %}
-            {% if is_new %}
-              <span class="badge bg-warning text-dark ms-1">New</span>
-            {% endif %}
-          </div>
-        </div>
+      <hr>
 
-        <div class="col-md-6">
-          <strong>Member since</strong>
-          <div class="text-muted">{{ created_at_str }}</div>
-        </div>
-      </div>
+      <strong>Status</strong><br>
+      {% if is_verified %}
+        <span class="badge bg-success">Verified</span>
+      {% else %}
+        <span class="badge bg-secondary">Standard</span>
+      {% endif %}
     </div>
   </div>
 
-  <!-- ===================== REVIEWS TAB ===================== -->
+  <!-- ===================== REVIEWS ===================== -->
   <div class="tab-pane fade" id="pane-reviews">
     <div class="card p-3">
-
-      <div class="d-flex align-items-center gap-2 mb-2">
-        <h5 class="m-0">Rating as renter</h5>
-        <span class="badge bg-light text-dark">
-          ⭐ <span class="num-ltr">{{ renter_reviews_avg }}/5</span> — {{ renter_reviews_count }} review(s)
-        </span>
-      </div>
-
       {% if renter_reviews_count > 0 %}
-        <div class="d-flex flex-column gap-2">
-
-          {% for r in renter_reviews %}
-            <div class="border rounded p-2">
-              <div class="d-flex align-items-center justify-content-between">
-                <div class="small text-muted">From owner #{{ r.owner_id }}</div>
-                <div>
-                  {% for _ in range(r.stars) %}⭐{% endfor %}
-                  {% for _ in range(5 - r.stars) %}☆{% endfor %}
-                </div>
-              </div>
-
-              {% if r.comment %}
-                <div class="mt-1">{{ r.comment }}</div>
-              {% endif %}
-
-              <div class="small text-muted mt-1">
-                {{ r.created_at.strftime("%Y-%m-%d") }}
+        {% for r in renter_reviews %}
+          <div class="border rounded p-2 mb-2">
+            <div class="d-flex justify-content-between">
+              <div class="small text-muted">Owner #{{ r.owner_id }}</div>
+              <div>
+                {% for _ in range(r.stars) %}⭐{% endfor %}
               </div>
             </div>
-          {% endfor %}
 
-        </div>
+            {% if r.comment %}
+              <div>{{ r.comment }}</div>
+            {% endif %}
+          </div>
+        {% endfor %}
       {% else %}
         <div class="text-muted">No reviews yet.</div>
       {% endif %}
-
     </div>
   </div>
-
 </div>
-
-<div class="py-2"></div>
-
-<script>
-(function(){
-  try{
-    var p = new URLSearchParams(location.search);
-    var want = p.get('tab') || (location.hash || '').replace('#','');
-    if(want === 'reviews'){
-      document.getElementById('tab-reviews')?.click();
-    }
-  }catch(e){}
-})();
-</script>
 
 {% endblock %}
