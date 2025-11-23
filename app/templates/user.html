@@ -1,6 +1,54 @@
 {% extends "base.html" %}
 {% block content %}
 
+<!-- ===== زر الرجوع iOS ===== -->
+<a href="/" class="back-btn-ios">
+  <i class="bi bi-chevron-left"></i>
+</a>
+
+<style>
+/* =====================================================
+   زر الرجوع — iOS floating button style
+   ===================================================== */
+.back-btn-ios {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 12px);
+    left: 14px;
+    z-index: 9999;
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    font-size: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    text-decoration: none;
+}
+.back-btn-ios:active { transform: scale(0.94); }
+
+/* =====================================================
+   إخفاء الهيدر + التابات + التاب بار + سترايب
+   ===================================================== */
+header.topbar,
+.m-top-tabs,
+nav.desk-tabs,
+.mobile-tabbar,
+.stripe-callout,
+.connect-banner,
+.payout-banner,
+.stripe-connect-banner,
+.searchbar {
+    display: none !important;
+}
+
+body.has-tabbar { padding-bottom: 0 !important; }
+</style>
+
 <style>
 /* ====================== NUMBERS LTR ====================== */
 .num-ltr{
@@ -131,6 +179,7 @@
 }
 </style>
 
+
 {% macro build_src(p) -%}
   {% if p and (p.startswith('http://') or p.startswith('https://')) %}
     {{ p }}
@@ -138,6 +187,8 @@
     {{ '/' ~ p.lstrip('/') if p else '/static/placeholder.png' }}
   {% endif %}
 {%- endmacro %}
+
+<div class="container py-4" style="max-width:760px">
 
 <!-- ===================== USER HEADER ===================== -->
 <section class="card p-3 p-md-4 mb-3">
@@ -231,7 +282,7 @@
 
 <div class="tab-content">
 
-  <!-- ===================== ITEMS TAB (SIMILAR CARD) ===================== -->
+  <!-- ===================== ITEMS TAB ===================== -->
   <div class="tab-pane fade show active" id="pane-items">
 
     {% if items and items|length > 0 %}
@@ -281,7 +332,7 @@
     {% endif %}
   </div>
 
-  <!-- ===================== ABOUT ===================== -->
+  <!-- ===================== ABOUT TAB ===================== -->
   <div class="tab-pane fade" id="pane-about">
     <div class="card p-3">
       <strong>Full name</strong><br>
@@ -321,6 +372,9 @@
       {% endif %}
     </div>
   </div>
+
+</div>
+
 </div>
 
 {% endblock %}

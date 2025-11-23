@@ -1,109 +1,158 @@
-{# ============================================================
-   app/templates/profile.html
-   Profile Page — works with Cloudinary
-   ============================================================ #}
-
 {% extends "base.html" %}
 
-{# == Local safe macros == #}
-{% macro build_src(p) -%}
-  {%- set s = (p or '') -%}
-  {%- if s.startswith('http://') or s.startswith('https://') -%}
-    {{- s -}}
-  {%- else -%}
-    {{- '/' ~ s.lstrip('/') if s else '' -}}
-  {%- endif -%}
-{%- endmacro %}
-
-{% macro avatar_src(p) -%}
-  {%- set s = (p or '') -%}
-  {%- if s.startswith('http://') or s.startswith('https://') -%}
-    {{- s -}}
-  {%- elif s and (not s.startswith('/uploads/')) -%}
-    {{- '/' ~ s.lstrip('/') -}}
-  {%- else -%}
-    {{- '/static/placeholder.png' -}}
-  {%- endif -%}
-{%- endmacro %}
-
-{% from "_badges.html" import render_badges %}
 {% block content %}
 
-{# 🔒 IMPORTANT:
-   Prefer database image first, then session one.
-   This ensures that if the session is missing, we don’t fall back to “1”.
-#}
+<!-- ===== زر الرجوع (iOS style) ===== -->
+<a href="/" class="back-btn-ios">
+  <i class="bi bi-chevron-left"></i>
+</a>
+
+<style>
+/* ===== زر الرجوع iOS ===== */
+.back-btn-ios {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 12px);
+    left: 14px;
+    z-index: 9999;
+    background: #fff;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #222;
+    font-size: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    text-decoration: none;
+}
+.back-btn-ios:active { transform: scale(0.92); }
+
+/* ===== إخفاء كل شيء (Navbar, Tabs, Stripe) ===== */
+header.topbar,
+.m-top-tabs,
+nav.desk-tabs,
+.mobile-tabbar,
+.stripe-callout,
+.connect-banner,
+.payout-banner,
+.stripe-connect-banner,
+.searchbar {
+    display: none !important;
+}
+
+body.has-tabbar { padding-bottom: 0 !important; }
+
+/* ===== تحسين شكل الصفحة ليصبح Airbnb-like ===== */
+.profile-container {
+    max-width: 780px;
+    margin: auto;
+    padding: 26px 16px;
+}
+
+.profile-header h2 {
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.profile-small {
+    color: #555;
+    font-size: 15px;
+    margin-top: 6px;
+}
+
+.section-card {
+    border-radius: 14px;
+    border: 1px solid #e6e6e6;
+    padding: 18px 20px;
+    background: #fff;
+}
+</style>
+
+{% from "_badges.html" import render_badges %}
+
+{# بيانات المستخدم #}
 {% set db_user = user %}
-{% set sess    = session_user %}
+{% set sess = session_user %}
 {% set avatar_candidate = (db_user and db_user.avatar_path) or (sess and sess.avatar_path) or '' %}
-{% set _ava3 = avatar_src(avatar_candidate) %}
+{% set _ava3 = avatar_candidate if avatar_candidate else '/static/placeholder.png' %}
 
-<div class="d-flex align-items-center gap-3 mb-3">
-  <div class="rounded-circle border" style="width:64px;height:64px;overflow:hidden">
-    {% if _ava3 and not _ava3.endswith('placeholder.png') %}
-      <img src="{{ _ava3 }}"
-           alt="avatar"
-           referrerpolicy="no-referrer"
-           onerror="this.onerror=null;this.src='/static/placeholder.png'"
-           style="width:100%;height:100%;object-fit:cover">
-    {% else %}
-      {# First letter only when there’s truly no image #}
-      <div class="w-100 h-100 d-flex align-items-center justify-content-center fw-bold">
-        {{ ((db_user.first_name or db_user.email or 'U')[:1] | upper) if db_user else 'U' }}
+<div class="profile-container">
+
+  <!-- ===== Header (Avatar + Name) ===== -->
+  <div class="d-flex align-items-center gap-3 mb-3">
+
+    <div style="width:78px;height:78px;border-radius:50%;overflow:hidden;border:1px solid #eee;">
+      {% if _ava3.endswith('placeholder.png') %}
+        <div class="w-100 h-100 d-flex align-items-center justify-content-center fw-bold" style="font-size:26px;">
+          {{ ((db_user.first_name or db_user.email or 'U')[:1] | upper) }}
+        </div>
+      {% else %}
+        <img src="{{ _ava3 }}"
+             style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+      {% endif %}
+    </div>
+
+    <div>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <h2 class="m-0">{{ db_user.first_name }} {{ db_user.last_name }}</h2>
+        {{ render_badges(db_user, '20px') }}
       </div>
-    {% endif %}
+
+      <div class="profile-small">
+        Email: {{ db_user.email or '—' }}
+        · Phone: {{ db_user.phone or '—' }}
+        · Member since: {{ db_user.created_at.strftime('%d-%m-%Y') if db_user.created_at }}
+      </div>
+    </div>
+
   </div>
 
-  <div>
-    <div class="d-flex align-items-center gap-2 flex-wrap">
-      <h2 class="m-0">{{ (db_user.first_name or '') }} {{ (db_user.last_name or '') }}</h2>
-      {{ render_badges(db_user, '20px') }}
+  <hr class="my-3">
+
+  <!-- ===== Info Cards ===== -->
+  <div class="row gy-3">
+
+    <div class="col-md-6">
+      <div class="section-card">
+        <h5 class="mb-2">📦 My Listings</h5>
+        <div>Total items: <strong>{{ items_count }}</strong></div>
+        <div>Active: <strong>{{ items_active_count }}</strong></div>
+      </div>
     </div>
-    <div class="text-muted small mt-1">
-      Email: {{ db_user.email or '—' }} · Phone: {{ db_user.phone or '—' }}
-      · Member since: {{ (db_user.created_at.strftime('%d-%m-%Y') if db_user.created_at) }}
+
+    <div class="col-md-6">
+      <div class="section-card">
+        <h5 class="mb-2">⭐ Ratings</h5>
+        <div>Average: <strong>{{ avg_stars }}/5</strong></div>
+        <div>Reviews count: <strong>{{ ratings_count }}</strong></div>
+      </div>
     </div>
+
   </div>
-</div>
 
-<hr class="my-3">
+  {% if reviews and reviews|length %}
+  <hr class="my-4">
+  <h5>Latest Reviews</h5>
+  <ul class="list-group">
+    {% for r in reviews %}
+      <li class="list-group-item">
+        <div class="fw-bold text-warning">★ {{ r.stars }}/5</div>
+        <div class="text-muted small">{{ r.created_at.strftime('%d-%m-%Y') if r.created_at }}</div>
+        <div class="mt-1">{{ r.comment or '—' }}</div>
+        <div class="text-muted small">From: {{ r.rater_name }}</div>
+      </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
 
-<div class="row gy-3">
-  <div class="col-md-6">
-    <div class="card p-3">
-      <h5 class="mb-2">📦 My Listings</h5>
-      <div>Total items: <strong>{{ items_count }}</strong></div>
-      <div>Active: <strong>{{ items_active_count }}</strong></div>
-    </div>
+  <hr class="my-4">
+  <div class="text-center">
+    <a href="/profile/docs" class="btn btn-outline-primary">
+      📄 Edit Documents or Profile Photo
+    </a>
   </div>
 
-  <div class="col-md-6">
-    <div class="card p-3">
-      <h5 class="mb-2">⭐ Ratings</h5>
-      <div>Average: <strong>{{ avg_stars }}/5</strong></div>
-      <div>Reviews count: <strong>{{ ratings_count }}</strong></div>
-    </div>
-  </div>
-</div>
-
-{% if reviews and reviews|length %}
-<hr class="my-4">
-<h5>Latest Reviews</h5>
-<ul class="list-group">
-  {% for r in reviews %}
-    <li class="list-group-item">
-      <div class="fw-bold text-warning">★ {{ r.stars }}/5</div>
-      <div class="text-muted small">{{ r.created_at.strftime('%d-%m-%Y') if r.created_at }}</div>
-      <div class="mt-1">{{ r.comment or '—' }}</div>
-      <div class="text-muted small">From: {{ r.rater_name }}</div>
-    </li>
-  {% endfor %}
-</ul>
-{% endif %}
-
-<hr class="my-4">
-<div class="text-center">
-  <a href="/profile/docs" class="btn btn-outline-primary">📄 Edit Documents or Profile Photo</a>
 </div>
 
 {% endblock %}
