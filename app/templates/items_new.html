@@ -398,10 +398,32 @@ h2 {
 
   function render(list){
     if(!list.length){ hide(); return; }
-    lastList = list.slice(0,8);
+
+    // ===== إزالة التكرار لكل بلد =====
+    const unique = [];
+    const seen = new Set();
+
+    for (const p of list) {
+        const city = (p.display_name || "").split(",")[0].trim();
+        const country = (p.address && p.address.country) || "";
+        const key = city + "|" + country;
+
+        if (!seen.has(key)) {
+            seen.add(key);
+            unique.push(p);
+        }
+    }
+
+    // نأخذ فقط أول نتيجتين (كندا + فرنسا غالباً)
+    const finalList = unique.slice(0, 3);
+
+    if (!finalList.length) { hide(); return; }
+
+    lastList = finalList;
+
     panel.innerHTML =
       '<div class="px-2 py-1 small text-muted border-bottom">Cities/Areas</div>' +
-      lastList.map((p,i)=>`
+      finalList.map((p,i)=>`
         <div class="py-2 px-2 d-flex gap-2 city-row" data-i="${i}" style="cursor:pointer">
           <i class="bi bi-geo-alt"></i>
           <div>
@@ -410,9 +432,11 @@ h2 {
           </div>
         </div>
       `).join('');
+
     show();
-    active=-1;
-  }
+    active = -1;
+}
+
 
   function pick(i){
     const p = lastList[i]; if(!p) return;
