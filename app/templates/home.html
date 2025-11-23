@@ -901,6 +901,59 @@
 }
 
 
+/* ==============================================
+   FINAL NO-GAP FIX — Title ⟶ Price ⟶ City ⟶ Rating
+   ============================================== */
+
+.spot-body{
+  padding:4px 4px 0 !important;   /* أقل padding ممكن */
+  margin:0 !important;
+}
+
+.spot-title{
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.12 !important;
+}
+
+.spot-meta{
+  margin:0 !important;
+  padding:0 !important;
+  gap:0 !important;
+}
+
+.spot-price{
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.08 !important;
+}
+
+.spot-city{
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.05 !important;
+}
+
+.spot-rating{
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.05 !important;
+}
+
+/* إلغاء أي footer قد يضيف مسافة */
+.spot-footer,
+.owner-line,
+.price-badge{
+  display:none !important;
+}
+
+/* يمنع العنوان من النزول لسطرين */
+.spot-title{
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+
 </style>
 
 
