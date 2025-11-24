@@ -1761,7 +1761,6 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <script>
-<script>
 /* ===== REAL SWIPE SLIDER (Airbnb style) ===== */
 (function () {
   const main = document.getElementById('mainImg');
@@ -1779,15 +1778,11 @@ document.addEventListener('DOMContentLoaded', function () {
     if (i >= thumbs.length) i = 0;
 
     index = i;
-
-    // update image
     main.src = thumbs[i].dataset.src || thumbs[i].src;
 
-    // update thumbnails
     thumbs.forEach(t => t.classList.remove('active'));
     thumbs[i].classList.add('active');
 
-    // update pager
     if (pager) pager.textContent = (i + 1) + '/' + thumbs.length;
   }
 
@@ -1795,19 +1790,13 @@ document.addEventListener('DOMContentLoaded', function () {
     t.addEventListener('click', () => show(i));
   });
 
-  // ====== Touch events ======
   main.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     dragging = true;
   }, { passive: true });
 
-  main.addEventListener('touchmove', e => {
-    if (!dragging) return;
-  }, { passive: true });
-
   main.addEventListener('touchend', e => {
     if (!dragging) return;
-
     const endX = e.changedTouches[0].clientX;
     const diff = endX - startX;
 
@@ -1815,11 +1804,9 @@ document.addEventListener('DOMContentLoaded', function () {
       if (diff < 0) show(index + 1);
       else show(index - 1);
     }
-
     dragging = false;
   });
 
-  // init
   show(0);
 })();
 </script>
