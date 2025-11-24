@@ -233,6 +233,25 @@ h2 {
 
 </style>
 
+<style>
+#cityNewSuggest {
+    position: absolute !important;
+    z-index: 999999 !important;
+    inset-inline: 0 !important;
+    max-height: 260px !important;
+    overflow-y: auto !important;
+}
+</style>
+
+<style>
+form {
+    position: relative;
+    z-index: 10;
+    padding-bottom: 80px;
+}
+</style>
+
+
 
 <h2>Add New Item</h2>
 
@@ -370,49 +389,31 @@ h2 {
   });
 })();
 
-
-/* =======================================================
-   🏙 CITY AUTOCOMPLETE — ONE RESULT PER COUNTRY
-   SAME SYSTEM AS HOME PAGE
-======================================================= */
-(function cityNewSuggestions(){
+(function(){
 
   const input = document.getElementById("cityNew");
   const panel = document.getElementById("cityNewSuggest");
   const latEl = document.getElementById("latNew");
   const lngEl = document.getElementById("lngNew");
 
-  if(!input) return;
+  if (!input) return;
 
-  let delay = null;
+  let tm = null;
 
-  function hide(){
-    panel.style.display = "none";
-    panel.innerHTML = "";
-  }
-  function show(){
-    panel.style.display = "block";
-  }
-
-  // Extract the best city name
-  function pickBestName(p){
+  const pickName = p => {
     const a = p.address || {};
-    return a.city || a.town || a.village ||
-           (p.display_name || "").split(",")[0].trim();
-  }
+    return a.city || a.town || a.village || (p.display_name||'').split(',')[0].trim();
+  };
 
-  // UNIQUE result per country (same as HOME)
-  function uniquePerCountryStrong(list){
-    const out = new Map();
-
-    for(const p of list){
+  const unique = list => {
+    const map = new Map();
+    for (const p of list) {
       const a = p.address || {};
-      const cc = (a.country_code || "").toLowerCase();
-      const name = pickBestName(p);
-      if(!name || !a.country) continue;
-
-      if(!out.has(cc)){
-        out.set(cc, {
+      const cc = (a.country_code || '').toLowerCase();
+      const name = pickName(p);
+      if (!name || !a.country) continue;
+      if (!map.has(cc)) {
+        map.set(cc, {
           city: name,
           country: a.country,
           lat: p.lat,
@@ -420,62 +421,56 @@ h2 {
         });
       }
     }
+    return [...map.values()];
+  };
 
-    return [...out.values()];
+  function hide(){
+    panel.style.display = "none";
+    panel.innerHTML = "";
+  }
+
+  function show(){
+    panel.style.display = "block";
   }
 
   input.addEventListener("input", function(){
-    clearTimeout(delay);
+    clearTimeout(tm);
     const q = input.value.trim();
-
     latEl.value = "";
     lngEl.value = "";
 
-    if(q.length < 2){
-      hide();
-      return;
-    }
+    if (q.length < 2) { hide(); return; }
 
-    delay = setTimeout(async ()=>{
-      try{
-        const url = "https://nominatim.openstreetmap.org/search"
-          + "?format=json&addressdetails=1&limit=50"
-          + "&q=" + encodeURIComponent(q);
+    tm = setTimeout(async ()=>{
 
-        const r = await fetch(url);
-        if(!r.ok){ hide(); return; }
+      try {
+        const r = await fetch(
+          "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=50&q="+encodeURIComponent(q)
+        );
+        if (!r.ok) return hide();
 
         const data = await r.json();
-
-        // Only city-like results
-        let filtered = data.filter(p =>
-          ["city","town","village"].includes((p.type||"").toLowerCase())
+        const filtered = data.filter(x =>
+          ["city","town","village"].includes((x.type||"").toLowerCase())
         );
 
-        // Pick one per country
-        let list = uniquePerCountryStrong(filtered);
+        const list = unique(filtered);
+        if (!list.length) return hide();
 
-        if(!list.length){
-          hide();
-          return;
-        }
-
-        // Render suggestions
         panel.innerHTML =
           `<div class="px-2 py-1 small text-muted border-bottom">Cities / Areas</div>` +
-          list.map((n,i)=>`
-            <div class="py-2 px-2 d-flex gap-2 city-row" data-i="${i}" style="cursor:pointer">
+          list.map((n,i)=>
+            `<div class="py-2 px-2 d-flex gap-2 city-row" data-i="${i}" style="cursor:pointer">
               <i class="bi bi-geo-alt"></i>
               <div>
                 <div>${n.city}, ${n.country}</div>
                 <div class="text-muted small">lat ${n.lat} — lon ${n.lon}</div>
               </div>
-            </div>
-          `).join("");
+            </div>`
+          ).join('');
 
         show();
 
-        // Clicking a suggestion
         panel.querySelectorAll(".city-row").forEach(row=>{
           row.addEventListener("click", ()=>{
             const n = list[row.dataset.i];
@@ -486,15 +481,15 @@ h2 {
           });
         });
 
-      }catch(err){
+      } catch(e) {
         hide();
       }
+
     }, 250);
   });
 
-  // Hide when clicking outside
   document.addEventListener("click", (e)=>{
-    if(!panel.contains(e.target) && e.target !== input){
+    if (!panel.contains(e.target) && e.target!==input){
       hide();
     }
   });
