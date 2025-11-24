@@ -225,24 +225,26 @@ h2 {
 <style>
 #cityNewSuggest {
     position: absolute;
-    top: calc(100% + 4px); /* مهم جداً */
+    top: 100%;              /* بدل calc */
+    margin-top: 6px;        /* مسافة بسيطة */
     left: 0;
     right: 0;
 
-    z-index: 999999;
+    z-index: 999999999 !important;   /* فوق الكيبورد */
 
-    background: rgba(255,255,255,0.9);
+    background: rgba(255,255,255,0.98);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
 
     border-radius: 14px;
     border: 1px solid rgba(0,0,0,0.06);
-    box-shadow: 0 8px 18px rgba(0,0,0,0.06);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.12);
 
-    max-height: 260px;
+    max-height: 300px;
     overflow-y: auto;
     display: none;
 }
+
 </style>
 
 
