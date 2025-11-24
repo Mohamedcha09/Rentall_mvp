@@ -1468,7 +1468,84 @@ pointer-events:none;
 </div>
 {% endif %}
 
+<script>
+/* Gallery pager + parallax + fixed bar */
+(function(){
+  const main  = document.getElementById('mainImg');
+  const thumbs= document.getElementById('thumbs');
+  const pager = document.getElementById('airPager');
+  const heroFade = document.getElementById('heroFade');
+  const airBar = document.getElementById('airBar');
 
+  function setPager(i,t){ if(pager){ pager.textContent=(i+1)+'/'+t; } }
+  let activeIdx=0;
+  function totalImgs(){ return thumbs ? thumbs.querySelectorAll('img').length : (main?1:0); }
+  setPager(activeIdx,totalImgs());
+
+  if(thumbs && main){
+    thumbs.addEventListener('click', (e)=>{
+      const t=e.target;
+      if(t.tagName==='IMG'){
+        main.src=t.dataset.src||t.src;
+        [...thumbs.querySelectorAll('img')].forEach(i=>i.classList.remove('active'));
+        t.classList.add('active');
+        activeIdx=parseInt(t.getAttribute('data-index')||'0',10)||0;
+        setPager(activeIdx,totalImgs());
+        document.getElementById('rf_image_index')?.setAttribute('value', String(activeIdx));
+        document.getElementById('rf_image_url')?.setAttribute('value', t.dataset.src || t.src || '');
+      }
+    });
+  }
+
+  const gMain = document.getElementById('gMain');
+  function onScroll(){
+    if(!gMain || !main) return;
+    const rect = gMain.getBoundingClientRect();
+    const h = rect.height || 1;
+    const visibleTop = Math.max(0, -rect.top);
+    const p = Math.min(1, visibleTop / (h * .35));
+    const scale = 1 + (visibleTop>0 ? Math.min(visibleTop/1000, .06) : 0);
+    main.style.transform = `scale(${scale}) translateY(${visibleTop* -0.06}px)`;
+    main.style.opacity = String(1 - p*0.85);
+    if(heroFade) heroFade.style.opacity = String(p);
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+
+  function portalBar(){
+    if(!airBar) return;
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      if(airBar.parentElement !== document.body){ document.body.appendChild(airBar); }
+      const under = document.getElementById('airUnder');
+      if(under && under.parentElement !== document.body){ document.body.appendChild(under); }
+      const pad = (airBar.offsetHeight || 64) + 12;
+      document.body.style.paddingBottom = pad + 'px';
+      document.documentElement.style.setProperty('--airbar-h', pad + 'px');
+    } else {
+      const container = document.querySelector('.air-sheet');
+      if (container && airBar.parentElement !== container) container.appendChild(airBar);
+      document.body.style.paddingBottom = '';
+      document.documentElement.style.removeProperty('--airbar-h');
+    }
+  }
+  portalBar();
+  window.addEventListener('resize', portalBar);
+  window.addEventListener('orientationchange', portalBar);
+
+  if (window.visualViewport) {
+    const onVV = () => {
+      const vh = window.visualViewport.height || window.innerHeight;
+      const kbOpen = vh < window.innerHeight * 0.9;
+      if (kbOpen) document.body.style.paddingBottom = '12px';
+      else portalBar();
+    };
+    window.visualViewport.addEventListener('resize', onVV);
+    window.visualViewport.addEventListener('scroll', onVV);
+  }
+
+  document.body.classList.add('item-page');
+})();
+</script>
 <script>
 /* Share + Favorite (optimistic with POST/DELETE first, toggle as fallback) */
 (function () {
@@ -1761,15 +1838,6 @@ document.addEventListener('DOMContentLoaded', function () {
   updatePager();
 })();
 </script>
-
-<style>
-#mainImg{
-  transition: opacity .35s ease;
-}
-#mainImg.fade-out{
-  opacity:0;
-}
-</style>
 
 
 
