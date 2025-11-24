@@ -1,73 +1,129 @@
 {% extends "base.html" %}
+
 {% block content %}
 
+<!-- ================================
+    إخفاء عناصر الهاتف
+================================ -->
 <style>
-@media (max-width:768px){
-    header.topbar,
-    .m-top-tabs,
-    nav.desk-tabs,
-    .mobile-tabbar {
-        display:none !important;
-    }
-    body.has-tabbar{ padding-bottom:0 !important; }
+@media (max-width: 768px) {
+  header.topbar,
+  .m-top-tabs,
+  .searchbar,
+  .mobile-tabbar {
+      display: none !important;
+  }
+  body.has-tabbar {
+      padding-bottom: 0 !important;
+  }
 }
 
-body { background:#f7f7fb !important; }
-
-.del-card{
-    max-width:520px;
-    margin:40px auto;
-    padding:24px 20px;
-    background:rgba(255,255,255,0.85);
-    backdrop-filter:blur(16px);
-    border-radius:22px;
-    border:1px solid rgba(0,0,0,0.05);
+/* خلفية ناعمة */
+body {
+    background: #f7f7fb !important;
 }
 
-.del-card h2{
-    font-size:26px;
-    font-weight:700;
-    margin-bottom:14px;
+/* الحاوية */
+.delete-box {
+    max-width: 520px;
+    margin: 30px auto;
+    background: rgba(255,255,255,0.82);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 26px 24px;
+    border-radius: 18px;
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
 }
 
-.warning{
-    background:#fff3f3;
-    border-left:4px solid #ff4d4f;
-    padding:14px;
-    border-radius:8px;
-    margin-bottom:20px;
-    color:#c00;
+/* العنوان */
+.delete-box h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1c1c1e;
+    margin-bottom: 8px;
 }
 
-.btn-delete{
-    width:100%;
-    background:#ff4d4f;
-    border:none;
-    padding:14px;
-    color:white;
-    font-size:17px;
-    font-weight:600;
-    border-radius:12px;
+/* النص */
+.delete-box p {
+    font-size: 15px;
+    color: #555;
+    line-height: 1.6;
+    margin-bottom: 16px;
+}
+
+/* التحذير */
+.warning {
+    background: #fff4f4;
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px solid #ffdddd;
+    color: #b30000;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+/* زر الحذف */
+.btn-delete {
+    width: 100%;
+    background: #ff3b30;
+    color: white;
+    border: none;
+    padding: 13px;
+    border-radius: 12px;
+    font-size: 17px;
+    font-weight: 700;
+    transition: 0.2s;
+}
+.btn-delete:hover {
+    opacity: 0.8;
+}
+
+/* زر التراجع */
+.back-link {
+    display: block;
+    text-align: center;
+    margin-top: 12px;
+    color: #444;
+    text-decoration: none;
+}
+.back-link:hover {
+    text-decoration: underline;
 }
 </style>
 
-<div class="del-card">
-    <h2>Delete Account</h2>
 
-    <p>This will permanently remove:</p>
-    <div class="warning">
-        • Profile<br>
-        • Listings<br>
-        • Bookings<br>
-        • Reviews<br>
-        • Favorites<br>
-        • Support Tickets<br>
-        • All associated data
+<div class="container">
+    <div class="delete-box">
+
+        <h2>Delete Account</h2>
+        <p>
+            Once you delete your account, <b>all your data will be permanently removed</b>,
+            including:
+        </p>
+
+        <div class="warning">
+            • Items you listed<br>
+            • Messages & conversations<br>
+            • Bookings as renter and owner<br>
+            • Reviews & ratings<br>
+            • Support tickets<br>
+            • Favorites<br>
+            • Notifications<br>
+            • All activity logs<br>
+        </div>
+
+        <p>
+            This action is permanent and cannot be undone.
+        </p>
+
+        <form method="post" action="/account/delete">
+            <button class="btn-delete">Delete my account permanently</button>
+        </form>
+
+        <a href="/settings" class="back-link">Cancel and go back</a>
+
     </div>
-
-    <form method="POST">
-        <button class="btn-delete" type="submit">Delete My Account</button>
-    </form>
 </div>
 
 {% endblock %}
