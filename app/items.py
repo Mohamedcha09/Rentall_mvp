@@ -558,7 +558,6 @@ def item_new_get(request: Request):
             "account_limited": is_account_limited(request),
         }
     )
-
 @router.post("/owner/items/new")
 def item_new_post(
     request: Request,
@@ -571,8 +570,8 @@ def item_new_post(
     price: str = Form("0"),
     currency: str = Form("CAD"),
 
-    # 👇 NEW multiple images
-    images: list[UploadFile] = File(None),
+    # 👇 FIXED: File(...) instead of File(None)
+    images: list[UploadFile] = File(...),
 
     latitude: str = Form(""),
     longitude: str = Form(""),
@@ -585,7 +584,7 @@ def item_new_post(
     lat = _to_float_or_none(latitude)
     lng = _to_float_or_none(longitude)
 
-    # price
+    # --- PRICE ---
     try:
         _price = float(str(price).replace(",", ".").strip() or "0")
         if _price < 0:
@@ -593,7 +592,7 @@ def item_new_post(
     except Exception:
         _price = 0.0
 
-    # currency
+    # --- CURRENCY ---
     currency = (currency or "CAD").upper().strip()
     if currency not in {"CAD", "USD", "EUR"}:
         currency = "CAD"
@@ -601,63 +600,57 @@ def item_new_post(
     # ------------------------------
     # MULTI IMAGES UPLOAD HANDLING
     # ------------------------------
-    image_urls_list = []     # list for the new multi-images
-    fallback_image = None    # old image_path (first image)
 
-    if images:
-        for idx, img in enumerate(images):
-            if not (img and img.filename and _ext_ok(img.filename)):
-                continue
+    image_urls_list = []
+    fallback_image = None  # first image
 
-            ext = os.path.splitext(img.filename)[1].lower()
-            fname = f"{u['id']}_{secrets.token_hex(8)}{ext}"
-            fpath = os.path.join(ITEMS_DIR, fname)
+    for img in images:
+        if not img or not img.filename or not _ext_ok(img.filename):
+            continue
 
+        ext = os.path.splitext(img.filename)[1].lower()
+        fname = f"{u['id']}_{secrets.token_hex(8)}{ext}"
+        fpath = os.path.join(ITEMS_DIR, fname)
+
+        uploaded_url = None
+
+        # Upload to Cloudinary
+        try:
+            up = cloudinary.uploader.upload(
+                img.file,
+                folder=f"items/{u['id']}",
+                public_id=os.path.splitext(fname)[0],
+                resource_type="image",
+            )
+            uploaded_url = (up or {}).get("secure_url")
+        except Exception:
             uploaded_url = None
 
-            # Try Cloudinary first
+        # Local fallback
+        if not uploaded_url:
             try:
-                up = cloudinary.uploader.upload(
-                    img.file,
-                    folder=f"items/{u['id']}",
-                    public_id=os.path.splitext(fname)[0],
-                    resource_type="image",
-                )
-                uploaded_url = (up or {}).get("secure_url")
+                img.file.seek(0)
+                with open(fpath, "wb") as f:
+                    shutil.copyfileobj(img.file, f)
+                uploaded_url = _local_public_url(fname)
             except Exception:
                 uploaded_url = None
 
-            if not uploaded_url:
-                # fallback local
-                try:
-                    try:
-                        img.file.seek(0)
-                    except:
-                        pass
-                    with open(fpath, "wb") as f:
-                        shutil.copyfileobj(img.file, f)
-                    uploaded_url = _local_public_url(fname)
-                except Exception:
-                    uploaded_url = None
+        # Store
+        if uploaded_url:
+            image_urls_list.append(uploaded_url)
+            if fallback_image is None:
+                fallback_image = uploaded_url
 
-            # store
-            if uploaded_url:
-                image_urls_list.append(uploaded_url)
-                if fallback_image is None:
-                    fallback_image = uploaded_url  # first image → old field
-
-            try:
-                img.file.close()
-            except:
-                pass
-
-    # If no images uploaded → keep None
-    if fallback_image is None:
-        fallback_image = None
+        try:
+            img.file.close()
+        except:
+            pass
 
     # ------------------------------
-    # CREATE ITEM IN DATABASE
+    # CREATE ITEM
     # ------------------------------
+
     it = Item(
         owner_id=u["id"],
         title=title,
@@ -671,19 +664,16 @@ def item_new_post(
         price=_price,
         price_per_day=_price,
 
-        # OLD field (keep it for compatibility)
+        # First image
         image_path=fallback_image,
 
-        # NEW multi field
+        # ALL images
         image_urls=image_urls_list or None,
     )
 
     db.add(it)
     db.commit()
-    try:
-        db.refresh(it)
-    except:
-        pass
+    db.refresh(it)
 
     return RedirectResponse(url=f"/items/{it.id}", status_code=303)
 

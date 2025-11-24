@@ -263,6 +263,42 @@ h2 {
     multiple
     style="display:none"
 >
+<!-- Preview container -->
+<div id="preview" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;"></div>
+
+<script>
+document.getElementById('imgInput').addEventListener('change', function(){
+    const preview = document.getElementById('preview');
+    preview.innerHTML = '';
+
+    const files = [...this.files];
+
+    if(files.length === 0){
+        preview.innerHTML = "<div style='color:#888;font-size:14px'>Aucune image sélectionnée</div>";
+        return;
+    }
+
+    if(files.length > 10){
+        alert("Maximum 10 images");
+        this.value = "";
+        preview.innerHTML = "";
+        return;
+    }
+
+    files.forEach(file => {
+        const url = URL.createObjectURL(file);
+        const img = document.createElement('img');
+        img.src = url;
+        img.style.width = "95px";
+        img.style.height = "95px";
+        img.style.objectFit = "cover";
+        img.style.borderRadius = "12px";
+        img.style.border = "1px solid rgba(0,0,0,0.08)";
+        preview.appendChild(img);
+    });
+});
+</script>
+
 
 </div>
 
