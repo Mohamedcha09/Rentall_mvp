@@ -1082,3 +1082,10 @@ def notifications_page(request: Request):
 @app.on_event("startup")
 def _startup_fx_seed():
     _fx_ensure_daily_sync()
+
+
+from fastapi.responses import FileResponse
+
+@app.get("/sitemap.xml")
+def sitemap():
+    return FileResponse("app/static/sitemap.xml", media_type="application/xml")
