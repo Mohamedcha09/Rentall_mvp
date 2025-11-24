@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- ====== HIDE MOBILE NAVS ====== -->
 <style>
 @media (max-width:768px){
     header.topbar,
@@ -13,90 +12,62 @@
     body.has-tabbar{ padding-bottom:0 !important; }
 }
 
-/* ====== Background Soft ====== */
 body { background:#f7f7fb !important; }
 
-/* ====== Card ====== */
 .del-card{
     max-width:520px;
     margin:40px auto;
     padding:24px 20px;
-    background:rgba(255,255,255,0.82);
+    background:rgba(255,255,255,0.85);
     backdrop-filter:blur(16px);
-    -webkit-backdrop-filter:blur(16px);
     border-radius:22px;
     border:1px solid rgba(0,0,0,0.05);
 }
 
-/* Title */
 .del-card h2{
     font-size:26px;
     font-weight:700;
-    color:#1c1c1e;
     margin-bottom:14px;
 }
 
-/* Paragraph */
-.del-card p{
-    color:#444;
-    line-height:1.6;
-    margin-bottom:16px;
-}
-
-/* Warning box */
 .warning{
     background:#fff3f3;
     border-left:4px solid #ff4d4f;
-    padding:14px 14px;
+    padding:14px;
     border-radius:8px;
     margin-bottom:20px;
     color:#c00;
 }
 
-/* Delete Button */
 .btn-delete{
     width:100%;
     background:#ff4d4f;
     border:none;
     padding:14px;
+    color:white;
     font-size:17px;
     font-weight:600;
-    color:white;
     border-radius:12px;
-}
-.btn-delete:active{ opacity:.85; }
-
-/* Cancel */
-.cancel-link{
-    display:block;
-    margin-top:14px;
-    text-align:center;
-    color:#666;
-    text-decoration:none;
 }
 </style>
 
 <div class="del-card">
     <h2>Delete Account</h2>
 
-    <p>Deleting your account will permanently remove:</p>
-
+    <p>This will permanently remove:</p>
     <div class="warning">
-        • Your profile  
-        • All your items  
-        • All bookings (as owner or renter)  
-        • All reviews  
-        • All support tickets  
-        • All images and data related to your account  
+        • Profile<br>
+        • Listings<br>
+        • Bookings<br>
+        • Reviews<br>
+        • Favorites<br>
+        • Support Tickets<br>
+        • All associated data
     </div>
 
-    <p>This action cannot be undone.</p>
-
-    <form method="POST" action="/account/delete">
-        <button type="submit" class="btn-delete">Delete My Account</button>
+    <form method="POST">
+        <button class="btn-delete" type="submit">Delete My Account</button>
     </form>
-
-    <a href="/" class="cancel-link">Cancel</a>
 </div>
 
 {% endblock %}
