@@ -1053,6 +1053,29 @@
 }
 pointer-events:none;
 
+/* ====== Smooth Transition Effects ====== */
+.gallery-main img {
+  transition: opacity .35s ease, transform .35s ease;
+}
+
+.gallery-main.fade-out img {
+  opacity: 0;
+  transform: scale(1.03);
+}
+
+.gallery-main.fade-in img {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* أثناء السحب */
+.gallery-main.dragging img {
+  transition: none !important;
+  opacity: 0.75;
+  transform: translateX(var(--drag-x));
+}
+
+
 }
 
 
@@ -1761,9 +1784,10 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <script>
-/* ===== REAL SWIPE SLIDER (Airbnb style) ===== */
+/* ===== REAL SWIPE + FADE/SLIDE EFFECTS ===== */
 (function () {
   const main = document.getElementById('mainImg');
+  const gMain = document.getElementById('gMain');
   const thumbs = document.querySelectorAll('#thumbs img');
   const pager = document.getElementById('airPager');
 
@@ -1773,41 +1797,69 @@ document.addEventListener('DOMContentLoaded', function () {
   let startX = 0;
   let dragging = false;
 
-  function show(i) {
+  function show(i, animate = true) {
     if (i < 0) i = thumbs.length - 1;
     if (i >= thumbs.length) i = 0;
 
     index = i;
-    main.src = thumbs[i].dataset.src || thumbs[i].src;
 
-    thumbs.forEach(t => t.classList.remove('active'));
-    thumbs[i].classList.add('active');
+    if (animate) {
+      gMain.classList.add("fade-out");
+      setTimeout(() => {
+        main.src = thumbs[i].dataset.src || thumbs[i].src;
 
-    if (pager) pager.textContent = (i + 1) + '/' + thumbs.length;
+        thumbs.forEach(t => t.classList.remove('active'));
+        thumbs[i].classList.add('active');
+
+        if (pager) pager.textContent = (i + 1) + '/' + thumbs.length;
+
+        gMain.classList.remove("fade-out");
+        gMain.classList.add("fade-in");
+
+        setTimeout(() => gMain.classList.remove("fade-in"), 300);
+      }, 160);
+    } else {
+      main.src = thumbs[i].dataset.src || thumbs[i].src;
+    }
   }
 
+  /* Click on thumbnails */
   thumbs.forEach((t, i) => {
     t.addEventListener('click', () => show(i));
   });
 
+  /* Touch swipe */
   main.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     dragging = true;
+    gMain.classList.add("dragging");
+  }, { passive: true });
+
+  main.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    const currentX = e.touches[0].clientX;
+    const diff = currentX - startX;
+    gMain.style.setProperty('--drag-x', diff + 'px');
   }, { passive: true });
 
   main.addEventListener('touchend', e => {
     if (!dragging) return;
+
     const endX = e.changedTouches[0].clientX;
     const diff = endX - startX;
+
+    gMain.classList.remove("dragging");
+    gMain.style.removeProperty('--drag-x');
 
     if (Math.abs(diff) > 40) {
       if (diff < 0) show(index + 1);
       else show(index - 1);
     }
+
     dragging = false;
   });
 
-  show(0);
+  show(0, false);
 })();
 </script>
 
