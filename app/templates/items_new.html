@@ -242,20 +242,28 @@ h2 {
 <div class="mb-3">
   <label class="form-label">Images (up to 10)</label>
 
-  <div class="upload-box" onclick="document.getElementById('imgInput').click();">
-      <div class="upload-icon">☁️</div>
-      <div class="upload-text">Upload Images</div>
-      <div class="upload-sub">You can select up to 10 images</div>
-  </div>
+<div class="upload-box" onclick="document.getElementById('imgInput').click();">
+    <div class="upload-icon">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 17.58A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 4 16.25" />
+            <polyline points="12 12 12 21" />
+            <polyline points="8 17 12 21 16 17" />
+        </svg>
+    </div>
+    <div class="upload-text">Upload Images</div>
+    <div class="upload-sub">You can select up to 10 images</div>
+</div>
 
-  <input 
+
+<input 
     type="file"
     id="imgInput"
-    name="images"
+    name="images[]"
     accept=".jpg,.jpeg,.png,.webp"
     multiple
     style="display:none"
-  >
+>
+
 </div>
 
 <style>
