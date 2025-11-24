@@ -293,7 +293,7 @@ form {
 
     <input type="text" name="city" id="cityNew" class="form-control" placeholder="Type the city / area…" autocomplete="off" required>
 
-    <div id="cityNewSuggest" class="border rounded mt-1 bg-white shadow-sm"></div>
+    <div id="cityNewSuggest"></div>
 
     <div class="d-flex gap-2 mt-2">
       <button type="button" id="useMyLocNew" class="btn btn-outline-secondary btn-sm">📍 Use my location</button>
@@ -355,42 +355,6 @@ form {
 {% block scripts %}
 
 <script>
-/* =======================================================
-   📍 GPS BUTTON — SAVE COORDS
-======================================================= */
-(function(){
-  const btn = document.getElementById('useMyLocNew');
-  const latEl = document.getElementById('latNew');
-  const lngEl = document.getElementById('lngNew');
-  const radEl = document.getElementById('radiusNew');
-
-  function setCookie(name, value, days=180){
-    try{
-      const d=new Date(); d.setTime(d.getTime()+days*864e5);
-      document.cookie = name+"="+encodeURIComponent(value||"")+";expires="+d.toUTCString()+";path=/;SameSite=Lax";
-    }catch(_){}
-  }
-
-  btn?.addEventListener('click', function(){
-    if(!navigator.geolocation){
-      alert('Your browser does not support geolocation.');
-      return;
-    }
-
-    const r = radEl?.value || "25";
-
-    navigator.geolocation.getCurrentPosition(function(pos){
-      const {latitude, longitude} = pos.coords;
-      latEl.value = latitude;
-      lngEl.value = longitude;
-      setCookie('radius_km', r);
-      alert('Location saved.');
-    }, function(){
-      alert('Could not get your location.');
-    });
-  });
-})();
-
 (function(){
 
   const input = document.getElementById("cityNew");
@@ -400,18 +364,28 @@ form {
 
   if (!input) return;
 
-  let tm = null;
+  let timer = null;
+
+  function hide(){
+    panel.style.display = "none";
+    panel.innerHTML = "";
+  }
+
+  function show(){
+    panel.style.display = "block";
+  }
 
   const pickName = p => {
     const a = p.address || {};
-    return a.city || a.town || a.village || (p.display_name||'').split(',')[0].trim();
+    return a.city || a.town || a.village || a.municipality ||
+           (p.display_name || '').split(",")[0].trim();
   };
 
   const unique = list => {
     const map = new Map();
     for (const p of list) {
       const a = p.address || {};
-      const cc = (a.country_code || '').toLowerCase();
+      const cc = (a.country_code || "").toLowerCase();
       const name = pickName(p);
       if (!name || !a.country) continue;
       if (!map.has(cc)) {
@@ -426,49 +400,53 @@ form {
     return [...map.values()];
   };
 
-  function hide(){
-    panel.style.display = "none";
-    panel.innerHTML = "";
-  }
-
-  function show(){
-    panel.style.display = "block";
-  }
-
   input.addEventListener("input", function(){
-    clearTimeout(tm);
+    clearTimeout(timer);
+
     const q = input.value.trim();
     latEl.value = "";
     lngEl.value = "";
 
-    if (q.length < 2) { hide(); return; }
+    if (q.length < 2){
+      hide();
+      return;
+    }
 
-    tm = setTimeout(async ()=>{
+    timer = setTimeout(async ()=>{
 
       try {
-        const r = await fetch(
-          "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=50&q="+encodeURIComponent(q)
+        const res = await fetch(
+          "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=30&q=" 
+          + encodeURIComponent(q)
         );
-        if (!r.ok) return hide();
 
-        const data = await r.json();
+        if (!res.ok){
+          hide();
+          return;
+        }
+
+        const data = await res.json();
+
         const filtered = data.filter(x =>
-          ["city","town","village"].includes((x.type||"").toLowerCase())
+          ["city","town","village","municipality"].includes((x.type || "").toLowerCase())
         );
 
         const list = unique(filtered);
-        if (!list.length) return hide();
+        if (!list.length){
+          hide();
+          return;
+        }
 
         panel.innerHTML =
-          `<div class="px-2 py-1 small text-muted border-bottom">Cities / Areas</div>` +
+          `<div class="px-2 py-1 small text-muted border-bottom">Cities</div>` +
           list.map((n,i)=>
             `<div class="py-2 px-2 d-flex gap-2 city-row" data-i="${i}" style="cursor:pointer">
-              <i class="bi bi-geo-alt"></i>
-              <div>
-                <div>${n.city}, ${n.country}</div>
-                <div class="text-muted small">lat ${n.lat} — lon ${n.lon}</div>
-              </div>
-            </div>`
+               <i class="bi bi-geo-alt"></i>
+               <div>
+                 <div>${n.city}, ${n.country}</div>
+                 <div class="text-muted small">lat ${n.lat} — lon ${n.lon}</div>
+               </div>
+             </div>`
           ).join('');
 
         show();
@@ -483,21 +461,22 @@ form {
           });
         });
 
-      } catch(e) {
+      } catch(err){
         hide();
       }
 
-    }, 250);
+    }, 300);
   });
 
   document.addEventListener("click", (e)=>{
-    if (!panel.contains(e.target) && e.target!==input){
+    if (!panel.contains(e.target) && e.target !== input){
       hide();
     }
   });
 
 })();
 </script>
+
 
 
 <script>
