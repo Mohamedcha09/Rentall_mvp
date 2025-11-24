@@ -360,7 +360,6 @@ h2 {
   });
 })();
 
-
 (function cityNewAutocomplete(){
   const input = document.getElementById('cityNew');
   const panel = document.getElementById('cityNewSuggest');
@@ -379,7 +378,6 @@ h2 {
     panel.style.display='block';
   }
 
-  // Detect language
   function detectLang(q){
     const s = q.trim();
     if (/[\u0600-\u06FF]/.test(s)) return 'ar';
@@ -388,29 +386,33 @@ h2 {
     return 'en';
   }
 
-  // Normalize object
   function norm(p){
     const a = p.address || {};
+
     const city =
       a.city || a.town || a.village ||
-      (p.display_name || '').split(',')[0];
+      (p.display_name||'').split(',')[0].trim();
 
-    const country = a.country || '';
-    const cc = (a.country_code || '').toLowerCase();
-    return { city, country, cc, lat: p.lat, lon: p.lon };
+    return {
+      city,
+      country: a.country || '',
+      cc: (a.country_code || '').toLowerCase(),
+      lat: p.lat,
+      lon: p.lon
+    };
   }
 
-  // Group 1 per country
   function uniquePerCountry(list){
-    const best = new Map();
+    const out = new Map();
     for(const p of list){
       const n = norm(p);
       if(!n.city || !n.country) continue;
 
-      const key = n.cc;
-      if(!best.has(key)) best.set(key, n);
+      if(!out.has(n.cc)){
+        out.set(n.cc, n);
+      }
     }
-    return [...best.values()];
+    return [...out.values()];
   }
 
   input.addEventListener('input', function(){
@@ -424,29 +426,29 @@ h2 {
     tm = setTimeout(async ()=>{
       try{
         const lang = detectLang(q);
-        const url =
-          "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1"
+
+        const url = "https://nominatim.openstreetmap.org/search"
+          + "?format=json&addressdetails=1"
           + "&limit=30"
           + "&accept-language=" + lang
           + "&q=" + encodeURIComponent(q);
 
         const r = await fetch(url);
         if(!r.ok){ hide(); return; }
+
         let data = await r.json();
 
-        // Take only city/town/village
-        const filtered = data.filter(x =>
-          ["city","town","village"].includes((x.type||"").toLowerCase())
+        let filtered = data.filter(p =>
+          ["city","town","village"].includes((p.type||"").toLowerCase())
         );
 
-        // Unique per country
-        const finalList = uniquePerCountry(filtered);
+        let list = uniquePerCountry(filtered);
 
-        if(!finalList.length){ hide(); return; }
+        if(!list.length){ hide(); return; }
 
         panel.innerHTML =
-          '<div class="px-2 py-1 small text-muted border-bottom">Cities / Areas</div>' +
-          finalList.map((n,i)=>`
+          `<div class="px-2 py-1 small text-muted border-bottom">Cities / Areas</div>` +
+          list.map((n,i)=>`
             <div class="py-2 px-2 d-flex gap-2 city-row" data-i="${i}" style="cursor:pointer">
               <i class="bi bi-geo-alt"></i>
               <div>
@@ -460,31 +462,27 @@ h2 {
 
         panel.querySelectorAll('.city-row').forEach(row=>{
           row.addEventListener('click', ()=>{
-            const n = finalList[row.dataset.i];
-            input.value = n.city + ", " + n.country;
+            const n = list[row.dataset.i];
+            input.value = `${n.city}, ${n.country}`;
             latEl.value = n.lat;
             lonEl.value = n.lon;
             hide();
           });
         });
 
-      }catch(_){ hide(); }
-    }, 200);
-  });
-
-  panel.addEventListener('click', ()=>{
-    const label = panel.querySelector('#cityBest span')?.textContent || '';
-    input.value = label;
-    latEl.value = panel.dataset.lat || '';
-    lonEl.value = panel.dataset.lon || '';
-    hide();
+      }catch(err){
+        hide();
+      }
+    }, 250);
   });
 
   document.addEventListener('click', (e)=>{
     if(!panel.contains(e.target) && e.target!==input) hide();
   });
+
 })();
 </script>
+
 
 
 <script>
