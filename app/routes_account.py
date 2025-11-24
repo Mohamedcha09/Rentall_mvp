@@ -1,4 +1,3 @@
-# app/routes_account.py
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
