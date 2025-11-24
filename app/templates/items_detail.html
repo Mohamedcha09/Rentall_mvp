@@ -1761,39 +1761,41 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <script>
-/* ===== Swipe between images (Airbnb style) ===== */
+<script>
+/* ===== REAL SWIPE SLIDER (Airbnb style) ===== */
 (function () {
   const main = document.getElementById('mainImg');
-  const thumbs = document.getElementById('thumbs');
-  if (!main || !thumbs) return;
+  const thumbs = document.querySelectorAll('#thumbs img');
+  const pager = document.getElementById('airPager');
 
-  let imgs = [...thumbs.querySelectorAll('img')];
+  if (!main || !thumbs.length) return;
+
   let index = 0;
   let startX = 0;
-  let currentX = 0;
   let dragging = false;
 
   function show(i) {
-    if (i < 0 || i >= imgs.length) return;
-    index = i;
-    const url = imgs[i].dataset.src || imgs[i].src;
-    main.src = url;
+    if (i < 0) i = thumbs.length - 1;
+    if (i >= thumbs.length) i = 0;
 
-    // toggle active class
-    imgs.forEach(im => im.classList.remove('active'));
-    imgs[i].classList.add('active');
+    index = i;
+
+    // update image
+    main.src = thumbs[i].dataset.src || thumbs[i].src;
+
+    // update thumbnails
+    thumbs.forEach(t => t.classList.remove('active'));
+    thumbs[i].classList.add('active');
 
     // update pager
-    const pager = document.getElementById('airPager');
-    if (pager) pager.textContent = (i + 1) + '/' + imgs.length;
+    if (pager) pager.textContent = (i + 1) + '/' + thumbs.length;
   }
 
-  // click on thumb
-  imgs.forEach((img, i) => {
-    img.addEventListener('click', () => show(i));
+  thumbs.forEach((t, i) => {
+    t.addEventListener('click', () => show(i));
   });
 
-  // touch events
+  // ====== Touch events ======
   main.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     dragging = true;
@@ -1801,25 +1803,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
   main.addEventListener('touchmove', e => {
     if (!dragging) return;
-    currentX = e.touches[0].clientX;
   }, { passive: true });
 
-  main.addEventListener('touchend', () => {
+  main.addEventListener('touchend', e => {
     if (!dragging) return;
-    const diff = currentX - startX;
+
+    const endX = e.changedTouches[0].clientX;
+    const diff = endX - startX;
 
     if (Math.abs(diff) > 40) {
-      if (diff < 0) show(index + 1);  // swipe left → next
-      else show(index - 1);           // swipe right → prev
+      if (diff < 0) show(index + 1);
+      else show(index - 1);
     }
 
     dragging = false;
-    startX = 0;
-    currentX = 0;
   });
 
+  // init
+  show(0);
 })();
 </script>
+
 
 
 
