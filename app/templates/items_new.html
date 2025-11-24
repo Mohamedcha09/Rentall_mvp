@@ -332,8 +332,11 @@ h2 {
 {% endblock %}
 
 {% block scripts %}
+
 <script>
-/* ===== GPS button ===== */
+/* =======================================================
+   📍 GPS BUTTON — SAVE COORDS
+======================================================= */
 (function(){
   const btn = document.getElementById('useMyLocNew');
   const latEl = document.getElementById('latNew');
@@ -348,137 +351,137 @@ h2 {
   }
 
   btn?.addEventListener('click', function(){
-    if(!navigator.geolocation){ alert('Your browser does not support geolocation.'); return; }
+    if(!navigator.geolocation){
+      alert('Your browser does not support geolocation.');
+      return;
+    }
+
     const r = radEl?.value || "25";
+
     navigator.geolocation.getCurrentPosition(function(pos){
       const {latitude, longitude} = pos.coords;
       latEl.value = latitude;
       lngEl.value = longitude;
       setCookie('radius_km', r);
       alert('Location saved.');
-    }, function(){ alert('Could not get your location.'); });
+    }, function(){
+      alert('Could not get your location.');
+    });
   });
 })();
 
-(function cityNewAutocomplete(){
-  const input = document.getElementById('cityNew');
-  const panel = document.getElementById('cityNewSuggest');
-  const latEl = document.getElementById('latNew');
-  const lonEl = document.getElementById('lngNew');
 
-  if(!input || !panel) return;
+/* =======================================================
+   🏙 CITY AUTOCOMPLETE — ONE RESULT PER COUNTRY
+   SAME SYSTEM AS HOME PAGE
+======================================================= */
+(function cityNewSuggestions(){
 
-  let t = null;
+  const input = document.getElementById("cityNew");
+  const panel = document.getElementById("cityNewSuggest");
+  const latEl = document.getElementById("latNew");
+  const lngEl = document.getElementById("lngNew");
+
+  if(!input) return;
+
+  let delay = null;
 
   function hide(){
-    panel.style.display='none';
-    panel.innerHTML='';
+    panel.style.display = "none";
+    panel.innerHTML = "";
   }
   function show(){
-    panel.style.display='block';
+    panel.style.display = "block";
   }
 
-  // Detect language
-  function detectLang(q){
-    const s=q.trim();
-    if(/[\u0600-\u06FF]/.test(s)) return 'ar';
-    if(/[àâäæçéèêëîïôùûüÿ]/i.test(s)) return 'fr';
-    return 'en';
-  }
-
-  // Normalize like HOME
-  function normalizePlace(p){
+  // Extract the best city name
+  function pickBestName(p){
     const a = p.address || {};
-
-    const city =
-      a.city || a.town || a.village ||
-      (p.display_name||'').split(',')[0].trim();
-
-    return {
-      city,
-      country: a.country || '',
-      cc: (a.country_code || '').toLowerCase(),
-      lat: p.lat,
-      lon: p.lon,
-      type: (p.type||'').toLowerCase()
-    };
+    return a.city || a.town || a.village ||
+           (p.display_name || "").split(",")[0].trim();
   }
 
-  // EXACT like HOME: 1 result per country
-  function pickUniquePerCountry(list){
-    const map = new Map();
-    for(const p of list){
-      const n = normalizePlace(p);
-      if(!n.city || !n.country) continue;
+  // UNIQUE result per country (same as HOME)
+  function uniquePerCountryStrong(list){
+    const out = new Map();
 
-      // If country not registered → add
-      if(!map.has(n.cc)){
-        map.set(n.cc, n);
+    for(const p of list){
+      const a = p.address || {};
+      const cc = (a.country_code || "").toLowerCase();
+      const name = pickBestName(p);
+      if(!name || !a.country) continue;
+
+      if(!out.has(cc)){
+        out.set(cc, {
+          city: name,
+          country: a.country,
+          lat: p.lat,
+          lon: p.lon
+        });
       }
     }
-    return [...map.values()];
+
+    return [...out.values()];
   }
 
-  input.addEventListener('input', function(){
-    clearTimeout(t);
+  input.addEventListener("input", function(){
+    clearTimeout(delay);
     const q = input.value.trim();
-    latEl.value = '';
-    lonEl.value = '';
+
+    latEl.value = "";
+    lngEl.value = "";
 
     if(q.length < 2){
       hide();
       return;
     }
 
-    t = setTimeout(async()=>{
+    delay = setTimeout(async ()=>{
       try{
-        const lang = detectLang(q);
-
-        const url =
-          "https://nominatim.openstreetmap.org/search?" +
-          "format=json&addressdetails=1&limit=40" +
-          "&accept-language=" + lang +
-          "&q=" + encodeURIComponent(q);
+        const url = "https://nominatim.openstreetmap.org/search"
+          + "?format=json&addressdetails=1&limit=50"
+          + "&q=" + encodeURIComponent(q);
 
         const r = await fetch(url);
         if(!r.ok){ hide(); return; }
-        let data = await r.json();
 
-        // Home style: only city/town/village
+        const data = await r.json();
+
+        // Only city-like results
         let filtered = data.filter(p =>
           ["city","town","village"].includes((p.type||"").toLowerCase())
         );
 
-        let finalList = pickUniquePerCountry(filtered);
+        // Pick one per country
+        let list = uniquePerCountryStrong(filtered);
 
-        if(!finalList.length){
+        if(!list.length){
           hide();
           return;
         }
 
+        // Render suggestions
         panel.innerHTML =
-          `<div class="px-2 py-1 small text-muted border-bottom">
-            Cities / Areas
-          </div>` +
-          finalList.map((n,i)=>`
-            <div class="py-2 px-2 d-flex gap-2 city-row"
-                 data-i="${i}" style="cursor:pointer">
+          `<div class="px-2 py-1 small text-muted border-bottom">Cities / Areas</div>` +
+          list.map((n,i)=>`
+            <div class="py-2 px-2 d-flex gap-2 city-row" data-i="${i}" style="cursor:pointer">
               <i class="bi bi-geo-alt"></i>
               <div>
-                <div><strong>${n.city}</strong>, ${n.country}</div>
+                <div>${n.city}, ${n.country}</div>
                 <div class="text-muted small">lat ${n.lat} — lon ${n.lon}</div>
               </div>
             </div>
-          `).join('');
+          `).join("");
 
         show();
 
-        panel.querySelectorAll('.city-row').forEach(row=>{
-          row.addEventListener('click', ()=>{
-            const n = finalList[row.dataset.i];
+        // Clicking a suggestion
+        panel.querySelectorAll(".city-row").forEach(row=>{
+          row.addEventListener("click", ()=>{
+            const n = list[row.dataset.i];
             input.value = `${n.city}, ${n.country}`;
             latEl.value = n.lat;
-            lonEl.value = n.lon;
+            lngEl.value = n.lon;
             hide();
           });
         });
@@ -489,16 +492,15 @@ h2 {
     }, 250);
   });
 
-  document.addEventListener('click', (e)=>{
-    if(!panel.contains(e.target) && e.target!==input){
+  // Hide when clicking outside
+  document.addEventListener("click", (e)=>{
+    if(!panel.contains(e.target) && e.target !== input){
       hide();
     }
   });
 
 })();
 </script>
-
-
 
 
 <script>
