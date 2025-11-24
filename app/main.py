@@ -79,6 +79,7 @@ from .md import router as md_router
 from .reviews import router as reviews_router
 from .routes_geo import router as geo_router
 from fastapi.staticfiles import StaticFiles
+from .routes_account import router as account_router
 
 
 # -----------------------------------------------------------------------------
@@ -808,6 +809,7 @@ app.include_router(mod_routes.router)
 app.include_router(reviews_router)
 app.include_router(md_router)
 app.include_router(geo_router)  # ⬅️ New
+app.include_router(account_router)
 
 # -----------------------------------------------------------------------------
 # Legacy path → redirect to the new reports page
