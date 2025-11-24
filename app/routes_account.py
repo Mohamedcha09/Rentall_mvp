@@ -1,15 +1,17 @@
 # app/routes_account.py
-
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import User, Item, Booking, ItemReview, Favorite, SupportTicket, MessageThread, Message, Rating, Report, ReportActionLog, Notification, FreezeDeposit, DepositAuditLog, DepositEvidence, Order
+from .models import (
+    User, Item, Booking, ItemReview, Favorite, SupportTicket, MessageThread,
+    Message, Rating, Report, ReportActionLog, Notification, FreezeDeposit,
+    DepositAuditLog, DepositEvidence, Order, SupportMessage, UserReview
+)
 
-from fastapi.templating import Jinja2Templates
-
-templates = Jinja2Templates(directory="app/templates")
+# استخدم نفس templates الخاصة بالموقع (مهم جداً)
+from app.main import templates
 
 router = APIRouter(tags=["Account"])
 

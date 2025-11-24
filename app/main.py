@@ -301,6 +301,9 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 app.templates = templates
+from .utils_fx import display_currency
+templates.env.globals["display_currency"] = display_currency
+
 
 def media_url(path: str | None) -> str:
     """Returns the Cloudinary URL as-is, or prefixes a local path with '/'."""
