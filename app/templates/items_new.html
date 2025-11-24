@@ -368,7 +368,7 @@ h2 {
 
   if(!input || !panel) return;
 
-  let tm = null;
+  let t = null;
 
   function hide(){
     panel.style.display='none';
@@ -378,15 +378,16 @@ h2 {
     panel.style.display='block';
   }
 
+  // Detect language
   function detectLang(q){
-    const s = q.trim();
-    if (/[\u0600-\u06FF]/.test(s)) return 'ar';
-    const fr = /[àâäæçéèêëîïôùûüÿ]/i.test(s);
-    if(fr) return 'fr';
+    const s=q.trim();
+    if(/[\u0600-\u06FF]/.test(s)) return 'ar';
+    if(/[àâäæçéèêëîïôùûüÿ]/i.test(s)) return 'fr';
     return 'en';
   }
 
-  function norm(p){
+  // Normalize like HOME
+  function normalizePlace(p){
     const a = p.address || {};
 
     const city =
@@ -398,61 +399,73 @@ h2 {
       country: a.country || '',
       cc: (a.country_code || '').toLowerCase(),
       lat: p.lat,
-      lon: p.lon
+      lon: p.lon,
+      type: (p.type||'').toLowerCase()
     };
   }
 
-  function uniquePerCountry(list){
-    const out = new Map();
+  // EXACT like HOME: 1 result per country
+  function pickUniquePerCountry(list){
+    const map = new Map();
     for(const p of list){
-      const n = norm(p);
+      const n = normalizePlace(p);
       if(!n.city || !n.country) continue;
 
-      if(!out.has(n.cc)){
-        out.set(n.cc, n);
+      // If country not registered → add
+      if(!map.has(n.cc)){
+        map.set(n.cc, n);
       }
     }
-    return [...out.values()];
+    return [...map.values()];
   }
 
   input.addEventListener('input', function(){
-    clearTimeout(tm);
+    clearTimeout(t);
     const q = input.value.trim();
     latEl.value = '';
     lonEl.value = '';
 
-    if(q.length < 2){ hide(); return; }
+    if(q.length < 2){
+      hide();
+      return;
+    }
 
-    tm = setTimeout(async ()=>{
+    t = setTimeout(async()=>{
       try{
         const lang = detectLang(q);
 
-        const url = "https://nominatim.openstreetmap.org/search"
-          + "?format=json&addressdetails=1"
-          + "&limit=30"
-          + "&accept-language=" + lang
-          + "&q=" + encodeURIComponent(q);
+        const url =
+          "https://nominatim.openstreetmap.org/search?" +
+          "format=json&addressdetails=1&limit=40" +
+          "&accept-language=" + lang +
+          "&q=" + encodeURIComponent(q);
 
         const r = await fetch(url);
         if(!r.ok){ hide(); return; }
-
         let data = await r.json();
 
+        // Home style: only city/town/village
         let filtered = data.filter(p =>
           ["city","town","village"].includes((p.type||"").toLowerCase())
         );
 
-        let list = uniquePerCountry(filtered);
+        let finalList = pickUniquePerCountry(filtered);
 
-        if(!list.length){ hide(); return; }
+        if(!finalList.length){
+          hide();
+          return;
+        }
 
         panel.innerHTML =
-          `<div class="px-2 py-1 small text-muted border-bottom">Cities / Areas</div>` +
-          list.map((n,i)=>`
-            <div class="py-2 px-2 d-flex gap-2 city-row" data-i="${i}" style="cursor:pointer">
+          `<div class="px-2 py-1 small text-muted border-bottom">
+            Cities / Areas
+          </div>` +
+          finalList.map((n,i)=>`
+            <div class="py-2 px-2 d-flex gap-2 city-row"
+                 data-i="${i}" style="cursor:pointer">
               <i class="bi bi-geo-alt"></i>
               <div>
-                <div>${n.city}, ${n.country}</div>
+                <div><strong>${n.city}</strong>, ${n.country}</div>
                 <div class="text-muted small">lat ${n.lat} — lon ${n.lon}</div>
               </div>
             </div>
@@ -462,7 +475,7 @@ h2 {
 
         panel.querySelectorAll('.city-row').forEach(row=>{
           row.addEventListener('click', ()=>{
-            const n = list[row.dataset.i];
+            const n = finalList[row.dataset.i];
             input.value = `${n.city}, ${n.country}`;
             latEl.value = n.lat;
             lonEl.value = n.lon;
@@ -477,11 +490,14 @@ h2 {
   });
 
   document.addEventListener('click', (e)=>{
-    if(!panel.contains(e.target) && e.target!==input) hide();
+    if(!panel.contains(e.target) && e.target!==input){
+      hide();
+    }
   });
 
 })();
 </script>
+
 
 
 
