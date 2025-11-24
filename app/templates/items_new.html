@@ -239,10 +239,54 @@ h2 {
 
   </div>
 
-  <div class="mb-3">
-    <label class="form-label">Image</label>
-    <input type="file" name="image" class="form-control" accept=".jpg,.jpeg,.png" required>
+<div class="mb-3">
+  <label class="form-label">Images (up to 10)</label>
+
+  <div class="upload-box" onclick="document.getElementById('imgInput').click();">
+      <div class="upload-icon">☁️</div>
+      <div class="upload-text">Upload Images</div>
+      <div class="upload-sub">You can select up to 10 images</div>
   </div>
+
+  <input 
+    type="file"
+    id="imgInput"
+    name="images"
+    accept=".jpg,.jpeg,.png,.webp"
+    multiple
+    style="display:none"
+  >
+</div>
+
+<style>
+.upload-box{
+    border: 2px dashed rgba(139,92,246,0.45);
+    border-radius: 18px;
+    padding: 28px 14px;
+    text-align: center;
+    cursor: pointer;
+    background: rgba(255,255,255,0.6);
+    transition: .25s ease;
+}
+.upload-box:hover{
+    background: rgba(139,92,246,0.06);
+}
+.upload-icon{
+    font-size: 38px;
+    color: #8b5cf6;
+    margin-bottom: 6px;
+}
+.upload-text{
+    font-size: 17px;
+    font-weight: 600;
+    color: #1c1c1e;
+}
+.upload-sub{
+    font-size: 13px;
+    color: #6b7280;
+}
+</style>
+
 
   <button class="btn btn-primary">Save</button>
   <a href="/items" class="btn btn-outline-light">Back</a>
