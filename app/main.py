@@ -78,6 +78,9 @@ from . import mod as mod_routes
 from .md import router as md_router
 from .reviews import router as reviews_router
 from .routes_geo import router as geo_router
+from fastapi.staticfiles import StaticFiles
+
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # -----------------------------------------------------------------------------
 # Create the app
