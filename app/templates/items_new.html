@@ -360,6 +360,7 @@ h2 {
   });
 })();
 
+
 (function cityNewAutocomplete(){
   const input = document.getElementById('cityNew');
   const panel = document.getElementById('cityNewSuggest');
@@ -368,89 +369,107 @@ h2 {
 
   if(!input || !panel) return;
 
-  let t=null;
+  let tm = null;
 
-  function hide(){ panel.style.display='none'; panel.innerHTML=''; }
-  function show(){ panel.style.display='block'; }
+  function hide(){
+    panel.style.display='none';
+    panel.innerHTML='';
+  }
+  function show(){
+    panel.style.display='block';
+  }
 
-  // Detect Arabic / French / English
+  // Detect language
   function detectLang(q){
-    const s=(q||'').trim();
+    const s = q.trim();
     if (/[\u0600-\u06FF]/.test(s)) return 'ar';
     const fr = /[àâäæçéèêëîïôùûüÿ]/i.test(s);
     if(fr) return 'fr';
     return 'en';
   }
 
-  // Allowed types
-  const ALLOWED = new Set(['city','town','village','municipality']);
-  const FALLBACK = new Set(['state','province']);
+  // Normalize object
+  function norm(p){
+    const a = p.address || {};
+    const city =
+      a.city || a.town || a.village ||
+      (p.display_name || '').split(',')[0];
 
-  function normalizePlace(p){
-    const a=p.address||{};
-    const type=(p.type||'').toLowerCase();
-    const cc=(a.country_code||'').toLowerCase();
-    const city=a.city||a.town||a.village||a.municipality||a.state||a.province||(p.display_name||'').split(',')[0];
-    const country=a.country||'';
-    const prioMap={city:1,town:2,village:3,municipality:3,state:6,province:6};
-    const prio=prioMap[type]??9;
-    return { city, country, cc, lat:p.lat, lon:p.lon, type, prio };
+    const country = a.country || '';
+    const cc = (a.country_code || '').toLowerCase();
+    return { city, country, cc, lat: p.lat, lon: p.lon };
   }
 
-  function pickBestUnique(list){
-    const best=new Map();
+  // Group 1 per country
+  function uniquePerCountry(list){
+    const best = new Map();
     for(const p of list){
-      const n=normalizePlace(p);
-      if(!n.city||!n.cc) continue;
-      const key=n.city.trim().toLowerCase()+'|'+n.cc;
-      const prev=best.get(key);
-      if(!prev || n.prio < prev.prio) best.set(key,n);
+      const n = norm(p);
+      if(!n.city || !n.country) continue;
+
+      const key = n.cc;
+      if(!best.has(key)) best.set(key, n);
     }
-    return Array.from(best.values());
+    return [...best.values()];
   }
 
   input.addEventListener('input', function(){
-    clearTimeout(t);
+    clearTimeout(tm);
     const q = input.value.trim();
     latEl.value = '';
     lonEl.value = '';
 
     if(q.length < 2){ hide(); return; }
 
-    t = setTimeout(async ()=>{
+    tm = setTimeout(async ()=>{
       try{
         const lang = detectLang(q);
-        const url = 'https://nominatim.openstreetmap.org/search'
-                  + '?format=json&addressdetails=1&limit=30'
-                  + '&accept-language='+encodeURIComponent(lang)
-                  + '&q='+encodeURIComponent(q);
+        const url =
+          "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1"
+          + "&limit=30"
+          + "&accept-language=" + lang
+          + "&q=" + encodeURIComponent(q);
 
         const r = await fetch(url);
         if(!r.ok){ hide(); return; }
         let data = await r.json();
 
-        let filtered = data.filter(x=>ALLOWED.has((x.type||'').toLowerCase()));
-        if(!filtered.length) filtered = data.filter(x=>FALLBACK.has((x.type||'').toLowerCase()));
-        if(!filtered.length) filtered = data;
+        // Take only city/town/village
+        const filtered = data.filter(x =>
+          ["city","town","village"].includes((x.type||"").toLowerCase())
+        );
 
-        const unique = pickBestUnique(filtered);
+        // Unique per country
+        const finalList = uniquePerCountry(filtered);
 
-        unique.sort((a,b)=>a.prio-b.prio);
-        const best = unique[0];
-        if(!best){ hide(); return; }
+        if(!finalList.length){ hide(); return; }
 
-        const label = best.city + (best.country ? `, ${best.country}` : '');
+        panel.innerHTML =
+          '<div class="px-2 py-1 small text-muted border-bottom">Cities / Areas</div>' +
+          finalList.map((n,i)=>`
+            <div class="py-2 px-2 d-flex gap-2 city-row" data-i="${i}" style="cursor:pointer">
+              <i class="bi bi-geo-alt"></i>
+              <div>
+                <div>${n.city}, ${n.country}</div>
+                <div class="text-muted small">lat ${n.lat} — lon ${n.lon}</div>
+              </div>
+            </div>
+          `).join('');
 
-        panel.innerHTML = `
-          <div class="py-2 px-2 d-flex gap-2" style="cursor:pointer" id="cityBest">
-            <i class="bi bi-geo-alt"></i>
-            <span>${label}</span>
-          </div>`;
-        panel.dataset.lat = best.lat;
-        panel.dataset.lon = best.lon;
         show();
+
+        panel.querySelectorAll('.city-row').forEach(row=>{
+          row.addEventListener('click', ()=>{
+            const n = finalList[row.dataset.i];
+            input.value = n.city + ", " + n.country;
+            latEl.value = n.lat;
+            lonEl.value = n.lon;
+            hide();
+          });
+        });
+
       }catch(_){ hide(); }
-    }, 250);
+    }, 200);
   });
 
   panel.addEventListener('click', ()=>{
