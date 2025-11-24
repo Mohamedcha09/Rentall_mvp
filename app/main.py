@@ -80,12 +80,12 @@ from .reviews import router as reviews_router
 from .routes_geo import router as geo_router
 from fastapi.staticfiles import StaticFiles
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # -----------------------------------------------------------------------------
 # Create the app
 # -----------------------------------------------------------------------------
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/whoami")
 def whoami(request: Request, db: Session = Depends(get_db)):
