@@ -1760,6 +1760,67 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 </script>
 
+<script>
+/* ===== Swipe between images (Airbnb style) ===== */
+(function () {
+  const main = document.getElementById('mainImg');
+  const thumbs = document.getElementById('thumbs');
+  if (!main || !thumbs) return;
+
+  let imgs = [...thumbs.querySelectorAll('img')];
+  let index = 0;
+  let startX = 0;
+  let currentX = 0;
+  let dragging = false;
+
+  function show(i) {
+    if (i < 0 || i >= imgs.length) return;
+    index = i;
+    const url = imgs[i].dataset.src || imgs[i].src;
+    main.src = url;
+
+    // toggle active class
+    imgs.forEach(im => im.classList.remove('active'));
+    imgs[i].classList.add('active');
+
+    // update pager
+    const pager = document.getElementById('airPager');
+    if (pager) pager.textContent = (i + 1) + '/' + imgs.length;
+  }
+
+  // click on thumb
+  imgs.forEach((img, i) => {
+    img.addEventListener('click', () => show(i));
+  });
+
+  // touch events
+  main.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    dragging = true;
+  }, { passive: true });
+
+  main.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    currentX = e.touches[0].clientX;
+  }, { passive: true });
+
+  main.addEventListener('touchend', () => {
+    if (!dragging) return;
+    const diff = currentX - startX;
+
+    if (Math.abs(diff) > 40) {
+      if (diff < 0) show(index + 1);  // swipe left → next
+      else show(index - 1);           // swipe right → prev
+    }
+
+    dragging = false;
+    startX = 0;
+    currentX = 0;
+  });
+
+})();
+</script>
+
 
 
 {% endblock %}
