@@ -417,10 +417,17 @@ form {
     timer = setTimeout(async ()=>{
 
       try {
-        const res = await fetch(
-          "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=30&q=" 
-          + encodeURIComponent(q)
-        );
+const res = await fetch(
+  "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=30&q="
+  + encodeURIComponent(q),
+  {
+    headers: {
+      "User-Agent": "SevorApp/1.0 (contact@sevor.net)",
+      "Accept-Language": "en"
+    }
+  }
+);
+
 
         if (!res.ok){
           hide();
