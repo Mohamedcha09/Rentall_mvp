@@ -359,7 +359,7 @@ h2 {
     }, function(){ alert('Could not get your location.'); });
   });
 })();
-/* ===== Autocomplete (Same as Home) ===== */
+
 (function cityNewAutocomplete(){
   const input = document.getElementById('cityNew');
   const panel = document.getElementById('cityNewSuggest');
@@ -368,86 +368,105 @@ h2 {
 
   if(!input || !panel) return;
 
-  let tm=null, lastList=[];
+  let t=null;
 
-  function esc(s){
-    return String(s||"").replace(/[&<>"']/g, c =>
-      ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])
-    );
+  function hide(){ panel.style.display='none'; panel.innerHTML=''; }
+  function show(){ panel.style.display='block'; }
+
+  // Detect Arabic / French / English
+  function detectLang(q){
+    const s=(q||'').trim();
+    if (/[\u0600-\u06FF]/.test(s)) return 'ar';
+    const fr = /[àâäæçéèêëîïôùûüÿ]/i.test(s);
+    if(fr) return 'fr';
+    return 'en';
   }
 
-  function hide(){
-    panel.style.display='none';
-    panel.innerHTML='';
-    lastList=[];
+  // Allowed types
+  const ALLOWED = new Set(['city','town','village','municipality']);
+  const FALLBACK = new Set(['state','province']);
+
+  function normalizePlace(p){
+    const a=p.address||{};
+    const type=(p.type||'').toLowerCase();
+    const cc=(a.country_code||'').toLowerCase();
+    const city=a.city||a.town||a.village||a.municipality||a.state||a.province||(p.display_name||'').split(',')[0];
+    const country=a.country||'';
+    const prioMap={city:1,town:2,village:3,municipality:3,state:6,province:6};
+    const prio=prioMap[type]??9;
+    return { city, country, cc, lat:p.lat, lon:p.lon, type, prio };
   }
 
-  function show(){
-    panel.style.display='block';
-  }
-
-  async function query(q){
-    const url = 'https://nominatim.openstreetmap.org/search'
-              + '?format=json&addressdetails=1&limit=5'
-              + '&q=' + encodeURIComponent(q);
-    const r = await fetch(url, {headers:{'Accept-Language':'en'}});
-    if(!r.ok) return [];
-    return await r.json();
-  }
-
-  function render(list){
-    if(!list.length){ hide(); return; }
-
-    lastList = list;
-
-    panel.innerHTML =
-      '<div class="px-2 py-1 small text-muted border-bottom">Cities/Areas</div>' +
-      list.map((p,i)=>`
-        <div class="py-2 px-2 d-flex gap-2 city-row"
-             data-i="${i}" style="cursor:pointer">
-          <i class="bi bi-geo-alt"></i>
-          <div>
-            <div>${esc(p.display_name)}</div>
-            <div class="text-muted small">
-              lat ${esc(p.lat)} — lng ${esc(p.lon)}
-            </div>
-          </div>
-        </div>
-      `).join('');
-
-    show();
-  }
-
-  function pick(i){
-    const p = lastList[i]; if(!p) return;
-    input.value = p.display_name;
-    latEl.value = p.lat;
-    lonEl.value = p.lon;
-    hide();
+  function pickBestUnique(list){
+    const best=new Map();
+    for(const p of list){
+      const n=normalizePlace(p);
+      if(!n.city||!n.cc) continue;
+      const key=n.city.trim().toLowerCase()+'|'+n.cc;
+      const prev=best.get(key);
+      if(!prev || n.prio < prev.prio) best.set(key,n);
+    }
+    return Array.from(best.values());
   }
 
   input.addEventListener('input', function(){
-    clearTimeout(tm);
+    clearTimeout(t);
     const q = input.value.trim();
     latEl.value = '';
     lonEl.value = '';
 
     if(q.length < 2){ hide(); return; }
 
-    tm = setTimeout(async()=>{
-      try{ render(await query(q)); }
-      catch(_){ hide(); }
-    }, 200);
+    t = setTimeout(async ()=>{
+      try{
+        const lang = detectLang(q);
+        const url = 'https://nominatim.openstreetmap.org/search'
+                  + '?format=json&addressdetails=1&limit=30'
+                  + '&accept-language='+encodeURIComponent(lang)
+                  + '&q='+encodeURIComponent(q);
+
+        const r = await fetch(url);
+        if(!r.ok){ hide(); return; }
+        let data = await r.json();
+
+        let filtered = data.filter(x=>ALLOWED.has((x.type||'').toLowerCase()));
+        if(!filtered.length) filtered = data.filter(x=>FALLBACK.has((x.type||'').toLowerCase()));
+        if(!filtered.length) filtered = data;
+
+        const unique = pickBestUnique(filtered);
+
+        unique.sort((a,b)=>a.prio-b.prio);
+        const best = unique[0];
+        if(!best){ hide(); return; }
+
+        const label = best.city + (best.country ? `, ${best.country}` : '');
+
+        panel.innerHTML = `
+          <div class="py-2 px-2 d-flex gap-2" style="cursor:pointer" id="cityBest">
+            <i class="bi bi-geo-alt"></i>
+            <span>${label}</span>
+          </div>`;
+        panel.dataset.lat = best.lat;
+        panel.dataset.lon = best.lon;
+        show();
+      }catch(_){ hide(); }
+    }, 250);
   });
 
-  panel.addEventListener('click', e=>{
-    const row = e.target.closest('.city-row');
-    if(row) pick(Number(row.dataset.i));
+  panel.addEventListener('click', ()=>{
+    const label = panel.querySelector('#cityBest span')?.textContent || '';
+    input.value = label;
+    latEl.value = panel.dataset.lat || '';
+    lonEl.value = panel.dataset.lon || '';
+    hide();
   });
 
+  document.addEventListener('click', (e)=>{
+    if(!panel.contains(e.target) && e.target!==input) hide();
+  });
 })();
-
 </script>
+
 
 <script>
 // Preview selected images (max 10)
