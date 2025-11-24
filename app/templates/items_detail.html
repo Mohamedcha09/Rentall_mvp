@@ -1076,7 +1076,7 @@ pointer-events:none;
 }
 
 
-}
+
 
 
 </style>
@@ -1468,84 +1468,7 @@ pointer-events:none;
 </div>
 {% endif %}
 
-<script>
-/* Gallery pager + parallax + fixed bar */
-(function(){
-  const main  = document.getElementById('mainImg');
-  const thumbs= document.getElementById('thumbs');
-  const pager = document.getElementById('airPager');
-  const heroFade = document.getElementById('heroFade');
-  const airBar = document.getElementById('airBar');
 
-  function setPager(i,t){ if(pager){ pager.textContent=(i+1)+'/'+t; } }
-  let activeIdx=0;
-  function totalImgs(){ return thumbs ? thumbs.querySelectorAll('img').length : (main?1:0); }
-  setPager(activeIdx,totalImgs());
-
-  if(thumbs && main){
-    thumbs.addEventListener('click', (e)=>{
-      const t=e.target;
-      if(t.tagName==='IMG'){
-        main.src=t.dataset.src||t.src;
-        [...thumbs.querySelectorAll('img')].forEach(i=>i.classList.remove('active'));
-        t.classList.add('active');
-        activeIdx=parseInt(t.getAttribute('data-index')||'0',10)||0;
-        setPager(activeIdx,totalImgs());
-        document.getElementById('rf_image_index')?.setAttribute('value', String(activeIdx));
-        document.getElementById('rf_image_url')?.setAttribute('value', t.dataset.src || t.src || '');
-      }
-    });
-  }
-
-  const gMain = document.getElementById('gMain');
-  function onScroll(){
-    if(!gMain || !main) return;
-    const rect = gMain.getBoundingClientRect();
-    const h = rect.height || 1;
-    const visibleTop = Math.max(0, -rect.top);
-    const p = Math.min(1, visibleTop / (h * .35));
-    const scale = 1 + (visibleTop>0 ? Math.min(visibleTop/1000, .06) : 0);
-    main.style.transform = `scale(${scale}) translateY(${visibleTop* -0.06}px)`;
-    main.style.opacity = String(1 - p*0.85);
-    if(heroFade) heroFade.style.opacity = String(p);
-  }
-  window.addEventListener('scroll', onScroll, {passive:true});
-  onScroll();
-
-  function portalBar(){
-    if(!airBar) return;
-    if (window.matchMedia('(max-width: 768px)').matches) {
-      if(airBar.parentElement !== document.body){ document.body.appendChild(airBar); }
-      const under = document.getElementById('airUnder');
-      if(under && under.parentElement !== document.body){ document.body.appendChild(under); }
-      const pad = (airBar.offsetHeight || 64) + 12;
-      document.body.style.paddingBottom = pad + 'px';
-      document.documentElement.style.setProperty('--airbar-h', pad + 'px');
-    } else {
-      const container = document.querySelector('.air-sheet');
-      if (container && airBar.parentElement !== container) container.appendChild(airBar);
-      document.body.style.paddingBottom = '';
-      document.documentElement.style.removeProperty('--airbar-h');
-    }
-  }
-  portalBar();
-  window.addEventListener('resize', portalBar);
-  window.addEventListener('orientationchange', portalBar);
-
-  if (window.visualViewport) {
-    const onVV = () => {
-      const vh = window.visualViewport.height || window.innerHeight;
-      const kbOpen = vh < window.innerHeight * 0.9;
-      if (kbOpen) document.body.style.paddingBottom = '12px';
-      else portalBar();
-    };
-    window.visualViewport.addEventListener('resize', onVV);
-    window.visualViewport.addEventListener('scroll', onVV);
-  }
-
-  document.body.classList.add('item-page');
-})();
-</script>
 <script>
 /* Share + Favorite (optimistic with POST/DELETE first, toggle as fallback) */
 (function () {
@@ -1784,84 +1707,69 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <script>
-/* ===== REAL SWIPE + FADE/SLIDE EFFECTS ===== */
-(function () {
+(function(){
   const main = document.getElementById('mainImg');
-  const gMain = document.getElementById('gMain');
   const thumbs = document.querySelectorAll('#thumbs img');
-  const pager = document.getElementById('airPager');
+  const pager  = document.getElementById('airPager');
 
   if (!main || !thumbs.length) return;
 
   let index = 0;
-  let startX = 0;
-  let dragging = false;
 
-  function show(i, animate = true) {
-    if (i < 0) i = thumbs.length - 1;
-    if (i >= thumbs.length) i = 0;
-
-    index = i;
-
-    if (animate) {
-      gMain.classList.add("fade-out");
-      setTimeout(() => {
-        main.src = thumbs[i].dataset.src || thumbs[i].src;
-
-        thumbs.forEach(t => t.classList.remove('active'));
-        thumbs[i].classList.add('active');
-
-        if (pager) pager.textContent = (i + 1) + '/' + thumbs.length;
-
-        gMain.classList.remove("fade-out");
-        gMain.classList.add("fade-in");
-
-        setTimeout(() => gMain.classList.remove("fade-in"), 300);
-      }, 160);
-    } else {
-      main.src = thumbs[i].dataset.src || thumbs[i].src;
-    }
+  function updatePager(){
+    if(pager) pager.textContent = (index+1) + "/" + thumbs.length;
   }
 
-  /* Click on thumbnails */
-  thumbs.forEach((t, i) => {
-    t.addEventListener('click', () => show(i));
+  function changeImage(i){
+    if (i < 0) i = thumbs.length - 1;
+    if (i >= thumbs.length) i = 0;
+    index = i;
+
+    thumbs.forEach(t => t.classList.remove('active'));
+    thumbs[i].classList.add('active');
+
+    main.classList.add('fade-out');
+
+    setTimeout(()=>{
+      const newSrc = thumbs[i].dataset.src || thumbs[i].src;
+      main.src = newSrc;
+
+      main.classList.remove('fade-out');
+    },180);
+
+    updatePager();
+  }
+
+  thumbs.forEach((t,i)=>{
+    t.addEventListener("click", ()=> changeImage(i));
   });
 
-  /* Touch swipe */
-  main.addEventListener('touchstart', e => {
+  let startX = 0;
+
+  main.addEventListener("touchstart", e=>{
     startX = e.touches[0].clientX;
-    dragging = true;
-    gMain.classList.add("dragging");
-  }, { passive: true });
+  }, {passive:true});
 
-  main.addEventListener('touchmove', e => {
-    if (!dragging) return;
-    const currentX = e.touches[0].clientX;
-    const diff = currentX - startX;
-    gMain.style.setProperty('--drag-x', diff + 'px');
-  }, { passive: true });
-
-  main.addEventListener('touchend', e => {
-    if (!dragging) return;
-
-    const endX = e.changedTouches[0].clientX;
-    const diff = endX - startX;
-
-    gMain.classList.remove("dragging");
-    gMain.style.removeProperty('--drag-x');
-
-    if (Math.abs(diff) > 40) {
-      if (diff < 0) show(index + 1);
-      else show(index - 1);
+  main.addEventListener("touchend", e=>{
+    const diff = e.changedTouches[0].clientX - startX;
+    if(Math.abs(diff) > 40){
+      if(diff < 0) changeImage(index+1);
+      else changeImage(index-1);
     }
-
-    dragging = false;
   });
 
-  show(0, false);
+  updatePager();
 })();
 </script>
+
+<style>
+#mainImg{
+  transition: opacity .35s ease;
+}
+#mainImg.fade-out{
+  opacity:0;
+}
+</style>
 
 
 
