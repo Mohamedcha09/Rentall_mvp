@@ -953,48 +953,61 @@ def renter_confirm_received(
 
     item = db.get(Item, bk.item_id)
 
-    # ====== 1) Capture payment ======
+    # ====== 1) Capture rent payment ======
     captured = False
-    if bk.payment_method == "online":
-        captured = _try_capture_stripe_rent(bk)
+    pi_id = getattr(bk, "online_payment_intent_id", None)
 
-        # ====== 2) Transfer rent to owner ======
+    # We MUST have a rent PaymentIntent, otherwise no payout can happen
+    if bk.payment_method == "online" and pi_id:
         try:
             import stripe
             stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
-            owner = db.get(User, bk.owner_id)
-            owner_account = getattr(owner, "stripe_account_id", None)
+            # Capture rent (manual capture)
+            amount_to_capture = int(round((bk.amount_native or bk.total_amount or 0) * 100))
+            stripe.PaymentIntent.capture(pi_id, amount_to_capture=amount_to_capture)
 
-            if owner_account:
-                rent_native = bk.amount_native or bk.total_amount or 0
-                rent_cents = int(round(rent_native * 100))
-
-                stripe.Transfer.create(
-                    amount=rent_cents,
-                    currency=(bk.currency_paid or bk.currency_native or "CAD").upper(),
-                    destination=owner_account,
-                    description=f"Sevor Rent Payout Booking #{bk.id}",
-                )
-
-                bk.owner_payout_amount = rent_native
-                bk.owner_payout_status = "sent"
-                bk.rent_released_at = datetime.utcnow()
+            bk.online_status = "captured"
+            bk.payment_status = "released"
+            bk.rent_released_at = datetime.utcnow()
+            captured = True
 
         except Exception as e:
-            print("TRANSFER ERROR:", e)
+            print("CAPTURE ERROR:", e)
 
-        if not captured:
-            bk.payment_status = "released"
-            bk.owner_payout_amount = bk.rent_amount or bk.total_amount or 0
+    # ====== 2) Send payout to owner ======
+    try:
+        import stripe
+        stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+
+        owner = db.get(User, bk.owner_id)
+        owner_account = getattr(owner, "stripe_account_id", None)
+
+        if owner_account:
+            rent_native = float(bk.amount_native or bk.total_amount or 0)
+            rent_cents = int(round(rent_native * 100))
+
+            stripe.Transfer.create(
+                amount=rent_cents,
+                currency=(bk.currency_native or "CAD").lower(),
+                destination=owner_account,
+                description=f"Sevor Rent Payout Booking #{bk.id}",
+            )
+
+            bk.owner_payout_amount = rent_native
+            bk.owner_payout_status = "sent"
             bk.rent_released_at = datetime.utcnow()
-            bk.online_status = "captured"
+
+    except Exception as e:
+        print("TRANSFER ERROR:", e)
 
     # ====== 3) Update booking state ======
     bk.status = "picked_up"
     bk.picked_up_at = datetime.utcnow()
     bk.timeline_renter_received_at = datetime.utcnow()
+
     db.commit()
+
 
     # ====== 4) Notifications ======
     push_notification(
