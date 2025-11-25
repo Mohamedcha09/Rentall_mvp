@@ -597,6 +597,14 @@
               <button type="button" id="pickupCaptureBtn" class="btn-camera">
                 <i class="bi bi-camera"></i> Capture 6 photos with camera, then upload & continue
               </button>
+              <button type="button"
+        id="confirmPickupBtn"
+        class="btn btn-success w-100 mt-2"
+        style="display:none;"
+        onclick="window.location.href='/bookings/{{ booking.id }}/renter/confirm_received?loc={{ loc }}'">
+    ✔ Confirm Pickup
+</button>
+
 
               <div id="pickupCaptureStatus" class="k small d-flex align-items-center justify-content-between">
                 <span class="num-ltr" id="pickupCount">0/6</span>
@@ -1179,7 +1187,12 @@
       fetch(opts.postUrl, { method:'POST', body: fd, credentials:'same-origin' })
         .then(function(r){ if(!r.ok) throw new Error('upload failed'); return r.text(); })
         .then(function(){
-            document.getElementById('pickupConfirmForm').submit();
+            btn.disabled = true;
+            btn.innerHTML = "✔ تم رفع الصور";
+
+            // إظهار زر Confirm Pickup
+            var confirmBtn = document.getElementById("confirmPickupBtn");
+            if (confirmBtn) confirmBtn.style.display = "block";
             })
         .catch(function(){
           uploading = false;
