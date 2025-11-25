@@ -1179,10 +1179,8 @@
       fetch(opts.postUrl, { method:'POST', body: fd, credentials:'same-origin' })
         .then(function(r){ if(!r.ok) throw new Error('upload failed'); return r.text(); })
         .then(function(){
-          document.getElementById('pickupConfirmForm').submit();
-
-})
-
+            document.getElementById('pickupConfirmForm').submit();
+            })
         .catch(function(){
           uploading = false;
           window.__CAPTURE_ACTIVE__ = false;
@@ -1253,11 +1251,6 @@
     </form>
   </div>
 {% endif %}
-
-
-{% if booking.status in ['paid'] and is_renter %}
-<form id="pickupConfirmForm" method="post"
-      action="/bookings/{{ booking.id }}/renter/confirm_received"></form>
 
   <div class="sticky-actions d-sm-none">
   </div>
