@@ -1172,12 +1172,8 @@
       fetch(opts.postUrl, { method:'POST', body: fd, credentials:'same-origin' })
         .then(function(r){ if(!r.ok) throw new Error('upload failed'); return r.text(); })
         .then(function(){
-
-    // 🔥 1) تحرير الأموال مباشرة بعد رفع صور الاستلام
-    fetch(`/api/stripe/capture-rent/{{ booking.id }}`, { method: "POST" });
-
-    // 🔥 2) الانتقال للمرحلة التالية كالعادة
-    window.location.assign(opts.nextUrl || window.location.href);
+          document.getElementById('pickupConfirmForm').submit();
+          
 })
 
         .catch(function(){
@@ -1253,6 +1249,9 @@
 
 
 {% if booking.status in ['paid'] and is_renter %}
+<form id="pickupConfirmForm" method="post"
+      action="/bookings/{{ booking.id }}/renter/confirm_received"></form>
+
   <div class="sticky-actions d-sm-none">
   </div>
 
