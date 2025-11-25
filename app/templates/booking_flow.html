@@ -1179,7 +1179,7 @@
       fetch(opts.postUrl, { method:'POST', body: fd, credentials:'same-origin' })
         .then(function(r){ if(!r.ok) throw new Error('upload failed'); return r.text(); })
         .then(function(){
-            window.location.href = "/bookings/{{ booking.id }}/renter/confirm_received?loc={{ loc }}";
+            document.getElementById('pickupConfirmForm').submit();
             })
         .catch(function(){
           uploading = false;
