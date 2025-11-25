@@ -955,7 +955,7 @@ def renter_confirm_received(
 
                 stripe.Transfer.create(
                     amount=rent_cents,
-                    currency=(bk.currency_native or "CAD").lower(),
+                    currency=(bk.currency_paid or bk.currency_native or "CAD").lower(),
                     destination=owner_account,
                     description=f"Sevor Rent Payout Booking #{bk.id}",
                 )
