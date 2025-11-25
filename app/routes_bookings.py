@@ -337,17 +337,34 @@ def _try_capture_stripe_rent(bk: Booking) -> bool:
         sk = os.getenv("STRIPE_SECRET_KEY", "")
         if not sk:
             return False
+
         stripe.api_key = sk
         pi_id = getattr(bk, "online_payment_intent_id", None)
         if not pi_id:
             return False
+
+        # 1) تحديد المبلغ بدقة (Stripe يرفض بدون هذا)
+        amount_to_capture = int(round((bk.total_amount or bk.amount_native or 0) * 100))
+
+        # 2) تعديل الـ PaymentIntent قبل capture
+        stripe.PaymentIntent.modify(
+            pi_id,
+            amount_to_capture=amount_to_capture
+        )
+
+        # 3) عمل capture حقيقي
         stripe.PaymentIntent.capture(pi_id)
+
+        # 4) تحديث حالة البوكنغ
         bk.payment_status = "released"
         bk.online_status = "captured"
         bk.rent_released_at = datetime.utcnow()
         return True
-    except Exception:
+
+    except Exception as e:
+        print("STRIPE CAPTURE ERROR:", e)
         return False
+
 
 
 # Deposit PI (unify legacy names)
@@ -955,7 +972,7 @@ def renter_confirm_received(
 
                 stripe.Transfer.create(
                     amount=rent_cents,
-                    currency=(bk.currency_paid or bk.currency_native or "CAD").lower(),
+                    currency=(bk.currency_paid or bk.currency_native or "CAD").upper(),
                     destination=owner_account,
                     description=f"Sevor Rent Payout Booking #{bk.id}",
                 )
