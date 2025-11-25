@@ -901,7 +901,6 @@ def renter_pay_online(
 
     # Pay rent ONLY (rent is in display currency)
     return RedirectResponse(url=f"/api/stripe/checkout/rent/{booking_id}", status_code=303)
-
 # ========================================
 # Renter confirms receipt
 # ========================================
@@ -914,21 +913,24 @@ def renter_confirm_received(
 ):
     require_auth(user)
     bk = require_booking(db, booking_id)
+
+    # renter only
     if not is_renter(user, bk):
         raise HTTPException(status_code=403, detail="Only renter can confirm")
-    if bk.status not in (
-    "paid",
-    "awaiting_pickup",
-    "accepted",
-    "pending_payment",
-    "in_use",
-    "authorized",
-    "captured",
-    "paid_online",
-    "ready_for_pickup"
-):
-    raise HTTPException(status_code=400, detail="Invalid state")
 
+    # ===== CHECK VALID STATE =====
+    if bk.status not in (
+        "paid",
+        "awaiting_pickup",
+        "accepted",
+        "pending_payment",
+        "in_use",
+        "authorized",
+        "captured",
+        "paid_online",
+        "ready_for_pickup"
+    ):
+        raise HTTPException(status_code=400, detail="Invalid state")
 
     item = db.get(Item, bk.item_id)
 
@@ -946,7 +948,6 @@ def renter_confirm_received(
             owner_account = getattr(owner, "stripe_account_id", None)
 
             if owner_account:
-                # rent in native currency
                 rent_native = bk.amount_native or bk.total_amount or 0
                 rent_cents = int(round(rent_native * 100))
 
@@ -957,7 +958,6 @@ def renter_confirm_received(
                     description=f"Sevor Rent Payout Booking #{bk.id}",
                 )
 
-                # store payout info
                 bk.owner_payout_amount = rent_native
                 bk.owner_payout_status = "sent"
                 bk.rent_released_at = datetime.utcnow()
@@ -965,7 +965,6 @@ def renter_confirm_received(
         except Exception as e:
             print("TRANSFER ERROR:", e)
 
-        # fallback if capture didn't succeed
         if not captured:
             bk.payment_status = "released"
             bk.owner_payout_amount = bk.rent_amount or bk.total_amount or 0
@@ -992,47 +991,6 @@ def renter_confirm_received(
 
     renter = db.get(User, bk.renter_id)
     return redirect_to_flow_with_loc(bk, renter)
-
-
-# ========================================
-# Owner confirms delivery (mirror path)
-# ========================================
-@router.post("/bookings/{booking_id}/owner/confirm_delivered")
-def owner_confirm_delivered(
-    booking_id: int,
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
-    require_auth(user)
-    bk = require_booking(db, booking_id)
-    if not is_owner(user, bk):
-        raise HTTPException(status_code=403, detail="Only owner can confirm delivery")
-    if bk.status not in ("paid",):
-        renter = db.get(User, bk.renter_id)
-        return redirect_to_flow_with_loc(bk, renter)
-
-    item = db.get(Item, bk.item_id)
-
-    if bk.payment_method == "online":
-        captured = _try_capture_stripe_rent(bk)
-        if not captured:
-            bk.payment_status = "released"
-            bk.owner_payout_amount = bk.rent_amount or bk.total_amount or 0
-            bk.rent_released_at = datetime.utcnow()
-            bk.online_status = "captured"
-
-    bk.status = "picked_up"
-    bk.picked_up_at = datetime.utcnow()
-    db.commit()
-
-    push_notification(
-        db, bk.renter_id, "Item delivered",
-        f"The owner delivered '{item.title}'. Enjoy your rental.",
-        f"/bookings/flow/{bk.id}", "booking"
-    )
-    renter = db.get(User, bk.renter_id)
-    return redirect_to_flow_with_loc(bk, renter)
-
 
 # ========================================
 # Deposit dispute shortcut
