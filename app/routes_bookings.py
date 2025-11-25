@@ -928,8 +928,8 @@ def renter_confirm_received(
         "authorized",
         "captured",
         "paid_online",
-        "ready_for_pickup"
-        "picked_up"     # ← أضف هذا
+        "ready_for_pickup",
+        "picked_up"  ,   # ← أضف هذا
 
     ):
         raise HTTPException(status_code=400, detail="Invalid state")
