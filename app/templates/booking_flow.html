@@ -1232,7 +1232,8 @@
     countId:  'pickupCount',
 
     // أولاً: رفع الصور
-    postUrl:  '/bookings/{{ booking.id }}/pickup-proof-upload?next=/bookings/{{ booking.id }}/renter/confirm_received',
+    postUrl:  '/bookings/{{ booking.id }}/pickup-proof-upload',
+
 
     // ثانياً: بعد الرفع مباشرة: إرسال الأموال للمالك
     nextUrl:  '/bookings/{{ booking.id }}/renter/confirm_received',
