@@ -916,8 +916,19 @@ def renter_confirm_received(
     bk = require_booking(db, booking_id)
     if not is_renter(user, bk):
         raise HTTPException(status_code=403, detail="Only renter can confirm")
-    if bk.status not in ("paid", "awaiting_pickup", "accepted"):
-        raise HTTPException(status_code=400, detail="Invalid state")
+    if bk.status not in (
+    "paid",
+    "awaiting_pickup",
+    "accepted",
+    "pending_payment",
+    "in_use",
+    "authorized",
+    "captured",
+    "paid_online",
+    "ready_for_pickup"
+):
+    raise HTTPException(status_code=400, detail="Invalid state")
+
 
     item = db.get(Item, bk.item_id)
 
