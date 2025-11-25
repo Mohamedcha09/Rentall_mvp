@@ -594,6 +594,11 @@
             <div class="d-grid gap-2">
               <textarea id="pickupComment" class="form-control" rows="2" placeholder="Note (optional)"></textarea>
 
+              <form id="pickupConfirmForm"
+      method="post"
+      action="/bookings/{{ booking.id }}/renter/confirm_received">
+</form>
+
               <button type="button" id="pickupCaptureBtn" class="btn-camera">
                 <i class="bi bi-camera"></i> Capture 6 photos with camera, then upload & continue
               </button>
@@ -601,7 +606,7 @@
         id="confirmPickupBtn"
         class="btn btn-success w-100 mt-2"
         style="display:none;"
-        onclick="window.location.href='/bookings/{{ booking.id }}/renter/confirm_received?loc={{ loc }}'">
+        onclick="document.getElementById('pickupConfirmForm').submit();">
     ✔ Confirm Pickup
 </button>
 
