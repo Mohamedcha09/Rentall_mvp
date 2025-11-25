@@ -212,22 +212,18 @@ async def geo_session_middleware(request: Request, call_next):
     return response
 
 SUPPORTED_CURRENCIES = ["CAD", "USD", "EUR"]
-
 @app.middleware("http")
 async def currency_middleware(request: Request, call_next):
-    """
-    يحدد عملة العرض للمستخدم.
-    الأولوية:
-      1) الكوكي disp_cur (اختيار الزائر من الهيدر أو الإعدادات الآن)
-      2) إعداد المستخدم في الـsession (users.display_currency)
-      3) العملة الموجودة في geo داخل الـsession
-      4) التخمين من البلد (geoip_guess_currency)
-    """
     try:
         path = request.url.path or ""
 
-        # لا نتدخل في webhooks و geo
-        if path.startswith("/webhooks/") or path.startswith("/geo/"):
+        # 🟩 استثناءات Stripe Webhook + Geo
+        if (
+            path.startswith("/stripe/webhook")
+            or path.startswith("/webhooks/")
+            or path.startswith("/geo/")
+            or path.startswith("/api/pay/checkout")
+        ):
             return await call_next(request)
 
         sess = request.session or {}
@@ -236,38 +232,35 @@ async def currency_middleware(request: Request, call_next):
 
         disp = None
 
-        # 1) أولوية أولى: الكوكي من الهيدر (اختيارك الحالي)
+        # 1) من الكوكي
         cur_cookie = (request.cookies.get("disp_cur") or "").upper()
         if cur_cookie in SUPPORTED_CURRENCIES:
             disp = cur_cookie
 
-        # 2) لو ما عندنا كوكي صالحة → نستعمل إعداد المستخدم من الـsession
+        # 2) من session user
         if not disp:
             cur_user = (sess_user.get("display_currency") or "").upper()
             if cur_user in SUPPORTED_CURRENCIES:
                 disp = cur_user
 
-        # 3) لو لا كوكي ولا إعداد → نأخذ من GEO في الـsession
+        # 3) من geo session
         if not disp:
             cur_geo = (geo_sess.get("currency") or "").upper()
             if cur_geo in SUPPORTED_CURRENCIES:
                 disp = cur_geo
 
-        # 4) لو ما زال فاضي → نخمن من البلد
+        # 4) من التخمين
         if not disp:
             disp = geoip_guess_currency(request)
 
-        # حارس أمان
+        # fallback
         if disp not in SUPPORTED_CURRENCIES:
             disp = "CAD"
 
-        # نخزن العملة في request.state (يستعملها Jinja: display_currency(request))
         request.state.display_currency = disp
 
-        # نكمل الطلب
         response = await call_next(request)
 
-        # نحدّث الكوكي دائما بالعملة النهائية
         response.set_cookie(
             "disp_cur",
             disp,
