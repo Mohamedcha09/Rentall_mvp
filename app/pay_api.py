@@ -802,6 +802,8 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
 
     # 2) Extract metadata correctly
     md = (pi.metadata or {}) if pi else {}
+    if not md:
+        md = pi.metadata if hasattr(pi, "metadata") else {}
     kind = md.get("kind")              # rent / deposit / all
     booking_id = int(md.get("booking_id") or 0)
 
