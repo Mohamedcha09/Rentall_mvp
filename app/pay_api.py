@@ -790,8 +790,6 @@ def start_checkout_deposit(
     db.commit()
 
     return RedirectResponse(url=session.url, status_code=303)
-
-# ============ (D) Webhook: Persist Checkout results ============
 def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     import json
 
@@ -799,13 +797,13 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     intent_id = session_obj.get("payment_intent")
     pi = stripe.PaymentIntent.retrieve(intent_id) if intent_id else None
 
-    # 2) Extract metadata correctly
+    # 2) Extract metadata
     md = (pi.metadata or {}) if pi else {}
     if not md:
         md = pi.metadata if hasattr(pi, "metadata") else {}
+
     kind = md.get("kind")              # rent / deposit / all
     booking_id = int(md.get("booking_id") or 0)
-
     currency_paid_meta = md.get("currency_paid")
 
     # 3) Load booking
@@ -813,24 +811,19 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     if not bk:
         return
 
-    # ❗❗ IMPORTANT:
-    # DO NOT TOUCH online_payment_intent_id HERE
-    # EXCEPT when kind == "rent" or kind == "all"
-    # Because deposit must NOT override rent PaymentIntent
-
     renter = db.get(User, bk.renter_id) if bk.renter_id else None
     item   = db.get(Item, bk.item_id) if bk.item_id else None
     qs = _best_loc_qs(bk, renter)
 
-    # 4) Amount paid (total)
+    # 4) Amount paid
     amount_total_cents = int(session_obj.get("amount_total") or 0)
     bk.amount_paid_cents = amount_total_cents
 
-    # 5) Currency actually paid
+    # 5) Currency
     currency = (session_obj.get("currency") or currency_paid_meta or CURRENCY).lower()
     bk.currency_paid = currency
 
-    # 6) Platform fee currency
+    # 6) Platform fee
     bk.platform_fee_currency = "cad"
 
     # 7) FX snapshot
@@ -842,7 +835,7 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     except Exception:
         pass
 
-    # 8) Taxes snapshot
+    # 8) Taxes
     try:
         total_details = session_obj.get("total_details") or {}
         bk.tax_total = int(total_details.get("amount_tax") or 0)
@@ -850,34 +843,27 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     except Exception:
         pass
 
-    # 9) Charge ID & timestamp
+    # 9) Charge ID
     charge_id = _latest_charge_id(pi)
     when = datetime.utcnow()
 
     # =====================================================
     #  A) RENT ONLY
     # =====================================================
+    if kind == "rent":
 
-        if kind == "rent":
-
-        # Save PaymentIntent for rent
         if pi:
             bk.online_payment_intent_id = pi.id
 
-        # حالة Stripe الحقيقية
         pi_status = (getattr(pi, "status", "") or "").lower()
 
-        # بما أننا نترك Stripe يقوم بالـ capture أوتوماتيكياً،
-        # ستكون الحالة عادة "succeeded"
         if pi_status == "succeeded":
             bk.online_status = "captured"
             bk.payment_status = "released"
             bk.rent_released_at = when
         else:
-            # حالات أخرى نحتفظ بها فقط في الـ DB (احتياط)
             bk.online_status = pi_status or "authorized"
 
-        # مبلغ الإيجار الأصلي (بالعملة الأصلية)
         try:
             rent_native = float(
                 bk.amount_native
@@ -888,19 +874,16 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
         except Exception:
             rent_native = 0.0
 
-        # نعتبر أن التحويل تم (Stripe يقوم به عن طريق transfer_data)
         if rent_native > 0:
             bk.owner_payout_amount = rent_native
             bk.owner_payout_status = "sent"
 
-        # لو الديبوووزيت already held → البوكنغ أصبح paid
         if (bk.deposit_status or "").lower() == "held":
             bk.status = "paid"
             bk.timeline_paid_at = datetime.utcnow()
 
         db.commit()
 
-        # الإشعارات
         push_notification(
             db, bk.owner_id, "Rent payment successful",
             f"Booking #{bk.id}: Rent has been paid.",
@@ -915,7 +898,6 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
             "booking"
         )
 
-        # إرسال الإيصال بالإيميل (نتركه كما هو)
         try:
             email = _user_email(db, bk.renter_id)
             if email:
@@ -929,25 +911,18 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
         except Exception:
             pass
 
-
-
     # =====================================================
     #  B) DEPOSIT ONLY
     # =====================================================
     elif kind == "deposit":
 
-        # Save intent ONLY for deposit
         if pi:
             _set_deposit_pi_id(bk, pi.id)
 
         bk.deposit_status = "held"
         bk.deposit_currency = currency.upper()
 
-        # Do NOT modify online_status here (rent status)
-        # Do NOT override online_payment_intent_id
-
         if (bk.online_status or "").lower() == "authorized":
-            # Rent already authorized → fully paid now
             bk.status = "paid"
             bk.timeline_paid_at = datetime.utcnow()
             db.commit()
@@ -966,7 +941,6 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
                 "booking"
             )
         else:
-            # Waiting for rent
             db.commit()
 
             push_notification(
@@ -984,11 +958,10 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
             )
 
     # =====================================================
-    #  C) RENT + DEPOSIT TOGETHER
+    #  C) FULL PAYMENT (RENT + DEPOSIT TOGETHER)
     # =====================================================
     elif kind == "all":
 
-        # In ALL, both intents are the same → save for both
         if pi:
             bk.online_payment_intent_id = pi.id
             _set_deposit_pi_id(bk, pi.id)
