@@ -918,9 +918,8 @@ def renter_pay_online(
 
     # Pay rent ONLY (rent is in display currency)
     return RedirectResponse(url=f"/api/stripe/checkout/rent/{booking_id}", status_code=303)
-
 # ========================================
-# Renter confirms receipt  (NEW VERSION)
+# Renter confirms receipt  (FINAL FIXED VERSION)
 # ========================================
 @router.post("/bookings/{booking_id}/renter/confirm_received")
 def renter_confirm_received(
@@ -929,7 +928,6 @@ def renter_confirm_received(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    # 1) Auth + load booking
     require_auth(user)
     bk = require_booking(db, booking_id)
 
@@ -937,7 +935,7 @@ def renter_confirm_received(
     if not is_renter(user, bk):
         raise HTTPException(status_code=403, detail="Only renter can confirm")
 
-    # 2) Valid states
+    # Valid states
     if bk.status not in (
         "paid",
         "awaiting_pickup",
@@ -956,45 +954,47 @@ def renter_confirm_received(
     owner = db.get(User, bk.owner_id)
 
     # ======================================
-    # 3) CAPTURE RENT ON STRIPE (if online)
-    #    → This will also trigger transfer_data
+    # 1) CAPTURE PAYMENT INTENT (online only)
     # ======================================
     pi_id = getattr(bk, "online_payment_intent_id", None)
+    captured_now = False
 
     if bk.payment_method == "online" and pi_id and (bk.online_status or "").lower() != "captured":
         try:
             import stripe
             stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
-            # لا نرسل amount_to_capture → Stripe يستخدم المبلغ الكامل المصرّح به
             stripe.PaymentIntent.capture(pi_id)
 
-            # Update booking payment fields
             bk.online_status = "captured"
             bk.payment_status = "released"
             bk.rent_released_at = datetime.utcnow()
-
-            # قيمة تقريبية للواجهة (Stripe هو الحقيقة)
-            try:
-                bk.owner_payout_amount = float(
-                    bk.amount_native
-                    or bk.total_amount
-                    or bk.rent_amount
-                    or 0
-                )
-                bk.owner_payout_status = "sent"
-            except Exception:
-                pass
+            captured_now = True
 
         except Exception as e:
             print("CAPTURE ERROR:", e)
             return RedirectResponse(
                 url=f"/bookings/flow/{bk.id}?capture_error=1",
-                status_code=303
+                status_code=303,
             )
 
     # ======================================
-    # 4) Mark booking as picked up
+    # 2) Mark payout as sent in DB
+    #    (التحويل الحقيقي تمّ في Stripe
+    #     عن طريق transfer_data)
+    # ======================================
+    if captured_now:
+        rent_native = float(
+            bk.amount_native
+            or bk.total_amount
+            or bk.rent_amount
+            or 0
+        )
+        bk.owner_payout_amount = rent_native
+        bk.owner_payout_status = "sent"
+
+    # ======================================
+    # 3) Mark booking as picked up
     # ======================================
     bk.status = "picked_up"
     bk.picked_up_at = datetime.utcnow()
@@ -1003,38 +1003,29 @@ def renter_confirm_received(
     db.commit()
 
     # ======================================
-    # 5) Notifications
+    # 4) Notifications
     # ======================================
     if item:
         push_notification(
-            db, bk.owner_id, "Renter picked up the item",
+            db,
+            bk.owner_id,
+            "Renter picked up the item",
             f"'{item.title}'. Reminder about the return date.",
-            f"/bookings/flow/{bk.id}", "booking"
+            f"/bookings/flow/{bk.id}",
+            "booking",
         )
 
         push_notification(
-            db, bk.renter_id, "Pickup confirmed",
+            db,
+            bk.renter_id,
+            "Pickup confirmed",
             f"Don’t forget to return '{item.title}' on time.",
-            f"/bookings/flow/{bk.id}", "booking"
+            f"/bookings/flow/{bk.id}",
+            "booking",
         )
 
     renter = db.get(User, bk.renter_id)
     return redirect_to_flow_with_loc(bk, renter)
-
-# ========================================
-# Deposit dispute shortcut
-# ========================================
-@router.post("/bookings/{booking_id}/owner/open_deposit_issue")
-def owner_open_deposit_issue(
-    booking_id: int,
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
-    require_auth(user)
-    bk = require_booking(db, booking_id)
-    if not is_owner(user, bk):
-        raise HTTPException(status_code=403, detail="Only owner")
-    return RedirectResponse(url=f"/deposits/{bk.id}/report", status_code=303)
 
 
 # ========================================

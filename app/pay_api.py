@@ -416,10 +416,10 @@ def start_checkout_all(
             success_url=f"{success_url}&all_ok=1&sid={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{cancel_url}&cancel=1",
         )
-
+        
         # ⭐⭐⭐⭐⭐ CRITICAL FIX ⭐⭐⭐⭐⭐
         pi_id = session.payment_intent
-        bk.online_payment_intent_id = pi_id
+         _set_deposit_pi_id(bk, pi_id)
         db.commit()
 
     except Exception as e:
