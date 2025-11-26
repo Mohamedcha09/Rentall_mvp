@@ -275,10 +275,6 @@ def _ext_ok(filename: str) -> bool:
 def _local_public_url(fname: str) -> str:
     return f"/uploads/items/{fname}"
 
-
-# ============================================================
-# ======================= ITEMS LIST ==========================
-# ============================================================
 @router.get("/items")
 def items_list(
     request: Request,
@@ -291,28 +287,37 @@ def items_list(
 ):
     # Load DB categories
     categories_db = db.query(Category).order_by(Category.name.asc()).all()
-    subcategories_db = None
-    if category:
-        subcategories_db =(
-            db.query(Subcategory)
-           .filter(Subcategory.category_name == category)
-           .order_by(Subcategory.name.asc())
-           .all()
-               )
 
+    # =======================
+    # LOAD SUBCATEGORIES CORRECTLY
+    # =======================
+    subcategories_db = []
+    if category:
+        # 1) Get the category row by name
+        cat_obj = db.query(Category).filter(Category.name == category).first()
+
+        # 2) If exists → load its subcategories by category_id
+        if cat_obj:
+            subcategories_db = (
+                db.query(Subcategory)
+                .filter(Subcategory.category_id == cat_obj.id)
+                .order_by(Subcategory.name.asc())
+                .all()
+            )
 
     q = db.query(Item).filter(Item.is_active == "yes")
     current_category = category
 
-    # Filter by category (for now by name)
+    # Filter by category (by name)
     if category:
         q = q.filter(Item.category == category)
 
+        # Filter by subcategory
         sub = request.query_params.get("sub")
         if sub:
             q = q.filter(Item.subcategory == sub)
 
-    # City
+    # City filtering
     if city:
         short = (city or "").split(",")[0].strip()
         if short:
@@ -333,7 +338,7 @@ def items_list(
         q = q.order_by(dist2.asc())
         applied_distance_sort = True
 
-    # Normal sort
+    # Normal sorting
     s = (sort or request.query_params.get("sort") or "random").lower()
     current_sort = s
 
@@ -388,7 +393,6 @@ def items_list(
             "lng": lng,
         }
     )
-
 
 
 # ============================================================
