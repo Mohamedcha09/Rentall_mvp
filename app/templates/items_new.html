@@ -198,14 +198,22 @@ h2 {
     <input type="text" name="title" class="form-control" required>
   </div>
 
-  <div class="mb-3">
-    <label class="form-label">Category</label>
-    <select class="form-select" name="category" required>
-      {% for cat in categories %}
-        <option value="{{ cat.key }}">{{ cat.label }}</option>
-      {% endfor %}
-    </select>
-  </div>
+<div class="mb-3">
+  <label class="form-label">Category</label>
+  <select class="form-select" id="catSelect" name="category" required>
+    <option value="">Select category</option>
+    {% for cat in categories %}
+      <option value="{{ cat.name }}" data-id="{{ cat.id }}">{{ cat.name }}</option>
+    {% endfor %}
+  </select>
+</div>
+
+<div class="mb-3">
+  <label class="form-label">Subcategory</label>
+  <select class="form-select" id="subSelect" name="subcategory_id" required>
+      <option value="">Select a category first</option>
+  </select>
+</div>
 
   <div class="mb-3">
     <label class="form-label">Description</label>
@@ -510,5 +518,28 @@ document.getElementById('imgInput').addEventListener('change', function(){
   });
 
 })();
+</script>
+
+<script>
+const subcatsMap = {{ subcats_map | tojson }};
+const catSelect  = document.getElementById('catSelect');
+const subSelect  = document.getElementById('subSelect');
+
+catSelect.addEventListener('change', function() {
+    const catId = this.options[this.selectedIndex].dataset.id;
+    subSelect.innerHTML = "";
+
+    if (!catId || !subcatsMap[catId] || subcatsMap[catId].length === 0) {
+        subSelect.innerHTML = `<option value="">No subcategories</option>`;
+        return;
+    }
+
+    let opts = `<option value="">Select subcategory</option>`;
+    subcatsMap[catId].forEach(sc => {
+        opts += `<option value="${sc.id}">${sc.name}</option>`;
+    });
+
+    subSelect.innerHTML = opts;
+});
 </script>
 {% endblock %}

@@ -554,23 +554,38 @@ def my_items(request: Request, db: Session = Depends(get_db)):
 # ======================= ADD ITEM ============================
 # ============================================================
 @router.get("/owner/items/new")
-def item_new_get(request: Request):
+def item_new_get(request: Request, db: Session = Depends(get_db)):
     if not require_approved(request):
         return RedirectResponse(url="/login", status_code=303)
+
+    # Load categories from DB
+    categories_db = db.query(Category).order_by(Category.name.asc()).all()
+
+    # Load all subcategories once
+    subcats_db = db.query(Subcategory).all()
+
+    # Build dictionary: { category_id: [subcat, subcat, ...] }
+    subcats_map = {}
+    for s in subcats_db:
+        subcats_map.setdefault(s.category_id, [])
+        subcats_map[s.category_id].append({"id": s.id, "name": s.name})
 
     return request.app.templates.TemplateResponse(
         "items_new.html",
         {
             "request": request,
             "title": "Add Item",
-            "categories": CATEGORIES,
+            "categories": categories_db,     # full category objects
+            "subcats_map": subcats_map,     # dict for JS dynamic
             "session_user": request.session.get("user"),
             "account_limited": is_account_limited(request),
         }
     )
+
 @router.post("/owner/items/new")
 def item_new_post(
     request: Request,
+    subcategory_id: int | None = Form(None),
     db: Session = Depends(get_db),
     title: str = Form(...),
     category: str = Form(...),
