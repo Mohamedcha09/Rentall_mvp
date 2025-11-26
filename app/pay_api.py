@@ -662,7 +662,7 @@ def start_checkout_rent(
             billing_address_collection="required",
             customer_creation="always",
             line_items=line_items,
-            success_url=f"{success_url}&rent_ok=1&sid={{CHECKOUT_SESSION_ID}}",
+            success_url=f"{success_url}&ready=1&sid={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{cancel_url}&cancel=1",
         )
         # === NEW: Save PaymentIntent ID ===
