@@ -15,6 +15,7 @@ from .models import User, Item, Booking
 from .utils import category_label, display_currency
 from .notifications_api import push_notification, notify_admins
 from .items import _display_currency, fx_convert_smart
+from .pay_api import _handle_checkout_completed as _handle_checkout_completed_pay
 
 router = APIRouter(tags=["bookings"])
 DEFAULT_CA_SUB = os.getenv("DEFAULT_CA_SUB", "QC").upper()
@@ -614,6 +615,37 @@ def booking_flow(
     item = db.get(Item, bk.item_id)
     owner = db.get(User, bk.owner_id)
     renter = db.get(User, bk.renter_id)
+    sid = request.query_params.get("sid")
+    rent_ok = request.query_params.get("rent_ok")
+    dep_ok = request.query_params.get("deposit_ok")
+    all_ok = request.query_params.get("all_ok")
+
+    if sid and (rent_ok or dep_ok or all_ok):
+        try:
+            import stripe
+            stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+            if stripe.api_key:
+                # جلب الـ Session من Stripe
+                session_obj = stripe.checkout.Session.retrieve(sid)
+                # استدعاء الهاندلر النهائي الموجود في pay_api.py
+                _handle_checkout_completed_pay(session_obj, db)
+                # تحديث الـ Booking من DB بعد التعديل
+                db.refresh(bk)
+        except Exception as e:
+            print("CHECKOUT SYNC ERROR:", e)
+
+        # ريديركت واحد لتنظيف الـ URL من rent_ok / deposit_ok / all_ok / sid
+        clean_params = []
+        for k, v in request.query_params.items():
+            if k in ("rent_ok", "deposit_ok", "all_ok", "sid"):
+                continue
+            clean_params.append(f"{k}={v}")
+        qs = "&".join(clean_params)
+        url = f"/bookings/flow/{bk.id}"
+        if qs:
+            url = f"{url}?{qs}"
+        return RedirectResponse(url=url, status_code=303)
+
 
     # ✅ إذا وُجد ?loc=... نتعامل معه، وإلا نُطبّع برِديـركت واحد
     current_loc = request.query_params.get("loc")
