@@ -391,6 +391,8 @@ def items_list(
             "current_sort": current_sort,
             "lat": lat,
             "lng": lng,
+            "session_user": request.session.get("user"),
+
         }
     )
 
