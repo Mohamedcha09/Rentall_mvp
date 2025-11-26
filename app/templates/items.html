@@ -4,18 +4,18 @@
 
 {% block head %}
 <style>
-/* ============ Base: clear colors & contrast ============ */
+/* ================= BASE COLORS ================= */
 html[dir="rtl"] body{color:#0f172a}
 h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
 .small,.text-muted,.chip,.pill{color:#6b7280}
 
-/* ============ Cards (same as Home) ============ */
+/* ================= ITEM CARDS ================= */
 .spot{position:relative;border:none;background:transparent;box-shadow:none;border-radius:14px}
 .spot-media{position:relative;aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:#eef2f7}
 .spot-media img{width:100%;height:100%;object-fit:cover}
 .spot-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.1))}
 .category-chip{position:absolute;top:8px;left:8px;padding:4px 9px;font-size:.74rem;font-weight:800;color:#111;background:#fff;border:1px solid rgba(0,0,0,.06);border-radius:999px;box-shadow:0 3px 8px rgba(0,0,0,.08)}
-.fav-btn{display:none}   /* No heart needed here */
+.fav-btn{display:none}
 .spot-body{padding:10px 4px 0}
 .spot-title{font-weight:800;color:#111;font-size:clamp(.92rem,.86rem + .2vw,1rem);margin-bottom:4px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 .spot-meta{display:flex;flex-direction:column;gap:2px;margin-top:4px}
@@ -24,99 +24,111 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
 .spot-city{color:#6b7280;font-size:.9rem}
 .spot-rating{font-weight:800;color:#111;font-size:.88rem}
 .spot-rating::before{content:"★ ";font-weight:900}
-.owner-line,.spot-footer,.price-badge{display:none}
 
-/* Items grid 2-3-4-5-6 columns like Home */
+/* ================= GRID ================= */
 .grid-items{display:grid;gap:14px;padding-inline:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
 @media (min-width:576px){ .grid-items{grid-template-columns:repeat(3,minmax(0,1fr))} }
 @media (min-width:768px){ .grid-items{grid-template-columns:repeat(4,minmax(0,1fr))} }
 @media (min-width:992px){ .grid-items{grid-template-columns:repeat(5,minmax(0,1fr))} }
 @media (min-width:1200px){ .grid-items{grid-template-columns:repeat(6,minmax(0,1fr))} }
 
-/* ============ Categories toolbar (scrollable) ============ */
-.toolbar{display:flex;gap:8px;align-items:center;overflow:auto hidden;white-space:nowrap}
-.pill{padding:8px 12px;border-radius:999px;border:1px solid rgba(0,0,0,.08);background:#fff;color:#0f172a;text-decoration:none}
-.pill.active{border-color:#6C63FF;background:#f4f3ff}
+/* ================= TOP CATEGORY BAR ================= */
+.toolbar{display:flex;gap:8px;align-items:center;overflow:auto hidden;white-space:nowrap;padding-bottom:4px}
+.pill{padding:8px 12px;border-radius:999px;border:1px solid rgba(0,0,0,.08);background:#fff;color:#0f172a;text-decoration:none;font-weight:600}
+.pill.active{border-color:#6C63FF;background:#f4f3ff;color:#6C63FF}
 
-/* ============ ONE-LINE location bar for all screens ============ */
-.items-locbar{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,.06);
-  padding:8px 10px;margin-block:14px;display:flex;flex-wrap:nowrap;gap:6px;align-items:center}
-.items-locbar .col{padding:0;margin:0}
-.items-locbar .col--input{flex:1 1 auto;min-width:0;position:relative}
-#itemsCityInput{height:36px;border-radius:10px;border:1px solid rgba(0,0,0,.08);background:#fff;padding:0 12px}
-#itemsCityInput:focus{outline:none;border-color:#6C63FF;box-shadow:0 0 0 4px rgba(108,99,255,.18)}
-.items-locbar .btn{height:36px;border-radius:10px;font-weight:800}
-#itemsUseGPS{background:#fff;border:1px solid rgba(0,0,0,.08);color:#0f172a;padding:0 10px}
-#itemsSearchBtn{background:#6C63FF;border:none;color:#fff;padding:0 14px}
-#itemsClearGPS{color:#e5484d;border:none;background:transparent;padding:0 6px;height:auto;line-height:1;font-weight:800}
-@media (max-width:576px){
-  #itemsUseGPS{font-size:0}
-  #itemsUseGPS::before{content:"📍";font-size:18px;line-height:1;display:inline-block;transform:translateY(1px)}
+/* ================= SUBCATEGORY CHIPS ================= */
+.subcat-bar{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:10px;
+    margin-bottom:16px;
+}
+.subcat-chip{
+    padding:7px 12px;
+    border-radius:999px;
+    border:1px solid rgba(0,0,0,.08);
+    background:#fff;
+    color:#0f172a;
+    text-decoration:none;
+    font-size:.82rem;
+    font-weight:600;
+}
+.subcat-chip.active{
+    background:#6C63FF;
+    border-color:#6C63FF;
+    color:#fff;
 }
 
-/* City suggestion list */
+/* ================= LOCATION BAR ================= */
+.items-locbar{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,.06);
+  padding:8px 10px;margin-block:14px;display:flex;gap:6px;align-items:center}
+#itemsCityInput{height:36px;border-radius:10px;border:1px solid rgba(0,0,0,.08);background:#fff;padding:0 12px}
+.items-locbar .btn{height:36px;border-radius:10px;font-weight:800}
+#itemsSearchBtn{background:#6C63FF;border:none;color:#fff;padding:0 14px}
+
+/* CITY SUGGESTION */
 #itemsCitySugg{display:none;position:absolute;inset-inline:0;top:calc(100% + 6px);z-index:1000;max-height:240px;overflow:auto;
   background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,.08)}
 #itemsCitySugg>div{padding:.5rem .6rem;font-size:.95rem;color:#0f172a;border-top:1px solid rgba(0,0,0,.04);cursor:pointer}
-#itemsCitySugg>div:first-child{border-top:none}
 #itemsCitySugg>div:hover{background:#f7f7fb}
-
-/* Section header */
-.section-title{font-weight:900;font-size:1.05rem}
 </style>
 {% endblock %}
 
 {% block content %}
 
 <section class="container" style="max-width:1200px;margin:auto">
+
+  <!-- ================= TITLE + CATEGORY PILL ================ -->
   <div class="d-flex align-items-center justify-content-between mb-2" style="gap:8px">
     <div class="d-flex align-items-center" style="gap:10px">
       <h2 class="mb-0">Items</h2>
       <span class="pill" style="font-size:.82rem">
         {% if current_category %}Category: <b>{{ current_category }}</b>{% else %}All categories{% endif %}
       </span>
-      <span class="pill" style="font-size:.82rem">
-        Sort: {% if current_sort == 'new' %}Newest{% else %}Random{% endif %}
-      </span>
     </div>
 
+    <!-- ================= TOP CATEGORIES TOOLBAR ================ -->
     <div class="toolbar">
       <a class="pill {% if not current_category %}active{% endif %}" href="/items">All</a>
       {% for cat in categories %}
-        {% set key = cat.key if cat.key is defined else (cat.code if cat.code is defined else cat) %}
-        {% set label = cat.label if cat.label is defined else (cat.name if cat.name is defined else key) %}
-        <a class="pill {% if current_category == key %}active{% endif %}"
-           href="/items?category={{ key }}{% if selected_city %}&city={{ selected_city | urlencode }}{% endif %}{% if lat %}&lat={{ lat }}{% endif %}{% if lng %}&lng={{ lng }}{% endif %}">
-          {{ label }}
+        <a class="pill {% if current_category == cat.name %}active{% endif %}"
+           href="/items?category={{ cat.name }}">
+          {{ cat.name }}
         </a>
       {% endfor %}
-      {% set base_q = (current_category and ('&category=' ~ current_category)) or '' %}
-      <a class="pill {% if current_sort != 'new' %}active{% endif %}"
-         href="/items?sort=random{{ base_q }}{% if selected_city %}&city={{ selected_city | urlencode }}{% endif %}{% if lat %}&lat={{ lat }}{% endif %}{% if lng %}&lng={{ lng }}{% endif %}">Random</a>
-      <a class="pill {% if current_sort == 'new' %}active{% endif %}"
-         href="/items?sort=new{{ base_q }}{% if selected_city %}&city={{ selected_city | urlencode }}{% endif %}{% if lat %}&lat={{ lat }}{% endif %}{% if lng %}&lng={{ lng }}{% endif %}">Newest</a>
     </div>
   </div>
 
-  {# ========= Location bar (ONE-LINE) ========= #}
-  <form id="itemsLocForm" class="items-locbar" action="/items" method="get" role="search" novalidate>
-    <div class="col col--input">
+  <!-- ================= SUBCATEGORIES (only if category selected) ================ -->
+  {% if current_category and subcategories and subcategories|length > 0 %}
+  <div class="subcat-bar">
+    {% for sub in subcategories %}
+      <a class="subcat-chip {% if current_sub == sub.name %}active{% endif %}"
+         href="/items?category={{ current_category }}&sub={{ sub.name }}">
+        {{ sub.name }}
+      </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- ================= LOCATION BAR ================= -->
+  <form id="itemsLocForm" class="items-locbar" action="/items" method="get" role="search">
+    <div style="flex:1;position:relative">
       <input type="text" class="form-control" id="itemsCityInput" name="city"
-             placeholder="Type city / area …" autocomplete="off" value="{{ selected_city or '' }}">
+             placeholder="Type city / area …" autocomplete="off"
+             value="{{ selected_city or '' }}">
       <div id="itemsCitySugg"></div>
     </div>
 
-    <button type="button" id="itemsUseGPS" class="btn" aria-label="Use my location">GPS</button>
-    <button class="btn" id="itemsSearchBtn" type="submit">Search</button>
-    <button type="button" id="itemsClearGPS" class="btn btn-link">Clear</button>
-
-    <input type="hidden" id="itemsLat" name="lat" value="{{ lat or '' }}">
-    <input type="hidden" id="itemsLng" name="lng" value="{{ lng or '' }}">
     {% if current_category %}<input type="hidden" name="category" value="{{ current_category }}">{% endif %}
-    {% if current_sort %}<input type="hidden" name="sort" value="{{ current_sort }}">{% endif %}
+    {% if current_sub %}<input type="hidden" name="sub" value="{{ current_sub }}">{% endif %}
+
+    <button class="btn" id="itemsSearchBtn" type="submit">Search</button>
   </form>
 
-  {# ========= Items grid ========= #}
+  <!-- ================= ITEMS GRID ================= -->
   {% if items_view and items_view|length %}
     <div class="grid-items">
       {% for it in items_view %}
@@ -128,12 +140,12 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
               <img src="/static/placeholder.jpg" alt="">
             {% endif %}
             <div class="spot-overlay"></div>
-            {% if it.item.category_label %}
-              <span class="category-chip">{{ it.item.category_label }}</span>
+            {% if it.item.category %}
+              <span class="category-chip">{{ it.item.category }}</span>
             {% endif %}
           </div>
           <div class="spot-body">
-            <div class="spot-title" title="{{ it.item.title }}">{{ it.item.title }}</div>
+            <div class="spot-title">{{ it.item.title }}</div>
             <div class="spot-meta">
               <div class="spot-price">
                 <strong>{{ it.display_price | money(display_currency) }}</strong>
@@ -141,9 +153,8 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
               </div>
               <div class="spot-city">{{ it.item.city or '—' }}</div>
               {% if it.item.avg_stars %}
-  <div class="spot-rating">{{ "%.1f"|format(it.item.avg_stars) }}</div>
-{% endif %}
-
+                <div class="spot-rating">{{ "%.1f"|format(it.item.avg_stars) }}</div>
+              {% endif %}
             </div>
           </div>
         </a>
@@ -153,10 +164,12 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
     <div class="alert alert-secondary mt-3">No items match this selection.</div>
   {% endif %}
 </section>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
+
 /* ===== Location bar logic (City/GPS) ===== */
 (function itemsLocBar(){
   const form   = document.getElementById('itemsLocForm');
