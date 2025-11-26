@@ -16,6 +16,7 @@ from .database import get_db
 from .models import Item, User, ItemReview, Favorite as _Fav
 from .utils import CATEGORIES, category_label
 from .utils_badges import get_user_badges
+from .models import Category, Subcategory
 
 router = APIRouter()
 
@@ -288,14 +289,30 @@ def items_list(
     lat: float | None = None,
     lng: float | None = None,
 ):
-    q = db.query(Item).filter(Item.is_active == "yes")
-    current_category = None
+    # Load DB categories
+    categories_db = db.query(Category).order_by(Category.name.asc()).all()
+    subcategories_db = None
+    if category:
+        subcategories_db =(
+            db.query(Subcategory)
+           .filter(Subcategory.category_name == category)
+           .order_by(Subcategory.name.asc())
+           .all()
+               )
 
+
+    q = db.query(Item).filter(Item.is_active == "yes")
+    current_category = category
+
+    # Filter by category (for now by name)
     if category:
         q = q.filter(Item.category == category)
-        current_category = category
 
-    # City filter
+        sub = request.query_params.get("sub")
+        if sub:
+            q = q.filter(Item.subcategory == sub)
+
+    # City
     if city:
         short = (city or "").split(",")[0].strip()
         if short:
@@ -326,46 +343,32 @@ def items_list(
         else:
             q = q.order_by(func.random())
 
-    # ---- Fetch items ----
+    # Fetch items
     items = q.all()
 
-    # ---- Rating calculation ----
+    # Rating
     for it in items:
         avg = db.query(func.avg(ItemReview.stars)).filter(ItemReview.item_id == it.id).scalar()
         cnt = db.query(func.count(ItemReview.id)).filter(ItemReview.item_id == it.id).scalar()
-
         it.avg_stars = float(avg) if avg else None
         it.rating_count = int(cnt or 0)
 
-    # ---- Badges / category ----
-    for it in items:
-        it.category_label = category_label(it.category)
-        it.owner_badges = get_user_badges(it.owner, db) if it.owner else []
-
-    # ---- Price conversion ----
+    # Price conversion
     disp_cur = _display_currency(request)
     items_view = []
-
     for it in items:
-        try:
-            base_cur = (it.currency or "CAD").upper()
-        except Exception:
-            base_cur = "CAD"
-
+        base_cur = (it.currency or "CAD").upper()
         disp_price = fx_convert_smart(
             db,
-            getattr(it, "price", getattr(it, "price_per_day", 0.0)),
+            getattr(it, "price", getattr(it, "price_per_day", 0)),
             base_cur,
             disp_cur,
         )
-
-        items_view.append(
-            {
-                "item": it,
-                "display_price": float(disp_price),
-                "display_currency": disp_cur,
-            }
-        )
+        items_view.append({
+            "item": it,
+            "display_price": float(disp_price),
+            "display_currency": disp_cur,
+        })
 
     return request.app.templates.TemplateResponse(
         "items.html",
@@ -374,17 +377,18 @@ def items_list(
             "title": "Items",
             "items": items,
             "items_view": items_view,
-            "display_currency": disp_cur,
-            "categories": CATEGORIES,
+            "categories": categories_db,
             "current_category": current_category,
-            "session_user": request.session.get("user"),
-            "account_limited": is_account_limited(request),
-            "current_sort": current_sort,
+            "subcategories": subcategories_db,
+            "current_sub": request.query_params.get("sub"),
+            "display_currency": disp_cur,
             "selected_city": city or "",
+            "current_sort": current_sort,
             "lat": lat,
             "lng": lng,
         }
     )
+
 
 
 # ============================================================

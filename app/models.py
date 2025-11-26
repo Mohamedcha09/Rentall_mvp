@@ -188,6 +188,8 @@ class Item(Base):
 
     price_per_day = Column(Integer, nullable=False, default=0)
     category      = Column(String(50), nullable=False, default="other")
+    subcategory = Column(String(80), nullable=True)
+
 
     # OLD single image
     image_path    = Column(String(500), nullable=True)
