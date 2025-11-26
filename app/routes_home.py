@@ -8,8 +8,8 @@ import random
 
 from .database import get_db
 from .models import Item, FxRate, ItemReview
-from .utils import CATEGORIES, category_label as _category_label
 from sqlalchemy.sql import func
+from .models import Category
 
 router = APIRouter()
 
@@ -214,11 +214,37 @@ def home_page(
         it["display_currency"] = user_currency
         it["display_symbol"] = symbols.get(user_currency, user_currency)   # FIX ✔
 
-    # ---- Categories ----
+
+        # ===== Load all categories (from DB, dynamic) =====
     items_by_category = {}
-    for cat in CATEGORIES:
-        code = cat.get("key", "")
-        label = cat.get("label", "")
+
+    db_categories = db.query(Category).order_by(Category.id).all()
+
+    for cat in db_categories:
+        code = cat.name       # category key = name
+        label = cat.name      # label = name
+
+        q = base_q
+        if filtering:
+            q = _apply_city_or_gps_filter(q, city, lat, lng, radius_km)
+
+        # filter items by category name
+        q = q.filter(Item.category == code)
+
+        rows = q.order_by(func.random()).limit(12).all()
+        lst = [_serialize(i, ratings_map) for i in rows]
+
+        # fx conversion
+        for it in lst:
+            base = it["currency"]
+            price = it.get("price_per_day") or 0
+            it["display_price"] = fx_convert(price, base, user_currency, rates)
+            it["display_currency"] = user_currency
+            it["display_symbol"] = symbols.get(user_currency, user_currency)
+
+        if lst:
+            items_by_category[code] = lst
+
 
         q = base_q
         if filtering:
