@@ -612,6 +612,7 @@ def booking_flow(
 ):
     require_auth(user)
     bk = require_booking(db, booking_id)
+
     item = db.get(Item, bk.item_id)
     owner = db.get(User, bk.owner_id)
     renter = db.get(User, bk.renter_id)

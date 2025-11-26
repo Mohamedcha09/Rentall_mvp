@@ -879,8 +879,12 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
             bk.owner_payout_status = "sent"
 
         if (bk.deposit_status or "").lower() == "held":
-            bk.status = "paid"
-            bk.timeline_paid_at = datetime.utcnow()
+            rent_ok_now = (bk.online_status in ["authorized", "captured", "succeeded"])
+            dep_ok_now  = (bk.deposit_status == "held")
+
+            if rent_ok_now and dep_ok_now:
+                bk.status = "paid"
+                bk.timeline_paid_at = datetime.utcnow()
 
         db.commit()
 
