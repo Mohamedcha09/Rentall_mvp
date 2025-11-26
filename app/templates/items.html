@@ -94,9 +94,10 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
       <a class="pill {% if not current_category %}active{% endif %}" href="/items">All</a>
       {% for cat in categories %}
         <a class="pill {% if current_category == cat.name %}active{% endif %}"
-           href="/items?category={{ cat.name }}">
-          {{ cat.name }}
-        </a>
+   href="/items?category={{ cat.name | urlencode }}">
+  {{ cat.name }}
+</a>
+
       {% endfor %}
     </div>
   </div>
@@ -106,7 +107,7 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
   <div class="subcat-bar">
     {% for sub in subcategories %}
       <a class="subcat-chip {% if current_sub == sub.name %}active{% endif %}"
-         href="/items?category={{ current_category }}&sub={{ sub.name }}">
+         href="/items?category={{ current_category | urlencode }}&sub={{ sub.name | urlencode }}">
         {{ sub.name }}
       </a>
     {% endfor %}
