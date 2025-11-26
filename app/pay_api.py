@@ -638,7 +638,6 @@ def start_checkout_rent(
     # 5) Stripe Session + metadata snapshot
     # =======================================================
     pi_data = {
-        "capture_method": "manual",
         "metadata": {
             "kind": "rent",
             "booking_id": str(bk.id),
@@ -858,53 +857,65 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     # =====================================================
     #  A) RENT ONLY
     # =====================================================
-    if kind == "rent":
+
+        if kind == "rent":
 
         # Save PaymentIntent for rent
         if pi:
             bk.online_payment_intent_id = pi.id
 
-        bk.online_status = "authorized"
+        # حالة Stripe الحقيقية
+        pi_status = (getattr(pi, "status", "") or "").lower()
 
+        # بما أننا نترك Stripe يقوم بالـ capture أوتوماتيكياً،
+        # ستكون الحالة عادة "succeeded"
+        if pi_status == "succeeded":
+            bk.online_status = "captured"
+            bk.payment_status = "released"
+            bk.rent_released_at = when
+        else:
+            # حالات أخرى نحتفظ بها فقط في الـ DB (احتياط)
+            bk.online_status = pi_status or "authorized"
+
+        # مبلغ الإيجار الأصلي (بالعملة الأصلية)
+        try:
+            rent_native = float(
+                bk.amount_native
+                or bk.total_amount
+                or bk.rent_amount
+                or 0
+            )
+        except Exception:
+            rent_native = 0.0
+
+        # نعتبر أن التحويل تم (Stripe يقوم به عن طريق transfer_data)
+        if rent_native > 0:
+            bk.owner_payout_amount = rent_native
+            bk.owner_payout_status = "sent"
+
+        # لو الديبوووزيت already held → البوكنغ أصبح paid
         if (bk.deposit_status or "").lower() == "held":
-            # Rent authorized + deposit held → fully paid
             bk.status = "paid"
             bk.timeline_paid_at = datetime.utcnow()
-            db.commit()
 
-            push_notification(
-                db, bk.owner_id, "Rent payment authorized",
-                f"Booking #{bk.id}: Authorization completed.",
-                _append_qs(f"/bookings/flow/{bk.id}", qs),
-                "booking"
-            )
+        db.commit()
 
-            push_notification(
-                db, bk.renter_id, "Payment authorized",
-                f"Booking #{bk.id}: You can now pick up the item.",
-                _append_qs(f"/bookings/flow/{bk.id}", qs),
-                "booking"
-            )
+        # الإشعارات
+        push_notification(
+            db, bk.owner_id, "Rent payment successful",
+            f"Booking #{bk.id}: Rent has been paid.",
+            _append_qs(f"/bookings/flow/{bk.id}", qs),
+            "booking"
+        )
 
-        else:
-            # Waiting for deposit
-            db.commit()
+        push_notification(
+            db, bk.renter_id, "Payment successful",
+            f"Booking #{bk.id}: Your rent payment was completed.",
+            _append_qs(f"/bookings/flow/{bk.id}", qs),
+            "booking"
+        )
 
-            push_notification(
-                db, bk.owner_id, "Rent authorized",
-                f"Booking #{bk.id}: Waiting for deposit.",
-                _append_qs(f"/bookings/flow/{bk.id}", qs),
-                "booking"
-            )
-
-            push_notification(
-                db, bk.renter_id, "Rent authorized",
-                f"Booking #{bk.id}: Please complete the deposit.",
-                _append_qs(f"/bookings/flow/{bk.id}", qs),
-                "booking"
-            )
-
-        # Receipt
+        # إرسال الإيصال بالإيميل (نتركه كما هو)
         try:
             email = _user_email(db, bk.renter_id)
             if email:
@@ -916,7 +927,8 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
                 )
                 send_email(email, f"🧾 Payment Receipt — Booking #{bk.id}", html, text)
         except Exception:
-       		      pass
+            pass
+
 
 
     # =====================================================
