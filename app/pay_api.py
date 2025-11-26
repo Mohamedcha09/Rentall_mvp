@@ -419,7 +419,7 @@ def start_checkout_all(
         
         # ⭐⭐⭐⭐⭐ CRITICAL FIX ⭐⭐⭐⭐⭐
         pi_id = session.payment_intent
-         _set_deposit_pi_id(bk, pi_id)
+        _set_deposit_pi_id(bk, pi_id)
         db.commit()
 
     except Exception as e:
