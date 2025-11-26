@@ -581,13 +581,12 @@ def item_new_get(request: Request, db: Session = Depends(get_db)):
             "account_limited": is_account_limited(request),
         }
     )
-
 @router.post("/owner/items/new")
 def item_new_post(
     request: Request,
     db: Session = Depends(get_db),
 
-    # ← الآن نضع كل الـ Form()
+    # Form fields
     subcategory_id: int | None = Form(None),
     title: str = Form(...),
     category: str = Form(...),
@@ -625,9 +624,17 @@ def item_new_post(
         currency = "CAD"
 
     # ------------------------------
+    # GET SUBCATEGORY NAME FROM ID
+    # ------------------------------
+    subcat_name = None
+    if subcategory_id:
+        subcat = db.query(Subcategory).filter(Subcategory.id == subcategory_id).first()
+        if subcat:
+            subcat_name = subcat.name   # "Vans" for example
+
+    # ------------------------------
     # MULTI IMAGES UPLOAD HANDLING
     # ------------------------------
-
     image_urls_list = []
     fallback_image = None  # first image
 
@@ -677,14 +684,13 @@ def item_new_post(
     # ------------------------------
     # CREATE ITEM
     # ------------------------------
-
     it = Item(
         owner_id=u["id"],
         title=title,
         description=description,
         city=city,
-        category=category,
-        subcategory=subcategory_id,
+        category=category,          # example: Vehicles
+        subcategory=subcat_name,    # example: "Vans" instead of id (VERY IMPORTANT)
         is_active="yes",
         latitude=lat,
         longitude=lng,
