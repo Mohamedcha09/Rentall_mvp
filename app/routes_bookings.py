@@ -918,8 +918,9 @@ def renter_pay_online(
 
     # Pay rent ONLY (rent is in display currency)
     return RedirectResponse(url=f"/api/stripe/checkout/rent/{booking_id}", status_code=303)
-# ========================================
-# Renter confirms receipt
+
+   # ========================================
+# Renter confirms receipt  (FINAL FIX)
 # ========================================
 @router.post("/bookings/{booking_id}/renter/confirm_received")
 def renter_confirm_received(
@@ -935,58 +936,54 @@ def renter_confirm_received(
     if not is_renter(user, bk):
         raise HTTPException(status_code=403, detail="Only renter can confirm")
 
-    # ===== CHECK VALID STATE =====
+    # valid states
     if bk.status not in (
-        "paid",
-        "awaiting_pickup",
-        "accepted",
-        "pending_payment",
-        "in_use",
-        "authorized",
-        "captured",
-        "paid_online",
-        "ready_for_pickup",
-        "picked_up"  ,   # ← أضف هذا
-
+        "paid", "awaiting_pickup", "accepted", "pending_payment",
+        "in_use", "authorized", "captured", "paid_online",
+        "ready_for_pickup", "picked_up"
     ):
         raise HTTPException(status_code=400, detail="Invalid state")
 
     item = db.get(Item, bk.item_id)
+    owner = db.get(User, bk.owner_id)
+    owner_account = getattr(owner, "stripe_account_id", None)
 
-    # ====== 1) Capture rent payment ======
-    captured = False
+    # ==========================
+    # 1) Capture rent (REQUIRED)
+    # ==========================
     pi_id = getattr(bk, "online_payment_intent_id", None)
 
-    # We MUST have a rent PaymentIntent, otherwise no payout can happen
     if bk.payment_method == "online" and pi_id:
         try:
             import stripe
             stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
-            # Capture rent (manual capture)
-            amount_to_capture = int(round((bk.amount_native or bk.total_amount or 0) * 100))
-            stripe.PaymentIntent.capture(pi_id, amount_to_capture=amount_to_capture)
+            # Calculate amount
+            rent_native = float(bk.amount_native or bk.total_amount or 0)
+            rent_cents = int(round(rent_native * 100))
+
+            # Capture
+            stripe.PaymentIntent.capture(
+                pi_id,
+                amount_to_capture=rent_cents
+            )
 
             bk.online_status = "captured"
             bk.payment_status = "released"
             bk.rent_released_at = datetime.utcnow()
-            captured = True
 
         except Exception as e:
             print("CAPTURE ERROR:", e)
+            return RedirectResponse(
+                url=f"/bookings/flow/{bk.id}?capture_error=1",
+                status_code=303
+            )
 
-    # ====== 2) Send payout to owner ======
+    # ==========================
+    # 2) TRANSFER to owner
+    # ==========================
     try:
-        import stripe
-        stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
-
-        owner = db.get(User, bk.owner_id)
-        owner_account = getattr(owner, "stripe_account_id", None)
-
         if owner_account:
-            rent_native = float(bk.amount_native or bk.total_amount or 0)
-            rent_cents = int(round(rent_native * 100))
-
             stripe.Transfer.create(
                 amount=rent_cents,
                 currency=(bk.currency_native or "CAD").lower(),
@@ -1001,20 +998,24 @@ def renter_confirm_received(
     except Exception as e:
         print("TRANSFER ERROR:", e)
 
-    # ====== 3) Update booking state ======
+    # ==========================
+    # 3) Update booking
+    # ==========================
     bk.status = "picked_up"
     bk.picked_up_at = datetime.utcnow()
     bk.timeline_renter_received_at = datetime.utcnow()
 
     db.commit()
 
-
-    # ====== 4) Notifications ======
+    # ==========================
+    # 4) Notifications
+    # ==========================
     push_notification(
         db, bk.owner_id, "Renter picked up the item",
         f"'{item.title}'. Reminder about the return date.",
         f"/bookings/flow/{bk.id}", "booking"
     )
+
     push_notification(
         db, bk.renter_id, "Pickup confirmed",
         f"Don’t forget to return '{item.title}' on time.",
