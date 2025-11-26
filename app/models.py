@@ -205,6 +205,34 @@ class Item(Base):
     message_threads = relationship("MessageThread", back_populates="item", cascade="all, delete-orphan")
     favorited_by    = relationship("Favorite", back_populates="item", cascade="all, delete-orphan")
 
+# =========================
+# Categories & Subcategories
+# =========================
+
+class Category(Base):
+    __tablename__ = "categories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(80), nullable=False, unique=True)
+
+    # علاقة لجلب جميع الفئات الفرعية
+    subcategories = relationship(
+        "Subcategory",
+        back_populates="category",
+        cascade="all, delete-orphan"
+    )
+
+
+class Subcategory(Base):
+    __tablename__ = "subcategories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
+    name = Column(String(120), nullable=False)
+
+    # علاقة عكسية
+    category = relationship("Category", back_populates="subcategories")
+
 
 # =========================
 # Favorites
