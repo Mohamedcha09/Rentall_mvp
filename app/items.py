@@ -585,8 +585,10 @@ def item_new_get(request: Request, db: Session = Depends(get_db)):
 @router.post("/owner/items/new")
 def item_new_post(
     request: Request,
-    subcategory_id: int | None = Form(None),
     db: Session = Depends(get_db),
+
+    # ← الآن نضع كل الـ Form()
+    subcategory_id: int | None = Form(None),
     title: str = Form(...),
     category: str = Form(...),
     description: str = Form(""),
@@ -595,12 +597,12 @@ def item_new_post(
     price: str = Form("0"),
     currency: str = Form("CAD"),
 
-    # 👇 FIXED: File(...) instead of File(None)
     images: list[UploadFile] = File(...),
 
     latitude: str = Form(""),
     longitude: str = Form(""),
 ):
+
     if not require_approved(request):
         return RedirectResponse(url="/login", status_code=303)
 
@@ -682,6 +684,7 @@ def item_new_post(
         description=description,
         city=city,
         category=category,
+        subcategory=subcategory_id,
         is_active="yes",
         latitude=lat,
         longitude=lng,
