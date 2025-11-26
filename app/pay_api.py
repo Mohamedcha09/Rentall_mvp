@@ -780,7 +780,7 @@ def start_checkout_deposit(
         )
         # === NEW: Save PaymentIntent ID ===
         pi_id = session.payment_intent
-        bk.online_payment_intent_id = pi_id
+        _set_deposit_pi_id(bk, pi_id)
         db.commit()
 
 
