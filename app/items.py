@@ -554,6 +554,105 @@ def my_items(request: Request, db: Session = Depends(get_db)):
         }
     )
 
+@router.get("/owner/items/{item_id}/edit")
+def item_edit_get(request: Request, item_id: int, db: Session = Depends(get_db)):
+    u = request.session.get("user")
+    if not u:
+        return RedirectResponse(url="/login", status_code=303)
+
+    item = db.query(Item).get(item_id)
+    if not item or item.owner_id != u["id"]:
+        return RedirectResponse(url="/owner/items", status_code=303)
+
+    categories = db.query(Category).order_by(Category.name.asc()).all()
+    subcategories = (
+        db.query(Subcategory)
+        .filter(Subcategory.category_id == db.query(Category.id)
+        .filter(Category.name == item.category))
+        .all()
+    )
+
+    return request.app.templates.TemplateResponse(
+        "items_edit.html",
+        {
+            "request": request,
+            "item": item,
+            "categories": categories,
+            "subcategories": subcategories,
+            "session_user": u,
+        }
+    )
+
+
+@router.post("/owner/items/{item_id}/edit")
+def item_edit_post(
+    request: Request, item_id: int, db: Session = Depends(get_db),
+    title: str = Form(...),
+    category: str = Form(...),
+    subcategory_id: int = Form(None),
+    description: str = Form(""),
+    city: str = Form(""),
+    price: str = Form("0"),
+    currency: str = Form("CAD"),
+    images: list[UploadFile] = File(None),
+    latitude: str = Form(""),
+    longitude: str = Form("")
+):
+    u = request.session.get("user")
+    if not u:
+        return RedirectResponse(url="/login", status_code=303)
+
+    it = db.query(Item).get(item_id)
+    if not it or it.owner_id != u["id"]:
+        return RedirectResponse(url="/owner/items", status_code=303)
+
+    # Update main fields
+    it.title = title
+    it.category = category
+    it.description = description
+    it.city = city
+
+    # Price
+    try:
+        it.price_per_day = float(price)
+        it.price = float(price)
+    except:
+        it.price = 0
+
+    it.currency = currency
+    it.latitude = latitude or None
+    it.longitude = longitude or None
+
+    # Subcategory
+    sub_name = None
+    if subcategory_id:
+        sc = db.query(Subcategory).filter(Subcategory.id == subcategory_id).first()
+        if sc:
+            sub_name = sc.name
+    it.subcategory = sub_name
+
+    # Upload new images (optional)
+    if images:
+        new_list = []
+        for img in images:
+            if img and img.filename:
+                up = cloudinary.uploader.upload(img.file, folder=f"items/{u['id']}")
+                url = (up or {}).get("secure_url")
+                if url:
+                    new_list.append(url)
+        if new_list:
+            it.image_urls = new_list
+            it.image_path = new_list[0]
+
+    # after edit → back to pending
+    it.status = "pending"
+    it.admin_feedback = None
+    it.reviewed_at = None
+
+    db.commit()
+
+    return RedirectResponse(url="/owner/items", status_code=303)
+
 
 # ============================================================
 # ======================= ADD ITEM ============================

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>Edit Item</h2>
+
+<form method="post" enctype="multipart/form-data">
+
+  <div class="mb-3">
+    <label class="form-label">Title</label>
+    <input type="text" name="title" class="form-control" value="{{ item.title }}" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Category</label>
+    <select class="form-select" id="catSelect" name="category" required>
+      {% for cat in categories %}
+        <option value="{{ cat.name }}" {% if cat.name == item.category %}selected{% endif %}>
+          {{ cat.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Subcategory</label>
+    <select class="form-select" id="subSelect" name="subcategory_id">
+      {% for sc in subcategories %}
+        <option value="{{ sc.id }}"
+          {% if sc.name == item.subcategory %}selected{% endif %}>
+          {{ sc.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Description</label>
+    <textarea name="description" class="form-control" rows="4" required>{{ item.description }}</textarea>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6 mb-3 position-relative">
+      <label class="form-label">City</label>
+      <input type="text" name="city" class="form-control"
+             value="{{ item.city }}" autocomplete="off" required>
+
+      <input type="hidden" name="latitude" value="{{ item.latitude }}">
+      <input type="hidden" name="longitude" value="{{ item.longitude }}">
+    </div>
+
+    <div class="col-md-3 mb-3">
+      <label class="form-label">Price / day</label>
+      <input type="number" name="price" class="form-control"
+             value="{{ item.price_per_day }}" min="0" step="0.01" required>
+    </div>
+
+    <div class="col-md-3 mb-3">
+      <label class="form-label">Currency</label>
+      <select class="form-select" name="currency">
+        <option value="CAD" {% if item.currency == 'CAD' %}selected{% endif %}>CAD</option>
+        <option value="USD" {% if item.currency == 'USD' %}selected{% endif %}>USD</option>
+        <option value="EUR" {% if item.currency == 'EUR' %}selected{% endif %}>EUR</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Existing images -->
+  <label class="form-label">Current Images</label>
+  <div class="d-flex flex-wrap mb-3" style="gap:10px;">
+    {% for img in item.image_urls or [item.image_path] %}
+      <img src="{{ img }}" style="width:95px;height:95px;border-radius:12px;object-fit:cover;border:1px solid #ddd">
+    {% endfor %}
+  </div>
+
+  <!-- New images -->
+  <label class="form-label">Upload New Images (optional)</label>
+  <input type="file" name="images" multiple accept=".jpg,.jpeg,.png,.webp" class="form-control">
+
+  <button class="btn btn-primary mt-3">Save Changes</button>
+
+</form>
+
+{% endblock %}
