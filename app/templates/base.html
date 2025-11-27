@@ -1517,7 +1517,7 @@ window.onpageshow = function(e){
       }
       bodyEl.innerHTML = items.map(it=>{
         const href = normalizeHref(it);
-        return `<a class="notif-row" href="${esc(href)}">
+        return `<a class="notif-row" href="/notifications/open/${it.id}">
           <div class="fw-bold">${esc(it.title||'Notification')}</div>
           ${it.body ? '<div class="small text-muted">'+esc(it.body)+'</div>' : ''}
         </a>`;
