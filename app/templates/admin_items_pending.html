@@ -43,6 +43,16 @@
 </style>
 
 <div class="container py-3">
+{% if request.session.get("flash_message") %}
+    <div class="alert alert-{{ request.session.get('flash_category') }} alert-dismissible fade show" role="alert">
+        {{ request.session.get("flash_message") }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    {% set _ = request.session.pop("flash_message", None) %}
+    {% set _ = request.session.pop("flash_category", None) %}
+{% endif %}
+
 
     <h3 class="mb-3">Pending Items Review</h3>
 

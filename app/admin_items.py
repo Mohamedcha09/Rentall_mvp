@@ -1,5 +1,5 @@
 # app/admin_items.py
-from fastapi import APIRouter, Depends, Request, HTTPException, Form
+from fastapi import APIRouter, Depends, Request, HTTPException, Form, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -19,6 +19,13 @@ def require_admin(request: Request):
     if not u or u.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admins only")
     return u
+
+# ==========================
+# FLASH MESSAGE
+# ==========================
+def flash(request: Request, message: str, category: str = "success"):
+    request.session["flash_message"] = message
+    request.session["flash_category"] = category
 
 
 # ==========================
@@ -71,11 +78,14 @@ def approve_item(item_id: int, request: Request, db: Session = Depends(get_db)):
         link_url=f"/items/{it.id}"
     )
 
-    return RedirectResponse(url="/admin/items/pending", status_code=303)
+    # 🌟 رسالة نجاح
+    flash(request, "Item approved successfully!", "success")
+
+    return RedirectResponse("/admin/items/pending", status_code=302)
 
 
 # ==========================
-# 3) REJECT ITEM (WITH FEEDBACK)
+# 3) REJECT ITEM
 # ==========================
 @router.post("/{item_id}/reject")
 def reject_item(
@@ -96,7 +106,6 @@ def reject_item(
 
     db.commit()
 
-    # Notify owner
     push_notification(
         db,
         user_id=it.owner_id,
@@ -105,11 +114,14 @@ def reject_item(
         link_url=f"/owner/items/{it.id}/edit"
     )
 
-    return RedirectResponse(url="/admin/items/pending", status_code=303)
+    # 🌟 رسالة رفض
+    flash(request, "Feedback sent & item rejected.", "warning")
+
+    return RedirectResponse("/admin/items/pending", status_code=302)
 
 
 # ==========================
-# 4) RETURN ITEM TO PENDING (edit again)
+# 4) RETURN ITEM TO PENDING
 # ==========================
 @router.post("/{item_id}/reset")
 def reset_to_pending(item_id: int, request: Request, db: Session = Depends(get_db)):
@@ -125,7 +137,9 @@ def reset_to_pending(item_id: int, request: Request, db: Session = Depends(get_d
 
     db.commit()
 
-    return RedirectResponse(url="/admin/items/pending", status_code=303)
+    flash(request, "Item reset to pending.", "info")
+
+    return RedirectResponse("/admin/items/pending", status_code=302)
 
 
 # ==========================
@@ -142,4 +156,6 @@ def delete_item(item_id: int, request: Request, db: Session = Depends(get_db)):
     db.delete(it)
     db.commit()
 
-    return RedirectResponse(url="/admin/items/pending", status_code=303)
+    flash(request, "Item deleted permanently.", "danger")
+
+    return RedirectResponse("/admin/items/pending", status_code=302)
