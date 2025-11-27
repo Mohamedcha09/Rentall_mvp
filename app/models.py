@@ -182,6 +182,10 @@ class Item(Base):
     currency = Column(String(3), nullable=False, default='CAD')        # CAD / USD / EUR
     price    = Column(Numeric(12, 2), nullable=False, default=0)
 
+    status = Column(String(20), nullable=False, default="pending")
+    admin_feedback = Column(Text, nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+
     # Optional coordinates
     latitude  = col_or_literal("items", "latitude",  Float,  nullable=True)
     longitude = col_or_literal("items", "longitude", Float,  nullable=True)

@@ -703,6 +703,8 @@ def item_new_post(
 
         # ALL images
         image_urls=image_urls_list or None,
+        status="pending"
+
     )
 
     db.add(it)
