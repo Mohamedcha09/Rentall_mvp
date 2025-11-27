@@ -194,7 +194,6 @@ def mark_read(
     db.commit()
 
     return _json({"ok": True})
-
 @router.get("/notifications/open/{notif_id}")
 def open_notification(
     notif_id: int,
@@ -209,42 +208,28 @@ def open_notification(
     if not n or n.user_id != user.id:
         raise HTTPException(404, "Notification not found")
 
-    # إذا تم فتحه سابقاً → أمنعه فوراً
+    # إذا كان مفتوح من قبل → نمنعه
     if n.opened_once:
         return request.app.templates.TemplateResponse(
             "notification_used_once.html",
-            {
-                "request": request,
-                "session_user": user
-            }
+            {"request": request, "session_user": user}
         )
 
-    # تسجل أنه تم فتحه لأول مرة الآن
+    # أول مرة فقط
     n.opened_once = True
     n.opened_at = datetime.utcnow()
     n.is_read = True
     db.commit()
 
-    # 🔥 إذا كان إشعار تعديل Reject → نوجهه لصفحة التعديل الصحيحة
-    if n.kind == "reject_edit":
-        # استخرج رقم العنصر من نص الإشعار أو من قاعدة البيانات
-        # هنا أبسط طريقة وأكثرها أماناً:
-        try:
-            # نبحث عن أول رقم في النص (ID)
-            import re
-            m = re.search(r'\d+', n.body or "")
-            if m:
-                item_id = int(m.group(0))
-                return RedirectResponse(url=f"/owner/items/{item_id}/edit", status_code=303)
-        except:
-            pass
+    # 🌟 نلتقط ID العنصر من الرابط
+    item_id = request.query_params.get("item_id")
 
-        # fallback
-        return RedirectResponse(url="/owner/items", status_code=303)
+    # في حالة إشعار الرفض → افتح صفحة التعديل
+    if n.kind == "reject_edit" and item_id:
+        return RedirectResponse(
+            url=f"/owner/items/{item_id}/edit",
+            status_code=303
+        )
 
-    # إذا يوجد رابط عادي سابقاً
-    if n.link_url:
-        return RedirectResponse(url=n.link_url, status_code=303)
-
-    # آخر خيار → قائمة الإشعارات
+    # fallback
     return RedirectResponse(url="/notifications", status_code=303)
