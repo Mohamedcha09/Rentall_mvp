@@ -102,7 +102,7 @@ def reject_item(item_id: int, request: Request, db: Session = Depends(get_db), f
         user_id=it.owner_id,
         title="Your item was rejected",
         body=f"Your listing '{it.title}' requires changes.\nReason: {feedback}",
-        url="",                    # 👈 لا نضع رابط هنا
+        url=f"/owner/items/{it.id}/edit"
         kind="reject_edit"
     )
 
