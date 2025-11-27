@@ -10,7 +10,7 @@ import random
 from .database import get_db
 from .models import Item, FxRate, ItemReview, Category
 from sqlalchemy.sql import func
-from .utils import category_label as _category_label   # ← FIXED ✔ IMPORT
+from .utils import category_label as _category_label
 
 router = APIRouter()
 
@@ -41,7 +41,7 @@ def fx_convert(amount: float, base: str, quote: str, rates: dict):
 
 
 # ======================================
-# SERIALIZER — FIX: add subcategory ✔
+# SERIALIZER
 # ======================================
 def _serialize(i: Item, ratings: dict) -> dict:
     rid = getattr(i, "id", None)
@@ -52,13 +52,14 @@ def _serialize(i: Item, ratings: dict) -> dict:
         "image_path": getattr(i, "image_path", None) or "/static/placeholder.jpg",
         "city": getattr(i, "city", "") or "",
         "category": getattr(i, "category", "") or "",
-        "subcategory": getattr(i, "subcategory", "") or "",   # ← أضفت هذا السطر
+        "subcategory": getattr(i, "subcategory", "") or "",
         "price_per_day": getattr(i, "price_per_day", None),
 
         "rating_avg": r["avg"],
         "rating_count": r["cnt"],
         "currency": getattr(i, "currency", "CAD"),
     }
+
 
 # ================= Filters =================
 def _apply_city_or_gps_filter(qs, city, lat, lng, radius_km):
@@ -184,17 +185,24 @@ def home_page(
 
     # Currency
     session_user = getattr(request, "session", {}).get("user")
-    if session_user and session_user.get("display_currency"):
-        user_currency = session_user["display_currency"]
-    else:
-        user_currency = request.cookies.get("disp_cur") or "CAD"
+    user_currency = (
+        session_user["display_currency"]
+        if session_user and session_user.get("display_currency")
+        else request.cookies.get("disp_cur") or "CAD"
+    )
 
     symbols = {"CAD": "$", "USD": "$", "EUR": "€"}
 
     rates = load_fx_dict(db)
 
-    # Base items
-    base_q = db.query(Item).filter(Item.is_active == "yes")
+    # ============================================
+    # 🔥 IMPORTANT = show only approved items
+    # ============================================
+    base_q = db.query(Item).filter(
+        Item.is_active == "yes",
+        Item.status == "approved"
+    )
+
     filtered_q = _apply_city_or_gps_filter(base_q, city, lat, lng, radius_km)
     filtering = (lat and lng and radius_km) or (city not in (None, ""))
 
@@ -213,21 +221,21 @@ def home_page(
         it["display_price"] = fx_convert(price, base, user_currency, rates)
         it["display_symbol"] = symbols.get(user_currency, user_currency)
 
-    # ================================
-    # LOAD ALL CATEGORIES (FIXED) ✔
+    # ================================  
+    # CATEGORIES  
     # ================================
     items_by_category = {}
     db_categories = db.query(Category).order_by(Category.id).all()
 
     for cat in db_categories:
         code = cat.name
-        label = cat.name   # same
+        label = cat.name
 
         q = base_q
         if filtering:
             q = _apply_city_or_gps_filter(q, city, lat, lng, radius_km)
 
-        q = _apply_category_filter(q, code, label)   # FIXED ✔
+        q = _apply_category_filter(q, code, label)
 
         rows = q.order_by(Item.created_at.desc()).limit(12).all()
 
@@ -271,7 +279,7 @@ def home_page(
         "lat": lat,
         "lng": lng,
         "radius_km": radius_km or 25,
-        "category_label": _category_label,     # FIXED ✔
+        "category_label": _category_label,
         "session_user": session_user,
         "favorites_ids": [],
     }
