@@ -726,6 +726,25 @@ body[data-auth="0"] .mobile-tabbar {
   {%- endif -%}
 {%- endmacro %}
 
+{# ============================================================
+   Normalizer: convert session_user to a dict safely
+   ============================================================ #}
+{% if session_user and session_user.__class__.__name__ != 'dict' %}
+  {% set session_user = {
+    'id': session_user.id,
+    'first_name': session_user.first_name,
+    'last_name': session_user.last_name,
+    'username': session_user.username,
+    'avatar_path': session_user.avatar_path,
+    'role': session_user.role,
+    'status': session_user.status,
+    'is_mod': session_user.is_mod if session_user.is_mod is not none else False,
+    'is_support': session_user.is_support if session_user.is_support is not none else False,
+    'cs_enabled': session_user.cs_enabled if session_user.cs_enabled is not none else False,
+    'can_manage_deposits': session_user.can_manage_deposits if session_user.can_manage_deposits is not none else False,
+    'payouts_enabled': session_user.payouts_enabled if session_user.payouts_enabled is not none else False
+  } %}
+{% endif %}
 
 
 
