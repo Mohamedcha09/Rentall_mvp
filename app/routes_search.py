@@ -1,4 +1,5 @@
 # app/routes_search.py
+
 from fastapi import APIRouter, Depends, Request, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
@@ -8,28 +9,17 @@ from .models import User, Item
 
 router = APIRouter()
 
-# ✅ Constant: Earth radius (for Haversine)
+# Earth radius constant
 EARTH_RADIUS_KM = 6371.0
 
-
 def _clean_name(first: str, last: str, uid: int) -> str:
-    """
-    Build a proper full name even if one of the fields is empty.
-    """
     f = (first or "").strip()
     l = (last or "").strip()
     if f and l:
-        full = f"{f} {l}"
-    else:
-        full = f or l
-    return full or f"User {uid}"
-
+        return f"{f} {l}"
+    return f or l or f"User {uid}"
 
 def _to_float(v, default=None):
-    """
-    Convert a value to float if valid and non-empty.
-    Return default if conversion fails or the value is None/"".
-    """
     if v is None:
         return default
     try:
@@ -37,17 +27,12 @@ def _to_float(v, default=None):
         if s == "":
             return default
         return float(s)
-    except Exception:
+    except:
         return default
 
-
-# ✅ Smart city/GPS filter (GPS has priority)
-def _apply_city_or_gps_filter(qs, city: str | None, lat: float | None, lng: float | None, radius_km: float | None):
-    """
-    Apply filtering by GPS (if provided) or by city.
-    """
+# City/GPS combined filter
+def _apply_city_or_gps_filter(qs, city, lat, lng, radius_km):
     if lat is not None and lng is not None and radius_km:
-        # Haversine distance: distance between two points on a sphere
         distance_expr = EARTH_RADIUS_KM * func.acos(
             func.cos(func.radians(lat)) *
             func.cos(func.radians(Item.latitude)) *
@@ -61,31 +46,26 @@ def _apply_city_or_gps_filter(qs, city: str | None, lat: float | None, lng: floa
             distance_expr <= radius_km
         )
     elif city:
-        # Simple case-insensitive city filter
         qs = qs.filter(Item.city.ilike(f"%{city.strip()}%"))
     return qs
 
 
-# ✅ API: quick search (used for suggestions/autocomplete)
+# ============================================================
+# API SEARCH (Live autocomplete)
+# ============================================================
 @router.get("/api/search")
 def api_search(
     q: str = "",
     city: str | None = Query(None),
-    # 🔧 Receive lat/lng/lon/radius as strings then convert manually to avoid casting errors when they are ""
     lat: str | None = Query(None),
     lng: str | None = Query(None),
-    lon: str | None = Query(None),          # Accept lon alias from URL
+    lon: str | None = Query(None),
     radius_km: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
-    """
-    Live search (autocomplete) with optional city or GPS filtering.
-    """
-    # ✅ Merge lon into lng if present
     if (lng is None or str(lng).strip() == "") and lon not in (None, ""):
         lng = lon
 
-    # ✅ Safely convert values to float
     lat_f = _to_float(lat)
     lng_f = _to_float(lng)
     radius_f = _to_float(radius_km, default=25.0)
@@ -96,7 +76,7 @@ def api_search(
 
     pattern = f"%{q}%"
 
-    # Users
+    # USERS
     users_rows = (
         db.query(User.id, User.first_name, User.last_name)
         .filter(
@@ -108,25 +88,18 @@ def api_search(
         .limit(8)
         .all()
     )
-
     users = [
-        {
-            "id": uid,
-            "name": _clean_name(first, last, uid),
-            "url": f"/users/{uid}",
-        }
+        {"id": uid, "name": _clean_name(first, last, uid), "url": f"/users/{uid}"}
         for (uid, first, last) in users_rows
     ]
 
-    # Items
+    # ITEMS — FIX: approved only
     items_q = (
         db.query(Item.id, Item.title, Item.city)
         .filter(
             Item.is_active == "yes",
-            or_(
-                Item.title.ilike(pattern),
-                Item.description.ilike(pattern),
-            ),
+            Item.status == "approved",        # ✔ FIX
+            or_(Item.title.ilike(pattern), Item.description.ilike(pattern)),
         )
     )
 
@@ -146,7 +119,9 @@ def api_search(
     return {"users": users, "items": items}
 
 
-# ✅ Full search results page
+# ============================================================
+# FULL SEARCH PAGE
+# ============================================================
 @router.get("/search")
 def search_page(
     request: Request,
@@ -154,15 +129,10 @@ def search_page(
     city: str | None = Query(None),
     lat: str | None = Query(None),
     lng: str | None = Query(None),
-    lon: str | None = Query(None),          # ✅ Accept lon alias
+    lon: str | None = Query(None),
     radius_km: str | None = Query(None),
     db: Session = Depends(get_db)
 ):
-    """
-    Main search results page (shows all results).
-    Supports city or GPS filtering exactly like the API.
-    """
-    # ✅ Include lon in lng if lng is missing
     if (lng is None or str(lng).strip() == "") and lon not in (None, ""):
         lng = lon
 
@@ -170,7 +140,7 @@ def search_page(
     users = []
     items = []
 
-    # ✅ Read values from cookies if not provided in the URL (both lng/lon names)
+    # Read cookies if no parameters provided
     try:
         if not city:
             city = request.cookies.get("city")
@@ -188,10 +158,9 @@ def search_page(
         if radius_km in (None, ""):
             ck = request.cookies.get("radius_km")
             radius_km = ck if ck else None
-    except Exception:
+    except:
         pass
 
-    # ✅ Final conversion to float with 25 km as default
     lat_f = _to_float(lat)
     lng_f = _to_float(lng)
     radius_f = _to_float(radius_km, default=25.0)
@@ -199,7 +168,7 @@ def search_page(
     if len(q) >= 2:
         pattern = f"%{q}%"
 
-        # Users
+        # USERS
         users_rows = (
             db.query(User.id, User.first_name, User.last_name, User.avatar_path)
             .filter(
@@ -221,15 +190,13 @@ def search_page(
             for (uid, first, last, avatar) in users_rows
         ]
 
-        # Items
+        # ITEMS — FIX: approved only
         items_q = (
             db.query(Item.id, Item.title, Item.city, Item.image_path)
             .filter(
                 Item.is_active == "yes",
-                or_(
-                    Item.title.ilike(pattern),
-                    Item.description.ilike(pattern),
-                ),
+                Item.status == "approved",      # ✔ FIX
+                or_(Item.title.ilike(pattern), Item.description.ilike(pattern)),
             )
         )
 
@@ -247,7 +214,6 @@ def search_page(
             for (iid, title, city, img) in items_rows
         ]
 
-    # ✅ Return the page
     return request.app.templates.TemplateResponse(
         "search.html",
         {
@@ -259,7 +225,7 @@ def search_page(
             "session_user": request.session.get("user"),
             "selected_city": city or "",
             "lat": lat_f,
-            "lng": lng_f,               # ✅ pass converted values
+            "lng": lng_f,
             "radius_km": radius_f
         },
     )
