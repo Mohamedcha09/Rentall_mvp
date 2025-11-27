@@ -66,30 +66,21 @@ def notify_admins(db: Session, title: str, body: str = "", url: str = "") -> Non
         push_notification(db, a.id, title, body, url, kind="admin")
 
 
-# === MD broadcast helper ===========================================
-# Notifies all Deposit Managers (MD) + Admins about a new ticket or task
 def notify_mds(db, title: str, body: str, url: str = "/md/inbox", kind: str = "support") -> int:
-    """
-    Sends a notification to all users who have is_deposit_manager=True or role='admin'.
-    Returns the number of recipients (best-effort).
-    """
     sent = 0
-    try:
-        md_users = (
-            db.query(User)
-              .filter((User.is_deposit_manager == True) | (User.role == "admin"))
-              .all()
-        )
-        for u in md_users:
-            try:
-                push_notification(db, u.id, title, body, url=url, kind=kind)
-                sent += 1
-            except Exception:
-                pass
-    except Exception:
-        pass
-
+    md_users = (
+        db.query(User)
+        .filter((User.is_deposit_manager == True) | (User.role == "admin"))
+        .all()
+    )
+    for u in md_users:
+        try:
+            push_notification(db, u.id, title, body, url=url, kind=kind)
+            sent += 1
+        except:
+            pass
     return sent
+
 
 def notify_mods(db: Session, title: str, body: str = "", url: str = "") -> None:
     rows = (
@@ -204,6 +195,10 @@ def mark_read(
 
     return _json({"ok": True})
 
+
+# ============================================================
+#                 OPEN NOTIFICATION (ONE-TIME LINK)
+# ============================================================
 @router.get("/notifications/open/{notif_id}")
 def open_notification(
     notif_id: int,
@@ -218,7 +213,7 @@ def open_notification(
     if not n or n.user_id != user.id:
         raise HTTPException(404, "Notification not found")
 
-    # إذا تم فتحه سابقاً → أمنعه
+    # ⛔ إذا فتحه سابقاً → لا يستطيع الدخول مرة أخرى
     if n.opened_once:
         return request.app.templates.TemplateResponse(
             "notification_used_once.html",
@@ -228,19 +223,30 @@ def open_notification(
             }
         )
 
-    # أول مرة
+    # ✅ أول فتح
     n.opened_once = True
     n.is_read = True
     db.commit()
 
-    # إذا كان إشعار تعديل rejected
+    # ------------------------ FIX الحقيقي ------------------------
     if n.kind == "reject_edit":
-        # الرابط الحقيقي
-        item_id = int(n.link_url.split("/")[-1])
-        return RedirectResponse(url=f"/owner/items/{item_id}/edit", status_code=303)
+        # n.link_url = "/owner/items/55/edit"
+        parts = n.link_url.strip("/").split("/")   # ["owner","items","55","edit"]
 
-    # إشعار عادي
+        if len(parts) >= 3 and parts[0] == "owner" and parts[1] == "items":
+            try:
+                item_id = int(parts[2])
+                return RedirectResponse(url=f"/owner/items/{item_id}/edit", status_code=303)
+            except:
+                pass
+
+        # fallback
+        return RedirectResponse(url="/owner/items", status_code=303)
+    # -------------------------------------------------------------
+
+    # إذا لا يوجد نوع خاص → افتح الرابط كما هو
     if n.link_url:
         return RedirectResponse(url=n.link_url, status_code=303)
 
+    # بدون رابط → افتح قائمة الإشعارات
     return RedirectResponse(url="/notifications", status_code=303)
