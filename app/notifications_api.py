@@ -66,6 +66,31 @@ def notify_admins(db: Session, title: str, body: str = "", url: str = "") -> Non
         push_notification(db, a.id, title, body, url, kind="admin")
 
 
+# === MD broadcast helper ===========================================
+# Notifies all Deposit Managers (MD) + Admins about a new ticket or task
+def notify_mds(db, title: str, body: str, url: str = "/md/inbox", kind: str = "support") -> int:
+    """
+    Sends a notification to all users who have is_deposit_manager=True or role='admin'.
+    Returns the number of recipients (best-effort).
+    """
+    sent = 0
+    try:
+        md_users = (
+            db.query(User)
+              .filter((User.is_deposit_manager == True) | (User.role == "admin"))
+              .all()
+        )
+        for u in md_users:
+            try:
+                push_notification(db, u.id, title, body, url=url, kind=kind)
+                sent += 1
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    return sent
+
 def notify_mods(db: Session, title: str, body: str = "", url: str = "") -> None:
     rows = (
         db.query(User.id)
