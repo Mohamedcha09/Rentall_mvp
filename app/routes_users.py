@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from .database import get_db
-from .models import User, Item, UserReview   # ← we used UserReview instead of Rating
+from .models import User, Item, UserReview   # ← استخدام UserReview
 
 # ===== [Optional: unified email sender] =====
 import os
@@ -28,10 +28,12 @@ def _send_email_safe(to: str | None, subject: str, html: str, text: str | None =
 
 router = APIRouter()
 
+
 def _clean_str(v, default=""):
     if isinstance(v, str):
         return v.strip()
     return default if v is None else str(v)
+
 
 def _is_new(created_at: datetime | None, days: int = 60) -> bool:
     if not created_at:
@@ -41,6 +43,7 @@ def _is_new(created_at: datetime | None, days: int = 60) -> bool:
     now = datetime.now(timezone.utc)
     return (now - created_at) <= timedelta(days=days)
 
+
 @router.get("/users/{user_id}")
 def user_profile(user_id: int, request: Request, db: Session = Depends(get_db)):
     # 1) the user
@@ -48,10 +51,14 @@ def user_profile(user_id: int, request: Request, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # 2) their active items
+    # 2) their ACTIVE + APPROVED items  ← FIXED HERE ✔✔✔
     items = (
         db.query(Item)
-        .filter(Item.owner_id == user.id, Item.is_active == "yes")
+        .filter(
+            Item.owner_id == user.id,
+            Item.is_active == "yes",
+            Item.status == "approved"       # ← IMPORTANT FIX
+        )
         .order_by(Item.created_at.desc().nullslast())
         .all()
     )
@@ -59,7 +66,11 @@ def user_profile(user_id: int, request: Request, db: Session = Depends(get_db)):
     # 3) simple stats
     items_count = (
         db.query(func.count(Item.id))
-        .filter(Item.owner_id == user.id, Item.is_active == "yes")
+        .filter(
+            Item.owner_id == user.id,
+            Item.is_active == "yes",
+            Item.status == "approved"       # ← ALSO FIXED HERE
+        )
         .scalar()
         or 0
     )
@@ -71,8 +82,7 @@ def user_profile(user_id: int, request: Request, db: Session = Depends(get_db)):
     is_verified = bool(getattr(user, "is_verified", False)) or (user.status == "approved")
     created_at_str = created_at.strftime("%Y-%m-%d") if created_at else ""
 
-    # 5) their rating **as a renter** from UserReview table
-    #    target_user_id = the renter who received the review
+    # 5) Rating of the user as a renter
     renter_avg = (
         db.query(func.coalesce(func.avg(UserReview.stars), 0.0))
         .filter(UserReview.target_user_id == user.id)
@@ -106,11 +116,12 @@ def user_profile(user_id: int, request: Request, db: Session = Depends(get_db)):
         "rating_value": None,
         "rating_count": None,
         "session_user": (request.session or {}).get("user"),
-        # owner reviews for this user as a renter:
+
+        # renter rating
         "renter_reviews_avg": round(float(renter_avg), 2),
         "renter_reviews_count": int(renter_cnt),
         "renter_reviews": renter_reviews,
     }
 
-    # Note: your profile display template is named user.html
+    # Template: user.html
     return request.app.templates.TemplateResponse("user.html", context)
