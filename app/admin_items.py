@@ -51,7 +51,6 @@ def list_pending(request: Request, db: Session = Depends(get_db)):
         }
     )
 
-
 # ==========================
 # 2) APPROVE ITEM
 # ==========================
@@ -59,17 +58,15 @@ def list_pending(request: Request, db: Session = Depends(get_db)):
 def approve_item(item_id: int, request: Request, db: Session = Depends(get_db)):
     require_admin(request)
 
-    it = db.query(Item).get(item_id)
+    it = db.get(Item, item_id)    # ← FIXED
     if not it:
         raise HTTPException(404, "Item not found")
 
     it.status = "approved"
     it.reviewed_at = datetime.utcnow()
     it.admin_feedback = None
-
     db.commit()
 
-    # Notify owner
     push_notification(
         db,
         user_id=it.owner_id,
@@ -78,32 +75,26 @@ def approve_item(item_id: int, request: Request, db: Session = Depends(get_db)):
         link_url=f"/items/{it.id}"
     )
 
-    # 🌟 رسالة نجاح
-    flash(request, "Item approved successfully!", "success")
-
-    return RedirectResponse("/admin/items/pending", status_code=302)
+    return RedirectResponse(
+        url="/admin/items/pending",
+        status_code=status.HTTP_302_FOUND
+    )
 
 
 # ==========================
 # 3) REJECT ITEM
 # ==========================
 @router.post("/{item_id}/reject")
-def reject_item(
-    item_id: int,
-    request: Request,
-    db: Session = Depends(get_db),
-    feedback: str = Form("")
-):
+def reject_item(item_id: int, request: Request, db: Session = Depends(get_db), feedback: str = Form("")):
     require_admin(request)
 
-    it = db.query(Item).get(item_id)
+    it = db.get(Item, item_id)   # ← FIXED
     if not it:
         raise HTTPException(404, "Item not found")
 
     it.status = "rejected"
     it.admin_feedback = feedback
     it.reviewed_at = datetime.utcnow()
-
     db.commit()
 
     push_notification(
@@ -114,32 +105,32 @@ def reject_item(
         link_url=f"/owner/items/{it.id}/edit"
     )
 
-    # 🌟 رسالة رفض
-    flash(request, "Feedback sent & item rejected.", "warning")
-
-    return RedirectResponse("/admin/items/pending", status_code=302)
+    return RedirectResponse(
+        url="/admin/items/pending",
+        status_code=status.HTTP_302_FOUND
+    )
 
 
 # ==========================
-# 4) RETURN ITEM TO PENDING
+# 4) RESET TO PENDING
 # ==========================
 @router.post("/{item_id}/reset")
 def reset_to_pending(item_id: int, request: Request, db: Session = Depends(get_db)):
     require_admin(request)
 
-    it = db.query(Item).get(item_id)
+    it = db.get(Item, item_id)   # ← FIXED
     if not it:
         raise HTTPException(404, "Item not found")
 
     it.status = "pending"
     it.admin_feedback = None
     it.reviewed_at = None
-
     db.commit()
 
-    flash(request, "Item reset to pending.", "info")
-
-    return RedirectResponse("/admin/items/pending", status_code=302)
+    return RedirectResponse(
+        url="/admin/items/pending",
+        status_code=status.HTTP_302_FOUND
+    )
 
 
 # ==========================
@@ -149,13 +140,14 @@ def reset_to_pending(item_id: int, request: Request, db: Session = Depends(get_d
 def delete_item(item_id: int, request: Request, db: Session = Depends(get_db)):
     require_admin(request)
 
-    it = db.query(Item).get(item_id)
+    it = db.get(Item, item_id)   # ← FIXED
     if not it:
         raise HTTPException(404, "Item not found")
 
     db.delete(it)
     db.commit()
 
-    flash(request, "Item deleted permanently.", "danger")
-
-    return RedirectResponse("/admin/items/pending", status_code=302)
+    return RedirectResponse(
+        url="/admin/items/pending",
+        status_code=status.HTTP_302_FOUND
+    )

@@ -73,6 +73,14 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
   background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,.08)}
 #itemsCitySugg>div{padding:.5rem .6rem;font-size:.95rem;color:#0f172a;border-top:1px solid rgba(0,0,0,.04);cursor:pointer}
 #itemsCitySugg>div:hover{background:#f7f7fb}
+
+/* إخفاء Items + Category فقط في الهاتف */
+@media (max-width: 576px) {
+  .items-hide-mobile {
+    display: none !important;
+  }
+}
+
 </style>
 {% endblock %}
 
@@ -81,13 +89,14 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
 <section class="container" style="max-width:1200px;margin:auto">
 
   <!-- ================= TITLE + CATEGORY PILL ================ -->
-  <div class="d-flex align-items-center justify-content-between mb-2" style="gap:8px">
+<div class="items-hide-mobile d-flex align-items-center justify-content-between mb-2" style="gap:8px">
     <div class="d-flex align-items-center" style="gap:10px">
       <h2 class="mb-0">Items</h2>
       <span class="pill" style="font-size:.82rem">
         {% if current_category %}Category: <b>{{ current_category }}</b>{% else %}All categories{% endif %}
       </span>
     </div>
+
 
     <!-- ================= TOP CATEGORIES TOOLBAR ================ -->
     <div class="toolbar">
