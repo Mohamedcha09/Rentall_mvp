@@ -1029,8 +1029,8 @@ body[data-auth="0"] .mobile-tabbar {
     </a>
 
     {% if session_user %}
-      <a href="/favorites" class="{% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}">
-        <img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav"><span>Favorites</span>
+      <a href="/items" class="{% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}">
+        <img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav"><span>Explore</span>
       </a>
       <a href="/bookings" class="{% if request and request.url.path.startswith('/bookings') %}is-active{% endif %}">
         <img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>Bookings</span>
