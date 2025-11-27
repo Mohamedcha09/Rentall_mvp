@@ -184,3 +184,37 @@ def notify_mds(db, title: str, body: str, url: str = "/md/inbox", kind: str = "s
     except Exception:
         pass
     return sent
+
+
+@router.get("/notifications/open/{notif_id}")
+def open_notification(
+    notif_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    n = db.get(Notification, notif_id)
+    if not n or n.user_id != user.id:
+        raise HTTPException(404, "Notification not found")
+
+    # 🔒 إذا تم فتح الإشعار مرة من قبل → نمنع الدخول
+    if n.opened_once:
+        # صفحة بسيطة بدون الدخول للتعديل
+        return request.app.templates.TemplateResponse(
+            "notification_used_once.html",
+            {"request": request}
+        )
+
+    # أول مرة → ضع opened_once = True
+    n.opened_once = True
+    n.is_read = True
+    db.commit()
+
+    # توجيه طبيعي إلى الرابط
+    if n.link_url:
+        return RedirectResponse(url=n.link_url, status_code=303)
+
+    return RedirectResponse(url="/notifications", status_code=303)
