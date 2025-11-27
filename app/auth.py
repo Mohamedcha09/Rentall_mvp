@@ -1,4 +1,5 @@
 # app/auth.py
+
 from fastapi import APIRouter, Depends, Request, Form, UploadFile, File, HTTPException, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -9,6 +10,7 @@ import os, secrets, shutil
 from .database import get_db
 from .models import User, Document
 from .utils import hash_password, verify_password, MAX_FORM_PASSWORD_CHARS
+from cloudinary.uploader import upload as cloud_upload
 
 # (Optional) Internal notifications
 try:
@@ -45,19 +47,25 @@ def _normalize_form_password(pwd: str) -> str:
     return pwd[:MAX_FORM_PASSWORD_CHARS]
 
 def _save_any(fileobj: UploadFile | None, folder: str, allow_exts: list[str]) -> str | None:
-    """Safely save a file with a random name and return the path."""
+    """Upload file to Cloudinary instead of local storage."""
     if not fileobj:
         return None
+
     ext = os.path.splitext(fileobj.filename or "")[1].lower()
     if ext not in allow_exts:
         return None
-    fname = f"{secrets.token_hex(10)}{ext}"
-    fpath = os.path.join(folder, fname)
-    with open(fpath, "wb") as f:
-        shutil.copyfileobj(fileobj.file, f)
-    # Return a path starting with / to work with StaticFiles("/uploads", ...)
-    rel = os.path.relpath(fpath, APP_ROOT).replace("\\", "/")
-    return "/" + rel if not rel.startswith("/") else rel
+
+    try:
+        result = cloud_upload(
+            fileobj.file,
+            folder="sevor/uploads",
+            overwrite=True,
+            resource_type="image"
+        )
+        return result.get("secure_url")
+    except Exception as e:
+        print("Cloudinary upload failed:", e)
+        return None
 
 def _signer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(secret_key=SECRET_KEY, salt="email-verify-v1")
