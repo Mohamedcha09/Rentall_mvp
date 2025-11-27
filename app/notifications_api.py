@@ -4,7 +4,7 @@ from typing import Optional
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Request, HTTPException, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
@@ -27,7 +27,9 @@ def _json(data: dict) -> JSONResponse:
     )
 
 
-# ================== Helpers ==================
+# ============================================================
+#                     PUSH NOTIFICATION
+# ============================================================
 def push_notification(
     db: Session,
     user_id: int,
@@ -36,9 +38,7 @@ def push_notification(
     url: Optional[str] = None,
     kind: str = "system",
 ) -> Notification:
-    """
-    Create a single notification for a specific user.
-    """
+
     n = Notification(
         user_id=user_id,
         title=(title or "").strip()[:200],
@@ -47,27 +47,26 @@ def push_notification(
         kind=kind,
         is_read=False,
         created_at=datetime.utcnow(),
+        opened_once=False,
+        opened_at=None,
     )
+
     db.add(n)
     db.commit()
     db.refresh(n)
     return n
 
 
+# ============================================================
+#                      BROADCAST
+# ============================================================
 def notify_admins(db: Session, title: str, body: str = "", url: str = "") -> None:
-    """
-    Send a notification to all users with the admin role.
-    """
     admins = db.query(User).filter(User.role == "admin").all()
     for a in admins:
         push_notification(db, a.id, title, body, url, kind="admin")
 
 
 def notify_mods(db: Session, title: str, body: str = "", url: str = "") -> None:
-    """
-    Send a notification to all moderators (is_mod=True) plus admins (role='admin').
-    Does not duplicate notifications for users who are both Admin and Mod.
-    """
     rows = (
         db.query(User.id)
         .filter(or_(User.role == "admin", getattr(User, "is_mod") == True))
@@ -79,8 +78,9 @@ def notify_mods(db: Session, title: str, body: str = "", url: str = "") -> None:
         push_notification(db, uid, title, body, url, kind="support")
 
 
-# ================== APIs used by frontend ==================
-
+# ============================================================
+#                      API: unread_count
+# ============================================================
 @router.get("/api/unread_count")
 def api_unread_count(
     db: Session = Depends(get_db),
@@ -88,6 +88,7 @@ def api_unread_count(
 ):
     if not user:
         return _json({"count": 0})
+
     count = (
         db.query(Notification)
         .filter(Notification.user_id == user.id, Notification.is_read == False)
@@ -96,16 +97,21 @@ def api_unread_count(
     return _json({"count": int(count)})
 
 
+# ============================================================
+#                      API: POLLING
+# ============================================================
 @router.get("/api/notifications/poll")
 def api_poll(
     request: Request,
-    since: int = Query(0, description="Unix seconds of last poll"),
+    since: int = Query(0),
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
     if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(401)
+
     cutoff = datetime.utcfromtimestamp(since or 0)
+
     rows = (
         db.query(Notification)
         .filter(Notification.user_id == user.id, Notification.created_at > cutoff)
@@ -113,6 +119,7 @@ def api_poll(
         .limit(30)
         .all()
     )
+
     items = [
         {
             "id": r.id,
@@ -125,26 +132,35 @@ def api_poll(
         }
         for r in rows
     ]
+
     now = int(datetime.utcnow().timestamp())
     return _json({"now": now, "items": items})
 
 
+# ============================================================
+#                 API: mark all read
+# ============================================================
 @router.post("/api/notifications/mark_all_read")
 def mark_all_read(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
     if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(401)
+
     (
         db.query(Notification)
         .filter(Notification.user_id == user.id, Notification.is_read == False)
         .update({"is_read": True})
     )
     db.commit()
+
     return _json({"ok": True})
 
 
+# ============================================================
+#                 API: mark a single read
+# ============================================================
 @router.post("/api/notifications/{notif_id}/read")
 def mark_read(
     notif_id: int,
@@ -152,38 +168,21 @@ def mark_read(
     user: Optional[User] = Depends(get_current_user),
 ):
     if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(401)
+
     n = db.get(Notification, notif_id)
     if not n or n.user_id != user.id:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(404)
+
     n.is_read = True
     db.commit()
+
     return _json({"ok": True})
 
 
-# === MD broadcast helper ===========================================
-# Notifies all Deposit Managers (MD) + Admins about a new ticket or task
-def notify_mds(db, title: str, body: str, url: str = "/md/inbox", kind: str = "support") -> int:
-    """
-    Sends a notification to all users who have is_deposit_manager=True or role='admin'.
-    Returns the number of recipients (best-effort).
-    """
-    sent = 0
-    try:
-        md_users = (
-            db.query(User)
-              .filter((User.is_deposit_manager == True) | (User.role == "admin"))
-              .all()
-        )
-        for u in md_users:
-            try:
-                push_notification(db, u.id, title, body, url=url, kind=kind)
-                sent += 1
-            except Exception:
-                pass
-    except Exception:
-        pass
-    return sent
+# ============================================================
+#                 OPEN NOTIFICATION (ONE-TIME LINK)
+# ============================================================
 @router.get("/notifications/open/{notif_id}")
 def open_notification(
     notif_id: int,
@@ -192,39 +191,42 @@ def open_notification(
     user: Optional[User] = Depends(get_current_user),
 ):
     if not user:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse("/login", status_code=303)
 
     n = db.get(Notification, notif_id)
     if not n or n.user_id != user.id:
         raise HTTPException(404, "Notification not found")
 
-    # 🟣 if this notification is a "reject_edit"
-    # then enforce open once only
+    # ========================================================
+    #         ONLY FOR reject_edit → allow ONCE
+    # ========================================================
     if n.kind == "reject_edit":
+
+        # تم فتحه من قبل → ممنوع
         if n.opened_once:
             return request.app.templates.TemplateResponse(
                 "notification_used_once.html",
                 {"request": request}
             )
 
-        # first open
+        # أول فتح
         n.opened_once = True
         n.opened_at = datetime.utcnow()
         n.is_read = True
         db.commit()
 
-
-
         if n.link_url:
-            return RedirectResponse(url=n.link_url, status_code=303)
+            return RedirectResponse(n.link_url, status_code=303)
 
-        return RedirectResponse(url="/notifications", status_code=303)
+        return RedirectResponse("/notifications", status_code=303)
 
-    # 🟢 all other notifications behave normally (no one-time rule)
+    # ========================================================
+    #           كل الإشعارات الأخرى تعمل طبيعي
+    # ========================================================
     n.is_read = True
     db.commit()
 
     if n.link_url:
-        return RedirectResponse(url=n.link_url, status_code=303)
+        return RedirectResponse(n.link_url, status_code=303)
 
-    return RedirectResponse(url="/notifications", status_code=303)
+    return RedirectResponse("/notifications", status_code=303)
