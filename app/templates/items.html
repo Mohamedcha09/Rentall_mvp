@@ -88,28 +88,27 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
 
 <section class="container" style="max-width:1200px;margin:auto">
 
-  <!-- ================= TITLE + CATEGORY PILL ================ -->
-<div class="items-hide-mobile d-flex align-items-center justify-content-between mb-2" style="gap:8px">
+<!-- ====== HIDE THIS PART ONLY (Items + Category) ON MOBILE ====== -->
+<div class="items-hide-mobile d-flex align-items-center mb-2" style="gap:8px">
     <div class="d-flex align-items-center" style="gap:10px">
-      <h2 class="mb-0">Items</h2>
-      <span class="pill" style="font-size:.82rem">
-        {% if current_category %}Category: <b>{{ current_category }}</b>{% else %}All categories{% endif %}
-      </span>
+        <h2 class="mb-0">Items</h2>
+        <span class="pill" style="font-size:.82rem">
+            {% if current_category %}Category: <b>{{ current_category }}</b>{% else %}All categories{% endif %}
+        </span>
     </div>
+</div>
 
+<!-- ====== S L I D E R  (Always Visible on Mobile) ====== -->
+<div class="toolbar" style="margin-bottom:10px;">
+  <a class="pill {% if not current_category %}active{% endif %}" href="/items">All</a>
+  {% for cat in categories %}
+    <a class="pill {% if current_category == cat.name %}active{% endif %}" 
+       href="/items?category={{ cat.name | urlencode }}">
+       {{ cat.name }}
+    </a>
+  {% endfor %}
+</div>
 
-    <!-- ================= TOP CATEGORIES TOOLBAR ================ -->
-    <div class="toolbar">
-      <a class="pill {% if not current_category %}active{% endif %}" href="/items">All</a>
-      {% for cat in categories %}
-        <a class="pill {% if current_category == cat.name %}active{% endif %}"
-   href="/items?category={{ cat.name | urlencode }}">
-  {{ cat.name }}
-</a>
-
-      {% endfor %}
-    </div>
-  </div>
 
   <!-- ================= SUBCATEGORIES (only if category selected) ================ -->
   {% if current_category and subcategories and subcategories|length > 0 %}

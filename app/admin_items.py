@@ -72,7 +72,7 @@ def approve_item(item_id: int, request: Request, db: Session = Depends(get_db)):
         user_id=it.owner_id,
         title="Your item was approved",
         body=f"Your listing '{it.title}' is now live.",
-        link_url=f"/items/{it.id}"
+        url=f"/items/{it.id}"
     )
 
     return RedirectResponse(
@@ -102,7 +102,8 @@ def reject_item(item_id: int, request: Request, db: Session = Depends(get_db), f
         user_id=it.owner_id,
         title="Your item was rejected",
         body=f"Your listing '{it.title}' requires changes.\nReason: {feedback}",
-        link_url=f"/owner/items/{it.id}/edit"
+        url=f"/owner/items/{it.id}/edit"
+
     )
 
     return RedirectResponse(
