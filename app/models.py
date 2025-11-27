@@ -345,20 +345,27 @@ class Order(Base):
 # =========================
 class Notification(Base):
     __tablename__ = "notifications"
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    kind    = Column(String(40), nullable=False, default="info")
+    kind    = Column(String(40), nullable=False, default="system")
     title   = Column(String(200), nullable=False)
     body    = Column(Text, nullable=True)
     link_url = Column(String(400), nullable=True)
     is_read  = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    # 🔥 جديد — ضروري لنظام “فتح مرة واحدة”
+    opened_once = Column(Boolean, nullable=False, default=False)
+    opened_at   = Column(DateTime, nullable=True)
+
     user = relationship(
         "User",
         back_populates="notifications",
         lazy="joined",
         overlaps="notifications,user"
     )
+
 
 # Optional reverse relationship
 try:

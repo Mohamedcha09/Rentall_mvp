@@ -107,7 +107,9 @@ def reject_item(item_id: int, request: Request, db: Session = Depends(get_db), f
         user_id=it.owner_id,
         title="Your item was rejected",
         body=f"Your listing '{it.title}' requires changes.\nReason: {feedback}",
-        url="",   # نملؤه بعد أخذ ID
+        url="",   
+        kind="reject_edit"   # 👈 مهم جداً
+
     )
 
     # 2) تحديث الرابط داخل الإشعار لاحقاً
