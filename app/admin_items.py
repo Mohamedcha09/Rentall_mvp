@@ -20,6 +20,7 @@ def require_admin(request: Request):
         raise HTTPException(status_code=403, detail="Admins only")
     return u
 
+
 # ==========================
 # FLASH MESSAGE
 # ==========================
@@ -51,6 +52,7 @@ def list_pending(request: Request, db: Session = Depends(get_db)):
         }
     )
 
+
 # ==========================
 # 2) APPROVE ITEM
 # ==========================
@@ -58,7 +60,7 @@ def list_pending(request: Request, db: Session = Depends(get_db)):
 def approve_item(item_id: int, request: Request, db: Session = Depends(get_db)):
     require_admin(request)
 
-    it = db.get(Item, item_id)    # ← FIXED
+    it = db.get(Item, item_id)
     if not it:
         raise HTTPException(404, "Item not found")
 
@@ -67,6 +69,7 @@ def approve_item(item_id: int, request: Request, db: Session = Depends(get_db)):
     it.admin_feedback = None
     db.commit()
 
+    # إرسال إشعار قبول
     push_notification(
         db,
         user_id=it.owner_id,
@@ -82,29 +85,34 @@ def approve_item(item_id: int, request: Request, db: Session = Depends(get_db)):
 
 
 # ==========================
-# 3) REJECT ITEM
+# 3) REJECT ITEM  (FIXED 100%)
 # ==========================
 @router.post("/{item_id}/reject")
 def reject_item(item_id: int, request: Request, db: Session = Depends(get_db), feedback: str = Form("")):
     require_admin(request)
 
-    it = db.get(Item, item_id)   # ← FIXED
+    it = db.get(Item, item_id)
     if not it:
         raise HTTPException(404, "Item not found")
 
+    # تحديث حالة الرفض
     it.status = "rejected"
     it.admin_feedback = feedback
     it.reviewed_at = datetime.utcnow()
     db.commit()
 
-    push_notification(
+    # 1) إنشاء الإشعار وأخذ ID
+    notif = push_notification(
         db,
         user_id=it.owner_id,
         title="Your item was rejected",
         body=f"Your listing '{it.title}' requires changes.\nReason: {feedback}",
-        url=f"/notifications/open/{notif_id}"  # ✅ الرابط الصحيح
-
+        url="",   # نملؤه بعد أخذ ID
     )
+
+    # 2) تحديث الرابط داخل الإشعار لاحقاً
+    notif.link_url = f"/notifications/open/{notif.id}"
+    db.commit()
 
     return RedirectResponse(
         url="/admin/items/pending",
@@ -119,7 +127,7 @@ def reject_item(item_id: int, request: Request, db: Session = Depends(get_db), f
 def reset_to_pending(item_id: int, request: Request, db: Session = Depends(get_db)):
     require_admin(request)
 
-    it = db.get(Item, item_id)   # ← FIXED
+    it = db.get(Item, item_id)
     if not it:
         raise HTTPException(404, "Item not found")
 
@@ -141,7 +149,7 @@ def reset_to_pending(item_id: int, request: Request, db: Session = Depends(get_d
 def delete_item(item_id: int, request: Request, db: Session = Depends(get_db)):
     require_admin(request)
 
-    it = db.get(Item, item_id)   # ← FIXED
+    it = db.get(Item, item_id)
     if not it:
         raise HTTPException(404, "Item not found")
 
