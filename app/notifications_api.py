@@ -209,8 +209,11 @@ def open_notification(
 
         # first open
         n.opened_once = True
+        n.opened_at = datetime.utcnow()
         n.is_read = True
         db.commit()
+
+
 
         if n.link_url:
             return RedirectResponse(url=n.link_url, status_code=303)
