@@ -53,20 +53,16 @@
     {% for it in items %}
         <div class="pending-card">
 
-            <!-- Image -->
             <img src="{{ it.image_path or (it.image_urls[0] if it.image_urls else '') }}" alt="image">
 
-            <!-- Title -->
             <h4 class="mt-3 mb-2">{{ it.title }}</h4>
 
             <div class="text-muted small mb-2">
                 {{ it.city }} — {{ it.category }} / {{ it.subcategory or "None" }}
             </div>
 
-            <!-- Status -->
             <span class="badge bg-warning text-dark">Pending Review</span>
 
-            <!-- Admin Feedback if exists -->
             {% if it.admin_feedback %}
                 <div class="alert alert-warning mt-3">
                     <strong>Previous feedback:</strong><br>
@@ -74,20 +70,16 @@
                 </div>
             {% endif %}
 
-            <!-- Actions -->
             <div class="actions-row mt-3">
 
-                <!-- Approve -->
                 <form method="post" action="/admin/items/{{ it.id }}/approve" style="display:inline;">
                     <button class="btn btn-success btn-sm">Accept</button>
                 </form>
 
-                <!-- Delete -->
                 <form method="post" action="/admin/items/{{ it.id }}/delete" style="display:inline;">
                     <button class="btn btn-danger btn-sm">Delete</button>
                 </form>
 
-                <!-- Feedback -->
                 <button class="btn btn-secondary btn-sm"
                         onclick="openFeedback({{ it.id }}, '{{ it.title }}')">
                     Send Feedback
@@ -98,11 +90,6 @@
     {% endfor %}
 </div>
 
-
-
-<!-- =======================
-     FEEDBACK POPUP
-======================= -->
 <div id="feedbackPopup" class="feedback-popup">
     <div class="feedback-box">
         <h5 id="fbTitle"></h5>
@@ -119,7 +106,6 @@
         <button onclick="closeFeedback()" class="btn btn-light w-100 mt-2">Cancel</button>
     </div>
 </div>
-
 
 <script>
     function openFeedback(id, title) {
