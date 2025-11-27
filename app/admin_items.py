@@ -83,10 +83,6 @@ def approve_item(item_id: int, request: Request, db: Session = Depends(get_db)):
         status_code=status.HTTP_302_FOUND
     )
 
-
-# ==========================
-# 3) REJECT ITEM  (FIXED 100%)
-# ==========================
 @router.post("/{item_id}/reject")
 def reject_item(item_id: int, request: Request, db: Session = Depends(get_db), feedback: str = Form("")):
     require_admin(request)
@@ -95,31 +91,26 @@ def reject_item(item_id: int, request: Request, db: Session = Depends(get_db), f
     if not it:
         raise HTTPException(404, "Item not found")
 
-    # تحديث حالة الرفض
     it.status = "rejected"
     it.admin_feedback = feedback
     it.reviewed_at = datetime.utcnow()
     db.commit()
 
-    # 1) إنشاء الإشعار وأخذ ID
+    # 1) إنشاء إشعار
     notif = push_notification(
         db,
         user_id=it.owner_id,
         title="Your item was rejected",
         body=f"Your listing '{it.title}' requires changes.\nReason: {feedback}",
-        url="",   
-        kind="reject_edit"   # 👈 مهم جداً
-
+        url=f"/owner/items/{it.id}/edit",  # 👈 هذا هو الرابط الصحيح
+        kind="reject_edit"
     )
-
-    # 2) تحديث الرابط داخل الإشعار لاحقاً
-    notif.link_url = f"/notifications/open/{notif.id}"
-    db.commit()
 
     return RedirectResponse(
         url="/admin/items/pending",
         status_code=status.HTTP_302_FOUND
     )
+
 
 
 # ==========================
