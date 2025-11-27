@@ -195,10 +195,6 @@ def mark_read(
 
     return _json({"ok": True})
 
-
-# ============================================================
-#                 OPEN NOTIFICATION (ONE-TIME LINK)
-# ============================================================
 @router.get("/notifications/open/{notif_id}")
 def open_notification(
     notif_id: int,
@@ -213,7 +209,7 @@ def open_notification(
     if not n or n.user_id != user.id:
         raise HTTPException(404, "Notification not found")
 
-    # ⛔ إذا فتحه سابقاً → لا يستطيع الدخول مرة أخرى
+    # إذا تم فتحه سابقاً → أمنعه فوراً
     if n.opened_once:
         return request.app.templates.TemplateResponse(
             "notification_used_once.html",
@@ -223,30 +219,32 @@ def open_notification(
             }
         )
 
-    # ✅ أول فتح
+    # تسجل أنه تم فتحه لأول مرة الآن
     n.opened_once = True
+    n.opened_at = datetime.utcnow()
     n.is_read = True
     db.commit()
 
-    # ------------------------ FIX الحقيقي ------------------------
+    # 🔥 إذا كان إشعار تعديل Reject → نوجهه لصفحة التعديل الصحيحة
     if n.kind == "reject_edit":
-        # n.link_url = "/owner/items/55/edit"
-        parts = n.link_url.strip("/").split("/")   # ["owner","items","55","edit"]
-
-        if len(parts) >= 3 and parts[0] == "owner" and parts[1] == "items":
-            try:
-                item_id = int(parts[2])
+        # استخرج رقم العنصر من نص الإشعار أو من قاعدة البيانات
+        # هنا أبسط طريقة وأكثرها أماناً:
+        try:
+            # نبحث عن أول رقم في النص (ID)
+            import re
+            m = re.search(r'\d+', n.body or "")
+            if m:
+                item_id = int(m.group(0))
                 return RedirectResponse(url=f"/owner/items/{item_id}/edit", status_code=303)
-            except:
-                pass
+        except:
+            pass
 
         # fallback
         return RedirectResponse(url="/owner/items", status_code=303)
-    # -------------------------------------------------------------
 
-    # إذا لا يوجد نوع خاص → افتح الرابط كما هو
+    # إذا يوجد رابط عادي سابقاً
     if n.link_url:
         return RedirectResponse(url=n.link_url, status_code=303)
 
-    # بدون رابط → افتح قائمة الإشعارات
+    # آخر خيار → قائمة الإشعارات
     return RedirectResponse(url="/notifications", status_code=303)
