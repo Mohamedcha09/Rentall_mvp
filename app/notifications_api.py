@@ -216,45 +216,31 @@ def open_notification(
     user: Optional[User] = Depends(get_current_user),
 ):
     if not user:
-        return RedirectResponse("/login", status_code=303)
+        return RedirectResponse(url="/login", status_code=303)
 
     n = db.get(Notification, notif_id)
     if not n or n.user_id != user.id:
         raise HTTPException(404, "Notification not found")
 
-    # ========================================================
-    #         ONLY FOR reject_edit → allow ONCE
-    # ========================================================
-    if n.kind == "reject_edit":
+    # إذا كان الإشعار مُفتوح مسبقاً → نعرض صفحة واحدة فقط
+    if n.opened_once:
+        return request.app.templates.TemplateResponse(
+            "notification_used_once.html",
+            {
+                "request": request,
+                "session_user": user,        # ⚡ FIX
+                "notif": n                    # (اختياري إذا أردت عرض معلومات)
+            }
+        )
 
-        
-        if n.opened_once:
-            return request.app.templates.TemplateResponse(
-                "notification_used_once.html",
-                {
-                    "request": request
-                    "session_user": user
-                }
-            )
-
-        # أول فتح
-        n.opened_once = True
-        n.opened_at = datetime.utcnow()
-        n.is_read = True
-        db.commit()
-
-        if n.link_url:
-            return RedirectResponse(n.link_url, status_code=303)
-
-        return RedirectResponse("/notifications", status_code=303)
-
-    # ========================================================
-    #           كل الإشعارات الأخرى تعمل طبيعي
-    # ========================================================
+    # أول مرة يتم فتح الإشعار
+    n.opened_once = True
     n.is_read = True
     db.commit()
 
+    # إذا يوجد رابط → ندخل له
     if n.link_url:
-        return RedirectResponse(n.link_url, status_code=303)
+        return RedirectResponse(url=n.link_url, status_code=303)
 
-    return RedirectResponse("/notifications", status_code=303)
+    # إذا لا يوجد رابط → نفتح قائمة الإشعارات
+    return RedirectResponse(url="/notifications", status_code=303)
