@@ -83,6 +83,10 @@ def approve_item(item_id: int, request: Request, db: Session = Depends(get_db)):
         status_code=status.HTTP_302_FOUND
     )
 
+
+# ==========================
+# 3) REJECT ITEM — FINAL FIX
+# ==========================
 @router.post("/{item_id}/reject")
 def reject_item(item_id: int, request: Request, db: Session = Depends(get_db), feedback: str = Form("")):
     require_admin(request)
@@ -96,19 +100,15 @@ def reject_item(item_id: int, request: Request, db: Session = Depends(get_db), f
     it.reviewed_at = datetime.utcnow()
     db.commit()
 
-    # إنشاء الإشعار
-    notif = push_notification(
+    # إنشاء الإشعار — بالرابط الصحيح مباشرة
+    push_notification(
         db,
         user_id=it.owner_id,
         title="Your item was rejected",
         body=f"Your listing '{it.title}' requires changes.\nReason: {feedback}",
-        url="",                    # 👈 لا نضع رابط هنا
+        url=f"/owner/items/{it.id}/edit",   # 👈 أول مرة يفتح صفحة التعديل مباشرة
         kind="reject_edit"
     )
-
-    # تعديل الرابط بعد الإنشاء
-    notif.link_url = f"/notifications/open/{notif.id}"
-    db.commit()
 
     return RedirectResponse(
         url="/admin/items/pending",
