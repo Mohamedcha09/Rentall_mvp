@@ -328,5 +328,21 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
   // Hide suggestions when clicking outside
   document.addEventListener('click',(e)=>{ if(sugg && !sugg.contains(e.target) && e.target!==cityEl){hideSugg();} });
 })();
+
+// ===== Scroll slider automatically to active category =====
+document.addEventListener("DOMContentLoaded", function () {
+    const toolbar = document.querySelector(".toolbar");
+    const active = document.querySelector(".pill.active");
+
+    if (toolbar && active) {
+        // Scroll so the active category is visible in the middle
+        const offset = active.offsetLeft - (toolbar.clientWidth / 2) + (active.clientWidth / 2);
+        toolbar.scrollTo({
+            left: offset,
+            behavior: "smooth"
+        });
+    }
+});
+
 </script>
 {% endblock %}
