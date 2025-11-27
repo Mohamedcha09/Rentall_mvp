@@ -1103,7 +1103,7 @@
 {% for code, lst in cats_map.items() %}
   {% if lst and lst|length > 0 %}
     <div class="section-head mt-3">
-      <div class="section-title">{{ category_label(code) }}</div>
+      <div class="section-title">{{ code }}</div>
       <a class="text-muted small" href="/items?category={{ code }}">View all</a>
       <!-- (New) Slider nav buttons for this category -->
       <div class="row-nav">
