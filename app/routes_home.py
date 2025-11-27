@@ -52,15 +52,13 @@ def _serialize(i: Item, ratings: dict) -> dict:
         "image_path": getattr(i, "image_path", None) or "/static/placeholder.jpg",
         "city": getattr(i, "city", "") or "",
         "category": getattr(i, "category", "") or "",
-        "subcategory": getattr(i, "subcategory", "") or "",   # ← ADDED ✔
+        "subcategory": getattr(i, "subcategory", "") or "",   # ← أضفت هذا السطر
         "price_per_day": getattr(i, "price_per_day", None),
 
         "rating_avg": r["avg"],
         "rating_count": r["cnt"],
-
         "currency": getattr(i, "currency", "CAD"),
     }
-
 
 # ================= Filters =================
 def _apply_city_or_gps_filter(qs, city, lat, lng, radius_km):

@@ -1059,7 +1059,9 @@
             <span class="price-badge">{{ it.price_per_day|default(0) }}$ /day</span>
           {% endif %}
           {% if it.category is defined %}
-            <span class="category-chip">{{ category_label(it.category) }}</span>
+<span class="category-chip">
+  {{ it.subcategory or category_label(it.category) }}
+</span>
           {% endif %}
 
           <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="Add to favorites">
@@ -1125,8 +1127,9 @@
             {% if it.price_per_day is defined %}
               <span class="price-badge">{{ it.price_per_day|default(0) }}$ /day</span>
             {% endif %}
-            <span class="category-chip">{{ category_label(it.category) }}</span>
-
+  <span class="category-chip">
+    {{ it.subcategory or category_label(it.category) }}
+  </span>
             <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="Add to favorites">
               <i class="bi bi-heart"></i>
             </button>
