@@ -41,16 +41,49 @@
           {% endif %}
           <div class="card-body">
             <h6 class="card-title">{{ it.title }}</h6>
+
             <div class="d-flex justify-content-between align-items-center">
               <a href="/items/{{ it.id }}" class="btn btn-sm btn-outline-light">Open</a>
               <span class="small text-muted">{{ it.category }}</span>
             </div>
+
             <div class="mt-2">
               <span class="badge {% if it.is_active=='yes' %}bg-success{% else %}bg-secondary{% endif %}">
                 {% if it.is_active=='yes' %}Active{% else %}Inactive{% endif %}
               </span>
               <span class="badge bg-dark-subtle text-dark">{{ it.display_price }} {{ it.display_currency }}/day</span>
             </div>
+
+            <!-- ============================ -->
+            <!--   REVIEW STATUS (NEW)       -->
+            <!-- ============================ -->
+            {% if it.status != 'approved' %}
+              <div class="mt-2">
+                <span class="badge bg-warning text-dark">
+                  {{ it.status }}
+                </span>
+              </div>
+            {% endif %}
+
+            <!-- ============================ -->
+            <!--   ADMIN FEEDBACK (NEW)      -->
+            <!-- ============================ -->
+            {% if it.admin_feedback %}
+              <div class="alert alert-warning mt-2">
+                <strong>Admin Feedback:</strong><br>
+                {{ it.admin_feedback }}
+              </div>
+            {% endif %}
+
+            <!-- ============================ -->
+            <!--   RESUBMIT BUTTON (NEW)     -->
+            <!-- ============================ -->
+            {% if it.status in ['rejected', 'needs_revision'] %}
+              <form action="/owner/items/{{ it.id }}/resubmit" method="post">
+                <button class="btn btn-primary btn-sm mt-2">Resubmit for Review</button>
+              </form>
+            {% endif %}
+
           </div>
         </div>
       </div>

@@ -305,7 +305,8 @@ def items_list(
                 .all()
             )
 
-    q = db.query(Item).filter(Item.is_active == "yes")
+    q = db.query(Item).filter(Item.is_active == "yes",Item.status == "approved")
+
     current_category = category
 
     # Filter by category (by name)
@@ -403,6 +404,10 @@ def items_list(
 @router.get("/items/{item_id}")
 def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     item = db.query(Item).get(item_id)
+    # 🔒 Hide items that are not approved
+    if item.status != "approved":
+        return RedirectResponse(url="/items", status_code=303)
+
 
     session_u = request.session.get("user")
     disp_cur = _display_currency(request)
@@ -757,3 +762,23 @@ def item_reviews_all(request: Request, item_id: int, db: Session = Depends(get_d
             "session_user": request.session.get("user"),
         }
     )
+
+
+@router.post("/owner/items/{item_id}/resubmit")
+def item_resubmit(request: Request, item_id: int, db: Session = Depends(get_db)):
+    u = request.session.get("user")
+    if not u:
+        return RedirectResponse(url="/login", status_code=303)
+
+    it = db.query(Item).get(item_id)
+    if not it or it.owner_id != u["id"]:
+        raise HTTPException(404, "Item not found")
+
+    # Reset review status
+    it.status = "pending"
+    it.admin_feedback = None
+    it.reviewed_at = None
+
+    db.commit()
+
+    return RedirectResponse(url="/owner/items", status_code=303)
