@@ -204,10 +204,6 @@ def mark_read(
 
     return _json({"ok": True})
 
-
-# ============================================================
-#                 OPEN NOTIFICATION (ONE-TIME LINK)
-# ============================================================
 @router.get("/notifications/open/{notif_id}")
 def open_notification(
     notif_id: int,
@@ -222,25 +218,29 @@ def open_notification(
     if not n or n.user_id != user.id:
         raise HTTPException(404, "Notification not found")
 
-    # إذا كان الإشعار مُفتوح مسبقاً → نعرض صفحة واحدة فقط
+    # إذا تم فتحه سابقاً → أمنعه
     if n.opened_once:
         return request.app.templates.TemplateResponse(
             "notification_used_once.html",
             {
                 "request": request,
-                "session_user": user,        # ⚡ FIX
-                "notif": n                    # (اختياري إذا أردت عرض معلومات)
+                "session_user": user
             }
         )
 
-    # أول مرة يتم فتح الإشعار
+    # أول مرة
     n.opened_once = True
     n.is_read = True
     db.commit()
 
-    # إذا يوجد رابط → ندخل له
+    # إذا كان إشعار تعديل rejected
+    if n.kind == "reject_edit":
+        # الرابط الحقيقي
+        item_id = int(n.link_url.split("/")[-1])
+        return RedirectResponse(url=f"/owner/items/{item_id}/edit", status_code=303)
+
+    # إشعار عادي
     if n.link_url:
         return RedirectResponse(url=n.link_url, status_code=303)
 
-    # إذا لا يوجد رابط → نفتح قائمة الإشعارات
     return RedirectResponse(url="/notifications", status_code=303)
