@@ -187,6 +187,7 @@ def get_similar_items(db: Session, item: Item):
         .outerjoin(rev_agg, rev_agg.c.iid == Item.id)
         .filter(
             Item.is_active == "yes",
+            Item.status == "approved",
             Item.category == item.category,
             Item.id != item.id,
         )
@@ -397,32 +398,26 @@ def items_list(
         }
     )
 
-
 # ============================================================
 # ======================= ITEM DETAIL =========================
 # ============================================================
 @router.get("/items/{item_id}")
 def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
+    # 1) اجلب العنصر من قاعدة البيانات
     item = db.query(Item).get(item_id)
-    # 🔒 Hide items that are not approved
-    if item.status != "approved":
+    session_u = request.session.get("user")
+
+    # 2) إذا المنشور غير موجود → رجّع المستخدم لصفحة items
+    if not item:
         return RedirectResponse(url="/items", status_code=303)
 
+    # 3) إذا المنشور ليس approved → امنع الكل ماعدا صاحبه
+    if item.status != "approved":
+        if not session_u or session_u["id"] != item.owner_id:
+            return RedirectResponse(url="/items", status_code=303)
 
-    session_u = request.session.get("user")
+    # 4) عملة العرض
     disp_cur = _display_currency(request)
-
-    if not item:
-        return request.app.templates.TemplateResponse(
-            "items_detail.html",
-            {
-                "request": request,
-                "item": None,
-                "session_user": session_u,
-                "immersive": True,
-                "display_currency": disp_cur,
-            },
-        )
 
     from sqlalchemy import func as _func
 
@@ -446,7 +441,9 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     )
 
     cnt_stars = (
-        db.query(_func.count(ItemReview.id)).filter(ItemReview.item_id == item.id).scalar()
+        db.query(_func.count(ItemReview.id))
+        .filter(ItemReview.item_id == item.id)
+        .scalar()
         or 0
     )
 
@@ -478,7 +475,9 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     if session_u:
         favorite_ids = [
             r[0]
-            for r in db.query(_Fav.item_id).filter(_Fav.user_id == session_u["id"]).all()
+            for r in db.query(_Fav.item_id)
+                      .filter(_Fav.user_id == session_u["id"])
+                      .all()
         ]
 
     return request.app.templates.TemplateResponse(
