@@ -1,4 +1,5 @@
 # app/routes_home.py
+
 from fastapi import APIRouter, Depends, Request, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
@@ -7,9 +8,9 @@ from urllib.parse import quote
 import random
 
 from .database import get_db
-from .models import Item, FxRate, ItemReview
+from .models import Item, FxRate, ItemReview, Category
 from sqlalchemy.sql import func
-from .models import Category
+from .utils import category_label as _category_label   # ← FIXED ✔ IMPORT
 
 router = APIRouter()
 
@@ -39,6 +40,9 @@ def fx_convert(amount: float, base: str, quote: str, rates: dict):
     return round(amount * rates[key], 2)
 
 
+# ======================================
+# SERIALIZER — FIX: add subcategory ✔
+# ======================================
 def _serialize(i: Item, ratings: dict) -> dict:
     rid = getattr(i, "id", None)
     r = ratings.get(rid, {"avg": 0, "cnt": 0})
@@ -48,13 +52,12 @@ def _serialize(i: Item, ratings: dict) -> dict:
         "image_path": getattr(i, "image_path", None) or "/static/placeholder.jpg",
         "city": getattr(i, "city", "") or "",
         "category": getattr(i, "category", "") or "",
+        "subcategory": getattr(i, "subcategory", "") or "",   # ← ADDED ✔
         "price_per_day": getattr(i, "price_per_day", None),
 
-        # ⭐ التقييم الحقيقي
         "rating_avg": r["avg"],
         "rating_count": r["cnt"],
 
-        # العملة الأصلية
         "currency": getattr(i, "currency", "CAD"),
     }
 
@@ -126,8 +129,8 @@ def _pick_topstrip(limit_per_col=12):
         cols[i % 3].append(src)
     return cols
 
-# ==== Ratings aggregation (avg + count) ====
 
+# ==== Ratings aggregation ====
 def load_ratings_map(db: Session):
     rows = (
         db.query(
@@ -146,7 +149,8 @@ def load_ratings_map(db: Session):
         }
     return m
 
-# ================= Home Route =================
+
+# ================= HOME PAGE =================
 @router.get("/")
 def home_page(
     request: Request,
@@ -158,113 +162,89 @@ def home_page(
     db: Session = Depends(get_db),
 ):
 
+    # Fix lon->lng
     if lng is None and lon is not None:
         lng = lon
 
+    # Load cookies
     try:
         if not city:
             city = request.cookies.get("city") or None
 
-        if lat is None:
-            c_lat = request.cookies.get("lat")
-            if c_lat:
-                lat = float(c_lat)
+        if lat is None and request.cookies.get("lat"):
+            lat = float(request.cookies.get("lat"))
 
         if lng is None:
-            c_lng = request.cookies.get("lng") or request.cookies.get("lon")
-            if c_lng:
-                lng = float(c_lng)
-
-        if not radius_km:
-            ck = request.cookies.get("radius_km")
+            ck = request.cookies.get("lng") or request.cookies.get("lon")
             if ck:
-                radius_km = float(ck)
+                lng = float(ck)
+
+        if not radius_km and request.cookies.get("radius_km"):
+            radius_km = float(request.cookies.get("radius_km"))
     except Exception:
         pass
 
+    # Currency
     session_user = getattr(request, "session", {}).get("user")
     if session_user and session_user.get("display_currency"):
         user_currency = session_user["display_currency"]
     else:
         user_currency = request.cookies.get("disp_cur") or "CAD"
 
-    # NEW: currency symbols
     symbols = {"CAD": "$", "USD": "$", "EUR": "€"}
 
     rates = load_fx_dict(db)
 
+    # Base items
     base_q = db.query(Item).filter(Item.is_active == "yes")
     filtered_q = _apply_city_or_gps_filter(base_q, city, lat, lng, radius_km)
-    filtering = (lat is not None and lng is not None and radius_km) or (city not in (None, ""))
+    filtering = (lat and lng and radius_km) or (city not in (None, ""))
 
-    # ---- Nearby ----
+    # Nearby items
     if filtering:
         nearby_rows = filtered_q.order_by(Item.created_at.desc()).limit(20).all()
     else:
         nearby_rows = base_q.order_by(func.random()).limit(20).all()
 
     ratings_map = load_ratings_map(db)
-
     nearby_items = [_serialize(i, ratings_map) for i in nearby_rows]
 
     for it in nearby_items:
         base = it["currency"]
         price = it.get("price_per_day") or 0
         it["display_price"] = fx_convert(price, base, user_currency, rates)
-        it["display_currency"] = user_currency
-        it["display_symbol"] = symbols.get(user_currency, user_currency)   # FIX ✔
+        it["display_symbol"] = symbols.get(user_currency, user_currency)
 
-
-        # ===== Load all categories (from DB, dynamic) =====
+    # ================================
+    # LOAD ALL CATEGORIES (FIXED) ✔
+    # ================================
     items_by_category = {}
-
     db_categories = db.query(Category).order_by(Category.id).all()
 
     for cat in db_categories:
-        code = cat.name       # category key = name
-        label = cat.name      # label = name
+        code = cat.name
+        label = cat.name   # same
 
         q = base_q
         if filtering:
             q = _apply_city_or_gps_filter(q, city, lat, lng, radius_km)
 
-        # filter items by category name
-        q = q.filter(Item.category == code)
+        q = _apply_category_filter(q, code, label)   # FIXED ✔
 
-        rows = q.order_by(func.random()).limit(12).all()
+        rows = q.order_by(Item.created_at.desc()).limit(12).all()
+
         lst = [_serialize(i, ratings_map) for i in rows]
 
-        # fx conversion
         for it in lst:
             base = it["currency"]
             price = it.get("price_per_day") or 0
             it["display_price"] = fx_convert(price, base, user_currency, rates)
-            it["display_currency"] = user_currency
             it["display_symbol"] = symbols.get(user_currency, user_currency)
 
         if lst:
             items_by_category[code] = lst
 
-
-        q = base_q
-        if filtering:
-            q = _apply_city_or_gps_filter(q, city, lat, lng, radius_km)
-        q = _apply_category_filter(q, code, label)
-
-        rows = q.order_by(func.random()).limit(12).all()
-        lst = [_serialize(i, ratings_map) for i in rows]
-
-        for it in lst:
-            base = it["currency"]
-            price = it.get("price_per_day") or 0
-            it["display_price"] = fx_convert(price, base, user_currency, rates)
-            it["display_currency"] = user_currency
-            it["display_symbol"] = symbols.get(user_currency, user_currency)   # FIX ✔
-
-        if lst:
-            items_by_category[code] = lst
-
-    # ---- All items ----
+    # ALL ITEMS
     if filtering:
         all_rows = filtered_q.order_by(Item.created_at.desc()).limit(60).all()
     else:
@@ -276,8 +256,7 @@ def home_page(
         base = it["currency"]
         price = it.get("price_per_day") or 0
         it["display_price"] = fx_convert(price, base, user_currency, rates)
-        it["display_currency"] = user_currency
-        it["display_symbol"] = symbols.get(user_currency, user_currency)   # FIX ✔
+        it["display_symbol"] = symbols.get(user_currency, user_currency)
 
     banners = _pick_banners()
     top_strip_cols = _pick_topstrip()
@@ -293,8 +272,8 @@ def home_page(
         "selected_city": city or "",
         "lat": lat,
         "lng": lng,
-        "radius_km": radius_km or 25.0,
-        "category_label": _category_label,
+        "radius_km": radius_km or 25,
+        "category_label": _category_label,     # FIXED ✔
         "session_user": session_user,
         "favorites_ids": [],
     }
