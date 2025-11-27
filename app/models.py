@@ -359,12 +359,7 @@ class Notification(Base):
     opened_once = Column(Boolean, nullable=False, default=False)
     opened_at   = Column(DateTime, nullable=True)
 
-    user = relationship(
-        "User",
-        back_populates="notifications",
-        lazy="joined",
-        overlaps="notifications,user"
-    )
+    user = relationship("User", lazy="joined")
 
 
 # Optional reverse relationship
