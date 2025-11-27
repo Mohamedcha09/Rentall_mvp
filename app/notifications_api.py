@@ -227,11 +227,14 @@ def open_notification(
     # ========================================================
     if n.kind == "reject_edit":
 
-        # تم فتحه من قبل → ممنوع
+        
         if n.opened_once:
             return request.app.templates.TemplateResponse(
                 "notification_used_once.html",
-                {"request": request}
+                {
+                    "request": request
+                    "session_user": user
+                }
             )
 
         # أول فتح
