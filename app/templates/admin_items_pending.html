@@ -3,88 +3,87 @@
 
 <style>
 
-    /* === FULL COMPACT MODE === */
+    /* === ULTRA COMPACT CARD === */
     .pending-card {
-        border-radius: 14px;
-        padding: 15px;
-        margin-bottom: 16px;
+        border-radius: 10px;
+        padding: 8px;                     /* أصغر */
+        margin-bottom: 12px;
         background: #fff;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        box-shadow: 0 1px 4px rgba(0,0,0,0.05);
         border: 1px solid #e6e6e6;
 
-        max-width: 650px;          /* 👈 يجعل البطاقة أصغر */
+        max-width: 480px;                 /* أصغر عرض ممكن */
         margin-left: auto;
         margin-right: auto;
     }
 
-    /* Smaller spacing */
-    .pending-card h4 {
-        font-size: 18px;
-        margin-bottom: 6px;
+    h4 {
+        font-size: 14px;                  /* أصغر */
+        margin-bottom: 4px;
+        margin-top: 4px;
     }
 
-    .pending-card .small {
-        font-size: 13px;
+    .small {
+        font-size: 11px !important;
     }
 
-    /* === Owner Box COMPACT === */
+    .badge {
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+
+    /* === OWNER BOX COMPACT === */
     .owner-box {
         background: #fafaff;
         border: 1px solid #dcdcff;
-        padding: 8px 10px;            /* 👈 أصغر */
-        border-radius: 8px;
-        margin-bottom: 10px;
-        font-size: 13px;              /* 👈 أصغر */
-        line-height: 1.3;
+        padding: 6px 8px;                 /* أصغر */
+        border-radius: 6px;
+        margin-bottom: 6px;
+        font-size: 11px;                  /* أصغر */
+        line-height: 1.25;
     }
 
     .owner-box b {
-        font-size: 13px;
+        font-size: 11px;
     }
 
-    /* Label + value compact */
+    /* LABEL + TEXT */
     .label {
         font-weight: 600;
-        color: #555;
+        color: #444;
         margin-bottom: 2px;
-        font-size: 14px;
+        font-size: 12px;
     }
 
     .value {
         color: #222;
-        font-size: 14px;
-        margin-bottom: 6px;
+        font-size: 11px;
+        margin-bottom: 4px;
+        line-height: 1.3;
     }
 
-    /* ==== IMAGES GRID smaller === */
+    /* === IMAGES COMPACT GRID === */
     .item-images-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); /* 👈 أصغر */
-        gap: 8px;
-        margin-top: 8px;
+        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); /* أصغر */
+        gap: 6px;
+        margin-top: 6px;
     }
 
     .item-images-grid img {
         width: 100%;
-        height: 90px;                /* 👈 أصغر */
+        height: 70px;                    /* أصغر */
         object-fit: cover;
-        border-radius: 8px;
+        border-radius: 6px;
         border: 1px solid #ddd;
     }
 
-    /* Badges */
-    .badge {
-        font-size: 11px;
-        padding: 5px 8px;
+    .actions-row button {
+        padding: 3px 6px !important;
+        font-size: 11px !important;
     }
 
-    /* Buttons */
-    .btn-sm {
-        padding: 4px 8px;
-        font-size: 12px;
-    }
-
-    /* Feedback popup unchanged */
+    /* FEEDBACK */
     .feedback-popup {
         background: rgba(0,0,0,0.5);
         position: fixed;
@@ -97,20 +96,34 @@
 
     .feedback-box {
         background: #fff;
-        padding: 20px;
-        border-radius: 16px;
+        padding: 18px;
+        border-radius: 14px;
         width: 90%;
-        max-width: 420px;
+        max-width: 360px;
+    }
+
+    #fbTitle {
+        font-size: 14px;
+        margin-bottom: 6px;
+    }
+
+    textarea {
+        font-size: 12px !important;
+    }
+
+    .btn-primary {
+        font-size: 12px !important;
+        padding: 6px 10px !important;
     }
 
 </style>
 
-<div class="container py-3">
+<div class="container py-2">
 
-    <h3 class="mb-3" style="text-align:center;">Pending Items Review</h3>
+    <h3 class="mb-2" style="font-size:16px; text-align:center;">Pending Items Review</h3>
 
     {% if items|length == 0 %}
-        <div class="alert alert-info text-center">No items waiting for review.</div>
+        <div class="alert alert-info text-center" style="font-size:13px;">No items waiting.</div>
     {% endif %}
 
     {% for it in items %}
@@ -119,10 +132,10 @@
 
             <!-- OWNER INFO -->
             <div class="owner-box">
-                <strong>Owner:</strong><br>
+                <strong style="font-size:12px;">Owner:</strong><br>
                 <b>Name:</b> {{ it.owner.full_name if it.owner else "Unknown" }}<br>
                 <b>Email:</b> {{ it.owner.email if it.owner else "No email" }}<br>
-                <b>Owner ID:</b> {{ it.owner.id if it.owner else "—" }}
+                <b>ID:</b> {{ it.owner.id if it.owner else "—" }}
             </div>
 
             <h4>{{ it.title }}</h4>
@@ -138,13 +151,11 @@
                 {% endif %}
             </div>
 
-            <div class="mb-2">
-                <span class="badge bg-warning text-dark">Pending Review</span>
-            </div>
+            <span class="badge bg-warning text-dark mb-2">Pending Review</span>
 
             <!-- DESCRIPTION -->
             <div class="label">Description:</div>
-            <div class="value">{{ it.description or "No description provided." }}</div>
+            <div class="value">{{ it.description or "No description." }}</div>
 
             <!-- PRICE -->
             <div class="label">Price:</div>
@@ -158,18 +169,18 @@
                         <img src="{{ img }}">
                     {% endfor %}
                 {% else %}
-                    <div class="text-muted small">No images uploaded.</div>
+                    <div class="text-muted small">No images.</div>
                 {% endif %}
             </div>
 
             {% if it.admin_feedback %}
-                <div class="alert alert-warning mt-2 py-2" style="font-size:13px;">
-                    <strong>Previous feedback:</strong> {{ it.admin_feedback }}
+                <div class="alert alert-warning mt-2 py-1" style="font-size:11px;">
+                    <strong>Previous:</strong> {{ it.admin_feedback }}
                 </div>
             {% endif %}
 
             <!-- ACTION BUTTONS -->
-            <div class="actions-row mt-3">
+            <div class="actions-row mt-2">
 
                 <form method="post" action="/admin/items/{{ it.id }}/approve" style="display:inline;">
                     <button class="btn btn-success btn-sm">Approve</button>
@@ -181,7 +192,7 @@
 
                 <button class="btn btn-secondary btn-sm"
                         onclick="openFeedback({{ it.id }}, '{{ it.title }}')">
-                    Send Feedback
+                    Feedback
                 </button>
 
             </div>
@@ -199,27 +210,27 @@
 
         <form id="fbForm" method="post">
             <textarea name="feedback"
-                      class="form-control mb-3"
-                      placeholder="Write your message to the item owner..."
-                      rows="5"></textarea>
+                      class="form-control mb-2"
+                      placeholder="Write message..."
+                      rows="4"></textarea>
 
             <button class="btn btn-primary w-100">Send</button>
         </form>
 
-        <button onclick="closeFeedback()" class="btn btn-light w-100 mt-2">Cancel</button>
+        <button onclick="closeFeedback()" class="btn btn-light w-100 mt-2" style="font-size:12px;">Cancel</button>
     </div>
 </div>
 
 <script>
-    function openFeedback(id, title) {
-        document.getElementById("feedbackPopup").style.display = "flex";
-        document.getElementById("fbTitle").innerText = "Feedback for: " + title;
-        document.getElementById("fbForm").action = "/admin/items/" + id + "/reject";
-    }
+function openFeedback(id, title) {
+    document.getElementById("feedbackPopup").style.display = "flex";
+    document.getElementById("fbTitle").innerText = "Feedback for: " + title;
+    document.getElementById("fbForm").action = "/admin/items/" + id + "/reject";
+}
 
-    function closeFeedback() {
-        document.getElementById("feedbackPopup").style.display = "none";
-    }
+function closeFeedback() {
+    document.getElementById("feedbackPopup").style.display = "none";
+}
 </script>
 
 {% endblock %}
