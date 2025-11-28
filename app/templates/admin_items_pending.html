@@ -1,32 +1,52 @@
 {% extends "base.html" %}
-
 {% block content %}
 
 <style>
     .pending-card {
-        border: 1px solid #ddd;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 18px;
+        border-radius: 16px;
+        padding: 18px;
+        margin-bottom: 20px;
         background: #fff;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        border: 1px solid #eee;
     }
 
-    .pending-card img {
+    .item-images-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .item-images-grid img {
         width: 100%;
-        max-height: 200px;
+        height: 110px;
         object-fit: cover;
         border-radius: 10px;
+        border: 1px solid #ddd;
     }
 
-    .actions-row button {
-        margin-right: 6px;
+    .owner-box {
+        background: #f9f9ff;
+        border: 1px solid #e2e2ff;
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 12px;
+    }
+
+    .label {
+        font-weight: 600;
+        color: #444;
+    }
+
+    .value {
+        color: #222;
     }
 
     .feedback-popup {
-        background: rgba(0, 0, 0, 0.5);
+        background: rgba(0,0,0,0.5);
         position: fixed;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
+        inset: 0;
         display: none;
         align-items: center;
         justify-content: center;
@@ -43,36 +63,73 @@
 </style>
 
 <div class="container py-3">
-{% if request.session.get("flash_message") %}
-    <div class="alert alert-{{ request.session.get('flash_category') }} alert-dismissible fade show" role="alert">
-        {{ request.session.get("flash_message") }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
 
-    {% set _ = request.session.pop("flash_message", None) %}
-    {% set _ = request.session.pop("flash_category", None) %}
-{% endif %}
-
-
-    <h3 class="mb-3">Pending Items Review</h3>
+    <h3 class="mb-4">Pending Items Review</h3>
 
     {% if items|length == 0 %}
         <div class="alert alert-info">No items waiting for review.</div>
     {% endif %}
 
     {% for it in items %}
+
         <div class="pending-card">
 
-            <img src="{{ it.image_path or (it.image_urls[0] if it.image_urls else '') }}" alt="image">
+            {# ===========================
+               OWNER INFORMATION
+            ============================ #}
+            <div class="owner-box">
+                <strong>Owner:</strong>  
+                <div class="mt-1">
+                    <div><b>Name:</b> {{ it.owner.full_name if it.owner else "Unknown" }}</div>
+                    <div><b>Email:</b> {{ it.owner.email if it.owner else "No email" }}</div>
+                    <div><b>Owner ID:</b> {{ it.owner.id if it.owner else "—" }}</div>
+                </div>
+            </div>
 
             <h4 class="mt-3 mb-2">{{ it.title }}</h4>
 
             <div class="text-muted small mb-2">
-                {{ it.city }} — {{ it.category }} / {{ it.subcategory or "None" }}
+                📍 <b>{{ it.city or "No city" }}</b>
             </div>
 
-            <span class="badge bg-warning text-dark">Pending Review</span>
+            <div class="mb-2">
+                <span class="badge bg-primary">{{ it.category }}</span>
+                {% if it.subcategory %}
+                <span class="badge bg-info">{{ it.subcategory }}</span>
+                {% endif %}
+            </div>
 
+            <div class="mb-2">
+                <span class="badge bg-warning text-dark">Pending Review</span>
+            </div>
+
+            {# DESCRIPTION #}
+            <div class="mb-3">
+                <div class="label">Description:</div>
+                <div class="value">{{ it.description or "No description provided." }}</div>
+            </div>
+
+            {# PRICE #}
+            <div class="mb-3">
+                <div class="label">Price:</div>
+                <div class="value">{{ it.price }} {{ it.currency }}</div>
+            </div>
+
+            {# ===========================
+               MULTI IMAGES (up to 10)
+            ============================ #}
+            <div class="label mb-2">Images:</div>
+            <div class="item-images-grid">
+                {% if it.image_urls %}
+                    {% for img in it.image_urls %}
+                        <img src="{{ img }}" alt="Image">
+                    {% endfor %}
+                {% else %}
+                    <div class="text-muted">No images uploaded.</div>
+                {% endif %}
+            </div>
+
+            {# OLD FEEDBACK #}
             {% if it.admin_feedback %}
                 <div class="alert alert-warning mt-3">
                     <strong>Previous feedback:</strong><br>
@@ -80,10 +137,11 @@
                 </div>
             {% endif %}
 
+            {# ACTION BUTTONS #}
             <div class="actions-row mt-3">
 
                 <form method="post" action="/admin/items/{{ it.id }}/approve" style="display:inline;">
-                    <button class="btn btn-success btn-sm">Accept</button>
+                    <button class="btn btn-success btn-sm">Approve</button>
                 </form>
 
                 <form method="post" action="/admin/items/{{ it.id }}/delete" style="display:inline;">
@@ -96,10 +154,14 @@
                 </button>
 
             </div>
+
         </div>
+
     {% endfor %}
+
 </div>
 
+{# FEEDBACK POPUP ========================== #}
 <div id="feedbackPopup" class="feedback-popup">
     <div class="feedback-box">
         <h5 id="fbTitle"></h5>
