@@ -682,12 +682,31 @@
   -webkit-backdrop-filter: blur(8px) !important;
 }
 
-/* 4) حواف الصور + ظل أفخم مثل Airbnb */
+/* الخلفية الأساسية للكارد قبل ما الصورة تتحمل */
 .spot-media{
-  border-radius:16px !important;
-  box-shadow: 0 14px 34px rgba(0,0,0,.10) !important;
+  position:relative;
+  aspect-ratio:1/1 !important;
+  border-radius:14px;
+  overflow:hidden;
+  background:#e5e7eb;  /* رمادي ناعم بدل فراغ */
 }
-.spot-media img{ border-radius:16px !important; }
+
+/* الصورة تبدأ شفافة وتظهر بسلاسة لما تتحمل */
+.spot-media img{
+  display:block;
+  width:100%;
+  height:100% !important;
+  object-fit:cover !important;
+  object-position:center;
+  border-radius:14px;
+  aspect-ratio:auto !important;
+
+  opacity:0;
+  transition:opacity .25s ease-out;
+}
+.spot-media img.is-loaded{
+  opacity:1;
+}
 
 /* 5) لمسة نصية: العنوان/الميتا داكنة متوافقة */
 .spot-title{ color:#0f172a !important; }
@@ -1052,22 +1071,29 @@
     {% for it in nearby %}
       <a href="/items/{{ it.id }}" class="card spot hcard text-decoration-none">
         <div class="spot-media">
-          <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
-          <div class="spot-overlay"></div>
+  <img
+    src="{{ it.image_path or '/static/placeholder.jpg' }}"
+    alt="{{ it.title or '' }}"
+    loading="lazy"
+    decoding="async"
+    width="400"
+    height="400"
+    class="spot-img">
+  <div class="spot-overlay"></div>
 
-          {% if it.price_per_day is defined %}
-            <span class="price-badge">{{ it.price_per_day|default(0) }}$ /day</span>
-          {% endif %}
-          {% if it.category is defined %}
-<span class="category-chip">
-  {{ it.subcategory or category_label(it.category) }}
-</span>
-          {% endif %}
+  {% if it.subcategory %}
+    <span class="category-chip">{{ it.subcategory }}</span>
+  {% elif it.category %}
+    <span class="category-chip">{{ category_label(it.category) }}</span>
+  {% else %}
+    <!-- no chip -->
+  {% endif %}
 
-          <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="Add to favorites">
-            <i class="bi bi-heart"></i>
-          </button>
-        </div>
+  <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="Add to favorites">
+    <i class="bi bi-heart"></i>
+  </button>
+</div>
+
 
         <div class="card-body spot-body">
           <div class="spot-title">{{ it.title }}</div>
