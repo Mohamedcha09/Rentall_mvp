@@ -149,6 +149,26 @@ body.has-tabbar {
 }
 </style>
 
+<style>
+/* Hide ONLY top elements on items page */
+header.topbar,
+.m-top-tabs,
+.stripe-callout {
+    display: none !important;
+}
+
+/* Keep bottom tabbar visible */
+.mobile-tabbar {
+    display: flex !important;
+}
+
+/* Prevent extra bottom padding removal */
+body.has-tabbar {
+    padding-bottom: calc(92px + max(env(safe-area-inset-bottom,0px), 0px)) !important;
+}
+</style>
+
+
 {% endblock %}
 
 {% block content %}
