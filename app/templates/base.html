@@ -4,7 +4,49 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>{{ title or "RentAll" }}</title>
+
+  {# عنوان ديناميكي + افتراضي محترم للسيو #}
+  <title>{{ title or "Sevor — Rent Anything Worldwide | Rent any car, tool or equipment" }}</title>
+
+  <meta name="description" content="Sevor is the global marketplace where you can rent anything — cars, tools, electronics, equipment and more. Safe, fast, and secure rentals across Canada, USA and Europe.">
+
+  {# canonical لا نجعله دائماً /welcome على كل الصفحات #}
+  {% if request %}
+    {% if request.url.path == '/welcome' %}
+      <link rel="canonical" href="https://sevor.net/welcome">
+    {% else %}
+      <link rel="canonical" href="{{ request.url }}">
+    {% endif %}
+  {% else %}
+    <link rel="canonical" href="https://sevor.net">
+  {% endif %}
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Sevor",
+    "url": "https://sevor.net",
+    "logo": "https://sevor.net/static/img/sevor-logo.png"
+  }
+  </script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Sevor",
+    "url": "https://sevor.net",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://sevor.net/search?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+
+
+
 
   <!-- Bootstrap & Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
