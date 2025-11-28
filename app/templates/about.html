@@ -1,353 +1,346 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- ======= Styles (inline for this page) ======= -->
 <style>
+  /* ===== Global minimal luxury style ===== */
   .about-hero {
-    background: radial-gradient(1100px 500px at 90% -10%, rgba(124,92,255,.25), transparent 60%),
-                radial-gradient(800px 400px at -10% 10%, rgba(0,229,168,.18), transparent 55%),
-                linear-gradient(180deg, #0f1220 0%, #0b0e19 100%);
-    color: #fff; border-radius: 18px; padding: 56px 28px; overflow: hidden;
+    background: linear-gradient(180deg, #10121f 0%, #0a0d17 100%);
+    color: #fff;
+    border-radius: 20px;
+    padding: 58px 30px;
+    overflow: hidden;
   }
-  .glass { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.09);
-           border-radius: 16px; backdrop-filter: blur(8px); }
-  .feature-icon { width: 46px; height: 46px; border-radius: 12px; display:flex; align-items:center; justify-content:center;
-                  background: rgba(255,255,255,.08); font-size: 22px; }
-  .tick { color: #00e5a8; }
-  .chip { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); padding: 6px 10px; border-radius: 999px; }
-  .step { display:flex; gap:12px; align-items:flex-start; }
-  .step-num { width: 34px; height: 34px; border-radius: 50%; display:flex; align-items:center; justify-content:center; background:#0d6efd; color:#fff; font-weight:700; }
-  .roadmap-dot { width: 12px; height: 12px; border-radius: 50%; background:#0d6efd; }
-  .mini-badge { background: rgba(13,110,253,.12); color:#9cc4ff; padding: 3px 8px; border-radius: 999px; font-size:.8rem; }
-  .faq .accordion-button { background: rgba(255,255,255,.03); color:#e9ecef; }
-  .faq .accordion-body { background: rgba(255,255,255,.02); }
+  .glass {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+  }
+  .chip {
+    background: rgba(255,255,255,0.09);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+  }
+  .badge-min { background: rgba(13,110,253,0.15); color:#8ab7ff; border-radius: 999px; padding: 5px 10px; }
+  .section-title { font-weight: 700; font-size: 1.6rem; margin-bottom: 12px; }
+  .item-list span { background:#2b2e40; padding:6px 10px; border-radius: 8px; margin:3px; font-size:0.8rem; display:inline-block; }
+  .step { display:flex; gap:12px; margin-bottom:12px; }
+  .step-num { background:#0d6efd; color:#fff; width:34px; height:34px; display:flex; justify-content:center; align-items:center; border-radius:50%; font-weight:700; }
+  .feature-icon { width:48px; height:48px; border-radius:12px; background:rgba(255,255,255,0.1);
+                  display:flex; justify-content:center; align-items:center; font-size:24px; }
+  .faq .accordion-button { background:rgba(255,255,255,0.04); color:#fff; }
+  .faq .accordion-body { background:rgba(255,255,255,0.04); color:#c9c9c9; }
 </style>
 
 <div style="direction:ltr; text-align:left;">
 
-<!-- ======= Hero ======= -->
+<!-- ███████████████████████████████████████ -->
+<!--                HERO                    -->
+<!-- ███████████████████████████████████████ -->
 <section class="about-hero mb-4">
-  <div class="row align-items-center">
+  <div class="row">
+
     <div class="col-lg-7">
-      <div class="mini-badge mb-2">About the Platform</div>
-      <h1 class="fw-bold mb-3">RentAll — Share what you don’t use, rent what you need temporarily</h1>
+      <div class="badge-min mb-2">About Sevor — World's First Everything-Rental Platform</div>
+
+      <h1 class="fw-bold mb-3">
+        Sevor — The First Global Marketplace Where People Can Rent **Anything**
+      </h1>
+
       <p class="lead">
-        A peer-to-peer marketplace connecting <strong>owners</strong> who have items sitting idle with
-        <strong>renters</strong> who need them for a limited time. We provide a safe, flexible experience with
-        account verification, in-app messaging, and transparent reviews.
+        Sevor is the world’s first platform designed to let people <strong>rent anything they need</strong> and let owners earn money from items they don’t use — powered by advanced technology:
+        multi-currency, geo-aware pricing, tax-aware checkout, Stripe Connect payouts, advanced deposit system, photo-verified pickups and returns, owner protections, and full trust.
       </p>
-      <div class="d-flex flex-wrap gap-2 mt-3">
+
+      <div class="d-flex flex-wrap gap-2 mt-2">
+        <span class="chip">Rent Anything</span>
+        <span class="chip">Cars, Tools & Electronics</span>
+        <span class="chip">Drones & Cameras</span>
+        <span class="chip">Books & Games</span>
+        <span class="chip">Heavy Machines</span>
+        <span class="chip">Multi-Currency</span>
+        <span class="chip">Geo-Aware</span>
+        <span class="chip">Secured Deposits</span>
+        <span class="chip">Stripe Connect</span>
         <span class="chip">ID Verification</span>
-        <span class="chip">Per-item Message Threads</span>
-        <span class="chip">Smart Categories</span>
-        <span class="chip">Dynamic Home</span>
       </div>
-      <div class="mt-4 d-flex flex-wrap gap-2">
+
+      <div class="mt-4 d-flex gap-2">
         {% if not session_user %}
           <a class="btn btn-primary btn-lg" href="/register">Create Account</a>
           <a class="btn btn-outline-light btn-lg" href="/login">Log In</a>
-          <a class="btn btn-outline-secondary btn-lg" href="/">Browse as Guest</a>
         {% else %}
           <a class="btn btn-primary btn-lg" href="/">Explore Items</a>
           <a class="btn btn-outline-light btn-lg" href="/profile">My Profile</a>
         {% endif %}
       </div>
     </div>
+
     <div class="col-lg-5 mt-4 mt-lg-0">
       <div class="glass p-3">
-        <img src="/static/hero_placeholder.svg" class="w-100 rounded-3" alt="About Hero" style="aspect-ratio:16/9; object-fit:cover;">
+        <img src="/static/about_sevor_banner.jpg" class="w-100 rounded-3" style="aspect-ratio:16/9; object-fit:cover;">
       </div>
     </div>
+
   </div>
 </section>
 
-<!-- ======= Stats (optional: pass real values from backend) ======= -->
-<section class="mb-4">
-  <div class="row g-3">
-    <div class="col-6 col-md-3">
-      <div class="glass p-3 text-center">
-        <div class="h2 mb-1">{{ stats_items or 128 }}</div>
-        <div class="text-muted">Items Available</div>
-      </div>
-    </div>
-    <div class="col-6 col-md-3">
-      <div class="glass p-3 text-center">
-        <div class="h2 mb-1">{{ stats_users or 64 }}</div>
-        <div class="text-muted">Verified Users</div>
-      </div>
-    </div>
-    <div class="col-6 col-md-3">
-      <div class="glass p-3 text-center">
-        <div class="h2 mb-1">{{ stats_cities or 6 }}</div>
-        <div class="text-muted">Cities Covered</div>
-      </div>
-    </div>
-    <div class="col-6 col-md-3">
-      <div class="glass p-3 text-center">
-        <div class="h2 mb-1">{{ stats_success or '98%' }}</div>
-        <div class="text-muted">User Satisfaction</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ======= What & Why ======= -->
+<!-- ███████████████████████████████████████ -->
+<!--                 WHAT IS SEVOR           -->
+<!-- ███████████████████████████████████████ -->
 <section class="glass p-4 mb-4">
-  <div class="row g-4">
-    <div class="col-lg-6">
-      <h4 class="mb-2">What is RentAll?</h4>
-      <p class="text-muted">
-        A peer marketplace to rent almost anything short-term: cars, camera gear, construction tools,
-        electronics, games, camping & travel equipment, and more. Instead of buying something expensive
-        you’ll rarely use, rent it safely and save—while helping owners earn.
-      </p>
-      <div class="d-flex flex-wrap gap-2">
-        <span class="badge bg-secondary">Cars</span>
-        <span class="badge bg-secondary">Camera Gear</span>
-        <span class="badge bg-secondary">Construction Tools</span>
-        <span class="badge bg-secondary">Electronics</span>
-        <span class="badge bg-secondary">Games</span>
-        <span class="badge bg-secondary">Camping & Travel</span>
-        <span class="badge bg-secondary">Musical Instruments</span>
-      </div>
-    </div>
-    <div class="col-lg-6">
-      <h4 class="mb-2">Why Now?</h4>
-      <p class="text-muted">
-        We live in a use-instead-of-own economy: short-term needs, high costs, and limited storage.
-        RentAll reduces waste and increases utility by safely matching supply with demand.
-      </p>
-      <ul class="text-muted m-0">
-        <li><span class="tick">✔</span> Lower ownership costs for renters.</li>
-        <li><span class="tick">✔</span> Extra income for owners.</li>
-        <li><span class="tick">✔</span> A trusted community built on reviews.</li>
-      </ul>
-    </div>
+  <h2 class="section-title">What Is Sevor?</h2>
+
+  <p class="text-muted">
+    Sevor is the first truly universal rental marketplace — a platform where users can rent <strong>literally anything</strong>
+    they need, from simple items to heavy machinery, while benefiting from safety systems, smart pricing, and global support.
+  </p>
+
+  <h5 class="fw-bold mt-3">Supported Categories</h5>
+  <div class="item-list">
+    <span>Cars</span>
+    <span>Luxury Cars</span>
+    <span>Vans</span>
+    <span>Pickup Trucks</span>
+    <span>Motorcycles</span>
+    <span>Bicycles</span>
+    <span>Heavy Equipment</span>
+    <span>Excavators</span>
+    <span>Loaders</span>
+    <span>Tools</span>
+    <span>Power Tools</span>
+    <span>Electronics</span>
+    <span>Laptops & PCs</span>
+    <span>Cameras</span>
+    <span>Drones</span>
+    <span>Studio Gear</span>
+    <span>Gaming Consoles</span>
+    <span>VR Headsets</span>
+    <span>Books</span>
+    <span>Camping Gear</span>
+    <span>Sports Equipment</span>
+    <span>Music Instruments</span>
+    <span>Projectors</span>
+    <span>Printers</span>
+    <span>Home Equipment</span>
+    <span>Kids Toys</span>
+    <span>Construction Tools</span>
+    <span>Film Production Gear</span>
+    <span>All Other Items</span>
   </div>
+
+  <p class="text-muted mt-3">
+    If it exists, it can be rented on Sevor. Our platform was built with the mission to give people access to whatever they need,
+    without forcing them to buy, store, or maintain expensive items.
+  </p>
 </section>
 
-<!-- ======= How it works ======= -->
+<!-- ███████████████████████████████████████ -->
+<!--         SEVOR IS THE FIRST OF ITS KIND  -->
+<!-- ███████████████████████████████████████ -->
+<section class="glass p-4 mb-4">
+  <h2 class="section-title">Why Sevor Is the First Platform of Its Kind</h2>
+
+  <p class="text-muted">
+    No other marketplace in the world offers the combination of features and systems that Sevor provides:
+  </p>
+
+  <ul class="text-muted">
+    <li>✔ Universal rental system — all categories, not limited to cars or tools.</li>
+    <li>✔ Global multi-currency engine (CAD, USD, EUR).</li>
+    <li>✔ Automated geo-detection and tax calculation (GST/QST/HST/VAT).</li>
+    <li>✔ Secure Stripe Connect flow with deposits + rental payments.</li>
+    <li>✔ Deposits held until photo-verified pickup and return.</li>
+    <li>✔ Advanced review system (owner → renter, renter → item).</li>
+    <li>✔ Per-item messaging to avoid confusion.</li>
+    <li>✔ Full administrative system: Admin, DM, MOD, CS.</li>
+    <li>✔ A PWA-style ultra-fast UI inspired by Airbnb.</li>
+  </ul>
+</section>
+
+<!-- ███████████████████████████████████████ -->
+<!--                 HOW IT WORKS            -->
+<!-- ███████████████████████████████████████ -->
 <section class="mb-4">
   <div class="row g-3">
+
+    <!-- Steps -->
     <div class="col-md-6">
       <div class="glass p-3 h-100">
-        <h4 class="mb-3">How Does It Work?</h4>
-        <div class="step mb-2">
+        <h2 class="section-title">How Sevor Works</h2>
+
+        <div class="step">
           <div class="step-num">1</div>
-          <div>Create your account and upload an official ID (card/driver’s license/passport). Admins verify accounts for trust.</div>
+          <div>Create an account and upload an official ID. Admins manually verify it.</div>
         </div>
-        <div class="step mb-2">
+
+        <div class="step">
           <div class="step-num">2</div>
-          <div>Browse by category and location. A dynamic home page suggests fresh items on every visit.</div>
+          <div>Browse all categories — Sevor suggests items dynamically.</div>
         </div>
-        <div class="step mb-2">
+
+        <div class="step">
           <div class="step-num">3</div>
-          <div>Message the owner. Each item has its own dedicated message thread—no mix-ups.</div>
+          <div>Message the owner through per-item dedicated chats.</div>
         </div>
+
         <div class="step">
           <div class="step-num">4</div>
-          <div>Choose the duration, receive, use, and return the item. Leave a review to build a trustworthy reputation.</div>
+          <div>Checkout with Stripe; deposit is securely held.</div>
         </div>
+
+        <div class="step">
+          <div class="step-num">5</div>
+          <div>Upload 6 photos at pickup → Owner receives payout instantly.</div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">6</div>
+          <div>Upload photos at return → Deposit is reviewed and refunded.</div>
+        </div>
+
       </div>
     </div>
+
+    <!-- Roles -->
     <div class="col-md-6">
       <div class="glass p-3 h-100">
-        <h4 class="mb-3">Roles on the Platform</h4>
-        <div class="d-flex align-items-start gap-2 mb-2">
+        <h2 class="section-title">Roles on Sevor</h2>
+
+        <div class="d-flex align-items-start gap-3 mb-3">
           <div class="feature-icon">👤</div>
           <div>
-            <strong>User</strong>
-            <div class="text-muted">Explores items, messages owners, books rentals, and leaves reviews.</div>
+            <strong>Renter</strong>
+            <div class="text-muted">Searches, books, uploads photos, receives deposit refund.</div>
           </div>
         </div>
-        <div class="d-flex align-items-start gap-2 mb-2">
+
+        <div class="d-flex align-items-start gap-3 mb-3">
           <div class="feature-icon">🧳</div>
           <div>
             <strong>Owner</strong>
-            <div class="text-muted">Publishes items, sets daily pricing, receives messages and ratings.</div>
+            <div class="text-muted">Lists items, sets prices, receives payouts instantly.</div>
           </div>
         </div>
-        <div class="d-flex align-items-start gap-2">
+
+        <div class="d-flex align-items-start gap-3 mb-3">
           <div class="feature-icon">🛡️</div>
           <div>
             <strong>Admin</strong>
-            <div class="text-muted">Manually verifies IDs, monitors behavior, manages reports, and takes action on violations.</div>
+            <div class="text-muted">Verifies users, handles disputes, monitors behaviour.</div>
           </div>
         </div>
+
+        <div class="d-flex align-items-start gap-3 mb-3">
+          <div class="feature-icon">💳</div>
+          <div>
+            <strong>Deposit Manager (DM)</strong>
+            <div class="text-muted">Handles deposit evidence and refund decisions.</div>
+          </div>
+        </div>
+
+        <div class="d-flex align-items-start gap-3">
+          <div class="feature-icon">📨</div>
+          <div>
+            <strong>CS / MOD</strong>
+            <div class="text-muted">Support and moderation for the entire platform.</div>
+          </div>
+        </div>
+
       </div>
     </div>
+
   </div>
 </section>
 
-<!-- ======= Trust & Safety ======= -->
+<!-- ███████████████████████████████████████ -->
+<!--              PAYMENT SYSTEM             -->
+<!-- ███████████████████████████████████████ -->
 <section class="glass p-4 mb-4">
-  <h4 class="mb-3">Trust & Safety</h4>
-  <div class="row g-3">
-    <div class="col-md-4">
-      <div class="d-flex align-items-start gap-2">
-        <div class="feature-icon">🔒</div>
-        <div>
-          <strong>Account Verification</strong>
-          <div class="text-muted">Admins manually approve accounts after reviewing official documents.</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-4">
-      <div class="d-flex align-items-start gap-2">
-        <div class="feature-icon">💬</div>
-        <div>
-          <strong>Separate Threads per Item</strong>
-          <div class="text-muted">Message threads are tied to the item to avoid mixing requests.</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-4">
-      <div class="d-flex align-items-start gap-2">
-        <div class="feature-icon">⭐</div>
-        <div>
-          <strong>Rating System</strong>
-          <div class="text-muted">Transparent reputation after each rental helps everyone choose wisely.</div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <h2 class="section-title">Payment, Deposit & Security System</h2>
+
+  <p class="text-muted">
+    Sevor integrates a complete financial system using Stripe Connect and advanced logic:
+  </p>
+
+  <ul class="text-muted">
+    <li>✔ Rent + Deposit both processed in Stripe Checkout.</li>
+    <li>✔ Multi-currency: CAD (Canada), USD (Global), EUR (EU).</li>
+    <li>✔ Platform fee always in CAD.</li>
+    <li>✔ Owner payout in their local currency.</li>
+    <li>✔ Deposit stays held until renter uploads photos at return.</li>
+    <li>✔ Geo-detection based on Cloudflare headers, IP, or manual override.</li>
+    <li>✔ Automatic tax calculation per province/state (GST/QST/HST/VAT).</li>
+  </ul>
 </section>
 
-<!-- ======= Pricing / Model (illustrative) ======= -->
-<section class="mb-4">
-  <div class="row g-3">
-    <div class="col-md-6">
-      <div class="glass p-3 h-100">
-        <h4 class="mb-2">Business Model (Initial)</h4>
-        <p class="text-muted m-0">
-          Owners set prices; payment on handover or by mutual agreement (payment gateways can be added later).
-          A small service fee may be introduced in the future to cover operations.
-        </p>
-      </div>
-    </div>
-    <div class="col-md-6">
-      <div class="glass p-3 h-100">
-        <h4 class="mb-2">Short Policies</h4>
-        <ul class="text-muted m-0">
-          <li>Renter is responsible for proper use and must return items in good condition.</li>
-          <li>Owner must provide clear descriptions and real photos.</li>
-          <li>Violations can be reported to admins for action.</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ======= FAQ ======= -->
+<!-- ███████████████████████████████████████ -->
+<!--                    FAQ                  -->
+<!-- ███████████████████████████████████████ -->
 <section class="glass p-4 mb-4 faq">
-  <h4 class="mb-3">FAQs</h4>
+  <h2 class="section-title">Frequently Asked Questions</h2>
+
   <div class="accordion" id="faq">
+
     <div class="accordion-item">
-      <h2 class="accordion-header" id="q1">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#a1">
-          Do I need documents to activate my account?
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#a1">
+          Do I need an ID to rent or list items?
         </button>
       </h2>
-      <div id="a1" class="accordion-collapse collapse" data-bs-parent="#faq">
-        <div class="accordion-body text-muted">
-          Yes—an ID card, driver’s license, or passport. Admins perform manual review before enabling transactions.
-        </div>
+      <div id="a1" class="accordion-collapse collapse">
+        <div class="accordion-body">Yes — Every user must be verified manually by an admin.</div>
       </div>
     </div>
 
     <div class="accordion-item">
-      <h2 class="accordion-header" id="q2">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#a2">
-          How do I make sure my messages don’t get mixed across items?
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#a2">
+          When does the owner get paid?
         </button>
       </h2>
-      <div id="a2" class="accordion-collapse collapse" data-bs-parent="#faq">
-        <div class="accordion-body text-muted">
-          Each item has a dedicated thread linked by <code>item_id</code>, preventing mix-ups even with the same owner.
-        </div>
+      <div id="a2" class="accordion-collapse collapse">
+        <div class="accordion-body">After the renter uploads the 6 photos at pickup.</div>
       </div>
     </div>
 
     <div class="accordion-item">
-      <h2 class="accordion-header" id="q3">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#a3">
-          Is online payment available?
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#a3">
+          How is the deposit refunded?
         </button>
       </h2>
-      <div id="a3" class="accordion-collapse collapse" data-bs-parent="#faq">
-        <div class="accordion-body text-muted">
-          Currently, payment is on handover or as agreed. Payment gateways and optional insurance for some categories will be added later.
-        </div>
+      <div id="a3" class="accordion-collapse collapse">
+        <div class="accordion-body">After return photos → DM reviews → refundable portion is returned.</div>
       </div>
     </div>
+
   </div>
 </section>
 
-<!-- ======= Roadmap ======= -->
-<section class="glass p-4 mb-4">
-  <h4 class="mb-3">Roadmap</h4>
-  <div class="row g-3">
-    <div class="col-md-4">
-      <div class="p-3 h-100" style="border-left: 2px dashed rgba(255,255,255,.15);">
-        <div class="d-flex align-items-center gap-2 mb-2">
-          <div class="roadmap-dot"></div><strong>Phase 1 — Beta</strong>
-        </div>
-        <ul class="text-muted m-0">
-          <li>Manual ID-verified accounts</li>
-          <li>Categories + basic search</li>
-          <li>Per-item messaging</li>
-          <li>Post-return reviews</li>
-        </ul>
-      </div>
-    </div>
-    <div class="col-md-4">
-      <div class="p-3 h-100" style="border-left: 2px dashed rgba(255,255,255,.15);">
-        <div class="d-flex align-items-center gap-2 mb-2">
-          <div class="roadmap-dot"></div><strong>Phase 2 — Improved Experience</strong>
-        </div>
-        <ul class="text-muted m-0">
-          <li>Payment gateways</li>
-          <li>Real-time notifications</li>
-          <li>Wishlist</li>
-          <li>Advanced filters (location & price)</li>
-        </ul>
-      </div>
-    </div>
-    <div class="col-md-4">
-      <div class="p-3 h-100">
-        <div class="d-flex align-items-center gap-2 mb-2">
-          <div class="roadmap-dot"></div><strong>Phase 3 — Expansion</strong>
-        </div>
-        <ul class="text-muted m-0">
-          <li>Optional insurance on categories</li>
-          <li>More cities</li>
-          <li>Owner analytics dashboard</li>
-          <li>Special offers & bundles</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ======= Contact / CTA ======= -->
+<!-- ███████████████████████████████████████ -->
+<!--                   CTA                   -->
+<!-- ███████████████████████████████████████ -->
 <section class="mb-4">
-  <div class="glass p-4">
-    <div class="row align-items-center g-3">
-      <div class="col-lg-8">
-        <h4 class="mb-2">Ready to share what you don’t use—or rent what you need?</h4>
-        <p class="text-muted m-0">Start with a simple step — {% if not session_user %}create your free account or{% endif %} explore available items now.</p>
-      </div>
-      <div class="col-lg-4 d-flex gap-2 justify-content-lg-end">
-        <a class="btn btn-outline-light btn-lg" href="/items">Explore Items</a>
-        {% if not session_user %}
-          <a class="btn btn-primary btn-lg" href="/register">Create Account</a>
-        {% else %}
-          <a class="btn btn-primary btn-lg" href="/profile">Go to My Profile</a>
-        {% endif %}
-      </div>
+  <div class="glass p-4 text-center">
+    <h2 class="section-title">Join the First Global “Rent Anything” Platform</h2>
+    <p class="text-muted mb-3">
+      Explore thousands of items. Earn money from things you don’t use.  
+      Sevor is the future of renting.
+    </p>
+
+    <div class="d-flex justify-content-center gap-2">
+      <a class="btn btn-outline-light btn-lg" href="/items">Browse Items</a>
+      {% if not session_user %}
+        <a class="btn btn-primary btn-lg" href="/register">Create Account</a>
+      {% else %}
+        <a class="btn btn-primary btn-lg" href="/profile">My Profile</a>
+      {% endif %}
     </div>
   </div>
 </section>
 
 </div>
+
 {% endblock %}
