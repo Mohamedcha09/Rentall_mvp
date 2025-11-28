@@ -1254,9 +1254,13 @@
         <div class="spot-media">
           <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
           <div class="spot-overlay"></div>
-
-          {% if it.category is defined %}
-            <span class="category-chip">{{ category_label(it.category) }}</span>
+          
+          {% if it.subcategory %}
+              <span class="category-chip">{{ it.subcategory }}</span>
+          {% elif it.category %}
+              <span class="category-chip">{{ category_label(it.category) }}</span>
+          {% else %}
+            <!-- no chip -->
           {% endif %}
 
           <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="Add to favorites">
