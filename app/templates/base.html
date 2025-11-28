@@ -382,117 +382,197 @@ body[data-auth="0"] .mobile-tabbar {
     body.modal-open { padding-right: 0 !important; }
   </style>
 
- <style id="glass-tabbar">
-  /* =========================
-     GLASS UI – Mobile Tabbar
-     ========================= */
-  @media (max-width: 768px){
-    :root{
-      /* كان blur:16px و sat:199% => ثقيل على الموبايل */
-      --glass-blur: 10px;
-      --glass-sat: 150%;
-      --glass-bg: rgba(56, 56, 56, .35);
-      --glass-grad1: rgba(108, 99, 255, .18);
-      --glass-grad2: rgba(0, 212, 255, .12);
-      --glass-stroke: rgba(255,255,255, .25);
-      --glass-inner: rgba(255,255,255, .06);
-      --tabbar-h: 64px;
-      --tabbar-radius: 22px;
-    }
+  
+  <style id="glass-tabbar">
 
-    .mobile-tabbar{
-      position: fixed !important;
-      left: 10px !important; right: 10px !important;
-      bottom: calc(10px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important;
-      height: var(--tabbar-h) !important;
-      display: grid !important;
-      grid-template-columns: repeat(5, 1fr) !important;
-      align-items: center !important;
-      padding: 8px 12px !important;
-      border-top: none !important;
-      z-index: 2147483647 !important;
-      border-radius: var(--tabbar-radius) !important;
-
-      background:
-        linear-gradient(135deg, var(--glass-grad1), var(--glass-grad2)),
-        var(--glass-bg) !important;
-
-      backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
-      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
-
-      box-shadow:
-        0 10px 24px rgba(0,0,0,.35),
-        0 0 0 1px var(--glass-stroke) inset,
-        0 2px 0 0 var(--glass-inner) inset !important;
-
-      /* ❗ مهم للتسريع على الموبايل */
-      will-change: transform, opacity, backdrop-filter;
-      transform: translateZ(0);
-
-      transform: translateY(calc(-1 * var(--tabbar-lift)));
-      transition: transform .25s ease;
-    }
-
-    .mobile-tabbar a{
-      position: relative !important;
-      height: 100% !important;
-      border-radius: 16px !important;
-      display: flex !important;
-      flex-direction: column !important;
-      align-items: center !important;
-      justify-content: center !important;
-      gap: 4px !important;
-      text-decoration: none !important;
-      color: #f2f2f7 !important;
-      font-size: 12px !important;
-      font-weight: 700 !important;
-      transition: background .15s ease, transform .15s ease, color .15s ease;
-    }
-
-    .mobile-tabbar .tab-img{
-      width: 24px !important; height: 24px !important;
-      object-fit: contain !important;
-      opacity: .95 !important;
-      filter: drop-shadow(0 1px 0 rgba(0,0,0,.25));
-      transition: transform .15s ease, opacity .15s ease !important;
-    }
-
-    .mobile-tabbar a.is-active{
-      background: rgba(255,255,255,.14) !important;
-      box-shadow:
-        0 0 0 1px rgba(255,255,255,.22) inset,
-        0 6px 16px rgba(0,0,0,.25) !important;
-      color: #ffffff !important;
-    }
-    .mobile-tabbar a.is-active .tab-img{
-      opacity: 1 !important;
-      transform: scale(1.06) !important;
-    }
-
-    .mobile-tabbar .badge-dot{
-      position: absolute !important;
-      top: 6px !important;
-      transform: translateX(12px);
-      min-width: 20px; height: 20px;
-      line-height: 20px; font-size: 11px;
-      border-radius: 999px;
-      background: #22c55e; color: #0b1020;
-      box-shadow: 0 2px 6px rgba(34,197,94,.35);
-      text-align: center;
-    }
+    /* =========================
+   GLASS UI – Mobile Tabbar
+   (style only, no HTML change)
+   ========================= */
+@media (max-width: 768px){
+  :root{
+    --glass-blur: 16px;
+    --glass-sat: 199%;
+    --glass-bg: rgba(56, 56, 56, .35);              /* dark glass base */
+    --glass-grad1: rgba(108, 99, 255, .18);         /* purple */
+    --glass-grad2: rgba(0, 212, 255, .12);          /* cyan */
+    --glass-stroke: rgba(255,255,255,.125);         /* glass edge */
+    --glass-inner: rgba(255,255,255,.06);           /* inner gloss */
+    --tabbar-h: 64px;
+    --tabbar-radius: 22px;
   }
 
-  /* مود تقليل الشفافية لأجهزة ضعيفة / مستخدم يحب البساطة */
-  @media (max-width: 768px) and (prefers-reduced-transparency: reduce){
-    .mobile-tabbar{
-      backdrop-filter: none !important;
-      -webkit-backdrop-filter: none !important;
-      background: color-mix(in oklab, var(--panel) 96%, transparent) !important;
-      box-shadow: 0 8px 18px rgba(0,0,0,.22) !important;
-    }
-  }
-</style>
+  .mobile-tabbar{
+    position: fixed !important;
+    left: 10px !important; right: 10px !important;
+    bottom: calc(10px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important;
+    height: var(--tabbar-h) !important;
+    display: grid !important; grid-template-columns: repeat(5, 1fr) !important;
+    align-items: center !important; padding: 8px 12px !important; border-top: none !important;
+    z-index: 2147483647 !important; border-radius: var(--tabbar-radius) !important;
 
+    /* Glass: Blur + Saturate + bg + gradient */
+    background:
+      linear-gradient(135deg, var(--glass-grad1), var(--glass-grad2)),
+      var(--glass-bg) !important;
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+
+    /* edges & subtle highlight like the mock */
+    box-shadow:
+      0 14px 30px rgba(0,0,0,.35),
+      0 0 0 1px var(--glass-stroke) inset,
+      0 2px 0 0 var(--glass-inner) inset !important;
+
+    transform: translateY(calc(-1 * var(--tabbar-lift)));
+    transition: transform .25s ease;
+  }
+
+  /* Text & icons inside tabs */
+  .mobile-tabbar a{
+    position: relative !important;
+    height: 100% !important;
+    border-radius: 16px !important;
+    display: flex !important; flex-direction: column !important;
+    align-items: center !important; justify-content: center !important;
+    gap: 4px !important; text-decoration: none !important;
+    color: #f2f2f7 !important; font-size: 12px !important; font-weight: 700 !important;
+    transition: background .15s ease, transform .15s ease, color .15s ease;
+  }
+  .mobile-tabbar .tab-img{
+    width: 24px !important; height: 24px !important; object-fit: contain !important;
+    opacity: .95 !important; filter: drop-shadow(0 1px 0 rgba(0,0,0,.25));
+    transition: transform .15s ease, opacity .15s ease !important;
+  }
+
+  /* Active “pill” feel */
+  .mobile-tabbar a.is-active{
+    background: rgba(255,255,255,.14) !important;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.22) inset,
+      0 6px 16px rgba(0,0,0,.25) !important;
+    color: #ffffff !important;
+  }
+  .mobile-tabbar a.is-active .tab-img{
+    opacity: 1 !important; transform: scale(1.06) !important;
+  }
+
+  /* Badge dot */
+  .mobile-tabbar .badge-dot{
+    position: absolute !important; top: 6px !important; transform: translateX(12px);
+    min-width: 20px; height: 20px; line-height: 20px; font-size: 11px;
+    border-radius: 999px; background: #22c55e; color: #0b1020;
+    box-shadow: 0 2px 6px rgba(34,197,94,.35);
+    text-align: center;
+  }
+}
+
+/* Dark mode tune */
+[data-theme="dark"] .mobile-tabbar{
+  background:
+    linear-gradient(135deg, rgba(108,99,255,.16), rgba(0,212,255,.10)),
+    rgba(28,28,30,.66) !important;
+  box-shadow:
+    0 14px 30px rgba(0,0,0,.45),
+    0 0 0 1px rgba(255,255,255,.08) inset,
+    0 2px 0 0 rgba(255,255,255,.05) inset !important;
+}
+
+  /* ===== Profile Bottom Sheet — Glass Style (match mobile tabbar) ===== */
+@media (max-width: 768px){
+  /* Glassy header */
+  #profileSheet{
+    background:
+      linear-gradient(135deg, var(--glass-grad1), var(--glass-grad2)),
+      var(--glass-bg) !important;
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+    box-shadow:
+      0 -18px 40px rgba(0,0,0,.35),
+      0 0 0 1px var(--glass-stroke) inset,
+      0 2px 0 0 var(--glass-inner) inset !important;
+    color:#fff;  /* light text over glass */
+  }
+  /* Body contrast */
+  #profileSheet .sheet__body{
+    background: rgba(255,255,255,.08);
+    border-radius: 14px 14px 0 0;
+    margin: 6px 8px 8px;
+    padding: 4px 0 8px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.06) inset,
+      0 -1px 0 rgba(0,0,0,.05) inset;
+  }
+
+  /* Profile card atop sheet */
+  #profileSheet .sheet__avatar{
+    background: rgba(255,255,255,.14) !important;
+    color:#fff; font-weight:800;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.18) inset;
+  }
+  #profileSheet .sheet__name{ color:#fff; }
+  #profileSheet .sheet__handle{ color: rgba(255,255,255,.8); }
+
+  /* Share button */
+  #profileSheet .sheet__share{
+    background:#6C63FF !important; color:#fff !important; border:0 !important;
+    box-shadow: 0 8px 18px rgba(108,99,255,.35);
+  }
+
+  /* List items: height, chevron right, icon left */
+  #profileSheet .sheet__item{
+    background: transparent;
+    position: relative;
+    padding: 14px 14px;
+    border-bottom: 1px solid rgba(255,255,255,.12);
+    color:#f2f2f7;
+  }
+  #profileSheet .sheet__item:hover{
+    background: rgba(255,255,255,.10);
+  }
+  /* chevron */
+  #profileSheet .sheet__item .chev{
+    color:#fff; opacity:.85;
+  }
+  /* label */
+  #profileSheet .sheet__item .label{
+    font-weight:800; letter-spacing:.1px;
+  }
+
+  /* circular icons — same pack */
+  #profileSheet .ic{
+    box-shadow: 0 0 0 1px rgba(255,255,255,.10) inset;
+  }
+
+  /* Logout item in red */
+  #profileSheet .sheet__item.text-danger{
+    color:#ff6b6b !important;
+  }
+  #profileSheet .sheet__item.text-danger:hover{
+    background: rgba(255,107,107,.12) !important;
+  }
+}
+
+/* Light mode tweaks */
+@media (max-width: 768px){
+  [data-theme="light"] #profileSheet{
+    color:#111;
+  }
+  [data-theme="light"] #profileSheet .sheet__body{
+    background: rgba(255,255,255,.6);
+  }
+  [data-theme="light"] #profileSheet .sheet__item{
+    border-bottom: 1px solid rgba(0,0,0,.06);
+    color:#111;
+  }
+  [data-theme="light"] #profileSheet .sheet__item:hover{
+    background: rgba(0,0,0,.04);
+  }
+}
+  
+
+
+  </style>
 
   <style id="sheet-align-fix">
   /* Align sheet row items */
