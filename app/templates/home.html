@@ -222,6 +222,59 @@
   }
 }
 
+/* ============================
+   FIX LOCBAR GLASS BREAKING
+   ============================ */
+
+.home-locbar.locbar--compact,
+.home-locbar {
+    background:
+      linear-gradient(135deg, rgba(108,99,255,.14), rgba(0,212,255,.10)),
+      rgba(56,56,56,.28) !important;
+    backdrop-filter: blur(16px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+    border:1px solid rgba(255,255,255,.18) !important;
+}
+
+/* Input becomes FULL GLASS */
+#homeCityInput {
+    background: rgba(255,255,255,.16) !important;
+    border: 1px solid rgba(255,255,255,.28) !important;
+    box-shadow: 0 8px 18px rgba(0,0,0,.16) !important;
+    color: #fff !important;
+}
+
+/* GPS glass button */
+#homeUseGPS {
+    background:
+      linear-gradient(135deg, rgba(108,99,255,.18), rgba(0,212,255,.12)),
+      rgba(56,56,56,.30) !important;
+    border:1px solid rgba(255,255,255,.22) !important;
+    color:#fff !important;
+}
+
+/* Search Button glass */
+.home-locbar .btn.btn-primary {
+    background:
+      linear-gradient(135deg, rgba(108,99,255,.20), rgba(0,212,255,.14)),
+      rgba(56,56,56,.30) !important;
+    border:1px solid rgba(255,255,255,.22) !important;
+    color:#fff !important;
+    box-shadow:0 12px 28px rgba(0,0,0,.22) !important;
+}
+
+/* Clear link as glass pill */
+#homeClearGPS {
+    background:
+      linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,.10)),
+      rgba(56,56,56,.25) !important;
+    color:#fff !important;
+    border:1px solid rgba(255,255,255,.22) !important;
+    padding:4px 10px !important;
+    border-radius:10px !important;
+}
+
+
 </style>
 
 
