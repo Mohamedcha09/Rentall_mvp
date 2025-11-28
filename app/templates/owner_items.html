@@ -2,96 +2,259 @@
 {% block content %}
 
 <style>
-  .badge-icon{height:20px;width:20px;margin-inline-start:6px;vertical-align:middle;display:inline-block;}
+
+/* ===========================
+   🔥 خلفية Sevor — Gradient
+=========================== */
+body {
+    background: linear-gradient(135deg,#8b5cf6 0%, #5b9df9 100%) !important;
+    background-attachment: fixed;
+}
+
+/* ===========================
+   الحاوية
+=========================== */
+.items-container {
+    max-width: 1150px;
+    margin: 0 auto;
+    padding: 20px 15px 60px;
+}
+
+/* ===========================
+   العنوان
+=========================== */
+.page-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* زر إضافة عنصر */
+.add-item-btn {
+    background: #ffffff;
+    color: #5b5bf9;
+    font-weight: 600;
+    border-radius: 10px;
+    padding: 6px 16px;
+    box-shadow: 0 4px 10px rgba(0,0,0,.18);
+    border: none;
+}
+.add-item-btn:hover {
+    background: #f0f0ff;
+}
+
+/* ===========================
+   بطاقة العنصر — Glass UI
+=========================== */
+.item-card {
+    background: rgba(255,255,255,0.22);
+    backdrop-filter: blur(16px);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 6px 30px rgba(0,0,0,.22);
+    transition: .25s;
+    border: 1px solid rgba(255,255,255,.25);
+}
+.item-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 40px rgba(0,0,0,.28);
+}
+
+/* صورة العنصر */
+.item-card img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    border-bottom: 1px solid rgba(255,255,255,0.3);
+}
+
+/* محتوى البطاقة */
+.card-body-custom {
+    padding: 15px 16px;
+    color: white;
+}
+
+/* عنوان العنصر */
+.item-title {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+/* Open button */
+.btn-open {
+    padding: 5px 12px;
+    font-size: 13px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.3);
+    color: #fff;
+    font-weight: 600;
+    border: 1px solid rgba(255,255,255,.4);
+}
+.btn-open:hover {
+    background: rgba(255,255,255,0.5);
+    color: #000;
+}
+
+/* Price badge */
+.price-badge {
+    background: #ffffff;
+    color: #5b5bf9;
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+/* Active / Inactive badge */
+.state-badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 12px;
+}
+.state-active { background:#10b981; }
+.state-inactive { background:#6b7280; }
+
+/* Status badge */
+.status-badge {
+    margin-top: 6px;
+    background: #facc15;
+    color: #000;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+/* Feedback */
+.feedback-box {
+    background: rgba(255,255,255,0.2);
+    backdrop-filter: blur(10px);
+    border-radius: 10px;
+    padding: 10px;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.3);
+    margin-top: 6px;
+    font-size: 14px;
+}
+
+/* Resubmit button */
+.resubmit-btn {
+    margin-top: 8px;
+    background: white;
+    font-weight: 700;
+    border-radius: 10px;
+    color: #5b5bf9;
+    padding: 6px 14px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,.15);
+}
+.resubmit-btn:hover {
+    background: #f0f0ff;
+}
+
+/* Badges Images */
+.badge-icon {
+    height:20px;
+    width:20px;
+    margin-inline-start:6px;
+    vertical-align:middle;
+}
+
 </style>
 
-{% set me = session_user %}
-{% set _created = me.created_at if me and me.created_at else None %}
-{% set _created_iso = _created.isoformat() if _created else "" %}
-{% set _role = me.role if me else 'user' %}
-{% set _verified = 1 if (me and me.is_verified) else 0 %}
-{% set _five_star_count = 0 %}
-{% set _returns_success_count = 0 %}
-{% set _ratings_count = 0 %}
-{% set _avg_stars = 0 %}
 
-<div class="d-flex align-items-center justify-content-between mb-3">
-  <h3 class="mb-0">
-    My Items — {{ me.first_name }} {{ me.last_name }}
-    <span id="badges-owner-self"
-          data-role="{{ _role }}"
-          data-created="{{ _created_iso }}"
-          data-verified="{{ _verified }}"
-          data-stars-all="{{ _ratings_count }}"
-          data-avg="{{ _avg_stars }}"
-          data-stars5="{{ _five_star_count }}"
-          data-returns="{{ _returns_success_count }}">
-    </span>
-  </h3>
-  <a class="btn btn-primary" href="/owner/items/new">+ Add Item</a>
-</div>
+<div class="items-container">
 
-{% if items and items|length %}
-  <div class="row g-3">
-    {% for it in items %}
+  <div class="page-title mb-4">
+    <span>My Items — {{ me.first_name }} {{ me.last_name }}</span>
+    <a class="add-item-btn" href="/owner/items/new">+ Add Item</a>
+  </div>
+
+  {% set me = session_user %}
+  {% set _created = me.created_at if me and me.created_at else None %}
+  {% set _created_iso = _created.isoformat() if _created else "" %}
+  {% set _role = me.role if me else 'user' %}
+  {% set _verified = 1 if (me and me.is_verified) else 0 %}
+  {% set _five_star_count = 0 %}
+  {% set _returns_success_count = 0 %}
+  {% set _ratings_count = 0 %}
+  {% set _avg_stars = 0 %}
+
+  <span id="badges-owner-self"
+        data-role="{{ _role }}"
+        data-created="{{ _created_iso }}"
+        data-verified="{{ _verified }}"
+        data-stars-all="{{ _ratings_count }}"
+        data-avg="{{ _avg_stars }}"
+        data-stars5="{{ _five_star_count }}"
+        data-returns="{{ _returns_success_count }}">
+  </span>
+
+  {% if items and items|length %}
+    <div class="row g-4 mt-2">
+
+      {% for it in items %}
       <div class="col-12 col-md-4">
-        <div class="card h-100">
-          {% if it.image_path %}
-            <img src="/{{ it.image_path }}" class="card-img-top" style="height:160px;object-fit:cover">
-          {% endif %}
-          <div class="card-body">
-            <h6 class="card-title">{{ it.title }}</h6>
+        <div class="item-card">
 
-            <div class="d-flex justify-content-between align-items-center">
-              <a href="/items/{{ it.id }}" class="btn btn-sm btn-outline-light">Open</a>
-              <span class="small text-muted">{{ it.category }}</span>
+          {% if it.image_path %}
+            <img src="/{{ it.image_path }}" alt="">
+          {% endif %}
+
+          <div class="card-body-custom">
+
+            <div class="item-title">{{ it.title }}</div>
+
+            <div class="d-flex justify-content-between align-items-center mt-2">
+              <a href="/items/{{ it.id }}" class="btn-open">Open</a>
+              <span class="small text-light">{{ it.category }}</span>
             </div>
 
-            <div class="mt-2">
-              <span class="badge {% if it.is_active=='yes' %}bg-success{% else %}bg-secondary{% endif %}">
+            <div class="mt-3 d-flex align-items-center gap-2">
+              <span class="state-badge {% if it.is_active=='yes' %}state-active{% else %}state-inactive{% endif %}">
                 {% if it.is_active=='yes' %}Active{% else %}Inactive{% endif %}
               </span>
-              <span class="badge bg-dark-subtle text-dark">{{ it.display_price }} {{ it.display_currency }}/day</span>
+
+              <span class="price-badge">
+                {{ it.display_price }} {{ it.display_currency }}/day
+              </span>
             </div>
 
-            <!-- ============================ -->
-            <!--   REVIEW STATUS (NEW)       -->
-            <!-- ============================ -->
             {% if it.status != 'approved' %}
-              <div class="mt-2">
-                <span class="badge bg-warning text-dark">
-                  {{ it.status }}
-                </span>
-              </div>
+              <div class="status-badge">{{ it.status }}</div>
             {% endif %}
 
-            <!-- ============================ -->
-            <!--   ADMIN FEEDBACK (NEW)      -->
-            <!-- ============================ -->
             {% if it.admin_feedback %}
-              <div class="alert alert-warning mt-2">
-                <strong>Admin Feedback:</strong><br>
-                {{ it.admin_feedback }}
+              <div class="feedback-box">
+                <strong>Admin Feedback:</strong><br>{{ it.admin_feedback }}
               </div>
             {% endif %}
 
-            <!-- ============================ -->
-            <!--   RESUBMIT BUTTON (NEW)     -->
-            <!-- ============================ -->
             {% if it.status in ['rejected', 'needs_revision'] %}
               <form action="/owner/items/{{ it.id }}/resubmit" method="post">
-                <button class="btn btn-primary btn-sm mt-2">Resubmit for Review</button>
+                <button class="resubmit-btn">Resubmit for Review</button>
               </form>
             {% endif %}
 
           </div>
         </div>
       </div>
-    {% endfor %}
-  </div>
-{% else %}
-  <div class="alert alert-light text-dark">No items yet. Start by adding your first item.</div>
-{% endif %}
+      {% endfor %}
+
+    </div>
+
+  {% else %}
+    <div class="alert alert-light text-dark mt-3">
+      No items yet. Start by adding your first item.
+    </div>
+  {% endif %}
+
+</div>
+
 
 <script>
 (function(){
