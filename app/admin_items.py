@@ -39,7 +39,7 @@ def list_pending(request: Request, db: Session = Depends(get_db)):
     items = (
         db.query(Item)
         .filter(Item.status == "pending")
-        .order_by(Item.created_at.desc())
+        .order_by(Item.created_at.asc())
         .all()
     )
 

@@ -11,6 +11,20 @@
         border: 1px solid #eee;
     }
 
+    /* === Smaller owner box === */
+    .owner-box {
+        background: #fafaff;
+        border: 1px solid #e0e0ff;
+        padding: 10px 12px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        font-size: 14px;       /* ⬅ أصغر */
+    }
+
+    .owner-box b {
+        font-size: 14px;
+    }
+
     .item-images-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -24,14 +38,6 @@
         object-fit: cover;
         border-radius: 10px;
         border: 1px solid #ddd;
-    }
-
-    .owner-box {
-        background: #f9f9ff;
-        border: 1px solid #e2e2ff;
-        padding: 15px;
-        border-radius: 12px;
-        margin-bottom: 12px;
     }
 
     .label {
@@ -74,16 +80,14 @@
 
         <div class="pending-card">
 
-            {# ===========================
-               OWNER INFORMATION
-            ============================ #}
+            <!-- ======================
+                 OWNER INFO
+            ======================= -->
             <div class="owner-box">
-                <strong>Owner:</strong>  
-                <div class="mt-1">
-                    <div><b>Name:</b> {{ it.owner.full_name if it.owner else "Unknown" }}</div>
-                    <div><b>Email:</b> {{ it.owner.email if it.owner else "No email" }}</div>
-                    <div><b>Owner ID:</b> {{ it.owner.id if it.owner else "—" }}</div>
-                </div>
+                <strong>Owner:</strong><br>
+                <b>Name:</b> {{ it.owner.full_name if it.owner else "Unknown" }}<br>
+                <b>Email:</b> {{ it.owner.email if it.owner else "No email" }}<br>
+                <b>Owner ID:</b> {{ it.owner.id if it.owner else "—" }}
             </div>
 
             <h4 class="mt-3 mb-2">{{ it.title }}</h4>
@@ -103,21 +107,19 @@
                 <span class="badge bg-warning text-dark">Pending Review</span>
             </div>
 
-            {# DESCRIPTION #}
+            <!-- DESCRIPTION -->
             <div class="mb-3">
                 <div class="label">Description:</div>
                 <div class="value">{{ it.description or "No description provided." }}</div>
             </div>
 
-            {# PRICE #}
+            <!-- PRICE -->
             <div class="mb-3">
                 <div class="label">Price:</div>
                 <div class="value">{{ it.price }} {{ it.currency }}</div>
             </div>
 
-            {# ===========================
-               MULTI IMAGES (up to 10)
-            ============================ #}
+            <!-- MULTIPLE IMAGES -->
             <div class="label mb-2">Images:</div>
             <div class="item-images-grid">
                 {% if it.image_urls %}
@@ -129,7 +131,6 @@
                 {% endif %}
             </div>
 
-            {# OLD FEEDBACK #}
             {% if it.admin_feedback %}
                 <div class="alert alert-warning mt-3">
                     <strong>Previous feedback:</strong><br>
@@ -137,7 +138,6 @@
                 </div>
             {% endif %}
 
-            {# ACTION BUTTONS #}
             <div class="actions-row mt-3">
 
                 <form method="post" action="/admin/items/{{ it.id }}/approve" style="display:inline;">
@@ -161,7 +161,7 @@
 
 </div>
 
-{# FEEDBACK POPUP ========================== #}
+<!-- FEEDBACK POPUP -->
 <div id="feedbackPopup" class="feedback-popup">
     <div class="feedback-box">
         <h5 id="fbTitle"></h5>
