@@ -154,6 +154,21 @@ img.edit-thumb {
 
 <h2>Edit Item</h2>
 
+{# 🔥🔥🔥 هنا الإضافة الجديدة فقط — مربّع سبب الرفض #}
+{% if item.admin_feedback %}
+<div style="
+    background: #fff7d6;
+    border: 1px solid #ffe08a;
+    padding: 14px;
+    border-radius: 12px;
+    margin-bottom: 18px;
+">
+    <strong>⚠️ Your item was rejected by admin</strong><br>
+    <span style="color:#444;">{{ item.admin_feedback }}</span>
+</div>
+{% endif %}
+{# 🔥🔥🔥 نهاية الإضافة #}
+
 <form method="post" enctype="multipart/form-data">
 
   <!-- Title -->
