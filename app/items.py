@@ -504,15 +504,14 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
         }
     )
 
-
-# ============================================================
-# ======================= OWNER ITEMS =========================
-# ============================================================
 @router.get("/owner/items")
 def my_items(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user")
     if not u:
         return RedirectResponse(url="/login", status_code=303)
+
+    # REAL DB USER
+    me = db.query(User).get(u["id"])
 
     items = (
         db.query(Item)
@@ -548,10 +547,11 @@ def my_items(request: Request, db: Session = Depends(get_db)):
             "items": items,
             "items_view": owner_items_view,
             "display_currency": disp_cur,
-            "session_user": u,
+            "session_user": me,   # ← IMPORTANT
             "account_limited": is_account_limited(request),
         }
     )
+
 
 @router.get("/owner/items/{item_id}/edit")
 def item_edit_get(request: Request, item_id: int, db: Session = Depends(get_db)):
