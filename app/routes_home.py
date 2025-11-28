@@ -54,7 +54,6 @@ def _serialize(i: Item, ratings: dict) -> dict:
         "category": getattr(i, "category", "") or "",
         "subcategory": getattr(i, "subcategory", "") or "",
         "price_per_day": getattr(i, "price_per_day", None),
-
         "rating_avg": r["avg"],
         "rating_count": r["cnt"],
         "currency": getattr(i, "currency", "CAD"),
@@ -206,9 +205,11 @@ def home_page(
     filtered_q = _apply_city_or_gps_filter(base_q, city, lat, lng, radius_km)
     filtering = (lat and lng and radius_km) or (city not in (None, ""))
 
-    # Nearby items
+    # =======================
+    # NEARBY ITEMS — RANDOM
+    # =======================
     if filtering:
-        nearby_rows = filtered_q.order_by(Item.created_at.desc()).limit(20).all()
+        nearby_rows = filtered_q.order_by(func.random()).limit(20).all()
     else:
         nearby_rows = base_q.order_by(func.random()).limit(20).all()
 
@@ -221,8 +222,8 @@ def home_page(
         it["display_price"] = fx_convert(price, base, user_currency, rates)
         it["display_symbol"] = symbols.get(user_currency, user_currency)
 
-    # ================================  
-    # CATEGORIES  
+    # ================================
+    # CATEGORIES — RANDOM
     # ================================
     items_by_category = {}
     db_categories = db.query(Category).order_by(Category.id).all()
@@ -237,7 +238,8 @@ def home_page(
 
         q = _apply_category_filter(q, code, label)
 
-        rows = q.order_by(Item.created_at.desc()).limit(12).all()
+        # RANDOM FIX
+        rows = q.order_by(func.random()).limit(12).all()
 
         lst = [_serialize(i, ratings_map) for i in rows]
 
@@ -250,9 +252,11 @@ def home_page(
         if lst:
             items_by_category[code] = lst
 
-    # ALL ITEMS
+    # =======================
+    # ALL ITEMS — RANDOM
+    # =======================
     if filtering:
-        all_rows = filtered_q.order_by(Item.created_at.desc()).limit(60).all()
+        all_rows = filtered_q.order_by(func.random()).limit(60).all()
     else:
         all_rows = base_q.order_by(func.random()).limit(60).all()
 
