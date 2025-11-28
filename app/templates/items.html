@@ -132,7 +132,23 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
 }
 
 
+
+
 </style>
+
+<style>
+/* Hide topbar + mobile tabbar + stripe only on items page */
+header.topbar,
+.m-top-tabs,
+.mobile-tabbar,
+.stripe-callout {
+    display: none !important;
+}
+body.has-tabbar {
+    padding-bottom: 0 !important;
+}
+</style>
+
 {% endblock %}
 
 {% block content %}
