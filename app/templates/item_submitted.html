@@ -1,4 +1,23 @@
 {% extends "base.html" %}
+
+{% block head %}
+<style>
+@media (max-width: 768px) {
+    header.topbar,
+    nav.desk-tabs,
+    .m-top-tabs {
+        display: none !important;
+    }
+    .stripe-connect-banner,
+    .connect-banner,
+    .stripe-callout,
+    .payout-banner {
+        display: none !important;
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 
 <div class="container py-4" style="max-width:720px;">
@@ -9,8 +28,8 @@
       <h2 class="mb-3">Listing submitted for review ✅</h2>
 
       <p class="text-muted mb-3">
-        Your listing <strong>{{ item.title }}</strong>  has been submitted for review. Our team will approve it within 24 hours.
-
+        Your listing <strong>{{ item.title }}</strong> has been submitted for review.  
+        Our team will approve it within 24 hours.
       </p>
 
       <a href="/owner/items" class="btn btn-primary w-100 mb-2">
