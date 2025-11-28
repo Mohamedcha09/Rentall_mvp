@@ -148,12 +148,7 @@ def load_ratings_map(db: Session):
         }
     return m
 
-# =======================
-# PRIMARY REDIRECT BEFORE HOME (NO TOUCH HOME)
-# =======================
-@router.get("/", include_in_schema=False)
-def redirect_root():
-    return RedirectResponse("/welcome")
+
  
 # ================= HOME PAGE =================
 @router.get("/")
@@ -306,19 +301,29 @@ def home_page(
     return templates.TemplateResponse("home.html", ctx)
 
 
-# =======================
-# WELCOME PAGE
-# =======================
 @router.get("/welcome")
 def welcome_page(request: Request):
+    session_user = getattr(request, "session", {}).get("user")
+
     templates = getattr(request.app, "templates", None)
     if templates:
-        return templates.TemplateResponse("welcome.html", {"request": request})
+        return templates.TemplateResponse(
+            "welcome.html",
+            {
+                "request": request,
+                "session_user": session_user,
+            }
+        )
 
     from starlette.templating import Jinja2Templates
     templates = Jinja2Templates(directory="app/templates")
-    return templates.TemplateResponse("welcome.html", {"request": request})
-
+    return templates.TemplateResponse(
+        "welcome.html",
+        {
+            "request": request,
+            "session_user": session_user,
+        }
+    )
 
 # =======================
 # ABOUT PAGE
