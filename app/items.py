@@ -814,8 +814,7 @@ def item_new_post(
     db.commit()
     db.refresh(it)
 
-    return RedirectResponse(url=f"/items/{it.id}", status_code=303)
-
+    return RedirectResponse(url=f"/owner/items/{it.id}/submitted",status_code=303)
 
 # ============================================================
 # ======================= ALL REVIEWS =========================
@@ -880,3 +879,23 @@ def item_resubmit(request: Request, item_id: int, db: Session = Depends(get_db))
     db.commit()
 
     return RedirectResponse(url="/owner/items", status_code=303)
+
+
+@router.get("/owner/items/{item_id}/submitted")
+def item_submitted(request: Request, item_id: int, db: Session = Depends(get_db)):
+    u = request.session.get("user")
+    if not u:
+        return RedirectResponse(url="/login", status_code=303)
+
+    it = db.query(Item).get(item_id)
+    if not it or it.owner_id != u["id"]:
+        return RedirectResponse(url="/owner/items", status_code=303)
+
+    return request.app.templates.TemplateResponse(
+        "item_submitted.html",
+        {
+            "request": request,
+            "session_user": u,
+            "item": it,
+        }
+    )
