@@ -1,37 +1,28 @@
 {% extends "base.html" %}
 
+{# ===== Link Preview Card (Facebook/Instagram/WhatsApp/Twitter/Telegram) ===== #}
 {% block head %}
   {{ super() }}
 
-  <!-- ======= SEO FOR /welcome ======= -->
-  <title>SEVOR — Rent Anything Worldwide | Welcome</title>
-  <meta name="description"
-        content="SEVOR is the global platform where you can rent anything safely — cars, tools, electronics, travel gear, and more. Free account, zero fees." />
-
-  <!-- Open Graph -->
+  <!-- === Link Preview (Open Graph + Twitter) for /welcome === -->
   <meta property="og:site_name" content="SEVOR" />
-  <meta property="og:title" content="SEVOR — Rent Anything Worldwide" />
+  <meta property="og:title" content="SEVOR — Rent everything you need" />
   <meta property="og:description"
-        content="Rent anything you need — simple, fast, and secure. From cars to tools, cameras, electronics, and more." />
+        content="Find and rent anything you need — cameras, books, games, furniture, and more." />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://sevor.net/welcome" />
-  <meta property="og:image" content="https://sevor.net/static/img/sevor-preview.png" />
+  <meta property="og:url" content="https://m3ak.onrender.com/welcome" />
+
+  <!-- IMPORTANT: absolute URL + cache-buster -->
+  <meta property="og:image" content="https://m3ak.onrender.com/static/images/sevor-preview.png?v=3" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
 
-  <!-- Twitter Card -->
+  <!-- Twitter Card (works with most platforms) -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="SEVOR — Rent Anything Worldwide" />
+  <meta name="twitter:title" content="SEVOR — Rent everything you need" />
   <meta name="twitter:description"
-        content="Borrow what you need, or rent out what you don't use — SEVOR makes it easy." />
-  <meta name="twitter:image" content="https://sevor.net/static/img/sevor-preview.png" />
-
-  <!-- Invisible internal SEO links to help Google generate Sitelinks -->
-  <a href="/about" style="display:none">About SEVOR</a>
-  <a href="/items" style="display:none">Explore Items</a>
-  <a href="/categories" style="display:none">Categories</a>
-  <a href="/register" style="display:none">Sign Up</a>
-
+        content="Find and rent anything you need — cameras, books, games, furniture, and more." />
+  <meta name="twitter:image" content="https://m3ak.onrender.com/static/images/sevor-preview.png?v=3" />
 {% endblock %}
 
 {% block content %}
@@ -58,7 +49,6 @@
       <h1 class="mb-3 fw-bold">
         Welcome to <span class="text-info">SEVOR</span> — when you need something <u>temporarily</u> instead of buying it!
       </h1>
-
       <p class="lead mb-4">
         Sometimes we only need things for days or even hours: a camera, a drill, a roof box, or even a car.
         Buying is expensive and impractical — and asking around can be difficult.
@@ -78,6 +68,7 @@
     </div>
 
     <div class="col-lg-5 mt-4 mt-lg-0">
+      {# You can later place an app mockup/promotional image here #}
     </div>
   </div>
 </section>

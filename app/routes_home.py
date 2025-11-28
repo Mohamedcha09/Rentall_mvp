@@ -11,7 +11,6 @@ from .database import get_db
 from .models import Item, FxRate, ItemReview, Category
 from sqlalchemy.sql import func
 from .utils import category_label as _category_label
-from fastapi.responses import RedirectResponse
 
 router = APIRouter()
 
@@ -149,7 +148,6 @@ def load_ratings_map(db: Session):
     return m
 
 
- 
 # ================= HOME PAGE =================
 @router.get("/")
 def home_page(
@@ -298,42 +296,4 @@ def home_page(
     from starlette.templating import Jinja2Templates
     templates = Jinja2Templates(directory="app/templates")
     templates.env.globals["category_label"] = _category_label
-    return templates.TemplateResponse("home.html", ctx)
-
-
-@router.get("/welcome")
-def welcome_page(request: Request):
-    session_user = getattr(request, "session", {}).get("user")
-
-    templates = getattr(request.app, "templates", None)
-    if templates:
-        return templates.TemplateResponse(
-            "welcome.html",
-            {
-                "request": request,
-                "session_user": session_user,
-            }
-        )
-
-    from starlette.templating import Jinja2Templates
-    templates = Jinja2Templates(directory="app/templates")
-    return templates.TemplateResponse(
-        "welcome.html",
-        {
-            "request": request,
-            "session_user": session_user,
-        }
-    )
-
-# =======================
-# ABOUT PAGE
-# =======================
-@router.get("/about")
-def about_page(request: Request):
-    templates = getattr(request.app, "templates", None)
-    if templates:
-        return templates.TemplateResponse("about.html", {"request": request})
-
-    from starlette.templating import Jinja2Templates
-    templates = Jinja2Templates(directory="app/templates")
-    return templates.TemplateResponse("about.html", {"request": request})
+    return templates.TemplateResponse("home.html", ctx)  est ce que ca 

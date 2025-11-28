@@ -4,53 +4,37 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{{ title or "RentAll" }}</title>
 
-  <!-- ====== SEO MAIN ====== -->
-  <title>{{ title or "SEVOR — Rent Anything Worldwide" }}</title>
-  {% block head %}{% endblock %}
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+  <!-- External CSS -->
+  <link href="/static/style.css?v=9" rel="stylesheet">
+
+<!-- Primary Logo for Google -->
+<link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+
+<!-- PNG icons -->
+<link rel="icon" type="image/png" href="/static/img/sevor-logo.png" sizes="512x512">
+<link rel="apple-touch-icon" href="/static/img/sevor-logo.png">
+
+<!-- For Google Search -->
+<meta property="og:image" content="https://sevor.net/static/img/sevor-logo.png">
+<meta itemprop="image" content="https://sevor.net/static/img/sevor-logo.png">
 
 
-  <!-- Canonical: FORCE GOOGLE TO INDEX /welcome -->
-  <link rel="canonical" href="https://sevor.net/welcome" />
-
-  <!-- Main SEO description -->
-  <meta name="description"
-        content="SEVOR is the first global marketplace where you can rent anything safely — cars, tools, electronics, books, equipment, and more. Free account, zero fees, trusted worldwide." />
-
-  <!-- Open Graph -->
-  <meta property="og:title" content="SEVOR — Rent Anything Worldwide">
-  <meta property="og:description" content="Rent anything safely — cars, tools, electronics & more. Zero fees, free account. Trusted worldwide.">
-  <meta property="og:url" content="https://sevor.net/welcome">
-  <meta property="og:image" content="https://sevor.net/static/img/sevor-logo.png">
-  <meta property="og:type" content="website">
-
-  <!-- Twitter -->
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="SEVOR — Rent Anything Worldwide">
-  <meta name="twitter:description" content="Rent anything you need — simple, fast, secure.">
-  <meta name="twitter:image" content="https://sevor.net/static/img/sevor-logo.png">
-
-  <!-- Logo / Favicons -->
-  <link rel="icon" type="image/png" href="https://sevor.net/static/img/sevor-logo.png" sizes="512x512">
-  <link rel="apple-touch-icon" href="https://sevor.net/static/img/sevor-logo.png">
-
-  <!-- Structured Data: Organization -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": "SEVOR",
-    "url": "https://sevor.net",
-    "logo": "https://sevor.net/static/img/sevor-logo.png",
-    "sameAs": [
-      "https://www.facebook.com/sevor",
-      "https://www.instagram.com/sevor"
-    ]
-  }
-  </script>
-
-  <!-- BOOTSTRAP ETC (keep your original imports below) -->
-
+  <!-- PWA -->
+  <link rel="manifest" href="{{ url_for('static', path='manifest.json') }}">
+  <meta name="theme-color" content="#ffffff">
+  <script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(reg => reg.unregister());
+  });
+}
+</script>
 
 
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -708,6 +692,8 @@ body[data-auth="0"] .mobile-tabbar {
 </style>
 
 
+
+{% block head %}{% endblock %}
 {% set immersive = immersive|default(false) %}
 {% set _path = request.url.path if request else '' %}
 {% set is_home = (_path == '/' or _path == '') %}
