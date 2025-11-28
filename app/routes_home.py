@@ -296,4 +296,4 @@ def home_page(
     from starlette.templating import Jinja2Templates
     templates = Jinja2Templates(directory="app/templates")
     templates.env.globals["category_label"] = _category_label
-    return templates.TemplateResponse("home.html", ctx)  est ce que ca 
+    return templates.TemplateResponse("home.html", ctx)
