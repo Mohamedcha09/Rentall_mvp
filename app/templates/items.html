@@ -132,6 +132,24 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
 }
 
 
+/* ===== Hide top navbar + stripe banner ONLY on mobile ===== */
+@media (max-width: 768px) {
+
+    /* إخفاء النافبار العلوي */
+    header.topbar,
+    nav.desk-tabs,
+    .m-top-tabs {
+        display: none !important;
+    }
+
+    /* إخفاء شريط Stripe Connect */
+    .stripe-connect-banner,
+    .connect-banner,
+    .payout-banner,
+    .stripe-callout {
+        display: none !important;
+    }
+}
 
 
 </style>
