@@ -794,10 +794,6 @@ def booking_flow(
     utils_fx.inject_db_for_fx(db)
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
 
-
-# ========================================
-# Owner decision
-# ========================================
 @router.post("/bookings/{booking_id}/owner/decision")
 def owner_decision(
     booking_id: int,
@@ -816,67 +812,81 @@ def owner_decision(
 
     item = db.get(Item, bk.item_id)
 
+    # =======================
+    # REJECTED
+    # =======================
     if decision == "rejected":
         bk.status = "rejected"
         bk.owner_decision = "rejected"
         bk.rejected_at = datetime.utcnow()
         bk.timeline_owner_decided_at = datetime.utcnow()
         db.commit()
-            # -----------------------------
-    # Email to renter (REJECTED)
-    # -----------------------------
-    try:
-        from .email_service import send_email
 
-        subject = "Your booking was rejected"
-        title_txt = "Your booking was rejected ❌"
-        msg_txt = f"Unfortunately, your booking request for '{item.title}' was rejected by the owner."
-
-        html = f"""
-        <div style='font-family:Arial,Helvetica,sans-serif; line-height:1.6; color:#111;'>
-
-            <img src="https://sevor.net/static/img/sevor-logo.png"
-                 style="width:140px; margin-bottom:20px;" />
-
-            <h2 style='color:#e11d48;'>{title_txt}</h2>
-
-            <p>{msg_txt}</p>
-
-            <p><b>Item:</b> {item.title}</p>
-
-            <p>
-                <a href="https://sevor.net/bookings/flow/{bk.id}"
-                   style="padding:12px 18px;background:#4f46e5;color:white;
-                          text-decoration:none;border-radius:8px;display:inline-block;">
-                    View booking details
-                </a>
-            </p>
-
-            <br>
-            <p style='color:#888;font-size:13px;'>Sevor — Rent anything worldwide</p>
-        </div>
-        """
-
+        # رابط مع ?loc=...
         renter = db.get(User, bk.renter_id)
-        send_email(
-            to=renter.email,
-            subject=subject,
-            html_body=html,
-            text_body=msg_txt
-        )
+        qs = _loc_qs_for_booking(bk) or _loc_qs_for_user(renter)
+        link = f"/bookings/flow/{bk.id}{qs}"
 
-    except Exception as e:
-        print("EMAIL SEND ERROR:", e)
-
+        # إشعار داخل Sevor
         push_notification(
-            db, bk.renter_id, "Booking rejected",
+            db,
+            bk.renter_id,
+            "Booking rejected",
             f"Your request on '{item.title}' was rejected.",
-            f"/bookings/flow/{bk.id}", "booking"
+            link,
+            "booking",
         )
-        renter = db.get(User, bk.renter_id)
+
+        # إيميل للمستأجر (رفض)
+        try:
+            from .email_service import send_email
+
+            subject = "Your booking was rejected"
+            title_txt = "Your booking was rejected ❌"
+            msg_txt = (
+                f"Unfortunately, your booking request for '{item.title}' "
+                f"was rejected by the owner."
+            )
+
+            html = f"""
+            <div style='font-family:Arial,Helvetica,sans-serif; line-height:1.6; color:#111;'>
+                <img src="https://sevor.net/static/img/sevor-logo.png"
+                     style="width:140px; margin-bottom:20px;" />
+
+                <h2 style='color:#e11d48;'>{title_txt}</h2>
+
+                <p>{msg_txt}</p>
+
+                <p><b>Item:</b> {item.title}</p>
+
+                <p>
+                    <a href="https://sevor.net{link}"
+                       style="padding:12px 18px;background:#4f46e5;color:white;
+                              text-decoration:none;border-radius:8px;display:inline-block;">
+                        View booking details
+                    </a>
+                </p>
+
+                <br>
+                <p style='color:#888;font-size:13px;'>Sevor — Rent anything worldwide</p>
+            </div>
+            """
+
+            send_email(
+                to=renter.email,
+                subject=subject,
+                html_body=html,
+                text_body=msg_txt,
+            )
+        except Exception as e:
+            print("EMAIL SEND ERROR (REJECTED):", e)
+
+        # دايمًا بعد الرفض نرجع للـ flow
         return redirect_to_flow_with_loc(bk, renter)
 
-    # accepted
+    # =======================
+    # ACCEPTED
+    # =======================
     bk.owner_decision = "accepted"
 
     # Default deposit
@@ -897,8 +907,11 @@ def owner_decision(
         geo_now = _adapter_geo_from_request(request) if request else {"country": None, "sub": None}
 
         if (geo_now.get("country") or "").upper() and not (geo_now.get("sub") or ""):
-            cand = (getattr(renter, "region", None) or getattr(renter, "state", None)
-                    or getattr(renter, "geo_region", None))
+            cand = (
+                getattr(renter, "region", None)
+                or getattr(renter, "state", None)
+                or getattr(renter, "geo_region", None)
+            )
             if cand:
                 geo_now["sub"] = str(cand).strip().upper()
 
@@ -920,12 +933,15 @@ def owner_decision(
     link = f"/bookings/flow/{bk.id}{qs}"
 
     push_notification(
-        db, bk.renter_id, "Booking accepted",
+        db,
+        bk.renter_id,
+        "Booking accepted",
         f"On '{item.title}'. Choose a payment method{dep_txt}.",
         link,
-        "booking"
+        "booking",
     )
-        # -----------------------------
+
+    # -----------------------------
     # Email to renter (ACCEPTED)
     # -----------------------------
     try:
@@ -960,19 +976,17 @@ def owner_decision(
         </div>
         """
 
-        renter = db.get(User, bk.renter_id)
         send_email(
             to=renter.email,
             subject=subject,
             html_body=html,
-            text_body=msg_txt
+            text_body=msg_txt,
         )
 
     except Exception as e:
-        print("EMAIL SEND ERROR:", e)
+        print("EMAIL SEND ERROR (ACCEPTED):", e)
 
     return redirect_to_flow_with_loc(bk, renter)
-
 
 # ========================================
 # Renter chooses payment
