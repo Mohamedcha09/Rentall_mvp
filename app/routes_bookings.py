@@ -1402,11 +1402,7 @@ def alias_accept(booking_id: int,
     if not is_owner(user, bk):
         raise HTTPException(status_code=403, detail="Only owner can accept")
     if bk.status != "requested":
-        return RedirectResponse(
-            url=f"/reviews/renter/{bk.id}", 
-            status_code=303
-)
-
+        return _redir(bk.id)
     item = db.get(Item, bk.item_id)
 
     default_deposit = (item.price_per_day or 0) * 5
