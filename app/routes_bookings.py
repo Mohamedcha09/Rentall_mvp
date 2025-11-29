@@ -1670,7 +1670,9 @@ def alias_mark_returned(booking_id: int,
     except Exception as e:
         print("EMAIL ERROR (RETURN MARKED RENTER):", e)
 
-    return _redir(bk.id)
+    return RedirectResponse(
+        url=f"/reviews/renter/{bk.id}",
+        status_code=303)
 
 
 # ========================================
