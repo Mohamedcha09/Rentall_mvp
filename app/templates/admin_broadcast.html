@@ -1,42 +1,45 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container py-4" style="direction:ltr; text-align:left; max-width: 760px;">
+<div class="container py-4" style="max-width:760px;">
 
-  <h2 class="mb-4">Broadcast Email</h2>
+  <!-- Header مع اللوغو -->
+  <div class="d-flex align-items-center mb-4" style="gap:12px;">
+    <img src="/static/img/sevor-logo.png" style="height:48px;border-radius:10px;">
+    <h2 class="m-0 fw-bold">Broadcast Email</h2>
+  </div>
+
+  {% if error %}
+  <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+
   <p class="text-muted mb-4">
-    Send a message or announcement to <strong>all verified users</strong> on Sevor.
+    Send an announcement or update to your Sevor users.
   </p>
 
-  <!-- ===== FORM ===== -->
   <div class="card shadow-sm">
     <div class="card-body">
 
       <form method="post" action="/admin/broadcast">
-        
-        <!-- Subject -->
+
         <div class="mb-3">
           <label class="form-label fw-semibold">Subject</label>
-          <input type="text" name="subject" required
-                 class="form-control"
-                 placeholder="Example: Important update about new features">
+          <input type="text" name="subject"
+                 class="form-control form-control-lg" required>
         </div>
 
-        <!-- Message -->
         <div class="mb-3">
           <label class="form-label fw-semibold">Message</label>
-          <textarea name="message" rows="8" required
-                    class="form-control"
-                    placeholder="Write the email content here..."></textarea>
+          <textarea name="message" rows="8"
+                    class="form-control" required></textarea>
         </div>
 
-        <!-- Optional: Target type -->
         <div class="mb-3">
           <label class="form-label fw-semibold">Send to</label>
           <select name="audience" class="form-select">
             <option value="all">All users</option>
-            <option value="verified">Only verified users</option>
-            <option value="unverified">Only unverified users</option>
+            <option value="verified">Verified only</option>
+            <option value="unverified">Unverified only</option>
           </select>
         </div>
 
@@ -48,6 +51,5 @@
 
     </div>
   </div>
-
 </div>
 {% endblock %}
