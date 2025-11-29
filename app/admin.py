@@ -799,39 +799,16 @@ def broadcast_page(request: Request, db: Session = Depends(get_db)):
         }
     )
 
-
-@router.post("/admin/broadcast")
-def broadcast_send(
-    request: Request,
-    subject: str = Form(...),
-    body: str = Form(...),
-    db: Session = Depends(get_db),
-):
+@router.get("/admin/broadcast")
+def broadcast_page(request: Request):
     if not require_admin(request):
-        return RedirectResponse("/login", status_code=303)
-
-    users = db.query(User).filter(User.email != None).all()
-    emails = [u.email for u in users]
-
-    sent_count = 0
-    for email in emails:
-        try:
-            send_email(
-                email,
-                subject,
-                f"<div style='font-family:sans-serif;line-height:1.7'>{body}</div>",
-                text_body=body
-            )
-            sent_count += 1
-        except Exception:
-            pass
+        return RedirectResponse(url="/login", status_code=303)
 
     return request.app.templates.TemplateResponse(
-        "admin_broadcast_done.html",
+        "admin_broadcast.html",
         {
             "request": request,
-            "title": "Emails Sent",
-            "sent": sent_count,
-            "total": len(emails),
-        }
+            "title": "Broadcast Email",
+            "session_user": request.session.get("user"),   # ← هذا هو الفكس
+        },
     )
