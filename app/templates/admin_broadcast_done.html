@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Email Broadcast Completed</h2>
+
+<p>Emails sent: <b>{{ sent }}</b> out of <b>{{ total }}</b></p>
+
+<a class="btn btn-secondary" href="/admin/broadcast">Send another</a>
+
+{% endblock %}

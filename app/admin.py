@@ -781,3 +781,57 @@ def disable_support(user_id: int, request: Request, db: Session = Depends(get_db
             pass
 
     return RedirectResponse(url="/admin", status_code=303)
+
+
+# ---------------------------
+# Admin Broadcast Email (Send to all users)
+# ---------------------------
+@router.get("/admin/broadcast")
+def broadcast_page(request: Request, db: Session = Depends(get_db)):
+    if not require_admin(request):
+        return RedirectResponse("/login", status_code=303)
+
+    return request.app.templates.TemplateResponse(
+        "admin_broadcast.html",
+        {
+            "request": request,
+            "title": "Email Broadcast",
+        }
+    )
+
+
+@router.post("/admin/broadcast")
+def broadcast_send(
+    request: Request,
+    subject: str = Form(...),
+    body: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not require_admin(request):
+        return RedirectResponse("/login", status_code=303)
+
+    users = db.query(User).filter(User.email != None).all()
+    emails = [u.email for u in users]
+
+    sent_count = 0
+    for email in emails:
+        try:
+            send_email(
+                email,
+                subject,
+                f"<div style='font-family:sans-serif;line-height:1.7'>{body}</div>",
+                text_body=body
+            )
+            sent_count += 1
+        except Exception:
+            pass
+
+    return request.app.templates.TemplateResponse(
+        "admin_broadcast_done.html",
+        {
+            "request": request,
+            "title": "Emails Sent",
+            "sent": sent_count,
+            "total": len(emails),
+        }
+    )

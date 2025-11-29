@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 style="margin-bottom:20px">Broadcast Email to All Users</h2>
+
+<form method="post" action="/admin/broadcast" style="max-width:600px">
+
+    <label>Subject</label>
+    <input name="subject" required
+           class="form-control mb-3" placeholder="Email subject">
+
+    <label>Message</label>
+    <textarea name="body" required
+              class="form-control mb-3"
+              style="height:250px"
+              placeholder="Write the message here..."></textarea>
+
+    <button class="btn btn-primary">Send to all users</button>
+</form>
+
+{% endblock %}
