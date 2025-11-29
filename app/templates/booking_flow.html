@@ -641,6 +641,18 @@
               <button type="button" id="returnCaptureBtn" class="btn-camera">
                 <i class="bi bi-camera"></i> Capture 6 photos with camera, then upload & go to rating
               </button>
+              <form id="returnConfirmForm"
+      method="post"
+      action="/bookings/{{ booking.id }}/mark-returned"></form>
+
+<button type="button"
+        id="confirmReturnBtn"
+        class="btn btn-success w-100 mt-2"
+        style="display:none;"
+        onclick="document.getElementById('returnConfirmForm').submit();">
+  ✔ Confirm Return
+</button>
+
               
 
               <div id="returnCaptureStatus" class="k small d-flex align-items-center justify-content-between">
@@ -1195,6 +1207,9 @@
         .then(function(){
             btn.disabled = true;
             btn.innerHTML = "✔ تم رفع الصور";
+            var confirmBtn = document.getElementById("confirmReturnBtn");
+            if (confirmBtn) confirmBtn.style.display = "block";
+
 
             // إظهار زر Confirm Pickup
             var confirmBtn = document.getElementById("confirmPickupBtn");
