@@ -1030,6 +1030,59 @@ def renter_choose_payment(
         f"Booking '{item.title}'. Waiting for renter to pay.",
         f"/bookings/flow/{bk.id}", "booking"
     )
+        # -----------------------------
+    # Email to owner (CASH chosen)
+    # -----------------------------
+    try:
+        from .email_service import send_email
+
+        owner = db.get(User, bk.owner_id)
+        renter = db.get(User, bk.renter_id)
+
+        subject = "The renter chose Cash payment"
+        title_txt = "The renter chose Cash 💵"
+        msg_txt = (
+            f"The renter has chosen CASH payment for the booking on '{item.title}'. "
+            f"They will pay on pickup day."
+        )
+
+        link = f"/bookings/flow/{bk.id}"
+
+        html = f"""
+        <div style='font-family:Arial,Helvetica,sans-serif; line-height:1.6; color:#111;'>
+            <img src="https://sevor.net/static/img/sevor-logo.png"
+                 style="width:140px; margin-bottom:20px;" />
+
+            <h2 style='color:#4f46e5;'>{title_txt}</h2>
+
+            <p>{msg_txt}</p>
+
+            <p><b>Item:</b> {item.title}</p>
+
+            <p>
+                <a href="https://sevor.net{link}"
+                   style="padding:12px 18px;background:#4f46e5;color:white;
+                          text-decoration:none;border-radius:8px;display:inline-block;">
+                    View booking details
+                </a>
+            </p>
+
+            <br>
+            <p style='color:#888;font-size:13px;'>Sevor — Rent anything worldwide</p>
+        </div>
+        """
+
+        if owner and owner.email:
+            send_email(
+                to=owner.email,
+                subject=subject,
+                html_body=html,
+                text_body=msg_txt,
+            )
+
+    except Exception as e:
+        print("EMAIL SEND ERROR (CASH PAYMENT):", e)
+
     renter = db.get(User, bk.renter_id)
     return redirect_to_flow_with_loc(bk, renter)
 
