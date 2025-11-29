@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5" style="direction:ltr; text-align:left; max-width:700px;">
+
+  <div class="card shadow-sm p-4">
+    <h2 class="mb-3">Broadcast Sent Successfully</h2>
+
+    <p class="text-muted">
+      Your message has been delivered to <strong>{{ sent_to }}</strong> user(s).
+    </p>
+
+    <a href="/admin/broadcast" class="btn btn-dark mt-3">Send Another Message</a>
+    <a href="/admin" class="btn btn-outline-secondary mt-3 ms-2">Back to Dashboard</a>
+  </div>
+
+</div>
+{% endblock %}
