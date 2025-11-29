@@ -2,6 +2,9 @@
 from __future__ import annotations
 from typing import Optional
 from datetime import datetime
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 from fastapi import APIRouter, Depends, Request, HTTPException, Query
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -13,7 +16,65 @@ from .models import User, Notification
 
 router = APIRouter(tags=["notifications"])
 
+# ============================================================
+#                EMAIL SENDER (SMTP)
+# ============================================================
 
+SMTP_HOST = "mail.privateemail.com"   # Namecheap email server
+SMTP_PORT = 587
+SMTP_USER = "no-reply@sevor.net"      # تغيّر حسب إيميلك
+SMTP_PASS = "YOUR_PASSWORD_HERE"      # ضع كلمة مرور الإيميل
+
+
+def send_email_notification(to_email: str, subject: str, message: str):
+    """
+    ترسل إيميل بسيط HTML + TEXT
+    """
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["From"] = SMTP_USER
+        msg["To"] = to_email
+        msg["Subject"] = subject
+
+        html = f"""
+        <html>
+          <body style="font-family:Arial; font-size:15px;">
+            <h3>{subject}</h3>
+            <p>{message}</p>
+            <br>
+            <p>Sevor — Rent Anything Worldwide</p>
+          </body>
+        </html>
+        """
+
+        msg.attach(MIMEText(message, "plain"))
+        msg.attach(MIMEText(html, "html"))
+
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASS)
+            server.sendmail(SMTP_USER, to_email, msg.as_string())
+
+        print("EMAIL SENT →", to_email)
+
+    except Exception as e:
+        print("EMAIL ERROR:", e)
+
+
+def send_user_email(db: Session, user_id: int, subject: str, message: str):
+    """
+    تلتقط الإيميل من قاعدة البيانات وترسل الرسالة
+    """
+    u = db.get(User, user_id)
+    if not u or not getattr(u, "email", None):
+        print("❌ Cannot send email, user missing email:", user_id)
+        return
+    send_email_notification(u.email, subject, message)
+
+
+# ============================================================
+#                CURRENT USER
+# ============================================================
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
     uid = data.get("id")
@@ -28,7 +89,7 @@ def _json(data: dict) -> JSONResponse:
 
 
 # ============================================================
-#                     PUSH NOTIFICATION
+#                 PUSH + EMAIL NOTIFICATION
 # ============================================================
 def push_notification(
     db: Session,
@@ -39,6 +100,7 @@ def push_notification(
     kind: str = "system",
 ) -> Notification:
 
+    # === Push in database ===
     n = Notification(
         user_id=user_id,
         title=(title or "").strip()[:200],
@@ -50,10 +112,21 @@ def push_notification(
         opened_once=False,
         opened_at=None,
     )
-
     db.add(n)
     db.commit()
     db.refresh(n)
+
+    # === Email ===
+    try:
+        content = body or title
+        if url:
+            content += f"\n\nOpen here: https://sevor.net{url}"
+
+        send_user_email(db, user_id, title, content)
+
+    except Exception as e:
+        print("Email send error:", e)
+
     return n
 
 
@@ -194,6 +267,11 @@ def mark_read(
     db.commit()
 
     return _json({"ok": True})
+
+
+# ============================================================
+#                 OPEN NOTIFICATION
+# ============================================================
 @router.get("/notifications/open/{notif_id}")
 def open_notification(
     notif_id: int,
