@@ -18,10 +18,25 @@ from .items import _display_currency, fx_convert_smart
 
 # ===== Email helper =====
 BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
+# ===== Real Email Service (same as admin.py) =====
 try:
-    from .emailer import send_email as _templated_send_email
+    from .email_service import send_email as real_send_email
 except Exception:
-    _templated_send_email = None
+    real_send_email = None
+
+def send_payment_email(to_email: str, subject: str, html: str, text: str):
+    try:
+        if real_send_email:
+            return real_send_email(
+                to=to_email,
+                subject=subject,
+                html_body=html,
+                text_body=text
+            )
+    except:
+        pass
+    return False
+
 
 def _strip_html(html: str) -> str:
     try:
@@ -791,7 +806,6 @@ def start_checkout_deposit(
 
     return RedirectResponse(url=session.url, status_code=303)
 
-
 def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     import json
 
@@ -880,7 +894,6 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
             bk.owner_payout_amount = rent_native
             bk.owner_payout_status = "sent"
 
-        # If deposit already held → set status "paid"
         dep_ok = (bk.deposit_status == "held")
         rent_ok = (bk.online_status in ["authorized", "captured", "succeeded"])
 
@@ -905,18 +918,24 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
             "booking"
         )
 
-        # Email receipt
+        # -----------------------------
+        # EMAIL — Rent Payment Receipt
+        # -----------------------------
         try:
-            email = _user_email(db, bk.renter_id)
-            if email:
+            if renter and renter.email:
                 amount_txt = _fmt_money_cents(amount_total_cents, currency)
                 html, text = _compose_invoice_html(
                     bk=bk, renter=renter, item=item,
                     amount_txt=amount_txt, currency=currency,
                     pi_id=pi.id, charge_id=charge_id, when=when
                 )
-                send_email(email, f"🧾 Payment Receipt — Booking #{bk.id}", html, text)
-        except Exception:
+                send_payment_email(
+                    renter.email,
+                    f"🧾 Rent Payment Receipt — Booking #{bk.id}",
+                    html,
+                    text
+                )
+        except:
             pass
 
     # =====================================================
@@ -930,7 +949,6 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
         bk.deposit_status = "held"
         bk.deposit_currency = currency.upper()
 
-        # If rent already authorized → paid
         rent_ok = (bk.online_status in ["authorized", "captured", "succeeded"])
         dep_ok  = (bk.deposit_status == "held")
 
@@ -969,6 +987,26 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
                 "deposit"
             )
 
+        # -----------------------------
+        # EMAIL — Deposit Held
+        # -----------------------------
+        try:
+            if renter and renter.email:
+                html = f"""
+                <div style='font-family:Arial;line-height:1.6'>
+                    <h3>Deposit Held — Booking #{bk.id}</h3>
+                    <p>Your deposit has been successfully placed on hold.</p>
+                </div>
+                """
+                send_payment_email(
+                    renter.email,
+                    f"Deposit Held — Booking #{bk.id}",
+                    html,
+                    "Your deposit has been successfully held."
+                )
+        except:
+            pass
+
     # =====================================================
     #  C) FULL PAYMENT (RENT + DEPOSIT TOGETHER)
     # =====================================================
@@ -978,14 +1016,12 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
             bk.online_payment_intent_id = pi.id
             _set_deposit_pi_id(bk, pi.id)
 
-        # FULL PAYMENT ALWAYS:
         bk.online_status = "authorized"
         bk.deposit_status = "held"
         bk.status = "paid"
         bk.timeline_paid_at = datetime.utcnow()
         db.commit()
 
-        # Owner notification
         push_notification(
             db, bk.owner_id, "Full payment completed",
             f"Booking #{bk.id}: Rent paid + deposit held.",
@@ -993,7 +1029,6 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
             "booking"
         )
 
-        # Renter notification
         push_notification(
             db, bk.renter_id, "Payment successful",
             f"Rent and deposit paid for booking #{bk.id}.",
@@ -1001,7 +1036,25 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
             "booking"
         )
 
-
+        # -----------------------------
+        # EMAIL — Full Payment Receipt
+        # -----------------------------
+        try:
+            if renter and renter.email:
+                amount_txt = _fmt_money_cents(amount_total_cents, currency)
+                html, text = _compose_invoice_html(
+                    bk=bk, renter=renter, item=item,
+                    amount_txt=amount_txt, currency=currency,
+                    pi_id=pi.id, charge_id=charge_id, when=when
+                )
+                send_payment_email(
+                    renter.email,
+                    f"🧾 Full Payment Receipt — Booking #{bk.id}",
+                    html,
+                    text
+                )
+        except:
+            pass
 
     # END IF
 
