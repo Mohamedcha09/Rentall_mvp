@@ -1400,7 +1400,71 @@ def dm_nudge_renter(
             title="Request to Upload Deposit Evidence",
             body=msg,
             url=link,
+        )# ==== EMAIL: DM nudged renter to upload evidence ====
+try:
+    renter = db.get(User, bk.renter_id)
+    owner = db.get(User, bk.owner_id)
+
+    if renter and renter.email:
+        subject = f"Action required — Upload your deposit evidence (Booking #{bk.id})"
+
+        text_body = (
+            f"Dear {renter.first_name if renter else 'Renter'},\n\n"
+            f"The deposit manager is requesting that you upload your evidence for booking #{bk.id}.\n"
+            f"Please provide your photos/videos as soon as possible.\n\n"
+            f"Upload here: {BASE_URL}/deposits/{bk.id}/evidence/form"
         )
+
+        html_body = f"""
+        <div style="font-family:Arial,Helvetica,sans-serif; background:#f1f5f9; padding:30px;">
+            <div style="max-width:600px; margin:auto; background:white; padding:30px;
+                        border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.08);">
+
+                <div style="text-align:center; margin-bottom:25px;">
+                    <img src="https://sevor.net/static/img/sevor-logo.png" 
+                         style="width:120px; opacity:0.95;" />
+                </div>
+
+                <h2 style="color:#dc2626; margin-bottom:12px; text-align:center;">
+                    Action Required ❗
+                </h2>
+
+                <p style="font-size:15px; color:#444;">
+                    The deposit manager has requested that you upload your deposit evidence for 
+                    booking <b>#{bk.id}</b>.
+                </p>
+
+                <p style="font-size:15px; color:#444;">
+                    Please upload your photos/videos as soon as possible to avoid delays in your case.
+                </p>
+
+                <div style="text-align:center; margin:30px 0;">
+                    <a href="{BASE_URL}/deposits/{bk.id}/evidence/form" 
+                       style="background:#dc2626; color:white; padding:14px 24px; 
+                              text-decoration:none; border-radius:8px; font-size:16px;">
+                        Upload Evidence
+                    </a>
+                </div>
+
+                <hr style="border:none; border-top:1px solid #eee; margin:30px 0;">
+
+                <p style="font-size:13px; color:#888; text-align:center;">
+                    Sevor — Rent anything worldwide
+                </p>
+            </div>
+        </div>
+        """
+
+        send_email(
+            to=renter.email,
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body,
+        )
+
+except Exception as e:
+    print("EMAIL ERROR (DM NUDGE):", e)
+
     except Exception:
         pass
 
@@ -1493,7 +1557,70 @@ def renter_pickup_proof_upload(
             db, bk.owner_id, "Picked Up",
             f"The renter confirmed pickup for booking #{bk.id} and uploaded pickup photos.",
             f"/bookings/flow/{bk.id}", "deposit"
+        )# ==== EMAIL: Notify owner about pickup proof ====
+try:
+    owner = db.get(User, bk.owner_id)
+    renter = db.get(User, bk.renter_id)
+
+    if owner and owner.email:
+        subject = f"Pickup confirmed — Booking #{bk.id}"
+
+        text_body = (
+            f"The renter {renter.first_name if renter else ''} "
+            f"has confirmed pickup for your item '{bk.id}' and uploaded pickup photos.\n"
+            f"Open booking: {BASE_URL}/bookings/flow/{bk.id}"
         )
+
+        html_body = f"""
+        <div style="font-family:Arial,Helvetica,sans-serif; background:#f8fafc; padding:30px;">
+            <div style="max-width:600px; margin:auto; background:white; padding:30px;
+                        border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.06);">
+                
+                <div style="text-align:center; margin-bottom:25px;">
+                    <img src="https://sevor.net/static/img/sevor-logo.png" 
+                         style="width:120px; opacity:0.95;" />
+                </div>
+
+                <h2 style="color:#16a34a; margin-bottom:10px; text-align:center;">
+                    Pickup Confirmed 🎉
+                </h2>
+
+                <p style="font-size:15px; color:#444;">
+                    The renter <b>{renter.first_name if renter else 'The renter'}</b> has confirmed pickup
+                    and uploaded the required pickup photos for booking <b>#{bk.id}</b>.
+                </p>
+
+                <p style="font-size:15px; color:#444;">
+                    You can now review the photos and continue the rental process.
+                </p>
+
+                <div style="text-align:center; margin:30px 0;">
+                    <a href="{BASE_URL}/bookings/flow/{bk.id}" 
+                       style="background:#16a34a; color:white; padding:14px 24px; 
+                              text-decoration:none; border-radius:8px; font-size:16px;">
+                        Open Booking
+                    </a>
+                </div>
+
+                <hr style="border:none; border-top:1px solid #eee; margin:30px 0;">
+
+                <p style="font-size:13px; color:#888; text-align:center;">
+                    Sevor — Rent anything worldwide
+                </p>
+            </div>
+        </div>
+        """
+
+        send_email(
+            to=owner.email,
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body,
+        )
+
+except Exception as e:
+    print("EMAIL ERROR (pickup proof):", e)
+
     except Exception:
         pass
 
@@ -1549,7 +1676,70 @@ def renter_return_proof_upload(
             db, bk.owner_id, "Returned",
             f"The renter returned the item and uploaded return photos for booking #{bk.id}.",
             f"/bookings/flow/{bk.id}", "deposit"
+        )# ==== EMAIL: Notify owner about return proof ====
+try:
+    owner = db.get(User, bk.owner_id)
+    renter = db.get(User, bk.renter_id)
+
+    if owner and owner.email:
+        subject = f"Item returned — Booking #{bk.id}"
+
+        text_body = (
+            f"The renter {renter.first_name if renter else ''} "
+            f"returned the item and uploaded return photos for booking #{bk.id}.\n"
+            f"Open booking: {BASE_URL}/bookings/flow/{bk.id}"
         )
+
+        html_body = f"""
+        <div style="font-family:Arial,Helvetica,sans-serif; background:#f1f5f9; padding:30px;">
+            <div style="max-width:600px; margin:auto; background:white; padding:30px;
+                        border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.06);">
+                
+                <div style="text-align:center; margin-bottom:25px;">
+                    <img src="https://sevor.net/static/img/sevor-logo.png" 
+                         style="width:120px; opacity:0.95;" />
+                </div>
+
+                <h2 style="color:#2563eb; margin-bottom:10px; text-align:center;">
+                    Item Returned ✔️
+                </h2>
+
+                <p style="font-size:15px; color:#444;">
+                    The renter <b>{renter.first_name if renter else 'The renter'}</b> has returned your item
+                    and uploaded the required return photos for booking <b>#{bk.id}</b>.
+                </p>
+
+                <p style="font-size:15px; color:#444;">
+                    You can now review the return photos and finalize the deposit review.
+                </p>
+
+                <div style="text-align:center; margin:30px 0;">
+                    <a href="{BASE_URL}/bookings/flow/{bk.id}" 
+                       style="background:#2563eb; color:white; padding:14px 24px; 
+                              text-decoration:none; border-radius:8px; font-size:16px;">
+                        View Booking Details
+                    </a>
+                </div>
+
+                <hr style="border:none; border-top:1px solid #eee; margin:30px 0;">
+
+                <p style="font-size:13px; color:#888; text-align:center;">
+                    Sevor — Rent anything worldwide
+                </p>
+            </div>
+        </div>
+        """
+
+        send_email(
+            to=owner.email,
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body,
+        )
+
+except Exception as e:
+    print("EMAIL ERROR (return proof):", e)
+
     except Exception:
         pass
 
