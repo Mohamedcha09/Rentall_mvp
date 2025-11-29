@@ -1134,14 +1134,17 @@ def renter_confirm_received(
 
     item = db.get(Item, bk.item_id)
 
-    # 👇 الآن فقط نغيّر حالة البوكنغ
+    # 👇 نحدّث حالة الحجز
     bk.status = "picked_up"
     bk.picked_up_at = datetime.utcnow()
     bk.timeline_renter_received_at = datetime.utcnow()
     db.commit()
 
-    # إشعارات
+    # ======================
+    # PUSH NOTIFICATIONS
+    # ======================
     if item:
+        # إشعار للمالك
         push_notification(
             db,
             bk.owner_id,
@@ -1151,6 +1154,7 @@ def renter_confirm_received(
             "booking",
         )
 
+        # إشعار للمستأجر
         push_notification(
             db,
             bk.renter_id,
@@ -1160,8 +1164,101 @@ def renter_confirm_received(
             "booking",
         )
 
+    # ===========================================
+    # EMAIL — Owner (Renter picked up the item)
+    # ===========================================
+    try:
+        from .email_service import send_email
+        owner_user = db.get(User, bk.owner_id)
+        renter_user = db.get(User, bk.renter_id)
+
+        if owner_user and owner_user.email:
+            subject = f"Renter picked up your item — Booking #{bk.id}"
+            msg_txt = (
+                f"The renter '{renter_user.first_name if renter_user else ''}' "
+                f"picked up your item '{item.title}'."
+            )
+
+            html = f"""
+            <div style='font-family:Arial,Helvetica,sans-serif; line-height:1.6; color:#111;'>
+                <img src="https://sevor.net/static/img/sevor-logo.png"
+                     style="width:120px; margin-bottom:20px;" />
+
+                <h2 style="color:#ea580c;">Item picked up</h2>
+                <p>{msg_txt}</p>
+
+                <p>
+                    <a href="https://sevor.net/bookings/flow/{bk.id}"
+                       style="padding:12px 18px; background:#ea580c; color:white;
+                              border-radius:8px; text-decoration:none; display:inline-block;">
+                        Open booking
+                    </a>
+                </p>
+
+                <br>
+                <p style='color:#888;font-size:13px;'>Sevor — Rent anything worldwide</p>
+            </div>
+            """
+
+            send_email(
+                to=owner_user.email,
+                subject=subject,
+                html_body=html,
+                text_body=msg_txt,
+            )
+
+    except Exception as e:
+        print("EMAIL ERROR (OWNER PICKED UP):", e)
+
+    # ===========================================
+    # EMAIL — Renter (Pickup confirmed)
+    # ===========================================
+    try:
+        from .email_service import send_email
+        renter_user = db.get(User, bk.renter_id)
+
+        if renter_user and renter_user.email:
+            subject = f"Pickup confirmed — Booking #{bk.id}"
+            title_txt = "Enjoy your rental! 🎉"
+            msg_txt = (
+                f"You picked up '{item.title}'. Make sure to return it on time "
+                f"to avoid any extra charges."
+            )
+
+            html = f"""
+            <div style='font-family:Arial,Helvetica,sans-serif; line-height:1.6; color:#111;'>
+                <img src="https://sevor.net/static/img/sevor-logo.png"
+                     style="width:120px; margin-bottom:20px;" />
+
+                <h2 style="color:#2563eb;">{title_txt}</h2>
+                <p>{msg_txt}</p>
+
+                <p>
+                    <a href="https://sevor.net/bookings/flow/{bk.id}"
+                       style="padding:12px 18px; background:#2563eb; color:white;
+                              border-radius:8px; text-decoration:none; display:inline-block;">
+                        View booking details
+                    </a>
+                </p>
+
+                <br>
+                <p style='color:#888;'>Sevor — Rent anything worldwide</p>
+            </div>
+            """
+
+            send_email(
+                to=renter_user.email,
+                subject=subject,
+                html_body=html,
+                text_body=msg_txt,
+            )
+
+    except Exception as e:
+        print("EMAIL ERROR (RENTER PICKUP CONFIRMED):", e)
+
     renter = db.get(User, bk.renter_id)
     return redirect_to_flow_with_loc(bk, renter)
+
 
 
 # ========================================
