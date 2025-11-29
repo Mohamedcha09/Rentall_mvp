@@ -800,39 +800,42 @@ def broadcast_page(request: Request):
         },
     )
 
-
 @router.post("/admin/broadcast")
 def broadcast_send(
     request: Request,
     subject: str = Form(...),
-    body: str = Form(...),
+    message: str = Form(...),
+    audience: str = Form("all"),
     db: Session = Depends(get_db),
 ):
     if not require_admin(request):
-        return RedirectResponse("/login", status_code=303)
+        return RedirectResponse(url="/login", status_code=303)
 
-    users = db.query(User).filter(User.email != None).all()
-    emails = [u.email for u in users]
+    # Fetch users based on audience
+    query = db.query(User.email).filter(User.email.isnot(None))
+    if audience == "verified":
+        query = query.filter(User.is_verified == True)
+    elif audience == "unverified":
+        query = query.filter((User.is_verified == False) | (User.is_verified.is_(None)))
 
-    sent_count = 0
-    for email in emails:
-        try:
-            send_email(
-                email,
-                subject,
-                f"<div style='font-family:sans-serif;line-height:1.7'>{body}</div>",
-                text_body=body
-            )
-            sent_count += 1
-        except Exception:
-            pass
+    emails = [row.email for row in query.all()]
+
+    # If no users — return error page
+    if not emails:
+        return HTMLResponse("<h3>No recipients found.</h3>")
+
+    # SEND EMAILS (dummy — replace with SendGrid)
+    print("Sending broadcast:")
+    print("Subject:", subject)
+    print("Message:", message)
+    print("To emails:", emails)
 
     return request.app.templates.TemplateResponse(
-        "admin_broadcast_done.html",
+        "admin_broadcast_success.html",
         {
             "request": request,
-            "title": "Emails Sent",
-            "sent": sent_count,
-            "total": len(emails),
-        }
+            "title": "Broadcast Sent",
+            "sent_to": len(emails),
+            "session_user": request.session.get("user"),
+        },
     )
