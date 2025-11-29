@@ -822,6 +822,52 @@ def owner_decision(
         bk.rejected_at = datetime.utcnow()
         bk.timeline_owner_decided_at = datetime.utcnow()
         db.commit()
+            # -----------------------------
+    # Email to renter (REJECTED)
+    # -----------------------------
+    try:
+        from .email_service import send_email
+
+        subject = "Your booking was rejected"
+        title_txt = "Your booking was rejected ❌"
+        msg_txt = f"Unfortunately, your booking request for '{item.title}' was rejected by the owner."
+
+        html = f"""
+        <div style='font-family:Arial,Helvetica,sans-serif; line-height:1.6; color:#111;'>
+
+            <img src="https://sevor.net/static/img/sevor-logo.png"
+                 style="width:140px; margin-bottom:20px;" />
+
+            <h2 style='color:#e11d48;'>{title_txt}</h2>
+
+            <p>{msg_txt}</p>
+
+            <p><b>Item:</b> {item.title}</p>
+
+            <p>
+                <a href="https://sevor.net/bookings/flow/{bk.id}"
+                   style="padding:12px 18px;background:#4f46e5;color:white;
+                          text-decoration:none;border-radius:8px;display:inline-block;">
+                    View booking details
+                </a>
+            </p>
+
+            <br>
+            <p style='color:#888;font-size:13px;'>Sevor — Rent anything worldwide</p>
+        </div>
+        """
+
+        renter = db.get(User, bk.renter_id)
+        send_email(
+            to=renter.email,
+            subject=subject,
+            html_body=html,
+            text_body=msg_txt
+        )
+
+    except Exception as e:
+        print("EMAIL SEND ERROR:", e)
+
         push_notification(
             db, bk.renter_id, "Booking rejected",
             f"Your request on '{item.title}' was rejected.",
