@@ -1008,56 +1008,68 @@ def renter_choose_payment(
 
     item = db.get(Item, bk.item_id)
 
+    # ===========================================
+    # PAYMENT METHOD: CASH
+    # ===========================================
     if method == "cash":
         bk.payment_method = "cash"
         bk.payment_status = "unpaid"
         bk.status = "paid"
         bk.timeline_payment_method_chosen_at = datetime.utcnow()
         db.commit()
+
+        # إشعار داخل Sevor للمالك
         push_notification(
             db, bk.owner_id, "Renter chose cash",
             f"Booking '{item.title}'. Payment will be made on pickup.",
             f"/bookings/flow/{bk.id}", "booking"
         )
+
+        # ===== EMAIL NOTIFICATION TO OWNER =====
+        try:
+            from .email_service import send_email
+            owner = db.get(User, bk.owner_id)
+            renter = db.get(User, bk.renter_id)
+
+            if owner and owner.email:
+                subject = f"Booking #{bk.id} — Renter chose cash"
+                html_body = f"""
+                <div style='font-family:Arial;line-height:1.6'>
+                    <h3>Cash Payment Selected</h3>
+                    <p>The renter has chosen to pay in cash for booking #{bk.id}.</p>
+                    <p><b>Item:</b> {item.title}</p>
+                    <p><b>Renter:</b> {renter.first_name if renter else 'User'}</p>
+                    <p>Payment will be completed during pickup.</p>
+                </div>
+                """
+                text_body = (
+                    f"Cash Payment Selected\n\n"
+                    f"Booking #{bk.id}\n"
+                    f"Item: {item.title}\n"
+                    f"Renter: {renter.first_name if renter else 'User'}\n"
+                    f"Payment will be completed during pickup."
+                )
+
+                send_email(owner.email, subject, html_body, text_body)
+
+        except Exception as e:
+            print("EMAIL SEND ERROR (cash):", e)
+
         renter = db.get(User, bk.renter_id)
         return redirect_to_flow_with_loc(bk, renter)
 
+    # ===========================================
+    # PAYMENT METHOD: ONLINE
+    # ===========================================
     bk.payment_method = "online"
     bk.timeline_payment_method_chosen_at = datetime.utcnow()
     db.commit()
+
     push_notification(
         db, bk.owner_id, "Online payment chosen",
         f"Booking '{item.title}'. Waiting for renter to pay.",
         f"/bookings/flow/{bk.id}", "booking"
     )
-    # ========== EMAIL NOTIFICATION ==========
-try:
-    owner = db.get(User, bk.owner_id)
-    renter = db.get(User, bk.renter_id)
-    email = owner.email if owner else None
-
-    if email:
-        subject = f"Booking #{bk.id} — Renter chose cash"
-        html_body = f"""
-        <div style='font-family:Arial;line-height:1.6'>
-          <h3>Cash Payment Selected</h3>
-          <p>The renter has chosen to pay in cash for booking #{bk.id}.</p>
-          <p><b>Item:</b> {item.title}</p>
-          <p><b>Renter:</b> {renter.first_name if renter else 'User'}</p>
-          <p>Payment will be completed during pickup.</p>
-        </div>
-        """
-        text_body = (
-            f"Cash Payment Selected\n\n"
-            f"Booking #{bk.id}\n"
-            f"Item: {item.title}\n"
-            f"Renter: {renter.first_name if renter else 'User'}\n"
-            f"Payment will be completed during pickup."
-        )
-
-        send_email(email, subject, html_body, text_body)
-except Exception:
-    pass
 
     renter = db.get(User, bk.renter_id)
     return redirect_to_flow_with_loc(bk, renter)
