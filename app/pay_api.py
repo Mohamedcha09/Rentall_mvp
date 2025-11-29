@@ -790,7 +790,6 @@ def start_checkout_deposit(
     db.commit()
 
     return RedirectResponse(url=session.url, status_code=303)
-
 def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     import json
 
@@ -967,45 +966,6 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     # =====================================================
     elif kind == "all":
 
-        # ===== EMAIL to owner =====
-        try:
-            owner = db.get(User, bk.owner_id)
-            renter = db.get(User, bk.renter_id)
-            email = owner.email if owner else None
-
-            if email:
-                subject = f"Booking #{bk.id} — Full payment completed"
-                html_body = f"""
-                <div style='font-family:Arial;line-height:1.6'>
-                  <h2>Full Payment Completed 🎉</h2>
-                  <p>The renter has completed the full payment for booking #{bk.id}.</p>
-                  <p><b>Item:</b> {item.title if item else ''}</p>
-                  <p><b>Renter:</b> {renter.first_name if renter else 'Customer'}</p>
-                  <p>The rent is paid and the deposit is now on hold.</p>
-                  <p>You can view the booking here:</p>
-                  <p><a href="https://sevor.net/bookings/flow/{bk.id}"
-                        style="background:#4f46e5;color:#fff;padding:10px 16px;
-                               border-radius:8px;text-decoration:none;">
-                        Open booking
-                    </a></p>
-                </div>
-                """
-
-                text_body = (
-                    f"Full Payment Completed\n\n"
-                    f"Booking #{bk.id}\n"
-                    f"Rent paid and deposit held.\n"
-                    f"Item: {item.title if item else ''}\n"
-                    f"Renter: {renter.first_name if renter else 'Customer'}\n"
-                    f"View booking: https://sevor.net/bookings/flow/{bk.id}"
-                )
-
-                send_email(email, subject, html_body, text_body)
-
-        except Exception as e:
-            print("EMAIL SEND ERROR (FULL PAYMENT):", e)
-
-        # ===== UPDATE STATUS =====
         if pi:
             bk.online_payment_intent_id = pi.id
             _set_deposit_pi_id(bk, pi.id)
@@ -1030,6 +990,8 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
             "booking"
         )
 
+
+    # END IF
 
 # ============================================================
 # (E) Capture the rent amount manually
