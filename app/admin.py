@@ -799,7 +799,6 @@ def broadcast_page(request: Request):
             "session_user": request.session.get("user"),  # ← مهم جداً
         },
     )
-
 @router.post("/admin/broadcast")
 def broadcast_send(
     request: Request,
@@ -811,8 +810,11 @@ def broadcast_send(
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
+    # ---------------------------
     # Fetch users based on audience
+    # ---------------------------
     query = db.query(User.email).filter(User.email.isnot(None))
+
     if audience == "verified":
         query = query.filter(User.is_verified == True)
     elif audience == "unverified":
@@ -820,16 +822,40 @@ def broadcast_send(
 
     emails = [row.email for row in query.all()]
 
-    # If no users — return error page
     if not emails:
         return HTMLResponse("<h3>No recipients found.</h3>")
 
-    # SEND EMAILS (dummy — replace with SendGrid)
-    print("Sending broadcast:")
-    print("Subject:", subject)
-    print("Message:", message)
-    print("To emails:", emails)
+    # ---------------------------
+    # SEND EMAIL VIA SENDGRID
+    # ---------------------------
+    html_template = f"""
+    <div style="font-family:Arial, sans-serif; padding:20px; line-height:1.7">
+        <h2 style="color:#5b5bfd;">📢 Announcement from Sevor</h2>
+        <p>{message}</p>
 
+        <br><br>
+        <hr style="opacity:0.3">
+
+        <small style="color:#888;">
+            You are receiving this email because you have an active Sevor account.<br>
+            If you no longer want to receive announcements, reply STOP.
+        </small>
+    </div>
+    """
+
+    sent_ok = send_email(
+        to=emails,
+        subject=subject,
+        html_body=html_template,
+        text_body=message
+    )
+
+    if not sent_ok:
+        return HTMLResponse("<h3>Error sending emails — check SendGrid logs.</h3>")
+
+    # ---------------------------
+    # SUCCESS PAGE
+    # ---------------------------
     return request.app.templates.TemplateResponse(
         "admin_broadcast_success.html",
         {
