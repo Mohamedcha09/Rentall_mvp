@@ -15,6 +15,8 @@ router = APIRouter()
 
 BASE_URL = (os.getenv("SITE_URL") or os.getenv("BASE_URL") or "http://localhost:8000").rstrip("/")
 
+LOGO_URL  = f"{BASE_URL}/static/img/sevor-logo.png"
+BRAND_URL = f"{BASE_URL}/static/images/base.png"
 
 # ---------------------------
 # Helpers
@@ -799,6 +801,8 @@ def broadcast_page(request: Request):
             "session_user": request.session.get("user"),  # ← مهم جداً
         },
     )
+
+
 @router.post("/admin/broadcast")
 def broadcast_send(
     request: Request,
@@ -810,11 +814,8 @@ def broadcast_send(
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
-    # ---------------------------
-    # Fetch users based on audience
-    # ---------------------------
+    # 1) اختَر الجمهور
     query = db.query(User.email).filter(User.email.isnot(None))
-
     if audience == "verified":
         query = query.filter(User.is_verified == True)
     elif audience == "unverified":
@@ -822,62 +823,125 @@ def broadcast_send(
 
     emails = [row.email for row in query.all()]
 
+    # لو ما في ولا إيميل
     if not emails:
-        return HTMLResponse("<h3>No recipients found.</h3>")
+        return request.app.templates.TemplateResponse(
+            "admin_broadcast.html",
+            {
+                "request": request,
+                "title": "Broadcast Email",
+                "session_user": request.session.get("user"),
+                "error": "No recipients found for this audience.",
+            },
+            status_code=400,
+        )
 
-    # ---------------------------
-    # SEND EMAIL VIA SENDGRID
-    # ---------------------------
-    html_template = f"""
-<div style='background:#f5f6fa;padding:35px 15px;font-family:Arial,sans-serif;'>
+    # 2) حضّر النصوص
+    safe_subject = (subject or "").strip() or "📢 Announcement from Sevor"
+    plain_text = (message or "").strip()
+    msg_html = (message or "").replace("\n", "<br>")
 
-  <div style='max-width:650px;margin:auto;background:#ffffff;
-              border-radius:14px;overflow:hidden;
-              box-shadow:0 4px 14px rgba(0,0,0,0.08);'>
+    year = datetime.utcnow().year
+    home_url = f"{BASE_URL}/"
+    logo = LOGO_URL
+    brand = BRAND_URL
 
-    <!-- HEADER -->
-    <div style='padding:18px 22px; background:#5b5bfd; color:white; display:flex; align-items:center;'>
-      <img src="https://sevor.net/static/img/sevor-logo.png" style="height:38px;margin-right:12px;border-radius:8px;">
-      <span style="font-size:20px;font-weight:700;">Sevor</span>
-    </div>
+    # 3) HTML ديزاين بسيط + لوغو من فوق
+    html_body = f"""<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{safe_subject}</title>
+</head>
+<body style="margin:0;background:#0b0f1a;color:#e5e7eb;
+             font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
 
-    <!-- BODY -->
-    <div style='padding:28px 26px; color:#333; line-height:1.7; font-size:15px;'>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+         style="padding:24px 12px;background:#0b0f1a;">
+    <tr>
+      <td align="center">
 
-      <h2 style='margin-top:0;color:#5b5bfd;font-size:22px;font-weight:700;'>
-        📢 Announcement
-      </h2>
+        <table role="presentation" width="640" cellpadding="0" cellspacing="0"
+               style="width:100%;max-width:640px;border-radius:20px;overflow:hidden;
+                      background:#0f172a;border:1px solid #1f2937;">
 
-      <p>{message}</p>
+          <!-- Header مع اللوغو -->
+          <tr>
+            <td style="padding:18px 22px;
+                       background:linear-gradient(90deg,#111827,#0b1220);">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="left">
+                    <img src="{logo}" alt="Sevor logo"
+                         style="height:32px;border-radius:8px;display:block;" />
+                  </td>
+                  <td align="right"
+                      style="font-size:13px;color:#9ca3af;">
+                    Announcement from <span style="color:#e5e7eb;font-weight:600;">Sevor</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-    </div>
+          <!-- محتوى الرسالة -->
+          <tr>
+            <td style="padding:26px 24px;">
+              <h1 style="margin:0 0 12px;font-size:22px;color:#ffffff;
+                         letter-spacing:0.02em;">
+                {safe_subject}
+              </h1>
 
-    <!-- FOOTER -->
-    <div style='padding:18px 26px; background:#fafafa; border-top:1px solid #e5e5e5;
-                color:#777;font-size:12px; line-height:1.5;'>
-      You received this email because you have a Sevor account.<br>
-      If you no longer want to receive announcements, reply STOP.
-    </div>
+              <div style="margin:8px 0 18px;height:1px;background:#1f2937;"></div>
 
-  </div>
+              <div style="font-size:15px;line-height:1.8;color:#e5e7eb;">
+                {msg_html}
+              </div>
 
-</div>
-"""
+              <p style="margin:24px 0 0;font-size:13px;color:#9ca3af;">
+                You are receiving this email because you have an active Sevor account.
+                If you no longer want to receive announcements, reply <b>STOP</b>.
+              </p>
 
+              <p style="margin:20px 0 0;font-size:13px;">
+                <a href="{home_url}"
+                   style="display:inline-block;padding:10px 18px;
+                          border-radius:999px;background:#6366f1;
+                          color:#ffffff;text-decoration:none;font-weight:600;">
+                  Open Sevor
+                </a>
+              </p>
+            </td>
+          </tr>
 
-    sent_ok = send_email(
+          <!-- Footer صغير -->
+          <tr>
+            <td style="padding:14px 22px;background:#020617;
+                       font-size:11px;color:#6b7280;text-align:center;">
+              &copy; {year} Sevor. All rights reserved.
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+
+    # 4) إرسال الإيميل عبر SendGrid
+    from .email_service import send_email
+    ok = send_email(
         to=emails,
-        subject=subject,
-        html_body=html_template,
-        text_body=message
+        subject=safe_subject,
+        html_body=html_body,
+        text_body=plain_text or safe_subject,
     )
+    print("Broadcast send status:", ok, "to", len(emails), "users")
 
-    if not sent_ok:
-        return HTMLResponse("<h3>Error sending emails — check SendGrid logs.</h3>")
-
-    # ---------------------------
-    # SUCCESS PAGE
-    # ---------------------------
+    # 5) صفحة النجاح
     return request.app.templates.TemplateResponse(
         "admin_broadcast_success.html",
         {
