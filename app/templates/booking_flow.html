@@ -641,6 +641,19 @@
               <button type="button" id="returnCaptureBtn" class="btn-camera">
                 <i class="bi bi-camera"></i> Capture 6 photos with camera, then upload & go to rating
               </button>
+                      <!-- Nouveau : form + bouton Confirm Return -->
+        <form id="returnConfirmForm"
+              method="post"
+              action="/bookings/{{ booking.id }}/mark-returned"></form>
+
+        <button type="button"
+                id="confirmReturnBtn"
+                class="btn btn-success w-100 mt-2"
+                style="display:none;"
+                onclick="document.getElementById('returnConfirmForm').submit();">
+          ✔ Confirm Return
+        </button>
+
 
               <div id="returnCaptureStatus" class="k small d-flex align-items-center justify-content-between">
                 <span class="num-ltr" id="returnCount">0/6</span>
@@ -1191,14 +1204,25 @@
 
       fetch(opts.postUrl, { method:'POST', body: fd, credentials:'same-origin' })
         .then(function(r){ if(!r.ok) throw new Error('upload failed'); return r.text(); })
-        .then(function(){
-            btn.disabled = true;
-            btn.innerHTML = "✔ تم رفع الصور";
 
-            // إظهار زر Confirm Pickup
-            var confirmBtn = document.getElementById("confirmPickupBtn");
-            if (confirmBtn) confirmBtn.style.display = "block";
-            })
+
+        .then(function(){
+    uploading = false;
+    window.__CAPTURE_ACTIVE__ = false;
+    setMsg('Upload completed.');
+
+    btn.disabled = true;
+    btn.innerHTML = "✔ تم رفع الصور";
+
+    // استدعاء دالة بعد الرفع (Pickup أو Return)
+    if (typeof opts.onUploadDone === 'function') {
+        try { opts.onUploadDone(); } catch (e) {}
+    }
+})
+
+
+
+            
         .catch(function(){
           uploading = false;
           window.__CAPTURE_ACTIVE__ = false;
@@ -1249,10 +1273,15 @@
     countId:  'returnCount',
     postUrl:  '/bookings/{{ booking.id }}/return-proof-upload?next=/reviews/renter/{{ booking.id }}',
     nextUrl:  '/reviews/renter/{{ booking.id }}',
-    prefix:   'r'
-  });
+    prefix:   'r',
 
-})();
+    // 👇 بعد رفع الصور يظهر زر تأكيد الإرجاع
+    onUploadDone: function () {
+      var btn = document.getElementById("confirmReturnBtn");
+      if (btn) btn.style.display = "block";
+    }
+});
+
 </script>
 
 
