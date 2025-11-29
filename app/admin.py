@@ -829,19 +829,41 @@ def broadcast_send(
     # SEND EMAIL VIA SENDGRID
     # ---------------------------
     html_template = f"""
-    <div style="font-family:Arial, sans-serif; padding:20px; line-height:1.7">
-        <h2 style="color:#5b5bfd;">📢 Announcement from Sevor</h2>
-        <p>{message}</p>
+<div style='background:#f5f6fa;padding:35px 15px;font-family:Arial,sans-serif;'>
 
-        <br><br>
-        <hr style="opacity:0.3">
+  <div style='max-width:650px;margin:auto;background:#ffffff;
+              border-radius:14px;overflow:hidden;
+              box-shadow:0 4px 14px rgba(0,0,0,0.08);'>
 
-        <small style="color:#888;">
-            You are receiving this email because you have an active Sevor account.<br>
-            If you no longer want to receive announcements, reply STOP.
-        </small>
+    <!-- HEADER -->
+    <div style='padding:18px 22px; background:#5b5bfd; color:white; display:flex; align-items:center;'>
+      <img src="https://sevor.net/static/img/sevor-logo.png" style="height:38px;margin-right:12px;border-radius:8px;">
+      <span style="font-size:20px;font-weight:700;">Sevor</span>
     </div>
-    """
+
+    <!-- BODY -->
+    <div style='padding:28px 26px; color:#333; line-height:1.7; font-size:15px;'>
+
+      <h2 style='margin-top:0;color:#5b5bfd;font-size:22px;font-weight:700;'>
+        📢 Announcement
+      </h2>
+
+      <p>{message}</p>
+
+    </div>
+
+    <!-- FOOTER -->
+    <div style='padding:18px 26px; background:#fafafa; border-top:1px solid #e5e5e5;
+                color:#777;font-size:12px; line-height:1.5;'>
+      You received this email because you have a Sevor account.<br>
+      If you no longer want to receive announcements, reply STOP.
+    </div>
+
+  </div>
+
+</div>
+"""
+
 
     sent_ok = send_email(
         to=emails,
