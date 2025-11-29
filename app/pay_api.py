@@ -1285,4 +1285,3 @@ except Exception as e:
     print("EMAIL ERROR (deposit decision):", e)
 
 
-    return flow_redirect(bk.id, db)
