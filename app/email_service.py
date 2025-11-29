@@ -1,25 +1,27 @@
 from __future__ import annotations
 import os
-import requests
+import smtplib
 from typing import Optional, Iterable, Union, List
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 try:
     from dotenv import load_dotenv
     load_dotenv()
-except Exception:
+except:
     pass
 
 # =========================
-# SendGrid settings from .env
+# SMTP Settings (Namecheap Private Email)
 # =========================
-SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
-FROM_EMAIL = (os.getenv("FROM_EMAIL", "") or "").split("#", 1)[0].strip()
-FROM_NAME  = (os.getenv("FROM_NAME", "Rentall Notifications") or "").strip()
-
-SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send"
+SMTP_HOST = os.getenv("SMTP_HOST", "mail.privateemail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+FROM_EMAIL = os.getenv("FROM_EMAIL", "")
+FROM_NAME  = os.getenv("FROM_NAME", "Sevor Notifications")
 
 def _normalize_list(value: Optional[Union[str, Iterable[str]]]) -> List[str]:
-    """Converts a single value or a list into a clean list without spaces"""
     if not value:
         return []
     if isinstance(value, str):
@@ -35,73 +37,56 @@ def send_email(
     bcc: Optional[Union[str, Iterable[str]]] = None,
     reply_to: Optional[str] = None,
 ) -> bool:
-    """
-    Send an email via the SendGrid API.
-    Returns True on success or False on failure.
-    """
-    if not SENDGRID_API_KEY:
-        print("[email_service] ❌ SENDGRID_API_KEY is missing from .env")
-        return False
-    if not FROM_EMAIL:
-        print("[email_service] ❌ FROM_EMAIL is missing from .env")
+
+    if not SMTP_USER or not SMTP_PASSWORD:
+        print("[email_service] ❌ SMTP credentials missing")
         return False
 
     recipients = _normalize_list(to)
     if not recipients:
-        print("[email_service] ⚠️ No recipient specified")
+        print("[email_service] ⚠️ No recipient")
         return False
 
-    payload = {
-        "personalizations": [
-            {
-                "to": [{"email": addr} for addr in recipients],
-                "subject": subject or "(No subject)",
-            }
-        ],
-        "from": {"email": FROM_EMAIL, "name": FROM_NAME},
-        "content": [
-            {"type": "text/plain", "value": text_body or ""},
-            {"type": "text/html", "value": html_body or ""},
-        ],
-    }
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = f"{FROM_NAME} <{FROM_EMAIL}>"
+    msg["To"] = ", ".join(recipients)
 
-    # Support cc / bcc
-    cc_list = _normalize_list(cc)
-    bcc_list = _normalize_list(bcc)
-    if cc_list:
-        payload["personalizations"][0]["cc"] = [{"email": a} for a in cc_list]
-    if bcc_list:
-        payload["personalizations"][0]["bcc"] = [{"email": a} for a in bcc_list]
+    if cc:
+        cc_list = _normalize_list(cc)
+        msg["Cc"] = ", ".join(cc_list)
+    else:
+        cc_list = []
 
-    # Reply-To
     if reply_to:
-        payload["reply_to"] = {"email": reply_to.strip()}
+        msg["Reply-To"] = reply_to
 
-    headers = {
-        "Authorization": f"Bearer {SENDGRID_API_KEY}",
-        "Content-Type": "application/json",
-    }
+    msg.attach(MIMEText(text_body or "", "plain"))
+    msg.attach(MIMEText(html_body or "", "html"))
 
     try:
-        r = requests.post(SENDGRID_API_URL, json=payload, headers=headers, timeout=15)
-        if r.status_code in (200, 202):
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.sendmail(
+                FROM_EMAIL,
+                recipients + cc_list + _normalize_list(bcc),
+                msg.as_string(),
+            )
             print(f"[email_service] ✅ Email sent to {recipients}")
             return True
-        else:
-            print(f"[email_service] ❌ SendGrid error {r.status_code}: {r.text[:400]}")
-            return False
+
     except Exception as e:
-        print(f"[email_service] ⚠️ Exception while sending email: {e}")
+        print(f"[email_service] ❌ SMTP error: {e}")
         return False
 
 
-# Quick local test (optional)
+# Optional test
 if __name__ == "__main__":
-    test_to = os.getenv("TEST_EMAIL_TO", FROM_EMAIL)
     ok = send_email(
-        to=test_to,
-        subject="📨 SendGrid Test — Rentall",
-        html_body="<h2>It works 🎉</h2><p>This is a test email via SendGrid.</p>",
-        text_body="It works! This is a test email via SendGrid."
+        to=FROM_EMAIL,
+        subject="SMTP TEST — Sevor",
+        html_body="<h2>SMTP is working 🎉</h2>",
+        text_body="SMTP works"
     )
-    print("Test send:", "OK ✅" if ok else "FAILED ❌")
+    print("Test send:", ok)
