@@ -790,6 +790,8 @@ def start_checkout_deposit(
     db.commit()
 
     return RedirectResponse(url=session.url, status_code=303)
+
+
 def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
     import json
 
@@ -878,16 +880,17 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
             bk.owner_payout_amount = rent_native
             bk.owner_payout_status = "sent"
 
-        if (bk.deposit_status or "").lower() == "held":
-            rent_ok_now = (bk.online_status in ["authorized", "captured", "succeeded"])
-            dep_ok_now  = (bk.deposit_status == "held")
+        # If deposit already held → set status "paid"
+        dep_ok = (bk.deposit_status == "held")
+        rent_ok = (bk.online_status in ["authorized", "captured", "succeeded"])
 
-            if rent_ok_now and dep_ok_now:
-                bk.status = "paid"
-                bk.timeline_paid_at = datetime.utcnow()
+        if rent_ok and dep_ok:
+            bk.status = "paid"
+            bk.timeline_paid_at = datetime.utcnow()
 
         db.commit()
 
+        # Notifications
         push_notification(
             db, bk.owner_id, "Rent payment successful",
             f"Booking #{bk.id}: Rent has been paid.",
@@ -902,6 +905,7 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
             "booking"
         )
 
+        # Email receipt
         try:
             email = _user_email(db, bk.renter_id)
             if email:
@@ -926,7 +930,11 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
         bk.deposit_status = "held"
         bk.deposit_currency = currency.upper()
 
-        if (bk.online_status or "").lower() == "authorized":
+        # If rent already authorized → paid
+        rent_ok = (bk.online_status in ["authorized", "captured", "succeeded"])
+        dep_ok  = (bk.deposit_status == "held")
+
+        if rent_ok and dep_ok:
             bk.status = "paid"
             bk.timeline_paid_at = datetime.utcnow()
             db.commit()
@@ -970,12 +978,14 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
             bk.online_payment_intent_id = pi.id
             _set_deposit_pi_id(bk, pi.id)
 
+        # FULL PAYMENT ALWAYS:
         bk.online_status = "authorized"
         bk.deposit_status = "held"
         bk.status = "paid"
         bk.timeline_paid_at = datetime.utcnow()
         db.commit()
 
+        # Owner notification
         push_notification(
             db, bk.owner_id, "Full payment completed",
             f"Booking #{bk.id}: Rent paid + deposit held.",
@@ -983,12 +993,14 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
             "booking"
         )
 
+        # Renter notification
         push_notification(
             db, bk.renter_id, "Payment successful",
             f"Rent and deposit paid for booking #{bk.id}.",
             _append_qs(f"/bookings/flow/{bk.id}", qs),
             "booking"
         )
+
 
 
     # END IF
