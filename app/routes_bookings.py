@@ -527,14 +527,11 @@ async def create_booking(
         price_per_day = item.price_per_day or 0
         total_amount = days * max(0, price_per_day)
 
-        # 🔥🔥 FIXED: snapshot must use injected DB
+        # 🔥 FX snapshot fix
         item_currency = (item.currency or "CAD").upper()
         disp_cur = _display_currency(request)
-
-        # 👇👇 هذا هو السطر السحري الذي يصلح الخلل النهائي
         utils_fx.inject_db_for_fx(db)
 
-        # بعد الحقن → snapshot يصبح صحيح 100%
         snapshot = utils_fx.make_fx_snapshot(
             db=db,
             amount_native=total_amount,
@@ -560,16 +557,13 @@ async def create_booking(
             "deposit_hold_id": None,
             "timeline_created_at": datetime.utcnow(),
 
-            # 🔥🔥 snapshot الصحيح
+            # snapshot
             "currency_native": snapshot["currency_native"],
             "amount_native": snapshot["amount_native"],
-
             "currency_display": snapshot["currency_display"],
             "amount_display": snapshot["amount_display"],
-
             "currency_paid": snapshot["currency_paid"],
             "fx_rate_native_to_paid": snapshot["fx_rate_native_to_paid"],
-
             "platform_fee_currency": snapshot["platform_fee_currency"],
         }
 
@@ -582,12 +576,66 @@ async def create_booking(
         db.commit()
         db.refresh(bk)
 
+        # -------------------------
+        # PUSH NOTIFICATION
+        # -------------------------
         push_notification(
             db, bk.owner_id, "New booking request",
             f"On '{item.title}'. Click to view details.",
             f"/bookings/flow/{bk.id}", "booking"
         )
-        
+
+        # ------------------------------------------------------
+        # EMAIL — Owner: New booking request
+        # ------------------------------------------------------
+        try:
+            from .email_service import send_email
+            owner_user = db.get(User, bk.owner_id)
+            renter_user = db.get(User, bk.renter_id)
+
+            if owner_user and owner_user.email:
+                subject = f"New booking request — Booking #{bk.id}"
+                msg_txt = (
+                    f"You have a new booking request for '{item.title}'. "
+                    f"Click the link below to view the details."
+                )
+
+                html = f"""
+                <div style='font-family:Arial,Helvetica,sans-serif; line-height:1.6; color:#111;'>
+                    <img src="https://sevor.net/static/img/sevor-logo.png"
+                         style="width:140px; margin-bottom:20px;" />
+
+                    <h2 style="color:#4f46e5;">New booking request</h2>
+
+                    <p>You have received a new booking request for:</p>
+
+                    <p><b>{item.title}</b></p>
+
+                    <p><b>From renter:</b> {renter_user.first_name if renter_user else "User"}</p>
+
+                    <p>
+                        <a href="https://sevor.net/bookings/flow/{bk.id}"
+                           style="padding:12px 18px; background:#4f46e5; color:white;
+                                  text-decoration:none; border-radius:8px; display:inline-block;">
+                            View booking details
+                        </a>
+                    </p>
+
+                    <br>
+                    <p style='color:#888;font-size:13px;'>Sevor — Rent anything worldwide</p>
+                </div>
+                """
+
+                send_email(
+                    to=owner_user.email,
+                    subject=subject,
+                    html_body=html,
+                    text_body=msg_txt,
+                )
+
+        except Exception as e:
+            print("EMAIL ERROR (NEW BOOKING REQUEST):", e)
+
         renter = db.get(User, bk.renter_id)
         return redirect_to_flow_with_loc(bk, renter)
 
@@ -599,6 +647,7 @@ async def create_booking(
             url=f"/bookings/new?item_id={item_id_for_redirect}&err=invalid",
             status_code=303
         )
+
 
 
 # ========================================
@@ -1069,7 +1118,57 @@ def renter_choose_payment(
         db, bk.owner_id, "Online payment chosen",
         f"Booking '{item.title}'. Waiting for renter to pay.",
         f"/bookings/flow/{bk.id}", "booking"
-    )
+    )    # ===========================================
+    # EMAIL — Owner (Online payment chosen)
+    # ===========================================
+    try:
+        from .email_service import send_email
+        owner = db.get(User, bk.owner_id)
+        renter = db.get(User, bk.renter_id)
+
+        if owner and owner.email:
+            subject = f"Booking #{bk.id} — Online payment chosen"
+            msg_txt = (
+                f"The renter '{renter.first_name if renter else 'User'}' "
+                f"chose online payment for your item '{item.title}'."
+            )
+
+            html = f"""
+            <div style='font-family:Arial,Helvetica,sans-serif; line-height:1.6; color:#111;'>
+                <img src="https://sevor.net/static/img/sevor-logo.png"
+                     style="width:140px; margin-bottom:20px;" />
+
+                <h2 style="color:#2563eb;">Online payment chosen</h2>
+
+                <p>The renter has chosen to pay online for your item:</p>
+
+                <p><b>{item.title}</b></p>
+
+                <p><b>Renter:</b> {renter.first_name if renter else 'User'}</p>
+
+                <p>
+                    <a href="https://sevor.net/bookings/flow/{bk.id}"
+                       style="padding:12px 18px; background:#2563eb; color:white;
+                              text-decoration:none; border-radius:8px; display:inline-block;">
+                        Open booking
+                    </a>
+                </p>
+
+                <br>
+                <p style='color:#888;font-size:13px;'>Sevor — Rent anything worldwide</p>
+            </div>
+            """
+
+            send_email(
+                to=owner.email,
+                subject=subject,
+                html_body=html,
+                text_body=msg_txt,
+            )
+
+    except Exception as e:
+        print("EMAIL ERROR (ONLINE PAYMENT CHOSEN):", e)
+
 
     renter = db.get(User, bk.renter_id)
     return redirect_to_flow_with_loc(bk, renter)
@@ -1436,7 +1535,6 @@ def alias_picked_up(booking_id: int,
         f"/bookings/flow/{bk.id}", "booking"
     )
     return _redir(bk.id)
-
 @router.post("/bookings/{booking_id}/mark-returned")
 def alias_mark_returned(booking_id: int,
                         db: Session = Depends(get_db),
@@ -1453,6 +1551,9 @@ def alias_mark_returned(booking_id: int,
     bk.returned_at = datetime.utcnow()
     db.commit()
 
+    # ======================
+    # PUSH NOTIFICATIONS
+    # ======================
     push_notification(
         db, bk.owner_id, "Return marked",
         f"The item '{item.title}' was returned. Waiting for admin review of the deposit.",
@@ -1468,6 +1569,107 @@ def alias_mark_returned(booking_id: int,
         f"Booking #{bk.id} needs a deposit decision.",
         f"/bookings/flow/{bk.id}"
     )
+
+    # ===========================================
+    # EMAIL — Owner (item returned)
+    # ===========================================
+    try:
+        from .email_service import send_email
+        owner_user = db.get(User, bk.owner_id)
+        renter_user = db.get(User, bk.renter_id)
+
+        if owner_user and owner_user.email:
+            subject = f"Item returned — Booking #{bk.id}"
+            msg_txt = (
+                f"The renter '{renter_user.first_name if renter_user else 'User'}' "
+                f"marked the item '{item.title}' as returned. "
+                f"The deposit is now waiting for admin review."
+            )
+
+            html = f"""
+            <div style='font-family:Arial,Helvetica,sans-serif; line-height:1.6; color:#111;'>
+                <img src="https://sevor.net/static/img/sevor-logo.png"
+                     style="width:140px; margin-bottom:20px;" />
+
+                <h2 style="color:#16a34a;">Item marked as returned</h2>
+
+                <p>The renter has marked your item as returned:</p>
+
+                <p><b>Item:</b> {item.title}</p>
+                <p><b>Renter:</b> {renter_user.first_name if renter_user else 'User'}</p>
+
+                <p>The deposit is now under review by the Sevor team.</p>
+
+                <p>
+                    <a href="https://sevor.net/bookings/flow/{bk.id}"
+                       style="padding:12px 18px; background:#16a34a; color:white;
+                              text-decoration:none; border-radius:8px; display:inline-block;">
+                        Open booking
+                    </a>
+                </p>
+
+                <br>
+                <p style='color:#888;font-size:13px;'>Sevor — Rent anything worldwide</p>
+            </div>
+            """
+
+            send_email(
+                to=owner_user.email,
+                subject=subject,
+                html_body=html,
+                text_body=msg_txt,
+            )
+
+    except Exception as e:
+        print("EMAIL ERROR (RETURN MARKED OWNER):", e)
+
+    # ===========================================
+    # EMAIL — Renter (deposit under review)
+    # ===========================================
+    try:
+        from .email_service import send_email
+        renter_user = db.get(User, bk.renter_id)
+
+        if renter_user and renter_user.email:
+            subject = f"Deposit under review — Booking #{bk.id}"
+            title_txt = "Your deposit is under review"
+            msg_txt = (
+                f"You marked '{item.title}' as returned. "
+                f"Our team will review the deposit and notify you once a decision is made."
+            )
+
+            html = f"""
+            <div style='font-family:Arial,Helvetica,sans-serif; line-height:1.6; color:#111;'>
+                <img src="https://sevor.net/static/img/sevor-logo.png"
+                     style="width:140px; margin-bottom:20px;" />
+
+                <h2 style="color:#f97316;">{title_txt}</h2>
+
+                <p>{msg_txt}</p>
+
+                <p>
+                    <a href="https://sevor.net/bookings/flow/{bk.id}"
+                       style="padding:12px 18px; background:#f97316; color:white;
+                              text-decoration:none; border-radius:8px; display:inline-block;">
+                        View booking details
+                    </a>
+                </p>
+
+                <br>
+                <p style='color:#888;font-size:13px;'>Sevor — Rent anything worldwide</p>
+            </div>
+            """
+
+            send_email(
+                to=renter_user.email,
+                subject=subject,
+                html_body=html,
+                text_body=msg_txt,
+            )
+
+    except Exception as e:
+        print("EMAIL ERROR (RETURN MARKED RENTER):", e)
+
     return _redir(bk.id)
 
 
