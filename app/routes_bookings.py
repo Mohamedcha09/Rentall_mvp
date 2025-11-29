@@ -587,44 +587,7 @@ async def create_booking(
             f"On '{item.title}'. Click to view details.",
             f"/bookings/flow/{bk.id}", "booking"
         )
-            # -----------------------------
-    # Email to renter (NEW)
-    # -----------------------------
-    try:
-        from .email_service import send_email
-
-        subject = "Your booking was accepted — Choose a payment method"
-        title_txt = "Your booking was accepted 🎉"
-        msg_txt = f"Your booking on '{item.title}' was accepted. Please choose a payment method to continue."
-
-        # basic HTML (simple + clean)
-        html = f"""
-        <div style="font-family:Arial,Helvetica,sans-serif;line-height:1.7;color:#111;">
-            <h2 style="color:#4f46e5;">{title_txt}</h2>
-            <p>{msg_txt}</p>
-            <p><b>Item:</b> {item.title}</p>
-            <p><b>Deposit:</b> {bk.deposit_amount}$</p>
-            <p>
-                <a href="{link}" 
-                   style="padding:12px 18px;background:#4f46e5;color:white;
-                          text-decoration:none;border-radius:8px;display:inline-block;">
-                    Continue to booking
-                </a>
-            </p>
-            <br>
-            <p style="color:#666;font-size:13px;">Sevor — rent anything worldwide</p>
-        </div>
-        """
-
-        send_email(
-            to=bk.renter_id and renter.email,
-            subject=subject,
-            html_body=html,
-            text_body=msg_txt
-        )
-    except Exception as e:
-        print("EMAIL SEND ERROR:", e)
-
+        
         renter = db.get(User, bk.renter_id)
         return redirect_to_flow_with_loc(bk, renter)
 
@@ -916,6 +879,52 @@ def owner_decision(
         link,
         "booking"
     )
+        # -----------------------------
+    # Email to renter (ACCEPTED)
+    # -----------------------------
+    try:
+        from .email_service import send_email
+
+        subject = "Your booking was accepted — Continue your reservation"
+        title_txt = "Your booking was accepted 🎉"
+        msg_txt = f"Your booking on '{item.title}' has been accepted. Please choose your payment method."
+
+        html = f"""
+        <div style='font-family:Arial,Helvetica,sans-serif; line-height:1.6; color:#111;'>
+            <img src="https://sevor.net/static/img/sevor-logo.png"
+                 style="width:140px; margin-bottom:20px;" />
+
+            <h2 style='color:#4f46e5;'>{title_txt}</h2>
+
+            <p>{msg_txt}</p>
+
+            <p><b>Item:</b> {item.title}</p>
+            <p><b>Deposit:</b> {bk.deposit_amount}$</p>
+
+            <p>
+                <a href="https://sevor.net{link}"
+                   style="padding:12px 18px;background:#4f46e5;color:white;
+                          text-decoration:none;border-radius:8px;display:inline-block;">
+                    Continue to my booking
+                </a>
+            </p>
+
+            <br>
+            <p style='color:#888;font-size:13px;'>Sevor — Rent anything worldwide</p>
+        </div>
+        """
+
+        renter = db.get(User, bk.renter_id)
+        send_email(
+            to=renter.email,
+            subject=subject,
+            html_body=html,
+            text_body=msg_txt
+        )
+
+    except Exception as e:
+        print("EMAIL SEND ERROR:", e)
+
     return redirect_to_flow_with_loc(bk, renter)
 
 
