@@ -1030,58 +1030,34 @@ def renter_choose_payment(
         f"Booking '{item.title}'. Waiting for renter to pay.",
         f"/bookings/flow/{bk.id}", "booking"
     )
-        # -----------------------------
-    # Email to owner (CASH chosen)
-    # -----------------------------
-    try:
-        from .email_service import send_email
+    # ========== EMAIL NOTIFICATION ==========
+try:
+    owner = db.get(User, bk.owner_id)
+    renter = db.get(User, bk.renter_id)
+    email = owner.email if owner else None
 
-        owner = db.get(User, bk.owner_id)
-        renter = db.get(User, bk.renter_id)
-
-        subject = "The renter chose Cash payment"
-        title_txt = "The renter chose Cash 💵"
-        msg_txt = (
-            f"The renter has chosen CASH payment for the booking on '{item.title}'. "
-            f"They will pay on pickup day."
-        )
-
-        link = f"/bookings/flow/{bk.id}"
-
-        html = f"""
-        <div style='font-family:Arial,Helvetica,sans-serif; line-height:1.6; color:#111;'>
-            <img src="https://sevor.net/static/img/sevor-logo.png"
-                 style="width:140px; margin-bottom:20px;" />
-
-            <h2 style='color:#4f46e5;'>{title_txt}</h2>
-
-            <p>{msg_txt}</p>
-
-            <p><b>Item:</b> {item.title}</p>
-
-            <p>
-                <a href="https://sevor.net{link}"
-                   style="padding:12px 18px;background:#4f46e5;color:white;
-                          text-decoration:none;border-radius:8px;display:inline-block;">
-                    View booking details
-                </a>
-            </p>
-
-            <br>
-            <p style='color:#888;font-size:13px;'>Sevor — Rent anything worldwide</p>
+    if email:
+        subject = f"Booking #{bk.id} — Renter chose cash"
+        html_body = f"""
+        <div style='font-family:Arial;line-height:1.6'>
+          <h3>Cash Payment Selected</h3>
+          <p>The renter has chosen to pay in cash for booking #{bk.id}.</p>
+          <p><b>Item:</b> {item.title}</p>
+          <p><b>Renter:</b> {renter.first_name if renter else 'User'}</p>
+          <p>Payment will be completed during pickup.</p>
         </div>
         """
+        text_body = (
+            f"Cash Payment Selected\n\n"
+            f"Booking #{bk.id}\n"
+            f"Item: {item.title}\n"
+            f"Renter: {renter.first_name if renter else 'User'}\n"
+            f"Payment will be completed during pickup."
+        )
 
-        if owner and owner.email:
-            send_email(
-                to=owner.email,
-                subject=subject,
-                html_body=html,
-                text_body=msg_txt,
-            )
-
-    except Exception as e:
-        print("EMAIL SEND ERROR (CASH PAYMENT):", e)
+        send_email(email, subject, html_body, text_body)
+except Exception:
+    pass
 
     renter = db.get(User, bk.renter_id)
     return redirect_to_flow_with_loc(bk, renter)
