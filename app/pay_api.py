@@ -1189,6 +1189,100 @@ def resolve_deposit(
         f"Decision executed: {action}.",
         _append_qs(f"/bookings/flow/{bk.id}", qs),
         "deposit"
-    )
+    ) # ============================
+# EMAIL NOTIFICATIONS (OWNER + RENTER)
+# ============================
+try:
+    owner = db.get(User, bk.owner_id)
+    renter = db.get(User, bk.renter_id)
+    item = db.get(Item, bk.item_id)
+
+    # Determine message based on action
+    if action == "refund_all":
+        title = "Deposit Refunded"
+        sub_txt = "The full deposit has been refunded."
+        color = "#16a34a"  # green
+        renter_msg = "Your full deposit has been refunded."
+        owner_msg = "You have refunded the renter’s full deposit."
+
+    elif action == "withhold_all":
+        title = "Deposit Fully Withheld"
+        sub_txt = "The full deposit has been withheld."
+        color = "#dc2626"  # red
+        renter_msg = "The full deposit has been withheld."
+        owner_msg = "You have withheld the renter’s full deposit."
+
+    else:  # partial
+        title = "Partial Deposit Withheld"
+        sub_txt = f"A partial amount ({partial_amount}) has been withheld."
+        color = "#f59e0b"  # amber
+        renter_msg = f"A partial amount ({partial_amount}) has been withheld from your deposit."
+        owner_msg = f"You have withheld a partial amount ({partial_amount}) from the deposit."
+
+
+    # ========= EMAIL FUNCTION ==========
+    def _send(to, msg):
+        if not to:
+            return
+        html = f"""
+        <div style="font-family:Arial,Helvetica,sans-serif; background:#f3f4f6; padding:30px;">
+            <div style="max-width:600px; margin:auto; background:white; padding:28px;
+                        border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.06);">
+
+                <div style="text-align:center; margin-bottom:25px;">
+                    <img src="https://sevor.net/static/img/sevor-logo.png" 
+                         style="width:140px; opacity:0.95;" />
+                </div>
+
+                <h2 style="color:{color}; text-align:center; margin-bottom:12px;">
+                    {title}
+                </h2>
+
+                <p style="font-size:15px; color:#444; text-align:center;">
+                    {sub_txt}
+                </p>
+
+                <p style="font-size:15px; color:#444;">
+                    <b>Booking ID:</b> #{bk.id}<br>
+                    <b>Item:</b> {item.title if item else ''}
+                </p>
+
+                <div style="text-align:center; margin:32px 0;">
+                    <a href="{BASE_URL}/bookings/flow/{bk.id}"
+                       style="background:{color}; color:white; padding:14px 24px;
+                              text-decoration:none; border-radius:8px; font-size:16px;">
+                        Open Booking
+                    </a>
+                </div>
+
+                <hr style="border:none; border-top:1px solid #eee; margin:32px 0;">
+
+                <p style="font-size:13px; color:#888; text-align:center;">
+                    Sevor — Rent anything worldwide
+                </p>
+            </div>
+        </div>
+        """
+
+        text = f"{title}\n\n{sub_txt}\nBooking #{bk.id}\nItem: {item.title if item else ''}\n"
+
+        send_email(
+            to_email=to,
+            subject=f"{title} — Booking #{bk.id}",
+            html_body=html,
+            text_body=text
+        )
+
+
+    # Send emails
+    if owner and owner.email:
+        _send(owner.email, owner_msg)
+
+    if renter and renter.email:
+        _send(renter.email, renter_msg)
+
+except Exception as e:
+    print("EMAIL ERROR (deposit decision):", e)
+
 
     return flow_redirect(bk.id, db)
