@@ -993,7 +993,13 @@
       {% if banners and banners|length > 0 %}
         {% for src in banners %}
           <div class="carousel-item {% if loop.index0 == 0 %}active{% endif %}">
-            <img src="{{ src }}" alt="">
+                <img
+      src="{{ src|replace('res.cloudinary.com/de79qzfog/image/upload/','res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_1200/') }}"
+      loading="lazy"
+      decoding="async"
+      alt=""
+    >
+
           </div>
         {% endfor %}
       {% endif %}
@@ -1182,7 +1188,13 @@
         <div class="carousel-inner">
           {% for src in cols[0] %}
             <div class="carousel-item {% if loop.first %}active{% endif %}">
-              <img src="{{ src }}" alt="">
+                  <img
+      src="{{ src|replace('res.cloudinary.com/de79qzfog/image/upload/','res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_1200/') }}"
+      loading="lazy"
+      decoding="async"
+      alt=""
+    >
+
             </div>
           {% endfor %}
         </div>
@@ -1201,7 +1213,13 @@
         <div class="carousel-inner">
           {% for src in cols[1] %}
             <div class="carousel-item {% if loop.first %}active{% endif %}">
-              <img src="{{ src }}" alt="">
+                  <img
+      src="{{ src|replace('res.cloudinary.com/de79qzfog/image/upload/','res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_1200/') }}"
+      loading="lazy"
+      decoding="async"
+      alt=""
+    >
+
             </div>
           {% endfor %}
         </div>
@@ -1220,7 +1238,13 @@
         <div class="carousel-inner">
           {% for src in cols[2] %}
             <div class="carousel-item {% if loop.first %}active{% endif %}">
-              <img src="{{ src }}" alt="">
+                  <img
+      src="{{ src|replace('res.cloudinary.com/de79qzfog/image/upload/','res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_1200/') }}"
+      loading="lazy"
+      decoding="async"
+      alt=""
+    >
+
             </div>
           {% endfor %}
         </div>
