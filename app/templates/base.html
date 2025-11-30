@@ -757,6 +757,19 @@ body[data-auth="0"] .mobile-tabbar {
   z-index: 1;
 }
 
+/* Remove old tab indicator completely */
+.mobile-tabbar::before,
+.mobile-tabbar::after,
+.mobile-tabbar .active-bg,
+.mobile-tabbar .tab-highlight,
+.mobile-tabbar .old-indicator {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+
   
   
 </style>
