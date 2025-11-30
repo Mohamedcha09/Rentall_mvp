@@ -87,6 +87,8 @@ from .admin_items import router as admin_items_router
 # Create the app
 # -----------------------------------------------------------------------------
 app = FastAPI()
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/whoami")
