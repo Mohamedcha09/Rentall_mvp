@@ -109,6 +109,62 @@
 
 }
 </style>
+
+<style>
+@media (max-width: 768px) {
+
+  /* 🧨 إخفاء كل أنواع الهيدر */
+  header,
+  .site-header,
+  .top-navbar,
+  .nav-top,
+  .main-header,
+  .navbar,
+  .navbar-top,
+  .nav-main,
+  .nav-container,
+  .navtabs-container,
+  .tabs-wrapper,
+  .tabs,
+  nav[role="navigation"],
+  nav.tabs,
+  nav.tabbed,
+  .tabbed-nav,
+  .nav-tabs,
+  .flex-tabs,
+  .mobile-nav,
+  .page-header {
+      display: none !important;
+      height: 0 !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+  }
+
+  /* 🧨 أيضاً stripe connect */
+  .stripe-connect-banner,
+  .connect-now-box,
+  .alert-stripe {
+      display: none !important;
+  }
+
+  /* 🧨 إخفاء النافبار السفلي */
+  .mobile-tabbar,
+  .bottom-nav,
+  .footer-nav {
+      display: none !important;
+      opacity: 0 !important;
+      height: 0 !important;
+  }
+
+  /* تحسين المسافات بعد الإخفاء */
+  body {
+      padding-top: 0 !important;
+      margin-top: 0 !important;
+  }
+
+}
+</style>
 {% endblock %}
 
 {% block content %}
