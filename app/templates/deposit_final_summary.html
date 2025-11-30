@@ -248,6 +248,23 @@
     }
 }
 </style>
+
+<style>
+@media (max-width: 768px) {
+
+  /* إخفاء رسالة Stripe Connect بالكامل */
+  .stripe-callout,
+  .alert-stripe,
+  .connect-now-box,
+  .stripe-connect-banner {
+      display: none !important;
+      height: 0 !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+  }
+
+}
+</style>
 {% endblock %}
 
 {% block content %}
