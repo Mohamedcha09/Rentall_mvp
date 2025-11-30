@@ -27,7 +27,6 @@ def _normalize_list(value: Optional[Union[str, Iterable[str]]]) -> List[str]:
     if isinstance(value, str):
         value = [value]
     return [v.strip() for v in value if v and v.strip()]
-
 def send_email(
     to: Union[str, Iterable[str]],
     subject: str,
@@ -37,6 +36,8 @@ def send_email(
     bcc: Optional[Union[str, Iterable[str]]] = None,
     reply_to: Optional[str] = None,
 ) -> bool:
+
+    import time
 
     if not SMTP_USER or not SMTP_PASSWORD:
         print("[email_service] ❌ SMTP credentials missing")
@@ -64,29 +65,28 @@ def send_email(
     msg.attach(MIMEText(text_body or "", "plain"))
     msg.attach(MIMEText(html_body or "", "html"))
 
-    try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.sendmail(
-                FROM_EMAIL,
-                recipients + cc_list + _normalize_list(bcc),
-                msg.as_string(),
-            )
-            print(f"[email_service] ✅ Email sent to {recipients}")
+    # =========================
+    # Retry Logic (Fix Gmail 535)
+    # =========================
+    attempts = 2
+    for attempt in range(1, attempts + 1):
+        try:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.sendmail(
+                    FROM_EMAIL,
+                    recipients + cc_list + _normalize_list(bcc),
+                    msg.as_string(),
+                )
+
+            print(f"[email_service] ✅ Email sent to {recipients} (attempt {attempt})")
             return True
 
-    except Exception as e:
-        print(f"[email_service] ❌ SMTP error: {e}")
-        return False
-
-
-# Optional test
-if __name__ == "__main__":
-    ok = send_email(
-        to=FROM_EMAIL,
-        subject="SMTP TEST — Sevor",
-        html_body="<h2>SMTP is working 🎉</h2>",
-        text_body="SMTP works"
-    )
-    print("Test send:", ok)
+        except Exception as e:
+            print(f"[email_service] ⚠️ Attempt {attempt} failed: {e}")
+            if attempt < attempts:
+                time.sleep(0.4)  # wait then retry
+            else:
+                print("[email_service] ❌ All attempts failed.")
+                return False
