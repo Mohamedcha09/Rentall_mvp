@@ -1105,10 +1105,6 @@ window.onpageshow = function(e){
 
   <!-- ===== Page ===== -->
   <main class="page container-fluid main-flex-fill min-vh-100" data-page="main">
-  <div id="sv-app">
-
-
-
     {% if request and request.query_params.get('logged_out') %}
       <div class="alert alert-success my-2">You have been logged out successfully 👋</div>
     {% endif %}
@@ -1125,7 +1121,6 @@ window.onpageshow = function(e){
     <div id="sv-app">
     {% block content %}{% endblock %}
     </div>
-  </div><!-- /#sv-app -->
 
   </main>
 
@@ -2027,6 +2022,44 @@ document.addEventListener("DOMContentLoaded", () => {
     window.history.pushState({}, "", url);
   });
 
+})();
+</script>
+<script>
+(function() {
+  window.addEventListener("popstate", async function() {
+    const app = document.getElementById("sv-app");
+    if (!app) return;
+
+    const url = location.pathname;
+    const res = await fetch(url, { headers: { "X-SPA": "1" } });
+    const text = await res.text();
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, "text/html");
+    const newContent = doc.querySelector("#sv-app");
+    if (!newContent) {
+      window.location.reload();
+      return;
+    }
+
+    // أنيميشن رجوع مثل Airbnb
+    app.classList.add("sv-exit");
+    await new Promise(r => setTimeout(r, 10));
+    app.classList.add("sv-exit-active");
+
+    await new Promise(r => setTimeout(r, 250));
+
+    app.innerHTML = newContent.innerHTML;
+
+    app.classList.remove("sv-exit", "sv-exit-active");
+    app.classList.add("sv-enter");
+    await new Promise(r => setTimeout(r, 10));
+    app.classList.add("sv-enter-active");
+
+    setTimeout(() => {
+      app.classList.remove("sv-enter", "sv-enter-active");
+    }, 300);
+  });
 })();
 </script>
 
