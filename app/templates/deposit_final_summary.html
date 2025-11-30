@@ -165,6 +165,60 @@
 
 }
 </style>
+
+<style>
+@media (max-width: 768px) {
+
+  /* إخفاء أي عناصر تحتوي Tabs مثل (Home / Notifications / Payouts) */
+  .tabs,
+  .tabs-container,
+  .tabs-wrapper,
+  .profile-tabs,
+  .account-tabs,
+  .user-tabs,
+  .nav-tabs,
+  .top-tabs,
+  nav.tabs,
+  .section-tabs,
+  .subnav,
+  .sub-nav,
+  .subnavbar {
+      display: none !important;
+      height: 0 !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+  }
+
+  /* إخفاء أي div فوق المحتوى مباشرة */
+  .wrap ~ div:first-child,
+  .wrap + div,
+  .wrap + section {
+      display: none !important;
+  }
+
+  /* إخفاء stripe connect */
+  .stripe-connect-banner,
+  .connect-now-box,
+  .alert-stripe {
+      display: none !important;
+  }
+
+  /* إخفاء navbar العلوي */
+  header,
+  .site-header,
+  .top-navbar,
+  nav[role="navigation"] {
+      display: none !important;
+  }
+
+  /* إخفاء navbar السفلي */
+  .mobile-tabbar,
+  .bottom-nav {
+      display: none !important;
+  }
+}
+</style>
 {% endblock %}
 
 {% block content %}
