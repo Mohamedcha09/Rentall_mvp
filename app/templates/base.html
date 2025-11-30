@@ -731,24 +731,36 @@ body[data-auth="0"] .mobile-tabbar {
       0 2px 0 0 rgba(255,255,255,.05) inset !important;
   }
 
+/* ===== Moving Glass Indicator ===== */
+.mobile-tabbar {
+  position: relative;
+}
+
+.mobile-tabbar .tab-indicator {
+  position: absolute;
+  top: 6px;
+  left: 0;
+  width: 60px;
+  height: 52px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.18);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.25) inset,
+              0 8px 18px rgba(0,0,0,.25);
+  transition: transform .28s cubic-bezier(.25,.8,.25,1);
+  z-index: 0;
+}
+
+.mobile-tabbar a {
+  position: relative;
+  z-index: 1;
+}
 
   
   
 </style>
 
-<style>
-/* Force pulse on active tab */
-.mobile-tabbar a.is-active .tab-img {
-  animation: svTabPulse .35s ease !important;
-  transform: scale(1.22) !important;
-}
-
-@keyframes svTabPulse {
-  0%   { transform: scale(1); }
-  50%  { transform: scale(1.28); }
-  100% { transform: scale(1.15); }
-}
-</style>
 
 
 
@@ -1121,6 +1133,8 @@ window.onpageshow = function(e){
   <!-- Bottom bar (mobile) -->
 {% if show_tabbar and not immersive %}
   <nav class="mobile-tabbar d-lg-none">
+  <div class="tab-indicator"></div>
+
     <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
       <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home"><span>Home</span>
     </a>
@@ -1890,6 +1904,36 @@ document.addEventListener('DOMContentLoaded', function(){
   }catch(e){}
 });
 </script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const bar = document.querySelector(".mobile-tabbar");
+  if (!bar) return;
+
+  const tabs = bar.querySelectorAll("a");
+  const indicator = bar.querySelector(".tab-indicator");
+
+  function moveIndicator(activeTab) {
+    const rect = activeTab.getBoundingClientRect();
+    const barRect = bar.getBoundingClientRect();
+
+    const offset = rect.left - barRect.left;
+
+    indicator.style.transform = `translateX(${offset}px)`;
+    indicator.style.width = rect.width + "px";
+  }
+
+  // أول تشغيل = التاب النشط
+  const current = bar.querySelector("a.is-active") || tabs[0];
+  moveIndicator(current);
+
+  // عند الضغط
+  tabs.forEach(tab => {
+    tab.addEventListener("click", () => moveIndicator(tab));
+  });
+});
+</script>
+
 
 
  {# ===== Country Picker Overlay (first visit) ===== #}
