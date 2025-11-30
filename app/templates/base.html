@@ -1102,7 +1102,10 @@ window.onpageshow = function(e){
     {% endif %}
 
     {% if message %}<div class="alert alert-info">{{ message }}</div>{% endif %}
+        <div data-page>
     {% block content %}{% endblock %}
+        </div>
+
   </main>
 
   <!-- Side notifications panel -->
