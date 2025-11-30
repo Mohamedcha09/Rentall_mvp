@@ -1,6 +1,7 @@
 {# app/templates/inbox.html #}
 {% extends "base.html" %}
 {% block content %}
+<div data-page>
 
 <div class="d-flex align-items-center justify-content-between mb-3">
   <h3 class="mb-0">Messages</h3>
@@ -82,5 +83,6 @@
     <img src="{{ EMPTY_IMG }}" alt="No conversations">
   </div>
 {% endif %}
+</div>
 
 {% endblock %}

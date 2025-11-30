@@ -757,17 +757,6 @@ body[data-auth="0"] .mobile-tabbar {
   z-index: 1;
 }
 
-/* Remove old tab indicator completely */
-.mobile-tabbar::before,
-.mobile-tabbar::after,
-.mobile-tabbar .active-bg,
-.mobile-tabbar .tab-highlight,
-.mobile-tabbar .old-indicator {
-    display: none !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
-}
 
 
   
@@ -1097,7 +1086,8 @@ window.onpageshow = function(e){
 {% endif %}
 
   <!-- ===== Page ===== -->
-  <main class="page container-fluid main-flex-fill min-vh-100">
+  <main class="page container-fluid main-flex-fill min-vh-100" data-page="main">
+
 
     {% if request and request.query_params.get('logged_out') %}
       <div class="alert alert-success my-2">You have been logged out successfully 👋</div>
@@ -1946,6 +1936,97 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 </script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const bar  = document.querySelector(".mobile-tabbar");
+  if (!bar) return;
+
+  const tabs      = bar.querySelectorAll("a");
+  const indicator = bar.querySelector(".tab-indicator");
+  const pageRoot  = document.querySelector("[data-page]");
+
+  if (!pageRoot) return; // أمان إضافي
+
+  function moveIndicator(activeTab) {
+    if (!indicator) return;
+    const rect    = activeTab.getBoundingClientRect();
+    const barRect = bar.getBoundingClientRect();
+    const offset  = rect.left - barRect.left;
+    indicator.style.transform = `translateX(${offset}px)`;
+    indicator.style.width     = rect.width + "px";
+  }
+
+  // تشغيل أولي
+  const current = bar.querySelector("a.is-active") || tabs[0];
+  if (current) moveIndicator(current);
+
+  // تبديل الصفحات بدون reload
+  tabs.forEach(tab => {
+    tab.addEventListener("click", async (e) => {
+      // لو نفس الصفحة، خليه يشتغل عادي
+      if (tab.href === window.location.href) return;
+
+      e.preventDefault();
+
+      const url = tab.href;
+
+      // تحديث active
+      tabs.forEach(t => t.classList.remove("is-active"));
+      tab.classList.add("is-active");
+      moveIndicator(tab);
+
+      try {
+        const res  = await fetch(url, { cache: "no-store" });
+        const html = await res.text();
+
+        const parser = new DOMParser();
+        const doc    = parser.parseFromString(html, "text/html");
+        const fresh  = doc.querySelector("[data-page]");
+
+        // لو ما لقى data-page في الصفحة الجديدة، افتحها عادي
+        if (!fresh) {
+          window.location.href = url;
+          return;
+        }
+
+        // استبدال المحتوى فقط
+        pageRoot.innerHTML = fresh.innerHTML;
+
+        // تحديث المسار للـhistory + data-path
+        window.history.pushState({}, "", url);
+        document.body.setAttribute("data-path", new URL(url).pathname);
+      } catch (err) {
+        // لو صار خطأ، fallback إلى التنقل العادي
+        window.location.href = url;
+      }
+    });
+  });
+
+  // التعامل مع زر الرجوع في المتصفح
+  window.addEventListener("popstate", async () => {
+    try {
+      const url = window.location.href;
+      const res  = await fetch(url, { cache: "no-store" });
+      const html = await res.text();
+      const parser = new DOMParser();
+      const doc    = parser.parseFromString(html, "text/html");
+      const fresh  = doc.querySelector("[data-page]");
+      if (!fresh) return;
+      pageRoot.innerHTML = fresh.innerHTML;
+      document.body.setAttribute("data-path", new URL(url).pathname);
+
+      // حدث active tab لما نرجع بــback/forward
+      const path = new URL(url).pathname;
+      tabs.forEach(t => {
+        if (t.getAttribute("href") === path) t.classList.add("is-active");
+        else t.classList.remove("is-active");
+      });
+    } catch(e){}
+  });
+});
+</script>
+
 
 
 
