@@ -410,10 +410,8 @@ def start_checkout_all(
             "currency_native": native_currency,
             "fx_rate": fx_rate,
         },
-        "transfer_data": {
-            "destination": owner.stripe_account_id,
-            "amount": transfer_amount,
-        },
+
+
     }
 
     # 9) CREATE SESSION
@@ -661,10 +659,6 @@ def start_checkout_rent(
             "currency_native": native_currency,
             "fx_rate": fx_rate,
         },
-        "transfer_data": {
-            "destination": owner.stripe_account_id,
-            "amount": transfer_amount,
-        },
     }
 
     try:
@@ -892,7 +886,7 @@ def _handle_checkout_completed(session_obj: dict, db: Session) -> None:
 
         if rent_native > 0:
             bk.owner_payout_amount = rent_native
-            bk.owner_payout_status = "sent"
+            bk.owner_payout_status = "pending"   # لم يتم التحويل بعد
 
         dep_ok = (bk.deposit_status == "held")
         rent_ok = (bk.online_status in ["authorized", "captured", "succeeded"])
