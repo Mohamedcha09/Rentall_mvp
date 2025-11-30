@@ -1202,6 +1202,7 @@ def renter_pay_online(
 # Renter confirms receipt  (FINAL FIXED VERSION)
 # ========================================
 
+
 @router.post("/bookings/{booking_id}/renter/confirm_received")
 def renter_confirm_received(
     booking_id: int,
@@ -1233,11 +1234,39 @@ def renter_confirm_received(
 
     item = db.get(Item, bk.item_id)
 
-    # 👇 نحدّث حالة الحجز
+    # 👇 تحديث حالة الحجز
     bk.status = "picked_up"
     bk.picked_up_at = datetime.utcnow()
     bk.timeline_renter_received_at = datetime.utcnow()
     db.commit()
+
+    # ==============================
+    #  🔥 STRIPE PAYOUT (Send rent to owner)
+    # ==============================
+    try:
+        import stripe
+        stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+
+        owner_user = db.get(User, bk.owner_id)
+        if owner_user and owner_user.stripe_account_id:
+
+            rent_amount = int(round((bk.total_amount or bk.amount_native or 0) * 100))
+
+            transfer = stripe.Transfer.create(
+                amount=rent_amount,
+                currency=(bk.currency_native or "CAD").lower(),
+                destination=owner_user.stripe_account_id,
+                description=f"Rent payout for booking #{bk.id}"
+            )
+
+            # تحديث حالة الدفع
+            bk.owner_payout_status = "sent"
+            bk.owner_payout_amount = bk.total_amount
+            bk.rent_released_at = datetime.utcnow()
+            db.commit()
+
+    except Exception as e:
+        print("PAYOUT ERROR:", e)
 
     # ======================
     # PUSH NOTIFICATIONS
@@ -1357,7 +1386,6 @@ def renter_confirm_received(
 
     renter = db.get(User, bk.renter_id)
     return redirect_to_flow_with_loc(bk, renter)
-
 
 
 # ========================================
