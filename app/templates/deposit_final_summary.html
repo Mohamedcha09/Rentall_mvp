@@ -226,11 +226,42 @@
     }
 }
 </style>
+
+<style>
+@media (max-width: 768px) {
+    .back-mini-btn {
+        display: inline-block;
+        background: #ffffffd9;         /* خلفية بيضاء شفافة */
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        color: #333;
+        border: 1px solid #e3e3e3;
+        text-decoration: none;
+        margin-bottom: 8px;
+        backdrop-filter: blur(6px);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    }
+
+    .back-mini-btn:hover {
+        background: #ffffffee;
+    }
+}
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="wrap">
+
+  <!-- 🔙 زر العودة إلى Home -->
+  <div class="mb-2">
+    <a href="/" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-house-door"></i> Home
+    </a>
+  </div>
+
   <h4 class="mb-2">Final Result — Booking #{{ bk.id }}</h4>
+
 
   <div class="d-flex flex-wrap gap-2 mb-3">
     <span class="chip">Booking Status: {{ bk.status or '—' }}</span>
