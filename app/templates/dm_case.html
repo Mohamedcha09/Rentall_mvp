@@ -25,6 +25,101 @@
   .ev-grid{display:flex;flex-wrap:wrap;gap:8px}
   .ev-thumb{width:88px;height:88px;border-radius:10px;object-fit:cover;border:1px solid var(--border)}
 </style>
+
+<style>
+/* ============================
+   📱 MOBILE ONLY (max 768px)
+   ============================ */
+@media (max-width: 768px) {
+
+  /* اخفاء النافبار العلوي */
+  header, .top-navbar, .mobile-topbar, .nav-top, .site-header {
+      display: none !important;
+  }
+
+  /* اخفاء النافبار السفلي */
+  .mobile-tabbar, .bottom-nav, .footer-nav {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      height: 0 !important;
+  }
+
+  /* اخفاء Stripe Connect Banner */
+  .stripe-connect-banner,
+  .alert-stripe,
+  .connect-now-box,
+  .connect-notice {
+      display: none !important;
+  }
+
+  /* --- تحسين التخطيط على الموبايل --- */
+  .case-wrap {
+      max-width: 100%;
+      padding: 12px;
+  }
+
+  .grid {
+      grid-template-columns: 1fr !important;
+  }
+
+  .box {
+      padding: 16px;
+      border-radius: 14px;
+      margin-bottom: 16px;
+  }
+
+  h4 {
+      font-size: 1.25rem;
+      line-height: 1.35;
+  }
+
+  .chip {
+      font-size: .85rem;
+      padding: .35rem .7rem;
+  }
+
+  .ev-grid {
+      gap: 6px;
+  }
+
+  .ev-thumb {
+      width: 78px;
+      height: 78px;
+      border-radius: 10px;
+  }
+
+  /* تحسين نموذج الـ DM */
+  .acts .row {
+      flex-direction: column;
+  }
+
+  .acts .col-auto {
+      width: 100%;
+  }
+
+  .acts input,
+  .acts button {
+      width: 100%;
+  }
+
+  .acts button {
+      margin-top: 6px;
+  }
+
+  /* Payment Summary */
+  .box .d-flex {
+      font-size: .95rem;
+  }
+
+  /* صورة العنصر */
+  .box img {
+      width: 80px !important;
+      height: 80px !important;
+  }
+
+}
+</style>
 {% if bk.renter_response_deadline_at %}
   <script defer src="/static/js/countdown.js"></script>
 {% endif %}
