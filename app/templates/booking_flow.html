@@ -1175,37 +1175,64 @@
       }
       try{ input.value=''; }catch(_){}
     });
+function uploadNow(){
+    if(!collected.length || uploading) return;
+    uploading = true;
+    window.__CAPTURE_ACTIVE__ = true;
+    refreshUI();
+    setMsg('Uploading…');
 
-    function uploadNow(){
-      if(!collected.length || uploading) return;
-      uploading = true;
-      window.__CAPTURE_ACTIVE__ = true;
-      refreshUI();
-      setMsg('Uploading…');
-
-      var fd = new FormData();
-      for(var i=0;i<collected.length && i<MAX;i++){
-        fd.append('files', collected[i], collected[i].name || ('photo'+(i+1)+'.jpg'));
-      }
-      if(noteEl && noteEl.value){ fd.append('comment', noteEl.value); }
-
-      fetch(opts.postUrl, { method:'POST', body: fd, credentials:'same-origin' })
-        .then(function(r){ if(!r.ok) throw new Error('upload failed'); return r.text(); })
-        .then(function(){
-            btn.disabled = true;
-            btn.innerHTML = "✔ تم رفع الصور";
-
-            // إظهار زر Confirm Pickup
-            var confirmBtn = document.getElementById("confirmPickupBtn");
-            if (confirmBtn) confirmBtn.style.display = "block";
-            })
-        .catch(function(){
-          uploading = false;
-          window.__CAPTURE_ACTIVE__ = false;
-          setMsg('Upload failed. Please try again.');
-          refreshUI();
-        });
+    var fd = new FormData();
+    for(var i = 0; i < collected.length && i < MAX; i++){
+      fd.append('files', collected[i], collected[i].name || ('photo' + (i+1) + '.jpg'));
     }
+    if (noteEl && noteEl.value){
+      fd.append('comment', noteEl.value);
+    }
+
+    fetch(opts.postUrl, { method:'POST', body: fd, credentials:'same-origin' })
+      .then(function(r){
+        if (!r.ok) throw new Error('upload failed');
+        return r.text();
+      })
+      .then(function(){
+        // 🟣 هنا نفرّق بين الاستلام والإرجاع
+
+        // 1️⃣ مرحلة الاستلام (Pickup) → نفس السلوك القديم
+        if (opts.buttonId === "pickupCaptureBtn") {
+          btn.disabled = true;
+          btn.innerHTML = "✔ تم رفع الصور";
+
+          var confirmBtn = document.getElementById("confirmPickupBtn");
+          if (confirmBtn) {
+            confirmBtn.style.display = "block";
+          }
+          return;
+        }
+
+        // 2️⃣ مرحلة الإرجاع (Return) → رفع ثم مباشرة تقييمات
+        if (opts.buttonId === "returnCaptureBtn") {
+          // نستخدم nextUrl الممرر في setupAutoCapture
+          if (opts.nextUrl) {
+            window.location.assign(opts.nextUrl);
+          } else {
+            // احتياط لو ما كان فيه nextUrl
+            window.location.assign("/reviews/renter/{{ booking.id }}");
+          }
+          return;
+        }
+
+        // 3️⃣ أي أزرار أخرى (احتياطياً فقط)
+        btn.disabled = true;
+        btn.innerHTML = "✔ تم رفع الصور";
+      })
+      .catch(function(){
+        uploading = false;
+        window.__CAPTURE_ACTIVE__ = false;
+        setMsg('Upload failed. Please try again.');
+        refreshUI();
+      });
+}
 
     btn.addEventListener('click', function(){
       if(uploading) return;
