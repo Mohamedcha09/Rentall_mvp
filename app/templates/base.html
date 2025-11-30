@@ -730,6 +730,17 @@ body[data-auth="0"] .mobile-tabbar {
       0 0 0 1px rgba(255,255,255,.08) inset,
       0 2px 0 0 rgba(255,255,255,.05) inset !important;
   }
+
+
+  .mobile-tabbar a.is-active .tab-img {
+  animation: tabPulse .35s ease;
+}
+@keyframes tabPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1.15); }
+}
+
   
 </style>
 
