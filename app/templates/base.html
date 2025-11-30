@@ -732,17 +732,24 @@ body[data-auth="0"] .mobile-tabbar {
   }
 
 
-  .mobile-tabbar a.is-active .tab-img {
-  animation: tabPulse .35s ease;
-}
-@keyframes tabPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.25); }
-  100% { transform: scale(1.15); }
-}
-
+  
   
 </style>
+
+<style>
+/* Force pulse on active tab */
+.mobile-tabbar a.is-active .tab-img {
+  animation: svTabPulse .35s ease !important;
+  transform: scale(1.22) !important;
+}
+
+@keyframes svTabPulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.28); }
+  100% { transform: scale(1.15); }
+}
+</style>
+
 
 
 
