@@ -20,16 +20,13 @@ router = APIRouter(tags=["notifications"])
 #                EMAIL SENDER (SMTP)
 # ============================================================
 
-SMTP_HOST = "mail.privateemail.com"   # Namecheap email server
+SMTP_HOST = "mail.privateemail.com"
 SMTP_PORT = 587
-SMTP_USER = "no-reply@sevor.net"      # تغيّر حسب إيميلك
-SMTP_PASS = "YOUR_PASSWORD_HERE"      # ضع كلمة مرور الإيميل
+SMTP_USER = "no-reply@sevor.net"
+SMTP_PASS = "YOUR_PASSWORD_HERE"
 
 
 def send_email_notification(to_email: str, subject: str, message: str):
-    """
-    ترسل إيميل بسيط HTML + TEXT
-    """
     try:
         msg = MIMEMultipart("alternative")
         msg["From"] = SMTP_USER
@@ -38,22 +35,21 @@ def send_email_notification(to_email: str, subject: str, message: str):
 
         html = f"""
         <html>
-          <body style="font-family:Arial; font-size:15px;">
+        <body style="font-family:Arial;">
             <h3>{subject}</h3>
             <p>{message}</p>
-            <br>
-            <p>Sevor — Rent Anything Worldwide</p>
-          </body>
+            <br><p>Sevor — Rent Anything Worldwide</p>
+        </body>
         </html>
         """
 
         msg.attach(MIMEText(message, "plain"))
         msg.attach(MIMEText(html, "html"))
 
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASS)
-            server.sendmail(SMTP_USER, to_email, msg.as_string())
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as s:
+            s.starttls()
+            s.login(SMTP_USER, SMTP_PASS)
+            s.sendmail(SMTP_USER, to_email, msg.as_string())
 
         print("EMAIL SENT →", to_email)
 
@@ -62,13 +58,11 @@ def send_email_notification(to_email: str, subject: str, message: str):
 
 
 def send_user_email(db: Session, user_id: int, subject: str, message: str):
-    """
-    تلتقط الإيميل من قاعدة البيانات وترسل الرسالة
-    """
     u = db.get(User, user_id)
-    if not u or not getattr(u, "email", None):
-        print("❌ Cannot send email, user missing email:", user_id)
+    if not u or not u.email:
+        print("❌ Cannot send email, missing email for user:", user_id)
         return
+
     send_email_notification(u.email, subject, message)
 
 
@@ -89,7 +83,7 @@ def _json(data: dict) -> JSONResponse:
 
 
 # ============================================================
-#                 PUSH + EMAIL NOTIFICATION
+#               PUSH NOTIFICATIONS (DB + EMAIL)
 # ============================================================
 def push_notification(
     db: Session,
@@ -100,7 +94,6 @@ def push_notification(
     kind: str = "system",
 ) -> Notification:
 
-    # === Push in database ===
     n = Notification(
         user_id=user_id,
         title=(title or "").strip()[:200],
@@ -110,17 +103,16 @@ def push_notification(
         is_read=False,
         created_at=datetime.utcnow(),
         opened_once=False,
-        opened_at=None,
     )
     db.add(n)
     db.commit()
     db.refresh(n)
 
-    # === Email ===
+    # Email fallback
     try:
         content = body or title
         if url:
-            content += f"\n\nOpen here: https://sevor.net{url}"
+            content += f"\n\nOpen: https://sevor.net{url}"
 
         send_user_email(db, user_id, title, content)
 
@@ -131,45 +123,42 @@ def push_notification(
 
 
 # ============================================================
-#                      BROADCAST
+#               ADMIN + DM BROADCAST
 # ============================================================
-def notify_admins(db: Session, title: str, body: str = "", url: str = "") -> None:
+
+def notify_admins(db: Session, title: str, body: str = "", url: str = ""):
     admins = db.query(User).filter(User.role == "admin").all()
     for a in admins:
         push_notification(db, a.id, title, body, url, kind="admin")
 
 
-def notify_mds(db, title: str, body: str, url: str = "/md/inbox", kind: str = "support") -> int:
-    sent = 0
-    md_users = (
-        db.query(User)
-        .filter((User.is_deposit_manager == True) | (User.role == "admin"))
-        .all()
-    )
-    for u in md_users:
-        try:
-            push_notification(db, u.id, title, body, url=url, kind=kind)
-            sent += 1
-        except:
-            pass
-    return sent
+def notify_dms(db: Session, title: str, body: str = "", url: str = ""):
+    """
+    إرسال إشعار فقط للـ Deposit Managers + Admin
+    """
+    dm_users = db.query(User).filter(
+        (User.is_deposit_manager == True) | (User.role == "admin")
+    ).all()
+
+    for u in dm_users:
+        push_notification(db, u.id, title, body, url, kind="deposit")
 
 
-def notify_mods(db: Session, title: str, body: str = "", url: str = "") -> None:
+def notify_mods(db: Session, title: str, body: str = "", url: str = ""):
     rows = (
         db.query(User.id)
         .filter(or_(User.role == "admin", getattr(User, "is_mod") == True))
-        .distinct()
         .all()
     )
-    ids = [r[0] if isinstance(r, tuple) else r.id for r in rows]
+    ids = [r[0] for r in rows]
     for uid in ids:
         push_notification(db, uid, title, body, url, kind="support")
 
 
 # ============================================================
-#                      API: unread_count
+# API ENDPOINTS BELOW
 # ============================================================
+
 @router.get("/api/unread_count")
 def api_unread_count(
     db: Session = Depends(get_db),
@@ -186,9 +175,6 @@ def api_unread_count(
     return _json({"count": int(count)})
 
 
-# ============================================================
-#                      API: POLLING
-# ============================================================
 @router.get("/api/notifications/poll")
 def api_poll(
     request: Request,
@@ -199,7 +185,7 @@ def api_poll(
     if not user:
         raise HTTPException(401)
 
-    cutoff = datetime.utcfromtimestamp(since or 0)
+    cutoff = datetime.utcfromtimestamp(since)
 
     rows = (
         db.query(Notification)
@@ -222,13 +208,9 @@ def api_poll(
         for r in rows
     ]
 
-    now = int(datetime.utcnow().timestamp())
-    return _json({"now": now, "items": items})
+    return _json({"now": int(datetime.utcnow().timestamp()), "items": items})
 
 
-# ============================================================
-#                 API: mark all read
-# ============================================================
 @router.post("/api/notifications/mark_all_read")
 def mark_all_read(
     db: Session = Depends(get_db),
@@ -247,9 +229,6 @@ def mark_all_read(
     return _json({"ok": True})
 
 
-# ============================================================
-#                 API: mark a single read
-# ============================================================
 @router.post("/api/notifications/{notif_id}/read")
 def mark_read(
     notif_id: int,
@@ -269,9 +248,6 @@ def mark_read(
     return _json({"ok": True})
 
 
-# ============================================================
-#                 OPEN NOTIFICATION
-# ============================================================
 @router.get("/notifications/open/{notif_id}")
 def open_notification(
     notif_id: int,
@@ -284,30 +260,25 @@ def open_notification(
 
     n = db.get(Notification, notif_id)
     if not n or n.user_id != user.id:
-        raise HTTPException(404, "Notification not found")
+        raise HTTPException(404)
 
-    # إذا كان مفتوح من قبل → نمنعه
     if n.opened_once:
         return request.app.templates.TemplateResponse(
             "notification_used_once.html",
-            {"request": request, "session_user": user}
+            {"request": request, "session_user": user},
         )
 
-    # أول مرة فقط
     n.opened_once = True
     n.opened_at = datetime.utcnow()
     n.is_read = True
     db.commit()
 
-    # 🌟 نلتقط ID العنصر من الرابط
     item_id = request.query_params.get("item_id")
 
-    # في حالة إشعار الرفض → افتح صفحة التعديل
     if n.kind == "reject_edit" and item_id:
         return RedirectResponse(
             url=f"/owner/items/{item_id}/edit",
-            status_code=303
+            status_code=303,
         )
 
-    # fallback
     return RedirectResponse(url="/notifications", status_code=303)
