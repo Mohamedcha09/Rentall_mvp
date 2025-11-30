@@ -14,6 +14,101 @@
   .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
   .ok{color:#198754} .bad{color:#dc3545}
 </style>
+
+<style>
+/* ================================
+   📱 MOBILE (max-width: 768px)
+   ================================ */
+@media (max-width: 768px) {
+
+  /* إخفاء النافبار العلوي */
+  header,
+  .top-navbar,
+  .site-header,
+  .nav-top,
+  .mobile-topbar {
+      display: none !important;
+      opacity: 0 !important;
+      height: 0 !important;
+  }
+
+  /* إخفاء النافبار السفلي */
+  .mobile-tabbar,
+  .bottom-nav,
+  .footer-nav {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      height: 0 !important;
+  }
+
+  /* إخفاء banner Stripe Connect */
+  .stripe-connect-banner,
+  .connect-now-box,
+  .alert-stripe {
+      display: none !important;
+  }
+
+  /* ====== تحسين التخطيط ====== */
+  .wrap {
+      max-width: 100%;
+      padding: 14px;
+  }
+
+  .grid {
+      grid-template-columns: 1fr !important;
+  }
+
+  .card {
+      padding: 16px;
+      border-radius: 14px;
+      margin-bottom: 16px;
+  }
+
+  h4 {
+      font-size: 1.25rem;
+      margin-bottom: 10px;
+      line-height: 1.35;
+  }
+
+  .chip {
+      padding: .35rem .7rem;
+      font-size: .85rem;
+  }
+
+  /* صور الأدلة */
+  .evs {
+      gap: 6px !important;
+  }
+
+  .evs img,
+  .evs video {
+      width: 76px !important;
+      height: 76px !important;
+      border-radius: 10px;
+  }
+
+  /* بطاقة item */
+  .card img {
+      width: 90px !important;
+      height: 90px !important;
+  }
+
+  /* Financial Summary on mobile */
+  .card .d-flex {
+      font-size: .95rem;
+  }
+
+  /* زر العودة */
+  .btn-outline-secondary {
+      width: 100%;
+      text-align: center;
+      padding: 10px;
+      font-size: .95rem;
+  }
+
+}
+</style>
 {% endblock %}
 
 {% block content %}
