@@ -735,8 +735,45 @@ body[data-auth="0"] .mobile-tabbar {
 .mobile-tabbar {
   position: relative;
 }
+/* ----- Bottom Mobile Tabbar (Clean) ----- */
+.mobile-tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: center;
+  padding: 6px;
+  z-index: 99;
+  border-top: 1px solid rgba(255,255,255,.12);
+}
+
+/* Each tab */
+.mobile-tabbar a {
+  text-align: center;
+  color: rgba(255,255,255,.7);
+  font-size: 22px;
+  padding-top: 4px;
+}
+
+/* Active tab (glowing) */
+.mobile-tabbar a.is-active {
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Remove indicator completely */
 .mobile-tabbar .tab-indicator {
   display: none !important;
+}
+
+@media (min-width: 992px) {
+  .mobile-tabbar { display: none; }
 }
 
 
