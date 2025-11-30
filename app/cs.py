@@ -8,7 +8,8 @@ from sqlalchemy import desc, text
 
 from .database import get_db
 from .models import SupportTicket, SupportMessage, User
-from .notifications_api import push_notification, notify_mods, notify_mds
+from .notifications_api import push_notification, notify_mods, notify_dms
+
 
 templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(prefix="/cs", tags=["cs"])
