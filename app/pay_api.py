@@ -410,11 +410,7 @@ def start_checkout_all(
             "currency_native": native_currency,
             "fx_rate": fx_rate,
         },
-        # REMOVE THIS COMPLETELY
-# "transfer_data": {
-#     "destination": owner.stripe_account_id,
-#     "amount": transfer_amount,
-# },
+
 
     }
 
@@ -662,10 +658,6 @@ def start_checkout_rent(
             "currency_display": display_currency,
             "currency_native": native_currency,
             "fx_rate": fx_rate,
-        },
-        "transfer_data": {
-            "destination": owner.stripe_account_id,
-            "amount": transfer_amount,
         },
     }
 
