@@ -1083,22 +1083,6 @@ def _startup_fx_seed():
 
 
 from fastapi.responses import FileResponse
-# ---------------------------------------------------------------
-# Automated payout scheduler (runs every 30 minutes)
-# ---------------------------------------------------------------
-from .pay_api import send_owner_payouts
-
-@app.on_event("startup")
-@repeat_every(seconds=1800)  # 30 minutes
-def run_payout_scheduler():
-    print(">>> Running payout auto-scheduler on startup interval...")
-    db = SessionLocal()
-    try:
-        send_owner_payouts(db)
-    except Exception as e:
-        print("Payout scheduler error:", e)
-    finally:
-        db.close()
 
 @app.get("/sitemap.xml")
 def sitemap():
