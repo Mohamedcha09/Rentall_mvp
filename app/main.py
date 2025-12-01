@@ -1086,7 +1086,6 @@ from fastapi.responses import FileResponse
 # ---------------------------------------------------------------
 # Automated payout scheduler (runs every 30 minutes)
 # ---------------------------------------------------------------
-from fastapi_utils.tasks import repeat_every
 from .pay_api import send_owner_payouts
 
 @app.on_event("startup")
