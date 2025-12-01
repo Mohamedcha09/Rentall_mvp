@@ -1279,3 +1279,104 @@ except Exception as e:
     print("EMAIL ERROR (deposit decision):", e)
 
 
+
+
+# ============================================================
+# (G) AUTOMATED OWNER PAYOUT SCHEDULER
+# ============================================================
+
+def send_owner_payouts(db: Session):
+    """
+    This function attempts to send payouts for all bookings that:
+    - renter confirmed received
+    - owner_payout_request = True
+    - owner_payout_status = 'waiting_funds'
+    """
+
+    print("▶ Running automated payout scheduler...")
+
+    # 1) Query all bookings waiting for payout
+    bookings = db.query(Booking).filter(
+        Booking.owner_payout_request == True,
+        Booking.owner_payout_status == "waiting_funds"
+    ).all()
+
+    if not bookings:
+        print("✔ No payouts pending.")
+        return
+
+    for bk in bookings:
+        try:
+            owner = db.get(User, bk.owner_id)
+            if not owner or not getattr(owner, "stripe_account_id", None):
+                print(f"✖ Booking {bk.id} skipped: owner missing Stripe account.")
+                continue
+
+            # amount to transfer: convert native rent → paid currency cents
+            amount_native = float(bk.owner_payout_amount or bk.rent_amount or 0)
+            if amount_native <= 0:
+                print(f"✖ Booking {bk.id} has no payout amount.")
+                continue
+
+            # convert native to currency_paid cents
+            paid_cur = (bk.currency_paid or "cad").lower()
+            native_cur = (bk.currency_native or "cad").lower()
+
+            # convert using FX stored at booking
+            if native_cur == paid_cur:
+                payout_cents = int(round(amount_native * 100))
+            else:
+                fx = float(bk.fx_rate_native_to_paid or 1.0)
+                payout_cents = int(round(amount_native * fx * 100))
+
+            if payout_cents <= 0:
+                print(f"✖ Booking {bk.id} payout < 1 cent")
+                continue
+
+            print(f"→ Trying payout for booking {bk.id}: {payout_cents} {paid_cur}")
+
+            # 2) Try Stripe transfer
+            try:
+                stripe.Transfer.create(
+                    amount=payout_cents,
+                    currency=paid_cur,
+                    destination=owner.stripe_account_id,
+                    description=f"Payout for booking #{bk.id}"
+                )
+            except stripe.error.InvalidRequestError as e:
+                msg = str(e).lower()
+
+                # insufficient funds → retry later
+                if "insufficient" in msg:
+                    print(f"⚠ Insufficient funds. Will retry later. Booking {bk.id}")
+
+                    bk.owner_payout_last_try_at = datetime.utcnow()
+                    bk.owner_payout_attempts = (bk.owner_payout_attempts or 0) + 1
+                    bk.owner_payout_status = "waiting_funds"
+                    db.commit()
+                    continue
+
+                print(f"❌ Stripe error for booking {bk.id}: {e}")
+                continue
+
+            # SUCCESS 🎉
+            bk.owner_payout_status = "sent"
+            bk.owner_payout_sent_at = datetime.utcnow()
+            db.commit()
+
+            # Notify owner
+            push_notification(
+                db, bk.owner_id,
+                "Payout sent",
+                f"Your earnings for booking #{bk.id} have been transferred.",
+                f"/bookings/flow/{bk.id}",
+                "payout"
+            )
+
+            print(f"✔ Booking {bk.id} payout sent!")
+
+        except Exception as err:
+            print("❌ Unexpected error:", err)
+            continue
+
+    print("✔ Automated payout scheduler completed.")

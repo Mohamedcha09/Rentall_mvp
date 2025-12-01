@@ -1234,50 +1234,33 @@ def renter_confirm_received(
 
     item = db.get(Item, bk.item_id)
 
-    # 👇 تحديث حالة الحجز
+    # ==============================
+    # تحديث حالة الحجز
+    # ==============================
     bk.status = "picked_up"
     bk.picked_up_at = datetime.utcnow()
     bk.timeline_renter_received_at = datetime.utcnow()
+
+    # =====================================================
+    #  🔥 لا ترسل أي أموال الآن — فقط سجّل طلب الدفع
+    # =====================================================
+    bk.owner_payout_request = True
+    bk.owner_payout_status = "waiting_funds"
+    bk.owner_payout_attempts = 0
+    bk.owner_payout_last_try_at = None
+
     db.commit()
 
     # ==============================
-    #  🔥 STRIPE PAYOUT (Send rent to owner)
-    # ==============================
-    try:
-        import stripe
-        stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
-
-        owner_user = db.get(User, bk.owner_id)
-        if owner_user and owner_user.stripe_account_id:
-
-            rent_amount = int(round((bk.total_amount or bk.amount_native or 0) * 100))
-
-            transfer = stripe.Transfer.create(
-                amount=rent_amount,
-                currency=(bk.currency_native or "CAD").lower(),
-                destination=owner_user.stripe_account_id,
-                description=f"Rent payout for booking #{bk.id}"
-            )
-
-            # تحديث حالة الدفع
-            bk.owner_payout_status = "sent"
-            bk.owner_payout_amount = bk.total_amount
-            bk.rent_released_at = datetime.utcnow()
-            db.commit()
-
-    except Exception as e:
-        print("PAYOUT ERROR:", e)
-
-    # ======================
     # PUSH NOTIFICATIONS
-    # ======================
+    # ==============================
     if item:
         # إشعار للمالك
         push_notification(
             db,
             bk.owner_id,
             "Renter picked up the item",
-            f"'{item.title}'. Reminder about the return date.",
+            f"'{item.title}'. Wait for your payout.",
             f"/bookings/flow/{bk.id}",
             "booking",
         )
@@ -1287,7 +1270,7 @@ def renter_confirm_received(
             db,
             bk.renter_id,
             "Pickup confirmed",
-            f"Don’t forget to return '{item.title}' on time.",
+            f"You picked up '{item.title}'.",
             f"/bookings/flow/{bk.id}",
             "booking",
         )

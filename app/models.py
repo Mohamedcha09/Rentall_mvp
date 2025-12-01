@@ -411,6 +411,10 @@ class Booking(Base):
 
     owner_payout_amount      = col_or_literal("bookings", "owner_payout_amount", Integer, nullable=False, default=0)
     rent_released_at         = col_or_literal("bookings", "rent_released_at", DateTime, nullable=True)
+    owner_payout_request     = col_or_literal("bookings", "owner_payout_request", Boolean, nullable=False, default=False)
+    owner_payout_status      = col_or_literal("bookings", "owner_payout_status", String(20), nullable=True)
+    owner_payout_attempts    = col_or_literal("bookings", "owner_payout_attempts", Integer, nullable=False, default=0)
+    owner_payout_last_try_at = col_or_literal("bookings", "owner_payout_last_try_at", DateTime, nullable=True)
 
     deposit_status        = col_or_literal("bookings", "deposit_status", String(30), default="none")
     deposit_hold_intent_id = col_or_literal("bookings", "deposit_hold_intent_id", String(120), nullable=True)
