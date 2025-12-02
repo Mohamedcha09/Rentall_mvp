@@ -871,10 +871,12 @@ def owner_decision(
         bk.timeline_owner_decided_at = datetime.utcnow()
         db.commit()
 
+        # رابط مع ?loc=...
         renter = db.get(User, bk.renter_id)
         qs = _loc_qs_for_booking(bk) or _loc_qs_for_user(renter)
         link = f"/bookings/flow/{bk.id}{qs}"
 
+        # إشعار داخل Sevor
         push_notification(
             db,
             bk.renter_id,
@@ -884,7 +886,7 @@ def owner_decision(
             "booking",
         )
 
-        # EMAIL (rejected)
+        # إيميل للمستأجر (رفض)
         try:
             from .email_service import send_email
 
@@ -928,6 +930,7 @@ def owner_decision(
         except Exception as e:
             print("EMAIL SEND ERROR (REJECTED):", e)
 
+        # دايمًا بعد الرفض نرجع للـ flow
         return redirect_to_flow_with_loc(bk, renter)
 
     # =======================
@@ -935,35 +938,19 @@ def owner_decision(
     # =======================
     bk.owner_decision = "accepted"
 
-    # ---------------------------------------------------
-    # 🔥 DEPOSIT VALIDATION (max allowed = 10× daily)
-    # ---------------------------------------------------
-    daily_price = (item.price_per_day or 0)
-    max_allowed = daily_price * 10
-
+    # Default deposit
+    default_deposit = (item.price_per_day or 0) * 5
     amount = int(deposit_amount or 0)
-
-    # If user enters more than 10× → reject
-    if amount > max_allowed:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Deposit cannot exceed {max_allowed}$ (10× the daily price)"
-        )
-
-    # If empty or zero → default = 10×
     if amount <= 0:
-        amount = max_allowed
+        amount = default_deposit
 
-    # Save validated deposit
-    bk.deposit_amount = amount
-    # ---------------------------------------------------
-
+    bk.deposit_amount = max(0, amount)
     bk.accepted_at = datetime.utcnow()
     bk.timeline_owner_decided_at = datetime.utcnow()
     bk.status = "accepted"
     db.commit()
 
-    # GEO snapshot
+    # ✅ Snapshot geo immediately so notifications/links include ?loc=CA-QC
     try:
         renter = db.get(User, bk.renter_id)
         geo_now = _adapter_geo_from_request(request) if request else {"country": None, "sub": None}
@@ -1003,7 +990,9 @@ def owner_decision(
         "booking",
     )
 
-    # EMAIL (accepted)
+    # -----------------------------
+    # Email to renter (ACCEPTED)
+    # -----------------------------
     try:
         from .email_service import send_email
 
