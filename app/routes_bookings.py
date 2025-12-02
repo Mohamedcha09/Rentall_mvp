@@ -938,11 +938,18 @@ def owner_decision(
     # =======================
     bk.owner_decision = "accepted"
 
-    # Default deposit
-    default_deposit = (item.price_per_day or 0) * 5
+    # Default deposit (5×) + سقف أعلى (10×)
+    daily_price = (item.price_per_day or 0)
+    default_deposit = daily_price * 5
+
     amount = int(deposit_amount or 0)
     if amount <= 0:
         amount = default_deposit
+
+    # NEW: limit deposit to max 10 × daily price
+    max_deposit = daily_price * 10
+    if amount > max_deposit:
+        amount = max_deposit
 
     bk.deposit_amount = max(0, amount)
     bk.accepted_at = datetime.utcnow()
