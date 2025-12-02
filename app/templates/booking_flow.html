@@ -388,23 +388,21 @@
               <button class="btn btn-outline-danger"><i class="bi bi-x-lg"></i> Reject</button>
             </form>
           </div>
+
           <script>
-(function(){
-    var inp = document.getElementById("depositInput");
-    if(!inp) return;
-
-    inp.addEventListener("input", function(){
-        var val = parseFloat(this.value || 0);
-        var maxAllowed = ({{ item.price_per_day or 0 }} * 10);
-
-        if(val > maxAllowed){
-            alert("⚠️ Deposit cannot exceed x10 daily price.");
-            this.value = maxAllowed.toFixed(2);
-        }
-    });
-})();
-</script>
-
+            (function () {
+              try {
+                var inp = document.getElementById('depositInput');
+                if (!inp) return;
+                var current = parseFloat(inp.value || '0');
+                if (!current || current <= 0) {
+                  var pricePerDay = parseFloat('{{ (item.price_per_day or 0)|float }}') || 0;
+                  var defVal = Math.max(0, +(pricePerDay * 5).toFixed(2));
+                  inp.value = defVal;
+                }
+              } catch (e) {}
+            })();
+          </script>
 
         {% elif is_renter %}
           <div class="hint">Your request has been sent. Waiting for the owner’s approval…</div>
@@ -1293,12 +1291,39 @@ function uploadNow(){
       <input type="hidden" name="decision" value="rejected">
       <button class="btn btn-glass-red w-100"><i class="bi bi-x-lg"></i>Reject</button>
     </form>
-    <form method="post" action="/bookings/{{ booking.id }}/owner/decision">
+        <form method="post"
+          action="/bookings/{{ booking.id }}/owner/decision"
+          id="mobileAcceptForm">
       <input type="hidden" name="decision" value="accepted">
-      <button class="btn btn-glass-green w-100"><i class="bi bi-check2-circle"></i>Accept + Deposit</button>
+
+      {# هذا هو الحقل الذي سيرسل نفس قيمة الديبو #}
+      <input type="hidden" id="depositMobile"
+             name="deposit_amount"
+             value="{{ booking.deposit_amount or 0 }}">
+
+      <button class="btn btn-glass-green w-100">
+        <i class="bi bi-check2-circle"></i>Accept + Deposit
+      </button>
     </form>
   </div>
 {% endif %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var mainInput   = document.getElementById("depositInput");   // حقل الديبو الأصلي (الديستوب)
+  var mobileInput = document.getElementById("depositMobile");  // الحقل المخفي في الموبايل
+
+  if (!mainInput || !mobileInput) return;
+
+  // أول ما تفتح الصفحة: انسخ القيمة الحالية
+  mobileInput.value = mainInput.value;
+
+  // كل ما يغيّر المالك قيمة الديبو في الـ input العادي
+  mainInput.addEventListener("input", function () {
+    mobileInput.value = mainInput.value;
+  });
+});
+</script>
+
 
 
 {% if booking.status in ['paid'] and is_renter %}
