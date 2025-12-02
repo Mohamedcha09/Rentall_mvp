@@ -865,8 +865,16 @@ def booking_flow(
         "disp_cur": _display_currency(request),
         "fx_rate": utils_fx.fx_rate,
         "err_code": request.query_params.get("err"),
+         
+        "renter_full_name": renter.full_name if renter else "",
+        "renter_first_name": renter.first_name if renter else "",
+        "renter_last_name": renter.last_name if renter else "",
+        "renter_phone": renter.phone if renter else "",
+        "renter_avatar": renter.avatar_path if renter and renter.avatar_path else None,
         "renter_reviews_count": renter_reviews_count,
         "renter_reviews_avg": renter_reviews_avg,
+
+
          
     }
     utils_fx.inject_db_for_fx(db)
