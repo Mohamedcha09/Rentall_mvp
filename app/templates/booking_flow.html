@@ -365,6 +365,12 @@
       {% if booking.status in ['requested'] %}
         {% if is_owner %}
           <h5 class="mb-2 d-none d-sm-block">New request awaiting your approval</h5>
+                    {% if err_code == 'deposit_too_high' %}
+          <div class="alert alert-warning alert-mini mb-2">
+            Deposit too high. It must be ≤ 10× daily price
+            (max {{ (item.price_per_day or 0) * 10 }} {{ item.currency or 'CAD' }}).
+          </div>
+          {% endif %}
 
           <div class="box mb-2">
             <div class="mb-2">Enter the required <strong>deposit</strong> (default = daily price × 5)</div>

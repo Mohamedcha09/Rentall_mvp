@@ -839,6 +839,8 @@ def booking_flow(
         "display_currency": _display_currency,
         "disp_cur": _display_currency(request),
         "fx_rate": utils_fx.fx_rate,
+        "err_code": request.query_params.get("err"),
+
     }
     utils_fx.inject_db_for_fx(db)
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
@@ -940,10 +942,16 @@ def owner_decision(
     max_deposit = (item.price_per_day or 0) * 10
 
     if amount > max_deposit:
-        raise HTTPException(
-            status_code=400,
-            detail=f"الديبو كبير جداً. الحد الأقصى هو {max_deposit}."
-        )
+        renter = db.get(User, bk.renter_id)
+        qs = _loc_qs_for_booking(bk) or _loc_qs_for_user(renter)  # نحافظ على ?loc=...
+        url = f"/bookings/flow/{bk.id}{qs}"
+
+        # نضيف كود الخطأ في الـ query string
+        sep = "&" if "?" in url else "?"
+        url = f"{url}{sep}err=deposit_too_high"
+
+        # لا نغيّر حالة الحجز (يبقى requested) ونرجّع redirect
+        return RedirectResponse(url=url, status_code=303)
 
     bk.deposit_amount = amount  # 0 = بدون ديبو ، غيره = الرقم كما هو
 
