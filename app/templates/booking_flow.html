@@ -738,7 +738,14 @@
 
           <div class="hint mt-2">
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-              <div class="small">Renter rating: ⭐ {{ renter_reviews_avg }}/5 — {{ renter_reviews_count }} reviews</div>
+              <div class="small">
+  {% if renter_reviews_count and renter_reviews_count > 0 %}
+    ⭐ {{ renter_reviews_avg }}/5 — {{ renter_reviews_count }} reviews
+  {% else %}
+    No reviews yet
+  {% endif %}
+</div>
+
               <a class="btn btn-ghost btn-sm" href="/users/{{ booking.renter_id }}?tab=reviews">Open reviews page</a>
             </div>
           </div>

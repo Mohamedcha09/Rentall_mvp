@@ -11,7 +11,9 @@ from sqlalchemy import inspect
 from . import utils_fx
 
 from .database import get_db
-from .models import User, Item, Booking
+from .models import User, Item, Booking, UserReview
+from sqlalchemy.sql import func
+
 from .utils import category_label, display_currency
 from .notifications_api import push_notification, notify_admins
 from .items import _display_currency, fx_convert_smart
@@ -666,6 +668,29 @@ def booking_flow(
     item = db.get(Item, bk.item_id)
     owner = db.get(User, bk.owner_id)
     renter = db.get(User, bk.renter_id)
+    # ================================
+    # RENTER REVIEWS (from UserReview)
+    # ================================
+    renter_reviews_count = 0
+    renter_reviews_avg = 0.0
+
+    if renter:
+        try:
+            q = db.query(UserReview).filter(
+                UserReview.target_user_id == renter.id
+            )
+            renter_reviews_count = q.count()
+
+            if renter_reviews_count > 0:
+                avg = db.query(func.avg(UserReview.stars)).filter(
+                    UserReview.target_user_id == renter.id
+                ).scalar()
+                renter_reviews_avg = round(float(avg or 0.0), 1)
+        except Exception as e:
+            print("REVIEW STATS ERROR:", e)
+            renter_reviews_count = 0
+            renter_reviews_avg = 0.0
+
     sid = request.query_params.get("sid")
     rent_ok = request.query_params.get("rent_ok")
     dep_ok = request.query_params.get("deposit_ok")
@@ -840,6 +865,8 @@ def booking_flow(
         "disp_cur": _display_currency(request),
         "fx_rate": utils_fx.fx_rate,
         "err_code": request.query_params.get("err"),
+        "renter_reviews_count": renter_reviews_count,
+        "renter_reviews_avg": renter_reviews_avg,
          
     }
     utils_fx.inject_db_for_fx(db)
