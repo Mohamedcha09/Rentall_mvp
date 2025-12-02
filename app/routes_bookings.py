@@ -840,11 +840,7 @@ def booking_flow(
         "disp_cur": _display_currency(request),
         "fx_rate": utils_fx.fx_rate,
         "err_code": request.query_params.get("err"),
-        "owner_avatar": getattr(owner, "avatar_path", None),
-        "owner_rating": getattr(owner, "rating", None),
-        "renter_avatar": getattr(renter, "avatar_path", None),
-        "renter_rating": getattr(renter, "rating", None),
-
+         
     }
     utils_fx.inject_db_for_fx(db)
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
