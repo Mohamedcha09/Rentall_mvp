@@ -938,13 +938,27 @@ def owner_decision(
     # =======================
     bk.owner_decision = "accepted"
 
-    # Default deposit
-    default_deposit = (item.price_per_day or 0) * 5
-    amount = int(deposit_amount or 0)
-    if amount <= 0:
-        amount = default_deposit
+    # ===== منطق الديبو الجديد =====
+    daily_price = item.price_per_day or 0
+    max_allowed = daily_price * 10 if daily_price > 0 else None
 
-    bk.deposit_amount = max(0, amount)
+    amount = int(deposit_amount or 0)
+
+    # 1) إذا المالك كتب رقم أكبر من 10×السعر اليومي → خطأ
+    if max_allowed is not None and amount > max_allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Deposit cannot exceed {max_allowed}$ (max = 10× daily price)"
+        )
+
+    # 2) إذا تركه فارغ / صفر / سالب → نخليه 0 (بدون ديبو)
+    if amount <= 0:
+        amount = 0
+
+    # 3) حفظ قيمة الديبو كما هي
+    bk.deposit_amount = amount
+    # ===============================
+
     bk.accepted_at = datetime.utcnow()
     bk.timeline_owner_decided_at = datetime.utcnow()
     bk.status = "accepted"
