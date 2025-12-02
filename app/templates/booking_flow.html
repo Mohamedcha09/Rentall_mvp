@@ -367,7 +367,7 @@
           <h5 class="mb-2 d-none d-sm-block">New request awaiting your approval</h5>
 
           <div class="box mb-2">
-            <div class="mb-2">Enter the required <strong>deposit</strong> (default = daily price × 10)</div>
+            <div class="mb-2">Enter the required <strong>deposit</strong> (default = daily price × 5)</div>
             <form method="post" action="/bookings/{{ booking.id }}/owner/decision" class="row g-2 align-items-end">
               <input type="hidden" name="decision" value="accepted">
               <div class="col-12 col-md-6">
@@ -388,21 +388,23 @@
               <button class="btn btn-outline-danger"><i class="bi bi-x-lg"></i> Reject</button>
             </form>
           </div>
-
           <script>
-            (function () {
-              try {
-                var inp = document.getElementById('depositInput');
-                if (!inp) return;
-                var current = parseFloat(inp.value || '0');
-                if (!current || current <= 0) {
-                  var pricePerDay = parseFloat('{{ (item.price_per_day or 0)|float }}') || 0;
-                  var defVal = Math.max(0, +(pricePerDay * 5).toFixed(2));
-                  inp.value = defVal;
-                }
-              } catch (e) {}
-            })();
-          </script>
+(function(){
+    var inp = document.getElementById("depositInput");
+    if(!inp) return;
+
+    inp.addEventListener("input", function(){
+        var val = parseFloat(this.value || 0);
+        var maxAllowed = ({{ item.price_per_day or 0 }} * 10);
+
+        if(val > maxAllowed){
+            alert("⚠️ Deposit cannot exceed x10 daily price.");
+            this.value = maxAllowed.toFixed(2);
+        }
+    });
+})();
+</script>
+
 
         {% elif is_renter %}
           <div class="hint">Your request has been sent. Waiting for the owner’s approval…</div>
