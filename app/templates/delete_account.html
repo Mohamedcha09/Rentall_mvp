@@ -1,0 +1,86 @@
+{# app/templates/delete_account.html #}
+{% extends "base.html" %}
+
+{% block title %}Delete your Sevor account{% endblock %}
+
+{% block head %}
+<style>
+  .del-wrap{max-width:800px;margin:24px auto;padding:16px}
+  .del-card{background:#ffffff;border-radius:16px;padding:20px;border:1px solid #e5e7eb}
+  .del-title{font-size:1.4rem;font-weight:700;margin-bottom:8px}
+  .del-sub{opacity:.8;margin-bottom:18px}
+  .del-section{margin-bottom:18px}
+  .del-section h2{font-size:1rem;font-weight:600;margin-bottom:6px}
+  .del-section ul{margin:6px 0 0 18px}
+  .del-section li{margin-bottom:4px}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="del-wrap">
+  <div class="del-card">
+    <div class="del-title">Delete your Sevor account</div>
+    <p class="del-sub">
+      This page explains how Sevor users can request deletion of their account
+      and associated personal data.
+    </p>
+
+    <div class="del-section">
+      <h2>How to request deletion</h2>
+      <p>You can request deletion of your Sevor account in one of the following ways:</p>
+      <ul>
+        <li>
+          Send an email to
+          <strong>support@sevor.net</strong>
+          from the same email address used for your Sevor account, and clearly
+          state that you want to delete your account.
+        </li>
+        <li>
+          Or contact us from inside the app using the support / help section
+          and ask for <strong>“Account deletion”</strong>.
+        </li>
+      </ul>
+      <p>
+        We may ask you to confirm your identity to protect your account from
+        unauthorized deletion.
+      </p>
+    </div>
+
+    <div class="del-section">
+      <h2>What data will be deleted</h2>
+      <p>When we delete your account, we permanently remove:</p>
+      <ul>
+        <li>Your Sevor profile (name, photo, bio)</li>
+        <li>Your listings, saved items and favourites</li>
+        <li>Your messages and conversations (where legally possible)</li>
+        <li>Your reviews and ratings (or we anonymize them)</li>
+      </ul>
+    </div>
+
+    <div class="del-section">
+      <h2>Data we may keep temporarily</h2>
+      <p>
+        Some information must be kept for a limited time for legal, security
+        or fraud-prevention reasons, for example:
+      </p>
+      <ul>
+        <li>Completed bookings and payment records</li>
+        <li>Invoices and tax-related information</li>
+      </ul>
+      <p>
+        This data is kept only as long as necessary (up to
+        <strong>90 days</strong>) and is not used for marketing purposes. After
+        this period, it is either deleted or anonymized.
+      </p>
+    </div>
+
+    <div class="del-section">
+      <h2>Questions</h2>
+      <p>
+        If you have any questions about account deletion or data protection,
+        you can contact us at <strong>support@sevor.net</strong>.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
