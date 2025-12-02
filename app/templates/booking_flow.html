@@ -769,7 +769,68 @@
     </div>
 
     <!-- Right column: summary -->
+        <!-- Right column: summary -->
     <div class="col-12 col-lg-5">
+
+      {# ==== Renter info card (for owner) ==== #}
+     {% if renter and is_owner %}
+<div class="box mb-2">
+  <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+
+    <!-- LEFT: Avatar + Name -->
+    <div class="d-flex align-items-center gap-2">
+
+      {% if renter.profile_image %}
+        <!-- Profile image circle -->
+        <img src="{{ renter.profile_image }}"
+             alt="avatar"
+             style="width:48px;height:48px;border-radius:999px;object-fit:cover;">
+      {% else %}
+        <!-- Simple fallback circle with initial -->
+        <div style="
+            width:48px;height:48px;border-radius:999px;
+            background:rgba(0,0,0,.07);
+            display:flex;align-items:center;justify-content:center;
+            font-weight:600;font-size:1.05rem;
+          ">
+          {{ (renter.first_name or renter.last_name or renter.email or '?')[:1]|upper }}
+        </div>
+      {% endif %}
+
+      <div>
+        <div class="small text-muted">Renter account</div>
+        <div class="fw-semibold">
+          {{ renter.first_name or '' }} {{ renter.last_name or '' }}
+        </div>
+
+        {% if renter.phone %}
+        <div class="small">
+          <span class="num-ltr">{{ renter.phone }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- RIGHT: Rating -->
+    <div class="text-end">
+      {% if renter_reviews_count and renter_reviews_count > 0 %}
+        <div class="small">⭐ {{ renter_reviews_avg }}/5</div>
+        <div class="xsmall text-muted">{{ renter_reviews_count }} reviews</div>
+      {% else %}
+        <div class="small text-muted">No reviews yet</div>
+      {% endif %}
+
+      <a class="btn btn-ghost btn-sm mt-1"
+         href="/users/{{ booking.renter_id }}?tab=reviews">
+        Reviews
+      </a>
+    </div>
+
+  </div>
+</div>
+{% endif %}
+
+
       <div class="box">
         <h6 class="mb-2">Payment summary</h6>
 
