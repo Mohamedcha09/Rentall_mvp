@@ -939,7 +939,7 @@ def owner_decision(
     except:
         raise HTTPException(status_code=400, detail="Invalid deposit amount")
 
-    max_deposit = (item.price_per_day or 0) * 10
+    max_deposit = (item.price_per_day or 0) * 20
 
     if amount > max_deposit:
         renter = db.get(User, bk.renter_id)
