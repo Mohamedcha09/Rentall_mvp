@@ -366,14 +366,24 @@
         {% if is_owner %}
           <h5 class="mb-2 d-none d-sm-block">New request awaiting your approval</h5>
                     {% if err_code == 'deposit_too_high' %}
-          <div class="alert alert-warning alert-mini mb-2">
-            Deposit too high. It must be ≤ 10× daily price
-            (max {{ (item.price_per_day or 0) * 10 }} {{ item.currency or 'CAD' }}).
-          </div>
+          <div class="alert alert-danger mb-2"
+     style="
+        border-radius:12px;
+        padding:12px 16px;
+        font-size:14px;
+        font-weight:500;
+        background:#fee2e2;      /* أحمر ناعم */
+        color:#b91c1c;            /* أحمر داكن */
+        border:1px solid #fecaca; /* خط أحمر خفيف */
+     ">
+  <i class="bi bi-exclamation-triangle-fill" style="margin-right:6px;"></i>
+  Deposit too high. It must be ≤ 10× daily price (max {{ (item.price_per_day or 0) * 10 }} CAD).
+</div>
+
           {% endif %}
 
           <div class="box mb-2">
-            <div class="mb-2">Enter the required <strong>deposit</strong> (default = daily price × 5)</div>
+            <div class="mb-2">Enter the required <strong>deposit</strong> (default = daily price × 10)</div>
             <form method="post" action="/bookings/{{ booking.id }}/owner/decision" class="row g-2 align-items-end">
               <input type="hidden" name="decision" value="accepted">
               <div class="col-12 col-md-6">
