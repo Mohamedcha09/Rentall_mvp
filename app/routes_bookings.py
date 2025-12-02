@@ -842,7 +842,6 @@ def booking_flow(
     }
     utils_fx.inject_db_for_fx(db)
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
-
 @router.post("/bookings/{booking_id}/owner/decision")
 def owner_decision(
     booking_id: int,
@@ -871,12 +870,10 @@ def owner_decision(
         bk.timeline_owner_decided_at = datetime.utcnow()
         db.commit()
 
-        # رابط مع ?loc=...
         renter = db.get(User, bk.renter_id)
         qs = _loc_qs_for_booking(bk) or _loc_qs_for_user(renter)
         link = f"/bookings/flow/{bk.id}{qs}"
 
-        # إشعار داخل Sevor
         push_notification(
             db,
             bk.renter_id,
@@ -886,7 +883,6 @@ def owner_decision(
             "booking",
         )
 
-        # إيميل للمستأجر (رفض)
         try:
             from .email_service import send_email
 
@@ -903,9 +899,7 @@ def owner_decision(
                      style="width:140px; margin-bottom:20px;" />
 
                 <h2 style='color:#e11d48;'>{title_txt}</h2>
-
                 <p>{msg_txt}</p>
-
                 <p><b>Item:</b> {item.title}</p>
 
                 <p>
@@ -930,7 +924,6 @@ def owner_decision(
         except Exception as e:
             print("EMAIL SEND ERROR (REJECTED):", e)
 
-        # دايمًا بعد الرفض نرجع للـ flow
         return redirect_to_flow_with_loc(bk, renter)
 
     # =======================
@@ -938,19 +931,29 @@ def owner_decision(
     # =======================
     bk.owner_decision = "accepted"
 
-    # Default deposit
-    default_deposit = (item.price_per_day or 0) * 5
-    amount = int(deposit_amount or 0)
-    if amount <= 0:
-        amount = default_deposit
+    # =============== DEPOSIT VALIDATION (FIXED 100%) ===============
+    try:
+        amount = int(deposit_amount or 0)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid deposit amount")
 
-    bk.deposit_amount = max(0, amount)
+    max_deposit = (item.price_per_day or 0) * 10
+
+    if amount > max_deposit:
+        raise HTTPException(
+            status_code=400,
+            detail=f"الديبو كبير جداً. الحد الأقصى هو {max_deposit}."
+        )
+
+    bk.deposit_amount = amount  # 0 = بدون ديبو ، غيره = الرقم كما هو
+
+    # ================================================================
     bk.accepted_at = datetime.utcnow()
     bk.timeline_owner_decided_at = datetime.utcnow()
     bk.status = "accepted"
     db.commit()
 
-    # ✅ Snapshot geo immediately so notifications/links include ?loc=CA-QC
+    # Snapshot geo for links
     try:
         renter = db.get(User, bk.renter_id)
         geo_now = _adapter_geo_from_request(request) if request else {"country": None, "sub": None}
@@ -976,7 +979,7 @@ def owner_decision(
     except Exception:
         pass
 
-    dep_txt = f" with a {bk.deposit_amount}$ deposit" if (bk.deposit_amount or 0) > 0 else ""
+    dep_txt = f" with a {bk.deposit_amount}$ deposit" if (amount > 0) else ""
     renter = db.get(User, bk.renter_id)
     qs = _loc_qs_for_booking(bk) or _loc_qs_for_user(renter)
     link = f"/bookings/flow/{bk.id}{qs}"
@@ -990,9 +993,7 @@ def owner_decision(
         "booking",
     )
 
-    # -----------------------------
-    # Email to renter (ACCEPTED)
-    # -----------------------------
+    # EMAIL
     try:
         from .email_service import send_email
 
