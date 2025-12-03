@@ -1089,3 +1089,8 @@ from fastapi.responses import FileResponse
 @app.get("/sitemap.xml")
 def sitemap():
     return FileResponse("app/static/sitemap.xml", media_type="application/xml")
+
+
+@app.get("/privacy")
+def privacy_page(request: Request):
+    return templates.TemplateResponse("privacy.html", {"request": request})
