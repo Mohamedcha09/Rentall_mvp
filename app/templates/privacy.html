@@ -1,22 +1,9 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Privacy Policy — Sevor</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 900px;
-      margin: auto;
-      padding: 20px;
-      line-height: 1.6;
-    }
-    h1, h2, h3 { color: #333; }
-  </style>
-</head>
+{% extends "base.html" %}
 
-<body>
+{% block title %}Privacy Policy — Sevor{% endblock %}
+
+{% block content %}
+<div class="wrap" style="padding:20px; max-width:900px; margin:auto;">
   <h1>Privacy Policy</h1>
 
   <p>
@@ -42,10 +29,9 @@
   </ul>
 
   <h2>Your Rights</h2>
-  <p>You may request access, correction, or deletion of your personal data at any time.</p>
+  <p>You may request access, correction, or deletion of your data at any time.</p>
 
   <h2>Contact</h2>
   <p>Email: no-reply@sevor.net</p>
-
-</body>
-</html>
+</div>
+{% endblock %}

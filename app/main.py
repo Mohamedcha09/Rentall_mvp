@@ -1091,6 +1091,12 @@ def sitemap():
     return FileResponse("app/static/sitemap.xml", media_type="application/xml")
 
 
-@app.get("/privacy")
-def privacy_page(request: Request):
-    return templates.TemplateResponse("privacy.html", {"request": request})
+@router.get("/privacy")
+def privacy_page(request: Request, user: Optional[User] = Depends(get_current_user)):
+    return templates.TemplateResponse(
+        "privacy.html",
+        {
+            "request": request,
+            "session_user": user  # مهم جداً
+        }
+    )
