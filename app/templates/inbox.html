@@ -197,13 +197,9 @@ mark {
 
   <!-- STATIC SUPPORT ENTRY (hidden initially) -->
   <a href="/messages/support-sevor"
-     class="thread-row thread-item"
+     class="thread-row"
      id="supportCard"
-     data-type="support"
-     style="display:none"
-     data-name="soutien sevor"
-     data-item=""
-     data-last="support sevor">
+     style="display:none">
 
     <div class="item-preview">
       <img src="/static/img/sevor-logo.png">
@@ -223,7 +219,7 @@ mark {
   <!-- USER THREAD MESSAGES -->
 {% for t in threads %}
 <a href="/messages/{{ t.id }}"
-   class="thread-row thread-item"
+   class="thread-row thread-item normal-card"
    data-type="{{ 'support' if t.other_verified else 'normal' }}"
    data-name="{{ t.other_fullname|lower }}"
    data-item="{{ t.item_title|lower }}"
@@ -272,7 +268,7 @@ const openBtn = document.getElementById("openSearch");
 const cancelBtn = document.getElementById("cancelSearch");
 const input = document.getElementById("searchInput");
 
-const items = document.querySelectorAll(".thread-item");
+const items = document.querySelectorAll(".normal-card");
 const supportCard = document.getElementById("supportCard");
 
 /* SEARCH HIGHLIGHT */
@@ -309,7 +305,7 @@ input.addEventListener("input", () => {
 
   let found = 0;
 
-  items.forEach(row => {
+  document.querySelectorAll(".thread-item").forEach(row => {
     const name = row.dataset.name;
     const item = row.dataset.item;
     const last = row.dataset.last;
@@ -343,7 +339,7 @@ input.addEventListener("input", () => {
   }
 });
 
-/* FILTER TABS LOGIC — FIXED */
+/* FILTER TABS LOGIC — PERFECT VERSION */
 const tabs = document.querySelectorAll(".tab");
 
 tabs.forEach(tab => {
@@ -355,19 +351,12 @@ tabs.forEach(tab => {
 
     if (filter === "all") {
       supportCard.style.display = "none";
-
-      items.forEach(r => {
-        if (r.dataset.type === "normal") r.style.display = "flex";
-        else r.style.display = "none";
-      });
+      items.forEach(r => r.style.display = "flex");
     }
 
     else if (filter === "support") {
       supportCard.style.display = "flex";
-
-      items.forEach(r => {
-        r.style.display = "none";
-      });
+      items.forEach(r => r.style.display = "none");
     }
   };
 });
