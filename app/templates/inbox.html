@@ -102,44 +102,9 @@
   cursor: pointer;
 }
 
-
 /* --------------------------
-   THREAD LIST (main page)
+   FILTER TABS
 -------------------------- */
-.thread-row {
-  display: flex;
-  align-items: center;
-  padding: 14px 10px;
-  border-bottom: 1px solid #eee;
-  gap: 14px;
-  text-decoration: none;
-  color: inherit;
-}
-
-.item-preview {
-  width: 60px;
-  height: 60px;
-  border-radius: 14px;
-  overflow: hidden;
-  position: relative;
-}
-
-.item-preview img { width: 100%; height: 100%; object-fit: cover; }
-
-.small-avatar {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: 3px solid white;
-  overflow: hidden;
-  background: white;
-  z-index: 10;
-}
-
-/* ===== ADDED: FILTER TABS ===== */
 .msg-tabs {
   display: flex;
   gap: 10px;
@@ -162,7 +127,46 @@
   color: #fff;
   border-color: transparent;
 }
-/* ===== END ADDED ===== */
+
+/* --------------------------
+   THREAD LIST (main page)
+-------------------------- */
+.thread-row {
+  display: flex;
+  align-items: center;
+  padding: 14px 10px;
+  border-bottom: 1px solid #eee;
+  gap: 14px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.item-preview {
+  width: 60px;
+  height: 60px;
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+}
+
+.item-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.small-avatar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid white;
+  overflow: hidden;
+  background: white;
+  z-index: 10;
+}
 
 .msg-title { font-size: 17px; font-weight: 600; }
 .msg-sub { font-size: 14px; color: #666; }
@@ -181,24 +185,53 @@ mark {
   <div class="search-icon-btn" id="openSearch">🔍</div>
 </div>
 
-<!-- ===== ADDED TABS ===== -->
+<!-- FILTER TABS -->
 <div class="msg-tabs">
   <div class="tab active" data-filter="all">Tout</div>
-  <div class="tab" data-filter="support">Soutien Sevor</div>
+
+  <!-- Soutien Sevor button + icon -->
+  <div class="tab" data-filter="support">
+    <img src="/static/img/sevor-logo.png" 
+         style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">
+    Soutien Sevor
+  </div>
 </div>
-<!-- ===== END ADDED ===== -->
 
 <!-- THREADS LIST -->
 <div id="threadsContainer">
+
+  <!-- STATIC SUPPORT ENTRY ALWAYS VISIBLE -->
+  <a href="/messages/support-sevor"
+     class="thread-row thread-item"
+     data-type="support"
+     data-name="soutien sevor"
+     data-item=""
+     data-last="support sevor">
+
+    <div class="item-preview">
+      <img src="/static/img/sevor-logo.png">
+      <div class="small-avatar">
+        <img src="/static/img/sevor-logo.png">
+      </div>
+    </div>
+
+    <div class="flex-grow-1 text-zone">
+      <div class="msg-title">Soutien Sevor</div>
+      <div class="msg-sub">Contactez le support Sevor</div>
+    </div>
+
+    <div class="msg-date">Maintenant</div>
+  </a>
+
+  <!-- USER THREAD MESSAGES -->
   {% for t in threads %}
   <a href="/messages/{{ t.id }}"
-   class="thread-row thread-item"
-   data-type="{{ 'support' if t.other_verified else 'normal' }}"
-   data-name="{{ t.other_fullname|lower }}"
-   data-item="{{ t.item_title|lower }}"
-   data-last="{{ t.last_message_text|lower }}">
+     class="thread-row thread-item"
+     data-type="{{ 'support' if t.other_verified else 'normal' }}"
+     data-name="{{ t.other_fullname|lower }}"
+     data-item="{{ t.item_title|lower }}"
+     data-last="{{ t.last_message_text|lower }}">
 
-    
     <div class="item-preview">
       <img src="{{ t.item_image }}">
       <div class="small-avatar">
@@ -228,11 +261,8 @@ mark {
 <div class="search-overlay" id="searchOverlay">
 
   <div class="search-panel" id="searchPanel">
-
     <input id="searchInput" class="search-input" placeholder="Search messages…">
-
     <div class="cancel-search" id="cancelSearch">Annuler</div>
-
   </div>
 
   <div class="search-results-box" id="searchResults"></div>
@@ -318,8 +348,7 @@ input.addEventListener("input", () => {
   }
 });
 
-
-/* ===== ADDED: FILTER TABS LOGIC ===== */
+/* FILTER TABS LOGIC */
 const tabs = document.querySelectorAll(".tab");
 
 tabs.forEach(tab => {
@@ -341,8 +370,6 @@ tabs.forEach(tab => {
     });
   };
 });
-/* ===== END ADDED ===== */
-
 </script>
 
 {% endblock %}
