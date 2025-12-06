@@ -1,3 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+
+<link rel="stylesheet" href="/static/css/chatbot.css">
+
 <div id="sv-chatbot-root">
 
   <!-- زر فتح الشات بوت -->
@@ -5,41 +10,43 @@
     <span>?</span>
   </button>
 
-  <!-- لوحة الشات بوت -->
-  <div id="sv-chatbot-panel" hidden>
+  <!-- اللوحة الرئيسية -->
+  <div id="sv-chatbot-panel">
 
-    <!-- الهيدر -->
     <div class="sv-chatbot-header">
       <div>
         <div class="sv-chatbot-title">Sevor Assistant</div>
         <div class="sv-chatbot-subtitle">Instant answers for your questions</div>
       </div>
-      <button class="sv-chatbot-close" aria-label="Close">✕</button>
+      <button class="sv-chatbot-close">✕</button>
     </div>
 
-    <!-- الجسم الرئيسي -->
+    <!-- الجسم بالكامل -->
     <div class="sv-chatbot-body">
 
-      <!-- الأعمدة الثلاثة -->
-      <!-- عمود الأقسام (Level 1) -->
-      <div class="sv-chatbot-col sv-chatbot-sections">
+      <!-- Sections -->
+      <div class="sv-chatbot-col">
         <div class="sv-chatbot-col-title">Sections</div>
         <ul id="sv-chatbot-section-list"></ul>
       </div>
 
-      <!-- عمود الأسئلة (Level 2) -->
-      <div class="sv-chatbot-col sv-chatbot-questions">
+      <!-- Questions -->
+      <div class="sv-chatbot-col">
         <div class="sv-chatbot-col-title">Questions</div>
         <ul id="sv-chatbot-question-list"></ul>
       </div>
 
-      <!-- عمود الإجابات (Level 3) -->
-      <div class="sv-chatbot-col sv-chatbot-answer">
+      <!-- Answers -->
+      <div class="sv-chatbot-col">
         <div id="sv-chatbot-answer-inner">
           <div class="sv-chatbot-empty">Select a question to view the answer.</div>
         </div>
       </div>
 
-    </div> <!-- نهاية الجسم -->
-  </div> <!-- نهاية اللوحة -->
-</div> <!-- نهاية الجذر -->
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/chatbot.js"></script>
+
+{% endblock %}
