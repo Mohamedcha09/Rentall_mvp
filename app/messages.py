@@ -66,7 +66,7 @@ def inbox(request: Request, db: Session = Depends(get_db)):
                 filtered.append(t)
         threads = filtered
 
-    # thread IDs to compute unread counts
+    # unread counter
     thread_ids = [t.id for t in threads] or [-1]
     unread_rows = (
         db.query(Message.thread_id, func.count(Message.id))
@@ -80,40 +80,44 @@ def inbox(request: Request, db: Session = Depends(get_db)):
     )
     unread_map = {tid: int(cnt) for (tid, cnt) in unread_rows}
 
+    # Build final list
     view_threads = []
     for t in threads:
         other_id = t.user_b_id if t.user_a_id == uid else t.user_a_id
         other = db.query(User).get(other_id)
 
-        # item data linked to the thread (if any)
-        item_title, item_image = "", "/static/placeholder.svg"
+        # Item info
+        item_title = ""
+        item_image = "/static/placeholder.svg"
+
         if getattr(t, "item_id", None):
             item = db.query(Item).get(t.item_id)
             if item:
                 item_title = item.title or ""
-                # FIX: item image handling (Cloudinary or local)
-if getattr(item, "image_path", None):
-    raw = item.image_path.strip()
 
-    # 1) Cloudinary full URL
-    if raw.startswith("http://") or raw.startswith("https://"):
-        item_image = raw
+                # Cloudinary + Local Image Fix
+                if getattr(item, "image_path", None):
+                    raw = item.image_path.strip()
 
-    # 2) Cloudinary path without domain
-    elif raw.startswith("cloudinary") or raw.startswith("v"):
-        item_image = "https://res.cloudinary.com/YOUR_CLOUD_NAME/" + raw
+                    # 1) Full URL
+                    if raw.startswith("http://") or raw.startswith("https://"):
+                        item_image = raw
 
-    # 3) Local path
-    else:
-        raw = raw.replace("\\", "/")
-        if not raw.startswith("/"):
-            raw = "/" + raw
-        item_image = raw
+                    # 2) Cloudinary path without domain
+                    elif raw.startswith("cloudinary") or raw.startswith("v"):
+                        item_image = "https://res.cloudinary.com/YOUR_CLOUD_NAME/" + raw
 
+                    # 3) Local path
+                    else:
+                        raw = raw.replace("\\", "/")
+                        if not raw.startswith("/"):
+                            raw = "/" + raw
+                        item_image = raw
 
-        # NEW: extra fields for the UI (we don't remove the old ones)
+        # sanitize both avatar + item
         other_avatar = _safe_url(getattr(other, "avatar_path", None), "/static/placeholder.svg")
         item_image = _safe_url(item_image, "/static/placeholder.svg")
+
         other_verified = bool(other.is_verified) if other else False
         other_created_iso = other.created_at.isoformat() if (other and other.created_at) else ""
 
@@ -122,11 +126,11 @@ if getattr(item, "image_path", None):
             "other_fullname": f"{other.first_name} {other.last_name}" if other else "User",
             "last_message_at": t.last_message_at,
             "item_title": item_title,
-            "item_image": item_image,                     # old + sanitized
+            "item_image": item_image,       
             "unread_count": unread_map.get(t.id, 0),
-            "other_verified": other_verified,             # ✅ present
-            "other_avatar": other_avatar,                 # ✅ new
-            "other_created_iso": other_created_iso,       # ✅ new
+            "other_verified": other_verified,
+            "other_avatar": other_avatar,
+            "other_created_iso": other_created_iso,
         })
 
     return request.app.templates.TemplateResponse(
@@ -136,9 +140,10 @@ if getattr(item, "image_path", None):
             "title": "Messages",
             "threads": view_threads,
             "session_user": u,
-            "account_limited": is_account_limited(request),  # NEW
+            "account_limited": is_account_limited(request),
         }
     )
+
 
 # NEW: support thread with admin
 @router.get("/messages/support")
