@@ -8,7 +8,7 @@
   <a class="refresh-btn" href="/messages">Refresh</a>
 </div>
 
-{% if session_user && session_user.status != 'approved' %}
+{% if session_user and session_user.status != 'approved' %}
   <div class="alert alert-warning">
     Your account is still <strong>under review</strong>. 
     You cannot message other users currently, but you can 
