@@ -57,15 +57,15 @@
     background: #f7f7f7;
   }
 
-  /* === AIRBNB STYLE IMAGE PREVIEW === */
+  /* === AIRBNB STYLE MAIN IMAGE === */
   .item-preview {
     position: relative;
-    width: 64px;  
-    height: 64px;
+    width: 60px;      /* EXACT AIRBNB SIZE */
+    height: 60px;
     border-radius: 14px;
-    overflow: hidden;
-    flex-shrink: 0;
     background: #eee;
+    flex-shrink: 0;
+    overflow: visible;   /* IMPORTANT: allow avatar to go outside */
   }
 
   .item-preview img {
@@ -75,17 +75,17 @@
     object-fit: cover;
   }
 
-  /* === SMALL AVATAR (overlay) — EXACT AIRBNB STYLE === */
+  /* === SMALL AVATAR EXACT AIRBNB === */
   .small-avatar {
     position: absolute;
-    bottom: -4px;
-    left: -4px;
-    width: 30px;
-    height: 30px;
+    bottom: -6px;      /* Airbnb overlap */
+    left: -6px;
+    width: 26px;       /* Smaller — EXACT Airbnb */
+    height: 26px;
     border-radius: 50%;
-    overflow: hidden;
     border: 3px solid white;
-    background: #fff;
+    background: white;
+    overflow: hidden;
   }
 
   .small-avatar img {
@@ -135,7 +135,7 @@
     {% for t in threads %}
       <a href="/messages/{{ t.id }}" class="thread-row">
 
-        <!-- LEFT SIDE — Airbnb style image + avatar -->
+        <!-- LEFT SIDE — AIRBNB -->
         <div class="item-preview">
           <img src="{{ t.item_image }}"
                onerror="this.onerror=null;this.src='/static/img/.png'">
