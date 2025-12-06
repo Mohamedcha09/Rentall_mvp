@@ -1,0 +1,332 @@
+{
+  "sections": [
+    {
+      "section_id": 1,
+      "section_title": "Account & Verification",
+      "faqs": {
+        "How long does account verification take?": {
+          "answer": "Account verification on Sevor usually takes between 1 and 24 hours. Owner accounts may take slightly longer because they require full document review. If your information is clear and complete, verification is often quick. If it exceeds 24 hours, it usually means a manual review is being conducted to ensure safety."
+        },
+        "Why is my account still under review?": {
+          "options": {
+            "I am a renter": {
+              "answer": "Renter verification is normally fast. If your account is still under review, the system is confirming your identity and checking for any unusual activity. This typically takes 1–12 hours depending on review traffic."
+            },
+            "I am an owner": {
+              "answer": "Owner accounts require a deeper review because they involve renting items to other users. Your ID and profile details must be validated for safety. This process may take 6–24 hours depending on queue volume and clarity of documents."
+            },
+            "I uploaded my documents": {
+              "answer": "If your documents were uploaded, the review team must check clarity, authenticity, matching name and birthdate, and fraud protection signals. Manual checks may take up to 24 hours."
+            },
+            "I did not upload documents": {
+              "answer": "Your account cannot be approved until the required documents are uploaded. Missing documents place your account in 'review' indefinitely."
+            },
+            "I changed my information": {
+              "answer": "Changing important information (name, birthday, phone number, email) automatically triggers a new review for safety and fraud prevention. This may delay approval."
+            },
+            "I recently created my account": {
+              "answer": "New accounts undergo initial automated safety screening. This may delay approval slightly during peak hours."
+            },
+            "I did not receive any email": {
+              "answer": "Review confirmation emails may take several minutes. Check spam or junk. If no email appears, your review is still in progress and no action is required."
+            }
+          }
+        },
+        "Why was my account rejected?": {
+          "options": {
+            "Missing documents": {
+              "answer": "Your account was rejected because required documents were not submitted. Please upload a clear government ID, real name, and correct birthdate. Without these, verification cannot be completed."
+            },
+            "Low-quality ID photo": {
+              "answer": "The ID photo you provided was blurry, dark, cropped, or lacked details. Make sure the entire document is visible, well-lit, and unedited when uploading."
+            },
+            "Incorrect personal info": {
+              "answer": "Your personal information did not match the details shown on your ID. Sevor cannot approve profiles with inconsistent data for safety reasons."
+            },
+            "Suspicious activity detected": {
+              "answer": "Our security systems detected unusual behavior linked to your account. For safety, your verification was rejected. You may contact support for a manual review if this was a mistake."
+            },
+            "Underage": {
+              "answer": "Users must be 18 years or older to use Sevor. If your birthdate indicates you are under the required age, your account cannot be approved."
+            },
+            "Duplicate accounts": {
+              "answer": "Multiple accounts using the same identity, phone number, or device were detected. Sevor allows only one account per user for safety and fraud prevention."
+            },
+            "Other": {
+              "answer": "Your account was rejected for a reason that is not listed here. Please contact Sevor Support if you'd like more information or to request another review."
+            }
+          }
+        },
+        "What documents do I need to verify my identity?": {
+          "answer": "To verify your identity on Sevor, you need: a valid government-issued ID (passport, driver's license, or national ID), a clear profile photo, your full legal name, birthdate, a valid phone number, and a verified email. Owners may also be required to provide proof of address. All documents must be readable and authentic."
+        },
+        "How do I verify my email?": {
+          "answer": "After creating your Sevor account, a verification link is sent to your email. Open the email and click on the confirmation button. If you do not see the email, check spam or junk folders. You can also resend the verification email from your profile settings."
+        },
+        "How do I verify my phone number?": {
+          "answer": "Go to Profile → Phone Verification. Enter your phone number and press 'Send Code'. A 4–6 digit SMS code will be sent to you. Enter the code to complete the verification. If you do not receive a code, verify your number is correct, avoid VPNs, and try again after 30 seconds."
+        },
+        "Why can't I log in?": {
+          "options": {
+            "Wrong password": {
+              "answer": "If your password is incorrect, click 'Forgot Password' to receive a reset link. Follow the instructions to create a new password."
+            },
+            "Wrong email": {
+              "answer": "Ensure you are using the correct email address associated with your account. Many login issues are caused by using an unregistered or misspelled email."
+            },
+            "Account not verified": {
+              "answer": "You may not be able to log in until your email or identity is verified. Check your inbox for a verification email."
+            },
+            "Account restricted": {
+              "answer": "Your account has been temporarily restricted for safety reasons. Please contact Sevor Support to resolve the issue."
+            },
+            "Technical error": {
+              "answer": "Sometimes browser extensions, cookies, or temporary glitches cause login problems. Try clearing your cache or using another browser."
+            },
+            "Using VPN": {
+              "answer": "VPN usage may block login attempts or trigger security checks. Turn off your VPN and try logging in again."
+            },
+            "Login blocked": {
+              "answer": "Too many failed login attempts can temporarily block your access for 10–20 minutes. Wait and try again later."
+            }
+          }
+        }
+      }
+    },
+
+    {
+      "section_id": 2,
+      "section_title": "Listings & Publishing",
+      "faqs": {
+        "How long does listing approval take?": {
+          "answer": "Listing approval on Sevor typically takes between 1 and 12 hours. Our review team checks photo quality, item accuracy, safety requirements, pricing, and compliance with local regulations. If your listing is clear and complete, approval is usually very fast. During high traffic periods, manual checks may take longer."
+        },
+        "Why was my listing removed?": {
+          "options": {
+            "Low-quality photos": {
+              "answer": "Your listing was removed because the photos were too blurry, dark, cropped, or unclear. Sevor requires high-quality images where the item is fully visible. Retake well-lit photos and upload them again."
+            },
+            "Incomplete information": {
+              "answer": "Your listing was missing required details such as title, description, category, location, or pricing. Listings without complete information cannot remain visible because they create confusion for renters."
+            },
+            "Safety or policy violation": {
+              "answer": "Your listing violated Sevor’s safety or rental policies. This may include prohibited items, misleading information, or suspicious content. You may contact support to clarify the reason."
+            },
+            "Wrong category": {
+              "answer": "The item was listed in an incorrect category, which can cause misinformation and a poor user experience. Please select the correct category and submit it again."
+            },
+            "Duplicate listing": {
+              "answer": "Multiple listings of the same item are not allowed. Duplicate items confuse renters and violate Sevor's guidelines. Keep one listing and update it instead."
+            },
+            "Owner unverified": {
+              "answer": "If your owner account is not verified, listings may be removed until verification is completed to maintain platform safety."
+            },
+            "Other": {
+              "answer": "Your listing was removed for a reason that is not listed here. Contact Sevor support for clarification or to request a manual review."
+            }
+          }
+        },
+        "Why can't I publish my listing?": {
+          "options": {
+            "Account not verified": {
+              "answer": "Your account must be fully verified before publishing listings. This includes email verification, phone confirmation, and ID approval. Without verification, the system prevents publishing for safety reasons."
+            },
+            "Missing required fields": {
+              "answer": "Your listing is missing essential information such as title, photos, location, pricing, or description. The system cannot publish incomplete listings because renters must have accurate details to decide."
+            },
+            "Photo issues": {
+              "answer": "Your photos may be too blurry, dark, incorrectly oriented, or not showing the full item. Sevor requires clear, high-quality images to ensure trust and safety."
+            },
+            "Invalid price": {
+              "answer": "Your price may be too low, too high, or outside the acceptable range for your category. Sevor automatically blocks unrealistic or unsafe pricing to protect the platform."
+            },
+            "Location not set": {
+              "answer": "Your listing must include a valid pickup location. Without a precise location, renters cannot find or book the item."
+            },
+            "Unsupported item": {
+              "answer": "The item you are trying to publish may not be allowed due to safety regulations or rental restrictions. Check Sevor’s allowed items list."
+            },
+            "Technical error": {
+              "answer": "A temporary system issue prevented publishing. Try again later, or refresh your browser. If the problem continues, contact support."
+            }
+          }
+        },
+        "Why is my listing still pending review?": {
+          "answer": "Your listing is still under review because our team is manually verifying all details. We check photo clarity, item authenticity, category accuracy, safety compliance, and local regulations. Reviews may take longer during peak hours or if your images or descriptions require additional inspection. You will receive a notification once the review is complete."
+        },
+        "How do I edit my listing?": {
+          "answer": "To edit your listing, go to your profile → My Listings → Select the item → Edit. You can update the title, description, photos, price, availability, and location. After saving, some changes may require re-approval—especially if you modify photos, important details, or pricing. This ensures renters always see accurate and safe information."
+        },
+        "How do I delete my listing?": {
+          "answer": "To delete your listing, open your profile → My Listings → Select the item → Delete. Once deleted, the listing is permanently removed from search results and cannot be restored. If you want to hide a listing temporarily, you can set it as 'Unavailable' instead of deleting it."
+        },
+        "What are the photo requirements?": {
+          "answer": "Sevor requires high-quality photos for all listings. Your photos must be clear, well-lit, uncropped, and show the entire item from multiple angles. Avoid filters, text overlays, or dark/blurry images. At least one main photo is required. Better photos help you get approved faster and increase booking chances."
+        }
+      }
+    },
+
+    {
+      "section_id": 3,
+      "section_title": "Bookings",
+      "faqs": [
+        {
+          "question": "Why was my booking rejected?",
+          "answer": "A booking can be rejected by the owner for several operational or safety reasons. The platform allows owners to decline when the requested time slot is already taken, when the renter’s profile does not meet trust criteria (missing verification, unclear profile details), when the renter has previous unpaid cancellations, or when the owner notices inconsistencies between the rental purpose and the item’s intended use. Sometimes owners reject to avoid overlaps in their personal schedule or because the item requires preparation they cannot complete in time. In rare cases, the system rejects automatically if payment authorization fails or the renter’s identity cannot be confirmed. Each rejection is logged internally to maintain transparency and protect both sides. You can always request another time or contact the owner to clarify the issue."
+        },
+        {
+          "question": "Why is my booking still pending?",
+          "answer": "A booking stays in pending status when the owner has not yet reviewed the request or when the platform’s automated verification steps are not completed. Owners sometimes need more time to confirm availability or validate the renter’s profile. Pending can also occur when the system is waiting for payment pre-authorization checks from your bank—some issuers take several minutes or hours depending on anti-fraud rules. The platform keeps your request reserved temporarily so no one else can take the slot. If the booking remains pending more than 24 hours, the system may auto-cancel to avoid blocking availability. You will receive a notification for every change in the booking flow."
+        },
+        {
+          "question": "Why can't I cancel my booking?",
+          "answer": "Cancellation may be disabled depending on the stage of the booking and the platform’s safety policies. After payment has been pre-authorized and the owner has accepted, the cancellation rules change to protect both parties. Some items have strict cancellation windows due to preparation, delivery, or cleaning requirements. If pickup time is very close, the system prevents cancellation to avoid last-minute losses for the owner. In damage-related investigations or dispute periods, cancellation is blocked until a decision is reached. If you believe cancellation should be allowed, contact support with your booking ID and our team will review the case fully."
+        },
+        {
+          "question": "Why is my payment not going through?",
+          "answer": "Payment failures usually occur due to security restrictions from your bank, insufficient funds, incorrect card details, or mismatched billing information. Many banks automatically block transactions categorized as 'rental with security deposit' until manually approved by the cardholder. If you attempt the payment multiple times too quickly, anti-fraud systems may temporarily lock the card. On international cards, currency-conversion rules or location mismatches can also cause declines. The platform never withdraws funds without confirmation; it only requests a temporary authorization. If the bank refuses the hold, the booking cannot proceed. Contact your bank and request that they allow online rental transactions, then retry."
+        },
+        {
+          "question": "Why was my deposit increased?",
+          "answer": "Deposits are dynamically calculated based on risk signals, item value, renter history, and owner preferences. If you are renting high-value items, luxury cars, electronics, or equipment with expensive replacement costs, the system may automatically propose a higher deposit to ensure coverage. Deposit adjustments also occur when the renter has limited rental history, missing verification documents, or previous disputes. Seasonal risk (holidays, high-demand weeks) and local regulations can influence the deposit amount as well. Owners never receive the deposit directly; it is temporarily held by the platform and released automatically once the return is confirmed."
+        },
+        {
+          "question": "Why do I have to upload pickup and return photos?",
+          "answer": "Pickup and return documentation is a mandatory safety layer used to protect both renter and owner from unfair claims. Photos and videos create a timestamped visual record of the item’s condition before and after the rental. These files are analyzed automatically by the system and reviewed manually if a dispute occurs. Without proper documentation, investigations become impossible or biased, and liability cannot be assigned correctly. This step prevents false damage accusations, ensures transparency, and accelerates deposit release. The platform accepts up to six photos per stage to guarantee a complete visual history of the item."
+        },
+        {
+          "question": "Why was my booking auto-cancelled?",
+          "answer": "Auto-cancellations happen when the system detects a time-sensitive issue such as failed payment authorization, expired verification documents, owner inactivity, or scheduling conflicts. If the owner does not respond within the maximum allowed response window, the booking is cancelled to prevent renter frustration. In some cases, the renter’s bank may decline the pre-authorization after a delay, which forces the system to void the booking immediately. Auto-cancellation also triggers when the requested dates overlap with another confirmed booking. The system prioritizes fairness, so neither party is charged or penalized unless directly responsible for the failure."
+        }
+      ]
+    },
+
+    {
+      "section_id": 4,
+      "section_title": "Payments & Deposits",
+      "faqs": [
+        {
+          "question": "Why is my deposit on hold?",
+          "answer": "A deposit hold is a standard financial safety mechanism used to protect both parties in rental transactions. When you initiate a booking, the platform sends a pre-authorization request to your bank. This does not withdraw money; it simply reserves a portion of your available balance so that funds are guaranteed in case of damage, late return, or policy violations. Banks often keep this hold until the rental is fully completed and the platform sends a release request. Release timing varies depending on bank processing, international routing rules, and anti-fraud checks. The platform cannot accelerate your bank’s internal delays, but it confirms deposit release the moment the owner marks the item as safely returned. You will always receive a confirmation notification once the financial institution completes the unblocking process."
+        },
+        {
+          "question": "Why did my card get declined?",
+          "answer": "Card declines happen for several reasons related to security, authorization limits, and bank risk policies. Many banks treat rental platforms as high-verification transactions, especially when they involve both a payment and a security deposit. If your card issuer detects unusual behaviour—such as a new merchant, a foreign currency, or a high amount—it may automatically block the attempt. Some debit cards do not support large pre-authorizations at all, while others require two-step security confirmations. A mismatch between your billing address and the bank’s records can also trigger a decline. The fastest solution is to contact your bank, approve the transaction manually, and retry. The platform only submits the request; the bank alone decides whether to approve it."
+        },
+        {
+          "question": "Why is my refund not showing?",
+          "answer": "Refund visibility depends entirely on your bank’s internal processing timeline. When the platform issues a refund, the money is immediately released from our side and transmitted to the financial network. However, most banks require 3–10 business days to update the available balance, especially for international cards or when currency conversion is involved. Some banks display refunded funds as 'pending adjustments' before they appear officially in the account. If the refund was tied to a pre-authorization (common in rentals), the bank may simply remove the hold instead of displaying a separate incoming transaction. If more than 10 business days pass, contacting your bank with the refund reference number will allow them to trace it instantly."
+        },
+        {
+          "question": "Why do I see two charges?",
+          "answer": "Seeing two charges is usually caused by the difference between an authorization hold and an actual payment capture. The first visible amount is almost always the deposit pre-authorization, which temporarily appears as a charge even though no funds were withdrawn. The second amount corresponds to the rental payment itself. Some banks display holds and real charges identically, creating the impression of a duplicate transaction. Once the rental is returned and the deposit is released, the first entry will disappear automatically. If you see two identical finalized charges (rare), it is typically due to the bank retrying a failed authorization; one will automatically void. The platform never collects duplicate payments and performs reconciliation checks hourly to ensure accuracy."
+        },
+        {
+          "question": "Why was my payout delayed?",
+          "answer": "Payout delays occur when financial compliance checks or risk reviews require more time. For security and regulatory reasons, payouts must pass identity verification, fraud inspection, and cross-border payment rules. If the owner’s payout account information is incomplete, mismatched, or under review by the payment provider, the system automatically pauses payouts to prevent routing failures. Public holidays, banking cut-off times, or international transfers may extend settlement times. In rare cases, a dispute claim or damage investigation temporarily locks the payout until a resolution is reached. The platform always notifies owners when payout-related requirements need action and releases funds immediately after all checks pass successfully."
+        },
+        {
+          "question": "Why was my deposit partially retained?",
+          "answer": "Partial retention happens when the evidence collected during the rental shows measurable damage, missing accessories, late return fees, cleaning charges, or policy violations. The platform reviews pickup and return photos, timestamps, messages, and owner claims to calculate a fair assessment. Only the amount required to cover the proven cost is retained—never more. The remainder of the deposit is released back to the renter immediately. All deposit deductions undergo a multi-step verification process: visual inspection, rule compliance check, cost estimation, and approval by an independent reviewer. This ensures that no owner can unfairly charge a renter and no renter can avoid responsibility for documented damages."
+        }
+      ]
+    },
+
+    {
+      "section_id": 5,
+      "section_title": "Refunds & Charges",
+      "faqs": [
+        {
+          "question": "When will I receive my refund?",
+          "answer": "Refund processing time depends primarily on your bank and the card network involved. Once the platform issues a refund, the transaction is immediately released on our side and sent back through the financial system. However, most banks require between 3 and 10 business days to update your balance. International cards, prepaid cards, or cards connected to currency conversion services may experience delays of up to 14 business days. Some banks process refunds as 'reversal of authorization,' meaning you may not see a separate incoming transaction—the original charge simply disappears. The platform provides a refund reference ID for tracking, and your bank can use that ID to locate the transaction instantly if needed."
+        },
+        {
+          "question": "Why was I charged more than expected?",
+          "answer": "Additional charges occur when there are extra costs generated during your rental period. These may include late return fees, mileage overuse, cleaning charges, city or provincial taxes, currency conversion differences, or damage-related deductions supported by documentation. In certain countries, banks add their own international transaction fees that the platform cannot control. If your currency differs from the listing’s currency, the final amount shown by your bank may vary slightly depending on the exchange rate used by your card provider. A detailed breakdown of all charges appears automatically in your booking invoice, and support can verify any amount that seems incorrect."
+        },
+        {
+          "question": "Why do I still see a pending charge?",
+          "answer": "A pending charge is usually not a completed transaction but an authorization hold. This happens when your bank temporarily reserves the amount to verify card validity or to secure a deposit. Pending charges often remain visible even after the platform releases them, because banks sometimes take several business days to remove holds from account statements. International banks and debit cards typically take longer to update pending transactions. If the rental was cancelled or refunded, the platform cannot remove the pending charge directly; the bank must clear it internally. You may contact your bank with the authorization code to expedite the release."
+        },
+        {
+          "question": "Why didn’t I receive a full refund?",
+          "answer": "Partial refunds occur when certain platform policies apply to your booking. For example, if you cancel after the cancellation window, only a portion of the rental fee may be refundable. If you used the item or if costs were incurred (cleaning, preparation, or owner travel), part of the fee may not be reversible. Additionally, some banks deduct non-refundable processing fees for international transactions, which the platform cannot reimburse. If damages or violations were reported during the booking, part of the deposit may be retained according to the evidence submitted by the owner. A full breakdown of any non-refundable components is always listed in your receipt."
+        },
+        {
+          "question": "What payment methods does the platform accept?",
+          "answer": "The platform supports most major credit and debit cards issued by internationally recognized networks. These typically include Visa, Mastercard, American Express, and some regional alternatives depending on the renter’s country. Prepaid cards may work for rental fees but often do not support large deposit holds due to limited balance protection. Digital wallets such as Apple Pay and Google Pay are supported when they are backed by a compatible card. Bank transfers, e-checks, and cash are not supported because rentals require instant verification, fraud protection, and deposit pre-authorization, which only card-based systems can process reliably and immediately."
+        },
+        {
+          "question": "How do I get an invoice or payment receipt?",
+          "answer": "Invoices and receipts are generated automatically as soon as a payment is successfully captured. You can download them at any time from the Payments section in your booking page. Each invoice includes the rental fee, tax breakdown, service fee, deposit information, and any adjustments made after the booking. For accounting or reimbursement purposes, every receipt follows standardized formatting compatible with most business reporting systems. If your country requires specific tax details—such as VAT numbers, provincial tax identification, or business-use statements—you can request a customized invoice through support, and our system will generate a compliant document for your region."
+        }
+      ]
+    },
+
+    {
+      "section_id": 6,
+      "section_title": "Owner Tools & Earnings",
+      "faqs": [
+        {
+          "question": "When do I get paid?",
+          "answer": "Your payout is issued only after the booking is successfully completed and both pickup and return confirmations are submitted. This ensures the rental was delivered correctly, protects both parties, and verifies that no disputes or damage reports are pending. Once the booking is marked as completed, the platform transfers your payout to your connected payment account. Processing times depend on your financial institution: most banks deliver funds within 1–3 business days, while international or smaller banks may require up to 5 business days. If your payout account is newly created, the first transfer may take slightly longer due to additional banking verification. All payouts include a detailed breakdown of earnings, fees, and adjustments."
+        },
+        {
+          "question": "Why hasn’t my payout arrived?",
+          "answer": "Several factors can delay payouts. The most common reasons include incomplete identity verification, mismatched banking details, or a payout account that has been temporarily restricted by the bank or payment partner. Another frequent cause is that the booking has not been fully completed—owners must confirm both the pickup and return inside the app before earnings are released. If a deposit claim or dispute is opened, payouts may be held until the case is resolved. In rare cases, the recipient bank rejects the transfer due to formatting issues such as incorrect account numbers or unsupported account types. An exact status is always shown in your Earnings dashboard, and support can check the transaction trace if needed."
+        },
+        {
+          "question": "How do I accept or reject a booking?",
+          "answer": "When a renter sends a booking request, owners receive an instant notification in the app and by email. From the booking page, you can either accept, reject, or request more information. Accepting a request allows the renter to proceed with the deposit and payment. Rejecting a request immediately frees the dates and notifies the renter. If you ignore a request for too long, the system automatically expires it to maintain renter experience. Consistent responsiveness improves your ranking, visibility, and future booking rates. Owners who frequently miss requests may appear lower in search results because renters prefer listings with active hosts."
+        },
+        {
+          "question": "How do pickup and return confirmations work?",
+          "answer": "Both confirmations are essential for security and insurance validation. At pickup time, you must verify the renter’s identity, inspect the item, take clear photos or videos, and then tap 'Confirm Pickup' in the app. This marks the rental as officially started. At the end of the booking, repeat the inspection, document the condition, and tap 'Confirm Return.' This closes the rental and triggers payout processing. If damages are found, you may submit a deposit claim before confirming return. For safety reasons, payouts cannot be issued without both confirmations, and unconfirmed trip stages may delay your earnings or block dispute protection."
+        },
+        {
+          "question": "Why is my earnings amount different from what I expected?",
+          "answer": "Differences in earnings typically come from service fees, taxes, or adjustments applied during the rental. Service fees cover platform operations, payment processing, fraud prevention, and customer support. Taxes depend on your region and may include sales tax, VAT, GST, QST, or similar obligations—these are automatically calculated and applied. If the renter changed the booking duration, returned the item late, or required additional cleaning, these adjustments also appear in your final payout. In rare cases, the system may temporarily hold part of the payout if a deposit claim or dispute is under review. Your payout breakdown always shows the exact reason for every adjustment."
+        },
+        {
+          "question": "How do I contact a renter?",
+          "answer": "You can communicate with renters directly through the in-app messaging system. This ensures all conversations are securely logged and can be used as reference for support or dispute resolution if needed. Messaging becomes available immediately after a renter sends a booking request and remains open until the booking is completed. For safety, owners should avoid sharing personal phone numbers unless necessary and should never arrange off-platform payments or agreements. Clear communication—such as confirming meeting times, explaining pickup instructions, or providing special requirements—helps prevent misunderstandings and improves your rating and future bookings."
+        }
+      ]
+    },
+
+    {
+      "section_id": 7,
+      "section_title": "General Questions About Sevor",
+      "faqs": [
+        {
+          "question": "What is Sevor?",
+          "answer": "Sevor is a global peer-to-peer rental platform that allows individuals and businesses to list, discover, and rent items in a safe, structured, and fully managed environment. The platform is designed to support a wide range of categories—including cars, tools, electronics, sports equipment, and professional gear—while maintaining high standards of verification, security, and payment protection. Sevor handles all financial flows such as secure payments, deposit holds, dispute resolution, timing controls, and insurance-compatible documentation. The system tracks every step of a rental using timestamps, pickup/return confirmations, and detailed inspection photos, ensuring a transparent and trustworthy experience for both renters and owners."
+        },
+        {
+          "question": "How does Sevor work?",
+          "answer": "Sevor operates on a structured lifecycle for each booking. First, renters search for an item and send a booking request. Owners then review the request, verify renter profiles, and either accept or decline. Once accepted, the renter must complete payment and deposit pre-authorization. After payment is confirmed, both parties meet for the pickup. Owners use the app to document the item’s condition with photos or video before tapping 'Confirm Pickup,' which activates the rental. During the rental period, both parties can communicate through the secure in-app messaging system. At the end of the rental, a complete return inspection is required before tapping 'Confirm Return.' Only after this step does the system release payouts, update deposit holds, and close the booking. Every action is tracked in a transparent timeline that ensures fairness, accountability, and dispute protection."
+        },
+        {
+          "question": "Is Sevor safe?",
+          "answer": "Safety is one of Sevor’s core pillars. To protect users, several layers of verification and monitoring are implemented. Renters and owners undergo identity checks, fraud detection, document validation, and phone/email verification. All payments flow through regulated payment partners that specialize in risk management and secure deposit handling. The app requires both sides to perform structured photo inspections during pickup and return, creating evidence for any claims. Additionally, all communication stays inside the app for support review, preventing off-platform fraud or unsafe arrangements. Sevor uses automated monitoring systems that detect suspicious behavior, duplicate accounts, misuse of payment methods, and abnormal booking patterns. If a safety issue occurs, the support team can intervene, freeze accounts, or handle disputes using the inspection evidence."
+        },
+        {
+          "question": "What items can I rent on Sevor?",
+          "answer": "Sevor supports a wide variety of rentable items as long as they meet the platform’s safety, legality, and verification requirements. Common categories include vehicles (cars, vans, motorcycles), electronics (cameras, drones, laptops), construction and DIY tools, travel equipment, professional photography gear, home appliances, furniture, and sports equipment. Items must be described accurately, photographed clearly, and listed with transparent pricing. Prohibited categories include items that are illegal, unsafe, or require government licensing. Owners must ensure that items are functional, well-maintained, and available at the selected pickup time. Renters can filter items by price, location, category, and availability in real time."
+        },
+        {
+          "question": "What countries does Sevor support?",
+          "answer": "Sevor is built as a global-first platform with multi-currency, multi-region, and multi-tax logic. The system supports international listings, cross-border renters, and local currency display. While availability depends on regulatory requirements for each payment partner, Sevor currently prioritizes regions such as Canada, the United States, Europe, and MENA markets. Payment flows—including deposits, payouts, and refunds—are adapted to each country’s banking rules. The platform dynamically switches tax rules, currency formats, and regulatory compliance based on the user's location. Future expansions depend on securing regional payment partners, local insurance providers, and verification providers."
+        },
+        {
+          "question": "What currencies are supported?",
+          "answer": "Sevor includes an internal FX engine that automatically converts prices between major global currencies such as CAD, USD, and EUR. Every listing has a base currency set by the owner, while renters view prices in their preferred display currency. The platform retrieves and stores official exchange rate snapshots and uses them consistently across the entire booking. This ensures that the renter sees accurate pricing, and the owner receives payments in their chosen currency without confusion. Deposit holds are also performed in the owner's item currency to ensure claims are processed correctly. Currency rounding, bank conversion differences, and international card fees are documented and explained to users in the payment section."
+        },
+        {
+          "question": "How does customer support work?",
+          "answer": "Sevor provides multi-layered support designed to respond faster and more effectively than traditional platforms. Users can create support tickets directly from their profile, attach screenshots, photos, or booking references, and receive real-time updates on ticket status. Support agents can access booking timelines, inspection photos, communication logs, payment histories, and verification results to resolve issues accurately. Auto-suggested help topics guide users before they open a ticket, and complex cases—such as deposit disputes—are escalated to a specialized team. Owners and renters also receive automated guidance during critical steps like missing pickup confirmations, late returns, or declined payments. Support communications are stored securely for future review and quality assurance."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+<div id="sv-chatbot-root">
+
+  <!-- زر فتح الشات بوت -->
+  <button id="sv-chatbot-toggle" type="button" aria-label="Help Center">
+    <span>?</span>
+  </button>
+
+  <!-- لوحة الشات بوت -->
+  <div id="sv-chatbot-panel" hidden>
+
+    <!-- الهيدر -->
+    <div class="sv-chatbot-header">
+      <div>
+        <div class="sv-chatbot-title">Sevor Assistant</div>
+        <div class="sv-chatbot-subtitle">Instant answers for your questions</div>
+      </div>
+      <button class="sv-chatbot-close" aria-label="Close">✕</button>
+    </div>
+
+    <!-- الجسم الرئيسي -->
+    <div class="sv-chatbot-body">
+
+      <!-- الأعمدة الثلاثة -->
+      <!-- عمود الأقسام (Level 1) -->
+      <div class="sv-chatbot-col sv-chatbot-sections">
+        <div class="sv-chatbot-col-title">Sections</div>
+        <ul id="sv-chatbot-section-list"></ul>
+      </div>
+
+      <!-- عمود الأسئلة (Level 2) -->
+      <div class="sv-chatbot-col sv-chatbot-questions">
+        <div class="sv-chatbot-col-title">Questions</div>
+        <ul id="sv-chatbot-question-list"></ul>
+      </div>
+
+      <!-- عمود الإجابات (Level 3) -->
+      <div class="sv-chatbot-col sv-chatbot-answer">
+        <div id="sv-chatbot-answer-inner">
+          <div class="sv-chatbot-empty">Select a question to view the answer.</div>
+        </div>
+      </div>
+
+    </div> <!-- نهاية الجسم -->
+  </div> <!-- نهاية اللوحة -->
+</div> <!-- نهاية الجذر -->

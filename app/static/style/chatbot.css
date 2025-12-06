@@ -1,0 +1,228 @@
+/* ===========================
+   ROOT CONTAINER
+=========================== */
+#sv-chatbot-root {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  z-index: 999999;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* ===========================
+   TOGGLE BUTTON
+=========================== */
+#sv-chatbot-toggle {
+  width: 58px;
+  height: 58px;
+  border-radius: 100px;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, #8b5cf6, #5b9df9);
+  color: #fff;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 35px rgba(0,0,0,.35);
+  transition: 0.2s;
+}
+
+#sv-chatbot-toggle:hover {
+  transform: scale(1.06);
+  box-shadow: 0 14px 40px rgba(0,0,0,.45);
+}
+
+/* ===========================
+   MAIN PANEL
+=========================== */
+#sv-chatbot-panel {
+  position: absolute;
+  right: 0;
+  bottom: 75px;
+  width: min(920px, 92vw);
+  height: min(550px, 82vh);
+  background: rgba(17, 25, 40, 0.92);
+  backdrop-filter: blur(14px);
+  border-radius: 16px;
+  color: #e2e8f0;
+  box-shadow: 0 18px 50px rgba(0,0,0,.65);
+  border: 1px solid rgba(148,163,184,.22);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: svPanelFade 0.25s ease;
+}
+
+@keyframes svPanelFade {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===========================
+   HEADER
+=========================== */
+.sv-chatbot-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: linear-gradient(to right, rgba(139,92,246,.22), rgba(91,157,249,.15));
+  border-bottom: 1px solid rgba(148,163,184,.25);
+}
+
+.sv-chatbot-title {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.sv-chatbot-subtitle {
+  font-size: 12px;
+  opacity: .75;
+  margin-top: 1px;
+}
+
+.sv-chatbot-close {
+  background: transparent;
+  border: none;
+  color: #e2e8f0;
+  font-size: 20px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.sv-chatbot-close:hover {
+  color: #fff;
+  transform: scale(1.1);
+}
+
+/* ===========================
+   BODY LAYOUT (3 COLUMNS)
+=========================== */
+.sv-chatbot-body {
+  display: grid;
+  grid-template-columns: 1.2fr 1.6fr 2.5fr;
+  height: 100%;
+}
+
+/* COLUMN BASE STYLE */
+.sv-chatbot-col {
+  padding: 12px;
+  border-right: 1px solid rgba(148,163,184,.2);
+  overflow-y: auto;
+}
+
+.sv-chatbot-col:last-child {
+  border-right: none;
+}
+
+.sv-chatbot-col-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+  opacity: .7;
+  margin-bottom: 10px;
+}
+
+/* ===========================
+   LIST STYLE (CATEGORIES & QUESTIONS)
+=========================== */
+#sv-chatbot-section-list,
+#sv-chatbot-question-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sv-chatbot-pill {
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  border-radius: 100px;
+  background: rgba(255,255,255,.06);
+  cursor: pointer;
+  font-size: 13px;
+  transition: .15s;
+  white-space: nowrap;
+}
+
+.sv-chatbot-pill:hover {
+  background: rgba(255,255,255,.12);
+}
+
+.sv-chatbot-pill.is-active {
+  background: rgba(139,92,246,.45);
+}
+
+.sv-chatbot-question {
+  padding: 8px 8px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: rgba(255,255,255,.04);
+  font-size: 13px;
+  transition: .15s;
+}
+
+.sv-chatbot-question:hover {
+  background: rgba(255,255,255,.10);
+}
+
+.sv-chatbot-question.is-active {
+  background: rgba(91,157,249,.35);
+}
+
+/* ===========================
+   ANSWER AREA
+=========================== */
+.sv-chatbot-answer {
+  font-size: 13px;
+  line-height: 1.5em;
+  padding-right: 14px;
+}
+
+#sv-chatbot-answer-inner {
+  background: rgba(255,255,255,.05);
+  padding: 12px;
+  border-radius: 8px;
+  min-height: 100%;
+}
+
+.sv-chatbot-empty {
+  opacity: .7;
+  font-size: 13px;
+  margin-top: 10px;
+}
+
+.sv-chatbot-answer-text {
+  white-space: pre-line;
+  color: #e2e8f0;
+  font-size: 13px;
+}
+
+/* ===========================
+   SUB QUESTIONS (OPTIONS)
+=========================== */
+.sv-chatbot-option {
+  padding: 8px 10px;
+  margin: 6px 0;
+  border-radius: 8px;
+  background: rgba(148,163,184,.1);
+  cursor: pointer;
+  transition: .15s;
+}
+
+.sv-chatbot-option:hover {
+  background: rgba(255,255,255,.12);
+}
+
+.sv-chatbot-option.is-active {
+  background: rgba(139,92,246,.35);
+}
+
+/* Scrollbars */
+.sv-chatbot-col::-webkit-scrollbar {
+  width: 6px;
+}
+.sv-chatbot-col::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.18);
+  border-radius: 100px;
+}
