@@ -1,4 +1,3 @@
-{# app/templates/inbox.html #}
 {% extends "base.html" %}
 {% block content %}
 
@@ -8,6 +7,12 @@
   <a class="refresh-btn" href="/messages">Refresh</a>
 </div>
 
+<!-- SEARCH BAR LIKE AIRBNB -->
+<div class="search-box">
+  <input id="searchInput" type="text" placeholder="Search messages...">
+  <button id="clearSearch" style="display:none;">×</button>
+</div>
+
 {% if session_user and session_user.status != 'approved' %}
   <div class="alert alert-warning">
     Your account is still <strong>under review</strong>.
@@ -15,11 +20,6 @@
     <a href="/messages/support" class="alert-link">contact support</a>.
   </div>
 {% endif %}
-
-<!-- SEARCH BAR (Airbnb style) -->
-<div class="msg-search-box">
-    <input type="text" id="msgSearchInput" placeholder="Search messages...">
-</div>
 
 <style>
 
@@ -48,28 +48,33 @@
   }
 
   /* SEARCH BAR */
-  .msg-search-box {
-    width: 100%;
-    margin-bottom: 14px;
+  .search-box {
+    position: relative;
+    margin-bottom: 15px;
   }
 
-  .msg-search-box input {
+  #searchInput {
     width: 100%;
-    padding: 10px 16px;
+    padding: 13px 45px 13px 18px;
+    border-radius: 40px;
+    border: 1px solid #dcdcdc;
+    background: #f7f7f7;
     font-size: 16px;
-    background: #f2f2f2;
-    border: 1px solid #e5e5e5;
-    border-radius: 30px;
-    outline: none;
-    transition: 0.2s;
   }
 
-  .msg-search-box input:focus {
-    background: #fff;
-    border-color: #bebebe;
+  #clearSearch {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 24px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: #777;
   }
 
-  /* ROW */
+  /* THREAD ROW */
   .thread-row {
     display: flex;
     align-items: center;
@@ -80,20 +85,13 @@
     text-decoration: none;
     color: inherit;
   }
-  .thread-row:hover {
-    background: #f7f7f7;
-  }
 
-  /* MAIN IMAGE — Airbnb Style */
   .item-preview {
     position: relative;
     width: 60px;
     height: 60px;
     border-radius: 14px;
-    background: #eee;
-    flex-shrink: 0;
-    overflow: visible;  
-    z-index: 1;
+    overflow: visible;
   }
 
   .item-preview img {
@@ -103,7 +101,7 @@
     object-fit: cover;
   }
 
-  /* SMALL AVATAR */
+  /* SMALL CIRCLE AVATAR */
   .small-avatar {
     position: absolute;
     bottom: -10px;
@@ -112,9 +110,9 @@
     height: 34px;
     border-radius: 50%;
     border: 3px solid white;
-    background: white;
     overflow: hidden;
-    z-index: 9999;
+    background: white;
+    z-index: 999;
   }
 
   .small-avatar img {
@@ -123,11 +121,9 @@
     object-fit: cover;
   }
 
-  /* TEXTS */
   .msg-title {
     font-size: 17px;
     font-weight: 600;
-    color: #222;
     margin-bottom: 2px;
   }
 
@@ -137,81 +133,99 @@
   }
 
   .msg-date {
+    margin-left: auto;
     font-size: 13px;
     color: #717171;
     white-space: nowrap;
-    margin-left: auto;
   }
 
-  /* EMPTY STATE */
-  .empty-box {
-    padding: 30px 8px;
-    text-align: center;
+  /* HIGHLIGHT */
+  mark {
+    background: #ffe08a;
+    padding: 2px 4px;
+    border-radius: 4px;
   }
-
-  .empty-box img {
-    max-width: 260px;
-    width: 70%;
-    opacity: .95;
-  }
-
 </style>
 
 {% set EMPTY_IMG = url_for('static', path='photo/mon.png') %}
 
+<div id="threadsContainer">
+
 {% if threads and threads|length %}
-  <div id="threadsWrapper">
-    {% for t in threads %}
-      <a href="/messages/{{ t.id }}" class="thread-row">
-
-        <div class="item-preview">
-          <img src="{{ t.item_image }}"
-               onerror="this.onerror=null;this.src='/static/img/.png'">
-
-          <div class="small-avatar">
-            <img src="{{ t.other_avatar }}"
-               onerror="this.onerror=null;this.src='/static/img/.png'">
-          </div>
+  {% for t in threads %}
+    <a href="/messages/{{ t.id }}" class="thread-row thread-item"
+       data-name="{{ t.other_fullname|lower }}"
+       data-item="{{ t.item_title|lower }}"
+       data-last="{{ t.last_message_text|lower }}">
+       
+      <!-- IMAGE -->
+      <div class="item-preview">
+        <img src="{{ t.item_image }}">
+        <div class="small-avatar">
+          <img src="{{ t.other_avatar }}">
         </div>
+      </div>
 
-        <div class="flex-grow-1">
-          <div class="msg-title">
-            {{ t.other_fullname }}
-            {% if t.other_verified %}
-              <img src="/static/img/violet.png" style="height:15px;margin-left:4px">
-            {% endif %}
-          </div>
+      <div class="flex-grow-1 text-zone">
+        <div class="msg-title">{{ t.other_fullname }}</div>
 
-          {% if t.item_title %}
-            <div class="msg-sub">Regarding: {{ t.item_title }}</div>
-          {% endif %}
-        </div>
+        {% if t.item_title %}
+          <div class="msg-sub">{{ t.item_title }}</div>
+        {% endif %}
+      </div>
 
-        <div class="msg-date">
-          {{ t.last_message_at.strftime("%d-%m-%Y") }}
-        </div>
+      <div class="msg-date">{{ t.last_message_at.strftime("%d-%m-%Y") }}</div>
 
-      </a>
-    {% endfor %}
-  </div>
+    </a>
+  {% endfor %}
 
 {% else %}
   <div class="empty-box">
-    <img src="{{ EMPTY_IMG }}" alt="No conversations">
+    <img src="{{ EMPTY_IMG }}">
   </div>
 {% endif %}
+</div>
 
-<!-- SEARCH FILTER SCRIPT -->
 <script>
-document.getElementById("msgSearchInput").addEventListener("input", function() {
-    let query = this.value.toLowerCase();
-    let rows = document.querySelectorAll(".thread-row");
+const input = document.getElementById("searchInput");
+const clearBtn = document.getElementById("clearSearch");
+const items = document.querySelectorAll(".thread-item");
 
-    rows.forEach(row => {
-        let text = row.innerText.toLowerCase();
-        row.style.display = text.includes(query) ? "flex" : "none";
-    });
+function highlight(text, word) {
+  if (!word) return text;
+  const regex = new RegExp(`(${word})`, "gi");
+  return text.replace(regex, "<mark>$1</mark>");
+}
+
+input.addEventListener("input", function () {
+  const q = this.value.toLowerCase().trim();
+
+  clearBtn.style.display = q ? "block" : "none";
+
+  items.forEach(row => {
+    const name = row.dataset.name;
+    const item = row.dataset.item;
+    const last = row.dataset.last;
+
+    const match = name.includes(q) || item.includes(q) || last.includes(q);
+
+    row.style.display = match ? "flex" : "none";
+
+    // highlight text
+    const zone = row.querySelector(".text-zone");
+    const title = zone.querySelector(".msg-title");
+    const sub = zone.querySelector(".msg-sub");
+
+    title.innerHTML = highlight(title.textContent, q);
+    if (sub) sub.innerHTML = highlight(sub.textContent, q);
+  });
 });
+
+clearBtn.onclick = () => {
+  input.value = "";
+  clearBtn.style.display = "none";
+  items.forEach(i => i.style.display = "flex");
+};
 </script>
 
 {% endblock %}
