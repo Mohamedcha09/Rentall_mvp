@@ -14,7 +14,7 @@ router = APIRouter()
 def require_login(request: Request):
     return request.session.get("user")
 
-# NEW: helper to convert any image path to a safe URL
+
 def _safe_url(p: str | None, fallback: str = "/static/placeholder.svg") -> str:
     s = (p or "").strip()
     if not s:
@@ -26,29 +26,34 @@ def _safe_url(p: str | None, fallback: str = "/static/placeholder.svg") -> str:
         s = "/" + s
     return s
 
-# NEW: is the user account limited (not approved)?
+
 def is_account_limited(request: Request) -> bool:
     u = request.session.get("user")
     if not u:
         return False
     return u.get("status") != "approved"
 
-# NEW: admin helpers
+
 def get_first_admin(db: Session) -> User | None:
     return db.query(User).filter(User.role == "admin").order_by(User.id.asc()).first()
+
 
 def is_admin_user(user: User | None) -> bool:
     return bool(user and user.role == "admin")
 
+
+# ===================================================================
+#                           INBOX (LIST OF THREADS)
+# ===================================================================
 
 @router.get("/messages")
 def inbox(request: Request, db: Session = Depends(get_db)):
     u = require_login(request)
     if not u:
         return RedirectResponse(url="/login", status_code=303)
+
     uid = u["id"]
 
-    # all threads for the user
     threads = (
         db.query(MessageThread)
         .filter((MessageThread.user_a_id == uid) | (MessageThread.user_b_id == uid))
@@ -56,7 +61,6 @@ def inbox(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
-    # if the account is limited: show only support threads with admin
     if is_account_limited(request):
         filtered = []
         for t in threads:
@@ -66,7 +70,6 @@ def inbox(request: Request, db: Session = Depends(get_db)):
                 filtered.append(t)
         threads = filtered
 
-    # unread counter
     thread_ids = [t.id for t in threads] or [-1]
     unread_rows = (
         db.query(Message.thread_id, func.count(Message.id))
@@ -80,13 +83,25 @@ def inbox(request: Request, db: Session = Depends(get_db)):
     )
     unread_map = {tid: int(cnt) for (tid, cnt) in unread_rows}
 
-    # Build final list
+    # ============================================================
+    #   BUILD FINAL LIST WITH last_message_text  (FOR SEARCH BOX)
+    # ============================================================
+
     view_threads = []
     for t in threads:
+
+        # FETCH LAST REAL MESSAGE
+        last_msg = (
+            db.query(Message)
+            .filter(Message.thread_id == t.id)
+            .order_by(Message.created_at.desc())
+            .first()
+        )
+        last_text = last_msg.body if last_msg else ""
+
         other_id = t.user_b_id if t.user_a_id == uid else t.user_a_id
         other = db.query(User).get(other_id)
 
-        # Item info
         item_title = ""
         item_image = "/static/placeholder.svg"
 
@@ -94,29 +109,20 @@ def inbox(request: Request, db: Session = Depends(get_db)):
             item = db.query(Item).get(t.item_id)
             if item:
                 item_title = item.title or ""
-
-                # Cloudinary + Local Image Fix
                 if getattr(item, "image_path", None):
                     raw = item.image_path.strip()
-
-                    # 1) Full URL
                     if raw.startswith("http://") or raw.startswith("https://"):
                         item_image = raw
-
-                    # 2) Cloudinary path without domain
                     elif raw.startswith("cloudinary") or raw.startswith("v"):
                         item_image = "https://res.cloudinary.com/YOUR_CLOUD_NAME/" + raw
-
-                    # 3) Local path
                     else:
                         raw = raw.replace("\\", "/")
                         if not raw.startswith("/"):
                             raw = "/" + raw
                         item_image = raw
 
-        # sanitize both avatar + item
-        other_avatar = _safe_url(getattr(other, "avatar_path", None), "/static/placeholder.svg")
-        item_image = _safe_url(item_image, "/static/placeholder.svg")
+        other_avatar = _safe_url(getattr(other, "avatar_path", None))
+        item_image = _safe_url(item_image)
 
         other_verified = bool(other.is_verified) if other else False
         other_created_iso = other.created_at.isoformat() if (other and other.created_at) else ""
@@ -126,11 +132,14 @@ def inbox(request: Request, db: Session = Depends(get_db)):
             "other_fullname": f"{other.first_name} {other.last_name}" if other else "User",
             "last_message_at": t.last_message_at,
             "item_title": item_title,
-            "item_image": item_image,       
+            "item_image": item_image,
             "unread_count": unread_map.get(t.id, 0),
             "other_verified": other_verified,
             "other_avatar": other_avatar,
             "other_created_iso": other_created_iso,
+
+            # ⭐ FOR SEARCH (AIRBNB STYLE)
+            "last_message_text": last_text,
         })
 
     return request.app.templates.TemplateResponse(
@@ -145,7 +154,10 @@ def inbox(request: Request, db: Session = Depends(get_db)):
     )
 
 
-# NEW: support thread with admin
+# ===================================================================
+#                           SUPPORT THREAD
+# ===================================================================
+
 @router.get("/messages/support")
 def support_thread(request: Request, db: Session = Depends(get_db)):
     u = require_login(request)
@@ -155,10 +167,8 @@ def support_thread(request: Request, db: Session = Depends(get_db)):
 
     admin = get_first_admin(db)
     if not admin:
-        # if there is no admin at all, return to inbox
         return RedirectResponse(url="/messages", status_code=303)
 
-    # find an existing thread between me and admin (without item)
     thr = (
         db.query(MessageThread)
         .filter(
@@ -182,6 +192,10 @@ def support_thread(request: Request, db: Session = Depends(get_db)):
     return RedirectResponse(url=f"/messages/{thr.id}", status_code=303)
 
 
+# ===================================================================
+#                           START THREAD
+# ===================================================================
+
 @router.get("/messages/start")
 def start_thread(
     request: Request,
@@ -189,10 +203,6 @@ def start_thread(
     user_id: int = 0,
     item_id: int = 0
 ):
-    """
-    start a conversation thread between the current user and user_id,
-    and pin the thread to item_id if provided.
-    """
     u = require_login(request)
     if not u:
         return RedirectResponse(url="/login", status_code=303)
@@ -202,15 +212,14 @@ def start_thread(
     if not other or other.id == me:
         return RedirectResponse(url="/messages", status_code=303)
 
-    # NEW: if the account is limited and not messaging an admin → redirect to support
     if is_account_limited(request) and not is_admin_user(other):
         return RedirectResponse(url="/messages/support", status_code=303)
 
-    # look for a thread for the same pair and same item_id (or NULL)
     q = db.query(MessageThread).filter(
         ((MessageThread.user_a_id == me) & (MessageThread.user_b_id == other.id)) |
         ((MessageThread.user_a_id == other.id) & (MessageThread.user_b_id == me))
     )
+
     if item_id:
         q = q.filter(MessageThread.item_id == item_id)
     else:
@@ -231,11 +240,12 @@ def start_thread(
     return RedirectResponse(url=f"/messages/{thr.id}", status_code=303)
 
 
+# ===================================================================
+#                           THREAD VIEW
+# ===================================================================
+
 @router.get("/messages/{thread_id}")
 def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db)):
-    """
-    display a specific conversation + mark incoming messages as read.
-    """
     u = require_login(request)
     if not u:
         return RedirectResponse(url="/login", status_code=303)
@@ -244,13 +254,12 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
     if not thr or (u["id"] not in [thr.user_a_id, thr.user_b_id]):
         return RedirectResponse(url="/messages", status_code=303)
 
-    # NEW: if the account is limited and the other party is not admin → redirect to support
     other_id = thr.user_b_id if thr.user_a_id == u["id"] else thr.user_a_id
     other = db.query(User).get(other_id)
+
     if is_account_limited(request) and not is_admin_user(other):
         return RedirectResponse(url="/messages/support", status_code=303)
 
-    # fetch messages oldest to newest
     msgs = (
         db.query(Message)
         .filter(Message.thread_id == thr.id)
@@ -258,7 +267,6 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
         .all()
     )
 
-    # mark other party's messages as read
     changed = False
     for m in msgs:
         if m.sender_id != u["id"] and not m.is_read:
@@ -269,7 +277,6 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
     if changed:
         db.commit()
 
-    # item info (if any)
     item_title, item_image = "", "/static/placeholder.svg"
     if getattr(thr, "item_id", None):
         item = db.query(Item).get(thr.item_id)
@@ -278,9 +285,8 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
             if getattr(item, "image_path", None):
                 item_image = "/" + item.image_path.replace("\\", "/")
 
-    # NEW: pass the other party's avatar to the template (without removing any old values)
-    other_avatar = _safe_url(getattr(other, "avatar_path", None), "/static/placeholder.svg")
-    item_image = _safe_url(item_image, "/static/placeholder.svg")
+    other_avatar = _safe_url(getattr(other, "avatar_path", None))
+    item_image = _safe_url(item_image)
 
     return request.app.templates.TemplateResponse(
         "thread.html",
@@ -290,14 +296,18 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
             "thread": thr,
             "messages": msgs,
             "other": other,
-            "other_avatar": other_avatar,     # new
+            "other_avatar": other_avatar,
             "item_title": item_title,
             "item_image": item_image,
             "session_user": u,
-            "account_limited": is_account_limited(request),  # NEW: for template
+            "account_limited": is_account_limited(request),
         }
     )
 
+
+# ===================================================================
+#                           SEND MESSAGE
+# ===================================================================
 
 @router.post("/messages/{thread_id}")
 def thread_send(
@@ -306,9 +316,6 @@ def thread_send(
     db: Session = Depends(get_db),
     body: str = Form(...)
 ):
-    """
-    send a message inside a specific thread.
-    """
     u = require_login(request)
     if not u:
         return RedirectResponse(url="/login", status_code=303)
@@ -317,17 +324,15 @@ def thread_send(
     if not thr or (u["id"] not in [thr.user_a_id, thr.user_b_id]):
         return RedirectResponse(url="/messages", status_code=303)
 
-    # NEW: block sending to non-admin if the account is limited
     other_id = thr.user_b_id if thr.user_a_id == u["id"] else thr.user_a_id
     other = db.query(User).get(other_id)
+
     if is_account_limited(request) and not is_admin_user(other):
         return RedirectResponse(url="/messages/support", status_code=303)
 
     if not body.strip():
         return {"ok": True}
 
-
-    # create message
     msg = Message(
         thread_id=thr.id,
         sender_id=u["id"],
@@ -337,17 +342,17 @@ def thread_send(
     )
     db.add(msg)
 
-    # update last contact time
     thr.last_message_at = datetime.utcnow()
     db.commit()
 
     return RedirectResponse(url=f"/messages/{thr.id}", status_code=303)
 
 
+# ===================================================================
+#                       UNREAD COUNTERS
+# ===================================================================
+
 def unread_count(user_id: int, db: Session) -> int:
-    """
-    number of unread messages for the user across all threads.
-    """
     return (
         db.query(Message)
         .join(MessageThread, Message.thread_id == MessageThread.id)
@@ -361,10 +366,6 @@ def unread_count(user_id: int, db: Session) -> int:
 
 
 def unread_grouped(user_id: int, db: Session):
-    """
-    return (thread_id, count) for conversations that contain unread messages,
-    with the other party's name and the item title (if any).
-    """
     rows = (
         db.query(Message.thread_id, func.count(Message.id).label("cnt"))
         .join(MessageThread, Message.thread_id == MessageThread.id)
@@ -382,6 +383,7 @@ def unread_grouped(user_id: int, db: Session):
         thr = db.query(MessageThread).get(thread_id)
         if not thr:
             continue
+
         other_id = thr.user_b_id if thr.user_a_id == user_id else thr.user_a_id
         other = db.query(User).get(other_id)
         other_name = f"{other.first_name} {other.last_name}" if other else "User"
@@ -397,8 +399,9 @@ def unread_grouped(user_id: int, db: Session):
             "count": int(cnt),
             "other_name": other_name,
             "item_title": item_title,
-            "other_verified": bool(other.is_verified) if other else False,  # ✅ kept
+            "other_verified": bool(other.is_verified) if other else False,
         })
+
     return result
 
 
@@ -407,19 +410,23 @@ def api_unread_summary(request: Request, db: Session = Depends(get_db)):
     u = require_login(request)
     if not u:
         return JSONResponse({"total": 0, "threads": []})
+
     return JSONResponse({
         "total": unread_count(u["id"], db),
         "threads": unread_grouped(u["id"], db)
     })
 
 
-# ====== Typing state memory ======
+# ===================================================================
+#                       TYPING INDICATOR
+# ===================================================================
+
 from datetime import datetime, timedelta
 typing_state = {}   # { thread_id: { user_id: datetime_expire } }
 
 @router.post("/messages/{thread_id}/typing")
 def set_typing(thread_id: int, request: Request, db: Session = Depends(get_db)):
-    session_user = request.session.get("user")   # ← بدل request.state.user
+    session_user = request.session.get("user")
     if not session_user:
         return {"ok": False}
 
@@ -434,7 +441,7 @@ def set_typing(thread_id: int, request: Request, db: Session = Depends(get_db)):
 
 @router.get("/messages/{thread_id}/typing_status")
 def typing_status(thread_id: int, request: Request):
-    session_user = request.session.get("user")  # ← هنا أيضاً
+    session_user = request.session.get("user")
     if not session_user:
         return {"typing": False}
 
@@ -462,10 +469,7 @@ def poll_messages(thread_id: int, request: Request, db: Session = Depends(get_db
 
     rows = (
         db.query(Message)
-        .filter(
-            Message.thread_id == thread_id,
-            Message.id > last_id
-        )
+        .filter(Message.thread_id == thread_id, Message.id > last_id)
         .order_by(Message.id.asc())
         .all()
     )
@@ -476,7 +480,7 @@ def poll_messages(thread_id: int, request: Request, db: Session = Depends(get_db
                 "id": m.id,
                 "body": m.body,
                 "time": m.created_at.strftime("%H:%M"),
-                "from_me": (m.sender_id == u["id"])
+                "from_me": (m.sender_id == u["id"]),
             }
             for m in rows
         ]

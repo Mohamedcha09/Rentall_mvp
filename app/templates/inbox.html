@@ -7,10 +7,10 @@
   <a class="refresh-btn" href="/messages">Refresh</a>
 </div>
 
-<!-- SEARCH BAR LIKE AIRBNB -->
+<!-- SEARCH BAR (AIRBNB STYLE) -->
 <div class="search-box">
   <input id="searchInput" type="text" placeholder="Search messages...">
-  <button id="clearSearch" style="display:none;">×</button>
+  <button id="clearSearch">×</button>
 </div>
 
 {% if session_user and session_user.status != 'approved' %}
@@ -30,13 +30,11 @@
     align-items: center;
     margin-bottom: 18px;
   }
-
   .inbox-title {
     font-size: 28px;
     font-weight: 700;
     color: #222;
   }
-
   .refresh-btn {
     background: #fff;
     border: 1px solid #dcdcdc;
@@ -50,40 +48,39 @@
   /* SEARCH BAR */
   .search-box {
     position: relative;
-    margin-bottom: 15px;
+    margin-bottom: 18px;
   }
-
   #searchInput {
     width: 100%;
-    padding: 13px 45px 13px 18px;
+    padding: 14px 50px 14px 20px;
+    font-size: 16px;
     border-radius: 40px;
     border: 1px solid #dcdcdc;
-    background: #f7f7f7;
-    font-size: 16px;
+    background: #f6f6f6;
   }
-
   #clearSearch {
     position: absolute;
-    right: 14px;
+    right: 12px;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 24px;
+    font-size: 26px;
     border: none;
     background: none;
     cursor: pointer;
     color: #777;
+    display: none;
   }
 
-  /* THREAD ROW */
+  /* MESSAGE ROW */
   .thread-row {
     display: flex;
     align-items: center;
     gap: 14px;
     padding: 14px 12px;
-    background: #ffffff;
-    border-bottom: 1px solid #f1f1f1;
+    border-bottom: 1px solid #ededed;
     text-decoration: none;
     color: inherit;
+    background: white;
   }
 
   .item-preview {
@@ -92,8 +89,8 @@
     height: 60px;
     border-radius: 14px;
     overflow: visible;
+    flex-shrink: 0;
   }
-
   .item-preview img {
     width: 100%;
     height: 100%;
@@ -101,7 +98,7 @@
     object-fit: cover;
   }
 
-  /* SMALL CIRCLE AVATAR */
+  /* CIRCLE AVATAR */
   .small-avatar {
     position: absolute;
     bottom: -10px;
@@ -109,12 +106,11 @@
     width: 34px;
     height: 34px;
     border-radius: 50%;
-    border: 3px solid white;
     overflow: hidden;
+    border: 3px solid white;
     background: white;
     z-index: 999;
   }
-
   .small-avatar img {
     width: 100%;
     height: 100%;
@@ -124,14 +120,12 @@
   .msg-title {
     font-size: 17px;
     font-weight: 600;
-    margin-bottom: 2px;
+    margin-bottom: 3px;
   }
-
   .msg-sub {
     font-size: 14px;
-    color: #717171;
+    color: #777;
   }
-
   .msg-date {
     margin-left: auto;
     font-size: 13px;
@@ -141,10 +135,11 @@
 
   /* HIGHLIGHT */
   mark {
-    background: #ffe08a;
+    background: #ffe18a;
     padding: 2px 4px;
     border-radius: 4px;
   }
+
 </style>
 
 {% set EMPTY_IMG = url_for('static', path='photo/mon.png') %}
@@ -157,8 +152,7 @@
        data-name="{{ t.other_fullname|lower }}"
        data-item="{{ t.item_title|lower }}"
        data-last="{{ t.last_message_text|lower }}">
-       
-      <!-- IMAGE -->
+
       <div class="item-preview">
         <img src="{{ t.item_image }}">
         <div class="small-avatar">
@@ -168,7 +162,6 @@
 
       <div class="flex-grow-1 text-zone">
         <div class="msg-title">{{ t.other_fullname }}</div>
-
         {% if t.item_title %}
           <div class="msg-sub">{{ t.item_title }}</div>
         {% endif %}
@@ -178,7 +171,6 @@
 
     </a>
   {% endfor %}
-
 {% else %}
   <div class="empty-box">
     <img src="{{ EMPTY_IMG }}">
@@ -199,7 +191,6 @@ function highlight(text, word) {
 
 input.addEventListener("input", function () {
   const q = this.value.toLowerCase().trim();
-
   clearBtn.style.display = q ? "block" : "none";
 
   items.forEach(row => {
@@ -207,11 +198,13 @@ input.addEventListener("input", function () {
     const item = row.dataset.item;
     const last = row.dataset.last;
 
-    const match = name.includes(q) || item.includes(q) || last.includes(q);
+    const match =
+      name.includes(q) ||
+      item.includes(q) ||
+      last.includes(q);
 
     row.style.display = match ? "flex" : "none";
 
-    // highlight text
     const zone = row.querySelector(".text-zone");
     const title = zone.querySelector(".msg-title");
     const sub = zone.querySelector(".msg-sub");
@@ -224,7 +217,17 @@ input.addEventListener("input", function () {
 clearBtn.onclick = () => {
   input.value = "";
   clearBtn.style.display = "none";
-  items.forEach(i => i.style.display = "flex");
+
+  items.forEach(row => {
+    row.style.display = "flex";
+
+    const zone = row.querySelector(".text-zone");
+    const title = zone.querySelector(".msg-title");
+    const sub = zone.querySelector(".msg-sub");
+
+    title.innerHTML = title.textContent;
+    if (sub) sub.innerHTML = sub.textContent;
+  });
 };
 </script>
 
