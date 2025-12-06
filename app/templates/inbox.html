@@ -195,10 +195,12 @@ mark {
 <!-- THREADS LIST -->
 <div id="threadsContainer">
 
-  <!-- STATIC SUPPORT ENTRY ALWAYS VISIBLE -->
+  <!-- STATIC SUPPORT ENTRY (hidden initially) -->
   <a href="/messages/support-sevor"
      class="thread-row thread-item"
+     id="supportCard"
      data-type="support"
+     style="display:none"
      data-name="soutien sevor"
      data-item=""
      data-last="support sevor">
@@ -220,8 +222,6 @@ mark {
 
   <!-- USER THREAD MESSAGES -->
 {% for t in threads %}
-
-<!-- 🔥🔥 التعديل هنا فقط: "support" إذا كان المستخدم verified 🔥🔥 -->
 <a href="/messages/{{ t.id }}"
    class="thread-row thread-item"
    data-type="{{ 'support' if t.other_verified else 'normal' }}"
@@ -251,9 +251,7 @@ mark {
     <div class="msg-date">{{ t.last_message_at.strftime("%d-%m-%Y") }}</div>
 
 </a>
-
 {% endfor %}
-
 </div>
 
 <!-- SEARCH OVERLAY -->
@@ -275,8 +273,9 @@ const cancelBtn = document.getElementById("cancelSearch");
 const input = document.getElementById("searchInput");
 
 const items = document.querySelectorAll(".thread-item");
+const supportCard = document.getElementById("supportCard");
 
-/* HIGHLIGHT */
+/* SEARCH HIGHLIGHT */
 function highlight(text, word) {
   if (!word) return text;
   const re = new RegExp(`(${word})`, "gi");
@@ -299,7 +298,7 @@ cancelBtn.onclick = () => {
   resultsBox.classList.remove("active");
 };
 
-/* SEARCH FILTER */
+/* SEARCH LOGIC */
 input.addEventListener("input", () => {
   const q = input.value.toLowerCase().trim();
   resultsBox.innerHTML = "";
@@ -344,27 +343,32 @@ input.addEventListener("input", () => {
   }
 });
 
-/* FILTER TABS LOGIC */
+/* FILTER TABS LOGIC — FIXED */
 const tabs = document.querySelectorAll(".tab");
 
 tabs.forEach(tab => {
   tab.onclick = () => {
-
     tabs.forEach(t => t.classList.remove("active"));
     tab.classList.add("active");
 
     const filter = tab.dataset.filter;
 
-    items.forEach(r => {
-      const type = r.dataset.type;
+    if (filter === "all") {
+      supportCard.style.display = "none";
 
-      if (filter === "all") {
-        r.style.display = "flex";
+      items.forEach(r => {
+        if (r.dataset.type === "normal") r.style.display = "flex";
+        else r.style.display = "none";
+      });
+    }
 
-      } else if (filter === "support") {
-        r.style.display = (type === "support") ? "flex" : "none";
-      }
-    });
+    else if (filter === "support") {
+      supportCard.style.display = "flex";
+
+      items.forEach(r => {
+        r.style.display = "none";
+      });
+    }
   };
 });
 </script>
