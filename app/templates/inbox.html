@@ -1,234 +1,247 @@
 {% extends "base.html" %}
 {% block content %}
 
+<style>
+/* --------------------------
+   HEADER + SEARCH ICON
+-------------------------- */
+.inbox-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.inbox-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #222;
+}
+
+.search-icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid #ddd;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 18px;
+  background: #fff;
+  cursor: pointer;
+}
+
+/* --------------------------
+   AIRBNB SEARCH OVERLAY
+-------------------------- */
+.search-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.25);
+  backdrop-filter: blur(4px);
+  display: none;
+  opacity: 0;
+  transition: opacity .25s ease;
+  z-index: 2000;
+}
+
+.search-overlay.active {
+  display: block;
+  opacity: 1;
+}
+
+/* SEARCH BOX CONTAINER */
+.search-panel {
+  background: #fff;
+  padding: 16px;
+  border-radius: 18px;
+  margin: 20px;
+  transform: translateY(-40px);
+  opacity: 0;
+  transition: all .25s ease;
+}
+
+.search-panel.active {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* INPUT */
+.search-input {
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 40px;
+  border: 1px solid #dcdcdc;
+  font-size: 17px;
+  background: #f7f7f7;
+}
+
+/* CANCEL BUTTON */
+.cancel-search {
+  margin-top: 12px;
+  text-align: right;
+  font-size: 17px;
+  color: #ff385c;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* --------------------------
+   THREAD LIST
+-------------------------- */
+.thread-row {
+  display: flex;
+  align-items: center;
+  padding: 14px 10px;
+  border-bottom: 1px solid #eee;
+  gap: 14px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.item-preview {
+  width: 60px;
+  height: 60px;
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+}
+
+.item-preview img { width: 100%; height: 100%; object-fit: cover; }
+
+.small-avatar {
+  position: absolute;
+  bottom: -10px;
+  left: -10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid white;
+  overflow: hidden;
+}
+
+.msg-title { font-size: 17px; font-weight: 600; }
+.msg-sub { font-size: 14px; color: #666; }
+.msg-date { margin-left: auto; font-size: 13px; color: #777; }
+
+mark {
+  background: #ffe08a;
+  padding: 2px 3px;
+  border-radius: 4px;
+}
+</style>
+
 <!-- HEADER -->
 <div class="inbox-header">
   <div class="inbox-title">Messages</div>
-  <a class="refresh-btn" href="/messages">Refresh</a>
+
+  <!-- Airbnb style Search button -->
+  <div class="search-icon-btn" id="openSearch">🔍</div>
 </div>
 
-<!-- SEARCH BAR (AIRBNB STYLE) -->
-<div class="search-box">
-  <input id="searchInput" type="text" placeholder="Search messages...">
-  <button id="clearSearch">×</button>
-</div>
 
-{% if session_user and session_user.status != 'approved' %}
-  <div class="alert alert-warning">
-    Your account is still <strong>under review</strong>.
-    You cannot message other users currently, but you can
-    <a href="/messages/support" class="alert-link">contact support</a>.
-  </div>
-{% endif %}
-
-<style>
-
-  /* HEADER */
-  .inbox-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 18px;
-  }
-  .inbox-title {
-    font-size: 28px;
-    font-weight: 700;
-    color: #222;
-  }
-  .refresh-btn {
-    background: #fff;
-    border: 1px solid #dcdcdc;
-    padding: 6px 12px;
-    border-radius: 50px;
-    font-size: 14px;
-    color: #555;
-    text-decoration: none;
-  }
-
-  /* SEARCH BAR */
-  .search-box {
-    position: relative;
-    margin-bottom: 18px;
-  }
-  #searchInput {
-    width: 100%;
-    padding: 14px 50px 14px 20px;
-    font-size: 16px;
-    border-radius: 40px;
-    border: 1px solid #dcdcdc;
-    background: #f6f6f6;
-  }
-  #clearSearch {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 26px;
-    border: none;
-    background: none;
-    cursor: pointer;
-    color: #777;
-    display: none;
-  }
-
-  /* MESSAGE ROW */
-  .thread-row {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 14px 12px;
-    border-bottom: 1px solid #ededed;
-    text-decoration: none;
-    color: inherit;
-    background: white;
-  }
-
-  .item-preview {
-    position: relative;
-    width: 60px;
-    height: 60px;
-    border-radius: 14px;
-    overflow: visible;
-    flex-shrink: 0;
-  }
-  .item-preview img {
-    width: 100%;
-    height: 100%;
-    border-radius: 14px;
-    object-fit: cover;
-  }
-
-  /* CIRCLE AVATAR */
-  .small-avatar {
-    position: absolute;
-    bottom: -10px;
-    left: -10px;
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    overflow: hidden;
-    border: 3px solid white;
-    background: white;
-    z-index: 999;
-  }
-  .small-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .msg-title {
-    font-size: 17px;
-    font-weight: 600;
-    margin-bottom: 3px;
-  }
-  .msg-sub {
-    font-size: 14px;
-    color: #777;
-  }
-  .msg-date {
-    margin-left: auto;
-    font-size: 13px;
-    color: #717171;
-    white-space: nowrap;
-  }
-
-  /* HIGHLIGHT */
-  mark {
-    background: #ffe18a;
-    padding: 2px 4px;
-    border-radius: 4px;
-  }
-
-</style>
-
-{% set EMPTY_IMG = url_for('static', path='photo/mon.png') %}
-
+<!-- THREADS LIST -->
 <div id="threadsContainer">
-
-{% if threads and threads|length %}
   {% for t in threads %}
-    <a href="/messages/{{ t.id }}" class="thread-row thread-item"
-       data-name="{{ t.other_fullname|lower }}"
-       data-item="{{ t.item_title|lower }}"
-       data-last="{{ t.last_message_text|lower }}">
-
-      <div class="item-preview">
-        <img src="{{ t.item_image }}">
-        <div class="small-avatar">
-          <img src="{{ t.other_avatar }}">
-        </div>
+  <a href="/messages/{{ t.id }}" 
+     class="thread-row thread-item"
+     data-name="{{ t.other_fullname|lower }}"
+     data-item="{{ t.item_title|lower }}"
+     data-last="{{ t.last_message_text|lower }}">
+    
+    <div class="item-preview">
+      <img src="{{ t.item_image }}">
+      <div class="small-avatar">
+        <img src="{{ t.other_avatar }}">
       </div>
+    </div>
 
-      <div class="flex-grow-1 text-zone">
-        <div class="msg-title">{{ t.other_fullname }}</div>
-        {% if t.item_title %}
-          <div class="msg-sub">{{ t.item_title }}</div>
-        {% endif %}
-      </div>
+    <div class="flex-grow-1 text-zone">
+      <div class="msg-title">{{ t.other_fullname }}</div>
 
-      <div class="msg-date">{{ t.last_message_at.strftime("%d-%m-%Y") }}</div>
+      {% if t.item_title %}
+      <div class="msg-sub">{{ t.item_title }}</div>
+      {% endif %}
 
-    </a>
+      {% if t.last_message_text %}
+      <div class="msg-sub">{{ t.last_message_text }}</div>
+      {% endif %}
+    </div>
+
+    <div class="msg-date">{{ t.last_message_at.strftime("%d-%m-%Y") }}</div>
+  </a>
   {% endfor %}
-{% else %}
-  <div class="empty-box">
-    <img src="{{ EMPTY_IMG }}">
-  </div>
-{% endif %}
 </div>
+
+
+<!-- SEARCH OVERLAY -->
+<div class="search-overlay" id="searchOverlay">
+
+  <div class="search-panel" id="searchPanel">
+
+    <input id="searchInput" class="search-input" placeholder="Search messages…">
+
+    <div class="cancel-search" id="cancelSearch">Annuler</div>
+
+  </div>
+
+</div>
+
 
 <script>
+const overlay = document.getElementById("searchOverlay");
+const panel = document.getElementById("searchPanel");
+const openBtn = document.getElementById("openSearch");
+const cancelBtn = document.getElementById("cancelSearch");
 const input = document.getElementById("searchInput");
-const clearBtn = document.getElementById("clearSearch");
 const items = document.querySelectorAll(".thread-item");
 
+/* HIGHLIGHT FUNCTION */
 function highlight(text, word) {
   if (!word) return text;
-  const regex = new RegExp(`(${word})`, "gi");
-  return text.replace(regex, "<mark>$1</mark>");
+  const re = new RegExp(`(${word})`, "gi");
+  return text.replace(re, "<mark>$1</mark>");
 }
 
-input.addEventListener("input", function () {
-  const q = this.value.toLowerCase().trim();
-  clearBtn.style.display = q ? "block" : "none";
+/* OPEN SEARCH */
+openBtn.onclick = () => {
+  overlay.classList.add("active");
+  panel.classList.add("active");
+
+  setTimeout(() => input.focus(), 200);
+};
+
+/* CLOSE SEARCH */
+cancelBtn.onclick = () => {
+  overlay.classList.remove("active");
+  panel.classList.remove("active");
+  input.value = "";
+  items.forEach(i => i.style.display = "flex");
+};
+
+/* FILTERING */
+input.addEventListener("input", () => {
+  const q = input.value.toLowerCase().trim();
 
   items.forEach(row => {
     const name = row.dataset.name;
     const item = row.dataset.item;
     const last = row.dataset.last;
 
-    const match =
-      name.includes(q) ||
-      item.includes(q) ||
-      last.includes(q);
+    const match = name.includes(q) || item.includes(q) || last.includes(q);
 
     row.style.display = match ? "flex" : "none";
 
+    // highlight
     const zone = row.querySelector(".text-zone");
-    const title = zone.querySelector(".msg-title");
-    const sub = zone.querySelector(".msg-sub");
+    const t1 = zone.querySelector(".msg-title");
+    const subs = zone.querySelectorAll(".msg-sub");
 
-    title.innerHTML = highlight(title.textContent, q);
-    if (sub) sub.innerHTML = highlight(sub.textContent, q);
+    t1.innerHTML = highlight(t1.textContent, q);
+    subs.forEach(s => s.innerHTML = highlight(s.textContent, q));
   });
+
 });
-
-clearBtn.onclick = () => {
-  input.value = "";
-  clearBtn.style.display = "none";
-
-  items.forEach(row => {
-    row.style.display = "flex";
-
-    const zone = row.querySelector(".text-zone");
-    const title = zone.querySelector(".msg-title");
-    const sub = zone.querySelector(".msg-sub");
-
-    title.innerHTML = title.textContent;
-    if (sub) sub.innerHTML = sub.textContent;
-  });
-};
 </script>
 
 {% endblock %}
