@@ -219,16 +219,15 @@ mark {
   </a>
 
   <!-- USER THREAD MESSAGES -->
-  {% for t in threads %}
-  <a href="/messages/{{ t.id }}"
-     class="thread-row thread-item"
+{% for t in threads %}
 
-     <!-- 🔥🔥 التعديل هنا 🔥🔥 -->
-     data-type="normal"
-
-     data-name="{{ t.other_fullname|lower }}"
-     data-item="{{ t.item_title|lower }}"
-     data-last="{{ t.last_message_text|lower }}">
+<!-- 🔥🔥 التعديل هنا فقط: "support" إذا كان المستخدم verified 🔥🔥 -->
+<a href="/messages/{{ t.id }}"
+   class="thread-row thread-item"
+   data-type="{{ 'support' if t.other_verified else 'normal' }}"
+   data-name="{{ t.other_fullname|lower }}"
+   data-item="{{ t.item_title|lower }}"
+   data-last="{{ t.last_message_text|lower }}">
 
     <div class="item-preview">
       <img src="{{ t.item_image }}">
@@ -250,8 +249,11 @@ mark {
     </div>
 
     <div class="msg-date">{{ t.last_message_at.strftime("%d-%m-%Y") }}</div>
-  </a>
-  {% endfor %}
+
+</a>
+
+{% endfor %}
+
 </div>
 
 <!-- SEARCH OVERLAY -->
