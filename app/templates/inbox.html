@@ -2,9 +2,9 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="d-flex align-items-center justify-content-between mb-3">
-  <h3 class="mb-0">Messages</h3>
-  <a class="btn btn-outline-secondary btn-sm" href="/messages">Refresh</a>
+<div class="inbox-header">
+  <div class="inbox-title">Messages</div>
+  <a class="refresh-btn" href="/messages">Refresh</a>
 </div>
 
 {% if session_user and session_user.status != 'approved' %}
@@ -15,65 +15,153 @@
 {% endif %}
 
 <style>
-  .thread-row{
-    display:flex;align-items:center;gap:.75rem;
-    padding:.65rem .8rem;border-bottom:1px solid rgba(0,0,0,.06);
+  /* -------------------------
+     Airbnb 100% Clean Style
+     ------------------------- */
+
+  .inbox-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
   }
-  .thread-row:hover{background:rgba(0,0,0,.02)}
-  .avatar{width:40px;height:40px;border-radius:50%;overflow:hidden;flex:0 0 40px;background:#f2f3f5;}
-  .avatar img{width:100%;height:100%;object-fit:cover;display:block}
-  .thumb{width:44px;height:44px;border-radius:10px;overflow:hidden;background:#f2f3f5;flex:0 0 44px;}
-  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+
+  .inbox-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #222;
+  }
+
+  .refresh-btn {
+    background: #ffffff;
+    border: 1px solid #dcdcdc;
+    padding: 6px 12px;
+    border-radius: 50px;
+    font-size: 14px;
+    color: #555;
+    text-decoration: none;
+  }
+  .refresh-btn:hover {
+    background: #f7f7f7;
+  }
+
+  .thread-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 10px;
+    background: #ffffff;
+    border-bottom: 1px solid #f1f1f1;
+    transition: background 0.15s ease;
+    text-decoration: none;
+    color: inherit;
+  }
+  .thread-row:hover {
+    background: #f7f7f7;
+  }
+
+  /* Avatar */
+  .avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #e8e8e8;
+    flex: 0 0 48px;
+  }
+  .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* Thumbnail (optional) */
+  .thumb {
+    width: 46px;
+    height: 46px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #e8e8e8;
+    flex: 0 0 46px;
+  }
+  .thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* Text styling */
+  .msg-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: #222;
+    margin-bottom: 2px;
+  }
+
+  .msg-sub {
+    font-size: 14px;
+    color: #717171;
+  }
+
+  .msg-date {
+    font-size: 13px;
+    color: #717171;
+    white-space: nowrap;
+    margin-left: auto;
+  }
 
   /* Empty state */
-  .empty-box{padding:24px 8px;text-align:center;}
-  .empty-box img{
-    display:block;margin:10px auto;max-width:300px;width:75%;
-    
-    
-    height:auto;object-fit:contain;opacity:.98;
+  .empty-box {
+    padding: 24px 8px;
+    text-align: center;
+  }
+  .empty-box img {
+    max-width: 260px;
+    width: 75%;
+    opacity: 0.95;
   }
 </style>
 
 {% set EMPTY_IMG = url_for('static', path='photo/mon.png') %}
 
 {% if threads and threads|length %}
-  <div class="list-group">
+  <div>
     {% for t in threads %}
-      <a href="/messages/{{ t.id }}" class="thread-row text-decoration-none text-reset">
+      <a href="/messages/{{ t.id }}" class="thread-row">
+
+        <!-- Avatar -->
         <div class="avatar">
           <img src="{{ t.other_avatar }}"
                referrerpolicy="no-referrer"
                onerror="this.onerror=null;this.src='/static/img/.png'">
         </div>
 
+        <!-- Texts -->
         <div class="flex-grow-1">
-          <div class="d-flex align-items-center gap-2">
-            <strong class="fs-6">{{ t.other_fullname }}</strong>
+          <div class="msg-title">
+            {{ t.other_fullname }}
             {% if t.other_verified %}
-              <img src="/static/img/violet.png" alt="verified" style="height:16px">
-            {% endif %}
-            {% set c = t.unread_count|int %}
-            {% if c > 0 %}
-              <span class="badge rounded-pill bg-danger">
-                {% if c > 9 %}+9{% else %}{{ c }}{% endif %}
-              </span>
+              <img src="/static/img/violet.png" style="height:15px;margin-left:4px">
             {% endif %}
           </div>
+
           {% if t.item_title %}
-            <div class="text-muted small">Regarding: {{ t.item_title }}</div>
+            <div class="msg-sub">Regarding: {{ t.item_title }}</div>
           {% endif %}
         </div>
 
+        <!-- Optional photo -->
         <div class="thumb d-none d-sm-block">
           <img src="{{ t.item_image }}"
                referrerpolicy="no-referrer"
                onerror="this.onerror=null;this.src='/static/img/.png'">
         </div>
 
-        <div class="text-nowrap text-muted small">
+        <!-- Date -->
+        <div class="msg-date">
           {{ t.last_message_at.strftime("%d-%m-%Y") if t.last_message_at else "" }}
         </div>
+
       </a>
     {% endfor %}
   </div>
