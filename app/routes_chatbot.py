@@ -54,4 +54,6 @@ def chatbot_page(request: Request):
     return templates.TemplateResponse("chatbot.html", {
         "request": request,
         "session_user": getattr(request.state, "user", None)
+        "display_currency": display_currency   # ← الحل
+
     })
