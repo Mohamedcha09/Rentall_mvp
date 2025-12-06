@@ -91,8 +91,25 @@ def inbox(request: Request, db: Session = Depends(get_db)):
             item = db.query(Item).get(t.item_id)
             if item:
                 item_title = item.title or ""
-                if getattr(item, "image_path", None):
-                    item_image = "/" + item.image_path.replace("\\", "/")
+                # FIX: item image handling (Cloudinary or local)
+if getattr(item, "image_path", None):
+    raw = item.image_path.strip()
+
+    # 1) Cloudinary full URL
+    if raw.startswith("http://") or raw.startswith("https://"):
+        item_image = raw
+
+    # 2) Cloudinary path without domain
+    elif raw.startswith("cloudinary") or raw.startswith("v"):
+        item_image = "https://res.cloudinary.com/YOUR_CLOUD_NAME/" + raw
+
+    # 3) Local path
+    else:
+        raw = raw.replace("\\", "/")
+        if not raw.startswith("/"):
+            raw = "/" + raw
+        item_image = raw
+
 
         # NEW: extra fields for the UI (we don't remove the old ones)
         other_avatar = _safe_url(getattr(other, "avatar_path", None), "/static/placeholder.svg")
