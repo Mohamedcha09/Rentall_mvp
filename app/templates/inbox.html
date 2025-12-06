@@ -17,6 +17,7 @@
 {% endif %}
 
 <style>
+
   /* HEADER */
   .inbox-header {
     display: flex;
@@ -45,8 +46,8 @@
   .thread-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 14px 10px;
+    gap: 14px;
+    padding: 14px 12px;
     background: #ffffff;
     border-bottom: 1px solid #f1f1f1;
     text-decoration: none;
@@ -56,11 +57,11 @@
     background: #f7f7f7;
   }
 
-  /* Preview block (Airbnb style) */
+  /* === AIRBNB STYLE IMAGE PREVIEW === */
   .item-preview {
     position: relative;
-    width: 60px;
-    height: 60px;
+    width: 64px;  
+    height: 64px;
     border-radius: 14px;
     overflow: hidden;
     flex-shrink: 0;
@@ -70,16 +71,17 @@
   .item-preview img {
     width: 100%;
     height: 100%;
+    border-radius: 14px;
     object-fit: cover;
   }
 
-  /* Avatar overlay - EXACT Airbnb style */
+  /* === SMALL AVATAR (overlay) — EXACT AIRBNB STYLE === */
   .small-avatar {
     position: absolute;
-    bottom: -6px;
-    left: 6px;
-    width: 36px;
-    height: 36px;
+    bottom: -4px;
+    left: -4px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     overflow: hidden;
     border: 3px solid white;
@@ -133,7 +135,7 @@
     {% for t in threads %}
       <a href="/messages/{{ t.id }}" class="thread-row">
 
-        <!-- LEFT SIDE — Airbnb style -->
+        <!-- LEFT SIDE — Airbnb style image + avatar -->
         <div class="item-preview">
           <img src="{{ t.item_image }}"
                onerror="this.onerror=null;this.src='/static/img/.png'">
