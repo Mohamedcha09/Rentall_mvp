@@ -10,8 +10,8 @@
 
 {% if session_user and session_user.status != 'approved' %}
   <div class="alert alert-warning">
-    Your account is still <strong>under review</strong>. 
-    You cannot message other users currently, but you can 
+    Your account is still <strong>under review</strong>.
+    You cannot message other users currently, but you can
     <a href="/messages/support" class="alert-link">contact support</a>.
   </div>
 {% endif %}
@@ -60,12 +60,13 @@
   /* === AIRBNB STYLE MAIN IMAGE === */
   .item-preview {
     position: relative;
-    width: 60px;      /* EXACT AIRBNB SIZE */
+    width: 60px;
     height: 60px;
     border-radius: 14px;
     background: #eee;
     flex-shrink: 0;
-    overflow: visible;   /* IMPORTANT: allow avatar to go outside */
+    overflow: visible;       /* IMPORTANT: allow circle to escape */
+    z-index: 1;
   }
 
   .item-preview img {
@@ -73,25 +74,28 @@
     height: 100%;
     border-radius: 14px;
     object-fit: cover;
+    display: block;
   }
 
-  /* === SMALL AVATAR EXACT AIRBNB === */
+  /* === SMALL AVATAR — THE FIXED VERSION === */
   .small-avatar {
     position: absolute;
-    bottom: -6px;      /* Airbnb overlap */
-    left: -6px;
-    width: 26px;       /* Smaller — EXACT Airbnb */
-    height: 26px;
+    bottom: -10px;     /* more overlap just like Airbnb */
+    left: -10px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
+    overflow: hidden;
     border: 3px solid white;
     background: white;
-    overflow: hidden;
+    z-index: 99999;     /* ensures avatar is ALWAYS above image */
   }
 
   .small-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    display: block;
   }
 
   /* TEXTS */
@@ -135,14 +139,14 @@
     {% for t in threads %}
       <a href="/messages/{{ t.id }}" class="thread-row">
 
-        <!-- LEFT SIDE — AIRBNB -->
+        <!-- LEFT SIDE — IMAGE + OVERLAY AVATAR -->
         <div class="item-preview">
           <img src="{{ t.item_image }}"
-               onerror="this.onerror=null;this.src='/static/img/.png'">
+            onerror="this.onerror=null;this.src='/static/img/.png'">
 
           <div class="small-avatar">
             <img src="{{ t.other_avatar }}"
-                 onerror="this.onerror=null;this.src='/static/img/.png'">
+              onerror="this.onerror=null;this.src='/static/img/.png'">
           </div>
         </div>
 
@@ -151,7 +155,8 @@
           <div class="msg-title">
             {{ t.other_fullname }}
             {% if t.other_verified %}
-              <img src="/static/img/violet.png" style="height:15px;margin-left:4px">
+              <img src="/static/img/violet.png"
+                   style="height:15px;margin-left:4px">
             {% endif %}
           </div>
 
