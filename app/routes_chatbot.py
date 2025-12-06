@@ -7,6 +7,9 @@ import os
 import json
 from functools import lru_cache
 
+# ⭐ لازم تضيف هذا
+from .utils import display_currency
+
 router = APIRouter(tags=["chatbot"])
 
 # -----------------------------
@@ -53,7 +56,6 @@ def chatbot_page(request: Request):
     """
     return templates.TemplateResponse("chatbot.html", {
         "request": request,
-        "session_user": getattr(request.state, "user", None)
-        "display_currency": display_currency   # ← الحل
-
+        "session_user": getattr(request.state, "user", None),
+        "display_currency": display_currency
     })
