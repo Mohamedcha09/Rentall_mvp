@@ -66,6 +66,22 @@
   opacity: 1;
 }
 
+/* SEARCH RESULTS BOX */
+.search-results-box {
+  background: #fff;
+  margin: 20px;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  max-height: 60vh;
+  overflow-y: auto;
+  display: none;
+}
+
+.search-results-box.active {
+  display: block;
+}
+
 /* INPUT */
 .search-input {
   width: 100%;
@@ -86,8 +102,9 @@
   cursor: pointer;
 }
 
+
 /* --------------------------
-   THREAD LIST
+   THREAD LIST (main page)
 -------------------------- */
 .thread-row {
   display: flex;
@@ -185,12 +202,16 @@ mark {
 
   </div>
 
+  <!-- RESULTS APPEAR HERE -->
+  <div class="search-results-box" id="searchResults"></div>
+
 </div>
 
 
 <script>
 const overlay = document.getElementById("searchOverlay");
 const panel = document.getElementById("searchPanel");
+const resultsBox = document.getElementById("searchResults");
 const openBtn = document.getElementById("openSearch");
 const cancelBtn = document.getElementById("cancelSearch");
 const input = document.getElementById("searchInput");
@@ -207,7 +228,6 @@ function highlight(text, word) {
 openBtn.onclick = () => {
   overlay.classList.add("active");
   panel.classList.add("active");
-
   setTimeout(() => input.focus(), 200);
 };
 
@@ -216,12 +236,21 @@ cancelBtn.onclick = () => {
   overlay.classList.remove("active");
   panel.classList.remove("active");
   input.value = "";
-  items.forEach(i => i.style.display = "flex");
+  resultsBox.innerHTML = "";
+  resultsBox.classList.remove("active");
 };
 
-/* FILTERING */
+
+/* FILTERING + SHOW RESULTS INSIDE OVERLAY */
 input.addEventListener("input", () => {
   const q = input.value.toLowerCase().trim();
+  resultsBox.innerHTML = "";
+  if (!q) {
+    resultsBox.classList.remove("active");
+    return;
+  }
+
+  let found = 0;
 
   items.forEach(row => {
     const name = row.dataset.name;
@@ -230,17 +259,33 @@ input.addEventListener("input", () => {
 
     const match = name.includes(q) || item.includes(q) || last.includes(q);
 
-    row.style.display = match ? "flex" : "none";
+    if (match) {
+      found++;
 
-    // highlight
-    const zone = row.querySelector(".text-zone");
-    const t1 = zone.querySelector(".msg-title");
-    const subs = zone.querySelectorAll(".msg-sub");
+      const originalHTML = row.innerHTML;
 
-    t1.innerHTML = highlight(t1.textContent, q);
-    subs.forEach(s => s.innerHTML = highlight(s.textContent, q));
+      const clone = document.createElement("div");
+      clone.className = "thread-row";
+      clone.innerHTML = originalHTML;
+
+      const zone = clone.querySelector(".text-zone");
+      const title = zone.querySelector(".msg-title");
+      const subs = zone.querySelectorAll(".msg-sub");
+
+      title.innerHTML = highlight(title.textContent, q);
+      subs.forEach(s => s.innerHTML = highlight(s.textContent, q));
+
+      clone.onclick = () => window.location = row.href;
+
+      resultsBox.appendChild(clone);
+    }
   });
 
+  if (found > 0) {
+    resultsBox.classList.add("active");
+  } else {
+    resultsBox.classList.remove("active");
+  }
 });
 </script>
 
