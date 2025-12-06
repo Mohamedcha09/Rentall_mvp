@@ -3,14 +3,36 @@
 
 <link rel="stylesheet" href="/static/css/chatbot.css">
 
+<style>
+  /* نجعل الصفحة كاملة مثل Airbnb */
+  #sv-chatbot-root {
+    position: relative !important;
+    bottom: unset;
+    right: unset;
+    width: 100%;
+    height: calc(100vh - 70px);
+    margin-top: 20px;
+  }
+
+  /* إلغاء زر الفتح — لن نحتاجه */
+  #sv-chatbot-toggle {
+    display: none !important;
+  }
+
+  /* نجعل البانيل Full Page */
+  #sv-chatbot-panel {
+    position: relative !important;
+    width: 100% !important;
+    height: 100% !important;
+    bottom: unset !important;
+    right: unset !important;
+    border-radius: 16px;
+  }
+</style>
+
 <div id="sv-chatbot-root">
 
-  <!-- زر فتح الشات بوت -->
-  <button id="sv-chatbot-toggle" type="button" aria-label="Help Center">
-    <span>?</span>
-  </button>
-
-  <!-- اللوحة الرئيسية -->
+  <!-- البانيل الرئيسي full page -->
   <div id="sv-chatbot-panel">
 
     <div class="sv-chatbot-header">
@@ -18,7 +40,9 @@
         <div class="sv-chatbot-title">Sevor Assistant</div>
         <div class="sv-chatbot-subtitle">Instant answers for your questions</div>
       </div>
-      <button class="sv-chatbot-close">✕</button>
+
+      <!-- زر الغلق → يعود لصفحة الرسائل -->
+      <a href="/messages" class="sv-chatbot-close" style="text-decoration:none;">✕</a>
     </div>
 
     <!-- الجسم بالكامل -->

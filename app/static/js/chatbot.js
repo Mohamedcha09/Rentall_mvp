@@ -1,33 +1,8 @@
 // ===============================
-//  SEVOR CHATBOT ENGINE
+//  LOAD CHATBOT TREE
 // ===============================
-
 let SV_TREE = null;
 
-// HTML Elements
-const panel = document.getElementById("sv-chatbot-panel");
-const toggleBtn = document.getElementById("sv-chatbot-toggle");
-const closeBtn = document.querySelector(".sv-chatbot-close");
-
-const sectionList = document.getElementById("sv-chatbot-section-list");
-const questionList = document.getElementById("sv-chatbot-question-list");
-const answerBox = document.getElementById("sv-chatbot-answer-inner");
-
-// ===============================
-//  PANEL OPEN / CLOSE
-// ===============================
-toggleBtn.onclick = () => {
-  panel.hidden = !panel.hidden;
-  if (!panel.hidden) loadSections();
-};
-
-closeBtn.onclick = () => {
-  panel.hidden = true;
-};
-
-// ===============================
-//  FETCH JSON TREE
-// ===============================
 async function loadTree() {
   if (SV_TREE) return SV_TREE;
   try {
@@ -35,21 +10,42 @@ async function loadTree() {
     SV_TREE = await res.json();
     return SV_TREE;
   } catch (err) {
-    console.error("Chatbot JSON error:", err);
+    console.error("Failed to load chatbot tree:", err);
   }
 }
 
+// ===============================
+//  ELEMENTS
+// ===============================
+const sectionList = document.getElementById("sv-chatbot-section-list");
+const questionList = document.getElementById("sv-chatbot-question-list");
+const answerBox = document.getElementById("sv-chatbot-answer-inner");
+
+// ===============================
+//  INITIAL LOAD
+// ===============================
+document.addEventListener("DOMContentLoaded", () => {
+  loadSections();
+});
+
+// ===============================
+//  LOAD SECTIONS
+// ===============================
 async function loadSections() {
   const data = await loadTree();
+  if (!data) return;
+
   sectionList.innerHTML = "";
   questionList.innerHTML = "";
   answerBox.innerHTML = `<div class="sv-chatbot-empty">Select a question to view the answer.</div>`;
 
-  Object.keys(data).forEach((section) => {
+  Object.keys(data).forEach(section => {
     const li = document.createElement("li");
-    li.textContent = section;
     li.className = "sv-chatbot-pill";
+    li.textContent = section;
+
     li.onclick = () => selectSection(section);
+
     sectionList.appendChild(li);
   });
 }
@@ -60,23 +56,20 @@ async function loadSections() {
 function selectSection(sectionName) {
   const sectionData = SV_TREE[sectionName];
 
-  // Highlight selection
-  [...sectionList.children].forEach((el) => el.classList.remove("is-active"));
-  [...sectionList.children]
-    .find((el) => el.textContent === sectionName)
-    ?.classList.add("is-active");
+  [...sectionList.children].forEach(el => el.classList.remove("is-active"));
+  const found = [...sectionList.children].find(el => el.textContent === sectionName);
+  if (found) found.classList.add("is-active");
 
-  // Reset column 2 + 3
   questionList.innerHTML = "";
   answerBox.innerHTML = `<div class="sv-chatbot-empty">Select a question to view the answer.</div>`;
 
-  const questions = Object.keys(sectionData);
-
-  questions.forEach((q) => {
+  Object.keys(sectionData).forEach(q => {
     const li = document.createElement("li");
-    li.textContent = q;
     li.className = "sv-chatbot-question";
+    li.textContent = q;
+
     li.onclick = () => selectQuestion(sectionName, q);
+
     questionList.appendChild(li);
   });
 }
@@ -85,25 +78,19 @@ function selectSection(sectionName) {
 //  SELECT QUESTION
 // ===============================
 function selectQuestion(sectionName, questionText) {
-  const questionData = SV_TREE[sectionName][questionText];
+  const qData = SV_TREE[sectionName][questionText];
 
-  // Highlight selection
-  [...questionList.children].forEach((el) =>
-    el.classList.remove("is-active")
-  );
-  [...questionList.children]
-    .find((el) => el.textContent === questionText)
-    ?.classList.add("is-active");
+  [...questionList.children].forEach(el => el.classList.remove("is-active"));
+  const found = [...questionList.children].find(el => el.textContent === questionText);
+  if (found) found.classList.add("is-active");
 
-  // If the question has simple answer
-  if (questionData.answer) {
-    showAnswer(questionData.answer);
+  if (qData.answer) {
+    showAnswer(qData.answer);
     return;
   }
 
-  // If question has options (sub-questions)
-  if (questionData.options) {
-    showOptions(sectionName, questionText, questionData.options);
+  if (qData.options) {
+    showOptions(qData.options);
     return;
   }
 }
@@ -122,29 +109,26 @@ function showAnswer(text) {
 // ===============================
 //  SHOW SUB OPTIONS
 // ===============================
-function showOptions(sectionName, questionText, options) {
+function showOptions(options) {
   answerBox.innerHTML = "";
 
   const title = document.createElement("div");
   title.className = "sv-chatbot-answer-text";
   title.style.fontWeight = "700";
-  title.style.marginBottom = "8px";
   title.textContent = "Select a more specific question:";
+  title.style.marginBottom = "10px";
   answerBox.appendChild(title);
 
-  Object.keys(options).forEach((opt) => {
+  Object.keys(options).forEach(opt => {
     const div = document.createElement("div");
     div.className = "sv-chatbot-option";
     div.textContent = opt;
 
     div.onclick = () => {
-      // Highlight active option
-      [...answerBox.querySelectorAll(".sv-chatbot-option")].forEach((el) =>
-        el.classList.remove("is-active")
-      );
-      div.classList.add("is-active");
+      [...answerBox.querySelectorAll(".sv-chatbot-option")]
+        .forEach(el => el.classList.remove("is-active"));
 
-      // Show answer
+      div.classList.add("is-active");
       showAnswer(options[opt].answer);
     };
 
