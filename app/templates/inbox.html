@@ -200,11 +200,11 @@ mark {
 <!-- THREADS LIST -->
 <div id="threadsContainer">
 
-  <!-- STATIC SUPPORT ENTRY (hidden initially) -->
-  <a href="/messages/support-sevor"
-     class="thread-row"
-     id="supportCard"
-     style="display:none">
+  <!-- STATIC SUPPORT ENTRY -->
+  <a href="#" 
+   class="thread-row"
+   id="supportCard"
+   style="display:none">
 
     <div class="item-preview">
       <img src="/static/img/sevor-logo.png">
@@ -344,7 +344,7 @@ input.addEventListener("input", () => {
   }
 });
 
-/* FILTER TABS LOGIC — PERFECT VERSION */
+/* FILTER TABS LOGIC */
 const tabs = document.querySelectorAll(".tab");
 
 tabs.forEach(tab => {
@@ -365,6 +365,31 @@ tabs.forEach(tab => {
     }
   };
 });
+
+/* OPEN CHATBOT — FIXED VERSION */
+document.addEventListener("DOMContentLoaded", () => {
+  const chatbotPanel = document.getElementById("sv-chatbot-panel");
+  const supportCardBtn = document.getElementById("supportCard");
+
+  if (supportCardBtn) {
+    supportCardBtn.addEventListener("click", function(e) {
+      e.preventDefault();
+
+      chatbotPanel.hidden = false;
+
+      if (typeof loadSections === "function") {
+        loadSections();
+      }
+
+      chatbotPanel.scrollTop = 0;
+
+      tabs.forEach(t => t.classList.remove("active"));
+      const sTab = document.querySelector(".tab[data-filter='support']");
+      if (sTab) sTab.classList.add("active");
+    });
+  }
+});
+
 </script>
 
 {% endblock %}
