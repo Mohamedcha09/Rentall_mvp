@@ -2,7 +2,6 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- HEADER -->
 <div class="inbox-header">
   <div class="inbox-title">Messages</div>
   <a class="refresh-btn" href="/messages">Refresh</a>
@@ -15,15 +14,13 @@
   </div>
 {% endif %}
 
-<!-- =======================
-     AIRBNB STYLE (CLEAN)
-     ======================= -->
 <style>
+  /* HEADER */
   .inbox-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 18px;
+    margin-bottom: 14px;
   }
 
   .inbox-title {
@@ -33,83 +30,65 @@
   }
 
   .refresh-btn {
-    background: #fff;
+    background: #ffffff;
     border: 1px solid #dcdcdc;
-    padding: 6px 14px;
+    padding: 6px 12px;
     border-radius: 50px;
     font-size: 14px;
     color: #555;
-    text-decoration: none;
-  }
-  .refresh-btn:hover {
-    background: #f7f7f7;
   }
 
-  /* Message row */
+  /* ROW */
   .thread-row {
     display: flex;
     align-items: center;
-    padding: 14px 10px;
     gap: 12px;
+    padding: 14px 10px;
     background: #ffffff;
     border-bottom: 1px solid #f1f1f1;
     text-decoration: none;
     color: inherit;
-    transition: background .15s ease;
   }
   .thread-row:hover {
     background: #f7f7f7;
   }
 
-  /* Avatar (left side) */
-  .avatar {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    overflow: hidden;
-    background: #e8e8e8;
-    flex-shrink: 0;
-  }
-  .avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  /* --- NEW AIRBNB STYLE — ITEM + SMALL AVATAR OVERLAY --- */
+  /* Airbnb style image block */
   .item-preview {
     position: relative;
-    width: 58px;
-    height: 58px;
-    border-radius: 12px;
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
     overflow: hidden;
-    background: #ececec;
     flex-shrink: 0;
+    background: #eaeaea;
   }
+
   .item-preview img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
 
-  .item-preview .small-avatar {
+  /* Small avatar overlay */
+  .small-avatar {
     position: absolute;
-    bottom: -4px;
-    right: -4px;
-    width: 28px;
-    height: 28px;
+    bottom: -3px;
+    right: -3px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     border: 2px solid white;
     overflow: hidden;
     background: #fff;
   }
-  .item-preview .small-avatar img {
+  .small-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
 
-  /* Text area */
+  /* TEXTS */
   .msg-title {
     font-size: 17px;
     font-weight: 600;
@@ -125,38 +104,30 @@
   .msg-date {
     font-size: 13px;
     color: #717171;
-    margin-left: auto;
     white-space: nowrap;
+    margin-left: auto;
   }
 
-  /* Empty State */
-  .empty-box {
-    padding: 30px 8px;
-    text-align: center;
-  }
-  .empty-box img {
-    max-width: 260px;
-    width: 70%;
-    opacity: .95;
-  }
 </style>
 
-{% set EMPTY_IMG = url_for('static', path='photo/mon.png') %}
 
-<!-- THREAD LIST -->
 {% if threads and threads|length %}
   <div>
     {% for t in threads %}
       <a href="/messages/{{ t.id }}" class="thread-row">
 
-        <!-- LEFT AVATAR (OTHER USER) -->
-        <div class="avatar">
-          <img src="{{ t.other_avatar }}"
-               referrerpolicy="no-referrer"
+        <!-- LEFT SIDE — Airbnb style preview block -->
+        <div class="item-preview">
+          <img src="{{ t.item_image }}"
                onerror="this.onerror=null;this.src='/static/img/.png'">
+
+          <div class="small-avatar">
+            <img src="{{ t.other_avatar }}"
+                 onerror="this.onerror=null;this.src='/static/img/.png'">
+          </div>
         </div>
 
-        <!-- TEXTS -->
+        <!-- TEXT AREA -->
         <div class="flex-grow-1">
           <div class="msg-title">
             {{ t.other_fullname }}
@@ -170,24 +141,9 @@
           {% endif %}
         </div>
 
-        <!-- RIGHT SIDE — ITEM + OVERLAY AVATAR -->
-        {% if t.item_image %}
-        <div class="item-preview">
-          <img src="{{ t.item_image }}"
-               referrerpolicy="no-referrer"
-               onerror="this.onerror=null;this.src='/static/img/.png'">
-
-          <div class="small-avatar">
-            <img src="{{ t.other_avatar }}"
-                 referrerpolicy="no-referrer"
-                 onerror="this.onerror=null;this.src='/static/img/.png'">
-          </div>
-        </div>
-        {% endif %}
-
         <!-- DATE -->
         <div class="msg-date">
-          {{ t.last_message_at.strftime("%d-%m-%Y") if t.last_message_at else "" }}
+          {{ t.last_message_at.strftime("%d-%m-%Y") }}
         </div>
 
       </a>
