@@ -50,7 +50,6 @@
   opacity: 1;
 }
 
-/* SEARCH BOX CONTAINER */
 .search-panel {
   background: #fff;
   padding: 16px;
@@ -66,7 +65,6 @@
   opacity: 1;
 }
 
-/* SEARCH RESULTS BOX */
 .search-results-box {
   background: #fff;
   margin: 20px;
@@ -82,7 +80,6 @@
   display: block;
 }
 
-/* INPUT */
 .search-input {
   width: 100%;
   padding: 14px 20px;
@@ -92,7 +89,6 @@
   background: #f7f7f7;
 }
 
-/* CANCEL BUTTON */
 .cancel-search {
   margin-top: 12px;
   text-align: right;
@@ -189,7 +185,6 @@ mark {
 <div class="msg-tabs">
   <div class="tab active" data-filter="all">Tout</div>
 
-  <!-- Soutien Sevor button + icon -->
   <div class="tab" data-filter="support">
     <img src="/static/img/sevor-logo.png" 
          style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">
@@ -227,7 +222,10 @@ mark {
   {% for t in threads %}
   <a href="/messages/{{ t.id }}"
      class="thread-row thread-item"
-     data-type="{{ 'support' if t.other_verified else 'normal' }}"
+
+     <!-- 🔥🔥 التعديل هنا 🔥🔥 -->
+     data-type="normal"
+
      data-name="{{ t.other_fullname|lower }}"
      data-item="{{ t.item_title|lower }}"
      data-last="{{ t.last_message_text|lower }}">
@@ -256,19 +254,15 @@ mark {
   {% endfor %}
 </div>
 
-
 <!-- SEARCH OVERLAY -->
 <div class="search-overlay" id="searchOverlay">
-
   <div class="search-panel" id="searchPanel">
     <input id="searchInput" class="search-input" placeholder="Search messages…">
     <div class="cancel-search" id="cancelSearch">Annuler</div>
   </div>
 
   <div class="search-results-box" id="searchResults"></div>
-
 </div>
-
 
 <script>
 const overlay = document.getElementById("searchOverlay");
@@ -364,6 +358,7 @@ tabs.forEach(tab => {
 
       if (filter === "all") {
         r.style.display = "flex";
+
       } else if (filter === "support") {
         r.style.display = (type === "support") ? "flex" : "none";
       }
