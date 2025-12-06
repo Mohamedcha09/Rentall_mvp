@@ -16,6 +16,11 @@
   </div>
 {% endif %}
 
+<!-- SEARCH BAR (Airbnb style) -->
+<div class="msg-search-box">
+    <input type="text" id="msgSearchInput" placeholder="Search messages...">
+</div>
+
 <style>
 
   /* HEADER */
@@ -42,6 +47,28 @@
     text-decoration: none;
   }
 
+  /* SEARCH BAR */
+  .msg-search-box {
+    width: 100%;
+    margin-bottom: 14px;
+  }
+
+  .msg-search-box input {
+    width: 100%;
+    padding: 10px 16px;
+    font-size: 16px;
+    background: #f2f2f2;
+    border: 1px solid #e5e5e5;
+    border-radius: 30px;
+    outline: none;
+    transition: 0.2s;
+  }
+
+  .msg-search-box input:focus {
+    background: #fff;
+    border-color: #bebebe;
+  }
+
   /* ROW */
   .thread-row {
     display: flex;
@@ -57,7 +84,7 @@
     background: #f7f7f7;
   }
 
-  /* === AIRBNB STYLE MAIN IMAGE === */
+  /* MAIN IMAGE — Airbnb Style */
   .item-preview {
     position: relative;
     width: 60px;
@@ -65,7 +92,7 @@
     border-radius: 14px;
     background: #eee;
     flex-shrink: 0;
-    overflow: visible;       /* IMPORTANT: allow circle to escape */
+    overflow: visible;  
     z-index: 1;
   }
 
@@ -74,28 +101,26 @@
     height: 100%;
     border-radius: 14px;
     object-fit: cover;
-    display: block;
   }
 
-  /* === SMALL AVATAR — THE FIXED VERSION === */
+  /* SMALL AVATAR */
   .small-avatar {
     position: absolute;
-    bottom: -10px;     /* more overlap just like Airbnb */
+    bottom: -10px;
     left: -10px;
     width: 34px;
     height: 34px;
     border-radius: 50%;
-    overflow: hidden;
     border: 3px solid white;
     background: white;
-    z-index: 99999;     /* ensures avatar is ALWAYS above image */
+    overflow: hidden;
+    z-index: 9999;
   }
 
   .small-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    display: block;
   }
 
   /* TEXTS */
@@ -135,28 +160,25 @@
 {% set EMPTY_IMG = url_for('static', path='photo/mon.png') %}
 
 {% if threads and threads|length %}
-  <div>
+  <div id="threadsWrapper">
     {% for t in threads %}
       <a href="/messages/{{ t.id }}" class="thread-row">
 
-        <!-- LEFT SIDE — IMAGE + OVERLAY AVATAR -->
         <div class="item-preview">
           <img src="{{ t.item_image }}"
-            onerror="this.onerror=null;this.src='/static/img/.png'">
+               onerror="this.onerror=null;this.src='/static/img/.png'">
 
           <div class="small-avatar">
             <img src="{{ t.other_avatar }}"
-              onerror="this.onerror=null;this.src='/static/img/.png'">
+               onerror="this.onerror=null;this.src='/static/img/.png'">
           </div>
         </div>
 
-        <!-- TEXT AREA -->
         <div class="flex-grow-1">
           <div class="msg-title">
             {{ t.other_fullname }}
             {% if t.other_verified %}
-              <img src="/static/img/violet.png"
-                   style="height:15px;margin-left:4px">
+              <img src="/static/img/violet.png" style="height:15px;margin-left:4px">
             {% endif %}
           </div>
 
@@ -165,7 +187,6 @@
           {% endif %}
         </div>
 
-        <!-- DATE -->
         <div class="msg-date">
           {{ t.last_message_at.strftime("%d-%m-%Y") }}
         </div>
@@ -179,5 +200,18 @@
     <img src="{{ EMPTY_IMG }}" alt="No conversations">
   </div>
 {% endif %}
+
+<!-- SEARCH FILTER SCRIPT -->
+<script>
+document.getElementById("msgSearchInput").addEventListener("input", function() {
+    let query = this.value.toLowerCase();
+    let rows = document.querySelectorAll(".thread-row");
+
+    rows.forEach(row => {
+        let text = row.innerText.toLowerCase();
+        row.style.display = text.includes(query) ? "flex" : "none";
+    });
+});
+</script>
 
 {% endblock %}
