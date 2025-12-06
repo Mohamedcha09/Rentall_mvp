@@ -2,6 +2,7 @@
 {% extends "base.html" %}
 {% block content %}
 
+<!-- HEADER -->
 <div class="inbox-header">
   <div class="inbox-title">Messages</div>
   <a class="refresh-btn" href="/messages">Refresh</a>
@@ -10,20 +11,19 @@
 {% if session_user and session_user.status != 'approved' %}
   <div class="alert alert-warning">
     Your account is still <strong>under review</strong>. You cannot message other users currently,
-    but you can <a href="/messages/support" class="alert-link">contact support</a> to know what is missing to activate your account.
+    but you can <a href="/messages/support" class="alert-link">contact support</a>.
   </div>
 {% endif %}
 
+<!-- =======================
+     AIRBNB STYLE (CLEAN)
+     ======================= -->
 <style>
-  /* -------------------------
-     Airbnb 100% Clean Style
-     ------------------------- */
-
   .inbox-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 14px;
+    margin-bottom: 18px;
   }
 
   .inbox-title {
@@ -33,9 +33,9 @@
   }
 
   .refresh-btn {
-    background: #ffffff;
+    background: #fff;
     border: 1px solid #dcdcdc;
-    padding: 6px 12px;
+    padding: 6px 14px;
     border-radius: 50px;
     font-size: 14px;
     color: #555;
@@ -45,29 +45,30 @@
     background: #f7f7f7;
   }
 
+  /* Message row */
   .thread-row {
     display: flex;
     align-items: center;
-    gap: 12px;
     padding: 14px 10px;
+    gap: 12px;
     background: #ffffff;
     border-bottom: 1px solid #f1f1f1;
-    transition: background 0.15s ease;
     text-decoration: none;
     color: inherit;
+    transition: background .15s ease;
   }
   .thread-row:hover {
     background: #f7f7f7;
   }
 
-  /* Avatar */
+  /* Round avatar */
   .avatar {
     width: 48px;
     height: 48px;
     border-radius: 50%;
     overflow: hidden;
     background: #e8e8e8;
-    flex: 0 0 48px;
+    flex-shrink: 0;
   }
   .avatar img {
     width: 100%;
@@ -75,14 +76,14 @@
     object-fit: cover;
   }
 
-  /* Thumbnail (optional) */
+  /* Item square image */
   .thumb {
     width: 46px;
     height: 46px;
     border-radius: 10px;
     overflow: hidden;
-    background: #e8e8e8;
-    flex: 0 0 46px;
+    background: #eee;
+    flex-shrink: 0;
   }
   .thumb img {
     width: 100%;
@@ -90,7 +91,7 @@
     object-fit: cover;
   }
 
-  /* Text styling */
+  /* Text area */
   .msg-title {
     font-size: 17px;
     font-weight: 600;
@@ -106,37 +107,38 @@
   .msg-date {
     font-size: 13px;
     color: #717171;
-    white-space: nowrap;
     margin-left: auto;
+    white-space: nowrap;
   }
 
-  /* Empty state */
+  /* Empty State */
   .empty-box {
-    padding: 24px 8px;
+    padding: 30px 8px;
     text-align: center;
   }
   .empty-box img {
     max-width: 260px;
-    width: 75%;
-    opacity: 0.95;
+    width: 70%;
+    opacity: .95;
   }
 </style>
 
 {% set EMPTY_IMG = url_for('static', path='photo/mon.png') %}
 
+<!-- THREAD LIST -->
 {% if threads and threads|length %}
   <div>
     {% for t in threads %}
       <a href="/messages/{{ t.id }}" class="thread-row">
 
-        <!-- Avatar -->
+        <!-- ROUND AVATAR (OTHER USER) -->
         <div class="avatar">
           <img src="{{ t.other_avatar }}"
                referrerpolicy="no-referrer"
                onerror="this.onerror=null;this.src='/static/img/.png'">
         </div>
 
-        <!-- Texts -->
+        <!-- TEXTS -->
         <div class="flex-grow-1">
           <div class="msg-title">
             {{ t.other_fullname }}
@@ -150,14 +152,16 @@
           {% endif %}
         </div>
 
-        <!-- Optional photo -->
-        <div class="thumb d-none d-sm-block">
+        <!-- SQUARE THUMBNAIL (ITEM PHOTO) -->
+        {% if t.item_image %}
+        <div class="thumb">
           <img src="{{ t.item_image }}"
                referrerpolicy="no-referrer"
                onerror="this.onerror=null;this.src='/static/img/.png'">
         </div>
+        {% endif %}
 
-        <!-- Date -->
+        <!-- DATE -->
         <div class="msg-date">
           {{ t.last_message_at.strftime("%d-%m-%Y") if t.last_message_at else "" }}
         </div>
@@ -165,6 +169,7 @@
       </a>
     {% endfor %}
   </div>
+
 {% else %}
   <div class="empty-box">
     <img src="{{ EMPTY_IMG }}" alt="No conversations">
