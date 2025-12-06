@@ -191,16 +191,13 @@ mark {
 <!-- THREADS LIST -->
 <div id="threadsContainer">
   {% for t in threads %}
-  <a href="/messages/{{ t.id }}" 
-     class="thread-row thread-item"
-     
-     <!-- ===== ADDED: tagging support threads ===== -->
-     data-type="{{ 'support' if t.other_verified else 'normal' }}"
-     <!-- ===== END ADDED ===== -->
-     
-     data-name="{{ t.other_fullname|lower }}"
-     data-item="{{ t.item_title|lower }}"
-     data-last="{{ t.last_message_text|lower }}">
+  <a href="/messages/{{ t.id }}"
+   class="thread-row thread-item"
+   data-type="{{ 'support' if t.other_verified else 'normal' }}"
+   data-name="{{ t.other_fullname|lower }}"
+   data-item="{{ t.item_title|lower }}"
+   data-last="{{ t.last_message_text|lower }}">
+
     
     <div class="item-preview">
       <img src="{{ t.item_image }}">
