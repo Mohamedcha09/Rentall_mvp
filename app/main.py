@@ -1096,3 +1096,5 @@ def sitemap():
 @app.get("/privacy")
 def privacy_page(request: Request):
     return templates.TemplateResponse("privacy.html", {"request": request})
+
+
