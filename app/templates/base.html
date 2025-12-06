@@ -960,16 +960,11 @@ window.onpageshow = function(e){
       <div id="typeaheadPanel" class="typeahead d-none"></div>
 
       <div class="actions d-flex align-items-center gap-2 ms-auto">
-      {% if display_currency is defined %}
-  {% if display_currency is string %}
-    {% set _cur = display_currency %}
-  {% else %}
-    {% set _cur = display_currency(request) %}
-  {% endif %}
+      {% if display_currency is string %}
+  {% set _cur = display_currency %}
 {% else %}
-  {% set _cur = 'USD' %}
+  {% set _cur = display_currency(request) %}
 {% endif %}
-
 
 
         <!-- Messages -->

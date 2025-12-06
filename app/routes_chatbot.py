@@ -50,7 +50,8 @@ def get_chatbot_tree():
 def chatbot_page(request: Request):
     """
     Serve the chatbot HTML page.
-    This page contains the 3-column interface (Sections / Questions / Answers)
-    and the JS that fetches: /chatbot/tree
     """
-    return templates.TemplateResponse("chatbot.html", {"request": request})
+    return templates.TemplateResponse("chatbot.html", {
+        "request": request,
+        "session_user": getattr(request.state, "user", None)
+    })
