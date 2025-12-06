@@ -139,6 +139,30 @@
   z-index: 10;
 }
 
+/* ===== ADDED: FILTER TABS ===== */
+.msg-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.msg-tabs .tab {
+  padding: 8px 18px;
+  border-radius: 30px;
+  font-size: 15px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  background: #fff;
+  color: #444;
+  transition: .25s;
+}
+
+.msg-tabs .tab.active {
+  background: linear-gradient(90deg, #8b5cf6, #5b9df9);
+  color: #fff;
+  border-color: transparent;
+}
+/* ===== END ADDED ===== */
 
 .msg-title { font-size: 17px; font-weight: 600; }
 .msg-sub { font-size: 14px; color: #666; }
@@ -154,17 +178,26 @@ mark {
 <!-- HEADER -->
 <div class="inbox-header">
   <div class="inbox-title">Messages</div>
-
-  <!-- Airbnb style Search button -->
   <div class="search-icon-btn" id="openSearch">🔍</div>
 </div>
 
+<!-- ===== ADDED TABS ===== -->
+<div class="msg-tabs">
+  <div class="tab active" data-filter="all">Tout</div>
+  <div class="tab" data-filter="support">Soutien Sevor</div>
+</div>
+<!-- ===== END ADDED ===== -->
 
 <!-- THREADS LIST -->
 <div id="threadsContainer">
   {% for t in threads %}
   <a href="/messages/{{ t.id }}" 
      class="thread-row thread-item"
+     
+     <!-- ===== ADDED: tagging support threads ===== -->
+     data-type="{{ 'support' if t.other_verified else 'normal' }}"
+     <!-- ===== END ADDED ===== -->
+     
      data-name="{{ t.other_fullname|lower }}"
      data-item="{{ t.item_title|lower }}"
      data-last="{{ t.last_message_text|lower }}">
@@ -205,7 +238,6 @@ mark {
 
   </div>
 
-  <!-- RESULTS APPEAR HERE -->
   <div class="search-results-box" id="searchResults"></div>
 
 </div>
@@ -218,9 +250,10 @@ const resultsBox = document.getElementById("searchResults");
 const openBtn = document.getElementById("openSearch");
 const cancelBtn = document.getElementById("cancelSearch");
 const input = document.getElementById("searchInput");
+
 const items = document.querySelectorAll(".thread-item");
 
-/* HIGHLIGHT FUNCTION */
+/* HIGHLIGHT */
 function highlight(text, word) {
   if (!word) return text;
   const re = new RegExp(`(${word})`, "gi");
@@ -243,8 +276,7 @@ cancelBtn.onclick = () => {
   resultsBox.classList.remove("active");
 };
 
-
-/* FILTERING + SHOW RESULTS INSIDE OVERLAY */
+/* SEARCH FILTER */
 input.addEventListener("input", () => {
   const q = input.value.toLowerCase().trim();
   resultsBox.innerHTML = "";
@@ -265,11 +297,9 @@ input.addEventListener("input", () => {
     if (match) {
       found++;
 
-      const originalHTML = row.innerHTML;
-
       const clone = document.createElement("div");
       clone.className = "thread-row";
-      clone.innerHTML = originalHTML;
+      clone.innerHTML = row.innerHTML;
 
       const zone = clone.querySelector(".text-zone");
       const title = zone.querySelector(".msg-title");
@@ -290,6 +320,32 @@ input.addEventListener("input", () => {
     resultsBox.classList.remove("active");
   }
 });
+
+
+/* ===== ADDED: FILTER TABS LOGIC ===== */
+const tabs = document.querySelectorAll(".tab");
+
+tabs.forEach(tab => {
+  tab.onclick = () => {
+
+    tabs.forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+
+    const filter = tab.dataset.filter;
+
+    items.forEach(r => {
+      const type = r.dataset.type;
+
+      if (filter === "all") {
+        r.style.display = "flex";
+      } else if (filter === "support") {
+        r.style.display = (type === "support") ? "flex" : "none";
+      }
+    });
+  };
+});
+/* ===== END ADDED ===== */
+
 </script>
 
 {% endblock %}
