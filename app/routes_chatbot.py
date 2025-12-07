@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 import os, json
 from functools import lru_cache
 
-from .utils import display_currency, get_current_user
+from .utils import display_currency
 from .models import User
 
 router = APIRouter(tags=["chatbot"])
