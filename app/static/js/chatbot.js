@@ -12,7 +12,7 @@ async function loadTree() {
 function addBotMessage(html) {
   const chat = document.getElementById("sv-chat-window");
   const box = document.createElement("div");
-  box.className = "sv-msg sv-msg-bot";
+  box.className = "sv-msg sv-msg-bot sv-fade-in";
   box.innerHTML = html;
   chat.appendChild(box);
   chat.scrollTop = chat.scrollHeight;
@@ -21,7 +21,7 @@ function addBotMessage(html) {
 function addUserMessage(text) {
   const chat = document.getElementById("sv-chat-window");
   const box = document.createElement("div");
-  box.className = "sv-msg sv-msg-user";
+  box.className = "sv-msg sv-msg-user sv-fade-in";
   box.textContent = text;
   chat.appendChild(box);
   chat.scrollTop = chat.scrollHeight;
@@ -35,8 +35,8 @@ function clearSuggestions() {
 // ===========================
 // GLOBAL DATA
 // ===========================
-let SECTIONS = []; // كل السكاشن
-let CURRENT_SECTION = null; // السكشن الذي اختاره المستخدم
+let SECTIONS = [];
+let CURRENT_SECTION = null;
 
 // ===========================
 // FEEDBACK BUTTONS
@@ -45,13 +45,13 @@ function showFeedbackButtons() {
   const chat = document.getElementById("sv-chat-window");
 
   const wrapper = document.createElement("div");
-  wrapper.className = "sv-msg sv-msg-bot";
+  wrapper.className = "sv-msg sv-msg-bot sv-fade-in";
 
   wrapper.innerHTML = `
-    <div class="sv-feedback-title">✔️ Est-ce que cela répond à votre question ?</div>
+    <div class="sv-feedback-title">✔️ Did this answer your question?</div>
     <div class="sv-feedback-buttons">
-      <button class="sv-yes-btn">Oui</button>
-      <button class="sv-no-btn">Non</button>
+      <button class="sv-yes-btn">Yes</button>
+      <button class="sv-no-btn">No</button>
     </div>
   `;
 
@@ -63,12 +63,12 @@ function showFeedbackButtons() {
 }
 
 function handleYes() {
-  addBotMessage("Parfait ! 😊<br>Voulez-vous poser une autre question ?");
+  addBotMessage("Great! 😊<br>Would you like to ask another question?");
 
   const chat = document.getElementById("sv-chat-window");
   const btn = document.createElement("button");
   btn.className = "sv-option-chip";
-  btn.textContent = "Retour aux catégories";
+  btn.textContent = "Back to Categories";
 
   btn.onclick = () => showSections();
 
@@ -79,7 +79,7 @@ function handleYes() {
 }
 
 function handleNo() {
-  addBotMessage("Je comprends ❤️ Nous sommes là pour vous aider.");
+  addBotMessage("I understand ❤️ We're here to help.");
 
   const chat = document.getElementById("sv-chat-window");
   const btn = document.createElement("button");
@@ -95,7 +95,7 @@ function handleNo() {
 }
 
 // ===========================
-// SHOW MAIN CATEGORIES (SECTIONS)
+// SHOW MAIN CATEGORIES
 // ===========================
 function showSections() {
   clearSuggestions();
@@ -119,7 +119,7 @@ function showSections() {
 }
 
 // ===========================
-// SHOW QUESTIONS IN A SECTION
+// SHOW QUESTIONS IN SELECTED SECTION
 // ===========================
 function showQuestionsInSection(section) {
   clearSuggestions();
@@ -129,24 +129,23 @@ function showQuestionsInSection(section) {
 
   let faqs = section.faqs;
 
-  // إذا كان Object → نأخذ keys
+  // Object-based FAQs
   if (!Array.isArray(faqs)) {
     Object.entries(faqs).forEach(([question, obj]) => {
       const btn = document.createElement("button");
       btn.className = "sv-question-chip";
       btn.textContent = question;
 
-      btn.onclick = () => handleQuestionClick({ 
-        label: question, 
-        answer: obj.answer, 
-        options: obj.options || null 
+      btn.onclick = () => handleQuestionClick({
+        label: question,
+        answer: obj.answer,
+        options: obj.options || null
       });
 
       suggestions.appendChild(btn);
     });
   }
-
-  // إذا كان Array → item.question
+  // Array-based FAQs
   else {
     faqs.forEach(item => {
       const btn = document.createElement("button");
@@ -165,7 +164,7 @@ function showQuestionsInSection(section) {
 }
 
 // ===========================
-// WHEN USER SELECTS A QUESTION
+// USER SELECTS A QUESTION
 // ===========================
 function handleQuestionClick(q) {
   addUserMessage(q.label);
@@ -187,7 +186,7 @@ function handleQuestionClick(q) {
 
     const title = document.createElement("div");
     title.className = "sv-options-title";
-    title.textContent = "Choisissez un cas :";
+    title.textContent = "Choose a case:";
     wrapper.appendChild(title);
 
     Object.entries(q.options).forEach(([label, data]) => {
@@ -217,7 +216,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const data = await loadTree();
   SECTIONS = data.sections || [];
 
-  addBotMessage("👋 Bonjour! Je suis l’assistant Sevor.<br>Choisissez une catégorie pour commencer.");
+  // 🔥 ENGLISH INTRO
+  addBotMessage("👋 Hello! I’m the Sevor assistant.<br>Select a category to get started.");
 
   showSections();
 });
