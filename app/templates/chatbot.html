@@ -30,12 +30,6 @@ body[data-path="/chatbot"].has-tabbar {
     padding: 18px;
 }
 
-.sv-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-}
 
 .sv-back {
     font-size: 22px;
@@ -43,15 +37,6 @@ body[data-path="/chatbot"].has-tabbar {
     color: #111;
 }
 
-.sv-logo {
-    width: 34px;
-    height: 34px;
-}
-
-.sv-title {
-    font-size: 22px;
-    font-weight: 700;
-}
 
 .sv-chat-window {
     min-height: 120px;
@@ -73,11 +58,24 @@ body[data-path="/chatbot"].has-tabbar {
 <div class="sv-chatbot-page">
 
   <!-- HEADER -->
-  <div class="sv-header">
+  <!-- HEADER — Airbnb EXACT STYLE -->
+<div class="sv-header">
+
+    <!-- Left arrow -->
     <a href="/messages" class="sv-back">←</a>
-    <img src="/static/img/sevor-logo.png" class="sv-logo">
-    <div class="sv-title">Soutien Sevor</div>
-  </div>
+
+    <!-- Center (logo + title stacked vertically) -->
+    <div class="sv-header-center">
+        <div class="sv-header-logo-wrap">
+            <img src="/static/img/sevor-logo.png" alt="Sevor">
+        </div>
+        <div class="sv-title">Soutien Sevor</div>
+    </div>
+
+    <!-- Right empty space -->
+    <div class="sv-header-right"></div>
+</div>
+
 
   <!-- CHAT WINDOW -->
   <div id="sv-chat-window" class="sv-chat-window"></div>
