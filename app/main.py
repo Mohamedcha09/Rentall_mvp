@@ -759,9 +759,6 @@ def _get_session_user(request: Request) -> Optional[dict]:
     except Exception:
         return None
 
-# اجعل عملة العرض متاحة للتمبليت عبر global callable
-templates.env.globals["display_currency"] = lambda request: getattr(request.state, "display_currency", "CAD")
-
 # فلتر money(amount, cur)
 def _money_filter(amount, cur="CAD"):
     return _format_money(amount, (cur or "CAD").upper())
