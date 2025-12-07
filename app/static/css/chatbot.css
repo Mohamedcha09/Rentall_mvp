@@ -51,11 +51,6 @@
   margin-bottom: 4px;
 }
 
-.sv-header-logo-wrap img {
-  width: 26px;
-  height: 26px;
-  filter: brightness(0) invert(1);
-}
 
 .sv-title {
   font-size: 17px;
