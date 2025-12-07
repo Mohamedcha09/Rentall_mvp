@@ -11,6 +11,7 @@ from .database import get_db
 from .models import User, Document
 from .utils import hash_password, verify_password, MAX_FORM_PASSWORD_CHARS
 from cloudinary.uploader import upload as cloud_upload
+from .database import get_db
 
 # (Optional) Internal notifications
 try:
@@ -715,3 +716,22 @@ def settings_password_post(
     db.add(u); db.commit()
 
     return RedirectResponse("/settings?pwd_ok=1", status_code=303)
+
+
+# ============ Current User Dependency ============
+
+def get_current_user(request: Request, db: Session = Depends(get_db)):
+    """
+    Reads the user from session cookie.
+    Returns the full User object or None.
+    """
+    sess = request.session.get("user")
+    if not sess:
+        return None
+
+    uid = sess.get("id")
+    if not uid:
+        return None
+
+    u = db.query(User).filter(User.id == uid).first()
+    return u
