@@ -1,6 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
 
+<style>
+  /* Hide top navbar + bottom navbar ONLY in chatbot page */
+  .navbar-top,
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+
+  /* Also remove page padding caused by hidden navbars */
+  body {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+</style>
+
 <link rel="stylesheet" href="/static/css/chatbot.css">
 
 <div class="sv-chatbot-page">
