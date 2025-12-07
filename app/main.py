@@ -297,6 +297,8 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 app.templates = templates
+templates.env.globals["display_currency"] = lambda request: getattr(request.state, "display_currency", "CAD")
+
 
 
 def media_url(path: str | None) -> str:

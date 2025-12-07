@@ -737,3 +737,16 @@ class UserReview(Base):
 
     owner       = relationship("User", foreign_keys=[owner_id],       lazy="joined")
     target_user = relationship("User", foreign_keys=[target_user_id],  lazy="joined")
+
+
+class ChatbotLog(Base):
+    __tablename__ = "chatbot_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String(200), nullable=False)   # Soutien Sevor 1, 2, 3…
+    question = Column(Text, nullable=False)
+    answer = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", lazy="joined")
