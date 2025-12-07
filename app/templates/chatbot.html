@@ -3,72 +3,27 @@
 
 <link rel="stylesheet" href="/static/css/chatbot.css">
 
-<style>
-  /* نجعل الصفحة كاملة مثل Airbnb */
-  #sv-chatbot-root {
-    position: relative !important;
-    bottom: unset;
-    right: unset;
-    width: 100%;
-    height: calc(100vh - 70px);
-    margin-top: 20px;
-  }
+<div class="sv-chatbot-page">
 
-  /* إلغاء زر الفتح — لن نحتاجه */
-  #sv-chatbot-toggle {
-    display: none !important;
-  }
-
-  /* نجعل البانيل Full Page */
-  #sv-chatbot-panel {
-    position: relative !important;
-    width: 100% !important;
-    height: 100% !important;
-    bottom: unset !important;
-    right: unset !important;
-    border-radius: 16px;
-  }
-</style>
-
-<div id="sv-chatbot-root">
-
-  <!-- البانيل الرئيسي full page -->
-  <div id="sv-chatbot-panel">
-
-    <div class="sv-chatbot-header">
-      <div>
-        <div class="sv-chatbot-title">Sevor Assistant</div>
-        <div class="sv-chatbot-subtitle">Instant answers for your questions</div>
-      </div>
-
-      <!-- زر الغلق → يعود لصفحة الرسائل -->
-      <a href="/messages" class="sv-chatbot-close" style="text-decoration:none;">✕</a>
-    </div>
-
-    <!-- الجسم بالكامل -->
-    <div class="sv-chatbot-body">
-
-      <!-- Sections -->
-      <div class="sv-chatbot-col">
-        <div class="sv-chatbot-col-title">Sections</div>
-        <ul id="sv-chatbot-section-list"></ul>
-      </div>
-
-      <!-- Questions -->
-      <div class="sv-chatbot-col">
-        <div class="sv-chatbot-col-title">Questions</div>
-        <ul id="sv-chatbot-question-list"></ul>
-      </div>
-
-      <!-- Answers -->
-      <div class="sv-chatbot-col">
-        <div id="sv-chatbot-answer-inner">
-          <div class="sv-chatbot-empty">Select a question to view the answer.</div>
-        </div>
-      </div>
-
-    </div>
+  <!-- HEADER -->
+  <div class="sv-header">
+    <a href="/messages" class="sv-back">←</a>
+    <img src="/static/img/sevor-logo.png" class="sv-logo">
+    <div class="sv-title">Soutien Sevor</div>
   </div>
+
+  <!-- WELCOME MESSAGE -->
+  <div class="sv-welcome">
+    <h2>👋 Bonjour! Comment pouvons-nous vous aider ?</h2>
+    <p>Choisissez un sujet ci-dessous.</p>
+  </div>
+
+  <!-- QUESTIONS LIST -->
+  <div id="sv-questions" class="sv-list"></div>
+
+  <!-- ANSWER BOX -->
+  <div id="sv-answer" class="sv-answer hidden"></div>
+
 </div>
 
 <script src="/static/js/chatbot.js"></script>
