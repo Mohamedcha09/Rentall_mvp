@@ -31,13 +31,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   const data = await loadTree();
   const sections = data.sections || [];
 
-  // نحول كل الأسئلة إلى قائمة بسيطة
+  // تحويل كل الأسئلة إلى قائمة بسيطة
   const allQuestions = [];
 
   sections.forEach(section => {
     const faqs = section.faqs;
 
-    // CASE 1: faqs = object (question → {answer, options})
+    // CASE 1: faqs = object
     if (!Array.isArray(faqs)) {
       Object.entries(faqs).forEach(([question, obj]) => {
         allQuestions.push({
@@ -47,7 +47,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
       });
     }
-    // CASE 2: faqs = array of {question, answer}
+    // CASE 2: faqs = array
     else {
       faqs.forEach(item => {
         allQuestions.push({
@@ -59,13 +59,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // 4) رسالة ترحيب أولى (بوت)
+  // 4) رسالة ترحيب أولى
   addBotMessage(
     chatWindow,
     "👋 Bonjour! Je suis l’assistant Sevor.<br>Choisissez une question fréquente ci-dessous pour commencer."
   );
 
-  // 5) نرسم الـ chips للأسئلة
+  // 5) رسم الاقتراحات
   allQuestions.forEach(q => {
     const chip = document.createElement("button");
     chip.className = "sv-question-chip";
@@ -82,12 +82,16 @@ function handleQuestionClick(chatWindow, q) {
   // رسالة المستخدم
   addUserMessage(chatWindow, q.label);
 
+  // ❗ إخفاء جميع الأسئلة بعد أول اختيار
+  const suggestions = document.getElementById("sv-suggestions");
+  suggestions.innerHTML = "";
+
   // جواب البوت الأساسي
   if (q.answer) {
     addBotMessage(chatWindow, q.answer);
   }
 
-  // إذا كان عنده خيارات (options)
+  // إذا كان السؤال يحتوي خيارات
   if (q.options) {
     const wrapper = document.createElement("div");
     wrapper.className = "sv-msg sv-msg-bot";
@@ -108,7 +112,6 @@ function handleQuestionClick(chatWindow, q) {
       btn.onclick = () => {
         // المستخدم يختار الخيار
         addUserMessage(chatWindow, optLabel);
-        // البوت يرد بالجواب
         addBotMessage(chatWindow, optData.answer || "...");
       };
 
