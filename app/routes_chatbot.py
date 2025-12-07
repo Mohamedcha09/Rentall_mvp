@@ -39,6 +39,7 @@ def chatbot_page(
 ):
     return templates.TemplateResponse("chatbot.html", {
         "request": request,
-        "session_user": user,
+        "user": user,               # ← أضف هذا السطر
+        "session_user": user,       # يبقى كما هو
         "display_currency": display_currency
     })
