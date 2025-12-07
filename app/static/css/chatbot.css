@@ -1,134 +1,172 @@
-.sv-chatbot-page {
+/* ======================================================
+   SEVOR CHATBOT — AIRBNB STYLE (LARGE, CLEAN, PREMIUM)
+   ====================================================== */
+
+.sv-chatbot-page,
+.sv-page-wrapper {
   max-width: 720px;
   margin: 0 auto;
-  padding: 20px 16px 32px;
+  padding: 24px 18px 40px;
+  background: #f9fafb;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-/* HEADER */
+/* ------------------------------------------------------
+   HEADER
+------------------------------------------------------ */
 .sv-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 18px;
+  gap: 14px;
+  margin-bottom: 22px;
 }
 
 .sv-back {
-  font-size: 24px;
+  font-size: 26px;
   text-decoration: none;
   color: #111827;
 }
 
 .sv-logo {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
 }
 
 .sv-title {
-  font-size: 20px;
-  font-weight: 600;
-}
-
-/* WELCOME */
-.sv-welcome h2 {
   font-size: 22px;
   font-weight: 700;
-  margin-bottom: 4px;
+  color: #111827;
+}
+
+/* ------------------------------------------------------
+   WELCOME TEXT
+------------------------------------------------------ */
+.sv-welcome h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #111827;
 }
 
 .sv-welcome p {
-  opacity: 0.7;
-  margin-bottom: 16px;
+  color: #374151;
+  opacity: 0.8;
+  font-size: 16px;
+  margin-bottom: 22px;
 }
 
-/* CHAT WINDOW */
+/* ------------------------------------------------------
+   CHAT WINDOW
+------------------------------------------------------ */
 .sv-chat-window {
-  background: #f3f4f6;
-  border-radius: 18px;
-  padding: 14px 10px;
-  max-height: 520px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  padding: 20px 16px;
+  min-height: 180px;
+  max-height: 70vh;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
 }
 
-/* MESSAGE BUBBLES */
+/* Scroll clean */
+.sv-chat-window::-webkit-scrollbar {
+  width: 6px;
+}
+.sv-chat-window::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 10px;
+}
+
+/* ------------------------------------------------------
+   BOT + USER MESSAGE BUBBLES
+------------------------------------------------------ */
 .sv-msg {
-  max-width: 88%;
-  padding: 10px 13px;
-  border-radius: 18px;
-  font-size: 15px;
-  line-height: 1.5;
+  max-width: 85%;
+  padding: 14px 18px;
+  border-radius: 22px;
+  font-size: 16px;
+  line-height: 1.6;
 }
 
 .sv-msg-bot {
   align-self: flex-start;
-  background: white;
+  background: #ffffff;
   border: 1px solid #e5e7eb;
+  color: #111827;
+  border-bottom-left-radius: 6px;
 }
 
 .sv-msg-user {
   align-self: flex-end;
   background: #111827;
   color: white;
-  border-bottom-right-radius: 4px;
+  border-bottom-right-radius: 6px;
 }
 
-/* SUGGESTIONS */
+/* ------------------------------------------------------
+   QUESTIONS LIST (TOP LEVEL)
+------------------------------------------------------ */
 .sv-suggestions-wrap {
-  margin-top: 18px;
+  margin-top: 32px;
 }
 
 .sv-suggestions-title {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  color: #111827;
 }
 
 .sv-suggestions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
 }
 
+/* Each FAQ chip */
 .sv-question-chip {
-  border: 1px solid #e5e7eb;
   background: white;
+  border: 1px solid #e5e7eb;
+  padding: 10px 16px;
+  font-size: 15px;
   border-radius: 999px;
-  padding: 8px 12px;
-  font-size: 13px;
   cursor: pointer;
   transition: 0.15s;
-  max-width: 100%;
-  text-align: left;
+  line-height: 1.4;
 }
 
 .sv-question-chip:hover {
   background: #f3f4f6;
 }
 
-/* OPTIONS INSIDE BOT ANSWER */
+/* ------------------------------------------------------
+   OPTIONS INSIDE AN ANSWER
+------------------------------------------------------ */
 .sv-options-wrapper {
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
 .sv-options-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #111827;
 }
 
 .sv-option-chip {
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-  border-radius: 999px;
-  padding: 7px 11px;
-  font-size: 13px;
-  cursor: pointer;
-  margin: 0 6px 6px 0;
   display: inline-block;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 9px 14px;
+  margin: 0 8px 8px 0;
+  font-size: 14px;
+  cursor: pointer;
   transition: 0.15s;
 }
 
@@ -137,9 +175,61 @@
   border-color: #c7d2fe;
 }
 
-/* SMALL SCREEN */
+/* ------------------------------------------------------
+   FEEDBACK BUTTONS (YES / NO)
+------------------------------------------------------ */
+.sv-feedback {
+  margin-top: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.sv-feedback button {
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.sv-feedback button:hover {
+  background: #f3f4f6;
+}
+
+/* ------------------------------------------------------
+   BACK TO CATEGORIES BUTTON
+------------------------------------------------------ */
+.sv-back-btn {
+  margin-top: 18px;
+  padding: 12px 20px;
+  border-radius: 16px;
+  background: white;
+  border: 1px solid #d1d5db;
+  font-size: 15px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+
+.sv-back-btn:hover {
+  background: #f3f4f6;
+}
+
+/* ------------------------------------------------------
+   MOBILE OPTIMIZATION
+------------------------------------------------------ */
 @media (max-width: 640px) {
   .sv-chat-window {
-    max-height: 70vh;
+    max-height: 72vh;
+  }
+
+  .sv-msg {
+    font-size: 15px;
+    padding: 12px 16px;
+  }
+
+  .sv-welcome h2 {
+    font-size: 22px;
   }
 }
