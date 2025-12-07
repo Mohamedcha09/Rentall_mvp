@@ -2,20 +2,72 @@
 {% block content %}
 
 <style>
-  /* Hide top navbar + bottom navbar ONLY in chatbot page */
-  .navbar-top,
-  .mobile-bottom-nav {
+/* ----------------------------------------------------
+   FORCE HIDE ALL TOP + BOTTOM NAV ONLY IN /chatbot
+---------------------------------------------------- */
+body[data-path="/chatbot"] header.topbar,
+body[data-path="/chatbot"] .m-top-tabs,
+body[data-path="/chatbot"] .searchbar,
+body[data-path="/chatbot"] .stripe-callout,
+body[data-path="/chatbot"] .mobile-tabbar,
+body[data-path="/chatbot"] #fabAdd {
     display: none !important;
-  }
+}
 
-  /* Also remove page padding caused by hidden navbars */
-  body {
+/* Remove extra padding from base.html */
+body[data-path="/chatbot"] .page {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
-  }
-</style>
+}
 
-<link rel="stylesheet" href="/static/css/chatbot.css">
+/* Optional: remove has-tabbar padding class effect */
+body[data-path="/chatbot"].has-tabbar {
+    padding-bottom: 0 !important;
+}
+
+/* Chatbot container styling */
+.sv-chatbot-page {
+    padding: 18px;
+}
+
+.sv-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.sv-back {
+    font-size: 22px;
+    text-decoration: none;
+    color: #111;
+}
+
+.sv-logo {
+    width: 34px;
+    height: 34px;
+}
+
+.sv-title {
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.sv-chat-window {
+    min-height: 120px;
+    margin-top: 12px;
+}
+
+.sv-suggestions-wrap {
+    margin-top: 24px;
+}
+
+.sv-suggestions-title {
+    font-weight: 700;
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+</style>
 
 <div class="sv-chatbot-page">
 
