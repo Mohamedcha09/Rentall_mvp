@@ -52,6 +52,28 @@ body[data-path="/chatbot"].has-tabbar {
     margin-bottom: 10px;
     font-size: 18px;
 }
+
+/* Logo circle like Airbnb BUT with real Sevor logo */
+
+.sv-header-logo-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: transparent;   /* ما نحتاج خلفية سوداء هنا */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;          /* يقطع زوايا الصورة ويخليها دائرية */
+}
+
+.sv-header-logo-wrap img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;        /* الصورة نفسها تصبح دائرة */
+  object-fit: cover;
+  filter: none;              /* نلغي invert حتى تبقى ألوان اللوغو الأصلية */
+}
+
 </style>
 <link rel="stylesheet" href="/static/css/chatbot.css">
 
