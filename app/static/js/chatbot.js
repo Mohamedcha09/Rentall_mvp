@@ -1,100 +1,139 @@
-// 1) Load JSON tree from backend
+// ===============
+//  LOAD TREE
+// ===============
 async function loadTree() {
   const res = await fetch("/chatbot/tree");
   return await res.json();
 }
 
-// 2) Helpers to add messages
-function addBotMessage(chatWindow, html) {
-  const msg = document.createElement("div");
-  msg.className = "sv-msg sv-msg-bot";
-  msg.innerHTML = html;
-  chatWindow.appendChild(msg);
-  chatWindow.scrollTop = chatWindow.scrollHeight;
+// ===============
+//  UI HELPERS
+// ===============
+function addBotMessage(text) {
+  const chat = document.getElementById("sv-chat-window");
+  const box = document.createElement("div");
+  box.className = "sv-msg sv-msg-bot";
+  box.innerHTML = text;
+  chat.appendChild(box);
+  chat.scrollTop = chat.scrollHeight;
 }
 
-function addUserMessage(chatWindow, text) {
-  const msg = document.createElement("div");
-  msg.className = "sv-msg sv-msg-user";
-  msg.textContent = text;
-  chatWindow.appendChild(msg);
-  chatWindow.scrollTop = chatWindow.scrollHeight;
+function addUserMessage(text) {
+  const chat = document.getElementById("sv-chat-window");
+  const box = document.createElement("div");
+  box.className = "sv-msg sv-msg-user";
+  box.textContent = text;
+  chat.appendChild(box);
+  chat.scrollTop = chat.scrollHeight;
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
-  const chatWindow   = document.getElementById("sv-chat-window");
-  const suggestions  = document.getElementById("sv-suggestions");
+function clearSuggestions() {
+  document.getElementById("sv-suggestions").innerHTML = "";
+}
 
-  if (!chatWindow || !suggestions) return;
+// ===============
+//  MAIN LOGIC
+// ===============
+let ALL_QUESTIONS = [];
 
-  // 🧠 3) Load data from tree.json
-  const data = await loadTree();
-  const sections = data.sections || [];
+// بعد كل جواب يجب أن نسأل: هل أجاب هذا على سؤالك ؟
+function showFeedbackButtons() {
+  const chat = document.getElementById("sv-chat-window");
 
-  // تحويل كل الأسئلة إلى قائمة بسيطة
-  const allQuestions = [];
+  const wrapper = document.createElement("div");
+  wrapper.className = "sv-msg sv-msg-bot";
 
-  sections.forEach(section => {
-    const faqs = section.faqs;
+  wrapper.innerHTML = `
+    <div class="sv-feedback-title">✔️ Est-ce que cela répond à votre question ?</div>
+    <div class="sv-feedback-buttons">
+      <button class="sv-yes-btn">Oui</button>
+      <button class="sv-no-btn">Non</button>
+    </div>
+  `;
 
-    // CASE 1: faqs = object
-    if (!Array.isArray(faqs)) {
-      Object.entries(faqs).forEach(([question, obj]) => {
-        allQuestions.push({
-          label: question,
-          answer: obj.answer || null,
-          options: obj.options || null
-        });
-      });
-    }
-    // CASE 2: faqs = array
-    else {
-      faqs.forEach(item => {
-        allQuestions.push({
-          label: item.question,
-          answer: item.answer || null,
-          options: null
-        });
-      });
-    }
-  });
+  chat.appendChild(wrapper);
+  chat.scrollTop = chat.scrollHeight;
 
-  // 4) رسالة ترحيب أولى
-  addBotMessage(
-    chatWindow,
-    "👋 Bonjour! Je suis l’assistant Sevor.<br>Choisissez une question fréquente ci-dessous pour commencer."
-  );
+  wrapper.querySelector(".sv-yes-btn").onclick = handleYes;
+  wrapper.querySelector(".sv-no-btn").onclick = handleNo;
+}
 
-  // 5) رسم الاقتراحات
-  allQuestions.forEach(q => {
+// YES → نرجع لقائمة الأسئلة الأولى
+function handleYes() {
+  addBotMessage("Ravi de vous aider ! 😊<br>Voulez-vous poser une autre question ?");
+
+  const chat = document.getElementById("sv-chat-window");
+
+  const btn = document.createElement("button");
+  btn.textContent = "Poser une autre question";
+  btn.className = "sv-option-chip";
+
+  btn.onclick = () => {
+    loadInitialSuggestions();
+  };
+
+  const box = document.createElement("div");
+  box.className = "sv-msg sv-msg-bot";
+  box.appendChild(btn);
+  chat.appendChild(box);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// NO → نتحول مباشرة إلى /messages
+function handleNo() {
+  addBotMessage("Je comprends ! Nous sommes là pour vous aider ❤️");
+
+  const chat = document.getElementById("sv-chat-window");
+  const btn = document.createElement("button");
+  btn.textContent = "Contact Support";
+  btn.className = "sv-option-chip";
+
+  btn.onclick = () => {
+    window.location.href = "/messages";
+  };
+
+  const box = document.createElement("div");
+  box.className = "sv-msg sv-msg-bot";
+  box.appendChild(btn);
+  chat.appendChild(box);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// ===============
+//  DISPLAY SUGGESTED QUESTIONS
+// ===============
+function loadInitialSuggestions() {
+  const suggestions = document.getElementById("sv-suggestions");
+  suggestions.innerHTML = "";
+
+  ALL_QUESTIONS.forEach(q => {
     const chip = document.createElement("button");
     chip.className = "sv-question-chip";
     chip.textContent = q.label;
 
-    chip.onclick = () => handleQuestionClick(chatWindow, q);
+    chip.onclick = () => selectQuestion(q);
 
     suggestions.appendChild(chip);
   });
-});
+}
 
-// 6) عند الضغط على سؤال
-function handleQuestionClick(chatWindow, q) {
-  // رسالة المستخدم
-  addUserMessage(chatWindow, q.label);
+// ===============
+//  WHEN USER SELECTS QUESTION
+// ===============
+function selectQuestion(q) {
+  addUserMessage(q.label);
+  clearSuggestions();
 
-  // ❗ إخفاء جميع الأسئلة بعد أول اختيار
-  const suggestions = document.getElementById("sv-suggestions");
-  suggestions.innerHTML = "";
-
-  // جواب البوت الأساسي
   if (q.answer) {
-    addBotMessage(chatWindow, q.answer);
+    addBotMessage(q.answer);
+    showFeedbackButtons();
   }
 
-  // إذا كان السؤال يحتوي خيارات
   if (q.options) {
-    const wrapper = document.createElement("div");
-    wrapper.className = "sv-msg sv-msg-bot";
+    const chat = document.getElementById("sv-chat-window");
+
+    const box = document.createElement("div");
+    box.className = "sv-msg sv-msg-bot";
 
     const inner = document.createElement("div");
     inner.className = "sv-options-wrapper";
@@ -104,22 +143,56 @@ function handleQuestionClick(chatWindow, q) {
     title.textContent = "Choisissez un cas :";
     inner.appendChild(title);
 
-    Object.entries(q.options).forEach(([optLabel, optData]) => {
+    Object.entries(q.options).forEach(([label, data]) => {
       const btn = document.createElement("button");
       btn.className = "sv-option-chip";
-      btn.textContent = optLabel;
+      btn.textContent = label;
 
       btn.onclick = () => {
-        // المستخدم يختار الخيار
-        addUserMessage(chatWindow, optLabel);
-        addBotMessage(chatWindow, optData.answer || "...");
+        addUserMessage(label);
+        addBotMessage(data.answer || "...");
+        showFeedbackButtons();
       };
 
       inner.appendChild(btn);
     });
 
-    wrapper.appendChild(inner);
-    chatWindow.appendChild(wrapper);
-    chatWindow.scrollTop = chatWindow.scrollHeight;
+    box.appendChild(inner);
+    chat.appendChild(box);
+    chat.scrollTop = chat.scrollHeight;
   }
 }
+
+// ===============
+//  INITIAL LOAD
+// ===============
+document.addEventListener("DOMContentLoaded", async () => {
+  const data = await loadTree();
+  const sections = data.sections || [];
+
+  sections.forEach(section => {
+    const faqs = section.faqs;
+    if (!Array.isArray(faqs)) {
+      Object.entries(faqs).forEach(([question, obj]) => {
+        ALL_QUESTIONS.push({
+          label: question,
+          answer: obj.answer,
+          options: obj.options || null
+        });
+      });
+    } else {
+      faqs.forEach(item => {
+        ALL_QUESTIONS.push({
+          label: item.question,
+          answer: item.answer,
+          options: null
+        });
+      });
+    }
+  });
+
+  // أول رسالة
+  addBotMessage("👋 Bonjour! Je suis l’assistant Sevor.<br>Choisissez une question ci-dessous pour commencer.");
+
+  loadInitialSuggestions();
+});
