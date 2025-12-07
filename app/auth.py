@@ -11,8 +11,6 @@ from .database import get_db
 from .models import User, Document
 from .utils import hash_password, verify_password, MAX_FORM_PASSWORD_CHARS
 from cloudinary.uploader import upload as cloud_upload
-from .database import get_db
-
 # (Optional) Internal notifications
 try:
     from .notifications_api import push_notification  # noqa: F401
