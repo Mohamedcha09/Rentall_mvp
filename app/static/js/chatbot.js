@@ -1,19 +1,19 @@
-// ===============
-//  LOAD TREE
-// ===============
+// ===========================
+// LOAD TREE.JSON
+// ===========================
 async function loadTree() {
   const res = await fetch("/chatbot/tree");
   return await res.json();
 }
 
-// ===============
-//  UI HELPERS
-// ===============
-function addBotMessage(text) {
+// ===========================
+// UI HELPERS
+// ===========================
+function addBotMessage(html) {
   const chat = document.getElementById("sv-chat-window");
   const box = document.createElement("div");
   box.className = "sv-msg sv-msg-bot";
-  box.innerHTML = text;
+  box.innerHTML = html;
   chat.appendChild(box);
   chat.scrollTop = chat.scrollHeight;
 }
@@ -32,32 +32,15 @@ function clearSuggestions() {
   if (s) s.innerHTML = "";
 }
 
-// ===============
-//  MAIN LOGIC
-// ===============
-let ALL_QUESTIONS = [];
+// ===========================
+// GLOBAL DATA
+// ===========================
+let SECTIONS = []; // كل السكاشن
+let CURRENT_SECTION = null; // السكشن الذي اختاره المستخدم
 
-// 🔵 الأسئلة الرئيسية فقط — التي نعرضها في البداية
-const MAIN_QUESTION_LABELS = [
-  "Why is my account still under review?",
-  "Why was my account rejected?",
-  "Why can't I log in?",
-  "Why can't I publish my listing?",
-  "Why is my booking still pending?",
-  "Why was my booking rejected?",
-  "Why is my payment not going through?",
-  "Why did my card get declined?",
-  "When will I receive my refund?",
-  "Why do I see two charges?",
-  "Why do I still see a pending charge?",
-  "When do I get paid?",
-  "Why hasn’t my payout arrived?",
-  "What is Sevor?",
-  "How does Sevor work?",
-  "Is Sevor safe?"
-];
-
-// بعد كل جواب يجب أن نسأل: هل أجاب هذا على سؤالك ؟
+// ===========================
+// FEEDBACK BUTTONS
+// ===========================
 function showFeedbackButtons() {
   const chat = document.getElementById("sv-chat-window");
 
@@ -79,80 +62,112 @@ function showFeedbackButtons() {
   wrapper.querySelector(".sv-no-btn").onclick = handleNo;
 }
 
-// YES → نرجع لقائمة الأسئلة الأولى
 function handleYes() {
-  addBotMessage("Ravi de vous aider ! 😊<br>Voulez-vous poser une autre question ?");
+  addBotMessage("Parfait ! 😊<br>Voulez-vous poser une autre question ?");
 
   const chat = document.getElementById("sv-chat-window");
-
   const btn = document.createElement("button");
-  btn.textContent = "Poser une autre question";
   btn.className = "sv-option-chip";
+  btn.textContent = "Retour aux catégories";
 
-  btn.onclick = () => {
-    loadInitialSuggestions();
-  };
+  btn.onclick = () => showSections();
 
   const box = document.createElement("div");
   box.className = "sv-msg sv-msg-bot";
   box.appendChild(btn);
   chat.appendChild(box);
-  chat.scrollTop = chat.scrollHeight;
 }
 
-// NO → نتحول مباشرة إلى /messages
 function handleNo() {
-  addBotMessage("Je comprends ! Nous sommes là pour vous aider ❤️");
+  addBotMessage("Je comprends ❤️ Nous sommes là pour vous aider.");
 
   const chat = document.getElementById("sv-chat-window");
   const btn = document.createElement("button");
-  btn.textContent = "Contact Support";
   btn.className = "sv-option-chip";
+  btn.textContent = "Contact Support";
 
-  btn.onclick = () => {
-    window.location.href = "/messages";
-  };
+  btn.onclick = () => (window.location.href = "/messages");
 
   const box = document.createElement("div");
   box.className = "sv-msg sv-msg-bot";
   box.appendChild(btn);
   chat.appendChild(box);
-  chat.scrollTop = chat.scrollHeight;
 }
 
-// ===============
-//  DISPLAY SUGGESTED QUESTIONS
-// ===============
-function loadInitialSuggestions() {
+// ===========================
+// SHOW MAIN CATEGORIES (SECTIONS)
+// ===========================
+function showSections() {
+  clearSuggestions();
+
   const suggestions = document.getElementById("sv-suggestions");
-  if (!suggestions) return;
   suggestions.innerHTML = "";
 
-  // 🔵 نعرض فقط الأسئلة الرئيسية وليس كل الأسئلة
-  let mainList = ALL_QUESTIONS.filter(q =>
-    MAIN_QUESTION_LABELS.includes(q.label)
-  );
+  SECTIONS.forEach(sec => {
+    const btn = document.createElement("button");
+    btn.className = "sv-question-chip";
+    btn.textContent = sec.section_title;
 
-  // احتياطًا لو JSON تغير
-  if (!mainList.length) {
-    mainList = ALL_QUESTIONS.slice(0, 12);
-  }
+    btn.onclick = () => {
+      CURRENT_SECTION = sec;
+      showQuestionsInSection(sec);
+      addUserMessage(sec.section_title);
+    };
 
-  mainList.forEach(q => {
-    const chip = document.createElement("button");
-    chip.className = "sv-question-chip";
-    chip.textContent = q.label;
-
-    chip.onclick = () => selectQuestion(q);
-
-    suggestions.appendChild(chip);
+    suggestions.appendChild(btn);
   });
 }
 
-// ===============
-//  WHEN USER SELECTS QUESTION
-// ===============
-function selectQuestion(q) {
+// ===========================
+// SHOW QUESTIONS IN A SECTION
+// ===========================
+function showQuestionsInSection(section) {
+  clearSuggestions();
+
+  const suggestions = document.getElementById("sv-suggestions");
+  suggestions.innerHTML = "";
+
+  let faqs = section.faqs;
+
+  // إذا كان Object → نأخذ keys
+  if (!Array.isArray(faqs)) {
+    Object.entries(faqs).forEach(([question, obj]) => {
+      const btn = document.createElement("button");
+      btn.className = "sv-question-chip";
+      btn.textContent = question;
+
+      btn.onclick = () => handleQuestionClick({ 
+        label: question, 
+        answer: obj.answer, 
+        options: obj.options || null 
+      });
+
+      suggestions.appendChild(btn);
+    });
+  }
+
+  // إذا كان Array → item.question
+  else {
+    faqs.forEach(item => {
+      const btn = document.createElement("button");
+      btn.className = "sv-question-chip";
+      btn.textContent = item.question;
+
+      btn.onclick = () => handleQuestionClick({
+        label: item.question,
+        answer: item.answer,
+        options: null
+      });
+
+      suggestions.appendChild(btn);
+    });
+  }
+}
+
+// ===========================
+// WHEN USER SELECTS A QUESTION
+// ===========================
+function handleQuestionClick(q) {
   addUserMessage(q.label);
   clearSuggestions();
 
@@ -167,13 +182,13 @@ function selectQuestion(q) {
     const box = document.createElement("div");
     box.className = "sv-msg sv-msg-bot";
 
-    const inner = document.createElement("div");
-    inner.className = "sv-options-wrapper";
+    const wrapper = document.createElement("div");
+    wrapper.className = "sv-options-wrapper";
 
     const title = document.createElement("div");
     title.className = "sv-options-title";
     title.textContent = "Choisissez un cas :";
-    inner.appendChild(title);
+    wrapper.appendChild(title);
 
     Object.entries(q.options).forEach(([label, data]) => {
       const btn = document.createElement("button");
@@ -186,45 +201,23 @@ function selectQuestion(q) {
         showFeedbackButtons();
       };
 
-      inner.appendChild(btn);
+      wrapper.appendChild(btn);
     });
 
-    box.appendChild(inner);
+    box.appendChild(wrapper);
     chat.appendChild(box);
     chat.scrollTop = chat.scrollHeight;
   }
 }
 
-// ===============
-//  INITIAL LOAD
-// ===============
+// ===========================
+// INITIAL LOAD
+// ===========================
 document.addEventListener("DOMContentLoaded", async () => {
   const data = await loadTree();
-  const sections = data.sections || [];
+  SECTIONS = data.sections || [];
 
-  sections.forEach(section => {
-    const faqs = section.faqs;
-    if (!Array.isArray(faqs)) {
-      Object.entries(faqs).forEach(([question, obj]) => {
-        ALL_QUESTIONS.push({
-          label: question,
-          answer: obj.answer,
-          options: obj.options || null
-        });
-      });
-    } else {
-      faqs.forEach(item => {
-        ALL_QUESTIONS.push({
-          label: item.question,
-          answer: item.answer,
-          options: null
-        });
-      });
-    }
-  });
+  addBotMessage("👋 Bonjour! Je suis l’assistant Sevor.<br>Choisissez une catégorie pour commencer.");
 
-  // أول رسالة
-  addBotMessage("👋 Bonjour! Je suis l’assistant Sevor.<br>Choisissez une question ci-dessous pour commencer.");
-
-  loadInitialSuggestions();
+  showSections();
 });
