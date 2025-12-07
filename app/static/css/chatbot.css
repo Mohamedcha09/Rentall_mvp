@@ -1,125 +1,158 @@
-/* ======================================================
-   SEVOR CHATBOT — AIRBNB STYLE (LARGE, CLEAN, PREMIUM)
-   ====================================================== */
+/* ==========================================================================
+   SEVOR CHATBOT — AIRBNB EXACT STYLE
+   ========================================================================== */
 
-.sv-chatbot-page,
-.sv-page-wrapper {
+.sv-chatbot-page {
   max-width: 720px;
   margin: 0 auto;
-  padding: 24px 18px 40px;
-  background: #f9fafb;
+  padding: 0 18px 40px;
+  background: #ffffff;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-/* ------------------------------------------------------
-   HEADER
------------------------------------------------------- */
+/* ==========================================================================
+   HEADER (Airbnb style)
+   ========================================================================== */
+
 .sv-header {
+  padding-top: 28px;
+  padding-bottom: 14px;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 22px;
 }
 
+/* Left arrow */
 .sv-back {
   font-size: 26px;
   text-decoration: none;
-  color: #111827;
+  color: #111;
 }
 
-.sv-logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+/* Center block (logo + title) */
+.sv-header-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Logo circle like Airbnb */
+.sv-header-logo-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #111;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.sv-header-logo-wrap img {
+  width: 26px;
+  height: 26px;
+  filter: brightness(0) invert(1);
 }
 
 .sv-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #111827;
+  font-size: 17px;
+  font-weight: 600;
+  color: #111;
 }
 
-/* ------------------------------------------------------
-   WELCOME TEXT
------------------------------------------------------- */
-.sv-welcome h2 {
-  font-size: 24px;
-  font-weight: 700;
-  margin-bottom: 6px;
-  color: #111827;
+/* Right empty space (keeps center aligned) */
+.sv-header-right {
+  width: 30px;
+  height: 20px;
 }
 
-.sv-welcome p {
-  color: #374151;
-  opacity: 0.8;
-  font-size: 16px;
-  margin-bottom: 22px;
+/* ==========================================================================
+   DATE SEPARATOR (like Airbnb)
+   ========================================================================== */
+
+.sv-date-separator {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 13px;
+  color: #6b7280;
 }
 
-/* ------------------------------------------------------
-   CHAT WINDOW
------------------------------------------------------- */
+
+/* ==========================================================================
+   CHAT WINDOW (Airbnb box style)
+   ========================================================================== */
+
 .sv-chat-window {
-  background: white;
+  margin-top: 18px;
+  padding: 20px 14px;
+  border-radius: 16px;
+  background: #f9fafb;
   border: 1px solid #e5e7eb;
-  border-radius: 20px;
-  padding: 20px 16px;
-  min-height: 180px;
-  max-height: 70vh;
-  overflow-y: auto;
+  min-height: 200px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  gap: 18px;
+  max-height: 68vh;
+  overflow-y: auto;
 }
 
-/* Scroll clean */
 .sv-chat-window::-webkit-scrollbar {
   width: 6px;
 }
+
 .sv-chat-window::-webkit-scrollbar-thumb {
   background: #d1d5db;
-  border-radius: 10px;
+  border-radius: 50px;
 }
 
-/* ------------------------------------------------------
-   BOT + USER MESSAGE BUBBLES
------------------------------------------------------- */
+
+/* ==========================================================================
+   MESSAGE BUBBLES — EXACT AIRBNB STYLE
+   ========================================================================== */
+
 .sv-msg {
-  max-width: 85%;
+  max-width: 80%;
   padding: 14px 18px;
-  border-radius: 22px;
-  font-size: 16px;
-  line-height: 1.6;
+  border-radius: 18px;
+  font-size: 15px;
+  line-height: 1.55;
+  word-wrap: break-word;
 }
 
+/* Bot bubble — left white rounded */
 .sv-msg-bot {
   align-self: flex-start;
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  color: #111827;
+  color: #111;
   border-bottom-left-radius: 6px;
 }
 
+/* User bubble — right dark */
 .sv-msg-user {
   align-self: flex-end;
   background: #111827;
-  color: white;
+  color: #fff;
   border-bottom-right-radius: 6px;
 }
 
-/* ------------------------------------------------------
-   QUESTIONS LIST (TOP LEVEL)
------------------------------------------------------- */
+
+/* ==========================================================================
+   SUGGESTIONS (FAQ Chips)
+   ========================================================================== */
+
 .sv-suggestions-wrap {
-  margin-top: 32px;
+  margin-top: 30px;
 }
 
 .sv-suggestions-title {
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 14px;
-  color: #111827;
+  font-size: 17px;
+  font-weight: 600;
+  color: #111;
+  margin-bottom: 12px;
 }
 
 .sv-suggestions {
@@ -128,46 +161,44 @@
   gap: 10px;
 }
 
-/* Each FAQ chip */
 .sv-question-chip {
-  background: white;
-  border: 1px solid #e5e7eb;
   padding: 10px 16px;
-  font-size: 15px;
   border-radius: 999px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  font-size: 15px;
   cursor: pointer;
-  transition: 0.15s;
-  line-height: 1.4;
+  transition: 0.15s ease;
 }
 
 .sv-question-chip:hover {
   background: #f3f4f6;
 }
 
-/* ------------------------------------------------------
-   OPTIONS INSIDE AN ANSWER
------------------------------------------------------- */
+
+/* ==========================================================================
+   OPTIONS INSIDE ANSWERS (chips)
+   ========================================================================== */
+
 .sv-options-wrapper {
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
 .sv-options-title {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 8px;
-  color: #111827;
 }
 
 .sv-option-chip {
-  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 999px;
   background: #f9fafb;
   border: 1px solid #e5e7eb;
-  border-radius: 999px;
-  padding: 9px 14px;
-  margin: 0 8px 8px 0;
-  font-size: 14px;
   cursor: pointer;
-  transition: 0.15s;
+  margin: 6px 6px 0 0;
+  transition: 0.15s ease;
+  font-size: 14px;
 }
 
 .sv-option-chip:hover {
@@ -175,61 +206,38 @@
   border-color: #c7d2fe;
 }
 
-/* ------------------------------------------------------
-   FEEDBACK BUTTONS (YES / NO)
------------------------------------------------------- */
-.sv-feedback {
-  margin-top: 16px;
+
+/* ==========================================================================
+   FEEDBACK BUTTONS
+   ========================================================================== */
+
+.sv-feedback-buttons {
   display: flex;
   gap: 12px;
-  align-items: center;
+  margin-top: 10px;
 }
 
-.sv-feedback button {
-  padding: 8px 18px;
+.sv-feedback-buttons button {
+  padding: 8px 16px;
   border-radius: 999px;
+  background: #ffffff;
   border: 1px solid #d1d5db;
-  background: white;
   cursor: pointer;
+  transition: 0.15s;
   font-size: 14px;
 }
 
-.sv-feedback button:hover {
+.sv-feedback-buttons button:hover {
   background: #f3f4f6;
 }
 
-/* ------------------------------------------------------
-   BACK TO CATEGORIES BUTTON
------------------------------------------------------- */
-.sv-back-btn {
-  margin-top: 18px;
-  padding: 12px 20px;
-  border-radius: 16px;
-  background: white;
-  border: 1px solid #d1d5db;
-  font-size: 15px;
-  cursor: pointer;
-  transition: 0.15s;
-}
 
-.sv-back-btn:hover {
-  background: #f3f4f6;
-}
+/* ==========================================================================
+   MOBILE
+   ========================================================================== */
 
-/* ------------------------------------------------------
-   MOBILE OPTIMIZATION
------------------------------------------------------- */
 @media (max-width: 640px) {
   .sv-chat-window {
-    max-height: 72vh;
-  }
-
-  .sv-msg {
-    font-size: 15px;
-    padding: 12px 16px;
-  }
-
-  .sv-welcome h2 {
-    font-size: 22px;
+    max-height: 70vh;
   }
 }
