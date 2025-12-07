@@ -28,13 +28,34 @@ function addUserMessage(text) {
 }
 
 function clearSuggestions() {
-  document.getElementById("sv-suggestions").innerHTML = "";
+  const s = document.getElementById("sv-suggestions");
+  if (s) s.innerHTML = "";
 }
 
 // ===============
 //  MAIN LOGIC
 // ===============
 let ALL_QUESTIONS = [];
+
+// 🔵 الأسئلة الرئيسية فقط — التي نعرضها في البداية
+const MAIN_QUESTION_LABELS = [
+  "Why is my account still under review?",
+  "Why was my account rejected?",
+  "Why can't I log in?",
+  "Why can't I publish my listing?",
+  "Why is my booking still pending?",
+  "Why was my booking rejected?",
+  "Why is my payment not going through?",
+  "Why did my card get declined?",
+  "When will I receive my refund?",
+  "Why do I see two charges?",
+  "Why do I still see a pending charge?",
+  "When do I get paid?",
+  "Why hasn’t my payout arrived?",
+  "What is Sevor?",
+  "How does Sevor work?",
+  "Is Sevor safe?"
+];
 
 // بعد كل جواب يجب أن نسأل: هل أجاب هذا على سؤالك ؟
 function showFeedbackButtons() {
@@ -104,9 +125,20 @@ function handleNo() {
 // ===============
 function loadInitialSuggestions() {
   const suggestions = document.getElementById("sv-suggestions");
+  if (!suggestions) return;
   suggestions.innerHTML = "";
 
-  ALL_QUESTIONS.forEach(q => {
+  // 🔵 نعرض فقط الأسئلة الرئيسية وليس كل الأسئلة
+  let mainList = ALL_QUESTIONS.filter(q =>
+    MAIN_QUESTION_LABELS.includes(q.label)
+  );
+
+  // احتياطًا لو JSON تغير
+  if (!mainList.length) {
+    mainList = ALL_QUESTIONS.slice(0, 12);
+  }
+
+  mainList.forEach(q => {
     const chip = document.createElement("button");
     chip.className = "sv-question-chip";
     chip.textContent = q.label;
