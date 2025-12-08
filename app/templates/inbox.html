@@ -32,6 +32,19 @@
 }
 
 /* --------------------------
+   BADGE NUMBERS
+-------------------------- */
+.badge {
+  background: #ff3b5c;
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  margin-left: 6px;
+}
+
+/* --------------------------
    AIRBNB SEARCH OVERLAY
 -------------------------- */
 .search-overlay {
@@ -165,20 +178,14 @@
 }
 
 .msg-title { font-size: 17px; font-weight: 600; }
-.msg-sub { font-size: 14px; color: #666; }
-.msg-date { margin-left: auto; font-size: 13px; color: #777; }
+.msg-sub   { font-size: 14px; color: #666; }
+.msg-date  { margin-left: auto; font-size: 13px; color: #777; }
 
-/* Badge for ticket count */
-.badge {
-  background: #ff3b5c;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 20px;
-  font-size: 12px;
-  margin-left: 6px;
-  font-weight: 600;
+mark {
+  background: #ffe08a;
+  padding: 2px 3px;
+  border-radius: 4px;
 }
-
 </style>
 
 <!-- HEADER -->
@@ -192,12 +199,11 @@
   <div class="tab active" data-filter="all">Tout</div>
 
   <div class="tab" data-filter="support">
-    <img src="/static/img/sevor-logo.png"
+    <img src="/static/img/sevor-logo.png" 
          style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">
     Soutien Sevor
-
     {% if tickets_count > 0 %}
-    <span class="badge">{{ tickets_count }}</span>
+      <span class="badge">{{ tickets_count }}</span>
     {% endif %}
   </div>
 </div>
@@ -205,8 +211,10 @@
 <!-- THREADS LIST -->
 <div id="threadsContainer">
 
-  <!-- ALWAYS SHOW SUPPORT BOT FIRST -->
-  <a href="/chatbot" class="thread-row">
+  <!-- Soutien Sevor + chatbot tickets (مخفية في Tout) -->
+  <a href="/chatbot"
+     class="thread-row support-entry"
+     style="display:none">
 
     <div class="item-preview">
       <img src="/static/img/sevor-logo.png">
@@ -216,7 +224,7 @@
       <div class="msg-title">
         Soutien Sevor
         {% if tickets_count > 0 %}
-        <span class="badge">{{ tickets_count }}</span>
+          <span class="badge">{{ tickets_count }}</span>
         {% endif %}
       </div>
       <div class="msg-sub">Contactez le support Sevor</div>
@@ -225,9 +233,10 @@
     <div class="msg-date">Maintenant</div>
   </a>
 
-  <!-- SUPPORT TICKETS LIST -->
-  {% for t in support_tickets %}
-  <a href="/support/ticket/{{ t.id }}" class="thread-row" style="border-left: 4px solid #8b5cf6;">
+  {% for t in chatbot_tickets %}
+  <a href="/support/ticket/{{ t.id }}"
+     class="thread-row support-ticket"
+     style="display:none">
 
     <div class="item-preview">
       <img src="/static/img/sevor-logo.png">
@@ -235,17 +244,20 @@
 
     <div class="flex-grow-1 text-zone">
       <div class="msg-title">Ticket #{{ t.id }}</div>
-      <div class="msg-sub">{{ t.subject or 'Support Request' }}</div>
+      <div class="msg-sub">{{ t.subject or "Chatbot Request" }}</div>
     </div>
 
     <div class="msg-date">{{ t.updated_at.strftime("%d-%m-%Y") }}</div>
-
   </a>
   {% endfor %}
 
-  <!-- NORMAL USER THREADS -->
+  <!-- USER THREAD MESSAGES (رسائل عادية فقط) -->
   {% for t in threads %}
-  <a href="/messages/{{ t.id }}" class="thread-row">
+  <a href="/messages/{{ t.id }}"
+     class="thread-row thread-item normal-card"
+     data-name="{{ t.other_fullname|lower }}"
+     data-item="{{ t.item_title|lower }}"
+     data-last="{{ t.last_message_text|lower }}">
 
     <div class="item-preview">
       <img src="{{ t.item_image }}">
@@ -256,19 +268,19 @@
 
     <div class="flex-grow-1 text-zone">
       <div class="msg-title">{{ t.other_fullname }}</div>
+
       {% if t.item_title %}
       <div class="msg-sub">{{ t.item_title }}</div>
       {% endif %}
+
       {% if t.last_message_text %}
       <div class="msg-sub">{{ t.last_message_text }}</div>
       {% endif %}
     </div>
 
     <div class="msg-date">{{ t.last_message_at.strftime("%d-%m-%Y") }}</div>
-
   </a>
   {% endfor %}
-
 </div>
 
 <!-- SEARCH OVERLAY -->
@@ -282,16 +294,41 @@
 </div>
 
 <script>
-const overlay = document.getElementById("searchOverlay");
-const panel = document.getElementById("searchPanel");
+const overlay    = document.getElementById("searchOverlay");
+const panel      = document.getElementById("searchPanel");
 const resultsBox = document.getElementById("searchResults");
-const openBtn = document.getElementById("openSearch");
-const cancelBtn = document.getElementById("cancelSearch");
-const input = document.getElementById("searchInput");
+const openBtn    = document.getElementById("openSearch");
+const cancelBtn  = document.getElementById("cancelSearch");
+const input      = document.getElementById("searchInput");
 
-const items = document.querySelectorAll(".normal-card");
+const tabs          = document.querySelectorAll(".tab");
+const normalCards   = document.querySelectorAll(".normal-card");
+const supportEntry  = document.querySelector(".support-entry");
+const supportTickets= document.querySelectorAll(".support-ticket");
 
-/* SEARCH LOGIC */
+/* OPEN SEARCH */
+openBtn.onclick = () => {
+  overlay.classList.add("active");
+  panel.classList.add("active");
+  setTimeout(() => input.focus(), 200);
+};
+
+/* CLOSE SEARCH */
+cancelBtn.onclick = () => {
+  overlay.classList.remove("active");
+  panel.classList.remove("active");
+  input.value = "";
+  resultsBox.innerHTML = "";
+  resultsBox.classList.remove("active");
+};
+
+/* SEARCH LOGIC (على الرسائل العادية فقط حالياً) */
+function highlight(text, word) {
+  if (!word) return text;
+  const re = new RegExp(`(${word})`, "gi");
+  return text.replace(re, "<mark>$1</mark>");
+}
+
 input.addEventListener("input", () => {
   const q = input.value.toLowerCase().trim();
   resultsBox.innerHTML = "";
@@ -302,25 +339,44 @@ input.addEventListener("input", () => {
 
   let found = 0;
 
-  document.querySelectorAll(".thread-row").forEach(row => {
-    if (row.innerText.toLowerCase().includes(q)) {
+  document.querySelectorAll(".thread-item").forEach(row => {
+    const name = row.dataset.name;
+    const item = row.dataset.item;
+    const last = row.dataset.last;
+
+    const match = name.includes(q) || item.includes(q) || last.includes(q);
+
+    if (match) {
       found++;
 
       const clone = document.createElement("div");
       clone.className = "thread-row";
       clone.innerHTML = row.innerHTML;
+
+      const zone  = clone.querySelector(".text-zone");
+      const title = zone.querySelector(".msg-title");
+      const subs  = zone.querySelectorAll(".msg-sub");
+
+      title.innerHTML = highlight(title.textContent, q);
+      subs.forEach(s => s.innerHTML = highlight(s.textContent, q));
+
       clone.onclick = () => window.location = row.href;
+
       resultsBox.appendChild(clone);
     }
   });
 
-  if (found > 0) resultsBox.classList.add("active");
-  else resultsBox.classList.remove("active");
+  if (found > 0) {
+    resultsBox.classList.add("active");
+  } else {
+    resultsBox.classList.remove("active");
+  }
 });
 
-/* FILTER TABS */
-const tabs = document.querySelectorAll(".tab");
-
+/* FILTER TABS: 
+   - Tout  => فقط normal-card
+   - Soutien Sevor => bot + chatbot_tickets فقط
+*/
 tabs.forEach(tab => {
   tab.onclick = () => {
     tabs.forEach(t => t.classList.remove("active"));
@@ -329,15 +385,19 @@ tabs.forEach(tab => {
     const filter = tab.dataset.filter;
 
     if (filter === "all") {
-      document.querySelectorAll(".thread-row").forEach(r => r.style.display = "flex");
+      // إخفاء دعم الشات بوت
+      if (supportEntry) supportEntry.style.display = "none";
+      supportTickets.forEach(r => r.style.display = "none");
+      // إظهار الرسائل العادية فقط
+      normalCards.forEach(r => r.style.display = "flex");
     }
 
     else if (filter === "support") {
-      document.querySelectorAll(".thread-row").forEach(r => r.style.display = "none");
-      document.querySelectorAll(".thread-row")[0].style.display = "flex"; // bot
-      {% for t in support_tickets %}
-      document.querySelectorAll(".thread-row")[{{ loop.index }}].style.display = "flex";
-      {% endfor %}
+      // إظهار بطاقة بوت + تذاكر الشات بوت
+      if (supportEntry) supportEntry.style.display = "flex";
+      supportTickets.forEach(r => r.style.display = "flex");
+      // إخفاء الرسائل العادية
+      normalCards.forEach(r => r.style.display = "none");
     }
   };
 });

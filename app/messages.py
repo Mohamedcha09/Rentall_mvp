@@ -6,7 +6,7 @@ from sqlalchemy import func
 from datetime import datetime
 
 from .database import get_db
-from .models import MessageThread, Message, User, Item
+from .models import MessageThread, Message, User, Item, SupportTicket
 
 router = APIRouter()
 
@@ -47,17 +47,13 @@ def is_admin_user(user: User | None) -> bool:
 # ===================================================================
 @router.get("/messages")
 def inbox(request: Request, db: Session = Depends(get_db)):
-    from .models import SupportTicket
-
     u = require_login(request)
     if not u:
         return RedirectResponse(url="/login", status_code=303)
 
     uid = u["id"]
 
-    # ============================
-    #   USER MESSAGE THREADS
-    # ============================
+    # ========= threads العادية =========
     threads = (
         db.query(MessageThread)
         .filter((MessageThread.user_a_id == uid) | (MessageThread.user_b_id == uid))
@@ -65,21 +61,15 @@ def inbox(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
-    # ============================
-    #  SUPPORT TICKETS (ALL)
-    # ============================
-    support_tickets = (
-        db.query(SupportTicket)
-        .filter(SupportTicket.user_id == uid)
-        .order_by(SupportTicket.updated_at.desc())
-        .all()
-    )
+    if is_account_limited(request):
+        filtered = []
+        for t in threads:
+            other_id = t.user_b_id if t.user_a_id == uid else t.user_a_id
+            other = db.query(User).get(other_id)
+            if is_admin_user(other):
+                filtered.append(t)
+        threads = filtered
 
-    tickets_count = len(support_tickets)
-
-    # ============================
-    # UNREAD COUNTS FOR THREADS
-    # ============================
     thread_ids = [t.id for t in threads] or [-1]
     unread_rows = (
         db.query(Message.thread_id, func.count(Message.id))
@@ -93,9 +83,17 @@ def inbox(request: Request, db: Session = Depends(get_db)):
     )
     unread_map = {tid: int(cnt) for (tid, cnt) in unread_rows}
 
-    # ============================
-    # BUILD VIEW THREADS
-    # ============================
+    # ========= تذاكر الشات بوت فقط (channel='chatbot') =========
+    chatbot_tickets = (
+        db.query(SupportTicket)
+        .filter(SupportTicket.user_id == uid)
+        .filter(SupportTicket.channel == "chatbot")   # 👈 مهم: لا نأخذ legacy
+        .order_by(SupportTicket.updated_at.desc())
+        .all()
+    )
+    tickets_count = len(chatbot_tickets)
+
+    # ========= بناء قائمة threads للـ HTML =========
     view_threads = []
     for t in threads:
         last_msg = (
@@ -118,12 +116,19 @@ def inbox(request: Request, db: Session = Depends(get_db)):
                 item_title = item.title or ""
                 if getattr(item, "image_path", None):
                     raw = item.image_path.strip()
-                    if raw.startswith("http"):
+                    if raw.startswith("http://") or raw.startswith("https://"):
                         item_image = raw
                     else:
-                        item_image = "/" + raw.replace("\\", "/")
+                        raw = raw.replace("\\", "/")
+                        if not raw.startswith("/"):
+                            raw = "/" + raw
+                        item_image = raw
 
         other_avatar = _safe_url(getattr(other, "avatar_path", None))
+        item_image   = _safe_url(item_image)
+
+        other_verified   = bool(other.is_verified) if other else False
+        other_created_iso = other.created_at.isoformat() if (other and other.created_at) else ""
 
         view_threads.append({
             "id": t.id,
@@ -132,8 +137,9 @@ def inbox(request: Request, db: Session = Depends(get_db)):
             "item_title": item_title,
             "item_image": item_image,
             "unread_count": unread_map.get(t.id, 0),
-            "other_verified": bool(other.is_verified) if other else False,
+            "other_verified": other_verified,
             "other_avatar": other_avatar,
+            "other_created_iso": other_created_iso,
             "last_message_text": last_text,
         })
 
@@ -143,9 +149,10 @@ def inbox(request: Request, db: Session = Depends(get_db)):
             "request": request,
             "title": "Messages",
             "threads": view_threads,
-            "support_tickets": support_tickets,   # 👈 مهم جداً
-            "tickets_count": tickets_count,       # 👈 الرقم
+            "chatbot_tickets": chatbot_tickets,  # 👈 يُستخدم في التمبلت
+            "tickets_count": tickets_count,      # 👈 للبادج
             "session_user": u,
+            "account_limited": is_account_limited(request),
         }
     )
 
