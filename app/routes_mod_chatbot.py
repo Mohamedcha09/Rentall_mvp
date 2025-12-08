@@ -10,23 +10,16 @@ from sqlalchemy import desc
 from .database import get_db
 from .models import SupportTicket, SupportMessage, User
 from .utils import display_currency
-from .notifications_api import push_notification
 
 templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(prefix="/mod/chatbot", tags=["mod_chatbot"])
 
 
-# ---------------------------
-# Helpers
-# ---------------------------
 def _require_login(request: Request):
     return request.session.get("user")
 
 
 def _ensure_mod_session(db: Session, request: Request):
-    """
-    MOD agents are: User.is_mod == True
-    """
     sess = request.session.get("user") or {}
     uid = sess.get("id")
     if not uid:
@@ -43,22 +36,22 @@ def _ensure_mod_session(db: Session, request: Request):
     return None
 
 
-# ---------------------------
-# MOD Chatbot Inbox
-# ---------------------------
+# ================================
+# MOD CHATBOT INBOX
+# ================================
 @router.get("/inbox")
 def mod_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
     if not u:
-        return RedirectResponse("/login", status_code=303)
+        return RedirectResponse("/login", 303)
 
     u_mod = _ensure_mod_session(db, request)
     if not u_mod:
-        return RedirectResponse("/support/my", status_code=303)
+        return RedirectResponse("/support/my", 303)
 
     base_q = db.query(SupportTicket).filter(
         SupportTicket.channel == "chatbot",
-        SupportTicket.queue == "mod"
+        SupportTicket.queue == "mod_chatbot"   # ← FIXED
     )
 
     new_q = (
@@ -101,30 +94,27 @@ def mod_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
     )
 
 
-# ---------------------------
-# View Ticket
-# ---------------------------
+# ================================
+# VIEW TICKET
+# ================================
 @router.get("/ticket/{tid}")
 def mod_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
     if not u:
-        return RedirectResponse("/login", status_code=303)
+        return RedirectResponse("/login", 303)
 
     u_mod = _ensure_mod_session(db, request)
     if not u_mod:
-        return RedirectResponse("/support/my", status_code=303)
+        return RedirectResponse("/support/my", 303)
 
-    t = (
-        db.query(SupportTicket)
-        .filter(
-            SupportTicket.id == tid,
-            SupportTicket.channel == "chatbot",
-            SupportTicket.queue == "mod",
-        )
-        .first()
-    )
+    t = db.query(SupportTicket).filter(
+        SupportTicket.id == tid,
+        SupportTicket.channel == "chatbot",
+        SupportTicket.queue == "mod_chatbot"
+    ).first()
+
     if not t:
-        return RedirectResponse("/mod/chatbot/inbox", status_code=303)
+        return RedirectResponse("/mod/chatbot/inbox", 303)
 
     t.unread_for_agent = False
     db.commit()
@@ -142,22 +132,22 @@ def mod_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(ge
     )
 
 
-# ---------------------------
-# Reply
-# ---------------------------
+# ================================
+# REPLY
+# ================================
 @router.post("/ticket/{tid}/reply")
 def mod_chatbot_reply(tid: int, request: Request, db: Session = Depends(get_db), body: str = Form("")):
     u = _require_login(request)
     if not u:
-        return RedirectResponse("/login", status_code=303)
+        return RedirectResponse("/login", 303)
 
     u_mod = _ensure_mod_session(db, request)
     if not u_mod:
-        return RedirectResponse("/support/my", status_code=303)
+        return RedirectResponse("/support/my", 303)
 
     t = db.get(SupportTicket, tid)
-    if not t or t.channel != "chatbot" or t.queue != "mod":
-        return RedirectResponse("/mod/chatbot/inbox", status_code=303)
+    if not t or t.queue != "mod_chatbot":
+        return RedirectResponse("/mod/chatbot/inbox", 303)
 
     now = datetime.utcnow()
 
@@ -167,7 +157,7 @@ def mod_chatbot_reply(tid: int, request: Request, db: Session = Depends(get_db),
         sender_role="agent",
         body=(body or "").strip() or "(no text)",
         created_at=now,
-        channel="chatbot",
+        channel="chatbot"
     )
     db.add(msg)
 
@@ -182,45 +172,45 @@ def mod_chatbot_reply(tid: int, request: Request, db: Session = Depends(get_db),
 
     db.commit()
 
-    return RedirectResponse(f"/mod/chatbot/ticket/{t.id}", status_code=303)
+    return RedirectResponse(f"/mod/chatbot/ticket/{t.id}", 303)
 
 
-# ---------------------------
-# Resolve
-# ---------------------------
+# ================================
+# RESOLVE
+# ================================
 @router.post("/tickets/{ticket_id}/resolve")
 def mod_chatbot_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
     if not u:
-        return RedirectResponse("/login", status_code=303)
+        return RedirectResponse("/login", 303)
 
     u_mod = _ensure_mod_session(db, request)
     if not u_mod:
-        return RedirectResponse("/support/my", status_code=303)
+        return RedirectResponse("/support/my", 303)
 
     t = db.get(SupportTicket, ticket_id)
-    if not t or t.channel != "chatbot" or t.queue != "mod":
-        return RedirectResponse("/mod/chatbot/inbox", status_code=303)
+    if not t or t.queue != "mod_chatbot":
+        return RedirectResponse("/mod/chatbot/inbox", 303)
 
     now = datetime.utcnow()
+
     t.status = "resolved"
     t.resolved_at = now
     t.updated_at = now
     if not t.assigned_to_id:
         t.assigned_to_id = u_mod["id"]
 
-    close_msg = SupportMessage(
+    m = SupportMessage(
         ticket_id=t.id,
         sender_id=u_mod["id"],
         sender_role="agent",
         body=f"MOD resolved chatbot ticket at {now.strftime('%Y-%m-%d %H:%M')}",
         created_at=now,
-        channel="chatbot",
+        channel="chatbot"
     )
-    db.add(close_msg)
+    db.add(m)
 
     t.unread_for_user = True
 
     db.commit()
-
-    return RedirectResponse("/mod/chatbot/inbox", status_code=303)
+    return RedirectResponse("/mod/chatbot/inbox", 303)

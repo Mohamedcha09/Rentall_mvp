@@ -22,9 +22,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TREE_PATH = os.path.join(BASE_DIR, "chatbot", "tree.json")
 
 
-# ============================
-# Load chatbot tree
-# ============================
 @lru_cache(maxsize=1)
 def load_tree():
     if not os.path.exists(TREE_PATH):
@@ -42,9 +39,6 @@ def get_chatbot_tree():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ============================
-# Chatbot main page
-# ============================
 @router.get("/chatbot")
 def chatbot_page(
     request: Request,
@@ -58,9 +52,9 @@ def chatbot_page(
     })
 
 
-# =======================================================
-# 🚨 When user presses "NO → Contact Support"
-# =======================================================
+# ===========================================================
+# NEW CHATBOT TICKET
+# ===========================================================
 @router.post("/chatbot/support")
 def chatbot_open_ticket(
     request: Request,
@@ -69,27 +63,23 @@ def chatbot_open_ticket(
     question: str = Form(...),
     answer: str = Form(...)
 ):
-    """
-    Creates a special ticket when Chatbot → Contact Support.
-    """
     if not user:
         raise HTTPException(status_code=401, detail="Login required")
 
-    # Create chatbot ticket (queue MUST stay 'cs')
+    # NEW → ALWAYS goes to CS_CHATBOT first
     t = SupportTicket(
         user_id=user.id,
         subject="Chatbot Assistance Needed",
-        queue="cs",              # ← يجب أن يبقى CS !!
+        queue="cs_chatbot",      # ← CORRECT QUEUE
         status="new",
         last_from="user",
         unread_for_agent=True,
         unread_for_user=False,
-        channel="chatbot"        # ← هذا الذي يرسلها للصفحات الجديدة
+        channel="chatbot"
     )
     db.add(t)
     db.flush()
 
-    # Save chatbot message
     body_text = (
         f"Chatbot question:\n{question}\n\n"
         f"Chatbot answer given:\n{answer}\n\n"
@@ -106,7 +96,7 @@ def chatbot_open_ticket(
     db.add(msg)
     db.commit()
 
-    # Notify support agents
+    # Notify CS agents
     agents = (
         db.query(User)
         .filter(User.is_support == True, User.status == "approved")
@@ -119,7 +109,7 @@ def chatbot_open_ticket(
             ag.id,
             "🤖 Chatbot escalation",
             f"User needs help (ticket #{t.id})",
-            url=f"/cs/chatbot/ticket/{t.id}",  # ← صفحة جديدة صحيحة
+            url=f"/cs/chatbot/ticket/{t.id}",
             kind="support"
         )
 

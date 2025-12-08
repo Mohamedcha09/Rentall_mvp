@@ -1,4 +1,5 @@
 # app/routes_cs_chatbot.py
+
 from datetime import datetime
 from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import RedirectResponse
@@ -9,15 +10,11 @@ from sqlalchemy import desc
 from .database import get_db
 from .models import SupportTicket, SupportMessage, User
 from .utils import display_currency
-from .notifications_api import push_notification
 
 templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(prefix="/cs/chatbot", tags=["cs_chatbot"])
 
 
-# ---------------------------
-# Helpers
-# ---------------------------
 def _require_login(request: Request):
     return request.session.get("user")
 
@@ -27,7 +24,7 @@ def _ensure_cs_session(db: Session, request: Request):
     uid = sess.get("id")
     if not uid:
         return None
-    if bool(sess.get("is_support")):
+    if bool(sess.get("is_support", False)):
         return sess
     u_db = db.get(User, uid)
     if u_db and bool(getattr(u_db, "is_support", False)):
@@ -37,25 +34,21 @@ def _ensure_cs_session(db: Session, request: Request):
     return None
 
 
-# ---------------------------
-# CS Chatbot Inbox
-# ---------------------------
 @router.get("/inbox")
 def cs_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
     if not u:
-        return RedirectResponse("/login", status_code=303)
+        return RedirectResponse("/login", 303)
 
     u_cs = _ensure_cs_session(db, request)
     if not u_cs:
-        return RedirectResponse("/support/my", status_code=303)
+        return RedirectResponse("/support/my", 303)
 
     base_q = db.query(SupportTicket).filter(
         SupportTicket.channel == "chatbot",
-        SupportTicket.queue == "cs"
+        SupportTicket.queue == "cs_chatbot"   # ← FIXED
     )
 
-    # New / Unassigned
     new_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
@@ -66,7 +59,6 @@ def cs_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
     )
 
-    # Assigned / in review
     in_review_q = (
         base_q.filter(
             SupportTicket.status == "open",
@@ -75,7 +67,6 @@ def cs_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
     )
 
-    # Resolved
     resolved_q = (
         base_q.filter(SupportTicket.status == "resolved")
         .order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
@@ -99,30 +90,27 @@ def cs_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
     )
 
 
-# ---------------------------
-# View Chatbot Ticket
-# ---------------------------
 @router.get("/ticket/{tid}")
-def cs_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
+def cs_chatbot_ticket_view(tid, request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
     if not u:
-        return RedirectResponse("/login", status_code=303)
+        return RedirectResponse("/login", 303)
 
     u_cs = _ensure_cs_session(db, request)
     if not u_cs:
-        return RedirectResponse("/support/my", status_code=303)
+        return RedirectResponse("/support/my", 303)
 
     t = (
         db.query(SupportTicket)
         .filter(
             SupportTicket.id == tid,
             SupportTicket.channel == "chatbot",
-            SupportTicket.queue == "cs",
+            SupportTicket.queue == "cs_chatbot",  # ← FIXED
         )
         .first()
     )
     if not t:
-        return RedirectResponse("/cs/chatbot/inbox", status_code=303)
+        return RedirectResponse("/cs/chatbot/inbox", 303)
 
     t.unread_for_agent = False
     db.commit()
@@ -138,88 +126,3 @@ def cs_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get
             "display_currency": display_currency,
         },
     )
-
-
-# ---------------------------
-# Agent Reply
-# ---------------------------
-@router.post("/ticket/{tid}/reply")
-def cs_chatbot_reply(tid: int, request: Request, db: Session = Depends(get_db), body: str = Form("")):
-    u = _require_login(request)
-    if not u:
-        return RedirectResponse("/login", status_code=303)
-
-    u_cs = _ensure_cs_session(db, request)
-    if not u_cs:
-        return RedirectResponse("/support/my", status_code=303)
-
-    t = db.get(SupportTicket, tid)
-    if not t or t.channel != "chatbot":
-        return RedirectResponse("/cs/chatbot/inbox", status_code=303)
-
-    now = datetime.utcnow()
-
-    msg = SupportMessage(
-        ticket_id=t.id,
-        sender_id=u_cs["id"],
-        sender_role="agent",
-        body=(body or "").strip() or "(no text)",
-        created_at=now,
-        channel="chatbot",
-    )
-    db.add(msg)
-
-    t.last_msg_at = now
-    t.updated_at = now
-    t.last_from = "agent"
-    if not t.assigned_to_id:
-        t.assigned_to_id = u_cs["id"]
-    t.status = "open"
-    t.unread_for_user = True
-    t.unread_for_agent = False
-
-    db.commit()
-
-    return RedirectResponse(f"/cs/chatbot/ticket/{t.id}", status_code=303)
-
-
-# ---------------------------
-# Resolve Ticket
-# ---------------------------
-@router.post("/tickets/{ticket_id}/resolve")
-def cs_chatbot_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
-    u = _require_login(request)
-    if not u:
-        return RedirectResponse("/login", status_code=303)
-
-    u_cs = _ensure_cs_session(db, request)
-    if not u_cs:
-        return RedirectResponse("/support/my", status_code=303)
-
-    t = db.get(SupportTicket, ticket_id)
-    if not t or t.channel != "chatbot":
-        return RedirectResponse("/cs/chatbot/inbox", status_code=303)
-
-    now = datetime.utcnow()
-
-    t.status = "resolved"
-    t.resolved_at = now
-    t.updated_at = now
-    if not t.assigned_to_id:
-        t.assigned_to_id = u_cs["id"]
-
-    close_msg = SupportMessage(
-        ticket_id=t.id,
-        sender_id=u_cs["id"],
-        sender_role="agent",
-        body=f"Chatbot ticket resolved at {now.strftime('%Y-%m-%d %H:%M')}",
-        created_at=now,
-        channel="chatbot",
-    )
-    db.add(close_msg)
-
-    t.unread_for_user = True
-
-    db.commit()
-
-    return RedirectResponse("/cs/chatbot/inbox", status_code=303)

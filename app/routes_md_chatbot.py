@@ -15,17 +15,11 @@ templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(prefix="/md/chatbot", tags=["md_chatbot"])
 
 
-# ---------------------------
-# Helpers
-# ---------------------------
 def _require_login(request: Request):
     return request.session.get("user")
 
 
 def _ensure_md_session(db: Session, request: Request):
-    """
-    MD agents: User.is_md == True
-    """
     sess = request.session.get("user") or {}
     uid = sess.get("id")
     if not uid:
@@ -43,22 +37,22 @@ def _ensure_md_session(db: Session, request: Request):
     return None
 
 
-# ---------------------------
-# MD Chatbot Inbox
-# ---------------------------
+# ================================
+# MD CHATBOT INBOX
+# ================================
 @router.get("/inbox")
 def md_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
     if not u:
-        return RedirectResponse("/login", status_code=303)
+        return RedirectResponse("/login", 303)
 
     u_md = _ensure_md_session(db, request)
     if not u_md:
-        return RedirectResponse("/support/my", status_code=303)
+        return RedirectResponse("/support/my", 303)
 
     base_q = db.query(SupportTicket).filter(
         SupportTicket.channel == "chatbot",
-        SupportTicket.queue == "md"
+        SupportTicket.queue == "md_chatbot"   # ← FIXED!!
     )
 
     new_q = (
@@ -101,31 +95,29 @@ def md_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
     )
 
 
-# ---------------------------
-# View Ticket
-# ---------------------------
+# ================================
+# VIEW CHATBOT TICKET
+# ================================
 @router.get("/ticket/{tid}")
 def md_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
     if not u:
-        return RedirectResponse("/login", status_code=303)
+        return RedirectResponse("/login", 303)
 
     u_md = _ensure_md_session(db, request)
     if not u_md:
-        return RedirectResponse("/support/my", status_code=303)
+        return RedirectResponse("/support/my", 303)
 
-    t = (
-        db.query(SupportTicket)
-        .filter(
-            SupportTicket.id == tid,
-            SupportTicket.channel == "chatbot",
-            SupportTicket.queue == "md",
-        )
-        .first()
-    )
+    t = db.query(SupportTicket).filter(
+        SupportTicket.id == tid,
+        SupportTicket.channel == "chatbot",
+        SupportTicket.queue == "md_chatbot"   # ← FIXED
+    ).first()
+
     if not t:
-        return RedirectResponse("/md/chatbot/inbox", status_code=303)
+        return RedirectResponse("/md/chatbot/inbox", 303)
 
+    # mark as read
     t.unread_for_agent = False
     db.commit()
 
@@ -142,22 +134,22 @@ def md_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get
     )
 
 
-# ---------------------------
-# Agent Reply
-# ---------------------------
+# ================================
+# MD REPLY
+# ================================
 @router.post("/ticket/{tid}/reply")
 def md_chatbot_reply(tid: int, request: Request, db: Session = Depends(get_db), body: str = Form("")):
     u = _require_login(request)
     if not u:
-        return RedirectResponse("/login", status_code=303)
+        return RedirectResponse("/login", 303)
 
     u_md = _ensure_md_session(db, request)
     if not u_md:
-        return RedirectResponse("/support/my", status_code=303)
+        return RedirectResponse("/support/my", 303)
 
     t = db.get(SupportTicket, tid)
-    if not t or t.channel != "chatbot" or t.queue != "md":
-        return RedirectResponse("/md/chatbot/inbox", status_code=303)
+    if not t or t.queue != "md_chatbot":
+        return RedirectResponse("/md/chatbot/inbox", 303)
 
     now = datetime.utcnow()
 
@@ -167,7 +159,7 @@ def md_chatbot_reply(tid: int, request: Request, db: Session = Depends(get_db), 
         sender_role="agent",
         body=(body or "").strip() or "(no text)",
         created_at=now,
-        channel="chatbot",
+        channel="chatbot"
     )
     db.add(msg)
 
@@ -181,26 +173,25 @@ def md_chatbot_reply(tid: int, request: Request, db: Session = Depends(get_db), 
     t.unread_for_agent = False
 
     db.commit()
+    return RedirectResponse(f"/md/chatbot/ticket/{t.id}", 303)
 
-    return RedirectResponse(f"/md/chatbot/ticket/{t.id}", status_code=303)
 
-
-# ---------------------------
-# Resolve Ticket
-# ---------------------------
+# ================================
+# RESOLVE
+# ================================
 @router.post("/tickets/{ticket_id}/resolve")
 def md_chatbot_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
     if not u:
-        return RedirectResponse("/login", status_code=303)
+        return RedirectResponse("/login", 303)
 
     u_md = _ensure_md_session(db, request)
     if not u_md:
-        return RedirectResponse("/support/my", status_code=303)
+        return RedirectResponse("/support/my", 303)
 
     t = db.get(SupportTicket, ticket_id)
-    if not t or t.channel != "chatbot" or t.queue != "md":
-        return RedirectResponse("/md/chatbot/inbox", status_code=303)
+    if not t or t.queue != "md_chatbot":
+        return RedirectResponse("/md/chatbot/inbox", 303)
 
     now = datetime.utcnow()
 
@@ -210,18 +201,16 @@ def md_chatbot_resolve(ticket_id: int, request: Request, db: Session = Depends(g
     if not t.assigned_to_id:
         t.assigned_to_id = u_md["id"]
 
-    close_msg = SupportMessage(
+    msg = SupportMessage(
         ticket_id=t.id,
         sender_id=u_md["id"],
         sender_role="agent",
         body=f"MD resolved chatbot ticket at {now.strftime('%Y-%m-%d %H:%M')}",
         created_at=now,
-        channel="chatbot",
+        channel="chatbot"
     )
-    db.add(close_msg)
-
+    db.add(msg)
     t.unread_for_user = True
 
     db.commit()
-
-    return RedirectResponse("/md/chatbot/inbox", status_code=303)
+    return RedirectResponse("/md/chatbot/inbox", 303)
