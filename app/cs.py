@@ -8,8 +8,7 @@ from sqlalchemy import desc, text
 
 from .database import get_db
 from .models import SupportTicket, SupportMessage, User
-from .notifications_api import push_notification, notify_mods, notify_dms
-
+from .notifications_api import push_notification, notify_mods, notify_mds
 
 templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(prefix="/cs", tags=["cs"])
@@ -30,11 +29,13 @@ def _ensure_cs_session(db: Session, request: Request):
         return None
     if bool(sess.get("is_support")):
         return sess
+
     u_db = db.get(User, uid)
     if u_db and bool(getattr(u_db, "is_support", False)):
         sess["is_support"] = True
         request.session["user"] = sess
         return sess
+
     return None
 
 # ---------------------------
@@ -50,10 +51,9 @@ def cs_inbox(request: Request, db: Session = Depends(get_db)):
     if not u_cs:
         return RedirectResponse("/support/my", status_code=303)
 
-    # Important: CS inbox should not show tickets transferred to MOD/MD
+    # CS inbox excluding MOD/MD queues
     base_q = db.query(SupportTicket).filter(text("COALESCE(queue,'cs') = 'cs'"))
 
-    # New: unassigned + last message from client + unread for agent
     new_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
@@ -64,7 +64,6 @@ def cs_inbox(request: Request, db: Session = Depends(get_db)):
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
     )
 
-    # In review: open and assigned to agent
     in_review_q = (
         base_q.filter(
             SupportTicket.status == "open",
@@ -73,7 +72,6 @@ def cs_inbox(request: Request, db: Session = Depends(get_db)):
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
     )
 
-    # Resolved
     resolved_q = (
         base_q.filter(SupportTicket.status == "resolved")
         .order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
@@ -91,22 +89,23 @@ def cs_inbox(request: Request, db: Session = Depends(get_db)):
     )
 
 # ---------------------------
-# View CS Ticket
+# View Ticket (CS)
 # ---------------------------
 @router.get("/ticket/{tid}")
 def cs_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
+
     u_cs = _ensure_cs_session(db, request)
     if not u_cs:
         return RedirectResponse("/support/my", status_code=303)
 
-    t = db.query(SupportTicket).filter(SupportTicket.id == tid).first()
+    t = db.get(SupportTicket, tid)
     if not t:
         return RedirectResponse("/cs/inbox", status_code=303)
 
-    # Mark as read for the agent
+    # Mark as read
     t.unread_for_agent = False
     db.commit()
 
@@ -116,13 +115,14 @@ def cs_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     )
 
 # ---------------------------
-# Take ownership of the ticket (Assign to me)
+# Assign ticket to self
 # ---------------------------
 @router.post("/tickets/{ticket_id}/assign_self")
 def cs_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
+
     u_cs = _ensure_cs_session(db, request)
     if not u_cs:
         return RedirectResponse("/support/my", status_code=303)
@@ -134,17 +134,18 @@ def cs_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_d
         t.updated_at = datetime.utcnow()
         t.unread_for_agent = False
 
-        agent_name = (request.session["user"].get("first_name") or "").strip() or "Support Agent"
+        agent_name = (u_cs.get("first_name") or "Support Agent")
+
         try:
             push_notification(
                 db,
                 t.user_id,
                 "📬 Your ticket has been opened",
-                f"The message has been opened by {agent_name}",
+                f"{agent_name} opened your ticket",
                 url=f"/support/ticket/{t.id}",
                 kind="support",
             )
-        except Exception:
+        except:
             pass
 
         db.commit()
@@ -152,13 +153,14 @@ def cs_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_d
     return RedirectResponse(f"/cs/ticket/{ticket_id}", status_code=303)
 
 # ---------------------------
-# Agent reply to ticket
+# Agent reply
 # ---------------------------
 @router.post("/ticket/{tid}/reply")
 def cs_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), body: str = Form("")):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
+
     u_cs = _ensure_cs_session(db, request)
     if not u_cs:
         return RedirectResponse("/support/my", status_code=303)
@@ -168,6 +170,7 @@ def cs_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
         return RedirectResponse("/cs/inbox", status_code=303)
 
     now = datetime.utcnow()
+
     msg = SupportMessage(
         ticket_id=t.id,
         sender_id=u_cs["id"],
@@ -180,14 +183,15 @@ def cs_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
     t.last_msg_at = now
     t.updated_at = now
     t.last_from = "agent"
-    if not t.assigned_to_id:
-        t.assigned_to_id = u_cs["id"]
     t.status = "open"
     t.unread_for_user = True
     t.unread_for_agent = False
 
+    if not t.assigned_to_id:
+        t.assigned_to_id = u_cs["id"]
+
     try:
-        agent_name = (request.session["user"].get("first_name") or "").strip() or "Support Agent"
+        agent_name = (u_cs.get("first_name") or "Support Agent")
         push_notification(
             db,
             t.user_id,
@@ -196,20 +200,21 @@ def cs_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
             url=f"/support/ticket/{t.id}",
             kind="support",
         )
-    except Exception:
+    except:
         pass
 
     db.commit()
     return RedirectResponse(f"/cs/ticket/{t.id}", status_code=303)
 
 # ---------------------------
-# Close the ticket (Resolve)
+# Resolve ticket
 # ---------------------------
 @router.post("/tickets/{ticket_id}/resolve")
 def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
+
     u_cs = _ensure_cs_session(db, request)
     if not u_cs:
         return RedirectResponse("/support/my", status_code=303)
@@ -217,24 +222,26 @@ def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     t = db.get(SupportTicket, ticket_id)
     if t:
         now = datetime.utcnow()
-        agent_name = (request.session["user"].get("first_name") or "").strip() or "Support Agent"
+        agent_name = (u_cs.get("first_name") or "Support Agent")
 
         t.status = "resolved"
         t.resolved_at = now
         t.updated_at = now
+
         if not t.assigned_to_id:
             t.assigned_to_id = u_cs["id"]
 
-        close_msg = SupportMessage(
+        msg = SupportMessage(
             ticket_id=t.id,
             sender_id=u_cs["id"],
             sender_role="agent",
             body=f"Ticket closed by {agent_name} at {now.strftime('%Y-%m-%d %H:%M')}",
             created_at=now,
         )
-        db.add(close_msg)
+        db.add(msg)
 
         t.unread_for_user = True
+
         try:
             push_notification(
                 db,
@@ -244,7 +251,7 @@ def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
                 url=f"/support/ticket/{t.id}",
                 kind="support",
             )
-        except Exception:
+        except:
             pass
 
         db.commit()
@@ -252,24 +259,26 @@ def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     return RedirectResponse("/cs/inbox", status_code=303)
 
 # ---------------------------
-# Transfer ticket between departments (CS → MD → MOD)
+# Transfer ticket (CS → MD → MOD)
 # ---------------------------
 @router.post("/tickets/{ticket_id}/transfer")
 def cs_transfer_queue(
     ticket_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    to: str = Form(...),  # values: cs / md / mod
+    to: str = Form(...),
 ):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
+
     u_cs = _ensure_cs_session(db, request)
     if not u_cs:
         return RedirectResponse("/support/my", status_code=303)
 
     target = (to or "").strip().lower()
     allowed = {"cs", "md", "mod"}
+
     if target not in allowed:
         return RedirectResponse(f"/cs/ticket/{ticket_id}", status_code=303)
 
@@ -277,41 +286,38 @@ def cs_transfer_queue(
     if not t:
         return RedirectResponse("/cs/inbox", status_code=303)
 
-    # Update queue directly (the column might not be defined in the model)
+    # Update queue
     try:
         db.execute(
             text("UPDATE support_tickets SET queue = :q, updated_at = now() WHERE id = :tid"),
             {"q": target, "tid": ticket_id},
         )
-    except Exception:
+    except:
         pass
 
     now = datetime.utcnow()
-    agent_name = (request.session["user"].get("first_name") or "").strip() or "Support Agent"
+    agent_name = (u_cs.get("first_name") or "Support Agent")
 
-    # System message to explain transfer
     msg = SupportMessage(
         ticket_id=t.id,
         sender_id=u_cs["id"],
         sender_role="agent",
-        body=f"Ticket transferred from CS to {target.upper()} by {agent_name} at {now.strftime('%Y-%m-%d %H:%M')}",
+        body=f"Ticket transferred to {target.upper()} by {agent_name} at {now.strftime('%Y-%m-%d %H:%M')}",
         created_at=now,
     )
     db.add(msg)
 
-    # Keep status open/new + unread flags
+    # Flags update
     t.last_from = "agent"
     t.last_msg_at = now
     t.updated_at = now
     t.unread_for_user = True
 
-    # ✅ Important: when transferring to MD or MOD → mark as 'new' and unassigned so it appears in 'New from CS' inbox
     if target in ("md", "mod"):
         t.status = "new"
         t.assigned_to_id = None
         t.unread_for_agent = True
     else:
-        # Back to CS
         t.status = "open"
         if not t.assigned_to_id:
             t.assigned_to_id = u_cs["id"]
@@ -323,14 +329,14 @@ def cs_transfer_queue(
             db,
             t.user_id,
             "↪️ Your ticket has been transferred",
-            f"Your ticket has been transferred to the appropriate team ({target.upper()}).",
+            f"Your ticket has been transferred to the {target.upper()} team.",
             url=f"/support/ticket/{t.id}",
             kind="support",
         )
-    except Exception:
+    except:
         pass
 
-    # Notify moderators only if transfer to MOD
+    # Notify MOD
     if target == "mod":
         try:
             notify_mods(
@@ -339,10 +345,10 @@ def cs_transfer_queue(
                 body=f"{t.subject or '(No subject)'} — #{t.id}",
                 url=f"/mod/inbox?tid={t.id}",
             )
-        except Exception:
+        except:
             pass
 
-    # ✅ Notify deposit managers if transfer to MD
+    # Notify Deposit Managers (MD)
     if target == "md":
         try:
             notify_mds(
@@ -351,7 +357,7 @@ def cs_transfer_queue(
                 body=f"{t.subject or '(No subject)'} — #{t.id}",
                 url=f"/md/inbox?tid={t.id}",
             )
-        except Exception:
+        except:
             pass
 
     db.commit()
