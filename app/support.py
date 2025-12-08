@@ -177,15 +177,24 @@ def support_my(request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
+
+    # ✅ نعرض فقط تذاكر السيبور القديم
     tickets = (
         db.query(SupportTicket)
         .filter(SupportTicket.user_id == u["id"])
+        .filter((SupportTicket.channel == None) | (SupportTicket.channel != "chatbot"))
         .order_by(SupportTicket.updated_at.desc())
         .all()
     )
+
     return request.app.templates.TemplateResponse(
         "support_my.html",
-        {"request": request, "session_user": u, "tickets": tickets, "title": "My Tickets"},
+        {
+            "request": request,
+            "session_user": u,
+            "tickets": tickets,
+            "title": "My Tickets",
+        },
     )
 
 
