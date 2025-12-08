@@ -75,16 +75,16 @@ def chatbot_open_ticket(
     if not user:
         raise HTTPException(status_code=401, detail="Login required")
 
-    # Create chatbot ticket
+    # Create chatbot ticket (queue MUST stay 'cs')
     t = SupportTicket(
         user_id=user.id,
         subject="Chatbot Assistance Needed",
-        queue="cs",
+        queue="cs",              # ← يجب أن يبقى CS !!
         status="new",
         last_from="user",
         unread_for_agent=True,
         unread_for_user=False,
-        channel="chatbot"   # 👈 NEW + IMPORTANT
+        channel="chatbot"        # ← هذا الذي يرسلها للصفحات الجديدة
     )
     db.add(t)
     db.flush()
@@ -101,7 +101,7 @@ def chatbot_open_ticket(
         sender_id=user.id,
         sender_role="user",
         body=body_text,
-        channel="chatbot"    # 👈 NEW + IMPORTANT
+        channel="chatbot"
     )
     db.add(msg)
     db.commit()
@@ -119,7 +119,7 @@ def chatbot_open_ticket(
             ag.id,
             "🤖 Chatbot escalation",
             f"User needs help (ticket #{t.id})",
-            url=f"/cs/ticket/{t.id}",
+            url=f"/cs/chatbot/ticket/{t.id}",  # ← صفحة جديدة صحيحة
             kind="support"
         )
 
