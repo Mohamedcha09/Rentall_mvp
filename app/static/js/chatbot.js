@@ -38,6 +38,9 @@ function clearSuggestions() {
 let SECTIONS = [];
 let CURRENT_SECTION = null;
 
+let LAST_QUESTION = null;
+let LAST_ANSWER = null;
+
 // ===========================
 // FEEDBACK BUTTONS
 // ===========================
@@ -78,20 +81,38 @@ function handleYes() {
   chat.appendChild(box);
 }
 
-function handleNo() {
-  addBotMessage("I understand ❤️ We're here to help.");
+// ================================
+// 🚨 NEW: REAL CONTACT SUPPORT FLOW
+// ================================
+async function handleNo() {
+  addBotMessage("One moment… contacting support 🕓");
 
-  const chat = document.getElementById("sv-chat-window");
-  const btn = document.createElement("button");
-  btn.className = "sv-option-chip";
-  btn.textContent = "Contact Support";
+  // إرسال بيانات السؤال والجواب إلى API لإنشاء Ticket
+  const formData = new FormData();
+  formData.append("question", LAST_QUESTION || "(unknown)");
+  formData.append("answer", LAST_ANSWER || "(unknown)");
 
-  btn.onclick = () => (window.location.href = "/messages");
+  const res = await fetch("/chatbot/support", {
+    method: "POST",
+    body: formData
+  });
 
-  const box = document.createElement("div");
-  box.className = "sv-msg sv-msg-bot";
-  box.appendChild(btn);
-  chat.appendChild(box);
+  let data;
+  try {
+    data = await res.json();
+  } catch (e) {
+    addBotMessage("⚠️ Error contacting support.");
+    return;
+  }
+
+  if (data.ok) {
+    addBotMessage("A support agent will assist you shortly 🟣");
+
+    // افتح صفحة التيكيت الجديدة
+    window.location.href = `/support/ticket/${data.ticket_id}`;
+  } else {
+    addBotMessage("⚠️ Failed to create support ticket.");
+  }
 }
 
 // ===========================
@@ -119,7 +140,7 @@ function showSections() {
 }
 
 // ===========================
-// SHOW QUESTIONS IN SELECTED SECTION
+// SHOW QUESTIONS
 // ===========================
 function showQuestionsInSection(section) {
   clearSuggestions();
@@ -129,24 +150,21 @@ function showQuestionsInSection(section) {
 
   let faqs = section.faqs;
 
-  // Object-based FAQs
   if (!Array.isArray(faqs)) {
-    Object.entries(faqs).forEach(([question, obj]) => {
+    Object.entries(faqs).forEach(([qText, obj]) => {
       const btn = document.createElement("button");
       btn.className = "sv-question-chip";
-      btn.textContent = question;
+      btn.textContent = qText;
 
       btn.onclick = () => handleQuestionClick({
-        label: question,
+        label: qText,
         answer: obj.answer,
         options: obj.options || null
       });
 
       suggestions.appendChild(btn);
     });
-  }
-  // Array-based FAQs
-  else {
+  } else {
     faqs.forEach(item => {
       const btn = document.createElement("button");
       btn.className = "sv-question-chip";
@@ -164,14 +182,17 @@ function showQuestionsInSection(section) {
 }
 
 // ===========================
-// USER SELECTS A QUESTION
+// SELECT QUESTION
 // ===========================
 function handleQuestionClick(q) {
   addUserMessage(q.label);
+  LAST_QUESTION = q.label;
+
   clearSuggestions();
 
   if (q.answer) {
     addBotMessage(q.answer);
+    LAST_ANSWER = q.answer;
     showFeedbackButtons();
   }
 
@@ -197,6 +218,7 @@ function handleQuestionClick(q) {
       btn.onclick = () => {
         addUserMessage(label);
         addBotMessage(data.answer || "...");
+        LAST_ANSWER = data.answer || "...";
         showFeedbackButtons();
       };
 
@@ -216,7 +238,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const data = await loadTree();
   SECTIONS = data.sections || [];
 
-  // 🔥 ENGLISH INTRO
   addBotMessage("👋 Hello! I’m the Sevor assistant.<br>Select a category to get started.");
 
   showSections();
