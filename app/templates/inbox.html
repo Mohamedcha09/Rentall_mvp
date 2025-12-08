@@ -125,7 +125,7 @@
 }
 
 /* --------------------------
-   THREAD LIST (main page)
+   THREAD LIST
 -------------------------- */
 .thread-row {
   display: flex;
@@ -168,14 +168,15 @@
 .msg-sub { font-size: 14px; color: #666; }
 .msg-date { margin-left: auto; font-size: 13px; color: #777; }
 
-mark {
-  background: #ffe08a;
-  padding: 2px 3px;
-  border-radius: 4px;
-}
-
-#supportCard .small-avatar {
-  display: none !important;
+/* Badge for ticket count */
+.badge {
+  background: #ff3b5c;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 12px;
+  margin-left: 6px;
+  font-weight: 600;
 }
 
 </style>
@@ -191,44 +192,60 @@ mark {
   <div class="tab active" data-filter="all">Tout</div>
 
   <div class="tab" data-filter="support">
-    <img src="/static/img/sevor-logo.png" 
+    <img src="/static/img/sevor-logo.png"
          style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">
     Soutien Sevor
+
+    {% if tickets_count > 0 %}
+    <span class="badge">{{ tickets_count }}</span>
+    {% endif %}
   </div>
 </div>
 
 <!-- THREADS LIST -->
 <div id="threadsContainer">
 
-  <!-- STATIC SUPPORT ENTRY (hidden initially) -->
-  <a href="/chatbot"
-     class="thread-row"
-     id="supportCard"
-     style="display:none">
+  <!-- ALWAYS SHOW SUPPORT BOT FIRST -->
+  <a href="/chatbot" class="thread-row">
 
     <div class="item-preview">
       <img src="/static/img/sevor-logo.png">
-      <div class="small-avatar">
-        <img src="/static/img/sevor-logo.png">
-      </div>
     </div>
 
     <div class="flex-grow-1 text-zone">
-      <div class="msg-title">Soutien Sevor</div>
+      <div class="msg-title">
+        Soutien Sevor
+        {% if tickets_count > 0 %}
+        <span class="badge">{{ tickets_count }}</span>
+        {% endif %}
+      </div>
       <div class="msg-sub">Contactez le support Sevor</div>
     </div>
 
     <div class="msg-date">Maintenant</div>
   </a>
 
-  <!-- USER THREAD MESSAGES -->
-{% for t in threads %}
-<a href="/messages/{{ t.id }}"
-   class="thread-row thread-item normal-card"
-   data-type="{{ 'support' if t.other_verified else 'normal' }}"
-   data-name="{{ t.other_fullname|lower }}"
-   data-item="{{ t.item_title|lower }}"
-   data-last="{{ t.last_message_text|lower }}">
+  <!-- SUPPORT TICKETS LIST -->
+  {% for t in support_tickets %}
+  <a href="/support/ticket/{{ t.id }}" class="thread-row" style="border-left: 4px solid #8b5cf6;">
+
+    <div class="item-preview">
+      <img src="/static/img/sevor-logo.png">
+    </div>
+
+    <div class="flex-grow-1 text-zone">
+      <div class="msg-title">Ticket #{{ t.id }}</div>
+      <div class="msg-sub">{{ t.subject or 'Support Request' }}</div>
+    </div>
+
+    <div class="msg-date">{{ t.updated_at.strftime("%d-%m-%Y") }}</div>
+
+  </a>
+  {% endfor %}
+
+  <!-- NORMAL USER THREADS -->
+  {% for t in threads %}
+  <a href="/messages/{{ t.id }}" class="thread-row">
 
     <div class="item-preview">
       <img src="{{ t.item_image }}">
@@ -239,11 +256,9 @@ mark {
 
     <div class="flex-grow-1 text-zone">
       <div class="msg-title">{{ t.other_fullname }}</div>
-
       {% if t.item_title %}
       <div class="msg-sub">{{ t.item_title }}</div>
       {% endif %}
-
       {% if t.last_message_text %}
       <div class="msg-sub">{{ t.last_message_text }}</div>
       {% endif %}
@@ -251,8 +266,9 @@ mark {
 
     <div class="msg-date">{{ t.last_message_at.strftime("%d-%m-%Y") }}</div>
 
-</a>
-{% endfor %}
+  </a>
+  {% endfor %}
+
 </div>
 
 <!-- SEARCH OVERLAY -->
@@ -274,30 +290,6 @@ const cancelBtn = document.getElementById("cancelSearch");
 const input = document.getElementById("searchInput");
 
 const items = document.querySelectorAll(".normal-card");
-const supportCard = document.getElementById("supportCard");
-
-/* SEARCH HIGHLIGHT */
-function highlight(text, word) {
-  if (!word) return text;
-  const re = new RegExp(`(${word})`, "gi");
-  return text.replace(re, "<mark>$1</mark>");
-}
-
-/* OPEN SEARCH */
-openBtn.onclick = () => {
-  overlay.classList.add("active");
-  panel.classList.add("active");
-  setTimeout(() => input.focus(), 200);
-};
-
-/* CLOSE SEARCH */
-cancelBtn.onclick = () => {
-  overlay.classList.remove("active");
-  panel.classList.remove("active");
-  input.value = "";
-  resultsBox.innerHTML = "";
-  resultsBox.classList.remove("active");
-};
 
 /* SEARCH LOGIC */
 input.addEventListener("input", () => {
@@ -310,41 +302,23 @@ input.addEventListener("input", () => {
 
   let found = 0;
 
-  document.querySelectorAll(".thread-item").forEach(row => {
-    const name = row.dataset.name;
-    const item = row.dataset.item;
-    const last = row.dataset.last;
-
-    const match = name.includes(q) || item.includes(q) || last.includes(q);
-
-    if (match) {
+  document.querySelectorAll(".thread-row").forEach(row => {
+    if (row.innerText.toLowerCase().includes(q)) {
       found++;
 
       const clone = document.createElement("div");
       clone.className = "thread-row";
       clone.innerHTML = row.innerHTML;
-
-      const zone = clone.querySelector(".text-zone");
-      const title = zone.querySelector(".msg-title");
-      const subs = zone.querySelectorAll(".msg-sub");
-
-      title.innerHTML = highlight(title.textContent, q);
-      subs.forEach(s => s.innerHTML = highlight(s.textContent, q));
-
       clone.onclick = () => window.location = row.href;
-
       resultsBox.appendChild(clone);
     }
   });
 
-  if (found > 0) {
-    resultsBox.classList.add("active");
-  } else {
-    resultsBox.classList.remove("active");
-  }
+  if (found > 0) resultsBox.classList.add("active");
+  else resultsBox.classList.remove("active");
 });
 
-/* FILTER TABS LOGIC — PERFECT VERSION */
+/* FILTER TABS */
 const tabs = document.querySelectorAll(".tab");
 
 tabs.forEach(tab => {
@@ -355,13 +329,15 @@ tabs.forEach(tab => {
     const filter = tab.dataset.filter;
 
     if (filter === "all") {
-      supportCard.style.display = "none";
-      items.forEach(r => r.style.display = "flex");
+      document.querySelectorAll(".thread-row").forEach(r => r.style.display = "flex");
     }
 
     else if (filter === "support") {
-      supportCard.style.display = "flex";
-      items.forEach(r => r.style.display = "none");
+      document.querySelectorAll(".thread-row").forEach(r => r.style.display = "none");
+      document.querySelectorAll(".thread-row")[0].style.display = "flex"; // bot
+      {% for t in support_tickets %}
+      document.querySelectorAll(".thread-row")[{{ loop.index }}].style.display = "flex";
+      {% endfor %}
     }
   };
 });
