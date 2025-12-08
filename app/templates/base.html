@@ -813,6 +813,12 @@ body[data-auth="0"] .mobile-tabbar {
 {% block head %}{% endblock %}
 {% set immersive = immersive|default(false) %}
 {% set _path = request.url.path if request else '' %}
+{% set no_ui = (
+    _path.startswith('/cs')
+    or _path.startswith('/mod')
+    or _path.startswith('/md')
+) %}
+
 {% set is_home = (_path == '/' or _path == '') %}
 
 {# Hide tabbar only on notifications/payout/admin #}
@@ -884,11 +890,13 @@ window.onpageshow = function(e){
 
 
 
-<body data-auth="{{ '1' if session_user else '0' }}" class="{% if show_tabbar and not immersive %}has-tabbar{% endif %}">
+<body data-auth="{{ '1' if session_user else '0' }}"
+      class="{% if show_tabbar and not immersive and not no_ui %}has-tabbar{% endif %}">
   <div id="page-wrapper">
-{% if not immersive %}
+{% if not immersive and not no_ui %}
   <!-- ===== Topbar ===== -->
   <header class="topbar">
+
     <div class="topbar__inner container-fluid d-flex align-items-center gap-2 py-2">
 
       <!-- ☰ button -->
@@ -1101,7 +1109,7 @@ window.onpageshow = function(e){
   </header>
   {% endif %}
 
-{% if not immersive %}
+{% if not immersive and not no_ui %}
   <!-- Top tabs (mobile) -->
   <nav class="m-top-tabs d-lg-none px-3 pb-2" role="tablist" aria-label="Top sections">
     <a href="/" class="m-tab {% if request and request.url.path == '/' %}is-active{% endif %}" role="tab"
@@ -1178,7 +1186,7 @@ window.onpageshow = function(e){
 
 
   <!-- Bottom bar (mobile) -->
-{% if show_tabbar and not immersive %}
+{% if show_tabbar and not immersive and not no_ui %}
   <nav class="mobile-tabbar d-lg-none">
   <div class="tab-indicator"></div>
 
