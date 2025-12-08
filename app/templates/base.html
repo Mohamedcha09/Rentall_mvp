@@ -967,11 +967,17 @@ window.onpageshow = function(e){
       <div id="typeaheadPanel" class="typeahead d-none"></div>
 
       <div class="actions d-flex align-items-center gap-2 ms-auto">
-      {% if display_currency is string %}
-  {% set _cur = display_currency %}
+      {# FAIL-SAFE display_currency #}
+{% if display_currency is defined %}
+  {% if display_currency is string %}
+    {% set _cur = display_currency %}
+  {% else %}
+    {% set _cur = display_currency(request) if request else '' %}
+  {% endif %}
 {% else %}
-  {% set _cur = display_currency(request) %}
+  {% set _cur = '' %}
 {% endif %}
+
 
 
         <!-- Messages -->
@@ -999,7 +1005,8 @@ window.onpageshow = function(e){
         </a>
 
         <!-- Bell -->
-        {% set unread = (request.state.unread_messages|default(0))|int if request else 0 %}
+{% set unread = (request.state.unread_messages|default(0))|int
+      if (request and request.state is defined) else 0 %}
         <button class="btn btn-ghost btn-sm position-relative" id="notifOpen" title="Notifications">
           <img class="icon-img" src="/static/img/notfi.png" alt="Notifications" style="width:24px;height:24px">
           {% if unread > 0 %}
@@ -1023,7 +1030,7 @@ window.onpageshow = function(e){
         <div class="dropdown">
           <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="Language">
             <i class="bi bi-globe2"></i>
-            <span class="d-none d-sm-inline">{{ current_lang()|upper if current_lang else 'EN' }}</span>
+            <span class="d-none d-sm-inline">{{ current_lang()|upper if current_lang is defined else 'EN' }}</span>
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
             <li><a class="dropdown-item" href="/lang/ar">العربية</a></li>
