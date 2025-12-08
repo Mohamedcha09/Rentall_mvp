@@ -1,18 +1,17 @@
-# app/cs.py
 from datetime import datetime
 from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, text
 
 from .database import get_db
 from .models import SupportTicket, SupportMessage, User
-from .notifications_api import push_notification, notify_mods, notify_dms
+from .notifications_api import push_notification, notify_mods, notify_dms as notify_mds
 
+from app.main import templates
 
-templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(prefix="/cs", tags=["cs"])
+
 
 # ---------------------------
 # Helpers
