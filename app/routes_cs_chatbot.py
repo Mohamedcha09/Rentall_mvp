@@ -34,6 +34,9 @@ def _ensure_cs_session(db: Session, request: Request):
     return None
 
 
+# ================================
+# CS CHATBOT INBOX
+# ================================
 @router.get("/inbox")
 def cs_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
@@ -46,7 +49,7 @@ def cs_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
 
     base_q = db.query(SupportTicket).filter(
         SupportTicket.channel == "chatbot",
-        SupportTicket.queue == "cs_chatbot"   # ← FIXED
+        SupportTicket.queue == "cs_chatbot"
     )
 
     new_q = (
@@ -90,6 +93,9 @@ def cs_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
     )
 
 
+# ================================
+# VIEW TICKET
+# ================================
 @router.get("/ticket/{tid}")
 def cs_chatbot_ticket_view(tid, request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
@@ -105,7 +111,7 @@ def cs_chatbot_ticket_view(tid, request: Request, db: Session = Depends(get_db))
         .filter(
             SupportTicket.id == tid,
             SupportTicket.channel == "chatbot",
-            SupportTicket.queue == "cs_chatbot",  # ← FIXED
+            SupportTicket.queue == "cs_chatbot",
         )
         .first()
     )
@@ -126,3 +132,67 @@ def cs_chatbot_ticket_view(tid, request: Request, db: Session = Depends(get_db))
             "display_currency": display_currency,
         },
     )
+
+
+# ================================
+# CS REPLY (WITH FIRST CONTACT MESSAGE)
+# ================================
+@router.post("/ticket/{tid}/reply")
+def cs_chatbot_reply(
+    tid: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    body: str = Form("")
+):
+    u = _require_login(request)
+    if not u:
+        return RedirectResponse("/login", 303)
+
+    u_cs = _ensure_cs_session(db, request)
+    if not u_cs:
+        return RedirectResponse("/support/my", 303)
+
+    t = db.get(SupportTicket, tid)
+    if not t or t.queue != "cs_chatbot":
+        return RedirectResponse("/cs/chatbot/inbox", 303)
+
+    now = datetime.utcnow()
+
+    # -----------------------------------
+    # 1) Send FIRST CONTACT message
+    # -----------------------------------
+    if not t.assigned_to_id:
+        first_contact = SupportMessage(
+            ticket_id=t.id,
+            sender_id=u_cs["id"],
+            sender_role="system",
+            body=f"You are now chatting with one of our agents: {u_cs['first_name']} {u_cs['last_name']}.",
+            created_at=now,
+            channel="chatbot"
+        )
+        db.add(first_contact)
+        t.assigned_to_id = u_cs["id"]
+
+    # -----------------------------------
+    # 2) Agent reply
+    # -----------------------------------
+    msg = SupportMessage(
+        ticket_id=t.id,
+        sender_id=u_cs["id"],
+        sender_role="agent",
+        body=(body or "").strip() or "(no text)",
+        created_at=now,
+        channel="chatbot"
+    )
+    db.add(msg)
+
+    t.last_msg_at = now
+    t.updated_at = now
+    t.last_from = "agent"
+    t.status = "open"
+    t.unread_for_user = True
+    t.unread_for_agent = False
+
+    db.commit()
+
+    return RedirectResponse(f"/cs/chatbot/ticket/{t.id}", 303)

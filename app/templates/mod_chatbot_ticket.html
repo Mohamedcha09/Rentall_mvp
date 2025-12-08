@@ -25,9 +25,23 @@
     <button class="btn btn-primary mt-2">Send Reply</button>
   </form>
 
+  <hr>
+
+  <!-- ⭐ TRANSFER FORM (NEW) -->
+  <form action="/chatbot/ticket/{{ ticket.id }}/transfer" method="post" class="mt-3">
+    <label class="fw-bold">Transfer ticket to:</label>
+    <select name="new_queue" class="form-control">
+      <option value="md_chatbot">MD</option>
+    </select>
+    <button class="btn btn-warning mt-2">Transfer</button>
+  </form>
+
+  <hr>
+
   <form action="/mod/chatbot/tickets/{{ ticket.id }}/resolve" method="post" class="mt-3">
     <button class="btn btn-success">Resolve</button>
   </form>
+
 </div>
 
 {% endblock %}

@@ -5,9 +5,10 @@
   <h2 class="mt-4 mb-3">👑 MD — Chatbot Inbox</h2>
 
   <h3>🆕 New / Unassigned</h3>
-  {% if data.new %}
+  {% set items = data.new | selectattr('queue', 'equalto', 'md_chatbot') | list %}
+  {% if items %}
     <div class="list-group mt-2">
-      {% for t in data.new %}
+      {% for t in items %}
         <a href="/md/chatbot/ticket/{{ t.id }}" class="list-group-item list-group-item-action">
           <strong>#{{ t.id }} — {{ t.subject }}</strong>
           <div class="text-muted small">{{ t.last_msg_at }}</div>
@@ -15,13 +16,14 @@
       {% endfor %}
     </div>
   {% else %}
-    <p class="text-muted">No new tickets.</p>
+    <p class="text-muted">None.</p>
   {% endif %}
 
   <h3 class="mt-4">📂 In Review</h3>
-  {% if data.in_review %}
+  {% set items = data.in_review | selectattr('queue', 'equalto', 'md_chatbot') | list %}
+  {% if items %}
     <div class="list-group mt-2">
-      {% for t in data.in_review %}
+      {% for t in items %}
         <a href="/md/chatbot/ticket/{{ t.id }}" class="list-group-item list-group-item-action">
           <strong>#{{ t.id }} — {{ t.subject }}</strong>
           <div class="text-muted small">Assigned</div>
@@ -33,16 +35,17 @@
   {% endif %}
 
   <h3 class="mt-4">✅ Resolved</h3>
-  {% if data.resolved %}
+  {% set items = data.resolved | selectattr('queue', 'equalto', 'md_chatbot') | list %}
+  {% if items %}
     <div class="list-group mt-2">
-      {% for t in data.resolved %}
+      {% for t in items %}
         <a href="/md/chatbot/ticket/{{ t.id }}" class="list-group-item list-group-item-action">
           <strong>#{{ t.id }} — {{ t.subject }}</strong>
         </a>
       {% endfor %}
     </div>
   {% else %}
-    <p class="text-muted">No resolved tickets.</p>
+    <p class="text-muted">None.</p>
   {% endif %}
 </div>
 

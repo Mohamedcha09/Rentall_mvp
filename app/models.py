@@ -628,7 +628,15 @@ class SupportTicket(Base):
     channel = col_or_literal("support_tickets", "channel", String(20), default="legacy")
 
     # 👇 Most important line: make queue a real column (with fallback if DB is old)
-    queue = col_or_literal("support_tickets", "queue", String(10), default="cs", nullable=False, index=True)
+    queue = col_or_literal(
+    "support_tickets",
+    "queue",
+    String(20),                         # ← مساحة أكبر
+    default="cs_chatbot",               # ← افتراضي جديد للشاتبوت
+    nullable=False,
+    index=True
+)
+
     # new | open | resolved
     status        = Column(String(20), nullable=False, default="new", index=True)
     assigned_to_id = Column(Integer, ForeignKey("users.id"), nullable=True)

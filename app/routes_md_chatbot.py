@@ -38,7 +38,7 @@ def _ensure_md_session(db: Session, request: Request):
 
 
 # ================================
-# MD CHATBOT INBOX
+# MD INBOX
 # ================================
 @router.get("/inbox")
 def md_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
@@ -52,7 +52,7 @@ def md_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
 
     base_q = db.query(SupportTicket).filter(
         SupportTicket.channel == "chatbot",
-        SupportTicket.queue == "md_chatbot"   # ← FIXED!!
+        SupportTicket.queue == "md_chatbot"
     )
 
     new_q = (
@@ -96,7 +96,7 @@ def md_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
 
 
 # ================================
-# VIEW CHATBOT TICKET
+# VIEW TICKET
 # ================================
 @router.get("/ticket/{tid}")
 def md_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
@@ -111,13 +111,12 @@ def md_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get
     t = db.query(SupportTicket).filter(
         SupportTicket.id == tid,
         SupportTicket.channel == "chatbot",
-        SupportTicket.queue == "md_chatbot"   # ← FIXED
+        SupportTicket.queue == "md_chatbot"
     ).first()
 
     if not t:
         return RedirectResponse("/md/chatbot/inbox", 303)
 
-    # mark as read
     t.unread_for_agent = False
     db.commit()
 
@@ -135,10 +134,15 @@ def md_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get
 
 
 # ================================
-# MD REPLY
+# MD REPLY (FIRST CONTACT + REPLY)
 # ================================
 @router.post("/ticket/{tid}/reply")
-def md_chatbot_reply(tid: int, request: Request, db: Session = Depends(get_db), body: str = Form("")):
+def md_chatbot_reply(
+    tid: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    body: str = Form("")
+):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", 303)
@@ -153,6 +157,24 @@ def md_chatbot_reply(tid: int, request: Request, db: Session = Depends(get_db), 
 
     now = datetime.utcnow()
 
+    # -----------------------------------
+    # 1) Send FIRST CONTACT message if not assigned
+    # -----------------------------------
+    if not t.assigned_to_id:
+        first_contact = SupportMessage(
+            ticket_id=t.id,
+            sender_id=u_md["id"],
+            sender_role="system",
+            body=f"You are now chatting with one of our senior agents: {u_md['first_name']} {u_md['last_name']}.",
+            created_at=now,
+            channel="chatbot"
+        )
+        db.add(first_contact)
+        t.assigned_to_id = u_md["id"]
+
+    # -----------------------------------
+    # 2) MD reply
+    # -----------------------------------
     msg = SupportMessage(
         ticket_id=t.id,
         sender_id=u_md["id"],
@@ -166,13 +188,12 @@ def md_chatbot_reply(tid: int, request: Request, db: Session = Depends(get_db), 
     t.last_msg_at = now
     t.updated_at = now
     t.last_from = "agent"
-    if not t.assigned_to_id:
-        t.assigned_to_id = u_md["id"]
     t.status = "open"
     t.unread_for_user = True
     t.unread_for_agent = False
 
     db.commit()
+
     return RedirectResponse(f"/md/chatbot/ticket/{t.id}", 303)
 
 
@@ -210,6 +231,7 @@ def md_chatbot_resolve(ticket_id: int, request: Request, db: Session = Depends(g
         channel="chatbot"
     )
     db.add(msg)
+
     t.unread_for_user = True
 
     db.commit()

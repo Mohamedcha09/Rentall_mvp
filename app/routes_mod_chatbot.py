@@ -51,7 +51,7 @@ def mod_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
 
     base_q = db.query(SupportTicket).filter(
         SupportTicket.channel == "chatbot",
-        SupportTicket.queue == "mod_chatbot"   # ← FIXED
+        SupportTicket.queue == "mod_chatbot"
     )
 
     new_q = (
@@ -133,10 +133,15 @@ def mod_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(ge
 
 
 # ================================
-# REPLY
+# MOD REPLY (FIRST CONTACT + REPLY)
 # ================================
 @router.post("/ticket/{tid}/reply")
-def mod_chatbot_reply(tid: int, request: Request, db: Session = Depends(get_db), body: str = Form("")):
+def mod_chatbot_reply(
+    tid: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    body: str = Form("")
+):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", 303)
@@ -151,6 +156,24 @@ def mod_chatbot_reply(tid: int, request: Request, db: Session = Depends(get_db),
 
     now = datetime.utcnow()
 
+    # -----------------------------------
+    # 1) Send FIRST CONTACT message if not assigned
+    # -----------------------------------
+    if not t.assigned_to_id:
+        first_contact = SupportMessage(
+            ticket_id=t.id,
+            sender_id=u_mod["id"],
+            sender_role="system",
+            body=f"You are now chatting with one of our moderation specialists: {u_mod['first_name']} {u_mod['last_name']}.",
+            created_at=now,
+            channel="chatbot"
+        )
+        db.add(first_contact)
+        t.assigned_to_id = u_mod["id"]
+
+    # -----------------------------------
+    # 2) MOD reply
+    # -----------------------------------
     msg = SupportMessage(
         ticket_id=t.id,
         sender_id=u_mod["id"],
@@ -164,8 +187,6 @@ def mod_chatbot_reply(tid: int, request: Request, db: Session = Depends(get_db),
     t.last_msg_at = now
     t.updated_at = now
     t.last_from = "agent"
-    if not t.assigned_to_id:
-        t.assigned_to_id = u_mod["id"]
     t.status = "open"
     t.unread_for_user = True
     t.unread_for_agent = False

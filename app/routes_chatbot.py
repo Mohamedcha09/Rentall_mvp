@@ -66,11 +66,10 @@ def chatbot_open_ticket(
     if not user:
         raise HTTPException(status_code=401, detail="Login required")
 
-    # NEW → ALWAYS goes to CS_CHATBOT first
     t = SupportTicket(
         user_id=user.id,
         subject="Chatbot Assistance Needed",
-        queue="cs_chatbot",      # ← CORRECT QUEUE
+        queue="cs_chatbot",
         status="new",
         last_from="user",
         unread_for_agent=True,
@@ -96,7 +95,6 @@ def chatbot_open_ticket(
     db.add(msg)
     db.commit()
 
-    # Notify CS agents
     agents = (
         db.query(User)
         .filter(User.is_support == True, User.status == "approved")
@@ -114,3 +112,85 @@ def chatbot_open_ticket(
         )
 
     return {"ok": True, "ticket_id": t.id}
+
+
+
+# ===========================================================
+#   TRANSFER SYSTEM — FULL LOGIC
+# ===========================================================
+@router.post("/chatbot/ticket/{ticket_id}/transfer")
+def chatbot_transfer_ticket(
+    ticket_id: int,
+    new_queue: str = Form(...),   # cs_chatbot / md_chatbot / mod_chatbot
+    db = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user)
+):
+    if not user or not user.is_support:
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    t = db.query(SupportTicket).filter_by(id=ticket_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    old_queue = t.queue
+    now = datetime.utcnow()
+
+    # ------------------------------------------------------------------
+    # 1) Write SYSTEM MESSAGE: TRANSFER NOTICE FOR THE USER
+    # ------------------------------------------------------------------
+    transfer_msg_text = ""
+
+    if new_queue == "cs_chatbot":
+        transfer_msg_text = "Your conversation has been transferred to our Customer Support team."
+    elif new_queue == "md_chatbot":
+        transfer_msg_text = "Your conversation has been transferred to our Management Desk (MD)."
+    elif new_queue == "mod_chatbot":
+        transfer_msg_text = "Your conversation has been transferred to our Moderation Team (MOD)."
+    else:
+        raise HTTPException(status_code=400, detail="Invalid queue name")
+
+    # This message is visible to the USER
+    user_notice = SupportMessage(
+        ticket_id=ticket_id,
+        sender_id=user.id,
+        sender_role="system",
+        body=transfer_msg_text,
+        channel="chatbot",
+        created_at=now
+    )
+    db.add(user_notice)
+
+    # ------------------------------------------------------------------
+    # 2) Update ticket state
+    # ------------------------------------------------------------------
+    t.queue = new_queue
+    t.last_from = "system"
+    t.unread_for_agent = True
+    t.unread_for_user = True
+    t.updated_at = now
+
+    # ------------------------------------------------------------------
+    # 3) Notify the new team's agents
+    # ------------------------------------------------------------------
+    target_filter = None
+
+    if new_queue == "cs_chatbot":
+        target_filter = User.is_support == True
+    elif new_queue == "md_chatbot":
+        target_filter = User.is_md == True
+    elif new_queue == "mod_chatbot":
+        target_filter = User.is_mod == True
+
+    agents = db.query(User).filter(target_filter).all()
+    for ag in agents:
+        push_notification(
+            db,
+            ag.id,
+            "🤖 Ticket transferred",
+            f"Ticket #{ticket_id} moved to your team.",
+            url=f"/{new_queue.replace('_chatbot','')}/chatbot/ticket/{ticket_id}",
+            kind="support"
+        )
+
+    db.commit()
+    return {"ok": True, "queue": new_queue}
