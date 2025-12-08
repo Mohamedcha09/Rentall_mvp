@@ -59,7 +59,7 @@ def chatbot_page(
 
 
 # =======================================================
-# NEW: When chatbot user presses "NO → Contact Support"
+# 🚨 When user presses "NO → Contact Support"
 # =======================================================
 @router.post("/chatbot/support")
 def chatbot_open_ticket(
@@ -75,7 +75,7 @@ def chatbot_open_ticket(
     if not user:
         raise HTTPException(status_code=401, detail="Login required")
 
-    # Create ticket
+    # Create chatbot ticket
     t = SupportTicket(
         user_id=user.id,
         subject="Chatbot Assistance Needed",
@@ -83,18 +83,25 @@ def chatbot_open_ticket(
         status="new",
         last_from="user",
         unread_for_agent=True,
-        unread_for_user=False
+        unread_for_user=False,
+        channel="chatbot"   # 👈 NEW + IMPORTANT
     )
     db.add(t)
     db.flush()
 
-    # Save chatbot conversation as the first message
-    body_text = f"Chatbot question:\n{question}\n\nChatbot answer given:\n{answer}\n\nUser clicked: NO (needs help)"
+    # Save chatbot message
+    body_text = (
+        f"Chatbot question:\n{question}\n\n"
+        f"Chatbot answer given:\n{answer}\n\n"
+        "User clicked: NO (needs help)"
+    )
+
     msg = SupportMessage(
         ticket_id=t.id,
         sender_id=user.id,
         sender_role="user",
-        body=body_text
+        body=body_text,
+        channel="chatbot"    # 👈 NEW + IMPORTANT
     )
     db.add(msg)
     db.commit()
@@ -105,6 +112,7 @@ def chatbot_open_ticket(
         .filter(User.is_support == True, User.status == "approved")
         .all()
     )
+
     for ag in agents:
         push_notification(
             db,

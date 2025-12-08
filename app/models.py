@@ -625,6 +625,7 @@ class SupportTicket(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
     subject  = Column(String(200), nullable=False)
+    channel = col_or_literal("support_tickets", "channel", String(20), default="legacy")
 
     # 👇 Most important line: make queue a real column (with fallback if DB is old)
     queue = col_or_literal("support_tickets", "queue", String(10), default="cs", nullable=False, index=True)
@@ -657,7 +658,7 @@ class SupportTicket(Base):
 
 class SupportMessage(Base):
     __tablename__ = "support_messages"
-
+    channel = col_or_literal("support_messages", "channel", String(20), default="legacy")
     id = Column(Integer, primary_key=True, index=True)
     ticket_id = Column(Integer, ForeignKey("support_tickets.id"), nullable=False)
     sender_id = Column(Integer, ForeignKey("users.id"), nullable=False)

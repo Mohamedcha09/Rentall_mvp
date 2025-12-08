@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page">
+  <h2 class="mt-4 mb-3">🤖 Chatbot — CS Inbox</h2>
+
+  <!-- New Tickets -->
+  <h3 class="mt-4">🆕 New / Unassigned</h3>
+  {% if data.new %}
+    <div class="list-group mt-2">
+      {% for t in data.new %}
+        <a href="/cs/chatbot/ticket/{{ t.id }}" class="list-group-item list-group-item-action">
+          <div class="d-flex justify-content-between">
+            <strong>#{{ t.id }} — {{ t.subject }}</strong>
+            <span>{{ t.last_msg_at or t.created_at }}</span>
+          </div>
+          <div class="text-muted small">
+            From: {{ t.user.first_name }} {{ t.user.last_name }}
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-muted">No new tickets.</p>
+  {% endif %}
+
+  <!-- In Review -->
+  <h3 class="mt-4">📂 In Review</h3>
+  {% if data.in_review %}
+    <div class="list-group mt-2">
+      {% for t in data.in_review %}
+        <a href="/cs/chatbot/ticket/{{ t.id }}" class="list-group-item list-group-item-action">
+          <div class="d-flex justify-content-between">
+            <strong>#{{ t.id }} — {{ t.subject }}</strong>
+            <span>{{ t.updated_at }}</span>
+          </div>
+          <div class="text-muted small">
+            Assigned to: {{ t.assigned_to.first_name if t.assigned_to else "Unassigned" }}
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-muted">No tickets in review.</p>
+  {% endif %}
+
+  <!-- Resolved -->
+  <h3 class="mt-4">✅ Resolved</h3>
+  {% if data.resolved %}
+    <div class="list-group mt-2">
+      {% for t in data.resolved %}
+        <a href="/cs/chatbot/ticket/{{ t.id }}" class="list-group-item list-group-item-action">
+          <div class="d-flex justify-content-between">
+            <strong>#{{ t.id }} — {{ t.subject }}</strong>
+            <span>{{ t.resolved_at }}</span>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-muted">No resolved tickets.</p>
+  {% endif %}
+</div>
+
+{% endblock %}
