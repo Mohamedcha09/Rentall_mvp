@@ -41,8 +41,8 @@ let CURRENT_SECTION = null;
 let LAST_QUESTION = null;
 let LAST_ANSWER = null;
 
-let ACTIVE_TICKET_ID = null;       // 🔥 NEW
-let AGENT_WATCH_INTERVAL = null;   // 🔥 NEW
+let ACTIVE_TICKET_ID = null;       
+let AGENT_WATCH_INTERVAL = null;   
 
 // =====================================================
 // FEEDBACK BUTTONS
@@ -85,7 +85,7 @@ function handleYes() {
 }
 
 // =============================================================
-// 🚨 NEW: REAL CONTACT SUPPORT + LIVE AGENT DETECTION
+// 🚨 CONTACT SUPPORT + START LIVE AGENT WATCHER
 // =============================================================
 async function handleNo() {
   addBotMessage("One moment… contacting support 🕓");
@@ -116,7 +116,7 @@ async function handleNo() {
 
   addBotMessage("A support agent will assist you shortly 🟣");
 
-  // 🔥 Start watching if agent joins
+  // Start polling
   startAgentWatcher(ACTIVE_TICKET_ID);
 }
 
@@ -129,14 +129,13 @@ async function checkAgentStatus(ticketId) {
     const data = await res.json();
 
     if (data.assigned && data.agent_name) {
-      // Stop watching
       clearInterval(AGENT_WATCH_INTERVAL);
       AGENT_WATCH_INTERVAL = null;
 
       const banner = document.getElementById("sv-live-agent-banner");
       banner.style.display = "block";
       banner.innerHTML = `
-          You are now chatting with one of our agents: 
+          You are now chatting with one of our agents:
           <span style="color:#6b46c1; font-weight:700;">${data.agent_name}</span>
       `;
 
