@@ -24,7 +24,7 @@ TREE_PATH = os.path.join(BASE_DIR, "chatbot", "tree.json")
 
 
 # ===========================================================
-# LOAD TREE
+# LOAD TREE.JSON
 # ===========================================================
 @lru_cache(maxsize=1)
 def load_tree():
@@ -48,7 +48,7 @@ def get_chatbot_tree():
 @router.get("/chatbot")
 def chatbot_page(
     request: Request,
-    user: Optional[User] = Depends(get_current_user)
+    user: Optional[User] = Depends(get_current_user),
 ):
     return templates.TemplateResponse("chatbot.html", {
         "request": request,
@@ -81,7 +81,7 @@ def chatbot_open_ticket(
         last_from="user",
         unread_for_agent=True,
         unread_for_user=False,
-        channel="chatbot"
+        channel="chatbot",
     )
     db.add(t)
     db.flush()
@@ -97,7 +97,7 @@ def chatbot_open_ticket(
     db.add(msg)
     db.commit()
 
-    # Notify agents
+    # Notify CS agents
     agents = db.query(User).filter(User.is_support == True).all()
     for ag in agents:
         push_notification(
@@ -120,7 +120,7 @@ def chatbot_transfer_ticket(
     ticket_id: int,
     new_queue: str = Form(...),  # cs_chatbot / md_chatbot / mod_chatbot
     db = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user)
+    user: Optional[User] = Depends(get_current_user),
 ):
     if not user or not user.is_support:
         raise HTTPException(status_code=403, detail="Not allowed")
@@ -131,7 +131,7 @@ def chatbot_transfer_ticket(
 
     now = datetime.utcnow()
 
-    # Message text
+    # Create system message text
     if new_queue == "cs_chatbot":
         transfer_text = "Your conversation has been transferred to our Customer Support team."
     elif new_queue == "md_chatbot":
@@ -139,9 +139,9 @@ def chatbot_transfer_ticket(
     elif new_queue == "mod_chatbot":
         transfer_text = "Your conversation has been transferred to our Moderation Team."
     else:
-        raise HTTPException(status_code=400, detail="Invalid queue")
+        raise HTTPException(status_code=400, detail="Invalid queue name")
 
-    # System message
+    # Add system message
     db.add(SupportMessage(
         ticket_id=ticket_id,
         sender_id=user.id,
@@ -151,24 +151,24 @@ def chatbot_transfer_ticket(
         created_at=now
     ))
 
-    # Update ticket
+    # Update ticket metadata
     t.queue = new_queue
     t.last_from = "system"
-    t.updated_at = now
     t.unread_for_user = True
     t.unread_for_agent = True
+    t.updated_at = now
 
-    # Find agents
+    # Determine which team receives ticket
     if new_queue == "cs_chatbot":
         target_filter = User.is_support == True
     elif new_queue == "md_chatbot":
-        target_filter = User.is_mod == True   # لا يوجد is_md فاستعمل is_mod
+        target_filter = User.is_mod == True  # No is_md field → using is_mod
     elif new_queue == "mod_chatbot":
         target_filter = User.is_mod == True
 
     agents = db.query(User).filter(target_filter).all()
 
-    # Notify new agents
+    # Notify team members
     for ag in agents:
         push_notification(
             db,
@@ -184,25 +184,25 @@ def chatbot_transfer_ticket(
 
 
 # ===========================================================
-# ✅ NEW — API FOR LIVE CHECK (Agent Joined?)
+# 🔥 LIVE AGENT DETECTION API (Used by chatbot.js)
 # ===========================================================
-@router.get("/chatbot/ticket_status/{ticket_id}")
-def chatbot_ticket_status(
+@router.get("/api/chatbot/agent_status/{ticket_id}")
+def chatbot_agent_status(
     ticket_id: int,
     db = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
     """
-    يُستخدم من الـ JS لعمل LIVE UPDATE:
-    - هل تم تعيين Agent على التذكرة؟
-    - من هو الـ Agent؟
+    Used by JS polling:
+    - Did an agent join the ticket?
+    - What is the agent's name?
     """
 
     t = db.query(SupportTicket).filter_by(id=ticket_id).first()
     if not t:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    # آخر رسالة
+    # Get last message of ticket
     last_msg = (
         db.query(SupportMessage)
         .filter_by(ticket_id=ticket_id)
@@ -212,7 +212,7 @@ def chatbot_ticket_status(
 
     agent_name = None
 
-    # إذا آخر رسالة من agent فهذا يعني أنه joined
+    # If last message belongs to agent → agent joined
     if last_msg and last_msg.sender_role in ("support", "agent"):
         u = db.query(User).filter_by(id=last_msg.sender_id).first()
         if u:
@@ -220,6 +220,6 @@ def chatbot_ticket_status(
 
     return {
         "ticket_id": ticket_id,
-        "agent_joined": bool(agent_name),
+        "assigned": bool(agent_name),
         "agent_name": agent_name
     }
