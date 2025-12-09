@@ -1,1 +1,120 @@
-      
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+/* ----------------------------------------------------
+   FORCE HIDE ALL TOP + BOTTOM NAV ONLY IN /chatbot
+---------------------------------------------------- */
+body[data-path="/chatbot"] header.topbar,
+body[data-path="/chatbot"] .m-top-tabs,
+body[data-path="/chatbot"] .searchbar,
+body[data-path="/chatbot"] .stripe-callout,
+body[data-path="/chatbot"] .mobile-tabbar,
+body[data-path="/chatbot"] #fabAdd {
+    display: none !important;
+}
+
+body[data-path="/chatbot"] .page {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+body[data-path="/chatbot"].has-tabbar {
+    padding-bottom: 0 !important;
+}
+
+/* Chatbot container */
+.sv-chatbot-page {
+    padding: 18px;
+}
+
+.sv-back {
+    font-size: 22px;
+    text-decoration: none;
+    color: #111;
+}
+
+.sv-chat-window {
+    min-height: 120px;
+    margin-top: 12px;
+}
+
+.sv-suggestions-wrap {
+    margin-top: 24px;
+}
+
+.sv-suggestions-title {
+    font-weight: 700;
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+/* Header Logo */
+.sv-header-logo-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.sv-header-logo-wrap img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  filter: none;
+}
+
+/* 🔥 NEW — Agent joined banner */
+#sv-live-agent-banner {
+    display: none;
+    background: #f3f4f6;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-top: 12px;
+    font-size: 15px;
+    color: #111;
+    font-weight: 600;
+}
+
+</style>
+
+<link rel="stylesheet" href="/static/css/chatbot.css">
+
+<div class="sv-chatbot-page">
+
+  <!-- HEADER -->
+  <div class="sv-header">
+      <a href="/messages" class="sv-back">←</a>
+
+      <div class="sv-header-center">
+          <div class="sv-header-logo-wrap">
+              <img src="/static/sevor-logo.png" alt="Sevor">
+          </div>
+          <div class="sv-title">Soutien Sevor</div>
+      </div>
+
+      <div class="sv-header-right"></div>
+  </div>
+
+  <!-- 🔥 Agent joined message appears here -->
+  <div id="sv-live-agent-banner"></div>
+
+  <!-- CHAT WINDOW -->
+  <div id="sv-chat-window" class="sv-chat-window"></div>
+
+  <!-- SUGGESTED QUESTIONS -->
+  <div class="sv-suggestions-wrap" id="sv-suggestions-section">
+    <div class="sv-suggestions-title">Questions fréquentes</div>
+    <div id="sv-suggestions" class="sv-suggestions"></div>
+  </div>
+
+</div>
+
+<script src="/static/js/chatbot.js"></script>
+
+{% endblock %}
