@@ -41,8 +41,8 @@ let CURRENT_SECTION = null;
 let LAST_QUESTION = null;
 let LAST_ANSWER = null;
 
-let ACTIVE_TICKET_ID = null;       // ID التذكرة التي فتحها الشات بوت
-let AGENT_WATCH_INTERVAL = null;   // setInterval handler
+let ACTIVE_TICKET_ID = null;
+let AGENT_WATCH_INTERVAL = null;
 
 // =====================================================
 // FEEDBACK BUTTONS
@@ -85,7 +85,7 @@ function handleYes() {
 }
 
 // =============================================================
-// 🚨 CONTACT SUPPORT + START LIVE AGENT WATCHER
+// CONTACT SUPPORT + START LIVE AGENT WATCHER
 // =============================================================
 async function handleNo() {
   addBotMessage("One moment… contacting support 🕓");
@@ -112,27 +112,24 @@ async function handleNo() {
     return;
   }
 
-  // حفظ رقم التذكرة
   ACTIVE_TICKET_ID = data.ticket_id;
 
   addBotMessage("A support agent will assist you shortly 🟣");
 
-  // 🔥 إبدأ المراقبة: هل الـ Agent دخل و رد؟
+  // 🔥 Start LIVE watcher
   startAgentWatcher(ACTIVE_TICKET_ID);
 }
 
 // =============================================================
-// 🔥 CHECK IF AGENT JOINED (poll every 2 seconds)
+// CHECK IF AGENT JOINED (poll every 2 seconds)
 // =============================================================
 async function checkAgentStatus(ticketId) {
   try {
-    // ⚠️ مهم: نفس الـ URL الموجود في routes_chatbot.py
-    const res = await fetch(`/chatbot/ticket_status/${ticketId}`);
+    // ✔ FIXED: correct backend route
+    const res = await fetch(`/api/chatbot/agent_status/${ticketId}`);
     const data = await res.json();
 
-    // backend يرجّع: { agent_joined: bool, agent_name: "..." }
-    if (data.agent_joined && data.agent_name) {
-      // وقف الـ polling
+    if (data.assigned && data.agent_name) {
       clearInterval(AGENT_WATCH_INTERVAL);
       AGENT_WATCH_INTERVAL = null;
 
@@ -156,9 +153,10 @@ async function checkAgentStatus(ticketId) {
 
 function startAgentWatcher(ticketId) {
   if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
+
   AGENT_WATCH_INTERVAL = setInterval(() => {
     checkAgentStatus(ticketId);
-  }, 2000); // كل ثانيتين
+  }, 2000);
 }
 
 // =====================================================
