@@ -84,6 +84,8 @@ from .admin_items import router as admin_items_router
 from . import routes_static
 from . import routes_chatbot
 from .routes_cs_chatbot import router as cs_chatbot_router
+from .routes_md_chatbot import router as md_chatbot_router
+from .routes_mod_chatbot import router as mod_chatbot_router
 
 
 
@@ -812,6 +814,9 @@ app.include_router(admin_items_router)
 app.include_router(routes_static.router)
 app.include_router(routes_chatbot.router)
 app.include_router(cs_chatbot_router)
+app.include_router(md_chatbot_router)
+app.include_router(mod_chatbot_router)
+
 
 # -----------------------------------------------------------------------------
 # Legacy path → redirect to the new reports page
