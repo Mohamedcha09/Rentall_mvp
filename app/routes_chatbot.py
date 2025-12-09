@@ -162,7 +162,7 @@ def chatbot_transfer_ticket(
     if new_queue == "cs_chatbot":
         target_filter = User.is_support == True
     elif new_queue == "md_chatbot":
-        target_filter = User.is_mod == True   # ← لا يوجد is_md لذلك نستعمل is_mod
+        target_filter = User.is_mod == True   # لا يوجد is_md فاستعمل is_mod
     elif new_queue == "mod_chatbot":
         target_filter = User.is_mod == True
 
@@ -181,3 +181,45 @@ def chatbot_transfer_ticket(
 
     db.commit()
     return {"ok": True, "queue": new_queue}
+
+
+# ===========================================================
+# ✅ NEW — API FOR LIVE CHECK (Agent Joined?)
+# ===========================================================
+@router.get("/chatbot/ticket_status/{ticket_id}")
+def chatbot_ticket_status(
+    ticket_id: int,
+    db = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    """
+    يُستخدم من الـ JS لعمل LIVE UPDATE:
+    - هل تم تعيين Agent على التذكرة؟
+    - من هو الـ Agent؟
+    """
+
+    t = db.query(SupportTicket).filter_by(id=ticket_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    # آخر رسالة
+    last_msg = (
+        db.query(SupportMessage)
+        .filter_by(ticket_id=ticket_id)
+        .order_by(SupportMessage.id.desc())
+        .first()
+    )
+
+    agent_name = None
+
+    # إذا آخر رسالة من agent فهذا يعني أنه joined
+    if last_msg and last_msg.sender_role in ("support", "agent"):
+        u = db.query(User).filter_by(id=last_msg.sender_id).first()
+        if u:
+            agent_name = u.full_name or u.first_name or "Support agent"
+
+    return {
+        "ticket_id": ticket_id,
+        "agent_joined": bool(agent_name),
+        "agent_name": agent_name
+    }

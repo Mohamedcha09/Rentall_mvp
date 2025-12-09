@@ -14,29 +14,25 @@ body[data-path="/chatbot"] #fabAdd {
     display: none !important;
 }
 
-/* Remove extra padding from base.html */
 body[data-path="/chatbot"] .page {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
 }
 
-/* Optional: remove has-tabbar padding class effect */
 body[data-path="/chatbot"].has-tabbar {
     padding-bottom: 0 !important;
 }
 
-/* Chatbot container styling */
+/* Chatbot container */
 .sv-chatbot-page {
     padding: 18px;
 }
-
 
 .sv-back {
     font-size: 22px;
     text-decoration: none;
     color: #111;
 }
-
 
 .sv-chat-window {
     min-height: 120px;
@@ -53,51 +49,60 @@ body[data-path="/chatbot"].has-tabbar {
     font-size: 18px;
 }
 
-/* Logo circle like Airbnb BUT with real Sevor logo */
-
+/* Header Logo */
 .sv-header-logo-wrap {
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: transparent;   /* ما نحتاج خلفية سوداء هنا */
+  background: transparent;
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow: hidden;          /* يقطع زوايا الصورة ويخليها دائرية */
+  overflow: hidden;
 }
 
 .sv-header-logo-wrap img {
   width: 100%;
   height: 100%;
-  border-radius: 50%;        /* الصورة نفسها تصبح دائرة */
+  border-radius: 50%;
   object-fit: cover;
-  filter: none;              /* نلغي invert حتى تبقى ألوان اللوغو الأصلية */
+  filter: none;
+}
+
+/* 🔥 NEW — Agent joined banner */
+#sv-live-agent-banner {
+    display: none;
+    background: #f3f4f6;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-top: 12px;
+    font-size: 15px;
+    color: #111;
+    font-weight: 600;
 }
 
 </style>
+
 <link rel="stylesheet" href="/static/css/chatbot.css">
 
 <div class="sv-chatbot-page">
 
   <!-- HEADER -->
-  <!-- HEADER — Airbnb EXACT STYLE -->
-<div class="sv-header">
+  <div class="sv-header">
+      <a href="/messages" class="sv-back">←</a>
 
-    <!-- Left arrow -->
-    <a href="/messages" class="sv-back">←</a>
+      <div class="sv-header-center">
+          <div class="sv-header-logo-wrap">
+              <img src="/static/sevor-logo.png" alt="Sevor">
+          </div>
+          <div class="sv-title">Soutien Sevor</div>
+      </div>
 
-    <!-- Center (logo + title stacked vertically) -->
-    <div class="sv-header-center">
-        <div class="sv-header-logo-wrap">
-            <img src="/static/sevor-logo.png" alt="Sevor">
-        </div>
-        <div class="sv-title">Soutien Sevor</div>
-    </div>
+      <div class="sv-header-right"></div>
+  </div>
 
-    <!-- Right empty space -->
-    <div class="sv-header-right"></div>
-</div>
-
+  <!-- 🔥 NEW placeholder — agent joined message appears here -->
+  <div id="sv-live-agent-banner"></div>
 
   <!-- CHAT WINDOW -->
   <div id="sv-chat-window" class="sv-chat-window"></div>

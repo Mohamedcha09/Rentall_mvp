@@ -1,14 +1,14 @@
-// ===========================
+// =====================================================
 // LOAD TREE.JSON
-// ===========================
+// =====================================================
 async function loadTree() {
   const res = await fetch("/chatbot/tree");
   return await res.json();
 }
 
-// ===========================
+// =====================================================
 // UI HELPERS
-// ===========================
+// =====================================================
 function addBotMessage(html) {
   const chat = document.getElementById("sv-chat-window");
   const box = document.createElement("div");
@@ -32,18 +32,21 @@ function clearSuggestions() {
   if (s) s.innerHTML = "";
 }
 
-// ===========================
+// =====================================================
 // GLOBAL DATA
-// ===========================
+// =====================================================
 let SECTIONS = [];
 let CURRENT_SECTION = null;
 
 let LAST_QUESTION = null;
 let LAST_ANSWER = null;
 
-// ===========================
+let ACTIVE_TICKET_ID = null;       // 🔥 NEW
+let AGENT_WATCH_INTERVAL = null;   // 🔥 NEW
+
+// =====================================================
 // FEEDBACK BUTTONS
-// ===========================
+// =====================================================
 function showFeedbackButtons() {
   const chat = document.getElementById("sv-chat-window");
 
@@ -81,13 +84,12 @@ function handleYes() {
   chat.appendChild(box);
 }
 
-// ================================
-// 🚨 NEW: REAL CONTACT SUPPORT FLOW
-// ================================
+// =============================================================
+// 🚨 NEW: REAL CONTACT SUPPORT + LIVE AGENT DETECTION
+// =============================================================
 async function handleNo() {
   addBotMessage("One moment… contacting support 🕓");
 
-  // إرسال بيانات السؤال والجواب إلى API لإنشاء Ticket
   const formData = new FormData();
   formData.append("question", LAST_QUESTION || "(unknown)");
   formData.append("answer", LAST_ANSWER || "(unknown)");
@@ -105,19 +107,58 @@ async function handleNo() {
     return;
   }
 
-  if (data.ok) {
-    addBotMessage("A support agent will assist you shortly 🟣");
-
-    // افتح صفحة التيكيت الجديدة
-    window.location.href = `/support/ticket/${data.ticket_id}`;
-  } else {
+  if (!data.ok) {
     addBotMessage("⚠️ Failed to create support ticket.");
+    return;
+  }
+
+  ACTIVE_TICKET_ID = data.ticket_id;
+
+  addBotMessage("A support agent will assist you shortly 🟣");
+
+  // 🔥 Start watching if agent joins
+  startAgentWatcher(ACTIVE_TICKET_ID);
+}
+
+// =============================================================
+// 🔥 CHECK IF AGENT JOINED (poll every 2 seconds)
+// =============================================================
+async function checkAgentStatus(ticketId) {
+  try {
+    const res = await fetch(`/api/chatbot/agent_status/${ticketId}`);
+    const data = await res.json();
+
+    if (data.assigned && data.agent_name) {
+      // Stop watching
+      clearInterval(AGENT_WATCH_INTERVAL);
+      AGENT_WATCH_INTERVAL = null;
+
+      const banner = document.getElementById("sv-live-agent-banner");
+      banner.style.display = "block";
+      banner.innerHTML = `
+          You are now chatting with one of our agents: 
+          <span style="color:#6b46c1; font-weight:700;">${data.agent_name}</span>
+      `;
+
+      addBotMessage(
+        `You're now connected with agent <b>${data.agent_name}</b>. How can I help you?`
+      );
+    }
+  } catch (err) {
+    console.log("poll error:", err);
   }
 }
 
-// ===========================
+function startAgentWatcher(ticketId) {
+  if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
+  AGENT_WATCH_INTERVAL = setInterval(() => {
+    checkAgentStatus(ticketId);
+  }, 2000);
+}
+
+// =====================================================
 // SHOW MAIN CATEGORIES
-// ===========================
+// =====================================================
 function showSections() {
   clearSuggestions();
 
@@ -139,9 +180,9 @@ function showSections() {
   });
 }
 
-// ===========================
+// =====================================================
 // SHOW QUESTIONS
-// ===========================
+// =====================================================
 function showQuestionsInSection(section) {
   clearSuggestions();
 
@@ -181,9 +222,9 @@ function showQuestionsInSection(section) {
   }
 }
 
-// ===========================
+// =====================================================
 // SELECT QUESTION
-// ===========================
+// =====================================================
 function handleQuestionClick(q) {
   addUserMessage(q.label);
   LAST_QUESTION = q.label;
@@ -217,8 +258,8 @@ function handleQuestionClick(q) {
 
       btn.onclick = () => {
         addUserMessage(label);
-        addBotMessage(data.answer || "...");
-        LAST_ANSWER = data.answer || "...";
+        addBotMessage(data.answer || "…");
+        LAST_ANSWER = data.answer || "…";
         showFeedbackButtons();
       };
 
@@ -231,9 +272,9 @@ function handleQuestionClick(q) {
   }
 }
 
-// ===========================
+// =====================================================
 // INITIAL LOAD
-// ===========================
+// =====================================================
 document.addEventListener("DOMContentLoaded", async () => {
   const data = await loadTree();
   SECTIONS = data.sections || [];
