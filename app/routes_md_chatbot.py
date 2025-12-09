@@ -20,21 +20,36 @@ def _require_login(request: Request):
 
 
 def _ensure_md_session(db: Session, request: Request):
-    sess = request.session.get("user") or {}
-    uid = sess.get("id")
-    if not uid:
+    sess = request.session.get("user")
+    if not sess:
         return None
 
-    if bool(sess.get("is_md", False)):
+    # لو السيشن سبق وان وُسم كـ MD، استعمله مباشرة
+    if sess.get("is_md", False):
         return sess
 
-    u_db = db.get(User, uid)
-    if u_db and bool(getattr(u_db, "is_md", False)):
-        sess["is_md"] = True
-        request.session["user"] = sess
-        return sess
+    # حمل المستخدم من الداتابيس
+    u_db = db.query(User).filter(User.id == sess["id"]).first()
+    if not u_db:
+        return None
 
-    return None
+    # نعتبر الـ MD هو:
+    # - مدير ديبو / مدفوعات
+    #   أو
+    # - أدمن عام في النظام
+    is_md_role = bool(
+        getattr(u_db, "is_deposit_manager", False)
+        or getattr(u_db, "badge_admin", False)
+    )
+
+    if not is_md_role:
+        return None
+
+    # خزّن الفلاغ في السيشن حتى لا نعيد التحقق كل مرة
+    sess["is_md"] = True
+    request.session["user"] = sess
+    return sess
+
 
 
 # ================================

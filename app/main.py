@@ -808,7 +808,7 @@ app.include_router(cs_routes.router)
 app.include_router(mod_routes.router)
 app.include_router(reviews_router)
 app.include_router(md_router)
-app.include_router(geo_router)  # ⬅️ New
+app.include_router(geo_router)  
 app.include_router(account_router)
 app.include_router(admin_items_router)
 app.include_router(routes_static.router)
