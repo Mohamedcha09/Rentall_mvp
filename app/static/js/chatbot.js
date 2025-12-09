@@ -45,6 +45,17 @@ let ACTIVE_TICKET_ID = null;
 let AGENT_WATCH_INTERVAL = null;
 
 // =====================================================
+// RESTORE ACTIVE TICKET WHEN USER REOPENS /chatbot
+// =====================================================
+document.addEventListener("DOMContentLoaded", () => {
+  const saved = localStorage.getItem("chatbot_active_ticket");
+  if (saved) {
+    ACTIVE_TICKET_ID = parseInt(saved);
+    startAgentWatcher(ACTIVE_TICKET_ID);
+  }
+});
+
+// =====================================================
 // FEEDBACK BUTTONS
 // =====================================================
 function showFeedbackButtons() {
@@ -114,9 +125,12 @@ async function handleNo() {
 
   ACTIVE_TICKET_ID = data.ticket_id;
 
+  // 🔥 Save ticket so user can close page & return
+  localStorage.setItem("chatbot_active_ticket", data.ticket_id);
+
   addBotMessage("A support agent will assist you shortly 🟣");
 
-  // 🔥 Start LIVE watcher
+  // Start live watcher
   startAgentWatcher(ACTIVE_TICKET_ID);
 }
 
@@ -125,10 +139,10 @@ async function handleNo() {
 // =============================================================
 async function checkAgentStatus(ticketId) {
   try {
-    // ✔ FIXED: correct backend route
     const res = await fetch(`/api/chatbot/agent_status/${ticketId}`);
     const data = await res.json();
 
+    // Backend returns { assigned: bool, agent_name: "..." }
     if (data.assigned && data.agent_name) {
       clearInterval(AGENT_WATCH_INTERVAL);
       AGENT_WATCH_INTERVAL = null;
@@ -152,6 +166,8 @@ async function checkAgentStatus(ticketId) {
 }
 
 function startAgentWatcher(ticketId) {
+  if (!ticketId) return;
+
   if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
 
   AGENT_WATCH_INTERVAL = setInterval(() => {
@@ -160,7 +176,7 @@ function startAgentWatcher(ticketId) {
 }
 
 // =====================================================
-// SHOW MAIN CATEGORIES
+// SHOW MAIN SECTIONS
 // =====================================================
 function showSections() {
   clearSuggestions();
@@ -184,7 +200,7 @@ function showSections() {
 }
 
 // =====================================================
-// SHOW QUESTIONS
+// SHOW QUESTIONS OF SECTION
 // =====================================================
 function showQuestionsInSection(section) {
   clearSuggestions();
@@ -228,7 +244,7 @@ function showQuestionsInSection(section) {
 }
 
 // =====================================================
-// SELECT QUESTION
+// HANDLE QUESTION CLICK
 // =====================================================
 function handleQuestionClick(q) {
   addUserMessage(q.label);
@@ -285,6 +301,5 @@ document.addEventListener("DOMContentLoaded", async () => {
   SECTIONS = data.sections || [];
 
   addBotMessage("👋 Hello! I’m the Sevor assistant.<br>Select a category to get started.");
-
   showSections();
 });
