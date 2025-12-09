@@ -19,26 +19,69 @@ body[data-path="/chatbot"] .page {
     padding-bottom: 0 !important;
 }
 
-body[data-path="/chatbot"].has-tabbar {
-    padding-bottom: 0 !important;
-}
-
-/* Chatbot container */
+/* Chatbot page */
 .sv-chatbot-page {
     padding: 18px;
 }
 
+/* Header */
 .sv-back {
     font-size: 22px;
     text-decoration: none;
     color: #111;
 }
 
-.sv-chat-window {
-    min-height: 120px;
-    margin-top: 12px;
+.sv-header-logo-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  overflow: hidden;
 }
 
+.sv-header-logo-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Agent joined banner */
+#sv-live-agent-banner {
+    display: none;
+    background: #f3f4f6;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-top: 12px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+/* Chat window */
+#sv-chat-window {
+    min-height: 140px;
+    margin-top: 16px;
+}
+
+/* Messages */
+.sv-msg {
+    padding: 10px 14px;
+    margin: 6px 0;
+    border-radius: 12px;
+    max-width: 85%;
+    line-height: 1.4;
+}
+
+.sv-msg-bot {
+    background: #f3f4f6;
+    color: #111;
+}
+
+.sv-msg-user {
+    background: #6b46c1;
+    color: white;
+    margin-left: auto;
+}
+
+/* Suggestions */
 .sv-suggestions-wrap {
     margin-top: 24px;
 }
@@ -49,38 +92,11 @@ body[data-path="/chatbot"].has-tabbar {
     font-size: 18px;
 }
 
-/* Header Logo */
-.sv-header-logo-wrap {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: transparent;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-}
-
-.sv-header-logo-wrap img {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  filter: none;
-}
-
-/* 🔥 NEW — Agent joined banner */
-#sv-live-agent-banner {
+/* Input box */
+#sv-chat-input {
     display: none;
-    background: #f3f4f6;
-    padding: 10px 14px;
-    border-radius: 10px;
-    margin-top: 12px;
-    font-size: 15px;
-    color: #111;
-    font-weight: 600;
+    margin-top: 18px;
 }
-
 </style>
 
 <link rel="stylesheet" href="/static/css/chatbot.css">
@@ -88,10 +104,10 @@ body[data-path="/chatbot"].has-tabbar {
 <div class="sv-chatbot-page">
 
   <!-- HEADER -->
-  <div class="sv-header">
+  <div class="sv-header" style="display:flex;justify-content:space-between;align-items:center;">
       <a href="/messages" class="sv-back">←</a>
 
-      <div class="sv-header-center">
+      <div class="sv-header-center" style="text-align:center;">
           <div class="sv-header-logo-wrap">
               <img src="/static/sevor-logo.png" alt="Sevor">
           </div>
@@ -101,16 +117,34 @@ body[data-path="/chatbot"].has-tabbar {
       <div class="sv-header-right"></div>
   </div>
 
-  <!-- 🔥 Agent joined message appears here -->
+  <!-- Agent joined banner -->
   <div id="sv-live-agent-banner"></div>
 
   <!-- CHAT WINDOW -->
-  <div id="sv-chat-window" class="sv-chat-window"></div>
+  <div id="sv-chat-window"></div>
 
   <!-- SUGGESTED QUESTIONS -->
   <div class="sv-suggestions-wrap" id="sv-suggestions-section">
     <div class="sv-suggestions-title">Questions fréquentes</div>
     <div id="sv-suggestions" class="sv-suggestions"></div>
+  </div>
+
+  <!-- INPUT BOX (ONLY WHEN AGENT CONNECTS) -->
+  <div id="sv-chat-input">
+      <form id="sv-send-form">
+          <input
+              id="sv-message-input"
+              type="text"
+              placeholder="Write your message to support..."
+              style="width:100%; padding:12px; border-radius:12px; border:1px solid #ddd;"
+          >
+          <button
+              type="submit"
+              style="margin-top:10px; width:100%; padding:12px; background:#6b46c1; color:white; border-radius:12px;"
+          >
+              Send
+          </button>
+      </form>
   </div>
 
 </div>

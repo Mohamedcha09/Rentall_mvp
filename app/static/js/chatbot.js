@@ -1,5 +1,5 @@
 // =====================================================
-// LOAD TREE.JSON
+// LOAD TREE.JSON (FAQ SYSTEM)
 // =====================================================
 async function loadTree() {
   const res = await fetch("/chatbot/tree");
@@ -37,21 +37,22 @@ function clearSuggestions() {
 // =====================================================
 let SECTIONS = [];
 let CURRENT_SECTION = null;
-
 let LAST_QUESTION = null;
 let LAST_ANSWER = null;
 
 let ACTIVE_TICKET_ID = null;
 let AGENT_WATCH_INTERVAL = null;
+let CHAT_POLL_INTERVAL = null;
 
 // =====================================================
-// RESTORE ACTIVE TICKET WHEN USER REOPENS /chatbot
+// RESTORE PREVIOUS TICKET IF PAGE RELOADED
 // =====================================================
 document.addEventListener("DOMContentLoaded", () => {
   const saved = localStorage.getItem("chatbot_active_ticket");
   if (saved) {
     ACTIVE_TICKET_ID = parseInt(saved);
     startAgentWatcher(ACTIVE_TICKET_ID);
+    startChatPolling(ACTIVE_TICKET_ID);
   }
 });
 
@@ -96,7 +97,7 @@ function handleYes() {
 }
 
 // =============================================================
-// CONTACT SUPPORT + START LIVE AGENT WATCHER
+// USER CLICKED NO → CREATE SUPPORT TICKET
 // =============================================================
 async function handleNo() {
   addBotMessage("One moment… contacting support 🕓");
@@ -125,13 +126,13 @@ async function handleNo() {
 
   ACTIVE_TICKET_ID = data.ticket_id;
 
-  // 🔥 Save ticket so user can close page & return
-  localStorage.setItem("chatbot_active_ticket", data.ticket_id);
+  // Save ticket ID so user can leave and come back
+  localStorage.setItem("chatbot_active_ticket", ACTIVE_TICKET_ID);
 
   addBotMessage("A support agent will assist you shortly 🟣");
 
-  // Start live watcher
   startAgentWatcher(ACTIVE_TICKET_ID);
+  startChatPolling(ACTIVE_TICKET_ID);
 }
 
 // =============================================================
@@ -142,22 +143,21 @@ async function checkAgentStatus(ticketId) {
     const res = await fetch(`/api/chatbot/agent_status/${ticketId}`);
     const data = await res.json();
 
-    // Backend returns { assigned: bool, agent_name: "..." }
     if (data.assigned && data.agent_name) {
       clearInterval(AGENT_WATCH_INTERVAL);
       AGENT_WATCH_INTERVAL = null;
 
       const banner = document.getElementById("sv-live-agent-banner");
-      if (banner) {
-        banner.style.display = "block";
-        banner.innerHTML = `
-          You are now chatting with one of our agents:
-          <span style="color:#6b46c1; font-weight:700;">${data.agent_name}</span>
-        `;
-      }
+      banner.style.display = "block";
+      banner.innerHTML = `
+        You are now chatting with one of our agents:
+        <span style="color:#6b46c1; font-weight:700;">${data.agent_name}</span>
+      `;
+
+      document.getElementById("sv-chat-input").style.display = "block";
 
       addBotMessage(
-        `You're now connected with agent <b>${data.agent_name}</b>. How can I help you?`
+        `You're now connected with <b>${data.agent_name}</b>. How can I help you?`
       );
     }
   } catch (err) {
@@ -166,18 +166,82 @@ async function checkAgentStatus(ticketId) {
 }
 
 function startAgentWatcher(ticketId) {
-  if (!ticketId) return;
-
   if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
-
   AGENT_WATCH_INTERVAL = setInterval(() => {
     checkAgentStatus(ticketId);
   }, 2000);
 }
 
-// =====================================================
+// =============================================================
+// POLLING REAL MESSAGES FROM AGENT
+// =============================================================
+let LAST_MESSAGE_ID = 0;
+
+async function pollMessages(ticketId) {
+  try {
+    const res = await fetch(`/api/chatbot/messages/${ticketId}`);
+    const data = await res.json();
+
+    data.messages.forEach(msg => {
+      if (msg.id > LAST_MESSAGE_ID) {
+        LAST_MESSAGE_ID = msg.id;
+
+        if (msg.sender_role === "support" || msg.sender_role === "agent") {
+          addBotMessage(msg.body);
+        } else if (msg.sender_role === "user") {
+          addUserMessage(msg.body);
+        }
+      }
+    });
+
+  } catch (e) {
+    console.log("chat poll error:", e);
+  }
+}
+
+function startChatPolling(ticketId) {
+  if (CHAT_POLL_INTERVAL) clearInterval(CHAT_POLL_INTERVAL);
+
+  CHAT_POLL_INTERVAL = setInterval(() => {
+    pollMessages(ticketId);
+  }, 1500);
+}
+
+// =============================================================
+// SEND MESSAGE TO AGENT
+// =============================================================
+async function sendUserMessageToServer(text) {
+  const formData = new FormData();
+  formData.append("body", text);
+
+  await fetch(`/api/chatbot/messages/${ACTIVE_TICKET_ID}`, {
+    method: "POST",
+    body: formData
+  });
+}
+
+// Input form logic
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("sv-send-form");
+  if (!form) return;
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const input = document.getElementById("sv-message-input");
+    const text = input.value.trim();
+    if (!text) return;
+
+    addUserMessage(text);
+    input.value = "";
+
+    await sendUserMessageToServer(text);
+  });
+});
+
+// =============================================================
 // SHOW MAIN SECTIONS
-// =====================================================
+// =============================================================
 function showSections() {
   clearSuggestions();
 
@@ -199,9 +263,9 @@ function showSections() {
   });
 }
 
-// =====================================================
-// SHOW QUESTIONS OF SECTION
-// =====================================================
+// =============================================================
+// SHOW QUESTIONS OF ONE SECTION
+// =============================================================
 function showQuestionsInSection(section) {
   clearSuggestions();
 
@@ -243,9 +307,9 @@ function showQuestionsInSection(section) {
   }
 }
 
-// =====================================================
-// HANDLE QUESTION CLICK
-// =====================================================
+// =============================================================
+// QUESTION CLICK
+// =============================================================
 function handleQuestionClick(q) {
   addUserMessage(q.label);
   LAST_QUESTION = q.label;
@@ -293,9 +357,9 @@ function handleQuestionClick(q) {
   }
 }
 
-// =====================================================
+// =============================================================
 // INITIAL LOAD
-// =====================================================
+// =============================================================
 document.addEventListener("DOMContentLoaded", async () => {
   const data = await loadTree();
   SECTIONS = data.sections || [];

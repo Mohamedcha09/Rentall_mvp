@@ -36,10 +36,7 @@ def load_tree():
 
 @router.get("/chatbot/tree")
 def get_chatbot_tree():
-    try:
-        return JSONResponse(content=load_tree())
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return JSONResponse(content=load_tree())
 
 
 # ===========================================================
@@ -72,32 +69,34 @@ def chatbot_open_ticket(
     if not user:
         raise HTTPException(status_code=401, detail="Login required")
 
-    # Create ticket
+    # Create new ticket
     t = SupportTicket(
         user_id=user.id,
         subject="Chatbot Assistance Needed",
         queue="cs_chatbot",
-        status="new",
+        status="open",
         last_from="user",
         unread_for_agent=True,
         unread_for_user=False,
         channel="chatbot",
+        created_at=datetime.utcnow()
     )
     db.add(t)
     db.flush()
 
-    # First message
+    # Add first message
     msg = SupportMessage(
         ticket_id=t.id,
         sender_id=user.id,
         sender_role="user",
         body=f"Chatbot question:\n{question}\n\nChatbot answer:\n{answer}\n\nUser clicked NO.",
-        channel="chatbot"
+        channel="chatbot",
+        created_at=datetime.utcnow()
     )
     db.add(msg)
     db.commit()
 
-    # Notify CS agents
+    # Notify agents
     agents = db.query(User).filter(User.is_support == True).all()
     for ag in agents:
         push_notification(
@@ -118,7 +117,7 @@ def chatbot_open_ticket(
 @router.post("/chatbot/ticket/{ticket_id}/transfer")
 def chatbot_transfer_ticket(
     ticket_id: int,
-    new_queue: str = Form(...),  # cs_chatbot / md_chatbot / mod_chatbot
+    new_queue: str = Form(...),
     db = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
@@ -131,14 +130,14 @@ def chatbot_transfer_ticket(
 
     now = datetime.utcnow()
 
-    # Create system message text
-    if new_queue == "cs_chatbot":
-        transfer_text = "Your conversation has been transferred to our Customer Support team."
-    elif new_queue == "md_chatbot":
-        transfer_text = "Your conversation has been transferred to our Management Desk."
-    elif new_queue == "mod_chatbot":
-        transfer_text = "Your conversation has been transferred to our Moderation Team."
-    else:
+    # Determine transfer text
+    transfer_map = {
+        "cs_chatbot": "Your conversation has been transferred to our Customer Support team.",
+        "md_chatbot": "Your conversation has been transferred to our Management Desk.",
+        "mod_chatbot": "Your conversation has been transferred to our Moderation Team.",
+    }
+
+    if new_queue not in transfer_map:
         raise HTTPException(status_code=400, detail="Invalid queue name")
 
     # Add system message
@@ -146,29 +145,27 @@ def chatbot_transfer_ticket(
         ticket_id=ticket_id,
         sender_id=user.id,
         sender_role="system",
-        body=transfer_text,
+        body=transfer_map[new_queue],
         channel="chatbot",
         created_at=now
     ))
 
-    # Update ticket metadata
+    # Update ticket
     t.queue = new_queue
     t.last_from = "system"
     t.unread_for_user = True
     t.unread_for_agent = True
     t.updated_at = now
 
-    # Determine which team receives ticket
+    # Find agents of the target queue
     if new_queue == "cs_chatbot":
         target_filter = User.is_support == True
-    elif new_queue == "md_chatbot":
-        target_filter = User.is_mod == True  # No is_md field → using is_mod
-    elif new_queue == "mod_chatbot":
+    else:
         target_filter = User.is_mod == True
 
     agents = db.query(User).filter(target_filter).all()
 
-    # Notify team members
+    # Notify them
     for ag in agents:
         push_notification(
             db,
@@ -184,25 +181,18 @@ def chatbot_transfer_ticket(
 
 
 # ===========================================================
-# 🔥 LIVE AGENT DETECTION API (Used by chatbot.js)
+# LIVE AGENT DETECTION
 # ===========================================================
 @router.get("/api/chatbot/agent_status/{ticket_id}")
 def chatbot_agent_status(
     ticket_id: int,
     db = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
+    user: Optional[User] = Depends(get_current_user)
 ):
-    """
-    Used by JS polling:
-    - Did an agent join the ticket?
-    - What is the agent's name?
-    """
-
     t = db.query(SupportTicket).filter_by(id=ticket_id).first()
     if not t:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    # Get last message of ticket
     last_msg = (
         db.query(SupportMessage)
         .filter_by(ticket_id=ticket_id)
@@ -212,7 +202,6 @@ def chatbot_agent_status(
 
     agent_name = None
 
-    # If last message belongs to agent → agent joined
     if last_msg and last_msg.sender_role in ("support", "agent"):
         u = db.query(User).filter_by(id=last_msg.sender_id).first()
         if u:
@@ -223,3 +212,69 @@ def chatbot_agent_status(
         "assigned": bool(agent_name),
         "agent_name": agent_name
     }
+
+
+# ===========================================================
+# GET ALL MESSAGES OF TICKET — for chatbot polling
+# ===========================================================
+@router.get("/api/chatbot/messages/{ticket_id}")
+def chatbot_get_messages(
+    ticket_id: int,
+    db = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user)
+):
+    msgs = (
+        db.query(SupportMessage)
+        .filter_by(ticket_id=ticket_id)
+        .order_by(SupportMessage.id.asc())
+        .all()
+    )
+
+    out = []
+    for m in msgs:
+        out.append({
+            "id": m.id,
+            "body": m.body,
+            "sender_role": m.sender_role,
+            "created_at": m.created_at.isoformat()
+        })
+
+    return {"messages": out}
+
+
+# ===========================================================
+# SEND MESSAGE FROM USER TO TICKET
+# ===========================================================
+@router.post("/api/chatbot/messages/{ticket_id}")
+def chatbot_send_message(
+    ticket_id: int,
+    body: str = Form(...),
+    db = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user)
+):
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
+
+    t = db.query(SupportTicket).filter_by(id=ticket_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    msg = SupportMessage(
+        ticket_id=ticket_id,
+        sender_id=user.id,
+        sender_role="user",
+        body=body,
+        channel="chatbot",
+        created_at=datetime.utcnow()
+    )
+
+    db.add(msg)
+
+    # Update ticket
+    t.last_from = "user"
+    t.unread_for_agent = True
+    t.updated_at = datetime.utcnow()
+
+    db.commit()
+
+    return {"ok": True}
