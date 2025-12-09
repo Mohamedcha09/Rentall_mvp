@@ -41,8 +41,8 @@ let CURRENT_SECTION = null;
 let LAST_QUESTION = null;
 let LAST_ANSWER = null;
 
-let ACTIVE_TICKET_ID = null;       
-let AGENT_WATCH_INTERVAL = null;   
+let ACTIVE_TICKET_ID = null;       // ID التذكرة التي فتحها الشات بوت
+let AGENT_WATCH_INTERVAL = null;   // setInterval handler
 
 // =====================================================
 // FEEDBACK BUTTONS
@@ -112,11 +112,12 @@ async function handleNo() {
     return;
   }
 
+  // حفظ رقم التذكرة
   ACTIVE_TICKET_ID = data.ticket_id;
 
   addBotMessage("A support agent will assist you shortly 🟣");
 
-  // Start polling
+  // 🔥 إبدأ المراقبة: هل الـ Agent دخل و رد؟
   startAgentWatcher(ACTIVE_TICKET_ID);
 }
 
@@ -125,19 +126,24 @@ async function handleNo() {
 // =============================================================
 async function checkAgentStatus(ticketId) {
   try {
-    const res = await fetch(`/api/chatbot/agent_status/${ticketId}`);
+    // ⚠️ مهم: نفس الـ URL الموجود في routes_chatbot.py
+    const res = await fetch(`/chatbot/ticket_status/${ticketId}`);
     const data = await res.json();
 
-    if (data.assigned && data.agent_name) {
+    // backend يرجّع: { agent_joined: bool, agent_name: "..." }
+    if (data.agent_joined && data.agent_name) {
+      // وقف الـ polling
       clearInterval(AGENT_WATCH_INTERVAL);
       AGENT_WATCH_INTERVAL = null;
 
       const banner = document.getElementById("sv-live-agent-banner");
-      banner.style.display = "block";
-      banner.innerHTML = `
+      if (banner) {
+        banner.style.display = "block";
+        banner.innerHTML = `
           You are now chatting with one of our agents:
           <span style="color:#6b46c1; font-weight:700;">${data.agent_name}</span>
-      `;
+        `;
+      }
 
       addBotMessage(
         `You're now connected with agent <b>${data.agent_name}</b>. How can I help you?`
@@ -152,7 +158,7 @@ function startAgentWatcher(ticketId) {
   if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
   AGENT_WATCH_INTERVAL = setInterval(() => {
     checkAgentStatus(ticketId);
-  }, 2000);
+  }, 2000); // كل ثانيتين
 }
 
 // =====================================================
@@ -196,11 +202,12 @@ function showQuestionsInSection(section) {
       btn.className = "sv-question-chip";
       btn.textContent = qText;
 
-      btn.onclick = () => handleQuestionClick({
-        label: qText,
-        answer: obj.answer,
-        options: obj.options || null
-      });
+      btn.onclick = () =>
+        handleQuestionClick({
+          label: qText,
+          answer: obj.answer,
+          options: obj.options || null
+        });
 
       suggestions.appendChild(btn);
     });
@@ -210,11 +217,12 @@ function showQuestionsInSection(section) {
       btn.className = "sv-question-chip";
       btn.textContent = item.question;
 
-      btn.onclick = () => handleQuestionClick({
-        label: item.question,
-        answer: item.answer,
-        options: null
-      });
+      btn.onclick = () =>
+        handleQuestionClick({
+          label: item.question,
+          answer: item.answer,
+          options: null
+        });
 
       suggestions.appendChild(btn);
     });
