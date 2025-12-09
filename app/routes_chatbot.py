@@ -7,6 +7,7 @@ import os
 import json
 from functools import lru_cache
 from typing import Optional
+from datetime import datetime   # ← أضف هذا السطر هنا!
 
 from .utils import display_currency
 from .auth import get_current_user
