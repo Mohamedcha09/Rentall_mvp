@@ -926,9 +926,10 @@ def api_unread_count(request: Request, db: Session = Depends(get_db)):
         return JSONResponse({"count": 0})
     return JSONResponse({"count": unread_count(u["id"], db)})
 
-# -----------------------------------------------------------------------------
-# Sync user flags from DB into session
-# -----------------------------------------------------------------------------
+
+
+
+
 @app.middleware("http")
 async def sync_user_flags(request: Request, call_next):
     try:
@@ -940,38 +941,27 @@ async def sync_user_flags(request: Request, call_next):
                 try:
                     db_user = db.query(User).filter(User.id == sess_user["id"]).first()
                     if db_user:
+                        # تحديث كل الفلاقز مباشرة من DB
                         sess_user["is_verified"] = bool(getattr(db_user, "is_verified", False))
                         sess_user["role"] = getattr(db_user, "role", sess_user.get("role"))
                         sess_user["status"] = getattr(db_user, "status", sess_user.get("status"))
                         sess_user["payouts_enabled"] = bool(getattr(db_user, "payouts_enabled", False))
                         sess_user["is_deposit_manager"] = bool(getattr(db_user, "is_deposit_manager", False))
-                        try:
-                            sess_user["is_mod"] = bool(getattr(db_user, "is_mod", False))
-                        except Exception:
-                            pass
-                        # ✅ New: sync customer support flag
-                        try:
-                            sess_user["is_support"] = bool(getattr(db_user, "is_support", False))
-                        except Exception:
-                            pass
-                        for key in [
-                            "badge_admin","badge_new_yellow","badge_pro_green","badge_pro_gold",
-                            "badge_purple_trust","badge_renter_green","badge_orange_stars"
-                        ]:
-                            try:
-                                sess_user[key] = bool(getattr(db_user, key))
-                            except Exception:
-                                pass
-                        request.session["user"] = sess_user
-                except Exception:
-                    pass
+                        sess_user["is_mod"] = bool(getattr(db_user, "is_mod", False))
+                        sess_user["is_support"] = bool(getattr(db_user, "is_support", False))  # 🔥 مهم جداً
+
+                        # أعد كتابة session بالكامل
+                        request.session.update({"user": sess_user})  # 🔥🔥🔥 الحل الحقيقي
+
                 finally:
                     try:
                         next(db_gen)
                     except StopIteration:
                         pass
+
     except Exception:
         pass
+
     response = await call_next(request)
     return response
 
