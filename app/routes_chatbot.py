@@ -314,8 +314,8 @@ def chatbot_get_messages(
     return {
         "ok": True,
         "messages": out,
-        "ticket_status": t.status,
-        "closed_by": t.closed_by or None,
+        "ticket_status": t.status,                   # 👈 مهم
+        "closed_by": t.closed_by or None,           # 👈 مهم
         "closed_at": t.closed_at.isoformat() if t.closed_at else None,
     }
 
@@ -392,4 +392,41 @@ def chatbot_ticket_client(
         "msgs": msgs,
         "user": user,
         "session_user": user,
+    })
+
+# ===========================================================
+# CLIENT VIEW — CHATBOT TICKET PAGE
+# ===========================================================
+@router.get("/support/chatbot/ticket/{ticket_id}")
+def chatbot_ticket_client_page(
+    ticket_id: int,
+    request: Request,
+    db = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
+
+    t = db.query(SupportTicket).filter_by(id=ticket_id, channel="chatbot").first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    # التذكرة يجب أن تكون للعميل نفسه
+    if t.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    msgs = (
+        db.query(SupportMessage)
+        .filter_by(ticket_id=t.id)
+        .order_by(SupportMessage.id.asc())
+        .all()
+    )
+
+    return templates.TemplateResponse("chatbot_ticket_client.html", {
+        "request": request,
+        "user": user,
+        "session_user": user,
+        "ticket": t,
+        "msgs": msgs,
+        "display_currency": display_currency,
     })

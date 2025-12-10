@@ -118,8 +118,14 @@ h3 {
         | list | length)
       %}
 
-      <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-         href="/support/ticket/{{t.id}}">
+      {% if t.channel == 'chatbot' %}
+  <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+     href="/support/chatbot/ticket/{{ t.id }}">
+{% else %}
+  <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+     href="/support/ticket/{{ t.id }}">
+{% endif %}
+
 
         <div class="me-2">
           <div class="fw-semibold">#{{t.id}} — {{t.subject or 'Untitled'}}</div>
