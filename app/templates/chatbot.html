@@ -19,7 +19,7 @@ body[data-path="/chatbot"] .page {
     padding-bottom: 0 !important;
 }
 
-/* Chatbot page */
+/* Chatbot container */
 .sv-chatbot-page {
     padding: 18px;
 }
@@ -44,7 +44,7 @@ body[data-path="/chatbot"] .page {
   object-fit: cover;
 }
 
-/* Agent joined banner */
+/* Agent banner */
 #sv-live-agent-banner {
     display: none;
     background: #f3f4f6;
@@ -52,6 +52,19 @@ body[data-path="/chatbot"] .page {
     border-radius: 10px;
     margin-top: 12px;
     font-size: 15px;
+    font-weight: 600;
+}
+
+/* Closed ticket banner (NEW) */
+#sv-ticket-closed-banner {
+    display: none;
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+    padding: 12px 14px;
+    border-radius: 10px;
+    margin-top: 12px;
+    font-size: 15px;
+    color: #991b1b;
     font-weight: 600;
 }
 
@@ -117,6 +130,9 @@ body[data-path="/chatbot"] .page {
       <div class="sv-header-right"></div>
   </div>
 
+  <!-- CLOSED TICKET BANNER (NEW) -->
+  <div id="sv-ticket-closed-banner"></div>
+
   <!-- Agent joined banner -->
   <div id="sv-live-agent-banner"></div>
 
@@ -129,7 +145,7 @@ body[data-path="/chatbot"] .page {
     <div id="sv-suggestions" class="sv-suggestions"></div>
   </div>
 
-  <!-- INPUT BOX (ONLY WHEN AGENT CONNECTS) -->
+  <!-- INPUT BOX -->
   <div id="sv-chat-input">
       <form id="sv-send-form">
           <input
