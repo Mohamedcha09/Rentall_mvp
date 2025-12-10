@@ -64,7 +64,7 @@ def chatbot_open_ticket(
     db = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
     question: str = Form(...),
-    answer: str = Form(...)
+    answer: str = Form(...),
 ):
     if not user:
         raise HTTPException(status_code=401, detail="Login required")
@@ -78,7 +78,7 @@ def chatbot_open_ticket(
         unread_for_agent=True,
         unread_for_user=False,
         channel="chatbot",
-        created_at=datetime.utcnow()
+        created_at=datetime.utcnow(),
     )
     db.add(t)
     db.flush()
@@ -89,7 +89,7 @@ def chatbot_open_ticket(
         sender_role="user",
         body=f"Chatbot question:\n{question}\n\nChatbot answer:\n{answer}\n\nUser clicked NO.",
         channel="chatbot",
-        created_at=datetime.utcnow()
+        created_at=datetime.utcnow(),
     )
     db.add(msg)
     db.commit()
@@ -103,7 +103,7 @@ def chatbot_open_ticket(
             "🤖 Chatbot escalation",
             f"User needs help (ticket #{t.id})",
             url=f"/cs/chatbot/ticket/{t.id}",
-            kind="support"
+            kind="support",
         )
 
     return {"ok": True, "ticket_id": t.id}
@@ -146,7 +146,7 @@ def chatbot_transfer_ticket(
         sender_role="system",
         body=transfer_map[new_queue],
         channel="chatbot",
-        created_at=now
+        created_at=now,
     ))
 
     t.queue = new_queue
@@ -170,7 +170,7 @@ def chatbot_transfer_ticket(
             "🤖 Ticket transferred",
             f"Ticket #{ticket_id} moved to your team.",
             url=f"/{new_queue.replace('_chatbot','')}/chatbot/ticket/{ticket_id}",
-            kind="support"
+            kind="support",
         )
 
     db.commit()
@@ -178,7 +178,7 @@ def chatbot_transfer_ticket(
 
 
 # ===========================================================
-# CLOSE TICKET  (🔥 NEW IMPORTANT)
+# CLOSE TICKET
 # ===========================================================
 @router.post("/chatbot/ticket/{ticket_id}/close")
 def chatbot_close_ticket(
@@ -189,7 +189,7 @@ def chatbot_close_ticket(
     if not user:
         raise HTTPException(status_code=401, detail="Login required")
 
-    # Only support, md, mod can close
+    # Only support / md / mod can close
     if not (user.is_support or user.is_mod):
         raise HTTPException(status_code=403, detail="Not allowed")
 
@@ -202,14 +202,21 @@ def chatbot_close_ticket(
 
     now = datetime.utcnow()
 
-    # Add SYSTEM message
+    closer_name = (
+        (user.full_name or "").strip()
+        or (user.first_name or "").strip()
+        or (user.email or "").strip()
+        or "support agent"
+    )
+
+    # SYSTEM message with closer name
     db.add(SupportMessage(
         ticket_id=ticket_id,
         sender_id=user.id,
         sender_role="system",
-        body="This ticket has been closed.",
+        body=f"This ticket has been closed by {closer_name}.",
         channel="chatbot",
-        created_at=now
+        created_at=now,
     ))
 
     # Update ticket
@@ -221,7 +228,7 @@ def chatbot_close_ticket(
 
     db.commit()
 
-    return {"ok": True, "status": "closed"}
+    return {"ok": True, "status": "closed", "closed_by": closer_name}
 
 
 # ===========================================================
@@ -231,7 +238,7 @@ def chatbot_close_ticket(
 def chatbot_agent_status(
     ticket_id: int,
     db = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user)
+    user: Optional[User] = Depends(get_current_user),
 ):
     t = db.query(SupportTicket).filter_by(id=ticket_id).first()
     if not t:
@@ -254,7 +261,7 @@ def chatbot_agent_status(
     return {
         "ticket_id": ticket_id,
         "assigned": bool(agent_name),
-        "agent_name": agent_name
+        "agent_name": agent_name,
     }
 
 
@@ -265,8 +272,12 @@ def chatbot_agent_status(
 def chatbot_get_messages(
     ticket_id: int,
     db = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user)
+    user: Optional[User] = Depends(get_current_user),
 ):
+    t = db.query(SupportTicket).filter_by(id=ticket_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
     msgs = (
         db.query(SupportMessage)
         .filter_by(ticket_id=ticket_id)
@@ -280,10 +291,10 @@ def chatbot_get_messages(
             "id": m.id,
             "body": m.body,
             "sender_role": m.sender_role,
-            "created_at": m.created_at.isoformat()
+            "created_at": m.created_at.isoformat(),
         })
 
-    return {"messages": out}
+    return {"messages": out, "ticket_status": t.status}
 
 
 # ===========================================================
@@ -294,7 +305,7 @@ def chatbot_send_message(
     ticket_id: int,
     body: str = Form(...),
     db = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user)
+    user: Optional[User] = Depends(get_current_user),
 ):
     if not user:
         raise HTTPException(status_code=401, detail="Login required")
@@ -312,7 +323,7 @@ def chatbot_send_message(
         sender_role="user",
         body=body,
         channel="chatbot",
-        created_at=datetime.utcnow()
+        created_at=datetime.utcnow(),
     )
 
     db.add(msg)

@@ -11,6 +11,7 @@ async function loadTree() {
 // =====================================================
 function addBotMessage(html) {
   const chat = document.getElementById("sv-chat-window");
+  if (!chat) return;
   const box = document.createElement("div");
   box.className = "sv-msg sv-msg-bot sv-fade-in";
   box.innerHTML = html;
@@ -20,6 +21,7 @@ function addBotMessage(html) {
 
 function addUserMessage(text) {
   const chat = document.getElementById("sv-chat-window");
+  if (!chat) return;
   const box = document.createElement("div");
   box.className = "sv-msg sv-msg-user sv-fade-in";
   box.textContent = text;
@@ -43,6 +45,51 @@ let LAST_ANSWER = null;
 let ACTIVE_TICKET_ID = null;
 let AGENT_WATCH_INTERVAL = null;
 let CHAT_POLL_INTERVAL = null;
+let LAST_MESSAGE_ID = 0;
+
+// هل التذكرة مغلقة؟
+let IS_TICKET_CLOSED = false;
+
+// =====================================================
+// LOCK CHAT UI WHEN TICKET CLOSED
+// =====================================================
+function lockChatUI(closeText) {
+  if (IS_TICKET_CLOSED) return;
+  IS_TICKET_CLOSED = true;
+
+  // Banner أحمر في الأعلى
+  const closedBanner = document.getElementById("sv-ticket-closed-banner");
+  if (closedBanner) {
+    closedBanner.style.display = "block";
+    closedBanner.textContent =
+      closeText || "This ticket has been closed. You can start a new chat from the Messages page.";
+  }
+
+  // إخفاء input
+  const chatInput = document.getElementById("sv-chat-input");
+  if (chatInput) {
+    chatInput.style.display = "none";
+  }
+
+  // إخفاء FAQ
+  const faqSection = document.getElementById("sv-suggestions-section");
+  if (faqSection) {
+    faqSection.style.display = "none";
+  }
+
+  // إيقاف الـ intervals
+  if (CHAT_POLL_INTERVAL) {
+    clearInterval(CHAT_POLL_INTERVAL);
+    CHAT_POLL_INTERVAL = null;
+  }
+  if (AGENT_WATCH_INTERVAL) {
+    clearInterval(AGENT_WATCH_INTERVAL);
+    AGENT_WATCH_INTERVAL = null;
+  }
+
+  // إزالة التذكرة من localStorage
+  localStorage.removeItem("chatbot_active_ticket");
+}
 
 // =====================================================
 // RESTORE PREVIOUS TICKET IF PAGE RELOADED
@@ -60,7 +107,10 @@ document.addEventListener("DOMContentLoaded", () => {
 // FEEDBACK BUTTONS
 // =====================================================
 function showFeedbackButtons() {
+  if (IS_TICKET_CLOSED) return;
+
   const chat = document.getElementById("sv-chat-window");
+  if (!chat) return;
 
   const wrapper = document.createElement("div");
   wrapper.className = "sv-msg sv-msg-bot sv-fade-in";
@@ -81,9 +131,13 @@ function showFeedbackButtons() {
 }
 
 function handleYes() {
+  if (IS_TICKET_CLOSED) return;
+
   addBotMessage("Great! 😊<br>Would you like to ask another question?");
 
   const chat = document.getElementById("sv-chat-window");
+  if (!chat) return;
+
   const btn = document.createElement("button");
   btn.className = "sv-option-chip";
   btn.textContent = "Back to Categories";
@@ -100,6 +154,8 @@ function handleYes() {
 // USER CLICKED NO → CREATE SUPPORT TICKET
 // =============================================================
 async function handleNo() {
+  if (IS_TICKET_CLOSED) return;
+
   addBotMessage("One moment… contacting support 🕓");
 
   const formData = new FormData();
@@ -108,7 +164,7 @@ async function handleNo() {
 
   const res = await fetch("/chatbot/support", {
     method: "POST",
-    body: formData
+    body: formData,
   });
 
   let data;
@@ -125,6 +181,8 @@ async function handleNo() {
   }
 
   ACTIVE_TICKET_ID = data.ticket_id;
+  LAST_MESSAGE_ID = 0;
+  IS_TICKET_CLOSED = false;
 
   // Save ticket ID so user can leave and come back
   localStorage.setItem("chatbot_active_ticket", ACTIVE_TICKET_ID);
@@ -139,6 +197,8 @@ async function handleNo() {
 // CHECK IF AGENT JOINED (poll every 2 seconds)
 // =============================================================
 async function checkAgentStatus(ticketId) {
+  if (IS_TICKET_CLOSED) return;
+
   try {
     const res = await fetch(`/api/chatbot/agent_status/${ticketId}`);
     const data = await res.json();
@@ -148,13 +208,18 @@ async function checkAgentStatus(ticketId) {
       AGENT_WATCH_INTERVAL = null;
 
       const banner = document.getElementById("sv-live-agent-banner");
-      banner.style.display = "block";
-      banner.innerHTML = `
-        You are now chatting with one of our agents:
-        <span style="color:#6b46c1; font-weight:700;">${data.agent_name}</span>
-      `;
+      if (banner) {
+        banner.style.display = "block";
+        banner.innerHTML = `
+          You are now chatting with one of our agents:
+          <span style="color:#6b46c1; font-weight:700;">${data.agent_name}</span>
+        `;
+      }
 
-      document.getElementById("sv-chat-input").style.display = "block";
+      const chatInput = document.getElementById("sv-chat-input");
+      if (chatInput) {
+        chatInput.style.display = "block";
+      }
 
       addBotMessage(
         `You're now connected with <b>${data.agent_name}</b>. How can I help you?`
@@ -166,6 +231,7 @@ async function checkAgentStatus(ticketId) {
 }
 
 function startAgentWatcher(ticketId) {
+  if (!ticketId) return;
   if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
   AGENT_WATCH_INTERVAL = setInterval(() => {
     checkAgentStatus(ticketId);
@@ -175,14 +241,19 @@ function startAgentWatcher(ticketId) {
 // =============================================================
 // POLLING REAL MESSAGES FROM AGENT
 // =============================================================
-let LAST_MESSAGE_ID = 0;
-
 async function pollMessages(ticketId) {
+  if (!ticketId) return;
   try {
     const res = await fetch(`/api/chatbot/messages/${ticketId}`);
     const data = await res.json();
 
-    data.messages.forEach(msg => {
+    // لو الـAPI قال إن التذكرة مغلقة → اقفل الـUI
+    if (data.ticket_status === "closed" && !IS_TICKET_CLOSED) {
+      // سنغلق مع أول رسالة system للغلق، أو بنص افتراضي لو ما وجدنا
+      // (سيتم استدعاء lockChatUI من هنا أو من رسالة النظام نفسها)
+    }
+
+    (data.messages || []).forEach((msg) => {
       if (msg.id > LAST_MESSAGE_ID) {
         LAST_MESSAGE_ID = msg.id;
 
@@ -190,18 +261,33 @@ async function pollMessages(ticketId) {
           addBotMessage(msg.body);
         } else if (msg.sender_role === "user") {
           addUserMessage(msg.body);
+        } else if (msg.sender_role === "system") {
+          // لو هذه هي رسالة الغلق
+          if (
+            typeof msg.body === "string" &&
+            msg.body.toLowerCase().startsWith("this ticket has been closed")
+          ) {
+            // نغلق الـUI بنص الرسالة (فيه اسم الشخص)
+            lockChatUI(msg.body);
+          }
+          // نعرض رسالة system أيضاً في الشات
+          addBotMessage(msg.body);
         }
       }
     });
 
+    // احتياط: لو الحالة closed من الـAPI لكن لم نلتقط رسالة النظام لأي سبب
+    if (data.ticket_status === "closed" && !IS_TICKET_CLOSED) {
+      lockChatUI();
+    }
   } catch (e) {
     console.log("chat poll error:", e);
   }
 }
 
 function startChatPolling(ticketId) {
+  if (!ticketId) return;
   if (CHAT_POLL_INTERVAL) clearInterval(CHAT_POLL_INTERVAL);
-
   CHAT_POLL_INTERVAL = setInterval(() => {
     pollMessages(ticketId);
   }, 1500);
@@ -211,12 +297,14 @@ function startChatPolling(ticketId) {
 // SEND MESSAGE TO AGENT
 // =============================================================
 async function sendUserMessageToServer(text) {
+  if (!ACTIVE_TICKET_ID || IS_TICKET_CLOSED) return;
+
   const formData = new FormData();
   formData.append("body", text);
 
   await fetch(`/api/chatbot/messages/${ACTIVE_TICKET_ID}`, {
     method: "POST",
-    body: formData
+    body: formData,
   });
 }
 
@@ -227,6 +315,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+
+    if (IS_TICKET_CLOSED) {
+      // لا ترسل بعد الإغلاق
+      return;
+    }
 
     const input = document.getElementById("sv-message-input");
     const text = input.value.trim();
@@ -243,12 +336,15 @@ document.addEventListener("DOMContentLoaded", () => {
 // SHOW MAIN SECTIONS
 // =============================================================
 function showSections() {
+  if (IS_TICKET_CLOSED) return;
+
   clearSuggestions();
 
   const suggestions = document.getElementById("sv-suggestions");
+  if (!suggestions) return;
   suggestions.innerHTML = "";
 
-  SECTIONS.forEach(sec => {
+  SECTIONS.forEach((sec) => {
     const btn = document.createElement("button");
     btn.className = "sv-question-chip";
     btn.textContent = sec.section_title;
@@ -267,9 +363,12 @@ function showSections() {
 // SHOW QUESTIONS OF ONE SECTION
 // =============================================================
 function showQuestionsInSection(section) {
+  if (IS_TICKET_CLOSED) return;
+
   clearSuggestions();
 
   const suggestions = document.getElementById("sv-suggestions");
+  if (!suggestions) return;
   suggestions.innerHTML = "";
 
   let faqs = section.faqs;
@@ -284,13 +383,13 @@ function showQuestionsInSection(section) {
         handleQuestionClick({
           label: qText,
           answer: obj.answer,
-          options: obj.options || null
+          options: obj.options || null,
         });
 
       suggestions.appendChild(btn);
     });
   } else {
-    faqs.forEach(item => {
+    faqs.forEach((item) => {
       const btn = document.createElement("button");
       btn.className = "sv-question-chip";
       btn.textContent = item.question;
@@ -299,7 +398,7 @@ function showQuestionsInSection(section) {
         handleQuestionClick({
           label: item.question,
           answer: item.answer,
-          options: null
+          options: null,
         });
 
       suggestions.appendChild(btn);
@@ -311,6 +410,8 @@ function showQuestionsInSection(section) {
 // QUESTION CLICK
 // =============================================================
 function handleQuestionClick(q) {
+  if (IS_TICKET_CLOSED) return;
+
   addUserMessage(q.label);
   LAST_QUESTION = q.label;
 
@@ -324,6 +425,7 @@ function handleQuestionClick(q) {
 
   if (q.options) {
     const chat = document.getElementById("sv-chat-window");
+    if (!chat) return;
 
     const box = document.createElement("div");
     box.className = "sv-msg sv-msg-bot";
