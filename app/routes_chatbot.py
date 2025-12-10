@@ -45,13 +45,27 @@ def get_chatbot_tree():
 @router.get("/chatbot")
 def chatbot_page(
     request: Request,
+    db = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
+    # جلب آخر تذكرة مفتوحة للشاتبوت
+    active_ticket = None
+    if user:
+        t = (
+            db.query(SupportTicket)
+            .filter_by(user_id=user.id, channel="chatbot", status="open")
+            .order_by(SupportTicket.id.desc())
+            .first()
+        )
+        if t:
+            active_ticket = t.id
+
     return templates.TemplateResponse("chatbot.html", {
         "request": request,
         "user": user,
         "session_user": user,
-        "display_currency": display_currency
+        "active_ticket": active_ticket,   # ← أهم شيء!!
+        "display_currency": display_currency,
     })
 
 

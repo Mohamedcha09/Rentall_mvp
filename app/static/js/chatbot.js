@@ -85,6 +85,16 @@ function lockChatUI(closeText) {
 // RESTORE PREVIOUS TICKET
 // =====================================================
 document.addEventListener("DOMContentLoaded", () => {
+  // 1) إذا السيرفر أرسل تذكرة مفتوحة
+  if (window.ACTIVE_TICKET_FROM_SERVER) {
+    ACTIVE_TICKET_ID = window.ACTIVE_TICKET_FROM_SERVER;
+    localStorage.setItem("chatbot_active_ticket", ACTIVE_TICKET_ID);
+    startAgentWatcher(ACTIVE_TICKET_ID);
+    startChatPolling(ACTIVE_TICKET_ID);
+    return;
+  }
+
+  // 2) لو فقط مخزنة في localStorage
   const saved = localStorage.getItem("chatbot_active_ticket");
   if (saved) {
     ACTIVE_TICKET_ID = parseInt(saved);
@@ -92,6 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
     startChatPolling(ACTIVE_TICKET_ID);
   }
 });
+
 
 // =====================================================
 // FEEDBACK BUTTONS
