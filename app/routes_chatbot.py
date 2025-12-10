@@ -312,12 +312,12 @@ def chatbot_get_messages(
         })
 
     return {
-    "messages": out,
-    "ticket_status": t.status,
-    "closed_by": t.closed_by,
-    "closed_at": t.updated_at.isoformat() if t.status == "closed" else None
-}
-
+        "ok": True,
+        "messages": out,
+        "ticket_status": t.status,
+        "closed_by": t.closed_by or None,
+        "closed_at": t.closed_at.isoformat() if t.closed_at else None,
+    }
 
 
 # ===========================================================
