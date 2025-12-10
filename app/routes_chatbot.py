@@ -358,3 +358,38 @@ def chatbot_send_message(
     db.commit()
 
     return {"ok": True}
+
+
+# ===========================================================
+# CLIENT VIEW FOR CHATBOT TICKET  (/chatbot/ticket/{id})
+# ===========================================================
+@router.get("/chatbot/ticket/{ticket_id}")
+def chatbot_ticket_client(
+    ticket_id: int,
+    request: Request,
+    db = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
+
+    # fetch ticket
+    t = db.query(SupportTicket).filter_by(id=ticket_id, user_id=user.id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    # messages
+    msgs = (
+        db.query(SupportMessage)
+        .filter_by(ticket_id=ticket_id)
+        .order_by(SupportMessage.id.asc())
+        .all()
+    )
+
+    return templates.TemplateResponse("chatbot_ticket_client.html", {
+        "request": request,
+        "ticket": t,
+        "msgs": msgs,
+        "user": user,
+        "session_user": user,
+    })
