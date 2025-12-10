@@ -82,7 +82,7 @@ function lockChatUI(closeText) {
 }
 
 // =====================================================
-// RESTORE PREVIOUS TICKET IF PAGE RELOADED
+// RESTORE PREVIOUS TICKET
 // =====================================================
 document.addEventListener("DOMContentLoaded", () => {
   const saved = localStorage.getItem("chatbot_active_ticket");
@@ -183,7 +183,7 @@ async function handleNo() {
 }
 
 // =============================================================
-// CHECK IF AGENT JOINED
+// CHECK AGENT STATUS
 // =============================================================
 async function checkAgentStatus(ticketId) {
   if (IS_TICKET_CLOSED) return;
@@ -226,7 +226,7 @@ function startAgentWatcher(ticketId) {
 }
 
 // =============================================================
-// POLLING REAL MESSAGES — WITH INSTANT CLOSE
+// POLL REAL MESSAGES (WITH INSTANT CLOSE)
 // =============================================================
 async function pollMessages(ticketId) {
   if (!ticketId) return;
@@ -235,7 +235,7 @@ async function pollMessages(ticketId) {
     const res = await fetch(`/api/chatbot/messages/${ticketId}`);
     const data = await res.json();
 
-    // ⚡ إغلاق فوري — لا ننتظر أي رسالة system
+    // ⚡ INSTANT CLOSE — NO WAITING
     if (data.ticket_status === "closed") {
       if (!IS_TICKET_CLOSED) {
         lockChatUI(
@@ -244,10 +244,10 @@ async function pollMessages(ticketId) {
             : "This ticket has been closed."
         );
       }
-      return;
+      return; // stop everything instantly
     }
 
-    // Display messages normally
+    // Show new messages
     (data.messages || []).forEach((msg) => {
       if (msg.id > LAST_MESSAGE_ID) {
         LAST_MESSAGE_ID = msg.id;
@@ -317,7 +317,6 @@ function showSections() {
   if (IS_TICKET_CLOSED) return;
 
   clearSuggestions();
-
   const suggestions = document.getElementById("sv-suggestions");
   suggestions.innerHTML = "";
 
@@ -343,7 +342,6 @@ function showQuestionsInSection(section) {
   if (IS_TICKET_CLOSED) return;
 
   clearSuggestions();
-
   const suggestions = document.getElementById("sv-suggestions");
   suggestions.innerHTML = "";
 
