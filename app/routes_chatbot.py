@@ -64,7 +64,7 @@ def chatbot_page(
         "request": request,
         "user": user,
         "session_user": user,
-        "active_ticket_id": active_ticket,   # ← مهم جداً
+                "active_ticket": active_ticket,   # ← المهم هنا  # ← مهم جداً
         "display_currency": display_currency
     })
 
