@@ -69,7 +69,6 @@ def chatbot_open_ticket(
     if not user:
         raise HTTPException(status_code=401, detail="Login required")
 
-    # Create new ticket
     t = SupportTicket(
         user_id=user.id,
         subject="Chatbot Assistance Needed",
@@ -84,7 +83,6 @@ def chatbot_open_ticket(
     db.add(t)
     db.flush()
 
-    # Add first message
     msg = SupportMessage(
         ticket_id=t.id,
         sender_id=user.id,
@@ -96,7 +94,7 @@ def chatbot_open_ticket(
     db.add(msg)
     db.commit()
 
-    # Notify agents
+    # notify CS agents
     agents = db.query(User).filter(User.is_support == True).all()
     for ag in agents:
         push_notification(
@@ -112,7 +110,7 @@ def chatbot_open_ticket(
 
 
 # ===========================================================
-# TRANSFER SYSTEM (CS → MD → MOD)
+# TRANSFER TICKET
 # ===========================================================
 @router.post("/chatbot/ticket/{ticket_id}/transfer")
 def chatbot_transfer_ticket(
@@ -128,9 +126,11 @@ def chatbot_transfer_ticket(
     if not t:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
+    if t.status == "closed":
+        raise HTTPException(status_code=400, detail="Ticket already closed")
+
     now = datetime.utcnow()
 
-    # Determine transfer text
     transfer_map = {
         "cs_chatbot": "Your conversation has been transferred to our Customer Support team.",
         "md_chatbot": "Your conversation has been transferred to our Management Desk.",
@@ -138,9 +138,8 @@ def chatbot_transfer_ticket(
     }
 
     if new_queue not in transfer_map:
-        raise HTTPException(status_code=400, detail="Invalid queue name")
+        raise HTTPException(status_code=400, detail="Invalid queue")
 
-    # Add system message
     db.add(SupportMessage(
         ticket_id=ticket_id,
         sender_id=user.id,
@@ -150,14 +149,13 @@ def chatbot_transfer_ticket(
         created_at=now
     ))
 
-    # Update ticket
     t.queue = new_queue
     t.last_from = "system"
     t.unread_for_user = True
     t.unread_for_agent = True
     t.updated_at = now
 
-    # Find agents of the target queue
+    # who receives the ticket?
     if new_queue == "cs_chatbot":
         target_filter = User.is_support == True
     else:
@@ -165,7 +163,6 @@ def chatbot_transfer_ticket(
 
     agents = db.query(User).filter(target_filter).all()
 
-    # Notify them
     for ag in agents:
         push_notification(
             db,
@@ -178,6 +175,53 @@ def chatbot_transfer_ticket(
 
     db.commit()
     return {"ok": True, "queue": new_queue}
+
+
+# ===========================================================
+# CLOSE TICKET  (🔥 NEW IMPORTANT)
+# ===========================================================
+@router.post("/chatbot/ticket/{ticket_id}/close")
+def chatbot_close_ticket(
+    ticket_id: int,
+    db = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
+
+    # Only support, md, mod can close
+    if not (user.is_support or user.is_mod):
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    t = db.query(SupportTicket).filter_by(id=ticket_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    if t.status == "closed":
+        return {"ok": True, "status": "already_closed"}
+
+    now = datetime.utcnow()
+
+    # Add SYSTEM message
+    db.add(SupportMessage(
+        ticket_id=ticket_id,
+        sender_id=user.id,
+        sender_role="system",
+        body="This ticket has been closed.",
+        channel="chatbot",
+        created_at=now
+    ))
+
+    # Update ticket
+    t.status = "closed"
+    t.last_from = "system"
+    t.unread_for_user = True
+    t.unread_for_agent = False
+    t.updated_at = now
+
+    db.commit()
+
+    return {"ok": True, "status": "closed"}
 
 
 # ===========================================================
@@ -215,7 +259,7 @@ def chatbot_agent_status(
 
 
 # ===========================================================
-# GET ALL MESSAGES OF TICKET — for chatbot polling
+# GET MESSAGES FOR CHATBOT POLLING
 # ===========================================================
 @router.get("/api/chatbot/messages/{ticket_id}")
 def chatbot_get_messages(
@@ -243,7 +287,7 @@ def chatbot_get_messages(
 
 
 # ===========================================================
-# SEND MESSAGE FROM USER TO TICKET
+# SEND MESSAGE (USER → AGENT)
 # ===========================================================
 @router.post("/api/chatbot/messages/{ticket_id}")
 def chatbot_send_message(
@@ -259,6 +303,9 @@ def chatbot_send_message(
     if not t:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
+    if t.status == "closed":
+        raise HTTPException(status_code=403, detail="Ticket is closed")
+
     msg = SupportMessage(
         ticket_id=ticket_id,
         sender_id=user.id,
@@ -270,7 +317,6 @@ def chatbot_send_message(
 
     db.add(msg)
 
-    # Update ticket
     t.last_from = "user"
     t.unread_for_agent = True
     t.updated_at = datetime.utcnow()
