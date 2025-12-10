@@ -48,7 +48,7 @@ def chatbot_page(
     db = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    # جلب آخر تذكرة مفتوحة للشاتبوت
+    # last open chatbot ticket
     active_ticket = None
     if user:
         t = (
@@ -64,9 +64,10 @@ def chatbot_page(
         "request": request,
         "user": user,
         "session_user": user,
-        "active_ticket": active_ticket,   # ← أهم شيء!!
-        "display_currency": display_currency,
+        "active_ticket_id": active_ticket,   # ← مهم جداً
+        "display_currency": display_currency
     })
+
 
 
 # ===========================================================
