@@ -47,7 +47,6 @@ let AGENT_WATCH_INTERVAL = null;
 let CHAT_POLL_INTERVAL = null;
 let LAST_MESSAGE_ID = 0;
 
-// هل التذكرة مغلقة؟
 let IS_TICKET_CLOSED = false;
 
 // =====================================================
@@ -57,7 +56,6 @@ function lockChatUI(closeText) {
   if (IS_TICKET_CLOSED) return;
   IS_TICKET_CLOSED = true;
 
-  // Banner أحمر في الأعلى
   const closedBanner = document.getElementById("sv-ticket-closed-banner");
   if (closedBanner) {
     closedBanner.style.display = "block";
@@ -65,19 +63,12 @@ function lockChatUI(closeText) {
       closeText || "This ticket has been closed. You can start a new chat from the Messages page.";
   }
 
-  // إخفاء input
   const chatInput = document.getElementById("sv-chat-input");
-  if (chatInput) {
-    chatInput.style.display = "none";
-  }
+  if (chatInput) chatInput.style.display = "none";
 
-  // إخفاء FAQ
   const faqSection = document.getElementById("sv-suggestions-section");
-  if (faqSection) {
-    faqSection.style.display = "none";
-  }
+  if (faqSection) faqSection.style.display = "none";
 
-  // إيقاف الـ intervals
   if (CHAT_POLL_INTERVAL) {
     clearInterval(CHAT_POLL_INTERVAL);
     CHAT_POLL_INTERVAL = null;
@@ -87,7 +78,6 @@ function lockChatUI(closeText) {
     AGENT_WATCH_INTERVAL = null;
   }
 
-  // إزالة التذكرة من localStorage
   localStorage.removeItem("chatbot_active_ticket");
 }
 
@@ -184,7 +174,6 @@ async function handleNo() {
   LAST_MESSAGE_ID = 0;
   IS_TICKET_CLOSED = false;
 
-  // Save ticket ID so user can leave and come back
   localStorage.setItem("chatbot_active_ticket", ACTIVE_TICKET_ID);
 
   addBotMessage("A support agent will assist you shortly 🟣");
@@ -194,7 +183,7 @@ async function handleNo() {
 }
 
 // =============================================================
-// CHECK IF AGENT JOINED (poll every 2 seconds)
+// CHECK IF AGENT JOINED
 // =============================================================
 async function checkAgentStatus(ticketId) {
   if (IS_TICKET_CLOSED) return;
@@ -217,9 +206,7 @@ async function checkAgentStatus(ticketId) {
       }
 
       const chatInput = document.getElementById("sv-chat-input");
-      if (chatInput) {
-        chatInput.style.display = "block";
-      }
+      if (chatInput) chatInput.style.display = "block";
 
       addBotMessage(
         `You're now connected with <b>${data.agent_name}</b>. How can I help you?`
@@ -239,20 +226,28 @@ function startAgentWatcher(ticketId) {
 }
 
 // =============================================================
-// POLLING REAL MESSAGES FROM AGENT
+// POLLING REAL MESSAGES — WITH INSTANT CLOSE
 // =============================================================
 async function pollMessages(ticketId) {
   if (!ticketId) return;
+
   try {
     const res = await fetch(`/api/chatbot/messages/${ticketId}`);
     const data = await res.json();
 
-    // لو الـAPI قال إن التذكرة مغلقة → اقفل الـUI
-    if (data.ticket_status === "closed" && !IS_TICKET_CLOSED) {
-      // سنغلق مع أول رسالة system للغلق، أو بنص افتراضي لو ما وجدنا
-      // (سيتم استدعاء lockChatUI من هنا أو من رسالة النظام نفسها)
+    // ⚡ إغلاق فوري — لا ننتظر أي رسالة system
+    if (data.ticket_status === "closed") {
+      if (!IS_TICKET_CLOSED) {
+        lockChatUI(
+          data.closed_by
+            ? `This ticket has been closed by ${data.closed_by}.`
+            : "This ticket has been closed."
+        );
+      }
+      return;
     }
 
+    // Display messages normally
     (data.messages || []).forEach((msg) => {
       if (msg.id > LAST_MESSAGE_ID) {
         LAST_MESSAGE_ID = msg.id;
@@ -262,24 +257,11 @@ async function pollMessages(ticketId) {
         } else if (msg.sender_role === "user") {
           addUserMessage(msg.body);
         } else if (msg.sender_role === "system") {
-          // لو هذه هي رسالة الغلق
-          if (
-            typeof msg.body === "string" &&
-            msg.body.toLowerCase().startsWith("this ticket has been closed")
-          ) {
-            // نغلق الـUI بنص الرسالة (فيه اسم الشخص)
-            lockChatUI(msg.body);
-          }
-          // نعرض رسالة system أيضاً في الشات
           addBotMessage(msg.body);
         }
       }
     });
 
-    // احتياط: لو الحالة closed من الـAPI لكن لم نلتقط رسالة النظام لأي سبب
-    if (data.ticket_status === "closed" && !IS_TICKET_CLOSED) {
-      lockChatUI();
-    }
   } catch (e) {
     console.log("chat poll error:", e);
   }
@@ -294,7 +276,7 @@ function startChatPolling(ticketId) {
 }
 
 // =============================================================
-// SEND MESSAGE TO AGENT
+// SEND MESSAGE
 // =============================================================
 async function sendUserMessageToServer(text) {
   if (!ACTIVE_TICKET_ID || IS_TICKET_CLOSED) return;
@@ -308,7 +290,6 @@ async function sendUserMessageToServer(text) {
   });
 }
 
-// Input form logic
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("sv-send-form");
   if (!form) return;
@@ -316,10 +297,7 @@ document.addEventListener("DOMContentLoaded", () => {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    if (IS_TICKET_CLOSED) {
-      // لا ترسل بعد الإغلاق
-      return;
-    }
+    if (IS_TICKET_CLOSED) return;
 
     const input = document.getElementById("sv-message-input");
     const text = input.value.trim();
@@ -341,7 +319,6 @@ function showSections() {
   clearSuggestions();
 
   const suggestions = document.getElementById("sv-suggestions");
-  if (!suggestions) return;
   suggestions.innerHTML = "";
 
   SECTIONS.forEach((sec) => {
@@ -360,7 +337,7 @@ function showSections() {
 }
 
 // =============================================================
-// SHOW QUESTIONS OF ONE SECTION
+// SHOW QUESTIONS IN A SECTION
 // =============================================================
 function showQuestionsInSection(section) {
   if (IS_TICKET_CLOSED) return;
@@ -368,7 +345,6 @@ function showQuestionsInSection(section) {
   clearSuggestions();
 
   const suggestions = document.getElementById("sv-suggestions");
-  if (!suggestions) return;
   suggestions.innerHTML = "";
 
   let faqs = section.faqs;
@@ -407,7 +383,7 @@ function showQuestionsInSection(section) {
 }
 
 // =============================================================
-// QUESTION CLICK
+// QUESTION CLICK HANDLER
 // =============================================================
 function handleQuestionClick(q) {
   if (IS_TICKET_CLOSED) return;
@@ -425,8 +401,6 @@ function handleQuestionClick(q) {
 
   if (q.options) {
     const chat = document.getElementById("sv-chat-window");
-    if (!chat) return;
-
     const box = document.createElement("div");
     box.className = "sv-msg sv-msg-bot";
 

@@ -221,6 +221,8 @@ def chatbot_close_ticket(
 
     # Update ticket
     t.status = "closed"
+    t.closed_by = closer_name
+    t.closed_at = now
     t.last_from = "system"
     t.unread_for_user = True
     t.unread_for_agent = False
@@ -294,7 +296,13 @@ def chatbot_get_messages(
             "created_at": m.created_at.isoformat(),
         })
 
-    return {"messages": out, "ticket_status": t.status}
+    return {
+    "messages": out,
+    "ticket_status": t.status,
+    "closed_by": t.closed_by,
+    "closed_at": t.updated_at.isoformat() if t.status == "closed" else None
+}
+
 
 
 # ===========================================================
