@@ -7,6 +7,8 @@
   <h2 class="mt-4">🤖 Chatbot Ticket #{{ ticket.id }}</h2>
   <p class="text-muted">Subject: {{ ticket.subject }}</p>
 
+  {% set is_closed = (ticket.status == 'closed') %}
+
   <hr>
 
   <!-- Messages -->
@@ -17,6 +19,8 @@
           <strong>
             {% if m.sender_role == "agent" %}
               Agent
+            {% elif m.sender_role == "system" %}
+              System
             {% else %}
               User
             {% endif %}
@@ -30,6 +34,7 @@
 
   <hr>
 
+  {% if not is_closed %}
   <!-- Reply Form -->
   <form action="/cs/chatbot/ticket/{{ ticket.id }}/reply" method="post" class="mt-3">
     <div class="form-group">
@@ -38,10 +43,16 @@
     </div>
     <button class="btn btn-primary mt-2">Send Reply</button>
   </form>
+  {% else %}
+  <div class="alert alert-secondary mt-3">
+    🔒 This ticket is closed. No further replies can be sent.
+  </div>
+  {% endif %}
 
   <hr>
 
-  <!-- ⭐ TRANSFER FORM (NEW) -->
+  {% if not is_closed %}
+  <!-- ⭐ TRANSFER FORM -->
   <form action="/chatbot/ticket/{{ ticket.id }}/transfer" method="post" class="mt-3">
     <label class="fw-bold">Transfer ticket to:</label>
     <select name="new_queue" class="form-control">
@@ -50,13 +61,19 @@
     </select>
     <button class="btn btn-warning mt-2">Transfer</button>
   </form>
+  {% endif %}
 
   <hr>
 
-  <!-- Resolve Ticket -->
-  <form action="/cs/chatbot/tickets/{{ ticket.id }}/resolve" method="post" class="mt-3">
-    <button class="btn btn-success">Resolve Ticket</button>
+  {% if not is_closed %}
+  <!-- CLOSE TICKET FINAL -->
+  <form action="/chatbot/ticket/{{ ticket.id }}/close" method="post" class="mt-3"
+        onsubmit="return confirm('Are you sure you want to close this ticket permanently?');">
+      <button class="btn btn-danger">Close Ticket</button>
   </form>
+  {% else %}
+  <div class="alert alert-success mt-3">✅ Ticket Closed</div>
+  {% endif %}
 
 </div>
 

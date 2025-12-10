@@ -1,46 +1,79 @@
 {% extends "base.html" %}
+{% set u = session_user or {} %}
 {% block content %}
 
-<div class="page">
-  <a href="/md/chatbot/inbox" class="btn btn-light mt-3">← Back</a>
+<style>
+  .ticket-wrap{max-width:980px;margin:auto}
+  .chip{font-size:.8rem;padding:.25rem .55rem;border:1px solid var(--border);border-radius:999px;background:rgba(255,255,255,.03)}
+  .msg{border-radius:14px;padding:.6rem .8rem;white-space:pre-wrap}
+  .msg-user{background:rgba(25,135,84,.08);border:1px solid rgba(25,135,84,.2)}
+  .msg-agent{background:rgba(13,110,253,.08);border:1px solid rgba(13,110,253,.2)}
+  .msg-system{background:rgba(108,117,125,.08);border:1px dashed rgba(108,117,125,.35);font-style:italic}
+  .msg-meta{font-size:.78rem;color:#888}
+  .card-chat{max-height:58vh;overflow:auto}
+  .toolbar-sticky{position:sticky;bottom:0;z-index:2;background:linear-gradient(to top, rgba(0,0,0,.06), transparent 42%);padding-top:.4rem;border-top:1px solid rgba(255,255,255,.08)}
+</style>
 
-  <h2 class="mt-4">👑 MD — Chatbot Ticket #{{ ticket.id }}</h2>
-  <p class="text-muted">Subject: {{ ticket.subject }}</p>
+<div class="container py-3 ticket-wrap" dir="rtl">
+  <div class="d-flex align-items-center justify-content-between">
+    <h4 class="m-0">Ticket #{{ ticket.id }} (MD)</h4>
+    <a href="/md/inbox" class="btn btn-outline-secondary btn-sm"><i class="bi bi-inbox"></i> Back to Inbox</a>
+  </div>
+  <hr class="my-3">
 
-  <hr>
+  {% set is_closed = (ticket.status == 'closed') %}
 
-  {% for m in msgs %}
-    <div class="mb-3 p-3 border rounded {% if m.sender_role == 'agent' %}bg-light{% else %}bg-white{% endif %}">
-      <strong>{{ 'Agent' if m.sender_role == 'agent' else 'User' }}</strong>
-      <span class="text-muted small">— {{ m.created_at }}</span>
-      <div class="mt-2">{{ m.body | safe }}</div>
+  <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+    <span class="chip"><i class="bi bi-tag"></i> Subject: {{ ticket.subject or "No subject" }}</span>
+    <span class="chip"><i class="bi bi-person"></i> Customer: {{ ticket.user and (ticket.user.first_name or ticket.user.email) or "Customer" }}</span>
+    {% if is_closed %}
+      <span class="chip text-bg-success border-0"><i class="bi bi-lock-fill"></i> Closed</span>
+    {% else %}
+      <span class="chip text-bg-warning border-0 text-dark"><i class="bi bi-hourglass-split"></i> In Review</span>
+    {% endif %}
+  </div>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-header d-flex align-items-center gap-2">
+      <i class="bi bi-chat-dots"></i> Conversation
+      <span class="ms-auto small text-muted">Last update: {{ ticket.updated_at and (ticket.updated_at|string)[:16] }}</span>
     </div>
-  {% endfor %}
+    <div class="card-body card-chat">
+      {% for m in msgs %}
+        {% set who = (m.sender_role or '').lower() %}
+        <div class="mb-3 {% if who=='agent' %}text-end{% endif %}">
+          <div class="msg-meta mb-1">
+            {{ m.created_at and m.created_at.strftime("%Y-%m-%d %H:%M") }} —
+            {% if who=='agent' %}Agent{% elif who=='system' %}System{% else %}Customer{% endif %}
+          </div>
+          <div class="msg {% if who=='agent' %}msg-agent{% elif who=='system' %}msg-system{% else %}msg-user{% endif %}">
+            {{ m.body }}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
 
-  <hr>
+  {% if not is_closed %}
+    <div class="toolbar-sticky">
+      <form id="replyForm" method="post" action="/md/ticket/{{ ticket.id }}/reply" class="p-2">
+        <textarea class="form-control mb-2" name="body" rows="3" placeholder="Write your reply here..." required></textarea>
+        <button class="btn btn-primary me-2" type="submit"><i class="bi bi-send"></i> Send Reply</button>
+      </form>
 
-  <form action="/md/chatbot/ticket/{{ ticket.id }}/reply" method="post" class="mt-3">
-    <textarea name="body" class="form-control" rows="3" placeholder="Write reply…"></textarea>
-    <button class="btn btn-primary mt-2">Send Reply</button>
-  </form>
-
-  <hr>
-
-  <!-- ⭐ TRANSFER FORM (NEW) -->
-  <form action="/chatbot/ticket/{{ ticket.id }}/transfer" method="post" class="mt-3">
-    <label class="fw-bold">Transfer ticket to:</label>
-    <select name="new_queue" class="form-control">
-      <option value="mod_chatbot">MOD</option>
-    </select>
-    <button class="btn btn-warning mt-2">Transfer</button>
-  </form>
-
-  <hr>
-
-  <form action="/md/chatbot/tickets/{{ ticket.id }}/resolve" method="post" class="mt-3">
-    <button class="btn btn-success">Resolve</button>
-  </form>
-
+      <form method="post" action="/chatbot/ticket/{{ ticket.id }}/close"
+            onsubmit="return confirm('Close this ticket permanently? This cannot be undone.');"
+            class="d-inline">
+        <button class="btn btn-danger mt-2" type="submit">
+          <i class="bi bi-x-circle"></i> Close Ticket
+        </button>
+      </form>
+    </div>
+  {% else %}
+    <div class="alert alert-secondary mt-3">
+      🔒 This ticket is closed.
+    </div>
+  {% endif %}
 </div>
 
 {% endblock %}
