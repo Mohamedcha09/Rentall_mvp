@@ -621,7 +621,7 @@ def _on_user_before_update(mapper, conn, u):
 # =========================
 class SupportTicket(Base):
     __tablename__ = "support_tickets"
-
+    
     id = Column(Integer, primary_key=True, index=True)
     user_id  = Column(Integer, ForeignKey("users.id"), nullable=False)
     subject  = Column(String(200), nullable=False)
@@ -650,6 +650,9 @@ class SupportTicket(Base):
     unread_for_user  = Column(Boolean, nullable=False, default=False)
     unread_for_agent = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    closed_by = Column(String, nullable=True)
+    closed_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
     user = relationship("User", foreign_keys=[user_id], lazy="joined")
