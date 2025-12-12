@@ -12,9 +12,11 @@ async function loadTree() {
 function addBotMessage(html) {
   const chat = document.getElementById("sv-chat-window");
   if (!chat) return;
+
   const box = document.createElement("div");
   box.className = "sv-msg sv-msg-bot sv-fade-in";
   box.innerHTML = html;
+
   chat.appendChild(box);
   chat.scrollTop = chat.scrollHeight;
 }
@@ -22,9 +24,11 @@ function addBotMessage(html) {
 function addUserMessage(text) {
   const chat = document.getElementById("sv-chat-window");
   if (!chat) return;
+
   const box = document.createElement("div");
   box.className = "sv-msg sv-msg-user sv-fade-in";
   box.textContent = text;
+
   chat.appendChild(box);
   chat.scrollTop = chat.scrollHeight;
 }
@@ -69,14 +73,8 @@ function lockChatUI(closeText) {
   const faqSection = document.getElementById("sv-suggestions-section");
   if (faqSection) faqSection.style.display = "none";
 
-  if (CHAT_POLL_INTERVAL) {
-    clearInterval(CHAT_POLL_INTERVAL);
-    CHAT_POLL_INTERVAL = null;
-  }
-  if (AGENT_WATCH_INTERVAL) {
-    clearInterval(AGENT_WATCH_INTERVAL);
-    AGENT_WATCH_INTERVAL = null;
-  }
+  if (CHAT_POLL_INTERVAL) clearInterval(CHAT_POLL_INTERVAL);
+  if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
 
   localStorage.removeItem("chatbot_active_ticket");
 }
@@ -85,7 +83,6 @@ function lockChatUI(closeText) {
 // RESTORE PREVIOUS TICKET
 // =====================================================
 document.addEventListener("DOMContentLoaded", () => {
-  // 1) إذا السيرفر أرسل تذكرة مفتوحة
   if (window.ACTIVE_TICKET_FROM_SERVER) {
     ACTIVE_TICKET_ID = window.ACTIVE_TICKET_FROM_SERVER;
     localStorage.setItem("chatbot_active_ticket", ACTIVE_TICKET_ID);
@@ -94,7 +91,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // 2) لو فقط مخزنة في localStorage
   const saved = localStorage.getItem("chatbot_active_ticket");
   if (saved) {
     ACTIVE_TICKET_ID = parseInt(saved);
@@ -103,7 +99,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-
 // =====================================================
 // FEEDBACK BUTTONS
 // =====================================================
@@ -111,8 +106,6 @@ function showFeedbackButtons() {
   if (IS_TICKET_CLOSED) return;
 
   const chat = document.getElementById("sv-chat-window");
-  if (!chat) return;
-
   const wrapper = document.createElement("div");
   wrapper.className = "sv-msg sv-msg-bot sv-fade-in";
 
@@ -136,18 +129,16 @@ function handleYes() {
 
   addBotMessage("Great! 😊<br>Would you like to ask another question?");
 
-  const chat = document.getElementById("sv-chat-window");
-  if (!chat) return;
-
   const btn = document.createElement("button");
   btn.className = "sv-option-chip";
   btn.textContent = "Back to Categories";
-
   btn.onclick = () => showSections();
 
   const box = document.createElement("div");
   box.className = "sv-msg sv-msg-bot";
   box.appendChild(btn);
+
+  const chat = document.getElementById("sv-chat-window");
   chat.appendChild(box);
 }
 
@@ -168,13 +159,7 @@ async function handleNo() {
     body: formData,
   });
 
-  let data;
-  try {
-    data = await res.json();
-  } catch (e) {
-    addBotMessage("⚠️ Error contacting support.");
-    return;
-  }
+  let data = await res.json();
 
   if (!data.ok) {
     addBotMessage("⚠️ Failed to create support ticket.");
@@ -194,7 +179,7 @@ async function handleNo() {
 }
 
 // =============================================================
-// CHECK AGENT STATUS
+// CHECK AGENT STATUS (FAST: 300ms)
 // =============================================================
 async function checkAgentStatus(ticketId) {
   if (IS_TICKET_CLOSED) return;
@@ -205,39 +190,35 @@ async function checkAgentStatus(ticketId) {
 
     if (data.assigned && data.agent_name) {
       clearInterval(AGENT_WATCH_INTERVAL);
-      AGENT_WATCH_INTERVAL = null;
 
       const banner = document.getElementById("sv-live-agent-banner");
-      if (banner) {
-        banner.style.display = "block";
-        banner.innerHTML = `
-          You are now chatting with one of our agents:
-          <span style="color:#6b46c1; font-weight:700;">${data.agent_name}</span>
-        `;
-      }
+      banner.style.display = "block";
+      banner.innerHTML = `
+        You are now chatting with one of our agents:
+        <span style="color:#6b46c1; font-weight:700;">${data.agent_name}</span>
+      `;
 
       const chatInput = document.getElementById("sv-chat-input");
-      if (chatInput) chatInput.style.display = "block";
+      chatInput.style.display = "block";
 
       addBotMessage(
         `You're now connected with <b>${data.agent_name}</b>. How can I help you?`
       );
     }
-  } catch (err) {
-    console.log("poll error:", err);
-  }
+  } catch (err) {}
 }
 
 function startAgentWatcher(ticketId) {
   if (!ticketId) return;
   if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
+
   AGENT_WATCH_INTERVAL = setInterval(() => {
     checkAgentStatus(ticketId);
-  }, 2000);
+  }, 300); // 🔥 أسرع
 }
 
 // =============================================================
-// POLL REAL MESSAGES (WITH INSTANT CLOSE)
+// POLL REAL MESSAGES + INSTANT CLOSE (300ms)
 // =============================================================
 async function pollMessages(ticketId) {
   if (!ticketId) return;
@@ -246,53 +227,43 @@ async function pollMessages(ticketId) {
     const res = await fetch(`/api/chatbot/messages/${ticketId}`);
     const data = await res.json();
 
-    // ⚡ INSTANT CLOSE — NO WAITING
+    // ---- CLOSED IMMEDIATELY ----
     if (data.ticket_status === "closed") {
+      addBotMessage(
+        data.closed_by
+          ? `This ticket has been closed by ${data.closed_by}.`
+          : "This ticket has been closed."
+      );
 
-    // أضف رسالة System للعميل داخل الشات
-    addBotMessage(
-      data.closed_by
-        ? `This ticket has been closed by ${data.closed_by}.`
-        : "This ticket has been closed."
-    );
+      lockChatUI(
+        data.closed_by
+          ? `This ticket has been closed by ${data.closed_by}.`
+          : "This ticket has been closed."
+      );
 
-    // أقفل الواجهة
-    lockChatUI(
-      data.closed_by
-        ? `This ticket has been closed by ${data.closed_by}.`
-        : "This ticket has been closed."
-    );
+      return;
+    }
 
-    return;
-}
-
-
-    // Show new messages
+    // ---- NEW MESSAGES ----
     (data.messages || []).forEach((msg) => {
       if (msg.id > LAST_MESSAGE_ID) {
         LAST_MESSAGE_ID = msg.id;
 
-        if (msg.sender_role === "support" || msg.sender_role === "agent") {
-          addBotMessage(msg.body);
-        } else if (msg.sender_role === "user") {
-          addUserMessage(msg.body);
-        } else if (msg.sender_role === "system") {
-          addBotMessage(msg.body);
-        }
+        if (msg.sender_role === "user") addUserMessage(msg.body);
+        else addBotMessage(msg.body);
       }
     });
 
-  } catch (e) {
-    console.log("chat poll error:", e);
-  }
+  } catch (e) {}
 }
 
 function startChatPolling(ticketId) {
   if (!ticketId) return;
   if (CHAT_POLL_INTERVAL) clearInterval(CHAT_POLL_INTERVAL);
+
   CHAT_POLL_INTERVAL = setInterval(() => {
     pollMessages(ticketId);
-  }, 1500);
+  }, 300); // 🔥 أسرع
 }
 
 // =============================================================
@@ -316,7 +287,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-
     if (IS_TICKET_CLOSED) return;
 
     const input = document.getElementById("sv-message-input");
@@ -331,14 +301,13 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // =============================================================
-// SHOW MAIN SECTIONS
+// FAQ SECTIONS
 // =============================================================
 function showSections() {
   if (IS_TICKET_CLOSED) return;
 
   clearSuggestions();
   const suggestions = document.getElementById("sv-suggestions");
-  suggestions.innerHTML = "";
 
   SECTIONS.forEach((sec) => {
     const btn = document.createElement("button");
@@ -355,15 +324,11 @@ function showSections() {
   });
 }
 
-// =============================================================
-// SHOW QUESTIONS IN A SECTION
-// =============================================================
 function showQuestionsInSection(section) {
   if (IS_TICKET_CLOSED) return;
 
   clearSuggestions();
   const suggestions = document.getElementById("sv-suggestions");
-  suggestions.innerHTML = "";
 
   let faqs = section.faqs;
 
@@ -400,9 +365,6 @@ function showQuestionsInSection(section) {
   }
 }
 
-// =============================================================
-// QUESTION CLICK HANDLER
-// =============================================================
 function handleQuestionClick(q) {
   if (IS_TICKET_CLOSED) return;
 
