@@ -1,4 +1,4 @@
-هذا هو ملف الوحيد الذي قلت لي عدله اصن الان تفقده اذا صحيح قلي لنحرب // ===================================================== 
+// ===================================================== 
 // LOAD TREE.JSON (FAQ SYSTEM)
 // =====================================================
 async function loadTree() {
@@ -248,24 +248,15 @@ async function pollMessages(ticketId) {
 
     // ⚡ INSTANT CLOSE — NO WAITING
     if (data.ticket_status === "closed") {
-
-    // أضف رسالة System للعميل داخل الشات
-    addBotMessage(
-      data.closed_by
-        ? `This ticket has been closed by ${data.closed_by}.`
-        : "This ticket has been closed."
-    );
-
-    // أقفل الواجهة
-    lockChatUI(
-      data.closed_by
-        ? `This ticket has been closed by ${data.closed_by}.`
-        : "This ticket has been closed."
-    );
-
-    return;
-}
-
+      if (!IS_TICKET_CLOSED) {
+        lockChatUI(
+          data.closed_by
+            ? `This ticket has been closed by ${data.closed_by}.`
+            : "This ticket has been closed."
+        );
+      }
+      return; // stop everything instantly
+    }
 
     // Show new messages
     (data.messages || []).forEach((msg) => {
