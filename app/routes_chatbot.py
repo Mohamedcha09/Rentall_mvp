@@ -48,9 +48,8 @@ def chatbot_page(
     db = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    # last open chatbot ticket
     active_ticket = None
-    
+
     return templates.TemplateResponse("chatbot.html", {
         "request": request,
         "user": user,
@@ -58,7 +57,6 @@ def chatbot_page(
         "active_ticket": active_ticket,
         "display_currency": display_currency
     })
-
 
 
 # ===========================================================
@@ -161,30 +159,12 @@ def chatbot_transfer_ticket(
     t.unread_for_agent = True
     t.updated_at = now
 
-    # who receives the ticket?
-    if new_queue == "cs_chatbot":
-        target_filter = User.is_support == True
-    else:
-        target_filter = User.is_mod == True
-
-    agents = db.query(User).filter(target_filter).all()
-
-    for ag in agents:
-        push_notification(
-            db,
-            ag.id,
-            "🤖 Ticket transferred",
-            f"Ticket #{ticket_id} moved to your team.",
-            url=f"/{new_queue.replace('_chatbot','')}/chatbot/ticket/{ticket_id}",
-            kind="support",
-        )
-
     db.commit()
     return {"ok": True, "queue": new_queue}
 
 
 # ===========================================================
-# CLOSE TICKET
+# CLOSE TICKET  (FIXED ✔)
 # ===========================================================
 @router.post("/chatbot/ticket/{ticket_id}/close")
 def chatbot_close_ticket(
@@ -203,8 +183,8 @@ def chatbot_close_ticket(
     if not t:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    if t.status == "closed":
-        return {"ok": True, "status": "already_closed"}
+    if t.status == "resolved":
+        return {"ok": True, "status": "already_resolved"}
 
     now = datetime.utcnow()
 
@@ -215,7 +195,7 @@ def chatbot_close_ticket(
         or "support agent"
     )
 
-    # SYSTEM message with closer name
+    # SYSTEM message announcing closure
     db.add(SupportMessage(
         ticket_id=ticket_id,
         sender_id=user.id,
@@ -225,8 +205,8 @@ def chatbot_close_ticket(
         created_at=now,
     ))
 
-    # Update ticket
-    t.status = "closed"
+    # Update ticket → FIXED
+    t.status = "resolved"
     t.closed_by = closer_name
     t.closed_at = now
     t.last_from = "system"
@@ -234,9 +214,13 @@ def chatbot_close_ticket(
     t.unread_for_agent = False
     t.updated_at = now
 
+    # 🔥 IMPORTANT FIX — حتى لا تختفي التذكرة
+    if not t.assigned_to_id:
+        t.assigned_to_id = user.id
+
     db.commit()
 
-    return {"ok": True, "status": "closed", "closed_by": closer_name}
+    return {"ok": True, "status": "resolved", "closed_by": closer_name}
 
 
 # ===========================================================
@@ -274,7 +258,7 @@ def chatbot_agent_status(
 
 
 # ===========================================================
-# GET MESSAGES FOR CHATBOT POLLING
+# GET MESSAGES (POLLING)
 # ===========================================================
 @router.get("/api/chatbot/messages/{ticket_id}")
 def chatbot_get_messages(
@@ -305,8 +289,8 @@ def chatbot_get_messages(
     return {
         "ok": True,
         "messages": out,
-        "ticket_status": t.status,                   # 👈 مهم
-        "closed_by": t.closed_by or None,           # 👈 مهم
+        "ticket_status": t.status,
+        "closed_by": t.closed_by or None,
         "closed_at": t.closed_at.isoformat() if t.closed_at else None,
     }
 
@@ -328,7 +312,7 @@ def chatbot_send_message(
     if not t:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    if t.status == "closed":
+    if t.status == "resolved":
         raise HTTPException(status_code=403, detail="Ticket is closed")
 
     msg = SupportMessage(
@@ -352,7 +336,7 @@ def chatbot_send_message(
 
 
 # ===========================================================
-# CLIENT VIEW FOR CHATBOT TICKET  (/chatbot/ticket/{id})
+# CLIENT VIEW
 # ===========================================================
 @router.get("/chatbot/ticket/{ticket_id}")
 def chatbot_ticket_client(
@@ -362,14 +346,12 @@ def chatbot_ticket_client(
     user: Optional[User] = Depends(get_current_user),
 ):
     if not user:
-        raise HTTPException(status_code=401, detail="Login required")
+        raise HTTPException(status_code=401)
 
-    # fetch ticket
     t = db.query(SupportTicket).filter_by(id=ticket_id, user_id=user.id).first()
     if not t:
-        raise HTTPException(status_code=404, detail="Ticket not found")
+        raise HTTPException(status_code=404)
 
-    # messages
     msgs = (
         db.query(SupportMessage)
         .filter_by(ticket_id=ticket_id)
@@ -385,8 +367,9 @@ def chatbot_ticket_client(
         "session_user": user,
     })
 
+
 # ===========================================================
-# CLIENT VIEW — CHATBOT TICKET PAGE
+# CLIENT VIEW (UNIVERSAL)
 # ===========================================================
 @router.get("/support/chatbot/ticket/{ticket_id}")
 def chatbot_ticket_client_page(
@@ -396,15 +379,14 @@ def chatbot_ticket_client_page(
     user: Optional[User] = Depends(get_current_user),
 ):
     if not user:
-        raise HTTPException(status_code=401, detail="Login required")
+        raise HTTPException(status_code=401)
 
     t = db.query(SupportTicket).filter_by(id=ticket_id, channel="chatbot").first()
     if not t:
-        raise HTTPException(status_code=404, detail="Ticket not found")
+        raise HTTPException(status_code=404)
 
-    # التذكرة يجب أن تكون للعميل نفسه
     if t.user_id != user.id:
-        raise HTTPException(status_code=403, detail="Not allowed")
+        raise HTTPException(status_code=403)
 
     msgs = (
         db.query(SupportMessage)
