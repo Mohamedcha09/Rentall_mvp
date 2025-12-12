@@ -157,7 +157,6 @@ def cs_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get
 # ------------------------------------------------
 # REPLY (AVEC MESSAGE D’ACCUEIL LA PREMIÈRE FOIS)
 # ------------------------------------------------
-
 @router.post("/ticket/{tid}/reply")
 def cs_chatbot_reply(
     tid: int,
@@ -179,20 +178,25 @@ def cs_chatbot_reply(
 
     now = datetime.utcnow()
 
-    # 1) Premier contact si pas encore assigné
+    # =================================================
+    # 1) FIRST AGENT CONTACT (CRITICAL)
+    # =================================================
     if not t.assigned_to_id:
+        t.assigned_to_id = u_cs["id"]
+
         first_contact = SupportMessage(
             ticket_id=t.id,
             sender_id=u_cs["id"],
-            sender_role="system",
-            body=f"You are now chatting with one of our agents: {u_cs['first_name']} {u_cs['last_name']}.",
+            sender_role="agent",  # ⭐ مهم جداً
+            body=f"You're now connected with {u_cs['first_name']} {u_cs['last_name']}. How can I help you?",
             created_at=now,
             channel="chatbot"
         )
         db.add(first_contact)
-        t.assigned_to_id = u_cs["id"]
 
-    # 2) Réponse de l’agent
+    # =================================================
+    # 2) AGENT REPLY
+    # =================================================
     msg = SupportMessage(
         ticket_id=t.id,
         sender_id=u_cs["id"],
@@ -203,7 +207,9 @@ def cs_chatbot_reply(
     )
     db.add(msg)
 
-    # Mise à jour du ticket
+    # =================================================
+    # 3) UPDATE TICKET
+    # =================================================
     t.last_msg_at = now
     t.updated_at = now
     t.last_from = "agent"
