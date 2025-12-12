@@ -62,7 +62,7 @@ def chatbot_page(
 
 
 # ===========================================================
-# TRANSFER TICKET
+# TRANSFER TICKET — FINAL VERSION WITH TEAM-TO-TEAM NOTIFICATION
 # ===========================================================
 @router.post("/chatbot/ticket/{ticket_id}/transfer")
 def chatbot_transfer_ticket(
@@ -87,7 +87,7 @@ def chatbot_transfer_ticket(
 
     now = datetime.utcnow()
 
-    # Text sent to the user
+    # Message visible to the user
     transfer_map = {
         "cs_chatbot": "Your conversation has been transferred to our Customer Support team.",
         "md_chatbot": "Your conversation has been transferred to our Management Desk.",
@@ -97,7 +97,7 @@ def chatbot_transfer_ticket(
     if new_queue not in transfer_map:
         raise HTTPException(status_code=400, detail="Invalid queue")
 
-    # Add system message
+    # Add system message to conversation
     db.add(SupportMessage(
         ticket_id=ticket_id,
         sender_id=user.id,
@@ -107,39 +107,48 @@ def chatbot_transfer_ticket(
         created_at=now,
     ))
 
-    # Determine which team will receive the ticket
+    # ===== Determine sender team =====
+    if user.is_support:
+        sender_team = "Customer Support (CS)"
+    elif hasattr(user, "is_md") and user.is_md:
+        sender_team = "Management Desk (MD)"
+    elif hasattr(user, "is_mod") and user.is_mod:
+        sender_team = "Moderation Team (MOD)"
+    else:
+        sender_team = "Support Team"
+
+    # ===== Determine receiver team + agents =====
     if new_queue == "cs_chatbot":
+        receiver_team = "Customer Support (CS)"
         agents = db.query(User).filter(User.is_support == True).all()
-        team_label = "Customer Support (CS)"
     elif new_queue == "md_chatbot":
+        receiver_team = "Management Desk (MD)"
         agents = db.query(User).filter(
             (User.is_deposit_manager == True) | (User.badge_admin == True)
         ).all()
-        team_label = "Management Desk (MD)"
     else:
+        receiver_team = "Moderation Team (MOD)"
         agents = db.query(User).filter(User.is_mod == True).all()
-        team_label = "Moderation Team (MOD)"
 
-    # Update ticket queue + status
+    # Update ticket info
     t.queue = new_queue
     t.last_from = "system"
     t.unread_for_user = True
     t.unread_for_agent = True
     t.updated_at = now
 
-    # Send notifications to the team
+    # ===== Send notification to receiver team =====
     for ag in agents:
         push_notification(
             db,
             ag.id,
-            f"🔄 Ticket transferred to {team_label}",
-            f"Ticket #{ticket_id} has been moved to your queue.",
+            "📨 Ticket Transferred",
+            f"Ticket #{ticket_id} has been sent from {sender_team} → {receiver_team}.",
             url=f"/{new_queue.replace('_chatbot','')}/chatbot/ticket/{ticket_id}",
             kind="support",
         )
 
     db.commit()
-
     return {"ok": True, "queue": new_queue}
 
 # ===========================================================
