@@ -42,8 +42,8 @@
   {% endif %}
 
   <!-- Closed -->
-  <h3 class="mt-4">🚫 Closed</h3>
-  {% set items = data.closed | selectattr('queue', 'equalto', 'cs_chatbot') | list %}
+  <h3 class="mt-4">✅ Resolved</h3>
+  {% set items = data.resolved | selectattr('queue', 'equalto', 'cs_chatbot') | list %}
   {% if items %}
     <div class="list-group mt-2">
       {% for t in items %}
@@ -53,7 +53,7 @@
       {% endfor %}
     </div>
   {% else %}
-    <p class="text-muted">No closed chatbot tickets.</p>
+    <p class="text-muted">No resolved  chatbot tickets.</p>
   {% endif %}
 </div>
 

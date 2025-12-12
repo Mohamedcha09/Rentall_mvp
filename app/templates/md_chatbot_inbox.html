@@ -34,8 +34,8 @@
     <p class="text-muted">None.</p>
   {% endif %}
 
-  <h3 class="mt-4">🚫 Closed</h3>
-  {% set items = data.closed | selectattr('queue', 'equalto', 'md_chatbot') | list %}
+  <h3 class="mt-4">✅ Resolved</h3>
+  {% set items = data.resolved | selectattr('queue', 'equalto', 'md_chatbot') | list %}
   {% if items %}
     <div class="list-group mt-2">
       {% for t in items %}
