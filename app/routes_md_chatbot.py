@@ -15,6 +15,10 @@ templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(prefix="/md/chatbot", tags=["md_chatbot"])
 
 
+# ------------------------------------------------
+# HELPERS
+# ------------------------------------------------
+
 def _require_login(request: Request):
     return request.session.get("user")
 
@@ -24,37 +28,33 @@ def _ensure_md_session(db: Session, request: Request):
     if not sess:
         return None
 
-    # لو السيشن سبق وان وُسم كـ MD، استعمله مباشرة
+    # if already validated earlier in session
     if sess.get("is_md", False):
         return sess
 
-    # حمل المستخدم من الداتابيس
-    u_db = db.query(User).filter(User.id == sess["id"]).first()
-    if not u_db:
+    u = db.get(User, sess["id"])
+    if not u:
         return None
 
-    # نعتبر الـ MD هو:
-    # - مدير ديبو / مدفوعات
-    #   أو
-    # - أدمن عام في النظام
+    # define MD role (deposit manager OR admin badge)
     is_md_role = bool(
-        getattr(u_db, "is_deposit_manager", False)
-        or getattr(u_db, "badge_admin", False)
+        getattr(u, "is_deposit_manager", False) or
+        getattr(u, "badge_admin", False)
     )
 
     if not is_md_role:
         return None
 
-    # خزّن الفلاغ في السيشن حتى لا نعيد التحقق كل مرة
+    # store in session
     sess["is_md"] = True
     request.session["user"] = sess
     return sess
 
 
+# ------------------------------------------------
+# 📥 MD INBOX — FINAL VERSION
+# ------------------------------------------------
 
-# ================================
-# MD INBOX
-# ================================
 @router.get("/inbox")
 def md_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
@@ -65,31 +65,42 @@ def md_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
     if not u_md:
         return RedirectResponse("/support/my", 303)
 
-    base_q = db.query(SupportTicket).filter(
+    base = db.query(SupportTicket).filter(
         SupportTicket.channel == "chatbot",
         SupportTicket.queue == "md_chatbot"
     )
 
-    new_q = (
-        base_q.filter(
-            SupportTicket.status.in_(("new", "open")),
-            SupportTicket.assigned_to_id.is_(None),
-            SupportTicket.last_from == "user",
-        )
-        .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
+    # -----------------------------
+    # 🆕 NEW
+    # -----------------------------
+    new_q = base.filter(
+        SupportTicket.assigned_to_id.is_(None),
+        SupportTicket.status.in_(("new", "open")),
+        SupportTicket.last_from == "user",
+    ).order_by(
+        desc(SupportTicket.last_msg_at),
+        desc(SupportTicket.created_at)
     )
 
-    in_review_q = (
-        base_q.filter(
-            SupportTicket.status == "open",
-            SupportTicket.assigned_to_id.isnot(None),
-        )
-        .order_by(desc(SupportTicket.updated_at))
+    # -----------------------------
+    # 📂 IN REVIEW
+    # -----------------------------
+    in_review_q = base.filter(
+        SupportTicket.assigned_to_id.isnot(None),
+        SupportTicket.status == "open",
+    ).order_by(
+        desc(SupportTicket.updated_at),
+        desc(SupportTicket.last_msg_at)
     )
 
-    resolved_q = (
-        base_q.filter(SupportTicket.status == "resolved")
-        .order_by(desc(SupportTicket.resolved_at))
+    # -----------------------------
+    # ✅ RESOLVED
+    # -----------------------------
+    resolved_q = base.filter(
+        SupportTicket.status == "resolved"
+    ).order_by(
+        desc(SupportTicket.resolved_at),
+        desc(SupportTicket.updated_at)
     )
 
     data = {
@@ -110,9 +121,10 @@ def md_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
     )
 
 
-# ================================
+# ------------------------------------------------
 # VIEW TICKET
-# ================================
+# ------------------------------------------------
+
 @router.get("/ticket/{tid}")
 def md_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
@@ -148,9 +160,10 @@ def md_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get
     )
 
 
-# ================================
-# MD REPLY (FIRST CONTACT + REPLY)
-# ================================
+# ------------------------------------------------
+# REPLY (FIRST CONTACT + NORMAL REPLY)
+# ------------------------------------------------
+
 @router.post("/ticket/{tid}/reply")
 def md_chatbot_reply(
     tid: int,
@@ -172,11 +185,9 @@ def md_chatbot_reply(
 
     now = datetime.utcnow()
 
-    # -----------------------------------
-    # 1) Send FIRST CONTACT message if not assigned
-    # -----------------------------------
+    # FIRST CONTACT = assign ticket
     if not t.assigned_to_id:
-        first_contact = SupportMessage(
+        intro = SupportMessage(
             ticket_id=t.id,
             sender_id=u_md["id"],
             sender_role="system",
@@ -184,12 +195,10 @@ def md_chatbot_reply(
             created_at=now,
             channel="chatbot"
         )
-        db.add(first_contact)
+        db.add(intro)
         t.assigned_to_id = u_md["id"]
 
-    # -----------------------------------
-    # 2) MD reply
-    # -----------------------------------
+    # Real reply
     msg = SupportMessage(
         ticket_id=t.id,
         sender_id=u_md["id"],
@@ -200,6 +209,7 @@ def md_chatbot_reply(
     )
     db.add(msg)
 
+    # Update ticket
     t.last_msg_at = now
     t.updated_at = now
     t.last_from = "agent"
@@ -212,9 +222,10 @@ def md_chatbot_reply(
     return RedirectResponse(f"/md/chatbot/ticket/{t.id}", 303)
 
 
-# ================================
+# ------------------------------------------------
 # RESOLVE
-# ================================
+# ------------------------------------------------
+
 @router.post("/tickets/{ticket_id}/resolve")
 def md_chatbot_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
@@ -234,10 +245,11 @@ def md_chatbot_resolve(ticket_id: int, request: Request, db: Session = Depends(g
     t.status = "resolved"
     t.resolved_at = now
     t.updated_at = now
+
     if not t.assigned_to_id:
         t.assigned_to_id = u_md["id"]
 
-    msg = SupportMessage(
+    close_msg = SupportMessage(
         ticket_id=t.id,
         sender_id=u_md["id"],
         sender_role="agent",
@@ -245,9 +257,10 @@ def md_chatbot_resolve(ticket_id: int, request: Request, db: Session = Depends(g
         created_at=now,
         channel="chatbot"
     )
-    db.add(msg)
 
+    db.add(close_msg)
     t.unread_for_user = True
 
     db.commit()
+
     return RedirectResponse("/md/chatbot/inbox", 303)

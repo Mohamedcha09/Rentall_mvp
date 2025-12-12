@@ -15,6 +15,10 @@ templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(prefix="/mod/chatbot", tags=["mod_chatbot"])
 
 
+# ------------------------------------------------
+# HELPERS
+# ------------------------------------------------
+
 def _require_login(request: Request):
     return request.session.get("user")
 
@@ -24,11 +28,14 @@ def _ensure_mod_session(db: Session, request: Request):
     uid = sess.get("id")
     if not uid:
         return None
-    if bool(sess.get("is_mod")):
+
+    # already validated once
+    if sess.get("is_mod", False):
         return sess
 
-    u_db = db.get(User, uid)
-    if u_db and bool(getattr(u_db, "is_mod", False)):
+    # reload from DB
+    u = db.get(User, uid)
+    if u and bool(getattr(u, "is_mod", False)):
         sess["is_mod"] = True
         request.session["user"] = sess
         return sess
@@ -36,9 +43,10 @@ def _ensure_mod_session(db: Session, request: Request):
     return None
 
 
-# ================================
-# MOD CHATBOT INBOX
-# ================================
+# ------------------------------------------------
+# 📥 MOD INBOX — FINAL VERSION
+# ------------------------------------------------
+
 @router.get("/inbox")
 def mod_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
@@ -49,31 +57,42 @@ def mod_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
     if not u_mod:
         return RedirectResponse("/support/my", 303)
 
-    base_q = db.query(SupportTicket).filter(
+    base = db.query(SupportTicket).filter(
         SupportTicket.channel == "chatbot",
         SupportTicket.queue == "mod_chatbot"
     )
 
-    new_q = (
-        base_q.filter(
-            SupportTicket.status.in_(("new", "open")),
-            SupportTicket.assigned_to_id.is_(None),
-            SupportTicket.last_from == "user",
-        )
-        .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
+    # -----------------------------
+    # 🆕 NEW
+    # -----------------------------
+    new_q = base.filter(
+        SupportTicket.assigned_to_id.is_(None),
+        SupportTicket.status.in_(("new", "open")),
+        SupportTicket.last_from == "user",
+    ).order_by(
+        desc(SupportTicket.last_msg_at),
+        desc(SupportTicket.created_at)
     )
 
-    in_review_q = (
-        base_q.filter(
-            SupportTicket.status == "open",
-            SupportTicket.assigned_to_id.isnot(None),
-        )
-        .order_by(desc(SupportTicket.updated_at))
+    # -----------------------------
+    # 📂 IN REVIEW
+    # -----------------------------
+    in_review_q = base.filter(
+        SupportTicket.assigned_to_id.isnot(None),
+        SupportTicket.status == "open",
+    ).order_by(
+        desc(SupportTicket.updated_at),
+        desc(SupportTicket.last_msg_at)
     )
 
-    resolved_q = (
-        base_q.filter(SupportTicket.status == "resolved")
-        .order_by(desc(SupportTicket.resolved_at))
+    # -----------------------------
+    # ✅ RESOLVED
+    # -----------------------------
+    resolved_q = base.filter(
+        SupportTicket.status == "resolved"
+    ).order_by(
+        desc(SupportTicket.resolved_at),
+        desc(SupportTicket.updated_at)
     )
 
     data = {
@@ -94,9 +113,10 @@ def mod_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
     )
 
 
-# ================================
+# ------------------------------------------------
 # VIEW TICKET
-# ================================
+# ------------------------------------------------
+
 @router.get("/ticket/{tid}")
 def mod_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
@@ -116,6 +136,7 @@ def mod_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(ge
     if not t:
         return RedirectResponse("/mod/chatbot/inbox", 303)
 
+    # mark as read for agent
     t.unread_for_agent = False
     db.commit()
 
@@ -132,9 +153,10 @@ def mod_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(ge
     )
 
 
-# ================================
-# MOD REPLY (FIRST CONTACT + REPLY)
-# ================================
+# ------------------------------------------------
+# REPLY (FIRST CONTACT + NORMAL REPLY)
+# ------------------------------------------------
+
 @router.post("/ticket/{tid}/reply")
 def mod_chatbot_reply(
     tid: int,
@@ -156,11 +178,9 @@ def mod_chatbot_reply(
 
     now = datetime.utcnow()
 
-    # -----------------------------------
-    # 1) Send FIRST CONTACT message if not assigned
-    # -----------------------------------
+    # FIRST CONTACT
     if not t.assigned_to_id:
-        first_contact = SupportMessage(
+        intro = SupportMessage(
             ticket_id=t.id,
             sender_id=u_mod["id"],
             sender_role="system",
@@ -168,22 +188,21 @@ def mod_chatbot_reply(
             created_at=now,
             channel="chatbot"
         )
-        db.add(first_contact)
+        db.add(intro)
         t.assigned_to_id = u_mod["id"]
 
-    # -----------------------------------
-    # 2) MOD reply
-    # -----------------------------------
+    # REAL REPLY
     msg = SupportMessage(
         ticket_id=t.id,
         sender_id=u_mod["id"],
         sender_role="agent",
-        body=(body or "").strip() or "(no text)",
+        body=(body or "").trim() if hasattr(body, "trim") else (body.strip() or "(no text)"),
         created_at=now,
         channel="chatbot"
     )
     db.add(msg)
 
+    # update ticket
     t.last_msg_at = now
     t.updated_at = now
     t.last_from = "agent"
@@ -196,9 +215,10 @@ def mod_chatbot_reply(
     return RedirectResponse(f"/mod/chatbot/ticket/{t.id}", 303)
 
 
-# ================================
+# ------------------------------------------------
 # RESOLVE
-# ================================
+# ------------------------------------------------
+
 @router.post("/tickets/{ticket_id}/resolve")
 def mod_chatbot_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
@@ -218,10 +238,11 @@ def mod_chatbot_resolve(ticket_id: int, request: Request, db: Session = Depends(
     t.status = "resolved"
     t.resolved_at = now
     t.updated_at = now
+
     if not t.assigned_to_id:
         t.assigned_to_id = u_mod["id"]
 
-    m = SupportMessage(
+    close_msg = SupportMessage(
         ticket_id=t.id,
         sender_id=u_mod["id"],
         sender_role="agent",
@@ -229,9 +250,10 @@ def mod_chatbot_resolve(ticket_id: int, request: Request, db: Session = Depends(
         created_at=now,
         channel="chatbot"
     )
-    db.add(m)
+    db.add(close_msg)
 
     t.unread_for_user = True
 
     db.commit()
+
     return RedirectResponse("/mod/chatbot/inbox", 303)

@@ -24,19 +24,14 @@ def _require_login(request: Request):
 
 
 def _ensure_cs_session(db: Session, request: Request):
-    """
-    Vérifie que l'utilisateur est agent CS (customer support).
-    """
     sess = request.session.get("user") or {}
     uid = sess.get("id")
     if not uid:
         return None
 
-    # Si déjà support dans la session → ok
     if bool(sess.get("is_support", False)):
         return sess
 
-    # Sinon reload depuis DB
     u_db = db.get(User, uid)
     if u_db and bool(getattr(u_db, "is_support", False)):
         sess["is_support"] = True
@@ -47,7 +42,7 @@ def _ensure_cs_session(db: Session, request: Request):
 
 
 # ------------------------------------------------
-# INBOX (CS CHATBOT)
+# INBOX — CS CHATBOT (FINAL VERSION)
 # ------------------------------------------------
 
 @router.get("/inbox")
@@ -60,35 +55,48 @@ def cs_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
     if not u_cs:
         return RedirectResponse("/support/my", 303)
 
-    base_q = db.query(SupportTicket).filter(
+    base = db.query(SupportTicket).filter(
         SupportTicket.channel == "chatbot",
         SupportTicket.queue == "cs_chatbot"
     )
 
-    # Nouveaux tickets
-    new_q = (
-        base_q.filter(
-            SupportTicket.status.in_(("new", "open")),
-            SupportTicket.assigned_to_id.is_(None),
-            SupportTicket.unread_for_agent.is_(True),
-            SupportTicket.last_from == "user",
-        )
-        .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
+    # ------------------------------------------------
+    # 🆕 NEW / UNASSIGNED
+    # ------------------------------------------------
+    # - لا يوجد assigned_to_id
+    # - آخر رسالة من user
+    # - agent لم يكتب أبداً
+    # ------------------------------------------------
+    new_q = base.filter(
+        SupportTicket.assigned_to_id.is_(None),
+        SupportTicket.last_from == "user",
+        SupportTicket.status.in_(("new", "open")),
+    ).order_by(
+        desc(SupportTicket.last_msg_at),
+        desc(SupportTicket.created_at)
     )
 
-    # Tickets en cours (assignés)
-    in_review_q = (
-        base_q.filter(
-            SupportTicket.status == "open",
-            SupportTicket.assigned_to_id.isnot(None),
-        )
-        .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
+    # ------------------------------------------------
+    # 📂 IN REVIEW
+    # ------------------------------------------------
+    # التذكرة أصبحت assigned → في المعالجة
+    # ------------------------------------------------
+    in_review_q = base.filter(
+        SupportTicket.assigned_to_id.isnot(None),
+        SupportTicket.status == "open",
+    ).order_by(
+        desc(SupportTicket.updated_at),
+        desc(SupportTicket.last_msg_at)
     )
 
-    # Tickets résolus
-    resolved_q = (
-        base_q.filter(SupportTicket.status == "resolved")
-        .order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
+    # ------------------------------------------------
+    # ✅ RESOLVED
+    # ------------------------------------------------
+    resolved_q = base.filter(
+        SupportTicket.status == "resolved"
+    ).order_by(
+        desc(SupportTicket.resolved_at),
+        desc(SupportTicket.updated_at)
     )
 
     data = {
@@ -110,7 +118,7 @@ def cs_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
 
 
 # ------------------------------------------------
-# VIEW TICKET (CORRIGÉ → tid: int)
+# VIEW TICKET
 # ------------------------------------------------
 
 @router.get("/ticket/{tid}")
@@ -123,21 +131,16 @@ def cs_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get
     if not u_cs:
         return RedirectResponse("/support/my", 303)
 
-    # IMPORTANT: tid est maintenant int, pas string
-    t = (
-        db.query(SupportTicket)
-        .filter(
-            SupportTicket.id == tid,
-            SupportTicket.channel == "chatbot",
-            SupportTicket.queue == "cs_chatbot",
-        )
-        .first()
-    )
+    t = db.query(SupportTicket).filter(
+        SupportTicket.id == tid,
+        SupportTicket.channel == "chatbot",
+        SupportTicket.queue == "cs_chatbot",
+    ).first()
 
     if not t:
         return RedirectResponse("/cs/chatbot/inbox", 303)
 
-    # Marquer comme lu pour agent
+    # mark as read for agent
     t.unread_for_agent = False
     db.commit()
 
@@ -155,7 +158,7 @@ def cs_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get
 
 
 # ------------------------------------------------
-# REPLY (AVEC MESSAGE D’ACCUEIL LA PREMIÈRE FOIS)
+# REPLY (FIRST CONTACT + NORMAL REPLY)
 # ------------------------------------------------
 
 @router.post("/ticket/{tid}/reply")
@@ -179,9 +182,9 @@ def cs_chatbot_reply(
 
     now = datetime.utcnow()
 
-    # 1) Premier contact si pas encore assigné
+    # FIRST CONTACT (assign)
     if not t.assigned_to_id:
-        first_contact = SupportMessage(
+        welcome = SupportMessage(
             ticket_id=t.id,
             sender_id=u_cs["id"],
             sender_role="system",
@@ -189,10 +192,10 @@ def cs_chatbot_reply(
             created_at=now,
             channel="chatbot"
         )
-        db.add(first_contact)
+        db.add(welcome)
         t.assigned_to_id = u_cs["id"]
 
-    # 2) Réponse de l’agent
+    # agent reply
     msg = SupportMessage(
         ticket_id=t.id,
         sender_id=u_cs["id"],
@@ -203,7 +206,7 @@ def cs_chatbot_reply(
     )
     db.add(msg)
 
-    # Mise à jour du ticket
+    # update ticket state
     t.last_msg_at = now
     t.updated_at = now
     t.last_from = "agent"
