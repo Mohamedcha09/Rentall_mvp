@@ -50,16 +50,7 @@ def chatbot_page(
 ):
     # last open chatbot ticket
     active_ticket = None
-    if user:
-        t = (
-            db.query(SupportTicket)
-            .filter_by(user_id=user.id, channel="chatbot", status="open")
-            .order_by(SupportTicket.id.desc())
-            .first()
-        )
-        if t:
-            active_ticket = t.id
-
+    
     return templates.TemplateResponse("chatbot.html", {
         "request": request,
         "user": user,
