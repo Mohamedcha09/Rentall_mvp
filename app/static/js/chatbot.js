@@ -95,12 +95,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // 2) لو فقط مخزنة في localStorage
-  const saved = localStorage.getItem("chatbot_active_ticket");
-  if (saved) {
-    ACTIVE_TICKET_ID = parseInt(saved);
-    startAgentWatcher(ACTIVE_TICKET_ID);
-    startChatPolling(ACTIVE_TICKET_ID);
-  }
+  localStorage.removeItem("chatbot_active_ticket");
+  ACTIVE_TICKET_ID = null;
 });
 
 
