@@ -62,7 +62,61 @@ def chatbot_page(
 
 
 # ===========================================================
-# TRANSFER TICKET — FINAL VERSION WITH TEAM-TO-TEAM NOTIFICATION
+# OPEN NEW CHATBOT TICKET
+# ===========================================================
+@router.post("/chatbot/support")
+def chatbot_open_ticket(
+    request: Request,
+    db = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+    question: str = Form(...),
+    answer: str = Form(...),
+):
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
+
+    t = SupportTicket(
+        user_id=user.id,
+        subject="Chatbot Assistance Needed",
+        queue="cs_chatbot",
+        status="open",
+        last_from="user",
+        unread_for_agent=True,
+        unread_for_user=False,
+        channel="chatbot",
+        created_at=datetime.utcnow(),
+    )
+    db.add(t)
+    db.flush()
+
+    msg = SupportMessage(
+        ticket_id=t.id,
+        sender_id=user.id,
+        sender_role="user",
+        body=f"Chatbot question:\n{question}\n\nChatbot answer:\n{answer}\n\nUser clicked NO.",
+        channel="chatbot",
+        created_at=datetime.utcnow(),
+    )
+    db.add(msg)
+    db.commit()
+
+    # notify CS agents
+    agents = db.query(User).filter(User.is_support == True).all()
+    for ag in agents:
+        push_notification(
+            db,
+            ag.id,
+            "🤖 Chatbot escalation",
+            f"User needs help (ticket #{t.id})",
+            url=f"/cs/chatbot/ticket/{t.id}",
+            kind="support",
+        )
+
+    return {"ok": True, "ticket_id": t.id}
+
+
+# ===========================================================
+# TRANSFER TICKET
 # ===========================================================
 @router.post("/chatbot/ticket/{ticket_id}/transfer")
 def chatbot_transfer_ticket(
@@ -71,23 +125,18 @@ def chatbot_transfer_ticket(
     db = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-    if not user:
-        raise HTTPException(status_code=401, detail="Login required")
-
-    # Only CS / MD / MOD can transfer
-    if not (user.is_support or user.is_md or user.is_mod):
+    if not user or not user.is_support:
         raise HTTPException(status_code=403, detail="Not allowed")
 
     t = db.query(SupportTicket).filter_by(id=ticket_id).first()
     if not t:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    if t.status == "resolved":
+    if t.status == "closed":
         raise HTTPException(status_code=400, detail="Ticket already closed")
 
     now = datetime.utcnow()
 
-    # Message visible to the user
     transfer_map = {
         "cs_chatbot": "Your conversation has been transferred to our Customer Support team.",
         "md_chatbot": "Your conversation has been transferred to our Management Desk.",
@@ -97,7 +146,6 @@ def chatbot_transfer_ticket(
     if new_queue not in transfer_map:
         raise HTTPException(status_code=400, detail="Invalid queue")
 
-    # Add system message to conversation
     db.add(SupportMessage(
         ticket_id=ticket_id,
         sender_id=user.id,
@@ -107,66 +155,48 @@ def chatbot_transfer_ticket(
         created_at=now,
     ))
 
-    # ===== Determine sender team =====
-    if user.is_support:
-        sender_team = "Customer Support (CS)"
-    elif hasattr(user, "is_md") and user.is_md:
-        sender_team = "Management Desk (MD)"
-    elif hasattr(user, "is_mod") and user.is_mod:
-        sender_team = "Moderation Team (MOD)"
-    else:
-        sender_team = "Support Team"
-
-    # ===== Determine receiver team + agents =====
-    if new_queue == "cs_chatbot":
-        receiver_team = "Customer Support (CS)"
-        agents = db.query(User).filter(User.is_support == True).all()
-    elif new_queue == "md_chatbot":
-        receiver_team = "Management Desk (MD)"
-        agents = db.query(User).filter(
-            (User.is_deposit_manager == True) | (User.badge_admin == True)
-        ).all()
-    else:
-        receiver_team = "Moderation Team (MOD)"
-        agents = db.query(User).filter(User.is_mod == True).all()
-
-    # Update ticket info
     t.queue = new_queue
     t.last_from = "system"
     t.unread_for_user = True
     t.unread_for_agent = True
     t.updated_at = now
 
-    # ===== Send notification to receiver team =====
+    # who receives the ticket?
+    if new_queue == "cs_chatbot":
+        target_filter = User.is_support == True
+    else:
+        target_filter = User.is_mod == True
+
+    agents = db.query(User).filter(target_filter).all()
+
     for ag in agents:
         push_notification(
             db,
             ag.id,
-            "📨 Ticket Transferred",
-            f"Ticket #{ticket_id} has been sent from {sender_team} → {receiver_team}.",
+            "🤖 Ticket transferred",
+            f"Ticket #{ticket_id} moved to your team.",
             url=f"/{new_queue.replace('_chatbot','')}/chatbot/ticket/{ticket_id}",
             kind="support",
         )
 
     db.commit()
     return {"ok": True, "queue": new_queue}
+
+
 # ===========================================================
-# TRANSFER TICKET — FINAL VERSION (CS → MD → MOD → CS)
-# WITH TEAM-TO-TEAM NOTIFICATION
+# CLOSE TICKET
 # ===========================================================
-@router.post("/chatbot/ticket/{ticket_id}/transfer")
-def chatbot_transfer_ticket(
+@router.post("/chatbot/ticket/{ticket_id}/close")
+def chatbot_close_ticket(
     ticket_id: int,
-    new_queue: str = Form(...),
     db = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
-
     if not user:
         raise HTTPException(status_code=401, detail="Login required")
 
-    # Only agents can transfer
-    if not (user.is_support or user.is_md or user.is_mod):
+    # Only support / md / mod can close
+    if not (user.is_support or user.is_mod):
         raise HTTPException(status_code=403, detail="Not allowed")
 
     t = db.query(SupportTicket).filter_by(id=ticket_id).first()
@@ -174,77 +204,40 @@ def chatbot_transfer_ticket(
         raise HTTPException(status_code=404, detail="Ticket not found")
 
     if t.status == "resolved":
-        raise HTTPException(status_code=400, detail="Ticket already closed")
+        return {"ok": True, "status": "already_resolved"}
+
 
     now = datetime.utcnow()
 
-    # Message visible to USER
-    transfer_map = {
-        "cs_chatbot": "Your conversation has been transferred to our Customer Support team.",
-        "md_chatbot": "Your conversation has been transferred to our Management Desk.",
-        "mod_chatbot": "Your conversation has been transferred to our Moderation Team.",
-    }
+    closer_name = (
+        (user.full_name or "").strip()
+        or (user.first_name or "").strip()
+        or (user.email or "").strip()
+        or "support agent"
+    )
 
-    if new_queue not in transfer_map:
-        raise HTTPException(status_code=400, detail="Invalid queue")
-
-    # Add system message visible to customer
+    # SYSTEM message with closer name
     db.add(SupportMessage(
         ticket_id=ticket_id,
         sender_id=user.id,
         sender_role="system",
-        body=transfer_map[new_queue],
+        body=f"This ticket has been closed by {closer_name}.",
         channel="chatbot",
         created_at=now,
     ))
 
-    # -------- Determine SENDER team --------
-    if user.is_support:
-        sender_team = "Customer Support (CS)"
-    elif user.is_md:
-        sender_team = "Management Desk (MD)"
-    elif user.is_mod:
-        sender_team = "Moderation Team (MOD)"
-    else:
-        sender_team = "Support Team"
-
-    # -------- Determine RECEIVER team & agents --------
-    if new_queue == "cs_chatbot":
-        receiver_team = "Customer Support (CS)"
-        agents = db.query(User).filter(User.is_support == True).all()
-
-    elif new_queue == "md_chatbot":
-        receiver_team = "Management Desk (MD)"
-        agents = db.query(User).filter(
-            (User.is_md == True) | 
-            (User.is_deposit_manager == True) | 
-            (User.badge_admin == True)
-        ).all()
-
-    elif new_queue == "mod_chatbot":
-        receiver_team = "Moderation Team (MOD)"
-        agents = db.query(User).filter(User.is_mod == True).all()
-
-    # Update ticket state
-    t.queue = new_queue
+    # Update ticket
+    t.status = "resolved"            # ← أهم تعديل
+    t.closed_by = closer_name
+    t.closed_at = now
     t.last_from = "system"
     t.unread_for_user = True
-    t.unread_for_agent = True
+    t.unread_for_agent = False
     t.updated_at = now
 
-    # -------- Send notification to receiver team --------
-    for ag in agents:
-        push_notification(
-            db,
-            ag.id,
-            "📨 Ticket Transferred",
-            f"Ticket #{ticket_id} has been sent from {sender_team} → {receiver_team}.",
-            url=f"/{new_queue.replace('_chatbot','')}/chatbot/ticket/{ticket_id}",
-            kind="support",
-        )
-
     db.commit()
-    return {"ok": True, "queue": new_queue}
+
+    return {"ok": True, "status": "resolved", "closed_by": closer_name}
 
 
 
