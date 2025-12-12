@@ -233,7 +233,7 @@ function startAgentWatcher(ticketId) {
   if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
   AGENT_WATCH_INTERVAL = setInterval(() => {
     checkAgentStatus(ticketId);
-  }, 2000);
+  }, 500);
 }
 
 // =============================================================
@@ -283,7 +283,7 @@ function startChatPolling(ticketId) {
   if (CHAT_POLL_INTERVAL) clearInterval(CHAT_POLL_INTERVAL);
   CHAT_POLL_INTERVAL = setInterval(() => {
     pollMessages(ticketId);
-  }, 1500);
+  }, 400);
 }
 
 // =============================================================
