@@ -166,8 +166,9 @@ body[data-path="/chatbot"] .page {
 </div>
 
 <script>
-  window.ACTIVE_TICKET_FROM_SERVER = {{ active_ticket or 'null' }};
+  window.ACTIVE_TICKET_FROM_SERVER = null;
 </script>
+
 
 <script>
   localStorage.removeItem("chatbot_active_ticket");

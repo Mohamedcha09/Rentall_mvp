@@ -82,22 +82,15 @@ function lockChatUI(closeText) {
 }
 
 // =====================================================
-// RESTORE PREVIOUS TICKET
+// ALWAYS START FRESH CHAT ON /chatbot
 // =====================================================
 document.addEventListener("DOMContentLoaded", () => {
-  // 1) إذا السيرفر أرسل تذكرة مفتوحة
-  if (window.ACTIVE_TICKET_FROM_SERVER) {
-    ACTIVE_TICKET_ID = window.ACTIVE_TICKET_FROM_SERVER;
-    localStorage.setItem("chatbot_active_ticket", ACTIVE_TICKET_ID);
-    startAgentWatcher(ACTIVE_TICKET_ID);
-    startChatPolling(ACTIVE_TICKET_ID);
-    return;
-  }
-
-  // 2) لو فقط مخزنة في localStorage
+  // لا نسترجع أي تذكرة قديمة نهائياً
   localStorage.removeItem("chatbot_active_ticket");
   ACTIVE_TICKET_ID = null;
+  IS_TICKET_CLOSED = false;
 });
+
 
 
 // =====================================================
