@@ -240,7 +240,6 @@ def chatbot_close_ticket(
     return {"ok": True, "status": "resolved", "closed_by": closer_name}
 
 
-
 # ===========================================================
 # LIVE AGENT DETECTION
 # ===========================================================
@@ -254,17 +253,10 @@ def chatbot_agent_status(
     if not t:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    last_msg = (
-        db.query(SupportMessage)
-        .filter_by(ticket_id=ticket_id)
-        .order_by(SupportMessage.id.desc())
-        .first()
-    )
-
     agent_name = None
 
-    if last_msg and last_msg.sender_role in ("support", "agent"):
-        u = db.query(User).filter_by(id=last_msg.sender_id).first()
+    if t.assigned_to_id:
+        u = db.query(User).filter_by(id=t.assigned_to_id).first()
         if u:
             agent_name = u.full_name or u.first_name or "Support agent"
 
@@ -273,6 +265,7 @@ def chatbot_agent_status(
         "assigned": bool(agent_name),
         "agent_name": agent_name,
     }
+
 
 
 # ===========================================================
@@ -312,9 +305,8 @@ def chatbot_get_messages(
         "closed_at": t.closed_at.isoformat() if t.closed_at else None,
     }
 
-
 # ===========================================================
-# SEND MESSAGE (USER → AGENT)
+# SEND MESSAGE (USER ↔ AGENT)
 # ===========================================================
 @router.post("/api/chatbot/messages/{ticket_id}")
 def chatbot_send_message(
@@ -333,10 +325,17 @@ def chatbot_send_message(
     if t.status == "closed":
         raise HTTPException(status_code=403, detail="Ticket is closed")
 
+    # -------------------------------
+    # Detect sender role
+    # -------------------------------
+    sender_role = "user"
+    if user.is_support or user.is_mod:
+        sender_role = "support"
+
     msg = SupportMessage(
         ticket_id=ticket_id,
         sender_id=user.id,
-        sender_role="user",
+        sender_role=sender_role,
         body=body,
         channel="chatbot",
         created_at=datetime.utcnow(),
@@ -344,8 +343,23 @@ def chatbot_send_message(
 
     db.add(msg)
 
-    t.last_from = "user"
-    t.unread_for_agent = True
+    # -------------------------------
+    # FIRST AGENT CONTACT
+    # -------------------------------
+    if sender_role == "support" and not t.assigned_to_id:
+        t.assigned_to_id = user.id
+
+    # -------------------------------
+    # Update ticket flags
+    # -------------------------------
+    if sender_role == "support":
+        t.last_from = "support"
+        t.unread_for_user = True
+        t.unread_for_agent = False
+    else:
+        t.last_from = "user"
+        t.unread_for_agent = True
+
     t.updated_at = datetime.utcnow()
 
     db.commit()
