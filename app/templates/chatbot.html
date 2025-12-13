@@ -681,6 +681,7 @@ function startAgentWatcher(ticketId) {
     // POLL REAL MESSAGES (WITH INSTANT CLOSE)
     // =============================================================
 async function pollMessages(ticketId) {
+  if (IS_TICKET_CLOSED) return;
   if (!ticketId || IS_TICKET_CLOSED) return;
 
   try {
@@ -688,6 +689,9 @@ async function pollMessages(ticketId) {
     const data = await res.json();
 
     if (data.ticket_status === "closed") {
+      IS_TICKET_CLOSED = true;
+      MODE = "CLOSED";
+
       lockChatUI(
         data.closed_by
           ? `This ticket has been closed by ${data.closed_by}.`
