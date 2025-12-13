@@ -684,14 +684,13 @@ async function pollMessages(ticketId) {
     const res = await fetch(`/api/chatbot/messages/${ticketId}`);
     const data = await res.json();
 
+    // إغلاق التذكرة فورًا
     if (data.ticket_status === "closed") {
-      if (!IS_TICKET_CLOSED) {
-        lockChatUI(
-          data.closed_by
-            ? `This ticket has been closed by ${data.closed_by}.`
-            : "This ticket has been closed."
-        );
-      }
+      lockChatUI(
+        data.closed_by
+          ? `This ticket has been closed by ${data.closed_by}.`
+          : "This ticket has been closed."
+      );
       return;
     }
 
@@ -699,22 +698,11 @@ async function pollMessages(ticketId) {
       if (msg.id <= LAST_MESSAGE_ID) return;
       LAST_MESSAGE_ID = msg.id;
 
-      // ⛔ تجاهل echo لنفس رسالة العميل
-      if (
-        (msg.sender_role === "system" || msg.sender_role === "agent") &&
-        LAST_SENT_TEXT &&
-        msg.body &&
-        msg.body.trim() === LAST_SENT_TEXT &&
-        Date.now() - LAST_SENT_AT < 5000
-      ) {
-        return;
-      }
+      // ❌ تجاهل أي رسالة مصدرها user مهما كان
+      if (msg.sender_role === "user") return;
 
-      if (
-        msg.sender_role === "support" ||
-        msg.sender_role === "agent" ||
-        msg.sender_role === "system"
-      ) {
+      // ✅ فقط رسائل السيبور
+      if (msg.sender_role === "support" || msg.sender_role === "agent") {
         addBotMessage(msg.body);
       }
     });
@@ -722,6 +710,7 @@ async function pollMessages(ticketId) {
     console.log("chat poll error:", e);
   }
 }
+
 
 
 function startChatPolling(ticketId) {
