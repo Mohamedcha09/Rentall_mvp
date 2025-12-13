@@ -201,12 +201,6 @@
   word-break:break-word;
 }
 
-@media (max-width: 768px){
-  .container {
-    margin-top: 90px !important;
-  }
-}
-
 
 </style>
 
@@ -227,21 +221,21 @@
     </div>
 
     <div class="d-flex align-items-center gap-2">
-      {% if ticket.status in ['resolved', 'closed'] %}
-  <span class="badge bg-success">Closed</span>
-{% elif ticket.status == 'open' %}
-  <span class="badge bg-primary">Open</span>
-{% else %}
-  <span class="badge bg-secondary">New</span>
-{% endif %}
-
+      {% if ticket.status == 'resolved' %}
+        <span class="badge bg-success">Closed</span>
+      {% elif ticket.status == 'open' %}
+        <span class="badge bg-primary">Open</span>
+      {% else %}
+        <span class="badge bg-secondary">New</span>
+      {% endif %}
+    </div>
   </div>
 
   <!-- MOBILE TITLE (تمت إضافته أعلى الصفحة) -->
   <div class="d-md-none" style="height:70px"></div>
 
   <!-- Status banners -->
-  {% if ticket.status in ['resolved', 'closed'] %}
+  {% if ticket.status == 'resolved' %}
     <div class="alert alert-success d-flex justify-content-between align-items-center" role="status">
       <div>
         ✅ The ticket has been resolved and closed.
@@ -300,25 +294,21 @@
         </div>
 
         <div class="card-footer">
-          {% if ticket.status in ['resolved', 'closed'] %}
+          {% if ticket.status == 'resolved' %}
             <div class="alert alert-warning py-2 mb-2">
               This ticket is currently closed. Sending a new reply will automatically reopen it and notify the support agent.
             </div>
           {% endif %}
 
-          {% if ticket.status not in ['resolved', 'closed'] %}
-  <form method="post" action="/support/ticket/{{ ticket.id }}/reply">
-    <div class="mb-2">
-      <textarea name="body" class="form-control" rows="3"
-        placeholder="Write your message to support…" required></textarea>
-    </div>
-    <div class="d-flex justify-content-end gap-2">
-      <a href="/support/my" class="btn btn-outline-secondary">Cancel</a>
-      <button class="btn btn-primary" type="submit">Send</button>
-    </div>
-  </form>
-{% endif %}
-
+          <form method="post" action="/support/ticket/{{ ticket.id }}/reply">
+            <div class="mb-2">
+              <textarea name="body" class="form-control" rows="3" placeholder="Write your message to support…" required></textarea>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+              <a href="/support/my" class="btn btn-outline-secondary">Cancel</a>
+              <button class="btn btn-primary" type="submit">Send</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
@@ -339,7 +329,7 @@
           <div class="list-group-item d-flex justify-content-between">
             <span class="text-muted">Status</span>
             <span>
-              {% if ticket.status in ['resolved', 'closed'] %}
+              {% if ticket.status == 'resolved' %}
                 Closed
               {% elif ticket.status == 'open' %}
                 Open
