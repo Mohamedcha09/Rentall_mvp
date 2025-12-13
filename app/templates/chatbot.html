@@ -443,6 +443,8 @@ function lockChatUI(closeText) {
     clearInterval(AGENT_WATCH_INTERVAL);
     AGENT_WATCH_INTERVAL = null;
   }
+  stopFastPolling();
+
 
   // مهم: امسح التذكرة المحفوظة لأن هذا Ticket انتهى
   localStorage.removeItem("chatbot_active_ticket");
@@ -728,8 +730,14 @@ function startChatPolling(ticketId) {
   // ✅ لا polling إلا إذا نحن في LIVE
   if (MODE !== "LIVE") return;
 
-  if (CHAT_POLL_INTERVAL) clearInterval(CHAT_POLL_INTERVAL);
-  CHAT_POLL_INTERVAL = setInterval(() => pollMessages(ticketId), 1500);
+  // أوقف أي setInterval قديم
+  if (CHAT_POLL_INTERVAL) {
+    clearInterval(CHAT_POLL_INTERVAL);
+    CHAT_POLL_INTERVAL = null;
+  }
+
+  // ✅ شغل الـ fast polling
+  startFastPolling(ticketId);
 }
 
     // =============================================================
@@ -900,6 +908,34 @@ async function sendUserMessageToServer(text) {
         console.log("initial close check error", e);
       }
     }
+
+
+    // =============================================================
+// FAST RECURSIVE POLLING (SUPER FAST)
+// =============================================================
+let FAST_POLL_STOP = false;
+
+async function startFastPolling(ticketId) {
+  if (!ticketId || IS_TICKET_CLOSED || MODE !== "LIVE") return;
+
+  FAST_POLL_STOP = false;
+
+  const loop = async () => {
+    if (FAST_POLL_STOP || IS_TICKET_CLOSED || MODE !== "LIVE") return;
+
+    await pollMessages(ticketId);
+
+    // 🔥 سرعة عالية (تقدر تخليها 120 أو 150)
+    setTimeout(loop, 150);
+  };
+
+  loop();
+}
+
+function stopFastPolling() {
+  FAST_POLL_STOP = true;
+}
+
   </script>
 </body>
 </html>
