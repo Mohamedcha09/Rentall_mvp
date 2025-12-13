@@ -85,11 +85,18 @@ function lockChatUI(closeText) {
 // ALWAYS START FRESH CHAT ON /chatbot
 // =====================================================
 document.addEventListener("DOMContentLoaded", () => {
-  // لا نسترجع أي تذكرة قديمة نهائياً
-  localStorage.removeItem("chatbot_active_ticket");
-  ACTIVE_TICKET_ID = null;
+  const savedTicket = localStorage.getItem("chatbot_active_ticket");
+  if (savedTicket) {
+    ACTIVE_TICKET_ID = parseInt(savedTicket);
+    startAgentWatcher(ACTIVE_TICKET_ID);
+    startChatPolling(ACTIVE_TICKET_ID);
+  } else {
+    ACTIVE_TICKET_ID = null;
+  }
+
   IS_TICKET_CLOSED = false;
 });
+
 
 
 
@@ -235,7 +242,7 @@ async function pollMessages(ticketId) {
     const res = await fetch(`/api/chatbot/messages/${ticketId}`);
     const data = await res.json();
 
-    // ⚡ INSTANT CLOSE — NO WAITING
+    // ⚡ INSTANT CLOSE
     if (data.ticket_status === "closed") {
       if (!IS_TICKET_CLOSED) {
         lockChatUI(
@@ -244,10 +251,27 @@ async function pollMessages(ticketId) {
             : "This ticket has been closed."
         );
       }
-      return; // stop everything instantly
+      return;
     }
 
-    // Show new messages
+    // 🔥 AUTO-DETECT AGENT FROM MESSAGES (المكان الصحيح)
+    (data.messages || []).forEach((msg) => {
+      if (
+        (msg.sender_role === "agent" || msg.sender_role === "support") &&
+        document.getElementById("sv-live-agent-banner")?.style.display !== "block"
+      ) {
+        const banner = document.getElementById("sv-live-agent-banner");
+        if (banner) {
+          banner.style.display = "block";
+          banner.innerHTML = "You are now chatting with one of our agents";
+        }
+
+        const chatInput = document.getElementById("sv-chat-input");
+        if (chatInput) chatInput.style.display = "block";
+      }
+    });
+
+    // عرض الرسائل
     (data.messages || []).forEach((msg) => {
       if (msg.id > LAST_MESSAGE_ID) {
         LAST_MESSAGE_ID = msg.id;
@@ -266,6 +290,7 @@ async function pollMessages(ticketId) {
     console.log("chat poll error:", e);
   }
 }
+
 
 function startChatPolling(ticketId) {
   if (!ticketId) return;
