@@ -659,11 +659,6 @@ async function checkAgentStatus(ticketId) {
 
       // start polling only once
       startChatPolling(ticketId);
-
-      // welcome message only once
-      addBotMessage(
-        `You're now connected with <b>${data.agent_name}</b>. How can I help you?`
-      );
     }
   } catch (err) {
     console.log("poll error:", err);
@@ -685,7 +680,6 @@ function startAgentWatcher(ticketId) {
     // =============================================================
     // POLL REAL MESSAGES (WITH INSTANT CLOSE)
     // =============================================================
-
 async function pollMessages(ticketId) {
   if (!ticketId || IS_TICKET_CLOSED) return;
 
@@ -703,10 +697,17 @@ async function pollMessages(ticketId) {
     }
 
     (data.messages || []).forEach((msg) => {
-      const body = (msg.body || "").trim();
-      if (!body) return;
 
-      // ⛔ الحل النهائي: منع echo نهائيًا
+      // ✅ أهم سطر — يمنع التكرار نهائيًا
+      if (RENDERED_MESSAGE_IDS.has(msg.id)) return;
+
+      const body = (msg.body || "").trim();
+      if (!body) {
+        RENDERED_MESSAGE_IDS.add(msg.id);
+        return;
+      }
+
+      // ❌ منع echo لرسائل المستخدم
       if (USER_TEXT_CACHE.has(body)) {
         RENDERED_MESSAGE_IDS.add(msg.id);
         return;
@@ -718,7 +719,7 @@ async function pollMessages(ticketId) {
         return;
       }
 
-      // ✅ فقط رسائل السيبور الحقيقية
+      // ✅ فقط رسائل السيبور
       if (msg.sender_role === "agent" || msg.sender_role === "support") {
         addBotMessage(body);
         RENDERED_MESSAGE_IDS.add(msg.id);
@@ -729,7 +730,6 @@ async function pollMessages(ticketId) {
     console.log("chat poll error:", e);
   }
 }
-
 
 
 
