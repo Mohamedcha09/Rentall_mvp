@@ -203,9 +203,9 @@ def chatbot_close_ticket(
     if not t:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    if t.status == "resolved":
-        return {"ok": True, "status": "already_resolved"}
-
+    # ✅ إذا كانت مغلقة مسبقاً
+    if t.status == "closed":
+        return {"ok": True, "status": "already_closed"}
 
     now = datetime.utcnow()
 
@@ -226,8 +226,8 @@ def chatbot_close_ticket(
         created_at=now,
     ))
 
-    # Update ticket
-    t.status = "resolved"            # ← أهم تعديل
+    # ✅ Update ticket
+    t.status = "closed"              # ✅ هنا التعديل الحاسم
     t.closed_by = closer_name
     t.closed_at = now
     t.last_from = "system"
@@ -237,8 +237,7 @@ def chatbot_close_ticket(
 
     db.commit()
 
-    return {"ok": True, "status": "resolved", "closed_by": closer_name}
-
+    return {"ok": True, "status": "closed", "closed_by": closer_name}
 
 # ===========================================================
 # LIVE AGENT DETECTION
@@ -322,7 +321,7 @@ def chatbot_send_message(
     if not t:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    if t.status == "closed":
+    if t.status in ("closed", "resolved"):
         raise HTTPException(status_code=403, detail="Ticket is closed")
 
     # -------------------------------
