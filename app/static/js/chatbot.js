@@ -66,9 +66,6 @@ function lockChatUI(closeText) {
 
   const chatInput = document.getElementById("sv-chat-input");
   if (chatInput) chatInput.style.display = "none";
-  setTimeout(() => {
-  const ci = document.getElementById("sv-chat-input");
-  if (ci) ci.style.display = "none";}, 0);
   
 
   const faqSection = document.getElementById("sv-suggestions-section");
