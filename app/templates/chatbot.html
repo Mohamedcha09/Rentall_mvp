@@ -280,6 +280,7 @@ body.ticket-closed #sv-send-form {
   display: none !important;
 }
 
+
   </style>
 </head>
 
@@ -397,6 +398,7 @@ function addUserMessage(text) {
 
 
 function setMode(m) {
+  if (IS_TICKET_CLOSED) return; // 🔒 هذا هو السطر الحاسم
   MODE = m;
 
   const faqSection = document.getElementById("sv-suggestions-section");
@@ -427,17 +429,27 @@ function setMode(m) {
     // =====================================================
     // LOCK CHAT UI WHEN TICKET CLOSED
     // =====================================================
-function lockChatUI(closeText) {
+
+ function lockChatUI(closeText) {
   if (IS_TICKET_CLOSED) return;
+
   IS_TICKET_CLOSED = true;
   MODE = "CLOSED";
 
-  // 🔴 هذا السطر الحاسم
-document.body.classList.add("ticket-closed");
+  // 🔒 قفل نهائي
+  document.body.classList.add("ticket-closed");
 
-const chatInput = document.getElementById("sv-chat-input");
-if (chatInput) chatInput.style.display = "none";
+  // ❌ إخفاء input بالقوة (JS)
+  const chatInput = document.getElementById("sv-chat-input");
+  if (chatInput) chatInput.style.display = "none";
 
+  // ❌ تعطيل form نهائياً
+  const form = document.getElementById("sv-send-form");
+  if (form) {
+    form.onsubmit = (e) => e.preventDefault();
+  }
+
+  // 🔴 Banner الإغلاق
   const closedBanner = document.getElementById("sv-ticket-closed-banner");
   if (closedBanner) {
     closedBanner.style.display = "block";
@@ -445,9 +457,15 @@ if (chatInput) chatInput.style.display = "none";
       closeText || "This ticket has been closed.";
   }
 
+  // 🛑 أوقف أي polling
   stopFastPolling();
+  if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
+  if (CHAT_POLL_INTERVAL) clearInterval(CHAT_POLL_INTERVAL);
+
+  // 🧹 امسح التذكرة
   localStorage.removeItem("chatbot_active_ticket");
 }
+
 
 
 document.addEventListener("DOMContentLoaded", async () => {
