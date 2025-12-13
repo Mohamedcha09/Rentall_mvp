@@ -349,15 +349,20 @@
       chat.scrollTop = chat.scrollHeight;
     }
 
-    function addUserMessage(text) {
-      const chat = document.getElementById("sv-chat-window");
-      if (!chat) return;
-      const box = document.createElement("div");
-      box.className = "sv-msg sv-msg-user";
-      box.textContent = text;
-      chat.appendChild(box);
-      chat.scrollTop = chat.scrollHeight;
-    }
+function addUserMessage(text) {
+  const clean = text.trim();
+  USER_TEXT_CACHE.add(clean); // ⬅️ احفظ النص
+
+  const chat = document.getElementById("sv-chat-window");
+  if (!chat) return;
+
+  const box = document.createElement("div");
+  box.className = "sv-msg sv-msg-user";
+  box.textContent = clean;
+  chat.appendChild(box);
+  chat.scrollTop = chat.scrollHeight;
+}
+
 
     function clearSuggestions() {
       const s = document.getElementById("sv-suggestions");
@@ -382,6 +387,7 @@
     let LAST_SENT_TEXT = null;
     let LAST_SENT_AT = 0;
     let RENDERED_MESSAGE_IDS = new Set();
+    const USER_TEXT_CACHE = new Set();
 
 
 function setMode(m) {
@@ -679,6 +685,7 @@ function startAgentWatcher(ticketId) {
     // =============================================================
     // POLL REAL MESSAGES (WITH INSTANT CLOSE)
     // =============================================================
+
 async function pollMessages(ticketId) {
   if (!ticketId || IS_TICKET_CLOSED) return;
 
@@ -686,7 +693,6 @@ async function pollMessages(ticketId) {
     const res = await fetch(`/api/chatbot/messages/${ticketId}`);
     const data = await res.json();
 
-    // إغلاق التذكرة
     if (data.ticket_status === "closed") {
       lockChatUI(
         data.closed_by
@@ -697,19 +703,24 @@ async function pollMessages(ticketId) {
     }
 
     (data.messages || []).forEach((msg) => {
+      const body = (msg.body || "").trim();
+      if (!body) return;
 
-      // ❌ إذا سبق رسم الرسالة → تجاهلها
-      if (RENDERED_MESSAGE_IDS.has(msg.id)) return;
+      // ⛔ الحل النهائي: منع echo نهائيًا
+      if (USER_TEXT_CACHE.has(body)) {
+        RENDERED_MESSAGE_IDS.add(msg.id);
+        return;
+      }
 
-      // ❌ تجاهل أي رسالة مصدرها user
+      // ❌ لا ترسم رسائل user من السيرفر
       if (msg.sender_role === "user") {
         RENDERED_MESSAGE_IDS.add(msg.id);
         return;
       }
 
-      // ✅ فقط رسائل السيبور
-      if (msg.sender_role === "support" || msg.sender_role === "agent") {
-        addBotMessage(msg.body);
+      // ✅ فقط رسائل السيبور الحقيقية
+      if (msg.sender_role === "agent" || msg.sender_role === "support") {
+        addBotMessage(body);
         RENDERED_MESSAGE_IDS.add(msg.id);
       }
     });
