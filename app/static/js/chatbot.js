@@ -65,6 +65,10 @@ function lockChatUI(closeText) {
 
   const chatInput = document.getElementById("sv-chat-input");
   if (chatInput) chatInput.style.display = "none";
+  setTimeout(() => {
+  const ci = document.getElementById("sv-chat-input");
+  if (ci) ci.style.display = "none";}, 0);
+  
 
   const faqSection = document.getElementById("sv-suggestions-section");
   if (faqSection) faqSection.style.display = "none";
@@ -267,7 +271,6 @@ function startAgentWatcher(ticketId) {
     checkAgentStatus(ticketId);
   }, 2000);
 }
-
 // =============================================================
 // POLL REAL MESSAGES (WITH INSTANT CLOSE)
 // =============================================================
@@ -287,12 +290,18 @@ async function pollMessages(ticketId) {
             : "This ticket has been closed."
         );
       }
+
+      // 🔴 تأكيد إخفاء input نهائياً
+      const ci = document.getElementById("sv-chat-input");
+      if (ci) ci.style.display = "none";
+
       return;
     }
 
-    // 🔥 AUTO-DETECT AGENT FROM MESSAGES (المكان الصحيح)
+    // 🔥 AUTO-DETECT AGENT FROM MESSAGES
     (data.messages || []).forEach((msg) => {
       if (
+        !IS_TICKET_CLOSED &&   // ✅ الإضافة الوحيدة والمهمة
         (msg.sender_role === "agent" || msg.sender_role === "support") &&
         document.getElementById("sv-live-agent-banner")?.style.display !== "block"
       ) {
@@ -326,7 +335,6 @@ async function pollMessages(ticketId) {
     console.log("chat poll error:", e);
   }
 }
-
 
 function startChatPolling(ticketId) {
   if (!ticketId) return;
