@@ -683,17 +683,21 @@ async function pollMessages(ticketId) {
     const res = await fetch(`/api/chatbot/messages/${ticketId}`);
     const data = await res.json();
 
-    if (data.ticket_status === "closed") {
-      IS_TICKET_CLOSED = true;
-      MODE = "CLOSED";
+  if (data.ticket_status === "closed") {
+  lockChatUI(
+    data.closed_by
+      ? `This ticket has been closed by ${data.closed_by}.`
+      : "This ticket has been closed."
+  );
 
-      lockChatUI(
-        data.closed_by
-          ? `This ticket has been closed by ${data.closed_by}.`
-          : "This ticket has been closed."
-      );
-      return;
-    }
+  // ⛔ أوقف polling فورًا
+  stopFastPolling();
+  if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
+  if (CHAT_POLL_INTERVAL) clearInterval(CHAT_POLL_INTERVAL);
+
+  return;
+}
+
 
     (data.messages || []).forEach((msg) => {
 
@@ -927,7 +931,7 @@ async function sendUserMessageToServer(text) {
 let FAST_POLL_STOP = false;
 
 async function startFastPolling(ticketId) {
-  if (!ticketId || IS_TICKET_CLOSED) return;
+    if (!ticketId || IS_TICKET_CLOSED || MODE !== "LIVE") return;
 
   FAST_POLL_STOP = false;
 
