@@ -54,7 +54,14 @@ let IS_TICKET_CLOSED = false;
 // =====================================================
 function lockChatUI(closeText) {
   if (IS_TICKET_CLOSED) return;
-  IS_TICKET_CLOSED = true;
+  IS_TICKET_CLOSED = true;  
+  const form = document.getElementById("sv-send-form");
+  if (form) {
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      return false;
+    };
+  }
 
   const closedBanner = document.getElementById("sv-ticket-closed-banner");
   if (closedBanner) {
