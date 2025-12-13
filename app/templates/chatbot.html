@@ -927,21 +927,21 @@ async function sendUserMessageToServer(text) {
 let FAST_POLL_STOP = false;
 
 async function startFastPolling(ticketId) {
-  if (!ticketId || IS_TICKET_CLOSED || MODE !== "LIVE") return;
+  if (!ticketId || IS_TICKET_CLOSED) return;
 
   FAST_POLL_STOP = false;
 
   const loop = async () => {
-    if (FAST_POLL_STOP || IS_TICKET_CLOSED || MODE !== "LIVE") return;
+    if (FAST_POLL_STOP || IS_TICKET_CLOSED) return;
 
     await pollMessages(ticketId);
 
-    // 🔥 سرعة عالية (تقدر تخليها 120 أو 150)
     setTimeout(loop, 150);
   };
 
   loop();
 }
+
 
 function stopFastPolling() {
   FAST_POLL_STOP = true;
