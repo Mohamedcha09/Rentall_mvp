@@ -63,8 +63,17 @@ function lockChatUI(closeText) {
       closeText || "This ticket has been closed. You can start a new chat from the Messages page.";
   }
 
-  const chatInput = document.getElementById("sv-chat-input");
-  if (chatInput) chatInput.style.display = "none";
+  const input = document.getElementById("sv-message-input");
+  const sendBtn = document.getElementById("sv-send-btn");
+
+  if (input) {
+    input.disabled = true;
+    input.placeholder = "This ticket is closed";
+  }
+
+  if (sendBtn) {
+    sendBtn.disabled = true;
+  }
 
   const faqSection = document.getElementById("sv-suggestions-section");
   if (faqSection) faqSection.style.display = "none";
@@ -80,6 +89,7 @@ function lockChatUI(closeText) {
 
   localStorage.removeItem("chatbot_active_ticket");
 }
+
 
 // =====================================================
 // ALWAYS START FRESH CHAT ON /chatbot
