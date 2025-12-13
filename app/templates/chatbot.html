@@ -379,6 +379,8 @@
     let AGENT_JOINED_ONCE = false;
     let IS_TICKET_CLOSED = false;
     let MODE = "FAQ"; // FAQ | WAITING | LIVE | CLOSED
+    let LAST_SENT_TEXT = null;
+    let LAST_SENT_AT = 0;
 
 function setMode(m) {
   MODE = m;
@@ -680,7 +682,6 @@ async function pollMessages(ticketId) {
     const res = await fetch(`/api/chatbot/messages/${ticketId}`);
     const data = await res.json();
 
-    // ✅ إغلاق فوري
     if (data.ticket_status === "closed") {
       if (!IS_TICKET_CLOSED) {
         lockChatUI(
@@ -692,12 +693,26 @@ async function pollMessages(ticketId) {
       return;
     }
 
-    // ✅ اعرض فقط رسائل agent/support/system — وتجاهل user نهائيًا
     (data.messages || []).forEach((msg) => {
       if (msg.id <= LAST_MESSAGE_ID) return;
       LAST_MESSAGE_ID = msg.id;
 
-      if (msg.sender_role === "support" || msg.sender_role === "agent" || msg.sender_role === "system") {
+      // ⛔ تجاهل echo لنفس رسالة العميل
+      if (
+        (msg.sender_role === "system" || msg.sender_role === "agent") &&
+        LAST_SENT_TEXT &&
+        msg.body &&
+        msg.body.trim() === LAST_SENT_TEXT &&
+        Date.now() - LAST_SENT_AT < 5000
+      ) {
+        return;
+      }
+
+      if (
+        msg.sender_role === "support" ||
+        msg.sender_role === "agent" ||
+        msg.sender_role === "system"
+      ) {
         addBotMessage(msg.body);
       }
     });
@@ -705,6 +720,7 @@ async function pollMessages(ticketId) {
     console.log("chat poll error:", e);
   }
 }
+
 
 function startChatPolling(ticketId) {
   if (!ticketId || IS_TICKET_CLOSED) return;
@@ -719,17 +735,22 @@ function startChatPolling(ticketId) {
     // =============================================================
     // SEND MESSAGE
     // =============================================================
-    async function sendUserMessageToServer(text) {
-      if (!ACTIVE_TICKET_ID || IS_TICKET_CLOSED) return;
+async function sendUserMessageToServer(text) {
+  if (!ACTIVE_TICKET_ID || IS_TICKET_CLOSED) return;
 
-      const formData = new FormData();
-      formData.append("body", text);
+  // حفظ آخر رسالة أرسلها العميل
+  LAST_SENT_TEXT = text.trim();
+  LAST_SENT_AT = Date.now();
 
-      await fetch(`/api/chatbot/messages/${ACTIVE_TICKET_ID}`, {
-        method: "POST",
-        body: formData,
-      });
-    }
+  const formData = new FormData();
+  formData.append("body", text);
+
+  await fetch(`/api/chatbot/messages/${ACTIVE_TICKET_ID}`, {
+    method: "POST",
+    body: formData,
+  });
+}
+
 
     // =============================================================
     // SHOW MAIN SECTIONS
