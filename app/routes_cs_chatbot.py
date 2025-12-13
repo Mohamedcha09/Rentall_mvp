@@ -32,11 +32,9 @@ def _ensure_cs_session(db: Session, request: Request):
     if not uid:
         return None
 
-    # Si déjà support dans la session → ok
     if bool(sess.get("is_support", False)):
         return sess
 
-    # Sinon reload depuis DB
     u_db = db.get(User, uid)
     if u_db and bool(getattr(u_db, "is_support", False)):
         sess["is_support"] = True
@@ -65,7 +63,6 @@ def cs_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
         SupportTicket.queue == "cs_chatbot"
     )
 
-    # Nouveaux tickets
     new_q = (
         base_q.filter(
             SupportTicket.status.in_(("new", "open")),
@@ -76,7 +73,6 @@ def cs_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.created_at))
     )
 
-    # Tickets en cours (assignés)
     in_review_q = (
         base_q.filter(
             SupportTicket.status == "open",
@@ -85,7 +81,6 @@ def cs_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
         .order_by(desc(SupportTicket.last_msg_at), desc(SupportTicket.updated_at))
     )
 
-    # Tickets résolus
     resolved_q = (
         base_q.filter(SupportTicket.status == "resolved")
         .order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
@@ -110,7 +105,7 @@ def cs_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
 
 
 # ------------------------------------------------
-# VIEW TICKET (CORRIGÉ → tid: int)
+# VIEW TICKET  ✅ FIX: ASSIGN ON OPEN + INTRO MESSAGE
 # ------------------------------------------------
 
 @router.get("/ticket/{tid}")
@@ -123,7 +118,6 @@ def cs_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get
     if not u_cs:
         return RedirectResponse("/support/my", 303)
 
-    # IMPORTANT: tid est maintenant int, pas string
     t = (
         db.query(SupportTicket)
         .filter(
@@ -137,7 +131,33 @@ def cs_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get
     if not t:
         return RedirectResponse("/cs/chatbot/inbox", 303)
 
-    # Marquer comme lu pour agent
+    now = datetime.utcnow()
+
+    # ✅ CRITICAL: mark ticket assigned as soon as CS OPENS it
+    if not t.assigned_to_id:
+        t.assigned_to_id = u_cs["id"]
+
+        agent_name = (
+            f"{(u_cs.get('first_name') or '').strip()} {(u_cs.get('last_name') or '').strip()}".strip()
+            or (u_cs.get("email") or "Support agent")
+        )
+
+        db.add(SupportMessage(
+            ticket_id=t.id,
+            sender_id=u_cs["id"],
+            sender_role="agent",  # مهم: الواجهة تعتبره Agent
+            body=f"You're now connected with {agent_name}. How can I help you?",
+            created_at=now,
+            channel="chatbot",
+        ))
+
+        t.last_from = "agent"
+        t.status = "open"
+        t.unread_for_user = True
+        t.updated_at = now
+        t.last_msg_at = now
+
+    # Mark as read for agent
     t.unread_for_agent = False
     db.commit()
 
@@ -155,8 +175,9 @@ def cs_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get
 
 
 # ------------------------------------------------
-# REPLY (AVEC MESSAGE D’ACCUEIL LA PREMIÈRE FOIS)
+# REPLY
 # ------------------------------------------------
+
 @router.post("/ticket/{tid}/reply")
 def cs_chatbot_reply(
     tid: int,
@@ -178,25 +199,10 @@ def cs_chatbot_reply(
 
     now = datetime.utcnow()
 
-    # =================================================
-    # 1) FIRST AGENT CONTACT (CRITICAL)
-    # =================================================
+    # If still not assigned (rare), assign here too (no duplicate intro because view already did it)
     if not t.assigned_to_id:
         t.assigned_to_id = u_cs["id"]
 
-        first_contact = SupportMessage(
-            ticket_id=t.id,
-            sender_id=u_cs["id"],
-            sender_role="agent",  # ⭐ مهم جداً
-            body=f"You're now connected with {u_cs['first_name']} {u_cs['last_name']}. How can I help you?",
-            created_at=now,
-            channel="chatbot"
-        )
-        db.add(first_contact)
-
-    # =================================================
-    # 2) AGENT REPLY
-    # =================================================
     msg = SupportMessage(
         ticket_id=t.id,
         sender_id=u_cs["id"],
@@ -207,9 +213,6 @@ def cs_chatbot_reply(
     )
     db.add(msg)
 
-    # =================================================
-    # 3) UPDATE TICKET
-    # =================================================
     t.last_msg_at = now
     t.updated_at = now
     t.last_from = "agent"
