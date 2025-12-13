@@ -381,6 +381,8 @@
     let MODE = "FAQ"; // FAQ | WAITING | LIVE | CLOSED
     let LAST_SENT_TEXT = null;
     let LAST_SENT_AT = 0;
+    let RENDERED_MESSAGE_IDS = new Set();
+
 
 function setMode(m) {
   MODE = m;
@@ -684,7 +686,7 @@ async function pollMessages(ticketId) {
     const res = await fetch(`/api/chatbot/messages/${ticketId}`);
     const data = await res.json();
 
-    // إغلاق التذكرة فورًا
+    // إغلاق التذكرة
     if (data.ticket_status === "closed") {
       lockChatUI(
         data.closed_by
@@ -695,21 +697,28 @@ async function pollMessages(ticketId) {
     }
 
     (data.messages || []).forEach((msg) => {
-      if (msg.id <= LAST_MESSAGE_ID) return;
-      LAST_MESSAGE_ID = msg.id;
 
-      // ❌ تجاهل أي رسالة مصدرها user مهما كان
-      if (msg.sender_role === "user") return;
+      // ❌ إذا سبق رسم الرسالة → تجاهلها
+      if (RENDERED_MESSAGE_IDS.has(msg.id)) return;
+
+      // ❌ تجاهل أي رسالة مصدرها user
+      if (msg.sender_role === "user") {
+        RENDERED_MESSAGE_IDS.add(msg.id);
+        return;
+      }
 
       // ✅ فقط رسائل السيبور
       if (msg.sender_role === "support" || msg.sender_role === "agent") {
         addBotMessage(msg.body);
+        RENDERED_MESSAGE_IDS.add(msg.id);
       }
     });
+
   } catch (e) {
     console.log("chat poll error:", e);
   }
 }
+
 
 
 
@@ -735,18 +744,17 @@ function startChatPolling(ticketId) {
 async function sendUserMessageToServer(text) {
   if (!ACTIVE_TICKET_ID || IS_TICKET_CLOSED) return;
 
-  // حفظ آخر رسالة أرسلها العميل
-  LAST_SENT_TEXT = text.trim();
-  LAST_SENT_AT = Date.now();
-
   const formData = new FormData();
   formData.append("body", text);
 
-  await fetch(`/api/chatbot/messages/${ACTIVE_TICKET_ID}`, {
+  const res = await fetch(`/api/chatbot/messages/${ACTIVE_TICKET_ID}`, {
     method: "POST",
     body: formData,
   });
+
+  // ⬅️ لا نرسم أي شيء هنا
 }
+
 
 
     // =============================================================
