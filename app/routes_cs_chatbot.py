@@ -87,7 +87,7 @@ def cs_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
 
     # Tickets résolus
     resolved_q = (
-        base_q.filter(SupportTicket.status == "resolved")
+        base_q.filter(SupportTicket.status.in_(("resolved", "closed")))
         .order_by(desc(SupportTicket.resolved_at), desc(SupportTicket.updated_at))
     )
 

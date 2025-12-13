@@ -97,7 +97,7 @@ def md_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
     # ✅ RESOLVED
     # -----------------------------
     resolved_q = base.filter(
-        SupportTicket.status == "resolved"
+            SupportTicket.status.in_(("resolved", "closed"))
     ).order_by(
         desc(SupportTicket.resolved_at),
         desc(SupportTicket.updated_at)
