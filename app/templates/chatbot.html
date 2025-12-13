@@ -1,6 +1,116 @@
 {% extends "base.html" %}
 {% block content %}
 
+<style>
+/* ----------------------------------------------------
+   FORCE HIDE ALL TOP + BOTTOM NAV ONLY IN /chatbot
+---------------------------------------------------- */
+body[data-path="/chatbot"] header.topbar,
+body[data-path="/chatbot"] .m-top-tabs,
+body[data-path="/chatbot"] .searchbar,
+body[data-path="/chatbot"] .stripe-callout,
+body[data-path="/chatbot"] .mobile-tabbar,
+body[data-path="/chatbot"] #fabAdd {
+    display: none !important;
+}
+
+body[data-path="/chatbot"] .page {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+/* Chatbot container */
+.sv-chatbot-page {
+    padding: 18px;
+}
+
+/* Header */
+.sv-back {
+    font-size: 22px;
+    text-decoration: none;
+    color: #111;
+}
+
+.sv-header-logo-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.sv-header-logo-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Agent banner */
+#sv-live-agent-banner {
+    display: none;
+    background: #f3f4f6;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-top: 12px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+/* Closed ticket banner */
+#sv-ticket-closed-banner {
+    display: none;
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+    padding: 12px 14px;
+    border-radius: 10px;
+    margin-top: 12px;
+    font-size: 15px;
+    color: #991b1b;
+    font-weight: 600;
+}
+
+/* Chat window */
+#sv-chat-window {
+    min-height: 140px;
+    margin-top: 16px;
+}
+
+/* Messages */
+.sv-msg {
+    padding: 10px 14px;
+    margin: 6px 0;
+    border-radius: 12px;
+    max-width: 85%;
+    line-height: 1.4;
+}
+
+.sv-msg-bot {
+    background: #f3f4f6;
+    color: #111;
+}
+
+.sv-msg-user {
+    background: #6b46c1;
+    color: white;
+    margin-left: auto;
+}
+
+/* Suggestions */
+.sv-suggestions-wrap {
+    margin-top: 24px;
+}
+
+.sv-suggestions-title {
+    font-weight: 700;
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+/* Input box */
+#sv-chat-input {
+    display: none;
+    margin-top: 18px;
+}
+</style>
 
 <link rel="stylesheet" href="/static/css/chatbot.css">
 
@@ -27,8 +137,7 @@
   <div id="sv-live-agent-banner"></div>
 
   <!-- CHAT WINDOW -->
-  <div id="sv-chat-window" class="sv-chat-window"></div>
-
+  <div id="sv-chat-window"></div>
 
   <!-- SUGGESTED QUESTIONS -->
   <div class="sv-suggestions-wrap" id="sv-suggestions-section">
@@ -61,6 +170,10 @@
 </script>
 
 
-<script src="/static/js/chatbot.js?v=9"></script>
+<script>
+  localStorage.removeItem("chatbot_active_ticket");
+</script>
+
+<script src="/static/js/chatbot.js?v=2"></script>
 
 {% endblock %}
