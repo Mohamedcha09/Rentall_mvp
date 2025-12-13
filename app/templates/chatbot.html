@@ -649,8 +649,6 @@ if (form) {
 
             if (msg.sender_role === "support" || msg.sender_role === "agent") {
               addBotMessage(msg.body);
-            } else if (msg.sender_role === "user") {
-              addUserMessage(msg.body);
             } else if (msg.sender_role === "system") {
               addBotMessage(msg.body);
             }
