@@ -88,37 +88,33 @@ function lockChatUI(closeText) {
 // =====================================================
 document.addEventListener("DOMContentLoaded", async () => {
 
-  // -----------------------------
-  // Load FAQ Tree
-  // -----------------------------
+  const chat = document.getElementById("sv-chat-window");
+  if (chat) chat.style.display = "block";
+
+  const faq = document.getElementById("sv-suggestions-section");
+  if (faq) faq.style.display = "block";
+
+  // Load FAQ
   const data = await loadTree();
   SECTIONS = data.sections || [];
 
   addBotMessage("👋 Hello! I’m the Sevor assistant.<br>Select a category to get started.");
   showSections();
 
-  // -----------------------------
   // Restore ticket if exists
-  // -----------------------------
   const savedTicket = localStorage.getItem("chatbot_active_ticket");
   if (savedTicket) {
     ACTIVE_TICKET_ID = parseInt(savedTicket);
-
-    // ✅ check closed immediately
     checkClosedOnLoad(ACTIVE_TICKET_ID);
-
     startAgentWatcher(ACTIVE_TICKET_ID);
     startChatPolling(ACTIVE_TICKET_ID);
   }
 
-  // -----------------------------
   // Form submit
-  // -----------------------------
   const form = document.getElementById("sv-send-form");
   if (form) {
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-
       if (IS_TICKET_CLOSED) return;
 
       const input = document.getElementById("sv-message-input");
@@ -127,15 +123,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       addUserMessage(text);
       input.value = "";
-
       await sendUserMessageToServer(text);
     });
   }
+
 });
-
-
-
-
 
 
 // =====================================================
