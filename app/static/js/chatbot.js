@@ -61,6 +61,7 @@ function lockChatUI(closeText) {
     closedBanner.style.display = "block";
     closedBanner.textContent =
       closeText || "This ticket has been closed. You can start a new chat from the Messages page.";
+      localStorage.removeItem("chatbot_active_ticket");
   }
 
   const chatInput = document.getElementById("sv-chat-input");
@@ -496,7 +497,10 @@ async function checkClosedOnLoad(ticketId) {
         data.closed_by
           ? `This ticket has been closed by ${data.closed_by}.`
           : "This ticket has been closed."
+          
       );
+      document.getElementById("sv-suggestions-section")?.style.display = "none";
+
     }
   } catch (e) {
     console.log("initial close check error", e);
