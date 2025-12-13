@@ -383,50 +383,46 @@
     // LOCK CHAT UI WHEN TICKET CLOSED
     // =====================================================
     function lockChatUI(closeText) {
-      if (IS_TICKET_CLOSED) return;
-      IS_TICKET_CLOSED = true;
+  if (IS_TICKET_CLOSED) return;
+  IS_TICKET_CLOSED = true;
 
-      const form = document.getElementById("sv-send-form");
-      if (form) {
-        form.onsubmit = (e) => {
-          e.preventDefault();
-          return false;
-        };
-      }
+  const closedBanner = document.getElementById("sv-ticket-closed-banner");
+  if (closedBanner) {
+    closedBanner.style.display = "block";
+    closedBanner.textContent =
+      closeText || "This ticket has been closed. You can start a new chat from the Messages page.";
+  }
 
-      const closedBanner = document.getElementById("sv-ticket-closed-banner");
-      if (closedBanner) {
-        closedBanner.style.display = "block";
-        closedBanner.textContent =
-          closeText || "This ticket has been closed. You can start a new chat from the Messages page.";
-      }
+  const input = document.getElementById("sv-message-input");
+  const sendBtn = document.getElementById("sv-send-btn");
 
-      const input = document.getElementById("sv-message-input");
-      const sendBtn = document.getElementById("sv-send-btn");
+  if (input) {
+    input.disabled = true;
+    input.placeholder = "This ticket is closed";
+  }
 
-      if (input) {
-        input.disabled = true;
-        input.placeholder = "This ticket is closed";
-      }
+  if (sendBtn) {
+    sendBtn.disabled = true;
+  }
 
-      if (sendBtn) {
-        sendBtn.disabled = true;
-      }
+  const faqSection = document.getElementById("sv-suggestions-section");
+  if (faqSection) faqSection.style.display = "none";
 
-      const faqSection = document.getElementById("sv-suggestions-section");
-      if (faqSection) faqSection.style.display = "none";
+  const chatInput = document.getElementById("sv-chat-input");
+  if (chatInput) chatInput.style.display = "none";
 
-      if (CHAT_POLL_INTERVAL) {
-        clearInterval(CHAT_POLL_INTERVAL);
-        CHAT_POLL_INTERVAL = null;
-      }
-      if (AGENT_WATCH_INTERVAL) {
-        clearInterval(AGENT_WATCH_INTERVAL);
-        AGENT_WATCH_INTERVAL = null;
-      }
+  if (CHAT_POLL_INTERVAL) {
+    clearInterval(CHAT_POLL_INTERVAL);
+    CHAT_POLL_INTERVAL = null;
+  }
+  if (AGENT_WATCH_INTERVAL) {
+    clearInterval(AGENT_WATCH_INTERVAL);
+    AGENT_WATCH_INTERVAL = null;
+  }
 
-      localStorage.removeItem("chatbot_active_ticket");
-    }
+  localStorage.removeItem("chatbot_active_ticket");
+}
+
 
 document.addEventListener("DOMContentLoaded", async () => {
 
@@ -456,7 +452,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     await checkClosedOnLoad(ACTIVE_TICKET_ID);
     startAgentWatcher(ACTIVE_TICKET_ID);
     startChatPolling(ACTIVE_TICKET_ID);
+    const chatInput = document.getElementById("sv-chat-input");
+    if (chatInput) chatInput.style.display = "block";
   }
+// ✅ Bind SEND form submit (IMPORTANT)
+const form = document.getElementById("sv-send-form");
+if (form) {
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    // لازم يكون عندنا تذكرة نشطة ومش مغلقة
+    if (!ACTIVE_TICKET_ID || IS_TICKET_CLOSED) return;
+
+    const input = document.getElementById("sv-message-input");
+    const text = (input?.value || "").trim();
+    if (!text) return;
+
+    // يظهر عند المستخدم فوراً
+    addUserMessage(text);
+    input.value = "";
+
+    // إرسال للسيرفر
+    await sendUserMessageToServer(text);
+  });
+}
 
 });
 
