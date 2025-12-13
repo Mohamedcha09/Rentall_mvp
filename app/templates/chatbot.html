@@ -274,6 +274,12 @@
         max-height: 70vh;
       }
     }
+
+body.ticket-closed #sv-chat-input,
+body.ticket-closed #sv-send-form {
+  display: none !important;
+}
+
   </style>
 </head>
 
@@ -421,47 +427,22 @@ function setMode(m) {
     // =====================================================
     // LOCK CHAT UI WHEN TICKET CLOSED
     // =====================================================
-
- function lockChatUI(closeText) {
+function lockChatUI(closeText) {
   if (IS_TICKET_CLOSED) return;
   IS_TICKET_CLOSED = true;
   MODE = "CLOSED";
 
-  // 🔴 Banner
+  // 🔴 هذا السطر الحاسم
+document.body.classList.add("ticket-closed");
+
+const chatInput = document.getElementById("sv-chat-input");
+if (chatInput) chatInput.style.display = "none";
+
   const closedBanner = document.getElementById("sv-ticket-closed-banner");
   if (closedBanner) {
     closedBanner.style.display = "block";
     closedBanner.textContent =
       closeText || "This ticket has been closed.";
-  }
-
-  // 🔒 تعطيل input و الزر
-  const input = document.getElementById("sv-message-input");
-  const sendBtn = document.getElementById("sv-send-btn");
-  const chatInputWrap = document.getElementById("sv-chat-input");
-
-  if (input) {
-    input.disabled = true;
-    input.placeholder = "This ticket is closed";
-  }
-
-  if (sendBtn) {
-    sendBtn.disabled = true;
-  }
-
-  // 🔒 إخفاء input بالكامل (نهائي)
-  if (chatInputWrap) {
-    chatInputWrap.style.display = "none";
-  }
-
-  // ⛔ أوقف كل polling
-  if (CHAT_POLL_INTERVAL) {
-    clearInterval(CHAT_POLL_INTERVAL);
-    CHAT_POLL_INTERVAL = null;
-  }
-  if (AGENT_WATCH_INTERVAL) {
-    clearInterval(AGENT_WATCH_INTERVAL);
-    AGENT_WATCH_INTERVAL = null;
   }
 
   stopFastPolling();
@@ -470,6 +451,7 @@ function setMode(m) {
 
 
 document.addEventListener("DOMContentLoaded", async () => {
+  document.body.classList.remove("ticket-closed");
   // ✅ إذا جاي من /messages نبدأ FAQ جديد دائمًا
   if ((document.referrer || "").includes("/messages")) {
     localStorage.removeItem("chatbot_active_ticket");
