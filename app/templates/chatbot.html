@@ -421,28 +421,40 @@ function setMode(m) {
     // =====================================================
     // LOCK CHAT UI WHEN TICKET CLOSED
     // =====================================================
-function lockChatUI(closeText) {
+
+ function lockChatUI(closeText) {
   if (IS_TICKET_CLOSED) return;
   IS_TICKET_CLOSED = true;
+  MODE = "CLOSED";
 
-  setMode("CLOSED");
-
+  // 🔴 Banner
   const closedBanner = document.getElementById("sv-ticket-closed-banner");
   if (closedBanner) {
     closedBanner.style.display = "block";
     closedBanner.textContent =
-      closeText || "This ticket has been closed. You can start a new chat from the Messages page.";
+      closeText || "This ticket has been closed.";
   }
 
+  // 🔒 تعطيل input و الزر
   const input = document.getElementById("sv-message-input");
   const sendBtn = document.getElementById("sv-send-btn");
+  const chatInputWrap = document.getElementById("sv-chat-input");
 
   if (input) {
     input.disabled = true;
     input.placeholder = "This ticket is closed";
   }
-  if (sendBtn) sendBtn.disabled = true;
 
+  if (sendBtn) {
+    sendBtn.disabled = true;
+  }
+
+  // 🔒 إخفاء input بالكامل (نهائي)
+  if (chatInputWrap) {
+    chatInputWrap.style.display = "none";
+  }
+
+  // ⛔ أوقف كل polling
   if (CHAT_POLL_INTERVAL) {
     clearInterval(CHAT_POLL_INTERVAL);
     CHAT_POLL_INTERVAL = null;
@@ -451,13 +463,10 @@ function lockChatUI(closeText) {
     clearInterval(AGENT_WATCH_INTERVAL);
     AGENT_WATCH_INTERVAL = null;
   }
+
   stopFastPolling();
-
-
-  // مهم: امسح التذكرة المحفوظة لأن هذا Ticket انتهى
   localStorage.removeItem("chatbot_active_ticket");
 }
-
 
 
 document.addEventListener("DOMContentLoaded", async () => {
