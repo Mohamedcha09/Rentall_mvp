@@ -376,15 +376,46 @@
     let AGENT_WATCH_INTERVAL = null;
     let CHAT_POLL_INTERVAL = null;
     let LAST_MESSAGE_ID = 0;
-
+    let AGENT_JOINED_ONCE = false;
     let IS_TICKET_CLOSED = false;
+    let MODE = "FAQ"; // FAQ | WAITING | LIVE | CLOSED
+
+function setMode(m) {
+  MODE = m;
+
+  const faqSection = document.getElementById("sv-suggestions-section");
+  const chatInput  = document.getElementById("sv-chat-input");
+
+  if (m === "FAQ") {
+    if (faqSection) faqSection.style.display = "block";
+    if (chatInput)  chatInput.style.display = "none";
+  }
+
+  if (m === "WAITING") {
+    if (faqSection) faqSection.style.display = "none";
+    if (chatInput)  chatInput.style.display = "none";
+  }
+
+  if (m === "LIVE") {
+    if (faqSection) faqSection.style.display = "none";
+    if (chatInput)  chatInput.style.display = "block";
+  }
+
+  if (m === "CLOSED") {
+    if (faqSection) faqSection.style.display = "none";
+    if (chatInput)  chatInput.style.display = "none";
+  }
+}
+
 
     // =====================================================
     // LOCK CHAT UI WHEN TICKET CLOSED
     // =====================================================
-    function lockChatUI(closeText) {
+function lockChatUI(closeText) {
   if (IS_TICKET_CLOSED) return;
   IS_TICKET_CLOSED = true;
+
+  setMode("CLOSED");
 
   const closedBanner = document.getElementById("sv-ticket-closed-banner");
   if (closedBanner) {
@@ -400,14 +431,7 @@
     input.disabled = true;
     input.placeholder = "This ticket is closed";
   }
-
-  if (sendBtn) {
-    sendBtn.disabled = true;
-  }
-
-  const faqSection = document.getElementById("sv-suggestions-section");
-  if (faqSection) faqSection.style.display = "none";
-
+  if (sendBtn) sendBtn.disabled = true;
 
   if (CHAT_POLL_INTERVAL) {
     clearInterval(CHAT_POLL_INTERVAL);
@@ -418,65 +442,82 @@
     AGENT_WATCH_INTERVAL = null;
   }
 
+  // مهم: امسح التذكرة المحفوظة لأن هذا Ticket انتهى
   localStorage.removeItem("chatbot_active_ticket");
 }
 
 
+
 document.addEventListener("DOMContentLoaded", async () => {
+  // ✅ إذا جاي من /messages نبدأ FAQ جديد دائمًا
   if ((document.referrer || "").includes("/messages")) {
     localStorage.removeItem("chatbot_active_ticket");
-  }  
+  }
 
   const savedTicket = localStorage.getItem("chatbot_active_ticket");
 
-  if (!savedTicket) {
-    // 👈 هذا يعني: دخول جديد من Messages
-    ACTIVE_TICKET_ID = null;
-    IS_TICKET_CLOSED = false;
-    LAST_MESSAGE_ID = 0;
+  // Reset visuals always
+  const chatWindow = document.getElementById("sv-chat-window");
+  if (chatWindow) chatWindow.innerHTML = "";
 
-    document.getElementById("sv-chat-window").innerHTML = "";
-    document.getElementById("sv-live-agent-banner").style.display = "none";
-    document.getElementById("sv-ticket-closed-banner").style.display = "none";
-    document.getElementById("sv-chat-input").style.display = "none";
+  const liveBanner = document.getElementById("sv-live-agent-banner");
+  if (liveBanner) liveBanner.style.display = "none";
+
+  const closedBanner = document.getElementById("sv-ticket-closed-banner");
+  if (closedBanner) closedBanner.style.display = "none";
+
+  IS_TICKET_CLOSED = false;
+  LAST_MESSAGE_ID = 0;
+
+  if (!savedTicket) {
+    // ✅ FAQ MODE
+    ACTIVE_TICKET_ID = null;
+    setMode("FAQ");
 
     const data = await loadTree();
     SECTIONS = data.sections || [];
 
     addBotMessage("👋 Hello! I’m the Sevor assistant.<br>Select a category to get started.");
     showSections();
-
   } else {
-    // 👈 هذا يعني: هناك Ticket نشط
+    // ✅ عندك Ticket محفوظ (مثلاً Reload داخل نفس التذكرة)
     ACTIVE_TICKET_ID = parseInt(savedTicket);
+    setMode("WAITING");
 
+    // 1) تأكد إذا ticket مغلق
     await checkClosedOnLoad(ACTIVE_TICKET_ID);
+    if (IS_TICKET_CLOSED) return;
+
+    // 2) شغل watcher (هو الذي سيقرر LIVE ويفتح polling)
     startAgentWatcher(ACTIVE_TICKET_ID);
-    startChatPolling(ACTIVE_TICKET_ID);
+
+    // 3) نفّذ check مرة مباشرة (بدون انتظار 2 ثواني)
+    await checkAgentStatus(ACTIVE_TICKET_ID);
   }
-// ✅ Bind SEND form submit (IMPORTANT)
-const form = document.getElementById("sv-send-form");
-if (form) {
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
 
-    // لازم يكون عندنا تذكرة نشطة ومش مغلقة
-    if (!ACTIVE_TICKET_ID || IS_TICKET_CLOSED) return;
+  // ✅ Bind SEND form submit
+  const form = document.getElementById("sv-send-form");
+  if (form) {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-    const input = document.getElementById("sv-message-input");
-    const text = (input?.value || "").trim();
-    if (!text) return;
+      // لا إرسال إلا إذا Agent موجود + التذكرة ليست مغلقة
+      if (!ACTIVE_TICKET_ID || IS_TICKET_CLOSED || MODE !== "LIVE") return;
 
-    // يظهر عند المستخدم فوراً
-    addUserMessage(text);
-    input.value = "";
+      const input = document.getElementById("sv-message-input");
+      const text = (input?.value || "").trim();
+      if (!text) return;
 
-    // إرسال للسيرفر
-    await sendUserMessageToServer(text);
-  });
-}
+      // يظهر عند المستخدم فورًا (مرة واحدة فقط)
+      addUserMessage(text);
+      input.value = "";
 
+      // إرسال للسيرفر
+      await sendUserMessageToServer(text);
+    });
+  }
 });
+
 
 
     // =====================================================
@@ -531,147 +572,149 @@ if (form) {
     // =============================================================
     // USER CLICKED NO → CREATE SUPPORT TICKET
     // =============================================================
-    async function handleNo() {
-      if (IS_TICKET_CLOSED) return;
 
-      addBotMessage("One moment… contacting support 🕓");
+async function handleNo() {
+  if (IS_TICKET_CLOSED) return;
 
-      const formData = new FormData();
-      formData.append("question", LAST_QUESTION || "(unknown)");
-      formData.append("answer", LAST_ANSWER || "(unknown)");
+  addBotMessage("One moment… contacting support 🕓");
+  setMode("WAITING");
 
-      const res = await fetch("/chatbot/support", { method: "POST", body: formData });
+  const formData = new FormData();
+  formData.append("question", LAST_QUESTION || "(unknown)");
+  formData.append("answer", LAST_ANSWER || "(unknown)");
 
-      let data;
-      try {
-        data = await res.json();
-      } catch (e) {
-        addBotMessage("⚠️ Error contacting support.");
-        return;
-      }
+  const res = await fetch("/chatbot/support", { method: "POST", body: formData });
 
-      if (!data.ok) {
-        addBotMessage("⚠️ Failed to create support ticket.");
-        return;
-      }
+  let data;
+  try {
+    data = await res.json();
+  } catch (e) {
+    addBotMessage("⚠️ Error contacting support.");
+    setMode("FAQ");
+    return;
+  }
 
-      ACTIVE_TICKET_ID = data.ticket_id;
-      LAST_MESSAGE_ID = 0;
-      IS_TICKET_CLOSED = false;
+  if (!data.ok) {
+    addBotMessage("⚠️ Failed to create support ticket.");
+    setMode("FAQ");
+    return;
+  }
 
-      localStorage.setItem("chatbot_active_ticket", ACTIVE_TICKET_ID);
+  ACTIVE_TICKET_ID = data.ticket_id;
+  LAST_MESSAGE_ID = 0;
+  IS_TICKET_CLOSED = false;
 
-      addBotMessage("A support agent will assist you shortly 🟣");
+  localStorage.setItem("chatbot_active_ticket", ACTIVE_TICKET_ID);
 
-      startAgentWatcher(ACTIVE_TICKET_ID);
-      startChatPolling(ACTIVE_TICKET_ID);
-    }
+  addBotMessage("A support agent will assist you shortly 🟣");
+
+  // ✅ لا polling الآن — فقط نراقب دخول agent
+  startAgentWatcher(ACTIVE_TICKET_ID);
+
+  // ✅ نفّذ check مباشرة
+  await checkAgentStatus(ACTIVE_TICKET_ID);
+}
 
     // =============================================================
     // CHECK AGENT STATUS
     // =============================================================
-    async function checkAgentStatus(ticketId) {
-      if (IS_TICKET_CLOSED) return;
+async function checkAgentStatus(ticketId) {
+  if (IS_TICKET_CLOSED) return;
+  if (AGENT_JOINED_ONCE) return; // ✅ مهم
 
-      try {
-        const res = await fetch(`/api/chatbot/agent_status/${ticketId}`);
-        const data = await res.json();
+  try {
+    const res = await fetch(`/api/chatbot/agent_status/${ticketId}`);
+    const data = await res.json();
 
-        if (data.assigned && data.agent_name) {
-          if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
-          AGENT_WATCH_INTERVAL = null;
+    if (data.assigned && data.agent_name) {
+      AGENT_JOINED_ONCE = true; // ✅ مهم جدًا
 
-          const banner = document.getElementById("sv-live-agent-banner");
-          if (banner) {
-            banner.style.display = "block";
-            banner.innerHTML = `
-              You are now chatting with one of our agents:
-              <span style="color:#6b46c1; font-weight:700;">${data.agent_name}</span>
-            `;
-          }
-
-          const chatInput = document.getElementById("sv-chat-input");
-          if (chatInput) chatInput.style.display = "block";
-
-          addBotMessage(`You're now connected with <b>${data.agent_name}</b>. How can I help you?`);
-        }
-      } catch (err) {
-        console.log("poll error:", err);
-      }
-    }
-
-    function startAgentWatcher(ticketId) {
-      if (!ticketId) return;
+      // stop watcher
       if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
-      AGENT_WATCH_INTERVAL = setInterval(() => checkAgentStatus(ticketId), 2000);
+      AGENT_WATCH_INTERVAL = null;
+
+      // LIVE MODE
+      setMode("LIVE");
+
+      const banner = document.getElementById("sv-live-agent-banner");
+      if (banner) {
+        banner.style.display = "block";
+        banner.innerHTML = `
+          You are now chatting with one of our agents:
+          <span style="color:#6b46c1; font-weight:700;">${data.agent_name}</span>
+        `;
+      }
+
+      // start polling only once
+      startChatPolling(ticketId);
+
+      // welcome message only once
+      addBotMessage(
+        `You're now connected with <b>${data.agent_name}</b>. How can I help you?`
+      );
     }
+  } catch (err) {
+    console.log("poll error:", err);
+  }
+}
+
+
+function startAgentWatcher(ticketId) {
+  if (!ticketId || IS_TICKET_CLOSED) return;
+  if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
+
+  // نحن في انتظار agent
+  if (MODE !== "LIVE") setMode("WAITING");
+
+  AGENT_WATCH_INTERVAL = setInterval(() => checkAgentStatus(ticketId), 2000);
+}
+
 
     // =============================================================
     // POLL REAL MESSAGES (WITH INSTANT CLOSE)
     // =============================================================
-    async function pollMessages(ticketId) {
-      if (!ticketId) return;
+async function pollMessages(ticketId) {
+  if (!ticketId || IS_TICKET_CLOSED) return;
 
-      try {
-        const res = await fetch(`/api/chatbot/messages/${ticketId}`);
-        const data = await res.json();
+  try {
+    const res = await fetch(`/api/chatbot/messages/${ticketId}`);
+    const data = await res.json();
 
-        if (data.ticket_status === "closed") {
-          if (!IS_TICKET_CLOSED) {
-            lockChatUI(
-              data.closed_by
-                ? `This ticket has been closed by ${data.closed_by}.`
-                : "This ticket has been closed."
-            );
-          }
-          return;
-        }
-
-        (data.messages || []).forEach((msg) => {
-  if (msg.id > LAST_MESSAGE_ID) {
-    LAST_MESSAGE_ID = msg.id;
-
-    // ✅ إذا السيرفر رجّع نفس رسالة المستخدم اللي أرسلناها للتو → تجاهلها
-    if (msg.sender_role === "user") {
-      const sameText = (msg.body || "").trim() === (LAST_SENT_TEXT || "").trim();
-      const recent = (Date.now() - LAST_SENT_AT) < 6000; // 6s
-      if (sameText && recent) return;
-
-      // إذا تريد تظهر رسائل user من السيرفر (عند reload) خليها:
-      addUserMessage(msg.body);
+    // ✅ إغلاق فوري
+    if (data.ticket_status === "closed") {
+      if (!IS_TICKET_CLOSED) {
+        lockChatUI(
+          data.closed_by
+            ? `This ticket has been closed by ${data.closed_by}.`
+            : "This ticket has been closed."
+        );
+      }
       return;
     }
 
-    if (msg.sender_role === "support" || msg.sender_role === "agent") {
-      addBotMessage(msg.body);
-    } else if (msg.sender_role === "system") {
-      addBotMessage(msg.body);
-    }
-  }
-});
+    // ✅ اعرض فقط رسائل agent/support/system — وتجاهل user نهائيًا
+    (data.messages || []).forEach((msg) => {
+      if (msg.id <= LAST_MESSAGE_ID) return;
+      LAST_MESSAGE_ID = msg.id;
 
-
-        (data.messages || []).forEach((msg) => {
-          if (msg.id > LAST_MESSAGE_ID) {
-            LAST_MESSAGE_ID = msg.id;
-
-            if (msg.sender_role === "support" || msg.sender_role === "agent") {
-              addBotMessage(msg.body);
-            } else if (msg.sender_role === "system") {
-              addBotMessage(msg.body);
-            }
-          }
-        });
-      } catch (e) {
-        console.log("chat poll error:", e);
+      if (msg.sender_role === "support" || msg.sender_role === "agent" || msg.sender_role === "system") {
+        addBotMessage(msg.body);
       }
-    }
+    });
+  } catch (e) {
+    console.log("chat poll error:", e);
+  }
+}
 
-    function startChatPolling(ticketId) {
-      if (!ticketId) return;
-      if (CHAT_POLL_INTERVAL) clearInterval(CHAT_POLL_INTERVAL);
-      CHAT_POLL_INTERVAL = setInterval(() => pollMessages(ticketId), 1500);
-    }
+function startChatPolling(ticketId) {
+  if (!ticketId || IS_TICKET_CLOSED) return;
+
+  // ✅ لا polling إلا إذا نحن في LIVE
+  if (MODE !== "LIVE") return;
+
+  if (CHAT_POLL_INTERVAL) clearInterval(CHAT_POLL_INTERVAL);
+  CHAT_POLL_INTERVAL = setInterval(() => pollMessages(ticketId), 1500);
+}
 
     // =============================================================
     // SEND MESSAGE
