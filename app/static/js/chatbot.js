@@ -84,18 +84,54 @@ function lockChatUI(closeText) {
 // =====================================================
 // ALWAYS START FRESH CHAT ON /chatbot
 // =====================================================
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+
+  // -----------------------------
+  // Load FAQ Tree
+  // -----------------------------
+  const data = await loadTree();
+  SECTIONS = data.sections || [];
+
+  addBotMessage("👋 Hello! I’m the Sevor assistant.<br>Select a category to get started.");
+  showSections();
+
+  // -----------------------------
+  // Restore ticket if exists
+  // -----------------------------
   const savedTicket = localStorage.getItem("chatbot_active_ticket");
   if (savedTicket) {
     ACTIVE_TICKET_ID = parseInt(savedTicket);
+
+    // ✅ check closed immediately
+    checkClosedOnLoad(ACTIVE_TICKET_ID);
+
     startAgentWatcher(ACTIVE_TICKET_ID);
     startChatPolling(ACTIVE_TICKET_ID);
-  } else {
-    ACTIVE_TICKET_ID = null;
   }
 
-  IS_TICKET_CLOSED = false;
+  // -----------------------------
+  // Form submit
+  // -----------------------------
+  const form = document.getElementById("sv-send-form");
+  if (form) {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      if (IS_TICKET_CLOSED) return;
+
+      const input = document.getElementById("sv-message-input");
+      const text = input.value.trim();
+      if (!text) return;
+
+      addUserMessage(text);
+      input.value = "";
+
+      await sendUserMessageToServer(text);
+    });
+  }
 });
+
+
 
 
 
@@ -315,25 +351,6 @@ async function sendUserMessageToServer(text) {
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("sv-send-form");
-  if (!form) return;
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    if (IS_TICKET_CLOSED) return;
-
-    const input = document.getElementById("sv-message-input");
-    const text = input.value.trim();
-    if (!text) return;
-
-    addUserMessage(text);
-    input.value = "";
-
-    await sendUserMessageToServer(text);
-  });
-});
 
 // =============================================================
 // SHOW MAIN SECTIONS
@@ -456,13 +473,24 @@ function handleQuestionClick(q) {
   }
 }
 
-// =============================================================
-// INITIAL LOAD
-// =============================================================
-document.addEventListener("DOMContentLoaded", async () => {
-  const data = await loadTree();
-  SECTIONS = data.sections || [];
 
-  addBotMessage("👋 Hello! I’m the Sevor assistant.<br>Select a category to get started.");
-  showSections();
-});
+
+// =====================================================
+// CHECK CLOSED STATUS ON LOAD (IMPORTANT)
+// =====================================================
+async function checkClosedOnLoad(ticketId) {
+  try {
+    const res = await fetch(`/api/chatbot/messages/${ticketId}`);
+    const data = await res.json();
+
+    if (data.ticket_status === "closed") {
+      lockChatUI(
+        data.closed_by
+          ? `This ticket has been closed by ${data.closed_by}.`
+          : "This ticket has been closed."
+      );
+    }
+  } catch (e) {
+    console.log("initial close check error", e);
+  }
+}
