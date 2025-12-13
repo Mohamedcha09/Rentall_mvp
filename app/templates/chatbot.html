@@ -1,188 +1,819 @@
-{% extends "base.html" %}
-{% block content %}
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Sevor Chatbot</title>
 
-<style>
-/* ----------------------------------------------------
-   FORCE HIDE ALL TOP + BOTTOM NAV ONLY IN /chatbot
----------------------------------------------------- */
-body[data-path="/chatbot"] header.topbar,
-body[data-path="/chatbot"] .m-top-tabs,
-body[data-path="/chatbot"] .searchbar,
-body[data-path="/chatbot"] .stripe-callout,
-body[data-path="/chatbot"] .mobile-tabbar,
-body[data-path="/chatbot"] #fabAdd {
-    display: none !important;
-}
+  <style>
+    /* ----------------------------------------------------
+       FORCE HIDE ALL TOP + BOTTOM NAV ONLY IN /chatbot
+    ---------------------------------------------------- */
+    body[data-path="/chatbot"] header.topbar,
+    body[data-path="/chatbot"] .m-top-tabs,
+    body[data-path="/chatbot"] .searchbar,
+    body[data-path="/chatbot"] .stripe-callout,
+    body[data-path="/chatbot"] .mobile-tabbar,
+    body[data-path="/chatbot"] #fabAdd {
+      display: none !important;
+    }
 
-body[data-path="/chatbot"] .page {
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-}
+    body[data-path="/chatbot"] .page {
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+    }
 
-/* Chatbot container */
-.sv-chatbot-page {
-    padding: 18px;
-}
+    /* ==========================================================================
+      SEVOR CHATBOT — AIRBNB EXACT STYLE
+      ========================================================================== */
 
-/* Header */
-.sv-back {
-    font-size: 22px;
-    text-decoration: none;
-    color: #111;
-}
+    .sv-chatbot-page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 18px 40px;
+      background: #ffffff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
 
-.sv-header-logo-wrap {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  overflow: hidden;
-}
+    /* Header */
+    .sv-header {
+      padding-top: 28px;
+      padding-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+    }
 
-.sv-header-logo-wrap img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+    .sv-back {
+      font-size: 26px;
+      text-decoration: none;
+      color: #111;
+    }
 
-/* Agent banner */
-#sv-live-agent-banner {
-    display: none;
-    background: #f3f4f6;
-    padding: 10px 14px;
-    border-radius: 10px;
-    margin-top: 12px;
-    font-size: 15px;
-    font-weight: 600;
-}
+    .sv-header-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+    }
 
-/* Closed ticket banner */
-#sv-ticket-closed-banner {
-    display: none;
-    background: #fee2e2;
-    border: 1px solid #fca5a5;
-    padding: 12px 14px;
-    border-radius: 10px;
-    margin-top: 12px;
-    font-size: 15px;
-    color: #991b1b;
-    font-weight: 600;
-}
+    .sv-header-logo-wrap {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      overflow: hidden;
+      margin-bottom: 4px;
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
 
-/* Chat window */
-#sv-chat-window {
-    min-height: 140px;
-    margin-top: 16px;
-}
+    .sv-header-logo-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
 
-/* Messages */
-.sv-msg {
-    padding: 10px 14px;
-    margin: 6px 0;
-    border-radius: 12px;
-    max-width: 85%;
-    line-height: 1.4;
-}
+    .sv-title {
+      font-size: 17px;
+      font-weight: 600;
+      color: #111;
+    }
 
-.sv-msg-bot {
-    background: #f3f4f6;
-    color: #111;
-}
+    .sv-header-right {
+      width: 30px;
+      height: 20px;
+    }
 
-.sv-msg-user {
-    background: #6b46c1;
-    color: white;
-    margin-left: auto;
-}
+    /* Agent banner */
+    #sv-live-agent-banner {
+      display: none;
+      background: #f3f4f6;
+      padding: 10px 14px;
+      border-radius: 10px;
+      margin-top: 12px;
+      font-size: 15px;
+      font-weight: 600;
+    }
 
-/* Suggestions */
-.sv-suggestions-wrap {
-    margin-top: 24px;
-}
+    /* Closed ticket banner */
+    #sv-ticket-closed-banner {
+      display: none;
+      background: #fee2e2;
+      border: 1px solid #fca5a5;
+      padding: 12px 14px;
+      border-radius: 10px;
+      margin-top: 12px;
+      font-size: 15px;
+      color: #991b1b;
+      font-weight: 600;
+    }
 
-.sv-suggestions-title {
-    font-weight: 700;
-    margin-bottom: 10px;
-    font-size: 18px;
-}
+    /* Chat window */
+    #sv-chat-window {
+      margin-top: 18px;
+      padding: 20px 14px;
+      border-radius: 16px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      max-height: 68vh;
+      overflow-y: auto;
+    }
 
-/* Input box */
-#sv-chat-input {
-    display: none;
-    margin-top: 18px;
-}
+    #sv-chat-window::-webkit-scrollbar {
+      width: 6px;
+    }
+    #sv-chat-window::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 50px;
+    }
 
-#sv-send-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+    /* Messages */
+    .sv-msg {
+      max-width: 80%;
+      padding: 14px 18px;
+      border-radius: 18px;
+      font-size: 15px;
+      line-height: 1.55;
+      word-wrap: break-word;
+    }
 
-#sv-message-input:disabled {
-  background: #f3f4f6;
-  cursor: not-allowed;
-}
+    .sv-msg-bot {
+      align-self: flex-start;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      color: #111;
+      border-bottom-left-radius: 6px;
+    }
 
-</style>
+    .sv-msg-user {
+      align-self: flex-end;
+      background: #111827;
+      color: #fff;
+      border-bottom-right-radius: 6px;
+    }
 
-<link rel="stylesheet" href="/static/css/chatbot.css">
+    /* Suggestions */
+    .sv-suggestions-wrap {
+      margin-top: 30px;
+    }
 
-<div class="sv-chatbot-page">
+    .sv-suggestions-title {
+      font-size: 17px;
+      font-weight: 600;
+      color: #111;
+      margin-bottom: 12px;
+    }
 
-  <!-- HEADER -->
-  <div class="sv-header" style="display:flex;justify-content:space-between;align-items:center;">
+    .sv-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .sv-question-chip {
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      font-size: 15px;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    .sv-question-chip:hover {
+      background: #f3f4f6;
+    }
+
+    /* Options chips */
+    .sv-options-wrapper {
+      margin-top: 10px;
+    }
+
+    .sv-options-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .sv-option-chip {
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      cursor: pointer;
+      margin: 6px 6px 0 0;
+      transition: 0.15s ease;
+      font-size: 14px;
+    }
+
+    .sv-option-chip:hover {
+      background: #eef2ff;
+      border-color: #c7d2fe;
+    }
+
+    /* Feedback buttons */
+    .sv-feedback-buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .sv-feedback-buttons button {
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: #ffffff;
+      border: 1px solid #d1d5db;
+      cursor: pointer;
+      transition: 0.15s;
+      font-size: 14px;
+    }
+
+    .sv-feedback-buttons button:hover {
+      background: #f3f4f6;
+    }
+
+    /* Input box */
+    #sv-chat-input {
+      display: none;
+      margin-top: 18px;
+    }
+
+    #sv-send-btn {
+      margin-top: 10px;
+      width: 100%;
+      padding: 12px;
+      background: #6b46c1;
+      color: white;
+      border-radius: 12px;
+      border: none;
+    }
+
+    #sv-send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    #sv-message-input:disabled {
+      background: #f3f4f6;
+      cursor: not-allowed;
+    }
+
+    @media (max-width: 640px) {
+      #sv-chat-window {
+        max-height: 70vh;
+      }
+    }
+  </style>
+</head>
+
+<body data-path="/chatbot">
+
+  <div class="sv-chatbot-page">
+
+    <!-- HEADER -->
+    <div class="sv-header">
       <a href="/messages" class="sv-back">←</a>
 
-      <div class="sv-header-center" style="text-align:center;">
-          <div class="sv-header-logo-wrap">
-              <img src="/static/sevor-logo.png" alt="Sevor">
-          </div>
-          <div class="sv-title">Soutien Sevor</div>
+      <div class="sv-header-center">
+        <div class="sv-header-logo-wrap">
+          <img src="/static/sevor-logo.png" alt="Sevor">
+        </div>
+        <div class="sv-title">Soutien Sevor</div>
       </div>
 
       <div class="sv-header-right"></div>
-  </div>
+    </div>
 
-  <!-- CLOSED TICKET BANNER -->
-  <div id="sv-ticket-closed-banner"></div>
+    <!-- CLOSED TICKET BANNER -->
+    <div id="sv-ticket-closed-banner"></div>
 
-  <!-- Agent joined banner -->
-  <div id="sv-live-agent-banner"></div>
+    <!-- Agent joined banner -->
+    <div id="sv-live-agent-banner"></div>
 
-  <!-- CHAT WINDOW -->
-  <div id="sv-chat-window"></div>
+    <!-- CHAT WINDOW -->
+    <div id="sv-chat-window"></div>
 
-  <!-- SUGGESTED QUESTIONS -->
-  <div class="sv-suggestions-wrap" id="sv-suggestions-section">
-    <div class="sv-suggestions-title">Questions fréquentes</div>
-    <div id="sv-suggestions" class="sv-suggestions"></div>
-  </div>
+    <!-- SUGGESTED QUESTIONS -->
+    <div class="sv-suggestions-wrap" id="sv-suggestions-section">
+      <div class="sv-suggestions-title">Questions fréquentes</div>
+      <div id="sv-suggestions" class="sv-suggestions"></div>
+    </div>
 
-  <!-- INPUT BOX -->
-  <div id="sv-chat-input">
+    <!-- INPUT BOX -->
+    <div id="sv-chat-input">
       <form id="sv-send-form">
-          <input
-    id="sv-message-input"
-    type="text"
-    placeholder="Write your message to support..."
-    style="width:100%; padding:12px; border-radius:12px; border:1px solid #ddd;"
->
-
-<button
-    id="sv-send-btn"
-    type="submit"
-    style="margin-top:10px; width:100%; padding:12px; background:#6b46c1; color:white; border-radius:12px;"
->
-    Send
-</button>
-
+        <input
+          id="sv-message-input"
+          type="text"
+          placeholder="Write your message to support..."
+          style="width:100%; padding:12px; border-radius:12px; border:1px solid #ddd;"
+        />
+        <button id="sv-send-btn" type="submit">Send</button>
       </form>
+    </div>
+
   </div>
 
-</div>
+  <script>
+    window.ACTIVE_TICKET_FROM_SERVER = null;
 
-<script>
-  window.ACTIVE_TICKET_FROM_SERVER = null;
-</script>
+    // =====================================================
+    // LOAD TREE.JSON (FAQ SYSTEM)
+    // =====================================================
+    async function loadTree() {
+      const res = await fetch("/chatbot/tree");
+      return await res.json();
+    }
 
-<script src="/static/js/chatbot.js?v=11"></script>
+    // =====================================================
+    // UI HELPERS
+    // =====================================================
+    function addBotMessage(html) {
+      const chat = document.getElementById("sv-chat-window");
+      if (!chat) return;
+      const box = document.createElement("div");
+      box.className = "sv-msg sv-msg-bot";
+      box.innerHTML = html;
+      chat.appendChild(box);
+      chat.scrollTop = chat.scrollHeight;
+    }
 
-{% endblock %}
+    function addUserMessage(text) {
+      const chat = document.getElementById("sv-chat-window");
+      if (!chat) return;
+      const box = document.createElement("div");
+      box.className = "sv-msg sv-msg-user";
+      box.textContent = text;
+      chat.appendChild(box);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function clearSuggestions() {
+      const s = document.getElementById("sv-suggestions");
+      if (s) s.innerHTML = "";
+    }
+
+    // =====================================================
+    // GLOBAL DATA
+    // =====================================================
+    let SECTIONS = [];
+    let CURRENT_SECTION = null;
+    let LAST_QUESTION = null;
+    let LAST_ANSWER = null;
+
+    let ACTIVE_TICKET_ID = null;
+    let AGENT_WATCH_INTERVAL = null;
+    let CHAT_POLL_INTERVAL = null;
+    let LAST_MESSAGE_ID = 0;
+
+    let IS_TICKET_CLOSED = false;
+
+    // =====================================================
+    // LOCK CHAT UI WHEN TICKET CLOSED
+    // =====================================================
+    function lockChatUI(closeText) {
+      if (IS_TICKET_CLOSED) return;
+      IS_TICKET_CLOSED = true;
+
+      const form = document.getElementById("sv-send-form");
+      if (form) {
+        form.onsubmit = (e) => {
+          e.preventDefault();
+          return false;
+        };
+      }
+
+      const closedBanner = document.getElementById("sv-ticket-closed-banner");
+      if (closedBanner) {
+        closedBanner.style.display = "block";
+        closedBanner.textContent =
+          closeText || "This ticket has been closed. You can start a new chat from the Messages page.";
+      }
+
+      const input = document.getElementById("sv-message-input");
+      const sendBtn = document.getElementById("sv-send-btn");
+
+      if (input) {
+        input.disabled = true;
+        input.placeholder = "This ticket is closed";
+      }
+
+      if (sendBtn) {
+        sendBtn.disabled = true;
+      }
+
+      const faqSection = document.getElementById("sv-suggestions-section");
+      if (faqSection) faqSection.style.display = "none";
+
+      if (CHAT_POLL_INTERVAL) {
+        clearInterval(CHAT_POLL_INTERVAL);
+        CHAT_POLL_INTERVAL = null;
+      }
+      if (AGENT_WATCH_INTERVAL) {
+        clearInterval(AGENT_WATCH_INTERVAL);
+        AGENT_WATCH_INTERVAL = null;
+      }
+
+      localStorage.removeItem("chatbot_active_ticket");
+    }
+
+    // =====================================================
+    // ALWAYS START FRESH CHAT ON /chatbot
+    // =====================================================
+    document.addEventListener("DOMContentLoaded", async () => {
+      const data = await loadTree();
+      SECTIONS = data.sections || [];
+
+      addBotMessage("👋 Hello! I’m the Sevor assistant.<br>Select a category to get started.");
+      showSections();
+
+      const savedTicket = localStorage.getItem("chatbot_active_ticket");
+      if (savedTicket) {
+        ACTIVE_TICKET_ID = parseInt(savedTicket);
+        await checkClosedOnLoad(ACTIVE_TICKET_ID);
+        startAgentWatcher(ACTIVE_TICKET_ID);
+        startChatPolling(ACTIVE_TICKET_ID);
+      }
+
+      const form = document.getElementById("sv-send-form");
+      if (form) {
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          if (IS_TICKET_CLOSED) return;
+
+          const input = document.getElementById("sv-message-input");
+          const text = (input?.value || "").trim();
+          if (!text) return;
+
+          addUserMessage(text);
+          input.value = "";
+
+          await sendUserMessageToServer(text);
+        });
+      }
+    });
+
+    // =====================================================
+    // FEEDBACK BUTTONS
+    // =====================================================
+    function showFeedbackButtons() {
+      if (IS_TICKET_CLOSED) return;
+
+      const chat = document.getElementById("sv-chat-window");
+      if (!chat) return;
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "sv-msg sv-msg-bot";
+
+      wrapper.innerHTML = `
+        <div class="sv-feedback-title">✔️ Did this answer your question?</div>
+        <div class="sv-feedback-buttons">
+          <button type="button" class="sv-yes-btn">Yes</button>
+          <button type="button" class="sv-no-btn">No</button>
+        </div>
+      `;
+
+      chat.appendChild(wrapper);
+      chat.scrollTop = chat.scrollHeight;
+
+      wrapper.querySelector(".sv-yes-btn").onclick = handleYes;
+      wrapper.querySelector(".sv-no-btn").onclick = handleNo;
+    }
+
+    function handleYes() {
+      if (IS_TICKET_CLOSED) return;
+
+      addBotMessage("Great! 😊<br>Would you like to ask another question?");
+
+      const chat = document.getElementById("sv-chat-window");
+      if (!chat) return;
+
+      const btn = document.createElement("button");
+      btn.className = "sv-option-chip";
+      btn.type = "button";
+      btn.textContent = "Back to Categories";
+
+      btn.onclick = () => showSections();
+
+      const box = document.createElement("div");
+      box.className = "sv-msg sv-msg-bot";
+      box.appendChild(btn);
+      chat.appendChild(box);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    // =============================================================
+    // USER CLICKED NO → CREATE SUPPORT TICKET
+    // =============================================================
+    async function handleNo() {
+      if (IS_TICKET_CLOSED) return;
+
+      addBotMessage("One moment… contacting support 🕓");
+
+      const formData = new FormData();
+      formData.append("question", LAST_QUESTION || "(unknown)");
+      formData.append("answer", LAST_ANSWER || "(unknown)");
+
+      const res = await fetch("/chatbot/support", { method: "POST", body: formData });
+
+      let data;
+      try {
+        data = await res.json();
+      } catch (e) {
+        addBotMessage("⚠️ Error contacting support.");
+        return;
+      }
+
+      if (!data.ok) {
+        addBotMessage("⚠️ Failed to create support ticket.");
+        return;
+      }
+
+      ACTIVE_TICKET_ID = data.ticket_id;
+      LAST_MESSAGE_ID = 0;
+      IS_TICKET_CLOSED = false;
+
+      localStorage.setItem("chatbot_active_ticket", ACTIVE_TICKET_ID);
+
+      addBotMessage("A support agent will assist you shortly 🟣");
+
+      startAgentWatcher(ACTIVE_TICKET_ID);
+      startChatPolling(ACTIVE_TICKET_ID);
+    }
+
+    // =============================================================
+    // CHECK AGENT STATUS
+    // =============================================================
+    async function checkAgentStatus(ticketId) {
+      if (IS_TICKET_CLOSED) return;
+
+      try {
+        const res = await fetch(`/api/chatbot/agent_status/${ticketId}`);
+        const data = await res.json();
+
+        if (data.assigned && data.agent_name) {
+          if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
+          AGENT_WATCH_INTERVAL = null;
+
+          const banner = document.getElementById("sv-live-agent-banner");
+          if (banner) {
+            banner.style.display = "block";
+            banner.innerHTML = `
+              You are now chatting with one of our agents:
+              <span style="color:#6b46c1; font-weight:700;">${data.agent_name}</span>
+            `;
+          }
+
+          const chatInput = document.getElementById("sv-chat-input");
+          if (chatInput) chatInput.style.display = "block";
+
+          addBotMessage(`You're now connected with <b>${data.agent_name}</b>. How can I help you?`);
+        }
+      } catch (err) {
+        console.log("poll error:", err);
+      }
+    }
+
+    function startAgentWatcher(ticketId) {
+      if (!ticketId) return;
+      if (AGENT_WATCH_INTERVAL) clearInterval(AGENT_WATCH_INTERVAL);
+      AGENT_WATCH_INTERVAL = setInterval(() => checkAgentStatus(ticketId), 2000);
+    }
+
+    // =============================================================
+    // POLL REAL MESSAGES (WITH INSTANT CLOSE)
+    // =============================================================
+    async function pollMessages(ticketId) {
+      if (!ticketId) return;
+
+      try {
+        const res = await fetch(`/api/chatbot/messages/${ticketId}`);
+        const data = await res.json();
+
+        if (data.ticket_status === "closed") {
+          if (!IS_TICKET_CLOSED) {
+            lockChatUI(
+              data.closed_by
+                ? `This ticket has been closed by ${data.closed_by}.`
+                : "This ticket has been closed."
+            );
+          }
+          return;
+        }
+
+        (data.messages || []).forEach((msg) => {
+          if (
+            (msg.sender_role === "agent" || msg.sender_role === "support") &&
+            document.getElementById("sv-live-agent-banner")?.style.display !== "block"
+          ) {
+            const banner = document.getElementById("sv-live-agent-banner");
+            if (banner) {
+              banner.style.display = "block";
+              banner.innerHTML = "You are now chatting with one of our agents";
+            }
+            const chatInput = document.getElementById("sv-chat-input");
+            if (chatInput) chatInput.style.display = "block";
+          }
+        });
+
+        (data.messages || []).forEach((msg) => {
+          if (msg.id > LAST_MESSAGE_ID) {
+            LAST_MESSAGE_ID = msg.id;
+
+            if (msg.sender_role === "support" || msg.sender_role === "agent") {
+              addBotMessage(msg.body);
+            } else if (msg.sender_role === "user") {
+              addUserMessage(msg.body);
+            } else if (msg.sender_role === "system") {
+              addBotMessage(msg.body);
+            }
+          }
+        });
+      } catch (e) {
+        console.log("chat poll error:", e);
+      }
+    }
+
+    function startChatPolling(ticketId) {
+      if (!ticketId) return;
+      if (CHAT_POLL_INTERVAL) clearInterval(CHAT_POLL_INTERVAL);
+      CHAT_POLL_INTERVAL = setInterval(() => pollMessages(ticketId), 1500);
+    }
+
+    // =============================================================
+    // SEND MESSAGE
+    // =============================================================
+    async function sendUserMessageToServer(text) {
+      if (!ACTIVE_TICKET_ID || IS_TICKET_CLOSED) return;
+
+      const formData = new FormData();
+      formData.append("body", text);
+
+      await fetch(`/api/chatbot/messages/${ACTIVE_TICKET_ID}`, {
+        method: "POST",
+        body: formData,
+      });
+    }
+
+    // =============================================================
+    // SHOW MAIN SECTIONS
+    // =============================================================
+    function showSections() {
+      if (IS_TICKET_CLOSED) return;
+
+      clearSuggestions();
+      const suggestions = document.getElementById("sv-suggestions");
+      if (!suggestions) return;
+      suggestions.innerHTML = "";
+
+      SECTIONS.forEach((sec) => {
+        const btn = document.createElement("button");
+        btn.className = "sv-question-chip";
+        btn.type = "button";
+        btn.textContent = sec.section_title;
+
+        btn.onclick = () => {
+          CURRENT_SECTION = sec;
+          showQuestionsInSection(sec);
+          addUserMessage(sec.section_title);
+        };
+
+        suggestions.appendChild(btn);
+      });
+    }
+
+    // =============================================================
+    // SHOW QUESTIONS IN A SECTION
+    // =============================================================
+    function showQuestionsInSection(section) {
+      if (IS_TICKET_CLOSED) return;
+
+      clearSuggestions();
+      const suggestions = document.getElementById("sv-suggestions");
+      if (!suggestions) return;
+      suggestions.innerHTML = "";
+
+      let faqs = section.faqs;
+
+      if (!Array.isArray(faqs)) {
+        Object.entries(faqs).forEach(([qText, obj]) => {
+          const btn = document.createElement("button");
+          btn.className = "sv-question-chip";
+          btn.type = "button";
+          btn.textContent = qText;
+
+          btn.onclick = () =>
+            handleQuestionClick({
+              label: qText,
+              answer: obj.answer,
+              options: obj.options || null,
+            });
+
+          suggestions.appendChild(btn);
+        });
+      } else {
+        faqs.forEach((item) => {
+          const btn = document.createElement("button");
+          btn.className = "sv-question-chip";
+          btn.type = "button";
+          btn.textContent = item.question;
+
+          btn.onclick = () =>
+            handleQuestionClick({
+              label: item.question,
+              answer: item.answer,
+              options: null,
+            });
+
+          suggestions.appendChild(btn);
+        });
+      }
+    }
+
+    // =============================================================
+    // QUESTION CLICK HANDLER
+    // =============================================================
+    function handleQuestionClick(q) {
+      if (IS_TICKET_CLOSED) return;
+
+      addUserMessage(q.label);
+      LAST_QUESTION = q.label;
+
+      clearSuggestions();
+
+      if (q.answer) {
+        addBotMessage(q.answer);
+        LAST_ANSWER = q.answer;
+        showFeedbackButtons();
+      }
+
+      if (q.options) {
+        const chat = document.getElementById("sv-chat-window");
+        if (!chat) return;
+
+        const box = document.createElement("div");
+        box.className = "sv-msg sv-msg-bot";
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "sv-options-wrapper";
+
+        const title = document.createElement("div");
+        title.className = "sv-options-title";
+        title.textContent = "Choose a case:";
+        wrapper.appendChild(title);
+
+        Object.entries(q.options).forEach(([label, data]) => {
+          const btn = document.createElement("button");
+          btn.className = "sv-option-chip";
+          btn.type = "button";
+          btn.textContent = label;
+
+          btn.onclick = () => {
+            addUserMessage(label);
+            addBotMessage(data.answer || "…");
+            LAST_ANSWER = data.answer || "…";
+            showFeedbackButtons();
+          };
+
+          wrapper.appendChild(btn);
+        });
+
+        box.appendChild(wrapper);
+        chat.appendChild(box);
+        chat.scrollTop = chat.scrollHeight;
+      }
+    }
+
+    // =====================================================
+    // CHECK CLOSED STATUS ON LOAD (IMPORTANT)
+    // =====================================================
+    async function checkClosedOnLoad(ticketId) {
+      try {
+        const res = await fetch(`/api/chatbot/messages/${ticketId}`);
+        const data = await res.json();
+
+        if (data.ticket_status === "closed") {
+          lockChatUI(
+            data.closed_by
+              ? `This ticket has been closed by ${data.closed_by}.`
+              : "This ticket has been closed."
+          );
+        }
+      } catch (e) {
+        console.log("initial close check error", e);
+      }
+    }
+  </script>
+</body>
+</html>
