@@ -1,4 +1,4 @@
- // ===================================================== 
+// ===================================================== 
 // LOAD TREE.JSON (FAQ SYSTEM)
 // =====================================================
 async function loadTree() {
@@ -61,15 +61,10 @@ function lockChatUI(closeText) {
     closedBanner.style.display = "block";
     closedBanner.textContent =
       closeText || "This ticket has been closed. You can start a new chat from the Messages page.";
-      localStorage.removeItem("chatbot_active_ticket");
   }
 
   const chatInput = document.getElementById("sv-chat-input");
   if (chatInput) chatInput.style.display = "none";
-  setTimeout(() => {
-  const ci = document.getElementById("sv-chat-input");
-  if (ci) ci.style.display = "none";}, 0);
-  
 
   const faqSection = document.getElementById("sv-suggestions-section");
   if (faqSection) faqSection.style.display = "none";
@@ -272,6 +267,7 @@ function startAgentWatcher(ticketId) {
     checkAgentStatus(ticketId);
   }, 2000);
 }
+
 // =============================================================
 // POLL REAL MESSAGES (WITH INSTANT CLOSE)
 // =============================================================
@@ -291,18 +287,12 @@ async function pollMessages(ticketId) {
             : "This ticket has been closed."
         );
       }
-
-      // 🔴 تأكيد إخفاء input نهائياً
-      const ci = document.getElementById("sv-chat-input");
-      if (ci) ci.style.display = "none";
-
       return;
     }
 
-    // 🔥 AUTO-DETECT AGENT FROM MESSAGES
+    // 🔥 AUTO-DETECT AGENT FROM MESSAGES (المكان الصحيح)
     (data.messages || []).forEach((msg) => {
       if (
-        !IS_TICKET_CLOSED &&   // ✅ الإضافة الوحيدة والمهمة
         (msg.sender_role === "agent" || msg.sender_role === "support") &&
         document.getElementById("sv-live-agent-banner")?.style.display !== "block"
       ) {
@@ -336,6 +326,7 @@ async function pollMessages(ticketId) {
     console.log("chat poll error:", e);
   }
 }
+
 
 function startChatPolling(ticketId) {
   if (!ticketId) return;
@@ -497,13 +488,9 @@ async function checkClosedOnLoad(ticketId) {
         data.closed_by
           ? `This ticket has been closed by ${data.closed_by}.`
           : "This ticket has been closed."
-          
       );
-      document.getElementById("sv-suggestions-section")?.style.display = "none";
-
     }
   } catch (e) {
     console.log("initial close check error", e);
   }
 }
- 
