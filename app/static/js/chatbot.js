@@ -48,7 +48,6 @@ let CHAT_POLL_INTERVAL = null;
 let LAST_MESSAGE_ID = 0;
 
 let IS_TICKET_CLOSED = false;
-let HAS_AGENT_JOINED = false;
 
 // =====================================================
 // LOCK CHAT UI WHEN TICKET CLOSED
@@ -56,8 +55,6 @@ let HAS_AGENT_JOINED = false;
 function lockChatUI(closeText) {
   if (IS_TICKET_CLOSED) return;
   IS_TICKET_CLOSED = true;
-  HAS_AGENT_JOINED = false;
-
 
   const closedBanner = document.getElementById("sv-ticket-closed-banner");
   if (closedBanner) {
@@ -91,9 +88,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const savedTicket = localStorage.getItem("chatbot_active_ticket");
   if (savedTicket) {
     ACTIVE_TICKET_ID = parseInt(savedTicket);
-    HAS_AGENT_JOINED = false;
-    LAST_MESSAGE_ID = 0;
-
     startAgentWatcher(ACTIVE_TICKET_ID);
     startChatPolling(ACTIVE_TICKET_ID);
   } else {
@@ -205,15 +199,30 @@ async function checkAgentStatus(ticketId) {
     const res = await fetch(`/api/chatbot/agent_status/${ticketId}`);
     const data = await res.json();
 
-    if (data.assigned) {
+    if (data.assigned && data.agent_name) {
       clearInterval(AGENT_WATCH_INTERVAL);
       AGENT_WATCH_INTERVAL = null;
+
+      const banner = document.getElementById("sv-live-agent-banner");
+      if (banner) {
+        banner.style.display = "block";
+        banner.innerHTML = `
+          You are now chatting with one of our agents:
+          <span style="color:#6b46c1; font-weight:700;">${data.agent_name}</span>
+        `;
+      }
+
+      const chatInput = document.getElementById("sv-chat-input");
+      if (chatInput) chatInput.style.display = "block";
+
+      addBotMessage(
+        `You're now connected with <b>${data.agent_name}</b>. How can I help you?`
+      );
     }
   } catch (err) {
     console.log("poll error:", err);
   }
 }
-
 
 function startAgentWatcher(ticketId) {
   if (!ticketId) return;
