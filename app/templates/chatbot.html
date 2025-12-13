@@ -720,7 +720,11 @@ async function pollMessages(ticketId) {
       }
 
       // ✅ فقط رسائل السيبور
-      if (msg.sender_role === "agent" || msg.sender_role === "support") {
+      if (
+  msg.sender_role === "agent" ||
+  msg.sender_role === "support" ||
+  msg.sender_role === "system"
+) {
         addBotMessage(body);
         RENDERED_MESSAGE_IDS.add(msg.id);
       }
