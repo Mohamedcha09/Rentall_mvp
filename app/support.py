@@ -197,7 +197,6 @@ def support_my(request: Request, db: Session = Depends(get_db)):
         },
     )
 
-
 @router.get("/support/ticket/{tid}", response_class=HTMLResponse)
 def support_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     u = _require_login(request)
@@ -208,10 +207,17 @@ def support_ticket_view(tid: int, request: Request, db: Session = Depends(get_db
     if not t or t.user_id != u["id"]:
         return RedirectResponse("/support/my", status_code=303)
 
-    # mark agent messages as read + reset "unread for user" flag
+    # ✅ أهم سطر: إذا كانت التذكرة Chatbot → حوّلها لصفحة الشاتبوت
+    if t.channel == "chatbot":
+        return RedirectResponse(f"/chatbot/ticket/{t.id}", status_code=303)
+
+    # ---------------------------------------
+    # سيبور قديم فقط (legacy)
+    # ---------------------------------------
     for msg in t.messages or []:
         if msg.sender_role == "agent" and not getattr(msg, "is_read", False):
             msg.is_read = True
+
     t.unread_for_user = False
     db.commit()
 

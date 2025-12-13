@@ -2,150 +2,71 @@
 {% block content %}
 
 <style>
-  /* Hide all global UI for chatbot ticket page */
-  body[data-path^="/chatbot/ticket"] header.topbar,
-  body[data-path^="/chatbot/ticket"] .mobile-tabbar,
-  body[data-path^="/chatbot/ticket"] .m-top-tabs,
-  body[data-path^="/chatbot/ticket"] .searchbar,
-  body[data-path^="/chatbot/ticket"] .stripe-callout {
-      display: none !important;
-  }
+body[data-path^="/chatbot/ticket"] header.topbar,
+body[data-path^="/chatbot/ticket"] .mobile-tabbar,
+body[data-path^="/chatbot/ticket"] .m-top-tabs,
+body[data-path^="/chatbot/ticket"] .searchbar {
+  display: none !important;
+}
 
-  .sv-ticket-page {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 20px;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont;
-  }
-
-  .sv-header {
-      display: flex;
-      align-items: center;
-      margin-bottom: 16px;
-  }
-
-  .sv-header a {
-      text-decoration: none;
-      font-size: 22px;
-      color: #111;
-  }
-
-  .sv-header-title {
-      flex: 1;
-      text-align: center;
-      font-size: 20px;
-      font-weight: 700;
-  }
-
-  .sv-chat-window {
-      background: #f8f8f8;
-      padding: 16px;
-      border-radius: 14px;
-      min-height: 240px;
-      max-height: 70vh;
-      overflow-y: auto;
-  }
-
-  .sv-msg {
-      padding: 10px 14px;
-      margin: 8px 0;
-      border-radius: 14px;
-      max-width: 80%;
-      line-height: 1.4;
-  }
-
-  .sv-msg-user {
-      background: #6b46c1;
-      color: white;
-      margin-left: auto;
-  }
-
-  .sv-msg-agent {
-      background: #fff;
-      border: 1px solid #ddd;
-  }
-
-  #sv-closed-banner {
-      display: none;
-      background: #fee2e2;
-      border: 1px solid #fca5a5;
-      padding: 12px;
-      border-radius: 12px;
-      color: #991b1b;
-      margin-bottom: 14px;
-      font-weight: 600;
-  }
-
-  #sv-send-box {
-      margin-top: 16px;
-  }
-
-  #sv-send-box textarea {
-      width: 100%;
-      padding: 12px;
-      border-radius: 12px;
-      border: 1px solid #ccc;
-  }
-
-  #sv-send-box button {
-      margin-top: 10px;
-      width: 100%;
-      padding: 12px;
-      background: #6b46c1;
-      color: white;
-      border-radius: 12px;
-      border: none;
-      font-size: 16px;
-  }
-
+.sv-ticket-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 20px;
+}
+.sv-chat-window {
+  background: #f8f8f8;
+  padding: 16px;
+  border-radius: 14px;
+  min-height: 200px;
+  max-height: 65vh;
+  overflow-y: auto;
+}
+.sv-msg-user {
+  background:#6b46c1;color:#fff;
+  padding:10px 14px;border-radius:14px;
+  margin:8px 0 8px auto;max-width:80%;
+}
+.sv-msg-agent {
+  background:#fff;border:1px solid #ddd;
+  padding:10px 14px;border-radius:14px;
+  margin:8px 0;max-width:80%;
+}
 </style>
 
 <div class="sv-ticket-page">
 
-    <!-- Header -->
-    <div class="sv-header">
-        <a href="/messages">←</a>
-        <div class="sv-header-title">Ticket #{{ ticket.id }}</div>
-        <div style="width:22px"></div>
-    </div>
+  <a href="/messages" style="font-size:20px">←</a>
+  <h3>Ticket #{{ ticket.id }}</h3>
 
-    <!-- Closed banner -->
-    <div id="sv-closed-banner"></div>
-
-    <!-- Chat window -->
-    <div id="sv-chat-window" class="sv-chat-window">
-        {% for m in msgs %}
-            {% if m.sender_role == 'user' %}
-                <div class="sv-msg sv-msg-user">{{ m.body }}</div>
-            {% else %}
-                <div class="sv-msg sv-msg-agent">{{ m.body }}</div>
-            {% endif %}
-        {% endfor %}
+  {% if ticket.status == 'closed' %}
+    <div style="background:#fee2e2;padding:12px;border-radius:12px;margin-bottom:12px">
+      This ticket is closed.
     </div>
+  {% endif %}
 
-    <!-- Send box -->
-    <div id="sv-send-box">
-        <form method="post" action="/api/chatbot/messages/{{ ticket.id }}">
-            <textarea name="body" rows="3" placeholder="Write your message…"></textarea>
-            <button type="submit">Send</button>
-        </form>
-    </div>
+  <div class="sv-chat-window" id="chat">
+    {% for m in msgs %}
+      {% if m.sender_role == 'user' %}
+        <div class="sv-msg-user">{{ m.body }}</div>
+      {% else %}
+        <div class="sv-msg-agent">{{ m.body }}</div>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  {% if ticket.status != 'closed' %}
+  <form method="post" action="/api/chatbot/messages/{{ ticket.id }}">
+    <textarea name="body" rows="3" required style="width:100%;margin-top:12px"></textarea>
+    <button type="submit" style="width:100%;margin-top:8px">Send</button>
+  </form>
+  {% endif %}
 
 </div>
 
 <script>
-  // Hide send box if ticket is closed
-  const isClosed = "{{ ticket.status }}" === "closed";
-  if (isClosed) {
-      document.getElementById("sv-closed-banner").style.display = "block";
-      document.getElementById("sv-closed-banner").textContent =
-          "This ticket has been closed by support.";
-
-      document.getElementById("sv-send-box").style.display = "none";
-  }
-
-  const chat = document.getElementById("sv-chat-window");
-  chat.scrollTop = chat.scrollHeight;
+const c = document.getElementById("chat");
+if (c) c.scrollTop = c.scrollHeight;
 </script>
 
 {% endblock %}
