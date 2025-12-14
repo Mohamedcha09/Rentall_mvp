@@ -275,6 +275,53 @@
       }
     }
 
+/* ================================
+   FIXED INPUT BAR (BOTTOM)
+================================ */
+
+.sv-input-fixed {
+  position: fixed;
+  bottom: env(safe-area-inset-bottom);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 720px;
+  background: #ffffff;
+  border-top: 1px solid #e5e7eb;
+  padding: 12px 14px 16px;
+  z-index: 999;
+}
+
+/* form layout */
+.sv-input-fixed form {
+  display: flex;
+  gap: 10px;
+}
+
+/* input */
+#sv-message-input {
+  flex: 1;
+  padding: 12px 14px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  font-size: 15px;
+}
+
+/* send button */
+#sv-send-btn {
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: #6b46c1;
+  color: #fff;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* give space so messages don't hide behind input */
+#sv-chat-window {
+  padding-bottom: 120px;
+}
 
   </style>
 </head>
@@ -314,16 +361,18 @@
 
     <!-- INPUT BOX -->
     <div id="sv-chat-input" data-chat-input>
-      <form id="sv-send-form">
-        <input
-          id="sv-message-input"
-          type="text"
-          placeholder="Write your message to support..."
-          style="width:100%; padding:12px; border-radius:12px; border:1px solid #ddd;"
-        />
-        <button id="sv-send-btn" type="submit">Send</button>
-      </form>
-    </div>
+  <div class="sv-input-fixed">
+    <form id="sv-send-form">
+      <input
+        id="sv-message-input"
+        type="text"
+        placeholder="Write your message to support..."
+      />
+      <button id="sv-send-btn" type="submit">Send</button>
+    </form>
+  </div>
+</div>
+
 
   </div>
 
