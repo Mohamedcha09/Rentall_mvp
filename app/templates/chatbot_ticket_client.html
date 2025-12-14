@@ -2,6 +2,9 @@
 {% block content %}
 
 <style>
+/* ===============================
+   HIDE GLOBAL NAVS
+=============================== */
 body[data-path^="/chatbot/ticket"] header.topbar,
 body[data-path^="/chatbot/ticket"] .mobile-tabbar,
 body[data-path^="/chatbot/ticket"] .m-top-tabs,
@@ -9,42 +12,183 @@ body[data-path^="/chatbot/ticket"] .searchbar {
   display: none !important;
 }
 
+/* ===============================
+   PAGE WRAPPER
+=============================== */
 .sv-ticket-page {
   max-width: 720px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 0 18px 140px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
+
+/* ===============================
+   HEADER (Same as chatbot)
+=============================== */
+.sv-header {
+  padding-top: 28px;
+  padding-bottom: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+}
+
+.sv-back {
+  font-size: 26px;
+  text-decoration: none;
+  color: #111;
+}
+
+.sv-header-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.sv-header-logo-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin: 0 auto 4px;
+  background: #111;
+}
+
+.sv-header-logo-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sv-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #111;
+}
+
+/* ===============================
+   CHAT WINDOW
+=============================== */
 .sv-chat-window {
-  background: #f8f8f8;
-  padding: 16px;
-  border-radius: 14px;
-  min-height: 200px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   max-height: 65vh;
   overflow-y: auto;
 }
+
+/* ===============================
+   MESSAGES
+=============================== */
 .sv-msg-user {
-  background:#6b46c1;color:#fff;
-  padding:10px 14px;border-radius:14px;
-  margin:8px 0 8px auto;max-width:80%;
+  align-self: flex-end;
+  background: #6b46c1;
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 18px;
+  border-bottom-right-radius: 6px;
+  max-width: 80%;
 }
+
 .sv-msg-agent {
-  background:#fff;border:1px solid #ddd;
-  padding:10px 14px;border-radius:14px;
-  margin:8px 0;max-width:80%;
+  align-self: flex-start;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  color: #111;
+  padding: 12px 16px;
+  border-radius: 18px;
+  border-bottom-left-radius: 6px;
+  max-width: 80%;
 }
+
+/* ===============================
+   CLOSED BANNER
+=============================== */
+.sv-closed {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+  padding: 12px 14px;
+  border-radius: 12px;
+  margin: 14px 0;
+  font-weight: 600;
+}
+
+/* ===============================
+   FIXED INPUT (iOS SAFE)
+=============================== */
+.sv-input-fixed {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 720px;
+  background: #fff;
+  border-top: 1px solid #e5e7eb;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  z-index: 999;
+}
+
+.sv-input-fixed form {
+  display: flex;
+  gap: 10px;
+}
+
+.sv-input-fixed textarea {
+  flex: 1;
+  resize: none;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  padding: 12px 16px;
+  font-size: 16px;
+  line-height: 20px;
+}
+
+.sv-input-fixed button {
+  border-radius: 999px;
+  padding: 12px 20px;
+  background: #6b46c1;
+  color: #fff;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 </style>
 
 <div class="sv-ticket-page">
 
-  <a href="/messages" style="font-size:20px">←</a>
-  <h3>Ticket #{{ ticket.id }}</h3>
+  <!-- HEADER -->
+  <div class="sv-header">
+    <a href="/messages" class="sv-back">←</a>
+
+    <div class="sv-header-center">
+      <div class="sv-header-logo-wrap">
+        <img src="/static/sevor-logo.png" alt="Sevor">
+      </div>
+      <div class="sv-title">Soutien Sevor</div>
+    </div>
+
+    <div style="width:30px"></div>
+  </div>
+
+  <h3 style="margin:12px 0">Ticket #{{ ticket.id }}</h3>
 
   {% if ticket.status == 'closed' %}
-    <div style="background:#fee2e2;padding:12px;border-radius:12px;margin-bottom:12px">
+    <div class="sv-closed">
       This ticket is closed.
     </div>
   {% endif %}
 
+  <!-- CHAT -->
   <div class="sv-chat-window" id="chat">
     {% for m in msgs %}
       {% if m.sender_role == 'user' %}
@@ -55,14 +199,16 @@ body[data-path^="/chatbot/ticket"] .searchbar {
     {% endfor %}
   </div>
 
-  {% if ticket.status != 'closed' %}
-  <form method="post" action="/api/chatbot/messages/{{ ticket.id }}">
-    <textarea name="body" rows="3" required style="width:100%;margin-top:12px"></textarea>
-    <button type="submit" style="width:100%;margin-top:8px">Send</button>
-  </form>
-  {% endif %}
-
 </div>
+
+{% if ticket.status != 'closed' %}
+<div class="sv-input-fixed">
+  <form method="post" action="/api/chatbot/messages/{{ ticket.id }}">
+    <textarea name="body" rows="1" required placeholder="Write your message…"></textarea>
+    <button type="submit">Send</button>
+  </form>
+</div>
+{% endif %}
 
 <script>
 const c = document.getElementById("chat");
