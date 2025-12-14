@@ -327,10 +327,12 @@ def chatbot_send_message(
     # -------------------------------
     # Detect sender role
     # -------------------------------
-    sender_role = "user"
-    if t.queue in ("cs_chatbot", "md_chatbot", "mod_chatbot") and (user.is_support or user.is_mod):
+    if user.id == t.user_id:
+        sender_role = "user"
+    else:     
         sender_role = "support"
-
+        
+                  
     msg = SupportMessage(
         ticket_id=ticket_id,
         sender_id=user.id,
