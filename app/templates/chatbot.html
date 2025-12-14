@@ -274,19 +274,18 @@
 ================================ */
 
 .sv-input-fixed {
-  position: sticky;              /* ✅ بدل fixed */
+  position: fixed;
   bottom: 0;
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   width: 100%;
   max-width: 720px;
-  margin: 0 auto;
   background: #ffffff;
   border-top: 1px solid #e5e7eb;
-  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-  z-index: 50;
-  will-change: transform;
-
+  padding: 10px 12px env(safe-area-inset-bottom);
+  z-index: 999;
 }
+
 
 /* لا تغيير أحجام */
 .sv-input-fixed * {
@@ -333,6 +332,15 @@
 /* give space so messages don't hide behind input */
 #sv-chat-window {
   padding-bottom: 120px;
+}
+
+input,
+button {
+  font-size: 16px !important;
+}
+#sv-chat-window {
+  overflow-y: auto;
+  padding-bottom: 140px;
 }
 
   </style>
@@ -1013,23 +1021,6 @@ function stopFastPolling() {
 }
 
 
-/* ================================
-   iOS Keyboard Fix (VisualViewport)
-================================ */
-if (window.visualViewport) {
-  window.visualViewport.addEventListener("resize", () => {
-    const bar = document.querySelector(".sv-input-fixed");
-    if (!bar) return;
-
-    const offset =
-      window.innerHeight
-      - window.visualViewport.height
-      - window.visualViewport.offsetTop;
-
-    bar.style.transform =
-      offset > 0 ? `translateY(-${offset}px)` : "translateY(0)";
-  });
-}
 
 
   </script>
