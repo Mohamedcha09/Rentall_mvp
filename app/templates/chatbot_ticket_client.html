@@ -199,13 +199,15 @@ form.addEventListener("submit", async (e) => {
   const fd = new FormData();
   fd.append("body", text);
 
-  await fetch("/api/chatbot/messages/{{ ticket.id }}", {
+  const res = await fetch("/api/chatbot/messages/{{ ticket.id }}", {
     method: "POST",
     body: fd
   });
-  LAST_MESSAGE_ID += 1; // 👈 يمنع polling من إعادة الرسالة
 
+  const data = await res.json();
+  LAST_MESSAGE_ID = data.message_id; // ✅ مهم جدًا
 });
+
 
 /* POLL AGENT ONLY */
 async function pollAgentMessages() {

@@ -363,7 +363,12 @@ def chatbot_send_message(
 
     db.commit()
 
-    return {"ok": True}
+    return {
+    "ok": True,
+    "message_id": msg.id,
+    "sender_role": sender_role
+}
+
 
 
 # ===========================================================
