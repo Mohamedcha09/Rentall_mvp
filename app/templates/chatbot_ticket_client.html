@@ -18,12 +18,12 @@ body[data-path^="/chatbot/ticket"] .searchbar {
 .sv-ticket-page {
   max-width: 720px;
   margin: 0 auto;
-  padding: 0 18px 140px;
+  padding: 0 18px 160px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 /* ===============================
-   HEADER (Same as chatbot)
+   HEADER
 =============================== */
 .sv-header {
   padding-top: 28px;
@@ -108,7 +108,7 @@ body[data-path^="/chatbot/ticket"] .searchbar {
 }
 
 /* ===============================
-   CLOSED BANNER
+   CLOSED
 =============================== */
 .sv-closed {
   background: #fee2e2;
@@ -121,7 +121,7 @@ body[data-path^="/chatbot/ticket"] .searchbar {
 }
 
 /* ===============================
-   FIXED INPUT (iOS SAFE)
+   FIXED INPUT
 =============================== */
 .sv-input-fixed {
   position: fixed;
@@ -159,9 +159,7 @@ body[data-path^="/chatbot/ticket"] .searchbar {
   border: none;
   font-size: 16px;
   font-weight: 600;
-  white-space: nowrap;
 }
-
 </style>
 
 <div class="sv-ticket-page">
@@ -203,16 +201,44 @@ body[data-path^="/chatbot/ticket"] .searchbar {
 
 {% if ticket.status != 'closed' %}
 <div class="sv-input-fixed">
-  <form method="post" action="/api/chatbot/messages/{{ ticket.id }}">
-    <textarea name="body" rows="1" required placeholder="Write your message…"></textarea>
+  <form id="send-form">
+    <textarea id="msg-input" rows="1" placeholder="Write your message…" required></textarea>
     <button type="submit">Send</button>
   </form>
 </div>
 {% endif %}
 
 <script>
-const c = document.getElementById("chat");
-if (c) c.scrollTop = c.scrollHeight;
+const chat  = document.getElementById("chat");
+const form  = document.getElementById("send-form");
+const input = document.getElementById("msg-input");
+
+if (chat) chat.scrollTop = chat.scrollHeight;
+
+if (form) {
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault(); // ⛔ منع فتح JSON
+
+    const text = input.value.trim();
+    if (!text) return;
+
+    // ✅ إظهار الرسالة فوراً
+    const bubble = document.createElement("div");
+    bubble.className = "sv-msg-user";
+    bubble.textContent = text;
+    chat.appendChild(bubble);
+    chat.scrollTop = chat.scrollHeight;
+
+    input.value = "";
+
+    // ✅ إرسال async
+    await fetch("/api/chatbot/messages/{{ ticket.id }}", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ body: text })
+    });
+  });
+}
 </script>
 
 {% endblock %}
