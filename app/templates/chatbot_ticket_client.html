@@ -153,24 +153,16 @@ body[data-path^="/chatbot/ticket"] .searchbar {
 
   <h3>Ticket #{{ ticket.id }}</h3>
 
-  <div class="sv-chat-window" id="chat">
-    {% for m in msgs %}
-      {% for m in msgs %}
-  {% if m.sender_role == 'user' %}
-    <div class="sv-msg-user">{{ m.body }}</div>
-  {% elif m.sender_role in ['support', 'system'] %}
-    <div class="sv-msg-agent">{{ m.body }}</div>
-  {% endif %}
-{% endfor %}
-
-  <div class="sv-msg-agent">{{ m.body }}</div>
-{% else %}
-  <div class="sv-msg-user">{{ m.body }}</div>
-{% endif %}
-
-    {% endfor %}
-  </div>
+<div class="sv-chat-window" id="chat">
+  {% for m in msgs %}
+    {% if m.sender_role == 'user' %}
+      <div class="sv-msg-user">{{ m.body }}</div>
+    {% else %}
+      <div class="sv-msg-agent">{{ m.body }}</div>
+    {% endif %}
+  {% endfor %}
 </div>
+
 
 {% if ticket.status != 'closed' %}
 <div class="sv-input-fixed">
