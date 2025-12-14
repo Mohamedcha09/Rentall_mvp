@@ -75,7 +75,7 @@ body[data-path^="/chatbot/ticket"] .searchbar {
   overflow-y: auto;
 }
 
-/* USER = BLACK */
+/* USER */
 .sv-msg-user {
   align-self: flex-end;
   background: #111827;
@@ -86,26 +86,16 @@ body[data-path^="/chatbot/ticket"] .searchbar {
   max-width: 80%;
 }
 
-/* AGENT = WHITE */
+/* AGENT */
 .sv-msg-agent {
   align-self: flex-start;
-  background: #ffffff;
+  background: #fff;
   border: 1px solid #e5e7eb;
   color: #111;
   padding: 12px 16px;
   border-radius: 18px;
   border-bottom-left-radius: 6px;
   max-width: 80%;
-}
-
-.sv-closed {
-  background: #fee2e2;
-  border: 1px solid #fca5a5;
-  color: #991b1b;
-  padding: 12px 14px;
-  border-radius: 12px;
-  margin: 14px 0;
-  font-weight: 600;
 }
 
 .sv-input-fixed {
@@ -163,15 +153,9 @@ body[data-path^="/chatbot/ticket"] .searchbar {
 
   <h3>Ticket #{{ ticket.id }}</h3>
 
-  {% if ticket.status == 'closed' %}
-    <div class="sv-closed">This ticket is closed.</div>
-  {% endif %}
-
   <div class="sv-chat-window" id="chat">
     {% for m in msgs %}
-      {% if m.sender_role == 'user' %}
-        <div class="sv-msg-user">{{ m.body }}</div>
-      {% else %}
+      {% if m.sender_role != 'user' %}
         <div class="sv-msg-agent">{{ m.body }}</div>
       {% endif %}
     {% endfor %}
@@ -192,22 +176,15 @@ const chat  = document.getElementById("chat");
 const form  = document.getElementById("send-form");
 const input = document.getElementById("msg-input");
 
-/* 🔐 cache user messages */
-const USER_SENT_CACHE = new Set();
-
-/* last known DB id */
 let LAST_MESSAGE_ID = {{ msgs[-1].id if msgs else 0 }};
-
 chat.scrollTop = chat.scrollHeight;
 
-/* SEND */
+/* SEND USER MESSAGE (FRONT ONLY) */
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const text = input.value.trim();
   if (!text) return;
-
-  USER_SENT_CACHE.add(text);
 
   const div = document.createElement("div");
   div.className = "sv-msg-user";
@@ -233,23 +210,11 @@ async function pollAgentMessages() {
 
   for (const msg of (data.messages || [])) {
     if (msg.id <= LAST_MESSAGE_ID) continue;
-
-    const body = (msg.body || "").trim();
-
-    /* ❌ ignore user messages (local cache) */
-    if (USER_SENT_CACHE.has(body)) {
-      LAST_MESSAGE_ID = msg.id;
-      continue;
-    }
-
-    if (msg.sender_role !== "agent") {
-      LAST_MESSAGE_ID = msg.id;
-      continue;
-    }
+    if (msg.sender_role !== "agent") continue;
 
     const div = document.createElement("div");
     div.className = "sv-msg-agent";
-    div.textContent = body;
+    div.textContent = msg.body;
     chat.appendChild(div);
     chat.scrollTop = chat.scrollHeight;
 
