@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
 
+<script>
+  /* IMPORTANT : pour activer les CSS ciblés */
+  document.body.setAttribute("data-path", "/chatbot/ticket");
+</script>
+
 <style>
 /* ===============================
    HIDE GLOBAL NAVS
@@ -23,7 +28,7 @@ body[data-path^="/chatbot/ticket"] .searchbar {
 }
 
 /* ===============================
-   HEADER
+   HEADER (IDENTIQUE CHATBOT)
 =============================== */
 .sv-header {
   padding-top: 28px;
@@ -108,7 +113,7 @@ body[data-path^="/chatbot/ticket"] .searchbar {
 }
 
 /* ===============================
-   CLOSED
+   CLOSED BANNER
 =============================== */
 .sv-closed {
   background: #fee2e2;
@@ -121,7 +126,7 @@ body[data-path^="/chatbot/ticket"] .searchbar {
 }
 
 /* ===============================
-   FIXED INPUT
+   FIXED INPUT (iOS SAFE)
 =============================== */
 .sv-input-fixed {
   position: fixed;
@@ -202,7 +207,11 @@ body[data-path^="/chatbot/ticket"] .searchbar {
 {% if ticket.status != 'closed' %}
 <div class="sv-input-fixed">
   <form id="send-form">
-    <textarea id="msg-input" rows="1" placeholder="Write your message…" required></textarea>
+    <textarea
+      id="msg-input"
+      rows="1"
+      placeholder="Write your message…"
+      required></textarea>
     <button type="submit">Send</button>
   </form>
 </div>
@@ -217,12 +226,12 @@ if (chat) chat.scrollTop = chat.scrollHeight;
 
 if (form) {
   form.addEventListener("submit", async (e) => {
-    e.preventDefault(); // ⛔ منع فتح JSON
+    e.preventDefault(); // ⛔ STOP reload / JSON
 
     const text = input.value.trim();
     if (!text) return;
 
-    // ✅ إظهار الرسالة فوراً
+    /* Affichage immédiat */
     const bubble = document.createElement("div");
     bubble.className = "sv-msg-user";
     bubble.textContent = text;
@@ -231,11 +240,13 @@ if (form) {
 
     input.value = "";
 
-    // ✅ إرسال async
+    /* Envoi async */
+    const fd = new FormData();
+    fd.append("body", text);
+
     await fetch("/api/chatbot/messages/{{ ticket.id }}", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ body: text })
+      body: fd
     });
   });
 }
