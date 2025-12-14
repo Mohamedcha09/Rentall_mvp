@@ -2,14 +2,10 @@
 {% block content %}
 
 <script>
-  /* IMPORTANT : pour activer les CSS ciblés */
   document.body.setAttribute("data-path", "/chatbot/ticket");
 </script>
 
 <style>
-/* ===============================
-   HIDE GLOBAL NAVS
-=============================== */
 body[data-path^="/chatbot/ticket"] header.topbar,
 body[data-path^="/chatbot/ticket"] .mobile-tabbar,
 body[data-path^="/chatbot/ticket"] .m-top-tabs,
@@ -17,9 +13,6 @@ body[data-path^="/chatbot/ticket"] .searchbar {
   display: none !important;
 }
 
-/* ===============================
-   PAGE WRAPPER
-=============================== */
 .sv-ticket-page {
   max-width: 720px;
   margin: 0 auto;
@@ -27,9 +20,6 @@ body[data-path^="/chatbot/ticket"] .searchbar {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-/* ===============================
-   HEADER (IDENTIQUE CHATBOT)
-=============================== */
 .sv-header {
   padding-top: 28px;
   padding-bottom: 14px;
@@ -73,9 +63,6 @@ body[data-path^="/chatbot/ticket"] .searchbar {
   color: #111;
 }
 
-/* ===============================
-   CHAT WINDOW
-=============================== */
 .sv-chat-window {
   background: #f9fafb;
   border: 1px solid #e5e7eb;
@@ -88,22 +75,21 @@ body[data-path^="/chatbot/ticket"] .searchbar {
   overflow-y: auto;
 }
 
-/* ===============================
-   MESSAGES
-=============================== */
+/* USER = BLACK */
 .sv-msg-user {
   align-self: flex-end;
-  background: #111827; /* أسود */
-  color: #ffffff;
+  background: #111827;
+  color: #fff;
   padding: 12px 16px;
   border-radius: 18px;
   border-bottom-right-radius: 6px;
   max-width: 80%;
 }
 
+/* AGENT = WHITE */
 .sv-msg-agent {
   align-self: flex-start;
-  background: #fff;
+  background: #ffffff;
   border: 1px solid #e5e7eb;
   color: #111;
   padding: 12px 16px;
@@ -112,9 +98,6 @@ body[data-path^="/chatbot/ticket"] .searchbar {
   max-width: 80%;
 }
 
-/* ===============================
-   CLOSED BANNER
-=============================== */
 .sv-closed {
   background: #fee2e2;
   border: 1px solid #fca5a5;
@@ -125,9 +108,6 @@ body[data-path^="/chatbot/ticket"] .searchbar {
   font-weight: 600;
 }
 
-/* ===============================
-   FIXED INPUT (iOS SAFE)
-=============================== */
 .sv-input-fixed {
   position: fixed;
   bottom: 0;
@@ -153,7 +133,6 @@ body[data-path^="/chatbot/ticket"] .searchbar {
   border: 1px solid #d1d5db;
   padding: 12px 16px;
   font-size: 16px;
-  line-height: 20px;
 }
 
 .sv-input-fixed button {
@@ -169,13 +148,12 @@ body[data-path^="/chatbot/ticket"] .searchbar {
 
 <div class="sv-ticket-page">
 
-  <!-- HEADER -->
   <div class="sv-header">
     <a href="/messages" class="sv-back">←</a>
 
     <div class="sv-header-center">
       <div class="sv-header-logo-wrap">
-        <img src="/static/sevor-logo.png" alt="Sevor">
+        <img src="/static/sevor-logo.png">
       </div>
       <div class="sv-title">Soutien Sevor</div>
     </div>
@@ -183,36 +161,27 @@ body[data-path^="/chatbot/ticket"] .searchbar {
     <div style="width:30px"></div>
   </div>
 
-  <h3 style="margin:12px 0">Ticket #{{ ticket.id }}</h3>
+  <h3>Ticket #{{ ticket.id }}</h3>
 
   {% if ticket.status == 'closed' %}
-    <div class="sv-closed">
-      This ticket is closed.
-    </div>
+    <div class="sv-closed">This ticket is closed.</div>
   {% endif %}
 
-  <!-- CHAT -->
   <div class="sv-chat-window" id="chat">
     {% for m in msgs %}
       {% if m.sender_role == 'user' %}
-  <div class="sv-msg-user" data-db="1">{{ m.body }}</div>
-{% else %}
-  <div class="sv-msg-agent">{{ m.body }}</div>
-{% endif %}
-
+        <div class="sv-msg-user">{{ m.body }}</div>
+      {% else %}
+        <div class="sv-msg-agent">{{ m.body }}</div>
+      {% endif %}
     {% endfor %}
   </div>
-
 </div>
 
 {% if ticket.status != 'closed' %}
 <div class="sv-input-fixed">
   <form id="send-form">
-    <textarea
-      id="msg-input"
-      rows="1"
-      placeholder="Write your message…"
-      required></textarea>
+    <textarea id="msg-input" rows="1" placeholder="Write your message…" required></textarea>
     <button type="submit">Send</button>
   </form>
 </div>
@@ -223,76 +192,72 @@ const chat  = document.getElementById("chat");
 const form  = document.getElementById("send-form");
 const input = document.getElementById("msg-input");
 
-/* 🔥 NEW : track last message id */
+/* 🔐 cache user messages */
+const USER_SENT_CACHE = new Set();
+
+/* last known DB id */
 let LAST_MESSAGE_ID = {{ msgs[-1].id if msgs else 0 }};
 
-if (chat) chat.scrollTop = chat.scrollHeight;
+chat.scrollTop = chat.scrollHeight;
 
-/* SEND MESSAGE (unchanged) */
-if (form) {
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+/* SEND */
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-    const text = input.value.trim();
-    if (!text) return;
+  const text = input.value.trim();
+  if (!text) return;
 
-    const bubble = document.createElement("div");
-    bubble.className = "sv-msg-user";
-    bubble.textContent = text;
-    bubble.setAttribute("data-local", "1");
+  USER_SENT_CACHE.add(text);
 
-    chat.appendChild(bubble);
-    chat.scrollTop = chat.scrollHeight;
+  const div = document.createElement("div");
+  div.className = "sv-msg-user";
+  div.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
 
-    input.value = "";
+  input.value = "";
 
-    const fd = new FormData();
-    fd.append("body", text);
+  const fd = new FormData();
+  fd.append("body", text);
 
-    await fetch("/api/chatbot/messages/{{ ticket.id }}", {
-      method: "POST",
-      body: fd
-    });
+  await fetch("/api/chatbot/messages/{{ ticket.id }}", {
+    method: "POST",
+    body: fd
   });
-}
-
-/* 🔥 NEW : LIVE AGENT MESSAGES */
-async function pollAgentMessages() {
-  try {
-    const res = await fetch("/api/chatbot/messages/{{ ticket.id }}");
-    const data = await res.json();
-
-    (data.messages || []).forEach(msg => {
-      if (msg.id <= LAST_MESSAGE_ID) return;
-      if (msg.sender_role === "user") return;
-
-      const div = document.createElement("div");
-      div.className = "sv-msg-agent";
-      div.textContent = msg.body;
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
-
-      LAST_MESSAGE_ID = msg.id;
-    });
-  } catch (e) {
-    console.log("poll error", e);
-  }
-}
-
-/* 🔥 poll every 1.2s */
-setInterval(pollAgentMessages, 1200);
-
-/* إزالة التكرار (local vs DB) */
-const locals = [...document.querySelectorAll('[data-local]')].map(
-  el => el.textContent.trim()
-);
-
-document.querySelectorAll('[data-db]').forEach(el => {
-  if (locals.includes(el.textContent.trim())) {
-    el.remove();
-  }
 });
 
+/* POLL AGENT ONLY */
+async function pollAgentMessages() {
+  const res = await fetch("/api/chatbot/messages/{{ ticket.id }}");
+  const data = await res.json();
+
+  for (const msg of (data.messages || [])) {
+    if (msg.id <= LAST_MESSAGE_ID) continue;
+
+    const body = (msg.body || "").trim();
+
+    /* ❌ ignore user messages (local cache) */
+    if (USER_SENT_CACHE.has(body)) {
+      LAST_MESSAGE_ID = msg.id;
+      continue;
+    }
+
+    if (msg.sender_role !== "agent") {
+      LAST_MESSAGE_ID = msg.id;
+      continue;
+    }
+
+    const div = document.createElement("div");
+    div.className = "sv-msg-agent";
+    div.textContent = body;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+
+    LAST_MESSAGE_ID = msg.id;
+  }
+}
+
+setInterval(pollAgentMessages, 1200);
 </script>
 
 {% endblock %}
