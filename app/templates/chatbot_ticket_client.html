@@ -203,6 +203,8 @@ form.addEventListener("submit", async (e) => {
     method: "POST",
     body: fd
   });
+  LAST_MESSAGE_ID += 1; // 👈 يمنع polling من إعادة الرسالة
+
 });
 
 /* POLL AGENT ONLY */
@@ -212,7 +214,7 @@ async function pollAgentMessages() {
 
   for (const msg of (data.messages || [])) {
     if (msg.id <= LAST_MESSAGE_ID) continue;
-    if (msg.sender_role === "user") continue;
+    if (msg.sender_role !== "support" && msg.sender_role !== "system") continue;
 
     const div = document.createElement("div");
     div.className = "sv-msg-agent";
