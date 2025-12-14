@@ -155,7 +155,14 @@ body[data-path^="/chatbot/ticket"] .searchbar {
 
   <div class="sv-chat-window" id="chat">
     {% for m in msgs %}
-      {% if m.sender_role in ['agent', 'support', 'admin'] %}
+      {% for m in msgs %}
+  {% if m.sender_role == 'user' %}
+    <div class="sv-msg-user">{{ m.body }}</div>
+  {% elif m.sender_role in ['support', 'system'] %}
+    <div class="sv-msg-agent">{{ m.body }}</div>
+  {% endif %}
+{% endfor %}
+
   <div class="sv-msg-agent">{{ m.body }}</div>
 {% else %}
   <div class="sv-msg-user">{{ m.body }}</div>
@@ -213,7 +220,7 @@ async function pollAgentMessages() {
 
   for (const msg of (data.messages || [])) {
     if (msg.id <= LAST_MESSAGE_ID) continue;
-    if (msg.sender_role !== "agent") continue;
+    if (msg.sender_role === "user") continue;
 
     const div = document.createElement("div");
     div.className = "sv-msg-agent";
