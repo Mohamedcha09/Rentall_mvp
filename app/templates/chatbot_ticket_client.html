@@ -155,9 +155,12 @@ body[data-path^="/chatbot/ticket"] .searchbar {
 
   <div class="sv-chat-window" id="chat">
     {% for m in msgs %}
-      {% if m.sender_role != 'user' %}
-        <div class="sv-msg-agent">{{ m.body }}</div>
-      {% endif %}
+      {% if m.sender_role in ['agent', 'support', 'admin'] %}
+  <div class="sv-msg-agent">{{ m.body }}</div>
+{% else %}
+  <div class="sv-msg-user">{{ m.body }}</div>
+{% endif %}
+
     {% endfor %}
   </div>
 </div>
