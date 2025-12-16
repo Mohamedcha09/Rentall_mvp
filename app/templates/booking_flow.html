@@ -450,32 +450,64 @@
 
       <div class="hr-or"><span>or</span></div>
 
-      <!-- Online payment (PayPal) -->
-<div class="pay-option">
-  <div class="d-flex justify-content-between align-items-center mb-2">
-    <strong>Online payment (PayPal)</strong>
-    <span class="k">Secure checkout</span>
-  </div>
+      <!-- Online (Stripe) -->
+      <div class="pay-option" id="onlineBox"
+           data-rent-authorized="{{ '1' if booking.online_status in ['authorized','captured','succeeded','paid'] else '0' }}"
+           data-deposit-held="{{ '1' if booking.deposit_status in ['held','authorized'] else '0' }}">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong>Online payment (Stripe Checkout)</strong>
+          <div class="stripe-logos">
+            <span class="stripe-chip">Visa</span>
+            <span class="stripe-chip">Mastercard</span>
+            <span class="stripe-chip">Amex</span>
+            <span class="stripe-chip">Apple Pay</span>
+          </div>
+        </div>
 
-  {% if not owner_pe %}
-    <div class="alert alert-warning alert-mini mb-2">
-      Online payment unavailable until the owner finishes verification.
-    </div>
-  {% endif %}
+        {% if not owner_pe %}
+          <div class="alert alert-warning alert-mini mb-2">
+            Online payment unavailable until the <strong>owner</strong> finishes bank & ID verification.
+          </div>
+        {% endif %}
 
-  <form method="post" action="/api/paypal/checkout/rent/{{ booking.id }}">
-    <button class="btn btn-solid-primary w-100"
-            {% if not owner_pe %}disabled{% endif %}>
-      <i class="bi bi-paypal me-1"></i>
-      Pay with PayPal
-    </button>
-  </form>
+        {% set rent_paid = (booking.online_status in ['authorized','captured','succeeded','paid']) %}
+        {% set deposit_ok = (booking.deposit_status in ['held','authorized']) %}
 
-  <div class="pay-note mt-2">
-    You’ll be redirected to PayPal to complete the payment securely.
-  </div>
-</div>
+        <div class="action-row mb-2" id="rentActionWrap">
+          {% if rent_paid or request.query_params.get('rent_ok') %}
+            <button id="rentPaidBadge" class="btn btn-success" disabled>
+              <i class="bi bi-check2-circle me-1"></i> Rent paid ✅
+            </button>
+          {% else %}
+            <form id="stripePayRentForm" method="post" action="/api/stripe/checkout/rent/{{ booking.id }}">
+              <button id="stripePayRentBtn" class="btn btn-solid-primary"
+                      {% if not owner_pe %}disabled aria-disabled="true"{% endif %}>
+                <i class="bi bi-credit-card-2-front me-1"></i> Pay rent only
+              </button>
+            </form>
+          {% endif %}
+        </div>
 
+        {% if (booking.deposit_amount or booking.hold_deposit_amount) and (booking.deposit_amount or booking.hold_deposit_amount) > 0 %}
+        <div class="action-row" id="depositActionWrap">
+          {% if deposit_ok %}
+            <button id="depositHeldBadge" class="btn btn-success" disabled>
+              <i class="bi bi-shield-check me-1"></i> Deposit held ✅
+            </button>
+          {% else %}
+            <form id="stripeDepositForm" method="post" class="d-inline" action="/api/stripe/checkout/deposit/{{ booking.id }}">
+              <button id="stripeDepositBtn" class="btn btn-outline-soft"
+                      {% if not owner_pe %}disabled aria-disabled="true"{% endif %}>
+                <i class="bi bi-shield-lock me-1"></i> Hold deposit only
+              </button>
+            </form>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="pay-note mt-2">
+          You’ll be redirected to Stripe to complete the card details. After success you’ll return here and statuses will update.
+        </div>
 
 
 
@@ -494,8 +526,8 @@
 {% set disp_rent   = (rent_native * (fx or 1.0))|round(2) %}
 
 {# processing fee نحسبه على نفس base ثم نحوله #}
-{% set fee_native = 0.0 %}
-
+{% set fee_native = (processing_fee is defined) and processing_fee or
+                    ((rent_native * (STRIPE_PROCESSING_PCT or 0.029)) + ((STRIPE_PROCESSING_FIXED_CENTS or 30) / 100.0)) %}
 {% set disp_fee   = (fee_native * (fx or 1.0))|round(2) %}
 
 {% set disp_sub_before_tax = (disp_rent + disp_fee)|round(2) %}
@@ -526,7 +558,7 @@
 
 {% else %}
   <div class="d-flex justify-content-between text-muted mt-1">
-    <span>Taxes</span><span>Calculated at payment provider</span>
+    <span>Taxes</span><span>Calculated at Stripe</span>
   </div>
   <hr class="my-2">
 
@@ -540,7 +572,7 @@
 
     <div class="small text-muted mt-2">
       • Sevor يأخذ 1% من الإيجار ضمن التحويل للمالك.<br>
-• Processing fee (if any) is handled by the payment provider.
+      • Processing fee تُدفع كسطر منفصل وتُحتسب عليها الضرائب داخل Stripe (إن كان fallback).
     </div>
   </div>
 </div>
@@ -826,8 +858,7 @@
 
         <div class="d-flex justify-content-between">
           <span>Payment method</span>
-          <strong>{{ booking.payment_provider|upper if booking.payment_provider else '—' }}</strong>
-
+          <strong>{{ booking.payment_method or '—' }}</strong>
         </div>
 
         <div class="d-flex justify-content-between">
@@ -842,7 +873,7 @@
 
         <div class="d-flex justify-content-between">
           <span>Online charge status</span>
-          <strong>{{ booking.payment_status or '—' }}</strong>
+          <strong>{{ booking.online_status or '—' }}</strong>
         </div>
 
         <div class="d-flex justify-content-between">
@@ -982,6 +1013,9 @@
     }
   }
 
+  wireDisableOnSubmit('stripePayRentForm','stripePayRentBtn','Taking you to payment…');
+  wireDisableOnSubmit('stripeDepositForm','stripeDepositBtn','Taking you to payment…');
+
   (function(){
     try{
       var box = document.getElementById('onlineBox');
@@ -994,6 +1028,46 @@
   })();
 
   (function(){
+    if (window.__FLOW_POLLER__ && window.__FLOW_POLLER__.started) return;
+    window.__FLOW_POLLER__ = { started:true };
+
+    var bookingId = {{ booking.id }};
+    var params = new URLSearchParams(location.search);
+    if (params.has('ready')) return;
+
+    var tries = 0, maxTries = 30, redirected = false;
+    function modalOpen(){ return !!document.querySelector('.modal.show'); }
+
+    function checkOnce(){
+      if (window.__CAPTURE_ACTIVE__) { setTimeout(checkOnce, 1200); return; }
+      if (modalOpen()){ setTimeout(checkOnce, 1500); return; }
+
+      fetch('/api/stripe/checkout/state/' + bookingId, {credentials:'same-origin', cache: 'no-store'})
+        .then(r => r.ok ? r.json() : {})
+        .then(state => {
+          try{
+            if(state.rent_authorized){ markRentPaidUI(); }
+            if(state.deposit_held){   markDepositHeldUI(); }
+            if(state.ready_for_pickup && !redirected){
+              redirected = true;
+              location.assign("/bookings/flow/{{ booking.id }}/next");
+              return;
+            }
+          }catch(e){}
+          retry();
+        })
+        .catch(retry);
+    }
+
+    function retry(){
+      tries++;
+      if(tries > maxTries || redirected) return;
+      var delay = (tries < 8) ? 1000 : Math.min(8000, 1000 + tries*700);
+      setTimeout(checkOnce, delay);
+    }
+
+    checkOnce();
+
     document.addEventListener('hidden.bs.modal', function(){ tries = 0; checkOnce(); });
     document.addEventListener('visibilitychange', function(){
       if (!document.hidden && !redirected && !params.has('ready')) { tries = 0; checkOnce(); }
@@ -1410,6 +1484,34 @@ document.addEventListener("DOMContentLoaded", function () {
       document.querySelectorAll('.js-flow-only').forEach(function(el){ el.remove(); });
     }
   });
+})();
+</script>
+<script>
+(function(){
+  var params = new URLSearchParams(location.search);
+
+  // Rent OK
+  if (params.has("rent_ok")) {
+    markRentPaidUI();
+  }
+
+  // Deposit only OK
+  if (params.has("deposit_ok")) {
+    markDepositHeldUI();
+    setTimeout(function(){
+        window.location.assign("/bookings/flow/{{ booking.id }}/next");
+    }, 600);
+  }
+
+  // FULL PAYMENT: rent + deposit
+  if (params.has("all_ok")) {
+    markRentPaidUI();
+    markDepositHeldUI();
+    setTimeout(function(){
+        window.location.assign("/bookings/flow/{{ booking.id }}/next");
+    }, 600);
+  }
+
 })();
 </script>
 
