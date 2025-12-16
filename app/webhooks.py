@@ -1,6 +1,7 @@
 # app/webhooks.py
 import os
 import httpx
+from datetime import datetime
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sqlalchemy.orm import Session
 
@@ -9,10 +10,13 @@ from .models import Booking
 
 router = APIRouter(tags=["paypal-webhook"])
 
-PAYPAL_MODE = os.getenv("PAYPAL_MODE", "sandbox")
+# =========================
+# PayPal Config
+# =========================
+PAYPAL_MODE = os.getenv("PAYPAL_MODE", "sandbox")  # sandbox | live
 PAYPAL_WEBHOOK_ID = os.getenv("PAYPAL_WEBHOOK_ID")
-CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID")
-SECRET = os.getenv("PAYPAL_SECRET")
+PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID")
+PAYPAL_SECRET = os.getenv("PAYPAL_SECRET")
 
 BASE_URL = (
     "https://api-m.paypal.com"
@@ -20,16 +24,18 @@ BASE_URL = (
     else "https://api-m.sandbox.paypal.com"
 )
 
-
+# =========================
+# Helpers
+# =========================
 class PayPalWebhookError(Exception):
     pass
 
 
-async def _get_access_token():
+async def _get_access_token() -> str:
     async with httpx.AsyncClient() as client:
         r = await client.post(
             f"{BASE_URL}/v1/oauth2/token",
-            auth=httpx.BasicAuth(CLIENT_ID, SECRET),
+            auth=httpx.BasicAuth(PAYPAL_CLIENT_ID, PAYPAL_SECRET),
             data={"grant_type": "client_credentials"},
         )
     if r.status_code != 200:
@@ -38,6 +44,9 @@ async def _get_access_token():
 
 
 async def verify_webhook(headers, body: bytes) -> bool:
+    """
+    Verify PayPal webhook signature
+    """
     token = await _get_access_token()
 
     payload = {
@@ -60,6 +69,9 @@ async def verify_webhook(headers, body: bytes) -> bool:
     return r.json().get("verification_status") == "SUCCESS"
 
 
+# =========================
+# Webhook Endpoint
+# =========================
 @router.post("/paypal/webhook")
 async def paypal_webhook(
     request: Request,
@@ -67,6 +79,7 @@ async def paypal_webhook(
 ):
     body = await request.body()
 
+    # 1️⃣ Verify webhook
     verified = await verify_webhook(request.headers, body)
     if not verified:
         raise HTTPException(status_code=400, detail="Invalid PayPal webhook")
@@ -74,8 +87,24 @@ async def paypal_webhook(
     event = await request.json()
     event_type = event.get("event_type")
 
-    # 🔥 أهم حدث
-    if event_type == "PAYMENT.CAPTURE.COMPLETED":
+    # =====================================================
+    # 2️⃣ ORDER APPROVED (user finished PayPal checkout)
+    # =====================================================
+    if event_type == "CHECKOUT.ORDER.APPROVED":
+        order_id = event["resource"]["id"]
+
+        booking = db.query(Booking).filter(
+            Booking.paypal_order_id == order_id
+        ).first()
+
+        if booking:
+            booking.payment_status = "approved"
+            db.commit()
+
+    # =====================================================
+    # 3️⃣ PAYMENT CAPTURED (money received)
+    # =====================================================
+    elif event_type == "PAYMENT.CAPTURE.COMPLETED":
         resource = event["resource"]
         capture_id = resource["id"]
         order_id = resource["supplementary_data"]["related_ids"]["order_id"]
@@ -84,9 +113,12 @@ async def paypal_webhook(
             Booking.paypal_order_id == order_id
         ).first()
 
-        if booking:
+        # ⛔ protection against duplicate webhooks
+        if booking and booking.payment_status != "paid":
             booking.payment_status = "paid"
+            booking.status = "paid"
             booking.paypal_capture_id = capture_id
+            booking.timeline_paid_at = datetime.utcnow()
             db.commit()
 
     return {"status": "ok"}
