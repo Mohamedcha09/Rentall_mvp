@@ -1,124 +1,54 @@
 # app/webhooks.py
 import os
-import httpx
-from datetime import datetime
-from fastapi import APIRouter, Request, HTTPException, Depends
-from sqlalchemy.orm import Session
+import stripe
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 
-from .database import get_db
-from .models import Booking
+from .database import SessionLocal
+# We will use the real handler from pay_api
+from .pay_api import _handle_checkout_completed
 
-router = APIRouter(tags=["paypal-webhook"])
+router = APIRouter()
 
-# =========================
-# PayPal Config
-# =========================
-PAYPAL_MODE = os.getenv("PAYPAL_MODE", "sandbox")  # sandbox | live
-PAYPAL_WEBHOOK_ID = os.getenv("PAYPAL_WEBHOOK_ID")
-PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID")
-PAYPAL_SECRET = os.getenv("PAYPAL_SECRET")
-
-BASE_URL = (
-    "https://api-m.paypal.com"
-    if PAYPAL_MODE == "live"
-    else "https://api-m.sandbox.paypal.com"
-)
-
-# =========================
-# Helpers
-# =========================
-class PayPalWebhookError(Exception):
-    pass
-
-
-async def _get_access_token() -> str:
-    async with httpx.AsyncClient() as client:
-        r = await client.post(
-            f"{BASE_URL}/v1/oauth2/token",
-            auth=httpx.BasicAuth(PAYPAL_CLIENT_ID, PAYPAL_SECRET),
-            data={"grant_type": "client_credentials"},
-        )
-    if r.status_code != 200:
-        raise PayPalWebhookError(r.text)
-    return r.json()["access_token"]
-
-
-async def verify_webhook(headers, body: bytes) -> bool:
+@router.get("/stripe/webhook/ping")
+def webhook_ping():
     """
-    Verify PayPal webhook signature
+    Quick check that the route is working (does not require a signature).
     """
-    token = await _get_access_token()
+    return {"ok": True, "msg": "stripe webhook endpoint is alive"}
 
-    payload = {
-        "auth_algo": headers.get("paypal-auth-algo"),
-        "cert_url": headers.get("paypal-cert-url"),
-        "transmission_id": headers.get("paypal-transmission-id"),
-        "transmission_sig": headers.get("paypal-transmission-sig"),
-        "transmission_time": headers.get("paypal-transmission-time"),
-        "webhook_id": PAYPAL_WEBHOOK_ID,
-        "webhook_event": body.decode(),
-    }
+@router.post("/stripe/webhook")
+async def stripe_webhook(request: Request):
+    """
+    This route receives Webhooks from Stripe (your endpoint is configured to it).
+    After verifying the signature, we forward the event to the same handler used inside pay_api.py
+    so the booking gets updated in the database, and the buttons disappear automatically.
+    """
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature", "")
+    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
 
-    async with httpx.AsyncClient() as client:
-        r = await client.post(
-            f"{BASE_URL}/v1/notifications/verify-webhook-signature",
-            json=payload,
-            headers={"Authorization": f"Bearer {token}"},
-        )
+    if not webhook_secret:
+        return JSONResponse({"error": "Missing STRIPE_WEBHOOK_SECRET"}, status_code=400)
 
-    return r.json().get("verification_status") == "SUCCESS"
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
 
+    # Useful diagnostic log
+    try:
+        print("✅ Webhook received:", event.get("type"))
+    except Exception:
+        pass
 
-# =========================
-# Webhook Endpoint
-# =========================
-@router.post("/paypal/webhook")
-async def paypal_webhook(
-    request: Request,
-    db: Session = Depends(get_db),
-):
-    body = await request.body()
+    # >>> The two most important lines: call the same real update logic
+    if event.get("type") == "checkout.session.completed":
+        session_obj = event["data"]["object"]
+        db = SessionLocal()
+        try:
+            _handle_checkout_completed(session_obj, db)
+        finally:
+            db.close()
 
-    # 1️⃣ Verify webhook
-    verified = await verify_webhook(request.headers, body)
-    if not verified:
-        raise HTTPException(status_code=400, detail="Invalid PayPal webhook")
-
-    event = await request.json()
-    event_type = event.get("event_type")
-
-    # =====================================================
-    # 2️⃣ ORDER APPROVED (user finished PayPal checkout)
-    # =====================================================
-    if event_type == "CHECKOUT.ORDER.APPROVED":
-        order_id = event["resource"]["id"]
-
-        booking = db.query(Booking).filter(
-            Booking.paypal_order_id == order_id
-        ).first()
-
-        if booking:
-            booking.payment_status = "approved"
-            db.commit()
-
-    # =====================================================
-    # 3️⃣ PAYMENT CAPTURED (money received)
-    # =====================================================
-    elif event_type == "PAYMENT.CAPTURE.COMPLETED":
-        resource = event["resource"]
-        capture_id = resource["id"]
-        order_id = resource["supplementary_data"]["related_ids"]["order_id"]
-
-        booking = db.query(Booking).filter(
-            Booking.paypal_order_id == order_id
-        ).first()
-
-        # ⛔ protection against duplicate webhooks
-        if booking and booking.payment_status != "paid":
-            booking.payment_status = "paid"
-            booking.status = "paid"
-            booking.paypal_capture_id = capture_id
-            booking.timeline_paid_at = datetime.utcnow()
-            db.commit()
-
-    return {"status": "ok"}
+    return {"received": True}
