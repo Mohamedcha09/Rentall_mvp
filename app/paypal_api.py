@@ -15,7 +15,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User | 
     return db.get(User, uid) if uid else None
 
 
-@router.post("/api/paypal/checkout/rent/{booking_id}")
+@router.get("/checkout/rent/{booking_id}")
 async def paypal_checkout_rent(
     booking_id: int,
     request: Request,

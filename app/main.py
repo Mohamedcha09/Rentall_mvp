@@ -817,7 +817,8 @@ app.include_router(routes_chatbot.router)
 app.include_router(cs_chatbot_router)
 app.include_router(md_chatbot_router)
 app.include_router(mod_chatbot_router)
-app.include_router(paypal_router)
+app.include_router(paypal_router, prefix="/api/paypal")
+
 
 
 # -----------------------------------------------------------------------------
