@@ -55,7 +55,7 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
 
     # Stripe / Payouts
-    #stripe_account_id = col_or_literal("users", "stripe_account_id", String, nullable=True)
+    stripe_account_id = col_or_literal("users", "stripe_account_id", String, nullable=True)
     payouts_enabled   = col_or_literal("users", "payouts_enabled", Boolean, default=False)
 
     role   = Column(String(20), default="user")
@@ -405,10 +405,9 @@ class Booking(Base):
     rent_amount              = col_or_literal("bookings", "rent_amount", Integer, nullable=False, default=0)
     hold_deposit_amount      = col_or_literal("bookings", "hold_deposit_amount", Integer, nullable=False, default=0)
 
-    # --- Stripe legacy (disabled) ---
-    # online_status            = col_or_literal("bookings", "online_status", String(30), default="created")
-    # online_checkout_id       = col_or_literal("bookings", "online_checkout_id", String(120), nullable=True)
-    # online_payment_intent_id = col_or_literal("bookings", "online_payment_intent_id", String(120), nullable=True)
+    online_status            = col_or_literal("bookings", "online_status", String(30), default="created")
+    online_checkout_id       = col_or_literal("bookings", "online_checkout_id", String(120), nullable=True)
+    online_payment_intent_id = col_or_literal("bookings", "online_payment_intent_id", String(120), nullable=True)
 
     owner_payout_amount      = col_or_literal("bookings", "owner_payout_amount", Integer, nullable=False, default=0)
     rent_released_at         = col_or_literal("bookings", "rent_released_at", DateTime, nullable=True)
@@ -424,13 +423,6 @@ class Booking(Base):
 
     owner_decision  = col_or_literal("bookings", "owner_decision", String(20), nullable=True)
     payment_status  = col_or_literal("bookings", "payment_status", String(20), nullable=True)
-
-    payment_provider = col_or_literal("bookings", "payment_provider", String(20), nullable=True)
-
-    paypal_order_id = col_or_literal("bookings", "paypal_order_id", String(120), nullable=True)
-
-    paypal_capture_id = col_or_literal("bookings", "paypal_capture_id", String(120), nullable=True)
-
     deposit_amount  = col_or_literal("bookings", "deposit_amount", Integer, nullable=False, default=0)
     deposit_hold_id = col_or_literal("bookings", "deposit_hold_id", String(120), nullable=True)
     deposit_charged_amount = col_or_literal("bookings", "deposit_charged_amount", Integer, nullable=False, default=0)

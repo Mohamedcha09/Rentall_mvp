@@ -17,6 +17,7 @@ from sqlalchemy.sql import func
 from .utils import category_label, display_currency
 from .notifications_api import push_notification, notify_admins
 from .items import _display_currency, fx_convert_smart
+from .pay_api import _handle_checkout_completed as _handle_checkout_completed_pay
 
 router = APIRouter(tags=["bookings"])
 DEFAULT_CA_SUB = os.getenv("DEFAULT_CA_SUB", "QC").upper()
@@ -266,15 +267,11 @@ def _adapter_taxes_for_request(request: Request, subtotal: float) -> dict:
         except Exception:
             pass
 
-    # 4) fallback → PayPal (no tax calculation)
+    # 4) fallback → Stripe
     return {
-        "mode": "paypal",
-        "currency": currency,
-        "country": country,
-        "sub": sub,
-        "tax_lines": [],
-        "tax_total": None,
-        "grand_total": subtotal,
+        "mode": "stripe",
+        "currency": currency, "country": country, "sub": sub,
+        "tax_lines": [], "tax_total": None, "grand_total": subtotal,
     }
 
 
@@ -333,6 +330,92 @@ def redirect_to_flow(booking_id: int) -> RedirectResponse:
 def _parse_date(s: str) -> date:
     return datetime.strptime(s, "%Y-%m-%d").date()
 
+
+# ========================================
+# Stripe helpers
+# ========================================
+def _try_capture_stripe_rent(bk: Booking) -> bool:
+    try:
+        import stripe
+        sk = os.getenv("STRIPE_SECRET_KEY", "")
+        if not sk:
+            return False
+
+        stripe.api_key = sk
+        pi_id = getattr(bk, "online_payment_intent_id", None)
+        if not pi_id:
+            return False
+
+        # 1) تحديد المبلغ بدقة (Stripe يرفض بدون هذا)
+        amount_to_capture = int(round((bk.total_amount or bk.amount_native or 0) * 100))
+
+        # 2) تعديل الـ PaymentIntent قبل capture
+        stripe.PaymentIntent.modify(
+            pi_id,
+            amount_to_capture=amount_to_capture
+        )
+
+        # 3) عمل capture حقيقي
+        stripe.PaymentIntent.capture(pi_id)
+
+        # 4) تحديث حالة البوكنغ
+        bk.payment_status = "released"
+        bk.online_status = "captured"
+        bk.rent_released_at = datetime.utcnow()
+        return True
+
+    except Exception as e:
+        print("STRIPE CAPTURE ERROR:", e)
+        return False
+
+
+
+# Deposit PI (unify legacy names)
+def _get_deposit_pi_id(bk: Booking) -> Optional[str]:
+    return getattr(bk, "deposit_hold_intent_id", None) or getattr(bk, "deposit_hold_id", None)
+
+
+def _set_deposit_pi_id(bk: Booking, pi_id: Optional[str]) -> None:
+    try:
+        setattr(bk, "deposit_hold_intent_id", pi_id)
+    except Exception:
+        pass
+    try:
+        setattr(bk, "deposit_hold_id", pi_id)
+    except Exception:
+        pass
+
+
+def _ensure_deposit_hold(bk: Booking) -> bool:
+    """Create manual-capture PaymentIntent for deposit if missing."""
+    try:
+        import stripe
+        sk = os.getenv("STRIPE_SECRET_KEY", "")
+        if not sk:
+            return False
+        stripe.api_key = sk
+
+        if _get_deposit_pi_id(bk):
+            return True
+
+        amount = int(getattr(bk, "deposit_amount", 0) or 0)
+        if amount <= 0:
+            return False
+
+        pi = stripe.PaymentIntent.create(
+            amount=amount * 100,
+            currency=(os.getenv("CURRENCY", "CAD") or "CAD").lower(),
+            capture_method="manual",
+            description=f"Deposit hold for booking #{bk.id}",
+        )
+        _set_deposit_pi_id(bk, pi["id"])
+        try:
+            bk.deposit_status = "held"
+        except Exception:
+            pass
+        return True
+    except Exception:
+        return False
 
 
 # ========================================
@@ -608,6 +691,37 @@ def booking_flow(
             renter_reviews_count = 0
             renter_reviews_avg = 0.0
 
+    sid = request.query_params.get("sid")
+    rent_ok = request.query_params.get("rent_ok")
+    dep_ok = request.query_params.get("deposit_ok")
+    all_ok = request.query_params.get("all_ok")
+
+    if sid and (rent_ok or dep_ok or all_ok):
+        try:
+            import stripe
+            stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+            if stripe.api_key:
+                # جلب الـ Session من Stripe
+                session_obj = stripe.checkout.Session.retrieve(sid)
+                # استدعاء الهاندلر النهائي الموجود في pay_api.py
+                _handle_checkout_completed_pay(session_obj, db)
+                # تحديث الـ Booking من DB بعد التعديل
+                db.refresh(bk)
+        except Exception as e:
+            print("CHECKOUT SYNC ERROR:", e)
+
+        # ريديركت واحد لتنظيف الـ URL من rent_ok / deposit_ok / all_ok / sid
+        clean_params = []
+        for k, v in request.query_params.items():
+            if k in ("rent_ok", "deposit_ok", "all_ok", "sid"):
+                continue
+            clean_params.append(f"{k}={v}")
+        qs = "&".join(clean_params)
+        url = f"/bookings/flow/{bk.id}"
+        if qs:
+            url = f"{url}?{qs}"
+        return RedirectResponse(url=url, status_code=303)
+
 
     # ✅ إذا وُجد ?loc=... نتعامل معه، وإلا نُطبّع برِديـركت واحد
     current_loc = request.query_params.get("loc")
@@ -693,8 +807,10 @@ def booking_flow(
     except Exception:
         rent_amount = 0.0
 
-    processing_fee = 0.0
-    subtotal_before_tax = rent_amount
+    pct = float(os.getenv("STRIPE_PROCESSING_PCT", "0.029") or 0.029)
+    fixed_cents = int(os.getenv("STRIPE_PROCESSING_FIXED_CENTS", "30") or 30)
+    processing_fee = round(rent_amount * pct + (fixed_cents / 100.0), 2)
+    subtotal_before_tax = round(rent_amount + processing_fee, 2)
     taxes_ctx = _adapter_taxes_for_request(request, subtotal_before_tax)
 
     # حفظ لقطة الموقع إن كانت ناقصة
@@ -743,6 +859,8 @@ def booking_flow(
         "subtotal_before_tax": subtotal_before_tax,
         "taxes": taxes_ctx,
         "CURRENCY": (os.getenv("CURRENCY", "CAD") or "CAD").upper(),
+        "STRIPE_PROCESSING_PCT": pct,
+        "STRIPE_PROCESSING_FIXED_CENTS": fixed_cents,
         "display_currency": _display_currency,
         "disp_cur": _display_currency(request),
         "fx_rate": utils_fx.fx_rate,
@@ -1125,7 +1243,7 @@ def renter_pay_online(
         raise HTTPException(status_code=409, detail="Owner payouts not enabled")
 
     # Pay rent ONLY (rent is in display currency)
-    return RedirectResponse(url=f"/api/paypal/checkout/rent/{booking_id}", status_code=303)
+    return RedirectResponse(url=f"/api/stripe/checkout/rent/{booking_id}", status_code=303)
 # ========================================
 # Renter confirms receipt  (FINAL FIXED VERSION)
 # ========================================
@@ -1152,6 +1270,8 @@ def renter_confirm_received(
         "accepted",
         "pending_payment",
         "in_use",
+        "authorized",
+        "captured",
         "paid_online",
         "ready_for_pickup",
         "picked_up",
@@ -1440,7 +1560,7 @@ def alias_pay_online(booking_id: int,
         bk.hold_deposit_amount = max(0, int(deposit_amount or 0))
     db.commit()
 
-    return RedirectResponse(url=f"/api/paypal/checkout/rent/{booking_id}", status_code=303)
+    return RedirectResponse(url=f"/api/stripe/checkout/rent/{booking_id}", status_code=303)
 
 @router.post("/bookings/{booking_id}/picked-up")
 def alias_picked_up(booking_id: int,
@@ -1456,6 +1576,14 @@ def alias_picked_up(booking_id: int,
     item = db.get(Item, bk.item_id)
     bk.status = "picked_up"
     bk.picked_up_at = datetime.utcnow()
+
+    if bk.payment_method == "online":
+        captured = _try_capture_stripe_rent(bk)
+        if not captured:
+            bk.owner_payout_amount = bk.rent_amount or bk.total_amount or 0
+            bk.rent_released_at = datetime.utcnow()
+            bk.online_status = "captured"
+            bk.payment_status = "released"
 
     db.commit()
     push_notification(
@@ -1600,6 +1728,35 @@ def alias_mark_returned(booking_id: int,
         print("EMAIL ERROR (RETURN MARKED RENTER):", e)
 
     return _redir(bk.id)
+
+
+# ========================================
+# Stripe checkout state (UI helper)
+# ========================================
+@router.get("/api/stripe/checkout/state/{booking_id}")
+def api_stripe_checkout_state(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+    if not (is_renter(user, bk) or is_owner(user, bk)):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    rent_ok = str(getattr(bk, "online_status", "") or "").lower() in (
+        "authorized", "captured", "succeeded", "paid"
+    )
+    dep_ok = str(getattr(bk, "deposit_status", "") or "").lower() in (
+        "held", "authorized"
+    )
+
+    ready = bool(rent_ok and dep_ok)
+    return _json({
+        "rent_authorized": rent_ok,
+        "deposit_held": dep_ok,
+        "ready_for_pickup": ready
+    })
 
 
 # ========================================
