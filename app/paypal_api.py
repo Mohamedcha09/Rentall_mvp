@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from .database import get_db
 from .models import Booking, User
-from .pay_api import create_paypal_order, capture_paypal_order, PayPalError
+from .paypal_client import create_paypal_order, capture_paypal_order, PayPalError
 
 router = APIRouter(tags=["paypal"])
 
