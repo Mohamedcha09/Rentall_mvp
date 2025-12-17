@@ -473,9 +473,7 @@
     <form method="post"
           action="/api/paypal/confirm-payment/{{ booking.id }}">
       <input type="hidden" name="rent_paid" value="true">
-      {% if booking.deposit_amount and booking.deposit_amount > 0 %}
         <input type="hidden" name="security_paid" value="true">
-      {% endif %}
 
       <button class="btn btn-success w-100">
         ✔ I have completed PayPal payment
