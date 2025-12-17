@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 from .database import SessionLocal
 # We will use the real handler from pay_api
-from .pay_api import _handle_checkout_completed
+from .pay_handlers import handle_checkout_completed
 
 router = APIRouter()
 
