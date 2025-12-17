@@ -252,13 +252,6 @@
 }
 .pay-option + .pay-option{ margin-top:10px }
 
-.stripe-logos{
-  display:flex; gap:8px; align-items:center; opacity:.9; flex-wrap:wrap
-}
-.stripe-chip{
-  height:28px; border-radius:7px; padding:0 10px; line-height:28px;
-  background:#1118270f; border:1px solid var(--border); font-weight:700; font-size:.85rem
-}
 
 .action-row{ display:flex; gap:10px; flex-wrap:wrap }
 .action-row .btn{ border-radius:12px; font-weight:800 }
@@ -450,64 +443,41 @@
 
       <div class="hr-or"><span>or</span></div>
 
-      <!-- Online (Stripe) -->
-      <div class="pay-option" id="onlineBox"
-           data-rent-authorized="{{ '1' if booking.online_status in ['authorized','captured','succeeded','paid'] else '0' }}"
-           data-deposit-held="{{ '1' if booking.deposit_status in ['held','authorized'] else '0' }}">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <strong>Online payment (Stripe Checkout)</strong>
-          <div class="stripe-logos">
-            <span class="stripe-chip">Visa</span>
-            <span class="stripe-chip">Mastercard</span>
-            <span class="stripe-chip">Amex</span>
-            <span class="stripe-chip">Apple Pay</span>
-          </div>
-        </div>
+      <div class="pay-card mb-2">
+  <div class="pay-head">
+    <div class="pay-title">Pay with PayPal</div>
+    <span class="secure-badge">
+      <i class="bi bi-shield-lock"></i> PayPal
+    </span>
+  </div>
 
-        {% if not owner_pe %}
-          <div class="alert alert-warning alert-mini mb-2">
-            Online payment unavailable until the <strong>owner</strong> finishes bank & ID verification.
-          </div>
-        {% endif %}
+  <div class="pay-option">
+    <p class="k">
+      You will be redirected to PayPal to complete the payment.
+      After payment, return here and confirm.
+    </p>
 
-        {% set rent_paid = (booking.online_status in ['authorized','captured','succeeded','paid']) %}
-        {% set deposit_ok = (booking.deposit_status in ['held','authorized']) %}
+    <!-- PayPal external link -->
+    <a href="/paypal/start/{{ booking.id }}"
+       class="btn btn-solid-primary w-100 mb-2">
+      <i class="bi bi-paypal"></i> Pay with PayPal
+    </a>
 
-        <div class="action-row mb-2" id="rentActionWrap">
-          {% if rent_paid or request.query_params.get('rent_ok') %}
-            <button id="rentPaidBadge" class="btn btn-success" disabled>
-              <i class="bi bi-check2-circle me-1"></i> Rent paid ✅
-            </button>
-          {% else %}
-            <form id="stripePayRentForm" method="post" action="/api/stripe/checkout/rent/{{ booking.id }}">
-              <button id="stripePayRentBtn" class="btn btn-solid-primary"
-                      {% if not owner_pe %}disabled aria-disabled="true"{% endif %}>
-                <i class="bi bi-credit-card-2-front me-1"></i> Pay rent only
-              </button>
-            </form>
-          {% endif %}
-        </div>
+    <!-- Confirm payment -->
+    <form method="post"
+          action="/api/paypal/confirm-payment/{{ booking.id }}">
+      <input type="hidden" name="rent_paid" value="true">
+      {% if booking.deposit_amount and booking.deposit_amount > 0 %}
+        <input type="hidden" name="security_paid" value="true">
+      {% endif %}
 
-        {% if (booking.deposit_amount or booking.hold_deposit_amount) and (booking.deposit_amount or booking.hold_deposit_amount) > 0 %}
-        <div class="action-row" id="depositActionWrap">
-          {% if deposit_ok %}
-            <button id="depositHeldBadge" class="btn btn-success" disabled>
-              <i class="bi bi-shield-check me-1"></i> Deposit held ✅
-            </button>
-          {% else %}
-            <form id="stripeDepositForm" method="post" class="d-inline" action="/api/stripe/checkout/deposit/{{ booking.id }}">
-              <button id="stripeDepositBtn" class="btn btn-outline-soft"
-                      {% if not owner_pe %}disabled aria-disabled="true"{% endif %}>
-                <i class="bi bi-shield-lock me-1"></i> Hold deposit only
-              </button>
-            </form>
-          {% endif %}
-        </div>
-        {% endif %}
+      <button class="btn btn-success w-100">
+        ✔ I have completed PayPal payment
+      </button>
+    </form>
+  </div>
+</div>
 
-        <div class="pay-note mt-2">
-          You’ll be redirected to Stripe to complete the card details. After success you’ll return here and statuses will update.
-        </div>
 
 
 
@@ -873,7 +843,14 @@
 
         <div class="d-flex justify-content-between">
           <span>Online charge status</span>
-          <strong>{{ booking.online_status or '—' }}</strong>
+          <strong>
+  {% if booking.rent_paid %}
+    PayPal
+  {% else %}
+    —
+  {% endif %}
+</strong>
+
         </div>
 
         <div class="d-flex justify-content-between">
@@ -1013,9 +990,6 @@
     }
   }
 
-  wireDisableOnSubmit('stripePayRentForm','stripePayRentBtn','Taking you to payment…');
-  wireDisableOnSubmit('stripeDepositForm','stripeDepositBtn','Taking you to payment…');
-
   (function(){
     try{
       var box = document.getElementById('onlineBox');
@@ -1038,47 +1012,6 @@
     var tries = 0, maxTries = 30, redirected = false;
     function modalOpen(){ return !!document.querySelector('.modal.show'); }
 
-    function checkOnce(){
-      if (window.__CAPTURE_ACTIVE__) { setTimeout(checkOnce, 1200); return; }
-      if (modalOpen()){ setTimeout(checkOnce, 1500); return; }
-
-      fetch('/api/stripe/checkout/state/' + bookingId, {credentials:'same-origin', cache: 'no-store'})
-        .then(r => r.ok ? r.json() : {})
-        .then(state => {
-          try{
-            if(state.rent_authorized){ markRentPaidUI(); }
-            if(state.deposit_held){   markDepositHeldUI(); }
-            if(state.ready_for_pickup && !redirected){
-              redirected = true;
-              location.assign("/bookings/flow/{{ booking.id }}/next");
-              return;
-            }
-          }catch(e){}
-          retry();
-        })
-        .catch(retry);
-    }
-
-    function retry(){
-      tries++;
-      if(tries > maxTries || redirected) return;
-      var delay = (tries < 8) ? 1000 : Math.min(8000, 1000 + tries*700);
-      setTimeout(checkOnce, delay);
-    }
-
-    checkOnce();
-
-    document.addEventListener('hidden.bs.modal', function(){ tries = 0; checkOnce(); });
-    document.addEventListener('visibilitychange', function(){
-      if (!document.hidden && !redirected && !params.has('ready')) { tries = 0; checkOnce(); }
-    });
-    window.addEventListener('pageshow', function(){
-      if(!redirected && !params.has('ready')) { tries = 0; checkOnce(); }
-    });
-    window.addEventListener('focus', function(){
-      if(!redirected && !params.has('ready')) { tries = 0; checkOnce(); }
-    });
-  })();
 
   {% if dispute_deadline_iso %}
   try{

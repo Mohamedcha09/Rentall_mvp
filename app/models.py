@@ -54,10 +54,6 @@ class User(Base):
     phone = Column(String(50), nullable=False)
     password_hash = Column(String(255), nullable=False)
 
-    # Stripe / Payouts
-    stripe_account_id = col_or_literal("users", "stripe_account_id", String, nullable=True)
-    payouts_enabled   = col_or_literal("users", "payouts_enabled", Boolean, default=False)
-
     role   = Column(String(20), default="user")
     status = Column(String(20), default="pending")
 
@@ -406,26 +402,31 @@ class Booking(Base):
     hold_deposit_amount      = col_or_literal("bookings", "hold_deposit_amount", Integer, nullable=False, default=0)
 
     online_status            = col_or_literal("bookings", "online_status", String(30), default="created")
-    online_checkout_id       = col_or_literal("bookings", "online_checkout_id", String(120), nullable=True)
-    online_payment_intent_id = col_or_literal("bookings", "online_payment_intent_id", String(120), nullable=True)
 
-    owner_payout_amount      = col_or_literal("bookings", "owner_payout_amount", Integer, nullable=False, default=0)
     rent_released_at         = col_or_literal("bookings", "rent_released_at", DateTime, nullable=True)
     owner_payout_request     = col_or_literal("bookings", "owner_payout_request", Boolean, nullable=False, default=False)
     owner_payout_status      = col_or_literal("bookings", "owner_payout_status", String(20), nullable=True)
     owner_payout_attempts    = col_or_literal("bookings", "owner_payout_attempts", Integer, nullable=False, default=0)
     owner_payout_last_try_at = col_or_literal("bookings", "owner_payout_last_try_at", DateTime, nullable=True)
-
-    deposit_status        = col_or_literal("bookings", "deposit_status", String(30), default="none")
-    deposit_hold_intent_id = col_or_literal("bookings", "deposit_hold_intent_id", String(120), nullable=True)
-    deposit_refund_id      = col_or_literal("bookings", "deposit_refund_id", String(120), nullable=True)
-    deposit_capture_id     = col_or_literal("bookings", "deposit_capture_id", String(120), nullable=True)
-
+    
     owner_decision  = col_or_literal("bookings", "owner_decision", String(20), nullable=True)
-    payment_status  = col_or_literal("bookings", "payment_status", String(20), nullable=True)
     deposit_amount  = col_or_literal("bookings", "deposit_amount", Integer, nullable=False, default=0)
-    deposit_hold_id = col_or_literal("bookings", "deposit_hold_id", String(120), nullable=True)
-    deposit_charged_amount = col_or_literal("bookings", "deposit_charged_amount", Integer, nullable=False, default=0)
+    # الإيجار
+    rent_amount        = col_or_literal("bookings", "rent_amount", Integer, default=0)
+    rent_paid          = col_or_literal("bookings", "rent_paid", Boolean, default=False)
+
+    # Security coverage (الديبو)
+    security_amount    = col_or_literal("bookings", "security_amount", Numeric(10,2), default=0)
+    security_paid      = col_or_literal("bookings", "security_paid", Boolean, default=False)
+    security_status    = col_or_literal("bookings","security_status", String(30), default="not_paid")
+    refund_amount      = col_or_literal("bookings", "refund_amount", Numeric(10,2), default=0)
+    damage_amount      = col_or_literal("bookings", "damage_amount", Numeric(10,2), default=0)
+    refund_done        = col_or_literal("bookings", "refund_done", Boolean, default=False)
+
+    owner_due_amount   = col_or_literal("bookings", "owner_due_amount", Numeric(10,2), default=0)
+    owner_payout_status = col_or_literal("bookings","owner_payout_status",String(20),default="pending")
+    payout_executed     = col_or_literal("bookings", "payout_executed", Boolean, default=False)
+    payout_executed_at  = col_or_literal("bookings", "payout_executed_at", DateTime, nullable=True)
 
     # Pickup/return photos
     pickup_photos_json = col_or_literal("bookings", "pickup_photos_json", Text, nullable=True)
