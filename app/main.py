@@ -300,26 +300,6 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
-
-# ===============================
-# FX helper for Jinja templates
-# ===============================
-def fx_rate(base: str, quote: str) -> float:
-    """
-    ترجع فقط سعر الصرف (بدون ضرب مبلغ)
-    تُستعمل داخل Jinja: fx_rate('CAD','USD')
-    """
-    db = SessionLocal()
-    try:
-        r = _fetch_rate(db, (base or "CAD").upper(), (quote or "CAD").upper())
-        return float(r) if r else 1.0
-    except Exception:
-        return 1.0
-    finally:
-        db.close()
-
-templates.env.globals["fx_rate"] = fx_rate
-
 app.templates = templates
 templates.env.globals["display_currency"] = lambda request: getattr(request.state, "display_currency", "CAD")
 
