@@ -231,9 +231,14 @@
 
 /* ======= Renter Pay Section (polished) ======= */
 .pay-card{
-  border:1px solid var(--border); border-radius:18px; background:var(--glass);
-  box-shadow:var(--shadow); padding:14px; overflow:hidden
+  border:1px solid var(--border);
+  border-radius:18px;
+  background:var(--glass);
+  box-shadow:var(--shadow);
+  padding:14px;
+  overflow: visible; /* ✅ */
 }
+
 .pay-head{
   display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px
 }
@@ -462,7 +467,12 @@
        class="btn btn-solid-primary w-100 mb-2">
       <i class="bi bi-paypal"></i> Pay with PayPal
     </a>
-    
+    <!-- Pay Security Fund -->
+<a href="/paypal/start/{{ booking.id }}?type=deposit"
+   class="btn btn-outline-soft w-100 mb-2">
+  <i class="bi bi-shield-lock"></i> Pay security fund (PayPal)
+</a>
+
 
     <!-- Confirm payment -->
     <form method="post"
