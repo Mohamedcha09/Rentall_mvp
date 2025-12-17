@@ -231,9 +231,14 @@
 
 /* ======= Renter Pay Section (polished) ======= */
 .pay-card{
-  border:1px solid var(--border); border-radius:18px; background:var(--glass);
-  box-shadow:var(--shadow); padding:14px; overflow:hidden
+  border:1px solid var(--border);
+  border-radius:18px;
+  background:var(--glass);
+  box-shadow:var(--shadow);
+  padding:14px;
+  overflow: visible; /* ✅ */
 }
+
 .pay-head{
   display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px
 }
@@ -473,7 +478,9 @@
     <form method="post"
           action="/api/paypal/confirm-payment/{{ booking.id }}">
       <input type="hidden" name="rent_paid" value="true">
+      {% if booking.deposit_amount and booking.deposit_amount > 0 %}
         <input type="hidden" name="security_paid" value="true">
+      {% endif %}
 
       <button class="btn btn-success w-100">
         ✔ I have completed PayPal payment
