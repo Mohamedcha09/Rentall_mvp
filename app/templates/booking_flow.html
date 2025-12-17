@@ -318,11 +318,11 @@
         <div>
           <div class="title">{{ item.title }}</div>
 
-{% set disp_cur = disp_cur %}
-{% set currency = (disp_cur or 'CAD')|upper %}
+{% set currency = display_currency(request)|upper %}
 {% set native_cur = item.currency or 'CAD' %}
 {% set fx = fx_rate(native_cur, currency) %}
-{% set disp_price = (item.price_per_day * (fx or 1.0))|round(2) %}
+{% set disp_price = (item.price_per_day * fx)|round(2) %}
+
 
 
 <div class="meta">
@@ -497,8 +497,8 @@
   <div class="card-body">
     <h6 class="mb-2">Order summary</h6>
 
-{% set disp_cur = disp_cur %}
-{% set currency   = (disp_cur or 'CAD')|upper %}
+{% set currency = display_currency(request)|upper %}
+
 {% set native_cur = booking.currency_native or booking.currency or 'CAD' %}
 {% set fx         = fx_rate(native_cur, currency) %}
 
@@ -824,8 +824,8 @@
         <h6 class="mb-2">Payment summary</h6>
 
         {# NEW: نفس عملة العرض المستخدمة في كل الموقع #}
-{% set disp_cur = disp_cur %}
-        {% set currency = (disp_cur or 'CAD')|upper %}
+{% set currency = display_currency(request)|upper %}
+
 
     {% set native_cur = booking.currency_native or booking.currency or 'CAD' %}
     {% set fx = fx_rate(native_cur, currency) %}
@@ -934,8 +934,9 @@
     <div>
       <div class="fw-bold">{{ item.title }}</div>
       <div class="k">{{ category_label(item.category) }}</div>
-{% set disp_cur = disp_cur %}
-      {% set currency = (disp_cur or "CAD")|upper %}
+
+{% set currency = display_currency(request)|upper %}
+
 
       {% set native_cur = item.currency or booking.currency_native or "CAD" %}
       {% set fx = fx_rate(native_cur, currency) %}
