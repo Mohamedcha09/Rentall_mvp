@@ -367,6 +367,7 @@ def booking_new(
             "request": request,
             "item": item,
             "display_currency": disp_cur,
+            "disp_price": disp_price,
             "user": user,
         },
     )
