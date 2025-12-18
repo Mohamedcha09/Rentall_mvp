@@ -345,3 +345,28 @@ def bookings_index(
             "user": user,
         },
     )
+
+
+@router.get("/bookings/new")
+def booking_new(
+    request: Request,
+    item_id: int = Query(...),
+    disp_cur: str = Query("CAD"),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    require_auth(user)
+
+    item = db.get(Item, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    return request.app.templates.TemplateResponse(
+        "booking_new.html",
+        {
+            "request": request,
+            "item": item,
+            "display_currency": disp_cur,
+            "user": user,
+        },
+    )
