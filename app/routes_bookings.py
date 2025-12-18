@@ -100,7 +100,7 @@ async def create_booking(
         price_per_day_snapshot=item.price_per_day,
         total_amount=total_amount,
         status="requested",
-
+        
         # ---- PAYPAL MANUAL FLOW (IMPORTANT) ----
         payment_provider="paypal",
         payment_status="pending",
@@ -185,6 +185,8 @@ def booking_flow(
         "renter_reviews_count": renter_reviews_count,
         "renter_reviews_avg": renter_reviews_avg,
         "dispute_window_hours": DISPUTE_WINDOW_HOURS,
+        "session_user": request.session.get("user"),
+
     }
 
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
