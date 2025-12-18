@@ -54,6 +54,7 @@ def redirect_to_flow(bk: Booking):
 # =====================================================
 # Create booking
 # =====================================================
+
 @router.post("/bookings")
 async def create_booking(
     request: Request,
@@ -89,6 +90,7 @@ async def create_booking(
     total_amount = days * item.price_per_day
 
     bk = Booking(
+        # ---- CORE ----
         item_id=item.id,
         renter_id=user.id,
         owner_id=item.owner_id,
@@ -98,6 +100,33 @@ async def create_booking(
         price_per_day_snapshot=item.price_per_day,
         total_amount=total_amount,
         status="requested",
+
+        # ---- PAYPAL MANUAL FLOW (IMPORTANT) ----
+        payment_provider="paypal",
+        payment_status="pending",
+        online_status="created",
+
+        # ---- FINANCIAL NOT NULL (MANDATORY) ----
+        platform_fee=0,
+        rent_amount=total_amount,
+        hold_deposit_amount=0,
+        owner_payout_amount=0,
+        deposit_amount=0,
+        deposit_charged_amount=0,
+        amount_native=total_amount,
+        amount_display=total_amount,
+        amount_paid_cents=0,
+
+        # ---- FLAGS ----
+        rent_paid=False,
+        security_paid=False,
+        security_amount=0,
+        security_status="not_paid",
+        refund_done=False,
+        payout_executed=False,
+        owner_due_amount=0,
+
+        # ---- TIMELINE ----
         timeline_created_at=datetime.utcnow(),
     )
 
