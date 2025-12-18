@@ -107,6 +107,9 @@ async def create_booking(
         days=days,
         price_per_day_snapshot=item.price_per_day,
         total_amount=total_amount,
+
+        owner_payout_amount=0,
+
         status="requested",
         timeline_created_at=datetime.utcnow(),
     )
