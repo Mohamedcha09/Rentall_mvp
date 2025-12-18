@@ -463,21 +463,6 @@ a.btn.disabled{
     </span>
   </div>
 
-  <div class="pay-option">
-    <p class="k">
-      You will be redirected to PayPal to complete the payment.
-      After payment, return here and confirm.
-    </p>
-
-    <!-- PayPal external link -->
-    <div id="rentActionWrap">
-  <a href="/paypal/start/{{ booking.id }}?type=rent"
-     class="btn btn-solid-primary {% if booking.rent_paid %}disabled{% endif %}"
-     {% if booking.rent_paid %}aria-disabled="true" tabindex="-1"{% endif %}>
-     Pay Rent with PayPal
-  </a>
-</div>
-
 <div class="pay-option">
   <p class="k">
     You will be redirected to PayPal to complete the payment.
@@ -495,10 +480,11 @@ a.btn.disabled{
       {% endif %}
     </a>
   </div>
-
   <!-- SECURITY FUND -->
-  {% if booking.security_amount > 0 %}
+
+
   <div id="depositActionWrap">
+  {% if booking.security_amount > 0 %}
     <a href="/paypal/start/{{ booking.id }}?type=securityfund"
        class="btn btn-outline-soft w-100 {% if booking.security_paid %}disabled{% endif %}">
       {% if booking.security_paid %}
@@ -507,7 +493,13 @@ a.btn.disabled{
         Pay Security Fund with PayPal
       {% endif %}
     </a>
-  </div>
+  {% else %}
+    <button class="btn btn-outline-soft w-100 disabled">
+      No security fund required
+    </button>
+  {% endif %}
+</div>
+
   {% endif %}
 </div>
 
