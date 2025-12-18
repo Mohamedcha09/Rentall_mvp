@@ -478,21 +478,41 @@ a.btn.disabled{
   </a>
 </div>
 
-    <!-- Pay Security Fund -->
-<div id="depositActionWrap">
-{% if booking.rent_paid %}
-  {% if not booking.security_paid %}
-    <a href="/paypal/start/{{ booking.id }}?type=securityfund"
-       class="btn btn-outline-soft">
-       Pay Security Fund
+<div class="pay-option">
+  <p class="k">
+    You will be redirected to PayPal to complete the payment.
+    After payment, return here and confirm.
+  </p>
+
+  <!-- ===== RENT BUTTON ===== -->
+  <div id="rentActionWrap" class="mb-2">
+    <a href="/paypal/start/{{ booking.id }}?type=rent"
+       class="btn btn-solid-primary w-100 {% if booking.rent_paid %}disabled{% endif %}"
+       {% if booking.rent_paid %}aria-disabled="true" tabindex="-1"{% endif %}>
+      {% if booking.rent_paid %}
+        ✔ Rent paid
+      {% else %}
+        Pay Rent with PayPal
+      {% endif %}
     </a>
-  {% else %}
-    <button class="btn btn-success" disabled>
-      <i class="bi bi-shield-check"></i> Security fund paid
-    </button>
+  </div>
+
+  <!-- ===== SECURITY FUND BUTTON ===== -->
+  {% if booking.security_amount > 0 %}
+  <div id="depositActionWrap">
+    <a href="/paypal/start/{{ booking.id }}?type=security"
+       class="btn btn-outline-soft w-100 {% if booking.security_paid %}disabled{% endif %}"
+       {% if booking.security_paid %}aria-disabled="true" tabindex="-1"{% endif %}>
+      {% if booking.security_paid %}
+        ✔ Security fund paid
+      {% else %}
+        Pay Security Fund with PayPal
+      {% endif %}
+    </a>
+  </div>
   {% endif %}
-{% endif %}
 </div>
+
 
 
 
