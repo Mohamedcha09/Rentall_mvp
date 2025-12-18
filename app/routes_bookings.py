@@ -209,10 +209,16 @@ def owner_decision_route(
         db.commit()
         return redirect_to_flow(bk)
 
+    # ✅ الإصلاح الحقيقي هنا
     bk.status = "accepted"
     bk.accepted_at = datetime.utcnow()
+
     bk.security_amount = security_amount or 0
+    bk.deposit_amount  = int(security_amount or 0)   # 🔥 مهم
+    bk.hold_deposit_amount = int(security_amount or 0)
+
     db.commit()
+    db.refresh(bk)  # 🔒 ضروري
 
     push_notification(
         db,
@@ -224,7 +230,6 @@ def owner_decision_route(
     )
 
     return redirect_to_flow(bk)
-
 # =====================================================
 # Pickup
 # =====================================================
