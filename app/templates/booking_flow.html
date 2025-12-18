@@ -484,11 +484,10 @@ a.btn.disabled{
     After payment, return here and confirm.
   </p>
 
-  <!-- ===== RENT BUTTON ===== -->
+  <!-- RENT -->
   <div id="rentActionWrap" class="mb-2">
     <a href="/paypal/start/{{ booking.id }}?type=rent"
-       class="btn btn-solid-primary w-100 {% if booking.rent_paid %}disabled{% endif %}"
-       {% if booking.rent_paid %}aria-disabled="true" tabindex="-1"{% endif %}>
+       class="btn btn-solid-primary w-100 {% if booking.rent_paid %}disabled{% endif %}">
       {% if booking.rent_paid %}
         ✔ Rent paid
       {% else %}
@@ -497,12 +496,11 @@ a.btn.disabled{
     </a>
   </div>
 
-  <!-- ===== SECURITY FUND BUTTON ===== -->
+  <!-- SECURITY FUND -->
   {% if booking.security_amount > 0 %}
   <div id="depositActionWrap">
-    <a href="/paypal/start/{{ booking.id }}?type=security"
-       class="btn btn-outline-soft w-100 {% if booking.security_paid %}disabled{% endif %}"
-       {% if booking.security_paid %}aria-disabled="true" tabindex="-1"{% endif %}>
+    <a href="/paypal/start/{{ booking.id }}?type=securityfund"
+       class="btn btn-outline-soft w-100 {% if booking.security_paid %}disabled{% endif %}">
       {% if booking.security_paid %}
         ✔ Security fund paid
       {% else %}
@@ -1471,7 +1469,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Deposit only OK
-  if (params.has("deposit_ok")) {
+  if (params.has("security_ok")) {
     markDepositHeldUI();
     setTimeout(function(){
         window.location.assign("/bookings/flow/{{ booking.id }}/next");
