@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from .database import get_db
 from .models import Booking, User
-from .notifications_api import push_notification, notify_admins
+from .notifications_api import push_notification
 
 router = APIRouter(tags=["payments"])
 
@@ -18,7 +18,10 @@ router = APIRouter(tags=["payments"])
 # Helpers
 # =====================================================
 
-def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
+def get_current_user(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Optional[User]:
     data = request.session.get("user") or {}
     uid = data.get("id")
     return db.get(User, uid) if uid else None
@@ -56,26 +59,30 @@ def paypal_start(
     require_auth(user)
     bk = require_booking(db, booking_id)
 
+    # 🔐 فقط المستأجر
     if user.id != bk.renter_id:
         raise HTTPException(status_code=403)
 
-    if type == "rent" and bk.rent_paid:
-        raise HTTPException(status_code=400, detail="Rent already paid")
+    # 🧾 Rent
+    if type == "rent":
+        if bk.rent_paid:
+            raise HTTPException(status_code=400, detail="Rent already paid")
 
+    # 🛡️ Security
     if type == "security":
         if bk.security_amount <= 0:
             raise HTTPException(status_code=400, detail="No security fund required")
         if bk.security_paid:
             raise HTTPException(status_code=400, detail="Security fund already paid")
 
-    # 🔴 مؤقتًا: redirect مباشر (مكان PayPal الحقيقي لاحقًا)
+    # 🔴 مؤقت: redirect مباشر (Mock PayPal)
     return RedirectResponse(
         url=f"/paypal/return?booking_id={bk.id}&type={type}",
         status_code=302,
     )
 
 # =====================================================
-# PAYPAL RETURN
+# PAYPAL RETURN (SINGLE & CORRECT)
 # =====================================================
 
 @router.get("/paypal/return")
@@ -83,12 +90,25 @@ def paypal_return(
     booking_id: int,
     type: Literal["rent", "security"],
     db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
 ):
+    require_auth(user)
     bk = require_booking(db, booking_id)
 
+    # 🔐 تأكيد أن نفس المستأجر
+    if user.id != bk.renter_id:
+        raise HTTPException(status_code=403)
+
+    # =========================
+    # RENT PAYMENT
+    # =========================
     if type == "rent":
+        if bk.rent_paid:
+            return flow_redirect(bk, "rent_ok")
+
         bk.rent_paid = True
         bk.payment_status = "paid"
+        bk.payment_method = "paypal"
 
         push_notification(
             db,
@@ -99,9 +119,17 @@ def paypal_return(
             "payment",
         )
 
+    # =========================
+    # SECURITY PAYMENT
+    # =========================
     elif type == "security":
+        if bk.security_paid:
+            return flow_redirect(bk, "security_ok")
+
         bk.security_paid = True
         bk.security_status = "held"
+        bk.payment_status = "paid"
+        bk.payment_method = "paypal"
 
         push_notification(
             db,
@@ -112,7 +140,9 @@ def paypal_return(
             "deposit",
         )
 
-    # ✅ إذا اكتمل الاثنان
+    # =========================
+    # FINAL STATUS
+    # =========================
     if bk.rent_paid and (bk.security_paid or bk.security_amount == 0):
         bk.status = "paid"
         bk.timeline_paid_at = datetime.utcnow()

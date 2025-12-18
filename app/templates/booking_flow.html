@@ -481,7 +481,7 @@ a.btn.disabled{
     <!-- Pay Security Fund -->
 {% if booking.rent_paid and not booking.security_paid %}
 <div id="depositActionWrap">
-  <a href="/paypal/start/{{ booking.id }}?type=deposit"
+  <a href="/paypal/start/{{ booking.id }}?type=security"
      class="btn btn-outline-soft">
      Pay Security Fund
   </a>
