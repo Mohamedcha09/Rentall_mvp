@@ -387,6 +387,9 @@ class Booking(Base):
     days                    = Column(Integer, nullable=False, default=1)
     price_per_day_snapshot  = Column(Integer, nullable=False, default=0)
     total_amount            = Column(Integer, nullable=False, default=0)
+    payment_provider = col_or_literal("bookings", "payment_provider", String(20),  nullable=True)
+
+    payment_status = col_or_literal("bookings", "payment_status", String(20),nullable=True)
 
     # snapshot عملة وقيمة الحجز كاملة
     currency    = col_or_literal("bookings", "currency", String(3), nullable=True)
