@@ -54,6 +54,9 @@ def redirect_to_flow(bk: Booking):
 # =====================================================
 # Create booking
 # =====================================================
+# =====================================================
+# Create booking  ✅ FIXED (NO 500)
+# =====================================================
 @router.post("/bookings")
 async def create_booking(
     request: Request,
@@ -61,11 +64,29 @@ async def create_booking(
     user: Optional[User] = Depends(get_current_user),
 ):
     require_auth(user)
+
     form = await request.form()
 
-    item_id = int(form.get("item_id"))
-    start_date = datetime.strptime(form.get("start_date"), "%Y-%m-%d").date()
-    end_date = datetime.strptime(form.get("end_date"), "%Y-%m-%d").date()
+    # ===== SAFE FORM PARSING =====
+    item_id_raw = form.get("item_id")
+    start_raw = form.get("start_date")
+    end_raw = form.get("end_date")
+
+    if not item_id_raw or not start_raw or not end_raw:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing booking data"
+        )
+
+    try:
+        item_id = int(item_id_raw)
+        start_date = datetime.strptime(start_raw, "%Y-%m-%d").date()
+        end_date = datetime.strptime(end_raw, "%Y-%m-%d").date()
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid booking data"
+        )
 
     if end_date <= start_date:
         raise HTTPException(status_code=400, detail="Invalid dates")
@@ -94,6 +115,7 @@ async def create_booking(
     db.commit()
     db.refresh(bk)
 
+    # ✅ إشعار المالك
     push_notification(
         db,
         bk.owner_id,
@@ -104,6 +126,7 @@ async def create_booking(
     )
 
     return redirect_to_flow(bk)
+
 
 # =====================================================
 # Booking flow page
