@@ -482,7 +482,7 @@ a.btn.disabled{
 <div id="depositActionWrap">
 {% if booking.rent_paid %}
   {% if not booking.security_paid %}
-    <a href="/paypal/start/{{ booking.id }}?type=security"
+    <a href="/paypal/start/{{ booking.id }}?type=securityfund"
        class="btn btn-outline-soft">
        Pay Security Fund
     </a>
