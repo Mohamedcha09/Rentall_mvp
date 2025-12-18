@@ -194,7 +194,7 @@ def booking_flow(
 def owner_decision_route(
     booking_id: int,
     decision: Literal["accepted", "rejected"] = Form(...),
-    security_amount: float = Form(0),
+    deposit_amount: float = Form(0),   # ✅ هذا هو الاسم الصحيح
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
@@ -209,16 +209,16 @@ def owner_decision_route(
         db.commit()
         return redirect_to_flow(bk)
 
-    # ✅ الإصلاح الحقيقي هنا
     bk.status = "accepted"
     bk.accepted_at = datetime.utcnow()
 
-    bk.security_amount = security_amount or 0
-    bk.deposit_amount  = int(security_amount or 0)   # 🔥 مهم
-    bk.hold_deposit_amount = int(security_amount or 0)
+    # 🔥 الحفظ الصحيح
+    bk.security_amount = deposit_amount
+    bk.deposit_amount = int(deposit_amount)
+    bk.hold_deposit_amount = int(deposit_amount)
 
     db.commit()
-    db.refresh(bk)  # 🔒 ضروري
+    db.refresh(bk)
 
     push_notification(
         db,
@@ -230,6 +230,7 @@ def owner_decision_route(
     )
 
     return redirect_to_flow(bk)
+
 # =====================================================
 # Pickup
 # =====================================================
