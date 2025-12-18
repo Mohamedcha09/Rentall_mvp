@@ -12,12 +12,8 @@ from .database import get_db
 from .models import User, Item, Booking, UserReview
 from .utils import category_label, display_currency, fx_convert
 from .notifications_api import push_notification, notify_admins
-from .pay_api import (
-    confirm_paypal_payment,
-    owner_deposit_decision,
-    finalize_deposit,
-    mark_money_executed,
-)
+from .pay_api import paypal_start, paypal_return
+
 
 router = APIRouter(tags=["bookings"])
 
@@ -230,25 +226,6 @@ def owner_decision_route(
     return redirect_to_flow(bk)
 
 # =====================================================
-# Renter confirms PayPal payment (MANUAL)
-# =====================================================
-@router.post("/bookings/{booking_id}/confirm-paypal")
-def renter_confirm_paypal(
-    booking_id: int,
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
-    require_auth(user)
-    bk = require_booking(db, booking_id)
-    if not is_renter(user, bk):
-        raise HTTPException(status_code=403)
-
-    confirm_paypal_payment(db, bk)
-    db.commit()
-
-    return redirect_to_flow(bk)
-
-# =====================================================
 # Pickup
 # =====================================================
 @router.post("/bookings/{booking_id}/pickup")
@@ -295,69 +272,6 @@ def renter_return(
         f"Booking #{bk.id} requires deposit decision.",
         f"/bookings/flow/{bk.id}",
     )
-
-    return redirect_to_flow(bk)
-
-# =====================================================
-# Owner deposit decision
-# =====================================================
-@router.post("/bookings/{booking_id}/owner/deposit-decision")
-def owner_deposit_decision_route(
-    booking_id: int,
-    damage_amount: float = Form(0),
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
-    require_auth(user)
-    bk = require_booking(db, booking_id)
-    if not is_owner(user, bk):
-        raise HTTPException(status_code=403)
-
-    owner_deposit_decision(db, bk, damage_amount)
-    db.commit()
-
-    return redirect_to_flow(bk)
-
-# =====================================================
-# Admin finalize deposit
-# =====================================================
-@router.post("/admin/bookings/{booking_id}/finalize-deposit")
-def admin_finalize_deposit(
-    booking_id: int,
-    refund_amount: float = Form(...),
-    owner_due_amount: float = Form(...),
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
-    require_auth(user)
-    if not user.can_manage_deposits:
-        raise HTTPException(status_code=403)
-
-    bk = require_booking(db, booking_id)
-    finalize_deposit(db, bk, refund_amount, owner_due_amount)
-    db.commit()
-
-    return redirect_to_flow(bk)
-
-# =====================================================
-# Admin marks money executed (manual)
-# =====================================================
-@router.post("/admin/bookings/{booking_id}/mark-executed")
-def admin_mark_executed(
-    booking_id: int,
-    db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user),
-):
-    require_auth(user)
-    if not user.can_manage_deposits:
-        raise HTTPException(status_code=403)
-
-    bk = require_booking(db, booking_id)
-    mark_money_executed(db, bk)
-    db.commit()
-
-    bk.status = "completed"
-    db.commit()
 
     return redirect_to_flow(bk)
 

@@ -151,7 +151,3 @@ def paypal_return(
 
     flag = "rent_ok" if type == "rent" else "security_ok"
     return flow_redirect(bk, flag)
-
-
-def confirm_paypal_payment(*args, **kwargs):
-    raise NotImplementedError("confirm_paypal_payment not implemented yet")
