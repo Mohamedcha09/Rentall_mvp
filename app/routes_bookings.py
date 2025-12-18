@@ -10,7 +10,7 @@ from sqlalchemy.sql import func
 
 from .database import get_db
 from .models import User, Item, Booking, UserReview
-from .utils import (category_label, _display_currency, fx_convert_smart,)
+from .utils import category_label, display_currency, fx_convert
 from .notifications_api import push_notification, notify_admins
 from .pay_api import (
     confirm_paypal_payment,
@@ -362,42 +362,41 @@ def booking_new_page(
     if not item or item.is_active != "yes":
         raise HTTPException(status_code=404, detail="Item not available")
 
-    # === 1) عملة المنشور ===
+    # 1️⃣ عملة العنصر
     item_cur = (item.currency or "CAD").upper()
 
-    # === 2) عملة العرض (نفس التي تستعمل في home و items_detail) ===
-    disp_cur = _display_currency(request)
+    # 2️⃣ عملة العرض (الدالة الصحيحة)
+    disp_cur = display_currency(request)
 
-    # === 3) تحويل السعر إلى عملة العرض ===
-    disp_price = fx_convert_smart(
-        db,
+    # 3️⃣ تحويل السعر
+    rates = request.app.state.fx_rates
+    disp_price = fx_convert(
         item.price_per_day,
         item_cur,
-        disp_cur
+        disp_cur,
+        rates,
     )
 
-    # === 4) قيم افتراضية للتواريخ ===
+    # 4️⃣ تواريخ افتراضية
     today = date.today()
     start_default = today
     end_default = today + timedelta(days=1)
     days_default = 1
 
-    # === 5) نرسل كل شيء للـ HTML ===
+    # 5️⃣ context
     ctx = {
         "request": request,
         "user": user,
-        "session_user": request.session.get("user"),   
         "display_currency": disp_cur,
-
         "item": item,
         "disp_price": disp_price,
         "item_currency": item_cur,
-
         "start_default": start_default,
         "end_default": end_default,
         "days_default": days_default,
     }
 
-    return request.app.templates.TemplateResponse("booking_new.html", ctx)
-# Create booking  (FIXED 100%)
-# ========================================
+    return request.app.templates.TemplateResponse(
+        "booking_new.html",
+        ctx
+    )
