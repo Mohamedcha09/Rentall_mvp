@@ -64,6 +64,9 @@ async def create_booking(
 
     form = await request.form()
 
+    # =========================
+    # SAFE FORM PARSING
+    # =========================
     item_id_raw = form.get("item_id")
     start_raw = form.get("start_date")
     end_raw = form.get("end_date")
@@ -81,6 +84,9 @@ async def create_booking(
     if end_date <= start_date:
         raise HTTPException(status_code=400, detail="Invalid dates")
 
+    # =========================
+    # ITEM VALIDATION
+    # =========================
     item = db.get(Item, item_id)
     if not item or item.owner_id == user.id:
         raise HTTPException(status_code=400, detail="Invalid item")
@@ -88,6 +94,9 @@ async def create_booking(
     days = max(1, (end_date - start_date).days)
     total_amount = days * item.price_per_day
 
+    # =========================
+    # CREATE BOOKING (ALL NOT NULL INSIDE)
+    # =========================
     bk = Booking(
         item_id=item.id,
         renter_id=user.id,
@@ -97,25 +106,33 @@ async def create_booking(
         days=days,
         price_per_day_snapshot=item.price_per_day,
         total_amount=total_amount,
+
+        # ===== REQUIRED NOT NULL FINANCIAL FIELDS =====
+        owner_payout_amount=0,
+        owner_due_amount=0,
+        refund_amount=0,
+        damage_amount=0,
+        platform_fee=0,
+        rent_amount=total_amount,
+        rent_paid=False,
+        security_amount=0,
+        security_paid=False,
+        security_status="not_paid",
+        payout_executed=False,
+        refund_done=False,
+
+        # ===== INITIAL STATE =====
         status="requested",
         timeline_created_at=datetime.utcnow(),
     )
-
-    # ✅ REQUIRED FINANCIAL DEFAULTS (PAYPAL SAFE)
-    bk.owner_payout_amount = 0
-    bk.owner_due_amount = 0
-    bk.refund_amount = 0
-    bk.damage_amount = 0
-    bk.platform_fee = 0
-    bk.rent_amount = total_amount
-    bk.rent_paid = False
-    bk.security_paid = False
-    bk.security_status = "not_paid"
 
     db.add(bk)
     db.commit()
     db.refresh(bk)
 
+    # =========================
+    # NOTIFY OWNER
+    # =========================
     push_notification(
         db,
         bk.owner_id,
