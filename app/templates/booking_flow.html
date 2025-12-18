@@ -479,16 +479,21 @@ a.btn.disabled{
 </div>
 
     <!-- Pay Security Fund -->
-{% if booking.rent_paid and not booking.security_paid %}
 <div id="depositActionWrap">
-  <a href="/paypal/start/{{ booking.id }}?type=security"
-     class="btn btn-outline-soft">
-     Pay Security Fund
-  </a>
-</div>
-{% else %}
-<div id="depositActionWrap"></div>
+{% if booking.rent_paid %}
+  {% if not booking.security_paid %}
+    <a href="/paypal/start/{{ booking.id }}?type=security"
+       class="btn btn-outline-soft">
+       Pay Security Fund
+    </a>
+  {% else %}
+    <button class="btn btn-success" disabled>
+      <i class="bi bi-shield-check"></i> Security fund paid
+    </button>
+  {% endif %}
 {% endif %}
+</div>
+
 
 
   </div>
