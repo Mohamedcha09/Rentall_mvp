@@ -390,6 +390,9 @@ class Booking(Base):
     payment_provider = col_or_literal("bookings", "payment_provider", String(20),  nullable=True)
 
     payment_status = col_or_literal("bookings", "payment_status", String(20),nullable=True)
+    owner_payout_amount = col_or_literal( "bookings", "owner_payout_amount", Integer, nullable=False,  default=0)
+
+    deposit_charged_amount = col_or_literal(  "bookings", "deposit_charged_amount",Integer, nullable=False, default=0)
 
     # snapshot عملة وقيمة الحجز كاملة
     currency    = col_or_literal("bookings", "currency", String(3), nullable=True)
@@ -408,14 +411,11 @@ class Booking(Base):
 
     rent_released_at         = col_or_literal("bookings", "rent_released_at", DateTime, nullable=True)
     owner_payout_request     = col_or_literal("bookings", "owner_payout_request", Boolean, nullable=False, default=False)
-    owner_payout_status      = col_or_literal("bookings", "owner_payout_status", String(20), nullable=True)
     owner_payout_attempts    = col_or_literal("bookings", "owner_payout_attempts", Integer, nullable=False, default=0)
     owner_payout_last_try_at = col_or_literal("bookings", "owner_payout_last_try_at", DateTime, nullable=True)
     
     owner_decision  = col_or_literal("bookings", "owner_decision", String(20), nullable=True)
     deposit_amount  = col_or_literal("bookings", "deposit_amount", Integer, nullable=False, default=0)
-    # الإيجار
-    rent_amount        = col_or_literal("bookings", "rent_amount", Integer, default=0)
     rent_paid          = col_or_literal("bookings", "rent_paid", Boolean, default=False)
 
     # Security coverage (الديبو)
