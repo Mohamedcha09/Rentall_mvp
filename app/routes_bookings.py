@@ -373,16 +373,21 @@ def booking_new_page(
     end_default = today + timedelta(days=1)
 
     ctx = {
-        "request": request,
-        "user": user,
-        "display_currency": disp_cur,
-        "item": item,
-        "disp_price": disp_price,
-        "item_currency": item_cur,
-        "start_default": start_default,
-        "end_default": end_default,
-        "days_default": 1,
-    }
+    "request": request,
+    "user": user,
+
+    # ✅ هذا هو السطر المهم
+    "session_user": request.session.get("user"),
+
+    "display_currency": disp_cur,
+    "item": item,
+    "disp_price": disp_price,
+    "item_currency": item_cur,
+    "start_default": start_default,
+    "end_default": end_default,
+    "days_default": 1,
+}
+
 
     return request.app.templates.TemplateResponse(
         "booking_new.html",
