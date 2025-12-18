@@ -252,3 +252,58 @@ def mark_money_executed(
     db.commit()
 
     return JSONResponse({"ok": True})
+
+@router.get("/paypal/start/{booking_id}")
+def paypal_start(
+    booking_id: int,
+    type: Literal["rent", "deposit"] = "rent",
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+
+    if user.id != bk.renter_id:
+        raise HTTPException(status_code=403)
+
+    if type == "rent" and bk.rent_paid:
+        raise HTTPException(status_code=400, detail="Rent already paid")
+
+    if type == "deposit" and bk.security_paid:
+        raise HTTPException(status_code=400, detail="Deposit already paid")
+
+    # هنا لاحقاً نضيف PayPal SDK
+    return RedirectResponse(
+        url=f"/paypal/redirect-mock?booking_id={bk.id}&type={type}",
+        status_code=302
+    )
+
+
+@router.get("/paypal/return")
+def paypal_return(
+    booking_id: int,
+    type: Literal["rent", "deposit"],
+    db: Session = Depends(get_db),
+):
+    bk = require_booking(db, booking_id)
+
+    if type == "rent":
+        bk.rent_paid = True
+        bk.payment_status = "paid"
+
+    if type == "deposit":
+        bk.security_paid = True
+        bk.security_status = "held"
+
+    if bk.rent_paid and (bk.security_paid or bk.security_amount == 0):
+        bk.status = "paid"
+        bk.timeline_paid_at = datetime.utcnow()
+
+    db.commit()
+
+    # نرجع للـ flow مع flag
+    flag = "rent_ok" if type == "rent" else "deposit_ok"
+    return RedirectResponse(
+        url=f"/bookings/flow/{bk.id}?{flag}=1",
+        status_code=302
+    )

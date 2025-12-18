@@ -288,6 +288,13 @@
   .action-row .btn{ width:100% }
 }
 
+a.btn.disabled{
+  pointer-events:none !important;
+  opacity:.6 !important;
+  cursor:default !important;
+}
+
+
 </style>
 
 {% if dispute_deadline_iso %}
@@ -463,25 +470,27 @@
     </p>
 
     <!-- PayPal external link -->
-    <a href="/paypal/start/{{ booking.id }}"
-       class="btn btn-solid-primary w-100 mb-2">
-      <i class="bi bi-paypal"></i> Pay with PayPal
-    </a>
+    <div id="rentActionWrap">
+  <a href="/paypal/start/{{ booking.id }}?type=rent"
+     class="btn btn-solid-primary {% if booking.rent_paid %}disabled{% endif %}"
+     {% if booking.rent_paid %}aria-disabled="true" tabindex="-1"{% endif %}>
+     Pay Rent with PayPal
+  </a>
+</div>
+
     <!-- Pay Security Fund -->
-<a href="/paypal/start/{{ booking.id }}?type=deposit"
-   class="btn btn-outline-soft w-100 mb-2">
-  <i class="bi bi-shield-lock"></i> Pay security fund (PayPal)
-</a>
+{% if booking.rent_paid and not booking.security_paid %}
+<div id="depositActionWrap">
+  <a href="/paypal/start/{{ booking.id }}?type=deposit"
+     class="btn btn-outline-soft">
+     Pay Security Fund
+  </a>
+</div>
+{% else %}
+<div id="depositActionWrap"></div>
+{% endif %}
 
 
-    <!-- Confirm payment -->
-    <form method="post"
-          action="/api/paypal/confirm-payment/{{ booking.id }}">
-      <input type="hidden" name="rent_paid" value="true">
-      {% if booking.deposit_amount and booking.deposit_amount > 0 %}
-        <input type="hidden" name="security_paid" value="true">
-      {% endif %}
-    </form>
   </div>
 </div>
 
