@@ -362,28 +362,16 @@ def booking_new_page(
     if not item or item.is_active != "yes":
         raise HTTPException(status_code=404, detail="Item not available")
 
-    # 1️⃣ عملة العنصر
     item_cur = (item.currency or "CAD").upper()
-
-    # 2️⃣ عملة العرض (الدالة الصحيحة)
     disp_cur = display_currency(request)
 
-    # 3️⃣ تحويل السعر
-    rates = request.app.state.fx_rates
-    disp_price = fx_convert(
-        item.price_per_day,
-        item_cur,
-        disp_cur,
-        rates,
-    )
+    # ✅ SAFE PRICE DISPLAY (NO FX STATE)
+    disp_price = item.price_per_day
 
-    # 4️⃣ تواريخ افتراضية
     today = date.today()
     start_default = today
     end_default = today + timedelta(days=1)
-    days_default = 1
 
-    # 5️⃣ context
     ctx = {
         "request": request,
         "user": user,
@@ -393,7 +381,7 @@ def booking_new_page(
         "item_currency": item_cur,
         "start_default": start_default,
         "end_default": end_default,
-        "days_default": days_default,
+        "days_default": 1,
     }
 
     return request.app.templates.TemplateResponse(
