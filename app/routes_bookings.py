@@ -10,7 +10,7 @@ from sqlalchemy.sql import func
 
 from .database import get_db
 from .models import User, Item, Booking, UserReview
-from .utils import category_label
+from .utils import (category_label, _display_currency, fx_convert_smart,)
 from .notifications_api import push_notification, notify_admins
 from .pay_api import (
     confirm_paypal_payment,
