@@ -42,21 +42,21 @@ def require_booking(db: Session, booking_id: int) -> Booking:
     return bk
 
 
-def flow_redirect(bk: Booking, flag: str | None = None):
-    url = f"/bookings/flow/{bk.id}"
-    if flag:
-        url += f"?{flag}=1"
-    return RedirectResponse(url=url, status_code=303)
+def flow_redirect(bk: Booking, flag: str):
+    return RedirectResponse(
+        url=f"/bookings/flow/{bk.id}?{flag}=1",
+        status_code=303,
+    )
 
 # =====================================================
-# PAYPAL CORE (REAL)
+# PAYPAL CORE
 # =====================================================
 
-PAYPAL_BASE = "https://api-m.sandbox.paypal.com"  # لاحقًا: api-m.paypal.com
+PAYPAL_BASE = "https://api-m.sandbox.paypal.com"
 
 def paypal_get_token() -> str:
     client_id = os.getenv("PAYPAL_CLIENT_ID")
-    secret = os.getenv("PAYPAL_SECRET")
+    secret = os.getenv("PAYPAL_CLIENT_SECRET")  # ✅ هنا الإصلاح
 
     if not client_id or not secret:
         raise RuntimeError("PayPal credentials missing")
@@ -81,7 +81,7 @@ def paypal_create_order(
     booking: Booking,
     amount: float,
     currency: str,
-    pay_type: Literal["rent", "security"],
+    pay_type: Literal["rent", "securityfund"],
 ) -> str:
     token = paypal_get_token()
 
@@ -140,35 +140,29 @@ def paypal_capture(order_id: str):
     return r.json()
 
 # =====================================================
-# PAYPAL START (Rent / Security)
+# START
 # =====================================================
 
 @router.get("/paypal/start/{booking_id}")
 def paypal_start(
     booking_id: int,
-    type: Literal["rent", "security"],
+    type: Literal["rent", "securityfund"],
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
     require_auth(user)
     bk = require_booking(db, booking_id)
 
-    # 🔐 فقط المستأجر
     if user.id != bk.renter_id:
         raise HTTPException(status_code=403)
 
-    # 🧾 Rent
     if type == "rent":
         if bk.rent_paid:
-            raise HTTPException(status_code=400, detail="Rent already paid")
+            raise HTTPException(status_code=400)
         amount = bk.total_amount
-
-    # 🛡️ Security
     else:
-        if bk.security_amount <= 0:
-            raise HTTPException(status_code=400, detail="No security fund required")
-        if bk.security_paid:
-            raise HTTPException(status_code=400, detail="Security fund already paid")
+        if bk.security_amount <= 0 or bk.security_paid:
+            raise HTTPException(status_code=400)
         amount = bk.security_amount
 
     approval_url = paypal_create_order(
@@ -181,13 +175,13 @@ def paypal_start(
     return RedirectResponse(approval_url, status_code=302)
 
 # =====================================================
-# PAYPAL RETURN + CAPTURE (REAL)
+# RETURN + CAPTURE
 # =====================================================
 
 @router.get("/paypal/return")
 def paypal_return(
     booking_id: int,
-    type: Literal["rent", "security"],
+    type: Literal["rent", "securityfund"],
     token: str,  # PayPal Order ID
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
@@ -195,58 +189,22 @@ def paypal_return(
     require_auth(user)
     bk = require_booking(db, booking_id)
 
-    # 🔐 نفس المستأجر
     if user.id != bk.renter_id:
         raise HTTPException(status_code=403)
 
-    # 🧾 Capture
     paypal_capture(token)
 
-    # =========================
-    # RENT
-    # =========================
     if type == "rent":
-        if not bk.rent_paid:
-            bk.rent_paid = True
-            bk.payment_status = "paid"
-            bk.payment_method = "paypal"
-
-            push_notification(
-                db,
-                bk.owner_id,
-                "Rent paid",
-                f"Booking #{bk.id}: rent paid via PayPal.",
-                f"/bookings/flow/{bk.id}",
-                "payment",
-            )
-
-    # =========================
-    # SECURITY
-    # =========================
+        bk.rent_paid = True
     else:
-        if not bk.security_paid:
-            bk.security_paid = True
-            bk.security_status = "held"
-            bk.payment_status = "paid"
-            bk.payment_method = "paypal"
+        bk.security_paid = True
+        bk.security_status = "held"
 
-            push_notification(
-                db,
-                bk.owner_id,
-                "Security fund paid",
-                f"Booking #{bk.id}: security fund is now held.",
-                f"/bookings/flow/{bk.id}",
-                "deposit",
-            )
-
-    # =========================
-    # FINAL STATUS
-    # =========================
     if bk.rent_paid and (bk.security_paid or bk.security_amount == 0):
         bk.status = "paid"
+        bk.payment_method = "paypal"
+        bk.payment_status = "paid"
         bk.timeline_paid_at = datetime.utcnow()
 
     db.commit()
-
-    flag = "rent_ok" if type == "rent" else "security_ok"
-    return flow_redirect(bk, flag)
+    return flow_redirect(bk, "rent_ok" if type == "rent" else "security_ok")
