@@ -481,18 +481,19 @@ a.btn.disabled{
     </a>
   </div>
   <!-- SECURITY FUND -->
-  {% if booking.deposit_amount and booking.deposit_amount > 0 %}
-  <div id="depositActionWrap">
-    <a href="/paypal/start/{{ booking.id }}?type=securityfund"
-       class="btn btn-outline-soft w-100 {% if booking.security_paid %}disabled{% endif %}">
-      {% if booking.security_paid %}
-        ✔ Security fund paid
-      {% else %}
-        Pay Security Fund with PayPal
-      {% endif %}
-    </a>
-  </div>
-  {% endif %}
+  {% if (booking.hold_deposit_amount or booking.deposit_amount or 0) > 0 %}
+<div id="depositActionWrap">
+  <a href="/paypal/start/{{ booking.id }}?type=securityfund"
+     class="btn btn-outline-soft w-100 {% if booking.security_paid %}disabled{% endif %}">
+    {% if booking.security_paid %}
+      ✔ Security fund paid
+    {% else %}
+      Pay Security Fund with PayPal
+    {% endif %}
+  </a>
+</div>
+{% endif %}
+
 </div>
 
 
