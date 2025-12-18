@@ -346,28 +346,58 @@ def bookings_index(
         },
     )
 
-
+# ========================================
+# UI: Create page
+# ========================================
 @router.get("/bookings/new")
-def booking_new(
+def booking_new_page(
     request: Request,
     item_id: int = Query(...),
-    disp_cur: str = Query("CAD"),
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
     require_auth(user)
 
     item = db.get(Item, item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
+    if not item or item.is_active != "yes":
+        raise HTTPException(status_code=404, detail="Item not available")
 
-    return request.app.templates.TemplateResponse(
-        "booking_new.html",
-        {
-            "request": request,
-            "item": item,
-            "display_currency": disp_cur,
-            "disp_price": disp_price,
-            "user": user,
-        },
+    # === 1) عملة المنشور ===
+    item_cur = (item.currency or "CAD").upper()
+
+    # === 2) عملة العرض (نفس التي تستعمل في home و items_detail) ===
+    disp_cur = _display_currency(request)
+
+    # === 3) تحويل السعر إلى عملة العرض ===
+    disp_price = fx_convert_smart(
+        db,
+        item.price_per_day,
+        item_cur,
+        disp_cur
     )
+
+    # === 4) قيم افتراضية للتواريخ ===
+    today = date.today()
+    start_default = today
+    end_default = today + timedelta(days=1)
+    days_default = 1
+
+    # === 5) نرسل كل شيء للـ HTML ===
+    ctx = {
+        "request": request,
+        "user": user,
+        "session_user": request.session.get("user"),   
+        "display_currency": disp_cur,
+
+        "item": item,
+        "disp_price": disp_price,
+        "item_currency": item_cur,
+
+        "start_default": start_default,
+        "end_default": end_default,
+        "days_default": days_default,
+    }
+
+    return request.app.templates.TemplateResponse("booking_new.html", ctx)
+# Create booking  (FIXED 100%)
+# ========================================
