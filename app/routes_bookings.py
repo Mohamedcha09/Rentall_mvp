@@ -141,7 +141,6 @@ async def create_booking(
 
     return redirect_to_flow(bk)  
 
-
 @router.get("/bookings/flow/{booking_id}")
 def booking_flow(
     booking_id: int,
@@ -155,6 +154,13 @@ def booking_flow(
     item = db.get(Item, bk.item_id)
     owner = db.get(User, bk.owner_id)
     renter = db.get(User, bk.renter_id)
+
+    # ✅ ADD THIS BLOCK (HERE EXACTLY)
+    renter_reviews_count = (
+        db.query(UserReview)
+        .filter(UserReview.user_id == renter.id)
+        .count()
+    )
 
     geo = locate_from_session(request)
     if not isinstance(geo, dict):
@@ -184,7 +190,6 @@ def booking_flow(
             processing_fee = round(rent * 0.029 + 0.30, 2)
 
         except Exception:
-            # ❌ لا نكسر الصفحة أبداً
             tax_lines = []
             tax_total = 0.0
             processing_fee = 0.0
@@ -210,8 +215,8 @@ def booking_flow(
         "processing_fee": processing_fee,
         "grand_total": grand_total,
         "geo": geo,
-        "session_user": request.session.get("user")
-
+        "session_user": request.session.get("user"),
+        "renter_reviews_count": renter_reviews_count,
     }
 
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
