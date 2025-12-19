@@ -155,10 +155,10 @@ def booking_flow(
     owner = db.get(User, bk.owner_id)
     renter = db.get(User, bk.renter_id)
 
-    # ✅ ADD THIS BLOCK (HERE EXACTLY)
+    # ✅ FIXED HERE
     renter_reviews_count = (
         db.query(UserReview)
-        .filter(UserReview.user_id == renter.id)
+        .filter(UserReview.owner_id == renter.id)
         .count()
     )
 
@@ -176,7 +176,6 @@ def booking_flow(
     tax_total = 0.0
     processing_fee = 0.0
 
-    # ✅ الضرائب فقط إذا كان RENTER ويوجد GEO
     if is_renter(user, bk) and country:
         try:
             tax_base = rent + sevor_fee
