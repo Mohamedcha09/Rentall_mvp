@@ -141,9 +141,8 @@ async def create_booking(
 
     return redirect_to_flow(bk)  
 
-
 # =====================================================
-# Booking flow page  ✅ FINAL FIX
+# Booking flow page  ✅ FIX: GEO ONLY FOR RENTER
 # =====================================================
 @router.get("/bookings/flow/{booking_id}")
 def booking_flow(
@@ -155,54 +154,68 @@ def booking_flow(
     require_auth(user)
     bk = require_booking(db, booking_id)
 
+    item = db.get(Item, bk.item_id)
+    owner = db.get(User, bk.owner_id)
+    renter = db.get(User, bk.renter_id)
+
     # ===============================
-    # GEO CHECK (منطقي 100%)
+    # GEO CHECK: ONLY FOR RENTER
     # ===============================
     geo = locate_from_session(request)
-
     country = (geo.get("country") or "").upper() if isinstance(geo, dict) else ""
     region  = (geo.get("region") or "").upper() if isinstance(geo, dict) else ""
 
-    # ✅ البلد إجباري دائمًا
-    if not country:
-        return RedirectResponse(
-            url=f"/geo/pick?next=/bookings/flow/{bk.id}",
-            status_code=303
-        )
+    # ✅ إذا كان OWNER: لا نطلب Geo نهائيًا
+    if is_owner(user, bk):
+        # نترك geo كما هو للعرض فقط (إن وُجد)، لكن لا نعمل redirect أبداً
+        pass
+    else:
+        # ✅ إذا كان RENTER: Geo إجباري للضرائب والدفع
+        if not country:
+            return RedirectResponse(
+                url=f"/geo/pick?next=/bookings/flow/{bk.id}",
+                status_code=303
+            )
 
-    # ✅ المقاطعة / الولاية فقط لـ CA و US
-    if country in ("CA", "US") and not region:
-        return RedirectResponse(
-            url=f"/geo/pick?next=/bookings/flow/{bk.id}",
-            status_code=303
-        )
+        # ✅ المقاطعة/الولاية مطلوبة فقط لـ CA و US
+        if country in ("CA", "US") and not region:
+            return RedirectResponse(
+                url=f"/geo/pick?next=/bookings/flow/{bk.id}",
+                status_code=303
+            )
 
     # ===============================
     # ORDER SUMMARY
     # ===============================
     rent = bk.total_amount
     sevor_fee = round(rent * 0.01, 2)
-    tax_base = rent + sevor_fee
 
-    tax_result = compute_order_taxes(
-        subtotal=tax_base,
-        geo={
-            "country": country,
-            "sub": region,
-        }
-    )
+    tax_lines = []
+    tax_total = 0
 
-    tax_total = tax_result.get("total", 0)
-    processing_fee = round(rent * 0.029 + 0.30, 2)
+    # ✅ الضرائب تُحسب فقط للـ RENTER (لأنه هو الذي سيدفع)
+    if is_owner(user, bk):
+        processing_fee = 0
+        grand_total = round(rent + sevor_fee, 2)
+    else:
+        tax_base = rent + sevor_fee
 
-    grand_total = round(
-        rent + sevor_fee + tax_total + processing_fee,
-        2
-    )
+        tax_result = compute_order_taxes(
+            subtotal=tax_base,
+            geo={
+                "country": country,
+                "sub": region,
+            }
+        )
 
-    item = db.get(Item, bk.item_id)
-    owner = db.get(User, bk.owner_id)
-    renter = db.get(User, bk.renter_id)
+        tax_lines = tax_result.get("lines", [])
+        tax_total = tax_result.get("total", 0)
+        processing_fee = round(rent * 0.029 + 0.30, 2)
+
+        grand_total = round(
+            rent + sevor_fee + tax_total + processing_fee,
+            2
+        )
 
     renter_reviews_count = 0
     renter_reviews_avg = 0.0
@@ -232,11 +245,13 @@ def booking_flow(
         # PRICING
         "rent": rent,
         "sevor_fee": sevor_fee,
-        "tax_lines": tax_result.get("lines", []),
+        "tax_lines": tax_lines,
         "tax_total": tax_total,
         "processing_fee": processing_fee,
         "grand_total": grand_total,
         "geo": geo,
+        "geo_country": country,
+        "geo_region": region,
     }
 
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
