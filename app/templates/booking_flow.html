@@ -536,7 +536,7 @@ a.btn.disabled{
       <strong>{{ "%.2f"|format(disp_fee) }} {{ currency }}</strong>
     </div>
 
-    {% if taxes and taxes.tax_lines and (taxes.tax_lines|length > 0) %}
+    {% if tax_lines and (tax_lines|length > 0) %}
         <hr class="my-2">
 
   {# نستخدم namespace حتى يعمل الجمع داخل اللوب #}
