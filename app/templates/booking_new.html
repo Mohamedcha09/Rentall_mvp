@@ -80,7 +80,6 @@ document.addEventListener("DOMContentLoaded", () => {
   btn.addEventListener("click", function (e) {
     e.preventDefault();
 
-    // المتصفح لا يدعم الموقع → نكمل مباشرة
     if (!navigator.geolocation) {
       form.submit();
       return;
@@ -92,17 +91,19 @@ document.addEventListener("DOMContentLoaded", () => {
         const lon = pos.coords.longitude;
 
         try {
-          // ✅ نحفظ الموقع في session (مهم جداً)
-          await fetch(`/geo/set?lat=${lat}&lon=${lon}`);
-        } catch (e) {
-          console.warn("Geo session save failed");
+          await fetch(`/geo/set?lat=${lat}&lon=${lon}`, {
+            method: "GET",
+            credentials: "same-origin"
+          });
+        } catch (err) {
+          console.warn("Geo save failed");
         }
 
-        // ✅ بعد الحفظ نكمل الحجز
+        // ✅ نكمل الحجز دائمًا
         form.submit();
       },
       function error() {
-        // ❌ المستخدم رفض الموقع
+        // ❌ رفض الموقع → اختيار يدوي
         window.location.href = "/geo/pick";
       },
       {
