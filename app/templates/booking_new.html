@@ -69,33 +69,35 @@
     </div>
   </div>
 </div>
-
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("bookingCreateForm");
-  const btn  = document.getElementById("bookingContinue") || form?.querySelector('button[type="submit"]');
+  const btn  = document.getElementById("bookingContinue");
   if (!form || !btn) return;
 
-  form.addEventListener("submit", (e) => {
+  btn.addEventListener("click", function (e) {
     e.preventDefault();
 
-    if (!navigator.geolocation) {
-      alert("⚠️ المتصفح لا يدعم تحديد الموقع الجغرافي.");
-      form.submit();
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      const { latitude, longitude } = pos.coords;
-      try {
-        await fetch(`/api/geo/set?lat=${latitude}&lon=${longitude}`, { method: "POST" });
-      } catch (_) {}
-      form.submit();
-    }, () => {
-      alert("❌ لا يمكن المتابعة بدون تفعيل الموقع.");
-    }, { enableHighAccuracy: true });
+    // هذا السطر هو الذي يُجبر المتصفح على إظهار Popup
+    navigator.geolocation.getCurrentPosition(
+      function success(position) {
+        // لا نعمل fetch هنا ❌
+        // فقط نكمل الإرسال
+        form.submit();
+      },
+      function error() {
+        // رفض الموقع → نرسله لاختيار الدولة يدويًا
+        window.location.href = "/geo/pick";
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 0
+      }
+    );
   });
 });
 </script>
+
 
 {% endblock %}
