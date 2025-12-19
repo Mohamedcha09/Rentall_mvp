@@ -140,6 +140,8 @@ async def create_booking(
     )
 
     return redirect_to_flow(bk)  
+
+
 @router.get("/bookings/flow/{booking_id}")
 def booking_flow(
     booking_id: int,
@@ -154,7 +156,10 @@ def booking_flow(
     owner = db.get(User, bk.owner_id)
     renter = db.get(User, bk.renter_id)
 
-    geo = locate_from_session(request) or {}
+    geo = locate_from_session(request)
+    if not isinstance(geo, dict):
+        geo = {}
+
     country = (geo.get("country") or "").upper()
     region  = (geo.get("region") or "").upper()
 
@@ -162,19 +167,27 @@ def booking_flow(
     sevor_fee = round(rent * 0.01, 2)
 
     tax_lines = []
-    tax_total = 0
-    processing_fee = 0
+    tax_total = 0.0
+    processing_fee = 0.0
 
     # ✅ الضرائب فقط إذا كان RENTER ويوجد GEO
     if is_renter(user, bk) and country:
-        tax_base = rent + sevor_fee
-        tax_result = compute_order_taxes(
-            subtotal=tax_base,
-            geo={"country": country, "sub": region}
-        )
-        tax_lines = tax_result.get("lines", [])
-        tax_total = tax_result.get("total", 0)
-        processing_fee = round(rent * 0.029 + 0.30, 2)
+        try:
+            tax_base = rent + sevor_fee
+            tax_result = compute_order_taxes(
+                subtotal=tax_base,
+                geo={"country": country, "sub": region}
+            ) or {}
+
+            tax_lines = tax_result.get("lines", [])
+            tax_total = float(tax_result.get("total", 0))
+            processing_fee = round(rent * 0.029 + 0.30, 2)
+
+        except Exception:
+            # ❌ لا نكسر الصفحة أبداً
+            tax_lines = []
+            tax_total = 0.0
+            processing_fee = 0.0
 
     grand_total = round(
         rent + sevor_fee + tax_total + processing_fee,
