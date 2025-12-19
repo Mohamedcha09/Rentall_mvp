@@ -541,7 +541,7 @@ a.btn.disabled{
 
   {# نستخدم namespace حتى يعمل الجمع داخل اللوب #}
   {% set ns = namespace(total=0.0) %}
-  {% for t in taxes.tax_lines %}
+  {% for t in tax_lines %}
     {% set disp_tax = (t.amount * (fx or 1.0))|round(2) %}
     {% set ns.total = ns.total + disp_tax %}
     <div class="d-flex justify-content-between">
