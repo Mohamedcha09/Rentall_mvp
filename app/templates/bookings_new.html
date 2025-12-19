@@ -5,7 +5,8 @@
 
 <div class="card">
   <div class="card-body">
-    <!-- ✅ IMPORTANT: action لازم تكون /bookings -->
+
+    <!-- ✅ IMPORTANT -->
     <form method="post" action="/bookings" id="booking-form">
       <input type="hidden" name="item_id" value="{{ item.id }}">
 
@@ -14,129 +15,137 @@
           <label class="form-label">Start date</label>
           <input type="date" name="start_date" id="start_date" class="form-control" required>
         </div>
+
         <div class="col-md-6">
           <label class="form-label">End date</label>
           <input type="date" name="end_date" id="end_date" class="form-control" required>
         </div>
+
         <div class="col-12">
           <label class="form-label">Note (optional)</label>
-          <textarea name="note" class="form-control" rows="2" placeholder="Additional details…"></textarea>
+          <textarea name="note" class="form-control" rows="2"></textarea>
         </div>
 
-        <!-- Instant conflict notice -->
         <div class="col-12">
-          <div id="availability_hint" class="alert alert-warning" style="display:none;">
-            The selected dates overlap with confirmed bookings. Please choose different dates.
-          </div>
+          <div id="availability_hint" class="alert alert-warning" style="display:none;"></div>
         </div>
       </div>
 
       <div class="d-flex gap-2 mt-3">
-        <!-- ✅ IMPORTANT: type="submit" -->
-        <button type="submit" class="btn btn-success" id="submit_btn">Submit booking request</button>
+        <button type="submit" class="btn btn-success" id="submit_btn">
+          Submit booking request
+        </button>
         <a href="/items/{{ item.id }}" class="btn btn-outline-light">Back</a>
       </div>
     </form>
+
   </div>
 </div>
 
 <script>
 (function(){
+
   const form    = document.getElementById('booking-form');
   const startEl = document.getElementById('start_date');
   const endEl   = document.getElementById('end_date');
   const hint    = document.getElementById('availability_hint');
   const btn     = document.getElementById('submit_btn');
 
-  // Set minimum to today
   const today = new Date().toISOString().slice(0,10);
   startEl.min = today;
   endEl.min   = today;
 
-  let blocked = []; // booked ranges {start,end}
+  let blocked = [];
 
-  // Load booked ranges for this item
   fetch(`/api/items/{{ item.id }}/booked`, { credentials: 'include' })
-    .then(r => r.ok ? r.json() : {blocked:[]})
-    .then(json => { blocked = json.blocked || []; })
-    .catch(() => { blocked = []; });
+    .then(r => r.ok ? r.json() : { blocked: [] })
+    .then(j => blocked = j.blocked || [])
+    .catch(() => blocked = []);
 
   function parse(d){
-    try { return new Date(d + "T00:00:00"); } catch(e){ return null; }
+    return new Date(d + "T00:00:00");
   }
 
-  function overlaps(aStart, aEnd, bStart, bEnd){
-    return aStart <= bEnd && aEnd >= bStart;
+  function overlaps(a1, a2, b1, b2){
+    return a1 <= b2 && a2 >= b1;
   }
 
-  function check(){
+  function checkDates(){
     hint.style.display = 'none';
     btn.disabled = false;
 
-    const s = startEl.value;
-    const e = endEl.value;
-    if(!s || !e) return true;
+    if(!startEl.value || !endEl.value) return true;
 
-    const sd = parse(s);
-    const ed = parse(e);
-    if(ed < sd){
+    const s = parse(startEl.value);
+    const e = parse(endEl.value);
+
+    if(e < s){
+      hint.textContent = "End date cannot be before start date.";
       hint.style.display = 'block';
-      hint.textContent = 'End date cannot be before start date.';
       btn.disabled = true;
       return false;
     }
 
-    // Conflict with booked ranges
     for(const r of blocked){
-      const rs = parse(r.start);
-      const re = parse(r.end);
-      if(overlaps(sd, ed, rs, re)){
+      if(overlaps(s, e, parse(r.start), parse(r.end))){
+        hint.textContent = "Selected dates overlap with another booking.";
         hint.style.display = 'block';
-        hint.textContent = 'The selected dates overlap with confirmed bookings. Please choose different dates.';
         btn.disabled = true;
         return false;
       }
     }
 
-    hint.style.display = 'none';
-    btn.disabled = false;
     return true;
   }
 
-  startEl.addEventListener('change', check);
-  endEl.addEventListener('change', check);
+  startEl.addEventListener('change', checkDates);
+  endEl.addEventListener('change', checkDates);
 
-  // ✅ GEOLOGATION BEFORE SUBMIT (هذا هو اللي يطلع Popup Allow/Refuse)
+  /* ===========================
+     GEOLOCATION LOGIC (FINAL)
+     =========================== */
   form.addEventListener('submit', function(e){
-    // إذا التواريخ غلط أو overlap → ما نكمل
-    if(!check()){
+
+    if(!checkDates()){
       e.preventDefault();
       return;
     }
 
-    // لو ما عنده geolocation أصلاً → نكمل عادي
     if(!navigator.geolocation){
       return;
     }
 
-    // نوقف الإرسال مؤقتًا حتى يطلع popup
     e.preventDefault();
     btn.disabled = true;
 
     navigator.geolocation.getCurrentPosition(
+
+      // ✅ AUTORISÉ
       function success(pos){
-        // ✅ المستخدم ضغط Autoriser
-        // ما نقدر نطلع country/region من lat/lon بدون reverse geocode
-        // فهنا نكمل الحجز مباشرة
-        btn.disabled = false;
-        form.submit();
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+
+        fetch(`/geo/set?lat=${lat}&lon=${lon}`, {
+          method: "GET",
+          credentials: "include"
+        })
+        .then(r => r.json())
+        .then(() => {
+          btn.disabled = false;
+          form.submit();
+        })
+        .catch(() => {
+          const next = encodeURIComponent(location.pathname + location.search);
+          location.href = "/geo/pick?next=" + next;
+        });
       },
+
+      // ❌ REFUSÉ
       function error(){
-        // ✅ المستخدم ضغط Refuser (أو فشل)
-        // نوديه لصفحة اختيار البلد يدويًا ثم يرجع لنفس الصفحة
-        const next = encodeURIComponent(window.location.pathname + window.location.search);
-        window.location.href = "/geo/pick?next=" + next;
+        const next = encodeURIComponent(location.pathname + location.search);
+        location.href = "/geo/pick?next=" + next;
       },
+
       {
         enableHighAccuracy: true,
         timeout: 8000,
