@@ -47,7 +47,6 @@
             </label>
           </div>
 
-          {# رموز العملات #}
           {% set symbols = {"CAD":"CAD", "USD":"USD", "EUR":"EUR"} %}
           {% set symbol = symbols.get(display_currency, "") %}
 
@@ -62,13 +61,16 @@
 
         <div class="col-12 d-flex justify-content-end gap-2 mt-3">
           <a href="/items/{{ item.id }}" class="btn btn-light">Back</a>
-          <button id="bookingContinue" class="btn btn-primary" type="submit">Continue</button>
+          <button id="bookingContinue" class="btn btn-primary" type="submit">
+            Continue
+          </button>
         </div>
 
       </form>
     </div>
   </div>
 </div>
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("bookingCreateForm");
@@ -78,15 +80,29 @@ document.addEventListener("DOMContentLoaded", () => {
   btn.addEventListener("click", function (e) {
     e.preventDefault();
 
-    // هذا السطر هو الذي يُجبر المتصفح على إظهار Popup
+    // المتصفح لا يدعم الموقع → نكمل مباشرة
+    if (!navigator.geolocation) {
+      form.submit();
+      return;
+    }
+
     navigator.geolocation.getCurrentPosition(
-      function success(position) {
-        // لا نعمل fetch هنا ❌
-        // فقط نكمل الإرسال
+      async function success(pos) {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+
+        try {
+          // ✅ نحفظ الموقع في session (مهم جداً)
+          await fetch(`/geo/set?lat=${lat}&lon=${lon}`);
+        } catch (e) {
+          console.warn("Geo session save failed");
+        }
+
+        // ✅ بعد الحفظ نكمل الحجز
         form.submit();
       },
       function error() {
-        // رفض الموقع → نرسله لاختيار الدولة يدويًا
+        // ❌ المستخدم رفض الموقع
         window.location.href = "/geo/pick";
       },
       {
@@ -98,6 +114,5 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 </script>
-
 
 {% endblock %}
