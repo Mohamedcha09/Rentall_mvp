@@ -14,6 +14,10 @@ from .utils import category_label, display_currency, fx_convert
 from .notifications_api import push_notification, notify_admins
 from .pay_api import paypal_start, paypal_return
 
+# ✅ ADDITIONS
+from .utili_geo import locate_from_session
+from .utili_tax import compute_order_taxes
+
 
 router = APIRouter(tags=["bookings"])
 
@@ -50,7 +54,6 @@ def redirect_to_flow(bk: Booking):
 # =====================================================
 # Create booking
 # =====================================================
-
 @router.post("/bookings")
 async def create_booking(
     request: Request,
@@ -86,7 +89,6 @@ async def create_booking(
     total_amount = days * item.price_per_day
 
     bk = Booking(
-        # ---- CORE ----
         item_id=item.id,
         renter_id=user.id,
         owner_id=item.owner_id,
@@ -96,13 +98,11 @@ async def create_booking(
         price_per_day_snapshot=item.price_per_day,
         total_amount=total_amount,
         status="requested",
-        
-        # ---- PAYPAL MANUAL FLOW (IMPORTANT) ----
+
         payment_provider="paypal",
         payment_status="pending",
         online_status="created",
 
-        # ---- FINANCIAL NOT NULL (MANDATORY) ----
         platform_fee=0,
         rent_amount=total_amount,
         hold_deposit_amount=0,
@@ -113,7 +113,6 @@ async def create_booking(
         amount_display=total_amount,
         amount_paid_cents=0,
 
-        # ---- FLAGS ----
         rent_paid=False,
         security_paid=False,
         security_amount=0,
@@ -122,7 +121,6 @@ async def create_booking(
         payout_executed=False,
         owner_due_amount=0,
 
-        # ---- TIMELINE ----
         timeline_created_at=datetime.utcnow(),
     )
 
@@ -154,6 +152,42 @@ def booking_flow(
     require_auth(user)
     bk = require_booking(db, booking_id)
 
+    # ===============================
+    # FORCE GEO LOCATION
+    # ===============================
+    geo = locate_from_session(request)
+    if not geo.get("country") or not geo.get("region"):
+        return RedirectResponse(
+            url=f"/geo/set?next=/bookings/flow/{bk.id}",
+            status_code=303
+        )
+
+    # ===============================
+    # ORDER SUMMARY CALCULATION
+    # ===============================
+    rent = bk.total_amount
+
+    sevor_fee = round(rent * 0.01, 2)
+
+    tax_base = rent + sevor_fee
+
+    tax_result = compute_order_taxes(
+        subtotal=tax_base,
+        geo={
+            "country": geo.get("country"),
+            "sub": geo.get("region"),
+        }
+    )
+
+    tax_total = tax_result.get("total", 0)
+
+    processing_fee = round(rent * 0.029 + 0.30, 2)
+
+    grand_total = round(
+        rent + sevor_fee + tax_total + processing_fee,
+        2
+    )
+
     item = db.get(Item, bk.item_id)
     owner = db.get(User, bk.owner_id)
     renter = db.get(User, bk.renter_id)
@@ -183,6 +217,14 @@ def booking_flow(
         "dispute_window_hours": DISPUTE_WINDOW_HOURS,
         "session_user": request.session.get("user"),
 
+        # ✅ NEW VALUES
+        "rent": rent,
+        "sevor_fee": sevor_fee,
+        "tax_lines": tax_result.get("lines", []),
+        "tax_total": tax_total,
+        "processing_fee": processing_fee,
+        "grand_total": grand_total,
+        "geo": geo,
     }
 
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
@@ -194,7 +236,7 @@ def booking_flow(
 def owner_decision_route(
     booking_id: int,
     decision: Literal["accepted", "rejected"] = Form(...),
-    deposit_amount: float = Form(0),   # ✅ هذا هو الاسم الصحيح
+    deposit_amount: float = Form(0),
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
@@ -212,7 +254,6 @@ def owner_decision_route(
     bk.status = "accepted"
     bk.accepted_at = datetime.utcnow()
 
-    # 🔥 الحفظ الصحيح
     bk.security_amount = deposit_amount
     bk.deposit_amount = int(deposit_amount)
     bk.hold_deposit_amount = int(deposit_amount)
@@ -327,7 +368,6 @@ def booking_new_page(
     item_cur = (item.currency or "CAD").upper()
     disp_cur = display_currency(request)
 
-    # ✅ SAFE PRICE DISPLAY (NO FX STATE)
     disp_price = item.price_per_day
 
     today = date.today()
@@ -335,23 +375,16 @@ def booking_new_page(
     end_default = today + timedelta(days=1)
 
     ctx = {
-    "request": request,
-    "user": user,
+        "request": request,
+        "user": user,
+        "session_user": request.session.get("user"),
+        "display_currency": disp_cur,
+        "item": item,
+        "disp_price": disp_price,
+        "item_currency": item_cur,
+        "start_default": start_default,
+        "end_default": end_default,
+        "days_default": 1,
+    }
 
-    # ✅ هذا هو السطر المهم
-    "session_user": request.session.get("user"),
-
-    "display_currency": disp_cur,
-    "item": item,
-    "disp_price": disp_price,
-    "item_currency": item_cur,
-    "start_default": start_default,
-    "end_default": end_default,
-    "days_default": 1,
-}
-
-
-    return request.app.templates.TemplateResponse(
-        "booking_new.html",
-        ctx
-    )
+    return request.app.templates.TemplateResponse("booking_new.html", ctx)
