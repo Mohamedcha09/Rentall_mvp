@@ -810,7 +810,7 @@ a.btn.disabled{
       </div>
       {% endif %}
 
-      {% if renter_reviews_count > 0 %}
+      {% if renter_reviews_count|default(0) > 0 %}
       <div class="small" style="color:#f59e0b;font-weight:600;">
         ⭐ {{ renter_reviews_avg }}/5
         <span style="opacity:.6;">({{ renter_reviews_count }} reviews)</span>
