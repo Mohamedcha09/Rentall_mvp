@@ -1,4 +1,3 @@
-# app/pay_api.py
 from __future__ import annotations
 
 import os
@@ -14,6 +13,10 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from .models import Booking, User
 from .notifications_api import push_notification
+
+# ✅ نستخدم نفس منطق الضرائب
+from .utili_geo import locate_from_session
+from .utili_tax import compute_order_taxes
 
 router = APIRouter(tags=["payments"])
 
@@ -49,14 +52,14 @@ def flow_redirect(bk: Booking, flag: str):
     )
 
 # =====================================================
-# PAYPAL CORE
+# PayPal core
 # =====================================================
 
 PAYPAL_BASE = "https://api-m.sandbox.paypal.com"
 
 def paypal_get_token() -> str:
     client_id = os.getenv("PAYPAL_CLIENT_ID")
-    secret = os.getenv("PAYPAL_CLIENT_SECRET")  # ✅ هنا الإصلاح
+    secret = os.getenv("PAYPAL_CLIENT_SECRET")
 
     if not client_id or not secret:
         raise RuntimeError("PayPal credentials missing")
@@ -140,6 +143,45 @@ def paypal_capture(order_id: str):
     return r.json()
 
 # =====================================================
+# NEW: compute full payable amount (rent + fees + taxes)
+# =====================================================
+
+def compute_grand_total_for_paypal(request: Request, bk: Booking) -> float:
+    """
+    يحسب نفس Total الذي يظهر في Order summary:
+    Rent + Sevor 1% + Taxes + Processing fee
+    """
+    geo = locate_from_session(request)
+    if not geo.get("country") or not geo.get("region"):
+        raise HTTPException(status_code=400, detail="Missing geo location")
+
+    rent = float(bk.total_amount or 0)
+
+    # Sevor fee 1%
+    sevor_fee = round(rent * 0.01, 2)
+
+    # Taxes (تُحسب على rent + sevor fee)
+    tax_base = rent + sevor_fee
+    tax_result = compute_order_taxes(
+        subtotal=tax_base,
+        geo={
+            "country": geo.get("country"),
+            "sub": geo.get("region"),
+        },
+    )
+    tax_total = float(tax_result.get("total", 0))
+
+    # Processing fee (تقريب Stripe style)
+    processing_fee = round(rent * 0.029 + 0.30, 2)
+
+    grand_total = round(
+        rent + sevor_fee + tax_total + processing_fee,
+        2
+    )
+
+    return grand_total
+
+# =====================================================
 # START
 # =====================================================
 
@@ -147,6 +189,7 @@ def paypal_capture(order_id: str):
 def paypal_start(
     booking_id: int,
     type: Literal["rent", "securityfund"],
+    request: Request,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
@@ -159,11 +202,15 @@ def paypal_start(
     if type == "rent":
         if bk.rent_paid:
             raise HTTPException(status_code=400)
-        amount = bk.total_amount
+
+        # ✅ هنا التغيير المهم
+        amount = compute_grand_total_for_paypal(request, bk)
+
     else:
+        # Security fund — بدون ضرائب
         if bk.security_amount <= 0 or bk.security_paid:
             raise HTTPException(status_code=400)
-        amount = bk.security_amount
+        amount = float(bk.security_amount)
 
     approval_url = paypal_create_order(
         booking=bk,
