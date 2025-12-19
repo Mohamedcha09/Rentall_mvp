@@ -47,6 +47,7 @@
             </label>
           </div>
 
+          {# رموز العملات #}
           {% set symbols = {"CAD":"CAD", "USD":"USD", "EUR":"EUR"} %}
           {% set symbol = symbols.get(display_currency, "") %}
 
@@ -61,9 +62,7 @@
 
         <div class="col-12 d-flex justify-content-end gap-2 mt-3">
           <a href="/items/{{ item.id }}" class="btn btn-light">Back</a>
-          <button id="bookingContinue" class="btn btn-primary" type="submit">
-            Continue
-          </button>
+          <button id="bookingContinue" class="btn btn-primary" type="submit">Continue</button>
         </div>
 
       </form>
@@ -74,44 +73,27 @@
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("bookingCreateForm");
-  const btn  = document.getElementById("bookingContinue");
+  const btn  = document.getElementById("bookingContinue") || form?.querySelector('button[type="submit"]');
   if (!form || !btn) return;
 
-  btn.addEventListener("click", function (e) {
+  form.addEventListener("submit", (e) => {
     e.preventDefault();
 
     if (!navigator.geolocation) {
+      alert("⚠️ المتصفح لا يدعم تحديد الموقع الجغرافي.");
       form.submit();
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      async function success(pos) {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-
-        try {
-          await fetch(`/geo/set?lat=${lat}&lon=${lon}`, {
-            method: "GET",
-            credentials: "same-origin"
-          });
-        } catch (err) {
-          console.warn("Geo save failed");
-        }
-
-        // ✅ نكمل الحجز دائمًا
-        form.submit();
-      },
-      function error() {
-        // ❌ رفض الموقع → اختيار يدوي
-        window.location.href = "/geo/pick";
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 8000,
-        maximumAge: 0
-      }
-    );
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const { latitude, longitude } = pos.coords;
+      try {
+        await fetch(`/api/geo/set?lat=${latitude}&lon=${longitude}`, { method: "POST" });
+      } catch (_) {}
+      form.submit();
+    }, () => {
+      alert("❌ لا يمكن المتابعة بدون تفعيل الموقع.");
+    }, { enableHighAccuracy: true });
   });
 });
 </script>
