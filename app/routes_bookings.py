@@ -210,6 +210,8 @@ def booking_flow(
         "processing_fee": processing_fee,
         "grand_total": grand_total,
         "geo": geo,
+        "session_user": request.session.get("user")
+
     }
 
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
