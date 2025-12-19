@@ -1,101 +1,158 @@
-{# app/templates/booking_new.html #}
 {% extends "base.html" %}
-
 {% block content %}
 
-{% set item_cur = (item.currency or 'CAD')|upper %}
+<h3 class="mb-3">Booking: {{ item.title }}</h3>
 
-<div class="container" style="max-width:840px">
+<div class="card">
+  <div class="card-body">
 
-  <h3 class="mb-3">Booking: {{ item.title }}</h3>
+    <!-- ✅ BOOKING FORM -->
+    <form method="post" action="/bookings" id="booking-form">
+      <input type="hidden" name="item_id" value="{{ item.id }}">
 
-  {% if request.query_params.get('err') == 'dates' %}
-    <div class="alert alert-danger">Please choose valid start and end dates.</div>
-  {% endif %}
-
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <form id="bookingCreateForm" method="post" action="/bookings" class="row g-3">
-
-        <input type="hidden" name="item_id" value="{{ item.id }}">
-
-        <div class="col-12 col-md-6">
-          <label class="form-label">From</label>
-          <input type="date" name="start_date" class="form-control" required value="{{ start_default }}">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Start date</label>
+          <input type="date" name="start_date" id="start_date" class="form-control" required>
         </div>
 
-        <div class="col-12 col-md-6">
-          <label class="form-label">To</label>
-          <input type="date" name="end_date" class="form-control" required value="{{ end_default }}">
-        </div>
-
-        <div class="col-12 col-md-6">
-          <label class="form-label">Number of days</label>
-          <input type="number" name="days" class="form-control" min="1" value="{{ days_default }}" required>
+        <div class="col-md-6">
+          <label class="form-label">End date</label>
+          <input type="date" name="end_date" id="end_date" class="form-control" required>
         </div>
 
         <div class="col-12">
-          <label class="form-label d-block">Payment method</label>
-          <div class="d-flex flex-column gap-2">
-            <label class="form-check">
-              <input class="form-check-input" type="radio" name="pay_method" value="online" checked>
-              <span class="form-check-label">Online (via the site)</span>
-            </label>
-            <label class="form-check">
-              <input class="form-check-input" type="radio" name="pay_method" value="cash">
-              <span class="form-check-label">Cash on pickup</span>
-            </label>
-          </div>
-
-          {# رموز العملات #}
-          {% set symbols = {"CAD":"CAD", "USD":"USD", "EUR":"EUR"} %}
-          {% set symbol = symbols.get(display_currency, "") %}
-
-          <div class="form-text mt-2">
-            Current daily price:
-            <strong>
-              {{ "%.2f"|format(disp_price) }}
-              <span style="font-weight:700;"> {{ symbol }}</span>
-            </strong>
-          </div>
+          <label class="form-label">Note (optional)</label>
+          <textarea name="note" class="form-control" rows="2"></textarea>
         </div>
 
-        <div class="col-12 d-flex justify-content-end gap-2 mt-3">
-          <a href="/items/{{ item.id }}" class="btn btn-light">Back</a>
-          <button id="bookingContinue" class="btn btn-primary" type="submit">Continue</button>
+        <div class="col-12">
+          <div id="availability_hint" class="alert alert-warning" style="display:none;"></div>
         </div>
+      </div>
 
-      </form>
-    </div>
+      <div class="d-flex gap-2 mt-3">
+        <button type="submit" class="btn btn-success" id="submit_btn">
+          Submit booking request
+        </button>
+        <a href="/items/{{ item.id }}" class="btn btn-outline-light">Back</a>
+      </div>
+    </form>
+
   </div>
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("bookingCreateForm");
-  const btn  = document.getElementById("bookingContinue") || form?.querySelector('button[type="submit"]');
-  if (!form || !btn) return;
+(function(){
 
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
+  const form    = document.getElementById('booking-form');
+  const startEl = document.getElementById('start_date');
+  const endEl   = document.getElementById('end_date');
+  const hint    = document.getElementById('availability_hint');
+  const btn     = document.getElementById('submit_btn');
 
-    if (!navigator.geolocation) {
-      alert("⚠️ المتصفح لا يدعم تحديد الموقع الجغرافي.");
-      form.submit();
+  const today = new Date().toISOString().slice(0,10);
+  startEl.min = today;
+  endEl.min   = today;
+
+  let blocked = [];
+
+  fetch(`/api/items/{{ item.id }}/booked`, { credentials: 'include' })
+    .then(r => r.ok ? r.json() : { blocked: [] })
+    .then(j => blocked = j.blocked || [])
+    .catch(() => blocked = []);
+
+  function parse(d){
+    return new Date(d + "T00:00:00");
+  }
+
+  function overlaps(a1, a2, b1, b2){
+    return a1 <= b2 && a2 >= b1;
+  }
+
+  function checkDates(){
+    hint.style.display = 'none';
+    btn.disabled = false;
+
+    if(!startEl.value || !endEl.value) return true;
+
+    const s = parse(startEl.value);
+    const e = parse(endEl.value);
+
+    if(e < s){
+      hint.textContent = "End date cannot be before start date.";
+      hint.style.display = 'block';
+      btn.disabled = true;
+      return false;
+    }
+
+    for(const r of blocked){
+      if(overlaps(s, e, parse(r.start), parse(r.end))){
+        hint.textContent = "Selected dates overlap with another booking.";
+        hint.style.display = 'block';
+        btn.disabled = true;
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  startEl.addEventListener('change', checkDates);
+  endEl.addEventListener('change', checkDates);
+
+  /* ===========================
+     GEOLOCATION FLOW (FIXED)
+     =========================== */
+  form.addEventListener('submit', function(e){
+
+    if(!checkDates()){
+      e.preventDefault();
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      const { latitude, longitude } = pos.coords;
-      try {
-        await fetch(`/api/geo/set?lat=${latitude}&lon=${longitude}`, { method: "POST" });
-      } catch (_) {}
-      form.submit();
-    }, () => {
-      alert("❌ لا يمكن المتابعة بدون تفعيل الموقع.");
-    }, { enableHighAccuracy: true });
+    if(!navigator.geolocation){
+      return;
+    }
+
+    e.preventDefault();
+    btn.disabled = true;
+
+    navigator.geolocation.getCurrentPosition(
+
+      // ✅ USER ALLOWED LOCATION
+      function success(pos){
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+
+        // ⚠️ IMPORTANT:
+        // /geo/set IS NOT JSON API
+        // we just call it to save session, then submit form
+        fetch(`/geo/set?lat=${lat}&lon=${lon}`, {
+          method: "GET",
+          credentials: "include"
+        })
+        .finally(() => {
+          btn.disabled = false;
+          form.submit();
+        });
+      },
+
+      // ❌ USER DENIED LOCATION
+      function error(){
+        const next = encodeURIComponent(location.pathname + location.search);
+        location.href = "/geo/pick?next=" + next;
+      },
+
+      {
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 0
+      }
+    );
   });
-});
+
+})();
 </script>
 
 {% endblock %}
