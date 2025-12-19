@@ -153,12 +153,22 @@ def booking_flow(
     bk = require_booking(db, booking_id)
 
     # ===============================
-    # GEO CHECK (❌ region لم يعد إجباري)
+    # GEO CHECK ✅ (country لازم / region فقط ل CA و US)
     # ===============================
     geo = locate_from_session(request)
 
-    # ❗ فقط country إجباري
-    if not geo.get("country"):
+    country = (geo.get("country") or "").upper() if isinstance(geo, dict) else ""
+    region  = (geo.get("region") or "").upper() if isinstance(geo, dict) else ""
+
+    # ✅ country إجباري دائمًا
+    if not country:
+        return RedirectResponse(
+            url=f"/geo/pick?next=/bookings/flow/{bk.id}",
+            status_code=303
+        )
+
+    # ✅ region إجباري فقط لكندا/أمريكا (باش الضرائب تكون صحيحة)
+    if country in ("CA", "US") and not region:
         return RedirectResponse(
             url=f"/geo/pick?next=/bookings/flow/{bk.id}",
             status_code=303
@@ -174,8 +184,8 @@ def booking_flow(
     tax_result = compute_order_taxes(
         subtotal=tax_base,
         geo={
-            "country": geo.get("country"),
-            "sub": geo.get("region"),  # قد تكون None ← مسموح
+            "country": country,
+            "sub": region,  # هنا أصبح مضمون لـ CA/US، وممكن يكون فارغ لغيرهم
         }
     )
 
