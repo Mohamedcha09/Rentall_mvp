@@ -40,42 +40,40 @@
 
   </div>
 </div>
-
 <script>
-(function(){
-
+(function () {
   const form = document.getElementById("booking-form");
-  const btn  = document.getElementById("submit_btn");
+  const btn = document.getElementById("submit_btn");
 
-  form.addEventListener("submit", function(e){
+  form.addEventListener("submit", function (e) {
     if (!navigator.geolocation) {
-      return; // نكمل مباشرة
+      form.submit();
+      return;
     }
 
     e.preventDefault();
     btn.disabled = true;
 
     navigator.geolocation.getCurrentPosition(
-      function success(pos){
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-
-        fetch(`/geo/set?lat=${lat}&lon=${lon}`, {
-          method: "GET",
+      function success(pos) {
+        // ✅ نحن في كندا → نعطي loc صريح
+        // لاحقًا يمكن تطويره
+        fetch("/geo/set?loc=CA", {
           credentials: "include"
         }).finally(() => {
           btn.disabled = false;
           form.submit();
         });
       },
-
-      function error(){
-        // ❌ لا redirect
-        // ❌ لا صفحة زرقاء
-        btn.disabled = false;
-        form.submit();
+      function error() {
+        // fallback آمن
+        fetch("/geo/set?loc=WORLD", {
+          credentials: "include"
+        }).finally(() => {
+          btn.disabled = false;
+          form.submit();
+        });
       },
-
       {
         enableHighAccuracy: true,
         timeout: 8000,
@@ -83,8 +81,8 @@
       }
     );
   });
-
 })();
 </script>
+
 
 {% endblock %}
