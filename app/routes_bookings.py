@@ -140,10 +140,6 @@ async def create_booking(
     )
 
     return redirect_to_flow(bk)  
-
-# =====================================================
-# Booking flow page  ✅ FIX: GEO ONLY FOR RENTER
-# =====================================================
 @router.get("/bookings/flow/{booking_id}")
 def booking_flow(
     booking_id: int,
@@ -158,75 +154,32 @@ def booking_flow(
     owner = db.get(User, bk.owner_id)
     renter = db.get(User, bk.renter_id)
 
-    # ===============================
-    # GEO CHECK: ONLY FOR RENTER
-    # ===============================
-    geo = locate_from_session(request)
-    country = (geo.get("country") or "").upper() if isinstance(geo, dict) else ""
-    region  = (geo.get("region") or "").upper() if isinstance(geo, dict) else ""
+    geo = locate_from_session(request) or {}
+    country = (geo.get("country") or "").upper()
+    region  = (geo.get("region") or "").upper()
 
-    # ✅ إذا كان OWNER: لا نطلب Geo نهائيًا
-    if is_owner(user, bk):
-        # نترك geo كما هو للعرض فقط (إن وُجد)، لكن لا نعمل redirect أبداً
-        pass
-    else:
-        # ✅ إذا كان RENTER: Geo إجباري للضرائب والدفع
-        if not country:
-            return RedirectResponse(
-                url=f"/geo/pick?next=/bookings/flow/{bk.id}",
-                status_code=303
-            )
-
-        # ✅ المقاطعة/الولاية مطلوبة فقط لـ CA و US
-        if country in ("CA", "US") and not region:
-            return RedirectResponse(
-                url=f"/geo/pick?next=/bookings/flow/{bk.id}",
-                status_code=303
-            )
-
-    # ===============================
-    # ORDER SUMMARY
-    # ===============================
     rent = bk.total_amount
     sevor_fee = round(rent * 0.01, 2)
 
     tax_lines = []
     tax_total = 0
+    processing_fee = 0
 
-    # ✅ الضرائب تُحسب فقط للـ RENTER (لأنه هو الذي سيدفع)
-    if is_owner(user, bk):
-        processing_fee = 0
-        grand_total = round(rent + sevor_fee, 2)
-    else:
+    # ✅ الضرائب فقط إذا كان RENTER ويوجد GEO
+    if is_renter(user, bk) and country:
         tax_base = rent + sevor_fee
-
         tax_result = compute_order_taxes(
             subtotal=tax_base,
-            geo={
-                "country": country,
-                "sub": region,
-            }
+            geo={"country": country, "sub": region}
         )
-
         tax_lines = tax_result.get("lines", [])
         tax_total = tax_result.get("total", 0)
         processing_fee = round(rent * 0.029 + 0.30, 2)
 
-        grand_total = round(
-            rent + sevor_fee + tax_total + processing_fee,
-            2
-        )
-
-    renter_reviews_count = 0
-    renter_reviews_avg = 0.0
-    if renter:
-        q = db.query(UserReview).filter(UserReview.target_user_id == renter.id)
-        renter_reviews_count = q.count()
-        if renter_reviews_count:
-            avg = db.query(func.avg(UserReview.stars)).filter(
-                UserReview.target_user_id == renter.id
-            ).scalar()
-            renter_reviews_avg = round(float(avg or 0), 1)
+    grand_total = round(
+        rent + sevor_fee + tax_total + processing_fee,
+        2
+    )
 
     ctx = {
         "request": request,
@@ -237,12 +190,6 @@ def booking_flow(
         "is_owner": is_owner(user, bk),
         "is_renter": is_renter(user, bk),
         "category_label": category_label,
-        "renter_reviews_count": renter_reviews_count,
-        "renter_reviews_avg": renter_reviews_avg,
-        "dispute_window_hours": DISPUTE_WINDOW_HOURS,
-        "session_user": request.session.get("user"),
-
-        # PRICING
         "rent": rent,
         "sevor_fee": sevor_fee,
         "tax_lines": tax_lines,
@@ -250,8 +197,6 @@ def booking_flow(
         "processing_fee": processing_fee,
         "grand_total": grand_total,
         "geo": geo,
-        "geo_country": country,
-        "geo_region": region,
     }
 
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)

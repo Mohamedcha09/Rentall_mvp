@@ -6,7 +6,6 @@
 <div class="card">
   <div class="card-body">
 
-    <!-- ✅ BOOKING FORM -->
     <form method="post" action="/bookings" id="booking-form">
       <input type="hidden" name="item_id" value="{{ item.id }}">
 
@@ -45,103 +44,36 @@
 <script>
 (function(){
 
-  const form    = document.getElementById('booking-form');
-  const startEl = document.getElementById('start_date');
-  const endEl   = document.getElementById('end_date');
-  const hint    = document.getElementById('availability_hint');
-  const btn     = document.getElementById('submit_btn');
+  const form = document.getElementById("booking-form");
+  const btn  = document.getElementById("submit_btn");
 
-  const today = new Date().toISOString().slice(0,10);
-  startEl.min = today;
-  endEl.min   = today;
-
-  let blocked = [];
-
-  fetch(`/api/items/{{ item.id }}/booked`, { credentials: 'include' })
-    .then(r => r.ok ? r.json() : { blocked: [] })
-    .then(j => blocked = j.blocked || [])
-    .catch(() => blocked = []);
-
-  function parse(d){
-    return new Date(d + "T00:00:00");
-  }
-
-  function overlaps(a1, a2, b1, b2){
-    return a1 <= b2 && a2 >= b1;
-  }
-
-  function checkDates(){
-    hint.style.display = 'none';
-    btn.disabled = false;
-
-    if(!startEl.value || !endEl.value) return true;
-
-    const s = parse(startEl.value);
-    const e = parse(endEl.value);
-
-    if(e < s){
-      hint.textContent = "End date cannot be before start date.";
-      hint.style.display = 'block';
-      btn.disabled = true;
-      return false;
-    }
-
-    for(const r of blocked){
-      if(overlaps(s, e, parse(r.start), parse(r.end))){
-        hint.textContent = "Selected dates overlap with another booking.";
-        hint.style.display = 'block';
-        btn.disabled = true;
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  startEl.addEventListener('change', checkDates);
-  endEl.addEventListener('change', checkDates);
-
-  /* ===========================
-     GEOLOCATION FLOW (FIXED)
-     =========================== */
-  form.addEventListener('submit', function(e){
-
-    if(!checkDates()){
-      e.preventDefault();
-      return;
-    }
-
-    if(!navigator.geolocation){
-      return;
+  form.addEventListener("submit", function(e){
+    if (!navigator.geolocation) {
+      return; // نكمل مباشرة
     }
 
     e.preventDefault();
     btn.disabled = true;
 
     navigator.geolocation.getCurrentPosition(
-
-      // ✅ USER ALLOWED LOCATION
       function success(pos){
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
 
-        // ⚠️ IMPORTANT:
-        // /geo/set IS NOT JSON API
-        // we just call it to save session, then submit form
         fetch(`/geo/set?lat=${lat}&lon=${lon}`, {
           method: "GET",
           credentials: "include"
-        })
-        .finally(() => {
+        }).finally(() => {
           btn.disabled = false;
           form.submit();
         });
       },
 
-      // ❌ USER DENIED LOCATION
       function error(){
-        const next = encodeURIComponent(location.pathname + location.search);
-        location.href = "/geo/pick?next=" + next;
+        // ❌ لا redirect
+        // ❌ لا صفحة زرقاء
+        btn.disabled = false;
+        form.submit();
       },
 
       {
