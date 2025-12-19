@@ -40,49 +40,6 @@
 
   </div>
 </div>
-<script>
-(function () {
-  const form = document.getElementById("booking-form");
-  const btn = document.getElementById("submit_btn");
-
-  form.addEventListener("submit", function (e) {
-    if (!navigator.geolocation) {
-      form.submit();
-      return;
-    }
-
-    e.preventDefault();
-    btn.disabled = true;
-
-    navigator.geolocation.getCurrentPosition(
-      function success(pos) {
-        // ✅ نحن في كندا → نعطي loc صريح
-        // لاحقًا يمكن تطويره
-        fetch("/geo/set?loc=CA", {
-          credentials: "include"
-        }).finally(() => {
-          btn.disabled = false;
-          form.submit();
-        });
-      },
-      function error() {
-        // fallback آمن
-        fetch("/geo/set?loc=WORLD", {
-          credentials: "include"
-        }).finally(() => {
-          btn.disabled = false;
-          form.submit();
-        });
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 8000,
-        maximumAge: 0
-      }
-    );
-  });
-})();
-</script>
 
 
 {% endblock %}
