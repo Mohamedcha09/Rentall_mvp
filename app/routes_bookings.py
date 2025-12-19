@@ -51,6 +51,8 @@ def is_owner(user: User, bk: Booking) -> bool:
 def redirect_to_flow(bk: Booking):
     return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
+
+
 # =====================================================
 # Create booking
 # =====================================================
@@ -65,16 +67,16 @@ async def create_booking(
     form = await request.form()
 
     item_id_raw = form.get("item_id")
-    start_raw = form.get("start_date")
-    end_raw = form.get("end_date")
+    start_raw   = form.get("start_date")
+    end_raw     = form.get("end_date")
 
     if not item_id_raw or not start_raw or not end_raw:
         raise HTTPException(status_code=400, detail="Missing booking data")
 
     try:
-        item_id = int(item_id_raw)
+        item_id    = int(item_id_raw)
         start_date = datetime.strptime(start_raw, "%Y-%m-%d").date()
-        end_date = datetime.strptime(end_raw, "%Y-%m-%d").date()
+        end_date   = datetime.strptime(end_raw, "%Y-%m-%d").date()
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid booking data")
 
@@ -137,10 +139,11 @@ async def create_booking(
         "booking",
     )
 
-    return redirect_to_flow(bk)
+    return redirect_to_flow(bk)  
+
 
 # =====================================================
-# Booking flow page  ✅ FIX HERE
+# Booking flow page  ✅ FINAL FIX
 # =====================================================
 @router.get("/bookings/flow/{booking_id}")
 def booking_flow(
@@ -153,21 +156,21 @@ def booking_flow(
     bk = require_booking(db, booking_id)
 
     # ===============================
-    # GEO CHECK ✅ (country لازم / region فقط ل CA و US)
+    # GEO CHECK (منطقي 100%)
     # ===============================
     geo = locate_from_session(request)
 
     country = (geo.get("country") or "").upper() if isinstance(geo, dict) else ""
     region  = (geo.get("region") or "").upper() if isinstance(geo, dict) else ""
 
-    # ✅ country إجباري دائمًا
+    # ✅ البلد إجباري دائمًا
     if not country:
         return RedirectResponse(
             url=f"/geo/pick?next=/bookings/flow/{bk.id}",
             status_code=303
         )
 
-    # ✅ region إجباري فقط لكندا/أمريكا (باش الضرائب تكون صحيحة)
+    # ✅ المقاطعة / الولاية فقط لـ CA و US
     if country in ("CA", "US") and not region:
         return RedirectResponse(
             url=f"/geo/pick?next=/bookings/flow/{bk.id}",
@@ -175,7 +178,7 @@ def booking_flow(
         )
 
     # ===============================
-    # ORDER SUMMARY CALCULATION
+    # ORDER SUMMARY
     # ===============================
     rent = bk.total_amount
     sevor_fee = round(rent * 0.01, 2)
@@ -185,7 +188,7 @@ def booking_flow(
         subtotal=tax_base,
         geo={
             "country": country,
-            "sub": region,  # هنا أصبح مضمون لـ CA/US، وممكن يكون فارغ لغيرهم
+            "sub": region,
         }
     )
 

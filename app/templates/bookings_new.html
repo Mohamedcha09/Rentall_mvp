@@ -5,7 +5,8 @@
 
 <div class="card">
   <div class="card-body">
-    <form method="post" action="/bookings/new" id="booking-form">
+    <!-- ✅ IMPORTANT: action لازم تكون /bookings -->
+    <form method="post" action="/bookings" id="booking-form">
       <input type="hidden" name="item_id" value="{{ item.id }}">
 
       <div class="row g-3">
@@ -31,7 +32,8 @@
       </div>
 
       <div class="d-flex gap-2 mt-3">
-        <button class="btn btn-success" id="submit_btn">Submit booking request</button>
+        <!-- ✅ IMPORTANT: type="submit" -->
+        <button type="submit" class="btn btn-success" id="submit_btn">Submit booking request</button>
         <a href="/items/{{ item.id }}" class="btn btn-outline-light">Back</a>
       </div>
     </form>
@@ -39,70 +41,111 @@
 </div>
 
 <script>
-  (function(){
-    const startEl = document.getElementById('start_date');
-    const endEl   = document.getElementById('end_date');
-    const hint    = document.getElementById('availability_hint');
-    const btn     = document.getElementById('submit_btn');
+(function(){
+  const form    = document.getElementById('booking-form');
+  const startEl = document.getElementById('start_date');
+  const endEl   = document.getElementById('end_date');
+  const hint    = document.getElementById('availability_hint');
+  const btn     = document.getElementById('submit_btn');
 
-    // Set minimum to today
-    const today = new Date().toISOString().slice(0,10);
-    startEl.min = today;
-    endEl.min   = today;
+  // Set minimum to today
+  const today = new Date().toISOString().slice(0,10);
+  startEl.min = today;
+  endEl.min   = today;
 
-    let blocked = []; // booked ranges {start,end}
+  let blocked = []; // booked ranges {start,end}
 
-    // Load booked ranges for this item
-    fetch(`/api/items/{{ item.id }}/booked`, { credentials: 'include' })
-      .then(r => r.ok ? r.json() : {blocked:[]})
-      .then(json => { blocked = json.blocked || []; })
-      .catch(() => { blocked = []; });
+  // Load booked ranges for this item
+  fetch(`/api/items/{{ item.id }}/booked`, { credentials: 'include' })
+    .then(r => r.ok ? r.json() : {blocked:[]})
+    .then(json => { blocked = json.blocked || []; })
+    .catch(() => { blocked = []; });
 
-    function parse(d){
-      try { return new Date(d + "T00:00:00"); } catch(e){ return null; }
+  function parse(d){
+    try { return new Date(d + "T00:00:00"); } catch(e){ return null; }
+  }
+
+  function overlaps(aStart, aEnd, bStart, bEnd){
+    return aStart <= bEnd && aEnd >= bStart;
+  }
+
+  function check(){
+    hint.style.display = 'none';
+    btn.disabled = false;
+
+    const s = startEl.value;
+    const e = endEl.value;
+    if(!s || !e) return true;
+
+    const sd = parse(s);
+    const ed = parse(e);
+    if(ed < sd){
+      hint.style.display = 'block';
+      hint.textContent = 'End date cannot be before start date.';
+      btn.disabled = true;
+      return false;
     }
 
-    function overlaps(aStart, aEnd, bStart, bEnd){
-      return aStart <= bEnd && aEnd >= bStart;
-    }
-
-    function check(){
-      hint.style.display = 'none';
-      btn.disabled = false;
-
-      const s = startEl.value;
-      const e = endEl.value;
-      if(!s || !e) return;
-
-      const sd = parse(s);
-      const ed = parse(e);
-      if(ed < sd){
+    // Conflict with booked ranges
+    for(const r of blocked){
+      const rs = parse(r.start);
+      const re = parse(r.end);
+      if(overlaps(sd, ed, rs, re)){
         hint.style.display = 'block';
-        hint.textContent = 'End date cannot be before start date.';
+        hint.textContent = 'The selected dates overlap with confirmed bookings. Please choose different dates.';
         btn.disabled = true;
-        return;
+        return false;
       }
-
-      // Conflict with booked ranges
-      for(const r of blocked){
-        const rs = parse(r.start);
-        const re = parse(r.end);
-        if(overlaps(sd, ed, rs, re)){
-          hint.style.display = 'block';
-          hint.textContent = 'The selected dates overlap with confirmed bookings. Please choose different dates.';
-          btn.disabled = true;
-          return;
-        }
-      }
-
-      // Reset to default (no conflict)
-      hint.style.display = 'none';
-      btn.disabled = false;
     }
 
-    startEl.addEventListener('change', check);
-    endEl.addEventListener('change', check);
-  })();
+    hint.style.display = 'none';
+    btn.disabled = false;
+    return true;
+  }
+
+  startEl.addEventListener('change', check);
+  endEl.addEventListener('change', check);
+
+  // ✅ GEOLOGATION BEFORE SUBMIT (هذا هو اللي يطلع Popup Allow/Refuse)
+  form.addEventListener('submit', function(e){
+    // إذا التواريخ غلط أو overlap → ما نكمل
+    if(!check()){
+      e.preventDefault();
+      return;
+    }
+
+    // لو ما عنده geolocation أصلاً → نكمل عادي
+    if(!navigator.geolocation){
+      return;
+    }
+
+    // نوقف الإرسال مؤقتًا حتى يطلع popup
+    e.preventDefault();
+    btn.disabled = true;
+
+    navigator.geolocation.getCurrentPosition(
+      function success(pos){
+        // ✅ المستخدم ضغط Autoriser
+        // ما نقدر نطلع country/region من lat/lon بدون reverse geocode
+        // فهنا نكمل الحجز مباشرة
+        btn.disabled = false;
+        form.submit();
+      },
+      function error(){
+        // ✅ المستخدم ضغط Refuser (أو فشل)
+        // نوديه لصفحة اختيار البلد يدويًا ثم يرجع لنفس الصفحة
+        const next = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = "/geo/pick?next=" + next;
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 0
+      }
+    );
+  });
+
+})();
 </script>
 
 {% endblock %}
