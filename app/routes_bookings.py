@@ -84,7 +84,7 @@ async def create_booking(
         raise HTTPException(status_code=400, detail="Invalid dates")
 
     item = db.get(Item, item_id)
-    if not item or item.owner_id == user.id:
+    if not item:
         raise HTTPException(status_code=400, detail="Invalid item")
 
     days = max(1, (end_date - start_date).days)
