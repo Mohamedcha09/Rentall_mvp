@@ -1,79 +1,2011 @@
-# app/payout_connect.py
+<!-- app/templates/base.html -->  
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
-from fastapi import APIRouter, Request, Depends, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy.orm import Session
+  {# عنوان ديناميكي + افتراضي محترم للسيو #}
+  <title>{{ title or "Sevor — Rent Anything Worldwide | Rent any car, tool or equipment" }}</title>
 
-from .database import get_db
-from .models import User, UserPayoutMethod
+  <meta name="description" content="Sevor is the global marketplace where you can rent anything — cars, tools, electronics, equipment and more. Safe, fast, and secure rentals across Canada, USA and Europe.">
 
-router = APIRouter()
+  {# canonical لا نجعله دائماً /welcome على كل الصفحات #}
+  {% if request %}
+    {% if request.url.path == '/welcome' %}
+      <link rel="canonical" href="https://sevor.net/welcome">
+    {% else %}
+      <link rel="canonical" href="{{ request.url }}">
+    {% endif %}
+  {% else %}
+    <link rel="canonical" href="https://sevor.net">
+  {% endif %}
 
-# =====================================================
-# Helpers
-# =====================================================
-def get_current_user(request: Request, db: Session) -> User | None:
-    sess = request.session.get("user")
-    if not sess:
-        return None
-    return db.query(User).get(sess.get("id"))
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Sevor",
+    "url": "https://sevor.net",
+    "logo": "https://sevor.net/static/img/sevor-logo.png"
+  }
+  </script>
 
-# =====================================================
-# GET – Payout settings page
-# =====================================================
-@router.get("/payout/settings", response_class=HTMLResponse)
-def payout_settings(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
-    if not user:
-        return RedirectResponse("/login", status_code=303)
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Sevor",
+    "url": "https://sevor.net",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://sevor.net/search?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
 
-    payout = (
-        db.query(UserPayoutMethod)
-        .filter(UserPayoutMethod.user_id == user.id, UserPayoutMethod.is_active == True)
-        .first()
-    )
 
-    return request.app.templates.TemplateResponse(
-        "payout_connect.html",
-        {
-            "request": request,
-            "user": user,
-            "payout": payout,
-        },
-    )
 
-# =====================================================
-# POST – Save payout preference
-# =====================================================
-@router.post("/payout/settings")
-def save_payout_settings(
-    request: Request,
-    country: str = Form(...),
-    method: str = Form(...),
-    destination: str = Form(...),
-    currency: str = Form(...),
-    db: Session = Depends(get_db),
-):
-    user = get_current_user(request, db)
-    if not user:
-        return RedirectResponse("/login", status_code=303)
 
-    # Disable previous methods
-    db.query(UserPayoutMethod).filter(
-        UserPayoutMethod.user_id == user.id,
-        UserPayoutMethod.is_active == True
-    ).update({"is_active": False})
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
-    payout = UserPayoutMethod(
-        user_id=user.id,
-        method=method,
-        country=country,
-        currency=currency,
-        destination=destination,
-        is_active=True,
-    )
+  <!-- External CSS -->
+  <link href="/static/style.css?v=9" rel="stylesheet">
 
-    db.add(payout)
-    db.commit()
+<!-- Primary Logo for Google -->
+<link rel="icon" href="/static/favicon.ico" type="image/x-icon">
 
-    return RedirectResponse("/payout/settings?saved=1", status_code=303)
+<!-- PNG icons -->
+<link rel="icon" type="image/png" href="/static/img/sevor-logo.png" sizes="512x512">
+<link rel="apple-touch-icon" href="/static/img/sevor-logo.png">
+
+<!-- For Google Search -->
+<meta property="og:image" content="https://sevor.net/static/img/sevor-logo.png">
+<meta itemprop="image" content="https://sevor.net/static/img/sevor-logo.png">
+
+
+  <!-- PWA -->
+  <link rel="manifest" href="{{ url_for('static', path='manifest.json') }}">
+  <meta name="theme-color" content="#ffffff">
+  <script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(reg => reg.unregister());
+  });
+}
+</script>
+
+
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --text:#111827; --muted:#6b7280; --panel:#f8fafc; --surface:#ffffff; --border:rgba(0,0,0,.08);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-bottom-legacy: constant(safe-area-inset-bottom, 0px);
+      --tabbar-lift: 20px; /* lift bottom bar a bit */
+    }
+    body{ color:var(--text); background:#f4f6fb; }
+    [data-theme="dark"]{
+      --text:#e5e7eb; --muted:#9ca3af; --panel:#0b1220; --surface:#0f172a; --border:rgba(255,255,255,.12);
+      background:#0b1020;
+    }
+
+    /* Topbar */
+    .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; }
+
+    /* Searchbar (item + city) */
+    .searchbar{ position:relative; max-width:760px; margin-inline:auto; }
+    .searchbar-wrap{
+      display:flex; align-items:center; gap:10px;
+      background:#fff; border:1px solid var(--border);
+      border-radius:999px; padding:10px 14px;
+      box-shadow:0 6px 20px rgba(0,0,0,.06);
+    }
+    body[data-theme="dark"] .searchbar-wrap{
+      background:rgba(255,255,255,.06); border-color:var(--border); backdrop-filter:saturate(120%) blur(6px);
+    }
+    .searchbar i.bi-search{font-size:18px; opacity:.7}
+    .searchbar input{ border:0; outline:0; background:transparent; color:inherit; font-size:16px; }
+    .searchbar .field{ flex:1; display:flex; align-items:center; gap:10px; }
+    .searchbar .sep{ width:1px; height:24px; background:var(--border); }
+    .searchbar .k{ opacity:.55; font-size:.9rem; white-space:nowrap }
+
+    /* City suggestions panel */
+    .city-suggest{
+      position:absolute; inset-inline:14px; top: calc(100% + 8px);
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius:14px;
+      box-shadow: 0 14px 36px rgba(0,0,0,.18); z-index:2200; overflow:hidden;
+      display:none; max-height:320px; overflow:auto;
+    }
+    .city-suggest .row{ padding:10px 12px; cursor:pointer; display:flex; gap:8px; align-items:baseline; }
+    .city-suggest .row:hover{ background: color-mix(in oklab, var(--text) 8%, transparent); }
+    .city-suggest .sub{ opacity:.6; font-size:.85em }
+
+    /* Your typeahead (accounts/items) */
+    .typeahead{
+      position:absolute; inset-inline:0; top: calc(100% + .25rem);
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius:.75rem;
+      box-shadow: 0 14px 36px rgba(0,0,0,.18); z-index:2000; overflow:hidden;
+    }
+    .typeahead.d-none{ display:none; }
+    .typeahead-group{ padding:.45rem .75rem; font-size:.85rem; opacity:.7; border-bottom:1px solid var(--border) }
+    .typeahead-item{ padding:.65rem .8rem; display:flex; gap:.6rem; align-items:center; cursor:pointer; }
+    .typeahead-item:hover, .typeahead-item.active{ background: rgba(124,92,255,.12); }
+    .typeahead-item .k{ opacity:.65; font-size:.85em }
+
+    /* Bell */
+    #notifOpen{ position: relative; }
+    #notifOpen .notif-count{
+      position:absolute; top:-6px; inset-inline-end:-6px; background:#d43aff; color:#fff;
+      font-size:12px; line-height:18px; min-width:18px; height:18px; padding:0 4px; border-radius:10px; text-align:center;
+    }
+    #notifOpen .notif-ping{
+      position:absolute; top:-2px; inset-inline-end:-2px; width:8px; height:8px; background:#d43aff; border-radius:50%;
+      box-shadow:0 0 0 6px rgba(212,58,255,.18);
+    }
+
+    .sidebar{ width:268px; flex:0 0 268px; border-inline-end:1px solid var(--border); background:var(--surface); }
+    .sidebar[data-collapsed="true"]{ width:84px; flex-basis:84px; }
+    @media (max-width:991.98px){ .sidebar{ display:none !important; } }
+
+    /* Global bottom space (to keep content above the tab bar) */
+    .has-tabbar{ padding-bottom: calc(92px + max(var(--safe-bottom), var(--safe-bottom-legacy))); }
+
+
+    /* Side notifications panel */
+    .notif-panel{
+      position: fixed; top:0; inset-inline-end:-420px; width:360px; max-width:88vw; height:100vh;
+      background: var(--surface); color: var(--text);
+      border-inline-start:1px solid var(--border);
+      box-shadow: -14px 0 36px rgba(0,0,0,.25);
+      z-index:2300; display:flex; flex-direction:column; transition:.25s ease;
+    }
+    .notif-panel.is-open{ inset-inline-end:0; }
+    .notif-panel__header{ padding:12px 14px; border-bottom:1px solid var(--border); }
+    .notif-panel__body{ padding:10px 14px; overflow:auto; }
+    .notif-row{ display:block; padding:10px 8px; text-decoration:none; color:inherit; border-bottom:1px solid var(--border); border-radius:8px; }
+    .notif-row:hover{ background: color-mix(in oklab, var(--surface) 92%, transparent); }
+    .scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:2200; opacity:0; pointer-events:none; transition:.2s; }
+
+    /* Top tabs (mobile only) — centered + purple bottom bar */
+    .m-top-tabs{
+      display:none !important;
+      justify-content:center; align-items:flex-end; gap:28px;
+      padding:0 14px; margin-top:6px;
+      border-bottom:1px solid var(--border); background:transparent;
+    }
+    .m-top-tabs .m-tab{
+      position:relative; display:inline-flex; align-items:center;
+      background:transparent !important; border:0 !important; box-shadow:none !important; border-radius:0 !important;
+      padding:12px 2px 14px; font-weight:800; font-size:15px; color:var(--muted); text-decoration:none; transition:color .15s ease;
+    }
+    .m-top-tabs .m-tab:hover{ color:color-mix(in oklab, var(--text) 60%, transparent); }
+    .m-top-tabs .m-tab.is-active{ color:var(--text); }
+    .m-top-tabs .m-tab::after{
+      content:""; position:absolute; left:0; right:0; bottom:-1px; height:3px; background:#6C63FF; border-radius:3px;
+      opacity:0; transform:scaleX(.25); transform-origin:center; transition:transform .18s ease, opacity .12s ease;
+    }
+    .m-top-tabs .m-tab.is-active::after{ opacity:1; transform:scaleX(1); }
+    [data-theme="dark"] .m-top-tabs{ border-bottom:1px solid var(--border); }
+    [data-theme="dark"] .m-top-tabs .m-tab{ color:#9ca3af; }
+    [data-theme="dark"] .m-top-tabs .m-tab.is-active{ color:#e5e7eb; }
+
+    @media (max-width:768px){
+      .m-top-tabs{ display:flex !important; }
+    }
+  </style>
+
+  <!-- Remove dropdown caret triangle -->
+  <style>
+    .dropdown-toggle::after,
+    .btn.dropdown-toggle::after,
+    button.dropdown-toggle::after {
+      display: none !important;
+      content: "" !important;
+      border: 0 !important;
+      margin: 0 !important;
+    }
+  </style>
+
+  <!-- Bottom Sheet (profile) mobile only -->
+  <style>
+    @media (max-width: 768px){
+      .sheet-scrim{
+        position:fixed; inset:0; background:rgba(0,0,0,.35);
+        z-index:2147483646; opacity:0; pointer-events:none; transition:.2s ease;
+      }
+      .sheet{
+        position:fixed; left:0; right:0; bottom:0;
+        height:min(78vh, 660px);
+        background:#fff; color:var(--text);
+        border-radius:18px 18px 0 0;
+        box-shadow:0 -18px 40px rgba(0,0,0,.28);
+        z-index:2147483647;
+        transform:translateY(100%);
+        transition:transform .24s ease;
+        display:flex; flex-direction:column;
+        padding-bottom:calc(8px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px)));
+      }
+      .sheet.is-open{ transform:translateY(0); }
+      .sheet-scrim.is-open{ opacity:1; pointer-events:auto; }
+
+      .sheet__drag{ width:46px; height:5px; border-radius:10px; background:#d1d5db; margin:8px auto 6px; }
+      .sheet__header{ padding:6px 16px 10px; display:flex; align-items:center; justify-content:space-between; }
+      .sheet__profile{ display:flex; align-items:center; gap:10px; }
+      .sheet__avatar{ width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; background: #f2f3f7; font-weight:800; }
+      .sheet__name{ font-weight:800; line-height:1.1; }
+      .sheet__handle{ font-size:.9rem; opacity:.7; }
+      .sheet__share{ background:#6C63FF; color:#fff; border:0; padding:.4rem .7rem; border-radius:999px; font-weight:700 }
+
+      .sheet__body{ padding:4px 10px 10px; overflow:auto; }
+      .sheet__list{ list-style:none; margin:0; padding:0; }
+      .sheet__item{
+        display:flex; align-items:center; justify-content:space-between;
+        padding:14px 10px; border-bottom:1px solid var(--border);
+        text-decoration:none; color:inherit;
+      }
+      .sheet__item i{ font-size:18px; opacity:.8; margin-inline-start:6px; }
+    }
+    @media (min-width: 769px){
+      #profileSheet, #profileScrim{ display:none !important; }
+    }
+  </style>
+
+  <!-- Circular icon pack (PNG) -->
+  <style id="ic-pack">
+    :root{ --ic: 28px; }
+    .ic{
+      width:var(--ic); height:var(--ic);
+      display:inline-block; position:relative;
+      border-radius:50%; overflow:hidden; vertical-align:-3px; flex:0 0 var(--ic);
+    }
+    .ic::after{
+      content:""; position:absolute; inset:0;
+      background-position:center; background-repeat:no-repeat; background-size:88%; image-rendering:auto;
+    }
+    [data-theme="dark"] .ic{ box-shadow:0 0 0 1px rgba(255,255,255,.08) inset; }
+
+    .ic--support  { --img: url('/static/iconblossom/sfer.png'); }
+    .ic--profile  { --img: url('/static/iconblossom/vert.png'); }
+    .ic--fav      { --img: url('/static/iconblossom/mov.png'); }
+    .ic--settings { --img: url('/static/iconblossom/ramdi.png'); }
+    .ic--logout   { --img: url('/static/iconblossom/roge.png'); }
+    .ic--cc       { --img: url('/static/iconblossom/cc.png'); }
+    .ic::after{ background-image: var(--img); }
+
+    /* Desktop tweaks */
+    .ic--support  { --ic: 34px; }
+    .ic--profile  { --ic: 30px; }
+    .ic--fav      { --ic: 28px; }
+    .ic--settings { --ic: 28px; }
+    .ic--logout   { --ic: 32px; }
+    .ic--cc       { --ic: 36px; }
+
+    /* Mobile */
+    @media (max-width:768px){
+      .ic--support  { --ic: 38px; }
+      .ic--profile  { --ic: 34px; }
+      .ic--fav      { --ic: 38px; }
+      .ic--settings { --ic: 42px; }
+      .ic--logout   { --ic: 36px; }
+      .ic--cc       { --ic: 40px; }
+    }
+  </style>
+
+  <!-- Simplified guest UI — mobile only -->
+  <style id="guest-mobile-only">
+    @media (max-width: 768px){
+      body[data-auth="0"] #menuBtn,
+      body[data-auth="0"] #quickMenu,
+      body[data-auth="0"] .searchbar,
+      body[data-auth="0"] .m-top-tabs,
+      body[data-auth="0"] #notifOpen,
+      body[data-auth="0"] .stripe-callout,
+      body[data-auth="0"] .fab,
+      body[data-auth="0"] .sheet,
+      body[data-auth="0"] .sheet-scrim { display: none !important; }
+
+      /* In actions leave only Login/Register */
+      body[data-auth="0"] .actions > *:not(a[href="/login"]):not(a[href="/register"]){
+        display: none !important;
+      }
+
+      /* Force hide bottom tabbar when guest */
+body[data-auth="0"] .mobile-tabbar {
+    display: none !important;
+}
+
+      /* Proper bottom space without + button */
+      body[data-auth="0"] .page{
+        padding-bottom: calc(76px + max(var(--safe-bottom), var(--safe-bottom-legacy))) !important;
+      }
+    }
+  </style>
+
+  <!-- Highlight Login/Register as pills -->
+  <style>
+    body[data-auth="0"] .actions{
+      display:flex !important; align-items:center !important; gap:8px !important;
+      margin-inline-start:auto !important;
+    }
+    body[data-auth="0"] .actions a[href="/login"],
+    body[data-auth="0"] .actions a[href="/register"]{
+      display:inline-flex !important;
+    }
+
+    .actions{ gap:8px; }
+    .btn-chip{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:8px 14px; border-radius:999px; font-weight:800;
+      line-height:1; font-size:.95rem; text-decoration:none;
+      border:1px solid transparent; transition:.15s ease;
+      box-shadow:0 4px 14px rgba(0,0,0,.06);
+    }
+    .btn-chip--ghost{ background:#fff; color:#6C63FF; border-color:#e5e7eb; }
+    .btn-chip--ghost:hover{ background:#f8f8ff; border-color:#d9d9ff; }
+    .btn-chip--primary{ background:#6C63FF; color:#fff; border-color:#6C63FF; }
+    .btn-chip--primary:hover{ filter:brightness(.98); }
+    [data-theme="dark"] .btn-chip--ghost{ background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.18); }
+
+    /* Keep search visible for guest */
+    body[data-auth="0"] .searchbar{ display:block !important; }
+
+    /* Don’t hide guest login/register within actions */
+    body[data-auth="0"] .actions > *{ display:none !important; }
+    body[data-auth="0"] .actions a[href="/login"],
+    body[data-auth="0"] .actions a[href="/register"]{
+      display:inline-flex !important;
+    }
+  </style>
+
+  <!-- Modal guard + z-index fixes -->
+  <style id="modal-guard">
+    .modal { z-index: 1070 !important; }
+    .modal-backdrop { z-index: 1060 !important; }
+    body.modal-open #typeaheadPanel,
+    body.modal-open #citySuggest,
+    body.modal-open .notif-panel,
+    body.modal-open #profileSheet,
+    body.modal-open #profileScrim,
+    body.modal-open .sheet,
+    body.modal-open .sheet-scrim { display: none !important; }
+    .modal-backdrop + .modal-backdrop { display: none !important; }
+    body::after { z-index: 1000 !important; }
+    .modal.fade .modal-dialog { transition: none !important; }
+    body.modal-open { padding-right: 0 !important; }
+  </style>
+
+  
+  <style id="glass-tabbar">
+
+    /* =========================
+   GLASS UI – Mobile Tabbar
+   (style only, no HTML change)
+   ========================= */
+@media (max-width: 768px){
+  :root{
+    --glass-blur: 16px;
+    --glass-sat: 199%;
+    --glass-bg: rgba(56, 56, 56, .35);              /* dark glass base */
+    --glass-grad1: rgba(108, 99, 255, .18);         /* purple */
+    --glass-grad2: rgba(0, 212, 255, .12);          /* cyan */
+    --glass-stroke: rgba(255,255,255,.125);         /* glass edge */
+    --glass-inner: rgba(255,255,255,.06);           /* inner gloss */
+    --tabbar-h: 64px;
+    --tabbar-radius: 22px;
+  }
+
+  .mobile-tabbar{
+    position: fixed !important;
+    left: 10px !important; right: 10px !important;
+    bottom: calc(10px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important;
+    height: var(--tabbar-h) !important;
+    display: grid !important; grid-template-columns: repeat(5, 1fr) !important;
+    align-items: center !important; padding: 8px 12px !important; border-top: none !important;
+    z-index: 2147483647 !important; border-radius: var(--tabbar-radius) !important;
+
+    /* Glass: Blur + Saturate + bg + gradient */
+    background:
+      linear-gradient(135deg, var(--glass-grad1), var(--glass-grad2)),
+      var(--glass-bg) !important;
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+
+    /* edges & subtle highlight like the mock */
+    box-shadow:
+      0 14px 30px rgba(0,0,0,.35),
+      0 0 0 1px var(--glass-stroke) inset,
+      0 2px 0 0 var(--glass-inner) inset !important;
+
+    transform: translateY(calc(-1 * var(--tabbar-lift)));
+    transition: transform .25s ease;
+  }
+
+  /* Text & icons inside tabs */
+  .mobile-tabbar a{
+    position: relative !important;
+    height: 100% !important;
+    border-radius: 16px !important;
+    display: flex !important; flex-direction: column !important;
+    align-items: center !important; justify-content: center !important;
+    gap: 4px !important; text-decoration: none !important;
+    color: #f2f2f7 !important; font-size: 12px !important; font-weight: 700 !important;
+    transition: background .15s ease, transform .15s ease, color .15s ease;
+  }
+  .mobile-tabbar .tab-img{
+    width: 24px !important; height: 24px !important; object-fit: contain !important;
+    opacity: .95 !important; filter: drop-shadow(0 1px 0 rgba(0,0,0,.25));
+    transition: transform .15s ease, opacity .15s ease !important;
+  }
+
+  /* Active “pill” feel */
+  .mobile-tabbar a.is-active{
+    background: rgba(255,255,255,.14) !important;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.22) inset,
+      0 6px 16px rgba(0,0,0,.25) !important;
+    color: #ffffff !important;
+  }
+  .mobile-tabbar a.is-active .tab-img{
+    opacity: 1 !important; transform: scale(1.06) !important;
+  }
+
+  /* Badge dot */
+  .mobile-tabbar .badge-dot{
+    position: absolute !important; top: 6px !important; transform: translateX(12px);
+    min-width: 20px; height: 20px; line-height: 20px; font-size: 11px;
+    border-radius: 999px; background: #22c55e; color: #0b1020;
+    box-shadow: 0 2px 6px rgba(34,197,94,.35);
+    text-align: center;
+  }
+}
+
+/* Dark mode tune */
+[data-theme="dark"] .mobile-tabbar{
+  background:
+    linear-gradient(135deg, rgba(108,99,255,.16), rgba(0,212,255,.10)),
+    rgba(28,28,30,.66) !important;
+  box-shadow:
+    0 14px 30px rgba(0,0,0,.45),
+    0 0 0 1px rgba(255,255,255,.08) inset,
+    0 2px 0 0 rgba(255,255,255,.05) inset !important;
+}
+
+  /* ===== Profile Bottom Sheet — Glass Style (match mobile tabbar) ===== */
+@media (max-width: 768px){
+  /* Glassy header */
+  #profileSheet{
+    background:
+      linear-gradient(135deg, var(--glass-grad1), var(--glass-grad2)),
+      var(--glass-bg) !important;
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+    box-shadow:
+      0 -18px 40px rgba(0,0,0,.35),
+      0 0 0 1px var(--glass-stroke) inset,
+      0 2px 0 0 var(--glass-inner) inset !important;
+    color:#fff;  /* light text over glass */
+  }
+  /* Body contrast */
+  #profileSheet .sheet__body{
+    background: rgba(255,255,255,.08);
+    border-radius: 14px 14px 0 0;
+    margin: 6px 8px 8px;
+    padding: 4px 0 8px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.06) inset,
+      0 -1px 0 rgba(0,0,0,.05) inset;
+  }
+
+  /* Profile card atop sheet */
+  #profileSheet .sheet__avatar{
+    background: rgba(255,255,255,.14) !important;
+    color:#fff; font-weight:800;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.18) inset;
+  }
+  #profileSheet .sheet__name{ color:#fff; }
+  #profileSheet .sheet__handle{ color: rgba(255,255,255,.8); }
+
+  /* Share button */
+  #profileSheet .sheet__share{
+    background:#6C63FF !important; color:#fff !important; border:0 !important;
+    box-shadow: 0 8px 18px rgba(108,99,255,.35);
+  }
+
+  /* List items: height, chevron right, icon left */
+  #profileSheet .sheet__item{
+    background: transparent;
+    position: relative;
+    padding: 14px 14px;
+    border-bottom: 1px solid rgba(255,255,255,.12);
+    color:#f2f2f7;
+  }
+  #profileSheet .sheet__item:hover{
+    background: rgba(255,255,255,.10);
+  }
+  /* chevron */
+  #profileSheet .sheet__item .chev{
+    color:#fff; opacity:.85;
+  }
+  /* label */
+  #profileSheet .sheet__item .label{
+    font-weight:800; letter-spacing:.1px;
+  }
+
+  /* circular icons — same pack */
+  #profileSheet .ic{
+    box-shadow: 0 0 0 1px rgba(255,255,255,.10) inset;
+  }
+
+  /* Logout item in red */
+  #profileSheet .sheet__item.text-danger{
+    color:#ff6b6b !important;
+  }
+  #profileSheet .sheet__item.text-danger:hover{
+    background: rgba(255,107,107,.12) !important;
+  }
+}
+
+/* Light mode tweaks */
+@media (max-width: 768px){
+  [data-theme="light"] #profileSheet{
+    color:#111;
+  }
+  [data-theme="light"] #profileSheet .sheet__body{
+    background: rgba(255,255,255,.6);
+  }
+  [data-theme="light"] #profileSheet .sheet__item{
+    border-bottom: 1px solid rgba(0,0,0,.06);
+    color:#111;
+  }
+  [data-theme="light"] #profileSheet .sheet__item:hover{
+    background: rgba(0,0,0,.04);
+  }
+}
+  
+
+
+  </style>
+
+  <style id="sheet-align-fix">
+  /* Align sheet row items */
+  #profileSheet .sheet__item{ display:flex; align-items:center; }
+  #profileSheet .sheet__item .left{ display:flex; align-items:center; gap:10px; }
+
+  /* Vertically center text next to icon */
+  #profileSheet .sheet__item .label{
+    display:flex; align-items:center;
+    line-height:1; margin:0; padding:0;
+  }
+
+  /* Cancel vertical offset of icon in sheet only */
+  #profileSheet .ic{ vertical-align:0; }
+
+  /* 1px nudge for iOS (optional) */
+  @supports (-webkit-touch-callout: none){
+    #profileSheet .sheet__item .label{ position:relative; top:-1px; }
+  }
+</style>
+<style>
+  .immersive-back{
+    position: fixed;
+    inset-inline-start: 12px;
+    inset-block-start: calc(var(--safe-top, 0px) + 12px);
+    z-index: 2147483647;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border-radius: 999px;
+    background: rgba(15,17,26,.65);
+    backdrop-filter: blur(10px) saturate(160%);
+    -webkit-backdrop-filter: blur(10px) saturate(160%);
+    color: #fff; text-decoration: none;
+    box-shadow: 0 6px 16px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.12) inset;
+  }
+  [data-theme="light"] .immersive-back{
+    background: rgba(255,255,255,.7);
+    color:#111;
+    box-shadow: 0 6px 16px rgba(0,0,0,.15), 0 0 0 1px rgba(0,0,0,.08) inset;
+  }
+</style>
+
+
+<style id="font-setup">
+  /* === Minimal Luxury Typography ===
+     - العناوين: Cormorant Garamond (فخم/مجلات)
+     - النص: Work Sans (حديث وواضح)
+  */
+  :root{
+    --font-head: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+    --font-body: 'Work Sans', -apple-system, BlinkMacSystemFont, "Segoe UI",
+                 Roboto, Helvetica, Arial, sans-serif;
+    /* لو تستخدم Bootstrap: */
+    --bs-body-font-family: var(--font-body);
+  }
+
+  html, body, input, button, textarea, select {
+    font-family: var(--font-body) !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.6;
+    letter-spacing: 0.1px; /* لمسة خفيفة */
+    color: #111827;
+  }
+
+  /* العناوين الفخمة */
+  h1, h2, h3 {
+    font-family: var(--font-head);
+    font-weight: 600;      /* 600 يعطي حضور بدون مبالغة */
+    letter-spacing: 0.2px;
+    color: #0f172a;
+  }
+  h4, h5, h6 {
+    font-family: var(--font-body);
+    font-weight: 700;
+    letter-spacing: 0.1px;
+  }
+  strong, b, button { font-weight: 600; }
+
+  /* أحجام (معقولة) + تدرّج للهاتف */
+  h1 { font-size: clamp(1.9rem, 2.5vw + 1.2rem, 2.7rem); line-height: 1.18; }
+  h2 { font-size: clamp(1.6rem, 1.8vw + 1.0rem, 2.1rem); line-height: 1.22; }
+  h3 { font-size: clamp(1.25rem, 1.2vw + .9rem, 1.5rem); line-height: 1.28; }
+
+  /* أرقام ثابتة العرض للأسعار والنِّسب */
+  .num, .price, .percent { font-variant-numeric: tabular-nums; }
+
+  /* نص الفقرات */
+  p { color:#374151; }
+
+  /* تحسين بسيط للوضع الداكن إن كنت تفعّله */
+  [data-theme="dark"] html,
+  [data-theme="dark"] body { color: #e5e7eb; }
+  [data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3 { color:#eef2ff; }
+  [data-theme="dark"] p { color:#cbd5e1; }
+</style>
+
+<style id="fix-fab">
+  /* متغيّرات افتراضية */
+  :root{
+    --sv-tabbar: 64px;            /* يتحدث تلقائياً عبر JS أدناه */
+    --sv-lift: 20px;              /* مقدار رفع التاب بار لديك */
+    --sv-fab-gap: 14px;           /* مسافة إضافية فوق التاب بار */
+    --glass-blur: 16px;
+    --glass-sat: 199%;
+    --glass-bg: rgba(56,56,56,.35);
+    --glass-g1: rgba(108,99,255,.18);  /* purple */
+    --glass-g2: rgba(0,212,255,.12);   /* cyan */
+    --glass-stroke: rgba(255,255,255,.125);
+    --glass-inner: rgba(255,255,255,.06);
+  }
+
+  /* شكل الزر الزجاجي */
+  #fabAdd{
+    position: fixed;
+    right: 16px;
+    bottom: 16px;                 /* يتبدل على الموبايل أدناه */
+    width: 58px; height: 58px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    text-decoration: none;
+    color: #fff !important;
+    z-index: 2147483648 !important;  /* أعلى من التاب بار */
+    border: 0 !important;
+
+    /* زجاج مطابق للتاب بار */
+    background:
+      linear-gradient(135deg, var(--glass-g1), var(--glass-g2)),
+      var(--glass-bg) !important;
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+    box-shadow:
+      0 14px 30px rgba(0,0,0,.35),
+      0 0 0 1px var(--glass-stroke) inset,
+      0 2px 0 0 var(--glass-inner) inset !important;
+  }
+  #fabAdd i{ font-size: 24px; filter: drop-shadow(0 1px 0 rgba(0,0,0,.25)); }
+  #fabAdd:active{ transform: scale(.96); }
+
+  /* ارفع الزر فوق التاب بار على الموبايل */
+  @media (max-width: 768px){
+    #fabAdd{
+      bottom: calc(var(--sv-tabbar) + var(--sv-lift)
+                   + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))
+                   + var(--sv-fab-gap)) !important;
+    }
+  }
+
+  /* دارك مود مطابق */
+  [data-theme="dark"] #fabAdd{
+    background:
+      linear-gradient(135deg, rgba(108,99,255,.16), rgba(0,212,255,.10)),
+      rgba(28,28,30,.66) !important;
+    box-shadow:
+      0 14px 30px rgba(0,0,0,.45),
+      0 0 0 1px rgba(255,255,255,.08) inset,
+      0 2px 0 0 rgba(255,255,255,.05) inset !important;
+  }
+
+/* ===== Moving Glass Indicator ===== */
+.mobile-tabbar {
+  position: relative;
+}
+/* ----- Bottom Mobile Tabbar (Clean) ----- */
+.mobile-tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: center;
+  padding: 6px;
+  z-index: 99;
+  border-top: 1px solid rgba(255,255,255,.12);
+}
+
+/* Each tab */
+.mobile-tabbar a {
+  text-align: center;
+  color: rgba(255,255,255,.7);
+  font-size: 22px;
+  padding-top: 4px;
+}
+
+/* Active tab (glowing) */
+.mobile-tabbar a.is-active {
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Remove indicator completely */
+.mobile-tabbar .tab-indicator {
+  display: none !important;
+}
+
+@media (min-width: 992px) {
+  .mobile-tabbar { display: none; }
+}
+
+
+.mobile-tabbar a {
+  position: relative;
+  z-index: 1;
+}
+  
+</style>
+<style>
+  .sv-enter {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  .sv-enter-active {
+    opacity: 1;
+    transform: translateX(0);
+    transition: opacity .25s ease, transform .25s ease;
+  }
+
+  .sv-exit {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  .sv-exit-active {
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: opacity .25s ease, transform .25s ease;
+  }
+</style>
+
+
+
+
+
+
+{% block head %}{% endblock %}
+{% set immersive = immersive|default(false) %}
+{% set _path = request.url.path if request else '' %}
+{% set no_ui = (
+    _path.startswith('/cs')
+    or _path.startswith('/mod')
+    or _path.startswith('/md')
+) %}
+
+{% set is_home = (_path == '/' or _path == '') %}
+
+{# Hide tabbar only on notifications/payout/admin #}
+{% set hide_tabbar = request and (
+    _path.startswith('/notifications') or
+    _path.startswith('/payout') or
+    _path.startswith('/admin')
+) %}
+
+{# Show it everywhere else #}
+{% set show_tabbar = (not hide_tabbar) %}
+
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
+</head>
+
+<script>
+window.onpageshow = function(e){
+  if (e.persisted) {
+    window.location.reload();
+  }
+};
+</script>
+
+{# ===== Helper: builds a correct src whether https or local path ===== #}
+{% macro build_src(p) -%}
+  {%- set s = (p or '') -%}
+  {%- if s.startswith('http://') or s.startswith('https://') -%}
+    {{- s -}}
+  {%- else -%}
+    {{- '/' ~ s.lstrip('/') if s else '' -}}
+  {%- endif -%}
+{%- endmacro %}
+
+{# ===== Helper: avatar_src — returns a safe URL for avatar ===== #}
+{% macro avatar_src(p) -%}
+  {%- set s = (p or '') -%}
+  {%- if s.startswith('http://') or s.startswith('https://') -%}
+    {{- s -}}
+  {%- elif s and (not s.startswith('/uploads/')) -%}
+    {{- '/' ~ s.lstrip('/') -}}
+  {%- else -%}
+    {{- '/static/placeholder.png' -}}
+  {%- endif -%}
+{%- endmacro %}
+
+{# ============================================================
+   Normalizer: convert session_user to a dict safely
+   ============================================================ #}
+{% if session_user and session_user.__class__.__name__ != 'dict' %}
+  {% set session_user = {
+    'id': session_user.id,
+    'first_name': session_user.first_name,
+    'last_name': session_user.last_name,
+    'username': session_user.username,
+    'avatar_path': session_user.avatar_path,
+    'role': session_user.role,
+    'status': session_user.status,
+    'is_mod': session_user.is_mod if session_user.is_mod is not none else False,
+    'is_support': session_user.is_support if session_user.is_support is not none else False,
+    'cs_enabled': session_user.cs_enabled if session_user.cs_enabled is not none else False,
+    'can_manage_deposits': session_user.can_manage_deposits if session_user.can_manage_deposits is not none else False,
+    'payouts_enabled': session_user.payouts_enabled if session_user.payouts_enabled is not none else False
+  } %}
+{% endif %}
+
+
+
+
+<body data-auth="{{ '1' if session_user else '0' }}"
+      class="{% if show_tabbar and not immersive and not no_ui %}has-tabbar{% endif %}">
+  <div id="page-wrapper">
+{% if not immersive and not no_ui %}
+  <!-- ===== Topbar ===== -->
+  <header class="topbar">
+
+    <div class="topbar__inner container-fluid d-flex align-items-center gap-2 py-2">
+
+      <!-- ☰ button -->
+      <button id="menuBtn" class="hamburger-btn d-none d-lg-inline" type="button"
+              aria-haspopup="true" aria-expanded="false" aria-controls="quickMenu" title="Menu">☰</button>
+
+      <!-- Dropdown (desktop) -->
+      <nav id="quickMenu" class="topmenu" hidden role="menu" aria-label="Site menu">
+        <a role="menuitem" class="topmenu-item" href="/"><i class="bi bi-house"></i> Home</a>
+        <a role="menuitem" class="topmenu-item" href="/items"><i class="bi bi-box-seam"></i> Items</a>
+
+        {% if session_user %}
+          <a role="menuitem" class="topmenu-item" href="/favorites"><i class="bi bi-heart-fill"></i> My Favorites</a>
+          <a role="menuitem" class="topmenu-item" href="/profile"><i class="bi bi-person-circle"></i> My Profile</a>
+          <a role="menuitem" class="topmenu-item" href="/bookings"><i class="bi bi-calendar2-check"></i> My Bookings</a>
+          <a role="menuitem" class="topmenu-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> Payouts</a>
+          <a role="menuitem" class="topmenu-item" href="/owner/items"><i class="bi bi-collection"></i> My Items</a>
+
+          {% if session_user.get('can_manage_deposits') %}
+            <a role="menuitem" class="topmenu-item" href="/dm/deposits"><i class="bi bi-shield-exclamation"></i> Deposit Cases</a>
+          {% endif %}
+
+          {% if session_user.role == 'admin' or session_user.get('is_mod') %}
+            <a role="menuitem" class="topmenu-item" href="/admin/reports">📸 Reports</a>
+          {% endif %}
+
+          {% if session_user.role == 'admin' %}
+            <hr class="topmenu-sep" role="separator">
+            <a role="menuitem" class="topmenu-item" href="/admin"><i class="bi bi-speedometer2"></i> Admin Panel</a>
+          {% endif %}
+        {% endif %}
+      </nav>
+
+      <!-- Brand -->
+      <a class="brand d-flex align-items-center gap-2 text-decoration:none me-2" href="/">
+        <img class="brand-logo" src="{{ url_for('static', path='images/base.png') }}" alt="SEVOR" style="height:48px">
+        <span class="visually-hidden">SEVOR</span>
+      </a>
+
+      <!-- ===== Search bar (item + city) ===== -->
+      <form class="search searchbar flex-grow-1" action="/search" method="get" role="search" dir="ltr">
+        <div class="searchbar-wrap">
+          <i class="bi bi-search"></i>
+
+          <div class="field">
+            <input class="form-control form-control-sm" type="search" name="q" id="qTop"
+                   placeholder="Search an item (car, camera…)"
+                   value="{{ request.query_params.get('q','') if request else '' }}" autocomplete="off">
+          </div>
+
+          <div class="sep" aria-hidden="true"></div>
+
+          <div class="field">
+            <span class="k">City</span>
+            <input class="form-control form-control-sm" type="text" id="cityTop" name="city"
+                   placeholder="Montreal, Algiers…" autocomplete="off"
+                   value="{{ request.query_params.get('city','') if request else '' }}">
+          </div>
+
+          <input type="hidden" id="latTop" name="lat" value="{{ request.query_params.get('lat','') if request else '' }}">
+          <input type="hidden" id="lngTop" name="lng" value="{{ request.query_params.get('lng','') if request else '' }}">
+        </div>
+
+        <div id="citySuggest" class="city-suggest" aria-label="City suggestions"></div>
+      </form>
+
+      <!-- Your typeahead (accounts/items) -->
+      <div id="typeaheadPanel" class="typeahead d-none"></div>
+
+      <div class="actions d-flex align-items-center gap-2 ms-auto">
+      {# FAIL-SAFE display_currency #}
+{% if display_currency is defined %}
+  {% if display_currency is string %}
+    {% set _cur = display_currency %}
+  {% else %}
+    {% set _cur = display_currency(request) if request else '' %}
+  {% endif %}
+{% else %}
+  {% set _cur = '' %}
+{% endif %}
+
+
+
+        <!-- Messages -->
+        <a href="/messages" class="btn btn-ghost btn-sm" title="Messages">
+          <img class="icon-img" src="/static/img/msg.png" alt="Messages" style="width:24px;height:24px">
+        </a>
+
+        <!-- Favorites -->
+        {% if session_user %}
+          <a href="/favorites" class="btn btn-ghost btn-sm" title="My Favorites">
+            <i class="bi bi-heart-fill" style="font-size:20px; color:#a944ec;"></i>
+          </a>
+        {% endif %}
+
+        <!-- CS Inbox -->
+        {% if session_user and (session_user.is_support or session_user.get('is_support') or session_user.get('cs_enabled')) %}
+          <a class="btn btn-outline-secondary btn-sm" href="/cs/inbox" title="Customer Support Inbox (CS)">
+            <i class="bi bi-headset"></i>
+          </a>
+        {% endif %}
+
+        <!-- Support ticket -->
+        <a class="btn btn-outline-secondary btn-sm" href="/support/new" title="Support">
+          <i class="bi bi-life-preserver"></i>
+        </a>
+
+        <!-- Bell -->
+{% set unread = (request.state.unread_messages|default(0))|int
+      if (request and request.state is defined) else 0 %}
+        <button class="btn btn-ghost btn-sm position-relative" id="notifOpen" title="Notifications">
+          <img class="icon-img" src="/static/img/notfi.png" alt="Notifications" style="width:24px;height:24px">
+          {% if unread > 0 %}
+            <span class="notif-ping"></span>
+            <span class="notif-count">{{ unread if unread < 100 else '99+' }}</span>
+          {% endif %}
+        </button>
+
+        <!-- Create -->
+        <div class="dropdown">
+          <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown">
+            <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">Create</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="/owner/items/new"><i class="bi bi-box"></i> New Item</a></li>
+            <li><a class="dropdown-item" href="/messages"><i class="bi bi-chat-left-text"></i> Message</a></li>
+          </ul>
+        </div>
+
+        <!-- Language -->
+        <div class="dropdown">
+          <button class="btn btn-ghost btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown" title="Language">
+            <i class="bi bi-globe2"></i>
+            <span class="d-none d-sm-inline">{{ current_lang()|upper if current_lang is defined else 'EN' }}</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="/lang/ar">العربية</a></li>
+            <li><a class="dropdown-item" href="/lang/en">English</a></li>
+            <li><a class="dropdown-item" href="/lang/fr">Français</a></li>
+          </ul>
+        </div>
+        <!-- Currency -->
+<div class="dropdown">
+  <button
+    class="btn btn-ghost btn-sm d-flex align-items-center gap-1"
+    data-bs-toggle="dropdown"
+    title="Currency"
+    aria-label="Currency"
+  >
+    <i class="bi bi-cash-coin"></i>
+    <span class="d-none d-sm-inline">{{ _cur }}</span>
+  </button>
+
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li class="dropdown-header">Display currency</li>
+    <li>
+      <a class="dropdown-item {% if _cur == 'CAD' %}active{% endif %}" href="/set-currency?cur=CAD">
+        CAD — Canadian Dollar
+      </a>
+    </li>
+    <li>
+      <a class="dropdown-item {% if _cur == 'USD' %}active{% endif %}" href="/set-currency?cur=USD">
+        USD — US Dollar
+      </a>
+    </li>
+    <li>
+      <a class="dropdown-item {% if _cur == 'EUR' %}active{% endif %}" href="/set-currency?cur=EUR">
+        EUR — Euro
+      </a>
+    </li>
+  </ul>
+</div>
+
+
+        <!-- Account -->
+        {% if session_user %}
+          <div class="dropdown">
+            <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
+  {% set _ava = avatar_src(session_user.avatar_path if session_user else '') %}
+{% if _ava and not _ava.endswith('placeholder.png') %}
+  <img src="{{ _ava }}"
+       alt=""
+       referrerpolicy="no-referrer"
+       onerror="this.onerror=null;this.src='/static/placeholder.png'"
+       style="width:28px;height:28px;object-fit:cover;border-radius:50%">
+{% else %}
+  <div class="avatar ring">{{ (session_user.first_name or 'A')[:1] }}</div>
+{% endif %}
+
+
+  <span class="fw-bold d-none d-md-inline">{{ session_user.first_name or session_user.get('first_name','') }}</span>
+  {% if session_user.status == 'approved' %}<i class="bi bi-patch-check-fill verify" title="Verified"></i>{% endif %}
+</button>
+
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> My Profile</a></li>
+              <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> My Items</a></li>
+              <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> My Bookings</a></li>
+              <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> Payouts</a></li>
+              {% if session_user.role == 'admin' or session_user.get('is_mod') %}
+                <li><a class="dropdown-item" href="/admin/reports">📸 Reports</a></li>
+              {% endif %}
+              {% if session_user.role == 'admin' %}
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="/admin"><i class="bi bi-speedometer2"></i> Admin Panel</a></li>
+              {% endif %}
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+            </ul>
+          </div>
+        {% else %}
+          <a class="btn-chip btn-chip--ghost btn-login" href="/login">Login</a>
+          <a class="btn-chip btn-chip--primary btn-register" href="/register">Sign Up</a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+  {% endif %}
+
+{% if not immersive and not no_ui %}
+  <!-- Top tabs (mobile) -->
+  <nav class="m-top-tabs d-lg-none px-3 pb-2" role="tablist" aria-label="Top sections">
+    <a href="/" class="m-tab {% if request and request.url.path == '/' %}is-active{% endif %}" role="tab"
+       aria-selected="{{ 'true' if request and request.url.path == '/' else 'false' }}">Home</a>
+
+    {% if session_user %}
+      <a href="/notifications" class="m-tab {% if request and request.url.path.startswith('/notifications') %}is-active{% endif %}" role="tab">
+        Notifications
+        {% set unread_top = (request.state.unread_messages|default(0))|int if request else 0 %}
+        <small id="mNotifBadge" {% if unread_top<=0 %}style="display:none"{% endif %} class="ms-1">
+          {{ unread_top if unread_top < 100 else '99+' }}
+        </small>
+      </a>
+      <a href="/payout/settings" class="m-tab {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" role="tab">Payouts</a>
+      {% if session_user.role == 'admin' %}
+        <a href="/admin" class="m-tab {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" role="tab">Admin</a>
+      {% endif %}
+    {% else %}
+      <a href="/login" class="m-tab" role="tab">Notifications</a>
+      <a href="/login" class="m-tab" role="tab">Payouts</a>
+    {% endif %}
+  </nav>
+{% endif %}
+{% if immersive %}
+{% endif %}
+
+  <!-- ===== Page ===== -->
+  <main class="page container-fluid main-flex-fill min-vh-100" data-page="main">
+    {% if request and request.query_params.get('logged_out') %}
+      <div class="alert alert-success my-2">You have been logged out successfully 👋</div>
+    {% endif %}
+
+    {% if not immersive and session_user and session_user.status == 'approved' and not session_user.payouts_enabled %}
+
+      <div class="stripe-callout alert alert-warning d-flex justify-content-between align-items:center mb-3">
+        <div>💸 To start receiving earnings, connect <strong>Stripe Connect</strong>.</div>
+        <a class="btn btn-sm btn-primary" href="/payout/settings">Connect Now</a>
+      </div>
+    {% endif %}
+
+    {% if message %}<div class="alert alert-info">{{ message }}</div>{% endif %}
+
+    {% block content %}{% endblock %}
+
+
+  </main>
+
+  <!-- Side notifications panel -->
+  <div class="notif-panel" id="notifPanel" aria-hidden="true">
+    <div class="notif-panel__header d-flex justify-content-between align-items-center">
+      <strong>Notifications</strong>
+      {% if session_user and session_user.is_support %}
+        <a class="btn btn-sm btn-outline-primary" href="/cs/inbox" title="Open Message Center">Open Message Center</a>
+      {% endif %}
+      <button class="btn btn-ghost btn-sm" id="notifClose"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="notif-panel__body" id="notifBody">
+      <div class="small text-muted">No new notifications.</div>
+    </div>
+  </div>
+  <div class="scrim" id="scrim"></div>
+
+  {% if session_user and is_home %}
+  <!-- FAB: Glass + مرفوع فوق التاب بار -->
+  <a id="fabAdd"
+     href="/owner/items/new"
+     class="d-lg-none"
+     title="New Item"
+     aria-label="New Item">
+    <i class="bi bi-plus-lg"></i>
+  </a>
+{% endif %}
+
+
+
+  <!-- Bottom bar (mobile) -->
+{% if show_tabbar and not immersive and not no_ui %}
+  <nav class="mobile-tabbar d-lg-none">
+  <div class="tab-indicator"></div>
+
+    <a href="/" class="{% if request and request.url.path == '/' %}is-active{% endif %}">
+      <img class="tab-img" src="{{ url_for('static', path='images/home.png') }}" alt="home"><span>Home</span>
+    </a>
+
+    {% if session_user %}
+      <a href="/items" class="{% if request and request.url.path.startswith('/items') %}is-active{% endif %}">
+        <img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav"><span>Explore</span>
+      </a>
+      <a href="/bookings" class="{% if request and request.url.path.startswith('/bookings') %}is-active{% endif %}">
+        <img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>Bookings</span>
+      </a>
+      <a href="/messages" class="{% if request and request.url.path.startswith('/messages') %}is-active{% endif %}">
+        <img class="tab-img" src="/static/img/msg.png" alt="Messages"><span>Messages</span>
+      </a>
+      <a href="/profile" class="{% if request and request.url.path.startswith('/profile') %}is-active{% endif %}">
+        <img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile"><span>Profile</span>
+      </a>
+    {% else %}
+      <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/save.png') }}" alt="fav"><span>Favorites</span></a>
+      <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/jour.png') }}" alt="jour"><span>Bookings</span></a>
+      <a href="/login"><img class="tab-img" src="/static/img/msg.png" alt="Messages"><span>Messages</span></a>
+      <a href="/login"><img class="tab-img" src="{{ url_for('static', path='images/profil.png') }}" alt="profile"><span>Profile</span></a>
+    {% endif %}
+  </nav>
+{% endif %}
+
+
+  </div><!-- /#page-wrapper -->
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  {% block scripts %}{% endblock %}
+
+  <!-- === SAFE MODE KILL-SWITCH ========================================= -->
+  <script>
+  (function(){
+    const url = new URL(location.href);
+    const SAFE = url.searchParams.has('safe') || localStorage.getItem('SAFE_MODE') === '1';
+    if (!SAFE) return;
+    localStorage.setItem('SAFE_MODE', '1');
+    window.__SAFE_MODE__ = true;
+
+    const css = `
+      * { animation: none !important; transition: none !important; }
+      html, body { scroll-behavior: auto !important; }
+      body.modal-open { padding-right: 0 !important; }
+      .modal, .modal-backdrop { transition: none !important; }
+    `;
+    const style = document.createElement('style');
+    style.setAttribute('data-safe-style','');
+    style.appendChild(document.createTextNode(css));
+    document.documentElement.appendChild(style);
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(list => {
+        list.forEach(reg => reg.unregister());
+      }).catch(()=>{});
+    }
+    if ('caches' in window) {
+      caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).catch(()=>{});
+    }
+
+    const _fetch = window.fetch;
+    window.fetch = function(input, init){
+      try{
+        const url = (typeof input === 'string') ? input : (input && input.url) || '';
+        if (url.includes('/api/stripe/checkout/state/')) {
+          return Promise.resolve(new Response(JSON.stringify({ rent_authorized:false, deposit_held:false, ready_for_pickup:false }), { headers:{'Content-Type':'application/json'} }));
+        }
+        const opts = Object.assign({}, init || {}, { cache: 'no-store', headers: Object.assign({}, (init && init.headers)||{}, {'Cache-Control':'no-store'}) });
+        return _fetch(input, opts);
+      }catch(_){
+        return _fetch(input, init);
+      }
+    };
+
+    window.requestAnimationFrame = function(){ return 0; };
+    Object.defineProperty(window, 'initCountdown', { value: function(){}, writable: false });
+
+    document.addEventListener('show.bs.modal', function(){ document.body.style.paddingRight = '0px'; }, true);
+    document.addEventListener('hidden.bs.modal', function(){ document.body.style.paddingRight = '0px'; }, true);
+
+    document.addEventListener('DOMContentLoaded', function(){
+      const badge = document.createElement('div');
+      badge.textContent = 'SAFE MODE';
+      Object.assign(badge.style, {
+        position:'fixed', insetInlineEnd:'8px', insetBlockStart:'8px',
+        padding:'4px 8px', font:'12px/1.2 system-ui,Segoe UI,Arial',
+        background:'#222', color:'#fff', borderRadius:'6px', zIndex:'2147483647', opacity:'.8'
+      });
+      document.body.appendChild(badge);
+    });
+  })();
+  </script>
+  <!-- ================================================================== -->
+
+  <!-- Compute safe-area -->
+  <script>
+  (function(){
+    var root = document.documentElement;
+    function computeSafe(){
+      var safe = 0;
+      try{
+        var probe = document.createElement('div');
+        probe.style.cssText = 'position:fixed; bottom:0; left:0; right:0; height:constant(safe-area-inset-bottom); height:env(safe-area-inset-bottom); pointer-events:none; opacity:0;';
+        document.body.appendChild(probe);
+        safe = Math.max(0, probe.getBoundingClientRect().height || 0);
+        probe.remove();
+      }catch(_){}
+      var isIOS = /iphone|ipod|ipad/i.test(navigator.userAgent);
+      var isStandalone = (window.navigator.standalone === true) || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+      if (isIOS && isStandalone && safe < 8) safe = 16;
+      root.style.setProperty('--safe-bottom', safe + 'px');
+    }
+    computeSafe();
+    window.addEventListener('resize', computeSafe);
+    if (window.visualViewport){
+      visualViewport.addEventListener('resize', computeSafe);
+      visualViewport.addEventListener('scroll', computeSafe);
+    }
+  })();
+  </script>
+
+  <!-- ☰ button (quick menu) -->
+  <script>
+  (function(){
+    const btn  = document.getElementById('menuBtn');
+    const menu = document.getElementById('quickMenu');
+    if(!btn || !menu) return;
+    if (window.__quickMenuInit) return;
+    window.__quickMenuInit = true;
+
+    function open(){ menu.classList.add('is-open'); menu.removeAttribute('hidden'); btn.setAttribute('aria-expanded','true');
+      setTimeout(()=>{ document.addEventListener('click', onDoc, true); document.addEventListener('keydown', onKey); },0); }
+    function close(){ menu.classList.remove('is-open'); menu.setAttribute('hidden',''); btn.setAttribute('aria-expanded','false');
+      document.removeEventListener('click', onDoc, true); document.removeEventListener('keydown', onKey); }
+    function toggle(){ menu.classList.contains('is-open') ? close() : open(); }
+    function onDoc(e){ if (e.target===btn || btn.contains(e.target) || menu.contains(e.target)) return; close(); }
+    function onKey(e){ if (e.key==='Escape'){ close(); btn.focus(); } }
+    btn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); toggle(); });
+    menu.addEventListener('click', function(e){ e.stopPropagation(); });
+  })();
+  </script>
+
+  <!-- Typeahead for items/accounts -->
+  <script>
+  (function initTypeahead(){
+    if (window.__typeaheadInit) return; window.__typeaheadInit = true;
+
+    var form  = document.querySelector('form.search');
+    var input = form ? form.querySelector('input[name="q"]') : null;
+    var panel = document.getElementById('typeaheadPanel');
+    if (!form || !input || !panel) return;
+
+    var tm = null, activeIndex = -1;
+    function hide(){ panel.classList.add('d-none'); panel.innerHTML = ""; activeIndex = -1; }
+    function show(){ panel.classList.remove('d-none'); }
+    function esc(s){ return String(s||"").replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c]; }); }
+
+    function normalizePayload(data){
+      var usersArr = (data && data.users) ? data.users : [];
+      var itemsArr = (data && data.items) ? data.items : [];
+      var users = usersArr.map(function(u){
+        var name = u.name || ((u.first_name||"") + " " + (u.last_name||"")).trim();
+        return { id:u.id, name:name, avatar:u.avatar||u.avatar_path||"", url:u.url||("/users/"+u.id) };
+      });
+      var items = itemsArr.map(function(it){
+        return { id:it.id, title:it.title||"", image:it.image||it.image_path||"", city:it.city||"", url:it.url||("/items/"+it.id) };
+      });
+      return { users: users, items: items };
+    }
+
+    function render(data){
+      var norm = normalizePayload(data);
+      var users = norm.users, items = norm.items, html = [];
+      if (users.length){
+        html.push('<div class="typeahead-group">Accounts</div>');
+        users.forEach(function(u){ html.push('<div class="typeahead-item" data-url="'+u.url+'"><i class="bi bi-person-circle"></i><div class="flex-grow-1"><div>'+esc(u.name)+'</div><div class="k">Profile</div></div></div>'); });
+      }
+      if (items.length){
+        html.push('<div class="typeahead-group">Items</div>');
+        items.forEach(function(it){
+          var city = it.city ? ' — <span class="k">'+esc(it.city)+'</span>' : '';
+          html.push('<div class="typeahead-item" data-url="'+it.url+'"><i class="bi bi-box-seam"></i><div class="flex-grow-1"><div>'+esc(it.title)+city+'</div><div class="k">Item details</div></div></div>');
+        });
+      }
+      if (!html.length){ hide(); return; }
+      panel.innerHTML = html.join(""); show();
+    }
+
+    function search(q){
+      if (!q || q.trim().length < 2) { hide(); return; }
+      fetch('/api/search?q='+encodeURIComponent(q.trim()))
+        .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+        .then(render).catch(hide);
+    }
+
+    input.addEventListener('input', function(){ clearTimeout(tm); tm = setTimeout(function(){ search(input.value); }, 180); });
+    panel.addEventListener('click', function(e){
+      var row = e.target.closest('.typeahead-item'); if (!row) return;
+      window.location.href = row.getAttribute('data-url');
+    });
+
+    input.addEventListener('keydown', function(e){
+      if (panel.classList.contains('d-none')) return;
+      var rows = Array.prototype.slice.call(panel.querySelectorAll('.typeahead-item'));
+      if (!rows.length) return;
+      if (e.key === 'ArrowDown'){ e.preventDefault(); setActive(rows, activeIndex+1); }
+      else if (e.key === 'ArrowUp'){ e.preventDefault(); setActive(rows, activeIndex-1); }
+      else if (e.key === 'Enter'){ if (activeIndex>=0 && rows[activeIndex]){ e.preventDefault(); rows[activeIndex].click(); } }
+      else if (e.key === 'Escape'){ hide(); }
+    });
+
+    document.addEventListener('click', function(e){ if (!panel.contains(e.target) && e.target !== input){ hide(); } });
+
+    function setActive(rows, i){
+      rows.forEach(function(r){ r.classList.remove('active'); });
+      if (i < 0) i = rows.length-1;
+      if (i >= rows.length) i = 0;
+      activeIndex = i; rows[activeIndex].classList.add('active');
+      rows[activeIndex].scrollIntoView({block:'nearest'});
+    }
+  })();
+  </script>
+
+  <!-- City autocomplete -->
+  <script>
+  (function cityAutocomplete(){
+    if (window.__cityAutoInit) return; window.__cityAutoInit = true;
+
+    const input = document.getElementById('cityTop');
+    const panel = document.getElementById('citySuggest');
+    const latEl = document.getElementById('latTop');
+    const lngEl = document.getElementById('lngTop');
+    const form  = input ? input.closest('form') : null;
+    if(!input || !panel || !form) return;
+
+    let tm = null, lastList = [], active = -1;
+
+    function detectLang(q){
+      const s = (q||'').trim();
+      if (/[\u0600-\u06FF]/.test(s)) return 'ar';
+      const hasFrMarks = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(s);
+      const frWords = /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
+      const enWords = /\b(new|city|county|state|united|kingdom|usa|us|uk)\b/i.test(s);
+      if (hasFrMarks || frWords) return 'fr';
+      if (enWords) return 'en';
+      const prefs = (navigator.languages || [navigator.language || 'en']).map(x=>x.slice(0,2).toLowerCase());
+      if (prefs.includes('fr')) return 'fr';
+      if (prefs.includes('en')) return 'en';
+      if (prefs.includes('ar')) return 'ar';
+      return 'en';
+    }
+
+    function esc(s){ return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
+    function hide(){ panel.style.display='none'; panel.innerHTML=""; lastList=[]; active=-1; }
+    function show(){ panel.style.display='block'; }
+
+    const ALLOWED = new Set(['city','town','village','municipality']);
+    const FALLBACK = new Set(['state','province']);
+    function normalizePlace(p){
+      const a = p.address || {};
+      const type = (p.type || '').toLowerCase();
+      const cc = (a.country_code || '').toLowerCase();
+      const city = a.city || a.town || a.village || a.municipality || a.state || a.province || (p.display_name||'').split(',')[0];
+      const prioMap = {city:1, town:2, village:3, municipality:3, state:6, province:6, administrative:8, county:8, region:8};
+      const prio = prioMap[type] ?? 9;
+      const country = a.country || '';
+      return { city, country, cc, label: city + (country ? ', ' + country : ''), lat:p.lat, lon:p.lon, type, prio };
+    }
+    function dedupeByCountry(list){
+      const best = new Map();
+      for(const raw of list){
+        const n = normalizePlace(raw);
+        if (!n.city || !n.cc) continue;
+        const key = (n.city.trim().toLowerCase() + '|' + n.cc);
+        const prev = best.get(key);
+        if (!prev || n.prio < prev.prio) best.set(key, n);
+      }
+      return Array.from(best.values());
+    }
+
+    async function query(q){
+      const lang = detectLang(q);
+      const u = 'https://nominatim.openstreetmap.org/search'
+              + '?format=json&addressdetails=1&namedetails=0&extratags=0'
+              + '&limit=30&accept-language=' + encodeURIComponent(lang)
+              + '&q=' + encodeURIComponent(q);
+      const r = await fetch(u, { headers: { 'Accept': 'application/json' }});
+      if(!r.ok) return [];
+      const data = await r.json();
+
+      let filtered = data.filter(x => ALLOWED.has((x.type||'').toLowerCase()));
+      if (!filtered.length) filtered = data.filter(x => FALLBACK.has((x.type||'').toLowerCase()));
+      if (!filtered.length) filtered = data;
+
+      return dedupeByCountry(filtered);
+    }
+
+    function render(list){
+      if(!Array.isArray(list) || list.length===0){ hide(); return; }
+      lastList = list.slice(0, 6);
+      const html = [
+        '<div class="typeahead-group">Cities/Areas</div>',
+        ...lastList.map((p,i)=>(
+          '<div class="row" data-i="'+i+'"><i class="bi bi-geo-alt"></i>'
+          + '<div><div>'+esc(p.label)+'</div><div class="sub">lat '+esc(p.lat)+' — lng '+esc(p.lon)+'</div></div></div>'
+        ))
+      ].join('');
+      panel.innerHTML = html; show(); active = -1;
+    }
+
+    function pick(i){
+      const p = lastList[i]; if(!p) return;
+      input.value = p.label;
+      if (latEl) latEl.value = p.lat || '';
+      if (lngEl) lngEl.value = p.lon || '';
+      try{
+        document.cookie = "city="+encodeURIComponent(p.label)+";path=/;SameSite=Lax";
+        document.cookie = "lat="+(p.lat||"")+";path=/;SameSite=Lax";
+        document.cookie = "lng="+(p.lon||"")+";path=/;SameSite=Lax";
+      }catch(_){}
+      hide();
+    }
+
+    input.addEventListener('input', function(){
+      clearTimeout(tm);
+      const q = input.value.trim();
+      if (latEl) latEl.value = '';
+      if (lngEl) lngEl.value = '';
+      if (q.length < 2){ hide(); return; }
+      tm = setTimeout(async ()=>{ try{ const list = await query(q); render(list); }catch(_){ hide(); } }, 220);
+    });
+    panel.addEventListener('click', function(e){
+      const row = e.target.closest('.row'); if(!row) return;
+      pick(Number(row.getAttribute('data-i')||'-1'));
+    });
+
+    input.addEventListener('keydown', function(e){
+      if (panel.style.display !== 'block') {
+        if (e.key === 'Enter') { e.preventDefault(); form.submit(); }
+        return;
+      }
+      const rows = Array.prototype.slice.call(panel.querySelectorAll('.row'));
+      if (!rows.length) return;
+      if (e.key === 'ArrowDown'){ e.preventDefault(); active = (active+1) % rows.length; markActive(rows); }
+      else if (e.key === 'ArrowUp'){ e.preventDefault(); active = (active-1 + rows.length) % rows.length; markActive(rows); }
+      else if (e.key === 'Enter'){
+        e.preventDefault();
+        if (active >= 0 && rows[active]) { rows[active].click(); }
+        else { form.submit(); }
+      } else if (e.key === 'Escape'){ hide(); }
+    });
+    function markActive(rows){
+      rows.forEach(r=>r.classList.remove('active'));
+      if (active>=0 && rows[active]){ rows[active].classList.add('active'); rows[active].scrollIntoView({block:'nearest'}); }
+    }
+
+    const qInput = document.getElementById('qTop');
+    qInput?.addEventListener('keydown', function(e){
+      if (e.key === 'Enter'){ e.preventDefault(); form.submit(); }
+    });
+
+    document.addEventListener('click', function(e){ if (e.target === input || panel.contains(e.target)) return; hide(); });
+  })();
+  </script>
+
+  <!-- Detect app mode and add html.pwa -->
+  <script>
+    (function(){
+      var isStandalone = false;
+      try {
+        isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+                       || (window.navigator.standalone === true);
+      } catch(_) {}
+      if (isStandalone) { document.documentElement.classList.add('pwa'); }
+    })();
+  </script>
+
+  <style id="modal-safearea-fix"> body.modal-open::after{ display:none !important; } </style>
+
+  <!-- Metrics -->
+  <script>
+  (function(){
+    function uuid(){
+      return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+      );
+    }
+    const KEY = "sv_session_id";
+    let sid = localStorage.getItem(KEY);
+    if(!sid){ sid = uuid(); localStorage.setItem(KEY, sid); }
+
+    const USER_ID = {{ (session_user.id if session_user else 'null') | safe }};
+
+    async function postJSON(url, data){
+      try { await fetch(url, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(data) }); }
+      catch(e){}
+    }
+
+    postJSON("/api/metrics/track", { session_id: sid, user_id: USER_ID });
+
+    async function ping(){
+      try{
+        await fetch("/api/metrics/heartbeat", {
+          method:"POST", headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ session_id: sid, user_id: USER_ID })
+        });
+      }catch(e){}
+    }
+    setInterval(ping, 30000);
+    setTimeout(ping, 5000);
+  })();
+  </script>
+
+  <!-- Notifications -->
+  <script>
+  (function initNotifications(){
+    if (window.__notifInit) return; window.__notifInit = true;
+
+    const btn    = document.getElementById('notifOpen');
+    const panel  = document.getElementById('notifPanel');
+    const bodyEl = document.getElementById('notifBody');
+    const close  = document.getElementById('notifClose');
+    const scrim  = document.getElementById('scrim');
+    if (!btn || !panel || !bodyEl) return;
+
+    let ping  = btn.querySelector('.notif-ping');
+    let count = btn.querySelector('.notif-count');
+    if (!ping){  ping  = document.createElement('span'); ping.className='notif-ping';  ping.style.display='none'; btn.appendChild(ping); }
+    if (!count){ count = document.createElement('span'); count.className='notif-count'; count.style.display='none'; btn.appendChild(count); }
+
+    let lastTs = 0;
+    function setBadge(n){
+      if (!n || n<=0){ ping.style.display='none'; count.style.display='none'; }
+      else { ping.style.display='block'; count.style.display='block'; count.textContent = (n>99 ? '99+' : n); }
+    }
+    async function fetchUnreadCount(){
+      try{
+        const r = await fetch('/api/unread_count', {cache:'no-store'});
+        if(!r.ok) return;
+        const j = await r.json();
+        setBadge(Number(j.count||0));
+      }catch(_){}
+    }
+    function esc(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
+
+    function normalizeHref(it){ return (it && it.url) ? it.url : '#'; }
+
+    function renderItems(items){
+      if (!items || !items.length){
+        bodyEl.innerHTML = '<div class="small text-muted">No new notifications.</div>';
+        return;
+      }
+      bodyEl.innerHTML = items.map(it=>{
+        const href = normalizeHref(it);
+        return `<a class="notif-row" href="${esc(href)}">
+          <div class="fw-bold">${esc(it.title||'Notification')}</div>
+          ${it.body ? '<div class="small text-muted">'+esc(it.body)+'</div>' : ''}
+        </a>`;
+      }).join('');
+    }
+
+    async function pollOnce(){
+      try{
+        const r = await fetch('/api/notifications/poll?since='+(lastTs||0), {cache:'no-store'});
+        if(!r.ok) return;
+        const j = await r.json();
+        lastTs = Number(j.now||Math.floor(Date.now()/1000));
+        const items = Array.isArray(j.items) ? j.items : [];
+        if (panel.classList.contains('is-open')){
+          if (items.length===0){ await loadInitial(); }
+          else { renderItems(items); }
+        } else {
+          if (items.length>0){ await fetchUnreadCount(); }
+        }
+      }catch(_){}
+    }
+
+    async function loadInitial(){
+      try{
+        const r = await fetch('/api/notifications/poll?since=0', {cache:'no-store'});
+        if(!r.ok) return;
+        const j = await r.json();
+        lastTs = Number(j.now||Math.floor(Date.now()/1000));
+        renderItems(j.items||[]);
+      }catch(_){}
+    }
+
+    async function markAllRead(){
+      try{ await fetch('/api/notifications/mark_all_read', {method:'POST'}); setBadge(0); }catch(_){}
+    }
+
+    function openPanel(){
+      panel.classList.add('is-open');
+      panel.setAttribute('aria-hidden','false');
+      scrim.style.opacity='1'; scrim.style.pointerEvents='auto';
+      loadInitial().then(markAllRead);
+    }
+    function closePanel(){
+      panel.classList.remove('is-open');
+      panel.setAttribute('aria-hidden','true');
+      scrim.style.opacity='0'; scrim.style.pointerEvents='none';
+    }
+
+    btn.addEventListener('click', (e)=>{ e.preventDefault(); panel.classList.contains('is-open') ? closePanel() : openPanel(); });
+    close?.addEventListener('click', ()=>closePanel());
+    scrim?.addEventListener('click', ()=>closePanel());
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closePanel(); });
+
+    fetchUnreadCount();
+    setInterval(pollOnce, 20000);
+  })();
+  </script>
+
+  <!-- Submit report (if a form exists) -->
+  <script>
+  document.getElementById('reportForm')?.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const form = e.target;
+    const data = new FormData(form);
+    const res = await fetch(form.action, { method:'POST', body:data });
+    const out = await res.json().catch(()=>({}));
+    if (res.ok && out.ok){
+      alert('✅ Report sent. Thank you!');
+      const m = bootstrap.Modal.getInstance(document.getElementById('reportModal'));
+      m?.hide();
+    }else{
+      alert('❌ Failed to send report. Try again later.');
+    }
+  });
+  </script>
+
+  <!-- Profile Bottom Sheet (mobile only) -->
+  <div id="profileScrim" class="sheet-scrim" hidden></div>
+  <div id="profileSheet" class="sheet" hidden aria-hidden="true" role="dialog" aria-label="Profile menu">
+    <div class="sheet__drag"></div>
+    <div class="sheet__header">
+      <div class="sheet__profile">
+        <div class="sheet__avatar">
+  {% set _ava2 = avatar_src(session_user.avatar_path if session_user else '') %}
+{% if _ava2 and not _ava2.endswith('placeholder.png') %}
+  <img src="{{ _ava2 }}"
+       alt=""
+       referrerpolicy="no-referrer"
+       onerror="this.onerror=null;this.src='/static/placeholder.png'"
+       style="width:56px;height:56px;object-fit:cover;border-radius:50%">
+{% else %}
+  {{ (session_user.first_name or 'A')[:1] if session_user else 'U' }}
+{% endif %}
+
+
+</div>
+
+        <div>
+          <div class="sheet__name">{{ session_user.first_name or 'User' }}</div>
+          <div class="sheet__handle">@{{ session_user.username or 'user' }}</div>
+        </div>
+      </div>
+      <button class="sheet__share" type="button">Share</button>
+    </div>
+
+    <div class="sheet__body">
+      <ul class="sheet__list">
+        <li><a class="sheet__item" href="/profile"><span class="left"><span class="ic ic--profile"></span><span class="label">My Account</span></span><i class="bi bi-chevron-right chev"></i></a></li>
+        <li><a class="sheet__item" href="/favorites"><span class="left"><span class="ic ic--fav"></span><span class="label">My Favorites</span></span><i class="bi bi-chevron-right chev"></i></a></li>
+        <li><a class="sheet__item" href="/settings"><span class="left"><span class="ic ic--settings"></span><span class="label">Settings</span></span><i class="bi bi-chevron-right chev"></i></a></li>
+        <li><a class="sheet__item" href="/support/my"><span class="left"><span class="ic ic--cc"></span><span class="label">My Tickets</span></span><i class="bi bi-chevron-right chev"></i></a></li>
+        <li><a class="sheet__item" href="/support/new"><span class="left"><span class="ic ic--support"></span><span class="label">Contact Support</span></span><i class="bi bi-chevron-right chev"></i></a></li>
+        <li><a class="sheet__item text-danger" href="/logout"><span class="left"><span class="ic ic--logout"></span><span class="label">Logout</span></span><i class="bi bi-chevron-right chev"></i></a></li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+  (function initProfileSheet(){
+    if (window.__profileSheetInit) return; window.__profileSheetInit = true;
+    const isMobile = window.matchMedia('(max-width: 768px)');
+    const sheet = document.getElementById('profileSheet');
+    const scrim = document.getElementById('profileScrim');
+    if (!sheet || !scrim) return;
+    function show(){ sheet.hidden=false; scrim.hidden=false; requestAnimationFrame(()=>{ sheet.classList.add('is-open'); scrim.classList.add('is-open'); }); }
+    function hide(){ sheet.classList.remove('is-open'); scrim.classList.remove('is-open'); setTimeout(()=>{ sheet.hidden=true; scrim.hidden=true; },220); }
+    scrim.addEventListener('click', hide);
+    document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') hide(); });
+    const profTab = document.querySelector('.mobile-tabbar a[href="/profile"]');
+    if (profTab){ profTab.addEventListener('click',(e)=>{ if(isMobile.matches){ e.preventDefault(); show(); } }); }
+  })();
+  </script>
+
+  <!-- When opening any modal, hide floating panels -->
+  <script id="modal-guard-js">
+  (function(){
+    function hidePanels(){
+      try{
+        document.getElementById('typeaheadPanel')?.classList.add('d-none');
+        const city = document.getElementById('citySuggest');
+        if (city){ city.style.display = 'none'; city.innerHTML = ''; }
+        document.getElementById('notifPanel')?.classList.remove('is-open');
+        const scrim = document.getElementById('scrim');
+        if (scrim){ scrim.style.opacity='0'; scrim.style.pointerEvents='none'; }
+        const sheet = document.getElementById('profileSheet');
+        const sheetScrim = document.getElementById('profileScrim');
+        if (sheet){ sheet.classList.remove('is-open'); sheet.hidden = true; }
+        if (sheetScrim){ sheetScrim.classList.remove('is-open'); sheetScrim.hidden = true; }
+      }catch(_){}
+    }
+    document.addEventListener('show.bs.modal', hidePanels, true);
+  })();
+  </script>
+
+  <script>
+/**
+ * Single button to open camera + upload + navigate.
+ * Usage from any page:
+ *   SV_CaptureAndGo.open({ bookingId: 123, side: 'pickup'|'return' })
+ */
+(function(){
+  if (window.SV_CaptureAndGo) return;
+  window.SV_CaptureAndGo = (function(){
+    // Hidden input to trigger camera (mobile supports capture)
+    let fileInput = null;
+    function ensureInput(){
+      if (fileInput) return fileInput;
+      fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.multiple = true;
+      fileInput.capture = 'environment'; // back camera
+      fileInput.style.display = 'none';
+      document.body.appendChild(fileInput);
+      return fileInput;
+    }
+
+    // Simple progress overlay
+    let overlay = null;
+    function showOverlay(text){
+      if (!overlay){
+        overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2147483647;display:flex;align-items:center;justify-content:center;color:#fff';
+        overlay.innerHTML = '<div style="background:rgba(0,0,0,.55);padding:18px 22px;border-radius:12px;font:600 14px system-ui">Uploading photos…</div>';
+        document.body.appendChild(overlay);
+      }
+      overlay.firstChild.textContent = text || 'Uploading photos…';
+      overlay.style.display = 'flex';
+    }
+    function hideOverlay(){ if (overlay) overlay.style.display = 'none'; }
+
+    async function upload({bookingId, side, files}){
+      const fd = new FormData();
+      fd.append('side', side);
+      const list = Array.prototype.slice.call(files || []);
+      list.slice(0,6).forEach(f => fd.append('files', f, f.name || 'photo.jpg'));
+      const res = await fetch(`/bookings/${bookingId}/upload-photos`, { method:'POST', body: fd });
+      const out = await res.json().catch(()=>({ ok:false }));
+      return out;
+    }
+
+    async function open({bookingId, side}){
+      try{
+        const input = ensureInput();
+        input.value = ''; // clear previous
+        return new Promise((resolve) => {
+          input.onchange = async function(){
+            const chosen = input.files;
+            if (!chosen || !chosen.length){ resolve(false); return; }
+            showOverlay('Uploading photos…');
+            try{
+              const out = await upload({ bookingId, side, files: chosen });
+              hideOverlay();
+              if (out && out.ok){
+                window.location.assign(out.next_url || `/bookings/${bookingId}`);
+              }else{
+                alert('Upload failed. We’ll take you back to the page.');
+                window.location.assign(`/bookings/${bookingId}`);
+              }
+              resolve(true);
+            }catch(e){
+              hideOverlay();
+              alert('An error occurred during upload.');
+              resolve(false);
+            }
+          };
+          // trigger camera
+          input.click();
+        });
+      }catch(e){
+        alert('Camera not supported on this browser. Please pick photos from the gallery.');
+      }
+    }
+
+    return { open };
+  })();
+})();
+</script>
+
+<script>
+/* يقرأ ارتفاع .mobile-tabbar الحقيقي ويضبط --sv-tabbar تلقائياً */
+(function(){
+  function setFabOffset(){
+    var bar = document.querySelector('.mobile-tabbar');
+    var h = 64;
+    if (bar){
+      var r = bar.getBoundingClientRect();
+      h = Math.max(48, Math.round(r.height || 64));
+    }
+    document.documentElement.style.setProperty('--sv-tabbar', h + 'px');
+  }
+  setFabOffset();
+  window.addEventListener('resize', setFabOffset);
+  window.addEventListener('orientationchange', setFabOffset);
+  // إعادة الحساب بعد رندر التاب بار/الفونت
+  setTimeout(setFabOffset, 100);
+  setTimeout(setFabOffset, 500);
+})();
+</script>
+<script>
+(function() {
+  try {
+    if (localStorage.getItem("geo_locale_done") === "1") return;
+
+    const lang = navigator.language || (navigator.languages && navigator.languages[0]);
+    if (!lang) return;
+
+    fetch("/geo/locale", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ lang: lang })
+    })
+      .then(() => {
+        localStorage.setItem("geo_locale_done", "1");
+        location.reload();
+      })
+      .catch(() => {});
+  } catch(e){}
+})();
+</script>
+
+<style id="hide-header-messages">
+/* ===== Hide header ONLY on /messages (mobile only) ===== */
+@media (max-width: 768px){
+
+  body[data-path="/messages"],
+  body[data-path^="/messages/"] {
+
+    /* Hide everything from header */
+    header.topbar,
+    .m-top-tabs,
+    .searchbar,
+    .stripe-callout {
+      display: none !important;
+    }
+
+    /* Remove extra top space */
+    .page {
+      padding-top: 12px !important;
+    }
+  }
+}
+</style>
+
+<script>
+/* Attach current path to <body data-path="..."> */
+document.addEventListener('DOMContentLoaded', function(){
+  try {
+    document.body.setAttribute('data-path', location.pathname);
+  }catch(e){}
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const bar = document.querySelector(".mobile-tabbar");
+  if (!bar) return;
+
+  const tabs = bar.querySelectorAll("a");
+  const indicator = bar.querySelector(".tab-indicator");
+
+  function moveIndicator(activeTab) {
+    const rect = activeTab.getBoundingClientRect();
+    const barRect = bar.getBoundingClientRect();
+
+    const offset = rect.left - barRect.left;
+
+    indicator.style.transform = `translateX(${offset}px)`;
+    indicator.style.width = rect.width + "px";
+  }
+
+  // أول تشغيل = التاب النشط
+  const current = bar.querySelector("a.is-active") || tabs[0];
+  moveIndicator(current);
+
+  // عند الضغط
+  tabs.forEach(tab => {
+    tab.addEventListener("click", () => moveIndicator(tab));
+  });
+});
+</script>
+
+
+
+ {# ===== Country Picker Overlay (first visit) ===== #}
+  {# لا نظهر نافذة اختيار البلد إلا إذا لم يكن عندنا عملة عرض ولا geo في الجلسة #}
+  {% if not request.cookies.get('disp_cur') and not (request.session and request.session.get('geo')) %}
+    {% include "geo_pick.html" %}
+  {% endif %}
+
+
+
+{% set immersive = immersive|default(false) %}
+</body>
+</html>
