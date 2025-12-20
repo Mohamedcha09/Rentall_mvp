@@ -9,27 +9,22 @@
   background:var(--surface);
   margin-bottom:18px;
 }
-
 .method{
   border:1px solid var(--border);
   border-radius:16px;
   padding:16px;
   margin-bottom:14px;
-  transition:.2s ease;
 }
-
 .method.active{
   border-color:#6d5dfc;
   background:rgba(109,93,252,.05);
 }
-
 .method-title{
   display:flex;
   align-items:center;
   gap:10px;
   font-weight:600;
 }
-
 .field{margin-top:14px}
 .field input, .field select{
   width:100%;
@@ -37,7 +32,6 @@
   border-radius:12px;
   border:1px solid var(--border);
 }
-
 .hint{font-size:.85rem;opacity:.7;margin-top:4px}
 </style>
 {% endblock %}
@@ -47,7 +41,6 @@
 
 <h3 class="mb-3">Payout Preferences</h3>
 
-{# ================= SUCCESS MESSAGE ================= #}
 {% if request.query_params.get("saved") %}
 <div class="alert alert-success mb-3">
   ✅ Your payout method has been saved successfully.
@@ -55,7 +48,7 @@
 {% endif %}
 
 {# ================= SUMMARY CARD ================= #}
-{% if payout %}
+{% if payout and not request.query_params.get("edit") %}
 <div class="card">
   <h5>Your payout method</h5>
 
@@ -81,9 +74,8 @@
 </div>
 {% endif %}
 
-
 {# ================= FORM ================= #}
-{% if show_form %}
+{% if request.query_params.get("edit") or not payout %}
 <form method="post" action="/payout/settings">
 
 <div class="card">
@@ -93,54 +85,31 @@
 
 <div class="card">
 
-  <!-- Interac -->
-  <div class="method {% if not payout or payout.method=='interac' %}active{% endif %}" data-method="interac">
+  <div class="method active" data-method="interac">
     <div class="method-title">
-      <input type="radio" name="method" value="interac"
-             {% if not payout or payout.method=='interac' %}checked{% endif %}>
+      <input type="radio" name="method" value="interac" checked>
       Interac e-Transfer (Canada)
     </div>
-
-    <div class="field {% if payout and payout.method!='interac' %}d-none{% endif %}">
-      <input name="interac_destination"
-             value="{{ payout.destination if payout and payout.method=='interac' else '' }}"
-             placeholder="Email or phone number">
-    </div>
-
-    <label class="mt-2">
-      <input type="checkbox" name="auto_deposit"
-             {% if payout and payout.auto_deposit %}checked{% endif %}>
-      Enable auto-deposit
-    </label>
-  </div>
-
-  <!-- PayPal -->
-  <div class="method {% if payout and payout.method=='paypal' %}active{% endif %}" data-method="paypal">
-    <div class="method-title">
-      <input type="radio" name="method" value="paypal"
-             {% if payout and payout.method=='paypal' %}checked{% endif %}>
-      PayPal
-    </div>
-
-    <div class="field {% if not payout or payout.method!='paypal' %}d-none{% endif %}">
-      <input type="email" name="paypal_email"
-             value="{{ payout.destination if payout and payout.method=='paypal' else '' }}"
-             placeholder="PayPal email">
+    <div class="field">
+      <input name="interac_destination" placeholder="Email or phone">
     </div>
   </div>
 
-  <!-- Wise -->
-  <div class="method {% if payout and payout.method=='wise' %}active{% endif %}" data-method="wise">
+  <div class="method" data-method="paypal">
     <div class="method-title">
-      <input type="radio" name="method" value="wise"
-             {% if payout and payout.method=='wise' %}checked{% endif %}>
-      Wise
+      <input type="radio" name="method" value="paypal"> PayPal
     </div>
+    <div class="field d-none">
+      <input name="paypal_email" placeholder="PayPal email">
+    </div>
+  </div>
 
-    <div class="field {% if not payout or payout.method!='wise' %}d-none{% endif %}">
-      <input name="wise_iban"
-             value="{{ payout.destination if payout and payout.method=='wise' else '' }}"
-             placeholder="IBAN">
+  <div class="method" data-method="wise">
+    <div class="method-title">
+      <input type="radio" name="method" value="wise"> Wise
+    </div>
+    <div class="field d-none">
+      <input name="wise_iban" placeholder="IBAN">
     </div>
   </div>
 
@@ -148,9 +117,9 @@
 
 <div class="card">
   <select name="currency">
-    <option value="CAD" {% if payout and payout.currency=='CAD' %}selected{% endif %}>CAD</option>
-    <option value="USD" {% if payout and payout.currency=='USD' %}selected{% endif %}>USD</option>
-    <option value="EUR" {% if payout and payout.currency=='EUR' %}selected{% endif %}>EUR</option>
+    <option value="CAD">CAD</option>
+    <option value="USD">USD</option>
+    <option value="EUR">EUR</option>
   </select>
 </div>
 
@@ -166,18 +135,13 @@
 (function(){
   const methods = document.querySelectorAll(".method");
   const radios = document.querySelectorAll("input[name=method]");
-
-  radios.forEach(radio => {
-    radio.addEventListener("change", () => {
-      methods.forEach(m => {
-        const active = m.dataset.method === radio.value;
-        m.classList.toggle("active", active);
-        m.querySelectorAll(".field").forEach(f => {
-          f.classList.toggle("d-none", !active);
-        });
-      });
+  radios.forEach(r => r.addEventListener("change", () => {
+    methods.forEach(m => {
+      const active = m.dataset.method === r.value;
+      m.classList.toggle("active", active);
+      m.querySelector(".field")?.classList.toggle("d-none", !active);
     });
-  });
+  }));
 })();
 </script>
 {% endblock %}
