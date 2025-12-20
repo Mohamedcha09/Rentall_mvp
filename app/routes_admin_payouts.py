@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session, joinedload
+
 from .database import get_db
 from .models import Booking, User, UserPayoutMethod
 
@@ -15,7 +16,7 @@ def get_current_user(request: Request, db: Session) -> User | None:
         return None
     return db.query(User).get(sess.get("id"))
 
-def require_admin(user: User):
+def require_admin(user: User | None):
     if not user or user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
 
@@ -24,7 +25,10 @@ def require_admin(user: User):
 # GET – Admin payouts page
 # =====================================================
 @router.get("/payouts", response_class=HTMLResponse)
-def admin_payouts(request: Request, db: Session = Depends(get_db)):
+def admin_payouts(
+    request: Request,
+    db: Session = Depends(get_db)
+):
     user = get_current_user(request, db)
     require_admin(user)
 
@@ -53,7 +57,7 @@ def admin_payouts(request: Request, db: Session = Depends(get_db)):
         rows.append({
             "booking": b,
             "owner": b.owner,
-            "payout": payout
+            "payout": payout,
         })
 
     return request.app.templates.TemplateResponse(
@@ -63,7 +67,6 @@ def admin_payouts(request: Request, db: Session = Depends(get_db)):
             "user": user,
             "rows": rows,
             "session_user": request.session.get("user"),
-
         }
     )
 
@@ -90,4 +93,4 @@ def mark_payout_sent(
 
     db.commit()
 
-    return RedirectResponse("/admin/payouts", status_code=303)
+    return RedirectResponse(url="/admin/payouts", status_code=303)
