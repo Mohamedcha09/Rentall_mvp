@@ -117,17 +117,3 @@ def dispute_new(request: Request):
 def dispute_new_post(request: Request, reason: str = Form(...)):
     # Later: save the dispute in DB and notify admins
     return RedirectResponse(url="/my/rentals", status_code=303)
-
-# ==============================
-# Admin payments dashboard (Placeholder)
-# ==============================
-@router.get("/admin/payouts")
-def admin_payouts(request: Request):
-    u = request.session.get("user")
-    if not (u and u.get("role") == "admin"):
-        return RedirectResponse(url="/login", status_code=303)
-
-    return request.app.templates.TemplateResponse(
-        "admin_payouts.html",
-        {"request": request, "title": "Transfers/Payouts", "session_user": u}
-    )
