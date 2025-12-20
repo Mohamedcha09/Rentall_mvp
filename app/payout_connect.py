@@ -1,5 +1,3 @@
-# app/payout_connect.py
-
 from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
@@ -29,9 +27,15 @@ def payout_settings(request: Request, db: Session = Depends(get_db)):
 
     payout = (
         db.query(UserPayoutMethod)
-        .filter(UserPayoutMethod.user_id == user.id, UserPayoutMethod.is_active == True)
+        .filter(
+            UserPayoutMethod.user_id == user.id,
+            UserPayoutMethod.is_active == True
+        )
         .first()
     )
+
+    # ✅ هذا هو السطر المهم
+    show_form = request.query_params.get("edit") == "1" or payout is None
 
     return request.app.templates.TemplateResponse(
         "payout_settings.html",
@@ -39,12 +43,13 @@ def payout_settings(request: Request, db: Session = Depends(get_db)):
             "request": request,
             "user": user,
             "payout": payout,
-            "show_form": request.query_params.get("edit") == "1" or payout is None
-
+            "show_form": show_form,
         },
     )
 
-
+# =====================================================
+# POST – Save payout settings
+# =====================================================
 @router.post("/payout/settings")
 def save_payout_settings(
     request: Request,
@@ -64,7 +69,7 @@ def save_payout_settings(
         return RedirectResponse("/login", status_code=303)
 
     # -----------------------------
-    # Determine destination safely
+    # Determine destination
     # -----------------------------
     if method == "interac":
         destination = interac_destination
@@ -107,7 +112,9 @@ def save_payout_settings(
 
     return RedirectResponse("/payout/settings?saved=1", status_code=303)
 
-
+# =====================================================
+# POST – Remove payout method
+# =====================================================
 @router.post("/payout/settings/remove")
 def remove_payout(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
