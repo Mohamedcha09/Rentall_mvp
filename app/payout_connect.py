@@ -39,6 +39,8 @@ def payout_settings(request: Request, db: Session = Depends(get_db)):
             "request": request,
             "user": user,
             "payout": payout,
+            "show_form": request.query_params.get("edit") == "1" or payout is None
+
         },
     )
 
