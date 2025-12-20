@@ -55,7 +55,7 @@
 {% endif %}
 
 {# ================= SUMMARY CARD ================= #}
-{% if payout and not show_form %}
+{% if payout %}
 <div class="card">
   <h5>Your payout method</h5>
 
@@ -80,6 +80,7 @@
   </div>
 </div>
 {% endif %}
+
 
 {# ================= FORM ================= #}
 {% if show_form %}

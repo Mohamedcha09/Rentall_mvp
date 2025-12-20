@@ -19,13 +19,12 @@ def get_current_user(request: Request, db: Session) -> User | None:
 # =====================================================
 # GET – Payout settings page
 # =====================================================
+
 @router.get("/payout/settings", response_class=HTMLResponse)
 def payout_settings(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse("/login", status_code=303)
-
-    print("✅ DEBUG: GET /payout/settings reached, user_id =", user.id)
 
     payout = (
         db.query(UserPayoutMethod)
@@ -36,10 +35,7 @@ def payout_settings(request: Request, db: Session = Depends(get_db)):
         .first()
     )
 
-    show_form = request.query_params.get("edit") == "1" or payout is None
-
-    print("✅ DEBUG: payout =", payout)
-    print("✅ DEBUG: show_form =", show_form)
+    show_form = request.query_params.get("edit") == "1"
 
     return request.app.templates.TemplateResponse(
         "payout_settings.html",
