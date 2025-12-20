@@ -16,7 +16,7 @@ def get_current_user(request: Request, db: Session) -> User | None:
     return db.query(User).get(sess.get("id"))
 
 def require_admin(user: User):
-    if not user or not user.is_super_admin:
+    if not user or user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
 
 
