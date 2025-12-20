@@ -34,7 +34,7 @@ def payout_settings(request: Request, db: Session = Depends(get_db)):
     )
 
     return request.app.templates.TemplateResponse(
-        "payout_connect.html",
+        "payout_settings.html",
         {
             "request": request,
             "user": user,
