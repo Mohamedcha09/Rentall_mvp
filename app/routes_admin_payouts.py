@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, Form
-from fastapi.responses import HTMLResponse, RedirectResponse ,StreamingResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session, joinedload
+from datetime import datetime
+import csv
+import io
 
 from .database import get_db
 from .models import Booking, User, UserPayoutMethod
-from .notifications_api import push_notification   # ✅ ADD
-import csv
-import io
+from .notifications_api import push_notification
 
 router = APIRouter(prefix="/admin", tags=["admin-payouts"])
 
@@ -17,7 +18,7 @@ def get_current_user(request: Request, db: Session) -> User | None:
     sess = request.session.get("user")
     if not sess:
         return None
-    return db.query(User).get(sess.get("id"))
+    return db.get(User, sess.get("id"))
 
 def require_admin(user: User | None):
     if not user or user.role != "admin":
@@ -25,12 +26,12 @@ def require_admin(user: User | None):
 
 
 # =====================================================
-# GET – Admin payouts page
+# GET – Pending payouts
 # =====================================================
 @router.get("/payouts", response_class=HTMLResponse)
 def admin_payouts(
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     user = get_current_user(request, db)
     require_admin(user)
@@ -52,11 +53,10 @@ def admin_payouts(
             db.query(UserPayoutMethod)
             .filter(
                 UserPayoutMethod.user_id == b.owner_id,
-                UserPayoutMethod.is_active == True
+                UserPayoutMethod.is_active == True,
             )
             .first()
         )
-
         rows.append({
             "booking": b,
             "owner": b.owner,
@@ -73,6 +73,10 @@ def admin_payouts(
         }
     )
 
+
+# =====================================================
+# POST – Mark payout as sent
+# =====================================================
 @router.post("/payouts/{booking_id}/mark-sent")
 def mark_payout_sent(
     booking_id: int,
@@ -85,16 +89,17 @@ def mark_payout_sent(
 
     booking = db.get(Booking, booking_id)
     if not booking:
-        raise HTTPException(404)
+        raise HTTPException(status_code=404, detail="Booking not found")
 
+    # ✅ تحديث الحالة
     booking.payout_sent = True
     booking.payout_ready = False
-    booking.payout_sent_at = db.execute("SELECT NOW()").scalar()
+    booking.payout_sent_at = datetime.utcnow()
     booking.payout_reference = reference
 
     db.commit()
 
-    # 🔔 إشعار للمالك
+    # 🔔 إشعار + إيميل للمالك
     push_notification(
         db,
         booking.owner_id,
@@ -108,7 +113,9 @@ def mark_payout_sent(
     return RedirectResponse("/admin/payouts/paid", status_code=303)
 
 
-
+# =====================================================
+# GET – Paid payouts history
+# =====================================================
 @router.get("/payouts/paid", response_class=HTMLResponse)
 def admin_payouts_paid(
     request: Request,
@@ -128,7 +135,6 @@ def admin_payouts_paid(
 
     if date_from:
         q = q.filter(Booking.payout_sent_at >= date_from)
-
     if date_to:
         q = q.filter(Booking.payout_sent_at <= date_to)
 
@@ -156,7 +162,7 @@ def admin_payouts_paid(
                 db.query(UserPayoutMethod)
                 .filter(
                     UserPayoutMethod.user_id == b.owner_id,
-                    UserPayoutMethod.is_active == True
+                    UserPayoutMethod.is_active == True,
                 )
                 .first()
             )
@@ -176,7 +182,9 @@ def admin_payouts_paid(
         return StreamingResponse(
             output,
             media_type="text/csv",
-            headers={"Content-Disposition": "attachment; filename=payouts.csv"},
+            headers={
+                "Content-Disposition": "attachment; filename=payouts.csv"
+            },
         )
 
     # ==========================
@@ -188,11 +196,15 @@ def admin_payouts_paid(
             db.query(UserPayoutMethod)
             .filter(
                 UserPayoutMethod.user_id == b.owner_id,
-                UserPayoutMethod.is_active == True
+                UserPayoutMethod.is_active == True,
             )
             .first()
         )
-        rows.append({"booking": b, "owner": b.owner, "payout": payout})
+        rows.append({
+            "booking": b,
+            "owner": b.owner,
+            "payout": payout,
+        })
 
     return request.app.templates.TemplateResponse(
         "admin_payouts_paid.html",
