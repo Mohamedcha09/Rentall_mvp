@@ -9,22 +9,27 @@
   background:var(--surface);
   margin-bottom:18px;
 }
+
 .method{
   border:1px solid var(--border);
   border-radius:16px;
   padding:16px;
   margin-bottom:14px;
+  transition:.2s ease;
 }
+
 .method.active{
   border-color:#6d5dfc;
   background:rgba(109,93,252,.05);
 }
+
 .method-title{
   display:flex;
   align-items:center;
   gap:10px;
   font-weight:600;
 }
+
 .field{margin-top:14px}
 .field input, .field select{
   width:100%;
@@ -32,6 +37,7 @@
   border-radius:12px;
   border:1px solid var(--border);
 }
+
 .hint{font-size:.85rem;opacity:.7;margin-top:4px}
 </style>
 {% endblock %}
@@ -47,33 +53,41 @@
 </div>
 {% endif %}
 
-{# ================= SUMMARY CARD ================= #}
-{% if payout and not show_form %}
+{# =====================================================
+   SUMMARY CARD — تظهر دائمًا إذا payout موجود
+   ===================================================== #}
+{% if payout %}
 <div class="card">
   <h5>Your payout method</h5>
 
-  <p>
+  <p class="mb-1">
     You receive your earnings via
     <strong>{{ payout.method|upper }}</strong>
   </p>
 
   <p class="hint">
-    {{ payout.destination }}<br>
+    {{ payout.destination }} <br>
     Currency: {{ payout.currency }}
   </p>
 
   <div class="d-flex gap-2 mt-3">
-    <a href="/payout/settings?edit=1" class="btn btn-outline-primary">Edit</a>
+    <a href="/payout/settings?edit=1" class="btn btn-outline-primary">
+      Edit
+    </a>
 
     <form method="post" action="/payout/settings/remove">
-      <button class="btn btn-outline-danger">Remove</button>
+      <button type="submit" class="btn btn-outline-danger">
+        Remove
+      </button>
     </form>
   </div>
 </div>
 {% endif %}
 
-{# ================= FORM ================= #}
-{% if show_form %}
+{# =====================================================
+   FORM — يظهر فقط إذا لا يوجد payout أو edit=1
+   ===================================================== #}
+{% if not payout or request.query_params.get("edit") %}
 <form method="post" action="/payout/settings">
 
 <div class="card">
@@ -83,6 +97,7 @@
 
 <div class="card">
 
+  <!-- Interac -->
   <div class="method active" data-method="interac">
     <div class="method-title">
       <input type="radio" name="method" value="interac" checked>
@@ -91,20 +106,28 @@
     <div class="field">
       <input name="interac_destination" placeholder="Email or phone number">
     </div>
+    <label class="mt-2">
+      <input type="checkbox" name="auto_deposit">
+      Enable auto-deposit
+    </label>
   </div>
 
+  <!-- PayPal -->
   <div class="method" data-method="paypal">
     <div class="method-title">
-      <input type="radio" name="method" value="paypal"> PayPal
+      <input type="radio" name="method" value="paypal">
+      PayPal
     </div>
     <div class="field d-none">
       <input name="paypal_email" placeholder="PayPal email">
     </div>
   </div>
 
+  <!-- Wise -->
   <div class="method" data-method="wise">
     <div class="method-title">
-      <input type="radio" name="method" value="wise"> Wise
+      <input type="radio" name="method" value="wise">
+      Wise
     </div>
     <div class="field d-none">
       <input name="wise_iban" placeholder="IBAN">
@@ -133,13 +156,18 @@
 (function(){
   const methods = document.querySelectorAll(".method");
   const radios = document.querySelectorAll("input[name=method]");
-  radios.forEach(r => r.addEventListener("change", () => {
-    methods.forEach(m => {
-      const active = m.dataset.method === r.value;
-      m.classList.toggle("active", active);
-      m.querySelector(".field")?.classList.toggle("d-none", !active);
+
+  radios.forEach(radio => {
+    radio.addEventListener("change", () => {
+      methods.forEach(m => {
+        const active = m.dataset.method === radio.value;
+        m.classList.toggle("active", active);
+        m.querySelectorAll(".field").forEach(f => {
+          f.classList.toggle("d-none", !active);
+        });
+      });
     });
-  }));
+  });
 })();
 </script>
 {% endblock %}
