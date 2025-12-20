@@ -48,24 +48,22 @@
 {% endif %}
 
 {# ================= SUMMARY CARD ================= #}
-{% if payout and not request.query_params.get("edit") %}
+{% if payout and not show_form %}
 <div class="card">
   <h5>Your payout method</h5>
 
-  <p class="mb-1">
+  <p>
     You receive your earnings via
     <strong>{{ payout.method|upper }}</strong>
   </p>
 
   <p class="hint">
-    {{ payout.destination }} <br>
+    {{ payout.destination }}<br>
     Currency: {{ payout.currency }}
   </p>
 
   <div class="d-flex gap-2 mt-3">
-    <a href="/payout/settings?edit=1" class="btn btn-outline-primary">
-      Edit
-    </a>
+    <a href="/payout/settings?edit=1" class="btn btn-outline-primary">Edit</a>
 
     <form method="post" action="/payout/settings/remove">
       <button class="btn btn-outline-danger">Remove</button>
@@ -75,7 +73,7 @@
 {% endif %}
 
 {# ================= FORM ================= #}
-{% if request.query_params.get("edit") or not payout %}
+{% if show_form %}
 <form method="post" action="/payout/settings">
 
 <div class="card">
@@ -91,7 +89,7 @@
       Interac e-Transfer (Canada)
     </div>
     <div class="field">
-      <input name="interac_destination" placeholder="Email or phone">
+      <input name="interac_destination" placeholder="Email or phone number">
     </div>
   </div>
 

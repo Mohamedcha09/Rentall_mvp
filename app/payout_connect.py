@@ -19,7 +19,6 @@ def get_current_user(request: Request, db: Session) -> User | None:
 # =====================================================
 # GET – Payout settings page
 # =====================================================
-
 @router.get("/payout/settings", response_class=HTMLResponse)
 def payout_settings(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
@@ -35,7 +34,8 @@ def payout_settings(request: Request, db: Session = Depends(get_db)):
         .first()
     )
 
-    show_form = request.query_params.get("edit") == "1"
+    # 🔴 المنطق النهائي (لا تغيّره)
+    show_form = request.query_params.get("edit") == "1" or payout is None
 
     return request.app.templates.TemplateResponse(
         "payout_settings.html",
@@ -68,9 +68,6 @@ def save_payout_settings(
     if not user:
         return RedirectResponse("/login", status_code=303)
 
-    # -----------------------------
-    # Determine destination
-    # -----------------------------
     if method == "interac":
         destination = interac_destination
         country = "CA"
@@ -86,17 +83,12 @@ def save_payout_settings(
     if not destination:
         return RedirectResponse("/payout/settings?error=missing", status_code=303)
 
-    # -----------------------------
-    # Disable previous payout method
-    # -----------------------------
+    # تعطيل القديم
     db.query(UserPayoutMethod).filter(
         UserPayoutMethod.user_id == user.id,
         UserPayoutMethod.is_active == True
     ).update({"is_active": False})
 
-    # -----------------------------
-    # Save new payout method
-    # -----------------------------
     payout = UserPayoutMethod(
         user_id=user.id,
         method=method,
