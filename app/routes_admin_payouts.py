@@ -32,9 +32,9 @@ def admin_payouts(request: Request, db: Session = Depends(get_db)):
     bookings = (
         db.query(Booking)
         .filter(
-                Booking.payout_ready == True,
-                Booking.payout_sent == False,
-                Booking.status == "completed")
+            Booking.payout_ready == True,
+            Booking.payout_sent == False,
+        )
         .order_by(Booking.updated_at.asc())
         .all()
     )
