@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse ,StreamingResponse
 from sqlalchemy.orm import Session, joinedload
 
 from .database import get_db
 from .models import Booking, User, UserPayoutMethod
 from .notifications_api import push_notification   # ✅ ADD
+import csv
+import io
 
 router = APIRouter(prefix="/admin", tags=["admin-payouts"])
 
@@ -71,35 +73,28 @@ def admin_payouts(
         }
     )
 
-
-# =====================================================
-# POST – Mark payout as sent
-# =====================================================
 @router.post("/payouts/{booking_id}/mark-sent")
 def mark_payout_sent(
     booking_id: int,
     request: Request,
-    db: Session = Depends(get_db)
+    reference: str = Form(""),
+    db: Session = Depends(get_db),
 ):
     user = get_current_user(request, db)
     require_admin(user)
 
-    booking = db.query(Booking).get(booking_id)
+    booking = db.get(Booking, booking_id)
     if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
+        raise HTTPException(404)
 
-    # ==========================
-    # UPDATE PAYOUT STATUS
-    # ==========================
     booking.payout_sent = True
     booking.payout_ready = False
     booking.payout_sent_at = db.execute("SELECT NOW()").scalar()
+    booking.payout_reference = reference
 
     db.commit()
 
-    # ==========================
-    # 🔔 NOTIFICATION + EMAIL
-    # ==========================
+    # 🔔 إشعار للمالك
     push_notification(
         db,
         booking.owner_id,
@@ -110,4 +105,102 @@ def mark_payout_sent(
         kind="payout",
     )
 
-    return RedirectResponse(url="/admin/payouts", status_code=303)
+    return RedirectResponse("/admin/payouts/paid", status_code=303)
+
+
+
+@router.get("/payouts/paid", response_class=HTMLResponse)
+def admin_payouts_paid(
+    request: Request,
+    db: Session = Depends(get_db),
+    date_from: str | None = None,
+    date_to: str | None = None,
+    export: str | None = None,
+):
+    user = get_current_user(request, db)
+    require_admin(user)
+
+    q = (
+        db.query(Booking)
+        .options(joinedload(Booking.owner))
+        .filter(Booking.payout_sent == True)
+    )
+
+    if date_from:
+        q = q.filter(Booking.payout_sent_at >= date_from)
+
+    if date_to:
+        q = q.filter(Booking.payout_sent_at <= date_to)
+
+    bookings = q.order_by(Booking.payout_sent_at.desc()).all()
+
+    # ==========================
+    # 📤 EXPORT CSV
+    # ==========================
+    if export == "csv":
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "Booking ID",
+            "Owner",
+            "Amount",
+            "Currency",
+            "Method",
+            "Destination",
+            "Paid at",
+            "Reference",
+        ])
+
+        for b in bookings:
+            payout = (
+                db.query(UserPayoutMethod)
+                .filter(
+                    UserPayoutMethod.user_id == b.owner_id,
+                    UserPayoutMethod.is_active == True
+                )
+                .first()
+            )
+
+            writer.writerow([
+                b.id,
+                b.owner.full_name if b.owner else "",
+                b.owner_amount,
+                b.currency_display or b.currency,
+                payout.method if payout else "",
+                payout.destination if payout else "",
+                b.payout_sent_at,
+                getattr(b, "payout_reference", ""),
+            ])
+
+        output.seek(0)
+        return StreamingResponse(
+            output,
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=payouts.csv"},
+        )
+
+    # ==========================
+    # UI DATA
+    # ==========================
+    rows = []
+    for b in bookings:
+        payout = (
+            db.query(UserPayoutMethod)
+            .filter(
+                UserPayoutMethod.user_id == b.owner_id,
+                UserPayoutMethod.is_active == True
+            )
+            .first()
+        )
+        rows.append({"booking": b, "owner": b.owner, "payout": payout})
+
+    return request.app.templates.TemplateResponse(
+        "admin_payouts_paid.html",
+        {
+            "request": request,
+            "rows": rows,
+            "session_user": request.session.get("user"),
+            "date_from": date_from,
+            "date_to": date_to,
+        }
+    )

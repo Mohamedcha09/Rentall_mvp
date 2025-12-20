@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container" style="max-width:1200px">
+
+<h3 class="mb-4">💸 Paid Payouts (Admin)</h3>
+
+<!-- 🔍 FILTER -->
+<form method="get" class="row g-2 mb-3">
+  <div class="col">
+    <input type="date" name="date_from" class="form-control"
+           value="{{ date_from }}">
+  </div>
+  <div class="col">
+    <input type="date" name="date_to" class="form-control"
+           value="{{ date_to }}">
+  </div>
+  <div class="col">
+    <button class="btn btn-outline-primary">Filter</button>
+    <a href="?export=csv" class="btn btn-outline-success">Export CSV</a>
+  </div>
+</form>
+
+{% if not rows %}
+  <div class="alert alert-info">No paid payouts.</div>
+{% endif %}
+
+{% for row in rows %}
+<div class="card mb-3 border-success">
+  <div class="card-body">
+
+    <h5>Booking #{{ row.booking.id }}</h5>
+
+    <p>
+      <b>Owner:</b> {{ row.owner.full_name }}<br>
+      <b>Amount:</b>
+      {{ row.booking.owner_amount }}
+      {{ row.booking.currency_display or row.booking.currency }}<br>
+      <b>Paid at:</b> {{ row.booking.payout_sent_at }}<br>
+      <b>Reference:</b> {{ row.booking.payout_reference or "—" }}
+    </p>
+
+    {% if row.payout %}
+      <p class="mb-0">
+        <b>Method:</b> {{ row.payout.method|upper }}<br>
+        <b>Destination:</b> {{ row.payout.destination }}
+      </p>
+    {% endif %}
+
+  </div>
+</div>
+{% endfor %}
+
+</div>
+{% endblock %}
