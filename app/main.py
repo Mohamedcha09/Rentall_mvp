@@ -86,7 +86,6 @@ from . import routes_chatbot
 from .routes_cs_chatbot import router as cs_chatbot_router
 from .routes_md_chatbot import router as md_chatbot_router
 from .routes_mod_chatbot import router as mod_chatbot_router
-from .payout_settings import router as payout_settings_router
 
 
 
@@ -837,7 +836,6 @@ app.include_router(routes_chatbot.router)
 app.include_router(cs_chatbot_router)
 app.include_router(md_chatbot_router)
 app.include_router(mod_chatbot_router)
-app.include_router(payout_settings_router)
 
 
 # -----------------------------------------------------------------------------
