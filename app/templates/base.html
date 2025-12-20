@@ -912,7 +912,7 @@ window.onpageshow = function(e){
           <a role="menuitem" class="topmenu-item" href="/favorites"><i class="bi bi-heart-fill"></i> My Favorites</a>
           <a role="menuitem" class="topmenu-item" href="/profile"><i class="bi bi-person-circle"></i> My Profile</a>
           <a role="menuitem" class="topmenu-item" href="/bookings"><i class="bi bi-calendar2-check"></i> My Bookings</a>
-          <a role="menuitem" class="topmenu-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> Payouts</a>
+          <a role="menuitem" class="topmenu-item" href="/payout/connect"><i class="bi bi-cash-stack"></i> Payouts</a>
           <a role="menuitem" class="topmenu-item" href="/owner/items"><i class="bi bi-collection"></i> My Items</a>
 
           {% if session_user.get('can_manage_deposits') %}
@@ -1095,7 +1095,7 @@ window.onpageshow = function(e){
               <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> My Profile</a></li>
               <li><a class="dropdown-item" href="/owner/items"><i class="bi bi-collection"></i> My Items</a></li>
               <li><a class="dropdown-item" href="/bookings"><i class="bi bi-calendar2-check"></i> My Bookings</a></li>
-              <li><a class="dropdown-item" href="/payout/settings"><i class="bi bi-cash-stack"></i> Payouts</a></li>
+              <li><a class="dropdown-item" href="/payout/connect"><i class="bi bi-cash-stack"></i> Payouts</a></li>
               {% if session_user.role == 'admin' or session_user.get('is_mod') %}
                 <li><a class="dropdown-item" href="/admin/reports">📸 Reports</a></li>
               {% endif %}
@@ -1130,7 +1130,7 @@ window.onpageshow = function(e){
           {{ unread_top if unread_top < 100 else '99+' }}
         </small>
       </a>
-      <a href="/payout/settings" class="m-tab {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" role="tab">Payouts</a>
+      <a href="/payout/connect" class="m-tab {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" role="tab">Payouts</a>
       {% if session_user.role == 'admin' %}
         <a href="/admin" class="m-tab {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" role="tab">Admin</a>
       {% endif %}
@@ -1153,7 +1153,7 @@ window.onpageshow = function(e){
 
       <div class="stripe-callout alert alert-warning d-flex justify-content-between align-items:center mb-3">
         <div>💸 To start receiving earnings, connect <strong>Stripe Connect</strong>.</div>
-        <a class="btn btn-sm btn-primary" href="/payout/settings">Connect Now</a>
+        <a class="btn btn-sm btn-primary" href="/payout/connect">Connect Now</a>
       </div>
     {% endif %}
 
