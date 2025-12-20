@@ -12,6 +12,16 @@ stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 def _me(request: Request): return request.session.get("user")
 def _need_login(): return RedirectResponse(url="/login", status_code=303)
 
+@router.get("/payout/settings")
+def payout_settings(request: Request, db: Session = Depends(get_db)):
+    u = _me(request)
+    if not u: return _need_login()
+    me: User = db.query(User).get(u["id"])
+    return request.app.templates.TemplateResponse(
+        "payout_settings.html",
+        {"request": request, "title": "Payout Settings", "user": me, "session_user": u,
+         "pk": os.environ.get("STRIPE_PUBLISHABLE_KEY")}
+    )
 
 @router.post("/payout/connect")
 def payout_connect(request: Request, db: Session = Depends(get_db)):

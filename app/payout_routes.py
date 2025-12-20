@@ -42,6 +42,27 @@ def _refresh_connect_status(db: Session, user: User) -> None:
         pass
 
 
+# ===== 1) Owner payout settings page =====
+@router.get("/payout/settings")
+def payout_settings(request: Request, db: Session = Depends(get_db)):
+    sess = _require_login(request)
+    if not sess:
+        return RedirectResponse(url="/login", status_code=303)
+
+    db_user = db.query(User).get(sess["id"])
+    if not db_user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    ctx = {
+        "request": request,
+        "title": "Payout Settings (Stripe Connect)",
+        "session_user": request.session.get("user"),
+        "has_api_key": _stripe_key_ok(),
+        "stripe_account_id": getattr(db_user, "stripe_account_id", None),
+        "payouts_enabled": bool(getattr(db_user, "payouts_enabled", False)),
+    }
+    return request.app.templates.TemplateResponse("payout_settings.html", ctx)
+
 
 # ===== 2) “Start linking” button (redirects to pay_api route) =====
 @router.post("/payout/connect/start")
