@@ -41,28 +41,29 @@ def payout_settings(request: Request, db: Session = Depends(get_db)):
             "payout": payout,
         },
     )
+
+
 @router.post("/payout/settings")
 def save_payout_settings(
     request: Request,
     method: str = Form(...),
     currency: str = Form(...),
-    interac_destination: str | None = Form(None),
-    paypal_email: str | None = Form(None),
-    wise_iban: str | None = Form(None),
+
+    interac_destination: str = Form(None),
+    paypal_email: str = Form(None),
+    wise_iban: str = Form(None),
+
     auto_deposit: bool = Form(False),
+
     db: Session = Depends(get_db),
 ):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse("/login", status_code=303)
 
-    # تعطيل أي طريقة سابقة
-    db.query(UserPayoutMethod).filter(
-        UserPayoutMethod.user_id == user.id,
-        UserPayoutMethod.is_active == True
-    ).update({"is_active": False})
-
-    # تحديد destination حسب الطريقة
+    # -----------------------------
+    # Determine destination safely
+    # -----------------------------
     if method == "interac":
         destination = interac_destination
         country = "CA"
@@ -73,9 +74,22 @@ def save_payout_settings(
         destination = wise_iban
         country = "EU"
     else:
-        destination = None
-        country = ""
+        return RedirectResponse("/payout/settings?error=invalid", status_code=303)
 
+    if not destination:
+        return RedirectResponse("/payout/settings?error=missing", status_code=303)
+
+    # -----------------------------
+    # Disable previous payout method
+    # -----------------------------
+    db.query(UserPayoutMethod).filter(
+        UserPayoutMethod.user_id == user.id,
+        UserPayoutMethod.is_active == True
+    ).update({"is_active": False})
+
+    # -----------------------------
+    # Save new payout method
+    # -----------------------------
     payout = UserPayoutMethod(
         user_id=user.id,
         method=method,
