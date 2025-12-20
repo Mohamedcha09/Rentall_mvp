@@ -41,28 +41,40 @@ def payout_settings(request: Request, db: Session = Depends(get_db)):
             "payout": payout,
         },
     )
-
-# =====================================================
-# POST – Save payout preference
-# =====================================================
 @router.post("/payout/settings")
 def save_payout_settings(
     request: Request,
-    country: str = Form(...),
     method: str = Form(...),
-    destination: str = Form(...),
     currency: str = Form(...),
+    interac_destination: str | None = Form(None),
+    paypal_email: str | None = Form(None),
+    wise_iban: str | None = Form(None),
+    auto_deposit: bool = Form(False),
     db: Session = Depends(get_db),
 ):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse("/login", status_code=303)
 
-    # Disable previous methods
+    # تعطيل أي طريقة سابقة
     db.query(UserPayoutMethod).filter(
         UserPayoutMethod.user_id == user.id,
         UserPayoutMethod.is_active == True
     ).update({"is_active": False})
+
+    # تحديد destination حسب الطريقة
+    if method == "interac":
+        destination = interac_destination
+        country = "CA"
+    elif method == "paypal":
+        destination = paypal_email
+        country = "US"
+    elif method == "wise":
+        destination = wise_iban
+        country = "EU"
+    else:
+        destination = None
+        country = ""
 
     payout = UserPayoutMethod(
         user_id=user.id,
@@ -70,6 +82,7 @@ def save_payout_settings(
         country=country,
         currency=currency,
         destination=destination,
+        auto_deposit=auto_deposit if method == "interac" else None,
         is_active=True,
     )
 
@@ -77,3 +90,18 @@ def save_payout_settings(
     db.commit()
 
     return RedirectResponse("/payout/settings?saved=1", status_code=303)
+
+
+@router.post("/payout/settings/remove")
+def remove_payout(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+
+    db.query(UserPayoutMethod).filter(
+        UserPayoutMethod.user_id == user.id,
+        UserPayoutMethod.is_active == True
+    ).update({"is_active": False})
+
+    db.commit()
+    return RedirectResponse("/payout/settings", status_code=303)

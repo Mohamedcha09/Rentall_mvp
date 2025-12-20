@@ -1,4 +1,3 @@
-{# app/templates/payout_settings.html #}
 {% extends "base.html" %}
 
 {% block head %}
@@ -48,7 +47,7 @@
     display:block;
   }
 
-  .field input{
+  .field input, .field select{
     width:100%;
     padding:12px 14px;
     border-radius:12px;
@@ -68,28 +67,66 @@
 
   <h3 class="mb-3">Payout Preferences</h3>
 
+  {# ===================================================== #}
+  {# ===== SHOW SUMMARY IF PAYOUT EXISTS ================= #}
+  {# ===================================================== #}
+  {% if payout and not request.query_params.get("edit") %}
+
+  <div class="card">
+    <h5 class="mb-2">Your payout method</h5>
+
+    <p class="mb-1">
+      You are using
+      <strong>{{ payout.method|upper }}</strong>
+      to receive your earnings.
+    </p>
+
+    <p class="hint">
+      Destination:
+      <strong>{{ payout.destination }}</strong><br>
+      Currency: {{ payout.currency }}
+    </p>
+
+    <div class="d-flex gap-2 mt-3">
+      <a href="/payout/settings?edit=1" class="btn btn-outline-primary">
+        Edit
+      </a>
+
+      <form method="post" action="/payout/settings/remove">
+        <button class="btn btn-outline-danger">
+          Remove
+        </button>
+      </form>
+    </div>
+  </div>
+
+  {% else %}
+
+  {# ===================================================== #}
+  {# =================== FORM ============================ #}
+  {# ===================================================== #}
+
   <div class="card">
     <p class="mb-1">
       Choose how you want to receive your <strong>earnings</strong>.
     </p>
     <p class="hint">
-      No bank connection. No automatic payouts. Sevor sends payments manually.
+      Sevor sends payouts manually. No bank connection required.
     </p>
   </div>
 
   <form method="post" action="/payout/settings">
 
-    <!-- ================= METHOD ================= -->
     <div class="card">
 
-      <!-- Interac -->
+      {# ---------------- INTERAC ---------------- #}
       <div class="method active" data-method="interac">
         <div class="method-title">
           <input type="radio" name="method" value="interac" checked>
           Interac e-Transfer (Canada)
         </div>
         <div class="method-desc">
-          Canadian residents – email or phone number
+          Email or phone number (Canada only)
         </div>
 
         <div class="field">
@@ -99,7 +136,7 @@
             name="interac_destination"
             placeholder="email@example.com or +1 514 000 0000"
           >
-          <div class="hint">Used only to send your Interac transfer</div>
+          <div class="hint">Used only for Interac transfers</div>
         </div>
 
         <div class="field">
@@ -110,14 +147,14 @@
         </div>
       </div>
 
-      <!-- PayPal -->
+      {# ---------------- PAYPAL ---------------- #}
       <div class="method" data-method="paypal">
         <div class="method-title">
           <input type="radio" name="method" value="paypal">
-          PayPal (USD / EUR)
+          PayPal
         </div>
         <div class="method-desc">
-          Receive funds to your PayPal account
+          Receive USD or EUR via PayPal
         </div>
 
         <div class="field d-none">
@@ -130,14 +167,14 @@
         </div>
       </div>
 
-      <!-- Wise -->
+      {# ---------------- WISE ---------------- #}
       <div class="method" data-method="wise">
         <div class="method-title">
           <input type="radio" name="method" value="wise">
           Wise (International)
         </div>
         <div class="method-desc">
-          Best for USD & EUR – IBAN or Wise account
+          Best for EUR / USD (IBAN)
         </div>
 
         <div class="field d-none">
@@ -152,23 +189,27 @@
 
     </div>
 
-    <!-- ================= CURRENCY ================= -->
+    {# ================= CURRENCY ================= #}
     <div class="card">
       <label>Payout currency</label>
-      <select name="currency" class="form-select">
+      <select name="currency">
         <option value="CAD">CAD – Canadian Dollar</option>
         <option value="USD">USD – US Dollar</option>
         <option value="EUR">EUR – Euro</option>
       </select>
     </div>
 
-    <!-- ================= ACTION ================= -->
+    {# ================= ACTION ================= #}
     <div class="d-flex gap-2">
-      <button class="btn btn-primary">Save preferences</button>
+      <button class="btn btn-primary">
+        Save payout preference
+      </button>
       <a href="/" class="btn btn-outline-secondary">Cancel</a>
     </div>
 
   </form>
+
+  {% endif %}
 </div>
 {% endblock %}
 
