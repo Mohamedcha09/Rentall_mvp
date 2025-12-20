@@ -1,15 +1,7 @@
-/payout_settings.html       {% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block head %}
 <style>
-.card{
-  border:1px solid var(--border);
-  border-radius:18px;
-  padding:20px;
-  background:var(--surface);
-  margin-bottom:18px;
-}
-
 .method{
   border:1px solid var(--border);
   border-radius:16px;
@@ -17,19 +9,16 @@
   margin-bottom:14px;
   transition:.2s ease;
 }
-
 .method.active{
   border-color:#6d5dfc;
   background:rgba(109,93,252,.05);
 }
-
 .method-title{
   display:flex;
   align-items:center;
   gap:10px;
   font-weight:600;
 }
-
 .field{margin-top:14px}
 .field input, .field select{
   width:100%;
@@ -37,7 +26,6 @@
   border-radius:12px;
   border:1px solid var(--border);
 }
-
 .hint{font-size:.85rem;opacity:.7;margin-top:4px}
 </style>
 {% endblock %}
@@ -47,96 +35,70 @@
 
 <h3 class="mb-3">Payout Preferences</h3>
 
+{# ✅ عرض الطريقة الحالية فقط — بدون بطاقة #}
+{% if payout %}
+  <div class="alert alert-info mb-4">
+    💰 <strong>Current payout method:</strong>
+    {{ payout.method|upper }} — {{ payout.destination }}
+  </div>
+{% else %}
+  <div class="alert alert-warning mb-4">
+    ⚠️ No payout method configured yet.
+  </div>
+{% endif %}
+
 {% if request.query_params.get("saved") %}
 <div class="alert alert-success mb-3">
   ✅ Your payout method has been saved successfully.
 </div>
 {% endif %}
 
-{# =====================================================
-   SUMMARY CARD — تظهر دائمًا إذا payout موجود
-   ===================================================== #}
-{% if payout %}
-<div class="card">
-  <h5>Your payout method</h5>
-
-  <p class="mb-1">
-    You receive your earnings via
-    <strong>{{ payout.method|upper }}</strong>
-  </p>
-
-  <p class="hint">
-    {{ payout.destination }} <br>
-    Currency: {{ payout.currency }}
-  </p>
-
-  <div class="d-flex gap-2 mt-3">
-    <a href="/payout/settings?edit=1" class="btn btn-outline-primary">
-      Edit
-    </a>
-
-    <form method="post" action="/payout/settings/remove">
-      <button type="submit" class="btn btn-outline-danger">
-        Remove
-      </button>
-    </form>
-  </div>
-</div>
-{% endif %}
-
-{# =====================================================
-   FORM — يظهر فقط إذا لا يوجد payout أو edit=1
-   ===================================================== #}
+{# ================= FORM ================= #}
 {% if not payout or request.query_params.get("edit") %}
 <form method="post" action="/payout/settings">
 
-<div class="card">
-  <p>Choose how you want to receive your <strong>earnings</strong>.</p>
-  <p class="hint">Sevor sends payouts manually.</p>
+<p class="hint mb-3">
+  Choose how you want to receive your <strong>earnings</strong>.
+</p>
+
+<!-- Interac -->
+<div class="method active" data-method="interac">
+  <div class="method-title">
+    <input type="radio" name="method" value="interac" checked>
+    Interac e-Transfer (Canada)
+  </div>
+  <div class="field">
+    <input name="interac_destination" placeholder="Email or phone number">
+  </div>
+  <label class="mt-2">
+    <input type="checkbox" name="auto_deposit">
+    Enable auto-deposit
+  </label>
 </div>
 
-<div class="card">
-
-  <!-- Interac -->
-  <div class="method active" data-method="interac">
-    <div class="method-title">
-      <input type="radio" name="method" value="interac" checked>
-      Interac e-Transfer (Canada)
-    </div>
-    <div class="field">
-      <input name="interac_destination" placeholder="Email or phone number">
-    </div>
-    <label class="mt-2">
-      <input type="checkbox" name="auto_deposit">
-      Enable auto-deposit
-    </label>
+<!-- PayPal -->
+<div class="method" data-method="paypal">
+  <div class="method-title">
+    <input type="radio" name="method" value="paypal">
+    PayPal
   </div>
-
-  <!-- PayPal -->
-  <div class="method" data-method="paypal">
-    <div class="method-title">
-      <input type="radio" name="method" value="paypal">
-      PayPal
-    </div>
-    <div class="field d-none">
-      <input name="paypal_email" placeholder="PayPal email">
-    </div>
+  <div class="field d-none">
+    <input name="paypal_email" placeholder="PayPal email">
   </div>
-
-  <!-- Wise -->
-  <div class="method" data-method="wise">
-    <div class="method-title">
-      <input type="radio" name="method" value="wise">
-      Wise
-    </div>
-    <div class="field d-none">
-      <input name="wise_iban" placeholder="IBAN">
-    </div>
-  </div>
-
 </div>
 
-<div class="card">
+<!-- Wise -->
+<div class="method" data-method="wise">
+  <div class="method-title">
+    <input type="radio" name="method" value="wise">
+    Wise
+  </div>
+  <div class="field d-none">
+    <input name="wise_iban" placeholder="IBAN">
+  </div>
+</div>
+
+<div class="field mt-3">
   <select name="currency">
     <option value="CAD">CAD</option>
     <option value="USD">USD</option>
@@ -144,7 +106,7 @@
   </select>
 </div>
 
-<button class="btn btn-primary">Save payout preference</button>
+<button class="btn btn-primary mt-3">Save payout preference</button>
 </form>
 {% endif %}
 
