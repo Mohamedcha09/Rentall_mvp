@@ -1,134 +1,122 @@
 {# app/templates/payout_connect.html #}
 {% extends "base.html" %}
+
 {% block head %}
 <style>
-  .cardish{border:1px solid var(--border);border-radius:14px;padding:16px}
-  .illus-box{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}
-  .illus-box img{display:block;max-width:420px;width:88%;height:auto;object-fit:contain;opacity:.98}
-  .illus-hint{margin-top:10px;opacity:.9;text-align:center;font-size:.95rem}
+  .cardish{
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:18px;
+    background:var(--surface);
+  }
+  .form-hint{
+    font-size:.9rem;
+    opacity:.85;
+  }
+  .method-box{
+    border:1px dashed var(--border);
+    border-radius:12px;
+    padding:14px;
+    margin-top:10px;
+    background:rgba(0,0,0,.02);
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container" style="max-width:920px">
-  <h3 class="mb-3">Payout Setup (Stripe Connect)</h3>
+
+  <h3 class="mb-3">Payout Preferences</h3>
 
   <div class="cardish mb-3">
     <p class="mb-2">
-      For the <strong>owner</strong> to receive funds to their bank account via Stripe,
-      connect a <strong>Stripe Connect</strong> account and complete verification (KYC).
+      Choose how you want to <strong>receive your earnings</strong> from Sevor.
+      Payments are processed manually by the platform based on your preference.
     </p>
-    <p class="mb-2">The platform will take a <strong>8%</strong> service fee from every transaction.</p>
-    <div class="d-flex flex-wrap gap-2 align-items-center">
-      <a class="btn btn-primary" href="/payout/connect/start">Start connecting now</a>
-      <button id="chkBtn" class="btn btn-outline-secondary">Check status</button>
-      <button id="kycBtn" class="btn btn-warning d-none">Complete verification now</button>
+    <p class="form-hint mb-0">
+      No bank connection. No automatic payouts. No third-party onboarding.
+    </p>
+  </div>
+
+  <form method="post" action="/payout/settings">
+
+    <!-- COUNTRY -->
+    <div class="cardish mb-3">
+      <label class="form-label"><strong>Country</strong></label>
+      <select name="country" class="form-select" required>
+        <option value="">Select your country</option>
+        <option value="CA">Canada</option>
+        <option value="US">United States</option>
+        <option value="EU">Europe</option>
+      </select>
     </div>
-  </div>
 
-  {# ✅ Show state image only #}
-  <div class="illus-box">
-    <img id="stateImg" src="{{ url_for('static', path='photo/fon.png') }}" alt="Stripe Connect state">
-    <div id="hint" class="illus-hint d-none"></div>
-  </div>
+    <!-- METHOD -->
+    <div class="cardish mb-3">
+      <label class="form-label"><strong>Payout method</strong></label>
+
+      <div class="method-box">
+        <label class="form-check mb-2">
+          <input class="form-check-input" type="radio" name="method" value="interac">
+          <span class="form-check-label">
+            Interac e-Transfer (Canada)
+          </span>
+        </label>
+        <p class="form-hint mb-0">
+          Receive funds via email or phone number (Canada only).
+        </p>
+      </div>
+
+      <div class="method-box">
+        <label class="form-check mb-2">
+          <input class="form-check-input" type="radio" name="method" value="paypal">
+          <span class="form-check-label">
+            PayPal (USD / EUR)
+          </span>
+        </label>
+        <p class="form-hint mb-0">
+          Receive funds to your PayPal account (email).
+        </p>
+      </div>
+    </div>
+
+    <!-- DESTINATION -->
+    <div class="cardish mb-3">
+      <label class="form-label"><strong>Email or phone number</strong></label>
+      <input
+        type="text"
+        name="destination"
+        class="form-control"
+        placeholder="email@example.com or +1 514 000 0000"
+        required
+      >
+      <div class="form-hint mt-1">
+        Used only to send your payout. No automatic withdrawal.
+      </div>
+    </div>
+
+    <!-- CURRENCY -->
+    <div class="cardish mb-3">
+      <label class="form-label"><strong>Payout currency</strong></label>
+      <select name="currency" class="form-select" required>
+        <option value="">Select currency</option>
+        <option value="CAD">CAD – Canadian Dollar</option>
+        <option value="USD">USD – US Dollar</option>
+        <option value="EUR">EUR – Euro</option>
+      </select>
+    </div>
+
+    <!-- SUBMIT -->
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary">
+        Save payout preference
+      </button>
+      <a href="/dashboard" class="btn btn-outline-secondary">
+        Cancel
+      </a>
+    </div>
+
+  </form>
+
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-(function(){
-  const imgEl  = document.getElementById('stateImg');
-  const kycBtn = document.getElementById('kycBtn');
-  const hintEl = document.getElementById('hint');
-
-  const FON = "{{ url_for('static', path='photo/fon.png') }}"; // all false or low progress
-  const BON = "{{ url_for('static', path='photo/bon.png') }}"; // all true / completed
-  const ZON = "{{ url_for('static', path='photo/zon.png') }}"; // only one false (almost done)
-
-  function show(el, yes){ el?.classList.toggle('d-none', !yes); }
-
-  function makeHint(missing){
-    if(!missing.length) return "";
-    const map = {
-      payouts_enabled: "Enable bank payouts (payouts_enabled)",
-      charges_enabled: "Allow charging (charges_enabled)",
-      details_submitted: "Upload identity documents KYC (details_submitted)"
-    };
-    const pretty = missing.map(k=>map[k]||k);
-    return "Missing to complete activation: " + pretty.join(", ");
-  }
-
-  async function load(){
-    try{
-      const r = await fetch('/api/stripe/connect/status?autocreate=1', {credentials:'same-origin'});
-      if(!r.ok) throw new Error('status failed');
-      const d = await r.json();
-
-      const payouts = !!d.payouts_enabled;
-      const charges = !!d.charges_enabled;
-      const details = !!d.details_submitted;
-
-      const vals = [payouts, charges, details];
-      const trueCount = vals.filter(Boolean).length;
-
-      // Choose image by required condition:
-      // - 3 true  => BON
-      // - 2 true + 1 false => ZON + show missing reason
-      // - otherwise (0 or 1 true) => FON
-      let src = FON;
-      let missing = [];
-      if (trueCount === 3){
-        src = BON;
-      } else if (trueCount === 2){
-        src = ZON;
-        if (!payouts) missing.push("payouts_enabled");
-        if (!charges) missing.push("charges_enabled");
-        if (!details) missing.push("details_submitted");
-      } else {
-        // 0 or 1 true: show FON and we can also list what is missing
-        missing = [];
-        if (!payouts) missing.push("payouts_enabled");
-        if (!charges) missing.push("charges_enabled");
-        if (!details) missing.push("details_submitted");
-      }
-
-      imgEl.src = src;
-
-      // Show the reason text only for the middle state (one false)
-      if (trueCount === 2){
-        hintEl.textContent = makeHint(missing);
-        show(hintEl, true);
-      } else {
-        hintEl.textContent = "";
-        show(hintEl, false);
-      }
-
-      // Show KYC button if not all values are completed
-      show(kycBtn, trueCount !== 3);
-    }catch(e){
-      console.error(e);
-      // On error show incomplete state
-      imgEl.src = FON;
-      hintEl.textContent = "Failed to fetch status now. Try again or complete verification.";
-      show(hintEl, true);
-      show(kycBtn, true);
-    }
-  }
-
-  document.getElementById('chkBtn')?.addEventListener('click', e => { e.preventDefault(); load(); });
-
-  // "Complete verification now" → request onboarding link from backend
-  kycBtn?.addEventListener('click', async (e)=>{
-    e.preventDefault();
-    try{
-      const r = await fetch('/api/stripe/connect/onboard_link', {credentials:'same-origin'});
-      const d = await r.json();
-      if (d && d.url) window.location.href = d.url;
-    }catch(err){ console.error(err); }
-  });
-
-  // Auto load on page open
-  load();
-})();
-</script>
 {% endblock %}

@@ -766,3 +766,27 @@ class ChatbotLog(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", lazy="joined")
+
+
+# =========================
+# User payout methods
+# =========================
+class UserPayoutMethod(Base):
+    __tablename__ = "user_payout_methods"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    method = Column(String(20), nullable=False)      # interac | paypal | wise
+    country = Column(String(2), nullable=False)      # CA | US | EU
+    currency = Column(String(3), nullable=False)     # CAD | USD | EUR
+
+    destination = Column(String(255), nullable=False)  # email / phone / iban
+    auto_deposit = Column(Boolean, nullable=True)
+
+    is_active = Column(Boolean, default=True)
+
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
+
+    user = relationship("User", backref="payout_methods")
