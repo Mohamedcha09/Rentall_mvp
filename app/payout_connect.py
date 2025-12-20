@@ -25,6 +25,8 @@ def payout_settings(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse("/login", status_code=303)
 
+    print("✅ DEBUG: GET /payout/settings reached, user_id =", user.id)
+
     payout = (
         db.query(UserPayoutMethod)
         .filter(
@@ -34,8 +36,10 @@ def payout_settings(request: Request, db: Session = Depends(get_db)):
         .first()
     )
 
-    # ✅ هذا هو السطر المهم
     show_form = request.query_params.get("edit") == "1" or payout is None
+
+    print("✅ DEBUG: payout =", payout)
+    print("✅ DEBUG: show_form =", show_form)
 
     return request.app.templates.TemplateResponse(
         "payout_settings.html",
