@@ -5,118 +5,169 @@
 <style>
   .cardish{
     border:1px solid var(--border);
-    border-radius:14px;
+    border-radius:16px;
     padding:18px;
     background:var(--surface);
-  }
-  .form-hint{
-    font-size:.9rem;
-    opacity:.85;
+    margin-bottom:16px;
   }
   .method-box{
     border:1px dashed var(--border);
-    border-radius:12px;
+    border-radius:14px;
     padding:14px;
-    margin-top:10px;
-    background:rgba(0,0,0,.02);
+    margin-bottom:12px;
+    cursor:pointer;
+  }
+  .method-box input[type="radio"]{
+    margin-right:8px;
+  }
+  .method-fields{
+    margin-top:14px;
+  }
+  .method-fields label{
+    font-weight:600;
+    margin-bottom:6px;
+    display:block;
+  }
+  .method-fields input{
+    width:100%;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid var(--border);
+  }
+  .hint{
+    font-size:.9rem;
+    opacity:.75;
+    margin-top:4px;
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container" style="max-width:920px">
+<div class="container" style="max-width:860px">
 
   <h3 class="mb-3">Payout Preferences</h3>
 
-  <div class="cardish mb-3">
-    <p class="mb-2">
+  <div class="cardish">
+    <p class="mb-1">
       Choose how you want to <strong>receive your earnings</strong> from Sevor.
-      Payments are processed manually by the platform based on your preference.
     </p>
-    <p class="form-hint mb-0">
-      No bank connection. No automatic payouts. No third-party onboarding.
+    <p class="hint">
+      No bank connection. No automatic withdrawals. Payments are sent manually by Sevor.
     </p>
   </div>
 
   <form method="post" action="/payout/settings">
 
-    <!-- COUNTRY -->
-    <div class="cardish mb-3">
-      <label class="form-label"><strong>Country</strong></label>
-      <select name="country" class="form-select" required>
-        <option value="">Select your country</option>
-        <option value="CA">Canada</option>
-        <option value="US">United States</option>
-        <option value="EU">Europe</option>
-      </select>
+    <!-- ================= COUNTRY ================= -->
+    <div class="cardish">
+      <label>Country</label>
+      <input type="text" name="country" value="CA" readonly>
+      <div class="hint">Used only to validate payout methods</div>
     </div>
 
-    <!-- METHOD -->
-    <div class="cardish mb-3">
-      <label class="form-label"><strong>Payout method</strong></label>
+    <!-- ================= PAYOUT METHOD ================= -->
+    <div class="cardish">
+      <h5 class="mb-2">Payout method</h5>
 
+      <!-- Interac -->
       <div class="method-box">
-        <label class="form-check mb-2">
-          <input class="form-check-input" type="radio" name="method" value="interac">
-          <span class="form-check-label">
-            Interac e-Transfer (Canada)
-          </span>
+        <label>
+          <input type="radio" name="method" value="interac" checked>
+          <strong>Interac e-Transfer (Canada)</strong>
         </label>
-        <p class="form-hint mb-0">
-          Receive funds via email or phone number (Canada only).
-        </p>
+        <div class="hint">Email or phone number (Canada only)</div>
+
+        <div id="interacFields" class="method-fields">
+          <label>Interac email or phone</label>
+          <input
+            type="text"
+            name="destination"
+            placeholder="email@example.com or +1 514 000 0000"
+          >
+          <label class="mt-2">
+            <input type="checkbox" name="auto_deposit">
+            Enable auto-deposit
+          </label>
+        </div>
       </div>
 
+      <!-- PayPal -->
       <div class="method-box">
-        <label class="form-check mb-2">
-          <input class="form-check-input" type="radio" name="method" value="paypal">
-          <span class="form-check-label">
-            PayPal (USD / EUR)
-          </span>
+        <label>
+          <input type="radio" name="method" value="paypal">
+          <strong>PayPal</strong>
         </label>
-        <p class="form-hint mb-0">
-          Receive funds to your PayPal account (email).
-        </p>
+        <div class="hint">USD / EUR – PayPal email only</div>
+
+        <div id="paypalFields" class="method-fields d-none">
+          <label>PayPal email</label>
+          <input
+            type="email"
+            name="destination"
+            placeholder="paypal@email.com"
+          >
+        </div>
       </div>
+
+      <!-- Wise -->
+      <div class="method-box">
+        <label>
+          <input type="radio" name="method" value="wise">
+          <strong>Wise</strong>
+        </label>
+        <div class="hint">USD / EUR – IBAN or Wise email</div>
+
+        <div id="wiseFields" class="method-fields d-none">
+          <label>IBAN</label>
+          <input
+            type="text"
+            name="destination"
+            placeholder="DE89 3704 0044 0532 0130 00"
+          >
+        </div>
+      </div>
+
     </div>
 
-    <!-- DESTINATION -->
-    <div class="cardish mb-3">
-      <label class="form-label"><strong>Email or phone number</strong></label>
-      <input
-        type="text"
-        name="destination"
-        class="form-control"
-        placeholder="email@example.com or +1 514 000 0000"
-        required
-      >
-      <div class="form-hint mt-1">
-        Used only to send your payout. No automatic withdrawal.
-      </div>
-    </div>
-
-    <!-- CURRENCY -->
-    <div class="cardish mb-3">
-      <label class="form-label"><strong>Payout currency</strong></label>
-      <select name="currency" class="form-select" required>
-        <option value="">Select currency</option>
+    <!-- ================= CURRENCY ================= -->
+    <div class="cardish">
+      <label>Payout currency</label>
+      <select name="currency" class="form-select">
         <option value="CAD">CAD – Canadian Dollar</option>
         <option value="USD">USD – US Dollar</option>
         <option value="EUR">EUR – Euro</option>
       </select>
     </div>
 
-    <!-- SUBMIT -->
-    <div class="d-flex gap-2">
+    <!-- ================= ACTIONS ================= -->
+    <div class="d-flex gap-2 mt-3">
       <button type="submit" class="btn btn-primary">
         Save payout preference
       </button>
-      <a href="/dashboard" class="btn btn-outline-secondary">
-        Cancel
-      </a>
+      <a href="/" class="btn btn-outline-secondary">Cancel</a>
     </div>
 
   </form>
-
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const radios = document.querySelectorAll('input[name="method"]');
+  const interac = document.getElementById("interacFields");
+  const paypal  = document.getElementById("paypalFields");
+  const wise    = document.getElementById("wiseFields");
+
+  function update(){
+    const v = document.querySelector('input[name="method"]:checked').value;
+    interac.classList.toggle("d-none", v !== "interac");
+    paypal.classList.toggle("d-none", v !== "paypal");
+    wise.classList.toggle("d-none", v !== "wise");
+  }
+
+  radios.forEach(r => r.addEventListener("change", update));
+  update();
+})();
+</script>
 {% endblock %}
