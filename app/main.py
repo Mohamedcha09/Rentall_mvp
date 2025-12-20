@@ -51,7 +51,6 @@ from .freeze import router as freeze_router
 from .payments import router as payments_router
 from .checkout import router as checkout_router
 from .pay_api import router as pay_api_router
-from .payout_connect import router as payout_connect_router
 from .webhooks import router as webhooks_router
 from .disputes import router as disputes_router
 from .routes_search import router as search_router
@@ -803,7 +802,6 @@ app.include_router(freeze_router)
 app.include_router(payments_router)
 app.include_router(checkout_router)
 app.include_router(pay_api_router)
-app.include_router(payout_connect_router)
 app.include_router(debug_cloudinary_router)
 app.include_router(home_router)
 app.include_router(metrics_router)
