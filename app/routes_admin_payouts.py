@@ -62,6 +62,8 @@ def admin_payouts(request: Request, db: Session = Depends(get_db)):
             "request": request,
             "user": user,
             "rows": rows
+            "session_user": request.session.get("user"),
+
         }
     )
 
