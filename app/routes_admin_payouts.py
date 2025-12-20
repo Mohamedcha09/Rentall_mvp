@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from .database import get_db
 from .models import Booking, User, UserPayoutMethod
+from .notifications_api import push_notification   # ✅ ADD
 
 router = APIRouter(prefix="/admin", tags=["admin-payouts"])
 
@@ -87,10 +88,26 @@ def mark_payout_sent(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
+    # ==========================
+    # UPDATE PAYOUT STATUS
+    # ==========================
     booking.payout_sent = True
     booking.payout_ready = False
     booking.payout_sent_at = db.execute("SELECT NOW()").scalar()
 
     db.commit()
+
+    # ==========================
+    # 🔔 NOTIFICATION + EMAIL
+    # ==========================
+    push_notification(
+        db,
+        booking.owner_id,
+        "💸 Payout sent",
+        f"Your payout of {booking.owner_amount} "
+        f"{booking.currency_display or booking.currency} has been sent.",
+        f"/bookings/flow/{booking.id}",
+        kind="payout",
+    )
 
     return RedirectResponse(url="/admin/payouts", status_code=303)
