@@ -430,6 +430,8 @@ def renter_confirm_received(
     # 2️⃣ تعليم الحجز كجاهز للدفع في لوحة الأدمن
     bk.payout_ready = True
     bk.payout_sent = False
+    bk.status = "completed"
+
 
     # 3️⃣ حالة طلب الدفع
     bk.owner_payout_request = True
