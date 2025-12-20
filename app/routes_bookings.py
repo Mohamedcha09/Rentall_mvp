@@ -373,3 +373,45 @@ def booking_new_page(
     }
 
     return request.app.templates.TemplateResponse("booking_new.html", ctx)
+
+
+@router.post("/bookings/{booking_id}/renter/confirm_received")
+def renter_confirm_received(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user),
+):
+    require_auth(user)
+    bk = require_booking(db, booking_id)
+
+    if not is_renter(user, bk):
+        raise HTTPException(status_code=403)
+
+    if bk.status != "paid":
+        raise HTTPException(status_code=400)
+
+    # ✅ تحديث حالة الحجز
+    bk.status = "picked_up"
+    bk.picked_up_at = datetime.utcnow()
+
+    # ✅ حساب مبلغ المالك (الإيجار فقط)
+    rent = float(bk.rent_amount or 0)
+    sevor_fee = round(rent * 0.01, 2)
+    owner_amount = round(rent - sevor_fee, 2)
+
+    bk.owner_amount = owner_amount
+    bk.owner_due_amount = owner_amount
+    bk.payout_ready = True
+    bk.payout_sent = False
+
+    db.commit()
+
+    # 🔔 تنبيه الأدمن
+    notify_admins(
+        db,
+        "Payout ready",
+        f"Booking #{bk.id} ready for owner payout",
+        "/admin/payouts"
+    )
+
+    return redirect_to_flow(bk)

@@ -401,6 +401,14 @@ class Booking(Base):
     status      = Column(String(20), nullable=False, default="requested")
     created_at  = Column(DateTime, default=datetime.utcnow)
     updated_at  = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+ 
+    owner_amount = col_or_literal("bookings", "owner_amount", Numeric(10, 2), default=0)
+
+    payout_ready = col_or_literal("bookings", "payout_ready", Boolean, default=False)
+
+    payout_sent = col_or_literal("bookings", "payout_sent", Boolean, default=False)
+
+    payout_sent_at = col_or_literal("bookings", "payout_sent_at", DateTime, nullable=True)
 
     payment_method           = col_or_literal("bookings", "payment_method", String(20), nullable=True)
     platform_fee             = col_or_literal("bookings", "platform_fee", Integer, nullable=False, default=0)
