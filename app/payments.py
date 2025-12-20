@@ -46,29 +46,6 @@ def wallet_connect_post(request: Request):
     """
     return RedirectResponse(url="/payout/connect/start", status_code=303)
 
-@router.get("/payout/settings")
-def payout_settings(request: Request):
-    """
-    Payout settings page — shows the account state from the session
-    (it auto-refreshes via middleware in main.py after calling /payout/connect/refresh).
-    And displays buttons to (start/retry) the connection.
-    """
-    u = require_login(request)
-    if not u:
-        return RedirectResponse(url="/login", status_code=303)
-
-    # Pass the connect/refresh links to the template:
-    return request.app.templates.TemplateResponse(
-        "payout_settings.html",
-        {
-            "request": request,
-            "title": "Payout Settings",
-            "session_user": u,
-            "connect_start_url": "/payout/connect/start",
-            "connect_refresh_url": "/payout/connect/refresh",
-        }
-    )
-
 # =========================================
 # Deposit/checkout page for the renter (Placeholder)
 # =========================================
