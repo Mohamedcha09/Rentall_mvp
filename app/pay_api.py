@@ -147,31 +147,26 @@ def paypal_capture(order_id: str):
 # =====================================================
 
 def compute_grand_total_for_paypal(request: Request, bk: Booking) -> float:
-    """
-    يحسب نفس Total الذي يظهر في Order summary:
-    Rent + Sevor 1% + Taxes + Processing fee
-    """
-    geo = locate_from_session(request)
-    if not geo.get("country") or not geo.get("region"):
-        raise HTTPException(status_code=400, detail="Missing geo location")
+    geo = locate_from_session(request) or {}
+
+    country = (geo.get("country") or "CA").upper()
+    region  = (geo.get("region") or "QC").upper()
 
     rent = float(bk.total_amount or 0)
 
     # Sevor fee 1%
     sevor_fee = round(rent * 0.01, 2)
 
-    # Taxes (تُحسب على rent + sevor fee)
+    # Taxes
     tax_base = rent + sevor_fee
     tax_result = compute_order_taxes(
         subtotal=tax_base,
-        geo={
-            "country": geo.get("country"),
-            "sub": geo.get("region"),
-        },
-    )
+        geo={"country": country, "sub": region},
+    ) or {}
+
     tax_total = float(tax_result.get("total", 0))
 
-    # Processing fee (تقريب Stripe style)
+    # Processing fee
     processing_fee = round(rent * 0.029 + 0.30, 2)
 
     grand_total = round(
