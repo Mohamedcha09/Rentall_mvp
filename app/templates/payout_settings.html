@@ -47,6 +47,13 @@
 
 <h3 class="mb-3">Payout Preferences</h3>
 
+{# ================= SUCCESS MESSAGE ================= #}
+{% if request.query_params.get("saved") %}
+<div class="alert alert-success mb-3">
+  ✅ Your payout method has been saved successfully.
+</div>
+{% endif %}
+
 {# ================= SUMMARY CARD ================= #}
 {% if payout and not show_form %}
 <div class="card">
