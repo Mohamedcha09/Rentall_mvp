@@ -54,7 +54,7 @@
 {% endif %}
 
 {# ================= FORM ================= #}
-{% if not payout or request.query_params.get("edit") %}
+{% if request.query_params.get("edit") == "1" or not payout %}
 <form method="post" action="/payout/settings">
 
 <p class="hint mb-3">
