@@ -3,88 +3,107 @@
 
 {% block head %}
 <style>
-  .cardish{
+  .card{
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:20px;
+    background:var(--surface);
+    margin-bottom:18px;
+  }
+
+  .method{
     border:1px solid var(--border);
     border-radius:16px;
-    padding:18px;
-    background:var(--surface);
-    margin-bottom:16px;
+    padding:16px;
+    margin-bottom:14px;
+    transition:.2s;
   }
-  .method-box{
-    border:1px dashed var(--border);
-    border-radius:14px;
-    padding:14px;
-    margin-bottom:12px;
-    cursor:pointer;
+
+  .method.active{
+    border-color:#6d5dfc;
+    background:rgba(109,93,252,.04);
   }
-  .method-box input[type="radio"]{
-    margin-right:8px;
+
+  .method-title{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-weight:600;
   }
-  .method-fields{
+
+  .method-desc{
+    font-size:.9rem;
+    opacity:.75;
+    margin-left:28px;
+    margin-top:4px;
+  }
+
+  .field{
     margin-top:14px;
   }
-  .method-fields label{
+
+  .field label{
     font-weight:600;
     margin-bottom:6px;
     display:block;
   }
-  .method-fields input{
+
+  .field input{
     width:100%;
-    padding:10px 12px;
-    border-radius:10px;
+    padding:12px 14px;
+    border-radius:12px;
     border:1px solid var(--border);
   }
+
   .hint{
-    font-size:.9rem;
-    opacity:.75;
+    font-size:.85rem;
+    opacity:.7;
     margin-top:4px;
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container" style="max-width:860px">
+<div class="container" style="max-width:820px">
 
   <h3 class="mb-3">Payout Preferences</h3>
 
-  <div class="cardish">
+  <div class="card">
     <p class="mb-1">
-      Choose how you want to <strong>receive your earnings</strong> from Sevor.
+      Choose how you want to receive your <strong>earnings</strong>.
     </p>
     <p class="hint">
-      No bank connection. No automatic withdrawals. Payments are sent manually by Sevor.
+      No bank connection. No automatic payouts. Sevor sends payments manually.
     </p>
   </div>
 
   <form method="post" action="/payout/settings">
 
-    <!-- ================= COUNTRY ================= -->
-    <div class="cardish">
-      <label>Country</label>
-      <input type="text" name="country" value="CA" readonly>
-      <div class="hint">Used only to validate payout methods</div>
-    </div>
-
-    <!-- ================= PAYOUT METHOD ================= -->
-    <div class="cardish">
-      <h5 class="mb-2">Payout method</h5>
+    <!-- ================= METHOD ================= -->
+    <div class="card">
 
       <!-- Interac -->
-      <div class="method-box">
-        <label>
+      <div class="method active" data-method="interac">
+        <div class="method-title">
           <input type="radio" name="method" value="interac" checked>
-          <strong>Interac e-Transfer (Canada)</strong>
-        </label>
-        <div class="hint">Email or phone number (Canada only)</div>
+          Interac e-Transfer (Canada)
+        </div>
+        <div class="method-desc">
+          Canadian residents – email or phone number
+        </div>
 
-        <div id="interacFields" class="method-fields">
-          <label>Interac email or phone</label>
+        <div class="field">
+          <label>Email or phone number</label>
           <input
             type="text"
-            name="destination"
+            name="interac_destination"
             placeholder="email@example.com or +1 514 000 0000"
           >
-          <label class="mt-2">
+          <div class="hint">Used only to send your Interac transfer</div>
+        </div>
+
+        <div class="field">
+          <label>
             <input type="checkbox" name="auto_deposit">
             Enable auto-deposit
           </label>
@@ -92,36 +111,40 @@
       </div>
 
       <!-- PayPal -->
-      <div class="method-box">
-        <label>
+      <div class="method" data-method="paypal">
+        <div class="method-title">
           <input type="radio" name="method" value="paypal">
-          <strong>PayPal</strong>
-        </label>
-        <div class="hint">USD / EUR – PayPal email only</div>
+          PayPal (USD / EUR)
+        </div>
+        <div class="method-desc">
+          Receive funds to your PayPal account
+        </div>
 
-        <div id="paypalFields" class="method-fields d-none">
+        <div class="field d-none">
           <label>PayPal email</label>
           <input
             type="email"
-            name="destination"
+            name="paypal_email"
             placeholder="paypal@email.com"
           >
         </div>
       </div>
 
       <!-- Wise -->
-      <div class="method-box">
-        <label>
+      <div class="method" data-method="wise">
+        <div class="method-title">
           <input type="radio" name="method" value="wise">
-          <strong>Wise</strong>
-        </label>
-        <div class="hint">USD / EUR – IBAN or Wise email</div>
+          Wise (International)
+        </div>
+        <div class="method-desc">
+          Best for USD & EUR – IBAN or Wise account
+        </div>
 
-        <div id="wiseFields" class="method-fields d-none">
+        <div class="field d-none">
           <label>IBAN</label>
           <input
             type="text"
-            name="destination"
+            name="wise_iban"
             placeholder="DE89 3704 0044 0532 0130 00"
           >
         </div>
@@ -130,7 +153,7 @@
     </div>
 
     <!-- ================= CURRENCY ================= -->
-    <div class="cardish">
+    <div class="card">
       <label>Payout currency</label>
       <select name="currency" class="form-select">
         <option value="CAD">CAD – Canadian Dollar</option>
@@ -139,11 +162,9 @@
       </select>
     </div>
 
-    <!-- ================= ACTIONS ================= -->
-    <div class="d-flex gap-2 mt-3">
-      <button type="submit" class="btn btn-primary">
-        Save payout preference
-      </button>
+    <!-- ================= ACTION ================= -->
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary">Save preferences</button>
       <a href="/" class="btn btn-outline-secondary">Cancel</a>
     </div>
 
@@ -154,19 +175,21 @@
 {% block scripts %}
 <script>
 (function(){
-  const radios = document.querySelectorAll('input[name="method"]');
-  const interac = document.getElementById("interacFields");
-  const paypal  = document.getElementById("paypalFields");
-  const wise    = document.getElementById("wiseFields");
+  const methods = document.querySelectorAll(".method");
+  const radios  = document.querySelectorAll("input[name='method']");
 
   function update(){
-    const v = document.querySelector('input[name="method"]:checked').value;
-    interac.classList.toggle("d-none", v !== "interac");
-    paypal.classList.toggle("d-none", v !== "paypal");
-    wise.classList.toggle("d-none", v !== "wise");
+    const val = document.querySelector("input[name='method']:checked").value;
+    methods.forEach(m=>{
+      const active = m.dataset.method === val;
+      m.classList.toggle("active", active);
+      m.querySelectorAll(".field").forEach(f=>{
+        f.classList.toggle("d-none", !active);
+      });
+    });
   }
 
-  radios.forEach(r => r.addEventListener("change", update));
+  radios.forEach(r=>r.addEventListener("change", update));
   update();
 })();
 </script>
