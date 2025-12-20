@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5" style="max-width:720px">
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+
+      <h3 class="mb-4">💸 Payout Receipt</h3>
+
+      <div class="mb-3">
+        <strong>Status:</strong>
+        <span class="badge bg-success">Paid</span>
+      </div>
+
+      <hr>
+
+      <p><strong>Booking ID:</strong> #{{ booking.id }}</p>
+      <p><strong>Paid at:</strong> {{ booking.payout_sent_at }}</p>
+
+      <hr>
+
+      <p>
+        <strong>Amount:</strong>
+        {{ booking.owner_amount }}
+        {{ booking.currency_display or booking.currency or "CAD" }}
+      </p>
+
+      <p><strong>Payment Method:</strong> {{ payout.method }}</p>
+      <p><strong>Destination:</strong> {{ payout.destination }}</p>
+
+      {% if booking.payout_reference %}
+        <p><strong>Reference:</strong> {{ booking.payout_reference }}</p>
+      {% endif %}
+
+      <hr>
+
+      <a href="/my/orders" class="btn btn-outline-primary">
+        ← Back to my orders
+      </a>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

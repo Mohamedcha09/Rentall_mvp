@@ -106,7 +106,7 @@ def mark_payout_sent(
         "💸 Payout sent",
         f"Your payout of {booking.owner_amount} "
         f"{booking.currency_display or booking.currency} has been sent.",
-        f"/bookings/flow/{booking.id}",
+        f"f/payouts/receipt/{booking.id}",
         kind="payout",
     )
 
@@ -214,5 +214,51 @@ def admin_payouts_paid(
             "session_user": request.session.get("user"),
             "date_from": date_from,
             "date_to": date_to,
+        }
+    )
+
+# =====================================================
+# GET – Payout receipt (OWNER)
+# =====================================================
+@router.get("/payouts/receipt/{booking_id}", response_class=HTMLResponse)
+def payout_receipt(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user = get_current_user(request, db)
+    if not user:
+        raise HTTPException(status_code=403)
+
+    booking = (
+        db.query(Booking)
+        .options(joinedload(Booking.owner))
+        .filter(
+            Booking.id == booking_id,
+            Booking.owner_id == user.id,
+            Booking.payout_sent == True,
+        )
+        .first()
+    )
+
+    if not booking:
+        raise HTTPException(status_code=404)
+
+    payout = (
+        db.query(UserPayoutMethod)
+        .filter(
+            UserPayoutMethod.user_id == booking.owner_id,
+            UserPayoutMethod.is_active == True
+        )
+        .first()
+    )
+
+    return request.app.templates.TemplateResponse(
+        "payout_receipt.html",
+        {
+            "request": request,
+            "booking": booking,
+            "payout": payout,
+            "session_user": request.session.get("user"),
         }
     )

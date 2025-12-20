@@ -52,10 +52,6 @@ def redirect_to_flow(bk: Booking):
     return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
 
-
-# =====================================================
-# Create booking
-# =====================================================
 @router.post("/bookings")
 async def create_booking(
     request: Request,
@@ -130,6 +126,9 @@ async def create_booking(
     db.commit()
     db.refresh(bk)
 
+    # =========================
+    # 🔔 إشعار داخل الموقع
+    # =========================
     push_notification(
         db,
         bk.owner_id,
@@ -139,7 +138,39 @@ async def create_booking(
         "booking",
     )
 
-    return redirect_to_flow(bk)  
+    # =========================
+    # 📧 EMAIL — OWNER
+    # =========================
+    try:
+        from .email_service import send_email
+        owner = db.get(User, bk.owner_id)
+
+        if owner and owner.email:
+            subject = f"New booking request — Booking #{bk.id}"
+            msg_txt = f"You received a new booking request for '{item.title}'."
+            html = f"""
+            <div style="font-family:Arial">
+                <h2>New booking request</h2>
+                <p><b>Item:</b> {item.title}</p>
+                <p><b>Renter:</b> {user.first_name}</p>
+                <a href="https://sevor.net/bookings/flow/{bk.id}">
+                    Open booking
+                </a>
+            </div>
+            """
+
+            send_email(
+                to=owner.email,
+                subject=subject,
+                text_body=msg_txt,
+                html_body=html,
+            )
+    except Exception as e:
+        print("EMAIL ERROR (CREATE BOOKING):", e)
+
+    return redirect_to_flow(bk)
+
+
 
 @router.get("/bookings/flow/{booking_id}")
 def booking_flow(
@@ -219,10 +250,6 @@ def booking_flow(
     }
 
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
-
-# =====================================================
-# Owner decision
-# =====================================================
 @router.post("/bookings/{booking_id}/owner/decision")
 def owner_decision_route(
     booking_id: int,
@@ -233,15 +260,42 @@ def owner_decision_route(
 ):
     require_auth(user)
     bk = require_booking(db, booking_id)
+
     if not is_owner(user, bk):
         raise HTTPException(status_code=403)
 
+    renter = db.get(User, bk.renter_id)
+    item = db.get(Item, bk.item_id)
+
+    # =========================
+    # ❌ REJECTED
+    # =========================
     if decision == "rejected":
         bk.status = "rejected"
         bk.rejected_at = datetime.utcnow()
         db.commit()
+
+        # 📧 EMAIL — RENTER (REJECTED)
+        try:
+            from .email_service import send_email
+            if renter and renter.email:
+                send_email(
+                    to=renter.email,
+                    subject="Booking rejected",
+                    text_body=f"Your booking for '{item.title}' was rejected.",
+                    html_body=f"""
+                    <h2>Booking rejected</h2>
+                    <p>Your request for <b>{item.title}</b> was rejected.</p>
+                    """
+                )
+        except Exception as e:
+            print("EMAIL ERROR (REJECTED):", e)
+
         return redirect_to_flow(bk)
 
+    # =========================
+    # ✅ ACCEPTED
+    # =========================
     bk.status = "accepted"
     bk.accepted_at = datetime.utcnow()
     bk.security_amount = deposit_amount
@@ -259,6 +313,28 @@ def owner_decision_route(
         f"/bookings/flow/{bk.id}",
         "booking",
     )
+
+    # 📧 EMAIL — RENTER (ACCEPTED)
+    try:
+        from .email_service import send_email
+        if renter and renter.email:
+            send_email(
+                to=renter.email,
+                subject="Booking accepted 🎉",
+                text_body=f"Your booking for '{item.title}' was accepted.",
+                html_body=f"""
+                <div style="font-family:Arial">
+                    <h2>Booking accepted 🎉</h2>
+                    <p><b>Item:</b> {item.title}</p>
+                    <p><b>Deposit:</b> {bk.deposit_amount}$</p>
+                    <a href="https://sevor.net/bookings/flow/{bk.id}">
+                        Continue booking
+                    </a>
+                </div>
+                """
+            )
+    except Exception as e:
+        print("EMAIL ERROR (ACCEPTED):", e)
 
     return redirect_to_flow(bk)
 
