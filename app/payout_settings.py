@@ -42,6 +42,7 @@ def payout_settings(request: Request, db: Session = Depends(get_db)):
         {
             "request": request,
             "user": user,
+            "session_user": user,  # ✅ أضف هذا السطر
             "payout": payout,
             "show_form": show_form,
         },
