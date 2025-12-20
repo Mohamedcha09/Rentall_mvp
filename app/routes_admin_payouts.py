@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy.orm import Session
-
+from sqlalchemy.orm import Session, joinedload
 from .database import get_db
 from .models import Booking, User, UserPayoutMethod
 
@@ -31,6 +30,7 @@ def admin_payouts(request: Request, db: Session = Depends(get_db)):
 
     bookings = (
         db.query(Booking)
+        .options(joinedload(Booking.owner))
         .filter(
             Booking.payout_ready == True,
             Booking.payout_sent == False,
