@@ -47,9 +47,6 @@ def payout_settings(request: Request, db: Session = Depends(get_db)):
         },
     )
 
-# =====================================================
-# POST – Save payout settings
-# =====================================================
 @router.post("/payout/settings")
 def save_payout_settings(
     request: Request,
@@ -68,6 +65,9 @@ def save_payout_settings(
     if not user:
         return RedirectResponse("/login", status_code=303)
 
+    # =====================================================
+    # Determine destination + country
+    # =====================================================
     if method == "interac":
         destination = interac_destination
         country = "CA"
@@ -83,12 +83,17 @@ def save_payout_settings(
     if not destination:
         return RedirectResponse("/payout/settings?error=missing", status_code=303)
 
-    # تعطيل القديم
+    # =====================================================
+    # Disable previous payout methods
+    # =====================================================
     db.query(UserPayoutMethod).filter(
         UserPayoutMethod.user_id == user.id,
         UserPayoutMethod.is_active == True
     ).update({"is_active": False})
 
+    # =====================================================
+    # Create new payout method
+    # =====================================================
     payout = UserPayoutMethod(
         user_id=user.id,
         method=method,
@@ -100,9 +105,16 @@ def save_payout_settings(
     )
 
     db.add(payout)
+
+    # =====================================================
+    # 🔥 IMPORTANT FIX: enable payouts for the user
+    # =====================================================
+    user.payouts_enabled = True
+
     db.commit()
 
     return RedirectResponse("/payout/settings?saved=1", status_code=303)
+
 
 # =====================================================
 # POST – Remove payout method
