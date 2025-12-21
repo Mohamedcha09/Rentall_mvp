@@ -294,7 +294,7 @@ def deposit_receipt_front(
         .filter(
             Booking.id == booking_id,
             Booking.owner_id == user.id,
-            Booking.deposit_comp_sent == True,
+            Booking.dm_decision_amount > 0,
         )
         .first()
     )
