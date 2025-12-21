@@ -1,3 +1,6 @@
+# =====================================================
+#routes_admin_payouts.py  
+# ===================================================== 
 from fastapi import APIRouter, Request, Depends, HTTPException, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session, joinedload
@@ -106,7 +109,7 @@ def mark_payout_sent(
         "💸 Payout sent",
         f"Your payout of {booking.owner_amount} "
         f"{booking.currency_display or booking.currency} has been sent.",
-        f"f/payouts/receipt/{booking.id}",
+        f"f/admin/payouts/receipt/{booking.id}",
         kind="payout",
     )
 
