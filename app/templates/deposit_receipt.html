@@ -1,29 +1,159 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container" style="max-width:800px">
 
-<h3 class="mb-4">🛡 Deposit Compensation Receipt</h3>
+<style>
+  .deposit-wrap {
+    max-width: 820px;
+    margin: auto;
+  }
 
-<div class="card">
-  <div class="card-body">
+  .deposit-card {
+    border-radius: 18px;
+    border: 1px solid rgba(99,102,241,.2);
+    background: linear-gradient(180deg,#f8f9ff,#ffffff);
+    box-shadow: 0 20px 40px rgba(0,0,0,.06);
+  }
 
-    <p><strong>Booking:</strong> #{{ booking.id }}</p>
-    <p><strong>Amount received:</strong>
-      {{ booking.dm_decision_amount }}
-      {{ booking.currency_display or booking.currency }}
-    </p>
+  .deposit-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
 
-    {% if payout %}
-      <p><strong>Method:</strong> {{ payout.method|upper }}</p>
-      <p><strong>Destination:</strong> {{ payout.destination }}</p>
-    {% endif %}
+  .deposit-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg,#6366f1,#8b5cf6);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+  }
 
-    <p class="text-muted mt-3">
-      Sent at {{ booking.deposit_comp_sent_at }}
-    </p>
+  .deposit-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    background: rgba(99,102,241,.12);
+    color: #4f46e5;
+  }
 
+  .deposit-amount {
+    font-size: 34px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .deposit-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px dashed #e5e7eb;
+    font-size: 15px;
+  }
+
+  .deposit-row:last-child {
+    border-bottom: none;
+  }
+
+  .deposit-label {
+    color: #6b7280;
+  }
+
+  .deposit-value {
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .deposit-footer {
+    margin-top: 24px;
+    font-size: 13px;
+    color: #6b7280;
+    text-align: center;
+  }
+
+  .deposit-back {
+    margin-top: 24px;
+    display: inline-block;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 1px solid #6366f1;
+    color: #4f46e5;
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .deposit-back:hover {
+    background: rgba(99,102,241,.08);
+  }
+</style>
+
+<div class="container deposit-wrap">
+
+  <!-- Header -->
+  <div class="deposit-header">
+    <div class="deposit-icon">🛡</div>
+    <div>
+      <h3 class="mb-1">Deposit Compensation</h3>
+      <span class="deposit-badge">Deposit Receipt</span>
+    </div>
   </div>
-</div>
+
+  <!-- Card -->
+  <div class="card deposit-card">
+    <div class="card-body">
+
+      <div class="text-center mb-4">
+        <div class="deposit-amount">
+          {{ booking.dm_decision_amount }}
+          {{ booking.currency_display or booking.currency }}
+        </div>
+        <div class="text-muted mt-1">
+          Deposit compensation received
+        </div>
+      </div>
+
+      <div class="deposit-row">
+        <div class="deposit-label">Booking ID</div>
+        <div class="deposit-value">#{{ booking.id }}</div>
+      </div>
+
+      {% if payout %}
+      <div class="deposit-row">
+        <div class="deposit-label">Payment Method</div>
+        <div class="deposit-value">{{ payout.method|upper }}</div>
+      </div>
+
+      <div class="deposit-row">
+        <div class="deposit-label">Destination</div>
+        <div class="deposit-value">{{ payout.destination }}</div>
+      </div>
+      {% endif %}
+
+      <div class="deposit-row">
+        <div class="deposit-label">Status</div>
+        <div class="deposit-value text-success">Completed</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="deposit-footer">
+    This compensation was issued after deposit review by Sevor.
+  </div>
+
+  <div class="text-center">
+    <a href="/orders" class="deposit-back">
+      ← Back to my orders
+    </a>
+  </div>
 
 </div>
+
 {% endblock %}
