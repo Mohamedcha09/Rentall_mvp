@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container" style="max-width:1100px">
+  <h2 class="mb-4">🛡 Paid Deposit Compensations</h2>
+
+  {% for r in rows %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5>Booking #{{ r.booking.id }}</h5>
+
+      <p><strong>Owner:</strong> {{ r.owner.name }}</p>
+      <p><strong>Amount:</strong>
+        {{ r.amount }} {{ r.currency }}
+      </p>
+
+      <p class="text-muted">
+        Paid at {{ r.booking.deposit_comp_sent_at }}
+      </p>
+
+      {% if r.payout %}
+        <p><strong>Method:</strong> {{ r.payout.method|upper }}</p>
+        <p><strong>Destination:</strong> {{ r.payout.destination }}</p>
+      {% endif %}
+
+      <a
+        href="/f/payouts/deposit/{{ r.booking.id }}"
+        class="btn btn-outline-primary btn-sm mt-2"
+      >
+        View owner receipt
+      </a>
+    </div>
+  </div>
+  {% else %}
+    <p class="text-muted">No deposit compensations paid yet.</p>
+  {% endfor %}
+</div>
+
+{% endblock %}

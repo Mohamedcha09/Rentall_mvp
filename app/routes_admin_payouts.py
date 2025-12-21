@@ -289,6 +289,8 @@ def deposit_receipt_front(
             Booking.id == booking_id,
             Booking.owner_id == user.id,
             Booking.dm_decision_amount > 0,
+            Booking.deposit_comp_sent == False,   # 👈 هذا هو المفتاح
+
         )
         .first()
     )
@@ -311,6 +313,53 @@ def deposit_receipt_front(
             "request": request,
             "booking": booking,
             "payout": payout,
+            "session_user": request.session.get("user"),
+        }
+    )
+
+
+@router.get("/payouts/deposit/paid", response_class=HTMLResponse)
+def admin_deposit_payouts_paid(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user = get_current_user(request, db)
+    require_admin(user)
+
+    bookings = (
+        db.query(Booking)
+        .options(joinedload(Booking.owner))
+        .filter(
+            Booking.deposit_comp_sent == True,
+            Booking.dm_decision_amount > 0,
+        )
+        .order_by(Booking.deposit_comp_sent_at.desc())
+        .all()
+    )
+
+    rows = []
+    for b in bookings:
+        payout = (
+            db.query(UserPayoutMethod)
+            .filter(
+                UserPayoutMethod.user_id == b.owner_id,
+                UserPayoutMethod.is_active == True,
+            )
+            .first()
+        )
+        rows.append({
+            "booking": b,
+            "owner": b.owner,
+            "amount": b.dm_decision_amount,
+            "currency": b.currency_display or b.currency,
+            "payout": payout,
+        })
+
+    return request.app.templates.TemplateResponse(
+        "admin_deposit_payouts_paid.html",
+        {
+            "request": request,
+            "rows": rows,
             "session_user": request.session.get("user"),
         }
     )
