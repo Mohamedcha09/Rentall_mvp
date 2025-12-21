@@ -86,7 +86,7 @@ from .routes_cs_chatbot import router as cs_chatbot_router
 from .routes_md_chatbot import router as md_chatbot_router
 from .routes_mod_chatbot import router as mod_chatbot_router
 from .payout_settings import router as payout_settings_router
-from .routes_admin_payouts import router as admin_payouts_router
+from .routes_admin_payouts import router as admin_payouts_router, front_router as payouts_front_router
 
 
 
@@ -838,7 +838,7 @@ app.include_router(md_chatbot_router)
 app.include_router(mod_chatbot_router)
 app.include_router(payout_settings_router)
 app.include_router(admin_payouts_router)
-
+app.include_router(payouts_front_router)
 
 # -----------------------------------------------------------------------------
 # Legacy path → redirect to the new reports page

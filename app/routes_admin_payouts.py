@@ -1,3 +1,6 @@
+# =====================================================
+#routes_admin_payouts.py  
+# ===================================================== 
 from fastapi import APIRouter, Request, Depends, HTTPException, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session, joinedload
@@ -10,6 +13,7 @@ from .models import Booking, User, UserPayoutMethod
 from .notifications_api import push_notification
 
 router = APIRouter(prefix="/admin", tags=["admin-payouts"])
+front_router = APIRouter(prefix="/f", tags=["payouts-front"])
 
 # =====================================================
 # Helpers
@@ -106,7 +110,7 @@ def mark_payout_sent(
         "💸 Payout sent",
         f"Your payout of {booking.owner_amount} "
         f"{booking.currency_display or booking.currency} has been sent.",
-        f"/bookings/flow/{booking.id}",
+        f"/f/payouts/receipt/{booking.id}",
         kind="payout",
     )
 
@@ -220,8 +224,8 @@ def admin_payouts_paid(
 # =====================================================
 # GET – Payout receipt (OWNER)
 # =====================================================
-@router.get("/payouts/receipt/{booking_id}", response_class=HTMLResponse)
-def payout_receipt(
+@front_router.get("/payouts/receipt/{booking_id}", response_class=HTMLResponse)
+def payout_receipt_front(
     booking_id: int,
     request: Request,
     db: Session = Depends(get_db),
