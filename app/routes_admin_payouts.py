@@ -1,6 +1,6 @@
 # =====================================================
-#routes_admin_payouts.py  
-# ===================================================== 
+# routes_admin_payouts.py
+# =====================================================
 from fastapi import APIRouter, Request, Depends, HTTPException, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session, joinedload
@@ -28,9 +28,8 @@ def require_admin(user: User | None):
     if not user or user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
 
-
 # =====================================================
-# GET – Pending payouts
+# GET – Pending payouts (RENT + DEPOSIT)
 # =====================================================
 @router.get("/payouts", response_class=HTMLResponse)
 def admin_payouts(
@@ -40,7 +39,12 @@ def admin_payouts(
     user = get_current_user(request, db)
     require_admin(user)
 
-    bookings = (
+    rows = []
+
+    # ==========================
+    # RENT PAYOUTS
+    # ==========================
+    rent_bookings = (
         db.query(Booking)
         .options(joinedload(Booking.owner))
         .filter(
@@ -51,8 +55,7 @@ def admin_payouts(
         .all()
     )
 
-    rows = []
-    for b in bookings:
+    for b in rent_bookings:
         payout = (
             db.query(UserPayoutMethod)
             .filter(
@@ -62,8 +65,43 @@ def admin_payouts(
             .first()
         )
         rows.append({
+            "type": "rent",
             "booking": b,
             "owner": b.owner,
+            "amount": b.owner_amount,
+            "currency": b.currency_display or b.currency,
+            "payout": payout,
+        })
+
+    # ==========================
+    # DEPOSIT COMPENSATIONS
+    # ==========================
+    deposit_bookings = (
+        db.query(Booking)
+        .options(joinedload(Booking.owner))
+        .filter(
+            Booking.dm_decision_amount > 0,
+            Booking.deposit_comp_sent == False,
+        )
+        .order_by(Booking.updated_at.asc())
+        .all()
+    )
+
+    for b in deposit_bookings:
+        payout = (
+            db.query(UserPayoutMethod)
+            .filter(
+                UserPayoutMethod.user_id == b.owner_id,
+                UserPayoutMethod.is_active == True,
+            )
+            .first()
+        )
+        rows.append({
+            "type": "deposit",
+            "booking": b,
+            "owner": b.owner,
+            "amount": b.dm_decision_amount,
+            "currency": b.currency_display or b.currency,
             "payout": payout,
         })
 
@@ -77,12 +115,11 @@ def admin_payouts(
         }
     )
 
-
 # =====================================================
-# POST – Mark payout as sent
+# POST – Mark RENT payout as sent
 # =====================================================
 @router.post("/payouts/{booking_id}/mark-sent")
-def mark_payout_sent(
+def mark_rent_payout_sent(
     booking_id: int,
     request: Request,
     reference: str = Form(""),
@@ -93,107 +130,83 @@ def mark_payout_sent(
 
     booking = db.get(Booking, booking_id)
     if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
+        raise HTTPException(status_code=404)
 
-    # ✅ تحديث الحالة
     booking.payout_sent = True
     booking.payout_ready = False
     booking.payout_sent_at = datetime.utcnow()
     booking.payout_reference = reference
-
     db.commit()
 
-    # 🔔 إشعار + إيميل للمالك
     push_notification(
         db,
         booking.owner_id,
-        "💸 Payout sent",
-        f"Your payout of {booking.owner_amount} "
+        "💸 Rent payout sent",
+        f"Your rent payout of {booking.owner_amount} "
         f"{booking.currency_display or booking.currency} has been sent.",
         f"/f/payouts/receipt/{booking.id}",
         kind="payout",
     )
 
-    return RedirectResponse("/admin/payouts/paid", status_code=303)
-
+    return RedirectResponse("/admin/payouts", status_code=303)
 
 # =====================================================
-# GET – Paid payouts history
+# POST – Mark DEPOSIT compensation as sent
+# =====================================================
+@router.post("/payouts/{booking_id}/deposit/mark-sent")
+def mark_deposit_payout_sent(
+    booking_id: int,
+    request: Request,
+    reference: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    user = get_current_user(request, db)
+    require_admin(user)
+
+    booking = db.get(Booking, booking_id)
+    if not booking:
+        raise HTTPException(status_code=404)
+
+    if booking.dm_decision_amount <= 0:
+        raise HTTPException(status_code=400, detail="No deposit compensation")
+
+    booking.deposit_comp_sent = True
+    booking.deposit_comp_sent_at = datetime.utcnow()
+    booking.deposit_comp_reference = reference
+    db.commit()
+
+    push_notification(
+        db,
+        booking.owner_id,
+        "🛡 Deposit compensation sent",
+        f"You received {booking.dm_decision_amount} "
+        f"{booking.currency_display or booking.currency} "
+        "as a deposit compensation.",
+        f"/f/payouts/receipt/{booking.id}",
+        kind="deposit",
+    )
+
+    return RedirectResponse("/admin/payouts", status_code=303)
+
+# =====================================================
+# GET – Paid payouts history (RENT only)
 # =====================================================
 @router.get("/payouts/paid", response_class=HTMLResponse)
 def admin_payouts_paid(
     request: Request,
     db: Session = Depends(get_db),
-    date_from: str | None = None,
-    date_to: str | None = None,
-    export: str | None = None,
 ):
     user = get_current_user(request, db)
     require_admin(user)
 
-    q = (
+    bookings = (
         db.query(Booking)
         .options(joinedload(Booking.owner))
         .filter(Booking.payout_sent == True)
+        .order_by(Booking.payout_sent_at.desc())
+        .all()
     )
 
-    if date_from:
-        q = q.filter(Booking.payout_sent_at >= date_from)
-    if date_to:
-        q = q.filter(Booking.payout_sent_at <= date_to)
-
-    bookings = q.order_by(Booking.payout_sent_at.desc()).all()
-
-    # ==========================
-    # 📤 EXPORT CSV
-    # ==========================
-    if export == "csv":
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow([
-            "Booking ID",
-            "Owner",
-            "Amount",
-            "Currency",
-            "Method",
-            "Destination",
-            "Paid at",
-            "Reference",
-        ])
-
-        for b in bookings:
-            payout = (
-                db.query(UserPayoutMethod)
-                .filter(
-                    UserPayoutMethod.user_id == b.owner_id,
-                    UserPayoutMethod.is_active == True,
-                )
-                .first()
-            )
-
-            writer.writerow([
-                b.id,
-                b.owner.full_name if b.owner else "",
-                b.owner_amount,
-                b.currency_display or b.currency,
-                payout.method if payout else "",
-                payout.destination if payout else "",
-                b.payout_sent_at,
-                getattr(b, "payout_reference", ""),
-            ])
-
-        output.seek(0)
-        return StreamingResponse(
-            output,
-            media_type="text/csv",
-            headers={
-                "Content-Disposition": "attachment; filename=payouts.csv"
-            },
-        )
-
-    # ==========================
-    # UI DATA
-    # ==========================
     rows = []
     for b in bookings:
         payout = (
@@ -216,8 +229,6 @@ def admin_payouts_paid(
             "request": request,
             "rows": rows,
             "session_user": request.session.get("user"),
-            "date_from": date_from,
-            "date_to": date_to,
         }
     )
 
@@ -240,7 +251,6 @@ def payout_receipt_front(
         .filter(
             Booking.id == booking_id,
             Booking.owner_id == user.id,
-            Booking.payout_sent == True,
         )
         .first()
     )
