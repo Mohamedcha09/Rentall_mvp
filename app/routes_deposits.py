@@ -321,7 +321,6 @@ def _split_renter_evidence(bk):
         else:
             other.append(e)
     return pickup, ret, other
-
 # ============ Issues queue (with filters) ============
 @router.get("/dm/deposits")
 def dm_queue(
@@ -335,55 +334,101 @@ def dm_queue(
     if not can_manage_deposits(user):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # support legacy field deposit_hold_id if present
-    deposit_hold_old_expr = text("deposit_hold_id IS NOT NULL") if hasattr(Booking, "deposit_hold_id") else text("0")
-
+    # ==================================================
+    # ✅ BASE FILTERS — ONLY REAL COLUMNS
+    # ==================================================
     base_filters = [
         or_(
-            Booking.deposit_hold_intent_id.isnot(None),
-            deposit_hold_old_expr,
-            Booking.deposit_status.in_(["held", "in_dispute", "partially_withheld", "awaiting_renter", "no_deposit", "refunded"]),
+            Booking.hold_deposit_amount > 0,
+            Booking.deposit_status.in_([
+                "held",
+                "in_dispute",
+                "partially_withheld",
+                "awaiting_renter",
+                "no_deposit",
+                "refunded",
+            ]),
             Booking.status.in_(["returned", "in_review", "closed"]),
         )
     ]
 
-    # apply state filter
+    # ==================================================
+    # STATE FILTER
+    # ==================================================
     if state == "awaiting_renter":
         base_filters.append(Booking.deposit_status == "awaiting_renter")
+
     elif state == "closed":
-        base_filters.append(or_(Booking.status == "closed",
-                                Booking.deposit_status.in_(["refunded", "partially_withheld", "no_deposit"])))
+        base_filters.append(
+            or_(
+                Booking.status == "closed",
+                Booking.deposit_status.in_(["refunded", "partially_withheld", "no_deposit"]),
+            )
+        )
+
     elif state in ("new", "awaiting_dm"):
         base_filters.append(Booking.deposit_status == "in_dispute")
-        # not yet assigned
-        if hasattr(Booking, "dm_assignee_id"):
-            base_filters.append(or_(Booking.dm_assignee_id.is_(None), Booking.dm_assignee_id == 0))
 
+        # not yet assigned (if column exists)
+        if hasattr(Booking, "dm_assignee_id"):
+            base_filters.append(
+                or_(
+                    Booking.dm_assignee_id.is_(None),
+                    Booking.dm_assignee_id == 0,
+                )
+            )
+
+    # ==================================================
+    # QUERY
+    # ==================================================
     qset = db.query(Booking).filter(and_(*base_filters))
 
-    # search
+    # ==================================================
+    # SEARCH
+    # ==================================================
     if q:
         q = q.strip()
-        # #123 or email or part of item title
+
         if q.startswith("#") and q[1:].isdigit():
             qset = qset.filter(Booking.id == int(q[1:]))
+
         elif q.isdigit():
             qset = qset.filter(Booking.id == int(q))
+
         else:
-            # join Item when needed
             qset = qset.join(Item, Item.id == Booking.item_id, isouter=True)
             like = f"%{q}%"
-            qset = qset.filter(or_(Item.title.ilike(like), Booking.owner_email.ilike(like) if hasattr(Booking, "owner_email") else text("0"),
-                                   Booking.renter_email.ilike(like) if hasattr(Booking, "renter_email") else text("0")))
+            qset = qset.filter(
+                or_(
+                    Item.title.ilike(like),
+                )
+            )
 
-    order_col = Booking.updated_at.desc() if hasattr(Booking, "updated_at") else Booking.id.desc()
+    # ==================================================
+    # ORDER
+    # ==================================================
+    order_col = (
+        Booking.updated_at.desc()
+        if hasattr(Booking, "updated_at")
+        else Booking.id.desc()
+    )
+
     cases: List[Booking] = qset.order_by(order_col).all()
 
-    # prefetch items
+    # ==================================================
+    # PREFETCH ITEMS
+    # ==================================================
     item_ids = {b.item_id for b in cases}
-    items: List[Item] = db.query(Item).filter(Item.id.in_(item_ids)).all() if item_ids else []
+    items: List[Item] = (
+        db.query(Item).filter(Item.id.in_(item_ids)).all()
+        if item_ids
+        else []
+    )
     items_map: Dict[int, Item] = {it.id: it for it in items}
 
+    # ==================================================
+    # RENDER
+    # ==================================================
     return request.app.templates.TemplateResponse(
         "dm_queue.html",
         {
