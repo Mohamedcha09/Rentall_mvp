@@ -180,7 +180,7 @@ def mark_deposit_payout_sent(
         f"You received {booking.dm_decision_amount} "
         f"{booking.currency_display or booking.currency} "
         "as a deposit compensation.",
-        f"/f/payouts/receipt/{booking.id}",
+        f"/f/payouts/deposit/{booking.id}",
         kind="deposit",
     )
 
@@ -267,6 +267,52 @@ def payout_receipt_front(
 
     return request.app.templates.TemplateResponse(
         "payout_receipt.html",
+        {
+            "request": request,
+            "booking": booking,
+            "payout": payout,
+            "session_user": request.session.get("user"),
+        }
+    )
+
+# =====================================================
+# GET – Deposit compensation receipt (OWNER)
+# =====================================================
+@front_router.get("/payouts/deposit/{booking_id}", response_class=HTMLResponse)
+def deposit_receipt_front(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user = get_current_user(request, db)
+    if not user:
+        raise HTTPException(status_code=403)
+
+    booking = (
+        db.query(Booking)
+        .options(joinedload(Booking.owner))
+        .filter(
+            Booking.id == booking_id,
+            Booking.owner_id == user.id,
+            Booking.deposit_comp_sent == True,
+        )
+        .first()
+    )
+
+    if not booking:
+        raise HTTPException(status_code=404)
+
+    payout = (
+        db.query(UserPayoutMethod)
+        .filter(
+            UserPayoutMethod.user_id == booking.owner_id,
+            UserPayoutMethod.is_active == True
+        )
+        .first()
+    )
+
+    return request.app.templates.TemplateResponse(
+        "deposit_receipt.html",
         {
             "request": request,
             "booking": booking,

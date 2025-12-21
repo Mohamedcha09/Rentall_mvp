@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container" style="max-width:800px">
+
+<h3 class="mb-4">🛡 Deposit Compensation Receipt</h3>
+
+<div class="card">
+  <div class="card-body">
+
+    <p><strong>Booking:</strong> #{{ booking.id }}</p>
+    <p><strong>Amount received:</strong>
+      {{ booking.dm_decision_amount }}
+      {{ booking.currency_display or booking.currency }}
+    </p>
+
+    {% if payout %}
+      <p><strong>Method:</strong> {{ payout.method|upper }}</p>
+      <p><strong>Destination:</strong> {{ payout.destination }}</p>
+    {% endif %}
+
+    <p class="text-muted mt-3">
+      Sent at {{ booking.deposit_comp_sent_at }}
+    </p>
+
+  </div>
+</div>
+
+</div>
+{% endblock %}
