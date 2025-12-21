@@ -1,24 +1,25 @@
 {% extends "base.html" %}
-
 {% block content %}
+
 <div class="container" style="max-width:1100px">
 
-<h3 class="mb-4">💸 Owner Payouts (Admin)</h3>
+<!-- ================= RENT PAYOUTS ================= -->
+<h3 class="mb-3 text-success">💸 Rent payouts</h3>
 
-{% if not rows %}
-  <div class="alert alert-success">
-    ✅ No pending payouts.
-  </div>
+{% set rent_rows = rows | selectattr("type", "equalto", "rent") | list %}
+{% if not rent_rows %}
+  <div class="alert alert-success">No pending rent payouts.</div>
 {% endif %}
 
-{% for row in rows %}
-<div class="card mb-3">
+{% for row in rent_rows %}
+<div class="card mb-3 border-success">
   <div class="card-body">
 
-    <div class="d-flex justify-content-between align-items-start">
+    <div class="d-flex justify-content-between">
       <div>
         <h5 class="mb-1">
           Booking #{{ row.booking.id }}
+          <span class="badge bg-success ms-2">RENT</span>
         </h5>
         <div class="text-muted">
           Owner: <strong>{{ row.owner.full_name }}</strong><br>
@@ -28,27 +29,77 @@
 
       <form method="post" action="/admin/payouts/{{ row.booking.id }}/mark-sent">
         <button class="btn btn-success">
-          ✔ Mark as paid
+          ✔ Mark rent as paid
         </button>
       </form>
     </div>
 
     <hr>
 
-    <p class="mb-1">
-      <strong>Amount to send:</strong>
-      {{ row.booking.owner_amount }} {{ row.booking.currency_display or row.booking.currency }}
+    <p>
+      <strong>Amount:</strong>
+      {{ row.amount }} {{ row.currency }}
     </p>
 
     {% if row.payout %}
-      <p class="mb-0">
-        <strong>Method:</strong> {{ row.payout.method|upper }} <br>
-        <strong>Destination:</strong> {{ row.payout.destination }}
-      </p>
+      <small>
+        Method: {{ row.payout.method|upper }}<br>
+        Destination: {{ row.payout.destination }}
+      </small>
     {% else %}
-      <p class="text-danger mb-0">
-        ⚠️ Owner has no payout method configured
-      </p>
+      <p class="text-danger">Owner has no payout method</p>
+    {% endif %}
+
+  </div>
+</div>
+{% endfor %}
+
+
+<!-- ================= DEPOSIT PAYOUTS ================= -->
+<h3 class="mt-5 mb-3 text-purple">🛡 Deposit compensations</h3>
+
+{% set deposit_rows = rows | selectattr("type", "equalto", "deposit") | list %}
+{% if not deposit_rows %}
+  <div class="alert alert-secondary">No deposit compensations.</div>
+{% endif %}
+
+{% for row in deposit_rows %}
+<div class="card mb-3 border-purple bg-deposit">
+  <div class="card-body">
+
+    <div class="d-flex justify-content-between">
+      <div>
+        <h5 class="mb-1">
+          Booking #{{ row.booking.id }}
+          <span class="badge bg-purple ms-2">DEPOSIT</span>
+        </h5>
+        <div class="text-muted">
+          Owner: <strong>{{ row.owner.full_name }}</strong><br>
+          Reason: {{ row.reason or "Damage compensation" }}
+        </div>
+      </div>
+
+      <form method="post" action="/admin/payouts/{{ row.booking.id }}/deposit/mark-sent">
+        <button class="btn btn-purple">
+          🛡 Send deposit compensation
+        </button>
+      </form>
+    </div>
+
+    <hr>
+
+    <p>
+      <strong>Compensation amount:</strong>
+      {{ row.amount }} {{ row.currency }}
+    </p>
+
+    {% if row.payout %}
+      <small>
+        Method: {{ row.payout.method|upper }}<br>
+        Destination: {{ row.payout.destination }}
+      </small>
+    {% else %}
+      <p class="text-danger">Owner has no payout method</p>
     {% endif %}
 
   </div>
@@ -56,4 +107,24 @@
 {% endfor %}
 
 </div>
+
+<style>
+/* ===== Deposit style ===== */
+.text-purple { color: #7c3aed; }
+.bg-purple { background-color: #7c3aed; }
+.btn-purple {
+  background-color: #7c3aed;
+  color: white;
+}
+.btn-purple:hover {
+  background-color: #6d28d9;
+}
+.border-purple {
+  border-left: 6px solid #7c3aed;
+}
+.bg-deposit {
+  background: #faf5ff;
+}
+</style>
+
 {% endblock %}
