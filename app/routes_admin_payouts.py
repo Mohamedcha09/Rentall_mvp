@@ -80,9 +80,7 @@ def admin_payouts(
         db.query(Booking)
         .options(joinedload(Booking.owner))
         .filter(
-            Booking.dm_decision_amount > 0,
-            Booking.deposit_comp_sent == False,
-        )
+            Booking.dm_decision_amount > 0,        )
         .order_by(Booking.updated_at.asc())
         .all()
     )
