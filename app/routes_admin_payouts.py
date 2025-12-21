@@ -147,10 +147,6 @@ def mark_rent_payout_sent(
     )
 
     return RedirectResponse("/admin/payouts", status_code=303)
-
-# =====================================================
-# POST – Mark DEPOSIT compensation as sent
-# =====================================================
 @router.post("/payouts/{booking_id}/deposit/mark-sent")
 def mark_deposit_payout_sent(
     booking_id: int,
@@ -168,9 +164,7 @@ def mark_deposit_payout_sent(
     if booking.dm_decision_amount <= 0:
         raise HTTPException(status_code=400, detail="No deposit compensation")
 
-    booking.deposit_comp_sent = True
-    booking.deposit_comp_sent_at = datetime.utcnow()
-    booking.deposit_comp_reference = reference
+    # لا نضيف أي أعمدة غير موجودة
     db.commit()
 
     push_notification(
