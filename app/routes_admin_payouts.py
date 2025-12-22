@@ -313,6 +313,8 @@ def deposit_receipt_front(
         }
     )
 
+
+
 @router.get("/payouts/deposit/paid", response_class=HTMLResponse)
 def admin_deposit_payouts_paid(
     request: Request,
@@ -326,6 +328,8 @@ def admin_deposit_payouts_paid(
         .options(joinedload(Booking.owner))
         .filter(
             Booking.dm_decision_amount > 0,
+            Booking.updated_at > Booking.created_at,  # أو أي شرط مؤقت
+
         )
         .order_by(Booking.updated_at.desc())
         .all()
