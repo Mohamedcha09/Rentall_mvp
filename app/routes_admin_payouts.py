@@ -289,8 +289,6 @@ def deposit_receipt_front(
             Booking.id == booking_id,
             Booking.owner_id == user.id,
             Booking.dm_decision_amount > 0,
-            Booking.deposit_comp_sent == False,   # 👈 هذا هو المفتاح
-
         )
         .first()
     )
@@ -317,7 +315,6 @@ def deposit_receipt_front(
         }
     )
 
-
 @router.get("/payouts/deposit/paid", response_class=HTMLResponse)
 def admin_deposit_payouts_paid(
     request: Request,
@@ -330,10 +327,9 @@ def admin_deposit_payouts_paid(
         db.query(Booking)
         .options(joinedload(Booking.owner))
         .filter(
-            Booking.deposit_comp_sent == True,
             Booking.dm_decision_amount > 0,
         )
-        .order_by(Booking.deposit_comp_sent_at.desc())
+        .order_by(Booking.updated_at.desc())
         .all()
     )
 
