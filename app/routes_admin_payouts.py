@@ -269,9 +269,7 @@ def payout_receipt_front(
         }
     )
 
-# =====================================================
-# GET – Deposit compensation receipt (OWNER)
-# =====================================================
+
 @front_router.get("/payouts/deposit/{booking_id}", response_class=HTMLResponse)
 def deposit_receipt_front(
     booking_id: int,
@@ -289,8 +287,6 @@ def deposit_receipt_front(
             Booking.id == booking_id,
             Booking.owner_id == user.id,
             Booking.dm_decision_amount > 0,
-            Booking.deposit_comp_sent == False,   # 👈 هذا هو المفتاح
-
         )
         .first()
     )
