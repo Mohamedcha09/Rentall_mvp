@@ -289,6 +289,8 @@ def deposit_receipt_front(
             Booking.id == booking_id,
             Booking.owner_id == user.id,
             Booking.dm_decision_amount > 0,
+            Booking.deposit_comp_sent == False,   # 👈 هذا هو المفتاح
+
         )
         .first()
     )
