@@ -402,9 +402,24 @@ class Booking(Base):
     created_at  = Column(DateTime, default=datetime.utcnow)
     updated_at  = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
  
+
+
     owner_amount = col_or_literal("bookings", "owner_amount", Numeric(10, 2), default=0)
 
     payout_ready = col_or_literal("bookings", "payout_ready", Boolean, default=False)
+
+        # ===== Deposit payout tracking =====
+    deposit_comp_sent = col_or_literal(
+        "bookings", "deposit_comp_sent", Boolean, default=False
+    )
+
+    deposit_comp_sent_at = col_or_literal(
+        "bookings", "deposit_comp_sent_at", DateTime, nullable=True
+    )
+
+    deposit_comp_reference = col_or_literal(
+        "bookings", "deposit_comp_reference", String(120), nullable=True
+    )
 
     payout_sent = col_or_literal("bookings", "payout_sent", Boolean, default=False)
 

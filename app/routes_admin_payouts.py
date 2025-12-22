@@ -28,9 +28,7 @@ def require_admin(user: User | None):
     if not user or user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
 
-# =====================================================
-# GET – Pending payouts (RENT + DEPOSIT)
-# =====================================================
+
 @router.get("/payouts", response_class=HTMLResponse)
 def admin_payouts(
     request: Request,
@@ -74,13 +72,15 @@ def admin_payouts(
         })
 
     # ==========================
-    # DEPOSIT COMPENSATIONS
+    # DEPOSIT COMPENSATIONS (PENDING ONLY)
     # ==========================
     deposit_bookings = (
         db.query(Booking)
         .options(joinedload(Booking.owner))
         .filter(
-            Booking.dm_decision_amount > 0,        )
+            Booking.dm_decision_amount > 0,
+            Booking.deposit_comp_sent == False,   # ✅ المفتاح
+        )
         .order_by(Booking.updated_at.asc())
         .all()
     )
@@ -147,6 +147,9 @@ def mark_rent_payout_sent(
     )
 
     return RedirectResponse("/admin/payouts", status_code=303)
+
+
+
 @router.post("/payouts/{booking_id}/deposit/mark-sent")
 def mark_deposit_payout_sent(
     booking_id: int,
@@ -164,7 +167,15 @@ def mark_deposit_payout_sent(
     if booking.dm_decision_amount <= 0:
         raise HTTPException(status_code=400, detail="No deposit compensation")
 
-    # لا نضيف أي أعمدة غير موجودة
+    # ✅ منع الإرسال مرتين
+    if booking.deposit_comp_sent:
+        return RedirectResponse("/admin/payouts", status_code=303)
+
+    # ✅ هذا هو النقل الحقيقي
+    booking.deposit_comp_sent = True
+    booking.deposit_comp_sent_at = datetime.utcnow()
+    booking.deposit_comp_reference = reference
+
     db.commit()
 
     push_notification(
@@ -314,7 +325,6 @@ def deposit_receipt_front(
     )
 
 
-
 @router.get("/payouts/deposit/paid", response_class=HTMLResponse)
 def admin_deposit_payouts_paid(
     request: Request,
@@ -328,10 +338,9 @@ def admin_deposit_payouts_paid(
         .options(joinedload(Booking.owner))
         .filter(
             Booking.dm_decision_amount > 0,
-            Booking.updated_at > Booking.created_at,  # أو أي شرط مؤقت
-
+            Booking.deposit_comp_sent == True,   # ✅ فقط المرسلة
         )
-        .order_by(Booking.updated_at.desc())
+        .order_by(Booking.deposit_comp_sent_at.desc())
         .all()
     )
 
