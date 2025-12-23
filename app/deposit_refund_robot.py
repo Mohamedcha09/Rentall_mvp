@@ -1,12 +1,12 @@
 # app/deposit_refund_robot.py
 """
 Deposit Refund Robot
---------------------
+====================
 الروبوت مسؤول فقط عن:
 - اختيار الحجوزات الجاهزة
 - حساب مبلغ إرجاع الديبو للزبون
-- تسجيل القرار في DB (PLAN فقط)
-❌ لا يرسل أموال
+- إرسال Refund حقيقي عبر PayPal
+- تحديث أعمدة refund في bookings
 ❌ لا يلمس تعويض المالك
 """
 
@@ -16,13 +16,22 @@ from sqlalchemy import or_, and_
 
 from app.database import SessionLocal
 from app.models import Booking, DepositAuditLog
+from app.pay_api import send_deposit_refund   # ✅ السطر الذي كان ناقص
 
 
 # =========================================================
-# المرحلة 2 — اختيار الحجوزات الجاهزة
+# اختيار الحجوزات الجاهزة
 # =========================================================
 
 def find_candidates(db: Session):
+    """
+    نختار فقط الحجوزات التي:
+    - عندها deposit
+    - لم يتم refund بعد
+    - إمّا:
+        A) قرار DM موجود
+        B) انتهت بدون مشاكل
+    """
     return db.query(Booking).filter(
         Booking.deposit_amount > 0,
         Booking.deposit_refund_sent == False,
@@ -33,21 +42,17 @@ def find_candidates(db: Session):
             # B) انتهى بدون مشاكل
             and_(
                 Booking.return_check_no_problem == True,
-                Booking.return_check_submitted_at.isnot(None)
-            )
-        )
+                Booking.return_check_submitted_at.isnot(None),
+            ),
+        ),
     ).all()
 
 
 # =========================================================
-# المرحلة 3 — حساب مبلغ الإرجاع
+# حساب مبلغ الإرجاع
 # =========================================================
 
 def compute_refund_amount(booking: Booking) -> float:
-    """
-    يحسب كم يرجع للزبون
-    """
-
     deposit = float(booking.deposit_amount or 0)
 
     # A) بعد قرار DM
@@ -60,36 +65,48 @@ def compute_refund_amount(booking: Booking) -> float:
     if booking.return_check_no_problem:
         return deposit
 
-    return 0
+    return 0.0
 
 
 # =========================================================
-# المرحلة 3 — تسجيل الخطة (بدون إرسال)
+# تنفيذ Refund حقيقي + تسجيل Log
 # =========================================================
 
-def apply_refund_plan(db: Session, booking: Booking, refund_amount: float):
+def execute_refund(db: Session, booking: Booking, refund_amount: float):
     """
-    يكتب الخطة فقط:
-    - deposit_refund_amount
-    - Audit log
+    - يرسل Refund حقيقي عبر PayPal
+    - يحدّث booking
+    - يضيف Audit Log
     """
 
-    booking.deposit_refund_amount = refund_amount
+    if refund_amount <= 0:
+        return
 
-    db.add(DepositAuditLog(
-        booking_id=booking.id,
-        actor_id=booking.owner_id,  # روبوت = system (نغيّره لاحقًا)
-        actor_role="system",
-        action="robot_refund_planned",
-        amount=int(refund_amount),
-        reason="Automatic refund plan by robot"
-    ))
+    # 🔥 إرسال المال فعليًا
+    refund_reference = send_deposit_refund(
+        db=db,
+        booking=booking,
+        amount=refund_amount,
+    )
+
+    # Audit log
+    db.add(
+        DepositAuditLog(
+            booking_id=booking.id,
+            actor_id=booking.owner_id,   # system
+            actor_role="system",
+            action="robot_refund_sent",
+            amount=int(refund_amount),
+            reason="Automatic deposit refund executed by robot",
+            details=f"refund_reference={refund_reference}",
+        )
+    )
 
     db.commit()
 
 
 # =========================================================
-# المرحلة 1 + 3 — تشغيل الروبوت
+# تشغيل الروبوت مرة واحدة
 # =========================================================
 
 def run_once():
@@ -98,20 +115,26 @@ def run_once():
         bookings = find_candidates(db)
 
         print("======================================")
-        print("Deposit Refund Robot — PLAN MODE")
-        print(f"Candidates: {len(bookings)}")
+        print("Deposit Refund Robot — LIVE MODE")
+        print(f"Candidates found: {len(bookings)}")
 
         for b in bookings:
             refund = compute_refund_amount(b)
 
-            apply_refund_plan(db, b, refund)
-
             print(
-                f"- Booking #{b.id} | deposit={b.deposit_amount} | "
-                f"refund_planned={refund}"
+                f"Booking #{b.id} | "
+                f"deposit={b.deposit_amount} | "
+                f"refund={refund}"
             )
 
+            execute_refund(db, b, refund)
+
+        print("Robot finished successfully.")
         print("======================================")
+
+    except Exception as e:
+        print("❌ Robot error:", str(e))
+        raise
 
     finally:
         db.close()

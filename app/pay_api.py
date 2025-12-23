@@ -236,8 +236,10 @@ def paypal_return(
 
     capture_data = paypal_capture(token)
     capture_id = (capture_data["purchase_units"][0]["payments"]["captures"][0]["id"])
-    bk.payment_provider = capture_id
-
+    bk.payment_method = "paypal"
+    bk.payment_provider = capture_id         # ← ثابت
+    bk.deposit_capture_id = capture_id      # ← إذا عندك هذا العمود
+    bk.payment_capture_id = capture_id 
 
 
     if type == "rent":
