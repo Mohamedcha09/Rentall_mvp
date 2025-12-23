@@ -7,7 +7,9 @@ Deposit Refund Robot
 - حساب مبلغ إرجاع الديبو للزبون
 - إرسال Refund حقيقي عبر PayPal
 - تحديث أعمدة refund في bookings
+
 ❌ لا يلمس تعويض المالك
+❌ لا يلمس Stripe / Cash
 """
 
 from datetime import datetime
@@ -16,7 +18,7 @@ from sqlalchemy import or_, and_
 
 from app.database import SessionLocal
 from app.models import Booking, DepositAuditLog
-from app.pay_api import send_deposit_refund   # ✅ السطر الذي كان ناقص
+from app.pay_api import send_deposit_refund
 
 
 # =========================================================
@@ -75,25 +77,43 @@ def compute_refund_amount(booking: Booking) -> float:
 def execute_refund(db: Session, booking: Booking, refund_amount: float):
     """
     - يرسل Refund حقيقي عبر PayPal
-    - يحدّث booking
-    - يضيف Audit Log
+    - يتجاهل أي حجز غير صالح
     """
 
     if refund_amount <= 0:
         return
 
+    # =====================================================
+    # 🔒 فلاتر أمان — لا نلمس إلا PayPal مع capture_id حقيقي
+    # =====================================================
+
+    if booking.payment_method != "paypal":
+        print(f"⏭️ Skip booking #{booking.id} (not PayPal)")
+        return
+
+    capture_id = booking.payment_provider
+    if not capture_id or capture_id.lower() == "paypal":
+        print(f"⏭️ Skip booking #{booking.id} (missing PayPal capture_id)")
+        return
+
+    # =====================================================
     # 🔥 إرسال المال فعليًا
+    # =====================================================
+
     refund_reference = send_deposit_refund(
         db=db,
         booking=booking,
         amount=refund_amount,
     )
 
-    # Audit log
+    # =====================================================
+    # 🧾 Audit Log
+    # =====================================================
+
     db.add(
         DepositAuditLog(
             booking_id=booking.id,
-            actor_id=booking.owner_id,   # system
+            actor_id=None,
             actor_role="system",
             action="robot_refund_sent",
             amount=int(refund_amount),
