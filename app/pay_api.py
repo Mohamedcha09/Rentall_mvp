@@ -187,7 +187,9 @@ def paypal_start(
             raise HTTPException(status_code=400)
 
         # ✅ هنا التغيير المهم
-        amount = compute_grand_total_for_paypal(request, bk)
+        pricing = compute_grand_total_for_paypal(request, bk)
+        amount = pricing["grand_total"]
+
 
     else:
         # Security fund — بدون ضرائب
