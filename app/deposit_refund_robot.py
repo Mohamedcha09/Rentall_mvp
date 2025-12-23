@@ -113,7 +113,7 @@ def execute_refund(db: Session, booking: Booking, refund_amount: float):
     db.add(
         DepositAuditLog(
             booking_id=booking.id,
-            actor_id=None,
+            actor_id= 0,
             actor_role="system",
             action="robot_refund_sent",
             amount=int(refund_amount),
