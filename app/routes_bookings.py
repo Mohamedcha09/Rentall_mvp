@@ -12,7 +12,7 @@ from .database import get_db
 from .models import User, Item, Booking, UserReview
 from .utils import category_label, display_currency, fx_convert
 from .notifications_api import push_notification, notify_admins
-from .pay_api import paypal_start, paypal_return
+from .pay_api import paypal_start, paypal_return, compute_grand_total_for_paypal
 
 # ✅ ADDITIONS
 from .utili_geo import locate_from_session
