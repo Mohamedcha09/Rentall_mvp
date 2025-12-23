@@ -145,37 +145,38 @@ def paypal_capture(order_id: str):
 # =====================================================
 # NEW: compute full payable amount (rent + fees + taxes)
 # =====================================================
-
 def compute_grand_total_for_paypal(request: Request, bk: Booking) -> float:
-    geo = locate_from_session(request) or {}
-
-    country = (geo.get("country") or "CA").upper()
-    region  = (geo.get("region") or "QC").upper()
+    """
+    FINAL PRICING LOGIC
+    - Owner gets EXACT rent (no fees deducted)
+    - Sevor fee (2%) is added to renter
+    - PayPal fee (2.9% + 0.30) is added to renter
+    """
 
     rent = float(bk.total_amount or 0)
 
-    # Sevor fee 1%
-    sevor_fee = round(rent * 0.01, 2)
+    # ===== CONFIG =====
+    SEVOR_FEE_PCT = 0.02          # 2%
+    PAYPAL_PCT    = 0.029         # 2.9%
+    PAYPAL_FIXED  = 0.30
 
-    # Taxes
-    tax_base = rent + sevor_fee
-    tax_result = compute_order_taxes(
-        subtotal=tax_base,
-        geo={"country": country, "sub": region},
-    ) or {}
+    # ===== FEES =====
+    sevor_fee = round(rent * SEVOR_FEE_PCT, 2)
 
-    tax_total = float(tax_result.get("total", 0))
-
-    # Processing fee
-    processing_fee = round(rent * 0.029 + 0.30, 2)
+    base_before_paypal = rent + sevor_fee
+    paypal_fee = round(base_before_paypal * PAYPAL_PCT + PAYPAL_FIXED, 2)
 
     grand_total = round(
-        rent + sevor_fee + tax_total + processing_fee,
+        rent + sevor_fee + paypal_fee,
         2
     )
 
-    return grand_total
+    # ===== STORE SNAPSHOTS =====
+    bk.platform_fee = int(round(sevor_fee * 100)) / 100
+    bk.owner_due_amount = rent      # 🔥 OWNER GETS FULL RENT
+    bk.amount_paid_cents = int(round(grand_total * 100))
 
+    return grand_total
 # =====================================================
 # START
 # =====================================================
