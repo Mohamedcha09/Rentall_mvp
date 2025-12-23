@@ -170,8 +170,6 @@ async def create_booking(
 
     return redirect_to_flow(bk)
 
-
-
 @router.get("/bookings/flow/{booking_id}")
 def booking_flow(
     booking_id: int,
@@ -200,35 +198,37 @@ def booking_flow(
     country = (geo.get("country") or "").upper()
     region  = (geo.get("region") or "").upper()
 
-    rent = bk.total_amount
-    sevor_fee = round(rent * 0.01, 2)
+    # ============================
+    # 💰 FINAL PRICING LOGIC
+    # ============================
+    rent = float(bk.total_amount or 0)
 
-    tax_lines = []
-    tax_total = 0.0
-    processing_fee = 0.0
+    SEVOR_FEE_PCT = 0.02        # ✅ 2% Sevor
+    PAYPAL_PCT = 0.029          # ✅ PayPal 2.9%
+    PAYPAL_FIXED = 0.30         # ✅ PayPal fixed fee
 
-    if is_renter(user, bk) and country:
-        try:
-            tax_base = rent + sevor_fee
-            tax_result = compute_order_taxes(
-                subtotal=tax_base,
-                geo={"country": country, "sub": region}
-            ) or {}
+    # Sevor fee (paid by renter)
+    sevor_fee = round(rent * SEVOR_FEE_PCT, 2)
 
-            tax_lines = tax_result.get("lines", [])
-            tax_total = float(tax_result.get("total", 0))
-            processing_fee = round(rent * 0.029 + 0.30, 2)
-
-        except Exception:
-            tax_lines = []
-            tax_total = 0.0
-            processing_fee = 0.0
-
-    grand_total = round(
-        rent + sevor_fee + tax_total + processing_fee,
+    # PayPal fee is calculated on (rent + sevor fee)
+    paypal_fee = round(
+        (rent + sevor_fee) * PAYPAL_PCT + PAYPAL_FIXED,
         2
     )
 
+    # ❌ NO TAXES (disabled)
+    tax_lines = []
+    tax_total = 0.0
+
+    # Final total shown to renter
+    grand_total = round(
+        rent + sevor_fee + paypal_fee,
+        2
+    )
+
+    # ============================
+    # 📦 CONTEXT
+    # ============================
     ctx = {
         "request": request,
         "booking": bk,
@@ -238,17 +238,21 @@ def booking_flow(
         "is_owner": is_owner(user, bk),
         "is_renter": is_renter(user, bk),
         "category_label": category_label,
+
+        # amounts
         "rent": rent,
         "sevor_fee": sevor_fee,
-        "tax_lines": tax_lines,
-        "tax_total": tax_total,
-        "processing_fee": processing_fee,
+        "processing_fee": paypal_fee,   # 👈 renamed logically
+        "tax_lines": [],
+        "tax_total": 0.0,
         "grand_total": grand_total,
+
         "geo": geo,
         "session_user": request.session.get("user"),
         "renter_reviews_count": renter_reviews_count,
     }
 
+    return request.app.templates.TemplateResponse("booking_flow.html", ctx)
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
 @router.post("/bookings/{booking_id}/owner/decision")
 def owner_decision_route(
