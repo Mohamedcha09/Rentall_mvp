@@ -27,7 +27,6 @@ def get_current_user(request: Request, db: Session) -> User | None:
 def require_admin(user: User | None):
     if not user or user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-
 # =====================================================
 # GET – Pending payouts (RENT + DEPOSIT)
 # =====================================================
@@ -51,7 +50,7 @@ def admin_payouts(
             Booking.payout_ready == True,
             Booking.payout_sent == False,
         )
-        .order_by(Booking.created_at.asc())  # ✅ الأقدم → الأحدث
+        .order_by(Booking.created_at.asc())
         .all()
     )
 
@@ -64,6 +63,7 @@ def admin_payouts(
             )
             .first()
         )
+
         rows.append({
             "type": "rent",
             "booking": b,
@@ -81,9 +81,9 @@ def admin_payouts(
         .options(joinedload(Booking.owner))
         .filter(
             Booking.dm_decision_amount > 0,
-            Booking.deposit_comp_sent == False,   # ✅ فقط غير المرسلة
+            Booking.deposit_comp_sent == False,
         )
-        .order_by(Booking.created_at.asc())      # ✅ الأقدم → الأحدث
+        .order_by(Booking.created_at.asc())
         .all()
     )
 
@@ -96,11 +96,38 @@ def admin_payouts(
             )
             .first()
         )
+
+        # ==========================
+        # DISPLAY ONLY LOGIC (DEPOSIT)
+        # ==========================
+        # deposit الأصلي الذي دفعه الزبون (مثال: 20)
+        deposit_gross = float(getattr(b, "deposit_amount", 0) or 0)
+
+        # عمولة PayPal المحسوبة مرة واحدة من deposit الأصلي (مثال: 0.88)
+        paypal_fee = float(getattr(b, "deposit_paypal_fee", 0) or 0)
+
+        # قرار MD الاسمي (مثال: 10)
+        md_amount = float(getattr(b, "dm_decision_amount", 0) or 0)
+
+        # ✅ المبلغ الحقيقي الذي يمكن إرساله للمالك
+        # (قرار MD − عمولة PayPal)
+        net_to_owner = round(md_amount - paypal_fee, 2)
+        if net_to_owner < 0:
+            net_to_owner = 0.0
+
         rows.append({
             "type": "deposit",
             "booking": b,
             "owner": b.owner,
-            "amount": b.dm_decision_amount,
+
+            # ✅ هذا هو الرقم الذي سيظهر في بطاقة الأدمن
+            "amount": net_to_owner,
+
+            # معلومات إضافية (للعرض فقط)
+            "md_amount": md_amount,
+            "paypal_fee": paypal_fee,
+            "deposit_gross": deposit_gross,
+
             "currency": b.currency_display or b.currency,
             "payout": payout,
         })
