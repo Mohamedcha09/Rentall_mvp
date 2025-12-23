@@ -6,160 +6,174 @@
 {% block head %}
 <style>
   .queue-wrap{max-width:1100px;margin:auto}
-  .chip{padding:.35rem .6rem;border:1px solid var(--border,#e5e7eb);border-radius:999px}
+  .chip{
+    padding:.35rem .6rem;
+    border:1px solid var(--border,#e5e7eb);
+    border-radius:999px;
+    font-size:.85rem;
+    font-weight:500;
+  }
   .muted{opacity:.65}
   .row-item{border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:12px;background:#fff}
-  .stat{display:flex;gap:12px;flex-wrap:wrap}
-  .stat > div{background:#fff;border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:8px 10px}
-  .table thead th{white-space:nowrap}
   .searchbar{display:flex;gap:8px;flex-wrap:wrap}
+
+  /* ===== Status styles ===== */
+  .status-in_review{background:#fef3c7;border-color:#f59e0b}
+  .status-awaiting_manager{background:#ffedd5;border-color:#f97316}
+  .status-accepted{background:#dbeafe;border-color:#3b82f6}
+  .status-paid{background:#dcfce7;border-color:#22c55e}
+  .status-picked_up{background:#ede9fe;border-color:#8b5cf6}
+  .status-completed{background:#bbf7d0;border-color:#16a34a}
+  .status-closed{background:#f3f4f6;border-color:#9ca3af;color:#6b7280}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="queue-wrap">
 
+  <!-- ================= Header + Filters ================= -->
   <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <h4 class="m-0">Deposit Cases</h4>
+
     <div class="searchbar">
       <form class="d-flex gap-2" method="get" action="/dm/deposits">
-        <input class="form-control" name="q" value="{{ q or '' }}" placeholder="Search (booking #, email, name)…">
+        <input class="form-control"
+               name="q"
+               value="{{ q or '' }}"
+               placeholder="Search (booking #, email, name)…">
+
         <select class="form-select" name="status">
-          <option value="">All statuses</option>
-          <option value="new" {{ 'selected' if status=='new' }}>New</option>
-          <option value="awaiting_renter" {{ 'selected' if status=='awaiting_renter' }}>Awaiting renter response</option>
-          <option value="awaiting_manager" {{ 'selected' if status=='awaiting_manager' }}>Awaiting DM decision</option>
-          <option value="finalized" {{ 'selected' if status=='finalized' }}>Closed</option>
+          <option value="">All (open only)</option>
+
+          <optgroup label="Deposit">
+            <option value="in_review" {{ 'selected' if status=='in_review' }}>In review</option>
+            <option value="awaiting_manager" {{ 'selected' if status=='awaiting_manager' }}>Awaiting decision</option>
+            <option value="closed" {{ 'selected' if status=='closed' }}>Closed</option>
+          </optgroup>
+
+          <optgroup label="Booking">
+            <option value="accepted" {{ 'selected' if status=='accepted' }}>Accepted</option>
+            <option value="paid" {{ 'selected' if status=='paid' }}>Paid</option>
+            <option value="picked_up" {{ 'selected' if status=='picked_up' }}>Picked up</option>
+            <option value="completed" {{ 'selected' if status=='completed' }}>Completed</option>
+          </optgroup>
         </select>
+
         <button class="btn btn-primary">Search</button>
       </form>
+
       <a class="btn btn-light" href="/dm/deposits">Reset</a>
     </div>
   </div>
 
-  {# Optional quick numbers if passed from the router #}
-  {% if counters is defined and counters %}
-  <div class="stat mb-3">
-    <div>New: <strong>{{ counters.new or 0 }}</strong></div>
-    <div>Awaiting renter: <strong>{{ counters.awaiting_renter or 0 }}</strong></div>
-    <div>Awaiting DM: <strong>{{ counters.awaiting_manager or 0 }}</strong></div>
-    <div>Closed: <strong>{{ counters.finalized or 0 }}</strong></div>
-  </div>
-  {% endif %}
-
   {% set LIST = cases if cases is defined else (items if items is defined else []) %}
 
+  <!-- ================= Table ================= -->
   {% if LIST and LIST|length %}
-    <div class="table-responsive">
-      <table class="table table-hover align-middle">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Item</th>
-            <th>Renter</th>
-            <th>Owner</th>
-            <th>Period</th>
-            <th>Booking Status</th>
-            <th>Deposit Status</th>
-            <th>Last Update</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for B in LIST %}
-            <tr>
-              <td class="mono">#{{ B.id }}</td>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Item</th>
+          <th>Renter</th>
+          <th>Owner</th>
+          <th>Period</th>
+          <th>Booking Status</th>
+          <th>Deposit Status</th>
+          <th>Last Update</th>
+          <th></th>
+        </tr>
+      </thead>
 
-              <td style="min-width:220px;">
-                {% if B.item %}
-                  <div class="fw-semibold"><a href="/items/{{ B.item.id }}" target="_blank">{{ B.item.title }}</a></div>
-                {% else %}
-                  <div class="fw-semibold">—</div>
+      <tbody>
+        {% for B in LIST %}
+        <tr>
+          <td class="mono">#{{ B.id }}</td>
+
+          <!-- Item -->
+          <td style="min-width:220px;">
+            {% if B.item %}
+              <div class="fw-semibold">
+                <a href="/items/{{ B.item.id }}" target="_blank">{{ B.item.title }}</a>
+              </div>
+            {% else %}
+              <div class="fw-semibold">—</div>
+            {% endif %}
+            <div class="muted small">Booking: {{ B.created_at or '' }}</div>
+
+            {% if B.owner_report_type or B.owner_report_reason %}
+              <div class="muted small mt-1">
+                <span class="badge bg-warning-subtle text-dark">
+                  Report: {{ B.owner_report_type or '—' }}
+                </span>
+                {% if B.owner_report_reason %}
+                  <span class="ms-2">
+                    {{ B.owner_report_reason[:120] }}
+                    {% if B.owner_report_reason|length > 120 %}…{% endif %}
+                  </span>
                 {% endif %}
-                <div class="muted small">Booking: {{ B.created_at or '' }}</div>
+              </div>
+            {% endif %}
+          </td>
 
-                {# ==== Report preview + first two evidence thumbnails (added as requested) ==== #}
-                {% if B.owner_report_type or B.owner_report_reason %}
-                  <div class="muted small mt-1">
-                    <span class="badge bg-warning-subtle text-dark">Report: {{ B.owner_report_type or '—' }}</span>
-                    {% if B.owner_report_reason %}
-                      <span class="ms-2">{{ B.owner_report_reason[:120] }}{% if B.owner_report_reason|length > 120 %}…{% endif %}</span>
-                    {% endif %}
-                  </div>
-                {% endif %}
+          <!-- Renter -->
+          <td>
+            {% if B.renter %}
+              <div class="fw-semibold">{{ B.renter.full_name }}</div>
+              <div class="muted small">{{ B.renter.email }}</div>
+            {% else %}—{% endif %}
+          </td>
 
-                {% if B.deposit_evidences and B.deposit_evidences|length %}
-                  {% set owner_evs = B.deposit_evidences | selectattr('side','equalto','owner') | list %}
-                  {% if owner_evs and owner_evs|length %}
-                    <div class="d-flex gap-2 mt-2">
-                      {% for ev in owner_evs[:2] %}
-                        {% if ev.kind == 'video' %}
-                          <a href="{{ ev.file_path }}" target="_blank" title="Open video">
-                            <video src="{{ ev.file_path }}" muted
-                                   style="width:56px;height:56px;border-radius:8px;object-fit:cover"></video>
-                          </a>
-                        {% else %}
-                          <a href="{{ ev.file_path }}" target="_blank" title="Open image">
-                            <img src="{{ ev.file_path }}"
-                                 style="width:56px;height:56px;border-radius:8px;object-fit:cover"/>
-                          </a>
-                        {% endif %}
-                      {% endfor %}
-                    </div>
-                  {% endif %}
-                {% endif %}
-                {# ==== /preview ==== #}
-              </td>
+          <!-- Owner -->
+          <td>
+            {% if B.owner %}
+              <div class="fw-semibold">{{ B.owner.full_name }}</div>
+              <div class="muted small">{{ B.owner.email }}</div>
+            {% else %}—{% endif %}
+          </td>
 
-              <td>
-                {% if B.renter %}
-                  <div class="fw-semibold">{{ B.renter.full_name }}</div>
-                  <div class="muted small">{{ B.renter.email }}</div>
-                {% else %}—{% endif %}
-              </td>
+          <!-- Period -->
+          <td>
+            <div class="mono small">
+              {{ B.start_date or '—' }} → {{ B.end_date or '—' }}
+            </div>
+            {% if B.days %}
+              <div class="muted small">{{ B.days }} days</div>
+            {% endif %}
+          </td>
 
-              <td>
-                {% if B.owner %}
-                  <div class="fw-semibold">{{ B.owner.full_name }}</div>
-                  <div class="muted small">{{ B.owner.email }}</div>
-                {% else %}—{% endif %}
-              </td>
+          <!-- Booking status -->
+          <td>
+            <span class="chip status-{{ B.status }}">
+              {{ B.status or '—' }}
+            </span>
+          </td>
 
-              <td>
-                <div class="mono small">
-                  {{ B.start_date or '—' }} → {{ B.end_date or '—' }}
-                </div>
-                {% if B.days %}<div class="muted small">{{ B.days }} days</div>{% endif %}
-              </td>
+          <!-- Deposit status -->
+          <td>
+            <span class="chip status-{{ B.deposit_status }}">
+              {{ B.deposit_status or '—' }}
+            </span>
+          </td>
 
-              <td><span class="chip">{{ B.status or '—' }}</span></td>
-              <td><span class="chip">{{ B.deposit_status or '—' }}</span></td>
+          <!-- Last update -->
+          <td class="mono small">
+            {{ B.updated_at or B.returned_at or B.accepted_at or B.created_at or '' }}
+          </td>
 
-              <td class="mono small">
-                {{ B.updated_at or B.returned_at or B.accepted_at or B.created_at or '' }}
-              </td>
-
-              <td class="text-end">
-                <a class="btn btn-outline-primary btn-sm" href="/dm/deposits/{{ B.id }}">
-                  Open Case
-                </a>
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    {# Optional pagination #}
-    {% if pagination is defined and pagination %}
-      <div class="d-flex justify-content-between align-items-center mt-3">
-        <div class="muted small">Page {{ pagination.page }} of {{ pagination.pages }}</div>
-        <div class="d-flex gap-2">
-          {% if pagination.prev_url %}<a class="btn btn-light btn-sm" href="{{ pagination.prev_url }}">Prev</a>{% endif %}
-          {% if pagination.next_url %}<a class="btn btn-light btn-sm" href="{{ pagination.next_url }}">Next</a>{% endif %}
-        </div>
-      </div>
-    {% endif %}
+          <!-- Action -->
+          <td class="text-end">
+            <a class="btn btn-outline-primary btn-sm"
+               href="/dm/deposits/{{ B.id }}">
+              Open Case
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
   {% else %}
     <div class="row-item">
