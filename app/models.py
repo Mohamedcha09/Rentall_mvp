@@ -425,6 +425,13 @@ class Booking(Base):
 
     payout_sent_at = col_or_literal("bookings", "payout_sent_at", DateTime, nullable=True)
 
+    
+    # ===== Deposit refund (ROBOT controls) =====
+    deposit_refund_amount = col_or_literal( "bookings","deposit_refund_amount", Numeric(10, 2),  default=0)
+
+    deposit_refund_sent = col_or_literal("bookings","deposit_refund_sent",Boolean,default=False)
+
+    deposit_refund_sent_at = col_or_literal( "bookings", "deposit_refund_sent_at", DateTime, nullable=True)
     payment_method           = col_or_literal("bookings", "payment_method", String(20), nullable=True)
     platform_fee             = col_or_literal("bookings", "platform_fee", Integer, nullable=False, default=0)
     rent_amount              = col_or_literal("bookings", "rent_amount", Integer, nullable=False, default=0)

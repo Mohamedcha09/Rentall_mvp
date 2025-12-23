@@ -840,6 +840,7 @@ app.include_router(payout_settings_router)
 app.include_router(admin_payouts_router)
 app.include_router(payouts_front_router)
 
+
 # -----------------------------------------------------------------------------
 # Legacy path → redirect to the new reports page
 # -----------------------------------------------------------------------------

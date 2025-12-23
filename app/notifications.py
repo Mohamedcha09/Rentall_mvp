@@ -158,3 +158,5 @@ def mark_read(
     n.is_read = True
     db.commit()
     return _json({"ok": True})
+
+

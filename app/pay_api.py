@@ -234,7 +234,11 @@ def paypal_return(
     if user.id != bk.renter_id:
         raise HTTPException(status_code=403)
 
-    paypal_capture(token)
+    capture_data = paypal_capture(token)
+    capture_id = (capture_data["purchase_units"][0]["payments"]["captures"][0]["id"])
+    bk.payment_provider = capture_id
+
+
 
     if type == "rent":
         bk.rent_paid = True
@@ -250,3 +254,75 @@ def paypal_return(
 
     db.commit()
     return flow_redirect(bk, "rent_ok" if type == "rent" else "security_ok")
+
+
+# =====================================================
+# DEPOSIT REFUND (USED BY ROBOT ONLY)
+# =====================================================
+
+def paypal_refund_capture(
+    *,
+    capture_id: str,
+    amount: float,
+    currency: str,
+) -> str:
+    """
+    Refund a captured PayPal payment (partial or full).
+    Returns refund ID.
+    """
+    token = paypal_get_token()
+
+    r = requests.post(
+        f"{PAYPAL_BASE}/v2/payments/captures/{capture_id}/refund",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "amount": {
+                "value": f"{amount:.2f}",
+                "currency_code": currency,
+            }
+        },
+        timeout=20,
+    )
+
+    r.raise_for_status()
+    data = r.json()
+    return data["id"]
+
+
+def send_deposit_refund(
+    *,
+    db: Session,
+    booking: Booking,
+    amount: float,
+) -> str:
+    """
+    ROBOT ENTRY POINT
+    Sends refund to renter for deposit only.
+    """
+    if amount <= 0:
+        raise ValueError("Refund amount must be > 0")
+
+    if booking.payment_method != "paypal":
+        raise RuntimeError("Refund supported only for PayPal for now")
+
+    # ⚠️ مهم: يجب أن يكون عندك capture_id محفوظ
+    capture_id = booking.payment_provider
+    if not capture_id:
+        raise RuntimeError("Missing PayPal capture ID")
+
+    refund_id = paypal_refund_capture(
+        capture_id=capture_id,
+        amount=amount,
+        currency=(booking.currency or "CAD"),
+    )
+
+    # Update booking (robot only touches refund fields)
+    booking.deposit_refund_amount = amount
+    booking.deposit_refund_sent = True
+    booking.deposit_refund_sent_at = datetime.utcnow()
+
+    db.commit()
+    return refund_id

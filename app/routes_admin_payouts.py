@@ -28,7 +28,9 @@ def require_admin(user: User | None):
     if not user or user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
 
-
+# =====================================================
+# GET – Pending payouts (RENT + DEPOSIT)
+# =====================================================
 @router.get("/payouts", response_class=HTMLResponse)
 def admin_payouts(
     request: Request,
@@ -40,7 +42,7 @@ def admin_payouts(
     rows = []
 
     # ==========================
-    # RENT PAYOUTS
+    # RENT PAYOUTS (PENDING)
     # ==========================
     rent_bookings = (
         db.query(Booking)
@@ -49,7 +51,7 @@ def admin_payouts(
             Booking.payout_ready == True,
             Booking.payout_sent == False,
         )
-        .order_by(Booking.updated_at.asc())
+        .order_by(Booking.created_at.asc())  # ✅ الأقدم → الأحدث
         .all()
     )
 
@@ -79,9 +81,9 @@ def admin_payouts(
         .options(joinedload(Booking.owner))
         .filter(
             Booking.dm_decision_amount > 0,
-            Booking.deposit_comp_sent == False,   # ✅ المفتاح
+            Booking.deposit_comp_sent == False,   # ✅ فقط غير المرسلة
         )
-        .order_by(Booking.updated_at.asc())
+        .order_by(Booking.created_at.asc())      # ✅ الأقدم → الأحدث
         .all()
     )
 
@@ -148,8 +150,9 @@ def mark_rent_payout_sent(
 
     return RedirectResponse("/admin/payouts", status_code=303)
 
-
-
+# =====================================================
+# POST – Mark DEPOSIT payout as sent
+# =====================================================
 @router.post("/payouts/{booking_id}/deposit/mark-sent")
 def mark_deposit_payout_sent(
     booking_id: int,
@@ -171,11 +174,10 @@ def mark_deposit_payout_sent(
     if booking.deposit_comp_sent:
         return RedirectResponse("/admin/payouts", status_code=303)
 
-    # ✅ هذا هو النقل الحقيقي
+    # ✅ تسجيل الإرسال
     booking.deposit_comp_sent = True
     booking.deposit_comp_sent_at = datetime.utcnow()
     booking.deposit_comp_reference = reference
-
     db.commit()
 
     push_notification(
@@ -192,7 +194,7 @@ def mark_deposit_payout_sent(
     return RedirectResponse("/admin/payouts", status_code=303)
 
 # =====================================================
-# GET – Paid payouts history (RENT only)
+# GET – Paid payouts history (RENT)
 # =====================================================
 @router.get("/payouts/paid", response_class=HTMLResponse)
 def admin_payouts_paid(
@@ -206,7 +208,7 @@ def admin_payouts_paid(
         db.query(Booking)
         .options(joinedload(Booking.owner))
         .filter(Booking.payout_sent == True)
-        .order_by(Booking.payout_sent_at.desc())
+        .order_by(Booking.payout_sent_at.asc())  # ✅ الأقدم → الأحدث
         .all()
     )
 
@@ -236,7 +238,7 @@ def admin_payouts_paid(
     )
 
 # =====================================================
-# GET – Payout receipt (OWNER)
+# GET – Payout receipt (OWNER – RENT)
 # =====================================================
 @front_router.get("/payouts/receipt/{booking_id}", response_class=HTMLResponse)
 def payout_receipt_front(
@@ -280,7 +282,9 @@ def payout_receipt_front(
         }
     )
 
-
+# =====================================================
+# GET – Deposit receipt (OWNER)
+# =====================================================
 @front_router.get("/payouts/deposit/{booking_id}", response_class=HTMLResponse)
 def deposit_receipt_front(
     booking_id: int,
@@ -324,7 +328,9 @@ def deposit_receipt_front(
         }
     )
 
-
+# =====================================================
+# GET – Deposit payouts history (ADMIN)
+# =====================================================
 @router.get("/payouts/deposit/paid", response_class=HTMLResponse)
 def admin_deposit_payouts_paid(
     request: Request,
@@ -338,9 +344,9 @@ def admin_deposit_payouts_paid(
         .options(joinedload(Booking.owner))
         .filter(
             Booking.dm_decision_amount > 0,
-            Booking.deposit_comp_sent == True,   # ✅ فقط المرسلة
+            Booking.deposit_comp_sent == True,
         )
-        .order_by(Booking.deposit_comp_sent_at.desc())
+        .order_by(Booking.deposit_comp_sent_at.asc())  # ✅ الأقدم → الأحدث
         .all()
     )
 
