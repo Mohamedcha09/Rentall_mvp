@@ -184,47 +184,22 @@ def booking_flow(
     owner = db.get(User, bk.owner_id)
     renter = db.get(User, bk.renter_id)
 
-    # ✅ FIXED HERE
+    # Reviews count
     renter_reviews_count = (
         db.query(UserReview)
         .filter(UserReview.owner_id == renter.id)
         .count()
     )
 
+    # Geo
     geo = locate_from_session(request)
     if not isinstance(geo, dict):
         geo = {}
 
-    country = (geo.get("country") or "").upper()
-    region  = (geo.get("region") or "").upper()
-
     # ============================
-    # 💰 FINAL PRICING LOGIC
+    # 💰 PRICING — SOURCE UNIQUE
     # ============================
-    rent = float(bk.total_amount or 0)
-
-    SEVOR_FEE_PCT = 0.02        # ✅ 2% Sevor
-    PAYPAL_PCT = 0.029          # ✅ PayPal 2.9%
-    PAYPAL_FIXED = 0.30         # ✅ PayPal fixed fee
-
-    # Sevor fee (paid by renter)
-    sevor_fee = round(rent * SEVOR_FEE_PCT, 2)
-
-    # PayPal fee is calculated on (rent + sevor fee)
-    paypal_fee = round(
-        (rent + sevor_fee) * PAYPAL_PCT + PAYPAL_FIXED,
-        2
-    )
-
-    # ❌ NO TAXES (disabled)
-    tax_lines = []
-    tax_total = 0.0
-
-    # Final total shown to renter
-    grand_total = round(
-        rent + sevor_fee + paypal_fee,
-        2
-    )
+    pricing = compute_grand_total_for_paypal(request, bk)
 
     # ============================
     # 📦 CONTEXT
@@ -239,13 +214,15 @@ def booking_flow(
         "is_renter": is_renter(user, bk),
         "category_label": category_label,
 
-        # amounts
-        "rent": rent,
-        "sevor_fee": sevor_fee,
-        "processing_fee": paypal_fee,   # 👈 renamed logically
+        # 💰 AMOUNTS (FROM SINGLE SOURCE)
+        "rent": pricing["rent"],
+        "sevor_fee": pricing["sevor_fee"],
+        "paypal_fee": pricing["paypal_fee"],
+        "grand_total": pricing["grand_total"],
+
+        # taxes disabled
         "tax_lines": [],
         "tax_total": 0.0,
-        "grand_total": grand_total,
 
         "geo": geo,
         "session_user": request.session.get("user"),
@@ -253,7 +230,8 @@ def booking_flow(
     }
 
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
-    return request.app.templates.TemplateResponse("booking_flow.html", ctx)
+
+
 @router.post("/bookings/{booking_id}/owner/decision")
 def owner_decision_route(
     booking_id: int,

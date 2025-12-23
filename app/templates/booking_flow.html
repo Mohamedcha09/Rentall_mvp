@@ -532,9 +532,27 @@ a.btn.disabled{
     </div>
 
     <div class="d-flex justify-content-between">
-      <span>Processing fee</span>
-      <strong>{{ "%.2f"|format(disp_fee) }} {{ currency }}</strong>
-    </div>
+  <span>Rent</span>
+  <strong>{{ "%.2f"|format(rent) }} {{ currency }}</strong>
+</div>
+
+<div class="d-flex justify-content-between">
+  <span>Sevor fee (2%)</span>
+  <strong>{{ "%.2f"|format(sevor_fee) }} {{ currency }}</strong>
+</div>
+
+<div class="d-flex justify-content-between">
+  <span>PayPal fee</span>
+  <strong>{{ "%.2f"|format(paypal_fee) }} {{ currency }}</strong>
+</div>
+
+<hr>
+
+<div class="d-flex justify-content-between fw-bold">
+  <span>Total</span>
+  <strong>{{ "%.2f"|format(grand_total) }} {{ currency }}</strong>
+</div>
+
 
     {% if tax_lines and (tax_lines|length > 0) %}
         <hr class="my-2">

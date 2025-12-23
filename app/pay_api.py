@@ -142,44 +142,31 @@ def paypal_capture(order_id: str):
     r.raise_for_status()
     return r.json()
 
-# =====================================================
-# NEW: compute full payable amount (rent + fees + taxes)
-# =====================================================
-def compute_grand_total_for_paypal(request: Request, bk: Booking) -> float:
-    """
-    FINAL PRICING LOGIC
-    - Owner gets EXACT rent (no fees deducted)
-    - Sevor fee (2%) is added to renter
-    - PayPal fee (2.9% + 0.30) is added to renter
-    """
-
+def compute_grand_total_for_paypal(request: Request, bk: Booking) -> dict:
     rent = float(bk.total_amount or 0)
 
-    # ===== CONFIG =====
-    SEVOR_FEE_PCT = 0.02          # 2%
-    PAYPAL_PCT    = 0.029         # 2.9%
-    PAYPAL_FIXED  = 0.30
+    SEVOR_FEE_PCT = 0.02
+    PAYPAL_PCT = 0.029
+    PAYPAL_FIXED = 0.30
 
-    # ===== FEES =====
     sevor_fee = round(rent * SEVOR_FEE_PCT, 2)
 
-    base_before_paypal = rent + sevor_fee
-    paypal_fee = round(base_before_paypal * PAYPAL_PCT + PAYPAL_FIXED, 2)
+    base = rent + sevor_fee
+    paypal_fee = round(base * PAYPAL_PCT + PAYPAL_FIXED, 2)
 
-    grand_total = round(
-        rent + sevor_fee + paypal_fee,
-        2
-    )
+    grand_total = round(rent + sevor_fee + paypal_fee, 2)
 
-    # ===== STORE SNAPSHOTS =====
-    bk.platform_fee = int(round(sevor_fee * 100)) / 100
-    bk.owner_due_amount = rent      # 🔥 OWNER GETS FULL RENT
-    bk.amount_paid_cents = int(round(grand_total * 100))
+    # تخزين القيم (snapshot)
+    bk.platform_fee = sevor_fee
+    bk.owner_due_amount = rent
+    bk.amount_paid_cents = int(grand_total * 100)
 
-    return grand_total
-# =====================================================
-# START
-# =====================================================
+    return {
+        "rent": rent,
+        "sevor_fee": sevor_fee,
+        "paypal_fee": paypal_fee,
+        "grand_total": grand_total,
+    }
 
 @router.get("/paypal/start/{booking_id}")
 def paypal_start(
