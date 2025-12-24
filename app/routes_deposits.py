@@ -321,7 +321,8 @@ def _split_renter_evidence(bk):
         else:
             other.append(e)
     return pickup, ret, other
-@router.get("/dm/deposits")
+    
+  @router.get("/dm/deposits")
 def dm_queue(
     request: Request,
     db: Session = Depends(get_db),
@@ -335,16 +336,18 @@ def dm_queue(
 
     # ===============================
     # BASE FILTERS
-    # (OPEN CASES ONLY)
+    # (OPEN DEPOSIT CASES ONLY)
     # ===============================
     base_filters = [
         or_(
             Booking.hold_deposit_amount > 0,
             Booking.deposit_audits.any(),
-            Booking.deposit_status.in_([
-                "in_dispute",
-                "awaiting_renter",
+            Booking.status.in_([
                 "in_review",
+                "returned",
+                "completed",
+                "picked_up",
+                "paid",
             ]),
         )
     ]
@@ -355,11 +358,12 @@ def dm_queue(
     if status:
         status = status.strip().lower()
 
-        # --- closed cases (explicit) ---
+        # ---- CLOSED CASES ----
         if status == "closed":
             base_filters.append(Booking.status == "closed")
 
-        # --- deposit statuses ---
+        # ---- DEPOSIT-LIKE STATES (SAFE FALLBACK) ----
+        # ⚠️ لا نستعمل deposit_status في SQL
         elif status in {
             "in_review",
             "awaiting_renter",
@@ -368,9 +372,12 @@ def dm_queue(
             "partially_withheld",
             "no_deposit",
         }:
-            base_filters.append(Booking.deposit_status == status)
+            # كل هذه الحالات مرتبطة فعليًا بمراجعة/إغلاق
+            base_filters.append(
+                Booking.status.in_(["in_review", "closed"])
+            )
 
-        # --- booking statuses ---
+        # ---- BOOKING STATUSES ----
         elif status in {
             "accepted",
             "paid",
