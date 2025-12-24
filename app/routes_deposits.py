@@ -321,13 +321,12 @@ def _split_renter_evidence(bk):
         else:
             other.append(e)
     return pickup, ret, other
-
 @router.get("/dm/deposits")
 def dm_queue(
     request: Request,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
-    state: Literal["all", "new", "awaiting_renter", "awaiting_dm", "closed"] = "all",
+    status: Optional[str] = None,
     q: Optional[str] = None,
 ):
     require_auth(user)
@@ -335,33 +334,51 @@ def dm_queue(
         raise HTTPException(status_code=403, detail="Access denied")
 
     # ===============================
-    # BASE FILTERS (REAL COLUMNS ONLY)
+    # BASE FILTERS
+    # (OPEN CASES ONLY)
     # ===============================
     base_filters = [
         or_(
             Booking.hold_deposit_amount > 0,
-            Booking.deposit_audits.any(),   # 👈 بديل deposit_status
-            Booking.status.in_(["returned", "in_review", "closed"]),
+            Booking.deposit_audits.any(),
+            Booking.deposit_status.in_([
+                "in_dispute",
+                "awaiting_renter",
+                "in_review",
+            ]),
         )
     ]
 
     # ===============================
-    # STATE FILTER
+    # STATUS FILTER (FROM DROPDOWN)
     # ===============================
-    if state == "closed":
-        base_filters.append(Booking.status == "closed")
+    if status:
+        status = status.strip().lower()
 
-    elif state in ("new", "awaiting_dm"):
-        # حالات فيها بلاغ / مراجعة
-        base_filters.append(Booking.deposit_audits.any())
+        # --- closed cases (explicit) ---
+        if status == "closed":
+            base_filters.append(Booking.status == "closed")
 
-        if hasattr(Booking, "dm_assignee_id"):
-            base_filters.append(
-                or_(
-                    Booking.dm_assignee_id.is_(None),
-                    Booking.dm_assignee_id == 0,
-                )
-            )
+        # --- deposit statuses ---
+        elif status in {
+            "in_review",
+            "awaiting_renter",
+            "in_dispute",
+            "refunded",
+            "partially_withheld",
+            "no_deposit",
+        }:
+            base_filters.append(Booking.deposit_status == status)
+
+        # --- booking statuses ---
+        elif status in {
+            "accepted",
+            "paid",
+            "picked_up",
+            "completed",
+            "returned",
+        }:
+            base_filters.append(Booking.status == status)
 
     # ===============================
     # QUERY
@@ -399,7 +416,7 @@ def dm_queue(
     # ===============================
     # PREFETCH ITEMS
     # ===============================
-    item_ids = {b.item_id for b in cases}
+    item_ids = {b.item_id for b in cases if b.item_id}
     items = (
         db.query(Item).filter(Item.id.in_(item_ids)).all()
         if item_ids
@@ -416,7 +433,7 @@ def dm_queue(
             "cases": cases,
             "items_map": items_map,
             "category_label": category_label,
-            "state": state,
+            "status": status or "",
             "q": q or "",
         },
     )
