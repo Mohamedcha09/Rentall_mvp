@@ -95,11 +95,14 @@
           <td style="min-width:220px;">
             {% if B.item %}
               <div class="fw-semibold">
-                <a href="/items/{{ B.item.id }}" target="_blank">{{ B.item.title }}</a>
+                <a href="/items/{{ B.item.id }}" target="_blank">
+                  {{ B.item.title }}
+                </a>
               </div>
             {% else %}
               <div class="fw-semibold">—</div>
             {% endif %}
+
             <div class="muted small">Booking: {{ B.created_at or '' }}</div>
 
             {% if B.owner_report_type or B.owner_report_reason %}
