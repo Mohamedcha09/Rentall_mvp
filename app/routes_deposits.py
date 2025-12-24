@@ -321,6 +321,7 @@ def _split_renter_evidence(bk):
         else:
             other.append(e)
     return pickup, ret, other
+
 @router.get("/dm/deposits")
 def dm_queue(
     request: Request,
@@ -334,41 +335,38 @@ def dm_queue(
         raise HTTPException(status_code=403, detail="Access denied")
 
     # ===============================
-    # BASE FILTERS
+    # BASE QUERY
     # ===============================
-    base_filters = [
-        or_(
-            Booking.hold_deposit_amount > 0,
-            Booking.deposit_audits.any(),
-            Booking.status == "closed",
-        )
-    ]
+    qset = db.query(Booking)
 
     # ===============================
-    # STATE FILTER (USING REAL COLUMNS)
+    # STATE FILTER (UNIFIED & CLEAN)
     # ===============================
     if state == "closed":
-        base_filters.append(Booking.status == "closed")
+        # ملف منتهٍ نهائيًا
+        qset = qset.filter(Booking.status == "closed")
 
     elif state == "new":
-        base_filters.append(Booking.deposit_audits.any())
-        base_filters.append(Booking.renter_response_at.is_(None))
-        base_filters.append(Booking.dm_decision_at.is_(None))
+        # نزاع مفتوح – لا رد مستأجر – لا قرار DM
+        qset = qset.filter(
+            Booking.deposit_status == "in_dispute",
+            Booking.renter_response_at.is_(None),
+            Booking.dm_decision_at.is_(None),
+        )
 
     elif state == "awaiting_renter":
-        base_filters.append(Booking.deposit_audits.any())
-        base_filters.append(Booking.renter_response_at.is_(None))
-        base_filters.append(Booking.dm_decision_at.isnot(None))
+        # في نافذة 24 ساعة – ننتظر المستأجر
+        qset = qset.filter(
+            Booking.deposit_status == "awaiting_renter"
+        )
 
     elif state == "awaiting_dm":
-        base_filters.append(Booking.deposit_audits.any())
-        base_filters.append(Booking.renter_response_at.isnot(None))
-        base_filters.append(Booking.dm_decision_at.is_(None))
-
-    # ===============================
-    # QUERY
-    # ===============================
-    qset = db.query(Booking).filter(and_(*base_filters))
+        # المستأجر رد – ننتظر قرار DM
+        qset = qset.filter(
+            Booking.deposit_status == "in_dispute",
+            Booking.renter_response_at.isnot(None),
+            Booking.dm_decision_at.is_(None),
+        )
 
     # ===============================
     # SEARCH
@@ -381,12 +379,20 @@ def dm_queue(
             qset = qset.join(Item, Item.id == Booking.item_id, isouter=True)
             qset = qset.filter(Item.title.ilike(f"%{q}%"))
 
+    # ===============================
+    # ORDER
+    # ===============================
     cases = qset.order_by(Booking.updated_at.desc()).all()
 
+    # ===============================
+    # RENDER
+    # ===============================
     return request.app.templates.TemplateResponse(
         "dm_queue.html",
         {
             "request": request,
+            "title": "Deposit Cases",
+            "session_user": request.session.get("user"),
             "cases": cases,
             "state": state,
             "q": q or "",
