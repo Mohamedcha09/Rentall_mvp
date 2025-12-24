@@ -321,7 +321,6 @@ def _split_renter_evidence(bk):
         else:
             other.append(e)
     return pickup, ret, other
-
 @router.get("/dm/deposits")
 def dm_queue(
     request: Request,
@@ -340,28 +339,33 @@ def dm_queue(
     base_filters = [
         or_(
             Booking.hold_deposit_amount > 0,
-            Booking.deposit_audits.any(),   # 👈 بديل deposit_status
             Booking.status.in_(["returned", "in_review", "closed"]),
+            Booking.deposit_status.isnot(None),
         )
     ]
 
     # ===============================
-    # STATE FILTER
+    # STATE FILTER (FIXED — EXACT LOGIC)
     # ===============================
     if state == "closed":
+        # ملف منتهٍ نهائيًا
         base_filters.append(Booking.status == "closed")
 
-    elif state in ("new", "awaiting_dm"):
-        # حالات فيها بلاغ / مراجعة
-        base_filters.append(Booking.deposit_audits.any())
+    elif state == "new":
+        # ملف جديد تمامًا:
+        # لا ننتظر مستأجر، لا ننتظر DM، لا يوجد أي قرار
+        base_filters.append(Booking.deposit_status == "in_dispute")
+        base_filters.append(Booking.renter_response_at.is_(None))
+        base_filters.append(Booking.dm_decision_at.is_(None))
 
-        if hasattr(Booking, "dm_assignee_id"):
-            base_filters.append(
-                or_(
-                    Booking.dm_assignee_id.is_(None),
-                    Booking.dm_assignee_id == 0,
-                )
-            )
+    elif state == "awaiting_renter":
+        # في نافذة 24 ساعة – ننتظر المستأجر
+        base_filters.append(Booking.deposit_status == "awaiting_renter")
+
+    elif state == "awaiting_dm":
+        # المستأجر رد أو انتهت المهلة – ننتظر قرار DM
+        base_filters.append(Booking.deposit_status == "in_dispute")
+        base_filters.append(Booking.renter_response_at.isnot(None))
 
     # ===============================
     # QUERY
@@ -420,6 +424,7 @@ def dm_queue(
             "q": q or "",
         },
     )
+
 
 # ============ Case page ============
 @router.get("/dm/deposits/{booking_id}")
