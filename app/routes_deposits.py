@@ -1347,13 +1347,13 @@ def _deadline_overdue_rows(db: Session) -> List[Booking]:
     q = (
         db.query(Booking)
         .filter(
-            Booking.deposit_status == "awaiting_renter",
+            text("deposit_status = 'awaiting_renter'"),
             Booking.renter_response_deadline_at.isnot(None),
             Booking.renter_response_deadline_at < now,
         )
-        .order_by(Booking.renter_response_deadline_at.asc())
     )
     return q.all()
+
 
 # ===== Simple nudge to renter to upload evidence =====
 @router.post("/dm/deposits/{booking_id}/nudge-renter", response_model=None)
