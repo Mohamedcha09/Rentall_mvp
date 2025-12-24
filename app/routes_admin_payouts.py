@@ -27,6 +27,8 @@ def get_current_user(request: Request, db: Session) -> User | None:
 def require_admin(user: User | None):
     if not user or user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
+
+        
 # =====================================================
 # GET – Pending payouts (RENT + DEPOSIT)
 # =====================================================
