@@ -7,6 +7,8 @@ import shutil
 import stripe
 import mimetypes
 from fastapi import BackgroundTasks
+
+
 # --- NEW: Cloudinary ---
 import cloudinary
 import cloudinary.uploader
@@ -320,9 +322,7 @@ def _split_renter_evidence(bk):
         else:
             other.append(e)
     return pickup, ret, other
-
 @router.get("/dm/deposits")
-
 def dm_queue(
     request: Request,
     db: Session = Depends(get_db),
@@ -334,44 +334,29 @@ def dm_queue(
     if not can_manage_deposits(user):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # ===============================
-    # BASE QUERY
-    # ===============================
-    qset = (
-    db.query(Booking)
-    .options(
-        joinedload(Booking.item),
-        joinedload(Booking.owner),
-        joinedload(Booking.renter),
-    )
-)
-
+    qset = db.query(Booking)
 
     # ===============================
-    # STATE FILTER (UNIFIED & CLEAN)
+    # ✅ STATE FILTER (FINAL FIX)
     # ===============================
     if state == "closed":
-        # ملف منتهٍ نهائيًا
         qset = qset.filter(Booking.status == "closed")
 
     elif state == "new":
-        # نزاع مفتوح – لا رد مستأجر – لا قرار DM
         qset = qset.filter(
-            Booking.deposit_status == "in_dispute",
+            text("deposit_status = 'in_dispute'"),
             Booking.renter_response_at.is_(None),
             Booking.dm_decision_at.is_(None),
         )
 
     elif state == "awaiting_renter":
-        # في نافذة 24 ساعة – ننتظر المستأجر
         qset = qset.filter(
-            Booking.deposit_status == "awaiting_renter"
+            text("deposit_status = 'awaiting_renter'")
         )
 
     elif state == "awaiting_dm":
-        # المستأجر رد – ننتظر قرار DM
         qset = qset.filter(
-            Booking.deposit_status == "in_dispute",
+            text("deposit_status = 'in_dispute'"),
             Booking.renter_response_at.isnot(None),
             Booking.dm_decision_at.is_(None),
         )
@@ -387,14 +372,8 @@ def dm_queue(
             qset = qset.join(Item, Item.id == Booking.item_id, isouter=True)
             qset = qset.filter(Item.title.ilike(f"%{q}%"))
 
-    # ===============================
-    # ORDER
-    # ===============================
     cases = qset.order_by(Booking.updated_at.desc()).all()
 
-    # ===============================
-    # RENDER
-    # ===============================
     return request.app.templates.TemplateResponse(
         "dm_queue.html",
         {
