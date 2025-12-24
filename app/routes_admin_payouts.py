@@ -105,14 +105,15 @@ def admin_payouts(
         # deposit الأصلي الذي دفعه الزبون (مثال: 20)
         deposit_gross = float(getattr(b, "deposit_amount", 0) or 0)
 
-        # عمولة PayPal المحسوبة مرة واحدة من deposit الأصلي (مثال: 0.88)
-        paypal_fee = float(getattr(b, "deposit_paypal_fee", 0) or 0)
+        # ✅ PayPal fee محسوب من deposit الأصلي: 2.9% + 0.30
+        # مثال: 20 => 20*0.029 + 0.30 = 0.88
+        paypal_fee = round((deposit_gross * 0.029) + 0.30, 2)
 
         # قرار MD الاسمي (مثال: 10)
         md_amount = float(getattr(b, "dm_decision_amount", 0) or 0)
 
         # ✅ المبلغ الحقيقي الذي يمكن إرساله للمالك
-        # (قرار MD − عمولة PayPal)
+        # (قرار MD − عمولة PayPal المحسوبة من deposit الأصلي)
         net_to_owner = round(md_amount - paypal_fee, 2)
         if net_to_owner < 0:
             net_to_owner = 0.0
@@ -237,7 +238,7 @@ def admin_payouts_paid(
         db.query(Booking)
         .options(joinedload(Booking.owner))
         .filter(Booking.payout_sent == True)
-        .order_by(Booking.payout_sent_at.asc())  # ✅ الأقدم → الأحدث
+        .order_by(Booking.payout_sent_at.asc())
         .all()
     )
 
@@ -375,7 +376,7 @@ def admin_deposit_payouts_paid(
             Booking.dm_decision_amount > 0,
             Booking.deposit_comp_sent == True,
         )
-        .order_by(Booking.deposit_comp_sent_at.asc())  # ✅ الأقدم → الأحدث
+        .order_by(Booking.deposit_comp_sent_at.asc())
         .all()
     )
 

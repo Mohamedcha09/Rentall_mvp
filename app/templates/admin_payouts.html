@@ -94,14 +94,21 @@
     </p>
 
     {% if row.payout %}
-      
-<small class="text-muted">
-  MD decision: {{ "%.2f"|format(row.md_amount or 0) }} {{ row.currency }}<br>
-  PayPal fee (from original deposit): −{{ "%.2f"|format(row.paypal_fee or 0) }} {{ row.currency }}
-</small>
+      <small>
+        Method: {{ row.payout.method|upper }}<br>
+        Destination: {{ row.payout.destination }}
+      </small>
     {% else %}
       <p class="text-danger">Owner has no payout method</p>
     {% endif %}
+
+    <div class="mt-2">
+      <small class="text-muted">
+        MD decision: {{ "%.2f"|format(row.md_amount or 0) }} {{ row.currency }}<br>
+        PayPal fee (from original deposit): −{{ "%.2f"|format(row.paypal_fee or 0) }} {{ row.currency }}<br>
+        Original deposit: {{ "%.2f"|format(row.deposit_gross or 0) }} {{ row.currency }}
+      </small>
+    </div>
 
   </div>
 </div>
