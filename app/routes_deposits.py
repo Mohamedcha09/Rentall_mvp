@@ -322,6 +322,8 @@ def _split_renter_evidence(bk):
         else:
             other.append(e)
     return pickup, ret, other
+
+
 @router.get("/dm/deposits")
 def dm_queue(
     request: Request,
@@ -763,7 +765,10 @@ def report_deposit_issue(
 
     bk.deposit_status = "in_dispute"
     bk.status = "in_review"
+    bk.dm_decision_at = None
+    bk.renter_response_at = None
     bk.updated_at = datetime.utcnow()
+
     try:
         note_old = (getattr(bk, "owner_return_note", "") or "").strip()
         note_new = f"[{issue_type}] {description}".strip()
