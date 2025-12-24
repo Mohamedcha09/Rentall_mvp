@@ -336,7 +336,6 @@ def dm_queue(
 
     # ===============================
     # BASE FILTERS
-    # (OPEN DEPOSIT CASES ONLY)
     # ===============================
     base_filters = [
         or_(
@@ -353,17 +352,14 @@ def dm_queue(
     ]
 
     # ===============================
-    # STATUS FILTER (FROM DROPDOWN)
+    # STATUS FILTER
     # ===============================
     if status:
         status = status.strip().lower()
 
-        # ---- CLOSED CASES ----
         if status == "closed":
             base_filters.append(Booking.status == "closed")
 
-        # ---- DEPOSIT-LIKE STATES (SAFE FALLBACK) ----
-        # ⚠️ لا نستعمل deposit_status في SQL
         elif status in {
             "in_review",
             "awaiting_renter",
@@ -372,12 +368,10 @@ def dm_queue(
             "partially_withheld",
             "no_deposit",
         }:
-            # كل هذه الحالات مرتبطة فعليًا بمراجعة/إغلاق
             base_filters.append(
                 Booking.status.in_(["in_review", "closed"])
             )
 
-        # ---- BOOKING STATUSES ----
         elif status in {
             "accepted",
             "paid",
@@ -387,14 +381,8 @@ def dm_queue(
         }:
             base_filters.append(Booking.status == status)
 
-    # ===============================
-    # QUERY
-    # ===============================
     qset = db.query(Booking).filter(and_(*base_filters))
 
-    # ===============================
-    # SEARCH
-    # ===============================
     if q:
         q = q.strip()
 
@@ -406,12 +394,8 @@ def dm_queue(
 
         else:
             qset = qset.join(Item, Item.id == Booking.item_id, isouter=True)
-            like = f"%{q}%"
-            qset = qset.filter(Item.title.ilike(like))
+            qset = qset.filter(Item.title.ilike(f"%{q}%"))
 
-    # ===============================
-    # ORDER
-    # ===============================
     order_col = (
         Booking.updated_at.desc()
         if hasattr(Booking, "updated_at")
@@ -420,28 +404,14 @@ def dm_queue(
 
     cases = qset.order_by(order_col).all()
 
-    # ===============================
-    # PREFETCH ITEMS
-    # ===============================
-    item_ids = {b.item_id for b in cases if b.item_id}
-    items = (
-        db.query(Item).filter(Item.id.in_(item_ids)).all()
-        if item_ids
-        else []
-    )
-    items_map = {it.id: it for it in items}
-
     return request.app.templates.TemplateResponse(
         "dm_queue.html",
         {
             "request": request,
-            "title": "Deposit Cases",
-            "session_user": request.session.get("user"),
             "cases": cases,
-            "items_map": items_map,
-            "category_label": category_label,
             "status": status or "",
             "q": q or "",
+            "session_user": request.session.get("user"),
         },
     )
 
