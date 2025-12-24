@@ -321,7 +321,7 @@ def _split_renter_evidence(bk):
         else:
             other.append(e)
     return pickup, ret, other
-# ============ Issues queue (with filters) ============
+
 @router.get("/dm/deposits")
 def dm_queue(
     request: Request,
@@ -334,42 +334,27 @@ def dm_queue(
     if not can_manage_deposits(user):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # ==================================================
-    # ✅ BASE FILTERS — ONLY REAL COLUMNS
-    # ==================================================
+    # ===============================
+    # BASE FILTERS (REAL COLUMNS ONLY)
+    # ===============================
     base_filters = [
         or_(
             Booking.hold_deposit_amount > 0,
-            Booking.deposit_status.in_([
-                "held",
-                "in_dispute",
-                "partially_withheld",
-                "awaiting_renter",
-                "no_deposit",
-                "refunded",
-            ]),
+            Booking.deposit_audits.any(),   # 👈 بديل deposit_status
             Booking.status.in_(["returned", "in_review", "closed"]),
         )
     ]
 
-    # ==================================================
+    # ===============================
     # STATE FILTER
-    # ==================================================
-    if state == "awaiting_renter":
-        base_filters.append(Booking.deposit_status == "awaiting_renter")
-
-    elif state == "closed":
-        base_filters.append(
-            or_(
-                Booking.status == "closed",
-                Booking.deposit_status.in_(["refunded", "partially_withheld", "no_deposit"]),
-            )
-        )
+    # ===============================
+    if state == "closed":
+        base_filters.append(Booking.status == "closed")
 
     elif state in ("new", "awaiting_dm"):
-        base_filters.append(Booking.deposit_status == "in_dispute")
+        # حالات فيها بلاغ / مراجعة
+        base_filters.append(Booking.deposit_audits.any())
 
-        # not yet assigned (if column exists)
         if hasattr(Booking, "dm_assignee_id"):
             base_filters.append(
                 or_(
@@ -378,14 +363,14 @@ def dm_queue(
                 )
             )
 
-    # ==================================================
+    # ===============================
     # QUERY
-    # ==================================================
+    # ===============================
     qset = db.query(Booking).filter(and_(*base_filters))
 
-    # ==================================================
+    # ===============================
     # SEARCH
-    # ==================================================
+    # ===============================
     if q:
         q = q.strip()
 
@@ -398,37 +383,30 @@ def dm_queue(
         else:
             qset = qset.join(Item, Item.id == Booking.item_id, isouter=True)
             like = f"%{q}%"
-            qset = qset.filter(
-                or_(
-                    Item.title.ilike(like),
-                )
-            )
+            qset = qset.filter(Item.title.ilike(like))
 
-    # ==================================================
+    # ===============================
     # ORDER
-    # ==================================================
+    # ===============================
     order_col = (
         Booking.updated_at.desc()
         if hasattr(Booking, "updated_at")
         else Booking.id.desc()
     )
 
-    cases: List[Booking] = qset.order_by(order_col).all()
+    cases = qset.order_by(order_col).all()
 
-    # ==================================================
+    # ===============================
     # PREFETCH ITEMS
-    # ==================================================
+    # ===============================
     item_ids = {b.item_id for b in cases}
-    items: List[Item] = (
+    items = (
         db.query(Item).filter(Item.id.in_(item_ids)).all()
         if item_ids
         else []
     )
-    items_map: Dict[int, Item] = {it.id: it for it in items}
+    items_map = {it.id: it for it in items}
 
-    # ==================================================
-    # RENDER
-    # ==================================================
     return request.app.templates.TemplateResponse(
         "dm_queue.html",
         {
