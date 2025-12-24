@@ -321,13 +321,13 @@ def _split_renter_evidence(bk):
         else:
             other.append(e)
     return pickup, ret, other
-    
-  @router.get("/dm/deposits")
+
+@router.get("/dm/deposits")
 def dm_queue(
     request: Request,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
-    status: Optional[str] = None,
+    state: Literal["all", "new", "awaiting_renter", "awaiting_dm", "closed"] = "all",
     q: Optional[str] = None,
 ):
     require_auth(user)
@@ -335,54 +335,42 @@ def dm_queue(
         raise HTTPException(status_code=403, detail="Access denied")
 
     # ===============================
-    # BASE FILTERS
+    # BASE FILTERS (REAL COLUMNS ONLY)
     # ===============================
     base_filters = [
         or_(
             Booking.hold_deposit_amount > 0,
-            Booking.deposit_audits.any(),
-            Booking.status.in_([
-                "in_review",
-                "returned",
-                "completed",
-                "picked_up",
-                "paid",
-            ]),
+            Booking.deposit_audits.any(),   # 👈 بديل deposit_status
+            Booking.status.in_(["returned", "in_review", "closed"]),
         )
     ]
 
     # ===============================
-    # STATUS FILTER
+    # STATE FILTER
     # ===============================
-    if status:
-        status = status.strip().lower()
+    if state == "closed":
+        base_filters.append(Booking.status == "closed")
 
-        if status == "closed":
-            base_filters.append(Booking.status == "closed")
+    elif state in ("new", "awaiting_dm"):
+        # حالات فيها بلاغ / مراجعة
+        base_filters.append(Booking.deposit_audits.any())
 
-        elif status in {
-            "in_review",
-            "awaiting_renter",
-            "in_dispute",
-            "refunded",
-            "partially_withheld",
-            "no_deposit",
-        }:
+        if hasattr(Booking, "dm_assignee_id"):
             base_filters.append(
-                Booking.status.in_(["in_review", "closed"])
+                or_(
+                    Booking.dm_assignee_id.is_(None),
+                    Booking.dm_assignee_id == 0,
+                )
             )
 
-        elif status in {
-            "accepted",
-            "paid",
-            "picked_up",
-            "completed",
-            "returned",
-        }:
-            base_filters.append(Booking.status == status)
-
+    # ===============================
+    # QUERY
+    # ===============================
     qset = db.query(Booking).filter(and_(*base_filters))
 
+    # ===============================
+    # SEARCH
+    # ===============================
     if q:
         q = q.strip()
 
@@ -394,8 +382,12 @@ def dm_queue(
 
         else:
             qset = qset.join(Item, Item.id == Booking.item_id, isouter=True)
-            qset = qset.filter(Item.title.ilike(f"%{q}%"))
+            like = f"%{q}%"
+            qset = qset.filter(Item.title.ilike(like))
 
+    # ===============================
+    # ORDER
+    # ===============================
     order_col = (
         Booking.updated_at.desc()
         if hasattr(Booking, "updated_at")
@@ -404,14 +396,28 @@ def dm_queue(
 
     cases = qset.order_by(order_col).all()
 
+    # ===============================
+    # PREFETCH ITEMS
+    # ===============================
+    item_ids = {b.item_id for b in cases}
+    items = (
+        db.query(Item).filter(Item.id.in_(item_ids)).all()
+        if item_ids
+        else []
+    )
+    items_map = {it.id: it for it in items}
+
     return request.app.templates.TemplateResponse(
         "dm_queue.html",
         {
             "request": request,
-            "cases": cases,
-            "status": status or "",
-            "q": q or "",
+            "title": "Deposit Cases",
             "session_user": request.session.get("user"),
+            "cases": cases,
+            "items_map": items_map,
+            "category_label": category_label,
+            "state": state,
+            "q": q or "",
         },
     )
 
