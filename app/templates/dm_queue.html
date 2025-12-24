@@ -24,26 +24,28 @@
     <div class="searchbar">
       <form class="d-flex gap-2" method="get" action="/dm/deposits">
         <input class="form-control" name="q" value="{{ q or '' }}" placeholder="Search (booking #, email, name)…">
-        <select class="form-select" name="status">
-          <option value="">All statuses</option>
-          <option value="new" {{ 'selected' if status=='new' }}>New</option>
-          <option value="awaiting_renter" {{ 'selected' if status=='awaiting_renter' }}>Awaiting renter response</option>
-          <option value="awaiting_manager" {{ 'selected' if status=='awaiting_manager' }}>Awaiting DM decision</option>
-          <option value="finalized" {{ 'selected' if status=='finalized' }}>Closed</option>
+
+        <!-- ✅ FIXED FILTER -->
+        <select class="form-select" name="state">
+          <option value="all">All statuses</option>
+          <option value="new" {{ 'selected' if state=='new' }}>New</option>
+          <option value="awaiting_renter" {{ 'selected' if state=='awaiting_renter' }}>Awaiting renter response</option>
+          <option value="awaiting_dm" {{ 'selected' if state=='awaiting_dm' }}>Awaiting DM decision</option>
+          <option value="closed" {{ 'selected' if state=='closed' }}>Closed</option>
         </select>
+
         <button class="btn btn-primary">Search</button>
       </form>
       <a class="btn btn-light" href="/dm/deposits">Reset</a>
     </div>
   </div>
 
-  {# Optional quick numbers if passed from the router #}
   {% if counters is defined and counters %}
   <div class="stat mb-3">
     <div>New: <strong>{{ counters.new or 0 }}</strong></div>
     <div>Awaiting renter: <strong>{{ counters.awaiting_renter or 0 }}</strong></div>
-    <div>Awaiting DM: <strong>{{ counters.awaiting_manager or 0 }}</strong></div>
-    <div>Closed: <strong>{{ counters.finalized or 0 }}</strong></div>
+    <div>Awaiting DM: <strong>{{ counters.awaiting_dm or 0 }}</strong></div>
+    <div>Closed: <strong>{{ counters.closed or 0 }}</strong></div>
   </div>
   {% endif %}
 
@@ -72,43 +74,13 @@
 
               <td style="min-width:220px;">
                 {% if B.item %}
-                  <div class="fw-semibold"><a href="/items/{{ B.item.id }}" target="_blank">{{ B.item.title }}</a></div>
+                  <div class="fw-semibold">
+                    <a href="/items/{{ B.item.id }}" target="_blank">{{ B.item.title }}</a>
+                  </div>
                 {% else %}
                   <div class="fw-semibold">—</div>
                 {% endif %}
                 <div class="muted small">Booking: {{ B.created_at or '' }}</div>
-
-                {# ==== Report preview + first two evidence thumbnails (added as requested) ==== #}
-                {% if B.owner_report_type or B.owner_report_reason %}
-                  <div class="muted small mt-1">
-                    <span class="badge bg-warning-subtle text-dark">Report: {{ B.owner_report_type or '—' }}</span>
-                    {% if B.owner_report_reason %}
-                      <span class="ms-2">{{ B.owner_report_reason[:120] }}{% if B.owner_report_reason|length > 120 %}…{% endif %}</span>
-                    {% endif %}
-                  </div>
-                {% endif %}
-
-                {% if B.deposit_evidences and B.deposit_evidences|length %}
-                  {% set owner_evs = B.deposit_evidences | selectattr('side','equalto','owner') | list %}
-                  {% if owner_evs and owner_evs|length %}
-                    <div class="d-flex gap-2 mt-2">
-                      {% for ev in owner_evs[:2] %}
-                        {% if ev.kind == 'video' %}
-                          <a href="{{ ev.file_path }}" target="_blank" title="Open video">
-                            <video src="{{ ev.file_path }}" muted
-                                   style="width:56px;height:56px;border-radius:8px;object-fit:cover"></video>
-                          </a>
-                        {% else %}
-                          <a href="{{ ev.file_path }}" target="_blank" title="Open image">
-                            <img src="{{ ev.file_path }}"
-                                 style="width:56px;height:56px;border-radius:8px;object-fit:cover"/>
-                          </a>
-                        {% endif %}
-                      {% endfor %}
-                    </div>
-                  {% endif %}
-                {% endif %}
-                {# ==== /preview ==== #}
               </td>
 
               <td>
@@ -129,7 +101,9 @@
                 <div class="mono small">
                   {{ B.start_date or '—' }} → {{ B.end_date or '—' }}
                 </div>
-                {% if B.days %}<div class="muted small">{{ B.days }} days</div>{% endif %}
+                {% if B.days %}
+                  <div class="muted small">{{ B.days }} days</div>
+                {% endif %}
               </td>
 
               <td><span class="chip">{{ B.status or '—' }}</span></td>
@@ -149,18 +123,6 @@
         </tbody>
       </table>
     </div>
-
-    {# Optional pagination #}
-    {% if pagination is defined and pagination %}
-      <div class="d-flex justify-content-between align-items-center mt-3">
-        <div class="muted small">Page {{ pagination.page }} of {{ pagination.pages }}</div>
-        <div class="d-flex gap-2">
-          {% if pagination.prev_url %}<a class="btn btn-light btn-sm" href="{{ pagination.prev_url }}">Prev</a>{% endif %}
-          {% if pagination.next_url %}<a class="btn btn-light btn-sm" href="{{ pagination.next_url }}">Next</a>{% endif %}
-        </div>
-      </div>
-    {% endif %}
-
   {% else %}
     <div class="row-item">
       No matching cases right now.
