@@ -7,7 +7,6 @@ import shutil
 import stripe
 import mimetypes
 from fastapi import BackgroundTasks
-
 # --- NEW: Cloudinary ---
 import cloudinary
 import cloudinary.uploader
@@ -22,7 +21,7 @@ from fastapi import (
     File
 )
 from fastapi.responses import RedirectResponse, JSONResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_, text
 
 from .database import get_db, engine as _engine
@@ -323,6 +322,7 @@ def _split_renter_evidence(bk):
     return pickup, ret, other
 
 @router.get("/dm/deposits")
+
 def dm_queue(
     request: Request,
     db: Session = Depends(get_db),
@@ -337,7 +337,15 @@ def dm_queue(
     # ===============================
     # BASE QUERY
     # ===============================
-    qset = db.query(Booking)
+    qset = (
+    db.query(Booking)
+    .options(
+        joinedload(Booking.item),
+        joinedload(Booking.owner),
+        joinedload(Booking.renter),
+    )
+)
+
 
     # ===============================
     # STATE FILTER (UNIFIED & CLEAN)
