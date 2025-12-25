@@ -1,4 +1,3 @@
-# app/deposit_refund_robot.py
 """
 Deposit Refund Robot (TEST MODE)
 ================================
@@ -46,10 +45,10 @@ def auto_refund_owner_silent(db: Session):
             b.auto_finalized_by_robot = True
             b.deposit_case_closed = True
 
-            # 🧾 Audit log (SYSTEM → actor_id = None)
+            # 🧾 Audit log (actor = owner, role = system)
             db.add(DepositAuditLog(
                 booking_id=b.id,
-                actor_id=None,
+                actor_id=b.owner_id,          # ✅ FIX
                 actor_role="system",
                 action="auto_refund_owner_silent",
                 amount=int(b.deposit_amount),
@@ -61,7 +60,7 @@ def auto_refund_owner_silent(db: Session):
                 db=db,
                 user_id=b.renter_id,
                 title="Deposit refunded ✅",
-                body="The owner did not report any issue. Your deposit was fully refunded.",
+                body="The owner did not report any issue in time. Your deposit was fully refunded.",
                 url=f"/bookings/{b.id}/deposit/summary",
                 kind="deposit",
             )
@@ -71,7 +70,7 @@ def auto_refund_owner_silent(db: Session):
                 db=db,
                 user_id=b.owner_id,
                 title="Deposit automatically refunded",
-                body="You did not open a dispute in time. The deposit was refunded.",
+                body="You did not open a dispute in time. The deposit was refunded to the renter.",
                 url=f"/bookings/{b.id}/deposit/summary",
                 kind="deposit",
             )
@@ -105,7 +104,7 @@ def auto_finalize_md_decision(db: Session):
 
             db.add(DepositAuditLog(
                 booking_id=b.id,
-                actor_id=None,
+                actor_id=b.owner_id,          # ✅ FIX
                 actor_role="system",
                 action="auto_finalize_md_decision",
                 amount=int(b.dm_decision_amount or 0),
@@ -120,44 +119,7 @@ def auto_finalize_md_decision(db: Session):
 
 
 # =========================================================
-# 3️⃣ Refund candidates
-# =========================================================
-
-def find_candidates(db: Session):
-    return db.query(Booking).filter(
-        Booking.deposit_amount > 0,
-        Booking.deposit_refund_sent == False,
-        or_(
-            and_(
-                Booking.dm_decision_final == True,
-                Booking.dm_decision_at.isnot(None),
-            ),
-            and_(
-                Booking.return_check_no_problem == True,
-                Booking.return_check_submitted_at.isnot(None),
-            ),
-        ),
-    ).all()
-
-
-# =========================================================
-# 4️⃣ Refund amount
-# =========================================================
-
-def compute_refund_amount(booking: Booking) -> float:
-    deposit = float(booking.deposit_amount or 0)
-
-    if booking.dm_decision_final:
-        return max(deposit - float(booking.dm_decision_amount or 0), 0)
-
-    if booking.return_check_no_problem:
-        return deposit
-
-    return 0.0
-
-
-# =========================================================
-# 5️⃣ Execute refund (PayPal)
+# 3️⃣ Execute refund (PayPal only)
 # =========================================================
 
 def execute_refund(db: Session, booking: Booking, refund_amount: float):
@@ -179,7 +141,7 @@ def execute_refund(db: Session, booking: Booking, refund_amount: float):
 
     db.add(DepositAuditLog(
         booking_id=booking.id,
-        actor_id=None,
+        actor_id=booking.owner_id,        # ✅ FIX
         actor_role="system",
         action="robot_refund_sent",
         amount=int(refund_amount),
@@ -189,28 +151,17 @@ def execute_refund(db: Session, booking: Booking, refund_amount: float):
 
 
 # =========================================================
-# 6️⃣ Run robot
+# 4️⃣ Run robot
 # =========================================================
 
 def run_once():
     db = SessionLocal()
     try:
         print("🤖 Deposit Refund Robot — TEST MODE (1 minute)")
-
         auto_refund_owner_silent(db)
         auto_finalize_md_decision(db)
-
-        for b in find_candidates(db):
-            try:
-                refund = compute_refund_amount(b)
-                execute_refund(db, b, refund)
-                db.commit()
-            except Exception as e:
-                db.rollback()
-                print(f"❌ Refund error for booking #{b.id}:", e)
-
+        db.commit()
         print("✅ Robot finished successfully")
-
     finally:
         db.close()
 
