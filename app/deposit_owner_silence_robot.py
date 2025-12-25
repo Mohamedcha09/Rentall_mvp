@@ -15,7 +15,7 @@ Behavior (SAME AS OLD ROBOT):
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -32,8 +32,7 @@ from app.notifications_api import push_notification
 # =====================================================
 WINDOW_DELTA = timedelta(minutes=1)
 
-
-NOW = lambda: datetime.utcnow()
+NOW = lambda: datetime.now(timezone.utc)
 
 
 # =====================================================
@@ -96,7 +95,10 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
         return None
 
     capture_id = (bk.payment_provider or "").strip()
-    if not capture_id:
+
+    # 🔒 IMPORTANT SAFETY FILTER (FIX 404 ERROR)
+    if not capture_id or capture_id.lower() in ("paypal", "sandbox"):
+        print(f"⏭️ Skip booking #{bk.id} (invalid capture_id={capture_id})")
         return None
 
     # 🔥 PayPal refund
