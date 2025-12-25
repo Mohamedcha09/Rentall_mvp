@@ -338,41 +338,37 @@ def dm_queue(
 
     qset = db.query(Booking)
 
-    # ===============================
-    # ✅ STATE FILTER (FINAL FIX)
-    # ===============================
-    if state == "closed":
-        qset = qset.filter(Booking.status == "closed")
-
-    elif state == "new":
+    if state == "new":
         qset = qset.filter(
-            text("deposit_status = 'in_dispute'"),
+            Booking.deposit_status == "in_dispute",
             Booking.renter_response_at.is_(None),
             Booking.dm_decision_at.is_(None),
         )
 
     elif state == "awaiting_renter":
         qset = qset.filter(
-            text("deposit_status = 'awaiting_renter'")
+            Booking.deposit_status == "awaiting_renter"
         )
 
     elif state == "awaiting_dm":
         qset = qset.filter(
-            text("deposit_status = 'in_dispute'"),
+            Booking.deposit_status == "in_dispute",
             Booking.renter_response_at.isnot(None),
             Booking.dm_decision_at.is_(None),
         )
 
-    # ===============================
-    # SEARCH
-    # ===============================
+    elif state == "closed":
+        qset = qset.filter(
+            or_(
+                Booking.status == "closed",
+                Booking.dm_decision_at.isnot(None),
+            )
+        )
+
     if q:
         q = q.strip()
         if q.isdigit():
             qset = qset.filter(Booking.id == int(q))
-        else:
-            qset = qset.join(Item, Item.id == Booking.item_id, isouter=True)
-            qset = qset.filter(Item.title.ilike(f"%{q}%"))
 
     cases = qset.order_by(Booking.updated_at.desc()).all()
 
@@ -380,11 +376,11 @@ def dm_queue(
         "dm_queue.html",
         {
             "request": request,
-            "title": "Deposit Cases",
-            "session_user": request.session.get("user"),
             "cases": cases,
             "state": state,
             "q": q or "",
+            "session_user": request.session.get("user"),
+
         },
     )
 
