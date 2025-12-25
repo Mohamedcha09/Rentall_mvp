@@ -1,170 +1,168 @@
+# app/deposit_refund_robot.py
 """
-Deposit Refund Robot (TEST MODE)
-================================
-⏱️ TEST: 1 minute instead of 24 hours
+Deposit Refund Robot
+====================
+الروبوت مسؤول فقط عن:
+- اختيار الحجوزات الجاهزة
+- حساب مبلغ إرجاع الديبو للزبون
+- إرسال Refund حقيقي عبر PayPal
+- تحديث أعمدة refund في bookings
+
+❌ لا يلمس تعويض المالك
+❌ لا يلمس Stripe / Cash
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 
 from app.database import SessionLocal
 from app.models import Booking, DepositAuditLog
 from app.pay_api import send_deposit_refund
-from app.notifications_api import push_notification
 
 
 # =========================================================
-# Helpers
+# اختيار الحجوزات الجاهزة
 # =========================================================
 
-NOW = lambda: datetime.utcnow()
-TEST_WINDOW = timedelta(minutes=1)  # 🔧 change to hours=24 later
-
-
-# =========================================================
-# 1️⃣ Auto refund if owner silent
-# =========================================================
-
-def auto_refund_owner_silent(db: Session):
-    limit_time = NOW() - TEST_WINDOW
-
-    bookings = db.query(Booking).filter(
+def find_candidates(db: Session):
+    """
+    نختار فقط الحجوزات التي:
+    - عندها deposit
+    - لم يتم refund بعد
+    - إمّا:
+        A) قرار DM موجود
+        B) انتهت بدون مشاكل
+    """
+    return db.query(Booking).filter(
         Booking.deposit_amount > 0,
         Booking.deposit_refund_sent == False,
-        Booking.returned_at.isnot(None),
-        Booking.owner_dispute_opened_at.is_(None),
-        Booking.returned_at <= limit_time,
+        or_(
+            # A) بعد قرار DM
+            Booking.dm_decision_at.isnot(None),
+
+            # B) انتهى بدون مشاكل
+            and_(
+                Booking.return_check_no_problem == True,
+                Booking.return_check_submitted_at.isnot(None),
+            ),
+        ),
     ).all()
 
-    for b in bookings:
-        try:
-            # 🔥 Refund money
-            execute_refund(db, b, float(b.deposit_amount))
 
-            b.auto_finalized_by_robot = True
-            b.deposit_case_closed = True
+# =========================================================
+# حساب مبلغ الإرجاع
+# =========================================================
 
-            # 🧾 Audit log (actor = owner, role = system)
-            db.add(DepositAuditLog(
-                booking_id=b.id,
-                actor_id=b.owner_id,          # ✅ FIX
-                actor_role="system",
-                action="auto_refund_owner_silent",
-                amount=int(b.deposit_amount),
-                reason="Owner did not open dispute within test window",
-            ))
+def compute_refund_amount(booking: Booking) -> float:
+    deposit = float(booking.deposit_amount or 0)
 
-            # 🔔 Notify renter
-            push_notification(
-                db=db,
-                user_id=b.renter_id,
-                title="Deposit refunded ✅",
-                body="The owner did not report any issue in time. Your deposit was fully refunded.",
-                url=f"/bookings/{b.id}/deposit/summary",
-                kind="deposit",
-            )
+    # A) بعد قرار DM
+    if booking.dm_decision_at:
+        dm_amount = float(booking.dm_decision_amount or 0)
+        refund = deposit - dm_amount
+        return max(refund, 0)
 
-            # 🔔 Notify owner
-            push_notification(
-                db=db,
-                user_id=b.owner_id,
-                title="Deposit automatically refunded",
-                body="You did not open a dispute in time. The deposit was refunded to the renter.",
-                url=f"/bookings/{b.id}/deposit/summary",
-                kind="deposit",
-            )
+    # B) بدون مشاكل
+    if booking.return_check_no_problem:
+        return deposit
 
-            db.commit()
-
-        except Exception as e:
-            db.rollback()
-            print(f"❌ Error processing booking #{b.id}:", e)
+    return 0.0
 
 
 # =========================================================
-# 2️⃣ Auto finalize MD decision if renter silent
-# =========================================================
-
-def auto_finalize_md_decision(db: Session):
-    limit_time = NOW() - TEST_WINDOW
-
-    bookings = db.query(Booking).filter(
-        Booking.renter_24h_window_opened_at.isnot(None),
-        Booking.renter_responded_at.is_(None),
-        Booking.dm_decision_final == False,
-        Booking.renter_24h_window_opened_at <= limit_time,
-    ).all()
-
-    for b in bookings:
-        try:
-            b.dm_decision_final = True
-            b.deposit_case_closed = True
-            b.dm_decision_at = NOW()
-
-            db.add(DepositAuditLog(
-                booking_id=b.id,
-                actor_id=b.owner_id,          # ✅ FIX
-                actor_role="system",
-                action="auto_finalize_md_decision",
-                amount=int(b.dm_decision_amount or 0),
-                reason="Renter did not respond within test window",
-            ))
-
-            db.commit()
-
-        except Exception as e:
-            db.rollback()
-            print(f"❌ Error finalizing MD decision for booking #{b.id}:", e)
-
-
-# =========================================================
-# 3️⃣ Execute refund (PayPal only)
+# تنفيذ Refund حقيقي + تسجيل Log
 # =========================================================
 
 def execute_refund(db: Session, booking: Booking, refund_amount: float):
+    """
+    - يرسل Refund حقيقي عبر PayPal
+    - يتجاهل أي حجز غير صالح
+    """
+
     if refund_amount <= 0:
         return
 
+    # =====================================================
+    # 🔒 فلاتر أمان — لا نلمس إلا PayPal مع capture_id حقيقي
+    # =====================================================
+
     if booking.payment_method != "paypal":
+        print(f"⏭️ Skip booking #{booking.id} (not PayPal)")
         return
 
-    ref = send_deposit_refund(
+    capture_id = booking.payment_provider
+    if not capture_id or capture_id.lower() == "paypal":
+        print(f"⏭️ Skip booking #{booking.id} (missing PayPal capture_id)")
+        return
+
+    # =====================================================
+    # 🔥 إرسال المال فعليًا
+    # =====================================================
+
+    refund_reference = send_deposit_refund(
         db=db,
         booking=booking,
         amount=refund_amount,
     )
 
-    booking.deposit_refund_sent = True
-    booking.deposit_refund_sent_at = NOW()
-    booking.deposit_refund_amount = refund_amount
+    # =====================================================
+    # 🧾 Audit Log
+    # =====================================================
 
-    db.add(DepositAuditLog(
-        booking_id=booking.id,
-        actor_id=booking.owner_id,        # ✅ FIX
-        actor_role="system",
-        action="robot_refund_sent",
-        amount=int(refund_amount),
-        reason="Deposit refund executed by robot",
-        details=f"ref={ref}",
-    ))
+    db.add(
+        DepositAuditLog(
+            booking_id=booking.id,
+            actor_id= 0,
+            actor_role="system",
+            action="robot_refund_sent",
+            amount=int(refund_amount),
+            reason="Automatic deposit refund executed by robot",
+            details=f"refund_reference={refund_reference}",
+        )
+    )
+
+    db.commit()
 
 
 # =========================================================
-# 4️⃣ Run robot
+# تشغيل الروبوت مرة واحدة
 # =========================================================
 
 def run_once():
     db = SessionLocal()
     try:
-        print("🤖 Deposit Refund Robot — TEST MODE (1 minute)")
-        auto_refund_owner_silent(db)
-        auto_finalize_md_decision(db)
-        db.commit()
-        print("✅ Robot finished successfully")
+        bookings = find_candidates(db)
+
+        print("======================================")
+        print("Deposit Refund Robot — LIVE MODE")
+        print(f"Candidates found: {len(bookings)}")
+
+        for b in bookings:
+            refund = compute_refund_amount(b)
+
+            print(
+                f"Booking #{b.id} | "
+                f"deposit={b.deposit_amount} | "
+                f"refund={refund}"
+            )
+
+            execute_refund(db, b, refund)
+
+        print("Robot finished successfully.")
+        print("======================================")
+
+    except Exception as e:
+        print("❌ Robot error:", str(e))
+        raise
+
     finally:
         db.close()
 
+
+# =========================================================
+# CLI
+# =========================================================
 
 if __name__ == "__main__":
     run_once()
