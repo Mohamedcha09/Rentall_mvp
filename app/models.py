@@ -398,6 +398,17 @@ class Booking(Base):
     # snapshot عملة وقيمة الحجز كاملة
     currency    = col_or_literal("bookings", "currency", String(3), nullable=True)
     amount_item = col_or_literal("bookings", "amount_item", Integer, nullable=False, default=0)
+    
+        # =========================
+    # 🤖 Robot / 24h windows
+    # =========================
+
+    owner_dispute_opened_at = col_or_literal("bookings", "owner_dispute_opened_at", DateTime, nullable=True)
+    renter_24h_window_opened_at = col_or_literal( "bookings", "renter_24h_window_opened_at", DateTime, nullable=True)
+    renter_responded_at = col_or_literal( "bookings", "renter_responded_at", DateTime, nullable=True   )
+    auto_finalized_by_robot = col_or_literal( "bookings", "auto_finalized_by_robot", Boolean, default=False)
+    dm_decision_final = col_or_literal( "bookings", "dm_decision_final", Boolean, default=False)
+    deposit_case_closed = col_or_literal( "bookings", "deposit_case_closed", Boolean, default=False)
 
     status      = Column(String(20), nullable=False, default="requested")
     created_at  = Column(DateTime, default=datetime.utcnow)

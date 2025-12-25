@@ -756,7 +756,7 @@ def report_deposit_issue(
         try:
             bk.owner_report_type = (issue_type or None)
             bk.owner_report_reason = (description or None)
-            bk.dispute_opened_at = datetime.utcnow()
+            bk.owner_dispute_opened_at = datetime.utcnow()
         except Exception:
             pass
         db.commit()
@@ -1661,10 +1661,17 @@ def renter_return_proof_upload(
     except Exception:
         db.rollback()
 
+    now = datetime.utcnow()
+
     bk.status = "returned"
-    bk.returned_at = datetime.utcnow()
-    bk.updated_at = datetime.utcnow()
+    bk.returned_at = now
+
+    # 🔔 بداية مهلة 24h للمالك
+    bk.owner_dispute_opened_at = None  # تأكيد أنه لم يفتح بلاغ بعد
+
+    bk.updated_at = now
     db.commit()
+
 
     try:
         push_notification(
