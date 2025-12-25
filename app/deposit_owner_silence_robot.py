@@ -2,17 +2,15 @@
 """
 Robot #1 — Owner Silence (After Return)
 ======================================
-TEST MODE (1 MINUTE)
+TEST MODE — 1 MINUTE
 
-Goal:
-- After renter submits return check
-- If owner does NOT open a dispute within 1 minute (TEST)
-- Auto refund 100% of the deposit to renter via PayPal
-- Send notifications:
-    - Owner: deposit refunded due to silence
-    - Renter: deposit refunded successfully
-- Log the action
-- Close the deposit case
+Behavior (SAME AS OLD ROBOT):
+- If item is returned (returned_at) OR return marked no problem
+- Owner did NOT open dispute within window
+- Auto refund FULL deposit via PayPal
+- Send notifications to renter & owner
+- Log audit
+- Close deposit case
 """
 
 from __future__ import annotations
@@ -21,7 +19,7 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import or_, and_
 
 from app.database import SessionLocal
 from app.models import Booking, DepositAuditLog
@@ -30,17 +28,19 @@ from app.notifications_api import push_notification
 
 
 # =====================================================
-# ⏱️ TEST WINDOW — 1 MINUTE ONLY
+# ⏱️ TEST WINDOW — 1 MINUTE
 # =====================================================
 WINDOW_DELTA = timedelta(minutes=1)
 
 
+NOW = lambda: datetime.utcnow()
+
+
 # =====================================================
-# Find eligible bookings
+# Find eligible bookings (LIKE OLD FILE)
 # =====================================================
 def find_candidates(db: Session) -> List[Booking]:
-    now = datetime.utcnow()
-    deadline = now - WINDOW_DELTA
+    deadline = NOW() - WINDOW_DELTA
 
     return (
         db.query(Booking)
@@ -48,18 +48,28 @@ def find_candidates(db: Session) -> List[Booking]:
             Booking.deposit_amount > 0,
             Booking.deposit_refund_sent == False,
 
-            # renter finished return
-            Booking.return_check_no_problem == True,
-            Booking.return_check_submitted_at.isnot(None),
-            Booking.return_check_submitted_at <= deadline,
+            # ⬅️ SAME LOGIC AS OLD FILE
+            or_(
+                Booking.returned_at.isnot(None),
+                and_(
+                    Booking.return_check_no_problem == True,
+                    Booking.return_check_submitted_at.isnot(None),
+                ),
+            ),
 
             # owner silence
             Booking.owner_dispute_opened_at.is_(None),
 
+            # enough time passed
+            or_(
+                Booking.returned_at <= deadline,
+                Booking.return_check_submitted_at <= deadline,
+            ),
+
             # avoid conflict states
-            and_(
-                (Booking.deposit_status.is_(None)) |
-                (~Booking.deposit_status.in_(["in_dispute", "awaiting_renter"]))
+            or_(
+                Booking.deposit_status.is_(None),
+                ~Booking.deposit_status.in_(["in_dispute", "awaiting_renter"]),
             ),
 
             # PayPal only
@@ -86,22 +96,25 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
         return None
 
     capture_id = (bk.payment_provider or "").strip()
-    if not capture_id or capture_id.lower() == "paypal":
+    if not capture_id:
         return None
 
-    # 🔥 Send PayPal refund
+    # 🔥 PayPal refund
     refund_id = send_deposit_refund(
         db=db,
         booking=bk,
         amount=refund_amount,
     )
 
-    now = datetime.utcnow()
+    now = NOW()
 
-    # Update booking state
-    bk.deposit_status = "refunded"
+    # Update booking
     bk.deposit_refund_sent = True
+    bk.deposit_refund_sent_at = now
+    bk.deposit_refund_amount = refund_amount
+    bk.deposit_status = "refunded"
     bk.deposit_case_closed = True
+    bk.auto_finalized_by_robot = True
     bk.status = "closed"
 
     # 🧾 Audit log
@@ -112,18 +125,14 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
             actor_role="system",
             action="auto_refund_owner_silent",
             amount=int(refund_amount),
-            reason="Owner did not open a dispute within 1 minute (TEST)",
+            reason="Owner did not open dispute within test window",
             details=f"refund_id={refund_id}",
         )
     )
 
     db.commit()
 
-    # =================================================
     # 🔔 Notifications
-    # =================================================
-
-    # 📩 Notify renter
     push_notification(
         user_id=bk.renter_id,
         title="Deposit refunded ✅",
@@ -131,11 +140,10 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
         data={"booking_id": bk.id},
     )
 
-    # 📩 Notify owner
     push_notification(
         user_id=bk.owner_id,
         title="Deposit refunded to renter",
-        message="The deposit was refunded to the renter due to no dispute being opened within the allowed time.",
+        message="The deposit was refunded automatically due to no dispute being opened.",
         data={"booking_id": bk.id},
     )
 
@@ -143,7 +151,7 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
 
 
 # =====================================================
-# Run once (cron entry)
+# Run once (cron)
 # =====================================================
 def run_once():
     db = SessionLocal()
