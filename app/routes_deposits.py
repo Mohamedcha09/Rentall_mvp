@@ -338,12 +338,7 @@ def dm_queue(
 
     qset = db.query(Booking)
 
-    if state == "new":
-        qset = qset.filter(
-            Booking.deposit_status == "in_dispute",
-            Booking.renter_response_at.is_(None),
-            Booking.dm_decision_at.is_(None),
-        )
+    if state == "new":query = query.filter(or_( Booking.deposit_status == "in_dispute", Booking.deposit_status.is_(None)  ),Booking.renter_response_at.is_(None),Booking.dm_decision_at.is_(None),)
 
     elif state == "awaiting_renter":
         qset = qset.filter(
