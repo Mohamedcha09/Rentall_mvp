@@ -28,8 +28,7 @@ def require_admin(user: User | None):
     if not user or user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
 
-        
-# =====================================================
+ # =====================================================
 # GET – Pending payouts (RENT + DEPOSIT)
 # =====================================================
 @router.get("/payouts", response_class=HTMLResponse)
@@ -76,7 +75,8 @@ def admin_payouts(
         })
 
     # ==========================
-    # DEPOSIT COMPENSATIONS (PENDING ONLY)
+    # DEPOSIT COMPENSATIONS
+    # (FINAL DECISION ONLY ✅)
     # ==========================
     deposit_bookings = (
         db.query(Booking)
@@ -84,6 +84,13 @@ def admin_payouts(
         .filter(
             Booking.dm_decision_amount > 0,
             Booking.deposit_comp_sent == False,
+
+            # ✅ القرار نهائي فقط
+            Booking.deposit_status.in_([
+                "partially_withheld",
+                "no_deposit",
+                "refunded",
+            ]),
         )
         .order_by(Booking.created_at.asc())
         .all()
@@ -123,10 +130,10 @@ def admin_payouts(
             "booking": b,
             "owner": b.owner,
 
-            # ✅ هذا هو الرقم الذي سيظهر في بطاقة الأدمن
+            # ✅ هذا هو الرقم الذي يظهر في بطاقة الأدمن
             "amount": net_to_owner,
 
-            # معلومات إضافية (للعرض فقط)
+            # معلومات إضافية (عرض فقط)
             "md_amount": md_amount,
             "paypal_fee": paypal_fee,
             "deposit_gross": deposit_gross,
