@@ -7,8 +7,8 @@ Behavior:
 - MD opened window
 - Renter did NOT respond within window
 - Finalize MD decision
-- Refund remaining deposit to renter (PayPal)
-- CREATE owner compensation task for admin
+- Try refund remaining deposit to renter (PayPal)
+- CREATE owner compensation task for admin (ALWAYS)
 - Log everything
 """
 
@@ -90,34 +90,42 @@ def compute_refund_amount(bk: Booking) -> float:
 def execute_one(db: Session, bk: Booking):
     now = NOW()
 
-    # 1️⃣ Finalize decision
+    # 1️⃣ Finalize decision (NO closing here)
     bk.dm_decision_final = True
     bk.dm_decision_at = now
     bk.deposit_status = "withhold_final"
     bk.auto_finalized_by_robot = True
 
-    # ⛔️ لا نغلق الملف هنا
-    # bk.deposit_case_closed = True
-    # bk.status = "closed"
-
-    # 2️⃣ Refund renter
+    # =================================================
+    # 2️⃣ Refund renter (SAFE — never crash robot)
+    # =================================================
     refund_amount = compute_refund_amount(bk)
     refund_id = None
+    refund_error = None
 
     if refund_amount > 0:
-        refund_id = send_deposit_refund(
-            db=db,
-            booking=bk,
-            amount=refund_amount,
-        )
+        try:
+            refund_id = send_deposit_refund(
+                db=db,
+                booking=bk,
+                amount=refund_amount,
+            )
 
-        bk.deposit_refund_sent = True
-        bk.deposit_refund_sent_at = now
-        bk.deposit_refund_amount = refund_amount
+            bk.deposit_refund_sent = True
+            bk.deposit_refund_sent_at = now
+            bk.deposit_refund_amount = refund_amount
 
-    # 3️⃣ Audit — Renter refund
+        except Exception as e:
+            # 🔥 VERY IMPORTANT: never crash robot
+            refund_error = str(e)
+
+    # =================================================
+    # 3️⃣ Audit logs
+    # =================================================
     admin = db.query(User).filter(User.role == "admin").first()
+
     if admin:
+        # Renter refund log (even if failed)
         db.add(
             DepositAuditLog(
                 booking_id=bk.id,
@@ -126,44 +134,56 @@ def execute_one(db: Session, bk: Booking):
                 action="auto_finalize_md_renter_silent",
                 amount=int(refund_amount),
                 reason="Renter did not respond — decision finalized",
-                details=f"refund_id={refund_id}",
+                details=(
+                    f"refund_id={refund_id}"
+                    if refund_id
+                    else f"refund_failed={refund_error}"
+                ),
             )
         )
 
-    # 4️⃣ 🔥 OWNER COMPENSATION MARKER (THIS WAS MISSING)
-    owner_amount = int(bk.dm_decision_amount or 0)
-    if owner_amount > 0 and admin:
-        db.add(
-            DepositAuditLog(
-                booking_id=bk.id,
-                actor_id=admin.id,
-                actor_role="system",
-                action="owner_compensation_required",
-                amount=owner_amount,
-                reason="Owner compensation required after renter silence",
-                details="manual payout required",
+        # 🔥 OWNER COMPENSATION TASK (THIS IS THE MISSING PIECE)
+        owner_amount = int(bk.dm_decision_amount or 0)
+        if owner_amount > 0:
+            db.add(
+                DepositAuditLog(
+                    booking_id=bk.id,
+                    actor_id=admin.id,
+                    actor_role="system",
+                    action="owner_compensation_required",
+                    amount=owner_amount,
+                    reason="Owner compensation required after renter silence",
+                    details="manual payout required",
+                )
             )
-        )
 
     db.commit()
 
-    # 5️⃣ Notifications
-    push_notification(
-        user_id=bk.renter_id,
-        title="Deposit finalized ✅",
-        message=f"Your deposit was finalized automatically. Refunded: {refund_amount} CAD.",
-        data={"booking_id": bk.id},
-    )
+    # =================================================
+    # 4️⃣ Notifications (ALWAYS)
+    # =================================================
+    try:
+        push_notification(
+            user_id=bk.renter_id,
+            title="Deposit finalized ✅",
+            message=f"Your deposit was finalized automatically. Refunded: {refund_amount} CAD.",
+            data={"booking_id": bk.id},
+        )
+    except Exception:
+        pass
 
-    notify_admins(
-        title="Owner compensation required",
-        message=f"Booking #{bk.id}: compensate owner {owner_amount} CAD.",
-        data={"booking_id": bk.id},
-    )
+    try:
+        notify_admins(
+            title="Owner compensation required",
+            message=f"Booking #{bk.id}: compensate owner {int(bk.dm_decision_amount or 0)} CAD.",
+            data={"booking_id": bk.id},
+        )
+    except Exception:
+        pass
 
 
 # =====================================================
-# Run once
+# Run once (cron entry)
 # =====================================================
 def run_once():
     db = SessionLocal()
