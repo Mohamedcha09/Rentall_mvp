@@ -93,7 +93,7 @@ def execute_one(db: Session, bk: Booking):
     # 1️⃣ Finalize decision (NO closing here)
     bk.dm_decision_final = True
     bk.dm_decision_at = now
-    bk.deposit_status = "withhold_final"
+    bk.deposit_status = "partially_withheld"
     bk.auto_finalized_by_robot = True
 
     # =================================================
