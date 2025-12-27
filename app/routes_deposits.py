@@ -1129,6 +1129,7 @@ def dm_start_renter_window(
         bk.dm_decision = "withhold"
         bk.dm_decision_amount = amt
         bk.dm_decision_note = (reason or None)
+        bk.renter_24h_window_opened_at = now 
         bk.renter_response_deadline_at = deadline
         bk.updated_at = now
     except Exception:
