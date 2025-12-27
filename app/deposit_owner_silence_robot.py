@@ -4,12 +4,12 @@ Robot #1 — Owner Silence (After Return)
 ======================================
 TEST MODE — 1 MINUTE
 
-Behavior (SAME AS OLD ROBOT):
-- If item is returned (returned_at) OR return marked no problem
+Behavior:
+- Item returned OR return marked no problem
 - Owner did NOT open dispute within window
 - Auto refund FULL deposit via PayPal
 - Send notifications to renter & owner
-- Log audit (SAFE)
+- Log audit safely
 - Close deposit case
 """
 
@@ -28,15 +28,20 @@ from app.notifications_api import push_notification
 
 
 # =====================================================
+# SYSTEM ACTOR (for audit logs)
+# =====================================================
+SYSTEM_ACTOR_ID = 0
+
+
+# =====================================================
 # ⏱️ TEST WINDOW — 1 MINUTE
 # =====================================================
 WINDOW_DELTA = timedelta(minutes=1)
-
 NOW = lambda: datetime.now(timezone.utc)
 
 
 # =====================================================
-# Find eligible bookings (LIKE OLD ROBOT)
+# Find eligible bookings
 # =====================================================
 def find_candidates(db: Session) -> List[Booking]:
     deadline = NOW() - WINDOW_DELTA
@@ -47,7 +52,7 @@ def find_candidates(db: Session) -> List[Booking]:
             Booking.deposit_amount > 0,
             Booking.deposit_refund_sent == False,
 
-            # Same logic as old robot
+            # Item returned OR no-problem return
             or_(
                 Booking.returned_at.isnot(None),
                 and_(
@@ -56,7 +61,7 @@ def find_candidates(db: Session) -> List[Booking]:
                 ),
             ),
 
-            # Owner silence
+            # Owner did not open dispute
             Booking.owner_dispute_opened_at.is_(None),
 
             # Enough time passed
@@ -65,7 +70,7 @@ def find_candidates(db: Session) -> List[Booking]:
                 Booking.return_check_submitted_at <= deadline,
             ),
 
-            # Avoid conflict states
+            # Avoid conflicting states
             or_(
                 Booking.deposit_status.is_(None),
                 ~Booking.deposit_status.in_(["in_dispute", "awaiting_renter"]),
@@ -87,7 +92,7 @@ def compute_refund_amount(bk: Booking) -> float:
 
 
 # =====================================================
-# Execute refund + notifications (SAFE)
+# Execute one booking
 # =====================================================
 def execute_one(db: Session, bk: Booking) -> Optional[str]:
     refund_amount = compute_refund_amount(bk)
@@ -96,12 +101,12 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
 
     capture_id = (bk.payment_provider or "").strip()
 
-    # 🔒 SAFETY: avoid 404 PayPal error
+    # Safety: avoid invalid PayPal capture IDs
     if not capture_id or capture_id.lower() in ("paypal", "sandbox"):
         print(f"⏭️ Skip booking #{bk.id} (invalid capture_id={capture_id})")
         return None
 
-    # 🔥 PayPal refund (REAL)
+    # 🔥 PayPal refund
     refund_id = send_deposit_refund(
         db=db,
         booking=bk,
@@ -119,12 +124,12 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
     bk.auto_finalized_by_robot = True
     bk.status = "closed"
 
-    # 🧾 Audit log (SAFE — no FK crash)
+    # 🧾 Audit log (SAFE)
     try:
         db.add(
             DepositAuditLog(
                 booking_id=bk.id,
-                actor_id=None,  # ✅ FIX FK ERROR
+                actor_id=SYSTEM_ACTOR_ID,
                 actor_role="system",
                 action="auto_refund_owner_silent",
                 amount=int(refund_amount),
@@ -141,14 +146,14 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
     push_notification(
         user_id=bk.renter_id,
         title="Deposit refunded ✅",
-        message="Your deposit has been fully refunded successfully.",
+        body="Your deposit has been fully refunded successfully.",
         data={"booking_id": bk.id},
     )
 
     push_notification(
         user_id=bk.owner_id,
         title="Deposit refunded to renter",
-        message="The deposit was refunded automatically due to no dispute being opened.",
+        body="The deposit was refunded automatically because no dispute was opened.",
         data={"booking_id": bk.id},
     )
 
