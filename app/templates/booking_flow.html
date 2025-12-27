@@ -1462,13 +1462,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
 })();
 </script>
+
 <script>
 (function () {
   var btn = document.getElementById("disputeBtn");
   if (!btn) return;
 
-  var deadlineStr = btn.dataset.deadline;
-  if (!deadlineStr) return;
+  var deadlineStr = btn.dataset.deadline || "";
+
+  // ✅ إصلاح صيغة التاريخ (Safari / iOS)
+  deadlineStr = deadlineStr.replace(/\.\d+/, "");
+  if (deadlineStr && !deadlineStr.endsWith("Z")) deadlineStr += "Z";
 
   var hint = document.getElementById("disputeHint");
 
@@ -1492,7 +1496,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // فحص مباشر
   checkDeadline();
 
-  // فحص كل ثانية (بدون refresh)
+  // فحص كل ثانية
   setInterval(checkDeadline, 1000);
 })();
 </script>

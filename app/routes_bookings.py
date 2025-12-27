@@ -207,7 +207,10 @@ def booking_flow(
     if bk.returned_at:
         # ⛔ TEST فقط: دقيقة واحدة
         dispute_deadline = bk.returned_at + timedelta(minutes=1)
-        dispute_deadline_iso = dispute_deadline.isoformat()
+
+        dispute_deadline = dispute_deadline.replace(microsecond=0)
+
+        dispute_deadline_iso = dispute_deadline.isoformat() + "Z"
 
     # ============================
     # 📦 CONTEXT
