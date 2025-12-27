@@ -1243,8 +1243,6 @@ def _auto_capture_for_booking(db: Session, bk: Booking) -> bool:
     bk.status = "closed"
     bk.dm_decision_at = now
     bk.updated_at = now
-    bk.dm_decision = "auto_withhold"
-    bk.dm_decision_note = "Automatic decision after 24h deadline"
 
 
     try:
