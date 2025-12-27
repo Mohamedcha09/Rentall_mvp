@@ -650,10 +650,20 @@ a.btn.disabled{
             {% endif %}
           </div>
           <form method="get" action="/deposits/{{ booking.id }}/report">
-            <button class="btn btn-outline-danger btn-wide">
-              <i class="bi bi-exclamation-octagon"></i> Open deposit dispute (damage/issue/delay)
-            </button>
-          </form>
+  <button
+    id="disputeBtn"
+    class="btn btn-outline-danger btn-wide"
+    data-deadline="{{ dispute_deadline_iso or '' }}"
+  >
+    <i class="bi bi-exclamation-octagon"></i>
+    Open deposit dispute (damage/issue/delay)
+  </button>
+</form>
+
+<div id="disputeHint" class="small k mt-1" style="display:none;">
+  Dispute window expired.
+</div>
+
 
           <!-- Owner rates renter -->
           <div class="box mt-3" id="ownerRateBox">
@@ -1465,6 +1475,41 @@ document.addEventListener("DOMContentLoaded", function () {
 
 })();
 </script>
+<script>
+(function () {
+  var btn = document.getElementById("disputeBtn");
+  if (!btn) return;
+
+  var deadlineStr = btn.dataset.deadline;
+  if (!deadlineStr) return;
+
+  var hint = document.getElementById("disputeHint");
+
+  function disableBtn() {
+    btn.disabled = true;
+    btn.style.opacity = "0.5";
+    btn.style.cursor = "not-allowed";
+    btn.title = "Dispute window expired";
+    if (hint) hint.style.display = "block";
+  }
+
+  function checkDeadline() {
+    var now = new Date();
+    var deadline = new Date(deadlineStr);
+    if (isNaN(deadline.getTime())) return;
+    if (now >= deadline) {
+      disableBtn();
+    }
+  }
+
+  // فحص مباشر
+  checkDeadline();
+
+  // فحص كل ثانية (بدون refresh)
+  setInterval(checkDeadline, 1000);
+})();
+</script>
+
 
 
 {% endblock %}

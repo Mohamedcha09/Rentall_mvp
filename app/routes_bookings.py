@@ -169,7 +169,6 @@ async def create_booking(
         print("EMAIL ERROR (CREATE BOOKING):", e)
 
     return redirect_to_flow(bk)
-
 @router.get("/bookings/flow/{booking_id}")
 def booking_flow(
     booking_id: int,
@@ -202,6 +201,15 @@ def booking_flow(
     pricing = compute_grand_total_for_paypal(request, bk)
 
     # ============================
+    # ⏱️ DISPUTE DEADLINE (TEST MODE = 1 MINUTE)
+    # ============================
+    dispute_deadline_iso = None
+    if bk.returned_at:
+        # ⛔ TEST فقط: دقيقة واحدة
+        dispute_deadline = bk.returned_at + timedelta(minutes=1)
+        dispute_deadline_iso = dispute_deadline.isoformat()
+
+    # ============================
     # 📦 CONTEXT
     # ============================
     ctx = {
@@ -227,6 +235,9 @@ def booking_flow(
         "geo": geo,
         "session_user": request.session.get("user"),
         "renter_reviews_count": renter_reviews_count,
+
+        # ⏱️ PASS DEADLINE TO TEMPLATE
+        "dispute_deadline_iso": dispute_deadline_iso,
     }
 
     return request.app.templates.TemplateResponse("booking_flow.html", ctx)
