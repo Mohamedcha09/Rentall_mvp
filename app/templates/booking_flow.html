@@ -297,9 +297,11 @@ a.btn.disabled{
 
 </style>
 
-{% if dispute_deadline_iso %}
-  <script defer src="/static/js/countdown.js"></script>
-{% endif %}
+{# TEMP DISABLED — countdown breaks dispute disable #}
+{# {% if dispute_deadline_iso %}
+     <script defer src="/static/js/countdown.js"></script>
+   {% endif %} #}
+
 
 <!-- 🔒 Guard to pause poller during capture/upload -->
 <script> window.__CAPTURE_ACTIVE__ = false; </script>
