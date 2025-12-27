@@ -635,25 +635,54 @@ a.btn.disabled{
       {% endif %}
 
       {# ======= returned / in_review ======= #}
-      {% if booking.status in ['returned', 'in_review'] %}
-        {% if is_owner %}
-          <h5 class="mb-2">Return marked — review</h5>
-          <div class="hint mb-2">
-            You have a window to file a deposit dispute if there’s an issue:
-            {% if dispute_deadline_iso %}
-              <div class="mt-2">
-                <span class="badge-dot"><i class="bi bi-circle-fill"></i> Countdown until dispute window ends:</span>
-                <div id="deadlineCountdown" class="mono fw-bold">
-                  <span class="countdown" data-deadline="{{ dispute_deadline_iso }}"></span>
-                </div>
-              </div>
-            {% endif %}
+      {% if booking.status in ['returned', 'in_review'] and is_owner %}
+
+  {% set dispute_locked =
+      booking.status == 'closed'
+      or booking.deposit_case_closed
+      or booking.deposit_status in ['refunded','withhold_final','partially_withheld']
+  %}
+
+  <h5 class="mb-2">Return marked — review</h5>
+
+  {% if dispute_locked %}
+    <!-- 🔒 DISPUTE LOCKED -->
+    <div class="alert alert-secondary">
+      ⛔ Dispute window closed — this case is finalized.
+    </div>
+
+    <button class="btn btn-outline-danger btn-wide disabled" disabled>
+      <i class="bi bi-lock-fill"></i>
+      Open deposit dispute
+    </button>
+
+  {% else %}
+    <!-- ✅ DISPUTE OPEN -->
+    <div class="hint mb-2">
+      You have a limited window to file a deposit dispute.
+      {% if dispute_deadline_iso %}
+        <div class="mt-2">
+          <span class="badge-dot">
+            <i class="bi bi-circle-fill"></i>
+            Countdown until dispute window ends:
+          </span>
+          <div id="deadlineCountdown" class="mono fw-bold">
+            <span class="countdown" data-deadline="{{ dispute_deadline_iso }}"></span>
           </div>
-          <form method="get" action="/deposits/{{ booking.id }}/report">
-            <button class="btn btn-outline-danger btn-wide">
-              <i class="bi bi-exclamation-octagon"></i> Open deposit dispute (damage/issue/delay)
-            </button>
-          </form>
+        </div>
+      {% endif %}
+    </div>
+
+    <form method="get" action="/deposits/{{ booking.id }}/report">
+      <button class="btn btn-outline-danger btn-wide">
+        <i class="bi bi-exclamation-octagon"></i>
+        Open deposit dispute (damage/issue/delay)
+      </button>
+    </form>
+  {% endif %}
+
+{% endif %}
+
 
           <!-- Owner rates renter -->
           <div class="box mt-3" id="ownerRateBox">
