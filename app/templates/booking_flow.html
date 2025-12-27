@@ -297,7 +297,7 @@ a.btn.disabled{
 
 </style>
 
-{# TEMP DISABLED — countdown breaks dispute disable #}
+{# DISABLED — countdown breaks dispute auto-disable #}
 {# {% if dispute_deadline_iso %}
      <script defer src="/static/js/countdown.js"></script>
    {% endif %} #}
@@ -643,12 +643,7 @@ a.btn.disabled{
           <div class="hint mb-2">
             You have a window to file a deposit dispute if there’s an issue:
             {% if dispute_deadline_iso %}
-              <div class="mt-2">
-                <span class="badge-dot"><i class="bi bi-circle-fill"></i> Countdown until dispute window ends:</span>
-                <div id="deadlineCountdown" class="mono fw-bold">
-                  <span class="countdown" data-deadline="{{ dispute_deadline_iso }}"></span>
-                </div>
-              </div>
+              
             {% endif %}
           </div>
           <form method="get" action="/deposits/{{ booking.id }}/report">
@@ -1018,16 +1013,6 @@ a.btn.disabled{
     function modalOpen(){ return !!document.querySelector('.modal.show'); }
 
 
-  {% if dispute_deadline_iso %}
-  try{
-    if(window.initCountdown){
-      initCountdown('deadlineCountdown','{{ dispute_deadline_iso }}');
-    }else{
-      var el = document.getElementById('deadlineCountdown');
-      if(el){ el.textContent = new Date('{{ dispute_deadline_iso }}').toLocaleString(); }
-    }
-  }catch(e){}
-  {% endif %}
 </script>
 
 <!-- ===== Owner rating script (lock + localStorage) ===== -->
