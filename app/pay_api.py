@@ -55,7 +55,12 @@ def flow_redirect(bk: Booking, flag: str):
 # PayPal core
 # =====================================================
 
-PAYPAL_BASE = "https://api-m.sandbox.paypal.com"
+PAYPAL_MODE = os.getenv("PAYPAL_MODE", "sandbox")
+
+if PAYPAL_MODE == "live":
+    PAYPAL_BASE = "https://api-m.paypal.com"
+else:
+    PAYPAL_BASE = "https://api-m.sandbox.paypal.com"
 
 def paypal_get_token() -> str:
     client_id = os.getenv("PAYPAL_CLIENT_ID")
