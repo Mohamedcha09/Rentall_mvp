@@ -18,6 +18,8 @@ from .pay_api import paypal_start, paypal_return, compute_grand_total_for_paypal
 from .utili_geo import locate_from_session
 from .utili_tax import compute_order_taxes
 
+from fastapi import BackgroundTasks
+from .database import SessionLocal
 
 router = APIRouter(tags=["bookings"])
 
@@ -51,10 +53,10 @@ def is_owner(user: User, bk: Booking) -> bool:
 def redirect_to_flow(bk: Booking):
     return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
 
-
 @router.post("/bookings")
 async def create_booking(
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
@@ -126,49 +128,67 @@ async def create_booking(
     db.commit()
     db.refresh(bk)
 
-    # =========================
-    # 🔔 إشعار داخل الموقع
-    # =========================
-    push_notification(
-        db,
-        bk.owner_id,
-        "New booking request",
-        f"Request on '{item.title}'.",
-        f"/bookings/flow/{bk.id}",
-        "booking",
-    )
+    # ✅ كل شيء ثقيل بالخلفية (إشعار + إيميل)
+    background_tasks.add_task(_after_booking_created_bg, bk.id)
 
-    # =========================
-    # 📧 EMAIL — OWNER
-    # =========================
-    try:
-        from .email_service import send_email
-        owner = db.get(User, bk.owner_id)
-
-        if owner and owner.email:
-            subject = f"New booking request — Booking #{bk.id}"
-            msg_txt = f"You received a new booking request for '{item.title}'."
-            html = f"""
-            <div style="font-family:Arial">
-                <h2>New booking request</h2>
-                <p><b>Item:</b> {item.title}</p>
-                <p><b>Renter:</b> {user.first_name}</p>
-                <a href="https://sevor.net/bookings/flow/{bk.id}">
-                    Open booking
-                </a>
-            </div>
-            """
-
-            send_email(
-                to=owner.email,
-                subject=subject,
-                text_body=msg_txt,
-                html_body=html,
-            )
-    except Exception as e:
-        print("EMAIL ERROR (CREATE BOOKING):", e)
-
+    # ✅ Redirect فوري (هذا اللي يخلي الزر سريع)
     return redirect_to_flow(bk)
+
+
+def _after_booking_created_bg(booking_id: int):
+    db = SessionLocal()
+    try:
+        bk = db.get(Booking, booking_id)
+        if not bk:
+            return
+
+        item = db.get(Item, bk.item_id)
+        owner = db.get(User, bk.owner_id)
+        renter = db.get(User, bk.renter_id)
+
+        # 🔔 إشعار داخل الموقع للمالك
+        try:
+            push_notification(
+                db,
+                bk.owner_id,
+                "New booking request",
+                f"Request on '{item.title}'.",
+                f"/bookings/flow/{bk.id}",
+                "booking",
+            )
+        except Exception as e:
+            print("PUSH ERROR (BG CREATE BOOKING):", e)
+
+        # 📧 EMAIL — OWNER (نفس الإيميل القديم)
+        try:
+            from .email_service import send_email
+
+            if owner and owner.email:
+                subject = f"New booking request — Booking #{bk.id}"
+                msg_txt = f"You received a new booking request for '{item.title}'."
+                html = f"""
+                <div style="font-family:Arial">
+                    <h2>New booking request</h2>
+                    <p><b>Item:</b> {item.title}</p>
+                    <p><b>Renter:</b> {renter.first_name if renter else ''}</p>
+                    <a href="https://sevor.net/bookings/flow/{bk.id}">
+                        Open booking
+                    </a>
+                </div>
+                """
+
+                send_email(
+                    to=owner.email,
+                    subject=subject,
+                    text_body=msg_txt,
+                    html_body=html,
+                )
+        except Exception as e:
+            print("EMAIL ERROR (BG CREATE BOOKING):", e)
+
+    finally:
+        db.close()
+
 @router.get("/bookings/flow/{booking_id}")
 def booking_flow(
     booking_id: int,
