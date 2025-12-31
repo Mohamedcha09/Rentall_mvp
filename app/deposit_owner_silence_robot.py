@@ -24,18 +24,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 
 from app.database import SessionLocal
-from app.models import Booking, DepositAuditLog
+from app.models import Booking, DepositAuditLog, User
 from app.pay_api import send_deposit_refund
 from app.notifications_api import push_notification
 
-# 🔥 PLATFORM WALLET (NEW LOGIC)
+# 🔥 PLATFORM WALLET
 from app.platform_wallet import spend_available, refund_revert
-
-
-# =====================================================
-# SYSTEM ACTOR (for audit logs)
-# =====================================================
-SYSTEM_ACTOR_ID = 0
 
 
 # =====================================================
@@ -43,6 +37,21 @@ SYSTEM_ACTOR_ID = 0
 # =====================================================
 WINDOW_DELTA = timedelta(minutes=1)
 NOW = lambda: datetime.now(timezone.utc)
+
+
+# =====================================================
+# Get SYSTEM ACTOR (ADMIN USER)
+# =====================================================
+def get_system_actor_id(db: Session) -> int:
+    admin = (
+        db.query(User)
+        .filter(User.role == "admin")
+        .order_by(User.id.asc())
+        .first()
+    )
+    if not admin:
+        raise RuntimeError("No admin user found for system actor")
+    return admin.id
 
 
 # =====================================================
@@ -109,7 +118,6 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
 
     capture_id = (bk.payment_provider or "").strip()
 
-    # Safety: avoid invalid PayPal capture IDs
     if not capture_id or capture_id.lower() in ("paypal", "sandbox"):
         print(f"⏭️ Skip booking #{bk.id} (invalid capture_id={capture_id})")
         return None
@@ -143,14 +151,14 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
             amount=refund_amount,
         )
     except Exception as e:
-        # 🔁 PayPal failed → revert platform balance
+        # revert platform balance
         try:
             refund_revert(
                 db,
                 amount=refund_amount,
                 source="robot",
                 booking_id=bk.id,
-                note=f"PayPal refund failed, revert platform balance: {str(e)[:200]}",
+                note=f"PayPal refund failed: {str(e)[:200]}",
             )
         except Exception:
             pass
@@ -160,7 +168,7 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
         return None
 
     # =================================================
-    # ✅ STEP 3 — UPDATE BOOKING STATE (CLOSE EVERYTHING)
+    # ✅ STEP 3 — UPDATE BOOKING STATE
     # =================================================
     bk.deposit_refund_sent = True
     bk.deposit_refund_sent_at = now
@@ -169,17 +177,15 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
     bk.deposit_status = "refunded"
     bk.deposit_case_closed = True
     bk.auto_finalized_by_robot = True
-
-    # 🔒 Close booking
     bk.status = "closed"
 
     # =================================================
-    # 🧾 Audit log
+    # 🧾 Audit log (ADMIN ACTOR)
     # =================================================
     db.add(
         DepositAuditLog(
             booking_id=bk.id,
-            actor_id=SYSTEM_ACTOR_ID,
+            actor_id=get_system_actor_id(db),
             actor_role="system",
             action="auto_refund_owner_silent",
             amount=int(refund_amount),
@@ -217,7 +223,7 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
 
 
 # =====================================================
-# Run once (cron entry)
+# Run once
 # =====================================================
 def run_once():
     db = SessionLocal()
