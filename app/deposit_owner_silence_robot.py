@@ -8,6 +8,7 @@ Behavior:
 - Item returned OR return marked no problem
 - Owner did NOT open dispute within window
 - Auto refund FULL deposit via PayPal
+- 💰 Refund is paid FROM PLATFORM AVAILABLE BALANCE
 - Send notifications to renter & owner
 - Log audit safely
 - ✅ CLOSE DEPOSIT CASE
@@ -26,6 +27,9 @@ from app.database import SessionLocal
 from app.models import Booking, DepositAuditLog
 from app.pay_api import send_deposit_refund
 from app.notifications_api import push_notification
+
+# 🔥 PLATFORM WALLET (NEW LOGIC)
+from app.platform_wallet import spend_available, refund_revert
 
 
 # =====================================================
@@ -110,19 +114,53 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
         print(f"⏭️ Skip booking #{bk.id} (invalid capture_id={capture_id})")
         return None
 
-    # =================================================
-    # 🔥 PayPal refund
-    # =================================================
-    refund_id = send_deposit_refund(
-        db=db,
-        booking=bk,
-        amount=refund_amount,
-    )
-
     now = NOW()
+    refund_id = None
 
     # =================================================
-    # ✅ UPDATE BOOKING STATE (CLOSE EVERYTHING)
+    # 💰 STEP 1 — DEDUCT FROM PLATFORM BALANCE
+    # =================================================
+    try:
+        spend_available(
+            db,
+            amount=refund_amount,
+            source="robot",
+            booking_id=bk.id,
+            note="Auto refund (owner silent) — platform balance used",
+        )
+    except Exception as e:
+        print(f"❌ Not enough platform balance for booking #{bk.id}: {e}")
+        db.rollback()
+        return None
+
+    # =================================================
+    # 💳 STEP 2 — PAYPAL REFUND
+    # =================================================
+    try:
+        refund_id = send_deposit_refund(
+            db=db,
+            booking=bk,
+            amount=refund_amount,
+        )
+    except Exception as e:
+        # 🔁 PayPal failed → revert platform balance
+        try:
+            refund_revert(
+                db,
+                amount=refund_amount,
+                source="robot",
+                booking_id=bk.id,
+                note=f"PayPal refund failed, revert platform balance: {str(e)[:200]}",
+            )
+        except Exception:
+            pass
+
+        db.commit()
+        print(f"❌ PayPal refund failed for booking #{bk.id}: {e}")
+        return None
+
+    # =================================================
+    # ✅ STEP 3 — UPDATE BOOKING STATE (CLOSE EVERYTHING)
     # =================================================
     bk.deposit_refund_sent = True
     bk.deposit_refund_sent_at = now
@@ -132,7 +170,7 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
     bk.deposit_case_closed = True
     bk.auto_finalized_by_robot = True
 
-    # 🔒 THIS WAS THE MISSING PIECE
+    # 🔒 Close booking
     bk.status = "closed"
 
     # =================================================

@@ -453,238 +453,70 @@ def dm_decision(
     if _is_closed(bk):
         raise HTTPException(status_code=400, detail="case already closed")
 
-    pi_id = _get_deposit_pi_id(bk)
     now = datetime.utcnow()
 
-    def _notify_final(title_owner: str, body_owner: str, title_renter: str, body_renter: str):
-        final_url = _final_summary_url(bk.id)  # ==> "/bookings/{id}/deposit/summary"
-        push_notification(db, bk.owner_id,  title_owner,  body_owner,  final_url, "deposit")
-        push_notification(db, bk.renter_id, title_renter, body_renter, final_url, "deposit")
-        # Admin keeps DM page open
-        notify_admins(db, "Final Decision Notice", f"Booking #{bk.id} — {decision}", f"/dm/deposits/{bk.id}")
+    # ===============================
+    # ✅ RELEASE — refund from PLATFORM BALANCE
+    # ===============================
+    if decision == "release":
+        refund_amount = int(bk.deposit_amount or 0)
 
-    try:
-        if decision == "release":
-            if pi_id:
-                try:
-                    stripe.PaymentIntent.cancel(pi_id)
-                except Exception:
-                    pass
+        # 🔥 خصم من رصيد الموقع
+        from .platform_wallet import spend_available
+        spend_available(
+            db=db,
+            amount=refund_amount,
+            reason=f"Deposit refund — booking #{bk.id}",
+            booking_id=bk.id,
+            actor_id=user.id,
+        )
 
-            bk.deposit_status = "refunded"
-            bk.deposit_charged_amount = 0
-            bk.status = "closed"
-            bk.dm_decision = "release"
-            bk.dm_decision_amount = 0
-            bk.dm_decision_note = (reason or None)
-            bk.dm_decision_at = now
-            bk.updated_at = now
+        bk.deposit_status = "refunded"
+        bk.deposit_charged_amount = 0
+        bk.status = "closed"
+        bk.dm_decision = "release"
+        bk.dm_decision_amount = 0
+        bk.dm_decision_note = reason or None
+        bk.dm_decision_at = now
+        bk.updated_at = now
 
-            _audit(db, actor=user, bk=bk, action="deposit_release_all", details={"reason": reason})
-            db.commit()
+        _audit(db, actor=user, bk=bk, action="deposit_refund_from_platform", details={
+            "amount": refund_amount,
+            "reason": reason,
+        })
 
-            _notify_final(
-                "Final Decision Announced", f"The deposit for booking #{bk.id} has been fully refunded.",
-                "Final Decision Announced", f"Your deposit has been fully refunded for booking #{bk.id}."
-            )
+        db.commit()
+        return RedirectResponse(url=_final_summary_url(bk.id), status_code=303)
 
-            try:
-                renter_email = _user_email(db, bk.renter_id)
-                owner_email  = _user_email(db, bk.owner_id)
-                case_url = f"{BASE_URL}{_final_summary_url(bk.id)}"  # BASE_URL + "/bookings/{id}/deposit/summary"
-                if owner_email:
-                    send_email(
-                        owner_email,
-                        f"Final Decision — Deposit Refund #{bk.id}",
-                        f"<p>The deposit was fully refunded for booking #{bk.id}.</p>"
-                        f'<p><a href="{case_url}">Final decision details</a></p>'
-                    )
-                if renter_email:
-                    send_email(
-                        renter_email,
-                        f"Final Decision — Your Deposit Refund #{bk.id}",
-                        f"<p>Your deposit was fully refunded for booking #{bk.id}.</p>"
-                        f'<p><a href="{case_url}">Final decision details</a></p>'
-                    )
-            except Exception:
-                pass
+    # ===============================
+    # ✅ WITHHOLD — keep money in PLATFORM BALANCE
+    # ===============================
+    elif decision == "withhold":
+        amt = max(0, int(amount or 0))
+        if amt <= 0:
+            raise HTTPException(status_code=400, detail="Invalid amount")
 
-            return RedirectResponse(url=_final_summary_url(bk.id), status_code=303)
+        bk.deposit_status = "partially_withheld"
+        bk.dm_decision = "withhold"
+        bk.dm_decision_amount = amt
+        bk.dm_decision_note = reason or None
+        bk.dm_decision_at = now
+        bk.status = "closed"
+        bk.updated_at = now
 
-        elif decision == "withhold":
-            amt = max(0, int(amount or 0))
+        # ❌ لا تحويل، ❌ لا Stripe
+        # المال يبقى في رصيد الموقع
 
-            if finalize:
-                if amt <= 0:
-                    raise HTTPException(status_code=400, detail="Invalid amount")
+        _audit(db, actor=user, bk=bk, action="deposit_withheld_to_platform", details={
+            "amount": amt,
+            "reason": reason,
+        })
 
-                captured_ok = False
-                charge_id: Optional[str] = None
+        db.commit()
+        return RedirectResponse(url=_final_summary_url(bk.id), status_code=303)
 
-                if pi_id:
-                    try:
-                        pi = stripe.PaymentIntent.capture(pi_id, amount_to_capture=amt * 100)
-                        captured_ok = bool(pi and pi.get("status") in ("succeeded", "requires_capture") or True)
-                        charge_id = (pi.get("latest_charge") or
-                                     ((pi.get("charges") or {}).get("data") or [{}])[0].get("id"))
-                    except Exception:
-                        captured_ok = False
-
-                bk.deposit_status = "partially_withheld" if captured_ok else "no_deposit"
-                bk.dm_decision = "withhold"
-                bk.dm_decision_amount = amt
-                bk.dm_decision_note = (reason or None)
-                bk.dm_decision_at = now
-                bk.deposit_charged_amount = (bk.deposit_charged_amount or 0) + (amt if captured_ok else 0)
-                bk.status = "closed"
-                bk.updated_at = now
-
-                _audit(
-                    db, actor=user, bk=bk, action="dm_withhold_final",
-                    details={"amount": amt, "reason": reason, "pi": pi_id, "captured": captured_ok, "charge_id": charge_id}
-                )
-                db.commit()
-
-                try:
-                    owner: User = db.get(User, bk.owner_id)
-                    if captured_ok and owner and getattr(owner, "stripe_account_id", None) and getattr(owner, "payouts_enabled", False):
-                        stripe.Transfer.create(
-                            amount=amt * 100,
-                            currency="cad",
-                            destination=owner.stripe_account_id,
-                            source_transaction=charge_id
-                        )
-                except Exception:
-                    pass
-
-                amt_txt = _fmt_money(amt)
-                reason_txt = _short_reason(reason)
-                if captured_ok:
-                    _notify_final(
-                        "Final Decision Announced",
-                        f"{amt_txt} CAD was deducted from the deposit in booking #{bk.id}" + (f" — reason: {reason_txt}" if reason_txt else ""),
-                        "Final Decision Announced",
-                        f"{amt_txt} CAD was deducted from your deposit in booking #{bk.id}" + (f" — reason: {reason_txt}" if reason_txt else "")
-                    )
-                else:
-                    _notify_final(
-                        "Final Decision Announced",
-                        f"Withholding {amt_txt} CAD for booking #{bk.id} confirmed (no held deposit available to charge).",
-                        "Final Decision Announced",
-                        f"Withholding {amt_txt} CAD from your deposit for booking #{bk.id} confirmed, but there is no held deposit."
-                    )
-
-                try:
-                    renter_email = _user_email(db, bk.renter_id)
-                    owner_email  = _user_email(db, bk.owner_id)
-                    case_url = f"{BASE_URL}{_final_summary_url(bk.id)}"
-                    if owner_email:
-                        send_email(
-                            owner_email,
-                            f"Final Decision — Withheld {amt_txt} CAD — #{bk.id}",
-                            f"<p>{amt_txt} CAD was withheld from the deposit for booking #{bk.id}.</p>"
-                            f'<p><a href="{case_url}">Final decision details</a></p>'
-                        )
-                    if renter_email:
-                        send_email(
-                            renter_email,
-                            f"Final Decision — {amt_txt} CAD withheld from your deposit — #{bk.id}",
-                            f"<p>{amt_txt} CAD was withheld from your deposit for booking #{bk.id}"
-                            + (f" — reason: {reason_txt}" if reason_txt else "")
-                            + f'</p><p><a href="{case_url}">Final decision details</a></p>'
-                        )
-                except Exception:
-                    pass
-
-                return RedirectResponse(url=_final_summary_url(bk.id), status_code=303)
-
-            # 24h window (not final)
-            if amt <= 0:
-                raise HTTPException(status_code=400, detail="Invalid amount")
-            deadline = now + timedelta(hours=24)
-
-            bk.deposit_status = "awaiting_renter"
-            bk.dm_decision = "withhold"
-            bk.dm_decision_amount = amt
-            bk.dm_decision_note = (reason or None)
-            bk.renter_response_deadline_at = deadline
-            bk.updated_at = now
-
-            _audit(
-                db, actor=user, bk=bk, action="dm_withhold_pending",
-                details={"amount": amt, "reason": reason, "deadline": deadline.isoformat()}
-            )
-            db.commit()
-
-            amt_txt = _fmt_money(amt)
-            reason_txt = _short_reason(reason)
-            push_notification(
-                db, bk.owner_id, "Pending Deduction Decision",
-                (f"A deduction decision of {amt_txt} CAD was opened for booking #{bk.id}"
-                 + (f" — reason: {reason_txt}" if reason_txt else "")
-                 + ". It will be executed automatically after 24 hours unless the renter responds."),
-                f"/dm/deposits/{bk.id}", "deposit"
-            )
-            push_notification(
-                db, bk.renter_id, "Alert: Deduction Decision on Your Deposit",
-                (f"There is a deduction decision of {amt_txt} CAD on your deposit for booking #{bk.id}"
-                 + (f" — reason: {reason_txt}" if reason_txt else "")
-                 + ". You have 24 hours to respond and upload evidence."),
-                f"/deposits/{bk.id}/evidence/form", "deposit"
-            )
-            notify_admins(db, "Pending Deduction Decision",
-                          f"Proposed deduction {amt_txt} CAD — booking #{bk.id}.", f"/dm/deposits/{bk.id}")
-
-            try:
-                renter_email = _user_email(db, bk.renter_id)
-                owner_email  = _user_email(db, bk.owner_id)
-                admins_em    = _admin_emails(db)
-                dms_em       = _dm_emails_only(db)
-                case_url = f"{BASE_URL}/dm/deposits/{bk.id}"
-                ev_url   = f"{BASE_URL}/deposits/{bk.id}/evidence/form"
-                deadline_str = deadline.strftime("%Y-%m-%d %H:%M UTC")
-                if renter_email:
-                    send_email(
-                        renter_email,
-                        f"Alert: Deduction Decision on Your Deposit — #{bk.id}",
-                        f"<p>There is a deduction decision of <b>{amt_txt} CAD</b> on your deposit for booking #{bk.id}."
-                        f" You have until <b>{deadline_str}</b> to respond and upload evidence.</p>"
-                        f'<p><a href="{ev_url}">Upload Evidence</a></p>'
-                    )
-                if owner_email:
-                    send_email(
-                        owner_email,
-                        f"Renter Response Window Started — #{bk.id}",
-                        f"<p>A 24-hour window has been opened to execute a deduction decision of {amt_txt} CAD."
-                        f" It will be executed automatically after the window ends unless the renter responds.</p>"
-                        f'<p><a href="{case_url}">Case Page</a></p>'
-                    )
-                for em in admins_em:
-                    send_email(
-                        em,
-                        f"[Admin] awaiting_renter — #{bk.id}",
-                        f"<p>Proposed deduction of {amt_txt} CAD for booking #{bk.id}.</p>"
-                        f'<p><a href="{case_url}">Open Case</a></p>'
-                    )
-                for em in dms_em:
-                    send_email(
-                        em,
-                        f"[DM] awaiting_renter — #{bk.id}",
-                        f"<p>The renter response window for a deduction decision has been opened for booking #{bk.id}.</p>"
-                        f'<p><a href="{case_url}">Manage Case</a></p>'
-                    )
-            except Exception:
-                pass
-
-            return RedirectResponse(url=f"/dm/deposits/{bk.id}?started=1", status_code=303)
-
-        else:
-            raise HTTPException(status_code=400, detail="Unknown decision")
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Stripe deposit operation failed: {e}")
+    else:
+        raise HTTPException(status_code=400, detail="Unknown decision")
 
 # ===================== Deposit report =====================
 @router.get("/deposits/{booking_id}/report")
