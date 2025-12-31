@@ -832,3 +832,32 @@ class UserPayoutMethod(Base):
     updated_at = Column(DateTime, onupdate=func.now())
 
     user = relationship("User", backref="payout_methods")
+
+
+# =========================
+# Platform Balance (Site Wallet)
+# =========================
+class PlatformBalance(Base):
+    __tablename__ = "platform_balance"
+
+    id = Column(Integer, primary_key=True)
+    available_amount = Column(Numeric(12, 2), nullable=False, default=0)
+    hold_amount = Column(Numeric(12, 2), nullable=False, default=0)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+# =========================
+# Platform Ledger (Money Movements)
+# =========================
+class PlatformLedger(Base):
+    __tablename__ = "platform_ledger"
+
+    id = Column(Integer, primary_key=True)
+    type = Column(String(30), nullable=False)  # deposit_refund / manual_topup / rent_income ...
+    amount = Column(Numeric(12, 2), nullable=False)
+    direction = Column(String(10), nullable=False)  # in / out
+    source = Column(String(30), nullable=True)  # paypal / manual / robot
+    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=True)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    booking = relationship("Booking", lazy="joined")

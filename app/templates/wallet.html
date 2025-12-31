@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Platform Wallet</h2>
+
+<div style="margin-bottom:20px">
+  <strong>Available balance:</strong>
+  {{ balance.available_amount }} <br>
+
+  <strong>On hold:</strong>
+  {{ balance.hold_amount }}
+</div>
+
+<hr>
+
+<h3>Add funds (Admin only)</h3>
+<form method="post" action="/admin/wallet/topup">
+  <input type="number" step="0.01" name="amount" required placeholder="Amount">
+  <input type="text" name="note" placeholder="Note (optional)">
+  <button type="submit">Add</button>
+</form>
+
+<hr>
+
+<h3>Last transactions</h3>
+<table border="1" cellpadding="6">
+  <tr>
+    <th>Date</th>
+    <th>Type</th>
+    <th>Amount</th>
+    <th>Direction</th>
+    <th>Source</th>
+    <th>Note</th>
+  </tr>
+
+  {% for row in ledger %}
+  <tr>
+    <td>{{ row.created_at }}</td>
+    <td>{{ row.type }}</td>
+    <td>{{ row.amount }}</td>
+    <td>{{ row.direction }}</td>
+    <td>{{ row.source }}</td>
+    <td>{{ row.note }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% endblock %}
