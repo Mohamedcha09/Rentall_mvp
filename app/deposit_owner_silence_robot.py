@@ -29,7 +29,7 @@ from app.notifications_api import push_notification
 
 
 # =====================================================
-WINDOW_DELTA = timedelta(minutes=1)
+WINDOW_DELTA = timedelta(minutes=1)  # test
 NOW = lambda: datetime.now(timezone.utc)
 # =====================================================
 
@@ -52,10 +52,11 @@ def find_candidates(db: Session) -> List[Booking]:
     return (
         db.query(Booking)
         .filter(
+            # يوجد ضمان
             Booking.deposit_amount > 0,
             Booking.deposit_refund_sent == False,
 
-            # item returned
+            # تم الإرجاع
             or_(
                 Booking.returned_at.isnot(None),
                 and_(
@@ -64,14 +65,19 @@ def find_candidates(db: Session) -> List[Booking]:
                 ),
             ),
 
-            # ✅ التعديل الوحيد: يجب أن يوجد بلاغ
+            # ✅ شرط أساسي: يوجد بلاغ
             Booking.owner_dispute_opened_at.isnot(None),
 
+            # المالك سكت بعد البلاغ
+            Booking.owner_decision.is_(None),
+
+            # انتهت المهلة
             or_(
                 Booking.returned_at <= deadline,
                 Booking.return_check_submitted_at <= deadline,
             ),
 
+            # PayPal فقط
             Booking.payment_method == "paypal",
             Booking.payment_provider.isnot(None),
         )
@@ -96,6 +102,7 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
         print(f"⏭️ Skip booking #{bk.id} (invalid capture_id)")
         return None
 
+    # 🔑 Refund PayPal
     refund_id = send_deposit_refund(
         db=db,
         booking=bk,
@@ -104,6 +111,7 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
 
     now = NOW()
 
+    # تحديث الحالة
     bk.deposit_refund_sent = True
     bk.deposit_refund_sent_at = now
     bk.deposit_refund_amount = refund_amount
@@ -112,6 +120,7 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
     bk.auto_finalized_by_robot = True
     bk.status = "closed"
 
+    # Audit log
     db.add(
         DepositAuditLog(
             booking_id=bk.id,
@@ -126,6 +135,7 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
 
     db.commit()
 
+    # إشعار للمستأجر
     try:
         push_notification(
             user_id=bk.renter_id,
@@ -143,7 +153,7 @@ def run_once():
     db = SessionLocal()
     try:
         items = find_candidates(db)
-        print(f"Candidates: {len(items)}")
+        print(f"Robot #1 (dispute-only) candidates: {len(items)}")
         for bk in items:
             execute_one(db, bk)
     finally:
