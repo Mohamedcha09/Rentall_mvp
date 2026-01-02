@@ -214,6 +214,7 @@ def paypal_start(
 # =====================================================
 # RETURN + CAPTURE
 # =====================================================
+
 @router.get("/paypal/return")
 def paypal_return(
     booking_id: int,
@@ -228,41 +229,28 @@ def paypal_return(
     if user.id != bk.renter_id:
         raise HTTPException(status_code=403)
 
-    # 🔴 CAPTURE PAYMENT FROM PAYPAL
     capture_data = paypal_capture(token)
-    capture_id = (
-        capture_data["purchase_units"][0]
-        ["payments"]["captures"][0]["id"]
-    )
-
+    capture_id = (capture_data["purchase_units"][0]["payments"]["captures"][0]["id"])
     bk.payment_method = "paypal"
+    bk.payment_provider = capture_id         # ← ثابت
+    bk.deposit_capture_id = capture_id      # ← إذا عندك هذا العمود
+    bk.payment_capture_id = capture_id 
 
-    # ==============================
-    # ✅ SEPARATE RENT / DEPOSIT
-    # ==============================
+
     if type == "rent":
         bk.rent_paid = True
-        bk.payment_capture_id = capture_id   # Capture خاص بالإيجار فقط
-
-    else:  # securityfund
+    else:
         bk.security_paid = True
         bk.security_status = "held"
-        bk.deposit_capture_id = capture_id   # ✅ Capture خاص بالضمان فقط
 
-    # ==============================
-    # FINALIZE BOOKING IF BOTH PAID
-    # ==============================
     if bk.rent_paid and (bk.security_paid or bk.security_amount == 0):
         bk.status = "paid"
+        bk.payment_method = "paypal"
         bk.payment_status = "paid"
         bk.timeline_paid_at = datetime.utcnow()
 
     db.commit()
-
-    return flow_redirect(
-        bk,
-        "rent_ok" if type == "rent" else "security_ok"
-    )
+    return flow_redirect(bk, "rent_ok" if type == "rent" else "security_ok")
 
 
 # =====================================================
@@ -299,6 +287,8 @@ def paypal_refund_capture(
     r.raise_for_status()
     data = r.json()
     return data["id"]
+
+
 def send_deposit_refund(
     *,
     db: Session,
@@ -307,18 +297,18 @@ def send_deposit_refund(
 ) -> str:
     """
     ROBOT ENTRY POINT
-    Sends refund to renter for DEPOSIT ONLY.
+    Sends refund to renter for deposit only.
     """
     if amount <= 0:
         raise ValueError("Refund amount must be > 0")
 
     if booking.payment_method != "paypal":
-        raise RuntimeError("Refund supported only for PayPal")
+        raise RuntimeError("Refund supported only for PayPal for now")
 
-    # ✅ IMPORTANT: USE DEPOSIT CAPTURE ONLY
-    capture_id = booking.deposit_capture_id
+    # ⚠️ مهم: يجب أن يكون عندك capture_id محفوظ
+    capture_id = booking.payment_provider
     if not capture_id:
-        raise RuntimeError("Missing PayPal DEPOSIT capture ID")
+        raise RuntimeError("Missing PayPal capture ID")
 
     refund_id = paypal_refund_capture(
         capture_id=capture_id,
@@ -326,7 +316,7 @@ def send_deposit_refund(
         currency=(booking.currency or "CAD"),
     )
 
-    # Update booking (robot-only fields)
+    # Update booking (robot only touches refund fields)
     booking.deposit_refund_amount = amount
     booking.deposit_refund_sent = True
     booking.deposit_refund_sent_at = datetime.utcnow()
