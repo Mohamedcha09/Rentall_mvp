@@ -392,7 +392,11 @@ class Booking(Base):
 
     payment_status = col_or_literal("bookings", "payment_status", String(20),nullable=True)
     owner_payout_amount = col_or_literal( "bookings", "owner_payout_amount", Integer, nullable=False,  default=0)
-    
+
+    payment_capture_id = col_or_literal(   "bookings", "payment_capture_id", String(128),nullable=True)
+
+    deposit_capture_id = col_or_literal(  "bookings", "deposit_capture_id", String(128),  nullable=True)
+
     deposit_charged_amount = col_or_literal(  "bookings", "deposit_charged_amount",Integer, nullable=False, default=0)
 
     # snapshot عملة وقيمة الحجز كاملة

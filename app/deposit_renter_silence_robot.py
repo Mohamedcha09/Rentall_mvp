@@ -1,22 +1,21 @@
-# app/deposit_renter_silence_robot.py
 """
 Robot #3 — Renter Silence after MD Open Window
 =============================================
-FINAL VERSION — PAYPAL SAFE (LIKE ROBOT #1)
+TEST MODE — 1 MINUTE
 
 Behavior:
 - MD opened window
 - Renter did NOT respond within window
-- Finalize MD decision ONLY AFTER successful PayPal refund
-- Refund remaining deposit to renter (PayPal)
-- CREATE owner compensation task for admin (AFTER refund)
+- Finalize MD decision
+- Try refund remaining deposit to renter (PayPal)
+- CREATE owner compensation task for admin (ALWAYS)
 - Log everything
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import List
 
 from sqlalchemy.orm import Session
 
@@ -27,7 +26,7 @@ from app.notifications_api import push_notification, notify_admins
 
 
 # =====================================================
-# ⏱️ TEST WINDOW — 1 MINUTE (CHANGE TO 24h IN PROD)
+# ⏱️ TEST WINDOW — 1 MINUTE
 # =====================================================
 WINDOW_DELTA = timedelta(minutes=1)
 NOW = lambda: datetime.now(timezone.utc)
@@ -62,9 +61,8 @@ def find_candidates(db: Session) -> List[Booking]:
         if opened_at.tzinfo is None:
             opened_at = opened_at.replace(tzinfo=timezone.utc)
 
-        # ⛔ STRICT capture_id validation (LIKE ROBOT #1)
-        capture_id = (bk.payment_provider or "").strip().lower()
-        if not capture_id or capture_id in ("paypal", "sandbox"):
+        cap = (bk.payment_provider or "").lower().strip()
+        if not cap or cap in ("paypal", "sandbox"):
             continue
 
         if opened_at <= deadline:
@@ -87,43 +85,47 @@ def compute_refund_amount(bk: Booking) -> float:
 
 
 # =====================================================
-# Execute robot (STRICT MODE)
+# Execute robot
 # =====================================================
 def execute_one(db: Session, bk: Booking):
     now = NOW()
 
-    refund_amount = compute_refund_amount(bk)
-    if refund_amount <= 0:
-        print(f"⏭️ Booking #{bk.id} — nothing to refund")
-        return
-
-    # =================================================
-    # 🔒 PAYPAL REFUND FIRST (NO TRY / NO SILENT FAIL)
-    # =================================================
-    refund_id = send_deposit_refund(
-        db=db,
-        booking=bk,
-        amount=refund_amount,
-    )
-
-    # =================================================
-    # ✅ ONLY AFTER SUCCESSFUL REFUND
-    # =================================================
-    bk.deposit_refund_sent = True
-    bk.deposit_refund_sent_at = now
-    bk.deposit_refund_amount = refund_amount
-
+    # 1️⃣ Finalize decision (NO closing here)
     bk.dm_decision_final = True
     bk.dm_decision_at = now
     bk.deposit_status = "partially_withheld"
     bk.auto_finalized_by_robot = True
 
     # =================================================
-    # Audit logs (TRUTHFUL)
+    # 2️⃣ Refund renter (SAFE — never crash robot)
+    # =================================================
+    refund_amount = compute_refund_amount(bk)
+    refund_id = None
+    refund_error = None
+
+    if refund_amount > 0:
+        try:
+            refund_id = send_deposit_refund(
+                db=db,
+                booking=bk,
+                amount=refund_amount,
+            )
+
+            bk.deposit_refund_sent = True
+            bk.deposit_refund_sent_at = now
+            bk.deposit_refund_amount = refund_amount
+
+        except Exception as e:
+            # 🔥 VERY IMPORTANT: never crash robot
+            refund_error = str(e)
+
+    # =================================================
+    # 3️⃣ Audit logs
     # =================================================
     admin = db.query(User).filter(User.role == "admin").first()
+
     if admin:
-        # Renter refund log
+        # Renter refund log (even if failed)
         db.add(
             DepositAuditLog(
                 booking_id=bk.id,
@@ -131,12 +133,16 @@ def execute_one(db: Session, bk: Booking):
                 actor_role="system",
                 action="auto_finalize_md_renter_silent",
                 amount=int(refund_amount),
-                reason="Renter did not respond — refund succeeded",
-                details=f"refund_id={refund_id}",
+                reason="Renter did not respond — decision finalized",
+                details=(
+                    f"refund_id={refund_id}"
+                    if refund_id
+                    else f"refund_failed={refund_error}"
+                ),
             )
         )
 
-        # 🔥 OWNER COMPENSATION TASK (AFTER REFUND)
+        # 🔥 OWNER COMPENSATION TASK (THIS IS THE MISSING PIECE)
         owner_amount = int(bk.dm_decision_amount or 0)
         if owner_amount > 0:
             db.add(
@@ -154,13 +160,13 @@ def execute_one(db: Session, bk: Booking):
     db.commit()
 
     # =================================================
-    # Notifications
+    # 4️⃣ Notifications (ALWAYS)
     # =================================================
     try:
         push_notification(
             user_id=bk.renter_id,
             title="Deposit finalized ✅",
-            body=f"Your deposit was finalized automatically. Refunded: {refund_amount} CAD.",
+            message=f"Your deposit was finalized automatically. Refunded: {refund_amount} CAD.",
             data={"booking_id": bk.id},
         )
     except Exception:
@@ -169,7 +175,7 @@ def execute_one(db: Session, bk: Booking):
     try:
         notify_admins(
             title="Owner compensation required",
-            body=f"Booking #{bk.id}: compensate owner {int(bk.dm_decision_amount or 0)} CAD.",
+            message=f"Booking #{bk.id}: compensate owner {int(bk.dm_decision_amount or 0)} CAD.",
             data={"booking_id": bk.id},
         )
     except Exception:
@@ -185,18 +191,21 @@ def run_once():
         items = find_candidates(db)
 
         print("======================================")
-        print("Robot #3 — Renter Silence (STRICT MODE)")
-        print("Window =", WINDOW_DELTA)
+        print("Robot #3 — Renter Silence (TEST MODE)")
+        print("Window = 1 minute")
         print(f"Candidates found: {len(items)}")
 
         for bk in items:
             print(f"- Booking #{bk.id}")
             execute_one(db, bk)
-            print("  ✅ refund + finalize done")
+            print("  ✅ executed")
 
         print("Robot finished.")
         print("======================================")
 
+    except Exception as e:
+        print("❌ Robot error:", str(e))
+        raise
     finally:
         db.close()
 
