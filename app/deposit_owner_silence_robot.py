@@ -3,13 +3,13 @@
 Robot #1 — Owner Silence (After Return)
 ======================================
 
-FINAL VERSION — PAYPAL SAFE
+FINAL VERSION — PAYPAL SAFE (DISPUTE ONLY)
 
 Behavior:
 - Item returned OR return marked no problem
-- Owner did NOT open dispute within window
+- ✅ OWNER DISPUTE EXISTS
+- Owner did NOT respond within window
 - Auto refund FULL deposit via PayPal
-- Refund is ALWAYS done from original PayPal transaction
 - Close deposit case
 - Close booking
 """
@@ -55,6 +55,7 @@ def find_candidates(db: Session) -> List[Booking]:
             Booking.deposit_amount > 0,
             Booking.deposit_refund_sent == False,
 
+            # item returned
             or_(
                 Booking.returned_at.isnot(None),
                 and_(
@@ -63,7 +64,8 @@ def find_candidates(db: Session) -> List[Booking]:
                 ),
             ),
 
-            Booking.owner_dispute_opened_at.is_(None),
+            # ✅ التعديل الوحيد: يجب أن يوجد بلاغ
+            Booking.owner_dispute_opened_at.isnot(None),
 
             or_(
                 Booking.returned_at <= deadline,
@@ -115,9 +117,9 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
             booking_id=bk.id,
             actor_id=get_system_actor_id(db),
             actor_role="system",
-            action="auto_refund_owner_silent",
+            action="auto_refund_owner_silent_dispute",
             amount=int(refund_amount),
-            reason="Owner did not open dispute",
+            reason="Owner opened dispute but stayed silent",
             details=f"refund_id={refund_id}",
         )
     )
