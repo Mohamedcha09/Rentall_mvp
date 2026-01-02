@@ -11,6 +11,7 @@ Behavior:
 - If NO owner dispute opened during window → auto refund FULL deposit
 - If owner dispute exists → SKIP forever (do NOT touch booking)
 - NEVER interfere with MD / Robot #3 flow
+- PayPal failure → SKIP booking (NO CRASH, NO DB UPDATE)
 """
 
 from __future__ import annotations
@@ -73,7 +74,7 @@ def find_candidates(db: Session) -> List[Booking]:
             Booking.owner_dispute_opened_at.is_(None),
 
             # ---- 🔒 NEVER TOUCH ADMIN / MD FLOW
-            # IMPORTANT: allow NULL OR 0 (some DBs store 0 by default)
+            # allow NULL OR 0 (some DBs store 0 by default)
             or_(Booking.dm_decision_amount.is_(None), Booking.dm_decision_amount == 0),
             Booking.renter_24h_window_opened_at.is_(None),
 
@@ -85,8 +86,6 @@ def find_candidates(db: Session) -> List[Booking]:
 
             # ---- PayPal only
             Booking.payment_method == "paypal",
-
-            # keep this; capture_id validity is checked again in execute_one
             Booking.payment_provider.isnot(None),
         )
         .all()
@@ -116,16 +115,24 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
         print(f"⏭️ Skip booking #{bk.id} (invalid capture_id)")
         return None
 
-    # ---- PayPal refund FIRST (safety)
-    refund_id = send_deposit_refund(
-        db=db,
-        booking=bk,
-        amount=refund_amount,
-    )
+    # =================================================
+    # 🔑 TRY PAYPAL REFUND FIRST (PAYPAL-SAFE)
+    # =================================================
+    try:
+        refund_id = send_deposit_refund(
+            db=db,
+            booking=bk,
+            amount=refund_amount,
+        )
+    except Exception as e:
+        print(f"⏭️ Skip booking #{bk.id} — PayPal refund failed: {e}")
+        return None  # 👈 VERY IMPORTANT (NO CRASH)
 
     now = NOW()
 
-    # ---- finalize booking
+    # =================================================
+    # ✅ REFUND SUCCESS → UPDATE DB
+    # =================================================
     bk.deposit_refund_sent = True
     bk.deposit_refund_sent_at = now
     bk.deposit_refund_amount = refund_amount
