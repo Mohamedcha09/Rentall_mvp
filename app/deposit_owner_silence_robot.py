@@ -1,17 +1,20 @@
-# app/deposit_owner_silence_robot.py
+# =====================================================
+# deposit_owner_silence_robot.py
+# =====================================================
 """
 Robot #1 — Owner Silence (After Return)
 ======================================
 
-FINAL VERSION — PAYPAL SAFE (NO DISPUTE ONLY)
+FINAL VERSION — WALLET BASED (NO PAYPAL REFUND)
 
 Behavior:
 - Item returned OR return marked no problem
 - Wait WINDOW_DELTA
 - If NO owner dispute opened during window → auto refund FULL deposit
-- If owner dispute exists → SKIP forever (do NOT touch booking)
+- Refund is sent from Sevor Wallet (PAYOUT), NOT PayPal refund
+- If wallet balance insufficient → SKIP (retry later)
 - NEVER interfere with MD / Robot #3 flow
-- PayPal failure → SKIP booking (NO CRASH, NO DB UPDATE)
+- NO CRASH, NO DB CORRUPTION
 """
 
 from __future__ import annotations
@@ -23,15 +26,19 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 
 from app.database import SessionLocal
-from app.models import Booking, DepositAuditLog, User
-from app.pay_api import send_deposit_refund
+from app.models import (
+    Booking,
+    DepositAuditLog,
+    User,
+    PlatformWallet,
+    PlatformWalletLedger,
+)
 from app.notifications_api import push_notification
-
 
 # =====================================================
 # ⏱️ WINDOW (TEST = 1 MINUTE, PROD = 24H)
 # =====================================================
-WINDOW_DELTA = timedelta(minutes=1)
+WINDOW_DELTA = timedelta(minutes=1)   # change to hours=24 in prod
 NOW = lambda: datetime.now(timezone.utc)
 # =====================================================
 
@@ -86,7 +93,7 @@ def find_candidates(db: Session) -> List[Booking]:
                 Booking.return_check_submitted_at <= deadline,
             ),
 
-            # ---- PayPal only
+            # ---- payment done
             Booking.payment_method == "paypal",
         )
         .all()
@@ -106,29 +113,51 @@ def compute_refund_amount(bk: Booking) -> float:
 # =====================================================
 # ⚙️ EXECUTE ONE BOOKING
 # =====================================================
-
 def execute_one(db: Session, bk: Booking) -> Optional[str]:
     refund_amount = compute_refund_amount(bk)
     if refund_amount <= 0:
         return None
 
-    # ✅ IMPORTANT: deposit capture id ONLY
-    capture_id = (bk.deposit_capture_id or "").strip()
-    if not capture_id:
-        print(f"⏭️ Skip booking #{bk.id} (missing deposit_capture_id)")
+    currency = bk.currency or "CAD"
+
+    # 🔒 Lock wallet row
+    wallet = (
+        db.query(PlatformWallet)
+        .filter(PlatformWallet.currency == currency)
+        .with_for_update()
+        .first()
+    )
+
+    if not wallet:
+        print(f"⏭️ Skip booking #{bk.id} (wallet not found)")
         return None
 
-    # ✅ avoid placeholders / bad ids
-    bad = {"paypal", "sandbox", "put_rent_capture_id_here", "put_deposit_capture_id_here"}
-    if capture_id.lower() in bad:
-        print(f"⏭️ Skip booking #{bk.id} (invalid deposit capture_id)")
+    # ❌ Not enough balance → wait
+    if wallet.available_balance < refund_amount:
+        print(
+            f"⏳ Wallet insufficient for booking #{bk.id} "
+            f"({wallet.available_balance} < {refund_amount})"
+        )
+        bk.deposit_waiting_wallet = True
+        bk.deposit_wallet_checked_at = NOW()
+        db.commit()
         return None
 
-    try:
-        refund_id = send_deposit_refund(db=db, booking=bk, amount=refund_amount)
-    except Exception as e:
-        print(f"⏭️ Skip booking #{bk.id} — PayPal refund failed: {e}")
-        return None
+    # ✅ Wallet OK → execute payout (logical)
+    wallet.available_balance -= refund_amount
+
+    db.add(
+        PlatformWalletLedger(
+            wallet_id=wallet.id,
+            booking_id=bk.id,
+            type="deposit_out",
+            amount=refund_amount,
+            currency=currency,
+            direction="out",
+            source="robot",
+            note="Auto refund — owner silence",
+        )
+    )
 
     now = NOW()
     bk.deposit_refund_sent = True
@@ -137,6 +166,7 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
     bk.deposit_status = "refunded"
     bk.deposit_case_closed = True
     bk.auto_finalized_by_robot = True
+    bk.deposit_waiting_wallet = False
     bk.status = "closed"
 
     db.add(
@@ -144,14 +174,15 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
             booking_id=bk.id,
             actor_id=get_system_actor_id(db),
             actor_role="system",
-            action="auto_refund_no_owner_dispute",
+            action="auto_refund_wallet_owner_silence",
             amount=int(refund_amount),
             reason="Owner did not open dispute within allowed window",
-            details=f"refund_id={refund_id}",
+            details=f"wallet_currency={currency}",
         )
     )
+
     db.commit()
-    return refund_id
+    return "wallet_payout_sent"
 
 
 # =====================================================

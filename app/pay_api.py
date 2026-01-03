@@ -1,5 +1,5 @@
 # =====================================================
-# pay-api.py
+# pay_api.py — WALLET VERSION (FINAL)
 # =====================================================
 
 from __future__ import annotations
@@ -15,10 +15,14 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import Booking, User
-from .notifications_api import push_notification
+from .models import (
+    Booking,
+    User,
+    PlatformWallet,
+    PlatformWalletLedger,
+)
 
-# ✅ نستخدم نفس منطق الضرائب
+from .notifications_api import push_notification
 from .utili_geo import locate_from_session
 from .utili_tax import compute_order_taxes
 
@@ -28,10 +32,7 @@ router = APIRouter(tags=["payments"])
 # Helpers
 # =====================================================
 
-def get_current_user(
-    request: Request,
-    db: Session = Depends(get_db),
-) -> Optional[User]:
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     data = request.session.get("user") or {}
     uid = data.get("id")
     return db.get(User, uid) if uid else None
@@ -60,18 +61,11 @@ def flow_redirect(bk: Booking, flag: str):
 # =====================================================
 
 PAYPAL_MODE = os.getenv("PAYPAL_MODE", "sandbox")
-
-if PAYPAL_MODE == "live":
-    PAYPAL_BASE = "https://api-m.paypal.com"
-else:
-    PAYPAL_BASE = "https://api-m.sandbox.paypal.com"
+PAYPAL_BASE = "https://api-m.paypal.com" if PAYPAL_MODE == "live" else "https://api-m.sandbox.paypal.com"
 
 def paypal_get_token() -> str:
     client_id = os.getenv("PAYPAL_CLIENT_ID")
     secret = os.getenv("PAYPAL_CLIENT_SECRET")
-
-    if not client_id or not secret:
-        raise RuntimeError("PayPal credentials missing")
 
     auth = base64.b64encode(f"{client_id}:{secret}".encode()).decode()
 
@@ -88,13 +82,7 @@ def paypal_get_token() -> str:
     return r.json()["access_token"]
 
 
-def paypal_create_order(
-    *,
-    booking: Booking,
-    amount: float,
-    currency: str,
-    pay_type: Literal["rent", "securityfund"],
-) -> str:
+def paypal_create_order(*, booking: Booking, amount: float, currency: str, pay_type: str) -> str:
     token = paypal_get_token()
 
     r = requests.post(
@@ -117,29 +105,23 @@ def paypal_create_order(
             "application_context": {
                 "brand_name": "Sevor",
                 "user_action": "PAY_NOW",
-                "return_url": (
-                    f"https://sevor.net/paypal/return"
-                    f"?booking_id={booking.id}&type={pay_type}"
-                ),
+                "return_url": f"https://sevor.net/paypal/return?booking_id={booking.id}&type={pay_type}",
                 "cancel_url": f"https://sevor.net/bookings/flow/{booking.id}",
             },
         },
         timeout=20,
     )
-
     r.raise_for_status()
-    data = r.json()
 
-    for link in data.get("links", []):
+    for link in r.json().get("links", []):
         if link.get("rel") == "approve":
             return link["href"]
 
     raise RuntimeError("PayPal approval link not found")
 
 
-def paypal_capture(order_id: str):
+def paypal_capture(order_id: str) -> dict:
     token = paypal_get_token()
-
     r = requests.post(
         f"{PAYPAL_BASE}/v2/checkout/orders/{order_id}/capture",
         headers={
@@ -151,31 +133,9 @@ def paypal_capture(order_id: str):
     r.raise_for_status()
     return r.json()
 
-def compute_grand_total_for_paypal(request: Request, bk: Booking) -> dict:
-    rent = float(bk.total_amount or 0)
-
-    SEVOR_FEE_PCT = 0.02
-    PAYPAL_PCT = 0.029
-    PAYPAL_FIXED = 0.30
-
-    sevor_fee = round(rent * SEVOR_FEE_PCT, 2)
-
-    base = rent + sevor_fee
-    paypal_fee = round(base * PAYPAL_PCT + PAYPAL_FIXED, 2)
-
-    grand_total = round(rent + sevor_fee + paypal_fee, 2)
-
-    # تخزين القيم (snapshot)
-    bk.platform_fee = sevor_fee
-    bk.owner_due_amount = rent
-    bk.amount_paid_cents = int(grand_total * 100)
-
-    return {
-        "rent": rent,
-        "sevor_fee": sevor_fee,
-        "paypal_fee": paypal_fee,
-        "grand_total": grand_total,
-    }
+# =====================================================
+# START PAYMENT
+# =====================================================
 
 @router.get("/paypal/start/{booking_id}")
 def paypal_start(
@@ -194,14 +154,8 @@ def paypal_start(
     if type == "rent":
         if bk.rent_paid:
             raise HTTPException(status_code=400)
-
-        # ✅ هنا التغيير المهم
-        pricing = compute_grand_total_for_paypal(request, bk)
-        amount = pricing["grand_total"]
-
-
+        amount = float(bk.total_amount)
     else:
-        # Security fund — بدون ضرائب
         if bk.security_amount <= 0 or bk.security_paid:
             raise HTTPException(status_code=400)
         amount = float(bk.security_amount)
@@ -216,11 +170,7 @@ def paypal_start(
     return RedirectResponse(approval_url, status_code=302)
 
 # =====================================================
-# RETURN + CAPTURE
-# =====================================================
-
-# =====================================================
-# RETURN + CAPTURE (FIXED)
+# RETURN + CAPTURE → WALLET
 # =====================================================
 
 @router.get("/paypal/return")
@@ -237,37 +187,42 @@ def paypal_return(
     if user.id != bk.renter_id:
         raise HTTPException(status_code=403)
 
-    capture_data = paypal_capture(token)
+    data = paypal_capture(token)
+    cap = data["purchase_units"][0]["payments"]["captures"][0]
 
-    cap = capture_data["purchase_units"][0]["payments"]["captures"][0]
-    capture_id = cap["id"]
-    capture_status = (cap.get("status") or "").upper()
-
-    # ثوابت
-    bk.payment_method = "paypal"
-    bk.payment_provider = "paypal"
-    bk.paypal_order_id = token
-
-    # ======================
-    # لم تكتمل العملية
-    # ======================
-    if capture_status != "COMPLETED":
-        db.commit()
+    if (cap.get("status") or "").upper() != "COMPLETED":
         return flow_redirect(bk, "paypal_pending")
 
-    # ======================
-    # COMPLETED
-    # ======================
+    payer = data.get("payer", {})
+    bk.payer_email = payer.get("email_address")
+    bk.payer_id = payer.get("payer_id")
+    bk.payment_provider = "paypal"
+    bk.payment_method = "paypal"
+
+    currency = bk.currency or "CAD"
+    wallet = db.query(PlatformWallet).filter_by(currency=currency).with_for_update().one()
+
+    amount = float(bk.total_amount if type == "rent" else bk.security_amount)
+
+    wallet.available_balance += amount
+
+    db.add(PlatformWalletLedger(
+        wallet_id=wallet.id,
+        booking_id=bk.id,
+        type="rent_in" if type == "rent" else "deposit_in",
+        amount=amount,
+        currency=currency,
+        direction="in",
+        source="paypal",
+    ))
+
     if type == "rent":
         bk.rent_paid = True
         bk.payment_status = "paid"
-        bk.paypal_capture_id = capture_id   # ✅ FIX النهائي
-
-    else:  # securityfund
+    else:
         bk.security_paid = True
         bk.security_status = "held"
         bk.deposit_status = "held"
-        bk.deposit_capture_id = capture_id
 
     if bk.rent_paid and (bk.security_paid or bk.security_amount == 0):
         bk.status = "paid"
@@ -275,63 +230,3 @@ def paypal_return(
 
     db.commit()
     return flow_redirect(bk, "rent_ok" if type == "rent" else "security_ok")
-
-
-# =====================================================
-# DEPOSIT REFUND (ROBOT ONLY)
-# =====================================================
-
-def paypal_refund_capture(
-    *,
-    capture_id: str,
-    amount: float,
-    currency: str,
-) -> str:
-    token = paypal_get_token()
-
-    r = requests.post(
-        f"{PAYPAL_BASE}/v2/payments/captures/{capture_id}/refund",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "amount": {
-                "value": f"{amount:.2f}",
-                "currency_code": currency,
-            }
-        },
-        timeout=20,
-    )
-
-    r.raise_for_status()
-    return r.json()["id"]
-
-
-def send_deposit_refund(
-    *,
-    db: Session,
-    booking: Booking,
-    amount: float,
-) -> str:
-    if amount <= 0:
-        raise ValueError("Refund amount must be > 0")
-
-    if booking.payment_method != "paypal":
-        raise RuntimeError("Refund supported only for PayPal")
-
-    if not booking.deposit_capture_id:
-        raise RuntimeError("Missing PayPal DEPOSIT capture ID")
-
-    refund_id = paypal_refund_capture(
-        capture_id=booking.deposit_capture_id,
-        amount=amount,
-        currency=(booking.currency or "CAD"),
-    )
-
-    booking.deposit_refund_amount = amount
-    booking.deposit_refund_sent = True
-    booking.deposit_refund_sent_at = datetime.utcnow()
-
-    db.commit()
-    return refund_id
