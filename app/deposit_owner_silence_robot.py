@@ -70,12 +70,14 @@ def find_candidates(db: Session) -> List[Booking]:
                 ),
             ),
 
-            # ---- 🚫 NO OWNER DISPUTE (CORE RULE)
+            # ---- 🚫 NO OWNER DISPUTE
             Booking.owner_dispute_opened_at.is_(None),
 
-            # ---- 🔒 NEVER TOUCH ADMIN / MD FLOW
-            # allow NULL OR 0 (some DBs store 0 by default)
-            or_(Booking.dm_decision_amount.is_(None), Booking.dm_decision_amount == 0),
+            # ---- 🔒 NEVER TOUCH MD FLOW
+            or_(
+                Booking.dm_decision_amount.is_(None),
+                Booking.dm_decision_amount == 0,
+            ),
             Booking.renter_24h_window_opened_at.is_(None),
 
             # ---- ⏱️ window expired
@@ -86,7 +88,6 @@ def find_candidates(db: Session) -> List[Booking]:
 
             # ---- PayPal only
             Booking.payment_method == "paypal",
-            Booking.payment_provider.isnot(None),
         )
         .all()
     )
@@ -110,9 +111,10 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
     if refund_amount <= 0:
         return None
 
-    capture_id = (bk.payment_provider or "").strip().lower()
-    if not capture_id or capture_id in ("paypal", "sandbox"):
-        print(f"⏭️ Skip booking #{bk.id} (invalid capture_id)")
+    # ✅ CORRECT: USE DEPOSIT CAPTURE ID ONLY
+    deposit_capture_id = (bk.deposit_capture_id or "").strip()
+    if not deposit_capture_id:
+        print(f"⏭️ Skip booking #{bk.id} — Missing PayPal DEPOSIT capture ID")
         return None
 
     # =================================================
@@ -126,7 +128,7 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
         )
     except Exception as e:
         print(f"⏭️ Skip booking #{bk.id} — PayPal refund failed: {e}")
-        return None  # 👈 VERY IMPORTANT (NO CRASH)
+        return None  # 👈 NO CRASH
 
     now = NOW()
 
@@ -150,7 +152,7 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
             action="auto_refund_no_owner_dispute",
             amount=int(refund_amount),
             reason="Owner did not open dispute within allowed window",
-            details=f"refund_id={refund_id}",
+            details=f"refund_capture={deposit_capture_id}",
         )
     )
 
