@@ -837,43 +837,31 @@ class UserPayoutMethod(Base):
 
     user = relationship("User", backref="payout_methods")
 
-class PlatformWallet(Base):
-    __tablename__ = "platform_wallet"
+
+# =========================
+# Platform Balance (Site Wallet)
+# =========================
+class PlatformBalance(Base):
+    __tablename__ = "platform_balance"
 
     id = Column(Integer, primary_key=True)
-    currency = Column(String(3), unique=True, nullable=False)
-
-    available_balance = Column(Numeric(12, 2), nullable=False, default=0)
-    reserved_balance  = Column(Numeric(12, 2), nullable=False, default=0)
-
+    available_amount = Column(Numeric(12, 2), nullable=False, default=0)
+    hold_amount = Column(Numeric(12, 2), nullable=False, default=0)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-class PlatformWalletLedger(Base):
-    __tablename__ = "platform_wallet_ledger"
+# =========================
+# Platform Ledger (Money Movements)
+# =========================
+class PlatformLedger(Base):
+    __tablename__ = "platform_ledger"
 
     id = Column(Integer, primary_key=True)
-
-    wallet_id = Column(
-        Integer,
-        ForeignKey("platform_wallet.id", ondelete="CASCADE"),
-        nullable=False
-    )
-
-    booking_id = Column(
-        Integer,
-        ForeignKey("bookings.id", ondelete="SET NULL"),
-        nullable=True
-    )
-
-    type = Column(String(30), nullable=False)      # rent_in / deposit_in / deposit_out ...
+    type = Column(String(30), nullable=False)  # deposit_refund / manual_topup / rent_income ...
     amount = Column(Numeric(12, 2), nullable=False)
-    currency = Column(String(3), nullable=False)
-
-    direction = Column(String(10), nullable=False) # in / out
-    source = Column(String(30), nullable=True)     # paypal / manual / robot
+    direction = Column(String(10), nullable=False)  # in / out
+    source = Column(String(30), nullable=True)  # paypal / manual / robot
+    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=True)
     note = Column(Text, nullable=True)
-
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    wallet  = relationship("PlatformWallet", lazy="joined")
     booking = relationship("Booking", lazy="joined")

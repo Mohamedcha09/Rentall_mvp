@@ -1,20 +1,17 @@
-# =====================================================
-# deposit_owner_silence_robot.py
-# =====================================================
+# app/deposit_owner_silence_robot.py
 """
 Robot #1 — Owner Silence (After Return)
 ======================================
 
-FINAL VERSION — WALLET BASED (NO PAYPAL REFUND)
+FINAL VERSION — PAYPAL SAFE
 
 Behavior:
 - Item returned OR return marked no problem
-- Wait WINDOW_DELTA
-- If NO owner dispute opened during window → auto refund FULL deposit
-- Refund is sent from Sevor Wallet (PAYOUT), NOT PayPal refund
-- If wallet balance insufficient → SKIP (retry later)
-- NEVER interfere with MD / Robot #3 flow
-- NO CRASH, NO DB CORRUPTION
+- Owner did NOT open dispute within window
+- Auto refund FULL deposit via PayPal
+- Refund is ALWAYS done from original PayPal transaction
+- Close deposit case
+- Close booking
 """
 
 from __future__ import annotations
@@ -26,20 +23,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 
 from app.database import SessionLocal
-from app.models import (
-    Booking,
-    DepositAuditLog,
-    User,
-    PlatformWallet,
-    PlatformWalletLedger,
-)
+from app.models import Booking, DepositAuditLog, User
+from app.pay_api import send_deposit_refund
 from app.notifications_api import push_notification
-from decimal import Decimal
+
 
 # =====================================================
-# ⏱️ WINDOW (TEST = 1 MINUTE, PROD = 24H)
-# =====================================================
-WINDOW_DELTA = timedelta(minutes=1)   # change to hours=24 in prod
+WINDOW_DELTA = timedelta(minutes=1)
 NOW = lambda: datetime.now(timezone.utc)
 # =====================================================
 
@@ -56,20 +46,15 @@ def get_system_actor_id(db: Session) -> int:
     return admin.id
 
 
-# =====================================================
-# 🔍 FIND ELIGIBLE BOOKINGS
-# =====================================================
 def find_candidates(db: Session) -> List[Booking]:
     deadline = NOW() - WINDOW_DELTA
 
     return (
         db.query(Booking)
         .filter(
-            # ---- deposit exists and not refunded
             Booking.deposit_amount > 0,
             Booking.deposit_refund_sent == False,
 
-            # ---- item returned
             or_(
                 Booking.returned_at.isnot(None),
                 and_(
@@ -78,96 +63,51 @@ def find_candidates(db: Session) -> List[Booking]:
                 ),
             ),
 
-            # ---- 🚫 NO OWNER DISPUTE
             Booking.owner_dispute_opened_at.is_(None),
 
-            # ---- 🔒 NEVER TOUCH MD FLOW
-            or_(
-                Booking.dm_decision_amount.is_(None),
-                Booking.dm_decision_amount == 0,
-            ),
-            Booking.renter_24h_window_opened_at.is_(None),
-
-            # ---- ⏱️ window expired
             or_(
                 Booking.returned_at <= deadline,
                 Booking.return_check_submitted_at <= deadline,
             ),
 
-            # ---- payment done
             Booking.payment_method == "paypal",
+            Booking.payment_provider.isnot(None),
         )
         .all()
     )
 
 
-# =====================================================
-# 💰 COMPUTE REFUND
-# =====================================================
-def compute_refund_amount(bk: Booking) -> Decimal:
+def compute_refund_amount(bk: Booking) -> float:
     try:
-        return Decimal(bk.deposit_amount or 0)
+        return float(bk.deposit_amount or 0)
     except Exception:
-        return Decimal("0.00")
+        return 0.0
 
 
-# =====================================================
-# ⚙️ EXECUTE ONE BOOKING
-# =====================================================
 def execute_one(db: Session, bk: Booking) -> Optional[str]:
     refund_amount = compute_refund_amount(bk)
     if refund_amount <= 0:
         return None
 
-    currency = bk.currency or "CAD"
-
-    # 🔒 Lock wallet row
-    wallet = (
-        db.query(PlatformWallet)
-        .filter(PlatformWallet.currency == currency)
-        .with_for_update()
-        .first()
-    )
-
-    if not wallet:
-        print(f"⏭️ Skip booking #{bk.id} (wallet not found)")
+    capture_id = (bk.payment_provider or "").strip()
+    if not capture_id or capture_id.lower() in ("paypal", "sandbox"):
+        print(f"⏭️ Skip booking #{bk.id} (invalid capture_id)")
         return None
 
-    # ❌ Not enough balance → wait
-    if wallet.available_balance < refund_amount:
-        print(
-            f"⏳ Wallet insufficient for booking #{bk.id} "
-            f"({wallet.available_balance} < {refund_amount})"
-        )
-        bk.deposit_waiting_wallet = True
-        bk.deposit_wallet_checked_at = NOW()
-        db.commit()
-        return None
-
-    # ✅ Wallet OK → execute payout (logical)
-    wallet.available_balance -= refund_amount
-
-    db.add(
-        PlatformWalletLedger(
-            wallet_id=wallet.id,
-            booking_id=bk.id,
-            type="deposit_out",
-            amount=refund_amount,
-            currency=currency,
-            direction="out",
-            source="robot",
-            note="Auto refund — owner silence",
-        )
+    refund_id = send_deposit_refund(
+        db=db,
+        booking=bk,
+        amount=refund_amount,
     )
 
     now = NOW()
+
     bk.deposit_refund_sent = True
     bk.deposit_refund_sent_at = now
     bk.deposit_refund_amount = refund_amount
     bk.deposit_status = "refunded"
     bk.deposit_case_closed = True
     bk.auto_finalized_by_robot = True
-    bk.deposit_waiting_wallet = False
     bk.status = "closed"
 
     db.add(
@@ -175,25 +115,33 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
             booking_id=bk.id,
             actor_id=get_system_actor_id(db),
             actor_role="system",
-            action="auto_refund_wallet_owner_silence",
-            amount=refund_amount,
-            reason="Owner did not open dispute within allowed window",
-            details=f"wallet_currency={currency}",
+            action="auto_refund_owner_silent",
+            amount=int(refund_amount),
+            reason="Owner did not open dispute",
+            details=f"refund_id={refund_id}",
         )
     )
 
     db.commit()
-    return "wallet_payout_sent"
+
+    try:
+        push_notification(
+            user_id=bk.renter_id,
+            title="Deposit refunded ✅",
+            body="Your deposit has been refunded.",
+            data={"booking_id": bk.id},
+        )
+    except Exception:
+        pass
+
+    return refund_id
 
 
-# =====================================================
-# ▶️ RUN ONCE
-# =====================================================
 def run_once():
     db = SessionLocal()
     try:
         items = find_candidates(db)
-        print(f"Robot #1 candidates: {len(items)}")
+        print(f"Candidates: {len(items)}")
         for bk in items:
             execute_one(db, bk)
     finally:
