@@ -106,35 +106,31 @@ def compute_refund_amount(bk: Booking) -> float:
 # =====================================================
 # ⚙️ EXECUTE ONE BOOKING
 # =====================================================
+
 def execute_one(db: Session, bk: Booking) -> Optional[str]:
     refund_amount = compute_refund_amount(bk)
     if refund_amount <= 0:
         return None
 
-    # ✅ CORRECT: USE DEPOSIT CAPTURE ID ONLY
-    deposit_capture_id = (bk.deposit_capture_id or "").strip()
-    if not deposit_capture_id:
-        print(f"⏭️ Skip booking #{bk.id} — Missing PayPal DEPOSIT capture ID")
+    # ✅ IMPORTANT: deposit capture id ONLY
+    capture_id = (bk.deposit_capture_id or "").strip()
+    if not capture_id:
+        print(f"⏭️ Skip booking #{bk.id} (missing deposit_capture_id)")
         return None
 
-    # =================================================
-    # 🔑 TRY PAYPAL REFUND FIRST (PAYPAL-SAFE)
-    # =================================================
+    # ✅ avoid placeholders / bad ids
+    bad = {"paypal", "sandbox", "put_rent_capture_id_here", "put_deposit_capture_id_here"}
+    if capture_id.lower() in bad:
+        print(f"⏭️ Skip booking #{bk.id} (invalid deposit capture_id)")
+        return None
+
     try:
-        refund_id = send_deposit_refund(
-            db=db,
-            booking=bk,
-            amount=refund_amount,
-        )
+        refund_id = send_deposit_refund(db=db, booking=bk, amount=refund_amount)
     except Exception as e:
         print(f"⏭️ Skip booking #{bk.id} — PayPal refund failed: {e}")
-        return None  # 👈 NO CRASH
+        return None
 
     now = NOW()
-
-    # =================================================
-    # ✅ REFUND SUCCESS → UPDATE DB
-    # =================================================
     bk.deposit_refund_sent = True
     bk.deposit_refund_sent_at = now
     bk.deposit_refund_amount = refund_amount
@@ -143,7 +139,6 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
     bk.auto_finalized_by_robot = True
     bk.status = "closed"
 
-    # ---- audit log
     db.add(
         DepositAuditLog(
             booking_id=bk.id,
@@ -152,23 +147,10 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
             action="auto_refund_no_owner_dispute",
             amount=int(refund_amount),
             reason="Owner did not open dispute within allowed window",
-            details=f"refund_capture={deposit_capture_id}",
+            details=f"refund_id={refund_id}",
         )
     )
-
     db.commit()
-
-    # ---- notify renter
-    try:
-        push_notification(
-            user_id=bk.renter_id,
-            title="Deposit refunded ✅",
-            body="Your deposit has been refunded automatically.",
-            data={"booking_id": bk.id},
-        )
-    except Exception:
-        pass
-
     return refund_id
 
 

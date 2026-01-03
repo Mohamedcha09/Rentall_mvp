@@ -214,6 +214,7 @@ def paypal_start(
 # =====================================================
 # RETURN + CAPTURE
 # =====================================================
+
 @router.get("/paypal/return")
 def paypal_return(
     booking_id: int,
@@ -228,41 +229,60 @@ def paypal_return(
     if user.id != bk.renter_id:
         raise HTTPException(status_code=403)
 
-    # 🔴 CAPTURE PAYMENT FROM PAYPAL
     capture_data = paypal_capture(token)
-    capture_id = (
+
+    cap = (
         capture_data["purchase_units"][0]
-        ["payments"]["captures"][0]["id"]
+        ["payments"]["captures"][0]
     )
+    capture_id = cap["id"]
+    capture_status = (cap.get("status") or "").upper()   # ✅ IMPORTANT
 
+    # ✅ always mark method/provider normally
     bk.payment_method = "paypal"
+    bk.payment_provider = "paypal"
 
-    # ==============================
-    # ✅ SEPARATE RENT / DEPOSIT
-    # ==============================
+    # ✅ save order id for debugging
+    bk.paypal_order_id = token
+
+    # =================================
+    # ✅ إذا العملية ليست COMPLETED لا نعتبرها مدفوعة
+    # =================================
+    if capture_status != "COMPLETED":
+        # خزن IDs فقط للتشخيص، لكن لا تغيّر paid flags
+        if type == "rent":
+            bk.paypal_capture_id = capture_id
+            bk.payment_status = "pending"
+        else:
+            bk.deposit_capture_id = capture_id
+            bk.security_status = "pending"
+
+        db.commit()
+        return flow_redirect(bk, "paypal_pending")
+
+    # =================================
+    # ✅ COMPLETED → نحدّث flags صح
+    # =================================
     if type == "rent":
         bk.rent_paid = True
-        bk.payment_capture_id = capture_id   # Capture خاص بالإيجار فقط
+        bk.payment_status = "paid"
+        bk.paypal_capture_id = capture_id  # ✅ بدل payment_capture_id
 
     else:  # securityfund
         bk.security_paid = True
         bk.security_status = "held"
-        bk.deposit_capture_id = capture_id   # ✅ Capture خاص بالضمان فقط
+        bk.deposit_capture_id = capture_id
+        bk.deposit_status = "held"
 
-    # ==============================
-    # FINALIZE BOOKING IF BOTH PAID
-    # ==============================
+    # finalize if both paid
     if bk.rent_paid and (bk.security_paid or bk.security_amount == 0):
         bk.status = "paid"
-        bk.payment_status = "paid"
         bk.timeline_paid_at = datetime.utcnow()
 
     db.commit()
 
-    return flow_redirect(
-        bk,
-        "rent_ok" if type == "rent" else "security_ok"
-    )
+    return flow_redirect(bk, "rent_ok" if type == "rent" else "security_ok")
+
 
 
 # =====================================================
