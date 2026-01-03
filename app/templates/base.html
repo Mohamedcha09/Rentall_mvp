@@ -1151,10 +1151,13 @@ window.onpageshow = function(e){
 
     {% if not immersive and session_user and session_user.status == 'approved' and not session_user.payouts_enabled %}
 
-      <div class="stripe-callout alert alert-warning d-flex justify-content-between align-items:center mb-3">
-        <div>💸 To start receiving earnings, connect <strong>Stripe Connect</strong>.</div>
-        <a class="btn btn-sm btn-primary" href="/payout/settings">Connect Now</a>
-      </div>
+      <div class="paypal-callout alert alert-warning d-flex justify-content-between align-items-center mb-3">
+  <div>💸 To start receiving earnings, connect <strong>PayPal</strong>.</div>
+  <a class="btn btn-sm btn-primary" href="/payout/paypal/connect">
+    Connect PayPal
+  </a>
+</div>
+
     {% endif %}
 
     {% if message %}<div class="alert alert-info">{{ message }}</div>{% endif %}
