@@ -1,3 +1,7 @@
+# =====================================================
+# pay-api.py
+# =====================================================
+
 from __future__ import annotations
 
 import os
@@ -215,11 +219,15 @@ def paypal_start(
 # RETURN + CAPTURE
 # =====================================================
 
+# =====================================================
+# RETURN + CAPTURE (FIXED)
+# =====================================================
+
 @router.get("/paypal/return")
 def paypal_return(
     booking_id: int,
     type: Literal["rent", "securityfund"],
-    token: str,  # PayPal Order ID
+    token: str,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user),
 ):
@@ -231,25 +239,16 @@ def paypal_return(
 
     capture_data = paypal_capture(token)
 
-    cap = (
-        capture_data["purchase_units"][0]
-        ["payments"]["captures"][0]
-    )
+    cap = capture_data["purchase_units"][0]["payments"]["captures"][0]
     capture_id = cap["id"]
-    capture_status = (cap.get("status") or "").upper()   # ✅ IMPORTANT
+    capture_status = (cap.get("status") or "").upper()
 
-    # ✅ always mark method/provider normally
+    # ✅ تصحيح أساسي
     bk.payment_method = "paypal"
     bk.payment_provider = "paypal"
-
-    # ✅ save order id for debugging
     bk.paypal_order_id = token
 
-    # =================================
-    # ✅ إذا العملية ليست COMPLETED لا نعتبرها مدفوعة
-    # =================================
     if capture_status != "COMPLETED":
-        # خزن IDs فقط للتشخيص، لكن لا تغيّر paid flags
         if type == "rent":
             bk.paypal_capture_id = capture_id
             bk.payment_status = "pending"
@@ -260,33 +259,25 @@ def paypal_return(
         db.commit()
         return flow_redirect(bk, "paypal_pending")
 
-    # =================================
-    # ✅ COMPLETED → نحدّث flags صح
-    # =================================
     if type == "rent":
         bk.rent_paid = True
         bk.payment_status = "paid"
-        bk.paypal_capture_id = capture_id  # ✅ بدل payment_capture_id
-
-    else:  # securityfund
+        bk.paypal_capture_id = capture_id
+    else:
         bk.security_paid = True
         bk.security_status = "held"
-        bk.deposit_capture_id = capture_id
         bk.deposit_status = "held"
+        bk.deposit_capture_id = capture_id
 
-    # finalize if both paid
     if bk.rent_paid and (bk.security_paid or bk.security_amount == 0):
         bk.status = "paid"
         bk.timeline_paid_at = datetime.utcnow()
 
     db.commit()
-
     return flow_redirect(bk, "rent_ok" if type == "rent" else "security_ok")
 
-
-
 # =====================================================
-# DEPOSIT REFUND (USED BY ROBOT ONLY)
+# DEPOSIT REFUND (ROBOT ONLY)
 # =====================================================
 
 def paypal_refund_capture(
@@ -295,10 +286,6 @@ def paypal_refund_capture(
     amount: float,
     currency: str,
 ) -> str:
-    """
-    Refund a captured PayPal payment (partial or full).
-    Returns refund ID.
-    """
     token = paypal_get_token()
 
     r = requests.post(
@@ -317,36 +304,30 @@ def paypal_refund_capture(
     )
 
     r.raise_for_status()
-    data = r.json()
-    return data["id"]
+    return r.json()["id"]
+
+
 def send_deposit_refund(
     *,
     db: Session,
     booking: Booking,
     amount: float,
 ) -> str:
-    """
-    ROBOT ENTRY POINT
-    Sends refund to renter for DEPOSIT ONLY.
-    """
     if amount <= 0:
         raise ValueError("Refund amount must be > 0")
 
     if booking.payment_method != "paypal":
         raise RuntimeError("Refund supported only for PayPal")
 
-    # ✅ IMPORTANT: USE DEPOSIT CAPTURE ONLY
-    capture_id = booking.deposit_capture_id
-    if not capture_id:
+    if not booking.deposit_capture_id:
         raise RuntimeError("Missing PayPal DEPOSIT capture ID")
 
     refund_id = paypal_refund_capture(
-        capture_id=capture_id,
+        capture_id=booking.deposit_capture_id,
         amount=amount,
         currency=(booking.currency or "CAD"),
     )
 
-    # Update booking (robot-only fields)
     booking.deposit_refund_amount = amount
     booking.deposit_refund_sent = True
     booking.deposit_refund_sent_at = datetime.utcnow()
