@@ -34,6 +34,7 @@ from app.models import (
     PlatformWalletLedger,
 )
 from app.notifications_api import push_notification
+from decimal import Decimal
 
 # =====================================================
 # ⏱️ WINDOW (TEST = 1 MINUTE, PROD = 24H)
@@ -103,11 +104,11 @@ def find_candidates(db: Session) -> List[Booking]:
 # =====================================================
 # 💰 COMPUTE REFUND
 # =====================================================
-def compute_refund_amount(bk: Booking) -> float:
+def compute_refund_amount(bk: Booking) -> Decimal:
     try:
-        return float(bk.deposit_amount or 0)
+        return Decimal(bk.deposit_amount or 0)
     except Exception:
-        return 0.0
+        return Decimal("0.00")
 
 
 # =====================================================
@@ -175,7 +176,7 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
             actor_id=get_system_actor_id(db),
             actor_role="system",
             action="auto_refund_wallet_owner_silence",
-            amount=int(refund_amount),
+            amount=refund_amount,
             reason="Owner did not open dispute within allowed window",
             details=f"wallet_currency={currency}",
         )
