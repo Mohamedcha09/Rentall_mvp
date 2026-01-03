@@ -12,7 +12,7 @@ from .database import get_db
 from .models import User, Item, Booking, UserReview
 from .utils import category_label, display_currency, fx_convert
 from .notifications_api import push_notification, notify_admins
-from .pay_api import paypal_start, paypal_return, compute_grand_total_for_paypal
+from .pay_api import paypal_start, paypal_return
 
 # ✅ ADDITIONS
 from .utili_geo import locate_from_session
@@ -218,7 +218,11 @@ def booking_flow(
     # ============================
     # 💰 PRICING — SOURCE UNIQUE
     # ============================
-    pricing = compute_grand_total_for_paypal(request, bk)
+    rent = float(bk.rent_amount or bk.total_amount or 0)
+    platform_fee = float(bk.platform_fee or 0)
+    paypal_fee = 0.0   # لم نعد نعرض PayPal fee للزبون
+    grand_total = rent + platform_fee
+
 
     # ============================
     # ⏱️ DISPUTE DEADLINE (TEST MODE = 1 MINUTE)
@@ -246,10 +250,11 @@ def booking_flow(
         "category_label": category_label,
 
         # 💰 AMOUNTS (FROM SINGLE SOURCE)
-        "rent": pricing["rent"],
-        "sevor_fee": pricing["sevor_fee"],
-        "paypal_fee": pricing["paypal_fee"],
-        "grand_total": pricing["grand_total"],
+        "rent": rent,
+        "sevor_fee": platform_fee,
+        "paypal_fee": paypal_fee,
+        "grand_total": grand_total,
+
 
         # taxes disabled
         "tax_lines": [],
