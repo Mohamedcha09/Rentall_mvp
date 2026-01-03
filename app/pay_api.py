@@ -243,27 +243,27 @@ def paypal_return(
     capture_id = cap["id"]
     capture_status = (cap.get("status") or "").upper()
 
-    # ✅ تصحيح أساسي
+    # ثوابت
     bk.payment_method = "paypal"
     bk.payment_provider = "paypal"
     bk.paypal_order_id = token
 
+    # ======================
+    # لم تكتمل العملية
+    # ======================
     if capture_status != "COMPLETED":
-        if type == "rent":
-            bk.paypal_capture_id = capture_id
-            bk.payment_status = "pending"
-        else:
-            bk.deposit_capture_id = capture_id
-            bk.security_status = "pending"
-
         db.commit()
         return flow_redirect(bk, "paypal_pending")
 
+    # ======================
+    # COMPLETED
+    # ======================
     if type == "rent":
         bk.rent_paid = True
         bk.payment_status = "paid"
-        bk.paypal_capture_id = capture_id
-    else:
+        bk.paypal_capture_id = capture_id   # ✅ FIX النهائي
+
+    else:  # securityfund
         bk.security_paid = True
         bk.security_status = "held"
         bk.deposit_status = "held"
@@ -275,6 +275,7 @@ def paypal_return(
 
     db.commit()
     return flow_redirect(bk, "rent_ok" if type == "rent" else "security_ok")
+
 
 # =====================================================
 # DEPOSIT REFUND (ROBOT ONLY)
