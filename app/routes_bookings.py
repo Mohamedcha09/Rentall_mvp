@@ -428,6 +428,8 @@ def bookings_index(
             "bookings": bookings,
             "view": view,
             "user": user,
+            "session_user": session_user,
+
         },
     )
 
