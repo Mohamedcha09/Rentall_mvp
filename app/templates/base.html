@@ -100,8 +100,6 @@ if ("serviceWorker" in navigator) {
     /* Topbar */
     .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; }
 
-    /* Searchbar (item + city) */
-    .searchbar{ position:relative; max-width:760px; margin-inline:auto; }
     .searchbar-wrap{
       display:flex; align-items:center; gap:10px;
       background:#fff; border:1px solid var(--border);
@@ -737,37 +735,7 @@ body[data-auth="0"] .mobile-tabbar {
 .mobile-tabbar {
   position: relative;
 }
-/* ----- Bottom Mobile Tabbar (Clean) ----- */
-.mobile-tabbar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 64px;
-  background: rgba(0,0,0,.55);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  align-items: center;
-  padding: 6px;
-  z-index: 99;
-  border-top: 1px solid rgba(255,255,255,.12);
-}
 
-/* Each tab */
-.mobile-tabbar a {
-  text-align: center;
-  color: rgba(255,255,255,.7);
-  font-size: 22px;
-  padding-top: 4px;
-}
-
-/* Active tab (glowing) */
-.mobile-tabbar a.is-active {
-  color: #fff;
-  font-weight: 600;
-}
 
 /* Remove indicator completely */
 .mobile-tabbar .tab-indicator {
@@ -866,66 +834,24 @@ main.page {
   }
 }
 
-/* ===== FIX: force identical searchbar width on payouts/admin/notifications ===== */
-
-body[data-path^="/payout"],
-body[data-path^="/admin"],
-body[data-path^="/notifications"] {
-
-  /* نمنع flex من التمدد */
-  .searchbar {
-    flex-grow: 0 !important;
-  }
-
-  /* نُثبت الحجم الحقيقي */
-  .searchbar-wrap {
-    max-width: 720px !important;
-    width: 100%;
-    margin-inline: auto;
-  }
-}
-
 :root{
   --sv-search-max: 720px;
 }
 
-.searchbar-wrap{
+
+.searchbar{
+  width: 100%;
   max-width: var(--sv-search-max);
+  margin-inline: auto;
+  flex: 0 0 auto;
 }
 
-
-
-
-
-
-/* =========================================================
-   FINAL FIX — FORCE SEARCH BAR TO MATCH HOME (PAYOUTS)
-   ========================================================= */
-
-/* 1. ثبّت عرض searchbar نفسه */
-.searchbar {
-  max-width: 720px !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-  flex: none !important;
+.searchbar-wrap{
+  width: 100%;
+  max-width: var(--sv-search-max);
+  margin-inline: auto;
 }
 
-/* 2. امنع أي تأثير من m-top-tabs */
-body[data-path^="/payout"] .m-top-tabs {
-  margin-top: 0 !important;
-  padding-top: 0 !important;
-}
-
-/* 3. اجعل searchbar فوق كل شيء */
-body[data-path^="/payout"] .searchbar {
-  position: relative;
-  z-index: 1100;
-}
-
-/* 4. أعد نفس padding المستخدم في Home */
-body[data-path^="/payout"] header.topbar {
-  padding-bottom: 6px !important;
-}
 
 </style>
 
@@ -1059,7 +985,7 @@ window.onpageshow = function(e){
       </a>
 
       <!-- ===== Search bar (item + city) ===== -->
-      <form class="search searchbar flex-grow-1" action="/search" method="get" role="search" dir="ltr">
+      <form class="search searchbar" action="/search" method="get" role="search" dir="ltr">
         <div class="searchbar-wrap">
           <i class="bi bi-search"></i>
 
@@ -2084,12 +2010,7 @@ window.onpageshow = function(e){
 </style>
 
 <script>
-/* Attach current path to <body data-path="..."> */
-document.addEventListener('DOMContentLoaded', function(){
-  try {
-    document.body.setAttribute('data-path', location.pathname);
-  }catch(e){}
-});
+  try { document.currentScript.parentElement.setAttribute('data-path', location.pathname); } catch(e){}
 </script>
 
 <script>
