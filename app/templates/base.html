@@ -808,31 +808,25 @@ body[data-auth="0"] .mobile-tabbar {
 
 
 
-<style id="mobile-safe-top-spacer">
+<style id="ios-pwa-safe-top-final">
 @media (max-width: 768px){
-  .sv-safe-top{
-    position: relative;
-    width: 100%;
-    height: 24px;                /* fallback ثابت */
+
+  /* === iOS SAFE AREA – PWA FIX (REAL) === */
+  html.pwa body::before{
+    content: "";
+    display: block;
+    height: max(env(safe-area-inset-top), 24px);
     background: #ffffff;
-    flex-shrink: 0;
   }
 
-  /* iOS modern */
-  @supports (height: env(safe-area-inset-top)) {
-    .sv-safe-top{
-      height: max(env(safe-area-inset-top), 24px);
-    }
+  /* Dark mode */
+  [data-theme="dark"].pwa body::before{
+    background: #0b1020;
   }
 
-  /* iOS legacy */
-  @supports (height: constant(safe-area-inset-top)) {
-    .sv-safe-top{
-      height: max(constant(safe-area-inset-top), 24px);
-    }
-  }
 }
 </style>
+
 
 
 
@@ -919,8 +913,6 @@ window.onpageshow = function(e){
 
 <body data-auth="{{ '1' if session_user else '0' }}"
       class="{% if show_tabbar and not immersive and not no_ui %}has-tabbar{% endif %}">
-        <div class="sv-safe-top d-lg-none"></div>
-
   <div id="page-wrapper">
 {% if not immersive and not no_ui %}
   <!-- ===== Topbar ===== -->
