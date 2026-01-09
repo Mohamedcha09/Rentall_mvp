@@ -806,63 +806,6 @@ body[data-auth="0"] .mobile-tabbar {
 </style>
 
 
-<style>
-/* =========================
-   FIX: iOS Safe Area (Top)
-   Apple Review – UI Cut Fix
-   ========================= */
-
-@media (max-width: 768px) {
-
-  header.topbar {
-    padding-top: calc(env(safe-area-inset-top, 0px) + 12px) !important;
-  }
-
-  .topbar__inner {
-    padding-top: 6px !important;
-  }
-
-  /* Search bar spacing */
-  .searchbar {
-    margin-top: 8px !important;
-  }
-
-  /* Mobile top tabs (Home / Notifications / Payouts / Admin) */
-  .m-top-tabs {
-    margin-top: 6px !important;
-  }
-}
-
-/* ===== MOBILE: Topbar = Search ONLY ===== */
-@media (max-width: 768px){
-  header.topbar .actions,
-  header.topbar .brand,
-  header.topbar #menuBtn {
-    display: none !important;
-  }
-
-  header.topbar{
-    position: sticky;
-    top: 0;
-    z-index: 3000;
-    background: transparent;
-  }
-}
-@media (max-width: 768px){
-  .searchbar{
-    position: relative;
-    z-index: 3001;
-    margin-top: 8px !important;
-  }
-}
-@media (max-width: 768px){
-  .m-top-tabs{
-    margin-top: 4px !important;   /* بدل 6px أو أكثر */
-    padding-top: 0 !important;
-  }
-}
-
-</style>
 
 
 
