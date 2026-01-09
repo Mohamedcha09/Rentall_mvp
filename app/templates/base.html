@@ -806,23 +806,30 @@ body[data-auth="0"] .mobile-tabbar {
 </style>
 
 
-<style id="ios-safe-top-fix">
-/* ===== iOS Safe Top Fix (Apple Review) ===== */
+<style>
+/* =========================
+   FIX: iOS Safe Area (Top)
+   Apple Review – UI Cut Fix
+   ========================= */
+
 @media (max-width: 768px) {
 
-  /* أنزل الهيدر كله */
   header.topbar {
-    padding-top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
-  }
-
-  /* أنزل التابات */
-  .m-top-tabs {
-    margin-top: calc(env(safe-area-inset-top, 0px) + 4px) !important;
-  }
-
-  /* أنزل محتوى الصفحة */
-  main.page {
     padding-top: calc(env(safe-area-inset-top, 0px) + 12px) !important;
+  }
+
+  .topbar__inner {
+    padding-top: 6px !important;
+  }
+
+  /* Search bar spacing */
+  .searchbar {
+    margin-top: 8px !important;
+  }
+
+  /* Mobile top tabs (Home / Notifications / Payouts / Admin) */
+  .m-top-tabs {
+    margin-top: 6px !important;
   }
 }
 </style>
