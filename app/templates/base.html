@@ -70,7 +70,8 @@
   <!-- PWA -->
   <link rel="manifest" href="{{ url_for('static', path='manifest.json') }}">
 <meta name="theme-color" content="#0b1020">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
   <script>
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.getRegistrations().then(regs => {
@@ -804,26 +805,15 @@ body[data-auth="0"] .mobile-tabbar {
     transform: translateX(-20px);
     transition: opacity .25s ease, transform .25s ease;
   }
-  /* ===== iOS PWA SAFE TOP BAR (FINAL FIX) ===== */
+  /* ===== iOS SAFE TOP — FINAL, NO BAR ===== */
 @media (max-width: 768px) {
 
-  html.pwa .ios-safe-top {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-
-    height: env(safe-area-inset-top);
-    min-height: 44px; /* fallback */
-
-    background: #ffffff; /* البار الأبيض */
-    z-index: 2147483000;
-    pointer-events: none;
+  header.topbar {
+    padding-top: max(env(safe-area-inset-top), 20px);
   }
 
-  /* ندفع الصفحة كلها تحت البار */
-  html.pwa body {
-    padding-top: calc(env(safe-area-inset-top) + 8px) !important;
+  .m-top-tabs {
+    margin-top: max(env(safe-area-inset-top), 20px);
   }
 }
 
@@ -917,7 +907,6 @@ window.onpageshow = function(e){
 
 <body data-auth="{{ '1' if session_user else '0' }}"
       class="{% if show_tabbar and not immersive and not no_ui %}has-tabbar{% endif %}">
-      <div class="ios-safe-top"></div>
 
   <div id="page-wrapper">
 {% if not immersive and not no_ui %}
