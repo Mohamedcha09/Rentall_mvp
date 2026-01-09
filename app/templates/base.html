@@ -806,6 +806,26 @@ body[data-auth="0"] .mobile-tabbar {
 </style>
 
 
+<style id="ios-safe-top-fix">
+/* ===== iOS Safe Top Fix (Apple Review) ===== */
+@media (max-width: 768px) {
+
+  /* أنزل الهيدر كله */
+  header.topbar {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
+  }
+
+  /* أنزل التابات */
+  .m-top-tabs {
+    margin-top: calc(env(safe-area-inset-top, 0px) + 4px) !important;
+  }
+
+  /* أنزل محتوى الصفحة */
+  main.page {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 12px) !important;
+  }
+}
+</style>
 
 
 
