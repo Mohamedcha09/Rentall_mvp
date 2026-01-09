@@ -808,25 +808,18 @@ body[data-auth="0"] .mobile-tabbar {
 
 
 
-<style id="mobile-top-white-bar">
-@media (max-width: 768px) {
-  body[data-path="/"]::before {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: env(safe-area-inset-top);
+<style id="mobile-safe-top-spacer">
+@media (max-width: 768px){
+  .sv-safe-top {
+    position: relative;
+    height: max(var(--safe-top), 16px);
+    min-height: 16px;
     background: #ffffff;
-    z-index: 2147483647;
-    pointer-events: none;
-  }
-
-  body[data-path="/"] {
-    padding-top: env(safe-area-inset-top);
+    flex-shrink: 0;
   }
 }
 </style>
+
 
 
 {% block head %}{% endblock %}
@@ -911,6 +904,8 @@ window.onpageshow = function(e){
 
 <body data-auth="{{ '1' if session_user else '0' }}"
       class="{% if show_tabbar and not immersive and not no_ui %}has-tabbar{% endif %}">
+        <div class="sv-safe-top d-lg-none"></div>
+
   <div id="page-wrapper">
 {% if not immersive and not no_ui %}
   <!-- ===== Topbar ===== -->
