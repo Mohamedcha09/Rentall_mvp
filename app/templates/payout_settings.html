@@ -35,6 +35,22 @@
   border:1px solid var(--border);
 }
 .hint{font-size:.85rem;opacity:.7;margin-top:4px}
+
+/* ===== Fix: make searchbar identical on all pages ===== */
+.searchbar-wrap{
+  background: #fff !important;
+  box-shadow: 0 6px 20px rgba(0,0,0,.06) !important;
+  border-radius: 999px !important;
+  position: relative;
+  z-index: 10;
+}
+
+/* Ensure tabs never affect searchbar visually */
+.m-top-tabs{
+  position: relative;
+  z-index: 1;
+}
+
 </style>
 {% endblock %}
 
