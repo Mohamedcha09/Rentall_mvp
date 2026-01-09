@@ -902,6 +902,34 @@ body[data-path^="/notifications"] {
 
 
 
+/* =========================================================
+   FINAL FIX — FORCE SEARCH BAR TO MATCH HOME (PAYOUTS)
+   ========================================================= */
+
+/* 1. ثبّت عرض searchbar نفسه */
+.searchbar {
+  max-width: 720px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  flex: none !important;
+}
+
+/* 2. امنع أي تأثير من m-top-tabs */
+body[data-path^="/payout"] .m-top-tabs {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* 3. اجعل searchbar فوق كل شيء */
+body[data-path^="/payout"] .searchbar {
+  position: relative;
+  z-index: 1100;
+}
+
+/* 4. أعد نفس padding المستخدم في Home */
+body[data-path^="/payout"] header.topbar {
+  padding-bottom: 6px !important;
+}
 
 
 {% block head %}{% endblock %}
