@@ -808,6 +808,25 @@ body[data-auth="0"] .mobile-tabbar {
 
 
 
+<style id="mobile-top-white-bar">
+@media (max-width: 768px) {
+  body[data-path="/"]::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-top);
+    background: #ffffff;
+    z-index: 2147483647;
+    pointer-events: none;
+  }
+
+  body[data-path="/"] {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+</style>
 
 
 {% block head %}{% endblock %}
