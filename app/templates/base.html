@@ -804,25 +804,32 @@ body[data-auth="0"] .mobile-tabbar {
     transform: translateX(-20px);
     transition: opacity .25s ease, transform .25s ease;
   }
-</style>
+  /* ===== iOS PWA SAFE TOP BAR (FINAL FIX) ===== */
+@media (max-width: 768px) {
 
+  html.pwa .ios-safe-top {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
 
+    height: env(safe-area-inset-top);
+    min-height: 44px; /* fallback */
 
-<style id="ios-pwa-safe-top-REAL">
-@media (max-width: 768px){
-
-  /* 1️⃣ إزاحة الصفحة نفسها */
-  html.pwa body{
-    padding-top: max(env(safe-area-inset-top), 24px) !important;
+    background: #ffffff; /* البار الأبيض */
+    z-index: 2147483000;
+    pointer-events: none;
   }
 
-  /* 2️⃣ إزاحة الـ header (لأنه position: static داخل flex) */
-  html.pwa header.topbar{
-    margin-top: max(env(safe-area-inset-top), 24px) !important;
+  /* ندفع الصفحة كلها تحت البار */
+  html.pwa body {
+    padding-top: calc(env(safe-area-inset-top) + 8px) !important;
   }
-
 }
+
 </style>
+
+
 
 
 
@@ -910,6 +917,8 @@ window.onpageshow = function(e){
 
 <body data-auth="{{ '1' if session_user else '0' }}"
       class="{% if show_tabbar and not immersive and not no_ui %}has-tabbar{% endif %}">
+      <div class="ios-safe-top"></div>
+
   <div id="page-wrapper">
 {% if not immersive and not no_ui %}
   <!-- ===== Topbar ===== -->
