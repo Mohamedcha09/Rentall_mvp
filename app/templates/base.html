@@ -866,6 +866,34 @@ main.page {
   }
 }
 
+/* ===== FIX: force identical searchbar width on payouts/admin/notifications ===== */
+
+body[data-path^="/payout"],
+body[data-path^="/admin"],
+body[data-path^="/notifications"] {
+
+  /* نمنع flex من التمدد */
+  .searchbar {
+    flex-grow: 0 !important;
+  }
+
+  /* نُثبت الحجم الحقيقي */
+  .searchbar-wrap {
+    max-width: 720px !important;
+    width: 100%;
+    margin-inline: auto;
+  }
+}
+
+:root{
+  --sv-search-max: 720px;
+}
+
+.searchbar-wrap{
+  max-width: var(--sv-search-max);
+}
+
+
 
 
 </style>
