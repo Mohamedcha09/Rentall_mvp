@@ -817,6 +817,46 @@ body[data-auth="0"] .mobile-tabbar {
   }
 }
 
+/* ===== FIX MOBILE TOP STACK (FINAL) ===== */
+@media (max-width: 768px){
+
+  header.topbar{
+    position: relative;
+    padding-top: calc(env(safe-area-inset-top) + 8px) !important;
+    padding-bottom: 8px !important;
+    z-index: 1000;
+  }
+
+  .topbar__inner{
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+}
+@media (max-width: 768px){
+
+  /* Search bar takes full row */
+  .searchbar{
+    order: 2;
+    width: 100%;
+    margin-top: 6px;
+  }
+
+  /* Actions (icons) stay on first row */
+  .actions{
+    order: 1;
+  }
+}
+@media (max-width: 768px){
+
+  .m-top-tabs{
+    position: relative;
+    margin-top: 4px !important;
+    padding-top: 6px;
+    z-index: 900;
+  }
+}
+
+
 </style>
 
 
