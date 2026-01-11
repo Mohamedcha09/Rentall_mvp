@@ -888,6 +888,30 @@ header.topbar .searchbar input.form-control{
 
 </style>
 
+<style>
+/* ===== FIX searchbar text drop ONLY on payouts page ===== */
+body[data-path^="/payout"] header.topbar .searchbar-wrap input{
+  line-height: 1 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* تأكيد محاذاة النص */
+body[data-path^="/payout"] header.topbar .searchbar-wrap{
+  align-items: center !important;
+}
+
+/* fix خاص بـ iOS */
+@supports (-webkit-touch-callout: none){
+  body[data-path^="/payout"] header.topbar .searchbar-wrap input{
+    position: relative;
+    top: -1px; /* ارفع النص قليلاً */
+  }
+}
+</style>
+
 
 
 {% block head %}{% endblock %}
