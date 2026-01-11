@@ -785,85 +785,47 @@ body[data-auth="0"] .mobile-tabbar {
   }
 }
 
-/* ===== FIX MOBILE TOP STACK (FINAL) ===== */
-@media (max-width: 768px){
 
-  header.topbar{
-    position: relative;
-    padding-top: calc(env(safe-area-inset-top) + 8px) !important;
-    padding-bottom: 8px !important;
-    z-index: 1000;
-  }
-
-  .topbar__inner{
-    flex-wrap: wrap;
-    row-gap: 10px;
-  }
-}
-@media (max-width: 768px){
-
-  /* Search bar takes full row */
-  .searchbar{
-    order: 2;
-    width: 100%;
-    margin-top: 6px;
-  }
-
-  /* Actions (icons) stay on first row */
-  .actions{
-    order: 1;
-  }
-}
-@media (max-width: 768px){
-
-  .m-top-tabs{
-    position: relative;
-    margin-top: 4px !important;
-    padding-top: 6px;
-    z-index: 900;
-  }
-}
-/* ===== FIX: content under topbar (all pages) ===== */
-main.page {
-  padding-top: 16px;
-}
-
-@media (max-width: 768px) {
-  main.page {
-    padding-top: 20px;
-  }
-}
 
 :root{
   --sv-search-max: 720px;
 }
 
-
-/* ===== FINAL FIX: unified searchbar on ALL pages ===== */
-
-header.topbar .searchbar{
-  flex: 1 1 auto;
-  max-width: 720px;
-}
-
-header.topbar .searchbar-wrap{
+/* ===== SEARCHBAR FINAL LOCK (GLOBAL) ===== */
+header.topbar form.searchbar{
+  flex: 0 0 var(--sv-search-max) !important; /* يمنع التمدد */
+  max-width: var(--sv-search-max) !important;
   width: 100%;
 }
 
-/* Mobile: searchbar stays same size everywhere */
+
+
+
+/* ===== FINAL UNIFIED SEARCHBAR (KEEP ONLY THIS) ===== */
 @media (max-width: 768px){
+
+  header.topbar{
+    padding-top: calc(env(safe-area-inset-top) + 8px) !important;
+    padding-bottom: 8px !important;
+  }
+
   header.topbar .topbar__inner{
     flex-wrap: nowrap !important;
+    align-items: center !important;
   }
 
   header.topbar .searchbar{
     order: 0 !important;
+    width: auto !important;
+    max-width: var(--sv-search-max) !important;
     margin-top: 0 !important;
   }
 
-  header.topbar .m-top-tabs{
-    margin-top: 6px !important;
-  }
+  header.topbar .searchbar-wrap{
+  width: auto !important;
+  max-width: var(--sv-search-max) !important;
+}
+
 }
 
 
@@ -952,15 +914,19 @@ window.onpageshow = function(e){
 
 
 
-<body data-auth="{{ '1' if session_user else '0' }}"
-      class="{% if show_tabbar and not immersive and not no_ui %}has-tabbar{% endif %}">
+<body
+  data-auth="{{ '1' if session_user else '0' }}"
+  data-path="{{ request.url.path if request else '' }}"
+  class="{% if show_tabbar and not immersive and not no_ui %}has-tabbar{% endif %}">
+
 
   <div id="page-wrapper">
 {% if not immersive and not no_ui %}
   <!-- ===== Topbar ===== -->
   <header class="topbar">
 
-    <div class="topbar__inner container-fluid d-flex align-items-center gap-2 py-2">
+    <div class="topbar__inner d-flex align-items-center gap-2 py-2">
+
 
       <!-- ☰ button -->
       <button id="menuBtn" class="hamburger-btn d-none d-lg-inline" type="button"
@@ -2024,9 +1990,6 @@ window.onpageshow = function(e){
 }
 </style>
 
-<script>
-  try { document.currentScript.parentElement.setAttribute('data-path', location.pathname); } catch(e){}
-</script>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
