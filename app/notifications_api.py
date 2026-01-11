@@ -23,7 +23,7 @@ router = APIRouter(tags=["notifications"])
 SMTP_HOST = "mail.privateemail.com"
 SMTP_PORT = 587
 SMTP_USER = "no-reply@sevor.net"
-SMTP_PASS = "YOUR_PASSWORD_HERE"
+SMTP_PASS = os.getenv("SMTP_PASSWORD")
 
 
 def send_email_notification(to_email: str, subject: str, message: str):
