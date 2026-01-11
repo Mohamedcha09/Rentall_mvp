@@ -774,7 +774,16 @@ body[data-auth="0"] .mobile-tabbar {
     transition: opacity .25s ease, transform .25s ease;
   }
   /* ===== iOS SAFE TOP — FINAL, NO BAR ===== */
-/* ❌ DISABLED — causes double safe-area */
+@media (max-width: 768px) {
+
+  header.topbar {
+    padding-top: max(env(safe-area-inset-top), 20px);
+  }
+
+  .m-top-tabs {
+    margin-top: max(env(safe-area-inset-top), 20px);
+  }
+}
 
 
 
@@ -868,22 +877,6 @@ header.topbar .searchbar input{
     flex: 1 1 auto !important;
   }
 }
-
-/* ===== FIX tiny offset on payouts ===== */
-body[data-path^="/payout"] .m-top-tabs{
-  margin-top: 6px !important;
-}
-
-/* 🔒 FORCE searchbar identical on /payout */
-body[data-path^="/payout"] header.topbar .topbar__inner {
-  align-items: center !important;
-}
-
-body[data-path^="/payout"] header.topbar form.searchbar {
-  flex: 0 0 720px !important;
-  max-width: 720px !important;
-}
-
 
 </style>
 
