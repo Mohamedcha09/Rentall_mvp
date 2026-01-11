@@ -791,6 +791,35 @@ header.topbar form.searchbar{
 
 
 
+
+/* ===== FINAL UNIFIED SEARCHBAR (KEEP ONLY THIS) ===== */
+@media (max-width: 768px){
+
+  header.topbar{
+    padding-top: calc(env(safe-area-inset-top) + 8px) !important;
+    padding-bottom: 8px !important;
+  }
+
+  header.topbar .topbar__inner{
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+  }
+
+  header.topbar .searchbar{
+    order: 0 !important;
+    width: auto !important;
+    max-width: var(--sv-search-max) !important;
+    margin-top: 0 !important;
+  }
+
+  header.topbar .searchbar-wrap{
+  width: auto !important;
+  max-width: var(--sv-search-max) !important;
+}
+
+}
+
+
 /* ==================================================
    SEARCHBAR FINAL HARD RESET (GLOBAL – NO CONFLICT)
    ================================================== */
