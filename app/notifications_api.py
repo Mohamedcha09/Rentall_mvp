@@ -2,6 +2,7 @@
 from __future__ import annotations
 from typing import Optional
 from datetime import datetime
+import os   # ✅ هذا هو الحل
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
