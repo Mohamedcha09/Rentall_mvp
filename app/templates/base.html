@@ -839,18 +839,33 @@ main.page {
 }
 
 
-.searchbar{
-  width: 100%;
-  max-width: var(--sv-search-max);
-  margin-inline: auto;
-  flex: 0 0 auto;
+/* ===== FINAL FIX: unified searchbar on ALL pages ===== */
+
+header.topbar .searchbar{
+  flex: 1 1 auto;
+  max-width: 720px;
 }
 
-.searchbar-wrap{
+header.topbar .searchbar-wrap{
   width: 100%;
-  max-width: var(--sv-search-max);
-  margin-inline: auto;
 }
+
+/* Mobile: searchbar stays same size everywhere */
+@media (max-width: 768px){
+  header.topbar .topbar__inner{
+    flex-wrap: nowrap !important;
+  }
+
+  header.topbar .searchbar{
+    order: 0 !important;
+    margin-top: 0 !important;
+  }
+
+  header.topbar .m-top-tabs{
+    margin-top: 6px !important;
+  }
+}
+
 
 
 </style>
