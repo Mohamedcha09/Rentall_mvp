@@ -829,6 +829,54 @@ header.topbar form.searchbar{
 }
 
 
+/* ==================================================
+   SEARCHBAR FINAL HARD RESET (GLOBAL – NO CONFLICT)
+   ================================================== */
+
+/* 1️⃣ topbar ثابت */
+header.topbar{
+  padding-top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
+  padding-bottom: 8px !important;
+}
+
+/* 2️⃣ inner alignment */
+header.topbar .topbar__inner{
+  align-items: center !important;
+}
+
+/* 3️⃣ searchbar = نفس المقاس بكل الصفحات */
+header.topbar form.searchbar{
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  max-width: 720px !important;
+  flex: 0 0 720px !important;
+}
+
+/* 4️⃣ capsule نفسها */
+header.topbar .searchbar-wrap{
+  height: 44px !important;
+  padding: 0 14px !important;
+  border-radius: 999px !important;
+  display: flex !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+}
+
+/* 5️⃣ inputs بدون أي رفع */
+header.topbar .searchbar input{
+  margin: 0 !important;
+  padding: 0 !important;
+  height: auto !important;
+}
+
+/* 6️⃣ mobile: نفس السلوك */
+@media (max-width: 768px){
+  header.topbar form.searchbar{
+    max-width: 100% !important;
+    flex: 1 1 auto !important;
+  }
+}
 
 </style>
 
