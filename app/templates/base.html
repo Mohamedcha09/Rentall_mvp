@@ -809,6 +809,11 @@ header.topbar .topbar__inner{
   min-height: calc(64px + env(safe-area-inset-top));
   padding-top: env(safe-area-inset-top);
   align-items: center;
+  flex-wrap: wrap;            /* 🔥 هذا السطر هو الحل */
+}
+header.topbar form.searchbar{
+  flex: 1 1 100%;
+  max-width: 100%;
 }
 
 
