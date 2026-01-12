@@ -773,110 +773,6 @@ body[data-auth="0"] .mobile-tabbar {
     transform: translateX(-20px);
     transition: opacity .25s ease, transform .25s ease;
   }
-  /* ===== iOS SAFE TOP — FINAL, NO BAR ===== */
-@media (max-width: 768px) {
-
-  header.topbar {
-    padding-top: max(env(safe-area-inset-top), 20px);
-  }
-
-  .m-top-tabs {
-    margin-top: max(env(safe-area-inset-top), 20px);
-  }
-}
-
-
-
-:root{
-  --sv-search-max: 720px;
-}
-
-/* ===== SEARCHBAR FINAL LOCK (GLOBAL) ===== */
-header.topbar form.searchbar{
-  flex: 0 0 var(--sv-search-max) !important; /* يمنع التمدد */
-  max-width: var(--sv-search-max) !important;
-  width: 100%;
-}
-
-
-
-
-/* ===== FINAL UNIFIED SEARCHBAR (KEEP ONLY THIS) ===== */
-@media (max-width: 768px){
-
-  header.topbar{
-    padding-top: calc(env(safe-area-inset-top) + 8px) !important;
-    padding-bottom: 8px !important;
-  }
-
-  header.topbar .topbar__inner{
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-  }
-
-  header.topbar .searchbar{
-    order: 0 !important;
-    width: auto !important;
-    max-width: var(--sv-search-max) !important;
-    margin-top: 0 !important;
-  }
-
-  header.topbar .searchbar-wrap{
-  width: auto !important;
-  max-width: var(--sv-search-max) !important;
-}
-
-}
-
-
-/* ==================================================
-   SEARCHBAR FINAL HARD RESET (GLOBAL – NO CONFLICT)
-   ================================================== */
-
-/* 1️⃣ topbar ثابت */
-header.topbar{
-  padding-top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
-  padding-bottom: 8px !important;
-}
-
-/* 2️⃣ inner alignment */
-header.topbar .topbar__inner{
-  align-items: center !important;
-}
-
-/* 3️⃣ searchbar = نفس المقاس بكل الصفحات */
-header.topbar form.searchbar{
-  margin: 0 !important;
-  padding: 0 !important;
-  width: 100% !important;
-  max-width: 720px !important;
-  flex: 0 0 720px !important;
-}
-
-/* 4️⃣ capsule نفسها */
-header.topbar .searchbar-wrap{
-  height: 44px !important;
-  padding: 0 14px !important;
-  border-radius: 999px !important;
-  display: flex !important;
-  align-items: center !important;
-  box-sizing: border-box !important;
-}
-
-/* 5️⃣ inputs بدون أي رفع */
-header.topbar .searchbar input{
-  margin: 0 !important;
-  padding: 0 !important;
-  height: auto !important;
-}
-
-/* 6️⃣ mobile: نفس السلوك */
-@media (max-width: 768px){
-  header.topbar form.searchbar{
-    max-width: 100% !important;
-    flex: 1 1 auto !important;
-  }
-}
 
 /* FIX iOS rounded seam between search + city inputs */
 header.topbar .searchbar input.form-control{
@@ -885,27 +781,7 @@ header.topbar .searchbar input.form-control{
   box-shadow: none !important;
   border-radius: 0 !important;
 }
-/* FIX: raise input text ONLY on payouts page */
-body[data-path^="/payout"] #qTop,
-body[data-path^="/payout"] #cityTop{
-  line-height: 1.1 !important;
-  padding-top: 2px !important;
-}
-/* 🔧 FIX: searchbar vertical alignment ONLY on /payout pages (iOS safe) */
-@media (max-width: 768px) {
-  body[data-path^="/payout"] header.topbar {
-    padding-top: calc(env(safe-area-inset-top, 0px) + 4px) !important;
-  }
 
-  body[data-path^="/payout"] header.topbar .searchbar-wrap {
-    align-items: center !important;
-  }
-
-  body[data-path^="/payout"] header.topbar .searchbar input {
-    position: relative;
-    top: -2px; /* ← هذا هو المفتاح */
-  }
-}
 
 </style>
 
