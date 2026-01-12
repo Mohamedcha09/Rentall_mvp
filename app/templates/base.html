@@ -821,27 +821,6 @@ header.topbar{
   padding-top: var(--ios-safe-top);
 }
 
-/* الصفحة نفسها */
-.page{
-  padding-top: calc(12px + var(--ios-safe-top));
-}
-
-/* عناصر fixed (احتياط إضافي) */
-@supports (-webkit-touch-callout: none){
-  header.topbar,
-  .m-top-tabs{
-    padding-top: var(--ios-safe-top);
-  }
-}
-/* ================================
-   iOS SAFE AREA – SPACING TUNE
-   Fix gap between searchbar & tabs
-   ================================ */
-
-/* Topbar يأخذ safe-area */
-header.topbar{
-  padding-top: var(--ios-safe-top);
-}
 
 /* ألغِ أي مسافة إضافية تحت الـ topbar */
 header.topbar .topbar__inner{
@@ -859,6 +838,7 @@ header.topbar .topbar__inner{
 .page{
   padding-top: 12px !important; /* مسافة طبيعية فقط */
 }
+
 
 
 </style>
