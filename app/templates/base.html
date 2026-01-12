@@ -833,10 +833,6 @@ header.topbar .searchbar-wrap{
   --safe-top: env(safe-area-inset-top, 24px);
 }
 
-/* Topbar respects iOS notch */
-header.topbar{
-  padding-top: var(--safe-top);
-}
 
 /* Small natural spacing */
 header.topbar .searchbar-wrap{
@@ -845,6 +841,16 @@ header.topbar .searchbar-wrap{
 
 .m-top-tabs{
   margin-top: 8px;
+}
+
+/* ===============================
+   iOS SAFE AREA TOP SPACER
+   =============================== */
+.ios-safe-spacer{
+  height: env(safe-area-inset-top, 44px);
+  background: #ffffff;
+  width: 100%;
+  flex-shrink: 0;
 }
 
 </style>
@@ -933,6 +939,9 @@ window.onpageshow = function(e){
   data-auth="{{ '1' if session_user else '0' }}"
   data-path="{{ request.url.path if request else '' }}"
   class="{% if show_tabbar and not immersive and not no_ui %}has-tabbar{% endif %}">
+    <!-- iOS Safe Area Spacer -->
+  <div class="ios-safe-spacer"></div>
+
 
 
   <div id="page-wrapper">
