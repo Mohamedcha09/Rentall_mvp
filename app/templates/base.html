@@ -806,9 +806,11 @@ header.topbar .searchbar input.form-control{
 /* === SEARCHBAR FINAL VERTICAL FIX (GLOBAL) === */
 
 header.topbar .topbar__inner{
-  min-height: 64px;
+  min-height: calc(64px + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
   align-items: center;
 }
+
 
 header.topbar form.searchbar{
   display: flex;
