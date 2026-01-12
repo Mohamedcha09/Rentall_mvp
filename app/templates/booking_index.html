@@ -65,6 +65,15 @@
         padding-top: 0 !important;
     }
 }
+
+.booking-info .title{
+  font-weight:700;
+  font-size:16px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
 </style>
 
 {% set EMPTY_IMG = (url_for('static', path='photo/xon.png') if view=='renter'
@@ -89,7 +98,7 @@
         </div>
 
         <div class="booking-info">
-            <div class="title">Booking #{{ b.id }}</div>
+            <div class="title">{{ b.item.title }}</div>
             <div class="status">Status: {{ b.status }}</div>
             <div class="text-muted small">
                 {{ b.start_date }} → {{ b.end_date }}
