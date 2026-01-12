@@ -826,6 +826,40 @@ header.topbar .searchbar-wrap{
     padding-top: 14px;
   }
 }
+/* ================================
+   FIX FOR XCODE / DESKTOP iOS SIM
+   Does NOT affect real iPhone
+   ================================ */
+
+/* فقط على الشاشات الكبيرة (Mac / Simulator) */
+@media (min-width: 769px) {
+
+  /* أنزل التوب بار قليلاً */
+  header.topbar {
+    padding-top: 24px !important;
+  }
+
+  /* أنزل التابس تحت البحث */
+  .m-top-tabs {
+    margin-top: 12px !important;
+  }
+
+}
+
+/* ================================
+   REAL iPhone — untouched
+   ================================ */
+@supports (-webkit-touch-callout: none) and (max-width: 768px) {
+
+  header.topbar {
+    padding-top: var(--ios-safe-top) !important;
+  }
+
+  .m-top-tabs {
+    margin-top: 0 !important;
+  }
+
+}
 
 
 
