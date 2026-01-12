@@ -1198,7 +1198,7 @@ window.onpageshow = function(e){
           {{ unread_top if unread_top < 100 else '99+' }}
         </small>
       </a>
-      <a href="/payout/settings" class="m-tab {% if request and request.url.path.startswith('/payout') %}is-active{% endif %}" role="tab">Payouts</a>
+      <a href="/favorites" class="m-tab {% if request and request.url.path.startswith('/favorites') %}is-active{% endif %}" role="tab">Favorites</a>
       {% if session_user.role == 'admin' %}
         <a href="/admin" class="m-tab {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" role="tab">Admin</a>
       {% endif %}
