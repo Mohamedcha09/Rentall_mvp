@@ -814,34 +814,6 @@ header.topbar .searchbar-wrap{
   --ios-safe-top: env(safe-area-inset-top, 0px);
 }
 
-/* احجز مساحة النظام كاملة */
-html,
-body{
-  padding-top: var(--ios-safe-top);
-}
-
-/* Topbar ينزل تحت الساعة */
-header.topbar{
-  padding-top: var(--ios-safe-top);
-}
-
-/* Tabs في الموبايل */
-.m-top-tabs{
-  margin-top: var(--ios-safe-top);
-}
-
-/* الصفحة نفسها */
-.page{
-  padding-top: calc(12px + var(--ios-safe-top));
-}
-
-/* عناصر fixed (احتياط إضافي) */
-@supports (-webkit-touch-callout: none){
-  header.topbar,
-  .m-top-tabs{
-    padding-top: var(--ios-safe-top);
-  }
-}
 /* ================================
    iOS SAFE AREA – SPACING TUNE
    Fix gap between searchbar & tabs
@@ -913,6 +885,45 @@ html{
   overflow-x: hidden;
 }
 /* panels تبقى مرتبطة بالـ searchbar */
+.typeahead,
+.city-suggest{
+  position: fixed;
+  z-index: 3100;
+}
+
+/* ===== FIXED HEADER – FINAL CLEAN ===== */
+
+header.topbar{
+  position: fixed;
+  top: 0;
+  inset-inline: 0;
+  z-index: 3000;
+
+  background: var(--surface);
+  backdrop-filter: saturate(160%) blur(10px);
+  -webkit-backdrop-filter: saturate(160%) blur(10px);
+
+  border-bottom: 1px solid var(--border);
+}
+
+header.topbar .topbar__inner{
+  min-height: 64px;
+}
+.m-top-tabs{
+  position: fixed;
+  top: 64px;
+  inset-inline: 0;
+  z-index: 2999;
+
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.page{
+  padding-top: calc(
+    64px   /* header */
+    + 48px /* tabs */
+  ) !important;
+}
 .typeahead,
 .city-suggest{
   position: fixed;
