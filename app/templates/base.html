@@ -869,49 +869,6 @@ header.topbar .topbar__inner{
   padding-top: 12px !important; /* مسافة طبيعية فقط */
 }
 
-/* ================================
-   FIXED TOP HEADER (FINAL)
-   ================================ */
-
-/* wrapper للـ header + tabs */
-header.topbar{
-  position: fixed;
-  top: 0;
-  inset-inline: 0;
-  z-index: 3000;
-  background: transparent;
-}
-
-/* اجعل الـ inner فعليًا ثابت بصريًا */
-header.topbar .topbar__inner{
-  background: transparent;
-}
-
-/* Tabs تحت الـ header مباشرة */
-.m-top-tabs{
-  position: fixed;
-  top: calc(64px + var(--ios-safe-top));
-  inset-inline: 0;
-  z-index: 2999;
-  background: var(--surface);
-}
-
-/* ===== PAGE OFFSET ===== */
-/* أعطِ مساحة كافية للمحتوى */
-.page{
-  padding-top: calc(
-    64px                 /* topbar */
-    + 48px               /* tabs */
-    + var(--ios-safe-top)
-    + 8px
-  ) !important;
-}
-/* لا تجعل أي parent يكسر position:fixed */
-#page-wrapper,
-body,
-html{
-  overflow-x: hidden;
-}
 
 </style>
 
