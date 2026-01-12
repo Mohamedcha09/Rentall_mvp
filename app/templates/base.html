@@ -870,6 +870,87 @@ header.topbar .topbar__inner{
 }
 
 
+/* =========================================================
+   iOS FIXED TRANSPARENT TOPBAR (NO LOGIC CHANGE)
+   ========================================================= */
+
+/* iOS only */
+@supports (-webkit-touch-callout: none){
+
+  /* ===== Make topbar fixed ===== */
+  header.topbar{
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+
+    z-index: 2147483646; /* أعلى من كل المحتوى */
+    
+    /* Glass effect */
+    background: rgba(255,255,255,.75);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+
+    border-bottom: 1px solid rgba(0,0,0,.06);
+  }
+
+  /* Dark mode glass */
+  [data-theme="dark"] header.topbar{
+    background: rgba(18,18,22,.65);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+
+  /* Inner stays transparent */
+  header.topbar .topbar__inner{
+    background: transparent !important;
+  }
+
+  /* ===== Mobile top tabs fixed under topbar ===== */
+  .m-top-tabs{
+    position: fixed !important;
+    top: calc(var(--ios-safe-top) + 64px);
+    left: 0;
+    right: 0;
+    z-index: 2147483645;
+
+    background: rgba(255,255,255,.65);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+  }
+
+  [data-theme="dark"] .m-top-tabs{
+    background: rgba(18,18,22,.55);
+  }
+
+  /* ===== Push page content UNDER fixed bars ===== */
+  .page{
+    padding-top: calc(
+      var(--ios-safe-top)
+      + 64px      /* topbar */
+      + 52px      /* tabs */
+      + 12px
+    ) !important;
+  }
+
+  /* Desktop (no mobile tabs) */
+  @media (min-width: 769px){
+    .page{
+      padding-top: calc(
+        var(--ios-safe-top)
+        + 72px
+        + 12px
+      ) !important;
+    }
+  }
+
+  /* ===== Ensure images & sliders scroll behind ===== */
+  .page > *{
+    position: relative;
+    z-index: 1;
+  }
+
+}
+
 </style>
 
 
