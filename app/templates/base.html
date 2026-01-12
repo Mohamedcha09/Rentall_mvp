@@ -863,12 +863,6 @@ header.topbar .searchbar-wrap{
   box-sizing: border-box !important;
 }
 
-/* 5️⃣ inputs بدون أي رفع */
-header.topbar .searchbar input{
-  margin: 0 !important;
-  padding: 0 !important;
-  height: auto !important;
-}
 
 /* 6️⃣ mobile: نفس السلوك */
 @media (max-width: 768px){
@@ -904,6 +898,15 @@ body[data-path^="/payout"] #cityTop{
   body[data-path^="/payout"] header.topbar .searchbar input {
     position: relative;
     top: -2px; /* ← هذا هو المفتاح */
+  }
+}
+/* ✅ FINAL FIX — raise input text ONLY on /payout (iOS) */
+@media (max-width: 768px){
+  body[data-path^="/payout"] #qTop,
+  body[data-path^="/payout"] #cityTop{
+    position: relative;
+    top: -2px;          /* ← يرفع الكتابة فعليًا */
+    line-height: 1.2;   /* تثبيت baseline */
   }
 }
 
