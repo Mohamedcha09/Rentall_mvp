@@ -900,15 +900,6 @@ body[data-path^="/payout"] #cityTop{
     top: -2px; /* ← هذا هو المفتاح */
   }
 }
-/* ✅ FINAL FIX — raise input text ONLY on /payout (iOS) */
-@media (max-width: 768px){
-  body[data-path^="/payout"] #qTop,
-  body[data-path^="/payout"] #cityTop{
-    position: relative;
-    top: -2px;          /* ← يرفع الكتابة فعليًا */
-    line-height: 1.2;   /* تثبيت baseline */
-  }
-}
 
 </style>
 
