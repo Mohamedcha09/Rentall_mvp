@@ -804,6 +804,45 @@ header.topbar .searchbar-wrap{
   align-items: center;
   height: 44px;
 }
+
+/* ================================
+   iOS SAFE AREA – TOP FIX (FINAL)
+   لا يخفي أي عنصر – فقط يحجز المساحة
+   ================================ */
+
+:root{
+  --ios-safe-top: env(safe-area-inset-top, 0px);
+}
+
+/* احجز مساحة النظام كاملة */
+html,
+body{
+  padding-top: var(--ios-safe-top);
+}
+
+/* Topbar ينزل تحت الساعة */
+header.topbar{
+  padding-top: var(--ios-safe-top);
+}
+
+/* Tabs في الموبايل */
+.m-top-tabs{
+  margin-top: var(--ios-safe-top);
+}
+
+/* الصفحة نفسها */
+.page{
+  padding-top: calc(12px + var(--ios-safe-top));
+}
+
+/* عناصر fixed (احتياط إضافي) */
+@supports (-webkit-touch-callout: none){
+  header.topbar,
+  .m-top-tabs{
+    padding-top: var(--ios-safe-top);
+  }
+}
+
 </style>
 
 
