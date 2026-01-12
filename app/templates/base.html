@@ -826,128 +826,28 @@ header.topbar .searchbar-wrap{
     padding-top: 14px;
   }
 }
-/* ================================
-   FIX FOR XCODE / DESKTOP iOS SIM
-   Does NOT affect real iPhone
-   ================================ */
 
-/* فقط على الشاشات الكبيرة (Mac / Simulator) */
-@media (min-width: 769px) {
 
-  /* أنزل التوب بار قليلاً */
-  header.topbar {
-    padding-top: 24px !important;
-  }
 
-  /* أنزل التابس تحت البحث */
-  .m-top-tabs {
-    margin-top: 12px !important;
-  }
-
+:root{
+  --safe-top: env(safe-area-inset-top, 24px);
 }
 
-/* ================================
-   REAL iPhone — untouched
-   ================================ */
-@supports (-webkit-touch-callout: none) and (max-width: 768px) {
-
-  header.topbar {
-    padding-top: var(--ios-safe-top) !important;
-  }
-
-  .m-top-tabs {
-    margin-top: 0 !important;
-  }
-
+/* Topbar respects iOS notch */
+header.topbar{
+  padding-top: var(--safe-top);
 }
 
-/* =========================================
-   XCODE / DESKTOP iOS SAFE-TOP FIX
-   Does NOT affect real iPhone
-   ========================================= */
-
-/* فقط على الشاشات الكبيرة (Mac / Xcode) */
-@media (min-width: 769px) {
-
-  /* ننزل الهيدر كله تحت عناصر الهاتف */
-  header.topbar {
-    padding-top: 38px !important;
-  }
-
-  /* ننزل شريط البحث */
-  header.topbar .searchbar-wrap {
-    margin-top: 6px !important;
-  }
-
-  /* ننزل التابس (Home / Notifications / Admin) */
-  .m-top-tabs {
-    margin-top: 14px !important;
-  }
+/* Small natural spacing */
+header.topbar .searchbar-wrap{
+  margin-top: 6px;
 }
 
-/* =========================================
-   REAL iPhone — keep native safe area
-   ========================================= */
-@supports (-webkit-touch-callout: none) and (max-width: 768px) {
-
-  header.topbar {
-    padding-top: var(--ios-safe-top) !important;
-  }
-
-  header.topbar .searchbar-wrap {
-    margin-top: 0 !important;
-  }
-
-  .m-top-tabs {
-    margin-top: 0 !important;
-  }
+.m-top-tabs{
+  margin-top: 8px;
 }
-
-
 
 </style>
-<style>
-/* =====================================================
-   FIX iOS SIMULATOR (Xcode / Mac only)
-   Does NOT affect real iPhone
-   ===================================================== */
-
-/* Simulator & desktop iOS preview */
-@media (hover: hover) and (pointer: fine) and (max-width: 900px) {
-
-  /* انزل الهيدر كامل */
-  header.topbar {
-    padding-top: 44px !important;
-  }
-
-  /* انزل شريط البحث */
-  header.topbar .searchbar-wrap {
-    margin-top: 10px !important;
-  }
-
-  /* انزل Tabs (Home / Notifications / Admin) */
-  .m-top-tabs {
-    margin-top: 16px !important;
-  }
-}
-
-/* =====================================================
-   REAL iPhone — keep native layout
-   ===================================================== */
-@media (hover: none) and (pointer: coarse) {
-
-  header.topbar {
-    padding-top: env(safe-area-inset-top) !important;
-  }
-
-  header.topbar .searchbar-wrap,
-  .m-top-tabs {
-    margin-top: 0 !important;
-  }
-}
-</style>
-
-
 
 {% block head %}{% endblock %}
 {% set immersive = immersive|default(false) %}
