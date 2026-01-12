@@ -99,17 +99,7 @@ if ("serviceWorker" in navigator) {
 
     /* Topbar */
     .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; }
-    /* ===== iOS SAFE AREA – TOPBAR FIX ===== */
-header.topbar{
-  padding-top: env(safe-area-inset-top);
-}
 
-/* iOS App (standalone / PWA) */
-html.pwa header.topbar{
-  padding-top: env(safe-area-inset-top);
-}
-
-     
     .searchbar-wrap{
       display:flex; align-items:center; gap:10px;
       background:#fff; border:1px solid var(--border);
@@ -186,16 +176,11 @@ html.pwa header.topbar{
 
     /* Top tabs (mobile only) — centered + purple bottom bar */
     .m-top-tabs{
-  display:none !important;
-  justify-content:center;
-  align-items:flex-end;
-  gap:28px;
-  padding: env(safe-area-inset-top) 14px 0;
-  margin-top: 0;
-  border-bottom:1px solid var(--border);
-  background:transparent;
-}
-
+      display:none !important;
+      justify-content:center; align-items:flex-end; gap:28px;
+      padding:0 14px; margin-top:6px;
+      border-bottom:1px solid var(--border); background:transparent;
+    }
     .m-top-tabs .m-tab{
       position:relative; display:inline-flex; align-items:center;
       background:transparent !important; border:0 !important; box-shadow:none !important; border-radius:0 !important;
@@ -339,10 +324,8 @@ body[data-auth="0"] .mobile-tabbar {
 
       /* Proper bottom space without + button */
       body[data-auth="0"] .page{
-  padding-top: calc(8px + env(safe-area-inset-top));
-  padding-bottom: calc(92px + max(var(--safe-bottom), var(--safe-bottom-legacy)));
-}
-
+        padding-bottom: calc(76px + max(var(--safe-bottom), var(--safe-bottom-legacy))) !important;
+      }
     }
   </style>
 
@@ -806,16 +789,9 @@ header.topbar .searchbar input.form-control{
 /* === SEARCHBAR FINAL VERTICAL FIX (GLOBAL) === */
 
 header.topbar .topbar__inner{
-  min-height: calc(64px + env(safe-area-inset-top));
-  padding-top: env(safe-area-inset-top);
+  min-height: 64px;
   align-items: center;
-  flex-wrap: wrap;            /* 🔥 هذا السطر هو الحل */
 }
-header.topbar form.searchbar{
-  flex: 1 1 100%;
-  max-width: 100%;
-}
-
 
 header.topbar form.searchbar{
   display: flex;
