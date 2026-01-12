@@ -805,41 +805,26 @@ header.topbar .searchbar-wrap{
   height: 44px;
 }
 
-/* ================================
-   iOS SAFE AREA – TOP FIX (FINAL)
-   لا يخفي أي عنصر – فقط يحجز المساحة
-   ================================ */
+/* ===== CLEAN FINAL TOPBAR FIX ===== */
 
-:root{
-  --ios-safe-top: env(safe-area-inset-top, 0px);
-}
+@media (max-width: 768px){
 
+  header.topbar{
+    padding-top: env(safe-area-inset-top);
+  }
 
+  header.topbar .topbar__inner{
+    min-height: 56px;
+    align-items: center;
+  }
 
-/* Topbar ينزل تحت الساعة */
-header.topbar{
-  padding-top: var(--ios-safe-top);
-}
+  .m-top-tabs{
+    margin-top: 10px;
+  }
 
-
-/* ألغِ أي مسافة إضافية تحت الـ topbar */
-header.topbar .topbar__inner{
-  margin-bottom: 0 !important;
-  padding-bottom: 0 !important;
-}
-
-/* Tabs: لا تأخذ safe-area مرة ثانية */
-.m-top-tabs{
-  margin-top: 0 !important;
-  padding-top: 0 !important;
-}
-
-/* الصفحة لا تحتاج safe-top لأن الهيدر أخذها */
-.page{
-  padding-top: 12px !important; /* مسافة طبيعية فقط */
-}
-.m-top-tabs{
-  margin-top: 8px !important;
+  .page{
+    padding-top: 14px;
+  }
 }
 
 
@@ -939,7 +924,8 @@ window.onpageshow = function(e){
   <!-- ===== Topbar ===== -->
   <header class="topbar">
 
-    <div class="topbar__inner d-flex align-items-center gap-2 py-2">
+    <div class="topbar__inner d-flex align-items-center gap-2">
+
 
 
       <!-- ☰ button -->
