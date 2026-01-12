@@ -906,6 +906,46 @@ header.topbar .searchbar-wrap{
 
 
 </style>
+<style>
+/* =====================================================
+   FIX iOS SIMULATOR (Xcode / Mac only)
+   Does NOT affect real iPhone
+   ===================================================== */
+
+/* Simulator & desktop iOS preview */
+@media (hover: hover) and (pointer: fine) and (max-width: 900px) {
+
+  /* انزل الهيدر كامل */
+  header.topbar {
+    padding-top: 44px !important;
+  }
+
+  /* انزل شريط البحث */
+  header.topbar .searchbar-wrap {
+    margin-top: 10px !important;
+  }
+
+  /* انزل Tabs (Home / Notifications / Admin) */
+  .m-top-tabs {
+    margin-top: 16px !important;
+  }
+}
+
+/* =====================================================
+   REAL iPhone — keep native layout
+   ===================================================== */
+@media (hover: none) and (pointer: coarse) {
+
+  header.topbar {
+    padding-top: env(safe-area-inset-top) !important;
+  }
+
+  header.topbar .searchbar-wrap,
+  .m-top-tabs {
+    margin-top: 0 !important;
+  }
+}
+</style>
 
 
 
