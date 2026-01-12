@@ -939,7 +939,9 @@ window.onpageshow = function(e){
   data-auth="{{ '1' if session_user else '0' }}"
   data-path="{{ request.url.path if request else '' }}"
   class="{% if show_tabbar and not immersive and not no_ui %}has-tabbar{% endif %}">
-  
+    <!-- iOS Safe Area Spacer -->
+  <div class="ios-safe-spacer"></div>
+
 
 
   <div id="page-wrapper">
@@ -1014,30 +1016,6 @@ window.onpageshow = function(e){
 
         <div id="citySuggest" class="city-suggest" aria-label="City suggestions"></div>
       </form>
-      <!-- Mobile tabs UNDER search -->
-<nav class="m-top-tabs d-lg-none px-3 pb-2" role="tablist">
-  <a href="/" class="m-tab {% if request.url.path == '/' %}is-active{% endif %}">
-    Home
-  </a>
-
-  {% if session_user %}
-    <a href="/notifications"
-       class="m-tab {% if request.url.path.startswith('/notifications') %}is-active{% endif %}">
-      Notifications
-    </a>
-
-    {% if session_user.role == 'admin' %}
-      <a href="/admin"
-         class="m-tab {% if request.url.path.startswith('/admin') %}is-active{% endif %}">
-        Admin
-      </a>
-    {% endif %}
-  {% else %}
-    <a href="/login" class="m-tab">Notifications</a>
-    <a href="/login" class="m-tab">Payouts</a>
-  {% endif %}
-</nav>
-
 
       <!-- Your typeahead (accounts/items) -->
       <div id="typeaheadPanel" class="typeahead d-none"></div>
@@ -1193,7 +1171,27 @@ window.onpageshow = function(e){
   {% endif %}
 
 {% if not immersive and not no_ui %}
- 
+  <!-- Top tabs (mobile) -->
+  <nav class="m-top-tabs d-lg-none px-3 pb-2" role="tablist" aria-label="Top sections">
+    <a href="/" class="m-tab {% if request and request.url.path == '/' %}is-active{% endif %}" role="tab"
+       aria-selected="{{ 'true' if request and request.url.path == '/' else 'false' }}">Home</a>
+
+    {% if session_user %}
+      <a href="/notifications" class="m-tab {% if request and request.url.path.startswith('/notifications') %}is-active{% endif %}" role="tab">
+        Notifications
+        {% set unread_top = (request.state.unread_messages|default(0))|int if request else 0 %}
+        <small id="mNotifBadge" {% if unread_top<=0 %}style="display:none"{% endif %} class="ms-1">
+          {{ unread_top if unread_top < 100 else '99+' }}
+        </small>
+      </a>
+      {% if session_user.role == 'admin' %}
+        <a href="/admin" class="m-tab {% if request and request.url.path.startswith('/admin') %}is-active{% endif %}" role="tab">Admin</a>
+      {% endif %}
+    {% else %}
+      <a href="/login" class="m-tab" role="tab">Notifications</a>
+      <a href="/login" class="m-tab" role="tab">Payouts</a>
+    {% endif %}
+  </nav>
 {% endif %}
 {% if immersive %}
 {% endif %}
