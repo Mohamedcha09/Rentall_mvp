@@ -891,6 +891,21 @@ body[data-path^="/payout"] #cityTop{
   line-height: 1.1 !important;
   padding-top: 2px !important;
 }
+/* 🔧 FIX: searchbar vertical alignment ONLY on /payout pages (iOS safe) */
+@media (max-width: 768px) {
+  body[data-path^="/payout"] header.topbar {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 4px) !important;
+  }
+
+  body[data-path^="/payout"] header.topbar .searchbar-wrap {
+    align-items: center !important;
+  }
+
+  body[data-path^="/payout"] header.topbar .searchbar input {
+    position: relative;
+    top: -2px; /* ← هذا هو المفتاح */
+  }
+}
 
 </style>
 
