@@ -861,6 +861,48 @@ header.topbar .searchbar-wrap{
 
 }
 
+/* =========================================
+   XCODE / DESKTOP iOS SAFE-TOP FIX
+   Does NOT affect real iPhone
+   ========================================= */
+
+/* فقط على الشاشات الكبيرة (Mac / Xcode) */
+@media (min-width: 769px) {
+
+  /* ننزل الهيدر كله تحت عناصر الهاتف */
+  header.topbar {
+    padding-top: 38px !important;
+  }
+
+  /* ننزل شريط البحث */
+  header.topbar .searchbar-wrap {
+    margin-top: 6px !important;
+  }
+
+  /* ننزل التابس (Home / Notifications / Admin) */
+  .m-top-tabs {
+    margin-top: 14px !important;
+  }
+}
+
+/* =========================================
+   REAL iPhone — keep native safe area
+   ========================================= */
+@supports (-webkit-touch-callout: none) and (max-width: 768px) {
+
+  header.topbar {
+    padding-top: var(--ios-safe-top) !important;
+  }
+
+  header.topbar .searchbar-wrap {
+    margin-top: 0 !important;
+  }
+
+  .m-top-tabs {
+    margin-top: 0 !important;
+  }
+}
+
 
 
 </style>
