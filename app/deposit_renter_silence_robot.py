@@ -1,3 +1,5 @@
+# app/deposit_renter_silence_robot.py
+
 """
 Robot #2 — Renter Silence after MD Open Window
 =============================================
@@ -7,9 +9,9 @@ Behavior:
 - MD opened window
 - Renter did NOT respond within window
 - Finalize MD decision
-- Refund remaining deposit to renter (PayPal) — STRICT (like Robot #1)
+- Refund remaining deposit to renter (PayPal)
 - CREATE owner compensation task for admin (ALWAYS)
-- Log everything
+- NEVER crash (like Robot #1)
 """
 
 from __future__ import annotations
@@ -92,7 +94,7 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
     now = NOW()
 
     # -------------------------------------------------
-    # 0) Validate capture_id like Robot #1
+    # 0) Validate capture_id (SAME as Robot #1)
     # -------------------------------------------------
     capture_id = (bk.payment_provider or "").strip()
     if not capture_id or capture_id.lower() in ("paypal", "sandbox"):
@@ -100,29 +102,30 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
         return None
 
     # -------------------------------------------------
-    # 1) STRICT refund first (only if refund_amount > 0)
-    #    If PayPal fails -> STOP (no finalize)
+    # 1) Refund renter (SAFE — NEVER crash)
     # -------------------------------------------------
     refund_amount = compute_refund_amount(bk)
     refund_id = None
+    refund_error = None
 
     if refund_amount > 0:
-        refund_id = send_deposit_refund(
-            db=db,
-            booking=bk,
-            amount=refund_amount,
-        )
+        try:
+            refund_id = send_deposit_refund(
+                db=db,
+                booking=bk,
+                amount=refund_amount,
+            )
 
-        # ✅ strict: if refund_id is missing -> abort (like Robot #1)
-        if not refund_id:
-            raise RuntimeError(f"PayPal refund failed (booking #{bk.id})")
+            bk.deposit_refund_sent = True
+            bk.deposit_refund_sent_at = now
+            bk.deposit_refund_amount = refund_amount
 
-        bk.deposit_refund_sent = True
-        bk.deposit_refund_sent_at = now
-        bk.deposit_refund_amount = refund_amount
+        except Exception as e:
+            refund_error = str(e)
+            print(f"⚠️ Refund failed for booking #{bk.id}: {refund_error}")
 
     # -------------------------------------------------
-    # 2) Finalize MD decision (after successful refund)
+    # 2) Finalize MD decision (ALWAYS)
     # -------------------------------------------------
     bk.dm_decision_final = True
     bk.dm_decision_at = now
@@ -142,7 +145,11 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
             action="auto_finalize_md_renter_silent",
             amount=int(refund_amount),
             reason="Renter did not respond — decision finalized",
-            details=(f"refund_id={refund_id}" if refund_id else "no_refund_needed"),
+            details=(
+                f"refund_id={refund_id}"
+                if refund_id
+                else f"refund_failed={refund_error}"
+            ),
         )
     )
 
@@ -163,7 +170,7 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
     db.commit()
 
     # -------------------------------------------------
-    # 4) Notifications
+    # 4) Notifications (ALWAYS)
     # -------------------------------------------------
     try:
         push_notification(
@@ -200,7 +207,7 @@ def run_once():
         for bk in items:
             print(f"- Booking #{bk.id}")
             execute_one(db, bk)
-            print("  ✅ executed")
+            print("  ✅ processed")
 
         print("Robot finished.")
         print("======================================")
