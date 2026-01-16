@@ -25,6 +25,7 @@ from app.database import SessionLocal
 from app.models import Booking, DepositAuditLog, User
 from app.pay_api import send_deposit_refund
 from app.notifications_api import push_notification, notify_admins
+from sqlalchemy import or_
 
 
 # =====================================================
@@ -58,6 +59,9 @@ def find_candidates(db: Session) -> List[Booking]:
         Booking.dm_decision_final == False,
 
         Booking.payment_method == "paypal",
+
+        # ✅ IMPORTANT FIX
+        Booking.deposit_capture_id.isnot(None),
     ).all()
 
     valid: List[Booking] = []
@@ -73,6 +77,7 @@ def find_candidates(db: Session) -> List[Booking]:
             valid.append(bk)
 
     return valid
+
 
 
 def compute_refund_amount(bk: Booking) -> float:

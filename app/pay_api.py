@@ -230,28 +230,36 @@ def paypal_return(
         raise HTTPException(status_code=403)
 
     capture_data = paypal_capture(token)
-    capture_id = (capture_data["purchase_units"][0]["payments"]["captures"][0]["id"])
+    capture_id = capture_data["purchase_units"][0]["payments"]["captures"][0]["id"]
+
     bk.payment_method = "paypal"
-    bk.payment_provider = capture_id         # ← ثابت
-    bk.deposit_capture_id = capture_id      # ← إذا عندك هذا العمود
-    bk.payment_capture_id = capture_id 
 
-
+    # ✅ IMPORTANT: store capture_id in the RIGHT field depending on type
     if type == "rent":
+        # Rent payment capture
+        bk.payment_provider = capture_id          # keep for backward compatibility
         bk.rent_paid = True
-    else:
+
+        # ❌ DO NOT touch deposit_capture_id here
+        # ❌ DO NOT set bk.payment_capture_id if this column doesn't exist
+
+    else:  # securityfund
+        # Deposit capture (this is what Robot #2 MUST refund)
+        bk.deposit_capture_id = capture_id
         bk.security_paid = True
         bk.security_status = "held"
 
+        # (Optional) If you want, you can ALSO keep payment_provider = rent capture only
+        # so don't overwrite it here
+
+    # ✅ Mark booking paid only when both rent and deposit are paid (or deposit=0)
     if bk.rent_paid and (bk.security_paid or bk.security_amount == 0):
         bk.status = "paid"
-        bk.payment_method = "paypal"
         bk.payment_status = "paid"
         bk.timeline_paid_at = datetime.utcnow()
 
     db.commit()
     return flow_redirect(bk, "rent_ok" if type == "rent" else "security_ok")
-
 
 # =====================================================
 # DEPOSIT REFUND (USED BY ROBOT ONLY)
