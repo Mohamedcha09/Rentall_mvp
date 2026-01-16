@@ -288,7 +288,6 @@ def paypal_refund_capture(
     data = r.json()
     return data["id"]
 
-
 def send_deposit_refund(
     *,
     db: Session,
@@ -299,16 +298,29 @@ def send_deposit_refund(
     ROBOT ENTRY POINT
     Sends refund to renter for deposit only.
     """
+
     if amount <= 0:
         raise ValueError("Refund amount must be > 0")
 
     if booking.payment_method != "paypal":
-        raise RuntimeError("Refund supported only for PayPal for now")
+        raise RuntimeError("Refund supported only for PayPal")
 
-    # ⚠️ مهم: يجب أن يكون عندك capture_id محفوظ
-    capture_id = booking.payment_provider
+    # =================================================
+    # ✅ FIX: choose the CORRECT PayPal capture_id
+    # Priority:
+    # 1) deposit_capture_id  (real capture for security deposit)
+    # 2) payment_provider    (fallback for old bookings)
+    # =================================================
+    capture_id = (getattr(booking, "deposit_capture_id", None) or "").strip()
+
     if not capture_id:
-        raise RuntimeError("Missing PayPal capture ID")
+        capture_id = (booking.payment_provider or "").strip()
+
+    if not capture_id:
+        raise RuntimeError("Missing PayPal capture ID (deposit/payment)")
+
+    # Optional but very useful for debugging
+    print("🔁 REFUND USING CAPTURE_ID:", capture_id)
 
     refund_id = paypal_refund_capture(
         capture_id=capture_id,

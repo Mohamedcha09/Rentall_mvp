@@ -58,7 +58,6 @@ def find_candidates(db: Session) -> List[Booking]:
         Booking.dm_decision_final == False,
 
         Booking.payment_method == "paypal",
-        Booking.payment_provider.isnot(None),
     ).all()
 
     valid: List[Booking] = []
@@ -69,10 +68,6 @@ def find_candidates(db: Session) -> List[Booking]:
 
         if opened_at.tzinfo is None:
             opened_at = opened_at.replace(tzinfo=timezone.utc)
-
-        cap = (bk.payment_provider or "").lower().strip()
-        if not cap or cap in ("paypal", "sandbox"):
-            continue
 
         if opened_at <= deadline:
             valid.append(bk)
@@ -92,14 +87,6 @@ def compute_refund_amount(bk: Booking) -> float:
 
 def execute_one(db: Session, bk: Booking) -> Optional[str]:
     now = NOW()
-
-    # -------------------------------------------------
-    # 0) Validate capture_id (SAME as Robot #1)
-    # -------------------------------------------------
-    capture_id = (bk.payment_provider or "").strip()
-    if not capture_id or capture_id.lower() in ("paypal", "sandbox"):
-        print(f"⏭️ Skip booking #{bk.id} (invalid capture_id)")
-        return None
 
     # -------------------------------------------------
     # 1) Refund renter (SAFE — NEVER crash)
