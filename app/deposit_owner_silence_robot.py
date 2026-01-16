@@ -29,7 +29,7 @@ from app.notifications_api import push_notification
 
 
 # =====================================================
-WINDOW_DELTA = timedelta(days=3)
+WINDOW_DELTA = timedelta(minutes=1)
 NOW = lambda: datetime.now(timezone.utc)
 # =====================================================
 
