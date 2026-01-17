@@ -26,6 +26,7 @@ from app.database import SessionLocal
 from app.models import Booking, DepositAuditLog, User, DepositEvidence
 from app.pay_api import send_deposit_refund
 from app.notifications_api import push_notification, notify_admins
+from sqlalchemy import exists, select
 
 
 # ✅ test mode
@@ -48,10 +49,11 @@ def get_system_actor_id(db: Session) -> int:
 def find_candidates(db: Session) -> List[Booking]:
     deadline = NOW() - WINDOW_DELTA
 
-    # ✅ CORRELATED "NOT EXISTS evidence for this booking"
-    no_evidence_for_booking = ~db.query(DepositEvidence).filter(
-        DepositEvidence.booking_id == Booking.id
-    ).exists()
+    evidence_exists = (
+        select(1)
+        .where(DepositEvidence.booking_id == Booking.id)
+        .exists()
+    )
 
     rows = db.query(Booking).filter(
         Booking.deposit_amount > 0,
@@ -61,8 +63,8 @@ def find_candidates(db: Session) -> List[Booking]:
         # ❌ renter did NOT reply
         Booking.renter_responded_at.is_(None),
 
-        # ❌ renter did NOT upload evidence (✅ correct)
-        no_evidence_for_booking,
+        # ❌ renter did NOT upload any evidence  ✅ FIXED
+        ~evidence_exists,
 
         Booking.dm_decision_amount.isnot(None),
         Booking.dm_decision_final == False,
@@ -72,9 +74,10 @@ def find_candidates(db: Session) -> List[Booking]:
     ).all()
 
     valid: List[Booking] = []
+
     for bk in rows:
         opened_at = bk.renter_24h_window_opened_at
-        if not opened_at:
+        if opened_at is None:
             continue
 
         if opened_at.tzinfo is None:
