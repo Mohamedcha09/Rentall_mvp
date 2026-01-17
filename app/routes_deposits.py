@@ -549,7 +549,6 @@ def report_deposit_issue_page(
             "category_label": category_label,
         },
     )
-
 @router.post("/deposits/{booking_id}/report")
 def report_deposit_issue(
     booking_id: int,
@@ -562,16 +561,25 @@ def report_deposit_issue(
 ):
     require_auth(user)
     bk = require_booking(db, booking_id)
+
+    # 🔐 فقط المالك
     if user.id != bk.owner_id:
         raise HTTPException(status_code=403, detail="Only owner can report issue")
-    # --- improved alternative ---
-    pi_id = _get_deposit_pi_id(bk)
 
-    # ---- from here to the end of the function must remain inside the function (indented by 4 spaces) ----
+    # 🔒 NEW — يسمح بفتح النزاع مرة واحدة فقط
+    if bk.owner_dispute_opened_at is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="Deposit dispute already opened"
+        )
+
+    # --- تحقق من وجود وديعة ---
+    pi_id = _get_deposit_pi_id(bk)
     if not pi_id:
         if (bk.payment_method or "").lower() not in ("cash", "manual") and (bk.hold_deposit_amount or 0) <= 0:
             raise HTTPException(status_code=400, detail="No deposit hold found")
 
+    # --- حفظ الصور ---
     saved_pairs = _save_evidence_files_and_cloud(bk.id, files)
 
     try:
@@ -585,17 +593,18 @@ def report_deposit_issue(
                 file_path=url,
                 description=(description or None),
             ))
-        try:
-            bk.owner_report_type = (issue_type or None)
-            bk.owner_report_reason = (description or None)
-            bk.owner_dispute_opened_at = datetime.utcnow()
-        except Exception:
-            pass
+
+        # 🔐 تسجيل أول فتح للنزاع (القفل)
+        bk.owner_report_type = issue_type or None
+        bk.owner_report_reason = description or None
+        bk.owner_dispute_opened_at = datetime.utcnow()
+
         db.commit()
     except Exception:
         db.rollback()
         pass
 
+    # --- تحديث حالة الحجز ---
     bk.deposit_status = "in_dispute"
     bk.status = "in_review"
     bk.dm_decision_at = None
@@ -605,53 +614,93 @@ def report_deposit_issue(
     try:
         note_old = (getattr(bk, "owner_return_note", "") or "").strip()
         note_new = f"[{issue_type}] {description}".strip()
-        setattr(bk, "owner_return_note", (note_old + ("\n" if note_old and note_new else "") + note_new))
+        setattr(
+            bk,
+            "owner_return_note",
+            (note_old + ("\n" if note_old and note_new else "") + note_new),
+        )
     except Exception:
         pass
+
     db.commit()
 
+    # --- إشعارات ---
     push_notification(
-        db, bk.renter_id, "New Deposit Report",
+        db,
+        bk.renter_id,
+        "New Deposit Report",
         f"The owner reported an issue ({issue_type}) for booking #{bk.id}.",
-        f"/bookings/flow/{bk.id}", "deposit"
+        f"/bookings/flow/{bk.id}",
+        "deposit",
     )
-    notify_dms(db, "New Deposit Report — Pending Review",
-               f"New report for booking #{bk.id}.", "/dm/deposits")
-    notify_admins(db, "Deposit Review Required",
-                  f"New deposit report for booking #{bk.id}.", "/dm/deposits")
 
-    _audit(db, actor=user, bk=bk, action="owner_report_issue",
-           details={"issue_type": issue_type, "desc": description, "files": [p[0] for p in saved_pairs]})
+    notify_dms(
+        db,
+        "New Deposit Report — Pending Review",
+        f"New report for booking #{bk.id}.",
+        "/dm/deposits",
+    )
 
+    notify_admins(
+        db,
+        "Deposit Review Required",
+        f"New deposit report for booking #{bk.id}.",
+        "/dm/deposits",
+    )
+
+    _audit(
+        db,
+        actor=user,
+        bk=bk,
+        action="owner_report_issue",
+        details={
+            "issue_type": issue_type,
+            "desc": description,
+            "files": [p[0] for p in saved_pairs],
+        },
+    )
+
+    # --- إيميلات ---
     try:
         renter_email = _user_email(db, bk.renter_id)
-        owner_email  = _user_email(db, bk.owner_id)
-        admins_em    = _admin_emails(db)
-        dms_em       = _dm_emails_only(db)
-        case_url  = f"{BASE_URL}/dm/deposits/{bk.id}"
-        flow_url  = f"{BASE_URL}/bookings/flow/{bk.id}"
+        owner_email = _user_email(db, bk.owner_id)
+        admins_em = _admin_emails(db)
+        dms_em = _dm_emails_only(db)
+
+        case_url = f"{BASE_URL}/dm/deposits/{bk.id}"
+        flow_url = f"{BASE_URL}/bookings/flow/{bk.id}"
+
         if renter_email:
             send_email(
                 renter_email,
                 f"New Deposit Report — #{bk.id}",
                 f"<p>The owner reported an issue (<b>{issue_type}</b>) regarding booking #{bk.id}.</p>"
-                f'<p><a href="{flow_url}">Open booking details</a></p>'
+                f'<p><a href="{flow_url}">Open booking details</a></p>',
             )
+
         if owner_email:
             send_email(
                 owner_email,
                 f"Deposit Report Submitted — #{bk.id}",
                 f"<p>Your report ({issue_type}) for booking #{bk.id} was submitted successfully and is now under review.</p>"
-                f'<p><a href="{flow_url}">Booking details</a></p>'
+                f'<p><a href="{flow_url}">Booking details</a></p>',
             )
+
         for em in admins_em:
-            send_email(em, f"[Admin] New Deposit Report — #{bk.id}",
-                       f"<p>New deposit report from the owner for booking #{bk.id}.</p>"
-                       f'<p><a href="{case_url}">Open case</a></p>')
+            send_email(
+                em,
+                f"[Admin] New Deposit Report — #{bk.id}",
+                f"<p>New deposit report from the owner for booking #{bk.id}.</p>"
+                f'<p><a href="{case_url}">Open case</a></p>',
+            )
+
         for em in dms_em:
-            send_email(em, f"[DM] New Deposit Report — #{bk.id}",
-                       f"<p>New report pending review for booking #{bk.id}.</p>"
-                       f'<p><a href="{case_url}">Manage case</a></p>')
+            send_email(
+                em,
+                f"[DM] New Deposit Report — #{bk.id}",
+                f"<p>New report pending review for booking #{bk.id}.</p>"
+                f'<p><a href="{case_url}">Manage case</a></p>',
+            )
     except Exception:
         pass
 
@@ -663,9 +712,8 @@ def report_deposit_issue(
             "session_user": request.session.get("user"),
             "bk": bk,
         },
-        status_code=200
+        status_code=200,
     )
-
 # ========================= Evidence for both parties =========================
 @router.post("/deposits/{booking_id}/evidence/upload")
 def evidence_upload(

@@ -646,16 +646,24 @@ a.btn.disabled{
               
             {% endif %}
           </div>
-          <form method="get" action="/deposits/{{ booking.id }}/report">
-  <button
-    id="disputeBtn"
-    class="btn btn-outline-danger btn-wide"
-    data-deadline="{{ dispute_deadline_iso or '' }}"
-  >
-    <i class="bi bi-exclamation-octagon"></i>
-    Open deposit dispute (damage/issue/delay)
+          {% if booking.owner_dispute_opened_at %}
+  <button class="btn btn-outline-secondary btn-wide" disabled>
+    <i class="bi bi-lock"></i>
+    Deposit dispute already submitted
   </button>
-</form>
+{% else %}
+  <form method="get" action="/deposits/{{ booking.id }}/report">
+    <button
+      id="disputeBtn"
+      class="btn btn-outline-danger btn-wide"
+      data-deadline="{{ dispute_deadline_iso or '' }}"
+    >
+      <i class="bi bi-exclamation-octagon"></i>
+      Open deposit dispute (damage/issue/delay)
+    </button>
+  </form>
+{% endif %}
+
 
 <div id="disputeHint" class="small k mt-1" style="display:none;">
   Dispute window expired.
