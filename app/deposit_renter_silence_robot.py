@@ -3,15 +3,16 @@
 """
 Robot #2 — Renter Silence after MD Open Window
 =============================================
-TEST MODE — 1 MINUTE
+TEST MODE — 1 MINUTE (change to 24h in prod)
 
 Behavior:
-- MD opened window
-- Renter did NOT respond within window
-- Finalize MD decision
+- MD opened evidence window
+- Renter did NOT respond
+- Renter did NOT upload any evidence
+- Finalize MD decision automatically
 - Refund remaining deposit to renter (PayPal)
-- CREATE owner compensation task for admin (ALWAYS)
-- NEVER crash (like Robot #1)
+- Create owner compensation task (audit only)
+- NEVER crash
 """
 
 from __future__ import annotations
@@ -22,16 +23,14 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
-from app.models import Booking, DepositAuditLog, User
+from app.models import Booking, DepositAuditLog, User, DepositEvidence
 from app.pay_api import send_deposit_refund
 from app.notifications_api import push_notification, notify_admins
-from sqlalchemy import or_
 
 
-# =====================================================
-WINDOW_DELTA = timedelta(minutes=1)   # test
+# ✅ test mode
+WINDOW_DELTA = timedelta(minutes=1)     # 🔁 production: timedelta(hours=24)
 NOW = lambda: datetime.now(timezone.utc)
-# =====================================================
 
 
 def get_system_actor_id(db: Session) -> int:
@@ -49,18 +48,26 @@ def get_system_actor_id(db: Session) -> int:
 def find_candidates(db: Session) -> List[Booking]:
     deadline = NOW() - WINDOW_DELTA
 
+    # ✅ CORRELATED "NOT EXISTS evidence for this booking"
+    no_evidence_for_booking = ~db.query(DepositEvidence).filter(
+        DepositEvidence.booking_id == Booking.id
+    ).exists()
+
     rows = db.query(Booking).filter(
         Booking.deposit_amount > 0,
 
         Booking.renter_24h_window_opened_at.isnot(None),
+
+        # ❌ renter did NOT reply
         Booking.renter_responded_at.is_(None),
+
+        # ❌ renter did NOT upload evidence (✅ correct)
+        no_evidence_for_booking,
 
         Booking.dm_decision_amount.isnot(None),
         Booking.dm_decision_final == False,
 
         Booking.payment_method == "paypal",
-
-        # ✅ IMPORTANT FIX
         Booking.deposit_capture_id.isnot(None),
     ).all()
 
@@ -79,7 +86,6 @@ def find_candidates(db: Session) -> List[Booking]:
     return valid
 
 
-
 def compute_refund_amount(bk: Booking) -> float:
     try:
         return max(
@@ -93,13 +99,11 @@ def compute_refund_amount(bk: Booking) -> float:
 def execute_one(db: Session, bk: Booking) -> Optional[str]:
     now = NOW()
 
-    # -------------------------------------------------
-    # 1) Refund renter (SAFE — NEVER crash)
-    # -------------------------------------------------
     refund_amount = compute_refund_amount(bk)
     refund_id = None
     refund_error = None
 
+    # 1) Refund renter (SAFE)
     if refund_amount > 0:
         try:
             refund_id = send_deposit_refund(
@@ -116,17 +120,13 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
             refund_error = str(e)
             print(f"⚠️ Refund failed for booking #{bk.id}: {refund_error}")
 
-    # -------------------------------------------------
-    # 2) Finalize MD decision (ALWAYS)
-    # -------------------------------------------------
+    # 2) Finalize decision
     bk.dm_decision_final = True
     bk.dm_decision_at = now
     bk.deposit_status = "partially_withheld"
     bk.auto_finalized_by_robot = True
 
-    # -------------------------------------------------
-    # 3) Audit logs (ALWAYS)
-    # -------------------------------------------------
+    # 3) Audit logs
     actor_id = get_system_actor_id(db)
 
     db.add(
@@ -136,7 +136,7 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
             actor_role="system",
             action="auto_finalize_md_renter_silent",
             amount=int(refund_amount),
-            reason="Renter did not respond — decision finalized",
+            reason="Renter did not respond and uploaded no evidence",
             details=(
                 f"refund_id={refund_id}"
                 if refund_id
@@ -161,14 +161,12 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
 
     db.commit()
 
-    # -------------------------------------------------
-    # 4) Notifications (ALWAYS)
-    # -------------------------------------------------
+    # 4) Notifications
     try:
         push_notification(
             user_id=bk.renter_id,
             title="Deposit finalized ✅",
-            body=f"Your deposit was finalized automatically. Refunded: {refund_amount} CAD.",
+            body=f"No response/evidence received. Refunded: {refund_amount} CAD.",
             data={"booking_id": bk.id},
         )
     except Exception:
@@ -177,7 +175,7 @@ def execute_one(db: Session, bk: Booking) -> Optional[str]:
     try:
         notify_admins(
             title="Owner compensation required",
-            body=f"Booking #{bk.id}: compensate owner {int(owner_amount)} CAD.",
+            body=f"Booking #{bk.id}: owner compensation {int(owner_amount)} CAD",
             data={"booking_id": bk.id},
         )
     except Exception:
@@ -192,8 +190,8 @@ def run_once():
         items = find_candidates(db)
 
         print("======================================")
-        print("Robot #2 — Renter Silence (TEST MODE)")
-        print("Window = 1 minute")
+        print("Robot #2 — Renter Silence")
+        print(f"Window = {WINDOW_DELTA}")
         print(f"Candidates found: {len(items)}")
 
         for bk in items:
