@@ -954,7 +954,7 @@ def dm_start_renter_window(
         raise HTTPException(status_code=400, detail="Amount must be > 0")
 
     now = datetime.utcnow()
-    deadline = now + timedelta(hours=24)
+    deadline = now + timedelta(hours=1)
 
     try:
         bk.deposit_status = "awaiting_renter"
