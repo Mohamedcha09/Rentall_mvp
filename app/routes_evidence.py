@@ -234,6 +234,7 @@ async def upload_deposit_evidence(
     saved_any = False
     saved_ids: List[int] = []
     saved_files: List[str] = []
+    has_real_file = False
     comment = (description or "").strip()
 
     evidence_dir = DEPOSITS_DIR / str(bk.id) / side
@@ -287,6 +288,8 @@ async def upload_deposit_evidence(
             saved_any = True
             saved_ids.append(ev_id)
             saved_files.append(rel_path)
+            has_real_file = True
+
 
     if not saved_any:
         raise HTTPException(status_code=400, detail="No files nor description provided")
@@ -301,7 +304,8 @@ async def upload_deposit_evidence(
     # ===== Phase: if deposit_status is awaiting_renter and the renter replied → switch to dispute and notify DMs =====
     try:
         current_status = (getattr(bk, "deposit_status", None) or "").lower()
-        if side == "renter" and current_status == "awaiting_renter":
+        if side == "renter" and current_status == "awaiting_renter" and has_real_file:
+
             try:
                 bk.deposit_status = "in_dispute"   # ← makes the UI show review buttons
                 bk.status = "in_review"
