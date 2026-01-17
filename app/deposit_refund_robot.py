@@ -17,14 +17,28 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 
 from app.database import SessionLocal
-from app.models import Booking, DepositAuditLog
+from app.models import Booking, DepositAuditLog, User
 from app.pay_api import send_deposit_refund
+
+
+# =========================================================
+# ✅ SYSTEM ACTOR (FIX FK ERROR)
+# =========================================================
+def get_system_actor_id(db: Session) -> int:
+    admin = (
+        db.query(User)
+        .filter(User.role == "admin")
+        .order_by(User.id.asc())
+        .first()
+    )
+    if not admin:
+        raise RuntimeError("No admin user found for robot audit log")
+    return admin.id
 
 
 # =========================================================
 # اختيار الحجوزات الجاهزة
 # =========================================================
-
 def find_candidates(db: Session):
     """
     نختار فقط الحجوزات التي:
@@ -53,7 +67,6 @@ def find_candidates(db: Session):
 # =========================================================
 # حساب مبلغ الإرجاع
 # =========================================================
-
 def compute_refund_amount(booking: Booking) -> float:
     deposit = float(booking.deposit_amount or 0)
 
@@ -73,7 +86,6 @@ def compute_refund_amount(booking: Booking) -> float:
 # =========================================================
 # تنفيذ Refund حقيقي + تسجيل Log
 # =========================================================
-
 def execute_refund(db: Session, booking: Booking, refund_amount: float):
     """
     - يرسل Refund حقيقي عبر PayPal
@@ -84,22 +96,20 @@ def execute_refund(db: Session, booking: Booking, refund_amount: float):
         return
 
     # =====================================================
-    # 🔒 فلاتر أمان — لا نلمس إلا PayPal مع capture_id حقيقي
+    # 🔒 فلاتر أمان — PayPal فقط
     # =====================================================
-
     if booking.payment_method != "paypal":
         print(f"⏭️ Skip booking #{booking.id} (not PayPal)")
         return
 
-    capture_id = booking.payment_provider
-    if not capture_id or capture_id.lower() == "paypal":
+    capture_id = booking.deposit_capture_id or booking.payment_provider
+    if not capture_id:
         print(f"⏭️ Skip booking #{booking.id} (missing PayPal capture_id)")
         return
 
     # =====================================================
     # 🔥 إرسال المال فعليًا
     # =====================================================
-
     refund_reference = send_deposit_refund(
         db=db,
         booking=booking,
@@ -107,13 +117,12 @@ def execute_refund(db: Session, booking: Booking, refund_amount: float):
     )
 
     # =====================================================
-    # 🧾 Audit Log
+    # 🧾 Audit Log (FIXED)
     # =====================================================
-
     db.add(
         DepositAuditLog(
             booking_id=booking.id,
-            actor_id= 0,
+            actor_id=get_system_actor_id(db),  # ✅ FIX HERE
             actor_role="system",
             action="robot_refund_sent",
             amount=int(refund_amount),
@@ -128,7 +137,6 @@ def execute_refund(db: Session, booking: Booking, refund_amount: float):
 # =========================================================
 # تشغيل الروبوت مرة واحدة
 # =========================================================
-
 def run_once():
     db = SessionLocal()
     try:
@@ -152,10 +160,6 @@ def run_once():
         print("Robot finished successfully.")
         print("======================================")
 
-    except Exception as e:
-        print("❌ Robot error:", str(e))
-        raise
-
     finally:
         db.close()
 
@@ -163,6 +167,5 @@ def run_once():
 # =========================================================
 # CLI
 # =========================================================
-
 if __name__ == "__main__":
     run_once()
