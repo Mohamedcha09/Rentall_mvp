@@ -853,11 +853,18 @@ header.topbar .searchbar-wrap{
   flex-shrink: 0;
 }
 
-/* FIX: push top tabs down in iOS App (Xcode only) */
-html.pwa .m-top-tabs{
-  margin-top: calc(env(safe-area-inset-top) + 12px) !important;
+/* =========================================
+   FINAL FIX – iOS WKWebView SAFE AREA BUG
+   (Xcode ONLY – Safari untouched)
+========================================= */
+
+html.pwa header.topbar {
+  padding-top: 0 !important;
 }
 
+html.pwa .ios-safe-spacer {
+  display: none !important;
+}
 
 
 </style>
