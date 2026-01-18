@@ -102,10 +102,11 @@ if ("serviceWorker" in navigator) {
 
     /* Topbar */
     .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; }
-
-
-
-
+     header.topbar {
+  position: sticky;
+  top: env(safe-area-inset-top);
+  padding-top: env(safe-area-inset-top);
+}
 
 
     .searchbar-wrap{
@@ -826,16 +827,17 @@ header.topbar .searchbar-wrap{
     margin-top: 10px;
   }
 
+  .page{
+    padding-top: 14px;
+  }
 }
 
-/* ===============================
-   FINAL TOP SAFE + ORDER FIX
-   =============================== */
-
-/* 1️⃣ topbar يحترم safe area */
-header.topbar{
-  padding-top: env(safe-area-inset-top);
+.m-top-tabs{
+  margin-top: 4px;
 }
+
+
+
 </style>
 
 {% block head %}{% endblock %}
@@ -928,10 +930,9 @@ window.onpageshow = function(e){
   <div id="page-wrapper">
 {% if not immersive and not no_ui %}
   <!-- ===== Topbar ===== -->
- <header class="topbar">
-  <div class="topbar__inner d-flex flex-column gap-2">
+  <header class="topbar">
 
-
+    <div class="topbar__inner d-flex align-items-center gap-2">
 
 
 
@@ -1153,8 +1154,6 @@ window.onpageshow = function(e){
   {% endif %}
 
 {% if not immersive and not no_ui %}
-
-
   <!-- Top tabs (mobile) -->
   <nav class="m-top-tabs d-lg-none px-3 pb-2" role="tablist" aria-label="Top sections">
     <a href="/" class="m-tab {% if request and request.url.path == '/' %}is-active{% endif %}" role="tab"
