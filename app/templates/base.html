@@ -791,40 +791,46 @@ header.topbar .searchbar input.form-control{
 
 
 </style>
-
 <style id="mobile-search-top-tabs-clean">
 /* ==================================================
-   MOBILE ONLY — CLEAN SEARCH + TOP TABS (FINAL)
+   MOBILE ONLY — CLEAN SEARCH + TOP TABS (FINAL FIX)
+   Objectif :
+   Search
+   ↓
+   Top Navbar (Home / Notifications / Admin)
    ================================================== */
 @media (max-width: 768px){
 
-  /* Header يحتوي البحث فقط */
+  /* Header : contient UNIQUEMENT la search bar */
   header.topbar{
     padding-top: env(safe-area-inset-top);
     padding-bottom: 0;
+    margin-bottom: 12px; /* ✅ IMPORTANT : sépare la navbar du search */
   }
 
-  /* البحث */
+  /* Search bar */
   header.topbar form.searchbar{
     display: block;
-    margin: 0 0 10px 0; /* المسافة تحت البحث */
+    margin: 0 0 10px 0; /* espace sous la search */
   }
 
-  /* نضمن أن inner لا يكدّس العناصر */
+  /* Inner : on évite toute empilement vertical */
   header.topbar .topbar__inner{
+    display: flex;
     flex-direction: row;
     align-items: center;
   }
 
-  /* Navbar العلوي تحت البحث */
+  /* Top navbar : élément NORMAL dans le flow */
   nav.m-top-tabs{
+    display: flex;
     position: relative;
     margin-top: 0;
     z-index: 1;
   }
+
 }
 </style>
-
 
 {% block head %}{% endblock %}
 {% set immersive = immersive|default(false) %}
@@ -1967,6 +1973,9 @@ window.onpageshow = function(e){
 <style id="hide-header-messages">
 /* ===== Hide header ONLY on /messages (mobile only) ===== */
 @media (max-width: 768px){
+   header.topbar{
+    margin-bottom: 12px; /* ⬅️ هذا هو الحل */
+  }
 
   body[data-path="/messages"],
   body[data-path^="/messages/"] {
