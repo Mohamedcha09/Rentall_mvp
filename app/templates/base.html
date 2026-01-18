@@ -92,10 +92,7 @@ if ("serviceWorker" in navigator) {
       --safe-bottom-legacy: constant(safe-area-inset-bottom, 0px);
       --tabbar-lift: 20px; /* lift bottom bar a bit */
     }
-    /* ===== iOS SAFE AREA – FINAL & CLEAN ===== */
-body {
-  padding-top: env(safe-area-inset-top);
-}
+
 
     body{ color:var(--text); background:#f4f6fb; }
     [data-theme="dark"]{
@@ -105,6 +102,12 @@ body {
 
     /* Topbar */
     .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; }
+     header.topbar {
+  position: sticky;
+  top: env(safe-area-inset-top);
+  padding-top: env(safe-area-inset-top);
+}
+
 
     .searchbar-wrap{
       display:flex; align-items:center; gap:10px;
