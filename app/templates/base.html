@@ -184,7 +184,6 @@ if ("serviceWorker" in navigator) {
 
     /* Top tabs (mobile only) — centered + purple bottom bar */
     .m-top-tabs{
-      display:none !important;
       justify-content:center; align-items:flex-end; gap:28px;
       padding:0 14px; margin-top:6px;
       border-bottom:1px solid var(--border); background:transparent;
@@ -813,29 +812,32 @@ header.topbar .searchbar-wrap{
   height: 44px;
 }
 
-/* ===== CLEAN FINAL TOPBAR FIX ===== */
 
+
+/* ===== FINAL MOBILE ORDER FIX ===== */
 @media (max-width: 768px){
 
+  header.topbar{
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: 6px;
+  }
+
   header.topbar .topbar__inner{
-    min-height: 56px;
-    align-items: center;
-  }
-
-  .m-top-tabs{
-    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 
 }
 
-/* ===============================
-   FINAL TOP SAFE + ORDER FIX
-   =============================== */
-
-/* 1️⃣ topbar يحترم safe area */
-header.topbar{
-  padding-top: env(safe-area-inset-top);
+@media (max-width: 768px){
+  header.topbar{
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: 6px;
+    margin-bottom: 6px; /* ✅ هذا هو المفتاح */
+  }
 }
+
 </style>
 
 {% block head %}{% endblock %}
@@ -1153,6 +1155,8 @@ window.onpageshow = function(e){
   {% endif %}
 
 {% if not immersive and not no_ui %}
+
+
   <!-- Top tabs (mobile) -->
   <nav class="m-top-tabs d-lg-none px-3 pb-2" role="tablist" aria-label="Top sections">
     <a href="/" class="m-tab {% if request and request.url.path == '/' %}is-active{% endif %}" role="tab"
