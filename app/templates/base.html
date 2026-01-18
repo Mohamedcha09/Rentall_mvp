@@ -54,8 +54,7 @@
 
   <!-- External CSS -->
   <link href="/static/style.css?v=9" rel="stylesheet">
-  <link rel="stylesheet" href="/static/app-safearea.css">
-
+  
 
 <!-- Primary Logo for Google -->
 <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
@@ -93,6 +92,11 @@ if ("serviceWorker" in navigator) {
       --safe-bottom-legacy: constant(safe-area-inset-bottom, 0px);
       --tabbar-lift: 20px; /* lift bottom bar a bit */
     }
+    /* ===== iOS SAFE AREA – FINAL & CLEAN ===== */
+body {
+  padding-top: env(safe-area-inset-top);
+}
+
     body{ color:var(--text); background:#f4f6fb; }
     [data-theme="dark"]{
       --text:#e5e7eb; --muted:#9ca3af; --panel:#0b1220; --surface:#0f172a; --border:rgba(255,255,255,.12);
@@ -810,10 +814,6 @@ header.topbar .searchbar-wrap{
 /* ===== CLEAN FINAL TOPBAR FIX ===== */
 
 @media (max-width: 768px){
-  header.topbar{
-  padding-top: 0 !important;
-}
-
 
   header.topbar .topbar__inner{
     min-height: 56px;
@@ -829,39 +829,10 @@ header.topbar .searchbar-wrap{
   }
 }
 
-
-
-:root{
-  --safe-top: env(safe-area-inset-top, 24px);
-}
-
 .m-top-tabs{
   margin-top: 4px;
 }
 
-
-/* ===============================
-   iOS SAFE AREA TOP SPACER
-   =============================== */
-.ios-safe-spacer{
-  height: env(safe-area-inset-top, 44px);
-  background: #ffffff;
-  width: 100%;
-  flex-shrink: 0;
-}
-
-/* =========================================
-   FINAL FIX – iOS WKWebView SAFE AREA BUG
-   (Xcode ONLY – Safari untouched)
-========================================= */
-
-html.pwa header.topbar {
-  padding-top: 0 !important;
-}
-
-html.pwa .ios-safe-spacer {
-  display: none !important;
-}
 
 
 </style>
