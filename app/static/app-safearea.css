@@ -1,0 +1,10 @@
+/* ==================================================
+   GLOBAL iOS SAFE AREA – APP ONLY
+   Applies to ALL pages automatically
+   Prevents overlap with notch / clock / battery
+================================================== */
+
+/* يعمل فقط داخل التطبيق (PWA / WKWebView) */
+html.pwa body {
+  padding-top: env(safe-area-inset-top);
+}
