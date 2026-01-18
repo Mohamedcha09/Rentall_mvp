@@ -102,21 +102,9 @@ if ("serviceWorker" in navigator) {
 
     /* Topbar */
     .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; }
-     /* ===== iOS ORDER FIX ===== */
-header.topbar {
-  position: relative;
-  padding-top: env(safe-area-inset-top);
-}
 
-header.topbar .searchbar {
-  order: 1;
-  width: 100%;
-}
 
-.m-top-tabs {
-  order: 2;
-  margin-top: 6px;
-}
+
 
 
 
@@ -838,14 +826,40 @@ header.topbar .searchbar-wrap{
     margin-top: 10px;
   }
 
-  .page{
-    padding-top: 14px;
-  }
 }
 
-.m-top-tabs{
-  margin-top: 4px;
+/* ===============================
+   FINAL TOP SAFE + ORDER FIX
+   =============================== */
+
+/* 1️⃣ topbar يحترم safe area */
+header.topbar{
+  padding-top: env(safe-area-inset-top);
 }
+
+/* 2️⃣ ترتيب واضح داخل topbar */
+header.topbar .topbar__inner{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 3️⃣ search bar دائمًا أول عنصر */
+header.topbar form.searchbar{
+  order: 1;
+}
+
+/* 4️⃣ التابات تأتي بعده (خارج الهيدر) */
+.m-top-tabs{
+  margin-top: 8px;
+}
+
+/* 5️⃣ المحتوى يبدأ بعد الهيدر بدون اختلاط */
+.page{
+  padding-top: 8px;
+}
+
+
 
 
 
