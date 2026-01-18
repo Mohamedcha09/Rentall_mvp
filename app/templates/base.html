@@ -791,45 +791,69 @@ header.topbar .searchbar input.form-control{
 
 
 </style>
-<style id="mobile-search-top-tabs-clean">
-/* ==================================================
-   MOBILE ONLY — CLEAN SEARCH + TOP TABS (FINAL FIX)
-   Objectif :
-   Search
-   ↓
-   Top Navbar (Home / Notifications / Admin)
-   ================================================== */
+
+<style id="searchbar-final-fix">
+/* === SEARCHBAR FINAL VERTICAL FIX (GLOBAL) === */
+
+header.topbar .topbar__inner{
+  min-height: 64px;
+  align-items: center;
+}
+
+header.topbar form.searchbar{
+  display: flex;
+  align-items: center;
+  margin: 0;
+}
+
+header.topbar .searchbar-wrap{
+  display: flex;
+  align-items: center;
+  height: 44px;
+}
+
+/* ===== CLEAN FINAL TOPBAR FIX ===== */
+
 @media (max-width: 768px){
 
-  /* Header : contient UNIQUEMENT la search bar */
-  header.topbar{
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: 0;
-    margin-bottom: 12px; /* ✅ IMPORTANT : sépare la navbar du search */
-  }
-
-  /* Search bar */
-  header.topbar form.searchbar{
-    display: block;
-    margin: 0 0 10px 0; /* espace sous la search */
-  }
-
-  /* Inner : on évite toute empilement vertical */
   header.topbar .topbar__inner{
-    display: flex;
-    flex-direction: row;
+    min-height: 56px;
     align-items: center;
   }
 
-  /* Top navbar : élément NORMAL dans le flow */
-  nav.m-top-tabs{
-    display: flex;
-    position: relative;
-    margin-top: 0;
-    z-index: 1;
+  .m-top-tabs{
+    margin-top: 10px;
   }
 
 }
+
+/* ===== FINAL MOBILE ORDER FIX ===== */
+@media (max-width: 768px){
+
+  header.topbar{
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: 6px;
+  }
+
+  header.topbar .topbar__inner{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+}
+
+@media (max-width: 768px){
+  .m-top-tabs{
+    position: static !important;
+    margin-top: 0;
+    padding-top: 6px;
+    background: transparent;
+  }
+}
+
+
+
 </style>
 
 {% block head %}{% endblock %}
@@ -923,8 +947,7 @@ window.onpageshow = function(e){
 {% if not immersive and not no_ui %}
   <!-- ===== Topbar ===== -->
  <header class="topbar">
-  <div class="topbar__inner d-flex gap-2">
-
+  <div class="topbar__inner d-flex flex-column gap-2">
 
 
 
@@ -1973,9 +1996,6 @@ window.onpageshow = function(e){
 <style id="hide-header-messages">
 /* ===== Hide header ONLY on /messages (mobile only) ===== */
 @media (max-width: 768px){
-   header.topbar{
-    margin-bottom: 12px; /* ⬅️ هذا هو الحل */
-  }
 
   body[data-path="/messages"],
   body[data-path^="/messages/"] {
