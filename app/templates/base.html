@@ -836,33 +836,6 @@ header.topbar .searchbar-wrap{
 header.topbar{
   padding-top: env(safe-area-inset-top);
 }
-
-/* 2️⃣ ترتيب واضح داخل topbar */
-header.topbar .topbar__inner{
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-/* 3️⃣ search bar دائمًا أول عنصر */
-header.topbar form.searchbar{
-  order: 1;
-}
-
-/* 4️⃣ التابات تأتي بعده (خارج الهيدر) */
-.m-top-tabs{
-  margin-top: 8px;
-}
-
-/* 5️⃣ المحتوى يبدأ بعد الهيدر بدون اختلاط */
-.page{
-  padding-top: 8px;
-}
-
-
-
-
-
 </style>
 
 {% block head %}{% endblock %}
@@ -956,7 +929,8 @@ window.onpageshow = function(e){
 {% if not immersive and not no_ui %}
   <!-- ===== Topbar ===== -->
  <header class="topbar">
-  <div class="topbar__inner d-flex flex-column">
+  <div class="topbar__inner d-flex flex-column gap-2">
+
 
 
 
