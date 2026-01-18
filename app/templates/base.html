@@ -808,10 +808,10 @@ header.topbar .searchbar-wrap{
 /* ===== CLEAN FINAL TOPBAR FIX ===== */
 
 @media (max-width: 768px){
-
   header.topbar{
-    padding-top: env(safe-area-inset-top);
-  }
+  padding-top: 0 !important;
+}
+
 
   header.topbar .topbar__inner{
     min-height: 56px;
@@ -833,15 +833,10 @@ header.topbar .searchbar-wrap{
   --safe-top: env(safe-area-inset-top, 24px);
 }
 
-
-/* Small natural spacing */
-header.topbar .searchbar-wrap{
-  margin-top: 6px;
-}
-
 .m-top-tabs{
-  margin-top: 8px;
+  margin-top: 4px;
 }
+
 
 /* ===============================
    iOS SAFE AREA TOP SPACER
@@ -953,8 +948,6 @@ window.onpageshow = function(e){
   data-auth="{{ '1' if session_user else '0' }}"
   data-path="{{ request.url.path if request else '' }}"
   class="{% if show_tabbar and not immersive and not no_ui %}has-tabbar{% endif %}">
-    <!-- iOS Safe Area Spacer -->
-  <div class="ios-safe-spacer"></div>
 
 
 
