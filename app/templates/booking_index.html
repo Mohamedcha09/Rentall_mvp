@@ -74,6 +74,32 @@
   text-overflow:ellipsis;
 }
 
+/* ===== iOS APP ONLY — TOP SAFE WHITE BAR (BOOKINGS PAGE) ===== */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 768px) {
+
+    /* الشريط الأبيض العلوي */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: env(safe-area-inset-top);
+      background: #fff;
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    /* دفع محتوى الصفحة للأسفل */
+    body {
+      padding-top: env(safe-area-inset-top);
+    }
+
+  }
+}
+
+
 </style>
 
 {% set EMPTY_IMG = (url_for('static', path='photo/xon.png') if view=='renter'
