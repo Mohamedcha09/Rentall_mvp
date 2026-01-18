@@ -184,6 +184,7 @@ if ("serviceWorker" in navigator) {
 
     /* Top tabs (mobile only) — centered + purple bottom bar */
     .m-top-tabs{
+      display:none !important;
       justify-content:center; align-items:flex-end; gap:28px;
       padding:0 14px; margin-top:6px;
       border-bottom:1px solid var(--border); background:transparent;
@@ -827,33 +828,14 @@ header.topbar .searchbar-wrap{
 
 }
 
-/* ===== FINAL MOBILE ORDER FIX ===== */
-@media (max-width: 768px){
+/* ===============================
+   FINAL TOP SAFE + ORDER FIX
+   =============================== */
 
-  header.topbar{
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: 6px;
-  }
-
-  header.topbar .topbar__inner{
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
+/* 1️⃣ topbar يحترم safe area */
+header.topbar{
+  padding-top: env(safe-area-inset-top);
 }
-
-@media (max-width: 768px){
-  .m-top-tabs{
-    position: static !important;
-    margin-top: 0;
-    padding-top: 6px;
-    background: transparent;
-  }
-}
-
-
-
 </style>
 
 {% block head %}{% endblock %}
