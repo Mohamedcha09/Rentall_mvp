@@ -853,6 +853,15 @@ header.topbar .searchbar-wrap{
   flex-shrink: 0;
 }
 
+/* ===============================
+   FIX: Lower top tabs in iOS App
+   (Xcode / WKWebView only)
+   =============================== */
+html.pwa .m-top-tabs{
+  top: calc(56px + env(safe-area-inset-top)) !important;
+}
+
+
 </style>
 
 {% block head %}{% endblock %}
