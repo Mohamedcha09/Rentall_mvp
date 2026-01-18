@@ -186,6 +186,32 @@ mark {
   padding: 2px 3px;
   border-radius: 4px;
 }
+
+/* ===== iOS APP ONLY — TOP SAFE WHITE BAR (MESSAGES PAGE) ===== */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 768px) {
+
+    /* شريط أبيض ثابت لحماية الساعة */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: env(safe-area-inset-top);
+      background: #fff;
+      z-index: 3000; /* أعلى من كل شيء */
+      pointer-events: none;
+    }
+
+    /* دفع محتوى الصفحة */
+    body {
+      padding-top: env(safe-area-inset-top);
+    }
+
+  }
+}
+
 </style>
 
 <!-- HEADER -->
