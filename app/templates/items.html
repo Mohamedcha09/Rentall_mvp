@@ -150,10 +150,29 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
         display: none !important;
     }
 }
-/* ===== FIX iOS SAFE AREA (status bar / notch) ===== */
-@media (max-width: 768px) {
-  body {
-    padding-top: env(safe-area-inset-top);
+/* ===== iOS APP ONLY: TOP SAFE WHITE BAR ===== */
+@supports (-webkit-touch-callout: none) {
+
+  @media (max-width: 768px) {
+
+    /* شريط أبيض ثابت أعلى الصفحة */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: env(safe-area-inset-top);
+      background: #fff;
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    /* دفع المحتوى أسفل الشريط */
+    body {
+      padding-top: env(safe-area-inset-top);
+    }
+
   }
 }
 
