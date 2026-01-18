@@ -1,10 +1,21 @@
-/* ==================================================
-   GLOBAL iOS SAFE AREA – APP ONLY
+/* ===================================================
+   GLOBAL iOS SAFE AREA FIX — WKWebView / Xcode ONLY
    Applies to ALL pages automatically
-   Prevents overlap with notch / clock / battery
-================================================== */
+=================================================== */
 
 /* يعمل فقط داخل التطبيق (PWA / WKWebView) */
+html.pwa,
+html.pwa body {
+  height: 100%;
+}
+
+/* أهم سطر في الحل */
 html.pwa body {
   padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  box-sizing: border-box;
 }
+
+/* Safari العادي لا يتأثر */
