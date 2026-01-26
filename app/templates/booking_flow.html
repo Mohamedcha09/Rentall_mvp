@@ -294,6 +294,28 @@ a.btn.disabled{
   cursor:default !important;
 }
 
+/* =====================================================
+   iOS APP ONLY — TOP SAFE WHITE BAR (BOOKING FLOW)
+   Hero-safe (no layout shift)
+===================================================== */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 576px) {
+
+    /* شريط أبيض خلف Status Bar فقط */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: env(safe-area-inset-top);
+      background: #ffffff;
+      z-index: 11000;
+      pointer-events: none;
+    }
+
+  }
+}
 
 </style>
 
