@@ -187,6 +187,32 @@ h2 {
 }
 
 
+/* ===== iOS APP ONLY — TOP SAFE WHITE BAR (ADD ITEM) ===== */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 768px) {
+
+    /* شريط أبيض ثابت تحت الساعة */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: env(safe-area-inset-top);
+      background: #ffffff;
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    /* دفع الصفحة كاملة للأسفل */
+    body {
+      padding-top: env(safe-area-inset-top);
+    }
+
+  }
+}
+<
+
 </style>
 
 

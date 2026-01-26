@@ -147,6 +147,33 @@ img.edit-thumb {
   form { padding: 0 6px; }
 }
 
+/* =====================================================
+   iOS APP ONLY — TOP SAFE WHITE BAR (EDIT ITEM)
+===================================================== */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 768px) {
+
+    /* شريط أبيض خلف الساعة (status bar) */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: env(safe-area-inset-top);
+      background: #ffffff;
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    /* دفع المحتوى للأسفل حتى لا يلتصق بالساعة */
+    body {
+      padding-top: env(safe-area-inset-top);
+    }
+
+  }
+}
+
 </style>
 {% endblock %}
 

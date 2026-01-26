@@ -1076,6 +1076,30 @@ pointer-events:none;
 }
 
 
+/* ===== iOS APP ONLY — TOP SAFE WHITE BAR (ITEMS DETAIL) ===== */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 768px) {
+
+    /* شريط أبيض ثابت تحت الساعة */
+    body.item-page::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: env(safe-area-inset-top);
+      background: #ffffff;
+      z-index: 10005; /* أعلى من gallery لكن تحت FABs */
+      pointer-events: none;
+    }
+
+    /* لا نضيف padding-top حتى لا نكسر الـ hero */
+    body.item-page {
+      padding-top: 0 !important;
+    }
+
+  }
+}
 
 
 </style>
