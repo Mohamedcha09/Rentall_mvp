@@ -372,6 +372,34 @@ body.has-tabbar {
 .about-wrap {
   min-height: 100vh;
 }
+
+/* ===== iOS APP ONLY — TOP SAFE WHITE BAR (ABOUT FULL) ===== */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 768px) {
+
+    body.about-full::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+
+      /* هذا هو السر */
+      height: env(safe-area-inset-top);
+
+      background: #ffffff;
+      z-index: 10005;   /* فوق كل شيء */
+      pointer-events: none;
+    }
+
+    body.about-full {
+      padding-top: 0 !important;
+      margin-top: 0 !important;
+    }
+
+  }
+}
+
 </style>
 
 
