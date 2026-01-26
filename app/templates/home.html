@@ -990,20 +990,27 @@
        data-bs-ride="carousel" data-bs-interval="5000" data-bs-touch="true" aria-label="Main slides">
 
     <div class="carousel-inner">
-      {% if banners and banners|length > 0 %}
-        {% for src in banners %}
-          <div class="carousel-item {% if loop.index0 == 0 %}active{% endif %}">
-                <img
-      src="{{ src|replace('res.cloudinary.com/de79qzfog/image/upload/','res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_1200/') }}"
-      loading="lazy"
-      decoding="async"
-      alt=""
-    >
-
-          </div>
-        {% endfor %}
-      {% endif %}
+  {% for src in (banners or []) %}
+    <div class="carousel-item {% if loop.first %}active{% endif %}">
+      <img
+        src="{{ src|replace(
+          'res.cloudinary.com/de79qzfog/image/upload/',
+          'res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_1200/'
+        ) }}"
+        width="1200"
+        height="800"
+        decoding="async"
+        {% if loop.first %}
+          fetchpriority="high"
+          loading="eager"
+        {% else %}
+          loading="lazy"
+        {% endif %}
+        alt="Sevor banner">
     </div>
+  {% endfor %}
+</div>
+
 
     <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" aria-label="Previous">
       <span class="carousel-control-prev-icon" aria-hidden="true"></span>
@@ -1047,6 +1054,7 @@
 {% set nearby = (nearby_items if nearby_items is defined else popular_items)|default([]) %}
 {% if nearby %}
   <div class="section-head">
+
     <div class="section-title">Popular Near You</div>
     <div class="d-flex gap-2">
       <button class="arrow-btn" data-snap-prev="#row-near"><i class="bi bi-chevron-right"></i></button>
@@ -1058,7 +1066,21 @@
     {% for it in nearby %}
       <a href="/items/{{ it.id }}" class="card spot hcard text-decoration-none">
         <div class="spot-media">
-          <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
+          <img
+  src="{% if it.image_path %}
+    {{ it.image_path | replace(
+      'res.cloudinary.com/de79qzfog/image/upload/',
+      'res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_450,h_450,c_fill/'
+    ) }}
+  {% else %}
+    /static/placeholder.jpg
+  {% endif %}"
+  width="303"
+  height="303"
+  loading="lazy"
+  decoding="async"
+  alt="{{ it.title }}">
+
           <div class="spot-overlay"></div>
 
           {% if it.price_per_day is defined %}
@@ -1127,7 +1149,21 @@
       {% for it in lst %}
         <a href="/items/{{ it.id }}" class="card spot hcard text-decoration-none">
           <div class="spot-media">
-            <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
+            <img
+  src="{% if it.image_path %}
+    {{ it.image_path | replace(
+      'res.cloudinary.com/de79qzfog/image/upload/',
+      'res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_450,h_450,c_fill/'
+    ) }}
+  {% else %}
+    /static/placeholder.jpg
+  {% endif %}"
+  width="303"
+  height="303"
+  loading="lazy"
+  decoding="async"
+  alt="{{ it.title }}">
+
             <div class="spot-overlay"></div>
 
             {% if it.price_per_day is defined %}
@@ -1276,7 +1312,21 @@
     {% for it in all_items_list %}
       <a href="/items/{{ it.id }}" class="card spot text-decoration-none">
         <div class="spot-media">
-          <img src="{{ it.image_path or '/static/placeholder.jpg' }}" alt="">
+          <img
+  src="{% if it.image_path %}
+    {{ it.image_path | replace(
+      'res.cloudinary.com/de79qzfog/image/upload/',
+      'res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_450,h_450,c_fill/'
+    ) }}
+  {% else %}
+    /static/placeholder.jpg
+  {% endif %}"
+  width="303"
+  height="303"
+  loading="lazy"
+  decoding="async"
+  alt="{{ it.title }}">
+
           <div class="spot-overlay"></div>
           
           {% if it.subcategory %}

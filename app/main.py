@@ -949,6 +949,15 @@ def about(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user") if _has_session(request) else None
     return templates.TemplateResponse("about.html", {"request": request, "session_user": u})
 
+@app.get("/about-full", response_class=HTMLResponse)
+def about_full(request: Request, db: Session = Depends(get_db)):
+    u = request.session.get("user") if _has_session(request) else None
+    return templates.TemplateResponse(
+        "about_full.html",
+        {"request": request, "session_user": u}
+    )
+
+
 @app.get("/api/unread_count")
 def api_unread_count(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user") if _has_session(request) else None
