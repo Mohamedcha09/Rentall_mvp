@@ -201,6 +201,31 @@
   word-break:break-word;
 }
 
+/* ===== iOS APP ONLY — TOP SAFE WHITE BAR (SUPPORT TICKET) ===== */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 768px) {
+
+    /* شريط أبيض ثابت أعلى الشاشة */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: env(safe-area-inset-top);
+      background: #ffffff;
+      z-index: 99998; /* تحت sticky bar */
+      pointer-events: none;
+    }
+
+    /* دفع المحتوى كله للأسفل */
+    body {
+      padding-top: env(safe-area-inset-top);
+    }
+
+  }
+}
+
 
 </style>
 
