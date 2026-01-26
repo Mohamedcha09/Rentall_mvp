@@ -1136,13 +1136,15 @@ def privacy_page(request: Request):
     return templates.TemplateResponse("privacy.html", {"request": request})
 
 
-
 @app.get("/how-it-works", response_class=HTMLResponse)
 def how_it_works(request: Request):
+    u = request.session.get("user") if _has_session(request) else None
     return templates.TemplateResponse(
         "how_it_works_steps.html",
         {
             "request": request,
-            "title": "How Sevor Works"
+            "title": "How Sevor Works",
+            "session_user": u,   # ✅ هذا هو المفتاح
         }
     )
+
