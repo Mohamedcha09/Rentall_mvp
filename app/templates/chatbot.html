@@ -343,6 +343,31 @@ button {
   padding-bottom: 140px;
 }
 
+/* ===== iOS APP ONLY — TOP SAFE WHITE BAR (CHATBOT) ===== */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 768px) {
+
+    /* شريط أبيض ثابت أعلى الشاشة */
+    body[data-path="/chatbot"]::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: env(safe-area-inset-top);
+      background: #ffffff;
+      z-index: 3000; /* أعلى من الهيدر والـ chat */
+      pointer-events: none;
+    }
+
+    /* دفع محتوى الشات للأسفل */
+    body[data-path="/chatbot"] {
+      padding-top: env(safe-area-inset-top);
+    }
+
+  }
+}
+ 
   </style>
 </head>
 
