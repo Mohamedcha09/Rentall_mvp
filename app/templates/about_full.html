@@ -322,56 +322,81 @@
 
 
 </style>
-
 <style>
 /* ================================
-   ABOUT FULL — HIDE GLOBAL UI
-   (NO base.html changes)
+   HOW IT WORKS — HIDE GLOBAL UI
+   (SAME AS about_full)
    ================================ */
 
-/* 1️⃣ إخفاء النافبار العلوي + البحث */
+/* 1️⃣ Hide top navbar + search */
 header.topbar,
 header.topbar * {
   display: none !important;
 }
 
-/* 2️⃣ إخفاء التابات العلوية (mobile) */
+/* 2️⃣ Hide mobile top tabs */
 .m-top-tabs {
   display: none !important;
 }
 
-/* 3️⃣ إخفاء شريط البحث تحديدًا (احتياط) */
+/* 3️⃣ Force-hide search bar (safety) */
 .search,
 .searchbar,
 .searchbar-wrap {
   display: none !important;
 }
 
-/* 4️⃣ إخفاء أي Callout فوق الصفحة */
+/* 4️⃣ Hide callouts */
 .stripe-callout,
 .paypal-callout {
   display: none !important;
 }
 
-/* 5️⃣ إخفاء التاب بار السفلي (mobile) */
+/* 5️⃣ Hide bottom mobile tabbar */
 .mobile-tabbar {
   display: none !important;
 }
 
-/* 6️⃣ إلغاء المساحات التي يضيفها التاب بار */
+/* 6️⃣ Remove tabbar spacing */
 body.has-tabbar {
   padding-bottom: 0 !important;
 }
 
-/* 7️⃣ تنظيف المسافة العلوية للصفحة */
+/* 7️⃣ Clean top spacing */
 .page {
   padding-top: 0 !important;
 }
 
-/* 8️⃣ تأكيد أن about_full يأخذ الشاشة كاملة */
-.about-wrap {
+/* 8️⃣ Full viewport page */
+.how-wrap {
   min-height: 100vh;
 }
+
+/* ===== iOS APP ONLY — SAFE AREA FIX ===== */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 768px) {
+
+    body.how-it-works::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: env(safe-area-inset-top);
+      background: #ffffff;
+      z-index: 10005;
+      pointer-events: none;
+    }
+
+    body.how-it-works {
+      padding-top: 0 !important;
+      margin-top: 0 !important;
+    }
+  }
+}
+</style>
+
+<style>
 
 /* ===== iOS APP ONLY — TOP SAFE WHITE BAR (ABOUT FULL) ===== */
 @supports (-webkit-touch-callout: none) {
