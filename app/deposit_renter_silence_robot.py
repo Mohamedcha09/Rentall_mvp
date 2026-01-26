@@ -28,7 +28,8 @@ from app.notifications_api import push_notification, notify_admins
 
 
 # =====================================================
-WINDOW_DELTA = timedelta(minutes=1)   # TEST MODE
+# Owner dispute window (48 hours after return)
+WINDOW_DELTA = timedelta(hours=48)
 NOW = lambda: datetime.now(timezone.utc)
 # =====================================================
 
