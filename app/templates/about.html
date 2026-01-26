@@ -36,15 +36,58 @@
 </style>
 
 <style>
-  /* تحويل كل النصوص إلى لون أبيض فقط */
-  p, li, .text-muted, .lead, span, div, ul {
-    color: #ffffff !important;
-  }
+  /* ===== Text Color System (Luxury / Readable) ===== */
+
+/* عناوين */
+h1, h2, h3, h4, h5, h6,
+.section-title {
+  color: #f5f7ff !important;   /* أبيض ناعم */
+}
+
+/* نص أساسي */
+p, li, .lead {
+  color: #d7dbf5 !important;   /* أبيض مائل للأزرق */
+  line-height: 1.75;
+}
+
+/* نص ثانوي */
+.text-muted {
+  color: #aeb6e6 !important;
+}
+
+/* Chips / badges */
+.chip, .badge-min {
+  color: #e6ebff !important;
+}
+
+/* عناصر صغيرة */
+.item-list span,
+.accordion-body {
+  color: #cfd5ff !important;
+}
+
+/* أزرار أكورديون */
+.accordion-button {
+  color: #f0f3ff !important;
+}
+
+/* عناصر glass */
+.glass {
+  color: #e2e6ff;
+}
+
 
   .accordion-body,
   .accordion-button {
     color: #ffffff !important;
   }
+
+  .about-hero h1 {
+  background: linear-gradient(90deg, #ffffff, #9fb0ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 </style>
 
 
