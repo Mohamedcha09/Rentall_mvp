@@ -319,7 +319,61 @@
     .steps{ grid-template-columns:1fr; }
     .hero h1{ font-size: 38px; }
   }
+
+
 </style>
+
+<style>
+/* ================================
+   ABOUT FULL — HIDE GLOBAL UI
+   (NO base.html changes)
+   ================================ */
+
+/* 1️⃣ إخفاء النافبار العلوي + البحث */
+header.topbar,
+header.topbar * {
+  display: none !important;
+}
+
+/* 2️⃣ إخفاء التابات العلوية (mobile) */
+.m-top-tabs {
+  display: none !important;
+}
+
+/* 3️⃣ إخفاء شريط البحث تحديدًا (احتياط) */
+.search,
+.searchbar,
+.searchbar-wrap {
+  display: none !important;
+}
+
+/* 4️⃣ إخفاء أي Callout فوق الصفحة */
+.stripe-callout,
+.paypal-callout {
+  display: none !important;
+}
+
+/* 5️⃣ إخفاء التاب بار السفلي (mobile) */
+.mobile-tabbar {
+  display: none !important;
+}
+
+/* 6️⃣ إلغاء المساحات التي يضيفها التاب بار */
+body.has-tabbar {
+  padding-bottom: 0 !important;
+}
+
+/* 7️⃣ تنظيف المسافة العلوية للصفحة */
+.page {
+  padding-top: 0 !important;
+}
+
+/* 8️⃣ تأكيد أن about_full يأخذ الشاشة كاملة */
+.about-wrap {
+  min-height: 100vh;
+}
+</style>
+
 
 {# ✅ Optional SEO structured data (safe) #}
 <script type="application/ld+json">
