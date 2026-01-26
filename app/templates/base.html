@@ -287,6 +287,8 @@ if ("serviceWorker" in navigator) {
     .ic--settings { --img: url('/static/iconblossom/ramdi.png'); }
     .ic--logout   { --img: url('/static/iconblossom/roge.png'); }
     .ic--cc       { --img: url('/static/iconblossom/cc.png'); }
+    .ic--about { --img: url('/static/iconblossom/org.png'); }
+
     .ic::after{ background-image: var(--img); }
 
     /* Desktop tweaks */
@@ -296,6 +298,7 @@ if ("serviceWorker" in navigator) {
     .ic--settings { --ic: 28px; }
     .ic--logout   { --ic: 32px; }
     .ic--cc       { --ic: 36px; }
+    .ic--about { --ic: 36px; }   /* عدّل الرقم كما تحب */
 
     /* Mobile */
     @media (max-width:768px){
@@ -305,6 +308,8 @@ if ("serviceWorker" in navigator) {
       .ic--settings { --ic: 42px; }
       .ic--logout   { --ic: 36px; }
       .ic--cc       { --ic: 40px; }
+      .ic--about { --ic: 36px; }   /* عدّل الرقم كما تحب */
+
     }
   </style>
 
@@ -1805,7 +1810,15 @@ window.onpageshow = function(e){
         <li><a class="sheet__item" href="/settings"><span class="left"><span class="ic ic--settings"></span><span class="label">Settings</span></span><i class="bi bi-chevron-right chev"></i></a></li>
         <li><a class="sheet__item" href="/support/my"><span class="left"><span class="ic ic--cc"></span><span class="label">My Tickets</span></span><i class="bi bi-chevron-right chev"></i></a></li>
         <li><a class="sheet__item" href="/support/new"><span class="left"><span class="ic ic--support"></span><span class="label">Contact Support</span></span><i class="bi bi-chevron-right chev"></i></a></li>
-        <li><a class="sheet__item" href="/about-full"><span class="left"><span class="ic ic--profile"></span><span class="label">About</span></span><i class="bi bi-chevron-right chev"></i></a></li>
+<li>
+  <a class="sheet__item" href="/about-full">
+    <span class="left">
+      <span class="ic ic--about"></span>
+      <span class="label">About</span>
+    </span>
+    <i class="bi bi-chevron-right chev"></i>
+  </a>
+</li>
         <li><a class="sheet__item text-danger" href="/logout"><span class="left"><span class="ic ic--logout"></span><span class="label">Logout</span></span><i class="bi bi-chevron-right chev"></i></a></li>
       </ul>
     </div>
