@@ -172,6 +172,26 @@ main,
   margin-top: 0 !important;
   padding-top: 0 !important;
 }
+
+/* ===== iOS APP ONLY — TOP SAFE WHITE BAR (HOW IT WORKS) ===== */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 768px) {
+
+    .howwrap::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: env(safe-area-inset-top);
+      background: #ffffff;
+      z-index: 10005;
+      pointer-events: none;
+    }
+
+  }
+}
+
 </style>
 
 
