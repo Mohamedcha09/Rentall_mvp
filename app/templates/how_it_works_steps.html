@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+  :root{
+    --glass: rgba(255,255,255,.55);
+    --border: rgba(120,120,160,.18);
+    --shadow: 0 16px 40px rgba(16,24,40,.10);
+    --shadow2: 0 8px 24px rgba(16,24,40,.10);
+    --radius: 22px;
+    --grad: linear-gradient(135deg, #7c3aed, #38bdf8);
+    --grad2: linear-gradient(135deg, #22c55e, #38bdf8);
+  }
+
+  .howwrap{ max-width: 1060px; margin: 18px auto 80px; padding: 0 14px; }
+
+  .hero{
+    border-radius: 26px;
+    padding: 18px 18px 16px;
+    background: radial-gradient(900px 280px at 20% 10%, rgba(124,58,237,.25), transparent 55%),
+                radial-gradient(800px 260px at 90% 30%, rgba(56,189,248,.25), transparent 55%),
+                rgba(255,255,255,.35);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .hero-top{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .badge{
+    display:inline-flex; align-items:center; gap:8px;
+    padding: 8px 12px; border-radius: 999px;
+    background: rgba(255,255,255,.55);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow2);
+    font-weight: 900;
+  }
+  .badge .dot{ width:10px; height:10px; border-radius:50%; background: var(--grad); }
+  .mini{ font-size: 12px; opacity: .85; font-weight: 800; }
+
+  .hero h1{ margin: 12px 0 6px; font-size: 28px; line-height: 1.08; letter-spacing: -.5px; font-weight: 950; color:#0b1220; }
+  .hero p{ margin: 0 0 14px; color: rgba(10,20,35,.72); font-weight: 650; }
+
+  .hero-ctas{ display:flex; flex-wrap:wrap; gap:10px; margin-top: 8px; }
+  .btnx{
+    display:inline-flex; align-items:center; justify-content:center; gap:10px;
+    padding: 12px 14px; border-radius: 16px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,.65);
+    box-shadow: var(--shadow2);
+    font-weight: 900; text-decoration: none; color:#0b1220;
+  }
+  .btnx.primary{ background: var(--grad); border-color: rgba(255,255,255,.25); color: white; }
+  .btnx.green{ background: var(--grad2); border-color: rgba(255,255,255,.25); color: white; }
+  .btnx:active{ transform: scale(.99); }
+
+  /* ===== Steps timeline ===== */
+  .timeline{ margin-top: 14px; display:flex; flex-direction:column; gap: 12px; }
+
+  .s{
+    display:grid;
+    grid-template-columns: 1.1fr .9fr;
+    gap: 12px;
+    border-radius: 26px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow2);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 14px;
+    overflow:hidden;
+  }
+
+  /* alternate on desktop */
+  .s.alt{ grid-template-columns: .9fr 1.1fr; }
+  .s.alt .txt{ order: 2; }
+  .s.alt .pic{ order: 1; }
+
+  .txt{
+    border-radius: 20px;
+    padding: 12px;
+    background: rgba(255,255,255,.45);
+    border: 1px solid rgba(120,120,160,.16);
+  }
+
+  .topline{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom: 8px; }
+  .num{
+    width: 40px; height: 40px; border-radius: 14px;
+    display:flex; align-items:center; justify-content:center;
+    font-weight: 950; color: white; background: var(--grad);
+    flex: 0 0 auto;
+  }
+  .tag{
+    font-size: 12px; font-weight: 950;
+    padding: 6px 10px; border-radius: 999px;
+    background: rgba(255,255,255,.65);
+    border: 1px solid rgba(120,120,160,.20);
+  }
+
+  .txt h3{ margin: 0 0 6px; font-size: 18px; font-weight: 950; color:#0b1220; }
+  .txt p{ margin: 0; color: rgba(10,20,35,.74); font-weight: 650; line-height: 1.55; }
+
+  .pic{
+    border-radius: 22px;
+    overflow:hidden;
+    border: 1px solid rgba(120,120,160,.18);
+    background: rgba(255,255,255,.30);
+    display:flex;
+    min-height: 210px;
+  }
+  .pic img{
+    width:100%; height:100%;
+    object-fit: cover;
+    display:block;
+  }
+
+  /* mobile: text above image */
+  @media(max-width: 820px){
+    .s, .s.alt{ grid-template-columns: 1fr; }
+    .s.alt .txt{ order: 1; }
+    .s.alt .pic{ order: 2; }
+    .pic{ min-height: 190px; }
+  }
+
+  .note{
+    margin-top: 14px;
+    padding: 14px;
+    border-radius: 22px;
+    background: rgba(255,255,255,.45);
+    border: 1px dashed rgba(120,120,160,.28);
+    color: rgba(10,20,35,.78);
+    font-weight: 700;
+  }
+</style>
+
+<div class="howwrap">
+
+  <div class="hero">
+    <div class="hero-top">
+      <div class="badge"><span class="dot"></span> Sevor — How it works (with screenshots)</div>
+      <div class="mini">Desktop: left/right • Mobile: text on top</div>
+    </div>
+
+    <h1>How renting works on Sevor</h1>
+    <p>Clear steps from choosing an item → booking → payment → photos → return → reviews.</p>
+
+    <div class="hero-ctas">
+      <a class="btnx primary" href="/explore">Explore listings</a>
+      <a class="btnx green" href="/items/new">List an item</a>
+      <a class="btnx" href="/signup">Create an account</a>
+    </div>
+  </div>
+
+  <div class="timeline">
+
+    <!-- 1 -->
+    <div class="s">
+      <div class="txt">
+        <div class="topline">
+          <div class="num">1</div>
+          <div class="tag">Explore</div>
+        </div>
+        <h3>Choose an item</h3>
+        <p>Go to Explore, pick a listing, and open the item page to see photos, price, and location.</p>
+      </div>
+      <div class="pic">
+        <img src="/static/img/how-it-works/step-1.png" alt="Step 1">
+      </div>
+    </div>
+
+    <!-- 2 -->
+    <div class="s alt">
+      <div class="txt">
+        <div class="topline">
+          <div class="num">2</div>
+          <div class="tag">Item page</div>
+        </div>
+        <h3>Tap “Book now”</h3>
+        <p>From the item page, tap <b>Book now</b> to open the booking form.</p>
+      </div>
+      <div class="pic">
+        <img src="/static/img/how-it-works/step-2.png" alt="Step 2">
+      </div>
+    </div>
+
+    <!-- 3 -->
+    <div class="s">
+      <div class="txt">
+        <div class="topline">
+          <div class="num">3</div>
+          <div class="tag">Dates</div>
+        </div>
+        <h3>Select the rental dates</h3>
+        <p>Pick start & end date, then submit your booking request.</p>
+      </div>
+      <div class="pic">
+        <img src="/static/img/how-it-works/step-3.png" alt="Step 3">
+      </div>
+    </div>
+
+    <!-- 4 -->
+    <div class="s alt">
+      <div class="txt">
+        <div class="topline">
+          <div class="num">4</div>
+          <div class="tag">Notification</div>
+        </div>
+        <h3>The owner gets a notification</h3>
+        <p>The owner receives a “New booking request” notification and opens the request.</p>
+      </div>
+      <div class="pic">
+        <img src="/static/img/how-it-works/step-4.png" alt="Step 4">
+      </div>
+    </div>
+
+    <!-- 5 -->
+    <div class="s">
+      <div class="txt">
+        <div class="topline">
+          <div class="num">5</div>
+          <div class="tag">Deposit</div>
+        </div>
+        <h3>Owner sets the deposit and accepts / rejects</h3>
+        <p>
+          The owner sets a <b>deposit</b> (security) then accepts or rejects the request.
+          <br><span class="mini">Suggested rule: deposit should not exceed 20× the 1-day price.</span>
+        </p>
+      </div>
+      <div class="pic">
+        <img src="/static/img/how-it-works/step-5.png" alt="Step 5">
+      </div>
+    </div>
+
+    <!-- 6 -->
+    <div class="s alt">
+      <div class="txt">
+        <div class="topline">
+          <div class="num">6</div>
+          <div class="tag">Payment</div>
+        </div>
+        <h3>Renter chooses payment method</h3>
+        <p>
+          <b>Cash</b>: rent only (no deposit), direct agreement — Sevor cannot guarantee safety.
+          <br><b>Card</b>: renter pays the rent first, then the deposit (recommended).
+        </p>
+      </div>
+      <div class="pic">
+        <img src="/static/img/how-it-works/step-6.png" alt="Step 6">
+      </div>
+    </div>
+
+    <!-- 7 -->
+    <div class="s">
+      <div class="txt">
+        <div class="topline">
+          <div class="num">7</div>
+          <div class="tag">Pickup photos</div>
+        </div>
+        <h3>Upload pickup photos (before)</h3>
+        <p>The renter uploads photos before taking the item. This protects both sides.</p>
+      </div>
+      <div class="pic">
+        <img src="/static/img/how-it-works/step-7.png" alt="Step 7">
+      </div>
+    </div>
+
+    <!-- 8 -->
+    <div class="s alt">
+      <div class="txt">
+        <div class="topline">
+          <div class="num">8</div>
+          <div class="tag">Return flow</div>
+        </div>
+        <h3>After photos, a Return button appears</h3>
+        <p>After uploading the required photos, a button appears to continue to the return page.</p>
+      </div>
+      <div class="pic">
+        <img src="/static/img/how-it-works/step-8.png" alt="Step 8">
+      </div>
+    </div>
+
+    <!-- 9 -->
+    <div class="s">
+      <div class="txt">
+        <div class="topline">
+          <div class="num">9</div>
+          <div class="tag">Return photos</div>
+        </div>
+        <h3>Upload return photos (during return)</h3>
+        <p>This page is used only when returning the item. Return photos are proof of condition.</p>
+      </div>
+      <div class="pic">
+        <img src="/static/img/how-it-works/step-9.png" alt="Step 9">
+      </div>
+    </div>
+
+    <!-- 10 -->
+    <div class="s alt">
+      <div class="txt">
+        <div class="topline">
+          <div class="num">10</div>
+          <div class="tag">Review</div>
+        </div>
+        <h3>Renter reviews the owner & the item</h3>
+        <p>After return, the renter leaves a review about the owner and the item.</p>
+      </div>
+      <div class="pic">
+        <img src="/static/img/how-it-works/step-10.png" alt="Step 10">
+      </div>
+    </div>
+
+    <!-- 11 -->
+    <div class="s">
+      <div class="txt">
+        <div class="topline">
+          <div class="num">11</div>
+          <div class="tag">Review</div>
+        </div>
+        <h3>Owner reviews the renter</h3>
+        <p>The owner can review the renter (communication, care, on-time return, etc.).</p>
+      </div>
+      <div class="pic">
+        <img src="/static/img/how-it-works/step-11.png" alt="Step 11">
+      </div>
+    </div>
+
+    <!-- 12 -->
+    <div class="s alt">
+      <div class="txt">
+        <div class="topline">
+          <div class="num">12</div>
+          <div class="tag">Report</div>
+        </div>
+        <h3>Report a problem (24h window)</h3>
+        <p>
+          If there is an issue, the renter/owner can submit a report with photos.
+          The report button is available for <b>24 hours</b> only. After that, it’s disabled and the deposit is released automatically.
+        </p>
+      </div>
+      <div class="pic">
+        <img src="/static/img/how-it-works/step-12.png" alt="Step 12">
+      </div>
+    </div>
+
+  </div>
+
+  <div class="note">
+    <b>Important:</b><br>
+    • Card payment is safer (traceable + proof).<br>
+    • Cash payments are direct agreements — Sevor cannot guarantee safety or handle theft cases.<br>
+    • Deposit + before/after photos protect both sides.
+  </div>
+
+</div>
+
+{% endblock %}

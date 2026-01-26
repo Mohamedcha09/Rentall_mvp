@@ -1136,3 +1136,13 @@ def privacy_page(request: Request):
     return templates.TemplateResponse("privacy.html", {"request": request})
 
 
+
+@app.get("/how-it-works", response_class=HTMLResponse)
+def how_it_works(request: Request):
+    return templates.TemplateResponse(
+        "how_it_works_steps.html",
+        {
+            "request": request,
+            "title": "How Sevor Works"
+        }
+    )
