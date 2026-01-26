@@ -1,0 +1,779 @@
+{# app/templates/about_full.html #}
+{% extends "base.html" %}
+{% set title = "À propos de Sevor | Rent Anything Worldwide" %}
+
+{% block head %}
+<style>
+  :root{
+    --bg0:#0b1220;
+    --bg1:#0f172a;
+    --card: rgba(255,255,255,.07);
+    --card2: rgba(255,255,255,.10);
+    --stroke: rgba(255,255,255,.14);
+    --text:#eaf0ff;
+    --muted: rgba(234,240,255,.72);
+    --accent1:#38bdf8;
+    --accent2:#a78bfa;
+    --accent3:#22c55e;
+    --warn:#f59e0b;
+    --shadow: 0 18px 60px rgba(0,0,0,.35);
+    --radius: 22px;
+  }
+
+  /* ===== PAGE WRAP ===== */
+  .about-wrap{
+    background:
+      radial-gradient(1200px 800px at 15% 10%, rgba(56,189,248,.18), transparent 55%),
+      radial-gradient(1200px 800px at 85% 20%, rgba(167,139,250,.18), transparent 55%),
+      radial-gradient(900px 650px at 50% 95%, rgba(34,197,94,.12), transparent 55%),
+      linear-gradient(180deg, var(--bg0), var(--bg1));
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .container{
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  /* ===== HERO ===== */
+  .hero{
+    padding: 78px 0 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-grid{
+    display:grid;
+    grid-template-columns: 1.2fr .8fr;
+    gap: 26px;
+    align-items: center;
+  }
+  .brand{
+    display:flex; gap:12px; align-items:center; margin-bottom:14px;
+  }
+  .logo-dot{
+    width:14px; height:14px; border-radius:50%;
+    background: linear-gradient(135deg, var(--accent1), var(--accent2));
+    box-shadow: 0 0 0 6px rgba(56,189,248,.12);
+  }
+  .brand b{letter-spacing:.6px}
+  .hero h1{
+    font-size: 46px;
+    line-height: 1.12;
+    margin: 0 0 14px;
+    font-weight: 900;
+  }
+  .hero p{
+    margin: 0 0 20px;
+    font-size: 16.5px;
+    line-height: 1.85;
+    color: var(--muted);
+  }
+  .tagline{
+    display:inline-flex;
+    gap:10px;
+    align-items:center;
+    padding: 10px 14px;
+    border: 1px solid var(--stroke);
+    background: rgba(255,255,255,.05);
+    border-radius: 999px;
+    color: rgba(234,240,255,.9);
+    font-weight: 700;
+    margin-bottom: 18px;
+  }
+  .tagline .pill{
+    background: linear-gradient(135deg, rgba(56,189,248,.22), rgba(167,139,250,.22));
+    border: 1px solid rgba(255,255,255,.14);
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+  }
+
+  .hero-cta{
+    display:flex; flex-wrap:wrap; gap:12px; margin-top: 10px;
+  }
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center;
+    gap:10px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--stroke);
+    background: rgba(255,255,255,.06);
+    color: var(--text);
+    text-decoration:none;
+    font-weight: 800;
+    box-shadow: 0 10px 28px rgba(0,0,0,.20);
+    transition: transform .12s ease, background .12s ease;
+  }
+  .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); }
+  .btn.primary{
+    border: none;
+    background: linear-gradient(135deg, var(--accent1), var(--accent2));
+  }
+  .btn.success{
+    border: none;
+    background: linear-gradient(135deg, var(--accent3), var(--accent1));
+  }
+  .btn .mini{
+    font-size: 12px; font-weight: 900; opacity:.9;
+    padding: 3px 8px; border-radius: 999px;
+    background: rgba(0,0,0,.22);
+    border: 1px solid rgba(255,255,255,.18);
+  }
+
+  /* ===== HERO CARD ===== */
+  .hero-card{
+    border-radius: var(--radius);
+    border: 1px solid var(--stroke);
+    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04));
+    box-shadow: var(--shadow);
+    padding: 18px;
+    position: relative;
+  }
+  .hero-card:before{
+    content:"";
+    position:absolute; inset:-1px;
+    background: radial-gradient(600px 300px at 20% 10%, rgba(56,189,248,.24), transparent 55%),
+                radial-gradient(600px 300px at 80% 20%, rgba(167,139,250,.22), transparent 55%);
+    border-radius: var(--radius);
+    z-index:0;
+    pointer-events:none;
+    opacity:.55;
+  }
+  .hero-card-inner{ position:relative; z-index:1; }
+  .kpis{
+    display:grid; grid-template-columns:1fr 1fr;
+    gap: 12px;
+  }
+  .kpi{
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(0,0,0,.18);
+    border-radius: 16px;
+    padding: 12px;
+  }
+  .kpi b{ display:block; font-size: 18px; }
+  .kpi span{ color: var(--muted); font-size: 12.5px; }
+  .chiprow{ display:flex; flex-wrap:wrap; gap:10px; margin-top: 12px;}
+  .chip{
+    display:inline-flex; align-items:center; gap:8px;
+    padding: 9px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.06);
+    font-weight: 800;
+    font-size: 12.5px;
+    color: rgba(234,240,255,.92);
+  }
+
+  /* ===== SECTIONS ===== */
+  .section{
+    padding: 26px 0;
+  }
+  .section-title{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:14px;
+    margin: 6px 0 16px;
+  }
+  .section-title h2{
+    margin:0;
+    font-size: 24px;
+    font-weight: 900;
+  }
+  .sub{
+    color: var(--muted);
+    margin: 0 0 14px;
+    line-height: 1.85;
+  }
+
+  .glass{
+    border-radius: var(--radius);
+    border: 1px solid var(--stroke);
+    background: rgba(255,255,255,.06);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: var(--shadow);
+  }
+
+  .box{
+    padding: 18px;
+  }
+
+  .grid3{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .grid2{
+    display:grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  .card{
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(0,0,0,.18);
+  }
+  .card h3{
+    margin: 0 0 8px;
+    font-size: 15.5px;
+    font-weight: 900;
+  }
+  .card p{
+    margin:0;
+    color: var(--muted);
+    line-height: 1.75;
+    font-size: 14px;
+  }
+
+  .list{
+    margin: 0;
+    padding-left: 18px;
+    color: rgba(234,240,255,.88);
+    line-height: 1.9;
+  }
+  .list li{ margin: 6px 0; color: rgba(234,240,255,.88); }
+  .note{
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(56,189,248,.10);
+    color: rgba(234,240,255,.92);
+    line-height: 1.8;
+    font-weight: 750;
+  }
+
+  /* ===== HOW IT WORKS ===== */
+  .steps{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 10px;
+  }
+  .step{
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.06);
+    padding: 14px;
+  }
+  .step b{
+    display:flex; align-items:center; gap:10px;
+    font-size: 14px; font-weight: 950;
+  }
+  .n{
+    width:26px; height:26px; border-radius: 10px;
+    display:inline-flex; align-items:center; justify-content:center;
+    background: rgba(0,0,0,.24);
+    border: 1px solid rgba(255,255,255,.16);
+  }
+  .step p{ margin: 10px 0 0; color: var(--muted); line-height: 1.75; font-size: 13.5px; }
+
+  /* ===== BIG CTA ===== */
+  .cta{
+    margin: 24px 0 8px;
+    padding: 18px;
+    border-radius: var(--radius);
+    border: 1px solid rgba(255,255,255,.18);
+    background:
+      radial-gradient(600px 240px at 15% 30%, rgba(56,189,248,.18), transparent 60%),
+      radial-gradient(600px 240px at 85% 40%, rgba(167,139,250,.18), transparent 60%),
+      rgba(255,255,255,.06);
+    box-shadow: var(--shadow);
+  }
+  .cta h3{ margin:0 0 10px; font-size: 18px; font-weight: 950;}
+  .cta p{ margin:0 0 14px; color: var(--muted); line-height: 1.8;}
+  .cta-row{ display:flex; flex-wrap:wrap; gap:12px; }
+
+  /* ===== FAQ ===== */
+  details{
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(0,0,0,.18);
+    padding: 14px;
+  }
+  details + details{ margin-top: 12px; }
+  summary{
+    cursor:pointer;
+    font-weight: 950;
+    list-style:none;
+  }
+  summary::-webkit-details-marker{ display:none; }
+  details p{ margin: 10px 0 0; color: var(--muted); line-height: 1.75; }
+
+  /* ===== FOOTER ===== */
+  .foot{
+    padding: 30px 0 60px;
+    color: rgba(234,240,255,.72);
+    font-size: 13px;
+  }
+  .foot a{ color: rgba(234,240,255,.92); text-decoration:none; font-weight: 900; }
+  .foot a:hover{ text-decoration: underline; }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 980px){
+    .hero-grid{ grid-template-columns:1fr; }
+    .grid3{ grid-template-columns:1fr; }
+    .grid2{ grid-template-columns:1fr; }
+    .steps{ grid-template-columns:1fr; }
+    .hero h1{ font-size: 38px; }
+  }
+</style>
+
+{# ✅ Optional SEO structured data (safe) #}
+<script type="application/ld+json">
+{
+  "@context":"https://schema.org",
+  "@type":"Organization",
+  "name":"Sevor",
+  "url":"https://sevor.net",
+  "slogan":"Rent Anything Worldwide",
+  "description":"Sevor est une plateforme de location intelligente qui permet de louer et proposer à la location presque n’importe quel objet.",
+  "sameAs":[]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="about-wrap">
+
+  <header class="hero">
+    <div class="container">
+      <div class="hero-grid">
+
+        <div>
+          <div class="brand">
+            <span class="logo-dot"></span>
+            <b>SEVOR</b>
+          </div>
+
+          <div class="tagline">
+            <span class="pill">Plateforme intelligente</span>
+            <span>La location au lieu de l’achat</span>
+            <span class="pill">Rent Anything Worldwide</span>
+          </div>
+
+          <h1>Une seule plateforme pour louer <span style="background:linear-gradient(135deg,var(--accent1),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent;">tout</span>, partout.</h1>
+
+          <p>
+            <strong>Sevor</strong> est une application et une plateforme numérique qui vise à transformer la manière de consommer
+            en promouvant la <strong>culture de la location</strong> plutôt que l’achat.
+            Que vous soyez <strong>particulier</strong>, <strong>startup</strong> ou <strong>entreprise</strong>,
+            vous pouvez trouver (ou proposer) des objets utiles, localement, rapidement, et à moindre coût.
+          </p>
+
+          <div class="hero-cta">
+            <a class="btn primary" href="/items">Découvrir les annonces <span class="mini">Explorer</span></a>
+            <a class="btn success" href="/items/new">Publier un objet <span class="mini">Lister</span></a>
+            <a class="btn" href="/contact">Contact & Support <span class="mini">Aide</span></a>
+          </div>
+        </div>
+
+        <aside class="hero-card">
+          <div class="hero-card-inner">
+            <div class="kpis">
+              <div class="kpi">
+                <b>🌍 Global</b>
+                <span>Une vision internationale, multi-catégories.</span>
+              </div>
+              <div class="kpi">
+                <b>⚡ Rapide</b>
+                <span>Rechercher, réserver, louer — en quelques minutes.</span>
+              </div>
+              <div class="kpi">
+                <b>🛡️ Confiance</b>
+                <span>Dépôt de garantie pour protéger les deux parties.</span>
+              </div>
+              <div class="kpi">
+                <b>🤝 Gagnant-gagnant</b>
+                <span>Économie pour les locataires, revenus pour les propriétaires.</span>
+              </div>
+            </div>
+
+            <div class="chiprow">
+              <span class="chip">🚗 Véhicules</span>
+              <span class="chip">🛠️ Outils</span>
+              <span class="chip">💻 Électronique</span>
+              <span class="chip">👗 Vêtements</span>
+              <span class="chip">🏭 Pro</span>
+              <span class="chip">📷 Audio/Photo</span>
+            </div>
+
+            <div class="note">
+              💡 Sevor n’est pas une boutique : c’est un <strong>marché intelligent</strong> qui met directement en relation le propriétaire et l’utilisateur.
+            </div>
+          </div>
+        </aside>
+
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- SECTION 1 -->
+    <section class="section">
+      <div class="section-title">
+        <h2>1) Présentation de Sevor</h2>
+      </div>
+      <div class="glass box">
+        <p class="sub">
+          Sevor permet à toute personne ou entreprise de :
+        </p>
+        <div class="grid2">
+          <div class="card">
+            <h3>✅ Louer & proposer</h3>
+            <p>Louer ou proposer à la location presque n’importe quel objet, dans un seul endroit.</p>
+          </div>
+          <div class="card">
+            <h3>✅ Simple & accessible</h3>
+            <p>Une expérience claire : chercher, comparer, réserver, et louer rapidement.</p>
+          </div>
+          <div class="card">
+            <h3>✅ Moins cher que l’achat</h3>
+            <p>Évitez d’acheter un objet coûteux pour une utilisation ponctuelle.</p>
+          </div>
+          <div class="card">
+            <h3>✅ Opportunité de revenus</h3>
+            <p>Transformez des objets inutilisés en source de revenus, sans les vendre.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2 -->
+    <section class="section">
+      <div class="section-title">
+        <h2>2) L’idée principale : instaurer la culture de la location</h2>
+      </div>
+      <div class="glass box">
+        <p class="sub">
+          Aujourd’hui, dans le monde, des milliers de produits sont achetés, utilisés une seule fois, puis stockés ou abandonnés.
+          Sevor est né pour changer cette mentalité :
+        </p>
+        <div class="grid2">
+          <div class="card">
+            <h3>❌ Acheter pour un usage temporaire</h3>
+            <p>Une dépense inutile, souvent suivie d’un stockage sans valeur.</p>
+          </div>
+          <div class="card">
+            <h3>✅ Louer uniquement quand on en a besoin</h3>
+            <p>Réduire les coûts, éviter le gaspillage, et utiliser de manière intelligente.</p>
+          </div>
+        </div>
+        <div class="note">
+          🌱 Ce modèle permet d’économiser, réduit le gaspillage, crée des revenus et sert l’économie et l’environnement.
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3 -->
+    <section class="section">
+      <div class="section-title">
+        <h2>3) Que peut-on louer ? (littéralement tout)</h2>
+      </div>
+      <div class="glass box">
+        <p class="sub">
+          Sur Sevor, les limites sont presque inexistantes. Tout ce qui peut être utilisé temporairement peut être loué.
+        </p>
+        <div class="grid3">
+          <div class="card">
+            <h3>🚗 Mobilité</h3>
+            <p>Voitures, vélos, camions, accessoires, équipements de transport.</p>
+          </div>
+          <div class="card">
+            <h3>🛠️ Travaux & maison</h3>
+            <p>Outils de construction, jardinage, réparation, maintenance.</p>
+          </div>
+          <div class="card">
+            <h3>💻 Tech & électronique</h3>
+            <p>Ordinateurs, consoles, drones, accessoires, gadgets.</p>
+          </div>
+          <div class="card">
+            <h3>📷 Création & événements</h3>
+            <p>Photo/vidéo/audio, lumière, décor, accessoires de fête.</p>
+          </div>
+          <div class="card">
+            <h3>👗 Mode</h3>
+            <p>Vêtements, accessoires, tenues d’événements, costumes.</p>
+          </div>
+          <div class="card">
+            <h3>🏭 Professionnel</h3>
+            <p>Matériel industriel, équipements pro, solutions B2B.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4 -->
+    <section class="section">
+      <div class="section-title">
+        <h2>4) Une seule plateforme au lieu de dizaines de sites</h2>
+      </div>
+      <div class="glass box">
+        <p class="sub">
+          Aujourd’hui : location de voitures = un site, outils = un autre, vêtements = ailleurs…  
+          <strong>Sevor regroupe tout</strong> dans une seule plateforme.
+        </p>
+        <div class="grid2">
+          <div class="card">
+            <h3>🔎 Moins de recherches</h3>
+            <p>Tu n’ouvres plus 10 sites. Tu cherches une fois, tu trouves.</p>
+          </div>
+          <div class="card">
+            <h3>📍 Plus proche, plus rapide</h3>
+            <p>Voir ce qui existe autour de toi et louer localement.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5 -->
+    <section class="section">
+      <div class="section-title">
+        <h2>5) Pourquoi les grandes entreprises en ont besoin ?</h2>
+      </div>
+      <div class="glass box">
+        <p class="sub">
+          Lors du lancement d’un nouveau produit, les entreprises prennent souvent un risque : investir beaucoup sans garantie.
+          Avec Sevor, elles peuvent <strong>louer</strong> pour tester, puis acheter si le projet réussit.
+        </p>
+        <ul class="list">
+          <li>Réduction des risques financiers</li>
+          <li>Encouragement de l’innovation</li>
+          <li>Décisions basées sur l’expérimentation</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- SECTION 6 -->
+    <section class="section">
+      <div class="section-title">
+        <h2>6) Pourquoi les startups en ont besoin ?</h2>
+      </div>
+      <div class="glass box">
+        <p class="sub">
+          Les startups disposent souvent de peu de capital. Sevor leur donne l’accès à des outils coûteux, à faible coût,
+          sans dettes ni risques majeurs.
+        </p>
+        <div class="grid3">
+          <div class="card"><h3>🚀 Lancement plus rapide</h3><p>Accès immédiat au matériel nécessaire.</p></div>
+          <div class="card"><h3>⚖️ Égalité des chances</h3><p>Les mêmes ressources, sans gros budget.</p></div>
+          <div class="card"><h3>💸 Moins de dépenses</h3><p>Réserver au lieu d’acheter et immobiliser du cash.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 7 -->
+    <section class="section">
+      <div class="section-title">
+        <h2>7) Pourquoi les particuliers en ont besoin ?</h2>
+      </div>
+      <div class="glass box">
+        <p class="sub">
+          Un utilisateur ordinaire ne veut pas acheter un objet à 1 000$ pour un usage unique.
+          Avec Sevor : il ouvre l’application, cherche, trouve le plus proche, au meilleur prix.
+        </p>
+        <div class="steps">
+          <div class="step">
+            <b><span class="n">1</span> Rechercher</b>
+            <p>Tu tapes ce dont tu as besoin et tu filtres par catégorie.</p>
+          </div>
+          <div class="step">
+            <b><span class="n">2</span> Comparer</b>
+            <p>Tu compares prix, distance, disponibilité et profil.</p>
+          </div>
+          <div class="step">
+            <b><span class="n">3</span> Réserver</b>
+            <p>Tu confirmes la location selon les conditions proposées.</p>
+          </div>
+          <div class="step">
+            <b><span class="n">4</span> Utiliser & rendre</b>
+            <p>Tu utilises l’objet puis tu le restitues facilement.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 8 -->
+    <section class="section">
+      <div class="section-title">
+        <h2>8) Zones isolées & villages : une économie locale intelligente</h2>
+      </div>
+      <div class="glass box">
+        <p class="sub">
+          Dans les régions où les commerces sont loin, Sevor aide à voir ce que possèdent les personnes autour
+          et à louer localement sans déplacement ni attente.
+        </p>
+        <ul class="list">
+          <li>Valorisation des ressources de proximité</li>
+          <li>Renforcement de l’économie locale</li>
+          <li>Moins de gaspillage et moins de trajets</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- SECTION 9 -->
+    <section class="section">
+      <div class="section-title">
+        <h2>9) Modèle économique équitable</h2>
+      </div>
+      <div class="glass box">
+        <p class="sub">
+          Sevor vise un modèle transparent et basé sur la confiance.
+          <br>
+          <strong>Le propriétaire garde le contrôle :</strong> il fixe son prix, ses disponibilités, et ses conditions.
+        </p>
+
+        <div class="grid2">
+          <div class="card">
+            <h3>🧾 Transparence</h3>
+            <p>Prix clair, conditions claires, règles compréhensibles.</p>
+          </div>
+          <div class="card">
+            <h3>🤝 Confiance</h3>
+            <p>Un modèle qui encourage l’offre et renforce la crédibilité.</p>
+          </div>
+        </div>
+
+        <div class="note">
+          ✅ Conseil SEO/Trust: ajoute aussi (Privacy / Terms / Contact) في الـ footer، هذا يساعد الثقة وفهرسة Google.
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 10 -->
+    <section class="section">
+      <div class="section-title">
+        <h2>10) Dépôt de garantie : protéger tout le monde</h2>
+      </div>
+      <div class="glass box">
+        <p class="sub">
+          Pour assurer la sécurité et la confiance, Sevor utilise un <strong>dépôt de garantie</strong> :
+          la garantie est bloquée pendant la location, puis restituée après retour conforme.
+        </p>
+        <div class="grid3">
+          <div class="card">
+            <h3>🛡️ Protection du propriétaire</h3>
+            <p>En cas de dommage, indemnisation via la garantie.</p>
+          </div>
+          <div class="card">
+            <h3>🔒 Sécurité du locataire</h3>
+            <p>Process clair, retour conforme = restitution.</p>
+          </div>
+          <div class="card">
+            <h3>⚖️ Système juste</h3>
+            <p>Cadre simple qui évite les litiges inutiles.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 11 -->
+    <section class="section">
+      <div class="section-title">
+        <h2>11) Pourquoi Sevor est différent et puissant ?</h2>
+      </div>
+      <div class="glass box">
+        <div class="grid2">
+          <div class="card">
+            <h3>🌟 Plateforme multi-catégories</h3>
+            <p>Une seule application pour toutes les locations (pas seulement voiture ou outils).</p>
+          </div>
+          <div class="card">
+            <h3>♻️ Impact & vision</h3>
+            <p>Réduire la surconsommation et encourager le partage.</p>
+          </div>
+          <div class="card">
+            <h3>💼 B2C + B2B</h3>
+            <p>Utilité pour particuliers, startups et entreprises.</p>
+          </div>
+          <div class="card">
+            <h3>📈 Marché immense</h3>
+            <p>Un besoin mondial encore largement exploité de façon fragmentée.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BIG CTA -->
+    <section class="section">
+      <div class="cta">
+        <h3>Prêt à louer ou à proposer à la location ?</h3>
+        <p>
+          Rejoignez Sevor et participez à une nouvelle manière de consommer :
+          <strong>utiliser</strong> au lieu de <strong>posséder</strong>.
+        </p>
+        <div class="cta-row">
+          <a class="btn primary" href="/items">Explorer les annonces <span class="mini">Now</span></a>
+          <a class="btn success" href="/items/new">Publier un objet <span class="mini">Fast</span></a>
+          <a class="btn" href="/register">Créer un compte <span class="mini">Free</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section">
+      <div class="section-title">
+        <h2>FAQ – Questions fréquentes</h2>
+      </div>
+
+      <details open>
+        <summary>Est-ce que je peux louer “n’importe quoi” ?</summary>
+        <p>Oui, tant que l’objet est légal, utilisable temporairement, et qu’il peut être décrit clairement avec des conditions de location.</p>
+      </details>
+
+      <details>
+        <summary>Comment la confiance est assurée ?</summary>
+        <p>Grâce à un dépôt de garantie, des règles simples, et une expérience claire pour les deux parties.</p>
+      </details>
+
+      <details>
+        <summary>Pourquoi louer au lieu d’acheter ?</summary>
+        <p>Parce que tu économises, tu évites le gaspillage, et tu utilises seulement quand tu en as besoin.</p>
+      </details>
+
+      <details>
+        <summary>Est-ce utile pour les entreprises ?</summary>
+        <p>Oui. Les entreprises peuvent louer pour tester, réduire les risques, et avancer sans immobiliser du budget.</p>
+      </details>
+    </section>
+
+    <!-- CONCLUSION -->
+    <section class="section">
+      <div class="glass box">
+        <div class="section-title">
+          <h2>Conclusion – La vision Sevor</h2>
+        </div>
+        <p class="sub" style="font-size:16.5px;">
+          Sevor n’est pas qu’une application… c’est un changement de mentalité.
+        </p>
+        <div class="note" style="text-align:center; font-size:18px;">
+          Passer de <strong>« Je possède tout »</strong><br>
+          à <strong>« J’utilise uniquement ce dont j’ai besoin »</strong>
+        </div>
+      </div>
+    </section>
+
+    <div class="foot">
+      <div class="glass box">
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;">
+          <div>
+            <b>Sevor</b> — Rent Anything Worldwide<br>
+            <span style="opacity:.75;">Plateforme de location intelligente</span>
+          </div>
+          <div style="display:flex; gap:14px; flex-wrap:wrap;">
+            <a href="/about">About</a>
+            <a href="/contact">Contact</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/items">Browse</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+{% endblock %}
