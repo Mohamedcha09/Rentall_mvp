@@ -133,6 +133,55 @@
   }
 </style>
 
+<style>
+/* ===============================
+   HOW IT WORKS — CLEAN PAGE
+   Hide header / footer / search
+   (no base.html changes)
+================================ */
+
+/* Top navbar / header */
+header,
+.topbar,
+.navbar,
+.main-navbar,
+.site-header {
+  display: none !important;
+}
+
+/* Search bar */
+.search,
+.searchbar,
+.search-bar,
+.search-container,
+form.search {
+  display: none !important;
+}
+
+/* Bottom navbar / footer */
+footer,
+.footer,
+.bottom-nav,
+.mobile-nav,
+.app-footer {
+  display: none !important;
+}
+
+/* Remove spacing added by base layout */
+body {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+main,
+#content,
+.page-content {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+</style>
+
+
 <div class="howwrap">
 
   <div class="hero">
