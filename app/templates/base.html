@@ -845,6 +845,47 @@ header.topbar .searchbar-wrap{
 
 </style>
 
+<style id="sv-page-loader-style">
+.sv-page-loader{
+  position: fixed;
+  inset: 0;
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2147483646;
+}
+
+[data-theme="dark"] .sv-page-loader{
+  background: rgba(0,0,0,0.45);
+}
+
+.sv-page-loader.hidden{
+  display: none;
+}
+
+.sv-spinner{
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 4px solid rgba(0,0,0,0.15);
+  border-top-color: #6C63FF;
+  animation: sv-spin 0.9s linear infinite;
+}
+
+[data-theme="dark"] .sv-spinner{
+  border-color: rgba(255,255,255,0.2);
+  border-top-color: #8b7cff;
+}
+
+@keyframes sv-spin{
+  to { transform: rotate(360deg); }
+}
+</style>
+
+
 {% block head %}{% endblock %}
 {% set immersive = immersive|default(false) %}
 {% set _path = request.url.path if request else '' %}
@@ -929,6 +970,11 @@ window.onpageshow = function(e){
   data-auth="{{ '1' if session_user else '0' }}"
   data-path="{{ request.url.path if request else '' }}"
   class="{% if show_tabbar and not immersive and not no_ui %}has-tabbar{% endif %}">
+  <!-- Global Page Loader -->
+<div id="sv-page-loader" class="sv-page-loader hidden">
+  <div class="sv-spinner"></div>
+</div>
+
 
 
 
@@ -2040,6 +2086,40 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 </script>
+<script id="sv-page-loader-js">
+(function(){
+  const loader = document.getElementById('sv-page-loader');
+  if (!loader) return;
+
+  function shouldIgnore(link){
+    if (!link) return true;
+    const href = link.getAttribute('href');
+    return (
+      !href ||
+      href.startsWith('#') ||
+      href.startsWith('http') ||
+      link.target === '_blank' ||
+      link.hasAttribute('download')
+    );
+  }
+
+  document.addEventListener('click', function(e){
+    const link = e.target.closest('a');
+    if (!link || shouldIgnore(link)) return;
+
+    // لا نظهره إذا الرابط هو نفس الصفحة
+    if (link.getAttribute('href') === location.pathname) return;
+
+    loader.classList.remove('hidden');
+  }, true);
+
+  // حماية: أخفِه لو الصفحة رجعت من cache
+  window.addEventListener('pageshow', function(){
+    loader.classList.add('hidden');
+  });
+})();
+</script>
+
 
 
 
