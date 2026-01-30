@@ -972,7 +972,7 @@ window.onpageshow = function(e){
   class="{% if show_tabbar and not immersive and not no_ui %}has-tabbar{% endif %}">
   <!-- Global Page Loader -->
 <div id="sv-page-loader" class="sv-page-loader hidden">
-  <div class="sv-spinner"></div>
+  <<div id="sv-lottie-loader" style="width:140px; height:140px;"></div>
 </div>
 
 
@@ -2116,6 +2116,22 @@ document.addEventListener("DOMContentLoaded", () => {
   // حماية: أخفِه لو الصفحة رجعت من cache
   window.addEventListener('pageshow', function(){
     loader.classList.add('hidden');
+  });
+})();
+</script>
+
+<script src="https://unpkg.com/lottie-web@5.12.2/build/player/lottie.min.js"></script>
+<script>
+(function(){
+  const box = document.getElementById('sv-lottie-loader');
+  if (!box) return;
+
+  lottie.loadAnimation({
+    container: box,
+    renderer: 'svg',
+    loop: true,
+    autoplay: true,
+    path: '/static/lottie/page-loader.json' // ← مسار الملف
   });
 })();
 </script>
