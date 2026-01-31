@@ -866,62 +866,25 @@ header.topbar .searchbar-wrap{
   display: none;
 }
 
-/* ===== GLASS 3D SPINNER (CIRCLE ONLY) ===== */
+
+/* ===== دائرة تحميل أنيقة وبسيطة ===== */
 .sv-spinner{
-  width: 54px;
-  height: 54px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
-  position: relative;
 
-  /* Glass gradients */
-  background:
-    radial-gradient(circle at 30% 30%,
-      rgba(255,255,255,.65),
-      rgba(255,255,255,.18) 35%,
-      rgba(108,99,255,.45) 60%,
-      rgba(0,212,255,.35) 100%
-    );
+  border: 3px solid rgba(108,99,255,0.20);
+  border-top-color: #6C63FF;
+  border-right-color: rgba(108,99,255,0.60);
 
-  backdrop-filter: blur(10px) saturate(180%);
-  -webkit-backdrop-filter: blur(10px) saturate(180%);
-
-  /* 3D depth */
-  box-shadow:
-    inset 0 3px 6px rgba(255,255,255,.45),
-    inset 0 -8px 14px rgba(0,0,0,.35),
-    0 18px 36px rgba(0,0,0,.35),
-    0 0 0 1px rgba(255,255,255,.35);
-
-  animation: sv-spin 0.85s linear infinite;
+  animation: sv-spin 0.75s linear infinite;
 }
 
-/* Highlight ring */
-.sv-spinner::before{
-  content:"";
-  position:absolute;
-  inset:6px;
-  border-radius:50%;
-  border:2px solid rgba(255,255,255,.45);
-  filter: blur(.2px);
-}
-
-/* Inner glow */
-.sv-spinner::after{
-  content:"";
-  position:absolute;
-  inset:14px;
-  border-radius:50%;
-  background: rgba(255,255,255,.35);
-  filter: blur(6px);
-}
-
-/* Dark mode tuning */
+/* الوضع الداكن */
 [data-theme="dark"] .sv-spinner{
-  box-shadow:
-    inset 0 3px 6px rgba(255,255,255,.25),
-    inset 0 -8px 14px rgba(0,0,0,.55),
-    0 18px 36px rgba(0,0,0,.55),
-    0 0 0 1px rgba(255,255,255,.18);
+  border-color: rgba(255,255,255,0.20);
+  border-top-color: #9b8cff;
+  border-right-color: rgba(155,140,255,0.60);
 }
 
 
