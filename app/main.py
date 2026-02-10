@@ -956,6 +956,8 @@ def about_full(request: Request, db: Session = Depends(get_db)):
         "about_full.html",
         {"request": request, "session_user": u}
     )
+
+
 @app.get("/pdfs", response_class=HTMLResponse)
 async def pdfs(request: Request):
     # إذا عندك middleware يحط user في request.state
