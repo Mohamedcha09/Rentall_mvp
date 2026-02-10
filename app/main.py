@@ -957,6 +957,10 @@ def about_full(request: Request, db: Session = Depends(get_db)):
         {"request": request, "session_user": u}
     )
 
+@app.route("/pdfs")
+def pdfs():
+    return render_template("pdfs.html")
+
 
 @app.get("/api/unread_count")
 def api_unread_count(request: Request, db: Session = Depends(get_db)):
