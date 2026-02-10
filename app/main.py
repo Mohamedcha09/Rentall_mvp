@@ -957,9 +957,9 @@ def about_full(request: Request, db: Session = Depends(get_db)):
         {"request": request, "session_user": u}
     )
 
-@app.route("/pdfs")
-def pdfs():
-    return render_template("pdfs.html")
+@app.get("/pdfs", response_class=HTMLResponse)
+async def pdfs(request: Request):
+    return templates.TemplateResponse("pdfs.html", {"request": request})
 
 
 @app.get("/api/unread_count")
