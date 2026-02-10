@@ -956,10 +956,19 @@ def about_full(request: Request, db: Session = Depends(get_db)):
         "about_full.html",
         {"request": request, "session_user": u}
     )
-
 @app.get("/pdfs", response_class=HTMLResponse)
 async def pdfs(request: Request):
-    return templates.TemplateResponse("pdfs.html", {"request": request})
+    # إذا عندك middleware يحط user في request.state
+    session_user = getattr(request.state, "session_user", None)
+
+    # fallback إذا ماكانش user (زائر)
+    if session_user is None:
+        session_user = {"first_name": "User"}
+
+    return templates.TemplateResponse(
+        "pdfs.html",
+        {"request": request, "session_user": session_user}
+    )
 
 
 @app.get("/api/unread_count")
