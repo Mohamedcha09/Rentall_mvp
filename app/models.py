@@ -173,6 +173,8 @@ class Document(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     reviewed_at = Column(DateTime, nullable=True)
     user = relationship("User", back_populates="documents")
+    company_doc_path = col_or_literal("documents", "company_doc_path", String(500), nullable=True)
+
 
 
 # =========================
