@@ -4,68 +4,78 @@
 <div class="container py-4" style="direction:ltr; text-align:left;">
   <h3 class="mb-4">Admin Dashboard</h3>
 
-<!-- Broadcast Email -->
-<div class="mb-4">
-  <a href="/admin/broadcast" class="btn btn-warning btn-lg">
-    📢 Send Email to All Users
-  </a>
-</div>
+  <!-- Broadcast Email -->
+  <div class="mb-4">
+    <a href="/admin/broadcast" class="btn btn-warning btn-lg">
+      📢 Send Email to All Users
+    </a>
+  </div>
 
-<!-- Button to Pending Items Review -->
-<div class="mb-4">
-  <a href="/admin/items/pending" class="btn btn-dark btn-lg">
-    Review Pending Listings
-  </a>
-</div>
+  <!-- Button to Pending Items Review -->
+  <div class="mb-4">
+    <a href="/admin/items/pending" class="btn btn-dark btn-lg">
+      Review Pending Listings
+    </a>
+  </div>
 
-<div class="mb-4">
-  <a href="/admin/payouts" class="btn btn-success btn-lg">
-    💸 Owner Payouts
-  </a>
-</div>
+  <div class="mb-4">
+    <a href="/admin/payouts" class="btn btn-success btn-lg">
+      💸 Owner Payouts
+    </a>
+  </div>
 
-<div class="mb-4">
-  <a href="/admin/payouts/paid" class="btn btn-outline-success btn-lg">
-    📄 Paid Payouts (History)
-  </a>
-</div>
+  <div class="mb-4">
+    <a href="/admin/payouts/paid" class="btn btn-outline-success btn-lg">
+      📄 Paid Payouts (History)
+    </a>
+  </div>
 
-<div class="mb-4">
-  <a href="/admin/payouts/deposit/paid"
-     class="btn btn-deposit btn-lg w-100">
-     🛡 Deposit Payouts (History)
-  </a>
-</div>
-<style>
-/* ===============================
-   Deposit Payouts Button (Admin)
-=============================== */
-.btn-deposit {
-  background: linear-gradient(135deg, #7c3aed, #8b5cf6);
-  color: #fff !important;
-  border: none;
-  border-radius: 16px;
-  padding: 16px 24px;
-  font-weight: 600;
-  letter-spacing: .3px;
-  box-shadow: 0 12px 28px rgba(124, 58, 237, .35);
-  transition: all .25s ease;
-}
+  <div class="mb-4">
+    <a href="/admin/payouts/deposit/paid"
+       class="btn btn-deposit btn-lg w-100">
+       🛡 Deposit Payouts (History)
+    </a>
+  </div>
 
-.btn-deposit:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 36px rgba(124, 58, 237, .45);
-  background: linear-gradient(135deg, #6d28d9, #7c3aed);
-  color: #fff;
-}
+  <style>
+    .btn-deposit {
+      background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+      color: #fff !important;
+      border: none;
+      border-radius: 16px;
+      padding: 16px 24px;
+      font-weight: 600;
+      letter-spacing: .3px;
+      box-shadow: 0 12px 28px rgba(124, 58, 237, .35);
+      transition: all .25s ease;
+    }
+    .btn-deposit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 36px rgba(124, 58, 237, .45);
+      background: linear-gradient(135deg, #6d28d9, #7c3aed);
+      color: #fff;
+    }
+    .btn-deposit:active {
+      transform: translateY(0);
+      box-shadow: 0 10px 22px rgba(124, 58, 237, .35);
+    }
 
-.btn-deposit:active {
-  transform: translateY(0);
-  box-shadow: 0 10px 22px rgba(124, 58, 237, .35);
-}
-</style>
-
-
+    .doc-img {
+      width:60px;height:40px;object-fit:cover;border-radius:4px;
+      margin-inline-end:6px;
+    }
+    .doc-img-sm {
+      width:44px;height:30px;object-fit:cover;border-radius:4px;
+      margin-inline-end:4px;
+    }
+    .avatar-img {
+      width:54px;height:54px;object-fit:cover;border-radius:6px;
+    }
+    .avatar-img-sm {
+      width:46px;height:46px;object-fit:cover;border-radius:6px;
+    }
+    .badge-company { background:#111827; }
+  </style>
 
   <!-- ===== Traffic Metrics ===== -->
   <div class="card mb-4">
@@ -128,15 +138,25 @@
   })();
   </script>
 
-  <!-- ==================== Pending Approval ==================== -->
+  {# ============================================================
+     Helpers per user: latest id doc + company proof doc
+     - ID doc is: doc_type != 'company_proof'
+     - Company proof is: doc_type == 'company_proof'
+  ============================================================ #}
+
+  {# ==================== Pending Approval (Individuals) ==================== #}
   <div class="card mb-4">
     <div class="card-header d-flex align-items-center justify-content-between">
-      <strong>Pending Approval</strong>
-      <span class="badge bg-secondary">{{ pending_users|length }}</span>
+      <strong>Pending Approval — Individuals</strong>
+      <span class="badge bg-secondary">
+        {{ pending_users | selectattr('account_type', 'ne', 'company') | list | length }}
+      </span>
     </div>
+
     <div class="card-body p-0">
-      {% if not pending_users %}
-        <div class="p-3 text-muted">No requests at the moment.</div>
+      {% set pending_individuals = pending_users | selectattr('account_type', 'ne', 'company') | list %}
+      {% if not pending_individuals %}
+        <div class="p-3 text-muted">No individual requests at the moment.</div>
       {% else %}
       <div class="table-responsive">
         <table class="table mb-0 align-middle">
@@ -153,15 +173,11 @@
             </tr>
           </thead>
           <tbody>
-            {% for row in pending_users %}
-              {# supports both shapes: row.u or row itself (User) #}
+            {% for row in pending_individuals %}
               {% set u = row.u if row is mapping and 'u' in row else row %}
               {% set docs = u.documents or [] %}
-              {% if row is mapping and 'latest_doc' in row %}
-                {% set d = row.latest_doc %}
-              {% else %}
-                {% set d = (docs|sort(attribute='created_at'))|last %}
-              {% endif %}
+              {% set id_docs = docs | rejectattr('doc_type', 'equalto', 'company_proof') | list %}
+              {% set d = (id_docs | sort(attribute='created_at')) | last %}
             <tr>
               <td>{{ u.id }}</td>
               <td>{{ u.first_name }} {{ u.last_name }}</td>
@@ -172,8 +188,7 @@
               <td>
                 {% if u.avatar_path %}
                   <a href="{{ u.avatar_path | media_url }}" target="_blank" rel="noopener">
-                    <img src="{{ u.avatar_path | media_url }}" alt="avatar"
-                         style="width:54px;height:54px;object-fit:cover;border-radius:6px">
+                    <img src="{{ u.avatar_path | media_url }}" alt="avatar" class="avatar-img">
                   </a>
                 {% else %}
                   <span class="text-muted">—</span>
@@ -184,12 +199,12 @@
               <td>
                 {% if d and d.file_front_path %}
                   <a href="{{ d.file_front_path | media_url }}" target="_blank" title="Front" rel="noopener">
-                    <img src="{{ d.file_front_path | media_url }}" style="width:60px;height:40px;object-fit:cover;border-radius:4px;margin-inline-end:6px">
+                    <img src="{{ d.file_front_path | media_url }}" class="doc-img">
                   </a>
                 {% endif %}
                 {% if d and d.file_back_path %}
                   <a href="{{ d.file_back_path | media_url }}" target="_blank" title="Back" rel="noopener">
-                    <img src="{{ d.file_back_path | media_url }}" style="width:60px;height:40px;object-fit:cover;border-radius:4px">
+                    <img src="{{ d.file_back_path | media_url }}" class="doc-img">
                   </a>
                 {% endif %}
                 {% if not (d and (d.file_front_path or d.file_back_path)) %}
@@ -225,14 +240,134 @@
     </div>
   </div>
 
-  <!-- ==================== All Users ==================== -->
-  <div class="card">
+  {# ==================== Pending Approval (Companies) ==================== #}
+  <div class="card mb-4">
     <div class="card-header d-flex align-items-center justify-content-between">
-      <strong>All Users</strong>
-      <span class="badge bg-secondary">{{ all_users|length }}</span>
+      <strong>Pending Approval — Companies</strong>
+      <span class="badge bg-secondary">
+        {{ pending_users | selectattr('account_type', 'equalto', 'company') | list | length }}
+      </span>
     </div>
+
     <div class="card-body p-0">
-      {% if not all_users %}
+      {% set pending_companies = pending_users | selectattr('account_type', 'equalto', 'company') | list %}
+      {% if not pending_companies %}
+        <div class="p-3 text-muted">No company requests at the moment.</div>
+      {% else %}
+      <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Avatar</th>
+              <th>ID (Front/Back)</th>
+              <th>Company Proof</th>
+              <th>Email Verification</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in pending_companies %}
+              {% set u = row.u if row is mapping and 'u' in row else row %}
+              {% set docs = u.documents or [] %}
+
+              {% set id_docs = docs | rejectattr('doc_type', 'equalto', 'company_proof') | list %}
+              {% set d = (id_docs | sort(attribute='created_at')) | last %}
+
+              {% set comp_docs = docs | selectattr('doc_type', 'equalto', 'company_proof') | list %}
+              {% set cdoc = (comp_docs | sort(attribute='created_at')) | last %}
+
+            <tr>
+              <td>{{ u.id }}</td>
+              <td>
+                {{ u.first_name }} {{ u.last_name }}
+                <span class="badge badge-company ms-1">COMPANY</span>
+              </td>
+              <td>{{ u.email }}</td>
+              <td>{{ u.phone }}</td>
+
+              <!-- Avatar -->
+              <td>
+                {% if u.avatar_path %}
+                  <a href="{{ u.avatar_path | media_url }}" target="_blank" rel="noopener">
+                    <img src="{{ u.avatar_path | media_url }}" alt="avatar" class="avatar-img">
+                  </a>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+
+              <!-- ID images -->
+              <td>
+                {% if d and d.file_front_path %}
+                  <a href="{{ d.file_front_path | media_url }}" target="_blank" title="Front" rel="noopener">
+                    <img src="{{ d.file_front_path | media_url }}" class="doc-img">
+                  </a>
+                {% endif %}
+                {% if d and d.file_back_path %}
+                  <a href="{{ d.file_back_path | media_url }}" target="_blank" title="Back" rel="noopener">
+                    <img src="{{ d.file_back_path | media_url }}" class="doc-img">
+                  </a>
+                {% endif %}
+                {% if not (d and (d.file_front_path or d.file_back_path)) %}
+                  <span class="text-muted">No document</span>
+                {% endif %}
+              </td>
+
+              <!-- ✅ Company proof -->
+              <td>
+                {% if cdoc and cdoc.file_front_path %}
+                  <a href="{{ cdoc.file_front_path | media_url }}" target="_blank" title="Company proof" rel="noopener">
+                    <img src="{{ cdoc.file_front_path | media_url }}" class="doc-img">
+                  </a>
+                {% else %}
+                  <span class="text-muted">No company proof</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if u.is_verified|default(false) %}
+                  <span class="badge bg-success">Verified</span>
+                {% else %}
+                  <span class="badge bg-warning text-dark">Unverified</span>
+                {% endif %}
+              </td>
+
+              <td class="text-end">
+                <form method="post" action="/admin/users/{{ u.id }}/approve" class="d-inline">
+                  <button class="btn btn-sm btn-success">Approve</button>
+                </form>
+                <form method="post" action="/admin/users/{{ u.id }}/reject" class="d-inline">
+                  <button class="btn btn-sm btn-outline-danger">Reject</button>
+                </form>
+                <form method="post" action="/admin/users/{{ u.id }}/message" class="d-inline">
+                  <button class="btn btn-sm btn-outline-primary">Message</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ==================== All Users (Individuals) ==================== #}
+  <div class="card mb-4">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <strong>All Users — Individuals</strong>
+      <span class="badge bg-secondary">
+        {{ all_users | selectattr('account_type', 'ne', 'company') | list | length }}
+      </span>
+    </div>
+
+    <div class="card-body p-0">
+      {% set all_individuals = all_users | selectattr('account_type', 'ne', 'company') | list %}
+      {% if not all_individuals %}
         <div class="p-3 text-muted">No users.</div>
       {% else %}
       <div class="table-responsive">
@@ -249,19 +384,16 @@
               <th>Verification</th>
               <th>MD</th>
               <th>MOD</th>
-              <th>CS</th>  {# Customer Support column #}
+              <th>CS</th>
               <th class="text-end">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {% for row in all_users %}
+            {% for row in all_individuals %}
               {% set u = row.u if row is mapping and 'u' in row else row %}
               {% set docs = u.documents or [] %}
-              {% if row is mapping and 'latest_doc' in row %}
-                {% set d = row.latest_doc %}
-              {% else %}
-                {% set d = (docs|sort(attribute='created_at'))|last %}
-              {% endif %}
+              {% set id_docs = docs | rejectattr('doc_type', 'equalto', 'company_proof') | list %}
+              {% set d = (id_docs | sort(attribute='created_at')) | last %}
             <tr>
               <td>{{ u.id }}</td>
               <td>
@@ -287,27 +419,30 @@
                   <span class="badge bg-info text-dark">User</span>
                 {% endif %}
               </td>
+
               <td>
                 {% if u.avatar_path %}
                   <a href="{{ u.avatar_path | media_url }}" target="_blank" rel="noopener">
-                    <img src="{{ u.avatar_path | media_url }}" style="width:46px;height:46px;object-fit:cover;border-radius:6px">
+                    <img src="{{ u.avatar_path | media_url }}" class="avatar-img-sm">
                   </a>
                 {% else %}
                   <span class="text-muted">—</span>
                 {% endif %}
               </td>
+
               <td>
                 {% if d and d.file_front_path %}
                   <a href="{{ d.file_front_path | media_url }}" target="_blank" title="Front" rel="noopener">
-                    <img src="{{ d.file_front_path | media_url }}" style="width:44px;height:30px;object-fit:cover;border-radius:4px;margin-inline-end:4px">
+                    <img src="{{ d.file_front_path | media_url }}" class="doc-img-sm">
                   </a>
                 {% endif %}
                 {% if d and d.file_back_path %}
                   <a href="{{ d.file_back_path | media_url }}" target="_blank" title="Back" rel="noopener">
-                    <img src="{{ d.file_back_path | media_url }}" style="width:44px;height:30px;object-fit:cover;border-radius:4px">
+                    <img src="{{ d.file_back_path | media_url }}" class="doc-img-sm">
                   </a>
                 {% endif %}
               </td>
+
               <td>
                 {% if u.is_verified|default(false) %}
                   <span class="badge bg-success">Verified</span>
@@ -321,7 +456,6 @@
                 {% endif %}
               </td>
 
-              <!-- MD -->
               <td>
                 {% if u.is_deposit_manager|default(false) %}
                   <span class="badge bg-primary">MD</span>
@@ -330,7 +464,6 @@
                 {% endif %}
               </td>
 
-              <!-- MOD -->
               <td>
                 {% if u.is_mod|default(false) %}
                   <span class="badge bg-secondary">MOD</span>
@@ -339,7 +472,6 @@
                 {% endif %}
               </td>
 
-              <!-- CS -->
               <td>
                 {% if u.is_support|default(false) %}
                   <span class="badge bg-success">CS</span>
@@ -349,7 +481,6 @@
               </td>
 
               <td class="text-end">
-                {# MD actions #}
                 {% if u.is_deposit_manager|default(false) %}
                   <form method="post" action="/admin/users/{{ u.id }}/deposit_manager/disable" class="d-inline">
                     <button class="btn btn-sm btn-outline-danger">Disable MD</button>
@@ -360,7 +491,6 @@
                   </form>
                 {% endif %}
 
-                {# MOD actions #}
                 {% if u.is_mod|default(false) %}
                   <form method="post" action="/admin/users/{{ u.id }}/mod/disable" class="d-inline">
                     <button class="btn btn-sm btn-outline-danger">Disable MOD</button>
@@ -371,7 +501,6 @@
                   </form>
                 {% endif %}
 
-                {# CS actions #}
                 {% if u.is_support|default(false) %}
                   <form method="post" action="/admin/users/{{ u.id }}/cs/disable" class="d-inline">
                     <button class="btn btn-sm btn-outline-danger">Disable CS</button>
@@ -392,6 +521,196 @@
                   <button class="btn btn-sm btn-outline-primary">Message</button>
                 </form>
               </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ==================== All Users (Companies) ==================== #}
+  <div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <strong>All Users — Companies</strong>
+      <span class="badge bg-secondary">
+        {{ all_users | selectattr('account_type', 'equalto', 'company') | list | length }}
+      </span>
+    </div>
+
+    <div class="card-body p-0">
+      {% set all_companies = all_users | selectattr('account_type', 'equalto', 'company') | list %}
+      {% if not all_companies %}
+        <div class="p-3 text-muted">No companies.</div>
+      {% else %}
+      <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Status</th>
+              <th>Role</th>
+              <th>Avatar</th>
+              <th>ID (F/B)</th>
+              <th>Company Proof</th>
+              <th>Verification</th>
+              <th>MD</th>
+              <th>MOD</th>
+              <th>CS</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in all_companies %}
+              {% set u = row.u if row is mapping and 'u' in row else row %}
+              {% set docs = u.documents or [] %}
+
+              {% set id_docs = docs | rejectattr('doc_type', 'equalto', 'company_proof') | list %}
+              {% set d = (id_docs | sort(attribute='created_at')) | last %}
+
+              {% set comp_docs = docs | selectattr('doc_type', 'equalto', 'company_proof') | list %}
+              {% set cdoc = (comp_docs | sort(attribute='created_at')) | last %}
+            <tr>
+              <td>{{ u.id }}</td>
+              <td>
+                {{ u.first_name }} {{ u.last_name }}
+                <span class="badge badge-company ms-1">COMPANY</span>
+              </td>
+              <td>{{ u.email }}</td>
+
+              <td>
+                {% if u.status == 'approved' %}
+                  <span class="badge bg-success">Approved</span>
+                {% elif u.status == 'rejected' %}
+                  <span class="badge bg-danger">Rejected</span>
+                {% else %}
+                  <span class="badge bg-secondary">Pending</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if u.role == 'admin' %}
+                  <span class="badge bg-dark">Admin</span>
+                {% else %}
+                  <span class="badge bg-info text-dark">User</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if u.avatar_path %}
+                  <a href="{{ u.avatar_path | media_url }}" target="_blank" rel="noopener">
+                    <img src="{{ u.avatar_path | media_url }}" class="avatar-img-sm">
+                  </a>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if d and d.file_front_path %}
+                  <a href="{{ d.file_front_path | media_url }}" target="_blank" title="Front" rel="noopener">
+                    <img src="{{ d.file_front_path | media_url }}" class="doc-img-sm">
+                  </a>
+                {% endif %}
+                {% if d and d.file_back_path %}
+                  <a href="{{ d.file_back_path | media_url }}" target="_blank" title="Back" rel="noopener">
+                    <img src="{{ d.file_back_path | media_url }}" class="doc-img-sm">
+                  </a>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if cdoc and cdoc.file_front_path %}
+                  <a href="{{ cdoc.file_front_path | media_url }}" target="_blank" title="Company proof" rel="noopener">
+                    <img src="{{ cdoc.file_front_path | media_url }}" class="doc-img-sm">
+                  </a>
+                {% else %}
+                  <span class="text-muted">No company proof</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if u.is_verified|default(false) %}
+                  <span class="badge bg-success">Verified</span>
+                  <form method="post" action="/admin/users/{{ u.id }}/unverify" class="d-inline">
+                    <button class="btn btn-sm btn-outline-warning">Unverify</button>
+                  </form>
+                {% else %}
+                  <form method="post" action="/admin/users/{{ u.id }}/verify" class="d-inline">
+                    <button class="btn btn-sm btn-outline-success">Verify</button>
+                  </form>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if u.is_deposit_manager|default(false) %}
+                  <span class="badge bg-primary">MD</span>
+                {% else %}
+                  <span class="badge bg-secondary">—</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if u.is_mod|default(false) %}
+                  <span class="badge bg-secondary">MOD</span>
+                {% else %}
+                  <span class="badge bg-secondary">—</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if u.is_support|default(false) %}
+                  <span class="badge bg-success">CS</span>
+                {% else %}
+                  <span class="badge bg-secondary">—</span>
+                {% endif %}
+              </td>
+
+              <td class="text-end">
+                {% if u.is_deposit_manager|default(false) %}
+                  <form method="post" action="/admin/users/{{ u.id }}/deposit_manager/disable" class="d-inline">
+                    <button class="btn btn-sm btn-outline-danger">Disable MD</button>
+                  </form>
+                {% else %}
+                  <form method="post" action="/admin/users/{{ u.id }}/deposit_manager/enable" class="d-inline">
+                    <button class="btn btn-sm btn-outline-primary">Enable MD</button>
+                  </form>
+                {% endif %}
+
+                {% if u.is_mod|default(false) %}
+                  <form method="post" action="/admin/users/{{ u.id }}/mod/disable" class="d-inline">
+                    <button class="btn btn-sm btn-outline-danger">Disable MOD</button>
+                  </form>
+                {% else %}
+                  <form method="post" action="/admin/users/{{ u.id }}/mod/enable" class="d-inline">
+                    <button class="btn btn-sm btn-outline-primary">Enable MOD</button>
+                  </form>
+                {% endif %}
+
+                {% if u.is_support|default(false) %}
+                  <form method="post" action="/admin/users/{{ u.id }}/cs/disable" class="d-inline">
+                    <button class="btn btn-sm btn-outline-danger">Disable CS</button>
+                  </form>
+                {% else %}
+                  <form method="post" action="/admin/users/{{ u.id }}/cs/enable" class="d-inline">
+                    <button class="btn btn-sm btn-outline-primary">Enable CS</button>
+                  </form>
+                {% endif %}
+
+                {% if u.status != 'approved' %}
+                  <form method="post" action="/admin/users/{{ u.id }}/approve" class="d-inline">
+                    <button class="btn btn-sm btn-success">Approve</button>
+                  </form>
+                {% endif %}
+
+                <form method="post" action="/admin/users/{{ u.id }}/message" class="d-inline">
+                  <button class="btn btn-sm btn-outline-primary">Message</button>
+                </form>
+              </td>
+
             </tr>
             {% endfor %}
           </tbody>
