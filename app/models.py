@@ -56,6 +56,17 @@ class User(Base):
 
     role   = Column(String(20), default="user")
     status = Column(String(20), default="pending")
+    # Account type: individual | company
+    # Optional company fields (only if account_type == "company")
+    company_name = col_or_literal("users", "company_name", String(200), nullable=True)
+    company_number = col_or_literal("users", "company_number", String(100), nullable=True)
+    account_type = col_or_literal(
+    "users", "account_type",
+    String(20),
+    default="individual",
+    nullable=False
+)
+
 
     is_verified = col_or_literal("users", "is_verified", Boolean, default=False, nullable=False)
     verified_at = col_or_literal("users", "verified_at", DateTime, nullable=True)
