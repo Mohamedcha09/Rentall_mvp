@@ -46,25 +46,32 @@ def _normalize_form_password(pwd: str) -> str:
     return pwd[:MAX_FORM_PASSWORD_CHARS]
 
 def _save_any(fileobj: UploadFile | None, folder: str, allow_exts: list[str]) -> str | None:
-    """Upload file to Cloudinary instead of local storage."""
+    """Upload file to Cloudinary (supports images + PDF correctly)."""
     if not fileobj:
         return None
 
     ext = os.path.splitext(fileobj.filename or "")[1].lower()
+
     if ext not in allow_exts:
         return None
 
     try:
+        # ✅ مهم جدا: PDF لازم يكون raw
+        resource_type = "raw" if ext == ".pdf" else "auto"
+
         result = cloud_upload(
             fileobj.file,
             folder="sevor/uploads",
             overwrite=True,
-            resource_type="auto"
+            resource_type=resource_type,
         )
+
         return result.get("secure_url")
+
     except Exception as e:
         print("Cloudinary upload failed:", e)
         return None
+
 
 def _signer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(secret_key=SECRET_KEY, salt="email-verify-v1")
