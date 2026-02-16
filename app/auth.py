@@ -199,10 +199,8 @@ def register_post(
     phone: str = Form(...),
     password: str = Form(...),
 
-    # ✅ NEW company fields
+    # ✅ ONLY THIS for company
     account_type: str = Form("individual"),
-    company_name: str = Form(""),
-    company_number: str = Form(""),
     company_proof: UploadFile = File(None),
 
     doc_type: str = Form(...),
@@ -215,66 +213,46 @@ def register_post(
     email = (email or "").strip().lower()
     password = _normalize_form_password(password or "")
 
-    # ✅ Normalize account_type
-    account_type = (account_type or "individual").strip().lower()
+    account_type = (account_type or "individual").lower()
     if account_type not in ("individual", "company"):
         account_type = "individual"
 
-    # Check if user exists
+    # Check existing user
     exists = db.query(User).filter(User.email == email).first()
     if exists:
         return request.app.templates.TemplateResponse(
             "auth_register.html",
-            {
-                "request": request,
-                "title": "Register",
-                "message": "This email is already in use.",
-                "session_user": request.session.get("user"),
-            },
+            {"request": request, "title": "Register",
+             "message": "This email is already in use.",
+             "session_user": request.session.get("user")}
         )
 
-    # ✅ Company proof required if company
+    # ✅ Require company document if company
     if account_type == "company" and not company_proof:
         return request.app.templates.TemplateResponse(
             "auth_register.html",
-            {
-                "request": request,
-                "title": "Register",
-                "message": "Company document is required for company accounts.",
-                "session_user": request.session.get("user"),
-            },
+            {"request": request, "title": "Register",
+             "message": "Company proof document is required.",
+             "session_user": request.session.get("user")}
         )
 
-    # Save documents
+    # Save files
     front_path = _save_any(doc_front, IDS_DIR, [".jpg", ".jpeg", ".png", ".pdf"])
     back_path = _save_any(doc_back, IDS_DIR, [".jpg", ".jpeg", ".png", ".pdf"]) if doc_back else None
     avatar_path = _save_any(avatar, AVATARS_DIR, [".jpg", ".jpeg", ".png", ".webp"])
+
     if not avatar_path:
         return request.app.templates.TemplateResponse(
             "auth_register.html",
-            {
-                "request": request,
-                "title": "Register",
-                "message": "Profile image is required and must be an image (JPG/PNG/WebP).",
-                "session_user": request.session.get("user"),
-            },
+            {"request": request, "title": "Register",
+             "message": "Profile image is required.",
+             "session_user": request.session.get("user")}
         )
 
-    # ✅ Save company proof (optional unless company)
+    # ✅ Save company document if exists
     company_doc_path = None
     if company_proof:
         company_doc_path = _save_any(company_proof, IDS_DIR, [".jpg", ".jpeg", ".png", ".pdf"])
-        # Optional: if upload failed while company -> block
-        if account_type == "company" and not company_doc_path:
-            return request.app.templates.TemplateResponse(
-                "auth_register.html",
-                {
-                    "request": request,
-                    "title": "Register",
-                    "message": "Company document upload failed. Please try again.",
-                    "session_user": request.session.get("user"),
-                },
-            )
 
     # Create user
     u = User(
@@ -286,24 +264,21 @@ def register_post(
         role="user",
         status="pending",
         avatar_path=avatar_path,
-
-        # ✅ NEW
-        account_type=account_type,
-        company_name=(company_name or "").strip() or None,
-        company_number=(company_number or "").strip() or None,
+        account_type=account_type,   # ✅ important
     )
     db.add(u)
     db.commit()
     db.refresh(u)
 
-    # Record document
+    # Parse expiry
     expiry = None
     if doc_expiry:
         try:
             expiry = datetime.strptime(doc_expiry, "%Y-%m-%d").date()
-        except Exception:
+        except:
             expiry = None
 
+    # Save document
     d = Document(
         user_id=u.id,
         doc_type=doc_type,
@@ -312,80 +287,15 @@ def register_post(
         file_front_path=front_path,
         file_back_path=back_path,
         review_status="pending",
-
-        # ✅ NEW
-        company_doc_path=company_doc_path,
+        company_doc_path=company_doc_path  # ✅ THIS IS THE KEY
     )
     db.add(d)
     db.commit()
 
-    # ===== Send activation email =====
-    try:
-        s = _signer()
-        token = s.dumps({"uid": u.id, "email": u.email})
-        verify_url = f"{BASE_URL}/activate/verify?token={token}"
-        year = datetime.utcnow().year
-        subj = "Activate your account — RentAll"
-
-        html = f"""<!doctype html>
-<html lang="en" dir="ltr">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Account activation</title>
-</head>
-<body style="margin:0;padding:0;background:#0f172a;color:#eaf0ff;font-family:Arial,'Segoe UI',Tahoma,sans-serif;direction:ltr;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#0f172a;">
-    <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#111827;border:1px solid #223049;border-radius:16px;overflow:hidden;">
-          <tr>
-            <td style="padding:20px 22px;background:#0f172a;border-bottom:1px solid #223049;">
-              <span style="display:inline-block;background:rgba(37,99,235,.15);border:1px solid rgba(37,99,235,.35);color:#cfe0ff;padding:6px 10px;border-radius:999px;font-size:13px;">SEVOR • RentAll</span>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:22px;">
-              <h2 style="margin:0 0 10px 0;font-weight:800;font-size:22px;line-height:1.4;color:#eaf0ff;">Hello {first_name} 👋</h2>
-              <p style="margin:0 0 16px 0;font-size:15px;line-height:1.8;color:#cdd7ee;">
-                Thanks for signing up to <b>RentAll</b>. To secure your account and get started, click the button below to verify your email:
-              </p>
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:18px auto;">
-                <tr>
-                  <td align="center" bgcolor="#2563eb" style="border-radius:12px;">
-                    <a href="{verify_url}" target="_blank"
-                       style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;
-                              font-weight:700;font-size:18px;line-height:48px;border-radius:12px;
-                              padding:0 26px;min-width:200px;text-align:center;cursor:pointer;">
-                      Activate account
-                    </a>
-                  </td>
-                </tr>
-              </table>
-              <p style="margin:22px 0 6px 0;font-size:14px;color:#93a4c9;">If the button doesn’t work, copy and open this link:</p>
-              <p dir="ltr" style="margin:0 0 16px 0;font-size:14px;word-break:break-all;">
-                <a href="{verify_url}" style="color:#60a5fa;text-decoration:underline;" target="_blank">{verify_url}</a>
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:14px 22px;background:#0b1220;color:#94a3b8;font-size:11px;text-align:center;">
-              ©️ {year} RentAll
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>"""
-
-        text = f"Hello {first_name}\n\nActivate your account using the link:\n{verify_url}\n\nIf this wasn’t you, please ignore this message."
-        send_email(u.email, subj, html, text_body=text)
-    except Exception:
-        pass
-
-    return RedirectResponse(url=f"/verify-email?email={u.email}&sent=1", status_code=303)
+    return RedirectResponse(
+        url=f"/verify-email?email={u.email}&sent=1",
+        status_code=303
+    )
 
 # ============ Email Verify Wall ============
 @router.get("/verify-email")
