@@ -222,18 +222,24 @@ def register_post(
     if exists:
         return request.app.templates.TemplateResponse(
             "auth_register.html",
-            {"request": request, "title": "Register",
-             "message": "This email is already in use.",
-             "session_user": request.session.get("user")}
+            {
+                "request": request,
+                "title": "Register",
+                "message": "This email is already in use.",
+                "session_user": request.session.get("user"),
+            },
         )
 
     # ✅ Require company document if company
     if account_type == "company" and not company_proof:
         return request.app.templates.TemplateResponse(
             "auth_register.html",
-            {"request": request, "title": "Register",
-             "message": "Company proof document is required.",
-             "session_user": request.session.get("user")}
+            {
+                "request": request,
+                "title": "Register",
+                "message": "Company proof document is required.",
+                "session_user": request.session.get("user"),
+            },
         )
 
     # Save files
@@ -244,13 +250,15 @@ def register_post(
     if not avatar_path:
         return request.app.templates.TemplateResponse(
             "auth_register.html",
-            {"request": request, "title": "Register",
-             "message": "Profile image is required.",
-             "session_user": request.session.get("user")}
+            {
+                "request": request,
+                "title": "Register",
+                "message": "Profile image is required.",
+                "session_user": request.session.get("user"),
+            },
         )
 
-
-    # Create user
+    # ✅ Create user
     u = User(
         first_name=first_name,
         last_name=last_name,
@@ -260,7 +268,7 @@ def register_post(
         role="user",
         status="pending",
         avatar_path=avatar_path,
-        account_type=account_type,   # ✅ important
+        account_type=account_type,
     )
     db.add(u)
     db.commit()
@@ -271,10 +279,10 @@ def register_post(
     if doc_expiry:
         try:
             expiry = datetime.strptime(doc_expiry, "%Y-%m-%d").date()
-        except:
+        except Exception:
             expiry = None
 
-    # Save document
+    # ✅ Save main ID document
     d = Document(
         user_id=u.id,
         doc_type=doc_type,
@@ -286,37 +294,38 @@ def register_post(
     )
     db.add(d)
     db.commit()
+
     # ✅ Save company proof as a separate Document row (doc_type = company_proof)
-if account_type == "company" and company_proof:
-    company_url = _save_any(company_proof, IDS_DIR, [".jpg", ".jpeg", ".png", ".pdf"])
-    if not company_url:
-        return request.app.templates.TemplateResponse(
-            "auth_register.html",
-            {
-                "request": request,
-                "title": "Register",
-                "message": "Company proof upload failed.",
-                "session_user": request.session.get("user"),
-            },
+    if account_type == "company" and company_proof:
+        company_url = _save_any(company_proof, IDS_DIR, [".jpg", ".jpeg", ".png", ".pdf"])
+        if not company_url:
+            return request.app.templates.TemplateResponse(
+                "auth_register.html",
+                {
+                    "request": request,
+                    "title": "Register",
+                    "message": "Company proof upload failed.",
+                    "session_user": request.session.get("user"),
+                },
+            )
+
+        cdoc = Document(
+            user_id=u.id,
+            doc_type="company_proof",
+            country=doc_country,
+            expiry_date=None,
+            file_front_path=company_url,
+            file_back_path=None,
+            review_status="pending",
         )
-
-    cdoc = Document(
-        user_id=u.id,
-        doc_type="company_proof",
-        country=doc_country,
-        expiry_date=None,
-        file_front_path=company_url,
-        file_back_path=None,
-        review_status="pending",
-    )
-    db.add(cdoc)
-    db.commit()
-
+        db.add(cdoc)
+        db.commit()
 
     return RedirectResponse(
         url=f"/verify-email?email={u.email}&sent=1",
-        status_code=303
+        status_code=303,
     )
+
 
 # ============ Email Verify Wall ============
 @router.get("/verify-email")
