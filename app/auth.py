@@ -59,7 +59,7 @@ def _save_any(fileobj: UploadFile | None, folder: str, allow_exts: list[str]) ->
             fileobj.file,
             folder="sevor/uploads",
             overwrite=True,
-            resource_type="image"
+            resource_type="auto"
         )
         return result.get("secure_url")
     except Exception as e:
@@ -249,10 +249,6 @@ def register_post(
              "session_user": request.session.get("user")}
         )
 
-    # ✅ Save company document if exists
-    company_doc_path = None
-    if company_proof:
-        company_doc_path = _save_any(company_proof, IDS_DIR, [".jpg", ".jpeg", ".png", ".pdf"])
 
     # Create user
     u = User(
@@ -287,10 +283,35 @@ def register_post(
         file_front_path=front_path,
         file_back_path=back_path,
         review_status="pending",
-        company_doc_path=company_doc_path  # ✅ THIS IS THE KEY
     )
     db.add(d)
     db.commit()
+    # ✅ Save company proof as a separate Document row (doc_type = company_proof)
+if account_type == "company" and company_proof:
+    company_url = _save_any(company_proof, IDS_DIR, [".jpg", ".jpeg", ".png", ".pdf"])
+    if not company_url:
+        return request.app.templates.TemplateResponse(
+            "auth_register.html",
+            {
+                "request": request,
+                "title": "Register",
+                "message": "Company proof upload failed.",
+                "session_user": request.session.get("user"),
+            },
+        )
+
+    cdoc = Document(
+        user_id=u.id,
+        doc_type="company_proof",
+        country=doc_country,
+        expiry_date=None,
+        file_front_path=company_url,
+        file_back_path=None,
+        review_status="pending",
+    )
+    db.add(cdoc)
+    db.commit()
+
 
     return RedirectResponse(
         url=f"/verify-email?email={u.email}&sent=1",
