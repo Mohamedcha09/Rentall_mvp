@@ -198,6 +198,13 @@ def register_post(
     email: str = Form(...),
     phone: str = Form(...),
     password: str = Form(...),
+
+    # ✅ NEW company fields
+    account_type: str = Form("individual"),
+    company_name: str = Form(""),
+    company_number: str = Form(""),
+    company_proof: UploadFile = File(None),
+
     doc_type: str = Form(...),
     doc_country: str = Form(...),
     doc_expiry: str = Form(None),
@@ -208,6 +215,11 @@ def register_post(
     email = (email or "").strip().lower()
     password = _normalize_form_password(password or "")
 
+    # ✅ Normalize account_type
+    account_type = (account_type or "individual").strip().lower()
+    if account_type not in ("individual", "company"):
+        account_type = "individual"
+
     # Check if user exists
     exists = db.query(User).filter(User.email == email).first()
     if exists:
@@ -217,6 +229,18 @@ def register_post(
                 "request": request,
                 "title": "Register",
                 "message": "This email is already in use.",
+                "session_user": request.session.get("user"),
+            },
+        )
+
+    # ✅ Company proof required if company
+    if account_type == "company" and not company_proof:
+        return request.app.templates.TemplateResponse(
+            "auth_register.html",
+            {
+                "request": request,
+                "title": "Register",
+                "message": "Company document is required for company accounts.",
                 "session_user": request.session.get("user"),
             },
         )
@@ -236,6 +260,22 @@ def register_post(
             },
         )
 
+    # ✅ Save company proof (optional unless company)
+    company_doc_path = None
+    if company_proof:
+        company_doc_path = _save_any(company_proof, IDS_DIR, [".jpg", ".jpeg", ".png", ".pdf"])
+        # Optional: if upload failed while company -> block
+        if account_type == "company" and not company_doc_path:
+            return request.app.templates.TemplateResponse(
+                "auth_register.html",
+                {
+                    "request": request,
+                    "title": "Register",
+                    "message": "Company document upload failed. Please try again.",
+                    "session_user": request.session.get("user"),
+                },
+            )
+
     # Create user
     u = User(
         first_name=first_name,
@@ -246,6 +286,11 @@ def register_post(
         role="user",
         status="pending",
         avatar_path=avatar_path,
+
+        # ✅ NEW
+        account_type=account_type,
+        company_name=(company_name or "").strip() or None,
+        company_number=(company_number or "").strip() or None,
     )
     db.add(u)
     db.commit()
@@ -267,6 +312,9 @@ def register_post(
         file_front_path=front_path,
         file_back_path=back_path,
         review_status="pending",
+
+        # ✅ NEW
+        company_doc_path=company_doc_path,
     )
     db.add(d)
     db.commit()
@@ -337,7 +385,6 @@ def register_post(
     except Exception:
         pass
 
-    # ✅ Send to email verification page
     return RedirectResponse(url=f"/verify-email?email={u.email}&sent=1", status_code=303)
 
 # ============ Email Verify Wall ============
