@@ -106,10 +106,12 @@
       <div class="title">Login</div>
     </div>
 
-    <form method="post" action="/login" novalidate>
+    <!-- ✅ IMPORTANT: removed novalidate to avoid 422 black page -->
+    <form id="loginForm" method="post" action="/login">
       <div class="mb-3">
         <label class="form-label">Email</label>
-        <input type="email" class="form-control" name="email" placeholder="name@example.com" required>
+        <!-- ✅ added id="email" -->
+        <input id="email" type="email" class="form-control" name="email" placeholder="name@example.com" required>
       </div>
 
       <div class="mb-2 pw-wrap">
@@ -123,6 +125,9 @@
       <div class="text-muted small mb-3">
         Passwords are encrypted, and two-step verification is used to secure your account.
       </div>
+
+      <!-- ✅ Custom error box (shows instead of black page) -->
+      <div id="loginErr" class="alert alert-danger mt-3 mb-2 d-none"></div>
 
       <button type="submit" class="btn btn-primary w-100 mb-2">Login</button>
       <a href="/register" class="btn btn-success w-100">Create New Account</a>
@@ -165,6 +170,50 @@
       input.type = show ? 'text' : 'password';
       btn.innerHTML = show ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
       input.focus();
+    });
+  })();
+
+  // ✅ Custom validation to avoid FastAPI 422 "black page"
+  (function(){
+    const form = document.getElementById('loginForm');
+    const email = document.getElementById('email');
+    const pw = document.getElementById('pw');
+    const errBox = document.getElementById('loginErr');
+
+    if(!form || !email || !pw || !errBox) return;
+
+    function showErr(msg){
+      errBox.textContent = msg;
+      errBox.classList.remove('d-none');
+    }
+    function hideErr(){
+      errBox.textContent = '';
+      errBox.classList.add('d-none');
+    }
+
+    // Hide error while typing
+    email.addEventListener('input', hideErr);
+    pw.addEventListener('input', hideErr);
+
+    form.addEventListener('submit', function(e){
+      const em = (email.value || '').trim();
+      const p = (pw.value || '').trim();
+
+      if(!em && !p){
+        e.preventDefault();
+        showErr('Please enter your email and password.');
+        return;
+      }
+      if(!em){
+        e.preventDefault();
+        showErr('Please enter your email.');
+        return;
+      }
+      if(!p){
+        e.preventDefault();
+        showErr('Please enter your password.');
+        return;
+      }
     });
   })();
 </script>
