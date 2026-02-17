@@ -61,6 +61,31 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
     color:#fff;
 }
 
+/* ================= SELLER FILTER BAR (NEW) ================= */
+.sellerbar{
+  display:flex;
+  gap:8px;
+  overflow:auto hidden;
+  white-space:nowrap;
+  padding:4px 0;
+  margin: 2px 0 12px 0;
+}
+.seller-chip{
+  padding:8px 12px;
+  border-radius:999px;
+  border:1px solid rgba(0,0,0,.08);
+  background:#fff;
+  color:#0f172a;
+  text-decoration:none;
+  font-weight:700;
+  font-size:.85rem;
+}
+.seller-chip.active{
+  border-color:#6C63FF;
+  background:#f4f3ff;
+  color:#6C63FF;
+}
+
 /* ================= LOCATION BAR ================= */
 .items-locbar{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,.06);
   padding:8px 10px;margin-block:14px;display:flex;gap:6px;align-items:center}
@@ -76,18 +101,14 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
 
 /* إخفاء Items + Category فقط في الهاتف */
 @media (max-width: 576px) {
-  .items-hide-mobile {
-    display: none !important;
-  }
+  .items-hide-mobile { display: none !important; }
 }
-
 
 /* ================================
    MOBILE — NEW CATEGORY SLIDER STYLE
 ================================ */
 @media (max-width: 576px) {
 
-  /* الشريط كامل */
   .toolbar {
     display: flex;
     gap: 10px;
@@ -103,7 +124,6 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
     box-shadow: 0 4px 22px rgba(0,0,0,0.08);
   }
 
-  /* كبس الفئة */
   .toolbar .pill {
     padding: 10px 18px;
     border-radius: 999px;
@@ -116,7 +136,6 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
     box-shadow: 0 2px 6px rgba(0,0,0,0.06);
   }
 
-  /* الفئة المختارة */
   .toolbar .pill.active {
     background: linear-gradient(135deg, #786BFF, #A88BFF);
     color: #fff;
@@ -124,155 +143,185 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
     transform: scale(1.05);
   }
 
-  /* Scroll Bar تصميم */
-  .toolbar::-webkit-scrollbar {
-    height: 0px;
+  .toolbar::-webkit-scrollbar { height: 0px; }
+
+  /* sellerbar looks like toolbar on mobile */
+  .sellerbar{
+    padding: 10px 6px;
+    margin: 0 -8px 10px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    background: rgba(255, 255, 255, 0.65);
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 4px 22px rgba(0,0,0,0.06);
   }
-
+  .sellerbar::-webkit-scrollbar { height: 0px; }
 }
-
 
 /* ===== Hide top navbar + stripe banner ONLY on mobile ===== */
 @media (max-width: 768px) {
-
-    /* إخفاء النافبار العلوي */
-    header.topbar,
-    nav.desk-tabs,
-    .m-top-tabs {
-        display: none !important;
-    }
-
-    /* إخفاء شريط Stripe Connect */
-    .stripe-connect-banner,
-    .connect-banner,
-    .payout-banner,
-    .stripe-callout {
-        display: none !important;
-    }
+    header.topbar, nav.desk-tabs, .m-top-tabs { display: none !important; }
+    .stripe-connect-banner, .connect-banner, .payout-banner, .stripe-callout { display: none !important; }
 }
+
 /* ===== iOS APP ONLY: TOP SAFE WHITE BAR ===== */
 @supports (-webkit-touch-callout: none) {
-
   @media (max-width: 768px) {
-
-    /* شريط أبيض ثابت أعلى الصفحة */
     body::before {
       content: "";
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
+      top: 0; left: 0; right: 0;
       height: env(safe-area-inset-top);
       background: #fff;
       z-index: 9999;
       pointer-events: none;
     }
-
-    /* دفع المحتوى أسفل الشريط */
-    body {
-      padding-top: env(safe-area-inset-top);
-    }
-
+    body { padding-top: env(safe-area-inset-top); }
   }
 }
-
-
 </style>
-
-
-
 {% endblock %}
 
 {% block content %}
-
 <section class="container" style="max-width:1200px;margin:auto">
 
 <!-- ====== HIDE THIS PART ONLY (Items + Category) ON MOBILE ====== -->
 <div class="items-hide-mobile d-flex align-items-center mb-2" style="gap:8px">
-    <div class="d-flex align-items-center" style="gap:10px">
-        <h2 class="mb-0">Items</h2>
-        <span class="pill" style="font-size:.82rem">
-            {% if current_category %}Category: <b>{{ current_category }}</b>{% else %}All categories{% endif %}
-        </span>
-    </div>
+  <div class="d-flex align-items-center" style="gap:10px">
+    <h2 class="mb-0">Items</h2>
+    <span class="pill" style="font-size:.82rem">
+      {% if current_category %}Category: <b>{{ current_category }}</b>{% else %}All categories{% endif %}
+    </span>
+  </div>
+</div>
+
+{# =====================
+   NEW: Seller filter chips (All / Companies / Individuals)
+   Keep current category/sub/city/sort/lat/lng in the links
+===================== #}
+{% set cat_q = current_category %}
+{% set sub_q = current_sub %}
+{% set city_q = selected_city %}
+{% set sort_q = current_sort %}
+{% set lat_q = lat %}
+{% set lng_q = lng %}
+
+<div class="sellerbar">
+  <a class="seller-chip {% if (current_seller or 'all') == 'all' %}active{% endif %}"
+     href="/items{% if cat_q or sub_q or city_q or sort_q or lat_q or lng_q %}?{% endif %}
+{% if cat_q %}category={{ cat_q|urlencode }}&{% endif %}
+{% if sub_q %}sub={{ sub_q|urlencode }}&{% endif %}
+{% if city_q %}city={{ city_q|urlencode }}&{% endif %}
+{% if sort_q %}sort={{ sort_q|urlencode }}&{% endif %}
+{% if lat_q is not none %}lat={{ lat_q }}&{% endif %}
+{% if lng_q is not none %}lng={{ lng_q }}&{% endif %}seller=all">
+    All sellers
+  </a>
+
+  <a class="seller-chip {% if (current_seller or 'all') == 'company' %}active{% endif %}"
+     href="/items{% if cat_q or sub_q or city_q or sort_q or lat_q or lng_q %}?{% endif %}
+{% if cat_q %}category={{ cat_q|urlencode }}&{% endif %}
+{% if sub_q %}sub={{ sub_q|urlencode }}&{% endif %}
+{% if city_q %}city={{ city_q|urlencode }}&{% endif %}
+{% if sort_q %}sort={{ sort_q|urlencode }}&{% endif %}
+{% if lat_q is not none %}lat={{ lat_q }}&{% endif %}
+{% if lng_q is not none %}lng={{ lng_q }}&{% endif %}seller=company">
+    Companies
+  </a>
+
+  <a class="seller-chip {% if (current_seller or 'all') == 'individual' %}active{% endif %}"
+     href="/items{% if cat_q or sub_q or city_q or sort_q or lat_q or lng_q %}?{% endif %}
+{% if cat_q %}category={{ cat_q|urlencode }}&{% endif %}
+{% if sub_q %}sub={{ sub_q|urlencode }}&{% endif %}
+{% if city_q %}city={{ city_q|urlencode }}&{% endif %}
+{% if sort_q %}sort={{ sort_q|urlencode }}&{% endif %}
+{% if lat_q is not none %}lat={{ lat_q }}&{% endif %}
+{% if lng_q is not none %}lng={{ lng_q }}&{% endif %}seller=individual">
+    Individuals
+  </a>
 </div>
 
 <!-- ====== S L I D E R  (Always Visible on Mobile) ====== -->
 <div class="toolbar" style="margin-bottom:10px;">
-  <a class="pill {% if not current_category %}active{% endif %}" href="/items">All</a>
+  <a class="pill {% if not current_category %}active{% endif %}"
+     href="/items?seller={{ (current_seller or 'all')|urlencode }}">
+     All
+  </a>
+
   {% for cat in categories %}
-    <a class="pill {% if current_category == cat.name %}active{% endif %}" 
-       href="/items?category={{ cat.name | urlencode }}">
-       {{ cat.name }}
+    <a class="pill {% if current_category == cat.name %}active{% endif %}"
+       href="/items?category={{ cat.name|urlencode }}&seller={{ (current_seller or 'all')|urlencode }}">
+      {{ cat.name }}
     </a>
   {% endfor %}
 </div>
 
-
-  <!-- ================= SUBCATEGORIES (only if category selected) ================ -->
-  {% if current_category and subcategories and subcategories|length > 0 %}
+<!-- ================= SUBCATEGORIES (only if category selected) ================ -->
+{% if current_category and subcategories and subcategories|length > 0 %}
   <div class="subcat-bar">
     {% for sub in subcategories %}
       <a class="subcat-chip {% if current_sub == sub.name %}active{% endif %}"
-         href="/items?category={{ current_category | urlencode }}&sub={{ sub.name | urlencode }}">
+         href="/items?category={{ current_category|urlencode }}&sub={{ sub.name|urlencode }}&seller={{ (current_seller or 'all')|urlencode }}">
         {{ sub.name }}
       </a>
     {% endfor %}
   </div>
-  {% endif %}
+{% endif %}
 
-  <!-- ================= LOCATION BAR ================= -->
-  <form id="itemsLocForm" class="items-locbar" action="/items" method="get" role="search">
-    <div style="flex:1;position:relative">
-      <input type="text" class="form-control" id="itemsCityInput" name="city"
-             placeholder="Type city / area …" autocomplete="off"
-             value="{{ selected_city or '' }}">
-      <div id="itemsCitySugg"></div>
-    </div>
+<!-- ================= LOCATION BAR ================= -->
+<form id="itemsLocForm" class="items-locbar" action="/items" method="get" role="search">
+  <div style="flex:1;position:relative">
+    <input type="text" class="form-control" id="itemsCityInput" name="city"
+           placeholder="Type city / area …" autocomplete="off"
+           value="{{ selected_city or '' }}">
+    <div id="itemsCitySugg"></div>
+  </div>
 
-    {% if current_category %}<input type="hidden" name="category" value="{{ current_category }}">{% endif %}
-    {% if current_sub %}<input type="hidden" name="sub" value="{{ current_sub }}">{% endif %}
+  {% if current_category %}<input type="hidden" name="category" value="{{ current_category }}">{% endif %}
+  {% if current_sub %}<input type="hidden" name="sub" value="{{ current_sub }}">{% endif %}
+  {# NEW: keep seller in the search submit #}
+  <input type="hidden" name="seller" value="{{ current_seller or 'all' }}">
 
-    <button class="btn" id="itemsSearchBtn" type="submit">Search</button>
-  </form>
+  <button class="btn" id="itemsSearchBtn" type="submit">Search</button>
+</form>
 
-  <!-- ================= ITEMS GRID ================= -->
-  {% if items_view and items_view|length %}
-    <div class="grid-items">
-      {% for it in items_view %}
-        <a href="/items/{{ it.item.id }}" class="spot text-decoration-none">
-          <div class="spot-media">
-            {% if it.item.image_path %}
-              <img src="{{ it.item.image_path | media_url }}" alt="">
-            {% else %}
-              <img src="/static/placeholder.jpg" alt="">
-            {% endif %}
-            <div class="spot-overlay"></div>
-            {% if it.item.category %}
-              <span class="category-chip">{{ it.item.category }}</span>
-            {% endif %}
-          </div>
-          <div class="spot-body">
-            <div class="spot-title">{{ it.item.title }}</div>
-            <div class="spot-meta">
-              <div class="spot-price">
-                <strong>{{ it.display_price | money(display_currency) }}</strong>
-                <span>/day</span>
-              </div>
-              <div class="spot-city">{{ it.item.city or '—' }}</div>
-              {% if it.item.avg_stars %}
-                <div class="spot-rating">{{ "%.1f"|format(it.item.avg_stars) }}</div>
-              {% endif %}
+<!-- ================= ITEMS GRID ================= -->
+{% if items_view and items_view|length %}
+  <div class="grid-items">
+    {% for it in items_view %}
+      <a href="/items/{{ it.item.id }}" class="spot text-decoration-none">
+        <div class="spot-media">
+          {% if it.item.image_path %}
+            <img src="{{ it.item.image_path | media_url }}" alt="">
+          {% else %}
+            <img src="/static/placeholder.jpg" alt="">
+          {% endif %}
+          <div class="spot-overlay"></div>
+          {% if it.item.category %}
+            <span class="category-chip">{{ it.item.category }}</span>
+          {% endif %}
+        </div>
+        <div class="spot-body">
+          <div class="spot-title">{{ it.item.title }}</div>
+          <div class="spot-meta">
+            <div class="spot-price">
+              <strong>{{ it.display_price | money(display_currency) }}</strong>
+              <span>/day</span>
             </div>
+            <div class="spot-city">{{ it.item.city or '—' }}</div>
+            {% if it.item.avg_stars %}
+              <div class="spot-rating">{{ "%.1f"|format(it.item.avg_stars) }}</div>
+            {% endif %}
           </div>
-        </a>
-      {% endfor %}
-    </div>
-  {% else %}
-    <div class="alert alert-secondary mt-3">No items match this selection.</div>
-  {% endif %}
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-secondary mt-3">No items match this selection.</div>
+{% endif %}
 </section>
-
 {% endblock %}
 
 {% block scripts %}
@@ -393,10 +442,18 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
     setCookie('city',label);setCookie('lat',lat);setCookie('lng',lon);
     const u=new URL(location.href);
     u.searchParams.set('city',label);u.searchParams.set('lat',lat);u.searchParams.set('lng',lon);
+
+    // keep category / sub / sort / seller
     const cat=form.querySelector('[name="category"]')?.value;
+    const sub=form.querySelector('[name="sub"]')?.value;
     const sort=form.querySelector('[name="sort"]')?.value;
+    const seller=form.querySelector('[name="seller"]')?.value;
+
     if(cat)u.searchParams.set('category',cat);
+    if(sub)u.searchParams.set('sub',sub);
     if(sort)u.searchParams.set('sort',sort);
+    if(seller)u.searchParams.set('seller',seller);
+
     location.href=u.toString();
   });
 
@@ -407,7 +464,9 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
     const lat=(latEl?.value||"").trim();
     const lng=(lngEl?.value||"").trim();
     const u=new URL(location.href);
+
     ['city','lat','lng'].forEach(k=>u.searchParams.delete(k));
+
     if(lat && lng){
       setCookie('lat',lat);setCookie('lng',lng);setCookie('city',c||"");
       u.searchParams.set('lat',lat);u.searchParams.set('lng',lng); if(c)u.searchParams.set('city',c);
@@ -417,10 +476,18 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
     }else{
       delCookie('city');delCookie('lat');delCookie('lng');
     }
+
+    // keep category / sub / sort / seller
     const cat=form.querySelector('[name="category"]')?.value;
+    const sub=form.querySelector('[name="sub"]')?.value;
     const sort=form.querySelector('[name="sort"]')?.value;
+    const seller=form.querySelector('[name="seller"]')?.value;
+
     if(cat)u.searchParams.set('category',cat);
+    if(sub)u.searchParams.set('sub',sub);
     if(sort)u.searchParams.set('sort',sort);
+    if(seller)u.searchParams.set('seller',seller);
+
     location.href=u.toString();
   });
 
@@ -430,17 +497,20 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
 
 // ===== Scroll slider automatically to active category =====
 document.addEventListener("DOMContentLoaded", function () {
-    const toolbar = document.querySelector(".toolbar");
-    const active = document.querySelector(".pill.active");
+  const toolbar = document.querySelector(".toolbar");
+  const active = document.querySelector(".pill.active");
+  if (toolbar && active) {
+    const offset = active.offsetLeft - (toolbar.clientWidth / 2) + (active.clientWidth / 2);
+    toolbar.scrollTo({ left: offset, behavior: "smooth" });
+  }
 
-    if (toolbar && active) {
-        // Scroll so the active category is visible in the middle
-        const offset = active.offsetLeft - (toolbar.clientWidth / 2) + (active.clientWidth / 2);
-        toolbar.scrollTo({
-            left: offset,
-            behavior: "smooth"
-        });
-    }
+  // optional: scroll sellerbar too
+  const sellerbar = document.querySelector(".sellerbar");
+  const sellerActive = document.querySelector(".seller-chip.active");
+  if (sellerbar && sellerActive) {
+    const off = sellerActive.offsetLeft - (sellerbar.clientWidth / 2) + (sellerActive.clientWidth / 2);
+    sellerbar.scrollTo({ left: off, behavior: "smooth" });
+  }
 });
 
 </script>

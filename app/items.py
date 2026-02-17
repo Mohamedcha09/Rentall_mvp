@@ -285,6 +285,7 @@ def items_list(
     city: str = None,
     lat: float | None = None,
     lng: float | None = None,
+    seller: str = None,
 ):
     # Load DB categories
     categories_db = db.query(Category).order_by(Category.name.asc()).all()
@@ -294,10 +295,7 @@ def items_list(
     # =======================
     subcategories_db = []
     if category:
-        # 1) Get the category row by name
         cat_obj = db.query(Category).filter(Category.name == category).first()
-
-        # 2) If exists → load its subcategories by category_id
         if cat_obj:
             subcategories_db = (
                 db.query(Subcategory)
@@ -306,7 +304,19 @@ def items_list(
                 .all()
             )
 
-    q = db.query(Item).filter(Item.is_active == "yes",Item.status == "approved")
+    # =======================
+    # NEW: seller filter (all | company | individual)
+    # =======================
+    seller = (seller or request.query_params.get("seller") or "all").lower().strip()
+    if seller not in ("all", "company", "individual"):
+        seller = "all"
+
+    # Base query
+    q = db.query(Item).filter(Item.is_active == "yes", Item.status == "approved")
+
+    # Apply seller filter (JOIN users)
+    if seller != "all":
+        q = q.join(Item.owner).filter(func.lower(User.account_type) == seller)
 
     current_category = category
 
@@ -371,11 +381,13 @@ def items_list(
             base_cur,
             disp_cur,
         )
-        items_view.append({
-            "item": it,
-            "display_price": float(disp_price),
-            "display_currency": disp_cur,
-        })
+        items_view.append(
+            {
+                "item": it,
+                "display_price": float(disp_price),
+                "display_currency": disp_cur,
+            }
+        )
 
     return request.app.templates.TemplateResponse(
         "items.html",
@@ -386,6 +398,7 @@ def items_list(
             "items_view": items_view,
             "categories": categories_db,
             "current_category": current_category,
+            "current_seller": seller,  # ✅ NEW
             "subcategories": subcategories_db,
             "current_sub": request.query_params.get("sub"),
             "display_currency": disp_cur,
@@ -394,9 +407,9 @@ def items_list(
             "lat": lat,
             "lng": lng,
             "session_user": request.session.get("user"),
-
-        }
+        },
     )
+
 
 # ============================================================
 # ======================= ITEM DETAIL =========================
