@@ -5,29 +5,25 @@
 {% block head %}
 <style>
   :root{
-    --bg0:#0b1220;
-    --bg1:#0f172a;
-    --card: rgba(255,255,255,.07);
-    --card2: rgba(255,255,255,.10);
-    --stroke: rgba(255,255,255,.14);
-    --text:#eaf0ff;
-    --muted: rgba(234,240,255,.72);
+    --bg0:#ffffff;
+    --bg1:#ffffff;
+    --card:#ffffff;
+    --card2:#ffffff;
+    --stroke: rgba(0,0,0,.08);
+    --text:#000000;
+    --muted:#555555;
     --accent1:#38bdf8;
     --accent2:#a78bfa;
     --accent3:#22c55e;
     --warn:#f59e0b;
-    --shadow: 0 18px 60px rgba(0,0,0,.35);
+    --shadow: 0 18px 60px rgba(0,0,0,.12);
     --radius: 22px;
   }
 
   /* ===== PAGE WRAP ===== */
   .about-wrap{
-    background:
-      radial-gradient(1200px 800px at 15% 10%, rgba(56,189,248,.18), transparent 55%),
-      radial-gradient(1200px 800px at 85% 20%, rgba(167,139,250,.18), transparent 55%),
-      radial-gradient(900px 650px at 50% 95%, rgba(34,197,94,.12), transparent 55%),
-      linear-gradient(180deg, var(--bg0), var(--bg1));
-    color: var(--text);
+    background: #ffffff;
+    color: #000000;
     min-height: 100vh;
   }
 
@@ -58,11 +54,13 @@
     box-shadow: 0 0 0 6px rgba(56,189,248,.12);
   }
   .brand b{letter-spacing:.6px}
+
   .hero h1{
     font-size: 46px;
     line-height: 1.12;
     margin: 0 0 14px;
     font-weight: 900;
+    color: #000;
   }
   .hero p{
     margin: 0 0 20px;
@@ -70,21 +68,23 @@
     line-height: 1.85;
     color: var(--muted);
   }
+
+  /* ✅ FIXED: tagline text + background + pill border for white theme */
   .tagline{
     display:inline-flex;
     gap:10px;
     align-items:center;
     padding: 10px 14px;
     border: 1px solid var(--stroke);
-    background: rgba(255,255,255,.05);
+    background: rgba(0,0,0,.03);
     border-radius: 999px;
-    color: rgba(234,240,255,.9);
-    font-weight: 700;
+    color: #111;
+    font-weight: 800;
     margin-bottom: 18px;
   }
   .tagline .pill{
     background: linear-gradient(135deg, rgba(56,189,248,.22), rgba(167,139,250,.22));
-    border: 1px solid rgba(255,255,255,.14);
+    border: 1px solid rgba(0,0,0,.10);
     padding: 6px 10px;
     border-radius: 999px;
     font-size: 12px;
@@ -99,34 +99,36 @@
     padding: 12px 16px;
     border-radius: 14px;
     border: 1px solid var(--stroke);
-    background: rgba(255,255,255,.06);
+    background: rgba(0,0,0,.03);
     color: var(--text);
     text-decoration:none;
-    font-weight: 800;
-    box-shadow: 0 10px 28px rgba(0,0,0,.20);
+    font-weight: 900;
+    box-shadow: 0 10px 28px rgba(0,0,0,.10);
     transition: transform .12s ease, background .12s ease;
   }
-  .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); }
+  .btn:hover{ transform: translateY(-1px); background: rgba(0,0,0,.05); }
   .btn.primary{
     border: none;
+    color:#fff;
     background: linear-gradient(135deg, var(--accent1), var(--accent2));
   }
   .btn.success{
     border: none;
+    color:#fff;
     background: linear-gradient(135deg, var(--accent3), var(--accent1));
   }
   .btn .mini{
-    font-size: 12px; font-weight: 900; opacity:.9;
+    font-size: 12px; font-weight: 950; opacity:.95;
     padding: 3px 8px; border-radius: 999px;
-    background: rgba(0,0,0,.22);
-    border: 1px solid rgba(255,255,255,.18);
+    background: rgba(0,0,0,.10);
+    border: 1px solid rgba(0,0,0,.12);
   }
 
   /* ===== HERO CARD ===== */
   .hero-card{
     border-radius: var(--radius);
     border: 1px solid var(--stroke);
-    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04));
+    background: #ffffff;
     box-shadow: var(--shadow);
     padding: 18px;
     position: relative;
@@ -134,8 +136,8 @@
   .hero-card:before{
     content:"";
     position:absolute; inset:-1px;
-    background: radial-gradient(600px 300px at 20% 10%, rgba(56,189,248,.24), transparent 55%),
-                radial-gradient(600px 300px at 80% 20%, rgba(167,139,250,.22), transparent 55%);
+    background: radial-gradient(600px 300px at 20% 10%, rgba(56,189,248,.18), transparent 55%),
+                radial-gradient(600px 300px at 80% 20%, rgba(167,139,250,.16), transparent 55%);
     border-radius: var(--radius);
     z-index:0;
     pointer-events:none;
@@ -147,23 +149,24 @@
     gap: 12px;
   }
   .kpi{
-    border: 1px solid rgba(255,255,255,.14);
-    background: rgba(0,0,0,.18);
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,.08);
     border-radius: 16px;
     padding: 12px;
   }
-  .kpi b{ display:block; font-size: 18px; }
+  .kpi b{ display:block; font-size: 18px; color:#000; }
   .kpi span{ color: var(--muted); font-size: 12.5px; }
+
   .chiprow{ display:flex; flex-wrap:wrap; gap:10px; margin-top: 12px;}
   .chip{
     display:inline-flex; align-items:center; gap:8px;
     padding: 9px 12px;
     border-radius: 999px;
-    border: 1px solid rgba(255,255,255,.14);
-    background: rgba(255,255,255,.06);
-    font-weight: 800;
+    background: rgba(0,0,0,.03);
+    font-weight: 900;
     font-size: 12.5px;
-    color: rgba(234,240,255,.92);
+    border: 1px solid rgba(0,0,0,.10);
+    color: #111;
   }
 
   /* ===== SECTIONS ===== */
@@ -178,7 +181,8 @@
   .section-title h2{
     margin:0;
     font-size: 24px;
-    font-weight: 900;
+    font-weight: 950;
+    color:#000;
   }
   .sub{
     color: var(--muted);
@@ -189,9 +193,9 @@
   .glass{
     border-radius: var(--radius);
     border: 1px solid var(--stroke);
-    background: rgba(255,255,255,.06);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: rgba(0,0,0,.02);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     box-shadow: var(--shadow);
   }
 
@@ -212,13 +216,14 @@
   .card{
     padding: 16px;
     border-radius: 18px;
-    border: 1px solid rgba(255,255,255,.14);
-    background: rgba(0,0,0,.18);
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,.08);
   }
   .card h3{
     margin: 0 0 8px;
     font-size: 15.5px;
-    font-weight: 900;
+    font-weight: 950;
+    color:#000;
   }
   .card p{
     margin:0;
@@ -227,22 +232,25 @@
     font-size: 14px;
   }
 
+  /* ✅ FIXED: list text for white theme */
   .list{
     margin: 0;
     padding-left: 18px;
-    color: rgba(234,240,255,.88);
+    color: #222;
     line-height: 1.9;
   }
-  .list li{ margin: 6px 0; color: rgba(234,240,255,.88); }
+  .list li{ margin: 6px 0; color:#222; }
+
+  /* ✅ FIXED: note text/border for white theme */
   .note{
     margin-top: 12px;
     padding: 12px 14px;
     border-radius: 14px;
-    border: 1px solid rgba(255,255,255,.14);
+    border: 1px solid rgba(0,0,0,.10);
     background: rgba(56,189,248,.10);
-    color: rgba(234,240,255,.92);
+    color: #111;
     line-height: 1.8;
-    font-weight: 750;
+    font-weight: 850;
   }
 
   /* ===== HOW IT WORKS ===== */
@@ -254,19 +262,20 @@
   }
   .step{
     border-radius: 18px;
-    border: 1px solid rgba(255,255,255,.14);
-    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(0,0,0,.08);
+    background: #ffffff;
     padding: 14px;
   }
   .step b{
     display:flex; align-items:center; gap:10px;
     font-size: 14px; font-weight: 950;
+    color:#000;
   }
   .n{
     width:26px; height:26px; border-radius: 10px;
     display:inline-flex; align-items:center; justify-content:center;
-    background: rgba(0,0,0,.24);
-    border: 1px solid rgba(255,255,255,.16);
+    background: rgba(0,0,0,.06);
+    border: 1px solid rgba(0,0,0,.10);
   }
   .step p{ margin: 10px 0 0; color: var(--muted); line-height: 1.75; font-size: 13.5px; }
 
@@ -275,22 +284,22 @@
     margin: 24px 0 8px;
     padding: 18px;
     border-radius: var(--radius);
-    border: 1px solid rgba(255,255,255,.18);
+    border: 1px solid rgba(0,0,0,.10);
     background:
-      radial-gradient(600px 240px at 15% 30%, rgba(56,189,248,.18), transparent 60%),
-      radial-gradient(600px 240px at 85% 40%, rgba(167,139,250,.18), transparent 60%),
-      rgba(255,255,255,.06);
+      radial-gradient(600px 240px at 15% 30%, rgba(56,189,248,.14), transparent 60%),
+      radial-gradient(600px 240px at 85% 40%, rgba(167,139,250,.14), transparent 60%),
+      rgba(0,0,0,.02);
     box-shadow: var(--shadow);
   }
-  .cta h3{ margin:0 0 10px; font-size: 18px; font-weight: 950;}
+  .cta h3{ margin:0 0 10px; font-size: 18px; font-weight: 950; color:#000;}
   .cta p{ margin:0 0 14px; color: var(--muted); line-height: 1.8;}
   .cta-row{ display:flex; flex-wrap:wrap; gap:12px; }
 
   /* ===== FAQ ===== */
   details{
     border-radius: 18px;
-    border: 1px solid rgba(255,255,255,.14);
-    background: rgba(0,0,0,.18);
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,.08);
     padding: 14px;
   }
   details + details{ margin-top: 12px; }
@@ -298,6 +307,7 @@
     cursor:pointer;
     font-weight: 950;
     list-style:none;
+    color:#000;
   }
   summary::-webkit-details-marker{ display:none; }
   details p{ margin: 10px 0 0; color: var(--muted); line-height: 1.75; }
@@ -305,10 +315,10 @@
   /* ===== FOOTER ===== */
   .foot{
     padding: 30px 0 60px;
-    color: rgba(234,240,255,.72);
+    color: #444;
     font-size: 13px;
   }
-  .foot a{ color: rgba(234,240,255,.92); text-decoration:none; font-weight: 900; }
+  .foot a{ color: #111; text-decoration:none; font-weight: 900; }
   .foot a:hover{ text-decoration: underline; }
 
   /* ===== RESPONSIVE ===== */
@@ -319,13 +329,11 @@
     .steps{ grid-template-columns:1fr; }
     .hero h1{ font-size: 38px; }
   }
-
-
 </style>
+
 <style>
 /* ================================
-   HOW IT WORKS — HIDE GLOBAL UI
-   (SAME AS about_full)
+   ABOUT — HIDE GLOBAL UI
    ================================ */
 
 /* 1️⃣ Hide top navbar + search */
@@ -368,14 +376,13 @@ body.has-tabbar {
 }
 
 /* 8️⃣ Full viewport page */
-.how-wrap {
+.about-wrap {
   min-height: 100vh;
 }
 
-/* ===== iOS APP ONLY — TOP SAFE WHITE BAR (ABOUT FULL) ===== */
+/* ===== iOS APP ONLY — TOP SAFE WHITE BAR ===== */
 @supports (-webkit-touch-callout: none) {
   @media (max-width: 768px) {
-
     .about-wrap::before {
       content: "";
       position: fixed;
@@ -387,13 +394,9 @@ body.has-tabbar {
       z-index: 10005;
       pointer-events: none;
     }
-
   }
 }
-
-
 </style>
-
 
 {# ✅ Optional SEO structured data (safe) #}
 <script type="application/ld+json">
@@ -439,10 +442,10 @@ body.has-tabbar {
 
           <div class="hero-cta">
             <a class="btn primary" href="/items">Découvrir les annonces <span class="mini">Explorer</span></a>
-<a class="btn"
-   href="mailto:no-reply@sevor.net?subject=Contact%20%26%20Support%20Sevor&body=Bonjour%20Sevor,%0A%0AJe%20souhaite%20contacter%20le%20support%20concernant%20:%0A%0A">
-   Contact & Support <span class="mini">Aide</span>
-</a>
+            <a class="btn"
+               href="mailto:no-reply@sevor.net?subject=Contact%20%26%20Support%20Sevor&body=Bonjour%20Sevor,%0A%0AJe%20souhaite%20contacter%20le%20support%20concernant%20:%0A%0A">
+               Contact & Support <span class="mini">Aide</span>
+            </a>
           </div>
         </div>
 
@@ -589,7 +592,7 @@ body.has-tabbar {
       </div>
       <div class="glass box">
         <p class="sub">
-          Aujourd’hui : location de voitures = un site, outils = un autre, vêtements = ailleurs…  
+          Aujourd’hui : location de voitures = un site, outils = un autre, vêtements = ailleurs…
           <strong>Sevor regroupe tout</strong> dans une seule plateforme.
         </p>
         <div class="grid2">
@@ -714,7 +717,7 @@ body.has-tabbar {
         </div>
 
         <div class="note">
-          ✅ Conseil SEO/Trust: ajoute aussi (Privacy / Terms / Contact) في الـ footer، هذا يساعد الثقة وفهرسة Google.
+          ✅ Conseil SEO/Trust: ajoute aussi (Privacy / Terms / Contact) dans le footer, ça aide la confiance et le SEO.
         </div>
       </div>
     </section>
@@ -843,6 +846,8 @@ body.has-tabbar {
             <a href="/about">About</a>
             <a href="mailto:no-reply@sevor.net">Contact</a>
             <a href="/privacy">Privacy</a>
+            {# ✅ si عندك صفحة شروط، أضفها #}
+            {# <a href="/terms">Terms</a> #}
             <a href="/items">Browse</a>
           </div>
         </div>
