@@ -5,32 +5,32 @@
 {% block head %}
 <style>
 :root{
-  /* NEW THEME (clean + premium + calm) */
-  --bg: #0B1020;
-  --panel: rgba(255,255,255,.06);
-  --panel2: rgba(255,255,255,.04);
-  --border: rgba(255,255,255,.10);
+  /* WHITE THEME */
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --panel2: rgba(0,0,0,.02);
+  --border: rgba(0,0,0,.10);
 
-  --text: #F5F7FF;
-  --muted: rgba(245,247,255,.72);
+  --text: #0b0f1a;
+  --muted: rgba(0,0,0,.55);
 
-  --accent: #7C3AED;     /* purple */
-  --accent2:#22D3EE;     /* cyan */
-  --good: #34D399;
+  --accent1:#38bdf8;   /* cyan */
+  --accent2:#a78bfa;   /* purple */
+  --good:#22c55e;
 
-  --shadow: 0 22px 70px rgba(0,0,0,.55);
+  --shadow: 0 18px 60px rgba(0,0,0,.10);
   --radius: 18px;
 }
 
-/* PAGE (totally different background) */
+/* PAGE */
 .pdfs-wrap{
   min-height: 100vh;
   color: var(--text);
   background:
-    radial-gradient(900px 520px at 20% 12%, rgba(124,58,237,.22), transparent 55%),
-    radial-gradient(900px 520px at 80% 18%, rgba(34,211,238,.18), transparent 55%),
-    radial-gradient(1200px 700px at 50% 110%, rgba(52,211,153,.10), transparent 55%),
-    linear-gradient(180deg, #070A14, var(--bg));
+    radial-gradient(900px 520px at 18% 10%, rgba(56,189,248,.14), transparent 55%),
+    radial-gradient(900px 520px at 82% 14%, rgba(167,139,250,.14), transparent 55%),
+    radial-gradient(1200px 700px at 50% 115%, rgba(34,197,94,.10), transparent 55%),
+    #ffffff;
   padding: 36px 0 60px;
 }
 
@@ -41,33 +41,58 @@
   width: 100%;
 }
 
-/* TOP BAR */
+/* TOP */
 .hero{
   display:flex;
   align-items:flex-end;
   justify-content:space-between;
   gap:16px;
   flex-wrap:wrap;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 .hero h1{
   margin:0;
   font-size: 34px;
   font-weight: 950;
   letter-spacing: -.02em;
+  color: var(--text);
 }
 .hero p{
   margin:0;
   color: var(--muted);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
 }
 
-/* MAIN PANEL (new structure) */
+/* LANG SWITCH */
+.lang-switch{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin: 0 0 14px;
+}
+.lang-btn{
+  appearance:none;
+  border:none;
+  cursor:pointer;
+  padding:10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,.12);
+  background: rgba(0,0,0,.03);
+  color: var(--text);
+  font-weight: 950;
+}
+.lang-btn.active{
+  border:none;
+  color:#fff;
+  background: linear-gradient(135deg, var(--accent1), var(--accent2));
+}
+
+/* PANEL */
 .panel{
   border-radius: var(--radius);
   border: 1px solid var(--border);
-  background: linear-gradient(180deg, var(--panel), var(--panel2));
+  background: var(--panel);
   box-shadow: var(--shadow);
   overflow:hidden;
 }
@@ -80,7 +105,7 @@
   justify-content:space-between;
   gap:12px;
   flex-wrap:wrap;
-  border-bottom: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid rgba(0,0,0,.08);
 }
 
 .back-btn{
@@ -89,21 +114,21 @@
   gap:10px;
   padding: 10px 14px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(0,0,0,.12);
+  background: rgba(0,0,0,.03);
   color: var(--text);
   text-decoration:none;
-  font-weight: 900;
+  font-weight: 950;
   font-size: 13px;
   transition: transform .12s ease, background .12s ease, border-color .12s ease;
 }
 .back-btn:hover{
   transform: translateY(-1px);
-  background: rgba(255,255,255,.08);
-  border-color: rgba(255,255,255,.18);
+  background: rgba(0,0,0,.05);
+  border-color: rgba(0,0,0,.16);
 }
 
-/* SEARCH (new element) */
+/* SEARCH */
 .search{
   flex: 1;
   min-width: 220px;
@@ -112,13 +137,13 @@
   gap:10px;
   padding: 10px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(0,0,0,.18);
+  border: 1px solid rgba(0,0,0,.12);
+  background: rgba(0,0,0,.03);
 }
 .search svg{
   width: 16px;
   height: 16px;
-  opacity: .85;
+  opacity: .8;
 }
 .search input{
   width:100%;
@@ -127,33 +152,31 @@
   background: transparent;
   color: var(--text);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
 }
-.search input::placeholder{
-  color: rgba(245,247,255,.55);
-}
+.search input::placeholder{ color: rgba(0,0,0,.42); }
 
-/* LIST (new: vertical list, not grid buttons) */
+/* LIST */
 .list{
   display:flex;
   flex-direction:column;
 }
 
-/* ROW ITEM */
+/* ROW */
 .item{
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:14px;
   padding: 16px 18px;
-  border-bottom: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid rgba(0,0,0,.06);
   text-decoration:none;
   color: var(--text);
   transition: background .12s ease, transform .12s ease;
 }
-.item:last-child{ border-bottom: none; }
+.item:last-child{ border-bottom:none; }
 .item:hover{
-  background: rgba(255,255,255,.06);
+  background: rgba(0,0,0,.02);
   transform: translateY(-1px);
 }
 
@@ -171,23 +194,22 @@
   border-radius: 12px;
   display:grid;
   place-items:center;
-  background: linear-gradient(135deg, rgba(124,58,237,.30), rgba(34,211,238,.22));
-  border: 1px solid rgba(255,255,255,.12);
+  background: linear-gradient(135deg, rgba(56,189,248,.22), rgba(167,139,250,.18));
+  border: 1px solid rgba(0,0,0,.10);
   flex: 0 0 auto;
 }
 .badge span{
   font-weight: 1000;
   letter-spacing: .02em;
   font-size: 12px;
+  color: var(--text);
 }
 
 /* TEXTS */
-.meta{
-  min-width:0;
-}
+.meta{ min-width:0; }
 .name{
   font-size: 14px;
-  font-weight: 950;
+  font-weight: 1000;
   margin:0;
   white-space:nowrap;
   overflow:hidden;
@@ -197,7 +219,7 @@
   margin:3px 0 0;
   font-size: 12px;
   color: var(--muted);
-  font-weight: 700;
+  font-weight: 800;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
@@ -213,12 +235,12 @@
 
 .tag{
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 950;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.06);
-  color: rgba(245,247,255,.92);
+  border: 1px solid rgba(0,0,0,.12);
+  background: rgba(0,0,0,.03);
+  color: rgba(0,0,0,.72);
 }
 
 .open{
@@ -226,9 +248,9 @@
   font-weight: 1000;
   padding: 8px 10px;
   border-radius: 12px;
-  color: #061018;
-  background: linear-gradient(135deg, rgba(34,211,238,.95), rgba(124,58,237,.85));
-  border: 1px solid rgba(255,255,255,.12);
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent1), var(--accent2));
+  border: none;
 }
 
 /* FOOT NOTE */
@@ -237,7 +259,7 @@
   color: var(--muted);
   font-size: 12px;
   line-height: 1.6;
-  border-top: 1px solid rgba(255,255,255,.08);
+  border-top: 1px solid rgba(0,0,0,.08);
 }
 
 /* RESPONSIVE */
@@ -247,9 +269,8 @@
   .right .tag{ display:none; }
 }
 
-/* HIDE GLOBAL UI (kept, but can remove if you want) */
-header.topbar,
-header.topbar * { display: none !important; }
+/* HIDE GLOBAL UI (kept) */
+header.topbar, header.topbar * { display: none !important; }
 .m-top-tabs { display: none !important; }
 .searchbar, .searchbar-wrap { display: none !important; }
 .stripe-callout, .paypal-callout { display: none !important; }
@@ -257,7 +278,7 @@ header.topbar * { display: none !important; }
 body.has-tabbar { padding-bottom: 0 !important; }
 .page { padding-top: 0 !important; }
 
-/* iOS safe area bar */
+/* iOS safe area bar (white) */
 @supports (-webkit-touch-callout: none) {
   @media (max-width: 768px) {
     .pdfs-wrap::before{
@@ -265,126 +286,272 @@ body.has-tabbar { padding-bottom: 0 !important; }
       position: fixed;
       top:0; left:0; right:0;
       height: env(safe-area-inset-top);
-      background: #070A14;
+      background: #ffffff;
       z-index: 10005;
       pointer-events:none;
     }
   }
 }
+
+/* helper */
+[hidden]{ display:none !important; }
 </style>
+
+<script>
+  // Language toggle (FR/EN) for this page
+  (function(){
+    function getQueryLang(){
+      try{
+        const p = new URLSearchParams(window.location.search);
+        const v = (p.get("lang") || "").toLowerCase();
+        return (v === "en" || v === "fr") ? v : null;
+      }catch(e){ return null; }
+    }
+
+    function setLang(lang){
+      const fr = document.getElementById("lang-fr");
+      const en = document.getElementById("lang-en");
+      const bfr = document.getElementById("btn-fr");
+      const ben = document.getElementById("btn-en");
+      if(!fr || !en) return;
+
+      const isFR = (lang !== "en");
+      fr.hidden = !isFR;
+      en.hidden = isFR;
+
+      if(bfr && ben){
+        bfr.classList.toggle("active", isFR);
+        ben.classList.toggle("active", !isFR);
+        bfr.setAttribute("aria-pressed", isFR ? "true" : "false");
+        ben.setAttribute("aria-pressed", !isFR ? "true" : "false");
+      }
+
+      try{ localStorage.setItem("pdfs_lang", isFR ? "fr" : "en"); }catch(e){}
+      window.__pdfsLang = isFR ? "fr" : "en";
+    }
+
+    window.__setPdfsLang = setLang;
+
+    document.addEventListener("DOMContentLoaded", function(){
+      const q = getQueryLang();
+      let saved = null;
+      try{ saved = localStorage.getItem("pdfs_lang"); }catch(e){}
+      setLang(q || saved || "en"); // default EN, change to "fr" if you want
+    });
+  })();
+</script>
 {% endblock %}
 
 {% block content %}
 <div class="pdfs-wrap">
   <div class="container">
 
-    <div class="hero">
-      <div>
-        <h1>PDF Documents</h1>
-        <p>Open or download official Sevor documents.</p>
-      </div>
-      <p style="margin:0;color:rgba(245,247,255,.60);font-weight:800;font-size:12px;">
-        Updated library • Sevor
-      </p>
+    <!-- Language buttons -->
+    <div class="lang-switch">
+      <button id="btn-fr" type="button" class="lang-btn" aria-pressed="false" onclick="window.__setPdfsLang && window.__setPdfsLang('fr')">Français</button>
+      <button id="btn-en" type="button" class="lang-btn" aria-pressed="true" onclick="window.__setPdfsLang && window.__setPdfsLang('en')">English</button>
     </div>
 
-    <div class="panel">
+    <!-- ================= ENGLISH ================= -->
+    <div id="lang-en">
+      <div class="hero">
+        <div>
+          <h1>PDF Documents</h1>
+          <p>Open or download official Sevor documents.</p>
+        </div>
+        <p style="margin:0;color:rgba(0,0,0,.45);font-weight:900;font-size:12px;">
+          Updated library • Sevor
+        </p>
+      </div>
 
-      <div class="panel-head">
-        <a href="/about-full" class="back-btn">← Back to Sevor</a>
+      <div class="panel">
+        <div class="panel-head">
+          <a href="/about-full" class="back-btn">← Back to Sevor</a>
 
-        <div class="search">
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2" opacity=".9"/>
-            <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" opacity=".9" stroke-linecap="round"/>
-          </svg>
-          <input id="pdfSearch" type="text" placeholder="Search documents…" autocomplete="off">
+          <div class="search">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2" opacity=".9"/>
+              <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" opacity=".9" stroke-linecap="round"/>
+            </svg>
+            <input id="pdfSearchEn" type="text" placeholder="Search documents…" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="list" id="pdfListEn">
+          <a class="item" data-title="complete presentation positioning vision" href="/static/Explication%20d%C3%A9taill%C3%A9e%20du%20positionnement%20de%20Sevor.pdf" target="_blank" rel="noopener noreferrer">
+            <div class="left">
+              <div class="badge"><span>PDF</span></div>
+              <div class="meta">
+                <p class="name">Complete Sevor Presentation</p>
+                <p class="desc">Full positioning, strategy, and long-form explanation</p>
+              </div>
+            </div>
+            <div class="right">
+              <span class="tag">Overview</span>
+              <span class="open">Open</span>
+            </div>
+          </a>
+
+          <a class="item" data-title="modern vision renting access economy" href="/static/Sevor%20(2).pdf" target="_blank" rel="noopener noreferrer">
+            <div class="left">
+              <div class="badge"><span>PDF</span></div>
+              <div class="meta">
+                <p class="name">A Modern Vision of Renting</p>
+                <p class="desc">Short narrative about access replacing ownership</p>
+              </div>
+            </div>
+            <div class="right">
+              <span class="tag">Vision</span>
+              <span class="open">Open</span>
+            </div>
+          </a>
+
+          <a class="item" data-title="how to use guide platform steps" href="/static/Comment%20utiliser%20le%20site%20Sevor.pdf" target="_blank" rel="noopener noreferrer">
+            <div class="left">
+              <div class="badge"><span>PDF</span></div>
+              <div class="meta">
+                <p class="name">How to Use Sevor</p>
+                <p class="desc">Step-by-step guide for users</p>
+              </div>
+            </div>
+            <div class="right">
+              <span class="tag">Guide</span>
+              <span class="open">Open</span>
+            </div>
+          </a>
+
+          <a class="item" data-title="brochure short intro marketing" href="/static/Une%20brochure%20de%20pr%C3%A9sentation%20de%20Sevor.pdf" target="_blank" rel="noopener noreferrer">
+            <div class="left">
+              <div class="badge"><span>PDF</span></div>
+              <div class="meta">
+                <p class="name">Sevor Overview Brochure</p>
+                <p class="desc">Quick, clear introduction for partners and clients</p>
+              </div>
+            </div>
+            <div class="right">
+              <span class="tag">Brochure</span>
+              <span class="open">Open</span>
+            </div>
+          </a>
+        </div>
+
+        <div class="note">
+          Tip: If you rename PDF files later, update only the links on this page.
         </div>
       </div>
+    </div>
 
-      <div class="list" id="pdfList">
-
-        <a class="item" data-title="complete presentation positioning vision" href="/static/Explication%20d%C3%A9taill%C3%A9e%20du%20positionnement%20de%20Sevor.pdf" target="_blank" rel="noopener noreferrer">
-          <div class="left">
-            <div class="badge"><span>PDF</span></div>
-            <div class="meta">
-              <p class="name">Complete Sevor Presentation</p>
-              <p class="desc">Full positioning, strategy, and long-form explanation</p>
-            </div>
-          </div>
-          <div class="right">
-            <span class="tag">Overview</span>
-            <span class="open">Open</span>
-          </div>
-        </a>
-
-        <a class="item" data-title="modern vision renting access economy" href="/static/Sevor%20(2).pdf" target="_blank" rel="noopener noreferrer">
-          <div class="left">
-            <div class="badge"><span>PDF</span></div>
-            <div class="meta">
-              <p class="name">A Modern Vision of Renting</p>
-              <p class="desc">Short narrative about access replacing ownership</p>
-            </div>
-          </div>
-          <div class="right">
-            <span class="tag">Vision</span>
-            <span class="open">Open</span>
-          </div>
-        </a>
-
-        <a class="item" data-title="how to use guide platform steps" href="/static/Comment%20utiliser%20le%20site%20Sevor.pdf" target="_blank" rel="noopener noreferrer">
-          <div class="left">
-            <div class="badge"><span>PDF</span></div>
-            <div class="meta">
-              <p class="name">How to Use Sevor</p>
-              <p class="desc">Step-by-step guide for users</p>
-            </div>
-          </div>
-          <div class="right">
-            <span class="tag">Guide</span>
-            <span class="open">Open</span>
-          </div>
-        </a>
-
-        <a class="item" data-title="brochure short intro marketing" href="/static/Une%20brochure%20de%20pr%C3%A9sentation%20de%20Sevor.pdf" target="_blank" rel="noopener noreferrer">
-          <div class="left">
-            <div class="badge"><span>PDF</span></div>
-            <div class="meta">
-              <p class="name">Sevor Overview Brochure</p>
-              <p class="desc">Quick, clear introduction for partners and clients</p>
-            </div>
-          </div>
-          <div class="right">
-            <span class="tag">Brochure</span>
-            <span class="open">Open</span>
-          </div>
-        </a>
-
+    <!-- ================= FRENCH ================= -->
+    <div id="lang-fr" hidden>
+      <div class="hero">
+        <div>
+          <h1>Documents PDF</h1>
+          <p>Ouvrez ou téléchargez les documents officiels de Sevor.</p>
+        </div>
+        <p style="margin:0;color:rgba(0,0,0,.45);font-weight:900;font-size:12px;">
+          Bibliothèque mise à jour • Sevor
+        </p>
       </div>
 
-      <div class="note">
-        Tip: if you rename PDF files later, update only the links on this page.
-      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <a href="/about-full" class="back-btn">← Retour à Sevor</a>
 
+          <div class="search">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2" opacity=".9"/>
+              <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" opacity=".9" stroke-linecap="round"/>
+            </svg>
+            <input id="pdfSearchFr" type="text" placeholder="Rechercher un document…" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="list" id="pdfListFr">
+          <a class="item" data-title="presentation complete positionnement vision" href="/static/Explication%20d%C3%A9taill%C3%A9e%20du%20positionnement%20de%20Sevor.pdf" target="_blank" rel="noopener noreferrer">
+            <div class="left">
+              <div class="badge"><span>PDF</span></div>
+              <div class="meta">
+                <p class="name">Présentation complète Sevor</p>
+                <p class="desc">Positionnement, stratégie et explication détaillée</p>
+              </div>
+            </div>
+            <div class="right">
+              <span class="tag">Aperçu</span>
+              <span class="open">Ouvrir</span>
+            </div>
+          </a>
+
+          <a class="item" data-title="vision moderne location economie acces" href="/static/Sevor%20(2).pdf" target="_blank" rel="noopener noreferrer">
+            <div class="left">
+              <div class="badge"><span>PDF</span></div>
+              <div class="meta">
+                <p class="name">Une vision moderne de la location</p>
+                <p class="desc">Texte court sur l’accès qui remplace la possession</p>
+              </div>
+            </div>
+            <div class="right">
+              <span class="tag">Vision</span>
+              <span class="open">Ouvrir</span>
+            </div>
+          </a>
+
+          <a class="item" data-title="comment utiliser guide etapes" href="/static/Comment%20utiliser%20le%20site%20Sevor.pdf" target="_blank" rel="noopener noreferrer">
+            <div class="left">
+              <div class="badge"><span>PDF</span></div>
+              <div class="meta">
+                <p class="name">Comment utiliser Sevor</p>
+                <p class="desc">Guide étape par étape pour les utilisateurs</p>
+              </div>
+            </div>
+            <div class="right">
+              <span class="tag">Guide</span>
+              <span class="open">Ouvrir</span>
+            </div>
+          </a>
+
+          <a class="item" data-title="brochure presentation courte marketing" href="/static/Une%20brochure%20de%20pr%C3%A9sentation%20de%20Sevor.pdf" target="_blank" rel="noopener noreferrer">
+            <div class="left">
+              <div class="badge"><span>PDF</span></div>
+              <div class="meta">
+                <p class="name">Brochure de présentation Sevor</p>
+                <p class="desc">Introduction rapide et claire pour partenaires et clients</p>
+              </div>
+            </div>
+            <div class="right">
+              <span class="tag">Brochure</span>
+              <span class="open">Ouvrir</span>
+            </div>
+          </a>
+        </div>
+
+        <div class="note">
+          Astuce : si vous renommez les fichiers PDF plus tard, mettez à jour uniquement les liens ici.
+        </div>
+      </div>
     </div>
 
   </div>
 </div>
 
 <script>
-/* Simple on-page search (no dependencies) */
+/* Simple on-page search (EN + FR) */
 (function(){
-  const input = document.getElementById("pdfSearch");
-  const items = Array.from(document.querySelectorAll("#pdfList .item"));
-  if(!input || !items.length) return;
+  function bindSearch(inputId, listSelector){
+    const input = document.getElementById(inputId);
+    const items = Array.from(document.querySelectorAll(listSelector + " .item"));
+    if(!input || !items.length) return;
 
-  input.addEventListener("input", () => {
-    const q = input.value.trim().toLowerCase();
-    items.forEach(a => {
-      const hay = (a.getAttribute("data-title") || a.textContent || "").toLowerCase();
-      a.style.display = hay.includes(q) ? "flex" : "none";
+    input.addEventListener("input", () => {
+      const q = input.value.trim().toLowerCase();
+      items.forEach(a => {
+        const hay = (a.getAttribute("data-title") || a.textContent || "").toLowerCase();
+        a.style.display = hay.includes(q) ? "flex" : "none";
+      });
     });
-  });
+  }
+
+  bindSearch("pdfSearchEn", "#pdfListEn");
+  bindSearch("pdfSearchFr", "#pdfListFr");
 })();
 </script>
 {% endblock %}
