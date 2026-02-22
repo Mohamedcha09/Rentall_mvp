@@ -292,12 +292,66 @@
   .foot a{ color:#111; text-decoration:none; font-weight:900; }
   .foot a:hover{ text-decoration: underline; }
 
-  /* responsive */
+  /* ====== NEW (infos blocks) ====== */
+  .info-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .info{
+    padding:16px;
+    border-radius:18px;
+    background:#fff;
+    border:1px solid rgba(0,0,0,.08);
+  }
+  .info .top{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    margin-bottom:10px;
+  }
+  .badge{
+    font-size:12px;
+    font-weight:950;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid rgba(0,0,0,.10);
+    background: rgba(0,0,0,.03);
+    color:#111;
+    white-space:nowrap;
+  }
+  .info h3{ margin:0; font-size:15px; font-weight:950; color:#000; }
+  .info p{ margin:0; color:var(--muted); line-height:1.75; font-size:13.8px; }
+  .mini-list{ margin:10px 0 0; padding-left:18px; color:#222; line-height:1.85; font-size:13.8px; }
+  .mini-list li{ margin:6px 0; }
+  .example{
+    margin-top:10px;
+    padding:10px 12px;
+    border-radius:14px;
+    border:1px dashed rgba(0,0,0,.14);
+    background: rgba(167,139,250,.08);
+    color:#111;
+    line-height:1.75;
+    font-weight:850;
+    font-size:13.5px;
+  }
+  .example small{ display:block; font-weight:900; opacity:.85; margin-bottom:6px; }
+  .hr{
+    height:1px; background: rgba(0,0,0,.08);
+    margin:14px 0;
+  }
+  .pillrow{ display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+  .pill2{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:8px 10px;
+    border-radius:999px;
+    border:1px solid rgba(0,0,0,.10);
+    background: rgba(0,0,0,.03);
+    font-weight:950;
+    font-size:12.5px;
+    color:#111;
+  }
+
   @media (max-width: 980px){
     .hero-grid{ grid-template-columns:1fr; }
     .grid3{ grid-template-columns:1fr; }
     .grid2{ grid-template-columns:1fr; }
     .steps{ grid-template-columns:1fr; }
+    .info-grid{ grid-template-columns:1fr; }
     .hero h1{ font-size:38px; }
   }
 
@@ -595,7 +649,151 @@ body.has-tabbar { padding-bottom:0 !important; }
                 <div class="card"><h3>🧾 Transparence</h3><p>Prix clair, conditions claires, règles compréhensibles.</p></div>
                 <div class="card"><h3>🤝 Confiance</h3><p>Un modèle qui encourage l’offre et renforce la crédibilité.</p></div>
               </div>
-              <div class="note">✅ Conseil SEO/Trust: ajoute aussi (Privacy / Terms / Contact) dans le footer, ça aide la confiance et le SEO.</div>
+
+              {# ===========================
+                 ✅ NEW: INFOS PRATIQUES
+                 (More detailed + examples)
+                 =========================== #}
+              <div class="hr"></div>
+
+              <div class="section-title" style="margin:0 0 10px;">
+                <h2 style="font-size:20px;">Infos pratiques (exemples concrets)</h2>
+              </div>
+              <p class="sub" style="margin-bottom:12px;">
+                Pour que ce soit clair et rassurant, voici comment Sevor fonctionne dans la vraie vie :
+                <strong>prix</strong>, <strong>dépôt</strong>, <strong>retour</strong>, <strong>litiges</strong>, <strong>bonnes pratiques</strong>.
+              </p>
+
+              <div class="info-grid">
+                <div class="info">
+                  <div class="top">
+                    <h3>🧾 Prix & conditions</h3>
+                    <span class="badge">Owner decides</span>
+                  </div>
+                  <p>
+                    Le propriétaire définit : le prix (jour/heure), la durée minimale, la disponibilité, et les règles (ex: pas de livraison, ou livraison payante).
+                  </p>
+                  <ul class="mini-list">
+                    <li>Prix flexible selon la demande</li>
+                    <li>Détails importants: état, accessoires inclus</li>
+                    <li>Règles: permis, âge, usage pro/perso</li>
+                  </ul>
+                  <div class="example">
+                    <small>Exemple</small>
+                    Une caméra louée <strong>25$/jour</strong>, minimum <strong>2 jours</strong>, accessoires inclus (batterie + trépied).
+                  </div>
+                </div>
+
+                <div class="info">
+                  <div class="top">
+                    <h3>🔒 Dépôt de garantie</h3>
+                    <span class="badge">Protect both</span>
+                  </div>
+                  <p>
+                    Le dépôt sert à protéger les deux parties : il est bloqué pendant la location et libéré si le retour est conforme.
+                  </p>
+                  <ul class="mini-list">
+                    <li>Évite les “arnaques” et rassure</li>
+                    <li>Encourage un retour propre</li>
+                    <li>Réduit les conflits</li>
+                  </ul>
+                  <div class="example">
+                    <small>Exemple</small>
+                    Une perceuse à <strong>10$/jour</strong> avec un dépôt de <strong>60$</strong>. Retour OK ⇒ dépôt restitué.
+                  </div>
+                </div>
+
+                <div class="info">
+                  <div class="top">
+                    <h3>📸 Photos & état</h3>
+                    <span class="badge">Before / after</span>
+                  </div>
+                  <p>
+                    Pour éviter les disputes, la meilleure pratique est de prendre des photos au moment du départ et du retour (même rapides).
+                  </p>
+                  <ul class="mini-list">
+                    <li>Photos claires (angles + défauts)</li>
+                    <li>Accessoires visibles</li>
+                    <li>Heure + date si possible</li>
+                  </ul>
+                  <div class="example">
+                    <small>Exemple</small>
+                    “Photo du coin cassé déjà présent” ⇒ évite qu’on te le reproche après.
+                  </div>
+                </div>
+
+                <div class="info">
+                  <div class="top">
+                    <h3>⏱️ Retard & prolongation</h3>
+                    <span class="badge">Simple rules</span>
+                  </div>
+                  <p>
+                    Si le locataire est en retard, la règle doit être annoncée dès le départ (frais ou facturation supplémentaire).
+                  </p>
+                  <ul class="mini-list">
+                    <li>Prolongation possible si disponible</li>
+                    <li>Frais de retard (ex: 1h = X$)</li>
+                    <li>Communication rapide = moins de stress</li>
+                  </ul>
+                  <div class="example">
+                    <small>Exemple</small>
+                    Location d’un vélo : retard <strong>+1h</strong> ⇒ <strong>+5$</strong> si noté dans les conditions.
+                  </div>
+                </div>
+
+                <div class="info">
+                  <div class="top">
+                    <h3>⚖️ Litiges & solutions</h3>
+                    <span class="badge">Fair process</span>
+                  </div>
+                  <p>
+                    En cas de problème, on se base sur : conditions écrites, photos, échanges, et logique. L’objectif : rester juste.
+                  </p>
+                  <ul class="mini-list">
+                    <li>Discussion d’abord</li>
+                    <li>Preuves (photos + description)</li>
+                    <li>Solution: réparation / compensation</li>
+                  </ul>
+                  <div class="example">
+                    <small>Exemple</small>
+                    Rayure “après” + non présente “avant” ⇒ prise en charge possible via dépôt (selon règles).
+                  </div>
+                </div>
+
+                <div class="info">
+                  <div class="top">
+                    <h3>✅ Bonnes pratiques</h3>
+                    <span class="badge">Trust booster</span>
+                  </div>
+                  <p>
+                    Des détails simples augmentent énormément la confiance et les réservations.
+                  </p>
+                  <ul class="mini-list">
+                    <li>Description précise (taille, modèle, compatibilité)</li>
+                    <li>Réponse rapide aux messages</li>
+                    <li>Propreté + rangement à la remise</li>
+                  </ul>
+                  <div class="example">
+                    <small>Exemple</small>
+                    “MacBook Pro M1 16GB + chargeur original” ⇒ plus de réservations qu’un texte vague.
+                  </div>
+                </div>
+              </div>
+
+              <div class="note" style="background: rgba(34,197,94,.10);">
+                ✅ Astuce : plus une annonce est claire (photos + règles + contenu), plus elle inspire confiance ⇒ plus elle se loue.
+              </div>
+
+              <div class="pillrow">
+                <span class="pill2">🟣 Règles visibles</span>
+                <span class="pill2">🔵 Photos avant/après</span>
+                <span class="pill2">🟢 Dépôt transparent</span>
+                <span class="pill2">⚪️ Communication rapide</span>
+              </div>
+
+              <div class="note">
+                🔎 À ajouter plus tard (optionnel) : <strong>Conditions générales (Terms)</strong> + <strong>centre d’aide</strong> + <strong>signalement</strong>.
+              </div>
             </div>
           </section>
 
@@ -882,7 +1080,151 @@ body.has-tabbar { padding-bottom:0 !important; }
                 <div class="card"><h3>🧾 Transparency</h3><p>Clear prices, clear rules, easy-to-understand conditions.</p></div>
                 <div class="card"><h3>🤝 Trust</h3><p>A model that encourages supply and strengthens credibility.</p></div>
               </div>
-              <div class="note">✅ SEO/Trust tip: add (Privacy / Terms / Contact) in the footer to improve trust and indexing.</div>
+
+              {# ===========================
+                 ✅ NEW: PRACTICAL INFO
+                 (More detailed + examples)
+                 =========================== #}
+              <div class="hr"></div>
+
+              <div class="section-title" style="margin:0 0 10px;">
+                <h2 style="font-size:20px;">Practical info (real examples)</h2>
+              </div>
+              <p class="sub" style="margin-bottom:12px;">
+                To make everything crystal-clear, here’s how Sevor works in real life:
+                <strong>pricing</strong>, <strong>deposit</strong>, <strong>returns</strong>, <strong>disputes</strong>, and <strong>best practices</strong>.
+              </p>
+
+              <div class="info-grid">
+                <div class="info">
+                  <div class="top">
+                    <h3>🧾 Pricing & rules</h3>
+                    <span class="badge">Owner decides</span>
+                  </div>
+                  <p>
+                    Owners set the price (per day/hour), minimum duration, availability, and rules (pickup only, delivery fees, requirements).
+                  </p>
+                  <ul class="mini-list">
+                    <li>Flexible pricing based on demand</li>
+                    <li>Important details: item condition + included accessories</li>
+                    <li>Rules: ID required, age limits, pro/personal use</li>
+                  </ul>
+                  <div class="example">
+                    <small>Example</small>
+                    A camera rented <strong>$25/day</strong>, minimum <strong>2 days</strong>, accessories included (battery + tripod).
+                  </div>
+                </div>
+
+                <div class="info">
+                  <div class="top">
+                    <h3>🔒 Security deposit</h3>
+                    <span class="badge">Protect both</span>
+                  </div>
+                  <p>
+                    The deposit protects both sides: it’s held during the rental and released if the return is compliant.
+                  </p>
+                  <ul class="mini-list">
+                    <li>Reduces fraud and increases trust</li>
+                    <li>Encourages clean returns</li>
+                    <li>Prevents unnecessary disputes</li>
+                  </ul>
+                  <div class="example">
+                    <small>Example</small>
+                    A drill at <strong>$10/day</strong> with a <strong>$60</strong> deposit. Return OK ⇒ deposit refunded.
+                  </div>
+                </div>
+
+                <div class="info">
+                  <div class="top">
+                    <h3>📸 Photos & item condition</h3>
+                    <span class="badge">Before / after</span>
+                  </div>
+                  <p>
+                    Best practice: take quick photos at pickup and return (even 20 seconds). It avoids most conflicts.
+                  </p>
+                  <ul class="mini-list">
+                    <li>Clear photos (angles + existing defects)</li>
+                    <li>Accessories visible</li>
+                    <li>Date/time if possible</li>
+                  </ul>
+                  <div class="example">
+                    <small>Example</small>
+                    “Photo of an existing scratch” ⇒ prevents being blamed later.
+                  </div>
+                </div>
+
+                <div class="info">
+                  <div class="top">
+                    <h3>⏱️ Late return & extension</h3>
+                    <span class="badge">Simple rules</span>
+                  </div>
+                  <p>
+                    Late rules should be written upfront (fees or extra billing). Extensions are easy if availability allows.
+                  </p>
+                  <ul class="mini-list">
+                    <li>Extension if the calendar is free</li>
+                    <li>Late fee example: 1 hour = $X</li>
+                    <li>Fast communication = fewer issues</li>
+                  </ul>
+                  <div class="example">
+                    <small>Example</small>
+                    Bike rental: late by <strong>+1 hour</strong> ⇒ <strong>+$5</strong> (if listed in the rules).
+                  </div>
+                </div>
+
+                <div class="info">
+                  <div class="top">
+                    <h3>⚖️ Disputes & solutions</h3>
+                    <span class="badge">Fair process</span>
+                  </div>
+                  <p>
+                    If something goes wrong, the resolution should rely on written rules + photos + messages, with a fair outcome.
+                  </p>
+                  <ul class="mini-list">
+                    <li>Start with discussion</li>
+                    <li>Use proof (photos + listing description)</li>
+                    <li>Fix/repair or partial compensation</li>
+                  </ul>
+                  <div class="example">
+                    <small>Example</small>
+                    A scratch appears “after” but not “before” ⇒ deposit can cover it (based on rules).
+                  </div>
+                </div>
+
+                <div class="info">
+                  <div class="top">
+                    <h3>✅ Best practices</h3>
+                    <span class="badge">Trust booster</span>
+                  </div>
+                  <p>
+                    Simple details massively increase trust and bookings.
+                  </p>
+                  <ul class="mini-list">
+                    <li>Precise description (model, size, compatibility)</li>
+                    <li>Fast replies to messages</li>
+                    <li>Clean pickup/return</li>
+                  </ul>
+                  <div class="example">
+                    <small>Example</small>
+                    “MacBook Pro M1 16GB + original charger” ⇒ gets more bookings than vague text.
+                  </div>
+                </div>
+              </div>
+
+              <div class="note" style="background: rgba(34,197,94,.10);">
+                ✅ Tip: clearer listings (photos + rules + details) ⇒ more trust ⇒ more rentals.
+              </div>
+
+              <div class="pillrow">
+                <span class="pill2">🟣 Clear rules</span>
+                <span class="pill2">🔵 Photos before/after</span>
+                <span class="pill2">🟢 Transparent deposit</span>
+                <span class="pill2">⚪️ Fast communication</span>
+              </div>
+
+              <div class="note">
+                🔎 Optional later: <strong>Terms</strong> + <strong>Help Center</strong> + <strong>Report system</strong>.
+              </div>
             </div>
           </section>
 
