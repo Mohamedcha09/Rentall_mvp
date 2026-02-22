@@ -383,6 +383,15 @@ body.has-tabbar { padding-bottom:0 !important; }
       pointer-events:none;
     }
   }
+  /* ===== Arabic RTL tweaks ===== */
+#lang-ar[dir="rtl"]{
+  direction: rtl;
+  text-align: right;
+}
+#lang-ar[dir="rtl"] .list{ padding-left:0; padding-right:18px; }
+#lang-ar[dir="rtl"] .steps .step b{ flex-direction: row-reverse; }
+#lang-ar[dir="rtl"] .n{ margin-left:0; margin-right:0; }
+#lang-ar[dir="rtl"] .tagline{ justify-content:flex-start; }
 }
 </style>
 
@@ -392,29 +401,38 @@ body.has-tabbar { padding-bottom:0 !important; }
       try{
         const p = new URLSearchParams(window.location.search);
         const v = (p.get("lang") || "").toLowerCase();
-        return (v === "en" || v === "fr") ? v : null;
+        return (v === "en" || v === "fr" || v === "ar") ? v : null;
       }catch(e){ return null; }
     }
 
     function setLang(lang){
       const fr = document.getElementById("lang-fr");
       const en = document.getElementById("lang-en");
+      const ar = document.getElementById("lang-ar");
+
       const bfr = document.getElementById("btn-fr");
       const ben = document.getElementById("btn-en");
-      if(!fr || !en) return;
+      const bar = document.getElementById("btn-ar");
 
-      const isFR = (lang !== "en");
-      fr.hidden = !isFR;
-      en.hidden = isFR;
+      if(!fr || !en || !ar) return;
 
-      if(bfr && ben){
-        bfr.classList.toggle("active", isFR);
-        ben.classList.toggle("active", !isFR);
-        bfr.setAttribute("aria-pressed", isFR ? "true" : "false");
-        ben.setAttribute("aria-pressed", !isFR ? "true" : "false");
+      const L = (lang === "en" || lang === "ar") ? lang : "fr";
+
+      fr.hidden = (L !== "fr");
+      en.hidden = (L !== "en");
+      ar.hidden = (L !== "ar");
+
+      if(bfr && ben && bar){
+        bfr.classList.toggle("active", L === "fr");
+        ben.classList.toggle("active", L === "en");
+        bar.classList.toggle("active", L === "ar");
+
+        bfr.setAttribute("aria-pressed", (L === "fr") ? "true" : "false");
+        ben.setAttribute("aria-pressed", (L === "en") ? "true" : "false");
+        bar.setAttribute("aria-pressed", (L === "ar") ? "true" : "false");
       }
 
-      try{ localStorage.setItem("about_lang", isFR ? "fr" : "en"); }catch(e){}
+      try{ localStorage.setItem("about_lang", L); }catch(e){}
     }
 
     window.__setAboutLang = setLang;
@@ -427,8 +445,11 @@ body.has-tabbar { padding-bottom:0 !important; }
 
       const bfr = document.getElementById("btn-fr");
       const ben = document.getElementById("btn-en");
+      const bar = document.getElementById("btn-ar");
+
       if(bfr) bfr.addEventListener("click", function(){ setLang("fr"); });
       if(ben) ben.addEventListener("click", function(){ setLang("en"); });
+      if(bar) bar.addEventListener("click", function(){ setLang("ar"); });
     });
   })();
 </script>
@@ -455,9 +476,10 @@ body.has-tabbar { padding-bottom:0 !important; }
 
       <!-- Language buttons (TOP) -->
       <div class="lang-switch">
-        <button id="btn-fr" type="button" class="lang-btn" aria-pressed="true">Français</button>
-        <button id="btn-en" type="button" class="lang-btn" aria-pressed="false">English</button>
-      </div>
+  <button id="btn-fr" type="button" class="lang-btn" aria-pressed="true">Français</button>
+  <button id="btn-en" type="button" class="lang-btn" aria-pressed="false">English</button>
+  <button id="btn-ar" type="button" class="lang-btn" aria-pressed="false">العربية</button>
+</div>
 
       <!-- =======================
            FRENCH VERSION
@@ -1321,6 +1343,295 @@ body.has-tabbar { padding-bottom:0 !important; }
 
         </main>
       </div>
+
+      <!-- =======================
+     ARABIC VERSION
+     ======================= -->
+<div id="lang-ar" dir="rtl" lang="ar" hidden>
+  <div class="hero-grid">
+    <div>
+      <div class="brand">
+        <span class="logo-dot"></span>
+        <b>SEVOR</b>
+      </div>
+
+      <div class="tagline">
+        <span class="pill">منصّة ذكية</span>
+        <span>استأجر بدل ما تشتري</span>
+        <span class="pill">Rent Anything Worldwide</span>
+      </div>
+
+      <h1>منصّة واحدة لاستئجار <span style="background:linear-gradient(135deg,var(--accent1),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent;">أي شيء</span>، في أي مكان.</h1>
+
+      <p>
+        <strong>سيفور</strong> هو تطبيق ومنصّة رقمية هدفها تغيير طريقة الاستهلاك عبر نشر
+        <strong>ثقافة الاستئجار</strong> بدل الشراء.
+        سواء كنت <strong>فرد</strong>، <strong>ستارتاب</strong> أو <strong>شركة</strong>،
+        تقدر تلقى (أو تعرض) أشياء مفيدة قريب منك، بسرعة وبسعر أقل.
+      </p>
+
+      <div class="hero-cta">
+        <a class="btn primary" href="/items">تصفّح الإعلانات <span class="mini">Explore</span></a>
+        <a class="btn" href="mailto:no-reply@sevor.net?subject=Contact%20%26%20Support%20Sevor&body=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%20Sevor,%0A%0A%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%A7%D9%84%D8%AA%D9%88%D8%A7%D8%B5%D9%84%20%D9%85%D8%B9%20%D8%A7%D9%84%D8%AF%D8%B9%D9%85%20%D8%A8%D8%AE%D8%B5%D9%88%D8%B5:%0A%0A">
+          تواصل & دعم <span class="mini">Help</span>
+        </a>
+      </div>
+    </div>
+
+    <aside class="hero-card">
+      <div class="hero-card-inner">
+        <div class="kpis">
+          <div class="kpi"><b>🌍 عالمي</b><span>رؤية دولية مع فئات متعددة.</span></div>
+          <div class="kpi"><b>⚡ سريع</b><span>ابحث، احجز، واستأجر خلال دقائق.</span></div>
+          <div class="kpi"><b>🛡️ ثقة</b><span>وديعة ضمان لحماية الطرفين.</span></div>
+          <div class="kpi"><b>🤝 ربح للطرفين</b><span>توفير للمستأجر + دخل للمالك.</span></div>
+        </div>
+
+        <div class="chiprow">
+          <span class="chip">🚗 مركبات</span>
+          <span class="chip">🛠️ أدوات</span>
+          <span class="chip">💻 إلكترونيات</span>
+          <span class="chip">👗 ملابس</span>
+          <span class="chip">🏭 احترافي</span>
+          <span class="chip">📷 تصوير/صوت</span>
+        </div>
+
+        <div class="note">
+          💡 سيفور ليس متجرًا: بل <strong>سوق ذكي</strong> يربط مباشرة بين المالك والمستأجر.
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <main class="container">
+
+    <section class="section">
+      <div class="section-title"><h2>1) نبذة عن Sevor</h2></div>
+      <div class="glass box">
+        <p class="sub">سيفور يسمح لأي شخص أو شركة بـ:</p>
+        <div class="grid2">
+          <div class="card"><h3>✅ استأجر أو اعرض للتأجير</h3><p>تأجير أو استئجار تقريبًا أي شيء في مكان واحد.</p></div>
+          <div class="card"><h3>✅ بسيط وسهل</h3><p>تجربة واضحة: بحث، مقارنة، حجز، ثم استئجار بسرعة.</p></div>
+          <div class="card"><h3>✅ أرخص من الشراء</h3><p>لا تشتري شيئًا غاليًا لاستعمال مؤقت فقط.</p></div>
+          <div class="card"><h3>✅ دخل إضافي</h3><p>حوّل الأشياء غير المستعملة إلى مصدر دخل دون بيعها.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title"><h2>2) الفكرة الأساسية: ثقافة الاستئجار</h2></div>
+      <div class="glass box">
+        <p class="sub">
+          كثير من الأشياء تُشترى وتُستعمل مرة واحدة ثم تُخزن أو تُهمل.
+          سيفور جاء ليغيّر هذه العقلية:
+        </p>
+        <div class="grid2">
+          <div class="card"><h3>❌ الشراء من أجل استعمال مؤقت</h3><p>مصاريف بلا فائدة ثم تخزين بدون قيمة.</p></div>
+          <div class="card"><h3>✅ استأجر فقط وقت الحاجة</h3><p>تقليل التكلفة، تقليل الهدر، واستعمال أذكى.</p></div>
+        </div>
+        <div class="note">🌱 هذا النموذج يوفر المال، يقلل الهدر، ويخلق دخلًا ويدعم الاقتصاد والبيئة.</div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title"><h2>3) ماذا يمكن استئجاره؟ (تقريبًا كل شيء)</h2></div>
+      <div class="glass box">
+        <p class="sub">أي شيء يُستعمل لفترة محدودة يمكن استئجاره.</p>
+        <div class="grid3">
+          <div class="card"><h3>🚗 التنقل</h3><p>سيارات، دراجات، شاحنات، ملحقات…</p></div>
+          <div class="card"><h3>🛠️ المنزل والأعمال</h3><p>أدوات بناء، حدائق، صيانة، إصلاح…</p></div>
+          <div class="card"><h3>💻 التقنية والإلكترونيات</h3><p>حاسوب، بلايستيشن، درون، إكسسوارات…</p></div>
+          <div class="card"><h3>📷 المناسبات وصناعة المحتوى</h3><p>كاميرات، صوت، إضاءة، ديكور…</p></div>
+          <div class="card"><h3>👗 الموضة</h3><p>ملابس، إكسسوارات، أزياء مناسبات…</p></div>
+          <div class="card"><h3>🏭 احترافي</h3><p>معدات صناعية وتجهيزات للشركات…</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title"><h2>4) منصّة واحدة بدل عشرات المواقع</h2></div>
+      <div class="glass box">
+        <p class="sub">
+          اليوم: تأجير السيارات موقع، الأدوات موقع آخر…  
+          <strong>سيفور يجمع كل شيء</strong> في مكان واحد.
+        </p>
+        <div class="grid2">
+          <div class="card"><h3>🔎 بحث أقل</h3><p>لا تحتاج تفتح 10 مواقع. ابحث مرة واحدة.</p></div>
+          <div class="card"><h3>📍 أقرب وأسرع</h3><p>تشوف المتوفر حولك وتستأجر محليًا.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title"><h2>5) لماذا تحتاجه الشركات الكبيرة؟</h2></div>
+      <div class="glass box">
+        <p class="sub">
+          عند إطلاق مشروع/منتج جديد، المخاطرة تكون كبيرة.
+          مع سيفور يمكنهم <strong>الاستئجار للتجربة</strong> ثم الشراء إذا نجح المشروع.
+        </p>
+        <ul class="list">
+          <li>تقليل المخاطر المالية</li>
+          <li>دعم الابتكار</li>
+          <li>قرارات مبنية على تجربة حقيقية</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title"><h2>6) لماذا تحتاجه الستارتاب؟</h2></div>
+      <div class="glass box">
+        <p class="sub">
+          الستارتاب غالبًا رأس المال محدود. سيفور يعطيها وصولًا لمعدات غالية بتكلفة أقل
+          بدون ديون أو ضغط كبير.
+        </p>
+        <div class="grid3">
+          <div class="card"><h3>🚀 انطلاقة أسرع</h3><p>وصول سريع للمعدات اللازمة.</p></div>
+          <div class="card"><h3>⚖️ تكافؤ الفرص</h3><p>نفس الموارد بدون ميزانية ضخمة.</p></div>
+          <div class="card"><h3>💸 مصاريف أقل</h3><p>استئجار بدل شراء وتجميد الأموال.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title"><h2>7) لماذا يحتاجه الأفراد؟</h2></div>
+      <div class="glass box">
+        <p class="sub">
+          ماشي منطقي تشتري شيء بـ 1000$ لاستعمال مرة أو مرتين.
+          مع سيفور: تفتح التطبيق، تبحث، تلقى الأقرب وبالسعر المناسب.
+        </p>
+        <div class="steps">
+          <div class="step"><b><span class="n">1</span> ابحث</b><p>اكتب ما تحتاجه واختر الفئة.</p></div>
+          <div class="step"><b><span class="n">2</span> قارن</b><p>قارن السعر، القرب، التوفر، والتقييم.</p></div>
+          <div class="step"><b><span class="n">3</span> احجز</b><p>أكد الحجز حسب شروط المالك.</p></div>
+          <div class="step"><b><span class="n">4</span> استعمل ثم أرجع</b><p>استعمل الشيء ثم أعده بسهولة.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title"><h2>8) المناطق البعيدة والقرى: اقتصاد محلي أذكى</h2></div>
+      <div class="glass box">
+        <p class="sub">
+          في الأماكن اللي المتاجر بعيدة، سيفور يساعدك تشوف ماذا يتوفر عند الناس قريب منك
+          وتستأجر محليًا بدون مشاوير طويلة.
+        </p>
+        <ul class="list">
+          <li>استغلال أفضل للموارد القريبة</li>
+          <li>تقوية الاقتصاد المحلي</li>
+          <li>تقليل الهدر وتقليل التنقل</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title"><h2>9) نموذج اقتصادي عادل</h2></div>
+      <div class="glass box">
+        <p class="sub">
+          سيفور يعتمد على الشفافية والثقة.<br>
+          <strong>المالك عنده السيطرة:</strong> يحدد السعر، التوفر، والشروط.
+        </p>
+        <div class="grid2">
+          <div class="card"><h3>🧾 شفافية</h3><p>أسعار واضحة، شروط واضحة، وقواعد مفهومة.</p></div>
+          <div class="card"><h3>🤝 ثقة</h3><p>نموذج يشجع العرض ويقوي المصداقية.</p></div>
+        </div>
+
+        <div class="note">✅ نصيحة: إضافة Privacy / Terms / Contact في الفوتر تقوي الثقة وSEO.</div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title"><h2>10) وديعة الضمان: لحماية الجميع</h2></div>
+      <div class="glass box">
+        <p class="sub">
+          لضمان الأمان والثقة، سيفور يستعمل <strong>وديعة ضمان</strong>:
+          تُحجز أثناء فترة الاستئجار ثم تُعاد بعد تسليم مطابق للشروط.
+        </p>
+        <div class="grid3">
+          <div class="card"><h3>🛡️ حماية المالك</h3><p>تعويض في حالة ضرر (حسب القواعد).</p></div>
+          <div class="card"><h3>🔒 حماية المستأجر</h3><p>عملية واضحة: تسليم مطابق = استرجاع الوديعة.</p></div>
+          <div class="card"><h3>⚖️ نظام عادل</h3><p>قواعد بسيطة تقلل النزاعات غير الضرورية.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title"><h2>11) لماذا سيفور مختلف وقوي؟</h2></div>
+      <div class="glass box">
+        <div class="grid2">
+          <div class="card"><h3>🌟 فئات متعددة</h3><p>تطبيق واحد لكل أنواع التأجير.</p></div>
+          <div class="card"><h3>♻️ أثر ورؤية</h3><p>تقليل الإفراط في الشراء وتشجيع المشاركة.</p></div>
+          <div class="card"><h3>💼 أفراد + شركات</h3><p>مفيد للأفراد والستارتاب والشركات.</p></div>
+          <div class="card"><h3>📈 سوق ضخم</h3><p>احتياج عالمي مازال مشتتًا بين منصّات كثيرة.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="cta">
+        <h3>جاهز تستأجر أو تعرض أشياء للتأجير؟</h3>
+        <p>انضم إلى سيفور وكن جزءًا من طريقة جديدة: <strong>استعمل</strong> بدل <strong>امتلك</strong>.</p>
+        <div class="cta-row">
+          <a class="btn primary" href="/items">تصفح الإعلانات <span class="mini">Now</span></a>
+          <a class="btn success" href="/how-it-works">كيف يعمل؟ <span class="mini">Guide</span></a>
+          <a class="btn" href="/register">إنشاء حساب <span class="mini">Free</span></a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title"><h2>أسئلة شائعة</h2></div>
+
+      <details open>
+        <summary>هل يمكنني استئجار “أي شيء”؟</summary>
+        <p>نعم، بشرط أن يكون الشيء قانونيًا، قابلًا للاستعمال المؤقت، ومُوصّفًا بوضوح مع شروط التأجير.</p>
+      </details>
+
+      <details>
+        <summary>كيف يتم ضمان الثقة؟</summary>
+        <p>عن طريق وديعة ضمان، قواعد بسيطة، وتجربة واضحة للطرفين.</p>
+      </details>
+
+      <details>
+        <summary>لماذا الاستئجار أفضل من الشراء؟</summary>
+        <p>لأنك توفر المال، تقلل الهدر، وتستعمل فقط وقت الحاجة.</p>
+      </details>
+
+      <details>
+        <summary>هل هو مفيد للشركات؟</summary>
+        <p>نعم. الشركات تستطيع الاستئجار للتجربة وتقليل المخاطر بدون تجميد ميزانية.</p>
+      </details>
+    </section>
+
+    <section class="section">
+      <div class="glass box">
+        <div class="section-title"><h2>الخلاصة – رؤية سيفور</h2></div>
+        <p class="sub" style="font-size:16.5px;">سيفور ليس مجرد تطبيق… بل تغيير في طريقة التفكير.</p>
+        <div class="note" style="text-align:center; font-size:18px;">
+          من <strong>“أملك كل شيء”</strong><br>
+          إلى <strong>“أستعمل فقط ما أحتاجه”</strong>
+        </div>
+      </div>
+    </section>
+
+    <div class="foot">
+      <div class="glass box">
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;">
+          <div>
+            <b>Sevor</b> — Rent Anything Worldwide<br>
+            <span style="opacity:.75;">منصّة تأجير ذكية</span>
+          </div>
+          <div style="display:flex; gap:14px; flex-wrap:wrap;">
+            <a href="/about">About</a>
+            <a href="mailto:no-reply@sevor.net">Contact</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/items">Browse</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
 
     </div>
   </header>
