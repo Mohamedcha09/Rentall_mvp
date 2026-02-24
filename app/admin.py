@@ -52,7 +52,7 @@ def _refresh_session_user_if_self(request: Request, user: User) -> None:
         return
     sess["role"] = user.role
     sess["status"] = user.status
-    sess["is_verified"] = bool(getattr(user, "is_verified", False))
+    sess["is_verified"] = bool(user.is_verified)
     # Badge flags
     for k in [
         "badge_admin", "badge_new_yellow", "badge_pro_green", "badge_pro_gold",
@@ -70,56 +70,21 @@ def _refresh_session_user_if_self(request: Request, user: User) -> None:
     request.session["user"] = sess
 
 
-def _send_email_any(to, subject: str, html: str, text_body: str = "") -> bool:
-    """
-    ✅ Important:
-    Your project has TWO possible send_email signatures in different places:
-      1) send_email(user.email, subject, html, text_body=...)
-      2) send_email(to=[...], subject=..., html_body=..., text_body=...)
-
-    This helper tries both so your code works مهما كانت الدالة عندك.
-    """
-    try:
-        # Style A (positional)
-        send_email(to, subject, html, text_body=text_body)
-        return True
-    except TypeError:
-        # Style B (kwargs)
-        try:
-            send_email(to=to if isinstance(to, list) else [to], subject=subject, html_body=html, text_body=text_body)
-            return True
-        except Exception:
-            return False
-    except Exception:
-        return False
-
-
+# ---------------------------
+# Admin dashboard
+# ---------------------------
 @router.get("/admin")
 def admin_dashboard(request: Request, db: Session = Depends(get_db)):
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
-    # ✅ فوق: أي واحد مازال ناقص شرط (admin approve أو email verify)
     pending_users = (
         db.query(User)
-        .filter(
-            (User.status.in_(["pending", "admin_approved"])) |
-            ((User.status == "approved") & ((User.is_verified.is_(False)) | (User.is_verified.is_(None))))
-        )
+        .filter(User.status == "pending")
         .order_by(User.created_at.desc())
         .all()
     )
-
-    # ✅ لتحت: لازم الشرطين مع بعض
-    all_users = (
-        db.query(User)
-        .filter(
-            User.status == "approved",
-            User.is_verified.is_(True)
-        )
-        .order_by(User.created_at.desc())
-        .all()
-    )
+    all_users = db.query(User).order_by(User.created_at.desc()).all()
 
     return request.app.templates.TemplateResponse(
         "admin_dashboard.html",
@@ -139,11 +104,8 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
 @router.post("/admin/users/{user_id}/approve")
 def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
     """
-    Admin approval:
-    - If email verified: set status = approved
-    - If not verified: set status = admin_approved (admin ok, waiting email verification)
-    - Approve documents
-    - Send email depending on verification state
+    Admin approval: enable booking by setting status to approved,
+    and send an email indicating the state.
     """
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
@@ -152,13 +114,8 @@ def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/admin", status_code=303)
 
-    # ✅ MODIFICATION: ما نديروش approved مباشرة إلا إذا كان verified
-    if bool(getattr(user, "is_verified", False)):
-        user.status = "approved"
-    else:
-        user.status = "admin_approved"  # الأدمن وافق، باقي تفعيل الإيميل
+    user.status = "approved"
 
-    # Approve all documents linked to the user
     for d in (user.documents or []):
         d.review_status = "approved"
         d.reviewed_at = datetime.utcnow()
@@ -173,176 +130,96 @@ def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
         brand = f"{BASE_URL}/static/images/base.png"
 
         if bool(getattr(user, "is_verified", False)):
-            # =========================
-            # ✅ VERIFIED -> 100% ACTIVATED
-            # =========================
             subject = "Your account is 100% activated — You can book now 🎉"
             year = datetime.utcnow().year
-
             html = f"""<!doctype html>
-<html lang="en" dir="ltr">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>100% Activation</title>
-</head>
+<html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>100% Activation</title></head>
 <body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,'Segoe UI',sans-serif;">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0">
-    Your account is 100% activated — You can book now
-  </div>
-
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0">Your account is 100% activated — You can book now</div>
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b0f1a;padding:24px 12px">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="640" cellspacing="0" cellpadding="0"
-               style="width:100%;max-width:640px;background:#0f172a;border:1px solid #1f2937;border-radius:16px;overflow:hidden">
-          <tr>
-            <td style="padding:20px 24px;background:linear-gradient(90deg,#111827,#0b1220)">
-              <table width="100%" cellspacing="0" cellpadding="0">
-                <tr>
-                  <td align="left">
-                    <img src="{logo}" alt="" style="height:36px;border-radius:8px;display:block">
-                  </td>
-                  <td align="right">
-                    <img src="{brand}" alt="" style="height:22px;opacity:.95;display:block">
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <tr>
-            <td style="padding:28px 26px">
-              <h2 style="margin:0 0 12px;font-size:22px;color:#fff;">
-                Hi {user.first_name or ''} 👋
-              </h2>
-
-              <p style="margin:0 0 12px;line-height:1.9;color:#cbd5e1">
-                Admin approval completed and your account is now
-                <b style="color:#fff">100% activated</b>.
-              </p>
-
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:26px auto">
-                <tr>
-                  <td bgcolor="#16a34a" style="border-radius:10px;">
-                    <a href="{home_url}" target="_blank"
-                       style="font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:16px;text-decoration:none;
-                              padding:14px 22px;display:inline-block;color:#ffffff;border-radius:10px;font-weight:700">
-                      Start now
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <tr>
-            <td style="padding:18px 24px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
-              If you didn’t request this action, please ignore this message.
-            </td>
-          </tr>
-        </table>
-
-        <div style="color:#64748b;font-size:11px;margin-top:12px">
-          &copy; {year} RentAll
-        </div>
-      </td>
-    </tr>
+    <tr><td align="center">
+      <table role="presentation" width="640" cellspacing="0" cellpadding="0"
+             style="width:100%;max-width:640px;background:#0f172a;border:1px solid #1f2937;border-radius:16px;overflow:hidden">
+        <tr>
+          <td style="padding:20px 24px;background:linear-gradient(90deg,#111827,#0b1220)">
+            <table width="100%"><tr>
+              <td align="right"><img src="{brand}" alt="" style="height:22px;opacity:.95"></td>
+              <td align="left"><img src="{logo}" alt="" style="height:36px;border-radius:8px"></td>
+            </tr></table>
+          </td>
+        </tr>
+        <tr><td style="padding:28px 26px">
+          <h2 style="margin:0 0 12px;font-size:22px;color:#fff;">Hi {user.first_name or ''} 👋</h2>
+          <p style="margin:0 0 12px;line-height:1.9;color:#cbd5e1">
+            Admin approval completed and your account is now <b style="color:#fff">100% activated</b>.
+          </p>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:26px auto">
+            <tr><td bgcolor="#16a34a" style="border-radius:10px;">
+              <a href="{home_url}" target="_blank"
+                 style="font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:16px;text-decoration:none;
+                        padding:14px 22px;display:inline-block;color:#ffffff;border-radius:10px;font-weight:700">
+                Start now
+              </a>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:18px 24px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
+          If you didn’t request this action, please ignore this message.
+        </td></tr>
+      </table>
+      <div style="color:#64748b;font-size:11px;margin-top:12px">&copy; {year} RentAll</div>
+    </td></tr>
   </table>
-</body>
-</html>"""
-
+</body></html>"""
             text = f"Hi {user.first_name}\n\nYour account is 100% activated and you can now book.\n{home_url}"
-
         else:
-            # =========================
-            # ❗ NOT VERIFIED -> ADMIN APPROVED, NEED EMAIL VERIFY
-            # =========================
             verify_page = f"{BASE_URL}/verify-email?email={user.email}"
             subject = "Admin approved — Verify your email to reach 100%"
             year = datetime.utcnow().year
-
             html = f"""<!doctype html>
-<html lang="en" dir="ltr">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Complete Email Verification</title>
-</head>
+<html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Complete Email Verification</title></head>
 <body style="margin:0;background:#0b0f1a;color:#e5e7eb;font-family:Tahoma,Arial,'Segoe UI',sans-serif;">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0">
-    Approval complete — Finish email verification to complete your account
-  </div>
-
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0">Approval complete — Finish email verification to complete your account</div>
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b0f1a;padding:24px 12px">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="640" cellspacing="0" cellpadding="0"
-               style="width:100%;max-width:640px;background:#0f172a;border:1px solid #1f2937;border-radius:16px;overflow:hidden">
-          <tr>
-            <td style="padding:20px 24px;background:linear-gradient(90deg,#111827,#0b1220)">
-              <table width="100%" cellspacing="0" cellpadding="0">
-                <tr>
-                  <td align="left">
-                    <img src="{logo}" alt="" style="height:36px;border-radius:8px;display:block">
-                  </td>
-                  <td align="right">
-                    <img src="{brand}" alt="" style="height:22px;opacity:.95;display:block">
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <tr>
-            <td style="padding:28px 26px">
-              <h2 style="margin:0 0 12px;font-size:22px;color:#fff;">
-                Hi {user.first_name or ''} 👋
-              </h2>
-
-              <p style="margin:0 0 12px;line-height:1.9;color:#cbd5e1">
-                Admin has approved your account. One step left to reach 100%:
-                <b style="color:#fff">verify your email</b>.
-              </p>
-
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:26px auto">
-                <tr>
-                  <td bgcolor="#2563eb" style="border-radius:10px;">
-                    <a href="{verify_page}" target="_blank"
-                       style="font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:16px;text-decoration:none;
-                              padding:14px 22px;display:inline-block;color:#ffffff;border-radius:10px;font-weight:700">
-                      Activation instructions
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <tr>
-            <td style="padding:18px 24px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
-              If you didn’t request this action, please ignore this message.
-            </td>
-          </tr>
-        </table>
-
-        <div style="color:#64748b;font-size:11px;margin-top:12px">
-          &copy; {year} RentAll
-        </div>
-      </td>
-    </tr>
+    <tr><td align="center">
+      <table role="presentation" width="640" cellspacing="0" cellpadding="0"
+             style="width:100%;max-width:640px;background:#0f172a;border:1px solid #1f2937;border-radius:16px;overflow:hidden">
+        <tr>
+          <td style="padding:20px 24px;background:linear-gradient(90deg,#111827,#0b1220)">
+            <table width="100%"><tr>
+              <td align="right"><img src="{brand}" alt="" style="height:22px;opacity:.95"></td>
+              <td align="left"><img src="{logo}" alt="" style="height:36px;border-radius:8px"></td>
+            </tr></table>
+          </td>
+        </tr>
+        <tr><td style="padding:28px 26px">
+          <h2 style="margin:0 0 12px;font-size:22px;color:#fff;">Hi {user.first_name or ''} 👋</h2>
+          <p style="margin:0 0 12px;line-height:1.9;color:#cbd5e1">
+            Admin has approved your account. One step left to reach 100%: <b style="color:#fff">verify your email</b>.
+          </p>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:26px auto">
+            <tr><td bgcolor="#2563eb" style="border-radius:10px;">
+              <a href="{verify_page}" target="_blank"
+                 style="font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:16px;text-decoration:none;
+                        padding:14px 22px;display:inline-block;color:#ffffff;border-radius:10px;font-weight:700">
+                Activation instructions
+              </a>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:18px 24px;background:#0b1220;color:#94a3b8;font-size:12px;text-align:center">
+          If you didn’t request this action, please ignore this message.
+        </td></tr>
+      </table>
+      <div style="color:#64748b;font-size:11px;margin-top:12px">&copy; {year} RentAll</div>
+    </td></tr>
   </table>
-</body>
-</html>"""
+</body></html>"""
+            text = f"Hi {user.first_name}\n\nAdmin has approved your account. To reach 100%, verify your email from the verification message.\n{verify_page}"
 
-            text = (
-                f"Hi {user.first_name}\n\n"
-                f"Admin has approved your account. To reach 100%, verify your email.\n"
-                f"{verify_page}"
-            )
-
-        _send_email_any(user.email, subject, html, text_body=text)
-
+        send_email(user.email, subject, html, text_body=text)
     except Exception:
         pass
 
@@ -374,7 +251,7 @@ def reject_user(user_id: int, request: Request, db: Session = Depends(get_db)):
           <p><a href="{BASE_URL}/activate">Complete activation</a></p>
         </div>
         """
-        _send_email_any(user.email, subject, html, text_body="Your account was not accepted at this time.")
+        send_email(user.email, subject, html, text_body="Your account was not accepted at this time.")
     except Exception:
         pass
 
@@ -395,18 +272,13 @@ def verify_user(user_id: int, request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/admin", status_code=303)
 
     user.is_verified = True
-
-    # ✅ إذا كان الأدمن وافق من قبل -> كمّل وخليه approved
-    if (user.status or "").lower() == "admin_approved":
-        user.status = "approved"
-
     if hasattr(user, "verified_at"):
         user.verified_at = datetime.utcnow()
     if hasattr(user, "verified_by_id") and admin:
         user.verified_by_id = admin.get("id")
-
     db.commit()
     _refresh_session_user_if_self(request, user)
+
     return RedirectResponse(url="/admin", status_code=303)
 
 
@@ -618,7 +490,7 @@ def enable_deposit_manager(user_id: int, request: Request, db: Session = Depends
   </table>
 </body></html>"""
             text = f"You’ve been granted the Deposit Manager role. Admin panel: {home}"
-            _send_email_any(u.email, subject, html, text_body=text)
+            send_email(u.email, subject, html, text_body=text)
         except Exception:
             pass
 
@@ -672,7 +544,7 @@ def disable_deposit_manager(user_id: int, request: Request, db: Session = Depend
   </table>
 </body></html>"""
             text = f"The Deposit Manager role has been removed from your account. For more details: {home}"
-            _send_email_any(u.email, subject, html, text_body=text)
+            send_email(u.email, subject, html, text_body=text)
         except Exception:
             pass
 
@@ -732,7 +604,7 @@ def enable_mod(user_id: int, request: Request, db: Session = Depends(get_db)):
   </table>
 </body></html>"""
             text = f"You’ve been granted the Content Moderator (MOD) permission. Start here: {home}"
-            _send_email_any(u.email, subject, html, text_body=text)
+            send_email(u.email, subject, html, text_body=text)
         except Exception:
             pass
 
@@ -789,7 +661,7 @@ def disable_mod(user_id: int, request: Request, db: Session = Depends(get_db)):
   </table>
 </body></html>"""
             text = f"The Content Moderator permission has been removed from your account. For more details: {home}"
-            _send_email_any(u.email, subject, html, text_body=text)
+            send_email(u.email, subject, html, text_body=text)
         except Exception:
             pass
 
@@ -836,7 +708,7 @@ def enable_support(user_id: int, request: Request, db: Session = Depends(get_db)
              style="width:100%;max-width:640px;border-radius:18px;overflow:hidden;background:#0f172a;border:1px solid #1f2937">
         <tr><td style="padding:26px 24px">
           <h3 style="margin:0 0 8px;color:#fff">Customer Support permission granted</h3>
-          <p style="margin:0;line-height:1.9;color:#cbd5e7">
+          <p style="margin:0;line-height:1.9;color:#cbd5e1">
             You can now assign/respond to tickets in the support panel.
           </p>
           <p style="margin:18px 0 0"><a href="{home}" style="color:#60a5fa;text-decoration:none">Open inbox</a></p>
@@ -849,7 +721,7 @@ def enable_support(user_id: int, request: Request, db: Session = Depends(get_db)
   </table>
 </body></html>"""
             text = f"Customer Support (CS) permission granted. Support panel: {home}"
-            _send_email_any(u.email, subject, html, text_body=text)
+            send_email(u.email, subject, html, text_body=text)
         except Exception:
             pass
 
@@ -906,7 +778,7 @@ def disable_support(user_id: int, request: Request, db: Session = Depends(get_db
   </table>
 </body></html>"""
             text = f"The Customer Support (CS) permission has been removed from your account. More details: {home}"
-            _send_email_any(u.email, subject, html, text_body=text)
+            send_email(u.email, subject, html, text_body=text)
         except Exception:
             pass
 
@@ -945,9 +817,9 @@ def broadcast_send(
     # 1) اختَر الجمهور
     query = db.query(User.email).filter(User.email.isnot(None))
     if audience == "verified":
-        query = query.filter(User.is_verified.is_(True))
+        query = query.filter(User.is_verified == True)
     elif audience == "unverified":
-        query = query.filter((User.is_verified.is_(False)) | (User.is_verified.is_(None)))
+        query = query.filter((User.is_verified == False) | (User.is_verified.is_(None)))
 
     emails = [row.email for row in query.all()]
 
@@ -1060,17 +932,13 @@ def broadcast_send(
 </html>"""
 
     # 4) إرسال الإيميل عبر SendGrid
-    # (ما حذفناش هذا السطر باش يبقى نفس الكود عندك)
     from .email_service import send_email
-
-    # ✅ بدل ما نعتمد على signature واحدة فقط:
-    ok = _send_email_any(
-        emails,
-        safe_subject,
-        html_body,
-        text_body=(plain_text or safe_subject),
+    ok = send_email(
+        to=emails,
+        subject=safe_subject,
+        html_body=html_body,
+        text_body=plain_text or safe_subject,
     )
-
     print("Broadcast send status:", ok, "to", len(emails), "users")
 
     # 5) صفحة النجاح
