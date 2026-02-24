@@ -3,13 +3,16 @@
 <style>
   /* ===== Modern Email Verify Page ===== */
   :root{
-    --card-bg: rgba(255,255,255,.04);
-    --card-bd: rgba(255,255,255,.12);
-    --accent: #2563eb;
-    --success: #16a34a;
-    --warning: #f59e0b;
-    --muted: rgba(255,255,255,.7);
-  }
+  --card-bg: #ffffff;
+  --card-bd: rgba(0,0,0,.10);
+
+  --accent: #2563eb;
+  --success: #16a34a;
+  --warning: #f59e0b;
+
+  --text: #000000;
+  --muted: rgba(0,0,0,.65);
+}
   .ve-container{
     max-width: 860px; margin: 0 auto; padding: 32px 16px;
   }
@@ -33,15 +36,17 @@
   .ve-badge{
     display:inline-flex; align-items:center; gap:8px;
     background: rgba(37,99,235,.15); border:1px solid rgba(37,99,235,.35);
-    color: #cfe0ff; padding: 6px 10px; border-radius: 999px; font-size: 13px;
+    color: #1e3a8a; padding: 6px 10px; border-radius: 999px; font-size: 13px;
   }
   .ve-body{ padding: 16px 24px 24px; }
   .ve-steps{ display:grid; grid-template-columns: 1fr; gap: 10px; margin: 12px 0 18px; }
   .ve-step{
-    display:flex; align-items:flex-start; gap:12px;
-    background: rgba(255,255,255,.03); border:1px dashed var(--card-bd);
-    padding:12px 14px; border-radius:12px;
-  }
+  display:flex; align-items:flex-start; gap:12px;
+  background: rgba(0,0,0,.02);
+  border:1px dashed rgba(0,0,0,.12);
+  padding:12px 14px; border-radius:12px;
+  color: var(--text);
+}
   .ve-step i{
     flex:0 0 auto; width:28px; height:28px; border-radius:50%;
     display:grid; place-items:center; font-style:normal; font-weight:900;
@@ -54,10 +59,9 @@
     cursor:pointer;
   }
   .btn-primary-ve{ background: var(--accent); color:#fff; }
-  .btn-outline-ve{ background: transparent; color:#fff; border-color: var(--card-bd); }
+  .btn-outline-ve{ background: transparent; color: var(--text); border-color: rgba(0,0,0,.18); }
   .btn-success-ve{ background: var(--success); color:#fff; }
-  .btn-ghost-ve{ background: rgba(255,255,255,.06); color:#fff; }
-  .ve-email{
+  .btn-ghost-ve{ background: rgba(0,0,0,.06); color: var(--text); }  .ve-email{
     display:flex; align-items:center; gap:8px; padding:10px 12px;
     background: rgba(255,255,255,.06); border:1px solid var(--card-bd); border-radius:10px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
