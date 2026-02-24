@@ -1,7 +1,7 @@
 # app/auth.py
 
-from fastapi import APIRouter, Depends, Request, Form, UploadFile, File, HTTPException, Response
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, Request, Form, UploadFile, File, HTTPException, Response , Body
+from fastapi.responses import RedirectResponse , JSONResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
 from urllib.parse import urlencode
@@ -78,6 +78,30 @@ def _signer() -> URLSafeTimedSerializer:
 
 def _pwd_signer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(secret_key=SECRET_KEY, salt="pwd-reset-v1")
+
+def _send_verify_email(to_email: str, user_id: int):
+    token = _signer().dumps({"uid": user_id, "email": to_email})
+    verify_url = f"{BASE_URL}/activate/verify?token={token}"
+
+    subj = "Activate your account — Sevor"
+    html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
+      <h2>Activate your Sevor account</h2>
+      <p>Click the button below to activate your account:</p>
+      <p style="margin:20px 0">
+        <a href="{verify_url}" style="background:#2563eb;color:white;padding:12px 18px;
+           text-decoration:none;border-radius:10px;font-weight:700;display:inline-block">
+          Activate account
+        </a>
+      </p>
+      <p style="color:#555;font-size:13px">If the button doesn't work, open this link:</p>
+      <p style="word-break:break-all;font-size:13px">
+        <a href="{verify_url}">{verify_url}</a>
+      </p>
+    </div>
+    """
+    text = f"Activate your account:\n{verify_url}"
+    send_email(to_email, subj, html, text_body=text)    
 
 def _maybe_redirect_canonical(request: Request) -> RedirectResponse | None:
     """
@@ -279,7 +303,11 @@ def register_post(
     )
     db.add(u)
     db.commit()
-    db.refresh(u)
+    db.refresh(u) 
+    try:
+        _send_verify_email(u.email, u.id)
+    except Exception as e:
+        print("Verify email send failed:", e)    
 
     # Parse expiry
     expiry = None
@@ -727,3 +755,28 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
 
     u = db.query(User).filter(User.id == uid).first()
     return u
+
+
+@router.post("/api/auth/resend-verify")
+def resend_verify(
+    payload: dict = Body(...),
+    request: Request = None,
+    db: Session = Depends(get_db),
+):
+    email = (payload.get("email") or "").strip().lower()
+    if not email:
+        return JSONResponse({"detail": "Email required."}, status_code=400)
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        return JSONResponse({"detail": "If an account exists, an email was sent."}, status_code=200)
+
+    if bool(getattr(user, "is_verified", False)):
+        return JSONResponse({"detail": "Account already verified."}, status_code=200)
+
+    try:
+        _send_verify_email(user.email, user.id)
+    except Exception:
+        return JSONResponse({"detail": "Error sending email."}, status_code=500)
+
+    return JSONResponse({"detail": "Sent again. Check inbox/spam."}, status_code=200)
