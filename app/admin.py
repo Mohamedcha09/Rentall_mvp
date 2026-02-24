@@ -69,32 +69,26 @@ def _refresh_session_user_if_self(request: Request, user: User) -> None:
         sess["is_support"] = bool(getattr(user, "is_support", False))
     request.session["user"] = sess
 
-
-# ---------------------------
-# Admin dashboard
-# ---------------------------
 @router.get("/admin")
 def admin_dashboard(request: Request, db: Session = Depends(get_db)):
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
-    # ✅ Pending Approval (فوق):
-    # فقط اللي فعّل الإيميل (is_verified=True) ومازال الأدمن ما دارش approve (status=pending)
+    # ✅ فوق: أي واحد مازال ما كملش الشرطين
     pending_users = (
         db.query(User)
-        .filter(
-            User.is_verified == True,
-            User.status == "pending",
-        )
+        .filter(User.status.in_(["pending", "admin_approved"]))
         .order_by(User.created_at.desc())
         .all()
     )
 
-    # ✅ All Users (تحت):
-    # غير اللي الأدمن دار لهم approve
+    # ✅ لتحت: لازم الشرطين مع بعض
     all_users = (
         db.query(User)
-        .filter(User.status == "approved")
+        .filter(
+            User.status == "approved",
+            User.is_verified == True
+        )
         .order_by(User.created_at.desc())
         .all()
     )
@@ -109,6 +103,7 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
             "session_user": request.session.get("user"),
         },
     )
+
 
 # ---------------------------
 # Registration decisions
@@ -126,7 +121,11 @@ def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/admin", status_code=303)
 
-    user.status = "approved"
+    # ✅ MODIFICATION: ما نديروش approved مباشرة إلا إذا كان verified
+    if bool(getattr(user, "is_verified", False)):
+        user.status = "approved"
+    else:
+        user.status = "admin_approved"   # الأدمن وافق، باقي تفعيل الإيميل
 
     for d in (user.documents or []):
         d.review_status = "approved"
@@ -273,6 +272,7 @@ def reject_user(user_id: int, request: Request, db: Session = Depends(get_db)):
 # ---------------------------
 # Verification
 # ---------------------------
+
 @router.post("/admin/users/{user_id}/verify")
 def verify_user(user_id: int, request: Request, db: Session = Depends(get_db)):
     if not require_admin(request):
@@ -284,6 +284,11 @@ def verify_user(user_id: int, request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/admin", status_code=303)
 
     user.is_verified = True
+
+    # ✅ MODIFICATION: إذا كان admin وافق من قبل، كمّل وخليه approved
+    if (user.status or "").lower() == "admin_approved":
+        user.status = "approved"
+
     if hasattr(user, "verified_at"):
         user.verified_at = datetime.utcnow()
     if hasattr(user, "verified_by_id") and admin:
@@ -292,7 +297,6 @@ def verify_user(user_id: int, request: Request, db: Session = Depends(get_db)):
     _refresh_session_user_if_self(request, user)
 
     return RedirectResponse(url="/admin", status_code=303)
-
 
 @router.post("/admin/users/{user_id}/unverify")
 def unverify_user(user_id: int, request: Request, db: Session = Depends(get_db)):
