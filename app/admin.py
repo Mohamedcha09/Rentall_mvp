@@ -52,7 +52,7 @@ def _refresh_session_user_if_self(request: Request, user: User) -> None:
         return
     sess["role"] = user.role
     sess["status"] = user.status
-    sess["is_verified"] = bool(user.is_verified)
+    sess["is_verified"] = bool(getattr(user, "is_verified", False))
     # Badge flags
     for k in [
         "badge_admin", "badge_new_yellow", "badge_pro_green", "badge_pro_gold",
@@ -68,6 +68,31 @@ def _refresh_session_user_if_self(request: Request, user: User) -> None:
     if hasattr(user, "is_support"):
         sess["is_support"] = bool(getattr(user, "is_support", False))
     request.session["user"] = sess
+
+
+def _send_email_any(to, subject: str, html: str, text_body: str = "") -> bool:
+    """
+    ✅ Important:
+    Your project has TWO possible send_email signatures in different places:
+      1) send_email(user.email, subject, html, text_body=...)
+      2) send_email(to=[...], subject=..., html_body=..., text_body=...)
+
+    This helper tries both so your code works مهما كانت الدالة عندك.
+    """
+    try:
+        # Style A (positional)
+        send_email(to, subject, html, text_body=text_body)
+        return True
+    except TypeError:
+        # Style B (kwargs)
+        try:
+            send_email(to=to if isinstance(to, list) else [to], subject=subject, html_body=html, text_body=text_body)
+            return True
+        except Exception:
+            return False
+    except Exception:
+        return False
+
 
 @router.get("/admin")
 def admin_dashboard(request: Request, db: Session = Depends(get_db)):
@@ -90,7 +115,7 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
         db.query(User)
         .filter(
             User.status == "approved",
-            User.is_verified == True
+            User.is_verified.is_(True)
         )
         .order_by(User.created_at.desc())
         .all()
@@ -316,12 +341,13 @@ def approve_user(user_id: int, request: Request, db: Session = Depends(get_db)):
                 f"{verify_page}"
             )
 
-        send_email(user.email, subject, html, text_body=text)
+        _send_email_any(user.email, subject, html, text_body=text)
 
     except Exception:
         pass
 
     return RedirectResponse(url="/admin", status_code=303)
+
 
 @router.post("/admin/users/{user_id}/reject")
 def reject_user(user_id: int, request: Request, db: Session = Depends(get_db)):
@@ -348,7 +374,7 @@ def reject_user(user_id: int, request: Request, db: Session = Depends(get_db)):
           <p><a href="{BASE_URL}/activate">Complete activation</a></p>
         </div>
         """
-        send_email(user.email, subject, html, text_body="Your account was not accepted at this time.")
+        _send_email_any(user.email, subject, html, text_body="Your account was not accepted at this time.")
     except Exception:
         pass
 
@@ -592,7 +618,7 @@ def enable_deposit_manager(user_id: int, request: Request, db: Session = Depends
   </table>
 </body></html>"""
             text = f"You’ve been granted the Deposit Manager role. Admin panel: {home}"
-            send_email(u.email, subject, html, text_body=text)
+            _send_email_any(u.email, subject, html, text_body=text)
         except Exception:
             pass
 
@@ -646,7 +672,7 @@ def disable_deposit_manager(user_id: int, request: Request, db: Session = Depend
   </table>
 </body></html>"""
             text = f"The Deposit Manager role has been removed from your account. For more details: {home}"
-            send_email(u.email, subject, html, text_body=text)
+            _send_email_any(u.email, subject, html, text_body=text)
         except Exception:
             pass
 
@@ -706,7 +732,7 @@ def enable_mod(user_id: int, request: Request, db: Session = Depends(get_db)):
   </table>
 </body></html>"""
             text = f"You’ve been granted the Content Moderator (MOD) permission. Start here: {home}"
-            send_email(u.email, subject, html, text_body=text)
+            _send_email_any(u.email, subject, html, text_body=text)
         except Exception:
             pass
 
@@ -763,7 +789,7 @@ def disable_mod(user_id: int, request: Request, db: Session = Depends(get_db)):
   </table>
 </body></html>"""
             text = f"The Content Moderator permission has been removed from your account. For more details: {home}"
-            send_email(u.email, subject, html, text_body=text)
+            _send_email_any(u.email, subject, html, text_body=text)
         except Exception:
             pass
 
@@ -810,7 +836,7 @@ def enable_support(user_id: int, request: Request, db: Session = Depends(get_db)
              style="width:100%;max-width:640px;border-radius:18px;overflow:hidden;background:#0f172a;border:1px solid #1f2937">
         <tr><td style="padding:26px 24px">
           <h3 style="margin:0 0 8px;color:#fff">Customer Support permission granted</h3>
-          <p style="margin:0;line-height:1.9;color:#cbd5e1">
+          <p style="margin:0;line-height:1.9;color:#cbd5e7">
             You can now assign/respond to tickets in the support panel.
           </p>
           <p style="margin:18px 0 0"><a href="{home}" style="color:#60a5fa;text-decoration:none">Open inbox</a></p>
@@ -823,7 +849,7 @@ def enable_support(user_id: int, request: Request, db: Session = Depends(get_db)
   </table>
 </body></html>"""
             text = f"Customer Support (CS) permission granted. Support panel: {home}"
-            send_email(u.email, subject, html, text_body=text)
+            _send_email_any(u.email, subject, html, text_body=text)
         except Exception:
             pass
 
@@ -880,7 +906,7 @@ def disable_support(user_id: int, request: Request, db: Session = Depends(get_db
   </table>
 </body></html>"""
             text = f"The Customer Support (CS) permission has been removed from your account. More details: {home}"
-            send_email(u.email, subject, html, text_body=text)
+            _send_email_any(u.email, subject, html, text_body=text)
         except Exception:
             pass
 
@@ -919,9 +945,9 @@ def broadcast_send(
     # 1) اختَر الجمهور
     query = db.query(User.email).filter(User.email.isnot(None))
     if audience == "verified":
-        query = query.filter(User.is_verified == True)
+        query = query.filter(User.is_verified.is_(True))
     elif audience == "unverified":
-        query = query.filter((User.is_verified == False) | (User.is_verified.is_(None)))
+        query = query.filter((User.is_verified.is_(False)) | (User.is_verified.is_(None)))
 
     emails = [row.email for row in query.all()]
 
@@ -1034,13 +1060,17 @@ def broadcast_send(
 </html>"""
 
     # 4) إرسال الإيميل عبر SendGrid
+    # (ما حذفناش هذا السطر باش يبقى نفس الكود عندك)
     from .email_service import send_email
-    ok = send_email(
-        to=emails,
-        subject=safe_subject,
-        html_body=html_body,
-        text_body=plain_text or safe_subject,
+
+    # ✅ بدل ما نعتمد على signature واحدة فقط:
+    ok = _send_email_any(
+        emails,
+        safe_subject,
+        html_body,
+        text_body=(plain_text or safe_subject),
     )
+
     print("Broadcast send status:", ok, "to", len(emails), "users")
 
     # 5) صفحة النجاح
