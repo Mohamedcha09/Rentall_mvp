@@ -47,10 +47,11 @@
     display:grid; place-items:center; font-style:normal; font-weight:900;
     background: rgba(37,99,235,.15); border:1px solid rgba(37,99,235,.3);
   }
-  .ve-actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top: 6px; }
+  .ve-actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top: 6px; align-items:center; }
   .btn-ve{
     border-radius:10px; padding:10px 14px; border:1px solid transparent;
     font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:8px;
+    cursor:pointer;
   }
   .btn-primary-ve{ background: var(--accent); color:#fff; }
   .btn-outline-ve{ background: transparent; color:#fff; border-color: var(--card-bd); }
@@ -111,7 +112,7 @@
           <i>1</i>
           <div>
             <b>Open your inbox</b>
-            <div class="ve-hint">Look for an email titled “Activate your account — RentAll”.</div>
+            <div class="ve-hint">Look for an email titled “Activate your account — Sevor”.</div>
           </div>
         </div>
         <div class="ve-step">
@@ -132,15 +133,24 @@
           <i>💡</i>
           <div>
             <b>Can’t find the email?</b>
-            <div class="ve-hint">Check your <b>Spam</b> folder or search for “RentAll”.</div>
+            <div class="ve-hint">Check your <b>Spam</b> folder or search for “Sevor”.</div>
           </div>
         </div>
       </div>
 
       <div class="ve-actions">
         {% if email %}
-        <a class="btn-ve btn-primary-ve" id="openInboxBtn">Open your inbox now</a>
+          <a class="btn-ve btn-primary-ve" id="openInboxBtn">Open your inbox now</a>
+
+          <!-- ✅ NEW: RESEND BUTTON -->
+          <button class="btn-ve btn-outline-ve" id="resendBtn" type="button">
+            Resend activation email
+          </button>
+
+          <!-- ✅ NEW: STATUS MESSAGE -->
+          <span class="ve-hint" id="resendMsg"></span>
         {% endif %}
+
         <a href="/login" class="btn-ve btn-outline-ve">Back to login</a>
         <a href="/" class="btn-ve btn-outline-ve">Back to home</a>
       </div>
@@ -154,7 +164,8 @@
             1) Make sure the email above is correct — if not, sign up again with the correct email.<br>
             2) Check the <b>Spam</b> or <b>Junk</b> folder.<br>
             3) Wait a minute or two and refresh the page.<br>
-            4) If the issue persists, contact us via the “Contact us” page.
+            4) Use the <b>Resend</b> button above.<br>
+            5) If the issue persists, contact us via the “Contact us” page.
           </div>
         </details>
       </div>
@@ -169,6 +180,7 @@
 <script>
   (function(){
     const email = document.getElementById('emailBox')?.dataset?.email || '';
+
     // Map email domains to their inbox pages
     const providers = [
       {m:/gmail\.com$/i, url:'https://mail.google.com/'},
@@ -185,6 +197,7 @@
       if(match){ openBtn.href = match.url; openBtn.target='_blank'; }
       else { openBtn.href = '/'; openBtn.onclick = function(e){ e.preventDefault(); alert('Open your inbox manually: ' + (domain || '—')); }; }
     }
+
     const cp = document.getElementById('copyBtn');
     if(cp){
       cp.addEventListener('click', async ()=>{
@@ -195,6 +208,46 @@
         }catch(e){ alert('Copy the email manually: ' + email); }
       });
     }
+
+    // ✅ NEW: RESEND LOGIC
+    const resendBtn = document.getElementById('resendBtn');
+    const resendMsg = document.getElementById('resendMsg');
+
+    if(resendBtn){
+      resendBtn.addEventListener('click', async ()=>{
+        if(!email){
+          resendMsg.textContent = "❌ Email not found.";
+          return;
+        }
+
+        resendBtn.disabled = true;
+        const oldText = resendBtn.textContent;
+        resendBtn.textContent = "Sending...";
+        resendMsg.textContent = "";
+
+        try{
+          const r = await fetch("/api/auth/resend-verify", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({ email: email })
+          });
+
+          const data = await r.json().catch(()=> ({}));
+
+          if(r.ok){
+            resendMsg.textContent = "✅ Sent again. Check inbox/spam.";
+          }else{
+            resendMsg.textContent = "❌ " + (data.detail || "Error sending email.");
+          }
+        }catch(e){
+          resendMsg.textContent = "❌ Network error.";
+        }finally{
+          resendBtn.disabled = false;
+          resendBtn.textContent = oldText;
+        }
+      });
+    }
+
   })();
 </script>
 {% endblock %}
