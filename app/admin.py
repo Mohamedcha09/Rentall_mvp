@@ -79,7 +79,7 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
         db.query(User)
         .filter(
             (User.status.in_(["pending", "admin_approved"])) |
-            ((User.status == "approved") & (User.is_verified != True))  # ✅ يلمّ القديم
+            ((User.status == "approved") & ((User.is_verified.is_(False)) | (User.is_verified.is_(None))))
         )
         .order_by(User.created_at.desc())
         .all()
