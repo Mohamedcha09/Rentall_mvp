@@ -78,13 +78,26 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
+    # ✅ Pending Approval (فوق):
+    # فقط اللي فعّل الإيميل (is_verified=True) ومازال الأدمن ما دارش approve (status=pending)
     pending_users = (
         db.query(User)
-        .filter(User.status == "pending")
+        .filter(
+            User.is_verified == True,
+            User.status == "pending",
+        )
         .order_by(User.created_at.desc())
         .all()
     )
-    all_users = db.query(User).order_by(User.created_at.desc()).all()
+
+    # ✅ All Users (تحت):
+    # غير اللي الأدمن دار لهم approve
+    all_users = (
+        db.query(User)
+        .filter(User.status == "approved")
+        .order_by(User.created_at.desc())
+        .all()
+    )
 
     return request.app.templates.TemplateResponse(
         "admin_dashboard.html",
@@ -96,7 +109,6 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
             "session_user": request.session.get("user"),
         },
     )
-
 
 # ---------------------------
 # Registration decisions
