@@ -3,90 +3,132 @@
 <style>
   /* ===== Modern Email Verify Page ===== */
   :root{
-  --card-bg: #ffffff;
-  --card-bd: rgba(0,0,0,.10);
+    --card-bg: #ffffff;
+    --card-bd: rgba(0,0,0,.10);
 
-  --accent: #2563eb;
-  --success: #16a34a;
-  --warning: #f59e0b;
+    --accent: #2563eb;
+    --success: #16a34a;
+    --warning: #f59e0b;
 
-  --text: #000000;
-  --muted: rgba(0,0,0,.65);
-}
+    --text: #000000;
+    --muted: rgba(0,0,0,.65);
+  }
+
   .ve-container{
     max-width: 860px; margin: 0 auto; padding: 32px 16px;
   }
+
   .ve-card{
     background: var(--card-bg);
     border: 1px solid var(--card-bd);
     border-radius: 16px;
     overflow: hidden;
     position: relative;
+    color: var(--text); /* ✅ NEW: force black text inside card */
   }
+
   .ve-hero{
     padding: 28px 24px 14px;
     background:
       radial-gradient(1200px 180px at 100% -30%, rgba(37,99,235,.15), transparent 60%),
       radial-gradient(1000px 180px at 0% -40%, rgba(22,163,74,.12), transparent 60%);
   }
+
   .ve-title{
     display: flex; align-items: center; gap: 10px; margin: 0 0 8px 0;
     font-size: 26px; font-weight: 800;
+    color: var(--text);
   }
+
   .ve-badge{
     display:inline-flex; align-items:center; gap:8px;
     background: rgba(37,99,235,.15); border:1px solid rgba(37,99,235,.35);
     color: #1e3a8a; padding: 6px 10px; border-radius: 999px; font-size: 13px;
   }
+
   .ve-body{ padding: 16px 24px 24px; }
+
   .ve-steps{ display:grid; grid-template-columns: 1fr; gap: 10px; margin: 12px 0 18px; }
+
   .ve-step{
-  display:flex; align-items:flex-start; gap:12px;
-  background: rgba(0,0,0,.02);
-  border:1px dashed rgba(0,0,0,.12);
-  padding:12px 14px; border-radius:12px;
-  color: var(--text);
-}
+    display:flex; align-items:flex-start; gap:12px;
+    background: rgba(0,0,0,.02);
+    border:1px dashed rgba(0,0,0,.12);
+    padding:12px 14px; border-radius:12px;
+    color: var(--text);
+  }
+
   .ve-step i{
     flex:0 0 auto; width:28px; height:28px; border-radius:50%;
     display:grid; place-items:center; font-style:normal; font-weight:900;
     background: rgba(37,99,235,.15); border:1px solid rgba(37,99,235,.3);
   }
-  .ve-actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top: 6px; align-items:center; }
+
+  .ve-actions{
+    display:flex; flex-wrap:wrap; gap:10px; margin-top: 6px; align-items:center;
+  }
+
   .btn-ve{
     border-radius:10px; padding:10px 14px; border:1px solid transparent;
     font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:8px;
     cursor:pointer;
   }
+
   .btn-primary-ve{ background: var(--accent); color:#fff; }
-  .btn-outline-ve{ background: transparent; color: var(--text); border-color: rgba(0,0,0,.18); }
-  .btn-success-ve{ background: var(--success); color:#fff; }
-  .btn-ghost-ve{ background: rgba(0,0,0,.06); color: var(--text); } 
-  
-  .ve-email{
-  display:flex; align-items:center; gap:8px; padding:10px 12px;
-  background: rgba(0,0,0,.03);
-  border:1px solid rgba(0,0,0,.12);
-  border-radius:10px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  direction:ltr; unicode-bidi: plaintext;
-  color: var(--text);
-}
-  .ve-hint{ color: var(--muted); font-size: 14px; }
-  .ve-divider{ height:1px; background: var(--card-bd); margin: 16px 0; }
-  .ve-faq details{
-    background: rgba(255,255,255,.03); border:1px solid var(--card-bd); border-radius:12px; padding: 10px 12px;
+
+  .btn-outline-ve{
+    background: transparent;
+    color: var(--text);
+    border-color: rgba(0,0,0,.18);
   }
-  .ve-faq summary{ cursor:pointer; font-weight:700; }
+
+  .btn-success-ve{ background: var(--success); color:#fff; }
+
+  .btn-ghost-ve{
+    background: rgba(0,0,0,.06);
+    color: var(--text);
+  }
+
+  .ve-email{
+    display:flex; align-items:center; gap:8px; padding:10px 12px;
+    background: rgba(0,0,0,.03);
+    border:1px solid rgba(0,0,0,.12);
+    border-radius:10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    direction:ltr; unicode-bidi: plaintext;
+    color: var(--text);
+  }
+
+  .ve-hint{ color: var(--muted); font-size: 14px; }
+
+  .ve-divider{ height:1px; background: var(--card-bd); margin: 16px 0; }
+
+  /* ✅ UPDATED: FAQ light theme + black text */
+  .ve-faq details{
+    background: rgba(0,0,0,.02);
+    border: 1px solid rgba(0,0,0,.12);
+    border-radius:12px;
+    padding: 10px 12px;
+    color: var(--text);
+  }
+
+  .ve-faq summary{
+    cursor:pointer;
+    font-weight:700;
+    color: var(--text);
+  }
+
   .ve-pulse{
     position:absolute; inset:auto 16px 16px auto; width:10px; height:10px; border-radius:999px;
     background: var(--warning); box-shadow: 0 0 0 0 rgba(245,158,11,.7); animation: pulse 1.6s infinite;
   }
+
   @keyframes pulse{
     0%{ box-shadow:0 0 0 0 rgba(245,158,11,.6) }
     70%{ box-shadow:0 0 0 10px rgba(245,158,11,0) }
     100%{ box-shadow:0 0 0 0 rgba(245,158,11,0) }
   }
+
   @media (min-width: 720px){
     .ve-steps{ grid-template-columns: 1fr 1fr; }
   }
@@ -124,6 +166,7 @@
             <div class="ve-hint">Look for an email titled “Activate your account — Sevor”.</div>
           </div>
         </div>
+
         <div class="ve-step">
           <i>2</i>
           <div>
@@ -131,6 +174,7 @@
             <div class="ve-hint">The site will open and confirm your email immediately.</div>
           </div>
         </div>
+
         <div class="ve-step">
           <i>3</i>
           <div>
@@ -138,6 +182,7 @@
             <div class="ve-hint">After activation you can log in and use the site (the booking button remains pending admin approval).</div>
           </div>
         </div>
+
         <div class="ve-step">
           <i>💡</i>
           <div>
@@ -151,12 +196,10 @@
         {% if email %}
           <a class="btn-ve btn-primary-ve" id="openInboxBtn">Open your inbox now</a>
 
-          <!-- ✅ NEW: RESEND BUTTON -->
           <button class="btn-ve btn-outline-ve" id="resendBtn" type="button">
             Resend activation email
           </button>
 
-          <!-- ✅ NEW: STATUS MESSAGE -->
           <span class="ve-hint" id="resendMsg"></span>
         {% endif %}
 
@@ -199,12 +242,22 @@
       {m:/mail\.ru$/i, url:'https://e.mail.ru/'},
       {m:/proton\.me$|protonmail\.com$/i, url:'https://mail.proton.me/u/0/inbox'},
     ];
+
     const domain = (email.split('@')[1] || '').toLowerCase();
     const match = providers.find(p => p.m.test(domain));
     const openBtn = document.getElementById('openInboxBtn');
+
     if(openBtn){
-      if(match){ openBtn.href = match.url; openBtn.target='_blank'; }
-      else { openBtn.href = '/'; openBtn.onclick = function(e){ e.preventDefault(); alert('Open your inbox manually: ' + (domain || '—')); }; }
+      if(match){
+        openBtn.href = match.url;
+        openBtn.target = '_blank';
+      } else {
+        openBtn.href = '/';
+        openBtn.onclick = function(e){
+          e.preventDefault();
+          alert('Open your inbox manually: ' + (domain || '—'));
+        };
+      }
     }
 
     const cp = document.getElementById('copyBtn');
@@ -214,11 +267,13 @@
           await navigator.clipboard.writeText(email);
           cp.textContent = 'Copied ✓';
           setTimeout(()=> cp.textContent = 'Copy email', 1600);
-        }catch(e){ alert('Copy the email manually: ' + email); }
+        }catch(e){
+          alert('Copy the email manually: ' + email);
+        }
       });
     }
 
-    // ✅ NEW: RESEND LOGIC
+    // RESEND LOGIC
     const resendBtn = document.getElementById('resendBtn');
     const resendMsg = document.getElementById('resendMsg');
 
@@ -256,7 +311,6 @@
         }
       });
     }
-
   })();
 </script>
 {% endblock %}
