@@ -1095,7 +1095,12 @@ pointer-events:none;
   }
 
 }
-
+.air-cta-disabled{
+  opacity:.55;
+  pointer-events:none;   /* أهم سطر */
+  cursor:not-allowed;
+  user-select:none;
+}
 
 
 </style>
@@ -1263,11 +1268,9 @@ pointer-events:none;
   </a>
 
 {% elif (session_user.get("status") or "") != "approved" %}
-  <a class="air-cta"
-     href="/activate"
-     style="opacity:.55;">
+  <span class="air-cta air-cta-disabled" aria-disabled="true">
     Book now
-  </a>
+  </span>
   <div class="small-muted" style="margin-top:8px">
     Your account must be approved by admin to book.
   </div>
