@@ -52,7 +52,6 @@ def is_owner(user: User, bk: Booking) -> bool:
 
 def redirect_to_flow(bk: Booking):
     return RedirectResponse(url=f"/bookings/flow/{bk.id}", status_code=303)
-
 @router.post("/bookings")
 async def create_booking(
     request: Request,
@@ -61,6 +60,10 @@ async def create_booking(
     user: Optional[User] = Depends(get_current_user),
 ):
     require_auth(user)
+
+    # ✅ BLOCK BOOKING IF NOT APPROVED
+    if (user.status or "").lower() != "approved":
+        return RedirectResponse(url="/activate", status_code=303)
 
     form = await request.form()
 
@@ -133,7 +136,6 @@ async def create_booking(
 
     # ✅ Redirect فوري (هذا اللي يخلي الزر سريع)
     return redirect_to_flow(bk)
-
 
 def _after_booking_created_bg(booking_id: int):
     db = SessionLocal()
@@ -446,6 +448,10 @@ def booking_new_page(
 ):
     require_auth(user)
 
+    # ✅ BLOCK BOOKING PAGE IF NOT APPROVED
+    if (user.status or "").lower() != "approved":
+        return RedirectResponse(url="/activate", status_code=303)
+
     item = db.get(Item, item_id)
     if not item or item.is_active != "yes":
         raise HTTPException(status_code=404, detail="Item not available")
@@ -469,6 +475,7 @@ def booking_new_page(
 
     return request.app.templates.TemplateResponse("booking_new.html", ctx)
 
+    
 @router.post("/bookings/{booking_id}/renter/confirm_received")
 def renter_confirm_received(
     booking_id: int,

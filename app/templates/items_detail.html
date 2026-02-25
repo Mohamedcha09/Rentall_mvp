@@ -1255,20 +1255,28 @@ pointer-events:none;
 
             <span class="per">per day</span>
           </div>
-{% set email_ok = session_user and (session_user.email_verified or session_user.email_verified_at) %}
-{% set approved_ok = session_user and (session_user.admin_approved or session_user.approved) %}
-
 {% if not session_user %}
-  <a class="air-cta" href="/login?next={{ request.url | urlencode }}" style="opacity:.55;">Book now</a>
+  <a class="air-cta"
+     href="/login?next={{ request.url | urlencode }}"
+     style="opacity:.55; pointer-events:auto;">
+    Book now
+  </a>
 
-{% elif not email_ok %}
-  <a class="air-cta js-blocked" href="#" data-msg="لازم تأكد الإيميل أولاً قبل الحجز." style="opacity:.55;">Book now</a>
-
-{% elif not approved_ok %}
-  <a class="air-cta js-blocked" href="#" data-msg="حسابك قيد المراجعة من الإدارة. انتظر الموافقة." style="opacity:.55;">Book now</a>
+{% elif (session_user.get("status") or "") != "approved" %}
+  <a class="air-cta"
+     href="/activate"
+     style="opacity:.55;">
+    Book now
+  </a>
+  <div class="small-muted" style="margin-top:8px">
+    Your account must be approved by admin to book.
+  </div>
 
 {% else %}
-  <a class="air-cta" href="/bookings/new?item_id={{ item.id }}&disp_cur={{ display_currency }}">Book now</a>
+  <a class="air-cta"
+     href="/bookings/new?item_id={{ item.id }}&disp_cur={{ display_currency }}">
+    Book now
+  </a>
 {% endif %}
 
         </div>
@@ -1861,14 +1869,7 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 </script>
 
-<script>
-document.addEventListener('click', function(e){
-  const b = e.target.closest('.js-blocked');
-  if(!b) return;
-  e.preventDefault();
-  alert(b.dataset.msg || "غير متاح حالياً.");
-});
-</script>
+
 
 
 {% endblock %}
