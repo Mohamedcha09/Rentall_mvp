@@ -587,6 +587,14 @@ body[data-auth="0"] .mobile-tabbar {
 
 
   </style>
+  <style id="sv-lock-style">
+  .sv-locked{
+    opacity: .55 !important;
+    cursor: not-allowed !important;
+    filter: grayscale(.25);
+  }
+  .sv-locked *{ pointer-events:none; }
+</style>
 
   <style id="sheet-align-fix">
   /* Align sheet row items */
@@ -1112,15 +1120,27 @@ window.onpageshow = function(e){
         </button>
 
         <!-- Create -->
-        <div class="dropdown">
-          <button class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="dropdown">
-            <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">Create</span>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li><a class="dropdown-item" href="/owner/items/new"><i class="bi bi-box"></i> New Item</a></li>
-            <li><a class="dropdown-item" href="/messages"><i class="bi bi-chat-left-text"></i> Message</a></li>
-          </ul>
-        </div>
+        {% set can_post = (session_user and session_user.status == 'approved') %}
+
+<div class="dropdown">
+  <button
+    class="btn btn-primary btn-sm d-flex align-items-center gap-1 {% if not can_post %}sv-locked{% endif %}"
+    {% if can_post %}data-bs-toggle="dropdown"{% endif %}
+    type="button"
+    aria-expanded="false"
+    data-post-locked="{{ '0' if can_post else '1' }}"
+    aria-disabled="{{ 'false' if can_post else 'true' }}"
+  >
+    <i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline">Create</span>
+  </button>
+
+  {% if can_post %}
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><a class="dropdown-item" href="/owner/items/new"><i class="bi bi-box"></i> New Item</a></li>
+    <li><a class="dropdown-item" href="/messages"><i class="bi bi-chat-left-text"></i> Message</a></li>
+  </ul>
+  {% endif %}
+</div>
 
         <!-- Language -->
         <div class="dropdown">
@@ -1277,13 +1297,16 @@ window.onpageshow = function(e){
   </div>
   <div class="scrim" id="scrim"></div>
 
-  {% if session_user and is_home %}
-  <!-- FAB: Glass + مرفوع فوق التاب بار -->
+{% if session_user and is_home %}
+  {% set can_post = (session_user.status == 'approved') %}
+
   <a id="fabAdd"
-     href="/owner/items/new"
-     class="d-lg-none"
-     title="New Item"
-     aria-label="New Item">
+     href="{% if can_post %}/owner/items/new{% else %}#{% endif %}"
+     class="d-lg-none {% if not can_post %}sv-locked{% endif %}"
+     title="{% if can_post %}New Item{% else %}Pending approval{% endif %}"
+     aria-label="New Item"
+     data-post-locked="{{ '0' if can_post else '1' }}"
+     aria-disabled="{{ 'false' if can_post else 'true' }}">
     <i class="bi bi-plus-lg"></i>
   </a>
 {% endif %}
