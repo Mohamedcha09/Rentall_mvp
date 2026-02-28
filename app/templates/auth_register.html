@@ -209,7 +209,9 @@
     margin-bottom: 8px;
   }
 
-  /* ✅ أقوى override (حتى لو Bootstrap يغيرها) */
+  /* ✅ أقوى منع zoom (حتى لو Bootstrap يغيرها) */
+  html { -webkit-text-size-adjust: 100%; }
+
   .card-reg input,
   .card-reg select,
   .card-reg textarea,
@@ -553,23 +555,21 @@
 
 <script>
 (function(){
-  // ✅ iOS Safari: قفل zoom وقت focus (أقوى)
+  // ✅ iOS Safari: قفل zoom وقت focus (نهائي)
   const meta = document.querySelector('meta[name="viewport"]');
   const baseViewport = "width=device-width, initial-scale=1, viewport-fit=cover";
   const lockedViewport = baseViewport + ", maximum-scale=1, user-scalable=no";
+
+  const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
   function setViewport(content){
     if (meta) meta.setAttribute("content", content);
   }
 
-  // نفلترها على iOS فقط
-  const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-
   if (isiOS && meta) {
     document.addEventListener("focusin", (e)=>{
       if(e.target && e.target.matches("input, textarea, select")) setViewport(lockedViewport);
     });
-
     document.addEventListener("focusout", (e)=>{
       if(e.target && e.target.matches("input, textarea, select")) setViewport(baseViewport);
     });
@@ -595,7 +595,6 @@
     const pct = Math.round((i) / (panels.length - 1) * 100);
     bar.style.width = pct + '%';
 
-    // ✅ مهم: في iOS لا تدير scroll smooth مع الكيبورد
     if (!isiOS) window.scrollTo({ top: 0, behavior: 'smooth' });
     else window.scrollTo(0, 0);
   }
@@ -631,6 +630,7 @@
         }
       }
     }
+
     return true;
   }
 
