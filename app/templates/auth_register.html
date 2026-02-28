@@ -26,9 +26,7 @@
       radial-gradient(900px 700px at 100% 100%, rgba(47,107,255,.14), transparent 55%),
       var(--sv-bg) !important;
   }
-  @media (max-width: 1100px){
-    .page{ grid-template-columns: 1fr; }
-  }
+  @media (max-width: 1100px){ .page{ grid-template-columns: 1fr; } }
 
   .hero{
     position:relative;
@@ -58,20 +56,13 @@
     z-index: 1;
     filter: drop-shadow(0 18px 40px rgba(0,0,0,.20));
   }
-
   @media (max-width: 992px){
     .hero{ display:none !important; }
     .hero::before{ content:none !important; }
   }
 
-  .brand-row{
-    display:flex; align-items:center; gap:12px;
-    margin-bottom: 10px;
-  }
-  .brand-row img.logo{
-    height: 44px; width:auto; display:block;
-    border-radius: 12px;
-  }
+  .brand-row{ display:flex; align-items:center; gap:12px; margin-bottom: 10px; }
+  .brand-row img.logo{ height: 44px; width:auto; display:block; border-radius: 12px; }
   .brand-row .name{
     font-weight: 950;
     letter-spacing:.3px;
@@ -98,11 +89,7 @@
     margin: 12px 0 10px;
     color: var(--sv-text);
   }
-  .hero p{
-    color: var(--sv-muted);
-    font-size: clamp(14px, 1.4vw, 16px);
-    max-width: 640px;
-  }
+  .hero p{ color: var(--sv-muted); font-size: clamp(14px, 1.4vw, 16px); max-width: 640px; }
 
   .reg-col{
     display:flex; align-items:center; justify-content:center;
@@ -111,10 +98,7 @@
     border-inline-end: 0 !important;
   }
   @media (max-width: 992px){
-    .reg-col{
-      min-height: 100dvh;
-      padding: 18px 14px;
-    }
+    .reg-col{ min-height: 100dvh; padding: 18px 14px; }
   }
 
   .card-reg{
@@ -136,10 +120,7 @@
     }
   }
 
-  .card-reg .head{
-    display:block !important;
-    margin-bottom: 12px !important;
-  }
+  .card-reg .head{ display:block !important; margin-bottom: 12px !important; }
   .head .title{
     font-weight: 950 !important;
     font-size: 40px !important;
@@ -147,7 +128,6 @@
     letter-spacing: -0.8px !important;
     color: var(--sv-text) !important;
   }
-
   .head .secure{
     display:inline-flex !important;
     margin-top: 12px;
@@ -161,22 +141,10 @@
     font-weight: 900;
     font-size: .80rem;
   }
-
-  .card-reg .sub{
-    color: var(--sv-muted);
-    font-size: 16px;
-    line-height: 1.45;
-    margin: 10px 0 16px;
-  }
+  .card-reg .sub{ color: var(--sv-muted); font-size: 16px; line-height: 1.45; margin: 10px 0 16px; }
 
   .wizard-top{ margin: 10px 0 16px; }
-
-  .wizard-steps{
-    display:flex;
-    gap: 10px;
-    align-items: stretch;
-    margin-bottom: 10px;
-  }
+  .wizard-steps{ display:flex; gap: 10px; align-items: stretch; margin-bottom: 10px; }
 
   .w-step{
     flex:1;
@@ -200,7 +168,6 @@
   .w-step .txt{ line-height:1.08; }
   .w-step .txt b{ display:block; font-size: .95rem; letter-spacing:.2px; color: rgba(2,6,23,.80); }
   .w-step .txt span{ display:block; font-size: .80rem; color: rgba(2,6,23,.45); }
-
   .w-step.active{
     opacity:1;
     transform: translateY(-1px);
@@ -212,17 +179,9 @@
     background: linear-gradient(135deg, var(--sv-primary), var(--sv-primary2));
     border: 0;
   }
-  .w-step.done{
-    opacity:.85;
-    border-color: rgba(47,107,255,.18);
-  }
+  .w-step.done{ opacity:.85; border-color: rgba(47,107,255,.18); }
 
-  .wizard-bar{
-    height: 10px;
-    border-radius: 999px;
-    background: rgba(2,6,23,.06);
-    overflow:hidden;
-  }
+  .wizard-bar{ height: 10px; border-radius: 999px; background: rgba(2,6,23,.06); overflow:hidden; }
   #wizardBar{
     height: 100%;
     width: 0%;
@@ -250,20 +209,28 @@
     margin-bottom: 8px;
   }
 
+  /* ✅ أقوى override (حتى لو Bootstrap يغيرها) */
+  .card-reg input,
+  .card-reg select,
+  .card-reg textarea,
+  .form-control,
+  .form-select{
+    font-size: 16px !important;
+    -webkit-text-size-adjust: 100%;
+  }
+
   .form-control, .form-select{
     height: 56px !important;
     border-radius: 16px !important;
     border: 2px solid rgba(15,23,42,.12) !important;
     background: #fff !important;
     color: var(--sv-text) !important;
-    font-size: 16px !important;
     padding: 0 16px !important;
     transition: border-color .18s ease, box-shadow .18s ease;
+    touch-action: manipulation;
   }
 
-  .form-control::placeholder{
-    color: rgba(2,6,23,.35) !important;
-  }
+  .form-control::placeholder{ color: rgba(2,6,23,.35) !important; }
 
   .form-control:focus, .form-select:focus{
     outline:none !important;
@@ -322,7 +289,7 @@
   }
   .acc-opt input{ transform: scale(1.08); margin-top: 2px; }
 
-  .btn{ border-radius: 18px !important; }
+  .btn{ border-radius: 18px !important; touch-action: manipulation; }
 
   .btn-primary{
     height: 56px;
@@ -335,10 +302,7 @@
     padding: 12px 16px;
     transition: transform .15s ease, filter .15s ease;
   }
-  .btn-primary:hover{
-    filter: brightness(1.03);
-    transform: translateY(-1px);
-  }
+  .btn-primary:hover{ filter: brightness(1.03); transform: translateY(-1px); }
   .btn-primary:active{ transform: translateY(1px); }
 
   .btn-success{
@@ -358,18 +322,10 @@
   }
   .btn-ghost:hover{ filter: brightness(1.05); }
 
-  .wiz-actions{
-    display:flex;
-    gap:10px;
-    align-items:center;
-    margin-top: 18px;
-  }
+  .wiz-actions{ display:flex; gap:10px; align-items:center; margin-top: 18px; }
   .wiz-actions .spacer{ flex:1; }
 
-  .btn.btn-primary.w-100{
-    height: 56px !important;
-    border-radius: 22px !important;
-  }
+  .btn.btn-primary.w-100{ height: 56px !important; border-radius: 22px !important; }
 
   a.muted{
     color: rgba(2,6,23,.55) !important;
@@ -382,17 +338,6 @@
     .head .title{ font-size: 34px !important; }
     .w-step .txt span{ display:none; }
     .w-step{ padding: 10px; }
-  }
-
-  /* ✅ iOS Safari: منع تغيير حجم النص */
-  html { -webkit-text-size-adjust: 100%; }
-
-  /* ✅ iOS Safari: منع zoom بسبب font-size أقل من 16 */
-  @supports (-webkit-touch-callout: none) {
-    input, select, textarea,
-    .form-control, .form-select {
-      font-size: 16px !important;
-    }
   }
 
   /* ✅ iOS: ثبات أفضل مع الكيبورد */
@@ -472,7 +417,6 @@
 
         <div class="mt-3">
           <label class="form-label">Phone Number</label>
-          <!-- ✅ تغيير: tel بدل text -->
           <input type="tel" name="phone" class="form-control" placeholder="+1 514 ..." required>
         </div>
 
@@ -609,19 +553,25 @@
 
 <script>
 (function(){
-  // ✅ (A) iOS Safari: حل نهائي لمنع zoom عند focus
+  // ✅ iOS Safari: قفل zoom وقت focus (أقوى)
   const meta = document.querySelector('meta[name="viewport"]');
   const baseViewport = "width=device-width, initial-scale=1, viewport-fit=cover";
-  if (meta) {
-    function lockViewport(){ meta.setAttribute("content", baseViewport + ", maximum-scale=1"); }
-    function unlockViewport(){ meta.setAttribute("content", baseViewport); }
+  const lockedViewport = baseViewport + ", maximum-scale=1, user-scalable=no";
 
+  function setViewport(content){
+    if (meta) meta.setAttribute("content", content);
+  }
+
+  // نفلترها على iOS فقط
+  const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+  if (isiOS && meta) {
     document.addEventListener("focusin", (e)=>{
-      if(e.target && e.target.matches("input, textarea, select")) lockViewport();
+      if(e.target && e.target.matches("input, textarea, select")) setViewport(lockedViewport);
     });
 
     document.addEventListener("focusout", (e)=>{
-      if(e.target && e.target.matches("input, textarea, select")) unlockViewport();
+      if(e.target && e.target.matches("input, textarea, select")) setViewport(baseViewport);
     });
   }
 
@@ -644,7 +594,10 @@
 
     const pct = Math.round((i) / (panels.length - 1) * 100);
     bar.style.width = pct + '%';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // ✅ مهم: في iOS لا تدير scroll smooth مع الكيبورد
+    if (!isiOS) window.scrollTo({ top: 0, behavior: 'smooth' });
+    else window.scrollTo(0, 0);
   }
 
   function validatePanel(i){
@@ -678,7 +631,6 @@
         }
       }
     }
-
     return true;
   }
 
@@ -732,7 +684,7 @@
   accRadios.forEach(r => r.addEventListener('change', syncCompanyProof));
   syncCompanyProof();
 
-  // Camera elements (unchanged)
+  // Camera elements
   const openCamBtn   = document.getElementById('openCamBtn');
   const snapBtn      = document.getElementById('snapBtn');
   const usePhotoBtn  = document.getElementById('usePhotoBtn');
