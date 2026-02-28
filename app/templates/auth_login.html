@@ -5,6 +5,13 @@
   /* Hide navbar/sidebar on login page */
   .topbar, .sidebar, .mobile-tabbar { display:none !important; }
 
+  /* ✅ SEVOR brand colors (purple + cyan only) */
+  :root{
+    --sevor-purple:#7c5cff;
+    --sevor-cyan:#3ecbff;
+    --sevor-ring: rgba(124,92,255,.18);
+  }
+
   /* Full white screen like Facebook */
   .page{
     margin:0 !important; padding:0 !important;
@@ -62,8 +69,8 @@
   }
   .form-control:focus{
     outline:none;
-    border-color:#1877f2;
-    box-shadow: 0 0 0 4px rgba(24,119,242,.18);
+    border-color: var(--sevor-purple);
+    box-shadow: 0 0 0 4px var(--sevor-ring);
   }
 
   .mb-3{ margin-bottom: 14px !important; }
@@ -96,12 +103,16 @@
     font-weight: 800;
     font-size: 20px;
   }
+
+  /* ✅ Login button (Sevor gradient) */
   .btn-primary{
-    background:#1877f2;
+    background: linear-gradient(135deg, var(--sevor-purple), var(--sevor-cyan));
     border:0;
-    box-shadow:none;
+    box-shadow: 0 6px 18px rgba(124,92,255,.25);
   }
-  .btn-primary:hover{ background:#166fe5; }
+  .btn-primary:hover{
+    filter: brightness(0.98);
+  }
 
   /* Forgot: bold black centered like screenshot */
   .forgot-wrap{
@@ -114,14 +125,14 @@
     text-decoration:none;
   }
 
-  /* Create account: outlined pill */
+  /* ✅ Create account: outlined pill (Sevor colors) */
   .btn-outline{
     height: 58px;
     width: 100%;
     border-radius: 999px;
     background: transparent;
-    border: 2px solid #1877f2;
-    color:#1877f2;
+    border: 2px solid var(--sevor-purple);
+    color: var(--sevor-purple);
     font-weight: 800;
     font-size: 20px;
     display:inline-flex;
@@ -130,7 +141,9 @@
     text-decoration:none;
   }
   .btn-outline:hover{
-    background: rgba(24,119,242,.06);
+    background: linear-gradient(135deg, rgba(124,92,255,.08), rgba(62,203,255,.08));
+    border-color: var(--sevor-cyan);
+    color: var(--sevor-cyan);
   }
 
   /* Footer (small + light like Meta line) */
@@ -198,7 +211,7 @@
 
     <div class="meta-footer">
       <span>∞</span>
-      <span>Meta</span>
+      <span>Sevor</span>
     </div>
   </div>
 </div>
