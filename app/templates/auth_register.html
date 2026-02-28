@@ -364,6 +364,24 @@
     }
     .card-reg{ margin-top: 0 !important; }
   }
+
+  /* ✅ FIX: Step 4 text cut on iPhone (wizard steps) */
+@media (max-width: 520px){
+  .wizard-steps{
+    overflow-x: auto;              /* يخليها تتحرك يمين/يسار إذا ضاق المكان */
+    -webkit-overflow-scrolling: touch;
+    gap: 8px;
+    padding-bottom: 6px;           /* مساحة صغيرة لscrollbar */
+  }
+
+  .w-step{
+    flex: 0 0 auto;                /* مايبقاش يضغطهم بزاف */
+    min-width: 122px;              /* عرض ثابت لكل خطوة */
+  }
+
+  .w-step .txt b{ font-size: .92rem; }
+  .w-step .txt span{ font-size: .76rem; }
+}
 </style>
 {% endblock %}
 
