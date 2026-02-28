@@ -2,157 +2,165 @@
 
 {% block head %}
 <style>
-  /* hide navbar/sidebar */
+  /* Hide navbar/sidebar on login page */
   .topbar, .sidebar, .mobile-tabbar { display:none !important; }
 
-  /* full screen center like Facebook */
+  /* Full white screen like Facebook */
   .page{
     margin:0 !important; padding:0 !important;
     min-height: 100dvh; min-height: 100svh;
+    background:#ffffff;
     display:flex;
-    align-items:center;
+    align-items:flex-start;
     justify-content:center;
-    background: #f0f2f5; /* facebook background */
   }
 
-  /* column wrapper */
+  /* Center column */
   .login-shell{
     width: 100%;
     max-width: 420px;
-    padding: 16px;
+    padding: 56px 20px 24px;
+    text-align:center;
   }
 
-  /* logo top */
+  /* Logo */
   .sevor-logo{
     display:flex;
     justify-content:center;
-    margin-bottom: 14px;
+    margin: 14px 0 34px;
   }
   .sevor-logo img{
-    height: 56px;
+    height: 62px;
     width:auto;
     display:block;
   }
 
-  /* card */
+  /* No card at all (Facebook style) */
   .card-login{
-    width:100%;
-    background:#fff;
-    border: 1px solid #dddfe2;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,.08);
-    padding: 16px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
   }
+  .card-login .head{ display:none; }
 
-  /* titles */
-  .card-login .head{
-    display:none; /* facebook page has no "Login" title inside */
-  }
-
-  /* inputs */
-  .form-label{ display:none; } /* keep clean like facebook */
+  /* Inputs: big, very rounded, light border */
+  .form-label{ display:none; }
   .form-control{
-    height: 46px;
-    border-radius: 6px;
-    border: 1px solid #dddfe2;
-    background:#fff;
-    color:#1c1e21;
-    font-size: 15px;
-    padding: 10px 12px;
+    height: 56px;
+    border-radius: 16px;
+    border: 1px solid #d7dbe0;
+    background:#ffffff;
+    color:#111827;
+    font-size: 18px;
+    padding: 12px 18px;
+  }
+  .form-control::placeholder{
+    color:#6b7280;
+    font-weight: 500;
   }
   .form-control:focus{
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(24,119,242,.2);
-    border-color: #1877f2;
+    outline:none;
+    border-color:#1877f2;
+    box-shadow: 0 0 0 4px rgba(24,119,242,.18);
   }
-  .mb-3{ margin-bottom: 12px !important; }
-  .mb-2{ margin-bottom: 10px !important; }
 
-  /* password eye inside (keep yours but facebook-ish) */
+  .mb-3{ margin-bottom: 14px !important; }
+  .mb-2{ margin-bottom: 16px !important; }
+
+  /* Password eye inside */
   .pw-wrap{ position: relative; }
-  .pw-input{ padding-inline-end: 44px !important; }
+  .pw-input{ padding-inline-end: 56px !important; }
   .pw-toggle{
-    position:absolute; inset-inline-end: 8px; top:50%;
+    position:absolute;
+    inset-inline-end: 12px;
+    top:50%;
     transform: translateY(-50%);
-    width: 36px; height: 36px;
-    border-radius: 999px;
+    width: 44px;
+    height: 44px;
     border: 0;
+    border-radius: 14px;
     background: transparent;
-    display:grid; place-items:center;
+    display:grid;
+    place-items:center;
     cursor:pointer;
-    color:#606770;
+    color:#6b7280;
   }
+  .pw-toggle i{ font-size: 20px; }
 
-  /* buttons */
+  /* Primary button: pill */
   .btn{
-    height: 48px;
-    border-radius: 6px;
-    font-weight: 700;
-    font-size: 16px;
+    height: 58px;
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 20px;
   }
-
   .btn-primary{
-    background: #1877f2;
-    border: 0;
-    box-shadow: none;
+    background:#1877f2;
+    border:0;
+    box-shadow:none;
   }
   .btn-primary:hover{ background:#166fe5; }
 
-  .btn-success{
-    background: #42b72a;
-    border: 0;
-    box-shadow: none;
-  }
-  .btn-success:hover{ background:#36a420; }
-
-  /* forgot link */
+  /* Forgot: bold black centered like screenshot */
   .forgot-wrap{
-    text-align:center;
-    margin-top: 8px;
-    margin-bottom: 10px;
+    margin: 18px 0 22px;
   }
   .forgot-wrap a{
-    color:#1877f2;
+    color:#111827;
+    font-weight: 800;
+    font-size: 20px;
     text-decoration:none;
+  }
+
+  /* Create account: outlined pill */
+  .btn-outline{
+    height: 58px;
+    width: 100%;
+    border-radius: 999px;
+    background: transparent;
+    border: 2px solid #1877f2;
+    color:#1877f2;
+    font-weight: 800;
+    font-size: 20px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    text-decoration:none;
+  }
+  .btn-outline:hover{
+    background: rgba(24,119,242,.06);
+  }
+
+  /* Footer (small + light like Meta line) */
+  .meta-footer{
+    margin-top: 22px;
+    color:#9ca3af;
     font-size: 14px;
-  }
-  .forgot-wrap a:hover{ text-decoration: underline; }
-
-  /* divider like facebook */
-  .divider{
-    height:1px;
-    background:#dadde1;
-    margin: 12px 0;
+    font-weight: 600;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
   }
 
-  /* hide your "encrypted ..." text to keep FB simple */
+  /* Hide extra hint text */
   .login-hint{ display:none; }
 
-  /* footer */
-  .card-footer{
-    text-align:center;
-    color:#8a8d91;
-    font-size: 12px;
-    margin-top: 10px;
-  }
-
-  /* remove right hero completely */
+  /* Remove hero completely */
   .hero{ display:none !important; }
 </style>
 {% endblock %}
 
 {% block content %}
-
 <div class="login-shell">
+
   <div class="sevor-logo">
     <img src="{{ url_for('static', path='images/ok.png') }}" alt="SEVOR">
   </div>
 
   <div class="card-login">
-    <div class="head">
-      <div class="title">Login</div>
-    </div>
-
     <form id="loginForm" method="post" action="/login">
       <div class="mb-3">
         <label class="form-label">Email</label>
@@ -175,22 +183,23 @@
 
       <div id="loginErr" class="alert alert-danger mt-3 mb-2 d-none"></div>
 
-      <button type="submit" class="btn btn-primary w-100 mb-2">Se connecter</button>
+      <button type="submit" class="btn btn-primary w-100">Se connecter</button>
 
       <div class="forgot-wrap">
         <a href="/forgot">Mot de passe oublié ?</a>
       </div>
 
-      <div class="divider"></div>
-
-      <a href="/register" class="btn btn-success w-100">Créer un compte</a>
+      <a href="/register" class="btn-outline">Créer un compte</a>
 
       {% if request.query_params.get('err') %}
         <div class="alert alert-danger mt-3 mb-0">Incorrect email or password.</div>
       {% endif %}
     </form>
 
-    <div class="card-footer">© SEVOR — All rights reserved</div>
+    <div class="meta-footer">
+      <span>∞</span>
+      <span>Meta</span>
+    </div>
   </div>
 </div>
 
@@ -233,23 +242,10 @@
       const em = (email.value || '').trim();
       const p = (pw.value || '').trim();
 
-      if(!em && !p){
-        e.preventDefault();
-        showErr('Veuillez saisir votre e-mail et votre mot de passe.');
-        return;
-      }
-      if(!em){
-        e.preventDefault();
-        showErr('Veuillez saisir votre e-mail.');
-        return;
-      }
-      if(!p){
-        e.preventDefault();
-        showErr('Veuillez saisir votre mot de passe.');
-        return;
-      }
+      if(!em && !p){ e.preventDefault(); showErr('Veuillez saisir votre e-mail et votre mot de passe.'); return; }
+      if(!em){ e.preventDefault(); showErr('Veuillez saisir votre e-mail.'); return; }
+      if(!p){ e.preventDefault(); showErr('Veuillez saisir votre mot de passe.'); return; }
     });
   })();
 </script>
-
 {% endblock %}
