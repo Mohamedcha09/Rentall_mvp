@@ -4,131 +4,213 @@
 <style>
   .topbar, .sidebar, .mobile-tabbar { display:none !important; }
 
-  .page {
+  /* =========================
+     LAYOUT (Desktop / Mobile)
+     ========================= */
+  .page{
     margin:0 !important; padding:0 !important;
-    min-height:100dvh; display:grid;
-    grid-template-columns: 640px 1fr;
+    min-height:100dvh;
+    display:grid;
+    grid-template-columns: 560px 1fr;
     background:
-      radial-gradient(1200px 900px at 15% -10%, rgba(124,92,255,.14), transparent 45%),
-      radial-gradient(900px 700px at 110% 110%, rgba(0,229,168,.08), transparent 40%),
+      radial-gradient(1200px 900px at 10% -10%, rgba(124,92,255,.16), transparent 45%),
+      radial-gradient(900px 700px at 110% 110%, rgba(0,229,168,.10), transparent 40%),
       var(--bg);
   }
-  @media (max-width: 1100px){ .page{ grid-template-columns: 1fr; } }
+  @media (max-width: 1100px){
+    .page{ grid-template-columns: 1fr; }
+  }
 
+  /* =========================
+     HERO (Right)
+     ========================= */
   .hero{
     position:relative;
     display:flex; align-items:center; justify-content:center;
-    padding: clamp(22px, 5vw, 80px);
+    padding: clamp(22px, 5vw, 84px);
     overflow:hidden;
     text-align:left;
   }
-  .hero-inner{ max-width: 860px; width:100%; position:relative; z-index:2; }
-
-  .hero::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 50%;
+  .hero-inner{
+    max-width: 900px;
+    width:100%;
+    position:relative;
+    z-index:2;
+  }
+  .hero::before{
+    content:"";
+    position:absolute;
+    top:-10px;
+    left:50%;
     transform: translateX(-50%);
     background: url("{{ url_for('static', path='images/app.png') }}") no-repeat center top;
     background-size: contain;
     width: 100%;
-    max-width: 700px;
-    height: 340px;
-    opacity: 0.95;
+    max-width: 720px;
+    height: 360px;
+    opacity: .95;
     z-index: 1;
+    filter: drop-shadow(0 18px 40px rgba(0,0,0,.25));
   }
   @media (max-width: 992px){
-    .hero::before { content: none !important; display: none !important; }
+    .hero{ display:none; } /* like Facebook/Airbnb: mobile focuses on form */
+    .hero::before{ content:none !important; }
   }
 
   .brand-row{
-    display:flex; align-items:center; gap:12px; margin-bottom: 10px;
+    display:flex; align-items:center; gap:12px;
+    margin-bottom: 10px;
   }
-  .brand-row img.logo{ height: 44px; width:auto; display:block; }
+  .brand-row img.logo{ height: 44px; width:auto; display:block; border-radius: 12px; }
   .brand-row .name{
-    font-weight:900; letter-spacing:.3px; font-size: clamp(22px, 3.2vw, 34px);
+    font-weight: 950;
+    letter-spacing:.3px;
+    font-size: clamp(22px, 3.2vw, 36px);
     background: linear-gradient(135deg,#6ee7f9,#7c5cff);
     -webkit-background-clip:text; background-clip:text; color: transparent;
   }
-
   .badge-soft{
     display:inline-flex; align-items:center; gap:8px;
     background: rgba(255,255,255,.06);
-    border: 1px solid var(--border); color: var(--text);
-    border-radius: 999px; padding: .25rem .6rem; font-weight:700; font-size:.85rem;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 999px;
+    padding: .28rem .65rem;
+    font-weight: 800;
+    font-size: .86rem;
   }
   .hero h1{
-    font-weight:900; line-height:1.35;
-    font-size: clamp(24px, 3.6vw, 42px);
-    margin: 6px 0 10px;
+    font-weight: 950;
+    line-height: 1.25;
+    font-size: clamp(26px, 3.8vw, 44px);
+    margin: 12px 0 10px;
   }
-  .hero p{ color: var(--muted); font-size: clamp(14px, 1.4vw, 16px); }
+  .hero p{
+    color: var(--muted);
+    font-size: clamp(14px, 1.4vw, 16px);
+    max-width: 640px;
+  }
 
+  /* =========================
+     FORM COLUMN (Left)
+     ========================= */
   .reg-col{
     display:flex; align-items:center; justify-content:center;
-    padding: clamp(14px, 4vw, 32px);
-    background: linear-gradient(180deg, color-mix(in oklab, var(--panel) 92%, transparent),
-                                        color-mix(in oklab, var(--panel) 84%, transparent));
+    padding: clamp(14px, 4vw, 34px);
+    background: linear-gradient(180deg,
+      color-mix(in oklab, var(--panel) 92%, transparent),
+      color-mix(in oklab, var(--panel) 84%, transparent)
+    );
     border-inline-end: 1px solid var(--border);
   }
-  .card-reg{
-    width:100%; max-width: 640px;
-    background: linear-gradient(180deg, color-mix(in oklab, var(--card) 96%, transparent),
-                                        color-mix(in oklab, var(--card) 88%, transparent));
-    border:1px solid var(--border);
-    border-radius: 18px; box-shadow: var(--shadow);
-    padding: 18px 18px 20px;
-  }
-  .card-reg .head{
-    display:flex; align-items:center; justify-content:space-between;
-    margin-bottom: 12px;
-  }
-  .head .title{ font-weight:900; opacity:.95; font-size: 1.1rem; }
-  .head .secure{
-    display:inline-flex; align-items:center; gap:6px;
-    padding:.25rem .55rem; border-radius:999px;
-    background: rgba(76,175,80,.12);
-    border: 1px solid rgba(76,175,80,.35);
-    color:#b5f1c7; font-weight:700; font-size:.82rem;
+  @media (max-width: 992px){
+    .reg-col{
+      min-height: 100dvh;
+      border-inline-end: none;
+      padding: 18px 14px;
+    }
   }
 
-  /* ✅ Wizard UI */
-  .wizard-top{
-    margin: 8px 0 14px;
+  /* =========================
+     CARD (Airbnb/Facebook feel)
+     ========================= */
+  .card-reg{
+    width:100%;
+    max-width: 560px;
+    background: linear-gradient(180deg,
+      color-mix(in oklab, var(--card) 96%, transparent),
+      color-mix(in oklab, var(--card) 90%, transparent)
+    );
+    border: 1px solid color-mix(in oklab, var(--border) 92%, transparent);
+    border-radius: 22px;
+    box-shadow:
+      0 20px 60px rgba(0,0,0,.18),
+      0 1px 0 rgba(255,255,255,.05) inset;
+    padding: 18px 18px 20px;
+    backdrop-filter: blur(14px);
   }
+  @media (max-width: 992px){
+    .card-reg{
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 16px 14px 16px;
+      border-radius: 18px;
+      box-shadow: 0 18px 55px rgba(0,0,0,.16);
+    }
+  }
+
+  .card-reg .head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .head .title{
+    font-weight: 950;
+    opacity: .96;
+    font-size: 1.18rem;
+    letter-spacing: .2px;
+  }
+  .head .secure{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding: .28rem .6rem;
+    border-radius: 999px;
+    background: rgba(34,197,94,.10);
+    border: 1px solid rgba(34,197,94,.22);
+    color: #c9fddc;
+    font-weight: 850;
+    font-size: .82rem;
+    white-space: nowrap;
+  }
+
+  /* =========================
+     WIZARD (Stepper + Progress)
+     ========================= */
+  .wizard-top{ margin: 8px 0 16px; }
+
   .wizard-steps{
-    display:flex; gap:10px; align-items:center; justify-content:space-between;
+    display:flex;
+    gap: 10px;
+    align-items: stretch;
     margin-bottom: 10px;
   }
   .w-step{
     flex:1;
-    display:flex; align-items:center; gap:10px;
-    padding: 10px 12px;
-    border-radius: 14px;
-    border: 1px solid var(--border);
-    background: rgba(255,255,255,.04);
-    opacity:.55;
-    transition:.25s;
+    border-radius: 16px;
+    padding: 12px 12px;
+    border: 1px solid color-mix(in oklab, var(--border) 90%, transparent);
+    background: color-mix(in oklab, var(--panel) 88%, transparent);
+    opacity: .55;
+    transition: opacity .2s ease, transform .2s ease, border-color .2s ease, background .2s ease;
+    cursor: default;
+    user-select:none;
   }
   .w-step .num{
-    width:30px; height:30px; border-radius:12px;
+    width: 34px; height: 34px;
+    border-radius: 12px;
     display:grid; place-items:center;
-    font-weight:900;
-    border:1px solid var(--border);
+    font-weight: 950;
     background: rgba(255,255,255,.06);
+    border: 1px solid var(--border);
   }
-  .w-step .txt{
-    line-height:1.1;
-  }
-  .w-step .txt b{ display:block; font-size:.92rem; }
-  .w-step .txt span{ display:block; font-size:.78rem; color: var(--muted); }
+  .w-step .txt{ line-height:1.08; }
+  .w-step .txt b{ display:block; font-size: .95rem; letter-spacing:.2px; }
+  .w-step .txt span{ display:block; font-size: .80rem; color: var(--muted); }
   .w-step.active{
     opacity:1;
-    background: color-mix(in oklab, rgba(124,92,255,.16) 65%, transparent);
+    transform: translateY(-1px);
     border-color: color-mix(in oklab, var(--primary) 55%, var(--border));
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, rgba(124,92,255,.14) 70%, transparent),
+      color-mix(in oklab, var(--panel) 86%, transparent)
+    );
   }
-  .w-step.done{ opacity:.9; }
+  .w-step.done{ opacity:.85; }
+
   .wizard-bar{
     height: 10px;
     border-radius: 999px;
@@ -136,82 +218,142 @@
     border: 1px solid var(--border);
     overflow:hidden;
   }
-  .wizard-bar > div{
+  #wizardBar{
     height: 100%;
     width: 0%;
+    border-radius: 999px;
     background: linear-gradient(135deg, var(--primary), var(--primary-2));
-    transition: .25s;
+    box-shadow: 0 10px 28px rgba(124,92,255,.22);
+    transition: width .25s ease;
   }
 
-  .step-panel{ display:none; }
+  /* Panels transition */
+  .step-panel{ display:none; animation: fadeSlide .22s ease both; }
   .step-panel.active{ display:block; }
+  @keyframes fadeSlide{
+    from{ opacity:0; transform: translateY(8px); }
+    to{ opacity:1; transform: translateY(0); }
+  }
 
+  /* =========================
+     FORM CONTROLS (Facebook clean)
+     ========================= */
   .grid-2{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   @media (max-width: 640px){ .grid-2{ grid-template-columns: 1fr; } }
 
-  .form-label{ font-weight:800; }
+  .form-label{ font-weight: 850; letter-spacing:.15px; }
+
   .form-control, .form-select{
-    height: 48px; border-radius: 14px;
+    height: 50px;
+    border-radius: 14px;
     background: color-mix(in oklab, var(--panel) 92%, transparent);
-    border:1px solid var(--border); color: var(--text);
+    border: 1px solid color-mix(in oklab, var(--border) 92%, transparent);
+    color: var(--text);
+  }
+  .form-control::placeholder{
+    color: color-mix(in oklab, var(--muted) 70%, transparent);
   }
   .form-control:focus, .form-select:focus{
-    box-shadow:0 0 0 4px var(--ring);
-    border-color: color-mix(in oklab, var(--primary) 60%, var(--border));
+    outline:none;
+    box-shadow: 0 0 0 4px rgba(124,92,255,.14);
+    border-color: color-mix(in oklab, var(--primary) 55%, var(--border));
   }
-  .form-text{ color: var(--muted) !important; }
+  .form-text{ color: var(--muted) !important; margin-top: 8px; line-height: 1.35; }
 
+  /* Password */
   .pw-wrap{ position: relative; }
   .pw-input{ padding-inline-end: 44px !important; }
   .pw-toggle{
-    position:absolute; inset-inline-end: 8px; top: 50%;
+    position:absolute;
+    inset-inline-end: 8px;
+    top: 50%;
     transform: translateY(-50%);
-    width: 34px; height: 34px; border-radius: 12px;
-    display:grid; place-items:center; border:1px solid var(--border);
-    background: rgba(255,255,255,.06); cursor:pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display:grid;
+    place-items:center;
+    border:1px solid var(--border);
+    background: rgba(255,255,255,.06);
+    cursor:pointer;
+    transition:.15s;
   }
-  .pw-toggle:hover{ filter:brightness(1.04); }
+  .pw-toggle:hover{ filter: brightness(1.06); }
 
-  .file-row{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  /* File rows */
+  .file-row{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   @media (max-width: 640px){ .file-row{ grid-template-columns: 1fr; } }
 
-  .btn{ border-radius: 12px; }
-  .btn-primary{
-    background: linear-gradient(135deg, var(--primary), var(--primary-2));
-    border:0; box-shadow:0 12px 28px rgba(124,92,255,.28);
-  }
-  .btn-success{ background:#22c55e; border:0; }
-  .muted{ color: var(--muted); }
-
-  .acc-type{
-    display:flex; gap:10px; flex-wrap:wrap;
-  }
+  /* =========================
+     Account type cards (Airbnb-ish)
+     ========================= */
+  .acc-type{ display:flex; gap:10px; flex-wrap:wrap; }
   .acc-opt{
     flex:1;
-    min-width: 220px;
-    display:flex; align-items:center; gap:10px;
+    min-width: 230px;
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
     padding: 12px 14px;
-    border:1px solid var(--border);
-    border-radius: 14px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
     background: color-mix(in oklab, var(--panel) 92%, transparent);
     cursor:pointer;
     user-select:none;
+    transition: transform .15s ease, border-color .15s ease, background .15s ease;
   }
-  .acc-opt input{ transform: scale(1.1); }
+  .acc-opt:hover{
+    transform: translateY(-1px);
+    border-color: color-mix(in oklab, var(--primary) 35%, var(--border));
+    background: color-mix(in oklab, rgba(124,92,255,.08) 55%, transparent);
+  }
+  .acc-opt input{ transform: scale(1.08); margin-top: 2px; }
 
-  /* ✅ Wizard nav buttons */
-  .wiz-actions{
-    display:flex; gap:10px; align-items:center;
-    margin-top: 16px;
+  /* =========================
+     Buttons
+     ========================= */
+  .btn{ border-radius: 14px; }
+
+  .btn-primary{
+    background: linear-gradient(135deg, var(--primary), var(--primary-2));
+    border: 0;
+    box-shadow: 0 14px 30px rgba(124,92,255,.22);
+    padding: 12px 16px;
   }
-  .wiz-actions .spacer{ flex:1; }
+  .btn-primary:active{ transform: translateY(1px); }
+
+  .btn-success{ background:#22c55e; border:0; }
+
   .btn-ghost{
     background: rgba(255,255,255,.06);
     border: 1px solid var(--border);
     color: var(--text);
+    padding: 12px 14px;
   }
   .btn-ghost:hover{ filter: brightness(1.06); }
 
+  .wiz-actions{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    margin-top: 18px;
+  }
+  .wiz-actions .spacer{ flex:1; }
+
+  /* Submit */
+  .btn.btn-primary.w-100{
+    height: 52px;
+    font-size: 1rem;
+    font-weight: 900;
+  }
+
+  .muted{ color: var(--muted); }
+
+  /* Mobile polish */
+  @media (max-width: 420px){
+    .w-step .txt span{ display:none; }
+    .w-step{ padding: 10px; }
+  }
 </style>
 {% endblock %}
 
@@ -243,21 +385,20 @@
           <div class="txt"><b>Verification</b><span>Document</span></div>
         </div>
       </div>
-
       <div class="wizard-bar"><div id="wizardBar"></div></div>
     </div>
 
     <form method="post" action="/register" enctype="multipart/form-data" id="signupForm">
-      <!-- ✅ STEP 1 -->
+      <!-- STEP 1 -->
       <div class="step-panel active" data-step="0">
         <div class="grid-2">
           <div>
             <label class="form-label">First Name</label>
-            <input type="text" name="first_name" class="form-control" required>
+            <input type="text" name="first_name" class="form-control" placeholder="Your first name" required>
           </div>
           <div>
             <label class="form-label">Last Name</label>
-            <input type="text" name="last_name" class="form-control" required>
+            <input type="text" name="last_name" class="form-control" placeholder="Your last name" required>
           </div>
         </div>
 
@@ -267,18 +408,18 @@
         </div>
       </div>
 
-      <!-- ✅ STEP 2 -->
+      <!-- STEP 2 -->
       <div class="step-panel" data-step="1">
         <div class="grid-2">
           <div>
             <label class="form-label">Email</label>
-            <input type="email" name="email" class="form-control" required>
+            <input type="email" name="email" class="form-control" placeholder="name@example.com" required>
           </div>
         </div>
 
         <div class="mt-3">
           <label class="form-label">Phone Number</label>
-          <input type="text" name="phone" class="form-control" required>
+          <input type="text" name="phone" class="form-control" placeholder="+1 514 ..." required>
         </div>
 
         <div class="mt-3">
@@ -287,7 +428,7 @@
             <label class="acc-opt">
               <input type="radio" name="account_type" value="individual" checked>
               <div>
-                <div style="font-weight:900;">👤 Compte Individuel</div>
+                <div style="font-weight:950;">👤 Compte Individuel</div>
                 <div class="form-text">Pour un usage personnel.</div>
               </div>
             </label>
@@ -295,7 +436,7 @@
             <label class="acc-opt">
               <input type="radio" name="account_type" value="company">
               <div>
-                <div style="font-weight:900;">🏢 Compte Entreprise</div>
+                <div style="font-weight:950;">🏢 Compte Entreprise</div>
                 <div class="form-text">Pour magasin / société.</div>
               </div>
             </label>
@@ -316,13 +457,13 @@
         </div>
       </div>
 
-      <!-- ✅ STEP 3 -->
+      <!-- STEP 3 -->
       <div class="step-panel" data-step="2">
         <div>
           <label class="form-label">Password</label>
           <div class="pw-wrap">
             <button type="button" class="pw-toggle" id="pwToggle"><i class="bi bi-eye-slash"></i></button>
-            <input type="password" name="password" class="form-control pw-input" id="pwInput" required>
+            <input type="password" name="password" class="form-control pw-input" id="pwInput" placeholder="Create a strong password" required>
           </div>
           <div class="form-text">Passwords are encrypted, and two-step verification helps prevent misuse.</div>
         </div>
@@ -356,7 +497,7 @@
         </div>
       </div>
 
-      <!-- ✅ STEP 4 -->
+      <!-- STEP 4 -->
       <div class="step-panel" data-step="3">
         <div class="mt-1">
           <label class="form-label">Document Type</label>
@@ -370,7 +511,7 @@
         <div class="grid-2 mt-3">
           <div>
             <label class="form-label">Issuing Country</label>
-            <input type="text" name="doc_country" class="form-control" required>
+            <input type="text" name="doc_country" class="form-control" placeholder="Canada" required>
           </div>
         </div>
 
@@ -389,7 +530,6 @@
         <div class="wiz-actions">
           <button type="button" class="btn btn-ghost" data-back><i class="bi bi-arrow-left"></i> Back</button>
           <div class="spacer"></div>
-          <!-- submit button already موجود فوق -->
         </div>
       </div>
     </form>
@@ -415,9 +555,7 @@
 
 <script>
 (function(){
-  // -------------------------
-  // Wizard (Steps)
-  // -------------------------
+  // Wizard
   const form = document.getElementById('signupForm');
   const panels = Array.from(document.querySelectorAll('.step-panel'));
   const stepNodes = Array.from(document.querySelectorAll('.w-step'));
@@ -431,6 +569,7 @@
     stepNodes.forEach((s, idx)=>{
       s.classList.toggle('active', idx === i);
       s.classList.toggle('done', idx < i);
+      s.style.cursor = (idx <= i) ? 'pointer' : 'default';
     });
 
     const pct = Math.round((i) / (panels.length - 1) * 100);
@@ -440,24 +579,17 @@
 
   function validatePanel(i){
     const scope = panels[i];
-
-    // validate normal inputs/selects inside current step
     const fields = Array.from(scope.querySelectorAll('input, select, textarea'));
 
     for (const el of fields){
-      // skip hidden file input avatar (handled separately)
       if (el.id === 'avatarInput') continue;
-
-      // if company proof hidden, skip (required toggled)
       if (el.id === 'companyProofInput' && document.getElementById('companyProofBox')?.style.display === 'none') continue;
-
       if (!el.checkValidity()){
         el.reportValidity();
         return false;
       }
     }
 
-    // Step 3: require camera avatar before leaving this step
     if (i === 2){
       const avatarInput = document.getElementById('avatarInput');
       if (!avatarInput || !avatarInput.files || avatarInput.files.length === 0){
@@ -466,7 +598,6 @@
       }
     }
 
-    // Step 2: if company -> require company proof before leaving
     if (i === 1){
       const type = document.querySelector('input[name="account_type"]:checked')?.value || 'individual';
       const companyProofInput = document.getElementById('companyProofInput');
@@ -496,7 +627,6 @@
     });
   });
 
-  // Optional: clicking step (only back/visited)
   stepNodes.forEach((node, idx)=>{
     node.addEventListener('click', ()=>{
       if (idx <= current) {
@@ -508,9 +638,7 @@
 
   setWizardUI(current);
 
-  // -------------------------
   // Password show/hide
-  // -------------------------
   const pwToggle = document.getElementById('pwToggle');
   const pwInput  = document.getElementById('pwInput');
   pwToggle?.addEventListener('click', () => {
@@ -519,9 +647,7 @@
     pwToggle.innerHTML = isPass ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
   });
 
-  // -------------------------
   // Account type -> company proof toggle
-  // -------------------------
   const companyProofBox   = document.getElementById('companyProofBox');
   const companyProofInput = document.getElementById('companyProofInput');
   const accRadios = document.querySelectorAll('input[name="account_type"]');
@@ -536,9 +662,7 @@
   accRadios.forEach(r => r.addEventListener('change', syncCompanyProof));
   syncCompanyProof();
 
-  // -------------------------
-  // Camera (unchanged logic)
-  // -------------------------
+  // Camera elements (unchanged)
   const openCamBtn   = document.getElementById('openCamBtn');
   const snapBtn      = document.getElementById('snapBtn');
   const usePhotoBtn  = document.getElementById('usePhotoBtn');
@@ -614,14 +738,11 @@
   }
 
   form?.addEventListener('submit', (e)=>{
-    // Require camera avatar
     if (!avatarInput.files || avatarInput.files.length === 0){
       e.preventDefault();
       alert('Please capture a photo with the camera before submitting.');
       return;
     }
-
-    // Require company proof only if company
     const type = document.querySelector('input[name="account_type"]:checked')?.value || 'individual';
     if (type === 'company') {
       if (!companyProofInput || !companyProofInput.files || companyProofInput.files.length === 0) {
