@@ -382,6 +382,36 @@
   .w-step .txt b{ font-size: .92rem; }
   .w-step .txt span{ font-size: .76rem; }
 }
+
+/* ✅ FIX نهائي: 4 خطوات في خط واحد بدون scroll */
+@media (max-width: 520px){
+
+  .wizard-steps{
+    display:flex;
+    gap:6px;
+  }
+
+  .w-step{
+    flex:1 1 0;
+    min-width:0;            /* مهم جداً لمنع القص */
+    padding:8px 6px;
+  }
+
+  .w-step .num{
+    width:28px;
+    height:28px;
+    font-size:13px;
+  }
+
+  .w-step .txt b{
+    font-size:12px;
+    white-space:nowrap;     /* يمنع النزول لسطر ثاني */
+  }
+
+  .w-step .txt span{
+    display:none;           /* نخفي السطر الصغير */
+  }
+}
 </style>
 {% endblock %}
 
