@@ -2,160 +2,195 @@
 
 {% block head %}
 <style>
-  /* Hide navbar/sidebar on login page + full screen layout */
+  /* hide navbar/sidebar */
   .topbar, .sidebar, .mobile-tabbar { display:none !important; }
+
+  /* full screen center like Facebook */
   .page{
     margin:0 !important; padding:0 !important;
     min-height: 100dvh; min-height: 100svh;
-    display:grid; grid-template-columns: 520px 1fr;
-    background:
-      radial-gradient(1200px 900px at 15% -10%, rgba(124,92,255,.14), transparent 45%),
-      radial-gradient(900px 700px at 110% 110%, rgba(0,229,168,.08), transparent 40%),
-      var(--bg);
-  }
-  @media (max-width: 980px){
-    .page{ grid-template-columns: 1fr; }
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: #f0f2f5; /* facebook background */
   }
 
-  /* Left column (login card) */
-  .login-col{
-    display:flex; align-items:center; justify-content:center;
-    padding: clamp(16px, 4vw, 36px);
-    background: linear-gradient(180deg, color-mix(in oklab, var(--panel) 92%, transparent),
-                                        color-mix(in oklab, var(--panel) 84%, transparent));
-    border-inline-end: 1px solid var(--border);
+  /* column wrapper */
+  .login-shell{
+    width: 100%;
+    max-width: 420px;
+    padding: 16px;
   }
+
+  /* logo top */
+  .sevor-logo{
+    display:flex;
+    justify-content:center;
+    margin-bottom: 14px;
+  }
+  .sevor-logo img{
+    height: 56px;
+    width:auto;
+    display:block;
+  }
+
+  /* card */
   .card-login{
-    width:100%; max-width: 460px;
-    background: linear-gradient(180deg, color-mix(in oklab, var(--card) 96%, transparent),
-                                        color-mix(in oklab, var(--card) 88%, transparent));
-    border:1px solid var(--border);
-    border-radius: 18px; box-shadow: var(--shadow);
-    padding: 18px 18px 20px;
+    width:100%;
+    background:#fff;
+    border: 1px solid #dddfe2;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.08);
+    padding: 16px;
   }
+
+  /* titles */
   .card-login .head{
-    display:flex; align-items:center; justify-content:space-between;
-    margin-bottom: 10px;
+    display:none; /* facebook page has no "Login" title inside */
   }
-  .head .title{ font-weight:800; opacity:.9 }
 
-  /* Password field with eye toggle */
-  .pw-wrap{ position: relative; }
-  .pw-input{
-    padding-inline-end: 44px !important;  /* Reserve space for the toggle on the right */
-  }
-  .pw-toggle{
-    position:absolute; inset-inline-end: 8px; top: 50%;
-    transform: translateY(-50%);
-    width: 36px; height: 36px; border-radius: 12px;
-    border:1px solid var(--border);
-    display:grid; place-items:center;
-    background: rgba(255,255,255,.06);
-    cursor:pointer;
-  }
-  .pw-toggle i{ font-size: 18px; opacity:.9 }
-
-  /* Buttons */
-  .btn-primary{
-    background: linear-gradient(135deg, var(--primary), var(--primary-2));
-    border:0; box-shadow:0 12px 28px rgba(124,92,255,.28);
-  }
-  .btn-success{ box-shadow:0 12px 28px rgba(34,197,94,.25); }
-
-  /* Input fields */
+  /* inputs */
+  .form-label{ display:none; } /* keep clean like facebook */
   .form-control{
-    height: 48px; border-radius: 14px;
-    background: color-mix(in oklab, var(--panel) 92%, transparent);
-    border:1px solid var(--border); color: var(--text);
+    height: 46px;
+    border-radius: 6px;
+    border: 1px solid #dddfe2;
+    background:#fff;
+    color:#1c1e21;
+    font-size: 15px;
+    padding: 10px 12px;
   }
   .form-control:focus{
-    box-shadow:0 0 0 4px var(--ring);
-    border-color: color-mix(in oklab, var(--primary) 60%, var(--border));
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(24,119,242,.2);
+    border-color: #1877f2;
+  }
+  .mb-3{ margin-bottom: 12px !important; }
+  .mb-2{ margin-bottom: 10px !important; }
+
+  /* password eye inside (keep yours but facebook-ish) */
+  .pw-wrap{ position: relative; }
+  .pw-input{ padding-inline-end: 44px !important; }
+  .pw-toggle{
+    position:absolute; inset-inline-end: 8px; top:50%;
+    transform: translateY(-50%);
+    width: 36px; height: 36px;
+    border-radius: 999px;
+    border: 0;
+    background: transparent;
+    display:grid; place-items:center;
+    cursor:pointer;
+    color:#606770;
   }
 
-  /* Right column (hero) */
-  .hero{
-    display:flex; align-items:center; justify-content:center;
-    padding: clamp(24px, 6vw, 80px);
+  /* buttons */
+  .btn{
+    height: 48px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 16px;
   }
-  .hero-inner{ max-width: 780px; width:100%; text-align:left; }
-  .brand-row{
-    display:flex; align-items:center; gap:12px; margin-bottom: 18px;
+
+  .btn-primary{
+    background: #1877f2;
+    border: 0;
+    box-shadow: none;
   }
-  .brand-row img.logo{ height: 44px; width:auto; display:block; }
-  .brand-row .name{
-    font-weight:900; letter-spacing:.3px; font-size: clamp(22px, 3.2vw, 34px);
-    background: linear-gradient(135deg,#6ee7f9,#7c5cff);
-    -webkit-background-clip:text; background-clip:text; color: transparent;
+  .btn-primary:hover{ background:#166fe5; }
+
+  .btn-success{
+    background: #42b72a;
+    border: 0;
+    box-shadow: none;
   }
-  .hero h1{
-    font-weight:900; line-height:1.35;
-    font-size: clamp(26px, 3.8vw, 44px);
-    margin: 6px 0 12px;
+  .btn-success:hover{ background:#36a420; }
+
+  /* forgot link */
+  .forgot-wrap{
+    text-align:center;
+    margin-top: 8px;
+    margin-bottom: 10px;
   }
-  .hero p{
-    color: var(--muted); font-size: clamp(14px, 1.4vw, 16px);
+  .forgot-wrap a{
+    color:#1877f2;
+    text-decoration:none;
+    font-size: 14px;
   }
+  .forgot-wrap a:hover{ text-decoration: underline; }
+
+  /* divider like facebook */
+  .divider{
+    height:1px;
+    background:#dadde1;
+    margin: 12px 0;
+  }
+
+  /* hide your "encrypted ..." text to keep FB simple */
+  .login-hint{ display:none; }
+
+  /* footer */
+  .card-footer{
+    text-align:center;
+    color:#8a8d91;
+    font-size: 12px;
+    margin-top: 10px;
+  }
+
+  /* remove right hero completely */
+  .hero{ display:none !important; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="login-col">
+
+<div class="login-shell">
+  <div class="sevor-logo">
+    <img src="{{ url_for('static', path='images/ok.png') }}" alt="SEVOR">
+  </div>
+
   <div class="card-login">
     <div class="head">
       <div class="title">Login</div>
     </div>
 
-    <!-- ✅ IMPORTANT: removed novalidate to avoid 422 black page -->
     <form id="loginForm" method="post" action="/login">
       <div class="mb-3">
         <label class="form-label">Email</label>
-        <!-- ✅ added id="email" -->
-        <input id="email" type="email" class="form-control" name="email" placeholder="name@example.com" required>
+        <input id="email" type="email" class="form-control" name="email"
+               placeholder="Numéro mobile ou e-mail" required>
       </div>
 
       <div class="mb-2 pw-wrap">
         <label class="form-label">Password</label>
-        <input id="pw" type="password" class="form-control pw-input" name="password" required>
+        <input id="pw" type="password" class="form-control pw-input" name="password"
+               placeholder="Mot de passe" required>
         <button class="pw-toggle" type="button" aria-label="Show/Hide Password">
           <i class="bi bi-eye-slash"></i>
         </button>
       </div>
 
-      <div class="text-muted small mb-3">
+      <div class="text-muted small mb-3 login-hint">
         Passwords are encrypted, and two-step verification is used to secure your account.
       </div>
 
-      <!-- ✅ Custom error box (shows instead of black page) -->
       <div id="loginErr" class="alert alert-danger mt-3 mb-2 d-none"></div>
 
-      <button type="submit" class="btn btn-primary w-100 mb-2">Login</button>
-      <a href="/register" class="btn btn-success w-100">Create New Account</a>
+      <button type="submit" class="btn btn-primary w-100 mb-2">Se connecter</button>
 
-      <div class="text-center mt-2">
-        <a href="/forgot" class="text-muted">Forgot Password?</a>
+      <div class="forgot-wrap">
+        <a href="/forgot">Mot de passe oublié ?</a>
       </div>
+
+      <div class="divider"></div>
+
+      <a href="/register" class="btn btn-success w-100">Créer un compte</a>
 
       {% if request.query_params.get('err') %}
         <div class="alert alert-danger mt-3 mb-0">Incorrect email or password.</div>
       {% endif %}
     </form>
 
-    <div class="small text-center text-muted mt-3">©️ SEVOR — All rights reserved</div>
-  </div>
-</div>
-
-<div class="hero">
-  <div class="hero-inner">
-    <div class="brand-row">
-      <img class="logo" src="{{ url_for('static', path='images/ok.png') }}" alt="SEVOR">
-      <div class="name">SEVOR</div>
-    </div>
-
-    <h1>Stay connected with the things you need in your everyday life.</h1>
-    <p>
-      Rent what you need easily and safely — manage your chats, payments, and notifications all in one place.
-    </p>
+    <div class="card-footer">© SEVOR — All rights reserved</div>
   </div>
 </div>
 
@@ -173,7 +208,7 @@
     });
   })();
 
-  // ✅ Custom validation to avoid FastAPI 422 "black page"
+  // Custom validation to avoid FastAPI 422
   (function(){
     const form = document.getElementById('loginForm');
     const email = document.getElementById('email');
@@ -191,7 +226,6 @@
       errBox.classList.add('d-none');
     }
 
-    // Hide error while typing
     email.addEventListener('input', hideErr);
     pw.addEventListener('input', hideErr);
 
@@ -201,20 +235,21 @@
 
       if(!em && !p){
         e.preventDefault();
-        showErr('Please enter your email and password.');
+        showErr('Veuillez saisir votre e-mail et votre mot de passe.');
         return;
       }
       if(!em){
         e.preventDefault();
-        showErr('Please enter your email.');
+        showErr('Veuillez saisir votre e-mail.');
         return;
       }
       if(!p){
         e.preventDefault();
-        showErr('Please enter your password.');
+        showErr('Veuillez saisir votre mot de passe.');
         return;
       }
     });
   })();
 </script>
+
 {% endblock %}
