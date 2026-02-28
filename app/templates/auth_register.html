@@ -5,7 +5,23 @@
   .topbar, .sidebar, .mobile-tabbar { display:none !important; }
 
   /* =========================
-     LAYOUT (Desktop / Mobile)
+     SEVOR LUXURY SIMPLE THEME
+     Airbnb/Facebook feel
+     ========================= */
+  :root{
+    --sv-primary: #7c5cff;     /* Sevor purple */
+    --sv-primary2:#2f6bff;     /* Sevor blue */
+    --sv-text:    #0b1220;
+    --sv-muted:   #5b667a;
+    --sv-line:    rgba(15,23,42,.14);
+    --sv-soft:    rgba(124,92,255,.08);
+    --sv-bg:      #f7f8fb;
+    --sv-card:    #ffffff;
+    --sv-shadow:  0 22px 60px rgba(2,6,23,.12);
+  }
+
+  /* =========================
+     PAGE LAYOUT (Desktop / Mobile)
      ========================= */
   .page{
     margin:0 !important; padding:0 !important;
@@ -13,9 +29,9 @@
     display:grid;
     grid-template-columns: 560px 1fr;
     background:
-      radial-gradient(1200px 900px at 10% -10%, rgba(124,92,255,.16), transparent 45%),
-      radial-gradient(900px 700px at 110% 110%, rgba(0,229,168,.10), transparent 40%),
-      var(--bg);
+      radial-gradient(900px 700px at 18% 0%, rgba(124,92,255,.16), transparent 55%),
+      radial-gradient(900px 700px at 100% 100%, rgba(47,107,255,.14), transparent 55%),
+      var(--sv-bg) !important;
   }
   @media (max-width: 1100px){
     .page{ grid-template-columns: 1fr; }
@@ -50,10 +66,12 @@
     height: 360px;
     opacity: .95;
     z-index: 1;
-    filter: drop-shadow(0 18px 40px rgba(0,0,0,.25));
+    filter: drop-shadow(0 18px 40px rgba(0,0,0,.20));
   }
+
+  /* mobile: hide hero (like app screens) */
   @media (max-width: 992px){
-    .hero{ display:none; } /* like Facebook/Airbnb: mobile focuses on form */
+    .hero{ display:none !important; }
     .hero::before{ content:none !important; }
   }
 
@@ -61,32 +79,38 @@
     display:flex; align-items:center; gap:12px;
     margin-bottom: 10px;
   }
-  .brand-row img.logo{ height: 44px; width:auto; display:block; border-radius: 12px; }
+  .brand-row img.logo{
+    height: 44px; width:auto; display:block;
+    border-radius: 12px;
+  }
   .brand-row .name{
     font-weight: 950;
     letter-spacing:.3px;
     font-size: clamp(22px, 3.2vw, 36px);
-    background: linear-gradient(135deg,#6ee7f9,#7c5cff);
+    background: linear-gradient(135deg, #6ee7f9, var(--sv-primary));
     -webkit-background-clip:text; background-clip:text; color: transparent;
   }
+
   .badge-soft{
     display:inline-flex; align-items:center; gap:8px;
-    background: rgba(255,255,255,.06);
-    border: 1px solid var(--border);
-    color: var(--text);
+    background: rgba(255,255,255,.55);
+    border: 1px solid rgba(2,6,23,.08);
+    color: rgba(2,6,23,.70);
     border-radius: 999px;
     padding: .28rem .65rem;
-    font-weight: 800;
+    font-weight: 850;
     font-size: .86rem;
+    backdrop-filter: blur(10px);
   }
   .hero h1{
     font-weight: 950;
-    line-height: 1.25;
+    line-height: 1.2;
     font-size: clamp(26px, 3.8vw, 44px);
     margin: 12px 0 10px;
+    color: var(--sv-text);
   }
   .hero p{
-    color: var(--muted);
+    color: var(--sv-muted);
     font-size: clamp(14px, 1.4vw, 16px);
     max-width: 640px;
   }
@@ -96,80 +120,79 @@
      ========================= */
   .reg-col{
     display:flex; align-items:center; justify-content:center;
-    padding: clamp(14px, 4vw, 34px);
-    background: linear-gradient(180deg,
-      color-mix(in oklab, var(--panel) 92%, transparent),
-      color-mix(in oklab, var(--panel) 84%, transparent)
-    );
-    border-inline-end: 1px solid var(--border);
+    padding: 26px 18px;
+    background: transparent !important;
+    border-inline-end: 0 !important;
   }
   @media (max-width: 992px){
     .reg-col{
       min-height: 100dvh;
-      border-inline-end: none;
       padding: 18px 14px;
     }
   }
 
   /* =========================
-     CARD (Airbnb/Facebook feel)
+     CARD (Luxury simple like Airbnb)
      ========================= */
   .card-reg{
     width:100%;
-    max-width: 560px;
-    background: linear-gradient(180deg,
-      color-mix(in oklab, var(--card) 96%, transparent),
-      color-mix(in oklab, var(--card) 90%, transparent)
-    );
-    border: 1px solid color-mix(in oklab, var(--border) 92%, transparent);
-    border-radius: 22px;
-    box-shadow:
-      0 20px 60px rgba(0,0,0,.18),
-      0 1px 0 rgba(255,255,255,.05) inset;
-    padding: 18px 18px 20px;
-    backdrop-filter: blur(14px);
+    max-width: 520px;
+    background: var(--sv-card) !important;
+    border: 1px solid rgba(2,6,23,.06) !important;
+    border-radius: 26px !important;
+    box-shadow: var(--sv-shadow) !important;
+    padding: 26px 22px 22px !important;
   }
   @media (max-width: 992px){
     .card-reg{
       max-width: 520px;
       margin: 0 auto;
-      padding: 16px 14px 16px;
-      border-radius: 18px;
-      box-shadow: 0 18px 55px rgba(0,0,0,.16);
+      padding: 22px 16px 18px !important;
+      border-radius: 22px !important;
+      box-shadow: 0 18px 55px rgba(0,0,0,.12) !important;
     }
   }
 
+  /* Head like the screenshot (big question style) */
   .card-reg .head{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap: 10px;
-    margin-bottom: 14px;
+    display:block !important;
+    margin-bottom: 12px !important;
   }
   .head .title{
-    font-weight: 950;
-    opacity: .96;
-    font-size: 1.18rem;
-    letter-spacing: .2px;
+    font-weight: 950 !important;
+    font-size: 40px !important;
+    line-height: 1.05 !important;
+    letter-spacing: -0.8px !important;
+    color: var(--sv-text) !important;
   }
+
+  /* Keep secure badge small and subtle (or hide it) */
   .head .secure{
-    display:inline-flex;
+    display:inline-flex !important;
+    margin-top: 12px;
     align-items:center;
     gap:6px;
-    padding: .28rem .6rem;
+    padding: .30rem .62rem;
     border-radius: 999px;
     background: rgba(34,197,94,.10);
     border: 1px solid rgba(34,197,94,.22);
-    color: #c9fddc;
-    font-weight: 850;
-    font-size: .82rem;
-    white-space: nowrap;
+    color: #1f8a52;
+    font-weight: 900;
+    font-size: .80rem;
+  }
+
+  /* subtitle under title (like Airbnb) */
+  .card-reg .sub{
+    color: var(--sv-muted);
+    font-size: 16px;
+    line-height: 1.45;
+    margin: 10px 0 16px;
   }
 
   /* =========================
-     WIZARD (Stepper + Progress)
+     WIZARD (Minimal, premium)
      ========================= */
-  .wizard-top{ margin: 8px 0 16px; }
+  .wizard-top{ margin: 10px 0 16px; }
 
   .wizard-steps{
     display:flex;
@@ -177,15 +200,15 @@
     align-items: stretch;
     margin-bottom: 10px;
   }
+
   .w-step{
     flex:1;
     border-radius: 16px;
-    padding: 12px 12px;
-    border: 1px solid color-mix(in oklab, var(--border) 90%, transparent);
-    background: color-mix(in oklab, var(--panel) 88%, transparent);
+    padding: 10px 10px;
+    border: 2px solid rgba(15,23,42,.10);
+    background: #fff;
     opacity: .55;
-    transition: opacity .2s ease, transform .2s ease, border-color .2s ease, background .2s ease;
-    cursor: default;
+    transition: opacity .18s ease, transform .18s ease, border-color .18s ease, box-shadow .18s ease;
     user-select:none;
   }
   .w-step .num{
@@ -193,99 +216,121 @@
     border-radius: 12px;
     display:grid; place-items:center;
     font-weight: 950;
-    background: rgba(255,255,255,.06);
-    border: 1px solid var(--border);
+    color: rgba(2,6,23,.55);
+    background: rgba(2,6,23,.04);
+    border: 1px solid rgba(2,6,23,.10);
   }
   .w-step .txt{ line-height:1.08; }
-  .w-step .txt b{ display:block; font-size: .95rem; letter-spacing:.2px; }
-  .w-step .txt span{ display:block; font-size: .80rem; color: var(--muted); }
+  .w-step .txt b{ display:block; font-size: .95rem; letter-spacing:.2px; color: rgba(2,6,23,.80); }
+  .w-step .txt span{ display:block; font-size: .80rem; color: rgba(2,6,23,.45); }
+
   .w-step.active{
     opacity:1;
     transform: translateY(-1px);
-    border-color: color-mix(in oklab, var(--primary) 55%, var(--border));
-    background: linear-gradient(
-      180deg,
-      color-mix(in oklab, rgba(124,92,255,.14) 70%, transparent),
-      color-mix(in oklab, var(--panel) 86%, transparent)
-    );
+    border-color: rgba(124,92,255,.35);
+    box-shadow: 0 14px 30px rgba(124,92,255,.10);
   }
-  .w-step.done{ opacity:.85; }
+  .w-step.active .num{
+    color: #fff;
+    background: linear-gradient(135deg, var(--sv-primary), var(--sv-primary2));
+    border: 0;
+  }
+  .w-step.done{
+    opacity:.85;
+    border-color: rgba(47,107,255,.18);
+  }
 
   .wizard-bar{
     height: 10px;
     border-radius: 999px;
-    background: rgba(255,255,255,.06);
-    border: 1px solid var(--border);
+    background: rgba(2,6,23,.06);
     overflow:hidden;
   }
   #wizardBar{
     height: 100%;
     width: 0%;
     border-radius: 999px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-2));
-    box-shadow: 0 10px 28px rgba(124,92,255,.22);
-    transition: width .25s ease;
+    background: linear-gradient(135deg, var(--sv-primary), var(--sv-primary2));
+    box-shadow: 0 10px 28px rgba(47,107,255,.18);
+    transition: width .22s ease;
   }
 
   /* Panels transition */
-  .step-panel{ display:none; animation: fadeSlide .22s ease both; }
+  .step-panel{ display:none; animation: fadeSlide .20s ease both; }
   .step-panel.active{ display:block; }
   @keyframes fadeSlide{
-    from{ opacity:0; transform: translateY(8px); }
+    from{ opacity:0; transform: translateY(10px); }
     to{ opacity:1; transform: translateY(0); }
   }
 
   /* =========================
-     FORM CONTROLS (Facebook clean)
+     FORM CONTROLS (Like the screenshot)
      ========================= */
-  .grid-2{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-2{ display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 640px){ .grid-2{ grid-template-columns: 1fr; } }
 
-  .form-label{ font-weight: 850; letter-spacing:.15px; }
+  .form-label{
+    font-weight: 850;
+    color: rgba(2,6,23,.55);
+    font-size: 13px;
+    letter-spacing: .2px;
+    margin-bottom: 8px;
+  }
 
   .form-control, .form-select{
-    height: 50px;
-    border-radius: 14px;
-    background: color-mix(in oklab, var(--panel) 92%, transparent);
-    border: 1px solid color-mix(in oklab, var(--border) 92%, transparent);
-    color: var(--text);
+    height: 56px !important;
+    border-radius: 16px !important;
+    border: 2px solid rgba(15,23,42,.12) !important;
+    background: #fff !important;
+    color: var(--sv-text) !important;
+    font-size: 16px !important;
+    padding: 0 16px !important;
+    transition: border-color .18s ease, box-shadow .18s ease;
   }
+
   .form-control::placeholder{
-    color: color-mix(in oklab, var(--muted) 70%, transparent);
+    color: rgba(2,6,23,.35) !important;
   }
+
   .form-control:focus, .form-select:focus{
-    outline:none;
-    box-shadow: 0 0 0 4px rgba(124,92,255,.14);
-    border-color: color-mix(in oklab, var(--primary) 55%, var(--border));
+    outline:none !important;
+    border-color: rgba(124,92,255,.55) !important;
+    box-shadow: 0 0 0 6px rgba(124,92,255,.12) !important;
   }
-  .form-text{ color: var(--muted) !important; margin-top: 8px; line-height: 1.35; }
+
+  .form-text{
+    color: var(--sv-muted) !important;
+    font-size: 13px !important;
+    margin-top: 8px;
+    line-height: 1.35;
+  }
 
   /* Password */
   .pw-wrap{ position: relative; }
-  .pw-input{ padding-inline-end: 44px !important; }
+  .pw-input{ padding-inline-end: 50px !important; }
   .pw-toggle{
     position:absolute;
     inset-inline-end: 8px;
     top: 50%;
     transform: translateY(-50%);
-    width: 36px;
-    height: 36px;
-    border-radius: 12px;
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
     display:grid;
     place-items:center;
-    border:1px solid var(--border);
-    background: rgba(255,255,255,.06);
+    border: 2px solid rgba(15,23,42,.10);
+    background: rgba(2,6,23,.03);
     cursor:pointer;
     transition:.15s;
   }
-  .pw-toggle:hover{ filter: brightness(1.06); }
+  .pw-toggle:hover{ filter: brightness(1.05); }
 
   /* File rows */
-  .file-row{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .file-row{ display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 640px){ .file-row{ grid-template-columns: 1fr; } }
 
   /* =========================
-     Account type cards (Airbnb-ish)
+     Account type cards
      ========================= */
   .acc-type{ display:flex; gap:10px; flex-wrap:wrap; }
   .acc-opt{
@@ -295,42 +340,58 @@
     align-items:flex-start;
     gap:10px;
     padding: 12px 14px;
-    border: 1px solid var(--border);
+    border: 2px solid rgba(15,23,42,.10);
     border-radius: 16px;
-    background: color-mix(in oklab, var(--panel) 92%, transparent);
+    background: rgba(124,92,255,.04);
     cursor:pointer;
     user-select:none;
     transition: transform .15s ease, border-color .15s ease, background .15s ease;
   }
   .acc-opt:hover{
     transform: translateY(-1px);
-    border-color: color-mix(in oklab, var(--primary) 35%, var(--border));
-    background: color-mix(in oklab, rgba(124,92,255,.08) 55%, transparent);
+    border-color: rgba(124,92,255,.28);
+    background: rgba(124,92,255,.06);
   }
   .acc-opt input{ transform: scale(1.08); margin-top: 2px; }
 
   /* =========================
-     Buttons
+     Buttons (Big rounded like screenshot)
      ========================= */
-  .btn{ border-radius: 14px; }
+  .btn{ border-radius: 18px !important; }
 
   .btn-primary{
-    background: linear-gradient(135deg, var(--primary), var(--primary-2));
-    border: 0;
-    box-shadow: 0 14px 30px rgba(124,92,255,.22);
+    height: 56px;
+    border: 0 !important;
+    font-weight: 950 !important;
+    font-size: 17px !important;
+    letter-spacing: .2px !important;
+    background: linear-gradient(135deg, var(--sv-primary), var(--sv-primary2)) !important;
+    box-shadow: 0 18px 40px rgba(47,107,255,.18) !important;
     padding: 12px 16px;
+    transition: transform .15s ease, filter .15s ease;
+  }
+  .btn-primary:hover{
+    filter: brightness(1.03);
+    transform: translateY(-1px);
   }
   .btn-primary:active{ transform: translateY(1px); }
 
-  .btn-success{ background:#22c55e; border:0; }
+  .btn-success{
+    background: linear-gradient(135deg, #22c55e, #16a34a) !important;
+    border: 0 !important;
+    border-radius: 14px !important;
+  }
 
   .btn-ghost{
-    background: rgba(255,255,255,.06);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 12px 14px;
+    background: rgba(2,6,23,.03) !important;
+    border: 2px solid rgba(15,23,42,.10) !important;
+    color: rgba(2,6,23,.80) !important;
+    height: 56px;
+    font-weight: 900;
+    border-radius: 18px !important;
+    padding: 12px 16px;
   }
-  .btn-ghost:hover{ filter: brightness(1.06); }
+  .btn-ghost:hover{ filter: brightness(1.05); }
 
   .wiz-actions{
     display:flex;
@@ -342,15 +403,20 @@
 
   /* Submit */
   .btn.btn-primary.w-100{
-    height: 52px;
-    font-size: 1rem;
-    font-weight: 900;
+    height: 56px !important;
+    border-radius: 22px !important;
   }
 
-  .muted{ color: var(--muted); }
+  a.muted{
+    color: rgba(2,6,23,.55) !important;
+    text-decoration: none !important;
+    font-weight: 800;
+  }
+  a.muted:hover{ text-decoration: underline !important; }
 
   /* Mobile polish */
   @media (max-width: 420px){
+    .head .title{ font-size: 34px !important; }
     .w-step .txt span{ display:none; }
     .w-step{ padding: 10px; }
   }
@@ -365,7 +431,9 @@
       <div class="secure"><i class="bi bi-shield-lock"></i> Secure & Encrypted</div>
     </div>
 
-    <!-- ✅ Wizard header -->
+    <div class="sub">Enter the full name you use daily.</div>
+
+    <!-- Wizard header -->
     <div class="wizard-top">
       <div class="wizard-steps" id="wizardSteps">
         <div class="w-step active" data-i="0">
@@ -394,17 +462,17 @@
         <div class="grid-2">
           <div>
             <label class="form-label">First Name</label>
-            <input type="text" name="first_name" class="form-control" placeholder="Your first name" required>
+            <input type="text" name="first_name" class="form-control" placeholder="First name" required>
           </div>
           <div>
             <label class="form-label">Last Name</label>
-            <input type="text" name="last_name" class="form-control" placeholder="Your last name" required>
+            <input type="text" name="last_name" class="form-control" placeholder="Last name" required>
           </div>
         </div>
 
         <div class="wiz-actions">
           <div class="spacer"></div>
-          <button type="button" class="btn btn-primary" data-next>Next <i class="bi bi-arrow-right"></i></button>
+          <button type="button" class="btn btn-primary" data-next>Next</button>
         </div>
       </div>
 
@@ -451,9 +519,9 @@
         </div>
 
         <div class="wiz-actions">
-          <button type="button" class="btn btn-ghost" data-back><i class="bi bi-arrow-left"></i> Back</button>
+          <button type="button" class="btn btn-ghost" data-back>Back</button>
           <div class="spacer"></div>
-          <button type="button" class="btn btn-primary" data-next>Next <i class="bi bi-arrow-right"></i></button>
+          <button type="button" class="btn btn-primary" data-next>Next</button>
         </div>
       </div>
 
@@ -491,9 +559,9 @@
         </div>
 
         <div class="wiz-actions">
-          <button type="button" class="btn btn-ghost" data-back><i class="bi bi-arrow-left"></i> Back</button>
+          <button type="button" class="btn btn-ghost" data-back>Back</button>
           <div class="spacer"></div>
-          <button type="button" class="btn btn-primary" data-next>Next <i class="bi bi-arrow-right"></i></button>
+          <button type="button" class="btn btn-primary" data-next>Next</button>
         </div>
       </div>
 
@@ -528,7 +596,7 @@
         </div>
 
         <div class="wiz-actions">
-          <button type="button" class="btn btn-ghost" data-back><i class="bi bi-arrow-left"></i> Back</button>
+          <button type="button" class="btn btn-ghost" data-back>Back</button>
           <div class="spacer"></div>
         </div>
       </div>
@@ -590,6 +658,7 @@
       }
     }
 
+    // Step 3: require camera avatar before leaving this step
     if (i === 2){
       const avatarInput = document.getElementById('avatarInput');
       if (!avatarInput || !avatarInput.files || avatarInput.files.length === 0){
@@ -598,6 +667,7 @@
       }
     }
 
+    // Step 2: if company -> require company proof
     if (i === 1){
       const type = document.querySelector('input[name="account_type"]:checked')?.value || 'individual';
       const companyProofInput = document.getElementById('companyProofInput');
@@ -760,5 +830,4 @@
   window.addEventListener('beforeunload', stopCamera);
 })();
 </script>
-
 {% endblock %}
