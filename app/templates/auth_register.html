@@ -329,6 +329,7 @@
   .file-row{ display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 640px){ .file-row{ grid-template-columns: 1fr; } }
 
+  
   /* =========================
      Account type cards
      ========================= */
@@ -420,6 +421,20 @@
     .w-step .txt span{ display:none; }
     .w-step{ padding: 10px; }
   }
+
+  /* ✅ Fix iOS Safari input zoom (no screen zoom on focus) */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea {
+    font-size: 16px !important;   /* أهم سطر */
+  }
+}
+
+/* زيادة أمان */
+html { -webkit-text-size-adjust: 100%; }
+
+.form-control, .form-select, textarea{
+  font-size: 16px !important;
+}
 </style>
 {% endblock %}
 
