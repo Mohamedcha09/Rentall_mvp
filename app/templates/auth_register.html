@@ -4,13 +4,9 @@
 <style>
   .topbar, .sidebar, .mobile-tabbar { display:none !important; }
 
-  /* =========================
-     SEVOR LUXURY SIMPLE THEME
-     Airbnb/Facebook feel
-     ========================= */
   :root{
-    --sv-primary: #7c5cff;     /* Sevor purple */
-    --sv-primary2:#2f6bff;     /* Sevor blue */
+    --sv-primary: #7c5cff;
+    --sv-primary2:#2f6bff;
     --sv-text:    #0b1220;
     --sv-muted:   #5b667a;
     --sv-line:    rgba(15,23,42,.14);
@@ -20,9 +16,6 @@
     --sv-shadow:  0 22px 60px rgba(2,6,23,.12);
   }
 
-  /* =========================
-     PAGE LAYOUT (Desktop / Mobile)
-     ========================= */
   .page{
     margin:0 !important; padding:0 !important;
     min-height:100dvh;
@@ -37,9 +30,6 @@
     .page{ grid-template-columns: 1fr; }
   }
 
-  /* =========================
-     HERO (Right)
-     ========================= */
   .hero{
     position:relative;
     display:flex; align-items:center; justify-content:center;
@@ -69,7 +59,6 @@
     filter: drop-shadow(0 18px 40px rgba(0,0,0,.20));
   }
 
-  /* mobile: hide hero (like app screens) */
   @media (max-width: 992px){
     .hero{ display:none !important; }
     .hero::before{ content:none !important; }
@@ -115,9 +104,6 @@
     max-width: 640px;
   }
 
-  /* =========================
-     FORM COLUMN (Left)
-     ========================= */
   .reg-col{
     display:flex; align-items:center; justify-content:center;
     padding: 26px 18px;
@@ -131,9 +117,6 @@
     }
   }
 
-  /* =========================
-     CARD (Luxury simple like Airbnb)
-     ========================= */
   .card-reg{
     width:100%;
     max-width: 520px;
@@ -153,7 +136,6 @@
     }
   }
 
-  /* Head like the screenshot (big question style) */
   .card-reg .head{
     display:block !important;
     margin-bottom: 12px !important;
@@ -166,7 +148,6 @@
     color: var(--sv-text) !important;
   }
 
-  /* Keep secure badge small and subtle (or hide it) */
   .head .secure{
     display:inline-flex !important;
     margin-top: 12px;
@@ -181,7 +162,6 @@
     font-size: .80rem;
   }
 
-  /* subtitle under title (like Airbnb) */
   .card-reg .sub{
     color: var(--sv-muted);
     font-size: 16px;
@@ -189,9 +169,6 @@
     margin: 10px 0 16px;
   }
 
-  /* =========================
-     WIZARD (Minimal, premium)
-     ========================= */
   .wizard-top{ margin: 10px 0 16px; }
 
   .wizard-steps{
@@ -255,7 +232,6 @@
     transition: width .22s ease;
   }
 
-  /* Panels transition */
   .step-panel{ display:none; animation: fadeSlide .20s ease both; }
   .step-panel.active{ display:block; }
   @keyframes fadeSlide{
@@ -263,9 +239,6 @@
     to{ opacity:1; transform: translateY(0); }
   }
 
-  /* =========================
-     FORM CONTROLS (Like the screenshot)
-     ========================= */
   .grid-2{ display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 640px){ .grid-2{ grid-template-columns: 1fr; } }
 
@@ -305,7 +278,6 @@
     line-height: 1.35;
   }
 
-  /* Password */
   .pw-wrap{ position: relative; }
   .pw-input{ padding-inline-end: 50px !important; }
   .pw-toggle{
@@ -325,14 +297,9 @@
   }
   .pw-toggle:hover{ filter: brightness(1.05); }
 
-  /* File rows */
   .file-row{ display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 640px){ .file-row{ grid-template-columns: 1fr; } }
 
-  
-  /* =========================
-     Account type cards
-     ========================= */
   .acc-type{ display:flex; gap:10px; flex-wrap:wrap; }
   .acc-opt{
     flex:1;
@@ -355,9 +322,6 @@
   }
   .acc-opt input{ transform: scale(1.08); margin-top: 2px; }
 
-  /* =========================
-     Buttons (Big rounded like screenshot)
-     ========================= */
   .btn{ border-radius: 18px !important; }
 
   .btn-primary{
@@ -402,7 +366,6 @@
   }
   .wiz-actions .spacer{ flex:1; }
 
-  /* Submit */
   .btn.btn-primary.w-100{
     height: 56px !important;
     border-radius: 22px !important;
@@ -415,52 +378,34 @@
   }
   a.muted:hover{ text-decoration: underline !important; }
 
-  /* Mobile polish */
   @media (max-width: 420px){
     .head .title{ font-size: 34px !important; }
     .w-step .txt span{ display:none; }
     .w-step{ padding: 10px; }
   }
 
-  /* ✅ Fix iOS Safari input zoom (no screen zoom on focus) */
-@supports (-webkit-touch-callout: none) {
-  input, select, textarea {
-    font-size: 16px !important;   /* أهم سطر */
-  }
-}
+  /* ✅ iOS Safari: منع تغيير حجم النص */
+  html { -webkit-text-size-adjust: 100%; }
 
-/* زيادة أمان */
-html { -webkit-text-size-adjust: 100%; }
-
-.form-control, .form-select, textarea{
-  font-size: 16px !important;
-}
-
-/* ✅ iOS: خليه ثابت وما يطلعش الفوق مع الكيبورد */
-@media (max-width: 992px){
-  .page{
-    min-height: 100svh !important; /* ثابت مع الكيبورد */
+  /* ✅ iOS Safari: منع zoom بسبب font-size أقل من 16 */
+  @supports (-webkit-touch-callout: none) {
+    input, select, textarea,
+    .form-control, .form-select {
+      font-size: 16px !important;
+    }
   }
-  .reg-col{
-    min-height: 100svh !important;
-    align-items: flex-start !important; /* مايبقاش وسط */
-    padding-top: max(18px, env(safe-area-inset-top)) !important;
-    padding-bottom: max(18px, env(safe-area-inset-bottom)) !important;
-  }
-  .card-reg{
-    margin-top: 0 !important;
-  }
-}
 
-/* ✅ بزيادة: iOS input zoom (خليه ثابت) */
-@supports (-webkit-touch-callout: none) {
-  input, select, textarea,
-  .form-control, .form-select {
-    font-size: 16px !important;
+  /* ✅ iOS: ثبات أفضل مع الكيبورد */
+  @media (max-width: 992px){
+    .page{ min-height: 100svh !important; }
+    .reg-col{
+      min-height: 100svh !important;
+      align-items: flex-start !important;
+      padding-top: max(18px, env(safe-area-inset-top)) !important;
+      padding-bottom: max(18px, env(safe-area-inset-bottom)) !important;
+    }
+    .card-reg{ margin-top: 0 !important; }
   }
-}
-html { -webkit-text-size-adjust: 100%; }
-
 </style>
 {% endblock %}
 
@@ -474,7 +419,6 @@ html { -webkit-text-size-adjust: 100%; }
 
     <div class="sub">Enter the full name you use daily.</div>
 
-    <!-- Wizard header -->
     <div class="wizard-top">
       <div class="wizard-steps" id="wizardSteps">
         <div class="w-step active" data-i="0">
@@ -528,7 +472,8 @@ html { -webkit-text-size-adjust: 100%; }
 
         <div class="mt-3">
           <label class="form-label">Phone Number</label>
-          <input type="text" name="phone" class="form-control" placeholder="+1 514 ..." required>
+          <!-- ✅ تغيير: tel بدل text -->
+          <input type="tel" name="phone" class="form-control" placeholder="+1 514 ..." required>
         </div>
 
         <div class="mt-3">
@@ -664,6 +609,22 @@ html { -webkit-text-size-adjust: 100%; }
 
 <script>
 (function(){
+  // ✅ (A) iOS Safari: حل نهائي لمنع zoom عند focus
+  const meta = document.querySelector('meta[name="viewport"]');
+  const baseViewport = "width=device-width, initial-scale=1, viewport-fit=cover";
+  if (meta) {
+    function lockViewport(){ meta.setAttribute("content", baseViewport + ", maximum-scale=1"); }
+    function unlockViewport(){ meta.setAttribute("content", baseViewport); }
+
+    document.addEventListener("focusin", (e)=>{
+      if(e.target && e.target.matches("input, textarea, select")) lockViewport();
+    });
+
+    document.addEventListener("focusout", (e)=>{
+      if(e.target && e.target.matches("input, textarea, select")) unlockViewport();
+    });
+  }
+
   // Wizard
   const form = document.getElementById('signupForm');
   const panels = Array.from(document.querySelectorAll('.step-panel'));
@@ -699,7 +660,6 @@ html { -webkit-text-size-adjust: 100%; }
       }
     }
 
-    // Step 3: require camera avatar before leaving this step
     if (i === 2){
       const avatarInput = document.getElementById('avatarInput');
       if (!avatarInput || !avatarInput.files || avatarInput.files.length === 0){
@@ -708,7 +668,6 @@ html { -webkit-text-size-adjust: 100%; }
       }
     }
 
-    // Step 2: if company -> require company proof
     if (i === 1){
       const type = document.querySelector('input[name="account_type"]:checked')?.value || 'individual';
       const companyProofInput = document.getElementById('companyProofInput');
@@ -871,4 +830,5 @@ html { -webkit-text-size-adjust: 100%; }
   window.addEventListener('beforeunload', stopCamera);
 })();
 </script>
+
 {% endblock %}
