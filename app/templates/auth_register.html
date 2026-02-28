@@ -7,7 +7,7 @@
   .page {
     margin:0 !important; padding:0 !important;
     min-height:100dvh; display:grid;
-    grid-template-columns: 640px 1fr; /* LTR: form on the left, hero on the right */
+    grid-template-columns: 640px 1fr;
     background:
       radial-gradient(1200px 900px at 15% -10%, rgba(124,92,255,.14), transparent 45%),
       radial-gradient(900px 700px at 110% 110%, rgba(0,229,168,.08), transparent 40%),
@@ -15,7 +15,6 @@
   }
   @media (max-width: 1100px){ .page{ grid-template-columns: 1fr; } }
 
-  /* Right section (hero) for LTR layout it becomes the second column */
   .hero{
     position:relative;
     display:flex; align-items:center; justify-content:center;
@@ -25,7 +24,6 @@
   }
   .hero-inner{ max-width: 860px; width:100%; position:relative; z-index:2; }
 
-  /* Top large image */
   .hero::before {
     content: "";
     position: absolute;
@@ -40,8 +38,6 @@
     opacity: 0.95;
     z-index: 1;
   }
-
-  /* Hide the image on phones */
   @media (max-width: 992px){
     .hero::before { content: none !important; display: none !important; }
   }
@@ -69,7 +65,6 @@
   }
   .hero p{ color: var(--muted); font-size: clamp(14px, 1.4vw, 16px); }
 
-  /* Left section (registration card) */
   .reg-col{
     display:flex; align-items:center; justify-content:center;
     padding: clamp(14px, 4vw, 32px);
@@ -98,6 +93,59 @@
     color:#b5f1c7; font-weight:700; font-size:.82rem;
   }
 
+  /* ✅ Wizard UI */
+  .wizard-top{
+    margin: 8px 0 14px;
+  }
+  .wizard-steps{
+    display:flex; gap:10px; align-items:center; justify-content:space-between;
+    margin-bottom: 10px;
+  }
+  .w-step{
+    flex:1;
+    display:flex; align-items:center; gap:10px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,.04);
+    opacity:.55;
+    transition:.25s;
+  }
+  .w-step .num{
+    width:30px; height:30px; border-radius:12px;
+    display:grid; place-items:center;
+    font-weight:900;
+    border:1px solid var(--border);
+    background: rgba(255,255,255,.06);
+  }
+  .w-step .txt{
+    line-height:1.1;
+  }
+  .w-step .txt b{ display:block; font-size:.92rem; }
+  .w-step .txt span{ display:block; font-size:.78rem; color: var(--muted); }
+  .w-step.active{
+    opacity:1;
+    background: color-mix(in oklab, rgba(124,92,255,.16) 65%, transparent);
+    border-color: color-mix(in oklab, var(--primary) 55%, var(--border));
+  }
+  .w-step.done{ opacity:.9; }
+  .wizard-bar{
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid var(--border);
+    overflow:hidden;
+  }
+  .wizard-bar > div{
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-2));
+    transition: .25s;
+  }
+
+  .step-panel{ display:none; }
+  .step-panel.active{ display:block; }
+
   .grid-2{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   @media (max-width: 640px){ .grid-2{ grid-template-columns: 1fr; } }
 
@@ -114,7 +162,7 @@
   .form-text{ color: var(--muted) !important; }
 
   .pw-wrap{ position: relative; }
-  .pw-input{ padding-inline-end: 44px !important; } /* LTR: reserve space on the right */
+  .pw-input{ padding-inline-end: 44px !important; }
   .pw-toggle{
     position:absolute; inset-inline-end: 8px; top: 50%;
     transform: translateY(-50%);
@@ -135,7 +183,6 @@
   .btn-success{ background:#22c55e; border:0; }
   .muted{ color: var(--muted); }
 
-  /* Account type */
   .acc-type{
     display:flex; gap:10px; flex-wrap:wrap;
   }
@@ -151,6 +198,20 @@
     user-select:none;
   }
   .acc-opt input{ transform: scale(1.1); }
+
+  /* ✅ Wizard nav buttons */
+  .wiz-actions{
+    display:flex; gap:10px; align-items:center;
+    margin-top: 16px;
+  }
+  .wiz-actions .spacer{ flex:1; }
+  .btn-ghost{
+    background: rgba(255,255,255,.06);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn-ghost:hover{ filter: brightness(1.06); }
+
 </style>
 {% endblock %}
 
@@ -162,118 +223,174 @@
       <div class="secure"><i class="bi bi-shield-lock"></i> Secure & Encrypted</div>
     </div>
 
-    <form method="post" action="/register" enctype="multipart/form-data">
-      <div class="grid-2">
+    <!-- ✅ Wizard header -->
+    <div class="wizard-top">
+      <div class="wizard-steps" id="wizardSteps">
+        <div class="w-step active" data-i="0">
+          <div class="num">1</div>
+          <div class="txt"><b>Identity</b><span>Name</span></div>
+        </div>
+        <div class="w-step" data-i="1">
+          <div class="num">2</div>
+          <div class="txt"><b>Contact</b><span>Email / Phone</span></div>
+        </div>
+        <div class="w-step" data-i="2">
+          <div class="num">3</div>
+          <div class="txt"><b>Security</b><span>Password / Photo</span></div>
+        </div>
+        <div class="w-step" data-i="3">
+          <div class="num">4</div>
+          <div class="txt"><b>Verification</b><span>Document</span></div>
+        </div>
+      </div>
+
+      <div class="wizard-bar"><div id="wizardBar"></div></div>
+    </div>
+
+    <form method="post" action="/register" enctype="multipart/form-data" id="signupForm">
+      <!-- ✅ STEP 1 -->
+      <div class="step-panel active" data-step="0">
+        <div class="grid-2">
+          <div>
+            <label class="form-label">First Name</label>
+            <input type="text" name="first_name" class="form-control" required>
+          </div>
+          <div>
+            <label class="form-label">Last Name</label>
+            <input type="text" name="last_name" class="form-control" required>
+          </div>
+        </div>
+
+        <div class="wiz-actions">
+          <div class="spacer"></div>
+          <button type="button" class="btn btn-primary" data-next>Next <i class="bi bi-arrow-right"></i></button>
+        </div>
+      </div>
+
+      <!-- ✅ STEP 2 -->
+      <div class="step-panel" data-step="1">
+        <div class="grid-2">
+          <div>
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" required>
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <label class="form-label">Phone Number</label>
+          <input type="text" name="phone" class="form-control" required>
+        </div>
+
+        <div class="mt-3">
+          <label class="form-label">Type de compte</label>
+          <div class="acc-type mt-2">
+            <label class="acc-opt">
+              <input type="radio" name="account_type" value="individual" checked>
+              <div>
+                <div style="font-weight:900;">👤 Compte Individuel</div>
+                <div class="form-text">Pour un usage personnel.</div>
+              </div>
+            </label>
+
+            <label class="acc-opt">
+              <input type="radio" name="account_type" value="company">
+              <div>
+                <div style="font-weight:900;">🏢 Compte Entreprise</div>
+                <div class="form-text">Pour magasin / société.</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="mt-3" id="companyProofBox" style="display:none;">
+          <label class="form-label">Document de l’entreprise (preuve)</label>
+          <input type="file" name="company_proof" id="companyProofInput"
+                 class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+          <div class="form-text">Obligatoire فقط إذا كان الحساب شركة.</div>
+        </div>
+
+        <div class="wiz-actions">
+          <button type="button" class="btn btn-ghost" data-back><i class="bi bi-arrow-left"></i> Back</button>
+          <div class="spacer"></div>
+          <button type="button" class="btn btn-primary" data-next>Next <i class="bi bi-arrow-right"></i></button>
+        </div>
+      </div>
+
+      <!-- ✅ STEP 3 -->
+      <div class="step-panel" data-step="2">
         <div>
-          <label class="form-label">First Name</label>
-          <input type="text" name="first_name" class="form-control" required>
+          <label class="form-label">Password</label>
+          <div class="pw-wrap">
+            <button type="button" class="pw-toggle" id="pwToggle"><i class="bi bi-eye-slash"></i></button>
+            <input type="password" name="password" class="form-control pw-input" id="pwInput" required>
+          </div>
+          <div class="form-text">Passwords are encrypted, and two-step verification helps prevent misuse.</div>
         </div>
-        <div>
-          <label class="form-label">Last Name</label>
-          <input type="text" name="last_name" class="form-control" required>
+
+        <div class="mt-3">
+          <label class="form-label">Account Photo (camera capture only)</label>
+
+          <div class="mt-2" style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-success btn-sm" id="openCamBtn"><i class="bi bi-camera"></i> Open Camera</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="snapBtn" style="display:none;"><i class="bi bi-record2"></i> Snap</button>
+            <button type="button" class="btn btn-primary btn-sm" id="usePhotoBtn" style="display:none;"><i class="bi bi-check2-circle"></i> Use</button>
+            <button type="button" class="btn btn-outline-light btn-sm" id="retakeBtn" style="display:none;"><i class="bi bi-arrow-repeat"></i> Retake</button>
+          </div>
+
+          <div id="camBox" style="display:none; margin-top:10px;">
+            <video id="video" style="width:100%;border-radius:12px;" autoplay playsinline></video>
+            <canvas id="canvas" style="display:none;"></canvas>
+            <img id="photoPreview" alt="Preview" style="display:none;width:100%;border-radius:12px;">
+          </div>
+
+          <input type="file" name="avatar" id="avatarInput" accept="image/*"
+                 style="position:absolute;left:-9999px;opacity:0;" tabindex="-1" aria-hidden="true">
+
+          <div class="form-text">A live camera capture is required. Uploading existing files is not allowed.</div>
         </div>
-      </div>
 
-      <div class="grid-2 mt-3">
-        <div>
-          <label class="form-label">Email</label>
-          <input type="email" name="email" class="form-control" required>
-        </div>
-      </div>
-
-      <div class="mt-3">
-        <label class="form-label">Phone Number</label>
-        <input type="text" name="phone" class="form-control" required>
-      </div>
-
-      <!-- ✅ Account type -->
-      <div class="mt-3">
-        <label class="form-label">Type de compte</label>
-        <div class="acc-type mt-2">
-          <label class="acc-opt">
-            <input type="radio" name="account_type" value="individual" checked>
-            <div>
-              <div style="font-weight:900;">👤 Compte Individuel</div>
-              <div class="form-text">Pour un usage personnel.</div>
-            </div>
-          </label>
-
-          <label class="acc-opt">
-            <input type="radio" name="account_type" value="company">
-            <div>
-              <div style="font-weight:900;">🏢 Compte Entreprise</div>
-              <div class="form-text">Pour magasin / société.</div>
-            </div>
-          </label>
+        <div class="wiz-actions">
+          <button type="button" class="btn btn-ghost" data-back><i class="bi bi-arrow-left"></i> Back</button>
+          <div class="spacer"></div>
+          <button type="button" class="btn btn-primary" data-next>Next <i class="bi bi-arrow-right"></i></button>
         </div>
       </div>
 
-      <!-- ✅ Company proof (ONLY for company) -->
-      <div class="mt-3" id="companyProofBox" style="display:none;">
-        <label class="form-label">Document de l’entreprise (preuve)</label>
-        <input type="file" name="company_proof" id="companyProofInput"
-               class="form-control" accept=".jpg,.jpeg,.png,.pdf">
-        <div class="form-text">Obligatoire فقط إذا كان الحساب شركة.</div>
-      </div>
-
-      <div class="mt-3">
-        <label class="form-label">Password</label>
-        <div class="pw-wrap">
-          <button type="button" class="pw-toggle" id="pwToggle"><i class="bi bi-eye-slash"></i></button>
-          <input type="password" name="password" class="form-control pw-input" id="pwInput" required>
-        </div>
-        <div class="form-text">Passwords are encrypted, and two-step verification helps prevent misuse.</div>
-      </div>
-
-      <!-- Camera-only avatar capture -->
-      <div class="mt-3">
-        <label class="form-label">Account Photo (camera capture only)</label>
-
-        <div class="mt-2" style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button type="button" class="btn btn-success btn-sm" id="openCamBtn"><i class="bi bi-camera"></i> Open Camera</button>
-          <button type="button" class="btn btn-secondary btn-sm" id="snapBtn" style="display:none;"><i class="bi bi-record2"></i> Snap</button>
-          <button type="button" class="btn btn-primary btn-sm" id="usePhotoBtn" style="display:none;"><i class="bi bi-check2-circle"></i> Use</button>
-          <button type="button" class="btn btn-outline-light btn-sm" id="retakeBtn" style="display:none;"><i class="bi bi-arrow-repeat"></i> Retake</button>
+      <!-- ✅ STEP 4 -->
+      <div class="step-panel" data-step="3">
+        <div class="mt-1">
+          <label class="form-label">Document Type</label>
+          <select name="doc_type" class="form-select" required>
+            <option value="id_card">ID Card</option>
+            <option value="driver_license">Driver’s License</option>
+            <option value="passport">Passport</option>
+          </select>
         </div>
 
-        <div id="camBox" style="display:none; margin-top:10px;">
-          <video id="video" style="width:100%;border-radius:12px;" autoplay playsinline></video>
-          <canvas id="canvas" style="display:none;"></canvas>
-          <img id="photoPreview" alt="Preview" style="display:none;width:100%;border-radius:12px;">
+        <div class="grid-2 mt-3">
+          <div>
+            <label class="form-label">Issuing Country</label>
+            <input type="text" name="doc_country" class="form-control" required>
+          </div>
         </div>
 
-        <input type="file" name="avatar" id="avatarInput" accept="image/*"
-               style="position:absolute;left:-9999px;opacity:0;" tabindex="-1" aria-hidden="true">
-
-        <div class="form-text">A live camera capture is required. Uploading existing files is not allowed.</div>
-      </div>
-
-      <div class="mt-3">
-        <label class="form-label">Document Type</label>
-        <select name="doc_type" class="form-select" required>
-          <option value="id_card">ID Card</option>
-          <option value="driver_license">Driver’s License</option>
-          <option value="passport">Passport</option>
-        </select>
-      </div>
-
-      <div class="grid-2 mt-3">
-        <div>
-          <label class="form-label">Issuing Country</label>
-          <input type="text" name="doc_country" class="form-control" required>
+        <div class="file-row mt-3">
+          <div>
+            <label class="form-label">Document Front</label>
+            <input type="file" name="doc_front" class="form-control" accept=".jpg,.jpeg,.png,.pdf" required>
+          </div>
         </div>
-      </div>
 
-      <div class="file-row mt-3">
-        <div>
-          <label class="form-label">Document Front</label>
-          <input type="file" name="doc_front" class="form-control" accept=".jpg,.jpeg,.png,.pdf" required>
+        <button type="submit" class="btn btn-primary w-100 mt-4">Create Account</button>
+        <div class="text-center mt-2">
+          <a class="muted" href="/login">Already have an account? Log in</a>
         </div>
-      </div>
 
-      <button type="submit" class="btn btn-primary w-100 mt-4">Create Account</button>
-      <div class="text-center mt-2">
-        <a class="muted" href="/login">Already have an account? Log in</a>
+        <div class="wiz-actions">
+          <button type="button" class="btn btn-ghost" data-back><i class="bi bi-arrow-left"></i> Back</button>
+          <div class="spacer"></div>
+          <!-- submit button already موجود فوق -->
+        </div>
       </div>
     </form>
   </div>
@@ -298,7 +415,102 @@
 
 <script>
 (function(){
+  // -------------------------
+  // Wizard (Steps)
+  // -------------------------
+  const form = document.getElementById('signupForm');
+  const panels = Array.from(document.querySelectorAll('.step-panel'));
+  const stepNodes = Array.from(document.querySelectorAll('.w-step'));
+  const bar = document.getElementById('wizardBar');
+  let current = 0;
+
+  function setWizardUI(i){
+    panels.forEach(p => p.classList.remove('active'));
+    panels[i].classList.add('active');
+
+    stepNodes.forEach((s, idx)=>{
+      s.classList.toggle('active', idx === i);
+      s.classList.toggle('done', idx < i);
+    });
+
+    const pct = Math.round((i) / (panels.length - 1) * 100);
+    bar.style.width = pct + '%';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function validatePanel(i){
+    const scope = panels[i];
+
+    // validate normal inputs/selects inside current step
+    const fields = Array.from(scope.querySelectorAll('input, select, textarea'));
+
+    for (const el of fields){
+      // skip hidden file input avatar (handled separately)
+      if (el.id === 'avatarInput') continue;
+
+      // if company proof hidden, skip (required toggled)
+      if (el.id === 'companyProofInput' && document.getElementById('companyProofBox')?.style.display === 'none') continue;
+
+      if (!el.checkValidity()){
+        el.reportValidity();
+        return false;
+      }
+    }
+
+    // Step 3: require camera avatar before leaving this step
+    if (i === 2){
+      const avatarInput = document.getElementById('avatarInput');
+      if (!avatarInput || !avatarInput.files || avatarInput.files.length === 0){
+        alert('لازم تلتقط صورة بالكاميرا (Use) قبل ما تكمل.');
+        return false;
+      }
+    }
+
+    // Step 2: if company -> require company proof before leaving
+    if (i === 1){
+      const type = document.querySelector('input[name="account_type"]:checked')?.value || 'individual';
+      const companyProofInput = document.getElementById('companyProofInput');
+      if (type === 'company'){
+        if (!companyProofInput || !companyProofInput.files || companyProofInput.files.length === 0){
+          alert("Veuillez ajouter un document preuve de l’entreprise.");
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  document.querySelectorAll('[data-next]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if (!validatePanel(current)) return;
+      current = Math.min(current + 1, panels.length - 1);
+      setWizardUI(current);
+    });
+  });
+
+  document.querySelectorAll('[data-back]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      current = Math.max(current - 1, 0);
+      setWizardUI(current);
+    });
+  });
+
+  // Optional: clicking step (only back/visited)
+  stepNodes.forEach((node, idx)=>{
+    node.addEventListener('click', ()=>{
+      if (idx <= current) {
+        current = idx;
+        setWizardUI(current);
+      }
+    });
+  });
+
+  setWizardUI(current);
+
+  // -------------------------
   // Password show/hide
+  // -------------------------
   const pwToggle = document.getElementById('pwToggle');
   const pwInput  = document.getElementById('pwInput');
   pwToggle?.addEventListener('click', () => {
@@ -307,7 +519,9 @@
     pwToggle.innerHTML = isPass ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
   });
 
+  // -------------------------
   // Account type -> company proof toggle
+  // -------------------------
   const companyProofBox   = document.getElementById('companyProofBox');
   const companyProofInput = document.getElementById('companyProofInput');
   const accRadios = document.querySelectorAll('input[name="account_type"]');
@@ -322,8 +536,9 @@
   accRadios.forEach(r => r.addEventListener('change', syncCompanyProof));
   syncCompanyProof();
 
-  // Camera elements
-  const form         = document.querySelector('form[action="/register"]') || document.querySelector('form');
+  // -------------------------
+  // Camera (unchanged logic)
+  // -------------------------
   const openCamBtn   = document.getElementById('openCamBtn');
   const snapBtn      = document.getElementById('snapBtn');
   const usePhotoBtn  = document.getElementById('usePhotoBtn');
@@ -334,7 +549,6 @@
   const photoPreview = document.getElementById('photoPreview');
   const avatarInput  = document.getElementById('avatarInput');
 
-  // Block manual file interaction and drag/paste
   if (avatarInput) {
     const block = (e)=> e.preventDefault();
     avatarInput.addEventListener('click', block);
@@ -357,6 +571,7 @@
       hide(usePhotoBtn);
       hide(retakeBtn);
       hide(photoPreview);
+      show(video);
       capturedBlob = null;
     }catch(e){
       alert('Unable to access the camera. Make sure permissions are granted and the page is served over HTTPS.');
