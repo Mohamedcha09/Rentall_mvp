@@ -13,22 +13,35 @@
   }
 
   /* Full white screen like Facebook */
-  .page{
-    margin:0 !important; padding:0 !important;
-    min-height: 100dvh; min-height: 100svh;
-    background:#ffffff;
-    display:flex;
-    align-items:flex-start;
-    justify-content:center;
-  }
+.page{
+  margin:0 !important;
+  padding:0 !important;
+  min-height:100dvh;
+  min-height:100svh;
+  background:#ffffff;
+  display:flex;
+  justify-content:center;
+  align-items:stretch; /* مهم */
+}
 
   /* Center column */
   .login-shell{
-    width: 100%;
-    max-width: 420px;
-    padding: 56px 20px 24px;
-    text-align:center;
-  }
+  width:100%;
+  max-width:420px;
+  padding:56px 20px 24px;
+  text-align:center;
+
+  display:flex;
+  flex-direction:column;
+  min-height:100%;
+}
+
+.card-login{
+  display:flex;
+  flex-direction:column;
+  flex:1;
+  justify-content:space-between;
+}
 
   /* Logo */
   .sevor-logo{
