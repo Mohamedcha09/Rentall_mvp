@@ -197,7 +197,7 @@ if ("serviceWorker" in navigator) {
     }
     .m-top-tabs .m-tab:hover{ color:color-mix(in oklab, var(--text) 60%, transparent); }
     .m-top-tabs .m-tab.is-active{ color:var(--text); }
-    .m-top-tabs .m-tab::after{a
+    .m-top-tabs .m-tab::after{
       content:""; position:absolute; left:0; right:0; bottom:-1px; height:3px; background:#6C63FF; border-radius:3px;
       opacity:0; transform:scaleX(.25); transform-origin:center; transition:transform .18s ease, opacity .12s ease;
     }
@@ -431,7 +431,7 @@ body[data-auth="0"] .mobile-tabbar {
       position: relative !important;
       top: auto !important;
       z-index: 4999 !important;
-      margin-top: -18px !important;
+      margin-top: 8px !important;
       padding-top: 0 !important;
       padding-bottom: 8px !important;
       background: rgba(255,255,255,.98) !important;
@@ -964,6 +964,45 @@ header.topbar .searchbar-wrap{
 
 @keyframes sv-spin{
   to { transform: rotate(360deg); }
+}
+</style>
+
+<style id="pwa-ios-tabs-final-fix">
+@media (max-width: 768px){
+
+  /* فقط داخل التطبيق المثبّت على الآيفون */
+  html.pwa .m-top-tabs{
+    position: relative !important;
+    top: auto !important;
+    z-index: 6001 !important;
+
+    margin-top: 8px !important;   /* بدل -18px */
+    padding-top: 0 !important;
+    padding-bottom: 8px !important;
+
+    background: rgba(255,255,255,.98) !important;
+    border-bottom: 0 !important;
+  }
+
+  html.pwa header.topbar{
+    z-index: 6000 !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  html.pwa header.topbar .topbar__inner{
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  html.pwa header.topbar form.searchbar,
+  html.pwa header.topbar .searchbar-wrap{
+    margin-bottom: 0 !important;
+  }
+
+  html.pwa .m-top-tabs::after{
+    display: none !important;
+  }
 }
 </style>
 
