@@ -187,7 +187,7 @@ if ("serviceWorker" in navigator) {
     .m-top-tabs{
       display:none !important;
       justify-content:center; align-items:flex-end; gap:28px;
-      padding:0 14px; margin-top:6px;
+      padding:0 14px; margin-top:0;
       border-bottom:1px solid var(--border); background:transparent;
     }
     .m-top-tabs .m-tab{
@@ -861,9 +861,8 @@ header.topbar .searchbar input.form-control{
 
 
 </style>
-
 <style id="searchbar-final-fix">
-/* === SEARCHBAR FINAL VERTICAL FIX (GLOBAL) === */
+/* === SEARCH + TOP TABS STICK TOGETHER === */
 
 header.topbar .topbar__inner{
   min-height: 64px;
@@ -882,32 +881,51 @@ header.topbar .searchbar-wrap{
   height: 44px;
 }
 
-/* ===== CLEAN FINAL TOPBAR FIX ===== */
-
 @media (max-width: 768px){
+
+  /* لا تترك فراغ تحت search */
+  header.topbar{
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
 
   header.topbar .topbar__inner{
     min-height: 56px;
     align-items: center;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
   }
 
+  header.topbar form.searchbar{
+    margin-bottom: 0 !important;
+  }
+
+  header.topbar .searchbar-wrap{
+    margin-bottom: 0 !important;
+  }
+
+  /* الصق tabs مباشرة تحت search */
   .m-top-tabs{
-    margin-top: 10px;
+    margin-top: -6px !important;
+    padding-top: 0 !important;
+    padding-bottom: 10px !important;
+    border-top: 0 !important;
+  }
+
+  /* احذف أي ظل/فراغ إضافي بينهما */
+  .m-top-tabs::after{
+    display: none !important;
   }
 
   .page{
-    padding-top: 14px;
+    padding-top: 10px !important;
   }
 }
 
 .m-top-tabs{
-  margin-top: 4px;
+  margin-top: 0;
 }
-
-
-
 </style>
-
 <style id="sv-page-loader-style">
 .sv-page-loader{
   position: fixed;
