@@ -53,7 +53,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
   <!-- External CSS -->
-  <link href="/static/style.css?v=11" rel="stylesheet">
+  <link href="/static/style.css?v=9" rel="stylesheet">
   
 
 <!-- Primary Logo for Google -->
@@ -101,12 +101,26 @@ if ("serviceWorker" in navigator) {
     }
 
     /* Topbar */
-    .topbar, .topbar__inner{ background:transparent !important; border:0 !important; box-shadow:none !important; }
-     header.topbar {
-  position: sticky;
-  top: env(safe-area-inset-top);
-  padding-top: env(safe-area-inset-top);
-}
+    /* Topbar */
+    .topbar,
+    .topbar__inner{
+      border:0 !important;
+      box-shadow:none !important;
+    }
+
+    header.topbar{
+      position: sticky;
+      top: 0;
+      z-index: 1100;
+      padding-top: var(--safe-top);
+      background: rgba(255,255,255,.96) !important;
+      backdrop-filter: saturate(160%) blur(10px);
+      -webkit-backdrop-filter: saturate(160%) blur(10px);
+    }
+
+    [data-theme="dark"] header.topbar{
+      background: rgba(11,16,32,.88) !important;
+    }
 
 
     .searchbar-wrap{
@@ -396,62 +410,6 @@ body[data-auth="0"] .mobile-tabbar {
     body.modal-open { padding-right: 0 !important; }
   </style>
 
-  <style id="ios-top-final-fix">
-  @media (max-width:768px){
-
-    /* أعلى التطبيق أبيض */
-    header.topbar{
-      position: sticky !important;
-      top: 0 !important;
-      z-index: 5000 !important;
-      padding-top: env(safe-area-inset-top, 0px) !important;
-      background: rgba(255,255,255,.98) !important;
-      border: 0 !important;
-      box-shadow: none !important;
-    }
-
-    /* فقط شريط أبيض لمنطقة الساعة */
-    header.topbar::before{
-      content: "";
-      position: absolute;
-      left: 0;
-      right: 0;
-      top: 0;
-      height: env(safe-area-inset-top, 0px);
-      background: #fff;
-      pointer-events: none;
-    }
-
-    /* لا نغيّر ترتيب ولا عناصر الهيدر */
-    header.topbar .topbar__inner{
-      background: transparent !important;
-    }
-
-    /* التابات تبقى كما هي */
-    .m-top-tabs{
-      position: sticky !important;
-      top: calc(env(safe-area-inset-top, 0px) + 74px) !important;
-      z-index: 4999 !important;
-      background: rgba(255,255,255,.98) !important;
-      border-bottom: 0 !important;
-    }
-
-    /* الطبقة الشفافة تحت التابات فقط */
-    .m-top-tabs::after{
-      content: "";
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: -18px;
-      height: 18px;
-      background: rgba(255,255,255,.18);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      pointer-events: none;
-    }
-  }
-  </style>
-  
   <style id="glass-tabbar">
 
     /* =========================
@@ -862,8 +820,9 @@ header.topbar .searchbar input.form-control{
 
 </style>
 
+
 <style id="searchbar-final-fix">
-/* === SEARCHBAR FINAL VERTICAL FIX (GLOBAL) === */
+/* === FINAL MOBILE TOP HEADER FIX === */
 
 header.topbar .topbar__inner{
   min-height: 64px;
@@ -882,32 +841,51 @@ header.topbar .searchbar-wrap{
   height: 44px;
 }
 
-/* ===== CLEAN FINAL TOPBAR FIX ===== */
-
 @media (max-width: 768px){
 
   header.topbar .topbar__inner{
     min-height: 56px;
     align-items: center;
+    padding-top: 8px;
+    padding-bottom: 10px;
   }
 
   .m-top-tabs{
-    margin-top: 10px;
+    margin-top: 0 !important;
+    padding: 0 14px 12px !important;
+    background: transparent !important;
+    border-bottom: 0 !important;
+    position: relative;
+    z-index: 1099;
+  }
+
+  /* blur/transparent line تحت التابات فقط */
+  .m-top-tabs::after{
+    content:"";
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:-14px;
+    height:14px;
+    background: rgba(255,255,255,.16);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    pointer-events:none;
+  }
+
+  [data-theme="dark"] .m-top-tabs::after{
+    background: rgba(11,16,32,.16);
   }
 
   .page{
-    padding-top: 14px;
+    padding-top: 10px !important;
   }
 }
 
 .m-top-tabs{
-  margin-top: 4px;
+  margin-top: 0;
 }
-
-
-
 </style>
-
 <style id="sv-page-loader-style">
 .sv-page-loader{
   position: fixed;
