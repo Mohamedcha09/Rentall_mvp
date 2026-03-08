@@ -53,7 +53,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
   <!-- External CSS -->
-  <link href="/static/style.css?v=9" rel="stylesheet">
+  <link href="/static/style.css?v=10" rel="stylesheet">
   
 
 <!-- Primary Logo for Google -->
@@ -394,141 +394,119 @@ body[data-auth="0"] .mobile-tabbar {
     body::after { z-index: 1000 !important; }
     .modal.fade .modal-dialog { transition: none !important; }
     body.modal-open { padding-right: 0 !important; }
-    
-    /* ================================
-       iPhone App / PWA Top Glass Shell
-       ================================ */
-    @media (max-width: 768px){
-
-      html.pwa body,
-      html.pwa [data-theme="light"] body{
-        background: #f4f6fb;
-      }
-
-      /* الهيدر كامل */
-      html.pwa header.topbar{
-        position: sticky !important;
-        top: 0 !important;
-        z-index: 3000 !important;
-        padding-top: var(--safe-top) !important;
-        background: rgba(255,255,255,.96) !important;
-        backdrop-filter: blur(18px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
-        border-bottom: 0 !important;
-        box-shadow: none !important;
-      }
-
-      /* شريط أبيض في منطقة الساعة / البطارية */
-      html.pwa header.topbar::before{
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: calc(var(--safe-top) + 8px);
-        background: rgba(255,255,255,.98);
-        z-index: -1;
-      }
-
-      /* الصف الداخلي */
-      html.pwa header.topbar .topbar__inner{
-        min-height: 64px !important;
-        padding-left: 14px !important;
-        padding-right: 14px !important;
-        padding-bottom: 8px !important;
-        background: transparent !important;
-      }
-
-      /* أخفِ البراند والزر الجانبي في الموبايل إذا أردت نفس الستايل النظيف */
-      html.pwa header.topbar #menuBtn,
-      html.pwa header.topbar .brand{
-        display: none !important;
-      }
-
-      /* خلّي البحث بعرض كامل */
-      html.pwa header.topbar .searchbar{
-        display: block !important;
-        width: 100% !important;
-        margin: 0 !important;
-      }
-
-      html.pwa header.topbar .searchbar-wrap{
-        width: 100% !important;
-        min-height: 52px !important;
-        padding: 10px 16px !important;
-        border-radius: 999px !important;
-        background: rgba(255,255,255,.98) !important;
-        border: 1px solid rgba(0,0,0,.08) !important;
-        box-shadow: 0 8px 24px rgba(0,0,0,.08) !important;
-        backdrop-filter: blur(8px) !important;
-        -webkit-backdrop-filter: blur(8px) !important;
-      }
-
-      html.pwa header.topbar .searchbar .field{
-        min-width: 0;
-      }
-
-      html.pwa header.topbar .searchbar input{
-        font-size: 16px !important;
-        background: transparent !important;
-      }
-
-      /* التابات */
-      html.pwa .m-top-tabs{
-        display: flex !important;
-        justify-content: center !important;
-        align-items: flex-end !important;
-        gap: 30px !important;
-        margin-top: 0 !important;
-        padding: 6px 14px 8px !important;
-        background: rgba(255,255,255,.96) !important;
-        backdrop-filter: blur(18px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
-        border-bottom: 0 !important;
-        position: sticky !important;
-        top: calc(var(--safe-top) + 72px) !important;
-        z-index: 2999 !important;
-      }
-
-      html.pwa .m-top-tabs .m-tab{
-        color: #7b7b86 !important;
-        font-weight: 800 !important;
-        font-size: 15px !important;
-        padding: 10px 2px 12px !important;
-      }
-
-      html.pwa .m-top-tabs .m-tab.is-active{
-        color: #111827 !important;
-      }
-
-      html.pwa .m-top-tabs .m-tab::after{
-        height: 4px !important;
-        border-radius: 999px !important;
-        background: linear-gradient(90deg, #4f8cff, #7c5cff) !important;
-      }
-
-      /* الطبقة الشفافة تحت التابات + البحث */
-      html.pwa .m-top-tabs::after{
-        content: "";
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: -26px;
-        height: 26px;
-        background: rgba(255,255,255,.18);
-        backdrop-filter: blur(16px) saturate(180%);
-        -webkit-backdrop-filter: blur(16px) saturate(180%);
-        box-shadow: 0 10px 28px rgba(31,38,135,.08);
-        pointer-events: none;
-      }
-
-      /* حتى لا يلتصق المحتوى بالأعلى */
-      html.pwa .page{
-        padding-top: 10px !important;
-      }
-    }
   </style>
 
+  
+  <style id="ios-top-final-fix">
+  @media (max-width:768px){
+
+    /* 1) الهيدر الأبيض العلوي */
+    header.topbar{
+      position: sticky !important;
+      top: 0 !important;
+      z-index: 5000 !important;
+      padding-top: env(safe-area-inset-top, 0px) !important;
+      background: rgba(255,255,255,.97) !important;
+      backdrop-filter: blur(16px) saturate(180%) !important;
+      -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+      border: 0 !important;
+      box-shadow: none !important;
+    }
+
+    /* 2) منطقة الساعة والبطارية */
+    header.topbar::before{
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: env(safe-area-inset-top, 0px);
+      background: #fff !important;
+      pointer-events: none;
+    }
+
+    /* 3) أخفِ اللوجو والأزرار فقط في الموبايل */
+    header.topbar #menuBtn,
+    header.topbar .brand,
+    header.topbar .actions{
+      display: none !important;
+    }
+
+    /* 4) البحث يكون بعرض كامل */
+    header.topbar .topbar__inner{
+      min-height: auto !important;
+      padding: 8px 14px 10px !important;
+      display: block !important;
+      background: transparent !important;
+    }
+
+    header.topbar .searchbar{
+      display: block !important;
+      width: 100% !important;
+      margin: 0 !important;
+    }
+
+    header.topbar .searchbar-wrap{
+      width: 100% !important;
+      min-height: 52px !important;
+      border-radius: 999px !important;
+      background: #fff !important;
+      border: 1px solid rgba(0,0,0,.08) !important;
+      box-shadow: 0 8px 20px rgba(0,0,0,.08) !important;
+    }
+
+    /* 5) التابات */
+    .m-top-tabs{
+      display: flex !important;
+      justify-content: center !important;
+      gap: 28px !important;
+      position: sticky !important;
+      top: calc(env(safe-area-inset-top, 0px) + 72px) !important;
+      z-index: 4999 !important;
+      margin-top: 0 !important;
+      padding: 8px 14px 12px !important;
+      background: rgba(255,255,255,.97) !important;
+      backdrop-filter: blur(16px) saturate(180%) !important;
+      -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+      border-bottom: 0 !important;
+    }
+
+    .m-top-tabs .m-tab{
+      font-size: 15px !important;
+      font-weight: 800 !important;
+      color: #7b7b86 !important;
+      padding: 8px 2px 12px !important;
+    }
+
+    .m-top-tabs .m-tab.is-active{
+      color: #111827 !important;
+    }
+
+    .m-top-tabs .m-tab::after{
+      height: 4px !important;
+      border-radius: 999px !important;
+      background: linear-gradient(90deg, #4f8cff, #7c5cff) !important;
+    }
+
+    /* 6) الضل/الشفافية تحت التابات */
+    .m-top-tabs::after{
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -22px;
+      height: 22px;
+      background: rgba(255,255,255,.20) !important;
+      backdrop-filter: blur(14px) !important;
+      -webkit-backdrop-filter: blur(14px) !important;
+      box-shadow: 0 10px 20px rgba(31,38,135,.08) !important;
+      pointer-events: none;
+    }
+
+    /* 7) فراغ بسيط تحت الهيدر */
+    .page{
+      padding-top: 8px !important;
+    }
+  }
+  </style>
   
   <style id="glass-tabbar">
 
