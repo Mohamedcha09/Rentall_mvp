@@ -23,8 +23,9 @@ def delete_account_page(
     session_user = get_session_user(request, db)
 
     return templates.TemplateResponse(
-        "delete_account.html",
-        {
+        request=request,
+        name="delete_account.html",
+        context={
             "request": request,
             "session_user": session_user,
             "display_currency": display_currency

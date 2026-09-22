@@ -38,8 +38,9 @@ def checkout_detail(booking_id: int, request: Request, db: Session = Depends(get
     # Render the template checkout_detail.html
     # This template calls /api/checkout/{booking_id}/intent from pay_api.py
     return request.app.templates.TemplateResponse(
-        "checkout_detail.html",
-        {
+        request=request,
+        name="checkout_detail.html",
+        context={
             "request": request,
             "title": f"Payment for booking #{booking.id}",
             "booking": booking,

@@ -50,8 +50,9 @@ def activate_get(request: Request, db: Session = Depends(get_db)):
                 break
 
     return request.app.templates.TemplateResponse(
-        "activate.html",
-        {"request": request, "title": "Complete Activation", "user": user, "docs": docs,
+        request=request,
+        name="activate.html",
+        context={"request": request, "title": "Complete Activation", "user": user, "docs": docs,
          "review_note": review_note, "session_user": sess}
     )
 

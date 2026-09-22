@@ -36,7 +36,11 @@ def guess_currency_for(code: str):
 def geo_pick(request: Request):
     app = request.app
     templates = getattr(app, "templates")
-    return templates.TemplateResponse("geo_pick.html", {"request": request})
+    return templates.TemplateResponse(
+        request=request,
+        name="geo_pick.html",
+        context={"request": request},
+    )
 
 
 @router.get("/geo/set")

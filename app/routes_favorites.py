@@ -126,8 +126,9 @@ def favorites_page(request: Request, db: Session = Depends(get_db), user: Option
         })
 
     return request.app.templates.TemplateResponse(
-        "favorites.html",
-        {
+        request=request,
+        name="favorites.html",
+        context={
             "request": request,
             "title": "My Favorites",
             "session_user": session_user,

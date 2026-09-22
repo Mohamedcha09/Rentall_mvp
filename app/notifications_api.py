@@ -265,8 +265,9 @@ def open_notification(
 
     if n.opened_once:
         return request.app.templates.TemplateResponse(
-            "notification_used_once.html",
-            {"request": request, "session_user": user},
+            request=request,
+            name="notification_used_once.html",
+            context={"request": request, "session_user": user},
         )
 
     n.opened_once = True

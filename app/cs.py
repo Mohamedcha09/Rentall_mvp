@@ -82,8 +82,9 @@ def cs_inbox(request: Request, db: Session = Depends(get_db)):
     }
 
     return templates.TemplateResponse(
-        "cs_inbox.html",
-        {
+        request=request,
+        name="cs_inbox.html",
+        context={
             "request": request,
             "session_user": u_cs,
             "title": "CS Inbox",
@@ -114,8 +115,9 @@ def cs_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     db.commit()
 
     return templates.TemplateResponse(
-        "cs_ticket.html",
-        {
+        request=request,
+        name="cs_ticket.html",
+        context={
             "request": request,
             "session_user": u_cs,
             "ticket": t,

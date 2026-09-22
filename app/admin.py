@@ -87,8 +87,9 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
     all_users = db.query(User).order_by(User.created_at.desc()).all()
 
     return request.app.templates.TemplateResponse(
-        "admin_dashboard.html",
-        {
+        request=request,
+        name="admin_dashboard.html",
+        context={
             "request": request,
             "title": "Admin Dashboard",
             "pending_users": pending_users,
@@ -794,8 +795,9 @@ def broadcast_page(request: Request):
         return RedirectResponse(url="/login", status_code=303)
 
     return request.app.templates.TemplateResponse(
-        "admin_broadcast.html",
-        {
+        request=request,
+        name="admin_broadcast.html",
+        context={
             "request": request,
             "title": "Broadcast Email",
             "session_user": request.session.get("user"),  # ← مهم جداً
@@ -826,8 +828,9 @@ def broadcast_send(
     # لو ما في ولا إيميل
     if not emails:
         return request.app.templates.TemplateResponse(
-            "admin_broadcast.html",
-            {
+            request=request,
+            name="admin_broadcast.html",
+            context={
                 "request": request,
                 "title": "Broadcast Email",
                 "session_user": request.session.get("user"),
@@ -943,8 +946,9 @@ def broadcast_send(
 
     # 5) صفحة النجاح
     return request.app.templates.TemplateResponse(
-        "admin_broadcast_success.html",
-        {
+        request=request,
+        name="admin_broadcast_success.html",
+        context={
             "request": request,
             "title": "Broadcast Sent",
             "sent_to": len(emails),

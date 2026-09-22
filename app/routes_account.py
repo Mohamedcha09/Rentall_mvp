@@ -28,8 +28,9 @@ def account_delete_page(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse("/login", status_code=303)
 
     return templates.TemplateResponse(
-        "account_delete.html",
-        {"request": request, "session_user": sess}
+        request=request,
+        name="account_delete.html",
+        context={"request": request, "session_user": sess},
     )
 
 

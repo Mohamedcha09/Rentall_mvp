@@ -124,4 +124,8 @@ def user_profile(user_id: int, request: Request, db: Session = Depends(get_db)):
     }
 
     # Template: user.html
-    return request.app.templates.TemplateResponse("user.html", context)
+    return request.app.templates.TemplateResponse(
+        request=request,
+        name="user.html",
+        context=context,
+    )

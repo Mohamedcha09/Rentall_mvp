@@ -914,8 +914,9 @@ def home(
     top_strip_cols = split_into_three_columns(list_top_slider_images())
 
     return templates.TemplateResponse(
-        "home.html",
-        {
+        request=request,
+        name="home.html",
+        context={
             "request": request,
             "title": "Marketplace",
             "items": items,
@@ -936,7 +937,11 @@ def home(
 @app.get("/welcome", response_class=HTMLResponse)
 def welcome(request: Request):
     u = request.session.get("user") if _has_session(request) else None
-    return templates.TemplateResponse("welcome.html", {"request": request, "session_user": u})
+    return templates.TemplateResponse(
+        request=request,
+        name="welcome.html",
+        context={"request": request, "session_user": u},
+    )
 
 @app.post("/welcome/continue")
 def welcome_continue():
@@ -947,14 +952,19 @@ def welcome_continue():
 @app.get("/about", response_class=HTMLResponse)
 def about(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user") if _has_session(request) else None
-    return templates.TemplateResponse("about.html", {"request": request, "session_user": u})
+    return templates.TemplateResponse(
+        request=request,
+        name="about.html",
+        context={"request": request, "session_user": u},
+    )
 
 @app.get("/about-full", response_class=HTMLResponse)
 def about_full(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user") if _has_session(request) else None
     return templates.TemplateResponse(
-        "about_full.html",
-        {"request": request, "session_user": u}
+        request=request,
+        name="about_full.html",
+        context={"request": request, "session_user": u},
     )
 
 
@@ -968,8 +978,9 @@ async def pdfs(request: Request):
         session_user = {"first_name": "User"}
 
     return templates.TemplateResponse(
-        "pdfs.html",
-        {"request": request, "session_user": session_user}
+        request=request,
+        name="pdfs.html",
+        context={"request": request, "session_user": session_user},
     )
 
 
@@ -1132,7 +1143,11 @@ def notifications_page(request: Request):
     u = request.session.get("user") if _has_session(request) else None
     if not u:
         return RedirectResponse(url="/login", status_code=303)
-    return templates.TemplateResponse("notifications.html", {"request": request, "session_user": u, "title": "Notifications"})
+    return templates.TemplateResponse(
+        request=request,
+        name="notifications.html",
+        context={"request": request, "session_user": u, "title": "Notifications"},
+    )
 
 @app.on_event("startup")
 def _startup_fx_seed():
@@ -1148,15 +1163,20 @@ def sitemap():
 
 @app.get("/privacy")
 def privacy_page(request: Request):
-    return templates.TemplateResponse("privacy.html", {"request": request})
+    return templates.TemplateResponse(
+        request=request,
+        name="privacy.html",
+        context={"request": request},
+    )
 
 
 @app.get("/how-it-works", response_class=HTMLResponse)
 def how_it_works(request: Request):
     u = request.session.get("user") if _has_session(request) else None
     return templates.TemplateResponse(
-        "how_it_works_steps.html",
-        {
+        request=request,
+        name="how_it_works_steps.html",
+        context={
             "request": request,
             "title": "How Sevor Works",
             "session_user": u,   # ✅ هذا هو المفتاح

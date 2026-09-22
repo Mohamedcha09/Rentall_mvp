@@ -115,8 +115,9 @@ def support_new(request: Request):
     if not u:
         return RedirectResponse("/login", status_code=303)
     return request.app.templates.TemplateResponse(
-        "support_new.html",
-        {"request": request, "session_user": u, "title": "Contact Support"},
+        request=request,
+        name="support_new.html",
+        context={"request": request, "session_user": u, "title": "Contact Support"},
     )
 
 
@@ -188,8 +189,9 @@ def support_my(request: Request, db: Session = Depends(get_db)):
     )
 
     return request.app.templates.TemplateResponse(
-        "support_my.html",
-        {
+        request=request,
+        name="support_my.html",
+        context={
             "request": request,
             "session_user": u,
             "tickets": tickets,
@@ -222,8 +224,9 @@ def support_ticket_view(tid: int, request: Request, db: Session = Depends(get_db
     db.commit()
 
     return request.app.templates.TemplateResponse(
-        "support_ticket.html",
-        {
+        request=request,
+        name="support_ticket.html",
+        context={
             "request": request,
             "session_user": u,
             "ticket": t,

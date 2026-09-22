@@ -43,8 +43,9 @@ def renter_rate_page(
         raise HTTPException(status_code=403, detail="not your booking")
 
     return templates.TemplateResponse(
-        "reviews_renter.html",
-        {
+        request=request,
+        name="reviews_renter.html",
+        context={
             "request": request,
             "title": f"Rate booking #{bk.id}",
             "booking": bk,

@@ -46,8 +46,9 @@ def deposit_managers_index(request: Request, db: Session = Depends(get_db)):
     )
 
     return request.app.templates.TemplateResponse(
-        "admin_deposit_managers.html",
-        {
+        request=request,
+        name="admin_deposit_managers.html",
+        context={
             "request": request,
             "title": "Deposit Managers Management",
             "users": users,

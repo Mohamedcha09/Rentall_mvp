@@ -38,8 +38,9 @@ def payout_settings(request: Request, db: Session = Depends(get_db)):
     show_form = request.query_params.get("edit") == "1" or payout is None
 
     return request.app.templates.TemplateResponse(
-        "payout_settings.html",
-        {
+        request=request,
+        name="payout_settings.html",
+        context={
             "request": request,
             "user": user,
             "session_user": user,  # ✅ أضف هذا السطر

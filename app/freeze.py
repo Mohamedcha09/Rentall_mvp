@@ -34,8 +34,9 @@ def freeze_list(request: Request, db: Session = Depends(get_db)):
         .all()
     )
     return request.app.templates.TemplateResponse(
-        "freeze.html",
-        {
+        request=request,
+        name="freeze.html",
+        context={
             "request": request,
             "title": "Guarantees (Placeholder)",
             "deposits": deposits,
@@ -82,8 +83,9 @@ def admin_freeze_list(request: Request, db: Session = Depends(get_db)):
         .all()
     )
     return request.app.templates.TemplateResponse(
-        "admin_freeze.html",
-        {
+        request=request,
+        name="admin_freeze.html",
+        context={
             "request": request,
             "title": "Manage Guarantees (Placeholder)",
             "deposits": deposits,

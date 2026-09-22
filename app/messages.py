@@ -144,8 +144,9 @@ def inbox(request: Request, db: Session = Depends(get_db)):
         })
 
     return request.app.templates.TemplateResponse(
-        "inbox.html",
-        {
+        request=request,
+        name="inbox.html",
+        context={
             "request": request,
             "title": "Messages",
             "threads": view_threads,
@@ -292,8 +293,9 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
     item_image = _safe_url(item_image)
 
     return request.app.templates.TemplateResponse(
-        "thread.html",
-        {
+        request=request,
+        name="thread.html",
+        context={
             "request": request,
             "title": "Conversation",
             "thread": thr,

@@ -36,8 +36,9 @@ def admin_users_page(request: Request, db: Session = Depends(get_db)):
             pass
 
     return request.app.templates.TemplateResponse(
-        "admine_dashboard.html",
-        {
+        request=request,
+        name="admine_dashboard.html",
+        context={
             "request": request,
             "pending_users": pending,
             "all_users": all_users,

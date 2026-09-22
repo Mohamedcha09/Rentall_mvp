@@ -44,8 +44,9 @@ def list_pending(request: Request, db: Session = Depends(get_db)):
     )
 
     return request.app.templates.TemplateResponse(
-        "admin_items_pending.html",
-        {
+        request=request,
+        name="admin_items_pending.html",
+        context={
             "request": request,
             "items": items,
             "session_user": request.session.get("user"),

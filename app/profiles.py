@@ -133,8 +133,9 @@ def profile(request: Request, db: Session = Depends(get_db)):
     payouts_enabled = bool(getattr(me, "payouts_enabled", False))
 
     return request.app.templates.TemplateResponse(
-        "profile.html",
-        {
+        request=request,
+        name="profile.html",
+        context={
             "request": request,
             "title": "My Profile",
             "session_user": u,
@@ -196,8 +197,9 @@ def public_profile(user_id: int, request: Request, db: Session = Depends(get_db)
     badges_user = get_user_badges(user, db)
 
     return request.app.templates.TemplateResponse(
-        "user_public.html",
-        {
+        request=request,
+        name="user_public.html",
+        context={
             "request": request,
             "title": f"{(user.first_name or '').strip()} {(user.last_name or '').strip()}".strip(),
             "user": user,
@@ -218,8 +220,9 @@ def profile_docs_get(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=303)
     user = db.get(User, u["id"])
     return request.app.templates.TemplateResponse(
-        "profile_docs.html",
-        {"request": request, "title": "Verification Correction", "user": user, "session_user": u}
+        request=request,
+        name="profile_docs.html",
+        context={"request": request, "title": "Verification Correction", "user": user, "session_user": u},
     )
 
 @router.post("/profile/docs")
@@ -293,8 +296,9 @@ def profile_docs_post(
 
     user = db.get(User, u["id"])
     return request.app.templates.TemplateResponse(
-        "profile_docs.html",
-        {
+        request=request,
+        name="profile_docs.html",
+        context={
             "request": request,
             "title": "Verification Correction",
             "user": user,

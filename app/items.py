@@ -390,8 +390,9 @@ def items_list(
         )
 
     return request.app.templates.TemplateResponse(
-        "items.html",
-        {
+        request=request,
+        name="items.html",
+        context={
             "request": request,
             "title": "Items",
             "items": items,
@@ -494,8 +495,9 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
         ]
 
     return request.app.templates.TemplateResponse(
-        "items_detail.html",
-        {
+        request=request,
+        name="items_detail.html",
+        context={
             "request": request,
             "item": item,
             "owner": owner,
@@ -554,8 +556,9 @@ def my_items(request: Request, db: Session = Depends(get_db)):
         )
 
     return request.app.templates.TemplateResponse(
-        "owner_items.html",
-        {
+        request=request,
+        name="owner_items.html",
+        context={
             "request": request,
             "title": "My Items",
             "items": items,
@@ -585,8 +588,9 @@ def item_edit_get(request: Request, item_id: int, db: Session = Depends(get_db))
     )
 
     return request.app.templates.TemplateResponse(
-        "items_edit.html",
-        {
+        request=request,
+        name="items_edit.html",
+        context={
             "request": request,
             "item": item,
             "categories": categories,
@@ -687,8 +691,9 @@ def item_new_get(request: Request, db: Session = Depends(get_db)):
         subcats_map[s.category_id].append({"id": s.id, "name": s.name})
 
     return request.app.templates.TemplateResponse(
-        "items_new.html",
-        {
+        request=request,
+        name="items_new.html",
+        context={
             "request": request,
             "title": "Add Item",
             "categories": categories_db,     # full category objects
@@ -861,8 +866,9 @@ def item_reviews_all(request: Request, item_id: int, db: Session = Depends(get_d
     )
 
     return request.app.templates.TemplateResponse(
-        "items_reviews.html",
-        {
+        request=request,
+        name="items_reviews.html",
+        context={
             "request": request,
             "title": f"All reviews • {item.title}",
             "item": item,
@@ -905,8 +911,9 @@ def item_submitted(request: Request, item_id: int, db: Session = Depends(get_db)
         return RedirectResponse(url="/owner/items", status_code=303)
 
     return request.app.templates.TemplateResponse(
-        "item_submitted.html",
-        {
+        request=request,
+        name="item_submitted.html",
+        context={
             "request": request,
             "session_user": u,
             "item": it,

@@ -155,8 +155,9 @@ def mod_inbox(request: Request, db: Session = Depends(get_db), tid: int | None =
     }
 
     return templates.TemplateResponse(
-        "mod_inbox.html",
-        {"request": request, "session_user": u_mod, "title": "MOD Inbox", "data": data},
+        request=request,
+        name="mod_inbox.html",
+        context={"request": request, "session_user": u_mod, "title": "MOD Inbox", "data": data},
     )
 
 
@@ -191,8 +192,9 @@ def mod_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     db.commit()
 
     return templates.TemplateResponse(
-        "mod_ticket.html",
-        {"request": request, "session_user": u_mod, "ticket": t, "msgs": t.messages, "title": f"Ticket #{t.id} (MOD)"},
+        request=request,
+        name="mod_ticket.html",
+        context={"request": request, "session_user": u_mod, "ticket": t, "msgs": t.messages, "title": f"Ticket #{t.id} (MOD)"},
     )
 
 

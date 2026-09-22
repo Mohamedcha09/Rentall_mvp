@@ -102,8 +102,9 @@ def mod_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
     }
 
     return templates.TemplateResponse(
-        "mod_chatbot_inbox.html",
-        {
+        request=request,
+        name="mod_chatbot_inbox.html",
+        context={
             "request": request,
             "session_user": u_mod,
             "title": "MOD Chatbot Inbox",
@@ -141,8 +142,9 @@ def mod_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(ge
     db.commit()
 
     return templates.TemplateResponse(
-        "mod_chatbot_ticket.html",
-        {
+        request=request,
+        name="mod_chatbot_ticket.html",
+        context={
             "request": request,
             "session_user": u_mod,
             "ticket": t,

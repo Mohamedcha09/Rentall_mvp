@@ -154,8 +154,9 @@ def md_inbox(request: Request, db: Session = Depends(get_db), tid: int | None = 
     }
 
     return templates.TemplateResponse(
-        "md_inbox.html",
-        {"request": request, "session_user": u_md, "title": "MD Inbox", "data": data},
+        request=request,
+        name="md_inbox.html",
+        context={"request": request, "session_user": u_md, "title": "MD Inbox", "data": data},
     )
 
 
@@ -192,8 +193,9 @@ def md_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     db.commit()
 
     return templates.TemplateResponse(
-        "md_ticket.html",
-        {"request": request, "session_user": u_md, "ticket": t, "msgs": t.messages, "title": f"Ticket #{t.id} (MD)"},
+        request=request,
+        name="md_ticket.html",
+        context={"request": request, "session_user": u_md, "ticket": t, "msgs": t.messages, "title": f"Ticket #{t.id} (MD)"},
     )
 
 

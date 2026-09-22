@@ -414,8 +414,9 @@ def admin_reports_page(request: Request, db: Session = Depends(get_db)):
     )
 
     return request.app.templates.TemplateResponse(
-        "reports.html",
-        {
+        request=request,
+        name="reports.html",
+        context={
             "request": request,
             "title": "Reports",
             "pending": pending,
@@ -573,8 +574,9 @@ def admin_report_detail_page(report_id: int, request: Request, db: Session = Dep
     owner_id = _get_item_owner_id(db, int(item_id)) if item_id else None
 
     return request.app.templates.TemplateResponse(
-        "report_detail.html",
-        {
+        request=request,
+        name="report_detail.html",
+        context={
             "request": request,
             "title": f"Report #{getattr(r,'id', '')}",
             "r": r,

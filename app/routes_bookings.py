@@ -265,7 +265,11 @@ def booking_flow(
         "dispute_deadline_iso": dispute_deadline_iso,
     }
 
-    return request.app.templates.TemplateResponse("booking_flow.html", ctx)
+    return request.app.templates.TemplateResponse(
+        request=request,
+        name="booking_flow.html",
+        context=ctx,
+    )
 
 
 @router.post("/bookings/{booking_id}/owner/decision")
@@ -424,8 +428,9 @@ def bookings_index(
         bookings = db.query(Booking).filter(Booking.renter_id == user.id).all()
 
     return request.app.templates.TemplateResponse(
-        "booking_index.html",
-        {
+        request=request,
+        name="booking_index.html",
+        context={
             "request": request,
             "bookings": bookings,
             "view": view,
@@ -473,7 +478,11 @@ def booking_new_page(
         "days_default": 1,
     }
 
-    return request.app.templates.TemplateResponse("booking_new.html", ctx)
+    return request.app.templates.TemplateResponse(
+        request=request,
+        name="booking_new.html",
+        context=ctx,
+    )
 
     
 @router.post("/bookings/{booking_id}/renter/confirm_received")

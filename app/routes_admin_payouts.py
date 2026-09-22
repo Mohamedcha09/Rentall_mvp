@@ -143,8 +143,9 @@ def admin_payouts(
         })
 
     return request.app.templates.TemplateResponse(
-        "admin_payouts.html",
-        {
+        request=request,
+        name="admin_payouts.html",
+        context={
             "request": request,
             "user": user,
             "rows": rows,
@@ -266,8 +267,9 @@ def admin_payouts_paid(
         })
 
     return request.app.templates.TemplateResponse(
-        "admin_payouts_paid.html",
-        {
+        request=request,
+        name="admin_payouts_paid.html",
+        context={
             "request": request,
             "rows": rows,
             "session_user": request.session.get("user"),
@@ -310,8 +312,9 @@ def payout_receipt_front(
     )
 
     return request.app.templates.TemplateResponse(
-        "payout_receipt.html",
-        {
+        request=request,
+        name="payout_receipt.html",
+        context={
             "request": request,
             "booking": booking,
             "payout": payout,
@@ -356,8 +359,9 @@ def deposit_receipt_front(
     )
 
     return request.app.templates.TemplateResponse(
-        "deposit_receipt.html",
-        {
+        request=request,
+        name="deposit_receipt.html",
+        context={
             "request": request,
             "booking": booking,
             "payout": payout,
@@ -406,8 +410,9 @@ def admin_deposit_payouts_paid(
         })
 
     return request.app.templates.TemplateResponse(
-        "admin_deposit_payouts_paid.html",
-        {
+        request=request,
+        name="admin_deposit_payouts_paid.html",
+        context={
             "request": request,
             "rows": rows,
             "session_user": request.session.get("user"),

@@ -133,8 +133,9 @@ def login_get(request: Request):
     if r:
         return r
     return request.app.templates.TemplateResponse(
-        "auth_login.html",
-        {"request": request, "title": "Login", "session_user": request.session.get("user")}
+        request=request,
+        name="auth_login.html",
+        context={"request": request, "title": "Login", "session_user": request.session.get("user")}
     )
 
 @router.post("/login")
@@ -216,8 +217,9 @@ def register_get(request: Request):
     if r:
         return r
     return request.app.templates.TemplateResponse(
-        "auth_register.html",
-        {"request": request, "title": "Register", "session_user": request.session.get("user")}
+        request=request,
+        name="auth_register.html",
+        context={"request": request, "title": "Register", "session_user": request.session.get("user")}
     )
 
 @router.post("/register")
@@ -252,8 +254,9 @@ def register_post(
     exists = db.query(User).filter(User.email == email).first()
     if exists:
         return request.app.templates.TemplateResponse(
-            "auth_register.html",
-            {
+            request=request,
+            name="auth_register.html",
+            context={
                 "request": request,
                 "title": "Register",
                 "message": "This email is already in use.",
@@ -264,8 +267,9 @@ def register_post(
     # ✅ Require company document if company
     if account_type == "company" and not company_proof:
         return request.app.templates.TemplateResponse(
-            "auth_register.html",
-            {
+            request=request,
+            name="auth_register.html",
+            context={
                 "request": request,
                 "title": "Register",
                 "message": "Company proof document is required.",
@@ -280,8 +284,9 @@ def register_post(
 
     if not avatar_path:
         return request.app.templates.TemplateResponse(
-            "auth_register.html",
-            {
+            request=request,
+            name="auth_register.html",
+            context={
                 "request": request,
                 "title": "Register",
                 "message": "Profile image is required.",
@@ -335,8 +340,9 @@ def register_post(
         company_url = _save_any(company_proof, IDS_DIR, [".jpg", ".jpeg", ".png", ".pdf"])
         if not company_url:
             return request.app.templates.TemplateResponse(
-                "auth_register.html",
-                {
+                request=request,
+                name="auth_register.html",
+                context={
                     "request": request,
                     "title": "Register",
                     "message": "Company proof upload failed.",
@@ -393,8 +399,9 @@ def verify_email_page(request: Request, email: str = "", db: Session = Depends(g
 
     # Other cases: show the page
     return request.app.templates.TemplateResponse(
-        "verify_email.html",
-        {"request": request, "title": "Verify your email", "email": em, "session_user": u or None},
+        request=request,
+        name="verify_email.html",
+        context={"request": request, "title": "Verify your email", "email": em, "session_user": u or None},
     )
 
 # ============ Activate account via link ============
@@ -458,8 +465,9 @@ def forgot_get(request: Request):
     if r:
         return r
     return request.app.templates.TemplateResponse(
-        "auth_forgot.html",
-        {"request": request, "title": "Reset password", "session_user": request.session.get("user")}
+        request=request,
+        name="auth_forgot.html",
+        context={"request": request, "title": "Reset password", "session_user": request.session.get("user")}
     )
 
 @router.post("/forgot")
@@ -521,8 +529,9 @@ def forgot_post(request: Request, db: Session = Depends(get_db), email: str = Fo
         pass
 
     return request.app.templates.TemplateResponse(
-        "auth_forgot.html",
-        {"request": request, "title": "Reset password", "info": msg, "session_user": request.session.get("user")}
+        request=request,
+        name="auth_forgot.html",
+        context={"request": request, "title": "Reset password", "info": msg, "session_user": request.session.get("user")}
     )
 
 # 3) New password entry page (via link)
@@ -534,8 +543,9 @@ def reset_get(request: Request, token: str = ""):
     if not token:
         return RedirectResponse(url="/forgot", status_code=303)
     return request.app.templates.TemplateResponse(
-        "auth_reset_password.html",
-        {"request": request, "title": "Set a new password", "token": token, "session_user": request.session.get("user")}
+        request=request,
+        name="auth_reset_password.html",
+        context={"request": request, "title": "Set a new password", "token": token, "session_user": request.session.get("user")}
     )
 
 # 4) Save the new password
@@ -552,8 +562,9 @@ def reset_post(
 
     if (not password) or (password != confirm):
         return request.app.templates.TemplateResponse(
-            "auth_reset_password.html",
-            {
+            request=request,
+            name="auth_reset_password.html",
+            context={
                 "request": request,
                 "title": "Set a new password",
                 "token": token,
@@ -569,20 +580,23 @@ def reset_post(
         email = (data.get("email") or "").strip().lower()
     except SignatureExpired:
         return request.app.templates.TemplateResponse(
-            "auth_reset_password.html",
-            {"request": request, "title": "Set a new password", "error": "The link has expired. Request a new link.", "token": "", "session_user": request.session.get("user")},
+            request=request,
+            name="auth_reset_password.html",
+            context={"request": request, "title": "Set a new password", "error": "The link has expired. Request a new link.", "token": "", "session_user": request.session.get("user")},
         )
     except BadSignature:
         return request.app.templates.TemplateResponse(
-            "auth_reset_password.html",
-            {"request": request, "title": "Set a new password", "error": "Invalid link.", "token": "", "session_user": request.session.get("user")},
+            request=request,
+            name="auth_reset_password.html",
+            context={"request": request, "title": "Set a new password", "error": "Invalid link.", "token": "", "session_user": request.session.get("user")},
         )
 
     user = db.query(User).filter(User.id == uid, User.email == email).first()
     if not user:
         return request.app.templates.TemplateResponse(
-            "auth_reset_password.html",
-            {"request": request, "title": "Set a new password", "error": "Account not found.", "token": "", "session_user": request.session.get("user")},
+            request=request,
+            name="auth_reset_password.html",
+            context={"request": request, "title": "Set a new password", "error": "Account not found.", "token": "", "session_user": request.session.get("user")},
         )
 
     user.password_hash = hash_password(password)
@@ -651,8 +665,9 @@ def settings_get(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse("/login", status_code=303)
     u = db.query(User).filter(User.id == sess["id"]).first()
     return request.app.templates.TemplateResponse(
-        "settings.html",
-        {"request": request, "title": "Settings", "u": u, "session_user": sess}
+        request=request,
+        name="settings.html",
+        context={"request": request, "title": "Settings", "u": u, "session_user": sess}
     )
 
 @router.post("/settings/profile")

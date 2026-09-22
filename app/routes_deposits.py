@@ -379,8 +379,9 @@ def dm_queue(
     cases = qset.order_by(Booking.updated_at.desc()).all()
 
     return request.app.templates.TemplateResponse(
-        "dm_queue.html",
-        {
+        request=request,
+        name="dm_queue.html",
+        context={
             "request": request,
             "cases": cases,
             "state": state,
@@ -410,8 +411,9 @@ def dm_case_page(
     has_renter_reply = _has_renter_reply(db, bk.id, bk)
 
     resp = request.app.templates.TemplateResponse(
-        "dm_case.html",
-        {
+        request=request,
+        name="dm_case.html",
+        context={
             "request": request,
             "title": f"Deposit Case #{bk.id}",
             "session_user": request.session.get("user"),
@@ -538,8 +540,9 @@ def report_deposit_issue_page(
     item = db.get(Item, bk.item_id)
 
     return request.app.templates.TemplateResponse(
-        "deposit_report.html",
-        {
+        request=request,
+        name="deposit_report.html",
+        context={
             "request": request,
             "title": f"Open Deposit Report — Booking #{bk.id}",
             "session_user": request.session.get("user"),
@@ -705,8 +708,9 @@ def report_deposit_issue(
         pass
 
     return request.app.templates.TemplateResponse(
-        "deposit_report_ok.html",
-        {
+        request=request,
+        name="deposit_report_ok.html",
+        context={
             "request": request,
             "title": "Report Submitted",
             "session_user": request.session.get("user"),
@@ -1368,8 +1372,9 @@ def deposit_final_summary(
     renter_pickup, renter_return, renter_other = _split_renter_evidence(bk)
 
     return request.app.templates.TemplateResponse(
-        "deposit_final_summary.html",
-        {
+        request=request,
+        name="deposit_final_summary.html",
+        context={
             "request": request,
             "title": f"Final Result — #{bk.id}",
             "bk": bk,

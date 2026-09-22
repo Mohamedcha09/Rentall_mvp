@@ -71,8 +71,9 @@ def dm_index(
 
     # Pass everything to the template
     return request.app.templates.TemplateResponse(
-        "deposit_manager_index.html",
-        {
+        request=request,
+        name="deposit_manager_index.html",
+        context={
             "request": request,
             "title": title,
             "session_user": request.session.get("user"),

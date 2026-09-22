@@ -51,7 +51,10 @@ def chatbot_page(
     # last open chatbot ticket
     active_ticket = None
     
-    return templates.TemplateResponse("chatbot.html", {
+    return templates.TemplateResponse(
+        request=request,
+        name="chatbot.html",
+        context={
         "request": request,
         "user": user,
         "session_user": user,
@@ -399,7 +402,10 @@ def chatbot_ticket_client(
         .all()
     )
 
-    return templates.TemplateResponse("chatbot_ticket_client.html", {
+    return templates.TemplateResponse(
+        request=request,
+        name="chatbot_ticket_client.html",
+        context={
         "request": request,
         "ticket": t,
         "msgs": msgs,
@@ -435,7 +441,10 @@ def chatbot_ticket_client_page(
         .all()
     )
 
-    return templates.TemplateResponse("chatbot_ticket_client.html", {
+    return templates.TemplateResponse(
+        request=request,
+        name="chatbot_ticket_client.html",
+        context={
         "request": request,
         "user": user,
         "session_user": user,

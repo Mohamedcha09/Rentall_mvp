@@ -23,8 +23,9 @@ def dispute_new(request: Request, db: Session = Depends(get_db)):
     if not u:
         return RedirectResponse(url="/login", status_code=303)
     return request.app.templates.TemplateResponse(
-        "dispute_new.html",
-        {"request": request, "session_user": u, "title": "Open Dispute"}
+        request=request,
+        name="dispute_new.html",
+        context={"request": request, "session_user": u, "title": "Open Dispute"}
     )
 
 # ---------- Shared Helpers ----------
@@ -87,8 +88,9 @@ def dm_queue_compat(
             items_map[it.id] = it
 
     return request.app.templates.TemplateResponse(
-        "dm_queue.html",
-        {
+        request=request,
+        name="dm_queue.html",
+        context={
             "request": request,
             "title": "Deposit Cases (Compat)",
             "session_user": request.session.get("user"),
@@ -119,8 +121,9 @@ def dm_case_compat(
     renter = db.get(User, bk.renter_id) if bk.renter_id else None
 
     return request.app.templates.TemplateResponse(
-        "dm_case.html",
-        {
+        request=request,
+        name="dm_case.html",
+        context={
             "request": request,
             "title": f"Deposit Case #{bk.id} (Compat)",
             "session_user": request.session.get("user"),

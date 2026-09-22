@@ -215,8 +215,9 @@ def search_page(
         ]
 
     return request.app.templates.TemplateResponse(
-        "search.html",
-        {
+        request=request,
+        name="search.html",
+        context={
             "request": request,
             "title": "Search Results",
             "q": q,

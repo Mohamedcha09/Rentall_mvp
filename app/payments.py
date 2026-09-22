@@ -29,8 +29,9 @@ def wallet_connect(request: Request):
         return RedirectResponse(url="/login", status_code=303)
 
     return request.app.templates.TemplateResponse(
-        "wallet_connect.html",
-        {
+        request=request,
+        name="wallet_connect.html",
+        context={
             "request": request,
             "title": "Payout Account Setup",
             "session_user": u,
@@ -62,8 +63,9 @@ def checkout_deposit(item_id: int, request: Request, db: Session = Depends(get_d
     # Later: read the real security_deposit from DB if you add the column.
     security_deposit = getattr(item, "security_deposit", None) or 100
     return request.app.templates.TemplateResponse(
-        "checkout_deposit.html",
-        {
+        request=request,
+        name="checkout_deposit.html",
+        context={
             "request": request,
             "title": "Deposit/Reservation",
             "session_user": u,
@@ -86,8 +88,9 @@ def my_rentals(request: Request):
     if not u:
         return RedirectResponse(url="/login", status_code=303)
     return request.app.templates.TemplateResponse(
-        "my_rentals.html",
-        {"request": request, "title": "My Rentals (Renter)", "session_user": u}
+        request=request,
+        name="my_rentals.html",
+        context={"request": request, "title": "My Rentals (Renter)", "session_user": u},
     )
 
 @router.get("/my/orders")          # As owner
@@ -96,8 +99,9 @@ def my_orders(request: Request):
     if not u:
         return RedirectResponse(url="/login", status_code=303)
     return request.app.templates.TemplateResponse(
-        "my_orders.html",
-        {"request": request, "title": "My Orders (Owner)", "session_user": u}
+        request=request,
+        name="my_orders.html",
+        context={"request": request, "title": "My Orders (Owner)", "session_user": u},
     )
 
 # ================
@@ -109,8 +113,9 @@ def dispute_new(request: Request):
     if not u:
         return RedirectResponse(url="/login", status_code=303)
     return request.app.templates.TemplateResponse(
-        "dispute_new.html",
-        {"request": request, "title": "Open Dispute", "session_user": u}
+        request=request,
+        name="dispute_new.html",
+        context={"request": request, "title": "Open Dispute", "session_user": u},
     )
 
 @router.post("/dispute/new")

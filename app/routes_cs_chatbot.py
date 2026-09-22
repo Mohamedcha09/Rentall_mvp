@@ -98,8 +98,9 @@ def cs_chatbot_inbox(request: Request, db: Session = Depends(get_db)):
     }
 
     return templates.TemplateResponse(
-        "cs_chatbot_inbox.html",
-        {
+        request=request,
+        name="cs_chatbot_inbox.html",
+        context={
             "request": request,
             "session_user": u_cs,
             "title": "CS Chatbot Inbox",
@@ -142,8 +143,9 @@ def cs_chatbot_ticket_view(tid: int, request: Request, db: Session = Depends(get
     db.commit()
 
     return templates.TemplateResponse(
-        "cs_chatbot_ticket.html",
-        {
+        request=request,
+        name="cs_chatbot_ticket.html",
+        context={
             "request": request,
             "session_user": u_cs,
             "ticket": t,
