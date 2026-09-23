@@ -56,7 +56,8 @@
           {% if docs and docs|length %}
             <div class="mb-3">
               <div class="small text-muted mb-1">Latest uploaded documents:</div>
-              {% for d in docs|sort(attribute="created_at", reverse=True)[:1] %}
+              {% set latest_docs = docs|sort(attribute="created_at", reverse=True) %}
+              {% for d in latest_docs[:1] %}
                 <div class="d-flex align-items-center gap-3">
                   {% if d.file_front_path %}
                     <img src="/{{ d.file_front_path }}" style="width:96px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">

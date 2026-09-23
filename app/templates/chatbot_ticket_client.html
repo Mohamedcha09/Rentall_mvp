@@ -196,6 +196,7 @@ let LAST_MESSAGE_ID = {{ msgs[-1].id if msgs else 0 }};
 chat.scrollTop = chat.scrollHeight;
 
 /* SEND USER MESSAGE (FRONT ONLY) */
+if (form && input) {
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -223,6 +224,7 @@ form.addEventListener("submit", async (e) => {
   // ✅ المهم
   LAST_MESSAGE_ID = data.message_id;
 });
+}
 
 
 /* POLL AGENT ONLY */
