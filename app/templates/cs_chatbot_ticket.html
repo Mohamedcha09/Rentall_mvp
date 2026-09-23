@@ -27,7 +27,7 @@
           </strong>
           <span class="text-muted small">— {{ m.created_at }}</span>
         </div>
-        <div class="mt-2">{{ m.body | safe }}</div>
+        <div class="mt-2 chatbot-message-body">{{ m.body | safe }}</div>
       </div>
     {% endfor %}
   </div>

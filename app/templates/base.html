@@ -1065,6 +1065,11 @@ header.topbar .searchbar-wrap{
   .page :is(h1,h2,h3,h4,h5,h6,p,.small,.text-muted,.card-title,.card-text,.form-text,.list-group-item){
     overflow-wrap:anywhere;
   }
+  .chat-thread .chatbot-message-body{
+    min-width:0;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+  }
 
   /* These internal support routes deliberately hide the shared chrome. */
   body[data-path^="/cs"] .page,
