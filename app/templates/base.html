@@ -1006,6 +1006,21 @@ header.topbar .searchbar-wrap{
 }
 </style>
 
+<style id="home-sticky-top-stack">
+@media (max-width:768px){
+  /* Keep the Home-only section tabs directly below the sticky search bar. */
+  body[data-path="/"] .m-top-tabs{
+    position:-webkit-sticky !important;
+    position:sticky !important;
+    top:calc(56px + env(safe-area-inset-top, 0px)) !important;
+    z-index:4999 !important;
+    margin-top:0 !important;
+    flex-shrink:0;
+    background:rgba(255,255,255,.98) !important;
+  }
+}
+</style>
+
 
 {% block head %}{% endblock %}
 {% set immersive = immersive|default(false) %}
