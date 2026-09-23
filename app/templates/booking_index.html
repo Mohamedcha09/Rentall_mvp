@@ -120,6 +120,8 @@
         <div class="booking-thumb">
             <img src="{{ b.item.image_path }}"
                  referrerpolicy="no-referrer"
+                 {% if loop.index > 3 %}loading="lazy"{% elif loop.first %}fetchpriority="high"{% endif %}
+                 decoding="async"
                  onerror="this.src='/static/placeholder.png'">
         </div>
 

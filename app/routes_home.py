@@ -215,18 +215,25 @@ def _pick_topstrip(limit_per_col=12):
 # ======================================
 # Ratings aggregation
 # ======================================
-def load_ratings_map(db: Session):
+def load_ratings_map(db: Session, item_ids: list[int] | None = None):
+
+    if item_ids is not None and not item_ids:
+        return {}
+
+    query = db.query(
+        ItemReview.item_id.label("iid"),
+        func.avg(
+            ItemReview.stars
+        ).label("avg"),
+        func.count(
+            ItemReview.id
+        ).label("cnt"),
+    )
+    if item_ids is not None:
+        query = query.filter(ItemReview.item_id.in_(item_ids))
 
     rows = (
-        db.query(
-            ItemReview.item_id.label("iid"),
-            func.avg(
-                ItemReview.stars
-            ).label("avg"),
-            func.count(
-                ItemReview.id
-            ).label("cnt"),
-        )
+        query
         .group_by(
             ItemReview.item_id
         )
@@ -249,6 +256,27 @@ def load_ratings_map(db: Session):
         }
 
     return m
+
+
+def _serialize_displayed_items(
+    rows: list[Item],
+    ratings_map: dict,
+    user_currency: str,
+    rates: dict,
+    symbols: dict,
+) -> list[dict]:
+    result = []
+    for row in rows:
+        item = _serialize(row, ratings_map)
+        item["display_price"] = fx_convert(
+            item.get("price_per_day") or 0,
+            item["currency"],
+            user_currency,
+            rates,
+        )
+        item["display_symbol"] = symbols.get(user_currency, user_currency)
+        result.append(item)
+    return result
 
 
 # ======================================
@@ -379,6 +407,16 @@ def home_page(
     )
 
 
+    db_categories = (
+        db.query(Category)
+        .order_by(Category.id)
+        .all()
+    )
+
+    # Keep the established full-catalog random selection for every shelf.
+    # Only the ratings aggregation below is narrowed to the displayed cards;
+    # ratings for items that cannot appear in this response do not need to be
+    # scanned or grouped.
     filtering = (
         (
             lat
@@ -394,230 +432,100 @@ def home_page(
         )
     )
 
-
-    # ======================================
-    # NEARBY ITEMS — RANDOM
-    # ======================================
     if filtering:
-
         nearby_rows = (
             filtered_q
-            .order_by(
-                func.random()
-            )
+            .order_by(func.random())
             .limit(20)
             .all()
         )
-
     else:
-
         nearby_rows = (
             base_q
-            .order_by(
-                func.random()
-            )
+            .order_by(func.random())
             .limit(20)
             .all()
         )
 
-
-    ratings_map = (
-        load_ratings_map(db)
-    )
-
-
-    nearby_items = [
-        _serialize(
-            i,
-            ratings_map,
-        )
-        for i in nearby_rows
-    ]
-
-
-    for it in nearby_items:
-
-        base = it["currency"]
-
-        price = (
-            it.get(
-                "price_per_day"
-            )
-            or 0
-        )
-
-        it["display_price"] = (
-            fx_convert(
-                price,
-                base,
-                user_currency,
-                rates,
-            )
-        )
-
-        it["display_symbol"] = (
-            symbols.get(
-                user_currency,
-                user_currency,
-            )
-        )
-
-
-    # ======================================
-    # CATEGORIES — RANDOM
-    # ======================================
-    items_by_category = {}
-
-
-    db_categories = (
-        db.query(Category)
-        .order_by(Category.id)
-        .all()
-    )
-
-
+    category_rows_by_code: dict[str, list[Item]] = {}
     for cat in db_categories:
-
         code = cat.name
-        label = cat.name
-
         q = base_q
 
-
         if filtering:
-
-            q = (
-                _apply_city_or_gps_filter(
-                    q,
-                    city,
-                    lat,
-                    lng,
-                    radius_km,
-                )
+            q = _apply_city_or_gps_filter(
+                q,
+                city,
+                lat,
+                lng,
+                radius_km,
             )
 
-
-        q = _apply_category_filter(
-            q,
-            code,
-            label,
-        )
-
+        q = _apply_category_filter(q, code, code)
 
         rows = (
             q
-            .order_by(
-                func.random()
-            )
+            .order_by(func.random())
             .limit(12)
             .all()
         )
+        if rows:
+            category_rows_by_code[code] = rows
 
-
-        lst = [
-            _serialize(
-                i,
-                ratings_map,
-            )
-            for i in rows
-        ]
-
-
-        for it in lst:
-
-            base = it["currency"]
-
-            price = (
-                it.get(
-                    "price_per_day"
-                )
-                or 0
-            )
-
-            it[
-                "display_price"
-            ] = fx_convert(
-                price,
-                base,
-                user_currency,
-                rates,
-            )
-
-            it[
-                "display_symbol"
-            ] = symbols.get(
-                user_currency,
-                user_currency,
-            )
-
-
-        if lst:
-            items_by_category[
-                code
-            ] = lst
-
-
-    # ======================================
-    # ALL ITEMS — RANDOM
-    # ======================================
     if filtering:
-
         all_rows = (
             filtered_q
-            .order_by(
-                func.random()
-            )
+            .order_by(func.random())
             .limit(60)
             .all()
         )
-
     else:
-
         all_rows = (
             base_q
-            .order_by(
-                func.random()
-            )
+            .order_by(func.random())
             .limit(60)
             .all()
         )
 
+    displayed_ids = list(
+        dict.fromkeys(
+            item.id
+            for rows in [
+                nearby_rows,
+                *category_rows_by_code.values(),
+                all_rows,
+            ]
+            for item in rows
+        )
+    )
+    ratings_map = load_ratings_map(db, displayed_ids)
 
-    all_items = [
-        _serialize(
-            i,
+    nearby_items = _serialize_displayed_items(
+        nearby_rows,
+        ratings_map,
+        user_currency,
+        rates,
+        symbols,
+    )
+
+    items_by_category = {
+        code: _serialize_displayed_items(
+            rows,
             ratings_map,
-        )
-        for i in all_rows
-    ]
-
-
-    for it in all_items:
-
-        base = it["currency"]
-
-        price = (
-            it.get(
-                "price_per_day"
-            )
-            or 0
-        )
-
-        it[
-            "display_price"
-        ] = fx_convert(
-            price,
-            base,
             user_currency,
             rates,
+            symbols,
         )
+        for code, rows in category_rows_by_code.items()
+    }
 
-        it[
-            "display_symbol"
-        ] = symbols.get(
-            user_currency,
-            user_currency,
-        )
+    all_items = _serialize_displayed_items(
+        all_rows,
+        ratings_map,
+        user_currency,
+        rates,
+        symbols,
+    )
 
 
     # ======================================

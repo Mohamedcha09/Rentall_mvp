@@ -225,7 +225,7 @@ mark {
   <div class="tab active" data-filter="all">Tout</div>
 
   <div class="tab" data-filter="support">
-    <img src="/static/img/sevor-logo.png" 
+    <img src="/static/images/ui/sevor-logo-96.png"
          style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">
     Soutien Sevor
     {% if tickets_count > 0 %}
@@ -243,7 +243,7 @@ mark {
      style="display:none">
 
     <div class="item-preview">
-      <img src="/static/img/sevor-logo.png">
+      <img src="/static/images/ui/sevor-logo-96.png" loading="lazy" decoding="async">
     </div>
 
     <div class="flex-grow-1 text-zone">
@@ -265,7 +265,7 @@ mark {
      style="display:none">
 
     <div class="item-preview">
-      <img src="/static/img/sevor-logo.png">
+      <img src="/static/images/ui/sevor-logo-96.png" loading="lazy" decoding="async">
     </div>
 
     <div class="flex-grow-1 text-zone">
@@ -286,9 +286,9 @@ mark {
      data-last="{{ t.last_message_text|lower }}">
 
     <div class="item-preview">
-      <img src="{{ t.item_image }}">
+      <img src="{{ t.item_image }}" {% if loop.index > 3 %}loading="lazy"{% endif %} decoding="async">
       <div class="small-avatar">
-        <img src="{{ t.other_avatar }}">
+        <img src="{{ t.other_avatar }}" {% if loop.index > 3 %}loading="lazy"{% endif %} decoding="async">
       </div>
     </div>
 

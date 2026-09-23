@@ -61,27 +61,80 @@ def inbox(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
-    if is_account_limited(request):
-        filtered = []
-        for t in threads:
-            other_id = t.user_b_id if t.user_a_id == uid else t.user_a_id
-            other = db.query(User).get(other_id)
-            if is_admin_user(other):
-                filtered.append(t)
-        threads = filtered
+    # Resolve the other participant once for all threads.  The previous loop
+    # queried a User for every thread, then repeated that lookup when building
+    # the template payload.
+    other_ids = {
+        t.user_b_id if t.user_a_id == uid else t.user_a_id
+        for t in threads
+    }
+    users_by_id = {}
+    if other_ids:
+        users_by_id = {
+            user.id: user
+            for user in db.query(User).filter(User.id.in_(other_ids)).all()
+        }
 
-    thread_ids = [t.id for t in threads] or [-1]
-    unread_rows = (
-        db.query(Message.thread_id, func.count(Message.id))
-        .filter(
-            Message.thread_id.in_(thread_ids),
-            Message.sender_id != uid,
-            Message.is_read == False,
+    account_limited = is_account_limited(request)
+    if account_limited:
+        threads = [
+            t
+            for t in threads
+            if is_admin_user(
+                users_by_id.get(
+                    t.user_b_id if t.user_a_id == uid else t.user_a_id
+                )
+            )
+        ]
+
+    thread_ids = [t.id for t in threads]
+    unread_map = {}
+    if thread_ids:
+        unread_rows = (
+            db.query(Message.thread_id, func.count(Message.id))
+            .filter(
+                Message.thread_id.in_(thread_ids),
+                Message.sender_id != uid,
+                Message.is_read == False,
+            )
+            .group_by(Message.thread_id)
+            .all()
         )
-        .group_by(Message.thread_id)
-        .all()
-    )
-    unread_map = {tid: int(cnt) for (tid, cnt) in unread_rows}
+        unread_map = {tid: int(cnt) for (tid, cnt) in unread_rows}
+
+    # Select the newest message for every displayed thread in one query.
+    # The row-number window works on PostgreSQL and supported SQLite versions,
+    # and avoids one ORDER BY/LIMIT query per conversation.
+    last_text_by_thread = {}
+    if thread_ids:
+        ranked_messages = (
+            db.query(
+                Message.thread_id.label("thread_id"),
+                Message.body.label("body"),
+                func.row_number()
+                .over(
+                    partition_by=Message.thread_id,
+                    order_by=(Message.created_at.desc(), Message.id.desc()),
+                )
+                .label("row_number"),
+            )
+            .filter(Message.thread_id.in_(thread_ids))
+            .subquery()
+        )
+        last_text_by_thread = {
+            row.thread_id: row.body or ""
+            for row in db.query(ranked_messages.c.thread_id, ranked_messages.c.body)
+            .filter(ranked_messages.c.row_number == 1)
+            .all()
+        }
+
+    item_ids = {t.item_id for t in threads if getattr(t, "item_id", None)}
+    items_by_id = {}
+    if item_ids:
+        items_by_id = {
+            item.id: item
+            for item in db.query(Item).filter(Item.id.in_(item_ids)).all()
+        }
 
     # ========= تذاكر الشات بوت فقط (channel='chatbot') =========
     chatbot_tickets = (
@@ -96,22 +149,16 @@ def inbox(request: Request, db: Session = Depends(get_db)):
     # ========= بناء قائمة threads للـ HTML =========
     view_threads = []
     for t in threads:
-        last_msg = (
-            db.query(Message)
-            .filter(Message.thread_id == t.id)
-            .order_by(Message.created_at.desc())
-            .first()
-        )
-        last_text = last_msg.body if last_msg else ""
+        last_text = last_text_by_thread.get(t.id, "")
 
         other_id = t.user_b_id if t.user_a_id == uid else t.user_a_id
-        other = db.query(User).get(other_id)
+        other = users_by_id.get(other_id)
 
         item_title = ""
         item_image = "/static/placeholder.svg"
 
         if getattr(t, "item_id", None):
-            item = db.query(Item).get(t.item_id)
+            item = items_by_id.get(t.item_id)
             if item:
                 item_title = item.title or ""
                 if getattr(item, "image_path", None):
@@ -153,7 +200,7 @@ def inbox(request: Request, db: Session = Depends(get_db)):
             "chatbot_tickets": chatbot_tickets,  # 👈 يُستخدم في التمبلت
             "tickets_count": tickets_count,      # 👈 للبادج
             "session_user": u,
-            "account_limited": is_account_limited(request),
+            "account_limited": account_limited,
         }
     )
 

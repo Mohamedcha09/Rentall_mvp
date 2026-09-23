@@ -136,11 +136,27 @@ def _has_session(request: Request) -> bool:
     except Exception:
         return False
 
+
+def _is_public_asset_request(request: Request) -> bool:
+    """Return whether a request can never need session or currency work."""
+    path = request.url.path or ""
+    return (
+        path == "/static"
+        or path.startswith("/static/")
+        or path == "/uploads"
+        or path.startswith("/uploads/")
+        or path in {"/favicon.ico", "/manifest.json", "/health", "/healthz"}
+    )
+
 # -----------------------------------------------------------------------------
 # FX autosync middleware (يعمل قبل الجلسات / العملات لكنه لا يلمس request.session)
 # -----------------------------------------------------------------------------
 @app.middleware("http")
 async def fx_autosync_mw(request: Request, call_next):
+    # Static files cannot use FX rates.  Avoid making an asset request the
+    # request that performs the daily synchronous FX refresh.
+    if _is_public_asset_request(request):
+        return await call_next(request)
     _fx_ensure_daily_sync()
     return await call_next(request)
 # --------------------------------------------------------------------------
@@ -158,6 +174,11 @@ async def geo_session_middleware(request: Request, call_next):
         * يظهر في باقي الصفحات لأول زيارة قبل اختيار الدولة.
     """
     path = request.url.path or "/"
+
+    # Mounted static/upload responses do not render a template and must not
+    # deserialize/write location state for every image, CSS, or JS request.
+    if _is_public_asset_request(request):
+        return await call_next(request)
 
     # فلاغ افتراضي للتمبلايت
     # (Jinja سيقرأه من request.state.show_country_modal)
@@ -225,6 +246,10 @@ async def currency_middleware(request: Request, call_next):
     try:
         path = request.url.path or ""
 
+        # Public assets never need display currency and should be cacheable.
+        if _is_public_asset_request(request):
+            return await call_next(request)
+
         # 🟩 استثناءات Stripe Webhook + Geo
         if (
             path.startswith("/stripe/webhook")
@@ -269,15 +294,17 @@ async def currency_middleware(request: Request, call_next):
 
         response = await call_next(request)
 
-        response.set_cookie(
-            "disp_cur",
-            disp,
-            max_age=60 * 60 * 24 * 180,
-            httponly=False,
-            samesite="lax",
-            domain=COOKIE_DOMAIN,
-            secure=HTTPS_ONLY_COOKIES,
-        )
+        # Do not resend an identical cookie on every dynamic response.
+        if (request.cookies.get("disp_cur") or "") != disp:
+            response.set_cookie(
+                "disp_cur",
+                disp,
+                max_age=60 * 60 * 24 * 180,
+                httponly=False,
+                samesite="lax",
+                domain=COOKIE_DOMAIN,
+                secure=HTTPS_ONLY_COOKIES,
+            )
 
         return response
 
@@ -310,10 +337,25 @@ def fx_rate(base: str, quote: str) -> float:
     ترجع فقط سعر الصرف (بدون ضرب مبلغ)
     تُستعمل داخل Jinja: fx_rate('CAD','USD')
     """
+    base = (base or "CAD").upper()
+    quote = (quote or "CAD").upper()
+    if base == quote:
+        return 1.0
+
+    cache_key = (date.today().isoformat(), base, quote)
+    cache = getattr(app.state, "fx_template_rate_cache", None)
+    if cache is None:
+        cache = {}
+        app.state.fx_template_rate_cache = cache
+    if cache_key in cache:
+        return cache[cache_key]
+
     db = SessionLocal()
     try:
-        r = _fetch_rate(db, (base or "CAD").upper(), (quote or "CAD").upper())
-        return float(r) if r else 1.0
+        r = _fetch_rate(db, base, quote)
+        rate = float(r) if r else 1.0
+        cache[cache_key] = rate
+        return rate
     except Exception:
         return 1.0
     finally:
@@ -409,6 +451,11 @@ def fx_sync_today(db: Session) -> None:
         base, quote = k.split("->")
         _fx_upsert(db, base, quote, float(r), today)
     db.commit()
+    # Template conversions are public daily values; invalidate only this
+    # process-local cache after the daily rates have changed.
+    cache = getattr(app.state, "fx_template_rate_cache", None)
+    if cache is not None:
+        cache.clear()
 
 app.state.fx_last_sync_at: datetime | None = None
 
@@ -1025,6 +1072,11 @@ def api_unread_count(request: Request, db: Session = Depends(get_db)):
 @app.middleware("http")
 async def sync_user_flags(request: Request, call_next):
     try:
+        # A static response does not consume session permissions.  Skipping
+        # this query is especially important because one page can load many
+        # images and stylesheets.
+        if _is_public_asset_request(request):
+            return await call_next(request)
         if _has_session(request):
             sess_user = request.session.get("user")
             if sess_user and "id" in sess_user:
@@ -1066,6 +1118,25 @@ async def sync_user_flags(request: Request, call_next):
     except Exception:
         pass
     response = await call_next(request)
+    return response
+
+
+@app.middleware("http")
+async def cache_public_static_assets(request: Request, call_next):
+    """Allow repeat navigations to reuse immutable/public static responses."""
+    response = await call_next(request)
+    path = request.url.path or ""
+    if (
+        request.method in {"GET", "HEAD"}
+        and (path == "/static" or path.startswith("/static/"))
+        and response.status_code in {200, 206, 304}
+        and not response.headers.get("Cache-Control")
+    ):
+        # SessionMiddleware can append a session cookie even for a static
+        # request from an authenticated browser.  Such a response is still
+        # useful in that browser's cache, but must never be shared by a CDN.
+        visibility = "private" if response.headers.get("Set-Cookie") else "public"
+        response.headers["Cache-Control"] = f"{visibility}, max-age=3600"
     return response
 
 # -----------------------------------------------------------------------------

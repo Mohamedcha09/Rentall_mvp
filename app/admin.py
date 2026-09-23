@@ -4,7 +4,7 @@ import os
 
 from fastapi import APIRouter, Depends, Request, HTTPException, Form
 from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from .database import get_db
 from .models import User, Document, MessageThread, Message
@@ -78,13 +78,16 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
     if not require_admin(request):
         return RedirectResponse(url="/login", status_code=303)
 
-    pending_users = (
+    # The dashboard renders documents for every listed user.  Load them in
+    # batches and derive the pending subset from the same ordered result,
+    # instead of issuing a document query per table row and a second User scan.
+    all_users = (
         db.query(User)
-        .filter(User.status == "pending")
+        .options(selectinload(User.documents))
         .order_by(User.created_at.desc())
         .all()
     )
-    all_users = db.query(User).order_by(User.created_at.desc()).all()
+    pending_users = [user for user in all_users if user.status == "pending"]
 
     return request.app.templates.TemplateResponse(
         request=request,

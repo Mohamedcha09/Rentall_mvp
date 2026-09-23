@@ -5,7 +5,7 @@ import os
 
 from fastapi import APIRouter, Depends, Request, HTTPException, Form, Query
 from fastapi.responses import RedirectResponse, JSONResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.sql import func
 
 from .database import get_db
@@ -423,9 +423,19 @@ def bookings_index(
     require_auth(user)
 
     if view == "owner":
-        bookings = db.query(Booking).filter(Booking.owner_id == user.id).all()
+        bookings = (
+            db.query(Booking)
+            .options(selectinload(Booking.item))
+            .filter(Booking.owner_id == user.id)
+            .all()
+        )
     else:
-        bookings = db.query(Booking).filter(Booking.renter_id == user.id).all()
+        bookings = (
+            db.query(Booking)
+            .options(selectinload(Booking.item))
+            .filter(Booking.renter_id == user.id)
+            .all()
+        )
 
     return request.app.templates.TemplateResponse(
         request=request,

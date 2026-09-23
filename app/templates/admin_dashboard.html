@@ -188,7 +188,7 @@
               <td>
                 {% if u.avatar_path %}
                   <a href="{{ u.avatar_path | media_url }}" target="_blank" rel="noopener">
-                    <img src="{{ u.avatar_path | media_url }}" alt="avatar" class="avatar-img">
+                    <img src="{{ u.avatar_path | media_url }}" alt="avatar" class="avatar-img" loading="lazy" decoding="async">
                   </a>
                 {% else %}
                   <span class="text-muted">—</span>
@@ -199,12 +199,12 @@
               <td>
                 {% if d and d.file_front_path %}
                   <a href="{{ d.file_front_path | media_url }}" target="_blank" title="Front" rel="noopener">
-                    <img src="{{ d.file_front_path | media_url }}" class="doc-img">
+                    <img src="{{ d.file_front_path | media_url }}" class="doc-img" loading="lazy" decoding="async">
                   </a>
                 {% endif %}
                 {% if d and d.file_back_path %}
                   <a href="{{ d.file_back_path | media_url }}" target="_blank" title="Back" rel="noopener">
-                    <img src="{{ d.file_back_path | media_url }}" class="doc-img">
+                    <img src="{{ d.file_back_path | media_url }}" class="doc-img" loading="lazy" decoding="async">
                   </a>
                 {% endif %}
                 {% if not (d and (d.file_front_path or d.file_back_path)) %}
@@ -293,7 +293,7 @@
               <td>
                 {% if u.avatar_path %}
                   <a href="{{ u.avatar_path | media_url }}" target="_blank" rel="noopener">
-                    <img src="{{ u.avatar_path | media_url }}" alt="avatar" class="avatar-img">
+                    <img src="{{ u.avatar_path | media_url }}" alt="avatar" class="avatar-img" loading="lazy" decoding="async">
                   </a>
                 {% else %}
                   <span class="text-muted">—</span>
@@ -304,12 +304,12 @@
               <td>
                 {% if d and d.file_front_path %}
                   <a href="{{ d.file_front_path | media_url }}" target="_blank" title="Front" rel="noopener">
-                    <img src="{{ d.file_front_path | media_url }}" class="doc-img">
+                    <img src="{{ d.file_front_path | media_url }}" class="doc-img" loading="lazy" decoding="async">
                   </a>
                 {% endif %}
                 {% if d and d.file_back_path %}
                   <a href="{{ d.file_back_path | media_url }}" target="_blank" title="Back" rel="noopener">
-                    <img src="{{ d.file_back_path | media_url }}" class="doc-img">
+                    <img src="{{ d.file_back_path | media_url }}" class="doc-img" loading="lazy" decoding="async">
                   </a>
                 {% endif %}
                 {% if not (d and (d.file_front_path or d.file_back_path)) %}
@@ -321,7 +321,7 @@
               <td>
                 {% if cdoc and cdoc.file_front_path %}
                   <a href="{{ cdoc.file_front_path | media_url }}" target="_blank" title="Company proof" rel="noopener">
-                    <img src="{{ cdoc.file_front_path | media_url }}" class="doc-img">
+                    <img src="{{ cdoc.file_front_path | media_url }}" class="doc-img" loading="lazy" decoding="async">
                   </a>
                 {% else %}
                   <span class="text-muted">No company proof</span>
@@ -423,7 +423,7 @@
               <td>
                 {% if u.avatar_path %}
                   <a href="{{ u.avatar_path | media_url }}" target="_blank" rel="noopener">
-                    <img src="{{ u.avatar_path | media_url }}" class="avatar-img-sm">
+                    <img src="{{ u.avatar_path | media_url }}" class="avatar-img-sm" loading="lazy" decoding="async">
                   </a>
                 {% else %}
                   <span class="text-muted">—</span>
@@ -433,12 +433,12 @@
               <td>
                 {% if d and d.file_front_path %}
                   <a href="{{ d.file_front_path | media_url }}" target="_blank" title="Front" rel="noopener">
-                    <img src="{{ d.file_front_path | media_url }}" class="doc-img-sm">
+                    <img src="{{ d.file_front_path | media_url }}" class="doc-img-sm" loading="lazy" decoding="async">
                   </a>
                 {% endif %}
                 {% if d and d.file_back_path %}
                   <a href="{{ d.file_back_path | media_url }}" target="_blank" title="Back" rel="noopener">
-                    <img src="{{ d.file_back_path | media_url }}" class="doc-img-sm">
+                    <img src="{{ d.file_back_path | media_url }}" class="doc-img-sm" loading="lazy" decoding="async">
                   </a>
                 {% endif %}
               </td>
@@ -602,7 +602,7 @@
               <td>
                 {% if u.avatar_path %}
                   <a href="{{ u.avatar_path | media_url }}" target="_blank" rel="noopener">
-                    <img src="{{ u.avatar_path | media_url }}" class="avatar-img-sm">
+                    <img src="{{ u.avatar_path | media_url }}" class="avatar-img-sm" loading="lazy" decoding="async">
                   </a>
                 {% else %}
                   <span class="text-muted">—</span>
@@ -612,12 +612,12 @@
               <td>
                 {% if d and d.file_front_path %}
                   <a href="{{ d.file_front_path | media_url }}" target="_blank" title="Front" rel="noopener">
-                    <img src="{{ d.file_front_path | media_url }}" class="doc-img-sm">
+                    <img src="{{ d.file_front_path | media_url }}" class="doc-img-sm" loading="lazy" decoding="async">
                   </a>
                 {% endif %}
                 {% if d and d.file_back_path %}
                   <a href="{{ d.file_back_path | media_url }}" target="_blank" title="Back" rel="noopener">
-                    <img src="{{ d.file_back_path | media_url }}" class="doc-img-sm">
+                    <img src="{{ d.file_back_path | media_url }}" class="doc-img-sm" loading="lazy" decoding="async">
                   </a>
                 {% endif %}
               </td>
@@ -625,7 +625,7 @@
               <td>
                 {% if cdoc and cdoc.file_front_path %}
                   <a href="{{ cdoc.file_front_path | media_url }}" target="_blank" title="Company proof" rel="noopener">
-                    <img src="{{ cdoc.file_front_path | media_url }}" class="doc-img-sm">
+                    <img src="{{ cdoc.file_front_path | media_url }}" class="doc-img-sm" loading="lazy" decoding="async">
                   </a>
                 {% else %}
                   <span class="text-muted">No company proof</span>

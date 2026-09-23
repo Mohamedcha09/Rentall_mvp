@@ -293,9 +293,13 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
       <a href="/items/{{ it.item.id }}" class="spot text-decoration-none">
         <div class="spot-media">
           {% if it.item.image_path %}
-            <img src="{{ it.item.image_path | media_url }}" alt="">
+            <img src="{{ it.item.image_path | media_url }}" alt=""
+                 {% if loop.index > 4 %}loading="lazy"{% elif loop.first %}fetchpriority="high"{% endif %}
+                 decoding="async">
           {% else %}
-            <img src="/static/placeholder.jpg" alt="">
+            <img src="/static/placeholder.jpg" alt=""
+                 {% if loop.index > 4 %}loading="lazy"{% elif loop.first %}fetchpriority="high"{% endif %}
+                 decoding="async">
           {% endif %}
           <div class="spot-overlay"></div>
           {% if it.item.category %}

@@ -3,8 +3,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request, Depends, UploadFile, File, Form
 from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import case, func
 from datetime import datetime
 import os, secrets
 
@@ -92,8 +92,6 @@ def profile(request: Request, db: Session = Depends(get_db)):
     if not me:
         return RedirectResponse(url="/login", status_code=303)
 
-    db.refresh(me)
-
     # Sync session with avatar from DB (so “1” doesn’t show)
     if me.avatar_path:
         sess = request.session.get("user") or {}
@@ -101,24 +99,37 @@ def profile(request: Request, db: Session = Depends(get_db)):
             sess["avatar_path"] = me.avatar_path
             request.session["user"] = sess
 
-    # Item statistics
-    items_count = db.query(Item).filter(Item.owner_id == me.id).count()
-    items_active_count = (
-        db.query(Item)
-        .filter(Item.owner_id == me.id, Item.is_active == "yes")
-        .count()
+    # Combine related aggregates rather than scanning each table twice.
+    items_count, items_active_count = (
+        db.query(
+            func.count(Item.id),
+            func.coalesce(
+                func.sum(case((Item.is_active == "yes", 1), else_=0)),
+                0,
+            ),
+        )
+        .filter(Item.owner_id == me.id)
+        .one()
     )
 
-    # Ratings
-    ratings_q = db.query(Rating).filter(Rating.rated_user_id == me.id)
-    ratings_count = ratings_q.count()
-    avg_stars_val = db.query(func.avg(Rating.stars)).filter(Rating.rated_user_id == me.id).scalar()
+    ratings_count, avg_stars_val = (
+        db.query(func.count(Rating.id), func.avg(Rating.stars))
+        .filter(Rating.rated_user_id == me.id)
+        .one()
+    )
     avg_stars = round(float(avg_stars_val), 1) if avg_stars_val is not None else 0.0
 
-    last_reviews = ratings_q.order_by(Rating.created_at.desc()).limit(5).all()
+    last_reviews = (
+        db.query(Rating)
+        .options(joinedload(Rating.rater))
+        .filter(Rating.rated_user_id == me.id)
+        .order_by(Rating.created_at.desc())
+        .limit(5)
+        .all()
+    )
     reviews_view = []
     for r in last_reviews:
-        rater = db.get(User, r.rater_id)
+        rater = r.rater
         reviews_view.append(
             {
                 "stars": r.stars,
@@ -158,42 +169,6 @@ def public_profile(user_id: int, request: Request, db: Session = Depends(get_db)
     if not user:
         return RedirectResponse(url="/", status_code=303)
 
-    items = (
-        db.query(Item)
-        .filter(Item.owner_id == user.id)
-        .order_by(Item.created_at.desc())
-        .all()
-    )
-    view_items = [
-        {
-            "id": it.id,
-            "title": it.title,
-            "image_path": it.image_path,
-            "price_per_day": it.price_per_day,
-            "category": it.category,
-        }
-        for it in items
-    ]
-
-    ratings = (
-        db.query(Rating)
-        .filter(Rating.rated_user_id == user.id)
-        .order_by(Rating.created_at.desc())
-        .all()
-    )
-    reviews = []
-    for r in ratings:
-        rater = db.get(User, r.rater_id)
-        reviews.append({
-            "stars": r.stars,
-            "comment": r.comment or "",
-            "created_at": r.created_at,
-            "rater_name": f"{(rater.first_name or '').strip()} {(rater.last_name or '').strip()}".strip() if rater else "User",
-        })
-
-    ratings_count = len(ratings)
-    avg_stars = float(sum([r.stars for r in ratings]) / ratings_count) if ratings_count else 0.0
-
     badges_user = get_user_badges(user, db)
 
     return request.app.templates.TemplateResponse(
@@ -204,10 +179,6 @@ def public_profile(user_id: int, request: Request, db: Session = Depends(get_db)
             "title": f"{(user.first_name or '').strip()} {(user.last_name or '').strip()}".strip(),
             "user": user,
             "badges": badges_user,
-            "items": view_items,
-            "reviews": reviews,
-            "ratings_count": ratings_count,
-            "avg_stars": avg_stars,
             "session_user": request.session.get("user"),
         }
     )

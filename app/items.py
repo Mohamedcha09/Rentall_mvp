@@ -1,9 +1,9 @@
 # app/items.py
 from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
 from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, or_, and_
-import os, secrets, shutil
+import os, random, secrets, shutil
 import unicodedata
 from datetime import date
 from typing import Optional
@@ -93,28 +93,36 @@ def fx_convert_smart(db: Session, amount: Optional[float], base: str, quote: str
         from .models import FxRate
         today = date.today()
 
-        # today's rate
-        row = (
-            db.query(FxRate)
-            .filter(
-                FxRate.base == base,
-                FxRate.quote == quote,
-                FxRate.effective_date == today,
-            )
-            .first()
-        )
-
-        # fallback to last available
-        if not row:
-            row = (
-                db.query(FxRate)
-                .filter(FxRate.base == base, FxRate.quote == quote)
-                .order_by(FxRate.effective_date.desc())
-                .first()
+        # A request-scoped Session is shared by the route.  Caching this
+        # public daily rate here eliminates repeated identical FxRate queries
+        # for each card while keeping all users and requests isolated.
+        cache = db.info.setdefault("sevor_fx_rate_cache", {})
+        cache_key = (base, quote, today)
+        if cache_key not in cache:
+            rate = (
+                db.query(FxRate.rate)
+                .filter(
+                    FxRate.base == base,
+                    FxRate.quote == quote,
+                    FxRate.effective_date == today,
+                )
+                .scalar()
             )
 
-        if row and getattr(row, "rate", None):
-            return float(amount) * float(row.rate)
+            # Fallback to the latest available rate only once per pair.
+            if rate is None:
+                rate = (
+                    db.query(FxRate.rate)
+                    .filter(FxRate.base == base, FxRate.quote == quote)
+                    .order_by(FxRate.effective_date.desc())
+                    .limit(1)
+                    .scalar()
+                )
+            cache[cache_key] = float(rate) if rate is not None else None
+
+        rate = cache[cache_key]
+        if rate is not None:
+            return float(amount) * rate
 
         return float(amount)
     except Exception:
@@ -238,6 +246,7 @@ def get_similar_items(db: Session, item: Item):
             rev_agg.c.avg_stars,
             rev_agg.c.rating_count,
         )
+        .options(selectinload(Item.owner))
         .outerjoin(rev_agg, rev_agg.c.iid == Item.id)
         .filter(
             Item.is_active == "yes",
@@ -412,17 +421,39 @@ def items_list(
         if s == "new":
             q = q.order_by(Item.created_at.desc())
         else:
-            q = q.order_by(func.random())
+            # Preserve a random display order without making the database sort
+            # every matching row with RANDOM().
+            q = q.order_by(Item.id.desc())
 
     # Fetch items
     items = q.all()
+    if not applied_distance_sort and s != "new":
+        random.shuffle(items)
 
-    # Rating
-    for it in items:
-        avg = db.query(func.avg(ItemReview.stars)).filter(ItemReview.item_id == it.id).scalar()
-        cnt = db.query(func.count(ItemReview.id)).filter(ItemReview.item_id == it.id).scalar()
-        it.avg_stars = float(avg) if avg else None
-        it.rating_count = int(cnt or 0)
+    # Aggregate ratings for all rendered cards in one indexed query instead
+    # of issuing an average and count query for every individual item.
+    ratings_by_item_id = {}
+    item_ids = [item.id for item in items]
+    if item_ids:
+        rating_rows = (
+            db.query(
+                ItemReview.item_id,
+                func.avg(ItemReview.stars).label("avg_stars"),
+                func.count(ItemReview.id).label("rating_count"),
+            )
+            .filter(ItemReview.item_id.in_(item_ids))
+            .group_by(ItemReview.item_id)
+            .all()
+        )
+        ratings_by_item_id = {
+            row.item_id: (row.avg_stars, row.rating_count)
+            for row in rating_rows
+        }
+
+    for item in items:
+        avg, count = ratings_by_item_id.get(item.id, (None, 0))
+        item.avg_stars = float(avg) if avg else None
+        item.rating_count = int(count or 0)
 
     # Price conversion
     disp_cur = _display_currency(request)
@@ -501,29 +532,28 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
         .all()
     )
 
-    avg_stars = (
-        db.query(_func.coalesce(_func.avg(ItemReview.stars), 0))
-        .filter(ItemReview.item_id == item.id)
-        .scalar()
-        or 0
-    )
-
-    cnt_stars = (
-        db.query(_func.count(ItemReview.id))
-        .filter(ItemReview.item_id == item.id)
-        .scalar()
-        or 0
-    )
-
-    # Favorite
-    is_favorite = False
-    if session_u:
-        is_favorite = (
-            db.query(_Fav.id)
-            .filter_by(user_id=session_u["id"], item_id=item.id)
-            .first()
-            is not None
+    avg_stars, cnt_stars = (
+        db.query(
+            _func.coalesce(_func.avg(ItemReview.stars), 0),
+            _func.count(ItemReview.id),
         )
+        .filter(ItemReview.item_id == item.id)
+        .one()
+    )
+    avg_stars = avg_stars or 0
+    cnt_stars = cnt_stars or 0
+
+    # Load a signed-in user's favorites once; the same collection feeds both
+    # the current-item state and the similar-item cards.
+    favorite_ids = []
+    if session_u:
+        favorite_ids = [
+            row[0]
+            for row in db.query(_Fav.item_id)
+            .filter(_Fav.user_id == session_u["id"])
+            .all()
+        ]
+    is_favorite = item.id in favorite_ids
 
     # Similar items
     similar_items = get_similar_items(db, item)
@@ -544,15 +574,6 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
         website_url = _normalize_website_url(getattr(item, "website_url", None))
     except ValueError:
         website_url = None
-
-    favorite_ids = []
-    if session_u:
-        favorite_ids = [
-            r[0]
-            for r in db.query(_Fav.item_id)
-                      .filter(_Fav.user_id == session_u["id"])
-                      .all()
-        ]
 
     return request.app.templates.TemplateResponse(
         request=request,

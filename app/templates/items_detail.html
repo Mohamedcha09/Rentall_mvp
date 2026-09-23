@@ -1180,7 +1180,7 @@ pointer-events:none;
     {% for s in imgs %}
       <img data-src="{{ s }}" data-index="{{ loop.index0 }}"
            class="{% if loop.index0==0 %}active{% endif %}"
-           src="{{ s }}">
+           src="{{ s }}" loading="lazy" decoding="async">
     {% endfor %}
   </div>
 {% endif %}
@@ -1317,7 +1317,7 @@ pointer-events:none;
             <div class="rv-card" id="review-{{ r.id }}">
               <div class="rv-head">
                 {% set avatar = (r.rater.avatar_path if r.rater and r.rater.avatar_path else url_for('static', path='placeholder.png')) %}
-                <img class="rv-ava" src="{{ avatar }}" alt="avatar">
+                <img class="rv-ava" src="{{ avatar }}" alt="avatar" loading="lazy" decoding="async">
                 <div>
                   <div style="font-weight:700">{{ (r.rater.first_name ~ ' ' ~ r.rater.last_name) if r.rater else 'Renter' }}</div>
                   <div class="rv-meta">{{ r.city or '' }} <span>•</span> {{ r.created_at.strftime("%B %Y") if r.created_at }}</div>
@@ -1361,7 +1361,7 @@ pointer-events:none;
 
           <a class="sim-card" href="/items/{{ s.id }}">
             <div class="sim-media">
-              <img class="sim-img" src="{{ cover or url_for('static', path='placeholder.png') }}" alt="{{ s.title|e }}">
+              <img class="sim-img" src="{{ cover or url_for('static', path='placeholder.png') }}" alt="{{ s.title|e }}" loading="lazy" decoding="async">
               {# مصدر الأفاتار (عدّل اسم الحقل حسب بياناتك) #}
 {% set logo_src =
      (s.owner_avatar_path if s.owner_avatar_path else
@@ -1372,7 +1372,7 @@ pointer-events:none;
 {% endif %}
 
 {% if logo_src %}
-  <img class="sim-logo" src="{{ logo_src }}" alt="owner logo">
+  <img class="sim-logo" src="{{ logo_src }}" alt="owner logo" loading="lazy" decoding="async">
 {% endif %}
 
 
@@ -1450,7 +1450,7 @@ pointer-events:none;
 
         {% if owner %}
           <div class="owner-row">
-            <img class="owner-avatar" src="{{ owner.avatar_path or url_for('static', path='placeholder.png') }}" alt="owner">
+            <img class="owner-avatar" src="{{ owner.avatar_path or url_for('static', path='placeholder.png') }}" alt="owner" loading="lazy" decoding="async">
             <div>
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 <strong>{{ owner.first_name }} {{ owner.last_name }}</strong>
