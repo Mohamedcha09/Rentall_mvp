@@ -246,6 +246,35 @@ h2 {
     <textarea name="description" class="form-control" rows="4" required></textarea>
   </div>
 
+  <div class="mb-3">
+    <label class="form-label" for="websiteUrlNew">
+      Website <span class="text-muted">(optional)</span>
+    </label>
+    <input
+      type="text"
+      name="website_url"
+      id="websiteUrlNew"
+      class="form-control"
+      placeholder="https://example.com"
+      autocomplete="url"
+      inputmode="url"
+      maxlength="2048"
+      aria-describedby="websiteHelpNew"
+    >
+    <div id="websiteHelpNew" class="form-text">
+      Add your website, or leave it blank if you do not have one.
+    </div>
+    <div class="form-check mt-2">
+      <input class="form-check-input" type="checkbox" name="no_website" value="true" id="noWebsiteNew">
+      <label class="form-check-label" for="noWebsiteNew">I don't have a website</label>
+    </div>
+    {% if website_error %}
+      <div class="alert alert-danger py-2 mt-2 mb-0" role="alert">
+        Enter a valid HTTP or HTTPS website address.
+      </div>
+    {% endif %}
+  </div>
+
   <div class="row">
     <div class="col-md-6 mb-3 position-relative">
       <label class="form-label">City</label>
@@ -347,6 +376,21 @@ document.getElementById('imgInput').addEventListener('change', function(){
         preview.appendChild(img);
     });
 });
+
+(function(){
+    const website = document.getElementById('websiteUrlNew');
+    const noWebsite = document.getElementById('noWebsiteNew');
+    if (!website || !noWebsite) return;
+
+    function syncWebsiteInput(){
+        website.disabled = noWebsite.checked;
+        website.setAttribute('aria-disabled', String(noWebsite.checked));
+        if (noWebsite.checked) website.value = '';
+    }
+
+    noWebsite.addEventListener('change', syncWebsiteInput);
+    syncWebsiteInput();
+})();
 </script>
 
 

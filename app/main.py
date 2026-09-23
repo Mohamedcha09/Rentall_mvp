@@ -568,6 +568,7 @@ def ensure_sqlite_columns():
     Hot-fix missing columns when using SQLite only (ignored on Postgres):
       - users.is_mod / users.is_deposit_manager (for mod and DM privileges)
       - users.is_support (customer support agent)  ✅ New
+      - items.website_url
       - deposit_evidences.uploader_id
       - reports.status / reports.tag / reports.updated_at
     """
@@ -591,6 +592,14 @@ def ensure_sqlite_columns():
                     conn.exec_driver_sql("ALTER TABLE users ADD COLUMN is_support BOOLEAN NOT NULL DEFAULT 0;")
             except Exception as e:
                 print(f"[WARN] ensure_sqlite_columns: users.* → {e}")
+
+            # ===== items.website_url =====
+            try:
+                icols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info('items')").all()}
+                if "website_url" not in icols:
+                    conn.exec_driver_sql("ALTER TABLE items ADD COLUMN website_url VARCHAR(2048);")
+            except Exception as e:
+                print(f"[WARN] ensure_sqlite_columns: items.website_url → {e}")
 
             # ===== deposit_evidences.uploader_id =====
             try:
@@ -643,6 +652,24 @@ def ensure_users_columns():
         print("[OK] ensure_users_columns(): users.is_mod / badge_admin / is_support ready")
     except Exception as e:
         print(f"[WARN] ensure_users_columns failed: {e}")
+
+
+def ensure_item_website_url_column():
+    """Keeps existing PostgreSQL item tables compatible with website_url."""
+    try:
+        try:
+            backend = engine.url.get_backend_name()
+        except Exception:
+            backend = getattr(getattr(engine, "dialect", None), "name", "")
+
+        if str(backend).startswith("postgres"):
+            with engine.begin() as conn:
+                conn.exec_driver_sql(
+                    "ALTER TABLE items ADD COLUMN IF NOT EXISTS website_url VARCHAR(2048);"
+                )
+        print("[OK] ensure_item_website_url_column(): items.website_url ready")
+    except Exception as e:
+        print(f"[WARN] ensure_item_website_url_column failed: {e}")
 
 # === New: initialize support_tickets columns to support CS/MOD/MD even if the column is not defined in the model
 def ensure_support_ticket_columns():
@@ -699,6 +726,7 @@ def ensure_support_ticket_columns():
 
 ensure_sqlite_columns()
 ensure_users_columns()
+ensure_item_website_url_column()
 ensure_support_ticket_columns()   # ⬅️ Now defined
 
 def seed_admin():

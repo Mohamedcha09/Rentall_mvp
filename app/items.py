@@ -7,6 +7,7 @@ import os, secrets, shutil
 import unicodedata
 from datetime import date
 from typing import Optional
+from urllib.parse import urlparse
 
 # Cloudinary (upload images to the cloud)
 import cloudinary
@@ -162,6 +163,59 @@ def _to_int_or_default(v, default=0):
         return int(float(s))
     except Exception:
         return int(default)
+
+
+_WEBSITE_URL_MAX_LENGTH = 2048
+
+
+def _normalize_website_url(value: str | None) -> str | None:
+    """Return a safe HTTP(S) website URL, or None for an empty optional value."""
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    if len(raw) > _WEBSITE_URL_MAX_LENGTH:
+        raise ValueError("Website URL is too long.")
+    if any(char.isspace() for char in raw):
+        raise ValueError("Website URL cannot contain whitespace.")
+
+    try:
+        initial = urlparse(raw)
+    except ValueError as exc:
+        raise ValueError("Website URL is invalid.") from exc
+
+    initial_scheme = initial.scheme.lower()
+    if raw.startswith("//"):
+        raw = f"https:{raw}"
+    elif initial_scheme in {"http", "https"}:
+        # Keep a supplied HTTP(S) URL; the parsed host is checked below.
+        pass
+    elif initial_scheme:
+        # urlparse reads a bare host with a port (example.com:8080) as a
+        # scheme. Treat that specific shape as a bare URL, but reject every
+        # actual non-HTTP(S) scheme such as javascript: or data:.
+        if "://" not in raw and "." in initial_scheme:
+            raw = f"https://{raw}"
+        else:
+            raise ValueError("Website URL must use HTTP or HTTPS.")
+    else:
+        raw = f"https://{raw}"
+
+    try:
+        parsed = urlparse(raw)
+        hostname = parsed.hostname
+        parsed.port  # validates malformed ports before the URL is saved
+    except ValueError as exc:
+        raise ValueError("Website URL is invalid.") from exc
+
+    if parsed.scheme.lower() not in {"http", "https"} or not hostname:
+        raise ValueError("Website URL must use HTTP or HTTPS.")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("Website URL cannot include credentials.")
+
+    normalized = parsed._replace(scheme=parsed.scheme.lower()).geturl()
+    if len(normalized) > _WEBSITE_URL_MAX_LENGTH:
+        raise ValueError("Website URL is too long.")
+    return normalized
 
 
 # ================= Similar items =================
@@ -485,6 +539,12 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
     src_amount = getattr(item, "price_per_day", None) or getattr(item, "price", 0)
     display_price = fx_convert_smart(db, src_amount, base_cur, disp_cur)
 
+    # Do not render a legacy or manually entered unsafe external URL.
+    try:
+        website_url = _normalize_website_url(getattr(item, "website_url", None))
+    except ValueError:
+        website_url = None
+
     favorite_ids = []
     if session_u:
         favorite_ids = [
@@ -516,6 +576,7 @@ def item_detail(request: Request, item_id: int, db: Session = Depends(get_db)):
             "display_currency": disp_cur,
             "base_amount": float(src_amount),
             "base_currency": base_cur,
+            "website_url": website_url,
         }
     )
 
@@ -570,7 +631,12 @@ def my_items(request: Request, db: Session = Depends(get_db)):
     )
 
 @router.get("/owner/items/{item_id}/edit")
-def item_edit_get(request: Request, item_id: int, db: Session = Depends(get_db)):
+def item_edit_get(
+    request: Request,
+    item_id: int,
+    website_error: bool = False,
+    db: Session = Depends(get_db),
+):
     u = request.session.get("user")
     if not u:
         return RedirectResponse(url="/login", status_code=303)
@@ -596,6 +662,7 @@ def item_edit_get(request: Request, item_id: int, db: Session = Depends(get_db))
             "categories": categories,
             "subcategories": subcategories,
             "session_user": u,
+            "website_error": website_error,
         }
     )
 
@@ -608,6 +675,8 @@ def item_edit_post(
     subcategory_id: int = Form(None),
     description: str = Form(""),
     city: str = Form(""),
+    website_url: str = Form(""),
+    no_website: bool = Form(False),
     price: str = Form("0"),
     currency: str = Form("CAD"),
     images: list[UploadFile] = File(None),
@@ -622,11 +691,20 @@ def item_edit_post(
     if not it or it.owner_id != u["id"]:
         return RedirectResponse(url="/owner/items", status_code=303)
 
+    try:
+        normalized_website_url = None if no_website else _normalize_website_url(website_url)
+    except ValueError:
+        return RedirectResponse(
+            url=f"/owner/items/{item_id}/edit?website_error=1",
+            status_code=303,
+        )
+
     # Update main fields
     it.title = title
     it.category = category
     it.description = description
     it.city = city
+    it.website_url = normalized_website_url
 
     # Price
     try:
@@ -674,7 +752,11 @@ def item_edit_post(
 # ======================= ADD ITEM ============================
 # ============================================================
 @router.get("/owner/items/new")
-def item_new_get(request: Request, db: Session = Depends(get_db)):
+def item_new_get(
+    request: Request,
+    website_error: bool = False,
+    db: Session = Depends(get_db),
+):
     if not require_approved(request):
         return RedirectResponse(url="/login", status_code=303)
 
@@ -700,6 +782,7 @@ def item_new_get(request: Request, db: Session = Depends(get_db)):
             "subcats_map": subcats_map,     # dict for JS dynamic
             "session_user": request.session.get("user"),
             "account_limited": is_account_limited(request),
+            "website_error": website_error,
         }
     )
 @router.post("/owner/items/new")
@@ -713,6 +796,8 @@ def item_new_post(
     category: str = Form(...),
     description: str = Form(""),
     city: str = Form(""),
+    website_url: str = Form(""),
+    no_website: bool = Form(False),
 
     price: str = Form("0"),
     currency: str = Form("CAD"),
@@ -727,6 +812,11 @@ def item_new_post(
         return RedirectResponse(url="/login", status_code=303)
 
     u = request.session.get("user")
+
+    try:
+        normalized_website_url = None if no_website else _normalize_website_url(website_url)
+    except ValueError:
+        return RedirectResponse(url="/owner/items/new?website_error=1", status_code=303)
 
     lat = _to_float_or_none(latitude)
     lng = _to_float_or_none(longitude)
@@ -810,6 +900,7 @@ def item_new_post(
         title=title,
         description=description,
         city=city,
+        website_url=normalized_website_url,
         category=category,          # example: Vehicles
         subcategory=subcat_name,    # example: "Vans" instead of id (VERY IMPORTANT)
         is_active="yes",

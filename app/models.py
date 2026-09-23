@@ -187,6 +187,7 @@ class Item(Base):
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
+    website_url = Column(String(2048), nullable=True)
     city = Column(String(120), nullable=True)
     currency = Column(String(3), nullable=False, default='CAD')        # CAD / USD / EUR
     price    = Column(Numeric(12, 2), nullable=False, default=0)

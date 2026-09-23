@@ -276,6 +276,11 @@
 .btns-row{ display:flex; gap:12px; flex-wrap:nowrap; justify-content:space-between; width:100%; }
 .btns-row .btnx{ flex:1 1 0; text-align:center; height:52px; border-radius:16px; }
 @media (max-width:480px){ .btns-row .btnx{ height:50px; } }
+.website-link-wrap{display:flex;justify-content:center;min-width:0;margin-top:12px;text-align:center}
+.website-link-wrap .btnx{max-width:100%;height:auto;min-height:48px;padding:12px 20px;white-space:normal;overflow-wrap:anywhere;text-align:center}
+.btnx-website{border-color:rgba(34,211,238,.7);background:var(--brand-grad);color:#fff;box-shadow:var(--btn-shadow)}
+.btnx-website:hover{color:#fff;box-shadow:var(--btn-shadow-strong)}
+.website-unavailable{margin:0;color:var(--muted);font-size:14px}
 </style>
 
 <style>
@@ -1245,6 +1250,17 @@ pointer-events:none;
             {% endif %}
           {% endif %}
           <a class="btnx btnx-ghost" href="/items">↩︎ Back to list</a>
+        </div>
+
+        <div class="website-link-wrap">
+          {% if website_url %}
+            <a class="btnx btnx-website" href="{{ website_url }}" target="_blank" rel="noopener noreferrer">
+              <span aria-hidden="true">🌐</span>
+              Visit website
+            </a>
+          {% else %}
+            <p class="website-unavailable">No website available</p>
+          {% endif %}
         </div>
 
         <!-- Bottom Booking Bar -->

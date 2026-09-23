@@ -235,6 +235,43 @@ img.edit-thumb {
     <textarea name="description" class="form-control" rows="4" required>{{ item.description }}</textarea>
   </div>
 
+  <div class="mb-3">
+    <label class="form-label" for="websiteUrlEdit">
+      Website <span class="text-muted">(optional)</span>
+    </label>
+    <input
+      type="text"
+      name="website_url"
+      id="websiteUrlEdit"
+      class="form-control"
+      value="{{ item.website_url or '' }}"
+      placeholder="https://example.com"
+      autocomplete="url"
+      inputmode="url"
+      maxlength="2048"
+      aria-describedby="websiteHelpEdit"
+    >
+    <div id="websiteHelpEdit" class="form-text">
+      Add, change, or remove your website. Leave it blank if you do not have one.
+    </div>
+    <div class="form-check mt-2">
+      <input
+        class="form-check-input"
+        type="checkbox"
+        name="no_website"
+        value="true"
+        id="noWebsiteEdit"
+        {% if not item.website_url %}checked{% endif %}
+      >
+      <label class="form-check-label" for="noWebsiteEdit">I don't have a website</label>
+    </div>
+    {% if website_error %}
+      <div class="alert alert-danger py-2 mt-2 mb-0" role="alert">
+        Enter a valid HTTP or HTTPS website address.
+      </div>
+    {% endif %}
+  </div>
+
   <div class="row">
     <!-- City -->
     <div class="col-md-6 mb-3">
@@ -302,6 +339,21 @@ document.getElementById('imgInput').addEventListener('change', function(){
         preview.appendChild(img);
     });
 });
+
+(function(){
+    const website = document.getElementById('websiteUrlEdit');
+    const noWebsite = document.getElementById('noWebsiteEdit');
+    if (!website || !noWebsite) return;
+
+    function syncWebsiteInput(){
+        website.disabled = noWebsite.checked;
+        website.setAttribute('aria-disabled', String(noWebsite.checked));
+        if (noWebsite.checked) website.value = '';
+    }
+
+    noWebsite.addEventListener('change', syncWebsiteInput);
+    syncWebsiteInput();
+})();
 </script>
 
 {% endblock %}
