@@ -27,7 +27,7 @@
     box-shadow: var(--shadow);
     overflow: hidden;
   }
-  .hero-top{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .hero-top{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; }
   .badge{
     display:inline-flex; align-items:center; gap:8px;
     padding: 8px 12px; border-radius: 999px;
@@ -35,6 +35,7 @@
     border: 1px solid var(--border);
     box-shadow: var(--shadow2);
     font-weight: 900;
+    max-width:100%; overflow-wrap:anywhere;
   }
   .badge .dot{ width:10px; height:10px; border-radius:50%; background: var(--grad); }
   .mini{ font-size: 12px; opacity: .85; font-weight: 800; }
@@ -71,6 +72,7 @@
     padding: 14px;
     overflow:hidden;
   }
+  .s > *, .txt{ min-width:0; }
 
   /* alternate on desktop */
   .s.alt{ grid-template-columns: .9fr 1.1fr; }
@@ -96,6 +98,7 @@
     padding: 6px 10px; border-radius: 999px;
     background: rgba(255,255,255,.65);
     border: 1px solid rgba(120,120,160,.20);
+    min-width:0; overflow-wrap:anywhere;
   }
 
   .txt h3{ margin: 0 0 6px; font-size: 18px; font-weight: 950; color:#0b1220; }
@@ -121,6 +124,16 @@
     .s.alt .txt{ order: 1; }
     .s.alt .pic{ order: 2; }
     .pic{ min-height: 190px; }
+  }
+
+  @media(max-width: 480px){
+    .howwrap{
+      margin-top:calc(18px + env(safe-area-inset-top, 0px));
+      margin-bottom:calc(32px + env(safe-area-inset-bottom, 0px));
+      padding-inline:12px;
+    }
+    .hero{ padding:16px 14px; }
+    .hero-ctas .btnx{ max-width:100%; text-align:center; }
   }
 
   .note{

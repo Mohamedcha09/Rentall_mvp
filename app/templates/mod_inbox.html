@@ -1,6 +1,25 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container py-3">
+<style>
+  @media (max-width: 768px) {
+    .mod-inbox .card-header,
+    .mod-inbox .list-group-item .d-flex {
+      flex-wrap: wrap;
+      gap: .35rem;
+    }
+    .mod-inbox .card-header > *,
+    .mod-inbox .list-group-item .d-flex > *,
+    .mod-inbox .list-group-item .me-2 {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .mod-inbox .list-group-item .fw-semibold,
+    .mod-inbox .list-group-item .small {
+      overflow-wrap: anywhere;
+    }
+  }
+</style>
+<div class="container py-3 mod-inbox">
 
   <h4 class="mb-3">Content Review Center (MOD Inbox)</h4>
 

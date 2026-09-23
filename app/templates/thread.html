@@ -19,7 +19,8 @@
   .chat-header {
       position: fixed;
       top: 0; left: 0; right: 0;
-      height: 76px;
+      height: calc(76px + env(safe-area-inset-top, 0px));
+      box-sizing: border-box;
       padding: calc(env(safe-area-inset-top) + 6px) 14px 10px 14px;
       background: linear-gradient(135deg,#8b5cf6cc,#5b9df9cc);
       backdrop-filter: blur(18px);
@@ -75,9 +76,11 @@
   .chat-wrapper {
       position: fixed;
       inset: 0;
-      padding-top: calc(env(safe-area-inset-top) + 90px);
+      /* Keep the message area below the safe-area-aware fixed header. */
+      padding-top: calc(76px + env(safe-area-inset-top, 0px) + 14px);
       display:flex;
       flex-direction:column;
+      min-width: 0;
   }
 
   .chat-messages {
@@ -96,12 +99,15 @@
 
   .bubble {
       max-width:80%;
+      min-width: 0;
       padding:12px 16px;
       border-radius:20px;
       margin-bottom:12px;
       font-size:15px;
       line-height:1.45;
       backdrop-filter:blur(8px);
+      overflow-wrap: anywhere;
+      word-break: break-word;
   }
 
   .bubble.other {
@@ -175,6 +181,8 @@
   .chat-input-bar {
       position:fixed;
       left:0; right:0; bottom:0;
+      box-sizing: border-box;
+      max-width: 100%;
       padding:12px;
       padding-bottom:calc(env(safe-area-inset-bottom) + 16px);
       background:#ffffffd9;
@@ -187,6 +195,7 @@
 
   .chat-input {
       flex:1;
+      min-width:0;
       border:1px solid rgba(0,0,0,0.15);
       border-radius:20px;
       padding:10px 14px;
@@ -202,6 +211,7 @@
       border-radius:20px;
       font-weight:600;
       font-size:16px !important;
+      flex-shrink:0;
       box-shadow:0 4px 12px rgba(0,0,0,.18);
   }
 

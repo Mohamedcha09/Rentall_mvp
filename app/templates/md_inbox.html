@@ -1,8 +1,25 @@
-app/templates/md_inbox.html
 {% extends "base.html" %}
 {% set u = session_user or {} %}
 {% block content %}
-<div class="container py-3">
+<style>
+  @media (max-width: 768px) {
+    .md-inbox .card-header,
+    .md-inbox .list-group-item .d-flex {
+      flex-wrap: wrap;
+      gap: .35rem;
+    }
+    .md-inbox .card-header > *,
+    .md-inbox .list-group-item .d-flex > * {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .md-inbox .list-group-item strong,
+    .md-inbox .list-group-item .small {
+      overflow-wrap: anywhere;
+    }
+  }
+</style>
+<div class="container py-3 md-inbox">
   <h3 class="mb-3">Inbox (MD)</h3>
 
   <div class="row g-3">

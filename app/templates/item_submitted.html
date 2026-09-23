@@ -14,13 +14,17 @@
     .payout-banner {
         display: none !important;
     }
+    .item-submitted-container {
+        padding-top: calc(1.5rem + env(safe-area-inset-top, 0px)) !important;
+    }
+    .item-submitted-container strong { overflow-wrap:anywhere; }
 }
 </style>
 {% endblock %}
 
 {% block content %}
 
-<div class="container py-4" style="max-width:720px;">
+<div class="container py-4 item-submitted-container" style="max-width:720px;">
 
   <div class="card shadow-sm border-0" style="border-radius:18px;">
     <div class="card-body p-4 text-center">

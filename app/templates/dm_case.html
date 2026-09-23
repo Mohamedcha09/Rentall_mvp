@@ -56,7 +56,7 @@
   /* --- تحسين التخطيط على الموبايل --- */
   .case-wrap {
       max-width: 100%;
-      padding: 12px;
+      padding: max(12px, calc(env(safe-area-inset-top, 0px) + 12px)) 12px max(12px, calc(env(safe-area-inset-bottom, 0px) + 12px));
   }
 
   .grid {
@@ -103,9 +103,14 @@
       width: 100%;
   }
 
-  .acts button {
-      margin-top: 6px;
-  }
+   .acts button {
+       margin-top: 6px;
+   }
+
+   .acts form {
+       display: block;
+       max-width: 100%;
+   }
 
   /* Payment Summary */
   .box .d-flex {
@@ -113,10 +118,33 @@
   }
 
   /* صورة العنصر */
-  .box img {
-      width: 80px !important;
-      height: 80px !important;
-  }
+   .box img {
+       width: 80px !important;
+       height: 80px !important;
+   }
+
+   .dm-case-page .chip,
+   .dm-case-page .box,
+   .dm-case-page .k,
+   .dm-case-page .mono,
+   .dm-case-page .locked::after {
+       overflow-wrap: anywhere;
+       word-break: break-word;
+   }
+
+   .dm-case-page .box .d-flex {
+       flex-wrap: wrap;
+       gap: .5rem;
+   }
+
+   .dm-case-page .box .d-flex > * {
+       min-width: 0;
+   }
+
+   .dm-case-page .locked::after {
+       padding: 12px;
+       text-align: center;
+   }
 
 }
 </style>
@@ -131,7 +159,7 @@
                     or (bk.deposit_status in ['refunded','partially_withheld','no_deposit'])
                     or (bk.dm_decision in ['release','withhold'] and bk.dm_decision_at) %}
 
-<div class="case-wrap">
+<div class="case-wrap dm-case-page">
   <div class="d-flex justify-content-between align-items-start flex-wrap mb-2">
     <div class="mb-2">
       <h4 class="mb-1">Deposit Case — Booking #{{ bk.id }}</h4>

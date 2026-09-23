@@ -1,4 +1,13 @@
 {% extends "base.html" %}
+{% block head %}
+<style>
+  .paid-payout-filter-actions{display:flex;flex-wrap:wrap;gap:.5rem}
+  .paid-payout-copy{overflow-wrap:anywhere}
+  @media (max-width:575.98px){
+    .paid-payout-filter-actions .btn{flex:1 1 120px}
+  }
+</style>
+{% endblock %}
 {% block content %}
 
 <div class="container" style="max-width:1200px">
@@ -7,15 +16,15 @@
 
 <!-- 🔍 FILTER -->
 <form method="get" class="row g-2 mb-3">
-  <div class="col">
+  <div class="col-12 col-sm">
     <input type="date" name="date_from" class="form-control"
            value="{{ date_from }}">
   </div>
-  <div class="col">
+  <div class="col-12 col-sm">
     <input type="date" name="date_to" class="form-control"
            value="{{ date_to }}">
   </div>
-  <div class="col">
+  <div class="col-12 col-sm paid-payout-filter-actions">
     <button class="btn btn-outline-primary">Filter</button>
     <a href="?export=csv" class="btn btn-outline-success">Export CSV</a>
   </div>
@@ -41,7 +50,7 @@
     </p>
 
     {% if row.payout %}
-      <p class="mb-0">
+      <p class="mb-0 paid-payout-copy">
         <b>Method:</b> {{ row.payout.method|upper }}<br>
         <b>Destination:</b> {{ row.payout.destination }}
       </p>

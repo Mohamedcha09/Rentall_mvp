@@ -7,7 +7,9 @@
     display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
     margin-bottom:14px
   }
-  .rev-title{margin:0;font-weight:800}
+  .rev-head > div,
+  .rev-user > div{min-width:0}
+  .rev-title{margin:0;font-weight:800;overflow-wrap:anywhere}
   .rev-meta{color:#6b7280}
   .stars-big{font-size:20px;letter-spacing:0}
   .stars-big .full{color:#111}
@@ -20,14 +22,17 @@
   .rev-user{display:flex;align-items:center;gap:10px}
   .rev-ava{width:40px;height:40px;border-radius:50%;object-fit:cover}
   .rev-when{color:#6b7280;font-size:12px}
-  .rev-body{white-space:pre-wrap;margin-top:6px}
-  .topbar{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .rev-body{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:6px}
   .btnx{appearance:none;border:0;border-radius:14px;font-weight:800;letter-spacing:.2px;text-decoration:none;line-height:1;height:44px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;transition:transform .12s ease,box-shadow .2s ease,background .3s ease,opacity .2s ease}
   .btnx-primary{background:linear-gradient(135deg,#8b5cf6,#22d3ee);color:#fff;box-shadow:0 10px 22px rgba(24,24,38,.18)}
   .btnx-primary:hover{transform:translateY(-1px);box-shadow:0 14px 30px rgba(24,24,38,.22)}
   .btnx-ghost{background:color-mix(in oklab, white 12%, transparent); color:#111; border:1px solid color-mix(in oklab, #22d3ee 25%, rgba(0,0,0,.12)); box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
-  .btns-row{display:flex;gap:12px}
-  .btns-row .btnx{flex:1 1 0}
+  .btns-row{display:flex;flex-wrap:wrap;gap:12px}
+  .btns-row .btnx{flex:1 1 0;min-width:0}
+  @media (max-width: 374px){
+    .rev-head{flex-wrap:wrap}
+    .btns-row .btnx{flex-basis:100%}
+  }
 </style>
 
 <section class="rev-wrap">

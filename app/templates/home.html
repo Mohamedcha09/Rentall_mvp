@@ -211,7 +211,7 @@
 }
 .spot-price{font-weight:900;color:#111;font-size:.95rem}
 .spot-price span{font-weight:600;opacity:.85}
-.spot-city{color:#6b7280;font-size:.92rem}
+.spot-city{color:#6b7280;font-size:.92rem;overflow-wrap:anywhere}
 .spot-rating{font-weight:800;color:#111;font-size:.9rem}
 .spot-rating::before{content:"★ ";font-weight:900}
 
@@ -471,13 +471,13 @@
   }
 }
 
-/* ======== MOBILE ONE-LINE LOCBAR (FINAL HARD OVERRIDE) ======== */
+/* ======== MOBILE LOCATION CONTROLS ======== */
 @media (max-width:576px){
-
-  /* Turn the Bootstrap row into a no-wrap Flex row */
+  /* Preserve every control, but give the narrow screen a usable two-row grid. */
   .home-locbar.locbar--compact.row{
-    display:flex !important;
-    flex-wrap:nowrap !important;
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-areas:"city actions" "search search";
     align-items:center !important;
     gap:8px !important;
     padding:8px !important;
@@ -487,91 +487,66 @@
     --bs-gutter-x:0 !important;
     --bs-gutter-y:0 !important;
   }
-
-  /* Remove default column margins/sizes so they don’t wrap */
   .home-locbar.locbar--compact.row > [class*="col-"]{
     width:auto !important;
-    flex:0 0 auto !important;
+    min-width:0 !important;
     padding:0 !important;
     margin:0 !important;
-    min-width:0 !important;
   }
-
-  /* City field grows and takes available space */
   .home-locbar.locbar--compact .col-12.col-md-5{
-    flex:1 1 auto !important;
-    min-width:0 !important;
+    grid-area:city;
+    position:relative;
   }
-
-  /* GPS group always horizontal */
   .home-locbar.locbar--compact .col-6.col-md-2.d-grid{
+    grid-area:actions;
     display:flex !important;
-    align-items:center !important;
+    align-items:center;
     gap:8px !important;
   }
-
-  /* Search button container keeps its size and doesn’t grow */
   .home-locbar.locbar--compact .col-12.col-md-2.d-grid{
-    display:flex !important;
-    align-items:center !important;
+    grid-area:search;
+    display:grid !important;
   }
-
-  /* Unified compact sizes */
-  .home-locbar.locbar--compact .btn{
-    height:34px !important;
+  .home-locbar.locbar--compact .btn,
+  .home-locbar.locbar--compact #homeCityInput{
+    height:44px !important;
+    min-height:44px;
     border-radius:10px !important;
-    font-size:.88rem !important;
-    padding:0 12px !important;
-    white-space:nowrap !important;
+    font-size:.9rem !important;
   }
-  #homeCityInput{
-    height:34px !important;
-    border-radius:10px !important;
-    font-size:.88rem !important;
-    padding:0 10px !important;
-    background:#fff !important;
-    border:1px solid var(--border) !important;
-    box-shadow:none !important;
+  .home-locbar.locbar--compact #homeCityInput{
+    width:100%;
+    min-width:0;
+    padding-inline:10px !important;
   }
-
-  /* GPS button = icon only (no text) */
   #homeUseGPS{
     font-size:0 !important;
-    background:#fff !important;
-    border:1px solid var(--border) !important;
-    color:var(--sevor-ink) !important;
-    padding:0 10px !important;
+    padding:0 12px !important;
   }
   #homeUseGPS::before{
     content:"📍" !important;
     font-size:18px !important;
     line-height:1 !important;
-    display:inline-block !important;
-    transform:translateY(1px);
+    margin:0 !important;
   }
-
-  /* Simple search button */
-  .home-locbar.locbar--compact .btn.btn-primary{
-    background:var(--sevor-brand) !important;
-    box-shadow:none !important;
-  }
-
-  /* Cancel as a small inline link on same row */
   #homeClearGPS{
-    padding:0 6px !important;
-    height:auto !important;
+    height:44px !important;
+    padding:0 8px !important;
     line-height:1 !important;
-    font-weight:800 !important;
-    color:var(--sevor-danger) !important;
-    border:none !important;
-    background:transparent !important;
   }
-
-  /* Hide any extra elements (like radius) if they accidentally appear */
-  #homeRadius,
-  .home-locbar:has(#homeRadius) .col-6.col-md-3{
-    display:none !important;
+  .home-locbar.locbar--compact .btn.btn-primary{ width:100%; }
+  .home-locbar.locbar--compact #homeCitySugg{
+    inset-inline:0;
+    top:calc(100% + 6px);
+    width:auto;
   }
+}
+@media (max-width:360px){
+  .home-locbar.locbar--compact.row{
+    grid-template-columns:1fr;
+    grid-template-areas:"city" "actions" "search";
+  }
+  .home-locbar.locbar--compact .col-6.col-md-2.d-grid{ justify-content:space-between; }
 }
 
 /* ======= HOME.GLASS OVERRIDES (paste at end of home.html <style>) ======= */
@@ -975,6 +950,10 @@
 .category-chip{
   top:10px !important;          /* لإرجاع شارة التصنيف مكانها */
   left:10px !important;
+  max-inline-size:calc(100% - 58px);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 
 </style>

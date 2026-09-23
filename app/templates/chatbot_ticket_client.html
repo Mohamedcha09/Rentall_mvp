@@ -14,9 +14,11 @@ body[data-path^="/chatbot/ticket"] .searchbar {
 }
 
 .sv-ticket-page {
+  box-sizing: border-box;
+  width: 100%;
   max-width: 720px;
   margin: 0 auto;
-  padding: 0 18px 160px;
+  padding: env(safe-area-inset-top, 0px) 18px 160px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -73,6 +75,7 @@ body[data-path^="/chatbot/ticket"] .searchbar {
   gap: 14px;
   max-height: 65vh;
   overflow-y: auto;
+  min-width: 0;
 }
 
 /* USER */
@@ -84,6 +87,9 @@ body[data-path^="/chatbot/ticket"] .searchbar {
   border-radius: 18px;
   border-bottom-right-radius: 6px;
   max-width: 80%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* AGENT */
@@ -96,6 +102,9 @@ body[data-path^="/chatbot/ticket"] .searchbar {
   border-radius: 18px;
   border-bottom-left-radius: 6px;
   max-width: 80%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .sv-input-fixed {
@@ -105,6 +114,7 @@ body[data-path^="/chatbot/ticket"] .searchbar {
   transform: translateX(-50%);
   width: 100%;
   max-width: 720px;
+  box-sizing: border-box;
   background: #fff;
   border-top: 1px solid #e5e7eb;
   padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
@@ -114,10 +124,12 @@ body[data-path^="/chatbot/ticket"] .searchbar {
 .sv-input-fixed form {
   display: flex;
   gap: 10px;
+  min-width: 0;
 }
 
 .sv-input-fixed textarea {
   flex: 1;
+  min-width: 0;
   resize: none;
   border-radius: 999px;
   border: 1px solid #d1d5db;
@@ -133,6 +145,8 @@ body[data-path^="/chatbot/ticket"] .searchbar {
   border: none;
   font-size: 16px;
   font-weight: 600;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 </style>
 

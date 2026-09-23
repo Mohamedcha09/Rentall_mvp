@@ -55,7 +55,8 @@
   display: none;
   opacity: 0;
   transition: opacity .25s ease;
-  z-index: 2000;
+  /* Above the sticky header and mobile navigation while search is open. */
+  z-index: 7001;
 }
 
 .search-overlay.active {
@@ -148,6 +149,7 @@
   gap: 14px;
   text-decoration: none;
   color: inherit;
+  min-width: 0;
 }
 
 .item-preview {
@@ -156,6 +158,7 @@
   border-radius: 14px;
   overflow: hidden;
   position: relative;
+  flex: 0 0 60px;
 }
 
 .item-preview img {
@@ -177,9 +180,17 @@
   z-index: 10;
 }
 
+.text-zone { flex: 1 1 auto; min-width: 0; }
+.msg-title,
+.msg-sub {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .msg-title { font-size: 17px; font-weight: 600; }
 .msg-sub   { font-size: 14px; color: #666; }
-.msg-date  { margin-left: auto; font-size: 13px; color: #777; }
+.msg-date  { margin-left: auto; flex: 0 0 auto; font-size: 13px; color: #777; white-space: nowrap; }
 
 mark {
   background: #ffe08a;
@@ -210,6 +221,25 @@ mark {
     }
 
   }
+}
+
+/* Keep the filter component, rather than the page, scrollable at narrow widths. */
+@media (max-width: 360px) {
+  .msg-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+
+  .msg-tabs .tab { flex: 0 0 auto; }
+}
+
+/* The overlay owns interaction while it is open; the fixed app navigation does not. */
+body.inbox-search-open .mobile-tabbar,
+body.inbox-search-open #fabAdd {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 </style>
@@ -334,6 +364,7 @@ const supportTickets= document.querySelectorAll(".support-ticket");
 
 /* OPEN SEARCH */
 openBtn.onclick = () => {
+  document.body.classList.add("inbox-search-open");
   overlay.classList.add("active");
   panel.classList.add("active");
   setTimeout(() => input.focus(), 200);
@@ -341,6 +372,7 @@ openBtn.onclick = () => {
 
 /* CLOSE SEARCH */
 cancelBtn.onclick = () => {
+  document.body.classList.remove("inbox-search-open");
   overlay.classList.remove("active");
   panel.classList.remove("active");
   input.value = "";

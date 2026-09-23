@@ -1,4 +1,26 @@
 {% extends "base.html" %}
+{% block head %}
+<style>
+  .checkout-detail,
+  .checkout-detail .card,
+  .checkout-detail .card-body,
+  #pay-form,
+  #payment-element{min-width:0;max-width:100%}
+  .checkout-detail__meta{overflow-wrap:anywhere}
+  .checkout-summary-row{
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:start;
+    gap:12px;
+  }
+  .checkout-summary-row > :first-child{min-width:0;overflow-wrap:anywhere}
+  .checkout-summary-row > :last-child{white-space:nowrap;text-align:end}
+  #payment-element iframe{max-width:100% !important}
+  @media (max-width:359px){
+    .checkout-summary-row{gap:8px}
+  }
+</style>
+{% endblock %}
 {% block content %}
 
 {# ==== متغيرات العرض (العملة والرسوم التقديرية) ==== #}
@@ -7,14 +29,15 @@
 {% set sevor_fee = (rent * 0.01) %}
 {% set processing_fee_est = (rent * 0.029) + 0.30 %}
 
-<h3 class="mb-3">Payment for Booking #{{ booking.id }}</h3>
+<div class="checkout-detail">
+<h3 class="checkout-detail__meta mb-3">Payment for Booking #{{ booking.id }}</h3>
 
 <div class="card">
   <div class="card-body">
-    <div class="mb-2">Item: <strong>{{ item.title }}</strong></div>
-    <div class="mb-2">Owner: {{ owner.first_name }} {{ owner.last_name }}</div>
-    <div class="mb-2">Dates: from {{ booking.start_date }} to {{ booking.end_date }}</div>
-    <div class="mb-3">Amount: <strong>{{ "%.2f"|format(rent) }} {{ currency }}</strong></div>
+    <div class="checkout-detail__meta mb-2">Item: <strong>{{ item.title }}</strong></div>
+    <div class="checkout-detail__meta mb-2">Owner: {{ owner.first_name }} {{ owner.last_name }}</div>
+    <div class="checkout-detail__meta mb-2">Dates: from {{ booking.start_date }} to {{ booking.end_date }}</div>
+    <div class="checkout-detail__meta mb-3">Amount: <strong>{{ "%.2f"|format(rent) }} {{ currency }}</strong></div>
 
     {% if booking.status != 'confirmed' %}
       <div class="alert alert-warning">The booking is not in the "confirmed" state.</div>
@@ -25,14 +48,14 @@
   <div class="card-body">
     <h5 class="mb-3">Order summary</h5>
 
-    <div class="d-flex justify-content-between">
+    <div class="checkout-summary-row">
       <span>Rent for (“{{ item.title }}”)</span>
       <strong>{{ "%.2f"|format(rent_amount) }} {{ CURRENCY }}</strong>
     </div>
 
     <hr class="my-2">
 
-    <div class="d-flex justify-content-between">
+    <div class="checkout-summary-row">
       <span>Sub-total</span>
       <strong>{{ "%.2f"|format(subtotal_before_tax) }} {{ CURRENCY }}</strong>
     </div>
@@ -40,32 +63,32 @@
     {# ===== Taxes block ===== #}
     {% if taxes and taxes.mode == 'computed' and taxes.tax_lines and taxes.tax_lines|length > 0 %}
       {% for t in taxes.tax_lines %}
-        <div class="d-flex justify-content-between">
+        <div class="checkout-summary-row">
           <span>{{ t.name }} ({{ (t.rate * 100)|round(2) }}%)</span>
           <strong>{{ "%.2f"|format(t.amount) }} {{ CURRENCY }}</strong>
         </div>
       {% endfor %}
 
-      <div class="d-flex justify-content-between mt-1">
+      <div class="checkout-summary-row mt-1">
         <span class="fw-semibold">Tax total</span>
         <strong>{{ "%.2f"|format(taxes.tax_total) }} {{ CURRENCY }}</strong>
       </div>
 
       <hr class="my-2">
 
-      <div class="d-flex justify-content-between">
+      <div class="checkout-summary-row">
         <span>Total (incl. tax)</span>
         <strong>{{ "%.2f"|format(taxes.grand_total) }} {{ CURRENCY }}</strong>
       </div>
 
     {% else %}
-      <div class="d-flex justify-content-between text-muted">
+      <div class="checkout-summary-row text-muted">
         <span>Taxes</span>
         <span>Calculated at Stripe</span>
       </div>
 
       <hr class="my-2">
-      <div class="d-flex justify-content-between">
+      <div class="checkout-summary-row">
         <span>Total (before tax)</span>
         <strong>{{ "%.2f"|format(subtotal_before_tax) }} {{ CURRENCY }}</strong>
       </div>
@@ -89,6 +112,7 @@
     {% endif %}
   </div>
 </div>
+ </div>
 
 <script src="https://js.stripe.com/v3/"></script>
 <script>

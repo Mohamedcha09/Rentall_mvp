@@ -1,9 +1,22 @@
 {% extends "base.html" %}
+{% block head %}
+<style>
+  .booking-new-card,
+  .booking-new-card .card-body{min-width:0}
+  .booking-new-title,
+  #availability_hint{overflow-wrap:anywhere}
+  .booking-new-actions{display:flex;flex-wrap:wrap;gap:.5rem}
+  .booking-new-actions > *{min-width:0}
+  @media (max-width:359px){
+    .booking-new-actions > *{flex:1 1 100%}
+  }
+</style>
+{% endblock %}
 {% block content %}
 
-<h3 class="mb-3">Booking: {{ item.title }}</h3>
+<h3 class="booking-new-title mb-3">Booking: {{ item.title }}</h3>
 
-<div class="card">
+<div class="booking-new-card card">
   <div class="card-body">
 
     <form method="post" action="/bookings">
@@ -30,7 +43,7 @@
         </div>
       </div>
 
-      <div class="d-flex gap-2 mt-3">
+      <div class="booking-new-actions mt-3">
         <button type="submit" class="btn btn-success" id="submit_btn">
           Submit booking request
         </button>

@@ -97,6 +97,8 @@
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --safe-bottom-legacy: constant(safe-area-inset-bottom, 0px);
+      /* The visible mobile header includes the status-bar safe area. */
+      --mobile-header-h: calc(56px + env(safe-area-inset-top, 0px));
       --tabbar-lift: 20px; /* lift bottom bar a bit */
     }
 
@@ -121,13 +123,15 @@
       background:#fff; border:1px solid var(--border);
       border-radius:999px; padding:10px 14px;
       box-shadow:0 6px 20px rgba(0,0,0,.06);
+      min-width:0;
     }
     body[data-theme="dark"] .searchbar-wrap{
       background:rgba(255,255,255,.06); border-color:var(--border); backdrop-filter:saturate(120%) blur(6px);
     }
     .searchbar i.bi-search{font-size:18px; opacity:.7}
     .searchbar input{ border:0; outline:0; background:transparent; color:inherit; font-size:16px; }
-    .searchbar .field{ flex:1; display:flex; align-items:center; gap:10px; }
+    .searchbar .field{ flex:1; min-width:0; display:flex; align-items:center; gap:10px; }
+    .searchbar .field input{ min-width:0; width:100%; }
     .searchbar .sep{ width:1px; height:24px; background:var(--border); }
     .searchbar .k{ opacity:.55; font-size:.9rem; white-space:nowrap }
 
@@ -215,6 +219,13 @@
 
     @media (max-width:768px){
       .m-top-tabs{ display:flex !important; }
+      .notif-panel{ height:100dvh; }
+      .notif-panel__header{
+        padding:calc(12px + env(safe-area-inset-top,0px)) 14px 12px;
+      }
+      .notif-panel__body{
+        padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));
+      }
     }
   </style>
 
@@ -388,8 +399,9 @@ body[data-auth="0"] .mobile-tabbar {
 
   <!-- Modal guard + z-index fixes -->
   <style id="modal-guard">
-    .modal { z-index: 1070 !important; }
-    .modal-backdrop { z-index: 1060 !important; }
+    /* Dialogs must remain above mobile navigation and the sticky header. */
+    .modal, .offcanvas { z-index: 7000 !important; }
+    .modal-backdrop, .offcanvas-backdrop { z-index: 6900 !important; }
     body.modal-open #typeaheadPanel,
     body.modal-open #citySuggest,
     body.modal-open .notif-panel,
@@ -401,6 +413,15 @@ body[data-auth="0"] .mobile-tabbar {
     body::after { z-index: 1000 !important; }
     .modal.fade .modal-dialog { transition: none !important; }
     body.modal-open { padding-right: 0 !important; }
+    @media (max-width:768px){
+      .modal-dialog{
+        width:calc(100% - 24px);
+        max-height:calc(100dvh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
+        margin:max(12px, env(safe-area-inset-top,0px)) auto max(12px, env(safe-area-inset-bottom,0px));
+      }
+      .modal-dialog .modal-content{ max-height:inherit; }
+      .modal-dialog .modal-body{ overflow-y:auto; }
+    }
   </style>
   <style id="ios-top-final-fix">
   @media (max-width:768px){
@@ -409,6 +430,9 @@ body[data-auth="0"] .mobile-tabbar {
       position: sticky !important;
       top: 0 !important;
       z-index: 5000 !important;
+      box-sizing:border-box;
+      height:var(--mobile-header-h) !important;
+      min-height:var(--mobile-header-h) !important;
       padding-top: env(safe-area-inset-top, 0px) !important;
       padding-bottom: 0 !important;
       margin-bottom: 0 !important;
@@ -429,6 +453,10 @@ body[data-auth="0"] .mobile-tabbar {
     }
 
     header.topbar .topbar__inner{
+      box-sizing:border-box;
+      height:56px;
+      min-height:56px !important;
+      min-width:0;
       background: transparent !important;
       padding-bottom: 0 !important;
       margin-bottom: 0 !important;
@@ -478,7 +506,7 @@ body[data-auth="0"] .mobile-tabbar {
     height: var(--tabbar-h) !important;
     display: grid !important; grid-template-columns: repeat(5, 1fr) !important;
     align-items: center !important; padding: 8px 12px !important; border-top: none !important;
-    z-index: 2147483647 !important; border-radius: var(--tabbar-radius) !important;
+    z-index: 1030 !important; border-radius: var(--tabbar-radius) !important;
 
     /* Glass: Blur + Saturate + bg + gradient */
     background:
@@ -751,7 +779,7 @@ body[data-auth="0"] .mobile-tabbar {
   :root{
     --sv-tabbar: 64px;            /* يتحدث تلقائياً عبر JS أدناه */
     --sv-lift: 20px;              /* مقدار رفع التاب بار لديك */
-    --sv-fab-gap: 14px;           /* مسافة إضافية فوق التاب بار */
+    --sv-fab-gap: 24px;           /* 14px visible gap above the lifted tab bar */
     --glass-blur: 16px;
     --glass-sat: 199%;
     --glass-bg: rgba(56,56,56,.35);
@@ -771,7 +799,7 @@ body[data-auth="0"] .mobile-tabbar {
     display: flex; align-items: center; justify-content: center;
     text-decoration: none;
     color: #fff !important;
-    z-index: 2147483648 !important;  /* أعلى من التاب بار */
+    z-index: 1040 !important;  /* Above the tab bar, below dialogs and sheets. */
     border: 0 !important;
 
     /* زجاج مطابق للتاب بار */
@@ -1019,12 +1047,36 @@ header.topbar .searchbar-wrap{
   body[data-path="/"] .m-top-tabs{
     position:-webkit-sticky !important;
     position:sticky !important;
-    top:calc(56px + env(safe-area-inset-top, 0px)) !important;
+    top:var(--mobile-header-h) !important;
     z-index:4999 !important;
     margin-top:0 !important;
     flex-shrink:0;
     background:rgba(255,255,255,.98) !important;
   }
+
+  /* The lifted tab bar reaches 94px + the safe inset from the bottom. */
+  body.has-tabbar .page{
+    padding-bottom:calc(110px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important;
+  }
+
+  .page, .page > *, .topbar__inner, .searchbar{ min-width:0; }
+  .page img, .modal img, .offcanvas img{ max-width:100%; height:auto; }
+  /* User-provided names, notes, emails, and URLs must never widen a phone layout. */
+  .page :is(h1,h2,h3,h4,h5,h6,p,.small,.text-muted,.card-title,.card-text,.form-text,.list-group-item){
+    overflow-wrap:anywhere;
+  }
+
+  /* These internal support routes deliberately hide the shared chrome. */
+  body[data-path^="/cs"] .page,
+  body[data-path^="/md"] .page,
+  body[data-path^="/mod"] .page{
+    padding-top:max(18px, calc(env(safe-area-inset-top, 0px) + 12px)) !important;
+  }
+}
+
+@media (max-width:360px){
+  .mobile-tabbar{ padding-inline:6px !important; }
+  .mobile-tabbar a{ font-size:10px !important; }
 }
 </style>
 

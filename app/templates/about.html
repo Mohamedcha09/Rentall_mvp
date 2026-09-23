@@ -26,11 +26,22 @@
   .section-title { font-weight: 700; font-size: 1.6rem; margin-bottom: 12px; }
   .item-list span { background:#2b2e40; padding:6px 10px; border-radius: 8px; margin:3px; font-size:0.8rem; display:inline-block; }
   .step { display:flex; gap:12px; margin-bottom:12px; }
-  .step-num { background:#0d6efd; color:#fff; width:34px; height:34px; display:flex; justify-content:center; align-items:center; border-radius:50%; font-weight:700; }
+  .step > :last-child,
+  .feature-icon + div { min-width:0; overflow-wrap:anywhere; }
+  .step-num { background:#0d6efd; color:#fff; width:34px; height:34px; flex:0 0 34px; display:flex; justify-content:center; align-items:center; border-radius:50%; font-weight:700; }
   .feature-icon { width:48px; height:48px; border-radius:12px; background:rgba(255,255,255,0.1);
                   display:flex; justify-content:center; align-items:center; font-size:24px; }
   .faq .accordion-button { background:rgba(255,255,255,0.04); color:#fff; }
   .faq .accordion-body { background:rgba(255,255,255,0.04); color:#c9c9c9; }
+
+  .about-hero-actions,
+  .about-bottom-actions { flex-wrap:wrap; }
+
+  @media (max-width: 480px){
+    .about-hero { padding:34px 18px; }
+    .about-hero-actions .btn,
+    .about-bottom-actions .btn { max-width:100%; white-space:normal; }
+  }
 
   
 </style>
@@ -124,7 +135,7 @@ p, li, .lead {
         <span class="chip">ID Verification</span>
       </div>
 
-      <div class="mt-4 d-flex gap-2">
+      <div class="about-hero-actions mt-4 d-flex gap-2">
         {% if not session_user %}
           <a class="btn btn-primary btn-lg" href="/register">Create Account</a>
           <a class="btn btn-outline-light btn-lg" href="/login">Log In</a>
@@ -388,7 +399,7 @@ p, li, .lead {
       Sevor is the future of renting.
     </p>
 
-    <div class="d-flex justify-content-center gap-2">
+    <div class="about-bottom-actions d-flex justify-content-center gap-2">
       <a class="btn btn-outline-light btn-lg" href="/items">Browse Items</a>
       {% if not session_user %}
         <a class="btn btn-primary btn-lg" href="/register">Create Account</a>

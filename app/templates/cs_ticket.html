@@ -1,6 +1,35 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container py-4">
+<style>
+  .cs-ticket-page .ticket-message,
+  .cs-ticket-page .ticket-message * {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  @media (max-width: 768px) {
+    .cs-ticket-page .ticket-actions,
+    .cs-ticket-page .ticket-message-row,
+    .cs-ticket-page .ticket-transfer {
+      flex-wrap: wrap;
+    }
+
+    .cs-ticket-page .ticket-actions > *,
+    .cs-ticket-page .ticket-message-row > *,
+    .cs-ticket-page .ticket-transfer > * {
+      min-width: 0;
+    }
+
+    .cs-ticket-page .ticket-transfer .ms-auto {
+      margin-inline-start: 0 !important;
+    }
+
+    .cs-ticket-page .ticket-message {
+      max-width: 100% !important;
+    }
+  }
+</style>
+<div class="container py-4 cs-ticket-page">
 
   <!-- Header -->
   <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
@@ -34,7 +63,7 @@
     </div>
 
     <!-- Top Buttons -->
-    <div class="d-flex flex-wrap gap-2">
+    <div class="d-flex flex-wrap gap-2 ticket-actions">
       <a class="btn btn-outline-secondary btn-sm" href="/cs/inbox">Back to Inbox</a>
 
       {% if not ticket.assigned_to_id %}
@@ -49,7 +78,7 @@
 
   <!-- Queue Transfer Bar -->
   <div class="card mb-3">
-    <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+    <div class="card-body d-flex flex-wrap gap-2 align-items-center ticket-transfer">
       <div class="fw-semibold me-2">Transfer to Department:</div>
 
       <!-- Transfer to MD -->
@@ -83,8 +112,8 @@
     <div class="card-body">
       {% if msgs and msgs|length %}
         {% for m in msgs %}
-          <div class="d-flex {% if m.sender_role=='user' %}justify-content-end{% else %}justify-content-start{% endif %} mb-2">
-            <div class="p-2 rounded-3"
+          <div class="d-flex {% if m.sender_role=='user' %}justify-content-end{% else %}justify-content-start{% endif %} mb-2 ticket-message-row">
+            <div class="p-2 rounded-3 ticket-message"
                  style="max-width: 90%; background: {% if m.sender_role=='user' %}#eef6ff{% else %}#f5f5f7{% endif %};">
               <div class="small text-muted mb-1">
                 {{ m.created_at }} — {{ 'Client' if m.sender_role=='user' else 'Support' }}
@@ -106,7 +135,7 @@
     <div class="card-body">
       <form method="post" action="/cs/ticket/{{ ticket.id }}/reply">
         <textarea name="body" class="form-control mb-2" rows="4" placeholder="Write your reply here..." required></textarea>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 ticket-actions">
           <button class="btn btn-primary">Send</button>
 
           {% if not ticket.assigned_to_id %}

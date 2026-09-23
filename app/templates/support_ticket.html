@@ -67,7 +67,8 @@
 .ticket-sticky-bar {
     position: fixed;
     top: 0; left: 0; right: 0;
-    height: 58px;
+    box-sizing: border-box;
+    height: calc(58px + env(safe-area-inset-top, 0px));
     padding: calc(env(safe-area-inset-top) + 6px) 14px 8px 14px;
     background: rgba(255,255,255,0.85);
     backdrop-filter: blur(14px);
@@ -76,7 +77,7 @@
     align-items: center;
     justify-content: space-between;
     opacity: 0;
-    transform: translateY(-70px);
+    transform: translateY(-100%);
     transition: all .35s ease;
     z-index: 99999;
 }
@@ -95,6 +96,16 @@
 .ticket-sticky-back {
     font-size: 22px;
     color: #333;
+}
+
+.back-btn-ios {
+  transition: opacity .2s ease, transform .2s ease;
+}
+
+.back-btn-ios.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(.94);
 }
 
 /* =====================================================
@@ -199,6 +210,41 @@
   line-height:1.35;
   white-space:pre-wrap;
   word-break:break-word;
+  overflow-wrap:anywhere;
+}
+
+@media (max-width: 768px) {
+  .support-ticket-page .chat-row .bubble {
+    min-width: 0;
+    max-width: calc(100% - .5rem);
+  }
+
+  .support-ticket-page .bubble .meta,
+  .support-ticket-page .card-header,
+  .support-ticket-page .alert.d-flex,
+  .support-ticket-page .card-footer .d-flex {
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+
+  .support-ticket-page .card-header > *,
+  .support-ticket-page .alert.d-flex > *,
+  .support-ticket-page .list-group-item > span:last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .support-ticket-page .list-group-item.d-flex {
+    gap: .75rem;
+  }
+
+  .support-ticket-page .list-group-item > span:last-child {
+    text-align: end;
+  }
+
+  .support-ticket-page .card-footer .d-flex > * {
+    min-width: 0;
+  }
 }
 
 /* ===== iOS APP ONLY — TOP SAFE WHITE BAR (SUPPORT TICKET) ===== */
@@ -233,7 +279,7 @@
       CONTENT (unchanged)
 ===================================================== -->
 
-<div class="container py-3" style="max-width:900px">
+<div class="container py-3 support-ticket-page" style="max-width:900px">
 
   <!-- DESKTOP HEADER ONLY (لا يمسه شيء) -->
   <div class="d-none d-md-flex align-items-center justify-content-between mb-3">
@@ -405,15 +451,20 @@
   if (chat){ setTimeout(()=>{ chat.scrollTop = chat.scrollHeight; }, 50); }
 })();
 
-document.addEventListener("scroll", function () {
+function syncTicketSticky() {
     const bar = document.getElementById("ticketSticky");
+    const back = document.querySelector(".back-btn-ios");
+    const shown = window.scrollY > 120;
 
-    if (window.scrollY > 120) {
+    if (shown) {
         bar.classList.add("show");
     } else {
         bar.classList.remove("show");
     }
-});
+    if (back) back.classList.toggle("is-hidden", shown);
+}
+window.addEventListener("scroll", syncTicketSticky, { passive: true });
+syncTicketSticky();
 </script>
 
 {% endblock %}

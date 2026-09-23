@@ -3,11 +3,16 @@
 
 <style>
   .badge-icon{height:18px;width:18px;margin-inline-start:6px;vertical-align:middle;display:inline-block;}
-  .thread-row{display:flex;align-items:center;gap:.6rem;padding:.5rem .75rem;border-bottom:1px solid rgba(255,255,255,.1);}
-  .thread-row a{text-decoration:none;color:inherit;display:flex;align-items:center;gap:.6rem;flex:1;}
-  .avatar{width:36px;height:36px;border-radius:50%;background:#e9ecef;color:#222;display:flex;align-items:center;justify-content:center;font-weight:700;}
-  .thread-title{flex:1;}
-  .thread-title .small{opacity:.8;}
+  .thread-row{display:flex;align-items:center;gap:.6rem;padding:.5rem .75rem;border-bottom:1px solid rgba(255,255,255,.1);min-width:0;}
+  .thread-row a{text-decoration:none;color:inherit;display:flex;align-items:center;gap:.6rem;flex:1;min-width:0;}
+  .avatar{width:36px;height:36px;flex:0 0 36px;border-radius:50%;background:#e9ecef;color:#222;display:flex;align-items:center;justify-content:center;font-weight:700;}
+  .thread-title{flex:1;min-width:0;}
+  .thread-title .fw-bold,.thread-title .small{overflow-wrap:anywhere;}
+  .messages-detail-header{gap:.75rem;flex-wrap:wrap;}
+  .messages-detail-header h5{min-width:0;overflow-wrap:anywhere;}
+  .list-group-item{overflow-wrap:anywhere;}
+  .input-group{min-width:0;}
+  .input-group .form-control{min-width:0;}
 </style>
 
 
@@ -72,7 +77,7 @@
           {% set role = other.role if other and other.role else 'user' %}
           {% set verified = 1 if (other and other.is_verified) else 0 %}
 
-          <div class="d-flex align-items-center justify-content-between mb-3">
+          <div class="messages-detail-header d-flex align-items-center justify-content-between mb-3">
             <h5 class="mb-0">
               {{ name }}
               <span class="auto-badges"

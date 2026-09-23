@@ -13,6 +13,33 @@
   .evs img,.evs video{width:88px;height:88px;border-radius:10px;object-fit:cover;border:1px solid var(--border,#e5e7eb)}
   .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
   .ok{color:#198754} .bad{color:#dc3545}
+  @media (max-width: 768px) {
+    .deposit-final-page {
+      box-sizing: border-box;
+      padding-top:max(14px, calc(env(safe-area-inset-top, 0px) + 12px));
+      padding-bottom:max(14px, calc(env(safe-area-inset-bottom, 0px) + 14px));
+    }
+    .deposit-final-page .deposit-item-summary,
+    .deposit-final-page .financial-row {
+      flex-wrap: wrap;
+      gap: .4rem;
+    }
+    .deposit-final-page .deposit-item-summary > *,
+    .deposit-final-page .financial-row > * {
+      min-width: 0;
+    }
+    .deposit-final-page .card,
+    .deposit-final-page .chip,
+    .deposit-final-page .deposit-note,
+    .deposit-final-page .k,
+    .deposit-final-page .mono {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .deposit-final-page .evs a {
+      max-width: 100%;
+    }
+  }
 </style>
 
 <style>
@@ -268,7 +295,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="wrap">
+<div class="wrap deposit-final-page">
 
   <!-- 🔙 زر العودة إلى Home -->
   <div class="mb-2">
@@ -294,7 +321,7 @@
     <div class="grid">
       <div class="card">
         <h6 class="mb-2">Item</h6>
-        <div class="d-flex gap-3">
+        <div class="d-flex gap-3 deposit-item-summary">
           {# Safe image #}
           {% set img = '/static/placeholder.jpg' %}
           {% if item and item.image_path %}
@@ -319,7 +346,7 @@
         <h6 class="mb-2"><i class="bi bi-exclamation-octagon me-1"></i> Owner Report</h6>
         <div class="k">Type: <b>{{ bk.owner_report_type or '—' }}</b></div>
         {% if bk.owner_report_reason %}
-          <div class="mt-1" style="white-space:pre-wrap">{{ bk.owner_report_reason }}</div>
+          <div class="mt-1 deposit-note" style="white-space:pre-wrap">{{ bk.owner_report_reason }}</div>
         {% endif %}
         {% set owner_evs = (bk.deposit_evidences or []) | selectattr('side','equalto','owner') | list %}
         <div class="evs mt-2">
@@ -396,22 +423,22 @@
     <div class="grid">
       <div class="card">
         <h6 class="mb-2">Financial Summary — Deposit</h6>
-        <div class="d-flex justify-content-between"><span>Held Deposit Amount</span><b>{{ hold_amt }} CAD</b></div>
-        <div class="d-flex justify-content-between"><span>Final Charge</span>
+        <div class="d-flex justify-content-between financial-row"><span>Held Deposit Amount</span><b>{{ hold_amt }} CAD</b></div>
+        <div class="d-flex justify-content-between financial-row"><span>Final Charge</span>
           <b class="{{ charged>0 and 'bad' or '' }}">{{ charged }} CAD</b></div>
-        <div class="d-flex justify-content-between"><span>Refunded to Renter</span>
+        <div class="d-flex justify-content-between financial-row"><span>Refunded to Renter</span>
           <b class="{{ refunded>0 and 'ok' or '' }}">{{ refunded }} CAD</b></div>
         {% if bk.dm_decision_note %}
           <hr>
-          <div class="k"><span class="mono">Reason:</span> {{ bk.dm_decision_note }}</div>
+          <div class="k deposit-note"><span class="mono">Reason:</span> {{ bk.dm_decision_note }}</div>
         {% endif %}
       </div>
 
       <div class="card">
         <h6 class="mb-2">Rent Summary</h6>
-        <div class="d-flex justify-content-between"><span>Daily Price</span><b>{{ item.price_per_day if item else 0 }} CAD</b></div>
-        <div class="d-flex justify-content-between"><span>Number of Days</span><b>{{ bk.days }}</b></div>
-        <div class="d-flex justify-content-between"><span>Total Rent (Approx.)</span>
+        <div class="d-flex justify-content-between financial-row"><span>Daily Price</span><b>{{ item.price_per_day if item else 0 }} CAD</b></div>
+        <div class="d-flex justify-content-between financial-row"><span>Number of Days</span><b>{{ bk.days }}</b></div>
+        <div class="d-flex justify-content-between financial-row"><span>Total Rent (Approx.)</span>
           <b>{{ (item.price_per_day or 0) * (bk.days or 0) if item else 0 }} CAD</b></div>
       </div>
 

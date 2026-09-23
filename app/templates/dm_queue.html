@@ -13,6 +13,33 @@
   .stat > div{background:#fff;border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:8px 10px}
   .table thead th{white-space:nowrap}
   .searchbar{display:flex;gap:8px;flex-wrap:wrap}
+  .queue-wrap .table-responsive{
+    max-width:100%;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .queue-wrap td{
+    overflow-wrap:anywhere;
+    word-break:break-word;
+  }
+  @media (max-width:768px){
+    .queue-wrap{padding-inline:12px}
+    .queue-wrap .searchbar,
+    .queue-wrap .searchbar form{
+      width:100%;
+    }
+    .queue-wrap .searchbar form{
+      flex-wrap:wrap;
+    }
+    .queue-wrap .searchbar form > *{
+      min-width:0;
+      flex:1 1 100%;
+    }
+    .queue-wrap .searchbar .btn,
+    .queue-wrap > .d-flex > .btn{
+      width:100%;
+    }
+  }
 </style>
 {% endblock %}
 

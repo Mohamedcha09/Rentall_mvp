@@ -121,7 +121,7 @@ def fx_convert_smart(db: Session, amount: Optional[float], base: str, quote: str
             cache[cache_key] = float(rate) if rate is not None else None
 
         rate = cache[cache_key]
-        if rate is not None:
+        if rate:
             return float(amount) * rate
 
         return float(amount)

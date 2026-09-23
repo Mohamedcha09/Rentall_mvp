@@ -1,6 +1,27 @@
 {% extends "base.html" %}
+{% block head %}
+<style>
+  .bookings-list{min-width:0}
+  .bookings-list .card,
+  .bookings-list .card-body,
+  .bookings-list .list-group-item{min-width:0}
+  .booking-list-entry{gap:12px}
+  .booking-list-entry__content{flex:1 1 auto;min-width:0}
+  .booking-list-entry__content > *{overflow-wrap:anywhere}
+  .booking-list-entry__status{flex:0 1 auto;max-width:45%;overflow-wrap:anywhere}
+  .booking-list-actions{display:flex;flex-wrap:wrap;gap:.5rem}
+  .booking-list-actions > *{min-width:0}
+  .booking-list-actions .btn{max-width:100%;white-space:normal}
+  @media (max-width:359px){
+    .booking-list-entry{align-items:flex-start !important;flex-wrap:wrap}
+    .booking-list-entry__status{max-width:100%}
+    .booking-list-actions > *{flex:1 1 100%}
+  }
+</style>
+{% endblock %}
 {% block content %}
 
+<div class="bookings-list">
 <h3 class="mb-3">My Bookings</h3>
 
 <div class="row g-3">
@@ -12,8 +33,8 @@
           <div class="list-group">
             {% for b in as_renter %}
               <div class="list-group-item bg-transparent">
-                <div class="d-flex justify-content-between align-items-center">
-                  <div>
+                <div class="booking-list-entry d-flex justify-content-between align-items-center">
+                  <div class="booking-list-entry__content">
                     <div class="fw-bold">
                       {{ b.item.title if b.item else 'Deleted item' }}
                     </div>
@@ -24,7 +45,7 @@
                       <div class="small">{{ b.note }}</div>
                     {% endif %}
                   </div>
-                  <span class="badge
+                  <span class="booking-list-entry__status badge
                     {% if b.status == 'pending' %}bg-warning text-dark
                     {% elif b.status == 'approved' %}bg-success
                     {% elif b.status == 'active' %}bg-primary
@@ -36,7 +57,7 @@
                 </div>
 
                 <!-- Quick actions by status -->
-                <div class="mt-2 d-flex gap-2">
+                <div class="booking-list-actions mt-2">
                   {% if b.status in ['pending','approved'] %}
                     <form method="post" action="/bookings/{{ b.id }}/cancel">
                       <button class="btn btn-sm btn-outline-danger">Cancel</button>
@@ -66,8 +87,8 @@
           <div class="list-group">
             {% for b in as_owner %}
               <div class="list-group-item bg-transparent">
-                <div class="d-flex justify-content-between align-items-center">
-                  <div>
+                <div class="booking-list-entry d-flex justify-content-between align-items-center">
+                  <div class="booking-list-entry__content">
                     <div class="fw-bold">
                       {{ b.item.title if b.item else 'Deleted item' }}
                     </div>
@@ -81,7 +102,7 @@
                       <div class="small">{{ b.note }}</div>
                     {% endif %}
                   </div>
-                  <span class="badge
+                  <span class="booking-list-entry__status badge
                     {% if b.status == 'pending' %}bg-warning text-dark
                     {% elif b.status == 'approved' %}bg-success
                     {% elif b.status == 'active' %}bg-primary
@@ -93,7 +114,7 @@
                 </div>
 
                 <!-- Owner actions -->
-                <div class="mt-2 d-flex gap-2">
+                <div class="booking-list-actions mt-2">
                   {% if b.status == 'pending' %}
                     <form method="post" action="/bookings/{{ b.id }}/approve">
                       <button class="btn btn-sm btn-success">Approve</button>
@@ -117,6 +138,7 @@
       </div>
     </div>
   </div>
+</div>
 </div>
 
 {% endblock %}

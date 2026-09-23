@@ -28,6 +28,8 @@
       ========================================================================== */
 
     .sv-chatbot-page {
+      box-sizing: border-box;
+      width: 100%;
       max-width: 720px;
       margin: 0 auto;
       padding: 0 18px 40px;
@@ -141,11 +143,13 @@
     /* Messages */
     .sv-msg {
       max-width: 80%;
+      min-width: 0;
       padding: 14px 18px;
       border-radius: 18px;
       font-size: 15px;
       line-height: 1.55;
-      word-wrap: break-word;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
     .sv-msg-bot {
@@ -225,6 +229,7 @@
     /* Feedback buttons */
     .sv-feedback-buttons {
       display: flex;
+      flex-wrap: wrap;
       gap: 12px;
       margin-top: 10px;
     }
@@ -280,6 +285,7 @@
   transform: translateX(-50%);
   width: 100%;
   max-width: 720px;
+  box-sizing: border-box;
   background: #ffffff;
   border-top: 1px solid #e5e7eb;
   padding: 10px 12px env(safe-area-inset-bottom);
@@ -307,11 +313,13 @@
 .sv-input-fixed form {
   display: flex;
   gap: 10px;
+  min-width: 0;
 }
 
 /* input */
 #sv-message-input {
   flex: 1;
+  min-width: 0;
   padding: 12px 14px;
   border-radius: 999px;
   border: 1px solid #d1d5db;

@@ -3,17 +3,42 @@
 <style>
   .ticket-wrap{max-width:980px;margin:auto}
   .chip{font-size:.8rem;padding:.25rem .55rem;border:1px solid var(--border);border-radius:999px;background:rgba(255,255,255,.03)}
-  .msg{border-radius:14px;padding:.6rem .8rem;white-space:pre-wrap}
+  .msg{border-radius:14px;padding:.6rem .8rem;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
   .msg-user{background:rgba(25,135,84,.08);border:1px solid rgba(25,135,84,.2)}
   .msg-agent{background:rgba(13,110,253,.08);border:1px solid rgba(13,110,253,.2)}
   .msg-system{background:rgba(108,117,125,.08);border:1px dashed rgba(108,117,125,.35);font-style:italic}
   .msg-meta{font-size:.78rem;color:#888}
   .card-chat{max-height:58vh;overflow:auto}
   .toolbar-sticky{position:sticky;bottom:0;z-index:2;background:linear-gradient(to top, rgba(0,0,0,.06), transparent 42%);padding-top:.4rem;border-top:1px solid rgba(255,255,255,.08)}
+  @media (max-width: 768px){
+    .mod-ticket-page .ticket-heading,
+    .mod-ticket-page .card-header{
+      flex-wrap:wrap;
+      gap:.5rem;
+    }
+    .mod-ticket-page .ticket-heading > *,
+    .mod-ticket-page .card-header > *,
+    .mod-ticket-page .msg,
+    .mod-ticket-page .chip{
+      min-width:0;
+      overflow-wrap:anywhere;
+    }
+    .mod-ticket-page .card-header .ms-auto{
+      margin-inline-start:0 !important;
+    }
+    .mod-ticket-page .toolbar-sticky{
+      position:static;
+      padding-bottom:0;
+    }
+    .mod-ticket-page .toolbar-sticky form{
+      display:block !important;
+      max-width:100%;
+    }
+  }
 </style>
 
-<div class="container py-3 ticket-wrap" dir="rtl">
-  <div class="d-flex align-items-center justify-content-between">
+<div class="container py-3 ticket-wrap mod-ticket-page" dir="rtl">
+  <div class="d-flex align-items-center justify-content-between ticket-heading">
     <h4 class="m-0">Ticket (MOD) #{{ ticket.id }}</h4>
     <a href="/mod/inbox" class="btn btn-outline-secondary btn-sm"><i class="bi bi-inbox"></i> Back to Inbox</a>
   </div>

@@ -281,6 +281,9 @@ body.has-tabbar { padding-bottom: 0 !important; }
 /* iOS safe area bar (white) */
 @supports (-webkit-touch-callout: none) {
   @media (max-width: 768px) {
+    .pdfs-wrap{
+      padding-top:calc(36px + env(safe-area-inset-top,0px));
+    }
     .pdfs-wrap::before{
       content:"";
       position: fixed;

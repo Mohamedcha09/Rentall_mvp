@@ -47,6 +47,12 @@ nav.desk-tabs,
 }
 
 body.has-tabbar { padding-bottom: 0 !important; }
+
+@media (max-width:768px){
+  .user-profile-page{
+    padding-top:max(70px, calc(env(safe-area-inset-top,0px) + 66px)) !important;
+  }
+}
 </style>
 
 <style>
@@ -119,6 +125,10 @@ body.has-tabbar { padding-bottom: 0 !important; }
   font-size:13px;
   font-weight:700;
   color:#111;
+  max-inline-size:calc(100% - 72px);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 
 .sim-cat{
@@ -132,6 +142,11 @@ body.has-tabbar { padding-bottom: 0 !important; }
   font-size:13px;
   font-weight:600;
   color:#555;
+  /* Reserve the /day badge on the other side of narrow two-column cards. */
+  max-inline-size:calc(100% - 76px);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 
 /* Heart */
@@ -155,6 +170,7 @@ body.has-tabbar { padding-bottom: 0 !important; }
 /* Body */
 .sim-body{
   padding-top:12px;
+  min-width:0;
 }
 
 .sim-title{
@@ -162,12 +178,14 @@ body.has-tabbar { padding-bottom: 0 !important; }
   font-weight:800;
   margin:0 0 4px;
   color:#111;
+  overflow-wrap:anywhere;
 }
 
 .sim-sub{
   color:#6b728052;
   font-size:14px;
   margin-bottom:8px;
+  overflow-wrap:anywhere;
   border-bottom:1px dashed #e5e7eb;
   padding-bottom:8px;
 }
@@ -176,6 +194,18 @@ body.has-tabbar { padding-bottom: 0 !important; }
   font-size:18px;
   font-weight:900;
   color:#111;
+}
+.profile-bio,.review-comment{overflow-wrap:anywhere;}
+
+@media (max-width:767.98px){
+  /* Category remains in the card text; avoid duplicate pills overlapping in two-column media. */
+  .sim-chip{max-inline-size:calc(100% - 20px);}
+  .sim-cat{display:none;}
+}
+
+@media (max-width:340px){
+  /* The actual price is already shown below; free this very narrow media area for the heart control. */
+  .sim-chip{display:none;}
 }
 </style>
 
@@ -188,7 +218,7 @@ body.has-tabbar { padding-bottom: 0 !important; }
   {% endif %}
 {%- endmacro %}
 
-<div class="container py-4" style="max-width:760px">
+<div class="container py-4 user-profile-page" style="max-width:760px">
 
 <!-- ===================== USER HEADER ===================== -->
 <section class="card p-3 p-md-4 mb-3">
@@ -225,7 +255,7 @@ body.has-tabbar { padding-bottom: 0 !important; }
       </div>
 
       {% if profile_user.bio %}
-        <p class="mt-2 mb-0 text-muted">{{ profile_user.bio }}</p>
+        <p class="mt-2 mb-0 text-muted profile-bio">{{ profile_user.bio }}</p>
       {% endif %}
     </div>
 
@@ -363,7 +393,7 @@ body.has-tabbar { padding-bottom: 0 !important; }
             </div>
 
             {% if r.comment %}
-              <div>{{ r.comment }}</div>
+              <div class="review-comment">{{ r.comment }}</div>
             {% endif %}
           </div>
         {% endfor %}

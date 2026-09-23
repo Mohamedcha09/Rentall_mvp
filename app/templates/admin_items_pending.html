@@ -15,6 +15,8 @@
         max-width: 480px;                 /* أصغر عرض ممكن */
         margin-left: auto;
         margin-right: auto;
+        box-sizing: border-box;
+        width: 100%;
     }
 
     h4 {
@@ -60,6 +62,8 @@
         font-size: 11px;
         margin-bottom: 4px;
         line-height: 1.3;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
     /* === IMAGES COMPACT GRID === */
@@ -83,11 +87,23 @@
         font-size: 11px !important;
     }
 
+    .actions-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .actions-row form {
+        margin: 0;
+    }
+
     /* FEEDBACK */
     .feedback-popup {
         background: rgba(0,0,0,0.5);
         position: fixed;
         inset: 0;
+        padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+        box-sizing: border-box;
         display: none;
         align-items: center;
         justify-content: center;
@@ -98,8 +114,11 @@
         background: #fff;
         padding: 18px;
         border-radius: 14px;
-        width: 90%;
+        box-sizing: border-box;
+        width: min(90%, 360px);
         max-width: 360px;
+        max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 24px);
+        overflow-y: auto;
     }
 
     #fbTitle {
@@ -114,6 +133,27 @@
     .btn-primary {
         font-size: 12px !important;
         padding: 6px 10px !important;
+    }
+
+    #fbTitle,
+    .owner-box,
+    h4 {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    @media (max-width: 360px) {
+        .pending-card {
+            padding: 8px;
+        }
+
+        .feedback-popup {
+            padding: 12px;
+        }
+
+        .feedback-box {
+            width: 100%;
+        }
     }
 
 </style>

@@ -1,9 +1,32 @@
 {% extends "base.html" %}
+{% block head %}
+<style>
+  .wallet-page{min-width:0}
+  .wallet-balance{overflow-wrap:anywhere}
+  .wallet-topup{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+  .wallet-topup input{box-sizing:border-box;min-width:0;max-width:100%}
+  .wallet-topup input[name="amount"]{flex:1 1 9rem}
+  .wallet-topup input[name="note"]{flex:2 1 14rem}
+  .wallet-topup button{flex:0 0 auto;max-width:100%;white-space:normal}
+  .wallet-table-scroll{
+    width:100%;max-width:100%;overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .wallet-table{min-width:640px;margin-bottom:0}
+  .wallet-table th,
+  .wallet-table td{vertical-align:top;overflow-wrap:anywhere}
+  @media (max-width:359px){
+    .wallet-topup input,
+    .wallet-topup button{flex:1 1 100%}
+  }
+</style>
+{% endblock %}
 {% block content %}
 
+<div class="wallet-page">
 <h2>Platform Wallet</h2>
 
-<div style="margin-bottom:20px">
+<div class="wallet-balance" style="margin-bottom:20px">
   <strong>Available balance:</strong>
   {{ balance.available_amount }} <br>
 
@@ -14,7 +37,7 @@
 <hr>
 
 <h3>Add funds (Admin only)</h3>
-<form method="post" action="/admin/wallet/topup">
+<form class="wallet-topup" method="post" action="/admin/wallet/topup">
   <input type="number" step="0.01" name="amount" required placeholder="Amount">
   <input type="text" name="note" placeholder="Note (optional)">
   <button type="submit">Add</button>
@@ -23,7 +46,8 @@
 <hr>
 
 <h3>Last transactions</h3>
-<table border="1" cellpadding="6">
+<div class="wallet-table-scroll" role="region" aria-label="Last transactions" tabindex="0">
+<table class="wallet-table" border="1" cellpadding="6">
   <tr>
     <th>Date</th>
     <th>Type</th>
@@ -44,5 +68,7 @@
   </tr>
   {% endfor %}
 </table>
+</div>
+</div>
 
 {% endblock %}

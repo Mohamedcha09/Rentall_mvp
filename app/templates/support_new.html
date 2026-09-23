@@ -61,7 +61,8 @@ body.has-tabbar { padding-bottom:0 !important; }
 .support-sticky-bar {
     position: fixed;
     top: 0; left: 0; right: 0;
-    height: 58px;
+    box-sizing: border-box;
+    height: calc(58px + env(safe-area-inset-top, 0px));
     padding: calc(env(safe-area-inset-top) + 6px) 14px 8px 14px;
     background: #F7F4FF;
     backdrop-filter: blur(14px);
@@ -70,7 +71,7 @@ body.has-tabbar { padding-bottom:0 !important; }
     align-items: center;
     justify-content: space-between;
     opacity: 0;
-    transform: translateY(-70px);
+    transform: translateY(-100%);
     transition: all .35s ease;
     z-index: 99999;
 }
@@ -91,6 +92,27 @@ body.has-tabbar { padding-bottom:0 !important; }
     color: #333;
 }
 
+.back-btn-ios {
+    transition: opacity .2s ease, transform .2s ease;
+}
+
+.back-btn-ios.is-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(.94);
+}
+
+@media (max-width: 768px) {
+    .support-new-page {
+        padding-top: calc(64px + env(safe-area-inset-top, 0px)) !important;
+    }
+
+    .support-new-page .form-control,
+    .support-new-page textarea {
+        max-width: 100%;
+    }
+}
+
 /* =====================================================
    عنوان الصفحة العادي
 ===================================================== */
@@ -105,7 +127,7 @@ h3 {
       Contact Support Content
 ===================================================== -->
 
-<div class="container py-4" style="max-width:760px">
+<div class="container py-4 support-new-page" style="max-width:760px">
 
   <h3>Contact Support</h3>
 
@@ -130,15 +152,20 @@ h3 {
      سكربت الشريط الثابت — يظهر عند النزول
 ===================================================== -->
 <script>
-document.addEventListener("scroll", function () {
+function syncSupportSticky() {
     const bar = document.getElementById("supportSticky");
+    const back = document.querySelector(".back-btn-ios");
+    const shown = window.scrollY > 100;
 
-    if (window.scrollY > 100) {
+    if (shown) {
         bar.classList.add("show");
     } else {
         bar.classList.remove("show");
     }
-});
+    if (back) back.classList.toggle("is-hidden", shown);
+}
+window.addEventListener("scroll", syncSupportSticky, { passive: true });
+syncSupportSticky();
 </script>
 
 {% endblock %}

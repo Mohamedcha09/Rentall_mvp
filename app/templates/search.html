@@ -39,10 +39,18 @@
   @media (min-width:576px){ .row-items{ grid-template-columns: 1fr; } }
 
   /* Single result item */
-  .result-item{display:flex; gap:12px; align-items:center; text-decoration:none; color:inherit; padding:6px; border-radius:12px;}
+  .result-item{display:flex; gap:12px; align-items:center; min-width:0; text-decoration:none; color:inherit; padding:6px; border-radius:12px;}
   .result-item:hover{ background: color-mix(in oklab, var(--surface) 90%, transparent); }
   .result-thumb{width:140px; aspect-ratio:16/9; border-radius:12px; overflow:hidden; background:#eef1f4; flex:0 0 140px;}
   .result-thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+  .result-item > .flex-grow-1,
+  .lux-card .list-group-item > .flex-grow-1{ min-width:0; }
+  .result-item .small{ flex-wrap:wrap; min-width:0; }
+  .result-item .small > *{ max-width:100%; overflow-wrap:anywhere; }
+  .lux-card .list-group-item{ min-width:0; }
+  .lux-card .list-group-item > :first-child,
+  .lux-card .list-group-item > .btn{ flex:0 0 auto; }
+  .search-query{ overflow-wrap:anywhere; }
   .badge-soft{background: color-mix(in oklab, var(--primary, #6c5ce7) 18%, white); border:1px solid var(--border);}
 
   /* Empty state inside a card */
@@ -64,10 +72,16 @@
     border-inline-start: 4px solid color-mix(in oklab, var(--primary, #6c5ce7) 65%, black);
     padding-inline-start:10px;
   }
+
+  @media (max-width: 374px){
+    .result-item{ align-items:flex-start; }
+    .result-thumb{ width:104px; flex-basis:104px; }
+    .result-item .small{ gap:6px !important; }
+  }
 </style>
 
 
-<h4 class="mb-3 section-title">Search results for: <span class="text-info">{{ q or '—' }}</span></h4>
+<h4 class="mb-3 section-title">Search results for: <span class="text-info search-query">{{ q or '—' }}</span></h4>
 
 {% if all_empty %}
   {# Both lists are empty → hide both cards and show aon.png #}

@@ -355,6 +355,23 @@
     .hero h1{ font-size:38px; }
   }
 
+  @media (max-width: 480px){
+    .container{ padding-inline:14px; }
+    .hero{ padding-top:64px; }
+    .tagline,
+    .btn,
+    .badge,
+    .chip,
+    .pill2{ max-width:100%; box-sizing:border-box; overflow-wrap:anywhere; }
+    .badge{ white-space:normal; }
+    .section-title,
+    .info .top{ flex-wrap:wrap; }
+    .section-title > *,
+    .info .top > *{ min-width:0; }
+    .cta-row .btn,
+    .hero-cta .btn{ white-space:normal; }
+  }
+
   /* hidden helper */
   [hidden]{ display:none !important; }
 </style>

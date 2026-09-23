@@ -1,7 +1,18 @@
 {% extends "base.html" %}
+{% block head %}
+<style>
+  .freeze-head,.freeze-record{gap:.75rem}
+  .freeze-record{min-width:0}
+  .freeze-record-copy{min-width:0;overflow-wrap:anywhere}
+  @media (max-width:575.98px){
+    .freeze-head,.freeze-record{flex-wrap:wrap;align-items:flex-start}
+    .freeze-record-date{width:100%;}
+  }
+</style>
+{% endblock %}
 {% block content %}
 
-<div class="d-flex align-items-center justify-content-between mb-3">
+<div class="d-flex align-items-center justify-content-between mb-3 freeze-head">
   <h3 class="mb-0">Guarantees (Placeholder)</h3>
   <a href="/freeze" class="btn btn-sm btn-outline-light">Refresh</a>
 </div>
@@ -36,8 +47,8 @@
   <div class="list-group">
     {% for d in deposits %}
       <div class="list-group-item">
-        <div class="d-flex justify-content-between align-items-center">
-          <div>
+        <div class="d-flex justify-content-between align-items-center freeze-record">
+          <div class="freeze-record-copy">
             <div class="fw-bold">Guarantee #{{ d.id }}</div>
             <div class="small text-muted">
               Item: {{ d.item_id or '-' }} ·
@@ -53,7 +64,7 @@
             </div>
             {% if d.note %}<div class="small text-muted">Note: {{ d.note }}</div>{% endif %}
           </div>
-          <div class="text-muted small">{{ d.created_at }}</div>
+          <div class="text-muted small freeze-record-date">{{ d.created_at }}</div>
         </div>
       </div>
     {% endfor %}

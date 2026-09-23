@@ -37,6 +37,7 @@
 .btnx-ghost{border-color:var(--stroke);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))}
 .btns-row{display:flex;flex-wrap:wrap;gap:10px}
 .owner-row{display:flex;align-items:center;gap:12px}
+.owner-row > :last-child{min-width:0;overflow-wrap:anywhere}
 .owner-avatar{width:62px;height:62px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--stroke)}
 .hr{border:0;height:1px;background:var(--stroke-soft);margin:14px 0}
 
@@ -79,7 +80,15 @@
   border-radius:999px; background:#fff; color:#111;
   border:1px solid #e5e7eb; font-weight:700; font-size:13px;
 }
-.sim-chip{ left:10px; font-weight:600; }
+.sim-chip{
+  left:10px;
+  font-weight:600;
+  max-inline-size:calc(100% - 72px);
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
 .sim-rate.empty{ display:none; }  /* أخفي الدائرة عند عدم وجود تقييم */
 .sim-rate .star{ font-size:14px }
 
@@ -155,7 +164,7 @@
     position:fixed !important; left:0; right:0; bottom:0;
     z-index:10000;background:#fff !important;border-top:1px solid #eee;
     padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
-    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;
     box-shadow:0 -6px 18px rgba(0,0,0,.08);
   }
   .air-underlay{
@@ -163,18 +172,25 @@
     height:calc(18px + env(safe-area-inset-bottom,0px));
     background:#fff; z-index:9999; pointer-events:none;
   }
-  .air-price{display:flex;flex-direction:column;line-height:1.2}
+  .air-price{display:flex;min-width:0;flex-direction:column;line-height:1.2;overflow-wrap:anywhere}
   .air-price .now{font-weight:800;font-size:20px}
   .air-price .per{color:#717171;font-size:12px}
   .air-cta{
     flex:0 0 auto;min-width:150px;text-align:center;height:48px;line-height:48px;padding:0 20px;border-radius:14px;
     font-weight:700;color:#fff;background:linear-gradient(90deg,#ff385c,#e61e4d);border:0;text-decoration:none;display:inline-block
   }
+  .air-fixed .small-muted{flex:0 0 100%;margin-top:0 !important;overflow-wrap:anywhere}
+  @media (max-width:360px){
+    .air-fixed{padding-inline:12px;gap:8px}
+    .air-cta{min-width:132px;padding-inline:12px}
+  }
 
   /* Reviews cards */
   .rv-strip{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 12px 2px}
-  .rv-card{scroll-snap-align:start;flex:0 0 84vw;background:#fff;border:1px solid #eee;border-radius:16px;padding:14px;box-shadow:0 6px 14px rgba(0,0,0,.05)}
+  .rv-card{scroll-snap-align:start;flex:0 0 84vw;min-width:0;background:#fff;border:1px solid #eee;border-radius:16px;padding:14px;box-shadow:0 6px 14px rgba(0,0,0,.05)}
   .rv-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .rv-head > :last-child{min-width:0;overflow-wrap:anywhere}
+  .rv-comment{overflow-wrap:anywhere}
   .rv-ava{width:40px;height:40px;border-radius:50%;object-fit:cover}
   .rv-meta{color:#6b7280;font-size:12px}
   .rv-stars{font-size:13px}
@@ -273,9 +289,10 @@
 @media (prefers-reduced-motion:reduce){ .btnx,.air-cta,.item-page .btn{ transition:none; } }
 .btnx-lightwide{ display:block; width:100%; text-align:center; padding:14px 18px; border-radius:16px; background:rgba(255,255,255,.75); border:1px solid #e5e7eb; color:#111; font-weight:800; box-shadow:0 10px 22px rgba(0,0,0,.06); }
 .btnx-lightwide:hover{ background:#fff }
-.btns-row{ display:flex; gap:12px; flex-wrap:nowrap; justify-content:space-between; width:100%; }
+.btns-row{ display:flex; gap:12px; flex-wrap:wrap; justify-content:space-between; width:100%; }
 .btns-row .btnx{ flex:1 1 0; text-align:center; height:52px; border-radius:16px; }
-@media (max-width:480px){ .btns-row .btnx{ height:50px; } }
+@media (max-width:480px){ .btns-row .btnx{ min-width:0; height:50px; } }
+@media (max-width:360px){ .btns-row .btnx{ flex-basis:100%; } }
 .website-link-wrap{display:flex;justify-content:center;min-width:0;margin-top:12px;text-align:center}
 .website-link-wrap .btnx{max-width:100%;height:auto;min-height:48px;padding:12px 20px;white-space:normal;overflow-wrap:anywhere;text-align:center}
 .btnx-website{border-color:rgba(34,211,238,.7);background:var(--brand-grad);color:#fff;box-shadow:var(--btn-shadow)}
@@ -285,8 +302,17 @@
 
 <style>
   /* اجعل الشيت أعلى من الشريط */
-  #reportSheet{ z-index:11000; --bs-offcanvas-height:85vh; }
-  .offcanvas-backdrop{ z-index:10990; }
+  #reportSheet{ z-index:11000 !important; --bs-offcanvas-height:85vh; }
+  .offcanvas-backdrop{ z-index:10990 !important; }
+  @media (max-width:768px){
+    #reportSheet{
+      box-sizing:border-box;
+      padding-top:env(safe-area-inset-top,0px);
+    }
+    #reportSheet .offcanvas-body{
+      padding-bottom:max(1rem, calc(env(safe-area-inset-bottom,0px) + 1rem));
+    }
+  }
 
   /* ستايل النجمة المتدرّج */
   .sim-rate .star{
@@ -359,6 +385,11 @@
   font-weight:700; 
   font-size:13px;
   box-shadow:0 4px 10px rgba(0,0,0,.08);
+  max-inline-size:calc(100% - 72px);
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 .sim-rate .star{
   font-size:15px;
@@ -373,10 +404,12 @@
   display:flex; align-items:center; justify-content:space-between; gap:8px;
   margin:0 0 4px 0;                    /* رأس البطاقة قريب */
 }
+.sim-head > *{ min-width:0; }
 .sim-title{
   margin:0; padding:0;
   font-weight:800; font-size:18px; line-height:1.15;
   /* لو كان عندك -webkit-line-clamp؛ يظل شغال */
+  overflow-wrap:anywhere;
 }
 .sim-sub{
   color:#6b7280; font-size:13px;
@@ -981,8 +1014,10 @@
 @media (min-width: 992px){
   .gallery{ border: 0; background: transparent; }
   .air-sheet{ border-top-left-radius: 18px; border-top-right-radius: 18px; }
+}
+.sim-meta > span:first-child{ min-width:0; overflow-wrap:anywhere; }
 
-  /* ====== DESKTOP FIX ONLY (>=992px) ====== */
+/* ====== DESKTOP FIX ONLY (>=992px) ====== */
 @media (min-width:992px){
 
   /* تخطيط عمودين واضح: اليسار المنشور، اليمين Reviews ثابت */
@@ -1056,7 +1091,6 @@
   /* تأكيد عدم وجود جريد سابق للسيميلر/الريفيو يفسد التخطيط */
   .rv-strip, .sim-row{ grid-template-columns:none !important; }
 }
-pointer-events:none;
 
 /* ====== Smooth Transition Effects ====== */
 .gallery-main img {
@@ -1330,7 +1364,7 @@ pointer-events:none;
               </div>
 
               {% if r.comment %}
-                <div style="margin-top:6px;white-space:pre-wrap">{{ r.comment }}</div>
+                <div class="rv-comment" style="margin-top:6px;white-space:pre-wrap">{{ r.comment }}</div>
               {% endif %}
             </div>
           {% endfor %}

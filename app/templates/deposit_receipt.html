@@ -91,6 +91,34 @@
   .deposit-back:hover {
     background: rgba(99,102,241,.08);
   }
+
+  @media (max-width: 768px) {
+    .deposit-wrap {
+      padding-inline: 12px;
+    }
+
+    .deposit-header,
+    .deposit-row {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .deposit-header > *,
+    .deposit-row > * {
+      min-width: 0;
+    }
+
+    .deposit-amount {
+      font-size: clamp(26px, 9vw, 34px);
+      overflow-wrap: anywhere;
+    }
+
+    .deposit-value {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      text-align: end;
+    }
+  }
 </style>
 
 <div class="container deposit-wrap">

@@ -11,12 +11,43 @@
   .badge-soft{border:1px solid var(--border);border-radius:999px;padding:2px 8px}
   .acts .btn{margin-inline-end:6px;margin-block-end:6px}
   .dm-empty{border:1px dashed var(--border);border-radius:14px;padding:24px;text-align:center;color:#888}
+  @media (max-width: 768px){
+    .dm-dashboard{padding-inline:12px}
+    .dm-dashboard-header,
+    .dm-case-header,
+    .dm-status-row,
+    .dm-tabs{
+      flex-wrap:wrap;
+    }
+    .dm-dashboard-header > *,
+    .dm-case-header > *,
+    .dm-status-row > *{
+      min-width:0;
+    }
+    .dm-case-header > div:first-child,
+    .dm-card .k,
+    .dm-card .mono,
+    .badge-soft{
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+    .dm-case-header > div:last-child{
+      width:100%;
+    }
+    .dm-case-header > div:last-child .btn{
+      width:100%;
+    }
+    .dm-decision-note{
+      display:block;
+      margin:.35rem 0 0 !important;
+    }
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="dm-wrap">
-  <div class="d-flex justify-content-between align-items-center mb-3">
+<div class="dm-wrap dm-dashboard">
+  <div class="d-flex justify-content-between align-items-center mb-3 dm-dashboard-header">
     <h4 class="m-0">Deposit Manager Dashboard</h4>
     <div class="dm-tabs d-flex gap-2">
       <a href="/deposit-manager?view=pending" class="{% if view=='pending' %}active{% endif %}">Pending</a>
@@ -31,9 +62,9 @@
     <div class="row-gap">
       {% for bk in rows %}
       <div class="dm-card">
-        <div class="d-flex justify-content-between align-items-start">
+        <div class="d-flex justify-content-between align-items-start dm-case-header">
           <div>
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 dm-status-row">
               <strong>Booking #{{ bk.id }}</strong>
               <span class="badge-soft mono k">{{ bk.status or '—' }}</span>
               <span class="badge-soft mono k">Deposit: {{ bk.deposit_status or '—' }}</span>
@@ -111,7 +142,7 @@
                   <button class="btn btn-success btn-sm">
                     <i class="bi bi-shield-check"></i> Execute decision
                   </button>
-                  <span class="small k ms-2">The operation will be executed via the unified decision route, then return.</span>
+                  <span class="small k ms-2 dm-decision-note">The operation will be executed via the unified decision route, then return.</span>
                 </div>
               </form>
             </div>

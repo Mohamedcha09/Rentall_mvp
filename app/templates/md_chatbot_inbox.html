@@ -1,7 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="page">
+<style>
+  @media (max-width: 768px) {
+    .chatbot-inbox .list-group-item .d-flex {
+      flex-wrap: wrap;
+      gap: .25rem;
+    }
+    .chatbot-inbox .list-group-item,
+    .chatbot-inbox .list-group-item * {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+  }
+</style>
+<div class="page chatbot-inbox">
   <h2 class="mt-4 mb-3">👑 MD — Chatbot Inbox</h2>
 
   <h3>🆕 New / Unassigned</h3>

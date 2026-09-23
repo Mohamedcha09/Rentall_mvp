@@ -57,6 +57,8 @@ h2 {
     font-size: 16px !important;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
     transition: all .25s ease;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .form-control:focus, .form-select:focus, textarea:focus {
@@ -145,6 +147,10 @@ img.edit-thumb {
 @media (max-width: 768px){
   h2 { margin-top: 12px; padding-left: 4px; }
   form { padding: 0 6px; }
+  .form-text,
+  .form-check-label,
+  form .alert,
+  .admin-feedback { overflow-wrap:anywhere; word-break:break-word; }
 }
 
 /* =====================================================
@@ -183,7 +189,7 @@ img.edit-thumb {
 
 {# 🔥🔥🔥 هنا الإضافة الجديدة فقط — مربّع سبب الرفض #}
 {% if item.admin_feedback %}
-<div style="
+<div class="admin-feedback" style="
     background: #fff7d6;
     border: 1px solid #ffe08a;
     padding: 14px;

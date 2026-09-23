@@ -168,6 +168,10 @@ h2 {
   form {
       padding: 0 6px;
   }
+
+  .city-location-controls{ flex-wrap:wrap; }
+  .city-location-controls > *{ min-height:44px; }
+  .city-location-controls #radiusNew{ flex:1 1 96px; min-width:0; max-width:100% !important; }
 }
 
 .upload-box {
@@ -211,8 +215,6 @@ h2 {
 
   }
 }
-<
-
 </style>
 
 
@@ -287,7 +289,7 @@ h2 {
            style="display:none; position:absolute; z-index:1000; max-height:260px; overflow:auto; inset-inline:0;"></div>
 
       <!-- GPS + radius (optional) -->
-      <div class="d-flex gap-2 mt-2">
+      <div class="d-flex gap-2 mt-2 city-location-controls">
         <button type="button" id="useMyLocNew" class="btn btn-outline-secondary btn-sm">📍 Use my location</button>
         <input type="number" id="radiusNew" class="form-control form-control-sm" style="max-width:110px"
                placeholder="km" value="25" min="1">

@@ -61,7 +61,8 @@ body.has-tabbar { padding-bottom: 0 !important; }
 .tickets-sticky-bar {
     position: fixed;
     top: 0; left: 0; right: 0;
-    height: 58px;
+    box-sizing: border-box;
+    height: calc(58px + env(safe-area-inset-top, 0px));
     padding: calc(env(safe-area-inset-top) + 6px) 14px 8px 14px;
     background: #F7F4FF;
     backdrop-filter: blur(14px);
@@ -70,7 +71,7 @@ body.has-tabbar { padding-bottom: 0 !important; }
     align-items: center;
     justify-content: space-between;
     opacity: 0;
-    transform: translateY(-70px);
+    transform: translateY(-100%);
     transition: all .35s ease;
     z-index: 99999;
 }
@@ -91,6 +92,45 @@ body.has-tabbar { padding-bottom: 0 !important; }
     color: #333;
 }
 
+.back-btn-ios {
+    transition: opacity .2s ease, transform .2s ease;
+}
+
+.back-btn-ios.is-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(.94);
+}
+
+@media (max-width: 768px) {
+    .support-my-page {
+        padding-top: calc(64px + env(safe-area-inset-top, 0px)) !important;
+    }
+
+    .support-my-page > .d-flex,
+    .support-my-page .list-group-item {
+        min-width: 0;
+    }
+
+    .support-my-page > .d-flex {
+        flex-wrap: wrap;
+        gap: .75rem;
+    }
+
+    .support-my-page .list-group-item {
+        gap: .5rem;
+    }
+
+    .support-my-page .list-group-item > div:first-child {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .support-my-page .list-group-item > div:last-child {
+        flex: 0 0 auto;
+    }
+}
+
 /* =====================================================
    العنوان في أعلى الصفحة
 ===================================================== */
@@ -101,7 +141,7 @@ h3 {
 }
 </style>
 
-<div class="container py-4" style="max-width:760px">
+<div class="container py-4 support-my-page" style="max-width:760px">
 
   <div class="d-flex justify-content-between align-items-center">
     <h3>My Tickets</h3>
@@ -159,15 +199,20 @@ h3 {
      سكربت الشريط الثابت
 ===================================================== -->
 <script>
-document.addEventListener("scroll", function () {
+function syncTicketsSticky() {
     const bar = document.getElementById("ticketsSticky");
+    const back = document.querySelector(".back-btn-ios");
+    const shown = window.scrollY > 100;
 
-    if (window.scrollY > 100) {
+    if (shown) {
         bar.classList.add("show");
     } else {
         bar.classList.remove("show");
     }
-});
+    if (back) back.classList.toggle("is-hidden", shown);
+}
+window.addEventListener("scroll", syncTicketsSticky, { passive: true });
+syncTicketsSticky();
 </script>
 
 {% endblock %}

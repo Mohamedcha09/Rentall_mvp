@@ -1,6 +1,23 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container py-3">
+<style>
+  @media (max-width: 768px) {
+    .cs-inbox .list-group-item,
+    .cs-inbox .list-group-item > .d-flex {
+      min-width: 0;
+    }
+    .cs-inbox .list-group-item.d-flex,
+    .cs-inbox .list-group-item > .d-flex {
+      flex-wrap: wrap;
+      gap: .5rem;
+    }
+    .cs-inbox .list-group-item .me-2 {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+  }
+</style>
+<div class="container py-3 cs-inbox">
 
   <h4 class="mb-3">Message Center (CS Inbox)</h4>
 

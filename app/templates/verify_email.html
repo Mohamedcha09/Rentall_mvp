@@ -35,7 +35,7 @@
   }
 
   .ve-title{
-    display: flex; align-items: center; gap: 10px; margin: 0 0 8px 0;
+    display: flex; flex-wrap:wrap; align-items: center; gap: 10px; margin: 0 0 8px 0;
     font-size: 26px; font-weight: 800;
     color: var(--text);
   }
@@ -44,6 +44,7 @@
     display:inline-flex; align-items:center; gap:8px;
     background: rgba(37,99,235,.15); border:1px solid rgba(37,99,235,.35);
     color: #1e3a8a; padding: 6px 10px; border-radius: 999px; font-size: 13px;
+    max-width:100%; overflow-wrap:anywhere;
   }
 
   .ve-body{ padding: 16px 24px 24px; }
@@ -57,6 +58,7 @@
     padding:12px 14px; border-radius:12px;
     color: var(--text);
   }
+  .ve-step > div{ min-width:0; overflow-wrap:anywhere; }
 
   .ve-step i{
     flex:0 0 auto; width:28px; height:28px; border-radius:50%;
@@ -90,7 +92,7 @@
   }
 
   .ve-email{
-    display:flex; align-items:center; gap:8px; padding:10px 12px;
+    display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:10px 12px;
     background: rgba(0,0,0,.03);
     border:1px solid rgba(0,0,0,.12);
     border-radius:10px;
@@ -98,8 +100,10 @@
     direction:ltr; unicode-bidi: plaintext;
     color: var(--text);
   }
+  .ve-email-value{ flex:1 1 12rem; min-width:0; overflow-wrap:anywhere; }
+  .ve-email #copyBtn{ flex:0 0 auto; margin-inline-start:auto !important; }
 
-  .ve-hint{ color: var(--muted); font-size: 14px; }
+  .ve-hint{ color: var(--muted); font-size: 14px; overflow-wrap:anywhere; }
 
   .ve-divider{ height:1px; background: var(--card-bd); margin: 16px 0; }
 
@@ -132,6 +136,11 @@
   @media (min-width: 720px){
     .ve-steps{ grid-template-columns: 1fr 1fr; }
   }
+  @media (max-width: 374px){
+    .ve-container{ padding-inline:12px; }
+    .ve-hero, .ve-body{ padding-inline:16px; }
+    .ve-actions > *{ max-width:100%; }
+  }
 </style>
 
 <div class="ve-container" dir="rtl">
@@ -153,8 +162,8 @@
     <div class="ve-body">
       {% if email %}
       <div class="ve-email" id="emailBox" data-email="{{ email|e }}">
-        {{ email }}
-        <button class="btn-ve btn-ghost-ve" id="copyBtn" type="button" style="margin-right:auto">Copy email</button>
+        <span class="ve-email-value">{{ email }}</span>
+        <button class="btn-ve btn-ghost-ve" id="copyBtn" type="button">Copy email</button>
       </div>
       {% endif %}
 

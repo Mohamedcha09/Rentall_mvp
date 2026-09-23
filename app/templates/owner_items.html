@@ -24,6 +24,12 @@ body {
     justify-content: space-between;
     align-items: center;
 }
+.page-title > span,
+.item-title,
+.feedback-box {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
 
 /* Add Item Button */
 .add-btn {
@@ -149,6 +155,25 @@ body {
     width:20px;
     margin-inline-start:6px;
     vertical-align:middle;
+}
+
+.item-card .d-flex.justify-content-between {
+    gap: 8px;
+    min-width: 0;
+}
+.item-card .d-flex.justify-content-between .small {
+    min-width: 0;
+    text-align: end;
+    overflow-wrap: anywhere;
+}
+.item-card .d-flex.align-items-center.gap-2 {
+    flex-wrap: wrap;
+}
+
+@media (max-width: 400px) {
+    .items-wrap { padding-inline: 12px; }
+    .page-title { flex-wrap: wrap; gap: 10px; }
+    .add-btn { max-width: 100%; text-align: center; white-space: normal; }
 }
 </style>
 

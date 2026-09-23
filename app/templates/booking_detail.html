@@ -1,10 +1,31 @@
 {% extends "base.html" %}
+{% block head %}
+<style>
+  .booking-detail{min-width:0}
+  .booking-detail .card,
+  .booking-detail .card-body{min-width:0}
+  .booking-detail .card-img-top{max-width:100%;height:auto}
+  .booking-detail__item-title,
+  .booking-detail .fw-bold{overflow-wrap:anywhere}
+  .booking-party{gap:12px;flex-wrap:wrap}
+  .booking-party__identity{flex:1 1 12rem;min-width:0;overflow-wrap:anywhere}
+  .booking-party .btn{min-width:0;white-space:normal}
+  .booking-detail-actions{display:flex;flex-wrap:wrap;gap:.5rem}
+  .booking-detail-actions form{min-width:0}
+  .booking-detail-actions .btn{max-width:100%;white-space:normal}
+  @media (max-width:359px){
+    .booking-party .btn,
+    .booking-detail-actions form,
+    .booking-detail-actions > .btn{flex:1 1 100%}
+  }
+</style>
+{% endblock %}
 {% block content %}
 
 {% if not booking %}
   <div class="alert alert-danger">Booking not found.</div>
 {% else %}
-<div class="row g-3">
+<div class="booking-detail row g-3">
   <div class="col-md-7">
     <div class="card">
       {% if item and item.image_path %}
@@ -16,7 +37,7 @@
         {% if item %}
           <div class="mb-2">
             <div class="small text-muted">Item</div>
-            <div class="fw-bold">{{ item.title }}</div>
+            <div class="booking-detail__item-title fw-bold">{{ item.title }}</div>
             <div class="text-muted small">{{ item.city or '' }} · {{ item.category or '' }}</div>
           </div>
         {% endif %}
@@ -62,8 +83,8 @@
       <div class="card-body">
         <h6 class="mb-3">Parties</h6>
 
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
+        <div class="booking-party d-flex align-items-center justify-content-between">
+          <div class="booking-party__identity">
             <div class="small text-muted">Owner</div>
             <div class="fw-bold">
               {{ owner.first_name }} {{ owner.last_name }}
@@ -77,8 +98,8 @@
 
         <hr>
 
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
+        <div class="booking-party d-flex align-items-center justify-content-between">
+          <div class="booking-party__identity">
             <div class="small text-muted">Renter</div>
             <div class="fw-bold">
               {{ renter.first_name }} {{ renter.last_name }}
@@ -95,6 +116,7 @@
     <!-- Action buttons based on role and status -->
     <div class="card">
       <div class="card-body">
+        <div class="booking-detail-actions">
         {% if session_user.id == owner.id %}
           {% if booking.status == 'pending' %}
             <form method="post" action="/bookings/{{ booking.id }}/confirm" class="d-inline">
@@ -117,6 +139,7 @@
             <div class="alert alert-success mb-0">Payment completed successfully ✅</div>
           {% endif %}
         {% endif %}
+        </div>
       </div>
     </div>
 

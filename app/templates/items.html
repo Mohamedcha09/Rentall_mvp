@@ -14,14 +14,14 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
 .spot-media{position:relative;aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:#eef2f7}
 .spot-media img{width:100%;height:100%;object-fit:cover}
 .spot-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.1))}
-.category-chip{position:absolute;top:8px;left:8px;padding:4px 9px;font-size:.74rem;font-weight:800;color:#111;background:#fff;border:1px solid rgba(0,0,0,.06);border-radius:999px;box-shadow:0 3px 8px rgba(0,0,0,.08)}
+.category-chip{position:absolute;top:8px;left:8px;max-inline-size:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 9px;font-size:.74rem;font-weight:800;color:#111;background:#fff;border:1px solid rgba(0,0,0,.06);border-radius:999px;box-shadow:0 3px 8px rgba(0,0,0,.08)}
 .fav-btn{display:none}
 .spot-body{padding:10px 4px 0}
 .spot-title{font-weight:800;color:#111;font-size:clamp(.92rem,.86rem + .2vw,1rem);margin-bottom:4px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 .spot-meta{display:flex;flex-direction:column;gap:2px;margin-top:4px}
 .spot-price{font-weight:900;color:#111;font-size:.95rem}
 .spot-price span{font-weight:600;opacity:.85}
-.spot-city{color:#6b7280;font-size:.9rem}
+.spot-city{color:#6b7280;font-size:.9rem;overflow-wrap:anywhere}
 .spot-rating{font-weight:800;color:#111;font-size:.88rem}
 .spot-rating::before{content:"★ ";font-weight:900}
 
@@ -89,7 +89,8 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
 /* ================= LOCATION BAR ================= */
 .items-locbar{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,.06);
   padding:8px 10px;margin-block:14px;display:flex;gap:6px;align-items:center}
-#itemsCityInput{height:36px;border-radius:10px;border:1px solid rgba(0,0,0,.08);background:#fff;padding:0 12px}
+.items-locbar > div{min-width:0}
+#itemsCityInput{width:100%;min-width:0;height:36px;border-radius:10px;border:1px solid rgba(0,0,0,.08);background:#fff;padding:0 12px}
 .items-locbar .btn{height:36px;border-radius:10px;font-weight:800}
 #itemsSearchBtn{background:#6C63FF;border:none;color:#fff;padding:0 14px}
 
@@ -157,6 +158,9 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
     box-shadow: 0 4px 22px rgba(0,0,0,0.06);
   }
   .sellerbar::-webkit-scrollbar { height: 0px; }
+
+  .items-locbar .btn,
+  #itemsCityInput{height:44px;min-height:44px;}
 }
 
 /* ===== Hide top navbar + stripe banner ONLY on mobile ===== */

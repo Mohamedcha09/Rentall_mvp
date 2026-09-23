@@ -50,6 +50,16 @@ body.has-tabbar { padding-bottom: 0 !important; }
     padding: 26px 16px;
 }
 
+.profile-header,
+.profile-identity { min-width:0; }
+.profile-identity { flex:1 1 auto; }
+.profile-small { overflow-wrap:anywhere; }
+
+@media (max-width:768px){
+    /* Keep profile content clear of the fixed iOS back control. */
+    .profile-container{ padding-top:max(70px, calc(66px + env(safe-area-inset-top,0px))); }
+}
+
 .profile-header h2 {
     font-size: 28px;
     font-weight: 700;
@@ -80,7 +90,7 @@ body.has-tabbar { padding-bottom: 0 !important; }
 <div class="profile-container">
 
   <!-- ===== Header (Avatar + Name) ===== -->
-  <div class="d-flex align-items-center gap-3 mb-3">
+  <div class="d-flex align-items-center gap-3 mb-3 profile-header">
 
     <div style="width:78px;height:78px;border-radius:50%;overflow:hidden;border:1px solid #eee;">
       {% if _ava3.endswith('placeholder.png') %}
@@ -93,7 +103,7 @@ body.has-tabbar { padding-bottom: 0 !important; }
       {% endif %}
     </div>
 
-    <div>
+    <div class="profile-identity">
       <div class="d-flex align-items-center gap-2 flex-wrap">
         <h2 class="m-0">{{ db_user.first_name }} {{ db_user.last_name }}</h2>
         {{ render_badges(db_user, '20px') }}

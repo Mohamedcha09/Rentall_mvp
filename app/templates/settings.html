@@ -76,7 +76,8 @@ body.has-tabbar { padding-bottom:0 !important; }
     top: 0;
     left: 0;
     right: 0;
-    height: 58px;
+    box-sizing: border-box;
+    height: calc(58px + env(safe-area-inset-top, 0px));
     padding: calc(env(safe-area-inset-top) + 6px) 14px 8px 14px;
     background: rgba(255,255,255,0.85);
     backdrop-filter: blur(14px);
@@ -85,7 +86,7 @@ body.has-tabbar { padding-bottom:0 !important; }
     align-items: center;
     justify-content: space-between;
     opacity: 0;
-    transform: translateY(-80px);
+    transform: translateY(-100%);
     transition: all .35s ease;
     z-index: 99999;
 }
@@ -104,6 +105,30 @@ body.has-tabbar { padding-bottom:0 !important; }
 .settings-sticky-back {
     font-size: 24px;
     color: #333;
+}
+
+@media (max-width:768px){
+    /* The initial title must clear the safe-area positioned back button. */
+    .settings-title{ margin-top:max(80px, calc(env(safe-area-inset-top, 0px) + 66px)); }
+}
+
+.air-back {
+    transition: opacity .2s ease, transform .2s ease;
+}
+
+.air-back.is-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(.94);
+}
+
+@media (max-width: 768px) {
+    .settings-sticky-title,
+    .settings-title,
+    .air-block,
+    .help-text {
+        overflow-wrap: anywhere;
+    }
 }
 
 /* =====================================================
@@ -293,15 +318,20 @@ section[class*="connect"] {
      سكربت الشريط الثابت — مثل Airbnb
 ===================================================== -->
 <script>
-document.addEventListener("scroll", function () {
+function syncSettingsSticky() {
     const bar = document.getElementById("settingsSticky");
+    const back = document.querySelector(".air-back");
+    const shown = window.scrollY > 100;
 
-    if (window.scrollY > 100) {
+    if (shown) {
         bar.classList.add("show");
     } else {
         bar.classList.remove("show");
     }
-});
+    if (back) back.classList.toggle("is-hidden", shown);
+}
+window.addEventListener("scroll", syncSettingsSticky, { passive: true });
+syncSettingsSticky();
 </script>
 
 {% endblock %}

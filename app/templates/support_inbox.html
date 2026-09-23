@@ -1,7 +1,20 @@
 {% extends "base.html" %}
+{% block head %}
+<style>
+  .support-inbox-head{display:flex;align-items:center;justify-content:space-between;gap:.75rem}
+  .support-ticket-row{gap:.75rem}
+  .support-ticket-copy{min-width:0;overflow-wrap:anywhere}
+  .support-ticket-copy small{overflow-wrap:anywhere}
+  @media (max-width: 575.98px){
+    .support-inbox-head{flex-wrap:wrap;align-items:stretch}
+    .support-inbox-head h3{margin:0;min-width:0}
+    .support-ticket-row{align-items:flex-start}
+  }
+</style>
+{% endblock %}
 {% block content %}
 <div class="container py-3">
-  <div class="d-flex align-items-center justify-content-between mb-3">
+  <div class="support-inbox-head mb-3">
     <h3 class="fw-bold">{{ 'Support Inbox (Agent)' if is_agent else 'Support Center' }}</h3>
     {% if not is_agent %}
     <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newTicketModal">
@@ -13,8 +26,8 @@
   {% if tickets and tickets|length %}
     <div class="list-group">
       {% for t in tickets %}
-      <a class="list-group-item list-group-item-action d-flex align-items-center justify-content-between" href="/support/t/{{ t.id }}">
-        <div class="me-2">
+      <a class="list-group-item list-group-item-action d-flex justify-content-between support-ticket-row" href="/support/t/{{ t.id }}">
+        <div class="me-2 support-ticket-copy">
           <div class="fw-bold">{{ t.subject }}</div>
           <small class="text-muted">
             Status: {{ t.status }}

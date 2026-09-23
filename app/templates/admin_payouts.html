@@ -15,8 +15,8 @@
 <div class="card mb-3 border-success">
   <div class="card-body">
 
-    <div class="d-flex justify-content-between">
-      <div>
+    <div class="payout-card-head">
+      <div class="payout-card-copy">
         <h5 class="mb-1">
           Booking #{{ row.booking.id }}
           <span class="badge bg-success ms-2">RENT</span>
@@ -27,7 +27,7 @@
         </div>
       </div>
 
-      <form method="post" action="/admin/payouts/{{ row.booking.id }}/mark-sent">
+      <form class="payout-card-action" method="post" action="/admin/payouts/{{ row.booking.id }}/mark-sent">
         <button class="btn btn-success">
           ✔ Mark rent as paid
         </button>
@@ -42,7 +42,7 @@
     </p>
 
     {% if row.payout %}
-      <small>
+      <small class="payout-destination">
         Method: {{ row.payout.method|upper }}<br>
         Destination: {{ row.payout.destination }}
       </small>
@@ -67,8 +67,8 @@
 <div class="card mb-3 border-purple bg-deposit">
   <div class="card-body">
 
-    <div class="d-flex justify-content-between">
-      <div>
+    <div class="payout-card-head">
+      <div class="payout-card-copy">
         <h5 class="mb-1">
           Booking #{{ row.booking.id }}
           <span class="badge bg-purple ms-2">DEPOSIT</span>
@@ -79,7 +79,7 @@
         </div>
       </div>
 
-      <form method="post" action="/admin/payouts/{{ row.booking.id }}/deposit/mark-sent">
+      <form class="payout-card-action" method="post" action="/admin/payouts/{{ row.booking.id }}/deposit/mark-sent">
         <button class="btn btn-purple">
           🛡 Send deposit compensation
         </button>
@@ -94,7 +94,7 @@
     </p>
 
     {% if row.payout %}
-      <small>
+      <small class="payout-destination">
         Method: {{ row.payout.method|upper }}<br>
         Destination: {{ row.payout.destination }}
       </small>
@@ -132,6 +132,14 @@
 }
 .bg-deposit {
   background: #faf5ff;
+}
+.payout-card-head{display:flex;justify-content:space-between;gap:1rem}
+.payout-card-copy{min-width:0;overflow-wrap:anywhere}
+.payout-destination{overflow-wrap:anywhere}
+@media (max-width:575.98px){
+  .payout-card-head{flex-wrap:wrap;align-items:stretch}
+  .payout-card-action{width:100%}
+  .payout-card-action .btn{width:100%}
 }
 </style>
 

@@ -20,6 +20,10 @@
 
   .sim-chip{
     position:absolute; top:10px; left:10px; z-index:2;
+    max-inline-size:calc(100% - 78px);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
     height:28px; line-height:28px; padding:0 10px;
     display:inline-flex; align-items:center; gap:6px;
     border-radius:999px; background:#fff; color:#111;
@@ -71,7 +75,7 @@
   }
   .sim-fav:hover i{ transform:translateY(-1px); }
 
-  .sim-sub{ color:#6b7280; font-size:13px; margin:0; line-height:1.2; }
+  .sim-sub{ color:#6b7280; font-size:13px; margin:0; line-height:1.2; overflow-wrap:anywhere; }
   .sim-meta{
     display:flex; align-items:center; gap:8px; color:#6b7280;
     font-size:13px; margin:2px 0 6px 0; line-height:1.2;

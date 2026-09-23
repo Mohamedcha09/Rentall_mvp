@@ -16,6 +16,10 @@
   body.has-tabbar {
       padding-bottom: 0 !important;
   }
+  .delete-box {
+      margin-top: calc(24px + env(safe-area-inset-top, 0px)) !important;
+      margin-bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+  }
 }
 
 /* خلفية ناعمة */
@@ -51,6 +55,8 @@ body {
     line-height: 1.6;
     margin-bottom: 16px;
 }
+.delete-box p,
+.warning { overflow-wrap:anywhere; }
 
 /* التحذير */
 .warning {

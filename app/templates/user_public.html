@@ -3,8 +3,16 @@
 {% from "_badges.html" import render_badges %}
 {% block content %}
 
-<div class="d-flex align-items-center justify-content-between mb-3">
-  <h3 class="mb-0 d-flex align-items-center gap-1">
+<style>
+  .public-user-head > *{ min-width:0; }
+  .public-user-name{ overflow-wrap:anywhere; }
+  @media (max-width:480px){
+    .public-user-head{ flex-wrap:wrap; gap:.75rem; }
+  }
+</style>
+
+<div class="d-flex align-items-center justify-content-between mb-3 public-user-head">
+  <h3 class="mb-0 d-flex align-items-center gap-1 public-user-name">
     {{ user.first_name }} {{ user.last_name }}
     {{ render_badges(user, '22px') }}
   </h3>

@@ -10,6 +10,7 @@
     display: flex;
     align-items: center;
     gap: 14px;
+    min-width: 0;
     padding: 14px;
     background: rgba(255,255,255,0.55);
     backdrop-filter: blur(18px);
@@ -32,6 +33,12 @@
     width:100%;
     height:100%;
     object-fit:cover;
+    display:block;
+}
+
+.booking-info{
+    flex:1 1 auto;
+    min-width:0;
 }
 
 .booking-info .title {
@@ -69,9 +76,21 @@
 .booking-info .title{
   font-weight:700;
   font-size:16px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
+  overflow-wrap:anywhere;
+}
+
+.booking-info .status,
+.booking-info .text-muted{overflow-wrap:anywhere}
+.booking-card > .bi{flex:0 0 auto}
+.booking-index-head{gap:10px;min-width:0}
+.booking-index-head h4{min-width:0;overflow-wrap:anywhere}
+.booking-index-head .btn-group{display:flex;flex-wrap:wrap;max-width:100%}
+.booking-index-head .btn{min-width:0;white-space:normal}
+
+@media (max-width:359px){
+  .booking-card{gap:10px;padding:12px}
+  .booking-thumb{width:56px;height:56px}
+  .booking-index-head{align-items:flex-start !important;flex-wrap:wrap}
 }
 
 /* ===== iOS APP ONLY — TOP SAFE WHITE BAR (BOOKINGS PAGE) ===== */
@@ -105,7 +124,7 @@
 {% set EMPTY_IMG = (url_for('static', path='photo/xon.png') if view=='renter'
                     else url_for('static', path='photo/ron.png')) %}
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="booking-index-head d-flex justify-content-between align-items-center flex-wrap mb-3">
   <h4>{{ title }}</h4>
   <div class="btn-group">
     <a class="btn btn-sm {% if view=='renter' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="/bookings?view=renter">As renter</a>
