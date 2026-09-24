@@ -1087,8 +1087,22 @@ header.topbar .searchbar-wrap{
 
 
 {% block head %}{% endblock %}
+<script id="ipad-layout-detection">
+  (function detectIPadLayout(){
+    const root = document.documentElement;
+    const info = window.navigator || {};
+    const ua = info.userAgent || "";
+    const platform = info.platform || "";
+    const touchPoints = Number(info.maxTouchPoints || 0);
+
+    // iPadOS can identify as a Mac; real Macs do not expose multiple touch points.
+    const ipadOSDesktopUA = platform === "MacIntel" && touchPoints > 1;
+    const ipadUserAgent = /\biPad\b/i.test(ua);
+    root.classList.toggle("is-ipad", ipadUserAgent || ipadOSDesktopUA);
+  })();
+</script>
 <style id="ipad-touch-mobile-shell">
-@supports (-webkit-touch-callout: none) {
+@scope (html.is-ipad) {
   /*
    * iPad Safari keeps the touch-first shell without changing the existing
    * phone (<=768px) or desktop/laptop breakpoints.  The minimum dimensions
@@ -2403,11 +2417,10 @@ window.onpageshow = function(e){
   (function initProfileSheet(){
     if (window.__profileSheetInit) return; window.__profileSheetInit = true;
     const isPhone = window.matchMedia('(max-width: 768px)');
-    const isTouchTablet = window.matchMedia('(min-width: 769px) and (max-width: 1376px) and (min-height: 600px) and (any-pointer: coarse)');
-    const supportsTouchTabletShell = typeof CSS !== 'undefined'
-      && typeof CSS.supports === 'function'
-      && CSS.supports('-webkit-touch-callout', 'none');
-    const usesMobileProfileSheet = () => isPhone.matches || (supportsTouchTabletShell && isTouchTablet.matches);
+    const isIPadLayoutViewport = window.matchMedia('(min-width: 769px) and (max-width: 1376px) and (min-height: 600px)');
+    const usesMobileProfileSheet = () => isPhone.matches || (
+      document.documentElement.classList.contains('is-ipad') && isIPadLayoutViewport.matches
+    );
     const sheet = document.getElementById('profileSheet');
     const scrim = document.getElementById('profileScrim');
     if (!sheet || !scrim) return;
