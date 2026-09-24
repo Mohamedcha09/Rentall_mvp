@@ -13,6 +13,21 @@
       overflow-wrap: anywhere;
     }
   }
+
+  @supports (-webkit-touch-callout: none) {
+    @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+      .chatbot-inbox .list-group-item .d-flex {
+        flex-wrap: wrap;
+        gap: .25rem;
+      }
+
+      .chatbot-inbox .list-group-item,
+      .chatbot-inbox .list-group-item * {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+    }
+  }
 </style>
 <div class="page chatbot-inbox">
   <h2 class="mt-4 mb-3">🛡️ MOD — Chatbot Inbox</h2>

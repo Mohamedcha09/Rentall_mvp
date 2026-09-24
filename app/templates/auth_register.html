@@ -383,6 +383,45 @@
   .w-step .txt span{ font-size: .76rem; }
 }
 
+/* iPad Safari keeps registration touch-first: one form column and no desktop hero. */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    .page {
+      grid-template-columns: 1fr !important;
+      min-height: 100dvh !important;
+    }
+
+    .hero,
+    .hero::before {
+      display: none !important;
+      content: none !important;
+    }
+
+    .reg-col {
+      min-height: 100dvh !important;
+      align-items: flex-start !important;
+      padding: max(24px, env(safe-area-inset-top, 0px)) 32px max(24px, env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    .card-reg {
+      width: 100% !important;
+      max-width: min(820px, calc(100vw - 64px)) !important;
+      margin: 0 auto !important;
+      padding: 26px 24px 22px !important;
+    }
+
+    .grid-2,
+    .file-row {
+      grid-template-columns: 1fr;
+    }
+
+    .acc-opt {
+      min-width: 0;
+      flex: 1 1 100%;
+    }
+  }
+}
+
 </style>
 {% endblock %}
 

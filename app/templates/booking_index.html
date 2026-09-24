@@ -118,6 +118,29 @@
   }
 }
 
+/* Keep the booking index in its existing phone chrome, with a natural tablet list width. */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    body[data-path="/bookings"] header.topbar,
+    body[data-path="/bookings"] .m-top-tabs.d-lg-none,
+    body[data-path="/bookings"] .notif-panels,
+    body[data-path="/bookings"] .search-wrapper,
+    body[data-path="/bookings"] .page-header {
+      display: none !important;
+    }
+
+    body[data-path="/bookings"] .page {
+      padding-top: max(18px, calc(18px + env(safe-area-inset-top, 0px))) !important;
+    }
+
+    body[data-path="/bookings"] .container-fluid {
+      max-width: 980px;
+      margin-inline: auto;
+      padding-inline: 24px;
+    }
+  }
+}
+
 
 </style>
 

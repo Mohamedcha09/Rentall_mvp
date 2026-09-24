@@ -956,6 +956,47 @@
   white-space:nowrap;
 }
 
+/* iPad: retain the mobile Home hierarchy without inheriting desktop shelves. */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    .edge-bleed{
+      width:100% !important;
+      margin-inline:auto !important;
+      padding-inline:20px;
+      box-sizing:border-box;
+    }
+    .hero-carousel{
+      width:100%;
+      max-width:860px !important;
+      margin:12px auto 20px !important;
+      border-radius:20px;
+    }
+    .home-shelves,
+    .home-shelves.container-xl{
+      max-width:1180px !important;
+      margin:16px auto 0 !important;
+      padding:0 20px calc(132px + env(safe-area-inset-bottom,0px)) !important;
+      background:transparent !important;
+      border-radius:0 !important;
+      box-shadow:none !important;
+    }
+    .hrow{gap:16px;padding-inline:0;}
+    .hcard{
+      min-width:clamp(250px,28vw,320px) !important;
+      max-width:clamp(250px,28vw,320px) !important;
+    }
+    .mixed-grid{
+      grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+      gap:16px;
+      padding-inline:0;
+    }
+    .top-strip-wrap{max-width:1180px;margin-inline:auto;padding-inline:20px;}
+    @media (orientation:landscape){
+      .mixed-grid{grid-template-columns:repeat(4,minmax(0,1fr)) !important;}
+    }
+  }
+}
+
 </style>
 
 

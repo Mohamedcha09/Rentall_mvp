@@ -10,6 +10,25 @@
     .support-inbox-head h3{margin:0;min-width:0}
     .support-ticket-row{align-items:flex-start}
   }
+
+  @supports (-webkit-touch-callout: none) {
+    @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+      .support-inbox-head {
+        flex-wrap: wrap;
+        align-items: stretch;
+      }
+
+      .support-inbox-head h3,
+      .support-ticket-row,
+      .support-ticket-row > * {
+        min-width: 0;
+      }
+
+      .support-ticket-row {
+        align-items: flex-start;
+      }
+    }
+  }
 </style>
 {% endblock %}
 {% block content %}

@@ -357,6 +357,96 @@ a.btn.disabled{
 
 </style>
 
+<style>
+/* iPad: retain the phone booking flow instead of its Bootstrap sm desktop variant. */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    .flow-card{
+      max-width:980px;
+      margin-inline:auto;
+      padding:calc(16px + env(safe-area-inset-top,0px)) 20px 32px !important;
+      min-width:0;
+    }
+    .m-hero-wrap.d-sm-none{display:block !important;margin:-16px -20px 18px;}
+    .m-hero{position:relative;}
+    .m-hero img{
+      display:block;
+      width:100%;
+      height:clamp(300px,42vw,460px);
+      object-fit:cover;
+      border-radius:0 0 18px 18px;
+    }
+    .m-hero .overlay{
+      position:absolute;
+      inset:0;
+      background:linear-gradient(to top,rgba(0,0,0,.55),rgba(0,0,0,0) 60%);
+      border-radius:0 0 18px 18px;
+    }
+    .m-hero .inside{
+      position:absolute;
+      left:20px;
+      right:20px;
+      bottom:18px;
+      display:flex;
+      align-items:end;
+      justify-content:space-between;
+      gap:12px;
+      color:#fff;
+      text-shadow:0 2px 10px rgba(0,0,0,.45);
+    }
+    .m-hero .inside > :first-child{flex:1 1 auto;min-width:0;}
+    .m-hero .title{font-size:clamp(20px,2.2vw,26px);font-weight:700;overflow-wrap:anywhere;}
+    .m-hero .meta{overflow-wrap:anywhere;}
+    .flow-card > .d-none.d-sm-flex,
+    .flow-card > hr.d-none.d-sm-block,
+    .flow-card .d-none.d-sm-block,
+    .flow-card .acts.d-none.d-sm-flex,
+    .flow-card .box.d-none.d-md-block{
+      display:none !important;
+    }
+    .sticky-actions.d-sm-none{
+      position:fixed;
+      left:0;
+      right:0;
+      bottom:calc(var(--sv-tabbar,64px) + var(--sv-lift,20px) + 24px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px)));
+      box-sizing:border-box;
+      display:grid !important;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:12px;
+      padding:12px 20px;
+      z-index:1060;
+      background:color-mix(in oklab,var(--surface) 92%,transparent);
+      border-top:1px solid var(--border);
+      box-shadow:0 -12px 30px rgba(0,0,0,.18);
+      -webkit-backdrop-filter:blur(14px) saturate(120%);
+      backdrop-filter:blur(14px) saturate(120%);
+    }
+    .sticky-actions.d-sm-none:empty{display:none !important;}
+    .sticky-actions.d-sm-none > form{min-width:0;}
+    .sticky-actions.d-sm-none .btn{
+      width:100%;
+      min-width:0;
+      min-height:48px;
+      height:auto;
+      white-space:normal;
+      overflow-wrap:anywhere;
+    }
+    .page-bottom-spacer.d-sm-none{
+      display:block !important;
+      height:calc(168px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important;
+    }
+    .k.small.d-sm-none.d-flex{display:flex !important;}
+    #flowTopSpace{height:env(safe-area-inset-top,0px);}
+    @media (orientation:landscape){
+      .flow-card{max-width:1080px;padding-inline:28px !important;}
+      .m-hero-wrap.d-sm-none{margin-inline:-28px;}
+      .m-hero img{height:clamp(280px,35vw,420px);}
+      .sticky-actions.d-sm-none{padding-inline:28px;}
+    }
+  }
+}
+</style>
+
 {# DISABLED — countdown breaks dispute auto-disable #}
 {# {% if dispute_deadline_iso %}
      <script defer src="/static/js/countdown.js"></script>

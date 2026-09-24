@@ -34,6 +34,28 @@
       overflow-wrap: anywhere;
     }
   }
+
+  @supports (-webkit-touch-callout: none) {
+    @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+      .support-chat-page > .d-flex,
+      .support-chat-page form.d-flex {
+        flex-wrap: wrap;
+      }
+
+      .support-chat-page > .d-flex > *,
+      .support-chat-page form.d-flex > * {
+        min-width: 0;
+      }
+
+      .support-chat-page form.d-flex textarea {
+        flex: 1 1 100%;
+      }
+
+      .support-chat-page form.d-flex .btn {
+        margin-inline-start: auto;
+      }
+    }
+  }
 </style>
 <div class="container py-3 support-chat-page" style="max-width:900px">
   <div class="d-flex align-items-center justify-content-between mb-2">

@@ -272,6 +272,75 @@
   }
 }
 
+/* iPad Safari follows this route's mobile ticket controls, not the desktop header. */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    body[data-path^="/support/ticket/"] header.topbar,
+    body[data-path^="/support/ticket/"] .m-top-tabs,
+    body[data-path^="/support/ticket/"] nav.desk-tabs,
+    body[data-path^="/support/ticket/"] .mobile-tabbar,
+    body[data-path^="/support/ticket/"] .stripe-callout,
+    body[data-path^="/support/ticket/"] .searchbar,
+    body[data-path^="/support/ticket/"] .payout-banner,
+    body[data-path^="/support/ticket/"] .connect-banner,
+    body[data-path^="/support/ticket/"] .stripe-connect-banner {
+      display: none !important;
+    }
+
+    body[data-path^="/support/ticket/"] .m-top-tabs.d-lg-none,
+    body[data-path^="/support/ticket/"] .mobile-tabbar.d-lg-none {
+      display: none !important;
+    }
+
+    body[data-path^="/support/ticket/"] {
+      padding-bottom: 0 !important;
+    }
+
+    body[data-path^="/support/ticket/"] .page {
+      padding-bottom: 0 !important;
+    }
+
+    .support-ticket-page > .d-none.d-md-flex {
+      display: none !important;
+    }
+
+    .support-ticket-page > .d-md-none {
+      display: block !important;
+    }
+
+    .back-btn-ios.d-md-none,
+    #ticketSticky.d-md-none {
+      display: flex !important;
+    }
+
+    .support-ticket-page .chat-row .bubble {
+      min-width: 0;
+      max-width: calc(100% - .5rem);
+    }
+
+    .support-ticket-page .bubble .meta,
+    .support-ticket-page .card-header,
+    .support-ticket-page .alert.d-flex,
+    .support-ticket-page .card-footer .d-flex {
+      flex-wrap: wrap;
+      gap: .5rem;
+    }
+
+    .support-ticket-page .card-header > *,
+    .support-ticket-page .alert.d-flex > *,
+    .support-ticket-page .card-footer .d-flex > * {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .support-ticket-page .row > .col-lg-8,
+    .support-ticket-page .row > .col-lg-4 {
+      flex: 0 0 100%;
+      max-width: 100%;
+    }
+  }
+}
+
 
 </style>
 

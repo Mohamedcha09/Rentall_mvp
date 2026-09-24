@@ -18,6 +18,28 @@
       overflow-wrap: anywhere;
     }
   }
+
+  @supports (-webkit-touch-callout: none) {
+    @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+      .md-inbox .row > .col-lg-6,
+      .md-inbox .row > .col-xxl-3 {
+        flex: 0 0 100%;
+        max-width: 100%;
+      }
+
+      .md-inbox .card-header,
+      .md-inbox .list-group-item .d-flex {
+        flex-wrap: wrap;
+        gap: .35rem;
+      }
+
+      .md-inbox .card-header > *,
+      .md-inbox .list-group-item .d-flex > * {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+    }
+  }
 </style>
 <div class="container py-3 md-inbox">
   <h3 class="mb-3">Inbox (MD)</h3>

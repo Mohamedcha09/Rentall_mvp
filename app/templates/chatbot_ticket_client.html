@@ -148,6 +148,32 @@ body[data-path^="/chatbot/ticket"] .searchbar {
   flex-shrink: 0;
   white-space: nowrap;
 }
+
+/* Give the mobile ticket conversation a natural iPad width without changing its order. */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    body[data-path^="/chatbot/ticket"] .m-top-tabs.d-lg-none,
+    body[data-path^="/chatbot/ticket"] .mobile-tabbar.d-lg-none {
+      display: none !important;
+    }
+
+    body[data-path^="/chatbot/ticket"] .page {
+      padding-bottom: 0 !important;
+    }
+
+    .sv-ticket-page {
+      max-width: min(960px, calc(100% - 48px));
+      padding-inline: 24px;
+      padding-bottom: 180px;
+    }
+
+    .sv-input-fixed {
+      width: min(960px, calc(100% - 48px));
+      max-width: none;
+      padding-inline: 18px;
+    }
+  }
+}
 </style>
 
 <div class="sv-ticket-page">

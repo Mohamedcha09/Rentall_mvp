@@ -224,6 +224,32 @@ section[class*="connect"] {
     padding: 0 !important;
 }
 
+/* This fixed-control route keeps its phone spacing and wrapping on iPad Safari. */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    body[data-path="/settings"] header.topbar,
+    body[data-path="/settings"] .m-top-tabs.d-lg-none,
+    body[data-path="/settings"] .mobile-tabbar.d-lg-none {
+      display: none !important;
+    }
+
+    body[data-path="/settings"] .page {
+      padding-bottom: 0 !important;
+    }
+
+    .settings-title {
+      margin-top: max(80px, calc(env(safe-area-inset-top, 0px) + 66px));
+    }
+
+    .settings-sticky-title,
+    .settings-title,
+    .air-block,
+    .help-text {
+      overflow-wrap: anywhere;
+    }
+  }
+}
+
 </style>
 
 <div class="container" style="max-width:760px">

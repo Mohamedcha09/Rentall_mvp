@@ -77,6 +77,30 @@ body.has-tabbar { padding-bottom: 0 !important; }
     padding: 18px 20px;
     background: #fff;
 }
+
+/* Preserve the profile's phone order and fixed-control clearance on iPad Safari. */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    body[data-path="/profile"] header.topbar,
+    body[data-path="/profile"] .m-top-tabs.d-lg-none,
+    body[data-path="/profile"] .mobile-tabbar.d-lg-none {
+      display: none !important;
+    }
+
+    body[data-path="/profile"] .page {
+      padding-bottom: 0 !important;
+    }
+
+    .profile-container {
+      padding-top: max(70px, calc(66px + env(safe-area-inset-top, 0px)));
+    }
+
+    .profile-container > .row > .col-md-6 {
+      flex: 0 0 100%;
+      max-width: 100%;
+    }
+  }
+}
 </style>
 
 {% from "_badges.html" import render_badges %}

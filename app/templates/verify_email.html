@@ -141,6 +141,20 @@
     .ve-hero, .ve-body{ padding-inline:16px; }
     .ve-actions > *{ max-width:100%; }
   }
+
+  /* Keep verification steps in the phone reading order on iPad Safari. */
+  @supports (-webkit-touch-callout: none) {
+    @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+      .ve-container {
+        max-width: min(960px, calc(100% - 48px));
+        padding-inline: 24px;
+      }
+
+      .ve-steps {
+        grid-template-columns: 1fr;
+      }
+    }
+  }
 </style>
 
 <div class="ve-container" dir="rtl">

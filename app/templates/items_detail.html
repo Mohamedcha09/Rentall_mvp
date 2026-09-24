@@ -1141,6 +1141,204 @@
   user-select:none;
 }
 
+/* iPad: keep the touch-first detail flow instead of the >=992px desktop sidebar. */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    .items-shell{
+      display:block !important;
+      width:100%;
+      max-width:none !important;
+      margin:0 !important;
+      padding:0 !important;
+      background:#fff !important;
+    }
+    .items-shell > .grid-2{
+      display:block !important;
+      grid-template-columns:1fr !important;
+      min-width:0;
+      gap:0 !important;
+    }
+    .items-shell > .grid-2,
+    .items-shell > .sim-wrap,
+    .items-shell > .card-glass:has(.owner-row){
+      grid-column:auto !important;
+      grid-row:auto !important;
+      width:auto !important;
+      max-width:none !important;
+      margin:0 !important;
+    }
+    .items-shell .card-glass{
+      background:transparent !important;
+      border:0 !important;
+      border-radius:0 !important;
+      box-shadow:none !important;
+      overflow:visible !important;
+    }
+    .gallery{
+      padding:20px !important;
+      background:#fff !important;
+      border:0 !important;
+      border-radius:0 !important;
+      box-shadow:none !important;
+    }
+    .gallery-main{
+      height:min(58vh,620px) !important;
+      max-height:620px !important;
+      aspect-ratio:auto !important;
+      border-radius:24px !important;
+      overflow:hidden !important;
+      box-shadow:none !important;
+    }
+    .gallery-main img{object-fit:cover !important;}
+    .gallery-menu.d-none.d-md-block{display:none !important;}
+    .air-fab-left.d-md-none,
+    .air-fab-right.d-md-none{
+      position:absolute;
+      top:calc(8px + env(safe-area-inset-top,0px));
+      z-index:10020;
+      display:flex !important;
+      gap:10px;
+    }
+    .air-fab-left.d-md-none{left:20px;}
+    .air-fab-right.d-md-none{right:20px;}
+    .air-fab{
+      display:grid;
+      place-items:center;
+      width:44px;
+      height:44px;
+      border-radius:50%;
+      font-size:18px;
+      line-height:1;
+    }
+    .air-pager{
+      position:absolute;
+      right:32px;
+      bottom:32px;
+      z-index:10010;
+      padding:6px 10px;
+      color:#fff;
+      background:rgba(0,0,0,.55);
+      border:1px solid rgba(255,255,255,.25);
+      border-radius:10px;
+      font-size:12px;
+      font-weight:600;
+    }
+    .hr.d-md-none{display:block !important;}
+    .air-sheet{
+      margin-top:-28px !important;
+      padding:28px 28px 24px !important;
+      background:#fff !important;
+      color:#111 !important;
+      border:1px solid #eee !important;
+      border-bottom:0 !important;
+      border-top-left-radius:28px !important;
+      border-top-right-radius:28px !important;
+      box-shadow:0 -6px 20px rgba(0,0,0,.06) !important;
+    }
+    .air-sheet::before{
+      content:"";
+      position:absolute;
+      top:0;
+      left:0;
+      right:0;
+      height:14px;
+      display:block !important;
+      border-top-left-radius:28px;
+      border-top-right-radius:28px;
+      background:linear-gradient(to bottom,rgba(0,0,0,.06),rgba(0,0,0,0));
+      opacity:.35;
+      pointer-events:none;
+    }
+    .card-title{font-size:clamp(28px,3vw,34px) !important;color:#111 !important;}
+    .small-muted{color:#717171 !important;}
+    #reviews{
+      position:static !important;
+      max-height:none !important;
+      overflow:visible !important;
+      margin:0 !important;
+      padding:22px 20px 0 !important;
+      background:#fff !important;
+      border:0 !important;
+      border-radius:0 !important;
+      box-shadow:none !important;
+    }
+    #reviews .rv-strip,
+    .rv-strip{
+      display:flex !important;
+      grid-template-columns:none !important;
+      gap:16px !important;
+      overflow-x:auto !important;
+      overflow-y:visible !important;
+      padding:2px 2px 14px !important;
+      scroll-snap-type:x mandatory;
+    }
+    #reviews .rv-card,
+    #reviews .rv-card.active,
+    .rv-card{
+      display:block !important;
+      flex:0 0 min(68vw,460px) !important;
+      min-width:0;
+      padding:16px !important;
+      background:#fff !important;
+      border:1px solid #eee !important;
+      border-radius:16px !important;
+      box-shadow:0 6px 14px rgba(0,0,0,.05) !important;
+      scroll-snap-align:start;
+    }
+    #reviews + a.btnx-lightwide{display:block !important;}
+    .sim-wrap{
+      margin:20px 0 0 !important;
+      padding:0 20px;
+    }
+    .sim-row{
+      display:flex !important;
+      grid-template-columns:none !important;
+      gap:16px !important;
+      overflow-x:auto !important;
+      overflow-y:visible !important;
+      padding:2px 2px 16px !important;
+      scroll-snap-type:x mandatory;
+    }
+    .sim-card{
+      flex:0 0 clamp(260px,32vw,360px) !important;
+      max-width:clamp(260px,32vw,360px) !important;
+      padding:14px !important;
+      background:#fff !important;
+      border:1px solid #e6eaf5 !important;
+      border-radius:16px !important;
+      box-shadow:0 10px 24px rgba(16,24,40,.08) !important;
+      scroll-snap-align:start !important;
+    }
+    #airBar{
+      position:fixed !important;
+      left:0 !important;
+      right:0 !important;
+      bottom:calc(var(--sv-tabbar,64px) + var(--sv-lift,20px) + 24px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important;
+      z-index:1040 !important;
+      padding:14px 24px !important;
+      display:flex !important;
+      flex-wrap:wrap;
+      gap:14px;
+      align-items:center;
+      justify-content:space-between;
+      background:#fff !important;
+      border-top:1px solid #eee !important;
+      box-shadow:0 -6px 18px rgba(0,0,0,.08) !important;
+    }
+    #airUnder{display:none !important;}
+    #airBar .air-cta{min-width:200px;}
+    body[data-path^="/items/"].has-tabbar .page{
+      padding-bottom:calc(220px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important;
+    }
+    @media (orientation:landscape){
+      .gallery{padding-inline:28px !important;}
+      .gallery-main{height:min(56vh,580px) !important;}
+      #reviews,.sim-wrap{padding-inline:28px;}
+      #airBar{padding-inline:32px !important;}
+    }
+  }
+}
+
 
 </style>
 

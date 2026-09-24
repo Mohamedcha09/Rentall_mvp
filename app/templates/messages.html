@@ -13,6 +13,21 @@
   .list-group-item{overflow-wrap:anywhere;}
   .input-group{min-width:0;}
   .input-group .form-control{min-width:0;}
+
+  /* Keep the touch-first conversation flow on iPad instead of a desktop split pane. */
+  @supports (-webkit-touch-callout: none) {
+    @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+      .page > .row > .col-md-4,
+      .page > .row > .col-md-8 {
+        flex: 0 0 100%;
+        max-width: 100%;
+      }
+
+      .page > .row > .col-md-8 {
+        margin-top: 1rem;
+      }
+    }
+  }
 </style>
 
 

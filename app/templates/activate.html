@@ -1,6 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
 
+<style>
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    body[data-path^="/activate"] .row.g-4 > .col-md-6 {
+      flex: 0 0 100%;
+      max-width: 100%;
+    }
+  }
+}
+</style>
+
 <div style="direction:ltr; text-align:left;">
 
   <div class="mb-4">

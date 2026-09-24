@@ -121,6 +121,31 @@ h3 {
     font-weight: 600;
     margin-bottom: 20px;
 }
+
+/* The form stays touch-first and clear of the fixed iOS back control on iPad. */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    body[data-path="/support/new"] header.topbar,
+    body[data-path="/support/new"] .m-top-tabs.d-lg-none,
+    body[data-path="/support/new"] .mobile-tabbar.d-lg-none {
+      display: none !important;
+    }
+
+    body[data-path="/support/new"] .page {
+      padding-bottom: 0 !important;
+    }
+
+    .support-new-page {
+      padding-top: calc(64px + env(safe-area-inset-top, 0px)) !important;
+    }
+
+    .support-new-page .form-control,
+    .support-new-page textarea {
+      min-width: 0;
+      max-width: 100%;
+    }
+  }
+}
 </style>
 
 <!-- =====================================================

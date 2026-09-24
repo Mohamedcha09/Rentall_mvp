@@ -9,6 +9,19 @@
   @media (max-width:480px){
     .public-user-head{ flex-wrap:wrap; gap:.75rem; }
   }
+
+  @supports (-webkit-touch-callout: none) {
+    @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+      .public-user-head {
+        flex-wrap: wrap;
+        gap: .75rem;
+      }
+
+      .public-user-head > * {
+        min-width: 0;
+      }
+    }
+  }
 </style>
 
 <div class="d-flex align-items-center justify-content-between mb-3 public-user-head">

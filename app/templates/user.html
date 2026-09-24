@@ -207,6 +207,52 @@ body.has-tabbar { padding-bottom: 0 !important; }
   /* The actual price is already shown below; free this very narrow media area for the heart control. */
   .sim-chip{display:none;}
 }
+
+/* Keep the public profile's touch-first hierarchy on iPad Safari. */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    body[data-path^="/users/"] header.topbar,
+    body[data-path^="/users/"] .m-top-tabs.d-lg-none,
+    body[data-path^="/users/"] .mobile-tabbar.d-lg-none {
+      display: none !important;
+    }
+
+    body[data-path^="/users/"] .page {
+      padding-bottom: 0 !important;
+    }
+
+    .user-profile-page {
+      padding-top: max(70px, calc(env(safe-area-inset-top, 0px) + 66px)) !important;
+    }
+
+    .user-profile-page > section.card > .d-flex.flex-md-row {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+    }
+
+    .user-profile-page .nav {
+      flex-wrap: wrap;
+    }
+
+    .user-profile-page .nav-item,
+    .user-profile-page .nav-link {
+      min-width: 0;
+    }
+
+    .user-profile-page #pane-items .row > .col-6.col-md-4.col-lg-3 {
+      flex: 0 0 50%;
+      max-width: 50%;
+    }
+
+    .user-profile-page .sim-chip {
+      max-inline-size: calc(100% - 20px);
+    }
+
+    .user-profile-page .sim-cat {
+      display: none;
+    }
+  }
+}
 </style>
 
 

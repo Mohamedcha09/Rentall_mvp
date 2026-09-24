@@ -28,6 +28,30 @@
       max-width: 100% !important;
     }
   }
+
+  @supports (-webkit-touch-callout: none) {
+    @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+      .cs-ticket-page .ticket-actions,
+      .cs-ticket-page .ticket-message-row,
+      .cs-ticket-page .ticket-transfer {
+        flex-wrap: wrap;
+      }
+
+      .cs-ticket-page .ticket-actions > *,
+      .cs-ticket-page .ticket-message-row > *,
+      .cs-ticket-page .ticket-transfer > * {
+        min-width: 0;
+      }
+
+      .cs-ticket-page .ticket-transfer .ms-auto {
+        margin-inline-start: 0 !important;
+      }
+
+      .cs-ticket-page .ticket-message {
+        max-width: 100% !important;
+      }
+    }
+  }
 </style>
 <div class="container py-4 cs-ticket-page">
 

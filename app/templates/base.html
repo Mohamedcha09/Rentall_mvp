@@ -1087,6 +1087,315 @@ header.topbar .searchbar-wrap{
 
 
 {% block head %}{% endblock %}
+<style id="ipad-touch-mobile-shell">
+@supports (-webkit-touch-callout: none) {
+  /*
+   * iPad Safari keeps the touch-first shell without changing the existing
+   * phone (<=768px) or desktop/laptop breakpoints.  The minimum dimensions
+   * exclude phones in either orientation; any-pointer keeps ordinary desktop
+   * browser windows out of this layout.
+   */
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    :root{
+      --ipad-shell-gutter:clamp(24px, 4vw, 52px);
+      --ipad-content-max:1280px;
+      --ipad-tabbar-h:72px;
+      --ipad-tabbar-lift:16px;
+    }
+
+    /* Keep the shared header touch-first, with the same safe-area treatment as phones. */
+    header.topbar{
+      position:sticky !important;
+      top:0 !important;
+      z-index:5000 !important;
+      box-sizing:border-box;
+      height:var(--mobile-header-h) !important;
+      min-height:var(--mobile-header-h) !important;
+      padding-top:env(safe-area-inset-top, 0px) !important;
+      padding-bottom:0 !important;
+      margin-bottom:0 !important;
+      background:rgba(255,255,255,.98) !important;
+      border:0 !important;
+      box-shadow:none !important;
+    }
+    header.topbar::before{
+      content:"";
+      position:absolute;
+      inset-inline:0;
+      top:0;
+      height:env(safe-area-inset-top, 0px);
+      background:#fff;
+      pointer-events:none;
+    }
+    header.topbar .topbar__inner{
+      box-sizing:border-box;
+      width:100%;
+      max-width:var(--ipad-content-max);
+      height:56px;
+      min-height:56px !important;
+      min-width:0;
+      margin-inline:auto;
+      padding:0 var(--ipad-shell-gutter) !important;
+      justify-content:center;
+      background:transparent !important;
+    }
+    header.topbar .brand,
+    header.topbar .actions,
+    header.topbar #menuBtn,
+    #quickMenu,
+    .sidebar{ display:none !important; }
+    header.topbar form.searchbar{
+      display:flex !important;
+      flex:1 1 auto;
+      width:100%;
+      max-width:960px !important;
+      min-width:0;
+      margin:0 auto !important;
+    }
+    header.topbar .searchbar-wrap{
+      width:100%;
+      min-width:0;
+      height:52px;
+      padding:10px 18px;
+    }
+
+    /* Re-enable the phone top tabs even when Bootstrap's lg utility hides them. */
+    .m-top-tabs.d-lg-none{
+      display:flex !important;
+      position:relative !important;
+      z-index:4999 !important;
+      min-width:0;
+      justify-content:center;
+      gap:clamp(28px, 4vw, 52px);
+      margin-top:0 !important;
+      padding:0 var(--ipad-shell-gutter) 10px !important;
+      background:rgba(255,255,255,.98) !important;
+      border-bottom:0 !important;
+    }
+    .m-top-tabs .m-tab{
+      padding:12px 2px 14px;
+      font-size:16px;
+    }
+    body[data-path="/"] .m-top-tabs{
+      position:-webkit-sticky !important;
+      position:sticky !important;
+      top:var(--mobile-header-h) !important;
+      z-index:4999 !important;
+      flex-shrink:0;
+      background:rgba(255,255,255,.98) !important;
+    }
+
+    /* A wide, centered tablet content column preserves the mobile hierarchy without scaling it. */
+    .page{
+      box-sizing:border-box;
+      width:100%;
+      max-width:var(--ipad-content-max);
+      margin-inline:auto !important;
+      padding:18px var(--ipad-shell-gutter) calc(36px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important;
+    }
+    body.has-tabbar .page{
+      padding-bottom:calc(136px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important;
+    }
+
+    /* Mobile navigation remains comfortably touch-sized without spanning the whole tablet. */
+    .mobile-tabbar.d-lg-none{
+      position:fixed !important;
+      left:50% !important;
+      right:auto !important;
+      bottom:calc(12px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important;
+      width:min(860px, calc(100% - 48px)) !important;
+      height:var(--ipad-tabbar-h) !important;
+      display:grid !important;
+      grid-template-columns:repeat(5, minmax(0, 1fr)) !important;
+      align-items:center !important;
+      padding:8px 16px !important;
+      border:0 !important;
+      border-radius:24px !important;
+      z-index:1030 !important;
+      transform:translate(-50%, calc(0px - var(--ipad-tabbar-lift))) !important;
+      background:
+        linear-gradient(135deg, var(--glass-grad1), var(--glass-grad2)),
+        var(--glass-bg) !important;
+      backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+      -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+      box-shadow:
+        0 14px 30px rgba(0,0,0,.35),
+        0 0 0 1px var(--glass-stroke) inset,
+        0 2px 0 0 var(--glass-inner) inset !important;
+    }
+    .mobile-tabbar.d-lg-none > a{
+      display:flex !important;
+      min-width:0;
+      height:100% !important;
+      flex-direction:column !important;
+      align-items:center !important;
+      justify-content:center !important;
+      gap:4px !important;
+      overflow:hidden;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+      border-radius:16px !important;
+      color:#f2f2f7 !important;
+      font-size:13px !important;
+      font-weight:700 !important;
+    }
+    .mobile-tabbar.d-lg-none .tab-img{
+      width:26px !important;
+      height:26px !important;
+      flex:0 0 auto;
+      object-fit:contain !important;
+      opacity:.95 !important;
+    }
+    .mobile-tabbar.d-lg-none > a.is-active{
+      background:rgba(255,255,255,.14) !important;
+      box-shadow:0 0 0 1px rgba(255,255,255,.22) inset, 0 6px 16px rgba(0,0,0,.25) !important;
+      color:#fff !important;
+    }
+    .mobile-tabbar.d-lg-none > a.is-active .tab-img{
+      opacity:1 !important;
+      transform:scale(1.06) !important;
+    }
+    .mobile-tabbar.d-lg-none .badge-dot{
+      top:7px !important;
+      min-width:20px;
+      height:20px;
+      line-height:20px;
+    }
+
+    #fabAdd.d-lg-none{
+      display:flex !important;
+      right:clamp(24px, 4vw, 48px) !important;
+      bottom:calc(120px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important;
+      width:60px;
+      height:60px;
+      z-index:1040 !important;
+    }
+
+    /* Keep the profile sheet usable when the mobile Profile tab is active on iPad. */
+    #profileScrim.sheet-scrim{
+      position:fixed;
+      inset:0;
+      z-index:2147483646;
+      background:rgba(0,0,0,.35);
+      opacity:0;
+      pointer-events:none;
+      transition:.2s ease;
+    }
+    #profileScrim.sheet-scrim.is-open{ opacity:1; pointer-events:auto; }
+    /* Override the desktop-only hide rule only after the sheet controller removes `hidden`. */
+    #profileScrim.sheet-scrim[hidden],
+    #profileSheet.sheet[hidden]{ display:none !important; }
+    #profileScrim.sheet-scrim:not([hidden]){ display:block !important; }
+    #profileSheet.sheet:not([hidden]){ display:flex !important; }
+    #profileSheet.sheet{
+      position:fixed;
+      left:50%;
+      right:auto;
+      bottom:0;
+      width:min(680px, calc(100% - 48px));
+      height:min(72dvh, 720px);
+      max-height:calc(100dvh - 24px - env(safe-area-inset-top,0px));
+      display:flex;
+      flex-direction:column;
+      padding-bottom:calc(8px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px)));
+      overflow:hidden;
+      border-radius:22px 22px 0 0;
+      color:#fff;
+      z-index:2147483647;
+      transform:translate(-50%, 100%);
+      transition:transform .24s ease;
+      background:
+        linear-gradient(135deg, var(--glass-grad1), var(--glass-grad2)),
+        var(--glass-bg) !important;
+      backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+      -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat)) !important;
+      box-shadow:0 -18px 40px rgba(0,0,0,.35), 0 0 0 1px var(--glass-stroke) inset, 0 2px 0 0 var(--glass-inner) inset !important;
+    }
+    #profileSheet.sheet.is-open{ transform:translate(-50%, 0); }
+    #profileSheet .sheet__drag{ width:46px; height:5px; margin:8px auto 6px; border-radius:10px; background:#d1d5db; }
+    #profileSheet .sheet__header{ display:flex; align-items:center; justify-content:space-between; padding:6px 18px 10px; }
+    #profileSheet .sheet__profile{ display:flex; align-items:center; gap:10px; min-width:0; }
+    #profileSheet .sheet__avatar{ width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex:0 0 auto; background:rgba(255,255,255,.14); color:#fff; font-weight:800; }
+    #profileSheet .sheet__name{ color:#fff; font-weight:800; line-height:1.1; overflow-wrap:anywhere; }
+    #profileSheet .sheet__handle{ color:rgba(255,255,255,.8); font-size:.9rem; overflow-wrap:anywhere; }
+    #profileSheet .sheet__share{ border:0; border-radius:999px; padding:.4rem .7rem; color:#fff; background:#6C63FF; font-weight:700; }
+    #profileSheet .sheet__body{ margin:6px 8px 8px; padding:4px 0 8px; overflow:auto; border-radius:14px 14px 0 0; background:rgba(255,255,255,.08); }
+    #profileSheet .sheet__item{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px; color:#f2f2f7; border-bottom:1px solid rgba(255,255,255,.12); }
+    #profileSheet .sheet__item .left{ display:flex; align-items:center; min-width:0; gap:10px; }
+    #profileSheet .sheet__item .label{ min-width:0; font-weight:800; overflow-wrap:anywhere; }
+    #profileSheet .sheet__item .chev{ flex:0 0 auto; color:#fff; opacity:.85; }
+    #profileSheet .sheet__item.text-danger{ color:#ff6b6b !important; }
+    [data-theme="light"] #profileSheet{ color:#111; }
+    [data-theme="light"] #profileSheet .sheet__body{ background:rgba(255,255,255,.6); }
+    [data-theme="light"] #profileSheet .sheet__item{ color:#111; border-bottom-color:rgba(0,0,0,.06); }
+    [data-theme="light"] #profileSheet .sheet__item .chev{ color:#111; }
+
+    /* Dialogs and the notification panel stay inside the tablet viewport and its safe areas. */
+    .modal-dialog{
+      width:min(760px, calc(100% - 48px));
+      max-height:calc(100dvh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
+      margin:max(12px, env(safe-area-inset-top,0px)) auto max(12px, env(safe-area-inset-bottom,0px));
+    }
+    .modal-dialog .modal-content{ max-height:inherit; }
+    .modal-dialog .modal-body{ overflow-y:auto; }
+    .notif-panel{
+      width:min(440px, calc(100% - 32px));
+      max-width:88vw;
+      height:100dvh;
+    }
+    .notif-panel__header{ padding:calc(12px + env(safe-area-inset-top,0px)) 14px 12px; }
+    .notif-panel__body{ padding-bottom:calc(10px + env(safe-area-inset-bottom,0px)); }
+
+    /* Shared guards prevent a long user value or image from widening the tablet shell. */
+    .page,
+    .page > *,
+    .topbar__inner,
+    .searchbar{ min-width:0; }
+    .page img,
+    .modal img,
+    .offcanvas img{ max-width:100%; height:auto; }
+    .page :is(h1,h2,h3,h4,h5,h6,p,.small,.text-muted,.card-title,.card-text,.form-text,.list-group-item){ overflow-wrap:anywhere; }
+    .chat-thread .chatbot-message-body{ min-width:0; overflow-wrap:anywhere; word-break:break-word; }
+
+    /* Messages deliberately use their focused mobile conversation chrome. */
+    body[data-path="/messages"] header.topbar,
+    body[data-path^="/messages/"] header.topbar,
+    body[data-path="/messages"] .m-top-tabs,
+    body[data-path^="/messages/"] .m-top-tabs,
+    body[data-path="/messages"] .searchbar,
+    body[data-path^="/messages/"] .searchbar,
+    body[data-path="/messages"] .stripe-callout,
+    body[data-path^="/messages/"] .stripe-callout{ display:none !important; }
+    body[data-path="/messages"] .page,
+    body[data-path^="/messages/"] .page{ padding-top:18px !important; }
+
+    /* Preserve the existing guest shell: only Login/Register remain in the header. */
+    body[data-auth="0"] #menuBtn,
+    body[data-auth="0"] #quickMenu,
+    body[data-auth="0"] .searchbar,
+    body[data-auth="0"] .m-top-tabs,
+    body[data-auth="0"] #notifOpen,
+    body[data-auth="0"] .stripe-callout,
+    body[data-auth="0"] .fab,
+    body[data-auth="0"] #fabAdd,
+    body[data-auth="0"] .sheet,
+    body[data-auth="0"] .sheet-scrim{ display:none !important; }
+    body[data-auth="0"] .mobile-tabbar.d-lg-none{ display:none !important; }
+    body[data-auth="0"] .page{
+      padding-bottom:calc(76px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important;
+    }
+    body[data-auth="0"] header.topbar .actions{
+      display:flex !important;
+      width:auto;
+      margin-inline-start:auto !important;
+      gap:8px !important;
+    }
+    body[data-auth="0"] header.topbar .actions > *{ display:none !important; }
+    body[data-auth="0"] header.topbar .actions a[href="/login"],
+    body[data-auth="0"] header.topbar .actions a[href="/register"]{ display:inline-flex !important; }
+  }
+}
+</style>
 {% set immersive = immersive|default(false) %}
 {% set _path = request.url.path if request else '' %}
 {% set no_ui = (
@@ -2093,7 +2402,12 @@ window.onpageshow = function(e){
   <script>
   (function initProfileSheet(){
     if (window.__profileSheetInit) return; window.__profileSheetInit = true;
-    const isMobile = window.matchMedia('(max-width: 768px)');
+    const isPhone = window.matchMedia('(max-width: 768px)');
+    const isTouchTablet = window.matchMedia('(min-width: 769px) and (max-width: 1376px) and (min-height: 600px) and (any-pointer: coarse)');
+    const supportsTouchTabletShell = typeof CSS !== 'undefined'
+      && typeof CSS.supports === 'function'
+      && CSS.supports('-webkit-touch-callout', 'none');
+    const usesMobileProfileSheet = () => isPhone.matches || (supportsTouchTabletShell && isTouchTablet.matches);
     const sheet = document.getElementById('profileSheet');
     const scrim = document.getElementById('profileScrim');
     if (!sheet || !scrim) return;
@@ -2102,7 +2416,7 @@ window.onpageshow = function(e){
     scrim.addEventListener('click', hide);
     document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') hide(); });
     const profTab = document.querySelector('.mobile-tabbar a[href="/profile"]');
-    if (profTab){ profTab.addEventListener('click',(e)=>{ if(isMobile.matches){ e.preventDefault(); show(); } }); }
+    if (profTab){ profTab.addEventListener('click',(e)=>{ if(usesMobileProfileSheet()){ e.preventDefault(); show(); } }); }
   })();
   </script>
 

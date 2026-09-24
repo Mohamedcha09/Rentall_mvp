@@ -96,6 +96,31 @@ body {
 .back-link:hover {
     text-decoration: underline;
 }
+
+/* Mirror this page's phone-only chrome and safe spacing on iPad Safari. */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    body[data-path="/account/delete"] header.topbar,
+    body[data-path="/account/delete"] .m-top-tabs.d-lg-none,
+    body[data-path="/account/delete"] .searchbar,
+    body[data-path="/account/delete"] .mobile-tabbar.d-lg-none {
+      display: none !important;
+    }
+
+    body.has-tabbar {
+        padding-bottom: 0 !important;
+    }
+
+    body[data-path="/account/delete"] .page {
+        padding-bottom: 0 !important;
+    }
+
+    body[data-path="/account/delete"] .delete-box {
+      margin-top: calc(24px + env(safe-area-inset-top, 0px)) !important;
+        margin-bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+  }
+}
 </style>
 
 

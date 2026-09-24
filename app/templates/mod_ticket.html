@@ -35,6 +35,38 @@
       max-width:100%;
     }
   }
+
+  @supports (-webkit-touch-callout: none) {
+    @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+      .mod-ticket-page .ticket-heading,
+      .mod-ticket-page .card-header {
+        flex-wrap: wrap;
+        gap: .5rem;
+      }
+
+      .mod-ticket-page .ticket-heading > *,
+      .mod-ticket-page .card-header > *,
+      .mod-ticket-page .msg,
+      .mod-ticket-page .chip {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .mod-ticket-page .card-header .ms-auto {
+        margin-inline-start: 0 !important;
+      }
+
+      .mod-ticket-page .toolbar-sticky {
+        position: static;
+        padding-bottom: 0;
+      }
+
+      .mod-ticket-page .toolbar-sticky form {
+        display: block !important;
+        max-width: 100%;
+      }
+    }
+  }
 </style>
 
 <div class="container py-3 ticket-wrap mod-ticket-page" dir="rtl">

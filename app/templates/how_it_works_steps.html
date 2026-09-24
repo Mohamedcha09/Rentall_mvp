@@ -136,6 +136,36 @@
     .hero-ctas .btnx{ max-width:100%; text-align:center; }
   }
 
+  /* Keep the explanatory timeline in its mobile reading order on iPad Safari. */
+  @supports (-webkit-touch-callout: none) {
+    @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+      .howwrap {
+        max-width: 1100px;
+        margin-top: calc(18px + env(safe-area-inset-top, 0px));
+        margin-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+        padding-inline: 24px;
+      }
+
+      .howwrap .s,
+      .howwrap .s.alt {
+        grid-template-columns: 1fr;
+      }
+
+      .howwrap .s.alt .txt {
+        order: 1;
+      }
+
+      .howwrap .s.alt .pic {
+        order: 2;
+      }
+
+      .howwrap .hero-ctas .btnx {
+        max-width: 100%;
+        text-align: center;
+      }
+    }
+  }
+
   .note{
     margin-top: 14px;
     padding: 14px;

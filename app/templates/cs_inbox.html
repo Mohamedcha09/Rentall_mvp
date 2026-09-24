@@ -16,6 +16,31 @@
       overflow-wrap: anywhere;
     }
   }
+
+  @supports (-webkit-touch-callout: none) {
+    @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+      .cs-inbox .row > .col-lg-4 {
+        flex: 0 0 100%;
+        max-width: 100%;
+      }
+
+      .cs-inbox .list-group-item,
+      .cs-inbox .list-group-item > .d-flex {
+        min-width: 0;
+      }
+
+      .cs-inbox .list-group-item.d-flex,
+      .cs-inbox .list-group-item > .d-flex {
+        flex-wrap: wrap;
+        gap: .5rem;
+      }
+
+      .cs-inbox .list-group-item .me-2 {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+    }
+  }
 </style>
 <div class="container py-3 cs-inbox">
 

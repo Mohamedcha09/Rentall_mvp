@@ -372,6 +372,57 @@
     .hero-cta .btn{ white-space:normal; }
   }
 
+  /* iPad Safari uses the same one-column content rhythm as the phone view. */
+  @supports (-webkit-touch-callout: none) {
+    @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+      .about-wrap .container {
+        max-width: 1100px;
+        padding-inline: 28px;
+      }
+
+      .about-wrap .hero-grid,
+      .about-wrap .grid3,
+      .about-wrap .grid2,
+      .about-wrap .steps,
+      .about-wrap .info-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .about-wrap .hero h1 {
+        font-size: 38px;
+      }
+
+      .about-wrap .tagline,
+      .about-wrap .btn,
+      .about-wrap .badge,
+      .about-wrap .chip,
+      .about-wrap .pill2 {
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-wrap: anywhere;
+      }
+
+      .about-wrap .badge {
+        white-space: normal;
+      }
+
+      .about-wrap .section-title,
+      .about-wrap .info .top {
+        flex-wrap: wrap;
+      }
+
+      .about-wrap .section-title > *,
+      .about-wrap .info .top > * {
+        min-width: 0;
+      }
+
+      .about-wrap .cta-row .btn,
+      .about-wrap .hero-cta .btn {
+        white-space: normal;
+      }
+    }
+  }
+
   /* hidden helper */
   [hidden]{ display:none !important; }
 </style>
@@ -398,6 +449,20 @@ body.has-tabbar { padding-bottom:0 !important; }
       background:#fff;
       z-index:10005;
       pointer-events:none;
+    }
+  }
+
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    body[data-path="/about-full"] header.topbar,
+    body[data-path="/about-full"] .m-top-tabs.d-lg-none,
+    body[data-path="/about-full"] .searchbar,
+    body[data-path="/about-full"] .mobile-tabbar.d-lg-none {
+      display: none !important;
+    }
+
+    body[data-path="/about-full"] .page {
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
     }
   }
   /* ===== Arabic RTL tweaks ===== */

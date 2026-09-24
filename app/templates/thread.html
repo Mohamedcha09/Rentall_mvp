@@ -215,6 +215,22 @@
       box-shadow:0 4px 12px rgba(0,0,0,.18);
   }
 
+  /* This focused conversation intentionally owns the full touch screen on iPad Safari. */
+  @supports (-webkit-touch-callout: none) {
+    @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+      body[data-path^="/messages/"] header.topbar,
+      body[data-path^="/messages/"] .m-top-tabs.d-lg-none,
+      body[data-path^="/messages/"] .mobile-tabbar.d-lg-none,
+      body[data-path^="/messages/"] #fabAdd.d-lg-none {
+        display: none !important;
+      }
+
+      body[data-path^="/messages/"] .page {
+        padding-bottom: 0 !important;
+      }
+    }
+  }
+
 </style>
 
 <div class="chat-bg"></div>

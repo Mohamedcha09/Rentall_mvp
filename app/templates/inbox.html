@@ -242,6 +242,27 @@ body.inbox-search-open #fabAdd {
   pointer-events: none;
 }
 
+/* iPad Safari keeps the same single-column conversation hierarchy as phones. */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    .inbox-header,
+    .msg-tabs,
+    .thread-row,
+    .thread-row > * {
+      min-width: 0;
+    }
+
+    .msg-tabs {
+      flex-wrap: wrap;
+    }
+
+    .thread-row .msg-title,
+    .thread-row .msg-sub {
+      overflow-wrap: anywhere;
+    }
+  }
+}
+
 </style>
 
 <!-- HEADER -->

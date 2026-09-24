@@ -41,6 +41,23 @@
                   align-items:center; justify-content:center; background:rgba(255,255,255,.08);
                   font-size:22px; }
   .tick { color:#00e5a8; }
+
+  /* Keep welcome content in the mobile reading order on iPad Safari. */
+  @supports (-webkit-touch-callout: none) {
+    @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+      body[data-path="/welcome"] .hero {
+        padding: 46px 28px;
+      }
+
+      body[data-path="/welcome"] .hero .row > .col-lg-7,
+      body[data-path="/welcome"] .hero .row > .col-lg-5,
+      body[data-path="/welcome"] .row.g-3 > .col-md-4,
+      body[data-path="/welcome"] .row.g-3 > .col-lg-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+      }
+    }
+  }
 </style>
 
 <section class="hero mb-4">

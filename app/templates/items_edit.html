@@ -181,6 +181,53 @@ img.edit-thumb {
 }
 
 </style>
+
+<style>
+/* iPad: keep the edit-item flow touch-first, with readable tablet-width fields. */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    body[data-path$="/edit"] header.topbar,
+    body[data-path$="/edit"] .m-top-tabs.d-lg-none,
+    body[data-path$="/edit"] nav.desk-tabs,
+    body[data-path$="/edit"] .mobile-tabbar.d-lg-none,
+    body[data-path$="/edit"] .searchbar,
+    body[data-path$="/edit"] .stripe-callout,
+    body[data-path$="/edit"] .stripe-connect-banner,
+    body[data-path$="/edit"] .payout-banner,
+    body[data-path$="/edit"] .connect-banner{
+      display:none !important;
+    }
+    body.has-tabbar{padding-bottom:0 !important;}
+    body{padding-top:env(safe-area-inset-top,0px);}
+    .page > h2,
+    .page > form,
+    .page > .admin-feedback{
+      width:100%;
+      max-width:920px;
+      margin-inline:auto;
+    }
+    .page > h2{padding-inline:20px;margin-top:20px;}
+    .page > form{padding:0 20px 36px;}
+    .page > .admin-feedback{margin-inline:auto !important;}
+    .page > form > .row{--bs-gutter-x:16px;--bs-gutter-y:0;}
+    .page > form > .row > .col-md-6{
+      flex:0 0 100%;
+      width:100%;
+    }
+    .page > form > .row > .col-md-3{
+      flex:0 0 50%;
+      width:50%;
+    }
+    img.edit-thumb{width:110px;height:110px;}
+    @media (orientation:landscape){
+      .page > h2,
+      .page > form,
+      .page > .admin-feedback{max-width:1020px;}
+      .page > form{padding-inline:28px;}
+    }
+  }
+}
+</style>
 {% endblock %}
 
 {% block content %}

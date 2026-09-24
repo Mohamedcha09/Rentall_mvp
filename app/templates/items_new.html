@@ -425,6 +425,57 @@ document.getElementById('imgInput').addEventListener('change', function(){
 }
 </style>
 
+<style>
+/* iPad: keep the add-item flow touch-first, with readable tablet-width fields. */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    body[data-path="/owner/items/new"] header.topbar,
+    body[data-path="/owner/items/new"] .m-top-tabs.d-lg-none,
+    body[data-path="/owner/items/new"] nav.desk-tabs,
+    body[data-path="/owner/items/new"] .mobile-tabbar.d-lg-none,
+    body[data-path="/owner/items/new"] .searchbar,
+    body[data-path="/owner/items/new"] .stripe-callout,
+    body[data-path="/owner/items/new"] .stripe-connect-banner,
+    body[data-path="/owner/items/new"] .payout-banner,
+    body[data-path="/owner/items/new"] .connect-banner{
+      display:none !important;
+    }
+    body.has-tabbar{padding-bottom:0 !important;}
+    body{padding-top:env(safe-area-inset-top,0px);}
+    .page > h2,
+    .page > form{
+      width:100%;
+      max-width:920px;
+      margin-inline:auto;
+    }
+    .page > h2{padding-inline:20px;margin-top:20px;}
+    .page > form{padding:0 20px 36px;}
+    .page > form > .row{--bs-gutter-x:16px;--bs-gutter-y:0;}
+    .page > form > .row > .col-md-6{
+      flex:0 0 100%;
+      width:100%;
+    }
+    .page > form > .row > .col-md-3{
+      flex:0 0 50%;
+      width:50%;
+    }
+    .city-location-controls{flex-wrap:wrap;}
+    .city-location-controls > *{min-height:44px;}
+    .city-location-controls #radiusNew{
+      flex:1 1 120px;
+      min-width:0;
+      max-width:100% !important;
+    }
+    #preview{gap:12px !important;}
+    @media (orientation:landscape){
+      .page > h2,
+      .page > form{max-width:1020px;}
+      .page > form{padding-inline:28px;}
+    }
+  }
+}
+</style>
+
 
   <button class="btn btn-primary" style="margin-top:6px;">Save</button>
 </form>

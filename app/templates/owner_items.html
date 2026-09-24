@@ -175,6 +175,31 @@ body {
     .page-title { flex-wrap: wrap; gap: 10px; }
     .add-btn { max-width: 100%; text-align: center; white-space: normal; }
 }
+
+/* iPad: retain touch-card proportions without falling into the md desktop grid. */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    .items-wrap{
+      max-width:1120px;
+      padding:28px 20px calc(132px + env(safe-area-inset-bottom,0px));
+    }
+    .items-wrap > .row{--bs-gutter-x:16px;--bs-gutter-y:16px;}
+    .items-wrap > .row > .col-12.col-md-4{
+      flex:0 0 50%;
+      width:50%;
+    }
+    .item-card img{height:clamp(200px,25vw,260px);}
+    .item-card .card-body{padding:16px 18px;}
+    .page-title{gap:14px;}
+    @media (orientation:landscape){
+      .items-wrap > .row > .col-12.col-md-4{
+        flex-basis:33.333333%;
+        width:33.333333%;
+      }
+      .item-card img{height:220px;}
+    }
+  }
+}
 </style>
 
 

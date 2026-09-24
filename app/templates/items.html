@@ -184,6 +184,71 @@ h1,h2,h3,h4,h5,h6,.section-title{color:#0f172a}
     body { padding-top: env(safe-area-inset-top); }
   }
 }
+
+/* iPad: use the same touch-first Explore hierarchy as the phone. */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    body[data-path="/items"] header.topbar,
+    body[data-path="/items"] nav.desk-tabs,
+    body[data-path="/items"] .m-top-tabs.d-lg-none{
+      display:none !important;
+    }
+    .stripe-connect-banner,
+    .connect-banner,
+    .payout-banner,
+    .stripe-callout{
+      display:none !important;
+    }
+    body{padding-top:env(safe-area-inset-top,0px);}
+    .items-hide-mobile{display:none !important;}
+    .toolbar{
+      gap:10px;
+      overflow-x:auto;
+      white-space:nowrap;
+      padding:12px 10px;
+      margin:0 -8px 14px;
+      background:rgba(255,255,255,.75);
+      border:1px solid rgba(255,255,255,.35);
+      border-radius:18px;
+      box-shadow:0 4px 22px rgba(0,0,0,.08);
+      backdrop-filter:blur(14px);
+      -webkit-backdrop-filter:blur(14px);
+    }
+    .toolbar .pill{
+      padding:10px 18px;
+      border:0;
+      background:rgba(240,240,255,.7);
+      font-size:.95rem;
+      font-weight:700;
+      box-shadow:0 2px 6px rgba(0,0,0,.06);
+    }
+    .toolbar .pill.active{
+      background:linear-gradient(135deg,#786BFF,#A88BFF);
+      color:#fff;
+      box-shadow:0 4px 12px rgba(120,107,255,.35);
+    }
+    .sellerbar{
+      padding:10px;
+      margin:0 -8px 12px;
+      background:rgba(255,255,255,.65);
+      border:1px solid rgba(255,255,255,.35);
+      border-radius:18px;
+      box-shadow:0 4px 22px rgba(0,0,0,.06);
+      backdrop-filter:blur(14px);
+      -webkit-backdrop-filter:blur(14px);
+    }
+    .items-locbar .btn,
+    #itemsCityInput{height:44px;min-height:44px;}
+    .grid-items{
+      grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+      gap:16px;
+      padding-inline:0;
+    }
+    @media (orientation:landscape){
+      .grid-items{grid-template-columns:repeat(4,minmax(0,1fr)) !important;}
+    }
+  }
+}
 </style>
 {% endblock %}
 

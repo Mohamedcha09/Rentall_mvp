@@ -2,6 +2,18 @@
 {% extends "base.html" %}
 {% block content %}
 
+<style>
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    body[data-path^="/profile/docs"] > .page .row > .col-md-6,
+    body[data-path^="/profile/docs"] .row.g-2 > .col-md-4 {
+      flex: 0 0 100%;
+      max-width: 100%;
+    }
+  }
+}
+</style>
+
 {# helper: builds a correct src whether http(s) or a local path #}
 {% macro build_src(p) -%}
   {%- set s = (p or '') -%}

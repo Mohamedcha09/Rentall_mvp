@@ -375,6 +375,23 @@ button {
 
   }
 }
+
+/* Give the same mobile chat structure room to breathe on iPad Safari. */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    .sv-chatbot-page {
+      max-width: min(960px, calc(100% - 48px));
+      padding-inline: 24px;
+      padding-bottom: 48px;
+    }
+
+    .sv-input-fixed {
+      width: min(960px, calc(100% - 48px));
+      max-width: none;
+      padding-inline: 18px;
+    }
+  }
+}
  
   </style>
 </head>

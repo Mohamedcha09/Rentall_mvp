@@ -1,6 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
 
+<style>
+@supports (-webkit-touch-callout: none) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+    body[data-path^="/mod/chatbot/ticket/"] .chat-thread,
+    body[data-path^="/mod/chatbot/ticket/"] .chat-thread > *,
+    body[data-path^="/mod/chatbot/ticket/"] .chatbot-message-body {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+  }
+}
+</style>
+
 <div class="page">
   <a href="/mod/chatbot/inbox" class="btn btn-light mt-3">← Back</a>
 

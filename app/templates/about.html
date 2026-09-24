@@ -43,6 +43,28 @@
     .about-bottom-actions .btn { max-width:100%; white-space:normal; }
   }
 
+  /* Keep the informational page in its phone reading order on iPad Safari. */
+  @supports (-webkit-touch-callout: none) {
+    @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+      body[data-path="/about"] .about-hero {
+        padding: 46px 28px;
+      }
+
+      body[data-path="/about"] .about-hero .row > .col-lg-7,
+      body[data-path="/about"] .about-hero .row > .col-lg-5,
+      body[data-path="/about"] .row.g-3 > .col-md-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+      }
+
+      body[data-path="/about"] .about-hero-actions .btn,
+      body[data-path="/about"] .about-bottom-actions .btn {
+        max-width: 100%;
+        white-space: normal;
+      }
+    }
+  }
+
   
 </style>
 
