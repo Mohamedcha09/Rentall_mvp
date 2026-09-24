@@ -1106,14 +1106,15 @@ header.topbar .searchbar-wrap{
   /*
    * iPad Safari keeps the touch-first shell without changing the existing
    * phone (<=768px) or desktop/laptop breakpoints.  The minimum dimensions
-   * exclude phones in either orientation; any-pointer keeps ordinary desktop
-   * browser windows out of this layout.
+   * exclude phones in either orientation; the is-ipad marker keeps ordinary
+   * desktop browser windows out of this layout.
    */
-  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) {
     :root{
       --ipad-shell-gutter:clamp(24px, 4vw, 52px);
       --ipad-content-max:1280px;
       --ipad-tabbar-h:72px;
+      --ipad-tabbar-max:860px;
       --ipad-tabbar-lift:16px;
     }
 
@@ -1214,10 +1215,13 @@ header.topbar .searchbar-wrap{
     /* Mobile navigation remains comfortably touch-sized without spanning the whole tablet. */
     .mobile-tabbar.d-lg-none{
       position:fixed !important;
-      left:50% !important;
-      right:auto !important;
+      left:env(safe-area-inset-left,0px) !important;
+      right:env(safe-area-inset-right,0px) !important;
       bottom:calc(12px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important;
-      width:min(860px, calc(100% - 48px)) !important;
+      width:min(var(--ipad-tabbar-max), calc(100% - 48px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px))) !important;
+      max-width:var(--ipad-tabbar-max) !important;
+      margin-inline:auto !important;
+      box-sizing:border-box !important;
       height:var(--ipad-tabbar-h) !important;
       display:grid !important;
       grid-template-columns:repeat(5, minmax(0, 1fr)) !important;
@@ -1226,7 +1230,7 @@ header.topbar .searchbar-wrap{
       border:0 !important;
       border-radius:24px !important;
       z-index:1030 !important;
-      transform:translate(-50%, calc(0px - var(--ipad-tabbar-lift))) !important;
+      transform:translateY(calc(0px - var(--ipad-tabbar-lift))) !important;
       background:
         linear-gradient(135deg, var(--glass-grad1), var(--glass-grad2)),
         var(--glass-bg) !important;
@@ -1278,7 +1282,7 @@ header.topbar .searchbar-wrap{
 
     #fabAdd.d-lg-none{
       display:flex !important;
-      right:clamp(24px, 4vw, 48px) !important;
+      right:max(calc(28px + env(safe-area-inset-right,0px)), calc((100vw - var(--ipad-tabbar-max)) / 2)) !important;
       bottom:calc(120px + max(env(safe-area-inset-bottom,0px), var(--safe-bottom,0px))) !important;
       width:60px;
       height:60px;
