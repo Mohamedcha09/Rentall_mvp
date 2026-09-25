@@ -1,8 +1,9 @@
 # app/items.py
-from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
+from fastapi import APIRouter, Depends, Request, Form, UploadFile, File, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, or_, and_
+from sqlalchemy.exc import IntegrityError
 import os, random, secrets, shutil
 import unicodedata
 from datetime import date
@@ -14,12 +15,78 @@ import cloudinary
 import cloudinary.uploader
 
 from .database import get_db
-from .models import Item, User, ItemReview, Favorite as _Fav
+from .models import (
+    Item,
+    User,
+    ItemReview,
+    Favorite as _Fav,
+    Booking,
+    FreezeDeposit,
+    MessageThread,
+    Order,
+    Report,
+)
 from .utils import CATEGORIES, category_label
 from .utils_badges import get_user_badges
 from .models import Category, Subcategory
 
 router = APIRouter()
+
+_OWNER_ITEMS_NOTICE_KEY = "owner_items_notice"
+
+
+def _set_owner_items_notice(request: Request, kind: str, text: str) -> None:
+    """Store a route-private My Listings notice for the following redirect."""
+    request.session[_OWNER_ITEMS_NOTICE_KEY] = {
+        "kind": "success" if kind == "success" else "error",
+        "text": text,
+    }
+
+
+def _consume_owner_items_notice(request: Request):
+    notice = request.session.pop(_OWNER_ITEMS_NOTICE_KEY, None)
+    if not isinstance(notice, dict):
+        return None
+
+    text = str(notice.get("text") or "").strip()
+    if not text:
+        return None
+
+    return {
+        "kind": "success" if notice.get("kind") == "success" else "error",
+        "text": text,
+    }
+
+
+def _owner_edit_is_locked(item: Item, session_user: dict) -> bool:
+    """Published listings are immutable for owners; preserve existing admin authority."""
+    is_admin = str((session_user or {}).get("role") or "").lower() == "admin"
+    return not is_admin and str(getattr(item, "status", "") or "").lower() == "approved"
+
+
+def _owner_listing_delete_blockers(db: Session, item_id: int) -> list[str]:
+    """
+    Return direct Item dependencies that make an owner hard-delete unsafe.
+
+    The policy intentionally blocks *all* booking history, not only active dates:
+    Booking carries payment, payout, deposit, and dispute records.  Blocking the
+    remaining direct references prevents implicit cascades from erasing user
+    history such as conversations and saved listings.
+    """
+    dependency_checks = (
+        ("bookings", Booking),
+        ("orders", Order),
+        ("reviews", ItemReview),
+        ("reports", Report),
+        ("messages", MessageThread),
+        ("deposit records", FreezeDeposit),
+        ("favorites", _Fav),
+    )
+    blockers = []
+    for label, model in dependency_checks:
+        if db.query(model.id).filter(model.item_id == item_id).first() is not None:
+            blockers.append(label)
+    return blockers
 
 # ---------- Uploads config ----------
 UPLOADS_ROOT = os.environ.get(
@@ -611,6 +678,8 @@ def my_items(request: Request, db: Session = Depends(get_db)):
     if not u:
         return RedirectResponse(url="/login", status_code=303)
 
+    listing_notice = _consume_owner_items_notice(request)
+
     items = (
         db.query(Item)
         .filter(Item.owner_id == u["id"])
@@ -648,6 +717,7 @@ def my_items(request: Request, db: Session = Depends(get_db)):
             "display_currency": disp_cur,
             "session_user": u,
             "account_limited": is_account_limited(request),
+            "listing_notice": listing_notice,
         }
     )
 
@@ -664,6 +734,14 @@ def item_edit_get(
 
     item = db.query(Item).get(item_id)
     if not item or item.owner_id != u["id"]:
+        return RedirectResponse(url="/owner/items", status_code=303)
+
+    if _owner_edit_is_locked(item, u):
+        _set_owner_items_notice(
+            request,
+            "error",
+            "Published listings can’t be edited. You can still view the listing or remove it when deletion is safe.",
+        )
         return RedirectResponse(url="/owner/items", status_code=303)
 
     categories = db.query(Category).order_by(Category.name.asc()).all()
@@ -710,6 +788,14 @@ def item_edit_post(
 
     it = db.query(Item).get(item_id)
     if not it or it.owner_id != u["id"]:
+        return RedirectResponse(url="/owner/items", status_code=303)
+
+    if _owner_edit_is_locked(it, u):
+        _set_owner_items_notice(
+            request,
+            "error",
+            "Published listings can’t be edited. You can still view the listing or remove it when deletion is safe.",
+        )
         return RedirectResponse(url="/owner/items", status_code=303)
 
     try:
@@ -766,6 +852,44 @@ def item_edit_post(
 
     db.commit()
 
+    return RedirectResponse(url="/owner/items", status_code=303)
+
+
+@router.post("/owner/items/{item_id}/delete")
+def owner_item_delete(request: Request, item_id: int, db: Session = Depends(get_db)):
+    """Permanently delete an unused owner listing without touching related history."""
+    u = request.session.get("user")
+    if not u:
+        return RedirectResponse(url="/login", status_code=303)
+
+    item = db.query(Item).get(item_id)
+    if not item or item.owner_id != u["id"]:
+        # Avoid exposing another owner’s listing through this destructive route.
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    if _owner_listing_delete_blockers(db, item.id):
+        _set_owner_items_notice(
+            request,
+            "error",
+            "This listing can’t be deleted because it has related rental, payment, or activity records.",
+        )
+        return RedirectResponse(url="/owner/items", status_code=303)
+
+    try:
+        db.delete(item)
+        db.commit()
+    except IntegrityError:
+        # A database-level relation that is not represented above must never be
+        # bypassed; roll back and keep the listing intact.
+        db.rollback()
+        _set_owner_items_notice(
+            request,
+            "error",
+            "This listing can’t be deleted because it has related records.",
+        )
+        return RedirectResponse(url="/owner/items", status_code=303)
+
+    _set_owner_items_notice(request, "success", "Listing deleted.")
     return RedirectResponse(url="/owner/items", status_code=303)
 
 
