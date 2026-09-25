@@ -4,9 +4,11 @@
 {% for listing_row in items_view %}
   {% set listing = listing_row.item %}
   {% set listing_status = (listing.status or 'pending')|lower %}
-  {% set listing_is_active = (listing.is_active or '')|lower == 'yes' %}
+  {% set listing_is_enabled = (listing.is_active or '')|lower == 'yes' %}
+  {% set listing_is_live = listing_status == 'approved' and listing_is_enabled %}
   {% set listing_stats.total = listing_stats.total + 1 %}
-  {% if listing_is_active %}{% set listing_stats.active = listing_stats.active + 1 %}{% else %}{% set listing_stats.inactive = listing_stats.inactive + 1 %}{% endif %}
+  {% if listing_is_live %}{% set listing_stats.active = listing_stats.active + 1 %}{% endif %}
+  {% if listing_status == 'approved' and not listing_is_enabled %}{% set listing_stats.inactive = listing_stats.inactive + 1 %}{% endif %}
   {% if listing_status == 'pending' %}{% set listing_stats.pending = listing_stats.pending + 1 %}{% endif %}
   {% if listing_status in ['rejected', 'needs_revision'] %}{% set listing_stats.review = listing_stats.review + 1 %}{% endif %}
 {% endfor %}
@@ -24,6 +26,7 @@
     width:min(1440px, calc(100% - 32px));
     margin:18px auto 0;
     gap:12px;
+    flex-wrap:wrap;
     border:1px solid rgba(190,137,32,.24);
     border-radius:18px;
     box-shadow:0 10px 26px rgba(40,37,77,.06);
@@ -403,6 +406,7 @@
     color:var(--listings-deep);
     font-size:2rem;
   }
+  .listing-card__image-fallback[hidden]{ display:none !important; }
   .listing-card__media-top,
   .listing-card__media-bottom{
     position:absolute;
@@ -643,7 +647,7 @@
   @media (max-width:374px){
     .listings-center-hero{ padding-inline:17px; }
     .listings-add-button{ width:100%; }
-    .listings-card__body{ padding:14px; }
+    .listing-card__body{ padding:14px; }
     .listing-card__actions{ gap:7px; }
     .listing-action{ padding-inline:7px; font-size:.76rem; }
   }
@@ -710,7 +714,7 @@
       </article>
     </section>
 
-    {% if listing_stats.total %}
+    {% if listing_stats.total > 1 %}
       <section class="listings-toolbar" aria-label="Search, filter, and sort listings">
         <div class="listings-toolbar__left">
           {% if listing_stats.total > 1 %}
@@ -719,7 +723,7 @@
               <i class="bi bi-search" aria-hidden="true"></i>
               <input id="listingsSearch" type="search" placeholder="Search your listings" autocomplete="off">
             </label>
-            <div class="listings-filter-scroll" aria-label="Listing filters">
+            <div class="listings-filter-scroll" role="group" aria-label="Listing filters">
               <button type="button" class="listings-filter" data-listings-filter="all" aria-pressed="true">All <span>{{ listing_stats.total }}</span></button>
               {% if listing_stats.active %}<button type="button" class="listings-filter" data-listings-filter="active" aria-pressed="false">Active <span>{{ listing_stats.active }}</span></button>{% endif %}
               {% if listing_stats.pending %}<button type="button" class="listings-filter" data-listings-filter="pending" aria-pressed="false">Pending <span>{{ listing_stats.pending }}</span></button>{% endif %}
@@ -744,7 +748,9 @@
         {% for listing_row in items_view %}
           {% set it = listing_row.item %}
           {% set status = (it.status or 'pending')|lower %}
-          {% set active = (it.is_active or '')|lower == 'yes' %}
+          {% set is_enabled = (it.is_active or '')|lower == 'yes' %}
+          {% set is_live = status == 'approved' and is_enabled %}
+          {% set is_inactive = status == 'approved' and not is_enabled %}
           {% set category_name = it.subcategory or it.category_label or it.category or 'Other' %}
           {% set images = it.image_urls or [] %}
           {% set listing_image = images[0] if images else it.image_path %}
@@ -756,13 +762,15 @@
             class="listing-card"
             data-listing-card
             data-status="{{ status }}"
-            data-active="{{ 'yes' if active else 'no' }}"
+            data-active="{{ 'yes' if is_live else 'no' }}"
+            data-inactive="{{ 'yes' if is_inactive else 'no' }}"
             data-search="{{ [it.title or '', category_name or '', it.city or '']|join(' ')|lower }}"
             data-created="{{ it.created_at.isoformat() if it.created_at else '' }}"
           >
             <div class="listing-card__media">
               {% if listing_image %}
                 <img class="listing-card__image" src="{{ listing_image_src }}" alt="Photo of {{ it.title }}" loading="lazy" decoding="async">
+                <span class="listing-card__image-fallback" data-listing-image-fallback hidden role="img" aria-label="Listing photo could not be loaded"><i class="bi bi-image" aria-hidden="true"></i></span>
               {% else %}
                 <span class="listing-card__image-fallback" role="img" aria-label="No photo added"><i class="bi bi-image" aria-hidden="true"></i></span>
               {% endif %}
@@ -795,10 +803,12 @@
 
               <div class="listing-card__meta">
                 {% if it.city %}<span><i class="bi bi-geo-alt" aria-hidden="true"></i>{{ it.city }}</span>{% endif %}
-                <span class="listing-card__availability{% if not active %} listing-card__availability--inactive{% endif %}">
-                  <i class="bi {% if active %}bi-check-circle{% else %}bi-pause-circle{% endif %}" aria-hidden="true"></i>
-                  {% if active %}Active{% else %}Inactive{% endif %}
-                </span>
+                {% if status == 'approved' %}
+                  <span class="listing-card__availability{% if not is_live %} listing-card__availability--inactive{% endif %}">
+                    <i class="bi {% if is_live %}bi-check-circle{% else %}bi-pause-circle{% endif %}" aria-hidden="true"></i>
+                    {% if is_live %}Active{% else %}Inactive{% endif %}
+                  </span>
+                {% endif %}
               </div>
 
               {% if it.admin_feedback and status in ['rejected', 'needs_revision'] %}
@@ -855,7 +865,7 @@
   const matchesFilter = (card) => {
     if (currentFilter === 'all') return true;
     if (currentFilter === 'active') return card.dataset.active === 'yes';
-    if (currentFilter === 'inactive') return card.dataset.active !== 'yes';
+    if (currentFilter === 'inactive') return card.dataset.inactive === 'yes';
     if (currentFilter === 'pending') return card.dataset.status === 'pending';
     if (currentFilter === 'rejected') return card.dataset.status === 'rejected' || card.dataset.status === 'needs_revision';
     return true;
@@ -882,6 +892,14 @@
   });
 
   if (search) search.addEventListener('input', applyFilters);
+
+  root.querySelectorAll('.listing-card__image').forEach((image) => {
+    image.addEventListener('error', () => {
+      image.hidden = true;
+      const fallback = image.parentElement.querySelector('[data-listing-image-fallback]');
+      if (fallback) fallback.hidden = false;
+    }, { once: true });
+  });
 
   if (sort) {
     sort.addEventListener('change', () => {
