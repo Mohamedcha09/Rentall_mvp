@@ -1126,6 +1126,15 @@ def item_resubmit(request: Request, item_id: int, db: Session = Depends(get_db))
     if not it or it.owner_id != u["id"]:
         raise HTTPException(404, "Item not found")
 
+    is_admin = str(u.get("role") or "").lower() == "admin"
+    if not is_admin and (it.status or "").lower() not in {"rejected", "needs_revision"}:
+        _set_owner_items_notice(
+            request,
+            "error",
+            "Only a listing that needs changes can be resubmitted for review.",
+        )
+        return RedirectResponse(url="/owner/items", status_code=303)
+
     # Reset review status
     it.status = "pending"
     it.admin_feedback = None
