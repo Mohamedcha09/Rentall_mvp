@@ -1,363 +1,609 @@
 {% extends "base.html" %}
-{% block content %}
+{% set title = "Account & Settings | SEVOR" %}
+{% set meta_description = "Manage your SEVOR account preferences, profile photo, password, and support links." %}
+{% set current_currency = u.display_currency or request.cookies.get('disp_cur') or 'CAD' %}
+{% set avatar_url = u.avatar_path or '' %}
+{% set profile_initial = ((u.first_name or u.email or 'S')[:1])|upper %}
+{% set settings_error = request.query_params.get('err', '') if request else '' %}
 
-<!-- ===== زر الرجوع (iOS مثل Airbnb) ===== -->
-<a href="/" class="air-back">
-  <i class="bi bi-chevron-left"></i>
-</a>
-
-<!-- ===== الشريط الثابت الجديد ===== -->
-<div id="settingsSticky" class="settings-sticky-bar">
-    <a href="/" class="settings-sticky-back"><i class="bi bi-chevron-left"></i></a>
-    <div class="settings-sticky-title">Settings</div>
-    <div style="width:24px"></div>
-</div>
-
-<style>
-
-/* =====================================================
-   خلفية Airbnb — بيضاء وبسيطة
-===================================================== */
-body {
-    background: #F3F4FF !important;
-}
-
-/* =====================================================
-   إخفاء الهيدر + تابات + تاب بار (مثل Airbnb)
-===================================================== */
-header.topbar,
-.m-top-tabs,
-nav.desk-tabs,
-.mobile-tabbar {
-    display: none !important;
-}
-body.has-tabbar { padding-bottom:0 !important; }
-
-/* =====================================================
-   زر الرجوع
-===================================================== */
-.air-back {
-    position: fixed;
-    top: calc(env(safe-area-inset-top) + 12px);
-    left: 16px;
-    z-index: 9999;
-    background: #F3F4FF;
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    box-shadow: 0 4px 12px rgba(0,0,0,.12);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    color: #333;
-    backdrop-filter: blur(10px);
-}
-
-/* =====================================================
-   عنوان الصفحة — Airbnb style
-===================================================== */
-.settings-title {
-    font-size: 28px;
-    font-weight: 600;
-    margin-top: 80px;
-    margin-bottom: 24px;
-    transition: .3s ease;
-}
-
-/* ===== العنوان المصغّر (تم استبداله بالشريط الثابت) ===== */
-.settings-mini { display:none !important; }
-
-/* =====================================================
-   الشريط الثابت (Sticky Header)
-===================================================== */
-.settings-sticky-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    box-sizing: border-box;
-    height: calc(58px + env(safe-area-inset-top, 0px));
-    padding: calc(env(safe-area-inset-top) + 6px) 14px 8px 14px;
-    background: rgba(255,255,255,0.85);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    opacity: 0;
-    transform: translateY(-100%);
-    transition: all .35s ease;
-    z-index: 99999;
-}
-
-.settings-sticky-bar.show {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.settings-sticky-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: #111;
-}
-
-.settings-sticky-back {
-    font-size: 24px;
-    color: #333;
-}
-
-@media (max-width:768px){
-    /* The initial title must clear the safe-area positioned back button. */
-    .settings-title{ margin-top:max(80px, calc(env(safe-area-inset-top, 0px) + 66px)); }
-}
-
-.air-back {
-    transition: opacity .2s ease, transform .2s ease;
-}
-
-.air-back.is-hidden {
-    opacity: 0;
-    pointer-events: none;
-    transform: scale(.94);
-}
-
-@media (max-width: 768px) {
-    .settings-sticky-title,
-    .settings-title,
-    .air-block,
-    .help-text {
-        overflow-wrap: anywhere;
-    }
-}
-
-/* =====================================================
-   البلوكات (بدل الكارد)
-===================================================== */
-.air-block {
-    padding: 24px 0;
-    border-bottom: 1px solid #ededed;
-}
-
-.air-block h4 {
-    font-size: 20px;
-    font-weight: 600;
-    margin-bottom: 16px;
-}
-
-/* =====================================================
-   الـ Input — ستايل Airbnb
-===================================================== */
-.air-input, .air-select {
-    width: 100%;
-    border: 1px solid #dcdcdc;
-    padding: 12px 14px;
-    border-radius: 12px;
-    font-size: 16px;
-    background: #fafafa;
-}
-
-.air-input:focus, .air-select:focus {
-    border-color: #000;
-    background: #fff;
-    outline: none;
-}
-
-/* =====================================================
-   زر Sevor — Gradient Luxury
-===================================================== */
-.air-btn {
-    width: 100%;
-    background: linear-gradient(135deg, #8b5cf6, #5b9df9);
-    color: #fff;
-    border: none;
-    border-radius: 12px;
-    padding: 14px;
-    font-size: 17px;
-    font-weight: 600;
-    text-align: center;
-    box-shadow: 0 4px 14px rgba(91,157,249,0.25);
-    margin-top: 8px;
-    transition: 0.2s ease-in-out;
-}
-
-.air-btn:hover {
-    box-shadow: 0 6px 18px rgba(91,157,249,0.35);
-    opacity: 0.95;
-}
-
-.air-btn:active {
-    transform: scale(0.97);
-}
-
-/* نصوص إضافية */
-.help-text {
-    font-size: 14px;
-    color: #777;
-}
-
-/* ===== إخفاء أي Banner مهما كان اسمه ===== */
-.stripe-callout,
-.payouts-callout,
-.connect-banner,
-.connect-now-banner,
-.payout-banner,
-.stripe-connect-banner,
-.connect-stripe,
-.stripe-box,
-.stripe_info,
-.stripe-info,
-.banner,
-.alert-stripe,
-.top-banner,
-.notice-stripe,
-#stripe-connect,
-[data-section="stripe"],
-div[class*="stripe"],
-section[class*="stripe"],
-div[class*="connect"],
-section[class*="connect"] {
-    display: none !important;
-    visibility: hidden !important;
-    height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-}
-
-/* This fixed-control route keeps its phone spacing and wrapping on iPad Safari. */
-@supports (-webkit-touch-callout: none) {
-  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
-    body[data-path="/settings"] header.topbar,
-    body[data-path="/settings"] .m-top-tabs.d-lg-none,
-    body[data-path="/settings"] .mobile-tabbar.d-lg-none {
-      display: none !important;
-    }
-
-    body[data-path="/settings"] .page {
-      padding-bottom: 0 !important;
-    }
-
-    .settings-title {
-      margin-top: max(80px, calc(env(safe-area-inset-top, 0px) + 66px));
-    }
-
-    .settings-sticky-title,
-    .settings-title,
-    .air-block,
-    .help-text {
-      overflow-wrap: anywhere;
-    }
+{% block head %}
+<style id="sevor-settings-center">
+  /* Account & Settings Center only. Shared controls and other pages stay untouched. */
+  body[data-path="/settings"] .page{
+    background:
+      radial-gradient(760px 470px at 100% 0, rgba(124,92,255,.13), transparent 68%),
+      radial-gradient(640px 430px at -9% 38%, rgba(0,185,217,.09), transparent 67%);
   }
-}
+  body[data-path="/settings"] .paypal-callout{
+    max-width:1180px;
+    margin:18px auto 0;
+    gap:12px;
+    flex-wrap:wrap;
+    border-radius:18px;
+  }
+  body[data-path="/settings"] .paypal-callout > *{ min-width:0; }
 
+  .settings-page{
+    --settings-primary:var(--primary, #7c5cff);
+    --settings-primary-deep:var(--primary-2, #5a3eff);
+    --settings-cyan:#00b8d9;
+    --settings-ink:var(--text, #111827);
+    --settings-muted:var(--muted, #667085);
+    --settings-surface:rgba(255,255,255,.84);
+    --settings-solid:#fff;
+    --settings-border:rgba(90,62,255,.15);
+    --settings-shadow:0 20px 48px rgba(30,35,65,.10);
+    --settings-soft-shadow:0 10px 26px rgba(30,35,65,.075);
+    width:min(1180px, 100%);
+    margin-inline:auto;
+    padding:max(18px, calc(env(safe-area-inset-top, 0px) + 12px)) 0 calc(clamp(44px,6vw,78px) + env(safe-area-inset-bottom, 0px));
+    color:var(--settings-ink);
+  }
+  .settings-page, .settings-page *{ box-sizing:border-box; }
+  .settings-page :is(h1,h2,h3,p,span,a,button,label,legend,small,dd,dt){ overflow-wrap:anywhere; }
+  .settings-page a{ color:inherit; }
+  .settings-page :focus-visible{ outline:3px solid var(--settings-cyan); outline-offset:3px; }
+  [data-theme="dark"] .settings-page{
+    --settings-primary-deep:#d5cfff;
+    --settings-cyan:#8cecfb;
+    --settings-surface:rgba(16,25,45,.88);
+    --settings-solid:#10192d;
+    --settings-border:rgba(184,172,255,.24);
+    --settings-shadow:0 20px 48px rgba(0,0,0,.30);
+    --settings-soft-shadow:0 10px 26px rgba(0,0,0,.22);
+  }
+
+  .settings-hero{
+    position:relative;
+    display:grid;
+    grid-template-columns:minmax(0,1.15fr) minmax(220px,.64fr);
+    gap:clamp(22px,4vw,56px);
+    align-items:center;
+    overflow:hidden;
+    padding:clamp(25px,5vw,60px);
+    border:1px solid rgba(255,255,255,.23);
+    border-radius:clamp(24px,4vw,36px);
+    background:linear-gradient(135deg, rgba(89,57,236,.98), rgba(116,82,255,.95) 58%, rgba(0,174,206,.92));
+    color:#fff;
+    box-shadow:var(--settings-shadow);
+    animation:settings-rise .42s ease both;
+  }
+  .settings-hero::before,.settings-hero::after{ content:""; position:absolute; pointer-events:none; border-radius:999px; }
+  .settings-hero::before{ width:350px; height:350px; right:-136px; bottom:-204px; background:rgba(255,255,255,.11); }
+  .settings-hero::after{ width:220px; height:220px; left:53%; top:-116px; border:1px solid rgba(255,255,255,.25); }
+  .settings-hero__content,.settings-hero__summary{ position:relative; z-index:1; min-width:0; }
+  .settings-back{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    min-height:44px;
+    padding:8px 11px;
+    border:1px solid rgba(255,255,255,.30);
+    border-radius:999px;
+    background:rgba(255,255,255,.12);
+    color:#fff !important;
+    font-size:.9rem;
+    font-weight:850;
+    text-decoration:none;
+    transition:transform .18s ease, background .18s ease;
+  }
+  .settings-back:hover{ transform:translateX(-2px); background:rgba(255,255,255,.19); }
+  .settings-kicker{ margin:24px 0 9px; color:rgba(255,255,255,.75); font-size:.78rem; font-weight:900; letter-spacing:.13em; }
+  .settings-hero h1{ max-width:720px; margin:0; font-size:clamp(2.2rem,4.8vw,4.4rem); line-height:.98; letter-spacing:-.055em; }
+  .settings-hero__lead{ max-width:660px; margin:18px 0 0; color:rgba(255,255,255,.90); font-size:clamp(1rem,1.5vw,1.16rem); line-height:1.65; }
+  .settings-hero__summary{
+    display:grid;
+    gap:10px;
+    padding:clamp(18px,3vw,26px);
+    border:1px solid rgba(255,255,255,.24);
+    border-radius:23px;
+    background:rgba(255,255,255,.12);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+  }
+  .settings-hero__summary i{ font-size:1.62rem; }
+  .settings-hero__summary strong{ font-size:1.05rem; }
+  .settings-hero__summary span{ color:rgba(255,255,255,.84); line-height:1.5; }
+
+  .settings-layout{ display:grid; gap:clamp(18px,3vw,30px); margin-top:clamp(22px,4vw,42px); }
+  .settings-nav{
+    display:none;
+    align-content:start;
+    gap:8px;
+    min-width:0;
+    padding:16px;
+    border:1px solid var(--settings-border);
+    border-radius:22px;
+    background:var(--settings-surface);
+    box-shadow:var(--settings-soft-shadow);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+  }
+  .settings-nav__label{ margin:0 0 4px; padding:0 9px; color:var(--settings-muted); font-size:.75rem; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+  .settings-nav a{ display:flex; align-items:center; gap:10px; min-height:43px; padding:9px; border-radius:12px; color:var(--settings-muted); font-size:.92rem; font-weight:800; text-decoration:none; transition:background .18s ease, color .18s ease, transform .18s ease; }
+  .settings-nav a:hover{ transform:translateX(2px); background:rgba(124,92,255,.09); color:var(--settings-primary-deep); }
+  .settings-content{ display:grid; gap:clamp(18px,3vw,26px); min-width:0; }
+  .settings-section,.settings-profile-card{
+    min-width:0;
+    padding:clamp(20px,4vw,34px);
+    border:1px solid var(--settings-border);
+    border-radius:clamp(22px,3vw,30px);
+    background:var(--settings-surface);
+    box-shadow:var(--settings-soft-shadow);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+    animation:settings-rise .45s ease both;
+  }
+  .settings-section:nth-child(2){ animation-delay:.03s; }
+  .settings-section:nth-child(3){ animation-delay:.06s; }
+  .settings-section:nth-child(4){ animation-delay:.09s; }
+  .settings-section:nth-child(5){ animation-delay:.12s; }
+  .settings-section__eyebrow{ display:flex; align-items:center; gap:8px; margin:0 0 8px; color:var(--settings-primary-deep); font-size:.78rem; font-weight:900; letter-spacing:.09em; text-transform:uppercase; }
+  .settings-section__eyebrow i{ color:var(--settings-cyan); }
+  .settings-section h2,.settings-profile-card h2{ margin:0; font-size:clamp(1.3rem,2vw,1.72rem); letter-spacing:-.03em; }
+  .settings-section__lead{ max-width:720px; margin:10px 0 0; color:var(--settings-muted); line-height:1.58; }
+
+  .settings-alert{ display:flex; gap:10px; align-items:flex-start; margin:0; padding:13px 14px; border:1px solid transparent; border-radius:15px; font-size:.91rem; line-height:1.5; }
+  .settings-alert--success{ border-color:rgba(22,128,63,.23); background:rgba(34,197,94,.10); color:#166534; }
+  .settings-alert--error{ border-color:rgba(180,35,24,.24); background:rgba(239,68,68,.09); color:#9f1d16; }
+  [data-theme="dark"] .settings-alert--success{ color:#9af0b4; }
+  [data-theme="dark"] .settings-alert--error{ color:#ffb4ab; }
+  .settings-alerts{ display:grid; gap:10px; }
+
+  .settings-profile-card{ display:grid; grid-template-columns:auto minmax(0,1fr); gap:clamp(16px,3vw,26px); align-items:center; }
+  .settings-avatar-wrap{ position:relative; flex:0 0 auto; width:clamp(92px,14vw,126px); height:clamp(92px,14vw,126px); }
+  .settings-avatar{
+    display:grid;
+    width:100%; height:100%; place-items:center;
+    overflow:hidden;
+    border:4px solid rgba(255,255,255,.75);
+    border-radius:50%;
+    background:linear-gradient(135deg, var(--settings-primary), var(--settings-cyan));
+    color:#fff;
+    box-shadow:0 14px 27px rgba(90,62,255,.25);
+    font-size:clamp(2rem,5vw,3rem);
+    font-weight:900;
+  }
+  .settings-avatar img{ width:100%; height:100%; object-fit:cover; }
+  .settings-profile-card__copy{ min-width:0; }
+  .settings-profile-card__copy p{ margin:8px 0 0; color:var(--settings-muted); line-height:1.5; }
+  .settings-profile-card__email{ display:block; margin-top:4px; color:var(--settings-muted); font-size:.94rem; }
+  .settings-profile-card__badge{ display:inline-flex; align-items:center; gap:6px; min-height:28px; margin-top:13px; padding:5px 9px; border:1px solid var(--settings-border); border-radius:999px; background:var(--settings-solid); color:var(--settings-primary-deep); font-size:.78rem; font-weight:850; }
+
+  .settings-photo-grid{ display:grid; grid-template-columns:auto minmax(0,1fr); gap:clamp(17px,3vw,26px); align-items:center; margin-top:24px; }
+  .settings-photo-grid .settings-avatar-wrap{ width:94px; height:94px; }
+  .settings-photo-copy{ min-width:0; }
+  .settings-photo-copy h3{ margin:0; font-size:1.06rem; }
+  .settings-photo-copy p{ margin:6px 0 0; color:var(--settings-muted); font-size:.92rem; line-height:1.52; }
+  .settings-photo-actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top:15px; }
+  .settings-file-input{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
+  .settings-button,.settings-button--secondary,.settings-button--danger{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    min-height:46px; padding:11px 15px; border-radius:14px;
+    font:inherit; font-size:.93rem; font-weight:900; text-decoration:none; cursor:pointer;
+    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease, opacity .18s ease;
+  }
+  .settings-button{ border:0; background:linear-gradient(135deg, var(--settings-primary), var(--settings-primary-deep)); color:#fff !important; box-shadow:0 10px 22px rgba(90,62,255,.25); }
+  .settings-button--secondary{ border:1px solid var(--settings-border); background:var(--settings-solid); color:var(--settings-primary-deep) !important; }
+  .settings-button--danger{ border:1px solid rgba(180,35,24,.25); background:rgba(239,68,68,.07); color:#a61b16 !important; }
+  .settings-button:hover:not(:disabled),.settings-button--secondary:hover,.settings-button--danger:hover{ transform:translateY(-2px); }
+  .settings-button:hover:not(:disabled){ box-shadow:0 14px 28px rgba(90,62,255,.32); }
+  .settings-button--secondary:hover{ border-color:rgba(124,92,255,.45); background:rgba(124,92,255,.07); }
+  .settings-button--danger:hover{ border-color:rgba(180,35,24,.42); background:rgba(239,68,68,.11); }
+  .settings-button:disabled{ cursor:wait; opacity:.72; box-shadow:none; }
+  .settings-button__spinner{ display:none; width:15px; height:15px; border:2px solid rgba(255,255,255,.45); border-top-color:#fff; border-radius:50%; animation:settings-spin .7s linear infinite; }
+  form[aria-busy="true"] .settings-button__spinner{ display:block; }
+  .settings-form-status{ min-height:1.25em; margin:12px 0 0; color:var(--settings-muted); font-size:.87rem; line-height:1.4; }
+  .settings-selection-note{ display:none; align-items:center; gap:7px; margin:12px 0 0; color:var(--settings-primary-deep); font-size:.88rem; font-weight:800; }
+  .settings-selection-note.is-visible{ display:flex; }
+
+  .settings-identity-list{ display:grid; gap:0; margin:23px 0 0; padding:0; border:1px solid var(--settings-border); border-radius:18px; overflow:hidden; background:var(--settings-solid); }
+  .settings-identity-list > div{ display:grid; grid-template-columns:minmax(100px,.55fr) minmax(0,1.45fr) auto; gap:14px; align-items:center; min-width:0; padding:15px 16px; border-bottom:1px solid var(--settings-border); }
+  .settings-identity-list > div:last-child{ border-bottom:0; }
+  .settings-identity-list dt{ color:var(--settings-muted); font-size:.89rem; font-weight:800; }
+  .settings-identity-list dd{ min-width:0; margin:0; font-weight:850; }
+  .settings-locked{ display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:10px; background:rgba(124,92,255,.10); color:var(--settings-primary-deep); }
+  .settings-identity-note{ display:flex; align-items:flex-start; gap:10px; margin-top:17px; color:var(--settings-muted); font-size:.92rem; line-height:1.55; }
+  .settings-identity-note i{ flex:0 0 auto; margin-top:3px; color:var(--settings-cyan); }
+  .settings-inline-actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
+
+  .settings-password-form,.settings-currency-form{ display:grid; gap:17px; margin-top:24px; }
+  .settings-field{ min-width:0; }
+  .settings-field label{ display:block; margin:0 0 8px; font-weight:850; }
+  .settings-field__hint{ display:block; margin-top:8px; color:var(--settings-muted); font-size:.86rem; line-height:1.45; }
+  .settings-input-wrap{ position:relative; min-width:0; }
+  .settings-input,.settings-select{
+    width:100%; min-width:0; min-height:52px; padding:12px 14px;
+    border:1px solid color-mix(in srgb, var(--settings-border) 88%, transparent);
+    border-radius:14px; background:var(--settings-solid); color:var(--settings-ink);
+    box-shadow:none; font:inherit; line-height:1.45;
+    transition:border-color .18s ease, box-shadow .18s ease, background .18s ease;
+  }
+  .settings-input--password{ padding-inline-end:51px; }
+  .settings-input:focus,.settings-select:focus{ border-color:var(--settings-primary); background:var(--settings-solid); box-shadow:0 0 0 4px rgba(124,92,255,.14); outline:0; }
+  .settings-input[aria-invalid="true"]{ border-color:#c43229; box-shadow:0 0 0 4px rgba(196,50,41,.11); }
+  .settings-password-toggle{ position:absolute; top:50%; inset-inline-end:7px; display:grid; width:38px; height:38px; place-items:center; transform:translateY(-50%); border:0; border-radius:11px; background:transparent; color:var(--settings-primary-deep); cursor:pointer; }
+  .settings-password-toggle:hover{ background:rgba(124,92,255,.09); }
+  .settings-password-feedback{ min-height:1.25em; margin:0; color:#a61b16; font-size:.87rem; line-height:1.4; }
+  .settings-form-actions{ display:flex; flex-wrap:wrap; align-items:center; gap:11px; }
+
+  .settings-currency-preview{ display:flex; gap:12px; align-items:flex-start; margin-top:5px; padding:14px; border:1px solid var(--settings-border); border-radius:16px; background:rgba(0,185,217,.065); }
+  .settings-currency-preview i{ flex:0 0 auto; color:#008da8; font-size:1.1rem; }
+  .settings-currency-preview p{ margin:0; color:var(--settings-muted); font-size:.91rem; line-height:1.5; }
+
+  .settings-resource-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:24px; }
+  .settings-resource-card{ display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:12px; align-items:start; min-width:0; min-height:120px; padding:17px; border:1px solid var(--settings-border); border-radius:18px; background:var(--settings-solid); color:var(--settings-ink); text-decoration:none; transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease; }
+  .settings-resource-card:hover{ transform:translateY(-2px); border-color:rgba(124,92,255,.44); background:rgba(124,92,255,.045); box-shadow:var(--settings-soft-shadow); }
+  .settings-resource-card__icon{ display:grid; width:39px; height:39px; place-items:center; border-radius:13px; background:rgba(124,92,255,.12); color:var(--settings-primary-deep); font-size:1.04rem; }
+  .settings-resource-card__copy{ min-width:0; }
+  .settings-resource-card strong,.settings-resource-card span{ display:block; }
+  .settings-resource-card strong{ font-size:.98rem; line-height:1.32; }
+  .settings-resource-card span{ margin-top:5px; color:var(--settings-muted); font-size:.84rem; line-height:1.43; }
+  .settings-resource-card > i{ align-self:center; color:var(--settings-primary-deep); }
+  .settings-danger{ border-color:rgba(180,35,24,.22); background:linear-gradient(145deg, rgba(239,68,68,.075), var(--settings-surface)); }
+  .settings-danger .settings-section__eyebrow{ color:#a61b16; }
+  .settings-danger .settings-section__eyebrow i{ color:#c43229; }
+  .settings-danger h2{ color:#8d1914; }
+
+  @keyframes settings-rise{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
+  @keyframes settings-spin{ to{ transform:rotate(360deg); } }
+  @media (min-width:900px){
+    body[data-path="/settings"] .page{ padding-top:clamp(18px,2vw,28px) !important; }
+    .settings-layout{ grid-template-columns:minmax(190px,.43fr) minmax(0,1.57fr); align-items:start; }
+    .settings-nav{ display:grid; position:sticky; top:22px; }
+  }
+  @media (max-width:699px){
+    .settings-hero{ grid-template-columns:1fr; }
+    .settings-hero__summary{ max-width:520px; }
+  }
+  @media (max-width:560px){
+    .settings-page{ padding-top:max(14px, calc(env(safe-area-inset-top, 0px) + 8px)); }
+    .settings-hero{ padding:25px 20px; }
+    .settings-hero h1{ font-size:clamp(2.02rem,11vw,3rem); }
+    .settings-profile-card{ grid-template-columns:1fr; justify-items:start; }
+    .settings-photo-grid{ grid-template-columns:1fr; }
+    .settings-identity-list > div{ grid-template-columns:1fr auto; gap:5px 12px; }
+    .settings-identity-list dt{ grid-column:1 / 2; }
+    .settings-identity-list dd{ grid-column:1 / 2; }
+    .settings-locked{ grid-column:2 / 3; grid-row:1 / 3; align-self:center; }
+    .settings-resource-grid{ grid-template-columns:1fr; }
+    .settings-form-actions,.settings-form-actions .settings-button{ width:100%; }
+  }
+  @media (max-width:370px){
+    .settings-hero{ padding:22px 17px; }
+    .settings-section,.settings-profile-card{ padding:20px 16px; }
+    .settings-photo-actions,.settings-photo-actions .settings-button--secondary,.settings-photo-actions .settings-button{ width:100%; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .settings-page *, .settings-page *::before, .settings-page *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; transition-duration:.01ms !important; }
+  }
 </style>
+{% endblock %}
 
-<div class="container" style="max-width:760px">
+{% block content %}
+<div class="settings-page" aria-labelledby="settings-page-title">
+  <section class="settings-hero">
+    <div class="settings-hero__content">
+      <a class="settings-back" href="/profile" aria-label="Back to My Profile"><i class="bi bi-arrow-left" aria-hidden="true"></i><span>Back to profile</span></a>
+      <p class="settings-kicker">SEVOR ACCOUNT</p>
+      <h1 id="settings-page-title">Account &amp; Settings</h1>
+      <p class="settings-hero__lead">Manage the profile details, preferences, and account tools that are available to you in SEVOR.</p>
+    </div>
+    <aside class="settings-hero__summary" aria-label="Settings overview">
+      <i class="bi bi-sliders2-vertical" aria-hidden="true"></i>
+      <strong>Your account, in one place</strong>
+      <span>Update your profile photo and preferences, keep your password current, and find account help when you need it.</span>
+    </aside>
+  </section>
 
-  <!-- العنوان الكبير -->
-  <div class="settings-title">Settings</div>
+  <div class="settings-layout">
+    <nav class="settings-nav" aria-label="Settings sections">
+      <p class="settings-nav__label">Settings</p>
+      <a href="#account"><i class="bi bi-person" aria-hidden="true"></i>Account</a>
+      <a href="#security"><i class="bi bi-shield-lock" aria-hidden="true"></i>Security</a>
+      <a href="#preferences"><i class="bi bi-currency-exchange" aria-hidden="true"></i>Preferences</a>
+      <a href="#resources"><i class="bi bi-grid" aria-hidden="true"></i>Privacy &amp; support</a>
+      <a href="#account-management"><i class="bi bi-person-gear" aria-hidden="true"></i>Account management</a>
+    </nav>
 
-  <!-- Alerts -->
-  {% if request.query_params.get('saved') %}
-    <div class="alert alert-success">Profile data saved ✅</div>
-  {% endif %}
-  {% if request.query_params.get('pwd_ok') %}
-    <div class="alert alert-success">Password changed ✅</div>
-  {% endif %}
-  {% if request.query_params.get('cur_saved') %}
-    <div class="alert alert-success">Currency updated ✅</div>
-  {% endif %}
+    <div class="settings-content">
+      <div class="settings-alerts" aria-live="polite">
+        {% if request.query_params.get('saved') %}
+          <div class="settings-alert settings-alert--success" role="status"><i class="bi bi-check-circle-fill" aria-hidden="true"></i><span>Your profile photo has been saved.</span></div>
+        {% endif %}
+        {% if request.query_params.get('pwd_ok') %}
+          <div class="settings-alert settings-alert--success" role="status"><i class="bi bi-check-circle-fill" aria-hidden="true"></i><span>Your password has been updated.</span></div>
+        {% endif %}
+        {% if request.query_params.get('cur_saved') %}
+          <div class="settings-alert settings-alert--success" role="status"><i class="bi bi-check-circle-fill" aria-hidden="true"></i><span>Your preferred display currency has been updated.</span></div>
+        {% endif %}
+        {% if settings_error == 'bad_current' %}
+          <div class="settings-alert settings-alert--error" role="alert"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span>The current password you entered is not correct.</span></div>
+        {% elif settings_error == 'mismatch' %}
+          <div class="settings-alert settings-alert--error" role="alert"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span>Enter a new password and make sure the confirmation matches it.</span></div>
+        {% endif %}
+      </div>
 
-  <!-- =====================================================
-       Profile Section
-  ====================================================== -->
-  <div class="air-block">
-    <h4>Profile</h4>
+      <section class="settings-profile-card" id="account" aria-labelledby="settings-profile-title">
+        <div class="settings-avatar-wrap">
+          <div class="settings-avatar" aria-hidden="true">
+            <img id="settingsOverviewAvatar" {% if avatar_url %}src="{{ avatar_url }}"{% endif %} alt="" {% if not avatar_url %}hidden{% endif %}>
+            <span id="settingsOverviewInitial" {% if avatar_url %}hidden{% endif %}>{{ profile_initial }}</span>
+          </div>
+        </div>
+        <div class="settings-profile-card__copy">
+          <p class="settings-section__eyebrow"><i class="bi bi-person-circle" aria-hidden="true"></i>Account overview</p>
+          <h2 id="settings-profile-title">{{ (u.first_name or '') ~ (' ' if u.first_name and u.last_name else '') ~ (u.last_name or '') }}</h2>
+          <span class="settings-profile-card__email">{{ u.email or '' }}</span>
+          <p>Keep the settings available to your account organized from one dedicated place.</p>
+          {% if u.is_verified %}<span class="settings-profile-card__badge"><i class="bi bi-patch-check-fill" aria-hidden="true"></i>Verified</span>{% endif %}
+        </div>
+      </section>
 
-    <form method="post" action="/settings/profile" enctype="multipart/form-data" class="vstack gap-3">
+      <section class="settings-section" aria-labelledby="settings-photo-title">
+        <p class="settings-section__eyebrow"><i class="bi bi-camera" aria-hidden="true"></i>Profile photo</p>
+        <h2 id="settings-photo-title">Make your profile recognizable</h2>
+        <p class="settings-section__lead">Choose a JPG, JPEG, PNG, or WebP image. You can review the preview here before saving it to your profile.</p>
+        <form method="post" action="/settings/profile" enctype="multipart/form-data" class="settings-photo-form" data-avatar-form aria-describedby="settings-avatar-status">
+          <input class="settings-file-input" id="settings-avatar-input" type="file" name="avatar" accept=".jpg,.jpeg,.png,.webp" data-avatar-input>
+          <div class="settings-photo-grid">
+            <div class="settings-avatar-wrap">
+              <div class="settings-avatar" aria-live="polite">
+                <img id="settingsAvatarPreview" {% if avatar_url %}src="{{ avatar_url }}"{% endif %} alt="Current profile photo" {% if not avatar_url %}hidden{% endif %}>
+                <span id="settingsAvatarInitial" {% if avatar_url %}hidden{% endif %}>{{ profile_initial }}</span>
+              </div>
+            </div>
+            <div class="settings-photo-copy">
+              <h3>Profile picture</h3>
+              <p>Use a photo that helps people recognize your account. The new image is uploaded only after you save.</p>
+              <div class="settings-photo-actions">
+                <button class="settings-button--secondary" type="button" data-avatar-trigger><i class="bi bi-camera" aria-hidden="true"></i><span>Change photo</span></button>
+                <button class="settings-button--secondary" type="button" data-avatar-cancel hidden><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Cancel selection</span></button>
+              </div>
+              <p class="settings-selection-note" id="settings-avatar-selection"><i class="bi bi-check2-circle" aria-hidden="true"></i><span>New photo selected and ready to save.</span></p>
+            </div>
+          </div>
+          <div class="settings-form-actions" style="margin-top:24px">
+            <button class="settings-button" type="submit" data-avatar-save><span data-avatar-save-label>Save profile photo</span><span class="settings-button__spinner" aria-hidden="true"></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button>
+          </div>
+          <p class="settings-form-status" id="settings-avatar-status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
 
-      <label>First name</label>
-      <input class="air-input" name="first_name" value="{{ u.first_name or '' }}">
+      <section class="settings-section" aria-labelledby="settings-identity-title">
+        <p class="settings-section__eyebrow"><i class="bi bi-lock" aria-hidden="true"></i>Identity information</p>
+        <h2 id="settings-identity-title">Protected account details</h2>
+        <p class="settings-section__lead">For account security, changes to your name or email must be requested through SEVOR Support.</p>
+        <dl class="settings-identity-list" aria-label="Locked account information">
+          <div><dt>First name</dt><dd>{{ u.first_name or '' }}</dd><span class="settings-locked" title="Managed through support"><i class="bi bi-lock-fill" aria-hidden="true"></i><span class="visually-hidden">Locked</span></span></div>
+          <div><dt>Last name</dt><dd>{{ u.last_name or '' }}</dd><span class="settings-locked" title="Managed through support"><i class="bi bi-lock-fill" aria-hidden="true"></i><span class="visually-hidden">Locked</span></span></div>
+          <div><dt>Email</dt><dd>{{ u.email or '' }}</dd><span class="settings-locked" title="Managed through support"><i class="bi bi-lock-fill" aria-hidden="true"></i><span class="visually-hidden">Locked</span></span></div>
+        </dl>
+        <p class="settings-identity-note"><i class="bi bi-info-circle" aria-hidden="true"></i><span>Need to change your name or email? Contact SEVOR Support and include only the information relevant to your request.</span></p>
+        <div class="settings-inline-actions"><a class="settings-button--secondary" href="/support/new"><i class="bi bi-headset" aria-hidden="true"></i>Request a change</a></div>
+      </section>
 
-      <label>Last name</label>
-      <input class="air-input" name="last_name" value="{{ u.last_name or '' }}">
+      <section class="settings-section" id="security" aria-labelledby="settings-security-title">
+        <p class="settings-section__eyebrow"><i class="bi bi-shield-lock" aria-hidden="true"></i>Security</p>
+        <h2 id="settings-security-title">Change password</h2>
+        <p class="settings-section__lead">Choose a strong password you do not use elsewhere. Your current password is required to save a new one.</p>
+        <form method="post" action="/settings/password" class="settings-password-form" data-password-form aria-describedby="settings-password-status settings-password-feedback">
+          <div class="settings-field">
+            <label for="settings-current-password">Current password</label>
+            <div class="settings-input-wrap"><input class="settings-input settings-input--password" id="settings-current-password" type="password" name="current" autocomplete="current-password" required><button class="settings-password-toggle" type="button" data-password-toggle data-target="settings-current-password" aria-pressed="false" aria-label="Show current password"><i class="bi bi-eye" aria-hidden="true"></i></button></div>
+          </div>
+          <div class="settings-field">
+            <label for="settings-new-password">New password</label>
+            <div class="settings-input-wrap"><input class="settings-input settings-input--password" id="settings-new-password" type="password" name="password" autocomplete="new-password" required aria-describedby="settings-password-feedback"><button class="settings-password-toggle" type="button" data-password-toggle data-target="settings-new-password" aria-pressed="false" aria-label="Show new password"><i class="bi bi-eye" aria-hidden="true"></i></button></div>
+          </div>
+          <div class="settings-field">
+            <label for="settings-confirm-password">Confirm new password</label>
+            <div class="settings-input-wrap"><input class="settings-input settings-input--password" id="settings-confirm-password" type="password" name="confirm" autocomplete="new-password" required aria-describedby="settings-password-feedback"><button class="settings-password-toggle" type="button" data-password-toggle data-target="settings-confirm-password" aria-pressed="false" aria-label="Show confirmation password"><i class="bi bi-eye" aria-hidden="true"></i></button></div>
+          </div>
+          <p class="settings-password-feedback" id="settings-password-feedback" role="status" aria-live="polite"></p>
+          <div class="settings-form-actions">
+            <button class="settings-button" type="submit" data-password-save><span data-password-save-label>Update password</span><span class="settings-button__spinner" aria-hidden="true"></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button>
+          </div>
+          <p class="settings-form-status" id="settings-password-status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
 
-      <label>Email</label>
-      <input class="air-input" type="email" name="email" value="{{ u.email or '' }}">
-      <div class="help-text">Changing your email may require re-verification.</div>
+      <section class="settings-section" id="preferences" aria-labelledby="settings-preferences-title">
+        <p class="settings-section__eyebrow"><i class="bi bi-currency-exchange" aria-hidden="true"></i>Preferences</p>
+        <h2 id="settings-preferences-title">Preferred display currency</h2>
+        <p class="settings-section__lead">Choose the currency SEVOR currently uses to display prices in your session.</p>
+        <form method="post" action="/settings/currency" class="settings-currency-form" data-currency-form aria-describedby="settings-currency-status">
+          <div class="settings-field">
+            <label for="settings-currency">Currency</label>
+            <select class="settings-select" id="settings-currency" name="cur">
+              <option value="CAD" {% if current_currency == 'CAD' %}selected{% endif %}>CAD — Canadian Dollar</option>
+              <option value="USD" {% if current_currency == 'USD' %}selected{% endif %}>USD — US Dollar</option>
+              <option value="EUR" {% if current_currency == 'EUR' %}selected{% endif %}>EUR — Euro</option>
+            </select>
+          </div>
+          <div class="settings-currency-preview"><i class="bi bi-info-circle" aria-hidden="true"></i><p>This updates the preferred display currency only; it does not change an item’s listed price or the existing payment logic.</p></div>
+          <div class="settings-form-actions"><button class="settings-button" type="submit" data-currency-save><span data-currency-save-label>Save currency</span><span class="settings-button__spinner" aria-hidden="true"></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button></div>
+          <p class="settings-form-status" id="settings-currency-status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
 
-      <label>Profile picture</label>
-      <input class="air-input" type="file" name="avatar" accept=".jpg,.jpeg,.png,.webp">
+      <section class="settings-section" id="resources" aria-labelledby="settings-resources-title">
+        <p class="settings-section__eyebrow"><i class="bi bi-grid" aria-hidden="true"></i>Privacy &amp; support</p>
+        <h2 id="settings-resources-title">Helpful account tools</h2>
+        <p class="settings-section__lead">Open the existing SEVOR tools you need without changing the way any of them work.</p>
+        <div class="settings-resource-grid">
+          <a class="settings-resource-card" href="/payout/settings"><span class="settings-resource-card__icon"><i class="bi bi-cash-stack" aria-hidden="true"></i></span><span class="settings-resource-card__copy"><strong>Payout preferences</strong><span>Choose how you receive eligible rental earnings.</span></span><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+          <a class="settings-resource-card" href="/privacy"><span class="settings-resource-card__icon"><i class="bi bi-shield-check" aria-hidden="true"></i></span><span class="settings-resource-card__copy"><strong>Privacy Center</strong><span>Read SEVOR’s current privacy information.</span></span><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+          <a class="settings-resource-card" href="/support/new"><span class="settings-resource-card__icon"><i class="bi bi-headset" aria-hidden="true"></i></span><span class="settings-resource-card__copy"><strong>Contact Support</strong><span>Send a support request through the current ticket flow.</span></span><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+          <a class="settings-resource-card" href="/support/my"><span class="settings-resource-card__icon"><i class="bi bi-ticket-perforated" aria-hidden="true"></i></span><span class="settings-resource-card__copy"><strong>My Support Requests</strong><span>Track existing tickets and continue their conversations.</span></span><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+        </div>
+      </section>
 
-      {% if u.avatar_path %}
-      <img src="{{ u.avatar_path }}" class="mt-2 rounded-circle" style="width:72px;height:72px;object-fit:cover">
-      {% endif %}
-
-      <button class="air-btn">Save</button>
-    </form>
+      <section class="settings-section" id="account-management" aria-labelledby="settings-management-title">
+        <p class="settings-section__eyebrow"><i class="bi bi-person-gear" aria-hidden="true"></i>Account management</p>
+        <h2 id="settings-management-title">Manage account actions carefully</h2>
+        <p class="settings-section__lead">Use these existing SEVOR flows when you need to update requested documents or manage your account.</p>
+        <div class="settings-resource-grid">
+          <a class="settings-resource-card" href="/profile/docs"><span class="settings-resource-card__icon"><i class="bi bi-file-earmark-text" aria-hidden="true"></i></span><span class="settings-resource-card__copy"><strong>Verification documents</strong><span>Review or update documents through the existing verification flow.</span></span><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+          <a class="settings-resource-card settings-danger" href="/account/delete"><span class="settings-resource-card__icon"><i class="bi bi-trash3" aria-hidden="true"></i></span><span class="settings-resource-card__copy"><strong>Delete account</strong><span>Open the existing account deletion flow to review this irreversible action.</span></span><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+        </div>
+      </section>
+    </div>
   </div>
-
-  <!-- =====================================================
-       Change Password
-  ====================================================== -->
-  <div class="air-block">
-    <h4>Change password</h4>
-
-    <form method="post" action="/settings/password" class="vstack gap-3">
-
-      <label>Current password</label>
-      <input class="air-input" type="password" name="current">
-
-      <label>New password</label>
-      <input class="air-input" type="password" name="password">
-
-      <label>Confirm password</label>
-      <input class="air-input" type="password" name="confirm">
-
-      <button class="air-btn">Update Password</button>
-    </form>
-  </div>
-
-  <!-- =====================================================
-       Currency
-  ====================================================== -->
-  {% set _cur = (u.display_currency or request.cookies.get('disp_cur') or 'CAD') %}
-
-  <div class="air-block">
-    <h4>Currency</h4>
-
-    <form method="post" action="/settings/currency" class="vstack gap-3">
-
-      <select class="air-select" name="cur">
-        <option value="CAD" {% if _cur == 'CAD' %}selected{% endif %}>CAD — Canadian Dollar</option>
-        <option value="USD" {% if _cur == 'USD' %}selected{% endif %}>USD — US Dollar</option>
-        <option value="EUR" {% if _cur == 'EUR' %}selected{% endif %}>EUR — Euro</option>
-      </select>
-
-      <button class="air-btn">Save</button>
-    </form>
-  </div>
-
 </div>
+{% endblock %}
 
-<!-- =====================================================
-     سكربت الشريط الثابت — مثل Airbnb
-===================================================== -->
+{% block scripts %}
 <script>
-function syncSettingsSticky() {
-    const bar = document.getElementById("settingsSticky");
-    const back = document.querySelector(".air-back");
-    const shown = window.scrollY > 100;
+(() => {
+  const page = document.querySelector('.settings-page');
+  if (!page) return;
 
-    if (shown) {
-        bar.classList.add("show");
-    } else {
-        bar.classList.remove("show");
-    }
-    if (back) back.classList.toggle("is-hidden", shown);
-}
-window.addEventListener("scroll", syncSettingsSticky, { passive: true });
-syncSettingsSticky();
+  const avatarInput = page.querySelector('[data-avatar-input]');
+  const avatarTrigger = page.querySelector('[data-avatar-trigger]');
+  const avatarCancel = page.querySelector('[data-avatar-cancel]');
+  const avatarPreview = page.querySelector('#settingsAvatarPreview');
+  const overviewAvatar = page.querySelector('#settingsOverviewAvatar');
+  const avatarInitial = page.querySelector('#settingsAvatarInitial');
+  const overviewInitial = page.querySelector('#settingsOverviewInitial');
+  const avatarSelection = page.querySelector('#settings-avatar-selection');
+  const avatarStatus = page.querySelector('#settings-avatar-status');
+  const avatarForm = page.querySelector('[data-avatar-form]');
+  const avatarSave = page.querySelector('[data-avatar-save]');
+  const avatarSaveLabel = page.querySelector('[data-avatar-save-label]');
+  const originalAvatar = avatarPreview ? avatarPreview.getAttribute('src') : '';
+  let previewUrl = '';
+
+  const revokePreview = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = '';
+  };
+  const useAvatarSource = (source) => {
+    [avatarPreview, overviewAvatar].forEach((image) => {
+      if (!image) return;
+      if (source) {
+        image.src = source;
+        image.hidden = false;
+      } else {
+        image.removeAttribute('src');
+        image.hidden = true;
+      }
+    });
+    [avatarInitial, overviewInitial].forEach((initial) => {
+      if (initial) initial.hidden = Boolean(source);
+    });
+  };
+  const resetAvatarSelection = () => {
+    revokePreview();
+    if (avatarInput) avatarInput.value = '';
+    useAvatarSource(originalAvatar);
+    if (avatarCancel) avatarCancel.hidden = true;
+    if (avatarSelection) avatarSelection.classList.remove('is-visible');
+    if (avatarStatus) avatarStatus.textContent = '';
+  };
+
+  if (avatarTrigger && avatarInput) avatarTrigger.addEventListener('click', () => avatarInput.click());
+  if (avatarCancel) avatarCancel.addEventListener('click', resetAvatarSelection);
+  if (avatarInput) {
+    avatarInput.addEventListener('change', () => {
+      const file = avatarInput.files && avatarInput.files[0];
+      if (!file) {
+        resetAvatarSelection();
+        return;
+      }
+      const extension = (file.name.split('.').pop() || '').toLowerCase();
+      if (!['jpg', 'jpeg', 'png', 'webp'].includes(extension)) {
+        resetAvatarSelection();
+        if (avatarStatus) avatarStatus.textContent = 'Choose a JPG, JPEG, PNG, or WebP image.';
+        return;
+      }
+      revokePreview();
+      previewUrl = URL.createObjectURL(file);
+      useAvatarSource(previewUrl);
+      if (avatarCancel) avatarCancel.hidden = false;
+      if (avatarSelection) avatarSelection.classList.add('is-visible');
+      if (avatarStatus) avatarStatus.textContent = 'New profile photo selected. Save to upload it.';
+    });
+  }
+  if (avatarForm) {
+    avatarForm.addEventListener('submit', (event) => {
+      if (avatarForm.dataset.submitting === 'true') {
+        event.preventDefault();
+        return;
+      }
+      avatarForm.dataset.submitting = 'true';
+      avatarForm.setAttribute('aria-busy', 'true');
+      if (avatarSave) avatarSave.disabled = true;
+      if (avatarSaveLabel) avatarSaveLabel.textContent = 'Saving profile photo…';
+      if (avatarStatus) avatarStatus.textContent = 'Saving your profile photo…';
+    });
+  }
+
+  const passwordForm = page.querySelector('[data-password-form]');
+  const password = page.querySelector('#settings-new-password');
+  const confirm = page.querySelector('#settings-confirm-password');
+  const passwordFeedback = page.querySelector('#settings-password-feedback');
+  const passwordStatus = page.querySelector('#settings-password-status');
+  const passwordSave = page.querySelector('[data-password-save]');
+  const passwordSaveLabel = page.querySelector('[data-password-save-label]');
+  const updatePasswordMatch = () => {
+    if (!password || !confirm || !passwordFeedback) return true;
+    const mismatch = Boolean(confirm.value) && password.value !== confirm.value;
+    confirm.setCustomValidity(mismatch ? 'The new password and confirmation must match.' : '');
+    confirm.setAttribute('aria-invalid', String(mismatch));
+    passwordFeedback.textContent = mismatch ? 'The new password and confirmation do not match yet.' : '';
+    return !mismatch;
+  };
+  [password, confirm].filter(Boolean).forEach((field) => field.addEventListener('input', updatePasswordMatch));
+  page.querySelectorAll('[data-password-toggle]').forEach((toggle) => {
+    toggle.addEventListener('click', () => {
+      const input = page.querySelector(`#${toggle.dataset.target}`);
+      if (!input) return;
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      toggle.setAttribute('aria-pressed', String(show));
+      toggle.setAttribute('aria-label', `${show ? 'Hide' : 'Show'} ${input.closest('.settings-field')?.querySelector('label')?.textContent || 'password'}`);
+      const icon = toggle.querySelector('i');
+      if (icon) icon.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+    });
+  });
+  if (passwordForm) {
+    passwordForm.addEventListener('submit', (event) => {
+      if (!updatePasswordMatch()) {
+        event.preventDefault();
+        confirm?.focus();
+        return;
+      }
+      if (passwordForm.dataset.submitting === 'true') {
+        event.preventDefault();
+        return;
+      }
+      passwordForm.dataset.submitting = 'true';
+      passwordForm.setAttribute('aria-busy', 'true');
+      if (passwordSave) passwordSave.disabled = true;
+      if (passwordSaveLabel) passwordSaveLabel.textContent = 'Updating password…';
+      if (passwordStatus) passwordStatus.textContent = 'Updating your password…';
+    });
+  }
+
+  const currencyForm = page.querySelector('[data-currency-form]');
+  const currencySave = page.querySelector('[data-currency-save]');
+  const currencySaveLabel = page.querySelector('[data-currency-save-label]');
+  const currencyStatus = page.querySelector('#settings-currency-status');
+  if (currencyForm) {
+    currencyForm.addEventListener('submit', (event) => {
+      if (currencyForm.dataset.submitting === 'true') {
+        event.preventDefault();
+        return;
+      }
+      currencyForm.dataset.submitting = 'true';
+      currencyForm.setAttribute('aria-busy', 'true');
+      if (currencySave) currencySave.disabled = true;
+      if (currencySaveLabel) currencySaveLabel.textContent = 'Saving currency…';
+      if (currencyStatus) currencyStatus.textContent = 'Saving your preferred display currency…';
+    });
+  }
+})();
 </script>
-
 {% endblock %}

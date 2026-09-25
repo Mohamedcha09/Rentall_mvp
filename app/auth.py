@@ -674,9 +674,6 @@ def settings_get(request: Request, db: Session = Depends(get_db)):
 def settings_profile_post(
     request: Request,
     db: Session = Depends(get_db),
-    first_name: str = Form(""),
-    last_name: str = Form(""),
-    email: str = Form(""),
     avatar: UploadFile = File(None),
 ):
     sess = request.session.get("user")
@@ -687,24 +684,9 @@ def settings_profile_post(
     if not u:
         raise HTTPException(404, "User not found")
 
-    # Update data
-    u.first_name = (first_name or "").strip()
-    u.last_name  = (last_name or "").strip()
-    new_email    = (email or "").strip().lower()
-
-    # Check email duplication if changed
-    if new_email and new_email != u.email:
-        exists = db.query(User).filter(User.email == new_email).first()
-        if exists:
-            return RedirectResponse("/settings?err=email_used", status_code=303)
-        u.email = new_email
-        # (Optional) make them unverified until they confirm the new email
-        try:
-            u.is_verified = False
-        except Exception:
-            pass
-
-    # New image
+    # Settings intentionally updates only the optional avatar. Identity changes
+    # are handled through the support workflow, so tampered form fields for a
+    # name or email are not accepted by this endpoint.
     if avatar:
         saved = _save_any(avatar, AVATARS_DIR, [".jpg", ".jpeg", ".png", ".webp"])
         if saved:
