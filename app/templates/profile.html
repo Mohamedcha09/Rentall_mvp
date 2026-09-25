@@ -1,192 +1,139 @@
 {% extends "base.html" %}
+{% set title = "My Profile | SEVOR" %}
+{% set meta_description = "Manage your SEVOR profile, listings, reputation, and account tools." %}
+{% set profile_name = ((user.first_name or '') ~ ' ' ~ (user.last_name or ''))|trim or 'SEVOR member' %}
+{% set avatar_url = user.avatar_path or '' %}
+{% set profile_initial = ((user.first_name or user.email or 'S')[:1])|upper %}
+
+{% block head %}
+<style id="sevor-profile-hub">
+  /* Profile Hub only: shared navigation, cards, and other routes stay untouched. */
+  body[data-path="/profile"] .page{
+    background:
+      radial-gradient(760px 470px at 100% 0, rgba(124,92,255,.13), transparent 68%),
+      radial-gradient(640px 430px at -9% 38%, rgba(0,185,217,.09), transparent 67%);
+  }
+  body[data-path="/profile"] .paypal-callout{ max-width:1180px; margin:18px auto 0; gap:12px; flex-wrap:wrap; border-radius:18px; }
+  body[data-path="/profile"] .paypal-callout > *{ min-width:0; }
+
+  .profile-hub{
+    --profile-primary:var(--primary, #7c5cff); --profile-primary-deep:var(--primary-2, #5a3eff); --profile-cyan:#00b8d9;
+    --profile-ink:var(--text, #111827); --profile-muted:var(--muted, #667085); --profile-surface:rgba(255,255,255,.84); --profile-solid:#fff;
+    --profile-border:rgba(90,62,255,.15); --profile-shadow:0 20px 48px rgba(30,35,65,.10); --profile-soft-shadow:0 10px 26px rgba(30,35,65,.075);
+    width:min(1180px, 100%); margin-inline:auto; padding:max(18px, calc(env(safe-area-inset-top, 0px) + 12px)) 0 calc(clamp(44px,6vw,78px) + env(safe-area-inset-bottom, 0px)); color:var(--profile-ink);
+  }
+  .profile-hub, .profile-hub *{ box-sizing:border-box; }
+  .profile-hub :is(h1,h2,h3,p,span,a,button,small,dt,dd,time){ min-width:0; overflow-wrap:anywhere; }
+  .profile-hub a{ color:inherit; }.profile-hub :focus-visible{ outline:3px solid var(--profile-cyan); outline-offset:3px; }
+  [data-theme="dark"] .profile-hub{ --profile-primary-deep:#d5cfff; --profile-cyan:#8cecfb; --profile-surface:rgba(16,25,45,.88); --profile-solid:#10192d; --profile-border:rgba(184,172,255,.24); --profile-shadow:0 20px 48px rgba(0,0,0,.30); --profile-soft-shadow:0 10px 26px rgba(0,0,0,.22); }
+
+  .profile-hub-hero{ position:relative; display:grid; grid-template-columns:minmax(0,1.16fr) minmax(250px,.68fr); gap:clamp(22px,4vw,56px); align-items:center; overflow:hidden; padding:clamp(25px,5vw,62px); border:1px solid rgba(255,255,255,.22); border-radius:clamp(24px,4vw,36px); background:linear-gradient(135deg, rgba(89,57,236,.98), rgba(116,82,255,.95) 57%, rgba(0,174,206,.92)); color:#fff; box-shadow:var(--profile-shadow); animation:profile-hub-rise .42s ease both; }
+  .profile-hub-hero::before,.profile-hub-hero::after{ content:""; position:absolute; pointer-events:none; border-radius:999px; }
+  .profile-hub-hero::before{ width:350px; height:350px; right:-132px; bottom:-205px; background:rgba(255,255,255,.11); }.profile-hub-hero::after{ width:220px; height:220px; left:53%; top:-116px; border:1px solid rgba(255,255,255,.25); }
+  .profile-hub-hero__content,.profile-hub-hero__summary{ position:relative; z-index:1; min-width:0; }
+  .profile-hub-back{ display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:8px 11px; border:1px solid rgba(255,255,255,.30); border-radius:999px; background:rgba(255,255,255,.12); color:#fff !important; font-size:.9rem; font-weight:850; text-decoration:none; transition:transform .18s ease,background .18s ease; }
+  .profile-hub-back:hover{ transform:translateX(-2px); background:rgba(255,255,255,.19); }.profile-hub-kicker{ margin:24px 0 9px; color:rgba(255,255,255,.75); font-size:.78rem; font-weight:900; letter-spacing:.13em; }
+  .profile-hub-hero h1{ margin:0; font-size:clamp(2.2rem,4.8vw,4.4rem); line-height:.98; letter-spacing:-.055em; }.profile-hub-hero__lead{ max-width:660px; margin:18px 0 0; color:rgba(255,255,255,.90); font-size:clamp(1rem,1.5vw,1.16rem); line-height:1.65; }
+  .profile-hub-identity{ display:flex; align-items:center; gap:13px; margin-top:23px; min-width:0; }
+  .profile-hub-avatar{ display:grid; place-items:center; flex:0 0 auto; width:clamp(74px,10vw,102px); height:clamp(74px,10vw,102px); overflow:hidden; border:4px solid rgba(255,255,255,.78); border-radius:50%; background:linear-gradient(135deg, rgba(255,255,255,.28), rgba(255,255,255,.10)); color:#fff; box-shadow:0 13px 28px rgba(30,20,100,.22); font-size:clamp(1.7rem,4vw,2.45rem); font-weight:900; }
+  .profile-hub-avatar img{ width:100%; height:100%; object-fit:cover; }.profile-hub-identity__copy{ min-width:0; }.profile-hub-identity__name{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:0; font-size:clamp(1.12rem,2vw,1.42rem); font-weight:900; line-height:1.15; }
+  .profile-hub-member{ display:flex; flex-wrap:wrap; gap:7px; margin:7px 0 0; color:rgba(255,255,255,.78); font-size:.9rem; line-height:1.45; }.profile-hub-member i{ flex:0 0 auto; }.profile-hub-statuses{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .profile-hub-status{ display:inline-flex; align-items:center; gap:6px; min-height:29px; padding:5px 9px; border:1px solid rgba(255,255,255,.28); border-radius:999px; background:rgba(255,255,255,.13); color:#fff; font-size:.78rem; font-weight:850; line-height:1.2; }.profile-hub-status i{ color:#cffff6; }
+  .profile-hub-hero-actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top:21px; }.profile-hub-hero-action{ display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:47px; padding:11px 16px; border:1px solid rgba(255,255,255,.74); border-radius:14px; background:#fff; color:#000 !important; box-shadow:0 10px 22px rgba(35,25,100,.22); font-size:.93rem; font-weight:900; text-decoration:none; transition:transform .18s ease,box-shadow .18s ease,background .18s ease; }
+  .profile-hub-hero-action:hover,.profile-hub-hero-action:focus-visible{ transform:translateY(-2px); background:#fff; color:#000 !important; box-shadow:0 14px 28px rgba(35,25,100,.30); }.profile-hub-hero-action:active{ transform:translateY(0); }.profile-hub-hero-action i{ color:currentColor; }
+  .profile-hub-hero-action--quiet{ border-color:rgba(255,255,255,.30); background:rgba(255,255,255,.11); color:#fff !important; box-shadow:none; }.profile-hub-hero-action--quiet:hover,.profile-hub-hero-action--quiet:focus-visible{ background:rgba(255,255,255,.18); color:#fff !important; box-shadow:none; }
+  .profile-hub-hero__summary{ display:grid; gap:13px; padding:clamp(19px,3vw,28px); border:1px solid rgba(255,255,255,.24); border-radius:23px; background:rgba(255,255,255,.12); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }.profile-hub-hero__summary > i{ font-size:1.7rem; }.profile-hub-hero__summary strong{ font-size:1.05rem; }.profile-hub-hero__summary span{ color:rgba(255,255,255,.84); line-height:1.55; }.profile-hub-hero__summary a{ justify-self:start; margin-top:2px; color:#fff; font-size:.9rem; font-weight:850; text-decoration:none; }.profile-hub-hero__summary a:hover{ text-decoration:underline; }
+
+  .profile-hub-layout{ display:grid; gap:clamp(20px,3vw,30px); margin-top:clamp(22px,4vw,42px); }.profile-hub-nav{ display:none; align-content:start; gap:8px; min-width:0; padding:16px; border:1px solid var(--profile-border); border-radius:22px; background:var(--profile-surface); box-shadow:var(--profile-soft-shadow); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }.profile-hub-nav__label{ margin:0 0 4px; padding:0 9px; color:var(--profile-muted); font-size:.75rem; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }.profile-hub-nav a{ display:flex; align-items:center; gap:10px; min-height:43px; padding:9px; border-radius:12px; color:var(--profile-muted); font-size:.92rem; font-weight:800; text-decoration:none; transition:background .18s ease,color .18s ease,transform .18s ease; }.profile-hub-nav a:hover{ transform:translateX(2px); background:rgba(124,92,255,.09); color:var(--profile-primary-deep); }
+  .profile-hub-content{ display:grid; gap:clamp(18px,3vw,27px); min-width:0; }.profile-hub-section{ min-width:0; padding:clamp(20px,4vw,34px); border:1px solid var(--profile-border); border-radius:clamp(22px,3vw,30px); background:var(--profile-surface); box-shadow:var(--profile-soft-shadow); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); animation:profile-hub-rise .45s ease both; }.profile-hub-section:nth-child(2){ animation-delay:.03s; }.profile-hub-section:nth-child(3){ animation-delay:.06s; }.profile-hub-section:nth-child(4){ animation-delay:.09s; }.profile-hub-section:nth-child(5){ animation-delay:.12s; }.profile-hub-eyebrow{ display:flex; align-items:center; gap:8px; margin:0 0 8px; color:var(--profile-primary-deep); font-size:.78rem; font-weight:900; letter-spacing:.09em; text-transform:uppercase; }.profile-hub-eyebrow i{ color:var(--profile-cyan); }.profile-hub-section h2{ margin:0; font-size:clamp(1.3rem,2vw,1.72rem); letter-spacing:-.03em; }.profile-hub-section__lead{ max-width:720px; margin:10px 0 0; color:var(--profile-muted); line-height:1.58; }.profile-hub-section-head{ display:flex; flex-wrap:wrap; align-items:end; justify-content:space-between; gap:15px; }.profile-hub-text-link{ display:inline-flex; align-items:center; gap:7px; min-height:38px; color:var(--profile-primary-deep) !important; font-size:.92rem; font-weight:850; text-decoration:none; }.profile-hub-text-link:hover{ text-decoration:underline; }
+
+  .profile-hub-actions{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:11px; margin-top:22px; }.profile-hub-action-card{ display:grid; grid-template-columns:auto minmax(0,1fr); gap:11px; align-items:start; min-width:0; min-height:112px; padding:16px; border:1px solid var(--profile-border); border-radius:19px; background:var(--profile-solid); box-shadow:0 4px 13px rgba(30,35,65,.035); color:var(--profile-ink) !important; text-decoration:none; transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,background .18s ease; }.profile-hub-action-card:hover{ transform:translateY(-2px); border-color:rgba(124,92,255,.46); background:color-mix(in srgb,var(--profile-solid) 90%,#eeeaff); box-shadow:var(--profile-soft-shadow); }.profile-hub-action-card__icon{ display:grid; place-items:center; width:38px; height:38px; border-radius:13px; background:rgba(124,92,255,.12); color:var(--profile-primary-deep); font-size:1.06rem; }.profile-hub-action-card__copy{ min-width:0; }.profile-hub-action-card strong,.profile-hub-action-card span{ display:block; }.profile-hub-action-card strong{ font-size:.95rem; line-height:1.3; }.profile-hub-action-card span{ margin-top:4px; color:var(--profile-muted); font-size:.82rem; line-height:1.4; }
+
+  .profile-hub-activity-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:23px; }.profile-hub-stat-card{ min-width:0; padding:clamp(18px,3vw,24px); border:1px solid var(--profile-border); border-radius:21px; background:var(--profile-solid); }.profile-hub-stat-card__head{ display:flex; align-items:center; justify-content:space-between; gap:12px; }.profile-hub-stat-card__icon{ display:grid; place-items:center; flex:0 0 auto; width:42px; height:42px; border-radius:14px; background:rgba(124,92,255,.12); color:var(--profile-primary-deep); font-size:1.12rem; }.profile-hub-stat-card__icon--cyan{ background:rgba(0,185,217,.12); color:#007e96; }.profile-hub-stat-card h3{ margin:0; font-size:1.01rem; }.profile-hub-stat-card p{ margin:12px 0 0; color:var(--profile-muted); line-height:1.5; }.profile-hub-stat-card__number{ display:block; margin-top:15px; color:var(--profile-primary-deep); font-size:clamp(2rem,4vw,2.75rem); font-weight:900; letter-spacing:-.055em; line-height:.95; }.profile-hub-stat-card__caption{ display:block; margin-top:6px; color:var(--profile-muted); font-size:.86rem; line-height:1.35; }[data-theme="dark"] .profile-hub-stat-card__icon--cyan{ color:#8cecfb; }.profile-hub-empty-inline{ display:flex; align-items:flex-start; gap:11px; margin-top:19px; padding:15px; border:1px dashed var(--profile-border); border-radius:16px; background:rgba(124,92,255,.045); color:var(--profile-muted); line-height:1.5; }.profile-hub-empty-inline i{ flex:0 0 auto; color:var(--profile-primary-deep); font-size:1.1rem; }.profile-hub-empty-inline strong{ display:block; color:var(--profile-ink); }
+
+  .profile-hub-reputation{ display:grid; grid-template-columns:minmax(220px,.58fr) minmax(0,1.42fr); gap:clamp(18px,3vw,30px); margin-top:23px; }.profile-hub-rating-summary{ display:grid; align-content:start; gap:14px; min-width:0; padding:clamp(19px,3vw,27px); border:1px solid var(--profile-border); border-radius:23px; background:linear-gradient(145deg, rgba(124,92,255,.12), rgba(0,185,217,.075)); }.profile-hub-rating-summary__top{ display:flex; align-items:center; gap:10px; color:var(--profile-primary-deep); font-weight:900; }.profile-hub-rating-summary__top i{ font-size:1.28rem; color:#f5b731; }.profile-hub-rating-score{ font-size:clamp(2.35rem,5vw,3.5rem); font-weight:900; letter-spacing:-.065em; line-height:.88; }.profile-hub-rating-score small{ color:var(--profile-muted); font-size:.96rem; font-weight:800; letter-spacing:0; }.profile-hub-rating-summary p{ margin:0; color:var(--profile-muted); line-height:1.55; }.profile-hub-review-list{ display:grid; gap:10px; min-width:0; }.profile-hub-review{ min-width:0; padding:16px; border:1px solid var(--profile-border); border-radius:18px; background:var(--profile-solid); box-shadow:0 4px 13px rgba(30,35,65,.03); }.profile-hub-review__head{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:9px; }.profile-hub-review__author{ display:flex; align-items:center; gap:8px; min-width:0; font-size:.91rem; font-weight:900; }.profile-hub-review__author i{ color:var(--profile-primary-deep); }.profile-hub-review__date{ color:var(--profile-muted); font-size:.8rem; line-height:1.4; }.profile-hub-review__stars{ color:#b77900; font-size:.87rem; font-weight:900; white-space:nowrap; }.profile-hub-review p{ margin:10px 0 0; color:var(--profile-muted); line-height:1.55; }.profile-hub-review-empty{ display:grid; justify-items:start; align-content:center; min-width:0; min-height:190px; padding:clamp(21px,4vw,34px); border:1px dashed var(--profile-border); border-radius:23px; background:rgba(124,92,255,.045); }.profile-hub-review-empty__icon{ display:grid; place-items:center; width:46px; height:46px; border-radius:15px; background:rgba(124,92,255,.13); color:var(--profile-primary-deep); font-size:1.22rem; }.profile-hub-review-empty h3{ margin:15px 0 0; font-size:1.12rem; }.profile-hub-review-empty p{ max-width:470px; margin:8px 0 0; color:var(--profile-muted); line-height:1.55; }
+
+  .profile-hub-account-grid{ display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr); gap:clamp(18px,3vw,27px); margin-top:23px; }.profile-hub-detail-card,.profile-hub-resource-card{ min-width:0; padding:clamp(19px,3vw,27px); border:1px solid var(--profile-border); border-radius:23px; background:var(--profile-solid); }.profile-hub-detail-card h3,.profile-hub-resource-card h3{ margin:0; font-size:1.06rem; }.profile-hub-detail-card > p,.profile-hub-resource-card > p{ margin:8px 0 0; color:var(--profile-muted); line-height:1.5; }.profile-hub-detail-list{ display:grid; gap:0; margin:17px 0 0; }.profile-hub-detail-list > div{ display:grid; grid-template-columns:auto minmax(0,1fr); gap:10px; align-items:start; padding:13px 0; border-top:1px solid var(--profile-border); }.profile-hub-detail-list > div:first-child{ padding-top:0; border-top:0; }.profile-hub-detail-list i{ display:grid; place-items:center; width:31px; height:31px; border-radius:10px; background:rgba(124,92,255,.1); color:var(--profile-primary-deep); }.profile-hub-detail-list dt{ margin:0; color:var(--profile-muted); font-size:.78rem; font-weight:850; line-height:1.35; }.profile-hub-detail-list dd{ margin:3px 0 0; color:var(--profile-ink); font-weight:800; line-height:1.42; overflow-wrap:anywhere; }.profile-hub-resource-list{ display:grid; gap:10px; margin-top:18px; }.profile-hub-resource-link{ display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:11px; align-items:center; min-width:0; min-height:66px; padding:12px; border:1px solid var(--profile-border); border-radius:16px; color:var(--profile-ink) !important; text-decoration:none; transition:transform .18s ease,border-color .18s ease,background .18s ease; }.profile-hub-resource-link:hover{ transform:translateY(-1px); border-color:rgba(124,92,255,.44); background:rgba(124,92,255,.06); }.profile-hub-resource-link__icon{ display:grid; place-items:center; width:38px; height:38px; border-radius:13px; background:rgba(124,92,255,.12); color:var(--profile-primary-deep); }.profile-hub-resource-link__copy{ min-width:0; }.profile-hub-resource-link strong,.profile-hub-resource-link small{ display:block; }.profile-hub-resource-link strong{ font-size:.91rem; line-height:1.35; }.profile-hub-resource-link small{ margin-top:3px; color:var(--profile-muted); font-size:.78rem; line-height:1.35; }.profile-hub-resource-link > i{ color:var(--profile-primary-deep); }
+  .profile-hub-public-card{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; margin-top:18px; padding:18px; border:1px solid rgba(0,185,217,.23); border-radius:19px; background:linear-gradient(135deg, rgba(0,185,217,.08), rgba(124,92,255,.06)); }.profile-hub-public-card__copy{ min-width:0; }.profile-hub-public-card__copy strong{ display:flex; align-items:center; gap:8px; }.profile-hub-public-card__copy strong i{ color:#007e96; }.profile-hub-public-card__copy p{ max-width:620px; margin:6px 0 0; color:var(--profile-muted); line-height:1.5; }.profile-hub-public-card__actions{ display:flex; flex-wrap:wrap; gap:9px; }.profile-hub-public-card__button{ display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:43px; padding:9px 12px; border:1px solid transparent; border-radius:13px; background:linear-gradient(135deg, var(--profile-primary), var(--profile-primary-deep)); color:#fff !important; box-shadow:0 9px 18px rgba(90,62,255,.20); font:inherit; font-size:.88rem; font-weight:900; text-decoration:none; transition:transform .18s ease,box-shadow .18s ease; }.profile-hub-public-card__button:hover{ transform:translateY(-1px); color:#fff !important; box-shadow:0 12px 23px rgba(90,62,255,.27); }
+
+  .profile-hub-support-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:23px; }.profile-hub-support-card{ display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:13px; align-items:center; min-width:0; min-height:104px; padding:17px; border:1px solid var(--profile-border); border-radius:21px; background:var(--profile-solid); color:var(--profile-ink) !important; text-decoration:none; transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,background .18s ease; }.profile-hub-support-card:hover{ transform:translateY(-2px); border-color:rgba(124,92,255,.46); background:color-mix(in srgb,var(--profile-solid) 90%,#eeeaff); box-shadow:var(--profile-soft-shadow); }.profile-hub-support-card__icon{ display:grid; place-items:center; width:43px; height:43px; border-radius:14px; background:linear-gradient(135deg, rgba(124,92,255,.16), rgba(0,185,217,.16)); color:var(--profile-primary-deep); font-size:1.16rem; }.profile-hub-support-card__copy{ min-width:0; }.profile-hub-support-card strong,.profile-hub-support-card span{ display:block; }.profile-hub-support-card strong{ font-size:1rem; line-height:1.35; }.profile-hub-support-card span{ margin-top:4px; color:var(--profile-muted); font-size:.84rem; line-height:1.42; }.profile-hub-support-card > i{ color:var(--profile-primary-deep); }
+
+  @keyframes profile-hub-rise{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
+  @media (min-width:769px){ body[data-path="/profile"] .page{ padding-top:clamp(18px,2vw,28px) !important; } }
+  @media (min-width:950px){ .profile-hub-layout{ grid-template-columns:208px minmax(0,1fr); align-items:start; }.profile-hub-nav{ display:grid; position:sticky; top:24px; } }
+  @media (max-width:899px){ .profile-hub-actions{ grid-template-columns:repeat(2,minmax(0,1fr)); }.profile-hub-reputation{ grid-template-columns:1fr; }.profile-hub-rating-summary{ grid-template-columns:auto minmax(0,1fr); align-items:center; }.profile-hub-rating-summary p{ grid-column:1 / -1; }.profile-hub-account-grid{ grid-template-columns:1fr; } }
+  @media (max-width:699px){ .profile-hub-hero{ grid-template-columns:1fr; }.profile-hub-hero__summary{ max-width:520px; }.profile-hub-activity-grid,.profile-hub-support-grid{ grid-template-columns:1fr; } }
+  @media (max-width:460px){ .profile-hub{ padding-top:16px; }.profile-hub-hero{ padding:25px 20px; }.profile-hub-hero h1{ font-size:clamp(2.02rem,11vw,3rem); }.profile-hub-identity{ align-items:flex-start; }.profile-hub-avatar{ width:72px; height:72px; }.profile-hub-hero-actions,.profile-hub-hero-action{ width:100%; }.profile-hub-hero-action--quiet{ width:100%; }.profile-hub-actions{ grid-template-columns:1fr; }.profile-hub-section{ padding:22px 16px; }.profile-hub-rating-summary{ grid-template-columns:1fr; }.profile-hub-public-card__actions,.profile-hub-public-card__button{ width:100%; }.profile-hub-public-card__actions{ align-items:stretch; }.profile-hub-review__head{ align-items:flex-start; }.profile-hub-review__stars{ width:100%; } }
+  @media (prefers-reduced-motion:reduce){ .profile-hub *, .profile-hub *::before, .profile-hub *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; transition-duration:.01ms !important; } }
+</style>
+{% endblock %}
 
 {% block content %}
-
-<!-- ===== زر الرجوع (iOS style) ===== -->
-<a href="/" class="back-btn-ios">
-  <i class="bi bi-chevron-left"></i>
-</a>
-
-<style>
-/* ===== زر الرجوع iOS ===== */
-.back-btn-ios {
-    position: fixed;
-    top: calc(env(safe-area-inset-top) + 12px);
-    left: 14px;
-    z-index: 9999;
-    background: #fff;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #222;
-    font-size: 20px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-    text-decoration: none;
-}
-.back-btn-ios:active { transform: scale(0.92); }
-
-/* ===== إخفاء كل شيء (Navbar, Tabs, Stripe) ===== */
-header.topbar,
-.m-top-tabs,
-nav.desk-tabs,
-.mobile-tabbar,
-.stripe-callout,
-.connect-banner,
-.payout-banner,
-.stripe-connect-banner,
-.searchbar {
-    display: none !important;
-}
-
-body.has-tabbar { padding-bottom: 0 !important; }
-
-/* ===== تحسين شكل الصفحة ليصبح Airbnb-like ===== */
-.profile-container {
-    max-width: 780px;
-    margin: auto;
-    padding: 26px 16px;
-}
-
-.profile-header,
-.profile-identity { min-width:0; }
-.profile-identity { flex:1 1 auto; }
-.profile-small { overflow-wrap:anywhere; }
-
-@media (max-width:768px){
-    /* Keep profile content clear of the fixed iOS back control. */
-    .profile-container{ padding-top:max(70px, calc(66px + env(safe-area-inset-top,0px))); }
-}
-
-.profile-header h2 {
-    font-size: 28px;
-    font-weight: 700;
-}
-
-.profile-small {
-    color: #555;
-    font-size: 15px;
-    margin-top: 6px;
-}
-
-.section-card {
-    border-radius: 14px;
-    border: 1px solid #e6e6e6;
-    padding: 18px 20px;
-    background: #fff;
-}
-
-/* Preserve the profile's phone order and fixed-control clearance on iPad Safari. */
-@supports (-webkit-touch-callout: none) {
-  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
-    body[data-path="/profile"] header.topbar,
-    body[data-path="/profile"] .m-top-tabs.d-lg-none,
-    body[data-path="/profile"] .mobile-tabbar.d-lg-none {
-      display: none !important;
-    }
-
-    body[data-path="/profile"] .page {
-      padding-bottom: 0 !important;
-    }
-
-    .profile-container {
-      padding-top: max(70px, calc(66px + env(safe-area-inset-top, 0px)));
-    }
-
-    .profile-container > .row > .col-md-6 {
-      flex: 0 0 100%;
-      max-width: 100%;
-    }
-  }
-}
-</style>
-
-{% from "_badges.html" import render_badges %}
-
-{# بيانات المستخدم #}
-{% set db_user = user %}
-{% set sess = session_user %}
-{% set avatar_candidate = (db_user and db_user.avatar_path) or (sess and sess.avatar_path) or '' %}
-{% set _ava3 = avatar_candidate if avatar_candidate else '/static/placeholder.png' %}
-
-<div class="profile-container">
-
-  <!-- ===== Header (Avatar + Name) ===== -->
-  <div class="d-flex align-items-center gap-3 mb-3 profile-header">
-
-    <div style="width:78px;height:78px;border-radius:50%;overflow:hidden;border:1px solid #eee;">
-      {% if _ava3.endswith('placeholder.png') %}
-        <div class="w-100 h-100 d-flex align-items-center justify-content-center fw-bold" style="font-size:26px;">
-          {{ ((db_user.first_name or db_user.email or 'U')[:1] | upper) }}
+<div class="profile-hub" aria-labelledby="profile-hub-title">
+  <header class="profile-hub-hero" id="profile-overview">
+    <div class="profile-hub-hero__content">
+      <a class="profile-hub-back" href="/" aria-label="Back to SEVOR"><i class="bi bi-arrow-left" aria-hidden="true"></i><span>Back to SEVOR</span></a>
+      <p class="profile-hub-kicker">MY SEVOR PROFILE</p>
+      <h1 id="profile-hub-title">Your profile, in one place.</h1>
+      <p class="profile-hub-hero__lead">Keep track of your listings, feedback, account tools, and the next action that matters to you.</p>
+      <div class="profile-hub-identity">
+        <div class="profile-hub-avatar" aria-label="Profile photo for {{ profile_name }}">{% if avatar_url %}<img src="{{ avatar_url }}" alt="Profile photo for {{ profile_name }}">{% else %}<span aria-hidden="true">{{ profile_initial }}</span>{% endif %}</div>
+        <div class="profile-hub-identity__copy">
+          <p class="profile-hub-identity__name">{{ profile_name }}</p>
+          {% if user.created_at %}<p class="profile-hub-member"><i class="bi bi-calendar3" aria-hidden="true"></i><time datetime="{{ user.created_at.isoformat() }}">Member since {{ user.created_at.strftime('%B %Y') }}</time></p>{% endif %}
+          {% if user.is_verified %}<div class="profile-hub-statuses"><span class="profile-hub-status" title="Verified account"><i class="bi bi-patch-check-fill" aria-hidden="true"></i>Verified account</span></div>{% endif %}
         </div>
-      {% else %}
-        <img src="{{ _ava3 }}"
-             style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
-      {% endif %}
-    </div>
-
-    <div class="profile-identity">
-      <div class="d-flex align-items-center gap-2 flex-wrap">
-        <h2 class="m-0">{{ db_user.first_name }} {{ db_user.last_name }}</h2>
-        {{ render_badges(db_user, '20px') }}
       </div>
-
-      <div class="profile-small">
-        Email: {{ db_user.email or '—' }}
-        · Phone: {{ db_user.phone or '—' }}
-        · Member since: {{ db_user.created_at.strftime('%d-%m-%Y') if db_user.created_at }}
-      </div>
+      <div class="profile-hub-hero-actions"><a class="profile-hub-hero-action" href="/settings"><i class="bi bi-pencil-square" aria-hidden="true"></i><span>Edit profile</span></a><a class="profile-hub-hero-action profile-hub-hero-action--quiet" href="/owner/items/new"><i class="bi bi-plus-lg" aria-hidden="true"></i><span>List an item</span></a></div>
     </div>
+    <aside class="profile-hub-hero__summary" aria-label="Profile hub summary"><i class="bi bi-person-vcard" aria-hidden="true"></i><strong>Your SEVOR space</strong><span>Manage the parts of your account that are available today, without mixing private account details into your public presence.</span><a href="#profile-account">Go to account tools <i class="bi bi-arrow-down" aria-hidden="true"></i></a></aside>
+  </header>
 
+  <div class="profile-hub-layout">
+    <nav class="profile-hub-nav" aria-label="Profile sections"><p class="profile-hub-nav__label">Profile</p><a href="#profile-overview"><i class="bi bi-person" aria-hidden="true"></i>Overview</a><a href="#profile-activity"><i class="bi bi-activity" aria-hidden="true"></i>Activity</a><a href="#profile-reputation"><i class="bi bi-star" aria-hidden="true"></i>Reputation</a><a href="#profile-account"><i class="bi bi-gear" aria-hidden="true"></i>Account</a><a href="#profile-support"><i class="bi bi-headset" aria-hidden="true"></i>Support</a></nav>
+    <main class="profile-hub-content">
+      <section class="profile-hub-section" id="profile-activity" aria-labelledby="profile-activity-title">
+        <div class="profile-hub-section-head"><div><p class="profile-hub-eyebrow"><i class="bi bi-lightning-charge" aria-hidden="true"></i>Your activity</p><h2 id="profile-activity-title">Keep your marketplace activity moving.</h2><p class="profile-hub-section__lead">Your listing activity is shown here. Use the quick paths below for bookings and favorites without adding unnecessary account analytics.</p></div><a class="profile-hub-text-link" href="/owner/items">View my listings <i class="bi bi-arrow-right" aria-hidden="true"></i></a></div>
+        <div class="profile-hub-actions" aria-label="Profile quick actions">
+          <a class="profile-hub-action-card" href="/owner/items"><span class="profile-hub-action-card__icon"><i class="bi bi-box-seam" aria-hidden="true"></i></span><span class="profile-hub-action-card__copy"><strong>My listings</strong><span>Manage the items you have shared.</span></span></a>
+          <a class="profile-hub-action-card" href="/owner/items/new"><span class="profile-hub-action-card__icon"><i class="bi bi-plus-circle" aria-hidden="true"></i></span><span class="profile-hub-action-card__copy"><strong>Add an item</strong><span>Create a new rental listing.</span></span></a>
+          <a class="profile-hub-action-card" href="/bookings"><span class="profile-hub-action-card__icon"><i class="bi bi-calendar-check" aria-hidden="true"></i></span><span class="profile-hub-action-card__copy"><strong>My bookings</strong><span>Review your rental journeys.</span></span></a>
+          <a class="profile-hub-action-card" href="/favorites"><span class="profile-hub-action-card__icon"><i class="bi bi-heart" aria-hidden="true"></i></span><span class="profile-hub-action-card__copy"><strong>Favorites</strong><span>Return to saved listings.</span></span></a>
+        </div>
+        <div class="profile-hub-activity-grid">
+          <article class="profile-hub-stat-card"><div class="profile-hub-stat-card__head"><h3>Total listings</h3><span class="profile-hub-stat-card__icon"><i class="bi bi-boxes" aria-hidden="true"></i></span></div><strong class="profile-hub-stat-card__number">{{ items_count }}</strong><span class="profile-hub-stat-card__caption">Items created through this account.</span></article>
+          <article class="profile-hub-stat-card"><div class="profile-hub-stat-card__head"><h3>Active listings</h3><span class="profile-hub-stat-card__icon profile-hub-stat-card__icon--cyan"><i class="bi bi-broadcast" aria-hidden="true"></i></span></div><strong class="profile-hub-stat-card__number">{{ items_active_count }}</strong><span class="profile-hub-stat-card__caption">Items currently marked active.</span></article>
+        </div>
+        {% if not items_count %}<div class="profile-hub-empty-inline"><i class="bi bi-plus-circle-dotted" aria-hidden="true"></i><div><strong>No listings yet</strong><span>Your first suitable listing can be created whenever you are ready.</span><a class="profile-hub-text-link" href="/owner/items/new">List an item <i class="bi bi-arrow-right" aria-hidden="true"></i></a></div></div>{% endif %}
+      </section>
+
+      <section class="profile-hub-section" id="profile-reputation" aria-labelledby="profile-reputation-title">
+        <div class="profile-hub-section-head"><div><p class="profile-hub-eyebrow"><i class="bi bi-stars" aria-hidden="true"></i>Your reputation</p><h2 id="profile-reputation-title">Feedback from rental experiences.</h2><p class="profile-hub-section__lead">Ratings and written feedback appear here when other users leave them for your account.</p></div></div>
+        <div class="profile-hub-reputation">
+          {% if ratings_count %}
+            <aside class="profile-hub-rating-summary" aria-label="Rating summary"><div class="profile-hub-rating-summary__top"><i class="bi bi-star-fill" aria-hidden="true"></i><span>Average rating</span></div><strong class="profile-hub-rating-score">{{ '%.1f'|format(avg_stars) }}<small>/5</small></strong><p>Based on {{ ratings_count }} rating{{ '' if ratings_count == 1 else 's' }} received by this account.</p></aside>
+            <div class="profile-hub-review-list" aria-label="Latest feedback">{% for review in reviews %}<article class="profile-hub-review"><div class="profile-hub-review__head"><span class="profile-hub-review__author"><i class="bi bi-person-circle" aria-hidden="true"></i>{{ review.rater_name }}</span>{% if review.created_at %}<time class="profile-hub-review__date" datetime="{{ review.created_at.isoformat() }}">{{ review.created_at.strftime('%d %b %Y') }}</time>{% endif %}<span class="profile-hub-review__stars"><i class="bi bi-star-fill" aria-hidden="true"></i> {{ review.stars }}/5</span></div>{% if review.comment %}<p>{{ review.comment }}</p>{% endif %}</article>{% endfor %}</div>
+          {% else %}
+            <aside class="profile-hub-rating-summary" aria-label="Rating summary"><div class="profile-hub-rating-summary__top"><i class="bi bi-star" aria-hidden="true"></i><span>Ratings</span></div><strong class="profile-hub-rating-score">—<small>/5</small></strong><p>No rating average is shown until this account receives feedback.</p></aside>
+            <div class="profile-hub-review-empty"><span class="profile-hub-review-empty__icon"><i class="bi bi-chat-square-heart" aria-hidden="true"></i></span><h3>No reviews yet</h3><p>Reviews will appear here after rental experiences are rated by other users.</p></div>
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="profile-hub-section" id="profile-account" aria-labelledby="profile-account-title">
+        <div><p class="profile-hub-eyebrow"><i class="bi bi-shield-lock" aria-hidden="true"></i>Account</p><h2 id="profile-account-title">Private details and account tools.</h2><p class="profile-hub-section__lead">These details are shown only in your own profile hub. Use Settings for the account options available to you.</p></div>
+        <div class="profile-hub-account-grid">
+          <section class="profile-hub-detail-card" aria-labelledby="profile-details-title"><h3 id="profile-details-title">Account details</h3><p>Keep your personal account information separate from your public profile.</p><dl class="profile-hub-detail-list"><div><i class="bi bi-envelope" aria-hidden="true"></i><div><dt>Email</dt><dd>{{ user.email or 'Not added' }}</dd></div></div><div><i class="bi bi-telephone" aria-hidden="true"></i><div><dt>Phone</dt><dd>{{ user.phone or 'Not added' }}</dd></div></div>{% if user.created_at %}<div><i class="bi bi-calendar3" aria-hidden="true"></i><div><dt>Member since</dt><dd><time datetime="{{ user.created_at.isoformat() }}">{{ user.created_at.strftime('%B %Y') }}</time></dd></div></div>{% endif %}</dl></section>
+          <section class="profile-hub-resource-card" aria-labelledby="profile-tools-title"><h3 id="profile-tools-title">Account tools</h3><p>Manage preferences, your payout destination, and privacy information from their dedicated spaces.</p><div class="profile-hub-resource-list"><a class="profile-hub-resource-link" href="/settings"><span class="profile-hub-resource-link__icon"><i class="bi bi-gear" aria-hidden="true"></i></span><span class="profile-hub-resource-link__copy"><strong>Settings</strong><small>Profile photo, preferences, and security.</small></span><i class="bi bi-chevron-right" aria-hidden="true"></i></a><a class="profile-hub-resource-link" href="/payout/settings"><span class="profile-hub-resource-link__icon"><i class="bi bi-cash-stack" aria-hidden="true"></i></span><span class="profile-hub-resource-link__copy"><strong>Payout preferences</strong><small>Choose how eligible rental earnings are received.</small></span><i class="bi bi-chevron-right" aria-hidden="true"></i></a><a class="profile-hub-resource-link" href="/privacy"><span class="profile-hub-resource-link__icon"><i class="bi bi-shield-check" aria-hidden="true"></i></span><span class="profile-hub-resource-link__copy"><strong>Privacy Center</strong><small>Review privacy information for SEVOR.</small></span><i class="bi bi-chevron-right" aria-hidden="true"></i></a></div></section>
+        </div>
+        <section class="profile-hub-public-card" aria-labelledby="profile-public-title"><div class="profile-hub-public-card__copy"><strong id="profile-public-title"><i class="bi bi-eye" aria-hidden="true"></i>View your public profile</strong><p>Preview the public profile route used for SEVOR members. Private email and phone details are not included there.</p></div><div class="profile-hub-public-card__actions"><a class="profile-hub-public-card__button" href="/users/{{ user.id }}"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i><span>View public profile</span></a></div></section>
+      </section>
+
+      <section class="profile-hub-section" id="profile-support" aria-labelledby="profile-support-title">
+        <div><p class="profile-hub-eyebrow"><i class="bi bi-headset" aria-hidden="true"></i>Help &amp; Support</p><h2 id="profile-support-title">Help is one step away.</h2><p class="profile-hub-section__lead">Start a support request or return to an existing ticket without leaving your account context.</p></div>
+        <div class="profile-hub-support-grid"><a class="profile-hub-support-card" href="/support/new"><span class="profile-hub-support-card__icon"><i class="bi bi-chat-square-text" aria-hidden="true"></i></span><span class="profile-hub-support-card__copy"><strong>Contact Support</strong><span>Send a new request through the current support ticket flow.</span></span><i class="bi bi-arrow-right" aria-hidden="true"></i></a><a class="profile-hub-support-card" href="/support/my"><span class="profile-hub-support-card__icon"><i class="bi bi-ticket-perforated" aria-hidden="true"></i></span><span class="profile-hub-support-card__copy"><strong>My Support Requests</strong><span>Read updates and continue existing conversations.</span></span><i class="bi bi-arrow-right" aria-hidden="true"></i></a></div>
+      </section>
+    </main>
   </div>
-
-  <hr class="my-3">
-
-  <!-- ===== Info Cards ===== -->
-  <div class="row gy-3">
-
-    <div class="col-md-6">
-      <div class="section-card">
-        <h5 class="mb-2">📦 My Listings</h5>
-        <div>Total items: <strong>{{ items_count }}</strong></div>
-        <div>Active: <strong>{{ items_active_count }}</strong></div>
-      </div>
-    </div>
-
-    <div class="col-md-6">
-      <div class="section-card">
-        <h5 class="mb-2">⭐ Ratings</h5>
-        <div>Average: <strong>{{ avg_stars }}/5</strong></div>
-        <div>Reviews count: <strong>{{ ratings_count }}</strong></div>
-      </div>
-    </div>
-
-  </div>
-
-  {% if reviews and reviews|length %}
-  <hr class="my-4">
-  <h5>Latest Reviews</h5>
-  <ul class="list-group">
-    {% for r in reviews %}
-      <li class="list-group-item">
-        <div class="fw-bold text-warning">★ {{ r.stars }}/5</div>
-        <div class="text-muted small">{{ r.created_at.strftime('%d-%m-%Y') if r.created_at }}</div>
-        <div class="mt-1">{{ r.comment or '—' }}</div>
-        <div class="text-muted small">From: {{ r.rater_name }}</div>
-      </li>
-    {% endfor %}
-  </ul>
-  {% endif %}
-
-  <hr class="my-4">
-  <div class="text-center">
-    <a href="/profile/docs" class="btn btn-outline-primary">
-      📄 Edit Documents or Profile Photo
-    </a>
-  </div>
-
 </div>
-
 {% endblock %}
