@@ -1262,10 +1262,14 @@ def sitemap():
 
 @app.get("/privacy")
 def privacy_page(request: Request):
+    session_user = request.session.get("user") if _has_session(request) else None
     return templates.TemplateResponse(
         request=request,
         name="privacy.html",
-        context={"request": request},
+        context={
+            "request": request,
+            "session_user": session_user,
+        },
     )
 
 
