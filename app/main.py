@@ -1029,7 +1029,9 @@ def about(request: Request, db: Session = Depends(get_db)):
     u = request.session.get("user") if _has_session(request) else None
     return templates.TemplateResponse(
         request=request,
-        name="about.html",
+        # Keep the public /about URL and the profile-sheet /about-full URL on
+        # the same current About experience.
+        name="about_full.html",
         context={"request": request, "session_user": u},
     )
 
