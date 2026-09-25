@@ -1,125 +1,598 @@
 {# app/templates/notifications.html #}
 {% extends "base.html" %}
+
 {% block head %}
 <style>
-  .notif-page{ max-width:720px; margin:0 auto; }
-  .notif-card{
-    display:block; text-decoration:none; color:inherit;
-    border:1px solid var(--border); border-radius:14px;
-    background:var(--surface); padding:12px; margin-bottom:10px;
+  /* Scoped notification-center presentation. Global top navigation intentionally remains visible. */
+  .notifications-page{
+    width:min(100%, 780px);
+    margin:0 auto;
+    padding-top:clamp(18px, 3vw, 34px);
+    padding-bottom:max(28px, env(safe-area-inset-bottom));
   }
-  .notif-card:hover{ background: color-mix(in oklab, var(--surface) 94%, transparent); }
-  .notif-title{ font-weight:800; font-size:1rem; margin-bottom:4px; overflow-wrap:anywhere; }
-  .notif-meta{ opacity:.7; font-size:.9rem; overflow-wrap:anywhere; }
+  .notifications-page,
+  .notifications-page *{ min-width:0; }
 
-  /* Empty state: show image only */
-  .notif-empty{
-    text-align:center; padding:30px 10px;
+  .notifications-center__header{
+    display:flex;
+    align-items:end;
+    justify-content:space-between;
+    gap:16px;
+    margin:0 2px 18px;
   }
-  .notif-empty img{
+  .notifications-center__eyebrow{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    margin:0 0 7px;
+    color:#675dce;
+    font-size:.75rem;
+    font-weight:800;
+    letter-spacing:.11em;
+    text-transform:uppercase;
+  }
+  .notifications-center__eyebrow .bi{ font-size:.9rem; }
+  .notifications-center__title{
+    margin:0;
+    color:var(--text);
+    font-size:clamp(1.7rem, 4vw, 2.2rem);
+    font-weight:850;
+    letter-spacing:-.04em;
+    line-height:1.05;
+  }
+  .notifications-center__subtitle{
+    max-width:500px;
+    margin:9px 0 0;
+    color:var(--muted);
+    font-size:.96rem;
+    line-height:1.55;
+  }
+  .notifications-center__summary{
+    flex:0 0 auto;
+    margin:0 0 2px;
+    color:var(--muted);
+    font-size:.82rem;
+    font-weight:700;
+    text-align:end;
+    white-space:nowrap;
+  }
+
+  .notifications-surface{
+    overflow:hidden;
+    border:1px solid var(--border);
+    border-radius:24px;
+    background:var(--surface);
+    box-shadow:0 18px 45px rgba(41, 36, 92, .08);
+  }
+  .notifications-feed{
     display:block;
-    margin: 10px auto;
-    max-width: 260px;   /* Max width for the image */
-    width: 70%;         /* Responsive on mobile */
-    height: auto;
-    object-fit: contain;
-    opacity: 0.95;      /* Subtle touch */
+    margin:0;
+    padding:0;
+    list-style:none;
+  }
+  .notification-feed__item + .notification-feed__item{
+    border-top:1px solid var(--border);
+  }
+
+  .notification-row{
+    position:relative;
+    display:grid;
+    grid-template-columns:48px minmax(0, 1fr);
+    gap:13px;
+    width:100%;
+    padding:15px 16px;
+    color:inherit;
+    text-align:start;
+    text-decoration:none;
+    transition:background-color .18s ease, transform .18s ease;
+  }
+  a.notification-row:hover{
+    color:inherit;
+    background:rgba(108, 99, 255, .045);
+  }
+  a.notification-row:active{ transform:scale(.995); }
+  a.notification-row:focus-visible{
+    z-index:1;
+    outline:3px solid rgba(108, 99, 255, .42);
+    outline-offset:-3px;
+  }
+  .notification-row--unread{
+    background:linear-gradient(90deg, rgba(108, 99, 255, .09), rgba(83, 154, 255, .035));
+  }
+  .notification-row--unread::before{
+    position:absolute;
+    inset-block:15px;
+    inset-inline-start:0;
+    width:3px;
+    border-radius:0 99px 99px 0;
+    background:linear-gradient(180deg, #746bff, #4c9dff);
+    content:"";
+  }
+
+  .notification-source{
+    position:relative;
+    display:grid;
+    place-items:center;
+    width:48px;
+    height:48px;
+    border:1px solid rgba(108, 99, 255, .17);
+    border-radius:50%;
+    background:linear-gradient(145deg, #756bff, #4b9eff);
+    color:#fff;
+    box-shadow:0 8px 18px rgba(92, 84, 202, .2);
+    font-size:.94rem;
+    font-weight:850;
+    letter-spacing:.02em;
+  }
+  .notification-source--booking{ background:linear-gradient(145deg, #667eea, #5ab5ed); }
+  .notification-source--deposit{ background:linear-gradient(145deg, #6554cb, #8c6ce7); }
+  .notification-source--payout{ background:linear-gradient(145deg, #438dbe, #4fc0a6); }
+  .notification-source--support{ background:linear-gradient(145deg, #7c58cf, #cf6cc1); }
+  .notification-source--assistant{ background:linear-gradient(145deg, #5867e9, #5cb9ef); }
+  .notification-source--report{ background:linear-gradient(145deg, #e0805a, #c85f88); }
+  .notification-source--moderation{ background:linear-gradient(145deg, #a860c6, #e06d92); }
+  .notification-source--role,
+  .notification-source--admin{ background:linear-gradient(145deg, #4f7ccd, #6778de); }
+  .notification-source--reject{ background:linear-gradient(145deg, #bd685f, #db8973); }
+  .notification-source__badge{
+    position:absolute;
+    inset-inline-end:-4px;
+    inset-block-end:-4px;
+    display:grid;
+    place-items:center;
+    width:21px;
+    height:21px;
+    border:2px solid var(--surface);
+    border-radius:50%;
+    background:#1e2150;
+    color:#fff;
+    font-size:.67rem;
+    line-height:1;
+  }
+
+  .notification-row__content{ padding-top:1px; }
+  .notification-row__title{
+    margin:0;
+    color:var(--text);
+    font-size:.98rem;
+    font-weight:800;
+    line-height:1.38;
+    overflow-wrap:anywhere;
+  }
+  .notification-row__body{
+    margin:4px 0 0;
+    color:var(--muted);
+    font-size:.9rem;
+    line-height:1.45;
+    overflow-wrap:anywhere;
+  }
+  .notification-row__footer{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:6px 9px;
+    margin-top:8px;
+    color:var(--muted);
+    font-size:.76rem;
+    font-weight:650;
+    line-height:1.25;
+  }
+  .notification-row__kind{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+  }
+  .notification-row__kind .bi{ color:#675dce; }
+  .notification-row__time{ color:var(--muted); }
+  .notification-row__new{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    color:#554bd6;
+    font-weight:800;
+  }
+  .notification-row__new::before{
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:#665bff;
+    box-shadow:0 0 0 3px rgba(102, 91, 255, .13);
+    content:"";
+  }
+
+  .notifications-state{
+    display:grid;
+    justify-items:center;
+    gap:10px;
+    padding:clamp(42px, 8vw, 68px) 22px;
+    color:var(--muted);
+    text-align:center;
+  }
+  .notifications-state__icon{
+    display:grid;
+    place-items:center;
+    width:50px;
+    height:50px;
+    border:1px solid rgba(108, 99, 255, .16);
+    border-radius:17px;
+    background:linear-gradient(145deg, rgba(108, 99, 255, .12), rgba(75, 158, 255, .12));
+    color:#675dce;
+    font-size:1.35rem;
+  }
+  .notifications-state h2{
+    margin:2px 0 0;
+    color:var(--text);
+    font-size:1.04rem;
+    font-weight:800;
+  }
+  .notifications-state p{
+    max-width:340px;
+    margin:0;
+    font-size:.9rem;
+    line-height:1.5;
+  }
+  .notifications-retry{
+    margin-top:4px;
+    border:1px solid rgba(108, 99, 255, .24);
+    border-radius:999px;
+    background:rgba(108, 99, 255, .08);
+    color:#564cd3;
+    font:inherit;
+    font-size:.88rem;
+    font-weight:800;
+    padding:9px 14px;
+    transition:background-color .18s ease, transform .18s ease;
+  }
+  .notifications-retry:hover{ background:rgba(108, 99, 255, .15); }
+  .notifications-retry:active{ transform:scale(.98); }
+  .notifications-retry:focus-visible{
+    outline:3px solid rgba(108, 99, 255, .42);
+    outline-offset:3px;
+  }
+
+  .notification-skeleton{
+    display:grid;
+    grid-template-columns:48px minmax(0, 1fr);
+    gap:13px;
+    padding:15px 16px;
+  }
+  .notification-skeleton + .notification-skeleton{ border-top:1px solid var(--border); }
+  .notification-skeleton__avatar,
+  .notification-skeleton__line{
+    border-radius:999px;
+    background:linear-gradient(100deg, rgba(108, 99, 255, .06) 20%, rgba(108, 99, 255, .15) 40%, rgba(108, 99, 255, .06) 65%);
+    background-size:260% 100%;
+    animation:notifications-shimmer 1.55s ease-in-out infinite;
+  }
+  .notification-skeleton__avatar{ width:48px; height:48px; }
+  .notification-skeleton__line{ display:block; height:11px; }
+  .notification-skeleton__line + .notification-skeleton__line{ margin-top:9px; }
+  .notification-skeleton__line--short{ width:44%; }
+  @keyframes notifications-shimmer{
+    from{ background-position:100% 0; }
+    to{ background-position:-100% 0; }
+  }
+
+  [data-theme="dark"] .notifications-surface{ box-shadow:0 18px 45px rgba(0, 0, 0, .22); }
+  [data-theme="dark"] .notification-row--unread{ background:linear-gradient(90deg, rgba(124, 113, 255, .18), rgba(83, 154, 255, .07)); }
+  [data-theme="dark"] .notification-source__badge{ border-color:var(--surface); }
+
+  @media (max-width:575px){
+    .notifications-page{
+      width:100%;
+      padding-top:16px;
+    }
+    .notifications-center__header{
+      align-items:start;
+      flex-direction:column;
+      gap:9px;
+      margin-inline:0;
+    }
+    .notifications-center__summary{ text-align:start; }
+    .notifications-surface{ border-radius:20px; }
+    .notification-row{ grid-template-columns:44px minmax(0, 1fr); gap:11px; padding:14px; }
+    .notification-source{ width:44px; height:44px; }
+    .notification-skeleton{ grid-template-columns:44px minmax(0, 1fr); gap:11px; padding:14px; }
+    .notification-skeleton__avatar{ width:44px; height:44px; }
+  }
+  @media (max-width:359px){
+    .notifications-center__title{ font-size:1.55rem; }
+    .notification-row{ padding-inline:12px; }
+    .notification-row__footer{ gap:5px 7px; }
+  }
+  @media (min-width:768px){
+    .notifications-page{ padding-top:30px; }
+    .notification-row{ padding:17px 18px; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .notification-row,
+    .notifications-retry{ transition:none; }
+    .notification-skeleton__avatar,
+    .notification-skeleton__line{ animation:none; }
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="notif-page container">
-  <h1 class="h5 fw-bold my-3">Notifications</h1>
-  <div id="notifList"></div>
-</div>
+<main class="notifications-page container" aria-labelledby="notificationsHeading">
+  <section class="notifications-center">
+    <header class="notifications-center__header">
+      <div>
+        <p class="notifications-center__eyebrow"><i class="bi bi-bell-fill" aria-hidden="true"></i> SEVOR</p>
+        <h1 id="notificationsHeading" class="notifications-center__title">Notifications</h1>
+        <p class="notifications-center__subtitle">Stay up to date with activity that matters to you.</p>
+      </div>
+      <p id="notificationSummary" class="notifications-center__summary" role="status" aria-live="polite">Loading notifications</p>
+    </header>
+
+    <section class="notifications-surface" aria-label="Your notifications">
+      <ul id="notifList" class="notifications-feed" aria-live="polite" aria-busy="true" aria-label="Notifications"></ul>
+    </section>
+  </section>
+</main>
 {% endblock %}
 
 {% block scripts %}
 <script>
-(function(){
-  const list  = document.getElementById('notifList');
+(() => {
+  const list = document.getElementById('notifList');
+  const summary = document.getElementById('notificationSummary');
   const badge = document.getElementById('mNotifBadge');
+  const LIST_ENDPOINTS = ['/api/notifs/list?limit=50', '/api/notifications/poll'];
 
-  // Empty-state image path (ton.png) from static/photo
-  const EMPTY_IMG = "{{ url_for('static', path='photo/ton.png') }}";
+  const typeMeta = (kind, title) => {
+    const value = String(kind || 'system').toLowerCase();
+    const source = String(title || '');
+    if (value === 'support' && /chatbot|🤖/iu.test(source)) {
+      return { icon: 'bi-robot', label: 'SEVOR Assistant', sourceClass: 'assistant' };
+    }
+    const types = {
+      booking: { icon: 'bi-calendar2-check', label: 'Booking update', sourceClass: 'booking' },
+      deposit: { icon: 'bi-shield-lock-fill', label: 'Deposit update', sourceClass: 'deposit' },
+      payout: { icon: 'bi-wallet2', label: 'Payout update', sourceClass: 'payout' },
+      support: { icon: 'bi-headset', label: 'SEVOR Support', sourceClass: 'support' },
+      report: { icon: 'bi-flag-fill', label: 'Report update', sourceClass: 'report' },
+      moderation: { icon: 'bi-shield-exclamation', label: 'Moderation update', sourceClass: 'moderation' },
+      role: { icon: 'bi-person-gear', label: 'Account update', sourceClass: 'role' },
+      admin: { icon: 'bi-shield-check', label: 'SEVOR Admin', sourceClass: 'admin' },
+      reject_edit: { icon: 'bi-box-seam', label: 'Listing review', sourceClass: 'reject' },
+      info: { icon: 'bi-bell-fill', label: 'SEVOR update', sourceClass: 'system' },
+      system: { icon: 'bi-bell-fill', label: 'SEVOR update', sourceClass: 'system' }
+    };
+    return types[value] || { icon: 'bi-bell-fill', label: 'SEVOR update', sourceClass: 'system' };
+  };
 
-  const FEEDS = [
-    '/api/notifications/poll',
-    '/api/notifications',
-    '/notifications/json'
-  ];
-
-  function esc(s){
-    return String(s||"").replace(/[&<>"']/g, c =>
-      ({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c]));
-  }
-
-  async function fetchFirst(urls){
-    for (const u of urls){
-      try{
-        const r = await fetch(u, {credentials:'include'});
-        if (r.ok){ return await r.json(); }
-      }catch(_){}
+  const fetchFirst = async (urls) => {
+    for (const url of urls) {
+      try {
+        const response = await fetch(url, { credentials: 'include', headers: { Accept: 'application/json' } });
+        if (response.ok) return await response.json();
+      } catch (_) {
+        // Continue to the established fallback endpoint.
+      }
     }
     return null;
-  }
+  };
 
-  function normalize(data){
-    const items = (data && (data.items || data.notifications || data)) || [];
-    const unread = Number(data && (data.unread ?? data.count ?? 0)) || 0;
-    return {
-      unread,
-      items: items.map(n => ({
-        title: n.title || n.subject || 'Notification',
-        meta:  n.body  || n.text || n.message || '',
-        link:  n.link_url || n.url || '#',
-        is_read: !!n.is_read,
-        created_at: n.created_at || n.time || ''
-      }))
-    };
-  }
+  const normalise = (data) => {
+    const source = Array.isArray(data) ? data : (data && (data.items || data.notifications)) || [];
+    const items = Array.isArray(source) ? source.map((notification) => ({
+      id: notification.id,
+      title: notification.title || notification.subject || 'Notification',
+      body: notification.body || notification.text || notification.message || '',
+      link: notification.link_url || notification.link || notification.url || '',
+      kind: notification.kind || 'system',
+      isRead: typeof notification.is_read === 'boolean' ? notification.is_read : null,
+      createdAt: notification.created_at || notification.ts || notification.time || ''
+    })) : [];
+    const providedUnread = Number(data && (data.unread ?? data.count));
+    const unread = Number.isFinite(providedUnread)
+      ? Math.max(0, providedUnread)
+      : items.filter((notification) => notification.isRead === false).length;
+    return { items, unread };
+  };
 
-  function render(norm){
-    list.innerHTML = '';
-    if (!norm.items.length){
-      // No text — image only when there are no notifications
-      list.innerHTML = `
-        <div class="notif-empty">
-          <img src="${EMPTY_IMG}" alt="No notifications">
-        </div>`;
+  const parseNotificationDate = (value) => {
+    if (!value) return null;
+    const raw = String(value);
+    const numeric = typeof value === 'number' || /^\d+$/.test(raw) ? Number(value) : NaN;
+    const date = Number.isFinite(numeric)
+      ? new Date(numeric < 100000000000 ? numeric * 1000 : numeric)
+      : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
+
+  const formatTime = (value) => {
+    if (!value) return '';
+    const date = parseNotificationDate(value);
+    if (!date) return '';
+    const elapsed = Math.max(0, Date.now() - date.getTime());
+    const minutes = Math.floor(elapsed / 60000);
+    if (minutes < 1) return 'Now';
+    if (minutes < 60) return String(minutes) + 'm';
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return String(hours) + 'h';
+    if (hours < 48) return 'Yesterday';
+    return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined }).format(date);
+  };
+
+  const updateBadge = (count) => {
+    if (!badge) return;
+    if (count > 0) {
+      badge.style.display = '';
+      badge.textContent = count > 99 ? '99+' : String(count);
+    } else {
+      badge.style.display = 'none';
+      badge.textContent = '';
+    }
+  };
+
+  const appendText = (element, text) => {
+    element.textContent = text;
+    return element;
+  };
+
+  const makeIcon = (className) => {
+    const icon = document.createElement('i');
+    icon.className = 'bi ' + className;
+    icon.setAttribute('aria-hidden', 'true');
+    return icon;
+  };
+
+  const createSource = (meta) => {
+    const source = document.createElement('div');
+    source.className = 'notification-source notification-source--' + meta.sourceClass;
+    source.setAttribute('aria-hidden', 'true');
+    source.textContent = 'S';
+    const kindBadge = document.createElement('span');
+    kindBadge.className = 'notification-source__badge';
+    kindBadge.appendChild(makeIcon(meta.icon));
+    source.appendChild(kindBadge);
+    return source;
+  };
+
+  const createRow = (notification) => {
+    const meta = typeMeta(notification.kind, notification.title);
+    const item = document.createElement('li');
+    item.className = 'notification-feed__item';
+    const row = notification.link ? document.createElement('a') : document.createElement('article');
+    row.className = 'notification-row' + (notification.isRead === false ? ' notification-row--unread' : '');
+    if (notification.link) row.href = notification.link;
+    if (!notification.link) row.setAttribute('aria-label', notification.title);
+
+    row.appendChild(createSource(meta));
+    const content = document.createElement('div');
+    content.className = 'notification-row__content';
+
+    const title = document.createElement('p');
+    title.className = 'notification-row__title';
+    appendText(title, notification.title);
+    content.appendChild(title);
+
+    if (notification.body) {
+      const body = document.createElement('p');
+      body.className = 'notification-row__body';
+      appendText(body, notification.body);
+      content.appendChild(body);
+    }
+
+    const footer = document.createElement('div');
+    footer.className = 'notification-row__footer';
+    const kind = document.createElement('span');
+    kind.className = 'notification-row__kind';
+    kind.appendChild(makeIcon(meta.icon));
+    kind.appendChild(document.createTextNode(meta.label));
+    footer.appendChild(kind);
+
+    const time = formatTime(notification.createdAt);
+    if (time) {
+      const timeElement = document.createElement('time');
+      timeElement.className = 'notification-row__time';
+      const date = parseNotificationDate(notification.createdAt);
+      if (date) timeElement.dateTime = date.toISOString();
+      appendText(timeElement, time);
+      footer.appendChild(timeElement);
+    }
+    if (notification.isRead === false) {
+      const unread = document.createElement('span');
+      unread.className = 'notification-row__new';
+      appendText(unread, 'New');
+      footer.appendChild(unread);
+    }
+    content.appendChild(footer);
+    row.appendChild(content);
+    item.appendChild(row);
+    return item;
+  };
+
+  const clearList = () => {
+    while (list.firstChild) list.removeChild(list.firstChild);
+  };
+
+  const renderLoading = () => {
+    clearList();
+    list.setAttribute('aria-busy', 'true');
+    for (let index = 0; index < 4; index += 1) {
+      const item = document.createElement('li');
+      item.className = 'notification-skeleton';
+      item.setAttribute('aria-hidden', 'true');
+      const avatar = document.createElement('span');
+      avatar.className = 'notification-skeleton__avatar';
+      const lines = document.createElement('span');
+      const lineOne = document.createElement('span');
+      lineOne.className = 'notification-skeleton__line';
+      const lineTwo = document.createElement('span');
+      lineTwo.className = 'notification-skeleton__line notification-skeleton__line--short';
+      lines.append(lineOne, lineTwo);
+      item.append(avatar, lines);
+      list.appendChild(item);
+    }
+  };
+
+  const renderState = (heading, message, retry) => {
+    clearList();
+    list.setAttribute('aria-busy', 'false');
+    const item = document.createElement('li');
+    const state = document.createElement('section');
+    state.className = 'notifications-state';
+    const icon = document.createElement('span');
+    icon.className = 'notifications-state__icon';
+    icon.appendChild(makeIcon(retry ? 'bi-wifi-off' : 'bi-bell'));
+    const title = document.createElement('h2');
+    appendText(title, heading);
+    const text = document.createElement('p');
+    appendText(text, message);
+    state.append(icon, title, text);
+    if (retry) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'notifications-retry';
+      appendText(button, 'Try again');
+      button.addEventListener('click', load);
+      state.appendChild(button);
+    }
+    item.appendChild(state);
+    list.appendChild(item);
+  };
+
+  const render = (result) => {
+    if (!result.items.length) {
+      renderState('You’re all caught up', 'No new notifications right now.');
       return;
     }
-    norm.items.forEach(n=>{
-      const a = document.createElement('a');
-      a.className='notif-card';
-      a.href = n.link || '#';
-      a.innerHTML = `
-        <div class="notif-title">${esc(n.title)}</div>
-        ${n.meta ? `<div class="notif-meta">${esc(n.meta)}</div>` : '' }
-      `;
-      list.appendChild(a);
-    });
+    clearList();
+    list.setAttribute('aria-busy', 'false');
+    result.items.forEach((notification) => list.appendChild(createRow(notification)));
+  };
+
+  async function markAllRead() {
+    try {
+      const response = await fetch('/api/notifications/mark_all_read', { method: 'POST', credentials: 'include' });
+      return response.ok;
+    } catch (_) {
+      return false;
+    }
   }
 
-  function updateBadge(n){
-    if (!badge) return;
-    if (n>0){ badge.style.display=''; badge.textContent = (n>99?'99+':String(n)); }
-    else{ badge.style.display='none'; badge.textContent=''; }
-  }
+  async function load() {
+    renderLoading();
+    summary.textContent = 'Loading notifications';
+    const data = await fetchFirst(LIST_ENDPOINTS);
+    if (!data) {
+      renderState('Notifications are unavailable', 'Please check your connection and try again.', true);
+      summary.textContent = 'Unable to load notifications';
+      return;
+    }
+    const result = normalise(data);
+    render(result);
+    updateBadge(result.unread);
+    summary.textContent = result.unread > 0
+      ? String(result.unread) + ' unread'
+      : (result.items.length ? 'All caught up' : 'No notifications');
 
-  async function load(){
-    // Light loading screen (no noisy text)
-    list.innerHTML = `
-      <div class="notif-empty">
-        <img src="${EMPTY_IMG}" alt="">
-      </div>`;
-    const data = await fetchFirst(FEEDS);
-    const norm = normalize(data||{});
-    render(norm);
-    updateBadge(norm.unread);
-    try{ await fetch('/api/notifications/mark_all_read', {method:'POST', credentials:'include'}); }
-    catch(_){}
+    // Preserve the page's established behavior: visiting the notification center marks all current rows as read.
+    // The rendered state reflects what the user received on arrival; a later visit will use the server's updated state.
+    if (await markAllRead()) updateBadge(0);
   }
 
   load();
