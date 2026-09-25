@@ -5,12 +5,14 @@
 <style>
   /* Focused conversation UI — intentionally scoped to this route's main modifier. */
   .page.page--focused-conversation{
-    --conversation-viewport-height:var(--sevor-conversation-viewport-height, 100dvh);
+    --conversation-viewport-height:var(--sevor-conversation-viewport-height, 100vh);
     box-sizing:border-box;
     display:flex;
     flex-direction:column;
     width:100%;
     max-width:none;
+    height:100vh;
+    height:100dvh;
     height:var(--conversation-viewport-height);
     min-height:0 !important;
     margin:0 !important;
@@ -164,7 +166,6 @@
     overflow-x:hidden;
     overflow-y:auto;
     overscroll-behavior:contain;
-    scroll-behavior:smooth;
     padding:20px 16px 24px;
     padding-left:max(16px, env(safe-area-inset-left, 0px));
     padding-right:max(16px, env(safe-area-inset-right, 0px));
