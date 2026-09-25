@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Request, Form, UploadFile, File, HTTPExc
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, or_, and_
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import SQLAlchemyError
 import os, random, secrets, shutil
 import unicodedata
 from datetime import date
@@ -878,7 +878,7 @@ def owner_item_delete(request: Request, item_id: int, db: Session = Depends(get_
     try:
         db.delete(item)
         db.commit()
-    except IntegrityError:
+    except SQLAlchemyError:
         # A database-level relation that is not represented above must never be
         # bypassed; roll back and keep the listing intact.
         db.rollback()
