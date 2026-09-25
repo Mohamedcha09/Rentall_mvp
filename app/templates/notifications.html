@@ -134,6 +134,21 @@
   .notification-source--role,
   .notification-source--admin{ background:linear-gradient(145deg, #4f7ccd, #6778de); }
   .notification-source--reject{ background:linear-gradient(145deg, #bd685f, #db8973); }
+  .notification-source--actor{ background:linear-gradient(145deg, #756bff, #4b9eff); }
+  .notification-source--item{ border-radius:15px; }
+  .notification-source__visual{
+    display:grid;
+    place-items:center;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    border-radius:inherit;
+  }
+  .notification-source__image{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
   .notification-source__badge{
     position:absolute;
     inset-inline-end:-4px;
@@ -151,6 +166,14 @@
   }
 
   .notification-row__content{ padding-top:1px; }
+  .notification-row__actor{
+    margin:0 0 3px;
+    color:var(--text);
+    font-size:.81rem;
+    font-weight:850;
+    line-height:1.3;
+    overflow-wrap:anywhere;
+  }
   .notification-row__title{
     margin:0;
     color:var(--text);
@@ -383,7 +406,19 @@
       link: notification.link_url || notification.link || notification.url || '',
       kind: notification.kind || 'system',
       isRead: typeof notification.is_read === 'boolean' ? notification.is_read : null,
-      createdAt: notification.created_at || notification.ts || notification.time || ''
+      createdAt: notification.created_at || notification.ts || notification.time || '',
+      actor: notification.actor && typeof notification.actor.name === 'string' && notification.actor.name.trim()
+        ? {
+            name: notification.actor.name.trim(),
+            avatarPath: typeof notification.actor.avatar_path === 'string' ? notification.actor.avatar_path : ''
+          }
+        : null,
+      item: notification.item && typeof notification.item === 'object'
+        ? {
+            title: typeof notification.item.title === 'string' ? notification.item.title : '',
+            imagePath: typeof notification.item.image_path === 'string' ? notification.item.image_path : ''
+          }
+        : null
     })) : [];
     const providedUnread = Number(data && (data.unread ?? data.count));
     const unread = Number.isFinite(providedUnread)
@@ -432,6 +467,18 @@
     return element;
   };
 
+  const initialsFor = (name) => {
+    const words = String(name || '').trim().split(/\s+/).filter(Boolean);
+    return (words.slice(0, 2).map((word) => word.charAt(0)).join('') || 'S').toUpperCase();
+  };
+
+  const safeMediaUrl = (value) => {
+    const raw = String(value || '').trim().replace(/\\/g, '/');
+    if (!raw || /^data:/i.test(raw) || /^javascript:/i.test(raw)) return '';
+    if (/^https?:\/\//i.test(raw)) return raw;
+    return '/' + raw.replace(/^\/+/, '');
+  };
+
   const makeIcon = (className) => {
     const icon = document.createElement('i');
     icon.className = 'bi ' + className;
@@ -439,15 +486,45 @@
     return icon;
   };
 
-  const createSource = (meta) => {
+  const createSource = (meta, actor, item) => {
     const source = document.createElement('div');
     source.className = 'notification-source notification-source--' + meta.sourceClass;
     source.setAttribute('aria-hidden', 'true');
-    source.textContent = 'S';
+    const visual = document.createElement('span');
+    visual.className = 'notification-source__visual';
+
+    const visualImage = actor ? actor.avatarPath : (item ? item.imagePath : '');
+    const hasItem = !actor && Boolean(item);
+    const useItemImage = hasItem && Boolean(item.imagePath);
+    if (actor) source.classList.add('notification-source--actor');
+    if (hasItem) source.classList.add('notification-source--item');
+
+    const setFallback = () => {
+      visual.replaceChildren();
+      if (actor) {
+        appendText(visual, initialsFor(actor.name));
+      } else {
+        visual.appendChild(makeIcon(hasItem ? 'bi-box-seam' : meta.icon));
+      }
+    };
+    const imageUrl = safeMediaUrl(visualImage);
+    if (imageUrl) {
+      const image = document.createElement('img');
+      image.className = 'notification-source__image';
+      image.src = imageUrl;
+      image.alt = '';
+      image.loading = 'lazy';
+      image.decoding = 'async';
+      image.addEventListener('error', setFallback, { once: true });
+      visual.appendChild(image);
+    } else {
+      setFallback();
+    }
+
     const kindBadge = document.createElement('span');
     kindBadge.className = 'notification-source__badge';
     kindBadge.appendChild(makeIcon(meta.icon));
-    source.appendChild(kindBadge);
+    source.append(visual, kindBadge);
     return source;
   };
 
@@ -460,9 +537,16 @@
     if (notification.link) row.href = notification.link;
     if (!notification.link) row.setAttribute('aria-label', notification.title);
 
-    row.appendChild(createSource(meta));
+    row.appendChild(createSource(meta, notification.actor, notification.item));
     const content = document.createElement('div');
     content.className = 'notification-row__content';
+
+    if (notification.actor) {
+      const actor = document.createElement('p');
+      actor.className = 'notification-row__actor';
+      appendText(actor, notification.actor.name);
+      content.appendChild(actor);
+    }
 
     const title = document.createElement('p');
     title.className = 'notification-row__title';
