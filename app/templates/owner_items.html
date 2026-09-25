@@ -181,6 +181,29 @@
     gap:clamp(20px,3vw,31px);
     margin-top:clamp(22px,4vw,42px);
   }
+  .listings-notice{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    padding:13px 15px;
+    border:1px solid transparent;
+    border-radius:16px;
+    box-shadow:var(--listings-soft-shadow);
+    font-size:.9rem;
+    font-weight:750;
+    line-height:1.48;
+  }
+  .listings-notice--success{
+    border-color:rgba(25,136,96,.20);
+    background:rgba(236,252,246,.88);
+    color:#126746;
+  }
+  .listings-notice--error{
+    border-color:rgba(186,62,68,.20);
+    background:rgba(255,243,244,.92);
+    color:#96343b;
+  }
+  .listings-notice .bi{ margin-top:2px; font-size:1rem; }
   .listings-overview{
     display:flex;
     align-items:end;
@@ -369,7 +392,7 @@
   .listing-card{
     display:grid;
     grid-template-rows:auto minmax(0, 1fr);
-    overflow:hidden;
+    overflow:visible;
     border:1px solid var(--listings-border);
     border-radius:22px;
     background:var(--listings-surface);
@@ -389,6 +412,7 @@
     position:relative;
     aspect-ratio:4 / 3;
     overflow:hidden;
+    border-radius:21px 21px 0 0;
     background:linear-gradient(145deg, rgba(114,92,255,.20), rgba(38,174,226,.16));
   }
   .listing-card__image{
@@ -449,6 +473,7 @@
     grid-template-rows:auto auto 1fr auto;
     gap:12px;
     padding:16px;
+    border-radius:0 0 21px 21px;
   }
   .listing-card__category{
     display:inline-flex;
@@ -499,10 +524,11 @@
   .listing-card__feedback strong{ font-weight:850; }
   .listing-card__actions{
     display:grid;
-    grid-template-columns:repeat(2, minmax(0, 1fr));
+    grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) 44px;
     gap:8px;
     margin-top:2px;
   }
+  .listing-card__actions--published{ grid-template-columns:minmax(0, 1fr) 44px; }
   .listing-action{
     display:inline-flex;
     align-items:center;
@@ -514,10 +540,12 @@
     border-radius:12px;
     background:var(--listings-solid);
     color:var(--listings-ink);
+    font:inherit;
     font-size:.8rem;
     font-weight:850;
     text-align:center;
     text-decoration:none;
+    cursor:pointer;
     transition:transform .18s ease, background .18s ease, border-color .18s ease;
   }
   .listing-action:hover{
@@ -532,6 +560,36 @@
     color:#fff !important;
   }
   .listing-action--edit:hover{ background:linear-gradient(135deg, #6550f5, #1c9fd1); color:#fff; }
+  .listing-actions-menu{ position:relative; }
+  .listing-action--more{
+    width:44px;
+    padding:9px;
+  }
+  .listing-action--more::after{ display:none; }
+  .listing-actions-menu .dropdown-menu{
+    z-index:20;
+    min-width:190px;
+    padding:7px;
+    border:1px solid rgba(66,57,137,.13);
+    border-radius:14px;
+    box-shadow:0 18px 36px rgba(38,34,92,.18);
+  }
+  .listing-actions-menu .dropdown-item{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-height:40px;
+    border-radius:9px;
+    color:var(--listings-ink);
+    font-size:.84rem;
+    font-weight:750;
+  }
+  .listing-actions-menu .dropdown-item:hover,
+  .listing-actions-menu .dropdown-item:focus{ background:rgba(114,92,255,.08); }
+  .listing-actions-menu .dropdown-divider{ margin:6px 0; }
+  .listing-actions-menu .listing-action-menu__delete{ color:#ab3540; }
+  .listing-actions-menu .listing-action-menu__delete:hover,
+  .listing-actions-menu .listing-action-menu__delete:focus{ background:rgba(203,67,76,.09); color:#912b35; }
   .listing-resubmit{ display:contents; }
   .listing-action--resubmit{
     grid-column:1 / -1;
@@ -593,6 +651,71 @@
     font-weight:850;
     text-decoration:none;
   }
+  .listings-delete-modal .modal-dialog{
+    max-width:480px;
+    margin:calc(18px + env(safe-area-inset-top, 0px)) auto calc(18px + env(safe-area-inset-bottom, 0px));
+    padding-inline:12px;
+  }
+  .listings-delete-modal .modal-content{
+    overflow:hidden;
+    border:1px solid rgba(86,71,161,.14);
+    border-radius:24px;
+    box-shadow:0 24px 64px rgba(27,22,78,.28);
+  }
+  .listings-delete-modal .modal-header{
+    align-items:flex-start;
+    gap:12px;
+    padding:22px 22px 12px;
+    border:0;
+  }
+  .listings-delete-modal .modal-title{
+    color:var(--listings-ink);
+    font-size:1.25rem;
+    font-weight:850;
+    letter-spacing:-.025em;
+  }
+  .listings-delete-modal .btn-close{ flex:0 0 auto; }
+  .listings-delete-modal .modal-body{
+    padding:5px 22px 18px;
+    color:var(--listings-muted);
+    line-height:1.58;
+  }
+  .listings-delete-modal__listing{
+    display:block;
+    margin-top:10px;
+    color:var(--listings-ink);
+    font-size:.88rem;
+    font-weight:850;
+  }
+  .listings-delete-modal .modal-footer{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    padding:14px 22px 22px;
+    border:0;
+  }
+  .listings-delete-cancel,
+  .listings-delete-confirm{
+    min-height:46px;
+    padding:10px 15px;
+    border-radius:13px;
+    font:inherit;
+    font-size:.88rem;
+    font-weight:850;
+  }
+  .listings-delete-cancel{
+    border:1px solid rgba(82,72,164,.16);
+    background:#fff;
+    color:var(--listings-ink);
+  }
+  .listings-delete-confirm{
+    border:1px solid transparent;
+    background:#b63843;
+    color:#fff;
+  }
+  .listings-delete-confirm:hover:not(:disabled),
+  .listings-delete-confirm:focus-visible:not(:disabled){ background:#942c36; color:#fff; }
+  .listings-delete-confirm:disabled{ cursor:not-allowed; opacity:.55; }
   .listings-filter-empty[hidden]{ display:none !important; }
 
   @keyframes listings-hero-rise{
@@ -650,6 +773,10 @@
     .listing-card__body{ padding:14px; }
     .listing-card__actions{ gap:7px; }
     .listing-action{ padding-inline:7px; font-size:.76rem; }
+    .listing-card__actions{ grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) 42px; }
+    .listing-card__actions--published{ grid-template-columns:minmax(0, 1fr) 42px; }
+    .listing-action--more{ width:42px; }
+    .listings-delete-modal .modal-footer > *{ width:100%; }
   }
   @media (prefers-reduced-motion:reduce){
     .listings-center-hero,
@@ -659,7 +786,8 @@
     .listing-card,
     .listing-card__image,
     .listing-action,
-    .listings-filter{ transition:none; }
+    .listings-filter,
+    .listings-delete-modal .modal-dialog{ transition:none; }
   }
 </style>
 {% endblock %}
@@ -682,6 +810,13 @@
   </header>
 
   <div class="listings-center-workspace">
+    {% if listing_notice %}
+      <div class="listings-notice listings-notice--{{ listing_notice.kind }}" {% if listing_notice.kind == 'error' %}role="alert"{% else %}role="status"{% endif %}>
+        <i class="bi {% if listing_notice.kind == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle-fill{% endif %}" aria-hidden="true"></i>
+        <span>{{ listing_notice.text }}</span>
+      </div>
+    {% endif %}
+
     <section class="listings-overview" aria-labelledby="listingsOverviewTitle">
       <div>
         <p class="listings-overview__eyebrow"><i class="bi bi-grid-1x2" aria-hidden="true"></i> Inventory overview</p>
@@ -714,7 +849,7 @@
       </article>
     </section>
 
-    {% if listing_stats.total > 1 %}
+    {% if listing_stats.total %}
       <section class="listings-toolbar" aria-label="Search, filter, and sort listings">
         <div class="listings-toolbar__left">
           {% if listing_stats.total > 1 %}
@@ -815,9 +950,32 @@
                 <p class="listing-card__feedback"><strong>Review note:</strong> {{ it.admin_feedback }}</p>
               {% endif %}
 
-              <div class="listing-card__actions">
+              <div class="listing-card__actions{% if status == 'approved' %} listing-card__actions--published{% endif %}">
                 <a class="listing-action" href="/items/{{ it.id }}"><i class="bi bi-eye" aria-hidden="true"></i><span>View listing</span></a>
-                <a class="listing-action listing-action--edit" href="/owner/items/{{ it.id }}/edit"><i class="bi bi-pencil-square" aria-hidden="true"></i><span>Edit</span></a>
+                {% if status != 'approved' %}
+                  <a class="listing-action listing-action--edit" href="/owner/items/{{ it.id }}/edit"><i class="bi bi-pencil-square" aria-hidden="true"></i><span>Edit</span></a>
+                {% endif %}
+                <div class="dropdown listing-actions-menu">
+                  <button class="listing-action listing-action--more dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions for {{ it.title }}">
+                    <i class="bi bi-three-dots" aria-hidden="true"></i><span class="visually-hidden">Listing actions</span>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end">
+                    {% if status != 'approved' %}
+                      <li><a class="dropdown-item" href="/owner/items/{{ it.id }}/edit"><i class="bi bi-pencil-square" aria-hidden="true"></i><span>Edit listing</span></a></li>
+                      <li><hr class="dropdown-divider"></li>
+                    {% endif %}
+                    <li>
+                      <button
+                        class="dropdown-item listing-action-menu__delete"
+                        type="button"
+                        data-bs-toggle="modal"
+                        data-bs-target="#listingDeleteModal"
+                        data-delete-url="/owner/items/{{ it.id }}/delete"
+                        data-listing-title="{{ it.title }}"
+                      ><i class="bi bi-trash3" aria-hidden="true"></i><span>Delete listing</span></button>
+                    </li>
+                  </ul>
+                </div>
                 {% if status in ['rejected', 'needs_revision'] %}
                   <form class="listing-resubmit" action="/owner/items/{{ it.id }}/resubmit" method="post">
                     <button class="listing-action listing-action--resubmit" type="submit"><i class="bi bi-arrow-repeat" aria-hidden="true"></i><span>Resubmit for review</span></button>
@@ -844,6 +1002,25 @@
     {% endif %}
   </div>
 </section>
+
+<div class="modal fade listings-delete-modal" id="listingDeleteModal" tabindex="-1" aria-labelledby="listingDeleteModalTitle" aria-describedby="listingDeleteModalDescription" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form id="listingDeleteForm" class="modal-content" method="post" action="">
+      <div class="modal-header">
+        <h2 class="modal-title" id="listingDeleteModalTitle">Delete this listing?</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="listingDeleteModalDescription">
+        This action will permanently remove this listing. Are you sure you want to continue?
+        <span class="listings-delete-modal__listing" id="listingDeleteModalListing"></span>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="listings-delete-cancel" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="listings-delete-confirm" id="listingDeleteConfirm" disabled>Delete listing</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -900,6 +1077,45 @@
       if (fallback) fallback.hidden = false;
     }, { once: true });
   });
+
+  const deleteModal = document.getElementById('listingDeleteModal');
+  const deleteForm = document.getElementById('listingDeleteForm');
+  const deleteConfirm = document.getElementById('listingDeleteConfirm');
+  const deleteListingName = document.getElementById('listingDeleteModalListing');
+  const validDeleteAction = (value) => /^\/owner\/items\/\d+\/delete$/.test(value || '');
+
+  if (deleteModal && deleteForm && deleteConfirm && deleteListingName) {
+    const resetDeleteForm = () => {
+      deleteForm.setAttribute('action', '');
+      deleteConfirm.disabled = true;
+      deleteConfirm.textContent = 'Delete listing';
+      deleteListingName.textContent = '';
+    };
+
+    deleteModal.addEventListener('show.bs.modal', (event) => {
+      resetDeleteForm();
+      const trigger = event.relatedTarget;
+      const action = trigger && trigger.dataset ? trigger.dataset.deleteUrl : '';
+      const listingTitle = trigger && trigger.dataset ? trigger.dataset.listingTitle : '';
+      if (!validDeleteAction(action)) return;
+
+      deleteForm.setAttribute('action', action);
+      deleteConfirm.disabled = false;
+      deleteListingName.textContent = listingTitle ? `Listing: ${listingTitle}` : '';
+    });
+
+    deleteModal.addEventListener('hidden.bs.modal', resetDeleteForm);
+
+    deleteForm.addEventListener('submit', (event) => {
+      const action = deleteForm.getAttribute('action') || '';
+      if (!validDeleteAction(action) || deleteConfirm.disabled) {
+        event.preventDefault();
+        return;
+      }
+      deleteConfirm.disabled = true;
+      deleteConfirm.textContent = 'Deleting…';
+    });
+  }
 
   if (sort) {
     sort.addEventListener('change', () => {
