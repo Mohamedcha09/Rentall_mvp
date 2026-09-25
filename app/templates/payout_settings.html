@@ -1,186 +1,531 @@
 {% extends "base.html" %}
+{% set title = "Payout Preferences | SEVOR" %}
+{% set meta_description = "Choose and manage the payout method for your SEVOR rental earnings." %}
+{% set selected_method = payout.method if payout and payout.method in ('interac', 'paypal', 'wise') else 'interac' %}
+{% set selected_currency = payout.currency if payout and payout.currency in ('CAD', 'USD', 'EUR') else 'CAD' %}
+{% set payout_error = request.query_params.get('error', '') if request else '' %}
 
 {% block head %}
-<style>
-.card{
-  border:1px solid var(--border);
-  border-radius:18px;
-  padding:20px;
-  background:var(--surface);
-  margin-bottom:18px;
-}
+<style id="sevor-payout-settings">
+  /* Payout Center only: shared navigation, payment logic, and global form styles stay untouched. */
+  body[data-path="/payout/settings"] .page{
+    background:
+      radial-gradient(760px 440px at 100% 0, rgba(124,92,255,.12), transparent 68%),
+      radial-gradient(620px 420px at -10% 35%, rgba(0,185,217,.09), transparent 66%);
+  }
+  body[data-path="/payout/settings"] .paypal-callout{
+    max-width:1180px;
+    margin:18px auto 0;
+    gap:12px;
+    flex-wrap:wrap;
+    border-radius:18px;
+  }
+  body[data-path="/payout/settings"] .paypal-callout > *{ min-width:0; }
 
-.method{
-  border:1px solid var(--border);
-  border-radius:16px;
-  padding:16px;
-  margin-bottom:14px;
-  transition:.2s ease;
-}
-.method.active{
-  border-color:#6d5dfc;
-  background:rgba(109,93,252,.05);
-}
-.method-title{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  font-weight:600;
-}
-.field{margin-top:14px}
-.field input, .field select{
-  width:100%;
-  padding:12px 14px;
-  border-radius:12px;
-  border:1px solid var(--border);
-}
-.hint{font-size:.85rem;opacity:.7;margin-top:4px}
+  .payout-settings-page{
+    --payout-primary:var(--primary, #7c5cff);
+    --payout-primary-deep:var(--primary-2, #5a3eff);
+    --payout-cyan:#00b8d9;
+    --payout-ink:var(--text, #111827);
+    --payout-muted:var(--muted, #667085);
+    --payout-surface:rgba(255,255,255,.82);
+    --payout-solid:#fff;
+    --payout-border:rgba(90,62,255,.15);
+    --payout-shadow:0 20px 48px rgba(30,35,65,.10);
+    --payout-soft-shadow:0 10px 26px rgba(30,35,65,.075);
+    width:min(1180px, 100%);
+    margin-inline:auto;
+    padding:clamp(18px,3vw,38px) 0 calc(clamp(42px,6vw,78px) + env(safe-area-inset-bottom, 0px));
+    color:var(--payout-ink);
+  }
+  .payout-settings-page, .payout-settings-page *{ box-sizing:border-box; }
+  .payout-settings-page :is(h1,h2,h3,p,span,a,button,label,legend,small){ overflow-wrap:anywhere; }
+  .payout-settings-page a{ color:inherit; }
+  .payout-settings-page :focus-visible{ outline:3px solid var(--payout-cyan); outline-offset:3px; }
+  [data-theme="dark"] .payout-settings-page{
+    --payout-primary-deep:#d5cfff;
+    --payout-cyan:#8cecfb;
+    --payout-surface:rgba(16,25,45,.88);
+    --payout-solid:#10192d;
+    --payout-border:rgba(184,172,255,.24);
+    --payout-shadow:0 20px 48px rgba(0,0,0,.30);
+    --payout-soft-shadow:0 10px 26px rgba(0,0,0,.22);
+  }
 
-/* ===== Fix: make searchbar identical on all pages ===== */
-.searchbar-wrap{
-  background: #fff !important;
-  box-shadow: 0 6px 20px rgba(0,0,0,.06) !important;
-  border-radius: 999px !important;
-  position: relative;
-  z-index: 10;
-}
+  .payout-hero{
+    position:relative;
+    display:grid;
+    grid-template-columns:minmax(0,1.15fr) minmax(230px,.65fr);
+    gap:clamp(22px,4vw,56px);
+    align-items:center;
+    overflow:hidden;
+    padding:clamp(25px,5vw,62px);
+    border:1px solid rgba(255,255,255,.22);
+    border-radius:clamp(24px,4vw,36px);
+    background:linear-gradient(135deg, rgba(89,57,236,.98), rgba(116,82,255,.95) 57%, rgba(0,174,206,.92));
+    color:#fff;
+    box-shadow:var(--payout-shadow);
+    animation:payout-rise .42s ease both;
+  }
+  .payout-hero::before,.payout-hero::after{
+    content:"";
+    position:absolute;
+    pointer-events:none;
+    border-radius:999px;
+  }
+  .payout-hero::before{ width:350px; height:350px; right:-132px; bottom:-205px; background:rgba(255,255,255,.11); }
+  .payout-hero::after{ width:220px; height:220px; left:53%; top:-116px; border:1px solid rgba(255,255,255,.25); }
+  .payout-hero__content,.payout-hero__summary{ position:relative; z-index:1; min-width:0; }
+  .payout-back{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    min-height:44px;
+    padding:8px 11px;
+    border:1px solid rgba(255,255,255,.30);
+    border-radius:999px;
+    background:rgba(255,255,255,.12);
+    color:#fff !important;
+    font-size:.9rem;
+    font-weight:800;
+    text-decoration:none;
+    transition:transform .18s ease, background .18s ease;
+  }
+  .payout-back:hover{ transform:translateX(-2px); background:rgba(255,255,255,.19); }
+  .payout-kicker{ margin:24px 0 9px; color:rgba(255,255,255,.75); font-size:.78rem; font-weight:900; letter-spacing:.13em; }
+  .payout-hero h1{ max-width:720px; margin:0; font-size:clamp(2.2rem,4.8vw,4.4rem); line-height:.98; letter-spacing:-.055em; }
+  .payout-hero__lead{ max-width:680px; margin:18px 0 0; color:rgba(255,255,255,.90); font-size:clamp(1rem,1.5vw,1.16rem); line-height:1.65; }
+  .payout-hero__summary{
+    display:grid;
+    gap:12px;
+    padding:clamp(18px,3vw,26px);
+    border:1px solid rgba(255,255,255,.24);
+    border-radius:23px;
+    background:rgba(255,255,255,.12);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+  }
+  .payout-hero__summary i{ font-size:1.65rem; }
+  .payout-hero__summary strong{ font-size:1.05rem; }
+  .payout-hero__summary span{ color:rgba(255,255,255,.84); line-height:1.5; }
 
-/* Ensure tabs never affect searchbar visually */
-.m-top-tabs{
-  position: relative;
-  z-index: 1;
-}
+  .payout-workspace{ display:grid; gap:clamp(18px,3vw,30px); margin-top:clamp(22px,4vw,42px); }
+  .payout-context{ display:grid; align-content:start; gap:16px; min-width:0; }
+  .payout-panel,.payout-form-card{
+    min-width:0;
+    border:1px solid var(--payout-border);
+    background:var(--payout-surface);
+    box-shadow:var(--payout-soft-shadow);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+  }
+  .payout-panel{ padding:clamp(18px,3vw,25px); border-radius:22px; }
+  .payout-panel__eyebrow,.payout-form-eyebrow{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin:0 0 8px;
+    color:var(--payout-primary-deep);
+    font-size:.78rem;
+    font-weight:900;
+    letter-spacing:.09em;
+    text-transform:uppercase;
+  }
+  .payout-panel__eyebrow i,.payout-form-eyebrow i{ color:var(--payout-cyan); }
+  .payout-panel h2,.payout-form-card h2{ margin:0; font-size:clamp(1.28rem,2vw,1.72rem); letter-spacing:-.03em; }
+  .payout-panel p{ margin:9px 0 0; color:var(--payout-muted); line-height:1.55; }
+  .payout-status{
+    border-color:rgba(124,92,255,.25);
+    background:linear-gradient(145deg, color-mix(in srgb, var(--payout-surface) 88%, #f0edff), var(--payout-surface));
+  }
+  .payout-status__method{ display:flex; align-items:center; gap:11px; margin-top:17px; }
+  .payout-status__icon{
+    display:grid;
+    flex:0 0 auto;
+    place-items:center;
+    width:43px;
+    height:43px;
+    border-radius:15px;
+    background:linear-gradient(135deg, var(--payout-primary), var(--payout-primary-deep));
+    color:#fff;
+  }
+  .payout-status__method strong,.payout-status__method span{ display:block; }
+  .payout-status__method strong{ font-size:1.03rem; }
+  .payout-status__method span{ margin-top:2px; color:var(--payout-muted); font-size:.88rem; line-height:1.4; }
+  .payout-status__chips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+  .payout-chip{ display:inline-flex; align-items:center; gap:6px; min-height:31px; padding:6px 9px; border:1px solid var(--payout-border); border-radius:999px; background:var(--payout-solid); color:var(--payout-primary-deep); font-size:.8rem; font-weight:850; }
+  .payout-current-actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top:19px; }
+  .payout-current-actions form{ margin:0; }
+  .payout-secondary-action,.payout-remove-action{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:43px;
+    padding:10px 13px;
+    border:1px solid var(--payout-border);
+    border-radius:13px;
+    background:var(--payout-solid);
+    font:inherit;
+    font-size:.9rem;
+    font-weight:850;
+    text-decoration:none;
+    cursor:pointer;
+    transition:transform .18s ease, border-color .18s ease, background .18s ease;
+  }
+  .payout-secondary-action{ color:var(--payout-primary-deep) !important; }
+  .payout-remove-action{ color:#b42318; }
+  .payout-secondary-action:hover,.payout-remove-action:hover{ transform:translateY(-1px); border-color:rgba(124,92,255,.46); background:rgba(124,92,255,.08); }
+  .payout-remove-action:hover{ border-color:rgba(180,35,24,.38); background:rgba(180,35,24,.07); }
 
+  .payout-process-list{ display:grid; gap:12px; margin:17px 0 0; padding:0; list-style:none; counter-reset:payout-step; }
+  .payout-process-list li{ display:grid; grid-template-columns:27px minmax(0,1fr); gap:10px; align-items:start; color:var(--payout-muted); line-height:1.45; }
+  .payout-process-list li::before{ counter-increment:payout-step; content:counter(payout-step); display:grid; place-items:center; width:25px; height:25px; border-radius:999px; background:rgba(124,92,255,.12); color:var(--payout-primary-deep); font-size:.75rem; font-weight:900; }
+  .payout-privacy-note{ display:flex; gap:10px; align-items:flex-start; background:rgba(0,185,217,.075); }
+  .payout-privacy-note i{ flex:0 0 auto; margin-top:3px; color:#008da8; }
+  .payout-privacy-note p{ margin:0; font-size:.89rem; }
+  .payout-privacy-note a{ color:var(--payout-primary-deep); font-weight:850; }
+
+  .payout-form-card{ padding:clamp(21px,4vw,40px); border-radius:clamp(22px,3vw,30px); box-shadow:var(--payout-shadow); }
+  .payout-form-card__intro{ max-width:720px; margin:10px 0 0; color:var(--payout-muted); line-height:1.6; }
+  .payout-alert{
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+    margin:0 0 20px;
+    padding:13px 14px;
+    border:1px solid transparent;
+    border-radius:15px;
+    font-size:.91rem;
+    line-height:1.5;
+  }
+  .payout-alert--success{ border-color:rgba(22,128,63,.23); background:rgba(34,197,94,.10); color:#166534; }
+  .payout-alert--error{ border-color:rgba(180,35,24,.24); background:rgba(239,68,68,.09); color:#9f1d16; }
+  [data-theme="dark"] .payout-alert--success{ color:#9af0b4; }
+  [data-theme="dark"] .payout-alert--error{ color:#ffb4ab; }
+  .payout-form{ display:grid; gap:24px; margin-top:27px; }
+  .payout-fieldset{ min-width:0; margin:0; padding:0; border:0; }
+  .payout-fieldset legend{ margin:0; padding:0; font-size:1rem; font-weight:900; }
+  .payout-fieldset > p{ margin:8px 0 0; color:var(--payout-muted); line-height:1.5; }
+  .payout-method-grid{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:11px; margin-top:16px; }
+  .payout-method-card{
+    position:relative;
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr);
+    gap:11px;
+    align-items:start;
+    min-width:0;
+    min-height:126px;
+    padding:16px;
+    border:1px solid var(--payout-border);
+    border-radius:19px;
+    background:var(--payout-solid);
+    color:var(--payout-ink);
+    cursor:pointer;
+    transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
+  }
+  .payout-method-card:hover{ transform:translateY(-2px); border-color:rgba(124,92,255,.44); box-shadow:var(--payout-soft-shadow); }
+  .payout-method-card.is-selected{ border-color:var(--payout-primary); background:color-mix(in srgb, var(--payout-solid) 89%, #eeeaff); box-shadow:0 0 0 3px rgba(124,92,255,.11); }
+  .payout-method-card__radio{ position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+  .payout-method-card:focus-within{ outline:3px solid var(--payout-cyan); outline-offset:3px; }
+  .payout-method-card__icon{ display:grid; place-items:center; width:38px; height:38px; border-radius:13px; background:rgba(124,92,255,.12); color:var(--payout-primary-deep); font-size:1.06rem; }
+  .payout-method-card.is-selected .payout-method-card__icon{ background:linear-gradient(135deg, var(--payout-primary), var(--payout-primary-deep)); color:#fff; }
+  .payout-method-card__copy{ min-width:0; }
+  .payout-method-card__copy strong,.payout-method-card__copy span{ display:block; }
+  .payout-method-card__copy strong{ font-size:.98rem; line-height:1.3; }
+  .payout-method-card__copy span{ margin-top:4px; color:var(--payout-muted); font-size:.84rem; line-height:1.4; }
+  .payout-method-card__check{ position:absolute; top:12px; right:12px; display:grid; place-items:center; width:20px; height:20px; border:1px solid var(--payout-border); border-radius:999px; color:transparent; font-size:.7rem; }
+  .payout-method-card.is-selected .payout-method-card__check{ border-color:var(--payout-primary); background:var(--payout-primary); color:#fff; }
+
+  .payout-method-panel{
+    min-width:0;
+    padding:clamp(18px,3vw,25px);
+    border:1px solid var(--payout-border);
+    border-radius:21px;
+    background:color-mix(in srgb, var(--payout-surface) 91%, #f1efff);
+    animation:payout-panel-in .2s ease both;
+  }
+  .payout-method-panel[hidden]{ display:none; }
+  .payout-method-panel__heading{ display:flex; align-items:center; gap:10px; }
+  .payout-method-panel__heading i{ display:grid; place-items:center; width:34px; height:34px; border-radius:11px; background:rgba(124,92,255,.12); color:var(--payout-primary-deep); }
+  .payout-method-panel h3{ margin:0; font-size:1.04rem; }
+  .payout-method-panel > p{ margin:9px 0 0; color:var(--payout-muted); line-height:1.5; }
+  .payout-fields{ display:grid; gap:17px; margin-top:20px; }
+  .payout-field{ min-width:0; }
+  .payout-field label{ display:block; margin:0 0 8px; font-weight:850; }
+  .payout-field__hint{ display:block; margin-top:8px; color:var(--payout-muted); font-size:.86rem; line-height:1.45; }
+  .payout-settings-page .payout-input,.payout-settings-page .payout-select{
+    width:100%;
+    min-width:0;
+    min-height:51px;
+    padding:12px 14px;
+    border:1px solid color-mix(in srgb, var(--payout-border) 88%, transparent);
+    border-radius:14px;
+    background:var(--payout-solid);
+    color:var(--payout-ink);
+    box-shadow:none;
+    font:inherit;
+    line-height:1.45;
+    transition:border-color .18s ease, box-shadow .18s ease, background .18s ease;
+  }
+  .payout-settings-page .payout-input::placeholder{ color:color-mix(in srgb, var(--payout-muted) 78%, transparent); opacity:1; }
+  .payout-settings-page .payout-input:focus,.payout-settings-page .payout-select:focus{ border-color:var(--payout-primary); background:var(--payout-solid); box-shadow:0 0 0 4px rgba(124,92,255,.14); outline:0; }
+  .payout-checkbox-row{ display:flex; align-items:flex-start; gap:10px; min-width:0; padding:13px; border:1px solid var(--payout-border); border-radius:14px; background:var(--payout-solid); }
+  .payout-checkbox-row input{ flex:0 0 auto; width:18px; height:18px; margin:2px 0 0; accent-color:var(--payout-primary); }
+  .payout-checkbox-row label{ margin:0; font-size:.94rem; font-weight:850; line-height:1.4; }
+  .payout-checkbox-row small{ display:block; margin-top:3px; color:var(--payout-muted); font-weight:400; line-height:1.4; }
+  .payout-currency-section{ padding-top:2px; }
+  .payout-currency-section h3{ margin:0; font-size:1rem; }
+  .payout-currency-section p{ margin:7px 0 12px; color:var(--payout-muted); font-size:.9rem; line-height:1.45; }
+  .payout-form-actions{ display:flex; flex-wrap:wrap; align-items:center; gap:11px; }
+  .payout-save{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+    min-height:50px;
+    padding:12px 19px;
+    border:0;
+    border-radius:14px;
+    background:linear-gradient(135deg, var(--payout-primary), var(--payout-primary-deep));
+    color:#fff;
+    box-shadow:0 10px 22px rgba(90,62,255,.25);
+    font:inherit;
+    font-weight:900;
+    cursor:pointer;
+    transition:transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+  }
+  .payout-save:hover:not(:disabled){ transform:translateY(-2px); box-shadow:0 14px 28px rgba(90,62,255,.32); }
+  .payout-save:active:not(:disabled){ transform:translateY(0); }
+  .payout-save:disabled{ cursor:wait; opacity:.72; box-shadow:none; }
+  .payout-save__spinner{ display:none; width:15px; height:15px; border:2px solid rgba(255,255,255,.45); border-top-color:#fff; border-radius:50%; animation:payout-spin .7s linear infinite; }
+  .payout-form[aria-busy="true"] .payout-save__spinner{ display:block; }
+  .payout-form-status{ min-height:1.25em; margin:0; color:var(--payout-muted); font-size:.88rem; line-height:1.4; }
+
+  @keyframes payout-rise{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
+  @keyframes payout-panel-in{ from{ opacity:.2; transform:translateY(5px); } to{ opacity:1; transform:translateY(0); } }
+  @keyframes payout-spin{ to{ transform:rotate(360deg); } }
+  @media (min-width:900px){ .payout-workspace{ grid-template-columns:minmax(260px,.72fr) minmax(0,1.28fr); align-items:start; } }
+  @media (min-width:769px){ body[data-path="/payout/settings"] .page{ padding-top:clamp(18px,2vw,28px) !important; } }
+  @media (max-width:699px){ .payout-hero{ grid-template-columns:1fr; }.payout-hero__summary{ max-width:520px; }.payout-method-grid{ grid-template-columns:1fr; } }
+  @media (max-width:460px){ .payout-settings-page{ padding-top:16px; }.payout-hero{ padding:25px 20px; }.payout-hero h1{ font-size:clamp(2.02rem,11vw,3rem); }.payout-current-actions,.payout-current-actions form,.payout-secondary-action,.payout-remove-action,.payout-save{ width:100%; }.payout-form-actions{ align-items:stretch; }.payout-form-card{ padding:22px 16px; }.payout-method-card{ min-height:0; } }
+  @media (prefers-reduced-motion:reduce){ .payout-settings-page *, .payout-settings-page *::before, .payout-settings-page *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; transition-duration:.01ms !important; } }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container" style="max-width:820px">
+<div class="payout-settings-page" aria-labelledby="payout-page-title">
+  <section class="payout-hero">
+    <div class="payout-hero__content">
+      <a class="payout-back" href="/profile" aria-label="Back to My Profile"><i class="bi bi-arrow-left" aria-hidden="true"></i><span>Back to profile</span></a>
+      <p class="payout-kicker">SEVOR PAYOUTS</p>
+      <h1 id="payout-page-title">Get paid your way.</h1>
+      <p class="payout-hero__lead">Choose the payout details you want SEVOR to keep on file for the current manual payout workflow.</p>
+    </div>
+    <aside class="payout-hero__summary" aria-label="Payout preference overview">
+      <i class="bi bi-wallet2" aria-hidden="true"></i>
+      <strong>Your payout preferences</strong>
+      <span>Save one preferred payout method and update it whenever your details change.</span>
+    </aside>
+  </section>
 
-<h3 class="mb-3">Payout Preferences</h3>
+  <div class="payout-workspace">
+    <aside class="payout-context" aria-label="Payout information">
+      <section class="payout-panel payout-status" aria-labelledby="payout-status-title">
+        <p class="payout-panel__eyebrow"><i class="bi bi-cash-stack" aria-hidden="true"></i>Payout setup</p>
+        {% if payout %}
+          <h2 id="payout-status-title">Current payout method</h2>
+          <div class="payout-status__method">
+            <span class="payout-status__icon"><i class="bi bi-check2" aria-hidden="true"></i></span>
+            <span>
+              <strong>{% if payout.method == 'interac' %}Interac e-Transfer{% elif payout.method == 'paypal' %}PayPal{% elif payout.method == 'wise' %}Wise{% else %}{{ payout.method|capitalize }}{% endif %}</strong>
+              <span>A payout destination is saved for this method.</span>
+            </span>
+          </div>
+          <div class="payout-status__chips">
+            <span class="payout-chip"><i class="bi bi-currency-exchange" aria-hidden="true"></i>{{ payout.currency }}</span>
+            {% if payout.method == 'interac' and payout.auto_deposit %}<span class="payout-chip"><i class="bi bi-lightning-charge" aria-hidden="true"></i>Auto-deposit selected</span>{% endif %}
+          </div>
+          <div class="payout-current-actions">
+            <a class="payout-secondary-action" href="/payout/settings?edit=1"><i class="bi bi-pencil-square" aria-hidden="true"></i>&nbsp;Edit method</a>
+            <form method="post" action="/payout/settings/remove">
+              <button class="payout-remove-action" type="submit"><i class="bi bi-trash3" aria-hidden="true"></i>&nbsp;Remove method</button>
+            </form>
+          </div>
+        {% else %}
+          <h2 id="payout-status-title">Not configured yet</h2>
+          <p>Add the payout method you prefer to use when your payout details are needed.</p>
+          <div class="payout-status__chips"><span class="payout-chip"><i class="bi bi-circle" aria-hidden="true"></i>No method on file</span></div>
+        {% endif %}
+      </section>
 
-{# ================= CURRENT PAYOUT CARD ================= #}
-{% if payout %}
-<div class="card">
-  <h5 class="mb-2">💰 Current payout method</h5>
+      <section class="payout-panel" aria-labelledby="payout-process-title">
+        <p class="payout-panel__eyebrow"><i class="bi bi-signpost-split" aria-hidden="true"></i>What happens next</p>
+        <h2 id="payout-process-title">A simple setup</h2>
+        <ol class="payout-process-list">
+          <li>Choose one preferred payout method.</li>
+          <li>Save the destination details for that method.</li>
+          <li>SEVOR uses the saved preference in the current manual payout workflow.</li>
+        </ol>
+      </section>
 
-  <p class="mb-1">
-    <strong>{{ payout.method|upper }}</strong>
-  </p>
+      <section class="payout-panel payout-privacy-note" aria-label="Payout details privacy notice">
+        <i class="bi bi-shield-lock" aria-hidden="true"></i>
+        <p>Enter only the payout details needed for your selected method. For more information, visit the <a href="/privacy">Privacy Center</a>.</p>
+      </section>
+    </aside>
 
-  <p class="hint">
-    {{ payout.destination }} <br>
-    Currency: {{ payout.currency }}
-  </p>
+    <section class="payout-form-card" aria-labelledby="payout-form-title">
+      {% if request and request.query_params.get('saved') %}
+        <div class="payout-alert payout-alert--success" role="status"><i class="bi bi-check-circle-fill" aria-hidden="true"></i><span>Your payout preference has been saved successfully.</span></div>
+      {% elif payout_error == 'missing' %}
+        <div class="payout-alert payout-alert--error" role="alert"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span>Add the destination detail for the payout method you selected, then save again.</span></div>
+      {% elif payout_error == 'invalid' %}
+        <div class="payout-alert payout-alert--error" role="alert"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span>Choose one of the available payout methods, then try again.</span></div>
+      {% endif %}
 
-  <div class="d-flex gap-2 mt-3">
-    <a href="/payout/settings?edit=1" class="btn btn-outline-primary">
-      Edit
-    </a>
+      {% if show_form or payout_error %}
+        <p class="payout-form-eyebrow"><i class="bi bi-sliders" aria-hidden="true"></i>{% if payout %}Update payout method{% else %}Choose a payout method{% endif %}</p>
+        <h2 id="payout-form-title">Where should payouts be sent?</h2>
+        <p class="payout-form-card__intro">Select one method, add its destination details, then choose the currency you want associated with this preference.</p>
 
-    <form method="post" action="/payout/settings/remove">
-      <button type="submit" class="btn btn-outline-danger">
-        Remove
-      </button>
-    </form>
+        <form method="post" action="/payout/settings" class="payout-form" data-payout-form aria-describedby="payout-form-status">
+          <fieldset class="payout-fieldset">
+            <legend>Preferred payout method</legend>
+            <p>Only one payout method can be active at a time.</p>
+            <div class="payout-method-grid" role="radiogroup" aria-label="Preferred payout method">
+              <label class="payout-method-card {% if selected_method == 'interac' %}is-selected{% endif %}" data-payout-method="interac">
+                <input class="payout-method-card__radio" type="radio" name="method" value="interac" {% if selected_method == 'interac' %}checked{% endif %}>
+                <span class="payout-method-card__icon"><i class="bi bi-bank" aria-hidden="true"></i></span>
+                <span class="payout-method-card__copy"><strong>Interac e-Transfer</strong><span>Canada</span></span>
+                <span class="payout-method-card__check"><i class="bi bi-check" aria-hidden="true"></i></span>
+              </label>
+              <label class="payout-method-card {% if selected_method == 'paypal' %}is-selected{% endif %}" data-payout-method="paypal">
+                <input class="payout-method-card__radio" type="radio" name="method" value="paypal" {% if selected_method == 'paypal' %}checked{% endif %}>
+                <span class="payout-method-card__icon"><i class="bi bi-paypal" aria-hidden="true"></i></span>
+                <span class="payout-method-card__copy"><strong>PayPal</strong><span>Use the email for your PayPal account.</span></span>
+                <span class="payout-method-card__check"><i class="bi bi-check" aria-hidden="true"></i></span>
+              </label>
+              <label class="payout-method-card {% if selected_method == 'wise' %}is-selected{% endif %}" data-payout-method="wise">
+                <input class="payout-method-card__radio" type="radio" name="method" value="wise" {% if selected_method == 'wise' %}checked{% endif %}>
+                <span class="payout-method-card__icon"><i class="bi bi-globe2" aria-hidden="true"></i></span>
+                <span class="payout-method-card__copy"><strong>Wise</strong><span>Use the IBAN for this preference.</span></span>
+                <span class="payout-method-card__check"><i class="bi bi-check" aria-hidden="true"></i></span>
+              </label>
+            </div>
+          </fieldset>
+
+          <section class="payout-method-panel" data-payout-panel="interac" {% if selected_method != 'interac' %}hidden{% endif %} aria-labelledby="interac-panel-title">
+            <div class="payout-method-panel__heading"><i class="bi bi-bank" aria-hidden="true"></i><h3 id="interac-panel-title">Interac e-Transfer details</h3></div>
+            <p>Add the email address or phone number you want to use for this payout preference.</p>
+            <div class="payout-fields">
+              <div class="payout-field">
+                <label for="interac-destination">Email or phone number</label>
+                <input class="payout-input" id="interac-destination" name="interac_destination" type="text" inputmode="text" autocomplete="off" placeholder="Email or phone number" aria-describedby="interac-destination-help">
+                <span class="payout-field__hint" id="interac-destination-help">Use the contact detail that should receive Interac e-Transfer payouts.</span>
+              </div>
+              <div class="payout-checkbox-row">
+                <input id="auto-deposit" type="checkbox" name="auto_deposit" {% if payout and payout.method == 'interac' and payout.auto_deposit %}checked{% endif %}>
+                <label for="auto-deposit">Enable auto-deposit<small>Save your current preference for Interac auto-deposit.</small></label>
+              </div>
+            </div>
+          </section>
+
+          <section class="payout-method-panel" data-payout-panel="paypal" {% if selected_method != 'paypal' %}hidden{% endif %} aria-labelledby="paypal-panel-title">
+            <div class="payout-method-panel__heading"><i class="bi bi-paypal" aria-hidden="true"></i><h3 id="paypal-panel-title">PayPal details</h3></div>
+            <p>Add the email address for the PayPal account you want to use for this payout preference.</p>
+            <div class="payout-fields">
+              <div class="payout-field">
+                <label for="paypal-email">PayPal email</label>
+                <input class="payout-input" id="paypal-email" name="paypal_email" type="text" inputmode="email" autocomplete="email" placeholder="PayPal email" aria-describedby="paypal-email-help">
+                <span class="payout-field__hint" id="paypal-email-help">Enter the email associated with the PayPal account you want to use.</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="payout-method-panel" data-payout-panel="wise" {% if selected_method != 'wise' %}hidden{% endif %} aria-labelledby="wise-panel-title">
+            <div class="payout-method-panel__heading"><i class="bi bi-globe2" aria-hidden="true"></i><h3 id="wise-panel-title">Wise details</h3></div>
+            <p>Add the IBAN you want to use for this payout preference.</p>
+            <div class="payout-fields">
+              <div class="payout-field">
+                <label for="wise-iban">IBAN</label>
+                <input class="payout-input" id="wise-iban" name="wise_iban" type="text" autocomplete="off" placeholder="IBAN" aria-describedby="wise-iban-help">
+                <span class="payout-field__hint" id="wise-iban-help">Enter the IBAN associated with the Wise payout destination you prefer.</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="payout-currency-section" aria-labelledby="payout-currency-title">
+            <h3 id="payout-currency-title">Payout currency</h3>
+            <p>Choose the currency to save with this payout preference.</p>
+            <label class="visually-hidden" for="payout-currency">Payout currency</label>
+            <select class="payout-select" id="payout-currency" name="currency">
+              <option value="CAD" {% if selected_currency == 'CAD' %}selected{% endif %}>CAD — Canadian Dollar</option>
+              <option value="USD" {% if selected_currency == 'USD' %}selected{% endif %}>USD — US Dollar</option>
+              <option value="EUR" {% if selected_currency == 'EUR' %}selected{% endif %}>EUR — Euro</option>
+            </select>
+          </section>
+
+          <div class="payout-form-actions">
+            <button class="payout-save" type="submit" data-payout-save><span data-payout-save-label>Save payout method</span><span class="payout-save__spinner" aria-hidden="true"></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button>
+            <p class="payout-form-status" id="payout-form-status" role="status" aria-live="polite"></p>
+          </div>
+        </form>
+      {% else %}
+        <p class="payout-form-eyebrow"><i class="bi bi-check-circle" aria-hidden="true"></i>Payout preference saved</p>
+        <h2 id="payout-form-title">Your setup is ready to review.</h2>
+        <p class="payout-form-card__intro">You can update or remove the active payout method from the card beside this summary whenever your preferences change.</p>
+      {% endif %}
+    </section>
   </div>
-</div>
-{% else %}
-<div class="alert alert-warning mb-4">
-  ⚠️ No payout method configured yet.
-</div>
-{% endif %}
-
-{% if request.query_params.get("saved") %}
-<div class="alert alert-success mb-3">
-  ✅ Your payout method has been saved successfully.
-</div>
-{% endif %}
-
-{# ================= FORM ================= #}
-{% if request.query_params.get("edit") == "1" or not payout %}
-<form method="post" action="/payout/settings">
-
-<div class="card">
-  <p class="mb-1">
-    Choose how you want to receive your <strong>earnings</strong>.
-  </p>
-  <p class="hint">Sevor sends payouts manually.</p>
-</div>
-
-<div class="card">
-
-  <!-- Interac -->
-  <div class="method active" data-method="interac">
-    <div class="method-title">
-      <input type="radio" name="method" value="interac" checked>
-      Interac e-Transfer (Canada)
-    </div>
-    <div class="field">
-      <input name="interac_destination" placeholder="Email or phone number">
-    </div>
-    <label class="mt-2">
-      <input type="checkbox" name="auto_deposit">
-      Enable auto-deposit
-    </label>
-  </div>
-
-  <!-- PayPal -->
-  <div class="method" data-method="paypal">
-    <div class="method-title">
-      <input type="radio" name="method" value="paypal">
-      PayPal
-    </div>
-    <div class="field d-none">
-      <input name="paypal_email" placeholder="PayPal email">
-    </div>
-  </div>
-
-  <!-- Wise -->
-  <div class="method" data-method="wise">
-    <div class="method-title">
-      <input type="radio" name="method" value="wise">
-      Wise
-    </div>
-    <div class="field d-none">
-      <input name="wise_iban" placeholder="IBAN">
-    </div>
-  </div>
-
-</div>
-
-<div class="card">
-  <select name="currency">
-    <option value="CAD">CAD</option>
-    <option value="USD">USD</option>
-    <option value="EUR">EUR</option>
-  </select>
-</div>
-
-<button class="btn btn-primary">Save payout preference</button>
-</form>
-{% endif %}
-
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-(function(){
-  const methods = document.querySelectorAll(".method");
-  const radios = document.querySelectorAll("input[name=method]");
+(() => {
+  const page = document.querySelector(".payout-settings-page");
+  if (!page) return;
 
-  radios.forEach(radio => {
-    radio.addEventListener("change", () => {
-      methods.forEach(m => {
-        const active = m.dataset.method === radio.value;
-        m.classList.toggle("active", active);
-        m.querySelectorAll(".field").forEach(f => {
-          f.classList.toggle("d-none", !active);
-        });
-      });
+  const form = page.querySelector("[data-payout-form]");
+  const radios = Array.from(page.querySelectorAll('input[name="method"]'));
+  const cards = Array.from(page.querySelectorAll("[data-payout-method]"));
+  const panels = Array.from(page.querySelectorAll("[data-payout-panel]"));
+  const status = page.querySelector("#payout-form-status");
+  const save = page.querySelector("[data-payout-save]");
+  const saveLabel = page.querySelector("[data-payout-save-label]");
+
+  const selectMethod = (method) => {
+    cards.forEach((card) => {
+      card.classList.toggle("is-selected", card.dataset.payoutMethod === method);
     });
+    panels.forEach((panel) => {
+      const active = panel.dataset.payoutPanel === method;
+      panel.hidden = !active;
+      panel.setAttribute("aria-hidden", String(!active));
+    });
+    if (status) status.textContent = method ? `${method === "interac" ? "Interac e-Transfer" : method === "paypal" ? "PayPal" : "Wise"} selected.` : "";
+  };
+
+  radios.forEach((radio) => {
+    radio.addEventListener("change", () => selectMethod(radio.value));
   });
+
+  const activeRadio = radios.find((radio) => radio.checked);
+  if (activeRadio) selectMethod(activeRadio.value);
+
+  if (form) {
+    form.addEventListener("submit", (event) => {
+      if (form.dataset.submitting === "true") {
+        event.preventDefault();
+        return;
+      }
+      form.dataset.submitting = "true";
+      form.setAttribute("aria-busy", "true");
+      if (save) save.disabled = true;
+      if (saveLabel) saveLabel.textContent = "Saving payout method…";
+      if (status) status.textContent = "Saving your payout preference…";
+    });
+  }
 })();
 </script>
 {% endblock %}
