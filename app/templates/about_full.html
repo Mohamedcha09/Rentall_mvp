@@ -69,6 +69,9 @@
   .about-actions{ display:flex; flex-wrap:wrap; gap:11px; margin-top:28px; }
   .about-button{ display:inline-flex; justify-content:center; align-items:center; gap:9px; min-height:46px; padding:11px 17px; border:1px solid transparent; border-radius:14px; background:var(--about-solid); color:var(--about-primary-deep); font-weight:850; text-align:center; text-decoration:none; transition:transform .2s ease, box-shadow .2s ease, background .2s ease; }
   .about-button:hover{ transform:translateY(-2px); box-shadow:0 10px 23px rgba(32,23,107,.25); }
+  .about-hero .about-actions > .about-button:not(.about-button--glass),
+  .about-hero .about-actions > .about-button:not(.about-button--glass):is(:hover,:active,:focus,:focus-visible),
+  .about-hero .about-actions > .about-button:not(.about-button--glass) > i{ color:#000; }
   .about-button--glass{ border-color:rgba(255,255,255,.42); background:rgba(255,255,255,.12); color:#fff; }
   .about-button--primary{ background:linear-gradient(135deg, var(--about-primary), var(--about-primary-deep)); color:#fff; }
   .about-button--quiet{ border-color:var(--about-border); background:var(--about-surface); color:var(--about-ink); }
