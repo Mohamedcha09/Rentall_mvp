@@ -8,7 +8,7 @@
   {# عنوان ديناميكي + افتراضي محترم للسيو #}
   <title>{{ title or "Sevor — Rent Anything Worldwide | Rent any car, tool or equipment" }}</title>
 
-  <meta name="description" content="Sevor is the global marketplace where you can rent anything — cars, tools, electronics, equipment and more. Safe, fast, and secure rentals across Canada, USA and Europe.">
+  <meta name="description" content="{{ meta_description or 'Sevor is the global marketplace where you can rent anything — cars, tools, electronics, equipment and more. Safe, fast, and secure rentals across Canada, USA and Europe.' }}">
 
   {# canonical لا نجعله دائماً /welcome على كل الصفحات #}
   {% if request %}

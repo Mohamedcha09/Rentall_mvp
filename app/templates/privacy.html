@@ -1,51 +1,583 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Privacy Policy — Sevor</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 900px;
-      margin: auto;
-      padding: 20px;
-      line-height: 1.6;
-    }
-    h1, h2, h3 { color: #333; }
-  </style>
-</head>
+{% extends "base.html" %}
+{% set immersive = true %}
+{% set title = "Privacy Policy | SEVOR" %}
+{% set meta_description = "Learn how SEVOR handles the account, booking, rental, uploaded-photo, device, and usage information described in its Privacy Policy." %}
 
-<body>
-  <h1>Privacy Policy</h1>
+{% block head %}
+<style id="sevor-privacy-center">
+  /* Privacy Center only: no shared page, header, navigation, or app layout is changed. */
+  body[data-path="/privacy"]{
+    background:
+      radial-gradient(920px 520px at 100% -5%, rgba(124,92,255,.14), transparent 62%),
+      radial-gradient(760px 440px at -8% 60%, rgba(0,212,255,.10), transparent 62%),
+      var(--bg, #f5f7fb);
+  }
+  body[data-path="/privacy"] .page{
+    width:100%;
+    max-width:none;
+    padding:calc(18px + env(safe-area-inset-top, 0px)) clamp(12px, 3vw, 32px) calc(42px + env(safe-area-inset-bottom, 0px)) !important;
+  }
 
-  <p>
-    Sevor ("we", "our") operates the Sevor website and mobile application. 
-    This Privacy Policy explains how we collect, use and protect your information.
-  </p>
+  .privacy-center{
+    --privacy-primary:var(--primary, #7c5cff);
+    --privacy-primary-deep:var(--primary-2, #5a3eff);
+    --privacy-cyan:#00b8d9;
+    --privacy-surface:rgba(255,255,255,.76);
+    --privacy-surface-solid:#fff;
+    --privacy-text:var(--text, #0d1320);
+    --privacy-muted:var(--muted, #667086);
+    --privacy-border:rgba(90,62,255,.14);
+    --privacy-shadow:0 20px 50px rgba(27,31,52,.10);
+    --privacy-soft-shadow:0 12px 30px rgba(43,38,91,.08);
+    --privacy-radius:24px;
+    color:var(--privacy-text);
+    isolation:isolate;
+  }
+  .privacy-center, .privacy-center *{ box-sizing:border-box; }
+  .privacy-center :is(h1,h2,h3,p,li,a,button,summary,span){ overflow-wrap:anywhere; }
+  .privacy-center a{ color:inherit; }
+  .privacy-center button{ font:inherit; }
+  .privacy-center [hidden]{ display:none !important; }
 
-  <h2>Information We Collect</h2>
-  <ul>
-    <li>Account information (name, email, phone number)</li>
-    <li>Booking and rental information</li>
-    <li>Uploaded photos for verification, pickup, and return</li>
-    <li>Device information and usage data</li>
-  </ul>
+  body[data-theme="dark"][data-path="/privacy"] .privacy-center{
+    --privacy-surface:rgba(15,23,42,.80);
+    --privacy-surface-solid:#111a2c;
+    --privacy-border:rgba(178,168,255,.22);
+    --privacy-shadow:0 20px 52px rgba(0,0,0,.30);
+    --privacy-soft-shadow:0 12px 30px rgba(0,0,0,.22);
+  }
 
-  <h2>How We Use Your Information</h2>
-  <ul>
-    <li>To provide and improve rental services</li>
-    <li>To verify your identity</li>
-    <li>To process bookings and payments</li>
-    <li>To enhance safety and prevent fraud</li>
-    <li>To communicate with you about your account</li>
-  </ul>
+  .privacy-shell{ max-width:1240px; margin-inline:auto; min-width:0; }
+  .privacy-progress{
+    position:fixed;
+    inset:0 0 auto;
+    z-index:6000;
+    height:3px;
+    pointer-events:none;
+    background:transparent;
+  }
+  .privacy-progress > span{
+    display:block;
+    width:100%; height:100%;
+    transform:scaleX(0);
+    transform-origin:left center;
+    background:linear-gradient(90deg, var(--privacy-primary), var(--privacy-cyan));
+    transition:transform .12s linear;
+  }
+  .privacy-center[dir="rtl"] .privacy-progress > span{ transform-origin:right center; }
 
-  <h2>Your Rights</h2>
-  <p>You may request access, correction, or deletion of your personal data at any time.</p>
+  .privacy-home-link{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    min-height:44px;
+    margin:0 0 14px;
+    padding:9px 12px;
+    border:1px solid var(--privacy-border);
+    border-radius:999px;
+    background:color-mix(in oklab, var(--privacy-surface) 88%, transparent);
+    box-shadow:0 7px 20px rgba(44,34,112,.05);
+    color:var(--privacy-text);
+    font-weight:800;
+    font-size:.91rem;
+    text-decoration:none;
+    transition:transform .18s ease, border-color .18s ease, background .18s ease;
+  }
+  .privacy-home-link:hover{ transform:translateY(-1px); border-color:color-mix(in oklab, var(--privacy-primary) 48%, var(--privacy-border)); }
+  .privacy-center[dir="rtl"] .privacy-home-link .bi-arrow-left{ transform:scaleX(-1); }
 
-  <h2>Contact</h2>
-  <p>Email: no-reply@sevor.net</p>
+  .privacy-hero{
+    position:relative;
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) auto;
+    gap:24px;
+    overflow:hidden;
+    padding:clamp(24px, 5vw, 58px);
+    border:1px solid color-mix(in oklab, var(--privacy-primary) 24%, var(--privacy-border));
+    border-radius:clamp(24px, 4vw, 34px);
+    background:
+      radial-gradient(520px 310px at 14% 0%, rgba(124,92,255,.28), transparent 72%),
+      radial-gradient(460px 300px at 98% 20%, rgba(0,196,227,.22), transparent 70%),
+      linear-gradient(135deg, color-mix(in oklab, var(--privacy-surface-solid) 74%, #eeeaff), var(--privacy-surface));
+    box-shadow:var(--privacy-shadow);
+  }
+  body[data-theme="dark"][data-path="/privacy"] .privacy-hero{
+    background:
+      radial-gradient(520px 310px at 14% 0%, rgba(124,92,255,.34), transparent 72%),
+      radial-gradient(460px 300px at 98% 20%, rgba(0,196,227,.20), transparent 70%),
+      linear-gradient(135deg, rgba(34,29,77,.88), rgba(15,23,42,.90));
+  }
+  .privacy-hero::before,
+  .privacy-hero::after{
+    content:"";
+    position:absolute;
+    border-radius:50%;
+    pointer-events:none;
+    filter:blur(1px);
+  }
+  .privacy-hero::before{ width:260px; height:260px; inset-inline-end:-98px; inset-block-end:-150px; border:1px solid rgba(255,255,255,.44); background:rgba(255,255,255,.08); }
+  .privacy-hero::after{ width:130px; height:130px; inset-inline-end:18%; inset-block-start:-80px; border:1px solid rgba(255,255,255,.36); }
+  .privacy-hero__content{ position:relative; z-index:1; min-width:0; }
+  .privacy-kicker{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    min-height:32px;
+    padding:7px 11px;
+    border:1px solid rgba(124,92,255,.26);
+    border-radius:999px;
+    background:rgba(255,255,255,.52);
+    color:var(--privacy-primary-deep);
+    font-size:.79rem;
+    font-weight:900;
+    letter-spacing:.02em;
+  }
+  body[data-theme="dark"][data-path="/privacy"] .privacy-kicker{ background:rgba(255,255,255,.08); color:#d7d1ff; }
+  .privacy-kicker .bi{ font-size:1rem; }
+  .privacy-brand{ margin:22px 0 6px; color:var(--privacy-primary-deep); font-size:.85rem; font-weight:950; letter-spacing:.18em; }
+  .privacy-hero h1{ max-width:700px; margin:0; font-size:clamp(2.1rem, 5vw, 4.15rem); line-height:.99; letter-spacing:-.055em; font-weight:900; }
+  .privacy-hero__lede{ max-width:680px; margin:16px 0 0; color:var(--privacy-muted); font-size:clamp(1rem, 2vw, 1.14rem); line-height:1.68; }
+  .privacy-hero__meta{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:22px; }
+  .privacy-date{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    min-height:38px;
+    padding:8px 11px;
+    border:1px solid var(--privacy-border);
+    border-radius:12px;
+    background:color-mix(in oklab, var(--privacy-surface-solid) 72%, transparent);
+    color:var(--privacy-muted);
+    font-size:.86rem;
+    font-weight:700;
+  }
+  .privacy-date time{ color:var(--privacy-text); font-weight:850; }
+  .privacy-hero-action{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+    min-height:46px;
+    padding:11px 15px;
+    border:0;
+    border-radius:14px;
+    background:linear-gradient(135deg, var(--privacy-primary), var(--privacy-primary-deep));
+    box-shadow:0 12px 26px rgba(92,65,255,.25);
+    color:#fff;
+    font-weight:900;
+    text-decoration:none;
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .privacy-hero-action:hover{ transform:translateY(-1px); box-shadow:0 16px 32px rgba(92,65,255,.31); color:#fff; }
+  .privacy-center[dir="rtl"] .privacy-hero-action .bi-arrow-down-right{ transform:scaleX(-1); }
+  .privacy-shield{
+    position:relative;
+    z-index:1;
+    display:grid;
+    place-items:center;
+    align-self:center;
+    width:clamp(112px, 17vw, 180px);
+    aspect-ratio:1;
+    border:1px solid rgba(124,92,255,.24);
+    border-radius:38% 62% 55% 45% / 44% 42% 58% 56%;
+    background:linear-gradient(145deg, rgba(255,255,255,.75), rgba(218,215,255,.48));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.7), 0 18px 40px rgba(82,62,196,.16);
+    color:var(--privacy-primary);
+    transform:rotate(-8deg);
+  }
+  .privacy-shield .bi{ font-size:clamp(3rem, 7vw, 5rem); transform:rotate(8deg); }
 
-</body>
-</html>
+  .privacy-overview{ margin-top:clamp(22px, 4vw, 40px); }
+  .privacy-section-heading{ max-width:740px; margin-bottom:18px; }
+  .privacy-eyebrow{ margin:0 0 6px; color:var(--privacy-primary-deep); font-size:.79rem; font-weight:950; letter-spacing:.13em; text-transform:uppercase; }
+  .privacy-section-heading h2,
+  .privacy-article h2{ margin:0; font-size:clamp(1.55rem, 3vw, 2.25rem); line-height:1.12; letter-spacing:-.035em; font-weight:900; }
+  .privacy-section-heading p{ margin:10px 0 0; color:var(--privacy-muted); line-height:1.65; }
+  .privacy-summary-grid{ display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:14px; }
+  .privacy-summary-card,
+  .privacy-data-card,
+  .privacy-right-card,
+  .privacy-callout,
+  .privacy-contact-card,
+  .privacy-language-panel{
+    border:1px solid var(--privacy-border);
+    border-radius:var(--privacy-radius);
+    background:var(--privacy-surface);
+    box-shadow:var(--privacy-soft-shadow);
+    backdrop-filter:blur(16px) saturate(125%);
+    -webkit-backdrop-filter:blur(16px) saturate(125%);
+  }
+  .privacy-summary-card{ min-width:0; padding:18px; transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+  .privacy-summary-card:hover{ transform:translateY(-2px); border-color:color-mix(in oklab, var(--privacy-primary) 46%, var(--privacy-border)); box-shadow:0 18px 34px rgba(84,63,184,.12); }
+  .privacy-card-icon{
+    display:grid;
+    place-items:center;
+    width:42px; height:42px;
+    border-radius:14px;
+    background:linear-gradient(135deg, rgba(124,92,255,.18), rgba(0,195,226,.16));
+    color:var(--privacy-primary-deep);
+    font-size:1.25rem;
+  }
+  .privacy-summary-card h3{ margin:14px 0 7px; font-size:1rem; font-weight:900; }
+  .privacy-summary-card p{ margin:0; color:var(--privacy-muted); font-size:.91rem; line-height:1.55; }
+
+  .privacy-layout{ display:grid; grid-template-columns:minmax(210px, 270px) minmax(0, 1fr); gap:clamp(22px, 4vw, 56px); align-items:start; margin-top:clamp(30px, 5vw, 56px); }
+  .privacy-toc{ position:sticky; top:20px; max-height:calc(100dvh - 40px); overflow:auto; padding:16px; border:1px solid var(--privacy-border); border-radius:20px; background:color-mix(in oklab, var(--privacy-surface) 88%, transparent); box-shadow:0 12px 28px rgba(43,38,91,.06); }
+  .privacy-toc__label{ display:flex; align-items:center; gap:8px; margin:0 0 10px; color:var(--privacy-muted); font-size:.78rem; font-weight:900; letter-spacing:.09em; text-transform:uppercase; }
+  .privacy-toc__list{ display:grid; gap:3px; margin:0; padding:0; list-style:none; }
+  .privacy-toc-link{ display:flex; align-items:center; min-height:38px; padding:8px 10px; border-radius:11px; color:var(--privacy-muted); font-size:.9rem; font-weight:750; text-decoration:none; transition:background .16s ease, color .16s ease, transform .16s ease; }
+  .privacy-toc-link:hover{ color:var(--privacy-text); background:rgba(124,92,255,.08); transform:translateX(2px); }
+  .privacy-center[dir="rtl"] .privacy-toc-link:hover{ transform:translateX(-2px); }
+  .privacy-toc-link.is-active{ color:var(--privacy-primary-deep); background:linear-gradient(90deg, rgba(124,92,255,.13), rgba(0,195,226,.08)); }
+  .privacy-toc-mobile{ display:none; }
+  .privacy-toc-mobile summary{ cursor:pointer; list-style:none; }
+  .privacy-toc-mobile summary::-webkit-details-marker{ display:none; }
+  .privacy-toc-mobile summary::after{ content:"⌄"; font-size:1.1rem; transition:transform .18s ease; }
+  .privacy-toc-mobile[open] summary::after{ transform:rotate(180deg); }
+  .privacy-toc-mobile .privacy-toc__list{ margin-top:10px; }
+
+  .privacy-article{ min-width:0; max-width:810px; }
+  .privacy-section{ scroll-margin-top:24px; padding:0 0 clamp(28px, 5vw, 52px); }
+  .privacy-section + .privacy-section{ padding-top:clamp(25px, 4vw, 42px); border-top:1px solid var(--privacy-border); }
+  .privacy-lead{ margin:12px 0 0; color:var(--privacy-muted); font-size:1.01rem; line-height:1.72; }
+  .privacy-data-grid{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:13px; margin-top:18px; }
+  .privacy-data-card{ min-width:0; padding:17px; }
+  .privacy-data-card__top{ display:flex; align-items:center; gap:10px; }
+  .privacy-data-card__top .bi{ color:var(--privacy-primary-deep); font-size:1.12rem; }
+  .privacy-data-card h3{ margin:0; font-size:1rem; font-weight:900; }
+  .privacy-data-card p{ margin:8px 0 0; color:var(--privacy-muted); font-size:.92rem; line-height:1.55; }
+  .privacy-purpose-list{ display:grid; gap:10px; margin:18px 0 0; padding:0; list-style:none; }
+  .privacy-purpose-list li{ display:flex; align-items:flex-start; gap:10px; color:var(--privacy-text); line-height:1.58; }
+  .privacy-purpose-list .bi{ flex:0 0 auto; margin-top:3px; color:var(--privacy-primary); }
+  .privacy-rights-grid{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:13px; margin-top:18px; }
+  .privacy-right-card{ min-width:0; padding:17px; }
+  .privacy-right-card h3{ margin:12px 0 7px; font-size:1rem; font-weight:900; }
+  .privacy-right-card p{ margin:0; color:var(--privacy-muted); font-size:.91rem; line-height:1.55; }
+  .privacy-callout{ position:relative; overflow:hidden; margin-top:18px; padding:20px; }
+  .privacy-callout::after{ content:""; position:absolute; inset-block:0; inset-inline-end:0; width:4px; background:linear-gradient(180deg, var(--privacy-primary), var(--privacy-cyan)); }
+  .privacy-callout__title{ display:flex; align-items:center; gap:9px; margin:0; font-size:1.03rem; font-weight:900; }
+  .privacy-callout__title .bi{ color:var(--privacy-primary); }
+  .privacy-callout p{ margin:10px 0 0; color:var(--privacy-muted); line-height:1.62; }
+  .privacy-action-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+  .privacy-button{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    min-height:44px;
+    padding:10px 14px;
+    border:1px solid var(--privacy-border);
+    border-radius:13px;
+    background:var(--privacy-surface-solid);
+    color:var(--privacy-text);
+    font-weight:850;
+    text-decoration:none;
+    transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .privacy-button:hover{ transform:translateY(-1px); border-color:color-mix(in oklab, var(--privacy-primary) 48%, var(--privacy-border)); box-shadow:0 10px 22px rgba(84,63,184,.12); }
+  .privacy-button--primary{ border-color:transparent; background:linear-gradient(135deg, var(--privacy-primary), var(--privacy-primary-deep)); color:#fff; }
+  .privacy-button--primary:hover{ color:#fff; }
+  .privacy-security-note{ display:flex; align-items:flex-start; gap:12px; margin-top:18px; padding:18px; border-radius:18px; background:linear-gradient(135deg, rgba(124,92,255,.09), rgba(0,195,226,.07)); border:1px solid color-mix(in oklab, var(--privacy-primary) 18%, var(--privacy-border)); }
+  .privacy-security-note .bi{ flex:0 0 auto; color:var(--privacy-primary-deep); font-size:1.25rem; }
+  .privacy-security-note p{ margin:0; color:var(--privacy-muted); line-height:1.62; }
+
+  .privacy-contact-card{ display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:18px; align-items:center; margin-top:18px; padding:clamp(18px, 4vw, 28px); background:linear-gradient(135deg, color-mix(in oklab, var(--privacy-surface-solid) 78%, #f0ecff), var(--privacy-surface)); }
+  .privacy-contact-card h3{ margin:0; font-size:1.16rem; font-weight:900; }
+  .privacy-contact-card p{ margin:8px 0 0; color:var(--privacy-muted); line-height:1.6; }
+  .privacy-contact-card__actions{ display:flex; flex-wrap:wrap; gap:9px; justify-content:flex-end; }
+
+  .privacy-language-panel{ margin-top:12px; padding:clamp(18px, 4vw, 30px); }
+  .privacy-language-panel__heading{ display:flex; align-items:flex-start; gap:12px; margin-bottom:18px; }
+  .privacy-language-panel__icon{ display:grid; place-items:center; flex:0 0 auto; width:42px; height:42px; border-radius:14px; background:linear-gradient(135deg, rgba(124,92,255,.20), rgba(0,195,226,.16)); color:var(--privacy-primary-deep); font-size:1.22rem; }
+  .privacy-language-panel h2{ margin:0; font-size:clamp(1.35rem, 2.5vw, 1.75rem); font-weight:900; letter-spacing:-.03em; }
+  .privacy-language-panel p{ margin:5px 0 0; color:var(--privacy-muted); }
+  .privacy-language-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 148px), 1fr)); gap:10px; }
+  .privacy-language{
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    min-width:0;
+    min-height:64px;
+    padding:12px;
+    border:1px solid var(--privacy-border);
+    border-radius:16px;
+    background:color-mix(in oklab, var(--privacy-surface-solid) 86%, transparent);
+    color:var(--privacy-text);
+    cursor:pointer;
+    text-align:start;
+    transition:transform .17s ease, border-color .17s ease, box-shadow .17s ease, background .17s ease;
+  }
+  .privacy-language:hover{ transform:translateY(-2px); border-color:color-mix(in oklab, var(--privacy-primary) 48%, var(--privacy-border)); box-shadow:0 12px 22px rgba(84,63,184,.10); }
+  .privacy-language[aria-pressed="true"]{ border-color:color-mix(in oklab, var(--privacy-primary) 62%, var(--privacy-border)); background:linear-gradient(135deg, rgba(124,92,255,.16), rgba(0,195,226,.10)); box-shadow:0 0 0 3px rgba(124,92,255,.10); }
+  .privacy-language__name{ min-width:0; font-size:.95rem; font-weight:850; overflow-wrap:anywhere; }
+  .privacy-language__code{ flex:0 0 auto; display:grid; place-items:center; width:32px; height:32px; border-radius:10px; background:rgba(124,92,255,.10); color:var(--privacy-primary-deep); font-size:.75rem; font-weight:950; letter-spacing:.05em; }
+  .privacy-language__check{ position:absolute; inset-inline-end:8px; inset-block-start:7px; color:var(--privacy-primary-deep); font-size:.85rem; opacity:0; transform:scale(.7); transition:opacity .16s ease, transform .16s ease; }
+  .privacy-language[aria-pressed="true"] .privacy-language__check{ opacity:1; transform:scale(1); }
+  .privacy-language-status{ min-height:1.2em; margin:12px 0 0; color:var(--privacy-muted); font-size:.85rem; }
+
+  .privacy-page-footer{ display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; margin:20px 2px 0; color:var(--privacy-muted); font-size:.84rem; }
+  .privacy-back-top{
+    position:fixed;
+    inset-inline-end:max(16px, env(safe-area-inset-right, 0px));
+    inset-block-end:calc(18px + env(safe-area-inset-bottom, 0px));
+    z-index:3000;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    min-height:44px;
+    padding:9px 12px;
+    border:1px solid rgba(255,255,255,.4);
+    border-radius:999px;
+    background:rgba(18,22,46,.88);
+    box-shadow:0 14px 30px rgba(0,0,0,.22);
+    color:#fff;
+    font-weight:850;
+    opacity:0;
+    pointer-events:none;
+    transform:translateY(10px);
+    transition:opacity .18s ease, transform .18s ease;
+  }
+  .privacy-back-top.is-visible{ opacity:1; pointer-events:auto; transform:translateY(0); }
+  .privacy-back-top:hover{ color:#fff; }
+
+  .privacy-center :is(a,button,summary):focus-visible{ outline:3px solid rgba(124,92,255,.48); outline-offset:3px; }
+  .privacy-motion-ready .privacy-center [data-privacy-reveal]{ opacity:0; transform:translateY(14px); transition:opacity .42s ease, transform .42s cubic-bezier(.2,.7,.2,1); }
+  .privacy-motion-ready .privacy-center [data-privacy-reveal].is-visible{ opacity:1; transform:translateY(0); }
+  .privacy-center.is-translating :is(.privacy-hero__content, .privacy-content){ opacity:.42; transform:translateY(2px); }
+  .privacy-hero__content, .privacy-content{ transition:opacity .14s ease, transform .14s ease; }
+
+  @media (max-width:959px){
+    .privacy-hero{ grid-template-columns:minmax(0, 1fr); }
+    .privacy-shield{ position:absolute; inset-inline-end:24px; inset-block-start:24px; width:92px; opacity:.5; }
+    .privacy-layout{ grid-template-columns:minmax(0, 1fr); gap:18px; }
+    .privacy-toc{ display:none; }
+    .privacy-toc-mobile{ display:block; padding:13px 14px; border:1px solid var(--privacy-border); border-radius:18px; background:var(--privacy-surface); box-shadow:var(--privacy-soft-shadow); }
+    .privacy-toc-mobile summary{ display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:36px; color:var(--privacy-text); font-weight:900; }
+    .privacy-article{ max-width:none; }
+  }
+  @media (max-width:720px){
+    .privacy-summary-grid{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    .privacy-rights-grid{ grid-template-columns:1fr; }
+    .privacy-contact-card{ grid-template-columns:1fr; }
+    .privacy-contact-card__actions{ justify-content:flex-start; }
+  }
+  @media (max-width:480px){
+    body[data-path="/privacy"] .page{ padding-inline:12px !important; }
+    .privacy-home-link{ margin-bottom:10px; }
+    .privacy-hero{ padding:21px 18px; border-radius:24px; }
+    .privacy-brand{ margin-top:16px; }
+    .privacy-hero__lede{ padding-inline-end:0; }
+    .privacy-shield{ display:none; }
+    .privacy-summary-grid, .privacy-data-grid{ grid-template-columns:1fr; }
+    .privacy-summary-card, .privacy-data-card, .privacy-right-card{ padding:16px; }
+    .privacy-action-row > .privacy-button{ flex:1 1 100%; }
+    .privacy-contact-card__actions .privacy-button{ flex:1 1 100%; }
+    .privacy-back-top{ min-width:44px; padding-inline:11px; }
+    .privacy-back-top span{ display:none; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .privacy-center *, .privacy-center *::before, .privacy-center *::after{ scroll-behavior:auto !important; transition-duration:.01ms !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="privacy-center" id="privacy-center" data-language="en" dir="ltr">
+  <div class="privacy-progress" aria-hidden="true"><span id="privacy-progress-bar"></span></div>
+
+  <div class="privacy-shell">
+    <a class="privacy-home-link" href="/" data-i18n-aria="backHomeAria">
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>
+      <span data-i18n="backHome">Back to SEVOR</span>
+    </a>
+
+    <section class="privacy-hero" aria-labelledby="privacy-page-title" data-privacy-reveal>
+      <div class="privacy-hero__content">
+        <div class="privacy-kicker"><i class="bi bi-shield-check" aria-hidden="true"></i><span data-i18n="privacyCenter">Privacy Center</span></div>
+        <p class="privacy-brand">SEVOR</p>
+        <h1 id="privacy-page-title" data-i18n="heroTitle">Privacy Policy</h1>
+        <p class="privacy-hero__lede" data-i18n="heroLead">Learn, in clear terms, what the current SEVOR Privacy Policy says about the information connected to your use of the platform.</p>
+        <div class="privacy-hero__meta">
+          <span class="privacy-date"><i class="bi bi-calendar3" aria-hidden="true"></i><span data-i18n="lastUpdated">Last updated</span><span data-i18n="updatedDate">Pending confirmation</span></span>
+          <a class="privacy-hero-action" href="#your-privacy-rights"><span data-i18n="heroAction">Explore your choices</span><i class="bi bi-arrow-down-right" aria-hidden="true"></i></a>
+        </div>
+      </div>
+      <div class="privacy-shield" aria-hidden="true"><i class="bi bi-shield-lock-fill"></i></div>
+    </section>
+
+    <div class="privacy-content">
+      <section class="privacy-overview" aria-labelledby="privacy-summary-title" data-privacy-reveal>
+        <div class="privacy-section-heading">
+          <p class="privacy-eyebrow" data-i18n="summaryEyebrow">At a glance</p>
+          <h2 id="privacy-summary-title" data-i18n="summaryTitle">A clear privacy summary</h2>
+          <p data-i18n="summaryLead">The highlights below reflect the information and purposes stated in SEVOR's current published policy.</p>
+        </div>
+        <div class="privacy-summary-grid">
+          <article class="privacy-summary-card">
+            <div class="privacy-card-icon"><i class="bi bi-person-vcard" aria-hidden="true"></i></div>
+            <h3 data-i18n="summary.0.title">Your data</h3>
+            <p data-i18n="summary.0.body">The policy identifies account, booking and rental details, uploaded photos, and device or usage information.</p>
+          </article>
+          <article class="privacy-summary-card">
+            <div class="privacy-card-icon"><i class="bi bi-lightning-charge" aria-hidden="true"></i></div>
+            <h3 data-i18n="summary.1.title">Why we use it</h3>
+            <p data-i18n="summary.1.body">To provide and improve rental services, verify identity, process bookings and payments, and communicate about an account.</p>
+          </article>
+          <article class="privacy-summary-card">
+            <div class="privacy-card-icon"><i class="bi bi-sliders" aria-hidden="true"></i></div>
+            <h3 data-i18n="summary.2.title">Your choices</h3>
+            <p data-i18n="summary.2.body">The policy states that you may request access to, correction of, or deletion of personal data.</p>
+          </article>
+          <article class="privacy-summary-card">
+            <div class="privacy-card-icon"><i class="bi bi-shield-check" aria-hidden="true"></i></div>
+            <h3 data-i18n="summary.3.title">Privacy &amp; security</h3>
+            <p data-i18n="summary.3.body">Safety and fraud prevention are among the stated reasons SEVOR uses information.</p>
+          </article>
+        </div>
+      </section>
+
+      <div class="privacy-layout">
+        <nav class="privacy-toc" aria-label="Privacy policy sections" data-i18n-aria="tocAria">
+          <p class="privacy-toc__label"><i class="bi bi-list-ul" aria-hidden="true"></i><span data-i18n="contentsLabel">On this page</span></p>
+          <ol class="privacy-toc__list">
+            <li><a class="privacy-toc-link" href="#privacy-introduction" data-section-link="privacy-introduction"><span data-i18n="toc.introduction">Introduction</span></a></li>
+            <li><a class="privacy-toc-link" href="#information-we-collect" data-section-link="information-we-collect"><span data-i18n="toc.collect">Information we collect</span></a></li>
+            <li><a class="privacy-toc-link" href="#how-we-use-information" data-section-link="how-we-use-information"><span data-i18n="toc.use">How we use information</span></a></li>
+            <li><a class="privacy-toc-link" href="#your-privacy-rights" data-section-link="your-privacy-rights"><span data-i18n="toc.rights">Your privacy rights</span></a></li>
+            <li><a class="privacy-toc-link" href="#account-and-data-deletion" data-section-link="account-and-data-deletion"><span data-i18n="toc.deletion">Account &amp; data deletion</span></a></li>
+            <li><a class="privacy-toc-link" href="#privacy-and-security" data-section-link="privacy-and-security"><span data-i18n="toc.security">Privacy &amp; security</span></a></li>
+            <li><a class="privacy-toc-link" href="#contact-us" data-section-link="contact-us"><span data-i18n="toc.contact">Contact us</span></a></li>
+          </ol>
+        </nav>
+
+        <details class="privacy-toc-mobile" data-privacy-reveal>
+          <summary><span data-i18n="contentsLabel">On this page</span></summary>
+          <ol class="privacy-toc__list">
+            <li><a class="privacy-toc-link" href="#privacy-introduction" data-section-link="privacy-introduction"><span data-i18n="toc.introduction">Introduction</span></a></li>
+            <li><a class="privacy-toc-link" href="#information-we-collect" data-section-link="information-we-collect"><span data-i18n="toc.collect">Information we collect</span></a></li>
+            <li><a class="privacy-toc-link" href="#how-we-use-information" data-section-link="how-we-use-information"><span data-i18n="toc.use">How we use information</span></a></li>
+            <li><a class="privacy-toc-link" href="#your-privacy-rights" data-section-link="your-privacy-rights"><span data-i18n="toc.rights">Your privacy rights</span></a></li>
+            <li><a class="privacy-toc-link" href="#account-and-data-deletion" data-section-link="account-and-data-deletion"><span data-i18n="toc.deletion">Account &amp; data deletion</span></a></li>
+            <li><a class="privacy-toc-link" href="#privacy-and-security" data-section-link="privacy-and-security"><span data-i18n="toc.security">Privacy &amp; security</span></a></li>
+            <li><a class="privacy-toc-link" href="#contact-us" data-section-link="contact-us"><span data-i18n="toc.contact">Contact us</span></a></li>
+          </ol>
+        </details>
+
+        <article class="privacy-article">
+          <section class="privacy-section" id="privacy-introduction" data-privacy-reveal>
+            <p class="privacy-eyebrow">SEVOR</p>
+            <h2 data-i18n="sections.introduction.title">Introduction</h2>
+            <p class="privacy-lead" data-i18n="sections.introduction.body">SEVOR operates a website and mobile application. This Privacy Policy explains how SEVOR collects, uses, and protects information connected to the platform.</p>
+          </section>
+
+          <section class="privacy-section" id="information-we-collect" data-privacy-reveal>
+            <h2 data-i18n="sections.collect.title">Information we collect</h2>
+            <p class="privacy-lead" data-i18n="sections.collect.lead">The current published policy identifies the following categories of information.</p>
+            <div class="privacy-data-grid">
+              <article class="privacy-data-card"><div class="privacy-data-card__top"><i class="bi bi-person-badge" aria-hidden="true"></i><h3 data-i18n="categories.0.title">Account information</h3></div><p data-i18n="categories.0.body">Name, email address, and phone number.</p></article>
+              <article class="privacy-data-card"><div class="privacy-data-card__top"><i class="bi bi-calendar2-check" aria-hidden="true"></i><h3 data-i18n="categories.1.title">Booking &amp; rental information</h3></div><p data-i18n="categories.1.body">Information connected to bookings and rentals.</p></article>
+              <article class="privacy-data-card"><div class="privacy-data-card__top"><i class="bi bi-images" aria-hidden="true"></i><h3 data-i18n="categories.2.title">Uploaded photos</h3></div><p data-i18n="categories.2.body">Photos uploaded for verification, pickup, and return.</p></article>
+              <article class="privacy-data-card"><div class="privacy-data-card__top"><i class="bi bi-phone" aria-hidden="true"></i><h3 data-i18n="categories.3.title">Device &amp; usage information</h3></div><p data-i18n="categories.3.body">Device information and usage data.</p></article>
+            </div>
+          </section>
+
+          <section class="privacy-section" id="how-we-use-information" data-privacy-reveal>
+            <h2 data-i18n="sections.use.title">How we use information</h2>
+            <p class="privacy-lead" data-i18n="sections.use.lead">SEVOR's current policy lists these purposes for using information.</p>
+            <ul class="privacy-purpose-list">
+              <li><i class="bi bi-check2-circle" aria-hidden="true"></i><span data-i18n="uses.0">Provide and improve rental services.</span></li>
+              <li><i class="bi bi-check2-circle" aria-hidden="true"></i><span data-i18n="uses.1">Verify identity.</span></li>
+              <li><i class="bi bi-check2-circle" aria-hidden="true"></i><span data-i18n="uses.2">Process bookings and payments.</span></li>
+              <li><i class="bi bi-check2-circle" aria-hidden="true"></i><span data-i18n="uses.3">Enhance safety and help prevent fraud.</span></li>
+              <li><i class="bi bi-check2-circle" aria-hidden="true"></i><span data-i18n="uses.4">Communicate about an account.</span></li>
+            </ul>
+          </section>
+
+          <section class="privacy-section" id="your-privacy-rights" data-privacy-reveal>
+            <h2 data-i18n="sections.rights.title">Your privacy rights</h2>
+            <p class="privacy-lead" data-i18n="sections.rights.lead">The current policy states that you may request the following actions regarding your personal data.</p>
+            <div class="privacy-rights-grid">
+              <article class="privacy-right-card"><div class="privacy-card-icon"><i class="bi bi-folder2-open" aria-hidden="true"></i></div><h3 data-i18n="rights.0.title">Access your data</h3><p data-i18n="rights.0.body">Request access to your personal data.</p></article>
+              <article class="privacy-right-card"><div class="privacy-card-icon"><i class="bi bi-pencil-square" aria-hidden="true"></i></div><h3 data-i18n="rights.1.title">Correct information</h3><p data-i18n="rights.1.body">Request correction of your personal data.</p></article>
+              <article class="privacy-right-card"><div class="privacy-card-icon"><i class="bi bi-person-x" aria-hidden="true"></i></div><h3 data-i18n="rights.2.title">Request deletion</h3><p data-i18n="rights.2.body">Request deletion of your personal data.</p></article>
+            </div>
+          </section>
+
+          <section class="privacy-section" id="account-and-data-deletion" data-privacy-reveal>
+            <h2 data-i18n="sections.deletion.title">Account &amp; data deletion</h2>
+            <div class="privacy-callout">
+              <p class="privacy-callout__title"><i class="bi bi-person-dash" aria-hidden="true"></i><span data-i18n="deletionCalloutTitle">Use the existing account-deletion flow</span></p>
+              <p data-i18n="deletionCalloutBody">SEVOR has an existing account-deletion page for signed-in users. It requires sign-in and uses the platform's current deletion flow; this page does not promise the scope or timing of deletion beyond that flow.</p>
+              <div class="privacy-action-row">
+                <a class="privacy-button privacy-button--primary" href="/account/delete"><i class="bi bi-person-x" aria-hidden="true"></i><span data-i18n="deletionAction">Open account deletion</span></a>
+                <a class="privacy-button" href="/support/new"><i class="bi bi-life-preserver" aria-hidden="true"></i><span data-i18n="supportAction">Open support</span></a>
+              </div>
+            </div>
+          </section>
+
+          <section class="privacy-section" id="privacy-and-security" data-privacy-reveal>
+            <h2 data-i18n="sections.security.title">Privacy &amp; security</h2>
+            <div class="privacy-security-note">
+              <i class="bi bi-shield-check" aria-hidden="true"></i>
+              <p data-i18n="sections.security.body">The published policy identifies identity verification, booking and payment processing, safety, and fraud prevention as reasons for using information. It does not publish a specific technical security standard, so this page makes no such claim.</p>
+            </div>
+          </section>
+
+          <section class="privacy-section" id="contact-us" data-privacy-reveal>
+            <h2 data-i18n="sections.contact.title">Contact us</h2>
+            <p class="privacy-lead" data-i18n="sections.contact.lead">The current published policy displays the address below. Signed-in users can also use SEVOR's existing support form.</p>
+            <div class="privacy-contact-card">
+              <div>
+                <h3 data-i18n="contactCardTitle">Privacy questions</h3>
+                <p><span data-i18n="policyAddressLabel">Address listed in the current policy:</span> <strong>no-reply@sevor.net</strong></p>
+              </div>
+              <div class="privacy-contact-card__actions">
+                <a class="privacy-button" href="mailto:no-reply@sevor.net"><i class="bi bi-envelope" aria-hidden="true"></i><span data-i18n="emailAction">Email address</span></a>
+                <a class="privacy-button privacy-button--primary" href="/support/new"><i class="bi bi-life-preserver" aria-hidden="true"></i><span data-i18n="supportAction">Open support</span></a>
+              </div>
+            </div>
+          </section>
+
+          <section class="privacy-section" id="privacy-language" data-privacy-reveal>
+            <div class="privacy-language-panel">
+              <div class="privacy-language-panel__heading">
+                <div class="privacy-language-panel__icon"><i class="bi bi-globe2" aria-hidden="true"></i></div>
+                <div><h2 data-i18n="languageTitle">Language</h2><p data-i18n="languageLead">Choose your language for this Privacy Center.</p></div>
+              </div>
+              <div class="privacy-language-grid" role="group" data-i18n-aria="languageGroupAria">
+                <button class="privacy-language" type="button" data-language="en" aria-pressed="true"><span class="privacy-language__name">English</span><span class="privacy-language__code">EN</span><i class="bi bi-check2 privacy-language__check" aria-hidden="true"></i></button>
+                <button class="privacy-language" type="button" data-language="fr" aria-pressed="false"><span class="privacy-language__name">Français</span><span class="privacy-language__code">FR</span><i class="bi bi-check2 privacy-language__check" aria-hidden="true"></i></button>
+                <button class="privacy-language" type="button" data-language="ar" aria-pressed="false"><span class="privacy-language__name">العربية</span><span class="privacy-language__code">AR</span><i class="bi bi-check2 privacy-language__check" aria-hidden="true"></i></button>
+                <button class="privacy-language" type="button" data-language="hi" aria-pressed="false"><span class="privacy-language__name">हिन्दी</span><span class="privacy-language__code">HI</span><i class="bi bi-check2 privacy-language__check" aria-hidden="true"></i></button>
+                <button class="privacy-language" type="button" data-language="zh" aria-pressed="false"><span class="privacy-language__name">中文</span><span class="privacy-language__code">ZH</span><i class="bi bi-check2 privacy-language__check" aria-hidden="true"></i></button>
+                <button class="privacy-language" type="button" data-language="es" aria-pressed="false"><span class="privacy-language__name">Español</span><span class="privacy-language__code">ES</span><i class="bi bi-check2 privacy-language__check" aria-hidden="true"></i></button>
+                <button class="privacy-language" type="button" data-language="pt" aria-pressed="false"><span class="privacy-language__name">Português</span><span class="privacy-language__code">PT</span><i class="bi bi-check2 privacy-language__check" aria-hidden="true"></i></button>
+                <button class="privacy-language" type="button" data-language="ru" aria-pressed="false"><span class="privacy-language__name">Русский</span><span class="privacy-language__code">RU</span><i class="bi bi-check2 privacy-language__check" aria-hidden="true"></i></button>
+                <button class="privacy-language" type="button" data-language="de" aria-pressed="false"><span class="privacy-language__name">Deutsch</span><span class="privacy-language__code">DE</span><i class="bi bi-check2 privacy-language__check" aria-hidden="true"></i></button>
+                <button class="privacy-language" type="button" data-language="it" aria-pressed="false"><span class="privacy-language__name">Italiano</span><span class="privacy-language__code">IT</span><i class="bi bi-check2 privacy-language__check" aria-hidden="true"></i></button>
+              </div>
+              <p class="privacy-language-status" id="privacy-language-status" aria-live="polite"></p>
+            </div>
+          </section>
+        </article>
+      </div>
+
+      <footer class="privacy-page-footer">
+        <span data-i18n="footerNote">This Privacy Center reflects the currently published SEVOR Privacy Policy.</span>
+        <a href="#privacy-page-title" data-i18n="footerTop">Back to top</a>
+      </footer>
+    </div>
+  </div>
+
+  <button class="privacy-back-top" id="privacy-back-top" type="button" tabindex="-1" aria-hidden="true" data-i18n-aria="backTopAria">
+    <i class="bi bi-arrow-up" aria-hidden="true"></i><span data-i18n="backTop">Back to top</span>
+  </button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='privacy-center.js') }}"></script>
+{% endblock %}
