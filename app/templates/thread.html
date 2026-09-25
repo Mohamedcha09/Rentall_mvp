@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-{% set other_name = ((other.first_name or '') ~ ' ' ~ (other.last_name or ''))|trim %}
+{% set other_name = (((other.first_name if other else '') or '') ~ ' ' ~ ((other.last_name if other else '') or ''))|trim %}
 
 <style>
   /* Focused conversation UI — intentionally scoped to this route's main modifier. */
@@ -482,7 +482,15 @@
         </div>
       {% endfor %}
 
-      <div id="typingMount" aria-live="polite" aria-atomic="true"></div>
+      <div id="typingMount" aria-live="polite" aria-atomic="true">
+        {% if other_is_typing|default(false) %}
+          <div id="typingIndicator" class="typing-indicator" role="status">
+            <img src="{{ other_avatar }}" class="typing-indicator__avatar" alt="" onerror="this.onerror=null;this.src='/static/placeholder.svg'">
+            <span class="typing-indicator__bubble" aria-hidden="true"><i class="typing-indicator__dot"></i><i class="typing-indicator__dot"></i><i class="typing-indicator__dot"></i></span>
+            <span class="visually-hidden">The other participant is typing</span>
+          </div>
+        {% endif %}
+      </div>
     </div>
 
     <form class="conversation-composer" id="conversationComposer" action="/messages/{{ thread.id }}" method="post">
