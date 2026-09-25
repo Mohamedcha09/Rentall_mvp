@@ -1,196 +1,402 @@
 {% extends "base.html" %}
-{% block content %}
+{% set title = "Contact Support | SEVOR" %}
+{% set meta_description = "Contact SEVOR Support and follow your request through My Tickets." %}
 
-<!-- ===== زر الرجوع العائم (iOS style) ===== -->
-<a href="/support/my" class="back-btn-ios">
-  <i class="bi bi-chevron-left"></i>
-</a>
-
-<!-- ===== الشريط الثابت (Sticky Header) ===== -->
-<div id="supportSticky" class="support-sticky-bar">
-    <a href="/support/my" class="support-sticky-back"><i class="bi bi-chevron-left"></i></a>
-    <div class="support-sticky-title">Contact Support</div>
-    <div style="width:24px"></div>
-</div>
-
-<style>
-/* =====================================================
-   زر الرجوع — iOS floating button style
-===================================================== */
-.back-btn-ios {
-    position: fixed;
-    top: calc(env(safe-area-inset-top) + 12px);
-    left: 14px;
-    z-index: 9999;
-    background: #F7F4FF;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #333;
-    font-size: 20px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-    text-decoration: none;
-}
-.back-btn-ios:active { transform: scale(0.94); }
-
-/* =====================================================
-   إخفاء navbars + stripe + searchbars
-===================================================== */
-header.topbar,
-.m-top-tabs,
-nav.desk-tabs,
-.mobile-tabbar,
-.stripe-callout,
-.searchbar,
-.payout-banner,
-.connect-banner,
-.stripe-connect-banner {
-    display: none !important;
-}
-
-body.has-tabbar { padding-bottom:0 !important; }
-
-/* =====================================================
-   الشريط الثابت (Airbnb style)
-===================================================== */
-.support-sticky-bar {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    box-sizing: border-box;
-    height: calc(58px + env(safe-area-inset-top, 0px));
-    padding: calc(env(safe-area-inset-top) + 6px) 14px 8px 14px;
-    background: #F7F4FF;
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    opacity: 0;
-    transform: translateY(-100%);
-    transition: all .35s ease;
-    z-index: 99999;
-}
-
-.support-sticky-bar.show {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.support-sticky-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: #111;
-}
-
-.support-sticky-back {
-    font-size: 22px;
-    color: #333;
-}
-
-.back-btn-ios {
-    transition: opacity .2s ease, transform .2s ease;
-}
-
-.back-btn-ios.is-hidden {
-    opacity: 0;
-    pointer-events: none;
-    transform: scale(.94);
-}
-
-@media (max-width: 768px) {
-    .support-new-page {
-        padding-top: calc(64px + env(safe-area-inset-top, 0px)) !important;
-    }
-
-    .support-new-page .form-control,
-    .support-new-page textarea {
-        max-width: 100%;
-    }
-}
-
-/* =====================================================
-   عنوان الصفحة العادي
-===================================================== */
-h3 {
-    font-size: 28px;
-    font-weight: 600;
-    margin-bottom: 20px;
-}
-
-/* The form stays touch-first and clear of the fixed iOS back control on iPad. */
-@supports (-webkit-touch-callout: none) {
-  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
-    body[data-path="/support/new"] header.topbar,
-    body[data-path="/support/new"] .m-top-tabs.d-lg-none,
-    body[data-path="/support/new"] .mobile-tabbar.d-lg-none {
-      display: none !important;
-    }
-
-    body[data-path="/support/new"] .page {
-      padding-bottom: 0 !important;
-    }
-
-    .support-new-page {
-      padding-top: calc(64px + env(safe-area-inset-top, 0px)) !important;
-    }
-
-    .support-new-page .form-control,
-    .support-new-page textarea {
-      min-width: 0;
-      max-width: 100%;
-    }
+{% block head %}
+<style id="sevor-support-new">
+  /* Support Center only: no shared form, navigation, or ticket styles are changed. */
+  body[data-path="/support/new"] .page{
+    background:
+      radial-gradient(760px 440px at 100% 0, rgba(124,92,255,.12), transparent 68%),
+      radial-gradient(620px 420px at -10% 35%, rgba(0,185,217,.09), transparent 66%);
   }
-}
+  body[data-path="/support/new"] .paypal-callout{
+    max-width:1240px;
+    margin:18px auto 0;
+    gap:12px;
+    flex-wrap:wrap;
+    border-radius:18px;
+  }
+  body[data-path="/support/new"] .paypal-callout > *{ min-width:0; }
+
+  .support-new-page{
+    --support-primary:var(--primary, #7c5cff);
+    --support-primary-deep:var(--primary-2, #5a3eff);
+    --support-cyan:#00b8d9;
+    --support-ink:var(--text, #111827);
+    --support-muted:var(--muted, #667085);
+    --support-surface:rgba(255,255,255,.82);
+    --support-solid:#fff;
+    --support-border:rgba(90,62,255,.15);
+    --support-shadow:0 20px 48px rgba(30,35,65,.10);
+    --support-soft-shadow:0 10px 26px rgba(30,35,65,.075);
+    width:min(1240px, 100%);
+    margin-inline:auto;
+    padding:clamp(18px,3vw,38px) 0 clamp(42px,6vw,78px);
+    color:var(--support-ink);
+  }
+  .support-new-page, .support-new-page *{ box-sizing:border-box; }
+  .support-new-page :is(h1,h2,h3,p,span,a,button,label){ overflow-wrap:anywhere; }
+  .support-new-page a{ color:inherit; }
+  .support-new-page :focus-visible{ outline:3px solid var(--support-cyan); outline-offset:3px; }
+  [data-theme="dark"] .support-new-page{
+    --support-surface:rgba(16,25,45,.88);
+    --support-solid:#10192d;
+    --support-border:rgba(184,172,255,.24);
+    --support-shadow:0 20px 48px rgba(0,0,0,.30);
+    --support-soft-shadow:0 10px 26px rgba(0,0,0,.22);
+  }
+
+  .support-hero{
+    position:relative;
+    overflow:hidden;
+    display:grid;
+    grid-template-columns:minmax(0,1.15fr) minmax(230px,.65fr);
+    gap:clamp(22px,4vw,56px);
+    align-items:center;
+    padding:clamp(25px,5vw,62px);
+    border:1px solid rgba(255,255,255,.22);
+    border-radius:clamp(24px,4vw,36px);
+    background:linear-gradient(135deg, rgba(89,57,236,.98), rgba(116,82,255,.95) 57%, rgba(0,174,206,.92));
+    color:#fff;
+    box-shadow:var(--support-shadow);
+  }
+  .support-hero::before,.support-hero::after{
+    content:"";
+    position:absolute;
+    pointer-events:none;
+    border-radius:999px;
+  }
+  .support-hero::before{ width:350px; height:350px; right:-132px; bottom:-205px; background:rgba(255,255,255,.11); }
+  .support-hero::after{ width:220px; height:220px; left:53%; top:-116px; border:1px solid rgba(255,255,255,.25); }
+  .support-hero__content,.support-hero__summary{ position:relative; z-index:1; min-width:0; }
+  .support-back-link{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    min-height:44px;
+    padding:8px 11px;
+    border:1px solid rgba(255,255,255,.30);
+    border-radius:999px;
+    background:rgba(255,255,255,.12);
+    color:#fff !important;
+    font-size:.9rem;
+    font-weight:800;
+    text-decoration:none;
+    transition:transform .18s ease, background .18s ease;
+  }
+  .support-back-link:hover{ transform:translateX(-2px); background:rgba(255,255,255,.19); }
+  .support-kicker{ margin:24px 0 9px; color:rgba(255,255,255,.75); font-size:.78rem; font-weight:900; letter-spacing:.13em; }
+  .support-hero h1{ max-width:700px; margin:0; font-size:clamp(2.2rem,4.8vw,4.4rem); line-height:.98; letter-spacing:-.055em; }
+  .support-hero__lead{ max-width:660px; margin:18px 0 0; color:rgba(255,255,255,.90); font-size:clamp(1rem,1.5vw,1.16rem); line-height:1.65; }
+  .support-hero__summary{
+    display:grid;
+    gap:12px;
+    padding:clamp(18px,3vw,26px);
+    border:1px solid rgba(255,255,255,.24);
+    border-radius:23px;
+    background:rgba(255,255,255,.12);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+  }
+  .support-hero__summary i{ font-size:1.65rem; }
+  .support-hero__summary strong{ font-size:1.05rem; }
+  .support-hero__summary span{ color:rgba(255,255,255,.84); line-height:1.5; }
+
+  .support-layout{ display:grid; gap:clamp(18px,3vw,30px); margin-top:clamp(22px,4vw,42px); }
+  .support-context{ display:grid; align-content:start; gap:18px; min-width:0; }
+  .support-section-heading h2,.support-form-card h2{ margin:0; font-size:clamp(1.3rem,2vw,1.7rem); letter-spacing:-.028em; }
+  .support-section-heading p{ margin:8px 0 0; color:var(--support-muted); line-height:1.55; }
+  .support-eyebrow{ display:flex; align-items:center; gap:8px; margin:0 0 8px; color:var(--support-primary-deep); font-size:.78rem; font-weight:900; letter-spacing:.09em; text-transform:uppercase; }
+  .support-eyebrow i{ color:var(--support-cyan); }
+
+  .support-topic-grid{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; }
+  .support-topic{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr);
+    gap:10px;
+    align-items:center;
+    min-width:0;
+    min-height:72px;
+    padding:13px;
+    border:1px solid var(--support-border);
+    border-radius:17px;
+    background:var(--support-surface);
+    color:var(--support-ink);
+    box-shadow:0 4px 13px rgba(30,35,65,.035);
+    font:inherit;
+    font-size:.91rem;
+    font-weight:800;
+    line-height:1.24;
+    text-align:start;
+    cursor:pointer;
+    transition:transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+  }
+  .support-topic i{ display:grid; place-items:center; width:32px; height:32px; border-radius:11px; background:rgba(124,92,255,.12); color:var(--support-primary-deep); font-size:1.02rem; }
+  .support-topic:hover,.support-topic[aria-pressed="true"]{ transform:translateY(-2px); border-color:rgba(124,92,255,.48); background:color-mix(in srgb, var(--support-solid) 88%, #eeeaff); box-shadow:var(--support-soft-shadow); }
+  .support-topic[aria-pressed="true"] i{ background:linear-gradient(135deg, var(--support-primary), var(--support-primary-deep)); color:#fff; }
+
+  .support-ticket-link,.support-next-steps,.support-links{
+    border:1px solid var(--support-border);
+    border-radius:22px;
+    background:var(--support-surface);
+    box-shadow:0 6px 18px rgba(30,35,65,.045);
+  }
+  .support-ticket-link{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    gap:13px;
+    align-items:center;
+    padding:17px;
+    text-decoration:none;
+    transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .support-ticket-link:hover{ transform:translateY(-2px); border-color:rgba(124,92,255,.42); box-shadow:var(--support-soft-shadow); }
+  .support-ticket-link__icon{ display:grid; place-items:center; width:43px; height:43px; border-radius:15px; background:linear-gradient(135deg, var(--support-primary), var(--support-primary-deep)); color:#fff; }
+  .support-ticket-link strong,.support-ticket-link span{ display:block; }
+  .support-ticket-link strong{ font-size:1rem; }
+  .support-ticket-link span{ margin-top:3px; color:var(--support-muted); font-size:.9rem; line-height:1.4; }
+  .support-ticket-link > .bi{ color:var(--support-primary-deep); }
+  .support-next-steps,.support-links{ padding:18px; }
+  .support-next-steps h3,.support-links h3{ margin:0; font-size:1rem; }
+  .support-next-steps ol{ display:grid; gap:11px; margin:15px 0 0; padding:0; list-style:none; counter-reset:support-step; }
+  .support-next-steps li{ display:grid; grid-template-columns:26px minmax(0,1fr); gap:10px; align-items:start; color:var(--support-muted); line-height:1.45; }
+  .support-next-steps li::before{ counter-increment:support-step; content:counter(support-step); display:grid; place-items:center; width:24px; height:24px; border-radius:999px; background:rgba(124,92,255,.12); color:var(--support-primary-deep); font-size:.74rem; font-weight:900; }
+  .support-links__items{ display:flex; flex-wrap:wrap; gap:9px; margin-top:14px; }
+  .support-links__items a{ display:inline-flex; align-items:center; gap:7px; min-height:38px; padding:8px 11px; border:1px solid var(--support-border); border-radius:11px; color:var(--support-primary-deep); font-size:.88rem; font-weight:800; text-decoration:none; transition:background .18s ease, transform .18s ease; }
+  .support-links__items a:hover{ transform:translateY(-1px); background:rgba(124,92,255,.10); }
+
+  .support-form-card{
+    min-width:0;
+    padding:clamp(21px,4vw,40px);
+    border:1px solid var(--support-border);
+    border-radius:clamp(22px,3vw,30px);
+    background:var(--support-surface);
+    box-shadow:var(--support-shadow);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+  }
+  .support-form-card__intro{ margin:10px 0 0; color:var(--support-muted); line-height:1.6; }
+  .support-form{ display:grid; gap:19px; margin-top:27px; }
+  .support-field{ min-width:0; }
+  .support-field label{ display:block; margin:0 0 8px; font-weight:850; }
+  .support-field__hint{ display:block; margin:8px 0 0; color:var(--support-muted); font-size:.86rem; line-height:1.45; }
+  .support-new-page .form-control{
+    width:100%;
+    min-width:0;
+    border:1px solid color-mix(in srgb, var(--support-border) 88%, transparent);
+    border-radius:14px;
+    background:var(--support-solid);
+    color:var(--support-ink);
+    box-shadow:none;
+    font:inherit;
+    line-height:1.45;
+    transition:border-color .18s ease, box-shadow .18s ease, background .18s ease;
+  }
+  .support-new-page input.form-control{ min-height:51px; padding:12px 14px; }
+  .support-new-page textarea.form-control{ min-height:180px; padding:13px 14px; resize:vertical; }
+  .support-new-page .form-control::placeholder{ color:color-mix(in srgb, var(--support-muted) 78%, transparent); opacity:1; }
+  .support-new-page .form-control:focus{ border-color:var(--support-primary); background:var(--support-solid); box-shadow:0 0 0 4px rgba(124,92,255,.14); }
+  .support-privacy-note{ display:flex; gap:10px; align-items:flex-start; padding:13px; border-radius:14px; background:rgba(0,185,217,.075); color:var(--support-muted); font-size:.88rem; line-height:1.5; }
+  .support-privacy-note i{ flex:0 0 auto; margin-top:2px; color:#008da8; }
+  .support-privacy-note a{ color:var(--support-primary-deep); font-weight:850; }
+  .support-form-actions{ display:flex; flex-wrap:wrap; align-items:center; gap:11px; padding-top:2px; }
+  .support-submit{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+    min-height:49px;
+    padding:12px 18px;
+    border:0;
+    border-radius:14px;
+    background:linear-gradient(135deg, var(--support-primary), var(--support-primary-deep));
+    color:#fff;
+    box-shadow:0 10px 22px rgba(90,62,255,.25);
+    font:inherit;
+    font-weight:900;
+    cursor:pointer;
+    transition:transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+  }
+  .support-submit:hover:not(:disabled){ transform:translateY(-2px); box-shadow:0 14px 28px rgba(90,62,255,.32); }
+  .support-submit:active:not(:disabled){ transform:translateY(0); }
+  .support-submit:disabled{ cursor:wait; opacity:.72; box-shadow:none; }
+  .support-submit .support-submit__spinner{ display:none; width:15px; height:15px; border:2px solid rgba(255,255,255,.45); border-top-color:#fff; border-radius:50%; animation:support-spin .7s linear infinite; }
+  .support-form[aria-busy="true"] .support-submit__spinner{ display:block; }
+  .support-form-status{ min-height:1.25em; margin:0; color:var(--support-muted); font-size:.88rem; line-height:1.4; }
+
+  @keyframes support-spin{ to{ transform:rotate(360deg); } }
+  @media (min-width:900px){
+    .support-layout{ grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr); align-items:start; }
+  }
+  @media (min-width:769px){
+    body[data-path="/support/new"] .page{ padding-top:clamp(18px,2vw,28px) !important; }
+  }
+  @media (max-width:699px){
+    .support-hero{ grid-template-columns:1fr; }
+    .support-hero__summary{ max-width:520px; }
+  }
+  @media (max-width:460px){
+    .support-new-page{ padding-top:16px; }
+    .support-hero{ padding:25px 20px; }
+    .support-hero h1{ font-size:clamp(2.02rem,11vw,3rem); }
+    .support-topic-grid{ grid-template-columns:1fr; }
+    .support-form-actions,.support-submit{ width:100%; }
+    .support-submit{ min-width:0; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .support-new-page *, .support-new-page *::before, .support-new-page *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; transition-duration:.01ms !important; }
+  }
 </style>
+{% endblock %}
 
-<!-- =====================================================
-      Contact Support Content
-===================================================== -->
-
-<div class="container py-4 support-new-page" style="max-width:760px">
-
-  <h3>Contact Support</h3>
-
-  <form method="post" class="mt-3">
-    <div class="mb-3">
-      <label class="form-label">Subject</label>
-      <input name="subject" class="form-control" placeholder="Enter subject">
+{% block content %}
+<div class="support-new-page" aria-labelledby="support-page-title">
+  <section class="support-hero">
+    <div class="support-hero__content">
+      <a class="support-back-link" href="/support/my" aria-label="Back to My Tickets">
+        <i class="bi bi-arrow-left" aria-hidden="true"></i><span>Back to My Tickets</span>
+      </a>
+      <p class="support-kicker">SEVOR SUPPORT</p>
+      <h1 id="support-page-title">How can we help?</h1>
+      <p class="support-hero__lead">Tell us what happened and share the details that can help us understand your request.</p>
     </div>
+    <aside class="support-hero__summary" aria-label="Support ticket overview">
+      <i class="bi bi-life-preserver" aria-hidden="true"></i>
+      <strong>One place for your request</strong>
+      <span>Send a ticket, then follow the conversation and updates in My Tickets.</span>
+    </aside>
+  </section>
 
-    <div class="mb-3">
-      <label class="form-label">Message</label>
-      <textarea name="body" class="form-control" rows="6" placeholder="Describe your issue..."></textarea>
-    </div>
+  <div class="support-layout">
+    <aside class="support-context" aria-label="Support help and resources">
+      <section aria-labelledby="quick-help-title">
+        <div class="support-section-heading">
+          <p class="support-eyebrow"><i class="bi bi-lightning-charge" aria-hidden="true"></i>Quick help</p>
+          <h2 id="quick-help-title">Start with the right topic</h2>
+          <p>Choose a topic to add an editable subject suggestion to your request.</p>
+        </div>
+        <div class="support-topic-grid" style="margin-top:16px">
+          <button class="support-topic" type="button" data-support-subject="Booking issue" aria-pressed="false"><i class="bi bi-calendar2-week" aria-hidden="true"></i><span>Booking issue</span></button>
+          <button class="support-topic" type="button" data-support-subject="Payment issue" aria-pressed="false"><i class="bi bi-credit-card" aria-hidden="true"></i><span>Payment issue</span></button>
+          <button class="support-topic" type="button" data-support-subject="Account and verification" aria-pressed="false"><i class="bi bi-person-vcard" aria-hidden="true"></i><span>Account &amp; verification</span></button>
+          <button class="support-topic" type="button" data-support-subject="Item or listing issue" aria-pressed="false"><i class="bi bi-box-seam" aria-hidden="true"></i><span>Item or listing issue</span></button>
+          <button class="support-topic" type="button" data-support-subject="Pickup or return" aria-pressed="false"><i class="bi bi-arrow-left-right" aria-hidden="true"></i><span>Pickup or return</span></button>
+          <button class="support-topic" type="button" data-support-subject="Safety or report" aria-pressed="false"><i class="bi bi-shield-exclamation" aria-hidden="true"></i><span>Safety or report</span></button>
+          <button class="support-topic" type="button" data-support-subject="Technical problem" aria-pressed="false"><i class="bi bi-wrench-adjustable" aria-hidden="true"></i><span>Technical problem</span></button>
+          <button class="support-topic" type="button" data-support-subject="Other support request" aria-pressed="false"><i class="bi bi-chat-square-text" aria-hidden="true"></i><span>Other</span></button>
+        </div>
+      </section>
 
-    <button class="btn btn-primary">Send</button>
-    <a class="btn btn-light" href="/support/my">My Tickets</a>
-  </form>
+      <a class="support-ticket-link" href="/support/my">
+        <span class="support-ticket-link__icon"><i class="bi bi-ticket-perforated" aria-hidden="true"></i></span>
+        <span><strong>My Support Requests</strong><span>View your tickets and follow their status.</span></span>
+        <i class="bi bi-arrow-right" aria-hidden="true"></i>
+      </a>
 
+      <section class="support-next-steps" aria-labelledby="next-steps-title">
+        <h3 id="next-steps-title">What happens next?</h3>
+        <ol>
+          <li>You send your request through this form.</li>
+          <li>A support ticket is created for your account.</li>
+          <li>You can follow the conversation in My Tickets.</li>
+          <li>Check the ticket for support updates and replies.</li>
+        </ol>
+      </section>
+
+      <section class="support-links" aria-labelledby="help-links-title">
+        <h3 id="help-links-title">Helpful before you send</h3>
+        <div class="support-links__items">
+          <a href="/how-it-works"><i class="bi bi-signpost-split" aria-hidden="true"></i>How SEVOR works</a>
+          <a href="/privacy"><i class="bi bi-shield-check" aria-hidden="true"></i>Privacy Center</a>
+        </div>
+      </section>
+    </aside>
+
+    <section class="support-form-card" aria-labelledby="support-form-title">
+      <p class="support-eyebrow"><i class="bi bi-send" aria-hidden="true"></i>New support ticket</p>
+      <h2 id="support-form-title">Tell us about your request</h2>
+      <p class="support-form-card__intro">A short, clear subject and the relevant details make your request easier to understand.</p>
+
+      <form method="post" class="support-form" data-support-form aria-describedby="support-form-status">
+        <div class="support-field">
+          <label for="support-subject">Subject</label>
+          <input id="support-subject" name="subject" class="form-control" autocomplete="off" placeholder="Briefly describe your issue" aria-describedby="support-subject-help">
+          <span class="support-field__hint" id="support-subject-help">You can use a Quick Help suggestion or write your own subject.</span>
+        </div>
+
+        <div class="support-field">
+          <label for="support-message">Message</label>
+          <textarea id="support-message" name="body" class="form-control" rows="7" placeholder="Tell us what happened and include any details that may help us understand the issue." aria-describedby="support-message-help"></textarea>
+          <span class="support-field__hint" id="support-message-help">Include only information relevant to your request. Do not include your password or other sensitive details that are not needed.</span>
+        </div>
+
+        <div class="support-privacy-note">
+          <i class="bi bi-shield-lock" aria-hidden="true"></i>
+          <span>Your request is handled through SEVOR’s ticket system. Review the <a href="/privacy">Privacy Center</a> for more information.</span>
+        </div>
+
+        <div class="support-form-actions">
+          <button class="support-submit" type="submit" data-support-submit>
+            <span data-support-submit-label>Send request</span><span class="support-submit__spinner" aria-hidden="true"></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+          </button>
+          <p class="support-form-status" id="support-form-status" role="status" aria-live="polite"></p>
+        </div>
+      </form>
+    </section>
+  </div>
 </div>
+{% endblock %}
 
-<!-- =====================================================
-     سكربت الشريط الثابت — يظهر عند النزول
-===================================================== -->
+{% block scripts %}
 <script>
-function syncSupportSticky() {
-    const bar = document.getElementById("supportSticky");
-    const back = document.querySelector(".back-btn-ios");
-    const shown = window.scrollY > 100;
+(() => {
+  const page = document.querySelector(".support-new-page");
+  if (!page) return;
 
-    if (shown) {
-        bar.classList.add("show");
-    } else {
-        bar.classList.remove("show");
-    }
-    if (back) back.classList.toggle("is-hidden", shown);
-}
-window.addEventListener("scroll", syncSupportSticky, { passive: true });
-syncSupportSticky();
+  const form = page.querySelector("[data-support-form]");
+  const subject = page.querySelector("#support-subject");
+  const message = page.querySelector("#support-message");
+  const status = page.querySelector("#support-form-status");
+  const submit = page.querySelector("[data-support-submit]");
+  const submitLabel = page.querySelector("[data-support-submit-label]");
+
+  page.querySelectorAll("[data-support-subject]").forEach((topic) => {
+    topic.addEventListener("click", () => {
+      if (subject) {
+        subject.value = topic.dataset.supportSubject || "";
+        subject.focus();
+      }
+      page.querySelectorAll("[data-support-subject]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button === topic));
+      });
+      if (status) status.textContent = "A subject suggestion was added. You can edit it before sending.";
+    });
+  });
+
+  if (message) {
+    const resizeMessage = () => {
+      message.style.height = "auto";
+      message.style.height = `${Math.max(180, Math.min(message.scrollHeight, 360))}px`;
+      message.style.overflowY = message.scrollHeight > 360 ? "auto" : "hidden";
+    };
+    message.addEventListener("input", resizeMessage);
+    resizeMessage();
+  }
+
+  if (form) {
+    form.addEventListener("submit", (event) => {
+      if (form.dataset.submitting === "true") {
+        event.preventDefault();
+        return;
+      }
+      form.dataset.submitting = "true";
+      form.setAttribute("aria-busy", "true");
+      if (submit) submit.disabled = true;
+      if (submitLabel) submitLabel.textContent = "Sending request…";
+      if (status) status.textContent = "Sending your request…";
+    });
+  }
+})();
 </script>
-
 {% endblock %}
