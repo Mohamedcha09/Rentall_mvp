@@ -1,256 +1,213 @@
 {% extends "base.html" %}
+{% set title = "My Support Requests | SEVOR" %}
+{% set meta_description = "Review your SEVOR support requests, ticket updates, and replies." %}
+
+{% set ticket_totals = namespace(new=0, open=0, resolved=0) %}
+{% for t in tickets %}
+  {% set status_key = (t.status or 'new')|lower %}
+  {% if status_key == 'resolved' %}
+    {% set ticket_totals.resolved = ticket_totals.resolved + 1 %}
+  {% elif status_key == 'open' %}
+    {% set ticket_totals.open = ticket_totals.open + 1 %}
+  {% else %}
+    {% set ticket_totals.new = ticket_totals.new + 1 %}
+  {% endif %}
+{% endfor %}
+
+{% block head %}
+<style id="sevor-support-my">
+  /* My Tickets only: shared navigation, forms, and ticket routes stay untouched. */
+  body[data-path="/support/my"] .page{
+    background:radial-gradient(760px 440px at 100% 0, rgba(124,92,255,.12), transparent 68%),radial-gradient(620px 420px at -10% 35%, rgba(0,185,217,.09), transparent 66%);
+  }
+  body[data-path="/support/my"] .paypal-callout{ max-width:1240px; margin:18px auto 0; gap:12px; flex-wrap:wrap; border-radius:18px; }
+  body[data-path="/support/my"] .paypal-callout > *{ min-width:0; }
+
+  .support-my-page{
+    --support-primary:var(--primary, #7c5cff); --support-primary-deep:var(--primary-2, #5a3eff); --support-cyan:#00b8d9;
+    --support-ink:var(--text, #111827); --support-muted:var(--muted, #667085); --support-surface:rgba(255,255,255,.82); --support-solid:#fff;
+    --support-border:rgba(90,62,255,.15); --support-shadow:0 20px 48px rgba(30,35,65,.10); --support-soft-shadow:0 10px 26px rgba(30,35,65,.075);
+    width:min(1240px, 100%); margin-inline:auto; padding:clamp(18px,3vw,38px) 0 clamp(42px,6vw,78px); color:var(--support-ink);
+  }
+  .support-my-page, .support-my-page *{ box-sizing:border-box; }
+  .support-my-page :is(h1,h2,h3,p,span,a,button,label,time){ overflow-wrap:anywhere; }
+  .support-my-page a{ color:inherit; }
+  .support-my-page :focus-visible{ outline:3px solid var(--support-cyan); outline-offset:3px; }
+  [data-theme="dark"] .support-my-page{ --support-surface:rgba(16,25,45,.88); --support-solid:#10192d; --support-border:rgba(184,172,255,.24); --support-shadow:0 20px 48px rgba(0,0,0,.30); --support-soft-shadow:0 10px 26px rgba(0,0,0,.22); }
+
+  .support-my-hero{
+    position:relative; overflow:hidden; display:grid; grid-template-columns:minmax(0,1.15fr) minmax(230px,.65fr); gap:clamp(22px,4vw,56px); align-items:center;
+    padding:clamp(25px,5vw,62px); border:1px solid rgba(255,255,255,.22); border-radius:clamp(24px,4vw,36px);
+    background:linear-gradient(135deg, rgba(89,57,236,.98), rgba(116,82,255,.95) 57%, rgba(0,174,206,.92)); color:#fff; box-shadow:var(--support-shadow); animation:support-my-rise .42s ease both;
+  }
+  .support-my-hero::before,.support-my-hero::after{ content:""; position:absolute; pointer-events:none; border-radius:999px; }
+  .support-my-hero::before{ width:350px; height:350px; right:-132px; bottom:-205px; background:rgba(255,255,255,.11); }
+  .support-my-hero::after{ width:220px; height:220px; left:53%; top:-116px; border:1px solid rgba(255,255,255,.25); }
+  .support-my-hero__content,.support-my-hero__summary{ position:relative; z-index:1; min-width:0; }
+  .support-my-back{ display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:8px 11px; border:1px solid rgba(255,255,255,.30); border-radius:999px; background:rgba(255,255,255,.12); color:#fff !important; font-size:.9rem; font-weight:800; text-decoration:none; transition:transform .18s ease,background .18s ease; }
+  .support-my-back:hover{ transform:translateX(-2px); background:rgba(255,255,255,.19); }
+  .support-my-kicker{ margin:24px 0 9px; color:rgba(255,255,255,.75); font-size:.78rem; font-weight:900; letter-spacing:.13em; }
+  .support-my-hero h1{ max-width:700px; margin:0; font-size:clamp(2.2rem,4.8vw,4.4rem); line-height:.98; letter-spacing:-.055em; }
+  .support-my-hero__lead{ max-width:660px; margin:18px 0 0; color:rgba(255,255,255,.90); font-size:clamp(1rem,1.5vw,1.16rem); line-height:1.65; }
+  .support-my-hero__summary{ display:grid; gap:12px; padding:clamp(18px,3vw,26px); border:1px solid rgba(255,255,255,.24); border-radius:23px; background:rgba(255,255,255,.12); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
+  .support-my-hero__summary i{ font-size:1.65rem; }
+  .support-my-hero__summary strong{ font-size:1.05rem; }
+  .support-my-hero__summary span{ color:rgba(255,255,255,.84); line-height:1.5; }
+  .support-my-new-ticket{ display:inline-flex; align-items:center; justify-content:center; gap:9px; min-height:49px; margin-top:22px; padding:12px 18px; border:1px solid rgba(255,255,255,.76); border-radius:14px; background:#fff; color:#000 !important; box-shadow:0 10px 22px rgba(35,25,100,.22); font-weight:900; text-decoration:none; transition:transform .18s ease,box-shadow .18s ease,background .18s ease; }
+  .support-my-new-ticket:hover{ transform:translateY(-2px); background:#fff; color:#000 !important; box-shadow:0 14px 28px rgba(35,25,100,.30); }
+  .support-my-new-ticket:active{ transform:translateY(0); }
+  .support-my-new-ticket i{ color:currentColor; }
+
+  .support-my-workspace{ display:grid; gap:clamp(20px,3vw,30px); margin-top:clamp(22px,4vw,42px); }
+  .support-my-summary{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+  .support-my-stat{ min-width:0; padding:15px; border:1px solid var(--support-border); border-radius:18px; background:var(--support-surface); box-shadow:0 5px 16px rgba(30,35,65,.045); }
+  .support-my-stat span{ display:block; color:var(--support-muted); font-size:.78rem; font-weight:800; line-height:1.3; }
+  .support-my-stat strong{ display:block; margin-top:5px; color:var(--support-ink); font-size:clamp(1.25rem,2vw,1.65rem); line-height:1; }
+  .support-my-stat--new strong{ color:#5a3eff; }.support-my-stat--open strong{ color:#007e96; }.support-my-stat--resolved strong{ color:#16803f; }
+  .support-my-list-shell{ min-width:0; padding:clamp(18px,3vw,29px); border:1px solid var(--support-border); border-radius:clamp(22px,3vw,30px); background:var(--support-surface); box-shadow:var(--support-shadow); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+  .support-my-list-toolbar{ display:grid; gap:16px; }
+  .support-my-toolbar-top{ display:flex; flex-wrap:wrap; align-items:end; justify-content:space-between; gap:14px; }
+  .support-my-eyebrow{ display:flex; align-items:center; gap:8px; margin:0 0 8px; color:var(--support-primary-deep); font-size:.78rem; font-weight:900; letter-spacing:.09em; text-transform:uppercase; }
+  .support-my-eyebrow i{ color:var(--support-cyan); }
+  .support-my-section-heading h2{ margin:0; font-size:clamp(1.35rem,2vw,1.75rem); letter-spacing:-.03em; }
+  .support-my-section-heading p{ margin:8px 0 0; color:var(--support-muted); line-height:1.55; }
+  .support-my-search{ position:relative; flex:1 1 260px; max-width:430px; min-width:0; }
+  .support-my-search i{ position:absolute; top:50%; left:14px; z-index:1; transform:translateY(-50%); color:var(--support-muted); pointer-events:none; }
+  .support-my-search input{ width:100%; min-width:0; min-height:47px; padding:11px 14px 11px 41px; border:1px solid var(--support-border); border-radius:14px; background:var(--support-solid); color:var(--support-ink); font:inherit; line-height:1.35; transition:border-color .18s ease,box-shadow .18s ease; }
+  .support-my-search input::placeholder{ color:color-mix(in srgb,var(--support-muted) 78%,transparent); opacity:1; }
+  .support-my-search input:focus{ border-color:var(--support-primary); box-shadow:0 0 0 4px rgba(124,92,255,.14); outline:0; }
+  .support-my-filter-group{ display:flex; flex-wrap:wrap; gap:8px; }
+  .support-my-filter{ min-height:39px; padding:8px 12px; border:1px solid var(--support-border); border-radius:999px; background:var(--support-solid); color:var(--support-muted); font:inherit; font-size:.87rem; font-weight:850; cursor:pointer; transition:transform .18s ease,border-color .18s ease,background .18s ease,color .18s ease; }
+  .support-my-filter:hover,.support-my-filter[aria-pressed="true"]{ border-color:rgba(124,92,255,.48); background:rgba(124,92,255,.11); color:var(--support-primary-deep); }
+  .support-my-filter:active{ transform:scale(.97); }
+  .support-my-results{ min-height:1.3em; margin:0; color:var(--support-muted); font-size:.87rem; line-height:1.4; }
+
+  .support-my-ticket-list{ display:grid; gap:11px; margin-top:20px; }
+  .support-my-ticket{ position:relative; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:14px; align-items:center; min-width:0; min-height:100px; padding:17px; border:1px solid var(--support-border); border-radius:20px; background:var(--support-solid); box-shadow:0 4px 13px rgba(30,35,65,.035); text-decoration:none; transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,background .18s ease; animation:support-my-rise .38s ease both; }
+  .support-my-ticket:hover{ transform:translateY(-2px); border-color:rgba(124,92,255,.48); background:color-mix(in srgb,var(--support-solid) 90%,#eeeaff); box-shadow:var(--support-soft-shadow); }
+  .support-my-ticket__main{ min-width:0; }.support-my-ticket__actions{ display:flex; flex:0 0 auto; align-items:center; gap:10px; }
+  .support-my-ticket__meta{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; color:var(--support-muted); font-size:.8rem; font-weight:750; line-height:1.4; }
+  .support-my-ticket__id{ color:var(--support-primary-deep); font-weight:900; }.support-my-ticket__subject{ display:block; margin:8px 0 0; color:var(--support-ink); font-size:clamp(1rem,1.35vw,1.13rem); font-weight:900; line-height:1.3; }.support-my-ticket__activity{ display:block; margin-top:7px; color:var(--support-muted); font-size:.84rem; line-height:1.4; }
+  .support-my-status{ display:inline-flex; align-items:center; min-height:29px; padding:5px 9px; border:1px solid transparent; border-radius:999px; font-size:.76rem; font-weight:900; line-height:1; white-space:nowrap; }
+  .support-my-status--new{ border-color:rgba(90,62,255,.22); background:rgba(124,92,255,.12); color:#5a3eff; }.support-my-status--open{ border-color:rgba(0,151,181,.24); background:rgba(0,185,217,.12); color:#007e96; }.support-my-status--resolved{ border-color:rgba(22,128,63,.24); background:rgba(34,197,94,.12); color:#16803f; }
+  .support-my-unread{ display:inline-flex; align-items:center; gap:5px; color:var(--support-primary-deep); font-size:.77rem; font-weight:900; white-space:nowrap; }.support-my-unread i{ font-size:.56rem; color:#00b8d9; }.support-my-ticket__arrow{ color:var(--support-primary-deep); font-size:1.05rem; }.support-my-no-results{ margin:21px 0 2px; color:var(--support-muted); text-align:center; }
+
+  .support-my-empty{ display:grid; justify-items:center; max-width:720px; margin:clamp(22px,5vw,54px) auto 0; padding:clamp(30px,6vw,66px) clamp(20px,5vw,54px); border:1px solid var(--support-border); border-radius:clamp(24px,4vw,32px); background:var(--support-surface); box-shadow:var(--support-shadow); text-align:center; animation:support-my-rise .42s ease both; }
+  .support-my-empty__icon{ display:grid; place-items:center; width:74px; height:74px; border-radius:25px; background:linear-gradient(135deg,var(--support-primary),var(--support-primary-deep)); color:#fff; box-shadow:0 12px 28px rgba(90,62,255,.24); font-size:2rem; }.support-my-empty h2{ margin:21px 0 0; font-size:clamp(1.42rem,2.6vw,2rem); letter-spacing:-.035em; }.support-my-empty p{ max-width:490px; margin:11px 0 0; color:var(--support-muted); line-height:1.6; }.support-my-empty__cta{ margin-top:23px; }
+
+  @keyframes support-my-rise{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
+  @media (min-width:769px){ body[data-path="/support/my"] .page{ padding-top:clamp(18px,2vw,28px) !important; } }
+  @media (min-width:900px){ .support-my-list-toolbar{ grid-template-columns:minmax(0,1fr) auto; align-items:end; }.support-my-results{ grid-column:1 / -1; } }
+  @media (max-width:699px){ .support-my-hero{ grid-template-columns:1fr; }.support-my-hero__summary{ max-width:520px; }.support-my-summary{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:460px){ .support-my-page{ padding-top:16px; }.support-my-hero{ padding:25px 20px; }.support-my-hero h1{ font-size:clamp(2.02rem,11vw,3rem); }.support-my-new-ticket{ width:100%; }.support-my-list-shell{ padding:18px 14px; }.support-my-toolbar-top{ align-items:stretch; }.support-my-search{ max-width:none; }.support-my-filter-group{ gap:7px; }.support-my-filter{ flex:1 1 auto; }.support-my-ticket{ grid-template-columns:minmax(0,1fr); gap:12px; }.support-my-ticket__actions{ justify-content:space-between; }.support-my-ticket__arrow{ position:absolute; right:18px; top:18px; } }
+  @media (prefers-reduced-motion:reduce){ .support-my-page *, .support-my-page *::before, .support-my-page *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; transition-duration:.01ms !important; } }
+</style>
+{% endblock %}
 
 {% block content %}
+<div class="support-my-page" aria-labelledby="support-my-title">
+  <section class="support-my-hero">
+    <div class="support-my-hero__content">
+      <a class="support-my-back" href="/" aria-label="Back to SEVOR"><i class="bi bi-arrow-left" aria-hidden="true"></i><span>Back to SEVOR</span></a>
+      <p class="support-my-kicker">SEVOR SUPPORT</p>
+      <h1 id="support-my-title">My Support Requests</h1>
+      <p class="support-my-hero__lead">Track your requests, read support updates, and continue the conversation from one place.</p>
+      <a class="support-my-new-ticket" href="/support/new"><i class="bi bi-plus-lg" aria-hidden="true"></i><span>New Ticket</span></a>
+    </div>
+    <aside class="support-my-hero__summary" aria-label="Support request overview"><i class="bi bi-ticket-perforated" aria-hidden="true"></i><strong>Your support space</strong><span>Your current and previous support requests stay together here for easy follow-up.</span></aside>
+  </section>
 
-<!-- ===== زر الرجوع العائم (iOS style) ===== -->
-<a href="/" class="back-btn-ios">
-  <i class="bi bi-chevron-left"></i>
-</a>
+  {% if tickets %}
+    <section class="support-my-workspace" aria-labelledby="support-my-list-title">
+      <div class="support-my-summary" aria-label="Ticket summary">
+        <div class="support-my-stat"><span>Total requests</span><strong>{{ tickets|length }}</strong></div>
+        <div class="support-my-stat support-my-stat--new"><span>New</span><strong>{{ ticket_totals.new }}</strong></div>
+        <div class="support-my-stat support-my-stat--open"><span>Open</span><strong>{{ ticket_totals.open }}</strong></div>
+        <div class="support-my-stat support-my-stat--resolved"><span>Resolved</span><strong>{{ ticket_totals.resolved }}</strong></div>
+      </div>
 
-<!-- ===== الشريط الثابت (Airbnb Sticky Header) ===== -->
-<div id="ticketsSticky" class="tickets-sticky-bar">
-    <a href="/" class="tickets-sticky-back"><i class="bi bi-chevron-left"></i></a>
-    <div class="tickets-sticky-title">My Tickets</div>
-    <div style="width:24px"></div>
-</div>
-
-<style>
-/* =====================================================
-   زر الرجوع — iOS floating button style
-===================================================== */
-.back-btn-ios {
-    position: fixed;
-    top: calc(env(safe-area-inset-top) + 12px);
-    left: 14px;
-    z-index: 9999;
-    background: #F7F4FF;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #333;
-    font-size: 20px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-    text-decoration: none;
-}
-.back-btn-ios:active { transform: scale(0.94); }
-
-/* =====================================================
-   إخفاء الهيدر + التابات + التاب بار + بنر Stripe
-===================================================== */
-header.topbar,
-.m-top-tabs,
-nav.desk-tabs,
-.mobile-tabbar,
-.stripe-callout,
-.connect-banner,
-.payout-banner,
-.stripe-connect-banner {
-    display: none !important;
-}
-
-body.has-tabbar { padding-bottom: 0 !important; }
-
-/* =====================================================
-   شريط ثابت يظهر عند النزول — Airbnb style
-===================================================== */
-.tickets-sticky-bar {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    box-sizing: border-box;
-    height: calc(58px + env(safe-area-inset-top, 0px));
-    padding: calc(env(safe-area-inset-top) + 6px) 14px 8px 14px;
-    background: #F7F4FF;
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    opacity: 0;
-    transform: translateY(-100%);
-    transition: all .35s ease;
-    z-index: 99999;
-}
-
-.tickets-sticky-bar.show {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.tickets-sticky-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: #111;
-}
-
-.tickets-sticky-back {
-    font-size: 22px;
-    color: #333;
-}
-
-.back-btn-ios {
-    transition: opacity .2s ease, transform .2s ease;
-}
-
-.back-btn-ios.is-hidden {
-    opacity: 0;
-    pointer-events: none;
-    transform: scale(.94);
-}
-
-@media (max-width: 768px) {
-    .support-my-page {
-        padding-top: calc(64px + env(safe-area-inset-top, 0px)) !important;
-    }
-
-    .support-my-page > .d-flex,
-    .support-my-page .list-group-item {
-        min-width: 0;
-    }
-
-    .support-my-page > .d-flex {
-        flex-wrap: wrap;
-        gap: .75rem;
-    }
-
-    .support-my-page .list-group-item {
-        gap: .5rem;
-    }
-
-    .support-my-page .list-group-item > div:first-child {
-        min-width: 0;
-        overflow-wrap: anywhere;
-    }
-
-    .support-my-page .list-group-item > div:last-child {
-        flex: 0 0 auto;
-    }
-}
-
-/* =====================================================
-   العنوان في أعلى الصفحة
-===================================================== */
-h3 {
-    font-size: 28px;
-    font-weight: 600;
-    margin-bottom: 20px;
-}
-
-/* Match this route's existing phone presentation on iPad Safari. */
-@supports (-webkit-touch-callout: none) {
-  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
-    body[data-path="/support/my"] header.topbar,
-    body[data-path="/support/my"] .m-top-tabs.d-lg-none,
-    body[data-path="/support/my"] .mobile-tabbar.d-lg-none {
-      display: none !important;
-    }
-
-    body[data-path="/support/my"] .page {
-      padding-bottom: 0 !important;
-    }
-
-    .support-my-page {
-      padding-top: calc(64px + env(safe-area-inset-top, 0px)) !important;
-    }
-
-    .support-my-page > .d-flex,
-    .support-my-page .list-group-item {
-      min-width: 0;
-    }
-
-    .support-my-page > .d-flex {
-      flex-wrap: wrap;
-      gap: .75rem;
-    }
-
-    .support-my-page .list-group-item {
-      gap: .5rem;
-    }
-
-    .support-my-page .list-group-item > div:first-child {
-      min-width: 0;
-      overflow-wrap: anywhere;
-    }
-  }
-}
-</style>
-
-<div class="container py-4 support-my-page" style="max-width:760px">
-
-  <div class="d-flex justify-content-between align-items-center">
-    <h3>My Tickets</h3>
-    <a class="btn btn-primary" href="/support/new">+ New Ticket</a>
-  </div>
-
-  <div class="list-group mt-3">
-    {% for t in tickets %}
-
-      {% set unread_cs =
-        (t.messages
-        | selectattr('sender_role','equalto','agent')
-        | selectattr('is_read','equalto',False)
-        | list | length)
-      %}
-
-      {% if t.channel == 'chatbot' %}
-  <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-     href="/support/chatbot/ticket/{{ t.id }}">
-{% else %}
-  <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-     href="/support/ticket/{{ t.id }}">
-{% endif %}
-
-
-        <div class="me-2">
-          <div class="fw-semibold">#{{t.id}} — {{t.subject or 'Untitled'}}</div>
-          <div class="small text-muted">
-            Status: {{ t.status or 'new' }}
-            {% if t.last_msg_at %}
-              · Last activity: {{ (t.last_msg_at|string)[:16] }}
-            {% endif %}
+      <div class="support-my-list-shell">
+        <div class="support-my-list-toolbar">
+          <div class="support-my-toolbar-top">
+            <div class="support-my-section-heading"><p class="support-my-eyebrow"><i class="bi bi-inboxes" aria-hidden="true"></i>Support history</p><h2 id="support-my-list-title">Your tickets</h2><p>Open a request to review the conversation and any support updates.</p></div>
+            <label class="support-my-search"><span class="visually-hidden">Search support tickets</span><i class="bi bi-search" aria-hidden="true"></i><input type="search" data-ticket-search placeholder="Search by subject or ticket ID" autocomplete="off"></label>
           </div>
+          <div class="support-my-filter-group" aria-label="Filter tickets by status">
+            <button class="support-my-filter" type="button" data-ticket-filter="all" aria-pressed="true">All</button>
+            <button class="support-my-filter" type="button" data-ticket-filter="new" aria-pressed="false">New</button>
+            <button class="support-my-filter" type="button" data-ticket-filter="open" aria-pressed="false">Open</button>
+            <button class="support-my-filter" type="button" data-ticket-filter="resolved" aria-pressed="false">Resolved</button>
+          </div>
+          <p class="support-my-results" data-ticket-results role="status" aria-live="polite">Showing {{ tickets|length }} support request{{ '' if tickets|length == 1 else 's' }}.</p>
         </div>
 
-        <div class="d-flex align-items-center gap-2">
-          {% if unread_cs > 0 %}
-            <span class="badge rounded-pill text-bg-primary">{{ unread_cs }}</span>
-          {% elif t.unread_for_user %}
-            <span class="badge rounded-pill text-bg-primary">•</span>
-          {% endif %}
-          <i class="bi bi-chevron-left opacity-50"></i>
+        <div class="support-my-ticket-list" data-ticket-list>
+          {% for t in tickets %}
+            {% set ticket_status = (t.status or 'new')|lower %}
+            {% set ticket_activity = t.last_msg_at or t.updated_at or t.created_at %}
+            <a class="support-my-ticket" data-ticket-card data-status="{{ ticket_status }}" data-search="#{{ t.id }} {{ t.subject or '' }}" href="/support/ticket/{{ t.id }}" aria-label="Open ticket #{{ t.id }}: {{ t.subject or 'Untitled request' }}">
+              <span class="support-my-ticket__main">
+                <span class="support-my-ticket__meta"><span class="support-my-ticket__id">Ticket #{{ t.id }}</span>{% if t.unread_for_user %}<span class="support-my-unread"><i class="bi bi-circle-fill" aria-hidden="true"></i>New reply</span>{% endif %}</span>
+                <span class="support-my-ticket__subject">{{ t.subject or 'Untitled request' }}</span>
+                {% if ticket_activity %}<time class="support-my-ticket__activity">Updated {{ (ticket_activity|string)[:16] }}</time>{% endif %}
+              </span>
+              <span class="support-my-ticket__actions">
+                {% if ticket_status == 'resolved' %}<span class="support-my-status support-my-status--resolved">Resolved</span>
+                {% elif ticket_status == 'open' %}<span class="support-my-status support-my-status--open">Open</span>
+                {% else %}<span class="support-my-status support-my-status--new">New</span>{% endif %}
+                <i class="bi bi-arrow-right support-my-ticket__arrow" aria-hidden="true"></i>
+              </span>
+            </a>
+          {% endfor %}
         </div>
-
-      </a>
-
-    {% else %}
-      <div class="text-muted">No tickets yet.</div>
-    {% endfor %}
-  </div>
-
+        <p class="support-my-no-results" data-ticket-no-results hidden>No support requests match this search.</p>
+      </div>
+    </section>
+  {% else %}
+    <section class="support-my-empty" aria-labelledby="support-my-empty-title">
+      <div class="support-my-empty__icon"><i class="bi bi-life-preserver" aria-hidden="true"></i></div>
+      <h2 id="support-my-empty-title">No support requests yet</h2>
+      <p>When you contact SEVOR Support, your requests and replies will appear here for easy follow-up.</p>
+      <a class="support-my-new-ticket support-my-empty__cta" href="/support/new"><i class="bi bi-plus-lg" aria-hidden="true"></i><span>Create your first ticket</span></a>
+    </section>
+  {% endif %}
 </div>
+{% endblock %}
 
-<!-- =====================================================
-     سكربت الشريط الثابت
-===================================================== -->
+{% block scripts %}
 <script>
-function syncTicketsSticky() {
-    const bar = document.getElementById("ticketsSticky");
-    const back = document.querySelector(".back-btn-ios");
-    const shown = window.scrollY > 100;
+(() => {
+  const page = document.querySelector(".support-my-page");
+  if (!page) return;
+  const search = page.querySelector("[data-ticket-search]");
+  const filters = Array.from(page.querySelectorAll("[data-ticket-filter]"));
+  const cards = Array.from(page.querySelectorAll("[data-ticket-card]"));
+  const results = page.querySelector("[data-ticket-results]");
+  const noResults = page.querySelector("[data-ticket-no-results]");
+  let activeFilter = "all";
 
-    if (shown) {
-        bar.classList.add("show");
-    } else {
-        bar.classList.remove("show");
-    }
-    if (back) back.classList.toggle("is-hidden", shown);
-}
-window.addEventListener("scroll", syncTicketsSticky, { passive: true });
-syncTicketsSticky();
+  const updateTickets = () => {
+    const query = (search?.value || "").trim().toLowerCase();
+    let visible = 0;
+    cards.forEach((card) => {
+      const matchesStatus = activeFilter === "all" || card.dataset.status === activeFilter;
+      const matchesQuery = !query || (card.dataset.search || "").toLowerCase().includes(query);
+      const show = matchesStatus && matchesQuery;
+      card.hidden = !show;
+      if (show) visible += 1;
+    });
+    if (results) results.textContent = visible === 1 ? "Showing 1 support request." : `Showing ${visible} support requests.`;
+    if (noResults) noResults.hidden = visible !== 0;
+  };
+
+  filters.forEach((filter) => {
+    filter.addEventListener("click", () => {
+      activeFilter = filter.dataset.ticketFilter || "all";
+      filters.forEach((button) => button.setAttribute("aria-pressed", String(button === filter)));
+      updateTickets();
+    });
+  });
+  if (search) search.addEventListener("input", updateTickets);
+})();
 </script>
-
 {% endblock %}
