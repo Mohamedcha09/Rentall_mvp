@@ -1,320 +1,900 @@
 {% extends "base.html" %}
-{% block content %}
 
-<style>
-/* ================================
-   BASIC CLEAN ELEGANT STYLE
-================================ */
-body {
-    background: #f8f9fc !important;
-}
+{% set listing_stats = namespace(total=0, active=0, pending=0, review=0, inactive=0) %}
+{% for listing_row in items_view %}
+  {% set listing = listing_row.item %}
+  {% set listing_status = (listing.status or 'pending')|lower %}
+  {% set listing_is_active = (listing.is_active or '')|lower == 'yes' %}
+  {% set listing_stats.total = listing_stats.total + 1 %}
+  {% if listing_is_active %}{% set listing_stats.active = listing_stats.active + 1 %}{% else %}{% set listing_stats.inactive = listing_stats.inactive + 1 %}{% endif %}
+  {% if listing_status == 'pending' %}{% set listing_stats.pending = listing_stats.pending + 1 %}{% endif %}
+  {% if listing_status in ['rejected', 'needs_revision'] %}{% set listing_stats.review = listing_stats.review + 1 %}{% endif %}
+{% endfor %}
 
-.items-wrap {
-    max-width: 1150px;
-    margin: 0 auto;
-    padding: 25px 15px 70px;
-}
-
-/* Title */
-.page-title {
-    font-size: 26px;
-    font-weight: 700;
-    color: #1a1a1c;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.page-title > span,
-.item-title,
-.feedback-box {
-    min-width: 0;
-    overflow-wrap: anywhere;
-}
-
-/* Add Item Button */
-.add-btn {
-    background: #4f46e5;
-    color: white;
-    border-radius: 8px;
-    padding: 7px 16px;
-    font-weight: 600;
-    text-decoration: none;
-}
-.add-btn:hover {
-    background: #4338ca;
-}
-
-/* Simple card style */
-.item-card {
-    background: #ffffff;
-    border-radius: 14px;
-    box-shadow: 0 3px 14px rgba(0,0,0,0.08);
-    overflow: hidden;
-    transition: 0.25s;
-    border: 1px solid #eee;
-}
-.item-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
-}
-
-/* Item Image */
-.item-card img {
-    width: 100%;
-    height: 170px;
-    object-fit: cover;
-    border-bottom: 1px solid #ddd;
-}
-
-/* Card content */
-.card-body {
-    padding: 14px 16px;
-}
-
-/* Title */
-.item-title {
-    font-size: 17px;
-    font-weight: 600;
-    color: #222;
-}
-
-/* Buttons */
-.btn-open {
-    background: #f3f4f6;
-    padding: 5px 10px;
-    border-radius: 6px;
-    font-size: 13px;
-    color: #333;
-    font-weight: 600;
-    border: none;
-}
-.btn-open:hover {
-    background: #e5e7eb;
-}
-
-/* Price badge */
-.price-badge {
-    background: #eef2ff;
-    color: #4f46e5;
-    padding: 4px 10px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 13px;
-}
-
-/* Active / inactive */
-.state-badge {
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
-}
-.active-badge { background:#10b981; color:white; }
-.inactive-badge { background:#6b7280; color:white; }
-
-/* Status badge */
-.status-badge {
-    margin-top: 8px;
-    background: #fde047;
-    color: #111;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 12px;
-}
-
-/* Feedback box */
-.feedback-box {
-    margin-top: 8px;
-    background: #fff7ed;
-    border: 1px solid #fed7aa;
-    color: #7c2d12;
-    padding: 10px;
-    border-radius: 8px;
-    font-size: 14px;
-}
-
-/* Resubmit button */
-.resubmit-btn {
-    margin-top: 10px;
-    background: #4f46e5;
-    border-radius: 8px;
-    padding: 7px 14px;
-    color: white;
-    font-weight: 600;
-    border: none;
-    width: 100%;
-}
-.resubmit-btn:hover {
-    background: #4338ca;
-}
-
-/* Badges images (admin/new/gold/etc) */
-.badge-icon {
-    height:20px;
-    width:20px;
-    margin-inline-start:6px;
-    vertical-align:middle;
-}
-
-.item-card .d-flex.justify-content-between {
-    gap: 8px;
-    min-width: 0;
-}
-.item-card .d-flex.justify-content-between .small {
-    min-width: 0;
-    text-align: end;
-    overflow-wrap: anywhere;
-}
-.item-card .d-flex.align-items-center.gap-2 {
-    flex-wrap: wrap;
-}
-
-@media (max-width: 400px) {
-    .items-wrap { padding-inline: 12px; }
-    .page-title { flex-wrap: wrap; gap: 10px; }
-    .add-btn { max-width: 100%; text-align: center; white-space: normal; }
-}
-
-/* iPad: retain touch-card proportions without falling into the md desktop grid. */
-@supports (-webkit-touch-callout: none) {
-  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
-    .items-wrap{
-      max-width:1120px;
-      padding:28px 20px calc(132px + env(safe-area-inset-bottom,0px));
-    }
-    .items-wrap > .row{--bs-gutter-x:16px;--bs-gutter-y:16px;}
-    .items-wrap > .row > .col-12.col-md-4{
-      flex:0 0 50%;
-      width:50%;
-    }
-    .item-card img{height:clamp(200px,25vw,260px);}
-    .item-card .card-body{padding:16px 18px;}
-    .page-title{gap:14px;}
-    @media (orientation:landscape){
-      .items-wrap > .row > .col-12.col-md-4{
-        flex-basis:33.333333%;
-        width:33.333333%;
-      }
-      .item-card img{height:220px;}
-    }
+{% block head %}
+<style id="sevor-listings-center">
+  /* My Listings only: management UI is isolated from the rest of SEVOR. */
+  body[data-path="/owner/items"] .page{
+    background:
+      radial-gradient(880px 520px at 100% -8%, rgba(103,86,255,.14), transparent 65%),
+      radial-gradient(720px 460px at -12% 34%, rgba(54,184,230,.10), transparent 70%),
+      #f5f6fb;
   }
-}
+  body[data-path="/owner/items"] .paypal-callout{
+    width:min(1440px, calc(100% - 32px));
+    margin:18px auto 0;
+    gap:12px;
+    border:1px solid rgba(190,137,32,.24);
+    border-radius:18px;
+    box-shadow:0 10px 26px rgba(40,37,77,.06);
+  }
+  body[data-path="/owner/items"] .paypal-callout > *{ min-width:0; }
+
+  .listings-center-page{
+    --listings-primary:var(--primary, #725cff);
+    --listings-deep:var(--primary-2, #5440df);
+    --listings-cyan:#26aee2;
+    --listings-ink:var(--text, #111827);
+    --listings-muted:var(--muted, #667085);
+    --listings-surface:rgba(255,255,255,.86);
+    --listings-solid:#fff;
+    --listings-border:rgba(60,55,120,.12);
+    --listings-shadow:0 20px 52px rgba(38,34,92,.11);
+    --listings-soft-shadow:0 11px 28px rgba(38,34,92,.08);
+    width:min(1440px, 100%);
+    margin-inline:auto;
+    padding:max(18px, env(safe-area-inset-top, 0px)) 0 calc(clamp(42px,6vw,76px) + env(safe-area-inset-bottom, 0px));
+    color:var(--listings-ink);
+  }
+  .listings-center-page,
+  .listings-center-page *{ box-sizing:border-box; min-width:0; }
+  .listings-center-page :is(h1,h2,h3,p,span,a,button,label,select,input,small,time){ overflow-wrap:anywhere; }
+  .listings-center-page a{ color:inherit; }
+  .listings-center-page :focus-visible{ outline:3px solid rgba(38,174,226,.75); outline-offset:3px; }
+
+  .listings-center-hero{
+    position:relative;
+    display:grid;
+    grid-template-columns:minmax(0,1.18fr) minmax(250px,.62fr);
+    gap:clamp(24px,4vw,58px);
+    align-items:end;
+    overflow:hidden;
+    padding:clamp(25px,5vw,62px);
+    border:1px solid rgba(255,255,255,.26);
+    border-radius:clamp(25px,4vw,38px);
+    background:linear-gradient(135deg, #5942e8 0%, #7862ff 56%, #23add9 118%);
+    color:#fff;
+    box-shadow:var(--listings-shadow);
+    isolation:isolate;
+    animation:listings-hero-rise .42s ease both;
+  }
+  .listings-center-hero::before,
+  .listings-center-hero::after{
+    position:absolute;
+    border-radius:999px;
+    pointer-events:none;
+    content:"";
+    z-index:-1;
+  }
+  .listings-center-hero::before{
+    width:390px;
+    height:390px;
+    inset-inline-end:-130px;
+    inset-block-end:-210px;
+    border:1px solid rgba(255,255,255,.22);
+    background:rgba(255,255,255,.10);
+  }
+  .listings-center-hero::after{
+    width:250px;
+    height:250px;
+    inset-inline-start:51%;
+    inset-block-start:-145px;
+    background:rgba(255,255,255,.08);
+  }
+  .listings-center-hero__content,
+  .listings-center-hero__snapshot{ position:relative; z-index:1; }
+  .listings-back{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    min-height:44px;
+    padding:8px 12px;
+    border:1px solid rgba(255,255,255,.30);
+    border-radius:999px;
+    background:rgba(255,255,255,.12);
+    color:#fff !important;
+    font-size:.9rem;
+    font-weight:800;
+    text-decoration:none;
+    transition:transform .18s ease, background .18s ease;
+  }
+  .listings-back:hover{ transform:translateX(-2px); background:rgba(255,255,255,.20); }
+  .listings-back .bi{ font-size:1rem; }
+  .listings-center-hero__eyebrow{
+    margin:26px 0 9px;
+    color:rgba(255,255,255,.76);
+    font-size:.76rem;
+    font-weight:900;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+  }
+  .listings-center-hero h1{
+    max-width:760px;
+    margin:0;
+    font-size:clamp(2.2rem,5vw,4.55rem);
+    font-weight:850;
+    letter-spacing:-.06em;
+    line-height:.97;
+  }
+  .listings-center-hero__lead{
+    max-width:650px;
+    margin:18px 0 0;
+    color:rgba(255,255,255,.9);
+    font-size:clamp(1rem,1.5vw,1.18rem);
+    line-height:1.62;
+  }
+  .listings-add-button{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+    min-height:48px;
+    margin-top:24px;
+    padding:12px 17px;
+    border:1px solid rgba(255,255,255,.48);
+    border-radius:15px;
+    background:#fff;
+    color:#2c236f !important;
+    box-shadow:0 12px 24px rgba(23,20,79,.18);
+    font-size:.95rem;
+    font-weight:850;
+    text-decoration:none;
+    transition:transform .18s ease, box-shadow .18s ease, background .18s ease;
+  }
+  .listings-add-button:hover{
+    transform:translateY(-2px);
+    background:#f8f7ff;
+    box-shadow:0 16px 28px rgba(23,20,79,.25);
+  }
+  .listings-add-button:active{ transform:translateY(0) scale(.985); }
+  .listings-center-hero__snapshot{
+    display:grid;
+    gap:9px;
+    align-self:center;
+    padding:clamp(18px,3vw,25px);
+    border:1px solid rgba(255,255,255,.24);
+    border-radius:24px;
+    background:rgba(255,255,255,.12);
+    box-shadow:inset 0 1px rgba(255,255,255,.14);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+  }
+  .listings-center-hero__snapshot i{ font-size:1.55rem; }
+  .listings-center-hero__snapshot strong{ font-size:1.06rem; }
+  .listings-center-hero__snapshot span{ color:rgba(255,255,255,.84); line-height:1.48; }
+
+  .listings-center-workspace{
+    display:grid;
+    gap:clamp(20px,3vw,31px);
+    margin-top:clamp(22px,4vw,42px);
+  }
+  .listings-overview{
+    display:flex;
+    align-items:end;
+    justify-content:space-between;
+    gap:18px;
+  }
+  .listings-overview__eyebrow{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    margin:0 0 8px;
+    color:var(--listings-deep);
+    font-size:.75rem;
+    font-weight:900;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+  }
+  .listings-overview h2{
+    margin:0;
+    color:var(--listings-ink);
+    font-size:clamp(1.45rem,3vw,2.15rem);
+    font-weight:850;
+    letter-spacing:-.045em;
+    line-height:1.08;
+  }
+  .listings-overview__lead{
+    max-width:640px;
+    margin:9px 0 0;
+    color:var(--listings-muted);
+    line-height:1.55;
+  }
+  .listings-overview__count{
+    flex:0 0 auto;
+    margin:0 0 3px;
+    color:var(--listings-muted);
+    font-size:.88rem;
+    font-weight:800;
+    text-align:end;
+  }
+
+  .listings-stats{
+    display:grid;
+    grid-template-columns:repeat(4, minmax(0, 1fr));
+    gap:12px;
+  }
+  .listings-stat{
+    min-height:112px;
+    padding:17px;
+    border:1px solid var(--listings-border);
+    border-radius:19px;
+    background:var(--listings-surface);
+    box-shadow:var(--listings-soft-shadow);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+  }
+  .listings-stat__icon{
+    display:grid;
+    place-items:center;
+    width:31px;
+    height:31px;
+    border-radius:11px;
+    background:rgba(114,92,255,.11);
+    color:var(--listings-deep);
+    font-size:.92rem;
+  }
+  .listings-stat--active .listings-stat__icon{ background:rgba(24,164,112,.12); color:#168761; }
+  .listings-stat--pending .listings-stat__icon{ background:rgba(216,146,24,.14); color:#9c6504; }
+  .listings-stat--review .listings-stat__icon{ background:rgba(213,80,84,.12); color:#ae4148; }
+  .listings-stat strong{
+    display:block;
+    margin-top:12px;
+    color:var(--listings-ink);
+    font-size:1.4rem;
+    font-weight:850;
+    line-height:1;
+  }
+  .listings-stat span{
+    display:block;
+    margin-top:6px;
+    color:var(--listings-muted);
+    font-size:.8rem;
+    font-weight:750;
+  }
+
+  .listings-toolbar{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:14px;
+    align-items:center;
+    padding:13px;
+    border:1px solid var(--listings-border);
+    border-radius:20px;
+    background:var(--listings-surface);
+    box-shadow:var(--listings-soft-shadow);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+  }
+  .listings-toolbar__left{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:center;
+  }
+  .listings-search{
+    position:relative;
+    flex:1 1 240px;
+    min-width:min(100%, 240px);
+  }
+  .listings-search .bi{
+    position:absolute;
+    inset-inline-start:14px;
+    inset-block-start:50%;
+    color:var(--listings-muted);
+    transform:translateY(-50%);
+  }
+  .listings-search input{
+    width:100%;
+    min-height:45px;
+    padding:10px 13px 10px 40px;
+    border:1px solid rgba(78,70,154,.15);
+    border-radius:13px;
+    background:var(--listings-solid);
+    color:var(--listings-ink);
+    font:inherit;
+    font-size:.9rem;
+  }
+  .listings-search input::placeholder{ color:var(--listings-muted); }
+  .listings-filter-scroll{
+    display:flex;
+    gap:7px;
+    max-width:100%;
+    overflow-x:auto;
+    overscroll-behavior-inline:contain;
+    scrollbar-width:none;
+  }
+  .listings-filter-scroll::-webkit-scrollbar{ display:none; }
+  .listings-filter{
+    flex:0 0 auto;
+    min-height:38px;
+    padding:8px 11px;
+    border:1px solid rgba(78,70,154,.13);
+    border-radius:999px;
+    background:var(--listings-solid);
+    color:var(--listings-muted);
+    font:inherit;
+    font-size:.78rem;
+    font-weight:850;
+    transition:background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease;
+  }
+  .listings-filter:hover{ border-color:rgba(114,92,255,.38); color:var(--listings-deep); }
+  .listings-filter:active{ transform:scale(.97); }
+  .listings-filter[aria-pressed="true"]{
+    border-color:transparent;
+    background:linear-gradient(135deg, var(--listings-primary), var(--listings-cyan));
+    color:#fff;
+    box-shadow:0 6px 15px rgba(93,77,224,.21);
+  }
+  .listings-sort{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-height:45px;
+    padding:0 11px;
+    border:1px solid rgba(78,70,154,.15);
+    border-radius:13px;
+    background:var(--listings-solid);
+    color:var(--listings-muted);
+  }
+  .listings-sort .bi{ color:var(--listings-deep); }
+  .listings-sort select{
+    min-width:94px;
+    border:0;
+    outline:0;
+    background:transparent;
+    color:var(--listings-ink);
+    font:inherit;
+    font-size:.84rem;
+    font-weight:800;
+  }
+
+  .listings-grid{
+    display:grid;
+    grid-template-columns:repeat(1, minmax(0, 1fr));
+    gap:clamp(14px,2vw,22px);
+  }
+  .listing-card{
+    display:grid;
+    grid-template-rows:auto minmax(0, 1fr);
+    overflow:hidden;
+    border:1px solid var(--listings-border);
+    border-radius:22px;
+    background:var(--listings-surface);
+    box-shadow:var(--listings-soft-shadow);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    animation:listings-card-rise .34s ease both;
+    transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+  }
+  .listing-card:hover{
+    border-color:rgba(107,89,243,.32);
+    box-shadow:0 17px 34px rgba(38,34,92,.13);
+    transform:translateY(-3px);
+  }
+  .listing-card[hidden]{ display:none !important; }
+  .listing-card__media{
+    position:relative;
+    aspect-ratio:4 / 3;
+    overflow:hidden;
+    background:linear-gradient(145deg, rgba(114,92,255,.20), rgba(38,174,226,.16));
+  }
+  .listing-card__image{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    transition:transform .38s ease;
+  }
+  .listing-card:hover .listing-card__image{ transform:scale(1.035); }
+  .listing-card__image-fallback{
+    display:grid;
+    place-items:center;
+    width:100%;
+    height:100%;
+    color:var(--listings-deep);
+    font-size:2rem;
+  }
+  .listing-card__media-top,
+  .listing-card__media-bottom{
+    position:absolute;
+    inset-inline:12px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    pointer-events:none;
+  }
+  .listing-card__media-top{ inset-block-start:12px; }
+  .listing-card__media-bottom{ inset-block-end:12px; justify-content:flex-end; }
+  .listing-chip,
+  .listing-price{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    max-width:100%;
+    border:1px solid rgba(255,255,255,.36);
+    border-radius:999px;
+    background:rgba(20,18,62,.67);
+    color:#fff;
+    box-shadow:0 4px 12px rgba(19,17,55,.17);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+  }
+  .listing-chip{ padding:6px 9px; font-size:.72rem; font-weight:850; }
+  .listing-chip--approved{ background:rgba(19,125,83,.83); }
+  .listing-chip--pending{ background:rgba(158,105,3,.83); }
+  .listing-chip--rejected,
+  .listing-chip--needs_revision{ background:rgba(167,54,60,.86); }
+  .listing-price{
+    padding:7px 10px;
+    font-size:.82rem;
+    font-weight:900;
+  }
+  .listing-price small{ color:rgba(255,255,255,.8); font-size:.72rem; font-weight:750; }
+  .listing-card__body{
+    display:grid;
+    grid-template-rows:auto auto 1fr auto;
+    gap:12px;
+    padding:16px;
+  }
+  .listing-card__category{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    color:var(--listings-deep);
+    font-size:.75rem;
+    font-weight:850;
+  }
+  .listing-card__title{
+    margin:0;
+    color:var(--listings-ink);
+    font-size:1.06rem;
+    font-weight:850;
+    letter-spacing:-.018em;
+    line-height:1.28;
+  }
+  .listing-card__meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px 11px;
+    min-height:20px;
+    color:var(--listings-muted);
+    font-size:.8rem;
+    font-weight:700;
+    line-height:1.4;
+  }
+  .listing-card__meta span{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+  }
+  .listing-card__availability{
+    color:#167f5d;
+  }
+  .listing-card__availability--inactive{ color:var(--listings-muted); }
+  .listing-card__feedback{
+    margin:0;
+    padding:10px 11px;
+    border:1px solid rgba(193,105,53,.22);
+    border-radius:13px;
+    background:rgba(255,243,235,.76);
+    color:#82411e;
+    font-size:.78rem;
+    font-weight:650;
+    line-height:1.45;
+  }
+  .listing-card__feedback strong{ font-weight:850; }
+  .listing-card__actions{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:8px;
+    margin-top:2px;
+  }
+  .listing-action{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    min-height:42px;
+    padding:9px 10px;
+    border:1px solid rgba(82,72,164,.16);
+    border-radius:12px;
+    background:var(--listings-solid);
+    color:var(--listings-ink);
+    font-size:.8rem;
+    font-weight:850;
+    text-align:center;
+    text-decoration:none;
+    transition:transform .18s ease, background .18s ease, border-color .18s ease;
+  }
+  .listing-action:hover{
+    border-color:rgba(107,89,243,.38);
+    background:rgba(114,92,255,.07);
+    color:var(--listings-deep);
+  }
+  .listing-action:active{ transform:scale(.985); }
+  .listing-action--edit{
+    border-color:transparent;
+    background:linear-gradient(135deg, var(--listings-primary), var(--listings-cyan));
+    color:#fff !important;
+  }
+  .listing-action--edit:hover{ background:linear-gradient(135deg, #6550f5, #1c9fd1); color:#fff; }
+  .listing-resubmit{ display:contents; }
+  .listing-action--resubmit{
+    grid-column:1 / -1;
+    border:0;
+    background:#3f367f;
+    color:#fff;
+    font:inherit;
+    cursor:pointer;
+  }
+  .listing-action--resubmit:hover{ background:#302866; color:#fff; }
+
+  .listings-empty,
+  .listings-filter-empty{
+    display:grid;
+    justify-items:center;
+    gap:11px;
+    padding:clamp(46px,8vw,76px) 24px;
+    border:1px dashed rgba(104,85,228,.30);
+    border-radius:25px;
+    background:rgba(255,255,255,.63);
+    color:var(--listings-muted);
+    text-align:center;
+  }
+  .listings-empty__icon,
+  .listings-filter-empty__icon{
+    display:grid;
+    place-items:center;
+    width:54px;
+    height:54px;
+    border-radius:18px;
+    background:linear-gradient(145deg, rgba(114,92,255,.14), rgba(38,174,226,.15));
+    color:var(--listings-deep);
+    font-size:1.45rem;
+  }
+  .listings-empty h2,
+  .listings-filter-empty h3{
+    margin:2px 0 0;
+    color:var(--listings-ink);
+    font-size:1.18rem;
+    font-weight:850;
+  }
+  .listings-empty p,
+  .listings-filter-empty p{
+    max-width:390px;
+    margin:0;
+    line-height:1.55;
+  }
+  .listings-empty__action{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    min-height:46px;
+    margin-top:7px;
+    padding:10px 14px;
+    border-radius:13px;
+    background:linear-gradient(135deg, var(--listings-primary), var(--listings-cyan));
+    color:#fff !important;
+    font-weight:850;
+    text-decoration:none;
+  }
+  .listings-filter-empty[hidden]{ display:none !important; }
+
+  @keyframes listings-hero-rise{
+    from{ opacity:0; transform:translateY(10px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  @keyframes listings-card-rise{
+    from{ opacity:0; transform:translateY(7px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+
+  [data-theme="dark"] body[data-path="/owner/items"] .page{ background:#0b1220; }
+  [data-theme="dark"] .listings-center-page{
+    --listings-surface:rgba(16,25,45,.88);
+    --listings-solid:#10192d;
+    --listings-border:rgba(184,172,255,.23);
+    --listings-shadow:0 20px 52px rgba(0,0,0,.34);
+    --listings-soft-shadow:0 11px 28px rgba(0,0,0,.23);
+  }
+  [data-theme="dark"] .listing-card__feedback{
+    border-color:rgba(238,161,109,.24);
+    background:rgba(113,60,31,.23);
+    color:#ffd2b6;
+  }
+
+  @media (min-width:600px){
+    .listings-grid{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+  }
+  @media (min-width:1100px){
+    .listings-grid{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
+  }
+  @media (min-width:1580px){
+    .listings-grid{ grid-template-columns:repeat(4, minmax(0, 1fr)); }
+  }
+  @media (max-width:899px){
+    .listings-center-hero{ grid-template-columns:1fr; }
+    .listings-center-hero__snapshot{ max-width:390px; }
+  }
+  @media (max-width:699px){
+    .listings-center-page{ padding-top:max(14px, env(safe-area-inset-top, 0px)); }
+    .listings-center-hero{ padding:24px 20px; border-radius:25px; }
+    .listings-center-hero h1{ font-size:clamp(2rem,11vw,3.25rem); }
+    .listings-center-hero__lead{ margin-top:14px; }
+    .listings-center-hero__snapshot{ display:none; }
+    .listings-overview{ align-items:start; flex-direction:column; gap:9px; }
+    .listings-overview__count{ text-align:start; }
+    .listings-stats{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    .listings-stat{ min-height:104px; padding:15px; }
+    .listings-toolbar{ grid-template-columns:1fr; }
+    .listings-sort{ justify-content:space-between; }
+  }
+  @media (max-width:374px){
+    .listings-center-hero{ padding-inline:17px; }
+    .listings-add-button{ width:100%; }
+    .listings-card__body{ padding:14px; }
+    .listing-card__actions{ gap:7px; }
+    .listing-action{ padding-inline:7px; font-size:.76rem; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .listings-center-hero,
+    .listing-card{ animation:none; }
+    .listings-back,
+    .listings-add-button,
+    .listing-card,
+    .listing-card__image,
+    .listing-action,
+    .listings-filter{ transition:none; }
+  }
 </style>
+{% endblock %}
 
-
-<div class="items-wrap">
-
-    <!-- HEADER -->
-    <div class="page-title mb-4">
-        <span>My Items — {{ session_user["first_name"] }} {{ session_user["last_name"] }}</span>
-        <a class="add-btn" href="/owner/items/new">+ Add Item</a>
+{% block content %}
+<section class="listings-center-page" aria-labelledby="listingsCenterTitle">
+  <header class="listings-center-hero">
+    <div class="listings-center-hero__content">
+      <a class="listings-back" href="/profile"><i class="bi bi-arrow-left" aria-hidden="true"></i><span>Back to profile</span></a>
+      <p class="listings-center-hero__eyebrow">SEVOR LISTINGS CENTER</p>
+      <h1 id="listingsCenterTitle">Manage your rentals with clarity.</h1>
+      <p class="listings-center-hero__lead">Keep your rental inventory organised, review its current status, and make changes whenever a listing needs attention.</p>
+      <a class="listings-add-button" href="/owner/items/new"><i class="bi bi-plus-lg" aria-hidden="true"></i><span>Add an item</span></a>
     </div>
+    <aside class="listings-center-hero__snapshot" aria-label="Listings overview">
+      <i class="bi bi-box-seam" aria-hidden="true"></i>
+      <strong>{{ listing_stats.total }} {{ 'listing' if listing_stats.total == 1 else 'listings' }}</strong>
+      <span>Your current rental inventory is collected in one place.</span>
+    </aside>
+  </header>
 
-    <!-- BADGES HOLDER -->
-    <span id="badges-owner-self"
-          data-role="{{ session_user.role if session_user else 'user' }}"
-          data-created="{{ session_user.created_at.isoformat() if session_user and session_user.created_at else '' }}"
-          data-verified="{{ 1 if (session_user and session_user.is_verified) else 0 }}"
-          data-stars-all="0"
-          data-avg="0"
-          data-stars5="0"
-          data-returns="0">
-    </span>
+  <div class="listings-center-workspace">
+    <section class="listings-overview" aria-labelledby="listingsOverviewTitle">
+      <div>
+        <p class="listings-overview__eyebrow"><i class="bi bi-grid-1x2" aria-hidden="true"></i> Inventory overview</p>
+        <h2 id="listingsOverviewTitle">Your listings</h2>
+        <p class="listings-overview__lead">View each item’s review status, active state, and the actions currently available to you.</p>
+      </div>
+      <p class="listings-overview__count">{{ listing_stats.total }} total</p>
+    </section>
 
+    <section class="listings-stats" aria-label="Listing summary">
+      <article class="listings-stat">
+        <span class="listings-stat__icon"><i class="bi bi-collection" aria-hidden="true"></i></span>
+        <strong>{{ listing_stats.total }}</strong>
+        <span>Total listings</span>
+      </article>
+      <article class="listings-stat listings-stat--active">
+        <span class="listings-stat__icon"><i class="bi bi-lightning-charge" aria-hidden="true"></i></span>
+        <strong>{{ listing_stats.active }}</strong>
+        <span>Active</span>
+      </article>
+      <article class="listings-stat listings-stat--pending">
+        <span class="listings-stat__icon"><i class="bi bi-hourglass-split" aria-hidden="true"></i></span>
+        <strong>{{ listing_stats.pending }}</strong>
+        <span>Pending review</span>
+      </article>
+      <article class="listings-stat listings-stat--review">
+        <span class="listings-stat__icon"><i class="bi bi-pencil-square" aria-hidden="true"></i></span>
+        <strong>{{ listing_stats.review }}</strong>
+        <span>Needs attention</span>
+      </article>
+    </section>
 
-    {% if items and items|length %}
-    <div class="row g-4 mt-2">
+    {% if listing_stats.total %}
+      <section class="listings-toolbar" aria-label="Search, filter, and sort listings">
+        <div class="listings-toolbar__left">
+          {% if listing_stats.total > 1 %}
+            <label class="listings-search">
+              <span class="visually-hidden">Search your listings</span>
+              <i class="bi bi-search" aria-hidden="true"></i>
+              <input id="listingsSearch" type="search" placeholder="Search your listings" autocomplete="off">
+            </label>
+            <div class="listings-filter-scroll" aria-label="Listing filters">
+              <button type="button" class="listings-filter" data-listings-filter="all" aria-pressed="true">All <span>{{ listing_stats.total }}</span></button>
+              {% if listing_stats.active %}<button type="button" class="listings-filter" data-listings-filter="active" aria-pressed="false">Active <span>{{ listing_stats.active }}</span></button>{% endif %}
+              {% if listing_stats.pending %}<button type="button" class="listings-filter" data-listings-filter="pending" aria-pressed="false">Pending <span>{{ listing_stats.pending }}</span></button>{% endif %}
+              {% if listing_stats.review %}<button type="button" class="listings-filter" data-listings-filter="rejected" aria-pressed="false">Needs attention <span>{{ listing_stats.review }}</span></button>{% endif %}
+              {% if listing_stats.inactive %}<button type="button" class="listings-filter" data-listings-filter="inactive" aria-pressed="false">Inactive <span>{{ listing_stats.inactive }}</span></button>{% endif %}
+            </div>
+          {% endif %}
+        </div>
+        {% if listing_stats.total > 1 %}
+          <label class="listings-sort">
+            <i class="bi bi-arrow-down-up" aria-hidden="true"></i>
+            <span class="visually-hidden">Sort listings</span>
+            <select id="listingsSort">
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+            </select>
+          </label>
+        {% endif %}
+      </section>
 
-        {% for it in items %}
-        <div class="col-12 col-md-4">
-
-            <div class="item-card">
-
-                <!-- IMAGE (fixed!) -->
-                {% if it.image_path %}
-                    <img src="{{ it.image_path }}" alt="">
+      <section id="listingsGrid" class="listings-grid" aria-label="Your rental listings">
+        {% for listing_row in items_view %}
+          {% set it = listing_row.item %}
+          {% set status = (it.status or 'pending')|lower %}
+          {% set active = (it.is_active or '')|lower == 'yes' %}
+          {% set category_name = it.subcategory or it.category_label or it.category or 'Other' %}
+          {% set images = it.image_urls or [] %}
+          {% set listing_image = images[0] if images else it.image_path %}
+          {% if listing_image %}
+            {% set listing_image_src = listing_image if listing_image.startswith('http://') or listing_image.startswith('https://') or listing_image.startswith('/') else '/' ~ listing_image.lstrip('/') %}
+          {% endif %}
+          {% set show_price = listing_row.display_price is not none and listing_row.display_price|float > 0 %}
+          <article
+            class="listing-card"
+            data-listing-card
+            data-status="{{ status }}"
+            data-active="{{ 'yes' if active else 'no' }}"
+            data-search="{{ [it.title or '', category_name or '', it.city or '']|join(' ')|lower }}"
+            data-created="{{ it.created_at.isoformat() if it.created_at else '' }}"
+          >
+            <div class="listing-card__media">
+              {% if listing_image %}
+                <img class="listing-card__image" src="{{ listing_image_src }}" alt="Photo of {{ it.title }}" loading="lazy" decoding="async">
+              {% else %}
+                <span class="listing-card__image-fallback" role="img" aria-label="No photo added"><i class="bi bi-image" aria-hidden="true"></i></span>
+              {% endif %}
+              <div class="listing-card__media-top">
+                <span class="listing-chip">{{ category_name }}</span>
+                {% if status == 'approved' %}
+                  <span class="listing-chip listing-chip--approved">Approved</span>
+                {% elif status == 'pending' %}
+                  <span class="listing-chip listing-chip--pending">Pending review</span>
+                {% elif status == 'rejected' %}
+                  <span class="listing-chip listing-chip--rejected">Rejected</span>
+                {% elif status == 'needs_revision' %}
+                  <span class="listing-chip listing-chip--needs_revision">Needs revision</span>
                 {% else %}
-                    <img src="/static/placeholder.jpg" alt="">
+                  <span class="listing-chip">{{ status|replace('_', ' ')|title }}</span>
                 {% endif %}
-
-                <div class="card-body">
-
-                    <div class="item-title">{{ it.title }}</div>
-
-                    <div class="d-flex justify-content-between align-items-center mt-2">
-                        <a href="/items/{{ it.id }}" class="btn-open">Open</a>
-                        <span class="small text-muted">{{ it.category }}</span>
-                    </div>
-
-                    <div class="mt-3 d-flex align-items-center gap-2">
-                        <span class="state-badge {% if it.is_active=='yes' %}active-badge{% else %}inactive-badge{% endif %}">
-                            {% if it.is_active=='yes' %}Active{% else %}Inactive{% endif %}
-                        </span>
-
-                        <span class="price-badge">
-                            {{ it.display_price }} {{ it.display_currency }}/day
-                        </span>
-                    </div>
-
-                    {% if it.status != 'approved' %}
-                    <div class="status-badge">{{ it.status }}</div>
-                    {% endif %}
-
-                    {% if it.admin_feedback %}
-                    <div class="feedback-box">
-                        <strong>Admin Feedback:</strong><br>{{ it.admin_feedback }}
-                    </div>
-                    {% endif %}
-
-                    {% if it.status in ['rejected','needs_revision'] %}
-                    <form action="/owner/items/{{ it.id }}/resubmit" method="post">
-                        <button class="resubmit-btn">Resubmit for Review</button>
-                    </form>
-                    {% endif %}
-
+              </div>
+              {% if show_price %}
+                <div class="listing-card__media-bottom">
+                  <span class="listing-price">{{ listing_row.display_price|money(listing_row.display_currency) }} <small>/ day</small></span>
                 </div>
+              {% endif %}
             </div>
 
-        </div>
+            <div class="listing-card__body">
+              <div>
+                <p class="listing-card__category"><i class="bi bi-tag" aria-hidden="true"></i>{{ category_name }}</p>
+                <h3 class="listing-card__title">{{ it.title }}</h3>
+              </div>
+
+              <div class="listing-card__meta">
+                {% if it.city %}<span><i class="bi bi-geo-alt" aria-hidden="true"></i>{{ it.city }}</span>{% endif %}
+                <span class="listing-card__availability{% if not active %} listing-card__availability--inactive{% endif %}">
+                  <i class="bi {% if active %}bi-check-circle{% else %}bi-pause-circle{% endif %}" aria-hidden="true"></i>
+                  {% if active %}Active{% else %}Inactive{% endif %}
+                </span>
+              </div>
+
+              {% if it.admin_feedback and status in ['rejected', 'needs_revision'] %}
+                <p class="listing-card__feedback"><strong>Review note:</strong> {{ it.admin_feedback }}</p>
+              {% endif %}
+
+              <div class="listing-card__actions">
+                <a class="listing-action" href="/items/{{ it.id }}"><i class="bi bi-eye" aria-hidden="true"></i><span>View listing</span></a>
+                <a class="listing-action listing-action--edit" href="/owner/items/{{ it.id }}/edit"><i class="bi bi-pencil-square" aria-hidden="true"></i><span>Edit</span></a>
+                {% if status in ['rejected', 'needs_revision'] %}
+                  <form class="listing-resubmit" action="/owner/items/{{ it.id }}/resubmit" method="post">
+                    <button class="listing-action listing-action--resubmit" type="submit"><i class="bi bi-arrow-repeat" aria-hidden="true"></i><span>Resubmit for review</span></button>
+                  </form>
+                {% endif %}
+              </div>
+            </div>
+          </article>
         {% endfor %}
-    </div>
+      </section>
 
+      <section id="listingsFilterEmpty" class="listings-filter-empty" hidden aria-live="polite">
+        <span class="listings-filter-empty__icon"><i class="bi bi-search" aria-hidden="true"></i></span>
+        <h3>No matching listings</h3>
+        <p>Try a different search or filter to see more of your inventory.</p>
+      </section>
     {% else %}
-    <div class="alert alert-light text-dark mt-3">
-        No items yet. Add your first item.
-    </div>
+      <section class="listings-empty" aria-labelledby="listingsEmptyTitle">
+        <span class="listings-empty__icon"><i class="bi bi-box-seam" aria-hidden="true"></i></span>
+        <h2 id="listingsEmptyTitle">Your rental shelf is empty.</h2>
+        <p>List something suitable for rent and it will appear here when you are ready to manage it.</p>
+        <a class="listings-empty__action" href="/owner/items/new"><i class="bi bi-plus-lg" aria-hidden="true"></i><span>Add your first item</span></a>
+      </section>
     {% endif %}
+  </div>
+</section>
+{% endblock %}
 
-</div>
-
-<!-- BADGES SCRIPT SAME AS BEFORE -->
+{% block scripts %}
 <script>
-(function(){
-  function daysFrom(iso){ if(!iso) return 99999; const d=new Date(iso); if(isNaN(d)) return 99999; return Math.floor((Date.now()-d.getTime())/86400000); }
-  function add(src,alt){ const i=document.createElement('img'); i.src=src; i.alt=alt; i.className='badge-icon'; return i; }
-  function render(box){
-    if(!box) return;
-    const role=(box.dataset.role||'').toLowerCase();
-    const days=daysFrom(box.dataset.created||'');
-    const verified=Number(box.dataset.verified||0)===1;
-    const fiveStar=Number(box.dataset.stars5||0);
-    const returnsOk=Number(box.dataset.returns||0);
+(() => {
+  const root = document.querySelector('.listings-center-page');
+  if (!root) return;
 
-    if(role==='admin'){ box.appendChild(add('/static/img/adm.png','Admin')); }
+  const grid = root.querySelector('#listingsGrid');
+  if (!grid) return;
 
-    const allowYellow=(role!=='admin'), allowGreen=(role!=='admin'), allowViolet=(role!=='admin');
+  const cards = Array.from(grid.querySelectorAll('[data-listing-card]'));
+  const search = root.querySelector('#listingsSearch');
+  const sort = root.querySelector('#listingsSort');
+  const empty = root.querySelector('#listingsFilterEmpty');
+  const filters = Array.from(root.querySelectorAll('[data-listings-filter]'));
+  let currentFilter = 'all';
 
-    if(allowYellow && days<60){ box.appendChild(add('/static/img/jaune.png','New')); }
-    else if(allowGreen && days>=60 && days<365){ box.appendChild(add('/static/img/ProVert.png','Pro Green')); }
-    else if(days>=365){ box.appendChild(add('/static/img/ProGold.png','Pro Gold')); }
+  const matchesFilter = (card) => {
+    if (currentFilter === 'all') return true;
+    if (currentFilter === 'active') return card.dataset.active === 'yes';
+    if (currentFilter === 'inactive') return card.dataset.active !== 'yes';
+    if (currentFilter === 'pending') return card.dataset.status === 'pending';
+    if (currentFilter === 'rejected') return card.dataset.status === 'rejected' || card.dataset.status === 'needs_revision';
+    return true;
+  };
 
-    if(allowViolet && (verified || fiveStar>=20)){ box.appendChild(add('/static/img/violet.png','Trust')); }
-    if(returnsOk>=10){ box.appendChild(add('/static/img/Vert.png','Safe Renter')); }
-    if(fiveStar>=10){ box.appendChild(add('/static/img/orange.png','Top Rated')); }
+  const applyFilters = () => {
+    const query = String(search ? search.value : '').trim().toLocaleLowerCase();
+    let visible = 0;
+    cards.forEach((card) => {
+      const matchesQuery = !query || String(card.dataset.search || '').includes(query);
+      const show = matchesQuery && matchesFilter(card);
+      card.hidden = !show;
+      if (show) visible += 1;
+    });
+    if (empty) empty.hidden = visible !== 0;
+  };
+
+  filters.forEach((button) => {
+    button.addEventListener('click', () => {
+      currentFilter = button.dataset.listingsFilter || 'all';
+      filters.forEach((filter) => filter.setAttribute('aria-pressed', String(filter === button)));
+      applyFilters();
+    });
+  });
+
+  if (search) search.addEventListener('input', applyFilters);
+
+  if (sort) {
+    sort.addEventListener('change', () => {
+      const multiplier = sort.value === 'oldest' ? 1 : -1;
+      cards.sort((first, second) => {
+        const firstTime = Date.parse(first.dataset.created || '') || 0;
+        const secondTime = Date.parse(second.dataset.created || '') || 0;
+        return (firstTime - secondTime) * multiplier;
+      });
+      cards.forEach((card) => grid.appendChild(card));
+      applyFilters();
+    });
   }
-  render(document.getElementById('badges-owner-self'));
 })();
 </script>
-
 {% endblock %}
