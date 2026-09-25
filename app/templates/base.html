@@ -1415,6 +1415,7 @@ header.topbar .searchbar-wrap{
 }
 </style>
 {% set immersive = immersive|default(false) %}
+{% set focused_conversation = focused_conversation|default(false) %}
 {% set _path = request.url.path if request else '' %}
 {% set no_ui = (
     _path.startswith('/cs')
@@ -1426,6 +1427,7 @@ header.topbar .searchbar-wrap{
     or _path == '/settings'
     or _path == '/profile'
     or _path.startswith('/users/')
+    or focused_conversation
 ) %}
 
 {% set is_home = (_path == '/' or _path == '') %}
@@ -1776,7 +1778,7 @@ window.onpageshow = function(e){
 {% endif %}
 
   <!-- ===== Page ===== -->
-  <main class="page container-fluid main-flex-fill min-vh-100" data-page="main">
+  <main class="page container-fluid main-flex-fill min-vh-100{% if focused_conversation %} page--focused-conversation{% endif %}" data-page="main">
     {% if request and request.query_params.get('logged_out') %}
       <div class="alert alert-success my-2">You have been logged out successfully 👋</div>
     {% endif %}

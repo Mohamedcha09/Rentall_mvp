@@ -353,6 +353,9 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
             "item_image": item_image,
             "session_user": u,
             "account_limited": is_account_limited(request),
+            # This only controls the shared-shell presentation for the
+            # focused conversation; route and message behavior stay intact.
+            "focused_conversation": True,
         }
     )
 

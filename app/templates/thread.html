@@ -1,386 +1,715 @@
 {% extends "base.html" %}
 {% block content %}
+{% set other_name = ((other.first_name or '') ~ ' ' ~ (other.last_name or ''))|trim %}
 
 <style>
-  header.topbar,
-  .m-top-tabs,
-  .mobile-tabbar,
-  #fabAdd {
-      display: none !important;
-  }
-  body.has-tabbar{padding-bottom:0!important;}
-
-  .chat-bg {
-      position: fixed;
-      inset: 0;
-      background: radial-gradient(circle at 30% 20%, #ede8ff, #f7f4ff 60%);
-  }
-
-  .chat-header {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      height: calc(76px + env(safe-area-inset-top, 0px));
-      box-sizing: border-box;
-      padding: calc(env(safe-area-inset-top) + 6px) 14px 10px 14px;
-      background: linear-gradient(135deg,#8b5cf6cc,#5b9df9cc);
-      backdrop-filter: blur(18px);
-      border-bottom: 1px solid rgba(255,255,255,0.25);
-      display:flex;
-      align-items:center;
-      gap:12px;
-      z-index:9999;
-      color:#fff;
-      box-shadow:0 8px 22px rgba(0,0,0,.12);
+  /* Focused conversation UI — intentionally scoped to this route's main modifier. */
+  .page.page--focused-conversation{
+    --conversation-viewport-height:var(--sevor-conversation-viewport-height, 100dvh);
+    box-sizing:border-box;
+    display:flex;
+    flex-direction:column;
+    width:100%;
+    max-width:none;
+    height:var(--conversation-viewport-height);
+    min-height:0 !important;
+    margin:0 !important;
+    padding:0 !important;
+    overflow:hidden;
+    background:
+      radial-gradient(circle at 12% 6%, rgba(139,92,246,.13), transparent 27rem),
+      radial-gradient(circle at 92% 14%, rgba(91,157,249,.12), transparent 24rem),
+      #f8f8fd;
   }
 
-  .chat-header-back {
-      min-width: 40px;
-      min-height: 40px;
-      border-radius: 999px;
-      background: rgba(255,255,255,.25);
-      backdrop-filter: blur(10px);
-      color:#fff;
-      font-size:22px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      text-decoration:none;
-      transition: .2s;
+  /* Override the legacy /messages mobile padding without touching inbox layout. */
+  body[data-path^="/messages/"] .page.page--focused-conversation{ padding:0 !important; }
+
+  .page.page--focused-conversation > .paypal-callout,
+  .page.page--focused-conversation > .alert{
+    flex:0 0 auto;
+    margin:12px 14px 10px !important;
+    border:1px solid rgba(117,90,220,.18);
+    border-radius:16px;
+    box-shadow:0 9px 24px rgba(53,40,106,.08);
   }
 
-  .chat-header-back:hover { background: rgba(255,255,255,.35); }
-
-  .chat-header-avatar {
-      width: 46px; height: 46px;
-      border-radius:999px;
-      object-fit: cover;
-      border: 2px solid rgba(255,255,255,0.7);
-      box-shadow:0 4px 12px rgba(0,0,0,.15);
+  .page.page--focused-conversation > .paypal-callout{
+    margin-top:max(12px, calc(env(safe-area-inset-top, 0px) + 8px)) !important;
   }
 
-  .chat-header-info { flex:1; min-width:0; }
-
-  .chat-header-name {
-      font-size:17px;
-      font-weight:600;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      display:flex;
-      gap:6px;
-      align-items:center;
+  .conversation-page{
+    position:relative;
+    z-index:0;
+    display:flex;
+    flex:1 1 auto;
+    min-width:0;
+    min-height:0;
+    width:100%;
+    justify-content:center;
   }
 
-  .chat-header-verified { height:18px; flex-shrink:0; }
-
-  .chat-wrapper {
-      position: fixed;
-      inset: 0;
-      /* Keep the message area below the safe-area-aware fixed header. */
-      padding-top: calc(76px + env(safe-area-inset-top, 0px) + 14px);
-      display:flex;
-      flex-direction:column;
-      min-width: 0;
+  .conversation-shell{
+    position:relative;
+    z-index:1;
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr) auto;
+    width:min(100%, 800px);
+    min-width:0;
+    height:100%;
+    overflow:hidden;
+    background:rgba(250,250,255,.84);
   }
 
-  .chat-messages {
-      flex:1;
-      overflow-y:auto;
-      padding:16px;
-      padding-bottom:150px;
+  .conversation-header{
+    display:grid;
+    grid-template-columns:auto auto minmax(0,1fr);
+    align-items:center;
+    gap:11px;
+    min-width:0;
+    min-height:76px;
+    padding:max(12px, calc(env(safe-area-inset-top, 0px) + 8px)) 16px 12px;
+    padding-left:max(16px, env(safe-area-inset-left, 0px));
+    padding-right:max(16px, env(safe-area-inset-right, 0px));
+    color:#17152b;
+    background:linear-gradient(135deg, rgba(255,255,255,.96), rgba(245,243,255,.92));
+    border-bottom:1px solid rgba(93,78,164,.13);
+    box-shadow:0 8px 22px rgba(60,47,116,.06);
   }
 
-  .msg-avatar {
-      width:34px; height:34px;
-      border-radius:999px;
-      margin-bottom:4px;
-      object-fit:cover;
+  .page--focused-conversation .paypal-callout ~ .conversation-page .conversation-header{
+    padding-top:12px;
   }
 
-  .bubble {
-      max-width:80%;
-      min-width: 0;
-      padding:12px 16px;
-      border-radius:20px;
-      margin-bottom:12px;
-      font-size:15px;
-      line-height:1.45;
-      backdrop-filter:blur(8px);
-      overflow-wrap: anywhere;
-      word-break: break-word;
+  .conversation-back{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:44px;
+    height:44px;
+    flex:0 0 44px;
+    border:1px solid rgba(103,83,187,.16);
+    border-radius:14px;
+    color:#302a58;
+    background:rgba(255,255,255,.9);
+    box-shadow:0 5px 14px rgba(48,42,88,.08);
+    text-decoration:none;
+    font-size:25px;
+    line-height:1;
+    transition:transform .18s ease, background .18s ease, box-shadow .18s ease;
   }
 
-  .bubble.other {
-      background:rgba(255,255,255,0.7);
-      border:1px solid rgba(0,0,0,0.05);
-      border-bottom-left-radius:6px;
-      margin-right:auto;
-      box-shadow:0 2px 12px rgba(0,0,0,0.06);
+  .conversation-back:hover{
+    color:#17152b;
+    background:#fff;
+    box-shadow:0 8px 18px rgba(48,42,88,.13);
+    transform:translateX(-1px);
   }
 
-  .bubble.me {
-      background:linear-gradient(135deg,#8b5cf6,#5b9df9);
-      color:#fff;
-      border-bottom-right-radius:6px;
-      margin-left:auto;
-      box-shadow:0 4px 14px rgba(0,0,0,.18);
+  .conversation-back:focus-visible,
+  .conversation-send:focus-visible,
+  .conversation-composer__input:focus-visible{
+    outline:3px solid rgba(91,157,249,.38);
+    outline-offset:3px;
   }
 
-  .bubble-time {
-      font-size:11px;
-      opacity:.6;
-      margin-bottom:4px;
-      display:block;
+  .conversation-avatar{
+    width:48px;
+    height:48px;
+    flex:0 0 48px;
+    border:2px solid rgba(139,92,246,.22);
+    border-radius:50%;
+    object-fit:cover;
+    background:#ece8ff;
+    box-shadow:0 6px 16px rgba(74,57,146,.14);
   }
 
-  .empty-chat {
-      width: 100%;
-      text-align:center;
-      margin-top: 70px;
-      opacity: .95;
+  .conversation-header__info{ min-width:0; }
+  .conversation-header__eyebrow{
+    display:block;
+    margin-bottom:2px;
+    color:#7c749a;
+    font-size:.7rem;
+    font-weight:800;
+    letter-spacing:.1em;
+    line-height:1.2;
+    text-transform:uppercase;
   }
-  .empty-chat img {
-      width: 220px;
-      height: auto;
+  .conversation-header__name{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    min-width:0;
+    margin:0;
+    color:#1d1934;
+    font-size:clamp(1rem, 3vw, 1.12rem);
+    font-weight:800;
+    line-height:1.25;
   }
-
-  .typing {
-      display:flex;
-      align-items:center;
-      gap:6px;
-      padding:10px 16px;
-      background:#ffffffb0;
-      border-radius:18px;
-      margin:10px 0;
-      width:fit-content;
-      box-shadow:0 2px 8px rgba(0,0,0,.08);
+  .conversation-header__name-text{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
   }
-
-  .dot {
-      width:6px; height:6px;
-      background:#8b5cf6;
-      border-radius:50%;
-      animation: blink 1.4s infinite;
-  }
-  .dot:nth-child(2){ animation-delay: .2s; }
-  .dot:nth-child(3){ animation-delay: .4s; }
-
-  @keyframes blink {
-      0%{opacity:.2;}
-      50%{opacity:1;}
-      100%{opacity:.2;}
+  .conversation-verified{
+    width:19px;
+    height:19px;
+    flex:0 0 auto;
+    object-fit:contain;
   }
 
-  @keyframes wspop {
-      0%   { transform: scale(0.6); opacity: 0; }
-      60%  { transform: scale(1.08); opacity: 1; }
-      100% { transform: scale(1); }
+  .conversation-scroll{
+    min-width:0;
+    min-height:0;
+    overflow-x:hidden;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    scroll-behavior:smooth;
+    padding:20px 16px 24px;
+    padding-left:max(16px, env(safe-area-inset-left, 0px));
+    padding-right:max(16px, env(safe-area-inset-right, 0px));
+    scrollbar-color:rgba(117,90,220,.32) transparent;
   }
-  .new-msg { animation: wspop .22s ease-out; }
-
-  .chat-input-bar {
-      position:fixed;
-      left:0; right:0; bottom:0;
-      box-sizing: border-box;
-      max-width: 100%;
-      padding:12px;
-      padding-bottom:calc(env(safe-area-inset-bottom) + 16px);
-      background:#ffffffd9;
-      backdrop-filter:blur(14px);
-      display:flex;
-      gap:10px;
-      align-items:center;
-      border-top:1px solid rgba(0,0,0,0.05);
+  .conversation-scroll::-webkit-scrollbar{ width:8px; }
+  .conversation-scroll::-webkit-scrollbar-thumb{
+    border:2px solid transparent;
+    border-radius:999px;
+    background:rgba(117,90,220,.28);
+    background-clip:padding-box;
   }
 
-  .chat-input {
-      flex:1;
-      min-width:0;
-      border:1px solid rgba(0,0,0,0.15);
-      border-radius:20px;
-      padding:10px 14px;
-      font-size:16px !important;
-      background:#fff;
+  .conversation-message{
+    display:flex;
+    align-items:flex-end;
+    gap:8px;
+    min-width:0;
+    max-width:100%;
+    margin:0 0 10px;
+    animation:conversation-message-in .28s cubic-bezier(.2,.8,.2,1) both;
+  }
+  .conversation-message--me{ justify-content:flex-end; padding-left:16%; }
+  .conversation-message--other{ padding-right:8%; }
+  .conversation-message__avatar{
+    width:30px;
+    height:30px;
+    flex:0 0 30px;
+    margin-bottom:2px;
+    border:1px solid rgba(112,91,188,.18);
+    border-radius:50%;
+    object-fit:cover;
+    background:#eeeaff;
+  }
+  .conversation-bubble{
+    max-width:min(80%, 560px);
+    min-width:0;
+    padding:11px 13px 9px;
+    border-radius:20px;
+    box-shadow:0 6px 18px rgba(40,32,82,.08);
+  }
+  .conversation-bubble--other{
+    color:#292542;
+    background:rgba(255,255,255,.94);
+    border:1px solid rgba(91,78,157,.12);
+    border-bottom-left-radius:6px;
+  }
+  .conversation-bubble--me{
+    color:#fff;
+    background:linear-gradient(135deg, #8558e8 0%, #587ff0 100%);
+    border:1px solid rgba(255,255,255,.19);
+    border-bottom-right-radius:6px;
+    box-shadow:0 9px 22px rgba(92,69,204,.27);
+  }
+  .conversation-bubble__text{
+    margin:0;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+    white-space:pre-wrap;
+    font-size:.96rem;
+    line-height:1.48;
+  }
+  .conversation-bubble__time{
+    display:block;
+    margin-top:5px;
+    color:inherit;
+    font-size:.69rem;
+    font-variant-numeric:tabular-nums;
+    line-height:1.1;
+    opacity:.7;
   }
 
-  .send-btn {
-      background:linear-gradient(135deg,#8b5cf6,#5b9df9);
-      color:#fff;
-      border:none;
-      padding:10px 18px;
-      border-radius:20px;
-      font-weight:600;
-      font-size:16px !important;
-      flex-shrink:0;
-      box-shadow:0 4px 12px rgba(0,0,0,.18);
+  .conversation-empty{
+    display:grid;
+    justify-items:center;
+    max-width:390px;
+    margin:clamp(42px, 14vh, 112px) auto 24px;
+    padding:28px 24px;
+    color:#494264;
+    text-align:center;
+    background:rgba(255,255,255,.7);
+    border:1px dashed rgba(116,89,207,.25);
+    border-radius:24px;
+    box-shadow:0 12px 28px rgba(55,43,110,.05);
+    animation:conversation-message-in .34s ease both;
+  }
+  .conversation-empty__icon{
+    display:grid;
+    place-items:center;
+    width:50px;
+    height:50px;
+    margin-bottom:12px;
+    border-radius:17px;
+    color:#6e55cc;
+    background:linear-gradient(135deg, #eee8ff, #e4efff);
+    font-size:1.35rem;
+  }
+  .conversation-empty h2{
+    margin:0;
+    color:#26213f;
+    font-size:1.05rem;
+    font-weight:800;
+  }
+  .conversation-empty p{ margin:7px 0 0; font-size:.9rem; line-height:1.5; }
+
+  .typing-indicator{
+    display:flex;
+    align-items:flex-end;
+    gap:8px;
+    width:max-content;
+    max-width:calc(100% - 8%);
+    margin:2px 8% 14px 0;
+    animation:conversation-message-in .2s ease both;
+  }
+  .typing-indicator__avatar{
+    width:30px;
+    height:30px;
+    flex:0 0 30px;
+    border:1px solid rgba(112,91,188,.18);
+    border-radius:50%;
+    object-fit:cover;
+    background:#eeeaff;
+  }
+  .typing-indicator__bubble{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    min-height:38px;
+    padding:0 13px;
+    background:rgba(255,255,255,.94);
+    border:1px solid rgba(91,78,157,.12);
+    border-radius:18px 18px 18px 6px;
+    box-shadow:0 6px 18px rgba(40,32,82,.07);
+  }
+  .typing-indicator__dot{
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:#7057cc;
+    animation:conversation-typing-dot 1.2s ease-in-out infinite;
+  }
+  .typing-indicator__dot:nth-child(2){ animation-delay:.15s; }
+  .typing-indicator__dot:nth-child(3){ animation-delay:.3s; }
+
+  .conversation-composer{
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    padding-left:max(16px, env(safe-area-inset-left, 0px));
+    padding-right:max(16px, env(safe-area-inset-right, 0px));
+    background:rgba(255,255,255,.93);
+    border-top:1px solid rgba(91,78,157,.12);
+    box-shadow:0 -10px 26px rgba(42,32,88,.06);
+    backdrop-filter:blur(18px);
+  }
+  .conversation-composer__row{
+    display:flex;
+    align-items:flex-end;
+    gap:10px;
+    min-width:0;
+  }
+  .conversation-composer__input{
+    box-sizing:border-box;
+    flex:1 1 auto;
+    min-width:0;
+    min-height:46px;
+    max-height:132px;
+    margin:0;
+    padding:12px 14px;
+    resize:none;
+    border:1px solid rgba(91,78,157,.18);
+    border-radius:17px;
+    color:#25203e;
+    background:#fff;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.9);
+    font:inherit;
+    font-size:16px;
+    line-height:1.4;
+    outline:none;
+    overflow-x:hidden;
+    overflow-y:auto;
+    transition:border-color .18s ease, box-shadow .18s ease, background .18s ease;
+  }
+  .conversation-composer__input::placeholder{ color:#8a84a5; opacity:1; }
+  .conversation-composer__input:focus{
+    border-color:rgba(101,83,212,.65);
+    background:#fff;
+    box-shadow:0 0 0 4px rgba(112,87,204,.11);
+  }
+  .conversation-send{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:76px;
+    min-height:46px;
+    padding:11px 16px;
+    border:0;
+    border-radius:16px;
+    color:#fff;
+    background:linear-gradient(135deg, #8558e8 0%, #587ff0 100%);
+    box-shadow:0 8px 18px rgba(92,69,204,.27);
+    font:inherit;
+    font-size:.94rem;
+    font-weight:800;
+    line-height:1;
+    cursor:pointer;
+    transition:transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+  }
+  .conversation-send:not(:disabled):hover{ box-shadow:0 11px 22px rgba(92,69,204,.34); transform:translateY(-1px); }
+  .conversation-send:not(:disabled):active{ transform:translateY(1px) scale(.98); }
+  .conversation-send:disabled{ cursor:not-allowed; opacity:.5; box-shadow:none; }
+  .conversation-composer__error{
+    margin:8px 2px 0;
+    color:#a3294b;
+    font-size:.82rem;
+    font-weight:700;
   }
 
-  /* This focused conversation intentionally owns the full touch screen on iPad Safari. */
-  @supports (-webkit-touch-callout: none) {
-    @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
-      body[data-path^="/messages/"] header.topbar,
-      body[data-path^="/messages/"] .m-top-tabs.d-lg-none,
-      body[data-path^="/messages/"] .mobile-tabbar.d-lg-none,
-      body[data-path^="/messages/"] #fabAdd.d-lg-none {
-        display: none !important;
-      }
+  @keyframes conversation-message-in{
+    from{ opacity:0; transform:translateY(6px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  @keyframes conversation-typing-dot{
+    0%, 65%, 100%{ opacity:.35; transform:translateY(0); }
+    35%{ opacity:1; transform:translateY(-3px); }
+  }
 
-      body[data-path^="/messages/"] .page {
-        padding-bottom: 0 !important;
-      }
+  @media (min-width:700px){
+    .conversation-page{ padding:16px 22px 20px; }
+    .conversation-shell{
+      height:calc(100% - 36px);
+      border:1px solid rgba(97,77,171,.14);
+      border-radius:28px;
+      box-shadow:0 22px 56px rgba(51,38,105,.12);
+    }
+    .conversation-header{ min-height:78px; padding:14px 20px; padding-left:max(20px, env(safe-area-inset-left, 0px)); padding-right:max(20px, env(safe-area-inset-right, 0px)); }
+    .conversation-scroll{ padding:26px 24px 30px; padding-left:max(24px, env(safe-area-inset-left, 0px)); padding-right:max(24px, env(safe-area-inset-right, 0px)); }
+    .conversation-composer{ padding:14px 20px calc(14px + env(safe-area-inset-bottom, 0px)); padding-left:max(20px, env(safe-area-inset-left, 0px)); padding-right:max(20px, env(safe-area-inset-right, 0px)); }
+    .conversation-message--me{ padding-left:24%; }
+    .conversation-message--other{ padding-right:18%; }
+  }
+
+  @media (min-width:1100px){
+    .conversation-page{ padding:24px 32px; }
+    .conversation-shell{ height:calc(100% - 48px); width:min(100%, 820px); }
+    .conversation-scroll{ padding-inline:30px; }
+  }
+
+  @media (max-width:390px){
+    .conversation-header{ gap:9px; padding-left:max(12px, env(safe-area-inset-left, 0px)); padding-right:max(12px, env(safe-area-inset-right, 0px)); }
+    .conversation-back{ width:42px; height:42px; flex-basis:42px; border-radius:13px; }
+    .conversation-avatar{ width:44px; height:44px; flex-basis:44px; }
+    .conversation-scroll{ padding:16px 12px 20px; padding-left:max(12px, env(safe-area-inset-left, 0px)); padding-right:max(12px, env(safe-area-inset-right, 0px)); }
+    .conversation-message--me{ padding-left:8%; }
+    .conversation-message--other{ padding-right:2%; }
+    .conversation-bubble{ max-width:84%; padding:10px 12px 8px; }
+    .conversation-composer{ padding-left:max(12px, env(safe-area-inset-left, 0px)); padding-right:max(12px, env(safe-area-inset-right, 0px)); }
+    .conversation-send{ min-width:64px; padding-inline:12px; }
+  }
+
+  @media (max-height:520px) and (orientation:landscape){
+    .conversation-header{ min-height:62px; padding-top:8px; padding-bottom:8px; }
+    .conversation-header__eyebrow{ display:none; }
+    .conversation-avatar{ width:40px; height:40px; flex-basis:40px; }
+    .conversation-composer{ padding-top:8px; padding-bottom:calc(8px + env(safe-area-inset-bottom, 0px)); }
+    .conversation-composer__input,.conversation-send{ min-height:42px; }
+    .conversation-scroll{ padding-top:12px; padding-bottom:14px; }
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .conversation-page *, .conversation-page *::before, .conversation-page *::after{
+      animation-duration:.01ms !important;
+      animation-iteration-count:1 !important;
+      scroll-behavior:auto !important;
+      transition-duration:.01ms !important;
     }
   }
-
 </style>
 
-<div class="chat-bg"></div>
+<section class="conversation-page" aria-label="Conversation with {{ other_name or 'SEVOR member' }}">
+  <div class="conversation-shell">
+    <header class="conversation-header">
+      <a class="conversation-back" href="/messages" aria-label="Back to messages" title="Back to messages">
+        <span aria-hidden="true">‹</span>
+      </a>
+      <img src="{{ other_avatar }}" class="conversation-avatar" alt="{{ (other_name or 'SEVOR member') ~ ' profile photo' }}" onerror="this.onerror=null;this.src='/static/placeholder.svg'">
+      <div class="conversation-header__info">
+        <span class="conversation-header__eyebrow">Conversation</span>
+        <h1 class="conversation-header__name">
+          <span class="conversation-header__name-text">{{ other_name or 'SEVOR member' }}</span>
+          {% if other and other.is_verified %}
+            <img src="/static/img/violet.png" class="conversation-verified" alt="Verified account" title="Verified account">
+          {% endif %}
+        </h1>
+      </div>
+    </header>
 
-<div class="chat-header">
-    <a href="/messages" class="chat-header-back">‹</a>
-    <img src="{{ other_avatar }}" class="chat-header-avatar" onerror="this.src='/static/placeholder.svg'">
-    <div class="chat-header-info">
-        <div class="chat-header-name">
-            {{ other.first_name }} {{ other.last_name }}
-            {% if other.is_verified %}
-                <img src="/static/img/violet.png" class="chat-header-verified">
-            {% endif %}
-        </div>
-    </div>
-</div>
-
-<div class="chat-wrapper">
-  <div class="chat-messages" id="chatMessages">
-
-    {% if messages|length == 0 %}
-    <div id="emptyState" class="empty-chat">
-        <img src="/static/photo/qon.png" alt="no messages">
-        <h3>No messages</h3>
-        <p>There are no messages left between you and this person.</p>
-    </div>
-    {% endif %}
-
-    {% for m in messages %}
-      {% if m.sender_id != session_user.id %}
-        <img src="{{ other_avatar }}" class="msg-avatar" onerror="this.src='/static/placeholder.svg'">
+    <div class="conversation-scroll" id="chatMessages" role="log" aria-live="polite" aria-relevant="additions text">
+      {% if messages|length == 0 %}
+        <section id="emptyState" class="conversation-empty" aria-labelledby="emptyConversationTitle">
+          <span class="conversation-empty__icon" aria-hidden="true">✦</span>
+          <h2 id="emptyConversationTitle">Start the conversation</h2>
+          <p>Send a message to {{ other_name or 'this SEVOR member' }} to begin.</p>
+        </section>
       {% endif %}
 
-      <div class="bubble {% if m.sender_id == session_user.id %}me{% else %}other{% endif %}">
-        <span class="bubble-time">{{ m.created_at.strftime("%H:%M") }}</span>
-        {{ m.body }}
-      </div>
-    {% endfor %}
+      {% for m in messages %}
+        <div class="conversation-message {% if m.sender_id == session_user.id %}conversation-message--me{% else %}conversation-message--other{% endif %}">
+          {% if m.sender_id != session_user.id %}
+            <img src="{{ other_avatar }}" class="conversation-message__avatar" alt="" onerror="this.onerror=null;this.src='/static/placeholder.svg'">
+          {% endif %}
+          <article class="conversation-bubble {% if m.sender_id == session_user.id %}conversation-bubble--me{% else %}conversation-bubble--other{% endif %}">
+            <p class="conversation-bubble__text">{{ m.body }}</p>
+            <time class="conversation-bubble__time">{{ m.created_at.strftime("%H:%M") }}</time>
+          </article>
+        </div>
+      {% endfor %}
 
-    {% if other_is_typing %}
-    <div class="typing">
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
+      <div id="typingMount" aria-live="polite" aria-atomic="true"></div>
     </div>
-    {% endif %}
-  </div>
 
-  <form class="chat-input-bar" onsubmit="sendMessage(event)">
-    <input type="text" name="body" placeholder="Aa" class="chat-input" required>
-    <button class="send-btn">Send</button>
-  </form>
-</div>
+    <form class="conversation-composer" id="conversationComposer" action="/messages/{{ thread.id }}" method="post">
+      <label class="visually-hidden" for="conversationMessage">Message</label>
+      <div class="conversation-composer__row">
+        <textarea id="conversationMessage" name="body" class="conversation-composer__input" rows="1" required placeholder="Write a message" aria-describedby="composerError" enterkeyhint="send"></textarea>
+        <button class="conversation-send" type="submit" disabled>
+          <span>Send</span>
+        </button>
+      </div>
+      <p id="composerError" class="conversation-composer__error" role="alert" hidden>Message could not be sent. Please try again.</p>
+    </form>
+  </div>
+</section>
 
 <script>
-  const chatBox = document.getElementById("chatMessages");
-  if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+  (() => {
+    const chatBox = document.getElementById('chatMessages');
+    const form = document.getElementById('conversationComposer');
+    const input = document.getElementById('conversationMessage');
+    const sendButton = form ? form.querySelector('.conversation-send') : null;
+    const errorMessage = document.getElementById('composerError');
+    const typingMount = document.getElementById('typingMount');
+    const threadId = {{ thread.id }};
+    const otherAvatar = {{ other_avatar|tojson }};
+    let emptyState = document.getElementById('emptyState');
+    let lastMessageId = {{ messages[-1].id if messages else 0 }};
+    let isSending = false;
 
-  const threadId = {{ thread.id }};
-  let emptyState = document.getElementById("emptyState");
-  const input = document.querySelector(".chat-input");
+    if (!chatBox || !form || !input || !sendButton) return;
 
-  input.addEventListener("input", () => {
-      if (input.value.trim().length > 0) {
-          fetch(`/messages/${threadId}/typing`, {method: "POST"});
+    const scrollToLatest = () => {
+      chatBox.scrollTop = chatBox.scrollHeight;
+    };
+
+    const autoResize = () => {
+      input.style.height = 'auto';
+      const maxHeight = 132;
+      const targetHeight = Math.min(input.scrollHeight, maxHeight);
+      input.style.height = `${targetHeight}px`;
+      input.style.overflowY = input.scrollHeight > maxHeight ? 'auto' : 'hidden';
+    };
+
+    const updateSendState = () => {
+      sendButton.disabled = isSending || !input.value.trim();
+    };
+
+    const makeAvatar = () => {
+      const avatar = document.createElement('img');
+      avatar.className = 'conversation-message__avatar';
+      avatar.alt = '';
+      avatar.src = otherAvatar;
+      avatar.addEventListener('error', () => {
+        avatar.onerror = null;
+        avatar.src = '/static/placeholder.svg';
+      }, { once: true });
+      return avatar;
+    };
+
+    const createMessageElement = (message) => {
+      const row = document.createElement('div');
+      const fromMe = Boolean(message.from_me);
+      row.className = `conversation-message ${fromMe ? 'conversation-message--me' : 'conversation-message--other'}`;
+
+      if (!fromMe) row.appendChild(makeAvatar());
+
+      const bubble = document.createElement('article');
+      bubble.className = `conversation-bubble ${fromMe ? 'conversation-bubble--me' : 'conversation-bubble--other'}`;
+
+      const body = document.createElement('p');
+      body.className = 'conversation-bubble__text';
+      body.textContent = message.body || '';
+
+      const timestamp = document.createElement('time');
+      timestamp.className = 'conversation-bubble__time';
+      timestamp.textContent = message.time || '';
+
+      bubble.append(body, timestamp);
+      row.appendChild(bubble);
+      return row;
+    };
+
+    const createTypingIndicator = () => {
+      const indicator = document.createElement('div');
+      indicator.id = 'typingIndicator';
+      indicator.className = 'typing-indicator';
+      indicator.setAttribute('role', 'status');
+
+      const accessibleText = document.createElement('span');
+      accessibleText.className = 'visually-hidden';
+      accessibleText.textContent = 'The other participant is typing';
+
+      const avatar = document.createElement('img');
+      avatar.className = 'typing-indicator__avatar';
+      avatar.alt = '';
+      avatar.src = otherAvatar;
+      avatar.addEventListener('error', () => {
+        avatar.onerror = null;
+        avatar.src = '/static/placeholder.svg';
+      }, { once: true });
+
+      const bubble = document.createElement('span');
+      bubble.className = 'typing-indicator__bubble';
+      bubble.setAttribute('aria-hidden', 'true');
+      for (let index = 0; index < 3; index += 1) {
+        const dot = document.createElement('i');
+        dot.className = 'typing-indicator__dot';
+        bubble.appendChild(dot);
       }
-  });
 
-  setInterval(() => {
-      fetch(`/messages/${threadId}/typing_status`)
-        .then(r => r.json())
-        .then(d => {
-            const existing = document.querySelector(".typing");
-            if (d.typing) {
-                if (!existing) {
-                    const div = document.createElement("div");
-                    div.className = "typing";
-                    div.innerHTML = `
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                    `;
-                    chatBox.appendChild(div);
-                    chatBox.scrollTop = chatBox.scrollHeight;
-                }
-            } else {
-                if (existing) existing.remove();
-            }
-        });
-  }, 1000);
+      indicator.append(avatar, bubble, accessibleText);
+      return indicator;
+    };
 
-  function stopTyping() {
-      fetch(`/messages/${threadId}/typing`, {
-          method: "POST",
-          body: ""
-      });
-  }
+    const updateTypingIndicator = (isTyping) => {
+      const existing = document.getElementById('typingIndicator');
+      if (isTyping && !existing) {
+        typingMount.appendChild(createTypingIndicator());
+        scrollToLatest();
+      } else if (!isTyping && existing) {
+        existing.remove();
+      }
+    };
 
-  let lastMessageId = {{ messages[-1].id if messages else 0 }};
+    const stopTyping = () => {
+      fetch(`/messages/${threadId}/typing`, { method: 'POST', body: '' });
+    };
 
-  setInterval(() => {
-      fetch(`/messages/${threadId}/poll?after=${lastMessageId}`)
-          .then(r => r.json())
-          .then(d => {
-              if (!d.messages || d.messages.length === 0) return;
+    const setConversationViewport = () => {
+      const viewport = window.visualViewport;
+      const height = Math.round(viewport ? viewport.height : window.innerHeight);
+      document.documentElement.style.setProperty('--sevor-conversation-viewport-height', `${height}px`);
+    };
 
-              if (emptyState){
-                  emptyState.remove();
-                  emptyState = null;
-              }
+    input.addEventListener('input', () => {
+      if (input.value.trim().length > 0) {
+        fetch(`/messages/${threadId}/typing`, { method: 'POST' });
+      }
+      autoResize();
+      updateSendState();
+      if (errorMessage) errorMessage.hidden = true;
+    });
 
-              d.messages.forEach(msg => {
-                  const div = document.createElement("div");
-                  div.className = "bubble new-msg " + (msg.from_me ? "me" : "other");
-                  div.innerHTML = `
-                      <span class="bubble-time">${msg.time}</span>
-                      ${msg.body}
-                  `;
-                  chatBox.appendChild(div);
-                  chatBox.scrollTop = chatBox.scrollHeight;
-                  lastMessageId = msg.id;
-              });
-          });
-  }, 1000);
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+        event.preventDefault();
+        if (!sendButton.disabled) {
+          if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+          } else {
+            form.dispatchEvent(new Event('submit', { cancelable: true }));
+          }
+        }
+      }
+    });
 
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const text = input.value.trim();
+      if (!text || isSending) return;
 
-  /* إصلاح مشكلة التكرار */
-  function sendMessage(e) {
-      e.preventDefault();
-
-      const txt = input.value.trim();
-      if (!txt) return;
+      isSending = true;
+      updateSendState();
+      if (errorMessage) errorMessage.hidden = true;
 
       fetch(`/messages/${threadId}`, {
-          method: "POST",
-          body: new FormData(e.target)
+        method: 'POST',
+        body: new FormData(form)
       })
-      .then(() => {
-          if (emptyState){
-              emptyState.remove();
-              emptyState = null;
+        .then((response) => {
+          if (!response.ok) throw new Error('Message request failed');
+          if (emptyState) {
+            emptyState.remove();
+            emptyState = null;
           }
-
-          input.value = "";
+          input.value = '';
+          autoResize();
           stopTyping();
+        })
+        .catch(() => {
+          if (errorMessage) errorMessage.hidden = false;
+          input.focus();
+        })
+        .finally(() => {
+          isSending = false;
+          updateSendState();
+        });
+    });
 
-          /* ❗ لا نضيف الرسالة يدويًا
-                poll سيعرض الرسالة الحقيقية بعد أقل من ثانية */
-      });
-  }
+    setInterval(() => {
+      fetch(`/messages/${threadId}/typing_status`)
+        .then((response) => response.json())
+        .then((data) => updateTypingIndicator(Boolean(data.typing)))
+        .catch(() => {});
+    }, 1000);
+
+    setInterval(() => {
+      fetch(`/messages/${threadId}/poll?after=${lastMessageId}`)
+        .then((response) => response.json())
+        .then((data) => {
+          if (!data.messages || data.messages.length === 0) return;
+          if (emptyState) {
+            emptyState.remove();
+            emptyState = null;
+          }
+          data.messages.forEach((message) => {
+            chatBox.insertBefore(createMessageElement(message), typingMount);
+            lastMessageId = message.id;
+          });
+          scrollToLatest();
+        })
+        .catch(() => {});
+    }, 1000);
+
+    setConversationViewport();
+    window.addEventListener('resize', setConversationViewport);
+    window.addEventListener('orientationchange', setConversationViewport);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', setConversationViewport);
+    window.addEventListener('pagehide', () => {
+      window.removeEventListener('resize', setConversationViewport);
+      window.removeEventListener('orientationchange', setConversationViewport);
+      if (window.visualViewport) window.visualViewport.removeEventListener('resize', setConversationViewport);
+      document.documentElement.style.removeProperty('--sevor-conversation-viewport-height');
+    }, { once: true });
+
+    autoResize();
+    updateSendState();
+    requestAnimationFrame(scrollToLatest);
+  })();
 </script>
-
 {% endblock %}
