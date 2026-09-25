@@ -1,456 +1,588 @@
 {% extends "base.html" %}
-{% block content %}
+{% set public_name = ((profile_user.first_name or '') ~ ' ' ~ (profile_user.last_name or ''))|trim or 'SEVOR member' %}
+{% set title = public_name ~ ' | SEVOR' %}
+{% set meta_description = 'Explore public listings and renter reviews for ' ~ public_name ~ ' on SEVOR.' %}
+{% set is_own_profile = session_user and session_user.get('id') == profile_user.id %}
+{% set verified_account = profile_user.is_verified|default(false) %}
+{% set available_listings = stats.items_count|default(0)|int %}
+{% set review_count = renter_reviews_count|default(0)|int %}
+{% set requested_tab = request.query_params.get('tab', 'items') if request else 'items' %}
+{% set active_tab = requested_tab if requested_tab in ['items', 'about', 'reviews'] else 'items' %}
+{% set category_names = {
+  'vehicle': 'Vehicles',
+  'housing': 'Housing & Stays',
+  'electronics': 'Electronics',
+  'furniture': 'Furniture',
+  'clothing': 'Clothing',
+  'tools': 'Tools & Equipment',
+  'other': 'Other'
+} %}
 
-<!-- ===== زر الرجوع iOS ===== -->
-<a href="/" class="back-btn-ios">
-  <i class="bi bi-chevron-left"></i>
-</a>
-
-<style>
-/* =====================================================
-   زر الرجوع — iOS floating button style
-   ===================================================== */
-.back-btn-ios {
-    position: fixed;
-    top: calc(env(safe-area-inset-top) + 12px);
-    left: 14px;
-    z-index: 9999;
-    background: rgba(255,255,255,0.88);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #333;
-    font-size: 20px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-    text-decoration: none;
-}
-.back-btn-ios:active { transform: scale(0.94); }
-
-/* =====================================================
-   إخفاء الهيدر + التابات + التاب بار + سترايب
-   ===================================================== */
-header.topbar,
-.m-top-tabs,
-nav.desk-tabs,
-.mobile-tabbar,
-.stripe-callout,
-.connect-banner,
-.payout-banner,
-.stripe-connect-banner,
-.searchbar {
-    display: none !important;
-}
-
-body.has-tabbar { padding-bottom: 0 !important; }
-
-@media (max-width:768px){
-  .user-profile-page{
-    padding-top:max(70px, calc(env(safe-area-inset-top,0px) + 66px)) !important;
-  }
-}
-</style>
-
-<style>
-/* ====================== NUMBERS LTR ====================== */
-.num-ltr{
-  direction:ltr;
-  unicode-bidi:isolate;
-  white-space:nowrap;
-  font-variant-numeric:tabular-nums;
-}
-
-/* ====================== STATS STRIP ====================== */
-.stats-strip{
-  display:flex; gap:10px; padding:4px 2px; margin-bottom:12px;
-  overflow-x:auto; overscroll-behavior-x:contain;
-  -webkit-overflow-scrolling:touch;
-}
-.stats-chip{
-  min-width:210px;
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:14px;
-  background:var(--surface);
-  flex:0 0 auto;
-}
-.stats-strip::-webkit-scrollbar{ height:8px }
-.stats-strip::-webkit-scrollbar-thumb{
-  background:rgba(0,0,0,.15); border-radius:999px;
-}
-
-/* ====================== SIMILAR CARD DESIGN ====================== */
-.sim-card{
-  background:#fff;
-  border-radius:22px;
-  padding:14px;
-  border:1px solid rgba(17,24,39,.06);
-  box-shadow:0 8px 26px rgba(17,24,39,.06);
-  transition:transform .18s ease, box-shadow .25s ease;
-}
-.sim-card:hover{
-  transform:translateY(-4px);
-  box-shadow:0 18px 38px rgba(17,24,39,.12);
-}
-
-.sim-img-box{
-  position:relative;
-  width:100%;
-  aspect-ratio:16 / 10;
-  border-radius:18px;
-  overflow:hidden;
-  background:#eee;
-}
-
-.sim-img-box img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  display:block;
-}
-
-/* Labels */
-.sim-chip{
-  position:absolute;
-  top:10px;
-  left:10px;
-  padding:6px 14px;
-  background:#fff;
-  border:1px solid #e5e7eb;
-  border-radius:999px;
-  font-size:13px;
-  font-weight:700;
-  color:#111;
-  max-inline-size:calc(100% - 72px);
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-
-.sim-cat{
-  position:absolute;
-  top:10px;
-  right:10px;
-  padding:6px 14px;
-  background:#fff;
-  border:1px solid #e5e7eb;
-  border-radius:999px;
-  font-size:13px;
-  font-weight:600;
-  color:#555;
-  /* Reserve the /day badge on the other side of narrow two-column cards. */
-  max-inline-size:calc(100% - 76px);
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-
-/* Heart */
-.sim-heart{
-  position:absolute;
-  bottom:12px;
-  right:12px;
-  width:34px;
-  height:34px;
-  background:#ffffffcc;
-  backdrop-filter:blur(6px);
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  border:1px solid #e5e7eb;
-  font-size:18px;
-  color:#d54df2;
-}
-
-/* Body */
-.sim-body{
-  padding-top:12px;
-  min-width:0;
-}
-
-.sim-title{
-  font-size:18px;
-  font-weight:800;
-  margin:0 0 4px;
-  color:#111;
-  overflow-wrap:anywhere;
-}
-
-.sim-sub{
-  color:#6b728052;
-  font-size:14px;
-  margin-bottom:8px;
-  overflow-wrap:anywhere;
-  border-bottom:1px dashed #e5e7eb;
-  padding-bottom:8px;
-}
-
-.sim-price{
-  font-size:18px;
-  font-weight:900;
-  color:#111;
-}
-.profile-bio,.review-comment{overflow-wrap:anywhere;}
-
-@media (max-width:767.98px){
-  /* Category remains in the card text; avoid duplicate pills overlapping in two-column media. */
-  .sim-chip{max-inline-size:calc(100% - 20px);}
-  .sim-cat{display:none;}
-}
-
-@media (max-width:340px){
-  /* The actual price is already shown below; free this very narrow media area for the heart control. */
-  .sim-chip{display:none;}
-}
-
-/* Keep the public profile's touch-first hierarchy on iPad Safari. */
-@supports (-webkit-touch-callout: none) {
-  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
-    body[data-path^="/users/"] header.topbar,
-    body[data-path^="/users/"] .m-top-tabs.d-lg-none,
-    body[data-path^="/users/"] .mobile-tabbar.d-lg-none {
-      display: none !important;
-    }
-
-    body[data-path^="/users/"] .page {
-      padding-bottom: 0 !important;
-    }
-
-    .user-profile-page {
-      padding-top: max(70px, calc(env(safe-area-inset-top, 0px) + 66px)) !important;
-    }
-
-    .user-profile-page > section.card > .d-flex.flex-md-row {
-      flex-direction: column !important;
-      align-items: flex-start !important;
-    }
-
-    .user-profile-page .nav {
-      flex-wrap: wrap;
-    }
-
-    .user-profile-page .nav-item,
-    .user-profile-page .nav-link {
-      min-width: 0;
-    }
-
-    .user-profile-page #pane-items .row > .col-6.col-md-4.col-lg-3 {
-      flex: 0 0 50%;
-      max-width: 50%;
-    }
-
-    .user-profile-page .sim-chip {
-      max-inline-size: calc(100% - 20px);
-    }
-
-    .user-profile-page .sim-cat {
-      display: none;
-    }
-  }
-}
-</style>
-
-
-{% macro build_src(p) -%}
-  {% if p and (p.startswith('http://') or p.startswith('https://')) %}
-    {{ p }}
-  {% else %}
-    {{ '/' ~ p.lstrip('/') if p else '/static/placeholder.png' }}
-  {% endif %}
+{% macro public_src(path, fallback='/static/placeholder.png') -%}
+  {%- set source = path or '' -%}
+  {%- if source.startswith('http://') or source.startswith('https://') -%}
+    {{- source -}}
+  {%- elif source -%}
+    {{- '/' ~ source.lstrip('/') -}}
+  {%- else -%}
+    {{- fallback -}}
+  {%- endif -%}
 {%- endmacro %}
 
-<div class="container py-4 user-profile-page" style="max-width:760px">
+{% block head %}
+<style id="sevor-public-profile">
+  /* Public profile only: these styles do not alter shared cards, navigation, or listings elsewhere. */
+  body[data-path^="/users/"] .page{
+    background:
+      radial-gradient(760px 470px at 96% -4%, rgba(106,82,255,.13), transparent 68%),
+      radial-gradient(560px 360px at 3% 30%, rgba(0,185,217,.08), transparent 66%),
+      var(--panel, #f8fafc);
+  }
+  body[data-path^="/users/"][data-auth="0"] .page{ padding-bottom:0 !important; }
+  .public-profile-page{
+    --profile-primary:var(--primary, #6c4ef8);
+    --profile-primary-deep:var(--primary-2, #5137dc);
+    --profile-cyan:#00adc8;
+    --profile-ink:var(--text, #172033);
+    --profile-muted:var(--muted, #667085);
+    --profile-surface:rgba(255,255,255,.84);
+    --profile-solid:#fff;
+    --profile-border:rgba(74,61,165,.14);
+    --profile-soft:rgba(108,78,248,.08);
+    --profile-shadow:0 24px 64px rgba(28,33,68,.11);
+    --profile-card-shadow:0 12px 32px rgba(28,33,68,.07);
+    width:min(1240px, 100%);
+    margin-inline:auto;
+    padding:clamp(16px,3vw,38px) max(0px, env(safe-area-inset-right, 0px)) calc(clamp(46px,7vw,88px) + env(safe-area-inset-bottom, 0px)) max(0px, env(safe-area-inset-left, 0px));
+    color:var(--profile-ink);
+  }
+  .public-profile-page, .public-profile-page *{ box-sizing:border-box; }
+  .public-profile-page :is(h1,h2,h3,p,span,strong,small,a,button,dd,dt){ overflow-wrap:anywhere; }
+  .public-profile-page :is(a,button):focus-visible{ outline:3px solid var(--profile-cyan); outline-offset:3px; }
+  [data-theme="dark"] .public-profile-page{
+    --profile-surface:rgba(15,24,45,.88);
+    --profile-solid:#101a31;
+    --profile-border:rgba(184,172,255,.24);
+    --profile-soft:rgba(164,146,255,.13);
+    --profile-shadow:0 24px 64px rgba(0,0,0,.32);
+    --profile-card-shadow:0 12px 32px rgba(0,0,0,.22);
+  }
 
-<!-- ===================== USER HEADER ===================== -->
-<section class="card p-3 p-md-4 mb-3">
-  <div class="d-flex align-items-start align-items-md-center gap-3 flex-column flex-md-row">
+  .public-profile-back{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    min-height:44px;
+    margin:0 0 14px;
+    padding:9px 13px;
+    border:1px solid var(--profile-border);
+    border-radius:999px;
+    background:var(--profile-surface);
+    box-shadow:0 6px 18px rgba(28,33,68,.06);
+    color:var(--profile-ink);
+    font-size:.91rem;
+    font-weight:800;
+    text-decoration:none;
+    transition:transform .18s ease, border-color .18s ease, background .18s ease;
+  }
+  .public-profile-back:hover{ transform:translateX(-2px); border-color:rgba(108,78,248,.38); background:var(--profile-solid); color:var(--profile-ink); }
 
-    <div class="flex-shrink-0">
-      {% if profile_user.avatar_path %}
-        <img src="{{ build_src(profile_user.avatar_path) }}"
-        class="rounded-circle"
-        style="width:86px;height:86px;object-fit:cover;border:1px solid var(--border)">
-      {% else %}
-        <div class="rounded-circle d-grid place-items-center"
-             style="width:86px;height:86px;background:rgba(255,255,255,.08);border:1px solid var(--border);">
-          <span class="fw-bold fs-2">{{ (profile_user.first_name or 'U')[:1] }}</span>
+  .public-profile-hero{
+    position:relative;
+    overflow:hidden;
+    display:grid;
+    grid-template-columns:minmax(0,1.24fr) minmax(245px,.76fr);
+    gap:clamp(22px,4vw,58px);
+    align-items:center;
+    min-width:0;
+    padding:clamp(25px,5vw,58px);
+    border:1px solid rgba(255,255,255,.27);
+    border-radius:clamp(26px,4vw,38px);
+    background:linear-gradient(135deg, #5137dc 0%, #7657ff 51%, #09a8c5 118%);
+    color:#fff;
+    box-shadow:var(--profile-shadow);
+    isolation:isolate;
+    animation:publicProfileIn .46s ease both;
+  }
+  .public-profile-hero::before,.public-profile-hero::after{
+    position:absolute;
+    z-index:-1;
+    content:"";
+    border-radius:999px;
+    pointer-events:none;
+  }
+  .public-profile-hero::before{ width:420px; height:420px; right:-164px; bottom:-250px; background:rgba(255,255,255,.12); }
+  .public-profile-hero::after{ width:270px; height:270px; left:48%; top:-160px; border:1px solid rgba(255,255,255,.24); }
+  .public-profile-hero__identity,.public-profile-hero__snapshot{ position:relative; min-width:0; }
+  .public-profile-kicker{ margin:0 0 15px; color:rgba(255,255,255,.76); font-size:.76rem; font-weight:900; letter-spacing:.14em; }
+  .public-profile-person{ display:flex; align-items:center; gap:clamp(16px,3vw,25px); min-width:0; }
+  .public-profile-avatar{
+    position:relative;
+    display:grid;
+    flex:0 0 auto;
+    width:clamp(78px,10vw,112px);
+    aspect-ratio:1;
+    place-items:center;
+    overflow:hidden;
+    border:3px solid rgba(255,255,255,.66);
+    border-radius:50%;
+    background:linear-gradient(145deg, rgba(255,255,255,.38), rgba(255,255,255,.12));
+    box-shadow:0 0 0 7px rgba(255,255,255,.12), 0 16px 28px rgba(20,12,83,.25);
+    color:#fff;
+    font-size:clamp(2rem,4.2vw,3.2rem);
+    font-weight:900;
+  }
+  .public-profile-avatar img{ width:100%; height:100%; object-fit:cover; }
+  .public-profile-name-line{ display:flex; flex-wrap:wrap; align-items:center; gap:9px; min-width:0; }
+  .public-profile-name-line h1{ margin:0; font-size:clamp(2rem,5vw,4.25rem); line-height:.97; letter-spacing:-.055em; }
+  .public-profile-verified,.public-profile-account-type,.public-profile-new{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    min-height:29px;
+    padding:5px 9px;
+    border:1px solid rgba(255,255,255,.29);
+    border-radius:999px;
+    background:rgba(255,255,255,.14);
+    color:#fff;
+    font-size:.77rem;
+    font-weight:850;
+    white-space:nowrap;
+  }
+  .public-profile-verified i{ color:#c9efff; }
+  .public-profile-meta{ display:flex; flex-wrap:wrap; gap:8px 16px; margin:12px 0 0; color:rgba(255,255,255,.87); font-size:.95rem; }
+  .public-profile-meta span{ display:inline-flex; align-items:center; gap:7px; }
+  .public-profile-meta i{ color:rgba(255,255,255,.76); }
+  .public-profile-actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; }
+  .public-profile-action{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    min-height:45px;
+    padding:10px 15px;
+    border:1px solid rgba(255,255,255,.31);
+    border-radius:14px;
+    background:rgba(255,255,255,.12);
+    color:#fff;
+    font-size:.91rem;
+    font-weight:850;
+    text-decoration:none;
+    transition:transform .18s ease, background .18s ease, box-shadow .18s ease;
+  }
+  button.public-profile-action{ cursor:pointer; }
+  .public-profile-action--primary{ border-color:#fff; background:#fff; color:#141221; box-shadow:0 8px 18px rgba(0,0,0,.13); }
+  .public-profile-action:hover{ transform:translateY(-2px); background:rgba(255,255,255,.22); color:#fff; }
+  .public-profile-action--primary:hover{ background:#fff; color:#141221; box-shadow:0 12px 22px rgba(0,0,0,.18); }
+  .public-profile-action:active,.public-profile-back:active{ transform:translateY(0) scale(.98); }
+  .public-profile-share-status{ display:block; min-height:1.2em; margin:9px 0 0; color:rgba(255,255,255,.84); font-size:.84rem; }
+  .public-profile-hero__snapshot{
+    display:grid;
+    gap:11px;
+    padding:clamp(17px,3vw,25px);
+    border:1px solid rgba(255,255,255,.25);
+    border-radius:24px;
+    background:rgba(255,255,255,.12);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+  }
+  .public-profile-hero__snapshot h2{ margin:0 0 2px; font-size:1rem; font-weight:900; }
+  .public-profile-snapshot-row{ display:flex; align-items:flex-start; gap:10px; min-width:0; color:rgba(255,255,255,.92); line-height:1.42; }
+  .public-profile-snapshot-row i{ flex:0 0 auto; margin-top:2px; color:#d9f7ff; }
+
+  .public-profile-stats{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:clamp(18px,3vw,28px) 0; }
+  .public-profile-stat{
+    min-width:0;
+    padding:clamp(15px,2.4vw,22px);
+    border:1px solid var(--profile-border);
+    border-radius:20px;
+    background:var(--profile-surface);
+    box-shadow:var(--profile-card-shadow);
+  }
+  .public-profile-stat__label{ display:flex; align-items:center; gap:7px; color:var(--profile-muted); font-size:.81rem; font-weight:800; }
+  .public-profile-stat__label i{ color:var(--profile-primary); }
+  .public-profile-stat strong{ display:block; margin-top:9px; font-size:clamp(1.4rem,2.8vw,2.1rem); line-height:1; letter-spacing:-.045em; }
+  .public-profile-stat small{ display:block; margin-top:7px; color:var(--profile-muted); font-size:.8rem; line-height:1.35; }
+  .public-profile-stat strong small{ display:inline; margin:0 0 0 2px; color:inherit; font-size:.48em; font-weight:800; }
+
+  .public-profile-tabs{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:7px;
+    min-width:0;
+    margin:0 0 clamp(18px,3vw,28px);
+    padding:7px;
+    border:1px solid var(--profile-border);
+    border-radius:18px;
+    background:var(--profile-surface);
+    box-shadow:var(--profile-card-shadow);
+  }
+  .public-profile-tab{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    min-width:0;
+    min-height:45px;
+    padding:9px 10px;
+    border:1px solid transparent;
+    border-radius:12px;
+    background:transparent;
+    color:var(--profile-muted);
+    font:inherit;
+    font-size:.9rem;
+    font-weight:850;
+    line-height:1.2;
+    cursor:pointer;
+    transition:background .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
+  }
+  .public-profile-tab:hover{ color:var(--profile-ink); background:var(--profile-soft); }
+  .public-profile-tab[aria-selected="true"]{ border-color:rgba(108,78,248,.15); background:var(--profile-solid); color:var(--profile-primary-deep); box-shadow:0 5px 14px rgba(49,39,113,.10); }
+  .public-profile-tab:active{ transform:scale(.985); }
+  .public-profile-tab i{ flex:0 0 auto; }
+  .public-profile-panel{ min-width:0; animation:publicProfilePanel .2s ease both; }
+  .public-profile-panel[hidden]{ display:none; }
+  .public-profile-section-heading{ display:flex; align-items:end; justify-content:space-between; gap:16px; margin:0 0 16px; }
+  .public-profile-section-heading > *{ min-width:0; }
+  .public-profile-eyebrow{ display:flex; align-items:center; gap:8px; margin:0 0 7px; color:var(--profile-primary-deep); font-size:.77rem; font-weight:900; letter-spacing:.11em; text-transform:uppercase; }
+  .public-profile-eyebrow i{ color:var(--profile-cyan); }
+  .public-profile-section-heading h2{ margin:0; font-size:clamp(1.45rem,3vw,2.25rem); line-height:1.05; letter-spacing:-.04em; }
+  .public-profile-section-count{ flex:0 0 auto; padding:7px 10px; border-radius:999px; background:var(--profile-soft); color:var(--profile-primary-deep); font-size:.83rem; font-weight:850; }
+
+  .public-profile-listings{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:clamp(12px,2vw,20px); }
+  .public-profile-listing{
+    display:flex;
+    min-width:0;
+    overflow:hidden;
+    border:1px solid var(--profile-border);
+    border-radius:21px;
+    background:var(--profile-solid);
+    box-shadow:var(--profile-card-shadow);
+    transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+  }
+  .public-profile-listing__content{ display:flex; flex:1 1 auto; flex-direction:column; min-width:0; }
+  .public-profile-listing__media{ position:relative; aspect-ratio:1.12/1; overflow:hidden; background:linear-gradient(145deg, #eff0ff, #e9f9fc); }
+  .public-profile-listing__media img{ width:100%; height:100%; object-fit:cover; display:block; transition:transform .35s ease; }
+  .public-profile-listing__price{
+    position:absolute;
+    top:10px;
+    left:10px;
+    z-index:1;
+    max-width:calc(100% - 63px);
+    padding:6px 9px;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,.52);
+    border-radius:999px;
+    background:rgba(255,255,255,.91);
+    box-shadow:0 6px 14px rgba(28,33,68,.13);
+    color:#17122c;
+    font-size:.75rem;
+    font-weight:900;
+    line-height:1.15;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .public-profile-listing__price small{ color:#635b73; font-size:.7rem; font-weight:750; }
+  .public-profile-listing__heart{
+    position:absolute;
+    top:10px;
+    right:10px;
+    z-index:1;
+    display:grid;
+    width:36px;
+    height:36px;
+    place-items:center;
+    border:1px solid rgba(255,255,255,.58);
+    border-radius:50%;
+    background:rgba(255,255,255,.91);
+    box-shadow:0 6px 14px rgba(28,33,68,.13);
+    color:var(--profile-primary);
+    font-size:1.04rem;
+  }
+  .public-profile-listing__body{ display:flex; flex:1 1 auto; flex-direction:column; min-width:0; padding:14px; }
+  .public-profile-listing__category{ margin:0 0 5px; color:var(--profile-primary-deep); font-size:.72rem; font-weight:900; letter-spacing:.07em; text-transform:uppercase; }
+  .public-profile-listing__title{ display:-webkit-box; overflow:hidden; margin:0; color:var(--profile-ink); font-size:1rem; font-weight:900; line-height:1.22; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+  .public-profile-listing__location{ display:flex; align-items:flex-start; gap:6px; min-height:1.3em; margin:9px 0 14px; color:var(--profile-muted); font-size:.83rem; line-height:1.35; }
+  .public-profile-listing__location i{ flex:0 0 auto; margin-top:1px; color:var(--profile-cyan); }
+  .public-profile-listing__location span{ min-width:0; }
+  .public-profile-listing__details{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    min-height:41px;
+    margin-top:auto;
+    padding:8px 10px;
+    border:1px solid rgba(108,78,248,.18);
+    border-radius:12px;
+    background:var(--profile-soft);
+    color:var(--profile-primary-deep);
+    text-decoration:none;
+    font-size:.83rem;
+    font-weight:900;
+    transition:background .18s ease, color .18s ease, transform .18s ease;
+  }
+  .public-profile-listing:hover .public-profile-listing__details{ background:var(--profile-primary); color:#fff; }
+  @media (hover:hover){
+    .public-profile-listing:hover{ transform:translateY(-5px); border-color:rgba(108,78,248,.29); box-shadow:0 20px 38px rgba(28,33,68,.14); }
+    .public-profile-listing:hover img{ transform:scale(1.045); }
+  }
+  .public-profile-listing__details:active{ transform:scale(.98); }
+
+  .public-profile-empty,.public-profile-about-card,.public-profile-review{
+    border:1px solid var(--profile-border);
+    border-radius:22px;
+    background:var(--profile-surface);
+    box-shadow:var(--profile-card-shadow);
+  }
+  .public-profile-empty{ display:grid; justify-items:center; padding:clamp(26px,5vw,52px); text-align:center; }
+  .public-profile-empty__icon{ display:grid; width:55px; height:55px; margin-bottom:14px; place-items:center; border-radius:18px; background:var(--profile-soft); color:var(--profile-primary); font-size:1.45rem; }
+  .public-profile-empty h3{ margin:0; font-size:1.22rem; font-weight:900; }
+  .public-profile-empty p{ max-width:480px; margin:9px 0 0; color:var(--profile-muted); line-height:1.58; }
+  .public-profile-about-card{ max-width:760px; padding:clamp(22px,4vw,36px); }
+  .public-profile-about-card h2{ margin:0; font-size:clamp(1.4rem,3vw,2rem); letter-spacing:-.035em; }
+  .public-profile-about-card p{ margin:11px 0 0; color:var(--profile-muted); line-height:1.62; }
+  .public-profile-about-card__note{ display:flex; align-items:flex-start; gap:9px; margin-top:19px !important; padding:12px 13px; border-radius:14px; background:var(--profile-soft); color:var(--profile-primary-deep) !important; font-size:.9rem; font-weight:700; }
+  .public-profile-about-card__note i{ flex:0 0 auto; margin-top:2px; }
+  .public-profile-review-list{ display:grid; gap:12px; max-width:920px; }
+  .public-profile-review{ padding:clamp(16px,3vw,22px); }
+  .public-profile-review__head{ display:flex; align-items:center; justify-content:space-between; gap:13px; }
+  .public-profile-reviewer{ display:flex; align-items:center; gap:10px; min-width:0; }
+  .public-profile-reviewer__avatar{ display:grid; flex:0 0 auto; width:39px; height:39px; place-items:center; overflow:hidden; border-radius:50%; background:var(--profile-soft); color:var(--profile-primary-deep); font-weight:900; }
+  .public-profile-reviewer__avatar img{ width:100%; height:100%; object-fit:cover; }
+  .public-profile-reviewer strong{ display:block; overflow-wrap:anywhere; font-size:.94rem; }
+  .public-profile-reviewer time{ display:block; margin-top:2px; color:var(--profile-muted); font-size:.78rem; }
+  .public-profile-review__rating{ display:inline-flex; flex:0 0 auto; align-items:center; gap:5px; padding:6px 9px; border-radius:999px; background:rgba(247,180,0,.12); color:#8a5c00; font-size:.82rem; font-weight:900; white-space:nowrap; }
+  .public-profile-review__rating i{ color:#e5a100; }
+  .public-profile-review p{ margin:15px 0 0; color:var(--profile-ink); line-height:1.6; }
+
+  @keyframes publicProfileIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
+  @keyframes publicProfilePanel{ from{ opacity:.4; transform:translateY(4px); } to{ opacity:1; transform:translateY(0); } }
+  @media (max-width:1023px){ .public-profile-listings{ grid-template-columns:repeat(3,minmax(0,1fr)); } }
+  @media (max-width:760px){
+    .public-profile-page{ padding-top:max(14px, env(safe-area-inset-top, 0px)); }
+    .public-profile-hero{ grid-template-columns:1fr; gap:21px; }
+    .public-profile-hero__snapshot{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .public-profile-hero__snapshot h2{ grid-column:1/-1; }
+    .public-profile-listings{ grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  }
+  @media (max-width:480px){
+    .public-profile-person{ align-items:flex-start; }
+    .public-profile-name-line h1{ font-size:clamp(1.84rem,9vw,2.45rem); }
+    .public-profile-stats{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .public-profile-stats .public-profile-stat:last-child{ grid-column:1/-1; }
+    .public-profile-hero__snapshot{ grid-template-columns:1fr; }
+    .public-profile-hero__snapshot h2{ grid-column:auto; }
+    .public-profile-tab{ padding-inline:6px; font-size:.82rem; }
+    .public-profile-tab i{ display:none; }
+    .public-profile-listing__body{ padding:12px; }
+    .public-profile-listing__title{ font-size:.93rem; }
+    .public-profile-listing__location{ font-size:.78rem; }
+  }
+  @media (max-width:359px){ .public-profile-listings{ grid-template-columns:1fr; } }
+  @media (prefers-reduced-motion:reduce){
+    .public-profile-page *, .public-profile-page *::before, .public-profile-page *::after{ scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="public-profile-page">
+  <a class="public-profile-back" href="/items"><i class="bi bi-chevron-left" aria-hidden="true"></i><span>Explore rentals</span></a>
+
+  <header class="public-profile-hero" aria-labelledby="public-profile-title">
+    <div class="public-profile-hero__identity">
+      <p class="public-profile-kicker">SEVOR MEMBER</p>
+      <div class="public-profile-person">
+        <div class="public-profile-avatar" aria-label="Profile photo for {{ public_name }}">
+          {% if profile_user.avatar_path %}
+            <img src="{{ public_src(profile_user.avatar_path) }}" alt="Profile photo for {{ public_name }}" decoding="async">
+          {% else %}
+            <span aria-hidden="true">{{ (profile_user.first_name or public_name or 'S')[:1]|upper }}</span>
+          {% endif %}
         </div>
-      {% endif %}
-    </div>
-
-    <div class="flex-grow-1 w-100">
-      <h2 class="m-0 fw-bold">
-        {{ profile_user.first_name }} {{ profile_user.last_name }}
-      </h2>
-
-      <div class="text-muted small mt-2 d-flex flex-wrap gap-3">
-        <span><i class="bi bi-calendar-check"></i> Joined: {{ created_at_str }}</span>
-        <span><i class="bi bi-box"></i> Listed items: {{ stats.items_count }}</span>
-
-        {% if renter_reviews_count > 0 %}
-        <span>
-          <i class="bi bi-star-fill"></i>
-          <span class="num-ltr">{{ '%.1f'|format(renter_reviews_avg) }}/5</span>
-        </span>
-        {% endif %}
+        <div>
+          <div class="public-profile-name-line">
+            <h1 id="public-profile-title">{{ public_name }}</h1>
+            {% if verified_account %}<span class="public-profile-verified" title="Verified account"><i class="bi bi-patch-check-fill" aria-hidden="true"></i><span>Verified account</span></span>{% endif %}
+            {% if profile_user.account_type|default('') == 'company' %}<span class="public-profile-account-type"><i class="bi bi-buildings" aria-hidden="true"></i><span>Business account</span></span>{% endif %}
+            {% if is_new %}<span class="public-profile-new"><i class="bi bi-sparkle" aria-hidden="true"></i><span>New member</span></span>{% endif %}
+          </div>
+          {% if profile_user.created_at is defined and profile_user.created_at %}
+            <p class="public-profile-meta"><span><i class="bi bi-calendar3" aria-hidden="true"></i><time datetime="{{ profile_user.created_at.isoformat() }}">Member since {{ profile_user.created_at.strftime('%B %Y') }}</time></span></p>
+          {% endif %}
+        </div>
       </div>
 
-      {% if profile_user.bio %}
-        <p class="mt-2 mb-0 text-muted profile-bio">{{ profile_user.bio }}</p>
-      {% endif %}
-    </div>
-
-  </div>
-</section>
-
-<!-- ===================== STATS ===================== -->
-<section class="mb-3">
-  <div class="stats-strip">
-    <div class="stats-chip">
-      <div class="text-muted small">Items</div>
-      <div class="fs-4 fw-bold">{{ stats.items_count }}</div>
-    </div>
-
-    <div class="stats-chip">
-      <div class="text-muted small">Renter rating</div>
-      <div class="fs-4 fw-bold">
-        {% if renter_reviews_count > 0 %}
-          <span class="num-ltr">{{ '%.1f'|format(renter_reviews_avg) }}/5</span>
-        {% else %}—{% endif %}
-      </div>
-    </div>
-
-    <div class="stats-chip">
-      <div class="text-muted small">Status</div>
-      <div class="fs-6 fw-bold">
-        {% if is_verified %}
-          <span class="text-success">Verified</span>
+      <div class="public-profile-actions">
+        {% if is_own_profile %}
+          <a class="public-profile-action public-profile-action--primary" href="/settings"><i class="bi bi-gear" aria-hidden="true"></i><span>Manage profile</span></a>
+        {% elif session_user %}
+          <a class="public-profile-action public-profile-action--primary" href="/messages/start?user_id={{ profile_user.id }}"><i class="bi bi-chat-text" aria-hidden="true"></i><span>Message</span></a>
         {% else %}
-          <span class="text-muted">Standard</span>
+          <a class="public-profile-action public-profile-action--primary" href="/login?next=/users/{{ profile_user.id }}"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i><span>Sign in to message</span></a>
         {% endif %}
+        <button class="public-profile-action" type="button" data-public-profile-share data-share-path="/users/{{ profile_user.id }}" data-share-title="{{ public_name }} on SEVOR" aria-label="Share {{ public_name }}'s public profile"><i class="bi bi-share" aria-hidden="true"></i><span>Share</span></button>
       </div>
+      <span class="public-profile-share-status" aria-live="polite"></span>
     </div>
 
-    <div class="stats-chip">
-      <div class="text-muted small">Member since</div>
-      <div class="fs-6 fw-bold">{{ created_at_str }}</div>
+    <aside class="public-profile-hero__snapshot" aria-label="Trust and activity summary">
+      <h2>Trust &amp; activity</h2>
+      {% if verified_account %}<div class="public-profile-snapshot-row"><i class="bi bi-patch-check-fill" aria-hidden="true"></i><span>Verified account</span></div>{% endif %}
+      <div class="public-profile-snapshot-row"><i class="bi bi-box-seam" aria-hidden="true"></i><span>{{ available_listings }} available listing{{ '' if available_listings == 1 else 's' }}</span></div>
+      <div class="public-profile-snapshot-row"><i class="bi bi-star-fill" aria-hidden="true"></i><span>{% if review_count %}{{ review_count }} renter review{{ '' if review_count == 1 else 's' }}{% else %}No renter reviews yet{% endif %}</span></div>
+    </aside>
+  </header>
+
+  <section class="public-profile-stats" aria-label="Profile summary">
+    <article class="public-profile-stat"><span class="public-profile-stat__label"><i class="bi bi-grid-3x3-gap" aria-hidden="true"></i>Listings</span><strong>{{ available_listings }}</strong><small>Available on SEVOR now</small></article>
+    <article class="public-profile-stat"><span class="public-profile-stat__label"><i class="bi bi-star" aria-hidden="true"></i>Renter rating</span>{% if review_count %}<strong>{{ '%.1f'|format(renter_reviews_avg) }}<small>/5</small></strong><small>From listing owners</small>{% else %}<strong>—</strong><small>No ratings yet</small>{% endif %}</article>
+    <article class="public-profile-stat"><span class="public-profile-stat__label"><i class="bi bi-chat-square-heart" aria-hidden="true"></i>Reviews</span><strong>{{ review_count }}</strong><small>Reviews from listing owners</small></article>
+  </section>
+
+  <nav class="public-profile-tabs" role="tablist" aria-label="{{ public_name }} profile sections">
+    <button class="public-profile-tab{% if active_tab == 'items' %} is-active{% endif %}" type="button" id="public-tab-items" role="tab" tabindex="{{ '0' if active_tab == 'items' else '-1' }}" aria-selected="{{ 'true' if active_tab == 'items' else 'false' }}" aria-controls="public-panel-items" data-profile-tab="items"><i class="bi bi-grid" aria-hidden="true"></i><span>Listings</span></button>
+    <button class="public-profile-tab{% if active_tab == 'about' %} is-active{% endif %}" type="button" id="public-tab-about" role="tab" tabindex="{{ '0' if active_tab == 'about' else '-1' }}" aria-selected="{{ 'true' if active_tab == 'about' else 'false' }}" aria-controls="public-panel-about" data-profile-tab="about"><i class="bi bi-person" aria-hidden="true"></i><span>About</span></button>
+    <button class="public-profile-tab{% if active_tab == 'reviews' %} is-active{% endif %}" type="button" id="public-tab-reviews" role="tab" tabindex="{{ '0' if active_tab == 'reviews' else '-1' }}" aria-selected="{{ 'true' if active_tab == 'reviews' else 'false' }}" aria-controls="public-panel-reviews" data-profile-tab="reviews"><i class="bi bi-star" aria-hidden="true"></i><span>Reviews</span></button>
+  </nav>
+
+  <section class="public-profile-panel" id="public-panel-items" role="tabpanel" tabindex="0" aria-labelledby="public-tab-items"{% if active_tab != 'items' %} hidden{% endif %}>
+    <div class="public-profile-section-heading">
+      <div><p class="public-profile-eyebrow"><i class="bi bi-grid-3x3-gap" aria-hidden="true"></i>AVAILABLE TO RENT</p><h2>Listings from {{ public_name }}</h2></div>
+      <span class="public-profile-section-count">{{ available_listings }} listing{{ '' if available_listings == 1 else 's' }}</span>
     </div>
-  </div>
-</section>
-
-<!-- ===================== TABS ===================== -->
-<ul class="nav nav-pills mb-3">
-  <li class="nav-item">
-    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pane-items">Listed items</button>
-  </li>
-  <li class="nav-item">
-    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-about">About user</button>
-  </li>
-  <li class="nav-item">
-    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-reviews">Reviews</button>
-  </li>
-</ul>
-
-<div class="tab-content">
-
-  <!-- ===================== ITEMS TAB ===================== -->
-  <div class="tab-pane fade show active" id="pane-items">
 
     {% if items and items|length > 0 %}
-      <div class="row g-3">
-
+      <div class="public-profile-listings">
         {% for it in items %}
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="sim-card">
-
-            <div class="sim-img-box">
-              <img src="{{ build_src(it.image_path) }}">
-
-              <div class="sim-chip">
-                /day
+          {% set listing_price = it.price_per_day or it.price %}
+          {% set listing_category = it.subcategory or category_names.get(it.category, (it.category or 'Other')|replace('_', ' ')|title) %}
+          <article class="public-profile-listing">
+            <div class="public-profile-listing__content">
+              <div class="public-profile-listing__media">
+                <img src="{{ public_src(it.image_path) }}" alt="{{ it.title }}" loading="lazy" decoding="async">
+                {% if listing_price is not none and listing_price|float > 0 %}<span class="public-profile-listing__price">{{ listing_price|money(it.currency or 'CAD') }} <small>/ day</small></span>{% endif %}
+                <span class="public-profile-listing__heart" aria-hidden="true"><i class="bi bi-heart"></i></span>
               </div>
-
-              {% if it.category_label %}
-              <div class="sim-cat">{{ it.category_label }}</div>
-              {% endif %}
-
-              <div class="sim-heart">
-                <i class="bi bi-heart"></i>
+              <div class="public-profile-listing__body">
+                <p class="public-profile-listing__category">{{ listing_category }}</p>
+                <h3 class="public-profile-listing__title">{{ it.title }}</h3>
+                <p class="public-profile-listing__location"><i class="bi bi-geo-alt" aria-hidden="true"></i><span>{{ it.city or 'Location not specified' }}</span></p>
+                <a class="public-profile-listing__details" href="/items/{{ it.id }}" aria-label="View details for {{ it.title }}">Details <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
               </div>
             </div>
-
-            <div class="sim-body">
-              <div class="sim-title">{{ it.title }}</div>
-              <div class="sim-sub">
-                {{ it.category_label }} | {{ it.city or "" }}
-              </div>
-
-              <div class="sim-price">
-                {{ it.display_price }} {{ it.display_currency }}
-              </div>
-
-              <a href="/items/{{ it.id }}" class="btn btn-primary w-100 mt-2">Details</a>
-            </div>
-
-          </div>
-        </div>
+          </article>
         {% endfor %}
-
       </div>
-
     {% else %}
-      <div class="card p-3 text-center text-muted">This user has no listed items currently.</div>
+      <div class="public-profile-empty"><span class="public-profile-empty__icon"><i class="bi bi-box-seam" aria-hidden="true"></i></span><h3>No available listings right now</h3><p>Listings that are active and approved will appear here when this member has them available.</p></div>
     {% endif %}
-  </div>
+  </section>
 
-  <!-- ===================== ABOUT TAB ===================== -->
-  <div class="tab-pane fade" id="pane-about">
-    <div class="card p-3">
-      <strong>Full name</strong><br>
-      <span class="text-muted">{{ profile_user.first_name }} {{ profile_user.last_name }}</span>
-
-      <hr>
-
-      <strong>Status</strong><br>
-      {% if is_verified %}
-        <span class="badge bg-success">Verified</span>
-      {% else %}
-        <span class="badge bg-secondary">Standard</span>
-      {% endif %}
+  <section class="public-profile-panel" id="public-panel-about" role="tabpanel" tabindex="0" aria-labelledby="public-tab-about"{% if active_tab != 'about' %} hidden{% endif %}>
+    <div class="public-profile-about-card">
+      <p class="public-profile-eyebrow"><i class="bi bi-person" aria-hidden="true"></i>ABOUT MEMBER</p>
+      <h2>About {{ public_name }}</h2>
+      <p>No public profile details have been added yet.</p>
+      <p class="public-profile-about-card__note"><i class="bi bi-shield-lock" aria-hidden="true"></i><span>Private contact and account information are not shown on this public profile.</span></p>
     </div>
-  </div>
+  </section>
 
-  <!-- ===================== REVIEWS ===================== -->
-  <div class="tab-pane fade" id="pane-reviews">
-    <div class="card p-3">
-      {% if renter_reviews_count > 0 %}
-        {% for r in renter_reviews %}
-          <div class="border rounded p-2 mb-2">
-            <div class="d-flex justify-content-between">
-              <div class="small text-muted">Owner #{{ r.owner_id }}</div>
-              <div>
-                {% for _ in range(r.stars) %}⭐{% endfor %}
+  <section class="public-profile-panel" id="public-panel-reviews" role="tabpanel" tabindex="0" aria-labelledby="public-tab-reviews"{% if active_tab != 'reviews' %} hidden{% endif %}>
+    <div class="public-profile-section-heading">
+      <div><p class="public-profile-eyebrow"><i class="bi bi-star" aria-hidden="true"></i>RENTER REVIEWS</p><h2>Feedback from listing owners</h2></div>
+      {% if review_count %}<span class="public-profile-section-count">{{ review_count }} review{{ '' if review_count == 1 else 's' }}</span>{% endif %}
+    </div>
+    {% if review_count %}
+      <div class="public-profile-review-list">
+        {% for review in renter_reviews %}
+          {% set reviewer = review.owner %}
+          {% set reviewer_name = ((reviewer.first_name or '') ~ ' ' ~ (reviewer.last_name or ''))|trim if reviewer else 'Listing owner' %}
+          <article class="public-profile-review">
+            <div class="public-profile-review__head">
+              <div class="public-profile-reviewer">
+                <span class="public-profile-reviewer__avatar" aria-hidden="true">{% if reviewer and reviewer.avatar_path %}<img src="{{ public_src(reviewer.avatar_path) }}" alt="">{% else %}{{ ((reviewer.first_name or 'O') if reviewer else 'O')[:1]|upper }}{% endif %}</span>
+                <div><strong>{{ reviewer_name or 'Listing owner' }}</strong>{% if review.created_at %}<time datetime="{{ review.created_at.isoformat() }}">{{ review.created_at.strftime('%d %b %Y') }}</time>{% endif %}</div>
               </div>
+              <span class="public-profile-review__rating" aria-label="{{ review.stars }} out of 5"><i class="bi bi-star-fill" aria-hidden="true"></i>{{ review.stars }}/5</span>
             </div>
-
-            {% if r.comment %}
-              <div class="review-comment">{{ r.comment }}</div>
-            {% endif %}
-          </div>
+            {% if review.comment %}<p>{{ review.comment }}</p>{% endif %}
+          </article>
         {% endfor %}
-      {% else %}
-        <div class="text-muted">No reviews yet.</div>
-      {% endif %}
-    </div>
-  </div>
-
+      </div>
+    {% else %}
+      <div class="public-profile-empty"><span class="public-profile-empty__icon"><i class="bi bi-chat-square-heart" aria-hidden="true"></i></span><h3>No renter reviews yet</h3><p>Feedback from listing owners will appear here when it is available.</p></div>
+    {% endif %}
+  </section>
 </div>
+{% endblock %}
 
-</div>
+{% block scripts %}
+<script>
+(() => {
+  const root = document.querySelector('.public-profile-page');
+  if (!root) return;
 
+  const tabs = Array.from(root.querySelectorAll('[data-profile-tab]'));
+  const panels = Array.from(root.querySelectorAll('[role="tabpanel"]'));
+  const activateTab = (tab, moveFocus = false) => {
+    const key = tab.dataset.profileTab;
+    tabs.forEach((candidate) => {
+      const selected = candidate === tab;
+      candidate.classList.toggle('is-active', selected);
+      candidate.setAttribute('aria-selected', String(selected));
+      candidate.tabIndex = selected ? 0 : -1;
+    });
+    panels.forEach((panel) => { panel.hidden = panel.id !== `public-panel-${key}`; });
+    if (moveFocus) tab.focus();
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', key);
+      window.history.replaceState({}, '', url);
+    } catch (_) {}
+  };
+
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => activateTab(tab));
+    tab.addEventListener('keydown', (event) => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      let next = index;
+      if (event.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length;
+      if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
+      if (event.key === 'Home') next = 0;
+      if (event.key === 'End') next = tabs.length - 1;
+      activateTab(tabs[next], true);
+    });
+  });
+
+  const shareButton = root.querySelector('[data-public-profile-share]');
+  const shareStatus = root.querySelector('.public-profile-share-status');
+  if (!shareButton) return;
+  const shareUrl = `${window.location.origin}${shareButton.dataset.sharePath || window.location.pathname}`;
+  const updateShareStatus = (message) => { if (shareStatus) shareStatus.textContent = message; };
+  const copyLink = async () => {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(shareUrl);
+      updateShareStatus('Profile link copied.');
+      return;
+    }
+    window.prompt('Copy this profile link:', shareUrl);
+  };
+  shareButton.addEventListener('click', async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: shareButton.dataset.shareTitle || document.title, url: shareUrl });
+        updateShareStatus('Profile link shared.');
+      } else {
+        await copyLink();
+      }
+    } catch (error) {
+      if (error && error.name === 'AbortError') return;
+      try { await copyLink(); } catch (_) { updateShareStatus('Unable to copy the profile link.'); }
+    }
+  });
+})();
+</script>
 {% endblock %}

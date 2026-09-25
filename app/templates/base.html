@@ -1425,6 +1425,7 @@ header.topbar .searchbar-wrap{
     or _path == '/payout/settings'
     or _path == '/settings'
     or _path == '/profile'
+    or _path.startswith('/users/')
 ) %}
 
 {% set is_home = (_path == '/' or _path == '') %}
@@ -1780,7 +1781,7 @@ window.onpageshow = function(e){
       <div class="alert alert-success my-2">You have been logged out successfully 👋</div>
     {% endif %}
 
-    {% if not immersive and session_user and session_user.status == 'approved' and not session_user.payouts_enabled %}
+    {% if not immersive and session_user and session_user.status == 'approved' and not session_user.payouts_enabled and not _path.startswith('/users/') %}
 
       <div class="paypal-callout alert alert-warning d-flex justify-content-between align-items-center mb-3">
   <div>💸 To start receiving earnings, connect <strong>PayPal</strong>.</div>
