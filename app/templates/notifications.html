@@ -338,7 +338,7 @@
   const list = document.getElementById('notifList');
   const summary = document.getElementById('notificationSummary');
   const badge = document.getElementById('mNotifBadge');
-  const LIST_ENDPOINTS = ['/api/notifs/list?limit=50', '/api/notifications/poll'];
+  const LIST_ENDPOINTS = ['/api/notifs/list?limit=30', '/api/notifications/poll'];
 
   const typeMeta = (kind, title) => {
     const value = String(kind || 'system').toLowerCase();
@@ -565,6 +565,14 @@
     result.items.forEach((notification) => list.appendChild(createRow(notification)));
   };
 
+  const markRenderedRowsRead = () => {
+    list.querySelectorAll('.notification-row--unread').forEach((row) => {
+      row.classList.remove('notification-row--unread');
+      const label = row.querySelector('.notification-row__new');
+      if (label) label.remove();
+    });
+  };
+
   async function markAllRead() {
     try {
       const response = await fetch('/api/notifications/mark_all_read', { method: 'POST', credentials: 'include' });
@@ -591,8 +599,11 @@
       : (result.items.length ? 'All caught up' : 'No notifications');
 
     // Preserve the page's established behavior: visiting the notification center marks all current rows as read.
-    // The rendered state reflects what the user received on arrival; a later visit will use the server's updated state.
-    if (await markAllRead()) updateBadge(0);
+    if (await markAllRead()) {
+      markRenderedRowsRead();
+      updateBadge(0);
+      summary.textContent = result.items.length ? 'All caught up' : 'No notifications';
+    }
   }
 
   load();
