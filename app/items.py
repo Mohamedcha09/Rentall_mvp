@@ -867,7 +867,19 @@ def owner_item_delete(request: Request, item_id: int, db: Session = Depends(get_
         # Avoid exposing another owner’s listing through this destructive route.
         raise HTTPException(status_code=404, detail="Item not found")
 
-    if _owner_listing_delete_blockers(db, item.id):
+    try:
+        blockers = _owner_listing_delete_blockers(db, item.id)
+    except SQLAlchemyError:
+        # If a dependency cannot be checked, fail closed and preserve the item.
+        db.rollback()
+        _set_owner_items_notice(
+            request,
+            "error",
+            "This listing can’t be deleted until its related activity can be checked.",
+        )
+        return RedirectResponse(url="/owner/items", status_code=303)
+
+    if blockers:
         _set_owner_items_notice(
             request,
             "error",
