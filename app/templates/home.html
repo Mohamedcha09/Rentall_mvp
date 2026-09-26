@@ -1275,6 +1275,28 @@ body[data-path="/"] :is(.spot-link,.fav-btn,.arrow-btn,.carousel-control-prev,.c
   }
 }
 
+/*
+ * Phone and iPad rails use the browser's own pan, momentum and direction
+ * arbitration.  The mouse-only drag enhancer below remains available on
+ * desktop, but touch never needs a JavaScript scrollLeft loop.
+ */
+@media (max-width:768px), (max-height:600px) and (orientation:landscape) and (hover:none) and (pointer:coarse){
+  body[data-path="/"] .hrow{
+    touch-action:auto;
+    scroll-behavior:auto;
+    scroll-snap-type:x proximity;
+    -webkit-overflow-scrolling:touch;
+  }
+}
+@media (min-width:769px) and (max-width:1376px) and (min-height:600px){
+  html.is-ipad body[data-path="/"] .hrow{
+    touch-action:auto;
+    scroll-behavior:auto;
+    scroll-snap-type:x proximity;
+    -webkit-overflow-scrolling:touch;
+  }
+}
+
 @media (max-width:576px){
   body[data-path="/"] .hero-carousel{ margin-inline:0; border-radius:16px; }
   body[data-path="/"] .hero-carousel :is(.carousel-inner,.carousel-item,.carousel-item img){ border-radius:16px; }
@@ -2133,14 +2155,14 @@ body[data-theme="dark"][data-path="/"] #homeCitySugg{ background:#171b2b !import
     });
   })();
 
-  /* ===== (New addition) Drag by finger/mouse + horizontal wheel for each hrow ===== */
+  /* ===== Desktop mouse drag + horizontal wheel for each hrow ===== */
   (function enhancers(){
     document.querySelectorAll('.hrow').forEach(row=>{
-      // rAF coalesces pointer moves into one scroll write per painted frame.
+      // Touch keeps native overflow momentum; only desktop mouse drags write scrollLeft.
       let down=false, start=0, startLeft=0, pid=null, frame=0, pendingLeft=0;
       let dragged=false, suppressClick=false;
       row.addEventListener('pointerdown', e=>{
-        if(!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+        if(!e.isPrimary || e.pointerType !== 'mouse' || e.button !== 0) return;
         if(e.target.closest('button,input,select,textarea,label')) return;
         down=true; dragged=false; pid=e.pointerId;
         start=e.pageX; startLeft=row.scrollLeft; pendingLeft=startLeft;
