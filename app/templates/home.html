@@ -1318,6 +1318,9 @@ body[data-theme="dark"][data-path="/"] #homeCitySugg{ background:#171b2b !import
         {% if loop.first %}
           fetchpriority="high"
           loading="eager"
+        {% elif loop.index == 2 %}
+          fetchpriority="low"
+          loading="eager"
         {% else %}
           loading="lazy"
         {% endif %}
