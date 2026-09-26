@@ -441,8 +441,13 @@ def items_list(
     if seller not in ("all", "company", "individual"):
         seller = "all"
 
-    # Base query
-    q = db.query(Item).filter(Item.is_active == "yes", Item.status == "approved")
+    # Keep the same listing selection while loading the already-rendered owner
+    # relation in one batch for the Explore card avatar presentation.
+    q = (
+        db.query(Item)
+        .options(selectinload(Item.owner))
+        .filter(Item.is_active == "yes", Item.status == "approved")
+    )
 
     # Apply seller filter (JOIN users)
     if seller != "all":
@@ -541,6 +546,16 @@ def items_list(
             }
         )
 
+    session_user = request.session.get("user")
+    favorite_ids = []
+    if session_user and session_user.get("id"):
+        favorite_ids = [
+            row[0]
+            for row in db.query(_Fav.item_id)
+            .filter(_Fav.user_id == session_user["id"])
+            .all()
+        ]
+
     return request.app.templates.TemplateResponse(
         request=request,
         name="items.html",
@@ -560,6 +575,7 @@ def items_list(
             "lat": lat,
             "lng": lng,
             "session_user": request.session.get("user"),
+            "favorite_ids": favorite_ids,
         },
     )
 
@@ -937,7 +953,10 @@ def item_new_get(
             "title": "Add Item",
             "categories": categories_db,     # full category objects
             "subcats_map": subcats_map,     # dict for JS dynamic
-            "session_user": request.session.get("user"),
+            "session_user": session_user,
+            # Existing favorite IDs are loaded once for the client-side
+            # POST/DELETE toggle; no favorite lifecycle behavior changes.
+            "favorite_ids": favorite_ids,
             "account_limited": is_account_limited(request),
             "website_error": website_error,
         }
