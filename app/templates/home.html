@@ -1454,6 +1454,41 @@ body[data-path="/"] .paypal-callout .home-paypal__cta{
 }
 
 /* Branded mobile/tablet header, built from the real global search/bell/account controls. */
+body[data-path="/"] header.topbar .home-account-avatar{
+  display:inline-grid;
+  flex:0 0 auto;
+  width:42px;
+  height:42px;
+  padding:0 !important;
+  overflow:hidden;
+  place-items:center;
+  border:0 !important;
+  border-radius:50% !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  line-height:1;
+  text-decoration:none;
+}
+body[data-path="/"] header.topbar .home-account-avatar__image,
+body[data-path="/"] header.topbar .home-account-avatar__fallback{
+  display:block;
+  width:100% !important;
+  height:100% !important;
+  min-width:0;
+  border-radius:inherit;
+}
+body[data-path="/"] header.topbar .home-account-avatar__image{object-fit:cover;}
+body[data-path="/"] header.topbar .home-account-avatar__fallback{
+  display:grid;
+  place-items:center;
+  background:#eef0f8;
+  color:#5f50ef;
+  font-weight:850;
+}
+body[data-path="/"] header.topbar .home-account-avatar:focus-visible{
+  outline:3px solid rgba(95,80,239,.36);
+  outline-offset:3px;
+}
 @media (max-width:991px){
   body[data-path="/"] header.topbar{
     position:relative !important;
@@ -1511,9 +1546,8 @@ body[data-path="/"] .paypal-callout .home-paypal__cta{
   }
   body[data-path="/"] header.topbar .actions > *{display:none !important;}
   body[data-path="/"] header.topbar .actions > #notifOpen,
-  body[data-path="/"] header.topbar .actions > .dropdown:last-child{display:inline-flex !important;}
-  body[data-path="/"] header.topbar #notifOpen,
-  body[data-path="/"] header.topbar .actions > .dropdown:last-child > button{
+  body[data-path="/"] header.topbar .actions > .home-account-avatar{display:inline-grid !important;}
+  body[data-path="/"] header.topbar #notifOpen{
     display:grid !important;
     place-items:center;
     width:42px;
@@ -1525,15 +1559,6 @@ body[data-path="/"] .paypal-callout .home-paypal__cta{
     background:rgba(255,255,255,.88) !important;
     box-shadow:0 5px 14px rgba(31,43,91,.055) !important;
   }
-  body[data-path="/"] header.topbar .actions > .dropdown:last-child > button img,
-  body[data-path="/"] header.topbar .actions > .dropdown:last-child > button .avatar{
-    width:32px !important;
-    height:32px !important;
-    max-width:none !important;
-    border-radius:50% !important;
-    object-fit:cover;
-  }
-  body[data-path="/"] header.topbar .actions > .dropdown:last-child > button::after{display:none;}
   body[data-path="/"] header.topbar form.searchbar{
     display:block !important;
     grid-area:search;
@@ -1616,12 +1641,9 @@ body[data-path="/"] .paypal-callout .home-paypal__cta{
   html.is-ipad body[data-path="/"] header.topbar .actions{display:flex !important; grid-area:actions; align-items:center; justify-content:flex-end; margin:0 !important; gap:9px !important;}
   html.is-ipad body[data-path="/"] header.topbar .actions > *{display:none !important;}
   html.is-ipad body[data-path="/"] header.topbar .actions > #notifOpen,
-  html.is-ipad body[data-path="/"] header.topbar .actions > .dropdown:last-child{display:inline-flex !important;}
-  html.is-ipad body[data-path="/"] header.topbar #notifOpen,
-  html.is-ipad body[data-path="/"] header.topbar .actions > .dropdown:last-child > button{display:grid !important; place-items:center; width:46px; height:46px; padding:0 !important; border:1px solid rgba(23,32,63,.08) !important; border-radius:50% !important; background:#fff !important; box-shadow:0 5px 14px rgba(31,43,91,.055) !important;}
-  html.is-ipad body[data-path="/"] header.topbar .actions > .dropdown:last-child > button img,
-  html.is-ipad body[data-path="/"] header.topbar .actions > .dropdown:last-child > button .avatar{width:35px !important; height:35px !important; max-width:none !important; border-radius:50% !important; object-fit:cover;}
-  html.is-ipad body[data-path="/"] header.topbar .actions > .dropdown:last-child > button::after{display:none;}
+  html.is-ipad body[data-path="/"] header.topbar .actions > .home-account-avatar{display:inline-grid !important;}
+  html.is-ipad body[data-path="/"] header.topbar #notifOpen{display:grid !important; place-items:center; width:46px; height:46px; padding:0 !important; border:1px solid rgba(23,32,63,.08) !important; border-radius:50% !important; background:#fff !important; box-shadow:0 5px 14px rgba(31,43,91,.055) !important;}
+  html.is-ipad body[data-path="/"] header.topbar .home-account-avatar{width:46px; height:46px;}
   html.is-ipad body[data-path="/"] header.topbar form.searchbar{display:block !important; grid-area:search; width:100% !important; max-width:none !important; margin:0 !important;}
   html.is-ipad body[data-path="/"] header.topbar .searchbar-wrap{width:100%; min-height:62px; height:62px; padding:10px 17px !important; border:1px solid rgba(23,32,63,.08) !important; border-radius:20px !important; background:#fff !important; box-shadow:var(--home-ref-shadow) !important;}
   html.is-ipad body[data-path="/"] header.topbar .searchbar .field{min-width:0; gap:8px;}

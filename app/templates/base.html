@@ -1709,9 +1709,27 @@ window.onpageshow = function(e){
 
         <!-- Account -->
         {% if session_user %}
+          {% set _ava = avatar_src(session_user.avatar_path if session_user else '') %}
+          {% if is_home %}
+          <a class="btn btn-ghost btn-sm home-account-avatar"
+             href="/profile"
+             title="My account"
+             aria-label="My account">
+            {% if _ava and not _ava.endswith('placeholder.png') %}
+            <img class="home-account-avatar__image"
+                 src="{{ _ava }}"
+                 width="42"
+                 height="42"
+                 alt=""
+                 referrerpolicy="no-referrer"
+                 onerror="this.onerror=null;this.src='/static/placeholder.png'">
+            {% else %}
+            <span class="home-account-avatar__fallback" aria-hidden="true">{{ (session_user.first_name or 'A')[:1] }}</span>
+            {% endif %}
+          </a>
+          {% else %}
           <div class="dropdown">
             <button class="btn btn-ghost btn-sm d-flex align-items-center gap-2" data-bs-toggle="dropdown">
-  {% set _ava = avatar_src(session_user.avatar_path if session_user else '') %}
 {% if _ava and not _ava.endswith('placeholder.png') %}
   <img src="{{ _ava }}"
        alt=""
@@ -1743,6 +1761,7 @@ window.onpageshow = function(e){
               <li><a class="dropdown-item text-danger" href="/logout"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
             </ul>
           </div>
+          {% endif %}
         {% else %}
           <a class="btn-chip btn-chip--ghost btn-login" href="/login">Login</a>
           <a class="btn-chip btn-chip--primary btn-register" href="/register">Sign Up</a>
