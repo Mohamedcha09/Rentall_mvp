@@ -1489,6 +1489,17 @@ body[data-path="/"] header.topbar .home-account-avatar:focus-visible{
   outline:3px solid rgba(95,80,239,.36);
   outline-offset:3px;
 }
+body[data-path="/"] header.topbar #notifOpen{line-height:0;}
+body[data-path="/"] header.topbar #notifOpen .icon-img{
+  display:block;
+  position:absolute;
+  inset:0;
+  width:24px !important;
+  height:24px !important;
+  margin:auto;
+  object-fit:contain;
+  transform:translateX(-.5px);
+}
 @media (max-width:991px){
   body[data-path="/"] header.topbar{
     position:relative !important;

@@ -1631,13 +1631,25 @@ window.onpageshow = function(e){
         <!-- Bell -->
 {% set unread = (request.state.unread_messages|default(0))|int
       if (request and request.state is defined) else 0 %}
+        {% if is_home %}
+        <a class="btn btn-ghost btn-sm position-relative" id="notifOpen"
+           href="/notifications"
+           title="Notifications"
+           aria-label="Notifications"
+           data-notification-page="true">
+        {% else %}
         <button class="btn btn-ghost btn-sm position-relative" id="notifOpen" title="Notifications">
+        {% endif %}
           <img class="icon-img" src="/static/images/ui/nav-notifications-72.png" alt="Notifications" style="width:24px;height:24px">
           {% if unread > 0 %}
             <span class="notif-ping"></span>
             <span class="notif-count">{{ unread if unread < 100 else '99+' }}</span>
           {% endif %}
+        {% if is_home %}
+        </a>
+        {% else %}
         </button>
+        {% endif %}
 
         <!-- Create -->
         {% set can_post = (session_user and session_user.status == 'approved') %}
@@ -2283,6 +2295,7 @@ window.onpageshow = function(e){
     const close  = document.getElementById('notifClose');
     const scrim  = document.getElementById('scrim');
     const hasSessionUser = {{ 'true' if session_user else 'false' }};
+    const opensNotificationsPage = btn?.dataset.notificationPage === 'true';
     if (!hasSessionUser || !btn || !panel || !bodyEl) return;
 
     let ping  = btn.querySelector('.notif-ping');
@@ -2364,10 +2377,12 @@ window.onpageshow = function(e){
       scrim.style.opacity='0'; scrim.style.pointerEvents='none';
     }
 
-    btn.addEventListener('click', (e)=>{ e.preventDefault(); panel.classList.contains('is-open') ? closePanel() : openPanel(); });
-    close?.addEventListener('click', ()=>closePanel());
-    scrim?.addEventListener('click', ()=>closePanel());
-    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closePanel(); });
+    if (!opensNotificationsPage){
+      btn.addEventListener('click', (e)=>{ e.preventDefault(); panel.classList.contains('is-open') ? closePanel() : openPanel(); });
+      close?.addEventListener('click', ()=>closePanel());
+      scrim?.addEventListener('click', ()=>closePanel());
+      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closePanel(); });
+    }
 
     fetchUnreadCount();
     setInterval(pollOnce, 20000);

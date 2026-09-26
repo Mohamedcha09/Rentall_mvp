@@ -1247,7 +1247,7 @@ def notifications_page(request: Request):
     return templates.TemplateResponse(
         request=request,
         name="notifications.html",
-        context={"request": request, "session_user": u, "title": "Notifications"},
+        context={"request": request, "session_user": u, "title": "Notifications", "immersive": True},
     )
 
 @app.on_event("startup")

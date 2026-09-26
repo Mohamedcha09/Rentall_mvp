@@ -3,7 +3,11 @@
 
 {% block head %}
 <style>
-  /* Scoped notification-center presentation. Global top navigation intentionally remains visible. */
+  /* Standalone notification-center presentation. */
+  body[data-path="/notifications"] .page{
+    padding-top:max(16px, calc(env(safe-area-inset-top, 0px) + 12px)) !important;
+    padding-bottom:max(28px, calc(env(safe-area-inset-bottom, 0px) + 20px)) !important;
+  }
   .notifications-page{
     width:min(100%, 780px);
     margin:0 auto;
