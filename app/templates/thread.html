@@ -1,11 +1,17 @@
 {% extends "base.html" %}
-{% block content %}
 {% set other_name = (((other.first_name if other else '') or '') ~ ' ' ~ ((other.last_name if other else '') or ''))|trim %}
+{% set context_item = thread.item if thread.item_id and thread.item else none %}
 
+{% block head %}
 <style>
-  /* Focused conversation UI — intentionally scoped to this route's main modifier. */
+  /* Focused conversation UI — deliberately confined to the real conversation route. */
+  body[data-path^="/messages/"]{
+    overflow:hidden;
+    background:#f8f9fd;
+  }
+
   .page.page--focused-conversation{
-    --conversation-viewport-height:var(--sevor-conversation-viewport-height, 100vh);
+    --conversation-viewport-height:var(--sevor-conversation-viewport-height, 100dvh);
     box-sizing:border-box;
     display:flex;
     flex-direction:column;
@@ -18,50 +24,34 @@
     margin:0 !important;
     padding:0 !important;
     overflow:hidden;
-    background:
-      radial-gradient(circle at 12% 6%, rgba(139,92,246,.13), transparent 27rem),
-      radial-gradient(circle at 92% 14%, rgba(91,157,249,.12), transparent 24rem),
-      #f8f8fd;
+    background:linear-gradient(180deg,#fbfbfe 0%,#f7f8fc 100%);
   }
 
-  /* Override the legacy /messages mobile padding without touching inbox layout. */
-  body[data-path^="/messages/"] .page.page--focused-conversation{ padding:0 !important; }
-
+  /* A thread is intentionally immersive. The inbox retains the live PayPal notice. */
   .page.page--focused-conversation > .paypal-callout,
-  .page.page--focused-conversation > .alert{
-    flex:0 0 auto;
-    margin:12px 14px 10px !important;
-    border:1px solid rgba(117,90,220,.18);
-    border-radius:16px;
-    box-shadow:0 9px 24px rgba(53,40,106,.08);
-  }
-
-  .page.page--focused-conversation > .paypal-callout{
-    margin-top:max(12px, calc(env(safe-area-inset-top, 0px) + 8px)) !important;
-  }
+  .page.page--focused-conversation > .alert{ display:none !important; }
 
   .conversation-page{
     position:relative;
-    z-index:0;
     display:flex;
     flex:1 1 auto;
+    justify-content:center;
     min-width:0;
     min-height:0;
     width:100%;
-    justify-content:center;
   }
 
   .conversation-shell{
-    position:relative;
-    z-index:1;
     display:grid;
     grid-template-rows:auto minmax(0,1fr) auto;
-    width:min(100%, 800px);
+    width:min(100%,860px);
     min-width:0;
     height:100%;
     overflow:hidden;
-    background:rgba(250,250,255,.84);
+    background:rgba(249,250,254,.96);
   }
+
+  .conversation-shell--with-context{ grid-template-rows:auto auto minmax(0,1fr) auto; }
 
   .conversation-header{
     display:grid;
@@ -69,114 +59,152 @@
     align-items:center;
     gap:11px;
     min-width:0;
-    min-height:76px;
-    padding:max(12px, calc(env(safe-area-inset-top, 0px) + 8px)) 16px 12px;
-    padding-left:max(16px, env(safe-area-inset-left, 0px));
-    padding-right:max(16px, env(safe-area-inset-right, 0px));
-    color:#17152b;
-    background:linear-gradient(135deg, rgba(255,255,255,.96), rgba(245,243,255,.92));
-    border-bottom:1px solid rgba(93,78,164,.13);
-    box-shadow:0 8px 22px rgba(60,47,116,.06);
-  }
-
-  .page--focused-conversation .paypal-callout ~ .conversation-page .conversation-header{
-    padding-top:12px;
+    min-height:72px;
+    padding:max(12px, calc(env(safe-area-inset-top, 0px) + 8px)) max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px));
+    color:#19162e;
+    background:rgba(255,255,255,.91);
+    border-bottom:1px solid rgba(85,70,142,.1);
+    box-shadow:0 4px 16px rgba(43,34,83,.04);
+    z-index:1;
   }
 
   .conversation-back{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    width:44px;
-    height:44px;
-    flex:0 0 44px;
-    border:1px solid rgba(103,83,187,.16);
-    border-radius:14px;
-    color:#302a58;
-    background:rgba(255,255,255,.9);
-    box-shadow:0 5px 14px rgba(48,42,88,.08);
-    text-decoration:none;
-    font-size:25px;
+    display:inline-grid;
+    place-items:center;
+    width:43px;
+    height:43px;
+    padding:0;
+    color:#2b2741;
+    background:#f3f3f8;
+    border:1px solid transparent;
+    border-radius:15px;
+    font-size:1.28rem;
     line-height:1;
+    text-decoration:none;
     transition:transform .18s ease, background .18s ease, box-shadow .18s ease;
   }
-
-  .conversation-back:hover{
-    color:#17152b;
-    background:#fff;
-    box-shadow:0 8px 18px rgba(48,42,88,.13);
-    transform:translateX(-1px);
-  }
-
+  .conversation-back:hover{ background:#fff; box-shadow:0 6px 16px rgba(43,34,83,.09); transform:translateX(-1px); }
+  .conversation-back:active{ transform:scale(.96); }
   .conversation-back:focus-visible,
-  .conversation-send:focus-visible,
-  .conversation-composer__input:focus-visible{
-    outline:3px solid rgba(91,157,249,.38);
+  .conversation-item-context:focus-visible,
+  .conversation-composer__input:focus-visible,
+  .conversation-send:focus-visible{
+    outline:3px solid rgba(91,141,244,.33);
     outline-offset:3px;
   }
 
   .conversation-avatar{
-    width:48px;
-    height:48px;
-    flex:0 0 48px;
-    border:2px solid rgba(139,92,246,.22);
-    border-radius:50%;
+    width:47px;
+    height:47px;
+    flex:0 0 47px;
     object-fit:cover;
-    background:#ece8ff;
-    box-shadow:0 6px 16px rgba(74,57,146,.14);
+    background:#eeeaff;
+    border:2px solid rgba(118,93,221,.19);
+    border-radius:17px;
+    box-shadow:0 5px 14px rgba(49,39,93,.09);
   }
 
   .conversation-header__info{ min-width:0; }
-  .conversation-header__eyebrow{
-    display:block;
-    margin-bottom:2px;
-    color:#7c749a;
-    font-size:.7rem;
-    font-weight:800;
-    letter-spacing:.1em;
-    line-height:1.2;
-    text-transform:uppercase;
-  }
   .conversation-header__name{
     display:flex;
     align-items:center;
     gap:6px;
     min-width:0;
     margin:0;
-    color:#1d1934;
-    font-size:clamp(1rem, 3vw, 1.12rem);
+    color:#1b1731;
+    font-size:clamp(1rem,3.5vw,1.14rem);
     font-weight:800;
+    letter-spacing:-.025em;
     line-height:1.25;
   }
-  .conversation-header__name-text{
+  .conversation-header__name-text{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .conversation-verified{ width:18px; height:18px; flex:0 0 auto; object-fit:contain; }
+
+  .conversation-item-context{
+    display:grid;
+    grid-template-columns:64px minmax(0,1fr) auto;
+    align-items:center;
+    gap:12px;
+    min-width:0;
+    margin:12px 16px 0;
+    padding:9px;
+    color:inherit;
+    background:rgba(255,255,255,.95);
+    border:1px solid rgba(84,68,146,.11);
+    border-radius:19px;
+    box-shadow:0 8px 21px rgba(43,34,83,.055);
+    text-decoration:none;
+    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    z-index:1;
+  }
+  .conversation-item-context:hover{ border-color:rgba(101,78,196,.21); box-shadow:0 11px 24px rgba(43,34,83,.085); transform:translateY(-1px); }
+  .conversation-item-context:active{ transform:scale(.995); }
+  .conversation-item-context__image{
+    width:64px;
+    height:64px;
+    object-fit:cover;
+    background:#eceffa;
+    border-radius:14px;
+  }
+  .conversation-item-context__body{ min-width:0; }
+  .conversation-item-context__title{
+    display:block;
     overflow:hidden;
+    color:#211d37;
+    font-size:.98rem;
+    font-weight:800;
+    letter-spacing:-.018em;
+    line-height:1.25;
     text-overflow:ellipsis;
     white-space:nowrap;
   }
-  .conversation-verified{
-    width:19px;
-    height:19px;
-    flex:0 0 auto;
-    object-fit:contain;
+  .conversation-item-context__meta{
+    display:block;
+    overflow:hidden;
+    margin-top:5px;
+    color:#807a91;
+    font-size:.82rem;
+    font-weight:600;
+    line-height:1.3;
+    text-overflow:ellipsis;
+    white-space:nowrap;
   }
+  .conversation-item-context__chevron{ color:#363047; font-size:1.12rem; }
 
   .conversation-scroll{
     min-width:0;
     min-height:0;
     overflow-x:hidden;
     overflow-y:auto;
-    overscroll-behavior:contain;
-    padding:20px 16px 24px;
+    overscroll-behavior-y:contain;
+    -webkit-overflow-scrolling:touch;
+    padding:24px 16px 28px;
     padding-left:max(16px, env(safe-area-inset-left, 0px));
     padding-right:max(16px, env(safe-area-inset-right, 0px));
-    scrollbar-color:rgba(117,90,220,.32) transparent;
+    scrollbar-color:rgba(113,90,211,.29) transparent;
   }
   .conversation-scroll::-webkit-scrollbar{ width:8px; }
   .conversation-scroll::-webkit-scrollbar-thumb{
+    background:rgba(113,90,211,.27);
     border:2px solid transparent;
     border-radius:999px;
-    background:rgba(117,90,220,.28);
     background-clip:padding-box;
+  }
+
+  .conversation-date{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:0 0 18px;
+    color:#918b9d;
+    font-size:.72rem;
+    font-weight:700;
+    line-height:1;
+  }
+  .conversation-date span{
+    padding:7px 11px;
+    background:rgba(238,238,246,.78);
+    border-radius:999px;
   }
 
   .conversation-message{
@@ -185,41 +213,45 @@
     gap:8px;
     min-width:0;
     max-width:100%;
-    margin:0 0 10px;
-    animation:conversation-message-in .28s cubic-bezier(.2,.8,.2,1) both;
+    margin:0 0 11px;
+    animation:conversation-message-in .2s cubic-bezier(.2,.8,.2,1) both;
   }
-  .conversation-message--me{ justify-content:flex-end; padding-left:16%; }
-  .conversation-message--other{ padding-right:8%; }
+  .conversation-message--me{ justify-content:flex-end; padding-left:18%; }
+  .conversation-message--other{ padding-right:11%; }
+  .conversation-message--continuation{ margin-top:-5px; }
+  .conversation-message--other.conversation-message--continuation{ padding-left:38px; }
   .conversation-message__avatar{
     width:30px;
     height:30px;
     flex:0 0 30px;
     margin-bottom:2px;
-    border:1px solid rgba(112,91,188,.18);
-    border-radius:50%;
     object-fit:cover;
-    background:#eeeaff;
+    background:#efeaff;
+    border:1px solid rgba(112,91,188,.18);
+    border-radius:11px;
   }
   .conversation-bubble{
-    max-width:min(80%, 560px);
+    max-width:min(80%,560px);
     min-width:0;
     padding:11px 13px 9px;
-    border-radius:20px;
-    box-shadow:0 6px 18px rgba(40,32,82,.08);
+    border-radius:19px;
+    box-shadow:0 6px 16px rgba(40,32,82,.055);
   }
   .conversation-bubble--other{
-    color:#292542;
-    background:rgba(255,255,255,.94);
-    border:1px solid rgba(91,78,157,.12);
+    color:#262137;
+    background:#eff0f5;
+    border:1px solid rgba(87,72,143,.04);
     border-bottom-left-radius:6px;
   }
   .conversation-bubble--me{
     color:#fff;
-    background:linear-gradient(135deg, #8558e8 0%, #587ff0 100%);
-    border:1px solid rgba(255,255,255,.19);
+    background:linear-gradient(135deg,#8158eb 0%,#5894f4 100%);
+    border:1px solid rgba(255,255,255,.2);
     border-bottom-right-radius:6px;
-    box-shadow:0 9px 22px rgba(92,69,204,.27);
+    box-shadow:0 8px 19px rgba(91,70,201,.22);
   }
+  .conversation-message--continuation .conversation-bubble--other{ border-top-left-radius:8px; }
+  .conversation-message--continuation .conversation-bubble--me{ border-top-right-radius:8px; }
   .conversation-bubble__text{
     margin:0;
     overflow-wrap:anywhere;
@@ -232,62 +264,57 @@
     display:block;
     margin-top:5px;
     color:inherit;
-    font-size:.69rem;
+    font-size:.68rem;
     font-variant-numeric:tabular-nums;
     line-height:1.1;
-    opacity:.7;
+    opacity:.65;
   }
 
   .conversation-empty{
     display:grid;
     justify-items:center;
-    max-width:390px;
-    margin:clamp(42px, 14vh, 112px) auto 24px;
+    max-width:370px;
+    margin:clamp(40px,13vh,105px) auto 24px;
     padding:28px 24px;
-    color:#494264;
+    color:#706a84;
     text-align:center;
-    background:rgba(255,255,255,.7);
-    border:1px dashed rgba(116,89,207,.25);
-    border-radius:24px;
-    box-shadow:0 12px 28px rgba(55,43,110,.05);
-    animation:conversation-message-in .34s ease both;
+    background:rgba(255,255,255,.72);
+    border:1px dashed rgba(111,86,203,.25);
+    border-radius:23px;
+    box-shadow:0 10px 26px rgba(55,43,110,.045);
+    animation:conversation-message-in .28s ease both;
   }
   .conversation-empty__icon{
     display:grid;
     place-items:center;
-    width:50px;
-    height:50px;
+    width:48px;
+    height:48px;
     margin-bottom:12px;
-    border-radius:17px;
-    color:#6e55cc;
-    background:linear-gradient(135deg, #eee8ff, #e4efff);
-    font-size:1.35rem;
+    color:#6b55d1;
+    background:#efebff;
+    border-radius:16px;
+    font-size:1.22rem;
   }
-  .conversation-empty h2{
-    margin:0;
-    color:#26213f;
-    font-size:1.05rem;
-    font-weight:800;
-  }
-  .conversation-empty p{ margin:7px 0 0; font-size:.9rem; line-height:1.5; }
+  .conversation-empty h2{ margin:0; color:#27223d; font-size:1.04rem; font-weight:800; }
+  .conversation-empty p{ margin:7px 0 0; font-size:.89rem; line-height:1.5; }
 
   .typing-indicator{
     display:flex;
     align-items:flex-end;
     gap:8px;
     width:max-content;
-    max-width:calc(100% - 8%);
-    margin:2px 8% 14px 0;
+    max-width:calc(100% - 11%);
+    margin:2px 11% 14px 0;
     animation:conversation-message-in .2s ease both;
   }
   .typing-indicator__avatar{
     width:30px;
     height:30px;
     flex:0 0 30px;
-    border:1px solid rgba(112,91,188,.18);
-    border-radius:50%;
     object-fit:cover;
-    background:#eeeaff;
+    background:#efeaff;
+    border:1px solid rgba(112,91,188,.18);
+    border-radius:11px;
   }
   .typing-indicator__bubble{
     display:flex;
@@ -295,29 +322,26 @@
     gap:5px;
     min-height:38px;
     padding:0 13px;
-    background:rgba(255,255,255,.94);
-    border:1px solid rgba(91,78,157,.12);
+    background:#eff0f5;
+    border:1px solid rgba(91,78,157,.06);
     border-radius:18px 18px 18px 6px;
-    box-shadow:0 6px 18px rgba(40,32,82,.07);
   }
   .typing-indicator__dot{
     width:6px;
     height:6px;
+    background:#7565b1;
     border-radius:50%;
-    background:#7057cc;
     animation:conversation-typing-dot 1.2s ease-in-out infinite;
   }
   .typing-indicator__dot:nth-child(2){ animation-delay:.15s; }
   .typing-indicator__dot:nth-child(3){ animation-delay:.3s; }
 
   .conversation-composer{
-    padding:12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
-    padding-left:max(16px, env(safe-area-inset-left, 0px));
-    padding-right:max(16px, env(safe-area-inset-right, 0px));
-    background:rgba(255,255,255,.93);
-    border-top:1px solid rgba(91,78,157,.12);
-    box-shadow:0 -10px 26px rgba(42,32,88,.06);
-    backdrop-filter:blur(18px);
+    padding:11px max(16px, env(safe-area-inset-right, 0px)) calc(11px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+    background:rgba(255,255,255,.96);
+    border-top:1px solid rgba(91,78,157,.1);
+    box-shadow:0 -7px 20px rgba(42,32,88,.045);
+    z-index:1;
   }
   .conversation-composer__row{
     display:flex;
@@ -329,16 +353,15 @@
     box-sizing:border-box;
     flex:1 1 auto;
     min-width:0;
-    min-height:46px;
+    min-height:47px;
     max-height:132px;
     margin:0;
-    padding:12px 14px;
+    padding:12px 15px;
     resize:none;
-    border:1px solid rgba(91,78,157,.18);
+    color:#242037;
+    background:#f5f5f9;
+    border:1px solid transparent;
     border-radius:17px;
-    color:#25203e;
-    background:#fff;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.9);
     font:inherit;
     font-size:16px;
     line-height:1.4;
@@ -347,47 +370,40 @@
     overflow-y:auto;
     transition:border-color .18s ease, box-shadow .18s ease, background .18s ease;
   }
-  .conversation-composer__input::placeholder{ color:#8a84a5; opacity:1; }
+  .conversation-composer__input::placeholder{ color:#9891a6; opacity:1; }
   .conversation-composer__input:focus{
-    border-color:rgba(101,83,212,.65);
     background:#fff;
-    box-shadow:0 0 0 4px rgba(112,87,204,.11);
+    border-color:rgba(101,83,212,.52);
+    box-shadow:0 0 0 4px rgba(112,87,204,.09);
   }
   .conversation-send{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    min-width:76px;
-    min-height:46px;
-    padding:11px 16px;
+    display:inline-grid;
+    place-items:center;
+    flex:0 0 47px;
+    width:47px;
+    height:47px;
+    padding:0;
+    color:#fff;
+    background:linear-gradient(135deg,#8158eb 0%,#5894f4 100%);
     border:0;
     border-radius:16px;
-    color:#fff;
-    background:linear-gradient(135deg, #8558e8 0%, #587ff0 100%);
-    box-shadow:0 8px 18px rgba(92,69,204,.27);
+    box-shadow:0 7px 16px rgba(91,70,201,.23);
     font:inherit;
-    font-size:.94rem;
-    font-weight:800;
-    line-height:1;
+    font-size:1.05rem;
     cursor:pointer;
     transition:transform .18s ease, box-shadow .18s ease, opacity .18s ease;
   }
-  .conversation-send:not(:disabled):hover{ box-shadow:0 11px 22px rgba(92,69,204,.34); transform:translateY(-1px); }
-  .conversation-send:not(:disabled):active{ transform:translateY(1px) scale(.98); }
-  .conversation-send:disabled{ cursor:not-allowed; opacity:.5; box-shadow:none; }
-  .conversation-composer__error{
-    margin:8px 2px 0;
-    color:#a3294b;
-    font-size:.82rem;
-    font-weight:700;
-  }
+  .conversation-send:not(:disabled):hover{ box-shadow:0 10px 21px rgba(91,70,201,.31); transform:translateY(-1px); }
+  .conversation-send:not(:disabled):active{ transform:scale(.96); }
+  .conversation-send:disabled{ cursor:not-allowed; opacity:.48; box-shadow:none; }
+  .conversation-composer__error{ margin:8px 2px 0; color:#a3294b; font-size:.82rem; font-weight:700; }
 
   @keyframes conversation-message-in{
-    from{ opacity:0; transform:translateY(6px); }
+    from{ opacity:0; transform:translateY(5px); }
     to{ opacity:1; transform:translateY(0); }
   }
   @keyframes conversation-typing-dot{
-    0%, 65%, 100%{ opacity:.35; transform:translateY(0); }
+    0%,65%,100%{ opacity:.35; transform:translateY(0); }
     35%{ opacity:1; transform:translateY(-3px); }
   }
 
@@ -395,46 +411,67 @@
     .conversation-page{ padding:16px 22px 20px; }
     .conversation-shell{
       height:calc(100% - 36px);
-      border:1px solid rgba(97,77,171,.14);
+      border:1px solid rgba(97,77,171,.12);
       border-radius:28px;
-      box-shadow:0 22px 56px rgba(51,38,105,.12);
+      box-shadow:0 20px 52px rgba(51,38,105,.1);
     }
-    .conversation-header{ min-height:78px; padding:14px 20px; padding-left:max(20px, env(safe-area-inset-left, 0px)); padding-right:max(20px, env(safe-area-inset-right, 0px)); }
-    .conversation-scroll{ padding:26px 24px 30px; padding-left:max(24px, env(safe-area-inset-left, 0px)); padding-right:max(24px, env(safe-area-inset-right, 0px)); }
-    .conversation-composer{ padding:14px 20px calc(14px + env(safe-area-inset-bottom, 0px)); padding-left:max(20px, env(safe-area-inset-left, 0px)); padding-right:max(20px, env(safe-area-inset-right, 0px)); }
-    .conversation-message--me{ padding-left:24%; }
-    .conversation-message--other{ padding-right:18%; }
+    .conversation-header{ min-height:78px; padding:14px 20px; }
+    .conversation-item-context{ margin:14px 20px 0; }
+    .conversation-scroll{ padding:27px 25px 31px; }
+    .conversation-composer{ padding:14px 20px calc(14px + env(safe-area-inset-bottom, 0px)); }
+    .conversation-message--me{ padding-left:25%; }
+    .conversation-message--other{ padding-right:20%; }
   }
 
   @media (min-width:1100px){
     .conversation-page{ padding:24px 32px; }
-    .conversation-shell{ height:calc(100% - 48px); width:min(100%, 820px); }
-    .conversation-scroll{ padding-inline:30px; }
+    .conversation-shell{ width:min(100%,860px); height:calc(100% - 48px); }
+    .conversation-scroll{ padding-inline:31px; }
   }
 
   @media (max-width:390px){
-    .conversation-header{ gap:9px; padding-left:max(12px, env(safe-area-inset-left, 0px)); padding-right:max(12px, env(safe-area-inset-right, 0px)); }
-    .conversation-back{ width:42px; height:42px; flex-basis:42px; border-radius:13px; }
-    .conversation-avatar{ width:44px; height:44px; flex-basis:44px; }
-    .conversation-scroll{ padding:16px 12px 20px; padding-left:max(12px, env(safe-area-inset-left, 0px)); padding-right:max(12px, env(safe-area-inset-right, 0px)); }
+    .conversation-header{ gap:9px; min-height:68px; padding-left:max(12px, env(safe-area-inset-left, 0px)); padding-right:max(12px, env(safe-area-inset-right, 0px)); }
+    .conversation-back{ width:41px; height:41px; border-radius:14px; }
+    .conversation-avatar{ width:43px; height:43px; flex-basis:43px; border-radius:15px; }
+    .conversation-item-context{ grid-template-columns:57px minmax(0,1fr) auto; gap:10px; margin-inline:12px; padding:8px; border-radius:17px; }
+    .conversation-item-context__image{ width:57px; height:57px; border-radius:12px; }
+    .conversation-scroll{ padding:18px 12px 23px; padding-left:max(12px, env(safe-area-inset-left, 0px)); padding-right:max(12px, env(safe-area-inset-right, 0px)); }
     .conversation-message--me{ padding-left:8%; }
-    .conversation-message--other{ padding-right:2%; }
+    .conversation-message--other{ padding-right:3%; }
+    .conversation-message--other.conversation-message--continuation{ padding-left:38px; }
     .conversation-bubble{ max-width:84%; padding:10px 12px 8px; }
     .conversation-composer{ padding-left:max(12px, env(safe-area-inset-left, 0px)); padding-right:max(12px, env(safe-area-inset-right, 0px)); }
-    .conversation-send{ min-width:64px; padding-inline:12px; }
   }
 
   @media (max-height:520px) and (orientation:landscape){
-    .conversation-header{ min-height:62px; padding-top:8px; padding-bottom:8px; }
-    .conversation-header__eyebrow{ display:none; }
-    .conversation-avatar{ width:40px; height:40px; flex-basis:40px; }
+    .conversation-header{ min-height:58px; padding-top:8px; padding-bottom:8px; }
+    .conversation-avatar{ width:40px; height:40px; flex-basis:40px; border-radius:13px; }
+    .conversation-item-context{ margin-top:8px; padding:7px; }
+    .conversation-item-context__image{ width:49px; height:49px; }
     .conversation-composer{ padding-top:8px; padding-bottom:calc(8px + env(safe-area-inset-bottom, 0px)); }
-    .conversation-composer__input,.conversation-send{ min-height:42px; }
+    .conversation-composer__input,.conversation-send{ min-height:42px; height:42px; }
+    .conversation-send{ flex-basis:42px; width:42px; }
     .conversation-scroll{ padding-top:12px; padding-bottom:14px; }
   }
 
+  [data-theme="dark"] body[data-path^="/messages/"],
+  [data-theme="dark"] .page.page--focused-conversation{ background:#111222; }
+  [data-theme="dark"] .conversation-shell,
+  [data-theme="dark"] .conversation-scroll{ background:#151629; }
+  [data-theme="dark"] .conversation-header,
+  [data-theme="dark"] .conversation-composer,
+  [data-theme="dark"] .conversation-item-context{ background:#202136; border-color:rgba(255,255,255,.1); }
+  [data-theme="dark"] .conversation-header__name,
+  [data-theme="dark"] .conversation-item-context__title,
+  [data-theme="dark"] .conversation-empty h2{ color:#f5f3ff; }
+  [data-theme="dark"] .conversation-back{ color:#f1efff; background:#2a2b42; }
+  [data-theme="dark"] .conversation-bubble--other,
+  [data-theme="dark"] .typing-indicator__bubble{ color:#f5f3ff; background:#2a2b42; }
+  [data-theme="dark"] .conversation-composer__input{ color:#f5f3ff; background:#292a40; }
+  [data-theme="dark"] .conversation-empty{ color:#b9b4c9; background:#202136; }
+
   @media (prefers-reduced-motion:reduce){
-    .conversation-page *, .conversation-page *::before, .conversation-page *::after{
+    .page--focused-conversation *, .page--focused-conversation *::before, .page--focused-conversation *::after{
       animation-duration:.01ms !important;
       animation-iteration-count:1 !important;
       scroll-behavior:auto !important;
@@ -442,42 +479,58 @@
     }
   }
 </style>
+{% endblock %}
 
+{% block content %}
 <section class="conversation-page" aria-label="Conversation with {{ other_name or 'SEVOR member' }}">
-  <div class="conversation-shell">
+  <div class="conversation-shell{% if context_item %} conversation-shell--with-context{% endif %}">
     <header class="conversation-header">
-      <a class="conversation-back" href="/messages" aria-label="Back to messages" title="Back to messages">
-        <span aria-hidden="true">‹</span>
-      </a>
+      <a class="conversation-back" href="/messages" aria-label="Back to messages" title="Back to messages"><i class="bi bi-arrow-left" aria-hidden="true"></i></a>
       <img src="{{ other_avatar }}" class="conversation-avatar" alt="{{ (other_name or 'SEVOR member') ~ ' profile photo' }}" onerror="this.onerror=null;this.src='/static/placeholder.svg'">
       <div class="conversation-header__info">
-        <span class="conversation-header__eyebrow">Conversation</span>
         <h1 class="conversation-header__name">
           <span class="conversation-header__name-text">{{ other_name or 'SEVOR member' }}</span>
-          {% if other and other.is_verified %}
-            <img src="/static/img/violet.png" class="conversation-verified" alt="Verified account" title="Verified account">
-          {% endif %}
+          {% if other and other.is_verified %}<img src="/static/img/violet.png" class="conversation-verified" alt="Verified account" title="Verified account">{% endif %}
         </h1>
       </div>
     </header>
 
+    {% if context_item %}
+      {% set daily_price = context_item.price_per_day or context_item.price %}
+      <a class="conversation-item-context" href="/items/{{ context_item.id }}" aria-label="Open {{ item_title or context_item.title }}">
+        <img class="conversation-item-context__image" src="{{ item_image }}" alt="{{ item_title or context_item.title }}" decoding="async" onerror="this.onerror=null;this.src='/static/placeholder.svg'">
+        <span class="conversation-item-context__body">
+          <strong class="conversation-item-context__title">{{ item_title or context_item.title }}</strong>
+          <span class="conversation-item-context__meta">
+            {% if daily_price is not none %}{{ daily_price }} {{ context_item.currency or '' }}/day{% endif %}{% if context_item.city %}{% if daily_price is not none %} · {% endif %}{{ context_item.city }}{% endif %}
+          </span>
+        </span>
+        <i class="bi bi-chevron-right conversation-item-context__chevron" aria-hidden="true"></i>
+      </a>
+    {% endif %}
+
     <div class="conversation-scroll" id="chatMessages" role="log" aria-live="polite" aria-relevant="additions text">
       {% if messages|length == 0 %}
         <section id="emptyState" class="conversation-empty" aria-labelledby="emptyConversationTitle">
-          <span class="conversation-empty__icon" aria-hidden="true">✦</span>
+          <span class="conversation-empty__icon" aria-hidden="true"><i class="bi bi-chat-square-text"></i></span>
           <h2 id="emptyConversationTitle">Start the conversation</h2>
           <p>Send a message to {{ other_name or 'this SEVOR member' }} to begin.</p>
         </section>
       {% endif %}
 
-      {% for m in messages %}
-        <div class="conversation-message {% if m.sender_id == session_user.id %}conversation-message--me{% else %}conversation-message--other{% endif %}">
-          {% if m.sender_id != session_user.id %}
+      {% for message in messages %}
+        {% set is_mine = message.sender_id == session_user.id %}
+        {% set continues_previous = (not loop.first) and loop.previtem.sender_id == message.sender_id %}
+        {% if message.created_at and (loop.first or not loop.previtem.created_at or message.created_at.strftime('%Y-%m-%d') != loop.previtem.created_at.strftime('%Y-%m-%d')) %}
+          <div class="conversation-date"><span>{{ message.created_at.strftime('%b %d, %Y') }}</span></div>
+        {% endif %}
+        <div class="conversation-message {% if is_mine %}conversation-message--me{% else %}conversation-message--other{% endif %}{% if continues_previous %} conversation-message--continuation{% endif %}" data-from-me="{{ '1' if is_mine else '0' }}">
+          {% if not is_mine and not continues_previous %}
             <img src="{{ other_avatar }}" class="conversation-message__avatar" alt="" onerror="this.onerror=null;this.src='/static/placeholder.svg'">
           {% endif %}
-          <article class="conversation-bubble {% if m.sender_id == session_user.id %}conversation-bubble--me{% else %}conversation-bubble--other{% endif %}">
-            <p class="conversation-bubble__text">{{ m.body }}</p>
-            <time class="conversation-bubble__time">{{ m.created_at.strftime("%H:%M") }}</time>
+          <article class="conversation-bubble {% if is_mine %}conversation-bubble--me{% else %}conversation-bubble--other{% endif %}">
+            <p class="conversation-bubble__text">{{ message.body }}</p>
+            {% if message.created_at %}<time class="conversation-bubble__time" datetime="{{ message.created_at.isoformat() }}">{{ message.created_at.strftime('%H:%M') }}</time>{% endif %}
           </article>
         </div>
       {% endfor %}
@@ -496,10 +549,8 @@
     <form class="conversation-composer" id="conversationComposer" action="/messages/{{ thread.id }}" method="post">
       <label class="visually-hidden" for="conversationMessage">Message</label>
       <div class="conversation-composer__row">
-        <textarea id="conversationMessage" name="body" class="conversation-composer__input" rows="1" required placeholder="Write a message" aria-describedby="composerError" enterkeyhint="send"></textarea>
-        <button class="conversation-send" type="submit" disabled>
-          <span>Send</span>
-        </button>
+        <textarea id="conversationMessage" name="body" class="conversation-composer__input" rows="1" required placeholder="Type a message…" aria-describedby="composerError" enterkeyhint="send"></textarea>
+        <button class="conversation-send" type="submit" disabled aria-label="Send message"><i class="bi bi-send-fill" aria-hidden="true"></i></button>
       </div>
       <p id="composerError" class="conversation-composer__error" role="alert" hidden>Message could not be sent. Please try again.</p>
     </form>
@@ -520,11 +571,10 @@
     let lastMessageId = {{ messages[-1].id if messages else 0 }};
     let isSending = false;
 
-    if (!chatBox || !form || !input || !sendButton) return;
+    if (!chatBox || !form || !input || !sendButton || !typingMount) return;
 
-    const scrollToLatest = () => {
-      chatBox.scrollTop = chatBox.scrollHeight;
-    };
+    const scrollToLatest = () => { chatBox.scrollTop = chatBox.scrollHeight; };
+    const isNearLatest = () => chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < 88;
 
     const autoResize = () => {
       input.style.height = 'auto';
@@ -534,9 +584,7 @@
       input.style.overflowY = input.scrollHeight > maxHeight ? 'auto' : 'hidden';
     };
 
-    const updateSendState = () => {
-      sendButton.disabled = isSending || !input.value.trim();
-    };
+    const updateSendState = () => { sendButton.disabled = isSending || !input.value.trim(); };
 
     const makeAvatar = () => {
       const avatar = document.createElement('img');
@@ -550,24 +598,28 @@
       return avatar;
     };
 
+    const lastRenderedMessage = () => {
+      const rendered = chatBox.querySelectorAll('.conversation-message');
+      return rendered.length ? rendered[rendered.length - 1] : null;
+    };
+
     const createMessageElement = (message) => {
       const row = document.createElement('div');
       const fromMe = Boolean(message.from_me);
-      row.className = `conversation-message ${fromMe ? 'conversation-message--me' : 'conversation-message--other'}`;
-
-      if (!fromMe) row.appendChild(makeAvatar());
+      const previous = lastRenderedMessage();
+      const continuesPrevious = previous && previous.dataset.fromMe === (fromMe ? '1' : '0');
+      row.className = `conversation-message ${fromMe ? 'conversation-message--me' : 'conversation-message--other'}${continuesPrevious ? ' conversation-message--continuation' : ''}`;
+      row.dataset.fromMe = fromMe ? '1' : '0';
+      if (!fromMe && !continuesPrevious) row.appendChild(makeAvatar());
 
       const bubble = document.createElement('article');
       bubble.className = `conversation-bubble ${fromMe ? 'conversation-bubble--me' : 'conversation-bubble--other'}`;
-
       const body = document.createElement('p');
       body.className = 'conversation-bubble__text';
       body.textContent = message.body || '';
-
       const timestamp = document.createElement('time');
       timestamp.className = 'conversation-bubble__time';
       timestamp.textContent = message.time || '';
-
       bubble.append(body, timestamp);
       row.appendChild(bubble);
       return row;
@@ -578,11 +630,9 @@
       indicator.id = 'typingIndicator';
       indicator.className = 'typing-indicator';
       indicator.setAttribute('role', 'status');
-
       const accessibleText = document.createElement('span');
       accessibleText.className = 'visually-hidden';
       accessibleText.textContent = 'The other participant is typing';
-
       const avatar = document.createElement('img');
       avatar.className = 'typing-indicator__avatar';
       avatar.alt = '';
@@ -591,7 +641,6 @@
         avatar.onerror = null;
         avatar.src = '/static/placeholder.svg';
       }, { once: true });
-
       const bubble = document.createElement('span');
       bubble.className = 'typing-indicator__bubble';
       bubble.setAttribute('aria-hidden', 'true');
@@ -600,7 +649,6 @@
         dot.className = 'typing-indicator__dot';
         bubble.appendChild(dot);
       }
-
       indicator.append(avatar, bubble, accessibleText);
       return indicator;
     };
@@ -608,16 +656,15 @@
     const updateTypingIndicator = (isTyping) => {
       const existing = document.getElementById('typingIndicator');
       if (isTyping && !existing) {
+        const followLatest = isNearLatest();
         typingMount.appendChild(createTypingIndicator());
-        scrollToLatest();
+        if (followLatest) scrollToLatest();
       } else if (!isTyping && existing) {
         existing.remove();
       }
     };
 
-    const stopTyping = () => {
-      fetch(`/messages/${threadId}/typing`, { method: 'POST', body: '' });
-    };
+    const stopTyping = () => { fetch(`/messages/${threadId}/typing`, { method: 'POST', body: '' }); };
 
     const setConversationViewport = () => {
       const viewport = window.visualViewport;
@@ -626,9 +673,7 @@
     };
 
     input.addEventListener('input', () => {
-      if (input.value.trim().length > 0) {
-        fetch(`/messages/${threadId}/typing`, { method: 'POST' });
-      }
+      if (input.value.trim().length > 0) fetch(`/messages/${threadId}/typing`, { method: 'POST' });
       autoResize();
       updateSendState();
       if (errorMessage) errorMessage.hidden = true;
@@ -638,11 +683,8 @@
       if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
         event.preventDefault();
         if (!sendButton.disabled) {
-          if (typeof form.requestSubmit === 'function') {
-            form.requestSubmit();
-          } else {
-            form.dispatchEvent(new Event('submit', { cancelable: true }));
-          }
+          if (typeof form.requestSubmit === 'function') form.requestSubmit();
+          else form.dispatchEvent(new Event('submit', { cancelable: true }));
         }
       }
     });
@@ -651,15 +693,10 @@
       event.preventDefault();
       const text = input.value.trim();
       if (!text || isSending) return;
-
       isSending = true;
       updateSendState();
       if (errorMessage) errorMessage.hidden = true;
-
-      fetch(`/messages/${threadId}`, {
-        method: 'POST',
-        body: new FormData(form)
-      })
+      fetch(`/messages/${threadId}`, { method: 'POST', body: new FormData(form) })
         .then((response) => {
           if (!response.ok) throw new Error('Message request failed');
           if (emptyState) {
@@ -692,6 +729,7 @@
         .then((response) => response.json())
         .then((data) => {
           if (!data.messages || data.messages.length === 0) return;
+          const followLatest = isNearLatest();
           if (emptyState) {
             emptyState.remove();
             emptyState = null;
@@ -700,7 +738,7 @@
             chatBox.insertBefore(createMessageElement(message), typingMount);
             lastMessageId = message.id;
           });
-          scrollToLatest();
+          if (followLatest) scrollToLatest();
         })
         .catch(() => {});
     }, 1000);

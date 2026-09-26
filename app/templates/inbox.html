@@ -1,485 +1,644 @@
 {% extends "base.html" %}
-{% block content %}
 
+{% block head %}
 <style>
-/* --------------------------
-   HEADER + SEARCH ICON
--------------------------- */
-.inbox-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 18px;
-}
+  /* Messages inbox — route-scoped so no shared card, input, or navigation styles leak out. */
+  body[data-path="/messages"]{ background:#f7f8fc; }
 
-.inbox-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #222;
-}
-
-.search-icon-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  border: 1px solid #ddd;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 18px;
-  background: #fff;
-  cursor: pointer;
-}
-
-/* --------------------------
-   BADGE NUMBERS
--------------------------- */
-.badge {
-  background: #ff3b5c;
-  padding: 2px 7px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  color: white;
-  margin-left: 6px;
-}
-
-/* --------------------------
-   AIRBNB SEARCH OVERLAY
--------------------------- */
-.search-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.25);
-  backdrop-filter: blur(4px);
-  display: none;
-  opacity: 0;
-  transition: opacity .25s ease;
-  /* Above the sticky header and mobile navigation while search is open. */
-  z-index: 7001;
-}
-
-.search-overlay.active {
-  display: block;
-  opacity: 1;
-}
-
-.search-panel {
-  background: #fff;
-  padding: 16px;
-  border-radius: 18px;
-  margin: 20px;
-  transform: translateY(-40px);
-  opacity: 0;
-  transition: all .25s ease;
-}
-
-.search-panel.active {
-  transform: translateY(0);
-  opacity: 1;
-}
-
-.search-results-box {
-  background: #fff;
-  margin: 20px;
-  margin-top: 10px;
-  padding: 10px;
-  border-radius: 14px;
-  max-height: 60vh;
-  overflow-y: auto;
-  display: none;
-}
-
-.search-results-box.active {
-  display: block;
-}
-
-.search-input {
-  width: 100%;
-  padding: 14px 20px;
-  border-radius: 40px;
-  border: 1px solid #dcdcdc;
-  font-size: 17px;
-  background: #f7f7f7;
-}
-
-.cancel-search {
-  margin-top: 12px;
-  text-align: right;
-  font-size: 17px;
-  color: #ff385c;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* --------------------------
-   FILTER TABS
--------------------------- */
-.msg-tabs {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.msg-tabs .tab {
-  padding: 8px 18px;
-  border-radius: 30px;
-  font-size: 15px;
-  border: 1px solid #ddd;
-  cursor: pointer;
-  background: #fff;
-  color: #444;
-  transition: .25s;
-}
-
-.msg-tabs .tab.active {
-  background: linear-gradient(90deg, #8b5cf6, #5b9df9);
-  color: #fff;
-  border-color: transparent;
-}
-
-/* --------------------------
-   THREAD LIST
--------------------------- */
-.thread-row {
-  display: flex;
-  align-items: center;
-  padding: 14px 10px;
-  border-bottom: 1px solid #eee;
-  gap: 14px;
-  text-decoration: none;
-  color: inherit;
-  min-width: 0;
-}
-
-.item-preview {
-  width: 60px;
-  height: 60px;
-  border-radius: 14px;
-  overflow: hidden;
-  position: relative;
-  flex: 0 0 60px;
-}
-
-.item-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.small-avatar {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: 3px solid white;
-  overflow: hidden;
-  background: white;
-  z-index: 10;
-}
-
-.text-zone { flex: 1 1 auto; min-width: 0; }
-.msg-title,
-.msg-sub {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.msg-title { font-size: 17px; font-weight: 600; }
-.msg-sub   { font-size: 14px; color: #666; }
-.msg-date  { margin-left: auto; flex: 0 0 auto; font-size: 13px; color: #777; white-space: nowrap; }
-
-mark {
-  background: #ffe08a;
-  padding: 2px 3px;
-  border-radius: 4px;
-}
-
-/* ===== iOS APP ONLY — TOP SAFE WHITE BAR (MESSAGES PAGE) ===== */
-@supports (-webkit-touch-callout: none) {
-  @media (max-width: 768px) {
-
-    /* شريط أبيض ثابت لحماية الساعة */
-    body::before {
-      content: "";
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: env(safe-area-inset-top);
-      background: #fff;
-      z-index: 3000; /* أعلى من كل شيء */
-      pointer-events: none;
-    }
-
-    /* دفع محتوى الصفحة */
-    body {
-      padding-top: env(safe-area-inset-top);
-    }
-
-  }
-}
-
-/* Keep the filter component, rather than the page, scrollable at narrow widths. */
-@media (max-width: 360px) {
-  .msg-tabs {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 2px;
+  body[data-path="/messages"] .page{
+    box-sizing:border-box;
+    width:100%;
+    max-width:900px !important;
+    margin-inline:auto !important;
+    padding:clamp(16px, 3vw, 30px) clamp(14px, 3.5vw, 34px) calc(122px + env(safe-area-inset-bottom, 0px)) !important;
+    background:transparent;
   }
 
-  .msg-tabs .tab { flex: 0 0 auto; }
-}
+  /* The existing payout condition and destination remain untouched; this only makes the notice quieter here. */
+  body[data-path="/messages"] .page > .paypal-callout{
+    max-width:760px;
+    margin:0 auto 20px !important;
+    padding:11px 12px 11px 14px;
+    gap:12px;
+    color:#3d3657;
+    background:rgba(255,255,255,.88);
+    border:1px solid rgba(103,82,178,.14);
+    border-radius:17px;
+    box-shadow:0 8px 22px rgba(43,34,84,.055);
+    font-size:.88rem;
+    line-height:1.35;
+  }
 
-/* The overlay owns interaction while it is open; the fixed app navigation does not. */
-body.inbox-search-open .mobile-tabbar,
-body.inbox-search-open #fabAdd {
-  visibility: hidden;
-  pointer-events: none;
-}
+  body[data-path="/messages"] .page > .paypal-callout .btn{
+    flex:0 0 auto;
+    border:0;
+    border-radius:12px;
+    background:linear-gradient(135deg,#7958e8,#5996f5);
+    box-shadow:0 5px 12px rgba(92,73,201,.18);
+    font-size:.78rem;
+    font-weight:800;
+  }
 
-/* iPad Safari keeps the same single-column conversation hierarchy as phones. */
-@supports (-webkit-touch-callout: none) {
-  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
-    .inbox-header,
-    .msg-tabs,
-    .thread-row,
-    .thread-row > * {
-      min-width: 0;
-    }
+  .messages-inbox{
+    width:min(100%,760px);
+    min-width:0;
+    margin:0 auto;
+    color:#151329;
+  }
 
-    .msg-tabs {
-      flex-wrap: wrap;
-    }
+  .messages-inbox__utility{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    min-width:0;
+    margin-bottom:23px;
+  }
 
-    .thread-row .msg-title,
-    .thread-row .msg-sub {
-      overflow-wrap: anywhere;
+  .messages-inbox__brand{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    min-width:0;
+    color:#5c72ed;
+    font-size:1rem;
+    font-weight:800;
+    letter-spacing:.035em;
+    text-decoration:none;
+  }
+
+  .messages-inbox__brand img{ width:31px; height:31px; object-fit:contain; }
+
+  .messages-inbox__search-toggle,
+  .messages-search__close{
+    display:inline-grid;
+    place-items:center;
+    flex:0 0 auto;
+    width:48px;
+    height:48px;
+    padding:0;
+    color:#25213b;
+    background:rgba(255,255,255,.9);
+    border:1px solid rgba(57,47,99,.11);
+    border-radius:50%;
+    box-shadow:0 6px 18px rgba(44,35,86,.07);
+    cursor:pointer;
+    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+
+  .messages-inbox__search-toggle:hover,
+  .messages-search__close:hover{
+    border-color:rgba(100,79,207,.24);
+    box-shadow:0 9px 22px rgba(44,35,86,.12);
+    transform:translateY(-1px);
+  }
+
+  .messages-inbox__search-toggle:active,
+  .messages-search__close:active{ transform:scale(.96); }
+  .messages-inbox__search-toggle:focus-visible,
+  .messages-search__close:focus-visible,
+  .messages-filter:focus-visible,
+  .messages-search__input:focus-visible,
+  .messages-conversation:focus-visible{
+    outline:3px solid rgba(91,141,244,.32);
+    outline-offset:3px;
+  }
+
+  .messages-inbox__search-toggle .bi{ font-size:1.2rem; }
+
+  .messages-inbox__heading{ margin:0 0 22px; }
+  .messages-inbox__heading h1{
+    margin:0;
+    color:#17142d;
+    font-size:clamp(2rem, 6vw, 2.62rem);
+    font-weight:800;
+    letter-spacing:-.055em;
+    line-height:1.02;
+  }
+  .messages-inbox__heading p{
+    max-width:34rem;
+    margin:8px 0 0;
+    color:#77728a;
+    font-size:clamp(.92rem, 2.8vw,1rem);
+    line-height:1.55;
+  }
+
+  .messages-search{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:center;
+    gap:9px;
+    margin:-7px 0 17px;
+    padding:8px;
+    background:rgba(255,255,255,.78);
+    border:1px solid rgba(80,65,144,.12);
+    border-radius:20px;
+    box-shadow:0 10px 26px rgba(43,34,84,.055);
+  }
+  .messages-search[hidden]{ display:none; }
+  .messages-search__field{
+    display:flex;
+    align-items:center;
+    min-width:0;
+    gap:10px;
+    padding:0 13px;
+    color:#79718f;
+    background:#f7f7fc;
+    border:1px solid transparent;
+    border-radius:14px;
+    transition:border-color .18s ease, box-shadow .18s ease, background .18s ease;
+  }
+  .messages-search__field:focus-within{
+    background:#fff;
+    border-color:rgba(96,77,206,.36);
+    box-shadow:0 0 0 3px rgba(96,77,206,.09);
+  }
+  .messages-search__field .bi{ flex:0 0 auto; }
+  .messages-search__input{
+    width:100%;
+    min-width:0;
+    height:44px;
+    padding:0;
+    color:#201d33;
+    background:transparent;
+    border:0;
+    font:inherit;
+    font-size:.96rem;
+    outline:0;
+  }
+  .messages-search__input::placeholder{ color:#9892a7; opacity:1; }
+  .messages-search__close{ width:42px; height:42px; color:#655b83; box-shadow:none; }
+
+  .messages-filters{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    min-width:0;
+    margin:0 0 17px;
+    padding:1px 0 4px;
+    overflow-x:auto;
+    overscroll-behavior-x:contain;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+  .messages-filters::-webkit-scrollbar{ display:none; }
+  .messages-filter{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    flex:0 0 auto;
+    min-height:45px;
+    padding:0 17px;
+    color:#3e3854;
+    background:rgba(255,255,255,.82);
+    border:1px solid rgba(73,59,131,.1);
+    border-radius:999px;
+    box-shadow:0 5px 15px rgba(42,33,81,.045);
+    font:inherit;
+    font-size:.9rem;
+    font-weight:700;
+    line-height:1;
+    white-space:nowrap;
+    cursor:pointer;
+    transition:transform .18s ease, background .18s ease, color .18s ease, box-shadow .18s ease;
+  }
+  .messages-filter:hover{ background:#fff; box-shadow:0 8px 18px rgba(42,33,81,.085); transform:translateY(-1px); }
+  .messages-filter:active{ transform:scale(.98); }
+  .messages-filter[aria-selected="true"]{
+    color:#fff;
+    background:linear-gradient(135deg,#8057ec 0%,#5796f5 100%);
+    border-color:transparent;
+    box-shadow:0 8px 19px rgba(92,71,206,.25);
+  }
+  .messages-filter__logo{ width:24px; height:24px; object-fit:contain; border-radius:50%; }
+  .messages-filter__count{
+    display:inline-grid;
+    place-items:center;
+    min-width:20px;
+    height:20px;
+    padding:0 6px;
+    color:#fff;
+    background:#ef4f65;
+    border:1px solid rgba(255,255,255,.5);
+    border-radius:999px;
+    font-size:.68rem;
+    font-weight:800;
+    font-variant-numeric:tabular-nums;
+  }
+  .messages-filter__dot{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:#7158e5;
+    box-shadow:0 0 0 4px rgba(113,88,229,.1);
+  }
+  .messages-filter[aria-selected="true"] .messages-filter__dot{ background:#fff; box-shadow:0 0 0 4px rgba(255,255,255,.16); }
+
+  .messages-conversations{ display:grid; gap:10px; min-width:0; }
+  .messages-conversation{
+    display:grid;
+    grid-template-columns:72px minmax(0,1fr) auto;
+    align-items:center;
+    min-width:0;
+    gap:12px;
+    padding:10px;
+    color:inherit;
+    background:rgba(255,255,255,.9);
+    border:1px solid rgba(77,62,139,.085);
+    border-radius:21px;
+    box-shadow:0 9px 24px rgba(42,33,81,.055);
+    text-decoration:none;
+    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
+  }
+  .messages-conversation:hover{
+    background:#fff;
+    border-color:rgba(94,75,182,.17);
+    box-shadow:0 13px 27px rgba(42,33,81,.095);
+    transform:translateY(-1px);
+  }
+  .messages-conversation:active{ transform:scale(.995); }
+  .messages-conversation[hidden]{ display:none; }
+  .messages-conversation--unread{
+    border-color:rgba(100,78,208,.18);
+    background:linear-gradient(105deg,rgba(255,255,255,.98),rgba(248,248,255,.96));
+  }
+  .messages-conversation__media{ position:relative; width:72px; height:72px; overflow:visible; }
+  .messages-conversation__item-image,
+  .messages-conversation__support-image{
+    display:block;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    background:#edf0f8;
+    border-radius:17px;
+  }
+  .messages-conversation__avatar{
+    position:absolute;
+    inset-inline-start:-3px;
+    inset-block-end:-3px;
+    width:31px;
+    height:31px;
+    object-fit:cover;
+    background:#f1edff;
+    border:3px solid #fff;
+    border-radius:50%;
+    box-shadow:0 3px 8px rgba(44,34,84,.13);
+  }
+  .messages-conversation__support-image{
+    padding:13px;
+    object-fit:contain;
+    background:linear-gradient(145deg,#f3edff,#edf5ff);
+    border:1px solid rgba(100,78,208,.12);
+  }
+  .messages-conversation__content,
+  .messages-conversation__side{ min-width:0; }
+  .messages-conversation__content{ display:block; }
+  .messages-conversation__name{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    min-width:0;
+    color:#19152d;
+    font-size:1rem;
+    font-weight:800;
+    letter-spacing:-.017em;
+    line-height:1.22;
+  }
+  .messages-conversation__name-text,
+  .messages-conversation__listing,
+  .messages-conversation__preview{ display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .messages-conversation--unread .messages-conversation__name,
+  .messages-conversation--unread .messages-conversation__preview{ font-weight:800; }
+  .messages-conversation__listing{
+    margin-top:3px;
+    color:#77718b;
+    font-size:.83rem;
+    font-weight:600;
+    line-height:1.28;
+  }
+  .messages-conversation__preview{
+    margin-top:3px;
+    color:#918aa0;
+    font-size:.84rem;
+    line-height:1.28;
+  }
+  .messages-conversation__side{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    align-self:stretch;
+    gap:8px;
+    min-width:42px;
+    color:#8f899f;
+    font-size:.72rem;
+    font-weight:700;
+    line-height:1.2;
+    text-align:end;
+    white-space:nowrap;
+  }
+  .messages-conversation__date{ max-width:66px; overflow:hidden; text-overflow:ellipsis; }
+  .messages-conversation__unread{
+    display:inline-grid;
+    place-items:center;
+    min-width:24px;
+    height:24px;
+    padding:0 6px;
+    margin-top:auto;
+    color:#fff;
+    background:linear-gradient(135deg,#8057ec,#5796f5);
+    border-radius:999px;
+    box-shadow:0 5px 11px rgba(92,71,206,.24);
+    font-size:.72rem;
+    font-weight:800;
+    font-variant-numeric:tabular-nums;
+  }
+  .messages-conversation__chevron{
+    display:inline-flex;
+    align-items:center;
+    justify-content:flex-end;
+    width:24px;
+    height:22px;
+    margin-top:auto;
+    color:#716986;
+    font-size:1.1rem;
+  }
+
+  .messages-empty{
+    display:grid;
+    justify-items:center;
+    min-height:230px;
+    padding:40px 22px;
+    color:#746e87;
+    text-align:center;
+    background:rgba(255,255,255,.58);
+    border:1px dashed rgba(99,78,186,.22);
+    border-radius:24px;
+  }
+  .messages-empty[hidden]{ display:none; }
+  .messages-empty__icon{
+    display:grid;
+    place-items:center;
+    width:48px;
+    height:48px;
+    margin-bottom:13px;
+    color:#6d59db;
+    background:#efebff;
+    border-radius:16px;
+    font-size:1.25rem;
+  }
+  .messages-empty h2{ margin:0; color:#28223e; font-size:1.02rem; font-weight:800; }
+  .messages-empty p{ max-width:280px; margin:7px 0 0; font-size:.88rem; line-height:1.5; }
+
+  [data-theme="dark"] body[data-path="/messages"],
+  [data-theme="dark"] body[data-path="/messages"] .page{ background:#101223; }
+  [data-theme="dark"] .messages-inbox{ color:#f1efff; }
+  [data-theme="dark"] .messages-inbox__heading h1,
+  [data-theme="dark"] .messages-conversation__name,
+  [data-theme="dark"] .messages-empty h2{ color:#f5f3ff; }
+  [data-theme="dark"] .messages-inbox__heading p,
+  [data-theme="dark"] .messages-conversation__listing,
+  [data-theme="dark"] .messages-conversation__preview,
+  [data-theme="dark"] .messages-conversation__side,
+  [data-theme="dark"] .messages-empty{ color:#b8b2c9; }
+  [data-theme="dark"] .messages-conversation,
+  [data-theme="dark"] .messages-filter,
+  [data-theme="dark"] .messages-inbox__search-toggle,
+  [data-theme="dark"] .messages-search{ background:rgba(28,29,48,.94); border-color:rgba(255,255,255,.1); }
+  [data-theme="dark"] .messages-conversation--unread{ background:linear-gradient(105deg,rgba(35,34,59,.98),rgba(35,40,70,.97)); }
+  [data-theme="dark"] .messages-filter{ color:#e4e1f2; }
+  [data-theme="dark"] .messages-search__field{ background:rgba(255,255,255,.06); }
+  [data-theme="dark"] .messages-search__input{ color:#f3f1ff; }
+  [data-theme="dark"] .messages-empty{ background:rgba(28,29,48,.5); }
+
+  @media (min-width:769px){
+    body[data-path="/messages"] .page{ padding-top:30px !important; }
+    .messages-inbox{ width:min(100%,780px); }
+    .messages-inbox__utility{ margin-bottom:27px; justify-content:flex-end; }
+    .messages-inbox__brand{ display:none; }
+    .messages-inbox__heading{ margin-bottom:25px; }
+    .messages-conversations{ gap:12px; }
+    .messages-conversation{ grid-template-columns:78px minmax(0,1fr) auto; gap:15px; padding:12px; border-radius:23px; }
+    .messages-conversation__media{ width:78px; height:78px; }
+    .messages-conversation__item-image,
+    .messages-conversation__support-image{ border-radius:19px; }
+  }
+
+  @media (max-width:360px){
+    body[data-path="/messages"] .page{ padding-inline:12px !important; }
+    .messages-inbox__utility{ margin-bottom:19px; }
+    .messages-inbox__heading h1{ font-size:2rem; }
+    .messages-filter{ min-height:42px; padding-inline:14px; font-size:.84rem; }
+    .messages-conversation{ grid-template-columns:64px minmax(0,1fr) auto; gap:10px; padding:8px; border-radius:18px; }
+    .messages-conversation__media{ width:64px; height:64px; }
+    .messages-conversation__item-image,
+    .messages-conversation__support-image{ border-radius:15px; }
+    .messages-conversation__avatar{ width:29px; height:29px; }
+    .messages-conversation__name{ font-size:.94rem; }
+    .messages-conversation__listing,
+    .messages-conversation__preview{ font-size:.78rem; }
+    .messages-conversation__side{ min-width:36px; font-size:.66rem; }
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .messages-inbox *, .messages-inbox *::before, .messages-inbox *::after{
+      animation-duration:.01ms !important;
+      animation-iteration-count:1 !important;
+      scroll-behavior:auto !important;
+      transition-duration:.01ms !important;
     }
   }
-}
-
 </style>
+{% endblock %}
 
-<!-- HEADER -->
-<div class="inbox-header">
-  <div class="inbox-title">Messages</div>
-  <div class="search-icon-btn" id="openSearch">🔍</div>
-</div>
+{% block content %}
+{% set unread_state = namespace(total=0) %}
+{% for thread in threads %}
+  {% if thread.unread_count|default(0)|int > 0 %}
+    {% set unread_state.total = unread_state.total + 1 %}
+  {% endif %}
+{% endfor %}
+{% for ticket in chatbot_tickets %}
+  {% if ticket.unread_for_user|default(false) %}
+    {% set unread_state.total = unread_state.total + 1 %}
+  {% endif %}
+{% endfor %}
 
-<!-- FILTER TABS -->
-<div class="msg-tabs">
-  <div class="tab active" data-filter="all">Tout</div>
+<section class="messages-inbox" aria-labelledby="messagesTitle">
+  <div class="messages-inbox__utility">
+    <a class="messages-inbox__brand" href="/" aria-label="SEVOR home">
+      <img src="/static/images/ui/sevor-logo-96.png" alt="" width="31" height="31">
+      <span>SEVOR</span>
+    </a>
+    <button class="messages-inbox__search-toggle" id="openSearch" type="button" aria-label="Search conversations" aria-controls="searchPanel" aria-expanded="false">
+      <i class="bi bi-search" aria-hidden="true"></i>
+    </button>
+  </div>
 
-  <div class="tab" data-filter="support">
-    <img src="/static/images/ui/sevor-logo-96.png"
-         style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">
-    Soutien Sevor
-    {% if tickets_count > 0 %}
-      <span class="badge">{{ tickets_count }}</span>
+  <header class="messages-inbox__heading">
+    <h1 id="messagesTitle">Messages</h1>
+    <p>Stay connected. Rent, chat, get things done.</p>
+  </header>
+
+  <div class="messages-search" id="searchPanel" hidden>
+    <label class="messages-search__field" for="searchInput">
+      <i class="bi bi-search" aria-hidden="true"></i>
+      <span class="visually-hidden">Search conversations</span>
+      <input class="messages-search__input" id="searchInput" type="search" placeholder="Search conversations" autocomplete="off">
+    </label>
+    <button class="messages-search__close" id="cancelSearch" type="button" aria-label="Close search"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="messages-filters" role="tablist" aria-label="Message filters">
+    <button class="messages-filter" type="button" role="tab" data-filter="all" aria-selected="true">All</button>
+    <button class="messages-filter" type="button" role="tab" data-filter="support" aria-selected="false">
+      <img class="messages-filter__logo" src="/static/images/ui/sevor-logo-96.png" alt="">
+      <span>SEVOR Support</span>
+      {% if tickets_count > 0 %}<span class="messages-filter__count" aria-label="{{ tickets_count }} support tickets">{{ tickets_count }}</span>{% endif %}
+    </button>
+    {% if unread_state.total > 0 %}
+      <button class="messages-filter" type="button" role="tab" data-filter="unread" aria-selected="false"><span>Unread</span><span class="messages-filter__dot" aria-hidden="true"></span></button>
     {% endif %}
   </div>
-</div>
 
-<!-- THREADS LIST -->
-<div id="threadsContainer">
+  <div class="messages-conversations" id="threadsContainer">
+    <a href="/chatbot" class="messages-conversation messages-conversation--support" data-message-row data-kind="support" data-unread="0" data-search="sevor support chatbot" hidden>
+      <span class="messages-conversation__media" aria-hidden="true"><img class="messages-conversation__support-image" src="/static/images/ui/sevor-logo-96.png" alt="" loading="lazy" decoding="async"></span>
+      <span class="messages-conversation__content">
+        <span class="messages-conversation__name"><span class="messages-conversation__name-text">SEVOR Support</span></span>
+        <span class="messages-conversation__listing">Support centre</span>
+        <span class="messages-conversation__preview">Contact the SEVOR support team</span>
+      </span>
+      <span class="messages-conversation__side" aria-hidden="true"><span class="messages-conversation__chevron"><i class="bi bi-chevron-right"></i></span></span>
+    </a>
 
-  <!-- Soutien Sevor + chatbot tickets (مخفية في Tout) -->
-  <a href="/chatbot"
-     class="thread-row support-entry"
-     style="display:none">
+    {% for ticket in chatbot_tickets %}
+      {% set ticket_is_unread = ticket.unread_for_user|default(false) %}
+      <a href="/support/ticket/{{ ticket.id }}" class="messages-conversation messages-conversation--support{% if ticket_is_unread %} messages-conversation--unread{% endif %}" data-message-row data-kind="support" data-unread="{{ '1' if ticket_is_unread else '0' }}" data-search="{{ ('sevor support ticket ' ~ ticket.id ~ ' ' ~ (ticket.subject or ''))|lower }}" hidden>
+        <span class="messages-conversation__media" aria-hidden="true"><img class="messages-conversation__support-image" src="/static/images/ui/sevor-logo-96.png" alt="" loading="lazy" decoding="async"></span>
+        <span class="messages-conversation__content">
+          <span class="messages-conversation__name"><span class="messages-conversation__name-text">Ticket #{{ ticket.id }}</span></span>
+          <span class="messages-conversation__listing">SEVOR Support</span>
+          <span class="messages-conversation__preview">{{ ticket.subject or 'Chatbot request' }}</span>
+        </span>
+        <span class="messages-conversation__side">
+          {% if ticket.updated_at %}<time class="messages-conversation__date" datetime="{{ ticket.updated_at.isoformat() }}" title="{{ ticket.updated_at.strftime('%d-%m-%Y') }}">{{ ticket.updated_at.strftime('%d %b') }}</time>{% endif %}
+          {% if ticket_is_unread %}<span class="messages-conversation__unread" aria-label="Unread support ticket">•</span>{% else %}<span class="messages-conversation__chevron" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>{% endif %}
+        </span>
+      </a>
+    {% endfor %}
 
-    <div class="item-preview">
-      <img src="/static/images/ui/sevor-logo-96.png" loading="lazy" decoding="async">
-    </div>
-
-    <div class="flex-grow-1 text-zone">
-      <div class="msg-title">
-        Soutien Sevor
-        {% if tickets_count > 0 %}
-          <span class="badge">{{ tickets_count }}</span>
-        {% endif %}
-      </div>
-      <div class="msg-sub">Contactez le support Sevor</div>
-    </div>
-
-    <div class="msg-date">Maintenant</div>
-  </a>
-
-  {% for t in chatbot_tickets %}
-  <a href="/support/ticket/{{ t.id }}"
-     class="thread-row support-ticket"
-     style="display:none">
-
-    <div class="item-preview">
-      <img src="/static/images/ui/sevor-logo-96.png" loading="lazy" decoding="async">
-    </div>
-
-    <div class="flex-grow-1 text-zone">
-      <div class="msg-title">Ticket #{{ t.id }}</div>
-      <div class="msg-sub">{{ t.subject or "Chatbot Request" }}</div>
-    </div>
-
-    <div class="msg-date">{{ t.updated_at.strftime("%d-%m-%Y") }}</div>
-  </a>
-  {% endfor %}
-
-  <!-- USER THREAD MESSAGES (رسائل عادية فقط) -->
-  {% for t in threads %}
-  <a href="/messages/{{ t.id }}"
-     class="thread-row thread-item normal-card"
-     data-name="{{ t.other_fullname|lower }}"
-     data-item="{{ t.item_title|lower }}"
-     data-last="{{ t.last_message_text|lower }}">
-
-    <div class="item-preview">
-      <img src="{{ t.item_image }}" {% if loop.index > 3 %}loading="lazy"{% endif %} decoding="async">
-      <div class="small-avatar">
-        <img src="{{ t.other_avatar }}" {% if loop.index > 3 %}loading="lazy"{% endif %} decoding="async">
-      </div>
-    </div>
-
-    <div class="flex-grow-1 text-zone">
-      <div class="msg-title">{{ t.other_fullname }}</div>
-
-      {% if t.item_title %}
-      <div class="msg-sub">{{ t.item_title }}</div>
-      {% endif %}
-
-      {% if t.last_message_text %}
-      <div class="msg-sub">{{ t.last_message_text }}</div>
-      {% endif %}
-    </div>
-
-    <div class="msg-date">{{ t.last_message_at.strftime("%d-%m-%Y") }}</div>
-  </a>
-  {% endfor %}
-</div>
-
-<!-- SEARCH OVERLAY -->
-<div class="search-overlay" id="searchOverlay">
-  <div class="search-panel" id="searchPanel">
-    <input id="searchInput" class="search-input" placeholder="Search messages…">
-    <div class="cancel-search" id="cancelSearch">Annuler</div>
+    {% for thread in threads %}
+      {% set thread_is_unread = thread.unread_count|default(0)|int > 0 %}
+      <a href="/messages/{{ thread.id }}" class="messages-conversation{% if thread_is_unread %} messages-conversation--unread{% endif %}" data-message-row data-kind="normal" data-unread="{{ '1' if thread_is_unread else '0' }}" data-search="{{ (thread.other_fullname ~ ' ' ~ (thread.item_title or '') ~ ' ' ~ (thread.last_message_text or ''))|lower }}">
+        <span class="messages-conversation__media" aria-hidden="true">
+          <img class="messages-conversation__item-image" src="{{ thread.item_image }}" alt="" {% if loop.index > 3 %}loading="lazy"{% endif %} decoding="async" onerror="this.onerror=null;this.src='/static/placeholder.svg'">
+          <img class="messages-conversation__avatar" src="{{ thread.other_avatar }}" alt="" {% if loop.index > 3 %}loading="lazy"{% endif %} decoding="async" onerror="this.onerror=null;this.src='/static/placeholder.svg'">
+        </span>
+        <span class="messages-conversation__content">
+          <span class="messages-conversation__name">
+            <span class="messages-conversation__name-text">{{ thread.other_fullname }}</span>
+            {% if thread.other_verified %}<img src="/static/img/violet.png" width="17" height="17" alt="Verified account" title="Verified account">{% endif %}
+          </span>
+          {% if thread.item_title %}<span class="messages-conversation__listing">{{ thread.item_title }}</span>{% endif %}
+          {% if thread.last_message_text %}<span class="messages-conversation__preview">{{ thread.last_message_text }}</span>{% else %}<span class="messages-conversation__preview">Start the conversation</span>{% endif %}
+        </span>
+        <span class="messages-conversation__side">
+          {% if thread.last_message_at %}<time class="messages-conversation__date" datetime="{{ thread.last_message_at.isoformat() }}" title="{{ thread.last_message_at.strftime('%d-%m-%Y') }}">{{ thread.last_message_at.strftime('%d %b') }}</time>{% endif %}
+          {% if thread_is_unread %}<span class="messages-conversation__unread" aria-label="{{ thread.unread_count }} unread messages">{{ '+9' if thread.unread_count > 9 else thread.unread_count }}</span>{% else %}<span class="messages-conversation__chevron" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>{% endif %}
+        </span>
+      </a>
+    {% endfor %}
   </div>
 
-  <div class="search-results-box" id="searchResults"></div>
-</div>
+  <section class="messages-empty" id="messagesEmpty" aria-live="polite" hidden>
+    <span class="messages-empty__icon" aria-hidden="true"><i class="bi bi-chat-square-text"></i></span>
+    <h2 id="messagesEmptyTitle">No messages yet.</h2>
+    <p id="messagesEmptyCopy">Your conversations will appear here.</p>
+  </section>
+</section>
 
 <script>
-const overlay    = document.getElementById("searchOverlay");
-const panel      = document.getElementById("searchPanel");
-const resultsBox = document.getElementById("searchResults");
-const openBtn    = document.getElementById("openSearch");
-const cancelBtn  = document.getElementById("cancelSearch");
-const input      = document.getElementById("searchInput");
+  (() => {
+    const searchToggle = document.getElementById('openSearch');
+    const searchPanel = document.getElementById('searchPanel');
+    const searchInput = document.getElementById('searchInput');
+    const closeSearch = document.getElementById('cancelSearch');
+    const filters = Array.from(document.querySelectorAll('.messages-filter'));
+    const rows = Array.from(document.querySelectorAll('[data-message-row]'));
+    const emptyState = document.getElementById('messagesEmpty');
+    const emptyTitle = document.getElementById('messagesEmptyTitle');
+    const emptyCopy = document.getElementById('messagesEmptyCopy');
+    let activeFilter = 'all';
 
-const tabs          = document.querySelectorAll(".tab");
-const normalCards   = document.querySelectorAll(".normal-card");
-const supportEntry  = document.querySelector(".support-entry");
-const supportTickets= document.querySelectorAll(".support-ticket");
+    if (!searchToggle || !searchPanel || !searchInput || !closeSearch || !emptyState) return;
 
-/* OPEN SEARCH */
-openBtn.onclick = () => {
-  document.body.classList.add("inbox-search-open");
-  overlay.classList.add("active");
-  panel.classList.add("active");
-  setTimeout(() => input.focus(), 200);
-};
+    const emptyCopyFor = (filter, query) => {
+      if (query) return ['No conversations found.', 'Try another name or listing title.'];
+      if (filter === 'support') return ['No support conversations yet.', 'Your SEVOR support conversations will appear here.'];
+      if (filter === 'unread') return ['You are all caught up.', 'There are no unread conversations right now.'];
+      return ['No messages yet.', 'Your conversations will appear here.'];
+    };
 
-/* CLOSE SEARCH */
-cancelBtn.onclick = () => {
-  document.body.classList.remove("inbox-search-open");
-  overlay.classList.remove("active");
-  panel.classList.remove("active");
-  input.value = "";
-  resultsBox.innerHTML = "";
-  resultsBox.classList.remove("active");
-};
+    const applyFilters = () => {
+      const query = searchInput.value.trim().toLocaleLowerCase();
+      let visibleCount = 0;
+      rows.forEach((row) => {
+        const kind = row.dataset.kind || 'normal';
+        const unread = row.dataset.unread === '1';
+        const matchesFilter = activeFilter === 'all'
+          ? kind === 'normal'
+          : activeFilter === 'support'
+            ? kind === 'support'
+            : unread;
+        const matchesQuery = !query || (row.dataset.search || '').includes(query);
+        const shouldShow = matchesFilter && matchesQuery;
+        row.hidden = !shouldShow;
+        if (shouldShow) visibleCount += 1;
+      });
+      emptyState.hidden = visibleCount !== 0;
+      if (visibleCount === 0) {
+        const [title, copy] = emptyCopyFor(activeFilter, query);
+        emptyTitle.textContent = title;
+        emptyCopy.textContent = copy;
+      }
+    };
 
-/* SEARCH LOGIC (على الرسائل العادية فقط حالياً) */
-function highlight(text, word) {
-  if (!word) return text;
-  const re = new RegExp(`(${word})`, "gi");
-  return text.replace(re, "<mark>$1</mark>");
-}
+    const selectFilter = (filter) => {
+      activeFilter = filter;
+      filters.forEach((button) => {
+        const isActive = button.dataset.filter === filter;
+        button.setAttribute('aria-selected', String(isActive));
+      });
+      applyFilters();
+    };
 
-input.addEventListener("input", () => {
-  const q = input.value.toLowerCase().trim();
-  resultsBox.innerHTML = "";
-  if (!q) {
-    resultsBox.classList.remove("active");
-    return;
-  }
+    searchToggle.addEventListener('click', () => {
+      const isOpening = searchPanel.hidden;
+      searchPanel.hidden = !isOpening;
+      searchToggle.setAttribute('aria-expanded', String(isOpening));
+      if (isOpening) requestAnimationFrame(() => searchInput.focus());
+      else {
+        searchInput.value = '';
+        applyFilters();
+      }
+    });
 
-  let found = 0;
+    closeSearch.addEventListener('click', () => {
+      searchInput.value = '';
+      searchPanel.hidden = true;
+      searchToggle.setAttribute('aria-expanded', 'false');
+      applyFilters();
+      searchToggle.focus();
+    });
 
-  document.querySelectorAll(".thread-item").forEach(row => {
-    const name = row.dataset.name;
-    const item = row.dataset.item;
-    const last = row.dataset.last;
-
-    const match = name.includes(q) || item.includes(q) || last.includes(q);
-
-    if (match) {
-      found++;
-
-      const clone = document.createElement("div");
-      clone.className = "thread-row";
-      clone.innerHTML = row.innerHTML;
-
-      const zone  = clone.querySelector(".text-zone");
-      const title = zone.querySelector(".msg-title");
-      const subs  = zone.querySelectorAll(".msg-sub");
-
-      title.innerHTML = highlight(title.textContent, q);
-      subs.forEach(s => s.innerHTML = highlight(s.textContent, q));
-
-      clone.onclick = () => window.location = row.href;
-
-      resultsBox.appendChild(clone);
-    }
-  });
-
-  if (found > 0) {
-    resultsBox.classList.add("active");
-  } else {
-    resultsBox.classList.remove("active");
-  }
-});
-
-/* FILTER TABS: 
-   - Tout  => فقط normal-card
-   - Soutien Sevor => bot + chatbot_tickets فقط
-*/
-tabs.forEach(tab => {
-  tab.onclick = () => {
-    tabs.forEach(t => t.classList.remove("active"));
-    tab.classList.add("active");
-
-    const filter = tab.dataset.filter;
-
-    if (filter === "all") {
-      // إخفاء دعم الشات بوت
-      if (supportEntry) supportEntry.style.display = "none";
-      supportTickets.forEach(r => r.style.display = "none");
-      // إظهار الرسائل العادية فقط
-      normalCards.forEach(r => r.style.display = "flex");
-    }
-
-    else if (filter === "support") {
-      // إظهار بطاقة بوت + تذاكر الشات بوت
-      if (supportEntry) supportEntry.style.display = "flex";
-      supportTickets.forEach(r => r.style.display = "flex");
-      // إخفاء الرسائل العادية
-      normalCards.forEach(r => r.style.display = "none");
-    }
-  };
-});
+    searchInput.addEventListener('input', applyFilters);
+    searchInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeSearch.click();
+    });
+    filters.forEach((button) => {
+      button.addEventListener('click', () => selectFilter(button.dataset.filter || 'all'));
+    });
+    applyFilters();
+  })();
 </script>
-
 {% endblock %}
