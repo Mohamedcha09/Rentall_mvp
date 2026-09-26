@@ -112,11 +112,15 @@
       <section class="home-section home-featured-section">
         <div class="home-section__header">
           <h2 class="home-section__title">Featured near you</h2>
-          <a class="home-section__link" href="/items">See all <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+          <div class="home-rail-header__actions">
+            <a class="home-section__link" href="/items">See all <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+            <button class="home-rail-button" type="button" data-snap-prev="#row-featured" aria-controls="row-featured" aria-label="Previous featured listings"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
+            <button class="home-rail-button" type="button" data-snap-next="#row-featured" aria-controls="row-featured" aria-label="Next featured listings"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+          </div>
         </div>
-        <div class="home-feature-grid">
+        <div id="row-featured" class="home-rail hrow">
           {% for it in nearby %}
-            {{ listing_card(it, loop.index <= 4) }}
+            {{ listing_card(it, loop.index <= 4, true) }}
           {% endfor %}
         </div>
       </section>
