@@ -603,6 +603,7 @@
       row.addEventListener('click', (event) => {
         if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
         event.preventDefault();
+        if (row.dataset.reading === 'true') return;
         const destination = row.href;
         void markRowRead().finally(() => window.location.assign(destination));
       });
