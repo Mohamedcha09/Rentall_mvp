@@ -516,11 +516,11 @@
   }
   body[data-path="/items"] .explore-primary-tabs{
     position:sticky;
-    top:0;
+    top:env(safe-area-inset-top, 0px);
     z-index:30;
     margin:0 0 11px;
     padding:0 0 10px;
-    background:linear-gradient(180deg, #fafbff 0%, #fafbff 84%, rgba(250,251,255,0));
+    background:#fafbff;
   }
   body[data-path="/items"] .explore-heading{ margin:0 0 4px; }
   body[data-path="/items"] .explore-heading h1{
@@ -540,15 +540,17 @@
     min-height:40px;
     gap:0;
     padding:0 4px;
-    overflow:visible;
+    overflow:hidden;
     color:#28243a;
     background:transparent;
     border:0;
     border-radius:12px;
     box-shadow:none;
-    font-size:clamp(.77rem, 3vw, .94rem);
+    font-size:clamp(.72rem, 2.9vw, .94rem);
     font-weight:820;
     letter-spacing:-.025em;
+    text-overflow:ellipsis;
+    white-space:nowrap;
     transition:background-color .16s ease, color .16s ease, transform .16s ease;
   }
   body[data-path="/items"] .explore-seller .bi{ display:none; }

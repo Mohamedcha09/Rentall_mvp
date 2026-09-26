@@ -101,7 +101,9 @@
     outline-offset:-3px;
   }
   .notification-row--unread{
-    background:linear-gradient(90deg, rgba(108, 99, 255, .09), rgba(83, 154, 255, .035));
+    color:#fff;
+    background:linear-gradient(135deg, #7659f4 0%, #439af3 100%);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);
   }
   .notification-row--unread::before{
     position:absolute;
@@ -109,8 +111,24 @@
     inset-inline-start:0;
     width:3px;
     border-radius:0 99px 99px 0;
-    background:linear-gradient(180deg, #746bff, #4c9dff);
+    background:rgba(255,255,255,.82);
     content:"";
+  }
+  a.notification-row.notification-row--unread:hover{
+    color:#fff;
+    background:linear-gradient(135deg, #7659f4 0%, #439af3 100%);
+  }
+  .notification-row--unread :is(.notification-row__actor, .notification-row__title, .notification-row__body, .notification-row__footer, .notification-row__time, .notification-row__new){
+    color:#fff;
+  }
+  .notification-row--unread .notification-row__kind .bi{ color:#fff; }
+  .notification-row--unread .notification-row__new::before{
+    background:#fff;
+    box-shadow:0 0 0 3px rgba(255,255,255,.18);
+  }
+  .notification-row--unread .notification-source__badge{
+    border-color:rgba(255,255,255,.86);
+    background:rgba(28,32,96,.72);
   }
 
   .notification-source{
@@ -301,7 +319,7 @@
   }
 
   [data-theme="dark"] .notifications-surface{ box-shadow:0 18px 45px rgba(0, 0, 0, .22); }
-  [data-theme="dark"] .notification-row--unread{ background:linear-gradient(90deg, rgba(124, 113, 255, .18), rgba(83, 154, 255, .07)); }
+  [data-theme="dark"] .notification-row--unread{ background:linear-gradient(135deg, #7659f4 0%, #439af3 100%); }
   [data-theme="dark"] .notification-source__badge{ border-color:var(--surface); }
 
   @media (max-width:575px){
@@ -366,6 +384,8 @@
   const summary = document.getElementById('notificationSummary');
   const badge = document.getElementById('mNotifBadge');
   const LIST_ENDPOINTS = ['/api/notifs/list?limit=30', '/api/notifications/poll'];
+  let visibleUnreadCount = 0;
+  let visibleNotificationCount = 0;
 
   const typeMeta = (kind, title) => {
     const value = String(kind || 'system').toLowerCase();
@@ -532,6 +552,74 @@
     return source;
   };
 
+  const syncUnreadSummary = () => {
+    updateBadge(visibleUnreadCount);
+    summary.textContent = visibleUnreadCount > 0
+      ? String(visibleUnreadCount) + ' unread'
+      : (visibleNotificationCount ? 'All caught up' : 'No notifications');
+  };
+
+  const applyReadPresentation = (row) => {
+    row.classList.remove('notification-row--unread');
+    const label = row.querySelector('.notification-row__new');
+    if (label) label.remove();
+  };
+
+  const markNotificationRead = async (notificationId) => {
+    const id = Number(notificationId);
+    if (!Number.isSafeInteger(id) || id <= 0) return false;
+    try {
+      const response = await fetch('/api/notifications/' + encodeURIComponent(String(id)) + '/read', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { Accept: 'application/json' }
+      });
+      return response.ok;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  const attachReadBehavior = (row, notification) => {
+    if (notification.isRead !== false || !Number.isSafeInteger(Number(notification.id))) return;
+
+    const markRowRead = async () => {
+      if (row.dataset.reading === 'true') return false;
+      row.dataset.reading = 'true';
+      row.setAttribute('aria-busy', 'true');
+      const read = await markNotificationRead(notification.id);
+      row.dataset.reading = 'false';
+      row.removeAttribute('aria-busy');
+      if (!read) return false;
+
+      notification.isRead = true;
+      applyReadPresentation(row);
+      visibleUnreadCount = Math.max(0, visibleUnreadCount - 1);
+      syncUnreadSummary();
+      return true;
+    };
+
+    if (row instanceof HTMLAnchorElement) {
+      row.addEventListener('click', (event) => {
+        if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        const destination = row.href;
+        void markRowRead().finally(() => window.location.assign(destination));
+      });
+      return;
+    }
+
+    row.setAttribute('role', 'button');
+    row.tabIndex = 0;
+    row.setAttribute('aria-label', notification.title + '. Unread. Activate to mark as read.');
+    row.addEventListener('click', () => { void markRowRead(); });
+    row.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      row.click();
+    });
+  };
+
   const createRow = (notification) => {
     const meta = typeMeta(notification.kind, notification.title);
     const item = document.createElement('li');
@@ -589,6 +677,7 @@
     }
     content.appendChild(footer);
     row.appendChild(content);
+    attachReadBehavior(row, notification);
     item.appendChild(row);
     return item;
   };
@@ -653,23 +742,6 @@
     result.items.forEach((notification) => list.appendChild(createRow(notification)));
   };
 
-  const markRenderedRowsRead = () => {
-    list.querySelectorAll('.notification-row--unread').forEach((row) => {
-      row.classList.remove('notification-row--unread');
-      const label = row.querySelector('.notification-row__new');
-      if (label) label.remove();
-    });
-  };
-
-  async function markAllRead() {
-    try {
-      const response = await fetch('/api/notifications/mark_all_read', { method: 'POST', credentials: 'include' });
-      return response.ok;
-    } catch (_) {
-      return false;
-    }
-  }
-
   async function load() {
     renderLoading();
     summary.textContent = 'Loading notifications';
@@ -680,18 +752,10 @@
       return;
     }
     const result = normalise(data);
+    visibleUnreadCount = result.unread;
+    visibleNotificationCount = result.items.length;
     render(result);
-    updateBadge(result.unread);
-    summary.textContent = result.unread > 0
-      ? String(result.unread) + ' unread'
-      : (result.items.length ? 'All caught up' : 'No notifications');
-
-    // Preserve the page's established behavior: visiting the notification center marks all current rows as read.
-    if (await markAllRead()) {
-      markRenderedRowsRead();
-      updateBadge(0);
-      summary.textContent = result.items.length ? 'All caught up' : 'No notifications';
-    }
+    syncUnreadSummary();
   }
 
   load();
