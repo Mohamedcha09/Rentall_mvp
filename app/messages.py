@@ -337,7 +337,15 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
         if item:
             item_title = item.title or ""
             if getattr(item, "image_path", None):
-                item_image = "/" + item.image_path.replace("\\", "/")
+                # Keep hosted listing images intact; only local paths need a leading slash.
+                raw = item.image_path.strip()
+                if raw.startswith("http://") or raw.startswith("https://"):
+                    item_image = raw
+                else:
+                    raw = raw.replace("\\", "/")
+                    if not raw.startswith("/"):
+                        raw = "/" + raw
+                    item_image = raw
 
     other_avatar = _safe_url(getattr(other, "avatar_path", None))
     item_image = _safe_url(item_image)
