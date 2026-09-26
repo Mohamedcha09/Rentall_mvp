@@ -536,25 +536,27 @@
     </div>
   </header>
 
-  <header class="explore-heading">
-    <h1 id="exploreTitle">Explore</h1>
-    <p>Find, rent, and get what you need.</p>
-  </header>
+  <div class="explore-primary-tabs">
+    <header class="explore-heading">
+      <h1 id="exploreTitle">Explore</h1>
+      <p>Find, rent, and get what you need.</p>
+    </header>
 
-  <nav class="explore-sellerbar" aria-label="Seller type">
-    <a class="explore-seller" {% if (current_seller or 'all') == 'all' %}aria-current="page"{% endif %}
-       href="/items?seller=all{% if cat_q %}&amp;category={{ cat_q|urlencode }}{% endif %}{% if sub_q %}&amp;sub={{ sub_q|urlencode }}{% endif %}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">
-      <i class="bi bi-people-fill" aria-hidden="true"></i><span>All sellers</span>
-    </a>
-    <a class="explore-seller" {% if (current_seller or 'all') == 'company' %}aria-current="page"{% endif %}
-       href="/items?seller=company{% if cat_q %}&amp;category={{ cat_q|urlencode }}{% endif %}{% if sub_q %}&amp;sub={{ sub_q|urlencode }}{% endif %}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">
-      <i class="bi bi-buildings" aria-hidden="true"></i><span>Companies</span>
-    </a>
-    <a class="explore-seller" {% if (current_seller or 'all') == 'individual' %}aria-current="page"{% endif %}
-       href="/items?seller=individual{% if cat_q %}&amp;category={{ cat_q|urlencode }}{% endif %}{% if sub_q %}&amp;sub={{ sub_q|urlencode }}{% endif %}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">
-      <i class="bi bi-person" aria-hidden="true"></i><span>Individuals</span>
-    </a>
-  </nav>
+    <nav class="explore-sellerbar" aria-label="Seller type">
+      <a class="explore-seller" {% if (current_seller or 'all') == 'all' %}aria-current="page"{% endif %}
+         href="/items?seller=all{% if cat_q %}&amp;category={{ cat_q|urlencode }}{% endif %}{% if sub_q %}&amp;sub={{ sub_q|urlencode }}{% endif %}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">
+        <i class="bi bi-people-fill" aria-hidden="true"></i><span>All sellers</span>
+      </a>
+      <a class="explore-seller" {% if (current_seller or 'all') == 'company' %}aria-current="page"{% endif %}
+         href="/items?seller=company{% if cat_q %}&amp;category={{ cat_q|urlencode }}{% endif %}{% if sub_q %}&amp;sub={{ sub_q|urlencode }}{% endif %}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">
+        <i class="bi bi-buildings" aria-hidden="true"></i><span>Companies</span>
+      </a>
+      <a class="explore-seller" {% if (current_seller or 'all') == 'individual' %}aria-current="page"{% endif %}
+         href="/items?seller=individual{% if cat_q %}&amp;category={{ cat_q|urlencode }}{% endif %}{% if sub_q %}&amp;sub={{ sub_q|urlencode }}{% endif %}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">
+        <i class="bi bi-person" aria-hidden="true"></i><span>Individuals</span>
+      </a>
+    </nav>
+  </div>
 
   <nav class="explore-categories" aria-label="Categories" id="exploreCategories">
     <a class="explore-category" {% if not current_category %}aria-current="page"{% endif %}
