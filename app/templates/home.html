@@ -1374,82 +1374,98 @@ body[data-path="/"] .home-root{
 body[data-path="/"] .paypal-callout{
   width:min(calc(100% - 32px),1220px);
   margin:10px auto 16px !important;
-  padding:15px 16px !important;
-  gap:14px !important;
+  padding:10px 12px !important;
+  gap:10px !important;
   border:1px solid rgba(93,116,220,.13) !important;
-  border-radius:20px !important;
+  border-radius:17px !important;
   color:var(--home-ref-ink) !important;
   background:linear-gradient(135deg,#f0f4ff 0%,#eaf4ff 100%) !important;
-  box-shadow:0 12px 30px rgba(46,65,139,.09) !important;
+  box-shadow:0 8px 20px rgba(46,65,139,.07) !important;
 }
 body[data-path="/"] .paypal-callout.home-paypal-callout{
+  position:relative;
+  min-height:64px;
   flex-direction:row !important;
   align-items:center !important;
+  cursor:pointer;
+  text-decoration:none;
+  transition:transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+body[data-path="/"] .paypal-callout.home-paypal-callout::after{
+  content:"›";
+  flex:0 0 auto;
+  color:#5f59dc;
+  font-size:1.55rem;
+  font-weight:500;
+  line-height:1;
 }
 body[data-path="/"] .home-paypal__body{
   display:flex;
   align-items:center;
   flex:1 1 auto;
-  gap:12px;
+  gap:10px;
   min-width:0;
 }
 body[data-path="/"] .home-paypal__icon{
   display:grid;
   place-items:center;
-  flex:0 0 48px;
-  width:48px;
-  height:48px;
-  border-radius:16px;
+  flex:0 0 42px;
+  width:42px;
+  height:42px;
+  border-radius:14px;
   color:#1677db;
   background:rgba(255,255,255,.84);
-  box-shadow:0 4px 12px rgba(61,91,190,.08);
-  font-size:25px;
+  box-shadow:0 3px 9px rgba(61,91,190,.07);
+  font-size:23px;
 }
 body[data-path="/"] .home-paypal__copy{flex:1 1 auto; min-width:0;}
 body[data-path="/"] .home-paypal__title{
-  margin:0 0 2px;
+  margin:0 0 1px;
   color:var(--home-ref-ink);
-  font-size:clamp(.95rem,.91rem + .18vw,1.08rem);
+  font-size:clamp(.9rem,.87rem + .16vw,1rem);
   font-weight:800;
   letter-spacing:-.02em;
 }
 body[data-path="/"] .home-paypal__description{
   margin:0;
+  overflow:hidden;
   color:var(--home-ref-muted);
-  font-size:.84rem;
-  line-height:1.38;
+  font-size:.78rem;
+  line-height:1.25;
+  white-space:nowrap;
+  text-overflow:ellipsis;
 }
 body[data-path="/"] .paypal-callout .home-paypal__cta{
-  flex:0 0 auto;
+  position:absolute !important;
+  inset:0 !important;
+  z-index:2;
+  display:block !important;
   width:auto !important;
-  min-height:44px;
-  padding:0 17px;
-  border:0;
-  border-radius:14px;
-  color:#fff !important;
-  background:var(--home-ref-gradient) !important;
-  box-shadow:0 8px 18px rgba(84,89,242,.24) !important;
-  font-weight:800;
-  white-space:nowrap;
-  transition:transform .16s ease,box-shadow .16s ease;
+  min-height:0 !important;
+  margin:0 !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:inherit !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  color:transparent !important;
+  font-size:0 !important;
+  line-height:0 !important;
+  text-decoration:none;
 }
+body[data-path="/"] .paypal-callout .home-paypal__cta .bi{display:none;}
 @media (max-width:430px){
   body[data-path="/"] .paypal-callout.home-paypal-callout{
-    flex-direction:column !important;
-    align-items:stretch !important;
+    flex-direction:row !important;
+    align-items:center !important;
   }
-  body[data-path="/"] .paypal-callout.home-paypal-callout .home-paypal__body{width:100%;}
-  body[data-path="/"] .paypal-callout .home-paypal__cta{
-    align-self:flex-end;
-    min-height:41px;
-    padding-inline:13px;
-    font-size:.82rem;
-  }
+  body[data-path="/"] .paypal-callout.home-paypal-callout .home-paypal__body{width:auto;}
 }
 @media (hover:hover){
-  body[data-path="/"] .paypal-callout .home-paypal__cta:hover{
+  body[data-path="/"] .paypal-callout.home-paypal-callout:hover{
+    border-color:rgba(91,93,223,.24) !important;
     transform:translateY(-1px);
-    box-shadow:0 11px 22px rgba(84,89,242,.30) !important;
+    box-shadow:0 11px 23px rgba(46,65,139,.12) !important;
   }
 }
 
@@ -2074,10 +2090,10 @@ body[data-path="/"] .home-empty{
 @media (max-width:360px){
   body[data-path="/"] .home-root{padding-inline:12px;}
   body[data-path="/"] .paypal-callout{width:calc(100% - 24px); padding:12px !important; gap:10px !important;}
-  body[data-path="/"] .paypal-callout.home-paypal-callout{flex-direction:column !important; align-items:stretch !important;}
-  body[data-path="/"] .home-paypal__icon{flex-basis:41px; width:41px; height:41px; border-radius:13px; font-size:22px;}
-  body[data-path="/"] .home-paypal__description{font-size:.77rem;}
-  body[data-path="/"] .paypal-callout .home-paypal__cta{width:100% !important; min-height:40px; padding-inline:11px; font-size:.8rem;}
+  body[data-path="/"] .paypal-callout.home-paypal-callout{min-height:60px; flex-direction:row !important; align-items:center !important;}
+  body[data-path="/"] .home-paypal__icon{flex-basis:38px; width:38px; height:38px; border-radius:12px; font-size:21px;}
+  body[data-path="/"] .home-paypal__description{font-size:.73rem;}
+  body[data-path="/"] .paypal-callout .home-paypal__cta{width:auto !important; min-height:0 !important; padding:0 !important; font-size:0 !important;}
   body[data-path="/"] .home-location-search{grid-template-columns:minmax(0,1fr) auto; padding:7px;}
   body[data-path="/"] .home-location-search__submit{grid-column:1 / -1; min-height:42px; width:100%;}
   body[data-path="/"] .home-location-search #homeCityInput{height:42px; font-size:.9rem;}
@@ -2188,6 +2204,7 @@ body[data-path="/"] header.topbar #notifOpen .notif-count{
 @media (prefers-reduced-motion:reduce){
   body[data-path="/"] :is(.home-listing,.home-listing__image,.home-listing__favorite,.home-hero .carousel-control-prev,.home-hero .carousel-control-next,.paypal-callout .home-paypal__cta,#fabAdd){transition:none !important;}
   body[data-path="/"] .home-rail{scroll-behavior:auto;}
+  body[data-path="/"] .paypal-callout.home-paypal-callout{transition:none !important;}
   body[data-path="/"] header.topbar #notifOpen .notification-bell__twinkles{transition:none !important;}
   body[data-path="/"] header.topbar #notifOpen.notification-bell--unread .notification-bell__twinkle{animation:none !important; opacity:0 !important;}
 }
