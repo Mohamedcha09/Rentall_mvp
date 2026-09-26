@@ -1,668 +1,1617 @@
 {% extends "base.html" %}
 
+{% block head %}
+<style>
+  /* This route deliberately uses its own quiet, task-focused shell. */
+  body[data-path="/owner/items/new"]{
+    background:#f7f7fa !important;
+    color:#191a27;
+  }
+
+  body[data-path="/owner/items/new"] header.topbar,
+  body[data-path="/owner/items/new"] .m-top-tabs,
+  body[data-path="/owner/items/new"] nav.desk-tabs,
+  body[data-path="/owner/items/new"] .mobile-tabbar,
+  body[data-path="/owner/items/new"] .searchbar,
+  body[data-path="/owner/items/new"] .stripe-callout,
+  body[data-path="/owner/items/new"] .stripe-connect-banner,
+  body[data-path="/owner/items/new"] .payout-banner,
+  body[data-path="/owner/items/new"] .connect-banner,
+  body[data-path="/owner/items/new"] #fabAdd,
+  body[data-path="/owner/items/new"] .fab{
+    display:none !important;
+  }
+
+  body[data-path="/owner/items/new"].has-tabbar .page,
+  body[data-path="/owner/items/new"] .page{
+    min-width:0;
+    padding:
+      max(20px, calc(env(safe-area-inset-top, 0px) + 16px))
+      clamp(16px, 3vw, 32px)
+      max(32px, calc(env(safe-area-inset-bottom, 0px) + 24px)) !important;
+    background:transparent;
+  }
+
+  /* Keep the real, conditional PayPal notice, but give it supporting weight. */
+  body[data-path="/owner/items/new"] .paypal-callout{
+    width:min(100%, 960px);
+    margin:0 auto 14px !important;
+    padding:11px 12px 11px 14px;
+    border:1px solid rgba(177,130,28,.18);
+    border-radius:14px;
+    background:#fffaf0;
+    color:#684d16;
+    box-shadow:none;
+    font-size:13px;
+    line-height:1.45;
+  }
+
+  body[data-path="/owner/items/new"] .paypal-callout .btn{
+    flex:0 0 auto;
+    padding:7px 10px;
+    border:0;
+    border-radius:9px;
+    background:#24243a;
+    color:#fff;
+    box-shadow:none;
+    font-size:12px;
+    font-weight:700;
+  }
+
+  .listing-create{
+    --lc-ink:#191a27;
+    --lc-muted:#737486;
+    --lc-line:#e6e6ee;
+    --lc-panel:#ffffff;
+    --lc-purple:#7057e8;
+    --lc-blue:#4e91ee;
+    width:min(100%, 960px);
+    margin:0 auto;
+  }
+
+  .listing-create *,
+  .listing-create *::before,
+  .listing-create *::after{ box-sizing:border-box; }
+
+  .listing-create__header{
+    display:flex;
+    align-items:flex-start;
+    gap:13px;
+    margin:0 0 20px;
+  }
+
+  .listing-create__back{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    flex:0 0 auto;
+    width:42px;
+    height:42px;
+    margin-top:1px;
+    border:1px solid var(--lc-line);
+    border-radius:13px;
+    background:rgba(255,255,255,.82);
+    color:var(--lc-ink);
+    text-decoration:none;
+    transition:transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
+  }
+
+  .listing-create__back:hover{
+    border-color:#d5d5e1;
+    background:#fff;
+    color:var(--lc-ink);
+    transform:translateX(-1px);
+  }
+
+  .listing-create__back:focus-visible,
+  .listing-create__submit:focus-visible,
+  .listing-create__location-button:focus-visible,
+  .listing-create__upload-zone:focus-visible,
+  .listing-create__preview-remove:focus-visible,
+  .listing-create__control:focus-visible,
+  .listing-create__check input:focus-visible + span{
+    outline:3px solid rgba(104,101,234,.22);
+    outline-offset:2px;
+  }
+
+  .listing-create__header-copy{ min-width:0; }
+
+  .listing-create__eyebrow{
+    margin:0 0 3px;
+    color:var(--lc-purple);
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.12em;
+    line-height:1.25;
+    text-transform:uppercase;
+  }
+
+  .listing-create__header h1{
+    margin:0;
+    color:var(--lc-ink);
+    font-size:clamp(24px, 4vw, 30px);
+    font-weight:760;
+    letter-spacing:-.035em;
+    line-height:1.12;
+  }
+
+  .listing-create__header p:last-child{
+    margin:6px 0 0;
+    color:var(--lc-muted);
+    font-size:14px;
+    line-height:1.45;
+  }
+
+  .listing-create__progress{
+    display:grid;
+    grid-template-columns:repeat(4, minmax(0, 1fr));
+    gap:7px;
+    margin:0 0 14px;
+  }
+
+  .listing-create__progress-item{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    min-width:0;
+    padding:8px 9px;
+    border:1px solid rgba(226,226,235,.85);
+    border-radius:11px;
+    background:rgba(255,255,255,.54);
+    color:#76768a;
+    font-size:11px;
+    font-weight:700;
+    line-height:1;
+  }
+
+  .listing-create__progress-number{
+    color:var(--lc-purple);
+    font-size:10px;
+    font-variant-numeric:tabular-nums;
+    letter-spacing:.04em;
+  }
+
+  .listing-create__progress-label{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  .listing-create__form{
+    overflow:hidden;
+    border:1px solid var(--lc-line);
+    border-radius:24px;
+    background:var(--lc-panel);
+    box-shadow:0 18px 42px rgba(28,28,48,.045);
+  }
+
+  .listing-create__section{
+    padding:clamp(22px, 4vw, 34px);
+  }
+
+  .listing-create__section + .listing-create__section{
+    border-top:1px solid var(--lc-line);
+  }
+
+  .listing-create__section-heading{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    margin:0 0 22px;
+  }
+
+  .listing-create__section-index{
+    flex:0 0 auto;
+    padding-top:3px;
+    color:var(--lc-purple);
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.11em;
+  }
+
+  .listing-create__section-heading h2{
+    margin:0;
+    color:var(--lc-ink);
+    font-size:17px;
+    font-weight:760;
+    letter-spacing:-.017em;
+    line-height:1.25;
+  }
+
+  .listing-create__section-heading p{
+    margin:4px 0 0;
+    color:var(--lc-muted);
+    font-size:13px;
+    line-height:1.5;
+  }
+
+  .listing-create__field-grid{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:20px 16px;
+  }
+
+  .listing-create__field{ min-width:0; }
+  .listing-create__field--wide{ grid-column:1 / -1; }
+  .listing-create__field--relative{ position:relative; }
+
+  .listing-create__label{
+    display:flex;
+    align-items:baseline;
+    gap:7px;
+    margin:0 0 8px;
+    color:#2a2b3b;
+    font-size:14px;
+    font-weight:720;
+    line-height:1.3;
+  }
+
+  .listing-create__label-note{
+    color:#999aaa;
+    font-size:11px;
+    font-weight:600;
+  }
+
+  .listing-create__control{
+    display:block;
+    width:100%;
+    min-width:0;
+    min-height:50px;
+    padding:12px 13px;
+    border:1px solid #ddddE7;
+    border-radius:13px;
+    background:#fff;
+    color:var(--lc-ink);
+    font:inherit;
+    font-size:15px;
+    line-height:1.35;
+    transition:border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+  }
+
+  .listing-create__control::placeholder{ color:#a1a2b0; opacity:1; }
+
+  .listing-create__control:hover:not(:disabled){ border-color:#cfcfdc; }
+
+  .listing-create__control:focus{
+    border-color:rgba(100,101,224,.84);
+    box-shadow:0 0 0 3px rgba(100,101,224,.11);
+    outline:none;
+  }
+
+  .listing-create__control:disabled{
+    border-color:#e8e8ef;
+    background:#f5f5f8;
+    color:#9b9baa;
+    cursor:not-allowed;
+    opacity:1;
+  }
+
+  .listing-create__textarea{
+    min-height:142px;
+    resize:vertical;
+  }
+
+  .listing-create__field-meta,
+  .listing-create__helper-row{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    margin-top:7px;
+    color:var(--lc-muted);
+    font-size:12px;
+    line-height:1.45;
+  }
+
+  .listing-create__counter{
+    flex:0 0 auto;
+    color:#8a8b99;
+    font-variant-numeric:tabular-nums;
+    white-space:nowrap;
+  }
+
+  .listing-create__error{
+    display:flex;
+    align-items:flex-start;
+    gap:6px;
+    margin:8px 0 0;
+    color:#b34048;
+    font-size:12px;
+    font-weight:650;
+    line-height:1.4;
+  }
+
+  .listing-create__error i{ margin-top:1px; }
+  .listing-create__error[hidden]{ display:none; }
+
+  .listing-create__field.is-invalid .listing-create__control,
+  .listing-create__field.is-invalid .listing-create__upload-zone{
+    border-color:rgba(190,74,84,.72);
+    background:#fffafa;
+  }
+
+  .listing-create__check{
+    display:inline-flex;
+    align-items:center;
+    gap:9px;
+    margin-top:11px;
+    color:#595a69;
+    font-size:13px;
+    line-height:1.35;
+    cursor:pointer;
+  }
+
+  .listing-create__check input{
+    position:absolute;
+    width:1px;
+    height:1px;
+    overflow:hidden;
+    clip:rect(0 0 0 0);
+    clip-path:inset(50%);
+    white-space:nowrap;
+  }
+
+  .listing-create__check span{
+    position:relative;
+    flex:0 0 auto;
+    width:18px;
+    height:18px;
+    border:1px solid #cfcfdb;
+    border-radius:6px;
+    background:#fff;
+    transition:background-color 150ms ease, border-color 150ms ease;
+  }
+
+  .listing-create__check input:checked + span{
+    border-color:var(--lc-purple);
+    background:var(--lc-purple);
+  }
+
+  .listing-create__check input:checked + span::after{
+    position:absolute;
+    inset:0;
+    color:#fff;
+    content:"✓";
+    font-size:13px;
+    font-weight:800;
+    line-height:17px;
+    text-align:center;
+  }
+
+  .listing-create__location-layout{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) auto;
+    gap:10px;
+    align-items:end;
+  }
+
+  .listing-create__location-button{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    min-height:50px;
+    padding:0 14px;
+    border:1px solid #d7d7e3;
+    border-radius:13px;
+    background:#fff;
+    color:#4d4c66;
+    font:inherit;
+    font-size:13px;
+    font-weight:720;
+    white-space:nowrap;
+    transition:border-color 160ms ease, color 160ms ease, background-color 160ms ease, transform 160ms ease;
+  }
+
+  .listing-create__location-button i{ color:var(--lc-purple); }
+  .listing-create__location-button:hover:not(:disabled){ border-color:#bcbcD4; background:#fafaff; color:#34334d; }
+  .listing-create__location-button:active:not(:disabled){ transform:translateY(1px); }
+  .listing-create__location-button:disabled{ cursor:wait; opacity:.7; }
+
+  .listing-create__location-options{
+    display:flex;
+    align-items:flex-end;
+    gap:12px;
+    margin-top:12px;
+  }
+
+  .listing-create__radius{
+    width:126px;
+    flex:0 0 126px;
+  }
+
+  .listing-create__radius .listing-create__label{
+    margin-bottom:6px;
+    font-size:12px;
+  }
+
+  .listing-create__affix-input{ position:relative; }
+  .listing-create__affix-input .listing-create__control{ padding-right:42px; }
+
+  .listing-create__input-suffix{
+    position:absolute;
+    top:50%;
+    right:13px;
+    color:#8b8b99;
+    font-size:12px;
+    font-weight:700;
+    pointer-events:none;
+    transform:translateY(-50%);
+  }
+
+  .listing-create__location-status{
+    min-height:18px;
+    padding:1px 0 0;
+    color:#656677;
+    font-size:12px;
+    line-height:1.4;
+  }
+
+  .listing-create__location-status[data-state="success"]{ color:#357858; }
+  .listing-create__location-status[data-state="error"]{ color:#b34048; }
+  .listing-create__location-status[hidden]{ display:none; }
+
+  .listing-create__suggestions{
+    position:absolute;
+    z-index:30;
+    top:calc(100% - 38px);
+    right:0;
+    left:0;
+    overflow:auto;
+    max-height:262px;
+    padding:6px;
+    border:1px solid #dfdfe9;
+    border-radius:14px;
+    background:#fff;
+    box-shadow:0 18px 36px rgba(31,31,51,.12);
+  }
+
+  .listing-create__suggestions[hidden]{ display:none; }
+
+  .listing-create__suggestions-heading{
+    padding:5px 7px 6px;
+    color:#9293a1;
+    font-size:11px;
+    font-weight:750;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+  }
+
+  .listing-create__city-option{
+    display:flex;
+    width:100%;
+    gap:9px;
+    padding:9px 8px;
+    border:0;
+    border-radius:9px;
+    background:transparent;
+    color:#303142;
+    font:inherit;
+    text-align:left;
+  }
+
+  .listing-create__city-option i{ margin-top:2px; color:var(--lc-purple); }
+  .listing-create__city-option span{ display:block; min-width:0; }
+  .listing-create__city-option small{ display:block; margin-top:2px; color:#878897; font-size:11px; }
+  .listing-create__city-option:hover,
+  .listing-create__city-option.is-active{ background:#f4f2ff; }
+
+  .listing-create__price-layout{
+    display:grid;
+    grid-template-columns:minmax(0, 1.28fr) minmax(112px, .72fr);
+    gap:16px;
+  }
+
+  .listing-create__photo-note{
+    margin:0;
+    color:var(--lc-muted);
+    font-size:12px;
+    line-height:1.45;
+  }
+
+  .listing-create__upload-zone{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height:206px;
+    padding:26px 18px;
+    border:1.5px dashed #beb5ed;
+    border-radius:18px;
+    background:linear-gradient(180deg, #fff 0%, #fbfaff 100%);
+    color:var(--lc-ink);
+    cursor:pointer;
+    text-align:center;
+    transition:border-color 170ms ease, background-color 170ms ease, transform 170ms ease;
+  }
+
+  .listing-create__upload-zone:hover,
+  .listing-create__upload-zone.is-dragging{
+    border-color:#8d7ce6;
+    background:#f8f6ff;
+  }
+
+  .listing-create__upload-zone.is-dragging{ transform:scale(.995); }
+
+  .listing-create__upload-icon{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:50px;
+    height:50px;
+    margin-bottom:12px;
+    border-radius:50%;
+    background:linear-gradient(145deg, #f0edff, #eef6ff);
+    color:#685ee3;
+  }
+
+  .listing-create__upload-icon svg{ width:25px; height:25px; }
+
+  .listing-create__upload-title{
+    display:block;
+    font-size:15px;
+    font-weight:760;
+    letter-spacing:-.01em;
+  }
+
+  .listing-create__upload-copy{
+    display:block;
+    margin-top:4px;
+    color:var(--lc-muted);
+    font-size:13px;
+    line-height:1.45;
+  }
+
+  .listing-create__upload-drop{
+    display:block;
+    margin-top:8px;
+    color:#8a88a1;
+    font-size:11px;
+    font-weight:650;
+  }
+
+  .listing-create__file-input{
+    position:absolute;
+    width:1px;
+    height:1px;
+    margin:-1px;
+    overflow:hidden;
+    clip:rect(0 0 0 0);
+    clip-path:inset(50%);
+    white-space:nowrap;
+  }
+
+  .listing-create__photos-meta{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    margin-top:11px;
+  }
+
+  .listing-create__photo-count{
+    flex:0 0 auto;
+    margin:0;
+    color:#595a6a;
+    font-size:12px;
+    font-weight:760;
+    font-variant-numeric:tabular-nums;
+    white-space:nowrap;
+  }
+
+  .listing-create__preview-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(96px, 1fr));
+    gap:10px;
+    margin-top:14px;
+  }
+
+  .listing-create__preview-empty{
+    grid-column:1 / -1;
+    margin:1px 0 0;
+    color:#9696a4;
+    font-size:12px;
+    line-height:1.45;
+  }
+
+  .listing-create__preview-tile{
+    position:relative;
+    overflow:hidden;
+    aspect-ratio:1 / 1;
+    border:1px solid #e2e2ea;
+    border-radius:13px;
+    background:#f6f6fa;
+    animation:listing-preview-in 180ms ease both;
+  }
+
+  .listing-create__preview-tile img{
+    display:block;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+
+  .listing-create__preview-name{
+    position:absolute;
+    right:0;
+    bottom:0;
+    left:0;
+    overflow:hidden;
+    padding:13px 7px 6px;
+    background:linear-gradient(transparent, rgba(20,20,31,.72));
+    color:#fff;
+    font-size:10px;
+    font-weight:650;
+    text-align:left;
+    text-overflow:ellipsis;
+    text-shadow:0 1px 2px rgba(0,0,0,.22);
+    white-space:nowrap;
+  }
+
+  .listing-create__preview-remove{
+    position:absolute;
+    top:6px;
+    right:6px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:25px;
+    height:25px;
+    border:1px solid rgba(255,255,255,.72);
+    border-radius:50%;
+    background:rgba(31,31,45,.68);
+    color:#fff;
+    font-size:14px;
+    line-height:1;
+    transition:background-color 150ms ease, transform 150ms ease;
+  }
+
+  .listing-create__preview-remove:hover{ background:rgba(132,50,65,.9); transform:scale(1.05); }
+
+  .listing-create__submit-area{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:18px;
+    padding:20px clamp(22px, 4vw, 34px) 22px;
+    border-top:1px solid var(--lc-line);
+    background:#fcfcfe;
+  }
+
+  .listing-create__submit-copy{ min-width:0; }
+  .listing-create__submit-copy strong{
+    display:block;
+    color:var(--lc-ink);
+    font-size:14px;
+    font-weight:760;
+    line-height:1.35;
+  }
+
+  .listing-create__submit-copy p{
+    margin:3px 0 0;
+    color:var(--lc-muted);
+    font-size:12px;
+    line-height:1.45;
+  }
+
+  .listing-create__submit{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    flex:0 0 auto;
+    min-height:50px;
+    padding:0 18px;
+    border:0;
+    border-radius:13px;
+    background:linear-gradient(118deg, #7057e8 0%, #5e72e9 48%, #4e91ee 100%);
+    box-shadow:0 8px 17px rgba(87,91,220,.19);
+    color:#fff;
+    font:inherit;
+    font-size:14px;
+    font-weight:760;
+    letter-spacing:-.01em;
+    transition:box-shadow 160ms ease, transform 160ms ease, filter 160ms ease;
+  }
+
+  .listing-create__submit:hover:not(:disabled){ box-shadow:0 10px 20px rgba(87,91,220,.24); filter:brightness(1.015); transform:translateY(-1px); }
+  .listing-create__submit:active:not(:disabled){ box-shadow:0 5px 12px rgba(87,91,220,.18); transform:translateY(1px); }
+  .listing-create__submit:disabled{ cursor:wait; opacity:.8; }
+
+  .listing-create__submit-spinner{
+    width:14px;
+    height:14px;
+    border:2px solid rgba(255,255,255,.38);
+    border-top-color:#fff;
+    border-radius:50%;
+    animation:listing-spin .7s linear infinite;
+  }
+
+  .listing-create__submit-spinner[hidden]{ display:none; }
+
+  @keyframes listing-spin{ to{ transform:rotate(360deg); } }
+  @keyframes listing-preview-in{ from{ opacity:0; transform:translateY(3px); } to{ opacity:1; transform:translateY(0); } }
+
+  @media (max-width:680px){
+    .listing-create__field-grid{ grid-template-columns:1fr; }
+    .listing-create__field--wide{ grid-column:auto; }
+    .listing-create__location-layout{ grid-template-columns:1fr; }
+    .listing-create__location-button{ justify-self:start; }
+    .listing-create__suggestions{ top:calc(100% - 90px); }
+  }
+
+  @media (max-width:480px){
+    .listing-create__form{ border-radius:20px; }
+    .listing-create__section{ padding:22px 18px; }
+    .listing-create__submit-area{ align-items:stretch; flex-direction:column; padding:18px; }
+    .listing-create__submit{ width:100%; }
+  }
+
+  @media (max-width:360px){
+    .listing-create__progress{ gap:5px; }
+    .listing-create__progress-item{ justify-content:center; padding:8px 5px; }
+    .listing-create__progress-label{ display:none; }
+    .listing-create__price-layout{ grid-template-columns:1fr; }
+    .listing-create__photos-meta,
+    .listing-create__field-meta{ flex-direction:column; gap:4px; }
+  }
+
+  @media (min-width:681px){
+    .listing-create__section{ padding-inline:clamp(28px, 5vw, 42px); }
+    .listing-create__upload-zone{ min-height:224px; }
+  }
+
+  @media (min-width:900px){
+    body[data-path="/owner/items/new"] .page{
+      padding-top:38px !important;
+      padding-bottom:52px !important;
+    }
+    .listing-create__header{ margin-bottom:24px; }
+    .listing-create__progress{ margin-bottom:17px; }
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .listing-create *, .listing-create *::before, .listing-create *::after{
+      scroll-behavior:auto !important;
+      transition-duration:.01ms !important;
+      animation-duration:.01ms !important;
+      animation-iteration-count:1 !important;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-
-<!-- ============================
-   إخفاء عناصر الهاتف فقط
-============================ -->
-<style>
-@media (max-width: 768px) {
-
-  /* Hide all navigation bars on mobile */
-  header.topbar,
-  .m-top-tabs,
-  nav.desk-tabs,
-  .mobile-tabbar,
-  .searchbar,
-  .stripe-callout,
-  .stripe-connect-banner,
-  .payout-banner,
-  .connect-banner {
-      display: none !important;
-  }
-
-  body.has-tabbar {
-      padding-bottom: 0 !important;
-  }
-}
-</style>
-
-<style>
-/* ================================
-   خلفية ناعمة مثل Airbnb
-================================ */
-body {
-    background: #f7f7fb !important;
-}
-
-/* الحاوية */
-.container, form {
-    background: transparent !important;
-}
-
-/* ================================
-   عنوان الصفحة
-================================ */
-h2 {
-    font-size: 24px;
-    font-weight: 700;
-    margin-bottom: 18px;
-    color: #1c1c1e;
-}
-
-/* ================================
-   حقول الإدخال — Airbnb Style
-================================ */
-.form-control, .form-select, textarea {
-    background: #ffffff !important;
-    border: 1px solid rgba(0,0,0,0.08) !important;
-    border-radius: 16px !important;
-    padding: 14px 16px !important;
-    font-size: 16px !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
-    transition: all .25s ease;
-}
-
-.form-control:focus, .form-select:focus, textarea:focus {
-    border-color: #8b5cf6 !important;
-    box-shadow: 0 0 0 3px rgba(139,92,246,0.15) !important;
-    outline: none !important;
-}
-
-/* ================================
-   ليبل الحقول
-================================ */
-.form-label {
-    font-size: 15px;
-    font-weight: 600;
-    color: #2c2c2e;
-    margin-bottom: 6px;
-}
-
-/* ================================
-   زر Use my location
-================================ */
-#useMyLocNew {
-    border-radius: 14px !important;
-    padding: 6px 12px !important;
-    border: 1px solid rgba(0,0,0,0.1) !important;
-    background: #fff !important;
-    font-size: 14px;
-}
-
-#useMyLocNew:active {
-    transform: scale(0.96);
-}
-
-/* ================================
-   زرار Save — Airbnb Purple
-================================ */
-.btn-primary {
-    background: linear-gradient(135deg, #8b5cf6, #5b9df9) !important;
-    border: none !important;
-    padding: 14px 22px !important;
-    border-radius: 14px !important;
-    font-size: 16px !important;
-    font-weight: 600 !important;
-    width: 100%;
-    margin-top: 10px;
-    box-shadow: 0 4px 16px rgba(139,92,246,0.25);
-    transition: all .2s ease;
-}
-
-.btn-primary:active {
-    transform: scale(0.97);
-}
-
-/* ================================
-   زر Back
-================================ */
-.btn-outline-light {
-    border-radius: 14px !important;
-    padding: 12px 18px !important;
-    font-size: 15px !important;
-    border: 1px solid rgba(0,0,0,0.08) !important;
-    background: #fff !important;
-}
-
-/* ================================
-   الشرح تحت الحقول
-================================ */
-.text-muted {
-    color: #6b7280 !important;
-    font-size: 13px !important;
-}
-
-/* ================================
-   City Suggestions Glass
-================================ */
-#cityNewSuggest {
-    background: rgba(255,255,255,0.82) !important;
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border-radius: 14px !important;
-    border: 1px solid rgba(0,0,0,0.06);
-    box-shadow: 0 8px 18px rgba(0,0,0,0.06);
-}
-
-.city-row:hover {
-    background: rgba(139,92,246,0.08);
-}
-
-/* ================================
-   الهوامش — شكل أنيق
-================================ */
-.mb-3 {
-    margin-bottom: 22px !important;
-}
-
-/* ================================
-   تحسين spacing على الهاتف
-================================ */
-@media (max-width: 768px){
-  h2 {
-      margin-top: 12px;
-      padding-left: 4px;
-  }
-
-  form {
-      padding: 0 6px;
-  }
-
-  .city-location-controls{ flex-wrap:wrap; }
-  .city-location-controls > *{ min-height:44px; }
-  .city-location-controls #radiusNew{ flex:1 1 96px; min-width:0; max-width:100% !important; }
-}
-
-.upload-box {
-    margin-top: -14px !important;
-    border: 2px dashed rgba(139,92,246,0.45);
-    border-radius: 18px;
-    padding: 26px 14px;
-    text-align: center;
-    cursor: pointer;
-    background: rgba(255,255,255,0.6);
-}
-.btn-primary {
-    margin-top: -2px !important;
-}
-.mb-3 {
-    margin-bottom: 14px !important;
-}
-
-
-/* ===== iOS APP ONLY — TOP SAFE WHITE BAR (ADD ITEM) ===== */
-@supports (-webkit-touch-callout: none) {
-  @media (max-width: 768px) {
-
-    /* شريط أبيض ثابت تحت الساعة */
-    body::before {
-      content: "";
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: env(safe-area-inset-top);
-      background: #ffffff;
-      z-index: 9999;
-      pointer-events: none;
-    }
-
-    /* دفع الصفحة كاملة للأسفل */
-    body {
-      padding-top: env(safe-area-inset-top);
-    }
-
-  }
-}
-</style>
-
-
-<h2>Add New Item</h2>
-
-<form method="post" enctype="multipart/form-data" id="newItemForm">
-  <div class="mb-3">
-    <label class="form-label">Title</label>
-    <input type="text" name="title" class="form-control" required>
-  </div>
-
-<div class="mb-3">
-  <label class="form-label">Category</label>
-  <select class="form-select" id="catSelect" name="category" required>
-    <option value="">Select category</option>
-    {% for cat in categories %}
-      <option value="{{ cat.name }}" data-id="{{ cat.id }}">{{ cat.name }}</option>
-    {% endfor %}
-  </select>
-</div>
-
-<div class="mb-3">
-  <label class="form-label">Subcategory</label>
-  <select class="form-select" id="subSelect" name="subcategory_id" required>
-      <option value="">Select a category first</option>
-  </select>
-</div>
-
-  <div class="mb-3">
-    <label class="form-label">Description</label>
-    <textarea name="description" class="form-control" rows="4" required></textarea>
-  </div>
-
-  <div class="mb-3">
-    <label class="form-label" for="websiteUrlNew">
-      Website <span class="text-muted">(optional)</span>
-    </label>
-    <input
-      type="text"
-      name="website_url"
-      id="websiteUrlNew"
-      class="form-control"
-      placeholder="https://example.com"
-      autocomplete="url"
-      inputmode="url"
-      maxlength="2048"
-      aria-describedby="websiteHelpNew"
-    >
-    <div id="websiteHelpNew" class="form-text">
-      Add your website, or leave it blank if you do not have one.
+<article class="listing-create" aria-labelledby="listingCreateTitle">
+  <header class="listing-create__header">
+    <a class="listing-create__back" href="/owner/items" aria-label="Back to My listings">
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>
+    </a>
+    <div class="listing-create__header-copy">
+      <p class="listing-create__eyebrow">SEVOR</p>
+      <h1 id="listingCreateTitle">Create a listing</h1>
+      <p>Share what you’re ready to rent.</p>
     </div>
-    <div class="form-check mt-2">
-      <input class="form-check-input" type="checkbox" name="no_website" value="true" id="noWebsiteNew">
-      <label class="form-check-label" for="noWebsiteNew">I don't have a website</label>
-    </div>
-    {% if website_error %}
-      <div class="alert alert-danger py-2 mt-2 mb-0" role="alert">
-        Enter a valid HTTP or HTTPS website address.
+  </header>
+
+  <nav class="listing-create__progress" aria-label="Listing form sections">
+    <span class="listing-create__progress-item"><span class="listing-create__progress-number">01</span><span class="listing-create__progress-label">Details</span></span>
+    <span class="listing-create__progress-item"><span class="listing-create__progress-number">02</span><span class="listing-create__progress-label">Location</span></span>
+    <span class="listing-create__progress-item"><span class="listing-create__progress-number">03</span><span class="listing-create__progress-label">Pricing</span></span>
+    <span class="listing-create__progress-item"><span class="listing-create__progress-number">04</span><span class="listing-create__progress-label">Photos</span></span>
+  </nav>
+
+  <form method="post" enctype="multipart/form-data" id="newItemForm" class="listing-create__form" aria-label="Create a listing">
+    <section class="listing-create__section" aria-labelledby="listingAboutTitle">
+      <header class="listing-create__section-heading">
+        <span class="listing-create__section-index">01</span>
+        <div>
+          <h2 id="listingAboutTitle">About your item</h2>
+          <p>Give renters the essential details in a few clear words.</p>
+        </div>
+      </header>
+
+      <div class="listing-create__field-grid">
+        <div class="listing-create__field listing-create__field--wide" data-field>
+          <label class="listing-create__label" for="listingTitle">Title</label>
+          <input
+            class="listing-create__control"
+            type="text"
+            id="listingTitle"
+            name="title"
+            maxlength="200"
+            autocomplete="off"
+            required
+            aria-describedby="titleHelp titleError"
+            data-error-target="titleError"
+            data-error-message="Enter a clear title for your item."
+          >
+          <div class="listing-create__field-meta">
+            <span id="titleHelp">A specific name helps renters understand the item quickly.</span>
+            <span class="listing-create__counter" id="titleCount">0 / 200</span>
+          </div>
+          <p class="listing-create__error" id="titleError" role="alert" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span></span></p>
+        </div>
+
+        <div class="listing-create__field" data-field>
+          <label class="listing-create__label" for="catSelect">Category</label>
+          <select
+            class="listing-create__control"
+            id="catSelect"
+            name="category"
+            required
+            aria-describedby="categoryError"
+            data-error-target="categoryError"
+            data-error-message="Choose a category."
+          >
+            <option value="">Select category</option>
+            {% for cat in categories %}
+              <option value="{{ cat.name }}" data-id="{{ cat.id }}">{{ cat.name }}</option>
+            {% endfor %}
+          </select>
+          <p class="listing-create__error" id="categoryError" role="alert" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span></span></p>
+        </div>
+
+        <div class="listing-create__field" data-field>
+          <label class="listing-create__label" for="subSelect">Subcategory</label>
+          <select
+            class="listing-create__control"
+            id="subSelect"
+            name="subcategory_id"
+            disabled
+            aria-disabled="true"
+            aria-describedby="subcategoryHelp subcategoryError"
+            data-error-target="subcategoryError"
+            data-error-message="Choose a subcategory."
+          >
+            <option value="">Select a category first</option>
+          </select>
+          <div class="listing-create__helper-row"><span id="subcategoryHelp">Available after you choose a category.</span></div>
+          <p class="listing-create__error" id="subcategoryError" role="alert" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span></span></p>
+        </div>
+
+        <div class="listing-create__field listing-create__field--wide" data-field>
+          <label class="listing-create__label" for="listingDescription">Description</label>
+          <textarea
+            class="listing-create__control listing-create__textarea"
+            id="listingDescription"
+            name="description"
+            rows="4"
+            required
+            aria-describedby="descriptionHelp descriptionError"
+            data-error-target="descriptionError"
+            data-error-message="Add a short description for your item."
+          ></textarea>
+          <div class="listing-create__helper-row"><span id="descriptionHelp">Mention condition, what’s included, and anything renters should know.</span></div>
+          <p class="listing-create__error" id="descriptionError" role="alert" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span></span></p>
+        </div>
+
+        <div class="listing-create__field listing-create__field--wide{% if website_error %} is-invalid{% endif %}" data-field>
+          <label class="listing-create__label" for="websiteUrlNew">Website <span class="listing-create__label-note">Optional</span></label>
+          <input
+            class="listing-create__control"
+            type="text"
+            name="website_url"
+            id="websiteUrlNew"
+            placeholder="https://example.com"
+            autocomplete="url"
+            inputmode="url"
+            maxlength="2048"
+            aria-describedby="websiteHelpNew websiteErrorNew"
+            data-error-target="websiteErrorNew"
+          >
+          <div class="listing-create__helper-row"><span id="websiteHelpNew">Add your website, or leave it blank if you do not have one.</span></div>
+          <label class="listing-create__check" for="noWebsiteNew">
+            <input class="listing-create__check-input" type="checkbox" name="no_website" value="true" id="noWebsiteNew">
+            <span aria-hidden="true"></span>
+            <span>I don’t have a website</span>
+          </label>
+          <p class="listing-create__error" id="websiteErrorNew" role="alert"{% if not website_error %} hidden{% endif %}><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span>{% if website_error %}Enter a valid HTTP or HTTPS website address.{% endif %}</span></p>
+        </div>
       </div>
-    {% endif %}
-  </div>
+    </section>
 
-  <div class="row">
-    <div class="col-md-6 mb-3 position-relative">
-      <label class="form-label">City</label>
+    <section class="listing-create__section" aria-labelledby="listingLocationTitle">
+      <header class="listing-create__section-heading">
+        <span class="listing-create__section-index">02</span>
+        <div>
+          <h2 id="listingLocationTitle">Location</h2>
+          <p>Set the city or area where renters can find this item.</p>
+        </div>
+      </header>
 
-      <!-- City field -->
-      <input type="text" name="city" id="cityNew" class="form-control" placeholder="Type the city / area…" autocomplete="off" required>
+      <div class="listing-create__field listing-create__field--relative" data-field>
+        <label class="listing-create__label" for="cityNew">City or area</label>
+        <div class="listing-create__location-layout">
+          <input
+            class="listing-create__control"
+            type="text"
+            name="city"
+            id="cityNew"
+            placeholder="Type the city / area…"
+            autocomplete="off"
+            maxlength="120"
+            required
+            aria-autocomplete="list"
+            aria-controls="cityNewSuggest"
+            aria-expanded="false"
+            aria-describedby="locationHelp cityError"
+            data-error-target="cityError"
+            data-error-message="Choose a city or area."
+          >
+          <button type="button" id="useMyLocNew" class="listing-create__location-button">
+            <i class="bi bi-crosshair" aria-hidden="true"></i><span data-location-label>Use my location</span>
+          </button>
+        </div>
+        <div id="cityNewSuggest" class="listing-create__suggestions" role="listbox" aria-label="City suggestions" hidden></div>
 
-      <!-- Suggestions list -->
-      <div id="cityNewSuggest" class="border rounded mt-1 bg-white shadow-sm"
-           style="display:none; position:absolute; z-index:1000; max-height:260px; overflow:auto; inset-inline:0;"></div>
-
-      <!-- GPS + radius (optional) -->
-      <div class="d-flex gap-2 mt-2 city-location-controls">
-        <button type="button" id="useMyLocNew" class="btn btn-outline-secondary btn-sm">📍 Use my location</button>
-        <input type="number" id="radiusNew" class="form-control form-control-sm" style="max-width:110px"
-               placeholder="km" value="25" min="1">
+        <div class="listing-create__location-options">
+          <div class="listing-create__radius">
+            <label class="listing-create__label" for="radiusNew">Location radius</label>
+            <div class="listing-create__affix-input">
+              <input type="number" id="radiusNew" class="listing-create__control" placeholder="km" value="25" min="1" inputmode="numeric" aria-describedby="radiusHelp">
+              <span class="listing-create__input-suffix">km</span>
+            </div>
+          </div>
+          <p id="locationStatus" class="listing-create__location-status" role="status" aria-live="polite" hidden></p>
+        </div>
+        <div class="listing-create__helper-row"><span id="locationHelp">Pick a city from the list or use your current location. Coordinates are saved automatically when available.</span></div>
+        <div id="radiusHelp" class="visually-hidden">The current location radius defaults to 25 kilometres.</div>
+        <input type="hidden" name="latitude" id="latNew">
+        <input type="hidden" name="longitude" id="lngNew">
+        <p class="listing-create__error" id="cityError" role="alert" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span></span></p>
       </div>
-      <small class="text-muted d-block mt-1">Pick a city from the list or use your location. When selected, coordinates are saved automatically.</small>
+    </section>
 
-      <!-- Hidden coordinates -->
-      <input type="hidden" name="latitude" id="latNew">
-      <input type="hidden" name="longitude" id="lngNew">
-    </div>
+    <section class="listing-create__section" aria-labelledby="listingPricingTitle">
+      <header class="listing-create__section-heading">
+        <span class="listing-create__section-index">03</span>
+        <div>
+          <h2 id="listingPricingTitle">Pricing</h2>
+          <p>Set the daily rental price in the listing’s original currency.</p>
+        </div>
+      </header>
 
-      <!-- ▼▼ السعر + العملة ▼▼ -->
-  <div class="col-md-3 mb-3">
-    <label class="form-label">Price / day</label>
-    <input type="number" name="price" class="form-control" value="0" min="0" step="0.01" required>
-    <small class="text-muted">Amount the owner sets.</small>
-  </div>
+      <div class="listing-create__price-layout">
+        <div class="listing-create__field" data-field>
+          <label class="listing-create__label" for="priceNew">Price / day</label>
+          <div class="listing-create__affix-input">
+            <input
+              class="listing-create__control"
+              type="number"
+              name="price"
+              id="priceNew"
+              value="0"
+              min="0"
+              step="0.01"
+              inputmode="decimal"
+              required
+              aria-describedby="priceHelp priceError"
+              data-error-target="priceError"
+              data-error-message="Enter a daily price of 0 or more."
+            >
+            <span class="listing-create__input-suffix">/ day</span>
+          </div>
+          <div class="listing-create__helper-row"><span id="priceHelp">Amount the owner sets.</span></div>
+          <p class="listing-create__error" id="priceError" role="alert" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span></span></p>
+        </div>
 
-  <div class="col-md-3 mb-3">
-    <label class="form-label">Currency</label>
-    <select class="form-select" name="currency" required>
-      <option value="CAD">CAD</option>
-      <option value="USD">USD</option>
-      <option value="EUR">EUR</option>
-    </select>
-    <small class="text-muted">Required (original listing currency).</small>
-  </div>
-  <!-- ▲▲ السعر + العملة ▲▲ -->
-</div>
-<!-- Images -->
-<div class="mb-2" style="margin-top:-6px;">
-  <label class="form-label" style="margin-bottom:6px;"></label>
-
-  <div class="upload-box" onclick="document.getElementById('imgInput').click();">
-      <div class="upload-icon">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 17.58A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 4 16.25" />
-              <polyline points="12 12 12 21" />
-              <polyline points="8 17 12 21 16 17" />
-          </svg>
+        <div class="listing-create__field" data-field>
+          <label class="listing-create__label" for="currencyNew">Currency</label>
+          <select
+            class="listing-create__control"
+            id="currencyNew"
+            name="currency"
+            required
+            aria-describedby="currencyHelp currencyError"
+            data-error-target="currencyError"
+            data-error-message="Choose a currency."
+          >
+            <option value="CAD">CAD</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+          </select>
+          <div class="listing-create__helper-row"><span id="currencyHelp">Required for this listing.</span></div>
+          <p class="listing-create__error" id="currencyError" role="alert" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span></span></p>
+        </div>
       </div>
-      <div class="upload-text">Upload Images</div>
-      <div class="upload-sub">You can select up to 10 images</div>
-  </div>
+    </section>
 
-  <input 
-      type="file"
-      id="imgInput"
-      name="images"
-      accept=".jpg,.jpeg,.png,.webp"
-      multiple
-      style="display:none"
-  >
+    <section class="listing-create__section" aria-labelledby="listingPhotosTitle">
+      <header class="listing-create__section-heading">
+        <span class="listing-create__section-index">04</span>
+        <div>
+          <h2 id="listingPhotosTitle">Photos</h2>
+          <p>Clear photos make the listing easier to trust.</p>
+        </div>
+      </header>
 
-  <div id="preview" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;"></div>
-</div>
+      <div class="listing-create__field" data-field>
+        <div
+          class="listing-create__upload-zone"
+          id="uploadZone"
+          role="button"
+          tabindex="0"
+          aria-controls="imgInput"
+          aria-describedby="photosHelp photosError"
+        >
+          <span class="listing-create__upload-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 17.58A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 4 16.25"></path>
+              <path d="M12 12v9"></path>
+              <path d="m8 17 4 4 4-4"></path>
+            </svg>
+          </span>
+          <span class="listing-create__upload-title">Upload images</span>
+          <span class="listing-create__upload-copy">Choose up to 10 photos</span>
+          <span class="listing-create__upload-drop">Drop photos here or click to browse</span>
+        </div>
+        <input
+          type="file"
+          id="imgInput"
+          name="images"
+          accept=".jpg,.jpeg,.png,.webp"
+          multiple
+          required
+          class="listing-create__file-input"
+          aria-label="Choose listing photos"
+          data-error-target="photosError"
+          data-error-message="Choose at least one JPG, PNG, or WebP image."
+        >
+        <div class="listing-create__photos-meta">
+          <p class="listing-create__photo-note" id="photosHelp">JPG, PNG, or WebP. The current page selection is limited to 10 photos.</p>
+          <p class="listing-create__photo-count" id="photoCount">0 / 10 photos</p>
+        </div>
+        <p class="listing-create__error" id="photosError" role="alert" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span></span></p>
+        <div id="preview" class="listing-create__preview-grid" aria-live="polite" aria-label="Selected photo previews"></div>
+      </div>
+    </section>
 
-<script>
-document.getElementById('imgInput').addEventListener('change', function(){
-    const preview = document.getElementById('preview');
-    preview.innerHTML = '';
-
-    const files = [...this.files];
-
-    if(files.length === 0){
-        preview.innerHTML = "<div style='color:#888;font-size:14px'>Aucune image sélectionnée</div>";
-        return;
-    }
-
-    if(files.length > 10){
-        alert("Maximum 10 images");
-        this.value = "";
-        preview.innerHTML = "";
-        return;
-    }
-
-    files.forEach(file => {
-        const url = URL.createObjectURL(file);
-        const img = document.createElement('img');
-        img.src = url;
-        img.style.width = "95px";
-        img.style.height = "95px";
-        img.style.objectFit = "cover";
-        img.style.borderRadius = "12px";
-        img.style.border = "1px solid rgba(0,0,0,0.08)";
-        preview.appendChild(img);
-    });
-});
-
-(function(){
-    const website = document.getElementById('websiteUrlNew');
-    const noWebsite = document.getElementById('noWebsiteNew');
-    if (!website || !noWebsite) return;
-
-    function syncWebsiteInput(){
-        website.disabled = noWebsite.checked;
-        website.setAttribute('aria-disabled', String(noWebsite.checked));
-        if (noWebsite.checked) website.value = '';
-    }
-
-    noWebsite.addEventListener('change', syncWebsiteInput);
-    syncWebsiteInput();
-})();
-</script>
-
-
-<style>
-.upload-box{
-    border: 2px dashed rgba(139,92,246,0.45);
-    border-radius: 18px;
-    padding: 28px 14px;
-    text-align: center;
-    cursor: pointer;
-    background: rgba(255,255,255,0.6);
-    transition: .25s ease;
-}
-.upload-box:hover{
-    background: rgba(139,92,246,0.06);
-}
-.upload-icon{
-    font-size: 38px;
-    color: #8b5cf6;
-    margin-bottom: 6px;
-}
-.upload-text{
-    font-size: 17px;
-    font-weight: 600;
-    color: #1c1c1e;
-}
-.upload-sub{
-    font-size: 13px;
-    color: #6b7280;
-}
-</style>
-
-<style>
-/* iPad: keep the add-item flow touch-first, with readable tablet-width fields. */
-@supports (-webkit-touch-callout: none) {
-  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
-    body[data-path="/owner/items/new"] header.topbar,
-    body[data-path="/owner/items/new"] .m-top-tabs.d-lg-none,
-    body[data-path="/owner/items/new"] nav.desk-tabs,
-    body[data-path="/owner/items/new"] .mobile-tabbar.d-lg-none,
-    body[data-path="/owner/items/new"] .searchbar,
-    body[data-path="/owner/items/new"] .stripe-callout,
-    body[data-path="/owner/items/new"] .stripe-connect-banner,
-    body[data-path="/owner/items/new"] .payout-banner,
-    body[data-path="/owner/items/new"] .connect-banner{
-      display:none !important;
-    }
-    body.has-tabbar{padding-bottom:0 !important;}
-    body{padding-top:env(safe-area-inset-top,0px);}
-    .page > h2,
-    .page > form{
-      width:100%;
-      max-width:920px;
-      margin-inline:auto;
-    }
-    .page > h2{padding-inline:20px;margin-top:20px;}
-    .page > form{padding:0 20px 36px;}
-    .page > form > .row{--bs-gutter-x:16px;--bs-gutter-y:0;}
-    .page > form > .row > .col-md-6{
-      flex:0 0 100%;
-      width:100%;
-    }
-    .page > form > .row > .col-md-3{
-      flex:0 0 50%;
-      width:50%;
-    }
-    .city-location-controls{flex-wrap:wrap;}
-    .city-location-controls > *{min-height:44px;}
-    .city-location-controls #radiusNew{
-      flex:1 1 120px;
-      min-width:0;
-      max-width:100% !important;
-    }
-    #preview{gap:12px !important;}
-    @media (orientation:landscape){
-      .page > h2,
-      .page > form{max-width:1020px;}
-      .page > form{padding-inline:28px;}
-    }
-  }
-}
-</style>
-
-
-  <button class="btn btn-primary" style="margin-top:6px;">Save</button>
-</form>
-
+    <footer class="listing-create__submit-area">
+      <div class="listing-create__submit-copy">
+        <strong>Ready to submit?</strong>
+        <p>Your listing will be submitted for review before it appears on SEVOR.</p>
+      </div>
+      <button class="listing-create__submit" type="submit" id="submitListingButton">
+        <span data-submit-label>Submit listing for review</span>
+        <span class="listing-create__submit-spinner" data-submit-spinner hidden aria-hidden="true"></span>
+      </button>
+    </footer>
+  </form>
+</article>
 {% endblock %}
 
 {% block scripts %}
 <script>
-/* ============ GPS button as-is ============ */
-(function(){
-  const btn = document.getElementById('useMyLocNew');
-  const latEl = document.getElementById('latNew');
-  const lngEl = document.getElementById('lngNew');
-  const radEl = document.getElementById('radiusNew');
+(() => {
+  'use strict';
 
-  function setCookie(name, value, days=180){
-    try{
-      const d=new Date(); d.setTime(d.getTime()+days*864e5);
-      document.cookie = name+"="+encodeURIComponent(value||"")+";expires="+d.toUTCString()+";path=/;SameSite=Lax";
-    }catch(_){}
+  const form = document.getElementById('newItemForm');
+  if (!form) return;
+
+  const titleInput = document.getElementById('listingTitle');
+  const titleCount = document.getElementById('titleCount');
+  const catSelect = document.getElementById('catSelect');
+  const subSelect = document.getElementById('subSelect');
+  const websiteInput = document.getElementById('websiteUrlNew');
+  const noWebsite = document.getElementById('noWebsiteNew');
+  const cityInput = document.getElementById('cityNew');
+  const cityPanel = document.getElementById('cityNewSuggest');
+  const latInput = document.getElementById('latNew');
+  const lngInput = document.getElementById('lngNew');
+  const locationButton = document.getElementById('useMyLocNew');
+  const locationButtonLabel = locationButton?.querySelector('[data-location-label]');
+  const locationStatus = document.getElementById('locationStatus');
+  const radiusInput = document.getElementById('radiusNew');
+  const imageInput = document.getElementById('imgInput');
+  const uploadZone = document.getElementById('uploadZone');
+  const preview = document.getElementById('preview');
+  const photoCount = document.getElementById('photoCount');
+  const submitButton = document.getElementById('submitListingButton');
+  const submitLabel = submitButton?.querySelector('[data-submit-label]');
+  const submitSpinner = submitButton?.querySelector('[data-submit-spinner]');
+  const subcatsMap = {{ subcats_map | tojson }};
+
+  const MAX_CLIENT_IMAGES = 10;
+  const allowedImageExtensions = new Set(['jpg', 'jpeg', 'png', 'webp']);
+  let selectedFiles = [];
+  let previewUrls = [];
+  let canManageFileList = false;
+  let isSubmitting = false;
+
+  function getField(input) {
+    return input?.closest('[data-field]');
   }
 
-  btn?.addEventListener('click', function(){
-    if(!navigator.geolocation){ alert('Your browser does not support geolocation.'); return; }
-    const r = radEl?.value || "25";
-    navigator.geolocation.getCurrentPosition(function(pos){
-      const {latitude, longitude} = pos.coords;
-      if (latEl) latEl.value = latitude;
-      if (lngEl) lngEl.value = longitude;
-      setCookie('radius_km', r);
-      alert('Your location (coordinates) has been saved for this listing.');
-    }, function(){ alert('Could not get your location.'); });
-  });
-})();
-
-/* ============ City Autocomplete ============ */
-(function cityNewAutocomplete(){
-  const input = document.getElementById('cityNew');
-  const panel = document.getElementById('cityNewSuggest');
-  const latEl = document.getElementById('latNew');
-  const lonEl = document.getElementById('lngNew');
-  const form  = document.getElementById('newItemForm');
-  if(!input || !panel) return;
-
-  let tm=null, lastList=[], active=-1;
-
-  function detectLang(q){
-    const s = (q||'').trim();
-    if (/[\u0600-\u06FF]/.test(s)) return 'ar';
-    const hasFrMarks = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(s);
-    const frWords = /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(s);
-    const enWords = /\b(new|city|county|state|united|kingdom|usa|us|uk)\b/i.test(s);
-    if (hasFrMarks || frWords) return 'fr';
-    if (enWords) return 'en';
-    const prefs = (navigator.languages || [navigator.language||'en']).map(x=>x.slice(0,2).toLowerCase());
-    if (prefs.includes('fr')) return 'fr';
-    if (prefs.includes('en')) return 'en';
-    if (prefs.includes('ar')) return 'ar';
-    return 'en';
+  function getErrorElement(input) {
+    return input?.dataset.errorTarget ? document.getElementById(input.dataset.errorTarget) : null;
   }
 
-  function esc(s){ return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
-  function hide(){ panel.style.display='none'; panel.innerHTML=''; active=-1; lastList=[]; }
-  function show(){ panel.style.display='block'; }
-
-  const ALLOWED = new Set(['city','town','village','municipality']);
-  const FALLBACK = new Set(['state','province']);
-  function normalizePlace(p){
-    const a = p.address || {};
-    const type = (p.type || '').toLowerCase();
-    const cc = (a.country_code || '').toLowerCase();
-    const city = a.city || a.town || a.village || a.municipality || a.state || a.province || (p.display_name||'').split(',')[0];
-    const prioMap = {city:1, town:2, village:3, municipality:3, state:6, province:6, administrative:8, county:8, region:8};
-    const prio = prioMap[type] ?? 9;
-    const country = a.country || '';
-    return { city, country, cc, label: city + (country ? ', ' + country : ''), lat:p.lat, lon:p.lon, type, prio };
+  function showFieldError(input, message) {
+    const field = getField(input);
+    const error = getErrorElement(input);
+    field?.classList.add('is-invalid');
+    input?.setAttribute('aria-invalid', 'true');
+    if (!error) return;
+    const copy = error.querySelector('span');
+    if (copy) copy.textContent = message;
+    error.hidden = false;
   }
-  function dedupeByCountry(list){
-    const best = new Map();
-    for(const raw of list){
-      const n = normalizePlace(raw);
-      if (!n.city || !n.cc) continue;
-      const key = n.city.trim().toLowerCase() + '|' + n.cc;
-      const prev = best.get(key);
-      if (!prev || n.prio < prev.prio) best.set(key, n);
+
+  function clearFieldError(input) {
+    const field = getField(input);
+    const error = getErrorElement(input);
+    field?.classList.remove('is-invalid');
+    input?.removeAttribute('aria-invalid');
+    if (!error) return;
+    const copy = error.querySelector('span');
+    if (copy) copy.textContent = '';
+    error.hidden = true;
+  }
+
+  function updateTitleCount() {
+    if (!titleInput || !titleCount) return;
+    titleCount.textContent = `${titleInput.value.length} / 200`;
+  }
+
+  updateTitleCount();
+  titleInput?.addEventListener('input', updateTitleCount);
+
+  form.addEventListener('invalid', (event) => {
+    const control = event.target;
+    if (!(control instanceof HTMLElement) || !control.dataset.errorTarget) return;
+    const message = control.dataset.errorMessage || 'Check this field and try again.';
+    showFieldError(control, message);
+    if (control === imageInput) {
+      window.setTimeout(() => uploadZone?.focus(), 0);
     }
-    return Array.from(best.values());
-  }
+  }, true);
 
-  async function query(q){
-    const lang = detectLang(q);
-    const url = 'https://nominatim.openstreetmap.org/search'
-              + '?format=json&addressdetails=1&limit=30&accept-language=' + encodeURIComponent(lang)
-              + '&q=' + encodeURIComponent(q);
-    const r = await fetch(url, {headers:{'Accept':'application/json'}});
-    if(!r.ok) return [];
-    const data = await r.json();
-    let filtered = data.filter(x => ALLOWED.has((x.type||'').toLowerCase()));
-    if (!filtered.length) filtered = data.filter(x => FALLBACK.has((x.type||'').toLowerCase()));
-    if (!filtered.length) filtered = data;
-    return dedupeByCountry(filtered);
-  }
-
-  function render(list){
-    if(!Array.isArray(list) || !list.length){ hide(); return; }
-    lastList = list.slice(0,8);
-    const html = [
-      '<div class="px-2 py-1 small text-muted border-bottom">Cities/Areas</div>',
-      ...lastList.map((p,i)=>(
-        '<div class="py-2 px-2 d-flex gap-2 align-items-start city-row" data-i="'+i+'" style="cursor:pointer">'
-        + '<i class="bi bi-geo-alt"></i>'
-        + '<div><div>'+esc(p.label)+'</div><div class="text-muted small">lat '+esc(p.lat)+' — lon '+esc(p.lon)+'</div></div>'
-        + '</div>'
-      ))
-    ].join('');
-    panel.innerHTML = html; show(); active=-1;
-  }
-
-  function pick(i){
-    const p = lastList[i]; if(!p) return;
-    input.value = p.label;
-    if (latEl) latEl.value = p.lat || '';
-    if (lonEl) lonEl.value = p.lon || '';
-    hide();
-  }
-
-  input.addEventListener('input', function(){
-    clearTimeout(tm);
-    const q = input.value.trim();
-    latEl.value = ''; lonEl.value = '';
-    if (q.length < 2){ hide(); return; }
-    tm = setTimeout(async ()=>{ try{ const list = await query(q); render(list); }catch(_){ hide(); } }, 220);
+  form.querySelectorAll('[data-error-target]').forEach((control) => {
+    const clearWhenValid = () => {
+      if ('validity' in control && control.validity.valid) clearFieldError(control);
+    };
+    control.addEventListener('input', clearWhenValid);
+    control.addEventListener('change', clearWhenValid);
   });
 
-  panel.addEventListener('click', function(e){
-    const row = e.target.closest('.city-row'); if(!row) return;
-    pick(Number(row.getAttribute('data-i')||'-1'));
-  });
-
-  // Arrows + Enter
-  input.addEventListener('keydown', function(e){
-    if (panel.style.display !== 'block') return;
-    const rows = Array.prototype.slice.call(panel.querySelectorAll('.city-row'));
-    if (!rows.length) return;
-    if (e.key === 'ArrowDown'){ e.preventDefault(); active = (active+1) % rows.length; markActive(rows); }
-    else if (e.key === 'ArrowUp'){ e.preventDefault(); active = (active-1+rows.length) % rows.length; markActive(rows); }
-    else if (e.key === 'Enter'){ e.preventDefault(); if (active>=0) rows[active].click(); }
-    else if (e.key === 'Escape'){ hide(); }
-  });
-  function markActive(rows){
-    rows.forEach(r=>r.classList.remove('bg-light'));
-    if (active>=0 && rows[active]){
-      rows[active].classList.add('bg-light');
-      rows[active].scrollIntoView({block:'nearest'});
+  function syncWebsiteInput() {
+    if (!websiteInput || !noWebsite) return;
+    const disabled = noWebsite.checked;
+    websiteInput.disabled = disabled;
+    websiteInput.setAttribute('aria-disabled', String(disabled));
+    if (disabled) {
+      websiteInput.value = '';
+      clearFieldError(websiteInput);
     }
   }
 
-  // Close on outside click
-  document.addEventListener('click', (e)=>{
-    if (!panel.contains(e.target) && e.target !== input){
-      hide();
+  noWebsite?.addEventListener('change', syncWebsiteInput);
+  syncWebsiteInput();
+
+  function updateSubcategories() {
+    if (!catSelect || !subSelect) return;
+    const selectedOption = catSelect.options[catSelect.selectedIndex];
+    const categoryId = selectedOption?.dataset.id || '';
+    const subcategories = Array.isArray(subcatsMap[categoryId]) ? subcatsMap[categoryId] : [];
+
+    subSelect.replaceChildren();
+    if (!categoryId) {
+      subSelect.append(new Option('Select a category first', ''));
+      subSelect.disabled = true;
+      subSelect.required = false;
+      subSelect.setAttribute('aria-disabled', 'true');
+      clearFieldError(subSelect);
+      return;
     }
+
+    if (!subcategories.length) {
+      subSelect.append(new Option('No subcategories available', ''));
+      subSelect.disabled = true;
+      subSelect.required = false;
+      subSelect.setAttribute('aria-disabled', 'true');
+      clearFieldError(subSelect);
+      return;
+    }
+
+    subSelect.append(new Option('Select subcategory', ''));
+    subcategories.forEach((subcategory) => {
+      subSelect.append(new Option(subcategory.name, String(subcategory.id)));
+    });
+    subSelect.disabled = false;
+    subSelect.required = true;
+    subSelect.setAttribute('aria-disabled', 'false');
+  }
+
+  catSelect?.addEventListener('change', updateSubcategories);
+  updateSubcategories();
+
+  function setLocationStatus(message, state) {
+    if (!locationStatus) return;
+    locationStatus.textContent = message;
+    locationStatus.dataset.state = state || '';
+    locationStatus.hidden = !message;
+  }
+
+  function setCookie(name, value, days = 180) {
+    try {
+      const date = new Date();
+      date.setTime(date.getTime() + days * 864e5);
+      document.cookie = `${name}=${encodeURIComponent(value || '')};expires=${date.toUTCString()};path=/;SameSite=Lax`;
+    } catch (_) {
+      // A location lookup should still work if storage is unavailable.
+    }
+  }
+
+  locationButton?.addEventListener('click', () => {
+    if (!navigator.geolocation) {
+      setLocationStatus('Your browser does not support geolocation. Choose a city instead.', 'error');
+      return;
+    }
+
+    locationButton.disabled = true;
+    if (locationButtonLabel) locationButtonLabel.textContent = 'Finding you…';
+    setLocationStatus('Finding your current location…', '');
+
+    const radius = radiusInput?.value || '25';
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        if (latInput) latInput.value = latitude;
+        if (lngInput) lngInput.value = longitude;
+        setCookie('radius_km', radius);
+        setLocationStatus('Location added. Coordinates will be saved with this listing.', 'success');
+        locationButton.disabled = false;
+        if (locationButtonLabel) locationButtonLabel.textContent = 'Use my location';
+      },
+      () => {
+        setLocationStatus('We couldn’t get your location. You can still choose a city.', 'error');
+        locationButton.disabled = false;
+        if (locationButtonLabel) locationButtonLabel.textContent = 'Use my location';
+      }
+    );
   });
 
-})();
-</script>
+  (function setupCityAutocomplete() {
+    if (!cityInput || !cityPanel) return;
 
-<script>
-const subcatsMap = {{ subcats_map | tojson }};
-const catSelect  = document.getElementById('catSelect');
-const subSelect  = document.getElementById('subSelect');
+    let timer = null;
+    let suggestions = [];
+    let activeIndex = -1;
 
-catSelect.addEventListener('change', function() {
-    const catId = this.options[this.selectedIndex].dataset.id;
-    subSelect.innerHTML = "";
+    function detectLanguage(query) {
+      const value = (query || '').trim();
+      if (/[\u0600-\u06FF]/.test(value)) return 'ar';
+      const hasFrenchMarks = /[àâçéèêëîïôûùüÿœæÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆ]/.test(value);
+      const hasFrenchWords = /\b(le|la|les|de|des|du|aux|au|à|sur|saint|sainte|chez)\b/i.test(value);
+      const hasEnglishWords = /\b(new|city|county|state|united|kingdom|usa|us|uk)\b/i.test(value);
+      if (hasFrenchMarks || hasFrenchWords) return 'fr';
+      if (hasEnglishWords) return 'en';
+      const languages = (navigator.languages || [navigator.language || 'en']).map((language) => language.slice(0, 2).toLowerCase());
+      if (languages.includes('fr')) return 'fr';
+      if (languages.includes('en')) return 'en';
+      if (languages.includes('ar')) return 'ar';
+      return 'en';
+    }
 
-    if (!catId || !subcatsMap[catId] || subcatsMap[catId].length === 0) {
-        subSelect.innerHTML = `<option value="">No subcategories</option>`;
+    function escapeHtml(value) {
+      return String(value || '').replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[character]);
+    }
+
+    function normalisePlace(place) {
+      const address = place.address || {};
+      const type = (place.type || '').toLowerCase();
+      const countryCode = (address.country_code || '').toLowerCase();
+      const city = address.city || address.town || address.village || address.municipality || address.state || address.province || (place.display_name || '').split(',')[0];
+      const priorityMap = { city:1, town:2, village:3, municipality:3, state:6, province:6, administrative:8, county:8, region:8 };
+      return {
+        city,
+        country:address.country || '',
+        countryCode,
+        label:city + (address.country ? `, ${address.country}` : ''),
+        lat:place.lat,
+        lon:place.lon,
+        priority:priorityMap[type] ?? 9
+      };
+    }
+
+    function dedupePlaces(list) {
+      const best = new Map();
+      list.forEach((place) => {
+        const normalised = normalisePlace(place);
+        if (!normalised.city || !normalised.countryCode) return;
+        const key = `${normalised.city.trim().toLowerCase()}|${normalised.countryCode}`;
+        const existing = best.get(key);
+        if (!existing || normalised.priority < existing.priority) best.set(key, normalised);
+      });
+      return Array.from(best.values());
+    }
+
+    async function queryCities(query) {
+      const language = detectLanguage(query);
+      const url = 'https://nominatim.openstreetmap.org/search'
+        + '?format=json&addressdetails=1&limit=30&accept-language=' + encodeURIComponent(language)
+        + '&q=' + encodeURIComponent(query);
+      const response = await fetch(url, { headers:{ Accept:'application/json' } });
+      if (!response.ok) return [];
+      const places = await response.json();
+      const cityTypes = new Set(['city', 'town', 'village', 'municipality']);
+      const fallbackTypes = new Set(['state', 'province']);
+      let filtered = places.filter((place) => cityTypes.has((place.type || '').toLowerCase()));
+      if (!filtered.length) filtered = places.filter((place) => fallbackTypes.has((place.type || '').toLowerCase()));
+      if (!filtered.length) filtered = places;
+      return dedupePlaces(filtered);
+    }
+
+    function hideSuggestions() {
+      cityPanel.hidden = true;
+      cityPanel.innerHTML = '';
+      cityInput.setAttribute('aria-expanded', 'false');
+      activeIndex = -1;
+      suggestions = [];
+    }
+
+    function renderSuggestions(list) {
+      if (!Array.isArray(list) || !list.length) {
+        hideSuggestions();
         return;
+      }
+      suggestions = list.slice(0, 8);
+      const content = [
+        '<div class="listing-create__suggestions-heading">Cities / areas</div>',
+        ...suggestions.map((place, index) => (
+          `<button type="button" class="listing-create__city-option city-row" role="option" aria-selected="false" data-index="${index}">`
+          + '<i class="bi bi-geo-alt" aria-hidden="true"></i>'
+          + `<span>${escapeHtml(place.label)}<small>lat ${escapeHtml(place.lat)} — lon ${escapeHtml(place.lon)}</small></span>`
+          + '</button>'
+        ))
+      ].join('');
+      cityPanel.innerHTML = content;
+      cityPanel.hidden = false;
+      cityInput.setAttribute('aria-expanded', 'true');
+      activeIndex = -1;
     }
 
-    let opts = `<option value="">Select subcategory</option>`;
-    subcatsMap[catId].forEach(sc => {
-        opts += `<option value="${sc.id}">${sc.name}</option>`;
+    function chooseSuggestion(index) {
+      const place = suggestions[index];
+      if (!place) return;
+      cityInput.value = place.label;
+      if (latInput) latInput.value = place.lat || '';
+      if (lngInput) lngInput.value = place.lon || '';
+      clearFieldError(cityInput);
+      hideSuggestions();
+    }
+
+    function markActive(rows) {
+      rows.forEach((row, index) => {
+        const active = index === activeIndex;
+        row.classList.toggle('is-active', active);
+        row.setAttribute('aria-selected', String(active));
+      });
+      if (activeIndex >= 0 && rows[activeIndex]) rows[activeIndex].scrollIntoView({ block:'nearest' });
+    }
+
+    cityInput.addEventListener('input', () => {
+      window.clearTimeout(timer);
+      const query = cityInput.value.trim();
+      if (latInput) latInput.value = '';
+      if (lngInput) lngInput.value = '';
+      if (query.length < 2) {
+        hideSuggestions();
+        return;
+      }
+      timer = window.setTimeout(async () => {
+        try {
+          renderSuggestions(await queryCities(query));
+        } catch (_) {
+          hideSuggestions();
+        }
+      }, 220);
     });
 
-    subSelect.innerHTML = opts;
-});
+    cityPanel.addEventListener('click', (event) => {
+      const option = event.target.closest('[data-index]');
+      if (!option) return;
+      chooseSuggestion(Number(option.dataset.index || '-1'));
+    });
+
+    cityInput.addEventListener('keydown', (event) => {
+      if (cityPanel.hidden) return;
+      const rows = Array.from(cityPanel.querySelectorAll('[data-index]'));
+      if (!rows.length) return;
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        activeIndex = (activeIndex + 1) % rows.length;
+        markActive(rows);
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        activeIndex = (activeIndex - 1 + rows.length) % rows.length;
+        markActive(rows);
+      } else if (event.key === 'Enter' && activeIndex >= 0) {
+        event.preventDefault();
+        chooseSuggestion(activeIndex);
+      } else if (event.key === 'Escape') {
+        hideSuggestions();
+      }
+    });
+
+    document.addEventListener('pointerdown', (event) => {
+      if (!cityPanel.contains(event.target) && event.target !== cityInput) hideSuggestions();
+    });
+  })();
+
+  function getFileExtension(file) {
+    const match = String(file?.name || '').toLowerCase().match(/\.([a-z0-9]+)$/);
+    return match ? match[1] : '';
+  }
+
+  function revokePreviewUrls() {
+    previewUrls.forEach((url) => URL.revokeObjectURL(url));
+    previewUrls = [];
+  }
+
+  function updatePhotoCount() {
+    if (photoCount) photoCount.textContent = `${selectedFiles.length} / ${MAX_CLIENT_IMAGES} photos`;
+  }
+
+  function renderPreviews() {
+    if (!preview) return;
+    revokePreviewUrls();
+    preview.replaceChildren();
+    updatePhotoCount();
+
+    if (!selectedFiles.length) {
+      const empty = document.createElement('p');
+      empty.className = 'listing-create__preview-empty';
+      empty.textContent = 'Your selected photos will appear here.';
+      preview.append(empty);
+      return;
+    }
+
+    selectedFiles.forEach((file, index) => {
+      const tile = document.createElement('div');
+      tile.className = 'listing-create__preview-tile';
+      const image = document.createElement('img');
+      const url = URL.createObjectURL(file);
+      previewUrls.push(url);
+      image.src = url;
+      image.alt = `Selected image ${index + 1}`;
+      image.decoding = 'async';
+      tile.append(image);
+
+      const name = document.createElement('span');
+      name.className = 'listing-create__preview-name';
+      name.textContent = file.name;
+      tile.append(name);
+
+      if (canManageFileList) {
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'listing-create__preview-remove';
+        remove.setAttribute('aria-label', `Remove ${file.name}`);
+        remove.innerHTML = '<i class="bi bi-x-lg" aria-hidden="true"></i>';
+        remove.addEventListener('click', () => {
+          selectedFiles = selectedFiles.filter((_, fileIndex) => fileIndex !== index);
+          if (!writeSelectedFiles()) return;
+          clearFieldError(imageInput);
+          renderPreviews();
+        });
+        tile.append(remove);
+      }
+
+      preview.append(tile);
+    });
+  }
+
+  function writeSelectedFiles() {
+    if (!canManageFileList || !imageInput) return false;
+    try {
+      const transfer = new DataTransfer();
+      selectedFiles.forEach((file) => transfer.items.add(file));
+      imageInput.files = transfer.files;
+      return true;
+    } catch (_) {
+      canManageFileList = false;
+      return false;
+    }
+  }
+
+  function restoreOrClearInput() {
+    if (canManageFileList && writeSelectedFiles()) return;
+    selectedFiles = [];
+    if (imageInput) imageInput.value = '';
+  }
+
+  function rejectFiles(message) {
+    restoreOrClearInput();
+    showFieldError(imageInput, message);
+    renderPreviews();
+  }
+
+  function applyFiles(fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) {
+      selectedFiles = [];
+      if (canManageFileList) writeSelectedFiles();
+      clearFieldError(imageInput);
+      renderPreviews();
+      return;
+    }
+
+    if (files.length > MAX_CLIENT_IMAGES) {
+      rejectFiles(`Choose up to ${MAX_CLIENT_IMAGES} photos for this listing.`);
+      return;
+    }
+
+    if (files.some((file) => !allowedImageExtensions.has(getFileExtension(file)))) {
+      rejectFiles('Use JPG, PNG, or WebP images only.');
+      return;
+    }
+
+    selectedFiles = files;
+    if (canManageFileList && !writeSelectedFiles()) {
+      selectedFiles = [];
+      if (imageInput) imageInput.value = '';
+      showFieldError(imageInput, 'Your browser could not prepare these photos. Please choose them again.');
+      renderPreviews();
+      return;
+    }
+    clearFieldError(imageInput);
+    renderPreviews();
+  }
+
+  if (imageInput && uploadZone) {
+    try {
+      canManageFileList = typeof DataTransfer !== 'undefined' && Boolean(new DataTransfer());
+    } catch (_) {
+      canManageFileList = false;
+    }
+
+    uploadZone.addEventListener('click', () => imageInput.click());
+    uploadZone.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      imageInput.click();
+    });
+    imageInput.addEventListener('change', () => applyFiles(imageInput.files));
+
+    const desktopDropSupported = canManageFileList && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    if (desktopDropSupported) {
+      ['dragenter', 'dragover'].forEach((eventName) => {
+        uploadZone.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          uploadZone.classList.add('is-dragging');
+        });
+      });
+      ['dragleave', 'drop'].forEach((eventName) => {
+        uploadZone.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          uploadZone.classList.remove('is-dragging');
+        });
+      });
+      uploadZone.addEventListener('drop', (event) => applyFiles(event.dataTransfer?.files));
+    } else {
+      uploadZone.querySelector('.listing-create__upload-drop')?.remove();
+    }
+  }
+
+  renderPreviews();
+  window.addEventListener('pagehide', revokePreviewUrls, { once:true });
+
+  form.addEventListener('submit', (event) => {
+    if (isSubmitting) {
+      event.preventDefault();
+      return;
+    }
+    if (!form.checkValidity()) return;
+    isSubmitting = true;
+    form.setAttribute('aria-busy', 'true');
+    if (submitButton) submitButton.disabled = true;
+    if (submitLabel) submitLabel.textContent = 'Submitting…';
+    if (submitSpinner) submitSpinner.hidden = false;
+  });
+})();
 </script>
 {% endblock %}
