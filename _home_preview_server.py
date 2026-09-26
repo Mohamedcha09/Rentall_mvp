@@ -2,7 +2,7 @@
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from types import SimpleNamespace
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 import sys
 
 ROOT = Path(__file__).resolve().parent
@@ -52,6 +52,12 @@ def render_home() -> str:
     )
     nearby = [listing(index) for index in range(1, 7)]
     template = env.get_template("home.html")
+    banner_dir = ROOT / "app" / "static" / "img" / "banners"
+    banner_paths = sorted(
+        path for path in banner_dir.iterdir()
+        if path.is_file() and path.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}
+    )[:2]
+    banners = [f"/static/img/banners/{quote(path.name)}" for path in banner_paths]
     return template.render(
         request=request,
         title="Home preview",
@@ -78,7 +84,7 @@ def render_home() -> str:
         nearby_items=nearby,
         items_by_category={"Tools": [listing(index) for index in range(7, 12)]},
         all_items=[listing(index) for index in range(12, 24)],
-        banners=["/static/img/11.jpg", "/static/img/12.jpg"],
+        banners=banners,
         top_strip_cols=[[], [], []],
         selected_city="Toronto",
         lat=None,
