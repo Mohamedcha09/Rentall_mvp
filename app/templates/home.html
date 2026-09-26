@@ -2,6 +2,11 @@
 {% extends "base.html" %}
 
 {% block head %}
+{% if banners and banners|length > 0 %}
+<link rel="preload" as="image"
+      href="{{ banners[0]|replace('res.cloudinary.com/de79qzfog/image/upload/', 'res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_1200/') }}"
+      fetchpriority="high">
+{% endif %}
 <style>
 /* =========================================
    Slider & section basics
@@ -997,6 +1002,295 @@
   }
 }
 
+/* ========================================================================
+   HOME V2 — late, Home-scoped polish. Shared pages continue to use base.html.
+   ======================================================================== */
+body[data-path="/"]{
+  --home-accent:#6c63ff;
+  --home-ink:#172033;
+  --home-muted:#667085;
+  --home-line:rgba(26,32,44,.10);
+  --home-ease:cubic-bezier(.2,.7,.2,1);
+}
+
+/* Preserve the familiar top search while improving hierarchy and focus. */
+body[data-path="/"] header.topbar .searchbar-wrap{
+  min-height:46px;
+  border-color:rgba(30,41,59,.12);
+  box-shadow:0 5px 18px rgba(15,23,42,.055);
+  transition:border-color .18s var(--home-ease), box-shadow .18s var(--home-ease), background-color .18s var(--home-ease);
+}
+body[data-path="/"] header.topbar .searchbar-wrap:focus-within{
+  border-color:color-mix(in srgb, var(--home-accent) 48%, #fff);
+  box-shadow:0 0 0 3px rgba(108,99,255,.13),0 7px 22px rgba(15,23,42,.08);
+}
+body[data-path="/"] header.topbar .searchbar .field,
+body[data-path="/"] header.topbar .searchbar input{ min-width:0; }
+body[data-path="/"] header.topbar .searchbar input{ font-weight:500; text-overflow:ellipsis; }
+body[data-path="/"] .m-top-tabs{ gap:clamp(18px,6vw,30px); border-color:rgba(26,32,44,.08); }
+body[data-path="/"] .m-top-tabs .m-tab{ min-height:44px; padding-inline:4px; letter-spacing:-.01em; }
+
+/* The base-owned PayPal callout is polished only when it appears on Home. */
+body[data-path="/"] .paypal-callout{
+  gap:14px;
+  padding:13px 14px;
+  border:1px solid rgba(177,114,0,.18);
+  border-radius:15px;
+  color:#5c4300;
+  background:linear-gradient(135deg,rgba(255,247,221,.96),rgba(255,252,241,.96));
+  box-shadow:0 8px 22px rgba(97,68,0,.06);
+}
+body[data-path="/"] .paypal-callout > div{ min-width:0; }
+body[data-path="/"] .paypal-callout .btn{
+  flex:0 0 auto;
+  min-height:40px;
+  padding-inline:14px;
+  border-radius:10px;
+  font-weight:800;
+  box-shadow:0 5px 13px rgba(108,99,255,.18);
+}
+
+/* Retain the existing carousel and ratio; improve image treatment and controls. */
+body[data-path="/"] .hero-carousel{
+  isolation:isolate;
+  border:1px solid rgba(15,23,42,.08);
+  background:linear-gradient(135deg,#f3f4fb,#e9edf8);
+  box-shadow:0 14px 32px rgba(15,23,42,.10);
+}
+body[data-path="/"] .hero-carousel .carousel-item{ background:#eef1f7; }
+body[data-path="/"] .hero-carousel .carousel-item img{
+  object-fit:cover;
+  background:linear-gradient(135deg,#eff1f8,#e5e9f4);
+}
+body[data-path="/"] :is(.hero-carousel,.top-strip) img.is-fallback{
+  object-fit:contain !important;
+  padding:18%;
+  background:#f0efff;
+}
+body[data-path="/"] :is(.hero-carousel,.top-strip){ --bs-carousel-transition:transform .52s var(--home-ease); }
+body[data-path="/"] :is(.hero-carousel,.top-strip) :is(.carousel-control-prev,.carousel-control-next){
+  top:50%; bottom:auto;
+  width:42px; height:42px;
+  border:1px solid rgba(255,255,255,.55);
+  border-radius:50%;
+  background:rgba(17,24,39,.42);
+  box-shadow:0 5px 14px rgba(15,23,42,.18);
+  opacity:.88;
+  transform:translateY(-50%);
+  transition:transform .16s var(--home-ease),opacity .16s var(--home-ease),background-color .16s var(--home-ease);
+}
+body[data-path="/"] :is(.hero-carousel,.top-strip) .carousel-control-prev{ left:12px; }
+body[data-path="/"] :is(.hero-carousel,.top-strip) .carousel-control-next{ right:12px; }
+@media (hover:hover){
+  body[data-path="/"] :is(.hero-carousel,.top-strip) :is(.carousel-control-prev,.carousel-control-next){ opacity:0; }
+  body[data-path="/"] :is(.hero-carousel,.top-strip):hover :is(.carousel-control-prev,.carousel-control-next),
+  body[data-path="/"] :is(.hero-carousel,.top-strip) :is(.carousel-control-prev,.carousel-control-next):focus-visible{ opacity:1; }
+  body[data-path="/"] :is(.hero-carousel,.top-strip) :is(.carousel-control-prev,.carousel-control-next):hover{
+    background:rgba(17,24,39,.62);
+    transform:translateY(-50%) scale(1.04);
+  }
+}
+
+/* Location controls: high contrast without the per-control blur/shadow cost. */
+body[data-path="/"] .home-locbar.locbar--compact{
+  border-color:var(--home-line) !important;
+  background:#fff !important;
+  color:var(--home-ink) !important;
+  box-shadow:0 8px 22px rgba(15,23,42,.06) !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+body[data-path="/"] .home-locbar #homeCityInput{
+  color:var(--home-ink) !important;
+  background:#f8f9fd !important;
+  border-color:rgba(30,41,59,.12) !important;
+}
+body[data-path="/"] .home-locbar #homeCityInput::placeholder{ color:#8791a2 !important; }
+body[data-path="/"] .home-locbar #homeCityInput:focus{
+  background:#fff !important;
+  border-color:rgba(108,99,255,.54) !important;
+  box-shadow:0 0 0 3px rgba(108,99,255,.13) !important;
+}
+body[data-path="/"] #homeUseGPS{
+  background:#f8f9fd !important;
+  border-color:rgba(30,41,59,.12) !important;
+  color:var(--home-ink) !important;
+  box-shadow:none !important;
+}
+body[data-path="/"] .home-locbar .btn.btn-primary{
+  background:linear-gradient(135deg,#6c63ff,#7d76ff) !important;
+  border-color:transparent !important;
+  color:#fff !important;
+  box-shadow:0 7px 16px rgba(108,99,255,.22) !important;
+}
+body[data-path="/"] #homeClearGPS{ color:#b42318 !important; box-shadow:none !important; }
+body[data-path="/"] #homeCitySugg{
+  border-color:var(--home-line) !important;
+  background:#fff !important;
+  color:var(--home-ink) !important;
+  box-shadow:0 12px 28px rgba(15,23,42,.13) !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+body[data-path="/"] #homeCitySugg > button{
+  display:flex; align-items:center; gap:8px; width:100%;
+  padding:.66rem .75rem; border:0; background:transparent; color:inherit; text-align:start;
+}
+body[data-path="/"] #homeCitySugg > button:hover,
+body[data-path="/"] #homeCitySugg > button:focus-visible{ background:#f2f1ff !important; }
+
+/* Rails and cards retain their current architecture with steadier hierarchy. */
+body[data-path="/"] .home-shelves{ min-width:0; }
+body[data-path="/"] .section-head{ margin:18px 2px 10px; }
+body[data-path="/"] .section-title{
+  color:var(--home-ink); font-size:clamp(1rem,.96rem + .2vw,1.12rem);
+  font-weight:800; letter-spacing:-.018em;
+}
+body[data-path="/"] .section-head .text-muted{ white-space:nowrap; }
+body[data-path="/"] .arrow-btn{
+  width:40px; height:40px;
+  border-color:rgba(30,41,59,.12) !important;
+  background:#fff !important; color:var(--home-ink) !important;
+  box-shadow:0 4px 12px rgba(15,23,42,.06) !important;
+  backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
+  transition:transform .16s var(--home-ease),background-color .16s var(--home-ease),box-shadow .16s var(--home-ease);
+}
+@media (hover:hover){
+  body[data-path="/"] .arrow-btn:hover{
+    background:#f5f4ff !important;
+    box-shadow:0 7px 16px rgba(15,23,42,.10) !important;
+    transform:translateY(-1px);
+  }
+}
+body[data-path="/"] .hrow{
+  gap:14px; padding:6px 4px 14px;
+  overscroll-behavior-inline:contain; scroll-behavior:smooth;
+  scrollbar-width:thin; scrollbar-color:rgba(108,99,255,.28) transparent;
+  touch-action:pan-y;
+}
+body[data-path="/"] .hrow.is-dragging{ cursor:grabbing; scroll-snap-type:none; user-select:none; }
+body[data-path="/"] .spot{ position:relative; min-width:0; }
+body[data-path="/"] .spot-link{ display:block; min-width:0; color:inherit; text-decoration:none; }
+body[data-path="/"] .spot-media{
+  background:linear-gradient(135deg,#eef0f7,#e3e8f4);
+  box-shadow:0 8px 20px rgba(15,23,42,.09) !important;
+  transition:transform .2s var(--home-ease),box-shadow .2s var(--home-ease);
+}
+body[data-path="/"] .home-card-image{ background:linear-gradient(135deg,#eef0f7,#e3e8f4); color:transparent; }
+body[data-path="/"] .home-card-image.is-fallback{
+  object-fit:contain !important; padding:22%; background:#f0efff;
+}
+body[data-path="/"] .spot-overlay{ background:linear-gradient(180deg,rgba(15,23,42,.02) 35%,rgba(15,23,42,.13)); }
+body[data-path="/"] .category-chip{
+  top:10px !important; left:10px !important; max-inline-size:calc(100% - 62px);
+  padding:4px 8px; border-color:rgba(15,23,42,.08) !important;
+  background:rgba(255,255,255,.94) !important;
+  box-shadow:0 2px 7px rgba(15,23,42,.08) !important;
+  backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
+}
+body[data-path="/"] .fav-btn{
+  top:10px !important; right:10px !important; width:36px; height:36px;
+  border-color:rgba(15,23,42,.10) !important;
+  background:rgba(255,255,255,.94) !important;
+  box-shadow:0 3px 9px rgba(15,23,42,.12) !important;
+  backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
+  transition:transform .16s var(--home-ease),background-color .16s var(--home-ease),box-shadow .16s var(--home-ease);
+}
+body[data-path="/"] .fav-btn .bi{ color:#1f2937 !important; }
+body[data-path="/"] .fav-btn.is-fav{
+  border-color:#6c63ff !important; background:#6c63ff !important;
+  box-shadow:0 5px 12px rgba(108,99,255,.28) !important;
+}
+body[data-path="/"] .fav-btn.is-fav .bi{ color:#fff !important; }
+body[data-path="/"] .fav-btn:active{ transform:scale(.94); }
+body[data-path="/"] .spot-body{ padding:8px 4px 0 !important; }
+body[data-path="/"] .spot-title{
+  display:-webkit-box !important; min-height:2.35em; margin:0 0 3px !important;
+  overflow:hidden; color:var(--home-ink) !important; white-space:normal !important;
+  -webkit-box-orient:vertical; -webkit-line-clamp:2; line-height:1.18 !important;
+}
+body[data-path="/"] .spot-meta{ gap:2px !important; }
+body[data-path="/"] .spot-price{
+  color:#111827 !important; font-size:.96rem; font-variant-numeric:tabular-nums; line-height:1.16 !important;
+}
+body[data-path="/"] .spot-price span{ color:var(--home-muted); font-size:.82em; font-weight:650; }
+body[data-path="/"] .spot-city{
+  overflow:hidden; color:var(--home-muted) !important; text-overflow:ellipsis; white-space:nowrap;
+}
+body[data-path="/"] .spot-rating{
+  display:inline-flex; align-items:center; width:max-content; color:#344054 !important; font-variant-numeric:tabular-nums;
+}
+@media (hover:hover){
+  body[data-path="/"] .spot:hover .spot-media,
+  body[data-path="/"] .spot:focus-within .spot-media{
+    box-shadow:0 12px 25px rgba(15,23,42,.14) !important;
+    transform:translateY(-2px);
+  }
+}
+@supports (content-visibility:auto){
+  body[data-path="/"] .mixed-grid > .spot{ content-visibility:auto; contain-intrinsic-size:auto 320px; }
+}
+
+/* Base-owned Home chrome remains centered by the existing iPad shell. */
+body[data-path="/"] .mobile-tabbar{
+  box-shadow:0 12px 30px rgba(15,23,42,.28),0 0 0 1px rgba(255,255,255,.13) inset !important;
+  backdrop-filter:blur(12px) saturate(140%) !important;
+  -webkit-backdrop-filter:blur(12px) saturate(140%) !important;
+}
+body[data-path="/"] .mobile-tabbar > a{ transition:transform .16s var(--home-ease),background-color .16s var(--home-ease); }
+body[data-path="/"] .mobile-tabbar > a:active{ transform:scale(.96); }
+body[data-path="/"] #fabAdd{
+  box-shadow:0 12px 24px rgba(60,50,170,.30),0 0 0 1px rgba(255,255,255,.18) inset !important;
+  transition:transform .16s var(--home-ease),box-shadow .16s var(--home-ease);
+}
+body[data-path="/"] #fabAdd:active{ transform:scale(.94); }
+
+/* Keyboard focus is explicit even though shared CSS suppresses the default outline. */
+body[data-path="/"] :is(.spot-link,.fav-btn,.arrow-btn,.carousel-control-prev,.carousel-control-next,#homeUseGPS,#homeClearGPS,.home-locbar .btn,.m-top-tabs .m-tab,.paypal-callout .btn,.mobile-tabbar > a):focus-visible{
+  outline:3px solid rgba(108,99,255,.72) !important;
+  outline-offset:3px;
+}
+
+@media (max-width:576px){
+  body[data-path="/"] .hero-carousel{ margin-inline:0; border-radius:16px; }
+  body[data-path="/"] .hero-carousel :is(.carousel-inner,.carousel-item,.carousel-item img){ border-radius:16px; }
+  body[data-path="/"] .section-head{ margin-top:16px; }
+  body[data-path="/"] .hcard{ min-width:clamp(148px,42vw,192px); max-width:clamp(148px,42vw,192px); }
+  body[data-path="/"] .mixed-grid{ gap:12px; padding-inline:2px; }
+  body[data-path="/"] .paypal-callout{
+    flex-direction:column;
+    align-items:stretch !important;
+  }
+  body[data-path="/"] .paypal-callout .btn{ width:100%; }
+  /* Keep the fixed add button from sitting on the mobile location submit target. */
+  body[data-path="/"] .home-locbar .col-12.col-md-2.d-grid{ padding-inline-end:64px !important; }
+  body[data-path="/"] :is(.hero-carousel,.top-strip) :is(.carousel-control-prev,.carousel-control-next){ width:40px; height:40px; }
+}
+@media (max-width:360px){
+  body[data-path="/"] .paypal-callout{ padding:12px; }
+  body[data-path="/"] .spot-body{ padding-inline:2px !important; }
+  body[data-path="/"] .home-locbar .col-12.col-md-2.d-grid{ padding-inline-end:56px !important; }
+}
+@media (prefers-reduced-motion:reduce){
+  body[data-path="/"] :is(.hrow,.spot-media,.fav-btn,.arrow-btn,.mobile-tabbar > a,#fabAdd,.carousel-control-prev,.carousel-control-next){
+    scroll-behavior:auto; transition:none !important;
+  }
+  body[data-path="/"] :is(.hero-carousel,.top-strip) .carousel-item{ transition:none !important; }
+}
+@media (min-width:769px) and (max-width:1376px) and (min-height:600px){
+  html.is-ipad body[data-path="/"] .mobile-tabbar.d-lg-none{ margin-inline:auto !important; }
+  html.is-ipad body[data-path="/"] .hrow{ padding-inline:2px; }
+}
+[data-theme="dark"] body[data-path="/"] .home-locbar.locbar--compact,
+body[data-theme="dark"][data-path="/"] .home-locbar.locbar--compact{
+  background:#151827 !important; border-color:rgba(255,255,255,.12) !important; color:#f5f6ff !important;
+}
+[data-theme="dark"] body[data-path="/"] .home-locbar #homeCityInput,
+body[data-theme="dark"][data-path="/"] .home-locbar #homeCityInput{
+  background:#202437 !important; border-color:rgba(255,255,255,.13) !important; color:#f5f6ff !important;
+}
+[data-theme="dark"] body[data-path="/"] #homeCitySugg,
+body[data-theme="dark"][data-path="/"] #homeCitySugg{ background:#171b2b !important; color:#f5f6ff !important; }
 </style>
 
 
@@ -1006,13 +1300,14 @@
 
 <!-- HERO (images only) -->
 <div class="edge-bleed">
-  <div id="heroCarousel" class="carousel slide hero-carousel mb-0"
-       data-bs-ride="carousel" data-bs-interval="5000" data-bs-touch="true" aria-label="Main slides">
+  <div id="heroCarousel" class="carousel slide hero-carousel mb-0" data-home-carousel
+       data-bs-ride="carousel" data-bs-interval="5000" data-bs-touch="true"
+       role="region" aria-roledescription="carousel" aria-live="off" aria-label="Sevor featured banners">
 
     <div class="carousel-inner">
   {% for src in (banners or []) %}
     <div class="carousel-item {% if loop.first %}active{% endif %}">
-      <img
+      <img class="home-hero-image"
         src="{{ src|replace(
           'res.cloudinary.com/de79qzfog/image/upload/',
           'res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_1200/'
@@ -1026,18 +1321,21 @@
         {% else %}
           loading="lazy"
         {% endif %}
-        alt="Sevor banner">
+        onerror="this.onerror=null;this.classList.add('is-fallback');this.src='/static/images/ui/sevor-logo-180.png';"
+        alt="Sevor featured banner">
     </div>
   {% endfor %}
 </div>
 
 
-    <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" aria-label="Previous">
+    {% if banners and banners|length > 1 %}
+    <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" aria-label="Previous banner">
       <span class="carousel-control-prev-icon" aria-hidden="true"></span>
     </button>
-    <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next" aria-label="Next">
+    <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next" aria-label="Next banner">
       <span class="carousel-control-next-icon" aria-hidden="true"></span>
     </button>
+    {% endif %}
   </div>
 </div>
 <!-- /HERO -->
@@ -1046,9 +1344,12 @@
 <section class="container-xl my-3">
 <form class="row g-2 align-items-center home-locbar locbar--compact" action="/" method="get" role="search" id="homeLocForm">
     <div class="col-12 col-md-5">
-      <input type="text" class="form-control" id="homeCityInput" name="city" placeholder="Type city / area …" autocomplete="off">
+      <input type="text" class="form-control" id="homeCityInput" name="city" placeholder="Type city / area …"
+             autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false"
+             aria-controls="homeCitySugg" aria-haspopup="listbox">
       <!-- City suggestions -->
-      <div id="homeCitySugg" class="border rounded mt-1 bg-white shadow-sm" style="display:none; position:absolute; z-index:1000; max-height:260px; overflow:auto"></div>
+      <div id="homeCitySugg" class="border rounded mt-1 bg-white shadow-sm" role="listbox"
+           style="display:none; position:absolute; z-index:1000; max-height:260px; overflow:auto"></div>
     </div>
     <!-- ❌ The 25 km field removed entirely -->
     <div class="col-6 col-md-2 d-grid">
@@ -1077,71 +1378,69 @@
 
     <div class="section-title">Popular Near You</div>
     <div class="d-flex gap-2">
-      <button class="arrow-btn" data-snap-prev="#row-near"><i class="bi bi-chevron-right"></i></button>
-      <button class="arrow-btn" data-snap-next="#row-near"><i class="bi bi-chevron-left"></i></button>
+      <button class="arrow-btn" type="button" data-snap-prev="#row-near" aria-controls="row-near" aria-label="Previous popular listings"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+      <button class="arrow-btn" type="button" data-snap-next="#row-near" aria-controls="row-near" aria-label="Next popular listings"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
     </div>
   </div>
 
   <div id="row-near" class="hrow">
     {% for it in nearby %}
-      <a href="/items/{{ it.id }}" class="card spot hcard text-decoration-none">
-        <div class="spot-media">
-          <img
+      <div class="card spot hcard">
+        <a href="/items/{{ it.id }}" class="spot-link text-decoration-none" aria-label="View {{ it.title or 'listing' }}">
+          <div class="spot-media">
+            <img class="home-card-image"
   src="{% if it.image_path %}
     {{ it.image_path | replace(
       'res.cloudinary.com/de79qzfog/image/upload/',
       'res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_450,h_450,c_fill/'
     ) }}
   {% else %}
-    /static/placeholder.jpg
+    /static/images/ui/sevor-logo-180.png
   {% endif %}"
   width="303"
   height="303"
-  loading="lazy"
+  {% if loop.index <= 2 %}loading="eager"{% else %}loading="lazy"{% endif %}
   decoding="async"
-  alt="{{ it.title }}">
+  onerror="this.onerror=null;this.classList.add('is-fallback');this.src='/static/images/ui/sevor-logo-180.png';"
+  alt="{{ it.title or 'Sevor listing' }}">
 
-          <div class="spot-overlay"></div>
+            <div class="spot-overlay"></div>
 
-          {% if it.price_per_day is defined %}
-            <span class="price-badge">{{ it.price_per_day|default(0) }}$ /day</span>
-          {% endif %}
-          {% if it.category is defined %}
-<span class="category-chip">
-  {{ it.subcategory or category_label(it.category) }}
-</span>
-          {% endif %}
-
-          <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="Add to favorites">
-            <i class="bi bi-heart"></i>
-          </button>
-        </div>
-
-        <div class="card-body spot-body">
-          <div class="spot-title">{{ it.title }}</div>
-            <!-- NEW: Price → City → Rating -->
-  <div class="spot-meta">
-    {% if it.price_per_day is defined %}
-      <div class="spot-price"><strong>{{ it.display_price }}</strong> {{ it.display_symbol }}<span>/day</span></div>
-    {% endif %}
-    <div class="spot-city">{{ it.city or '—' }}</div>
-    {% if it.rating_count > 0 %}
-  <div class="spot-rating">
-    {{ "%.1f"|format(it.rating_avg) }}
-  </div>
-{% endif %}
-
-  </div>
-          <div class="owner-line">
-            <div class="owner-avatar--placeholder">🏷️</div>
-            <span class="city-chip">{{ it.city or '—' }}</span>
+            {% if it.price_per_day is defined %}
+              <span class="price-badge">{{ it.price_per_day|default(0) }}$ /day</span>
+            {% endif %}
+            {% if it.category is defined %}
+              <span class="category-chip">{{ it.subcategory or category_label(it.category) }}</span>
+            {% endif %}
           </div>
-          <div class="spot-footer">
-            <small class="text-muted">Rating {{ it.rating|default(4.8) }}</small>
-            <i class="bi bi-arrow-left-short"></i>
+
+          <div class="card-body spot-body">
+            <div class="spot-title">{{ it.title }}</div>
+            <div class="spot-meta">
+              {% if it.price_per_day is defined %}
+                <div class="spot-price"><strong>{{ it.display_price }}</strong> {{ it.display_symbol }}<span>/day</span></div>
+              {% endif %}
+              <div class="spot-city">{{ it.city or '—' }}</div>
+              {% if it.rating_count > 0 %}
+                <div class="spot-rating">{{ "%.1f"|format(it.rating_avg) }}</div>
+              {% endif %}
+            </div>
+            <div class="owner-line">
+              <div class="owner-avatar--placeholder">🏷️</div>
+              <span class="city-chip">{{ it.city or '—' }}</span>
+            </div>
+            <div class="spot-footer">
+              <small class="text-muted">Rating {{ it.rating|default(4.8) }}</small>
+              <i class="bi bi-arrow-left-short"></i>
+            </div>
           </div>
-        </div>
-      </a>
+        </a>
+
+        <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-pressed="false"
+                aria-label="Add to favorites" title="Add to favorites">
+          <i class="bi bi-heart" aria-hidden="true"></i>
+        </button>
+      </div>
     {% endfor %}
   </div>
 {% endif %}
@@ -1155,11 +1454,11 @@
       <a class="text-muted small" href="/items?category={{ code }}">View all</a>
       <!-- (New) Slider nav buttons for this category -->
       <div class="row-nav">
-        <button class="arrow-btn" data-snap-prev="#row-{{ code }}" aria-label="Previous">
-          <i class="bi bi-chevron-right"></i>
+        <button class="arrow-btn" type="button" data-snap-prev="#row-{{ code }}" aria-controls="row-{{ code }}" aria-label="Previous {{ code }} listings">
+          <i class="bi bi-chevron-right" aria-hidden="true"></i>
         </button>
-        <button class="arrow-btn" data-snap-next="#row-{{ code }}" aria-label="Next">
-          <i class="bi bi-chevron-left"></i>
+        <button class="arrow-btn" type="button" data-snap-next="#row-{{ code }}" aria-controls="row-{{ code }}" aria-label="Next {{ code }} listings">
+          <i class="bi bi-chevron-left" aria-hidden="true"></i>
         </button>
       </div>
       <!-- /new -->
@@ -1167,62 +1466,60 @@
 
     <div id="row-{{ code }}" class="hrow">
       {% for it in lst %}
-        <a href="/items/{{ it.id }}" class="card spot hcard text-decoration-none">
-          <div class="spot-media">
-            <img
+        <div class="card spot hcard">
+          <a href="/items/{{ it.id }}" class="spot-link text-decoration-none" aria-label="View {{ it.title or 'listing' }}">
+            <div class="spot-media">
+              <img class="home-card-image"
   src="{% if it.image_path %}
     {{ it.image_path | replace(
       'res.cloudinary.com/de79qzfog/image/upload/',
       'res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_450,h_450,c_fill/'
     ) }}
   {% else %}
-    /static/placeholder.jpg
+    /static/images/ui/sevor-logo-180.png
   {% endif %}"
   width="303"
   height="303"
   loading="lazy"
   decoding="async"
-  alt="{{ it.title }}">
+  onerror="this.onerror=null;this.classList.add('is-fallback');this.src='/static/images/ui/sevor-logo-180.png';"
+  alt="{{ it.title or 'Sevor listing' }}">
 
-            <div class="spot-overlay"></div>
+              <div class="spot-overlay"></div>
 
-            {% if it.price_per_day is defined %}
-              <span class="price-badge">{{ it.price_per_day|default(0) }}$ /day</span>
-            {% endif %}
-  <span class="category-chip">
-    {{ it.subcategory or category_label(it.category) }}
-  </span>
-            <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="Add to favorites">
-              <i class="bi bi-heart"></i>
-            </button>
-          </div>
-
-          <div class="card-body spot-body">
-            <div class="spot-title">{{ it.title }}</div>
-              <!-- NEW: Price → City → Rating -->
-  <div class="spot-meta">
-    {% if it.price_per_day is defined %}
-            <div class="spot-price"><strong>{{ it.display_price }}</strong> {{ it.display_symbol }}<span>/day</span></div>
-      
-    {% endif %}
-    <div class="spot-city">{{ it.city or '—' }}</div>
-    {% if it.rating_count > 0 %}
-  <div class="spot-rating">
-    {{ "%.1f"|format(it.rating_avg) }}
-  </div>
-{% endif %}
-
-  </div>
-            <div class="owner-line">
-              <div class="owner-avatar--placeholder">🏷️</div>
-              <span class="city-chip">{{ it.city or '—' }}</span>
+              {% if it.price_per_day is defined %}
+                <span class="price-badge">{{ it.price_per_day|default(0) }}$ /day</span>
+              {% endif %}
+              <span class="category-chip">{{ it.subcategory or category_label(it.category) }}</span>
             </div>
-            <div class="spot-footer">
-              <small class="text-muted">Rating {{ it.rating|default(4.8) }}</small>
-              <i class="bi bi-arrow-left-short"></i>
+
+            <div class="card-body spot-body">
+              <div class="spot-title">{{ it.title }}</div>
+              <div class="spot-meta">
+                {% if it.price_per_day is defined %}
+                  <div class="spot-price"><strong>{{ it.display_price }}</strong> {{ it.display_symbol }}<span>/day</span></div>
+                {% endif %}
+                <div class="spot-city">{{ it.city or '—' }}</div>
+                {% if it.rating_count > 0 %}
+                  <div class="spot-rating">{{ "%.1f"|format(it.rating_avg) }}</div>
+                {% endif %}
+              </div>
+              <div class="owner-line">
+                <div class="owner-avatar--placeholder">🏷️</div>
+                <span class="city-chip">{{ it.city or '—' }}</span>
+              </div>
+              <div class="spot-footer">
+                <small class="text-muted">Rating {{ it.rating|default(4.8) }}</small>
+                <i class="bi bi-arrow-left-short"></i>
+              </div>
             </div>
-          </div>
-        </a>
+          </a>
+
+          <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-pressed="false"
+                  aria-label="Add to favorites" title="Add to favorites">
+            <i class="bi bi-heart" aria-hidden="true"></i>
+          </button>
+        </div>
       {% endfor %}
     </div>
   {% endif %}
@@ -1240,76 +1537,97 @@
 
     {# === Column 1 (5 seconds) === #}
     <div class="top-strip-col">
-      <div id="topStrip1" class="carousel slide top-strip" data-bs-ride="carousel" data-bs-interval="5000" data-bs-touch="true" aria-label="Top strip 1">
+      <div id="topStrip1" class="carousel slide top-strip" data-home-carousel
+           data-bs-ride="carousel" data-bs-interval="5000" data-bs-touch="true"
+           role="region" aria-roledescription="carousel" aria-live="off" aria-label="Sevor highlights">
         <div class="carousel-inner">
           {% for src in cols[0] %}
             <div class="carousel-item {% if loop.first %}active{% endif %}">
-                  <img
+                  <img class="home-strip-image"
       src="{{ src|replace('res.cloudinary.com/de79qzfog/image/upload/','res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_1200/') }}"
+      width="1024"
+      height="1536"
       loading="lazy"
       decoding="async"
+      onerror="this.onerror=null;this.classList.add('is-fallback');this.src='/static/images/ui/sevor-logo-180.png';"
       alt=""
     >
 
             </div>
           {% endfor %}
         </div>
-        <button class="carousel-control-prev" type="button" data-bs-target="#topStrip1" data-bs-slide="prev" aria-label="Previous">
+        {% if cols[0]|length > 1 %}
+        <button class="carousel-control-prev" type="button" data-bs-target="#topStrip1" data-bs-slide="prev" aria-label="Previous highlight">
           <span class="carousel-control-prev-icon" aria-hidden="true"></span>
         </button>
-        <button class="carousel-control-next" type="button" data-bs-target="#topStrip1" data-bs-slide="next" aria-label="Next">
+        <button class="carousel-control-next" type="button" data-bs-target="#topStrip1" data-bs-slide="next" aria-label="Next highlight">
           <span class="carousel-control-next-icon" aria-hidden="true"></span>
         </button>
+        {% endif %}
       </div>
     </div>
 
     {# === Column 2 (8 seconds) === #}
     <div class="top-strip-col">
-      <div id="topStrip2" class="carousel slide top-strip" data-bs-ride="carousel" data-bs-interval="8000" data-bs-touch="true" aria-label="Top strip 2">
+      <div id="topStrip2" class="carousel slide top-strip" data-home-carousel
+           data-bs-ride="carousel" data-bs-interval="8000" data-bs-touch="true"
+           role="region" aria-roledescription="carousel" aria-live="off" aria-label="Sevor highlights">
         <div class="carousel-inner">
           {% for src in cols[1] %}
             <div class="carousel-item {% if loop.first %}active{% endif %}">
-                  <img
+                  <img class="home-strip-image"
       src="{{ src|replace('res.cloudinary.com/de79qzfog/image/upload/','res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_1200/') }}"
+      width="1024"
+      height="1536"
       loading="lazy"
       decoding="async"
+      onerror="this.onerror=null;this.classList.add('is-fallback');this.src='/static/images/ui/sevor-logo-180.png';"
       alt=""
     >
 
             </div>
           {% endfor %}
         </div>
-        <button class="carousel-control-prev" type="button" data-bs-target="#topStrip2" data-bs-slide="prev" aria-label="Previous">
+        {% if cols[1]|length > 1 %}
+        <button class="carousel-control-prev" type="button" data-bs-target="#topStrip2" data-bs-slide="prev" aria-label="Previous highlight">
           <span class="carousel-control-prev-icon" aria-hidden="true"></span>
         </button>
-        <button class="carousel-control-next" type="button" data-bs-target="#topStrip2" data-bs-slide="next" aria-label="Next">
+        <button class="carousel-control-next" type="button" data-bs-target="#topStrip2" data-bs-slide="next" aria-label="Next highlight">
           <span class="carousel-control-next-icon" aria-hidden="true"></span>
         </button>
+        {% endif %}
       </div>
     </div>
 
     {# === Column 3 (10 seconds) === #}
     <div class="top-strip-col">
-      <div id="topStrip3" class="carousel slide top-strip" data-bs-ride="carousel" data-bs-interval="10000" data-bs-touch="true" aria-label="Top strip 3">
+      <div id="topStrip3" class="carousel slide top-strip" data-home-carousel
+           data-bs-ride="carousel" data-bs-interval="10000" data-bs-touch="true"
+           role="region" aria-roledescription="carousel" aria-live="off" aria-label="Sevor highlights">
         <div class="carousel-inner">
           {% for src in cols[2] %}
             <div class="carousel-item {% if loop.first %}active{% endif %}">
-                  <img
+                  <img class="home-strip-image"
       src="{{ src|replace('res.cloudinary.com/de79qzfog/image/upload/','res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_1200/') }}"
+      width="1024"
+      height="1536"
       loading="lazy"
       decoding="async"
+      onerror="this.onerror=null;this.classList.add('is-fallback');this.src='/static/images/ui/sevor-logo-180.png';"
       alt=""
     >
 
             </div>
           {% endfor %}
         </div>
-        <button class="carousel-control-prev" type="button" data-bs-target="#topStrip3" data-bs-slide="prev" aria-label="Previous">
+        {% if cols[2]|length > 1 %}
+        <button class="carousel-control-prev" type="button" data-bs-target="#topStrip3" data-bs-slide="prev" aria-label="Previous highlight">
           <span class="carousel-control-prev-icon" aria-hidden="true"></span>
         </button>
-        <button class="carousel-control-next" type="button" data-bs-target="#topStrip3" data-bs-slide="next" aria-label="Next">
+        <button class="carousel-control-next" type="button" data-bs-target="#topStrip3" data-bs-slide="next" aria-label="Next highlight">
           <span class="carousel-control-next-icon" aria-hidden="true"></span>
         </button>
+        {% endif %}
       </div>
     </div>
 
@@ -1330,65 +1648,62 @@
 {% if all_items_list and all_items_list|length > 0 %}
   <div class="mixed-grid">
     {% for it in all_items_list %}
-      <a href="/items/{{ it.id }}" class="card spot text-decoration-none">
-        <div class="spot-media">
-          <img
+      <div class="card spot">
+        <a href="/items/{{ it.id }}" class="spot-link text-decoration-none" aria-label="View {{ it.title or 'listing' }}">
+          <div class="spot-media">
+            <img class="home-card-image"
   src="{% if it.image_path %}
     {{ it.image_path | replace(
       'res.cloudinary.com/de79qzfog/image/upload/',
       'res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_450,h_450,c_fill/'
     ) }}
   {% else %}
-    /static/placeholder.jpg
+    /static/images/ui/sevor-logo-180.png
   {% endif %}"
   width="303"
   height="303"
   loading="lazy"
   decoding="async"
-  alt="{{ it.title }}">
+  onerror="this.onerror=null;this.classList.add('is-fallback');this.src='/static/images/ui/sevor-logo-180.png';"
+  alt="{{ it.title or 'Sevor listing' }}">
 
-          <div class="spot-overlay"></div>
-          
-          {% if it.subcategory %}
+            <div class="spot-overlay"></div>
+            {% if it.subcategory %}
               <span class="category-chip">{{ it.subcategory }}</span>
-          {% elif it.category %}
+            {% elif it.category %}
               <span class="category-chip">{{ category_label(it.category) }}</span>
-          {% else %}
-            <!-- no chip -->
-          {% endif %}
-
-          <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-label="Add to favorites">
-            <i class="bi bi-heart"></i>
-          </button>
-        </div>
-
-        <div class="card-body spot-body">
-          <div class="spot-title">{{ it.title }}</div>
-            <!-- NEW: Price → City → Rating -->
-  <div class="spot-meta">
-    {% if it.price_per_day is defined %}
-            <div class="spot-price"><strong>{{ it.display_price }}</strong> {{ it.display_symbol }}<span>/day</span></div>
-    {% endif %}
-    <div class="spot-city">{{ it.city or '—' }}</div>
-    {% if it.rating_count > 0 %}
-  <div class="spot-rating">
-    {{ "%.1f"|format(it.rating_avg) }}
-  </div>
-{% endif %}
-
-  </div>
-          <div class="owner-line">
-            <div class="owner-avatar--placeholder">🏷️</div>
-            <span class="city-chip">{{ it.city or '—' }}</span>
-          </div>
-          <div class="spot-footer">
-            {% if it.price_per_day is defined %}
-              <small class="text-muted">per day / {{ it.price_per_day|default(0) }}$</small>
             {% endif %}
-            <i class="bi bi-arrow-left-short"></i>
           </div>
-        </div>
-      </a>
+
+          <div class="card-body spot-body">
+            <div class="spot-title">{{ it.title }}</div>
+            <div class="spot-meta">
+              {% if it.price_per_day is defined %}
+                <div class="spot-price"><strong>{{ it.display_price }}</strong> {{ it.display_symbol }}<span>/day</span></div>
+              {% endif %}
+              <div class="spot-city">{{ it.city or '—' }}</div>
+              {% if it.rating_count > 0 %}
+                <div class="spot-rating">{{ "%.1f"|format(it.rating_avg) }}</div>
+              {% endif %}
+            </div>
+            <div class="owner-line">
+              <div class="owner-avatar--placeholder">🏷️</div>
+              <span class="city-chip">{{ it.city or '—' }}</span>
+            </div>
+            <div class="spot-footer">
+              {% if it.price_per_day is defined %}
+                <small class="text-muted">per day / {{ it.price_per_day|default(0) }}$</small>
+              {% endif %}
+              <i class="bi bi-arrow-left-short"></i>
+            </div>
+          </div>
+        </a>
+
+        <button class="fav-btn" type="button" data-id="{{ it.id }}" aria-pressed="false"
+                aria-label="Add to favorites" title="Add to favorites">
+          <i class="bi bi-heart" aria-hidden="true"></i>
+        </button>
+      </div>
     {% endfor %}
   </div>
 {% else %}
@@ -1407,11 +1722,14 @@
 
 <script>
   /* ===== Scroll buttons ===== */
+  const homeMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const prefersReducedMotion = () => Boolean(homeMotionQuery?.matches);
+
   function snap(el, dir=1){
     const node = document.querySelector(el);
     if(!node) return;
     const step = Math.max(280, node.clientWidth * 0.85);
-    node.scrollBy({left: dir*step, behavior:'smooth'});
+    node.scrollBy({left: dir*step, behavior:prefersReducedMotion() ? 'auto' : 'smooth'});
   }
   document.querySelectorAll('[data-snap-prev]').forEach(b=>{
     b.addEventListener('click', ()=> snap(b.dataset.snapPrev, -1));
@@ -1428,15 +1746,23 @@
     FAVORITES_IDS = JSON.parse(raw);
   }catch(e){ FAVORITES_IDS = []; }
 
+  function setFavoriteState(btn, isFavorite){
+    btn.classList.toggle('is-fav', isFavorite);
+    const icon = btn.querySelector('.bi');
+    if(icon){
+      icon.classList.toggle('bi-heart', !isFavorite);
+      icon.classList.toggle('bi-heart-fill', isFavorite);
+    }
+    const label = isFavorite ? 'Remove from favorites' : 'Add to favorites';
+    btn.setAttribute('aria-pressed', String(isFavorite));
+    btn.setAttribute('aria-label', label);
+    btn.setAttribute('title', label);
+  }
+
   function markExistingFavorites(){
     document.querySelectorAll('.fav-btn').forEach((btn)=>{
       const id = Number(btn.dataset.id);
-      if (Array.isArray(FAVORITES_IDS) && FAVORITES_IDS.includes(id)){
-        btn.classList.add('is-fav');
-        const icon = btn.querySelector('.bi');
-        if (icon){ icon.classList.remove('bi-heart'); icon.classList.add('bi-heart-fill'); }
-        btn.setAttribute('aria-pressed','true');
-      }
+      setFavoriteState(btn, Array.isArray(FAVORITES_IDS) && FAVORITES_IDS.includes(id));
     });
   }
 
@@ -1455,12 +1781,7 @@
       const res = await fetch(`/api/favorites/${id}`, { method: add ? 'POST' : 'DELETE' });
       if(!res.ok) throw new Error('bad response');
 
-      btn.classList.toggle('is-fav', add);
-      const icon = btn.querySelector('.bi');
-      if(icon){
-        icon.classList.toggle('bi-heart', !add);
-        icon.classList.toggle('bi-heart-fill', add);
-      }
+      setFavoriteState(btn, add);
       const i = FAVORITES_IDS.indexOf(id);
       if(add && i === -1) FAVORITES_IDS.push(id);
       if(!add && i >= 0) FAVORITES_IDS.splice(i,1);
@@ -1472,19 +1793,50 @@
 
   markExistingFavorites();
 
-  /* Pause/Resume HERO on hover */
-  document.addEventListener('DOMContentLoaded', function () {
-    const el = document.getElementById('heroCarousel');
-    if (!el) return;
-    el.addEventListener('mouseenter', () => {
-      const carousel = bootstrap.Carousel.getOrCreateInstance(el);
-      carousel.pause();
+  /* Pause off-screen, focused, hovered, or reduced-motion carousels without scroll listeners. */
+  (function initHomeCarousels(){
+    const elements = [...document.querySelectorAll('[data-home-carousel]')];
+    if(!elements.length || !window.bootstrap?.Carousel) return;
+
+    const instances = new Map();
+    const visible = new Map();
+    const carouselFor = (el) => {
+      if(!instances.has(el)) instances.set(el, bootstrap.Carousel.getOrCreateInstance(el));
+      return instances.get(el);
+    };
+    const reconcile = (el) => {
+      const carousel = carouselFor(el);
+      if(prefersReducedMotion() || !visible.get(el)) carousel.pause();
+      else carousel.cycle();
+    };
+
+    elements.forEach((el)=>{
+      el.addEventListener('focusin', ()=>carouselFor(el).pause());
+      el.addEventListener('focusout', ()=>{
+        window.setTimeout(()=>{ if(!el.contains(document.activeElement)) reconcile(el); }, 0);
+      });
+      if(window.matchMedia?.('(hover:hover)').matches){
+        el.addEventListener('mouseenter', ()=>carouselFor(el).pause());
+        el.addEventListener('mouseleave', ()=>reconcile(el));
+      }
     });
-    el.addEventListener('mouseleave', () => {
-      const carousel = bootstrap.Carousel.getOrCreateInstance(el);
-      carousel.cycle();
-    });
-  });
+
+    if('IntersectionObserver' in window){
+      const observer = new IntersectionObserver((entries)=>{
+        entries.forEach((entry)=>{
+          visible.set(entry.target, entry.isIntersecting);
+          reconcile(entry.target);
+        });
+      }, {threshold:.01});
+      elements.forEach((el)=>{ visible.set(el, false); carouselFor(el).pause(); observer.observe(el); });
+    }else{
+      elements.forEach((el)=>{ visible.set(el, true); reconcile(el); });
+    }
+
+    const onMotionChange = () => elements.forEach(reconcile);
+    if(homeMotionQuery?.addEventListener) homeMotionQuery.addEventListener('change', onMotionChange);
+    else homeMotionQuery?.addListener?.(onMotionChange);
+  })();
 
   /* ============================================
      ✅ Location bar (City/GPS/Radius) — search only
@@ -1564,8 +1916,20 @@
        ✅ Single city suggestion only
        ========================== */
     let t=null;
-    function hideSugg(){ if(sugg){ sugg.style.display='none'; sugg.innerHTML=''; } }
-    function showSugg(){ if(sugg){ sugg.style.display='block'; } }
+    let cityController=null;
+    let cityRequestId=0;
+    function hideSugg(){
+      if(!sugg) return;
+      sugg.style.display='none';
+      sugg.replaceChildren();
+      cityEl?.setAttribute('aria-expanded','false');
+      cityEl?.removeAttribute('aria-activedescendant');
+    }
+    function showSugg(){
+      if(!sugg) return;
+      sugg.style.display='block';
+      cityEl?.setAttribute('aria-expanded','true');
+    }
 
     // Input language detection: ar / fr / en
     function detectLang(q){
@@ -1607,12 +1971,35 @@
       return Array.from(best.values());
     }
 
+    function renderSuggestion(best){
+      if(!sugg) return;
+      const label = (best.city||'').trim() + (best.country ? `, ${best.country}` : '');
+      const option = document.createElement('button');
+      option.type = 'button';
+      option.id = 'homeCityOption';
+      option.dataset.best = '1';
+      option.setAttribute('role','option');
+      option.setAttribute('aria-selected','false');
+      option.innerHTML = '<i class="bi bi-geo-alt" aria-hidden="true"></i>';
+      const text = document.createElement('span');
+      text.textContent = label;
+      option.append(text);
+      sugg.replaceChildren(option);
+      sugg.dataset.lat = best.lat || '';
+      sugg.dataset.lon = best.lon || '';
+      showSugg();
+    }
+
     cityEl?.addEventListener('input', function(){
       clearTimeout(t);
+      cityController?.abort();
       const q = this.value.trim();
       if (q.length<2){ hideSugg(); return; }
+      const requestId = ++cityRequestId;
 
       t = setTimeout(async ()=>{
+        const controller = new AbortController();
+        cityController = controller;
         try{
           const lang = detectLang(q);
           const url = 'https://nominatim.openstreetmap.org/search'
@@ -1620,9 +2007,11 @@
                     + '&accept-language='+encodeURIComponent(lang)
                     + '&q='+encodeURIComponent(q);
 
-          const r = await fetch(url, {headers:{'Accept':'application/json'}});
+          const r = await fetch(url, {headers:{'Accept':'application/json'}, signal:controller.signal});
+          if(controller.signal.aborted || requestId !== cityRequestId) return;
           if(!r.ok){ hideSugg(); return; }
           let data = await r.json();
+          if(controller.signal.aborted || requestId !== cityRequestId) return;
 
           // 1) Keep only city-like types; if none, use fallback; if none, keep all
           let filtered = data.filter(x=>ALLOWED.has((x.type||'').toLowerCase()));
@@ -1637,22 +2026,13 @@
           const best = unique[0];
           if(!best){ hideSugg(); return; }
 
-          // 4) Show as "City, Country"
-          const label = (best.city||'').trim() + (best.country?`, ${best.country}`:'');
-          sugg.innerHTML =
-            `<div class="py-2 px-2" data-best="1" style="cursor:pointer">
-               <i class="bi bi-geo-alt"></i>
-               <span>${label}</span>
-             </div>`;
-          sugg.dataset.lat = best.lat||'';
-          sugg.dataset.lon = best.lon||'';
-          showSugg();
-        }catch(_){ hideSugg(); }
+          renderSuggestion(best);
+        }catch(err){ if(err?.name !== 'AbortError') hideSugg(); }
       }, 250);
     });
 
     // Picking the single suggestion
-    sugg?.addEventListener('click', ()=>{
+    function chooseSuggestion(){
       const label = (sugg.querySelector('[data-best] span')?.textContent||'').trim();
       const lat = sugg.dataset.lat||'';
       const lon = sugg.dataset.lon||'';
@@ -1674,6 +2054,23 @@
       u.searchParams.set('lng', lon);
       u.searchParams.set('radius_km', rad);
       location.href = u.toString();
+    }
+    sugg?.addEventListener('click', (e)=>{
+      if(e.target.closest('[data-best]')) chooseSuggestion();
+    });
+    sugg?.addEventListener('keydown', (e)=>{
+      if((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-best]')){
+        e.preventDefault();
+        chooseSuggestion();
+      }
+    });
+    cityEl?.addEventListener('keydown', (e)=>{
+      const option = sugg?.querySelector('[data-best]');
+      if(e.key === 'Escape'){ hideSugg(); return; }
+      if(e.key === 'ArrowDown' && option){
+        e.preventDefault();
+        option.focus();
+      }
     });
 
     // Hide list when clicking outside
@@ -1712,27 +2109,57 @@
   /* ===== (New addition) Drag by finger/mouse + horizontal wheel for each hrow ===== */
   (function enhancers(){
     document.querySelectorAll('.hrow').forEach(row=>{
-      // drag-to-scroll
-      let down=false, start=0, startLeft=0, pid=null;
+      // rAF coalesces pointer moves into one scroll write per painted frame.
+      let down=false, start=0, startLeft=0, pid=null, frame=0, pendingLeft=0;
+      let dragged=false, suppressClick=false;
       row.addEventListener('pointerdown', e=>{
-        down=true; pid=e.pointerId; row.setPointerCapture(pid);
-        start=e.pageX; startLeft=row.scrollLeft;
-      });
+        if(!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+        if(e.target.closest('button,input,select,textarea,label')) return;
+        down=true; dragged=false; pid=e.pointerId;
+        start=e.pageX; startLeft=row.scrollLeft; pendingLeft=startLeft;
+        try{ row.setPointerCapture(pid); }catch(_){}
+      }, {passive:true});
       row.addEventListener('pointermove', e=>{
-        if(!down) return;
-        row.scrollLeft = startLeft - (e.pageX - start);
-      });
-      function up(){ if(pid!=null){ try{row.releasePointerCapture(pid)}catch(_){} } down=false; pid=null; }
-      row.addEventListener('pointerup', up);
-      row.addEventListener('pointercancel', up);
-      row.addEventListener('mouseleave', up);
-
-      // mouse wheel → horizontal scroll
-      row.addEventListener('wheel', e=>{
-        if(Math.abs(e.deltaY) > Math.abs(e.deltaX)){
-          row.scrollLeft += e.deltaY;
-          e.preventDefault();
+        if(!down || e.pointerId !== pid) return;
+        const delta = e.pageX - start;
+        if(!dragged && Math.abs(delta) > 4){
+          dragged=true;
+          row.classList.add('is-dragging');
         }
+        if(!dragged) return;
+        pendingLeft = startLeft - delta;
+        if(frame) return;
+        frame = requestAnimationFrame(()=>{
+          row.scrollLeft = pendingLeft;
+          frame = 0;
+        });
+      }, {passive:true});
+      function up(e){
+        if(!down || (e?.pointerId != null && e.pointerId !== pid)) return;
+        if(frame){ cancelAnimationFrame(frame); frame=0; row.scrollLeft=pendingLeft; }
+        if(pid!=null){ try{row.releasePointerCapture(pid)}catch(_){} }
+        suppressClick=dragged;
+        row.classList.remove('is-dragging');
+        down=false; dragged=false; pid=null;
+      }
+      row.addEventListener('pointerup', up, {passive:true});
+      row.addEventListener('pointercancel', up, {passive:true});
+      row.addEventListener('mouseleave', up, {passive:true});
+      row.addEventListener('click', e=>{
+        if(!suppressClick) return;
+        suppressClick=false;
+        e.preventDefault();
+        e.stopPropagation();
+      }, true);
+
+      // Preserve normal page scrolling once a rail reaches either edge.
+      row.addEventListener('wheel', e=>{
+        if(Math.abs(e.deltaY) <= Math.abs(e.deltaX) || row.scrollWidth <= row.clientWidth) return;
+        const max = row.scrollWidth - row.clientWidth;
+        const next = Math.max(0, Math.min(max, row.scrollLeft + e.deltaY));
+        if(next === row.scrollLeft) return;
+        row.scrollLeft = next;
+        e.preventDefault();
       }, {passive:false});
     });
   })();
