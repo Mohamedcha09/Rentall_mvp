@@ -2030,88 +2030,11 @@ body[data-path="/"] .home-empty{
   background:rgba(255,255,255,.62);
 }
 
-/* Reference-like Home-only mobile dock; original links, active state and FAB remain intact. */
+/* Home content keeps its own top spacing; shared navigation remains base-owned. */
 @media (max-width:991px){
   body[data-path="/"] .page{padding-top:0 !important;}
-  body[data-path="/"] .mobile-tabbar{
-    display:grid !important;
-    grid-template-columns:repeat(5,minmax(0,1fr)) !important;
-    align-items:center !important;
-    position:fixed !important;
-    z-index:1040 !important;
-    left:12px !important;
-    right:12px !important;
-    width:auto !important;
-    max-width:none !important;
-    transform:none !important;
-    bottom:calc(10px + max(env(safe-area-inset-bottom,0px),var(--safe-bottom,0px))) !important;
-    height:68px !important;
-    border:1px solid rgba(23,32,63,.075) !important;
-    border-radius:22px !important;
-    background:rgba(255,255,255,.96) !important;
-    box-shadow:0 12px 28px rgba(31,43,91,.16) !important;
-    backdrop-filter:blur(14px) saturate(135%) !important;
-    -webkit-backdrop-filter:blur(14px) saturate(135%) !important;
-  }
-  body[data-auth="0"][data-path="/"] .mobile-tabbar{display:none !important;}
   body[data-auth="0"][data-path="/"] header.topbar form.searchbar{display:none !important;}
   body[data-auth="0"][data-path="/"] header.topbar .topbar__inner{grid-template-areas:"brand actions";}
-  body[data-path="/"] .mobile-tabbar > a{
-    color:#737d96 !important;
-    font-size:11px !important;
-    font-weight:760 !important;
-  }
-  body[data-path="/"] .mobile-tabbar .tab-img{opacity:.72 !important; filter:none !important;}
-  body[data-path="/"] .mobile-tabbar > a.is-active{
-    color:#5f50ef !important;
-    background:rgba(104,87,246,.10) !important;
-    box-shadow:none !important;
-  }
-  body[data-path="/"] .mobile-tabbar > a.is-active .tab-img{opacity:1 !important; transform:scale(1.02) !important;}
-  body[data-path="/"] .home-message-unread{
-    position:absolute;
-    top:4px;
-    inset-inline-end:calc(50% - 22px);
-    display:grid;
-    place-items:center;
-    min-width:18px;
-    height:18px;
-    padding:0 4px;
-    border:2px solid #fff;
-    border-radius:999px;
-    color:#fff;
-    background:#ef5264;
-    box-shadow:0 2px 6px rgba(191,48,67,.24);
-    font-size:10px;
-    font-weight:850;
-    line-height:1;
-  }
-  body[data-path="/"] #fabAdd{
-    position:absolute !important;
-    top:max(16px,env(safe-area-inset-top,0px)) !important;
-    right:128px !important;
-    bottom:auto !important;
-    z-index:5101 !important;
-    width:36px !important;
-    height:36px !important;
-    border-radius:12px !important;
-    color:#fff !important;
-    background:var(--home-ref-gradient) !important;
-    box-shadow:0 9px 20px rgba(82,86,234,.30) !important;
-  }
-  body[data-path="/"] #fabAdd i{font-size:1rem;}
-}
-@media (min-width:992px) and (max-width:1376px) and (min-height:600px){
-  html.is-ipad body[data-path="/"] .mobile-tabbar{
-    height:72px !important;
-    border:1px solid rgba(23,32,63,.075) !important;
-    border-radius:23px !important;
-    background:rgba(255,255,255,.96) !important;
-    box-shadow:0 12px 28px rgba(31,43,91,.16) !important;
-  }
-  html.is-ipad body[data-path="/"] .mobile-tabbar > a{color:#737d96 !important; font-weight:760 !important;}
-  html.is-ipad body[data-path="/"] .mobile-tabbar > a.is-active{color:#5f50ef !important; background:rgba(104,87,246,.10) !important; box-shadow:none !important;}
-  html.is-ipad body[data-path="/"] #fabAdd{position:absolute !important; top:20px !important; right:160px !important; bottom:auto !important; width:40px !important; height:40px !important; border-radius:13px !important; color:#fff !important; background:var(--home-ref-gradient) !important;}
 }
 
 /* Breakpoint-specific content proportions. iPad is kept out of desktop sizing. */
@@ -2683,22 +2606,6 @@ body[data-path="/"] :is(.home-listing__link,.home-listing__favorite,.home-sectio
     window.setTimeout(updateLocationClear, 0);
     document.getElementById('homeCityInput')?.addEventListener('input', updateLocationClear);
 
-    const messagesTab = document.querySelector('body[data-path="/"] .mobile-tabbar a[href="/messages"]');
-    const isAuthenticated = document.body.dataset.auth === '1';
-    if(messagesTab && isAuthenticated && !messagesTab.querySelector('.home-message-unread')){
-      fetch('/api/unread_summary', {headers:{Accept:'application/json'}})
-        .then((response) => response.ok ? response.json() : null)
-        .then((payload) => {
-          const total = Number(payload?.total || 0);
-          if(!Number.isFinite(total) || total <= 0) return;
-          const badge = document.createElement('span');
-          badge.className = 'home-message-unread';
-          badge.textContent = total > 99 ? '99+' : String(total);
-          badge.setAttribute('aria-label', `${total} unread messages`);
-          messagesTab.append(badge);
-        })
-        .catch(() => {});
-    }
   })();
 
   function snap(el, dir=1){

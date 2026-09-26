@@ -953,10 +953,7 @@ def item_new_get(
             "title": "Add Item",
             "categories": categories_db,     # full category objects
             "subcats_map": subcats_map,     # dict for JS dynamic
-            "session_user": session_user,
-            # Existing favorite IDs are loaded once for the client-side
-            # POST/DELETE toggle; no favorite lifecycle behavior changes.
-            "favorite_ids": favorite_ids,
+            "session_user": request.session.get("user"),
             "account_limited": is_account_limited(request),
             "website_error": website_error,
         }
