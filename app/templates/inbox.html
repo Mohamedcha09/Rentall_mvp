@@ -659,29 +659,30 @@
     // The existing endpoint is the canonical exact total for direct Messages only.
     // Support tickets expose an unread boolean, not a compatible per-message total,
     // so they are intentionally not folded into this numeric navigation badge.
-    const messagesNav = document.querySelector('.mobile-tabbar a[href="/messages"]');
+    const messagesNav = () => document.querySelector('.mobile-tabbar a[href="/messages"]');
     const renderMessagesNavBadge = (value) => {
-      if (!messagesNav) return;
+      const navLink = messagesNav();
+      if (!navLink) return;
       const total = Math.max(0, Number.parseInt(value, 10) || 0);
-      let badge = messagesNav.querySelector('.messages-nav-unread');
+      let badge = navLink.querySelector('.messages-nav-unread');
       if (!total) {
         badge?.remove();
-        messagesNav.removeAttribute('aria-label');
+        navLink.removeAttribute('aria-label');
         return;
       }
       if (!badge) {
         badge = document.createElement('span');
         badge.className = 'messages-nav-unread';
         badge.setAttribute('aria-live', 'polite');
-        messagesNav.append(badge);
+        navLink.append(badge);
       }
       const label = total > 99 ? '99+' : String(total);
       badge.textContent = label;
       badge.setAttribute('aria-label', total > 99 ? '99 or more unread messages' : `${total} unread message${total === 1 ? '' : 's'}`);
-      messagesNav.setAttribute('aria-label', `Messages, ${badge.getAttribute('aria-label')}`);
+      navLink.setAttribute('aria-label', `Messages, ${badge.getAttribute('aria-label')}`);
     };
 
-    if (inbox) {
+    const hydrateMessagesNavBadge = () => {
       renderMessagesNavBadge(inbox.dataset.directUnreadTotal);
       fetch('/api/unread_summary', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
         .then((response) => response.ok ? response.json() : null)
@@ -689,6 +690,14 @@
           if (payload && Object.prototype.hasOwnProperty.call(payload, 'total')) renderMessagesNavBadge(payload.total);
         })
         .catch(() => { /* Keep the server-rendered total if a transient refresh fails. */ });
+    };
+
+    if (inbox) {
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', hydrateMessagesNavBadge, { once: true });
+      } else {
+        hydrateMessagesNavBadge();
+      }
     }
 
     const searchToggle = document.getElementById('openSearch');
