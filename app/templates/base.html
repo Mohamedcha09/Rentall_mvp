@@ -1632,15 +1632,23 @@ window.onpageshow = function(e){
 {% set unread = (request.state.unread_messages|default(0))|int
       if (request and request.state is defined) else 0 %}
         {% if is_home %}
-        <a class="btn btn-ghost btn-sm position-relative" id="notifOpen"
+        <a class="btn btn-ghost btn-sm position-relative{% if unread > 0 %} notification-bell--unread{% endif %}" id="notifOpen"
            href="/notifications"
            title="Notifications"
            aria-label="Notifications"
            data-notification-page="true">
         {% else %}
-        <button class="btn btn-ghost btn-sm position-relative" id="notifOpen" title="Notifications">
+        <button class="btn btn-ghost btn-sm position-relative{% if unread > 0 %} notification-bell--unread{% endif %}" id="notifOpen" title="Notifications">
         {% endif %}
           <img class="icon-img" src="/static/images/ui/nav-notifications-72.png" alt="Notifications" style="width:24px;height:24px">
+          {% if is_home %}
+            <span class="notification-bell__twinkles" aria-hidden="true">
+              <span class="notification-bell__twinkle notification-bell__twinkle--one"></span>
+              <span class="notification-bell__twinkle notification-bell__twinkle--two"></span>
+              <span class="notification-bell__twinkle notification-bell__twinkle--three"></span>
+              <span class="notification-bell__twinkle notification-bell__twinkle--four"></span>
+            </span>
+          {% endif %}
           {% if unread > 0 %}
             <span class="notif-ping"></span>
             <span class="notif-count">{{ unread if unread < 100 else '99+' }}</span>
@@ -2305,8 +2313,15 @@ window.onpageshow = function(e){
 
     let lastTs = 0;
     function setBadge(n){
-      if (!n || n<=0){ ping.style.display='none'; count.style.display='none'; }
-      else { ping.style.display='block'; count.style.display='block'; count.textContent = (n>99 ? '99+' : n); }
+      const unreadCount = Math.max(0, Number(n) || 0);
+      const hasUnread = unreadCount > 0;
+      btn.classList.toggle('notification-bell--unread', hasUnread);
+      btn.dataset.unread = String(unreadCount);
+      btn.setAttribute('aria-label', hasUnread
+        ? `Notifications, ${unreadCount > 99 ? '99+' : unreadCount} unread`
+        : 'Notifications');
+      if (!hasUnread){ ping.style.display='none'; count.style.display='none'; }
+      else { ping.style.display='block'; count.style.display='block'; count.textContent = (unreadCount>99 ? '99+' : unreadCount); }
     }
     async function fetchUnreadCount(){
       try{
@@ -2345,9 +2360,8 @@ window.onpageshow = function(e){
         if (panel.classList.contains('is-open')){
           if (items.length===0){ await loadInitial(); }
           else { renderItems(items); }
-        } else {
-          if (items.length>0){ await fetchUnreadCount(); }
         }
+        await fetchUnreadCount();
       }catch(_){}
     }
 
@@ -2387,8 +2401,9 @@ window.onpageshow = function(e){
     fetchUnreadCount();
     setInterval(pollOnce, 20000);
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) pollOnce();
+      if (!document.hidden) fetchUnreadCount();
     });
+    window.addEventListener('pageshow', () => { fetchUnreadCount(); });
   })();
   </script>
 

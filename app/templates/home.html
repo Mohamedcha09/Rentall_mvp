@@ -2124,9 +2124,72 @@ body[data-path="/"] .home-empty{
   html.is-ipad body[data-path="/"] .home-feature-grid,
   html.is-ipad body[data-path="/"] .home-listing-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
 }
+
+/* The bell changes only when the existing unread count is truly non-zero. */
+body[data-path="/"] header.topbar #notifOpen{
+  isolation:isolate;
+  overflow:visible;
+}
+body[data-path="/"] header.topbar #notifOpen .icon-img{z-index:1;}
+body[data-path="/"] header.topbar #notifOpen.notification-bell--unread{
+  border-color:rgba(255,255,255,.28) !important;
+  background:linear-gradient(135deg, #7659f4 0%, #439af3 100%) !important;
+  box-shadow:0 8px 18px rgba(81,83,225,.26) !important;
+}
+body[data-path="/"] header.topbar #notifOpen.notification-bell--unread .icon-img{
+  filter:brightness(0) invert(1);
+}
+body[data-path="/"] header.topbar #notifOpen .notification-bell__twinkles{
+  position:absolute;
+  inset:0;
+  z-index:2;
+  pointer-events:none;
+  opacity:0;
+  visibility:hidden;
+  transition:opacity .2s ease, visibility 0s linear .2s;
+}
+body[data-path="/"] header.topbar #notifOpen.notification-bell--unread .notification-bell__twinkles{
+  opacity:1;
+  visibility:visible;
+  transition-delay:0s;
+}
+body[data-path="/"] header.topbar #notifOpen .notification-bell__twinkle{
+  position:absolute;
+  display:block;
+  color:#fff;
+  font-size:7px;
+  font-style:normal;
+  font-weight:800;
+  line-height:1;
+  opacity:0;
+  text-shadow:0 1px 3px rgba(27,39,119,.24);
+  transform:scale(.55);
+}
+body[data-path="/"] header.topbar #notifOpen .notification-bell__twinkle::before{content:"✦";}
+body[data-path="/"] header.topbar #notifOpen .notification-bell__twinkle--one{top:7px; left:7px; animation-delay:0s;}
+body[data-path="/"] header.topbar #notifOpen .notification-bell__twinkle--two{top:8px; right:8px; font-size:6px; animation-delay:.8s;}
+body[data-path="/"] header.topbar #notifOpen .notification-bell__twinkle--two::before{content:"✧";}
+body[data-path="/"] header.topbar #notifOpen .notification-bell__twinkle--three{bottom:7px; left:8px; font-size:6px; animation-delay:1.45s;}
+body[data-path="/"] header.topbar #notifOpen .notification-bell__twinkle--four{right:9px; bottom:7px; font-size:5px; animation-delay:2.1s;}
+body[data-path="/"] header.topbar #notifOpen.notification-bell--unread .notification-bell__twinkle{
+  animation:home-notification-twinkle 3.2s ease-in-out infinite;
+}
+body[data-path="/"] header.topbar #notifOpen .notif-ping{z-index:3;}
+body[data-path="/"] header.topbar #notifOpen .notif-count{
+  z-index:4;
+  border:2px solid #fff;
+  box-shadow:0 2px 5px rgba(25,33,74,.16);
+}
+@keyframes home-notification-twinkle{
+  0%, 100%{opacity:.14; transform:scale(.6);}
+  42%{opacity:.92; transform:scale(1);}
+  65%{opacity:.36; transform:scale(.78);}
+}
 @media (prefers-reduced-motion:reduce){
   body[data-path="/"] :is(.home-listing,.home-listing__image,.home-listing__favorite,.home-hero .carousel-control-prev,.home-hero .carousel-control-next,.paypal-callout .home-paypal__cta,#fabAdd){transition:none !important;}
   body[data-path="/"] .home-rail{scroll-behavior:auto;}
+  body[data-path="/"] header.topbar #notifOpen .notification-bell__twinkles{transition:none !important;}
+  body[data-path="/"] header.topbar #notifOpen.notification-bell--unread .notification-bell__twinkle{animation:none !important; opacity:0 !important;}
 }
 body[data-path="/"] :is(.home-listing__link,.home-listing__favorite,.home-section__link,.home-rail-button,.home-location-search__tool,.home-location-search__submit,.home-hero .carousel-control-prev,.home-hero .carousel-control-next,header.topbar .brand,header.topbar #notifOpen,header.topbar form.searchbar input):focus-visible{
   outline:3px solid rgba(104,87,246,.63) !important;
