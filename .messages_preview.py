@@ -75,11 +75,11 @@ item = SimpleNamespace(
 )
 thread = SimpleNamespace(id=22, item_id=item.id, item=item)
 messages = [
-    SimpleNamespace(id=1, sender_id=22, body="Hello! How can I help?", created_at=now - timedelta(minutes=11)),
-    SimpleNamespace(id=2, sender_id=7, body="Is it available this weekend?", created_at=now - timedelta(minutes=9)),
-    SimpleNamespace(id=3, sender_id=22, body="Yes, it is still available. I can reserve it for you.", created_at=now - timedelta(minutes=7)),
-    SimpleNamespace(id=4, sender_id=22, body="From Saturday to Sunday works well.", created_at=now - timedelta(minutes=5)),
-    SimpleNamespace(id=5, sender_id=7, body="Perfect. I will reserve it for you.", created_at=now - timedelta(minutes=2)),
+    SimpleNamespace(id=1, sender_id=22, body="Hello! How can I help?", created_at=now - timedelta(minutes=11), is_read=True),
+    SimpleNamespace(id=2, sender_id=7, body="Is it available this weekend?", created_at=now - timedelta(minutes=9), is_read=True),
+    SimpleNamespace(id=3, sender_id=22, body="Yes, it is still available. I can reserve it for you.", created_at=now - timedelta(minutes=7), is_read=True),
+    SimpleNamespace(id=4, sender_id=22, body="From Saturday to Sunday works well.", created_at=now - timedelta(minutes=5), is_read=True),
+    SimpleNamespace(id=5, sender_id=7, body="Perfect. I will reserve it for you.", created_at=now - timedelta(minutes=2), is_read=False),
 ]
 
 threads = [
