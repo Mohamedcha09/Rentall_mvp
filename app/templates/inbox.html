@@ -15,9 +15,13 @@
   }
 
   /* The existing payout condition and destination remain untouched; this only makes the notice quieter here. */
-  body[data-path="/messages"] .page > .paypal-callout{
+  body[data-path="/messages"] .paypal-callout{
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:center;
     max-width:760px;
-    margin:0 auto 20px !important;
+    width:100%;
+    margin:0 0 24px !important;
     padding:11px 12px 11px 14px;
     gap:12px;
     color:#3d3657;
@@ -27,6 +31,16 @@
     box-shadow:0 8px 22px rgba(43,34,84,.055);
     font-size:.88rem;
     line-height:1.35;
+  }
+
+  body[data-path="/messages"] .paypal-callout > div{ min-width:0; }
+  body[data-path="/messages"] .messages-paypal__icon{
+    display:inline-block;
+    margin-inline-end:7px;
+    color:#3269cf;
+    font-size:1.1rem;
+    line-height:1;
+    vertical-align:-.08em;
   }
 
   body[data-path="/messages"] .page > .paypal-callout .btn{
@@ -235,6 +249,29 @@
   }
   .messages-filter[aria-pressed="true"] .messages-filter__dot{ background:#fff; box-shadow:0 0 0 4px rgba(255,255,255,.16); }
 
+  /* This badge is injected only by the Inbox script, using the existing direct-message unread summary. */
+  body[data-path="/messages"] .mobile-tabbar a[href="/messages"] .messages-nav-unread{
+    position:absolute;
+    z-index:2;
+    top:-3px;
+    left:calc(50% + 10px);
+    display:grid;
+    place-items:center;
+    min-width:19px;
+    height:19px;
+    padding:0 5px;
+    color:#fff;
+    background:#ee5368;
+    border:2px solid rgba(255,255,255,.94);
+    border-radius:999px;
+    box-shadow:0 4px 10px rgba(210,57,83,.3);
+    font-size:.62rem;
+    font-weight:800;
+    font-variant-numeric:tabular-nums;
+    line-height:1;
+    pointer-events:none;
+  }
+
   .messages-conversations{ display:grid; gap:10px; min-width:0; }
   .messages-conversation{
     display:grid;
@@ -353,13 +390,27 @@
     font-weight:800;
     font-variant-numeric:tabular-nums;
   }
+  .messages-conversation__unread--dot{
+    min-width:8px;
+    width:8px;
+    height:8px;
+    padding:0;
+    box-shadow:0 0 0 4px rgba(92,71,206,.1);
+    font-size:0;
+  }
+  .messages-conversation__actions{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:4px;
+    margin-top:auto;
+  }
   .messages-conversation__chevron{
     display:inline-flex;
     align-items:center;
     justify-content:flex-end;
     width:24px;
     height:22px;
-    margin-top:auto;
     color:#716986;
     font-size:1.1rem;
   }
@@ -424,6 +475,10 @@
     .messages-conversation__support-image{ border-radius:19px; }
   }
 
+  /* Messages hides the shared chrome on iPad, so preserve the reference's local SEVOR mark there. */
+  html.is-ipad .messages-inbox__utility{ justify-content:space-between; }
+  html.is-ipad .messages-inbox__brand{ display:inline-flex; }
+
   @media (max-width:420px){
     .messages-filters{ gap:7px; }
     .messages-filter{ min-height:44px; gap:5px; padding-inline:12px; font-size:.84rem; }
@@ -435,6 +490,8 @@
     body[data-path="/messages"] .page{ padding-inline:12px !important; }
     .messages-inbox__utility{ margin-bottom:19px; }
     .messages-inbox__heading h1{ font-size:2rem; }
+    body[data-path="/messages"] .paypal-callout{ gap:9px; padding-inline:12px; font-size:.83rem; }
+    body[data-path="/messages"] .paypal-callout .btn{ padding-inline:10px; font-size:.72rem; }
     .messages-filter{ min-height:42px; padding-inline:10px; font-size:.8rem; }
     .messages-conversation{ grid-template-columns:64px minmax(0,1fr) auto; gap:10px; padding:8px; border-radius:18px; }
     .messages-conversation__media{ width:64px; height:64px; }
@@ -459,19 +516,26 @@
 {% endblock %}
 
 {% block content %}
-{% set unread_state = namespace(total=0) %}
+{% set unread_state = namespace(conversations=0, direct_total=0, support_total=0) %}
 {% for thread in threads %}
-  {% if thread.unread_count|default(0)|int > 0 %}
-    {% set unread_state.total = unread_state.total + 1 %}
+  {% set thread_unread_count = thread.unread_count|default(0)|int %}
+  {% if thread_unread_count > 0 %}
+    {% set unread_state.conversations = unread_state.conversations + 1 %}
+    {% set unread_state.direct_total = unread_state.direct_total + thread_unread_count %}
+    {% if thread.is_support_thread %}
+      {% set unread_state.support_total = unread_state.support_total + thread_unread_count %}
+    {% endif %}
   {% endif %}
 {% endfor %}
 {% for ticket in chatbot_tickets %}
   {% if ticket.unread_for_user|default(false) %}
-    {% set unread_state.total = unread_state.total + 1 %}
+    {% set unread_state.conversations = unread_state.conversations + 1 %}
+    {# Support tickets expose a real unread state, but not a per-message total. #}
+    {% set unread_state.support_total = unread_state.support_total + 1 %}
   {% endif %}
 {% endfor %}
 
-<section class="messages-inbox" aria-labelledby="messagesTitle">
+<section class="messages-inbox" aria-labelledby="messagesTitle" data-direct-unread-total="{{ unread_state.direct_total }}">
   <div class="messages-inbox__utility">
     <a class="messages-inbox__brand" href="/" aria-label="SEVOR home">
       <img src="/static/images/ui/sevor-logo-96.png" alt="" width="31" height="31">
@@ -501,15 +565,13 @@
     <button class="messages-filter" type="button" data-filter="support" aria-pressed="false">
       <img class="messages-filter__logo" src="/static/images/ui/sevor-logo-96.png" alt="">
       <span>SEVOR Support</span>
-      {% if tickets_count > 0 %}<span class="messages-filter__count" aria-label="{{ tickets_count }} support tickets">{{ tickets_count }}</span>{% endif %}
+      {% if unread_state.support_total > 0 %}<span class="messages-filter__count" aria-label="{{ unread_state.support_total }} unread support updates">{{ '99+' if unread_state.support_total > 99 else unread_state.support_total }}</span>{% endif %}
     </button>
-    {% if unread_state.total > 0 %}
-      <button class="messages-filter" type="button" data-filter="unread" aria-pressed="false"><span>Unread</span><span class="messages-filter__dot" aria-hidden="true"></span></button>
-    {% endif %}
+    <button class="messages-filter" type="button" data-filter="unread" aria-pressed="false"><span>Unread</span>{% if unread_state.conversations > 0 %}<span class="messages-filter__dot" aria-hidden="true"></span>{% endif %}</button>
   </div>
 
   <div class="messages-conversations" id="threadsContainer">
-    <a href="/chatbot" class="messages-conversation messages-conversation--support" data-message-row data-kind="support" data-unread="0" data-search="sevor support chatbot" hidden>
+    <a href="/chatbot" class="messages-conversation messages-conversation--support" data-message-row data-kind="support" data-unread="0" data-search="sevor support chatbot" aria-label="Open SEVOR Support conversation" hidden>
       <span class="messages-conversation__media" aria-hidden="true"><img class="messages-conversation__support-image" src="/static/images/ui/sevor-logo-96.png" alt="" loading="lazy" decoding="async"></span>
       <span class="messages-conversation__content">
         <span class="messages-conversation__name"><span class="messages-conversation__name-text">SEVOR Support</span></span>
@@ -521,7 +583,7 @@
 
     {% for ticket in chatbot_tickets %}
       {% set ticket_is_unread = ticket.unread_for_user|default(false) %}
-      <a href="/support/ticket/{{ ticket.id }}" class="messages-conversation messages-conversation--support{% if ticket_is_unread %} messages-conversation--unread{% endif %}" data-message-row data-kind="support" data-unread="{{ '1' if ticket_is_unread else '0' }}" data-search="{{ ('sevor support ticket ' ~ ticket.id ~ ' ' ~ (ticket.subject or ''))|lower }}" hidden>
+      <a href="/support/ticket/{{ ticket.id }}" class="messages-conversation messages-conversation--support{% if ticket_is_unread %} messages-conversation--unread{% endif %}" data-message-row data-kind="support" data-unread="{{ '1' if ticket_is_unread else '0' }}" data-search="{{ ('sevor support ticket ' ~ ticket.id ~ ' ' ~ (ticket.subject or ''))|lower }}" aria-label="Open SEVOR Support ticket {{ ticket.id }}{% if ticket_is_unread %}, unread{% endif %}" hidden>
         <span class="messages-conversation__media" aria-hidden="true"><img class="messages-conversation__support-image" src="/static/images/ui/sevor-logo-96.png" alt="" loading="lazy" decoding="async"></span>
         <span class="messages-conversation__content">
           <span class="messages-conversation__name"><span class="messages-conversation__name-text">Ticket #{{ ticket.id }}</span></span>
@@ -530,14 +592,17 @@
         </span>
         <span class="messages-conversation__side">
           {% if ticket.updated_at %}<time class="messages-conversation__date" datetime="{{ ticket.updated_at.isoformat() }}" title="{{ ticket.updated_at.strftime('%d-%m-%Y') }}">{{ ticket.updated_at.strftime('%d %b') }}</time>{% endif %}
-          {% if ticket_is_unread %}<span class="messages-conversation__unread" aria-label="Unread support ticket">•</span>{% else %}<span class="messages-conversation__chevron" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>{% endif %}
+          <span class="messages-conversation__actions">
+            {% if ticket_is_unread %}<span class="messages-conversation__unread messages-conversation__unread--dot" aria-label="Unread support ticket">•</span>{% endif %}
+            <span class="messages-conversation__chevron" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
+          </span>
         </span>
       </a>
     {% endfor %}
 
     {% for thread in threads %}
       {% set thread_is_unread = thread.unread_count|default(0)|int > 0 %}
-      <a href="/messages/{{ thread.id }}" class="messages-conversation{% if thread.is_support_thread %} messages-conversation--support{% endif %}{% if thread_is_unread %} messages-conversation--unread{% endif %}" data-message-row data-kind="{{ 'support' if thread.is_support_thread else 'normal' }}" data-unread="{{ '1' if thread_is_unread else '0' }}" data-search="{{ (thread.other_fullname ~ ' ' ~ (thread.item_title or '') ~ ' ' ~ (thread.last_message_text or ''))|lower }}">
+      <a href="/messages/{{ thread.id }}" class="messages-conversation{% if thread.is_support_thread %} messages-conversation--support{% endif %}{% if thread_is_unread %} messages-conversation--unread{% endif %}" data-message-row data-kind="{{ 'support' if thread.is_support_thread else 'normal' }}" data-unread="{{ '1' if thread_is_unread else '0' }}" data-search="{{ (thread.other_fullname ~ ' ' ~ (thread.item_title or '') ~ ' ' ~ (thread.last_message_text or ''))|lower }}" aria-label="Open conversation with {{ thread.other_fullname }}{% if thread.item_title %}, {{ thread.item_title }}{% endif %}{% if thread_is_unread %}, {{ thread.unread_count }} unread messages{% endif %}">
         <span class="messages-conversation__media" aria-hidden="true">
           <img class="messages-conversation__item-image" src="{{ thread.item_image }}" alt="" {% if loop.index > 3 %}loading="lazy"{% endif %} decoding="async" onerror="this.onerror=null;this.src='/static/placeholder.svg'">
           <img class="messages-conversation__avatar" src="{{ thread.other_avatar }}" alt="" {% if loop.index > 3 %}loading="lazy"{% endif %} decoding="async" onerror="this.onerror=null;this.src='/static/placeholder.svg'">
@@ -552,7 +617,10 @@
         </span>
         <span class="messages-conversation__side">
           {% if thread.last_message_at %}<time class="messages-conversation__date" datetime="{{ thread.last_message_at.isoformat() }}" title="{{ thread.last_message_at.strftime('%d-%m-%Y') }}">{{ thread.last_message_at.strftime('%d %b') }}</time>{% endif %}
-          {% if thread_is_unread %}<span class="messages-conversation__unread" aria-label="{{ thread.unread_count }} unread messages">{{ '+9' if thread.unread_count > 9 else thread.unread_count }}</span>{% else %}<span class="messages-conversation__chevron" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>{% endif %}
+          <span class="messages-conversation__actions">
+            {% if thread_is_unread %}<span class="messages-conversation__unread" aria-label="{{ thread.unread_count }} unread messages">{{ '99+' if thread.unread_count > 99 else thread.unread_count }}</span>{% endif %}
+            <span class="messages-conversation__chevron" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
+          </span>
         </span>
       </a>
     {% endfor %}
@@ -567,6 +635,62 @@
 
 <script>
   (() => {
+    const inbox = document.querySelector('.messages-inbox');
+
+    // Base owns the existing payout condition and destination. Move that same node into
+    // the Inbox sequence so the reference order is logo/search → PayPal → heading.
+    const paypalCallout = document.querySelector('body[data-path="/messages"] .page > .paypal-callout');
+    const inboxHeading = inbox?.querySelector('.messages-inbox__heading');
+    if (paypalCallout && inbox && inboxHeading) {
+      const copy = paypalCallout.querySelector(':scope > div');
+      if (copy && !copy.querySelector('.messages-paypal__icon')) {
+        const leadingText = Array.from(copy.childNodes).find((node) =>
+          node.nodeType === Node.TEXT_NODE && node.textContent.includes('💸')
+        );
+        if (leadingText) leadingText.textContent = leadingText.textContent.replace(/^\s*💸\s*/, '');
+        const icon = document.createElement('i');
+        icon.className = 'bi bi-paypal messages-paypal__icon';
+        icon.setAttribute('aria-hidden', 'true');
+        copy.prepend(icon);
+      }
+      inbox.insertBefore(paypalCallout, inboxHeading);
+    }
+
+    // The existing endpoint is the canonical exact total for direct Messages only.
+    // Support tickets expose an unread boolean, not a compatible per-message total,
+    // so they are intentionally not folded into this numeric navigation badge.
+    const messagesNav = document.querySelector('.mobile-tabbar a[href="/messages"]');
+    const renderMessagesNavBadge = (value) => {
+      if (!messagesNav) return;
+      const total = Math.max(0, Number.parseInt(value, 10) || 0);
+      let badge = messagesNav.querySelector('.messages-nav-unread');
+      if (!total) {
+        badge?.remove();
+        messagesNav.removeAttribute('aria-label');
+        return;
+      }
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'messages-nav-unread';
+        badge.setAttribute('aria-live', 'polite');
+        messagesNav.append(badge);
+      }
+      const label = total > 99 ? '99+' : String(total);
+      badge.textContent = label;
+      badge.setAttribute('aria-label', total > 99 ? '99 or more unread messages' : `${total} unread message${total === 1 ? '' : 's'}`);
+      messagesNav.setAttribute('aria-label', `Messages, ${badge.getAttribute('aria-label')}`);
+    };
+
+    if (inbox) {
+      renderMessagesNavBadge(inbox.dataset.directUnreadTotal);
+      fetch('/api/unread_summary', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+        .then((response) => response.ok ? response.json() : null)
+        .then((payload) => {
+          if (payload && Object.prototype.hasOwnProperty.call(payload, 'total')) renderMessagesNavBadge(payload.total);
+        })
+        .catch(() => { /* Keep the server-rendered total if a transient refresh fails. */ });
+    }
+
     const searchToggle = document.getElementById('openSearch');
     const searchPanel = document.getElementById('searchPanel');
     const searchInput = document.getElementById('searchInput');
@@ -594,7 +718,7 @@
         const kind = row.dataset.kind || 'normal';
         const unread = row.dataset.unread === '1';
         const matchesFilter = activeFilter === 'all'
-          ? kind === 'normal'
+          ? true
           : activeFilter === 'support'
             ? kind === 'support'
             : unread;
