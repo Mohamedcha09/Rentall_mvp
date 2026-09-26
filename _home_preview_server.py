@@ -46,7 +46,7 @@ def render_home() -> str:
         url=SimpleNamespace(path="/"),
         query_params={},
         state=SimpleNamespace(unread_messages=2),
-        session={},
+        session={"geo": {"source": "manual", "currency": "CAD"}},
         cookies={"disp_cur": "CAD", "geo_manual_done": "1"},
         headers={},
     )
