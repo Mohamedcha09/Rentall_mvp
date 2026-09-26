@@ -1,0 +1,190 @@
+{#
+  Home's reference-design content.  This partial deliberately keeps the IDs,
+  links, form names, data attributes, and real values used by the existing
+  Home controller and JavaScript.
+#}
+{% macro listing_card(it, eager=false, rail=false) %}
+  {% set image_src = it.image_path|default('/static/images/ui/sevor-logo-180.png', true) %}
+  <article class="home-listing{% if rail %} home-listing--rail{% endif %}">
+    <a class="home-listing__link" href="/items/{{ it.id }}" aria-label="View {{ it.title or 'listing' }}">
+      <div class="home-listing__media">
+        <img class="home-listing__image"
+             src="{{ image_src|replace('res.cloudinary.com/de79qzfog/image/upload/', 'res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_640,h_450,c_fill/') }}"
+             width="640"
+             height="450"
+             {% if eager %}loading="eager"{% else %}loading="lazy"{% endif %}
+             decoding="async"
+             onerror="this.onerror=null;this.classList.add('is-fallback');this.src='/static/images/ui/sevor-logo-180.png';"
+             alt="{{ it.title or 'Sevor listing' }}">
+      </div>
+      <div class="home-listing__body">
+        <h3 class="home-listing__title">{{ it.title or 'Untitled listing' }}</h3>
+        <div class="home-listing__price-row">
+          {% if it.price_per_day is not none %}
+            <div class="home-listing__price">{{ it.display_price }} {{ it.display_symbol }}<span>/day</span></div>
+          {% endif %}
+          {% if it.owner_avatar_path %}
+            <span class="home-listing__owner" title="{{ it.owner_name or 'Listing owner' }}">
+              <img src="{{ avatar_src(it.owner_avatar_path) }}"
+                   width="31" height="31" loading="lazy" decoding="async"
+                   onerror="this.onerror=null;this.parentElement.textContent='{{ it.owner_initial|default('S') }}';"
+                   alt="">
+            </span>
+          {% elif it.owner_name %}
+            <span class="home-listing__owner" aria-label="{{ it.owner_name }}">{{ it.owner_initial|default('S') }}</span>
+          {% endif %}
+        </div>
+        <div class="home-listing__meta">
+          <span class="home-listing__city" title="{{ it.city or '' }}"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i>{{ it.city or '—' }}</span>
+          {% if it.rating_count > 0 %}
+            <span class="home-listing__rating" aria-label="{{ '%.1f'|format(it.rating_avg) }} from {{ it.rating_count }} reviews"><i class="bi bi-star-fill" aria-hidden="true"></i>{{ '%.1f'|format(it.rating_avg) }} <span class="home-listing__reviews">({{ it.rating_count }})</span></span>
+          {% endif %}
+        </div>
+      </div>
+    </a>
+    <button class="fav-btn home-listing__favorite" type="button" data-id="{{ it.id }}" aria-pressed="false"
+            aria-label="Add to favorites" title="Add to favorites">
+      <i class="bi bi-heart" aria-hidden="true"></i>
+    </button>
+  </article>
+{% endmacro %}
+
+<div class="home-root">
+  <section class="home-hero-wrap" aria-label="Featured Sevor banners">
+    <div id="heroCarousel" class="carousel slide home-hero" data-home-carousel
+         data-bs-ride="carousel" data-bs-interval="5000" data-bs-touch="true"
+         role="region" aria-roledescription="carousel" aria-live="off" aria-label="Sevor featured banners">
+      <div class="carousel-inner">
+        {% for src in (banners or []) %}
+          <div class="carousel-item {% if loop.first %}active{% endif %}">
+            <img class="home-hero__image"
+                 src="{{ src|replace('res.cloudinary.com/de79qzfog/image/upload/', 'res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_1200/') }}"
+                 width="1200" height="800" decoding="async"
+                 {% if loop.first %}fetchpriority="high" loading="eager"{% elif loop.index == 2 %}fetchpriority="low" loading="eager"{% else %}loading="lazy"{% endif %}
+                 onerror="this.onerror=null;this.classList.add('is-fallback');this.src='/static/images/ui/sevor-logo-180.png';"
+                 alt="Sevor featured banner">
+          </div>
+        {% endfor %}
+      </div>
+      {% if banners and banners|length > 1 %}
+        <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" aria-label="Previous banner">
+          <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next" aria-label="Next banner">
+          <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        </button>
+        <div class="carousel-indicators" aria-label="Choose banner">
+          {% for src in banners %}
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="{{ loop.index0 }}"
+                    {% if loop.first %}class="active" aria-current="true"{% endif %}
+                    aria-label="Banner {{ loop.index }}"></button>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="home-location-wrap" aria-label="Search listings by location">
+    <form class="home-location-search" action="/" method="get" role="search" id="homeLocForm">
+      <div class="home-location-search__field">
+        <i class="bi bi-geo-alt" aria-hidden="true"></i>
+        <input type="text" class="form-control" id="homeCityInput" name="city" placeholder="Type city / area..."
+               autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false"
+               aria-controls="homeCitySugg" aria-haspopup="listbox">
+        <div id="homeCitySugg" role="listbox" style="display:none; position:absolute; z-index:1000; max-height:260px; overflow:auto"></div>
+      </div>
+      <button type="button" id="homeUseGPS" class="home-location-search__tool" aria-label="Use my location" title="Use my location">
+        <i class="bi bi-crosshair" aria-hidden="true"></i>
+      </button>
+      <button type="button" id="homeClearGPS" class="home-location-search__tool home-location-search__tool--clear" aria-label="Clear location" title="Clear location">
+        <i class="bi bi-x-lg" aria-hidden="true"></i>
+      </button>
+      <button class="home-location-search__submit" type="submit"><span>Search</span><i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+      <input type="hidden" id="homeLat" name="lat">
+      <input type="hidden" id="homeLng" name="lng">
+    </form>
+  </section>
+
+  <main class="home-content">
+    {% set nearby = (nearby_items if nearby_items is defined else popular_items)|default([]) %}
+    {% if nearby %}
+      <section class="home-section home-featured-section">
+        <div class="home-section__header">
+          <h2 class="home-section__title">Featured near you</h2>
+          <a class="home-section__link" href="/items">See all <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+        </div>
+        <div class="home-feature-grid">
+          {% for it in nearby %}
+            {{ listing_card(it, loop.index <= 4) }}
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+    {% set cats_map = (items_by_category if items_by_category is defined else {}) %}
+    {% for code, listings in cats_map.items() %}
+      {% if listings and listings|length > 0 %}
+        <section class="home-section home-rail-section">
+          <div class="home-section__header">
+            <h2 class="home-section__title">{{ code }}</h2>
+            <div class="home-rail-header__actions">
+              <a class="home-section__link" href="/items?category={{ code|urlencode }}">See all <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+              <button class="home-rail-button" type="button" data-snap-prev="#row-category-{{ loop.index }}" aria-controls="row-category-{{ loop.index }}" aria-label="Previous {{ code }} listings"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
+              <button class="home-rail-button" type="button" data-snap-next="#row-category-{{ loop.index }}" aria-controls="row-category-{{ loop.index }}" aria-label="Next {{ code }} listings"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+            </div>
+          </div>
+          <div id="row-category-{{ loop.index }}" class="home-rail hrow">
+            {% for it in listings %}
+              {{ listing_card(it, false, true) }}
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+    {% endfor %}
+
+    {% set cols = top_strip_cols|default([[],[],[]]) %}
+    {% set total = (cols[0]|length) + (cols[1]|length) + (cols[2]|length) %}
+    {% if total > 0 %}
+      <section class="home-section home-highlights" aria-label="Sevor highlights">
+        <div class="home-section__header"><h2 class="home-section__title">Discover more</h2></div>
+        <div class="home-highlight-grid">
+          {% for col in cols %}
+            {% if col %}
+              <div id="homeHighlight{{ loop.index }}" class="carousel slide home-highlight-carousel" data-home-carousel
+                   data-bs-ride="carousel" data-bs-interval="{{ 4000 + loop.index * 1500 }}" data-bs-touch="true"
+                   role="region" aria-roledescription="carousel" aria-live="off" aria-label="Sevor highlights">
+                <div class="carousel-inner">
+                  {% for src in col %}
+                    <div class="carousel-item {% if loop.first %}active{% endif %}">
+                      <img src="{{ src|replace('res.cloudinary.com/de79qzfog/image/upload/', 'res.cloudinary.com/de79qzfog/image/upload/f_auto,q_auto,w_900/') }}"
+                           width="900" height="1350" loading="lazy" decoding="async"
+                           onerror="this.onerror=null;this.src='/static/images/ui/sevor-logo-180.png';" alt="">
+                    </div>
+                  {% endfor %}
+                </div>
+                {% if col|length > 1 %}
+                  <button class="carousel-control-prev" type="button" data-bs-target="#homeHighlight{{ loop.index }}" data-bs-slide="prev" aria-label="Previous highlight"><span class="carousel-control-prev-icon" aria-hidden="true"></span></button>
+                  <button class="carousel-control-next" type="button" data-bs-target="#homeHighlight{{ loop.index }}" data-bs-slide="next" aria-label="Next highlight"><span class="carousel-control-next-icon" aria-hidden="true"></span></button>
+                {% endif %}
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+    {% set all_items_list = (all_items if all_items is defined else mixed_items if mixed_items is defined else items if items is defined else []) %}
+    <section class="home-section home-all-section">
+      <div class="home-section__header"><h2 class="home-section__title">All items</h2></div>
+      {% if all_items_list and all_items_list|length > 0 %}
+        <div class="home-listing-grid">
+          {% for it in all_items_list %}
+            {{ listing_card(it, false) }}
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="home-empty">No items are available yet.</div>
+      {% endif %}
+    </section>
+  </main>
+</div>

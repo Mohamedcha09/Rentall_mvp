@@ -1,14 +1,14 @@
 # app/routes_home.py
 
 from fastapi import APIRouter, Depends, Request, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, or_
 from pathlib import Path
 from urllib.parse import quote
 import random
 
 from .database import get_db
-from .models import Item, FxRate, ItemReview, Category
+from .models import Category, Favorite, FxRate, Item, ItemReview
 from .utils import category_label as _category_label
 
 router = APIRouter()
@@ -59,6 +59,16 @@ def _serialize(i: Item, ratings: dict) -> dict:
         },
     )
 
+    owner = getattr(i, "owner", None)
+    owner_name = " ".join(
+        part
+        for part in (
+            getattr(owner, "first_name", "") or "",
+            getattr(owner, "last_name", "") or "",
+        )
+        if part
+    ).strip()
+
     return {
         "id": rid,
         "title": getattr(i, "title", "") or "",
@@ -71,6 +81,12 @@ def _serialize(i: Item, ratings: dict) -> dict:
         "rating_avg": r["avg"],
         "rating_count": r["cnt"],
         "currency": getattr(i, "currency", "CAD"),
+        # Presentation-only owner data for the Home card.  The relationship is
+        # eager-loaded on the established item queries below, so this cannot
+        # introduce an N+1 query when shelves are rendered.
+        "owner_name": owner_name,
+        "owner_avatar_path": getattr(owner, "avatar_path", "") or "",
+        "owner_initial": (owner_name[:1] or "S").upper(),
     }
 
 
@@ -390,7 +406,7 @@ def home_page(
     # ============================================
     # Show only approved items
     # ============================================
-    base_q = db.query(Item).filter(
+    base_q = db.query(Item).options(selectinload(Item.owner)).filter(
         Item.is_active == "yes",
         Item.status == "approved",
     )
@@ -541,6 +557,22 @@ def home_page(
     # ======================================
     # TEMPLATE CONTEXT
     # ======================================
+    user_id = (
+        session_user.get("id")
+        if isinstance(session_user, dict)
+        else getattr(session_user, "id", None)
+    )
+    favorites_ids = []
+    if user_id:
+        favorites_ids = [
+            item_id
+            for (item_id,) in (
+                db.query(Favorite.item_id)
+                .filter(Favorite.user_id == user_id)
+                .all()
+            )
+        ]
+
     ctx = {
 
         "request": request,
@@ -581,7 +613,7 @@ def home_page(
             session_user,
 
         "favorites_ids":
-            [],
+            favorites_ids,
     }
 
 
