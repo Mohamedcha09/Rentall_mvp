@@ -238,7 +238,8 @@
 
   .listing-create__field{ min-width:0; }
   .listing-create__field--wide{ grid-column:1 / -1; }
-  .listing-create__field--relative{ position:relative; }
+  .listing-create__field--relative{ min-width:0; }
+  .listing-create__city-combobox{ position:relative; }
 
   .listing-create__label{
     display:flex;
@@ -459,7 +460,7 @@
   .listing-create__suggestions{
     position:absolute;
     z-index:30;
-    top:calc(100% - 38px);
+    top:calc(100% + 7px);
     right:0;
     left:0;
     overflow:auto;
@@ -573,6 +574,10 @@
     color:#8a88a1;
     font-size:11px;
     font-weight:650;
+  }
+
+  @media (hover:none), (pointer:coarse){
+    .listing-create__upload-drop{ display:none; }
   }
 
   .listing-create__file-input{
@@ -742,7 +747,6 @@
     .listing-create__field--wide{ grid-column:auto; }
     .listing-create__location-layout{ grid-template-columns:1fr; }
     .listing-create__location-button{ justify-self:start; }
-    .listing-create__suggestions{ top:calc(100% - 90px); }
   }
 
   @media (max-width:480px){
@@ -927,28 +931,30 @@
 
       <div class="listing-create__field listing-create__field--relative" data-field>
         <label class="listing-create__label" for="cityNew">City or area</label>
-        <div class="listing-create__location-layout">
-          <input
-            class="listing-create__control"
-            type="text"
-            name="city"
-            id="cityNew"
-            placeholder="Type the city / area…"
-            autocomplete="off"
-            maxlength="120"
-            required
-            aria-autocomplete="list"
-            aria-controls="cityNewSuggest"
-            aria-expanded="false"
-            aria-describedby="locationHelp cityError"
-            data-error-target="cityError"
-            data-error-message="Choose a city or area."
-          >
-          <button type="button" id="useMyLocNew" class="listing-create__location-button">
-            <i class="bi bi-crosshair" aria-hidden="true"></i><span data-location-label>Use my location</span>
-          </button>
+        <div class="listing-create__city-combobox">
+          <div class="listing-create__location-layout">
+            <input
+              class="listing-create__control"
+              type="text"
+              name="city"
+              id="cityNew"
+              placeholder="Type the city / area…"
+              autocomplete="off"
+              maxlength="120"
+              required
+              aria-autocomplete="list"
+              aria-controls="cityNewSuggest"
+              aria-expanded="false"
+              aria-describedby="locationHelp cityError"
+              data-error-target="cityError"
+              data-error-message="Choose a city or area."
+            >
+            <button type="button" id="useMyLocNew" class="listing-create__location-button">
+              <i class="bi bi-crosshair" aria-hidden="true"></i><span data-location-label>Use my location</span>
+            </button>
+          </div>
+          <div id="cityNewSuggest" class="listing-create__suggestions" role="listbox" aria-label="City suggestions" hidden></div>
         </div>
-        <div id="cityNewSuggest" class="listing-create__suggestions" role="listbox" aria-label="City suggestions" hidden></div>
 
         <div class="listing-create__location-options">
           <div class="listing-create__radius">
