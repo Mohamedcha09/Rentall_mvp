@@ -24,10 +24,11 @@
             <div class="home-listing__price">{{ it.display_price }} {{ it.display_symbol }}<span>/day</span></div>
           {% endif %}
           {% if it.owner_avatar_path %}
-            <span class="home-listing__owner" title="{{ it.owner_name or 'Listing owner' }}">
+            <span class="home-listing__owner" title="{{ it.owner_name or 'Listing owner' }}"
+                  data-owner-initial="{{ it.owner_initial|default('S') }}">
               <img src="{{ avatar_src(it.owner_avatar_path) }}"
                    width="31" height="31" loading="lazy" decoding="async"
-                   onerror="this.onerror=null;this.parentElement.textContent={{ it.owner_initial|default('S')|tojson }};"
+                   onerror="this.onerror=null;this.parentElement.textContent=this.parentElement.dataset.ownerInitial;"
                    alt="">
             </span>
           {% elif it.owner_name %}

@@ -99,13 +99,13 @@ class PreviewHandler(SimpleHTTPRequestHandler):
             body_text = render_home()
             if parse_qs(parsed.query).get("ipad"):
                 body_text = body_text.replace("<html", "<html class=\"is-ipad\"", 1)
-                # The production base template intentionally re-evaluates the
-                # device marker from the browser's iPad user agent.  The local
-                # desktop QA browser is not an iPad, so restore the marker after
-                # that detector has run in this fixture only.
+                # The production base template intentionally detects an iPad
+                # from its user agent.  The local desktop QA browser does not
+                # advertise that user agent, so preserve the marker before
+                # Home's own scripts execute in this fixture only.
                 body_text = body_text.replace(
-                    "</body>",
-                    "<script>document.documentElement.classList.add('is-ipad')</script></body>",
+                    'root.classList.toggle("is-ipad", ipadUserAgent || ipadOSDesktopUA);',
+                    'root.classList.add("is-ipad");',
                     1,
                 )
             body = body_text.encode("utf-8")

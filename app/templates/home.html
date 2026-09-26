@@ -1754,7 +1754,7 @@ body[data-path="/"] .home-location-search #homeClearGPS.home-location-search__to
   color:#8a93aa !important;
   background:#eef0f7 !important;
 }
-body[data-path="/"] .home-location-search.has-location #homeClearGPS.home-location-search__tool--clear{display:grid !important;}
+body[data-path="/"] .home-location-search.has-location #homeClearGPS.home-location-search__tool--clear{display:grid !important; place-items:center;}
 body[data-path="/"] .home-location-search.has-location #homeCityInput{padding-inline-end:37px;}
 body[data-path="/"] .home-location-search.has-location{grid-template-columns:minmax(0,1fr) auto;}
 body[data-path="/"] .home-location-search.has-location #homeUseGPS{display:none !important;}
@@ -2032,9 +2032,18 @@ body[data-path="/"] .home-empty{
 
 /* Reference-like Home-only mobile dock; original links, active state and FAB remain intact. */
 @media (max-width:991px){
+  body[data-path="/"] .page{padding-top:0 !important;}
   body[data-path="/"] .mobile-tabbar{
+    display:grid !important;
+    grid-template-columns:repeat(5,minmax(0,1fr)) !important;
+    align-items:center !important;
+    position:fixed !important;
+    z-index:1040 !important;
     left:12px !important;
     right:12px !important;
+    width:auto !important;
+    max-width:none !important;
+    transform:none !important;
     bottom:calc(10px + max(env(safe-area-inset-bottom,0px),var(--safe-bottom,0px))) !important;
     height:68px !important;
     border:1px solid rgba(23,32,63,.075) !important;
@@ -2044,6 +2053,9 @@ body[data-path="/"] .home-empty{
     backdrop-filter:blur(14px) saturate(135%) !important;
     -webkit-backdrop-filter:blur(14px) saturate(135%) !important;
   }
+  body[data-auth="0"][data-path="/"] .mobile-tabbar{display:none !important;}
+  body[data-auth="0"][data-path="/"] header.topbar form.searchbar{display:none !important;}
+  body[data-auth="0"][data-path="/"] header.topbar .topbar__inner{grid-template-areas:"brand actions";}
   body[data-path="/"] .mobile-tabbar > a{
     color:#737d96 !important;
     font-size:11px !important;
@@ -2099,7 +2111,7 @@ body[data-path="/"] .home-empty{
   }
   html.is-ipad body[data-path="/"] .mobile-tabbar > a{color:#737d96 !important; font-weight:760 !important;}
   html.is-ipad body[data-path="/"] .mobile-tabbar > a.is-active{color:#5f50ef !important; background:rgba(104,87,246,.10) !important; box-shadow:none !important;}
-  html.is-ipad body[data-path="/"] #fabAdd{position:absolute !important; top:20px !important; right:136px !important; bottom:auto !important; width:40px !important; height:40px !important; border-radius:13px !important; color:#fff !important; background:var(--home-ref-gradient) !important;}
+  html.is-ipad body[data-path="/"] #fabAdd{position:absolute !important; top:20px !important; right:160px !important; bottom:auto !important; width:40px !important; height:40px !important; border-radius:13px !important; color:#fff !important; background:var(--home-ref-gradient) !important;}
 }
 
 /* Breakpoint-specific content proportions. iPad is kept out of desktop sizing. */
@@ -2130,7 +2142,7 @@ body[data-path="/"] .home-empty{
   html:not(.is-ipad) body[data-path="/"] .home-root{padding-inline:clamp(28px,4vw,52px);}
   html:not(.is-ipad) body[data-path="/"] .home-hero-wrap{max-width:900px; margin:8px auto 24px;}
   html:not(.is-ipad) body[data-path="/"] .home-hero{border-radius:26px;}
-  html:not(.is-ipad) body[data-path="/"] .home-hero :is(.carousel-inner,.carousel-item){aspect-ratio:2.25 / 1;}
+  html:not(.is-ipad) body[data-path="/"] .home-hero :is(.carousel-inner,.carousel-item){aspect-ratio:1.8 / 1;}
   html:not(.is-ipad) body[data-path="/"] .home-location-wrap{max-width:960px; margin:0 auto 36px;}
   html:not(.is-ipad) body[data-path="/"] .home-feature-grid,
   html:not(.is-ipad) body[data-path="/"] .home-listing-grid{grid-template-columns:repeat(4,minmax(0,1fr)); gap:20px;}
@@ -2144,7 +2156,7 @@ body[data-path="/"] .home-empty{
   html.is-ipad body[data-path="/"] .home-root{width:min(100%,1180px); padding:0 28px 30px;}
   html.is-ipad body[data-path="/"] .paypal-callout{width:min(calc(100% - 56px),1100px); margin:12px auto 20px !important;}
   html.is-ipad body[data-path="/"] .home-hero-wrap{max-width:980px; margin:2px auto 26px;}
-  html.is-ipad body[data-path="/"] .home-hero :is(.carousel-inner,.carousel-item){aspect-ratio:2 / 1;}
+  html.is-ipad body[data-path="/"] .home-hero :is(.carousel-inner,.carousel-item){aspect-ratio:1.8 / 1;}
   html.is-ipad body[data-path="/"] .home-location-wrap{max-width:920px; margin:0 auto 34px;}
   html.is-ipad body[data-path="/"] .home-feature-grid,
   html.is-ipad body[data-path="/"] .home-listing-grid{grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px;}
