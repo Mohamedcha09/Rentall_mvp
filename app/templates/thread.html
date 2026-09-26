@@ -823,9 +823,12 @@
     }, 1000);
 
     setInterval(() => {
-      fetch(`/messages/${threadId}/poll?after=${lastMessageId}`)
+      const query = new URLSearchParams({ after: String(lastMessageId), receipts_after: receiptCursor });
+      fetch(`/messages/${threadId}/poll?${query.toString()}`)
         .then((response) => response.json())
         .then((data) => {
+          if (data.receipt_cursor) receiptCursor = data.receipt_cursor;
+          (data.read_receipts || []).forEach((receipt) => markReceiptRead(receipt.id));
           if (!data.messages || data.messages.length === 0) return;
           const followLatest = isNearLatest();
           if (emptyState) {
@@ -833,7 +836,7 @@
             emptyState = null;
           }
           data.messages.forEach((message) => {
-            chatBox.insertBefore(createMessageElement(message), typingMount);
+            appendMessage(message);
             lastMessageId = message.id;
           });
           if (followLatest) scrollToLatest();
