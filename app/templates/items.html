@@ -525,28 +525,41 @@
   body[data-path="/items"] .explore-heading{ margin:0 0 4px; }
   body[data-path="/items"] .explore-heading h1{
     color:#17142d;
-    font-size:clamp(1.95rem, 7vw, 2.55rem);
-    line-height:1.05;
+    font-size:clamp(2.2rem, 9.4vw, 3.25rem);
+    font-weight:900;
+    letter-spacing:-.06em;
+    line-height:.98;
   }
   body[data-path="/items"] .explore-heading p{ display:none; }
   body[data-path="/items"] .explore-sellerbar{
-    display:grid;
-    grid-template-columns:repeat(3, minmax(0, 1fr));
-    gap:2px;
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+    gap:clamp(5px, 1.7vw, 16px);
+    flex-wrap:nowrap;
     max-width:none;
     margin:0;
   }
+  body[data-path="/items"] .explore-sellerbar__separator{
+    display:block;
+    flex:0 0 1px;
+    width:1px;
+    height:31px;
+    background:rgba(29,25,45,.18);
+  }
   body[data-path="/items"] .explore-seller{
-    min-height:40px;
+    flex:0 1 auto;
+    min-width:0;
+    min-height:46px;
     gap:0;
-    padding:0 4px;
+    padding:0 clamp(7px, 2.2vw, 17px);
     overflow:hidden;
     color:#28243a;
     background:transparent;
     border:0;
-    border-radius:12px;
+    border-radius:999px;
     box-shadow:none;
-    font-size:clamp(.72rem, 2.9vw, .94rem);
+    font-size:clamp(.78rem, 3.35vw, 1rem);
     font-weight:820;
     letter-spacing:-.025em;
     text-overflow:ellipsis;
@@ -556,7 +569,7 @@
   body[data-path="/items"] .explore-seller .bi{ display:none; }
   body[data-path="/items"] .explore-seller:hover{
     color:#5148d8;
-    background:rgba(112,104,242,.075);
+    background:transparent;
     border-color:transparent;
     box-shadow:none;
     transform:none;
@@ -564,9 +577,10 @@
   body[data-path="/items"] .explore-seller:active{ transform:scale(.98); }
   body[data-path="/items"] .explore-seller[aria-current="page"]{
     color:#5148d8;
-    background:rgba(112,104,242,.13);
+    background:linear-gradient(135deg, rgba(119,91,244,.16), rgba(66,151,245,.16));
     border-color:transparent;
     box-shadow:none;
+    font-weight:900;
   }
   body[data-path="/items"] .explore-seller:focus-visible{
     outline:3px solid rgba(73,126,247,.4);
@@ -617,6 +631,7 @@
          href="/items?seller=all{% if cat_q %}&amp;category={{ cat_q|urlencode }}{% endif %}{% if sub_q %}&amp;sub={{ sub_q|urlencode }}{% endif %}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">
         <i class="bi bi-people-fill" aria-hidden="true"></i><span>All sellers</span>
       </a>
+      <span class="explore-sellerbar__separator" aria-hidden="true"></span>
       <a class="explore-seller" {% if (current_seller or 'all') == 'company' %}aria-current="page"{% endif %}
          href="/items?seller=company{% if cat_q %}&amp;category={{ cat_q|urlencode }}{% endif %}{% if sub_q %}&amp;sub={{ sub_q|urlencode }}{% endif %}{% if city_q %}&amp;city={{ city_q|urlencode }}{% endif %}{% if sort_q and sort_q != 'random' %}&amp;sort={{ sort_q|urlencode }}{% endif %}{% if lat_q is not none %}&amp;lat={{ lat_q }}{% endif %}{% if lng_q is not none %}&amp;lng={{ lng_q }}{% endif %}">
         <i class="bi bi-buildings" aria-hidden="true"></i><span>Companies</span>
