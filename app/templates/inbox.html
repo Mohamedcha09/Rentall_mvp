@@ -726,8 +726,10 @@
       rows.forEach((row) => {
         const kind = row.dataset.kind || 'normal';
         const unread = row.dataset.unread === '1';
+        // “All” is the peer-to-peer inbox. Support/chatbot tickets remain
+        // intentionally contained in the dedicated SEVOR Support filter.
         const matchesFilter = activeFilter === 'all'
-          ? true
+          ? kind === 'normal'
           : activeFilter === 'support'
             ? kind === 'support'
             : unread;

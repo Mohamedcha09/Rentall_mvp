@@ -30,6 +30,8 @@
   /* A thread is intentionally immersive. The inbox retains the live PayPal notice. */
   .page.page--focused-conversation > .paypal-callout,
   .page.page--focused-conversation > .alert{ display:none !important; }
+  /* The global first-visit country chooser belongs to marketplace setup, not chat. */
+  #geo-overlay{ display:none !important; }
 
   .conversation-page{
     position:relative;
