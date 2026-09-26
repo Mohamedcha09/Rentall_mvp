@@ -310,6 +310,21 @@
     background:#edf0f8;
     border-radius:17px;
   }
+
+  /* Base protects page images with height:auto on touch layouts. Keep Inbox
+     thumbnails inside their deliberate square frame instead of inheriting the
+     source image's aspect ratio. */
+  body[data-path="/messages"] .messages-inbox .messages-conversation__media{
+    flex:0 0 auto;
+    aspect-ratio:1 / 1;
+  }
+  body[data-path="/messages"] .messages-inbox .messages-conversation__item-image,
+  body[data-path="/messages"] .messages-inbox .messages-conversation__support-image{
+    box-sizing:border-box;
+    width:100%;
+    height:100%;
+    max-width:100%;
+  }
   .messages-conversation__avatar{
     position:absolute;
     inset-inline-start:-3px;
@@ -321,6 +336,12 @@
     border:3px solid #fff;
     border-radius:50%;
     box-shadow:0 3px 8px rgba(44,34,84,.13);
+  }
+  body[data-path="/messages"] .messages-inbox .messages-conversation__avatar{
+    box-sizing:border-box;
+    width:31px;
+    height:31px;
+    max-width:none;
   }
   .messages-conversation__support-image{
     padding:13px;
@@ -498,6 +519,7 @@
     .messages-conversation__item-image,
     .messages-conversation__support-image{ border-radius:15px; }
     .messages-conversation__avatar{ width:29px; height:29px; }
+    body[data-path="/messages"] .messages-inbox .messages-conversation__avatar{ width:29px; height:29px; }
     .messages-conversation__name{ font-size:.94rem; }
     .messages-conversation__listing,
     .messages-conversation__preview{ font-size:.78rem; }
