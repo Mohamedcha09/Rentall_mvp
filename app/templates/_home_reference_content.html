@@ -91,13 +91,13 @@
         <input type="text" class="form-control" id="homeCityInput" name="city" placeholder="Type city / area..."
                autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false"
                aria-controls="homeCitySugg" aria-haspopup="listbox">
+        <button type="button" id="homeClearGPS" class="home-location-search__tool home-location-search__tool--clear" aria-label="Clear location" title="Clear location">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
         <div id="homeCitySugg" role="listbox" style="display:none; position:absolute; z-index:1000; max-height:260px; overflow:auto"></div>
       </div>
       <button type="button" id="homeUseGPS" class="home-location-search__tool" aria-label="Use my location" title="Use my location">
         <i class="bi bi-crosshair" aria-hidden="true"></i>
-      </button>
-      <button type="button" id="homeClearGPS" class="home-location-search__tool home-location-search__tool--clear" aria-label="Clear location" title="Clear location">
-        <i class="bi bi-x-lg" aria-hidden="true"></i>
       </button>
       <button class="home-location-search__submit" type="submit"><span>Search</span><i class="bi bi-arrow-right" aria-hidden="true"></i></button>
       <input type="hidden" id="homeLat" name="lat">

@@ -1389,6 +1389,7 @@ body[data-path="/"] .paypal-callout.home-paypal-callout{
 body[data-path="/"] .home-paypal__body{
   display:flex;
   align-items:center;
+  flex:1 1 auto;
   gap:12px;
   min-width:0;
 }
@@ -1404,7 +1405,7 @@ body[data-path="/"] .home-paypal__icon{
   box-shadow:0 4px 12px rgba(61,91,190,.08);
   font-size:25px;
 }
-body[data-path="/"] .home-paypal__copy{min-width:0;}
+body[data-path="/"] .home-paypal__copy{flex:1 1 auto; min-width:0;}
 body[data-path="/"] .home-paypal__title{
   margin:0 0 2px;
   color:var(--home-ref-ink);
@@ -1431,6 +1432,19 @@ body[data-path="/"] .paypal-callout .home-paypal__cta{
   font-weight:800;
   white-space:nowrap;
   transition:transform .16s ease,box-shadow .16s ease;
+}
+@media (max-width:430px){
+  body[data-path="/"] .paypal-callout.home-paypal-callout{
+    flex-direction:column !important;
+    align-items:stretch !important;
+  }
+  body[data-path="/"] .paypal-callout.home-paypal-callout .home-paypal__body{width:100%;}
+  body[data-path="/"] .paypal-callout .home-paypal__cta{
+    align-self:flex-end;
+    min-height:41px;
+    padding-inline:13px;
+    font-size:.82rem;
+  }
 }
 @media (hover:hover){
   body[data-path="/"] .paypal-callout .home-paypal__cta:hover{
@@ -1632,7 +1646,7 @@ body[data-path="/"] .home-hero{
   box-shadow:0 14px 30px rgba(31,43,91,.10);
 }
 body[data-path="/"] .home-hero .carousel-inner,
-body[data-path="/"] .home-hero .carousel-item{aspect-ratio:3 / 2; overflow:hidden;}
+body[data-path="/"] .home-hero .carousel-item{aspect-ratio:1.75 / 1; overflow:hidden;}
 body[data-path="/"] .home-hero .carousel-item{background:#eaf0fa;}
 body[data-path="/"] .home-hero__image{
   display:block;
@@ -1724,9 +1738,26 @@ body[data-path="/"] .home-location-search__tool{
 }
 body[data-path="/"] .home-location-search__tool .bi{font-size:1.05rem;}
 body[data-path="/"] .home-location-search #homeUseGPS::before{content:none !important;}
-body[data-path="/"] .home-location-search__tool--clear{display:none;}
-body[data-path="/"] .home-location-search.has-location{grid-template-columns:minmax(0,1fr) auto auto auto;}
-body[data-path="/"] .home-location-search.has-location .home-location-search__tool--clear{display:inline-flex;}
+body[data-path="/"] .home-location-search #homeClearGPS.home-location-search__tool--clear{
+  position:absolute;
+  top:50%;
+  right:4px;
+  z-index:2;
+  display:none !important;
+  width:30px !important;
+  min-height:30px !important;
+  height:30px !important;
+  transform:translateY(-50%);
+  padding:0 !important;
+  border:0 !important;
+  border-radius:10px !important;
+  color:#8a93aa !important;
+  background:#eef0f7 !important;
+}
+body[data-path="/"] .home-location-search.has-location #homeClearGPS.home-location-search__tool--clear{display:grid !important;}
+body[data-path="/"] .home-location-search.has-location #homeCityInput{padding-inline-end:37px;}
+body[data-path="/"] .home-location-search.has-location{grid-template-columns:minmax(0,1fr) auto;}
+body[data-path="/"] .home-location-search.has-location #homeUseGPS{display:none !important;}
 body[data-path="/"] .home-location-search__submit{
   gap:7px;
   min-width:108px;
@@ -2044,16 +2075,19 @@ body[data-path="/"] .home-empty{
     line-height:1;
   }
   body[data-path="/"] #fabAdd{
-    right:18px !important;
-    bottom:calc(89px + max(env(safe-area-inset-bottom,0px),var(--safe-bottom,0px))) !important;
-    width:50px !important;
-    height:50px !important;
-    border-radius:17px !important;
+    position:absolute !important;
+    top:max(16px,env(safe-area-inset-top,0px)) !important;
+    right:128px !important;
+    bottom:auto !important;
+    z-index:5101 !important;
+    width:36px !important;
+    height:36px !important;
+    border-radius:12px !important;
     color:#fff !important;
     background:var(--home-ref-gradient) !important;
     box-shadow:0 9px 20px rgba(82,86,234,.30) !important;
   }
-  body[data-path="/"] #fabAdd i{font-size:1.2rem;}
+  body[data-path="/"] #fabAdd i{font-size:1rem;}
 }
 @media (min-width:992px) and (max-width:1376px) and (min-height:600px){
   html.is-ipad body[data-path="/"] .mobile-tabbar{
@@ -2065,7 +2099,7 @@ body[data-path="/"] .home-empty{
   }
   html.is-ipad body[data-path="/"] .mobile-tabbar > a{color:#737d96 !important; font-weight:760 !important;}
   html.is-ipad body[data-path="/"] .mobile-tabbar > a.is-active{color:#5f50ef !important; background:rgba(104,87,246,.10) !important; box-shadow:none !important;}
-  html.is-ipad body[data-path="/"] #fabAdd{right:max(calc(28px + env(safe-area-inset-right,0px)),calc((100vw - 860px)/2)) !important; bottom:calc(104px + max(env(safe-area-inset-bottom,0px),var(--safe-bottom,0px))) !important; width:54px !important; height:54px !important; border-radius:18px !important; color:#fff !important; background:var(--home-ref-gradient) !important;}
+  html.is-ipad body[data-path="/"] #fabAdd{position:absolute !important; top:20px !important; right:136px !important; bottom:auto !important; width:40px !important; height:40px !important; border-radius:13px !important; color:#fff !important; background:var(--home-ref-gradient) !important;}
 }
 
 /* Breakpoint-specific content proportions. iPad is kept out of desktop sizing. */
@@ -2094,8 +2128,9 @@ body[data-path="/"] .home-empty{
 }
 @media (min-width:992px){
   html:not(.is-ipad) body[data-path="/"] .home-root{padding-inline:clamp(28px,4vw,52px);}
-  html:not(.is-ipad) body[data-path="/"] .home-hero-wrap{max-width:1030px; margin:8px auto 24px;}
+  html:not(.is-ipad) body[data-path="/"] .home-hero-wrap{max-width:900px; margin:8px auto 24px;}
   html:not(.is-ipad) body[data-path="/"] .home-hero{border-radius:26px;}
+  html:not(.is-ipad) body[data-path="/"] .home-hero :is(.carousel-inner,.carousel-item){aspect-ratio:2.25 / 1;}
   html:not(.is-ipad) body[data-path="/"] .home-location-wrap{max-width:960px; margin:0 auto 36px;}
   html:not(.is-ipad) body[data-path="/"] .home-feature-grid,
   html:not(.is-ipad) body[data-path="/"] .home-listing-grid{grid-template-columns:repeat(4,minmax(0,1fr)); gap:20px;}
@@ -2109,6 +2144,7 @@ body[data-path="/"] .home-empty{
   html.is-ipad body[data-path="/"] .home-root{width:min(100%,1180px); padding:0 28px 30px;}
   html.is-ipad body[data-path="/"] .paypal-callout{width:min(calc(100% - 56px),1100px); margin:12px auto 20px !important;}
   html.is-ipad body[data-path="/"] .home-hero-wrap{max-width:980px; margin:2px auto 26px;}
+  html.is-ipad body[data-path="/"] .home-hero :is(.carousel-inner,.carousel-item){aspect-ratio:2 / 1;}
   html.is-ipad body[data-path="/"] .home-location-wrap{max-width:920px; margin:0 auto 34px;}
   html.is-ipad body[data-path="/"] .home-feature-grid,
   html.is-ipad body[data-path="/"] .home-listing-grid{grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px;}
@@ -2586,6 +2622,9 @@ body[data-path="/"] :is(.home-listing__link,.home-listing__favorite,.home-sectio
     const selectedCity = {{ selected_city|default('', true)|tojson }};
     if(cityTop && !cityTop.value && selectedCity) cityTop.value = selectedCity;
 
+    const productSearch = document.getElementById('qTop');
+    if(productSearch) productSearch.placeholder = 'Search for anything...';
+
     const cityField = cityTop?.closest('.field');
     if(cityField && !cityField.querySelector('.home-search-location-icon')){
       const icon = document.createElement('i');
@@ -2792,7 +2831,8 @@ body[data-path="/"] :is(.home-listing__link,.home-listing__favorite,.home-sectio
     // Simple init (without changing the rest)
     try{
       const url = new URL(location.href);
-      const c   = url.searchParams.get('city') || getCookie('city') || "";
+      const serverSelectedCity = {{ selected_city|default('', true)|tojson }};
+      const c   = url.searchParams.get('city') || getCookie('city') || serverSelectedCity || "";
       const lat = url.searchParams.get('lat')  || getCookie('lat')  || "";
       const lng = url.searchParams.get('lng')  || getCookie('lng')  || "";
       const rad = url.searchParams.get('radius_km') || getCookie('radius_km') || "25";

@@ -2,7 +2,7 @@
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from types import SimpleNamespace
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 import sys
 
 ROOT = Path(__file__).resolve().parent
@@ -94,8 +94,21 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(ROOT / "app"), **kwargs)
 
     def do_GET(self):
-        if urlparse(self.path).path == "/":
-            body = render_home().encode("utf-8")
+        parsed = urlparse(self.path)
+        if parsed.path == "/":
+            body_text = render_home()
+            if parse_qs(parsed.query).get("ipad"):
+                body_text = body_text.replace("<html", "<html class=\"is-ipad\"", 1)
+                # The production base template intentionally re-evaluates the
+                # device marker from the browser's iPad user agent.  The local
+                # desktop QA browser is not an iPad, so restore the marker after
+                # that detector has run in this fixture only.
+                body_text = body_text.replace(
+                    "</body>",
+                    "<script>document.documentElement.classList.add('is-ipad')</script></body>",
+                    1,
+                )
+            body = body_text.encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
