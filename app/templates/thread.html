@@ -112,6 +112,7 @@
     min-width:0;
     margin:0;
     color:#1b1731;
+    font-family:"Work Sans",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
     font-size:clamp(1rem,3.5vw,1.14rem);
     font-weight:800;
     letter-spacing:-.025em;
@@ -268,6 +269,11 @@
     font-variant-numeric:tabular-nums;
     line-height:1.1;
     opacity:.65;
+  }
+  .conversation-bubble__receipt{
+    margin-inline-start:3px;
+    font-size:.78rem;
+    vertical-align:-.03em;
   }
 
   .conversation-empty{
@@ -520,7 +526,7 @@
 
       {% for message in messages %}
         {% set is_mine = message.sender_id == session_user.id %}
-        {% set continues_previous = (not loop.first) and loop.previtem.sender_id == message.sender_id %}
+        {% set continues_previous = (not loop.first) and loop.previtem.sender_id == message.sender_id and (not message.created_at or not loop.previtem.created_at or message.created_at.strftime('%Y-%m-%d') == loop.previtem.created_at.strftime('%Y-%m-%d')) %}
         {% if message.created_at and (loop.first or not loop.previtem.created_at or message.created_at.strftime('%Y-%m-%d') != loop.previtem.created_at.strftime('%Y-%m-%d')) %}
           <div class="conversation-date"><span>{{ message.created_at.strftime('%b %d, %Y') }}</span></div>
         {% endif %}
@@ -530,7 +536,7 @@
           {% endif %}
           <article class="conversation-bubble {% if is_mine %}conversation-bubble--me{% else %}conversation-bubble--other{% endif %}">
             <p class="conversation-bubble__text">{{ message.body }}</p>
-            {% if message.created_at %}<time class="conversation-bubble__time" datetime="{{ message.created_at.isoformat() }}">{{ message.created_at.strftime('%H:%M') }}</time>{% endif %}
+            {% if message.created_at %}<time class="conversation-bubble__time" datetime="{{ message.created_at.isoformat() }}">{{ message.created_at.strftime('%H:%M') }}{% if is_mine and message.is_read %}<i class="bi bi-check2-all conversation-bubble__receipt" aria-label="Read"></i>{% endif %}</time>{% endif %}
           </article>
         </div>
       {% endfor %}
@@ -699,6 +705,15 @@
       fetch(`/messages/${threadId}`, { method: 'POST', body: new FormData(form) })
         .then((response) => {
           if (!response.ok) throw new Error('Message request failed');
+          // Preserve the server's existing permission/session redirects instead of
+          // treating a followed redirect as a successful in-place send.
+          if (response.redirected) {
+            const destination = new URL(response.url, window.location.href);
+            if (destination.pathname !== window.location.pathname) {
+              window.location.assign(destination.href);
+              return;
+            }
+          }
           if (emptyState) {
             emptyState.remove();
             emptyState = null;

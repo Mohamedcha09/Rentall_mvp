@@ -188,6 +188,9 @@ def inbox(request: Request, db: Session = Depends(get_db)):
             "other_avatar": other_avatar,
             "other_created_iso": other_created_iso,
             "last_message_text": last_text,
+            # Presentation-only marker for the existing direct SEVOR support thread.
+            # It does not alter the thread query, permissions, or support workflow.
+            "is_support_thread": bool(other and is_admin_user(other) and not getattr(t, "item_id", None)),
         })
 
     return request.app.templates.TemplateResponse(

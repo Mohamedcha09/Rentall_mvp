@@ -109,6 +109,7 @@
   .messages-inbox__heading h1{
     margin:0;
     color:#17142d;
+    font-family:"Work Sans",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
     font-size:clamp(2rem, 6vw, 2.62rem);
     font-weight:800;
     letter-spacing:-.055em;
@@ -204,7 +205,7 @@
   }
   .messages-filter:hover{ background:#fff; box-shadow:0 8px 18px rgba(42,33,81,.085); transform:translateY(-1px); }
   .messages-filter:active{ transform:scale(.98); }
-  .messages-filter[aria-selected="true"]{
+  .messages-filter[aria-pressed="true"]{
     color:#fff;
     background:linear-gradient(135deg,#8057ec 0%,#5796f5 100%);
     border-color:transparent;
@@ -232,7 +233,7 @@
     background:#7158e5;
     box-shadow:0 0 0 4px rgba(113,88,229,.1);
   }
-  .messages-filter[aria-selected="true"] .messages-filter__dot{ background:#fff; box-shadow:0 0 0 4px rgba(255,255,255,.16); }
+  .messages-filter[aria-pressed="true"] .messages-filter__dot{ background:#fff; box-shadow:0 0 0 4px rgba(255,255,255,.16); }
 
   .messages-conversations{ display:grid; gap:10px; min-width:0; }
   .messages-conversation{
@@ -423,11 +424,18 @@
     .messages-conversation__support-image{ border-radius:19px; }
   }
 
+  @media (max-width:420px){
+    .messages-filters{ gap:7px; }
+    .messages-filter{ min-height:44px; gap:5px; padding-inline:12px; font-size:.84rem; }
+    .messages-filter__logo{ width:21px; height:21px; }
+    .messages-filter__count{ min-width:18px; height:18px; padding-inline:5px; font-size:.64rem; }
+  }
+
   @media (max-width:360px){
     body[data-path="/messages"] .page{ padding-inline:12px !important; }
     .messages-inbox__utility{ margin-bottom:19px; }
     .messages-inbox__heading h1{ font-size:2rem; }
-    .messages-filter{ min-height:42px; padding-inline:14px; font-size:.84rem; }
+    .messages-filter{ min-height:42px; padding-inline:10px; font-size:.8rem; }
     .messages-conversation{ grid-template-columns:64px minmax(0,1fr) auto; gap:10px; padding:8px; border-radius:18px; }
     .messages-conversation__media{ width:64px; height:64px; }
     .messages-conversation__item-image,
@@ -488,15 +496,15 @@
     <button class="messages-search__close" id="cancelSearch" type="button" aria-label="Close search"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
   </div>
 
-  <div class="messages-filters" role="tablist" aria-label="Message filters">
-    <button class="messages-filter" type="button" role="tab" data-filter="all" aria-selected="true">All</button>
-    <button class="messages-filter" type="button" role="tab" data-filter="support" aria-selected="false">
+  <div class="messages-filters" role="group" aria-label="Message filters">
+    <button class="messages-filter" type="button" data-filter="all" aria-pressed="true">All</button>
+    <button class="messages-filter" type="button" data-filter="support" aria-pressed="false">
       <img class="messages-filter__logo" src="/static/images/ui/sevor-logo-96.png" alt="">
       <span>SEVOR Support</span>
       {% if tickets_count > 0 %}<span class="messages-filter__count" aria-label="{{ tickets_count }} support tickets">{{ tickets_count }}</span>{% endif %}
     </button>
     {% if unread_state.total > 0 %}
-      <button class="messages-filter" type="button" role="tab" data-filter="unread" aria-selected="false"><span>Unread</span><span class="messages-filter__dot" aria-hidden="true"></span></button>
+      <button class="messages-filter" type="button" data-filter="unread" aria-pressed="false"><span>Unread</span><span class="messages-filter__dot" aria-hidden="true"></span></button>
     {% endif %}
   </div>
 
@@ -529,7 +537,7 @@
 
     {% for thread in threads %}
       {% set thread_is_unread = thread.unread_count|default(0)|int > 0 %}
-      <a href="/messages/{{ thread.id }}" class="messages-conversation{% if thread_is_unread %} messages-conversation--unread{% endif %}" data-message-row data-kind="normal" data-unread="{{ '1' if thread_is_unread else '0' }}" data-search="{{ (thread.other_fullname ~ ' ' ~ (thread.item_title or '') ~ ' ' ~ (thread.last_message_text or ''))|lower }}">
+      <a href="/messages/{{ thread.id }}" class="messages-conversation{% if thread.is_support_thread %} messages-conversation--support{% endif %}{% if thread_is_unread %} messages-conversation--unread{% endif %}" data-message-row data-kind="{{ 'support' if thread.is_support_thread else 'normal' }}" data-unread="{{ '1' if thread_is_unread else '0' }}" data-search="{{ (thread.other_fullname ~ ' ' ~ (thread.item_title or '') ~ ' ' ~ (thread.last_message_text or ''))|lower }}">
         <span class="messages-conversation__media" aria-hidden="true">
           <img class="messages-conversation__item-image" src="{{ thread.item_image }}" alt="" {% if loop.index > 3 %}loading="lazy"{% endif %} decoding="async" onerror="this.onerror=null;this.src='/static/placeholder.svg'">
           <img class="messages-conversation__avatar" src="{{ thread.other_avatar }}" alt="" {% if loop.index > 3 %}loading="lazy"{% endif %} decoding="async" onerror="this.onerror=null;this.src='/static/placeholder.svg'">
@@ -607,7 +615,7 @@
       activeFilter = filter;
       filters.forEach((button) => {
         const isActive = button.dataset.filter === filter;
-        button.setAttribute('aria-selected', String(isActive));
+        button.setAttribute('aria-pressed', String(isActive));
       });
       applyFilters();
     };
