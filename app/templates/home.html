@@ -1251,6 +1251,30 @@ body[data-path="/"] :is(.spot-link,.fav-btn,.arrow-btn,.carousel-control-prev,.c
   outline-offset:3px;
 }
 
+/*
+ * Desktop-only sizing repair.  The generic `.spot { min-width:0 }` above is
+ * useful for grid overflow safety, but it also removes the flex floor from
+ * rail cards.  Restore a fixed, non-shrinking rail basis only for desktop
+ * browsers; the established `.is-ipad` marker leaves the tablet shell intact.
+ */
+@media (min-width:992px){
+  html:not(.is-ipad) body[data-path="/"] .hrow{
+    gap:18px;
+    padding-inline:4px;
+  }
+  html:not(.is-ipad) body[data-path="/"] .hrow > .hcard{
+    flex:0 0 clamp(280px,22vw,320px);
+    width:clamp(280px,22vw,320px);
+    min-width:clamp(280px,22vw,320px);
+    max-width:clamp(280px,22vw,320px);
+  }
+  html:not(.is-ipad) body[data-path="/"] .mixed-grid{
+    grid-template-columns:repeat(auto-fit,minmax(264px,1fr));
+    gap:20px;
+    padding-inline:4px;
+  }
+}
+
 @media (max-width:576px){
   body[data-path="/"] .hero-carousel{ margin-inline:0; border-radius:16px; }
   body[data-path="/"] .hero-carousel :is(.carousel-inner,.carousel-item,.carousel-item img){ border-radius:16px; }
