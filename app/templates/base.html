@@ -2401,7 +2401,7 @@ window.onpageshow = function(e){
     fetchUnreadCount();
     setInterval(pollOnce, 20000);
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) fetchUnreadCount();
+      if (!document.hidden) pollOnce();
     });
     window.addEventListener('pageshow', () => { fetchUnreadCount(); });
   })();
