@@ -215,8 +215,8 @@
     min-width:0;
     max-width:100%;
     margin:0 0 11px;
-    animation:conversation-message-in .2s cubic-bezier(.2,.8,.2,1) both;
   }
+  .conversation-message--new{ animation:conversation-message-in .2s cubic-bezier(.2,.8,.2,1) both; }
   .conversation-message--me{ justify-content:flex-end; padding-left:18%; }
   .conversation-message--other{ padding-right:11%; }
   .conversation-message--continuation{ margin-top:-5px; }
@@ -231,8 +231,16 @@
     border:1px solid rgba(112,91,188,.18);
     border-radius:11px;
   }
-  .conversation-bubble{
+  .conversation-message__content{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    min-width:0;
     max-width:min(80%,560px);
+  }
+  .conversation-message--me .conversation-message__content{ align-items:flex-end; }
+  .conversation-bubble{
+    max-width:100%;
     min-width:0;
     padding:11px 13px 9px;
     border-radius:19px;
@@ -261,19 +269,26 @@
     font-size:.96rem;
     line-height:1.48;
   }
-  .conversation-bubble__time{
-    display:block;
+  .conversation-message__meta{
+    display:flex;
+    align-items:center;
+    gap:4px;
     margin-top:5px;
-    color:inherit;
+    padding-inline:3px;
+    color:#918b9f;
     font-size:.68rem;
     font-variant-numeric:tabular-nums;
     line-height:1.1;
-    opacity:.65;
   }
-  .conversation-bubble__receipt{
-    margin-inline-start:3px;
-    font-size:.78rem;
-    vertical-align:-.03em;
+  .conversation-message--me .conversation-message__meta{ color:#716a95; }
+  .conversation-message__receipt{
+    display:inline-flex;
+    align-items:center;
+    font-size:.82rem;
+    line-height:1;
+  }
+  .conversation-message__receipt--sent{ color:#8e87a0; }
+  .conversation-message__receipt--read{ color:#4d83dc; }
   }
 
   .conversation-empty{
@@ -445,7 +460,8 @@
     .conversation-message--me{ padding-left:8%; }
     .conversation-message--other{ padding-right:3%; }
     .conversation-message--other.conversation-message--continuation{ padding-left:38px; }
-    .conversation-bubble{ max-width:84%; padding:10px 12px 8px; }
+    .conversation-message__content{ max-width:84%; }
+    .conversation-bubble{ padding:10px 12px 8px; }
     .conversation-composer{ padding-left:max(12px, env(safe-area-inset-left, 0px)); padding-right:max(12px, env(safe-area-inset-right, 0px)); }
   }
 
@@ -530,14 +546,25 @@
         {% if message.created_at and (loop.first or not loop.previtem.created_at or message.created_at.strftime('%Y-%m-%d') != loop.previtem.created_at.strftime('%Y-%m-%d')) %}
           <div class="conversation-date"><span>{{ message.created_at.strftime('%b %d, %Y') }}</span></div>
         {% endif %}
-        <div class="conversation-message {% if is_mine %}conversation-message--me{% else %}conversation-message--other{% endif %}{% if continues_previous %} conversation-message--continuation{% endif %}" data-from-me="{{ '1' if is_mine else '0' }}">
+        <div class="conversation-message {% if is_mine %}conversation-message--me{% else %}conversation-message--other{% endif %}{% if continues_previous %} conversation-message--continuation{% endif %}" data-message-id="{{ message.id }}" data-from-me="{{ '1' if is_mine else '0' }}" data-date-key="{{ message.created_at.strftime('%Y-%m-%d') if message.created_at else '' }}">
           {% if not is_mine and not continues_previous %}
             <img src="{{ other_avatar }}" class="conversation-message__avatar" alt="" onerror="this.onerror=null;this.src='/static/placeholder.svg'">
           {% endif %}
-          <article class="conversation-bubble {% if is_mine %}conversation-bubble--me{% else %}conversation-bubble--other{% endif %}">
-            <p class="conversation-bubble__text">{{ message.body }}</p>
-            {% if message.created_at %}<time class="conversation-bubble__time" datetime="{{ message.created_at.isoformat() }}">{{ message.created_at.strftime('%H:%M') }}{% if is_mine and message.is_read %}<i class="bi bi-check2-all conversation-bubble__receipt" aria-label="Read"></i>{% endif %}</time>{% endif %}
-          </article>
+          <div class="conversation-message__content">
+            <article class="conversation-bubble {% if is_mine %}conversation-bubble--me{% else %}conversation-bubble--other{% endif %}">
+              <p class="conversation-bubble__text">{{ message.body }}</p>
+            </article>
+            {% if message.created_at %}
+              <div class="conversation-message__meta">
+                <time datetime="{{ message.created_at.isoformat() }}">{{ message.created_at.strftime('%I:%M %p').lstrip('0') }}</time>
+                {% if is_mine %}
+                  <span class="conversation-message__receipt {% if message.is_read %}conversation-message__receipt--read{% else %}conversation-message__receipt--sent{% endif %}" data-receipt-id="{{ message.id }}" aria-label="{{ 'Read' if message.is_read else 'Sent' }}" title="{{ 'Read' if message.is_read else 'Sent' }}">
+                    <i class="bi {% if message.is_read %}bi-check2-all{% else %}bi-check2{% endif %}" aria-hidden="true"></i>
+                  </span>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
         </div>
       {% endfor %}
 
@@ -575,6 +602,7 @@
     const otherAvatar = {{ other_avatar|tojson }};
     let emptyState = document.getElementById('emptyState');
     let lastMessageId = {{ messages[-1].id if messages else 0 }};
+    let receiptCursor = {{ receipt_cursor|tojson }};
     let isSending = false;
 
     if (!chatBox || !form || !input || !sendButton || !typingMount) return;
@@ -609,26 +637,81 @@
       return rendered.length ? rendered[rendered.length - 1] : null;
     };
 
+    const createDateSeparator = (label) => {
+      const separator = document.createElement('div');
+      separator.className = 'conversation-date';
+      const text = document.createElement('span');
+      text.textContent = label;
+      separator.appendChild(text);
+      return separator;
+    };
+
+    const createReceipt = (messageId, isRead) => {
+      const receipt = document.createElement('span');
+      receipt.className = `conversation-message__receipt ${isRead ? 'conversation-message__receipt--read' : 'conversation-message__receipt--sent'}`;
+      receipt.dataset.receiptId = String(messageId);
+      receipt.setAttribute('aria-label', isRead ? 'Read' : 'Sent');
+      receipt.title = isRead ? 'Read' : 'Sent';
+      const icon = document.createElement('i');
+      icon.className = `bi ${isRead ? 'bi-check2-all' : 'bi-check2'}`;
+      icon.setAttribute('aria-hidden', 'true');
+      receipt.appendChild(icon);
+      return receipt;
+    };
+
+    const markReceiptRead = (messageId) => {
+      const receipt = chatBox.querySelector(`[data-receipt-id="${String(messageId)}"]`);
+      if (!receipt) return;
+      receipt.classList.remove('conversation-message__receipt--sent');
+      receipt.classList.add('conversation-message__receipt--read');
+      receipt.setAttribute('aria-label', 'Read');
+      receipt.title = 'Read';
+      const icon = receipt.querySelector('i');
+      if (icon) icon.className = 'bi bi-check2-all';
+    };
+
     const createMessageElement = (message) => {
       const row = document.createElement('div');
       const fromMe = Boolean(message.from_me);
       const previous = lastRenderedMessage();
-      const continuesPrevious = previous && previous.dataset.fromMe === (fromMe ? '1' : '0');
-      row.className = `conversation-message ${fromMe ? 'conversation-message--me' : 'conversation-message--other'}${continuesPrevious ? ' conversation-message--continuation' : ''}`;
+      const dateKey = message.date_key || '';
+      const continuesPrevious = previous
+        && previous.dataset.fromMe === (fromMe ? '1' : '0')
+        && previous.dataset.dateKey === dateKey;
+      row.className = `conversation-message conversation-message--new ${fromMe ? 'conversation-message--me' : 'conversation-message--other'}${continuesPrevious ? ' conversation-message--continuation' : ''}`;
+      row.dataset.messageId = String(message.id);
       row.dataset.fromMe = fromMe ? '1' : '0';
+      row.dataset.dateKey = dateKey;
       if (!fromMe && !continuesPrevious) row.appendChild(makeAvatar());
 
+      const content = document.createElement('div');
+      content.className = 'conversation-message__content';
       const bubble = document.createElement('article');
       bubble.className = `conversation-bubble ${fromMe ? 'conversation-bubble--me' : 'conversation-bubble--other'}`;
       const body = document.createElement('p');
       body.className = 'conversation-bubble__text';
       body.textContent = message.body || '';
       const timestamp = document.createElement('time');
-      timestamp.className = 'conversation-bubble__time';
+      timestamp.className = 'conversation-message__time';
       timestamp.textContent = message.time || '';
-      bubble.append(body, timestamp);
-      row.appendChild(bubble);
+      if (message.created_at) timestamp.dateTime = message.created_at;
+      bubble.appendChild(body);
+      const meta = document.createElement('div');
+      meta.className = 'conversation-message__meta';
+      meta.appendChild(timestamp);
+      if (fromMe) meta.appendChild(createReceipt(message.id, Boolean(message.is_read)));
+      content.append(bubble, meta);
+      row.appendChild(content);
       return row;
+    };
+
+    const appendMessage = (message) => {
+      const previous = lastRenderedMessage();
+      const dateKey = message.date_key || '';
+      if (dateKey && (!previous || previous.dataset.dateKey !== dateKey)) {
+        chatBox.insertBefore(createDateSeparator(message.date_label || dateKey), typingMount);
+      }
+      chatBox.insertBefore(createMessageElement(message), typingMount);
     };
 
     const createTypingIndicator = () => {

@@ -314,6 +314,11 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
     if is_account_limited(request) and not is_admin_user(other):
         return RedirectResponse(url="/messages/support", status_code=303)
 
+    # A presentation cursor lets the existing polling channel return only
+    # read-state changes that happened after this server-rendered snapshot.
+    # It does not alter the Message lifecycle or schema.
+    receipt_cursor = datetime.utcnow()
+
     msgs = (
         db.query(Message)
         .filter(Message.thread_id == thr.id)
@@ -364,6 +369,7 @@ def thread_view(thread_id: int, request: Request, db: Session = Depends(get_db))
             "item_image": item_image,
             "session_user": u,
             "account_limited": is_account_limited(request),
+            "receipt_cursor": receipt_cursor.isoformat(),
             # This only controls the shared-shell presentation for the
             # focused conversation; route and message behavior stay intact.
             "focused_conversation": True,
@@ -532,6 +538,19 @@ def poll_messages(thread_id: int, request: Request, db: Session = Depends(get_db
         return {"messages": []}
 
     last_id = int(request.query_params.get("after", 0))
+    receipt_after_raw = (request.query_params.get("receipts_after") or "").strip()
+    receipt_after = None
+    if receipt_after_raw:
+        try:
+            receipt_after = datetime.fromisoformat(receipt_after_raw.replace("Z", "+00:00"))
+            if receipt_after.tzinfo is not None:
+                receipt_after = receipt_after.replace(tzinfo=None)
+        except ValueError:
+            receipt_after = None
+
+    # Capture the upper bound before querying, so a receipt that arrives during
+    # this request is returned on the next harmless poll instead of being lost.
+    next_receipt_cursor = datetime.utcnow()
 
     rows = (
         db.query(Message)
@@ -540,14 +559,38 @@ def poll_messages(thread_id: int, request: Request, db: Session = Depends(get_db
         .all()
     )
 
+    read_receipts = []
+    if receipt_after is not None:
+        read_receipts = [
+            {"id": message_id, "read_at": read_at.isoformat()}
+            for message_id, read_at in (
+                db.query(Message.id, Message.read_at)
+                .filter(
+                    Message.thread_id == thread_id,
+                    Message.sender_id == u["id"],
+                    Message.is_read == True,
+                    Message.read_at.is_not(None),
+                    Message.read_at > receipt_after,
+                    Message.read_at <= next_receipt_cursor,
+                )
+                .all()
+            )
+        ]
+
     return {
         "messages": [
             {
                 "id": m.id,
                 "body": m.body,
-                "time": m.created_at.strftime("%H:%M"),
+                "time": m.created_at.strftime("%I:%M %p").lstrip("0"),
+                "date_key": m.created_at.strftime("%Y-%m-%d"),
+                "date_label": m.created_at.strftime("%b %d, %Y"),
+                "created_at": m.created_at.isoformat(),
                 "from_me": (m.sender_id == u["id"]),
+                "is_read": bool(m.is_read),
             }
             for m in rows
-        ]
+        ],
+        "read_receipts": read_receipts,
+        "receipt_cursor": next_receipt_cursor.isoformat(),
     }
