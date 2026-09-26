@@ -2141,6 +2141,75 @@ body[data-path="/"] .home-empty{
   html.is-ipad body[data-path="/"] .home-listing-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
 }
 
+/* Compact the Home hand-off from header → banner → location search → featured. */
+body[data-path="/"] .paypal-callout{margin:6px auto 10px !important;}
+body[data-path="/"] .home-hero-wrap{margin:0 0 10px;}
+body[data-path="/"] .home-location-wrap{margin:0 0 17px;}
+body[data-path="/"] .home-location-search{
+  gap:6px;
+  padding:5px;
+  border-radius:999px;
+  box-shadow:0 6px 16px rgba(31,43,91,.07);
+}
+body[data-path="/"] .home-location-search__field{gap:9px; padding-inline:9px;}
+body[data-path="/"] .home-location-search__field > .bi{font-size:1.22rem;}
+body[data-path="/"] .home-location-search #homeCityInput{height:44px;}
+body[data-path="/"] .home-location-search__tool,
+body[data-path="/"] .home-location-search__submit{
+  min-height:44px;
+  border-radius:999px;
+}
+body[data-path="/"] .home-location-search__tool{
+  width:44px;
+  height:44px;
+  border-color:rgba(23,32,63,.09);
+  background:#f8f9fd;
+  box-shadow:none;
+}
+body[data-path="/"] .home-location-search__tool .bi{font-size:1rem;}
+body[data-path="/"] .home-location-search #homeClearGPS.home-location-search__tool--clear{
+  width:30px !important;
+  min-height:30px !important;
+  height:30px !important;
+  right:5px;
+  border-radius:50% !important;
+}
+body[data-path="/"] .home-location-search__submit{
+  min-width:96px;
+  padding-inline:15px;
+  box-shadow:0 5px 12px rgba(83,88,239,.19);
+}
+@media (max-width:360px){
+  body[data-path="/"] .home-location-search{
+    grid-template-columns:minmax(0,1fr) 40px auto;
+    gap:5px;
+    padding:5px;
+  }
+  body[data-path="/"] .home-location-search #homeCityInput{height:40px; font-size:.88rem;}
+  body[data-path="/"] .home-location-search__tool{
+    width:40px;
+    min-height:40px;
+    height:40px;
+  }
+  body[data-path="/"] .home-location-search__submit{
+    grid-column:auto;
+    width:auto;
+    min-width:86px;
+    min-height:40px;
+    padding-inline:12px;
+  }
+}
+@media (min-width:992px){
+  html:not(.is-ipad) body[data-path="/"] .paypal-callout{margin:10px auto 12px !important;}
+  html:not(.is-ipad) body[data-path="/"] .home-hero-wrap{margin:4px auto 14px;}
+  html:not(.is-ipad) body[data-path="/"] .home-location-wrap{margin:0 auto 22px;}
+}
+@media (min-width:769px) and (max-width:1376px) and (min-height:600px){
+  html.is-ipad body[data-path="/"] .paypal-callout{margin:9px auto 12px !important;}
+  html.is-ipad body[data-path="/"] .home-hero-wrap{margin:0 auto 15px;}
+  html.is-ipad body[data-path="/"] .home-location-wrap{margin:0 auto 22px;}
+}
+
 /* The bell changes only when the existing unread count is truly non-zero. */
 body[data-path="/"] header.topbar #notifOpen{
   isolation:isolate;
