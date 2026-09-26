@@ -1,189 +1,622 @@
 {# app/templates/booking_index.html #}
 {% extends "base.html" %}
 
-{% block content %}
-<div class="container-fluid">
-
+{% block head %}
 <style>
-/* ====== GLASS CARD STYLE ====== */
-.booking-card {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    min-width: 0;
-    padding: 14px;
-    background: rgba(255,255,255,0.55);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    border-radius: 18px;
-    margin-bottom: 12px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-}
+  /* Bookings is intentionally self-contained: no shared navigation or global card styles are changed. */
+  body[data-path="/bookings"] .paypal-callout{
+    width:min(980px, 100%);
+    min-height:0;
+    margin:4px auto 18px !important;
+    padding:12px 14px;
+    border:1px solid #eee5c8;
+    border-radius:15px;
+    background:#fffcf4;
+    box-shadow:none;
+    color:#5b5136;
+    font-size:13px;
+  }
 
-.booking-thumb {
-    width: 64px;
-    height: 64px;
-    border-radius: 14px;
-    overflow: hidden;
-    background:#f1f1f1;
-    flex-shrink: 0;
-}
+  body[data-path="/bookings"] .paypal-callout .btn{
+    flex:0 0 auto;
+    border:0;
+    border-radius:10px;
+    padding:8px 11px;
+    background:#27263e;
+    box-shadow:none;
+    font-size:12px;
+    font-weight:750;
+  }
 
-.booking-thumb img {
+  .bookings-hub{
+    --bk-ink:#20202d;
+    --bk-muted:#777783;
+    --bk-soft:#f7f7fa;
+    --bk-border:#e7e6ee;
+    --bk-card:#ffffff;
+    --bk-purple:#675ee1;
+    --bk-blue:#5b82dd;
+    width:min(980px, 100%);
+    margin-inline:auto;
+    padding:clamp(4px, 1vw, 12px) 0 28px;
+    color:var(--bk-ink);
+  }
+
+  .bookings-hub,
+  .bookings-hub *{ box-sizing:border-box; }
+
+  .bookings-hub__header{
+    display:flex;
+    align-items:end;
+    justify-content:space-between;
+    gap:20px;
+    margin:0 0 27px;
+  }
+
+  .bookings-hub__eyebrow{
+    margin:0 0 5px;
+    color:var(--bk-purple);
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.12em;
+    line-height:1;
+    text-transform:uppercase;
+  }
+
+  .bookings-hub__title{
+    margin:0;
+    color:var(--bk-ink);
+    font-size:clamp(30px, 3.1vw, 40px);
+    font-weight:760;
+    letter-spacing:-.045em;
+    line-height:1.06;
+  }
+
+  .bookings-hub__subtitle{
+    max-width:470px;
+    margin:8px 0 0;
+    color:var(--bk-muted);
+    font-size:15px;
+    line-height:1.5;
+  }
+
+  .bookings-hub__switcher{
+    display:inline-grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    min-width:232px;
+    padding:4px;
+    border:1px solid var(--bk-border);
+    border-radius:15px;
+    background:var(--bk-soft);
+  }
+
+  .bookings-hub__switcher a{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:38px;
+    padding:8px 12px;
+    border-radius:11px;
+    color:#686875;
+    font-size:13px;
+    font-weight:750;
+    line-height:1.15;
+    text-align:center;
+    text-decoration:none;
+    transition:background-color 160ms ease, box-shadow 160ms ease, color 160ms ease, transform 160ms ease;
+  }
+
+  .bookings-hub__switcher a[aria-current="page"]{
+    background:linear-gradient(135deg, #675ee1, #5d7ed7);
+    box-shadow:0 4px 10px rgba(87,80,186,.18);
+    color:#fff;
+  }
+
+  .bookings-hub__switcher a:focus-visible,
+  .booking-card:focus-visible,
+  .bookings-hub__empty-cta:focus-visible{
+    outline:3px solid rgba(103,94,225,.28);
+    outline-offset:3px;
+  }
+
+  .bookings-hub__list{
+    display:grid;
+    gap:13px;
+    margin:0;
+    padding:0 0 22px;
+    list-style:none;
+  }
+
+  .booking-card{
+    display:grid;
+    grid-template-columns:118px minmax(0, 1fr) 38px;
+    align-items:center;
+    gap:17px;
+    min-width:0;
+    padding:14px;
+    border:1px solid var(--bk-border);
+    border-radius:20px;
+    background:var(--bk-card);
+    color:inherit;
+    text-decoration:none;
+    box-shadow:0 1px 1px rgba(25,24,42,.02);
+    transition:border-color 170ms ease, box-shadow 170ms ease, transform 170ms ease;
+  }
+
+  .booking-card__media{
+    position:relative;
+    display:block;
+    align-self:center;
+    min-width:0;
+    width:100%;
+    aspect-ratio:4 / 3;
+    overflow:hidden;
+    border-radius:15px;
+    background:#f0eff5;
+  }
+
+  .booking-card__media::after{
+    position:absolute;
+    inset:0;
+    border:1px solid rgba(255,255,255,.35);
+    border-radius:inherit;
+    content:"";
+    pointer-events:none;
+  }
+
+  .booking-card__media img{
+    display:block;
     width:100%;
     height:100%;
     object-fit:cover;
-    display:block;
-}
+  }
 
-.booking-info{
-    flex:1 1 auto;
+  .booking-card__media img.booking-card__image--fallback{
+    padding:20px;
+    background:#f5f3fa;
+    object-fit:contain;
+  }
+
+  .booking-card__body{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
     min-width:0;
-}
+    padding:2px 0;
+  }
 
-.booking-info .title {
-    font-weight:700;
-    font-size:16px;
-}
+  .booking-card__heading{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    min-width:0;
+  }
 
-.booking-info .status {
-    color:#4e8df6;
+  .booking-card__title{
+    display:-webkit-box;
+    min-width:0;
+    margin:0;
+    overflow:hidden;
+    color:var(--bk-ink);
+    font-size:17px;
+    font-weight:760;
+    letter-spacing:-.02em;
+    line-height:1.3;
+    overflow-wrap:anywhere;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:2;
+  }
+
+  .booking-card__status{
+    display:inline-flex;
+    flex:0 0 auto;
+    align-items:center;
+    min-height:25px;
+    max-width:100%;
+    padding:5px 8px;
+    border:1px solid transparent;
+    border-radius:999px;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.01em;
+    line-height:1;
+    text-align:center;
+    white-space:nowrap;
+  }
+
+  .booking-card__status--requested{ border-color:#e2d9ff; background:#f5f2ff; color:#6653b7; }
+  .booking-card__status--accepted{ border-color:#d8e5ff; background:#f0f5ff; color:#3f69b5; }
+  .booking-card__status--paid,
+  .booking-card__status--picked_up,
+  .booking-card__status--completed{ border-color:#d6eedd; background:#eef9f1; color:#317653; }
+  .booking-card__status--returned,
+  .booking-card__status--in_review{ border-color:#f0e1bb; background:#fff8e9; color:#986b16; }
+  .booking-card__status--closed{ border-color:#e4e4e9; background:#f5f5f7; color:#666673; }
+  .booking-card__status--rejected{ border-color:#f0d8da; background:#fff3f3; color:#a6484e; }
+  .booking-card__status--default{ border-color:#e4e4eb; background:#f7f7fa; color:#646473; }
+
+  .booking-card__meta{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:8px 11px;
+    margin-top:10px;
+    color:var(--bk-muted);
+    font-size:13px;
+    font-weight:620;
+    line-height:1.35;
+  }
+
+  .booking-card__date-range,
+  .booking-card__duration{
+    display:inline-flex;
+    align-items:center;
+    min-width:0;
+    gap:6px;
+  }
+
+  .booking-card__date-range i,
+  .booking-card__duration i{
+    flex:0 0 auto;
+    color:#8d88c7;
     font-size:14px;
-    font-weight:600;
-}
-
-/* EMPTY IMAGE */
-.empty-box{padding:24px 8px;text-align:center;}
-.empty-box img{
-  display:block;margin:10px auto;max-width:320px;width:76%;
-  height:auto;object-fit:contain;opacity:.98;
-}
-
-/* ===== PHONE FIX ===== */
-@media (max-width: 768px) {
-    header.topbar,
-    .m-top-tabs,
-    .notif-panels,
-    .search-wrapper,
-    .page-header {
-        display: none !important;
-    }
-    body.has-tabbar{
-        padding-top: 0 !important;
-    }
-}
-
-.booking-info .title{
-  font-weight:700;
-  font-size:16px;
-  overflow-wrap:anywhere;
-}
-
-.booking-info .status,
-.booking-info .text-muted{overflow-wrap:anywhere}
-.booking-card > .bi{flex:0 0 auto}
-.booking-index-head{gap:10px;min-width:0}
-.booking-index-head h4{min-width:0;overflow-wrap:anywhere}
-.booking-index-head .btn-group{display:flex;flex-wrap:wrap;max-width:100%}
-.booking-index-head .btn{min-width:0;white-space:normal}
-
-@media (max-width:359px){
-  .booking-card{gap:10px;padding:12px}
-  .booking-thumb{width:56px;height:56px}
-  .booking-index-head{align-items:flex-start !important;flex-wrap:wrap}
-}
-
-/* ===== iOS APP ONLY — TOP SAFE WHITE BAR (BOOKINGS PAGE) ===== */
-@supports (-webkit-touch-callout: none) {
-  @media (max-width: 768px) {
-
-    /* الشريط الأبيض العلوي */
-    body::before {
-      content: "";
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: env(safe-area-inset-top);
-      background: #fff;
-      z-index: 9999;
-      pointer-events: none;
-    }
-
-    /* دفع محتوى الصفحة للأسفل */
-    body {
-      padding-top: env(safe-area-inset-top);
-    }
-
   }
-}
 
-/* Keep the booking index in its existing phone chrome, with a natural tablet list width. */
-@supports (-webkit-touch-callout: none) {
-  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
+  .booking-card__date-arrow{ color:#a09faa; }
+  .booking-card__date-short{ display:none; }
+
+  .booking-card__duration{
+    padding-left:11px;
+    border-left:1px solid var(--bk-border);
+  }
+
+  .booking-card__total{
+    display:flex;
+    align-items:baseline;
+    gap:7px;
+    margin-top:11px;
+    color:var(--bk-muted);
+    font-size:12px;
+    font-weight:650;
+  }
+
+  .booking-card__total strong{
+    color:var(--bk-ink);
+    font-size:14px;
+    font-weight:780;
+    letter-spacing:-.01em;
+  }
+
+  .booking-card__chevron{
+    display:grid;
+    place-items:center;
+    align-self:center;
+    width:38px;
+    height:38px;
+    border:1px solid var(--bk-border);
+    border-radius:50%;
+    color:#6a6690;
+    font-size:16px;
+    transition:background-color 170ms ease, border-color 170ms ease, color 170ms ease, transform 170ms ease;
+  }
+
+  .bookings-hub__empty{
+    display:grid;
+    justify-items:center;
+    max-width:500px;
+    margin:clamp(24px, 5vw, 54px) auto 0;
+    padding:clamp(26px, 5vw, 42px) 22px;
+    border:1px solid var(--bk-border);
+    border-radius:22px;
+    background:var(--bk-card);
+    text-align:center;
+  }
+
+  .bookings-hub__empty img{
+    display:block;
+    width:min(168px, 52vw);
+    height:auto;
+    margin:0 0 16px;
+    object-fit:contain;
+  }
+
+  .bookings-hub__empty h2{
+    margin:0;
+    color:var(--bk-ink);
+    font-size:20px;
+    font-weight:760;
+    letter-spacing:-.025em;
+  }
+
+  .bookings-hub__empty p{
+    max-width:310px;
+    margin:7px 0 18px;
+    color:var(--bk-muted);
+    font-size:14px;
+    line-height:1.5;
+  }
+
+  .bookings-hub__empty-cta{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:42px;
+    padding:10px 15px;
+    border-radius:12px;
+    background:#282741;
+    color:#fff;
+    font-size:13px;
+    font-weight:760;
+    text-decoration:none;
+    transition:background-color 160ms ease, transform 160ms ease;
+  }
+
+  @media (hover:hover) and (pointer:fine){
+    .bookings-hub__switcher a:not([aria-current="page"]):hover{ color:var(--bk-ink); }
+    .booking-card:hover{
+      border-color:#d8d4eb;
+      box-shadow:0 10px 24px rgba(35,32,66,.07);
+      transform:translateY(-1px);
+    }
+    .booking-card:hover .booking-card__chevron{
+      border-color:#ccc6ec;
+      background:#f5f3ff;
+      color:#5f56cb;
+      transform:translateX(1px);
+    }
+    .bookings-hub__empty-cta:hover{ background:#3a3860; }
+  }
+
+  @media (max-width:768px){
+    /* Preserve the existing phone chrome behaviour for Bookings only. */
     body[data-path="/bookings"] header.topbar,
-    body[data-path="/bookings"] .m-top-tabs.d-lg-none,
-    body[data-path="/bookings"] .notif-panels,
+    body[data-path="/bookings"] .m-top-tabs,
     body[data-path="/bookings"] .search-wrapper,
-    body[data-path="/bookings"] .page-header {
-      display: none !important;
+    body[data-path="/bookings"] .page-header{ display:none !important; }
+
+    body[data-path="/bookings"].has-tabbar{ padding-top:0 !important; }
+    body[data-path="/bookings"].has-tabbar .page{
+      padding-bottom:calc(128px + max(env(safe-area-inset-bottom, 0px), var(--safe-bottom, 0px))) !important;
     }
 
-    body[data-path="/bookings"] .page {
-      padding-top: max(18px, calc(18px + env(safe-area-inset-top, 0px))) !important;
+    body[data-path="/bookings"] .paypal-callout{
+      margin-top:0 !important;
+      margin-bottom:17px !important;
+      align-items:flex-start !important;
+      gap:10px;
     }
 
-    body[data-path="/bookings"] .container-fluid {
-      max-width: 980px;
-      margin-inline: auto;
-      padding-inline: 24px;
+    .bookings-hub{ padding-top:1px; }
+    .bookings-hub__header{ align-items:stretch; flex-direction:column; gap:16px; margin-bottom:21px; }
+    .bookings-hub__title{ font-size:31px; }
+    .bookings-hub__subtitle{ margin-top:7px; font-size:14px; }
+    .bookings-hub__switcher{ width:100%; min-width:0; }
+    .bookings-hub__switcher a{ min-height:42px; }
+    .bookings-hub__list{ gap:11px; padding-bottom:18px; }
+
+    .booking-card{
+      grid-template-columns:86px minmax(0, 1fr) 34px;
+      gap:11px;
+      padding:11px;
+      border-radius:18px;
+    }
+
+    .booking-card__media{ aspect-ratio:1; border-radius:13px; }
+    .booking-card__heading{ align-items:flex-start; flex-direction:column; gap:7px; }
+    .booking-card__title{ font-size:16px; }
+    .booking-card__status{ min-height:24px; font-size:10.5px; }
+    .booking-card__meta{ gap:7px 9px; margin-top:8px; font-size:12px; }
+    .booking-card__date-long{ display:none; }
+    .booking-card__date-short{ display:inline; }
+    .booking-card__duration{ padding-left:9px; }
+    .booking-card__total{ margin-top:9px; }
+    .booking-card__chevron{ width:34px; height:34px; font-size:14px; }
+
+    .bookings-hub__empty{ margin-top:24px; }
+  }
+
+  @media (max-width:359px){
+    .bookings-hub__title{ font-size:29px; }
+    .booking-card{ grid-template-columns:76px minmax(0, 1fr) 30px; gap:9px; padding:10px; }
+    .booking-card__media{ aspect-ratio:1; }
+    .booking-card__chevron{ width:30px; height:30px; }
+    .booking-card__duration{ border-left:0; padding-left:0; }
+  }
+
+  /* The original touch shell treats exactly 768px as phone width. Give an iPad-sized touch viewport roomier cards without changing any shared breakpoint. */
+  @media (min-width:600px) and (max-width:768px) and (any-pointer:coarse){
+    .bookings-hub{ padding-top:10px; }
+    .bookings-hub__header{ flex-direction:row; align-items:end; }
+    .bookings-hub__switcher{ width:auto; min-width:232px; }
+    .booking-card{ grid-template-columns:126px minmax(0, 1fr) 38px; gap:15px; padding:14px; }
+    .booking-card__media{ aspect-ratio:4 / 3; border-radius:15px; }
+    .booking-card__heading{ align-items:flex-start; flex-direction:row; gap:12px; }
+    .booking-card__date-long{ display:inline; }
+    .booking-card__date-short{ display:none; }
+    .booking-card__chevron{ width:38px; height:38px; }
+  }
+
+  @supports (-webkit-touch-callout:none){
+    @media (max-width:768px){
+      body[data-path="/bookings"]::before{
+        position:fixed;
+        z-index:9999;
+        top:0;
+        right:0;
+        left:0;
+        height:env(safe-area-inset-top, 0px);
+        background:#fff;
+        content:"";
+        pointer-events:none;
+      }
+      body[data-path="/bookings"]{ padding-top:env(safe-area-inset-top, 0px); }
+    }
+
+    /* Preserve the current iPad touch layout rather than treating it as desktop. */
+    @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse){
+      body[data-path="/bookings"] header.topbar,
+      body[data-path="/bookings"] .m-top-tabs.d-lg-none,
+      body[data-path="/bookings"] .search-wrapper,
+      body[data-path="/bookings"] .page-header{ display:none !important; }
+
+      body[data-path="/bookings"] .page{
+        padding-top:max(18px, calc(18px + env(safe-area-inset-top, 0px))) !important;
+      }
+
+      body[data-path="/bookings"].has-tabbar .page{
+        padding-bottom:calc(154px + max(env(safe-area-inset-bottom, 0px), var(--safe-bottom, 0px))) !important;
+      }
+
+      .bookings-hub{ width:min(980px, 100%); }
+      .booking-card{ grid-template-columns:136px minmax(0, 1fr) 42px; }
+      .booking-card__media{ aspect-ratio:4 / 3; }
     }
   }
-}
 
+  @media (min-width:769px){
+    .bookings-hub__list{ padding-bottom:28px; }
+  }
 
+  @media (prefers-reduced-motion:reduce){
+    .bookings-hub *,
+    .bookings-hub *::before,
+    .bookings-hub *::after{ scroll-behavior:auto !important; transition-duration:.01ms !important; }
+  }
+
+  [data-theme="dark"] .bookings-hub{
+    --bk-ink:#f3f2f7;
+    --bk-muted:#aba9b7;
+    --bk-soft:#242332;
+    --bk-border:rgba(255,255,255,.11);
+    --bk-card:#1d1c29;
+  }
+
+  [data-theme="dark"] body[data-path="/bookings"] .paypal-callout{
+    border-color:rgba(241,210,129,.18);
+    background:#29261e;
+    color:#e3d5ae;
+  }
+
+  [data-theme="dark"] .booking-card__media{ background:#292837; }
+  [data-theme="dark"] .booking-card__status--requested{ background:#2b2845; border-color:#443d70; color:#d0c5ff; }
+  [data-theme="dark"] .booking-card__status--accepted{ background:#202d46; border-color:#364b73; color:#c9d9ff; }
+  [data-theme="dark"] .booking-card__status--paid,
+  [data-theme="dark"] .booking-card__status--picked_up,
+  [data-theme="dark"] .booking-card__status--completed{ background:#1e382d; border-color:#315844; color:#c3efd0; }
+  [data-theme="dark"] .booking-card__status--returned,
+  [data-theme="dark"] .booking-card__status--in_review{ background:#3b301c; border-color:#635129; color:#f0d38e; }
+  [data-theme="dark"] .booking-card__status--closed,
+  [data-theme="dark"] .booking-card__status--default{ background:#282735; border-color:#3d3b4a; color:#d0ced9; }
+  [data-theme="dark"] .booking-card__status--rejected{ background:#40262a; border-color:#653c42; color:#f4c8ce; }
+  [data-theme="dark"] .booking-card__chevron{ color:#cac6ed; }
 </style>
+{% endblock %}
 
-{% set EMPTY_IMG = (url_for('static', path='photo/xon.png') if view=='renter'
-                    else url_for('static', path='photo/ron.png')) %}
+{% block content %}
+{% set empty_image = (url_for('static', path='photo/xon.png') if view == 'renter' else url_for('static', path='photo/ron.png')) %}
+{% set booking_status_labels = {
+  'requested': 'Requested',
+  'accepted': 'Accepted',
+  'paid': 'Paid',
+  'picked_up': 'Picked up',
+  'returned': 'Returned',
+  'in_review': 'In review',
+  'closed': 'Closed',
+  'rejected': 'Rejected',
+  'completed': 'Completed',
+  'awaiting_pickup': 'Awaiting pickup',
+  'pending_payment': 'Pending payment',
+  'in_use': 'In use',
+  'authorized': 'Authorized',
+  'captured': 'Captured',
+  'paid_online': 'Paid online',
+  'ready_for_pickup': 'Ready for pickup'
+} %}
 
-<div class="booking-index-head d-flex justify-content-between align-items-center flex-wrap mb-3">
-  <h4>{{ title }}</h4>
-  <div class="btn-group">
-    <a class="btn btn-sm {% if view=='renter' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="/bookings?view=renter">As renter</a>
-    <a class="btn btn-sm {% if view=='owner' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="/bookings?view=owner">As owner</a>
-  </div>
-</div>
+<section class="bookings-hub" aria-labelledby="bookingsTitle">
+  <header class="bookings-hub__header">
+    <div>
+      <p class="bookings-hub__eyebrow">SEVOR</p>
+      <h1 class="bookings-hub__title" id="bookingsTitle">Bookings</h1>
+      <p class="bookings-hub__subtitle">Manage your rentals in one place.</p>
+    </div>
 
-{% if bookings and bookings|length %}
-  {% for b in bookings %}
-    <a class="booking-card text-decoration-none text-dark" href="/bookings/flow/{{ b.id }}">
+    <nav class="bookings-hub__switcher" aria-label="Booking view">
+      <a href="/bookings?view=renter"{% if view == 'renter' %} aria-current="page"{% endif %}>As renter</a>
+      <a href="/bookings?view=owner"{% if view == 'owner' %} aria-current="page"{% endif %}>As owner</a>
+    </nav>
+  </header>
 
-        <div class="booking-thumb">
-            <img src="{{ b.item.image_path }}"
-                 referrerpolicy="no-referrer"
-                 {% if loop.index > 3 %}loading="lazy"{% elif loop.first %}fetchpriority="high"{% endif %}
-                 decoding="async"
-                 onerror="this.src='/static/placeholder.png'">
-        </div>
+  {% if bookings and bookings|length %}
+    <ul class="bookings-hub__list" aria-label="{% if view == 'renter' %}Your rentals{% else %}Bookings for your listings{% endif %}">
+      {% for b in bookings %}
+        {% set status_key = (b.status or '')|lower %}
+        {% set status_label = booking_status_labels.get(status_key, (b.status or 'Status unavailable')|replace('_', ' ')|title) %}
+        {% set status_tone = status_key if status_key in ('requested', 'accepted', 'paid', 'picked_up', 'returned', 'in_review', 'closed', 'rejected', 'completed') else 'default' %}
+        {% set item_title = (b.item.title if b.item and b.item.title else 'Booking item') %}
+        {% set item_image = (b.item.image_path if b.item and b.item.image_path else '/static/images/ui/sevor-logo-180.png') %}
+        {% set item_currency = (b.item.currency if b.item and b.item.currency else '') %}
+        {% set booking_currency = b.currency or item_currency or 'CAD' %}
 
-        <div class="booking-info">
-            <div class="title">{{ b.item.title }}</div>
-            <div class="status">Status: {{ b.status }}</div>
-            <div class="text-muted small">
-                {{ b.start_date }} → {{ b.end_date }}
-                ({{ b.days }} days)
-            </div>
-        </div>
+        <li>
+          <a class="booking-card" href="/bookings/flow/{{ b.id }}" aria-label="View booking details for {{ item_title }}">
+            <span class="booking-card__media">
+              <img class="booking-card__image" src="{{ item_image }}"
+                   alt="{{ item_title }}"
+                   width="136"
+                   height="116"
+                   referrerpolicy="no-referrer"
+                   {% if loop.index > 2 %}loading="lazy"{% elif loop.first %}fetchpriority="high"{% endif %}
+                   decoding="async"
+                   onerror="this.onerror=null;this.classList.add('booking-card__image--fallback');this.src='/static/images/ui/sevor-logo-180.png'">
+            </span>
 
-        <i class="bi bi-chevron-right ms-auto"></i>
-    </a>
-  {% endfor %}
-{% else %}
-  <div class="empty-box">
-    <img src="{{ EMPTY_IMG }}" alt="">
-  </div>
-{% endif %}
+            <span class="booking-card__body">
+              <span class="booking-card__heading">
+                <span class="booking-card__title">{{ item_title }}</span>
+                <span class="booking-card__status booking-card__status--{{ status_tone }}" aria-label="Booking status: {{ status_label }}">{{ status_label }}</span>
+              </span>
 
-</div>
+              <span class="booking-card__meta">
+                <span class="booking-card__date-range">
+                  <i class="bi bi-calendar3" aria-hidden="true"></i>
+                  <time datetime="{{ b.start_date }}">
+                    <span class="booking-card__date-long">{{ b.start_date.strftime('%b %d, %Y') }}</span>
+                    <span class="booking-card__date-short">{{ b.start_date.strftime('%b %d') }}</span>
+                  </time>
+                  <span class="booking-card__date-arrow" aria-hidden="true">→</span>
+                  <time datetime="{{ b.end_date }}">
+                    <span class="booking-card__date-long">{{ b.end_date.strftime('%b %d, %Y') }}</span>
+                    <span class="booking-card__date-short">{{ b.end_date.strftime('%b %d') }}</span>
+                  </time>
+                </span>
+                <span class="booking-card__duration"><i class="bi bi-clock" aria-hidden="true"></i>{{ b.days }} {{ 'day' if b.days == 1 else 'days' }}</span>
+              </span>
+
+              {% if b.total_amount is not none %}
+                <span class="booking-card__total"><span>Total</span><strong>{{ '%.2f'|format(b.total_amount) }} {{ booking_currency }}</strong></span>
+              {% endif %}
+            </span>
+
+            <span class="booking-card__chevron" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <section class="bookings-hub__empty" aria-labelledby="emptyBookingsTitle">
+      <img src="{{ empty_image }}" alt="" loading="lazy" decoding="async">
+      {% if view == 'renter' %}
+        <h2 id="emptyBookingsTitle">No rentals yet.</h2>
+        <p>Items you rent will appear here.</p>
+        <a class="bookings-hub__empty-cta" href="/items">Explore items</a>
+      {% else %}
+        <h2 id="emptyBookingsTitle">No booking requests yet.</h2>
+        <p>Bookings for your listings will appear here.</p>
+        <a class="bookings-hub__empty-cta" href="/owner/items">View my listings</a>
+      {% endif %}
+    </section>
+  {% endif %}
+</section>
 {% endblock %}
