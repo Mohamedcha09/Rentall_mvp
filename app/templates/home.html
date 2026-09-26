@@ -1383,6 +1383,7 @@ body[data-path="/"] .paypal-callout{
   box-shadow:0 12px 30px rgba(46,65,139,.09) !important;
 }
 body[data-path="/"] .paypal-callout.home-paypal-callout{
+  flex-direction:row !important;
   align-items:center !important;
 }
 body[data-path="/"] .home-paypal__body{
@@ -1419,6 +1420,7 @@ body[data-path="/"] .home-paypal__description{
 }
 body[data-path="/"] .paypal-callout .home-paypal__cta{
   flex:0 0 auto;
+  width:auto !important;
   min-height:44px;
   padding:0 17px;
   border:0;
@@ -1721,6 +1723,7 @@ body[data-path="/"] .home-location-search__tool{
   background:#f7f8fd;
 }
 body[data-path="/"] .home-location-search__tool .bi{font-size:1.05rem;}
+body[data-path="/"] .home-location-search #homeUseGPS::before{content:none !important;}
 body[data-path="/"] .home-location-search__tool--clear{display:none;}
 body[data-path="/"] .home-location-search.has-location{grid-template-columns:minmax(0,1fr) auto auto auto;}
 body[data-path="/"] .home-location-search.has-location .home-location-search__tool--clear{display:inline-flex;}
@@ -2069,9 +2072,10 @@ body[data-path="/"] .home-empty{
 @media (max-width:360px){
   body[data-path="/"] .home-root{padding-inline:12px;}
   body[data-path="/"] .paypal-callout{width:calc(100% - 24px); padding:12px !important; gap:10px !important;}
+  body[data-path="/"] .paypal-callout.home-paypal-callout{flex-direction:column !important; align-items:stretch !important;}
   body[data-path="/"] .home-paypal__icon{flex-basis:41px; width:41px; height:41px; border-radius:13px; font-size:22px;}
   body[data-path="/"] .home-paypal__description{font-size:.77rem;}
-  body[data-path="/"] .paypal-callout .home-paypal__cta{min-height:40px; padding-inline:11px; font-size:.8rem;}
+  body[data-path="/"] .paypal-callout .home-paypal__cta{width:100% !important; min-height:40px; padding-inline:11px; font-size:.8rem;}
   body[data-path="/"] .home-location-search{grid-template-columns:minmax(0,1fr) auto; padding:7px;}
   body[data-path="/"] .home-location-search__submit{grid-column:1 / -1; min-height:42px; width:100%;}
   body[data-path="/"] .home-location-search #homeCityInput{height:42px; font-size:.9rem;}
@@ -2571,6 +2575,13 @@ body[data-path="/"] :is(.home-listing__link,.home-listing__favorite,.home-sectio
   /* Home-only presentation helpers. They reuse base-owned controls instead of
      cloning forms, notification behavior, payout links, or account menus. */
   (function enhanceHomeChrome(){
+    const homeUsesCompactHeader = window.matchMedia?.('(max-width: 991px)').matches || document.documentElement.classList.contains('is-ipad');
+    const brandLogo = document.querySelector('body[data-path="/"] header.topbar .brand-logo');
+    if(homeUsesCompactHeader && brandLogo){
+      brandLogo.src = '/static/images/ui/sevor-logo-96.png';
+      brandLogo.alt = 'SEVOR';
+    }
+
     const cityTop = document.getElementById('cityTop');
     const selectedCity = {{ selected_city|default('', true)|tojson }};
     if(cityTop && !cityTop.value && selectedCity) cityTop.value = selectedCity;
