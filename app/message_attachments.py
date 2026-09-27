@@ -451,53 +451,59 @@ def persist_staged_message_attachments(
     if backend == "local":
         MESSAGE_ATTACHMENT_ROOT.mkdir(parents=True, exist_ok=True)
     records: list[MessageAttachment] = []
-    for item in staged:
-        stored_name = (
-            _cloudinary_stored_name(item.kind, item.extension)
-            if backend == "cloudinary"
-            else f"{uuid.uuid4().hex}{item.extension}"
-        )
-        record = MessageAttachment(
-            thread_id=thread_id,
-            message_id=message_id,
-            uploader_id=uploader_id,
-            kind=item.kind,
-            original_name=item.display_name,
-            stored_name=stored_name,
-            content_type=item.content_type,
-            size_bytes=item.size_bytes,
-            duration_ms=item.duration_ms,
-        )
-        db.add(record)
-        db.flush()
-        records.append(record)
-        if backend == "cloudinary":
-            reference = _cloudinary_reference(stored_name)
-            if not reference:
-                raise HTTPException(status_code=503, detail="Private attachment storage is not configured.")
-            resource_type, object_token, _extension = reference
-            try:
-                _configure_cloudinary()
-                with item.temp_path.open("rb") as source:
-                    result = cloudinary.uploader.upload(
-                        source,
-                        public_id=_cloudinary_public_id(object_token),
-                        resource_type=resource_type,
-                        type="private",
-                        overwrite=False,
-                        unique_filename=False,
-                        use_filename=False,
-                    )
-                if not (result or {}).get("public_id"):
-                    raise RuntimeError("The private media provider did not return an object id.")
-                item.temp_path.unlink(missing_ok=True)
-            except HTTPException:
-                raise
-            except Exception as exc:
-                raise HTTPException(status_code=503, detail="Attachment upload failed. Please try again.") from exc
-        else:
-            destination = MESSAGE_ATTACHMENT_ROOT / stored_name
-            os.replace(item.temp_path, destination)
+    try:
+        for item in staged:
+            stored_name = (
+                _cloudinary_stored_name(item.kind, item.extension)
+                if backend == "cloudinary"
+                else f"{uuid.uuid4().hex}{item.extension}"
+            )
+            record = MessageAttachment(
+                thread_id=thread_id,
+                message_id=message_id,
+                uploader_id=uploader_id,
+                kind=item.kind,
+                original_name=item.display_name,
+                stored_name=stored_name,
+                content_type=item.content_type,
+                size_bytes=item.size_bytes,
+                duration_ms=item.duration_ms,
+            )
+            db.add(record)
+            db.flush()
+            # Append before touching storage so a partial provider success is
+            # cleaned if a later local/remote operation raises.
+            records.append(record)
+            if backend == "cloudinary":
+                reference = _cloudinary_reference(stored_name)
+                if not reference:
+                    raise HTTPException(status_code=503, detail="Private attachment storage is not configured.")
+                resource_type, object_token, _extension = reference
+                try:
+                    _configure_cloudinary()
+                    with item.temp_path.open("rb") as source:
+                        result = cloudinary.uploader.upload(
+                            source,
+                            public_id=_cloudinary_public_id(object_token),
+                            resource_type=resource_type,
+                            type="private",
+                            overwrite=False,
+                            unique_filename=False,
+                            use_filename=False,
+                        )
+                    if not (result or {}).get("public_id"):
+                        raise RuntimeError("The private media provider did not return an object id.")
+                    item.temp_path.unlink(missing_ok=True)
+                except HTTPException:
+                    raise
+                except Exception as exc:
+                    raise HTTPException(status_code=503, detail="Attachment upload failed. Please try again.") from exc
+            else:
+                destination = MESSAGE_ATTACHMENT_ROOT / stored_name
+                os.replace(item.temp_path, destination)
+    except Exception:
+        remove_saved_message_attachment_files(records)
+        raise
     return records
 
 
