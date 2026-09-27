@@ -149,22 +149,22 @@
 
   .conversation-item-context{
     display:grid;
-    grid-template-columns:92px minmax(0,1fr) 48px;
+    grid-template-columns:80px minmax(0,1fr) 42px;
     align-items:center;
     gap:16px;
     position:relative;
     overflow:hidden;
     box-sizing:border-box;
     min-width:0;
-    min-height:120px;
+    min-height:104px;
     margin:14px 16px 0;
-    padding:14px;
+    padding:11px 14px;
     color:inherit;
     background:
       radial-gradient(128% 165% at 108% 52%, rgba(79,111,255,.13) 0%, rgba(40,184,245,.075) 35%, transparent 69%),
       linear-gradient(135deg, rgba(255,255,255,.99) 0%, rgba(248,245,255,.98) 57%, rgba(244,250,255,.98) 100%);
     border:1px solid rgba(106,91,194,.16);
-    border-radius:28px;
+    border-radius:25px;
     box-shadow:0 12px 30px rgba(71,58,139,.09), 0 2px 8px rgba(70,129,211,.045);
     text-decoration:none;
     transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
@@ -174,14 +174,14 @@
   .conversation-item-context:active{ transform:scale(.995); }
   .conversation-item-context__media{
     display:block;
-    width:92px;
-    height:92px;
+    width:80px;
+    height:80px;
     aspect-ratio:1 / 1;
     min-width:0;
     overflow:hidden;
     background:linear-gradient(135deg,#f1edff,#eaf8ff);
     border:1px solid rgba(105,87,196,.13);
-    border-radius:20px;
+    border-radius:18px;
     box-shadow:0 8px 18px rgba(67,51,139,.09);
   }
   .conversation-item-context__image{
@@ -221,8 +221,8 @@
     max-width:100%;
     min-width:0;
     overflow:hidden;
-    margin-top:8px;
-    padding:5px 9px;
+    margin-top:6px;
+    padding:4px 8px;
     color:#5544c6;
     background:linear-gradient(135deg,rgba(118,91,255,.13),rgba(72,132,245,.11));
     border:1px solid rgba(94,89,213,.13);
@@ -241,7 +241,7 @@
     gap:6px;
     min-width:0;
     overflow:hidden;
-    margin-top:9px;
+    margin-top:6px;
     color:#756f89;
     font-size:.88rem;
     font-weight:650;
@@ -254,8 +254,8 @@
   .conversation-item-context__action{
     display:grid;
     place-items:center;
-    width:48px;
-    height:48px;
+    width:42px;
+    height:42px;
     color:#24213d;
     background:rgba(255,255,255,.78);
     border:1px solid rgba(91,77,166,.12);
@@ -896,9 +896,9 @@
       box-shadow:0 20px 52px rgba(51,38,105,.1);
     }
     .conversation-header{ min-height:78px; padding:14px 20px; }
-    .conversation-item-context{ grid-template-columns:96px minmax(0,1fr) 50px; gap:18px; min-height:124px; margin:14px 20px 0; }
-    .conversation-item-context__media{ width:96px; height:96px; }
-    .conversation-item-context__action{ width:50px; height:50px; }
+    .conversation-item-context{ grid-template-columns:84px minmax(0,1fr) 44px; gap:18px; min-height:108px; margin:14px 20px 0; padding:12px 14px; }
+    .conversation-item-context__media{ width:84px; height:84px; }
+    .conversation-item-context__action{ width:44px; height:44px; }
     .conversation-scroll{ padding:27px 25px 31px; }
     .conversation-composer{ padding:14px 20px calc(14px + env(safe-area-inset-bottom, 0px)); }
     .conversation-message--me{ padding-left:25%; }
@@ -908,9 +908,9 @@
   @media (min-width:1100px){
     .conversation-page{ padding:24px 32px; }
     .conversation-shell{ width:min(100%,860px); height:calc(100% - 48px); }
-    .conversation-item-context{ grid-template-columns:100px minmax(0,1fr) 52px; min-height:132px; padding:16px; }
-    .conversation-item-context__media{ width:100px; height:100px; }
-    .conversation-item-context__action{ width:52px; height:52px; }
+    .conversation-item-context{ grid-template-columns:88px minmax(0,1fr) 44px; min-height:112px; padding:12px 16px; border-radius:26px; }
+    .conversation-item-context__media{ width:88px; height:88px; }
+    .conversation-item-context__action{ width:44px; height:44px; }
     .conversation-scroll{ padding-inline:31px; }
   }
 
@@ -918,12 +918,12 @@
     .conversation-header{ gap:9px; min-height:68px; padding-left:max(12px, env(safe-area-inset-left, 0px)); padding-right:max(12px, env(safe-area-inset-right, 0px)); }
     .conversation-back{ width:41px; height:41px; border-radius:14px; }
     .conversation-avatar{ width:43px; height:43px; flex-basis:43px; border-radius:15px; }
-    .conversation-item-context{ grid-template-columns:80px minmax(0,1fr) 40px; gap:12px; min-height:100px; margin-inline:12px; padding:10px; border-radius:24px; }
-    .conversation-item-context__media{ width:80px; height:80px; border-radius:18px; }
+    .conversation-item-context{ grid-template-columns:72px minmax(0,1fr) 40px; gap:12px; min-height:96px; margin-inline:12px; padding:10px 12px; border-radius:22px; }
+    .conversation-item-context__media{ width:72px; height:72px; border-radius:16px; }
     .conversation-item-context__action{ width:40px; height:40px; }
     .conversation-item-context__title{ font-size:1.06rem; }
-    .conversation-item-context__price{ margin-top:6px; padding:4px 8px; font-size:.72rem; }
-    .conversation-item-context__location{ margin-top:7px; font-size:.78rem; }
+    .conversation-item-context__price{ margin-top:4px; padding:3px 7px; font-size:.72rem; }
+    .conversation-item-context__location{ margin-top:4px; font-size:.78rem; }
     .conversation-scroll{ padding:18px 12px 23px; padding-left:max(12px, env(safe-area-inset-left, 0px)); padding-right:max(12px, env(safe-area-inset-right, 0px)); }
     .conversation-message--me{ padding-left:8%; margin-right:4px; }
     .conversation-message--other{ padding-right:3%; }
@@ -939,8 +939,8 @@
   @media (max-height:520px) and (orientation:landscape){
     .conversation-header{ min-height:58px; padding-top:8px; padding-bottom:8px; }
     .conversation-avatar{ width:40px; height:40px; flex-basis:40px; border-radius:13px; }
-    .conversation-item-context{ grid-template-columns:78px minmax(0,1fr) 40px; gap:10px; min-height:98px; margin-top:8px; padding:10px; }
-    .conversation-item-context__media{ width:78px; height:78px; border-radius:17px; }
+    .conversation-item-context{ grid-template-columns:72px minmax(0,1fr) 40px; gap:10px; min-height:96px; margin-top:8px; padding:10px; }
+    .conversation-item-context__media{ width:72px; height:72px; border-radius:16px; }
     .conversation-item-context__action{ width:40px; height:40px; }
     .conversation-item-context__price{ margin-top:5px; padding-block:4px; }
     .conversation-item-context__location{ margin-top:6px; }

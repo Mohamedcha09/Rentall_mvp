@@ -219,10 +219,10 @@ class DirectMessageMediaTests(unittest.TestCase):
             "conversation-item-context__media",
             "aspect-ratio:1 / 1",
             "object-fit:cover",
-            "grid-template-columns:92px minmax(0,1fr) 48px",
-            "grid-template-columns:80px minmax(0,1fr) 40px",
-            "grid-template-columns:96px minmax(0,1fr) 50px",
-            "grid-template-columns:100px minmax(0,1fr) 52px",
+            "grid-template-columns:80px minmax(0,1fr) 42px",
+            "grid-template-columns:72px minmax(0,1fr) 40px",
+            "grid-template-columns:84px minmax(0,1fr) 44px",
+            "grid-template-columns:88px minmax(0,1fr) 44px",
             "conversation-item-context__price",
             "conversation-item-context__location",
             "conversation-item-context__action",
@@ -243,13 +243,54 @@ class DirectMessageMediaTests(unittest.TestCase):
 
         self.assertIn('href="/items/{{ context_item.id }}"', template)
         self.assertIn("onerror=\"this.onerror=null;this.src='/static/placeholder.svg'\"", template)
-        self.assertIn("width:92px;\n    height:92px;\n    aspect-ratio:1 / 1;", template)
-        for square_size in (80, 78, 96, 100):
+        self.assertIn("width:80px;\n    height:80px;\n    aspect-ratio:1 / 1;", template)
+        for square_size in (72, 84, 88):
             self.assertIn(f"width:{square_size}px; height:{square_size}px;", template)
         self.assertIn("object-fit:cover", template)
         self.assertIn("object-position:center", template)
         self.assertIn("text-overflow:ellipsis", template)
         self.assertNotIn("conversation-item-context__meta", template)
+
+    def test_listing_context_card_renders_the_existing_item_route_and_data(self):
+        """The visual card must not replace the real item context with fake data."""
+        db = SessionLocal()
+        try:
+            item = Item(
+                owner_id=self.owner_id,
+                title="Very long camera title used by the real item context card",
+                description="Test-only direct-message item",
+                city="Montréal, Québec, Canada",
+                currency="CAD",
+                price=42,
+                price_per_day=42,
+                category="other",
+                image_path="/uploads/context-card-test.jpg",
+            )
+            db.add(item)
+            db.flush()
+            thread = MessageThread(
+                user_a_id=self.owner_id,
+                user_b_id=self.participant_id,
+                item_id=item.id,
+                last_message_at=datetime.utcnow(),
+            )
+            db.add(thread)
+            db.commit()
+            thread_id, item_id = thread.id, item.id
+        finally:
+            db.close()
+
+        owner = TestClient(main_module.app)
+        _login(owner, self.owner_id)
+        page = owner.get(f"/messages/{thread_id}")
+        self.assertEqual(page.status_code, 200, page.text)
+        self.assertIn(f'href="/items/{item_id}"', page.text)
+        self.assertIn("Very long camera title used by the real item context card", page.text)
+        self.assertIn("42 CAD/day", page.text)
+        self.assertIn("Montréal, Québec, Canada", page.text)
+        self.assertIn('/uploads/context-card-test.jpg', page.text)
+        self.assertIn('class="conversation-item-context__media"', page.text)
+        self.assertIn('class="conversation-item-context__action"', page.text)
 
     def test_storage_selector_never_needs_a_render_marker_to_choose_cloudinary(self):
         """A cold production process must not silently fall back to local media."""
