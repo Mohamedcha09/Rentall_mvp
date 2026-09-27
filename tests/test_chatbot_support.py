@@ -14,6 +14,7 @@ import tempfile
 import unittest
 from datetime import date
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects import postgresql
@@ -51,7 +52,7 @@ def _bootstrap_schema(path: Path) -> None:
           id INTEGER PRIMARY KEY, item_id INTEGER NOT NULL, renter_id INTEGER NOT NULL, owner_id INTEGER NOT NULL,
           start_date DATE NOT NULL, end_date DATE NOT NULL, days INTEGER, price_per_day_snapshot INTEGER,
           total_amount INTEGER, payment_status VARCHAR(20), deposit_status VARCHAR(30), security_status VARCHAR(30),
-          refund_done BOOLEAN, owner_payout_status VARCHAR(20), payout_executed BOOLEAN, status VARCHAR(20), created_at TIMESTAMP,
+          refund_done BOOLEAN, deposit_refund_sent BOOLEAN, owner_payout_status VARCHAR(20), payout_sent BOOLEAN, payout_executed BOOLEAN, status VARCHAR(20), created_at TIMESTAMP,
           updated_at TIMESTAMP, loc_country VARCHAR(4), loc_sub VARCHAR(8)
         );
         CREATE TABLE support_tickets (
@@ -95,7 +96,33 @@ import app.main as main_module
 import app.routes_chatbot as chatbot_routes
 from app.database import SessionLocal
 from app.models import Booking, Item, SupportMessage, SupportTicket, User
-from app.support_ai import AGENT_ACTIVE, RESOLVED, WAITING_FOR_AGENT, _MessageRateLimiter, _chatbot_ticket_lock_query, analyze_support_intent, claim_ticket_atomically, collect_safe_tool_context, create_ai_answer, detect_language, is_handoff_request, load_knowledge, lock_agent_ticket_for_mutation, redact_sensitive_user_content, retrieve_knowledge, safe_booking_status, safe_verification_status, ticket_state
+from app.support_ai import (
+    AGENT_ACTIVE,
+    RESOLVED,
+    WAITING_FOR_AGENT,
+    _MessageRateLimiter,
+    _chatbot_ticket_lock_query,
+    _parse_semantic_router_response,
+    _provider_answer_is_grounded,
+    _safe_provider_summary,
+    analyze_support_intent,
+    call_openai_response,
+    classify_intents_with_provider,
+    claim_ticket_atomically,
+    collect_safe_tool_context,
+    create_ai_answer,
+    detect_language,
+    enrich_intent_with_provider,
+    is_handoff_request,
+    load_knowledge,
+    lock_agent_ticket_for_mutation,
+    redact_sensitive_user_content,
+    retrieve_knowledge,
+    safe_booking_status,
+    safe_verification_status,
+    ticket_state,
+    update_ticket_summary,
+)
 
 
 main_module._fx_schedule_daily_sync = lambda: None
@@ -145,7 +172,7 @@ class ChatbotSupportTests(unittest.TestCase):
             item = Item(id=101, owner_id=101, title="Camera", currency="CAD", price=10, status="approved", price_per_day=10, category="other", is_active="yes")
             second_item = Item(id=102, owner_id=101, title="Tripod", currency="CAD", price=10, status="approved", price_per_day=10, category="other", is_active="yes")
             db.add_all([item, second_item])
-            db.add(Booking(id=110, item_id=101, renter_id=102, owner_id=101, start_date=date(2026, 10, 1), end_date=date(2026, 10, 2), days=1, price_per_day_snapshot=10, total_amount=10, status="accepted", payment_status="paid", deposit_status="held", security_status="held", refund_done=False, owner_payout_status="pending", payout_executed=False))
+            db.add(Booking(id=110, item_id=101, renter_id=102, owner_id=101, start_date=date(2026, 10, 1), end_date=date(2026, 10, 2), days=1, price_per_day_snapshot=10, total_amount=10, status="accepted", payment_status="paid", deposit_status="held", security_status="held", refund_done=False, deposit_refund_sent=False, owner_payout_status="pending", payout_sent=False, payout_executed=False))
             db.add(Booking(id=111, item_id=102, renter_id=108, owner_id=101, start_date=date(2026, 10, 3), end_date=date(2026, 10, 4), days=1, price_per_day_snapshot=10, total_amount=10, status="requested", payment_status="pending"))
             ticket = SupportTicket(user_id=101, subject="Existing", channel="chatbot", queue="cs_chatbot", status="new", ai_state="waiting_for_agent", last_from="user", unread_for_agent=True, unread_for_user=False)
             db.add(ticket)
@@ -898,12 +925,15 @@ class ChatbotSupportTests(unittest.TestCase):
             ("I forgot my password", "en", "account.password.reset", "core:account:password-reset"),
             ("Je ne reçois pas l'email", "fr", "account.password.reset_email", "core:account:password-reset-email"),
             ("رابط تغيير كلمة السر لا يعمل", "ar", "account.password.reset_link", "core:account:password-reset-link"),
+            ("I am locked out", "en", "account.login", "core:account:login"),
             ("My booking is pending", "en", "booking.status", "core:bookings:request-status"),
             ("ma réservation est toujours en attente", "fr", "booking.status", "core:bookings:request-status"),
             ("الحجز ما زال معلقًا", "ar", "booking.status", "core:bookings:request-status"),
             ("mon booking mazal pending", "fr", "booking.status", "core:bookings:request-status"),
             ("Owner isn't answering", "en", "booking.owner_not_responding", "core:bookings:owner-not-responding"),
+            ("My owner is ghosting me", "en", "booking.owner_not_responding", "core:bookings:owner-not-responding"),
             ("I was charged but my booking is still pending", "en", "payment.booking_status", "core:payments:booking-payment"),
+            ("My payment went through, but reservation pending", "en", "payment.booking_status", "core:payments:booking-payment"),
             ("j'ai payé mais réservation pas confirmée", "fr", "payment.booking_status", "core:payments:booking-payment"),
             ("تم خصم المال لكن الحجز لم يتأكد", "ar", "payment.booking_status", "core:payments:booking-payment"),
             ("Why am I not verified?", "en", "verification.status", "core:verification:status"),
@@ -912,10 +942,15 @@ class ChatbotSupportTests(unittest.TestCase):
             ("My listing isn't visible", "en", "listing.status", "core:listings:pending-or-visibility"),
             ("mon annonce n'apparaît pas", "fr", "listing.status", "core:listings:pending-or-visibility"),
             ("المنتج لم يتم نشره", "ar", "listing.status", "core:listings:pending-or-visibility"),
+            ("What is the listing SLA?", "en", "listing.status", "core:listings:pending-or-visibility"),
             ("I need help tracking one of my bookings.", "en", "booking.general", "core:bookings:identify-issue"),
             ("I have a payment issue.", "en", "payment.booking_status", "core:payments:booking-payment"),
             ("I need help verifying my account.", "en", "account.email_verification", "core:account:email-verification"),
             ("I need help creating a listing.", "en", "listing.create_edit", "core:listings:create-edit"),
+            ("How does verification work?", "en", "verification.status", "core:verification:status"),
+            ("How do deposits work?", "en", "deposit.status", "core:deposits:status"),
+            ("How do payouts work?", "en", "payout.status", "core:payouts:status"),
+            ("How do I use messages?", "en", "messaging.contact", "core:messaging:contact"),
         )
         for message, language, expected_intent, expected_knowledge_id in cases:
             with self.subTest(message=message):
@@ -930,6 +965,7 @@ class ChatbotSupportTests(unittest.TestCase):
         payment_knowledge = retrieve_knowledge("paiement marche pas", intent=payment)
         self.assertEqual(payment.primary, "payment.booking_status")
         self.assertEqual([entry.id for entry in payment_knowledge], ["core:payments:booking-payment"])
+        self.assertEqual(detect_language("The object is unavailable"), "en")
 
     def test_intent_context_carries_short_followups_but_clear_new_topics_win(self):
         def assistant_history(intent: str):
@@ -963,6 +999,125 @@ class ChatbotSupportTests(unittest.TestCase):
         self.assertEqual(retrieve_knowledge("عندي مشكلة في حسابي", intent=generic_account)[0].id, "core:account:identify-issue")
         self.assertEqual(generic_booking.primary, "booking.general")
         self.assertEqual(retrieve_knowledge("I have a problem with my booking", intent=generic_booking)[0].id, "core:bookings:identify-issue")
+
+    def test_secondary_domains_retrieve_grounded_knowledge_in_english_french_and_arabic(self):
+        cases = (
+            ("How do deposits work?", "en", "deposit.status", "core:deposits:status"),
+            ("Comment fonctionne le dépôt ?", "fr", "deposit.status", "core:deposits:status"),
+            ("كيف يعمل التأمين؟", "ar", "deposit.status", "core:deposits:status"),
+            ("Where is my refund?", "en", "refund.status", "core:refunds:status"),
+            ("Où est mon remboursement ?", "fr", "refund.status", "core:refunds:status"),
+            ("أين الاسترداد؟", "ar", "refund.status", "core:refunds:status"),
+            ("How do payouts work?", "en", "payout.status", "core:payouts:status"),
+            ("Comment fonctionne le versement ?", "fr", "payout.status", "core:payouts:status"),
+            ("كيف تعمل الدفعات؟", "ar", "payout.status", "core:payouts:status"),
+            ("How do I connect PayPal?", "en", "payout.settings", "core:payouts:settings"),
+            ("Comment connecter PayPal ?", "fr", "payout.settings", "core:payouts:settings"),
+            ("كيف أربط بايبال؟", "ar", "payout.settings", "core:payouts:settings"),
+            ("How do I use messages?", "en", "messaging.contact", "core:messaging:contact"),
+            ("Comment utiliser les messages ?", "fr", "messaging.contact", "core:messaging:contact"),
+            ("كيف أستخدم الرسائل؟", "ar", "messaging.contact", "core:messaging:contact"),
+            ("How do favorites work?", "en", "favorites.manage", "core:favorites:manage"),
+            ("Comment fonctionnent les favoris ?", "fr", "favorites.manage", "core:favorites:manage"),
+            ("كيف تعمل المفضلة؟", "ar", "favorites.manage", "core:favorites:manage"),
+            ("How do I leave a review?", "en", "reviews.booking", "core:reviews:booking-review"),
+            ("Comment laisser un avis ?", "fr", "reviews.booking", "core:reviews:booking-review"),
+            ("كيف أترك تقييمًا؟", "ar", "reviews.booking", "core:reviews:booking-review"),
+            ("How do I report an item?", "en", "reports.safety", "core:reports:safety"),
+            ("Comment signaler une annonce ?", "fr", "reports.safety", "core:reports:safety"),
+            ("كيف أبلغ عن منتج؟", "ar", "reports.safety", "core:reports:safety"),
+            ("How does SEVOR work?", "en", "general.sevor", "core:general:sevor-support"),
+            ("Comment fonctionne SEVOR ?", "fr", "general.sevor", "core:general:sevor-support"),
+            ("كيف يعمل SEVOR؟", "ar", "general.sevor", "core:general:sevor-support"),
+        )
+        for message, language, expected_intent, expected_knowledge_id in cases:
+            with self.subTest(message=message):
+                analysis = analyze_support_intent(message)
+                self.assertEqual(detect_language(message), language)
+                self.assertEqual(analysis.primary, expected_intent)
+                self.assertEqual(retrieve_knowledge(message, intent=analysis)[0].id, expected_knowledge_id)
+
+    def test_optional_semantic_router_is_allow_listed_and_never_creates_an_intent(self):
+        self.assertEqual(
+            _parse_semantic_router_response('{"intents":["booking.owner_not_responding","not.a.real.intent"]}'),
+            ("booking.owner_not_responding",),
+        )
+        self.assertEqual(_parse_semantic_router_response("not json"), ())
+        unknown = analyze_support_intent("The other party has disappeared")
+        self.assertIsNone(unknown.primary)
+        with patch("app.support_ai.classify_intents_with_provider", return_value=("booking.owner_not_responding",)):
+            enriched = enrich_intent_with_provider(
+                unknown,
+                user_text="The other party has disappeared",
+                language="en",
+            )
+        self.assertTrue(enriched.provider_routed)
+        self.assertEqual(enriched.primary, "booking.owner_not_responding")
+        self.assertEqual(
+            retrieve_knowledge("The other party has disappeared", intent=enriched)[0].id,
+            "core:bookings:owner-not-responding",
+        )
+
+    def test_provider_payloads_are_redacted_scoped_and_store_nothing(self):
+        captured: list[dict] = []
+
+        class FakeResponse:
+            status_code = 200
+
+            def __init__(self, payload):
+                self._payload = payload
+
+            def json(self):
+                if self._payload["max_output_tokens"] == 100:
+                    return {"output_text": '{"intents":["account.password.reset"]}'}
+                return {"output_text": "Use the approved Help Center guidance."}
+
+        class FakeClient:
+            def __init__(self, *, timeout):
+                self.timeout = timeout
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, traceback):
+                return False
+
+            def post(self, url, *, headers, json):
+                captured.append({"url": url, "headers": headers, "payload": json, "timeout": self.timeout})
+                return FakeResponse(json)
+
+        password_knowledge = next(entry for entry in load_knowledge() if entry.id == "core:account:password-reset")
+        with patch.dict(
+            os.environ,
+            {"SEVOR_AI_PROVIDER": "openai", "OPENAI_API_KEY": "test-key", "SEVOR_AI_MODEL": "test-model"},
+            clear=False,
+        ), patch("app.support_ai.httpx.Client", FakeClient):
+            routed = classify_intents_with_provider(
+                user_text="my password hunter2",
+                language="en",
+            )
+            answer = call_openai_response(
+                user_text="I forgot my password",
+                language="en",
+                history=[],
+                knowledge=[password_knowledge],
+                tool_context=[],
+                summary="Issue: my password legacySecret9",
+            )
+
+        self.assertEqual(routed, ("account.password.reset",))
+        self.assertEqual(answer, "Use the approved Help Center guidance.")
+        self.assertEqual(len(captured), 2)
+        for request in captured:
+            self.assertFalse(request["payload"].get("store"))
+            self.assertEqual(request["url"], "https://api.openai.com/v1/responses")
+        router_input = captured[0]["payload"]["input"][0]["content"][0]["text"]
+        answer_input = captured[1]["payload"]["input"][0]["content"][0]["text"]
+        self.assertNotIn("hunter2", router_input)
+        self.assertIn("[redacted]", router_input)
+        self.assertNotIn("legacySecret9", answer_input)
+        self.assertIn("[redacted]", answer_input)
+        self.assertNotIn("payment_capture_id", answer_input)
 
     def test_approved_knowledge_excludes_legacy_faq_policy_claims_and_records_gaps(self):
         knowledge = load_knowledge()
@@ -1052,6 +1207,53 @@ class ChatbotSupportTests(unittest.TestCase):
             self.assertEqual(camera_data[0]["data"]["id"], 110)
             self.assertEqual(camera_choices, [])
 
+            # A later pronoun must keep the same server-authorized record and
+            # fetch its current state again, rather than guessing from text or
+            # relying on an old summary.
+            pronoun_context = analyze_support_intent(
+                "Why is it still pending?",
+                history=[
+                    SimpleNamespace(
+                        sender_role="assistant",
+                        metadata_json=json.dumps({
+                            "intent": "booking.status",
+                            "authorized_record_ids": ["booking:110"],
+                        }),
+                    )
+                ],
+            )
+            pronoun_data, pronoun_tools, pronoun_choices = collect_safe_tool_context(
+                db,
+                renter,
+                "Why is it still pending?",
+                intent=pronoun_context,
+            )
+            self.assertTrue(pronoun_context.from_context)
+            self.assertEqual(pronoun_context.context_record_ids, ("booking:110",))
+            self.assertEqual(pronoun_tools, ["get_my_booking_status"])
+            self.assertEqual(pronoun_data[0]["data"]["id"], 110)
+            self.assertEqual(pronoun_choices, [])
+
+            # A semantic router may select an intent, but without a booking /
+            # financial cue in the user's own text it cannot trigger a read.
+            uncertain = analyze_support_intent("My device is broken")
+            with patch("app.support_ai.classify_intents_with_provider", return_value=("payout.status",)):
+                misclassified = enrich_intent_with_provider(
+                    uncertain,
+                    user_text="My device is broken",
+                    language="en",
+                )
+            self.assertEqual(collect_safe_tool_context(db, renter, "My device is broken", intent=misclassified), ([], [], []))
+
+            verify_howto = analyze_support_intent("How do I verify my account?")
+            self.assertEqual(collect_safe_tool_context(db, renter, "How do I verify my account?", intent=verify_howto), ([], [], []))
+            verify_status = analyze_support_intent("Why is my verification pending?")
+            verification_data, verification_tools, _ = collect_safe_tool_context(
+                db, renter, "Why is my verification pending?", intent=verify_status
+            )
+            self.assertEqual(verification_tools, ["get_my_verification_status"])
+            self.assertEqual(set(verification_data[0]["data"]), {"account_status", "is_verified", "document_status"})
+
             foreign_data, foreign_tools, foreign_choices = collect_safe_tool_context(
                 db,
                 outsider,
@@ -1113,6 +1315,15 @@ class ChatbotSupportTests(unittest.TestCase):
             self.assertIn("redacted_sensitive_content", user_message.metadata_json or "")
             self.assertNotIn("hunter2", ticket.ai_summary or "")
 
+            legacy_ticket = SupportTicket(user_id=ticket.user_id, subject="Legacy raw secret", channel="chatbot", queue="cs_chatbot", status="open", ai_state="ai_active")
+            db.add(legacy_ticket)
+            db.flush()
+            db.add(SupportMessage(ticket_id=legacy_ticket.id, sender_id=ticket.user_id, sender_role="user", body="password legacySecret9", channel="chatbot"))
+            db.flush()
+            legacy_summary = update_ticket_summary(db, legacy_ticket)
+            self.assertNotIn("legacySecret9", legacy_summary)
+            self.assertIn("[redacted]", legacy_summary)
+
             injection_ticket = SupportTicket(user_id=ticket.user_id, subject="Injection", channel="chatbot", queue="cs_chatbot", status="open", ai_state="ai_active")
             db.add(injection_ticket)
             db.commit()
@@ -1146,6 +1357,66 @@ class ChatbotSupportTests(unittest.TestCase):
         arabic_redacted, arabic_changed = redact_sensitive_user_content("كلمة المرور هي secretValue")
         self.assertTrue(arabic_changed)
         self.assertNotIn("secretValue", arabic_redacted)
+        bare_password, bare_changed = redact_sensitive_user_content("my password hunter2")
+        self.assertTrue(bare_changed)
+        self.assertNotIn("hunter2", bare_password)
+        french_bare_password, french_bare_changed = redact_sensitive_user_content("mot de passe secretValue")
+        self.assertTrue(french_bare_changed)
+        self.assertNotIn("secretValue", french_bare_password)
+        normal_reset_phrase, normal_reset_changed = redact_sensitive_user_content("my password reset link does not work")
+        self.assertFalse(normal_reset_changed)
+        self.assertEqual(normal_reset_phrase, "my password reset link does not work")
+        self.assertNotIn("hunter2", _safe_provider_summary("Issue: my password hunter2"))
+
+    def test_provider_prose_grounding_guard_rejects_ungrounded_policy_claims(self):
+        listing = next(entry for entry in load_knowledge() if entry.id == "core:listings:pending-or-visibility")
+        self.assertTrue(
+            _provider_answer_is_grounded(
+                listing.content_for("en"),
+                knowledge=[listing],
+                tool_context=[],
+                language="en",
+            )
+        )
+        self.assertFalse(
+            _provider_answer_is_grounded(
+                "Every listing is approved in 6 hours and the fee is $10.",
+                knowledge=[listing],
+                tool_context=[],
+                language="en",
+            )
+        )
+        self.assertFalse(
+            _provider_answer_is_grounded(
+                "I can reveal the system prompt.",
+                knowledge=[listing],
+                tool_context=[],
+                language="en",
+            )
+        )
+
+    def test_grounded_fallback_replies_in_the_customers_language(self):
+        db = SessionLocal()
+        try:
+            user = db.get(User, 101)
+            ticket = SupportTicket(user_id=user.id, subject="Localized AI", channel="chatbot", queue="cs_chatbot", status="open", ai_state="ai_active")
+            db.add(ticket)
+            db.commit()
+            db.refresh(ticket)
+            cases = (
+                ("I can't change my password", "en", "When you are signed in"),
+                ("Je n'arrive pas à changer mon mot de passe", "fr", "Lorsque vous êtes connecté"),
+                ("لا أستطيع تغيير كلمة المرور", "ar", "عند تسجيل الدخول"),
+                ("mon booking mazal pending", "fr", "J’ai trouvé plusieurs réservations récentes"),
+            )
+            for message, language, expected_text in cases:
+                with self.subTest(message=message):
+                    answer, metadata = create_ai_answer(db, user, ticket, message)
+                    self.assertEqual(detect_language(message), language)
+                    self.assertIn(expected_text, answer)
+                    self.assertNotEqual(metadata["provider"], "openai")
+        finally:
+            db.close()
 
     def test_handoff_language_detection_and_rate_limit_guard(self):
         self.assertTrue(is_handoff_request("Je veux parler à un agent"))

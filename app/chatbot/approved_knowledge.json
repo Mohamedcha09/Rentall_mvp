@@ -85,9 +85,9 @@
       "keywords": ["verify email", "email verification", "resend verification", "vérifier email", "vérification email", "تأكيد البريد", "توثيق البريد"],
       "source": "app/auth.py:/activate/verify,/api/auth/resend-verify",
       "content": {
-        "en": "SEVOR sends an account-verification link to the registered email. Opening a valid link verifies that email. If you need another verification email, use the resend-verification option with the account email. An expired or invalid verification link should be replaced with a new one.",
-        "fr": "SEVOR envoie un lien de vérification à l’e-mail enregistré. L’ouverture d’un lien valide vérifie cet e-mail. Si vous avez besoin d’un autre e-mail de vérification, utilisez l’option de renvoi avec l’adresse du compte. Un lien expiré ou invalide doit être remplacé par un nouveau lien.",
-        "ar": "ترسل SEVOR رابط تحقق إلى البريد المسجل. فتح رابط صالح يؤكد ذلك البريد. إذا احتجت رسالة تحقق أخرى، استخدم خيار إعادة الإرسال مع بريد الحساب. يجب استبدال رابط التحقق المنتهي أو غير الصالح برابط جديد."
+        "en": "SEVOR attempts to send an account-verification link to the registered email. Opening a valid link verifies that email. If you need another verification email, use the resend-verification option with the account email. An expired or invalid verification link should be replaced with a new one.",
+        "fr": "SEVOR tente d’envoyer un lien de vérification à l’e-mail enregistré. L’ouverture d’un lien valide vérifie cet e-mail. Si vous avez besoin d’un autre e-mail de vérification, utilisez l’option de renvoi avec l’adresse du compte. Un lien expiré ou invalide doit être remplacé par un nouveau lien.",
+        "ar": "تحاول SEVOR إرسال رابط تحقق إلى البريد المسجل. فتح رابط صالح يؤكد ذلك البريد. إذا احتجت رسالة تحقق أخرى، استخدم خيار إعادة الإرسال مع بريد الحساب. يجب استبدال رابط التحقق المنتهي أو غير الصالح برابط جديد."
       }
     },
     {
@@ -100,9 +100,9 @@
       "keywords": ["verification pending", "not verified", "identity verification", "vérification en attente", "compte non vérifié", "التحقق معلق", "لماذا لست موثق", "توثيق الهوية"],
       "source": "app/models.py:User,Document; app/auth.py; app/admin.py",
       "content": {
-        "en": "SEVOR keeps an account status and a document-review status. When you are signed in, I can check the safe current status without accessing your document images. The current code has pending, approved, and rejected states, but it does not define a public review-time promise or a complete public list of rejection reasons.",
-        "fr": "SEVOR conserve un statut de compte et un statut de revue des documents. Une fois connecté, je peux vérifier le statut actuel sans accéder aux images de vos documents. Le code actuel comporte les états pending, approved et rejected, mais ne définit ni délai public de revue ni liste publique complète des motifs de rejet.",
-        "ar": "تحتفظ SEVOR بحالة للحساب وحالة لمراجعة الوثيقة. عند تسجيل الدخول يمكنني التحقق من الحالة الحالية الآمنة دون الوصول إلى صور وثائقك. يحتوي النظام الحالي على حالات pending وapproved وrejected، لكنه لا يحدد وعدًا عامًا لمدة المراجعة أو قائمة عامة كاملة لأسباب الرفض."
+        "en": "SEVOR keeps an account status and a document-review status. When you are signed in, I can check the safe current status without accessing your document images. The current code includes pending, approved, rejected, and needs-fix-style review states, but it does not define a public review-time promise or a complete public list of rejection reasons.",
+        "fr": "SEVOR conserve un statut de compte et un statut de revue des documents. Une fois connecté, je peux vérifier le statut actuel sans accéder aux images de vos documents. Le code actuel comprend notamment les états de revue pending, approved, rejected et needs-fix, mais ne définit ni délai public de revue ni liste publique complète des motifs de rejet.",
+        "ar": "تحتفظ SEVOR بحالة للحساب وحالة لمراجعة الوثيقة. عند تسجيل الدخول يمكنني التحقق من الحالة الحالية الآمنة دون الوصول إلى صور وثائقك. تتضمن الحالات الحالية للمراجعة pending وapproved وrejected وحالات مثل needs-fix، لكنها لا تحدد وعدًا عامًا لمدة المراجعة أو قائمة عامة كاملة لأسباب الرفض."
       }
     },
     {
@@ -115,9 +115,9 @@
       "keywords": ["create listing", "add item", "edit listing", "publish listing", "créer annonce", "modifier annonce", "publier annonce", "إضافة منتج", "إنشاء إعلان", "تعديل المنتج", "نشر المنتج"],
       "source": "app/items.py:/owner/items/new,/owner/items/{item_id}/edit",
       "content": {
-        "en": "Owners can create listings from the owner listing flow and edit their own listings. New and resubmitted listings are stored as pending; the code only exposes listings publicly when they are both approved and active. I can check the status of one of your own listings after you choose it.",
-        "fr": "Les propriétaires peuvent créer des annonces depuis le flux propriétaire et modifier leurs propres annonces. Les nouvelles annonces et les annonces soumises à nouveau sont enregistrées comme pending ; le code ne les affiche publiquement que si elles sont approved et actives. Je peux vérifier le statut d’une de vos annonces après votre choix.",
-        "ar": "يمكن للمالكين إنشاء الإعلانات من مسار المالك وتعديل إعلاناتهم الخاصة. تُحفظ الإعلانات الجديدة أو المعاد إرسالها بحالة pending؛ ولا يعرضها النظام للعامة إلا إذا كانت approved ونشطة. يمكنني التحقق من حالة أحد إعلاناتك بعد أن تختاره."
+        "en": "Approved owners can create listings from the owner listing flow. A non-admin owner may edit a listing unless its status is approved; approved listings are locked for non-admin owner edits. New and resubmitted listings are stored as pending, and public item queries show them only when they are both approved and active. I can check the status of one of your own listings after you choose it.",
+        "fr": "Les propriétaires approved peuvent créer des annonces depuis le flux propriétaire. Un propriétaire non administrateur peut modifier une annonce tant que son statut n’est pas approved ; les annonces approved sont verrouillées pour les modifications du propriétaire non administrateur. Les nouvelles annonces et les annonces soumises à nouveau sont enregistrées comme pending ; les requêtes publiques ne les affichent que si elles sont approved et actives. Je peux vérifier le statut d’une de vos annonces après votre choix.",
+        "ar": "يمكن للمالكين بحالة approved إنشاء الإعلانات من مسار المالك. يستطيع المالك غير الإداري تعديل الإعلان ما لم تكن حالته approved؛ فالإعلانات approved مقفلة أمام تعديل المالك غير الإداري. تُحفظ الإعلانات الجديدة أو المعاد إرسالها بحالة pending، ولا تظهر في استعلامات العناصر العامة إلا إذا كانت approved ونشطة. يمكنني التحقق من حالة أحد إعلاناتك بعد أن تختاره."
       }
     },
     {
@@ -145,9 +145,9 @@
       "keywords": ["book item", "booking dates", "dates unavailable", "create booking", "réserver", "dates indisponibles", "حجز", "تواريخ غير متاحة", "إنشاء حجز"],
       "source": "app/routes_bookings.py:/bookings,/bookings/new",
       "content": {
-        "en": "Creating a booking requires a signed-in approved account, an active item, a future start date, and an end date after the start date. SEVOR checks availability again on the server before creating the request, so dates can become unavailable even if a calendar was open earlier.",
-        "fr": "La création d’une réservation demande un compte connecté et approved, un article actif, une date de début future et une date de fin après le début. SEVOR revérifie la disponibilité côté serveur avant de créer la demande ; les dates peuvent donc devenir indisponibles même si le calendrier était déjà ouvert.",
-        "ar": "يتطلب إنشاء الحجز حسابًا مسجل الدخول وحالته approved، وعنصرًا نشطًا، وتاريخ بداية مستقبليًا وتاريخ نهاية بعد البداية. تتحقق SEVOR من التوفر على الخادم قبل إنشاء الطلب، لذلك قد تصبح التواريخ غير متاحة حتى لو كان التقويم مفتوحًا سابقًا."
+        "en": "Creating a booking requires a signed-in approved account, an active item, a start date that is not in the past, and an end date after the start date. SEVOR checks availability again on the server before creating the request, so dates can become unavailable even if a calendar was open earlier.",
+        "fr": "La création d’une réservation demande un compte connecté et approved, un article actif, une date de début qui n’est pas dans le passé et une date de fin après le début. SEVOR revérifie la disponibilité côté serveur avant de créer la demande ; les dates peuvent donc devenir indisponibles même si le calendrier était déjà ouvert.",
+        "ar": "يتطلب إنشاء الحجز حسابًا مسجل الدخول وحالته approved، وعنصرًا نشطًا، وتاريخ بداية ليس في الماضي وتاريخ نهاية بعد البداية. تتحقق SEVOR من التوفر على الخادم قبل إنشاء الطلب، لذلك قد تصبح التواريخ غير متاحة حتى لو كان التقويم مفتوحًا سابقًا."
       }
     },
     {
@@ -190,9 +190,9 @@
       "keywords": ["payment failed", "payment pending", "paid but booking pending", "charged booking", "paiement refusé", "paiement en attente", "payé réservation", "دفعت لكن الحجز", "فشل الدفع", "تم خصم المال"],
       "source": "app/models.py:Booking; app/routes_bookings.py",
       "content": {
-        "en": "A booking keeps separate booking and payment-status fields. I can check the safe current values for one of your bookings; I will not infer that payment succeeded from a bank message alone. If payment is completed while the booking is still requested, the current status is the source of truth and a support agent can investigate anything not explained by the booking flow.",
-        "fr": "Une réservation conserve des champs distincts pour son statut et son statut de paiement. Je peux vérifier les valeurs actuelles sûres d’une de vos réservations ; je ne vais pas déduire qu’un paiement a réussi à partir d’un seul message bancaire. Si le paiement est completed alors que la réservation reste requested, le statut actuel est la source de vérité et un agent peut examiner ce que le flux de réservation n’explique pas.",
-        "ar": "يحتفظ الحجز بحقلين منفصلين لحالة الحجز وحالة الدفع. يمكنني التحقق من القيم الآمنة الحالية لأحد حجوزاتك؛ ولن أستنتج نجاح الدفع من رسالة بنك فقط. إذا كان الدفع completed بينما الحجز ما زال requested، فالحالة الحالية هي مصدر الحقيقة ويمكن للموظف فحص ما لا يفسره مسار الحجز."
+        "en": "A booking keeps separate booking and payment-status fields. I can check the safe current values for one of your bookings; I will not infer that payment succeeded from a bank message alone. If the recorded payment status is paid while the booking is still requested, the current status is the source of truth and a support agent can investigate anything not explained by the booking flow.",
+        "fr": "Une réservation conserve des champs distincts pour son statut et son statut de paiement. Je peux vérifier les valeurs actuelles sûres d’une de vos réservations ; je ne vais pas déduire qu’un paiement a réussi à partir d’un seul message bancaire. Si le statut de paiement enregistré est paid alors que la réservation reste requested, le statut actuel est la source de vérité et un agent peut examiner ce que le flux de réservation n’explique pas.",
+        "ar": "يحتفظ الحجز بحقلين منفصلين لحالة الحجز وحالة الدفع. يمكنني التحقق من القيم الآمنة الحالية لأحد حجوزاتك؛ ولن أستنتج نجاح الدفع من رسالة بنك فقط. إذا كانت حالة الدفع المسجلة paid بينما الحجز ما زال requested، فالحالة الحالية هي مصدر الحقيقة ويمكن للموظف فحص ما لا يفسره مسار الحجز."
       }
     },
     {
@@ -220,9 +220,9 @@
       "keywords": ["refund", "refunded", "refund pending", "remboursement", "remboursé", "استرجاع", "استرداد", "مبلغ مسترد"],
       "source": "app/models.py:Booking; app/routes_deposits.py",
       "content": {
-        "en": "The booking model records whether a refund has been completed. I can check that safe status for an authorized booking. The current approved knowledge does not define refund eligibility or a universal bank-processing time, so an unresolved refund question should go to Sevor Support rather than receiving a guessed policy.",
-        "fr": "Le modèle de réservation enregistre si un remboursement est terminé. Je peux vérifier ce statut sûr pour une réservation autorisée. Les connaissances approuvées actuelles ne définissent ni l’éligibilité au remboursement ni un délai bancaire universel ; une question non résolue doit donc être transmise à Sevor Support plutôt que recevoir une règle devinée.",
-        "ar": "يسجل نموذج الحجز ما إذا كان الاسترداد قد اكتمل. يمكنني التحقق من هذه الحالة الآمنة لحجز مصرح به. لا تحدد المعرفة المعتمدة الحالية أهلية الاسترداد أو مدة مصرفية موحدة، لذلك يجب تحويل سؤال الاسترداد غير المحسوم إلى دعم Sevor بدل تخمين سياسة."
+        "en": "SEVOR records a safe deposit-refund-sent state on a booking. I can check that limited status for an authorized booking, but a sent flag is not a universal bank-settlement guarantee. The current approved knowledge does not define refund eligibility or a universal bank-processing time, so an unresolved refund question should go to Sevor Support rather than receiving a guessed policy.",
+        "fr": "SEVOR enregistre sur une réservation un état sûr indiquant qu’un remboursement de dépôt a été envoyé. Je peux vérifier ce statut limité pour une réservation autorisée, mais un indicateur d’envoi n’est pas une garantie universelle de règlement bancaire. Les connaissances approuvées actuelles ne définissent ni l’éligibilité au remboursement ni un délai bancaire universel ; une question non résolue doit donc être transmise à Sevor Support plutôt que recevoir une règle devinée.",
+        "ar": "تسجل SEVOR على الحجز حالة آمنة تفيد بأن استرداد التأمين قد أُرسل. يمكنني التحقق من هذه الحالة المحدودة لحجز مصرح به، لكن علامة الإرسال ليست ضمانًا عامًا للتسوية البنكية. لا تحدد المعرفة المعتمدة الحالية أهلية الاسترداد أو مدة مصرفية موحدة، لذلك يجب تحويل سؤال الاسترداد غير المحسوم إلى دعم Sevor بدل تخمين سياسة."
       }
     },
     {
@@ -232,12 +232,12 @@
       "category": "Payouts & PayPal",
       "intent": "payout.settings",
       "title": "Set up a payout method or PayPal",
-      "keywords": ["paypal", "payout settings", "connect paypal", "payment method owner", "paiement paypal", "versement paypal", "ربط بايبال", "إعدادات السحب", "دفعات المالك"],
+      "keywords": ["paypal", "interac", "wise", "payout settings", "connect paypal", "payment method owner", "paiement paypal", "versement paypal", "ربط بايبال", "إعدادات السحب", "دفعات المالك"],
       "source": "app/payout_settings.py:/payout/settings",
       "content": {
-        "en": "Owners can manage payout settings at /payout/settings. The current settings flow supports a PayPal payout destination and marks payouts as enabled after a valid method is saved. It does not make a payment or transfer money from chat.",
-        "fr": "Les propriétaires peuvent gérer leurs réglages de versement sur /payout/settings. Le flux actuel prend en charge une destination PayPal et active les versements lorsqu’une méthode valide est enregistrée. Il n’effectue aucun paiement ni transfert d’argent depuis le chat.",
-        "ar": "يمكن للمالكين إدارة إعدادات الدفعات من /payout/settings. يدعم المسار الحالي وجهة دفع عبر PayPal ويفعّل الدفعات بعد حفظ وسيلة صالحة. لا ينفذ أي دفع أو تحويل أموال من الدردشة."
+        "en": "Signed-in users can manage payout settings at /payout/settings. The current settings flow accepts an Interac destination, a PayPal email, or a Wise IBAN; after a supported method with a nonempty destination is saved, it marks payouts as enabled. It does not make a payment or transfer money from chat.",
+        "fr": "Les utilisateurs connectés peuvent gérer leurs réglages de versement sur /payout/settings. Le flux actuel accepte une destination Interac, un e-mail PayPal ou un IBAN Wise ; après l’enregistrement d’une méthode prise en charge avec une destination non vide, il active les versements. Il n’effectue aucun paiement ni transfert d’argent depuis le chat.",
+        "ar": "يمكن للمستخدمين المسجلين إدارة إعدادات الدفعات من /payout/settings. يقبل المسار الحالي وجهة Interac أو بريد PayPal أو IBAN من Wise؛ وبعد حفظ وسيلة مدعومة ذات وجهة غير فارغة يفعّل الدفعات. لا ينفذ أي دفع أو تحويل أموال من الدردشة."
       }
     },
     {
@@ -250,9 +250,9 @@
       "keywords": ["payout delayed", "earnings", "owner payout", "versement retard", "revenus propriétaire", "أرباح المالك", "دفعة متأخرة", "سحب الأرباح"],
       "source": "app/models.py:Booking; app/payout_settings.py",
       "content": {
-        "en": "For an owner’s booking, SEVOR stores an owner payout status and whether the payout was executed. I can check only those safe values for your own booking. The current approved knowledge has no universal payout timing or guarantee, so I will not promise a date.",
-        "fr": "Pour une réservation appartenant à un propriétaire, SEVOR enregistre un statut de versement propriétaire et si le versement a été exécuté. Je peux vérifier uniquement ces valeurs sûres pour votre propre réservation. Les connaissances approuvées actuelles ne comportent aucun délai ni garantie universels de versement, je ne promets donc pas de date.",
-        "ar": "بالنسبة إلى حجز يخص مالكًا، تخزن SEVOR حالة دفعة المالك وما إذا نُفذت. يمكنني التحقق من هذه القيم الآمنة فقط لحجزك. لا تحتوي المعرفة المعتمدة الحالية على مدة أو ضمان عام للدفعات، لذلك لن أعد بتاريخ."
+        "en": "For an owner’s booking, SEVOR records an owner payout status, and an administrator can mark a payout as sent. I can check only those safe values for your own booking. The current approved knowledge has no universal payout timing or guarantee, so I will not promise a date.",
+        "fr": "Pour une réservation appartenant à un propriétaire, SEVOR enregistre un statut de versement propriétaire et un administrateur peut marquer un versement comme envoyé. Je peux vérifier uniquement ces valeurs sûres pour votre propre réservation. Les connaissances approuvées actuelles ne comportent aucun délai ni garantie universels de versement, je ne promets donc pas de date.",
+        "ar": "بالنسبة إلى حجز يخص مالكًا، تسجل SEVOR حالة دفعة المالك ويمكن للمسؤول وضع علامة على الدفعة بأنها أُرسلت. يمكنني التحقق من هذه القيم الآمنة فقط لحجزك. لا تحتوي المعرفة المعتمدة الحالية على مدة أو ضمان عام للدفعات، لذلك لن أعد بتاريخ."
       }
     },
     {
@@ -310,9 +310,9 @@
       "keywords": ["report listing", "report item", "safety issue", "signalement", "signaler annonce", "sécurité", "الإبلاغ عن منتج", "مشكلة أمان", "بلاغ"],
       "source": "app/reports.py:/reports",
       "content": {
-        "en": "Signed-in users can submit a report for a listing through the existing reports endpoint. The report is recorded with a pending status and relevant moderators are notified. Sevor AI cannot decide a report or take moderation action from chat.",
-        "fr": "Les utilisateurs connectés peuvent soumettre un signalement concernant une annonce via le point d’entrée reports existant. Le signalement est enregistré avec le statut pending et les modérateurs concernés sont avertis. Sevor AI ne peut pas décider un signalement ni effectuer une action de modération depuis le chat.",
-        "ar": "يمكن للمستخدمين المسجلين إرسال بلاغ عن إعلان عبر نقطة reports الموجودة. يسجل البلاغ بحالة pending ويتم إخطار المشرفين المعنيين. لا تستطيع Sevor AI اتخاذ قرار في البلاغ أو تنفيذ إجراء إشراف من الدردشة."
+        "en": "Signed-in users can submit a report for a listing through the existing reports endpoint. The report is recorded with a pending status, and the app attempts to notify the relevant admins or moderators. Sevor AI cannot decide a report or take moderation action from chat.",
+        "fr": "Les utilisateurs connectés peuvent soumettre un signalement concernant une annonce via le point d’entrée reports existant. Le signalement est enregistré avec le statut pending et l’application tente de notifier les administrateurs ou modérateurs concernés. Sevor AI ne peut pas décider un signalement ni effectuer une action de modération depuis le chat.",
+        "ar": "يمكن للمستخدمين المسجلين إرسال بلاغ عن إعلان عبر نقطة reports الموجودة. يسجل البلاغ بحالة pending ويحاول التطبيق إخطار المسؤولين أو المشرفين المعنيين. لا تستطيع Sevor AI اتخاذ قرار في البلاغ أو تنفيذ إجراء إشراف من الدردشة."
       }
     },
     {
