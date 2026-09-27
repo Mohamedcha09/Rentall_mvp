@@ -1,6 +1,6 @@
 """persist direct-message attachment storage metadata
 
-Revision ID: message_attachment_storage_20260927
+Revision ID: msg_attach_storage_20260927
 Revises: direct_message_media_20260927
 Create Date: 2026-09-27
 """
@@ -9,7 +9,10 @@ from alembic import context, op
 import sqlalchemy as sa
 
 
-revision = "message_attachment_storage_20260927"
+# Render's existing ``alembic_version.version_num`` is VARCHAR(32).  Keep this
+# identifier within that established limit so Alembic can atomically record the
+# upgrade after the additive storage columns have been added.
+revision = "msg_attach_storage_20260927"
 down_revision = "direct_message_media_20260927"
 branch_labels = None
 depends_on = None
