@@ -255,6 +255,63 @@
     .item-detail__description-toggle:hover { color: var(--detail-blue); text-decoration: underline; }
     .item-detail__location-copy { display: flex; align-items: center; gap: 9px; color: #35405f; font-size: .95rem; line-height: 1.5; overflow-wrap: anywhere; }
     .item-detail__location-copy .bi { color: var(--detail-purple); font-size: 1.12rem; }
+    .item-detail__location-map {
+      position: relative;
+      height: 218px;
+      margin-top: 16px;
+      overflow: hidden;
+      border: 1px solid var(--detail-line);
+      border-radius: 16px;
+      background: linear-gradient(135deg, #eef2fb, #e5ebf7);
+      isolation: isolate;
+    }
+    .item-detail__location-map-frame,
+    .item-detail__location-map-frame iframe { width: 100%; height: 100%; border: 0; }
+    .item-detail__location-map-frame { position: absolute; inset: 0; }
+    .item-detail__location-map-status { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; color: var(--detail-muted); font-size: .88rem; }
+    .item-detail__location-map-overlay {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 2;
+      display: flex;
+      max-width: calc(100% - 150px);
+      align-items: center;
+      gap: 8px;
+      padding: 9px 11px;
+      overflow: hidden;
+      border: 1px solid rgba(17, 26, 58, .07);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, .94);
+      box-shadow: 0 5px 14px rgba(24, 38, 74, .1);
+      color: var(--detail-ink);
+      font-size: .82rem;
+      font-weight: 760;
+      line-height: 1.2;
+      pointer-events: none;
+    }
+    .item-detail__location-map-overlay .bi { flex: 0 0 auto; color: var(--detail-purple); font-size: 1.08rem; }
+    .item-detail__location-map-overlay span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .item-detail__location-map-link {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 9px 10px;
+      border: 1px solid rgba(17, 26, 58, .07);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, .94);
+      box-shadow: 0 5px 14px rgba(24, 38, 74, .1);
+      color: var(--detail-purple);
+      font-size: .78rem;
+      font-weight: 780;
+      line-height: 1;
+      text-decoration: none;
+    }
+    .item-detail__location-map-link:hover { color: var(--detail-blue); }
 
     .item-detail__reviews { scroll-margin-top: 20px; }
     .item-detail__review-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
@@ -354,6 +411,9 @@
       .item-detail__booking-price strong { font-size: .94rem; }
       .item-detail__booking-cta { padding-inline: 12px; font-size: .88rem; }
       .item-detail__title { font-size: 1.55rem; }
+      .item-detail__location-map { height: 196px; }
+      .item-detail__location-map-overlay { max-width: calc(100% - 128px); padding: 8px 9px; font-size: .74rem; }
+      .item-detail__location-map-link { padding: 8px; font-size: .72rem; }
     }
     @media (prefers-reduced-motion: reduce) {
       .item-detail *, .item-detail *::before, .item-detail *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
@@ -494,9 +554,15 @@
           {% endif %}
 
           {% if item_city %}
-            <section class="item-detail__section item-detail__card" aria-labelledby="itemLocationHeading">
+            <section class="item-detail__section item-detail__card" aria-labelledby="itemLocationHeading" data-location-map data-location-city="{{ item_city }}">
               <div class="item-detail__section-heading"><h2 id="itemLocationHeading">Location</h2></div>
               <div class="item-detail__location-copy"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i><span>{{ item_city }}</span></div>
+              <div class="item-detail__location-map" data-location-map-preview hidden>
+                <div class="item-detail__location-map-frame" data-location-map-frame></div>
+                <div class="item-detail__location-map-status" data-location-map-status role="status">Loading map…</div>
+                <div class="item-detail__location-map-overlay"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i><span>{{ item_city }}</span></div>
+                <a class="item-detail__location-map-link" data-location-map-link href="#" target="_blank" rel="noopener noreferrer" aria-label="View {{ item_city }} on map" hidden>View on map<i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+              </div>
             </section>
           {% endif %}
 
@@ -794,6 +860,101 @@
             descriptionToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
           });
         });
+      }
+
+      const locationMapSection = root.querySelector('[data-location-map]');
+      const initializeLocationMap = () => {
+        if (!locationMapSection || locationMapSection.dataset.mapState) return;
+        const city = (locationMapSection.dataset.locationCity || '').trim();
+        const mapPreview = locationMapSection.querySelector('[data-location-map-preview]');
+        const mapFrame = locationMapSection.querySelector('[data-location-map-frame]');
+        const mapStatus = locationMapSection.querySelector('[data-location-map-status]');
+        const mapLink = locationMapSection.querySelector('[data-location-map-link]');
+        if (!city || !mapPreview || !mapFrame) return;
+
+        const hideMap = () => {
+          locationMapSection.dataset.mapState = 'failed';
+          mapPreview.hidden = true;
+          if (mapLink) mapLink.hidden = true;
+          mapFrame.replaceChildren();
+        };
+
+        locationMapSection.dataset.mapState = 'loading';
+        mapPreview.hidden = false;
+        if (mapStatus) mapStatus.hidden = false;
+
+        (async () => {
+          try {
+            const lookupUrl = new URL('https://nominatim.openstreetmap.org/search');
+            lookupUrl.search = new URLSearchParams({
+              format: 'jsonv2',
+              addressdetails: '1',
+              limit: '5',
+              q: city
+            }).toString();
+            const response = await fetch(lookupUrl.toString(), {
+              headers: { Accept: 'application/json' },
+              credentials: 'omit'
+            });
+            if (!response.ok) throw new Error('Location lookup failed');
+
+            const results = await response.json();
+            const cityResult = Array.isArray(results) ? results.find((result) => {
+              const address = result?.address || {};
+              return !address.house_number && !address.road && Boolean(
+                address.city || address.town || address.village || address.municipality || address.county || address.state
+              );
+            }) : null;
+            const latitude = Number.parseFloat(cityResult?.lat);
+            const longitude = Number.parseFloat(cityResult?.lon);
+            if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
+              throw new Error('No city-level coordinates');
+            }
+
+            const south = Math.max(-90, latitude - 0.035).toFixed(6);
+            const west = Math.max(-180, longitude - 0.055).toFixed(6);
+            const north = Math.min(90, latitude + 0.035).toFixed(6);
+            const east = Math.min(180, longitude + 0.055).toFixed(6);
+            const mapUrl = new URL('https://www.openstreetmap.org/export/embed.html');
+            mapUrl.searchParams.set('bbox', [west, south, east, north].join(','));
+            mapUrl.searchParams.set('layer', 'mapnik');
+            mapUrl.searchParams.set('marker', `${latitude.toFixed(6)},${longitude.toFixed(6)}`);
+
+            const iframe = document.createElement('iframe');
+            iframe.title = `Map of ${city}`;
+            iframe.loading = 'lazy';
+            iframe.referrerPolicy = 'no-referrer';
+            iframe.src = mapUrl.toString();
+            iframe.addEventListener('load', () => { if (mapStatus) mapStatus.hidden = true; }, { once: true });
+            iframe.addEventListener('error', hideMap, { once: true });
+            mapFrame.replaceChildren(iframe);
+
+            if (mapLink) {
+              const viewUrl = new URL('https://www.openstreetmap.org/');
+              viewUrl.searchParams.set('mlat', latitude.toFixed(6));
+              viewUrl.searchParams.set('mlon', longitude.toFixed(6));
+              viewUrl.hash = `map=12/${latitude.toFixed(6)}/${longitude.toFixed(6)}`;
+              mapLink.href = viewUrl.toString();
+              mapLink.hidden = false;
+            }
+            locationMapSection.dataset.mapState = 'loaded';
+          } catch (_) {
+            hideMap();
+          }
+        })();
+      };
+
+      if (locationMapSection) {
+        if ('IntersectionObserver' in window) {
+          const locationMapObserver = new IntersectionObserver((entries) => {
+            if (!entries.some((entry) => entry.isIntersecting)) return;
+            locationMapObserver.disconnect();
+            initializeLocationMap();
+          }, { rootMargin: '280px 0px' });
+          locationMapObserver.observe(locationMapSection);
+        } else {
+          initializeLocationMap();
+        }
       }
 
       const reportSheet = root.querySelector('#itemReportSheet');
