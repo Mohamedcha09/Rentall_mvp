@@ -887,6 +887,18 @@ def check_message_rate(request: Request, user: Optional[User]) -> None:
     _RATE_LIMITER.check(identity)
 
 
+def check_direct_message_rate(request: Request, user: Optional[User]) -> None:
+    """Bound ordinary Messages sends independently from AI/support traffic.
+
+    Direct conversations can include files, so they need their own small
+    per-account bucket instead of competing with the Help Center's message
+    limit.  Fifteen sends per minute still permits natural back-and-forth while
+    constraining accidental retries and upload abuse.
+    """
+    identity = f"user:{user.id}" if user else f"ip:{getattr(request.client, 'host', 'unknown')}"
+    _RATE_LIMITER.check(f"direct-message:{identity}", limit=15, window_seconds=60)
+
+
 def check_guest_message_rate(request: Request) -> None:
     """Rate-limit public Help Center traffic independently of mutable cookies."""
     ip = getattr(request.client, "host", "unknown")

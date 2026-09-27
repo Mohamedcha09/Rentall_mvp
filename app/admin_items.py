@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from .database import get_db
-from .models import Item
+from .models import Item, MessageAttachment, MessageThread
+from .message_attachments import remove_saved_message_attachment_files
 from .notifications_api import push_notification
 
 router = APIRouter(tags=["admin-items"], prefix="/admin/items")
@@ -150,8 +151,30 @@ def delete_item(item_id: int, request: Request, db: Session = Depends(get_db)):
     if not it:
         raise HTTPException(404, "Item not found")
 
+    # Item deletion cascades its direct-message threads.  Their database rows
+    # clean up through the existing relationships, but private attachment bytes
+    # live outside the database and must be removed only after that transaction
+    # succeeds.
+    thread_ids = [
+        row[0]
+        for row in db.query(MessageThread.id)
+        .filter(MessageThread.item_id == it.id)
+        .all()
+    ]
+    attachment_names = (
+        [
+            row[0]
+            for row in db.query(MessageAttachment.stored_name)
+            .filter(MessageAttachment.thread_id.in_(thread_ids))
+            .all()
+        ]
+        if thread_ids
+        else []
+    )
+
     db.delete(it)
     db.commit()
+    remove_saved_message_attachment_files(attachment_names)
 
     return RedirectResponse(
         url="/admin/items/pending",

@@ -97,7 +97,7 @@ if not APP_DATABASE_WAS_PRELOADED:
 import app.main as main_module
 import app.message_attachments as attachment_service
 from app.database import SessionLocal
-from app.models import Message, MessageAttachment, MessageThread, User
+from app.models import Item, Message, MessageAttachment, MessageThread, User
 from app.models_metrics import OnlineSession
 
 
@@ -256,7 +256,8 @@ class DirectMessageMediaTests(unittest.TestCase):
             files=[("attachments", ("receipt.pdf", PDF_BYTES, "application/pdf"))],
         )
         self.assertEqual(pdf.status_code, 201, pdf.text)
-        self.assertEqual(pdf.json()["message"]["attachments"][0]["kind"], "file")
+        pdf_attachment = pdf.json()["message"]["attachments"][0]
+        self.assertEqual(pdf_attachment["kind"], "file")
 
         voice = self._send(
             owner,
@@ -268,7 +269,10 @@ class DirectMessageMediaTests(unittest.TestCase):
         self.assertEqual(voice.status_code, 201, voice.text)
         voice_attachment = voice.json()["message"]["attachments"][0]
         self.assertEqual(voice_attachment["kind"], "voice")
-        self.assertEqual(voice_attachment["duration_ms"], 10000)
+        # The browser may provide a duration while recording, but the server
+        # does not persist client-controlled display metadata.  The real media
+        # element calculates it after loading the private audio bytes.
+        self.assertIsNone(voice_attachment["duration_ms"])
 
         db = SessionLocal()
         try:
@@ -279,20 +283,33 @@ class DirectMessageMediaTests(unittest.TestCase):
         finally:
             db.close()
 
-        downloaded = owner.get(image_url)
-        self.assertEqual(downloaded.status_code, 200)
-        self.assertEqual(downloaded.headers["cache-control"], "private, no-store")
-        self.assertEqual(downloaded.headers["x-content-type-options"], "nosniff")
-
-        refreshed = owner.get(f"/messages/{thread_id}")
+        # The other real participant can render and retrieve each persisted
+        # media kind after refresh; these are not browser-blob-only messages.
+        refreshed = participant.get(f"/messages/{thread_id}")
         self.assertEqual(refreshed.status_code, 200)
         self.assertIn(image_url, refreshed.text)
+        self.assertIn(pdf_attachment["url"], refreshed.text)
         self.assertIn(voice_attachment["url"], refreshed.text)
+        self.assertIn('controls preload="metadata"', refreshed.text)
+        for url, expected in (
+            (image_url, PNG_BYTES),
+            (pdf_attachment["url"], PDF_BYTES),
+            (voice_attachment["url"], OGG_BYTES),
+        ):
+            downloaded = participant.get(url)
+            self.assertEqual(downloaded.status_code, 200)
+            self.assertEqual(downloaded.content, expected)
+            self.assertEqual(downloaded.headers["cache-control"], "private, no-store")
+            self.assertEqual(downloaded.headers["x-content-type-options"], "nosniff")
+
+        sender_refresh = owner.get(f"/messages/{thread_id}")
+        self.assertEqual(sender_refresh.status_code, 200)
+        self.assertIn(image_url, sender_refresh.text)
+        self.assertIn(voice_attachment["url"], sender_refresh.text)
 
         # Media rows stay in the ordinary Message lifecycle: the participant
         # opening the conversation produces persisted ✓✓ receipts for image,
         # PDF, and voice messages rather than a client-side timeout.
-        self.assertEqual(participant.get(f"/messages/{thread_id}").status_code, 200)
         receipts = owner.get(
             f"/messages/{thread_id}/poll",
             params={"after": 999999, "receipts_after": receipt_cursor},
@@ -312,6 +329,19 @@ class DirectMessageMediaTests(unittest.TestCase):
             headers={"Accept": "application/json"},
         )
         self.assertEqual(missing_csrf.status_code, 403)
+
+        # A normal multipart request declares Content-Length.  Reject an
+        # impossible payload before the framework attempts ordinary form work.
+        oversized = owner.post(
+            f"/messages/{thread_id}",
+            data={"body": "oversized", "client_message_id": "direct-oversized-message-001"},
+            files=[("attachments", ("proof.png", PNG_BYTES, "image/png"))],
+            headers={
+                "Accept": "application/json",
+                "Content-Length": str(attachment_service.max_direct_message_request_bytes() + 1),
+            },
+        )
+        self.assertEqual(oversized.status_code, 413, oversized.text)
 
         invalid = self._send(
             owner,
@@ -457,6 +487,65 @@ class DirectMessageMediaTests(unittest.TestCase):
             self.assertIsNone(db.get(User, deleting_id))
             self.assertEqual(db.query(MessageAttachment).filter(MessageAttachment.stored_name == stored_name).count(), 0)
             self.assertEqual(db.query(OnlineSession).filter(OnlineSession.user_id == deleting_id).count(), 0)
+        finally:
+            db.close()
+
+    def test_admin_item_deletion_removes_private_direct_media_after_commit(self):
+        """A listing cascade must not leave its private message bytes behind."""
+        from app.admin_items import delete_item
+
+        db = SessionLocal()
+        try:
+            item = Item(
+                owner_id=self.owner_id,
+                title="Deleted listing",
+                description="Test-only listing",
+                price=0,
+                price_per_day=0,
+                category="other",
+            )
+            db.add(item)
+            db.flush()
+            thread = MessageThread(
+                user_a_id=self.owner_id,
+                user_b_id=self.participant_id,
+                item_id=item.id,
+                last_message_at=datetime.utcnow(),
+            )
+            db.add(thread)
+            db.flush()
+            message = Message(thread_id=thread.id, sender_id=self.owner_id, body="private image")
+            db.add(message)
+            db.flush()
+            stored_name = "delete-item-after-commit.png"
+            db.add(
+                MessageAttachment(
+                    thread_id=thread.id,
+                    message_id=message.id,
+                    uploader_id=self.owner_id,
+                    kind="image",
+                    original_name="private.png",
+                    stored_name=stored_name,
+                    content_type="image/png",
+                    size_bytes=len(PNG_BYTES),
+                    created_at=datetime.utcnow(),
+                )
+            )
+            db.commit()
+
+            attachment_service.MESSAGE_ATTACHMENT_ROOT.mkdir(parents=True, exist_ok=True)
+            private_path = attachment_service.MESSAGE_ATTACHMENT_ROOT / stored_name
+            private_path.write_bytes(PNG_BYTES)
+
+            request = type("AdminRequest", (), {"session": {"user": {"role": "admin"}}})()
+            response = delete_item(item.id, request, db)
+            self.assertEqual(response.status_code, 302)
+            self.assertFalse(private_path.exists())
+            self.assertIsNone(db.get(Item, item.id))
+            self.assertEqual(
+                db.query(MessageAttachment).filter(MessageAttachment.stored_name == stored_name).count(),
+                0,
+            )
         finally:
             db.close()
 

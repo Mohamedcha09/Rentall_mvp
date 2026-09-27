@@ -39,6 +39,7 @@ from sqlalchemy.orm import Session
 
 from .database import Base, engine, SessionLocal, get_db
 from .models import User, Item
+from .message_attachments import max_direct_message_request_bytes
 from .utils import CATEGORIES, category_label
 # 5) Routers
 from .auth import router as auth_router
@@ -127,6 +128,37 @@ app.add_middleware(
     max_age=60 * 60 * 24 * 30,
     domain=COOKIE_DOMAIN,
 )
+
+
+@app.middleware("http")
+async def limit_direct_message_upload_body(request: Request, call_next):
+    """Reject oversized direct-message multipart bodies before form parsing.
+
+    The route itself also streams and validates each uploaded file.  This
+    preflight is deliberately limited to `/messages/{id}` so it cannot alter
+    marketplace, support-ticket, or other upload flows.
+    """
+    path = (request.url.path or "").rstrip("/")
+    message_suffix = path[len("/messages/"):] if path.startswith("/messages/") else ""
+    content_type = (request.headers.get("content-type") or "").lower()
+    if (
+        request.method == "POST"
+        and message_suffix.isdigit()
+        and content_type.startswith("multipart/form-data")
+    ):
+        raw_length = (request.headers.get("content-length") or "").strip()
+        if raw_length:
+            try:
+                content_length = int(raw_length)
+            except ValueError:
+                return JSONResponse({"detail": "Invalid upload size."}, status_code=400)
+            if content_length < 0 or content_length > max_direct_message_request_bytes():
+                return JSONResponse(
+                    {"detail": "This message upload is too large."},
+                    status_code=413,
+                    headers={"Cache-Control": "no-store"},
+                )
+    return await call_next(request)
 
 
 # Helper: هل الـ request فيه session من SessionMiddleware أو لا؟

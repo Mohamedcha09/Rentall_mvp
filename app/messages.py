@@ -24,7 +24,12 @@ from .message_attachments import (
 )
 from .models import MessageThread, Message, MessageAttachment, User, Item, SupportTicket
 from .presence import user_presence
-from .support_ai import get_or_create_csrf_token, require_csrf, validate_client_message_id
+from .support_ai import (
+    check_direct_message_rate,
+    get_or_create_csrf_token,
+    require_csrf,
+    validate_client_message_id,
+)
 
 router = APIRouter()
 
@@ -651,6 +656,7 @@ async def thread_send(
     if not sender:
         await _close_uploads(attachments, voice)
         raise HTTPException(status_code=401, detail="Login required")
+    check_direct_message_rate(request, sender)
 
     message, created = await _create_direct_message(
         db,

@@ -30,6 +30,7 @@ MAX_ATTACHMENTS_PER_MESSAGE = 4
 DEFAULT_MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
 DEFAULT_MAX_VOICE_BYTES = 12 * 1024 * 1024
 CHUNK_SIZE = 64 * 1024
+MESSAGE_REQUEST_OVERHEAD_BYTES = 512 * 1024
 
 # Browser selection is intentionally narrow.  The server validates the
 # declared MIME, file extension, and content signature; ``accept`` is only a
@@ -88,6 +89,17 @@ def max_attachments_per_message() -> int:
     )
 
 
+def max_direct_message_request_bytes() -> int:
+    """Return the largest valid multipart body plus a bounded form overhead.
+
+    This is used by a route-scoped preflight guard before Starlette parses a
+    normal browser upload.  The streaming per-file checks below remain the
+    authoritative validation for requests without a Content-Length header.
+    """
+    normal_batch = max_attachment_bytes() * max_attachments_per_message()
+    return max(normal_batch, max_voice_bytes()) + MESSAGE_REQUEST_OVERHEAD_BYTES
+
+
 def allowed_attachment_accept_value() -> str:
     return ",".join(sorted({mime for values in ALLOWED_ATTACHMENT_TYPES.values() for mime in values}))
 
@@ -121,22 +133,6 @@ def _validate_signature(path: Path, extension: str, *, kind: str) -> None:
     )
     if not valid:
         raise HTTPException(status_code=422, detail="The file content does not match its declared type.")
-
-
-def _validated_duration_ms(value: str | int | None) -> int | None:
-    """Keep a bounded display hint without treating client metadata as trust.
-
-    The persisted audio bytes remain the source used by the browser for
-    playback after refresh.  We do not claim server-side media inspection
-    without adding a transcoder/metadata dependency to production.
-    """
-    if value in (None, ""):
-        return None
-    try:
-        duration = int(float(value))
-    except (TypeError, ValueError):
-        return None
-    return duration if 0 < duration <= 10 * 60 * 1000 else None
 
 
 @dataclass
@@ -258,12 +254,16 @@ async def stage_message_attachments(
         for upload in normal_uploads:
             staged.append(await _stage_one(upload, kind="image" if Path(upload.filename or "").suffix.lower() in IMAGE_ATTACHMENT_EXTENSIONS else "file", size_limit=max_attachment_bytes()))
         if has_voice and voice_upload:
+            # Duration supplied by a browser is not authoritative.  New voice
+            # rows intentionally leave it empty; the recipient's native audio
+            # element derives the real duration from the persisted bytes.
+            _ = voice_duration_ms
             staged.append(
                 await _stage_one(
                     voice_upload,
                     kind="voice",
                     size_limit=max_voice_bytes(),
-                    duration_ms=_validated_duration_ms(voice_duration_ms),
+                    duration_ms=None,
                 )
             )
     except Exception:

@@ -1011,14 +1011,13 @@
 
     const bindVoiceDuration = (audio, durationLabel) => {
       if (!audio || !durationLabel) return;
-      const suppliedDuration = Number(audio.dataset.voiceDuration || 0);
-      if (suppliedDuration > 0) durationLabel.textContent = formatDuration(suppliedDuration);
       const update = () => {
         if (Number.isFinite(audio.duration) && audio.duration > 0) {
           durationLabel.textContent = formatDuration(audio.duration * 1000);
         }
       };
       audio.addEventListener('loadedmetadata', update, { once: true });
+      if (audio.readyState >= 1) update();
       if (audio.readyState >= 1) update();
     };
 
@@ -1381,8 +1380,10 @@
       else resetRecording();
     };
 
-    const openLightbox = (source, name) => {
+    let lightboxOpener = null;
+    const openLightbox = (source, name, opener) => {
       if (!lightbox || !lightboxImage || !source) return;
+      lightboxOpener = opener instanceof HTMLElement ? opener : document.activeElement;
       lightboxImage.src = source;
       lightboxImage.alt = name || 'Image attachment';
       lightbox.hidden = false;
@@ -1392,6 +1393,8 @@
       if (!lightbox || lightbox.hidden) return;
       lightbox.hidden = true;
       if (lightboxImage) lightboxImage.src = '';
+      if (lightboxOpener && typeof lightboxOpener.focus === 'function') lightboxOpener.focus();
+      lightboxOpener = null;
     };
 
     const setConversationViewport = () => {
@@ -1459,7 +1462,6 @@
             emptyState.remove();
             emptyState = null;
           }
-          const followLatest = isNearLatest();
           if (!chatBox.querySelector(`[data-message-id="${String(data.message.id)}"]`)) {
             appendMessage(data.message);
           }
@@ -1473,7 +1475,9 @@
           renderPreviews();
           clientMessageIdInput.value = createClientMessageId();
           stopTyping();
-          if (followLatest || true) scrollToLatest();
+          // A successful message is the sender's own deliberate action, so it
+          // is safe to reveal it even when they had been reviewing history.
+          scrollToLatest();
         })
         .catch((error) => {
           setError((error && error.message) || (hasPendingMedia() ? 'Upload failed. Please try again.' : 'Message could not be sent. Please try again.'));
@@ -1514,7 +1518,7 @@
 
     chatBox.addEventListener('click', (event) => {
       const imageButton = event.target.closest('[data-message-image]');
-      if (imageButton) openLightbox(imageButton.dataset.messageImage, imageButton.dataset.imageName);
+      if (imageButton) openLightbox(imageButton.dataset.messageImage, imageButton.dataset.imageName, imageButton);
     });
     lightboxClose && lightboxClose.addEventListener('click', closeLightbox);
     lightbox && lightbox.addEventListener('click', (event) => { if (event.target === lightbox) closeLightbox(); });
@@ -1566,6 +1570,14 @@
       }
     });
     window.addEventListener('pagehide', () => {
+      stopTyping();
+      if (activeRecorder && activeRecorder.state !== 'inactive') {
+        discardRecording = true;
+        activeRecorder.stop();
+      } else {
+        stopMediaStream();
+      }
+      clearPreviewUrls();
       window.removeEventListener('resize', setConversationViewport);
       window.removeEventListener('orientationchange', setConversationViewport);
       if (window.visualViewport) window.visualViewport.removeEventListener('resize', setConversationViewport);
