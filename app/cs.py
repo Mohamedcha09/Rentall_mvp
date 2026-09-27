@@ -1,6 +1,6 @@
 # app/cs.py
 from datetime import datetime
-from fastapi import APIRouter, Request, Depends, Form
+from fastapi import APIRouter, Request, Depends, File, Form, UploadFile
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -9,6 +9,13 @@ from sqlalchemy import desc, text
 from .database import get_db
 from .models import SupportTicket, SupportMessage, User
 from .notifications_api import push_notification, notify_mods, notify_dms
+from .support import (
+    create_legacy_support_message,
+    mark_legacy_ticket_messages_read,
+    staff_can_view_legacy_ticket,
+)
+from .support_ai import get_or_create_csrf_token, require_csrf
+from .support_attachments import allowed_accept_value, max_attachment_bytes
 from .utils import display_currency   # ← ★★★ مهم جداً
 
 templates = Jinja2Templates(directory="app/templates")
@@ -119,8 +126,20 @@ def cs_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     if not _is_legacy_ticket(t):
         return RedirectResponse("/cs/inbox", status_code=303)
 
-    t.unread_for_agent = False
-    db.commit()
+    # Direct URLs must still respect the legacy queue boundary.  This is the
+    # same authorization rule used before serving a private attachment.
+    staff_user = db.get(User, u_cs["id"])
+    if not staff_user or not staff_can_view_legacy_ticket(t, staff_user):
+        return RedirectResponse("/cs/inbox", status_code=303)
+
+    # A read receipt is written only after a real, authorized staff view.
+    # The helper also keeps the legacy unread flag in sync for the inbox.
+    mark_legacy_ticket_messages_read(
+        db,
+        ticket=t,
+        reader=staff_user,
+        reader_role="agent",
+    )
 
     return templates.TemplateResponse(
         request=request,
@@ -132,6 +151,9 @@ def cs_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
             "msgs": t.messages,
             "title": f"Ticket #{t.id} (CS)",
             "display_currency": display_currency,  # ← هنا أيضاً
+            "csrf_token": get_or_create_csrf_token(request),
+            "attachment_accept": allowed_accept_value(),
+            "max_attachment_bytes": max_attachment_bytes(),
         },
     )
 
@@ -140,7 +162,12 @@ def cs_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
 # Assign Self
 # ---------------------------
 @router.post("/tickets/{ticket_id}/assign_self")
-def cs_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_db)):
+def cs_assign_self(
+    ticket_id: int,
+    request: Request,
+    csrf_token: str = Form(""),
+    db: Session = Depends(get_db),
+):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
@@ -152,6 +179,20 @@ def cs_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_d
     t = db.get(SupportTicket, ticket_id)
     if not _is_legacy_ticket(t):
         return RedirectResponse("/cs/inbox", status_code=303)
+    if str(t.status or "").lower() == "closed":
+        return RedirectResponse(f"/cs/ticket/{ticket_id}", status_code=303)
+    row = db.execute(
+        text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"),
+        {"tid": ticket_id},
+    ).first()
+    # ``cs_chatbot`` is accepted only as a compatibility value on a *legacy*
+    # row; the legacy guard above keeps actual chatbot tickets out.
+    if not row or (row[0] or "cs") not in {"cs", "cs_chatbot"}:
+        return RedirectResponse("/cs/inbox", status_code=303)
+    staff_user = db.get(User, u_cs["id"])
+    if not staff_user or not staff_can_view_legacy_ticket(t, staff_user):
+        return RedirectResponse("/cs/inbox", status_code=303)
+    require_csrf(request, csrf_token)
     t.assigned_to_id = u_cs["id"]
     t.status = "open"
     t.updated_at = datetime.utcnow()
@@ -179,7 +220,15 @@ def cs_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_d
 # Agent Reply
 # ---------------------------
 @router.post("/ticket/{tid}/reply")
-def cs_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), body: str = Form("")):
+async def cs_ticket_reply(
+    tid: int,
+    request: Request,
+    body: str = Form(""),
+    csrf_token: str = Form(""),
+    client_message_id: str = Form(""),
+    attachments: list[UploadFile] | None = File(None),
+    db: Session = Depends(get_db),
+):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
@@ -192,40 +241,38 @@ def cs_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
     if not _is_legacy_ticket(t):
         return RedirectResponse("/cs/inbox", status_code=303)
 
-    now = datetime.utcnow()
+    staff_user = db.get(User, u_cs["id"])
+    if not staff_user or not staff_can_view_legacy_ticket(t, staff_user):
+        return RedirectResponse("/cs/inbox", status_code=303)
+    require_csrf(request, csrf_token)
 
-    msg = SupportMessage(
-        ticket_id=t.id,
-        sender_id=u_cs["id"],
+    _message, created = await create_legacy_support_message(
+        db,
+        request=request,
+        ticket=t,
+        sender=staff_user,
         sender_role="agent",
-        body=(body or "").strip() or "(no text)",
-        created_at=now,
+        body=body,
+        uploads=attachments,
+        client_message_id=client_message_id,
     )
-    db.add(msg)
 
-    t.last_msg_at = now
-    t.updated_at = now
-    t.last_from = "agent"
-    if not t.assigned_to_id:
-        t.assigned_to_id = u_cs["id"]
-    t.status = "open"
-    t.unread_for_user = True
-    t.unread_for_agent = False
-
-    try:
-        agent_name = (request.session["user"].get("first_name") or "").strip() or "Support Agent"
-        push_notification(
-            db,
-            t.user_id,
-            "💬 Reply from support",
-            f"{agent_name} replied to your ticket #{t.id}",
-            url=f"/support/ticket/{t.id}",
-            kind="support",
-        )
-    except:
-        pass
-
-    db.commit()
+    # The reply is already committed by the shared message transaction.  A
+    # notification problem must not roll back or misreport a successful send.
+    if created:
+        try:
+            agent_name = (request.session["user"].get("first_name") or "").strip() or "Support Agent"
+            push_notification(
+                db,
+                t.user_id,
+                "💬 Reply from support",
+                f"{agent_name} replied to your ticket #{t.id}",
+                url=f"/support/ticket/{t.id}",
+                kind="support",
+            )
+            db.commit()
+        except Exception:
+            db.rollback()
     return RedirectResponse(f"/cs/ticket/{t.id}", status_code=303)
 
 
@@ -233,7 +280,12 @@ def cs_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
 # Resolve Ticket
 # ---------------------------
 @router.post("/tickets/{ticket_id}/resolve")
-def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
+def cs_resolve(
+    ticket_id: int,
+    request: Request,
+    csrf_token: str = Form(""),
+    db: Session = Depends(get_db),
+):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
@@ -245,6 +297,18 @@ def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     t = db.get(SupportTicket, ticket_id)
     if not _is_legacy_ticket(t):
         return RedirectResponse("/cs/inbox", status_code=303)
+    if str(t.status or "").lower() == "closed":
+        return RedirectResponse(f"/cs/ticket/{ticket_id}", status_code=303)
+    row = db.execute(
+        text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"),
+        {"tid": ticket_id},
+    ).first()
+    if not row or (row[0] or "cs") not in {"cs", "cs_chatbot"}:
+        return RedirectResponse("/cs/inbox", status_code=303)
+    staff_user = db.get(User, u_cs["id"])
+    if not staff_user or not staff_can_view_legacy_ticket(t, staff_user):
+        return RedirectResponse("/cs/inbox", status_code=303)
+    require_csrf(request, csrf_token)
     now = datetime.utcnow()
     agent_name = (request.session["user"].get("first_name") or "").strip() or "Support Agent"
 
@@ -286,7 +350,13 @@ def cs_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
 # Transfer Ticket
 # ---------------------------
 @router.post("/tickets/{ticket_id}/transfer")
-def cs_transfer_queue(ticket_id: int, request: Request, db: Session = Depends(get_db), to: str = Form(...)):
+def cs_transfer_queue(
+    ticket_id: int,
+    request: Request,
+    to: str = Form(...),
+    csrf_token: str = Form(""),
+    db: Session = Depends(get_db),
+):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
@@ -304,14 +374,23 @@ def cs_transfer_queue(ticket_id: int, request: Request, db: Session = Depends(ge
     t = db.get(SupportTicket, ticket_id)
     if not _is_legacy_ticket(t):
         return RedirectResponse("/cs/inbox", status_code=303)
+    if str(t.status or "").lower() == "closed":
+        return RedirectResponse(f"/cs/ticket/{ticket_id}", status_code=303)
+    row = db.execute(
+        text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"),
+        {"tid": ticket_id},
+    ).first()
+    if not row or (row[0] or "cs") not in {"cs", "cs_chatbot"}:
+        return RedirectResponse("/cs/inbox", status_code=303)
+    staff_user = db.get(User, u_cs["id"])
+    if not staff_user or not staff_can_view_legacy_ticket(t, staff_user):
+        return RedirectResponse("/cs/inbox", status_code=303)
+    require_csrf(request, csrf_token)
 
-    try:
-        db.execute(
-            text("UPDATE support_tickets SET queue = :q, updated_at = now() WHERE id = :tid"),
-            {"q": target, "tid": ticket_id},
-        )
-    except:
-        pass
+    # Keep the queue mutation, system message, and ticket state in one ORM
+    # transaction.  Swallowing a queue write error here used to allow a false
+    # "transferred" message to be committed while the ticket stayed in place.
+    t.queue = target
 
     now = datetime.utcnow()
     agent_name = (request.session["user"].get("first_name") or "").strip() or "Support Agent"

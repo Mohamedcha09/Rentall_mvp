@@ -7,6 +7,29 @@
     word-break: break-word;
   }
 
+  .cs-ticket-page .ticket-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: .65rem;
+  }
+
+  .cs-ticket-page .ticket-attachment-image {
+    display: block;
+    max-width: 210px;
+    max-height: 160px;
+    border: 1px solid rgba(80, 86, 175, .18);
+    border-radius: .6rem;
+    object-fit: cover;
+  }
+
+  .cs-ticket-page .ticket-attachment-file {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    max-width: 100%;
+  }
+
   @media (max-width: 768px) {
     .cs-ticket-page .ticket-actions,
     .cs-ticket-page .ticket-message-row,
@@ -90,17 +113,18 @@
     <div class="d-flex flex-wrap gap-2 ticket-actions">
       <a class="btn btn-outline-secondary btn-sm" href="/cs/inbox">Back to Inbox</a>
 
-      {% if not ticket.assigned_to_id %}
+      {% if not ticket.assigned_to_id and ticket.status != 'closed' %}
         <button class="btn btn-outline-primary btn-sm" onclick="assignSelf({{ ticket.id }})">Take Ownership</button>
       {% endif %}
 
-      {% if ticket.status != 'resolved' %}
+      {% if ticket.status not in ('resolved', 'closed') %}
         <button class="btn btn-success btn-sm" onclick="resolveTicket({{ ticket.id }})">Mark as Resolved</button>
       {% endif %}
     </div>
   </div>
 
   <!-- Queue Transfer Bar -->
+  {% if ticket.status != 'closed' %}
   <div class="card mb-3">
     <div class="card-body d-flex flex-wrap gap-2 align-items-center ticket-transfer">
       <div class="fw-semibold me-2">Transfer to Department:</div>
@@ -108,6 +132,7 @@
       <!-- Transfer to MD -->
       <form method="post" action="/cs/tickets/{{ ticket.id }}/transfer" class="m-0">
         <input type="hidden" name="to" value="md">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button class="btn btn-outline-dark btn-sm" type="submit" title="Transfer ticket to MD (Deposit Management)">
           MD
         </button>
@@ -116,6 +141,7 @@
       <!-- Transfer to MOD -->
       <form method="post" action="/cs/tickets/{{ ticket.id }}/transfer" class="m-0">
         <input type="hidden" name="to" value="mod">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button class="btn btn-outline-dark btn-sm" type="submit" title="Transfer ticket to MOD (Moderators)">
           MOD
         </button>
@@ -124,12 +150,14 @@
       <!-- (Optional) Return to CS -->
       <form method="post" action="/cs/tickets/{{ ticket.id }}/transfer" class="m-0 ms-auto">
         <input type="hidden" name="to" value="cs">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button class="btn btn-outline-secondary btn-sm" type="submit" title="Return ticket to CS">
           Return to CS
         </button>
       </form>
     </div>
   </div>
+  {% endif %}
 
   <!-- Messages -->
   <div class="card mb-3">
@@ -143,6 +171,23 @@
                 {{ m.created_at }} — {{ 'Client' if m.sender_role=='user' else 'Support' }}
               </div>
               <div dir="auto">{{ m.body | e | replace('\n','<br>') | safe }}</div>
+              {% if m.attachments %}
+                <div class="ticket-attachments" aria-label="Message attachments">
+                  {% for attachment in m.attachments %}
+                    {% set attachment_url = '/support/ticket/' ~ ticket.id ~ '/attachments/' ~ attachment.id %}
+                    {% if attachment.content_type.startswith('image/') %}
+                      <a href="{{ attachment_url }}" target="_blank" rel="noopener" title="{{ attachment.original_name }}">
+                        <img class="ticket-attachment-image" src="{{ attachment_url }}" alt="{{ attachment.original_name }}">
+                      </a>
+                    {% else %}
+                      <a class="ticket-attachment-file btn btn-sm btn-outline-secondary" href="{{ attachment_url }}" target="_blank" rel="noopener">
+                        <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>
+                        <span>{{ attachment.original_name }}</span>
+                      </a>
+                    {% endif %}
+                  {% endfor %}
+                </div>
+              {% endif %}
             </div>
           </div>
         {% endfor %}
@@ -153,14 +198,19 @@
   </div>
 
   <!-- Agent Reply Form (if not resolved) -->
-  {% if ticket.status != 'resolved' %}
+  {% if ticket.status not in ('resolved', 'closed') %}
   <div class="card">
     <div class="card-header fw-semibold">Support Reply</div>
     <div class="card-body">
-      <form method="post" action="/cs/ticket/{{ ticket.id }}/reply">
-        <textarea name="body" class="form-control mb-2" rows="4" placeholder="Write your reply here..." required></textarea>
+      <form id="csReplyForm" method="post" enctype="multipart/form-data" action="/cs/ticket/{{ ticket.id }}/reply">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="client_message_id" value="">
+        <textarea name="body" class="form-control mb-2" rows="4" placeholder="Write your reply here..."></textarea>
+        <label class="form-label small" for="csTicketAttachments">Attachments (JPEG, PNG, WebP, or PDF)</label>
+        <input id="csTicketAttachments" class="form-control mb-2" type="file" name="attachments" multiple
+               accept="{{ attachment_accept }}" data-max-bytes="{{ max_attachment_bytes }}">
         <div class="d-flex gap-2 ticket-actions">
-          <button class="btn btn-primary">Send</button>
+          <button class="btn btn-primary" type="submit">Send</button>
 
           {% if not ticket.assigned_to_id %}
             <button class="btn btn-outline-primary" type="button" onclick="assignSelf({{ ticket.id }})">
@@ -177,7 +227,7 @@
   </div>
   {% else %}
   <div class="alert alert-success mt-3 mb-0">
-    This ticket is <strong>Resolved</strong>. You can only view it.
+    This ticket is <strong>{{ (ticket.status or 'resolved')|capitalize }}</strong>. You can only view it.
   </div>
   {% endif %}
 
@@ -185,9 +235,14 @@
 
 <!-- Actions -->
 <script>
+const ticketCsrfToken = {{ csrf_token|tojson }};
+
 async function resolveTicket(id){
   try{
-    const r = await fetch(`/cs/tickets/${id}/resolve`, { method:'POST' });
+    const r = await fetch(`/cs/tickets/${id}/resolve`, {
+      method: 'POST',
+      body: new URLSearchParams({csrf_token: ticketCsrfToken}),
+    });
     if(!r.ok) throw 0;
     window.location.href = '/cs/inbox';
   }catch(e){
@@ -196,12 +251,22 @@ async function resolveTicket(id){
 }
 async function assignSelf(id){
   try{
-    const r = await fetch(`/cs/tickets/${id}/assign_self`, { method:'POST' });
+    const r = await fetch(`/cs/tickets/${id}/assign_self`, {
+      method: 'POST',
+      body: new URLSearchParams({csrf_token: ticketCsrfToken}),
+    });
     if(!r.ok) throw 0;
     location.reload();
   }catch(e){
     alert('Failed to take ownership');
   }
 }
+
+document.getElementById('csReplyForm')?.addEventListener('submit', function () {
+  const key = this.querySelector('[name="client_message_id"]');
+  if (key && !key.value) {
+    key.value = (window.crypto?.randomUUID?.() || `support_${Date.now()}_${Math.random().toString(36).slice(2)}`).replaceAll('-', '');
+  }
+});
 </script>
 {% endblock %}

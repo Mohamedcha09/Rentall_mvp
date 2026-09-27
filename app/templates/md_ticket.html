@@ -9,6 +9,9 @@
   .msg-agent{background:rgba(13,110,253,.08);border:1px solid rgba(13,110,253,.2)}
   .msg-system{background:rgba(108,117,125,.08);border:1px dashed rgba(108,117,125,.35);font-style:italic}
   .msg-meta{font-size:.78rem;color:#888}
+  .msg-attachments{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.65rem}
+  .msg-attachment-image{display:block;max-width:210px;max-height:160px;border:1px solid rgba(80,86,175,.18);border-radius:.6rem;object-fit:cover}
+  .msg-attachment-file{display:inline-flex;align-items:center;gap:.35rem;max-width:100%}
   .card-chat{max-height:58vh;overflow:auto}
   .toolbar-sticky{position:sticky;bottom:0;z-index:2;background:linear-gradient(to top, rgba(0,0,0,.06), transparent 42%);padding-top:.4rem;border-top:1px solid rgba(255,255,255,.08)}
   @media (max-width: 768px){
@@ -108,6 +111,22 @@
             </div>
             <div class="msg {% if who=='agent' %}msg-agent{% elif who=='system' %}msg-system{% else %}msg-user{% endif %}">
               {{ m.body }}
+              {% if m.attachments %}
+                <div class="msg-attachments" aria-label="Message attachments">
+                  {% for attachment in m.attachments %}
+                    {% set attachment_url = '/support/ticket/' ~ ticket.id ~ '/attachments/' ~ attachment.id %}
+                    {% if attachment.content_type.startswith('image/') %}
+                      <a href="{{ attachment_url }}" target="_blank" rel="noopener" title="{{ attachment.original_name }}">
+                        <img class="msg-attachment-image" src="{{ attachment_url }}" alt="{{ attachment.original_name }}">
+                      </a>
+                    {% else %}
+                      <a class="msg-attachment-file btn btn-sm btn-outline-secondary" href="{{ attachment_url }}" target="_blank" rel="noopener">
+                        <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i><span>{{ attachment.original_name }}</span>
+                      </a>
+                    {% endif %}
+                  {% endfor %}
+                </div>
+              {% endif %}
             </div>
           </div>
         {% endfor %}
@@ -117,17 +136,23 @@
     </div>
   </div>
 
-  {% if not is_resolved %}
+  {% if ticket.status not in ('resolved', 'closed') %}
     <div class="toolbar-sticky">
       <!-- Reply form (independent) -->
-      <form id="replyForm" method="post" action="/md/ticket/{{ ticket.id }}/reply" class="p-2">
-        <textarea class="form-control mb-2" name="body" rows="3" placeholder="Write your reply here..." required></textarea>
+      <form id="replyForm" method="post" enctype="multipart/form-data" action="/md/ticket/{{ ticket.id }}/reply" class="p-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="client_message_id" value="">
+        <textarea class="form-control mb-2" name="body" rows="3" placeholder="Write your reply here..."></textarea>
+        <label class="form-label small" for="mdTicketAttachments">Attachments (JPEG, PNG, WebP, or PDF)</label>
+        <input id="mdTicketAttachments" class="form-control mb-2" type="file" name="attachments" multiple
+               accept="{{ attachment_accept }}" data-max-bytes="{{ max_attachment_bytes }}">
         <button class="btn btn-primary me-2" type="submit"><i class="bi bi-send"></i> Send Reply</button>
       </form>
 
       <!-- Other buttons, each in a separate form -->
       {% if not ticket.assigned_to_id %}
       <form method="post" action="/md/tickets/{{ ticket.id }}/assign_self" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button class="btn btn-outline-secondary mt-2" type="submit">
           <i class="bi bi-person-check"></i> Take Ownership
         </button>
@@ -137,6 +162,7 @@
       <form method="post" action="/md/tickets/{{ ticket.id }}/transfer_to_mod"
             onsubmit="return confirm('Transfer this ticket to the MOD review team?');"
             class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button class="btn btn-outline-warning mt-2" type="submit">
           <i class="bi bi-arrow-left-right"></i> Transfer to MOD
         </button>
@@ -145,6 +171,7 @@
       <form method="post" action="/md/tickets/{{ ticket.id }}/resolve"
             onsubmit="return confirm('Close this ticket permanently? This action cannot be undone.');"
             class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button class="btn btn-success mt-2" type="submit">
           <i class="bi bi-check2-circle"></i> Close (Final)
         </button>
@@ -152,4 +179,12 @@
     </div>
   {% endif %}
 </div>
+<script>
+document.getElementById('replyForm')?.addEventListener('submit', function () {
+  const key = this.querySelector('[name="client_message_id"]');
+  if (key && !key.value) {
+    key.value = (window.crypto?.randomUUID?.() || `support_${Date.now()}_${Math.random().toString(36).slice(2)}`).replaceAll('-', '');
+  }
+});
+</script>
 {% endblock %}

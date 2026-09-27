@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import os
 import re
-import shutil
 import tempfile
 import uuid
 from dataclasses import dataclass
@@ -57,6 +56,18 @@ def max_attachment_bytes() -> int:
         return DEFAULT_MAX_ATTACHMENT_BYTES
     # Do not let an accidental environment value disable a practical cap.
     return value if 256 * 1024 <= value <= 25 * 1024 * 1024 else DEFAULT_MAX_ATTACHMENT_BYTES
+
+
+def max_attachments_per_message() -> int:
+    """Read the one server-side attachment-count limit for UI and validation."""
+    raw = (os.getenv("SEVOR_SUPPORT_MAX_ATTACHMENTS") or "").strip()
+    if not raw:
+        return MAX_ATTACHMENTS_PER_MESSAGE
+    try:
+        value = int(raw)
+    except ValueError:
+        return MAX_ATTACHMENTS_PER_MESSAGE
+    return value if 1 <= value <= 8 else MAX_ATTACHMENTS_PER_MESSAGE
 
 
 def allowed_accept_value() -> str:
@@ -117,10 +128,11 @@ async def stage_support_attachments(
     when one file fails validation.
     """
     candidates = [upload for upload in (uploads or []) if upload and (upload.filename or "").strip()]
-    if len(candidates) > MAX_ATTACHMENTS_PER_MESSAGE:
+    attachment_limit = max_attachments_per_message()
+    if len(candidates) > attachment_limit:
         raise HTTPException(
             status_code=422,
-            detail=f"You can attach up to {MAX_ATTACHMENTS_PER_MESSAGE} files to one message.",
+            detail=f"You can attach up to {attachment_limit} files to one message.",
         )
 
     if not candidates:
@@ -131,6 +143,7 @@ async def stage_support_attachments(
     staged: list[StagedSupportAttachment] = []
     try:
         for upload in candidates:
+            temp_path: Path | None = None
             display_name = _display_name(upload.filename)
             extension = Path(display_name).suffix.lower()
             content_type = _declared_content_type(upload)
@@ -171,10 +184,11 @@ async def stage_support_attachments(
         cleanup_staged_attachments(staged)
         # If validation fails while processing the current upload, it has not
         # been added to ``staged`` yet.
-        try:
-            temp_path.unlink(missing_ok=True)  # type: ignore[name-defined]
-        except (NameError, OSError):
-            pass
+        if temp_path is not None:
+            try:
+                temp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
         raise
     finally:
         for upload in candidates:
@@ -223,10 +237,17 @@ def persist_staged_support_attachments(
     return records
 
 
-def remove_saved_attachment_files(records: Iterable[SupportAttachment]) -> None:
+def remove_saved_attachment_files(records: Iterable[SupportAttachment | str]) -> None:
+    """Best-effort private-file cleanup after a rolled-back write or deletion.
+
+    Callers deleting rows in bulk should pass the opaque stored-name strings
+    captured *before* commit, because ORM records can be expired after their
+    database row is gone.
+    """
     for record in records:
         try:
-            stored_name = Path(record.stored_name or "").name
+            raw_name = record if isinstance(record, str) else (record.stored_name or "")
+            stored_name = Path(raw_name).name
             if stored_name:
                 (SUPPORT_ATTACHMENT_ROOT / stored_name).unlink(missing_ok=True)
         except OSError:

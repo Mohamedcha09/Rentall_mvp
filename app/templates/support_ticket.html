@@ -1,539 +1,375 @@
-{# app/templates/support_ticket.html #}
 {% extends "base.html" %}
 
 {% block content %}
-
-<!-- ===== زر الرجوع العائم على الموبايل فقط ===== -->
-<a href="/support/my" class="back-btn-ios d-md-none">
-  <i class="bi bi-chevron-left"></i>
-</a>
-
-<!-- ===== الشريط الثابت (Mobile Sticky Header) ===== -->
-<div id="ticketSticky" class="ticket-sticky-bar d-md-none">
-    <a href="/support/my" class="ticket-sticky-back"><i class="bi bi-chevron-left"></i></a>
-    <div class="ticket-sticky-title">Ticket #{{ ticket.id }}</div>
-    <div style="width:24px"></div>
-</div>
+{% set raw_status = (ticket.status or 'new')|lower %}
+{% set status_labels = {'new': 'Waiting', 'open': 'Open', 'resolved': 'Resolved', 'closed': 'Closed'} %}
+{% set status_label = status_labels.get(raw_status, raw_status|replace('_', ' ')|title) %}
+{% set closed_ticket = raw_status == 'closed' %}
 
 <style>
-
-/* =====================================================
-   زر الرجوع — iOS floating button (MOBILE ONLY)
-===================================================== */
-.back-btn-ios {
-    position: fixed;
-    top: calc(env(safe-area-inset-top) + 12px);
-    left: 14px;
-    z-index: 9999;
-    background: rgba(255,255,255,0.88);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #333;
-    font-size: 20px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-    text-decoration: none;
-}
-.back-btn-ios:active { transform: scale(0.94); }
-
-/* =====================================================
-   إخفاء navbars ONLY ON MOBILE (لا تمس الحاسوب)
-===================================================== */
-@media (max-width: 768px){
-
-    header.topbar,
-    .m-top-tabs,
-    nav.desk-tabs,
-    .mobile-tabbar,
-    .stripe-callout,
-    .searchbar,
-    .payout-banner,
-    .connect-banner,
-    .stripe-connect-banner {
-        display: none !important;
-    }
-
-    body.has-tabbar { padding-bottom: 0 !important; }
-}
-
-/* =====================================================
-   Sticky Header (Mobile Only)
-===================================================== */
-.ticket-sticky-bar {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    box-sizing: border-box;
-    height: calc(58px + env(safe-area-inset-top, 0px));
-    padding: calc(env(safe-area-inset-top) + 6px) 14px 8px 14px;
-    background: rgba(255,255,255,0.85);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    opacity: 0;
-    transform: translateY(-100%);
-    transition: all .35s ease;
-    z-index: 99999;
-}
-
-.ticket-sticky-bar.show {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.ticket-sticky-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: #111;
-}
-
-.ticket-sticky-back {
-    font-size: 22px;
-    color: #333;
-}
-
-.back-btn-ios {
-  transition: opacity .2s ease, transform .2s ease;
-}
-
-.back-btn-ios.is-hidden {
-  opacity: 0;
-  pointer-events: none;
-  transform: scale(.94);
-}
-
-/* =====================================================
-   Chat bubbles (unchanged)
-===================================================== */
-.chat-thread{ max-height:60vh; overflow:auto; padding:2px 4px; }
-.chat-row{ display:flex; margin:.35rem 0; }
-.chat-row.me{ justify-content:flex-end; }
-.chat-row.them{ justify-content:flex-start; }
-.chat-row .bubble{
-  max-width:92%;
-  border-radius:14px;
-  padding:.55rem .7rem;
-  border:1px solid var(--border);
-  background:#fff;
-}
-[data-theme="dark"] .chat-row .bubble{
-  background:rgba(255,255,255,.06);
-}
-.chat-row.me .bubble{
-  background:#eff6ff;
-  border-color:rgba(0,0,0,.06);
-}
-[data-theme="dark"] .chat-row.me .bubble{
-  background:rgba(124,92,255,.18);
-  border-color:rgba(255,255,255,.12);
-}
-.bubble .meta{ font-size:.8rem; opacity:.7; display:flex; gap:.5rem; margin-bottom:.25rem; }
-.bubble .text{ white-space:pre-wrap; word-break:break-word; }
-
-
-/* =====================================================
-   Chat bubbles — Airbnb premium style
-===================================================== */
-.chat-thread{
-  max-height:60vh;
-  overflow:auto;
-  padding:6px 4px 10px;
-  background:#fafafa;
-  border-radius:16px;
-}
-
-/* صف الرسالة */
-.chat-row{
-  display:flex;
-  margin:.55rem 0;
-}
-
-/* رسائلي */
-.chat-row.me{
-  justify-content:flex-end;
-}
-
-/* رسائل الدعم */
-.chat-row.them{
-  justify-content:flex-start;
-}
-
-/* فقاقيع الرسائل */
-.chat-row .bubble{
-  max-width:84%;
-  padding:.7rem .9rem;
-  border-radius:18px;
-  background:#fff;
-  border:1px solid rgba(0,0,0,0.06);
-  box-shadow:0 1px 3px rgba(0,0,0,0.04);
-}
-
-/* رسائلي (Airbnb Blue bubble) */
-.chat-row.me .bubble{
-  background:#f1f7ff;
-  border-color:rgba(0,0,0,0.05);
-  box-shadow:0 1px 4px rgba(0,0,0,0.05);
-}
-
-/* الوضع الداكن */
-[data-theme="dark"] .chat-thread{
-  background:#0e0e12;
-}
-[data-theme="dark"] .chat-row .bubble{
-  background:rgba(255,255,255,0.08);
-  border-color:rgba(255,255,255,0.1);
-  box-shadow:none;
-}
-[data-theme="dark"] .chat-row.me .bubble{
-  background:rgba(124,92,255,0.25);
-}
-
-/* اسم + وقت */
-.bubble .meta{
-  font-size:.78rem;
-  opacity:.65;
-  display:flex;
-  gap:.45rem;
-  margin-bottom:.25rem;
-  font-weight:500;
-}
-
-/* نص الرسالة */
-.bubble .text{
-  font-size:.95rem;
-  line-height:1.35;
-  white-space:pre-wrap;
-  word-break:break-word;
-  overflow-wrap:anywhere;
-}
-
-@media (max-width: 768px) {
-  .support-ticket-page .chat-row .bubble {
-    min-width: 0;
-    max-width: calc(100% - .5rem);
+  /* Scoped, focused human-support workspace.  No global marketplace chrome. */
+  .support-ticket-page {
+    --ticket-ink: #111a3d;
+    --ticket-muted: #6f7895;
+    --ticket-line: #e4e7f1;
+    --ticket-surface: #ffffff;
+    --ticket-soft: #f7f8ff;
+    --ticket-purple: #7255f6;
+    --ticket-blue: #2788f3;
+    --ticket-cyan: #19bfd5;
+    --ticket-shadow: 0 16px 42px rgba(41, 48, 94, .09);
+    /* Fallback first; modern mobile browsers then use the dynamic viewport. */
+    min-height: 100vh;
+    min-height: 100dvh;
+    margin: -12px;
+    padding: max(14px, env(safe-area-inset-top)) clamp(12px, 3vw, 32px) calc(16px + env(safe-area-inset-bottom));
+    background: radial-gradient(circle at 5% 0%, rgba(116, 85, 246, .10), transparent 29rem), #f7f8fd;
+    color: var(--ticket-ink);
   }
-
-  .support-ticket-page .bubble .meta,
-  .support-ticket-page .card-header,
-  .support-ticket-page .alert.d-flex,
-  .support-ticket-page .card-footer .d-flex {
-    flex-wrap: wrap;
-    gap: .5rem;
+  .support-ticket-shell { max-width: 1030px; margin: 0 auto; min-width: 0; }
+  .support-ticket-header {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center;
+    margin: 0 auto 12px; padding: 8px 0;
   }
-
-  .support-ticket-page .card-header > *,
-  .support-ticket-page .alert.d-flex > *,
-  .support-ticket-page .list-group-item > span:last-child {
-    min-width: 0;
-    overflow-wrap: anywhere;
+  .support-ticket-back, .support-ticket-details, .ticket-send, .ticket-attach, .ticket-new-message {
+    border: 0; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
   }
-
-  .support-ticket-page .list-group-item.d-flex {
-    gap: .75rem;
+  .support-ticket-back, .support-ticket-details {
+    width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,.94); color: var(--ticket-ink);
+    border: 1px solid rgba(220,224,239,.94); box-shadow: 0 7px 20px rgba(28,35,79,.08); font-size: 19px;
   }
-
-  .support-ticket-page .list-group-item > span:last-child {
-    text-align: end;
+  .support-ticket-back:hover, .support-ticket-details:hover { color: var(--ticket-purple); transform: translateY(-1px); }
+  .support-ticket-title { min-width: 0; }
+  .support-ticket-title h1 { margin: 0; font-size: clamp(18px, 2.7vw, 23px); font-weight: 800; letter-spacing: -.035em; line-height: 1.08; }
+  .support-ticket-subtitle { margin-top: 4px; color: var(--ticket-muted); font-size: 13px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .support-ticket-details { font-size: 18px; cursor: pointer; }
+  .ticket-status-row { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin: 1px 0 14px 58px; }
+  .ticket-status { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:6px 10px; font-size:12px; font-weight:800; line-height:1; border:1px solid transparent; }
+  .ticket-status::before { content:""; width:7px; height:7px; border-radius:50%; background:currentColor; }
+  .ticket-status--open { color:#168250; background:#edf9f2; border-color:#ccefdc; }
+  .ticket-status--waiting, .ticket-status--new { color:#a86a11; background:#fff8e9; border-color:#f3dfad; }
+  .ticket-status--resolved { color:#177a86; background:#ebfbfb; border-color:#c8eeee; }
+  .ticket-status--closed { color:#63708a; background:#f0f2f6; border-color:#dce1e9; }
+  .ticket-meta { color:var(--ticket-muted); font-size:12px; font-weight:600; }
+  .ticket-meta span + span::before { content:"•"; margin: 0 7px; color:#b4bacb; }
+  .ticket-info-card {
+    display:flex; align-items:flex-start; gap:11px; padding:14px 15px; margin-bottom:13px; background:rgba(255,255,255,.82);
+    border:1px solid rgba(222,225,240,.92); border-radius:18px; box-shadow: 0 8px 25px rgba(39,45,91,.045);
   }
-
-  .support-ticket-page .card-footer .d-flex > * {
-    min-width: 0;
-  }
-}
-
-/* ===== iOS APP ONLY — TOP SAFE WHITE BAR (SUPPORT TICKET) ===== */
-@supports (-webkit-touch-callout: none) {
-  @media (max-width: 768px) {
-
-    /* شريط أبيض ثابت أعلى الشاشة */
-    body::before {
-      content: "";
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: env(safe-area-inset-top);
-      background: #ffffff;
-      z-index: 99998; /* تحت sticky bar */
-      pointer-events: none;
-    }
-
-    /* دفع المحتوى كله للأسفل */
-    body {
-      padding-top: env(safe-area-inset-top);
-    }
-
-  }
-}
-
-/* iPad Safari follows this route's mobile ticket controls, not the desktop header. */
-@supports (-webkit-touch-callout: none) {
-  @media (min-width:769px) and (max-width:1376px) and (min-height:600px) and (any-pointer:coarse) {
-    body[data-path^="/support/ticket/"] header.topbar,
-    body[data-path^="/support/ticket/"] .m-top-tabs,
-    body[data-path^="/support/ticket/"] nav.desk-tabs,
-    body[data-path^="/support/ticket/"] .mobile-tabbar,
-    body[data-path^="/support/ticket/"] .stripe-callout,
-    body[data-path^="/support/ticket/"] .searchbar,
-    body[data-path^="/support/ticket/"] .payout-banner,
-    body[data-path^="/support/ticket/"] .connect-banner,
-    body[data-path^="/support/ticket/"] .stripe-connect-banner {
-      display: none !important;
-    }
-
-    body[data-path^="/support/ticket/"] .m-top-tabs.d-lg-none,
-    body[data-path^="/support/ticket/"] .mobile-tabbar.d-lg-none {
-      display: none !important;
-    }
-
-    body[data-path^="/support/ticket/"] {
-      padding-bottom: 0 !important;
-    }
-
-    body[data-path^="/support/ticket/"] .page {
-      padding-bottom: 0 !important;
-    }
-
-    .support-ticket-page > .d-none.d-md-flex {
-      display: none !important;
-    }
-
-    .support-ticket-page > .d-md-none {
-      display: block !important;
-    }
-
-    .back-btn-ios.d-md-none,
-    #ticketSticky.d-md-none {
-      display: flex !important;
-    }
-
-    .support-ticket-page .chat-row .bubble {
-      min-width: 0;
-      max-width: calc(100% - .5rem);
-    }
-
-    .support-ticket-page .bubble .meta,
-    .support-ticket-page .card-header,
-    .support-ticket-page .alert.d-flex,
-    .support-ticket-page .card-footer .d-flex {
-      flex-wrap: wrap;
-      gap: .5rem;
-    }
-
-    .support-ticket-page .card-header > *,
-    .support-ticket-page .alert.d-flex > *,
-    .support-ticket-page .card-footer .d-flex > * {
-      min-width: 0;
-      overflow-wrap: anywhere;
-    }
-
-    .support-ticket-page .row > .col-lg-8,
-    .support-ticket-page .row > .col-lg-4 {
-      flex: 0 0 100%;
-      max-width: 100%;
-    }
-  }
-}
-
-
+  .ticket-info-mark { width:31px; height:31px; flex:0 0 31px; display:grid; place-items:center; color:#fff; border-radius:11px; background:linear-gradient(135deg,var(--ticket-purple),var(--ticket-blue)); }
+  .ticket-info-card strong { display:block; font-size:13px; margin:1px 0 3px; }
+  .ticket-info-card p { margin:0; color:var(--ticket-muted); font-size:13px; line-height:1.38; }
+  .ticket-stream-card { position:relative; overflow:hidden; background:rgba(255,255,255,.72); border:1px solid rgba(221,225,240,.92); border-radius:24px; box-shadow:var(--ticket-shadow); }
+  .ticket-stream { position:relative; min-height:clamp(350px, 52dvh, 650px); max-height:calc(100dvh - 295px); overflow-y:auto; overscroll-behavior:contain; padding:18px clamp(14px, 3vw, 31px) 25px; scrollbar-color:#cdd3e4 transparent; }
+  .ticket-stream::before { content:""; position:absolute; width:1px; left:31px; top:28px; bottom:28px; background:linear-gradient(#dbe0ee, rgba(219,224,238,.12)); }
+  .ticket-date-separator { position:relative; display:flex; align-items:center; gap:10px; margin:4px 0 16px; color:#7d86a0; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; }
+  .ticket-date-separator::before, .ticket-date-separator::after { content:""; height:1px; flex:1; background:#ebedf4; }
+  .ticket-date-separator span { padding:5px 10px; border:1px solid #e4e7f1; border-radius:999px; background:#fff; white-space:nowrap; }
+  .ticket-message { position:relative; display:grid; grid-template-columns: 38px minmax(0,1fr); gap:11px; margin:0 0 17px; }
+  .ticket-marker { position:relative; z-index:1; width:30px; height:30px; margin:4px 0 0 1px; border:2px solid #f9faff; display:grid; place-items:center; overflow:hidden; border-radius:50%; box-shadow:0 3px 10px rgba(37,44,90,.14); background:#edf0fb; color:#59637e; font-size:11px; font-weight:900; }
+  .ticket-marker img { width:100%; height:100%; object-fit:cover; }
+  .ticket-message--user .ticket-marker { color:#fff; background:linear-gradient(135deg,#7e59f7,#3c94f4); }
+  .ticket-message-body { min-width:0; }
+  .ticket-message-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:0 4px 5px; color:#747d97; font-size:11px; font-weight:650; }
+  .ticket-message-head strong { color:var(--ticket-ink); font-size:12px; font-weight:850; }
+  .ticket-bubble { border:1px solid #e4e7f0; border-radius:17px; padding:13px 14px; background:#fff; box-shadow:0 6px 19px rgba(38,44,88,.045); }
+  .ticket-message--user .ticket-bubble { border-color:rgba(111,86,243,.18); background:linear-gradient(135deg,rgba(119,86,247,.10),rgba(37,142,244,.055)); }
+  .ticket-message-text { margin:0; color:#222b48; font-size:14px; line-height:1.53; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .ticket-message-foot { display:flex; align-items:center; justify-content:flex-end; gap:5px; min-height:14px; margin-top:7px; color:#8992aa; font-size:10px; font-weight:700; }
+  .ticket-receipt { display:inline-flex; letter-spacing:-3px; padding-right:2px; color:#8791ab; font-size:12px; }
+  .ticket-receipt--read { color:#2098dc; }
+  .ticket-system { position:relative; z-index:1; display:flex; justify-content:center; margin:2px 0 17px 39px; }
+  .ticket-system span { max-width:82%; padding:7px 11px; border:1px solid #e4e7f0; border-radius:999px; color:#737d98; background:#fafbfe; text-align:center; font-size:11px; font-weight:700; line-height:1.35; }
+  .ticket-attachments { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .ticket-attachment-image { display:block; max-width:min(100%, 250px); padding:0; overflow:hidden; border:1px solid #dde3ef; border-radius:12px; background:#f2f4fa; cursor:zoom-in; }
+  .ticket-attachment-image img { display:block; width:100%; max-height:190px; object-fit:cover; }
+  .ticket-attachment-file { display:flex; align-items:center; gap:9px; min-width:0; max-width:100%; padding:9px 10px; color:#26304e; text-decoration:none; border:1px solid #e0e5ef; border-radius:12px; background:#f9faff; }
+  .ticket-attachment-file:hover { color:#6043e9; border-color:#cfc5fb; }
+  .ticket-attachment-file i { color:#e04e57; font-size:20px; }
+  .ticket-attachment-file span { min-width:0; display:block; }
+  .ticket-attachment-file b, .ticket-attachment-file small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ticket-attachment-file b { font-size:12px; } .ticket-attachment-file small { color:#8992aa; font-size:10px; margin-top:2px; }
+  .ticket-empty { display:grid; place-items:center; min-height:260px; padding:25px; text-align:center; }
+  .ticket-empty-icon { display:grid; place-items:center; width:52px; height:52px; margin-bottom:12px; color:#fff; border-radius:18px; background:linear-gradient(135deg,var(--ticket-purple),var(--ticket-cyan)); box-shadow:0 10px 21px rgba(91,74,222,.23); }
+  .ticket-empty h2 { margin:0 0 5px; font-size:18px; font-weight:850; letter-spacing:-.025em; } .ticket-empty p { max-width:310px; margin:0; color:var(--ticket-muted); font-size:13px; line-height:1.5; }
+  .ticket-closed-note { display:none; margin:0 0 12px; padding:10px 12px; color:#606b84; border:1px solid #dbe0e9; border-radius:13px; background:#f5f6f9; font-size:12px; font-weight:700; }
+  .ticket-closed-note.is-visible { display:block; }
+  .ticket-composer { position:sticky; bottom:0; z-index:8; padding:13px clamp(12px, 2.5vw, 24px) calc(13px + env(safe-area-inset-bottom)); border-top:1px solid #e6e9f1; background:rgba(255,255,255,.94); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
+  .ticket-composer-preview { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 9px; }
+  .ticket-preview { position:relative; display:flex; align-items:center; gap:8px; max-width:210px; min-height:43px; padding:5px 32px 5px 5px; border:1px solid #dde2ee; border-radius:12px; background:#fafbfe; }
+  .ticket-preview-image { width:35px; height:35px; object-fit:cover; border-radius:8px; background:#e9edf7; }
+  .ticket-preview-icon { display:grid; place-items:center; width:35px; height:35px; border-radius:8px; background:#eeeafd; color:#7054ef; font-size:18px; }
+  .ticket-preview-name { overflow:hidden; color:#3b4663; font-size:11px; font-weight:750; text-overflow:ellipsis; white-space:nowrap; }
+  .ticket-preview-size { color:#8c95aa; font-size:10px; }
+  .ticket-preview-remove { position:absolute; top:5px; right:5px; width:20px; height:20px; padding:0; border:0; border-radius:50%; color:#606b84; background:#edf0f6; line-height:1; }
+  .ticket-composer-row { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:end; gap:8px; }
+  .ticket-attach { position:relative; width:43px; height:43px; flex:0 0 43px; cursor:pointer; color:#64708b; border:1px solid #e1e5ef; border-radius:50%; background:#fff; font-size:18px; }
+  .ticket-attach:hover { color:var(--ticket-purple); border-color:#cdc5f9; }
+  .ticket-attach input { position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+  .ticket-composer textarea { width:100%; max-height:118px; min-height:45px; resize:none; padding:12px 14px; color:var(--ticket-ink); border:1px solid #dfe4ef; border-radius:16px; background:#fff; box-shadow:0 4px 13px rgba(40,47,93,.04); font-size:14px; line-height:1.35; outline:0; }
+  .ticket-composer textarea:focus { border-color:rgba(106,77,241,.58); box-shadow:0 0 0 3px rgba(112,82,244,.11); }
+  .ticket-composer textarea:disabled { cursor:not-allowed; color:#8992a9; background:#f4f5f9; }
+  .ticket-send { width:45px; height:45px; flex:0 0 45px; border-radius:50%; cursor:pointer; color:white; background:linear-gradient(135deg,var(--ticket-purple),var(--ticket-blue) 57%,var(--ticket-cyan)); box-shadow:0 9px 18px rgba(68,100,237,.27); font-size:18px; transition:transform .16s ease, opacity .16s ease; }
+  .ticket-send:hover { transform:translateY(-1px) scale(1.02); } .ticket-send:disabled { cursor:not-allowed; opacity:.5; transform:none; }
+  .ticket-composer-help { display:flex; justify-content:space-between; gap:10px; margin:8px 2px 0; color:#8992a9; font-size:10px; font-weight:650; }
+  .ticket-composer-status { min-height:14px; margin:6px 2px 0; color:#66718d; font-size:11px; font-weight:700; }
+  .ticket-composer-error { min-height:14px; margin:6px 2px 0; color:#c43a4c; font-size:11px; font-weight:700; }
+  .ticket-new-message { position:absolute; right:18px; bottom:93px; z-index:12; gap:5px; padding:8px 11px; color:white; border-radius:999px; background:#33416b; box-shadow:0 8px 20px rgba(20,28,62,.25); font-size:11px; font-weight:800; cursor:pointer; }
+  .ticket-new-message[hidden] { display:none; }
+  .ticket-details-dialog { width:min(440px, calc(100vw - 28px)); padding:0; color:var(--ticket-ink); border:0; border-radius:22px; box-shadow:0 25px 60px rgba(17,25,58,.28); }
+  .ticket-details-dialog::backdrop, .ticket-lightbox::backdrop { background:rgba(18,25,54,.42); backdrop-filter:blur(3px); }
+  .ticket-details-inner { padding:20px; background:#fff; } .ticket-details-top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+  .ticket-details-top h2 { margin:0; font-size:18px; font-weight:850; } .ticket-dialog-close { width:34px; height:34px; border:0; border-radius:50%; background:#f0f2f8; color:#53607d; }
+  .ticket-detail-list { display:grid; gap:1px; overflow:hidden; border:1px solid #e5e8f1; border-radius:14px; background:#e5e8f1; }
+  .ticket-detail-list div { display:flex; justify-content:space-between; gap:16px; padding:11px 12px; background:#fff; font-size:12px; }
+  .ticket-detail-list dt { color:#7e879f; font-weight:700; } .ticket-detail-list dd { margin:0; text-align:right; color:#26304d; font-weight:800; overflow-wrap:anywhere; }
+  .ticket-lightbox { max-width:min(94vw, 1000px); max-height:90dvh; padding:8px; border:0; border-radius:18px; background:#151a2b; }
+  .ticket-lightbox img { display:block; max-width:90vw; max-height:84dvh; border-radius:12px; object-fit:contain; } .ticket-lightbox-close { position:absolute; top:14px; right:14px; width:36px; height:36px; color:white; border:0; border-radius:50%; background:rgba(0,0,0,.54); }
+  @media (min-width: 760px) { .support-ticket-page { margin:-24px; padding:26px clamp(24px,5vw,72px) 24px; } .ticket-stream { min-height:420px; max-height:calc(100dvh - 255px); } }
+  @media (max-width: 430px) { .support-ticket-page { margin:-12px -8px; padding-inline:10px; } .ticket-status-row { margin-left:0; } .ticket-stream { min-height:calc(100dvh - 274px); max-height:calc(100dvh - 274px); padding-inline:12px; } .ticket-stream::before { left:28px; } .ticket-message { grid-template-columns:34px minmax(0,1fr); gap:8px; } .ticket-marker { width:28px; height:28px; } .ticket-system { margin-left:33px; } .ticket-message-head { padding-left:2px; } .ticket-bubble { padding:11px 12px; } }
+  @media (prefers-reduced-motion: reduce) { .support-ticket-page *, .support-ticket-page *::before, .support-ticket-page *::after { scroll-behavior:auto !important; transition:none !important; animation:none !important; } }
 </style>
 
-<!-- =====================================================
-      CONTENT (unchanged)
-===================================================== -->
+<section class="support-ticket-page" aria-label="SEVOR Support ticket" data-ticket-id="{{ ticket.id }}" data-ticket-status="{{ raw_status }}" data-csrf-token="{{ csrf_token }}" data-max-attachments="{{ max_attachments }}" data-max-file-bytes="{{ max_attachment_bytes }}" data-max-message-chars="{{ max_message_chars }}">
+  <div class="support-ticket-shell">
+    <header class="support-ticket-header">
+      <a class="support-ticket-back" href="/support/my" aria-label="Back to my support tickets"><i class="bi bi-arrow-left"></i></a>
+      <div class="support-ticket-title">
+        <h1>Ticket #{{ ticket.id }}</h1>
+        <div class="support-ticket-subtitle">SEVOR Support</div>
+      </div>
+      <button class="support-ticket-details" id="ticketDetailsButton" type="button" aria-label="Ticket details" aria-haspopup="dialog"><i class="bi bi-info-lg"></i></button>
+    </header>
 
-<div class="container py-3 support-ticket-page" style="max-width:900px">
-
-  <!-- DESKTOP HEADER ONLY (لا يمسه شيء) -->
-  <div class="d-none d-md-flex align-items-center justify-content-between mb-3">
-    <div class="d-flex align-items-center gap-2">
-      <a href="/support/my" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-right"></i> Back</a>
-      <h4 class="m-0">Ticket #{{ ticket.id }}</h4>
-      {% if ticket.subject %}
-        <span class="text-muted small d-none d-sm-inline">— {{ ticket.subject }}</span>
-      {% endif %}
+    <div class="ticket-status-row">
+      <span id="ticketStatus" class="ticket-status ticket-status--{{ raw_status }}">{{ status_label }}</span>
+      <div class="ticket-meta"><span id="ticketCreated"></span><span id="ticketActivity"></span></div>
     </div>
 
-    <div class="d-flex align-items-center gap-2">
-      {% if ticket.status == 'resolved' %}
-        <span class="badge bg-success">Closed</span>
-      {% elif ticket.status == 'open' %}
-        <span class="badge bg-primary">Open</span>
-      {% else %}
-        <span class="badge bg-secondary">New</span>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- MOBILE TITLE (تمت إضافته أعلى الصفحة) -->
-  <div class="d-md-none" style="height:70px"></div>
-
-  <!-- Status banners -->
-  {% if ticket.status == 'resolved' %}
-    <div class="alert alert-success d-flex justify-content-between align-items-center" role="status">
+    <div class="ticket-info-card">
+      <span class="ticket-info-mark" aria-hidden="true"><i class="bi bi-headset"></i></span>
       <div>
-        ✅ The ticket has been resolved and closed.
-        {% if ticket.assignee %}
-          <strong>{{ ticket.assignee.first_name or 'Support Agent' }}</strong>
-        {% endif %}
-        {% if ticket.resolved_at %}
-          — <span class="text-muted">({{ (ticket.resolved_at|string)[:16] }})</span>
-        {% endif %}
-      </div>
-      <div class="small text-muted">
-        You can reply below to automatically reopen the ticket.
+        <strong>You're in touch with SEVOR Support</strong>
+        <p id="ticketInfoText">{% if ticket.assigned_to %}{{ ticket.assigned_to.first_name or 'A SEVOR support agent' }} is helping with this ticket.{% else %}A member of our team will help you as soon as possible.{% endif %}</p>
       </div>
     </div>
-  {% endif %}
 
-  {% if ticket.assigned_to_id and ticket.assignee %}
-    <div class="alert alert-info py-2">
-      This conversation is handled by: <strong>{{ ticket.assignee.first_name or 'Support Agent' }}</strong>.
-    </div>
-  {% endif %}
-
-  <!-- Body -->
-  <div class="row g-3">
-    <!-- Conversation -->
-    <div class="col-12 col-lg-8">
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <div class="fw-bold">Conversation</div>
-          <div class="small text-muted">
-            Last activity:
-            {{ (ticket.last_msg_at or ticket.updated_at or ticket.created_at)|string }}
-          </div>
-        </div>
-
-        <div class="card-body">
-          <div id="chat" class="chat-thread">
-            {% for m in msgs %}
-              {% set is_user = (m.sender_id == session_user.id) and (m.sender_role == 'user') %}
-              {% set is_agent = (m.sender_role == 'agent') %}
-              <div class="chat-row {{ 'me' if is_user else 'them' }}">
-                <div class="bubble">
-                  <div class="meta">
-                    <span class="name">
-                      {% if is_user %}Me{% elif m.sender and m.sender.first_name %}{{ m.sender.first_name }}{% else %}Support{% endif %}
-                    </span>
-                    <span class="time">{{ (m.created_at|string)[:16] }}</span>
+    <article class="ticket-stream-card">
+      <div id="ticketStream" class="ticket-stream" aria-live="polite" aria-relevant="additions text" tabindex="0">
+        {% if msgs %}
+          {% for m in msgs %}
+            {% set role = (m.sender_role or 'user')|lower %}
+            {% set sender_name = 'You' if role == 'user' else (m.sender.first_name if role == 'agent' and m.sender and m.sender.first_name else 'SEVOR Support') %}
+            {% if role == 'system' %}
+              <div class="ticket-system ticket-message" data-message-id="{{ m.id }}" data-created-at="{{ message_timestamps.get(m.id) or '' }}" data-role="system"><span>{{ m.body }}</span></div>
+            {% else %}
+              <div class="ticket-message ticket-message--{{ role }}" data-message-id="{{ m.id }}" data-created-at="{{ message_timestamps.get(m.id) or '' }}" data-role="{{ role }}" data-read-by-support="{{ '1' if m.id in read_by_support_ids or (role == 'user' and m.is_read) else '0' }}">
+                <div class="ticket-marker" aria-hidden="true">
+                  {% if role == 'agent' %}<img src="{{ url_for('static', path='images/ui/sevor-logo-96.png') }}" alt="">{% else %}Y{% endif %}
+                </div>
+                <div class="ticket-message-body">
+                  <div class="ticket-message-head"><strong>{{ sender_name }}</strong><time data-time="{{ message_timestamps.get(m.id) or '' }}"></time></div>
+                  <div class="ticket-bubble">
+                    {% if m.body %}<p class="ticket-message-text">{{ m.body }}</p>{% endif %}
+                    {% if m.attachments %}
+                      <div class="ticket-attachments">
+                      {% for attachment in m.attachments %}
+                        {% set is_image = attachment.content_type in ['image/jpeg', 'image/png', 'image/webp'] %}
+                        {% if is_image %}
+                          <button class="ticket-attachment-image" type="button" data-image-url="/support/ticket/{{ ticket.id }}/attachments/{{ attachment.id }}" data-image-name="{{ attachment.original_name }}" aria-label="Open {{ attachment.original_name }}"><img src="/support/ticket/{{ ticket.id }}/attachments/{{ attachment.id }}" alt="{{ attachment.original_name }}" loading="lazy"></button>
+                        {% else %}
+                          <a class="ticket-attachment-file" href="/support/ticket/{{ ticket.id }}/attachments/{{ attachment.id }}" target="_blank" rel="noopener">
+                            <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i><span><b>{{ attachment.original_name }}</b><small>{{ (attachment.size_bytes / 1024)|round(1) }} KB · PDF</small></span>
+                          </a>
+                        {% endif %}
+                      {% endfor %}
+                      </div>
+                    {% endif %}
+                    <div class="ticket-message-foot"><time data-time="{{ message_timestamps.get(m.id) or '' }}"></time>{% if role == 'user' %}<span class="ticket-receipt {% if m.id in read_by_support_ids or m.is_read %}ticket-receipt--read{% endif %}" aria-label="{{ 'Read by support' if m.id in read_by_support_ids or m.is_read else 'Sent' }}">{% if m.id in read_by_support_ids or m.is_read %}✓✓{% else %}✓{% endif %}</span>{% endif %}</div>
                   </div>
-                  <div class="text">{{ m.body | e | replace('\n','<br>') | safe }}</div>
                 </div>
               </div>
-            {% else %}
-              <div class="text-muted">No messages yet.</div>
-            {% endfor %}
+            {% endif %}
+          {% endfor %}
+        {% else %}
+          <div id="ticketEmpty" class="ticket-empty">
+            <div><span class="ticket-empty-icon" aria-hidden="true"><i class="bi bi-chat-square-text"></i></span><h2>Your support ticket is open</h2><p>You can send a message to SEVOR Support below. Your conversation will appear here.</p></div>
           </div>
-        </div>
-
-        <div class="card-footer">
-          {% if ticket.status == 'resolved' %}
-            <div class="alert alert-warning py-2 mb-2">
-              This ticket is currently closed. Sending a new reply will automatically reopen it and notify the support agent.
-            </div>
-          {% endif %}
-
-          <form method="post" action="/support/ticket/{{ ticket.id }}/reply">
-            <div class="mb-2">
-              <textarea name="body" class="form-control" rows="3" placeholder="Write your message to support…" required></textarea>
-            </div>
-            <div class="d-flex justify-content-end gap-2">
-              <a href="/support/my" class="btn btn-outline-secondary">Cancel</a>
-              <button class="btn btn-primary" type="submit">Send</button>
-            </div>
-          </form>
-        </div>
+        {% endif %}
       </div>
-    </div>
+      <button id="ticketNewMessage" class="ticket-new-message" type="button" hidden><i class="bi bi-arrow-down"></i> New message</button>
 
-    <!-- Ticket info -->
-    <div class="col-12 col-lg-4">
-      <div class="card h-100">
-        <div class="card-header fw-bold">Details</div>
-        <div class="list-group list-group-flush">
-          <div class="list-group-item d-flex justify-content-between">
-            <span class="text-muted">ID</span>
-            <span>#{{ ticket.id }}</span>
+      <div class="ticket-composer">
+        <div id="ticketClosedNote" class="ticket-closed-note {% if closed_ticket %}is-visible{% endif %}">This ticket is closed. You can still review the full conversation above.</div>
+        <form id="ticketComposer" method="post" action="/support/ticket/{{ ticket.id }}/reply" enctype="multipart/form-data" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input id="ticketClientMessageId" type="hidden" name="client_message_id" value="">
+          <div id="ticketAttachmentPreview" class="ticket-composer-preview" aria-live="polite"></div>
+          <div class="ticket-composer-row">
+            <label class="ticket-attach" title="Attach an image or PDF" aria-label="Attach an image or PDF">
+              <i class="bi bi-paperclip" aria-hidden="true"></i>
+              <input id="ticketAttachments" name="attachments" type="file" accept="{{ attachment_accept }}" multiple {% if closed_ticket %}disabled{% endif %}>
+            </label>
+            <label class="visually-hidden" for="ticketBody">Write a message</label>
+            <textarea id="ticketBody" name="body" rows="1" maxlength="{{ max_message_chars }}" placeholder="Write a message..." {% if closed_ticket %}disabled{% endif %}></textarea>
+            <button id="ticketSend" class="ticket-send" type="submit" aria-label="Send message" {% if closed_ticket %}disabled{% endif %}><i class="bi bi-send-fill" aria-hidden="true"></i></button>
           </div>
-          <div class="list-group-item">
-            <div class="text-muted">Subject</div>
-            <div>{{ ticket.subject or 'No subject' }}</div>
-          </div>
-          <div class="list-group-item d-flex justify-content-between">
-            <span class="text-muted">Status</span>
-            <span>
-              {% if ticket.status == 'resolved' %}
-                Closed
-              {% elif ticket.status == 'open' %}
-                Open
-              {% else %}
-                New
-              {% endif %}
-            </span>
-          </div>
-          <div class="list-group-item">
-            <div class="text-muted">Assigned to</div>
-            <div>
-              {% if ticket.assignee %}
-                {{ ticket.assignee.first_name or 'Support Agent' }}
-              {% else %}
-                <span class="text-muted">Not yet assigned</span>
-              {% endif %}
-            </div>
-          </div>
-          <div class="list-group-item d-flex justify-content-between">
-            <span class="text-muted">Created</span>
-            <span>{{ (ticket.created_at|string)[:16] }}</span>
-          </div>
-          <div class="list-group-item d-flex justify-content-between">
-            <span class="text-muted">Last updated</span>
-            <span>{{ (ticket.updated_at|string)[:16] }}</span>
-          </div>
-          {% if ticket.resolved_at %}
-            <div class="list-group-item d-flex justify-content-between">
-              <span class="text-muted">Resolved at</span>
-              <span>{{ (ticket.resolved_at|string)[:16] }}</span>
-            </div>
-          {% endif %}
-          {% if ticket.last_msg_at %}
-            <div class="list-group-item d-flex justify-content-between">
-              <span class="text-muted">Last message</span>
-              <span>{{ (ticket.last_msg_at|string)[:16] }}</span>
-            </div>
-          {% endif %}
-        </div>
+          <div class="ticket-composer-help"><span>Images or PDF · up to {{ (max_attachment_bytes / 1024 / 1024)|round(0)|int }} MB each</span><span>Enter to send · Shift+Enter for a new line</span></div>
+          <div id="ticketComposerStatus" class="ticket-composer-status" role="status"></div>
+          <div id="ticketComposerError" class="ticket-composer-error" role="alert"></div>
+        </form>
       </div>
-    </div>
+    </article>
   </div>
-</div>
+</section>
+
+<dialog id="ticketDetailsDialog" class="ticket-details-dialog" aria-labelledby="ticketDetailsTitle">
+  <div class="ticket-details-inner">
+    <div class="ticket-details-top"><h2 id="ticketDetailsTitle">Ticket details</h2><button class="ticket-dialog-close" type="button" aria-label="Close details"><i class="bi bi-x-lg"></i></button></div>
+    <dl class="ticket-detail-list">
+      <div><dt>Ticket ID</dt><dd>#{{ ticket.id }}</dd></div>
+      <div><dt>Status</dt><dd id="ticketDetailStatus">{{ status_label }}</dd></div>
+      <div><dt>Subject</dt><dd>{{ ticket.subject or 'Support request' }}</dd></div>
+      <div><dt>Created</dt><dd id="ticketDetailCreated"></dd></div>
+      <div><dt>Last activity</dt><dd id="ticketDetailActivity"></dd></div>
+      {% if ticket.assigned_to %}<div><dt>Assigned support agent</dt><dd id="ticketAssignedAgent">{{ ticket.assigned_to.first_name or 'SEVOR Support' }}</dd></div>{% endif %}
+    </dl>
+  </div>
+</dialog>
+<dialog id="ticketImageDialog" class="ticket-lightbox"><button id="ticketImageClose" class="ticket-lightbox-close" type="button" aria-label="Close image preview"><i class="bi bi-x-lg"></i></button><img id="ticketImagePreview" alt=""></dialog>
 
 <script>
-(function(){
-  const chat = document.getElementById('chat');
-  if (chat){ setTimeout(()=>{ chat.scrollTop = chat.scrollHeight; }, 50); }
-})();
-
-function syncTicketSticky() {
-    const bar = document.getElementById("ticketSticky");
-    const back = document.querySelector(".back-btn-ios");
-    const shown = window.scrollY > 120;
-
-    if (shown) {
-        bar.classList.add("show");
+(() => {
+  "use strict";
+  const page = document.querySelector(".support-ticket-page");
+  if (!page) return;
+  const config = {
+    ticketId: Number(page.dataset.ticketId), csrf: page.dataset.csrfToken || "", status: page.dataset.ticketStatus || "new",
+    maxAttachments: Number(page.dataset.maxAttachments || 4), maxFileBytes: Number(page.dataset.maxFileBytes || 0), maxChars: Number(page.dataset.maxMessageChars || 6000)
+  };
+  const initialTimes = {{ ticket_timestamps|tojson }};
+  const stream = document.getElementById("ticketStream"), form = document.getElementById("ticketComposer"), body = document.getElementById("ticketBody"), picker = document.getElementById("ticketAttachments"), preview = document.getElementById("ticketAttachmentPreview"), send = document.getElementById("ticketSend"), statusText = document.getElementById("ticketComposerStatus"), error = document.getElementById("ticketComposerError"), newButton = document.getElementById("ticketNewMessage"), empty = document.getElementById("ticketEmpty"), closedNote = document.getElementById("ticketClosedNote"), statusEl = document.getElementById("ticketStatus"), clientId = document.getElementById("ticketClientMessageId");
+  const detailsDialog = document.getElementById("ticketDetailsDialog"), detailsButton = document.getElementById("ticketDetailsButton"), imageDialog = document.getElementById("ticketImageDialog"), imagePreview = document.getElementById("ticketImagePreview");
+  let latestId = 0, isSending = false, pollTimer = null, objectUrls = [], selectedFiles = [];
+  const statusLabels = {new:"Waiting", open:"Open", resolved:"Resolved", closed:"Closed"};
+  const accepted = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
+  const formatter = new Intl.DateTimeFormat(navigator.language || "en", {hour:"numeric", minute:"2-digit"});
+  const fullFormatter = new Intl.DateTimeFormat(navigator.language || "en", {year:"numeric", month:"short", day:"numeric", hour:"numeric", minute:"2-digit"});
+  const dateFormatter = new Intl.DateTimeFormat(navigator.language || "en", {month:"short", day:"numeric", year:"numeric"});
+  const escapeTime = (value) => { const date = value ? new Date(value) : null; return date && !Number.isNaN(date.valueOf()) ? date : null; };
+  const formatTime = (value) => { const date = escapeTime(value); return date ? formatter.format(date) : ""; };
+  const formatFull = (value) => { const date = escapeTime(value); return date ? fullFormatter.format(date) : "—"; };
+  const dateKey = (value) => { const d = escapeTime(value); return d ? [d.getFullYear(), d.getMonth(), d.getDate()].join("-") : ""; };
+  const dateTitle = (value) => {
+    const d = escapeTime(value); if (!d) return "";
+    const now = new Date(), today = dateKey(now), yesterday = dateKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+    if (dateKey(d) === today) return "Today"; if (dateKey(d) === yesterday) return "Yesterday"; return dateFormatter.format(d);
+  };
+  const create = (tag, className, text) => { const el = document.createElement(tag); if (className) el.className = className; if (text !== undefined) el.textContent = text; return el; };
+  const fileSize = (bytes) => bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  const nowAtBottom = () => stream.scrollHeight - stream.scrollTop - stream.clientHeight < 100;
+  const scrollLatest = (smooth = false) => stream.scrollTo({top: stream.scrollHeight, behavior: smooth ? "smooth" : "auto"});
+  const removeDateSeparators = () => stream.querySelectorAll(".ticket-date-separator").forEach(el => el.remove());
+  const addDateSeparators = () => {
+    removeDateSeparators(); let prior = "";
+    [...stream.querySelectorAll("[data-message-id]")].forEach(message => {
+      const value = message.dataset.createdAt || "", key = dateKey(value);
+      if (key && key !== prior) { const divider = create("div", "ticket-date-separator"); divider.append(create("span", "", dateTitle(value))); stream.insertBefore(divider, message); prior = key; }
+    });
+  };
+  const refreshTimeLabels = () => stream.querySelectorAll("time[data-time]").forEach(el => { el.textContent = formatTime(el.dataset.time); el.dateTime = el.dataset.time || ""; });
+  const latestMessageId = () => [...stream.querySelectorAll("[data-message-id]")].reduce((max, el) => Math.max(max, Number(el.dataset.messageId || 0)), 0);
+  const isImage = (attachment) => Boolean(attachment && attachment.is_image);
+  const addAttachment = (container, attachment) => {
+    if (!attachment || !attachment.url) return;
+    if (isImage(attachment)) {
+      const button = create("button", "ticket-attachment-image"); button.type = "button"; button.dataset.imageUrl = attachment.url; button.dataset.imageName = attachment.name || "Attachment"; button.setAttribute("aria-label", `Open ${attachment.name || "image"}`);
+      const img = document.createElement("img"); img.src = attachment.url; img.alt = attachment.name || "Attachment"; img.loading = "lazy"; button.append(img); container.append(button);
     } else {
-        bar.classList.remove("show");
+      const link = create("a", "ticket-attachment-file"); link.href = attachment.url; link.target = "_blank"; link.rel = "noopener";
+      const icon = create("i", "bi bi-file-earmark-pdf"); icon.setAttribute("aria-hidden", "true"); const text = create("span"); text.append(create("b", "", attachment.name || "Attachment"), create("small", "", `${fileSize(Number(attachment.size_bytes || 0))} · PDF`)); link.append(icon, text); container.append(link);
     }
-    if (back) back.classList.toggle("is-hidden", shown);
-}
-window.addEventListener("scroll", syncTicketSticky, { passive: true });
-syncTicketSticky();
+  };
+  const renderMessage = (message) => {
+    const role = String(message.sender_role || "user").toLowerCase(), root = create("div", role === "system" ? "ticket-system ticket-message" : `ticket-message ticket-message--${role}`);
+    root.dataset.messageId = String(message.id); root.dataset.createdAt = message.created_at || ""; root.dataset.role = role;
+    latestId = Math.max(latestId, Number(message.id || 0));
+    if (role === "system") { root.append(create("span", "", message.body || "System update")); return root; }
+    root.dataset.readBySupport = message.read_by_support ? "1" : "0";
+    const marker = create("div", "ticket-marker"); marker.setAttribute("aria-hidden", "true");
+    if (role === "agent") { const logo = document.createElement("img"); logo.src = "{{ url_for('static', path='images/ui/sevor-logo-96.png') }}"; logo.alt = ""; marker.append(logo); } else marker.textContent = "Y";
+    const content = create("div", "ticket-message-body"), head = create("div", "ticket-message-head"), label = create("strong", "", message.sender_name || (role === "user" ? "You" : "SEVOR Support")), headerTime = create("time"); headerTime.dataset.time = message.created_at || ""; head.append(label, headerTime);
+    const bubble = create("div", "ticket-bubble"); if (message.body) bubble.append(create("p", "ticket-message-text", message.body));
+    if (Array.isArray(message.attachments) && message.attachments.length) { const group = create("div", "ticket-attachments"); message.attachments.forEach(item => addAttachment(group, item)); bubble.append(group); }
+    const foot = create("div", "ticket-message-foot"), footTime = create("time"); footTime.dataset.time = message.created_at || ""; foot.append(footTime);
+    if (role === "user") { const read = Boolean(message.read_by_support); const receipt = create("span", `ticket-receipt${read ? " ticket-receipt--read" : ""}`, read ? "✓✓" : "✓"); receipt.setAttribute("aria-label", read ? "Read by support" : "Sent"); foot.append(receipt); }
+    bubble.append(foot); content.append(head, bubble); root.append(marker, content); return root;
+  };
+  const refreshReceipts = (ids) => {
+    const viewed = new Set((ids || []).map(Number)); stream.querySelectorAll('.ticket-message--user[data-message-id]').forEach(el => { const read = viewed.has(Number(el.dataset.messageId)); el.dataset.readBySupport = read ? "1" : "0"; const receipt = el.querySelector(".ticket-receipt"); if (receipt) { receipt.textContent = read ? "✓✓" : "✓"; receipt.classList.toggle("ticket-receipt--read", read); receipt.setAttribute("aria-label", read ? "Read by support" : "Sent"); } });
+  };
+  const updateStatus = (ticket) => {
+    if (!ticket) return; const raw = String(ticket.status || config.status || "new").toLowerCase(); config.status = raw; page.dataset.ticketStatus = raw;
+    statusEl.className = `ticket-status ticket-status--${raw}`; statusEl.textContent = statusLabels[raw] || raw.replaceAll("_", " ");
+    const closed = raw === "closed"; closedNote.classList.toggle("is-visible", closed); body.disabled = closed; picker.disabled = closed; send.disabled = closed || isSending;
+    if (ticket.updated_at || ticket.last_activity_at) applyHeaderTimes(ticket.updated_at || initialTimes.updated, ticket.last_activity_at || initialTimes.last_activity);
+    if (ticket.assigned_agent) document.getElementById("ticketInfoText").textContent = `${ticket.assigned_agent} is helping with this ticket.`;
+  };
+  const applyHeaderTimes = (updated, activity) => {
+    document.getElementById("ticketCreated").textContent = `Created ${formatFull(initialTimes.created)}`;
+    document.getElementById("ticketActivity").textContent = `Last activity ${formatFull(activity || updated || initialTimes.last_activity)}`;
+    document.getElementById("ticketDetailCreated").textContent = formatFull(initialTimes.created); document.getElementById("ticketDetailActivity").textContent = formatFull(activity || updated || initialTimes.last_activity);
+    document.getElementById("ticketDetailStatus").textContent = statusLabels[config.status] || config.status;
+  };
+  const replaceInputFiles = () => { const transfer = new DataTransfer(); selectedFiles.forEach(file => transfer.items.add(file)); picker.files = transfer.files; };
+  const clearObjectUrls = () => { objectUrls.forEach(url => URL.revokeObjectURL(url)); objectUrls = []; };
+  const renderPreviews = () => {
+    clearObjectUrls(); preview.replaceChildren();
+    selectedFiles.forEach((file, index) => { const item = create("div", "ticket-preview"); if (file.type.startsWith("image/")) { const img = document.createElement("img"); img.className = "ticket-preview-image"; const url = URL.createObjectURL(file); objectUrls.push(url); img.src = url; img.alt = ""; item.append(img); } else { const icon = create("span", "ticket-preview-icon"); icon.append(create("i", "bi bi-file-earmark-pdf")); item.append(icon); } const details = create("div"); details.append(create("div", "ticket-preview-name", file.name), create("div", "ticket-preview-size", fileSize(file.size))); const remove = create("button", "ticket-preview-remove", "×"); remove.type = "button"; remove.setAttribute("aria-label", `Remove ${file.name}`); remove.addEventListener("click", () => { selectedFiles.splice(index, 1); replaceInputFiles(); renderPreviews(); }); item.append(details, remove); preview.append(item); });
+  };
+  const setSending = (value) => { isSending = value; send.disabled = value || config.status === "closed"; picker.disabled = value || config.status === "closed"; body.disabled = value || config.status === "closed"; statusText.textContent = value ? (selectedFiles.length ? "Uploading attachment…" : "Sending message…") : ""; };
+  const showError = (value) => { error.textContent = value || ""; };
+  const showDialog = (dialog) => { if (typeof dialog.showModal === "function") dialog.showModal(); else dialog.setAttribute("open", ""); };
+  const closeDialog = (dialog) => { if (typeof dialog.close === "function") dialog.close(); else dialog.removeAttribute("open"); };
+  const ensureClientId = () => { if (!clientId.value) clientId.value = typeof crypto.randomUUID === "function" ? crypto.randomUUID().replaceAll("-", "") : `support_${Date.now()}_${Math.random().toString(36).slice(2)}`; return clientId.value; };
+  const postRead = async () => { if (document.hidden) return; try { const fd = new FormData(); fd.append("csrf_token", config.csrf); await fetch(`/support/ticket/${config.ticketId}/read`, {method:"POST", body:fd, credentials:"same-origin"}); } catch (_) { /* A later visible poll safely retries. */ } };
+  const poll = async () => {
+    if (document.hidden || !config.ticketId) return; try {
+      const res = await fetch(`/support/ticket/${config.ticketId}/updates?after_id=${latestId}`, {credentials:"same-origin", headers:{Accept:"application/json"}}); if (!res.ok) return;
+      const data = await res.json(), nearBottom = nowAtBottom(), messages = Array.isArray(data.messages) ? data.messages : [];
+      if (messages.length) { if (empty) empty.remove(); messages.forEach(message => stream.append(renderMessage(message))); addDateSeparators(); refreshTimeLabels(); if (nearBottom) scrollLatest(true); else newButton.hidden = false; postRead(); }
+      refreshReceipts(data.read_by_support_message_ids); updateStatus(data.ticket);
+    } catch (_) { /* Polling is progressive enhancement; the persisted view remains usable. */ }
+  };
+  picker.addEventListener("change", () => {
+    showError(""); const incoming = [...picker.files]; if (incoming.length > config.maxAttachments) { showError(`You can attach up to ${config.maxAttachments} files.`); picker.value = ""; return; }
+    for (const file of incoming) { if (!accepted.has(file.type)) { showError("Only JPEG, PNG, WebP, and PDF files are allowed."); picker.value = ""; return; } if (config.maxFileBytes && file.size > config.maxFileBytes) { showError(`Each attachment must be ${Math.round(config.maxFileBytes / 1024 / 1024)} MB or smaller.`); picker.value = ""; return; } }
+    selectedFiles = incoming; renderPreviews();
+  });
+  body.addEventListener("input", () => { body.style.height = "auto"; body.style.height = `${Math.min(body.scrollHeight, 118)}px`; });
+  body.addEventListener("keydown", event => { if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); form.requestSubmit(); } });
+  form.addEventListener("submit", async event => {
+    event.preventDefault(); if (isSending || config.status === "closed") return;
+    const text = body.value.trim(); if (!text && !selectedFiles.length) { showError("Write a message or attach a file before sending."); body.focus(); return; }
+    showError(""); setSending(true); ensureClientId(); const fd = new FormData(form); fd.delete("attachments"); selectedFiles.forEach(file => fd.append("attachments", file, file.name));
+    try { const res = await fetch(form.action, {method:"POST", body:fd, credentials:"same-origin", headers:{Accept:"application/json"}}); let data = null; try { data = await res.json(); } catch (_) {}
+      if (!res.ok || !data || !data.ok) throw new Error((data && data.detail) || "Your message could not be sent. Please try again.");
+      if (data.created && data.message && !stream.querySelector(`[data-message-id="${data.message.id}"]`)) { if (empty) empty.remove(); stream.append(renderMessage(data.message)); addDateSeparators(); refreshTimeLabels(); scrollLatest(true); }
+      if (data.ticket) updateStatus(data.ticket); body.value = ""; body.style.height = "auto"; selectedFiles = []; picker.value = ""; clearObjectUrls(); preview.replaceChildren(); clientId.value = ""; body.focus();
+    } catch (err) { showError(err && err.message ? err.message : "Your message could not be sent. Please try again."); }
+    finally { setSending(false); }
+  });
+  stream.addEventListener("click", event => { const button = event.target.closest(".ticket-attachment-image"); if (!button) return; imagePreview.src = button.dataset.imageUrl || ""; imagePreview.alt = button.dataset.imageName || "Image attachment"; showDialog(imageDialog); });
+  newButton.addEventListener("click", () => { scrollLatest(true); newButton.hidden = true; });
+  detailsButton.addEventListener("click", () => showDialog(detailsDialog));
+  document.querySelectorAll(".ticket-dialog-close, #ticketImageClose").forEach(button => button.addEventListener("click", () => closeDialog(button.closest("dialog"))));
+  [detailsDialog, imageDialog].forEach(dialog => dialog.addEventListener("click", event => { if (event.target === dialog) closeDialog(dialog); }));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { postRead(); poll(); } });
+  stream.addEventListener("scroll", () => { if (nowAtBottom()) newButton.hidden = true; }, {passive:true});
+  Object.entries(initialTimes).forEach(([key, value]) => { if (key === "last_activity") initialTimes.last_activity = value; });
+  latestId = latestMessageId(); addDateSeparators(); refreshTimeLabels(); applyHeaderTimes(initialTimes.updated, initialTimes.last_activity); updateStatus({status:config.status}); scrollLatest(false); postRead();
+  pollTimer = window.setInterval(poll, 5000); window.addEventListener("pagehide", () => { if (pollTimer) window.clearInterval(pollTimer); clearObjectUrls(); }, {once:true});
+})();
 </script>
-
 {% endblock %}

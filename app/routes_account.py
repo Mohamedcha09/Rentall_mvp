@@ -4,13 +4,16 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import or_
 
 from .database import get_db
 from .models import (
     User, Item, Booking, ItemReview, Favorite, SupportTicket, MessageThread,
     Message, Rating, Report, ReportActionLog, Notification, FreezeDeposit,
-    DepositAuditLog, DepositEvidence, Order, SupportMessage, UserReview
+    DepositAuditLog, DepositEvidence, Order, SupportMessage, SupportAttachment,
+    SupportMessageReceipt, UserReview
 )
+from .support_attachments import remove_saved_attachment_files
 
 # نستخدم الـ templates مباشرة (بدون استيراد من main)
 templates = Jinja2Templates(directory="app/templates")
@@ -88,9 +91,45 @@ def account_delete_confirm(request: Request, db: Session = Depends(get_db)):
     db.query(ReportActionLog).filter(ReportActionLog.actor_id == uid).delete()
     db.query(Report).filter(Report.reporter_id == uid).delete()
 
-    # تذاكر الدعم
-    db.query(SupportMessage).filter(SupportMessage.sender_id == uid).delete()
-    db.query(SupportTicket).filter(SupportTicket.user_id == uid).delete()
+    # تذاكر الدعم.  Their attachments are private files outside the public
+    # uploads mount, so collect them before the relational cleanup and remove
+    # their physical bytes only after the database transaction succeeds.
+    owned_ticket_ids = [
+        row[0]
+        for row in db.query(SupportTicket.id).filter(SupportTicket.user_id == uid).all()
+    ]
+    ticket_or_sender = (
+        or_(SupportMessage.ticket_id.in_(owned_ticket_ids), SupportMessage.sender_id == uid)
+        if owned_ticket_ids
+        else (SupportMessage.sender_id == uid)
+    )
+    attachment_ticket_or_uploader = (
+        or_(SupportAttachment.ticket_id.in_(owned_ticket_ids), SupportAttachment.uploader_id == uid)
+        if owned_ticket_ids
+        else (SupportAttachment.uploader_id == uid)
+    )
+    support_attachments = db.query(SupportAttachment).filter(attachment_ticket_or_uploader).all()
+    private_attachment_names = [attachment.stored_name for attachment in support_attachments]
+    support_message_ids = [
+        row[0]
+        for row in db.query(SupportMessage.id)
+        .filter(ticket_or_sender)
+        .all()
+    ]
+    if support_message_ids:
+        db.query(SupportMessageReceipt).filter(
+            or_(
+                SupportMessageReceipt.message_id.in_(support_message_ids),
+                SupportMessageReceipt.reader_id == uid,
+            )
+        ).delete(synchronize_session=False)
+    else:
+        db.query(SupportMessageReceipt).filter(
+            SupportMessageReceipt.reader_id == uid
+        ).delete(synchronize_session=False)
+    db.query(SupportAttachment).filter(attachment_ticket_or_uploader).delete(synchronize_session=False)
+    db.query(SupportMessage).filter(ticket_or_sender).delete(synchronize_session=False)
+    db.query(SupportTicket).filter(SupportTicket.user_id == uid).delete(synchronize_session=False)
 
     # الإشعارات
     db.query(Notification).filter(Notification.user_id == uid).delete()
@@ -109,6 +148,7 @@ def account_delete_confirm(request: Request, db: Session = Depends(get_db)):
     db.query(User).filter(User.id == uid).delete()
 
     db.commit()
+    remove_saved_attachment_files(private_attachment_names)
 
     # حذف الجلسة + الكوكي
     request.session.clear()

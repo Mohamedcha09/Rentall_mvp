@@ -1,6 +1,6 @@
 # app/md.py
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Request, Depends, Form
+from fastapi import APIRouter, Request, Depends, File, Form, UploadFile
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -9,6 +9,13 @@ from sqlalchemy import desc, text
 from .database import get_db
 from .models import SupportTicket, SupportMessage, User
 from .notifications_api import push_notification
+from .support import (
+    create_legacy_support_message,
+    mark_legacy_ticket_messages_read,
+    staff_can_view_legacy_ticket,
+)
+from .support_ai import get_or_create_csrf_token, require_csrf
+from .support_attachments import allowed_accept_value, max_attachment_bytes
 
 templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(prefix="/md", tags=["md"])
@@ -192,19 +199,42 @@ def md_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     if qval != "md":
         return RedirectResponse(f"/md/inbox?tid={tid}", status_code=303)
 
+    staff_user = db.get(User, u_md["id"])
+    if not staff_user or not staff_can_view_legacy_ticket(t, staff_user):
+        return RedirectResponse("/md/inbox", status_code=303)
+
     now = datetime.utcnow()
     if t.assigned_to_id is None:
         t.assigned_to_id = u_md["id"]
         t.status = "open"
         t.updated_at = now
 
-    t.unread_for_agent = False
+    # This receipt records an actual staff view, rather than treating a reply
+    # or a timeout as proof that the customer message was read.
+    mark_legacy_ticket_messages_read(
+        db,
+        ticket=t,
+        reader=staff_user,
+        reader_role="agent",
+    )
+    # ``mark_legacy_ticket_messages_read`` commits when it changes a receipt;
+    # commit here too so an automatic first assignment is never left pending
+    # when every message had already been read.
     db.commit()
 
     return templates.TemplateResponse(
         request=request,
         name="md_ticket.html",
-        context={"request": request, "session_user": u_md, "ticket": t, "msgs": t.messages, "title": f"Ticket #{t.id} (MD)"},
+        context={
+            "request": request,
+            "session_user": u_md,
+            "ticket": t,
+            "msgs": t.messages,
+            "title": f"Ticket #{t.id} (MD)",
+            "csrf_token": get_or_create_csrf_token(request),
+            "attachment_accept": allowed_accept_value(),
+            "max_attachment_bytes": max_attachment_bytes(),
+        },
     )
 
 
@@ -212,7 +242,12 @@ def md_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
 # Take over the ticket (Assign to me)
 # ---------------------------
 @router.post("/tickets/{ticket_id}/assign_self")
-def md_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_db)):
+def md_assign_self(
+    ticket_id: int,
+    request: Request,
+    csrf_token: str = Form(""),
+    db: Session = Depends(get_db),
+):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
@@ -223,6 +258,8 @@ def md_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_d
     t = db.get(SupportTicket, ticket_id)
     if not _is_legacy_ticket(t):
         return RedirectResponse("/md/inbox", status_code=303)
+    if str(t.status or "").lower() == "closed":
+        return RedirectResponse(f"/md/ticket/{ticket_id}", status_code=303)
 
     if t.status == "resolved":
         return RedirectResponse(f"/md/ticket/{ticket_id}", status_code=303)
@@ -230,6 +267,11 @@ def md_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_d
     row = db.execute(text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"), {"tid": ticket_id}).first()
     if not row or (row[0] or "cs") != "md":
         return RedirectResponse("/md/inbox", status_code=303)
+
+    staff_user = db.get(User, u_md["id"])
+    if not staff_user or not staff_can_view_legacy_ticket(t, staff_user):
+        return RedirectResponse("/md/inbox", status_code=303)
+    require_csrf(request, csrf_token)
 
     t.assigned_to_id = u_md["id"]
     t.status = "open"
@@ -257,7 +299,15 @@ def md_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_d
 # MD reply to ticket
 # ---------------------------
 @router.post("/ticket/{tid}/reply")
-def md_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), body: str = Form("")):
+async def md_ticket_reply(
+    tid: int,
+    request: Request,
+    body: str = Form(""),
+    csrf_token: str = Form(""),
+    client_message_id: str = Form(""),
+    attachments: list[UploadFile] | None = File(None),
+    db: Session = Depends(get_db),
+):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
@@ -276,39 +326,36 @@ def md_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
     if not row or (row[0] or "cs") != "md":
         return RedirectResponse("/md/inbox", status_code=303)
 
-    now = datetime.utcnow()
-    msg = SupportMessage(
-        ticket_id=t.id,
-        sender_id=u_md["id"],
+    staff_user = db.get(User, u_md["id"])
+    if not staff_user or not staff_can_view_legacy_ticket(t, staff_user):
+        return RedirectResponse("/md/inbox", status_code=303)
+    require_csrf(request, csrf_token)
+
+    _message, created = await create_legacy_support_message(
+        db,
+        request=request,
+        ticket=t,
+        sender=staff_user,
         sender_role="agent",
-        body=(body or "").strip() or "(No text)",
-        created_at=now,
+        body=body,
+        uploads=attachments,
+        client_message_id=client_message_id,
     )
-    db.add(msg)
 
-    t.last_msg_at = now
-    t.updated_at = now
-    t.last_from = "agent"
-    if not t.assigned_to_id:
-        t.assigned_to_id = u_md["id"]
-    t.status = "open"
-    t.unread_for_user = True
-    t.unread_for_agent = False
-
-    try:
-        agent_name = (request.session["user"].get("first_name") or "").strip() or "Deposit Manager"
-        push_notification(
-            db,
-            t.user_id,
-            "💬 Reply from Deposit Management (MD)",
-            f"{agent_name} replied to your ticket #{t.id}",
-            url=f"/support/ticket/{t.id}",
-            kind="support",
-        )
-    except Exception:
-        pass
-
-    db.commit()
+    if created:
+        try:
+            agent_name = (request.session["user"].get("first_name") or "").strip() or "Deposit Manager"
+            push_notification(
+                db,
+                t.user_id,
+                "💬 Reply from Deposit Management (MD)",
+                f"{agent_name} replied to your ticket #{t.id}",
+                url=f"/support/ticket/{t.id}",
+                kind="support",
+            )
+            db.commit()
+        except Exception:
+            db.rollback()
     return RedirectResponse(f"/md/ticket/{t.id}", status_code=303)
 
 
@@ -316,7 +363,12 @@ def md_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), b
 # Resolve the ticket (final)
 # ---------------------------
 @router.post("/tickets/{ticket_id}/resolve")
-def md_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
+def md_resolve(
+    ticket_id: int,
+    request: Request,
+    csrf_token: str = Form(""),
+    db: Session = Depends(get_db),
+):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
@@ -327,10 +379,17 @@ def md_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     t = db.get(SupportTicket, ticket_id)
     if not _is_legacy_ticket(t):
         return RedirectResponse("/md/inbox", status_code=303)
+    if str(t.status or "").lower() == "closed":
+        return RedirectResponse(f"/md/ticket/{ticket_id}", status_code=303)
 
     row = db.execute(text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"), {"tid": ticket_id}).first()
     if not row or (row[0] or "cs") != "md":
         return RedirectResponse("/md/inbox", status_code=303)
+
+    staff_user = db.get(User, u_md["id"])
+    if not staff_user or not staff_can_view_legacy_ticket(t, staff_user):
+        return RedirectResponse("/md/inbox", status_code=303)
+    require_csrf(request, csrf_token)
 
     now = datetime.utcnow()
     agent_name = (request.session["user"].get("first_name") or "").strip() or "Deposit Manager"
@@ -372,7 +431,12 @@ def md_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
 # Transfer the ticket to Moderator (MOD)
 # ---------------------------
 @router.post("/tickets/{ticket_id}/transfer_to_mod")
-def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(get_db)):
+def md_transfer_to_mod(
+    ticket_id: int,
+    request: Request,
+    csrf_token: str = Form(""),
+    db: Session = Depends(get_db),
+):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
@@ -383,8 +447,18 @@ def md_transfer_to_mod(ticket_id: int, request: Request, db: Session = Depends(g
     t = db.get(SupportTicket, ticket_id)
     if not _is_legacy_ticket(t):
         return RedirectResponse("/md/inbox", status_code=303)
+    if str(t.status or "").lower() == "closed":
+        return RedirectResponse(f"/md/ticket/{ticket_id}", status_code=303)
     if t.status == "resolved":
         return RedirectResponse(f"/md/ticket/{ticket_id}", status_code=303)
+
+    row = db.execute(text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"), {"tid": ticket_id}).first()
+    if not row or (row[0] or "cs") != "md":
+        return RedirectResponse("/md/inbox", status_code=303)
+    staff_user = db.get(User, u_md["id"])
+    if not staff_user or not staff_can_view_legacy_ticket(t, staff_user):
+        return RedirectResponse("/md/inbox", status_code=303)
+    require_csrf(request, csrf_token)
 
     now = datetime.utcnow()
     # 1) Move ticket to mod and record system_md message (direction: MD → MOD)

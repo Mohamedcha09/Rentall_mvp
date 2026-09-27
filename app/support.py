@@ -5,7 +5,7 @@ from typing import Sequence
 
 from fastapi import APIRouter, Request, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, HTMLResponse
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, lazyload, selectinload
 
 from .database import get_db
 from .models import SupportAttachment, SupportMessage, SupportMessageReceipt, SupportTicket, User
@@ -22,6 +22,7 @@ from .support_attachments import (
     allowed_accept_value,
     cleanup_staged_attachments,
     max_attachment_bytes,
+    max_attachments_per_message,
     persist_staged_support_attachments,
     remove_saved_attachment_files,
     serialize_support_attachment,
@@ -82,13 +83,18 @@ def staff_can_view_legacy_ticket(ticket: SupportTicket, user: User | None) -> bo
     if _is_admin(user):
         return True
     queue = str(getattr(ticket, "queue", None) or "cs").strip().lower()
-    if ticket.assigned_to_id == user.id:
-        return True
-    if queue == "cs":
+    # Once a legacy ticket has an assignee, do not let another queue member
+    # fetch private files simply because they share a role.
+    if ticket.assigned_to_id:
+        return ticket.assigned_to_id == user.id
+    # Some older legacy rows inherited the model's historic chatbot queue
+    # default.  They are still legacy tickets (guarded above), so preserve the
+    # intended human team mapping without granting chatbot-ticket access here.
+    if queue in {"cs", "cs_chatbot"}:
         return bool(getattr(user, "is_support", False))
-    if queue == "md":
+    if queue in {"md", "md_chatbot"}:
         return bool(getattr(user, "is_deposit_manager", False))
-    if queue == "mod":
+    if queue in {"mod", "mod_chatbot"}:
         return bool(getattr(user, "is_mod", False))
     return False
 
@@ -227,13 +233,13 @@ async def create_legacy_support_message(
         raise HTTPException(status_code=404, detail="Support ticket not found")
     if sender_role not in {"user", "agent"}:
         raise HTTPException(status_code=422, detail="Unsupported sender role")
-
     message_key = validate_client_message_id(client_message_id)
     if message_key:
         existing = (
             db.query(SupportMessage)
             .filter(
                 SupportMessage.ticket_id == ticket.id,
+                SupportMessage.sender_id == sender.id,
                 SupportMessage.client_message_id == message_key,
             )
             .first()
@@ -246,17 +252,79 @@ async def create_legacy_support_message(
                     pass
             return existing, False
 
+    # A hard-closed ticket is historical.  Legacy ``resolved`` tickets keep
+    # their established reopen-on-customer-reply behavior, but no participant
+    # may silently revive an explicitly closed conversation.  This check runs
+    # after the idempotency lookup so a safe retry can still retrieve a message
+    # that was already committed before the close transition.
+    if str(ticket.status or "").lower() == "closed":
+        for upload in uploads or []:
+            try:
+                await upload.close()
+            except Exception:
+                pass
+        raise HTTPException(status_code=409, detail="This ticket is closed.")
+
     clean_body = (body or "").strip()
     if len(clean_body) > support_message_max_chars():
+        for upload in uploads or []:
+            try:
+                await upload.close()
+            except Exception:
+                pass
         raise HTTPException(
             status_code=422,
             detail=f"Messages must be {support_message_max_chars()} characters or shorter.",
         )
+    has_upload = any(upload and (upload.filename or "").strip() for upload in (uploads or []))
+    if not clean_body and not has_upload:
+        raise HTTPException(status_code=422, detail="Write a message or attach a file before sending.")
+    # Rate-limit before writing attachment bytes to the local staging area.
+    # ``stage_support_attachments`` owns closing uploads after it begins.
+    try:
+        check_message_rate(request, sender)
+    except Exception:
+        for upload in uploads or []:
+            try:
+                await upload.close()
+            except Exception:
+                pass
+        raise
     staged = await stage_support_attachments(uploads)
     if not clean_body and not staged:
         raise HTTPException(status_code=422, detail="Write a message or attach a file before sending.")
 
-    check_message_rate(request, sender)
+    # Serialize the final idempotency/closed-state check with the ticket row,
+    # while deliberately keeping the potentially slow file upload validation
+    # outside the lock.  ``lazyload('*')`` prevents SupportTicket's nullable
+    # joined relationships from leaking into PostgreSQL's FOR UPDATE query.
+    locked_ticket = (
+        db.query(SupportTicket)
+        .options(lazyload("*"))
+        .filter(SupportTicket.id == ticket.id)
+        .with_for_update(of=SupportTicket)
+        .first()
+    )
+    if not _is_legacy_ticket(locked_ticket):
+        cleanup_staged_attachments(staged)
+        raise HTTPException(status_code=404, detail="Support ticket not found")
+    ticket = locked_ticket
+    if message_key:
+        existing = (
+            db.query(SupportMessage)
+            .filter(
+                SupportMessage.ticket_id == ticket.id,
+                SupportMessage.sender_id == sender.id,
+                SupportMessage.client_message_id == message_key,
+            )
+            .first()
+        )
+        if existing:
+            cleanup_staged_attachments(staged)
+            return existing, False
+    if str(ticket.status or "").lower() == "closed":
+        cleanup_staged_attachments(staged)
+        raise HTTPException(status_code=409, detail="This ticket is closed.")
     now = datetime.utcnow()
     saved_files: list[SupportAttachment] = []
     try:
@@ -297,9 +365,10 @@ async def create_legacy_support_message(
         db.commit()
         return message, True
     except Exception:
+        saved_file_names = [record.stored_name for record in saved_files]
         db.rollback()
         cleanup_staged_attachments(staged)
-        remove_saved_attachment_files(saved_files)
+        remove_saved_attachment_files(saved_file_names)
         raise
 
 
@@ -396,6 +465,52 @@ def _notify_support_agents_on_new_ticket(db: Session, ticket: SupportTicket):
             pass
 
 
+def _notify_legacy_ticket_reply(db: Session, ticket: SupportTicket) -> None:
+    """Notify the actual legacy queue after a committed customer reply.
+
+    A ticket can be transferred from CS to MD or MOD while it is unassigned.
+    Sending every such reply only to CS would make a private attachment easy
+    to miss.  The assignment, when present, remains the single recipient;
+    otherwise the queue determines the eligible team and destination link.
+    """
+    queue = str(ticket.queue or "cs").lower()
+    display_queue = "md" if queue in {"md", "md_chatbot"} else "mod" if queue in {"mod", "mod_chatbot"} else "cs"
+    if ticket.assigned_to_id:
+        recipients = [(ticket.assigned_to_id, display_queue)]
+    else:
+        if queue in {"md", "md_chatbot"}:
+            recipients = [
+                (user.id, "md")
+                for user in db.query(User)
+                .filter(User.is_deposit_manager == True, User.status.in_(("approved", "active")))
+                .all()
+            ]
+        elif queue in {"mod", "mod_chatbot"}:
+            recipients = [
+                (user.id, "mod")
+                for user in db.query(User)
+                .filter(User.is_mod == True, User.status.in_(("approved", "active")))
+                .all()
+            ]
+        else:
+            recipients = [
+                (user.id, "cs")
+                for user in db.query(User)
+                .filter(User.is_support == True, User.status.in_(("approved", "active")))
+                .all()
+            ]
+
+    for recipient_id, queue in recipients:
+        push_notification(
+            db,
+            recipient_id,
+            "💬 New customer reply",
+            f"#{ticket.id} — {ticket.subject or ''}",
+            url=f"/{queue}/ticket/{ticket.id}",
+            kind="support",
+        )
+
+
 # ========== Customer UI ==========
 
 @router.get("/support/new", response_class=HTMLResponse)
@@ -436,6 +551,8 @@ def support_new_post(request: Request, db: Session = Depends(get_db)):
     t = SupportTicket(
         user_id=u["id"],
         subject=subject,
+        channel="legacy",
+        queue="cs",
         status="new",
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
@@ -494,15 +611,7 @@ def support_ticket_view(tid: int, request: Request, db: Session = Depends(get_db
     if not u:
         return RedirectResponse("/login", status_code=303)
 
-    t = (
-        db.query(SupportTicket)
-        .options(
-            selectinload(SupportTicket.messages).selectinload(SupportMessage.attachments),
-            selectinload(SupportTicket.messages).selectinload(SupportMessage.sender),
-        )
-        .filter(SupportTicket.id == tid)
-        .first()
-    )
+    t = db.query(SupportTicket).filter(SupportTicket.id == tid).first()
     if not t or t.user_id != u["id"]:
         return RedirectResponse("/support/my", status_code=303)
 
@@ -516,6 +625,16 @@ def support_ticket_view(tid: int, request: Request, db: Session = Depends(get_db
     db_user = _session_db_user(db, request)
     if not db_user:
         return RedirectResponse("/login", status_code=303)
+    # Do not rely on the relationship's timestamp-only ordering: messages can
+    # share a timestamp under a fast send/retry.  The primary key breaks ties
+    # so the displayed timeline always matches persisted message order.
+    messages = (
+        db.query(SupportMessage)
+        .options(selectinload(SupportMessage.attachments), selectinload(SupportMessage.sender))
+        .filter(SupportMessage.ticket_id == t.id)
+        .order_by(SupportMessage.created_at.asc(), SupportMessage.id.asc())
+        .all()
+    )
     # Loading this ticket is a real view by its owner.  Persist read receipts
     # for messages already rendered; polling does the same for later replies.
     mark_legacy_ticket_messages_read(db, ticket=t, reader=db_user, reader_role="user")
@@ -528,14 +647,15 @@ def support_ticket_view(tid: int, request: Request, db: Session = Depends(get_db
             "request": request,
             "session_user": u,
             "ticket": t,
-            "msgs": t.messages,
+            "msgs": messages,
             "title": f"Ticket #{t.id}",
             "csrf_token": get_or_create_csrf_token(request),
             "attachment_accept": allowed_accept_value(),
             "max_attachment_bytes": max_attachment_bytes(),
+            "max_attachments": max_attachments_per_message(),
             "max_message_chars": support_message_max_chars(),
             "read_by_support_ids": read_by_support_ids,
-            "message_timestamps": {message.id: _timestamp_iso(message.created_at) for message in (t.messages or [])},
+            "message_timestamps": {message.id: _timestamp_iso(message.created_at) for message in messages},
             "ticket_timestamps": {
                 "created": _timestamp_iso(t.created_at),
                 "updated": _timestamp_iso(t.updated_at),
@@ -648,11 +768,12 @@ def support_ticket_attachment_download(
     from urllib.parse import quote
 
     safe_name = quote(attachment.original_name or "attachment", safe="")
+    disposition = "inline" if str(attachment.content_type).startswith("image/") else "attachment"
     headers = {
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
         "Content-Security-Policy": "sandbox",
-        "Content-Disposition": f"inline; filename*=UTF-8''{safe_name}",
+        "Content-Disposition": f"{disposition}; filename*=UTF-8''{safe_name}",
     }
     return FileResponse(path, media_type=attachment.content_type, headers=headers)
 
@@ -695,26 +816,15 @@ async def support_ticket_reply(
     )
 
     # notify the assigned agent if any, otherwise all approved CS staff
-    if created and t.assigned_to_id:
-        push_notification(
-            db,
-            t.assigned_to_id,
-            "💬 New customer reply",
-            f"#{t.id} — {t.subject or ''}",
-            url=f"/cs/ticket/{t.id}",
-            kind="support",
-        )
-    elif created:
-        agents = db.query(User).filter(User.is_support==True, User.status=="approved").all()
-        for ag in agents:
-            push_notification(
-                db,
-                ag.id,
-                "💬 New customer reply",
-                f"#{t.id} — {t.subject or ''}",
-                url=f"/cs/ticket/{t.id}",
-                kind="support",
-            )
+    # Notification delivery is auxiliary: the message has already committed
+    # and must not be reported as failed just because a notification provider
+    # has a transient problem.
+    if created:
+        try:
+            _notify_legacy_ticket_reply(db, t)
+            db.commit()
+        except Exception:
+            db.rollback()
 
     if "application/json" in (request.headers.get("accept") or "").lower():
         refreshed = (

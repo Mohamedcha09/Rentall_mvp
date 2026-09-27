@@ -1,6 +1,6 @@
 # app/mod.py
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Request, Depends, Form
+from fastapi import APIRouter, Request, Depends, File, Form, UploadFile
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -9,6 +9,13 @@ from sqlalchemy import desc, text
 from .database import get_db
 from .models import SupportTicket, SupportMessage, User
 from .notifications_api import push_notification
+from .support import (
+    create_legacy_support_message,
+    mark_legacy_ticket_messages_read,
+    staff_can_view_legacy_ticket,
+)
+from .support_ai import get_or_create_csrf_token, require_csrf
+from .support_attachments import allowed_accept_value, max_attachment_bytes
 
 templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(prefix="/mod", tags=["mod"])
@@ -197,13 +204,32 @@ def mod_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
     if qval != "mod":
         return RedirectResponse(f"/mod/inbox?tid={tid}", status_code=303)
 
-    t.unread_for_agent = False
-    db.commit()
+    staff_user = db.get(User, u_mod["id"])
+    if not staff_user or not staff_can_view_legacy_ticket(t, staff_user):
+        return RedirectResponse("/mod/inbox", status_code=303)
+
+    # Persist a receipt only for an actual authorized MOD view.  This is the
+    # source of truth for the customer's double-check read indicator.
+    mark_legacy_ticket_messages_read(
+        db,
+        ticket=t,
+        reader=staff_user,
+        reader_role="agent",
+    )
 
     return templates.TemplateResponse(
         request=request,
         name="mod_ticket.html",
-        context={"request": request, "session_user": u_mod, "ticket": t, "msgs": t.messages, "title": f"Ticket #{t.id} (MOD)"},
+        context={
+            "request": request,
+            "session_user": u_mod,
+            "ticket": t,
+            "msgs": t.messages,
+            "title": f"Ticket #{t.id} (MOD)",
+            "csrf_token": get_or_create_csrf_token(request),
+            "attachment_accept": allowed_accept_value(),
+            "max_attachment_bytes": max_attachment_bytes(),
+        },
     )
 
 
@@ -211,7 +237,12 @@ def mod_ticket_view(tid: int, request: Request, db: Session = Depends(get_db)):
 # Take over the ticket (Assign to me)
 # ---------------------------
 @router.post("/tickets/{ticket_id}/assign_self")
-def mod_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_db)):
+def mod_assign_self(
+    ticket_id: int,
+    request: Request,
+    csrf_token: str = Form(""),
+    db: Session = Depends(get_db),
+):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
@@ -222,6 +253,8 @@ def mod_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_
     t = db.get(SupportTicket, ticket_id)
     if not _is_legacy_ticket(t):
         return RedirectResponse("/mod/inbox", status_code=303)
+    if str(t.status or "").lower() == "closed":
+        return RedirectResponse(f"/mod/ticket/{ticket_id}", status_code=303)
 
     if t.status == "resolved":
         return RedirectResponse(f"/mod/ticket/{ticket_id}", status_code=303)
@@ -232,6 +265,11 @@ def mod_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_
     ).first()
     if not row or (row[0] or "cs") != "mod":
         return RedirectResponse("/mod/inbox", status_code=303)
+
+    staff_user = db.get(User, u_mod["id"])
+    if not staff_user or not staff_can_view_legacy_ticket(t, staff_user):
+        return RedirectResponse("/mod/inbox", status_code=303)
+    require_csrf(request, csrf_token)
 
     t.assigned_to_id = u_mod["id"]
     t.status = "open"
@@ -259,7 +297,15 @@ def mod_assign_self(ticket_id: int, request: Request, db: Session = Depends(get_
 # Moderator reply to the ticket
 # ---------------------------
 @router.post("/ticket/{tid}/reply")
-def mod_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), body: str = Form("")):
+async def mod_ticket_reply(
+    tid: int,
+    request: Request,
+    body: str = Form(""),
+    csrf_token: str = Form(""),
+    client_message_id: str = Form(""),
+    attachments: list[UploadFile] | None = File(None),
+    db: Session = Depends(get_db),
+):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
@@ -281,39 +327,36 @@ def mod_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), 
     if not row or (row[0] or "cs") != "mod":
         return RedirectResponse("/mod/inbox", status_code=303)
 
-    now = datetime.utcnow()
-    msg = SupportMessage(
-        ticket_id=t.id,
-        sender_id=u_mod["id"],
+    staff_user = db.get(User, u_mod["id"])
+    if not staff_user or not staff_can_view_legacy_ticket(t, staff_user):
+        return RedirectResponse("/mod/inbox", status_code=303)
+    require_csrf(request, csrf_token)
+
+    _message, created = await create_legacy_support_message(
+        db,
+        request=request,
+        ticket=t,
+        sender=staff_user,
         sender_role="agent",
-        body=(body or "").strip() or "(No text)",
-        created_at=now,
+        body=body,
+        uploads=attachments,
+        client_message_id=client_message_id,
     )
-    db.add(msg)
 
-    t.last_msg_at = now
-    t.updated_at = now
-    t.last_from = "agent"
-    if not t.assigned_to_id:
-        t.assigned_to_id = u_mod["id"]
-    t.status = "open"
-    t.unread_for_user = True
-    t.unread_for_agent = False
-
-    try:
-        mod_name = (request.session["user"].get("first_name") or "").strip() or "Content Moderator"
-        push_notification(
-            db,
-            t.user_id,
-            "💬 Reply from Review Team (MOD)",
-            f"{mod_name} replied to your ticket #{t.id}",
-            url=f"/support/ticket/{t.id}",
-            kind="support",
-        )
-    except Exception:
-        pass
-
-    db.commit()
+    if created:
+        try:
+            mod_name = (request.session["user"].get("first_name") or "").strip() or "Content Moderator"
+            push_notification(
+                db,
+                t.user_id,
+                "💬 Reply from Review Team (MOD)",
+                f"{mod_name} replied to your ticket #{t.id}",
+                url=f"/support/ticket/{t.id}",
+                kind="support",
+            )
+            db.commit()
+        except Exception:
+            db.rollback()
     return RedirectResponse(f"/mod/ticket/{t.id}", status_code=303)
 
 
@@ -321,7 +364,12 @@ def mod_ticket_reply(tid: int, request: Request, db: Session = Depends(get_db), 
 # Resolve the ticket (final)
 # ---------------------------
 @router.post("/tickets/{ticket_id}/resolve")
-def mod_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db)):
+def mod_resolve(
+    ticket_id: int,
+    request: Request,
+    csrf_token: str = Form(""),
+    db: Session = Depends(get_db),
+):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
@@ -332,6 +380,8 @@ def mod_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db))
     t = db.get(SupportTicket, ticket_id)
     if not _is_legacy_ticket(t):
         return RedirectResponse("/mod/inbox", status_code=303)
+    if str(t.status or "").lower() == "closed":
+        return RedirectResponse(f"/mod/ticket/{ticket_id}", status_code=303)
 
     row = db.execute(
         text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"),
@@ -339,6 +389,11 @@ def mod_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db))
     ).first()
     if not row or (row[0] or "cs") != "mod":
         return RedirectResponse("/mod/inbox", status_code=303)
+
+    staff_user = db.get(User, u_mod["id"])
+    if not staff_user or not staff_can_view_legacy_ticket(t, staff_user):
+        return RedirectResponse("/mod/inbox", status_code=303)
+    require_csrf(request, csrf_token)
 
     now = datetime.utcnow()
     mod_name = (request.session["user"].get("first_name") or "").strip() or "Content Moderator"
@@ -379,7 +434,12 @@ def mod_resolve(ticket_id: int, request: Request, db: Session = Depends(get_db))
 # Transfer the ticket to Deposit Manager (MD)
 # ---------------------------
 @router.post("/tickets/{ticket_id}/transfer_to_md")
-def mod_transfer_to_md(ticket_id: int, request: Request, db: Session = Depends(get_db)):
+def mod_transfer_to_md(
+    ticket_id: int,
+    request: Request,
+    csrf_token: str = Form(""),
+    db: Session = Depends(get_db),
+):
     u = _require_login(request)
     if not u:
         return RedirectResponse("/login", status_code=303)
@@ -390,8 +450,21 @@ def mod_transfer_to_md(ticket_id: int, request: Request, db: Session = Depends(g
     t = db.get(SupportTicket, ticket_id)
     if not _is_legacy_ticket(t):
         return RedirectResponse("/mod/inbox", status_code=303)
+    if str(t.status or "").lower() == "closed":
+        return RedirectResponse(f"/mod/ticket/{ticket_id}", status_code=303)
     if t.status == "resolved":
         return RedirectResponse(f"/mod/ticket/{ticket_id}", status_code=303)
+
+    row = db.execute(
+        text("SELECT LOWER(COALESCE(queue,'cs')) FROM support_tickets WHERE id=:tid"),
+        {"tid": ticket_id},
+    ).first()
+    if not row or (row[0] or "cs") != "mod":
+        return RedirectResponse("/mod/inbox", status_code=303)
+    staff_user = db.get(User, u_mod["id"])
+    if not staff_user or not staff_can_view_legacy_ticket(t, staff_user):
+        return RedirectResponse("/mod/inbox", status_code=303)
+    require_csrf(request, csrf_token)
 
     now = datetime.utcnow()
     # 1) Move the ticket to md and record a system_mod message (direction: MOD → MD)
