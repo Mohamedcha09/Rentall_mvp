@@ -7,6 +7,7 @@ from datetime import datetime
 
 from .database import get_db
 from .models import MessageThread, Message, User, Item, SupportTicket
+from .support_ai import get_or_create_csrf_token
 
 router = APIRouter()
 
@@ -151,10 +152,10 @@ def inbox(request: Request, db: Session = Depends(get_db)):
     )
     tickets_count = len(chatbot_tickets)
 
-    # The persistent Sevor AI conversation is the canonical destination for
-    # the top-level “SEVOR Support” row.  Keep its id in the rendered link so
-    # opening that row always resumes the same unresolved support thread.  In
-    # particular, it must never be treated like a request to start over.
+    # Historical tickets remain visible below.  The top-level “SEVOR Support”
+    # row is deliberately a separate POST action that closes any of these
+    # live chatbot tickets and starts one clean session (implemented by
+    # /chatbot/support/new), rather than linking to this current ticket.
     active_chatbot_ticket = next(
         (
             ticket
@@ -222,6 +223,7 @@ def inbox(request: Request, db: Session = Depends(get_db)):
             "active_chatbot_ticket": active_chatbot_ticket,
             "tickets_count": tickets_count,      # 👈 للبادج
             "session_user": u,
+            "chatbot_csrf_token": get_or_create_csrf_token(request),
             "account_limited": account_limited,
         }
     )

@@ -107,6 +107,9 @@
     }
     .sv-chat-column { width: min(100%, 760px); margin: 0 auto; }
     .sv-welcome { margin: 4px 0 20px; }
+    .sv-welcome-intro { display: flex; align-items: flex-start; gap: 11px; }
+    .sv-welcome .sv-ai-avatar { width: 42px; height: 42px; flex-basis: 42px; margin-top: 1px; }
+    .sv-welcome-copy { min-width: 0; }
     .sv-welcome h1 { margin: 0; font-size: clamp(24px, 5.6vw, 31px); letter-spacing: -.045em; line-height: 1.1; }
     .sv-welcome p { max-width: 560px; margin: 8px 0 0; color: var(--sv-muted); font-size: 14px; line-height: 1.5; }
 
@@ -260,8 +263,13 @@
     <section class="sv-chat-scroll" id="sv-chat-scroll" aria-label="Support conversation">
       <div class="sv-chat-column">
         <div class="sv-welcome" id="sv-welcome">
-          <h1>Sevor AI Support</h1>
-          <p id="sv-welcome-copy">Ask a question, choose a topic, or connect with Sevor Support when you need a person.</p>
+          <div class="sv-welcome-intro">
+            <span class="sv-ai-avatar" aria-hidden="true"><img src="/static/images/ui/sevor-logo-96.png" alt=""></span>
+            <div class="sv-welcome-copy">
+              <h1 id="sv-welcome-title">Hi, I’m Sevor AI. How can I help today?</h1>
+              <p id="sv-welcome-copy">Ask anything or choose a topic from the current SEVOR Help Center.</p>
+            </div>
+          </div>
         </div>
         <div class="sv-messages" id="sv-messages" role="log" aria-live="polite" aria-relevant="additions text"></div>
         <div class="sv-typing" id="sv-typing" aria-live="polite" aria-label="Sevor AI is responding">
@@ -334,10 +342,11 @@
       let sending = false;
       let pollTimer = null;
       let tree = null;
+      let hasPersistedMessages = false;
 
       const locale = (navigator.language || "en").toLowerCase();
       const texts = locale.startsWith("ar") ? {
-        welcome: "مرحبًا، أنا Sevor AI. كيف يمكنني مساعدتك اليوم؟",
+        welcome: "👋 مرحبًا، أنا Sevor AI. كيف يمكنني مساعدتك اليوم؟",
         welcomeDetail: "اكتب سؤالك بحرية، أو اختر موضوعًا من مركز مساعدة SEVOR.",
         login: "سجّل الدخول لبدء محادثة دعم محفوظة.",
         guest: "يمكنك سؤال مركز المساعدة. سجّل الدخول للمساعدة الخاصة بالحساب أو للتحدث مع موظف.",
@@ -347,7 +356,7 @@
         error: "تعذر إرسال الرسالة. يمكنك المحاولة مرة أخرى.",
         feedback: "هل حلّ ذلك مشكلتك؟"
       } : locale.startsWith("fr") ? {
-        welcome: "Bonjour, je suis Sevor AI. Comment puis-je vous aider aujourd’hui ?",
+        welcome: "👋 Bonjour, je suis Sevor AI. Comment puis-je vous aider aujourd’hui ?",
         welcomeDetail: "Posez votre question librement ou choisissez un sujet dans l’aide SEVOR.",
         login: "Connectez-vous pour démarrer une conversation d’assistance enregistrée.",
         guest: "Vous pouvez consulter l’aide. Connectez-vous pour une aide liée au compte ou un agent.",
@@ -357,7 +366,7 @@
         error: "Le message n’a pas pu être envoyé. Réessayez.",
         feedback: "Cela a-t-il résolu votre problème ?"
       } : {
-        welcome: "Hi, I’m Sevor AI. How can I help today?",
+        welcome: "👋 Hi, I’m Sevor AI. How can I help today?",
         welcomeDetail: "Ask anything or choose a topic from the current SEVOR Help Center.",
         login: "Please sign in to start a saved support conversation.",
         guest: "Ask general Help Center questions. Sign in for account-specific help or a support agent.",
@@ -453,7 +462,11 @@
         inputEl.disabled = isResolved || sending;
         sendEl.disabled = isResolved || sending;
         document.getElementById("sv-talk-agent").disabled = isResolved || sending;
-        initialTools.style.display = conversation ? "none" : "block";
+        // A valid ticket can be brand new (or imported from an older support
+        // flow) before it has any persisted message.  Do not turn that into a
+        // visually empty chat: keep the normal welcome/help affordances until
+        // there is real history to render.
+        initialTools.style.display = conversation && hasPersistedMessages ? "none" : "block";
         startNew.classList.toggle("is-visible", Boolean(loggedIn && isResolved));
         if (isAgent) { headerName.textContent = conversation.agent_name || "Sevor Support"; headerStatus.textContent = texts.agent; note.textContent = texts.agent; }
         else if (isWaiting) { headerName.textContent = "Sevor Support"; headerStatus.textContent = texts.waiting; note.textContent = texts.waiting; }
@@ -462,10 +475,12 @@
         inputEl.placeholder = isResolved ? texts.resolved : "Ask Sevor anything...";
       }
       function hydrate(payload, reset = false) {
-        if (reset) { rendered.clear(); feedbackRendered.clear(); pending.clear(); messagesEl.replaceChildren(); lastMessageId = 0; }
+        if (reset) { rendered.clear(); feedbackRendered.clear(); pending.clear(); messagesEl.replaceChildren(); lastMessageId = 0; hasPersistedMessages = false; }
         conversation = payload.conversation || null;
-        for (const message of payload.messages || []) renderMessage(message);
-        welcomeEl.style.display = conversation ? "none" : "block";
+        const incomingMessages = Array.isArray(payload.messages) ? payload.messages : [];
+        if (incomingMessages.length) hasPersistedMessages = true;
+        for (const message of incomingMessages) renderMessage(message);
+        welcomeEl.style.display = conversation && hasPersistedMessages ? "none" : "block";
         updateHeaderAndControls();
         scrollLatest(reset);
       }
@@ -552,7 +567,9 @@
       }
       async function startNew() {
         if (!loggedIn || sending) return;
-        try { hydrate(await api("/api/chatbot/conversation/new", {method: "POST", body: JSON.stringify({csrf_token: csrfToken})}), true); initialTools.style.display = "none"; inputEl.focus(); }
+        // ``hydrate`` decides whether this is an empty or active conversation.
+        // Do not override its empty-ticket welcome state here.
+        try { hydrate(await api("/api/chatbot/conversation/new", {method: "POST", body: JSON.stringify({csrf_token: csrfToken})}), true); inputEl.focus(); }
         catch (error) { setError(error.message || texts.error); }
       }
       async function poll() {
@@ -586,10 +603,14 @@
         inputEl.addEventListener("input", autoResize);
         inputEl.addEventListener("keydown", event => { if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); composerEl.requestSubmit(); } });
         composerEl.addEventListener("submit", event => { event.preventDefault(); sendMessage(inputEl.value); });
+        document.getElementById("sv-welcome-title").textContent = texts.welcome;
         document.getElementById("sv-welcome-copy").textContent = texts.welcomeDetail;
-        const firstAssistant = {id: "welcome", sender_role: "assistant", body: texts.welcome, created_at: new Date().toISOString()}; renderMessage(firstAssistant);
+        // This welcome is presentation only; a brand-new ticket remains
+        // message-free in the database until the customer chooses a real
+        // quick action or writes their own question.
+        const firstAssistant = {id: "welcome", sender_role: "assistant", body: texts.welcome, created_at: new Date().toISOString()};
         try { tree = await (await fetch("/chatbot/tree", {headers: {"Accept": "application/json"}})).json(); renderTopics(); } catch (_) { /* The input and human support path stay usable. */ }
-        try { hydrate(await api(`/api/chatbot/conversation${initialConversationId ? `?conversation_id=${encodeURIComponent(initialConversationId)}` : ""}`), true); if (!conversation) { renderMessage(firstAssistant); initialTools.style.display = "block"; } } catch (error) { setError(error.message || texts.error); }
+        try { hydrate(await api(`/api/chatbot/conversation${initialConversationId ? `?conversation_id=${encodeURIComponent(initialConversationId)}` : ""}`), true); if (!conversation) { if (!loggedIn) renderMessage(firstAssistant); initialTools.style.display = "block"; } } catch (error) { setError(error.message || texts.error); }
         pollTimer = window.setInterval(poll, 4000);
       }
       document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });

@@ -15,6 +15,7 @@ import unittest
 from datetime import date
 
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.dialects import postgresql
 
 
 TEST_DB = Path(tempfile.gettempdir()) / "sevor_chatbot_support_tests.sqlite3"
@@ -92,7 +93,7 @@ import app.main as main_module
 import app.routes_chatbot as chatbot_routes
 from app.database import SessionLocal
 from app.models import Booking, Item, SupportMessage, SupportTicket, User
-from app.support_ai import AGENT_ACTIVE, RESOLVED, WAITING_FOR_AGENT, _MessageRateLimiter, claim_ticket_atomically, collect_safe_tool_context, create_ai_answer, is_handoff_request, lock_agent_ticket_for_mutation, safe_verification_status, ticket_state
+from app.support_ai import AGENT_ACTIVE, RESOLVED, WAITING_FOR_AGENT, _MessageRateLimiter, _chatbot_ticket_lock_query, claim_ticket_atomically, collect_safe_tool_context, create_ai_answer, is_handoff_request, lock_agent_ticket_for_mutation, safe_verification_status, ticket_state
 
 
 main_module._fx_schedule_daily_sync = lambda: None
@@ -134,6 +135,9 @@ class ChatbotSupportTests(unittest.TestCase):
                 User(id=108, first_name="Limit", last_name="User", email="limit@example.test", phone="8", password_hash="x", role="user", status="active", is_verified=True),
                 User(id=109, first_name="Outside", last_name="User", email="outside2@example.test", phone="9", password_hash="x", role="user", status="active", is_verified=True),
                 User(id=120, first_name="Resume", last_name="User", email="resume@example.test", phone="10", password_hash="x", role="user", status="active", is_verified=True),
+                User(id=121, first_name="Fresh", last_name="Session", email="fresh@example.test", phone="11", password_hash="x", role="user", status="active", is_verified=True),
+                User(id=122, first_name="History", last_name="User", email="history@example.test", phone="12", password_hash="x", role="user", status="active", is_verified=True),
+                User(id=123, first_name="Empty", last_name="Conversation", email="empty@example.test", phone="13", password_hash="x", role="user", status="active", is_verified=True),
             ])
             item = Item(id=101, owner_id=101, title="Camera", currency="CAD", price=10, status="approved", price_per_day=10, category="other", is_active="yes")
             second_item = Item(id=102, owner_id=101, title="Tripod", currency="CAD", price=10, status="approved", price_per_day=10, category="other", is_active="yes")
@@ -381,12 +385,335 @@ class ChatbotSupportTests(unittest.TestCase):
         self.assertEqual(response.json()["conversation"]["state"], WAITING_FOR_AGENT)
         self.assertEqual(sum(m["sender_role"] == "assistant" for m in response.json()["messages"]), 2)
 
-    def test_support_entry_resumes_active_ticket_and_never_autostarts_from_closed_id(self):
-        """Returning through Messages/legacy FAQ must preserve one live ticket.
+    def test_messages_support_starts_one_clean_session_and_preserves_closed_history(self):
+        """The Messages shortcut is an explicit, atomic start-new action.
 
-        The global SEVOR Support row is a resume action.  A stale browser tab
-        that still carries a closed ticket id must receive a controlled 409,
-        not silently create another ticket.
+        It must close every active chatbot ticket for this customer, preserve
+        the old transcript plus a localized closure event, and redirect to a
+        fresh ticket.  Ordinary /chatbot GETs remain read-only afterwards.
+        """
+        db = SessionLocal()
+        try:
+            user = db.get(User, 121)
+            french_ticket = SupportTicket(
+                user_id=user.id,
+                subject="Ancienne conversation",
+                channel="chatbot",
+                queue="cs_chatbot",
+                status="open",
+                ai_state="ai_active",
+                last_from="user",
+                unread_for_agent=False,
+                unread_for_user=False,
+            )
+            arabic_ticket = SupportTicket(
+                user_id=user.id,
+                subject="محادثة سابقة",
+                channel="chatbot",
+                queue="md_chatbot",
+                status="new",
+                ai_state="waiting_for_agent",
+                last_from="user",
+                unread_for_agent=True,
+                unread_for_user=False,
+            )
+            db.add_all((french_ticket, arabic_ticket))
+            db.flush()
+            db.add_all((
+                SupportMessage(ticket_id=french_ticket.id, sender_id=user.id, sender_role="user", body="Je veux parler à un agent.", channel="chatbot"),
+                SupportMessage(ticket_id=arabic_ticket.id, sender_id=user.id, sender_role="user", body="أحتاج إلى مساعدة بشأن الحجز.", channel="chatbot"),
+            ))
+            db.commit()
+            old_ids = {french_ticket.id, arabic_ticket.id}
+        finally:
+            db.close()
+
+        client = TestClient(main_module.app, base_url="http://testserver.local")
+        csrf = _login(client, 121)
+        inbox = client.get("/messages")
+        self.assertEqual(inbox.status_code, 200, inbox.text[:1000])
+        self.assertIn('action="/chatbot/support/new"', inbox.text)
+        self.assertIn('name="csrf_token"', inbox.text)
+        self.assertNotIn('href="/chatbot?conversation={{ active_chatbot_ticket.id }}"', inbox.text)
+
+        started = client.post(
+            "/chatbot/support/new",
+            data={"csrf_token": csrf},
+            follow_redirects=False,
+        )
+        self.assertEqual(started.status_code, 303, started.text)
+        match = re.fullmatch(r"/chatbot\?conversation=(\d+)", started.headers["location"])
+        self.assertIsNotNone(match, started.headers["location"])
+        fresh_ticket_id = int(match.group(1))
+
+        db = SessionLocal()
+        try:
+            tickets = (
+                db.query(SupportTicket)
+                .filter(SupportTicket.user_id == 121, SupportTicket.channel == "chatbot")
+                .order_by(SupportTicket.id.asc())
+                .all()
+            )
+            self.assertEqual(len(tickets), 3)
+            active = [ticket for ticket in tickets if ticket.status not in {"resolved", "closed"}]
+            self.assertEqual([ticket.id for ticket in active], [fresh_ticket_id])
+
+            for old_id in old_ids:
+                old = db.get(SupportTicket, old_id)
+                self.assertEqual(old.status, "closed")
+                self.assertEqual(ticket_state(old), RESOLVED)
+                self.assertIsNotNone(old.closed_at)
+                self.assertIsNotNone(old.resolved_at)
+                self.assertTrue(old.unread_for_user)
+                self.assertFalse(old.unread_for_agent)
+                closure = (
+                    db.query(SupportMessage)
+                    .filter(SupportMessage.ticket_id == old_id, SupportMessage.sender_role == "system")
+                    .one()
+                )
+                self.assertTrue((closure.body or "").strip())
+                self.assertIn('"reason":"new_support_session"', closure.metadata_json or "")
+
+            # Verify the localized text itself rather than treating red status
+            # as the only indication that a conversation was closed.
+            french_closure = (
+                db.query(SupportMessage.body)
+                .filter(SupportMessage.ticket_id == french_ticket.id, SupportMessage.sender_role == "system")
+                .scalar()
+            )
+            arabic_closure = (
+                db.query(SupportMessage.body)
+                .filter(SupportMessage.ticket_id == arabic_ticket.id, SupportMessage.sender_role == "system")
+                .scalar()
+            )
+            self.assertIn("fermée", french_closure)
+            self.assertIn("تم إغلاق", arabic_closure)
+
+            fresh = db.get(SupportTicket, fresh_ticket_id)
+            self.assertEqual(fresh.status, "open")
+            self.assertEqual(ticket_state(fresh), "ai_active")
+            self.assertEqual(fresh.queue, "cs_chatbot")
+            self.assertIsNone(fresh.assigned_to_id)
+            self.assertIsNone(fresh.ai_summary)
+            self.assertEqual(db.query(SupportMessage).filter(SupportMessage.ticket_id == fresh_ticket_id).count(), 0)
+        finally:
+            db.close()
+
+        # A page view or a refresh of either old or new history never starts
+        # another ticket.  Closed history remains readable, but not writable.
+        self.assertEqual(client.get(f"/chatbot?conversation={fresh_ticket_id}").status_code, 200)
+        self.assertEqual(client.get(f"/chatbot?conversation={fresh_ticket_id}").status_code, 200)
+        self.assertEqual(client.get(f"/chatbot?conversation={min(old_ids)}").status_code, 200)
+        stale_send = client.post(
+            "/api/chatbot/conversation/message",
+            json={
+                "body": "A closed conversation cannot be revived by refresh.",
+                "conversation_id": min(old_ids),
+                "client_message_id": "fresh-session-closed-stale-0001",
+                "csrf_token": csrf,
+            },
+        )
+        self.assertEqual(stale_send.status_code, 409)
+
+        # A second explicit POST is serialized behind the same customer row.
+        # It is a deliberate fresh-session request, so it closes the first
+        # fresh ticket and leaves exactly one (not two) active conversations.
+        started_again = client.post(
+            "/chatbot/support/new",
+            data={"csrf_token": csrf},
+            follow_redirects=False,
+        )
+        self.assertEqual(started_again.status_code, 303, started_again.text)
+        again_match = re.fullmatch(r"/chatbot\?conversation=(\d+)", started_again.headers["location"])
+        self.assertIsNotNone(again_match, started_again.headers["location"])
+        newer_ticket_id = int(again_match.group(1))
+        self.assertNotEqual(newer_ticket_id, fresh_ticket_id)
+
+        db = SessionLocal()
+        try:
+            all_tickets = (
+                db.query(SupportTicket)
+                .filter(SupportTicket.user_id == 121, SupportTicket.channel == "chatbot")
+                .all()
+            )
+            active_ids = [ticket.id for ticket in all_tickets if ticket.status not in {"resolved", "closed"}]
+            self.assertEqual(active_ids, [newer_ticket_id])
+            first_fresh = db.get(SupportTicket, fresh_ticket_id)
+            self.assertEqual(first_fresh.status, "closed")
+            self.assertEqual(ticket_state(first_fresh), RESOLVED)
+            self.assertEqual(
+                db.query(SupportMessage)
+                .filter(SupportMessage.ticket_id == fresh_ticket_id, SupportMessage.sender_role == "system")
+                .count(),
+                1,
+            )
+            self.assertEqual(
+                db.query(SupportTicket)
+                .filter(SupportTicket.user_id == 121, SupportTicket.channel == "chatbot")
+                .count(),
+                4,
+            )
+        finally:
+            db.close()
+
+    def test_ticket_cards_open_the_requested_active_or_closed_history(self):
+        """Ticket cards must not fall back to an empty/new chatbot view.
+
+        The card URL uses the same ``conversation_id`` name as the polling
+        API.  The page also accepts the historical ``conversation`` alias so
+        old notification links continue to open their original transcript.
+        """
+        db = SessionLocal()
+        try:
+            user = db.get(User, 122)
+            closed_ticket = SupportTicket(
+                user_id=user.id,
+                subject="Closed history must remain visible",
+                channel="chatbot",
+                queue="cs_chatbot",
+                status="closed",
+                ai_state=RESOLVED,
+                last_from="system",
+                unread_for_agent=False,
+                unread_for_user=True,
+            )
+            open_ticket = SupportTicket(
+                user_id=user.id,
+                subject="Open history must remain visible",
+                channel="chatbot",
+                queue="cs_chatbot",
+                status="open",
+                ai_state="ai_active",
+                last_from="assistant",
+                unread_for_agent=False,
+                unread_for_user=False,
+            )
+            db.add_all((closed_ticket, open_ticket))
+            db.flush()
+            db.add_all((
+                SupportMessage(ticket_id=closed_ticket.id, sender_id=user.id, sender_role="user", body="The old issue is complete.", channel="chatbot"),
+                SupportMessage(ticket_id=closed_ticket.id, sender_id=user.id, sender_role="system", body="Your support conversation has been closed.", channel="chatbot"),
+                SupportMessage(ticket_id=open_ticket.id, sender_id=user.id, sender_role="user", body="The current issue still needs help.", channel="chatbot"),
+            ))
+            db.commit()
+            closed_id, open_id = closed_ticket.id, open_ticket.id
+        finally:
+            db.close()
+
+        client = TestClient(main_module.app, base_url="http://testserver.local")
+        _login(client, 122)
+        inbox = client.get("/messages")
+        self.assertEqual(inbox.status_code, 200, inbox.text[:1000])
+        self.assertIn(f'href="/chatbot?conversation_id={closed_id}"', inbox.text)
+        self.assertIn(f'href="/chatbot?conversation_id={open_id}"', inbox.text)
+
+        for param in (f"conversation_id={closed_id}", f"conversation={closed_id}", f"conversation_id={open_id}"):
+            page = client.get(f"/chatbot?{param}")
+            self.assertEqual(page.status_code, 200, page.text[:1000])
+            expected_id = closed_id if str(closed_id) in param else open_id
+            self.assertIn(f"const initialConversationId = {expected_id};", page.text)
+            payload = client.get(f"/api/chatbot/conversation?conversation_id={expected_id}")
+            self.assertEqual(payload.status_code, 200, payload.text)
+            self.assertEqual(payload.json()["conversation"]["id"], expected_id)
+            self.assertGreaterEqual(len(payload.json()["messages"]), 1)
+
+        db = SessionLocal()
+        try:
+            # Rendering either history is read-only: no empty replacement or
+            # accidental third ticket is made merely by following a card.
+            self.assertEqual(
+                db.query(SupportTicket)
+                .filter(SupportTicket.user_id == 122, SupportTicket.channel == "chatbot")
+                .count(),
+                2,
+            )
+        finally:
+            db.close()
+
+    def test_new_empty_ticket_keeps_the_ui_welcome_until_a_real_message_exists(self):
+        """A saved but message-free ticket must not render as a blank chat.
+
+        The welcome, quick actions and real Help Center topics are UI-only;
+        merely opening or refreshing the ticket must not insert a synthetic
+        message into its persisted support history.
+        """
+        db = SessionLocal()
+        try:
+            user = db.get(User, 123)
+            ticket = SupportTicket(
+                user_id=user.id,
+                subject="Brand-new support conversation",
+                channel="chatbot",
+                queue="cs_chatbot",
+                status="open",
+                ai_state="ai_active",
+                last_from="assistant",
+                unread_for_agent=False,
+                unread_for_user=False,
+            )
+            db.add(ticket)
+            db.commit()
+            db.refresh(ticket)
+            ticket_id = ticket.id
+        finally:
+            db.close()
+
+        client = TestClient(main_module.app, base_url="http://testserver.local")
+        csrf = _login(client, 123)
+        page = client.get(f"/chatbot?conversation_id={ticket_id}")
+        self.assertEqual(page.status_code, 200, page.text[:1000])
+        self.assertIn(f"const initialConversationId = {ticket_id};", page.text)
+        self.assertIn('id="sv-welcome"', page.text)
+        self.assertIn('id="sv-welcome-title"', page.text)
+        self.assertIn('data-prompt="I need help tracking one of my bookings."', page.text)
+        self.assertIn('id="sv-topic-grid"', page.text)
+
+        initial = client.get(f"/api/chatbot/conversation?conversation_id={ticket_id}&after_id=0")
+        self.assertEqual(initial.status_code, 200, initial.text)
+        self.assertEqual(initial.json()["conversation"]["id"], ticket_id)
+        self.assertEqual(initial.json()["messages"], [])
+
+        # Refreshing before a real action preserves the same empty ticket and
+        # does not manufacture an assistant message in the database.
+        self.assertEqual(client.get(f"/chatbot?conversation_id={ticket_id}").status_code, 200)
+        db = SessionLocal()
+        try:
+            self.assertEqual(db.query(SupportMessage).filter(SupportMessage.ticket_id == ticket_id).count(), 0)
+        finally:
+            db.close()
+
+        # A quick-action prompt goes through the ordinary AI endpoint, after
+        # which history is real and the UI's persisted-message condition hides
+        # the welcome tools on the next hydrate/refresh.
+        started = client.post(
+            "/api/chatbot/conversation/message",
+            json={
+                "body": "I need help tracking one of my bookings.",
+                "conversation_id": ticket_id,
+                "client_message_id": "empty-ticket-quick-action-0001",
+                "csrf_token": csrf,
+            },
+        )
+        self.assertEqual(started.status_code, 200, started.text)
+        self.assertGreaterEqual(len(started.json()["messages"]), 1)
+        refreshed = client.get(f"/api/chatbot/conversation?conversation_id={ticket_id}&after_id=0")
+        self.assertGreaterEqual(len(refreshed.json()["messages"]), 1)
+
+        template = (Path(__file__).parents[1] / "app" / "templates" / "chatbot.html").read_text(encoding="utf-8")
+        self.assertIn("let hasPersistedMessages = false", template)
+        self.assertIn('conversation && hasPersistedMessages ? "none" : "block"', template)
+        self.assertIn('welcomeEl.style.display = conversation && hasPersistedMessages ? "none" : "block"', template)
+        start_new_segment = template[
+            template.index("async function startNew()"):
+            template.index("async function poll()")
+        ]
+        self.assertNotIn("initialTools.style.display", start_new_segment)
+
+    def test_legacy_support_and_direct_chatbot_do_not_autostart_from_closed_id(self):
+        """Only the explicit Messages POST may start a clean support ticket.
+
+        Direct /chatbot GETs and stale legacy FAQ tabs continue to preserve or
+        show their existing history; they never silently create a replacement.
         """
         db = SessionLocal()
         try:
@@ -419,7 +746,7 @@ class ChatbotSupportTests(unittest.TestCase):
         self.assertIn(f"const initialConversationId = {ticket_id};", second_open.text)
         inbox = client.get("/messages")
         self.assertEqual(inbox.status_code, 200, inbox.text[:1000])
-        self.assertIn(f'href="/chatbot?conversation={ticket_id}"', inbox.text)
+        self.assertIn('action="/chatbot/support/new"', inbox.text)
 
         # The old FAQ support action may still exist in cached clients.  It
         # must join this ticket and produce its handoff event only once.
@@ -493,8 +820,8 @@ class ChatbotSupportTests(unittest.TestCase):
             db.close()
 
         inbox_template = (Path(__file__).parents[1] / "app" / "templates" / "inbox.html").read_text(encoding="utf-8")
-        self.assertIn("active_chatbot_ticket", inbox_template)
-        self.assertIn("/chatbot?conversation={{ active_chatbot_ticket.id }}", inbox_template)
+        self.assertIn('action="/chatbot/support/new"', inbox_template)
+        self.assertIn("supportStartForm.addEventListener('submit'", inbox_template)
 
     def test_migrated_queue_state_unique_idempotency_and_safe_tool_minimization(self):
         db = SessionLocal()
@@ -609,6 +936,19 @@ class ChatbotSupportTests(unittest.TestCase):
                 unread_for_user=False,
             )
             db.add_all((transfer, close, transfer_mod))
+            db.flush()
+            # Manual Close must use the same persisted, localized system
+            # message as the automatic Start New Support closure path.
+            before_close_message = SupportMessage(
+                ticket_id=close.id,
+                sender_id=owner.id,
+                sender_role="user",
+                body="Je souhaite fermer cette conversation.",
+                channel="chatbot",
+            )
+            db.add(before_close_message)
+            db.flush()
+            before_close_message_id = before_close_message.id
             db.commit()
             transfer_id, close_id, transfer_mod_id = transfer.id, close.id, transfer_mod.id
         finally:
@@ -680,9 +1020,24 @@ class ChatbotSupportTests(unittest.TestCase):
             ).one()
             self.assertIn("transferred", transfer_message.body.lower())
             self.assertIn("transferred", transfer_mod_message.body.lower())
-            self.assertIn("closed", close_message.body.lower())
+            self.assertIn("fermée", close_message.body)
+            closed_message_body = close_message.body
         finally:
             db.close()
+
+        # The same terminal message and resolved state are returned through
+        # the existing customer polling endpoint without requiring a refresh.
+        customer = TestClient(main_module.app, base_url="http://testserver.local")
+        _login(customer, 101)
+        polled = customer.get(
+            f"/api/chatbot/conversation?conversation_id={close_id}&after_id={before_close_message_id}"
+        )
+        self.assertEqual(polled.status_code, 200, polled.text)
+        self.assertEqual(polled.json()["conversation"]["state"], RESOLVED)
+        self.assertIn(
+            closed_message_body,
+            [message["body"] for message in polled.json()["messages"]],
+        )
         self.assertEqual(
             queue_events,
             [
@@ -843,6 +1198,55 @@ class ChatbotSupportTests(unittest.TestCase):
         ):
             segment = source[source.index(route_marker):]
             self.assertIn("lock_agent_ticket_for_mutation", segment.split("@router", 1)[0])
+
+    def test_postgresql_ticket_lock_excludes_nullable_user_joins(self):
+        """Regression: PostgreSQL cannot FOR UPDATE a nullable outer join.
+
+        SupportTicket maps both ``user`` and ``assigned_to`` as joined
+        relationships.  Compile the exact shared lock query with the
+        PostgreSQL dialect so a future eager-loading change cannot silently
+        restore ``LEFT OUTER JOIN ... FOR UPDATE`` in close/transfer/claim,
+        or in AI response persistence.
+        """
+        db = SessionLocal()
+        try:
+            statement = _chatbot_ticket_lock_query(db, self.existing_ticket_id).statement
+            sql = str(
+                statement.compile(
+                    dialect=postgresql.dialect(),
+                    compile_kwargs={"literal_binds": True},
+                )
+            )
+            new_session_statement = chatbot_routes._active_chatbot_tickets_for_new_session_query(db, 121).statement
+            new_session_sql = str(
+                new_session_statement.compile(
+                    dialect=postgresql.dialect(),
+                    compile_kwargs={"literal_binds": True},
+                )
+            )
+        finally:
+            db.close()
+
+        normalized_sql = " ".join(sql.upper().split())
+        self.assertIn("FROM SUPPORT_TICKETS", normalized_sql)
+        self.assertIn("FOR UPDATE OF SUPPORT_TICKETS", normalized_sql)
+        self.assertNotIn("LEFT OUTER JOIN", normalized_sql)
+        self.assertNotIn("JOIN USERS", normalized_sql)
+
+        normalized_new_session_sql = " ".join(new_session_sql.upper().split())
+        self.assertIn("FOR UPDATE OF SUPPORT_TICKETS", normalized_new_session_sql)
+        self.assertNotIn("LEFT OUTER JOIN", normalized_new_session_sql)
+        self.assertNotIn("JOIN USERS", normalized_new_session_sql)
+
+        # The AI response race guard must share the exact helper rather than
+        # reintroducing its own unsafe SupportTicket.with_for_update query.
+        routes_source = (Path(__file__).parents[1] / "app" / "routes_chatbot.py").read_text(encoding="utf-8")
+        provider_segment = routes_source[
+            routes_source.index("def _provider_answer_for_message("):
+            routes_source.index("def _assistant_attempt_count(")
+        ]
+        self.assertIn("lock_chatbot_ticket_for_update", provider_segment)
+        self.assertNotIn(".with_for_update()", provider_segment)
 
 
 if __name__ == "__main__":
