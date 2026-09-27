@@ -785,15 +785,20 @@ def set_typing(
     thread_id: int,
     request: Request,
     csrf_token: str = Form(""),
+    active: str = Form("true"),
     db: Session = Depends(get_db),
 ):
     session_user, _thread, _other = _thread_for_member(db, request, thread_id, api=True)
     require_csrf(request, csrf_token)
     uid = session_user["id"]
 
+    if str(active).lower() in {"0", "false", "no"}:
+        if thread_id in typing_state:
+            typing_state[thread_id].pop(uid, None)
+        return {"ok": True}
+
     if thread_id not in typing_state:
         typing_state[thread_id] = {}
-
     typing_state[thread_id][uid] = datetime.utcnow() + timedelta(seconds=3)
     return {"ok": True}
 
