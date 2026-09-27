@@ -532,6 +532,11 @@
     cursor:pointer;
   }
   .conversation-composer-preview__remove:hover{ color:#3c3552; background:rgba(91,78,157,.11); }
+  .conversation-composer-preview--voice{
+    flex-wrap:wrap;
+    max-width:min(100%,330px);
+  }
+  .conversation-composer-preview--voice audio{ width:min(210px,55vw); height:31px; }
   .conversation-recording{
     display:flex;
     align-items:center;
@@ -683,6 +688,8 @@
     .conversation-message__content{ max-width:84%; }
     .conversation-bubble{ padding:10px 12px 8px; }
     .conversation-composer{ padding-left:max(12px, env(safe-area-inset-left, 0px)); padding-right:max(12px, env(safe-area-inset-right, 0px)); }
+    .conversation-composer__row{ gap:6px; }
+    .conversation-composer__media{ width:34px; height:34px; flex-basis:34px; margin-bottom:6px; border-radius:11px; }
   }
 
   @media (max-height:520px) and (orientation:landscape){
@@ -871,19 +878,71 @@
     const form = document.getElementById('conversationComposer');
     const input = document.getElementById('conversationMessage');
     const sendButton = form ? form.querySelector('.conversation-send') : null;
+    const attachmentButton = document.getElementById('conversationAttachmentButton');
+    const attachmentInput = document.getElementById('conversationAttachmentInput');
+    const voiceButton = document.getElementById('conversationVoiceButton');
+    const previews = document.getElementById('conversationComposerPreviews');
+    const recording = document.getElementById('conversationRecording');
+    const recordingTimer = document.getElementById('conversationRecordingTimer');
+    const recordingCancel = document.getElementById('conversationRecordingCancel');
+    const recordingStop = document.getElementById('conversationRecordingStop');
+    const csrfInput = document.getElementById('conversationCsrf');
+    const clientMessageIdInput = document.getElementById('conversationClientMessageId');
+    const voiceDurationInput = document.getElementById('conversationVoiceDuration');
     const errorMessage = document.getElementById('composerError');
     const typingMount = document.getElementById('typingMount');
+    const presenceElement = document.getElementById('conversationPresence');
+    const lightbox = document.getElementById('conversationImageLightbox');
+    const lightboxImage = document.getElementById('conversationImageLightboxImage');
+    const lightboxClose = document.getElementById('conversationImageLightboxClose');
     const threadId = {{ thread.id }};
     const otherAvatar = {{ other_avatar|tojson }};
+    const csrfToken = {{ csrf_token|tojson }};
+    const maxAttachments = {{ max_attachments|int }};
+    const maxAttachmentBytes = {{ max_attachment_bytes|int }};
+    const maxVoiceBytes = {{ max_voice_bytes|int }};
     let emptyState = document.getElementById('emptyState');
     let lastMessageId = {{ messages[-1].id if messages else 0 }};
     let receiptCursor = {{ receipt_cursor|tojson }};
     let isSending = false;
+    let selectedAttachments = [];
+    let pendingVoiceFile = null;
+    let pendingVoiceDuration = 0;
+    let previewObjectUrls = [];
+    let activeRecorder = null;
+    let activeStream = null;
+    let recordingStartedAt = 0;
+    let recordingInterval = null;
+    let discardRecording = false;
+    let typingLastSentAt = 0;
 
-    if (!chatBox || !form || !input || !sendButton || !typingMount) return;
+    if (!chatBox || !form || !input || !sendButton || !typingMount || !attachmentInput || !attachmentButton || !voiceButton) return;
 
     const scrollToLatest = () => { chatBox.scrollTop = chatBox.scrollHeight; };
     const isNearLatest = () => chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < 88;
+    const isVisible = () => document.visibilityState === 'visible';
+    const createClientMessageId = () => {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID().replace(/-/g, '');
+      return `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`.slice(0, 64);
+    };
+    const formatDuration = (milliseconds) => {
+      const totalSeconds = Math.max(0, Math.round(Number(milliseconds || 0) / 1000));
+      return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
+    };
+    const formatBytes = (bytes) => {
+      const value = Number(bytes || 0);
+      return value >= 1024 * 1024 ? `${(value / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(value / 1024))} KB`;
+    };
+    const setError = (message) => {
+      if (!errorMessage) return;
+      errorMessage.textContent = message || 'Message could not be sent. Please try again.';
+      errorMessage.hidden = false;
+    };
+    const clearError = () => {
+      if (!errorMessage) return;
+      errorMessage.hidden = true;
+      errorMessage.textContent = 'Message could not be sent. Please try again.';
+    };
 
     const autoResize = () => {
       input.style.height = 'auto';
@@ -893,7 +952,12 @@
       input.style.overflowY = input.scrollHeight > maxHeight ? 'auto' : 'hidden';
     };
 
-    const updateSendState = () => { sendButton.disabled = isSending || !input.value.trim(); };
+    const hasPendingMedia = () => selectedAttachments.length > 0 || Boolean(pendingVoiceFile);
+    const updateSendState = () => {
+      sendButton.disabled = isSending || (!input.value.trim() && !hasPendingMedia());
+      attachmentButton.disabled = isSending || Boolean(activeRecorder) || Boolean(pendingVoiceFile);
+      voiceButton.disabled = isSending || Boolean(activeRecorder) || selectedAttachments.length > 0;
+    };
 
     const makeAvatar = () => {
       const avatar = document.createElement('img');
@@ -945,6 +1009,72 @@
       if (icon) icon.className = 'bi bi-check2-all';
     };
 
+    const bindVoiceDuration = (audio, durationLabel) => {
+      if (!audio || !durationLabel) return;
+      const suppliedDuration = Number(audio.dataset.voiceDuration || 0);
+      if (suppliedDuration > 0) durationLabel.textContent = formatDuration(suppliedDuration);
+      const update = () => {
+        if (Number.isFinite(audio.duration) && audio.duration > 0) {
+          durationLabel.textContent = formatDuration(audio.duration * 1000);
+        }
+      };
+      audio.addEventListener('loadedmetadata', update, { once: true });
+      if (audio.readyState >= 1) update();
+    };
+
+    const createAttachmentElement = (attachment) => {
+      const kind = attachment.kind || (attachment.is_image ? 'image' : attachment.is_voice ? 'voice' : 'file');
+      if (kind === 'image') {
+        const button = document.createElement('button');
+        button.className = 'conversation-attachment-image';
+        button.type = 'button';
+        button.dataset.messageImage = attachment.url || '';
+        button.dataset.imageName = attachment.name || 'Image attachment';
+        button.setAttribute('aria-label', `Open image ${attachment.name || 'attachment'}`);
+        const image = document.createElement('img');
+        image.src = attachment.url || '';
+        image.alt = attachment.name || 'Image attachment';
+        image.loading = 'lazy';
+        image.decoding = 'async';
+        button.appendChild(image);
+        return button;
+      }
+      if (kind === 'voice') {
+        const voice = document.createElement('div');
+        voice.className = 'conversation-voice';
+        const audio = document.createElement('audio');
+        audio.controls = true;
+        audio.preload = 'metadata';
+        audio.src = attachment.url || '';
+        audio.dataset.voiceDuration = attachment.duration_ms || '';
+        audio.setAttribute('aria-label', 'Voice message');
+        const duration = document.createElement('span');
+        duration.className = 'conversation-voice__duration';
+        duration.setAttribute('aria-label', 'Voice message duration');
+        voice.append(audio, duration);
+        bindVoiceDuration(audio, duration);
+        return voice;
+      }
+      const link = document.createElement('a');
+      link.className = 'conversation-attachment-file';
+      link.href = attachment.url || '';
+      link.download = attachment.name || 'attachment';
+      const icon = document.createElement('i');
+      icon.className = 'bi bi-file-earmark-text conversation-attachment-file__icon';
+      icon.setAttribute('aria-hidden', 'true');
+      const body = document.createElement('span');
+      body.className = 'conversation-attachment-file__body';
+      const name = document.createElement('span');
+      name.className = 'conversation-attachment-file__name';
+      name.textContent = attachment.name || 'Document';
+      const metadata = document.createElement('span');
+      metadata.className = 'conversation-attachment-file__meta';
+      metadata.textContent = formatBytes(attachment.size_bytes);
+      body.append(name, metadata);
+      link.append(icon, body);
+      return link;
+    };
+
     const createMessageElement = (message) => {
       const row = document.createElement('div');
       const fromMe = Boolean(message.from_me);
@@ -963,14 +1093,22 @@
       content.className = 'conversation-message__content';
       const bubble = document.createElement('article');
       bubble.className = `conversation-bubble ${fromMe ? 'conversation-bubble--me' : 'conversation-bubble--other'}`;
-      const body = document.createElement('p');
-      body.className = 'conversation-bubble__text';
-      body.textContent = message.body || '';
+      if (message.body) {
+        const body = document.createElement('p');
+        body.className = 'conversation-bubble__text';
+        body.textContent = message.body;
+        bubble.appendChild(body);
+      }
+      if (Array.isArray(message.attachments) && message.attachments.length) {
+        const attachments = document.createElement('div');
+        attachments.className = 'conversation-bubble__attachments';
+        message.attachments.forEach((attachment) => attachments.appendChild(createAttachmentElement(attachment)));
+        bubble.appendChild(attachments);
+      }
       const timestamp = document.createElement('time');
       timestamp.className = 'conversation-message__time';
       timestamp.textContent = message.time || '';
       if (message.created_at) timestamp.dateTime = message.created_at;
-      bubble.appendChild(body);
       const meta = document.createElement('div');
       meta.className = 'conversation-message__meta';
       meta.appendChild(timestamp);
@@ -1028,7 +1166,233 @@
       }
     };
 
-    const stopTyping = () => { fetch(`/messages/${threadId}/typing`, { method: 'POST', body: '' }); };
+    const postTyping = (active) => {
+      const data = new URLSearchParams({ csrf_token: csrfToken, active: active ? 'true' : 'false' });
+      return fetch(`/messages/${threadId}/typing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: data.toString(),
+      }).catch(() => {});
+    };
+    const announceTyping = () => {
+      const now = Date.now();
+      if (now - typingLastSentAt < 1200) return;
+      typingLastSentAt = now;
+      postTyping(true);
+    };
+    const stopTyping = () => postTyping(false);
+
+    const formatLastSeen = (value) => {
+      const timestamp = new Date(value || '');
+      if (!Number.isFinite(timestamp.getTime())) return 'Offline';
+      const age = Math.max(0, Date.now() - timestamp.getTime());
+      if (age < 60 * 1000) return 'Last seen just now';
+      if (age < 60 * 60 * 1000) return `Last seen ${Math.floor(age / (60 * 1000))} min ago`;
+      const now = new Date();
+      const time = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const isToday = timestamp.toDateString() === now.toDateString();
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      if (isToday) return `Last seen today at ${time}`;
+      if (timestamp.toDateString() === yesterday.toDateString()) return `Last seen yesterday at ${time}`;
+      return `Last seen ${timestamp.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${time}`;
+    };
+    const updatePresence = (presence) => {
+      if (!presenceElement || !presence) return;
+      const online = Boolean(presence.online);
+      presenceElement.dataset.online = online ? 'true' : 'false';
+      presenceElement.dataset.lastSeen = presence.last_seen || '';
+      const label = presenceElement.querySelector('.conversation-presence__text');
+      if (label) label.textContent = online ? 'Online' : formatLastSeen(presence.last_seen);
+    };
+    const refreshPresenceLabel = () => {
+      if (!presenceElement || presenceElement.dataset.online === 'true') return;
+      const label = presenceElement.querySelector('.conversation-presence__text');
+      if (label) label.textContent = formatLastSeen(presenceElement.dataset.lastSeen);
+    };
+
+    const clearPreviewUrls = () => {
+      previewObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+      previewObjectUrls = [];
+    };
+    const renderPreviews = () => {
+      if (!previews) return;
+      clearPreviewUrls();
+      previews.replaceChildren();
+      const addPreview = (file, index, isVoice) => {
+        const preview = document.createElement('div');
+        preview.className = `conversation-composer-preview${isVoice ? ' conversation-composer-preview--voice' : ''}`;
+        const isImage = !isVoice && /^image\//.test(file.type || '');
+        if (isImage) {
+          const image = document.createElement('img');
+          image.className = 'conversation-composer-preview__image';
+          const url = URL.createObjectURL(file);
+          previewObjectUrls.push(url);
+          image.src = url;
+          image.alt = '';
+          preview.appendChild(image);
+        } else {
+          const icon = document.createElement('i');
+          icon.className = `bi ${isVoice ? 'bi-mic-fill' : 'bi-file-earmark-text'} conversation-composer-preview__icon`;
+          icon.setAttribute('aria-hidden', 'true');
+          preview.appendChild(icon);
+        }
+        const details = document.createElement('span');
+        details.className = 'conversation-composer-preview__name';
+        details.textContent = isVoice ? `Voice message${pendingVoiceDuration ? ` · ${formatDuration(pendingVoiceDuration)}` : ''}` : file.name;
+        preview.appendChild(details);
+        if (isVoice) {
+          const audio = document.createElement('audio');
+          audio.controls = true;
+          audio.preload = 'metadata';
+          const url = URL.createObjectURL(file);
+          previewObjectUrls.push(url);
+          audio.src = url;
+          audio.setAttribute('aria-label', 'Preview voice message');
+          preview.appendChild(audio);
+        }
+        const remove = document.createElement('button');
+        remove.className = 'conversation-composer-preview__remove';
+        remove.type = 'button';
+        remove.setAttribute('aria-label', `Remove ${isVoice ? 'voice message' : file.name}`);
+        remove.innerHTML = '<i class="bi bi-x-lg" aria-hidden="true"></i>';
+        remove.addEventListener('click', () => {
+          if (isVoice) {
+            pendingVoiceFile = null;
+            pendingVoiceDuration = 0;
+            if (voiceDurationInput) voiceDurationInput.value = '';
+          } else {
+            selectedAttachments.splice(index, 1);
+          }
+          renderPreviews();
+          updateSendState();
+        });
+        preview.appendChild(remove);
+        previews.appendChild(preview);
+      };
+      selectedAttachments.forEach((file, index) => addPreview(file, index, false));
+      if (pendingVoiceFile) addPreview(pendingVoiceFile, 0, true);
+      previews.hidden = !selectedAttachments.length && !pendingVoiceFile;
+    };
+
+    const stopMediaStream = () => {
+      if (activeStream) activeStream.getTracks().forEach((track) => track.stop());
+      activeStream = null;
+    };
+    const updateRecordingTimer = () => {
+      if (!recordingTimer) return;
+      recordingTimer.textContent = formatDuration(Date.now() - recordingStartedAt);
+    };
+    const resetRecording = () => {
+      if (recordingInterval) window.clearInterval(recordingInterval);
+      recordingInterval = null;
+      if (recording) recording.hidden = true;
+      if (recordingTimer) recordingTimer.textContent = '00:00';
+      activeRecorder = null;
+      stopMediaStream();
+      updateSendState();
+    };
+    const extensionForMime = (mime) => {
+      const value = String(mime || '').toLowerCase();
+      if (value.includes('ogg')) return 'ogg';
+      if (value.includes('mp4') || value.includes('m4a')) return 'm4a';
+      return 'webm';
+    };
+    const preferredRecorderType = () => {
+      if (!window.MediaRecorder || typeof window.MediaRecorder.isTypeSupported !== 'function') return null;
+      return [
+        'audio/webm;codecs=opus',
+        'audio/mp4',
+        'audio/ogg;codecs=opus',
+        'audio/webm',
+      ].find((type) => window.MediaRecorder.isTypeSupported(type)) || null;
+    };
+    const finishRecording = (recorder, chunks) => {
+      const mime = recorder.mimeType || 'audio/webm';
+      const blob = new Blob(chunks, { type: mime });
+      resetRecording();
+      if (discardRecording || !blob.size) {
+        discardRecording = false;
+        return;
+      }
+      if (blob.size > maxVoiceBytes) {
+        setError(`Voice messages must be ${Math.max(1, Math.floor(maxVoiceBytes / (1024 * 1024)))} MB or smaller.`);
+        return;
+      }
+      const extension = extensionForMime(blob.type || mime);
+      pendingVoiceFile = new File([blob], `voice-message-${Date.now()}.${extension}`, { type: blob.type || mime });
+      pendingVoiceDuration = 0;
+      const probe = document.createElement('audio');
+      const probeUrl = URL.createObjectURL(blob);
+      probe.preload = 'metadata';
+      probe.src = probeUrl;
+      const finalize = () => URL.revokeObjectURL(probeUrl);
+      probe.addEventListener('loadedmetadata', () => {
+        if (Number.isFinite(probe.duration) && probe.duration > 0) {
+          pendingVoiceDuration = Math.round(probe.duration * 1000);
+          if (voiceDurationInput) voiceDurationInput.value = String(pendingVoiceDuration);
+        }
+        renderPreviews();
+      }, { once: true });
+      probe.addEventListener('error', () => renderPreviews(), { once: true });
+      probe.addEventListener('loadedmetadata', finalize, { once: true });
+      probe.addEventListener('error', finalize, { once: true });
+      renderPreviews();
+      updateSendState();
+    };
+    const startRecording = async () => {
+      if (activeRecorder || isSending) return;
+      if (selectedAttachments.length) {
+        setError('Send selected files before recording a voice message.');
+        return;
+      }
+      if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function' || !window.MediaRecorder) {
+        setError('Voice messages are not supported by this browser.');
+        return;
+      }
+      clearError();
+      try {
+        activeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const type = preferredRecorderType();
+        const recorder = type ? new MediaRecorder(activeStream, { mimeType: type }) : new MediaRecorder(activeStream);
+        const chunks = [];
+        activeRecorder = recorder;
+        discardRecording = false;
+        recorder.addEventListener('dataavailable', (event) => {
+          if (event.data && event.data.size) chunks.push(event.data);
+        });
+        recorder.addEventListener('stop', () => finishRecording(recorder, chunks), { once: true });
+        recorder.start(250);
+        recordingStartedAt = Date.now();
+        updateRecordingTimer();
+        recordingInterval = window.setInterval(updateRecordingTimer, 250);
+        if (recording) recording.hidden = false;
+        updateSendState();
+      } catch (error) {
+        resetRecording();
+        const denied = error && (error.name === 'NotAllowedError' || error.name === 'SecurityError');
+        setError(denied ? 'Microphone access is required to record a voice message.' : 'Unable to start the microphone. Please try again.');
+      }
+    };
+    const stopRecording = (discard) => {
+      if (!activeRecorder) return;
+      discardRecording = Boolean(discard);
+      if (activeRecorder.state !== 'inactive') activeRecorder.stop();
+      else resetRecording();
+    };
+
+    const openLightbox = (source, name) => {
+      if (!lightbox || !lightboxImage || !source) return;
+      lightboxImage.src = source;
+      lightboxImage.alt = name || 'Image attachment';
+      lightbox.hidden = false;
+      lightboxClose && lightboxClose.focus();
+    };
+    const closeLightbox = () => {
+      if (!lightbox || lightbox.hidden) return;
+      lightbox.hidden = true;
+      if (lightboxImage) lightboxImage.src = '';
+    };
 
     const setConversationViewport = () => {
       const viewport = window.visualViewport;
@@ -1037,10 +1401,10 @@
     };
 
     input.addEventListener('input', () => {
-      if (input.value.trim().length > 0) fetch(`/messages/${threadId}/typing`, { method: 'POST' });
+      if (input.value.trim().length > 0) announceTyping();
       autoResize();
       updateSendState();
-      if (errorMessage) errorMessage.hidden = true;
+      clearError();
     });
 
     input.addEventListener('keydown', (event) => {
@@ -1056,12 +1420,22 @@
     form.addEventListener('submit', (event) => {
       event.preventDefault();
       const text = input.value.trim();
-      if (!text || isSending) return;
+      if ((!text && !hasPendingMedia()) || isSending || activeRecorder) return;
       isSending = true;
       updateSendState();
-      if (errorMessage) errorMessage.hidden = true;
-      fetch(`/messages/${threadId}`, { method: 'POST', body: new FormData(form) })
-        .then((response) => {
+      clearError();
+      const requestData = new FormData(form);
+      requestData.set('body', text);
+      requestData.set('csrf_token', csrfInput ? csrfInput.value : csrfToken);
+      if (!clientMessageIdInput.value) clientMessageIdInput.value = createClientMessageId();
+      requestData.set('client_message_id', clientMessageIdInput.value);
+      selectedAttachments.forEach((file) => requestData.append('attachments', file, file.name));
+      if (pendingVoiceFile) {
+        requestData.set('voice', pendingVoiceFile, pendingVoiceFile.name);
+        requestData.set('voice_duration_ms', String(pendingVoiceDuration || ''));
+      }
+      fetch(`/messages/${threadId}`, { method: 'POST', headers: { Accept: 'application/json' }, body: requestData })
+        .then(async (response) => {
           if (!response.ok) throw new Error('Message request failed');
           // Preserve the server's existing permission/session redirects instead of
           // treating a followed redirect as a successful in-place send.
@@ -1069,19 +1443,37 @@
             const destination = new URL(response.url, window.location.href);
             if (destination.pathname !== window.location.pathname) {
               window.location.assign(destination.href);
-              return;
+              return null;
             }
           }
+          const data = await response.json();
+          if (!data.message) throw new Error('Message request failed');
+          return data;
+        })
+        .then((data) => {
+          if (!data) return;
           if (emptyState) {
             emptyState.remove();
             emptyState = null;
           }
+          const followLatest = isNearLatest();
+          if (!chatBox.querySelector(`[data-message-id="${String(data.message.id)}"]`)) {
+            appendMessage(data.message);
+          }
+          lastMessageId = Math.max(lastMessageId, Number(data.message.id) || 0);
           input.value = '';
           autoResize();
+          selectedAttachments = [];
+          pendingVoiceFile = null;
+          pendingVoiceDuration = 0;
+          if (voiceDurationInput) voiceDurationInput.value = '';
+          renderPreviews();
+          clientMessageIdInput.value = createClientMessageId();
           stopTyping();
+          if (followLatest || true) scrollToLatest();
         })
-        .catch(() => {
-          if (errorMessage) errorMessage.hidden = false;
+        .catch(async (error) => {
+          setError(error && error.message === 'Message request failed' ? 'Message could not be sent. Please try again.' : 'Message could not be sent. Please try again.');
           input.focus();
         })
         .finally(() => {
@@ -1090,18 +1482,57 @@
         });
     });
 
-    setInterval(() => {
-      fetch(`/messages/${threadId}/typing_status`)
-        .then((response) => response.json())
-        .then((data) => updateTypingIndicator(Boolean(data.typing)))
-        .catch(() => {});
-    }, 1000);
+    attachmentButton.addEventListener('click', () => attachmentInput.click());
+    attachmentInput.addEventListener('change', () => {
+      const additions = Array.from(attachmentInput.files || []);
+      attachmentInput.value = '';
+      if (!additions.length) return;
+      if (pendingVoiceFile) {
+        setError('Send the voice message separately from file attachments.');
+        return;
+      }
+      if (selectedAttachments.length + additions.length > maxAttachments) {
+        setError(`You can attach up to ${maxAttachments} files to one message.`);
+        return;
+      }
+      const tooLarge = additions.find((file) => file.size > maxAttachmentBytes);
+      if (tooLarge) {
+        setError(`${tooLarge.name} is too large to attach.`);
+        return;
+      }
+      selectedAttachments = [...selectedAttachments, ...additions];
+      clearError();
+      renderPreviews();
+      updateSendState();
+    });
+    voiceButton.addEventListener('click', startRecording);
+    recordingCancel && recordingCancel.addEventListener('click', () => stopRecording(true));
+    recordingStop && recordingStop.addEventListener('click', () => stopRecording(false));
 
-    setInterval(() => {
+    chatBox.addEventListener('click', (event) => {
+      const imageButton = event.target.closest('[data-message-image]');
+      if (imageButton) openLightbox(imageButton.dataset.messageImage, imageButton.dataset.imageName);
+    });
+    lightboxClose && lightboxClose.addEventListener('click', closeLightbox);
+    lightbox && lightbox.addEventListener('click', (event) => { if (event.target === lightbox) closeLightbox(); });
+    window.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeLightbox(); });
+
+    const pollTyping = () => {
+      if (!isVisible()) return;
+      fetch(`/messages/${threadId}/typing_status`)
+        .then((response) => response.ok ? response.json() : null)
+        .then((data) => { if (data) updateTypingIndicator(Boolean(data.typing)); })
+        .catch(() => {});
+    };
+
+    const pollConversation = () => {
+      if (!isVisible()) return;
       const query = new URLSearchParams({ after: String(lastMessageId), receipts_after: receiptCursor });
       fetch(`/messages/${threadId}/poll?${query.toString()}`)
-        .then((response) => response.json())
+        .then((response) => response.ok ? response.json() : null)
         .then((data) => {
+          if (!data) return;
+          updatePresence(data.presence);
           if (data.receipt_cursor) receiptCursor = data.receipt_cursor;
           (data.read_receipts || []).forEach((receipt) => markReceiptRead(receipt.id));
           if (!data.messages || data.messages.length === 0) return;
@@ -1117,12 +1548,20 @@
           if (followLatest) scrollToLatest();
         })
         .catch(() => {});
-    }, 1000);
+    };
 
     setConversationViewport();
     window.addEventListener('resize', setConversationViewport);
     window.addEventListener('orientationchange', setConversationViewport);
     if (window.visualViewport) window.visualViewport.addEventListener('resize', setConversationViewport);
+    document.addEventListener('visibilitychange', () => {
+      if (isVisible()) {
+        pollConversation();
+        pollTyping();
+      } else {
+        stopTyping();
+      }
+    });
     window.addEventListener('pagehide', () => {
       window.removeEventListener('resize', setConversationViewport);
       window.removeEventListener('orientationchange', setConversationViewport);
@@ -1132,6 +1571,12 @@
 
     autoResize();
     updateSendState();
+    updatePresence({ online: presenceElement && presenceElement.dataset.online === 'true', last_seen: presenceElement && presenceElement.dataset.lastSeen });
+    document.querySelectorAll('.conversation-voice audio').forEach((audio) => bindVoiceDuration(audio, audio.closest('.conversation-voice')?.querySelector('.conversation-voice__duration')));
+    window.setInterval(pollTyping, 2000);
+    window.setInterval(pollConversation, 5000);
+    window.setInterval(refreshPresenceLabel, 30000);
+    pollConversation();
     requestAnimationFrame(scrollToLatest);
   })();
 </script>
