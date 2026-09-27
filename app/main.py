@@ -771,6 +771,8 @@ def ensure_support_ticket_columns():
       - assigned_to_id INTEGER (FK to users.id)
       - resolved_at TIMESTAMP
       - updated_at TIMESTAMP
+      - ai_state / ai_summary for the existing chatbot conversation
+      - client_message_id / metadata_json for safe message idempotency/audit
     Works safely on both SQLite and Postgres.
     """
     try:
@@ -798,6 +800,16 @@ def ensure_support_ticket_columns():
                     conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN resolved_at TIMESTAMP;")
                 if "updated_at" not in cols:
                     conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN updated_at TIMESTAMP;")
+                if "ai_state" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN ai_state VARCHAR(24) NOT NULL DEFAULT 'ai_active';")
+                if "ai_summary" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN ai_summary TEXT;")
+
+                message_cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info('support_messages')").all()}
+                if "client_message_id" not in message_cols:
+                    conn.exec_driver_sql("ALTER TABLE support_messages ADD COLUMN client_message_id VARCHAR(72);")
+                if "metadata_json" not in message_cols:
+                    conn.exec_driver_sql("ALTER TABLE support_messages ADD COLUMN metadata_json TEXT;")
             elif str(backend).startswith("postgres"):
                 # Postgres: use IF NOT EXISTS for each column
                 conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS queue VARCHAR(10);")
@@ -808,6 +820,10 @@ def ensure_support_ticket_columns():
                 conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS assigned_to_id INTEGER NULL;")
                 conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP NULL;")
                 conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NULL;")
+                conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS ai_state VARCHAR(24) NOT NULL DEFAULT 'ai_active';")
+                conn.exec_driver_sql("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS ai_summary TEXT NULL;")
+                conn.exec_driver_sql("ALTER TABLE support_messages ADD COLUMN IF NOT EXISTS client_message_id VARCHAR(72) NULL;")
+                conn.exec_driver_sql("ALTER TABLE support_messages ADD COLUMN IF NOT EXISTS metadata_json TEXT NULL;")
         print("[OK] ensure_support_ticket_columns(): support_tickets ready")
     except Exception as e:
         print(f"[WARN] ensure_support_ticket_columns failed: {e}")

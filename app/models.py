@@ -719,6 +719,12 @@ class SupportTicket(Base):
     closed_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
+    # AI support stays on the same ticket/message system as human support.
+    # These are deliberately small, relationally-adjacent fields rather than a
+    # second support system or a large JSON conversation blob.
+    ai_state = Column(String(24), nullable=False, default="ai_active", index=True)
+    ai_summary = Column(Text, nullable=True)
+
     # Relationships
     user = relationship("User", foreign_keys=[user_id], lazy="joined")
     # 👇 Name it assigned_to because your templates use this name
@@ -742,6 +748,12 @@ class SupportMessage(Base):
     body = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     is_read   = Column(Boolean, nullable=False, default=False)
+
+    # The client key makes sends idempotent within a ticket.  Metadata is a
+    # compact audit record (knowledge ids/tool names/feedback only), never raw
+    # payment, document, token, or provider-secret data.
+    client_message_id = Column(String(72), nullable=True, index=True)
+    metadata_json = Column(Text, nullable=True)
 
     ticket = relationship("SupportTicket", back_populates="messages")
     sender = relationship("User", lazy="joined")
