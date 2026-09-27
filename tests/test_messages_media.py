@@ -216,8 +216,16 @@ class DirectMessageMediaTests(unittest.TestCase):
             "<source src=\"/messages/{{ thread.id }}/attachments/{{ attachment.id }}\" type=\"{{ attachment.content_type }}\">",
             'form.dataset.recording = \'true\'',
             "conversation-message--me{ padding-left:8%; margin-right:4px; }",
+            "conversation-item-context__media",
             "aspect-ratio:1 / 1",
-            "grid-template-columns:56px minmax(0,1fr) auto",
+            "object-fit:cover",
+            "grid-template-columns:92px minmax(0,1fr) 48px",
+            "grid-template-columns:80px minmax(0,1fr) 40px",
+            "grid-template-columns:96px minmax(0,1fr) 50px",
+            "grid-template-columns:100px minmax(0,1fr) 52px",
+            "conversation-item-context__price",
+            "conversation-item-context__location",
+            "conversation-item-context__action",
             "grid-template-columns:minmax(0,1fr)",
             "conversation-composer__preview-track",
             "-webkit-overflow-scrolling:touch",
@@ -228,6 +236,20 @@ class DirectMessageMediaTests(unittest.TestCase):
             "conversation-attachment-image--unavailable",
         ):
             self.assertIn(required, template)
+
+    def test_listing_context_card_keeps_its_square_media_and_existing_item_route(self):
+        """The compact listing context must remain presentation-only and 1:1."""
+        template = (Path(__file__).resolve().parents[1] / "app" / "templates" / "thread.html").read_text(encoding="utf-8")
+
+        self.assertIn('href="/items/{{ context_item.id }}"', template)
+        self.assertIn("onerror=\"this.onerror=null;this.src='/static/placeholder.svg'\"", template)
+        self.assertIn("width:92px;\n    height:92px;\n    aspect-ratio:1 / 1;", template)
+        for square_size in (80, 78, 96, 100):
+            self.assertIn(f"width:{square_size}px; height:{square_size}px;", template)
+        self.assertIn("object-fit:cover", template)
+        self.assertIn("object-position:center", template)
+        self.assertIn("text-overflow:ellipsis", template)
+        self.assertNotIn("conversation-item-context__meta", template)
 
     def test_storage_selector_never_needs_a_render_marker_to_choose_cloudinary(self):
         """A cold production process must not silently fall back to local media."""
