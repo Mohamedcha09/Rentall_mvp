@@ -1,0 +1,47 @@
+{
+  "purpose": "Internal inventory of facts that Sevor AI must not invent until an approved source is added.",
+  "entries": [
+    {
+      "domain": "LISTINGS",
+      "topic": "Public listing-review SLA",
+      "reason": "Current listing routes expose states but no approved review-time promise.",
+      "status": "missing"
+    },
+    {
+      "domain": "REFUNDS",
+      "topic": "Eligibility and bank-processing timeline",
+      "reason": "The model records completion, but no single approved customer policy defines eligibility or timing.",
+      "status": "missing"
+    },
+    {
+      "domain": "DEPOSITS",
+      "topic": "Amount formula and universal release policy",
+      "reason": "Booking fields expose status but not a published universal formula or release SLA.",
+      "status": "missing"
+    },
+    {
+      "domain": "PAYOUTS",
+      "topic": "Universal payout timing, fees, and guarantee",
+      "reason": "Payout settings and safe booking fields exist, but no approved universal timing/fee policy is present.",
+      "status": "missing"
+    },
+    {
+      "domain": "BOOKINGS",
+      "topic": "Owner response-time guarantee and cancellation policy",
+      "reason": "The booking flow has request/accept/reject state logic but no approved public SLA or complete cancellation policy.",
+      "status": "missing"
+    },
+    {
+      "domain": "VERIFICATION",
+      "topic": "Complete public document requirements and rejection-reason catalog",
+      "reason": "Account and document status are available, but the scanned code does not define a complete approved public list.",
+      "status": "missing"
+    },
+    {
+      "domain": "PAYMENTS",
+      "topic": "Universal fees and supported-payment-method policy",
+      "reason": "Safe booking payment status exists, but no approved customer-facing universal fee/method policy was found.",
+      "status": "missing"
+    }
+  ]
+}

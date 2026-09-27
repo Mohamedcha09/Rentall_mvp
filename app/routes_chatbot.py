@@ -44,6 +44,7 @@ from .support_ai import (
     notify_waiting_agents,
     provider_available,
     read_metadata,
+    redact_sensitive_user_content,
     resolve_ai_conversation_atomically,
     require_chatbot_ticket,
     require_csrf,
@@ -177,8 +178,24 @@ def _find_idempotent_message(db: Session, ticket: SupportTicket, client_message_
     )
 
 
-def _persist_user_message(db: Session, ticket: SupportTicket, user: User, body: str, client_message_id: Optional[str]) -> SupportMessage:
-    message = append_message(db, ticket, user, "user", body, client_message_id=client_message_id)
+def _persist_user_message(
+    db: Session,
+    ticket: SupportTicket,
+    user: User,
+    body: str,
+    client_message_id: Optional[str],
+    *,
+    metadata: Optional[dict] = None,
+) -> SupportMessage:
+    message = append_message(
+        db,
+        ticket,
+        user,
+        "user",
+        body,
+        client_message_id=client_message_id,
+        metadata=metadata,
+    )
     now = datetime.utcnow()
     ticket.last_from = "user"
     ticket.last_msg_at = now
@@ -512,6 +529,7 @@ def chatbot_send_ai_message(
     require_csrf(request, payload.csrf_token)
     check_message_rate(request, user)
     body = validate_message(payload.body)
+    body, sensitive_content_redacted = redact_sensitive_user_content(body)
     client_message_id = validate_client_message_id(payload.client_message_id)
     ticket = get_or_create_user_conversation(db, user, payload.conversation_id)
     state = ticket_state(ticket)
@@ -522,7 +540,14 @@ def chatbot_send_ai_message(
     if duplicate:
         return _conversation_payload(db, ticket)
 
-    user_message = _persist_user_message(db, ticket, user, body, client_message_id)
+    user_message = _persist_user_message(
+        db,
+        ticket,
+        user,
+        body,
+        client_message_id,
+        metadata={"redacted_sensitive_content": True} if sensitive_content_redacted else None,
+    )
     if state in {WAITING_FOR_AGENT, AGENT_ACTIVE}:
         duplicate_payload = _commit_user_message_or_duplicate(db, ticket, client_message_id)
         if duplicate_payload:
@@ -576,6 +601,7 @@ def chatbot_send_guest_message(
     require_csrf(request, payload.csrf_token)
     check_guest_message_rate(request)
     body = validate_guest_message(payload.body)
+    body, _ = redact_sensitive_user_content(body)
     client_message_id = validate_client_message_id(payload.client_message_id)
     return _guest_message_payload(body, client_message_id)
 
@@ -765,6 +791,7 @@ def chatbot_open_legacy_ticket(
     require_csrf(request, csrf_token)
     check_message_rate(request, user)
     question = validate_message(question)
+    question, sensitive_content_redacted = redact_sensitive_user_content(question)
     # Older FAQ clients can still post here.  They must join the user's
     # already-open Sevor Support conversation instead of creating a second
     # ticket every time the support entry point is clicked.
@@ -789,7 +816,14 @@ def chatbot_open_legacy_ticket(
     state = ticket_state(ticket)
     handoff_created = False
     if state == AI_ACTIVE:
-        _persist_user_message(db, ticket, user, question, None)
+        _persist_user_message(
+            db,
+            ticket,
+            user,
+            question,
+            None,
+            metadata={"redacted_sensitive_content": True} if sensitive_content_redacted else None,
+        )
         ticket, handoff_created = _handoff_after_user_message(
             db,
             ticket,

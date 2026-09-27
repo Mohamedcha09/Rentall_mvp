@@ -533,10 +533,10 @@
       }
       async function sendMessage(text, retryMessageId = null) {
         const body = (text || "").trim(); if (!body || sending) return;
-        // Keep the existing guest FAQ flow (including its option branches),
-        // while allowing all other public questions through the knowledge-only
-        // server path. Private account tools still require authentication.
-        if (!loggedIn && showGuestFaq(body)) return;
+        // Every question, including a legacy Help Center topic, goes through
+        // the server-side approved-knowledge pipeline.  The old client-side
+        // FAQ renderer remains available for compatibility but must not turn
+        // an unreviewed tree answer into a support-policy response.
         if (body.length > 4000) { setError("Message is too long."); return; }
         setError(""); sending = true; updateHeaderAndControls();
         const id = retryMessageId || clientId();

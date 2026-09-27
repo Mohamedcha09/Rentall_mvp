@@ -1,0 +1,379 @@
+{
+  "entries": [
+    {
+      "id": "core:account:password-reset",
+      "status": "published",
+      "priority": 100,
+      "category": "Account",
+      "intent": "account.password.reset",
+      "title": "Reset a password",
+      "keywords": ["forgot password", "password reset", "reset password", "mot de passe", "mot de passe oublié", "كلمة السر", "كلمة المرور", "reset"],
+      "source": "app/auth.py:/forgot,/reset-password",
+      "content": {
+        "en": "Use the Forgot Password page and enter the email for the account. SEVOR shows the same confirmation whether or not a matching account exists. If the email arrives, open its reset link and enter the new password twice. The reset link expires after two hours. Are you not receiving the email, or does the link fail when you open it?",
+        "fr": "Utilisez la page « Forgot Password » et saisissez l’adresse e-mail du compte. SEVOR affiche la même confirmation qu’un compte corresponde ou non. Si l’e-mail arrive, ouvrez son lien puis saisissez deux fois le nouveau mot de passe. Le lien expire après deux heures. Ne recevez-vous pas l’e-mail, ou le lien échoue-t-il à l’ouverture ?",
+        "ar": "استخدم صفحة «Forgot Password» وأدخل البريد الإلكتروني المرتبط بالحساب. تعرض SEVOR نفس رسالة التأكيد سواء وُجد حساب مطابق أم لا. إذا وصل البريد، افتح رابط إعادة التعيين وأدخل كلمة المرور الجديدة مرتين. تنتهي صلاحية الرابط بعد ساعتين. هل لا يصلك البريد أم أن الرابط يفشل عند فتحه؟"
+      }
+    },
+    {
+      "id": "core:account:password-reset-email",
+      "status": "published",
+      "priority": 110,
+      "category": "Account",
+      "intent": "account.password.reset_email",
+      "title": "Password reset email did not arrive",
+      "keywords": ["reset email", "reset mail", "email not arrive", "email never arrived", "ne reçois pas email", "email reset", "لا يصل البريد", "لا تصلني رسالة", "رسالة تغيير"],
+      "source": "app/auth.py:/forgot",
+      "content": {
+        "en": "Request the reset again from the Forgot Password page using the email for the account. For privacy, SEVOR does not reveal in that screen whether the address has an account. Do not share your password in chat. If the message still does not arrive after requesting it again, Sevor Support can investigate the delivery issue.",
+        "fr": "Demandez à nouveau la réinitialisation depuis la page « Forgot Password » avec l’adresse du compte. Pour préserver la confidentialité, SEVOR ne révèle pas sur cet écran si l’adresse possède un compte. Ne partagez jamais votre mot de passe dans le chat. Si le message n’arrive toujours pas, Sevor Support peut examiner le problème de livraison.",
+        "ar": "اطلب إعادة التعيين مرة أخرى من صفحة «Forgot Password» باستخدام بريد الحساب. لحماية الخصوصية، لا تكشف SEVOR في هذه الصفحة إن كان البريد مرتبطًا بحساب. لا تشارك كلمة المرور في الدردشة. إذا لم يصل البريد بعد طلبه مجددًا، يمكن لدعم Sevor فحص مشكلة التسليم."
+      }
+    },
+    {
+      "id": "core:account:password-reset-link",
+      "status": "published",
+      "priority": 110,
+      "category": "Account",
+      "intent": "account.password.reset_link",
+      "title": "Password reset link failed or expired",
+      "keywords": ["reset link", "link expired", "link invalid", "lien reset", "lien expiré", "lien ne marche pas", "رابط تغيير", "الرابط منتهي", "الرابط لا يعمل"],
+      "source": "app/auth.py:/reset-password",
+      "content": {
+        "en": "A reset link is valid for two hours. If SEVOR reports that it is expired or invalid, request a fresh link from Forgot Password and use the newest link. On the reset page, the new password and confirmation must match. Do not send either password to support.",
+        "fr": "Un lien de réinitialisation est valable deux heures. Si SEVOR indique qu’il est expiré ou invalide, demandez un nouveau lien depuis « Forgot Password » et utilisez le plus récent. Sur la page de réinitialisation, le nouveau mot de passe et sa confirmation doivent correspondre. Ne transmettez aucun mot de passe au support.",
+        "ar": "صلاحية رابط إعادة التعيين ساعتان. إذا أبلغتك SEVOR أن الرابط منتهي أو غير صالح، اطلب رابطًا جديدًا من «Forgot Password» واستخدم أحدث رابط. في صفحة إعادة التعيين يجب أن تتطابق كلمة المرور الجديدة والتأكيد. لا ترسل أي كلمة مرور إلى الدعم."
+      }
+    },
+    {
+      "id": "core:account:password-change",
+      "status": "published",
+      "priority": 100,
+      "category": "Account",
+      "intent": "account.password.change",
+      "title": "Change a signed-in password",
+      "keywords": ["change password", "current password", "modifier mot de passe", "changer mot de passe", "تغيير كلمة السر", "تغيير كلمة المرور"],
+      "source": "app/auth.py:/settings/password",
+      "content": {
+        "en": "When you are signed in, the password change flow requires your current password plus a new password entered twice. If you do not know the current password, use Forgot Password instead. Never put a password in this chat.",
+        "fr": "Lorsque vous êtes connecté, le changement de mot de passe demande le mot de passe actuel puis le nouveau mot de passe saisi deux fois. Si vous ne connaissez pas le mot de passe actuel, utilisez « Forgot Password ». Ne mettez jamais un mot de passe dans ce chat.",
+        "ar": "عند تسجيل الدخول، يتطلب تغيير كلمة المرور كلمة المرور الحالية ثم إدخال كلمة المرور الجديدة مرتين. إذا كنت لا تعرف كلمة المرور الحالية، استخدم «Forgot Password» بدلًا من ذلك. لا تكتب أي كلمة مرور في هذه الدردشة."
+      }
+    },
+    {
+      "id": "core:account:login",
+      "status": "published",
+      "priority": 80,
+      "category": "Account",
+      "intent": "account.login",
+      "title": "Sign-in and email verification",
+      "keywords": ["cannot login", "can't log in", "login problem", "connexion", "ne peux pas me connecter", "لا أستطيع تسجيل الدخول", "مشكلة تسجيل"],
+      "source": "app/auth.py:/login",
+      "content": {
+        "en": "SEVOR checks the email and password at sign-in. For regular users, an unverified email is sent to the email-verification page instead of creating a session. If the password is the problem, use Forgot Password; do not share it in chat.",
+        "fr": "SEVOR vérifie l’e-mail et le mot de passe à la connexion. Pour les utilisateurs ordinaires, un e-mail non vérifié ouvre la page de vérification au lieu de créer une session. Si le mot de passe est le problème, utilisez « Forgot Password » et ne le partagez pas dans le chat.",
+        "ar": "تتحقق SEVOR من البريد وكلمة المرور عند تسجيل الدخول. بالنسبة للمستخدم العادي، ينقلك البريد غير الموثق إلى صفحة التحقق بدل إنشاء جلسة دخول. إذا كانت المشكلة في كلمة المرور فاستخدم «Forgot Password» ولا تشاركها في الدردشة."
+      }
+    },
+    {
+      "id": "core:account:email-verification",
+      "status": "published",
+      "priority": 90,
+      "category": "Account & Verification",
+      "intent": "account.email_verification",
+      "title": "Verify an email address",
+      "keywords": ["verify email", "email verification", "resend verification", "vérifier email", "vérification email", "تأكيد البريد", "توثيق البريد"],
+      "source": "app/auth.py:/activate/verify,/api/auth/resend-verify",
+      "content": {
+        "en": "SEVOR sends an account-verification link to the registered email. Opening a valid link verifies that email. If you need another verification email, use the resend-verification option with the account email. An expired or invalid verification link should be replaced with a new one.",
+        "fr": "SEVOR envoie un lien de vérification à l’e-mail enregistré. L’ouverture d’un lien valide vérifie cet e-mail. Si vous avez besoin d’un autre e-mail de vérification, utilisez l’option de renvoi avec l’adresse du compte. Un lien expiré ou invalide doit être remplacé par un nouveau lien.",
+        "ar": "ترسل SEVOR رابط تحقق إلى البريد المسجل. فتح رابط صالح يؤكد ذلك البريد. إذا احتجت رسالة تحقق أخرى، استخدم خيار إعادة الإرسال مع بريد الحساب. يجب استبدال رابط التحقق المنتهي أو غير الصالح برابط جديد."
+      }
+    },
+    {
+      "id": "core:verification:status",
+      "status": "published",
+      "priority": 100,
+      "category": "Verification",
+      "intent": "verification.status",
+      "title": "Identity verification status",
+      "keywords": ["verification pending", "not verified", "identity verification", "vérification en attente", "compte non vérifié", "التحقق معلق", "لماذا لست موثق", "توثيق الهوية"],
+      "source": "app/models.py:User,Document; app/auth.py; app/admin.py",
+      "content": {
+        "en": "SEVOR keeps an account status and a document-review status. When you are signed in, I can check the safe current status without accessing your document images. The current code has pending, approved, and rejected states, but it does not define a public review-time promise or a complete public list of rejection reasons.",
+        "fr": "SEVOR conserve un statut de compte et un statut de revue des documents. Une fois connecté, je peux vérifier le statut actuel sans accéder aux images de vos documents. Le code actuel comporte les états pending, approved et rejected, mais ne définit ni délai public de revue ni liste publique complète des motifs de rejet.",
+        "ar": "تحتفظ SEVOR بحالة للحساب وحالة لمراجعة الوثيقة. عند تسجيل الدخول يمكنني التحقق من الحالة الحالية الآمنة دون الوصول إلى صور وثائقك. يحتوي النظام الحالي على حالات pending وapproved وrejected، لكنه لا يحدد وعدًا عامًا لمدة المراجعة أو قائمة عامة كاملة لأسباب الرفض."
+      }
+    },
+    {
+      "id": "core:listings:create-edit",
+      "status": "published",
+      "priority": 90,
+      "category": "Listings & Publishing",
+      "intent": "listing.create_edit",
+      "title": "Create or edit a listing",
+      "keywords": ["create listing", "add item", "edit listing", "publish listing", "créer annonce", "modifier annonce", "publier annonce", "إضافة منتج", "إنشاء إعلان", "تعديل المنتج", "نشر المنتج"],
+      "source": "app/items.py:/owner/items/new,/owner/items/{item_id}/edit",
+      "content": {
+        "en": "Owners can create listings from the owner listing flow and edit their own listings. New and resubmitted listings are stored as pending; the code only exposes listings publicly when they are both approved and active. I can check the status of one of your own listings after you choose it.",
+        "fr": "Les propriétaires peuvent créer des annonces depuis le flux propriétaire et modifier leurs propres annonces. Les nouvelles annonces et les annonces soumises à nouveau sont enregistrées comme pending ; le code ne les affiche publiquement que si elles sont approved et actives. Je peux vérifier le statut d’une de vos annonces après votre choix.",
+        "ar": "يمكن للمالكين إنشاء الإعلانات من مسار المالك وتعديل إعلاناتهم الخاصة. تُحفظ الإعلانات الجديدة أو المعاد إرسالها بحالة pending؛ ولا يعرضها النظام للعامة إلا إذا كانت approved ونشطة. يمكنني التحقق من حالة أحد إعلاناتك بعد أن تختاره."
+      }
+    },
+    {
+      "id": "core:listings:pending-or-visibility",
+      "status": "published",
+      "priority": 105,
+      "category": "Listings & Publishing",
+      "intent": "listing.status",
+      "title": "A listing is pending, rejected, or not visible",
+      "keywords": ["listing pending", "listing not visible", "item pending", "listing rejected", "annonce en attente", "annonce invisible", "annonce rejetée", "المنتج معلق", "الإعلان لا يظهر", "لم يتم نشر المنتج"],
+      "source": "app/items.py; app/admin_items.py",
+      "content": {
+        "en": "A listing is visible in public item queries only when its status is approved and it is active. The system supports pending and rejected listing states, and a rejected or needs-revision listing can be resubmitted through the owner flow. There is no approved public listing-review time in the current knowledge, so I will not guess a timeline.",
+        "fr": "Une annonce est visible dans les requêtes publiques seulement si son statut est approved et si elle est active. Le système prend en charge les états pending et rejected ; une annonce rejected ou needs-revision peut être soumise de nouveau depuis le flux propriétaire. Il n’existe pas de délai public approuvé pour la revue, je ne vais donc pas en inventer un.",
+        "ar": "لا يظهر الإعلان في نتائج العناصر العامة إلا عندما تكون حالته approved ونشطًا. يدعم النظام حالات pending وrejected؛ ويمكن إعادة إرسال إعلان بحالة rejected أو needs-revision من مسار المالك. لا توجد مدة مراجعة عامة معتمدة في المعرفة الحالية، لذلك لن أخمّن مدة."
+      }
+    },
+    {
+      "id": "core:bookings:create-dates",
+      "status": "published",
+      "priority": 90,
+      "category": "Bookings",
+      "intent": "booking.create_dates",
+      "title": "Create a booking and choose dates",
+      "keywords": ["book item", "booking dates", "dates unavailable", "create booking", "réserver", "dates indisponibles", "حجز", "تواريخ غير متاحة", "إنشاء حجز"],
+      "source": "app/routes_bookings.py:/bookings,/bookings/new",
+      "content": {
+        "en": "Creating a booking requires a signed-in approved account, an active item, a future start date, and an end date after the start date. SEVOR checks availability again on the server before creating the request, so dates can become unavailable even if a calendar was open earlier.",
+        "fr": "La création d’une réservation demande un compte connecté et approved, un article actif, une date de début future et une date de fin après le début. SEVOR revérifie la disponibilité côté serveur avant de créer la demande ; les dates peuvent donc devenir indisponibles même si le calendrier était déjà ouvert.",
+        "ar": "يتطلب إنشاء الحجز حسابًا مسجل الدخول وحالته approved، وعنصرًا نشطًا، وتاريخ بداية مستقبليًا وتاريخ نهاية بعد البداية. تتحقق SEVOR من التوفر على الخادم قبل إنشاء الطلب، لذلك قد تصبح التواريخ غير متاحة حتى لو كان التقويم مفتوحًا سابقًا."
+      }
+    },
+    {
+      "id": "core:bookings:request-status",
+      "status": "published",
+      "priority": 105,
+      "category": "Bookings",
+      "intent": "booking.status",
+      "title": "A booking is requested, accepted, rejected, or pending",
+      "keywords": ["booking pending", "reservation pending", "booking requested", "booking accepted", "booking rejected", "réservation en attente", "réservation acceptée", "الحجز معلق", "الحجز قيد الانتظار", "الحجز مرفوض"],
+      "source": "app/routes_bookings.py:/bookings,/bookings/{booking_id}/owner/decision",
+      "content": {
+        "en": "A new booking request starts with the requested status. The owner can accept or reject it. A rejected request does not reserve the item’s dates; accepting rechecks availability while the item is locked. I can check the current status of your own booking, but the current code does not publish a guaranteed owner-response time.",
+        "fr": "Une nouvelle demande de réservation commence avec le statut requested. Le propriétaire peut l’accepter ou la refuser. Une demande refusée ne réserve pas les dates ; l’acceptation revérifie la disponibilité pendant que l’article est verrouillé. Je peux vérifier le statut actuel de votre propre réservation, mais le code actuel ne publie aucun délai garanti de réponse du propriétaire.",
+        "ar": "يبدأ طلب الحجز الجديد بحالة requested. يستطيع المالك قبوله أو رفضه. الطلب المرفوض لا يحجز تواريخ العنصر؛ وعند القبول يُعاد التحقق من التوفر أثناء قفل العنصر. يمكنني فحص الحالة الحالية لحجزك، لكن النظام لا ينشر مدة مضمونة لرد المالك."
+      }
+    },
+    {
+      "id": "core:bookings:owner-not-responding",
+      "status": "published",
+      "priority": 105,
+      "category": "Bookings & Messaging",
+      "intent": "booking.owner_not_responding",
+      "title": "The owner is not responding",
+      "keywords": ["owner not responding", "owner doesn't answer", "owner no response", "propriétaire ne répond pas", "proprio répond pas", "المالك لا يرد", "المؤجر لا يجيب"],
+      "source": "app/routes_bookings.py:/bookings/{booking_id}/owner/decision; app/messages.py",
+      "content": {
+        "en": "For a requested booking, the owner is the person who can accept or reject the request. You can use the in-app messages to contact the other party. The current code does not define a public response-time promise, so I cannot give an exact waiting time. If the issue remains unresolved, I can connect you with Sevor Support.",
+        "fr": "Pour une réservation requested, le propriétaire est la personne qui peut accepter ou refuser la demande. Vous pouvez utiliser la messagerie intégrée pour contacter l’autre partie. Le code actuel ne définit pas de délai public de réponse, je ne peux donc pas donner de durée exacte. Si le problème reste sans solution, je peux vous mettre en relation avec Sevor Support.",
+        "ar": "بالنسبة إلى حجز بحالة requested، المالك هو من يستطيع قبول الطلب أو رفضه. يمكنك استخدام الرسائل داخل التطبيق للتواصل مع الطرف الآخر. لا يحدد النظام الحالي مدة انتظار عامة، لذلك لا أستطيع إعطاء وقت دقيق. إذا بقيت المشكلة بلا حل يمكنني وصلك بدعم Sevor."
+      }
+    },
+    {
+      "id": "core:payments:booking-payment",
+      "status": "published",
+      "priority": 110,
+      "category": "Payments",
+      "intent": "payment.booking_status",
+      "title": "Payment and booking status",
+      "keywords": ["payment failed", "payment pending", "paid but booking pending", "charged booking", "paiement refusé", "paiement en attente", "payé réservation", "دفعت لكن الحجز", "فشل الدفع", "تم خصم المال"],
+      "source": "app/models.py:Booking; app/routes_bookings.py",
+      "content": {
+        "en": "A booking keeps separate booking and payment-status fields. I can check the safe current values for one of your bookings; I will not infer that payment succeeded from a bank message alone. If payment is completed while the booking is still requested, the current status is the source of truth and a support agent can investigate anything not explained by the booking flow.",
+        "fr": "Une réservation conserve des champs distincts pour son statut et son statut de paiement. Je peux vérifier les valeurs actuelles sûres d’une de vos réservations ; je ne vais pas déduire qu’un paiement a réussi à partir d’un seul message bancaire. Si le paiement est completed alors que la réservation reste requested, le statut actuel est la source de vérité et un agent peut examiner ce que le flux de réservation n’explique pas.",
+        "ar": "يحتفظ الحجز بحقلين منفصلين لحالة الحجز وحالة الدفع. يمكنني التحقق من القيم الآمنة الحالية لأحد حجوزاتك؛ ولن أستنتج نجاح الدفع من رسالة بنك فقط. إذا كان الدفع completed بينما الحجز ما زال requested، فالحالة الحالية هي مصدر الحقيقة ويمكن للموظف فحص ما لا يفسره مسار الحجز."
+      }
+    },
+    {
+      "id": "core:deposits:status",
+      "status": "published",
+      "priority": 95,
+      "category": "Deposits",
+      "intent": "deposit.status",
+      "title": "Deposit status for a booking",
+      "keywords": ["deposit", "security deposit", "deposit hold", "caution", "dépôt", "عربون", "تأمين", "وديعة"],
+      "source": "app/models.py:Booking; app/routes_deposits.py",
+      "content": {
+        "en": "SEVOR stores deposit-related status on a booking. I can check the safe status for a booking you are authorized to view, but the current approved knowledge does not define a public deposit amount formula or a universal release-time policy. I will not invent either one.",
+        "fr": "SEVOR enregistre le statut lié au dépôt sur une réservation. Je peux vérifier le statut sûr d’une réservation que vous êtes autorisé à consulter, mais les connaissances approuvées actuelles ne définissent ni formule publique du montant du dépôt ni règle universelle de délai de libération. Je n’en inventerai pas.",
+        "ar": "تخزن SEVOR حالة مرتبطة بالتأمين/العربون على الحجز. يمكنني التحقق من الحالة الآمنة لحجز مصرح لك برؤيته، لكن المعرفة المعتمدة الحالية لا تحدد معادلة عامة لمبلغ التأمين ولا سياسة موحدة لمدة الإفراج عنه. لن أخترع أيًا منهما."
+      }
+    },
+    {
+      "id": "core:refunds:status",
+      "status": "published",
+      "priority": 90,
+      "category": "Refunds",
+      "intent": "refund.status",
+      "title": "Refund status",
+      "keywords": ["refund", "refunded", "refund pending", "remboursement", "remboursé", "استرجاع", "استرداد", "مبلغ مسترد"],
+      "source": "app/models.py:Booking; app/routes_deposits.py",
+      "content": {
+        "en": "The booking model records whether a refund has been completed. I can check that safe status for an authorized booking. The current approved knowledge does not define refund eligibility or a universal bank-processing time, so an unresolved refund question should go to Sevor Support rather than receiving a guessed policy.",
+        "fr": "Le modèle de réservation enregistre si un remboursement est terminé. Je peux vérifier ce statut sûr pour une réservation autorisée. Les connaissances approuvées actuelles ne définissent ni l’éligibilité au remboursement ni un délai bancaire universel ; une question non résolue doit donc être transmise à Sevor Support plutôt que recevoir une règle devinée.",
+        "ar": "يسجل نموذج الحجز ما إذا كان الاسترداد قد اكتمل. يمكنني التحقق من هذه الحالة الآمنة لحجز مصرح به. لا تحدد المعرفة المعتمدة الحالية أهلية الاسترداد أو مدة مصرفية موحدة، لذلك يجب تحويل سؤال الاسترداد غير المحسوم إلى دعم Sevor بدل تخمين سياسة."
+      }
+    },
+    {
+      "id": "core:payouts:settings",
+      "status": "published",
+      "priority": 90,
+      "category": "Payouts & PayPal",
+      "intent": "payout.settings",
+      "title": "Set up a payout method or PayPal",
+      "keywords": ["paypal", "payout settings", "connect paypal", "payment method owner", "paiement paypal", "versement paypal", "ربط بايبال", "إعدادات السحب", "دفعات المالك"],
+      "source": "app/payout_settings.py:/payout/settings",
+      "content": {
+        "en": "Owners can manage payout settings at /payout/settings. The current settings flow supports a PayPal payout destination and marks payouts as enabled after a valid method is saved. It does not make a payment or transfer money from chat.",
+        "fr": "Les propriétaires peuvent gérer leurs réglages de versement sur /payout/settings. Le flux actuel prend en charge une destination PayPal et active les versements lorsqu’une méthode valide est enregistrée. Il n’effectue aucun paiement ni transfert d’argent depuis le chat.",
+        "ar": "يمكن للمالكين إدارة إعدادات الدفعات من /payout/settings. يدعم المسار الحالي وجهة دفع عبر PayPal ويفعّل الدفعات بعد حفظ وسيلة صالحة. لا ينفذ أي دفع أو تحويل أموال من الدردشة."
+      }
+    },
+    {
+      "id": "core:payouts:status",
+      "status": "published",
+      "priority": 95,
+      "category": "Payouts & Owner Earnings",
+      "intent": "payout.status",
+      "title": "Owner payout or earnings status",
+      "keywords": ["payout delayed", "earnings", "owner payout", "versement retard", "revenus propriétaire", "أرباح المالك", "دفعة متأخرة", "سحب الأرباح"],
+      "source": "app/models.py:Booking; app/payout_settings.py",
+      "content": {
+        "en": "For an owner’s booking, SEVOR stores an owner payout status and whether the payout was executed. I can check only those safe values for your own booking. The current approved knowledge has no universal payout timing or guarantee, so I will not promise a date.",
+        "fr": "Pour une réservation appartenant à un propriétaire, SEVOR enregistre un statut de versement propriétaire et si le versement a été exécuté. Je peux vérifier uniquement ces valeurs sûres pour votre propre réservation. Les connaissances approuvées actuelles ne comportent aucun délai ni garantie universels de versement, je ne promets donc pas de date.",
+        "ar": "بالنسبة إلى حجز يخص مالكًا، تخزن SEVOR حالة دفعة المالك وما إذا نُفذت. يمكنني التحقق من هذه القيم الآمنة فقط لحجزك. لا تحتوي المعرفة المعتمدة الحالية على مدة أو ضمان عام للدفعات، لذلك لن أعد بتاريخ."
+      }
+    },
+    {
+      "id": "core:messaging:contact",
+      "status": "published",
+      "priority": 80,
+      "category": "Messaging",
+      "intent": "messaging.contact",
+      "title": "Contact an owner or renter",
+      "keywords": ["message owner", "contact owner", "message renter", "unread messages", "contacter propriétaire", "message locataire", "مراسلة المالك", "التواصل مع المؤجر", "رسائل غير مقروءة"],
+      "source": "app/messages.py:/messages,/messages/start",
+      "content": {
+        "en": "SEVOR has a separate user-to-user Messages area for contacting another user. Support tickets are separate from those conversations. If a booking or item context is needed, use the existing message flow; Sevor AI does not send messages or change a booking for you.",
+        "fr": "SEVOR possède une zone Messages distincte pour contacter un autre utilisateur. Les tickets d’assistance sont séparés de ces conversations. Si un contexte de réservation ou d’article est nécessaire, utilisez le flux de messages existant ; Sevor AI n’envoie pas de message et ne modifie pas une réservation à votre place.",
+        "ar": "لدى SEVOR مساحة Messages منفصلة للتواصل بين المستخدمين. تذاكر الدعم منفصلة عن هذه المحادثات. إذا احتجت سياق حجز أو عنصر فاستخدم مسار الرسائل الموجود؛ لا ترسل Sevor AI رسائل ولا تغيّر الحجز نيابة عنك."
+      }
+    },
+    {
+      "id": "core:favorites:manage",
+      "status": "published",
+      "priority": 70,
+      "category": "Favorites",
+      "intent": "favorites.manage",
+      "title": "Manage favorites",
+      "keywords": ["favorites", "favourite", "save item", "favoris", "ajouter favori", "المفضلة", "حفظ منتج"],
+      "source": "app/routes_favorites.py:/favorites,/api/favorites",
+      "content": {
+        "en": "Signed-in users can view favorites at /favorites and use the favorites API to add or remove an item. Favorites do not change listing availability or booking status.",
+        "fr": "Les utilisateurs connectés peuvent voir leurs favoris sur /favorites et utiliser l’API favorites pour ajouter ou retirer un article. Les favoris ne modifient ni la disponibilité d’une annonce ni le statut d’une réservation.",
+        "ar": "يمكن للمستخدمين المسجلين مشاهدة المفضلة في /favorites واستخدام واجهة favorites لإضافة عنصر أو حذفه. لا تغيّر المفضلة توفر الإعلان أو حالة الحجز."
+      }
+    },
+    {
+      "id": "core:reviews:booking-review",
+      "status": "published",
+      "priority": 70,
+      "category": "Reviews",
+      "intent": "reviews.booking",
+      "title": "Leave or manage a review",
+      "keywords": ["review", "rating", "leave review", "avis", "note", "تقييم", "مراجعة"],
+      "source": "app/reviews.py:/reviews/renter/{booking_id},/reviews/owner/{booking_id}",
+      "content": {
+        "en": "SEVOR’s review routes are tied to a booking and verify that the current user is part of it before allowing a review. Sevor AI can explain the flow, but it cannot create or change a review from chat.",
+        "fr": "Les routes d’avis de SEVOR sont liées à une réservation et vérifient que l’utilisateur actuel en fait partie avant d’autoriser un avis. Sevor AI peut expliquer le flux, mais ne peut pas créer ou modifier un avis depuis le chat.",
+        "ar": "ترتبط مسارات التقييم في SEVOR بحجز وتتحقق من أن المستخدم الحالي طرف فيه قبل السماح بالتقييم. يمكن لـSevor AI شرح المسار، لكنها لا تنشئ أو تعدل تقييمًا من الدردشة."
+      }
+    },
+    {
+      "id": "core:reports:safety",
+      "status": "published",
+      "priority": 90,
+      "category": "Reports & Safety",
+      "intent": "reports.safety",
+      "title": "Report a listing or safety concern",
+      "keywords": ["report listing", "report item", "safety issue", "signalement", "signaler annonce", "sécurité", "الإبلاغ عن منتج", "مشكلة أمان", "بلاغ"],
+      "source": "app/reports.py:/reports",
+      "content": {
+        "en": "Signed-in users can submit a report for a listing through the existing reports endpoint. The report is recorded with a pending status and relevant moderators are notified. Sevor AI cannot decide a report or take moderation action from chat.",
+        "fr": "Les utilisateurs connectés peuvent soumettre un signalement concernant une annonce via le point d’entrée reports existant. Le signalement est enregistré avec le statut pending et les modérateurs concernés sont avertis. Sevor AI ne peut pas décider un signalement ni effectuer une action de modération depuis le chat.",
+        "ar": "يمكن للمستخدمين المسجلين إرسال بلاغ عن إعلان عبر نقطة reports الموجودة. يسجل البلاغ بحالة pending ويتم إخطار المشرفين المعنيين. لا تستطيع Sevor AI اتخاذ قرار في البلاغ أو تنفيذ إجراء إشراف من الدردشة."
+      }
+    },
+    {
+      "id": "core:general:sevor-support",
+      "status": "published",
+      "priority": 50,
+      "category": "General SEVOR Support",
+      "intent": "general.sevor",
+      "title": "Use SEVOR support",
+      "keywords": ["sevor help", "how sevor works", "support", "aide sevor", "كيف يعمل sevor", "دعم sevor"],
+      "source": "app/routes_chatbot.py; app/messages.py",
+      "content": {
+        "en": "Sevor AI is for SEVOR support. It can explain approved help information, check a limited set of authorized account statuses, and connect you with Sevor Support when a reliable answer is not available. It does not make payments, refunds, approvals, or account changes from chat.",
+        "fr": "Sevor AI est destinée à l’assistance SEVOR. Elle peut expliquer les informations d’aide approuvées, vérifier un ensemble limité de statuts de compte autorisés et vous mettre en relation avec Sevor Support lorsqu’une réponse fiable n’est pas disponible. Elle ne réalise pas de paiement, remboursement, approbation ou modification de compte depuis le chat.",
+        "ar": "Sevor AI مخصصة لدعم SEVOR. يمكنها شرح معلومات المساعدة المعتمدة، والتحقق من مجموعة محدودة من حالات الحساب المصرح بها، ووصلك بدعم Sevor عندما لا تتوفر إجابة موثوقة. لا تنفذ مدفوعات أو استردادات أو موافقات أو تغييرات للحساب من الدردشة."
+      }
+    },
+    {
+      "id": "core:account:identify-issue",
+      "status": "published",
+      "priority": 85,
+      "category": "Account",
+      "intent": "account.general",
+      "title": "Identify an account issue",
+      "keywords": ["account problem", "account issue", "help with account", "problème compte", "aide compte", "مشكلة حساب", "مساعدة في الحساب"],
+      "source": "app/auth.py:/login,/forgot,/settings/password,/activate/verify",
+      "content": {
+        "en": "I can help with sign-in, password reset, email verification, or account status. Which part is not working: signing in, receiving a reset or verification email, opening a link, or something else? Do not share a password or code here.",
+        "fr": "Je peux vous aider pour la connexion, la réinitialisation du mot de passe, la vérification de l’e-mail ou le statut du compte. Qu’est-ce qui ne fonctionne pas : la connexion, la réception d’un e-mail de réinitialisation ou de vérification, l’ouverture d’un lien, ou autre chose ? Ne partagez aucun mot de passe ni code ici.",
+        "ar": "يمكنني المساعدة في تسجيل الدخول أو إعادة تعيين كلمة المرور أو التحقق من البريد أو حالة الحساب. ما الذي لا يعمل: تسجيل الدخول، وصول بريد إعادة التعيين أو التحقق، فتح رابط، أم شيء آخر؟ لا تشارك كلمة مرور أو رمزًا هنا."
+      }
+    },
+    {
+      "id": "core:bookings:identify-issue",
+      "status": "published",
+      "priority": 85,
+      "category": "Bookings",
+      "intent": "booking.general",
+      "title": "Identify a booking issue",
+      "keywords": ["booking problem", "booking issue", "reservation problem", "help with booking", "problème réservation", "مشكلة في الحجز"],
+      "source": "app/routes_bookings.py:/bookings",
+      "content": {
+        "en": "I can help with a booking request, dates, a pending or rejected status, payment status, or contacting the other party. Which booking issue are you seeing? If it is about one of your bookings, I can check a safe current status after you identify it.",
+        "fr": "Je peux aider pour une demande de réservation, les dates, un statut en attente ou refusé, le statut de paiement ou le contact avec l’autre partie. Quel problème de réservation voyez-vous ? S’il s’agit de l’une de vos réservations, je peux vérifier un statut actuel sûr après l’avoir identifiée.",
+        "ar": "يمكنني المساعدة في طلب الحجز أو التواريخ أو الحالة المعلقة أو المرفوضة أو حالة الدفع أو التواصل مع الطرف الآخر. ما المشكلة التي تراها في الحجز؟ إذا كان الأمر يتعلق بأحد حجوزاتك، يمكنني التحقق من حالة آمنة حالية بعد تحديده."
+      }
+    },
+    {
+      "id": "core:listings:identify-issue",
+      "status": "published",
+      "priority": 85,
+      "category": "Listings & Publishing",
+      "intent": "listing.general",
+      "title": "Identify a listing issue",
+      "keywords": ["listing problem", "listing issue", "listing not working", "problème annonce", "مشكلة في إعلاني", "مشكلة في المنتج"],
+      "source": "app/items.py:/owner/items/new,/owner/items/{item_id}/edit; app/admin_items.py",
+      "content": {
+        "en": "I can help with creating or editing a listing, a pending or rejected status, or public visibility. Is the listing pending, rejected, not visible, or are you unable to save or publish it? I can check one of your own listings after you identify it.",
+        "fr": "Je peux aider pour créer ou modifier une annonce, un statut en attente ou refusé, ou sa visibilité publique. L’annonce est-elle en attente, refusée, invisible, ou ne pouvez-vous pas l’enregistrer ou la publier ? Je peux vérifier l’une de vos propres annonces après l’avoir identifiée.",
+        "ar": "يمكنني المساعدة في إنشاء إعلان أو تعديله أو حالته المعلقة أو المرفوضة أو ظهوره للناس. هل الإعلان معلق أو مرفوض أو غير ظاهر، أم لا يمكنك حفظه أو نشره؟ يمكنني التحقق من أحد إعلاناتك بعد تحديده."
+      }
+    }
+  ]
+}
