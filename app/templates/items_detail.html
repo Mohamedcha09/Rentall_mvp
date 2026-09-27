@@ -274,15 +274,20 @@
       height: 218px;
       margin-top: 16px;
       overflow: hidden;
-      border: 1px solid var(--detail-line);
+      border: 1px solid rgba(102, 132, 188, .38);
       border-radius: 16px;
-      background: linear-gradient(135deg, #eef2fb, #e5ebf7);
+      background: radial-gradient(circle at 52% 44%, #1b3152 0%, #101c31 48%, #091323 100%);
       isolation: isolate;
     }
-    .item-detail__location-map-frame,
-    .item-detail__location-map-frame iframe { width: 100%; height: 100%; border: 0; }
-    .item-detail__location-map-frame { position: absolute; inset: 0; }
-    .item-detail__location-map-status { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; color: var(--detail-muted); font-size: .88rem; }
+    .item-detail__location-map-frame { position: absolute; inset: 0; background: #0b1527; }
+    .item-detail__location-map-frame iframe {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      filter: invert(.92) hue-rotate(174deg) saturate(.62) brightness(.74) contrast(1.14);
+    }
+    .item-detail__location-map-status { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; color: #d8e2f7; background: radial-gradient(circle at 50% 45%, rgba(49, 82, 133, .42), rgba(9, 19, 35, .94)); font-size: .88rem; }
     .item-detail__location-map-overlay {
       position: absolute;
       top: 12px;
