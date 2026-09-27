@@ -757,6 +757,66 @@ class SupportMessage(Base):
 
     ticket = relationship("SupportTicket", back_populates="messages")
     sender = relationship("User", lazy="joined")
+    attachments = relationship(
+        "SupportAttachment",
+        back_populates="message",
+        cascade="all, delete-orphan",
+        order_by="SupportAttachment.created_at",
+    )
+    read_receipts = relationship(
+        "SupportMessageReceipt",
+        back_populates="message",
+        cascade="all, delete-orphan",
+        order_by="SupportMessageReceipt.read_at",
+    )
+
+
+class SupportAttachment(Base):
+    """A private file attached to one human-support message.
+
+    ``stored_name`` is an opaque generated name kept outside the public uploads
+    mount.  The original filename is display metadata only; all downloads go
+    through an authenticated ticket-scoped route.
+    """
+
+    __tablename__ = "support_attachments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticket_id = Column(Integer, ForeignKey("support_tickets.id"), nullable=False, index=True)
+    message_id = Column(Integer, ForeignKey("support_messages.id"), nullable=False, index=True)
+    uploader_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    original_name = Column(String(180), nullable=False)
+    stored_name = Column(String(96), nullable=False, unique=True, index=True)
+    content_type = Column(String(100), nullable=False)
+    size_bytes = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    ticket = relationship("SupportTicket", foreign_keys=[ticket_id])
+    message = relationship("SupportMessage", back_populates="attachments", foreign_keys=[message_id])
+    uploader = relationship("User", foreign_keys=[uploader_id])
+
+
+class SupportMessageReceipt(Base):
+    """A durable record that a specific participant actually viewed a message.
+
+    ``SupportMessage.is_read`` remains as the compatibility-level aggregate for
+    older inboxes.  Individual receipts are needed because a human ticket can
+    move between CS, MD, and MOD, and one boolean cannot say who read it.
+    """
+
+    __tablename__ = "support_message_receipts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    message_id = Column(Integer, ForeignKey("support_messages.id"), nullable=False, index=True)
+    reader_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    read_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    message = relationship("SupportMessage", back_populates="read_receipts", foreign_keys=[message_id])
+    reader = relationship("User", foreign_keys=[reader_id])
+
+    __table_args__ = (
+        UniqueConstraint("message_id", "reader_id", name="ux_support_message_receipts_message_reader"),
+    )
 
 # =========================
 # FX rates (daily)
