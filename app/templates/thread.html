@@ -540,6 +540,7 @@
     z-index:1;
   }
   .conversation-composer__row{
+    box-sizing:border-box;
     display:flex;
     align-items:flex-end;
     gap:10px;
@@ -568,6 +569,7 @@
   .conversation-composer__media:disabled{ cursor:not-allowed; opacity:.48; }
   .conversation-composer__media:focus-visible{ outline:3px solid rgba(91,141,244,.33); outline-offset:3px; }
   .conversation-composer__previews{
+    box-sizing:border-box;
     display:block;
     width:100%;
     max-width:100%;
@@ -580,6 +582,7 @@
     scrollbar-width:thin;
   }
   .conversation-composer__preview-track{
+    box-sizing:border-box;
     display:flex;
     align-items:center;
     gap:8px;
@@ -843,6 +846,7 @@
     .conversation-composer{ padding-left:max(12px, env(safe-area-inset-left, 0px)); padding-right:max(12px, env(safe-area-inset-right, 0px)); }
     .conversation-composer__row{ gap:6px; }
     .conversation-composer__media{ width:34px; height:34px; flex-basis:34px; margin-bottom:6px; border-radius:11px; }
+    .conversation-composer-preview--image{ width:72px; height:72px; border-radius:12px; }
   }
 
   @media (max-height:520px) and (orientation:landscape){
@@ -1311,8 +1315,9 @@
       return voice;
     };
 
+    const attachmentKind = (attachment) => attachment.kind || (attachment.is_image ? 'image' : attachment.is_voice ? 'voice' : 'file');
     const createAttachmentElement = (attachment) => {
-      const kind = attachment.kind || (attachment.is_image ? 'image' : attachment.is_voice ? 'voice' : 'file');
+      const kind = attachmentKind(attachment);
       if (kind === 'image') {
         const button = document.createElement('button');
         button.className = 'conversation-attachment-image';
@@ -1351,6 +1356,13 @@
       return link;
     };
 
+    const createMessageImages = (attachments) => {
+      const images = document.createElement('div');
+      images.className = `conversation-message__images${attachments.length > 1 ? ' conversation-message__images--multiple' : ''}`;
+      attachments.forEach((attachment) => images.appendChild(createAttachmentElement(attachment)));
+      return images;
+    };
+
     const createMessageElement = (message) => {
       const row = document.createElement('div');
       const fromMe = Boolean(message.from_me);
@@ -1367,19 +1379,26 @@
 
       const content = document.createElement('div');
       content.className = 'conversation-message__content';
-      const bubble = document.createElement('article');
-      bubble.className = `conversation-bubble ${fromMe ? 'conversation-bubble--me' : 'conversation-bubble--other'}`;
-      if (message.body) {
-        const body = document.createElement('p');
-        body.className = 'conversation-bubble__text';
-        body.textContent = message.body;
-        bubble.appendChild(body);
-      }
-      if (Array.isArray(message.attachments) && message.attachments.length) {
-        const attachments = document.createElement('div');
-        attachments.className = 'conversation-bubble__attachments';
-        message.attachments.forEach((attachment) => attachments.appendChild(createAttachmentElement(attachment)));
-        bubble.appendChild(attachments);
+      const allAttachments = Array.isArray(message.attachments) ? message.attachments : [];
+      const imageAttachments = allAttachments.filter((attachment) => attachmentKind(attachment) === 'image');
+      const nonImageAttachments = allAttachments.filter((attachment) => attachmentKind(attachment) !== 'image');
+      if (imageAttachments.length) content.appendChild(createMessageImages(imageAttachments));
+      if (message.body || nonImageAttachments.length) {
+        const bubble = document.createElement('article');
+        bubble.className = `conversation-bubble ${fromMe ? 'conversation-bubble--me' : 'conversation-bubble--other'}`;
+        if (message.body) {
+          const body = document.createElement('p');
+          body.className = 'conversation-bubble__text';
+          body.textContent = message.body;
+          bubble.appendChild(body);
+        }
+        if (nonImageAttachments.length) {
+          const attachments = document.createElement('div');
+          attachments.className = 'conversation-bubble__attachments';
+          nonImageAttachments.forEach((attachment) => attachments.appendChild(createAttachmentElement(attachment)));
+          bubble.appendChild(attachments);
+        }
+        content.appendChild(bubble);
       }
       const timestamp = document.createElement('time');
       timestamp.className = 'conversation-message__time';
@@ -1389,7 +1408,7 @@
       meta.className = 'conversation-message__meta';
       meta.appendChild(timestamp);
       if (fromMe) meta.appendChild(createReceipt(message.id, Boolean(message.is_read)));
-      content.append(bubble, meta);
+      content.appendChild(meta);
       row.appendChild(content);
       return row;
     };
