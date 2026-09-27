@@ -984,7 +984,9 @@
                   {% for attachment in non_image_attachments %}
                     {% if attachment.kind == 'voice' %}
                       <div class="conversation-voice">
-                        <audio class="conversation-voice__audio" controls preload="metadata" src="/messages/{{ thread.id }}/attachments/{{ attachment.id }}" aria-label="Voice message"></audio>
+                        <audio class="conversation-voice__audio" controls preload="metadata" aria-label="Voice message">
+                          <source src="/messages/{{ thread.id }}/attachments/{{ attachment.id }}" type="{{ attachment.content_type }}">
+                        </audio>
                         <span class="conversation-voice__duration" aria-label="Voice message duration">{% if attachment.duration_ms %}{{ '%d:%02d'|format((attachment.duration_ms // 60000), ((attachment.duration_ms // 1000) % 60)) }}{% endif %}</span>
                       </div>
                     {% else %}
@@ -1096,6 +1098,7 @@
     let selectedAttachments = [];
     let pendingVoiceFile = null;
     let pendingVoiceDuration = 0;
+    let pendingVoiceReady = false;
     let previewObjectUrls = [];
     let activeRecorder = null;
     let activeStream = null;
@@ -1148,7 +1151,8 @@
 
     const hasPendingMedia = () => selectedAttachments.length > 0 || Boolean(pendingVoiceFile);
     const updateSendState = () => {
-      sendButton.disabled = isSending || (!input.value.trim() && !hasPendingMedia());
+      const voiceIsStillValidating = Boolean(pendingVoiceFile && !pendingVoiceReady);
+      sendButton.disabled = isSending || Boolean(activeRecorder) || voiceIsStillValidating || (!input.value.trim() && !hasPendingMedia());
       attachmentButton.disabled = isSending || Boolean(activeRecorder) || Boolean(pendingVoiceFile);
       voiceButton.disabled = isSending || Boolean(activeRecorder) || selectedAttachments.length > 0 || Boolean(pendingVoiceFile);
       if (activeRecorder) form.dataset.recording = 'true';
@@ -1236,6 +1240,27 @@
       const icon = button.querySelector('i');
       if (icon) icon.className = `bi ${isPlaying ? 'bi-pause-fill' : 'bi-play-fill'}`;
     };
+    const normalizedVoiceMime = (value) => String(value || '').split(';', 1)[0].trim().toLowerCase();
+    const isSupportedVoiceMime = (value) => ['audio/webm', 'audio/mp4', 'audio/x-m4a', 'audio/ogg', 'application/ogg'].includes(normalizedVoiceMime(value));
+    const canPlayVoiceMime = (value) => {
+      if (!isSupportedVoiceMime(value)) return false;
+      const probe = document.createElement('audio');
+      return Boolean(probe.canPlayType(value));
+    };
+    const reportVoicePlaybackFailure = (audio, context, error) => {
+      const mediaError = audio && audio.error;
+      // Keep diagnostics in the browser console without exposing a provider
+      // URL or credentials.  This makes an iPhone/Safari failure actionable
+      // instead of silently swallowing NotSupportedError.
+      console.warn('SEVOR voice playback failed', {
+        context,
+        media_error_code: mediaError ? mediaError.code : null,
+        error_name: error && error.name ? error.name : null,
+        error_message: error && error.message ? error.message : null,
+        mime: audio && (audio.dataset.mime || (audio.querySelector('source') || {}).type) || null,
+      });
+      if (context === 'message') setError('Voice playback failed. Please try again.');
+    };
     const enhanceVoicePlayer = (voice) => {
       if (!voice || voice.dataset.enhanced === 'true') return;
       const audio = voice.querySelector('audio');
@@ -1283,8 +1308,14 @@
         setVoiceToggleState(toggle, !audio.paused);
       };
       toggle.addEventListener('click', () => {
-        if (audio.paused) audio.play().catch(() => {});
-        else audio.pause();
+        if (audio.paused) {
+          audio.play().catch((error) => {
+            reportVoicePlaybackFailure(audio, 'message', error);
+            update();
+          });
+        } else {
+          audio.pause();
+        }
       });
       seek.addEventListener('input', () => {
         const duration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0;
@@ -1296,7 +1327,8 @@
       seek.addEventListener('blur', () => waveWrap.classList.remove('is-focused'));
       ['loadedmetadata', 'durationchange', 'timeupdate', 'play', 'pause', 'ended'].forEach((eventName) => audio.addEventListener(eventName, update));
       bindVoiceDuration(audio, durationLabel);
-      audio.addEventListener('error', () => {
+      audio.addEventListener('error', (error) => {
+        reportVoicePlaybackFailure(audio, 'message', error);
         // Keep the native control as an accessible fallback if a browser
         // cannot initialize the enhanced player for this particular file.
         voice.dataset.enhanced = 'fallback';
@@ -1311,14 +1343,20 @@
       update();
     };
 
-    const createVoiceElement = (source, initialDuration) => {
+    const createVoiceElement = (source, initialDuration, contentType) => {
       const voice = document.createElement('div');
       voice.className = 'conversation-voice';
       const audio = document.createElement('audio');
       audio.className = 'conversation-voice__audio';
       audio.controls = true;
       audio.preload = 'metadata';
-      audio.src = source || '';
+      if (source) {
+        const mediaSource = document.createElement('source');
+        mediaSource.src = source;
+        if (contentType) mediaSource.type = contentType;
+        audio.appendChild(mediaSource);
+      }
+      if (contentType) audio.dataset.mime = contentType;
       audio.setAttribute('aria-label', 'Voice message');
       const duration = document.createElement('span');
       duration.className = 'conversation-voice__duration';
@@ -1379,7 +1417,7 @@
         return button;
       }
       if (kind === 'voice') {
-        return createVoiceElement(attachment.url || '', attachment.duration_ms);
+        return createVoiceElement(attachment.url || '', attachment.duration_ms, attachment.content_type || '');
       }
       const link = document.createElement('a');
       link.className = 'conversation-attachment-file';
@@ -1577,6 +1615,7 @@
           remove.addEventListener('click', () => {
             pendingVoiceFile = null;
             pendingVoiceDuration = 0;
+            pendingVoiceReady = false;
             renderPreviews();
             updateSendState();
           });
@@ -1749,20 +1788,33 @@
     const extensionForMime = (mime) => {
       const value = String(mime || '').toLowerCase();
       if (value.includes('ogg')) return 'ogg';
+      // M4A is the audio-only MP4 container used by Safari; it remains
+      // correctly declared as audio/mp4 and is not mislabeled as WebM.
       if (value.includes('mp4') || value.includes('m4a')) return 'm4a';
       return 'webm';
     };
     const preferredRecorderType = () => {
       if (!window.MediaRecorder || typeof window.MediaRecorder.isTypeSupported !== 'function') return null;
       return [
-        'audio/webm;codecs=opus',
+        // Safari/iPhone normally exposes AAC in an MP4 container; Chromium
+        // will skip these if unsupported and select WebM/Opus below.
+        'audio/mp4;codecs=mp4a.40.2',
         'audio/mp4',
+        'audio/webm;codecs=opus',
         'audio/ogg;codecs=opus',
         'audio/webm',
-      ].find((type) => window.MediaRecorder.isTypeSupported(type)) || null;
+        'audio/ogg',
+      ].find((type) => window.MediaRecorder.isTypeSupported(type) && canPlayVoiceMime(type)) || null;
     };
     const finishRecording = (recorder, chunks) => {
-      const mime = recorder.mimeType || 'audio/webm';
+      const preferredType = preferredRecorderType();
+      const mime = [recorder.mimeType, ...chunks.map((chunk) => chunk.type), preferredType]
+        .find((candidate) => canPlayVoiceMime(candidate));
+      if (!mime) {
+        resetRecording();
+        setError('This browser did not provide a supported voice format.');
+        return;
+      }
       const blob = new Blob(chunks, { type: mime });
       resetRecording();
       if (discardRecording || !blob.size) {
@@ -1775,21 +1827,42 @@
       }
       const extension = extensionForMime(blob.type || mime);
       pendingVoiceFile = new File([blob], `voice-message-${Date.now()}.${extension}`, { type: blob.type || mime });
+      const voiceCandidate = pendingVoiceFile;
       pendingVoiceDuration = 0;
+      pendingVoiceReady = false;
       const probe = document.createElement('audio');
       const probeUrl = URL.createObjectURL(blob);
       probe.preload = 'metadata';
       probe.src = probeUrl;
       const finalize = () => URL.revokeObjectURL(probeUrl);
       probe.addEventListener('loadedmetadata', () => {
+        if (pendingVoiceFile !== voiceCandidate) return;
         if (Number.isFinite(probe.duration) && probe.duration > 0) {
           pendingVoiceDuration = Math.round(probe.duration * 1000);
         }
         renderPreviews();
       }, { once: true });
-      probe.addEventListener('error', () => renderPreviews(), { once: true });
+      const markPendingVoiceReady = () => {
+        if (pendingVoiceFile !== voiceCandidate) return;
+        pendingVoiceReady = true;
+        updateSendState();
+      };
+      probe.addEventListener('loadeddata', markPendingVoiceReady, { once: true });
+      probe.addEventListener('canplay', markPendingVoiceReady, { once: true });
+      probe.addEventListener('error', (error) => {
+        if (pendingVoiceFile !== voiceCandidate) return;
+        // Do not upload a recording that this browser cannot decode locally.
+        reportVoicePlaybackFailure(probe, 'preview', error);
+        pendingVoiceFile = null;
+        pendingVoiceDuration = 0;
+        pendingVoiceReady = false;
+        renderPreviews();
+        updateSendState();
+        setError('This voice recording could not be played on this device. Please record it again.');
+      }, { once: true });
       probe.addEventListener('loadedmetadata', finalize, { once: true });
       probe.addEventListener('error', finalize, { once: true });
+      probe.load();
       renderPreviews();
       updateSendState();
     };
@@ -1878,7 +1951,7 @@
     form.addEventListener('submit', (event) => {
       event.preventDefault();
       const text = input.value.trim();
-      if ((!text && !hasPendingMedia()) || isSending || activeRecorder) return;
+      if ((!text && !hasPendingMedia()) || isSending || activeRecorder || (pendingVoiceFile && !pendingVoiceReady)) return;
       isSending = true;
       updateSendState();
       clearError();
@@ -1925,6 +1998,7 @@
           selectedAttachments = [];
           pendingVoiceFile = null;
           pendingVoiceDuration = 0;
+          pendingVoiceReady = false;
           renderPreviews();
           clientMessageIdInput.value = createClientMessageId();
           stopTyping();

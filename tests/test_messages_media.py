@@ -114,6 +114,7 @@ PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
 JPEG_BYTES = b"\xff\xd8\xff" + b"\x00" * 64
 PDF_BYTES = b"%PDF-1.7\n1 0 obj\n<<>>\nendobj\n"
 OGG_BYTES = b"OggS" + b"\x00" * 64
+MP4_BYTES = b"\x00\x00\x00\x18ftypM4A " + b"\x00" * 64
 
 
 if not APP_DATABASE_WAS_PRELOADED:
@@ -210,6 +211,9 @@ class DirectMessageMediaTests(unittest.TestCase):
             "context.createMediaStreamSource(stream)",
             "context.createAnalyser()",
             "recordingAnalyser.getByteFrequencyData(recordingWaveData)",
+            "MediaRecorder.isTypeSupported(type) && canPlayVoiceMime(type)",
+            "audio.play().catch((error) =>",
+            "<source src=\"/messages/{{ thread.id }}/attachments/{{ attachment.id }}\" type=\"{{ attachment.content_type }}\">",
             'form.dataset.recording = \'true\'',
             "conversation-message--me{ padding-left:8%; margin-right:4px; }",
             "aspect-ratio:1 / 1",
@@ -471,6 +475,31 @@ class DirectMessageMediaTests(unittest.TestCase):
         ).json()["read_receipts"]
         self.assertEqual(len(receipts), 3)
 
+    def test_mp4_voice_mime_and_extension_are_preserved(self):
+        """Safari-style audio/mp4 uploads must never be renamed as WebM."""
+        thread_id = self._thread()
+        owner = TestClient(main_module.app)
+        _login(owner, self.owner_id)
+
+        sent = self._send(
+            owner,
+            thread_id,
+            key="direct-safari-mp4-voice-001",
+            files={"voice": ("voice-message.m4a", MP4_BYTES, "audio/mp4")},
+        )
+        self.assertEqual(sent.status_code, 201, sent.text)
+        attachment_id = sent.json()["message"]["attachments"][0]["id"]
+
+        db = SessionLocal()
+        try:
+            attachment = db.get(MessageAttachment, attachment_id)
+            self.assertEqual(attachment.kind, "voice")
+            self.assertEqual(attachment.original_name, "voice-message.m4a")
+            self.assertEqual(attachment.content_type, "audio/mp4")
+            self.assertTrue(attachment.stored_name.endswith(".m4a"))
+        finally:
+            db.close()
+
     def test_cloudinary_private_media_survives_a_new_release_filesystem(self):
         """Durable media must not depend on the worker's local upload directory."""
         thread_id = self._thread()
@@ -620,7 +649,7 @@ class DirectMessageMediaTests(unittest.TestCase):
         """A prior ``cld1:`` row becomes restart-safe on its first authorized read."""
         thread_id = self._thread()
         token = "a" * 32
-        stored_name = f"cld1:v:{token}.m4a"
+        stored_name = f"cld1:v:{token}.ogg"
         expected_public_id = f"legacy-direct-messages/{token}"
         voice_bytes = OGG_BYTES
 
@@ -640,10 +669,10 @@ class DirectMessageMediaTests(unittest.TestCase):
                 message_id=message.id,
                 uploader_id=self.owner_id,
                 kind="voice",
-                original_name="recording.m4a",
+                original_name="recording.ogg",
                 stored_name=stored_name,
                 storage_backend="cloudinary",
-                content_type="audio/mp4",
+                content_type="audio/ogg",
                 size_bytes=len(voice_bytes),
                 created_at=datetime.utcnow(),
             )
@@ -653,11 +682,16 @@ class DirectMessageMediaTests(unittest.TestCase):
         finally:
             db.close()
 
+        provider_ranges = []
+
         class FakeProviderResponse:
-            status_code = 200
+            def __init__(self, status_code=200, payload=voice_bytes, headers=None):
+                self.status_code = status_code
+                self.payload = payload
+                self.headers = headers or {}
 
             def iter_content(self, chunk_size=None):
-                yield voice_bytes
+                yield self.payload
 
             def close(self):
                 return None
@@ -671,16 +705,29 @@ class DirectMessageMediaTests(unittest.TestCase):
                 "resource_type": "video",
                 "type": "private",
                 "bytes": len(voice_bytes),
-                # Verify the persisted provider format wins over the original
-                # m4a display filename if a provider canonicalizes it.
-                "format": "mp4",
+                "format": "ogg",
             }
 
         def fake_private_download_url(public_id, provider_format, **options):
             self.assertEqual(public_id, expected_public_id)
-            self.assertEqual(provider_format, "mp4")
+            self.assertEqual(provider_format, "ogg")
             self.assertEqual(options["resource_type"], "video")
             return "https://private-provider.test/legacy-voice"
+
+        def fake_get(_url, **options):
+            requested_range = ((options.get("headers") or {}).get("Range"))
+            provider_ranges.append(requested_range)
+            if requested_range == "bytes=0-7":
+                return FakeProviderResponse(
+                    status_code=206,
+                    payload=voice_bytes[:8],
+                    headers={
+                        "Accept-Ranges": "bytes",
+                        "Content-Range": f"bytes 0-7/{len(voice_bytes)}",
+                        "Content-Length": "8",
+                    },
+                )
+            return FakeProviderResponse(headers={"Content-Length": str(len(voice_bytes))})
 
         cloudinary_env = {
             "SEVOR_MESSAGE_ATTACHMENT_STORAGE": "cloudinary",
@@ -695,7 +742,7 @@ class DirectMessageMediaTests(unittest.TestCase):
             mock.patch.dict(os.environ, cloudinary_env, clear=False),
             mock.patch.object(attachment_service.cloudinary.api, "resource", side_effect=fake_resource) as resource,
             mock.patch.object(attachment_service.cloudinary.utils, "private_download_url", side_effect=fake_private_download_url),
-            mock.patch.object(attachment_service.requests, "get", return_value=FakeProviderResponse()),
+            mock.patch.object(attachment_service.requests, "get", side_effect=fake_get),
         ):
             url = f"/messages/{thread_id}/attachments/{attachment_id}"
             first = participant.get(url)
@@ -708,7 +755,7 @@ class DirectMessageMediaTests(unittest.TestCase):
                 self.assertEqual(hydrated.storage_key, expected_public_id)
                 self.assertEqual(hydrated.storage_resource_type, "video")
                 self.assertEqual(hydrated.storage_delivery_type, "private")
-                self.assertEqual(hydrated.storage_format, "mp4")
+                self.assertEqual(hydrated.storage_format, "ogg")
             finally:
                 db.close()
 
@@ -719,6 +766,24 @@ class DirectMessageMediaTests(unittest.TestCase):
             self.assertEqual(second.status_code, 200, second.text)
             self.assertEqual(second.content, voice_bytes)
             self.assertEqual(resource.call_count, 1)
+
+            ranged = participant.get(url, headers={"Range": "bytes=0-7"})
+            self.assertEqual(ranged.status_code, 206, ranged.text)
+            self.assertEqual(ranged.content, voice_bytes[:8])
+            self.assertEqual(ranged.headers.get("accept-ranges"), "bytes")
+            self.assertEqual(ranged.headers.get("content-range"), f"bytes 0-7/{len(voice_bytes)}")
+            self.assertEqual(ranged.headers.get("content-length"), "8")
+            self.assertEqual(ranged.headers.get("content-type"), "audio/ogg")
+            self.assertTrue(ranged.headers.get("content-disposition", "").startswith("inline"))
+            self.assertEqual(provider_ranges[-1], "bytes=0-7")
+
+            invalid_range = participant.get(url, headers={"Range": "bytes=0-7,9-10"})
+            self.assertEqual(invalid_range.status_code, 416)
+            self.assertEqual(provider_ranges[-1], "bytes=0-7")
+
+            outsider = TestClient(main_module.app)
+            _login(outsider, self.outsider_id)
+            self.assertEqual(outsider.get(url, headers={"Range": "bytes=0-7"}).status_code, 404)
 
     def test_rejects_dangerous_content_and_blocks_nonmembers_from_private_routes(self):
         thread_id = self._thread()

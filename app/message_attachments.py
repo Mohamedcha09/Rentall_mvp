@@ -247,6 +247,15 @@ class CloudinaryStoredObject:
     asset_id: str | None = None
 
 
+@dataclass(frozen=True)
+class CloudinaryAttachmentDelivery:
+    """One authorized provider response, including safe Range metadata."""
+
+    status_code: int
+    response_headers: dict[str, str]
+    chunks: Iterator[bytes]
+
+
 def _cloudinary_attachment_reference(attachment: MessageAttachment) -> CloudinaryStoredObject:
     """Read a durable provider reference without rebuilding new rows from env."""
     if not is_cloudinary_message_attachment(attachment):
@@ -524,12 +533,36 @@ def hydrate_legacy_cloudinary_attachment_metadata(
     )
 
 
-def stream_cloudinary_message_attachment(attachment: MessageAttachment, *, as_attachment: bool) -> Iterator[bytes]:
-    """Proxy one short-lived private provider download through SEVOR's auth gate.
+_SINGLE_BYTE_RANGE_RE = re.compile(r"^bytes=(?:\d+-\d*|\d*-\d+)$", re.IGNORECASE)
+
+
+def _safe_provider_header(response, name: str) -> str | None:
+    """Copy only media-delivery headers that are safe to expose downstream."""
+    raw_headers = getattr(response, "headers", None) or {}
+    value = raw_headers.get(name) or raw_headers.get(name.lower())
+    if value is None:
+        return None
+    value = str(value).strip()
+    return value[:256] if value else None
+
+
+def open_cloudinary_message_attachment(
+    attachment: MessageAttachment,
+    *,
+    as_attachment: bool,
+    byte_range: str | None = None,
+) -> CloudinaryAttachmentDelivery:
+    """Open one private provider response through SEVOR's authorization gate.
 
     The browser never receives a permanent provider URL.  The caller has
     already verified conversation membership before this function is reached.
+    A single RFC 7233 byte-range is forwarded unchanged so Safari can load and
+    seek audio without treating the authenticated proxy as a non-streamable
+    download.
     """
+    normalized_range = str(byte_range or "").strip()
+    if normalized_range and not _SINGLE_BYTE_RANGE_RE.fullmatch(normalized_range):
+        raise HTTPException(status_code=416, detail="The requested byte range is not supported.")
     try:
         url = _cloudinary_private_download_url(attachment, as_attachment=as_attachment)
     except HTTPException as exc:
@@ -540,7 +573,13 @@ def stream_cloudinary_message_attachment(attachment: MessageAttachment, *, as_at
         )
         raise
     try:
-        response = requests.get(url, stream=True, timeout=(5, CLOUDINARY_DOWNLOAD_TIMEOUT_SECONDS))
+        provider_headers = {"Range": normalized_range} if normalized_range else None
+        response = requests.get(
+            url,
+            stream=True,
+            timeout=(5, CLOUDINARY_DOWNLOAD_TIMEOUT_SECONDS),
+            headers=provider_headers,
+        )
     except requests.RequestException as exc:
         logger.warning(
             "dm_attachment_download_failed attachment_id=%s backend=cloudinary provider_status=network_error error=%s",
@@ -556,6 +595,15 @@ def stream_cloudinary_message_attachment(attachment: MessageAttachment, *, as_at
             getattr(attachment, "id", None),
         )
         raise HTTPException(status_code=410, detail="Attachment is unavailable")
+    if response.status_code == 416:
+        content_range = _safe_provider_header(response, "Content-Range")
+        response.close()
+        logger.warning(
+            "dm_attachment_download_failed attachment_id=%s backend=cloudinary provider_status=416",
+            getattr(attachment, "id", None),
+        )
+        headers = {"Content-Range": content_range} if content_range else None
+        raise HTTPException(status_code=416, detail="The requested byte range is unavailable.", headers=headers)
     if response.status_code < 200 or response.status_code >= 300:
         status_code = response.status_code
         response.close()
@@ -566,11 +614,35 @@ def stream_cloudinary_message_attachment(attachment: MessageAttachment, *, as_at
         )
         raise HTTPException(status_code=503, detail="Attachment is temporarily unavailable.")
 
+    response_headers = {"Accept-Ranges": "bytes"}
+    content_length = _safe_provider_header(response, "Content-Length")
+    content_range = _safe_provider_header(response, "Content-Range")
+    if content_length:
+        response_headers["Content-Length"] = content_length
+    if response.status_code == 206:
+        if not content_range:
+            response.close()
+            logger.warning(
+                "dm_attachment_download_failed attachment_id=%s backend=cloudinary provider_status=206 reason=missing_content_range",
+                getattr(attachment, "id", None),
+            )
+            raise HTTPException(status_code=503, detail="Attachment is temporarily unavailable.")
+        response_headers["Content-Range"] = content_range
+    elif normalized_range:
+        # RFC 7233 allows an origin to ignore a range and return the complete
+        # resource.  Preserve its true 200 status instead of fabricating 206;
+        # Cloudinary normally serves 206 for audio range requests.
+        logger.info(
+            "dm_attachment_download_range_ignored attachment_id=%s backend=cloudinary provider_status=200",
+            getattr(attachment, "id", None),
+        )
+
     logger.info(
-        "dm_attachment_download_ready attachment_id=%s backend=cloudinary resource_type=%s provider_found=true provider_status=%s",
+        "dm_attachment_download_ready attachment_id=%s backend=cloudinary resource_type=%s provider_found=true provider_status=%s range_requested=%s",
         getattr(attachment, "id", None),
         _cloudinary_attachment_reference(attachment).resource_type,
         response.status_code,
+        bool(normalized_range),
     )
 
     def _chunks() -> Iterator[bytes]:
@@ -581,7 +653,19 @@ def stream_cloudinary_message_attachment(attachment: MessageAttachment, *, as_at
         finally:
             response.close()
 
-    return _chunks()
+    return CloudinaryAttachmentDelivery(
+        status_code=int(response.status_code),
+        response_headers=response_headers,
+        chunks=_chunks(),
+    )
+
+
+def stream_cloudinary_message_attachment(attachment: MessageAttachment, *, as_attachment: bool) -> Iterator[bytes]:
+    """Backward-compatible full-resource iterator used by maintenance jobs."""
+    return open_cloudinary_message_attachment(
+        attachment,
+        as_attachment=as_attachment,
+    ).chunks
 
 
 def _bounded_env_int(name: str, default: int, *, minimum: int, maximum: int) -> int:

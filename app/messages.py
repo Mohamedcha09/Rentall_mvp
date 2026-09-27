@@ -22,6 +22,7 @@ from .message_attachments import (
     is_cloudinary_message_attachment,
     message_attachment_record_backend,
     message_attachment_path,
+    open_cloudinary_message_attachment,
     persist_staged_message_attachments,
     remove_saved_message_attachment_files,
     serialize_message_attachment,
@@ -773,6 +774,19 @@ def message_attachment_download(
         # The app remains the authorization boundary: a signed provider URL is
         # generated and fetched only after membership was checked above, then
         # proxied back through this stable private SEVOR endpoint.
+        if str(attachment.kind or "").lower() == "voice":
+            delivery = open_cloudinary_message_attachment(
+                attachment,
+                as_attachment=False,
+                byte_range=request.headers.get("range"),
+            )
+            headers.update(delivery.response_headers)
+            return StreamingResponse(
+                delivery.chunks,
+                status_code=delivery.status_code,
+                media_type=attachment.content_type,
+                headers=headers,
+            )
         return StreamingResponse(
             stream_cloudinary_message_attachment(attachment, as_attachment=not inline),
             media_type=attachment.content_type,
