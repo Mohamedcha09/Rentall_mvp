@@ -26,6 +26,7 @@
   <style id="sv-launch-splash-critical">
     html.sv-launch-pending,
     html.sv-launch-pending body{ background:#fbfbff; }
+    html.sv-launch-pending{ scrollbar-gutter:stable; }
     html.sv-launch-pending body{
       overflow:hidden;
       overscroll-behavior:none;
@@ -64,8 +65,9 @@
       height:clamp(76px, 20vw, 90px);
       border-radius:50%;
       isolation:isolate;
-      opacity:0;
-      transform:scale(.94);
+      /* Visible defaults keep the mark usable when Safe Mode disables CSS animation. */
+      opacity:1;
+      transform:scale(1);
       animation:sv-launch-mark-in 420ms cubic-bezier(.2,.8,.3,1) 55ms both;
       transition:transform 620ms cubic-bezier(.22,.75,.25,1), opacity 520ms ease-out;
     }
@@ -135,7 +137,10 @@
     @media (prefers-reduced-motion:reduce){
       #sv-launch-splash{ transition:opacity 160ms linear, visibility 0s linear 160ms; }
       .sv-launch-splash__mark,
-      .sv-launch-splash__glow{ animation:none !important; }
+      .sv-launch-splash__glow{
+        animation:none !important;
+        transition:none !important;
+      }
       .sv-launch-splash__mark{ opacity:1; transform:none; }
       #sv-launch-splash.is-exiting .sv-launch-splash__mark{ transform:none; }
       #sv-launch-splash.is-exiting .sv-launch-splash__glow{ transform:none; }
@@ -1668,7 +1673,7 @@ window.onpageshow = function(e){
     if (!splash || !root.classList.contains('sv-launch-pending')) return;
 
     var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var exitDuration = reducedMotion ? 160 : 620;
+    var exitDuration = 620;
     var didExit = false;
     var safetyTimer;
 
@@ -1684,7 +1689,7 @@ window.onpageshow = function(e){
         splash.hidden = true;
         root.classList.remove('sv-launch-pending');
         root.classList.add('sv-launch-seen');
-      }, exitDuration);
+      }, (reducedMotion || window.__SAFE_MODE__) ? 160 : exitDuration);
     }
 
     function leaveAfterFirstPaint() {
