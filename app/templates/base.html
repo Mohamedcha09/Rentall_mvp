@@ -26,7 +26,11 @@
   <style id="sv-launch-splash-critical">
     html.sv-launch-pending,
     html.sv-launch-pending body{ background:#fbfbff; }
-    html.sv-launch-pending{ scrollbar-gutter:stable; }
+    html.sv-launch-pending{
+      overflow:hidden;
+      overscroll-behavior:none;
+      scrollbar-gutter:stable;
+    }
     html.sv-launch-pending body{
       overflow:hidden;
       overscroll-behavior:none;
